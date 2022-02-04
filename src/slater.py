@@ -1,7 +1,6 @@
 
 
 import math
-import numpy as np
 import torch
 
 from exceptions import CgtoAzimudalQuantumNumberError, CgtoMaxPrimitivesError, CgtoNegativeExponentsError, CgtoQuantumNumberError
@@ -36,7 +35,7 @@ pAlpha1 = torch.tensor([
 assert len(pAlpha1) == nf
 
 # Exponents from second row Table I-V.
-pAlpha2 = torch.tensor(np.array([
+pAlpha2 = torch.tensor([
     8.518186635e-1, 1.516232927e-1, # 1s
     1.292278611e-1, 4.908584205e-2, # 2s
     6.694095822e-1, 5.837135094e-2, # 3s
@@ -52,10 +51,10 @@ pAlpha2 = torch.tensor(np.array([
     2.006693538e-1, 6.865384900e-2, # 4f
     1.156094555e-1, 4.778940916e-2, # 5f
     1.554531559e-1, 5.854079811e-2] # 5g
-    ).reshape(2, nf, order='F'))
+    ).reshape(nf, 2)
 
 # Coefficients from second row Table I-V.
-pCoeff2 = torch.tensor(np.array([
+pCoeff2 = torch.tensor([
     4.301284983e-1, 6.789135305e-1, # 1s
     7.470867124e-1, 2.855980556e-1, # 2s
    -1.529645716e-1, 1.051370110e+0, # 3s
@@ -71,10 +70,10 @@ pCoeff2 = torch.tensor(np.array([
     4.769346276e-1, 6.587383976e-1, # 4f
     4.856637346e-1, 6.125980914e-1, # 5f
     4.848298074e-1, 6.539381621e-1],# 5g
-    ).reshape(2, nf, order='F'))
+    ).reshape(nf, 2)
 
 # Exponents from third row Table I-V.
-pAlpha3 = torch.tensor(np.array([
+pAlpha3 = torch.tensor([
     2.227660584e+0, 4.057711562e-1, 1.098175104e-1, # 1s
     2.581578398e+0, 1.567622104e-1, 6.018332272e-2, # 2s
     5.641487709e-1, 6.924421391e-2, 3.269529097e-2, # 3s
@@ -90,10 +89,10 @@ pAlpha3 = torch.tensor(np.array([
     3.483826963e-1, 1.249380537e-1, 5.349995725e-2, # 4f
     1.649233885e-1, 7.487066646e-2, 3.735787219e-2, # 5f
     2.545432122e-1, 1.006544376e-1, 4.624463922e-2],# 5g
-    ).reshape(3, nf, order='F'))
+    ).reshape(nf, 3)
 
 # Coefficients from third row Table I-V.
-pCoeff3 = torch.tensor(np.array([
+pCoeff3 = torch.tensor([
     1.543289673e-1, 5.353281423e-1, 4.446345422e-1, # 1s
    -5.994474934e-2, 5.960385398e-1, 4.581786291e-1, # 2s
    -1.782577972e-1, 8.612761663e-1, 2.261841969e-1, # 3s
@@ -109,10 +108,10 @@ pCoeff3 = torch.tensor(np.array([
     1.737856685e-1, 5.973380628e-1, 3.929395614e-1, # 4f
     1.909729355e-1, 6.146060459e-1, 3.059611271e-1, # 5f
     1.780980905e-1, 6.063757846e-1, 3.828552923e-1],# 5g
-    ).reshape(3, nf, order='F'))
+    ).reshape(nf, 3)
 
 # Exponents from forth row Table I-V.
-pAlpha4 = torch.tensor(np.array([
+pAlpha4 = torch.tensor([
     5.216844534e+0, 9.546182760e-1, # 1s
     2.652034102e-1, 8.801862774e-2,
     1.161525551e+1, 2.000243111e+0, # 2s
@@ -143,10 +142,10 @@ pAlpha4 = torch.tensor(np.array([
     5.447006630e-2, 3.037569283e-2,
     3.945205573e-1, 1.588100623e-1, # 5g
     7.646521729e-2, 3.898703611e-2],
-    ).reshape(4, nf, order='F'))
+    ).reshape(nf, 4)
 
 # Coefficients from forth row Table I-V.
-pCoeff4 = torch.tensor(np.array([
+pCoeff4 = torch.tensor([
     5.675242080e-2, 2.601413550e-1, # 1s
     5.328461143e-1, 2.916254405e-1,
    -1.198411747e-2,-5.472052539e-2, # 2s
@@ -177,10 +176,10 @@ pCoeff4 = torch.tensor(np.array([
     4.937432100e-1, 1.254001522e-1,
     6.010484250e-2, 3.309738329e-1, # 5g
     5.655207585e-1, 2.171122608e-1],
-    ).reshape(4, nf, order='F'))
+    ).reshape(nf, 4)
 
 # Exponents from fifth row Table I-V.
-pAlpha5 = torch.tensor(np.array([
+pAlpha5 = torch.tensor([
     1.130563696e+1, 2.071728178e+0, 5.786484833e-1, # 1s
     1.975724573e-1, 7.445271746e-2,
     8.984956862e+0, 1.673710636e+0, 1.944726668e-1, # 2s
@@ -211,10 +210,10 @@ pAlpha5 = torch.tensor(np.array([
     5.537913898e-2, 3.072866652e-2,
     5.895429375e-1, 2.393343780e-1, 1.172646904e-1, # 5g
     6.254074479e-2, 3.411243214e-2],
-    ).reshape(5, nf, order='F'))
+    ).reshape(nf, 5)
 
 #> Coefficients from fifth row Table I-V.
-pCoeff5 = torch.tensor(np.array([
+pCoeff5 = torch.tensor([
     2.214055312e-2, 1.135411520e-1, 3.318161484e-1, # 1s
     4.825700713e-1, 1.935721966e-1,
    -1.596349096e-2,-5.685884883e-2, 3.698265599e-1, # 2s
@@ -245,10 +244,10 @@ pCoeff5 = torch.tensor(np.array([
     5.040033146e-1, 1.328979300e-1,
     1.998085812e-2, 1.460384050e-1, 4.230565459e-1, # 5g
     4.635699665e-1, 1.226411691e-1],
-    ).reshape(5, nf, order='F'))
+    ).reshape(nf, 5)
 
 #> Exponents from sixth row Table I-V.
-pAlpha6 = torch.tensor(np.array([
+pAlpha6 = torch.tensor([
     2.310303149e+1, 4.235915534e+0, 1.185056519e+0, # 1s
     4.070988982e-1, 1.580884151e-1, 6.510953954e-2,
     2.768496241e+1, 5.077140627e+0, 1.426786050e+0, # 2s
@@ -283,10 +282,10 @@ pAlpha6 = torch.tensor(np.array([
     7.290318381e-2, 4.351355997e-2, 2.598071843e-2,
     8.574668996e-1, 3.497184772e-1, 1.727917060e-1, # 5g
     9.373643151e-2, 5.340032759e-2, 3.057364464e-2],
-    ).reshape(6, nf, order='F'))
+    ).reshape(nf, 6)
 
 #> Coefficients from sixth row Table I-V.
-pCoeff6 = torch.tensor(np.array([
+pCoeff6 = torch.tensor([
     9.163596280e-3, 4.936149294e-2, 1.685383049e-1, # 1s
     3.705627997e-1, 4.164915298e-1, 1.303340841e-1,
    -4.151277819e-3,-2.067024148e-2,-5.150303337e-2, # 2s
@@ -321,7 +320,7 @@ pCoeff6 = torch.tensor(np.array([
     4.589112231e-1, 3.205010548e-1, 5.077063693e-2,
     6.729778096e-3, 5.874145170e-2, 2.339955227e-1, # 5g
     4.512983737e-1, 3.552053926e-1, 6.974153145e-2],
-    ).reshape(6, nf, order='F'))
+    ).reshape(nf, 6)
 
 pAlpha6s = torch.tensor([
     5.800292686e-1, 2.718262251e-1, 7.938523262e-2, # 6s
@@ -409,17 +408,17 @@ def slater_to_gauss_array(ng, n, l, zeta, alpha, coeff, norm):
         alpha[0] = pAlpha1[ityp] * zeta**2
         coeff[0] = 1.0
     elif ng == 2:
-        alpha[:ng] = pAlpha2[:, ityp] * zeta**2
-        coeff[:ng] = pCoeff2[:, ityp]
+        alpha[:ng] = pAlpha2[ityp, :] * zeta**2
+        coeff[:ng] = pCoeff2[ityp, :]
     elif ng == 3:
-        alpha[:ng] = pAlpha3[:, ityp] * zeta**2
-        coeff[:ng] = pCoeff3[:, ityp]
+        alpha[:ng] = pAlpha3[ityp, :] * zeta**2
+        coeff[:ng] = pCoeff3[ityp, :]
     elif ng == 4:
-        alpha[:ng] = pAlpha4[:, ityp] * zeta**2
-        coeff[:ng] = pCoeff4[:, ityp]
+        alpha[:ng] = pAlpha4[ityp, :] * zeta**2
+        coeff[:ng] = pCoeff4[ityp, :]
     elif ng == 5:
-        alpha[:ng] = pAlpha5[:, ityp] * zeta**2
-        coeff[:ng] = pCoeff5[:, ityp]
+        alpha[:ng] = pAlpha5[ityp, :] * zeta**2
+        coeff[:ng] = pCoeff5[ityp, :]
     elif ng == 6:
         if n == 6:
             if l == 0:
@@ -431,8 +430,8 @@ def slater_to_gauss_array(ng, n, l, zeta, alpha, coeff, norm):
             else:
                 raise CgtoQuantumNumberError # info = 2
         else:
-            alpha[:ng] = pAlpha6[:, ityp] * zeta**2
-            coeff[:ng] = pCoeff6[:, ityp]
+            alpha[:ng] = pAlpha6[ityp, :] * zeta**2
+            coeff[:ng] = pCoeff6[ityp, :]
     else: # currently we cannot go beyond 6 primitives
         raise CgtoMaxPrimitivesError # info = 1
 
