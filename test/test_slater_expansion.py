@@ -1,6 +1,5 @@
 
 from unittest import TestCase
-import numpy as np
 import torch
 
 from basis import Cgto_Type
@@ -39,8 +38,9 @@ class Test_Slater_Expansion(TestCase):
         overlap = overlap_cgto(cgto, cgto, r2, vec, 100.0)
 
         # self-overlap should be identity matrix
-        target = np.identity(dim)
-        self.assertTrue(np.allclose(overlap, target, rtol=1e-05, atol=thr_atol, equal_nan=False), msg=f"Self overlap not identity:\n {overlap}")
+        target = torch.eye(dim)
+
+        self.assertTrue(torch.allclose(overlap, target, rtol=1e-05, atol=thr_atol, equal_nan=False), msg=f"Self overlap not identity:\n {overlap}")
 
         return
 
