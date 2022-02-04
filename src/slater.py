@@ -443,3 +443,9 @@ def slater_to_gauss_array(ng, n, l, zeta, alpha, coeff, norm):
         coeff[:ng] = coeff[:ng] * (top*alpha[:ng])**0.75 * np.sqrt(4*alpha[:ng])**l / np.sqrt(dfactorial[l])
 
     return
+
+# TODO: define interface
+#from overloading import overload
+slater_to_gauss = slater_to_gauss_cgto
+#@overload
+#slater_to_gauss = slater_to_gauss_array
