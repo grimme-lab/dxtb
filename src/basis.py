@@ -1,5 +1,5 @@
 
-import numpy as np
+import torch
 
 """ Definition of basic data classes """
 
@@ -17,10 +17,10 @@ class Cgto_Type():
         # Contraction length of this basis function
         self.nprim = 0
         # Exponent of the primitive Gaussian functions
-        self.alpha = np.array([0.0 for _ in range(maxg)])
+        self.alpha = torch.tensor([0.0 for _ in range(maxg)])
         # Contraction coefficients of the primitive Gaussian functions,
         # might contain normalization
-        self.coeff = np.array([0.0 for _ in range(maxg)])
+        self.coeff = torch.tensor([0.0 for _ in range(maxg)])
 
     def __str__(self):
         return f"cgto( l:{self.ang} | ng:{self.nprim} | alpha:{self.alpha} | coeff:{self.coeff} )"

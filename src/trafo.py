@@ -2,6 +2,7 @@
 
 import math
 import numpy as np
+import torch
 
 from exceptions import IntegralTransformError
 
@@ -9,7 +10,7 @@ from exceptions import IntegralTransformError
 
 s3 = math.sqrt(3.0)
 s3_4 = s3 * 0.5
-dtrafo = np.array([
+dtrafo = torch.tensor(np.array([
       #   0       1      -1       2      -2
       -0.5, 0.0, 0.0,   s3_4, 0.0,  # xx
       -0.5, 0.0, 0.0,  -s3_4, 0.0,  # yy
@@ -17,7 +18,7 @@ dtrafo = np.array([
        0.0, 0.0, 0.0, 0.0,     s3,  # xy
        0.0,     s3, 0.0, 0.0, 0.0,  # xz
        0.0, 0.0,     s3, 0.0, 0.0], # yz
-       ).reshape(5, 6, order='F')
+       ).reshape(5, 6, order='F')).float()
 
 d32 = 3.0/2.0
 s3_8 = math.sqrt(3.0/8.0)
@@ -27,7 +28,7 @@ s15 = math.sqrt(15.0)
 s15_4 = math.sqrt(15.0/4.0)
 s45 = math.sqrt(45.0)
 s45_8 = math.sqrt(45.0/8.0)
-ftrafo = np.array([
+ftrafo = torch.tensor(np.array([
       # 0        1       -1         2       -2         3       -3 
        0.0,   -s3_8,  0.0,   0.0,  0.0,     s5_8,  0.0,  # xxx 
        0.0,  0.0,   -s3_8,   0.0,  0.0,   0.0,   -s5_8,  # yyy 
@@ -39,7 +40,7 @@ ftrafo = np.array([
        0.0,      s6,  0.0,   0.0,  0.0,   0.0,  0.0,  # xzz 
        0.0,  0.0,      s6,   0.0,  0.0,   0.0,  0.0,  # yzz 
        0.0,  0.0,  0.0,   0.0,     s15,   0.0,  0.0], # xyz 
-       ).reshape(7,10, order='F')
+       ).reshape(7,10, order='F')).float()
 
 d38 = 3.0/8.0
 d34 = 3.0/4.0
@@ -52,7 +53,7 @@ s35_64 = math.sqrt(35.0/64.0)
 s45_4 = math.sqrt(45.0/4.0)
 s315_8 = math.sqrt(315.0/8.0)
 s315_16 = math.sqrt(315.0/16.0)
-gtrafo = np.array([
+gtrafo = torch.tensor(np.array([
       #    0       1      -1       2      -2        3      -3         4      -4
           d38, 0., 0.,-s5_16, 0.,  0., 0.,  s35_64, 0.,  # xxxx
           d38, 0., 0., s5_16, 0.,  0., 0.,  s35_64, 0.,  # yyyy
@@ -69,7 +70,7 @@ gtrafo = np.array([
         0., 0.,-s45_8, 0., 0.,  0.,s315_8,   0., 0.,  # xxyz
         0.,-s45_8, 0., 0., 0.,-s315_8, 0.,   0., 0.,  # xyyz
         0., 0., 0., 0.,   s45,  0., 0.,   0., 0.], # xyzz
-       ).reshape(9,15, order='F')
+       ).reshape(9,15, order='F')).float()
 
 
 def transform0(lj: int, li: int, cart):
@@ -89,7 +90,7 @@ def transform0(lj: int, li: int, cart):
 
     # infer shape depending on l
     dim = cart.shape[0]-1
-    sphr = np.zeros((dim,dim))
+    sphr = torch.zeros((dim,dim))
     assert len(cart.shape) == 2
     assert cart.shape[0] == cart.shape[1]
 
@@ -99,28 +100,28 @@ def transform0(lj: int, li: int, cart):
         if lj == 0 or lj == 1:
             sphr = cart
         elif lj == 2:
-            # sphr = np.dot(dtrafo, cart)
+            # sphr = torch.matmul(dtrafo, cart)
             sphr[0, :] = cart[2, :] - 0.5 * [cart[0, :] + cart[1, :]]
             sphr[1, :] = s3 * cart[4, :]
             sphr[2, :] = s3 * cart[5, :]
             sphr[3, :] = s3_4 * [cart[0, :] - cart[1, :]]
             sphr[4, :] = s3 * cart[3, :]
         elif lj == 3:
-            sphr = np.dot(ftrafo, cart)
+            sphr = torch.matmul(ftrafo, cart)
         elif lj == 4:
-            sphr = np.dot(gtrafo, cart)
+            sphr = torch.matmul(gtrafo, cart)
         else:
             raise IntegralTransformError          
     elif li == 2:
         if lj == 0 or lj == 1:
-            # sphr = np.dot(cart, transpose(dtrafo))
+            # sphr = torch.matmul(cart, transpose(dtrafo))
             sphr[:, 0] = cart[:, 2] - 0.5 * [cart[:, 0] + cart[:, 1]]
             sphr[:, 1] = s3 * cart[:, 4]
             sphr[:, 2] = s3 * cart[:, 5]
             sphr[:, 3] = s3_4 * [cart[:, 0] - cart[:, 1]]
             sphr[:, 4] = s3 * cart[:, 3]
         elif lj == 2:   
-            # sphr = np.dot(dtrafo, np.dot(cart, transpose(dtrafo)))
+            # sphr = torch.matmul(dtrafo, torch.matmul(cart, transpose(dtrafo)))
             sphr[0, 0] = cart[2, 2] - 0.5 * (cart[2, 0] + cart[2, 1] + cart[0, 2] + cart[1, 2]) + 0.25 * (cart[0, 0] + cart[0, 1] + cart[1, 0] + cart[1, 1])
             sphr[[1, 2, 4], 0] = s3 * cart[[4, 5, 3], 2] - s3_4 * (cart[[4, 5, 3], 0] + cart[[4, 5, 3], 1])
             sphr[3, 0] = s3_4 * (cart[0, 2] - cart[1, 2]) - s3 * 0.25 * (cart[0, 0] - cart[1, 0] + cart[0, 1] - cart[1, 1])
@@ -137,31 +138,31 @@ def transform0(lj: int, li: int, cart):
             sphr[[1, 2, 4], 4] = 3 * cart[[4, 5, 3], 3]
             sphr[3, 4] = 1.5 * (cart[0, 3] - cart[1, 3])
         elif lj == 3:
-            sphr = np.dot(ftrafo, np.dot(cart, dtrafo.transpose()))
+            sphr = torch.matmul(ftrafo, torch.matmul(cart, torch.transpose(dtrafo, 0,1)))
         elif lj == 4:
-            sphr = np.dot(gtrafo, np.dot(cart, dtrafo.transpose()))
+            sphr = torch.matmul(gtrafo, torch.matmul(cart, torch.transpose(dtrafo, 0,1)))
         else:
             raise IntegralTransformError
     elif li == 3:
         if lj == 0 or lj == 1:
-            sphr = np.dot(cart, ftrafo.transpose())
+            sphr = torch.matmul(cart, torch.transpose(ftrafo, 0,1))
         elif lj == 2:
-            sphr = np.dot(dtrafo, np.dot(cart, ftrafo.transpose()))
+            sphr = torch.matmul(dtrafo, torch.matmul(cart, torch.transpose(ftrafo, 0,1)))
         elif lj == 3:
-            sphr = np.dot(ftrafo, np.dot(cart, ftrafo.transpose()))
+            sphr = torch.matmul(ftrafo, torch.matmul(cart, torch.transpose(ftrafo, 0,1)))
         elif lj == 4:
-            sphr = np.dot(gtrafo, np.dot(cart, ftrafo.transpose()))
+            sphr = torch.matmul(gtrafo, torch.matmul(cart, torch.transpose(ftrafo, 0,1)))
         else:
             raise IntegralTransformError
     elif li == 4:
         if lj == 0 or lj == 1:
-            sphr = np.dot(cart, gtrafo.transpose())
+            sphr = torch.matmul(cart, torch.transpose(gtrafo, 0,1))
         elif lj == 2:
-            sphr = np.dot(dtrafo, np.dot(cart, gtrafo.transpose()))
+            sphr = torch.matmul(dtrafo, torch.matmul(cart, torch.transpose(gtrafo, 0,1)))
         elif lj == 3:
-            sphr = np.dot(ftrafo, np.dot(cart, gtrafo.transpose()))
+            sphr = torch.matmul(ftrafo, torch.matmul(cart, torch.transpose(gtrafo, 0,1)))
         elif lj == 4:
-            sphr = np.dot(gtrafo, np.dot(cart, gtrafo.transpose()))
+            sphr = torch.matmul(gtrafo, torch.matmul(cart, torch.transpose(gtrafo, 0,1)))
         else:
             raise IntegralTransformError
     else:
@@ -176,7 +177,7 @@ def transform1(lj: int, li: int, cart, sphr):
     assert len(cart.shape) == 3
     assert len(sphr.shape) == 3
 
-    for k in range(1, np.size(cart, 0)):
+    for k in range(1, torch.size(cart, 0)):
         transform0(lj, li, cart[k, :, :], sphr[k, :, :])
 
     return sphr
@@ -188,8 +189,8 @@ def transform2(lj: int, li: int, cart, sphr):
     assert len(cart.shape) == 4
     assert len(sphr.shape) == 4
 
-    for l in range(1, np.size(cart, 1)):
-        for k in range(1, np.size(cart, 0)):
+    for l in range(1, torch.size(cart, 1)):
+        for k in range(1, torch.size(cart, 0)):
             transform0(lj, li, cart[k, l, :, :], sphr[k, l, :, :])
 
     return sphr

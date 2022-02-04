@@ -1,6 +1,7 @@
 
 from unittest import TestCase
 import numpy as np
+import torch
 
 from basis import Cgto_Type
 from slater import slater_to_gauss
@@ -9,7 +10,7 @@ from overlap import overlap_cgto
 """ Testing the functionality of the overlap. """
 
 # equality threshold
-thr_atol = 1e-07
+thr_atol = 1e-05
 class Test_Slater_Expansion(TestCase):
 
     @classmethod
@@ -28,7 +29,7 @@ class Test_Slater_Expansion(TestCase):
 
         # same site 
         r2 = 0.0
-        vec = np.array([0., 0., 0.])
+        vec = torch.tensor([0., 0., 0.])
 
         # create gaussians
         cgto = Cgto_Type()

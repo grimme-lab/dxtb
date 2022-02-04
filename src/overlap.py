@@ -2,24 +2,14 @@
 
 
 import math
-import numpy as np
-
+import torch
 
 from trafo import transform0, transform1
-"""use mctc_env, only : wp
-use mctc_io, only : structure_type
-use mctc_io_constants, only : pi
-use tblite_basis_type, only : basis_type, cgto_type"""
 
-# TODO: rewrite into pytorch! (not only numpy)
-
-# public :: overlap_cgto, overlap_grad_cgto
-# public :: get_overlap
-# public :: maxl, msao
-
+# TODO: define interface (or just ducktyping)
 """interface get_overlap
     module procedure :: get_overlap_lat
-end interface get_overlap""" #TODO: maybe just ducktyping
+end interface get_overlap"""  
 
 maxl = 6
 maxl2 = 2*maxl
@@ -31,7 +21,7 @@ assert all([len(l) == maxl+1 for l in [msao, mlao, lmap]])
 sqrtpi = math.sqrt(math.pi)
 sqrtpi3 = sqrtpi**3
 
-lx = np.array([
+lx = torch.tensor([
     0,
     1,0,0,
     2,0,0,1,1,0,
@@ -210,11 +200,11 @@ def _overlap_3d(rpj, rpi, lj, li, s1d):
     """ Calculate three-dimensional overlap
 
     Args:
-        rpj (np.array): Scaled distance vector for gaussian i
-        rpi (np.array): Scaled distance vector for gaussian i
-        lj (np.array): [description]
-        li (np.array): [description]
-        s1d (np.array): One-dimensional overlap contributions
+        rpj (torch.tensor): Scaled distance vector for gaussian i
+        rpi (torch.tensor): Scaled distance vector for gaussian i
+        lj (torch.tensor): [description]
+        li (torch.tensor): [description]
+        s1d (torch.tensor): One-dimensional overlap contributions
 
     Returns:
         float: Overlap in three dimensions
@@ -252,15 +242,15 @@ def overlap_cgto(cgtoj, cgtoi, r2, vec, intcut):
         cgtoj (cgto_type): Description of contracted gaussian function on center i
         cgtoi (cgto_type): Description of contracted gaussian function on center j
         r2 (float): Square distance between center i and j
-        vec (np.array): Distance vector between center i and j, ri - rj
+        vec (torch.tensor): Distance vector between center i and j, ri - rj
         intcut (float): Maximum value of integral prefactor to consider
 
     Returns:
-        np.array: Overlap integrals for the given pair i  and j (overlap(msao(cgtoj.ang), msao(cgtoi.ang))
+        torch.tensor: Overlap integrals for the given pair i  and j (overlap(msao(cgtoj.ang), msao(cgtoi.ang))
     """
 
-    s1d = np.zeros((maxl2))
-    s3d = np.zeros((mlao[cgtoi.ang],mlao[cgtoj.ang]))
+    s1d = torch.zeros((maxl2))
+    s3d = torch.zeros((mlao[cgtoi.ang],mlao[cgtoj.ang]))
 
     # all contraction combinations
     for ip in range(cgtoi.nprim):
@@ -313,9 +303,9 @@ def overlap_grad_cgto(cgtoj, cgtoi, r2, vec, intcut, overlap, doverlap):
 
     #real(wp) :: eab, oab, est, rpi(3), rpj(3), cc, val, grad(3), pre
 
-    s1d = np.zeros((maxl2))
-    s3d = np.zeros((mlao[cgtoi.ang],mlao[cgtoj.ang]))
-    ds3d = np.zeros((3,mlao[cgtoi.ang],mlao[cgtoj.ang]))
+    s1d = torch.zeros((maxl2))
+    s3d = torch.zeros((mlao[cgtoi.ang],mlao[cgtoj.ang]))
+    ds3d = torch.zeros((3,mlao[cgtoi.ang],mlao[cgtoj.ang]))
 
     for ip in range(cgtoi.nprim):
         for jp in range(cgtoj.nprim):
@@ -359,8 +349,8 @@ def get_overlap_lat(mol, trans, cutoff: float, bas, overlap):
 
     raise NotImplementedError
 
-    overlap = np.zeros_like(overlap)
-    stmp = np.zeros((msao[bas.maxl]**2))
+    overlap = torch.zeros_like(overlap)
+    stmp = torch.zeros((msao[bas.maxl]**2))
     cutoff2 = cutoff**2
 
     #$omp parallel do schedule(runtime) default(none) &
@@ -372,7 +362,7 @@ def get_overlap_lat(mol, trans, cutoff: float, bas, overlap):
         for jat in range(1, mol.nat):
             jzp = mol.id[jat]
             js = bas.ish_at[jat]
-            for itr in range(1, np.size(trans, 2)):
+            for itr in range(1, torch.size(trans, 2)):
                 vec = mol.xyz[:, iat] - mol.xyz[:, jat] - trans[:, itr]
                 r2 = vec[1]**2 + vec[2]**2 + vec[3]**2
                 if r2 > cutoff2:
