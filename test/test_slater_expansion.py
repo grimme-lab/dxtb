@@ -1,17 +1,6 @@
 
-###################################
-import sys 
-import os
-# Add the src directory to sys.path so that all imports in the unittests work
-this_directory = os.path.dirname(os.path.abspath(__file__))
-src_directory = os.path.abspath(this_directory + "/../src/")
-sys.path.insert(0, src_directory)
-################################### # TODO: remove
-
 from unittest import TestCase
 import numpy as np
-import math
-import sys
 
 from basis import Cgto_Type
 from slater import slater_to_gauss
@@ -19,16 +8,8 @@ from overlap import overlap_cgto
 
 """ Testing the functionality of the overlap. """
 
-'''# TODO: check
-def epsilon(x: float):
-    return x + sys.float_info.epsilon
-thr = 5e+6*epsilon(1.0)
-thr2 = math.sqrt(epsilon(1.0))'''
-
 # equality threshold
 thr_atol = 1e-07
-
-
 class Test_Slater_Expansion(TestCase):
 
     @classmethod
@@ -371,15 +352,3 @@ class Test_Slater_Expansion(TestCase):
     
     def test_norm_5g_sto6g(self):
         self.assert_norm_g(5, 6)
-
-
-
-
-if __name__ == "__main__":
-    print("Start debugging")
-    tse = Test_Slater_Expansion()
-    #tse.assert_norm_s(1,1)
-    #tse.assert_norm_p(2,1)
-    #tse.assert_norm_p(5,6)
-    #tse.assert_norm_d(3,2)
-    tse.assert_norm_f(4,5)

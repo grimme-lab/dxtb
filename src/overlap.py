@@ -103,6 +103,16 @@ def _horizontal_shift(ae: float, l: int, cfs):
     return
 
 def _form_product(a, b, la: int, lb: int, d):
+    """ Form product of two gto
+
+    Args:
+        a ([type]): [description]
+        b ([type]): [description]
+        la (int): [description]
+        lb (int): [description]
+        d ([type]): [description]
+    """ # TODO: add docstring
+
     #real(wp), intent(in) :: a(*), b(*)
     #real(wp), intent(inout) :: d(*)
     if (la >= 4) or (lb >= 4):
@@ -182,23 +192,18 @@ def _form_product(a, b, la: int, lb: int, d):
         #       = <s> + <p> + <d> + <f> + <g>
         d[4]=a[2]*b[2]
     else:
-        print("here we are")
-        print(la, lb)
         # <s|s> = <s>
         d[0]=a[0]*b[0]
-        print("wrapping3")
         if (la == 0) and (lb == 0):
             return
         # <s|p> = <s|*(|s>+|p>)
         #       = <s> + <p>
-        print("wrapping2")
         d[1]=a[0]*b[1]+a[1]*b[0]
         if (la == 0) or (lb == 0):
             return
         # <p|p> = (<s|+<p|)*(|s>+|p>)
         #       = <s> + <p> + <d>
         d[2]=a[1]*b[1]
-        print("wrapping")
     return
 
 def _overlap_3d(rpj, rpi, lj, li, s1d):
@@ -290,3 +295,102 @@ def overlap_cgto(cgtoj, cgtoi, r2, vec, intcut):
     overlap = transform0(cgtoj.ang, cgtoi.ang, s3d)
 
     return overlap
+
+def overlap_grad_cgto(cgtoj, cgtoi, r2, vec, intcut, overlap, doverlap):
+    """ Calculate gradient for overlap cgto.
+
+    Args:
+        cgtoj (cgto_type): Description of contracted Gaussian function on center j
+        cgtoi (cgto_type): Description of contracted Gaussian function on center i
+        r2 (float): Square distance between center i and j
+        vec (int[3]): Distance vector between center i and j, ri - rj
+        intcut (float): Maximum value of integral prefactor to consider
+        overlap (float[msao(cgtoj.ang), msao(cgtoi.ang)]): Overlap integrals for the given pair i and j
+        doverlap (float[3, msao(cgtoj.ang), msao(cgtoi.ang)]): Overlap integral gradient for the given pair i and j
+    """  
+
+    raise NotImplementedError
+
+    #real(wp) :: eab, oab, est, rpi(3), rpj(3), cc, val, grad(3), pre
+
+    s1d = np.zeros((maxl2))
+    s3d = np.zeros((mlao[cgtoi.ang],mlao[cgtoj.ang]))
+    ds3d = np.zeros((3,mlao[cgtoi.ang],mlao[cgtoj.ang]))
+
+    for ip in range(cgtoi.nprim):
+        for jp in range(cgtoj.nprim):
+            eab = cgtoi.alpha(ip) + cgtoj.alpha(jp)
+            oab = 1.0/eab
+            est = cgtoi.alpha(ip) * cgtoj.alpha(jp) * r2 * oab
+            if (est > intcut):
+                continue
+            pre = math.exp(-est) * sqrtpi3*math.sqrt(oab)**3
+            rpi = -vec * cgtoj.alpha(jp) * oab
+            rpj = +vec * cgtoi.alpha(ip) * oab
+
+            for l in range(0, cgtoi.ang + cgtoj.ang + 1):
+                s1d[l] = _overlap_1d(l, eab)
+
+            cc = cgtoi.coeff(ip) * cgtoj.coeff(jp) * pre
+            for mli in range(1, mlao(cgtoi.ang)):
+                for mlj in range(1, mlao(cgtoj.ang)):
+                    val, grad = _overlap_grad_3d(rpj, rpi, cgtoj.alpha(jp), cgtoi.alpha(ip), lx[:, mlj+lmap(cgtoj.ang)], lx[:, mli+lmap(cgtoi.ang)], s1d, val, grad)
+                    s3d[mlj, mli] += cc*val
+                    ds3d[:, mlj, mli] += + cc*grad
+
+    transform0(cgtoj.ang, cgtoi.ang, s3d, overlap)
+    transform1(cgtoj.ang, cgtoi.ang, ds3d, doverlap)
+
+    return
+
+def get_overlap_lat(mol, trans, cutoff: float, bas, overlap):
+    """!> Evaluate overlap for a molecular structure
+    !> Molecular structure data
+    type(structure_type), intent(in) :: mol
+    !> Lattice points within a given realspace cutoff
+    real(wp), intent(in) :: trans(:, :)
+    !> Realspace cutoff
+    real(wp), intent(in) :: cutoff
+    !> Basis set information
+    type(basis_type), intent(in) :: bas
+    !> Overlap matrix
+    real(wp), intent(out) :: overlap(:, :)"""
+
+
+    raise NotImplementedError
+
+    overlap = np.zeros_like(overlap)
+    stmp = np.zeros((msao[bas.maxl]**2))
+    cutoff2 = cutoff**2
+
+    #$omp parallel do schedule(runtime) default(none) &
+    #$omp shared(mol, bas, trans, cutoff2, overlap) private(r2, vec, stmp) &
+    #$omp private(iat, jat, izp, jzp, itr, is, js, ish, jsh, ii, jj, iao, jao, nao)
+    for iat in range(1, mol.nat):
+        izp = mol.id[iat]
+        iss = bas.ish_at[iat]
+        for jat in range(1, mol.nat):
+            jzp = mol.id[jat]
+            js = bas.ish_at[jat]
+            for itr in range(1, np.size(trans, 2)):
+                vec = mol.xyz[:, iat] - mol.xyz[:, jat] - trans[:, itr]
+                r2 = vec[1]**2 + vec[2]**2 + vec[3]**2
+                if r2 > cutoff2:
+                    continue
+                for ish in range(1, bas.nsh_id[izp]):
+                    ii = bas.iao_sh[iss+ish]
+                    for jsh in range(1, bas.nsh_id[jzp]):
+                        jj = bas.iao_sh[js+jsh]
+                        overlap_cgto(bas.cgto[jsh, jzp], bas.cgto[ish, izp], r2, vec, bas.intcut, stmp)
+
+                        nao = msao(bas.cgto(jsh, jzp).ang)
+                        #$omp simd collapse(2)
+                        for iao in range(1, msao[bas.cgto[ish, izp].ang]):
+                            for jao in range(1,nao):
+                                overlap[jj+jao, ii+iao] += stmp[jao + nao*(iao-1)]
+
+    return overlap
+
+def get_overlap(mol, trans, cutoff: float, bas, overlap):
+    # TODO: nicer aliasing
+    get_overlap_lat(mol, trans, cutoff, bas, overlap)
