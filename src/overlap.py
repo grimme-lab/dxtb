@@ -219,13 +219,15 @@ def _overlap_3d(rpj, rpi, lj, li, s1d):
         vi[li[k]] = 1.0
         vj[lj[k]] = 1.0
 
-        # shift of gto to centers
-        _horizontal_shift(rpi[k], li[k], vi)
-        _horizontal_shift(rpj[k], lj[k], vj)
+        with torch.profiler.record_function("calc horizontal_shift"):
+            # shift of gto to centers
+            _horizontal_shift(rpi[k], li[k], vi)
+            _horizontal_shift(rpj[k], lj[k], vj)
        
-        # calc gto product
-        _form_product(vi, vj, li[k], lj[k], vv)
-        # TODO: vv = _form_product(vi, vj, li[k], lj[k]) --> change return value inside
+        with torch.profiler.record_function("calc form_product"):
+            # calc gto product
+            _form_product(vi, vj, li[k], lj[k], vv)
+            # TODO: vv = _form_product(vi, vj, li[k], lj[k]) --> change return value inside
 
         # sum over momenta of product gto
         for l in range(li[k] + lj[k] + 1):
@@ -252,37 +254,43 @@ def overlap_cgto(cgtoj, cgtoi, r2, vec, intcut):
     s1d = torch.zeros((maxl2))
     s3d = torch.zeros((mlao[cgtoi.ang],mlao[cgtoj.ang]))
 
-    # all contraction combinations
-    for ip in range(cgtoi.nprim):
-        for jp in range(cgtoj.nprim):
+    #with torch.profiler.record_function("calc overlap"):
+    if True:
+        # all contraction combinations
+        for ip in range(cgtoi.nprim):
+            for jp in range(cgtoj.nprim):
 
-            eab = cgtoi.alpha[ip] + cgtoj.alpha[jp]
-            oab = 1.0/eab
-            est = cgtoi.alpha[ip] * cgtoj.alpha[jp] * r2 * oab
-            if est > intcut:
-                continue
+                eab = cgtoi.alpha[ip] + cgtoj.alpha[jp]
+                oab = 1.0/eab
+                est = cgtoi.alpha[ip] * cgtoj.alpha[jp] * r2 * oab
+                if est > intcut:
+                    continue
         
-            pre = math.exp(-est) * sqrtpi3*math.sqrt(oab)**3
-            rpi = -vec * cgtoj.alpha[jp] * oab
-            rpj = +vec * cgtoi.alpha[ip] * oab
-            assert len(rpi) == 3
-            assert len(rpj) == 3
+                pre = math.exp(-est) * sqrtpi3*math.sqrt(oab)**3
+                rpi = -vec * cgtoj.alpha[jp] * oab
+                rpj = +vec * cgtoi.alpha[ip] * oab
+                assert len(rpi) == 3
+                assert len(rpj) == 3
 
-            # calc pairwise 1D overlap
-            for l in range(cgtoi.ang + cgtoj.ang + 1):
-                s1d[l] = _overlap_1d(l, eab)
+                with torch.profiler.record_function("calc 1D"):
+                    # calc pairwise 1D overlap
+                    for l in range(cgtoi.ang + cgtoj.ang + 1):
+                        s1d[l] = _overlap_1d(l, eab)
 
-            # scaling constant
-            cc = cgtoi.coeff[ip] * cgtoj.coeff[jp] * pre
+                # scaling constant
+                cc = cgtoi.coeff[ip] * cgtoj.coeff[jp] * pre
 
-            # calc pairwise 3D overlap
-            for mli in range(mlao[cgtoi.ang]):
-                for mlj in range(mlao[cgtoj.ang]):
-                    val = _overlap_3d(rpj, rpi, lx[:, mlj+lmap[cgtoj.ang]], lx[:, mli+lmap[cgtoi.ang]], s1d)
-                    s3d[mlj, mli] += cc*val
+                #with torch.profiler.record_function("calc 3D"):
+                if True:
+                    # calc pairwise 3D overlap
+                    for mli in range(mlao[cgtoi.ang]):
+                        for mlj in range(mlao[cgtoj.ang]):
+                            val = _overlap_3d(rpj, rpi, lx[:, mlj+lmap[cgtoj.ang]], lx[:, mli+lmap[cgtoi.ang]], s1d)
+                            s3d[mlj, mli] += cc*val
 
-    # transform overlap matrix
-    overlap = transform0(cgtoj.ang, cgtoi.ang, s3d)
+    with torch.profiler.record_function("transform overlap"):
+        # transform overlap matrix
+        overlap = transform0(cgtoj.ang, cgtoi.ang, s3d)
 
     return overlap
 

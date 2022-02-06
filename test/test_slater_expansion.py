@@ -26,22 +26,32 @@ class Test_Slater_Expansion(TestCase):
             ng (int): Number of gaussians
         """
 
-        # same site 
-        r2 = 0.0
-        vec = torch.tensor([0., 0., 0.])
+        print(f"test_l{l}_{dim}_n{n}_ng{ng}")
+    
+        with torch.profiler.profile(on_trace_ready=torch.profiler.tensorboard_trace_handler("/home/ch/PhD/projects/DFTB+/xtbML"), with_stack=True,  profile_memory=True) as prof:
+            # same site 
+            r2 = 0.0
+            vec = torch.tensor([0., 0., 0.])
 
-        # create gaussians
-        cgto = Cgto_Type()
-        slater_to_gauss(ng, n, l, 1.0, cgto, True)
+            with torch.profiler.record_function("slater_to_gauss"):
+                # create gaussians
+                cgto = Cgto_Type()
+                slater_to_gauss(ng, n, l, 1.0, cgto, True)
 
-        # calculate self-overlap
-        overlap = overlap_cgto(cgto, cgto, r2, vec, 100.0)
+            #with torch.profiler.record_function("overlap_cgto"):
+            if True:
+                # calculate self-overlap
+                overlap = overlap_cgto(cgto, cgto, r2, vec, 100.0)
 
-        # self-overlap should be identity matrix
-        target = torch.eye(dim)
+            with torch.profiler.record_function("assertTrue"):
+                # self-overlap should be identity matrix
+                target = torch.eye(dim)
 
-        self.assertTrue(torch.allclose(overlap, target, rtol=1e-05, atol=thr_atol, equal_nan=False), msg=f"Self overlap not identity:\n {overlap}")
+                self.assertTrue(torch.allclose(overlap, target, rtol=1e-05, atol=thr_atol, equal_nan=False), msg=f"Self overlap not identity:\n {overlap}")
 
+        print(prof.key_averages().table(sort_by='self_cpu_time_total', row_limit=5))
+        #print(prof.key_averages(group_by_stack_n=5).table(sort_by='self_cpu_time_total', row_limit=10))
+        
         return
 
     # assert self-overlap for different orbitals
@@ -69,8 +79,8 @@ class Test_Slater_Expansion(TestCase):
     # s-orbitals
     def test_norm_1s_sto1g(self):
         self.assert_norm_s(1, 1)
-    
-    def test_norm_2s_sto1g(self):
+
+    """def test_norm_2s_sto1g(self):
         self.assert_norm_s(2, 1)
     
     def test_norm_3s_sto1g(self):
@@ -352,4 +362,4 @@ class Test_Slater_Expansion(TestCase):
         self.assert_norm_g(5, 5)
     
     def test_norm_5g_sto6g(self):
-        self.assert_norm_g(5, 6)
+        self.assert_norm_g(5, 6)"""
