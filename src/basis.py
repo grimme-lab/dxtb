@@ -1,4 +1,5 @@
 
+import math
 import torch
 
 """ Definition of basic data classes """
@@ -40,7 +41,7 @@ class Basis_Type():
         # Integral cutoff as maximum exponent of Gaussian product theoreom to consider
         self.intcut = 0.0
         # Smallest primitive exponent in the basis set
-        self.min_alpha = huge(0.0) # TODO
+        self.min_alpha = float("inf")
         # Number of shells for each species
         self.nsh_id = []
         # Number of shells for each atom
@@ -72,9 +73,6 @@ class Basis_Type():
             Basis_Type: new basis set
         """  
 
-        # integer :: iat, isp, ish, iao, ii
-        # real(wp) :: min_alpha
-
         self.nsh_id = nshell
         self.cgto = cgto
         self.intcut = integral_cutoff(acc) # TODO
@@ -84,9 +82,7 @@ class Basis_Type():
 
         # Create mapping between atoms and shells
         self.nsh = sum(self.nsh_at)
-        allocate(self.ish_at[mol.nat], self.sh2at[self.nsh])
         ii = 0
-
         for iat in range(1, mol.nat):
             self.ish_at[iat] = ii
             for ish in range(1, self.nsh_at[iat]):
@@ -94,8 +90,6 @@ class Basis_Type():
             ii += self.nsh_at[iat]
 
         # Make count of spherical orbitals for each shell
-        allocate(self.nao_sh[self.nsh])
-
         for iat in range(1, mol.nat):
             isp = mol.id[iat]
             ii = self.ish_at[iat]
@@ -104,7 +98,6 @@ class Basis_Type():
 
         # Create mapping between shells and spherical orbitals, also map directly back to atoms
         self.nao = sum(self.nao_sh)
-        allocate(self.iao_sh[self.nsh], self.ao2sh[self.nao], self.ao2at[self.nao])
         ii = 0
         for ish in range(1, self.nsh):
             self.iao_sh[ish] = ii
@@ -120,9 +113,9 @@ class Basis_Type():
                 self.iao_sh[ish+self.ish_at[iat]] = ii
                 ii = ii + 2*cgto(ish, isp).ang + 1
 
-        min_alpha = huge(acc) # TODO
+        min_alpha = float("inf")
 
-        for isp in range(1, size(nshell)): # TODO
+        for isp in range(1, len(nshell)):
             for ish in range(1, nshell[isp]):
                 self.maxl = max(self.maxl, cgto[ish, isp].ang)
                 min_alpha = min(min_alpha, min(cgto[ish, isp].alpha[:cgto[ish, isp].nprim]))
@@ -163,7 +156,7 @@ def integral_cutoff(acc=None):
     max_intcut = 25.0
     max_acc = 1.0e-4
     min_acc = 1.0e+3
-    intcut = clip(max_intcut - 10*log10(clip(acc, min_acc, max_acc)), min_intcut, max_intcut)
+    intcut = clip(max_intcut - 10*math.log10(clip(acc, min_acc, max_acc)), min_intcut, max_intcut)
     return intcut
 
 def clip(val: float, min_val: float, max_val: float):
