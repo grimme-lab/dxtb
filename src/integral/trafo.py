@@ -145,25 +145,21 @@ def transform0(lj: int, li: int, cart):
 
 def transform1(lj: int, li: int, cart, sphr):
 
-    raise NotImplementedError
-
     assert len(cart.shape) == 3
     assert len(sphr.shape) == 3
 
-    for k in range(1, torch.size(cart, 0)):
-        transform0(lj, li, cart[k, :, :], sphr[k, :, :])
+    for k in range(torch.size(cart, 0)):
+        sphr[k, :, :] = transform0(lj, li, cart[k, :, :], sphr[k, :, :])
 
     return sphr
 
 def transform2(lj: int, li: int, cart, sphr):
-
-    raise NotImplementedError
     
     assert len(cart.shape) == 4
     assert len(sphr.shape) == 4
 
-    for l in range(1, torch.size(cart, 1)):
-        for k in range(1, torch.size(cart, 0)):
-            transform0(lj, li, cart[k, l, :, :], sphr[k, l, :, :])
+    for l in range(torch.size(cart, 1)):
+        for k in range(torch.size(cart, 0)):
+            sphr[k, l, :, :] = transform0(lj, li, cart[k, l, :, :], sphr[k, l, :, :])
 
     return sphr

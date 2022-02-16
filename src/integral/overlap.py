@@ -4,7 +4,7 @@
 import math
 import torch
 
-from trafo import transform0, transform1
+from integral.trafo import transform0, transform1
 
 # TODO: define interface (or just ducktyping)
 """interface get_overlap
@@ -210,10 +210,10 @@ def _overlap_3d(rpj, rpi, lj, li, s1d):
         float: Overlap in three dimensions
     """   # TODO: add docstring
 
-    v1d = [0.0 for _ in range(3)]
+    v1d = [0.0 for _ in range(3)] #TODO: change to tensor?
 
     for k in range(3):
-        vi = [0.0 for _ in range(maxl+1)]
+        vi = [0.0 for _ in range(maxl+1)] #TODO: change to tensor?
         vj = [0.0 for _ in range(maxl+1)]            
         vv = [0.0 for _ in range(maxl2+1)] # combined gto
         vi[li[k]] = 1.0
