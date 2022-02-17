@@ -1,13 +1,14 @@
 """Executable script which runs all unittests."""
 import logging
+import os
 import os.path as op
 import sys
 import unittest
 
 if __name__ == '__main__':
     # Add the src directory to sys.path so that all imports in the unittests work
-    this_directory = op.dirname(os.path.abspath(__file__))
-    src_directory = op.join(op.abspath(this_directory, "..", "src"))
+    this_directory = op.dirname(op.abspath(__file__))
+    src_directory = op.join(op.abspath(this_directory), "..", "src")
     sys.path.insert(0, src_directory)
 
     # Suppress logging
