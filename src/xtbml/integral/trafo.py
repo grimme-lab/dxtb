@@ -97,7 +97,7 @@ def transform0(lj: int, li: int, cart):
         if lj == 0 or lj == 1:
             sphr = cart
         elif lj == 2:
-            sphr = torch.matmul(dtrafo, cart)
+            sphr = torch.matmul(cart, dtrafo)
         elif lj == 3:
             sphr = torch.matmul(ftrafo, cart)
         elif lj == 4:
@@ -106,7 +106,7 @@ def transform0(lj: int, li: int, cart):
             raise IntegralTransformError          
     elif li == 2:
         if lj == 0 or lj == 1:
-            sphr = torch.matmul(cart, dtrafo)
+            sphr = torch.matmul(torch.transpose(dtrafo,0,1), cart)
         elif lj == 2:   
             sphr = torch.matmul(torch.transpose(dtrafo,0,1), torch.matmul(cart, dtrafo))
         elif lj == 3:

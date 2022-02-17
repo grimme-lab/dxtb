@@ -72,9 +72,95 @@ class Test_Cgto_Ortho(TestCase):
             torch.tensor([[+0.00000000e-00], [+0.00000000e-00], [-1.72674504e-01]]),
         ]
 
-        torch.set_printoptions(precision=10)
         for ish in h:
             for jsh in c:
+                overlap = overlap_cgto(ish, jsh, r2, vec, 100.0)
+                self.assertTrue(
+                    torch.allclose(
+                        overlap, ref.pop(0), rtol=1e-05, atol=1e-05, equal_nan=False
+                    ),
+                    msg=f"Overlap does not match:\n {overlap}",
+                )
+
+    def test_overlap_h_he(self):
+        """
+        Compare against reference calculated with tblite-int H He 0,0,1.7 --method gfn1 --bohr
+        """
+        from xtbml.param.gfn1 import GFN1_XTB as par
+        from xtbml.xtb.calculator import Basis
+
+        basis = Basis(["H", "He"], par)
+        h = basis.cgto.get("H")
+        he = basis.cgto.get("He")
+
+        vec = torch.tensor([0.0, 0.0, 1.7])
+        r2 = vec.dot(vec)
+
+        ref = [
+            torch.tensor([[3.67988976e-01]]),
+            torch.tensor([[9.03638642e-02]]),
+        ]
+
+        for ish in h:
+            for jsh in he:
+                overlap = overlap_cgto(ish, jsh, r2, vec, 100.0)
+                self.assertTrue(
+                    torch.allclose(
+                        overlap, ref.pop(0), rtol=1e-05, atol=1e-05, equal_nan=False
+                    ),
+                    msg=f"Overlap does not match:\n {overlap}",
+                )
+
+    def test_overlap_s_cl(self):
+        """
+        Compare against reference calculated with tblite-int S Cl 0,0,2.1 --method gfn1 --bohr
+        """
+        from xtbml.param.gfn1 import GFN1_XTB as par
+        from xtbml.xtb.calculator import Basis
+
+        basis = Basis(["S", "Cl"], par)
+        s = basis.cgto.get("S")
+        cl = basis.cgto.get("Cl")
+
+        vec = torch.tensor([0.0, 0.0, 2.1])
+        r2 = vec.dot(vec)
+
+        ref = [
+            torch.tensor([[4.21677786e-01]]),
+            torch.tensor([[0.0], [0.0], [-5.53353521e-01]]),
+            torch.tensor([[+3.57843134e-01], [0.0], [0.0], [0.0], [0.0]]),
+            torch.tensor([[0.0, 0.0, 5.71415151e-01]]),
+            torch.diag(
+                torch.tensor(
+                    [4.48181566e-01, 4.48181566e-01, -2.31133305e-01],
+                ),
+            ),
+            torch.tensor(
+                [
+                    [0.0, 0.0, -0.07887177],
+                    [-0.49594098, 0.0, 0.0],
+                    [0.0, -0.49594098, 0.0],
+                    [0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0],
+                ],
+            ),
+            torch.tensor([[0.40834189, 0.0, 0.0, 0.0, 0.0]]),
+            torch.tensor(
+                [
+                    [0.0, 0.49152805, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.49152805, 0.0, 0.0],
+                    [0.05231871, 0.0, 0.0, 0.0, 0.0],
+                ],
+            ),
+            torch.diag(
+                torch.tensor(
+                    [-0.03689737, -0.29504313, -0.29504313, 0.35847499, 0.35847499]
+                )
+            ),
+        ]
+
+        for ish in s:
+            for jsh in cl:
                 overlap = overlap_cgto(ish, jsh, r2, vec, 100.0)
                 self.assertTrue(
                     torch.allclose(
