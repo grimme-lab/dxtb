@@ -27,8 +27,10 @@ class Test_Slater_Expansion(TestCase):
         """
 
         print(f"test_l{l}_{dim}_n{n}_ng{ng}")
+        import os.path as op
+        proj_dir = op.join(op.dirname(op.abspath(__file__)), "..")
     
-        with torch.profiler.profile(on_trace_ready=torch.profiler.tensorboard_trace_handler("/home/ch/PhD/projects/DFTB+/xtbML"), with_stack=True,  profile_memory=True) as prof:
+        with torch.profiler.profile(on_trace_ready=torch.profiler.tensorboard_trace_handler(proj_dir), with_stack=True,  profile_memory=True) as prof:
             # same site 
             r2 = 0.0
             vec = torch.tensor([0., 0., 0.])
