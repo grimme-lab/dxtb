@@ -6,8 +6,8 @@
 import torch
 import math
 
-from integral.multipole import multipole_cgto
-from integral.overlap import maxl, msao
+from ..integral.multipole import multipole_cgto
+from ..integral.overlap import maxl, msao
 
 # Number of dipole components used in tblite library (x, y, z)
 dimDipole = 3

@@ -2,10 +2,10 @@
 import math
 import torch
 
-from ncoord.type import Ncoord_Type
-from data.covrad import get_covalent_rad
-from cutoff import get_lattice_points
-from ncoord.ncoord import exp_count, dexp_count
+from .type import Ncoord_Type
+from ..data.covrad import get_covalent_rad
+from ..cutoff import get_lattice_points
+from .ncoord import exp_count, dexp_count
 
 # Steepness of first counting function
 ka = 10.0

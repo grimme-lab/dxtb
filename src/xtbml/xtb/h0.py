@@ -2,9 +2,9 @@
 import math
 import torch
 
-from integral.overlap import maxl, msao
-from integral.multipole import multipole_cgto
-from exlibs.tblite import shift_operator,dimDipole, dimQuadrupole
+from ..integral.overlap import maxl, msao
+from ..integral.multipole import multipole_cgto
+from ..exlibs.tblite import shift_operator,dimDipole, dimQuadrupole
 
 # TODO:
 #   * tb_h0spec

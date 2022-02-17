@@ -3,7 +3,7 @@
 import math
 import torch
 
-from exceptions import CgtoAzimudalQuantumNumberError, CgtoMaxPrimitivesError, CgtoNegativeExponentsError, CgtoQuantumNumberError
+from ..exceptions import CgtoAzimudalQuantumNumberError, CgtoMaxPrimitivesError, CgtoNegativeExponentsError, CgtoQuantumNumberError
 
 
 # Number of functions

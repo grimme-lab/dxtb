@@ -3,9 +3,9 @@
 import math
 import torch
 
-from integral.overlap import msao, mlao, maxl, maxl2, sqrtpi3, lx, lmap, _overlap_1d, _horizontal_shift, _form_product
-from exlibs.tblite import dimDipole, dimQuadrupole # TODO: merge these configs into single file
-from integral.trafo import transform0, transform1, transform2
+from .overlap import msao, mlao, maxl, maxl2, sqrtpi3, lx, lmap, _overlap_1d, _horizontal_shift, _form_product
+from ..exlibs.tblite import dimDipole, dimQuadrupole # TODO: merge these configs into single file
+from .trafo import transform0, transform1, transform2
 
 
 def multipole_cgto(cgtoj, cgtoi, r2, vec, intcut, overlap, dpint, qpint):

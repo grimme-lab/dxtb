@@ -3,7 +3,7 @@
 
 import math
 
-from basis.type import Cgto_Type
+from .type import Cgto_Type
 
 """ Gram-Schmidt orthonormalization routines for contracted Gaussian basis functions """
 

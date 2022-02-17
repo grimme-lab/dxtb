@@ -3,7 +3,7 @@
 import math
 import torch
 
-from exceptions import IntegralTransformError
+from ..exceptions import IntegralTransformError
 
 """ Integral transformation """
 

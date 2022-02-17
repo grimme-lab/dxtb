@@ -4,7 +4,7 @@
 import math
 import torch
 
-from integral.trafo import transform0, transform1
+from .trafo import transform0, transform1
 
 # TODO: define interface (or just ducktyping)
 """interface get_overlap
