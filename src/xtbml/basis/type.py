@@ -26,6 +26,9 @@ class Cgto_Type():
     def __str__(self):
         return f"cgto( l:{self.ang} | ng:{self.nprim} | alpha:{self.alpha} | coeff:{self.coeff} )"
 
+    def __repr__(self):
+        return self.__str__()
+
 class Basis_Type():
     """ Collection of information regarding the basis set of a system """
 

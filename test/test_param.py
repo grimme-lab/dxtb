@@ -84,3 +84,18 @@ class TestParam(TestCase):
 
         self.assertTrue("H" in par.element)
         self.assertTrue("C" in par.element)
+
+    def test_param_calculator(self):
+        from xtbml.xtb.calculator import Calculator
+        from xtbml.param.gfn1 import GFN1_XTB as par
+
+        calc = Calculator(["H", "C"], par)
+
+        self.assertTrue("H" in calc.basis.cgto)
+        self.assertTrue("C" in calc.basis.cgto)
+
+        self.assertTrue("H" in calc.hamiltonian.refocc)
+        self.assertTrue("C" in calc.hamiltonian.refocc)
+
+        self.assertTrue(sum(calc.hamiltonian.refocc.get("H")) == 1)
+        self.assertTrue(sum(calc.hamiltonian.refocc.get("C")) == 4)
