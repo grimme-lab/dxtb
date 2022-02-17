@@ -2,9 +2,9 @@
 from unittest import TestCase
 import torch
 
-from basis import Cgto_Type
-from slater import slater_to_gauss
-from overlap import overlap_cgto
+from basis.type import Cgto_Type
+from basis.slater import slater_to_gauss
+from integral.overlap import overlap_cgto
 
 """ Testing the functionality of the overlap. """
 

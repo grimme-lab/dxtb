@@ -2,10 +2,10 @@
 from unittest import TestCase
 import torch
 
-from basis import Cgto_Type
-from slater import slater_to_gauss
-from overlap import overlap_cgto
-from ortho import orthogonalize
+from basis.type import Cgto_Type
+from basis.slater import slater_to_gauss
+from integral.overlap import overlap_cgto
+from basis.ortho import orthogonalize
 
 """ Testing the orthogonality of orbital overlap. """
 
