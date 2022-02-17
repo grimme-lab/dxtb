@@ -43,23 +43,24 @@ class Basis_Type():
         # Smallest primitive exponent in the basis set
         self.min_alpha = float("inf")
         # Number of shells for each species
-        self.nsh_id = []
+        self.nsh_id = torch.tensor([])
         # Number of shells for each atom
-        self.nsh_at = []
+        self.nsh_at = torch.tensor([])
         # Number of spherical atomic orbitals for each shell
-        self.nao_sh = []
+        self.nao_sh = torch.tensor([])
         # Index offset for each shell in the atomic orbital space
-        self.iao_sh = []
+        self.iao_sh = torch.tensor([])
         # Index offset for each atom in the shell space
-        self.ish_at = []
+        self.ish_at = torch.tensor([])
         # Mapping from spherical atomic orbitals to the respective atom
-        self.ao2at = []
+        self.ao2at = torch.tensor([])
         # Mapping from spherical atomic orbitals to the respective shell
-        self.ao2sh = []
+        self.ao2sh = torch.tensor([])
         # Mapping from shells to the respective atom
-        self.sh2at = []
+        self.sh2at = torch.tensor([])
         # Contracted Gaussian basis functions forming the basis set
-        self.cgto = [[]] #type(Cgto_Type)
+        self.cgto = Cgto_Type()
+
 
     def new_basis(self, mol, nshell, cgto, acc):
         """ Create a new basis set

@@ -35,31 +35,31 @@ def shift_operator(vec, s, di, qi, dj, qj):
 
     # Create dipole operator on Bra function from Ket function and shift contribution
     # due to monopol displacement
+    dj[0] += vec[0]*s
     dj[1] += vec[1]*s
     dj[2] += vec[2]*s
-    dj[3] += vec[3]*s
 
     # For the quadrupole operator on the Bra function we first construct the shift
     # contribution from the dipole and monopol displacement, since we have to remove
     # the trace contribution from the shift and the moment integral on the Ket function
     # is already traceless
-    qj[1] = 2*vec[1]*di[1] + vec[1]**2*s
-    qj[3] = 2*vec[2]*di[2] + vec[2]**2*s
-    qj[6] = 2*vec[3]*di[3] + vec[3]**2*s
-    qj[2] = vec[1]*di[2] + vec[2]*di[1] + vec[1]*vec[2]*s
-    qj[4] = vec[1]*di[3] + vec[3]*di[1] + vec[1]*vec[3]*s
-    qj[5] = vec[2]*di[3] + vec[3]*di[2] + vec[2]*vec[3]*s
+    qj[0] = 2*vec[0]*di[0] + vec[0]**2*s
+    qj[2] = 2*vec[1]*di[1] + vec[1]**2*s
+    qj[5] = 2*vec[2]*di[2] + vec[2]**2*s
+    qj[1] = vec[0]*di[1] + vec[1]*di[0] + vec[0]*vec[1]*s
+    qj[3] = vec[0]*di[2] + vec[2]*di[0] + vec[0]*vec[2]*s
+    qj[4] = vec[1]*di[2] + vec[2]*di[1] + vec[1]*vec[2]*s
     # Now collect the trace of the shift contribution
-    tr = 0.5 * (qj[1] + qj[3] + qj[6])
+    tr = 0.5 * (qj[0] + qj[2] + qj[5])
 
     # Finally, assemble the quadrupole operator on the Bra function from the operator
     # on the Ket function and the traceless shift contribution
-    qj[1] = qi[1] + 1.5 * qj[1] - tr
-    qj[2] = qi[2] + 1.5 * qj[2]
-    qj[3] = qi[3] + 1.5 * qj[3] - tr
+    qj[0] = qi[0] + 1.5 * qj[0] - tr
+    qj[1] = qi[1] + 1.5 * qj[1]
+    qj[2] = qi[2] + 1.5 * qj[2] - tr
+    qj[3] = qi[3] + 1.5 * qj[3]
     qj[4] = qi[4] + 1.5 * qj[4]
-    qj[5] = qi[5] + 1.5 * qj[5]
-    qj[6] = qi[6] + 1.5 * qj[6] - tr
+    qj[5] = qi[5] + 1.5 * qj[5] - tr
 
     return dj, qj
 
