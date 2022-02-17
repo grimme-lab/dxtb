@@ -1,4 +1,5 @@
 """Executable script which runs all unittests."""
+from cgi import test
 import logging
 import os
 import os.path as op
@@ -18,8 +19,9 @@ if __name__ == '__main__':
     loader = unittest.TestLoader()
     test_suite = unittest.TestSuite()
     for entry in os.scandir(this_directory):
-        if (entry.is_file() and str(entry.name).startswith("test_")):
+        if (entry.is_dir() and entry.name != "test_input_files"
+                and os.path.isfile(this_directory + "/" + entry.name + "/__init__.py")):
             print(entry)
-            test_suite.addTests(loader.discover(this_directory, top_level_dir=this_directory))
+            test_suite.addTests(loader.discover(this_directory + "/" + entry.name, top_level_dir=this_directory))
     runner = unittest.TextTestRunner()
     runner.run(test_suite)
