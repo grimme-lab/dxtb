@@ -90,7 +90,6 @@ def transform0(lj: int, li: int, cart):
     dim = cart.shape[0]-1
     sphr = torch.zeros((dim,dim))
     assert len(cart.shape) == 2
-    assert cart.shape[0] == cart.shape[1]
 
     # TODO: test non symmetric entries (li != lj)
 

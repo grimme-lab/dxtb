@@ -286,7 +286,7 @@ def overlap_cgto(cgtoj, cgtoi, r2, vec, intcut):
                     for mli in range(mlao[cgtoi.ang]):
                         for mlj in range(mlao[cgtoj.ang]):
                             val = _overlap_3d(rpj, rpi, lx[:, mlj+lmap[cgtoj.ang]], lx[:, mli+lmap[cgtoi.ang]], s1d)
-                            s3d[mlj, mli] += cc*val
+                            s3d[mli, mlj] += cc*val
 
     with torch.profiler.record_function("transform overlap"):
         # transform overlap matrix
