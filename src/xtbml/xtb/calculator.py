@@ -162,7 +162,7 @@ class Hamiltonian:
                 )
                 ksh[ish, jsh] = shell.get(kij, (kii + kjj) / 2)
 
-        def get_hscale(li, lj, ri, rj, vi, vj, km):
+        def get_hscale(li, lj, ri, rj, vi, vj, km, ksh):
             """Calculate Hamiltonian scaling for a shell block"""
             ni, nj = len(li), len(lj)
             hscale = np.zeros((ni, nj))
@@ -171,7 +171,7 @@ class Hamiltonian:
                 for jsh in range(nj):
                     kjj = ksh[lj[jsh], lj[jsh]] if vj[jsh] else par.hamiltonian.xtb.kpol
                     zi = ri.slater[ish]
-                    zj = ri.slater[ish]
+                    zj = rj.slater[ish]
                     zij = (2 * sqrt(zi * zj) / (zi + zj)) ** par.hamiltonian.xtb.wexp
                     hscale[ish, jsh] = zij * (
                         km * ksh[li[ish], lj[jsh]]
@@ -185,12 +185,13 @@ class Hamiltonian:
         for isp in species:
             ri = par.element[isp]
             for jsp in species:
+                if (jsp,isp) in self.hscale.keys(): continue
                 rj = par.element[jsp]
                 enp = 1.0 + par.hamiltonian.xtb.enscale * (ri.en - rj.en) ** 2
 
                 km = kpair.get(f"{isp}-{jsp}", kpair.get(f"{jsp}-{isp}", 1.0)) * enp
                 self.hscale[(isp, jsp)] = get_hscale(
-                    lsh[isp], lsh[jsp], ri, rj, valence[isp], valence[jsp], km
+                    lsh[isp], lsh[jsp], ri, rj, valence[isp], valence[jsp], km, ksh
                 )
 
 
