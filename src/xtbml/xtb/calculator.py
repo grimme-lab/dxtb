@@ -185,7 +185,6 @@ class Hamiltonian:
         for isp in species:
             ri = par.element[isp]
             for jsp in species:
-                if (jsp,isp) in self.hscale.keys(): continue
                 rj = par.element[jsp]
                 enp = 1.0 + par.hamiltonian.xtb.enscale * (ri.en - rj.en) ** 2
 
