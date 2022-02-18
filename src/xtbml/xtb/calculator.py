@@ -6,7 +6,7 @@ Base calculator for the extended tight-binding model.
 
 from math import sqrt
 from typing import List, Dict, Tuple, Union
-import numpy as np
+import torch
 
 from ..param import Param
 from ..param.element import Element
@@ -150,7 +150,7 @@ class Hamiltonian:
         # FIXME: tblite implicitly spreads missing angular momenta, however this
         #        is only relevant for f shells and higher in present parametrizations.
         shell = par.hamiltonian.xtb.shell
-        ksh = np.zeros((lmax, lmax))
+        ksh = torch.zeros((lmax, lmax))
         for ish in range(lmax):
             kii = shell.get(2 * _lsh2aqm[ish])
             for jsh in range(lmax):
@@ -165,7 +165,7 @@ class Hamiltonian:
         def get_hscale(li, lj, ri, rj, vi, vj, km, ksh):
             """Calculate Hamiltonian scaling for a shell block"""
             ni, nj = len(li), len(lj)
-            hscale = np.zeros((ni, nj))
+            hscale = torch.zeros((ni, nj))
             for ish in range(ni):
                 kii = ksh[li[ish], li[ish]] if vi[ish] else par.hamiltonian.xtb.kpol
                 for jsh in range(nj):
