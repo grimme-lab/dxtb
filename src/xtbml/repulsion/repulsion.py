@@ -70,13 +70,12 @@ class Repulsion(Energy_Contribution):
 
         return
 
-    def get_energy(self, geometry: Geometry, trans: Tensor, cutoff: float) -> Tensor:
+    def get_energy(self, geometry: Geometry, cutoff: float) -> Tensor:
         """
         Obtain repulsion energy
 
         Args:
            geometry (Geometry): Molecular structure data
-           trans (Tensor): Lattice points
            cutoff (float): Real space cutoff
 
         Returns:
@@ -94,42 +93,39 @@ class Repulsion(Energy_Contribution):
             izp = geometry.get_species_index(geometry.atomic_numbers[iat]) 
             jzp = geometry.get_species_index(geometry.atomic_numbers[jat]) 
 
-            for itr in range(trans.shape[0]):
-                    rij = (
-                        geometry.positions[iat, :]
-                        - geometry.positions[jat, :]
-                        - trans[itr, :] # TODO: check correct shape of translation
-                    )
-                    r2 = sum(rij ** 2)
-                    if r2 > cutoff2 or r2 < 1.0e-12: # TODO: for eg CH4 (x1=-x2; y1=-y2) get contributions correct
-                        continue
-                    r1 = torch.sqrt(r2)
+            rij = (
+               geometry.positions[iat, :]
+               - geometry.positions[jat, :]
+            )
+            r2 = sum(rij ** 2)
+            if r2 > cutoff2 or r2 < 1.0e-12: # TODO: for eg CH4 (x1=-x2; y1=-y2) get contributions correct
+               continue
+            r1 = torch.sqrt(r2)
 
-                    # TODO: get correct values (check storage structure)
-                    r1k = r1 ** self.kexp[izp, jzp]
-                    exa = exp(-self.alpha[izp, jzp] * r1k)
-                    r1r = r1 ** self.rexp[izp, jzp]
+            # TODO: get correct values (check storage structure)
+            r1k = r1 ** self.kexp[izp, jzp]
+            exa = exp(-self.alpha[izp, jzp] * r1k)
+            r1r = r1 ** self.rexp[izp, jzp]
 
-                    dE = self.zeff[izp, jzp] * exa / r1r
+            dE = self.zeff[izp, jzp] * exa / r1r
 
-                    # partition energy equally on contributing atoms
-                    energies[iat] = energies[iat] + 0.5 * dE
-                    if iat != jat:
-                        energies[jat] = energies[jat] + 0.5 * dE
+            # partition energy equally on contributing atoms
+            energies[iat] = energies[iat] + 0.5 * dE
+            if iat != jat:
+               energies[jat] = energies[jat] + 0.5 * dE
 
         return sum(energies)
 
-    def get_gradient(self, geometry: Geometry, trans: Tensor, cutoff: float) -> Tensor:
+    def get_gradient(self, geometry: Geometry, cutoff: float) -> Tensor:
         """
         Obtain repulsion gradient and energy.
 
         Args:
            geometry (Geometry): Molecular structure data
-           trans (Tensor): Lattice points
            cutoff (float): Real space cutoff
 
         Returns:
-           Tensor: Repulsion energy
+           Tensor: Repulsion gradient and energy
         """
 
         n_atoms = geometry.get_length(unique=False)
@@ -138,10 +134,7 @@ class Repulsion(Energy_Contribution):
 
         # Molecular gradient of the repulsion energy
         gradient = torch.zeros((n_atoms, 3))
-        # Strain derivatives of the repulsion energy
-        sigma = torch.zeros((3, 3))
         dG = torch.zeros((3))
-        dS = torch.zeros((3, 3))
 
         # TODO: apply same adjustments as for energy
 
@@ -152,42 +145,35 @@ class Repulsion(Energy_Contribution):
             izp = geometry.get_species_index(geometry.atomic_numbers[iat]) 
             jzp = geometry.get_species_index(geometry.atomic_numbers[jat]) 
 
-            for itr in range(trans.shape[0]):
-                  rij = (
-                        geometry.positions[iat, :]
-                        - geometry.positions[jat, :]
-                        - trans[itr, :]
-                  )
-                  r2 = sum(rij ** 2)
-                  if r2 > cutoff2 or r2 < 1.0e-12:
-                        continue
-                  r1 = torch.sqrt(r2)
+            rij = (
+                  geometry.positions[iat, :]
+                  - geometry.positions[jat, :]
+            )
+            r2 = sum(rij ** 2)
+            if r2 > cutoff2 or r2 < 1.0e-12:
+                  continue
+            r1 = torch.sqrt(r2)
 
-                  r1k = r1 ** self.kexp[izp, jzp]
-                  exa = exp(-self.alpha[izp, jzp] * r1k)
-                  r1r = r1 ** self.rexp[izp, jzp]
+            r1k = r1 ** self.kexp[izp, jzp]
+            exa = exp(-self.alpha[izp, jzp] * r1k)
+            r1r = r1 ** self.rexp[izp, jzp]
 
-                  dE = self.zeff[izp, jzp] * exa / r1r
+            dE = self.zeff[izp, jzp] * exa / r1r
 
-                  dG = (
-                     -(
-                           self.alpha[izp, jzp] * r1k * self.kexp[izp, jzp]
-                           + self.rexp[izp, jzp]
-                     )
-                     *dE* rij/r2
-                  )
-                  dS = dG.repeat(3, 1) * rij.repeat(
-                     3, 1
-                  )  # spread(dG, 1, 3) * spread(rij, 2, 3)
+            dG = (
+               -(
+                     self.alpha[izp, jzp] * r1k * self.kexp[izp, jzp]
+                     + self.rexp[izp, jzp]
+               )
+               *dE* rij/r2
+            )
 
-                  # partition energy and gradient equally on contributing atoms
-                  energies[iat] = energies[iat] + 0.5 * dE
-                  if iat != jat:
-                     energies[jat] = energies[jat] + 0.5 * dE
-                     gradient[iat, :] = gradient[iat, :] + dG
-                     gradient[jat, :] = gradient[jat, :] - dG
-                     sigma = sigma + dS
-                  else:
-                     sigma += 0.5 * dS
+            # partition energy and gradient equally on contributing atoms
+            energies[iat] = energies[iat] + 0.5 * dE
+            if iat != jat:
+               energies[jat] = energies[jat] + 0.5 * dE
+               gradient[iat, :] = gradient[iat, :] + dG
+               gradient[jat, :] = gradient[jat, :] - dG
 
-        return gradient, sigma, energies
+        return gradient, energies
+
