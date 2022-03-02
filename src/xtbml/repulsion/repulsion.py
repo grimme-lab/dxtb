@@ -234,9 +234,3 @@ class Repulsion(BaseModel):  # TODO: inherit from Energy_Contribution
                      sigma += 0.5 * dS
 
         return gradient, sigma, energies
-
-    def get_virial(self) -> Tensor:
-        """
-        Obtain repulsion virial
-        """
-        raise NotImplementedError

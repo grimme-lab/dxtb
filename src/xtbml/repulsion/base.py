@@ -44,13 +44,8 @@ class Energy_Contribution(BaseModel, ABC):
     @abstractmethod
     def get_gradient(self) -> Tensor:
         """
-        Obtain gradient for classical contribution
-        """
-        return
-
-    @abstractmethod
-    def get_virial(self) -> Tensor:
-        """
-        Obtain virial for classical contribution
+        Obtain gradient for classical contribution 
+        (energy is calculated during this step).
+        For periodic applications also calculate virial force.
         """
         return
