@@ -8,7 +8,7 @@ Definition of energy terms as abstract base class for classical interactions.
 
 from typing import Optional
 from pydantic import BaseModel
-from abc import ABC
+from abc import ABC, abstractmethod
 from torch import Tensor
 
 from tbmalt.structures.geometry import Geometry
@@ -22,7 +22,7 @@ class Energy_Contribution(BaseModel, ABC):
     """  # TODOC
 
     """Molecular structure data"""
-    geo: Geometry
+    geometry: Optional[Geometry] = None
     """Lattice points"""
     trans: Optional[Tensor] = None
     """Real space cutoff"""
@@ -33,6 +33,10 @@ class Energy_Contribution(BaseModel, ABC):
     gradient: Optional[Tensor] = None
     """Strain derivatives of the repulsion energy"""
     sigma: Optional[Tensor] = None
+    
+    class Config:
+        # allow for geometry and tensor fields
+        arbitrary_types_allowed = True
 
     @abstractmethod
     def get_energy(self) -> Tensor:
