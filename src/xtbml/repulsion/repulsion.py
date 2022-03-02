@@ -4,26 +4,26 @@
 Definition of repulsion energy terms.
 
 """
+
 from typing import Optional
-from pydantic import BaseModel
 from torch import Tensor
 import torch
 from math import sqrt, exp
 
 from tbmalt.structures.geometry import Geometry
 
+from base import Energy_Contribution #TODO
+
 # TODO: currently order is defined by geometry.unique_atomic_numbers()
 #        maybe change to dictionary representation?
 
-class Repulsion(BaseModel):  # TODO: inherit from Energy_Contribution
+class Repulsion(Energy_Contribution):
     """
     Classical repulsion interaction as used with the xTB Hamiltonian.
     Calculated is the effective repulsion as given in the TB framework.
     Container to evaluate classical repulsion interactions for the xTB Hamiltonian.
     """  # TODOC
 
-    """Molecular structure data"""
-    geometry: Geometry
     """Repulsion interaction exponent for all element pairs"""
     alpha: Optional[Tensor] = None  # shape [A, A] --> A being number of unique species
     """Effective nuclear charge for all element pairs"""
@@ -32,45 +32,6 @@ class Repulsion(BaseModel):  # TODO: inherit from Energy_Contribution
     kexp: Optional[Tensor] = None  # shape [A, A]
     """Exponent of the repulsion polynomial, pairwise parameters for all element pairs"""
     rexp: Optional[Tensor] = None  # shape [A, A]
-
-    class Config:
-        # allow for tensor fields
-        arbitrary_types_allowed = True
-
-    # NOTE: for optional arguments: alternatively use non-class methods> attr = Field(default_factory=_setup_attr)
-    """@validator('alpha')
-    def _setup_alpha(cls, alpha):
-       alpha_new, l = cls._setup_generic(alpha)
-       for i in range(l):
-          for j in range(l):
-                alpha_new[i,j] = sqrt(alpha[i]*alpha[j])
-       return alpha_new
-
-    @validator('zeff')
-    def _setup_zeff(cls, zeff):
-       zeff_new, l = cls._setup_generic(zeff)
-       for i in range(l):
-          for j in range(l):
-                zeff_new[i,j] = zeff[i]*zeff[j]
-       return zeff_new
-
-    @validator('kexp')
-    def _setup_kexp(cls, kexp):
-       # TODO kexp will be a scalar! real(wp), intent(in) :: kexp
-       #       how to setup with basemodel?
-       kexp_new, l = cls._setup_generic(kexp)
-       for i in range(l):
-          for j in range(l):
-                kexp_new[i,j] = kexp[i]*kexp[j]
-       return kexp_new
-
-    @classmethod
-    def _setup_generic(cls, v):
-       if len(v.shape) != 1:
-          raise ValueError('shape mismatch: expect 1D')
-       l = len(v) # TODO: replace with geometry.nid?
-       v_new = torch.zeros((l,l))
-       return v_new, l"""
 
     def setup(
         self, alpha: Tensor, zeff: Tensor, kexp: float, kexp_light: float, rexp: float
@@ -81,16 +42,12 @@ class Repulsion(BaseModel):  # TODO: inherit from Energy_Contribution
            ValueError: shape mismatch for non 1D input of alpha or zeff
         """
 
-        # NOTE: as setting up entirely in constructor is tedious in pydantic framework 
-        #       (cf. e.g. https://github.com/samuelcolvin/pydantic/issues/935)
-        #       this helper method is used.
-
         if len(alpha.shape) != 1:
             raise ValueError("shape mismatch: expect 1D")
         if len(zeff.shape) != 1:
             raise ValueError("shape mismatch: expect 1D")
 
-        l = len(self.geometry, unique=True)
+        l = self.geometry.get_length(unique=True)
         self.alpha = torch.zeros((l, l))
         self.zeff = torch.zeros((l, l))
         self.kexp = torch.zeros((l, l))
@@ -126,7 +83,7 @@ class Repulsion(BaseModel):  # TODO: inherit from Energy_Contribution
            Tensor: Repulsion energy
         """
 
-        n_atoms = len(geometry, unique=False)
+        n_atoms = geometry.get_length(unique=False)
         energies = torch.zeros(n_atoms)
         cutoff2 = cutoff ** 2
 
@@ -175,7 +132,7 @@ class Repulsion(BaseModel):  # TODO: inherit from Energy_Contribution
            Tensor: Repulsion energy
         """
 
-        n_atoms = len(geometry, unique=False)
+        n_atoms = geometry.get_length(unique=False)
         energies = torch.zeros(n_atoms)
         cutoff2 = cutoff ** 2
 
