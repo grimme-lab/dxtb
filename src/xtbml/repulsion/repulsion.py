@@ -117,13 +117,10 @@ class Repulsion(Energy_Contribution):
 
             # partition energy and gradient equally on contributing atoms
             energies[iat] = energies[iat] + 0.5 * dE
-            if iat != jat:
-               energies[jat] = energies[jat] + 0.5 * dE
-               if calc_gradient:
+            if calc_gradient:
                 gradient[iat, :] = gradient[iat, :] + dG
-                gradient[jat, :] = gradient[jat, :] - dG
 
-        energies = torch.sum(energies) / 2 # TODO: why is this factor 1/2 needed?
+        energies = torch.sum(energies)
 
         if calc_gradient:
             return energies, gradient
