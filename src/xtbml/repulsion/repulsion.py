@@ -12,7 +12,7 @@ from math import sqrt, exp
 
 from tbmalt.structures.geometry import Geometry
 
-from base import Energy_Contribution
+from .base import Energy_Contribution
 
 class Repulsion(Energy_Contribution):
     """
@@ -122,6 +122,8 @@ class Repulsion(Energy_Contribution):
                if calc_gradient:
                 gradient[iat, :] = gradient[iat, :] + dG
                 gradient[jat, :] = gradient[jat, :] - dG
+
+        energies = torch.sum(energies) / 2 # TODO: why is this factor 1/2 needed?
 
         if calc_gradient:
             return energies, gradient
