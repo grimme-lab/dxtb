@@ -6,7 +6,7 @@ Definition of energy terms as abstract base class for classical interactions.
 
 """
 
-from typing import Optional
+from typing import Optional, Tuple
 from pydantic import BaseModel
 from abc import ABC, abstractmethod
 from torch import Tensor
@@ -39,16 +39,9 @@ class Energy_Contribution(BaseModel, ABC):
         arbitrary_types_allowed = True
 
     @abstractmethod
-    def get_energy(self) -> Tensor:
+    def get_engrad(self) -> Tuple[Tensor,Tensor]:
         """
-        Obtain energy for classical contribution
-        """
-        return
-
-    @abstractmethod
-    def get_gradient(self) -> Tensor:
-        """
-        Obtain gradient for classical contribution 
+        Obtain energy and gradient for classical contribution 
         (energy is calculated during this step).
         For periodic applications also calculate virial force.
         """

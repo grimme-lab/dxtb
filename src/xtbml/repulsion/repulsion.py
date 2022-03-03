@@ -5,24 +5,21 @@ Definition of repulsion energy terms.
 
 """
 
-from typing import Optional
+from typing import Optional, Union, Tuple
 from torch import Tensor
 import torch
 from math import sqrt, exp
 
 from tbmalt.structures.geometry import Geometry
 
-from base import Energy_Contribution #TODO
-
-# TODO: currently order is defined by geometry.unique_atomic_numbers()
-#        maybe change to dictionary representation?
+from base import Energy_Contribution
 
 class Repulsion(Energy_Contribution):
     """
     Classical repulsion interaction as used with the xTB Hamiltonian.
     Calculated is the effective repulsion as given in the TB framework.
     Container to evaluate classical repulsion interactions for the xTB Hamiltonian.
-    """  # TODOC
+    """
 
     """Repulsion interaction exponent for all element pairs"""
     alpha: Optional[Tensor] = None  # shape [A, A] --> A being number of unique species
@@ -70,73 +67,25 @@ class Repulsion(Energy_Contribution):
 
         return
 
-    def get_energy(self, geometry: Geometry, cutoff: float) -> Tensor:
+    def get_engrad(self, geometry: Geometry, cutoff: float, calc_gradient: bool = False) -> Union[Tensor, Tuple[Tensor,Tensor]]:
         """
-        Obtain repulsion energy
+        Obtain repulsion energy and gradient.
 
         Args:
            geometry (Geometry): Molecular structure data
            cutoff (float): Real space cutoff
 
         Returns:
-           Tensor: Repulsion energy
+           Tensor: Repulsion energy and gradient
         """
 
         n_atoms = geometry.get_length(unique=False)
         energies = torch.zeros(n_atoms)
         cutoff2 = cutoff ** 2
-
-        for (iat, jat) in geometry.generate_interactions(unique=False):
-            iat, jat = iat.item(), jat.item()
-
-            # get index of atomic number in unique
-            izp = geometry.get_species_index(geometry.atomic_numbers[iat]) 
-            jzp = geometry.get_species_index(geometry.atomic_numbers[jat]) 
-
-            rij = (
-               geometry.positions[iat, :]
-               - geometry.positions[jat, :]
-            )
-            r2 = sum(rij ** 2)
-            if r2 > cutoff2 or r2 < 1.0e-12: # TODO: for eg CH4 (x1=-x2; y1=-y2) get contributions correct
-               continue
-            r1 = torch.sqrt(r2)
-
-            # TODO: get correct values (check storage structure)
-            r1k = r1 ** self.kexp[izp, jzp]
-            exa = exp(-self.alpha[izp, jzp] * r1k)
-            r1r = r1 ** self.rexp[izp, jzp]
-
-            dE = self.zeff[izp, jzp] * exa / r1r
-
-            # partition energy equally on contributing atoms
-            energies[iat] = energies[iat] + 0.5 * dE
-            if iat != jat:
-               energies[jat] = energies[jat] + 0.5 * dE
-
-        return sum(energies)
-
-    def get_gradient(self, geometry: Geometry, cutoff: float) -> Tensor:
-        """
-        Obtain repulsion gradient and energy.
-
-        Args:
-           geometry (Geometry): Molecular structure data
-           cutoff (float): Real space cutoff
-
-        Returns:
-           Tensor: Repulsion gradient and energy
-        """
-
-        n_atoms = geometry.get_length(unique=False)
-        energies = torch.zeros(n_atoms)
-        cutoff2 = cutoff ** 2
-
-        # Molecular gradient of the repulsion energy
-        gradient = torch.zeros((n_atoms, 3))
-        dG = torch.zeros((3))
-
-        # TODO: apply same adjustments as for energy
+        
+        if calc_gradient:
+            # Molecular gradient of the repulsion energy
+            gradient = torch.zeros((n_atoms, 3))
 
         for (iat, jat) in geometry.generate_interactions(unique=False):
             iat, jat = iat.item(), jat.item()
@@ -160,20 +109,22 @@ class Repulsion(Energy_Contribution):
 
             dE = self.zeff[izp, jzp] * exa / r1r
 
-            dG = (
-               -(
-                     self.alpha[izp, jzp] * r1k * self.kexp[izp, jzp]
-                     + self.rexp[izp, jzp]
-               )
-               *dE* rij/r2
-            )
+            if calc_gradient:
+                dG = (
+                -(self.alpha[izp, jzp] * r1k * self.kexp[izp, jzp] + self.rexp[izp, jzp])
+                *dE* rij/r2
+                )
 
             # partition energy and gradient equally on contributing atoms
             energies[iat] = energies[iat] + 0.5 * dE
             if iat != jat:
                energies[jat] = energies[jat] + 0.5 * dE
-               gradient[iat, :] = gradient[iat, :] + dG
-               gradient[jat, :] = gradient[jat, :] - dG
+               if calc_gradient:
+                gradient[iat, :] = gradient[iat, :] + dG
+                gradient[jat, :] = gradient[jat, :] - dG
 
-        return gradient, energies
+        if calc_gradient:
+            return energies, gradient
+        else:
+            return energies
 
