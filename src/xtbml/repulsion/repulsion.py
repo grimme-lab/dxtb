@@ -14,6 +14,8 @@ from tbmalt.structures.geometry import Geometry
 
 from .base import Energy_Contribution
 
+torch.set_default_dtype(torch.float64) # required for repulsion tests (esp. gradients) 
+
 class Repulsion(Energy_Contribution):
     """
     Classical repulsion interaction as used with the xTB Hamiltonian.
@@ -58,9 +60,9 @@ class Repulsion(Energy_Contribution):
                 self.zeff[i, j] = zeff[i] * zeff[j]
 
         for i in range(l):
-            iz = self.geometry.atomic_numbers[i]
+            iz = self.geometry.unique_atomic_numbers()[i]
             for j in range(l):
-                jz = self.geometry.atomic_numbers[j]
+                jz = self.geometry.unique_atomic_numbers()[j]
                 self.kexp[i, j] = kexp if (iz > 2 or jz > 2) else kexp_light
 
         self.rexp = torch.ones((l, l)) * rexp
@@ -87,38 +89,46 @@ class Repulsion(Energy_Contribution):
             # Molecular gradient of the repulsion energy
             gradient = torch.zeros((n_atoms, 3))
 
+        # alternatively:
+        """for iat in range(geometry.n_atoms):
+            for jat in range(iat+1):"""
         for (iat, jat) in geometry.generate_interactions(unique=False):
-            iat, jat = iat.item(), jat.item()
+                iat, jat = iat.item(), jat.item()
 
-            # get index of atomic number in unique
-            izp = geometry.get_species_index(geometry.atomic_numbers[iat]) 
-            jzp = geometry.get_species_index(geometry.atomic_numbers[jat]) 
+                # geometry accessed by atom index
+                rij = geometry.positions[iat, :] - geometry.positions[jat, :]
 
-            rij = (
-                  geometry.positions[iat, :]
-                  - geometry.positions[jat, :]
-            )
-            r2 = sum(rij ** 2)
-            if r2 > cutoff2 or r2 < 1.0e-12:
-                  continue
-            r1 = torch.sqrt(r2)
+                # translate atom index to unique species index
+                # (== index of atomic number in unique)
+                idx_i = geometry.get_species_index(geometry.atomic_numbers[iat]) 
+                idx_j = geometry.get_species_index(geometry.atomic_numbers[jat])    
 
-            r1k = r1 ** self.kexp[izp, jzp]
-            exa = exp(-self.alpha[izp, jzp] * r1k)
-            r1r = r1 ** self.rexp[izp, jzp]
+                r2 = sum(rij ** 2)
+                if r2 > cutoff2 or r2 < 1.0e-12:
+                    continue
+                r1 = torch.sqrt(r2)
+                r1k = r1 ** self.kexp[idx_i, idx_j]
+                exa = exp(-self.alpha[idx_i, idx_j] * r1k)
+                r1r = r1 ** self.rexp[idx_i, idx_j]
 
-            dE = self.zeff[izp, jzp] * exa / r1r
+                dE = self.zeff[idx_i, idx_j] * exa / r1r
 
-            if calc_gradient:
-                dG = (
-                -(self.alpha[izp, jzp] * r1k * self.kexp[izp, jzp] + self.rexp[izp, jzp])
-                *dE* rij/r2
-                )
+                if calc_gradient:
+                    dG = -(self.alpha[idx_i, idx_j] * r1k * self.kexp[idx_i, idx_j] + self.rexp[idx_i, idx_j]) * dE * rij/r2
 
-            # partition energy and gradient equally on contributing atoms
-            energies[iat] = energies[iat] + 0.5 * dE
-            if calc_gradient:
-                gradient[iat, :] = gradient[iat, :] + dG
+                # partition energy and gradient equally on contributing atoms
+                energies[iat] = energies[iat] + 0.5 * dE
+
+                if iat != jat:
+                    energies[jat] = energies[jat] + 0.5 * dE
+                    
+                    if calc_gradient:
+                        gradient[iat, :] = gradient[iat, :] + dG
+                        gradient[jat, :] = gradient[jat, :] - dG
+                else:
+                    # should never happen, since iat==jat --> r2==0.0
+                    # NOTE: only for PBC with transition vector this might be raised
+                    raise ValueError
 
         energies = torch.sum(energies)
 
