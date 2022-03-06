@@ -1,34 +1,41 @@
 
-import math
 import torch
+from math import sqrt
+from pydantic import BaseModel
+from typing import List, Dict, Tuple, Union
 
 from ..integral.overlap import maxl, msao
 from ..integral.multipole import multipole_cgto
 from ..exlibs.tblite import shift_operator,dimDipole, dimQuadrupole
 
 # TODO:
-#   * tb_h0spec
+#   * add abstract base class for future extensions 
 
-class Tb_Hamiltonian():
+class Tb_Hamiltonian(BaseModel):
     """ Implementation of the effective core Hamiltonian used in the extended tight binding. """
 
+    """# Atomic level information
+    selfenergy =  torch.zeroes([0,0])    
+    # Coordination number dependence of the atomic levels
+    kcn =  torch.zeroes([0,0])
+    # Charge dependence of the atomic levels
+    kq1 =  torch.zeroes([0,0])
+    # Charge dependence of the atomic levels
+    kq2 =  torch.zeroes([0,0])
+    # Enhancement factor to scale the Hamiltonian elements
+    hscale =  torch.zeroes([0,0,0,0])
+    # Polynomial coefficients for distance dependent enhancement factor
+    shpoly =  torch.zeroes([0,0])
+    # Reference occupation numbers
+    refocc =  torch.zeroes([0,0])"""
+    # Atomic radius for polynomial enhancement 
+    # TODO: are those equal to standard Van-der-Waals radius of each species? 
+    #       --> if yes, take from global param file
+    rad: Dict[str, float] = {}
+
+
     def __init__(self):
-        # Atomic level information
-        self.selfenergy =  torch.zeroes([0,0])    
-        # Coordination number dependence of the atomic levels
-        self.kcn =  torch.zeroes([0,0])
-        # Charge dependence of the atomic levels
-        self.kq1 =  torch.zeroes([0,0])
-        # Charge dependence of the atomic levels
-        self.kq2 =  torch.zeroes([0,0])
-        # Enhancement factor to scale the Hamiltonian elements
-        self.hscale =  torch.zeroes([0,0,0,0])
-        # Polynomial coefficients for distance dependent enhancement factor
-        self.shpoly =  torch.zeroes([0,0])
-        # Atomic radius for polynomial enhancement
-        self.rad =  torch.zeroes([0])
-        # Reference occupation numbers
-        self.refocc =  torch.zeroes([0,0])
+        # TODO
         return
 
     def __str__(self):
@@ -107,7 +114,7 @@ class Tb_Hamiltonian():
              dsedq = torch.zeros(dsedq.size())
 
         for iat in range(len(id)):
-            izp = id[iat]
+            isp = id[iat]
             ii = ish_at[iat]
             for ish in range(nshell[izp]):
                 selfenergy[ii+ish] = h0.selfenergy[ish, izp]
@@ -195,7 +202,7 @@ class Tb_Hamiltonian():
                 js = bas.ish_at[jat]
                 vec = mol.xyz[:, iat] - mol.xyz[:, jat] - trans[:, itr] #TODO: check torch.tensor
                 r2 = vec[1]**2 + vec[2]**2 + vec[3]**2
-                rr = math.sqrt(math.sqrt(r2) / (h0.rad[jzp] + h0.rad[izp]))
+                rr = sqrt(sqrt(r2) / (h0.rad[jzp] + h0.rad[izp]))
 
                 for ish in range(bas.nsh_id[izp]):
                     ii = bas.iao_sh[iss+ish]
@@ -240,7 +247,7 @@ class Tb_Hamiltonian():
             iss = bas.ish_at[iat]
             vec[:] = 0.0
             r2 = 0.0
-            rr = math.sqrt(math.sqrt(r2) / (h0.rad[izp] + h0.rad[izp]))
+            rr = sqrt(sqrt(r2) / (h0.rad[izp] + h0.rad[izp]))
 
             for ish in range(bas.nsh_id[izp]):
                 ii = bas.iao_sh(iss+ish)
@@ -295,3 +302,23 @@ class Tb_Hamiltonian():
 
         return nocc, n0at, n0sh
 
+    def buildDiatomicBlocks(self, overlap: torch.tensor, isp: str, jsp: str, r2: float, ish: int, jsh: int) -> torch.tensor:
+        """ Calculate effective Hamiltonian element for given pair of atoms.
+        """ # TODOC
+
+        # TODO: needed for non-sparse representation?
+        def index_offset(species):
+            """ Index offset for each atom in the shell space """
+            raise NotImplementedError
+            return offset        
+        iss = index_offset(isp)
+        jss = index_offset(jsp)
+
+        rr = sqrt(sqrt(r2) / (self.rad[isp] + self.rad[jsp]))
+
+        shpoly = (1.0 + self.shpoly[ish, isp]*rr) * (1.0 + self.shpoly[jsh, jsp]*rr)
+
+        # selfenergy (list[float]): Diagonal elements of the Hamiltonian
+        hij = 0.5 * (self.selfenergy[iss+ish] + self.selfenergy[jss+jsh]) * self.hscale[jsh, ish, jsp, isp] * shpoly
+              
+        return overlap * hij # TODO: check output format
