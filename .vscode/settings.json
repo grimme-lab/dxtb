@@ -2,28 +2,12 @@
   "[python]": {
     "editor.detectIndentation": false,
     "editor.formatOnSave": true,
-    "editor.formatOnPaste": true,
+    "editor.formatOnPaste": false, // not supported by black
     "editor.insertSpaces": true,
-    "editor.tabSize": 2
+    "editor.tabSize": 4
   },
   "python.defaultInterpreterPath": "${env:CONDA_PREFIX}envs/xtbML/bin/python",
-  "python.formatting.provider": "autopep8",
-  "python.formatting.autopep8Args": ["--indent-size=2", "--max-line-length", "80"],
+  "python.formatting.provider": "black",
   "python.linting.enabled": true,
   "python.linting.pylintEnabled": true,
-  "python.linting.flake8Enabled": false,
-  "python.linting.pylintArgs": [
-    "--indent-string='  '",
-    "--disable=C0103, C0111, C0114, C0115, C0116, C0415",
-    "--ignored-modules=torch",
-    "--ignored-classes=torch",
-    "--extension-pkg-whitelist=torch"
-  ]
 }
-
-// pylint disabled problems:
-//  - C0415: import-outside-toplevel
-//
-// pylint does not recognize members of module if not started in the environment
-//  - start VSCode with `code .`
-//  - or: "python.linting.pylintArgs": [...]
