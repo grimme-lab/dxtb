@@ -1,12 +1,14 @@
-
+""" Integral transformation """
 
 import math
 import torch
 
 from ..exceptions import IntegralTransformError
 
-""" Integral transformation """
 
+dtype = torch.float64
+
+# fmt: off
 s3 = math.sqrt(3.0)
 s3_4 = s3 * 0.5
 dtrafo = torch.tensor([
@@ -17,7 +19,7 @@ dtrafo = torch.tensor([
        0.0, 0.0, 0.0, 0.0,     s3,  # xy
        0.0,     s3, 0.0, 0.0, 0.0,  # xz
        0.0, 0.0,     s3, 0.0, 0.0], # yz
-       ).reshape(6, 5).float()
+       dtype=dtype).reshape(6, 5)
 d32 = 3.0/2.0
 s3_8 = math.sqrt(3.0/8.0)
 s5_8 = math.sqrt(5.0/8.0)
@@ -38,7 +40,7 @@ ftrafo = torch.tensor([
        0.0,      s6,  0.0,   0.0,  0.0,   0.0,  0.0,  # xzz 
        0.0,  0.0,      s6,   0.0,  0.0,   0.0,  0.0,  # yzz 
        0.0,  0.0,  0.0,   0.0,     s15,   0.0,  0.0], # xyz 
-       ).reshape(10, 7).float()
+       dtype=dtype).reshape(10, 7)
 
 d38 = 3.0/8.0
 d34 = 3.0/4.0
@@ -68,11 +70,12 @@ gtrafo = torch.tensor([
         0., 0.,-s45_8, 0., 0.,  0.,s315_8,   0., 0.,  # xxyz
         0.,-s45_8, 0., 0., 0.,-s315_8, 0.,   0., 0.,  # xyyz
         0., 0., 0., 0.,   s45,  0., 0.,   0., 0.], # xyzz
-       ).reshape(15, 9).float()
+       dtype=dtype).reshape(15, 9)
+# fmt: on
 
 
 def transform0(lj: int, li: int, cart):
-    """ Transform overlap. Note the inverted order of li, lj.
+    """Transform overlap. Note the inverted order of li, lj.
 
 
     Args:
@@ -85,11 +88,11 @@ def transform0(lj: int, li: int, cart):
 
     Returns:
         [type]: [description]
-    """ # TODOC
+    """  # TODOC
 
     # infer shape depending on l
-    dim = cart.shape[0]-1
-    sphr = torch.zeros((dim,dim))
+    dim = cart.shape[0] - 1
+    sphr = torch.zeros((dim, dim))
     assert len(cart.shape) == 2
 
     if li == 0 or li == 1:
@@ -102,44 +105,72 @@ def transform0(lj: int, li: int, cart):
         elif lj == 4:
             sphr = torch.matmul(cart, gtrafo)
         else:
-            raise IntegralTransformError          
+            raise IntegralTransformError
     elif li == 2:
         if lj == 0 or lj == 1:
-            sphr = torch.matmul(torch.transpose(dtrafo,0,1), cart)
+            sphr = torch.matmul(torch.transpose(dtrafo, 0, 1), cart)
         elif lj == 2:
-            sphr = torch.matmul(torch.transpose(dtrafo,0,1), torch.matmul(torch.transpose(cart,0,1), dtrafo))
+            sphr = torch.matmul(
+                torch.transpose(dtrafo, 0, 1),
+                torch.matmul(torch.transpose(cart, 0, 1), dtrafo),
+            )
         elif lj == 3:
-            sphr = torch.matmul(torch.transpose(ftrafo,0,1), torch.matmul(torch.transpose(cart,0,1), dtrafo))
+            sphr = torch.matmul(
+                torch.transpose(ftrafo, 0, 1),
+                torch.matmul(torch.transpose(cart, 0, 1), dtrafo),
+            )
         elif lj == 4:
-            sphr = torch.matmul(torch.transpose(gtrafo,0,1), torch.matmul(torch.transpose(cart,0,1), dtrafo))
+            sphr = torch.matmul(
+                torch.transpose(gtrafo, 0, 1),
+                torch.matmul(torch.transpose(cart, 0, 1), dtrafo),
+            )
         else:
             raise IntegralTransformError
     elif li == 3:
         if lj == 0 or lj == 1:
-            sphr = torch.matmul(torch.transpose(ftrafo,0,1), cart)
+            sphr = torch.matmul(torch.transpose(ftrafo, 0, 1), cart)
         elif lj == 2:
-            sphr = torch.matmul(torch.transpose(dtrafo,0,1), torch.matmul(torch.transpose(cart,0,1), ftrafo))
+            sphr = torch.matmul(
+                torch.transpose(dtrafo, 0, 1),
+                torch.matmul(torch.transpose(cart, 0, 1), ftrafo),
+            )
         elif lj == 3:
-            sphr = torch.matmul(torch.transpose(ftrafo,0,1), torch.matmul(torch.transpose(cart,0,1), ftrafo))
+            sphr = torch.matmul(
+                torch.transpose(ftrafo, 0, 1),
+                torch.matmul(torch.transpose(cart, 0, 1), ftrafo),
+            )
         elif lj == 4:
-            sphr = torch.matmul(torch.transpose(gtrafo,0,1), torch.matmul(torch.transpose(cart,0,1), ftrafo))
+            sphr = torch.matmul(
+                torch.transpose(gtrafo, 0, 1),
+                torch.matmul(torch.transpose(cart, 0, 1), ftrafo),
+            )
         else:
             raise IntegralTransformError
     elif li == 4:
         if lj == 0 or lj == 1:
-            sphr = torch.matmul(torch.transpose(gtrafo,0,1), cart)
+            sphr = torch.matmul(torch.transpose(gtrafo, 0, 1), cart)
         elif lj == 2:
-            sphr = torch.matmul(torch.transpose(dtrafo,0,1), torch.matmul(torch.transpose(cart,0,1), gtrafo))
+            sphr = torch.matmul(
+                torch.transpose(dtrafo, 0, 1),
+                torch.matmul(torch.transpose(cart, 0, 1), gtrafo),
+            )
         elif lj == 3:
-            sphr = torch.matmul(torch.transpose(ftrafo,0,1), torch.matmul(torch.transpose(cart,0,1), gtrafo))
+            sphr = torch.matmul(
+                torch.transpose(ftrafo, 0, 1),
+                torch.matmul(torch.transpose(cart, 0, 1), gtrafo),
+            )
         elif lj == 4:
-            sphr = torch.matmul(torch.transpose(gtrafo,0,1), torch.matmul(torch.transpose(cart,0,1), gtrafo))
+            sphr = torch.matmul(
+                torch.transpose(gtrafo, 0, 1),
+                torch.matmul(torch.transpose(cart, 0, 1), gtrafo),
+            )
         else:
             raise IntegralTransformError
     else:
         raise IntegralTransformError
 
     return sphr
+
 
 def transform1(lj: int, li: int, cart, sphr):
 
@@ -151,8 +182,9 @@ def transform1(lj: int, li: int, cart, sphr):
 
     return sphr
 
+
 def transform2(lj: int, li: int, cart, sphr):
-    
+
     assert len(cart.shape) == 4
     assert len(sphr.shape) == 4
 
