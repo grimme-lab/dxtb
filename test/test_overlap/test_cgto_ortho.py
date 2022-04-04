@@ -1,16 +1,17 @@
 from unittest import TestCase
 import torch
 
-from xtbml.basis.type import Cgto_Type
+from xtbml.basis.type import Basis, Cgto_Type
 from xtbml.basis.slater import slater_to_gauss
 from xtbml.integral.overlap import overlap_cgto
 from xtbml.basis.ortho import orthogonalize
 from xtbml.exceptions import IntegralTransformError
-
-""" Testing the orthogonality of orbital overlap. """
+from xtbml.param.gfn1 import GFN1_XTB as par
 
 
 class Test_Cgto_Ortho(TestCase):
+    """Testing the orthogonality of orbital overlap."""
+
     @classmethod
     def setUpClass(cls):
         print("Test_Cgto_Ortho")
@@ -18,8 +19,8 @@ class Test_Cgto_Ortho(TestCase):
     def test_ortho_1s_2s(self):
         """Test orthogonality of 1s and 2s orbitals"""
 
-        # orbitals
-        ng, l = 5, 0
+        # azimuthal quantum number of s-orbital
+        l = 0
 
         # same site
         r2 = 0.0
@@ -56,8 +57,6 @@ class Test_Cgto_Ortho(TestCase):
         """
         Compare against reference calculated with tblite-int H C 0,0,1.4 --bohr --method gfn1
         """
-        from xtbml.param.gfn1 import GFN1_XTB as par
-        from xtbml.xtb.calculator import Basis
 
         basis = Basis(["H", "C"], par)
         h = basis.cgto.get("H")
@@ -87,8 +86,6 @@ class Test_Cgto_Ortho(TestCase):
         """
         Compare against reference calculated with tblite-int H He 0,0,1.7 --method gfn1 --bohr
         """
-        from xtbml.param.gfn1 import GFN1_XTB as par
-        from xtbml.xtb.calculator import Basis
 
         basis = Basis(["H", "He"], par)
         h = basis.cgto.get("H")
@@ -116,8 +113,6 @@ class Test_Cgto_Ortho(TestCase):
         """
         Compare against reference calculated with tblite-int S Cl 0,0,2.1 --method gfn1 --bohr
         """
-        from xtbml.param.gfn1 import GFN1_XTB as par
-        from xtbml.xtb.calculator import Basis
 
         basis = Basis(["S", "Cl"], par)
         s = basis.cgto.get("S")
@@ -172,8 +167,7 @@ class Test_Cgto_Ortho(TestCase):
 
     def test_overlap_higher_orbitals(self):
 
-        from xtbml.param.gfn1 import GFN1_XTB as par
-        from xtbml.xtb.calculator import _process_record
+        from xtbml.basis.type import _process_record
         from test_overlap.test_cgto_ortho_data import ref_data
 
         vec = torch.tensor([0.0, 0.0, 1.4])
@@ -185,20 +179,24 @@ class Test_Cgto_Ortho(TestCase):
         # change momenta artifically for testing purposes
         for i in range(2):
             for j in range(2):
-                ele[0].ang, ele[1].ang = i,j
+                ele[0].ang, ele[1].ang = i, j
                 overlap = overlap_cgto(ele[0], ele[1], r2, vec, 100.0)
+
                 self.assertTrue(
                     torch.allclose(
-                        overlap, ref_data[(i,j)], rtol=1e-05, atol=1e-03, equal_nan=False
+                        overlap,
+                        ref_data[(i, j)],
+                        rtol=1e-05,
+                        atol=1e-03,
+                        equal_nan=False,
                     ),
                     msg=f"Overlap does not match:\n {overlap}",
                 )
 
     def test_overlap_higher_orbital_fail(self):
-        """ No higher orbitals than 4 allowed. """
+        """No higher orbitals than 4 allowed."""
 
-        from xtbml.param.gfn1 import GFN1_XTB as par
-        from xtbml.xtb.calculator import _process_record
+        from xtbml.basis.type import _process_record
 
         vec = torch.tensor([0.0, 0.0, 1.4])
         r2 = vec.dot(vec)
@@ -208,9 +206,13 @@ class Test_Cgto_Ortho(TestCase):
 
         j = 5
         for i in range(5):
-            ele[0].ang, ele[1].ang = i,j
-            self.assertRaises(IntegralTransformError, overlap_cgto, ele[0], ele[1], r2, vec, 100.0)
+            ele[0].ang, ele[1].ang = i, j
+            self.assertRaises(
+                IntegralTransformError, overlap_cgto, ele[0], ele[1], r2, vec, 100.0
+            )
         i = 5
         for j in range(5):
-            ele[0].ang, ele[1].ang = i,j
-            self.assertRaises(IntegralTransformError, overlap_cgto, ele[0], ele[1], r2, vec, 100.0)
+            ele[0].ang, ele[1].ang = i, j
+            self.assertRaises(
+                IntegralTransformError, overlap_cgto, ele[0], ele[1], r2, vec, 100.0
+            )
