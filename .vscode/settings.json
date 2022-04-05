@@ -6,8 +6,9 @@
     "editor.insertSpaces": true,
     "editor.tabSize": 4
   },
-  "python.defaultInterpreterPath": "${env:CONDA_PREFIX}envs/xtbML/bin/python",
+  "python.defaultInterpreterPath": "${env:CONDA_PREFIX}/envs/xtbML/bin/python",
   "python.formatting.provider": "black",
   "python.linting.enabled": true,
-  "python.linting.pylintEnabled": true
+  "python.linting.pylintEnabled": true,
+  "python.linting.pylintArgs": ["--indent-string='    '"]
 }
