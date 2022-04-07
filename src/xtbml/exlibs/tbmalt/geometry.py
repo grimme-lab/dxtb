@@ -12,9 +12,10 @@ import torch
 import numpy as np
 from h5py import Group
 from ase import Atoms
-from tbmalt.batch import pack, merge
-from tbmalt.units import length_units
-from tbmalt.data import chemical_symbols
+
+from .batch import pack, merge
+from .units import length_units
+from .data import chemical_symbols
 
 Tensor = torch.Tensor
 

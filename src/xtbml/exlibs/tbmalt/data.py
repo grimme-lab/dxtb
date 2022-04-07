@@ -19,4 +19,4 @@ Attributes:
 
 """
 # Make chemical_symbols/atomic_numbers accessible in the tbmalt.data namespace
-from tbmalt.elements import chemical_symbols, atomic_numbers
+from .elements import chemical_symbols, atomic_numbers
