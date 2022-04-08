@@ -1,5 +1,7 @@
 # This file is part of xtbml.
 
+from xtbml.constants import AA2AU
+
 _atomic_rad = {
     "H": 0.32,
     "He": 0.37,
@@ -121,18 +123,17 @@ _atomic_rad = {
     "Og": 1.57,
 }
 
-_aatoau = 1.8897259886
 
-
-def get_atomic_rad(sym: str):
+def get_atomic_rad(sym: str) -> float:
     """
     Atomic Radii of the Elements
-
     M. Mantina, R. Valero, C. J. Cramer, and D. G. Truhlar,
     in CRC Handbook of Chemistry and Physics, 91st Edition (2010-2011),
     edited by W. M. Haynes (CRC Press, Boca Raton, FL, 2010), pages 9-49-9-50;
     corrected Nov. 17, 2010 for the 92nd edition.
     """
 
-    rad = _atomic_rad.get(sym, 0.0) * _aatoau
-    return rad if rad > 0 else None
+    rad = _atomic_rad.get(sym, 0.0) * AA2AU
+    if rad <= 0:
+        raise ValueError
+    return rad

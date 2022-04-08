@@ -1,9 +1,13 @@
 # This file is part of xtbml.
 
+from typing import List
+import tomli as toml
+import torch
 from unittest import TestCase
 
+from xtbml.data.covrad import to_number
+from xtbml.exlibs.tbmalt import Geometry
 import xtbml.param
-import tomli as toml
 
 
 class TestParam(TestCase):
@@ -89,7 +93,11 @@ class TestParam(TestCase):
         from xtbml.xtb.calculator import Calculator
         from xtbml.param.gfn1 import GFN1_XTB as par
 
-        calc = Calculator(["H", "C"], par)
+        atomic_numbers = symbol2number(["H", "C"])
+        dummy_coords = torch.zeros(3)
+        mol = Geometry(atomic_numbers, dummy_coords)
+
+        calc = Calculator(mol, par)
 
         self.assertTrue("H" in calc.basis.cgto)
         self.assertTrue("C" in calc.basis.cgto)
@@ -99,3 +107,7 @@ class TestParam(TestCase):
 
         self.assertTrue(sum(calc.hamiltonian.refocc.get("H")) == 1)
         self.assertTrue(sum(calc.hamiltonian.refocc.get("C")) == 4)
+
+
+def symbol2number(symList: List[str]) -> torch.Tensor:
+    return torch.flatten(torch.tensor([to_number(s) for s in symList]))

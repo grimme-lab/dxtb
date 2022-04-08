@@ -1,5 +1,4 @@
 """ Gram-Schmidt orthonormalization routines for contracted Gaussian basis functions """
-
 import math
 
 
@@ -9,13 +8,10 @@ def orthogonalize(cgtoi, cgtoj):
     Args:
         cgtoi (Cgto_Type): Existing basis function
         cgtoj (Cgto_Type): Basis function to orthogonalize
-
-    Returns:
-        cgtoj (Cgto_Type): Orthogonalized basis function
     """
 
     if cgtoi.ang != cgtoj.ang:
-        return cgtoj
+        return
 
     # cgtoi
     overlap = 0.0
@@ -43,4 +39,4 @@ def orthogonalize(cgtoi, cgtoj):
 
     cgtoj.coeff[: cgtoj.nprim] = cgtoj.coeff[: cgtoj.nprim] / math.sqrt(overlap)
 
-    return cgtoj
+    return
