@@ -7,10 +7,8 @@ from xtbml.basis.ortho import orthogonalize
 from xtbml.basis.slater import slater_to_gauss
 from xtbml.exlibs.tbmalt import Geometry
 from xtbml.param import Param, Element
+from xtbml.constants import UINT8 as DTYPE
 
-
-DTYPE: torch.dtype = torch.uint8
-"""Dtype for torch tensors. Currently set to uint8"""
 
 MAXG = 12
 """Maximum contraction length of basis functions. The limit is chosen as twice the maximum size returned by the STO-NG expansion"""

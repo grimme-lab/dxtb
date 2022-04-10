@@ -1,8 +1,7 @@
 import torch
 from numpy import finfo
 
-DTYPE: torch.dtype = torch.uint8
-"""Dtype for torch tensors. Currently set to uint8"""
+from xtbml.constants.torch import UINT8 as DTYPE
 
 
 class AdjacencyList:

@@ -2,16 +2,16 @@ from typing import Callable, Union
 from unittest import TestCase
 import torch
 
-from tbmalt.structures.geometry import Geometry
+from xtbml.exlibs.tbmalt import Geometry
 from xtbml.repulsion.repulsion import Repulsion
 from .test_repulsion_data import data
 
 from xtbml.data.covrad import to_number
 
-""" Testing the calculation of repulsion energy and gradients. """
-
 
 class Test_Repulsion(TestCase):
+    """Testing the calculation of repulsion energy and gradients."""
+
     @classmethod
     def setUpClass(cls):
         print("Test_Repulsion")

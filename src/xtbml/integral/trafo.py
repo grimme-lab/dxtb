@@ -3,10 +3,9 @@
 import math
 import torch
 
-from ..exceptions import IntegralTransformError
+from xtbml.constants import FLOAT64 as DTYPE
+from xtbml.exceptions import IntegralTransformError
 
-
-dtype = torch.float64
 
 # fmt: off
 s3 = math.sqrt(3.0)
@@ -19,7 +18,7 @@ dtrafo = torch.tensor([
        0.0, 0.0, 0.0, 0.0,     s3,  # xy
        0.0,     s3, 0.0, 0.0, 0.0,  # xz
        0.0, 0.0,     s3, 0.0, 0.0], # yz
-       dtype=dtype).reshape(6, 5)
+       dtype=DTYPE).reshape(6, 5)
 d32 = 3.0/2.0
 s3_8 = math.sqrt(3.0/8.0)
 s5_8 = math.sqrt(5.0/8.0)
@@ -40,7 +39,7 @@ ftrafo = torch.tensor([
        0.0,      s6,  0.0,   0.0,  0.0,   0.0,  0.0,  # xzz 
        0.0,  0.0,      s6,   0.0,  0.0,   0.0,  0.0,  # yzz 
        0.0,  0.0,  0.0,   0.0,     s15,   0.0,  0.0], # xyz 
-       dtype=dtype).reshape(10, 7)
+       dtype=DTYPE).reshape(10, 7)
 
 d38 = 3.0/8.0
 d34 = 3.0/4.0
@@ -70,7 +69,7 @@ gtrafo = torch.tensor([
         0., 0.,-s45_8, 0., 0.,  0.,s315_8,   0., 0.,  # xxyz
         0.,-s45_8, 0., 0., 0.,-s315_8, 0.,   0., 0.,  # xyyz
         0., 0., 0., 0.,   s45,  0., 0.,   0., 0.], # xyzz
-       dtype=dtype).reshape(15, 9)
+       dtype=DTYPE).reshape(15, 9)
 # fmt: on
 
 

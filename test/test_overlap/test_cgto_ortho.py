@@ -34,7 +34,7 @@ class Test_Cgto_Ortho(TestCase):
         slater_to_gauss(5, 1, l, 1.0, cgtoi, True)
         slater_to_gauss(2, 2, l, 1.0, cgtoj, True)
 
-        orthogonalize(cgtoi, cgtoj)
+        cgtoj = orthogonalize(cgtoi, cgtoj)
 
         # normalised self-overlap
         overlap = overlap_cgto(cgtoj, cgtoj, r2, vec, 100.0)
