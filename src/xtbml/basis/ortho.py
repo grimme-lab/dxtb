@@ -8,10 +8,13 @@ def orthogonalize(cgtoi, cgtoj):
     Args:
         cgtoi (Cgto_Type): Existing basis function
         cgtoj (Cgto_Type): Basis function to orthogonalize
+
+    Returns:
+        cgtoj (Cgto_Type):: Orthogonalized version of cgtoj
     """
 
     if cgtoi.ang != cgtoj.ang:
-        return
+        return cgtoj
 
     # cgtoi
     overlap = 0.0
@@ -39,4 +42,4 @@ def orthogonalize(cgtoi, cgtoj):
 
     cgtoj.coeff[: cgtoj.nprim] = cgtoj.coeff[: cgtoj.nprim] / math.sqrt(overlap)
 
-    return
+    return cgtoj

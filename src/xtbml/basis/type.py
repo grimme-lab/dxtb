@@ -5,10 +5,9 @@ from typing import Union, Dict, List
 
 from xtbml.basis.ortho import orthogonalize
 from xtbml.basis.slater import slater_to_gauss
-from xtbml.param import Param
-from xtbml.param.element import Element
-
 from xtbml.exlibs.tbmalt import Geometry
+from xtbml.param import Param, Element
+
 
 DTYPE: torch.dtype = torch.uint8
 """Dtype for torch tensors. Currently set to uint8"""
@@ -177,7 +176,7 @@ def _process_record(record: Element) -> List[Cgto_Type]:
 
     for ish in range(nsh):
         if ortho[ish] is not None:
-            orthogonalize(cgto[ortho[ish]], cgto[ish])
+            cgto[ish] = orthogonalize(cgto[ortho[ish]], cgto[ish])
 
     return cgto
 

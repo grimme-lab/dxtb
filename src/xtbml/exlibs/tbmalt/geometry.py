@@ -204,7 +204,7 @@ class Geometry:
 
         # return torch.unique(self.atomic_numbers[self.atomic_numbers.ne(0)])
 
-    def unique_chemical_symbols(self) -> Tensor:
+    def unique_chemical_symbols(self) -> List:
         """Identifies and returns a tensor of unique chemical symbols.
 
         This method offers a means to identify the types of elements present
