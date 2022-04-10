@@ -11,10 +11,12 @@ from xtbml.param.gfn1 import GFN1_XTB as par
 from xtbml.utils import symbol2number
 from xtbml.xtb.calculator import Calculator
 
-from .test_h0_data import data
+from .test_h0_data import SampleInfo, data
 
 
-class Test_H0(TestCase):
+class TestH0(TestCase):
+    """Testing the building of the Hamiltonian matrix."""
+
     @classmethod
     def setUpClass(cls):
         print("Test_H0")
@@ -25,7 +27,7 @@ class Test_H0(TestCase):
         self.rtol = 1e-05
         self.cn_cutoff = 30.0
 
-    def base_test(self, sample, ref):
+    def base_test(self, sample: SampleInfo, ref: torch.Tensor) -> None:
         atomic_numbers = symbol2number(sample["elements"])
         mol = Geometry(atomic_numbers, sample["xyz"])
 
@@ -46,7 +48,7 @@ class Test_H0(TestCase):
 
         self.check_hamiltonian(h, ref)
 
-    def base_test_cn(self, sample, ref):
+    def base_test_cn(self, sample: SampleInfo, ref: torch.Tensor) -> None:
         atomic_numbers = symbol2number(sample["elements"])
         mol = Geometry(atomic_numbers, sample["xyz"])
 
@@ -71,7 +73,7 @@ class Test_H0(TestCase):
 
         self.check_hamiltonian(h, ref)
 
-    def check_hamiltonian(self, hamiltonian, ref):
+    def check_hamiltonian(self, hamiltonian: torch.Tensor, ref: torch.Tensor) -> None:
         size = hamiltonian.size(dim=0)
         for i in range(size):
             for j in range(size):
@@ -86,8 +88,10 @@ class Test_H0(TestCase):
     ##############
 
     def test_hamiltonian_h2_gfn1(self) -> None:
-        # tblite-int:
-        # fpm run -- H H 0,0,1.4050586229538 --bohr --hamiltonian --method gfn1
+        """
+        Compare against reference calculated with tblite-int: fpm run -- H H 0,0,1.4050586229538 --bohr --hamiltonian --method gfn1
+        """
+
         nao = 4
         ref_hamiltonian = torch.tensor(
             [
@@ -113,8 +117,10 @@ class Test_H0(TestCase):
         self.base_test(data["MB16_43_H2"], ref_hamiltonian)
 
     def test_hamiltonian_h2_gfn1_cn(self) -> None:
-        # tblite-int:
-        # fpm run -- H H 0,0,1.4050586229538 --bohr --hamiltonian --method gfn1 --cn 0.91396028097949444,0.91396028097949444
+        """
+        Compare against reference calculated with tblite-int: fpm run -- H H 0,0,1.4050586229538 --bohr --hamiltonian --method gfn1 --cn 0.91396028097949444,0.91396028097949444
+        """
+
         nao = 4
         ref_hamiltonian = torch.tensor(
             [
@@ -140,8 +146,10 @@ class Test_H0(TestCase):
         self.base_test_cn(data["MB16_43_H2"], ref_hamiltonian)
 
     def test_hamiltonian_lih_gfn1(self) -> None:
-        # tblite-int:
-        # fpm run -- Li H 0,0,3.0159348779447 --bohr --hamiltonian --method gfn1
+        """
+        Compare against reference calculated with tblite-int: fpm run -- Li H 0,0,3.0159348779447 --bohr --hamiltonian --method gfn1
+        """
+
         nao = 6
         ref_hamiltonian = torch.tensor(
             [
@@ -186,9 +194,60 @@ class Test_H0(TestCase):
 
         self.base_test(data["MB16_43_LiH"], ref_hamiltonian)
 
+    def test_hamiltonian_hli_gfn1(self) -> None:
+        """
+        Compare against reference calculated with tblite-int: fpm run -- H Li 0,0,3.0159348779447 --bohr --hamiltonian --method gfn1
+        """
+
+        nao = 6
+        ref_hamiltonian = torch.tensor(
+            [
+                -4.0142947439732e-01,
+                -2.0462585990502e-10,
+                -2.3812756752261e-01,
+                0.0000000000000e00,
+                0.0000000000000e00,
+                2.9755321938900e-01,
+                -2.0462545918772e-10,
+                -7.9815929839999e-02,
+                7.8610622058418e-02,
+                0.0000000000000e00,
+                0.0000000000000e00,
+                -2.6078089928320e-02,
+                -2.3812756752261e-01,
+                7.8610622058418e-02,
+                -2.6717144264010e-01,
+                0.0000000000000e00,
+                0.0000000000000e00,
+                0.0000000000000e00,
+                0.0000000000000e00,
+                0.0000000000000e00,
+                0.0000000000000e00,
+                -1.6938781290214e-01,
+                0.0000000000000e00,
+                0.0000000000000e00,
+                0.0000000000000e00,
+                0.0000000000000e00,
+                0.0000000000000e00,
+                0.0000000000000e00,
+                -1.6938781290214e-01,
+                0.0000000000000e00,
+                2.9755321938900e-01,
+                -2.6078089928320e-02,
+                0.0000000000000e00,
+                0.0000000000000e00,
+                0.0000000000000e00,
+                -1.6938781290214e-01,
+            ]
+        ).reshape(nao, nao)
+
+        self.base_test(data["MB16_43_HLi"], ref_hamiltonian)
+
     def test_hamiltonian_s2_gfn1(self) -> None:
-        # tblite-int:
-        # fpm run -- S S 0,0,3.60562542949258 --bohr --hamiltonian --method gfn1
+        """
+        Compare against reference calculated with tblite-int: fpm run -- S S 0,0,3.60562542949258 --bohr --hamiltonian --method gfn1
+        """
+
         nao = 18
         ref_hamiltonian = torch.tensor(
             [
@@ -522,7 +581,11 @@ class Test_H0(TestCase):
         self.base_test(data["MB16_43_S2"], ref_hamiltonian)
 
     def test_hamiltonian_sih4_gfn1(self) -> None:
+        """
+        Compare against reference calculated with tblite
+        """
         # tblite: with "use dftd3_ncoord, only: get_coordination_number"
+
         nao = 17
         ref_hamiltonian = torch.tensor(
             [
@@ -821,7 +884,11 @@ class Test_H0(TestCase):
         self.base_test(data["MB16_43_SiH4"], ref_hamiltonian)
 
     def test_hamiltonian_sih4_gfn1_cn(self) -> None:
+        """
+        Compare against reference calculated with tblite
+        """
         # tblite: with "use dftd3_ncoord, only: get_coordination_number"
+
         nao = 17
         ref_hamiltonian = torch.tensor(
             [

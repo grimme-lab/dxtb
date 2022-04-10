@@ -3,7 +3,7 @@
 import math
 import torch
 
-from xtbml.constants import FLOAT64 as DTYPE
+from xtbml.constants import FLOAT32 as DTYPE
 from xtbml.exceptions import IntegralTransformError
 
 
