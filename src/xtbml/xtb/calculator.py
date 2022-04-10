@@ -39,7 +39,7 @@ def _get_valence_shells(record: Element) -> List[bool]:
 
     nsh = len(record.shells)
     ang_idx = nsh * [-1]
-    lsh = [_aqm2lsh.get(shell[-1]) for shell in record.shells]
+    lsh = [_aqm2lsh[shell[-1]] for shell in record.shells]
 
     for ish in range(nsh):
         il = lsh[ish]
@@ -108,9 +108,9 @@ class Hamiltonian:
         shell = par.hamiltonian.xtb.shell
         ksh = torch.zeros((lmax, lmax))
         for ish in range(lmax):
-            kii = shell.get(2 * _lsh2aqm[ish])
+            kii = shell[2 * _lsh2aqm[ish]]
             for jsh in range(lmax):
-                kjj = shell.get(2 * _lsh2aqm[jsh])
+                kjj = shell[2 * _lsh2aqm[jsh]]
                 kij = (
                     _lsh2aqm[ish] + _lsh2aqm[jsh]
                     if jsh > ish
@@ -146,12 +146,6 @@ class Hamiltonian:
 
                 km = kpair.get(f"{isp}-{jsp}", kpair.get(f"{jsp}-{isp}", 1.0)) * enp
 
-                # print("\nisp", isp, "jsp", jsp, "lsh[isp]", lsh[isp], "lsh[jsp]", lsh[jsp])
-                # print("ri", ri)
-                # print("rj", rj)
-                # print("")
-                # print("valence[isp]", valence[isp], "valence[jsp]", valence[jsp])
-                # print("km", km, "ksh", ksh)
                 self.hscale[(isp, jsp)] = get_hscale(
                     lsh[isp], lsh[jsp], ri, rj, valence[isp], valence[jsp], km, ksh
                 )
@@ -226,23 +220,21 @@ class Hamiltonian:
         overlap_int = torch.zeros(basis.nao_tot, basis.nao_tot)
 
         # fill diagonal
-        h0 = self.buildDiagonalBlocks(h0, basis, self_energy)
+        h0 = self.build_diagonal_blocks(h0, basis, self_energy)
 
         # fill off-diagonal
-        h0, overlap_int = self.buildDiatomicBlocks(
+        h0, overlap_int = self.build_diatomic_blocks(
             h0, overlap_int, basis, adjlist, self_energy
         )
 
         return h0, overlap_int
 
-    def buildDiagonalBlocks(self, h0, basis, self_energy):
+    def build_diagonal_blocks(self, h0, basis, self_energy):
         for i, element in enumerate(self.mol.chemical_symbols):
             iss = basis.ish_at[i].item()
             for ish in range(basis.shells[element]):
                 ii = basis.iao_sh[iss + ish].item()
                 hii = self_energy[iss + ish]
-
-                # print("izp", element, "iss", iss, "ish", ish, "ii", ii)
 
                 i_nao = msao[basis.cgto[element][ish].ang]
                 for iao in range(i_nao):
@@ -250,7 +242,7 @@ class Hamiltonian:
 
         return h0
 
-    def buildDiatomicBlocks(self, h0, overlap_int, basis, adjlist, self_energy):
+    def build_diatomic_blocks(self, h0, overlap_int, basis, adjlist, self_energy):
         for i, el_i in enumerate(self.mol.chemical_symbols):
             isa = basis.ish_at[i].item()
             inl = adjlist.inl[i].item()
@@ -277,7 +269,6 @@ class Hamiltonian:
 
                         stmp = overlap_cgto(cgtoj, cgtoi, r2, vec, basis.intcut)
                         stmp = torch.flatten(stmp)
-                        # print("el_i", el_i, "el_j", el_j, "overlap", overlap)
 
                         shpoly = (1.0 + self.shpoly[el_i][ish] * rr) * (
                             1.0 + self.shpoly[el_j][jsh] * rr
@@ -290,10 +281,6 @@ class Hamiltonian:
                             * hscale
                             * shpoly
                         )
-
-                        # print("izp", element, "iss", iss,
-                        #   "ish", ish, "jsh", jsh, "ii", ii, "jj", jj)
-                        # print("hij", hij)
 
                         i_nao = msao[cgtoi.ang]
                         j_nao = msao[cgtoj.ang]
