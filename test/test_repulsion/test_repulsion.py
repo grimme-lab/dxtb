@@ -9,12 +9,12 @@ from xtbml.utils import symbol2number
 from .test_repulsion_data import data
 
 
-class Test_Repulsion(TestCase):
+class TestRepulsion(TestCase):
     """Testing the calculation of repulsion energy and gradients."""
 
     @classmethod
     def setUpClass(cls):
-        print("Test_Repulsion")
+        print(cls.__name__)
 
     def setUp(self):
         # define constants

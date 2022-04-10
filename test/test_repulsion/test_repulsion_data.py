@@ -2,7 +2,7 @@
 from typing import Dict
 from torch import tensor
 
-from xtbml.constants import FLOAT32 as DTYPE
+from xtbml.constants import FLOAT64 as DTYPE
 from xtbml.utils import SampleInfo
 
 

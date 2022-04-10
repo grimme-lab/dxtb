@@ -7,7 +7,8 @@ from xtbml.basis.ortho import orthogonalize
 from xtbml.basis.slater import slater_to_gauss
 from xtbml.exlibs.tbmalt import Geometry
 from xtbml.param import Param, Element
-from xtbml.constants import UINT8 as DTYPE
+from xtbml.constants import UINT8 as DTYPE_INT
+from xtbml.constants import FLOAT64 as DTYPE_FLOAT
 
 
 MAXG = 12
@@ -31,10 +32,10 @@ class Cgto_Type:
         # Contraction length of this basis function
         self.nprim = 0
         # Exponent of the primitive Gaussian functions
-        self.alpha = torch.zeros(MAXG)
+        self.alpha = torch.zeros(MAXG, dtype=DTYPE_FLOAT)
         # Contraction coefficients of the primitive Gaussian functions,
         # might contain normalization
-        self.coeff = torch.zeros(MAXG)
+        self.coeff = torch.zeros(MAXG, dtype=DTYPE_FLOAT)
 
     def __str__(self):
         return f"cgto( l:{self.ang} | ng:{self.nprim} | alpha:{self.alpha} | coeff:{self.coeff} )"
@@ -61,6 +62,7 @@ class Basis:
     """Number of shells per unique atom (=id) in basis set."""
 
     ish_at: torch.Tensor
+    """Index offset for each atom in the shell space"""
 
     nsh_tot: int = 0
     """Total number of shells in basis set."""
@@ -105,14 +107,14 @@ class Basis:
 
         # Create mapping between atoms and shells
         # (offset array for indexing (e.g. selfenergy) later)
-        self.ish_at = torch.zeros(mol.get_length(), dtype=DTYPE)
+        self.ish_at = torch.zeros(mol.get_length(), dtype=DTYPE_INT)
         counter = 0
         for i in range(mol.get_length()):
             self.ish_at[i] = counter
             counter += self.nsh_per_atom[i]
 
         # Make count of spherical orbitals for each shell
-        self.nao_sh = torch.zeros(self.nsh_tot, dtype=DTYPE)
+        self.nao_sh = torch.zeros(self.nsh_tot, dtype=DTYPE_INT)
         counter = 0
         for i, element in enumerate(mol.chemical_symbols):
             counter = int(self.ish_at[i].item())
@@ -122,7 +124,7 @@ class Basis:
         self.nao_tot = int(torch.sum(self.nao_sh).item())
 
         # Create mapping between shells and spherical orbitals
-        self.iao_sh = torch.zeros(self.nsh_tot, dtype=DTYPE)
+        self.iao_sh = torch.zeros(self.nsh_tot, dtype=DTYPE_INT)
         counter = 0
         for i in range(self.nsh_tot):
             self.iao_sh[i] = counter

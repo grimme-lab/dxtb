@@ -5,10 +5,12 @@ from typing import List, Dict, Tuple, Union
 from xtbml.adjlist import AdjacencyList
 from xtbml.basis.type import Basis
 from xtbml.constants import EV2AU
+from xtbml.constants import FLOAT64 as DTYPE
 from xtbml.data.atomicrad import get_atomic_rad
 from xtbml.exlibs.tbmalt import Geometry
 from xtbml.integral.overlap import msao, overlap_cgto
 from xtbml.param import Param, Element
+
 
 _aqm2lsh = {
     "s": 0,
@@ -141,16 +143,16 @@ class Hamiltonian:
     ):
 
         # calculate selfenergy using hamiltonian.selfenergy dict
-        self_energy = torch.zeros(basis.nsh_tot)
+        self_energy = torch.zeros(basis.nsh_tot, dtype=DTYPE)
         for i, sym in enumerate(self.mol.chemical_symbols):
             ii = int(basis.ish_at[i].item())
             for ish in range(basis.shells[sym]):
                 self_energy[ii + ish] = self.selfenergy[sym][ish]
 
         if dsedcn is not None:
-            dsedcn = torch.zeros(basis.nsh_tot)
+            dsedcn = torch.zeros(basis.nsh_tot, dtype=DTYPE)
         if dsedq is not None:
-            dsedq = torch.zeros(basis.nsh_tot)
+            dsedq = torch.zeros(basis.nsh_tot, dtype=DTYPE)
 
         if cn is not None:
             if dsedcn is not None:
@@ -193,12 +195,12 @@ class Hamiltonian:
 
     def build(
         self, basis: Basis, adjlist: AdjacencyList, cn: Union[torch.Tensor, None]
-    ):
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         self_energy = self.get_selfenergy(basis, cn)
 
         # init matrices
-        h0 = torch.zeros(basis.nao_tot, basis.nao_tot)
-        overlap_int = torch.zeros(basis.nao_tot, basis.nao_tot)
+        h0 = torch.zeros(basis.nao_tot, basis.nao_tot, dtype=DTYPE)
+        overlap_int = torch.zeros(basis.nao_tot, basis.nao_tot, dtype=DTYPE)
 
         # fill diagonal
         h0 = self.build_diagonal_blocks(h0, basis, self_energy)
@@ -210,7 +212,9 @@ class Hamiltonian:
 
         return h0, overlap_int
 
-    def build_diagonal_blocks(self, h0, basis, self_energy):
+    def build_diagonal_blocks(
+        self, h0: torch.Tensor, basis: Basis, self_energy: torch.Tensor
+    ) -> torch.Tensor:
         for i, element in enumerate(self.mol.chemical_symbols):
             iss = basis.ish_at[i].item()
             for ish in range(basis.shells[element]):
@@ -223,7 +227,14 @@ class Hamiltonian:
 
         return h0
 
-    def build_diatomic_blocks(self, h0, overlap_int, basis, adjlist, self_energy):
+    def build_diatomic_blocks(
+        self,
+        h0: torch.Tensor,
+        overlap_int: torch.Tensor,
+        basis: Basis,
+        adjlist: AdjacencyList,
+        self_energy: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         for i, el_i in enumerate(self.mol.chemical_symbols):
             isa = basis.ish_at[i].item()
             inl = adjlist.inl[i].item()

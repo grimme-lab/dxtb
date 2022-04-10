@@ -19,7 +19,7 @@ class TestH0(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        print("Test_H0")
+        print(cls.__name__)
 
     def setUp(self):
         # define some tolerances
