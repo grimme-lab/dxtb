@@ -1,22 +1,17 @@
 import math
 import torch
 
+
 from .type import NcoordType
 from ..data.covrad import get_covalent_rad
 from ..cutoff import get_lattice_points
 from .ncoord import exp_count, dexp_count
 
+from xtbml.constants import KCN, KA, KB, R_SHIFT, NCOORD_DEFAULT_CUTOFF
 from xtbml.exlibs.tbmalt import Geometry
 
-
-# Steepness of first counting function
-ka = 10.0
-# Steepness of second counting function
-kb = 20.0
-# Offset of the second counting function
-r_shift = 2.0
-
-default_cutoff = 25.0
+# TODO: differentiate between GFN1 and GFN2
+# TODO: GfnNcoordType is currently not used...
 
 
 class GfnNcoordType(NcoordType):
@@ -36,7 +31,7 @@ class GfnNcoordType(NcoordType):
         if cutoff is not None:
             self.cutoff = cutoff
         else:
-            self.cutoff = default_cutoff
+            self.cutoff = NCOORD_DEFAULT_CUTOFF
 
         if rcov is not None:
             self.rcov = rcov
@@ -121,7 +116,7 @@ class GfnNcoordType(NcoordType):
                     r1 = math.sqrt(r2)
                     rc = rcov[izp] + rcov[jzp]
 
-                    countf = exp_count(ka, r1, rc) * exp_count(kb, r1, rc + r_shift)
+                    countf = exp_count(KA, r1, rc) * exp_count(KB, r1, rc + R_SHIFT)
 
                     cn[iat] = cn[iat] + countf
                     if iat != jat:
@@ -171,11 +166,11 @@ class GfnNcoordType(NcoordType):
                     rc = rcov[izp] + rcov[jzp]
 
                     # TODO: only difference
-                    countf = exp_count(ka, r1, rc) * exp_count(kb, r1, rc + r_shift)
+                    countf = exp_count(KA, r1, rc) * exp_count(KB, r1, rc + R_SHIFT)
                     countd = (
                         (
-                            dexp_count(ka, r1, rc) * exp_count(kb, r1, rc + r_shift)
-                            + exp_count(ka, r1, rc) * dexp_count(kb, r1, rc + r_shift)
+                            dexp_count(KA, r1, rc) * exp_count(KB, r1, rc + R_SHIFT)
+                            + exp_count(KA, r1, rc) * dexp_count(KB, r1, rc + R_SHIFT)
                         )
                         * rij
                         / r1
