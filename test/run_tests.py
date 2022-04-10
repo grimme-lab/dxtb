@@ -19,10 +19,8 @@ def suite() -> unittest.TestSuite:
     loader = unittest.TestLoader()
     test_suite = unittest.TestSuite()
     for entry in scandir(this_directory):
-        if (
-            entry.is_dir()
-            and entry.name == "test_input_files"
-            and path.isfile(this_directory + "/" + entry.name + "/__init__.py")
+        if entry.is_dir() and path.isfile(
+            this_directory + "/" + entry.name + "/__init__.py"
         ):
             print(entry)
             test_suite.addTests(

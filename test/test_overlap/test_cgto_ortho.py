@@ -1,15 +1,14 @@
 from unittest import TestCase
-from typing import List
 import torch
 
 from xtbml.basis.type import Basis, Cgto_Type
 from xtbml.basis.slater import slater_to_gauss
-from xtbml.data.covrad import to_number
 from xtbml.exlibs.tbmalt import Geometry
 from xtbml.integral.overlap import overlap_cgto
 from xtbml.basis.ortho import orthogonalize
 from xtbml.exceptions import IntegralTransformError
 from xtbml.param.gfn1 import GFN1_XTB as par
+from xtbml.utils import symbol2number
 
 
 class Test_Cgto_Ortho(TestCase):
@@ -231,7 +230,3 @@ class Test_Cgto_Ortho(TestCase):
             self.assertRaises(
                 IntegralTransformError, overlap_cgto, ele[0], ele[1], r2, vec, 100.0
             )
-
-
-def symbol2number(symList: List[str]) -> torch.Tensor:
-    return torch.flatten(torch.tensor([to_number(s) for s in symList]))

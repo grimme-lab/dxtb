@@ -1,17 +1,17 @@
-from typing import List
 from unittest import TestCase
 
 import torch
 from xtbml.adjlist import AdjacencyList
 from xtbml.basis.type import get_cutoff
 from xtbml.cutoff import get_lattice_points
-from xtbml.data.covrad import get_covalent_rad, to_number
-from xtbml.ncoord.ncoord import get_coordination_number
-from xtbml.xtb.calculator import Calculator
-from xtbml.param.gfn1 import GFN1_XTB as par
-from .test_h0_data import data
-
+from xtbml.data.covrad import get_covalent_rad
 from xtbml.exlibs.tbmalt import Geometry
+from xtbml.ncoord.ncoord import get_coordination_number
+from xtbml.param.gfn1 import GFN1_XTB as par
+from xtbml.utils import symbol2number
+from xtbml.xtb.calculator import Calculator
+
+from .test_h0_data import data
 
 
 class Test_H0(TestCase):
@@ -1326,7 +1326,3 @@ class Test_H0(TestCase):
     #     ]).reshape(nao, nao)
 
     #     self.base_test(data["MB16_43_SiH4"], ref_hamiltonian)
-
-
-def symbol2number(symList: List[str]) -> torch.Tensor:
-    return torch.flatten(torch.tensor([to_number(s) for s in symList]))
