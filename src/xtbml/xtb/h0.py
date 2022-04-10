@@ -1,324 +1,297 @@
-
-import torch
 from math import sqrt
-from pydantic import BaseModel
+import torch
 from typing import List, Dict, Tuple, Union
 
-from ..integral.overlap import maxl, msao
-from ..integral.multipole import multipole_cgto
-from ..exlibs.tblite import shift_operator,dimDipole, dimQuadrupole
+from xtbml.adjlist import AdjacencyList
+from xtbml.basis.type import Basis
+from xtbml.constants import EV2AU
+from xtbml.data.atomicrad import get_atomic_rad
+from xtbml.exlibs.tbmalt import Geometry
+from xtbml.integral.overlap import msao, overlap_cgto
+from xtbml.param import Param, Element
 
-# TODO:
-#   * add abstract base class for future extensions 
+_aqm2lsh = {
+    "s": 0,
+    "p": 1,
+    "d": 2,
+    "f": 3,
+    "g": 4,
+}
+_lsh2aqm = {
+    0: "s",
+    1: "p",
+    2: "d",
+    3: "f",
+    4: "g",
+}
 
-class Tb_Hamiltonian(BaseModel):
-    """ Implementation of the effective core Hamiltonian used in the extended tight binding. """
 
-    """# Atomic level information
-    selfenergy =  torch.zeroes([0,0])    
-    # Coordination number dependence of the atomic levels
-    kcn =  torch.zeroes([0,0])
-    # Charge dependence of the atomic levels
-    kq1 =  torch.zeroes([0,0])
-    # Charge dependence of the atomic levels
-    kq2 =  torch.zeroes([0,0])
-    # Enhancement factor to scale the Hamiltonian elements
-    hscale =  torch.zeroes([0,0,0,0])
-    # Polynomial coefficients for distance dependent enhancement factor
-    shpoly =  torch.zeroes([0,0])
-    # Reference occupation numbers
-    refocc =  torch.zeroes([0,0])"""
-    # Atomic radius for polynomial enhancement 
-    # TODO: are those equal to standard Van-der-Waals radius of each species? 
-    #       --> if yes, take from global param file
+class Hamiltonian:
+    """
+    Model to obtain the core Hamiltonian from the overlap matrix elements.
+    """
+
+    selfenergy: Dict[str, List[float]] = {}
+    """Self-energy of each species"""
+
+    kcn: Dict[str, List[float]] = {}
+    """Coordination number dependent shift of the self energy"""
+
+    shpoly: Dict[str, List[float]] = {}
+    """Polynomial parameters for the distant dependent scaling"""
+
+    refocc: Dict[str, List[float]] = {}
+    """Reference occupation numbers"""
+
+    hscale: Dict[Tuple[str, str], Union[List[float], any]] = {}
+    """Off-site scaling factor for the Hamiltonian"""
+
     rad: Dict[str, float] = {}
+    """Van-der-Waals radius of each species"""
 
+    mol: Geometry
+    """Geometry representation"""
 
-    def __init__(self):
-        # TODO
-        return
+    par: Param
+    """Representation of parametrization of xtb model"""
 
-    def __str__(self):
-        # TODO:
-        raise NotImplementedError
-        return f"Tb_Hamiltonian( l:{self.ang} | ng:{self.nprim} | alpha:{self.alpha} | coeff:{self.coeff} )"
+    def __init__(self, mol: Geometry, par: Param):
+        self.mol = mol
+        self.par = par
 
+        lmax = 0
+        lsh = {}
+        valence = {}
+        species = mol.chemical_symbols
+        for isp in species:
+            record = par.element[isp]
 
-    def new_hamiltonian(self, mol, bas, spec):
-        """ Constructor for a new Hamiltonian object, consumes a Hamiltonian specification
+            lsh[isp] = [_aqm2lsh.get(shell[-1]) for shell in record.shells]
+            valence[isp] = _get_valence_shells(record)
+            lmax = max(lmax, *lsh[isp])
 
-        Args:
-            mol (structure_type): [description]
-            bas (basis_type): [description]
-            spec (tb_h0spec): [description]
-        """ # TODO: docstring
+            self.selfenergy[isp] = [i * EV2AU for i in par.element[isp].levels]
+            self.kcn[isp] = [i * EV2AU for i in par.element[isp].kcn]
+            self.shpoly[isp] = par.element[isp].shpoly.copy()
 
-        # TODO
+            self.refocc[isp] = [
+                occ if val else 0.0
+                for occ, val in zip(par.element[isp].refocc, valence[isp])
+            ]
 
-        mshell = torch.max(bas.nsh_id)
-        # allocate(self.selfenergy[mshell, mol.nid], self.kcn[mshell, mol.nid], &
-        #     & self.kq1[mshell, mol.nid], self.kq2[mshell, mol.nid])
+            self.rad[isp] = get_atomic_rad(isp)
+        lmax += 1
 
+        # Collect shell specific scaling block
+        #
+        # FIXME: tblite implicitly spreads missing angular momenta, however this
+        #        is only relevant for f shells and higher in present parametrizations.
+        shell = par.hamiltonian.xtb.shell
+        ksh = torch.zeros((lmax, lmax))
+        for ish in range(lmax):
+            kii = shell[2 * _lsh2aqm[ish]]
+            for jsh in range(lmax):
+                kjj = shell[2 * _lsh2aqm[jsh]]
+                kij = (
+                    _lsh2aqm[ish] + _lsh2aqm[jsh]
+                    if jsh > ish
+                    else _lsh2aqm[jsh] + _lsh2aqm[ish]
+                )
+                ksh[ish, jsh] = shell.get(kij, (kii + kjj) / 2)
 
-        # TODO: how to define interface? -- abstract base class needed?
-        self.get_selfenergy(mol, bas, self.selfenergy)
-        self.get_cnshift(mol, bas, self.kcn)
-        self.get_q1shift(mol, bas, self.kq1)
-        self.get_q2shift(mol, bas, self.kq2)
+        def get_hscale(li, lj, ri, rj, vi, vj, km, ksh):
+            """Calculate Hamiltonian scaling for a shell block"""
+            ni, nj = len(li), len(lj)
+            hscale = torch.zeros((ni, nj))
+            for ish in range(ni):
+                kii = ksh[li[ish], li[ish]] if vi[ish] else par.hamiltonian.xtb.kpol
+                for jsh in range(nj):
+                    kjj = ksh[lj[jsh], lj[jsh]] if vj[jsh] else par.hamiltonian.xtb.kpol
+                    zi = ri.slater[ish]
+                    zj = rj.slater[jsh]
+                    zij = (2 * sqrt(zi * zj) / (zi + zj)) ** par.hamiltonian.xtb.wexp
+                    hscale[ish, jsh] = zij * (
+                        km * ksh[li[ish], lj[jsh]]
+                        if vi[ish] and vj[jsh]
+                        else (kii + kjj) / 2
+                    )
 
-        # TODO: definde in abstract baseclass? -- no direct implementation in tblite/xtb
-        # allocate(self.hscale[mshell, mshell, mol.nid, mol.nid])
-        # self.get_hscale(mol, bas, self.hscale)
-        # 
-        # allocate(self.shpoly[mshell, mol.nid], self.rad[mol.nid])
-        # self.get_rad[mol, bas, self.rad]
-        # self.get_shpoly[mol, bas, self.shpoly]
-        # 
-        # allocate(self.refocc[mshell, mol.nid])
-        # self.get_reference_occ(mol, bas, self.refocc)
+            return hscale
 
-        return self
+        kpair = par.hamiltonian.xtb.kpair
+        for isp in species:
+            ri = par.element[isp]
+            for jsp in species:
+                rj = par.element[jsp]
+                enp = 1.0 + par.hamiltonian.xtb.enscale * (ri.en - rj.en) ** 2
 
+                km = kpair.get(f"{isp}-{jsp}", kpair.get(f"{jsp}-{isp}", 1.0)) * enp
 
-    def get_selfenergy(h0, id, ish_at, nshell, selfenergy, cn=None, qat=None, dsedcn=None, dsedq=None):
-        """[summary]
+                self.hscale[(isp, jsp)] = get_hscale(
+                    lsh[isp], lsh[jsp], ri, rj, valence[isp], valence[jsp], km, ksh
+                )
 
-        Args:
-            h0 ([type]): [description]
-            id ([type]): [description]
-            ish_at (bool): [description]
-            nshell ([type]): [description]
-            cn ([type]): [description]
-            qat ([type]): [description]
-            selfenergy ([type]): [description]
-            dsedcn ([type]): [description]
-            dsedq ([type]): [description]
-        """ # TODO: docstring
+    def get_selfenergy(
+        self,
+        basis: Basis,
+        cn: Union[torch.Tensor, None] = None,
+        qat=None,
+        dsedcn=None,
+        dsedq=None,
+    ):
 
-        # type(tb_hamiltonian), intent(in) :: h0
-        # integer, intent(in) :: id[:]
-        # integer, intent(in) :: ish_at[:]
-        # integer, intent(in) :: nshell[:]
-        # real(wp), intent(in), optional :: cn[:]
-        # real(wp), intent(in), optional :: qat[:]
-        # real(wp), intent(out) :: selfenergy[:]
-        # real(wp), intent(out), optional :: dsedcn[:]
-        # real(wp), intent(out), optional :: dsedq[:]
-        
-        # TODO needs self?
+        # calculate selfenergy using hamiltonian.selfenergy dict
+        self_energy = torch.zeros(basis.nsh_tot)
+        for i, sym in enumerate(self.mol.chemical_symbols):
+            ii = int(basis.ish_at[i].item())
+            for ish in range(basis.shells[sym]):
+                self_energy[ii + ish] = self.selfenergy[sym][ish]
 
-        selfenergy = torch.zeros(selfenergy.size())
         if dsedcn is not None:
-            dsedcn = torch.zeros(dsedcn.size())
+            dsedcn = torch.zeros(basis.nsh_tot)
         if dsedq is not None:
-             dsedq = torch.zeros(dsedq.size())
-
-        for iat in range(len(id)):
-            isp = id[iat]
-            ii = ish_at[iat]
-            for ish in range(nshell[izp]):
-                selfenergy[ii+ish] = h0.selfenergy[ish, izp]
+            dsedq = torch.zeros(basis.nsh_tot)
 
         if cn is not None:
             if dsedcn is not None:
-                for iat in range(len(id)):
-                    izp = id[iat]
-                    ii = ish_at[iat]
-                    for ish in range(nshell[izp]):
-                        selfenergy[ii+ish] = selfenergy[ii+ish] - h0.kcn[ish, izp] * cn[iat]
-                        dsedcn[ii+ish] = -h0.kcn[ish, izp]
+                for i, sym in enumerate(self.mol.chemical_symbols):
+                    ii = int(basis.ish_at[i].item())
+                    for ish in range(basis.shells[sym]):
+                        self_energy[ii + ish] -= self.kcn[sym][ish] * cn[i]
+                        dsedcn[ii + ish] = -self.kcn[sym][ish]
             else:
-                for iat in range(len(id)):
-                    izp = id[iat]
-                    ii = ish_at[iat]
-                    for ish in range(nshell[izp]):
-                        selfenergy[ii+ish] = selfenergy[ii+ish] - h0.kcn[ish, izp] * cn[iat]
+                for i, sym in enumerate(self.mol.chemical_symbols):
+                    ii = int(basis.ish_at[i].item())
+                    for ish in range(basis.shells[sym]):
+                        self_energy[ii + ish] -= self.kcn[sym][ish] * cn[i]
 
-        if qat is not None:
-            if dsedq is not None:
-                for iat in range(len(id)):
-                    izp = id[iat]
-                    ii = ish_at[iat]
-                    for ish in range(nshell[izp]):
-                        selfenergy[ii+ish] = selfenergy[ii+ish] - h0.kq1[ish, izp]*qat[iat] - h0.kq2[ish, izp]*qat[iat]**2
-                        dsedq[ii+ish] = -h0.kq1[ish, izp] - h0.kq2[ish, izp]*2*qat[iat]
-            else:
-                for iat in range(len(id)):
-                    izp = id[iat]
-                    ii = ish_at[iat]
-                    for ish in range(nshell[izp]):
-                        selfenergy[ii+ish] = selfenergy[ii+ish] - h0.kq1[ish, izp]*qat[iat] - h0.kq2[ish, izp]*qat[iat]**2
-        
-        return selfenergy, dsedcn, dsedq
+        # TODO:
+        #  - requires init of self.kq1 and self.kq2
+        #  - figuring out return values
+        #
+        # if qat is not None:
+        #     if dsedq is not None:
+        #         for i, sym in enumerate(self.mol.chemical_symbols):
+        #             ii = int(basis.ish_at[i].item())
+        #             for ish in range(basis.shells[sym]):
+        #                 self_energy[ii + ish] -= (
+        #                     self.kq1[sym][ish] * qat[i] - self.kq2[sym][ish] * qat[i]**2
+        #                 )
+        #                 dsedq[ii + ish] = (
+        #                     -self.kq1[sym][ish] - self.kq2[sym][ish] * 2 * qat[i]
+        #                 )
 
-    def get_hamiltonian(mol, trans, list, bas, h0, selfenergy, overlap, dpint, qpint, hamiltonian):
+        #     else:
+        #         for i, sym in enumerate(self.mol.chemical_symbols):
+        #             ii = int(basis.ish_at[i].item())
+        #             for ish in range(basis.shells[sym]):
+        #                 self_energy[ii + ish] -= (
+        #                     self.kq1[sym][ish] * qat[i] - self.kq2[sym][ish] * qat[i]
+        #                 )
 
-        # !> Molecular structure data
-        # type(structure_type), intent(in) :: mol
-        # !> Lattice points within a given realspace cutoff
-        # real(wp), intent(in) :: trans(:, :)
-        # !> Neighbour list
-        # type(adjacency_list), intent(in) :: list
-        # !> Basis set information
-        # type(basis_type), intent(in) :: bas
-        # !> Hamiltonian interaction data
-        # type(tb_hamiltonian), intent(in) :: h0
-        # !> Diagonal elememts of the Hamiltonian
-        # real(wp), intent(in) :: selfenergy[:]
-        # !> Overlap integral matrix
-        # real(wp), intent(out) :: overlap(:, :)
-        # !> Dipole moment integral matrix
-        # real(wp), intent(out) :: dpint(:, :, :)
-        # !> Quadrupole moment integral matrix
-        # real(wp), intent(out) :: qpint(:, :, :)
-        # !> Effective Hamiltonian
-        # real(wp), intent(out) :: hamiltonian(:, :)
+        return self_energy  # , dsedcn, dsedq
 
-        '''integer :: iat, jat, izp, jzp, itr, k, img, inl
-        integer :: ish, jsh, is, js, ii, jj, iao, jao, nao, ij
-        real(wp) :: rr, r2, vec(3), cutoff2, hij, shpoly, dtmpj(3), qtmpj(6)
-        real(wp), allocatable :: stmp[:], dtmpi(:, :), qtmpi(:, :)'''
+    def build(
+        self, basis: Basis, adjlist: AdjacencyList, cn: Union[torch.Tensor, None]
+    ):
+        self_energy = self.get_selfenergy(basis, cn)
 
-        overlap = torch.zeros(overlap.size())
-        dpint = torch.zeros(dpint.size())
-        qpint = torch.zeros(qpint.size())
-        hamiltonian = torch.zeros(hamiltonian.size())
+        # init matrices
+        h0 = torch.zeros(basis.nao_tot, basis.nao_tot)
+        overlap_int = torch.zeros(basis.nao_tot, basis.nao_tot)
 
-        # TODO - allocate
-        dtmpj = torch.zeros(dimDipole)
-        qtmpj = torch.zeros(dimQuadrupole)
-        # stmp = torch.zeros(msao(bas.maxl)**2)
-        # dtmpi = torch.zeros(dimDipole, msao(bas.maxl)**2)
-        # qtmpi = torch.zeros(dimQuadrupole, msao(bas.maxl)**2)
+        # fill diagonal
+        h0 = self.build_diagonal_blocks(h0, basis, self_energy)
 
-        for iat in range(mol.nat):
-            izp = mol.id[iat]
-            iss = bas.ish_at[iat]
-            inl = list.inl[iat]
-            for img in range(list.nnl[iat]):
-                jat = list.nlat[img+inl]
-                itr = list.nltr[img+inl]
-                jzp = mol.id[jat]
-                js = bas.ish_at[jat]
-                vec = mol.xyz[:, iat] - mol.xyz[:, jat] - trans[:, itr] #TODO: check torch.tensor
-                r2 = vec[1]**2 + vec[2]**2 + vec[3]**2
-                rr = sqrt(sqrt(r2) / (h0.rad[jzp] + h0.rad[izp]))
+        # fill off-diagonal
+        h0, overlap_int = self.build_diatomic_blocks(
+            h0, overlap_int, basis, adjlist, self_energy
+        )
 
-                for ish in range(bas.nsh_id[izp]):
-                    ii = bas.iao_sh[iss+ish]
-                    for jsh in range(bas.nsh_id[jzp]):
-                        jj = bas.iao_sh[js+jsh]
+        return h0, overlap_int
 
-                        stmp, dtmpi, qtmpi = multipole_cgto(bas.cgto[jsh, jzp], bas.cgto[ish, izp], r2, vec, bas.intcut, stmp, dtmpi, qtmpi)
+    def build_diagonal_blocks(self, h0, basis, self_energy):
+        for i, element in enumerate(self.mol.chemical_symbols):
+            iss = basis.ish_at[i].item()
+            for ish in range(basis.shells[element]):
+                ii = basis.iao_sh[iss + ish].item()
+                hii = self_energy[iss + ish]
 
-                        shpoly = (1.0 + h0.shpoly[ish, izp]*rr) * (1.0 + h0.shpoly[jsh, jzp]*rr)
+                i_nao = msao[basis.cgto[element][ish].ang]
+                for iao in range(i_nao):
+                    h0[ii + iao, ii + iao] = hii
 
-                        hij = 0.5 * (selfenergy[iss+ish] + selfenergy[js+jsh]) * h0.hscale[jsh, ish, jzp, izp] * shpoly
+        return h0
 
-                        nao = msao(bas.cgto[jsh, jzp].ang)
+    def build_diatomic_blocks(self, h0, overlap_int, basis, adjlist, self_energy):
+        for i, el_i in enumerate(self.mol.chemical_symbols):
+            isa = basis.ish_at[i].item()
+            inl = adjlist.inl[i].item()
 
-                        for iao in range(msao[bas.cgto[ish, izp].ang]):
-                            for jao in range(nao):
-                                ij = jao + nao*(iao-1)
+            imgs = int(adjlist.nnl[i].item())
+            for img in range(imgs):
+                j = adjlist.nlat[img + inl].item()
+                itr = adjlist.nltr[img + inl].item()
+                jsa = basis.ish_at[j].item()
+                el_j = self.mol.chemical_symbols[j]
 
-                                # TODO
-                                shift_operator(vec, stmp[ij], dtmpi[:, ij], qtmpi[:, ij], dtmpj, qtmpj)
-  
-                                overlap[jj+jao, ii+iao] += stmp[ij]
+                vec = torch.sub(self.mol.positions[i, :], self.mol.positions[j, :])
+                vec = torch.sub(vec, adjlist.trans[itr, :])
+                r2 = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]
+                rr = sqrt(sqrt(r2) / (self.rad[el_i] + self.rad[el_j]))
 
-                                for k in range(dimDipole):                                    
-                                    dpint[k, jj+jao, ii+iao] += dtmpi[k, ij]
+                for ish in range(basis.shells[el_i]):
+                    ii = basis.iao_sh[isa + ish].item()
+                    for jsh in range(basis.shells[el_j]):
+                        jj = basis.iao_sh[jsa + jsh].item()
 
-                                for k in range(dimQuadrupole):
-                                    qpint[k, jj+jao, ii+iao] +=  qtmpi[k, ij]
-                                
-                                hamiltonian[jj+jao, ii+iao] += stmp[ij] * hij
+                        cgtoi = basis.cgto[el_i][ish]
+                        cgtoj = basis.cgto[el_j][jsh]
 
-                                if iat != jat:
-                                    overlap[jj+jao, ii+iao] += stmp[ij]    
-                                    for k in range(dimDipole):      
-                                        dpint[k, ii+iao, jj+jao] += qtmpj[k]                              
-                                    for k in range(dimQuadrupole):
-                                        qpint[k, ii+iao, jj+jao] +=  qtmpj[k]    
-                                    hamiltonian[ii+iao, jj+jao] += stmp[ij] * hij
-                      
-        for iat in range(mol.nat):
-            izp = mol.id[iat]
-            iss = bas.ish_at[iat]
-            vec[:] = 0.0
-            r2 = 0.0
-            rr = sqrt(sqrt(r2) / (h0.rad[izp] + h0.rad[izp]))
+                        stmp = overlap_cgto(cgtoj, cgtoi, r2, vec, basis.intcut)
+                        stmp = torch.flatten(stmp)
 
-            for ish in range(bas.nsh_id[izp]):
-                ii = bas.iao_sh(iss+ish)
-                for jsh in range(bas.nsh_id[izp]):
-                    jj = bas.iao_sh(iss+jsh)
+                        shpoly = (1.0 + self.shpoly[el_i][ish] * rr) * (
+                            1.0 + self.shpoly[el_j][jsh] * rr
+                        )
 
-                    # TODO
-                    stmp, dtmpi, qtmpi = multipole_cgto(bas.cgto(jsh, izp), bas.cgto[ish, izp], r2, vec, bas.intcut, stmp, dtmpi, qtmpi)
+                        hscale = self.hscale[(el_i, el_j)][ish, jsh].item()
+                        hij = (
+                            0.5
+                            * (self_energy[isa + ish] + self_energy[jsa + jsh])
+                            * hscale
+                            * shpoly
+                        )
 
-                    shpoly = (1.0 + h0.shpoly[ish, izp]*rr) * (1.0 + h0.shpoly[jsh, izp]*rr)
+                        i_nao = msao[cgtoi.ang]
+                        j_nao = msao[cgtoj.ang]
+                        for iao in range(i_nao):
+                            for jao in range(j_nao):
+                                ij = jao + j_nao * iao
 
-                    hij = 0.5 * (selfenergy[iss+ish] + selfenergy[iss+jsh]) * shpoly
+                                overlap_int[jj + jao, ii + iao] += stmp[ij] * hij
+                                h0[jj + jao, ii + iao] += stmp[ij] * hij
 
-                    nao = msao(bas.cgto[jsh, izp].ang) #TODO: check slicable
+                                if i != j:
+                                    overlap_int[ii + iao, jj + jao] += stmp[ij]
+                                    h0[ii + iao, jj + jao] += stmp[ij] * hij
 
-                    for iao in range(msao[bas.cgto[ish, izp].ang]):
-                        for jao in range(nao):
-                            ij = jao + nao*(iao-1)
-                            overlap[jj+jao, ii+iao] += stmp[ij]
-                            dpint[:, jj+jao, ii+iao] += dtmpi[:, ij]
-                            qpint[:, jj+jao, ii+iao] += qtmpi[:, ij]
-                            hamiltonian[jj+jao, ii+iao] += stmp[ij] * hij
+        return h0, overlap_int
 
-        return
 
-    def  get_hamiltonian_gradient(mol, trans, list, bas, h0, selfenergy, dsedcn, pot, pmat, xmat, dEdcn, gradient, sigma):
-        raise NotImplementedError
+def _get_valence_shells(record: Element) -> List[bool]:
 
-    def get_occupation(mol, bas, h0, nocc, n0at, n0sh):
-        """[summary]
+    valence = []
 
-        Args:
-            mol (structure_type): Molecular structure data
-            bas (basis_type): Basis set information
-            h0 (tb_hamiltonian): Hamiltonian interaction data
-            nocc (float): Occupation number
-            n0at (list[float]): Reference occupation for each atom
-            n0sh (list[float]): Reference occupation for each shell
-        """ # TODO
+    nsh = len(record.shells)
+    ang_idx = nsh * [-1]
+    lsh = [_aqm2lsh[shell[-1]] for shell in record.shells]
 
-        nocc = -mol.charge
-        n0at = torch.zeros(n0at.size())
-        n0sh = torch.zeros(n0sh.size())
+    for ish in range(nsh):
+        il = lsh[ish]
 
-        for iat in range(mol.nat):
-            izp = mol.id[iat]
-            ii = bas.ish_at[iat]
-            for ish in range(bas.nsh_id[izp]): 
-                nocc = nocc + h0.refocc[ish, izp]
-                n0at[iat] += h0.refocc[ish, izp]
-                n0sh[ii+ish] += h0.refocc[ish, izp]
+        valence.append(ang_idx[il] < 0)
+        if valence[-1]:
+            ang_idx[il] = ish
 
-        return nocc, n0at, n0sh
-
-    def buildDiatomicBlocks(self, overlap: torch.tensor, isp: str, jsp: str, r2: float, ish: int, jsh: int) -> torch.tensor:
-        """ Calculate effective Hamiltonian element for given pair of atoms.
-        """ # TODOC
-
-        # TODO: needed for non-sparse representation?
-        def index_offset(species):
-            """ Index offset for each atom in the shell space """
-            raise NotImplementedError
-            return offset        
-        iss = index_offset(isp)
-        jss = index_offset(jsp)
-
-        rr = sqrt(sqrt(r2) / (self.rad[isp] + self.rad[jsp]))
-
-        shpoly = (1.0 + self.shpoly[ish, isp]*rr) * (1.0 + self.shpoly[jsh, jsp]*rr)
-
-        # selfenergy (list[float]): Diagonal elements of the Hamiltonian
-        hij = 0.5 * (self.selfenergy[iss+ish] + self.selfenergy[jss+jsh]) * self.hscale[jsh, ish, jsp, isp] * shpoly
-              
-        return overlap * hij # TODO: check output format
+    return valence
