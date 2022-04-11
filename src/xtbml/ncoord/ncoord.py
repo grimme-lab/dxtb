@@ -9,6 +9,45 @@ from xtbml.constants import KCN
 # from xtbml.constants import KCN, KA, KB, R_SHIFT
 
 
+Tensor = torch.Tensor
+
+def get_coordination_number_d3(
+    numbers: Tensor,
+    distances: Tensor,
+    edges: Tensor,
+    rcov: Tensor,
+    cutoff: float = 25.0,
+    kcn: float = 16.0,
+    symmetric: bool = True,
+) -> Tensor:
+    """
+    Compute fractional coordination number using an exponential counting function.
+    """
+
+    l_idx, r_idx = edges
+
+    mask = distances <= cutoff
+    distances = distances[mask]
+    l_idx = l_idx[mask]
+    r_idx = r_idx[mask]
+
+    l_num = numbers[l_idx]
+    r_num = numbers[r_idx]
+
+    rc = rcov[l_num] + rcov[r_num]
+    rr = rc.type(distances.dtype) / distances
+
+    countf = 1.0 / (1.0 + torch.exp(-kcn * (rr - 1.0)))
+    print(countf)
+
+    cn = countf.new_zeros(numbers.shape[0])
+    cn = cn.scatter_add_(0, l_idx, countf)
+    if symmetric:
+        cn = cn.scatter_add_(0, r_idx, countf)
+
+    return cn
+
+
 def get_coordination_number(
     mol: Geometry,
     trans: torch.Tensor,
