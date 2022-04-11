@@ -198,11 +198,11 @@ class Geometry:
             unique_atomic_numbers: A tensor specifying the unique atomic
                 numbers present.
         """
-        a = self.atomic_numbers[self.atomic_numbers.ne(0)]
-        indexes = np.unique(a, return_index=True)[1]
-        return torch.tensor([a[index] for index in sorted(indexes)])
+        return torch.unique(self.atomic_numbers[self.atomic_numbers.ne(0)])
 
-        # return torch.unique(self.atomic_numbers[self.atomic_numbers.ne(0)])
+        # a = self.atomic_numbers[self.atomic_numbers.ne(0)]
+        # indexes = np.unique(a, return_index=True)[1]
+        # return torch.tensor([a[index] for index in sorted(indexes)])
 
     def unique_chemical_symbols(self) -> Tensor:
         """Identifies and returns a tensor of unique chemical symbols.
