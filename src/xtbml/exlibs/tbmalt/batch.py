@@ -11,7 +11,7 @@ import numpy as np
 from collections import namedtuple
 import torch
 
-from tbmalt.common import bool_like
+from .common import bool_like
 
 Tensor = torch.Tensor
 __sort = namedtuple("sort", ("values", "indices"))
