@@ -3,7 +3,6 @@
 
 """
 Definition of energy terms as abstract base class for classical interactions.
-
 """
 
 from typing import Optional, Tuple
@@ -11,7 +10,7 @@ from pydantic import BaseModel
 from abc import ABC, abstractmethod
 from torch import Tensor
 
-from tbmalt.structures.geometry import Geometry
+from xtbml.exlibs.tbmalt import Geometry
 
 # TODO: allow for usability with base Params object
 class Energy_Contribution(BaseModel, ABC):
@@ -33,15 +32,15 @@ class Energy_Contribution(BaseModel, ABC):
     gradient: Optional[Tensor] = None
     """Strain derivatives of the repulsion energy"""
     sigma: Optional[Tensor] = None
-    
+
     class Config:
         # allow for geometry and tensor fields
         arbitrary_types_allowed = True
 
     @abstractmethod
-    def get_engrad(self) -> Tuple[Tensor,Tensor]:
+    def get_engrad(self) -> Tuple[Tensor, Tensor]:
         """
-        Obtain energy and gradient for classical contribution 
+        Obtain energy and gradient for classical contribution
         (energy is calculated during this step).
         For periodic applications also calculate virial force.
         """

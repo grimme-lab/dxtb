@@ -1,13 +1,12 @@
-"""Test data for testing H0 taken from https://github.com/grimme-lab/mstore"""
+"""Data for testing H0 taken from https://github.com/grimme-lab/mstore"""
+from typing import Dict
 from torch import tensor
 
+from xtbml.constants import FLOAT32 as DTYPE
+from xtbml.utils import SampleInfo
 
-dummy = {
-    "elements": [],
-    "xyz": [],
-}
 
-data = {
+data: Dict[str, SampleInfo] = {
     "MB16_43_H2": {
         "elements": ["H", "H"],
         "xyz": tensor(
@@ -18,7 +17,8 @@ data = {
                 0.00000000000000,
                 0.00000000000000,
                 0.70252931147690,
-            ]
+            ],
+            dtype=DTYPE,
         ).reshape((-1, 3)),
     },
     "MB16_43_LiH": {
@@ -31,7 +31,22 @@ data = {
                 0.00000000000000,
                 0.00000000000000,
                 1.50796743897235,
-            ]
+            ],
+            dtype=DTYPE,
+        ).reshape((-1, 3)),
+    },
+    "MB16_43_HLi": {
+        "elements": ["H", "Li"],
+        "xyz": tensor(
+            [
+                0.00000000000000,
+                0.00000000000000,
+                -1.50796743897235,
+                0.00000000000000,
+                0.00000000000000,
+                1.50796743897235,
+            ],
+            dtype=DTYPE,
         ).reshape((-1, 3)),
     },
     "MB16_43_S2": {
@@ -44,7 +59,8 @@ data = {
                 0.00000000000000,
                 0.00000000000000,
                 1.80281271474629,
-            ]
+            ],
+            dtype=DTYPE,
         ).reshape((-1, 3)),
     },
     "MB16_43_SiH4": {
@@ -66,7 +82,8 @@ data = {
                 -1.61768389755830,
                 1.61768389755830,
                 1.61768389755830,
-            ]
+            ],
+            dtype=DTYPE,
         ).reshape((-1, 3)),
     },
 }

@@ -204,7 +204,7 @@ class Geometry:
         # indexes = np.unique(a, return_index=True)[1]
         # return torch.tensor([a[index] for index in sorted(indexes)])
 
-    def unique_chemical_symbols(self) -> Tensor:
+    def unique_chemical_symbols(self) -> List:
         """Identifies and returns a tensor of unique chemical symbols.
 
         This method offers a means to identify the types of elements present

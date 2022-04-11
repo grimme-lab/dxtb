@@ -3,17 +3,10 @@ from typing import Dict
 import torch
 
 from xtbml.exlibs.tbmalt import Geometry
+from xtbml.constants import KCN
 
 # TODO: differentiate GFN1 and GFN2
-# GFN1: Steepness of counting function
-kcn = 16.0
-
-# GFN2: Steepness of first counting function
-ka = 10.0
-# GFN2: Steepness of second counting function
-kb = 20.0
-# GFN2: Offset of the second counting function
-r_shift = 2.0
+# from xtbml.constants import KCN, KA, KB, R_SHIFT
 
 
 def get_coordination_number(
@@ -82,7 +75,7 @@ def ncoord_exp(
 
                 rc = rcov[el_1] + rcov[el_2]
 
-                countf = exp_count(kcn, r1, rc)
+                countf = exp_count(KCN, r1, rc)
 
                 cn[i] += countf
                 if i != j:
@@ -131,8 +124,8 @@ def ncoord_dexp(mol, trans, cutoff, rcov, dcndr, dcndL):
                 r1 = math.sqrt(r2)
                 rc = rcov[izp] + rcov[jzp]
 
-                countf = exp_count(kcn, r1, rc)
-                countd = dexp_count(kcn, r1, rc) * rij / r1
+                countf = exp_count(KCN, r1, rc)
+                countd = dexp_count(KCN, r1, rc) * rij / r1
 
                 cn[iat] += countf
                 if iat != jat:
@@ -189,7 +182,7 @@ def add_coordination_number_derivs(mol, trans, cutoff, rcov, dEdcn, gradient, si
                 r1 = math.sqrt(r2)
                 rc = rcov[izp] + rcov[jzp]
 
-                countd = dexp_count(kcn, r1, rc) * rij / r1
+                countd = dexp_count(KCN, r1, rc) * rij / r1
 
                 gradient[:, iat] += countd * (dEdcn[iat] + dEdcn[jat])
                 gradient[:, jat] -= countd * (dEdcn[iat] + dEdcn[jat])
