@@ -1,14 +1,14 @@
 """ Reference data for CGTO orthogonalization test. """
 
-from torch import tensor, float64
+from torch import tensor
+from xtbml.constants import FLOAT64 as DTYPE
 
-dtype = float64
 
 ref_data = {
-    (0, 0): tensor([[0.5781]], dtype=dtype),
-    (0, 1): tensor([[0.0000], [0.0000], [-0.5193]], dtype=dtype),
+    (0, 0): tensor([[0.5781]], dtype=DTYPE),
+    (0, 1): tensor([[0.0000], [0.0000], [-0.5193]], dtype=DTYPE),
     (0, 2): tensor(
-        [[3.6897e-01], [0.0000e00], [0.0000e00], [2.9109e-09], [0.0000e00]], dtype=dtype
+        [[3.6897e-01], [0.0000e00], [0.0000e00], [2.9109e-09], [0.0000e00]], dtype=DTYPE
     ),
     (0, 3): tensor(
         [
@@ -20,7 +20,7 @@ ref_data = {
             [0.0000e00],
             [0.0000e00],
         ],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
     (0, 4): tensor(
         [
@@ -34,12 +34,12 @@ ref_data = {
             [2.9410e-07],
             [0.0000e00],
         ],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
-    (1, 0): tensor([[0.0000, 0.0000, 0.2900]], dtype=dtype),
+    (1, 0): tensor([[0.0000, 0.0000, 0.2900]], dtype=DTYPE),
     (1, 1): tensor(
         [[0.8354, 0.0000, 0.0000], [0.0000, 0.8354, 0.0000], [0.0000, 0.0000, 0.4773]],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
     (1, 2): tensor(
         [
@@ -49,7 +49,7 @@ ref_data = {
             [0.0000, 0.0000, 0.0000],
             [0.0000, 0.0000, 0.0000],
         ],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
     (1, 3): tensor(
         [
@@ -61,7 +61,7 @@ ref_data = {
             [2.3842e-07, 0.0000e00, 0.0000e00],
             [0.0000e00, -2.3842e-07, 0.0000e00],
         ],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
     (1, 4): tensor(
         [
@@ -75,10 +75,10 @@ ref_data = {
             [0.0000e00, 0.0000e00, 0.0000e00],
             [0.0000e00, 0.0000e00, 0.0000e00],
         ],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
     (2, 0): tensor(
-        [[4.7838e-02, 0.0000e00, 0.0000e00, 2.9109e-09, 0.0000e00]], dtype=dtype
+        [[4.7838e-02, 0.0000e00, 0.0000e00, 2.9109e-09, 0.0000e00]], dtype=DTYPE
     ),
     (2, 1): tensor(
         [
@@ -86,7 +86,7 @@ ref_data = {
             [0.0000, 0.0000, 0.7688, 0.0000, 0.0000],
             [0.7130, 0.0000, 0.0000, 0.0000, 0.0000],
         ],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
     (2, 2): tensor(
         [
@@ -96,7 +96,7 @@ ref_data = {
             [2.9802e-08, 0.0000e00, 0.0000e00, 2.8571e00, 0.0000e00],
             [0.0000e00, 0.0000e00, 0.0000e00, 0.0000e00, 2.8571e00],
         ],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
     (2, 3): tensor(
         [
@@ -146,7 +146,7 @@ ref_data = {
                 0.0000e00,
             ],
         ],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
     (2, 4): tensor(
         [
@@ -206,7 +206,7 @@ ref_data = {
                 5.1565e-07,
             ],
         ],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
     (3, 0): tensor(
         [
@@ -220,7 +220,7 @@ ref_data = {
                 0.0000e00,
             ]
         ],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
     (3, 1): tensor(
         [
@@ -252,7 +252,7 @@ ref_data = {
                 0.0000e00,
             ],
         ],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
     (3, 2): tensor(
         [
@@ -331,7 +331,7 @@ ref_data = {
                 1.5096e01,
             ],
         ],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
     (3, 4): tensor(
         [
@@ -413,7 +413,7 @@ ref_data = {
                 0.0000e00,
             ],
         ],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
     (4, 0): tensor(
         [
@@ -429,7 +429,7 @@ ref_data = {
                 0.0000e00,
             ]
         ],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
     (4, 1): tensor(
         [
@@ -467,7 +467,7 @@ ref_data = {
                 0.0000e00,
             ],
         ],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
     (4, 2): tensor(
         [
@@ -481,7 +481,7 @@ ref_data = {
             [-7.1526e-07, 0.0000e00, 0.0000e00, 0.0000e00, 0.0000e00],
             [0.0000e00, 0.0000e00, 0.0000e00, 0.0000e00, 3.5772e-07],
         ],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
     (4, 3): tensor(
         [
@@ -567,7 +567,7 @@ ref_data = {
                 0.0000e00,
             ],
         ],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
     (4, 4): tensor(
         [
@@ -671,6 +671,6 @@ ref_data = {
                 1.0957e02,
             ],
         ],
-        dtype=dtype,
+        dtype=DTYPE,
     ),
 }

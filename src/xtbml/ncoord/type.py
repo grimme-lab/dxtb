@@ -1,9 +1,7 @@
+from abc import ABC, abstractmethod
 
 
-from abc import ABC
-
-class Ncoord_Type(ABC):
-
+class NcoordType(ABC):
     @abstractmethod
     def get_cn(self, mol, cn, dcndr, dcndL):
         """# Coordination number container

@@ -1,5 +1,4 @@
 """ Gram-Schmidt orthonormalization routines for contracted Gaussian basis functions """
-
 import math
 
 
@@ -11,7 +10,7 @@ def orthogonalize(cgtoi, cgtoj):
         cgtoj (Cgto_Type): Basis function to orthogonalize
 
     Returns:
-        cgtoj (Cgto_Type): Orthogonalized basis function
+        cgtoj (Cgto_Type):: Orthogonalized version of cgtoj
     """
 
     if cgtoi.ang != cgtoj.ang:

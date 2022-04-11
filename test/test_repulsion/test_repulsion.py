@@ -2,19 +2,19 @@ from typing import Callable, Union
 from unittest import TestCase
 import torch
 
-from tbmalt.structures.geometry import Geometry
+from xtbml.exlibs.tbmalt import Geometry
 from xtbml.repulsion.repulsion import Repulsion
+from xtbml.utils import symbol2number
+
 from .test_repulsion_data import data
 
-from xtbml.data.covrad import to_number
 
-""" Testing the calculation of repulsion energy and gradients. """
+class TestRepulsion(TestCase):
+    """Testing the calculation of repulsion energy and gradients."""
 
-
-class Test_Repulsion(TestCase):
     @classmethod
     def setUpClass(cls):
-        print("Test_Repulsion")
+        print(cls.__name__)
 
     def setUp(self):
         # define constants
@@ -219,9 +219,7 @@ class Test_Repulsion(TestCase):
     def test_mb1643_01_gfn1(self):
         sample = data["MB16_43_01"]
 
-        atomic_numbers = torch.flatten(
-            torch.tensor([to_number(s) for s in sample["elements"]])
-        )
+        atomic_numbers = symbol2number(sample["elements"])
         geometry = Geometry(atomic_numbers=atomic_numbers, positions=sample["xyz"])
 
         reference_energy = torch.tensor(0.16777923624986593)
@@ -237,9 +235,7 @@ class Test_Repulsion(TestCase):
     def test_mb1643_02_gfn2(self):
         sample = data["MB16_43_02"]
 
-        atomic_numbers = torch.flatten(
-            torch.tensor([to_number(s) for s in sample["elements"]])
-        )
+        atomic_numbers = symbol2number(sample["elements"])
         geometry = Geometry(atomic_numbers=atomic_numbers, positions=sample["xyz"])
 
         reference_energy = torch.tensor(0.10745931926703985)
@@ -255,9 +251,7 @@ class Test_Repulsion(TestCase):
     def test_mb1643_03_gfn1(self):
         sample = data["MB16_43_03"]
 
-        atomic_numbers = torch.flatten(
-            torch.tensor([to_number(s) for s in sample["elements"]])
-        )
+        atomic_numbers = symbol2number(sample["elements"])
         geometry = Geometry(atomic_numbers=atomic_numbers, positions=sample["xyz"])
 
         # get reference gradient
@@ -276,9 +270,7 @@ class Test_Repulsion(TestCase):
     def test_mb1643_04_gfn2(self):
         sample = data["MB16_43_04"]
 
-        atomic_numbers = torch.flatten(
-            torch.tensor([to_number(s) for s in sample["elements"]])
-        )
+        atomic_numbers = symbol2number(sample["elements"])
         geometry = Geometry(atomic_numbers=atomic_numbers, positions=sample["xyz"])
 
         # get reference gradient
@@ -298,7 +290,7 @@ class Test_Repulsion(TestCase):
     """def test_uracil_gfn2(self):
         sample = data["uracil"]
 
-        atomic_numbers = torch.flatten(torch.tensor([to_number(s) for s in sample["elements"]]))
+        atomic_numbers = symbol2number(sample["elements"])
         geometry = Geometry(atomic_numbers=atomic_numbers,positions=sample["xyz"])
 
         reference_energy = torch.tensor(1.0401472262740301)

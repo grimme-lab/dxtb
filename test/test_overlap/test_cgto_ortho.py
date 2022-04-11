@@ -3,10 +3,12 @@ import torch
 
 from xtbml.basis.type import Basis, Cgto_Type
 from xtbml.basis.slater import slater_to_gauss
+from xtbml.exlibs.tbmalt import Geometry
 from xtbml.integral.overlap import overlap_cgto
 from xtbml.basis.ortho import orthogonalize
 from xtbml.exceptions import IntegralTransformError
 from xtbml.param.gfn1 import GFN1_XTB as par
+from xtbml.utils import symbol2number
 
 
 class Test_Cgto_Ortho(TestCase):
@@ -31,7 +33,7 @@ class Test_Cgto_Ortho(TestCase):
         slater_to_gauss(5, 1, l, 1.0, cgtoi, True)
         slater_to_gauss(2, 2, l, 1.0, cgtoj, True)
 
-        orthogonalize(cgtoi, cgtoj)
+        cgtoj = orthogonalize(cgtoi, cgtoj)
 
         # normalised self-overlap
         overlap = overlap_cgto(cgtoj, cgtoj, r2, vec, 100.0)
@@ -58,7 +60,11 @@ class Test_Cgto_Ortho(TestCase):
         Compare against reference calculated with tblite-int H C 0,0,1.4 --bohr --method gfn1
         """
 
-        basis = Basis(["H", "C"], par)
+        atomic_numbers = symbol2number(["H", "C"])
+        dummy_coords = torch.zeros(3)
+        mol = Geometry(atomic_numbers, dummy_coords)
+
+        basis = Basis(mol, par)
         h = basis.cgto.get("H")
         c = basis.cgto.get("C")
 
@@ -87,7 +93,11 @@ class Test_Cgto_Ortho(TestCase):
         Compare against reference calculated with tblite-int H He 0,0,1.7 --method gfn1 --bohr
         """
 
-        basis = Basis(["H", "He"], par)
+        atomic_numbers = symbol2number(["H", "He"])
+        dummy_coords = torch.zeros(3)
+        mol = Geometry(atomic_numbers, dummy_coords)
+
+        basis = Basis(mol, par)
         h = basis.cgto.get("H")
         he = basis.cgto.get("He")
 
@@ -114,7 +124,11 @@ class Test_Cgto_Ortho(TestCase):
         Compare against reference calculated with tblite-int S Cl 0,0,2.1 --method gfn1 --bohr
         """
 
-        basis = Basis(["S", "Cl"], par)
+        atomic_numbers = symbol2number(["S", "Cl"])
+        dummy_coords = torch.zeros(3)
+        mol = Geometry(atomic_numbers, dummy_coords)
+
+        basis = Basis(mol, par)
         s = basis.cgto.get("S")
         cl = basis.cgto.get("Cl")
 

@@ -10,11 +10,13 @@ from torch import Tensor
 import torch
 from math import sqrt, exp
 
-from tbmalt.structures.geometry import Geometry
+from xtbml.constants.torch import FLOAT64
+from xtbml.exlibs.tbmalt import Geometry
 
 from .base import Energy_Contribution
 
-torch.set_default_dtype(torch.float64) # required for repulsion tests (esp. gradients) 
+torch.set_default_dtype(FLOAT64)  # required for repulsion tests (esp. gradients)
+
 
 class Repulsion(Energy_Contribution):
     """
@@ -69,7 +71,9 @@ class Repulsion(Energy_Contribution):
 
         return
 
-    def get_engrad(self, geometry: Geometry, cutoff: float, calc_gradient: bool = False) -> Union[Tensor, Tuple[Tensor,Tensor]]:
+    def get_engrad(
+        self, geometry: Geometry, cutoff: float, calc_gradient: bool = False
+    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         """
         Obtain repulsion energy and gradient.
 
@@ -83,8 +87,8 @@ class Repulsion(Energy_Contribution):
 
         n_atoms = geometry.get_length(unique=False)
         energies = torch.zeros(n_atoms)
-        cutoff2 = cutoff ** 2
-        
+        cutoff2 = cutoff**2
+
         if calc_gradient:
             # Molecular gradient of the repulsion energy
             gradient = torch.zeros((n_atoms, 3))
@@ -93,42 +97,50 @@ class Repulsion(Energy_Contribution):
         """for iat in range(geometry.n_atoms):
             for jat in range(iat+1):"""
         for (iat, jat) in geometry.generate_interactions(unique=False):
-                iat, jat = iat.item(), jat.item()
+            iat, jat = iat.item(), jat.item()
 
-                # geometry accessed by atom index
-                rij = geometry.positions[iat, :] - geometry.positions[jat, :]
+            # geometry accessed by atom index
+            rij = geometry.positions[iat, :] - geometry.positions[jat, :]
 
-                # translate atom index to unique species index
-                # (== index of atomic number in unique)
-                idx_i = geometry.get_species_index(geometry.atomic_numbers[iat]) 
-                idx_j = geometry.get_species_index(geometry.atomic_numbers[jat])    
+            # translate atom index to unique species index
+            # (== index of atomic number in unique)
+            idx_i = geometry.get_species_index(geometry.atomic_numbers[iat])
+            idx_j = geometry.get_species_index(geometry.atomic_numbers[jat])
 
-                r2 = sum(rij ** 2)
-                if r2 > cutoff2 or r2 < 1.0e-12:
-                    continue
-                r1 = torch.sqrt(r2)
-                r1k = r1 ** self.kexp[idx_i, idx_j]
-                exa = exp(-self.alpha[idx_i, idx_j] * r1k)
-                r1r = r1 ** self.rexp[idx_i, idx_j]
+            r2 = sum(rij**2)
+            if r2 > cutoff2 or r2 < 1.0e-12:
+                continue
+            r1 = torch.sqrt(r2)
+            r1k = r1 ** self.kexp[idx_i, idx_j]
+            exa = exp(-self.alpha[idx_i, idx_j] * r1k)
+            r1r = r1 ** self.rexp[idx_i, idx_j]
 
-                dE = self.zeff[idx_i, idx_j] * exa / r1r
+            dE = self.zeff[idx_i, idx_j] * exa / r1r
+
+            if calc_gradient:
+                dG = (
+                    -(
+                        self.alpha[idx_i, idx_j] * r1k * self.kexp[idx_i, idx_j]
+                        + self.rexp[idx_i, idx_j]
+                    )
+                    * dE
+                    * rij
+                    / r2
+                )
+
+            # partition energy and gradient equally on contributing atoms
+            energies[iat] = energies[iat] + 0.5 * dE
+
+            if iat != jat:
+                energies[jat] = energies[jat] + 0.5 * dE
 
                 if calc_gradient:
-                    dG = -(self.alpha[idx_i, idx_j] * r1k * self.kexp[idx_i, idx_j] + self.rexp[idx_i, idx_j]) * dE * rij/r2
-
-                # partition energy and gradient equally on contributing atoms
-                energies[iat] = energies[iat] + 0.5 * dE
-
-                if iat != jat:
-                    energies[jat] = energies[jat] + 0.5 * dE
-                    
-                    if calc_gradient:
-                        gradient[iat, :] = gradient[iat, :] + dG
-                        gradient[jat, :] = gradient[jat, :] - dG
-                else:
-                    # should never happen, since iat==jat --> r2==0.0
-                    # NOTE: only for PBC with transition vector this might be raised
-                    raise ValueError
+                    gradient[iat, :] = gradient[iat, :] + dG
+                    gradient[jat, :] = gradient[jat, :] - dG
+            else:
+                # should never happen, since iat==jat --> r2==0.0
+                # NOTE: only for PBC with transition vector this might be raised
+                raise ValueError
 
         energies = torch.sum(energies)
 
@@ -136,4 +148,3 @@ class Repulsion(Energy_Contribution):
             return energies, gradient
         else:
             return energies
-

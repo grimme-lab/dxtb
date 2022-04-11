@@ -1,5 +1,4 @@
-
-# TODO: 
+# TODO:
 #   * Docstring
 #   * h0 hamiltonian type object
 
@@ -7,15 +6,13 @@ import torch
 import math
 
 from ..integral.multipole import multipole_cgto
-from ..integral.overlap import maxl, msao
+from ..integral.overlap import msao
 
-# Number of dipole components used in tblite library (x, y, z)
-dimDipole = 3
-# Number of quadrupole components used in tblite library (xx, xy, yy, xz, yz, zz)
-dimQuadrupole = 6
+from .config import dimDipole, dimQuadrupole
+
 
 def shift_operator(vec, s, di, qi, dj, qj):
-    """ 
+    """
     Shift multipole operator from Ket function (center i) to Bra function (center j),
     the multipole operator on the Bra function can be assembled from the lower moments
     on the Ket function and the displacement vector using horizontal shift rules.
@@ -31,24 +28,24 @@ def shift_operator(vec, s, di, qi, dj, qj):
         qi (list[float]): Quadrupole integral with operator on Ket function (center i)
         dj (list[float]): Dipole integral with operator on Bra function (center j)
         qj (list[float]): Quadrupole integral with operator on Bra function (center j)
-    """    
+    """
 
     # Create dipole operator on Bra function from Ket function and shift contribution
     # due to monopol displacement
-    dj[0] += vec[0]*s
-    dj[1] += vec[1]*s
-    dj[2] += vec[2]*s
+    dj[0] += vec[0] * s
+    dj[1] += vec[1] * s
+    dj[2] += vec[2] * s
 
     # For the quadrupole operator on the Bra function we first construct the shift
     # contribution from the dipole and monopol displacement, since we have to remove
     # the trace contribution from the shift and the moment integral on the Ket function
     # is already traceless
-    qj[0] = 2*vec[0]*di[0] + vec[0]**2*s
-    qj[2] = 2*vec[1]*di[1] + vec[1]**2*s
-    qj[5] = 2*vec[2]*di[2] + vec[2]**2*s
-    qj[1] = vec[0]*di[1] + vec[1]*di[0] + vec[0]*vec[1]*s
-    qj[3] = vec[0]*di[2] + vec[2]*di[0] + vec[0]*vec[2]*s
-    qj[4] = vec[1]*di[2] + vec[2]*di[1] + vec[1]*vec[2]*s
+    qj[0] = 2 * vec[0] * di[0] + vec[0] ** 2 * s
+    qj[2] = 2 * vec[1] * di[1] + vec[1] ** 2 * s
+    qj[5] = 2 * vec[2] * di[2] + vec[2] ** 2 * s
+    qj[1] = vec[0] * di[1] + vec[1] * di[0] + vec[0] * vec[1] * s
+    qj[3] = vec[0] * di[2] + vec[2] * di[0] + vec[0] * vec[2] * s
+    qj[4] = vec[1] * di[2] + vec[2] * di[1] + vec[1] * vec[2] * s
     # Now collect the trace of the shift contribution
     tr = 0.5 * (qj[0] + qj[2] + qj[5])
 
@@ -64,9 +61,8 @@ def shift_operator(vec, s, di, qi, dj, qj):
     return dj, qj
 
 
-
 def mlIdx(ml: int, l: int) -> int:
-    """ Index gymnastic to transfer magnetic quantum number ordering from one convention to another """
+    """Index gymnastic to transfer magnetic quantum number ordering from one convention to another"""
 
     idx = None
 
@@ -91,12 +87,34 @@ def mlIdx(ml: int, l: int) -> int:
         idx = ml
     return idx
 
+
 # The Hamiltonian is saved in an atomic block sparse compressed format.
 # We calculate a shell pair as a contiguous blocks and spread it to the
 # contiguous atomic block.
 #
 # Candidate for (partial) upstreaming in tblite library.
-def buildDiatomicBlocks(iAtFirst, iAtLast, species, coords, nNeighbour, iNeighbours, img2centCell, iPair, nOrbAtom, bas, h0, selfenergy, hamiltonian, overlap, dpintBra, dpintKet, qpintBra, qpintKet):
+
+
+def buildDiatomicBlocks(
+    iAtFirst,
+    iAtLast,
+    species,
+    coords,
+    nNeighbour,
+    iNeighbours,
+    img2centCell,
+    iPair,
+    nOrbAtom,
+    bas,
+    h0,
+    selfenergy,
+    hamiltonian,
+    overlap,
+    dpintBra,
+    dpintKet,
+    qpintBra,
+    qpintKet,
+):
     """[summary]
 
     Args:
@@ -121,20 +139,20 @@ def buildDiatomicBlocks(iAtFirst, iAtLast, species, coords, nNeighbour, iNeighbo
     """
 
     # TODO
-    #type(tb_hamiltonian), intent(in) :: h0
+    # type(tb_hamiltonian), intent(in) :: h0
 
     dtmpj = torch.zeros(dimDipole)
     qtmpj = torch.zeros(dimQuadrupole)
-    stmp = torch.zeros(msao(bas.maxl)**2)
-    dtmpi = torch.zeros(dimDipole, msao(bas.maxl)**2)
-    qtmpi = torch.zeros(dimQuadrupole, msao(bas.maxl)**2)
+    stmp = torch.zeros(msao(bas.maxl) ** 2)
+    dtmpi = torch.zeros(dimDipole, msao(bas.maxl) ** 2)
+    qtmpi = torch.zeros(dimQuadrupole, msao(bas.maxl) ** 2)
 
     for iAt in range(iAtFirst, iAtLast):
         # TODO: do iAt = iAtFirst, iAtLast --> indexing
 
         iZp = species[iAt]
         iss = bas.ish_at[iAt]
-        io = bas.iao_sh[iss+1]
+        io = bas.iao_sh[iss + 1]
 
         for iNeigh in range(nNeighbour[iAt]):
 
@@ -143,35 +161,53 @@ def buildDiatomicBlocks(iAtFirst, iAtLast, species, coords, nNeighbour, iNeighbo
             jZp = species[jAt]
             js = bas.ish_at[jAt]
             ind = iPair[iNeigh, iAt]
-            jo = bas.iao_sh[js+1]
+            jo = bas.iao_sh[js + 1]
             nBlk = nOrbAtom[jAt]
 
-            vec = coords[:, iAt] - coords[:, img] #TODO: check torch.tensor
-            r2 = vec[1]**2 + vec[2]**2 + vec[3]**2
+            vec = coords[:, iAt] - coords[:, img]  # TODO: check torch.tensor
+            r2 = vec[1] ** 2 + vec[2] ** 2 + vec[3] ** 2
             rr = math.sqrt(math.sqrt(r2) / (h0.rad[jZp] + h0.rad[iZp]))
 
             for iSh in range(bas.nsh_id[iZp]):
-                ii = bas.iao_sh[iss+iSh] - io
+                ii = bas.iao_sh[iss + iSh] - io
                 for jSh in range(bas.nsh_id[jZp]):
-                    jj = bas.iao_sh[js+jSh] - jo
+                    jj = bas.iao_sh[js + jSh] - jo
 
-                    stmp, dtmpi, qtmpi = multipole_cgto(bas.cgto[jSh, jZp], bas.cgto[iSh, iZp], r2, vec, bas.intcut, stmp, dtmpi, qtmpi)
-                    #call overlap_cgto(bas.cgto[jSh, jZp], bas.cgto[iSh, iZp], &
+                    stmp, dtmpi, qtmpi = multipole_cgto(
+                        bas.cgto[jSh, jZp],
+                        bas.cgto[iSh, iZp],
+                        r2,
+                        vec,
+                        bas.intcut,
+                        stmp,
+                        dtmpi,
+                        qtmpi,
+                    )
+                    # call overlap_cgto(bas.cgto[jSh, jZp], bas.cgto[iSh, iZp], &
                     #    & r2, vec, bas.intcut, stmp)
 
-                    shpoly = (1.0 + h0.shpoly[iSh, iZp]*rr) * (1.0 + h0.shpoly[jSh, jZp]*rr)
+                    shpoly = (1.0 + h0.shpoly[iSh, iZp] * rr) * (
+                        1.0 + h0.shpoly[jSh, jZp] * rr
+                    )
 
-                    hij = 0.5 * (selfenergy[iss+iSh] + selfenergy[js+jSh]) * h0.hscale[jSh, iSh, jZp, iZp] * shpoly
+                    hij = (
+                        0.5
+                        * (selfenergy[iss + iSh] + selfenergy[js + jSh])
+                        * h0.hscale[jSh, iSh, jZp, iZp]
+                        * shpoly
+                    )
 
                     li = bas.cgto[iSh, iZp].ang
                     lj = bas.cgto[jSh, jZp].ang
                     nao = msao[lj]
                     for iao in range(msao[li]):
                         for jao in range(nao):
-                            ij = mlIdx(jao, lj) + nao*(mlIdx(iao, li)-1)
-                            iblk = ind + jj+jao + nBlk*(ii+iao-1)
-                            
-                            dtmpj, qtmpj = shift_operator(vec, stmp[ij], dtmpi[:, ij], qtmpi[:, ij], dtmpj, qtmpj)
+                            ij = mlIdx(jao, lj) + nao * (mlIdx(iao, li) - 1)
+                            iblk = ind + jj + jao + nBlk * (ii + iao - 1)
+
+                            dtmpj, qtmpj = shift_operator(
+                                vec, stmp[ij], dtmpi[:, ij], qtmpi[:, ij], dtmpj, qtmpj
+                            )
 
                             overlap[iblk] = stmp[ij]
 
