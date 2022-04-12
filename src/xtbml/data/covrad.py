@@ -62,7 +62,7 @@ def get_covalent_rad(
 
 def to_number(sym: str) -> int:
     for i, n in PSE.items():
-        if n.lower() == sym or n == sym:
+        if n.lower() == sym.lower():
             return i
 
 
