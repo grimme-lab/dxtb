@@ -367,7 +367,7 @@ class Geometry:
                 self.atomic_numbers.to(device=device), self.positions.to(device=device)
             )
 
-    def __len__(self):
+    def __len__(self) -> int:
         """ Returns length of geometry batch. """
         if len(self.positions.shape) == 2:
             return 1

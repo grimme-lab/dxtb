@@ -1,9 +1,11 @@
 import os
 from typing import List
 import torch
+from torch.utils.data import  DataLoader
 
-from ..exlibs.tbmalt import Geometry
-from covrad import to_number
+from xtbml.exlibs.tbmalt import Geometry
+from xtbml.data.covrad import to_number
+from xtbml.constants import FLOAT64
 
 # read in data from disk to geometry object
 
@@ -11,7 +13,7 @@ from covrad import to_number
 def walklevel(some_dir: str, level=1):
     """Identical to os.walk() but allowing for limited depth."""
     some_dir = some_dir.rstrip(os.path.sep)
-    assert os.path.isdir(some_dir)
+    assert os.path.isdir(some_dir), f"Not a directory: {some_dir}"
     num_sep = some_dir.count(os.path.sep)
     for root, dirs, files in os.walk(some_dir):
         yield root, dirs, files
@@ -36,13 +38,13 @@ def read_coord(fp: str, breakpoints=["$user-defined bonds", "$redundant", "$end"
                 continue
             try:
                 x, y, z = float(l[0]), float(l[1]), float(l[2])
-                atm = to_number(l[3])[0]
+                atm = to_number(l[3])
                 arr.append([x, y, z, atm])
             except ValueError as e:
                 print(e)
                 print(f"WARNING: No correct values. Skip sample {fp}")
                 return
-    return torch.tensor(arr)
+    return torch.tensor(arr, dtype=FLOAT64)
 
 
 def read_chrg(fp: str):
@@ -57,6 +59,7 @@ class Datareader:
         """Fetch all data given in root directory."""
 
         data = []
+        file_list = []
 
         # loop through folders + subfolders only
         for (dirpath, dirnames, filenames) in walklevel(root, level=2):
@@ -86,17 +89,17 @@ class Datareader:
                 raise IOError
 
             data.append([xyz, q, chrg, uhf])
+            file_list.append(dirpath)
 
         assert len(data) == 7217  # 7217 + 3 (empty coord) + 87 (no-coord) = 7307
 
-        return data
+        return data, file_list
 
     def setup_geometry(data: torch.Tensor) -> Geometry:
         """Convert data tensor into batched geometry object."""
         device = None
-        dtype = torch.get_default_dtype()
 
-        positions = [torch.tensor(xyz, device=device, dtype=dtype) for xyz, *_ in data]
+        positions = [torch.tensor(xyz, device=device, dtype=FLOAT64) for xyz, *_ in data]
         atomic_numbers = [torch.tensor(q, device=device) for _, q, *_ in data]
 
         charges = [torch.tensor(chrg, device=device) for *_, chrg, _ in data]
@@ -106,13 +109,18 @@ class Datareader:
         return Geometry(atomic_numbers, positions, charges, unpaired_e, units="bohr")
 
 
-if __name__ == "__main__":
+    def get_dataloader(geometry: Geometry, cfg: dict = None) -> DataLoader:
+        """Return pytorch dataloader for batch-wise iteration over Geometry object."""
 
-    # root directory of GFN2-fitdata
-    path = "../../../data/gfn2-fitdata/data/"
+        def collate_fn(batch):
+            """Custom collate fn for loading Geometry objects in batch form."""
+            # add geometries together
+            batch_geometry = batch[0]
+            for i in range(1, len(batch)):
+                batch_geometry = batch_geometry + batch[i]
+            return batch_geometry
+        
+        if "collate_fn" not in cfg:
+            cfg["collate_fn"] = collate_fn
 
-    # read data from files
-    data = Datareader.fetch_data(path)
-
-    g = Datareader.setup_geometry(data)
-    print(g)
+        return DataLoader(geometry, **cfg)
