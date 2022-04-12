@@ -5,58 +5,6 @@ from xtbml.constants import UINT8 as DTYPE
 from xtbml.exlibs.tbmalt import Geometry
 
 
-def get_adjacency_map(
-    positions: torch.Tensor,
-    cutoff: float = 60.0,
-    symmetric: bool = True,
-) -> torch.Tensor:
-    """
-    Calculate all adjacent atoms for each atom in the geometry
-
-    Args:
-        positions: (N, 3) Cartesian coordinates of all atoms
-        cutoff: maximum distance between atoms to be considered adjacent
-        symmetric: whether to consider the graph symmetric
-
-    Returns:
-        edges: (2, M) indices of all pairs of atoms
-    """
-
-    distances = torch.sum((positions.unsqueeze(0) - positions.unsqueeze(1)).pow_(2), dim=2)
-    r_index, l_index = torch.where(distances <= cutoff**2)
-    mask = l_index < r_index if symmetric else l_index != r_index
-    edges = torch.stack((l_index[mask], r_index[mask]))
-
-    return edges
-
-
-def get_distances(
-    positions: torch.Tensor,
-    edges: torch.Tensor,
-    epsilon: float = 1.0e-20,
-) -> torch.Tensor:
-    """
-    Calculate all distances between atoms in the geometry
-
-    Args:
-        positions: (N, 3) Cartesian coordinates of all atoms
-        edges: (2, M) indices of all pairs of atoms
-        epsilon: small number to avoid division by zero
-
-    Returns:
-        distances: (M,) distances between all pairs of atoms
-    """
-
-    l_index, r_index = edges
-
-    pos_l = positions[l_index]
-    pos_r = positions[r_index]
-
-    distances = torch.sqrt(torch.sum((pos_l - pos_r) ** 2, dim=-1) + epsilon)
-
-    return distances
-
-
 class AdjacencyList:
     """
     Sparse neighbour map in compressed sparse row format.

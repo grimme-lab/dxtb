@@ -12,9 +12,7 @@ from xtbml.constants import KCN
 Tensor = torch.Tensor
 
 def get_coordination_number_d3(
-    numbers: Tensor,
-    distances: Tensor,
-    edges: Tensor,
+    geometry: Geometry,
     rcov: Tensor,
     cutoff: float = 25.0,
     kcn: float = 16.0,
@@ -24,28 +22,15 @@ def get_coordination_number_d3(
     Compute fractional coordination number using an exponential counting function.
     """
 
-    l_idx, r_idx = edges
+    numbers = geometry.atomic_numbers
+    distances = geometry.distances
+    real = numbers != 0
+    mask = ~(real.unsqueeze(-2) * real.unsqueeze(-1))
 
-    mask = distances <= cutoff
-    distances = distances[mask]
-    l_idx = l_idx[mask]
-    r_idx = r_idx[mask]
-
-    l_num = numbers[l_idx]
-    r_num = numbers[r_idx]
-
-    rc = rcov[l_num] + rcov[r_num]
-    rr = rc.type(distances.dtype) / distances
-
-    countf = 1.0 / (1.0 + torch.exp(-kcn * (rr - 1.0)))
-    print(countf)
-
-    cn = countf.new_zeros(numbers.shape[0])
-    cn = cn.scatter_add_(0, l_idx, countf)
-    if symmetric:
-        cn = cn.scatter_add_(0, r_idx, countf)
-
-    return cn
+    rc = rcov[numbers].unsqueeze(-2) + rcov[numbers].unsqueeze(-1)
+    cf = 1.0 / (1.0 + torch.exp(-kcn * (rc / distances - 1.0)))
+    cf[mask] = 0
+    return torch.sub(torch.sum(cf, dim=-1), 1.0)
 
 
 def get_coordination_number(
