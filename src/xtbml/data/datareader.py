@@ -110,7 +110,16 @@ class Datareader:
 
 
     def get_dataloader(geometry: Geometry, cfg: dict = None) -> DataLoader:
-        """Return pytorch dataloader for batch-wise iteration over Geometry object."""
+        """
+        Return pytorch dataloader for batch-wise iteration over Geometry object.
+
+        Args:
+            geometry (Geometry): Geometry object containing _all_ geometries in dataset.
+            cfg (dict, optional): Optional configuration for dataloader settings. Defaults to None.
+
+        Returns:
+            DataLoader: Pytorch dataloader
+        """
 
         def collate_fn(batch):
             """Custom collate fn for loading Geometry objects in batch form."""
