@@ -132,7 +132,9 @@ class Geometry:
         if self.positions.device != self.positions.device:
             raise RuntimeError("All tensors must be on the same device!")
 
-        self._charges = charges if charges != None else torch.zeros(self.positions.shape[0])
+        self._charges = (
+            charges if charges != None else torch.zeros(self.positions.shape[0])
+        )
         self._unpaired_e = (
             unpaired_e if unpaired_e != None else torch.zeros(self.positions.shape[0])
         )
@@ -368,7 +370,7 @@ class Geometry:
             )
 
     def __len__(self) -> int:
-        """ Returns length of geometry batch. """
+        """Returns length of geometry batch."""
         if len(self.positions.shape) == 2:
             return 1
         else:
@@ -382,7 +384,12 @@ class Geometry:
                 "Geometry slicing is only applicable to batches of systems."
             )
 
-        return self.__class__(self.atomic_numbers[selector], self.positions[selector], self.charges[selector], self.unpaired_e[selector])
+        return self.__class__(
+            self.atomic_numbers[selector],
+            self.positions[selector],
+            self.charges[selector],
+            self.unpaired_e[selector],
+        )
 
     def __add__(self, other: "Geometry") -> "Geometry":
         """Combine two `Geometry` objects together."""
@@ -481,7 +488,7 @@ class Geometry:
         if self.atomic_numbers.dim() == 1:  # If a single system
             formula = get_formula(self.atomic_numbers)
         else:  # If multiple systems
-            if self.atomic_numbers.shape[0] < 4:  # If n<4 systems; show all
+            if self.atomic_numbers.shape[0] <= 4:  # If n<4 systems; show all
                 formulas = [get_formula(an) for an in self.atomic_numbers]
                 formula = " ,".join(formulas)
             else:  # If n>4; show only the first and last two systems
