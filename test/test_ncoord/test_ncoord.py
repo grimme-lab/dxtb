@@ -69,8 +69,6 @@ samples = {
     ),
 }
 
-torch.set_printoptions(precision=10)
-
 
 class TestCoordinationNumber(TestCase):
     """
@@ -95,8 +93,7 @@ class TestCoordinationNumber(TestCase):
             ]
         )
 
-        rcov = atomic_data.covrad.covalent_rad_d3
-        cn = ncoord.get_coordination_number_d3(geometry, rcov)
+        cn = ncoord.get_coordination_number(geometry, rcov, ncoord.exp_count)
         self.assertTrue(torch.allclose(cn, ref))
 
     def test_cn_batch(self):
@@ -115,6 +112,7 @@ class TestCoordinationNumber(TestCase):
                 )
             ),
         )
+        rcov = atomic_data.covrad.covalent_rad_d3
         ref = torch.Tensor(
             [
                 [
@@ -160,6 +158,5 @@ class TestCoordinationNumber(TestCase):
             ]
         )
 
-        rcov = atomic_data.covrad.covalent_rad_d3
-        cn = ncoord.get_coordination_number_d3(geometry, rcov)
+        cn = ncoord.get_coordination_number(geometry, rcov, ncoord.exp_count)
         self.assertTrue(torch.allclose(cn, ref))
