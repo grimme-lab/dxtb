@@ -26,11 +26,12 @@ def get_coordination_number_d3(
     distances = geometry.distances
     real = numbers != 0
     mask = ~(real.unsqueeze(-2) * real.unsqueeze(-1))
+    torch.diagonal(mask, dim1=-2, dim2=-1)[:] = True
 
     rc = rcov[numbers].unsqueeze(-2) + rcov[numbers].unsqueeze(-1)
     cf = 1.0 / (1.0 + torch.exp(-kcn * (rc / distances - 1.0)))
     cf[mask] = 0
-    return torch.sub(torch.sum(cf, dim=-1), 1.0)
+    return torch.sum(cf, dim=-1)
 
 
 def get_coordination_number(
