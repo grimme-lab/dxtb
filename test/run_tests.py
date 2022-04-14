@@ -22,6 +22,8 @@ def suite() -> unittest.TestSuite:
         if entry.is_dir() and path.isfile(
             this_directory + "/" + entry.name + "/__init__.py"
         ):
+            if entry.name != "test_repulsion":  # and entry.name != "test_ncoord":
+                continue
             print(entry)
             test_suite.addTests(
                 loader.discover(

@@ -1,6 +1,5 @@
 # This file is part of xtbml.
 
-
 """
 Definition of energy terms as abstract base class for classical interactions.
 """
@@ -20,18 +19,23 @@ class Energy_Contribution(BaseModel, ABC):
     within a given cutoff.
     """  # TODOC
 
+    geometry: Geometry
     """Molecular structure data"""
-    geometry: Optional[Geometry] = None
-    """Lattice points"""
+
     trans: Optional[Tensor] = None
-    """Real space cutoff"""
+    """Lattice points"""
+
     cutoff: Optional[float] = None
-    """Repulsion energy"""
+    """Real space cutoff"""
+
     energy: Optional[Tensor] = None  # single value, needs gradient
-    """Molecular gradient of the repulsion energy"""
+    """Repulsion energy"""
+
     gradient: Optional[Tensor] = None
-    """Strain derivatives of the repulsion energy"""
+    """Molecular gradient of the repulsion energy"""
+
     sigma: Optional[Tensor] = None
+    """Strain derivatives of the repulsion energy"""
 
     class Config:
         # allow for geometry and tensor fields

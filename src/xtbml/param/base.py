@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from .element import Element
 from .hamiltonian import Hamiltonian
 from .meta import Meta
+from .repulsion import Repulsion
 
 
 class Param(BaseModel):
@@ -25,7 +26,7 @@ class Param(BaseModel):
     Complete self-contained representation of an extended tight-binding model.
     """
 
-    meta: Meta = Meta()
+    meta: Meta
     """Descriptive data on the model"""
     element: Dict[str, Element]
     """Element specific parameter records"""
@@ -33,8 +34,8 @@ class Param(BaseModel):
     """Definition of the Hamiltonian, always required"""
     dispersion: Optional[dict] = None
     """Definition of the dispersion correction (not implemented)"""
-    repulsion: Optional[dict] = None
-    """Definition of the repulsion contribution (not implemented)"""
+    repulsion: Repulsion
+    """Definition of the repulsion contribution"""
     charge: Optional[dict] = None
     """Definition of the isotropic second-order charge interactions (not implemented)"""
     multipole: Optional[dict] = None
