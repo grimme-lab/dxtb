@@ -1,18 +1,8 @@
 from typing import Callable, Union, List, Tuple
 import torch
-from torch.utils.data import DataLoader
-from ase.build import molecule
-import sys
 from pathlib import Path
-from xtbml.param import element
 
-from xtbml.param.gfn1 import GFN1_XTB as par
-from xtbml.xtb.calculator import Basis
-from xtbml.basis.type import Cgto_Type, _process_record
-from xtbml.integral.overlap import overlap_cgto
 from xtbml.exlibs.tbmalt import Geometry
-from xtbml.repulsion.repulsion import Repulsion
-from xtbml.data.datareader import Datareader
 
 
 class Geometry_Handler:
@@ -49,6 +39,16 @@ class Geometry_Handler:
             if i == idx_to_remove:
                 continue
             new_geometry = new_geometry + geometry[i]
+
+        if len(new_geometry) == 1:
+            # set shape of properties to batch size 1
+            new_geometry = Geometry(
+                atomic_numbers=torch.unsqueeze(new_geometry.atomic_numbers, 0),
+                positions=torch.unsqueeze(new_geometry.positions, 0),
+                charges=torch.unsqueeze(new_geometry.charges, 0),
+                unpaired_e=torch.unsqueeze(new_geometry.unpaired_e, 0),
+            )
+
         return new_geometry
 
     def select(geometry: Geometry, selector_fn: Callable[[Geometry], bool]) -> Geometry:
