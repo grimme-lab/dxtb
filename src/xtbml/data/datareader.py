@@ -1,13 +1,11 @@
 import os
 from typing import List
 import torch
-from torch.utils.data import  DataLoader
+from torch.utils.data import DataLoader
 
 from xtbml.exlibs.tbmalt import Geometry
 from xtbml.data.covrad import to_number
 from xtbml.constants import FLOAT64
-
-# read in data from disk to geometry object
 
 
 def walklevel(some_dir: str, level=1):
@@ -55,6 +53,8 @@ def read_chrg(fp: str):
 
 
 class Datareader:
+    """Class to read in data from disk to Geometry object."""
+
     def fetch_data(root: str) -> List:
         """Fetch all data given in root directory."""
 
@@ -91,15 +91,15 @@ class Datareader:
             data.append([xyz, q, chrg, uhf])
             file_list.append(dirpath)
 
-        assert len(data) == 7217  # 7217 + 3 (empty coord) + 87 (no-coord) = 7307
-
         return data, file_list
 
     def setup_geometry(data: torch.Tensor) -> Geometry:
         """Convert data tensor into batched geometry object."""
         device = None
 
-        positions = [torch.tensor(xyz, device=device, dtype=FLOAT64) for xyz, *_ in data]
+        positions = [
+            torch.tensor(xyz, device=device, dtype=FLOAT64) for xyz, *_ in data
+        ]
         atomic_numbers = [torch.tensor(q, device=device) for _, q, *_ in data]
 
         charges = [torch.tensor(chrg, device=device) for *_, chrg, _ in data]
@@ -107,7 +107,6 @@ class Datareader:
 
         # convert into geometry object
         return Geometry(atomic_numbers, positions, charges, unpaired_e, units="bohr")
-
 
     def get_dataloader(geometry: Geometry, cfg: dict = None) -> DataLoader:
         """
@@ -128,7 +127,7 @@ class Datareader:
             for i in range(1, len(batch)):
                 batch_geometry = batch_geometry + batch[i]
             return batch_geometry
-        
+
         if "collate_fn" not in cfg:
             cfg["collate_fn"] = collate_fn
 
