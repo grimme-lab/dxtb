@@ -3,8 +3,7 @@ from math import log10, sqrt
 import torch
 from typing import Union, Dict, List
 
-from ..basis.ortho import orthogonalize
-from ..basis.slater import slater_to_gauss
+from ..basis import slater, orthogonalize
 from ..exlibs.tbmalt import Geometry
 from ..param import Param, Element
 from ..constants import UINT8 as DTYPE_INT
@@ -26,16 +25,16 @@ _aqm2lsh = {
 class Cgto_Type:
     """Contracted Gaussian type basis function"""
 
-    def __init__(self):
+    def __init__(self, ang, alpha, coeff):
         # Angular momentum of this basis function
-        self.ang = -1
+        self.ang = ang
         # Contraction length of this basis function
-        self.nprim = 0
+        self.nprim = min(alpha.shape[-1], coeff.shape[-1])
         # Exponent of the primitive Gaussian functions
-        self.alpha = torch.zeros(MAXG, dtype=DTYPE_FLOAT)
+        self.alpha = alpha
         # Contraction coefficients of the primitive Gaussian functions,
         # might contain normalization
-        self.coeff = torch.zeros(MAXG, dtype=DTYPE_FLOAT)
+        self.coeff = coeff
 
     def __str__(self):
         return f"cgto( l:{self.ang} | ng:{self.nprim} | alpha:{self.alpha} | coeff:{self.coeff} )"
@@ -170,13 +169,21 @@ def _process_record(record: Element) -> List[Cgto_Type]:
         else:
             ang_idx[il] = ish
 
-        cgtoi = Cgto_Type()
-        slater_to_gauss(ng, pqn[ish], il, record.slater[ish], cgtoi, True)
+        cgtoi = Cgto_Type(
+            il, *slater.to_gauss(ng, pqn[ish], il, torch.tensor(record.slater[ish]))
+        )
         cgto.append(cgtoi)
 
     for ish in range(nsh):
         if ortho[ish] is not None:
-            cgto[ish] = orthogonalize(cgto[ortho[ish]], cgto[ish])
+            cgto[ish] = Cgto_Type(
+                lsh[ish],
+                *orthogonalize(
+                    lsh[ish],
+                    (cgto[ortho[ish]].alpha, cgto[ish].alpha),
+                    (cgto[ortho[ish]].coeff, cgto[ish].coeff),
+                ),
+            )
 
     return cgto
 

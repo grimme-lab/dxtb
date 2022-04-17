@@ -1,45 +1,54 @@
 """ Gram-Schmidt orthonormalization routines for contracted Gaussian basis functions """
 import math
+import torch
 
 
-def orthogonalize(cgtoi, cgtoj):
-    """Orthogonalize a contracted Gaussian basis function to an existing basis function
+def orthogonalize(angular, alpha, coeff):
+    """
+    Orthogonalize a contracted Gaussian basis function to an existing basis function.
+    The second basis function is orthonormalized against the first basis function
 
     Args:
-        cgtoi (Cgto_Type): Existing basis function
-        cgtoj (Cgto_Type): Basis function to orthogonalize
+        coeff: (Tensor, Tensor)
+            Contraction coefficients for the shell pair.
+        alpha: (Tensor, Tensor)
+            Primitive Gaussian exponents for the shell pair.
+            the second basis function is orthonormalized against the first basis function
 
     Returns:
-        cgtoj (Cgto_Type):: Orthogonalized version of cgtoj
+        (Tensor, Tensor)
+            Primitive Gaussian exponents and contraction coefficients for
+            the orthonormalized basis function.
     """
 
-    if cgtoi.ang != cgtoj.ang:
-        return cgtoj
+    coeff_i, coeff_j = coeff
+    alpha_i, alpha_j = alpha
 
-    # cgtoi
+    coeff_new = coeff_i.new_zeros((coeff_i.shape[-1] + coeff_j.shape[-1]))
+    alpha_new = alpha_i.new_zeros((alpha_i.shape[-1] + alpha_j.shape[-1]))
+
+    # Calculate overlap between basis functions
     overlap = 0.0
-    for ipr in range(cgtoi.nprim):
-        for jpr in range(cgtoj.nprim):
-            eab = cgtoi.alpha[ipr] + cgtoj.alpha[jpr]
+    for ai, ci in zip(alpha_i, coeff_i):
+        for aj, cj in zip(alpha_j, coeff_j):
+            eab = ai + aj
             oab = 1.0 / eab
-            kab = math.sqrt(math.pi * oab) ** 3
-            overlap += cgtoi.coeff[ipr] * cgtoj.coeff[jpr] * kab
+            kab = torch.sqrt(math.pi * oab) ** 3
+            overlap += ci * cj * kab
 
-    cgtoj.alpha[cgtoj.nprim : cgtoj.nprim + cgtoi.nprim] = cgtoi.alpha[: cgtoi.nprim]
-    cgtoj.coeff[cgtoj.nprim : cgtoj.nprim + cgtoi.nprim] = (
-        -overlap * cgtoi.coeff[: cgtoi.nprim]
-    )
-    cgtoj.nprim += cgtoi.nprim
+    # Create new basis function from the pair which is orthogonal to the first basis function
+    alpha_new[:alpha_j.shape[-1]], alpha_new[alpha_j.shape[-1]:] = alpha_j, alpha_i
+    coeff_new[:coeff_j.shape[-1]], coeff_new[coeff_j.shape[-1]:] = coeff_j, -overlap * coeff_i
 
-    # cgtoj
+    # Normalization of the new basis function might be off, calculate self overlap
     overlap = 0.0
-    for ipr in range(cgtoj.nprim):
-        for jpr in range(cgtoj.nprim):
-            eab = cgtoj.alpha[ipr] + cgtoj.alpha[jpr]
+    for ai, ci in zip(alpha_new, coeff_new):
+        for aj, cj in zip(alpha_new, coeff_new):
+            eab = ai + aj
             oab = 1.0 / eab
-            kab = math.sqrt(math.pi * oab) ** 3
-            overlap = overlap + cgtoj.coeff[ipr] * cgtoj.coeff[jpr] * kab
+            kab = torch.sqrt(math.pi * oab) ** 3
+            overlap += ci * cj * kab
 
-    cgtoj.coeff[: cgtoj.nprim] = cgtoj.coeff[: cgtoj.nprim] / math.sqrt(overlap)
+    coeff_new /= torch.sqrt(overlap)
 
-    return cgtoj
+    return alpha_new, coeff_new
