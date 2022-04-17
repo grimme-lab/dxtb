@@ -10,6 +10,7 @@ from xtbml.constants import AA2AU, PSE
 # Covalent radii (taken from Pyykko and Atsumi, Chem. Eur. J. 15, 2009,
 #  188-197), values for metals decreased by 10 %
 covalent_rad_2009 = AA2AU * tensor([ 
+    0.00,  # None
     0.32,0.46,  # H,He
     1.20,0.94,0.77,0.75,0.71,0.63,0.64,0.67,  # Li-Ne
     1.40,1.25,1.13,1.04,1.10,1.02,0.99,0.96,  # Na-Ar
@@ -92,7 +93,7 @@ def get_covalent_rad_num(num: int) -> float:
         float: Covalent radius
     """
     if num > 0 and num <= len(covalent_rad_d3):
-        rad = covalent_rad_d3[num - 1].item()
+        rad = covalent_rad_d3[num].item()
     else:
         rad = 0.0
     return rad
