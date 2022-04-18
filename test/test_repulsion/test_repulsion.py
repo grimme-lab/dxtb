@@ -96,7 +96,7 @@ class TestRepulsion(TestCase):
         n_atoms = geometry.get_length(unique=False)
 
         # numerical gradient
-        gradient = torch.zeros((n_atoms, 3))
+        gradient = torch.zeros(n_atoms, 3)
         step = 1.0e-6
 
         for i in range(n_atoms):
@@ -162,8 +162,8 @@ class TestRepulsion(TestCase):
             reference_gradient=numerical_gradient,
         )
 
-    def stest_gfn1_batch(self):
-        sample1, sample2 = data["MB16_43_01"], data["SiH4"]
+    def test_gfn1_batch_energy(self):
+        sample1, sample2 = data["MB16_43_01"], data["MB16_43_01"]
         geometry = Geometry(
             batch.pack(
                 (
@@ -179,7 +179,7 @@ class TestRepulsion(TestCase):
             ),
         )
 
-        reference_energy = torch.tensor([0.16777923624986593, 0.12702003611285190])
+        reference_energy = torch.tensor([0.16777923624986593, 0.16777923624986593])
         reference_gradient = None
 
         self.base_test(
@@ -189,6 +189,41 @@ class TestRepulsion(TestCase):
             reference_gradient=reference_gradient,
         )
 
+    def test_gfn1_batch_grad(self):
+        sample1, sample2 = data["MB16_43_01"], data["SiH4"]
+        geometries = Geometry(
+            batch.pack(
+                (
+                    symbol2number(sample1["elements"]),
+                    symbol2number(sample2["elements"]),
+                )
+            ),
+            batch.pack(
+                (
+                    sample1["xyz"],
+                    sample2["xyz"],
+                )
+            ),
+        )
+
+        # get reference gradients by just looping over geometries
+        grads = []
+        for geometry in geometries:
+            repulsion = self.repulsion_gfn1(geometry)
+            grad = self.calc_numerical_gradient(geometry, repulsion, self.cutoff)
+            grads.append(grad)
+
+        numerical_gradient = batch.pack(grads)
+
+        self.base_test(
+            geometry=geometries,
+            repulsion_factory=self.repulsion_gfn1,
+            reference_energy=None,
+            reference_gradient=numerical_gradient,
+        )
+
+    # REQUIRES GFN2-XTB PARAMETRIZATION
+    """
     def stest_mb1643_02_gfn2(self):
         sample = data["MB16_43_02"]
 
@@ -223,6 +258,7 @@ class TestRepulsion(TestCase):
             reference_energy=None,
             reference_gradient=numerical_gradient,
         )
+    """
 
     # REQUIRES PBC implementation
     """def test_uracil_gfn2(self):
