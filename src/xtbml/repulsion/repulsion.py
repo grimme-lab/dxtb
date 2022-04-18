@@ -123,6 +123,11 @@ class Repulsion(Energy_Contribution):
         EPS = 2.220446049250313e-16
 
         distances = geometry.distances
+
+        # Calculate repulsion only for distances smaller than cutoff
+        if cutoff is not None:
+            distances = torch.where(distances <= cutoff, distances, 0.0)
+
         distances += EPS
 
         # Eq.13: R_AB ** k_f
