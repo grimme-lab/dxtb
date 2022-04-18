@@ -6,14 +6,11 @@ from torch import Tensor
 from xtbml.exlibs.tbmalt import Geometry, batch
 from xtbml.repulsion.repulsion import Repulsion
 from xtbml.utils import symbol2number
-
 from .test_repulsion_data import data
 
 from xtbml.param.gfn1 import GFN1_XTB
 
-import warnings
-
-warnings.filterwarnings("ignore", category=UserWarning)
+from samples import mb16_43
 
 
 class TestRepulsion(TestCase):
@@ -51,9 +48,9 @@ class TestRepulsion(TestCase):
         self,
         geometry: Geometry,
         repulsion_factory: Callable,
-        reference_energy: Union[List[Tensor], Tensor, None],
+        reference_energy: Union[Tensor, None],
         reference_gradient: Union[Tensor, None],
-    ):
+    ) -> None:
         """Wrapper for testing versus reference energy and gradient"""
 
         # factory to produce repulsion objects
@@ -86,11 +83,9 @@ class TestRepulsion(TestCase):
                 msg=f"Gradient not correct:\n {gradient} vs. {reference_gradient}",
             )
 
-        return
-
     def calc_numerical_gradient(
         self, geometry: Geometry, repulsion: Repulsion, cutoff: float
-    ):
+    ) -> Tensor:
         """Calculate gradient numerically for reference."""
 
         n_atoms = geometry.get_length(unique=False)
@@ -111,13 +106,15 @@ class TestRepulsion(TestCase):
 
         return gradient
 
-    def test_mb1643_01_gfn1(self):
-        sample = data["MB16_43_01"]
+    def test_gfn1_mb1643_01(self):
+        sample = mb16_43["01"]
 
-        atomic_numbers = symbol2number(sample["elements"])
-        geometry = Geometry(atomic_numbers=atomic_numbers, positions=sample["xyz"])
+        atomic_numbers = symbol2number(sample["symbols"])
+        geometry = Geometry(
+            atomic_numbers=atomic_numbers, positions=sample["positions"]
+        )
 
-        reference_energy = torch.tensor(0.16777923624986593)
+        reference_energy = torch.tensor(sample["ref"]["gfn1"]["repulsion"])
         reference_gradient = None
 
         self.base_test(
@@ -127,13 +124,15 @@ class TestRepulsion(TestCase):
             reference_gradient=reference_gradient,
         )
 
-    def test_mb1643_02_gfn1(self):
-        sample = data["MB16_43_02"]
+    def test_gfn1_mb1643_02(self):
+        sample = mb16_43["02"]
 
-        atomic_numbers = symbol2number(sample["elements"])
-        geometry = Geometry(atomic_numbers=atomic_numbers, positions=sample["xyz"])
+        atomic_numbers = symbol2number(sample["symbols"])
+        geometry = Geometry(
+            atomic_numbers=atomic_numbers, positions=sample["positions"]
+        )
 
-        reference_energy = torch.tensor(0.12702003611285190)
+        reference_energy = torch.tensor(sample["ref"]["gfn1"]["repulsion"])
         reference_gradient = None
 
         self.base_test(
@@ -143,11 +142,13 @@ class TestRepulsion(TestCase):
             reference_gradient=reference_gradient,
         )
 
-    def test_mb1643_03_gfn1(self):
-        sample = data["MB16_43_03"]
+    def test_gfn1_grad_mb1643_03(self):
+        sample = mb16_43["03"]
 
-        atomic_numbers = symbol2number(sample["elements"])
-        geometry = Geometry(atomic_numbers=atomic_numbers, positions=sample["xyz"])
+        atomic_numbers = symbol2number(sample["symbols"])
+        geometry = Geometry(
+            atomic_numbers=atomic_numbers, positions=sample["positions"]
+        )
 
         # get reference gradient
         repulsion = self.repulsion_gfn1(geometry)
@@ -162,24 +163,29 @@ class TestRepulsion(TestCase):
             reference_gradient=numerical_gradient,
         )
 
-    def test_gfn1_batch_energy(self):
-        sample1, sample2 = data["MB16_43_01"], data["MB16_43_01"]
+    def test_gfn1_batch(self):
+        sample1, sample2 = mb16_43["01"], mb16_43["SiH4"]
         geometry = Geometry(
             batch.pack(
                 (
-                    symbol2number(sample1["elements"]),
-                    symbol2number(sample2["elements"]),
+                    symbol2number(sample1["symbols"]),
+                    symbol2number(sample2["symbols"]),
                 )
             ),
             batch.pack(
                 (
-                    sample1["xyz"],
-                    sample2["xyz"],
+                    sample1["positions"],
+                    sample2["positions"],
                 )
             ),
         )
 
-        reference_energy = torch.tensor([0.16777923624986593, 0.16777923624986593])
+        reference_energy = torch.tensor(
+            [
+                sample1["ref"]["gfn1"]["repulsion"],
+                sample2["ref"]["gfn1"]["repulsion"],
+            ]
+        )
         reference_gradient = None
 
         self.base_test(
@@ -190,18 +196,18 @@ class TestRepulsion(TestCase):
         )
 
     def test_gfn1_batch_grad(self):
-        sample1, sample2 = data["MB16_43_01"], data["SiH4"]
+        sample1, sample2 = mb16_43["01"], mb16_43["SiH4"]
         geometries = Geometry(
             batch.pack(
                 (
-                    symbol2number(sample1["elements"]),
-                    symbol2number(sample2["elements"]),
+                    symbol2number(sample1["symbols"]),
+                    symbol2number(sample2["symbols"]),
                 )
             ),
             batch.pack(
                 (
-                    sample1["xyz"],
-                    sample2["xyz"],
+                    sample1["positions"],
+                    sample2["positions"],
                 )
             ),
         )
@@ -227,8 +233,8 @@ class TestRepulsion(TestCase):
     def stest_mb1643_02_gfn2(self):
         sample = data["MB16_43_02"]
 
-        atomic_numbers = symbol2number(sample["elements"])
-        geometry = Geometry(atomic_numbers=atomic_numbers, positions=sample["xyz"])
+        atomic_numbers = symbol2number(sample["symbols"])
+        geometry = Geometry(atomic_numbers=atomic_numbers, positions=sample["positions"])
 
         reference_energy = torch.tensor(0.10745931926703985)
         reference_gradient = None
@@ -243,8 +249,8 @@ class TestRepulsion(TestCase):
     def stest_mb1643_04_gfn2(self):
         sample = data["MB16_43_04"]
 
-        atomic_numbers = symbol2number(sample["elements"])
-        geometry = Geometry(atomic_numbers=atomic_numbers, positions=sample["xyz"])
+        atomic_numbers = symbol2number(sample["symbols"])
+        geometry = Geometry(atomic_numbers=atomic_numbers, positions=sample["positions"])
 
         # get reference gradient
         repulsion = self.repulsion_gfn2(geometry)
@@ -264,10 +270,10 @@ class TestRepulsion(TestCase):
     """def test_uracil_gfn2(self):
         sample = data["uracil"]
 
-        atomic_numbers = symbol2number(sample["elements"])
-        geometry = Geometry(atomic_numbers=atomic_numbers,positions=sample["xyz"])
+        atomic_numbers = symbol2number(sample["symbols"])
+        geometry = Geometry(atomic_numbers=atomic_numbers,positions=sample["positions"])
 
-        reference_energy = Tensor(1.0401472262740301)
+        reference_energy = torch.tensor(1.0401472262740301)
         reference_gradient = None
         self.base_test(geometry=geometry, 
                     repulsion_factory=self.repulsion_gfn2,

@@ -1,28 +1,23 @@
 # This file is part of xtbml.
 
-"""
-Definition of repulsion energy terms.
-
-"""
+"""Definition of repulsion energy terms."""
 
 from typing import Dict, Optional, Union, Tuple
 from torch import Tensor
 import torch
-from math import sqrt, exp
 
 from xtbml.constants.torch import FLOAT64
 from xtbml.exlibs.tbmalt import Geometry
-from xtbml.param.base import Param
 from xtbml.param.element import Element
 from xtbml.param.repulsion import EffectiveRepulsion
 
-from .base import Energy_Contribution
+from .base import EnergyContribution
 
 
 torch.set_default_dtype(FLOAT64)  # required for repulsion tests (esp. gradients)
 
 
-class Repulsion(Energy_Contribution):
+class Repulsion(EnergyContribution):
     """
     Classical repulsion interaction as used with the xTB Hamiltonian.
     Calculated is the effective repulsion as given in the TB framework.

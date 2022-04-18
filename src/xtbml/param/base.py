@@ -29,15 +29,15 @@ class Param(BaseModel):
     Complete self-contained representation of an extended tight-binding model.
     """
 
-    meta: Meta
+    meta: Optional[Meta]
     """Descriptive data on the model"""
     element: Dict[str, Element]
     """Element specific parameter records"""
     hamiltonian: Hamiltonian
     """Definition of the Hamiltonian, always required"""
-    dispersion: Dispersion
+    dispersion: Optional[Dispersion]
     """Definition of the dispersion correction (not implemented)"""
-    repulsion: Repulsion
+    repulsion: Optional[Repulsion]
     """Definition of the repulsion contribution"""
     charge: Optional[dict] = None
     """Definition of the isotropic second-order charge interactions (not implemented)"""
