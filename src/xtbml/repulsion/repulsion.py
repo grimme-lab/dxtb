@@ -38,7 +38,15 @@ class Repulsion(Energy_Contribution):
     kexp: Optional[Tensor] = None  # shape [87]
     """Scaling of the repulsion exponents, pairwise parameters for all element pairs"""
 
-    def get_kexp(self, par_repulsion: EffectiveRepulsion):
+    def get_kexp(self, par_repulsion: EffectiveRepulsion) -> Tensor:
+        """Obtain exponential scaling factors of effective repulsion.
+
+        Args:
+            par_repulsion (EffectiveRepulsion): Repulsion parametrization.
+
+        Returns:
+            Tensor: Exponential scaling factors of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
+        """
         tnsr = torch.ones(87) * par_repulsion.kexp
 
         # dummy for indexing with atomic numbers
@@ -51,6 +59,14 @@ class Repulsion(Energy_Contribution):
         return tnsr
 
     def get_alpha(self, par: Dict[str, Element]) -> Tensor:
+        """Obtain alpha parameters as tensors.
+
+        Args:
+            par (Dict[str, Element]): Parametrization of elements.
+
+        Returns:
+            Tensor: Alpha parameter of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
+        """
         a = torch.zeros(87)
 
         # dummy for indexing with atomic numbers
@@ -62,6 +78,14 @@ class Repulsion(Energy_Contribution):
         return a
 
     def get_zeff(self, par: Dict[str, Element]) -> Tensor:
+        """Obtain effective charges as tensors.
+
+        Args:
+            par (Dict[str, Element]): Parametrization of elements.
+
+        Returns:
+            Tensor: Effective charges of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
+        """
         z = torch.zeros(87)
 
         # dummy for indexing with atomic numbers
@@ -75,8 +99,14 @@ class Repulsion(Energy_Contribution):
     def setup(
         self, par_element: Dict[str, Element], par_repulsion: EffectiveRepulsion
     ) -> None:
-        """Setup internal variables."""
+        """Setup internal variables.
 
+        Args:
+            par_element (Dict[str, Element]): Parametrization of elements.
+            par_repulsion (EffectiveRepulsion): Parametrization of repulsion.
+        """
+
+        # get parameters and format to tensors
         alpha = self.get_alpha(par_element)
         zeff = self.get_zeff(par_element)
         kexp = self.get_kexp(par_repulsion)
@@ -94,28 +124,28 @@ class Repulsion(Energy_Contribution):
         self.alpha = torch.sqrt(
             alpha[numbers].unsqueeze(-2) * alpha[numbers].unsqueeze(-1)
         )
+        self.alpha[mask] = 0
+
         self.zeff = zeff[numbers].unsqueeze(-2) * zeff[numbers].unsqueeze(-1)
+        self.zeff[mask] = 0
 
         self.kexp = kexp[numbers].unsqueeze(-2) * kexp.new_ones(kexp.shape)[
             numbers
         ].unsqueeze(-1)
-
-        self.alpha[mask] = 0
-        self.zeff[mask] = 0
         self.kexp[mask] = 0
 
     def get_engrad(
         self, geometry: Geometry, cutoff: float, calc_gradient: bool = False
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
-        """
-        Obtain repulsion energy and gradient.
+        """Obtain repulsion energy and gradient.
 
         Args:
-           geometry (Geometry): Molecular structure data
-           cutoff (float): Real space cutoff
+            geometry (Geometry): Structure data.
+            cutoff (float): Real space cutoff.
+            calc_gradient (bool, optional): Flag for calculating gradient. Defaults to False.
 
         Returns:
-           Tensor: Repulsion energy and gradient
+            Union[Tensor, Tuple[Tensor, Tensor]]: Repulsion energy (and gradient).
         """
 
         # FIXME?: add epsilon to avoid zero division in some terms (gives inf)
@@ -140,21 +170,28 @@ class Repulsion(Energy_Contribution):
         dE = self.zeff * exp_term / distances
 
         # Eq.13: sum up and rectify double counting (symmetric matrix)
-        s = 0.5 * torch.sum(dE, dim=(-2, -1))
+        sum_dE = 0.5 * torch.sum(dE, dim=(-2, -1))
 
-        if calc_gradient:
-            # dG.shape: (n_atoms, n_atoms)
+        if calc_gradient is not False:
             dG = -(self.alpha * r1k * self.kexp + 1.0) * dE
+            # >>> print(dG.shape)
+            # torch.Size([n_batch, n_atoms, n_atoms])
 
             rij = geometry.distance_vectors
+            # >>> print(rij.shape)
+            # torch.Size([n_batch, n_atoms, n_atoms, 3])
             r2 = torch.sum(torch.pow(rij, 2), dim=-1, keepdim=True) + EPS
+            # >>> print(r2.shape)
+            # torch.Size([n_batch, n_atoms, n_atoms, 1])
 
-            # dG.shape: (n_atoms, n_atoms, 3)
             dG = dG.unsqueeze(-1) * rij / r2
+            # >>> print(dG.shape)
+            # torch.Size([n_batch, n_atoms, n_atoms, 3])
 
-            # dG.shape: (n_atoms, 3)
             dG = torch.sum(dG, dim=-2)
+            # >>> print(dG.shape)
+            # torch.Size([n_batch, n_atoms, 3])
 
-            return s, dG
+            return sum_dE, dG
         else:
-            return s
+            return sum_dE
