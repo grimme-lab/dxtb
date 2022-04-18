@@ -12,6 +12,9 @@ from math import sqrt, exp
 
 from xtbml.constants.torch import FLOAT64
 from xtbml.exlibs.tbmalt import Geometry
+from xtbml.param.base import Param
+from xtbml.param.element import Element
+from xtbml.param.repulsion import EffectiveRepulsion
 
 from .base import Energy_Contribution
 
@@ -35,25 +38,48 @@ class Repulsion(Energy_Contribution):
     kexp: Optional[Tensor] = None  # shape [87]
     """Scaling of the repulsion exponents, pairwise parameters for all element pairs"""
 
-    def get_kexp_as_tensor(self, gfn_repulsion):
-        tnsr = torch.ones(87) * gfn_repulsion.kexp
+    def get_kexp(self, par_repulsion: EffectiveRepulsion):
+        tnsr = torch.ones(87) * par_repulsion.kexp
 
         # dummy for indexing with atomic numbers
         tnsr[0] = -999999
 
         # change value for H and He
-        if gfn_repulsion.kexp_light is not None:
-            tnsr[1:3] = gfn_repulsion.kexp_light
+        if par_repulsion.kexp_light is not None:
+            tnsr[1:3] = par_repulsion.kexp_light
 
         return tnsr
 
+    def get_alpha(self, par: Dict[str, Element]) -> Tensor:
+        a = torch.zeros(87)
+
+        # dummy for indexing with atomic numbers
+        a[0] = -999999
+
+        for i, item in enumerate(par.values()):
+            a[i + 1] = item.arep
+
+        return a
+
+    def get_zeff(self, par: Dict[str, Element]) -> Tensor:
+        z = torch.zeros(87)
+
+        # dummy for indexing with atomic numbers
+        z[0] = -999999
+
+        for i, item in enumerate(par.values()):
+            z[i + 1] = item.zeff
+
+        return z
+
     def setup(
-        self,
-        alpha: Tensor,
-        zeff: Tensor,
-        kexp_data: Dict[str, Union[float, None]],
+        self, par_element: Dict[str, Element], par_repulsion: EffectiveRepulsion
     ) -> None:
         """Setup internal variables."""
+
+        alpha = self.get_alpha(par_element)
+        zeff = self.get_zeff(par_element)
+        kexp = self.get_kexp(par_repulsion)
 
         numbers = self.geometry.atomic_numbers
 
@@ -64,13 +90,12 @@ class Repulsion(Energy_Contribution):
         # set diagonal to 0 to remove A=B case in summation
         torch.diagonal(mask, dim1=-2, dim2=-1)[:] = True
 
-        # create padded array
+        # create padded arrays
         self.alpha = torch.sqrt(
             alpha[numbers].unsqueeze(-2) * alpha[numbers].unsqueeze(-1)
         )
         self.zeff = zeff[numbers].unsqueeze(-2) * zeff[numbers].unsqueeze(-1)
 
-        kexp = self.get_kexp_as_tensor(kexp_data)
         self.kexp = kexp[numbers].unsqueeze(-2) * kexp.new_ones(kexp.shape)[
             numbers
         ].unsqueeze(-1)
@@ -78,33 +103,6 @@ class Repulsion(Energy_Contribution):
         self.alpha[mask] = 0
         self.zeff[mask] = 0
         self.kexp[mask] = 0
-
-        # OLD CODE
-        # if len(alpha.shape) != 1:
-        #     raise ValueError("shape mismatch: expect 1D")
-        # if len(zeff.shape) != 1:
-        #     raise ValueError("shape mismatch: expect 1D")
-
-        # l = self.geometry.get_length(unique=True)
-        # self.alpha = torch.zeros((l, l))
-        # self.zeff = torch.zeros((l, l))
-        # self.kexp = torch.zeros((l, l))
-
-        # for i in range(l):
-        #     for j in range(l):
-        #         self.alpha[i, j] = sqrt(alpha[i] * alpha[j])
-
-        # for i in range(l):
-        #     for j in range(l):
-        #         self.zeff[i, j] = zeff[i] * zeff[j]
-
-        # for i in range(l):
-        #     iz = self.geometry.unique_atomic_numbers()[i]
-        #     for j in range(l):
-        #         jz = self.geometry.unique_atomic_numbers()[j]
-        #         self.kexp[i, j] = kexp if (iz > 2 or jz > 2) else kexp_light
-
-        # self.rexp = torch.ones(l, l) * rexp
 
     def get_engrad(
         self, geometry: Geometry, cutoff: float, calc_gradient: bool = False
@@ -120,12 +118,12 @@ class Repulsion(Energy_Contribution):
            Tensor: Repulsion energy and gradient
         """
 
-        # TODO: implement cutoff
-        # cutoff2 = cutoff**2
-
-        # FIXME?: add epsilon to avoid zero division in dE term (gives inf)
+        # FIXME?: add epsilon to avoid zero division in some terms (gives inf)
         # -> in ncoord problem is mitigated by exp(-inf) = 0
-        distances = geometry.distances + 2.220446049250313e-16
+        EPS = 2.220446049250313e-16
+
+        distances = geometry.distances
+        distances += EPS
 
         # Eq.13: R_AB ** k_f
         r1k = torch.pow(distances, self.kexp)
@@ -139,73 +137,19 @@ class Repulsion(Energy_Contribution):
         # Eq.13: sum up and rectify double counting (symmetric matrix)
         s = 0.5 * torch.sum(dE, dim=(-2, -1))
 
-        # TODO
         if calc_gradient:
-            rij_r2 = 1
-            # dG_vec = -(self.alpha * r1k * self.kexp + REXP) * dE * rij_r2
-            # print("grad vec", dG_vec)
-            return s, s
+            # dG.shape: (n_atoms, n_atoms)
+            dG = -(self.alpha * r1k * self.kexp + 1.0) * dE
+
+            rij = geometry.distance_vectors
+            r2 = torch.sum(torch.pow(rij, 2), dim=-1, keepdim=True) + EPS
+
+            # dG.shape: (n_atoms, n_atoms, 3)
+            dG = dG.unsqueeze(-1) * rij / r2
+
+            # dG.shape: (n_atoms, 3)
+            dG = torch.sum(dG, dim=-2)
+
+            return s, dG
         else:
             return s
-
-        # OLD CODE
-        # for (iat, jat) in geometry.generate_interactions(unique=False):
-        #     iat, jat = iat.item(), jat.item()
-
-        #     # geometry accessed by atom index
-        #     rij = geometry.positions[iat, :] - geometry.positions[jat, :]
-
-        #     # translate atom index to unique species index
-        #     # (== index of atomic number in unique)
-        #     idx_i = geometry.get_species_index(geometry.atomic_numbers[iat])
-        #     idx_j = geometry.get_species_index(geometry.atomic_numbers[jat])
-
-        #     # distances within cutoff
-        #     r2 = sum(rij**2)
-        #     if r2 > cutoff2 or r2 < 1.0e-12:
-        #         continue
-        #     r1 = torch.sqrt(r2)
-
-        #     # R_AB ** k_f
-        #     r1k = r1 ** self.kexp[idx_i, idx_j]
-
-        #     # exp(- (alpha_A * alpha_B)**2 )
-        #     exa = exp(-self.alpha[idx_i, idx_j] * r1k)
-
-        #     # ????
-        #     r1r = r1 ** self.rexp[idx_i, idx_j]
-
-        #     dE = self.zeff[idx_i, idx_j] * exa / r1r
-
-        #     if calc_gradient:
-        #         dG = (
-        #             -(
-        #                 self.alpha[idx_i, idx_j] * r1k * self.kexp[idx_i, idx_j]
-        #                 + self.rexp[idx_i, idx_j]
-        #             )
-        #             * dE
-        #             * rij
-        #             / r2
-        #         )
-
-        #     # partition energy and gradient equally on contributing atoms
-        #     energies[iat] = energies[iat] + 0.5 * dE
-
-        #     if iat != jat:
-        #         energies[jat] = energies[jat] + 0.5 * dE
-
-        #         if calc_gradient:
-        #             gradient[iat, :] = gradient[iat, :] + dG
-        #             gradient[jat, :] = gradient[jat, :] - dG
-        #     else:
-        #         # should never happen, since iat==jat --> r2==0.0
-        #         # NOTE: only for PBC with transition vector this might be raised
-        #         raise ValueError
-
-        # energies = torch.sum(energies)
-
-        # if calc_gradient:
-        #     print("final gradient", gradient)
-        #     return energies, gradient
-        # else:
-        #     return energies

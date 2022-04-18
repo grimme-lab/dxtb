@@ -32,125 +32,18 @@ class TestRepulsion(TestCase):
     def repulsion_gfn1(self, geometry: Geometry) -> Repulsion:
         """Factory for repulsion construction based on GFN1-xTB"""
 
-        # parameter library
-        alpha_gfn1 = torch.tensor(
-            [
-                -9999999,  # dummy
-                2.209700,
-                1.382907,
-                0.671797,
-                0.865377,
-                1.093544,
-                1.281954,
-                1.727773,
-                2.004253,
-                2.507078,
-                3.038727,
-                0.704472,
-                0.862629,
-                0.929219,
-                0.948165,
-                1.067197,
-                1.200803,
-                1.404155,
-                1.323756,
-                0.581529,
-                0.665588,
-            ]
-        )
-        zeff_gfn1 = torch.tensor(
-            [
-                -9999999,  # dummy
-                1.116244,
-                0.440231,
-                2.747587,
-                4.076830,
-                4.458376,
-                4.428763,
-                5.498808,
-                5.171786,
-                6.931741,
-                9.102523,
-                10.591259,
-                15.238107,
-                16.283595,
-                16.898359,
-                15.249559,
-                15.100323,
-                17.000000,
-                17.153132,
-                20.831436,
-                19.840212,
-            ]
-        )
-
-        kexp = GFN1_XTB.repulsion.effective
-
         # setup repulsion
         repulsion = Repulsion(geometry=geometry)
-        repulsion.setup(alpha_gfn1, zeff_gfn1, kexp)
+        repulsion.setup(GFN1_XTB.element, GFN1_XTB.repulsion.effective)
 
         return repulsion
 
     def repulsion_gfn2(self, geometry: Geometry) -> Repulsion:
         """Factory for repulsion construction based on GFN2-xTB"""
 
-        # parameter library
-        alpha_gfn2 = torch.tensor(
-            [
-                2.213717,
-                3.604670,
-                0.475307,
-                0.939696,
-                1.373856,
-                1.247655,
-                1.682689,
-                2.165712,
-                2.421394,
-                3.318479,
-                0.572728,
-                0.917975,
-                0.876623,
-                1.187323,
-                1.143343,
-                1.214553,
-                1.577144,
-                0.896198,
-                0.482206,
-                0.683051,
-            ]
-        )
-        zeff_gfn2 = torch.tensor(
-            [
-                1.105388,
-                1.094283,
-                1.289367,
-                4.221216,
-                7.192431,
-                4.231078,
-                5.242592,
-                5.784415,
-                7.021486,
-                11.041068,
-                5.244917,
-                18.083164,
-                17.867328,
-                40.001111,
-                19.683502,
-                14.995090,
-                17.353134,
-                7.266606,
-                10.439482,
-                14.786701,
-            ]
-        )
-
-        # kexp = GFN_XTB2.repulsion.effective.kexp
-        kexp = {"kexp": 1.5, "kexp_light": 1.0}
-
         # setup repulsion
         repulsion = Repulsion(geometry=geometry)
-        repulsion.setup(alpha_gfn2, zeff_gfn2, kexp)
+        # repulsion.setup(GFN2_XTB.element, GFN2_XTB.repulsion.effective)
 
         return repulsion
 
@@ -168,8 +61,6 @@ class TestRepulsion(TestCase):
         energy, gradient = repulsion.get_engrad(
             geometry=geometry, cutoff=self.cutoff, calc_gradient=True
         )
-        print(energy)
-        print(reference_energy)
 
         # test against reference values
         if reference_energy is not None:
@@ -236,7 +127,7 @@ class TestRepulsion(TestCase):
             reference_gradient=reference_gradient,
         )
 
-    def stest_mb1643_02_gfn1(self):
+    def test_mb1643_02_gfn1(self):
         sample = data["MB16_43_02"]
 
         atomic_numbers = symbol2number(sample["elements"])
@@ -252,7 +143,7 @@ class TestRepulsion(TestCase):
             reference_gradient=reference_gradient,
         )
 
-    def stest_mb1643_03_gfn1(self):
+    def test_mb1643_03_gfn1(self):
         sample = data["MB16_43_03"]
 
         atomic_numbers = symbol2number(sample["elements"])
