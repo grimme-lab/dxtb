@@ -1,7 +1,7 @@
 from typing import Dict, List, Union
 from torch import tensor
 
-from xtbml.constants import AA2AU, PSE
+from ..constants import AA2AU, PSE
 
 # TODO define interface
 

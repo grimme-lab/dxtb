@@ -1,6 +1,6 @@
 # This file is part of xtbml.
 
-from xtbml.constants import AA2AU
+from ..constants import AA2AU
 
 _atomic_rad = {
     "H": 0.32,

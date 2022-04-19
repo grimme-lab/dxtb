@@ -3,8 +3,8 @@
 import math
 import torch
 
-from xtbml.constants import FLOAT64 as DTYPE
-from xtbml.exceptions import IntegralTransformError
+from ..constants import FLOAT64 as DTYPE
+from ..exceptions import IntegralTransformError
 
 
 s3 = math.sqrt(3.0)

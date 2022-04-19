@@ -7,8 +7,8 @@ from ..data.covrad import get_covalent_rad
 from ..cutoff import get_lattice_points
 from .ncoord import exp_count, dexp_count
 
-from xtbml.constants import KCN, KA, KB, R_SHIFT, NCOORD_DEFAULT_CUTOFF
-from xtbml.exlibs.tbmalt import Geometry
+from ..constants import KCN, KA, KB, R_SHIFT, NCOORD_DEFAULT_CUTOFF
+from ..exlibs.tbmalt import Geometry
 
 # TODO: differentiate between GFN1 and GFN2
 # TODO: GfnNcoordType is currently not used...

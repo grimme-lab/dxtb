@@ -2,7 +2,7 @@ from typing import Callable, Union, List, Tuple
 import torch
 from pathlib import Path
 
-from xtbml.exlibs.tbmalt import Geometry
+from ..exlibs.tbmalt import Geometry
 
 
 class Geometry_Handler:

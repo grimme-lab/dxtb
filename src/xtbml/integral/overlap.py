@@ -5,9 +5,9 @@ import math
 import torch
 
 
-from xtbml.integral.trafo import transform0, transform1
-from xtbml.constants import FLOAT64 as DTYPE_FLOAT
-from xtbml.constants import UINT8 as DTYPE_INT
+from ..integral.trafo import transform0, transform1
+from ..constants import FLOAT64 as DTYPE_FLOAT
+from ..constants import UINT8 as DTYPE_INT
 
 
 # TODO: define interface (or just ducktyping)

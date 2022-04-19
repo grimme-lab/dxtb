@@ -3,12 +3,12 @@ from math import log10, sqrt
 import torch
 from typing import Union, Dict, List
 
-from xtbml.basis.ortho import orthogonalize
-from xtbml.basis.slater import slater_to_gauss
-from xtbml.exlibs.tbmalt import Geometry
-from xtbml.param import Param, Element
-from xtbml.constants import UINT8 as DTYPE_INT
-from xtbml.constants import FLOAT64 as DTYPE_FLOAT
+from ..basis.ortho import orthogonalize
+from ..basis.slater import slater_to_gauss
+from ..exlibs.tbmalt import Geometry
+from ..param import Param, Element
+from ..constants import UINT8 as DTYPE_INT
+from ..constants import FLOAT64 as DTYPE_FLOAT
 
 
 MAXG = 12

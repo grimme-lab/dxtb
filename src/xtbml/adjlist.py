@@ -1,8 +1,8 @@
 from numpy import finfo
 import torch
 
-from xtbml.constants import UINT8 as DTYPE
-from xtbml.exlibs.tbmalt import Geometry
+from .constants import UINT8 as DTYPE
+from .exlibs.tbmalt import Geometry
 
 
 class AdjacencyList:

@@ -3,9 +3,9 @@ from typing import List
 import torch
 from torch.utils.data import DataLoader
 
-from xtbml.exlibs.tbmalt import Geometry
-from xtbml.data.covrad import to_number
-from xtbml.constants import FLOAT64
+from ..exlibs.tbmalt import Geometry
+from ..data.covrad import to_number
+from ..constants import FLOAT64
 
 
 def walklevel(some_dir: str, level=1):
