@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from abc import ABC, abstractmethod
 from torch import Tensor
 
-from xtbml.exlibs.tbmalt import Geometry
+from ..exlibs.tbmalt import Geometry
 
 # TODO: allow for usability with base Params object
 class EnergyContribution(BaseModel, ABC):

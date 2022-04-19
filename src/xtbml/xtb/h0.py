@@ -2,14 +2,14 @@ from math import sqrt
 import torch
 from typing import List, Dict, Tuple, Union
 
-from xtbml.adjlist import AdjacencyList
-from xtbml.basis.type import Basis
-from xtbml.constants import EV2AU
-from xtbml.constants import FLOAT64 as DTYPE
-from xtbml.data.atomicrad import get_atomic_rad
-from xtbml.exlibs.tbmalt import Geometry
-from xtbml.integral.overlap import msao, overlap_cgto
-from xtbml.param import Param, Element
+from ..adjlist import AdjacencyList
+from ..basis.type import Basis
+from ..constants import EV2AU
+from ..constants import FLOAT64 as DTYPE
+from ..data.atomicrad import get_atomic_rad
+from ..exlibs.tbmalt import Geometry
+from ..integral.overlap import msao, overlap_cgto
+from ..param import Param, Element
 
 
 _aqm2lsh = {

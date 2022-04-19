@@ -2,8 +2,8 @@ import math
 from typing import Dict, Callable, Any
 import torch
 
-from xtbml.exlibs.tbmalt import Geometry
-from xtbml.constants import KCN
+from ..exlibs.tbmalt import Geometry
+from ..constants import KCN
 
 # TODO: differentiate GFN1 and GFN2
 # from xtbml.constants import KCN, KA, KB, R_SHIFT

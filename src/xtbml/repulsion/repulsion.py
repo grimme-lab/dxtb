@@ -6,9 +6,8 @@ from typing import Dict, Optional, Union, Tuple
 import torch
 from torch import Tensor
 
-from xtbml.exlibs.tbmalt import Geometry
-from xtbml.param import Element, EffectiveRepulsion
-
+from ..exlibs.tbmalt import Geometry
+from ..param import Element, EffectiveRepulsion
 from .base import EnergyContribution
 
 

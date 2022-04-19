@@ -132,9 +132,13 @@ class Geometry:
         if self.positions.device != self.positions.device:
             raise RuntimeError("All tensors must be on the same device!")
 
-        self._charges = charges if charges else torch.zeros(self.positions.shape[0])
+        self._charges = (
+            charges if charges is not None else torch.zeros(self.positions.shape[0])
+        )
         self._unpaired_e = (
-            unpaired_e if unpaired_e else torch.zeros(self.positions.shape[0])
+            unpaired_e
+            if unpaired_e is not None
+            else torch.zeros(self.positions.shape[0])
         )
 
     @property
@@ -367,6 +371,13 @@ class Geometry:
                 self.atomic_numbers.to(device=device), self.positions.to(device=device)
             )
 
+    def __len__(self) -> int:
+        """Returns length of geometry batch."""
+        if len(self.positions.shape) == 2:
+            return 1
+        else:
+            return self.positions.shape[0]
+
     def __getitem__(self, selector) -> "Geometry":
         """Permits batched Geometry instances to be sliced as needed."""
         # Block this if the instance has only a single system
@@ -375,7 +386,12 @@ class Geometry:
                 "Geometry slicing is only applicable to batches of systems."
             )
 
-        return self.__class__(self.atomic_numbers[selector], self.positions[selector])
+        return self.__class__(
+            self.atomic_numbers[selector],
+            self.positions[selector],
+            self.charges[selector],
+            self.unpaired_e[selector],
+        )
 
     def __add__(self, other: "Geometry") -> "Geometry":
         """Combine two `Geometry` objects together."""
@@ -397,7 +413,20 @@ class Geometry:
         pos_1 = pos_1 if s_batch else pos_1.unsqueeze(0)
         pos_2 = pos_2 if o_batch else pos_2.unsqueeze(0)
 
-        return self.__class__(merge([an_1, an_2]), merge([pos_1, pos_2]))
+        chrg_1 = self.charges
+        chrg_2 = other.charges
+        try:
+            chrg = torch.stack((chrg_1, chrg_2))
+        except RuntimeError:
+            chrg = torch.concat((chrg_1, chrg_2.unsqueeze(0)), dim=0)
+        ue_1 = self.unpaired_e
+        ue_2 = other.unpaired_e
+        try:
+            ue = torch.stack((ue_1, ue_2))
+        except RuntimeError:
+            ue = torch.concat((ue_1, ue_2.unsqueeze(0)), dim=0)
+
+        return self.__class__(merge([an_1, an_2]), merge([pos_1, pos_2]), chrg, ue)
 
     def __eq__(self, other: "Geometry") -> bool:
         """Check if two `Geometry` objects are equivalent."""
@@ -417,6 +446,8 @@ class Geometry:
             [
                 shape_and_value(self.atomic_numbers, other.atomic_numbers),
                 shape_and_value(self.positions, other.positions),
+                shape_and_value(self.charges, other.charges),
+                shape_and_value(self.unpaired_e, other.unpaired_e),
             ]
         )
 
@@ -459,7 +490,7 @@ class Geometry:
         if self.atomic_numbers.dim() == 1:  # If a single system
             formula = get_formula(self.atomic_numbers)
         else:  # If multiple systems
-            if self.atomic_numbers.shape[0] < 4:  # If n<4 systems; show all
+            if self.atomic_numbers.shape[0] <= 4:  # If n<4 systems; show all
                 formulas = [get_formula(an) for an in self.atomic_numbers]
                 formula = " ,".join(formulas)
             else:  # If n>4; show only the first and last two systems

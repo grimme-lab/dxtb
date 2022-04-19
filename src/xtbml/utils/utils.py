@@ -1,7 +1,7 @@
 from typing import List
 import torch
 
-from xtbml.data.covrad import to_number
+from ..data.covrad import to_number
 
 
 def symbol2number(sym_list: List[str]) -> torch.Tensor:
