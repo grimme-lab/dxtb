@@ -1,5 +1,5 @@
 import os
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import torch
 from torch.utils.data import DataLoader
 
@@ -94,7 +94,9 @@ class Datareader:
         return data, file_list
 
     def setup_geometry(
-        data: torch.Tensor, dtype: torch.dtype = FLOAT64, device=None
+        data: torch.Tensor,
+        dtype: Optional[torch.dtype] = FLOAT64,
+        device: Optional[torch.device] = None,
     ) -> Geometry:
         """Convert data tensor into batched geometry object."""
 
@@ -109,7 +111,7 @@ class Datareader:
         # convert into geometry object
         return Geometry(atomic_numbers, positions, charges, unpaired_e, units="bohr")
 
-    def get_dataloader(geometry: Geometry, cfg: dict = None) -> DataLoader:
+    def get_dataloader(geometry: Geometry, cfg: Optional[dict] = None) -> DataLoader:
         """
         Return pytorch dataloader for batch-wise iteration over Geometry object.
 
