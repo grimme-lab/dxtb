@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Tuple
 import torch
 from torch.utils.data import DataLoader
 
@@ -55,7 +55,7 @@ def read_chrg(fp: str):
 class Datareader:
     """Class to read in data from disk to Geometry object."""
 
-    def fetch_data(root: str) -> List:
+    def fetch_data(root: str) -> Tuple[List, List]:
         """Fetch all data given in root directory."""
 
         data = []
@@ -93,13 +93,14 @@ class Datareader:
 
         return data, file_list
 
-    def setup_geometry(data: torch.Tensor) -> Geometry:
+    def setup_geometry(
+        data: torch.Tensor, dtype: torch.dtype = FLOAT64, device=None
+    ) -> Geometry:
         """Convert data tensor into batched geometry object."""
-        device = None
 
-        positions = [
-            torch.tensor(xyz, device=device, dtype=FLOAT64) for xyz, *_ in data
-        ]
+        # TODO: add default dtype and device depending on config
+
+        positions = [torch.tensor(xyz, device=device, dtype=dtype) for xyz, *_ in data]
         atomic_numbers = [torch.tensor(q, device=device) for _, q, *_ in data]
 
         charges = [torch.tensor(chrg, device=device) for *_, chrg, _ in data]
