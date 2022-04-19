@@ -135,12 +135,12 @@ class Geometry:
         self._charges: Tensor = (
             pack(charges)
             if charges is not None
-            else torch.zeros(self.positions.shape[0])
+            else torch.zeros(self.positions.shape[0], dtype=torch.int8)
         )
         self._unpaired_e = (
             pack(unpaired_e)
             if unpaired_e is not None
-            else torch.zeros(self.positions.shape[0])
+            else torch.zeros(self.positions.shape[0], dtype=torch.uint8)
         )
 
     @property
