@@ -133,10 +133,12 @@ class Geometry:
             raise RuntimeError("All tensors must be on the same device!")
 
         self._charges = (
-            charges if charges != None else torch.zeros(self.positions.shape[0])
+            charges if charges is not None else torch.zeros(self.positions.shape[0])
         )
         self._unpaired_e = (
-            unpaired_e if unpaired_e != None else torch.zeros(self.positions.shape[0])
+            unpaired_e
+            if unpaired_e is not None
+            else torch.zeros(self.positions.shape[0])
         )
 
     @property
