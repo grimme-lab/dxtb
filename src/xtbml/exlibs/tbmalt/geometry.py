@@ -373,10 +373,7 @@ class Geometry:
 
     def __len__(self) -> int:
         """Returns length of geometry batch."""
-        if len(self.positions.shape) == 2:
-            return 1
-        else:
-            return self.positions.shape[0]
+        return self._n_batch
 
     def __getitem__(self, selector) -> "Geometry":
         """Permits batched Geometry instances to be sliced as needed."""
