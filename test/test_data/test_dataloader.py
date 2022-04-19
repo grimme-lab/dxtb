@@ -19,6 +19,10 @@ class Test_Dataloader(TestCase):
         self.path = "../data/gfn2-fitdata/data/"
         self.has_gfn2 = isdir(self.path)
 
+        # dtype for charges and unpaired electrons
+        self.dtype_charges = torch.int8
+        self.dtype_uhf = torch.uint8
+
     def test_dataloader_from_ase(self) -> None:
         """Test constructing a dataloader from Geometry object and config."""
 
@@ -72,13 +76,21 @@ class Test_Dataloader(TestCase):
                     msg="Inconsistent padding",
                 )
             self.assertTrue(
-                torch.equal(sample.charges, torch.tensor(0.0))  # incl. last batch
-                or torch.equal(sample.charges, torch.tensor([0.0, 0.0])),
+                torch.equal(
+                    sample.charges, torch.tensor(0, dtype=self.dtype_charges)
+                )  # incl. last batch
+                or torch.equal(
+                    sample.charges, torch.tensor([0, 0], dtype=self.dtype_charges)
+                ),
                 msg="Inconsistent charge for molecules generated from ase",
             )
             self.assertTrue(
-                torch.equal(sample.unpaired_e, torch.tensor(0.0))  # incl. last batch
-                or torch.equal(sample.unpaired_e, torch.tensor([0.0, 0.0])),
+                torch.equal(
+                    sample.unpaired_e, torch.tensor(0, dtype=self.dtype_uhf)
+                )  # incl. last batch
+                or torch.equal(
+                    sample.unpaired_e, torch.tensor([0, 0], dtype=self.dtype_uhf)
+                ),
                 msg="Inconsistent uhf for molecules generated from ase",
             )
 
