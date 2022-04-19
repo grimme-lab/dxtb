@@ -20,7 +20,11 @@ def walklevel(some_dir: str, level=1):
             del dirs[:]
 
 
-def read_coord(fp: str, breakpoints=["$user-defined bonds", "$redundant", "$end"]):
+def read_coord(
+    fp: str,
+    breakpoints=["$user-defined bonds", "$redundant", "$end"],
+    dtype: Optional[torch.dtype] = FLOAT64,
+):
     """Read a coord file."""
     arr = []
     with open(fp, "r") as file:
@@ -42,7 +46,7 @@ def read_coord(fp: str, breakpoints=["$user-defined bonds", "$redundant", "$end"
                 print(e)
                 print(f"WARNING: No correct values. Skip sample {fp}")
                 return
-    return torch.tensor(arr, dtype=FLOAT64)
+    return torch.tensor(arr, dtype=dtype)
 
 
 def read_chrg(fp: str):
@@ -96,6 +100,7 @@ class Datareader:
     def setup_geometry(
         data: torch.Tensor,
         dtype: Optional[torch.dtype] = FLOAT64,
+        dtype_int: Optional[torch.dtype] = torch.int16,  # TODO: adapt default dtype
         device: Optional[torch.device] = None,
     ) -> Geometry:
         """Convert data tensor into batched geometry object."""
@@ -103,10 +108,16 @@ class Datareader:
         # TODO: add default dtype and device depending on config
 
         positions = [torch.tensor(xyz, device=device, dtype=dtype) for xyz, *_ in data]
-        atomic_numbers = [torch.tensor(q, device=device) for _, q, *_ in data]
+        atomic_numbers = [
+            torch.tensor(q, device=device, dtype=dtype_int) for _, q, *_ in data
+        ]
 
-        charges = [torch.tensor(chrg, device=device) for *_, chrg, _ in data]
-        unpaired_e = [torch.tensor(uhf, device=device) for *_, uhf in data]
+        charges = [
+            torch.tensor(chrg, device=device, dtype=dtype_int) for *_, chrg, _ in data
+        ]
+        unpaired_e = [
+            torch.tensor(uhf, device=device, dtype=dtype_int) for *_, uhf in data
+        ]
 
         # convert into geometry object
         return Geometry(atomic_numbers, positions, charges, unpaired_e, units="bohr")
