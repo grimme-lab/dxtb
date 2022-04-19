@@ -2,7 +2,7 @@ import os
 from typing import List
 import torch
 
-from tbmalt.structures.geometry import Geometry
+from ..exlibs.tbmalt import Geometry
 from covrad import to_number
 
 # read in data from disk to geometry object

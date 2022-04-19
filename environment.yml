@@ -36,8 +36,3 @@ dependencies:
   - zlib=1.2.11=h36c2ea0_1013
   - tomli
   - pydantic
-  - pip
-  - pip:
-    # check VCS support works 
-    - git+https://github.com/grimme-lab/tbmalt.git
-prefix: /home/ch/anaconda3/envs/xtbML

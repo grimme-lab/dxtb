@@ -3,10 +3,11 @@ from unittest import TestCase
 import torch
 from xtbml.adjlist import AdjacencyList
 from xtbml.basis.type import get_cutoff
+from xtbml.constants import FLOAT64
 from xtbml.cutoff import get_lattice_points
-from xtbml.data.covrad import get_covalent_rad
+from xtbml.data.covrad import covalent_rad_d3
 from xtbml.exlibs.tbmalt import Geometry
-from xtbml.ncoord.ncoord import get_coordination_number
+from xtbml.ncoord.ncoord import get_coordination_number, exp_count
 from xtbml.param.gfn1 import GFN1_XTB as par
 from xtbml.utils import symbol2number
 from xtbml.xtb.calculator import Calculator
@@ -49,9 +50,9 @@ class TestH0(TestCase):
 
         self.check_hamiltonian(h, ref)
 
-    def base_test_cn(self, sample: Sample, ref: torch.Tensor) -> None:
+    def base_test_cn(self, sample: Sample, ref: torch.Tensor, dtype=FLOAT64) -> None:
         atomic_numbers = symbol2number(sample["symbols"])
-        mol = Geometry(atomic_numbers, sample["positions"])
+        mol = Geometry(atomic_numbers, sample["positions"].type(dtype))
 
         # TODO: extend geometry object with mol.lattice and mol.periodic
         mol_periodic = [False]
@@ -62,8 +63,8 @@ class TestH0(TestCase):
 
         # prepate cutoffs and lattice
         trans = get_lattice_points(mol_periodic, mol_lattice, self.cn_cutoff)
-        rcov = get_covalent_rad(mol.chemical_symbols)
-        cn = get_coordination_number(mol, trans, self.cn_cutoff, rcov)
+        rcov = covalent_rad_d3
+        cn = get_coordination_number(mol, rcov, exp_count)
 
         cutoff = get_cutoff(calc.basis)
         trans = get_lattice_points(mol_periodic, mol_lattice, cutoff)
