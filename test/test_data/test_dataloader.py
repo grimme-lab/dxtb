@@ -1,6 +1,7 @@
 from ase.build import molecule
 from unittest import TestCase
 import torch
+from os.path import isdir
 
 from xtbml.exlibs.tbmalt import Geometry
 from xtbml.data.datareader import Datareader
@@ -12,6 +13,11 @@ class Test_Dataloader(TestCase):
     @classmethod
     def setUpClass(cls):
         print(cls.__name__)
+
+    def setUp(self):
+        # root directory of GFN2-fitdata
+        self.path = "../data/gfn2-fitdata/data/"
+        self.has_gfn2 = isdir(self.path)
 
     def test_dataloader_from_ase(self) -> None:
         """Test constructing a dataloader from Geometry object and config."""
@@ -79,11 +85,11 @@ class Test_Dataloader(TestCase):
     def test_dataloader_from_gfn2_fitset(self) -> None:
         """Test loading gfn2 fitset from disk and converting to geometry."""
 
-        # root directory of GFN2-fitdata
-        path = "../data/gfn2-fitdata/data/"
+        if not self.has_gfn2:
+            return
 
         # read data from files
-        data, file_list = Datareader.fetch_data(path)
+        data, file_list = Datareader.fetch_data(self.path)
         self.assertTrue(
             len(data) == 7217,  # 7217 + 3 (empty coord) + 87 (no-coord) = 7307
             msg="Not all data loaded from gfn2 fitset",
