@@ -3,20 +3,16 @@
 """Definition of repulsion energy terms."""
 
 from typing import Dict, Optional, Union, Tuple
-from torch import Tensor
 import torch
+from torch import Tensor
 
-from xtbml.constants.torch import FLOAT64
 from xtbml.exlibs.tbmalt import Geometry
 from xtbml.param import Element, EffectiveRepulsion
 
 from .base import EnergyContribution
 
 
-torch.set_default_dtype(FLOAT64)  # required for repulsion tests (esp. gradients)
-
-
-class Repulsion(EnergyContribution):
+class RepulsionFactory(EnergyContribution):
     """
     Classical repulsion interaction as used with the xTB Hamiltonian.
     Calculated is the effective repulsion as given in the TB framework.
@@ -129,11 +125,7 @@ class Repulsion(EnergyContribution):
         self.kexp[mask] = 0
 
     def get_engrad(
-        self,
-        geometry: Geometry,
-        cutoff: float,
-        calc_gradient: bool = False,
-        dtype: torch.dtype = FLOAT64,
+        self, geometry: Geometry, cutoff: float, calc_gradient: bool = False
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         """Obtain repulsion energy and gradient.
 
@@ -150,10 +142,11 @@ class Repulsion(EnergyContribution):
 
         # Calculate repulsion only for distances smaller than cutoff
         if cutoff is not None:
-            distances = torch.where(distances <= cutoff, distances, 0.0)
+            zero = distances.new_zeros(1)
+            distances = torch.where(distances <= cutoff, distances, zero)
 
         # add epsilon to avoid zero division in some terms
-        distances += torch.finfo(dtype).eps
+        distances += torch.finfo(geometry.dtype).eps
 
         # Eq.13: R_AB ** k_f
         r1k = torch.pow(distances, self.kexp)
