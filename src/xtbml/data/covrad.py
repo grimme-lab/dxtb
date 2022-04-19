@@ -1,7 +1,7 @@
 from typing import Dict, List, Union
 from torch import tensor
 
-from xtbml.constants import AA2AU, PSE
+from ..constants import AA2AU, PSE
 
 # TODO define interface
 
@@ -63,7 +63,7 @@ def get_covalent_rad(
 
 def to_number(sym: str) -> int:
     for i, n in PSE.items():
-        if n == sym:
+        if n.lower() == sym.lower():
             return i
 
 

@@ -10,8 +10,8 @@ from torch import Tensor
 import torch
 from math import sqrt, exp
 
-from xtbml.constants.torch import FLOAT64
-from xtbml.exlibs.tbmalt import Geometry
+from ..constants.torch import FLOAT64
+from ..exlibs.tbmalt import Geometry
 
 from .base import Energy_Contribution
 
