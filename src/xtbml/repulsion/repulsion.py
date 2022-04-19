@@ -8,8 +8,7 @@ import torch
 
 from xtbml.constants.torch import FLOAT64
 from xtbml.exlibs.tbmalt import Geometry
-from xtbml.param.element import Element
-from xtbml.param.repulsion import EffectiveRepulsion
+from xtbml.param import Element, EffectiveRepulsion
 
 from .base import EnergyContribution
 
@@ -130,7 +129,11 @@ class Repulsion(EnergyContribution):
         self.kexp[mask] = 0
 
     def get_engrad(
-        self, geometry: Geometry, cutoff: float, calc_gradient: bool = False
+        self,
+        geometry: Geometry,
+        cutoff: float,
+        calc_gradient: bool = False,
+        dtype: torch.dtype = FLOAT64,
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         """Obtain repulsion energy and gradient.
 
@@ -143,17 +146,14 @@ class Repulsion(EnergyContribution):
             Union[Tensor, Tuple[Tensor, Tensor]]: Repulsion energy (and gradient).
         """
 
-        # FIXME?: add epsilon to avoid zero division in some terms (gives inf)
-        # -> in ncoord problem is mitigated by exp(-inf) = 0
-        EPS = 2.220446049250313e-16
-
         distances = geometry.distances
 
         # Calculate repulsion only for distances smaller than cutoff
         if cutoff is not None:
             distances = torch.where(distances <= cutoff, distances, 0.0)
 
-        distances += EPS
+        # add epsilon to avoid zero division in some terms
+        distances += torch.finfo(dtype).eps
 
         # Eq.13: R_AB ** k_f
         r1k = torch.pow(distances, self.kexp)
@@ -175,11 +175,12 @@ class Repulsion(EnergyContribution):
             rij = geometry.distance_vectors
             # >>> print(rij.shape)
             # torch.Size([n_batch, n_atoms, n_atoms, 3])
-            r2 = torch.sum(torch.pow(rij, 2), dim=-1, keepdim=True) + EPS
+            r2 = torch.pow(distances, 2)
             # >>> print(r2.shape)
-            # torch.Size([n_batch, n_atoms, n_atoms, 1])
+            # torch.Size([n_batch, n_atoms, n_atoms])
 
-            dG = dG.unsqueeze(-1) * rij / r2
+            dG = dG / r2
+            dG = dG.unsqueeze(-1) * rij
             # >>> print(dG.shape)
             # torch.Size([n_batch, n_atoms, n_atoms, 3])
 
