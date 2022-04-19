@@ -57,6 +57,9 @@ class Geometry_Handler:
         Args:
             geometry (Geometry): Batch geometry holding all samples.
             selector_fn (function): Masking function to select specific single geometries in batch.
+
+        Returns:
+            Geometry: Batch geometry holding samples that fulfill selector criteria.
         """
         remove_list = []
         for i, g in enumerate(geometry):
