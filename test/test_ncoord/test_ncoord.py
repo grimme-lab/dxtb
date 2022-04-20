@@ -1,4 +1,4 @@
-from unittest import TestCase
+import pytest
 import torch
 
 from xtbml import adjlist, data as atomic_data, utils
@@ -70,16 +70,52 @@ samples = {
 }
 
 
-class TestCoordinationNumber(TestCase):
-    """
-    Test for coordination number
-    """
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+def test_cn_single(dtype):
+    sample = samples["PbH4-BiH3"]
+    geometry = Geometry(
+        utils.symbol2number(sample["symbols"]), sample["positions"].type(dtype)
+    )
+    rcov = atomic_data.covrad.covalent_rad_d3
+    ref = torch.tensor(
+        [
+            3.9388208389,
+            0.9832025766,
+            0.9832026958,
+            0.9832026958,
+            0.9865897894,
+            2.9714603424,
+            0.9870455265,
+            0.9870456457,
+            0.9870455265,
+        ],
+        dtype=dtype,
+    )
 
-    def test_cn_single(self):
-        sample = samples["PbH4-BiH3"]
-        geometry = Geometry(utils.symbol2number(sample["symbols"]), sample["positions"])
-        rcov = atomic_data.covrad.covalent_rad_d3
-        ref = torch.Tensor(
+    cn = ncoord.get_coordination_number(geometry, rcov, ncoord.exp_count)
+    assert torch.allclose(cn, ref)
+
+
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+def test_cn_batch(dtype):
+    sample1, sample2 = samples["PbH4-BiH3"], samples["C6H5I-CH3SH"]
+    geometry = Geometry(
+        batch.pack(
+            (
+                utils.symbol2number(samples["PbH4-BiH3"]["symbols"]),
+                utils.symbol2number(samples["C6H5I-CH3SH"]["symbols"]),
+            )
+        ),
+        batch.pack(
+            (
+                samples["PbH4-BiH3"]["positions"].type(dtype),
+                samples["C6H5I-CH3SH"]["positions"].type(dtype),
+            )
+        ),
+    )
+    rcov = atomic_data.covrad.covalent_rad_d3
+    ref = torch.tensor(
+        [
             [
                 3.9388208389,
                 0.9832025766,
@@ -90,73 +126,39 @@ class TestCoordinationNumber(TestCase):
                 0.9870455265,
                 0.9870456457,
                 0.9870455265,
-            ]
-        )
-
-        cn = ncoord.get_coordination_number(geometry, rcov, ncoord.exp_count)
-        self.assertTrue(torch.allclose(cn, ref))
-
-    def test_cn_batch(self):
-        sample1, sample2 = samples["PbH4-BiH3"], samples["C6H5I-CH3SH"]
-        geometry = Geometry(
-            batch.pack(
-                (
-                    utils.symbol2number(samples["PbH4-BiH3"]["symbols"]),
-                    utils.symbol2number(samples["C6H5I-CH3SH"]["symbols"]),
-                )
-            ),
-            batch.pack(
-                (
-                    samples["PbH4-BiH3"]["positions"],
-                    samples["C6H5I-CH3SH"]["positions"],
-                )
-            ),
-        )
-        rcov = atomic_data.covrad.covalent_rad_d3
-        ref = torch.Tensor(
+                0.0000000000,
+                0.0000000000,
+                0.0000000000,
+                0.0000000000,
+                0.0000000000,
+                0.0000000000,
+                0.0000000000,
+                0.0000000000,
+                0.0000000000,
+            ],
             [
-                [
-                    3.9388208389,
-                    0.9832025766,
-                    0.9832026958,
-                    0.9832026958,
-                    0.9865897894,
-                    2.9714603424,
-                    0.9870455265,
-                    0.9870456457,
-                    0.9870455265,
-                    0.0000000000,
-                    0.0000000000,
-                    0.0000000000,
-                    0.0000000000,
-                    0.0000000000,
-                    0.0000000000,
-                    0.0000000000,
-                    0.0000000000,
-                    0.0000000000,
-                ],
-                [
-                    3.1393690109,
-                    3.1313166618,
-                    3.1393768787,
-                    3.3153429031,
-                    3.1376547813,
-                    3.3148119450,
-                    1.5363609791,
-                    1.0035246611,
-                    1.0122337341,
-                    1.0036621094,
-                    1.0121959448,
-                    1.0036619902,
-                    2.1570565701,
-                    0.9981809855,
-                    3.9841127396,
-                    1.0146225691,
-                    1.0123561621,
-                    1.0085891485,
-                ],
-            ]
-        )
+                3.1393690109,
+                3.1313166618,
+                3.1393768787,
+                3.3153429031,
+                3.1376547813,
+                3.3148119450,
+                1.5363609791,
+                1.0035246611,
+                1.0122337341,
+                1.0036621094,
+                1.0121959448,
+                1.0036619902,
+                2.1570565701,
+                0.9981809855,
+                3.9841127396,
+                1.0146225691,
+                1.0123561621,
+                1.0085891485,
+            ],
+        ],
+        dtype=dtype,
+    )
 
-        cn = ncoord.get_coordination_number(geometry, rcov, ncoord.exp_count)
-        self.assertTrue(torch.allclose(cn, ref))
+    cn = ncoord.get_coordination_number(geometry, rcov, ncoord.exp_count)
+    assert torch.allclose(cn, ref)
