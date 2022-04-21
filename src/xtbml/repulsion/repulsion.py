@@ -16,16 +16,35 @@ class RepulsionFactory(EnergyContribution):
     Classical repulsion interaction as used with the xTB Hamiltonian.
     Calculated is the effective repulsion as given in the TB framework.
     Container to evaluate classical repulsion interactions for the xTB Hamiltonian.
+
+    For details, see GFN1-xTB paper:
+    Grimme, S.; Bannwarth, C.; Shushkov, P. A Robust and Accurate Tight-Binding Quantum Chemical Method for Structures, Vibrational Frequencies, and Noncovalent Interactions of Large Molecular Systems Parameterized for All spd-Block Elements (Z = 1-86). J. Chem. Theory Comput. 2017, 13 (5), 1989-2009 DOI: 10.1021/acs.jctc.7b00118
     """
 
-    alpha: Optional[Tensor] = None  # shape [87]
-    """Repulsion interaction exponent for all element pairs"""
+    n_elements: int = 87
+    """
+    Number of elements (86, PSE up to Rn) plus dummy to allow indexing by atomic numbers.
+    """
 
-    zeff: Optional[Tensor] = None  # shape [87]
-    """Effective nuclear charge for all element pairs"""
+    dummy_value: int = -999999
+    """
+    Dummy value for zero index of tensors indexed by atomic numbers.
+    """
 
-    kexp: Optional[Tensor] = None  # shape [87]
-    """Scaling of the repulsion exponents, pairwise parameters for all element pairs"""
+    alpha: Optional[Tensor] = None
+    """
+    Repulsion interaction exponent for all element pairs. Always has size `RepulsionFactory.n_elements`.
+    """
+
+    zeff: Optional[Tensor] = None
+    """
+    Effective nuclear charge for all element pairs. Always has size `RepulsionFactory.n_elements`.
+    """
+
+    kexp: Optional[Tensor] = None
+    """
+    Scaling of the repulsion exponents, pairwise parameters for all element pairs. Always has size `RepulsionFactory.n_elements`.
+    """
 
     def get_kexp(self, par_repulsion: EffectiveRepulsion) -> Tensor:
         """Obtain exponential scaling factors of effective repulsion.
@@ -36,10 +55,10 @@ class RepulsionFactory(EnergyContribution):
         Returns:
             Tensor: Exponential scaling factors of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
         """
-        tnsr = torch.ones(87) * par_repulsion.kexp
+        tnsr = torch.ones(self.n_elements) * par_repulsion.kexp
 
         # dummy for indexing with atomic numbers
-        tnsr[0] = -999999
+        tnsr[0] = self.dummy_value
 
         # change value for H and He
         if par_repulsion.kexp_light is not None:
@@ -56,10 +75,10 @@ class RepulsionFactory(EnergyContribution):
         Returns:
             Tensor: Alpha parameter of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
         """
-        a = torch.zeros(87)
+        a = torch.zeros(self.n_elements)
 
         # dummy for indexing with atomic numbers
-        a[0] = -999999
+        a[0] = self.dummy_value
 
         for i, item in enumerate(par.values()):
             a[i + 1] = item.arep
@@ -75,10 +94,10 @@ class RepulsionFactory(EnergyContribution):
         Returns:
             Tensor: Effective charges of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
         """
-        z = torch.zeros(87)
+        z = torch.zeros(self.n_elements)
 
         # dummy for indexing with atomic numbers
-        z[0] = -999999
+        z[0] = self.dummy_value
 
         for i, item in enumerate(par.values()):
             z[i + 1] = item.zeff
@@ -159,7 +178,7 @@ class RepulsionFactory(EnergyContribution):
         # Eq.13: sum up and rectify double counting (symmetric matrix)
         sum_dE = 0.5 * torch.sum(dE, dim=(-2, -1))
 
-        if calc_gradient is not False:
+        if calc_gradient is True:
             dG = -(self.alpha * r1k * self.kexp + 1.0) * dE
             # >>> print(dG.shape)
             # torch.Size([n_batch, n_atoms, n_atoms])
