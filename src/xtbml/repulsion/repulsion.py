@@ -2,11 +2,10 @@
 
 """Definition of repulsion energy terms."""
 
-from typing import Dict, Optional, Union, Tuple
+from typing import Dict, List, Optional, Union, Tuple
 import torch
 from torch import Tensor
 
-from ..exlibs.tbmalt import Geometry
 from ..param import Element, EffectiveRepulsion
 from .base import EnergyContribution
 
@@ -26,7 +25,7 @@ class RepulsionFactory(EnergyContribution):
     Number of elements (86, PSE up to Rn) plus dummy to allow indexing by atomic numbers.
     """
 
-    dummy_value: int = -999999
+    dummy_value: float = 0
     """
     Dummy value for zero index of tensors indexed by atomic numbers.
     """
@@ -36,17 +35,32 @@ class RepulsionFactory(EnergyContribution):
     Repulsion interaction exponent for all element pairs. Always has size `RepulsionFactory.n_elements`.
     """
 
+    w_alpha: Optional[Tensor] = None
+    """
+    Working tensor for repulsion interaction exponent for all element pairs. Size is equal to the number of atoms.
+    """
+
     zeff: Optional[Tensor] = None
     """
     Effective nuclear charge for all element pairs. Always has size `RepulsionFactory.n_elements`.
     """
 
-    kexp: Optional[Tensor] = None
+    w_zeff: Optional[Tensor] = None
     """
-    Scaling of the repulsion exponents, pairwise parameters for all element pairs. Always has size `RepulsionFactory.n_elements`.
+    Working tensor for effective nuclear charge for all element pairs. Size is equal to the number of atoms.
     """
 
-    def get_kexp(self, par_repulsion: EffectiveRepulsion) -> Tensor:
+    kexp: Optional[Tensor] = None
+    """
+    Scaling of the repulsion exponents. Always has size `RepulsionFactory.n_elements`.
+    """
+
+    w_kexp: Optional[Tensor] = None
+    """
+    Working tensor for scaling of the repulsion exponents. Size is equal to the number of atoms.
+    """
+
+    def get_kexp(self, par_repulsion: EffectiveRepulsion) -> List[float]:
         """Obtain exponential scaling factors of effective repulsion.
 
         Args:
@@ -55,18 +69,20 @@ class RepulsionFactory(EnergyContribution):
         Returns:
             Tensor: Exponential scaling factors of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
         """
-        tnsr = torch.ones(self.n_elements) * par_repulsion.kexp
+
+        kexp = [par_repulsion.kexp] * self.n_elements
 
         # dummy for indexing with atomic numbers
-        tnsr[0] = self.dummy_value
+        kexp[0] = self.dummy_value
 
         # change value for H and He
         if par_repulsion.kexp_light is not None:
-            tnsr[1:3] = par_repulsion.kexp_light
+            kexp[1] = par_repulsion.kexp_light
+            kexp[2] = par_repulsion.kexp_light
 
-        return tnsr
+        return kexp
 
-    def get_alpha(self, par: Dict[str, Element]) -> Tensor:
+    def get_alpha(self, par: Dict[str, Element]) -> List[float]:
         """Obtain alpha parameters as tensors.
 
         Args:
@@ -75,17 +91,16 @@ class RepulsionFactory(EnergyContribution):
         Returns:
             Tensor: Alpha parameter of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
         """
-        a = torch.zeros(self.n_elements)
 
         # dummy for indexing with atomic numbers
-        a[0] = self.dummy_value
+        a = [self.dummy_value]
 
-        for i, item in enumerate(par.values()):
-            a[i + 1] = item.arep
+        for item in par.values():
+            a.append(item.arep)
 
         return a
 
-    def get_zeff(self, par: Dict[str, Element]) -> Tensor:
+    def get_zeff(self, par: Dict[str, Element]) -> List[float]:
         """Obtain effective charges as tensors.
 
         Args:
@@ -94,13 +109,12 @@ class RepulsionFactory(EnergyContribution):
         Returns:
             Tensor: Effective charges of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
         """
-        z = torch.zeros(self.n_elements)
 
         # dummy for indexing with atomic numbers
-        z[0] = self.dummy_value
+        z = [self.dummy_value]
 
-        for i, item in enumerate(par.values()):
-            z[i + 1] = item.zeff
+        for item in par.values():
+            z.append(item.zeff)
 
         return z
 
@@ -114,36 +128,49 @@ class RepulsionFactory(EnergyContribution):
             par_repulsion (EffectiveRepulsion): Parametrization of repulsion.
         """
 
+        if self.req_grad is None:
+            self.req_grad = False
+
+        numbers = self.numbers
+        dtype = self.positions.dtype
+
         # get parameters and format to tensors
-        alpha = self.get_alpha(par_element)
-        zeff = self.get_zeff(par_element)
-        kexp = self.get_kexp(par_repulsion)
+        self.alpha = torch.tensor(
+            self.get_alpha(par_element), dtype=dtype, requires_grad=self.req_grad
+        )
+        alpha_mol = self.alpha[numbers]
 
-        numbers = self.geometry.atomic_numbers
+        self.zeff = torch.tensor(
+            self.get_zeff(par_element), dtype=dtype, requires_grad=self.req_grad
+        )
+        zeff_mol = self.zeff[numbers]
 
-        # mask for padding
+        self.kexp = torch.tensor(
+            self.get_kexp(par_repulsion), dtype=dtype, requires_grad=self.req_grad
+        )
+        kexp_mol = self.kexp[numbers]
+
+        # mask for padding, inverted for multiplication
         real = numbers != 0
-        mask = ~(real.unsqueeze(-2) * real.unsqueeze(-1))
+        mask = real.unsqueeze(-2) * real.unsqueeze(-1)
 
         # set diagonal to 0 to remove A=B case in summation
-        torch.diagonal(mask, dim1=-2, dim2=-1)[:] = True
+        mask.diagonal(dim1=-2, dim2=-1).fill_(False)
 
-        # create padded arrays
-        self.alpha = torch.sqrt(
-            alpha[numbers].unsqueeze(-2) * alpha[numbers].unsqueeze(-1)
+        # create padded arrays and write to working tensor
+        alpha_mul = alpha_mol.unsqueeze(-1) * alpha_mol.unsqueeze(-2)
+        self.w_alpha = torch.sqrt(alpha_mul) * mask
+
+        zeff_mul = zeff_mol.unsqueeze(-2) * zeff_mol.unsqueeze(-1)
+        self.w_zeff = zeff_mul * mask
+
+        kexp_mul = kexp_mol.unsqueeze(-2) * kexp_mol.new_ones(kexp_mol.shape).unsqueeze(
+            -1
         )
-        self.alpha[mask] = 0
-
-        self.zeff = zeff[numbers].unsqueeze(-2) * zeff[numbers].unsqueeze(-1)
-        self.zeff[mask] = 0
-
-        self.kexp = kexp[numbers].unsqueeze(-2) * kexp.new_ones(kexp.shape)[
-            numbers
-        ].unsqueeze(-1)
-        self.kexp[mask] = 0
+        self.w_kexp = kexp_mul * mask
 
     def get_engrad(
-        self, geometry: Geometry, cutoff: float, calc_gradient: bool = False
+        self, cutoff: Optional[float] = None, calc_gradient: bool = False
     ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         """Obtain repulsion energy and gradient.
 
@@ -156,7 +183,14 @@ class RepulsionFactory(EnergyContribution):
             Union[Tensor, Tuple[Tensor, Tensor]]: Repulsion energy (and gradient).
         """
 
-        distances = geometry.distances
+        if self.w_alpha is None or self.w_zeff is None or self.w_kexp is None:
+            raise ValueError("Working tensor is not initialized.")
+
+        real = self.numbers != 0
+        mask = ~(real.unsqueeze(-2) * real.unsqueeze(-1))
+
+        distances = torch.cdist(self.positions, self.positions, p=2)
+        distances[mask] = 0
 
         # Calculate repulsion only for distances smaller than cutoff
         if cutoff is not None:
@@ -164,26 +198,27 @@ class RepulsionFactory(EnergyContribution):
             distances = torch.where(distances <= cutoff, distances, zero)
 
         # add epsilon to avoid zero division in some terms
-        distances += torch.finfo(geometry.dtype).eps
+        distances += torch.finfo(distances.dtype).eps
 
         # Eq.13: R_AB ** k_f
-        r1k = torch.pow(distances, self.kexp)
+        r1k = torch.pow(distances, self.w_kexp)
 
         # Eq.13: exp(- (alpha_A * alpha_B)**0.5 * R_AB ** k_f )
-        exp_term = torch.exp(-self.alpha * r1k)
+        exp_term = torch.exp(-self.w_alpha * r1k)
 
         # Eq.13: repulsion energy
-        dE = self.zeff * exp_term / distances
+        dE = self.w_zeff * exp_term / distances
 
         # Eq.13: sum up and rectify double counting (symmetric matrix)
         sum_dE = 0.5 * torch.sum(dE, dim=(-2, -1))
 
         if calc_gradient is True:
-            dG = -(self.alpha * r1k * self.kexp + 1.0) * dE
+            dG = -(self.w_alpha * r1k * self.w_kexp + 1.0) * dE
             # >>> print(dG.shape)
             # torch.Size([n_batch, n_atoms, n_atoms])
 
-            rij = geometry.distance_vectors
+            rij = self.positions.unsqueeze(-2) - self.positions.unsqueeze(-3)
+            rij[mask] = 0
             # >>> print(rij.shape)
             # torch.Size([n_batch, n_atoms, n_atoms, 3])
             r2 = torch.pow(distances, 2)

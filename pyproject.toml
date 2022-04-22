@@ -1,3 +1,11 @@
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "test"
+]
+markers = [
+    "grad: Marks tests which perform 'gradcheck' evaluations, this can be slow."
+]
