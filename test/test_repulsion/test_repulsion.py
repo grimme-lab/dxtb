@@ -1,14 +1,16 @@
-"""Run tests for repulsion contribution. Note that the gradient tests fail for `torch.float32`."""
+"""
+Run tests for repulsion contribution.
 
-import numbers
-from turtle import position
+(Note that the analytical gradient tests fail for `torch.float32`.)
+"""
+
 from typing import Callable, Union
 import pytest
 
 import torch
 from torch import Tensor
 
-from xtbml.exlibs.tbmalt import Geometry, batch
+from xtbml.exlibs.tbmalt import batch
 from xtbml.repulsion import RepulsionFactory
 from xtbml.utils import symbol2number
 from xtbml.param.gfn1 import GFN1_XTB
@@ -110,9 +112,9 @@ class TestRepulsion(Setup):
             for j in range(3):
                 er, el = 0.0, 0.0
                 repulsion.positions[i, j] += step
-                er = repulsion.get_engrad(cutoff=cutoff, calc_gradient=False)
+                er, _ = repulsion.get_engrad(cutoff=cutoff, calc_gradient=False)
                 repulsion.positions[i, j] -= 2 * step
-                el = repulsion.get_engrad(cutoff=cutoff, calc_gradient=False)
+                el, _ = repulsion.get_engrad(cutoff=cutoff, calc_gradient=False)
                 repulsion.positions[i, j] += step
                 gradient[i, j] = 0.5 * (er - el) / step
 
@@ -179,13 +181,13 @@ class TestRepulsion(Setup):
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     def test_gfn1_batch(self, dtype: torch.dtype):
         sample1, sample2 = mb16_43["01"], mb16_43["SiH4"]
-        numbers = batch.pack(
+        numbers: Tensor = batch.pack(
             (
                 symbol2number(sample1["symbols"]),
                 symbol2number(sample2["symbols"]),
             )
         )
-        positions = batch.pack(
+        positions: Tensor = batch.pack(
             (
                 sample1["positions"].type(dtype),
                 sample2["positions"].type(dtype),
@@ -213,13 +215,13 @@ class TestRepulsion(Setup):
     @pytest.mark.parametrize("dtype", [torch.float64])
     def test_gfn1_batch_grad(self, dtype: torch.dtype):
         sample1, sample2 = mb16_43["01"], mb16_43["SiH4"]
-        numbers = batch.pack(
+        numbers: Tensor = batch.pack(
             (
                 symbol2number(sample1["symbols"]),
                 symbol2number(sample2["symbols"]),
             )
         )
-        positions = batch.pack(
+        positions: Tensor = batch.pack(
             (
                 sample1["positions"].type(dtype),
                 sample2["positions"].type(dtype),
@@ -245,8 +247,17 @@ class TestRepulsion(Setup):
         )
 
     @pytest.mark.grad
-    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+    @pytest.mark.parametrize("dtype", [torch.float64])
     def test_param_grad(self, dtype: torch.dtype):
+        """
+        Check a single analytical gradient of `RepulsionFactory.alpha` against numerical gradient from `torch.autograd.gradcheck`.
+
+        Args:
+            dtype (torch.dtype): Numerical precision.
+
+        Note:
+            Although `torch.float32` raises a warning that the gradient check without double precision will fail, it actually works here.
+        """
         sample = mb16_43["01"]
 
         numbers = symbol2number(sample["symbols"])
@@ -254,7 +265,44 @@ class TestRepulsion(Setup):
 
         def func(*_):
             repulsion = self.repulsion_gfn1(numbers, positions, True)
-            return repulsion.get_engrad()
+            energy, _ = repulsion.get_engrad()
+            return energy
+
+        repulsion = self.repulsion_gfn1(numbers, positions, True)
+        param = (repulsion.alpha, repulsion.zeff, repulsion.kexp)
+        assert torch.autograd.gradcheck(func, param)
+
+    @pytest.mark.grad
+    @pytest.mark.parametrize("dtype", [torch.float64])
+    def test_param_grad_batch(self, dtype: torch.dtype):
+        """
+        Check batch analytical gradient against numerical gradient from `torch.autograd.gradcheck`.
+
+        Args:
+            dtype (torch.dtype): Numerical precision.
+
+        Note:
+            Although `torch.float32` raises a warning that the gradient check without double precision will fail, it actually works here.
+        """
+
+        sample1, sample2 = mb16_43["01"], mb16_43["SiH4"]
+        numbers: Tensor = batch.pack(
+            (
+                symbol2number(sample1["symbols"]),
+                symbol2number(sample2["symbols"]),
+            )
+        )
+        positions: Tensor = batch.pack(
+            (
+                sample1["positions"].type(dtype),
+                sample2["positions"].type(dtype),
+            )
+        )
+
+        def func(*_):
+            repulsion = self.repulsion_gfn1(numbers, positions, True)
+            energy, _ = repulsion.get_engrad()
+            return energy
 
         repulsion = self.repulsion_gfn1(numbers, positions, True)
         param = (repulsion.alpha, repulsion.zeff, repulsion.kexp)
