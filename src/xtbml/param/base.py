@@ -15,9 +15,13 @@ while a deserialized model in `tblite`_ is already verified at this stage.
 from typing import Dict, Optional
 from pydantic import BaseModel
 
+
+from .dispersion import Dispersion
 from .element import Element
+from .halogen import Halogen
 from .hamiltonian import Hamiltonian
 from .meta import Meta
+from .repulsion import Repulsion
 
 
 class Param(BaseModel):
@@ -25,21 +29,21 @@ class Param(BaseModel):
     Complete self-contained representation of an extended tight-binding model.
     """
 
-    meta: Meta = Meta()
+    meta: Optional[Meta]
     """Descriptive data on the model"""
     element: Dict[str, Element]
     """Element specific parameter records"""
     hamiltonian: Hamiltonian
     """Definition of the Hamiltonian, always required"""
-    dispersion: Optional[dict] = None
+    dispersion: Optional[Dispersion]
     """Definition of the dispersion correction (not implemented)"""
-    repulsion: Optional[dict] = None
-    """Definition of the repulsion contribution (not implemented)"""
+    repulsion: Optional[Repulsion]
+    """Definition of the repulsion contribution"""
     charge: Optional[dict] = None
     """Definition of the isotropic second-order charge interactions (not implemented)"""
     multipole: Optional[dict] = None
     """Definition of the anisotropic second-order multipolar interactions (not implemented)"""
-    halogen: Optional[dict] = None
+    halogen: Optional[Halogen] = None
     """Definition of the halogen bonding correction (not implemented)"""
     thirdorder: Optional[dict] = None
     """Definition of the isotropic third-order charge interactions (not implemented)"""

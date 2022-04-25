@@ -1,154 +1,48 @@
+"""Run tests for repulsion contribution. Note that the gradient tests fail for `torch.float32`."""
+
 from typing import Callable, Union
-from unittest import TestCase
+import pytest
+
 import torch
+from torch import Tensor
 
-from xtbml.exlibs.tbmalt import Geometry
-from xtbml.repulsion.repulsion import Repulsion
+from xtbml.exlibs.tbmalt import Geometry, batch
+from xtbml.repulsion import RepulsionFactory
 from xtbml.utils import symbol2number
+from xtbml.param.gfn1 import GFN1_XTB
 
-from .test_repulsion_data import data
+from samples import mb16_43
 
 
-class TestRepulsion(TestCase):
+class Setup:
+    """Setup class to define constants for test class."""
+
+    cutoff: float = 25.0
+    """Cutoff for repulsion calculation."""
+
+
+class TestRepulsion(Setup):
     """Testing the calculation of repulsion energy and gradients."""
 
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         print(cls.__name__)
 
-    def setUp(self):
-        # define constants
-        self.cutoff = 25.0
-        self.atol = 1e-07
-        self.rtol = 1e-07
-
-    def repulsion_gfn1(self, geometry: Geometry) -> Repulsion:
+    def repulsion_gfn1(self, geometry: Geometry) -> RepulsionFactory:
         """Factory for repulsion construction based on GFN1-xTB"""
 
-        # parameter library
-        alpha_gfn1 = torch.tensor(
-            [
-                2.209700,
-                1.382907,
-                0.671797,
-                0.865377,
-                1.093544,
-                1.281954,
-                1.727773,
-                2.004253,
-                2.507078,
-                3.038727,
-                0.704472,
-                0.862629,
-                0.929219,
-                0.948165,
-                1.067197,
-                1.200803,
-                1.404155,
-                1.323756,
-                0.581529,
-                0.665588,
-            ]
-        )
-        zeff_gfn1 = torch.tensor(
-            [
-                1.116244,
-                0.440231,
-                2.747587,
-                4.076830,
-                4.458376,
-                4.428763,
-                5.498808,
-                5.171786,
-                6.931741,
-                9.102523,
-                10.591259,
-                15.238107,
-                16.283595,
-                16.898359,
-                15.249559,
-                15.100323,
-                17.000000,
-                17.153132,
-                20.831436,
-                19.840212,
-            ]
-        )
-
-        alpha = alpha_gfn1[geometry.unique_atomic_numbers() - 1]
-        zeff = zeff_gfn1[geometry.unique_atomic_numbers() - 1]
-        kexp = 1.5
-        kexp_light = 1.5
-        rexp = 1.0
-
         # setup repulsion
-        repulsion = Repulsion(geometry=geometry)
-        repulsion.setup(alpha, zeff, kexp, kexp_light, rexp)
+        repulsion = RepulsionFactory(geometry=geometry)
+        repulsion.setup(GFN1_XTB.element, GFN1_XTB.repulsion.effective)
 
         return repulsion
 
-    def repulsion_gfn2(self, geometry: Geometry) -> Repulsion:
+    def repulsion_gfn2(self, geometry: Geometry) -> RepulsionFactory:
         """Factory for repulsion construction based on GFN2-xTB"""
 
-        # parameter library
-        alpha_gfn2 = torch.tensor(
-            [
-                2.213717,
-                3.604670,
-                0.475307,
-                0.939696,
-                1.373856,
-                1.247655,
-                1.682689,
-                2.165712,
-                2.421394,
-                3.318479,
-                0.572728,
-                0.917975,
-                0.876623,
-                1.187323,
-                1.143343,
-                1.214553,
-                1.577144,
-                0.896198,
-                0.482206,
-                0.683051,
-            ]
-        )
-        zeff_gfn2 = torch.tensor(
-            [
-                1.105388,
-                1.094283,
-                1.289367,
-                4.221216,
-                7.192431,
-                4.231078,
-                5.242592,
-                5.784415,
-                7.021486,
-                11.041068,
-                5.244917,
-                18.083164,
-                17.867328,
-                40.001111,
-                19.683502,
-                14.995090,
-                17.353134,
-                7.266606,
-                10.439482,
-                14.786701,
-            ]
-        )
-
-        alpha = alpha_gfn2[geometry.unique_atomic_numbers() - 1]
-        zeff = zeff_gfn2[geometry.unique_atomic_numbers() - 1]
-        kexp = 1.5
-        kexp_light = 1.0
-        rexp = 1.0
-
         # setup repulsion
-        repulsion = Repulsion(geometry=geometry)
-        repulsion.setup(alpha, zeff, kexp, kexp_light, rexp)
+        repulsion = RepulsionFactory(geometry=geometry)
+        # repulsion.setup(GFN2_XTB.element, GFN2_XTB.repulsion.effective)
 
         return repulsion
 
@@ -156,10 +50,14 @@ class TestRepulsion(TestCase):
         self,
         geometry: Geometry,
         repulsion_factory: Callable,
-        reference_energy: Union[torch.Tensor, None],
-        reference_gradient: Union[torch.Tensor, None],
-    ):
+        reference_energy: Union[Tensor, None],
+        reference_gradient: Union[Tensor, None],
+        dtype: torch.dtype,
+    ) -> None:
         """Wrapper for testing versus reference energy and gradient"""
+
+        atol = 1.0e-6 if dtype == torch.float32 else 1.0e-8
+        rtol = 1.0e-4 if dtype == torch.float32 else 1.0e-5
 
         # factory to produce repulsion objects
         repulsion = repulsion_factory(geometry)
@@ -168,40 +66,36 @@ class TestRepulsion(TestCase):
         )
 
         # test against reference values
-        if reference_energy:
-            self.assertTrue(
-                torch.allclose(
-                    energy,
-                    reference_energy,
-                    rtol=self.rtol,
-                    atol=self.atol,
-                    equal_nan=False,
-                ),
-                msg=f"Energy not correct:\n {energy} vs. {reference_energy}",
+        if reference_energy is not None:
+            assert torch.allclose(
+                energy,
+                reference_energy,
+                rtol=rtol,
+                atol=atol,
+                equal_nan=False,
             )
-        if reference_gradient != None:
-            self.assertTrue(
-                torch.allclose(
-                    gradient,
-                    reference_gradient,
-                    rtol=self.rtol,
-                    atol=self.atol,
-                    equal_nan=False,
-                ),
-                msg=f"Gradient not correct:\n {gradient} vs. {reference_gradient}",
+        if reference_gradient is not None:
+            assert torch.allclose(
+                gradient,
+                reference_gradient,
+                rtol=rtol,
+                atol=atol,
+                equal_nan=False,
             )
-
-        return
 
     def calc_numerical_gradient(
-        self, geometry: Geometry, repulsion: Repulsion, cutoff: float
-    ):
+        self,
+        geometry: Geometry,
+        repulsion: RepulsionFactory,
+        cutoff: float,
+        dtype: torch.dtype,
+    ) -> Tensor:
         """Calculate gradient numerically for reference."""
 
         n_atoms = geometry.get_length(unique=False)
 
         # numerical gradient
-        gradient = torch.zeros((n_atoms, 3))
+        gradient = torch.zeros(n_atoms, 3, dtype=dtype)
         step = 1.0e-6
 
         for i in range(n_atoms):
@@ -216,13 +110,15 @@ class TestRepulsion(TestCase):
 
         return gradient
 
-    def test_mb1643_01_gfn1(self):
-        sample = data["MB16_43_01"]
+    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+    def test_gfn1_mb1643_01(self, dtype: torch.dtype):
+        sample = mb16_43["01"]
 
-        atomic_numbers = symbol2number(sample["elements"])
-        geometry = Geometry(atomic_numbers=atomic_numbers, positions=sample["xyz"])
+        atomic_numbers = symbol2number(sample["symbols"])
+        positions = sample["positions"].type(dtype)
+        geometry = Geometry(atomic_numbers=atomic_numbers, positions=positions)
 
-        reference_energy = torch.tensor(0.16777923624986593)
+        reference_energy = torch.tensor(sample["ref"]["gfn1"]["repulsion"], dtype=dtype)
         reference_gradient = None
 
         self.base_test(
@@ -230,13 +126,127 @@ class TestRepulsion(TestCase):
             repulsion_factory=self.repulsion_gfn1,
             reference_energy=reference_energy,
             reference_gradient=reference_gradient,
+            dtype=dtype,
         )
 
+    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+    def test_gfn1_mb1643_02(self, dtype: torch.dtype):
+        sample = mb16_43["02"]
+
+        atomic_numbers = symbol2number(sample["symbols"])
+        positions = sample["positions"].type(dtype)
+        geometry = Geometry(atomic_numbers=atomic_numbers, positions=positions)
+
+        reference_energy = torch.tensor(sample["ref"]["gfn1"]["repulsion"], dtype=dtype)
+        reference_gradient = None
+
+        self.base_test(
+            geometry=geometry,
+            repulsion_factory=self.repulsion_gfn1,
+            reference_energy=reference_energy,
+            reference_gradient=reference_gradient,
+            dtype=dtype,
+        )
+
+    @pytest.mark.parametrize("dtype", [torch.float64])
+    def test_gfn1_grad_mb1643_03(self, dtype: torch.dtype):
+        sample = mb16_43["03"]
+
+        atomic_numbers = symbol2number(sample["symbols"])
+        positions = sample["positions"].type(dtype)
+        geometry = Geometry(atomic_numbers=atomic_numbers, positions=positions)
+
+        # get reference gradient
+        repulsion = self.repulsion_gfn1(geometry)
+        numerical_gradient = self.calc_numerical_gradient(
+            geometry, repulsion, self.cutoff, dtype
+        )
+
+        self.base_test(
+            geometry=geometry,
+            repulsion_factory=self.repulsion_gfn1,
+            reference_energy=None,
+            reference_gradient=numerical_gradient,
+            dtype=dtype,
+        )
+
+    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+    def test_gfn1_batch(self, dtype: torch.dtype):
+        sample1, sample2 = mb16_43["01"], mb16_43["SiH4"]
+        geometry = Geometry(
+            batch.pack(
+                (
+                    symbol2number(sample1["symbols"]),
+                    symbol2number(sample2["symbols"]),
+                )
+            ),
+            batch.pack(
+                (
+                    sample1["positions"].type(dtype),
+                    sample2["positions"].type(dtype),
+                )
+            ),
+        )
+
+        reference_energy = torch.tensor(
+            [
+                sample1["ref"]["gfn1"]["repulsion"],
+                sample2["ref"]["gfn1"]["repulsion"],
+            ],
+            dtype=dtype,
+        )
+        reference_gradient = None
+
+        self.base_test(
+            geometry=geometry,
+            repulsion_factory=self.repulsion_gfn1,
+            reference_energy=reference_energy,
+            reference_gradient=reference_gradient,
+            dtype=dtype,
+        )
+
+    @pytest.mark.parametrize("dtype", [torch.float64])
+    def test_gfn1_batch_grad(self, dtype: torch.dtype):
+        sample1, sample2 = mb16_43["01"], mb16_43["SiH4"]
+        geometries = Geometry(
+            batch.pack(
+                (
+                    symbol2number(sample1["symbols"]),
+                    symbol2number(sample2["symbols"]),
+                )
+            ),
+            batch.pack(
+                (
+                    sample1["positions"].type(dtype),
+                    sample2["positions"].type(dtype),
+                )
+            ),
+        )
+
+        # get reference gradients by just looping over geometries
+        grads = []
+        for geometry in geometries:
+            repulsion = self.repulsion_gfn1(geometry)
+            grad = self.calc_numerical_gradient(geometry, repulsion, self.cutoff, dtype)
+            grads.append(grad)
+
+        numerical_gradient = batch.pack(grads)
+
+        self.base_test(
+            geometry=geometries,
+            repulsion_factory=self.repulsion_gfn1,
+            reference_energy=None,
+            reference_gradient=numerical_gradient,
+            dtype=dtype,
+        )
+
+    # REQUIRES GFN2-XTB PARAMETRIZATION
+    """
     def test_mb1643_02_gfn2(self):
         sample = data["MB16_43_02"]
 
-        atomic_numbers = symbol2number(sample["elements"])
-        geometry = Geometry(atomic_numbers=atomic_numbers, positions=sample["xyz"])
+        atomic_numbers = symbol2number(sample["symbols"])
+        geometry = Geometry(atomic_numbers=atomic_numbers, positions=sample["positions"])
 
         reference_energy = torch.tensor(0.10745931926703985)
         reference_gradient = None
@@ -248,30 +258,11 @@ class TestRepulsion(TestCase):
             reference_gradient=reference_gradient,
         )
 
-    def test_mb1643_03_gfn1(self):
-        sample = data["MB16_43_03"]
-
-        atomic_numbers = symbol2number(sample["elements"])
-        geometry = Geometry(atomic_numbers=atomic_numbers, positions=sample["xyz"])
-
-        # get reference gradient
-        repulsion = self.repulsion_gfn1(geometry)
-        numerical_gradient = self.calc_numerical_gradient(
-            geometry, repulsion, self.cutoff
-        )
-
-        self.base_test(
-            geometry=geometry,
-            repulsion_factory=self.repulsion_gfn1,
-            reference_energy=None,
-            reference_gradient=numerical_gradient,
-        )
-
     def test_mb1643_04_gfn2(self):
         sample = data["MB16_43_04"]
 
-        atomic_numbers = symbol2number(sample["elements"])
-        geometry = Geometry(atomic_numbers=atomic_numbers, positions=sample["xyz"])
+        atomic_numbers = symbol2number(sample["symbols"])
+        geometry = Geometry(atomic_numbers=atomic_numbers, positions=sample["positions"])
 
         # get reference gradient
         repulsion = self.repulsion_gfn2(geometry)
@@ -285,13 +276,14 @@ class TestRepulsion(TestCase):
             reference_energy=None,
             reference_gradient=numerical_gradient,
         )
+    """
 
     # REQUIRES PBC implementation
     """def test_uracil_gfn2(self):
         sample = data["uracil"]
 
-        atomic_numbers = symbol2number(sample["elements"])
-        geometry = Geometry(atomic_numbers=atomic_numbers,positions=sample["xyz"])
+        atomic_numbers = symbol2number(sample["symbols"])
+        geometry = Geometry(atomic_numbers=atomic_numbers,positions=sample["positions"])
 
         reference_energy = torch.tensor(1.0401472262740301)
         reference_gradient = None

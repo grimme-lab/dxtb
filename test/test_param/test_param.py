@@ -1,13 +1,11 @@
 # This file is part of xtbml.
 
-from typing import List
 import tomli as toml
 import torch
 from unittest import TestCase
 
-from xtbml.data.covrad import to_number
 from xtbml.exlibs.tbmalt import Geometry
-import xtbml.param
+from xtbml.utils import symbol2number
 
 
 class TestParam(TestCase):
@@ -16,6 +14,7 @@ class TestParam(TestCase):
         print(cls.__name__)
 
     def test_builtin_gfn1(self):
+        # pylint: disable=import-outside-toplevel
         from xtbml.param.gfn1 import GFN1_XTB as par
 
         self.assertTrue(par.meta.name == "GFN1-xTB")
@@ -37,6 +36,9 @@ class TestParam(TestCase):
         self.assertTrue("Te" in par.element)
 
     def test_param_minimal(self):
+        # pylint: disable=import-outside-toplevel
+        from xtbml.param import Param
+
         data = """
         [hamiltonian.xtb]
         wexp = 5.0000000000000000E-01
@@ -84,12 +86,13 @@ class TestParam(TestCase):
         en = 2.5499999999999998E+00
         """
 
-        par = xtbml.param.Param(**toml.loads(data))
+        par = Param(**toml.loads(data))
 
         self.assertTrue("H" in par.element)
         self.assertTrue("C" in par.element)
 
     def test_param_calculator(self):
+        # pylint: disable=import-outside-toplevel
         from xtbml.xtb.calculator import Calculator
         from xtbml.param.gfn1 import GFN1_XTB as par
 
@@ -107,7 +110,3 @@ class TestParam(TestCase):
 
         self.assertTrue(sum(calc.hamiltonian.refocc.get("H")) == 1)
         self.assertTrue(sum(calc.hamiltonian.refocc.get("C")) == 4)
-
-
-def symbol2number(symList: List[str]) -> torch.Tensor:
-    return torch.flatten(torch.tensor([to_number(s) for s in symList]))
