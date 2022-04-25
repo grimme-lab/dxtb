@@ -15,7 +15,9 @@ from ..exlibs.tbmalt import Geometry
 
 from .base import Energy_Contribution
 
-torch.set_default_dtype(FLOAT64)  # required for repulsion tests (esp. gradients)
+torch.set_default_dtype(
+    FLOAT64
+)  # required for repulsion tests (esp. gradients) # TODO: (re)move this
 
 
 class Repulsion(Energy_Contribution):
