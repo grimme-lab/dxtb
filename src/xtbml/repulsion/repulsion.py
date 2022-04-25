@@ -10,14 +10,6 @@ from ..exlibs.tbmalt import Geometry
 from ..param import Element, EffectiveRepulsion
 from .base import EnergyContribution
 
-<<<<<<< HEAD
-from .base import Energy_Contribution
-
-torch.set_default_dtype(
-    FLOAT64
-)  # required for repulsion tests (esp. gradients) # TODO: (re)move this
-=======
->>>>>>> 8ab3bfbc4e4802ebbd94e2b1e32c14718d22c4a6
 
 class RepulsionFactory(EnergyContribution):
     """
