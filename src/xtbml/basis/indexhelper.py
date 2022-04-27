@@ -105,6 +105,8 @@ class IndexHelper:
     @classmethod
     def from_numbers(cls, numbers: Tensor, angular: Dict[int, Tensor]) -> "IndexHelper":
         """
+        Construct an index helper instance from atomic numbers and their angular momenta.
+
         Args:
             numbers (Tensor)
                 Atomic numbers for the system
@@ -236,7 +238,7 @@ class IndexHelper:
         Parameters
         ----------
         dtype : torch.dtype
-            Type of the
+            Type of the floating point numbers used by the `IndexHelper` instance.
 
         Returns
         -------
