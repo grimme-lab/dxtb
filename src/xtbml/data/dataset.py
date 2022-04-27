@@ -24,3 +24,7 @@ class Feature_Dataset(BaseModel, Dataset):
 
     def create_from_disk(csv1: str, csv2: str) -> "Feature_Dataset":
         raise NotImplementedError
+
+    def padding(self, max_atoms: int) -> "Feature_Dataset":
+        # TODO: add some padding, such that the samples features have same shape
+        raise NotImplementedError
