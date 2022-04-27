@@ -5,10 +5,10 @@ This project provides a fully differentiable implementation of the extended tigh
 
 For details on the xTB methods see
 
-- C. Bannwarth, E. Caldeweyher, S. Ehlert, A. Hansen, P. Pracht, J. Seibert, S. Spicher, S. Grimme
+- C. Bannwarth, E. Caldeweyher, S. Ehlert, A. Hansen, P. Pracht, J. Seibert, S. Spicher, S. Grimme,
   *WIREs Comput. Mol. Sci.*, **2020**, 11, e01493.
   (`DOI <https://doi.org/10.1002/wcms.1493>`__)
-- C. Bannwarth, S. Ehlert and S. Grimme.,
+- C. Bannwarth, S. Ehlert, S. Grimme,
   *J. Chem. Theory Comput.*, **2019**, 15, 1652-1671.
   (`DOI <https://dx.doi.org/10.1021/acs.jctc.8b01176>`__)
 - S. Grimme, C. Bannwarth, P. Shushkov,
