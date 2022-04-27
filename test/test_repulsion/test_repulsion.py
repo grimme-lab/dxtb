@@ -21,7 +21,7 @@ from samples import mb16_43
 class Setup:
     """Setup class to define constants for test class."""
 
-    cutoff: float = 25.0
+    cutoff: Tensor = torch.tensor(25.0)
     """Cutoff for repulsion calculation."""
 
 
@@ -39,7 +39,7 @@ class TestRepulsion(Setup):
 
         # setup repulsion
         repulsion = RepulsionFactory(
-            numbers=numbers, positions=positions, req_grad=req_grad
+            numbers=numbers, positions=positions, req_grad=req_grad, cutoff=self.cutoff
         )
         repulsion.setup(GFN1_XTB.element, GFN1_XTB.repulsion.effective)
 
@@ -52,7 +52,7 @@ class TestRepulsion(Setup):
 
         # setup repulsion
         repulsion = RepulsionFactory(
-            numbers=numbers, positions=positions, req_grad=req_grad
+            numbers=numbers, positions=positions, req_grad=req_grad, cutoff=self.cutoff
         )
         # repulsion.setup(GFN2_XTB.element, GFN2_XTB.repulsion.effective)
 
@@ -74,7 +74,8 @@ class TestRepulsion(Setup):
 
         # factory to produce repulsion objects
         repulsion = repulsion_factory(numbers, positions)
-        energy, gradient = repulsion.get_engrad(cutoff=self.cutoff, calc_gradient=True)
+        e, gradient = repulsion.get_engrad(calc_gradient=True)
+        energy = torch.sum(e, dim=(-2, -1))
 
         # test against reference values
         if reference_energy is not None:
@@ -97,7 +98,6 @@ class TestRepulsion(Setup):
     def calc_numerical_gradient(
         self,
         repulsion: RepulsionFactory,
-        cutoff: float,
         dtype: torch.dtype,
     ) -> Tensor:
         """Calculate gradient numerically for reference."""
@@ -112,9 +112,11 @@ class TestRepulsion(Setup):
             for j in range(3):
                 er, el = 0.0, 0.0
                 repulsion.positions[i, j] += step
-                er, _ = repulsion.get_engrad(cutoff=cutoff, calc_gradient=False)
+                er, _ = repulsion.get_engrad(calc_gradient=False)
+                er = torch.sum(er, dim=(-2, -1))
                 repulsion.positions[i, j] -= 2 * step
-                el, _ = repulsion.get_engrad(cutoff=cutoff, calc_gradient=False)
+                el, _ = repulsion.get_engrad(calc_gradient=False)
+                el = torch.sum(el, dim=(-2, -1))
                 repulsion.positions[i, j] += step
                 gradient[i, j] = 0.5 * (er - el) / step
 
@@ -167,7 +169,7 @@ class TestRepulsion(Setup):
 
         # get reference gradient
         repulsion = self.repulsion_gfn1(atomic_numbers, positions)
-        numerical_gradient = self.calc_numerical_gradient(repulsion, self.cutoff, dtype)
+        numerical_gradient = self.calc_numerical_gradient(repulsion, dtype)
 
         self.base_test(
             numbers=atomic_numbers,
@@ -232,7 +234,7 @@ class TestRepulsion(Setup):
         grads = []
         for number, position in zip(numbers, positions):
             repulsion = self.repulsion_gfn1(number, position)
-            grad = self.calc_numerical_gradient(repulsion, self.cutoff, dtype)
+            grad = self.calc_numerical_gradient(repulsion, dtype)
             grads.append(grad)
 
         numerical_gradient = batch.pack(grads)

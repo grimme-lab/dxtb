@@ -156,7 +156,7 @@ class RepulsionFactory(EnergyContribution):
         zeff_mol = self.zeff[numbers]
         kexp_mol = self.kexp[numbers]
 
-        # mask for padding, inverted for multiplication
+        # mask for padding
         real = numbers != 0
         mask = real.unsqueeze(-2) * real.unsqueeze(-1)
 
@@ -175,7 +175,7 @@ class RepulsionFactory(EnergyContribution):
         self.w_kexp = kexp_mul * mask
 
     def get_engrad(
-        self, cutoff: Union[float, None] = None, calc_gradient: bool = False
+        self, calc_gradient: bool = False
     ) -> Tuple[Tensor, Union[Tensor, None]]:
         """Obtain repulsion energy and gradient.
 
@@ -184,25 +184,30 @@ class RepulsionFactory(EnergyContribution):
             calc_gradient (bool, optional): Flag for calculating gradient. Defaults to `False`.
 
         Returns:
-            Tuple[Tensor, Union[Tensor, None]]: Repulsion energy (and gradient). Gradient is `None` if `calc_gradient` is set to `False`
+            Tuple[Tensor, Union[Tensor, None]]: Atom-wise repulsion energy (and gradient). For total repulsion energy, the energy tensor has to be summed up (`torch.sum(e_rep, dim=(-2, -1))`). Gradient is `None` if `calc_gradient` is set to `False`
         """
 
         if self.w_alpha is None or self.w_zeff is None or self.w_kexp is None:
             raise ValueError("Working tensor is not initialized.")
 
-        real = self.numbers != 0
-        mask = ~(real.unsqueeze(-2) * real.unsqueeze(-1))
+        # add epsilon to avoid zero division in some terms
+        eps = torch.tensor(
+            torch.finfo(self.positions.dtype).eps, dtype=self.positions.dtype
+        )
 
-        distances = torch.cdist(self.positions, self.positions, p=2)
-        distances[mask] = 0
+        real = self.numbers != 0
+        mask = real.unsqueeze(-2) * real.unsqueeze(-1)
+        mask.diagonal(dim1=-2, dim2=-1).fill_(False)
+
+        distances = torch.where(
+            mask,
+            torch.cdist(self.positions, self.positions, p=2),
+            eps,
+        )
 
         # Calculate repulsion only for distances smaller than cutoff
-        if cutoff is not None:
-            zero = distances.new_zeros(1)
-            distances = torch.where(distances <= cutoff, distances, zero)
-
-        # add epsilon to avoid zero division in some terms
-        distances += torch.finfo(distances.dtype).eps
+        if self.cutoff is not None:
+            distances = torch.where(distances <= self.cutoff, distances, eps)
 
         # Eq.13: R_AB ** k_f
         r1k = torch.pow(distances, self.w_kexp)
@@ -214,7 +219,7 @@ class RepulsionFactory(EnergyContribution):
         dE = self.w_zeff * exp_term / distances
 
         # Eq.13: sum up and rectify double counting (symmetric matrix)
-        sum_dE = 0.5 * torch.sum(dE, dim=(-2, -1))
+        # sum_dE = 0.5 * torch.sum(dE, dim=(-2, -1))
 
         dG = None
         if calc_gradient is True:
@@ -222,10 +227,14 @@ class RepulsionFactory(EnergyContribution):
             # >>> print(dG.shape)
             # torch.Size([n_batch, n_atoms, n_atoms])
 
-            rij = self.positions.unsqueeze(-2) - self.positions.unsqueeze(-3)
-            rij[mask] = 0
+            rij = torch.where(
+                mask.unsqueeze(-1),
+                self.positions.unsqueeze(-2) - self.positions.unsqueeze(-3),
+                torch.tensor(0.0, dtype=distances.dtype),
+            )
             # >>> print(rij.shape)
             # torch.Size([n_batch, n_atoms, n_atoms, 3])
+
             r2 = torch.pow(distances, 2)
             # >>> print(r2.shape)
             # torch.Size([n_batch, n_atoms, n_atoms])
@@ -239,4 +248,4 @@ class RepulsionFactory(EnergyContribution):
             # >>> print(dG.shape)
             # torch.Size([n_batch, n_atoms, 3])
 
-        return sum_dE, dG
+        return 0.5 * dE, dG
