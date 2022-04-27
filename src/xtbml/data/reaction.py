@@ -6,25 +6,22 @@ from torch import Tensor
 class Reaction(BaseModel):
     """Representation for reaction involving multiple samples."""
 
-    # supported features
     uid: str
     """Unique identifier for reaction"""
-    reactant: List[str]
-    """List of reagent uids"""
-    products: List[str]
-    """List of products uids"""
-    nu_r: List[int]
-    """Stoichiometry coefficient for respective reactants"""
-    nu_p: List[int]
-    """Stoichiometry coefficient for respective products"""
-    e: Tensor
-    """Reaction energies"""
+    reactants: List[str]  # reactants, participants, partner, ...
+    """List of reactants uids"""
+    nu: List[int]
+    """Stoichiometry coefficient for respective participant"""
+    egfn1: Tensor
+    """Reaction energies given by GFN1-xtb"""
+    eref: Tensor
+    """Reaction energies given by reference method"""
 
     class Config:
         # allow for geometry and tensor fields
         arbitrary_types_allowed = True
 
-    def from_json() -> "Reaction":
+    def from_json(path: str) -> List["Reaction"]:
         """
         Create reaction from json.
         """
