@@ -6,7 +6,8 @@ from xtbml.basis import IndexHelper
 from xtbml.exlibs.tbmalt import batch
 
 
-def test_indexhelper_single(dtype=torch.float64):
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+def test_indexhelper_single(dtype):
 
     numbers = utils.symbol2number("S H H H Mg N O S N N C H C H O N".split())
     angular = {
@@ -54,7 +55,8 @@ def test_indexhelper_single(dtype=torch.float64):
     )
 
 
-def test_indexhelper_batch(dtype=torch.float64):
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+def test_indexhelper_batch(dtype):
 
     numbers = batch.pack(
         (
