@@ -698,7 +698,7 @@ class ReactionDataset(BaseModel, Dataset):
 
             # TODO: could be added as an _add_ function to the class
             partners = [i for r in batched_reactions for i in r.partners]
-            nu = torch.tensor([r.nu for r in batched_reactions])
+            nu = torch.stack([r.nu for r in batched_reactions], 0)
             egfn1 = torch.stack([r.egfn1 for r in batched_reactions], 0)
             eref = torch.stack([r.eref for r in batched_reactions], 0)
 
