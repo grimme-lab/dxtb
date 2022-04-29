@@ -585,7 +585,7 @@ class ReactionDataset(BaseModel, Dataset):
     def __getitem__(self, idx: int):
         """Get all samples involved in specified reaction."""
         reaction = self.reactions[idx]
-        samples = [s for s in self.samples if s.uid in reaction.reactants]
+        samples = [s for s in self.samples if s.uid in reaction.partners]
         return samples, reaction
 
     def get_dataloader(self, cfg: Optional[dict] = {}) -> DataLoader:
@@ -604,7 +604,7 @@ class ReactionDataset(BaseModel, Dataset):
             # TODO: this does not parallelize well, for correct handling, tensorwise
             #       concatenation of samples and reactions properties is necessary
 
-            # fixed number of reactants
+            # fixed number of partners
             assert all([len(s[0]) == len(batch[0][0]) for s in batch])
 
             batched_samples = [{} for _ in range(len(batch[0][0]))]
@@ -652,24 +652,24 @@ class ReactionDataset(BaseModel, Dataset):
                 # with j being the index of reactant
 
             # TODO: could be added as an _add_ function to the class
-            reactants = [i for r in batched_reactions for i in r.reactants]
+            partners = [i for r in batched_reactions for i in r.partners]
             nu = torch.tensor([r.nu for r in batched_reactions])
             egfn1 = torch.stack([r.egfn1 for r in batched_reactions], 0)
             eref = torch.stack([r.eref for r in batched_reactions], 0)
 
             # NOTE: Example on how batching of Reaction objects is conducteds
-            # [Reaction(uid='AB', reactants=['A', 'B', 'AB'], nu=[-1, -1, 1],
+            # [Reaction(uid='AB', partners=['A', 'B', 'AB'], nu=[-1, -1, 1],
             # egfn1=tensor([1.2300]), eref=tensor([1.5400])),
-            # Reaction(uid='AC', reactants=['A', 'C', 'AC'], nu=[-1, -1, 1],
+            # Reaction(uid='AC', partners=['A', 'C', 'AC'], nu=[-1, -1, 1],
             # egfn1=tensor([3.4500]), eref=tensor([7.2300]))]
             # -->
-            # Reaction(uid='BATCH', reactants=[['A', 'B', 'AB'], ['A', 'C', 'AC']], nu=[[-1, -1, 1], [-1, -1, 1]],
+            # Reaction(uid='BATCH', partners=[['A', 'B', 'AB'], ['A', 'C', 'AC']], nu=[[-1, -1, 1], [-1, -1, 1]],
             # egfn1=tensor([[1.2300], [3.4500]]), eref=tensor([[1.5400], [7.2300]])),
 
             # convert to sample objects (optional)
             batched_samples = [Sample(**d) for d in batched_samples]
             batched_reactions = Reaction(
-                uid="BATCH", reactants=reactants, nu=nu, egfn1=egfn1, eref=eref
+                uid="BATCH", partners=partners, nu=nu, egfn1=egfn1, eref=eref
             )
 
             # NOTE: information on how samples and shapes are aligned
