@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Dict
 
 import torch
 
@@ -41,7 +40,7 @@ class TestDataset:
         assert hasattr(sample, "uid") == True
 
         assert type(samples[:3]) == list
-        assert len(samples[:3]) == 3
+        assert len(samples[:2]) == 2
 
         # test reactions
         reaction = reactions[0]
@@ -49,7 +48,7 @@ class TestDataset:
         assert hasattr(reaction, "uid") == True
 
         assert type(reactions[:3]) == list
-        assert len(reactions[:3]) == 3
+        assert len(reactions[:2]) == 2
 
     def test_dict(self) -> None:
         path_samples = Path(Path.cwd(), "data/features.json")
@@ -59,11 +58,11 @@ class TestDataset:
         reactions = Reactions.from_json(path_reactions)
 
         # test samples
-        d = samples[0].dict()
+        d = samples[0].to_dict()
         assert "uid" in d.keys()
 
         # test reactions
-        d = reactions[0].dict()
+        d = reactions[0].to_dict()
         assert "uid" in d.keys()
 
     def test_change_dtype(self) -> None:
@@ -77,7 +76,7 @@ class TestDataset:
         # test samples
         dtype = torch.float64
         samples = samples.type(dtype)
-        sample = samples[0]
+        sample: Sample = samples[0]
 
         assert sample.xyz.dtype == dtype
         assert sample.numbers.dtype != dtype
@@ -89,7 +88,7 @@ class TestDataset:
         # test reactions
         dtype = torch.float64
         reactions = reactions.type(dtype)
-        reaction = reactions[0]
+        reaction: Reaction = reactions[0]
 
         assert reaction.nu.dtype != dtype
         assert reaction.egfn1.dtype == dtype
@@ -106,7 +105,7 @@ class TestDataset:
         # test samples
         device = "cpu"
         samples = samples.to(torch.device(device))
-        sample = samples[0]
+        sample: Sample = samples[0]
 
         assert sample.xyz.device == torch.device(device)
         assert sample.numbers.device == torch.device(device)
@@ -118,8 +117,22 @@ class TestDataset:
         # test reactions
         device = "cpu"
         reactions = reactions.to(torch.device(device))
-        reaction = reactions[0]
+        reaction: Reaction = reactions[0]
 
         assert reaction.nu.device == torch.device(device)
         assert reaction.egfn1.device == torch.device(device)
         assert reaction.eref.device == torch.device(device)
+
+    
+    def test_singlepoint(self) -> None:
+        """Test for (slow) on-the-fly feature generation."""
+        path_samples = Path(Path.cwd(), "data/features.json")
+
+        samples: Samples = Samples.from_json(path_samples)
+        sample: Sample = samples[0]
+        
+        h0, ovlp, cn = sample.calc_singlepoint()
+        
+        print(h0, ovlp, cn)
+        
+        

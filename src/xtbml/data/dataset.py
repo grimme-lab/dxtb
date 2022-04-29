@@ -3,11 +3,19 @@ from pydantic import BaseModel
 from pathlib import Path
 from json import load as json_load
 
-
 import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
+
+from xtbml.adjlist import AdjacencyList
+from xtbml.basis.type import get_cutoff
+from xtbml.data.covrad import covalent_rad_d3
+from xtbml.xtb.calculator import Calculator
+from xtbml.ncoord.ncoord import get_coordination_number, exp_count
+from xtbml.param.gfn1 import GFN1_XTB as gfn1_par
+from xtbml.exlibs.tbmalt import Geometry
+from xtbml.exlibs.tbmalt.batch import deflate
 
 
 ##########################################################################################
@@ -20,6 +28,10 @@ class Sample:
     """Atomic positions"""
     numbers: Tensor
     """Atomic numbers"""
+    unpaired_e: Tensor
+    """Number of unpaired electrons"""
+    charges: Tensor
+    """Charge of sample"""
     egfn1: Tensor
     """Energy calculated by GFN1-xtb"""
     ovlp: Tensor
@@ -33,6 +45,8 @@ class Sample:
         "uid",
         "xyz",
         "numbers",
+        "unpaired_e",
+        "charges",
         "egfn1",
         "ovlp",
         "h0",
@@ -49,6 +63,8 @@ class Sample:
         uid: str,
         xyz: Tensor,
         numbers: Tensor,
+        unpaired_e: Tensor,
+        charges: Tensor,
         egfn1: Tensor,
         ovlp: Tensor,
         h0: Tensor,
@@ -57,6 +73,8 @@ class Sample:
         self.uid = uid
         self.xyz = xyz
         self.numbers = numbers
+        self.unpaired_e = unpaired_e
+        self.charges = charges
         self.egfn1 = egfn1
         self.ovlp = ovlp
         self.h0 = h0
@@ -71,6 +89,8 @@ class Sample:
                 for tensor in (
                     self.xyz,
                     self.numbers,
+                    self.unpaired_e,
+                    self.charges,
                     self.egfn1,
                     self.ovlp,
                     self.h0,
@@ -133,6 +153,8 @@ class Sample:
             self.uid,
             self.xyz.to(device=device),
             self.numbers.to(device=device),
+            self.unpaired_e.to(device=device),
+            self.charges.to(device=device),
             self.egfn1.to(device=device),
             self.ovlp.to(device=device),
             self.h0.to(device=device),
@@ -163,6 +185,8 @@ class Sample:
             self.uid,
             self.xyz.type(dtype),
             self.numbers.type(torch.long),
+            self.unpaired_e.type(torch.uint8),
+            self.charges.type(torch.uint8),
             self.egfn1.type(dtype),
             self.ovlp.type(dtype),
             self.h0.type(dtype),
@@ -194,6 +218,44 @@ class Sample:
                 d[slot] = getattr(self, slot)
 
         return d
+
+    def calc_singlepoint(self) -> List[Tensor]:
+        """Calculate QM features based on classicals input, such as geometry."""
+
+        # CALC FEATURES
+
+        # NOTE: singlepoint calculation so far only working with no padding
+        # quick and dirty hack to get rid of padding
+        mol = Geometry(
+            atomic_numbers=deflate(self.numbers),
+            positions=deflate(self.xyz, axis=1),
+            charges=self.charges,
+            unpaired_e=self.unpaired_e,
+        )
+
+        # check underlying data consistent
+        assert (
+            self.numbers.storage().data_ptr() == mol.atomic_numbers.storage().data_ptr()
+        )
+
+        # setup calculator
+        par = gfn1_par
+        calc = Calculator(mol, par)
+
+        # prepate cutoffs and lattice
+        # trans = get_lattice_points(mol_periodic, mol_lattice, cn_cutoff)
+        rcov = covalent_rad_d3
+        cn = get_coordination_number(mol, rcov, exp_count)
+
+        cutoff = get_cutoff(calc.basis)
+        # trans = get_lattice_points(mol_periodic, mol_lattice, cutoff)
+        trans = torch.zeros([3, 1])
+        adj = AdjacencyList(mol, trans, cutoff)
+
+        # build hamiltonian
+        h, overlap_int = calc.hamiltonian.build(calc.basis, adj, cn)
+
+        return h, overlap_int, cn
 
 
 class Samples:
