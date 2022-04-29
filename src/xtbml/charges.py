@@ -32,6 +32,7 @@ tensor([-0.8347, -0.8347,  0.2731,  0.2886,  0.2731,  0.2731,  0.2886,  0.2731])
 
 import torch
 import math
+from typing import Tuple
 
 Tensor = torch.Tensor
 
@@ -77,21 +78,19 @@ class ChargeModel:
         self.__device = chi.device
         self.__dtype = chi.dtype
 
-        if (
-            self.device
-            != self.chi.device
-            != self.kcn.device
-            != self.eta.device
-            != self.rad.device
+        if any(
+            [
+                tensor.device != self.device
+                for tensor in (self.device, self.chi, self.kcn.device, self.eta.device)
+            ]
         ):
             raise RuntimeError("All tensors must be on the same device!")
 
-        if (
-            self.dtype
-            != self.chi.dtype
-            != self.kcn.dtype
-            != self.eta.dtype
-            != self.rad.dtype
+        if any(
+            [
+                tensor.dtype != self.dtype
+                for tensor in (self.device, self.chi, self.kcn.device, self.eta.device)
+            ]
         ):
             raise RuntimeError("All tensors must have the same dtype!")
 
@@ -292,7 +291,7 @@ def solve(
     total_charge: Tensor,
     model: ChargeModel,
     cn: Tensor,
-):
+) -> Tuple[Tensor, Tensor]:
     """
     Solve the electronegativity equilibration for the partial charges minimizing
     the electrostatic energy.
@@ -361,10 +360,10 @@ def solve(
     )
 
     rad = model.rad[numbers]
-    gamma = 1.0 / torch.sqrt(rad.unsqueeze(-1)**2 + rad.unsqueeze(-2)**2)
+    gamma = 1.0 / torch.sqrt(rad.unsqueeze(-1) ** 2 + rad.unsqueeze(-2) ** 2)
     eta = torch.where(
         real,
-        model.eta[numbers] + torch.sqrt(torch.tensor(2.0/math.pi)) / rad,
+        model.eta[numbers] + torch.sqrt(torch.tensor(2.0 / math.pi)) / rad,
         torch.tensor(1.0, dtype=distances.dtype),
     )
     coulomb = torch.where(
@@ -374,7 +373,7 @@ def solve(
             mask,
             torch.erf(distances * gamma) / distances,
             torch.tensor(0.0, dtype=distances.dtype),
-        )
+        ),
     )
     constraint = torch.where(
         real,
