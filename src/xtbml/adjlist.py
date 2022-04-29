@@ -1,7 +1,7 @@
 from numpy import finfo
 import torch
 
-from .constants import UINT8 as DTYPE
+from .constants import INT16 as DTYPE
 from .exlibs.tbmalt import Geometry
 
 
@@ -55,8 +55,8 @@ class AdjacencyList:
         self.inl = torch.zeros(mol.get_length(), dtype=DTYPE)
         self.nnl = torch.zeros(mol.get_length(), dtype=DTYPE)
 
-        tmp_nlat = torch.zeros(10 * mol.get_length(), dtype=DTYPE)
-        tmp_nltr = torch.zeros(10 * mol.get_length(), dtype=DTYPE)
+        tmp_nlat = torch.zeros(30 * mol.get_length(), dtype=DTYPE)
+        tmp_nltr = torch.zeros(30 * mol.get_length(), dtype=DTYPE)
 
         img = 0
         cutoff2 = cutoff * cutoff
