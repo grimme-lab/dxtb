@@ -684,7 +684,7 @@ class ReactionDataset(BaseModel, Dataset):
                                 print(k, v.shape)
                         continue
 
-                    for k, v in sample.dict().items():
+                    for k, v in sample.to_dict().items():
                         if not isinstance(v, Tensor):
                             continue
                         batched_samples[j][k] = torch.concat(
