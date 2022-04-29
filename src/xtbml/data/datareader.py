@@ -56,51 +56,67 @@ def read_chrg(fp: str):
     return chrg
 
 
+def read_energy(fp: str):
+    """Read energy file (in TM format)."""
+    with open(fp, "r") as file:
+        for i, line in enumerate(file):
+            # energy is three times on second line (TM format)
+            if i == 1:
+                return float(line.strip().split()[-1])
+
+
 class Datareader:
     """Class to read in data from disk to Geometry object."""
 
     def fetch_data(root: str) -> Tuple[List, List]:
         """Fetch all data given in root directory."""
 
+        FILE_CHARGE = ".CHRG"
+        FILE_COORD = "coord"
+        FILE_ENERGY = "energy"
+        FILE_UHF = ".UHF"
+
         data = []
         file_list = []
 
         # loop through folders + subfolders only
         for (dirpath, dirnames, filenames) in walklevel(root, level=2):
-            if "coord" not in filenames:
+            if FILE_COORD not in filenames:
                 continue
 
             # read coord file
-            geo = read_coord("/".join([dirpath, "coord"]))
+            geo = read_coord("/".join([dirpath, FILE_COORD]))
             assert len(geo.shape) == 2
             xyz = geo[:, :3].tolist()
             q = list(map(int, geo[:, -1].tolist()))
 
             # read chrg file
-            if ".CHRG" in filenames:
-                chrg = read_chrg("/".join([dirpath, ".CHRG"]))
+            if FILE_CHARGE in filenames:
+                chrg = read_chrg("/".join([dirpath, FILE_CHARGE]))
             else:
                 chrg = 0
 
             # read uhf file
-            if ".UHF" in filenames:
-                uhf = read_chrg("/".join([dirpath, ".UHF"]))
+            if FILE_UHF in filenames:
+                uhf = read_chrg("/".join([dirpath, FILE_UHF]))
             else:
                 uhf = 0
 
-            if len(filenames) > 3:
-                print(dirpath, filenames)
-                raise IOError
+            # read energy file
+            if FILE_ENERGY in filenames:
+                energy = read_energy("/".join([dirpath, FILE_ENERGY]))
+            else:
+                energy = 0
 
-            data.append([xyz, q, chrg, uhf])
-            file_list.append(dirpath)
+            data.append([xyz, q, chrg, uhf, energy])
+            file_list.append(dirpath.replace(root, ""))
 
         return data, file_list
 
     def setup_geometry(
         data: torch.Tensor,
         dtype: Optional[torch.dtype] = FLOAT64,
-        dtype_int: Optional[torch.dtype] = torch.int16,  # TODO: adapt default dtype
+        dtype_int: Optional[torch.dtype] = torch.long,  # TODO: adapt default dtype
         device: Optional[torch.device] = None,
     ) -> Geometry:
         """Convert data tensor into batched geometry object."""
@@ -113,10 +129,11 @@ class Datareader:
         ]
 
         charges = [
-            torch.tensor(chrg, device=device, dtype=dtype_int) for *_, chrg, _ in data
+            torch.tensor(chrg, device=device, dtype=dtype_int)
+            for *_, chrg, _, _ in data
         ]
         unpaired_e = [
-            torch.tensor(uhf, device=device, dtype=dtype_int) for *_, uhf in data
+            torch.tensor(uhf, device=device, dtype=dtype_int) for *_, uhf, _ in data
         ]
 
         # convert into geometry object
