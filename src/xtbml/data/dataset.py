@@ -735,3 +735,53 @@ class ReactionDataset(BaseModel, Dataset):
             cfg["collate_fn"] = collate_fn
 
         return DataLoader(self, **cfg)
+
+    def pad(self):
+        """Conduct padding on all samples in the dataset."""
+
+        def get_max_shape(
+            dataset: ReactionDataset,
+        ) -> List[Union[None, Tuple[int, int]]]:
+            # ordered list containing each key
+            features = list(dataset.samples[0].to_dict().keys())
+            max_shape = [None for f in features]
+
+            # get max length/shape for each feature respectively
+            for s in dataset.samples:
+                for i, k in enumerate(features):
+                    f = getattr(s, k)
+                    if not isinstance(f, Tensor):
+                        continue
+                    sh = f.shape
+                    if max_shape[i] is None:
+                        max_shape[i] = list(sh)
+                    else:
+                        for j in range(len(sh)):
+                            max_shape[i][j] = max(max_shape[i][j], sh[j])
+
+            return max_shape
+
+        # get maximal shape for each feature
+        max_shape = get_max_shape(self)
+
+        # ordered list containing each key
+        features = list(self.samples[0].to_dict().keys())
+
+        # pad all features to max lengths
+        for s in self.samples:
+            for i, k in enumerate(features):
+                f = getattr(s, k)
+                if not isinstance(f, Tensor):
+                    continue
+                sh = f.shape
+                for j in range(len(sh)):
+                    abc = max_shape[i][j] > sh[j]
+                    if abc:
+                        # pad jth-dimension to max shape
+                        pad = [0 for _ in range(2 * len(sh))]
+                        # change respective entry to difference
+                        idx = 2 * (len(sh) - j) - 1
+                        pad[idx] = max_shape[i][j] - sh[j]
+                        f = torch.nn.functional.pad(f, pad, mode="constant", value=0.0)
+                        setattr(s, k, f)
+        return
