@@ -677,8 +677,7 @@ class ReactionDataset(BaseModel, Dataset):
                 for j, sample in enumerate(s[0]):
                     print(sample.uid)
                     if i == 0:
-                        batched_samples[j] = sample.dict()
-                        print("here we are")
+                        batched_samples[j] = sample.to_dict()
                         for k, v in batched_samples[j].items():
                             if isinstance(v, Tensor):
                                 batched_samples[j][k] = v.unsqueeze(0)
