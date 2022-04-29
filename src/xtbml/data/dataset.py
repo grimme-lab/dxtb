@@ -173,6 +173,28 @@ class Sample:
         """Custom print representation of class."""
         return f"{self.__class__.__name__}({self.uid})"
 
+    def dict(
+        self, skipped: Optional[List[str]] = None
+    ) -> Dict[str, Union[str, Tensor]]:
+        """Create dictionary of class attributes (exluding dunder methods, `device`, `dtype` and callables).
+
+        Args:
+            skipped (List[str], optional): Attributes to exclude. Defaults to None.
+
+        Returns:
+            Dict[str, Union[str, Tensor]]: Selected attributes and their respective values.
+        """
+        d = dict()
+        skip = ["__", "device", "dtype"]
+        if skipped is not None:
+            skip = skip + skipped
+
+        for slot in self.__slots__:
+            if not any([s in slot for s in skip]):
+                d[slot] = getattr(self, slot)
+
+        return d
+
 
 class Samples:
     """Representation for list of samples."""
@@ -424,6 +446,28 @@ class Reaction:
         """Custom print representation of class."""
         return f"{self.__class__.__name__}({self.uid})"
 
+    def dict(
+        self, skipped: Optional[List[str]] = None
+    ) -> Dict[str, Union[str, Tensor]]:
+        """Create dictionary of class attributes (exluding dunder methods, `device`, `dtype` and callables).
+
+        Args:
+            skipped (List[str], optional): Attributes to exclude. Defaults to None.
+
+        Returns:
+            Dict[str, Union[str, Tensor]]: Selected attributes and their respective values.
+        """
+        d = dict()
+        skip = ["__", "device", "dtype"]
+        if skipped is not None:
+            skip = skip + skipped
+
+        for slot in self.__slots__:
+            if not any([s in slot for s in skip]):
+                d[slot] = getattr(self, slot)
+
+        return d
+
 
 class Reactions:
     """Representation for list of samples."""
@@ -563,7 +607,9 @@ class ReactionDataset(BaseModel, Dataset):
         arbitrary_types_allowed = True
 
     @staticmethod
-    def create_from_disk(path_reactions: str, path_samples: str) -> "ReactionDataset":
+    def create_from_disk(
+        path_reactions: Union[Path, str], path_samples: Union[Path, str]
+    ) -> "ReactionDataset":
         """Load `Samples` and `Reactions` from JSON files.
 
         Args:

@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Dict
 
 import torch
 
@@ -49,6 +50,21 @@ class TestDataset:
 
         assert type(reactions[:3]) == list
         assert len(reactions[:3]) == 3
+
+    def test_dict(self) -> None:
+        path_samples = Path(Path.cwd(), "data/features.json")
+        path_reactions = Path(Path.cwd(), "data/reactions.json")
+
+        samples = Samples.from_json(path_samples)
+        reactions = Reactions.from_json(path_reactions)
+
+        # test samples
+        d = samples[0].dict()
+        assert "uid" in d.keys()
+
+        # test reactions
+        d = reactions[0].dict()
+        assert "uid" in d.keys()
 
     def test_change_dtype(self) -> None:
         """Test for setting `torch.dtype` for tensor class attributes."""
