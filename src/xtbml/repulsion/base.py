@@ -9,8 +9,6 @@ from pydantic import BaseModel
 from abc import ABC, abstractmethod
 from torch import Tensor
 
-from ..exlibs.tbmalt import Geometry
-
 # TODO: allow for usability with base Params object
 class EnergyContribution(BaseModel, ABC):
     """
@@ -19,8 +17,11 @@ class EnergyContribution(BaseModel, ABC):
     within a given cutoff.
     """  # TODOC
 
-    geometry: Geometry
-    """Molecular structure data"""
+    numbers: Tensor
+    """The atomic numbers of the atoms in the system."""
+    
+    positions: Tensor
+    """The positions of the atoms in the system."""
 
     trans: Optional[Tensor] = None
     """Lattice points"""
@@ -36,6 +37,9 @@ class EnergyContribution(BaseModel, ABC):
 
     sigma: Optional[Tensor] = None
     """Strain derivatives of the repulsion energy"""
+    
+    req_grad: Optional[bool] = False
+    """Flag for autograd computation. Defaults to `False`"""
 
     class Config:
         # allow for geometry and tensor fields
