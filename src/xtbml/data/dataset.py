@@ -694,7 +694,15 @@ class ReactionDataset(BaseModel, Dataset):
         """Get all samples involved in specified reaction."""
         reaction = self.reactions[idx]
         samples = [s for s in self.samples if s.uid in reaction.partners]
+        if samples == []:
+            print(f"WARNING: Samples for reaction {reaction} not available")
         return samples, reaction
+
+    def rm_reaction(self, idx: int):
+        """Remove reaction from dataset."""
+        # NOTE: Dataset might contain samples
+        #       that are not required in any reaction anymore
+        del self.reactions[idx]
 
     def get_dataloader(self, cfg: Optional[dict] = {}) -> DataLoader:
         """
@@ -713,7 +721,7 @@ class ReactionDataset(BaseModel, Dataset):
             #       concatenation of samples and reactions properties is necessary
 
             # fixed number of partners
-            assert all([len(s[0]) == len(batch[0][0]) for s in batch])
+            # assert all([len(s[0]) == len(batch[0][0]) for s in batch])
 
             batched_samples = [{} for _ in range(len(batch[0][0]))]
             batched_reactions = []
@@ -737,13 +745,13 @@ class ReactionDataset(BaseModel, Dataset):
 
                 # batch samples
                 for j, sample in enumerate(s[0]):
-                    print(sample.uid)
+                    # print(sample.uid)
                     if i == 0:
                         batched_samples[j] = sample.to_dict()
                         for k, v in batched_samples[j].items():
                             if isinstance(v, Tensor):
                                 batched_samples[j][k] = v.unsqueeze(0)
-                                print(k, v.shape)
+                                # print(k, v.shape)
                         continue
 
                     for k, v in sample.to_dict().items():
@@ -760,6 +768,12 @@ class ReactionDataset(BaseModel, Dataset):
 
             # TODO: could be added as an _add_ function to the class
             partners = [i for r in batched_reactions for i in r.partners]
+
+            # TODO: requires reactions with same number of partners
+            assert (
+                len(set([len(r.partners) for r in batched_reactions])) == 1
+            ), "Number of partners must be the same for all reactions (until padding or batching is implemented)"
+
             nu = torch.stack([r.nu for r in batched_reactions], 0)
             egfn1 = torch.stack([r.egfn1 for r in batched_reactions], 0)
             eref = torch.stack([r.eref for r in batched_reactions], 0)
