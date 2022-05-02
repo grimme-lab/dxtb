@@ -36,3 +36,5 @@ dependencies:
   - zlib=1.2.11=h36c2ea0_1013
   - tomli
   - pydantic
+  - pip:
+      - tad-dftd3
