@@ -118,7 +118,7 @@ def load_model_from_cfg(cfg: dict, load_state=True):
         lr=cfg.get("training_lr"),
         weight_decay=cfg.get("training_weight_decay", 0),
     )
-    if load_state:
+    if load_state and "optimizer_state_dict" in cfg:
         optimizer.load_state_dict(cfg["optimizer_state_dict"])
 
     scheduler = get_scheduler(cfg.get("training_scheduler", None), optimizer)
