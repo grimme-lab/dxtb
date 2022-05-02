@@ -78,27 +78,35 @@ class IndexHelper:
         self.__device = angular.device
         self.__dtype = angular.dtype
 
-        if (
-            self.dtype
-            != self.angular.dtype
-            != self.shells_per_atom.dtype
-            != self.shell_index.dtype
-            != self.shells_to_atom.dtype
-            != self.orbitals_per_shell.dtype
-            != self.orbital_index.dtype
-            != self.orbitals_to_shell.dtype
+        if any(
+            [
+                tensor.dtype != self.dtype
+                for tensor in (
+                    self.angular,
+                    self.shells_per_atom,
+                    self.shell_index,
+                    self.shells_to_atom,
+                    self.orbitals_per_shell,
+                    self.orbital_index,
+                    self.orbitals_to_shell,
+                )
+            ]
         ):
             raise ValueError("All tensors must have same dtype")
 
-        if (
-            self.device
-            != self.angular.device
-            != self.shells_per_atom.device
-            != self.shell_index.device
-            != self.shells_to_atom.device
-            != self.orbitals_per_shell.device
-            != self.orbital_index.device
-            != self.orbitals_to_shell.device
+        if any(
+            [
+                tensor.device != self.device
+                for tensor in (
+                    self.angular,
+                    self.shells_per_atom,
+                    self.shell_index,
+                    self.shells_to_atom,
+                    self.orbitals_per_shell,
+                    self.orbital_index,
+                    self.orbitals_to_shell,
+                )
+            ]
         ):
             raise ValueError("All tensors must be on the same device")
 
