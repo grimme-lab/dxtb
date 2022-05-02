@@ -5,7 +5,7 @@ from typing import List, Dict, Tuple, Union
 from ..adjlist import AdjacencyList
 from ..basis.type import Basis
 from ..constants import EV2AU
-from ..constants import FLOAT64 as DTYPE
+from ..constants import FLOAT32 as DTYPE
 from ..data.atomicrad import get_atomic_rad
 from ..exlibs.tbmalt import Geometry
 from ..integral.overlap import msao, overlap_cgto
