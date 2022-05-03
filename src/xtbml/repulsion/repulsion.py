@@ -2,7 +2,7 @@
 
 """Definition of repulsion energy terms."""
 
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Dict, List, Literal, Optional, Union, Tuple
 import torch
 from torch import Tensor
 
@@ -25,7 +25,7 @@ class RepulsionFactory(EnergyContribution):
     Number of elements (86, PSE up to Rn) plus dummy to allow indexing by atomic numbers.
     """
 
-    dummy_value: float = 0
+    dummy_value: float = 0.0
     """
     Dummy value for zero index of tensors indexed by atomic numbers.
     """
@@ -175,16 +175,19 @@ class RepulsionFactory(EnergyContribution):
         self.w_kexp = kexp_mul * mask
 
     def get_engrad(
-        self, calc_gradient: bool = False
+        self,
+        calc_gradient: bool = False,
+        mode: Literal["full", "pair", "atom", "scalar"] = "pair",
     ) -> Tuple[Tensor, Union[Tensor, None]]:
         """Obtain repulsion energy and gradient.
 
         Args:
-            cutoff (Union[float, None], optional): Real space cutoff. Defaults to `None`.
             calc_gradient (bool, optional): Flag for calculating gradient. Defaults to `False`.
+            mode (Literal["full", "pair", "atom", "scalar"], optional): Specifies returned repulsion energy. Use "pair" (upper triangular matrix) and "full" (full symmetric matrix) for atomic-pairwise, "atom" for atom-wise (vector), and scalar for the total repulsion energy. Defaults to "pair".
+
 
         Returns:
-            Tuple[Tensor, Union[Tensor, None]]: Atom-wise repulsion energy (and gradient). For total repulsion energy, the energy tensor has to be summed up (`torch.sum(e_rep, dim=(-2, -1))`). Gradient is `None` if `calc_gradient` is set to `False`
+            Tuple[Tensor, Union[Tensor, None]]: Repulsion energy (and gradient). Gradient is `None` if `calc_gradient` is set to `False`
         """
 
         if self.w_alpha is None or self.w_zeff is None or self.w_kexp is None:
@@ -218,9 +221,6 @@ class RepulsionFactory(EnergyContribution):
         # Eq.13: repulsion energy
         dE = self.w_zeff * exp_term / distances
 
-        # Eq.13: sum up and rectify double counting (symmetric matrix)
-        # sum_dE = 0.5 * torch.sum(dE, dim=(-2, -1))
-
         dG = None
         if calc_gradient is True:
             dG = -(self.w_alpha * r1k * self.w_kexp + 1.0) * dE
@@ -248,4 +248,15 @@ class RepulsionFactory(EnergyContribution):
             # >>> print(dG.shape)
             # torch.Size([n_batch, n_atoms, 3])
 
-        return 0.5 * dE, dG
+        if mode == "pair":
+            E = torch.triu(dE, diagonal=1)
+        elif mode == "atom":
+            E = torch.sum(torch.triu(dE, diagonal=1), dim=-1)
+        elif mode == "scalar":
+            E = 0.5 * torch.sum(dE, dim=(-2, -1))
+        elif mode == "full":
+            E = dE
+        else:
+            raise RuntimeError(f"Unknown mode '{mode}' for repulsion tensor.")
+
+        return E, dG
