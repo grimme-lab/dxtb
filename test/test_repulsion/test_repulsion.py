@@ -4,7 +4,7 @@ Run tests for repulsion contribution.
 (Note that the analytical gradient tests fail for `torch.float32`.)
 """
 
-from typing import Callable, Union
+from typing import Callable, Literal, Union
 import pytest
 
 import torch
@@ -66,6 +66,7 @@ class TestRepulsion(Setup):
         reference_energy: Union[Tensor, None],
         reference_gradient: Union[Tensor, None],
         dtype: torch.dtype,
+        repulsion_mode: Literal["full", "pair", "atom", "scalar"] = "pair",
     ) -> None:
         """Wrapper for testing versus reference energy and gradient"""
 
@@ -73,9 +74,20 @@ class TestRepulsion(Setup):
         rtol = 1.0e-4 if dtype == torch.float32 else 1.0e-5
 
         # factory to produce repulsion objects
-        repulsion = repulsion_factory(numbers, positions)
-        e, gradient = repulsion.get_engrad(calc_gradient=True)
-        energy = torch.sum(e, dim=(-2, -1))
+        repulsion: RepulsionFactory = repulsion_factory(numbers, positions)
+        e, gradient = repulsion.get_engrad(calc_gradient=True, mode=repulsion_mode)
+
+        # sum up for comparison with reference
+        if repulsion_mode == "pair":
+            energy = torch.sum(e, dim=(-2, -1))
+        elif repulsion_mode == "atom":
+            energy = torch.sum(e, dim=-1)
+        elif repulsion_mode == "full":
+            energy = 0.5 * torch.sum(e, dim=(-2, -1))
+        elif repulsion_mode == "scalar":
+            energy = e
+        else:
+            raise RuntimeError(f"Unknown mode '{repulsion_mode}' for repulsion tensor.")
 
         # test against reference values
         if reference_energy is not None:
@@ -121,6 +133,53 @@ class TestRepulsion(Setup):
                 gradient[i, j] = 0.5 * (er - el) / step
 
         return gradient
+
+    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+    def test_modes(self, dtype: torch.dtype):
+        sample = mb16_43["01"]
+
+        atomic_numbers = symbol2number(sample["symbols"])
+        positions = sample["positions"].type(dtype)
+
+        reference_energy = torch.tensor(sample["ref"]["gfn1"]["repulsion"], dtype=dtype)
+        reference_gradient = None
+
+        self.base_test(
+            numbers=atomic_numbers,
+            positions=positions,
+            repulsion_factory=self.repulsion_gfn1,
+            reference_energy=reference_energy,
+            reference_gradient=reference_gradient,
+            dtype=dtype,
+            repulsion_mode="pair",
+        )
+        self.base_test(
+            numbers=atomic_numbers,
+            positions=positions,
+            repulsion_factory=self.repulsion_gfn1,
+            reference_energy=reference_energy,
+            reference_gradient=reference_gradient,
+            dtype=dtype,
+            repulsion_mode="atom",
+        )
+        self.base_test(
+            numbers=atomic_numbers,
+            positions=positions,
+            repulsion_factory=self.repulsion_gfn1,
+            reference_energy=reference_energy,
+            reference_gradient=reference_gradient,
+            dtype=dtype,
+            repulsion_mode="full",
+        )
+        self.base_test(
+            numbers=atomic_numbers,
+            positions=positions,
+            repulsion_factory=self.repulsion_gfn1,
+            reference_energy=reference_energy,
+            reference_gradient=reference_gradient,
+            dtype=dtype,
+            repulsion_mode="scalar",
+        )
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     def test_gfn1_mb1643_01(self, dtype: torch.dtype):
@@ -309,6 +368,65 @@ class TestRepulsion(Setup):
         repulsion = self.repulsion_gfn1(numbers, positions, True)
         param = (repulsion.alpha, repulsion.zeff, repulsion.kexp)
         assert torch.autograd.gradcheck(func, param)
+
+    @pytest.mark.grad
+    @pytest.mark.parametrize("dtype", [torch.float64])
+    def test_positions_grad(self, dtype):
+        """
+        Check a single analytical gradient of `RepulsionFactory.positions` against numerical gradient from `torch.autograd.gradcheck`.
+
+        Args:
+            dtype (torch.dtype): Numerical precision.
+
+        Note:
+            Fails for `torch.float32`.
+        """
+        sample = mb16_43["01"]
+
+        numbers = symbol2number(sample["symbols"])
+        positions = sample["positions"].type(dtype)
+        positions.requires_grad_(True)
+
+        def func(positions):
+            repulsion = self.repulsion_gfn1(numbers, positions, True)
+            energy, _ = repulsion.get_engrad()
+            return energy
+
+        assert torch.autograd.gradcheck(func, positions)
+
+    @pytest.mark.grad
+    @pytest.mark.parametrize("dtype", [torch.float64])
+    def test_positions_grad_batch(self, dtype: torch.dtype):
+        """
+        Check batch analytical gradient against numerical gradient from `torch.autograd.gradcheck`.
+
+        Args:
+            dtype (torch.dtype): Numerical precision.
+
+        Note:
+            Fails for `torch.float32`.
+        """
+
+        sample1, sample2 = mb16_43["01"], mb16_43["SiH4"]
+        numbers: Tensor = batch.pack(
+            (
+                symbol2number(sample1["symbols"]),
+                symbol2number(sample2["symbols"]),
+            )
+        )
+        positions: Tensor = batch.pack(
+            (
+                sample1["positions"].type(dtype).requires_grad_(True),
+                sample2["positions"].type(dtype).requires_grad_(True),
+            )
+        )
+
+        def func(positions):
+            repulsion = self.repulsion_gfn1(numbers, positions, True)
+            energy, _ = repulsion.get_engrad()
+            return energy
+
+        assert torch.autograd.gradcheck(func, positions)
 
     # REQUIRES GFN2-XTB PARAMETRIZATION
     """
