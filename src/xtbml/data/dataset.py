@@ -241,7 +241,7 @@ class Sample:
         """Custom print representation of class."""
         return f"{self.__class__.__name__}({self.uid})"
 
-    def dict(
+    def to_dict(
         self, skipped: Optional[List[str]] = None
     ) -> Dict[str, Union[str, Tensor]]:
         """Create dictionary of class attributes (exluding dunder methods, `device`, `dtype` and callables).
@@ -558,7 +558,7 @@ class Reaction:
         """Custom print representation of class."""
         return f"{self.__class__.__name__}({self.uid})"
 
-    def dict(
+    def to_dict(
         self, skipped: Optional[List[str]] = None
     ) -> Dict[str, Union[str, Tensor]]:
         """Create dictionary of class attributes (exluding dunder methods, `device`, `dtype` and callables).
