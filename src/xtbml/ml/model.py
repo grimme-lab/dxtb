@@ -34,14 +34,16 @@ class Basic_CNN(nn.Module):
         )
         self.pool = nn.MaxPool2d(2, 2)
 
-        self.fc1 = nn.Linear(self.input, self.hidden * 2)
+        self.fc_cn = nn.Linear(81, self.hidden)  # TODO: set as argument
+
+        self.fc1 = nn.Linear(self.input + self.hidden, self.hidden * 2)
         self.fc2 = nn.Linear(self.hidden * 2, self.hidden)
         self.fc3 = nn.Linear(self.hidden, self.output)
 
     def forward(self, batched_samples: List, batched_reaction: List) -> Tensor:
         # prediction on single reaction (can be batched along first dimension)
 
-        # NOTE: add typing List[Samples] List[Reactions]
+        # TODO: add typing List[Samples] List[Reactions]
         # INFO: len(batched_samples) == how many reactants take part in each reaction
         # INFO: len(batched_reactions) == how many reactions are there (== batch_size)
 
@@ -59,9 +61,13 @@ class Basic_CNN(nn.Module):
             x2 = self.pool(F.leaky_relu(self.conv1(h)))
             x2 = F.leaky_relu(self.conv2(x2))
 
+            # coordination number
+            cn = F.leaky_relu(self.fc_cn(reactant.cn))
+
             # merge features
             x = torch.cat((x, x2), 1)
             x = torch.flatten(x, 1)  # flatten all dimensions except batch
+            x = torch.cat((x, cn), 1)
 
             # print(x.shape, reactant.egfn1, reactant.egfn1.shape) # batchsize should be first dimension
 
