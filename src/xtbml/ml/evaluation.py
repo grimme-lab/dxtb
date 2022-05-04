@@ -70,7 +70,30 @@ def evaluate():
     print("WTMAD-2: Enn", wtmad2(df, "Enn", "Eref"))
 
 
-def wtmad2(df, colname_target, colname_ref, set_column="subset"):
+def wtmad2(
+    df: pd.DataFrame,
+    colname_target: str,
+    colname_ref: str,
+    set_column: str = "subset",
+    verbose: bool = False,
+) -> float:
+    """Calculate the weighted total mean absolute deviation, as defined in
+
+    - L. Goerigk, A. Hansen, C. Bauer, S. Ehrlich,A. Najibi, Asim, S. Grimme,
+      *Phys. Chem. Chem. Phys.*, **2017**, 19, 48, 32184-32215.
+      (`DOI <http://dx.doi.org/10.1039/C7CP04913G>`__)
+
+    Args:
+        df (pd.DataFrame): Dataframe containing target and reference energy values.
+        colname_target (str): Name of target column.
+        colname_ref (str): Name of reference column.
+        set_column (str, optional): Name of column defining the subset association. Defaults to "subset".
+        verbose (bool, optional): Allows for printout of subset-wise MAD. Defaults to "False".
+
+    Returns:
+        float: weighted total mean absolute deviation
+    """
+
     AVG = 56.84
     subsets = df.groupby([set_column])
     subset_names = df[set_column].unique()
@@ -89,6 +112,7 @@ def wtmad2(df, colname_target, colname_ref, set_column="subset"):
         # https://github.com/pandas-dev/pandas/blob/v1.4.2/pandas/core/generic.py#L10813
         mue = (sdf[colname_ref] - sdf[colname_target]).abs().mean()
         wtmad += counts[i] * AVG / avg_subsets[i] * mue
-        print(f"Subset {subset_names[i]} ({counts[i]} entries): MUE {mue:.3f}")
+        if verbose:
+            print(f"Subset {subset_names[i]} ({counts[i]} entries): MUE {mue:.3f}")
 
     return wtmad / len(df.index)
