@@ -17,6 +17,7 @@ from xtbml.ncoord.ncoord import get_coordination_number, exp_count
 from xtbml.param.gfn1 import GFN1_XTB as gfn1_par
 from xtbml.exlibs.tbmalt import Geometry
 from xtbml.exlibs.tbmalt.batch import deflate
+from xtbml.constants import FLOAT32
 
 
 # TODO: add to general utils
@@ -320,7 +321,9 @@ class Samples:
         self.__dtype = samples[0].egfn1.dtype
 
     @classmethod
-    def from_json(cls, path: Union[Path, str]) -> "Samples":
+    def from_json(
+        cls, path: Union[Path, str], dtype: torch.dtype = FLOAT32
+    ) -> "Samples":
         """Create samples from json.
 
         Args:
@@ -345,7 +348,11 @@ class Samples:
                 # convert to tensor
                 for feature, value in features.items():
                     # print(features[feature], value)
-                    features[feature] = torch.tensor(value)
+                    features[feature] = torch.tensor(value, dtype=dtype)
+
+                # TODO: add values to constructor
+                features.pop("edisp", None)
+                features.pop("erep", None)
 
                 sample_list.append(Sample(uid=uid, **features))
 
@@ -741,6 +748,11 @@ class ReactionDataset(BaseModel, Dataset):
             print(f"WARNING: Samples for reaction {reaction} not available")
         return samples, reaction
 
+    @classmethod
+    def merge(cls, a, b):
+        """Merge two datasets."""
+        return cls(samples=a.samples + b.samples, reactions=a.reactions + b.reactions)
+
     def rm_reaction(self, idx: int):
         """Remove reaction from dataset."""
         # NOTE: Dataset might contain samples
@@ -765,6 +777,37 @@ class ReactionDataset(BaseModel, Dataset):
 
             # fixed number of partners
             # assert all([len(s[0]) == len(batch[0][0]) for s in batch])
+
+            # TODO: add typehints for batch: List[List[List[Sample], Reaction]]
+            def pad_batch(batch):
+                """Pad batch to constant number of partners per reaction."""
+
+                # max number of partners in batch
+                max_partner = max([len(s[0]) for s in batch])
+
+                # empty sample object used for padding
+                ref = batch[0][0][0]
+                padding_sample = Sample(
+                    uid="PADDING",
+                    xyz=torch.zeros_like(ref.xyz),
+                    numbers=torch.zeros_like(ref.numbers),
+                    unpaired_e=torch.zeros_like(ref.unpaired_e),
+                    charges=torch.zeros_like(ref.charges),
+                    egfn1=torch.zeros_like(ref.egfn1),
+                    ovlp=torch.zeros_like(ref.ovlp),
+                    h0=torch.zeros_like(ref.h0),
+                    cn=torch.zeros_like(ref.cn),
+                )
+
+                # pad each batch
+                for s in batch:
+                    for i in range(max_partner - len(s[0])):
+                        s[0].append(padding_sample)
+
+                return batch
+
+            # pad batch to same length
+            batch = pad_batch(batch)
 
             batched_samples = [{} for _ in range(len(batch[0][0]))]
             batched_reactions = []
