@@ -1,7 +1,7 @@
 import torch
 import pandas as pd
 
-from .training import get_dummy_dataset
+from .training import get_gmtkn_dataset
 from .util import load_model_from_cfg
 
 """ Load ML model from disk and conduct basic evaluation. """
@@ -13,7 +13,7 @@ def evaluate():
     torch.set_printoptions(precision=2, sci_mode=False)
 
     # load data
-    dataset = get_dummy_dataset()
+    dataset = get_gmtkn_dataset()
 
     # prune to constant number of partners
     np = [len(r.partners) for r in dataset.reactions]
@@ -22,6 +22,11 @@ def evaluate():
         dataset.rm_reaction(idx=i)
     cc = [r.uid for r in dataset.reactions]
     print(f"Dataset contains {len(cc)} reactions: {cc}")
+
+    # remove all samples with missing values
+    idxs = [i for i in range(len(dataset)) if len(dataset[i][0]) == 0]
+    for i in reversed(idxs):
+        dataset.rm_reaction(idx=i)
 
     # setup dataloader
     dl = dataset.get_dataloader({"batch_size": 1})
@@ -33,7 +38,7 @@ def evaluate():
         "training_loss_fn": "L1Loss",
         "training_lr": 0.01,
         "epochs": 3,
-        "model_state_dict": torch.load("../models/202205021939_model.pt"),
+        "model_state_dict": torch.load("../models/202205041550_model.pt"),
     }
     model, _, loss_fn, _ = load_model_from_cfg(cfg_ml)
     model.eval()
