@@ -13,11 +13,30 @@ from xtbml.data.dataset import ReactionDataset
 def train():
     """Trains the model."""
 
-    # TODO: load data correctly
-    dataset = get_dummy_dataset()
+    # load GMTKN55 from disk
+    dataset = get_gmtkn_dataset()
+
+    # TODO: extend padding to number of parameters
+    # prune to constant number of partners
+    if False:
+        np = [len(r.partners) for r in dataset.reactions]
+        idxs = [i for i, x in enumerate(np) if x != 2]
+        for i in reversed(idxs):
+            dataset.rm_reaction(idx=i)
+        cc = [r.uid for r in dataset.reactions]
+        print(f"Dataset contains {len(cc)} reactions: {cc}")
+
+    # TODO: apparently iterator not correctly implemented
+    # for i, s in enumerate(dataset):
+    #    print(dataset[i])
+
+    # remove all samples with missing values
+    idxs = [i for i in range(len(dataset)) if len(dataset[i][0]) == 0]
+    for i in reversed(idxs):
+        dataset.rm_reaction(idx=i)
 
     # setup dataloader
-    dl = dataset.get_dataloader({"batch_size": 2})
+    dl = dataset.get_dataloader({"batch_size": 50})
 
     # set config for ML
     cfg_ml = {
@@ -25,7 +44,7 @@ def train():
         "training_optimizer": "Adam",
         "training_loss_fn": "L1Loss",
         "training_lr": 0.01,
-        "epochs": 100,
+        "epochs": 60,
     }
 
     # load components
@@ -88,20 +107,59 @@ def train():
     torch.save(model.state_dict(), save_name + "_model.pt")
 
 
-def get_dummy_dataset() -> ReactionDataset:
+def get_dataset(path_reactions: str, path_samples: str) -> ReactionDataset:
     """Return a preliminary dataset for setting up the workflow."""
 
-    # load json with real data
-    path_samples = Path(Path.cwd(), "../data/features.json")
-    path_reactions = Path(Path.cwd(), "../data/reactions.json")
-
-    # samples = Samples.from_json(path_samples)
-    # reactions = Reactions.from_json(path_reactions)
+    # load json from disk
     dataset = ReactionDataset.create_from_disk(
         path_reactions=path_reactions, path_samples=path_samples
     )
 
     # apply simple padding
     dataset.pad()
+
+    return dataset
+
+
+def get_gmtkn_dataset() -> ReactionDataset:
+    """Return total gmtkn55 dataset."""
+
+    # load data
+    d1 = get_dataset(
+        path_reactions=Path(Path.cwd(), "../data/reactions.json"),
+        path_samples=Path(Path.cwd(), "../data/features-1.json"),
+    )
+    d2 = get_dataset(
+        path_reactions=Path(Path.cwd(), "../data/reactions.json"),
+        path_samples=Path(Path.cwd(), "../data/features-2.json"),
+    )
+    d3 = get_dataset(
+        path_reactions=Path(Path.cwd(), "../data/reactions.json"),
+        path_samples=Path(Path.cwd(), "../data/features-3.json"),
+    )
+    d4 = get_dataset(
+        path_reactions=Path(Path.cwd(), "../data/reactions.json"),
+        path_samples=Path(Path.cwd(), "../data/features-4.json"),
+    )
+    d5 = get_dataset(
+        path_reactions=Path(Path.cwd(), "../data/reactions.json"),
+        path_samples=Path(Path.cwd(), "../data/features-5.json"),
+    )
+    d6 = get_dataset(
+        path_reactions=Path(Path.cwd(), "../data/reactions.json"),
+        path_samples=Path(Path.cwd(), "../data/features-6.json"),
+    )
+
+    # merge
+    dataset = ReactionDataset.merge(d1, d2)
+    dataset = ReactionDataset.merge(dataset, d3)
+    dataset = ReactionDataset.merge(dataset, d4)
+    dataset = ReactionDataset.merge(dataset, d5)
+    dataset = ReactionDataset.merge(dataset, d6)
+    dataset.pad()
+
+    assert len(dataset) == 6 * 1499
+
+    # TODO: alternatively save to json
 
     return dataset
