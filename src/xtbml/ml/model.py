@@ -13,7 +13,7 @@ class Basic_CNN(nn.Module):
         self.hidden_size = 2  # dummy value
         self.kernel_size = 2  # dummy value
 
-        self.input = 4357  # TODO: set as argument
+        self.input = 55697  # TODO: set as argument
         self.hidden = 30
         self.output = 1
 
@@ -41,6 +41,7 @@ class Basic_CNN(nn.Module):
     def forward(self, batched_samples: List, batched_reaction: List) -> Tensor:
         # prediction on single reaction (can be batched along first dimension)
 
+        # NOTE: add typing List[Samples] List[Reactions]
         # INFO: len(batched_samples) == how many reactants take part in each reaction
         # INFO: len(batched_reactions) == how many reactions are there (== batch_size)
 
@@ -61,6 +62,8 @@ class Basic_CNN(nn.Module):
             # merge features
             x = torch.cat((x, x2), 1)
             x = torch.flatten(x, 1)  # flatten all dimensions except batch
+
+            # print(x.shape, reactant.egfn1, reactant.egfn1.shape) # batchsize should be first dimension
 
             # add GFN1-xtb energy
             e = torch.unsqueeze(reactant.egfn1, 1)  # TODO: check unsqueeze dimension
