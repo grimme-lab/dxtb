@@ -16,16 +16,6 @@ def train():
     # TODO: load data correctly
     dataset = get_dummy_dataset()
 
-    # TODO: extend padding to number of parameters
-    # prune to constant number of partners
-    if True:
-        np = [len(r.partners) for r in dataset.reactions]
-        idxs = [i for i, x in enumerate(np) if x != 2]
-        for i in reversed(idxs):
-            dataset.rm_reaction(idx=i)
-        cc = [r.uid for r in dataset.reactions]
-        print(f"Dataset contains {len(cc)} reactions: {cc}")
-
     # setup dataloader
     dl = dataset.get_dataloader({"batch_size": 2})
 

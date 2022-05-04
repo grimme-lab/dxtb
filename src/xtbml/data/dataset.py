@@ -7,6 +7,7 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
+import torch.nn.functional as F
 
 from xtbml.adjlist import AdjacencyList
 from xtbml.basis.type import get_cutoff
@@ -16,6 +17,48 @@ from xtbml.ncoord.ncoord import get_coordination_number, exp_count
 from xtbml.param.gfn1 import GFN1_XTB as gfn1_par
 from xtbml.exlibs.tbmalt import Geometry
 from xtbml.exlibs.tbmalt.batch import deflate
+
+
+# TODO: add to general utils
+# With courtesy to https://pytorch-forecasting.readthedocs.io
+def padded_stack(
+    tensors: List[torch.Tensor],
+    side: str = "right",
+    mode: str = "constant",
+    value: Union[int, float] = 0,
+) -> torch.Tensor:
+    """
+    Stack tensors along first dimension and pad them along last dimension to ensure their size is equal.
+
+    Args:
+        tensors (List[torch.Tensor]): list of tensors to stack
+        side (str): side on which to pad - "left" or "right". Defaults to "right".
+        mode (str): 'constant', 'reflect', 'replicate' or 'circular'. Default: 'constant'
+        value (Union[int, float]): value to use for constant padding
+
+    Returns:
+        torch.Tensor: stacked tensor
+    """
+    full_size = max([x.size(-1) for x in tensors])
+
+    def make_padding(pad):
+        if side == "left":
+            return (pad, 0)
+        elif side == "right":
+            return (0, pad)
+        else:
+            raise ValueError(f"side for padding '{side}' is unknown")
+
+    out = torch.stack(
+        [
+            F.pad(x, make_padding(full_size - x.size(-1)), mode=mode, value=value)
+            if full_size - x.size(-1) > 0
+            else x
+            for x in tensors
+        ],
+        dim=0,
+    )
+    return out
 
 
 ##########################################################################################
@@ -728,20 +771,12 @@ class ReactionDataset(BaseModel, Dataset):
 
             for i, s in enumerate(batch):
                 # assume standardised features
-                """assert all(
-                    sample.positions.shape == s[0][0].positions.shape for sample in s[0]
-                )
+                assert all(sample.xyz.shape == s[0][0].xyz.shape for sample in s[0])
                 assert all(
-                    sample.atomic_numbers.shape == s[0][0].atomic_numbers.shape
-                    for sample in s[0]
+                    sample.numbers.shape == s[0][0].numbers.shape for sample in s[0]
                 )
-                assert all(
-                    sample.overlap.shape == s[0][0].overlap.shape for sample in s[0]
-                )
-                assert all(
-                    sample.hamiltonian.shape == s[0][0].hamiltonian.shape
-                    for sample in s[0]
-                )"""  # TODO: as far as padding missing
+                assert all(sample.ovlp.shape == s[0][0].ovlp.shape for sample in s[0])
+                assert all(sample.h0.shape == s[0][0].h0.shape for sample in s[0])
 
                 # batch samples
                 for j, sample in enumerate(s[0]):
@@ -766,15 +801,13 @@ class ReactionDataset(BaseModel, Dataset):
                 # NOTE: item i belongs to features in batched_samples[j][i],
                 # with j being the index of reactant
 
-            # TODO: could be added as an _add_ function to the class
+            # stack features together
             partners = [i for r in batched_reactions for i in r.partners]
-
-            # TODO: requires reactions with same number of partners
-            assert (
-                len(set([len(r.partners) for r in batched_reactions])) == 1
-            ), "Number of partners must be the same for all reactions (until padding or batching is implemented)"
-
-            nu = torch.stack([r.nu for r in batched_reactions], 0)
+            nu = padded_stack(
+                tensors=[r.nu for r in batched_reactions],
+                side="right",
+                value=0,  # padding value for stoichiometry factor
+            )
             egfn1 = torch.stack([r.egfn1 for r in batched_reactions], 0)
             eref = torch.stack([r.eref for r in batched_reactions], 0)
 
