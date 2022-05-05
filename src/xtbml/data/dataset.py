@@ -77,7 +77,11 @@ class Sample:
     charges: Tensor
     """Charge of sample"""
     egfn1: Tensor
-    """Energy calculated by GFN1-xtb"""
+    """Energy calculated by GFN1-xTB"""
+    erep: Tensor
+    """Atom-pairwise repulsion energy"""
+    edisp: Tensor
+    """Atom-wise dispersion energy"""
     ovlp: Tensor
     """Overlap matrix"""
     h0: Tensor
@@ -92,6 +96,8 @@ class Sample:
         "unpaired_e",
         "charges",
         "egfn1",
+        "edisp",
+        "erep",
         "ovlp",
         "h0",
         "cn",
@@ -110,6 +116,8 @@ class Sample:
         unpaired_e: Tensor,
         charges: Tensor,
         egfn1: Tensor,
+        edisp: Tensor,
+        erep: Tensor,
         ovlp: Tensor,
         h0: Tensor,
         cn: Tensor,
@@ -120,6 +128,8 @@ class Sample:
         self.unpaired_e = unpaired_e
         self.charges = charges
         self.egfn1 = egfn1
+        self.edisp = edisp
+        self.erep = erep
         self.ovlp = ovlp
         self.h0 = h0
         self.cn = cn
@@ -136,6 +146,8 @@ class Sample:
                     self.unpaired_e,
                     self.charges,
                     self.egfn1,
+                    self.edisp,
+                    self.erep,
                     self.ovlp,
                     self.h0,
                     self.cn,
@@ -150,6 +162,8 @@ class Sample:
                 for tensor in (
                     self.xyz,
                     self.egfn1,
+                    self.edisp,
+                    self.erep,
                     self.ovlp,
                     self.h0,
                     self.cn,
@@ -200,6 +214,8 @@ class Sample:
             self.unpaired_e.to(device=device),
             self.charges.to(device=device),
             self.egfn1.to(device=device),
+            self.edisp.to(device=device),
+            self.erep.to(device=device),
             self.ovlp.to(device=device),
             self.h0.to(device=device),
             self.cn.to(device=device),
@@ -232,6 +248,8 @@ class Sample:
             self.unpaired_e.type(torch.uint8),
             self.charges.type(torch.uint8),
             self.egfn1.type(dtype),
+            self.edisp.type(dtype),
+            self.erep.type(dtype),
             self.ovlp.type(dtype),
             self.h0.type(dtype),
             self.cn.type(dtype),
@@ -347,7 +365,6 @@ class Samples:
             for uid, features in data.items():
                 # convert to tensor
                 for feature, value in features.items():
-                    # print(features[feature], value)
                     features[feature] = torch.tensor(value, dtype=dtype)
 
                 # TODO: add values to constructor
@@ -794,6 +811,8 @@ class ReactionDataset(BaseModel, Dataset):
                     unpaired_e=torch.zeros_like(ref.unpaired_e),
                     charges=torch.zeros_like(ref.charges),
                     egfn1=torch.zeros_like(ref.egfn1),
+                    edisp=torch.zeros_like(ref.edisp),
+                    erep=torch.zeros_like(ref.erep),
                     ovlp=torch.zeros_like(ref.ovlp),
                     h0=torch.zeros_like(ref.h0),
                     cn=torch.zeros_like(ref.cn),
