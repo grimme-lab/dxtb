@@ -123,31 +123,40 @@ def get_dataset(path_reactions: str, path_samples: str) -> ReactionDataset:
 
 def get_gmtkn_dataset() -> ReactionDataset:
     """Return total gmtkn55 dataset."""
+    rel = "../data"
+
+    # # !use this once all features are available in one file
+    # dataset = get_dataset(
+    #     path_reactions=Path(Path.cwd(), rel, "reactions.json"),
+    #     path_samples=Path(Path.cwd(), rel, "samples.json"),
+    # )
+    # assert len(dataset) == 1505
+    # return dataset
 
     # load data
     d1 = get_dataset(
-        path_reactions=Path(Path.cwd(), "../data/reactions.json"),
-        path_samples=Path(Path.cwd(), "../data/features-1.json"),
+        path_reactions=Path(Path.cwd(), rel, "reactions.json"),
+        path_samples=Path(Path.cwd(), rel, "features-1.json"),
     )
     d2 = get_dataset(
-        path_reactions=Path(Path.cwd(), "../data/reactions.json"),
-        path_samples=Path(Path.cwd(), "../data/features-2.json"),
+        path_reactions=Path(Path.cwd(), rel, "reactions.json"),
+        path_samples=Path(Path.cwd(), rel, "features-2.json"),
     )
     d3 = get_dataset(
-        path_reactions=Path(Path.cwd(), "../data/reactions.json"),
-        path_samples=Path(Path.cwd(), "../data/features-3.json"),
+        path_reactions=Path(Path.cwd(), rel, "reactions.json"),
+        path_samples=Path(Path.cwd(), rel, "features-3.json"),
     )
     d4 = get_dataset(
-        path_reactions=Path(Path.cwd(), "../data/reactions.json"),
-        path_samples=Path(Path.cwd(), "../data/features-4.json"),
+        path_reactions=Path(Path.cwd(), rel, "reactions.json"),
+        path_samples=Path(Path.cwd(), rel, "features-4.json"),
     )
     d5 = get_dataset(
-        path_reactions=Path(Path.cwd(), "../data/reactions.json"),
-        path_samples=Path(Path.cwd(), "../data/features-5.json"),
+        path_reactions=Path(Path.cwd(), rel, "reactions.json"),
+        path_samples=Path(Path.cwd(), rel, "features-5.json"),
     )
     d6 = get_dataset(
-        path_reactions=Path(Path.cwd(), "../data/reactions.json"),
-        path_samples=Path(Path.cwd(), "../data/features-6.json"),
+        path_reactions=Path(Path.cwd(), rel, "reactions.json"),
+        path_samples=Path(Path.cwd(), rel, "features-6.json"),
     )
 
     # merge

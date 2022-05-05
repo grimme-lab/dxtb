@@ -39,7 +39,7 @@ def evaluate():
         "training_loss_fn": "L1Loss",
         "training_lr": 0.01,
         "epochs": 3,
-        "model_state_dict": torch.load("../models/202205041550_model.pt"),
+        "model_state_dict": torch.load("../models/202205050222_model.pt"),
     }
     model, _, loss_fn, _ = load_model_from_cfg(cfg_ml)
     model.eval()
@@ -95,24 +95,28 @@ def wtmad2(
     """
 
     AVG = 56.84
+
     subsets = df.groupby([set_column])
     subset_names = df[set_column].unique()
 
-    # number of reactions in each subset
-    counts = subsets.count()[colname_target]
-
-    # compute average reaction energy for each subset
-    avg_subsets = subsets.mean()[colname_ref]
-
     wtmad = 0
-    for i in range(subsets.ngroups):
-        sdf = subsets.get_group(subset_names[i])
+    for name in subset_names:
+        sdf = subsets.get_group(name)
+        ref = sdf[colname_ref]
+        target = sdf[colname_target]
+
+        # number of reactions in each subset
+        count = target.count()
+
+        # compute average reaction energy for each subset
+        avg_subset = ref.mean()
 
         # pandas' mad is not the MAD we usually use, our MAD is actually MUE/MAE
         # https://github.com/pandas-dev/pandas/blob/v1.4.2/pandas/core/generic.py#L10813
-        mue = (sdf[colname_ref] - sdf[colname_target]).abs().mean()
-        wtmad += counts[i] * AVG / avg_subsets[i] * mue
+        mue = (ref - target).abs().mean()
+        wtmad += count * AVG / avg_subset * mue
+
         if verbose:
-            print(f"Subset {subset_names[i]} ({counts[i]} entries): MUE {mue:.3f}")
+            print(f"Subset {name} ({count} entries): MUE {mue:.3f}")
 
     return wtmad / len(df.index)
