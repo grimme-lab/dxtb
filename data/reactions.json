@@ -1833,10 +1833,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/n2",
-      "BH76RC/OH",
-      "BH76RC/n2o",
-      "BH76RC/H"
+      "BH76/n2",
+      "BH76/OH",
+      "BH76/n2o",
+      "BH76/H"
     ],
     "egfn1": -7.484094098070847,
     "eref": -64.91
@@ -1849,10 +1849,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/CH3",
-      "BH76RC/HF",
-      "BH76RC/ch3f",
-      "BH76RC/H"
+      "BH76/CH3",
+      "BH76/HF",
+      "BH76/ch3f",
+      "BH76/H"
     ],
     "egfn1": -12.702160596044763,
     "eref": -26.32
@@ -1865,10 +1865,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/F",
-      "BH76RC/HF",
-      "BH76RC/f2",
-      "BH76RC/H"
+      "BH76/F",
+      "BH76/HF",
+      "BH76/f2",
+      "BH76/H"
     ],
     "egfn1": -76.00252971733688,
     "eref": -103.28
@@ -1881,10 +1881,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/Cl",
-      "BH76RC/ch3f",
-      "BH76RC/clf",
-      "BH76RC/CH3"
+      "BH76/Cl",
+      "BH76/ch3f",
+      "BH76/clf",
+      "BH76/CH3"
     ],
     "egfn1": -49.71332004110097,
     "eref": -52.64
@@ -1897,10 +1897,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/ch3f",
-      "BH76RC/cl-",
-      "BH76RC/ch3cl",
-      "BH76RC/f-"
+      "BH76/ch3f",
+      "BH76/cl-",
+      "BH76/ch3cl",
+      "BH76/f-"
     ],
     "egfn1": -61.528946484303056,
     "eref": -32.16
@@ -1911,8 +1911,8 @@
       -1
     ],
     "partners": [
-      "BH76RC/fch3clcomp2",
-      "BH76RC/fch3clcomp1"
+      "BH76/fch3clcomp2",
+      "BH76/fch3clcomp1"
     ],
     "egfn1": -48.3191143832206,
     "eref": -26.12
@@ -1925,10 +1925,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/f-",
-      "BH76RC/CH3OH",
-      "BH76RC/ch3f",
-      "BH76RC/oh-"
+      "BH76/f-",
+      "BH76/CH3OH",
+      "BH76/ch3f",
+      "BH76/oh-"
     ],
     "egfn1": -33.003283986773056,
     "eref": -20.32
@@ -1939,8 +1939,8 @@
       -1
     ],
     "partners": [
-      "BH76RC/hoch3fcomp1",
-      "BH76RC/hoch3fcomp2"
+      "BH76/hoch3fcomp1",
+      "BH76/hoch3fcomp2"
     ],
     "egfn1": -42.44154810974403,
     "eref": -36.71
@@ -1952,9 +1952,9 @@
       -1
     ],
     "partners": [
-      "BH76RC/hn2",
-      "BH76RC/n2",
-      "BH76RC/H"
+      "BH76/hn2",
+      "BH76/n2",
+      "BH76/H"
     ],
     "egfn1": -44.87586686078983,
     "eref": 3.69
@@ -1966,9 +1966,9 @@
       -1
     ],
     "partners": [
-      "BH76RC/hco",
-      "BH76RC/co",
-      "BH76RC/H"
+      "BH76/hco",
+      "BH76/co",
+      "BH76/H"
     ],
     "egfn1": -61.48877621430323,
     "eref": -19.55
@@ -1980,9 +1980,9 @@
       -1
     ],
     "partners": [
-      "BH76RC/C2H5",
-      "BH76RC/c2h4",
-      "BH76RC/H"
+      "BH76/C2H5",
+      "BH76/c2h4",
+      "BH76/H"
     ],
     "egfn1": -59.21204935176649,
     "eref": -40.02
@@ -1994,9 +1994,9 @@
       -1
     ],
     "partners": [
-      "BH76RC/c3h7",
-      "BH76RC/c2h4",
-      "BH76RC/CH3"
+      "BH76/c3h7",
+      "BH76/c2h4",
+      "BH76/CH3"
     ],
     "egfn1": -39.35978752915089,
     "eref": -26.56
@@ -2007,8 +2007,8 @@
       -1
     ],
     "partners": [
-      "BH76RC/hcn",
-      "BH76RC/hnc"
+      "BH76/hcn",
+      "BH76/hnc"
     ],
     "egfn1": -21.2145748071992,
     "eref": -15.06
@@ -2021,10 +2021,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/Cl",
-      "BH76RC/H2",
-      "BH76RC/HCl",
-      "BH76RC/H"
+      "BH76/Cl",
+      "BH76/H2",
+      "BH76/HCl",
+      "BH76/H"
     ],
     "egfn1": -9.187650882606432,
     "eref": -1.9
@@ -2037,10 +2037,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/H",
-      "BH76RC/H2O",
-      "BH76RC/H2",
-      "BH76RC/OH"
+      "BH76/H",
+      "BH76/H2O",
+      "BH76/H2",
+      "BH76/OH"
     ],
     "egfn1": -40.91846388459964,
     "eref": -16.39
@@ -2053,10 +2053,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/H",
-      "BH76RC/CH4",
-      "BH76RC/H2",
-      "BH76RC/CH3"
+      "BH76/H",
+      "BH76/CH4",
+      "BH76/H2",
+      "BH76/CH3"
     ],
     "egfn1": -4.995877359736624,
     "eref": -3.11
@@ -2069,10 +2069,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/CH3",
-      "BH76RC/H2O",
-      "BH76RC/CH4",
-      "BH76RC/OH"
+      "BH76/CH3",
+      "BH76/H2O",
+      "BH76/CH4",
+      "BH76/OH"
     ],
     "egfn1": -35.92258652486329,
     "eref": -13.28
@@ -2085,10 +2085,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/NH2",
-      "BH76RC/H2O",
-      "BH76RC/NH3",
-      "BH76RC/OH"
+      "BH76/NH2",
+      "BH76/H2O",
+      "BH76/NH3",
+      "BH76/OH"
     ],
     "egfn1": -32.47985394925783,
     "eref": -10.32
@@ -2101,10 +2101,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/CH4",
-      "BH76RC/Cl",
-      "BH76RC/CH3",
-      "BH76RC/HCl"
+      "BH76/CH4",
+      "BH76/Cl",
+      "BH76/CH3",
+      "BH76/HCl"
     ],
     "egfn1": -14.183528242343055,
     "eref": -5.01
@@ -2117,10 +2117,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/C2H5",
-      "BH76RC/H2O",
-      "BH76RC/C2H6",
-      "BH76RC/OH"
+      "BH76/C2H5",
+      "BH76/H2O",
+      "BH76/C2H6",
+      "BH76/OH"
     ],
     "egfn1": -42.534876514538034,
     "eref": -16.84
@@ -2133,10 +2133,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/H",
-      "BH76RC/HF",
-      "BH76RC/H2",
-      "BH76RC/F"
+      "BH76/H",
+      "BH76/HF",
+      "BH76/H2",
+      "BH76/F"
     ],
     "egfn1": -17.586116169160135,
     "eref": -32.22
@@ -2149,10 +2149,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/CH3",
-      "BH76RC/OH",
-      "BH76RC/CH4",
-      "BH76RC/O"
+      "BH76/CH3",
+      "BH76/OH",
+      "BH76/CH4",
+      "BH76/O"
     ],
     "egfn1": -47.11721218520417,
     "eref": 5.44
@@ -2165,10 +2165,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/PH2",
-      "BH76RC/H2",
-      "BH76RC/PH3",
-      "BH76RC/H"
+      "BH76/PH2",
+      "BH76/H2",
+      "BH76/PH3",
+      "BH76/H"
     ],
     "egfn1": -15.499904966896173,
     "eref": -21.74
@@ -2181,10 +2181,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/O",
-      "BH76RC/H2",
-      "BH76RC/OH",
-      "BH76RC/H"
+      "BH76/O",
+      "BH76/H2",
+      "BH76/OH",
+      "BH76/H"
     ],
     "egfn1": 52.11308954494024,
     "eref": -2.32
@@ -2197,10 +2197,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/HS",
-      "BH76RC/H2",
-      "BH76RC/H2S",
-      "BH76RC/H"
+      "BH76/HS",
+      "BH76/H2",
+      "BH76/H2S",
+      "BH76/H"
     ],
     "egfn1": -11.069233874572534,
     "eref": -13.26
@@ -2213,10 +2213,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/Cl",
-      "BH76RC/OH",
-      "BH76RC/HCl",
-      "BH76RC/O"
+      "BH76/Cl",
+      "BH76/OH",
+      "BH76/HCl",
+      "BH76/O"
     ],
     "egfn1": -61.30074042754611,
     "eref": 0.42
@@ -2229,10 +2229,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/CH4",
-      "BH76RC/NH",
-      "BH76RC/CH3",
-      "BH76RC/NH2"
+      "BH76/CH4",
+      "BH76/NH",
+      "BH76/CH3",
+      "BH76/NH2"
     ],
     "egfn1": 1.2623272502022305,
     "eref": -13.12
@@ -2245,10 +2245,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/C2H6",
-      "BH76RC/NH",
-      "BH76RC/C2H5",
-      "BH76RC/NH2"
+      "BH76/C2H6",
+      "BH76/NH",
+      "BH76/C2H5",
+      "BH76/NH2"
     ],
     "egfn1": 7.874617239878088,
     "eref": -9.56
@@ -2261,10 +2261,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/NH3",
-      "BH76RC/C2H5",
-      "BH76RC/NH2",
-      "BH76RC/C2H6"
+      "BH76/NH3",
+      "BH76/C2H5",
+      "BH76/NH2",
+      "BH76/C2H6"
     ],
     "egfn1": -10.055022565279645,
     "eref": -6.52
@@ -2277,10 +2277,10 @@
       -1
     ],
     "partners": [
-      "BH76RC/CH3",
-      "BH76RC/NH3",
-      "BH76RC/CH4",
-      "BH76RC/NH2"
+      "BH76/CH3",
+      "BH76/NH3",
+      "BH76/CH4",
+      "BH76/NH2"
     ],
     "egfn1": -3.4427325756049028,
     "eref": -2.96
@@ -12795,6 +12795,86 @@
   },
   "NBPRC_1": {
     "nu": [
+      1,
+      -1,
+      -1
+    ],
+    "partners": [
+      "NBPRC/nh3-bh3",
+      "NBPRC/bh3",
+      "NBPRC/nh3"
+    ],
+    "egfn1": -30.876006054474264,
+    "eref": -32.1
+  },
+  "NBPRC_2": {
+    "nu": [
+      1,
+      1,
+      -1
+    ],
+    "partners": [
+      "NBPRC/h2",
+      "NBPRC/nh2-bh2",
+      "NBPRC/nh3-bh3"
+    ],
+    "egfn1": 13.268187514071348,
+    "eref": -0.2
+  },
+  "NBPRC_3": {
+    "nu": [
+      1,
+      1,
+      -1
+    ],
+    "partners": [
+      "NBPRC/h2",
+      "NBPRC/nh-bh",
+      "NBPRC/nh2-bh2"
+    ],
+    "egfn1": 40.11118382067741,
+    "eref": 37.6
+  },
+  "NBPRC_4": {
+    "nu": [
+      1,
+      -2
+    ],
+    "partners": [
+      "NBPRC/cbut",
+      "NBPRC/nh2-bh2"
+    ],
+    "egfn1": -27.750297370942253,
+    "eref": -19.5
+  },
+  "NBPRC_5": {
+    "nu": [
+      3,
+      1,
+      -3
+    ],
+    "partners": [
+      "NBPRC/h2",
+      "NBPRC/bz",
+      "NBPRC/nh2-bh2"
+    ],
+    "egfn1": -10.14784416832338,
+    "eref": -48.9
+  },
+  "NBPRC_6": {
+    "nu": [
+      1,
+      -3
+    ],
+    "partners": [
+      "NBPRC/ch",
+      "NBPRC/nh2-bh2"
+    ],
+    "egfn1": -54.94719796432648,
+    "eref": -46.1
+  },
+  "NBPRC_7": {
+    "nu": [
       -1,
       -1,
       1
@@ -12807,7 +12887,7 @@
     "egfn1": -23.852780215497226,
     "eref": -25.2
   },
-  "NBPRC_2": {
+  "NBPRC_8": {
     "nu": [
       -1,
       -1,
@@ -12821,7 +12901,7 @@
     "egfn1": 22.748042042559977,
     "eref": 40.4
   },
-  "NBPRC_3": {
+  "NBPRC_9": {
     "nu": [
       -1,
       -1,
@@ -12835,7 +12915,7 @@
     "egfn1": -13.740278598131896,
     "eref": -15.2
   },
-  "NBPRC_4": {
+  "NBPRC_10": {
     "nu": [
       -1,
       -1,
@@ -12849,7 +12929,7 @@
     "egfn1": 8.66528732881701,
     "eref": 18.5
   },
-  "NBPRC_5": {
+  "NBPRC_11": {
     "nu": [
       -1,
       -1,
@@ -12863,7 +12943,7 @@
     "egfn1": -10.811387401524108,
     "eref": -31.2
   },
-  "NBPRC_6": {
+  "NBPRC_12": {
     "nu": [
       -1,
       -1,
