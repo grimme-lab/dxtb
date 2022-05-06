@@ -1,38 +1,46 @@
 from pathlib import Path
-
+from typing import Generator, Tuple
+import pytest
 import torch
 
-from xtbml.data.dataset import Sample, Samples, Reaction, Reactions, ReactionDataset
+from xtbml.data.dataset import ReactionDataset
+from xtbml.data.reactions import Reaction, Reactions
+from xtbml.data.samples import Sample, Samples
 
 
+@pytest.fixture(scope="class")
+def data() -> Generator[Tuple[Samples, Reactions, ReactionDataset], None, None]:
+    print("Loading JSON files for 'Samples', 'Reactions' and 'ReactionDataset'...")
+    
+    path_samples = Path(Path.cwd(), "data/samples.json")
+    path_reactions = Path(Path.cwd(), "data/reactions.json")
+    
+    samples = Samples.from_json(path_samples)
+    reactions = Reactions.from_json(path_reactions)
+    dataset = ReactionDataset.create_from_disk(path_reactions, path_samples)
+    
+    yield samples, reactions, dataset
+    
+    # print("Teardown 'Loading'.")
+    
 class TestDataset:
     """Testing handling of batched Geometry objects."""
-
+    
     @classmethod
     def setUpClass(cls):
         print(cls.__name__)
-
-    def test_load(self) -> None:
+        
+    def test_load(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
         """Test loading the JSON files containing the samples and reactions."""
-        path_samples = Path(Path.cwd(), "data/features.json")
-        path_reactions = Path(Path.cwd(), "data/reactions.json")
+        samples, reactions, dataset = data
 
-        samples = Samples.from_json(path_samples)
         assert type(samples) == Samples
-
-        reactions = Reactions.from_json(path_reactions)
         assert type(reactions) == Reactions
-
-        dataset = ReactionDataset.create_from_disk(path_reactions, path_samples)
         assert type(dataset) == ReactionDataset
 
-    def test_indexing(self) -> None:
+    def test_indexing(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
         """Test dunder methods for indexing/slicing and length."""
-        path_samples = Path(Path.cwd(), "data/features.json")
-        path_reactions = Path(Path.cwd(), "data/reactions.json")
-
-        samples = Samples.from_json(path_samples)
-        reactions = Reactions.from_json(path_reactions)
+        samples, reactions, _ = data
 
         # test samples
         sample = samples[0]
@@ -50,12 +58,9 @@ class TestDataset:
         assert type(reactions[:3]) == list
         assert len(reactions[:2]) == 2
 
-    def test_dict(self) -> None:
-        path_samples = Path(Path.cwd(), "data/features.json")
-        path_reactions = Path(Path.cwd(), "data/reactions.json")
-
-        samples = Samples.from_json(path_samples)
-        reactions = Reactions.from_json(path_reactions)
+    def test_dict(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
+        """Test conversion to dictionary."""
+        samples, reactions, _ = data
 
         # test samples
         d = samples[0].to_dict()
@@ -65,13 +70,9 @@ class TestDataset:
         d = reactions[0].to_dict()
         assert "uid" in d.keys()
 
-    def test_change_dtype(self) -> None:
+    def test_change_dtype(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
         """Test for setting `torch.dtype` for tensor class attributes."""
-        path_samples = Path(Path.cwd(), "data/features.json")
-        path_reactions = Path(Path.cwd(), "data/reactions.json")
-
-        samples = Samples.from_json(path_samples)
-        reactions = Reactions.from_json(path_reactions)
+        samples, reactions, _ = data
 
         # test samples
         dtype = torch.float64
@@ -94,13 +95,9 @@ class TestDataset:
         assert reaction.egfn1.dtype == dtype
         assert reaction.eref.dtype == dtype
 
-    def test_change_device(self) -> None:
+    def test_change_device(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
         """Test for setting `torch.device` for tensor class attributes."""
-        path_samples = Path(Path.cwd(), "data/features.json")
-        path_reactions = Path(Path.cwd(), "data/reactions.json")
-
-        samples = Samples.from_json(path_samples)
-        reactions = Reactions.from_json(path_reactions)
+        samples, reactions, _ = data
 
         # test samples
         device = "cpu"
@@ -124,11 +121,10 @@ class TestDataset:
         assert reaction.eref.device == torch.device(device)
 
     
-    def test_singlepoint(self) -> None:
+    def stest_singlepoint(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
         """Test for (slow) on-the-fly feature generation."""
-        path_samples = Path(Path.cwd(), "data/features.json")
+        samples, _, _ = data
 
-        samples: Samples = Samples.from_json(path_samples)
         sample: Sample = samples[0]
         
         h0, ovlp, cn = sample.calc_singlepoint()
