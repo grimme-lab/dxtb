@@ -367,10 +367,6 @@ class Samples:
                 for feature, value in features.items():
                     features[feature] = torch.tensor(value, dtype=dtype)
 
-                # TODO: add values to constructor
-                features.pop("edisp", None)
-                features.pop("erep", None)
-
                 sample_list.append(Sample(uid=uid, **features))
 
         return cls(sample_list)

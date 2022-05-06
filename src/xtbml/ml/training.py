@@ -1,5 +1,6 @@
 """ Simple training pipline for pytoch ML model. """
 
+from typing import Union
 import datetime
 import torch
 import torch.nn as nn
@@ -107,7 +108,7 @@ def train():
     torch.save(model.state_dict(), save_name + "_model.pt")
 
 
-def get_dataset(path_reactions: str, path_samples: str) -> ReactionDataset:
+def get_dataset(path_reactions: Union[Path, str], path_samples: Union[Path, str]) -> ReactionDataset:
     """Return a preliminary dataset for setting up the workflow."""
 
     # load json from disk
@@ -126,49 +127,12 @@ def get_gmtkn_dataset() -> ReactionDataset:
     rel = "../data"
 
     # # !use this once all features are available in one file
-    # dataset = get_dataset(
-    #     path_reactions=Path(Path.cwd(), rel, "reactions.json"),
-    #     path_samples=Path(Path.cwd(), rel, "samples.json"),
-    # )
-    # assert len(dataset) == 1505
-    # return dataset
-
-    # load data
-    d1 = get_dataset(
+    dataset = get_dataset(
         path_reactions=Path(Path.cwd(), rel, "reactions.json"),
-        path_samples=Path(Path.cwd(), rel, "features-1.json"),
+        path_samples=Path(Path.cwd(), rel, "samples.json"),
     )
-    d2 = get_dataset(
-        path_reactions=Path(Path.cwd(), rel, "reactions.json"),
-        path_samples=Path(Path.cwd(), rel, "features-2.json"),
-    )
-    d3 = get_dataset(
-        path_reactions=Path(Path.cwd(), rel, "reactions.json"),
-        path_samples=Path(Path.cwd(), rel, "features-3.json"),
-    )
-    d4 = get_dataset(
-        path_reactions=Path(Path.cwd(), rel, "reactions.json"),
-        path_samples=Path(Path.cwd(), rel, "features-4.json"),
-    )
-    d5 = get_dataset(
-        path_reactions=Path(Path.cwd(), rel, "reactions.json"),
-        path_samples=Path(Path.cwd(), rel, "features-5.json"),
-    )
-    d6 = get_dataset(
-        path_reactions=Path(Path.cwd(), rel, "reactions.json"),
-        path_samples=Path(Path.cwd(), rel, "features-6.json"),
-    )
-
-    # merge
-    dataset = ReactionDataset.merge(d1, d2)
-    dataset = ReactionDataset.merge(dataset, d3)
-    dataset = ReactionDataset.merge(dataset, d4)
-    dataset = ReactionDataset.merge(dataset, d5)
-    dataset = ReactionDataset.merge(dataset, d6)
-    dataset.pad()
-
-    assert len(dataset) == 6 * 1499
-
-    # TODO: alternatively save to json
-
+    
+    assert len(dataset) == 1505
     return dataset
+
+ 
