@@ -126,7 +126,6 @@ def get_gmtkn_dataset() -> ReactionDataset:
     """Return total gmtkn55 dataset."""
     rel = "../data"
 
-    # # !use this once all features are available in one file
     dataset = get_dataset(
         path_reactions=Path(Path.cwd(), rel, "reactions.json"),
         path_samples=Path(Path.cwd(), rel, "samples.json"),
