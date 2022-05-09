@@ -3,6 +3,7 @@ import pytest
 
 from xtbml import charges, utils
 from xtbml.exlibs.tbmalt import batch
+from xtbml.ncoord.ncoord import erf_count, get_coordination_number
 
 
 structures = {
@@ -81,7 +82,7 @@ structures = {
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_charges_single(dtype):
+def test_charges_single(dtype: torch.dtype):
     sample = structures["NH3-dimer"]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
@@ -126,7 +127,7 @@ def test_charges_single(dtype):
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_charges_ghost(dtype):
+def test_charges_ghost(dtype: torch.dtype):
     sample = structures["NH3-dimer"]
     numbers = sample["numbers"]
     numbers[[1, 5, 6, 7]] = 0
@@ -172,7 +173,7 @@ def test_charges_ghost(dtype):
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_charges_batch(dtype):
+def test_charges_batch(dtype: torch.dtype):
     sample1, sample2 = (
         structures["PbH4-BiH3"],
         structures["C6H5I-CH3SH"],
@@ -335,7 +336,7 @@ def test_charges_batch(dtype):
 
 
 @pytest.mark.grad
-def test_charges_grad(dtype=torch.float64):
+def test_charges_grad(dtype: torch.dtype = torch.float64):
     sample = structures["NH3"]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
@@ -350,6 +351,8 @@ def test_charges_grad(dtype=torch.float64):
     total_charge.requires_grad_(True)
 
     def func(positions, total_charge):
-        return torch.sum(charges.solve(numbers, positions, total_charge, eeq, cn)[0], -1)
+        return torch.sum(
+            charges.solve(numbers, positions, total_charge, eeq, cn)[0], -1
+        )
 
     assert torch.autograd.gradcheck(func, (positions, total_charge))
