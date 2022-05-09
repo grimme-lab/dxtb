@@ -183,7 +183,7 @@ class RepulsionFactory(EnergyContribution):
 
         Args:
             calc_gradient (bool, optional): Flag for calculating gradient. Defaults to `False`.
-            mode (Literal["full", "pair", "atom", "scalar"], optional): Specifies returned repulsion energy. Use "pair" (upper triangular matrix) and "full" (full symmetric matrix) for atomic-pairwise, "atom" for atom-wise (vector), and scalar for the total repulsion energy. Defaults to "pair".
+            mode (Literal["full", "pair", "atom", "scalar"], optional): Specifies returned repulsion energy. Use "pair" (upper triangular matrix) and "full" (full symmetric matrix, scaled by 0.5) for atomic-pairwise, "atom" for atom-wise (vector), and scalar for the total repulsion energy. Defaults to "pair".
 
 
         Returns:
@@ -258,7 +258,7 @@ class RepulsionFactory(EnergyContribution):
         elif mode == "scalar":
             E = 0.5 * torch.sum(dE, dim=(-2, -1))
         elif mode == "full":
-            E = dE
+            E = 0.5 * dE
         else:
             raise RuntimeError(f"Unknown mode '{mode}' for repulsion tensor.")
 
