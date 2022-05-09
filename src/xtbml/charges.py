@@ -81,7 +81,7 @@ class ChargeModel:
         if any(
             [
                 tensor.device != self.device
-                for tensor in (self.device, self.chi, self.kcn.device, self.eta.device)
+                for tensor in (self.chi, self.kcn, self.eta, self.rad)
             ]
         ):
             raise RuntimeError("All tensors must be on the same device!")
@@ -89,7 +89,7 @@ class ChargeModel:
         if any(
             [
                 tensor.dtype != self.dtype
-                for tensor in (self.device, self.chi, self.kcn.device, self.eta.device)
+                for tensor in (self.chi, self.kcn, self.eta, self.rad)
             ]
         ):
             raise RuntimeError("All tensors must have the same dtype!")
