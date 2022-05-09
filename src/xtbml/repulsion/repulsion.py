@@ -192,6 +192,9 @@ class RepulsionFactory(EnergyContribution):
 
         if self.w_alpha is None or self.w_zeff is None or self.w_kexp is None:
             raise ValueError("Working tensor is not initialized.")
+        
+        if self.cutoff is None:
+            self.cutoff = torch.tensor(50.0, dtype=self.positions.dtype)
 
         # add epsilon to avoid zero division in some terms
         eps = torch.tensor(
@@ -208,10 +211,6 @@ class RepulsionFactory(EnergyContribution):
             eps,
         )
 
-        # Calculate repulsion only for distances smaller than cutoff
-        if self.cutoff is not None:
-            distances = torch.where(distances <= self.cutoff, distances, eps)
-
         # Eq.13: R_AB ** k_f
         r1k = torch.pow(distances, self.w_kexp)
 
@@ -219,7 +218,11 @@ class RepulsionFactory(EnergyContribution):
         exp_term = torch.exp(-self.w_alpha * r1k)
 
         # Eq.13: repulsion energy
-        dE = self.w_zeff * exp_term / distances
+        dE = torch.where(
+            mask * (distances <= self.cutoff),
+            self.w_zeff * exp_term / distances,
+            torch.tensor(0.0, dtype=distances.dtype),
+        )
 
         dG = None
         if calc_gradient is True:
