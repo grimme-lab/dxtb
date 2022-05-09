@@ -19,14 +19,14 @@ class EnergyContribution(BaseModel, ABC):
 
     numbers: Tensor
     """The atomic numbers of the atoms in the system."""
-    
+
     positions: Tensor
     """The positions of the atoms in the system."""
 
     trans: Optional[Tensor] = None
     """Lattice points"""
 
-    cutoff: Optional[float] = None
+    cutoff: Optional[Tensor] = None
     """Real space cutoff"""
 
     energy: Optional[Tensor] = None  # single value, needs gradient
@@ -37,7 +37,7 @@ class EnergyContribution(BaseModel, ABC):
 
     sigma: Optional[Tensor] = None
     """Strain derivatives of the repulsion energy"""
-    
+
     req_grad: Optional[bool] = False
     """Flag for autograd computation. Defaults to `False`"""
 

@@ -16,6 +16,7 @@ from xtbml.utils import symbol2number
 from xtbml.param.gfn1 import GFN1_XTB
 
 from samples import mb16_43
+from samples import amino20x4
 
 
 class Setup:
@@ -203,6 +204,25 @@ class TestRepulsion(Setup):
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     def test_gfn1_mb1643_02(self, dtype: torch.dtype):
         sample = mb16_43["02"]
+
+        atomic_numbers = symbol2number(sample["symbols"])
+        positions = sample["positions"].type(dtype)
+
+        reference_energy = torch.tensor(sample["ref"]["gfn1"]["repulsion"], dtype=dtype)
+        reference_gradient = None
+
+        self.base_test(
+            numbers=atomic_numbers,
+            positions=positions,
+            repulsion_factory=self.repulsion_gfn1,
+            reference_energy=reference_energy,
+            reference_gradient=reference_gradient,
+            dtype=dtype,
+        )
+
+    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+    def test_gfn1_Amino20x4_LYS_xao(self, dtype: torch.dtype):
+        sample = amino20x4["LYS_xao"]
 
         atomic_numbers = symbol2number(sample["symbols"])
         positions = sample["positions"].type(dtype)
