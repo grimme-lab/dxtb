@@ -15,7 +15,7 @@ from xtbml.repulsion import RepulsionFactory
 from xtbml.utils import symbol2number
 from xtbml.param.gfn1 import GFN1_XTB
 
-from samples import mb16_43
+from .samples import mb16_43
 
 
 class Setup:
@@ -129,7 +129,7 @@ class TestRepulsion(Setup):
         atomic_numbers = symbol2number(sample["symbols"])
         positions = sample["positions"].type(dtype)
 
-        reference_energy = torch.tensor(sample["ref"]["gfn1"]["repulsion"], dtype=dtype)
+        reference_energy = sample["gfn1"].type(dtype)
         reference_gradient = None
 
         self.base_test(
@@ -148,7 +148,7 @@ class TestRepulsion(Setup):
         atomic_numbers = symbol2number(sample["symbols"])
         positions = sample["positions"].type(dtype)
 
-        reference_energy = torch.tensor(sample["ref"]["gfn1"]["repulsion"], dtype=dtype)
+        reference_energy = sample["gfn1"].type(dtype)
         reference_gradient = None
 
         self.base_test(
@@ -196,12 +196,11 @@ class TestRepulsion(Setup):
             )
         )
 
-        reference_energy = torch.tensor(
+        reference_energy = torch.stack(
             [
-                sample1["ref"]["gfn1"]["repulsion"],
-                sample2["ref"]["gfn1"]["repulsion"],
+                sample1["gfn1"].type(dtype),
+                sample2["gfn1"].type(dtype),
             ],
-            dtype=dtype,
         )
         reference_gradient = None
 
