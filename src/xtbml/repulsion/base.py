@@ -5,9 +5,11 @@ Definition of energy terms as abstract base class for classical interactions.
 """
 
 from typing import Optional, Tuple, Union
+from ..typing import Tensor
+
 from pydantic import BaseModel
 from abc import ABC, abstractmethod
-from torch import Tensor
+from torch import tensor
 
 # TODO: allow for usability with base Params object
 class EnergyContribution(BaseModel, ABC):
@@ -26,7 +28,7 @@ class EnergyContribution(BaseModel, ABC):
     trans: Optional[Tensor] = None
     """Lattice points"""
 
-    cutoff: Optional[Tensor] = None
+    cutoff: Tensor = tensor(25.0)
     """Real space cutoff"""
 
     energy: Optional[Tensor] = None  # single value, needs gradient
