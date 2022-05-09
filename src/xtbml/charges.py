@@ -30,11 +30,10 @@ tensor(-0.1750)
 tensor([-0.8347, -0.8347,  0.2731,  0.2886,  0.2731,  0.2731,  0.2886,  0.2731])
 """
 
-import torch
 import math
+import torch
 from typing import Tuple
-
-Tensor = torch.Tensor
+from xtbml.typing import Tensor
 
 
 class ChargeModel:
@@ -339,10 +338,31 @@ def solve(
     tensor(0.6312)
     """
 
+    # check device and positions of all attributes
+    if any(
+        [
+            getattr(model, slot).device != positions.device
+            for slot in model.__slots__
+            if not slot.startswith("__")
+        ]
+    ):
+        model = model.to(positions.device)
+
+    if any(
+        [
+            getattr(model, slot).dtype != positions.dtype
+            for slot in model.__slots__
+            if not slot.startswith("__")
+        ]
+    ):
+        model = model.type(positions.dtype)
+
     eps = torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype)
+
     real = numbers > 0
     mask = real.unsqueeze(-2) * real.unsqueeze(-1)
     mask.diagonal(dim1=-2, dim2=-1).fill_(False)
+
     distances = torch.where(
         mask,
         torch.cdist(positions, positions, p=2),
