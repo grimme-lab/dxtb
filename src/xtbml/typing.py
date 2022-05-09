@@ -5,7 +5,7 @@ Type annotations for this project.
 from typing import Any, Callable, Dict, List, Optional, TypedDict, Union
 from torch import Tensor
 
-CountingFunction = Callable[[Tensor, Tensor, Any], Tensor]
+CountingFunction = Callable[[Tensor, Tensor, Dict[str, Any]], Tensor]
 
 
 class Molecule(TypedDict):

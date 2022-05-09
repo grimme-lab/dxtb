@@ -24,10 +24,15 @@ def get_coordination_number(
     Compute fractional coordination number using an exponential counting function.
 
     Args:
-        geometry (Geometry): Molecular structure data
-        rcov (Tensor): Covalent radii for each species
-        counting_function (Callable): Calculate weight for pair
-        kwargs: Pass-through arguments for counting function
+        numbers (Tensor): Atomic numbers of molecular structure.
+        positions (Tensor): Atomic positions of molecular structure
+        counting_function (Callable): Calculate weight for pairs.
+        rcov (Tensor, optional): Covalent radii for each species. Defaults to `None`.
+        cutoff (Tensor, optional): Real-space cutoff. Defaults to `None`.
+        kwargs: Pass-through arguments for counting function.
+
+    Raises:
+        ValueError: If shape mismatch between `numbers`, `positions` and `rcov` is detected
 
     Returns:
         cn (Tensor): Coordination numbers for all atoms
