@@ -3,8 +3,9 @@
 """Definition of repulsion energy terms."""
 
 from typing import Dict, List, Literal, Optional, Union, Tuple
+from ..typing import Tensor
+
 import torch
-from torch import Tensor
 
 from ..param import Element, EffectiveRepulsion
 from .base import EnergyContribution
@@ -192,7 +193,7 @@ class RepulsionFactory(EnergyContribution):
 
         if self.w_alpha is None or self.w_zeff is None or self.w_kexp is None:
             raise ValueError("Working tensor is not initialized.")
-        
+
         if self.cutoff is None:
             self.cutoff = torch.tensor(50.0, dtype=self.positions.dtype)
 

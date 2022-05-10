@@ -9,7 +9,7 @@ from ..typing import Tensor
 
 from pydantic import BaseModel
 from abc import ABC, abstractmethod
-from torch import tensor
+import torch
 
 # TODO: allow for usability with base Params object
 class EnergyContribution(BaseModel, ABC):
@@ -28,7 +28,7 @@ class EnergyContribution(BaseModel, ABC):
     trans: Optional[Tensor] = None
     """Lattice points"""
 
-    cutoff: Tensor = tensor(25.0)
+    cutoff: Tensor = torch.tensor(25.0)
     """Real space cutoff"""
 
     energy: Optional[Tensor] = None  # single value, needs gradient

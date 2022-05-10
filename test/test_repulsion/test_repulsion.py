@@ -5,10 +5,10 @@ Run tests for repulsion contribution.
 """
 
 from typing import Callable, Literal, Union
-import pytest
+from xtbml.typing import Tensor
 
+import pytest
 import torch
-from torch import Tensor
 
 from xtbml.exlibs.tbmalt import batch
 from xtbml.repulsion import RepulsionFactory
