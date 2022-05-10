@@ -346,7 +346,9 @@ def solve(
             if not slot.startswith("__")
         ]
     ):
-        model = model.to(positions.device)
+        raise RuntimeError(
+            f"All tensors of '{model.__class__.__name__}' must be on the same device!\nUse `{model.__class__.__name__}.param2019().to(device)` to correctly set the device."
+        )
 
     if any(
         [
@@ -355,7 +357,9 @@ def solve(
             if not slot.startswith("__")
         ]
     ):
-        model = model.type(positions.dtype)
+        raise RuntimeError(
+            f"All tensors of '{model.__class__.__name__}' must have the same dtype!\nUse `{model.__class__.__name__}.param2019().type(dtype)` to correctly set the dtype."
+        )
 
     eps = torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype)
 
