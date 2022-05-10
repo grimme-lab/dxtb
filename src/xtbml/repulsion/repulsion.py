@@ -255,7 +255,7 @@ class RepulsionFactory(EnergyContribution):
         if mode == "pair":
             E = torch.triu(dE, diagonal=1)
         elif mode == "atom":
-            E = torch.sum(torch.triu(dE, diagonal=1), dim=-1)
+            E = 0.5 * torch.sum(dE, dim=-1)
         elif mode == "scalar":
             E = 0.5 * torch.sum(dE, dim=(-2, -1))
         elif mode == "full":
