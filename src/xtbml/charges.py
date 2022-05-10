@@ -338,25 +338,12 @@ def solve(
     tensor(0.6312)
     """
 
-    # check device and positions of all attributes
-    if any(
-        [
-            getattr(model, slot).device != positions.device
-            for slot in model.__slots__
-            if not slot.startswith("__")
-        ]
-    ):
+    if model.device != positions.device:
         raise RuntimeError(
             f"All tensors of '{model.__class__.__name__}' must be on the same device!\nUse `{model.__class__.__name__}.param2019().to(device)` to correctly set the device."
         )
 
-    if any(
-        [
-            getattr(model, slot).dtype != positions.dtype
-            for slot in model.__slots__
-            if not slot.startswith("__")
-        ]
-    ):
+    if model.dtype != positions.dtype:
         raise RuntimeError(
             f"All tensors of '{model.__class__.__name__}' must have the same dtype!\nUse `{model.__class__.__name__}.param2019().type(dtype)` to correctly set the dtype."
         )
