@@ -1,12 +1,12 @@
 """Data for testing repulsion taken from https://github.com/grimme-lab/mstore"""
 
-from torch import tensor
 from xtbml.typing import Structures
+import torch
 
 mb16_43: Structures = {
     "01": {
-        "gfn1": tensor(0.16777923624986593),
-        "gfn2": tensor(0.15297938789402879),
+        "gfn1": torch.tensor(0.16777923624986593),
+        "gfn2": torch.tensor(0.15297938789402879),
         "symbols": [
             "Na",
             "H",
@@ -25,7 +25,7 @@ mb16_43: Structures = {
             "N",
             "Al",
         ],
-        "positions": tensor(
+        "positions": torch.tensor(
             [
                 -1.85528263484662,
                 3.58670515364616,
@@ -79,8 +79,8 @@ mb16_43: Structures = {
         ).reshape((-1, 3)),
     },
     "02": {
-        "gfn1": tensor(0.12702003611285190),
-        "gfn2": tensor(0.10745931926703985),
+        "gfn1": torch.tensor(0.12702003611285190),
+        "gfn2": torch.tensor(0.10745931926703985),
         "symbols": [
             "H",
             "S",
@@ -99,7 +99,7 @@ mb16_43: Structures = {
             "H",
             "S",
         ],
-        "positions": tensor(
+        "positions": torch.tensor(
             [
                 -1.79537625851198,
                 -3.77866422935275,
@@ -153,8 +153,8 @@ mb16_43: Structures = {
         ).reshape((-1, 3)),
     },
     "03": {
-        "gfn1": tensor(0.16600531760459214),
-        "gfn2": tensor(0.15818907118271672),
+        "gfn1": torch.tensor(0.16600531760459214),
+        "gfn2": torch.tensor(0.15818907118271672),
         "symbols": [
             "C",
             "O",
@@ -173,7 +173,7 @@ mb16_43: Structures = {
             "Na",
             "H",
         ],
-        "positions": tensor(
+        "positions": torch.tensor(
             [
                 -0.02148551327524,
                 -0.67161751504297,
@@ -227,10 +227,10 @@ mb16_43: Structures = {
         ).reshape((-1, 3)),
     },
     "SiH4": {
-        "gfn1": tensor(3.0331305861808766e-002),
-        "gfn2": tensor(3.1536555053538279e-002),
+        "gfn1": torch.tensor(3.0331305861808766e-002),
+        "gfn2": torch.tensor(3.1536555053538279e-002),
         "symbols": ["Si", "H", "H", "H", "H"],
-        "positions": tensor(
+        "positions": torch.tensor(
             [
                 0.00000000000000,
                 -0.00000000000000,

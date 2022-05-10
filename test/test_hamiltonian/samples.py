@@ -1,11 +1,11 @@
 """Data for testing repulsion taken from https://github.com/grimme-lab/mstore"""
 
 from xtbml.typing import Structures
-from torch import tensor
+import torch
 
 mb16_43: Structures = {
     "H2": {
-        "gfn1": tensor(
+        "gfn1": torch.tensor(
             [
                 -4.0363081796860e-01,
                 -2.0574797935551e-10,
@@ -25,9 +25,9 @@ mb16_43: Structures = {
                 -8.0253621377978e-02,
             ],
         ).reshape(4, 4),
-        "gfn2": tensor(0.0),
+        "gfn2": torch.tensor(0.0),
         "symbols": ["H", "H"],
-        "positions": tensor(
+        "positions": torch.tensor(
             [
                 0.00000000000000,
                 0.00000000000000,
@@ -39,10 +39,10 @@ mb16_43: Structures = {
         ).reshape((-1, 3)),
     },
     "LiH": {
-        "gfn1": tensor(0.0),
+        "gfn1": torch.tensor(0.0),
         "gfn2": None,
         "symbols": ["Li", "H"],
-        "positions": tensor(
+        "positions": torch.tensor(
             [
                 0.00000000000000,
                 0.00000000000000,
@@ -54,10 +54,10 @@ mb16_43: Structures = {
         ).reshape((-1, 3)),
     },
     "HLi": {
-        "gfn1": tensor(0.0),
-        "gfn2": tensor(0.0),
+        "gfn1": torch.tensor(0.0),
+        "gfn2": torch.tensor(0.0),
         "symbols": ["H", "Li"],
-        "positions": tensor(
+        "positions": torch.tensor(
             [
                 0.00000000000000,
                 0.00000000000000,
@@ -69,10 +69,10 @@ mb16_43: Structures = {
         ).reshape((-1, 3)),
     },
     "S2": {
-        "gfn1": tensor(0.0),
-        "gfn2": tensor(0.0),
+        "gfn1": torch.tensor(0.0),
+        "gfn2": torch.tensor(0.0),
         "symbols": ["S", "S"],
-        "positions": tensor(
+        "positions": torch.tensor(
             [
                 0.00000000000000,
                 0.00000000000000,
@@ -84,7 +84,7 @@ mb16_43: Structures = {
         ).reshape((-1, 3)),
     },
     "SiH4": {
-        "gfn1": tensor(
+        "gfn1": torch.tensor(
             [
                 -5.4553345097654e-01,
                 0.0000000000000e00,
@@ -377,9 +377,9 @@ mb16_43: Structures = {
                 -8.0281728438132e-02,
             ]
         ).reshape(17, 17),
-        "gfn2": tensor(0.0),
+        "gfn2": torch.tensor(0.0),
         "symbols": ["Si", "H", "H", "H", "H"],
-        "positions": tensor(
+        "positions": torch.tensor(
             [
                 0.00000000000000,
                 -0.00000000000000,
