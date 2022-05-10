@@ -32,16 +32,20 @@ class Sample:
     """Charge of sample"""
     egfn1: Tensor
     """Energy calculated by GFN1-xTB"""
-    erep: Tensor
-    """Atom-pairwise repulsion energy"""
     edisp: Tensor
     """Atom-wise dispersion energy"""
+    erep: Tensor
+    """Atom-pairwise repulsion energy"""
+    ees: Tensor
+    """Atom-wise electrostatic energy (from EEQ)"""
+    qat: Tensor
+    """Atomic partial charges (from EEQ)"""
     ovlp: Tensor
     """Overlap matrix"""
     h0: Tensor
     """Hamiltonian matrix"""
     cn: Tensor
-    """Coordination number"""
+    """Atom-wise coordination number"""
 
     __slots__ = [
         "uid",
@@ -52,6 +56,8 @@ class Sample:
         "egfn1",
         "edisp",
         "erep",
+        "ees",
+        "qat",
         "ovlp",
         "h0",
         "cn",
@@ -72,6 +78,8 @@ class Sample:
         egfn1: Tensor,
         edisp: Tensor,
         erep: Tensor,
+        ees: Tensor,
+        qat: Tensor,
         ovlp: Tensor,
         h0: Tensor,
         cn: Tensor,
@@ -84,6 +92,8 @@ class Sample:
         self.egfn1 = egfn1
         self.edisp = edisp
         self.erep = erep
+        self.ees = ees
+        self.qat = qat
         self.ovlp = ovlp
         self.h0 = h0
         self.cn = cn
@@ -102,6 +112,8 @@ class Sample:
                     self.egfn1,
                     self.edisp,
                     self.erep,
+                    self.ees,
+                    self.qat,
                     self.ovlp,
                     self.h0,
                     self.cn,
@@ -118,6 +130,8 @@ class Sample:
                     self.egfn1,
                     self.edisp,
                     self.erep,
+                    self.ees,
+                    self.qat,
                     self.ovlp,
                     self.h0,
                     self.cn,
@@ -170,6 +184,8 @@ class Sample:
             self.egfn1.to(device=device),
             self.edisp.to(device=device),
             self.erep.to(device=device),
+            self.ees.to(device=device),
+            self.qat.to(device=device),
             self.ovlp.to(device=device),
             self.h0.to(device=device),
             self.cn.to(device=device),
@@ -204,6 +220,8 @@ class Sample:
             self.egfn1.type(dtype),
             self.edisp.type(dtype),
             self.erep.type(dtype),
+            self.ees.type(dtype),
+            self.qat.type(dtype),
             self.ovlp.type(dtype),
             self.h0.type(dtype),
             self.cn.type(dtype),
@@ -318,12 +336,6 @@ class Samples:
                 # convert to tensor
                 for feature, value in features.items():
                     features[feature] = torch.tensor(value, dtype=dtype)
-
-                # TODO: add values to constructor
-                if "ees" in features:
-                    features.pop("ees", None)
-                if "qat" in features:
-                    features.pop("qat", None)
 
                 sample_list.append(Sample(uid=uid, **features))
 
