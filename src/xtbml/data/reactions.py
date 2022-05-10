@@ -153,7 +153,7 @@ class Reaction:
 
 
 class Reactions:
-    """Representation for list of samples."""
+    """Representation for list of `Reaction`s."""
 
     reactions: List[Reaction]
     """List of reactions"""
@@ -166,7 +166,7 @@ class Reactions:
 
     @classmethod
     def from_json(cls, path: Union[Path, str]) -> "Reactions":
-        """Create samples from json.
+        """Create `Reactions` from json.
 
         Args:
             path (Union[Path, str]): Path of JSON file to read.

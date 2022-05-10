@@ -296,7 +296,7 @@ class Samples:
     def from_json(
         cls, path: Union[Path, str], dtype: torch.dtype = FLOAT32
     ) -> "Samples":
-        """Create samples from json.
+        """Create `Samples` from json.
 
         Args:
             path (Union[Path, str]): Path of JSON file.
@@ -318,6 +318,12 @@ class Samples:
                 # convert to tensor
                 for feature, value in features.items():
                     features[feature] = torch.tensor(value, dtype=dtype)
+
+                # TODO: add values to constructor
+                if "ees" in features:
+                    features.pop("ees", None)
+                if "qat" in features:
+                    features.pop("qat", None)
 
                 sample_list.append(Sample(uid=uid, **features))
 
