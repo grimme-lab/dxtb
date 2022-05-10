@@ -1,10 +1,11 @@
 import torch
-from xtbml import utils
+from xtbml.typing import Samples
+from xtbml.utils import symbol2number
 
-structures = {
-    "NH3-dimer": dict(
-        numbers=utils.symbol2number("N N H H H H H H".split()),
-        positions=torch.tensor(
+structures: Samples = {
+    "NH3-dimer": {
+        "numbers": symbol2number("N N H H H H H H".split()),
+        "positions": torch.tensor(
             [
                 [-2.98334550857544, -0.08808205276728, +0.00000000000000],
                 [+2.98334550857544, +0.08808205276728, +0.00000000000000],
@@ -16,11 +17,11 @@ structures = {
                 [+4.07920360565186, -0.25775116682053, +1.52985656261444],
             ]
         ),
-        total_charge=torch.tensor(0.0),
-    ),
-    "NH3": dict(
-        numbers=utils.symbol2number("N H H H".split()),
-        positions=torch.tensor(
+        "total_charge": torch.tensor(0.0),
+    },
+    "NH3": {
+        "numbers": symbol2number("N H H H".split()),
+        "positions": torch.tensor(
             [
                 [+0.00000000000000, +0.00000000000000, -0.54524837997150],
                 [-0.88451840382282, +1.53203081565085, +0.18174945999050],
@@ -28,11 +29,11 @@ structures = {
                 [+1.76903680764564, +0.00000000000000, +0.18174945999050],
             ]
         ),
-        total_charge=torch.tensor(0.0),
-    ),
-    "PbH4-BiH3": dict(
-        numbers=utils.symbol2number("Pb H H H H Bi H H H".split()),
-        positions=torch.tensor(
+        "total_charge": torch.tensor(0.0),
+    },
+    "PbH4-BiH3": {
+        "numbers": symbol2number("Pb H H H H Bi H H H".split()),
+        "positions": torch.tensor(
             [
                 [-0.00000020988889, -4.98043478877778, +0.00000000000000],
                 [+3.06964045311111, -6.06324400177778, +0.00000000000000],
@@ -45,11 +46,11 @@ structures = {
                 [+1.35700257511111, +6.70626379422222, +2.35039772300000],
             ]
         ),
-        total_charge=torch.tensor(0.0),
-    ),
-    "C6H5I-CH3SH": dict(
-        numbers=utils.symbol2number("C C C C C C I H H H H H S H C H H H".split()),
-        positions=torch.tensor(
+        "total_charge": torch.tensor(0.0),
+    },
+    "C6H5I-CH3SH": {
+        "numbers": symbol2number("C C C C C C I H H H H H S H C H H H".split()),
+        "positions": torch.tensor(
             [
                 [-1.42754169820131, -1.50508961850828, -1.93430551124333],
                 [+1.19860572924150, -1.66299114873979, -2.03189643761298],
@@ -71,6 +72,6 @@ structures = {
                 [-6.35955320518616, 14.08073002965080, -1.68204314084441],
             ]
         ),
-        total_charge=torch.tensor(0.0),
-    ),
+        "total_charge": torch.tensor(0.0),
+    },
 }

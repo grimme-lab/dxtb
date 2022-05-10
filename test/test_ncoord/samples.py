@@ -1,13 +1,13 @@
 """Data for testing repulsion taken from https://github.com/grimme-lab/mstore"""
 
-from typing import Dict
-from xtbml.typing import Molecule
-
 import torch
+from xtbml.typing import Samples
+from xtbml.utils import symbol2number
 
-structures: Dict[str, Molecule] = {
+
+structures: Samples = {
     "PbH4-BiH3": {
-        "symbols": "Pb H H H H Bi H H H".split(),
+        "numbers": symbol2number("Pb H H H H Bi H H H".split()),
         "positions": torch.tensor(
             [
                 [-0.00000020988889, -4.98043478877778, +0.00000000000000],
@@ -23,7 +23,7 @@ structures: Dict[str, Molecule] = {
         ),
     },
     "C6H5I-CH3SH": {
-        "symbols": "C C C C C C I H H H H H S H C H H H".split(" "),
+        "numbers": symbol2number("C C C C C C I H H H H H S H C H H H".split(" ")),
         "positions": torch.tensor(
             [
                 [-1.42754169820131, -1.50508961850828, -1.93430551124333],
@@ -48,7 +48,7 @@ structures: Dict[str, Molecule] = {
         ),
     },
     "C4H5NCS": {
-        "symbols": "C C C C N C S H H H H H".split(),
+        "numbers": symbol2number("C C C C N C S H H H H H".split()),
         "positions": torch.tensor(
             [
                 [-2.56745685564671, -0.02509985979910, 0.00000000000000],

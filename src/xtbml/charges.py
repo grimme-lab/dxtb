@@ -33,7 +33,7 @@ tensor([-0.8347, -0.8347,  0.2731,  0.2886,  0.2731,  0.2731,  0.2886,  0.2731])
 import math
 import torch
 from typing import Tuple
-from xtbml.typing import Tensor
+from .typing import Tensor
 
 
 class ChargeModel:

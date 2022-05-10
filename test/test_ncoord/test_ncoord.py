@@ -4,7 +4,6 @@ import torch
 from xtbml.data.covrad import covalent_rad_d3
 from xtbml.exlibs.tbmalt import batch
 from xtbml.ncoord import ncoord
-from xtbml.utils import symbol2number
 
 from .samples import structures
 
@@ -12,7 +11,7 @@ from .samples import structures
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_cn_single(dtype: torch.dtype):
     sample = structures["PbH4-BiH3"]
-    numbers = symbol2number(sample["symbols"])
+    numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
 
     rcov = covalent_rad_d3[numbers]
@@ -40,8 +39,8 @@ def test_cn_batch(dtype: torch.dtype):
     sample1, sample2 = structures["PbH4-BiH3"], structures["C6H5I-CH3SH"]
     numbers = batch.pack(
         (
-            symbol2number(sample1["symbols"]),
-            symbol2number(sample2["symbols"]),
+            sample1["numbers"],
+            sample2["numbers"],
         )
     )
     positions = batch.pack(

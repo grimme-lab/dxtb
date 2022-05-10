@@ -39,7 +39,7 @@ class TestH0(Setup):
         print(cls.__name__)
 
     def base_test(self, sample: Record, ref: Tensor) -> None:
-        atomic_numbers = symbol2number(sample["symbols"])
+        atomic_numbers = sample["numbers"]
         mol = Geometry(atomic_numbers, sample["positions"])
 
         # TODO: extend geometry object with mol.lattice and mol.periodic
@@ -60,7 +60,7 @@ class TestH0(Setup):
         self.check_hamiltonian(h, ref)
 
     def base_test_cn(self, sample: Record, ref: Tensor) -> None:
-        numbers = symbol2number(sample["symbols"])
+        numbers = sample["numbers"]
         positions = sample["positions"].type(ref.dtype)
         mol = Geometry(numbers, positions)
 

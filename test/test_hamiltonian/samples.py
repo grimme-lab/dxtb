@@ -1,9 +1,10 @@
 """Data for testing repulsion taken from https://github.com/grimme-lab/mstore"""
 
-from xtbml.typing import Structures
 import torch
+from xtbml.typing import Samples
+from xtbml.utils import symbol2number
 
-mb16_43: Structures = {
+mb16_43: Samples = {
     "H2": {
         "gfn1": torch.tensor(
             [
@@ -26,7 +27,7 @@ mb16_43: Structures = {
             ],
         ).reshape(4, 4),
         "gfn2": torch.tensor(0.0),
-        "symbols": ["H", "H"],
+        "numbers": symbol2number(["H", "H"]),
         "positions": torch.tensor(
             [
                 0.00000000000000,
@@ -40,8 +41,8 @@ mb16_43: Structures = {
     },
     "LiH": {
         "gfn1": torch.tensor(0.0),
-        "gfn2": None,
-        "symbols": ["Li", "H"],
+        "gfn2": torch.tensor(0.0),
+        "numbers": symbol2number(["Li", "H"]),
         "positions": torch.tensor(
             [
                 0.00000000000000,
@@ -56,7 +57,7 @@ mb16_43: Structures = {
     "HLi": {
         "gfn1": torch.tensor(0.0),
         "gfn2": torch.tensor(0.0),
-        "symbols": ["H", "Li"],
+        "numbers": symbol2number(["H", "Li"]),
         "positions": torch.tensor(
             [
                 0.00000000000000,
@@ -71,7 +72,7 @@ mb16_43: Structures = {
     "S2": {
         "gfn1": torch.tensor(0.0),
         "gfn2": torch.tensor(0.0),
-        "symbols": ["S", "S"],
+        "numbers": symbol2number(["S", "S"]),
         "positions": torch.tensor(
             [
                 0.00000000000000,
@@ -378,7 +379,7 @@ mb16_43: Structures = {
             ]
         ).reshape(17, 17),
         "gfn2": torch.tensor(0.0),
-        "symbols": ["Si", "H", "H", "H", "H"],
+        "numbers": symbol2number(["Si", "H", "H", "H", "H"]),
         "positions": torch.tensor(
             [
                 0.00000000000000,

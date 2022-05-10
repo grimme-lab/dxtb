@@ -1,30 +1,34 @@
 """Data for testing repulsion taken from https://github.com/grimme-lab/mstore"""
 
-from xtbml.typing import Structures
 import torch
+from xtbml.typing import Samples
+from xtbml.utils import symbol2number
 
-mb16_43: Structures = {
+
+mb16_43: Samples = {
     "01": {
         "gfn1": torch.tensor(0.16777923624986593),
         "gfn2": torch.tensor(0.15297938789402879),
-        "symbols": [
-            "Na",
-            "H",
-            "O",
-            "H",
-            "F",
-            "H",
-            "H",
-            "O",
-            "N",
-            "H",
-            "H",
-            "Cl",
-            "B",
-            "B",
-            "N",
-            "Al",
-        ],
+        "numbers": symbol2number(
+            [
+                "Na",
+                "H",
+                "O",
+                "H",
+                "F",
+                "H",
+                "H",
+                "O",
+                "N",
+                "H",
+                "H",
+                "Cl",
+                "B",
+                "B",
+                "N",
+                "Al",
+            ]
+        ),
         "positions": torch.tensor(
             [
                 -1.85528263484662,
@@ -81,24 +85,26 @@ mb16_43: Structures = {
     "02": {
         "gfn1": torch.tensor(0.12702003611285190),
         "gfn2": torch.tensor(0.10745931926703985),
-        "symbols": [
-            "H",
-            "S",
-            "B",
-            "O",
-            "Mg",
-            "H",
-            "H",
-            "H",
-            "Si",
-            "H",
-            "B",
-            "Li",
-            "F",
-            "H",
-            "H",
-            "S",
-        ],
+        "numbers": symbol2number(
+            [
+                "H",
+                "S",
+                "B",
+                "O",
+                "Mg",
+                "H",
+                "H",
+                "H",
+                "Si",
+                "H",
+                "B",
+                "Li",
+                "F",
+                "H",
+                "H",
+                "S",
+            ]
+        ),
         "positions": torch.tensor(
             [
                 -1.79537625851198,
@@ -155,24 +161,26 @@ mb16_43: Structures = {
     "03": {
         "gfn1": torch.tensor(0.16600531760459214),
         "gfn2": torch.tensor(0.15818907118271672),
-        "symbols": [
-            "C",
-            "O",
-            "H",
-            "Li",
-            "Mg",
-            "Al",
-            "C",
-            "H",
-            "H",
-            "H",
-            "F",
-            "S",
-            "C",
-            "H",
-            "Na",
-            "H",
-        ],
+        "numbers": symbol2number(
+            [
+                "C",
+                "O",
+                "H",
+                "Li",
+                "Mg",
+                "Al",
+                "C",
+                "H",
+                "H",
+                "H",
+                "F",
+                "S",
+                "C",
+                "H",
+                "Na",
+                "H",
+            ]
+        ),
         "positions": torch.tensor(
             [
                 -0.02148551327524,
@@ -229,7 +237,7 @@ mb16_43: Structures = {
     "SiH4": {
         "gfn1": torch.tensor(3.0331305861808766e-002),
         "gfn2": torch.tensor(3.1536555053538279e-002),
-        "symbols": ["Si", "H", "H", "H", "H"],
+        "numbers": symbol2number(["Si", "H", "H", "H", "H"]),
         "positions": torch.tensor(
             [
                 0.00000000000000,
