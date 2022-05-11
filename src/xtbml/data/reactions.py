@@ -17,7 +17,9 @@ class Reaction:
     nu: Tensor
     """Stoichiometry coefficient for respective participant"""
     egfn1: Tensor
-    """Reaction energies given by GFN1-xtb"""
+    """Reaction energies given by GFN1-xTB"""
+    egfn2: Tensor
+    """Reaction energies given by GFN2-xTB"""
     eref: Tensor
     """Reaction energies given by reference method"""
 
@@ -26,18 +28,26 @@ class Reaction:
         "partners",
         "nu",
         "egfn1",
+        "egfn2",
         "eref",
         "__device",
         "__dtype",
     ]
 
     def __init__(
-        self, uid: str, partners: List[str], nu: Tensor, egfn1: Tensor, eref: Tensor
+        self,
+        uid: str,
+        partners: List[str],
+        nu: Tensor,
+        egfn1: Tensor,
+        egfn2: Tensor,
+        eref: Tensor,
     ) -> None:
         self.uid = uid
         self.partners = partners
         self.nu = nu
         self.egfn1 = egfn1
+        self.egfn2 = egfn2
         self.eref = eref
 
         self.__dtype = egfn1.dtype
@@ -94,6 +104,7 @@ class Reaction:
             self.partners,
             self.nu.to(device=device),
             self.egfn1.to(device=device),
+            self.egfn2.to(device=device),
             self.eref.to(device=device),
         )
 
@@ -122,6 +133,7 @@ class Reaction:
             self.partners,
             self.nu.type(torch.int8),
             self.egfn1.type(dtype),
+            self.egfn2.type(dtype),
             self.eref.type(dtype),
         )
 
@@ -188,6 +200,7 @@ class Reactions:
                 # convert to tensor
                 features["nu"] = torch.tensor(features["nu"])
                 features["egfn1"] = torch.tensor(features["egfn1"])
+                features["egfn2"] = torch.tensor(features["egfn2"])
                 features["eref"] = torch.tensor(features["eref"])
 
                 reaction_list.append(Reaction(uid=uid, **features))
