@@ -147,6 +147,8 @@ class ReactionDataset(BaseModel, Dataset):
                     ovlp=torch.zeros_like(ref.ovlp),
                     h0=torch.zeros_like(ref.h0),
                     cn=torch.zeros_like(ref.cn),
+                    ees=torch.zeros_like(ref.ees),
+                    qat=torch.zeros_like(ref.qat),
                 )
 
                 # pad each batch
