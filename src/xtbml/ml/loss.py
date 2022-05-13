@@ -2,15 +2,11 @@
 
 
 import copy
-from pathlib import Path
 import os
+from pathlib import Path
 import torch
-from torch.nn.modules.loss import _Loss, _WeightedLoss
-
 import torch.nn.functional as F
-
-import pandas as pd
-from typing import Optional, List
+from typing import List
 
 from ..typing import Tensor
 from ..utils import dict_reorder
@@ -118,9 +114,21 @@ class WTMAD2Loss(torch.nn.Module):
         rel_path: str = None,
         reduction: str = "mean",
     ) -> None:
-        super(WTMAD2Loss, self).__init__()
+        """_summary_
 
-        # relative path of GMTKN-55 directory
+        Parameters
+        ----------
+        rel_path : str, optional
+            Relative path of GMTKN-55 directory, by default None
+        reduction : str, optional
+            Reduction of batch-wise loss to single value, by default "mean"
+
+        Raises
+        ------
+        TypeError
+            Invalid loss given
+        """
+        super(WTMAD2Loss, self).__init__()
 
         if rel_path is None:
             # hardcoded values
@@ -143,95 +151,44 @@ class WTMAD2Loss(torch.nn.Module):
         elif reduction == "sum":
             self.reduction = torch.sum
         else:
-            raise NotImplementedError
+            raise TypeError
 
     def forward(
         self, input: Tensor, target: Tensor, label: List[str], n_partner: Tensor
     ) -> Tensor:
+        """Calculate WTMAD2 batch loss
 
-        # list of subset label
-        # list indicating the number of partners per batched reaction
+        Parameters
+        ----------
+        input : Tensor
+            Batch of input values
+        target : Tensor
+            Batch of target values
+        label : List[str]
+            List of subset labels
+        n_partner : Tensor
+            List indicating the number of partners per batched reaction
 
-        verbose = False
-
-        # legacy support -- broadcasting increases required RAM
-        broadcast_to_reactants = False
-
-        if verbose:
-            print("inside")
-            print(label)
-            print(n_partner)
+        Returns
+        -------
+        Tensor
+            Reduced WTMAD2 loss
+        """
 
         # get reaction-partner idx
         p_idx = torch.cumsum(n_partner, dim=0) - 1
 
-        if not broadcast_to_reactants:
-            # contract labels
-            label = [label[i] for i in p_idx]
+        # contract labels
+        label = [label[i] for i in p_idx]
 
-        #####################
         # create vector of subset values from label
         counts = torch.tensor([self.subsets[l]["count"].item() for l in label])
         avgs = torch.tensor([self.subsets[l]["avg"].item() for l in label])
 
-        if verbose:
-            print("preparing weights")
-            print("counts: ", counts)
-            print("avgs: ", avgs)
-
-            print("input: ", input)
-            print("target: ", target)
-
-        #####################
-
-        """# pandas' mad is not the MAD we usually use, our MAD is actually MUE/MAE
-        mue = (ref - target).abs().mean()
-        wtmad += len_sub * AVG / avg_subset * mue"""
-
         # pytorchs' mad is not the MAD we usually use, our MAD is actually MAE
         mae = F.l1_loss(input, target, reduction="none")
 
-        if broadcast_to_reactants:
-            # broadcast to reaction partners
-            # NOTE: works with different number of partners for reactions in batch
-            mae = mae.repeat_interleave(n_partner)
-
-        if verbose:
-            print("mae", mae, mae.shape)
-
-        # abc = (
-        #     self.subsets[key]["count"] * self.total_avg / self.subsets[key]["avg"] * mae
-        # ) / len(self.subsets)
-        # print(abc)
-
-        if verbose:
-            print(len(self.subsets), self.total_avg, mae)
-            print(counts * self.total_avg)
-            print((counts * self.total_avg).shape)
-            print(torch.div((counts * self.total_avg), avgs))
-            print(torch.div((counts * self.total_avg), avgs).shape)
-
-            print(torch.div(counts * self.total_avg, avgs) * mae)
-            print((torch.div(counts * self.total_avg, avgs) * mae).shape)
-
         wtmad2 = torch.div(counts * self.total_avg, avgs) * mae / len(self.subsets)
-        if verbose:
-            print("wtmad2")
-            print(wtmad2)
-            print(wtmad2.shape)
-
-        if broadcast_to_reactants:
-            # contract to reactions
-            wtmad2 = wtmad2[p_idx]
-
-        if verbose:
-            print("wtmad2 2")
-            print(wtmad2)
-            print(wtmad2.shape)
-            print("input", input.size()[0])
-        assert input.size()[0] == len(
-            wtmad2
-        ), "Consecutive samples belong to different reactions."
 
         return self.reduction(wtmad2)
 
@@ -270,65 +227,3 @@ class WTMAD2Loss(torch.nn.Module):
             for subset in d
         }
         self.total_avg = total_avg / len(dataset)
-
-
-def wtmad2(
-    df: pd.DataFrame,
-    colname_target: str,
-    colname_ref: str,
-    set_column: str = "subset",
-    verbose: bool = True,
-) -> float:
-
-    AVG = 56.84
-
-    subsets = df.groupby([set_column])
-    subset_names = df[set_column].unique()
-
-    wtmad = 0
-    for name in subset_names:
-        sdf = subsets.get_group(name)
-        ref = sdf[colname_ref]
-        target = sdf[colname_target]
-
-        # number of reactions in each subset
-        count = target.count()
-
-        # compute average reaction energy for each subset
-        avg_subset = ref.mean()
-
-        # pandas' mad is not the MAD we usually use, our MAD is actually MUE/MAE
-        # https://github.com/pandas-dev/pandas/blob/v1.4.2/pandas/core/generic.py#L10813
-        mue = (ref - target).abs().mean()
-        wtmad += count * AVG / avg_subset * mue
-
-        if verbose:
-            print(f"Subset {name} ({count} entries): MUE {mue:.3f}")
-
-    return wtmad / len(df.index)
-
-
-class NLLLoss(_WeightedLoss):
-    r"""The negative log likelihood loss. It is useful to train a classification"""
-    __constants__ = ["ignore_index", "reduction"]
-    ignore_index: int
-
-    def __init__(
-        self,
-        weight: Optional[Tensor] = None,
-        size_average=None,
-        ignore_index: int = -100,
-        reduce=None,
-        reduction: str = "mean",
-    ) -> None:
-        super(NLLLoss, self).__init__(weight, size_average, reduce, reduction)
-        self.ignore_index = ignore_index
-
-    def forward(self, input: Tensor, target: Tensor) -> Tensor:
-        return F.nll_loss(
-            input,
-            target,
-            weight=self.weight,
-            ignore_index=self.ignore_index,
-            reduction=self.reduction,
-        )
