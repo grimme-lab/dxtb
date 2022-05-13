@@ -3795,7 +3795,7 @@
   },
   "FH51_44": {
     "nu": [1, -1],
-    "partners": ["FH51/methylcyclohexa-13-diene", "FH51/methylcyclohexa-14-diene"],
+    "partners": ["FH51/methylcyclohexa-1-3-diene", "FH51/methylcyclohexa-1-4-diene"],
     "egfn1": -4.76611374007275,
     "egfn2": -4.953986098356153,
     "eref": -2.48
