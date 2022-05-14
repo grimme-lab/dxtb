@@ -1,11 +1,11 @@
 import pytest
-import torch
-from torch import Tensor
-
 import tad_dftd3 as d3
+import torch
 
-from samples import structures
 from xtbml.exlibs.tbmalt.batch import pack
+from xtbml.typing import Tensor
+
+from .samples import structures
 
 
 class TestDispersion:

@@ -30,11 +30,10 @@ tensor(-0.1750)
 tensor([-0.8347, -0.8347,  0.2731,  0.2886,  0.2731,  0.2731,  0.2886,  0.2731])
 """
 
-import torch
 import math
+import torch
 from typing import Tuple
-
-Tensor = torch.Tensor
+from .typing import Tensor
 
 
 class ChargeModel:
@@ -81,7 +80,7 @@ class ChargeModel:
         if any(
             [
                 tensor.device != self.device
-                for tensor in (self.device, self.chi, self.kcn.device, self.eta.device)
+                for tensor in (self.chi, self.kcn, self.eta, self.rad)
             ]
         ):
             raise RuntimeError("All tensors must be on the same device!")
@@ -89,7 +88,7 @@ class ChargeModel:
         if any(
             [
                 tensor.dtype != self.dtype
-                for tensor in (self.device, self.chi, self.kcn.device, self.eta.device)
+                for tensor in (self.chi, self.kcn, self.eta, self.rad)
             ]
         ):
             raise RuntimeError("All tensors must have the same dtype!")
@@ -339,10 +338,22 @@ def solve(
     tensor(0.6312)
     """
 
+    if model.device != positions.device:
+        raise RuntimeError(
+            f"All tensors of '{model.__class__.__name__}' must be on the same device!\nUse `{model.__class__.__name__}.param2019().to(device)` to correctly set the device."
+        )
+
+    if model.dtype != positions.dtype:
+        raise RuntimeError(
+            f"All tensors of '{model.__class__.__name__}' must have the same dtype!\nUse `{model.__class__.__name__}.param2019().type(dtype)` to correctly set the dtype."
+        )
+
     eps = torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype)
+
     real = numbers > 0
     mask = real.unsqueeze(-2) * real.unsqueeze(-1)
     mask.diagonal(dim1=-2, dim2=-1).fill_(False)
+
     distances = torch.where(
         mask,
         torch.cdist(positions, positions, p=2),
