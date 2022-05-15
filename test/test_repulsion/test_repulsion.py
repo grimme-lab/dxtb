@@ -264,7 +264,7 @@ class TestRepulsion(Setup):
             (
                 sample1["numbers"],
                 sample2["numbers"],
-            ),
+            )
         )
         positions = batch.pack(
             (
