@@ -1,13 +1,27 @@
 """Data for testing repulsion taken from https://github.com/grimme-lab/mstore"""
 
+from typing import Dict
 import torch
-from xtbml.typing import Samples
+from xtbml.typing import Molecule, Tensor
 from xtbml.utils import symbol2number
 
+
+class Record(Molecule):
+    """Format of reference records containing GFN1-xTB and GFN2-xTB reference values."""
+
+    gfn1: Tensor
+    """Reference values for GFN1-xTB"""
+
+    gfn2: Tensor
+    """Reference values for GFN1-xTB"""
+
+
+Samples = Dict[str, Record]
 
 amino20x4: Samples = {
     "LYS_xao": {
         "gfn1": torch.tensor(0.54175667737478617),
+        "gfn2": torch.tensor(0.0),
         "numbers": symbol2number(
             [
                 "N",
