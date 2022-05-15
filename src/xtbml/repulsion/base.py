@@ -4,7 +4,7 @@
 Definition of energy terms as abstract base class for classical interactions.
 """
 
-from typing import Optional, Tuple, Union
+from typing import Literal, Optional, Tuple, Union, overload
 from ..typing import Tensor
 
 from pydantic import BaseModel
@@ -47,11 +47,21 @@ class EnergyContribution(BaseModel, ABC):
         # allow for geometry and tensor fields
         arbitrary_types_allowed = True
 
+    @overload
     @abstractmethod
-    def get_engrad(self) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+    def get_engrad(self, calc_gradient: Literal[False] = False) -> Tensor:
+        ...
+
+    @overload
+    @abstractmethod
+    def get_engrad(self, calc_gradient: Literal[True] = True) -> Tuple[Tensor, Tensor]:
+        ...
+
+    @abstractmethod
+    def get_engrad(
+        self, calc_gradient: bool = False
+    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         """
-        Obtain energy and gradient for classical contribution
-        (energy is calculated during this step).
-        For periodic applications also calculate virial force.
+        Obtain energy and gradient for classical contributions.
         """
-        return
+        ...

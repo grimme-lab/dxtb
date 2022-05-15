@@ -4,7 +4,7 @@ Run tests for repulsion contribution.
 (Note that the analytical gradient tests fail for `torch.float32`.)
 """
 
-from typing import Callable, Literal, Union
+from typing import Union, Protocol
 
 import torch
 import pytest
@@ -17,15 +17,18 @@ from xtbml.typing import Tensor
 from .samples import amino20x4, mb16_43
 
 
-class Setup:
-    """Setup class to define constants for test class."""
+class RepulsionSetup(Protocol):
+    def __call__(
+        self, numbers: Tensor, positions: Tensor, req_grad: bool = False
+    ) -> RepulsionFactory:
+        ...
+
+
+class TestRepulsion:
+    """Testing the calculation of repulsion energy and gradients."""
 
     cutoff: Tensor = torch.tensor(25.0)
     """Cutoff for repulsion calculation."""
-
-
-class TestRepulsion(Setup):
-    """Testing the calculation of repulsion energy and gradients."""
 
     @classmethod
     def setup_class(cls):
@@ -45,7 +48,7 @@ class TestRepulsion(Setup):
         return repulsion
 
     def repulsion_gfn2(
-        self, numbers: Tensor, positions: Tensor, req_grad: bool
+        self, numbers: Tensor, positions: Tensor, req_grad: bool = False
     ) -> RepulsionFactory:
         """Factory for repulsion construction based on GFN2-xTB"""
 
@@ -61,11 +64,10 @@ class TestRepulsion(Setup):
         self,
         numbers: Tensor,
         positions: Tensor,
-        repulsion_factory: Callable,
+        repulsion_factory: RepulsionSetup,
         reference_energy: Union[Tensor, None],
         reference_gradient: Union[Tensor, None],
         dtype: torch.dtype,
-        repulsion_mode: Literal["full", "pair", "atom", "scalar"] = "pair",
     ) -> None:
         """Wrapper for testing versus reference energy and gradient"""
 
@@ -74,19 +76,8 @@ class TestRepulsion(Setup):
 
         # factory to produce repulsion objects
         repulsion = repulsion_factory(numbers, positions)
-        e, gradient = repulsion.get_engrad(calc_gradient=True, mode=repulsion_mode)
-
-        # sum up for comparison with reference
-        if repulsion_mode == "pair":
-            energy = torch.sum(e, dim=(-2, -1))
-        elif repulsion_mode == "atom":
-            energy = torch.sum(e, dim=-1)
-        elif repulsion_mode == "full":
-            energy = torch.sum(e, dim=(-2, -1))
-        elif repulsion_mode == "scalar":
-            energy = e
-        else:
-            raise RuntimeError(f"Unknown mode '{repulsion_mode}' for repulsion tensor.")
+        e, gradient = repulsion.get_engrad(calc_gradient=True)
+        energy = torch.sum(e, dim=-1)
 
         # test against reference values
         if reference_energy is not None:
@@ -123,62 +114,15 @@ class TestRepulsion(Setup):
             for j in range(3):
                 er, el = 0.0, 0.0
                 repulsion.positions[i, j] += step
-                er, _ = repulsion.get_engrad(calc_gradient=False)
-                er = torch.sum(er, dim=(-2, -1))
+                er = repulsion.get_engrad(calc_gradient=False)
+                er = torch.sum(er, dim=-1)
                 repulsion.positions[i, j] -= 2 * step
-                el, _ = repulsion.get_engrad(calc_gradient=False)
-                el = torch.sum(el, dim=(-2, -1))
+                el = repulsion.get_engrad(calc_gradient=False)
+                el = torch.sum(el, dim=-1)
                 repulsion.positions[i, j] += step
                 gradient[i, j] = 0.5 * (er - el) / step
 
         return gradient
-
-    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-    def test_modes(self, dtype: torch.dtype):
-        sample = mb16_43["01"]
-
-        atomic_numbers = sample["numbers"]
-        positions = sample["positions"].type(dtype)
-
-        reference_energy = sample["gfn1"].type(dtype)
-        reference_gradient = None
-
-        self.base_test(
-            numbers=atomic_numbers,
-            positions=positions,
-            repulsion_factory=self.repulsion_gfn1,
-            reference_energy=reference_energy,
-            reference_gradient=reference_gradient,
-            dtype=dtype,
-            repulsion_mode="pair",
-        )
-        self.base_test(
-            numbers=atomic_numbers,
-            positions=positions,
-            repulsion_factory=self.repulsion_gfn1,
-            reference_energy=reference_energy,
-            reference_gradient=reference_gradient,
-            dtype=dtype,
-            repulsion_mode="atom",
-        )
-        self.base_test(
-            numbers=atomic_numbers,
-            positions=positions,
-            repulsion_factory=self.repulsion_gfn1,
-            reference_energy=reference_energy,
-            reference_gradient=reference_gradient,
-            dtype=dtype,
-            repulsion_mode="full",
-        )
-        self.base_test(
-            numbers=atomic_numbers,
-            positions=positions,
-            repulsion_factory=self.repulsion_gfn1,
-            reference_energy=reference_energy,
-            reference_gradient=reference_gradient,
-            dtype=dtype,
-            repulsion_mode="scalar",
-        )
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     def test_gfn1_mb1643_01(self, dtype: torch.dtype):
@@ -343,8 +287,7 @@ class TestRepulsion(Setup):
 
         def func(*_):
             repulsion = self.repulsion_gfn1(numbers, positions, True)
-            energy, _ = repulsion.get_engrad()
-            return energy
+            return repulsion.get_engrad()
 
         repulsion = self.repulsion_gfn1(numbers, positions, True)
         param = (repulsion.alpha, repulsion.zeff, repulsion.kexp)
@@ -379,8 +322,7 @@ class TestRepulsion(Setup):
 
         def func(*_):
             repulsion = self.repulsion_gfn1(numbers, positions, True)
-            energy, _ = repulsion.get_engrad()
-            return energy
+            return repulsion.get_engrad()
 
         repulsion = self.repulsion_gfn1(numbers, positions, True)
         param = (repulsion.alpha, repulsion.zeff, repulsion.kexp)

@@ -2,7 +2,7 @@
 
 """Definition of repulsion energy terms."""
 
-from typing import Dict, List, Literal, Optional, Union, Tuple
+from typing import Dict, List, Literal, Optional, overload, Tuple, Union
 from ..typing import Tensor
 
 import torch
@@ -19,6 +19,7 @@ class RepulsionFactory(EnergyContribution):
 
     For details, see GFN1-xTB paper:
     Grimme, S.; Bannwarth, C.; Shushkov, P. A Robust and Accurate Tight-Binding Quantum Chemical Method for Structures, Vibrational Frequencies, and Noncovalent Interactions of Large Molecular Systems Parameterized for All spd-Block Elements (Z = 1-86). J. Chem. Theory Comput. 2017, 13 (5), 1989-2009 DOI: 10.1021/acs.jctc.7b00118
+
     """
 
     n_elements: int = 87
@@ -70,11 +71,15 @@ class RepulsionFactory(EnergyContribution):
     def get_kexp(self, par_repulsion: EffectiveRepulsion) -> List[float]:
         """Obtain exponential scaling factors of effective repulsion.
 
-        Args:
-            par_repulsion (EffectiveRepulsion): Repulsion parametrization.
+        Parameters
+        ----------
+        par_repulsion : EffectiveRepulsion
+            Repulsion parametrization.
 
-        Returns:
-            List[float]: Exponential scaling factors of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
+        Returns
+        -------
+        List[float]
+            Exponential scaling factors of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
         """
 
         kexp = [par_repulsion.kexp] * self.n_elements
@@ -90,13 +95,17 @@ class RepulsionFactory(EnergyContribution):
         return kexp
 
     def get_alpha(self, par: Dict[str, Element]) -> List[float]:
-        """Obtain alpha parameters as list.
+        """Obtain alpha parameters as List.
 
-        Args:
-            par (Dict[str, Element]): Parametrization of elements.
+        Parameters
+        ----------
+        par : Dict[str, Element]
+            Parametrization of elements.
 
-        Returns:
-            List[float]: Alpha parameter of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
+        Returns
+        -------
+        List[float]
+            Alpha parameter of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
         """
 
         # dummy for indexing with atomic numbers
@@ -108,13 +117,17 @@ class RepulsionFactory(EnergyContribution):
         return a
 
     def get_zeff(self, par: Dict[str, Element]) -> List[float]:
-        """Obtain effective charges as list.
+        """Obtain effective charges as List.
 
-        Args:
-            par (Dict[str, Element]): Parametrization of elements.
+        Parameters
+        ----------
+        par : Dict[str, Element]
+            Parametrization of elements.
 
-        Returns:
-            List[float]: Effective charges of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
+        Returns
+        -------
+        List[float]
+            Effective charges of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
         """
 
         # dummy for indexing with atomic numbers
@@ -130,9 +143,12 @@ class RepulsionFactory(EnergyContribution):
     ) -> None:
         """Setup `RepulsionFactory.alpha`, `RepulsionFactory.zeff` and `RepulsionFactory.kexp` and corresponding working tensors `RepulsionFactory.w_alpha`, `RepulsionFactory.w_zeff` and `RepulsionFactory.w_kexp` for a structure.
 
-        Args:
-            par_element (Dict[str, Element]): Parametrization of elements.
-            par_repulsion (EffectiveRepulsion): Parametrization of repulsion.
+        Parameters
+        ----------
+        par_element : Dict[str, Element]
+            Parametrization of elements.
+        par_repulsion : EffectiveRepulsion
+            Parametrization of repulsion.
         """
 
         if self.req_grad is None:
@@ -175,20 +191,29 @@ class RepulsionFactory(EnergyContribution):
         kexp_mul = kexp_mol.unsqueeze(-2) * kexp_ones.unsqueeze(-1)
         self.w_kexp = kexp_mul * mask
 
+    @overload
+    def get_engrad(self, calc_gradient: Literal[False] = False) -> Tensor:
+        ...
+
+    @overload
+    def get_engrad(self, calc_gradient: Literal[True] = True) -> Tuple[Tensor, Tensor]:
+        ...
+
     def get_engrad(
         self,
         calc_gradient: bool = False,
-        mode: Literal["full", "pair", "atom", "scalar"] = "pair",
-    ) -> Tuple[Tensor, Union[Tensor, None]]:
+    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         """Obtain repulsion energy and gradient.
 
-        Args:
-            calc_gradient (bool, optional): Flag for calculating gradient. Defaults to `False`.
-            mode (Literal["full", "pair", "atom", "scalar"], optional): Specifies returned repulsion energy. Use "pair" (upper triangular matrix) and "full" (full symmetric matrix, scaled by 0.5) for atomic-pairwise, "atom" for atom-wise (vector), and scalar for the total repulsion energy. Defaults to "pair".
+        Parameters
+        ----------
+        calc_gradient : bool, optional
+            Flag for calculating gradient. Defaults to `False`.
 
-
-        Returns:
-            Tuple[Tensor, Union[Tensor, None]]: Repulsion energy (and gradient). Gradient is `None` if `calc_gradient` is set to `False`
+        Returns
+        -------
+        Tensor | Tuple[Tensor, Tensor]
+            Repulsion energy (and gradient). Gradient is `None` if `calc_gradient` is set to `False`.
         """
 
         if self.w_alpha is None or self.w_zeff is None or self.w_kexp is None:
@@ -225,42 +250,37 @@ class RepulsionFactory(EnergyContribution):
             torch.tensor(0.0, dtype=distances.dtype),
         )
 
-        dG = None
-        if calc_gradient is True:
-            dG = -(self.w_alpha * r1k * self.w_kexp + 1.0) * dE
-            # >>> print(dG.shape)
-            # torch.Size([n_batch, n_atoms, n_atoms])
+        # atom resolved energies
+        E = 0.5 * torch.sum(dE, dim=-1)
 
-            rij = torch.where(
-                mask.unsqueeze(-1),
-                self.positions.unsqueeze(-2) - self.positions.unsqueeze(-3),
-                torch.tensor(0.0, dtype=distances.dtype),
-            )
-            # >>> print(rij.shape)
-            # torch.Size([n_batch, n_atoms, n_atoms, 3])
+        if calc_gradient is False:
+            return E
 
-            r2 = torch.pow(distances, 2)
-            # >>> print(r2.shape)
-            # torch.Size([n_batch, n_atoms, n_atoms])
+        # GRADIENT #
 
-            dG = dG / r2
-            dG = dG.unsqueeze(-1) * rij
-            # >>> print(dG.shape)
-            # torch.Size([n_batch, n_atoms, n_atoms, 3])
+        dG = -(self.w_alpha * r1k * self.w_kexp + 1.0) * dE
+        # >>> print(dG.shape)
+        # torch.Size([n_batch, n_atoms, n_atoms])
 
-            dG = torch.sum(dG, dim=-2)
-            # >>> print(dG.shape)
-            # torch.Size([n_batch, n_atoms, 3])
+        rij = torch.where(
+            mask.unsqueeze(-1),
+            self.positions.unsqueeze(-2) - self.positions.unsqueeze(-3),
+            torch.tensor(0.0, dtype=distances.dtype),
+        )
+        # >>> print(rij.shape)
+        # torch.Size([n_batch, n_atoms, n_atoms, 3])
 
-        if mode == "pair":
-            E = torch.triu(dE, diagonal=1)
-        elif mode == "atom":
-            E = 0.5 * torch.sum(dE, dim=-1)
-        elif mode == "scalar":
-            E = 0.5 * torch.sum(dE, dim=(-2, -1))
-        elif mode == "full":
-            E = 0.5 * dE
-        else:
-            raise RuntimeError(f"Unknown mode '{mode}' for repulsion tensor.")
+        r2 = torch.pow(distances, 2)
+        # >>> print(r2.shape)
+        # torch.Size([n_batch, n_atoms, n_atoms])
+
+        dG = dG / r2
+        dG = dG.unsqueeze(-1) * rij
+        # >>> print(dG.shape)
+        # torch.Size([n_batch, n_atoms, n_atoms, 3])
+
+        dG = torch.sum(dG, dim=-2)
+        # >>> print(dG.shape)
+        # torch.Size([n_batch, n_atoms, 3])
 
         return E, dG
