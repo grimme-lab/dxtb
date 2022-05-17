@@ -10,9 +10,7 @@ sys.path.insert(0, src_directory)
 
 
 from xtbml.ml.loss import WTMAD2Loss, get_gmtkn_ref_values
-from xtbml.ml.training import get_gmtkn_dataset
-from xtbml.data.dataset import ReactionDataset
-from xtbml.ml.util import load_model_from_cfg
+from xtbml.data.dataset import ReactionDataset, get_gmtkn_dataset
 
 
 class Test_WTMAD2Loss:

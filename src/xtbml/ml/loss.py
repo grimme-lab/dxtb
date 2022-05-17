@@ -10,7 +10,7 @@ from typing import List
 
 from ..typing import Tensor
 from ..utils import dict_reorder
-from .training import get_gmtkn_dataset
+from ..data.dataset import get_gmtkn_dataset
 
 
 def get_gmtkn_ref_values(
