@@ -142,6 +142,7 @@ class ReactionDataset(BaseModel, Dataset):
                     unpaired_e=torch.zeros_like(ref.unpaired_e),
                     charges=torch.zeros_like(ref.charges),
                     egfn1=torch.zeros_like(ref.egfn1),
+                    egfn2=torch.zeros_like(ref.egfn2),
                     edisp=torch.zeros_like(ref.edisp),
                     erep=torch.zeros_like(ref.erep),
                     ovlp=torch.zeros_like(ref.ovlp),
