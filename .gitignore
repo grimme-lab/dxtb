@@ -171,7 +171,20 @@ cython_debug/
 *.pt.trace.json
 
 # data
-data/
+*.json
+*.csv
+*.txt
+coord 
+struc.xyz
+.CHRG
+.UHF
+.SYM
+.resRC
+.res
+
+data/archive
+data/GMTKN55*
+
 
 # models 
 models/
