@@ -32,6 +32,8 @@ class Sample:
     """Charge of sample"""
     egfn1: Tensor
     """Energy calculated by GFN1-xTB"""
+    egfn2: Tensor
+    """Energy calculated by GFN2-xTB"""
     edisp: Tensor
     """Atom-wise dispersion energy"""
     erep: Tensor
@@ -54,6 +56,7 @@ class Sample:
         "unpaired_e",
         "charges",
         "egfn1",
+        "egfn2",
         "edisp",
         "erep",
         "ees",
@@ -76,6 +79,7 @@ class Sample:
         unpaired_e: Tensor,
         charges: Tensor,
         egfn1: Tensor,
+        egfn2: Tensor,
         edisp: Tensor,
         erep: Tensor,
         ees: Tensor,
@@ -90,6 +94,7 @@ class Sample:
         self.unpaired_e = unpaired_e
         self.charges = charges
         self.egfn1 = egfn1
+        self.egfn2 = egfn2
         self.edisp = edisp
         self.erep = erep
         self.ees = ees
@@ -110,6 +115,7 @@ class Sample:
                     self.unpaired_e,
                     self.charges,
                     self.egfn1,
+                    self.egfn2,
                     self.edisp,
                     self.erep,
                     self.ees,
@@ -128,6 +134,7 @@ class Sample:
                 for tensor in (
                     self.xyz,
                     self.egfn1,
+                    self.egfn2,
                     self.edisp,
                     self.erep,
                     self.ees,
@@ -182,6 +189,7 @@ class Sample:
             self.unpaired_e.to(device=device),
             self.charges.to(device=device),
             self.egfn1.to(device=device),
+            self.egfn2.to(device=device),
             self.edisp.to(device=device),
             self.erep.to(device=device),
             self.ees.to(device=device),
@@ -218,6 +226,7 @@ class Sample:
             self.unpaired_e.type(torch.uint8),
             self.charges.type(torch.uint8),
             self.egfn1.type(dtype),
+            self.egfn2.type(dtype),
             self.edisp.type(dtype),
             self.erep.type(dtype),
             self.ees.type(dtype),
