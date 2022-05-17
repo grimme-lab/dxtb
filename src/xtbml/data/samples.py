@@ -31,23 +31,23 @@ class Sample:
     charges: Tensor
     """Charge of sample"""
     egfn1: Tensor
-    """Energy calculated by GFN1-xTB"""
+    """Atomwise energy calculated by GFN1-xTB"""
     egfn2: Tensor
-    """Energy calculated by GFN2-xTB"""
+    """Atomwise energy calculated by GFN2-xTB"""
     edisp: Tensor
-    """Atom-wise dispersion energy"""
+    """Atomwise dispersion energy"""
     erep: Tensor
     """Atom-pairwise repulsion energy"""
     ees: Tensor
-    """Atom-wise electrostatic energy (from EEQ)"""
+    """Atomwise electrostatic energy (from EEQ)"""
     qat: Tensor
-    """Atomic partial charges (from EEQ)"""
+    """Atomwise partial charges (from EEQ)"""
+    cn: Tensor
+    """Atomwise coordination number"""
     ovlp: Tensor
     """Overlap matrix"""
     h0: Tensor
     """Hamiltonian matrix"""
-    cn: Tensor
-    """Atom-wise coordination number"""
 
     __slots__ = [
         "uid",
@@ -61,9 +61,9 @@ class Sample:
         "erep",
         "ees",
         "qat",
-        "ovlp",
-        "h0",
         "cn",
+        "h0",
+        "ovlp",
         "__device",
         "__dtype",
     ]
@@ -84,9 +84,9 @@ class Sample:
         erep: Tensor,
         ees: Tensor,
         qat: Tensor,
-        ovlp: Tensor,
-        h0: Tensor,
         cn: Tensor,
+        h0: Tensor,
+        ovlp: Tensor,
     ) -> None:
         self.uid = uid
         self.xyz = xyz
@@ -99,9 +99,9 @@ class Sample:
         self.erep = erep
         self.ees = ees
         self.qat = qat
-        self.ovlp = ovlp
-        self.h0 = h0
         self.cn = cn
+        self.h0 = h0
+        self.ovlp = ovlp
 
         self.__device = xyz.device
         self.__dtype = xyz.dtype
@@ -120,9 +120,9 @@ class Sample:
                     self.erep,
                     self.ees,
                     self.qat,
-                    self.ovlp,
-                    self.h0,
                     self.cn,
+                    self.h0,
+                    self.ovlp,
                 )
             ]
         ):
@@ -139,9 +139,9 @@ class Sample:
                     self.erep,
                     self.ees,
                     self.qat,
-                    self.ovlp,
-                    self.h0,
                     self.cn,
+                    self.h0,
+                    self.ovlp,
                 )
             ]
         ):
@@ -194,9 +194,9 @@ class Sample:
             self.erep.to(device=device),
             self.ees.to(device=device),
             self.qat.to(device=device),
-            self.ovlp.to(device=device),
-            self.h0.to(device=device),
             self.cn.to(device=device),
+            self.h0.to(device=device),
+            self.ovlp.to(device=device),
         )
 
     def type(self, dtype: torch.dtype) -> "Sample":
@@ -231,9 +231,9 @@ class Sample:
             self.erep.type(dtype),
             self.ees.type(dtype),
             self.qat.type(dtype),
-            self.ovlp.type(dtype),
-            self.h0.type(dtype),
             self.cn.type(dtype),
+            self.h0.type(dtype),
+            self.ovlp.type(dtype),
         )
 
     def __repr__(self) -> str:
