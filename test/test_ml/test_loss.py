@@ -1,13 +1,5 @@
 import pytest
-from os import path
-import sys
 import torch
-
-# Add the src directory to sys.path so that all imports in the unittests work
-this_directory = path.dirname(path.abspath(__file__))
-src_directory = path.join(path.abspath(this_directory), "../..", "src")
-sys.path.insert(0, src_directory)
-
 
 from xtbml.ml.loss import WTMAD2Loss, get_gmtkn_ref_values
 from xtbml.data.dataset import ReactionDataset, get_gmtkn_dataset
