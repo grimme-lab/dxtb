@@ -1,6 +1,12 @@
 Fully Differentiable Extended Tight Binding
 ===========================================
 
+.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+    :target: https://github.com/psf/black
+
+.. image:: https://img.shields.io/badge/docstring-numpydoc-black
+    :target: https://github.com/psf/black
+
 This project provides a fully differentiable implementation of the extended tight binding (xTB) Hamiltonian.
 
 For details on the xTB methods see
@@ -54,6 +60,7 @@ The following dependencies are required
 - `numpy <https://numpy.org/>`__
 - `tomli <https://github.com/hukkin/tomli>`__
 - `torch <https://pytorch.org/>`__ version 1.10 or newer
+- `tad-dftd3 <https://github.com/dftd3/tad-dftd3>`__
 - `pydantic <https://github.com/samuelcolvin/pydantic>`__
 - `pytest <https://docs.pytest.org/>`__ (tests only)
 
@@ -62,3 +69,9 @@ You can check your installation by running the test suite with
 .. code::
 
    pytest test/ --pyargs xtbml --doctest-modules
+
+or with xtbml module path in pyproject.toml:
+
+.. code::
+
+   python -m pytest test/ --doctest-modules

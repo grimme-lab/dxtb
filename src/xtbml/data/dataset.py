@@ -147,6 +147,8 @@ class ReactionDataset(BaseModel, Dataset):
                     ovlp=torch.zeros_like(ref.ovlp),
                     h0=torch.zeros_like(ref.h0),
                     cn=torch.zeros_like(ref.cn),
+                    ees=torch.zeros_like(ref.ees),
+                    qat=torch.zeros_like(ref.qat),
                 )
 
                 # pad each batch
@@ -202,6 +204,7 @@ class ReactionDataset(BaseModel, Dataset):
                 value=0,  # padding value for stoichiometry factor
             )
             egfn1 = torch.stack([r.egfn1 for r in batched_reactions], 0)
+            egfn2 = torch.stack([r.egfn2 for r in batched_reactions], 0)
             eref = torch.stack([r.eref for r in batched_reactions], 0)
 
             # NOTE: Example on how batching of Reaction objects is conducteds
@@ -216,7 +219,12 @@ class ReactionDataset(BaseModel, Dataset):
             # convert to sample objects (optional)
             batched_samples = [Sample(**d) for d in batched_samples]
             batched_reactions = Reaction(
-                uid="BATCH", partners=partners, nu=nu, egfn1=egfn1, eref=eref
+                uid="BATCH",
+                partners=partners,
+                nu=nu,
+                egfn1=egfn1,
+                egfn2=egfn2,
+                eref=eref,
             )
 
             # NOTE: information on how samples and shapes are aligned

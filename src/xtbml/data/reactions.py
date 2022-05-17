@@ -56,12 +56,17 @@ class Reaction:
         if any(
             [
                 tensor.device != self.device
-                for tensor in (self.nu, self.egfn1, self.eref)
+                for tensor in (self.nu, self.egfn1, self.egfn2, self.eref)
             ]
         ):
             raise RuntimeError("All tensors must be on the same device!")
 
-        if any([tensor.dtype != self.dtype for tensor in (self.egfn1, self.eref)]):
+        if any(
+            [
+                tensor.dtype != self.dtype
+                for tensor in (self.egfn1, self.egfn2, self.eref)
+            ]
+        ):
             raise RuntimeError("All tensors must have the same dtype!")
 
     @property
