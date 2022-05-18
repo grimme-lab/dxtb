@@ -1,6 +1,8 @@
 from pathlib import Path
+import pandas as pd
 import pytest
 import torch
+from xtbml.ml.evaluation import evaluate
 
 from xtbml.ml.loss import WTMAD2Loss
 from xtbml.data.dataset import ReactionDataset, get_gmtkn_dataset
@@ -11,10 +13,10 @@ from .gmtkn55 import GMTKN55
 class TestWTMAD2Loss:
     """Testing the loss calulation based on GMTKN55 weighting."""
 
-    path = "./data"
+    path = Path(Path(__file__).resolve().parents[2], "data")
+    """Absolute path to fit set data."""
 
     def setup_class(self):
-        print()
         print("Test custom loss function")
         self.dataset = get_gmtkn_dataset(self.path)
 
@@ -61,7 +63,7 @@ class TestWTMAD2Loss:
         rtol = 1.0e-4
         TOTAL_AVG = 57.82
 
-        for (_, target), (_, ref) in zip(self.loss_fn.subsets.items(), GMTKN55.items()):
+        for target, ref in zip(self.loss_fn.subsets.values(), GMTKN55.values()):
             # counts (type and value)
             assert ref["count"].is_integer()
             assert target["count"].item().is_integer()
@@ -103,6 +105,26 @@ class TestWTMAD2Loss:
 
         assert output.shape == torch.Size([])
         assert output.item() == 25.791534423828125
+
+    def test_evaluate(self):
+        bset, eref, egfn1, enn = evaluate()
+        df = pd.DataFrame(
+            list(zip(bset, eref, egfn1, enn)),
+            columns=["subset", "Eref", "Egfn1", "Enn"],
+        )
+
+        egfn1 = wtmad2(df, "Egfn1", "Eref", verbose=False)
+        enn = wtmad2(df, "Enn", "Eref", verbose=False)
+
+        assert round(egfn1, 1) == round(35.59, 1)
+
+        # print(df)
+        # df["dEgfn1"] = (df["Eref"] - df["Egfn1"]).abs()
+        # df["dEnn"] = (df["Eref"] - df["Enn"]).abs()
+        # print(df[["dEgfn1", "dEnn"]].describe())
+        print(
+            f"WTMAD-2: Egfn1 = {egfn1} ; Enn = {enn}",
+        )
 
     @pytest.mark.grad
     def test_grad(self):
@@ -188,3 +210,55 @@ class TestWTMAD2Loss:
         #    atol=1.0e-6,
         #    equal_nan=False,
         # )
+
+
+def wtmad2(
+    df: pd.DataFrame,
+    colname_target: str,
+    colname_ref: str,
+    set_column: str = "subset",
+    verbose: bool = True,
+) -> float:
+    """Calculate the weighted total mean absolute deviation, as defined in
+
+    - L. Goerigk, A. Hansen, C. Bauer, S. Ehrlich,A. Najibi, Asim, S. Grimme,
+      *Phys. Chem. Chem. Phys.*, **2017**, 19, 48, 32184-32215.
+      (`DOI <http://dx.doi.org/10.1039/C7CP04913G>`__)
+
+    Args:
+        df (pd.DataFrame): Dataframe containing target and reference energy values.
+        colname_target (str): Name of target column.
+        colname_ref (str): Name of reference column.
+        set_column (str, optional): Name of column defining the subset association. Defaults to "subset".
+        verbose (bool, optional): Allows for printout of subset-wise MAD. Defaults to "False".
+
+    Returns:
+        float: weighted total mean absolute deviation
+    """
+
+    AVG = 56.84
+
+    subsets = df.groupby([set_column])
+    subset_names = df[set_column].unique()
+
+    wtmad = 0
+    for name in subset_names:
+        sdf = subsets.get_group(name)
+        ref = sdf[colname_ref]
+        target = sdf[colname_target]
+
+        # number of reactions in each subset
+        count = target.count()
+
+        # compute average reaction energy for each subset
+        avg_subset = ref.abs().mean()
+
+        # pandas' mad is not the MAD we usually use, our MAD is actually MUE/MAE
+        # https://github.com/pandas-dev/pandas/blob/v1.4.2/pandas/core/generic.py#L10813
+        mue = (ref - target).abs().mean()
+        wtmad += count * AVG / avg_subset * mue
+
+        if verbose:
+            print(f"Subset {name} ({count} entries): MUE {mue:.3f}")
+
+    return wtmad / len(df.index)

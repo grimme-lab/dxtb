@@ -3,6 +3,7 @@
 ####### such as init, saving and loading of pytorch models.    #######
 ######################################################################
 
+from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -81,11 +82,12 @@ def get_scheduler(name, optimizer):
     return scheduler_dict.get(name)
 
 
-def get_loss_fn(name):
+def get_loss_fn(path: Path, name: str):
     """Returns loss function for the given choice
         from the predefined archetypes.
 
     Args:
+        path (Path): Absolute path of GMTKN55 directory
         name (str): Name-tag for the loss function
 
     Returns:
@@ -95,13 +97,13 @@ def get_loss_fn(name):
     loss_fn_dict = {
         "L1Loss": nn.L1Loss(reduction="mean"),
         "L2Loss": nn.MSELoss(reduction="mean"),
-        "WTMAD2Loss": WTMAD2Loss(reduction="mean"),
+        "WTMAD2Loss": WTMAD2Loss(path, reduction="mean"),
     }
 
     return loss_fn_dict.get(name)
 
 
-def load_model_from_cfg(cfg: dict, load_state=True):
+def load_model_from_cfg(path: Path, cfg: dict, load_state=True):
     """Loads the model, optimiser and loss function
     from a given config file. If load_state set
     to False, no checkpoint is loaded.
@@ -109,7 +111,7 @@ def load_model_from_cfg(cfg: dict, load_state=True):
 
     architecture = get_architecture(cfg.get("model_architecture"))
     optimizer = get_optimizer(cfg.get("training_optimizer"))
-    loss_fn = get_loss_fn(cfg.get("training_loss_fn"))
+    loss_fn = get_loss_fn(path, cfg.get("training_loss_fn"))
 
     # load model parameters
     model = architecture(cfg)

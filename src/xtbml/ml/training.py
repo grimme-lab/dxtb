@@ -8,14 +8,15 @@ from pathlib import Path
 import pandas as pd
 
 from xtbml.ml.util import load_model_from_cfg
-from xtbml.data.dataset import ReactionDataset
+from xtbml.data.dataset import  get_gmtkn_dataset
 
 
 def train():
     """Trains the model."""
 
     # load GMTKN55 from disk
-    dataset = get_gmtkn_dataset()
+    root = Path(__file__).resolve().parents[3]
+    dataset = get_gmtkn_dataset(Path(root, "data"))
 
     # TODO: extend padding to number of parameters
     # prune to constant number of partners
@@ -49,7 +50,7 @@ def train():
     }
 
     # load components
-    model, optimizer, loss_fn, scheduler = load_model_from_cfg(cfg_ml, load_state=False)
+    model, optimizer, loss_fn, scheduler = load_model_from_cfg(root, cfg_ml, load_state=False)
 
     # run training
     model.train()
@@ -107,30 +108,5 @@ def train():
     df.to_csv(save_name + "_df.csv", index=True)
     torch.save(model.state_dict(), save_name + "_model.pt")
 
-
-def get_dataset(path_reactions: Union[Path, str], path_samples: Union[Path, str]) -> ReactionDataset:
-    """Return a preliminary dataset for setting up the workflow."""
-
-    # load json from disk
-    dataset = ReactionDataset.create_from_disk(
-        path_reactions=path_reactions, path_samples=path_samples
-    )
-
-    # apply simple padding
-    dataset.pad()
-
-    return dataset
-
-
-def get_gmtkn_dataset(rel: str = "../data") -> ReactionDataset:
-    """Return total gmtkn55 dataset."""
-
-    dataset = get_dataset(
-        path_reactions=Path(Path.cwd(), rel, "reactions.json"),
-        path_samples=Path(Path.cwd(), rel, "samples.json"),
-    )
-    
-    assert len(dataset) == 1505
-    return dataset
 
  

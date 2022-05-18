@@ -1,5 +1,6 @@
 """ Module for custom loss functions."""
 
+from pathlib import Path
 import torch
 import torch.nn.functional as F
 from typing import List, Literal
@@ -18,15 +19,15 @@ class WTMAD2Loss(torch.nn.Module):
 
     def __init__(
         self,
-        rel_path: str,
+        path: Path,
         reduction: Literal["mean", "sum", "none"] = "mean",
     ) -> None:
         """_summary_
 
         Parameters
         ----------
-        rel_path : str, optional
-            Relative path of GMTKN55 directory, by default None
+        path : Path
+            Absolute path of GMTKN55 directory
         reduction : str, optional
             Reduction of batch-wise loss to single value, by default "mean"
 
@@ -38,9 +39,9 @@ class WTMAD2Loss(torch.nn.Module):
         super(WTMAD2Loss, self).__init__()
 
         # calculate properties dynamically
-        self.rel_path = rel_path
+        self.path = path
         self.reduction = reduction
-        self.calc_properties(self.rel_path)
+        self.calc_properties(path)
 
     @property
     def reduction(self):
@@ -109,17 +110,17 @@ class WTMAD2Loss(torch.nn.Module):
 
         return self.reduction(wtmad2)
 
-    def calc_properties(self, rel_path: str):
+    def calc_properties(self, path: Path):
         """Calculate GMTKN55 properties dynamically. Update instance properties.
 
         Parameters
         ----------
-        rel_path : str
+        path : str
             Relative path to directory containing GMTKN55 data
         """
 
         # load data
-        dataset = get_gmtkn_dataset(rel_path)
+        dataset = get_gmtkn_dataset(path)
         d = {}
 
         # collect values
