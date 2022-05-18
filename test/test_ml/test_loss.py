@@ -236,7 +236,7 @@ def wtmad2(
         float: weighted total mean absolute deviation
     """
 
-    AVG = 56.84
+    AVG = 57.82
 
     subsets = df.groupby([set_column])
     subset_names = df[set_column].unique()
