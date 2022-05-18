@@ -122,9 +122,8 @@ def get_dataset(path_reactions: Union[Path, str], path_samples: Union[Path, str]
     return dataset
 
 
-def get_gmtkn_dataset() -> ReactionDataset:
+def get_gmtkn_dataset(rel: str = "../data") -> ReactionDataset:
     """Return total gmtkn55 dataset."""
-    rel = "../data"
 
     dataset = get_dataset(
         path_reactions=Path(Path.cwd(), rel, "reactions.json"),

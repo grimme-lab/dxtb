@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import torch
 import torch.nn.functional as F
-from typing import List
+from typing import List, Literal, Optional
 
 from ..typing import Tensor
 from ..utils import dict_reorder
@@ -16,19 +16,19 @@ from .training import get_gmtkn_dataset
 def get_gmtkn_ref_values(
     path: Path = Path(Path.cwd(), "../data/GMTKN55-main"), name: str = ".average"
 ) -> dict:
-    """Get reference values for GMTKN-55 subset averages.
+    """Get reference values for GMTKN55 subset averages.
 
     Parameters
     ----------
     path : Path, optional
-        Path to GMTKN-55 folder, by default Path(Path.cwd(), "../data/GMTKN55-main")
+        Path to GMTKN55 folder, by default Path(Path.cwd(), "../data/GMTKN55-main")
     name : str, optional
         Name of the file(s) containing the average energy per subset, by default ".average"
 
     Returns
     -------
     dict
-        Dictionary conatining the average energy for each subset. Keys sorted alphabetically
+        Dictionary containing the average energy for each subset. Keys sorted alphabetically
     """
     d = {}
     for root, dirs, files in os.walk(path):
@@ -104,22 +104,22 @@ gmtkn_ref = {
 class WTMAD2Loss(torch.nn.Module):
     """Calculate the weighted total mean absolute deviation, as defined in
 
-    - L. Goerigk, A. Hansen, C. Bauer, S. Ehrlich,A. Najibi, Asim, S. Grimme,
+    - L. Goerigk, A. Hansen, C. Bauer, S. Ehrlich, A. Najibi, Asim, S. Grimme,
       *Phys. Chem. Chem. Phys.*, **2017**, 19, 48, 32184-32215.
       (`DOI <http://dx.doi.org/10.1039/C7CP04913G>`__)
     """
 
     def __init__(
         self,
-        rel_path: str = None,
-        reduction: str = "mean",
+        rel_path: Optional[str] = None,
+        reduction: Literal["mean", "sum", "none"] = "mean",
     ) -> None:
         """_summary_
 
         Parameters
         ----------
         rel_path : str, optional
-            Relative path of GMTKN-55 directory, by default None
+            Relative path of GMTKN55 directory, by default None
         reduction : str, optional
             Reduction of batch-wise loss to single value, by default "mean"
 
@@ -138,7 +138,7 @@ class WTMAD2Loss(torch.nn.Module):
                 self.subsets[k]["count"] = torch.tensor(self.subsets[k]["count"])
                 # average energy for each subset
                 self.subsets[k]["avg"] = torch.tensor(round(self.subsets[k]["avg"], 2))
-            self.total_avg = torch.Tensor([56.84])
+            self.total_avg = torch.tensor([56.84])
         else:
             # calculate properties dynamically
             self.rel_path = rel_path
@@ -193,12 +193,12 @@ class WTMAD2Loss(torch.nn.Module):
         return self.reduction(wtmad2)
 
     def calc_properties(self, rel_path: str):
-        """Calculate GMTKN-55 properties dynamically. Update instance properties.
+        """Calculate GMTKN55 properties dynamically. Update instance properties.
 
         Parameters
         ----------
         rel_path : str
-            Relative path to directory containing GMTKN-55 data
+            Relative path to directory containing GMTKN55 data
         """
 
         # load data
