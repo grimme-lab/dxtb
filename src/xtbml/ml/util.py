@@ -6,7 +6,9 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+
 from .model import Basic_CNN
+from .loss import WTMAD2Loss
 
 
 def get_architecture(name):
@@ -92,7 +94,8 @@ def get_loss_fn(name):
 
     loss_fn_dict = {
         "L1Loss": nn.L1Loss(reduction="mean"),
-        "MSELoss": nn.MSELoss(reduction="mean"),
+        "L2Loss": nn.MSELoss(reduction="mean"),
+        "WTMAD2Loss": WTMAD2Loss(reduction="mean"),
     }
 
     return loss_fn_dict.get(name)
