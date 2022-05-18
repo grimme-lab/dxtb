@@ -1,7 +1,7 @@
 import torch
 import pandas as pd
 
-from .training import get_gmtkn_dataset
+from ..data.dataset import get_gmtkn_dataset
 from .util import load_model_from_cfg
 
 """ Load ML model from disk and conduct basic evaluation. """
@@ -15,11 +15,7 @@ def evaluate():
     # load data
     dataset = get_gmtkn_dataset()
 
-    # prune to constant number of partners
-    np = [len(r.partners) for r in dataset.reactions]
-    idxs = [i for i, x in enumerate(np) if x != 2]
-    for i in reversed(idxs):
-        dataset.rm_reaction(idx=i)
+    # bookkeeping
     cc = [r.uid for r in dataset.reactions]
     bset = [r.uid.split("_")[0] for r in dataset.reactions]
     print(f"Dataset contains {len(cc)} reactions: {cc}")
@@ -39,7 +35,7 @@ def evaluate():
         "training_loss_fn": "L1Loss",
         "training_lr": 0.01,
         "epochs": 3,
-        "model_state_dict": torch.load("../models/202205050222_model.pt"),
+        "model_state_dict": torch.load("../models/202205171935_model.pt"),
     }
     model, _, loss_fn, _ = load_model_from_cfg(cfg_ml)
     model.eval()
@@ -54,7 +50,9 @@ def evaluate():
         eref.append(y_true.item())
         egfn1.append(batched_reaction.egfn1.item())
         enn.append(y.item())
-        print(f"Enn: {enn[i]:.2f} | Eref: {eref[i]:.2f} | Egfn1: {egfn1[i]:.2f}")
+        print(
+            f"Enn: {enn[i]:.2f} | Eref: {eref[i]:.2f} | Egfn1: {egfn1[i]:.2f} | Samples: {batched_samples}"
+        )
 
     df = pd.DataFrame(
         list(zip(bset, eref, egfn1, enn)), columns=["subset", "Eref", "Egfn1", "Enn"]
@@ -75,7 +73,7 @@ def wtmad2(
     colname_target: str,
     colname_ref: str,
     set_column: str = "subset",
-    verbose: bool = False,
+    verbose: bool = True,
 ) -> float:
     """Calculate the weighted total mean absolute deviation, as defined in
 
