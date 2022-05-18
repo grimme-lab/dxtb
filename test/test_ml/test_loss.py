@@ -1,20 +1,28 @@
+from pathlib import Path
 import pytest
 import torch
 
-from xtbml.ml.loss import WTMAD2Loss, get_gmtkn_ref_values
+from xtbml.ml.loss import WTMAD2Loss
 from xtbml.data.dataset import ReactionDataset, get_gmtkn_dataset
 
+from .gmtkn55 import GMTKN55
 
-class Test_WTMAD2Loss:
+
+class TestWTMAD2Loss:
     """Testing the loss calulation based on GMTKN55 weighting."""
+
+    path = "./data"
 
     def setup_class(self):
         print()
         print("Test custom loss function")
-        self.dataset = get_gmtkn_dataset("./data")
+        self.dataset = get_gmtkn_dataset(self.path)
 
-        # subsets in GMTKN-55
+        # subsets in GMTKN55
         self.all_sets = set([r.uid.split("_")[0] for r in self.dataset.reactions])
+
+        # loss function
+        self.loss_fn = WTMAD2Loss(self.path)
 
     def teardown_class(self):
         # teardown_class called once for the class
@@ -47,49 +55,40 @@ class Test_WTMAD2Loss:
             partners = [s.split("/")[0] for s in r.partners]
             assert {subset} == set(partners), "Partner and reaction naming inconsistent"
 
-    @pytest.mark.parametrize("dynamic_loading", [False, True])
-    def test_loading(self, dynamic_loading):
+    def test_loading(self):
+        """Check consistency of GMTKN55 through by comparing with hard-coded averages and counts (number of reactions) of subsets."""
         atol = 1.0e-2
         rtol = 1.0e-4
+        TOTAL_AVG = 57.82
 
-        if dynamic_loading:
-            # load GMTKN-55 dynamically from disk
-            loss_fn = WTMAD2Loss(rel_path="./data")
+        for (_, target), (_, ref) in zip(self.loss_fn.subsets.items(), GMTKN55.items()):
+            # counts (type and value)
+            assert ref["count"].is_integer()
+            assert target["count"].item().is_integer()
+            assert int(ref["count"]) == int(target["count"])
 
-            # TODO - fix bug for those
-            loss_fn.subsets["MB16-43"]["avg"] = torch.tensor(414.73)
-            loss_fn.subsets["WATER27"]["avg"] = torch.tensor(81.14)
-            loss_fn.total_avg = 56.84
-        else:
-            loss_fn = WTMAD2Loss()
-
-        def base_test(subsets: dict, gmtkn_ref: dict, key: str):
-            for k, v in subsets.items():
-                assert torch.allclose(
-                    v[key],
-                    gmtkn_ref[k],
-                    rtol=rtol,
-                    atol=atol,
-                    equal_nan=False,
-                )
-
-        # averages
-        avgs = get_gmtkn_ref_values(path="./data/GMTKN55-main")
-        base_test(loss_fn.subsets, avgs, "avg")
-
-        # counts
-        counts = get_gmtkn_ref_values(path="./data/GMTKN55-main", name=".numen")
-        base_test(loss_fn.subsets, counts, "count")
+            # averages
+            assert torch.allclose(
+                torch.tensor(ref["avg"]),
+                target["avg"],
+                rtol=rtol,
+                atol=atol,
+                equal_nan=False,
+            )
 
         # total average
-        assert loss_fn.total_avg == 56.84
+        assert torch.allclose(
+            self.loss_fn.total_avg,
+            torch.tensor(TOTAL_AVG),
+            rtol=rtol,
+            atol=atol,
+            equal_nan=False,
+        )
 
         # total len
-        assert len(loss_fn.subsets) == 55
+        assert len(self.loss_fn.subsets) == 55
 
     def test_single(self):
-        loss_fn = WTMAD2Loss()
-
         n_reactions = 2.0
         n_reactions_i = 2
         input = torch.arange(n_reactions, requires_grad=True)
@@ -99,10 +98,11 @@ class Test_WTMAD2Loss:
         # reaction lengths
         n_partner = torch.tensor([n_reactions_i, n_reactions_i])
 
-        output = loss_fn(input, target, label, n_partner)
+        self.loss_fn.reduction = "mean"
+        output = self.loss_fn(input, target, label, n_partner)
 
         assert output.shape == torch.Size([])
-        assert output.item() == 25.41281509399414
+        assert output.item() == 25.791534423828125
 
     @pytest.mark.grad
     def test_grad(self):
@@ -117,7 +117,7 @@ class Test_WTMAD2Loss:
         n_partner = torch.tensor([n_reactions_i, n_reactions_i])
 
         assert torch.autograd.gradcheck(
-            WTMAD2Loss(),
+            WTMAD2Loss(self.path),
             (input, target, label, n_partner),
             raise_exception=True,
         )
@@ -126,25 +126,25 @@ class Test_WTMAD2Loss:
     def test_gmtkn(self, batchsize):
         # TODO: compare subset and total WTMAD with paper and with implementation in evaluation.py
 
-        print("load dl with bs", batchsize)
+        print("\nload dl with bs", batchsize)
         dl = self.dataset.get_dataloader({"batch_size": batchsize, "shuffle": True})
-        loss_fn = WTMAD2Loss(reduction="sum")
+        self.loss_fn.reduction = "sum"
 
         loss = torch.tensor([0.0])
-        for i, (batched_samples, batched_reaction) in enumerate(dl):
+        for i, (_, batched_reaction) in enumerate(dl):
 
             # derive subset from partner list
             subsets = [s.split("/")[0] for s in batched_reaction.partners]
             # different number of partners per reaction
             n_partner = torch.count_nonzero(batched_reaction.nu, dim=1)
 
-            loss += loss_fn(
+            loss += self.loss_fn(
                 batched_reaction.egfn1, batched_reaction.eref, subsets, n_partner
             )
 
         assert torch.allclose(
             loss,
-            torch.tensor([44055.55078125]),
+            torch.tensor([44728.2891]),
             rtol=1.0e-4,
             atol=1.0e-6,
             equal_nan=False,
@@ -153,7 +153,7 @@ class Test_WTMAD2Loss:
     def test_gmtkn_subsets(self):
 
         dl = self.dataset.get_dataloader({"batch_size": 2, "shuffle": False})
-        loss_fn = WTMAD2Loss(reduction="none")
+        self.loss_fn.reduction = "none"
 
         losses = {k: torch.tensor([0.0]) for k in self.all_sets}
 
@@ -164,7 +164,7 @@ class Test_WTMAD2Loss:
             # different number of partners per reaction
             n_partner = torch.count_nonzero(batched_reaction.nu, dim=1)
 
-            loss = loss_fn(
+            loss = self.loss_fn(
                 batched_reaction.egfn1, batched_reaction.eref, subsets, n_partner
             )
 
@@ -176,7 +176,7 @@ class Test_WTMAD2Loss:
 
         # normalise loss per subset (optional)
         for k, v in losses.items():
-            losses[k] = v * len(self.dataset) / loss_fn.total_avg
+            losses[k] = v * len(self.dataset) / self.loss_fn.total_avg
 
         # print(losses)
 
