@@ -142,6 +142,7 @@ class ReactionDataset(BaseModel, Dataset):
                     unpaired_e=torch.zeros_like(ref.unpaired_e),
                     charges=torch.zeros_like(ref.charges),
                     egfn1=torch.zeros_like(ref.egfn1),
+                    egfn2=torch.zeros_like(ref.egfn2),
                     edisp=torch.zeros_like(ref.edisp),
                     erep=torch.zeros_like(ref.erep),
                     ovlp=torch.zeros_like(ref.ovlp),
@@ -295,3 +296,33 @@ class ReactionDataset(BaseModel, Dataset):
                         f = torch.nn.functional.pad(f, pad, mode="constant", value=0.0)
                         setattr(s, k, f)
         return
+
+
+def get_dataset(
+    path_reactions: Union[Path, str], path_samples: Union[Path, str]
+) -> ReactionDataset:
+    """Return a preliminary dataset for setting up the workflow."""
+
+    # load json from disk
+    dataset = ReactionDataset.create_from_disk(
+        path_reactions=path_reactions, path_samples=path_samples
+    )
+
+    # apply simple padding
+    dataset.pad()
+
+    return dataset
+
+
+def get_gmtkn_dataset(rel_path: str = "../data") -> ReactionDataset:
+    """Return total gmtkn55 dataset."""
+
+    dataset = get_dataset(
+        path_reactions=Path(Path.cwd(), rel_path, "reactions.json"),
+        path_samples=Path(Path.cwd(), rel_path, "samples.json"),
+        # path_reactions=Path(Path.cwd(), rel_path, "reactions-verysmall.json"),
+        # path_samples=Path(Path.cwd(), rel_path, "samples-verysmall.json"),
+    )
+
+    assert len(dataset) == 1505
+    return dataset
