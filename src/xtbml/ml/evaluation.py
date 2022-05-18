@@ -107,7 +107,7 @@ def wtmad2(
         count = target.count()
 
         # compute average reaction energy for each subset
-        avg_subset = ref.mean()
+        avg_subset = ref.abs().mean()
 
         # pandas' mad is not the MAD we usually use, our MAD is actually MUE/MAE
         # https://github.com/pandas-dev/pandas/blob/v1.4.2/pandas/core/generic.py#L10813
