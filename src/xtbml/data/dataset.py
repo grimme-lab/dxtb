@@ -179,6 +179,7 @@ class ReactionDataset(BaseModel, Dataset):
                     # print(sample.uid)
                     if i == 0:
                         batched_samples[j] = sample.to_dict()
+                        batched_samples[j]["uid"] = f"BATCH {j}"
                         for k, v in batched_samples[j].items():
                             if isinstance(v, Tensor):
                                 batched_samples[j][k] = v.unsqueeze(0)
