@@ -6,6 +6,7 @@ from typing import Any, Dict, Tuple
 import torch
 import torch.nn as nn
 import pandas as pd
+from pathlib import Path
 
 from ..ml.util import load_model_from_cfg
 from ..data.dataset import get_gmtkn_dataset
