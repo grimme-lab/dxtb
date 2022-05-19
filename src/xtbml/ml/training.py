@@ -39,7 +39,7 @@ def train():
 
     # load components
     model, optimizer, loss_fn, scheduler = load_model_from_cfg(
-        root, cfg_ml, load_state=False
+        Path(root, "data"), cfg_ml, load_state=False
     )
 
     # run training

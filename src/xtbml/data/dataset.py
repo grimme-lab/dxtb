@@ -331,9 +331,8 @@ def get_gmtkn_dataset(path: Path) -> ReactionDataset:
     dataset = get_dataset(
         path_reactions=Path(path, "reactions.json"),
         path_samples=Path(path, "samples.json"),
-        # path_reactions=Path(Path.cwd(), path, "reactions-verysmall.json"),
-        # path_samples=Path(Path.cwd(), path, "samples-verysmall.json"),
-    )
+        # path_reactions=Path(path, "reactions-verysmall.json"),
+        # path_samples=Path(path, "samples-verysmall.json"), )
 
     assert len(dataset) == 1505
     return dataset
