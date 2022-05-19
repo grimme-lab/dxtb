@@ -1,14 +1,15 @@
 """ Simple training pipline for pytoch ML model. """
 
-from typing import Union
 import datetime
+import imp
+from typing import Any, Dict, Tuple
 import torch
 import torch.nn as nn
-from pathlib import Path
 import pandas as pd
 
-from xtbml.ml.util import load_model_from_cfg
-from xtbml.data.dataset import ReactionDataset
+from ..ml.util import load_model_from_cfg
+from ..data.dataset import get_gmtkn_dataset
+from .norm import Normalisation
 
 
 def train():
@@ -17,34 +18,20 @@ def train():
     # load GMTKN55 from disk
     dataset = get_gmtkn_dataset()
 
-    # TODO: extend padding to number of parameters
-    # prune to constant number of partners
-    if False:
-        np = [len(r.partners) for r in dataset.reactions]
-        idxs = [i for i, x in enumerate(np) if x != 2]
-        for i in reversed(idxs):
-            dataset.rm_reaction(idx=i)
-        cc = [r.uid for r in dataset.reactions]
-        print(f"Dataset contains {len(cc)} reactions: {cc}")
-
-    # TODO: apparently iterator not correctly implemented
-    # for i, s in enumerate(dataset):
-    #    print(dataset[i])
-
-    # remove all samples with missing values
-    idxs = [i for i in range(len(dataset)) if len(dataset[i][0]) == 0]
-    for i in reversed(idxs):
-        dataset.rm_reaction(idx=i)
+    # TODO: maybe wrap this into a transforms module
+    #   (i.e. module that act on dataset objects)
+    Normalisation.normalise(dataset)
 
     # setup dataloader
-    dl = dataset.get_dataloader({"batch_size": 50})
+    dl = dataset.get_dataloader({"batch_size": 2, "shuffle": True})
 
     # set config for ML
     cfg_ml = {
-        "model_architecture": "Basic_CNN",
+        "model_architecture": "Basic_CNN",  # "Basic_CNN" "EGNN"
         "training_optimizer": "Adam",
-        "training_loss_fn": "L1Loss",
-        "training_lr": 0.01,
+        "training_scheduler": "CyclicLR",
+        "training_loss_fn": "WTMAD2Loss",  # "L1Loss",
+        "training_lr": 0.01,  # 0.0001 0.001 0.01
         "epochs": 60,
     }
 
@@ -54,16 +41,17 @@ def train():
     # run training
     model.train()
     losses = []
-    mads, mads_ref = [], []
+    mads, mads_ref, wtm2_ref = [], [], []
     for i in range(cfg_ml["epochs"]):
         print(f"EPOCH {i}")
         losses_epoch = []
-        mads_epoch, mads_ref_epoch = [], []
+        mads_epoch, mads_ref_epoch, wtm2_ref_epoch = [], [], []
         for batched_samples, batched_reaction in dl:
 
-            # some samples required in reaction are not available
-            if batched_samples == []:
-                continue
+            # TODO: make sure that all tensors require grad!
+
+            # TODO: ensure that added PADDING sample in batched_samples do not change prediction OR loss result (e.g. the mean or sum)
+            # --> mask all padded values --> check that especially with the ML-model
 
             # prediction based on QM features
             y = model(batched_samples, batched_reaction)
@@ -75,7 +63,16 @@ def train():
             y_true = batched_reaction.eref
 
             # optimize model parameter and feature parameter
-            loss = loss_fn(y, y_true)
+            if cfg_ml["training_loss_fn"] == "WTMAD2Loss":
+                # derive subset from partner list
+                subsets = [s.split("/")[0] for s in batched_reaction.partners]
+                # different number of partners per reaction
+                n_partner = torch.count_nonzero(batched_reaction.nu, dim=1)
+
+                loss = loss_fn(y, y_true, subsets, n_partner)
+            else:
+                loss = loss_fn(y, y_true)
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -90,15 +87,30 @@ def train():
             mads_epoch.append(mad_fn(y, y_true).item())
             mads_ref_epoch.append(mad_fn(batched_reaction.egfn1, y_true).item())
 
+            if cfg_ml["training_loss_fn"] == "WTMAD2Loss":
+                wtm2_ref_epoch.append(
+                    loss_fn(batched_reaction.egfn1, y_true, subsets, n_partner).item()
+                )
+
+        # adapting learning rate epoch-wise
+        scheduler.step()
+
         # Loss per epoch is average of batch losses
         losses.append(sum(losses_epoch) / len(losses_epoch))
         mads.append(sum(mads_epoch) / len(mads_epoch))
         mads_ref.append(sum(mads_ref_epoch) / len(mads_ref_epoch))
+        wtm2_ref.append(sum(wtm2_ref_epoch) / len(wtm2_ref_epoch))
+        print(
+            f"Loss: {losses[-1]} | MAD: {mads[-1]} | MAD_REF: {mads_ref[-1]} | WTM2_REF: {wtm2_ref[-1]}"
+        )
+
+    print("Minimal Loss:", min(losses))
 
     print("Finished training")
 
     df = pd.DataFrame(
-        list(zip(losses, mads, mads_ref)), columns=["Losses", "MAD", "MAD_ref"]
+        list(zip(losses, mads, mads_ref, wtm2_ref)),
+        columns=["Losses", "MAD", "MAD_ref", "WTMAD2_ref"],
     )
 
     # save model
@@ -106,31 +118,3 @@ def train():
     save_name = f"../models/{uid}"
     df.to_csv(save_name + "_df.csv", index=True)
     torch.save(model.state_dict(), save_name + "_model.pt")
-
-
-def get_dataset(path_reactions: Union[Path, str], path_samples: Union[Path, str]) -> ReactionDataset:
-    """Return a preliminary dataset for setting up the workflow."""
-
-    # load json from disk
-    dataset = ReactionDataset.create_from_disk(
-        path_reactions=path_reactions, path_samples=path_samples
-    )
-
-    # apply simple padding
-    dataset.pad()
-
-    return dataset
-
-
-def get_gmtkn_dataset(rel: str = "../data") -> ReactionDataset:
-    """Return total gmtkn55 dataset."""
-
-    dataset = get_dataset(
-        path_reactions=Path(Path.cwd(), rel, "reactions.json"),
-        path_samples=Path(Path.cwd(), rel, "samples.json"),
-    )
-    
-    assert len(dataset) == 1505
-    return dataset
-
- 
