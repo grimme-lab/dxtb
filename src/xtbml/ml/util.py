@@ -3,7 +3,9 @@
 ####### such as init, saving and loading of pytorch models.    #######
 ######################################################################
 
+from __future__ import annotations
 from pathlib import Path
+from typing import Optional
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -12,7 +14,7 @@ from .model import Basic_CNN
 from .loss import WTMAD2Loss
 
 
-def get_architecture(name):
+def get_architecture(name: str):
     """Returns architecture for the given choice
         from the predefined archetypes.
 
@@ -27,10 +29,10 @@ def get_architecture(name):
         "Basic_CNN": Basic_CNN,
     }
 
-    return architecture_dict.get(name)
+    return architecture_dict.get(name, Basic_CNN)
 
 
-def get_optimizer(name):
+def get_optimizer(name: str) -> torch.optim.Adam | torch.optim.SGD:
     """Returns optimiser for the given choice
         from the predefined archetypes.
 
@@ -46,10 +48,12 @@ def get_optimizer(name):
         "SGD": torch.optim.SGD,
     }
 
-    return optimiser_dict.get(name)
+    return optimiser_dict.get(name, torch.optim.Adam)
 
 
-def get_scheduler(name, optimizer):
+def get_scheduler(
+    name: str, optimizer
+) -> optim.lr_scheduler.StepLR | optim.lr_scheduler.ReduceLROnPlateau | optim.lr_scheduler.CyclicLR:
     """Returns learning rate scheduler for the given choice
         from the predefined archetypes.
 
@@ -82,16 +86,22 @@ def get_scheduler(name, optimizer):
     return scheduler_dict.get(name)
 
 
-def get_loss_fn(path: Path, name: str):
-    """Returns loss function for the given choice
-        from the predefined archetypes.
+def get_loss_fn(
+    name: str, path: Optional[Path] = None
+) -> nn.L1Loss | nn.MSELoss | WTMAD2Loss:
+    """Returns loss function for the given choice from the predefined archetypes.
 
-    Args:
-        path (Path): Absolute path of GMTKN55 directory
-        name (str): Name-tag for the loss function
+    Parameters
+    ----------
+    name : str
+        Name-tag for the loss function
+    path : Optional[Path], optional
+        Absolute path of GMTKN55 directory required for WTMAD2Loss, by default None
 
-    Returns:
-        [nn.Loss]: loss function of the model
+    Returns
+    -------
+    nn.L1Loss | nn.MSELoss | WTMAD2Loss
+        Loss function of model
     """
 
     loss_fn_dict = {
@@ -103,7 +113,7 @@ def get_loss_fn(path: Path, name: str):
     return loss_fn_dict.get(name)
 
 
-def load_model_from_cfg(path: Path, cfg: dict, load_state=True):
+def load_model_from_cfg(cfg: dict, load_state=True):
     """Loads the model, optimiser and loss function
     from a given config file. If load_state set
     to False, no checkpoint is loaded.
@@ -111,7 +121,7 @@ def load_model_from_cfg(path: Path, cfg: dict, load_state=True):
 
     architecture = get_architecture(cfg.get("model_architecture"))
     optimizer = get_optimizer(cfg.get("training_optimizer"))
-    loss_fn = get_loss_fn(path, cfg.get("training_loss_fn"))
+    loss_fn = get_loss_fn(cfg.get("training_loss_fn"), cfg.get("training_loss_fn_path"))
 
     # load model parameters
     model = architecture(cfg)

@@ -18,8 +18,8 @@ def evaluate():
 
     # bookkeeping
     bset = [r.uid.split("_")[0] for r in dataset.reactions]
-    #cc = [r.uid for r in dataset.reactions]
-    #print(f"Dataset contains {len(cc)} reactions: {cc}")
+    # cc = [r.uid for r in dataset.reactions]
+    # print(f"Dataset contains {len(cc)} reactions: {cc}")
 
     # remove all samples with missing values
     idxs = [i for i in range(len(dataset)) if len(dataset[i][0]) == 0]
@@ -34,11 +34,12 @@ def evaluate():
         "model_architecture": "Basic_CNN",
         "training_optimizer": "Adam",
         "training_loss_fn": "L1Loss",
+        "training_loss_fn_path": Path(root, "data"),
         "training_lr": 0.01,
         "epochs": 3,
         "model_state_dict": torch.load(f"{root}/models/202205171935_model.pt"),
     }
-    model, _, loss_fn, _ = load_model_from_cfg(Path(root, "data"), cfg_ml)
+    model, _, loss_fn, _ = load_model_from_cfg(cfg_ml)
     model.eval()
 
     # evaluate model
