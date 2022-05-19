@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from .model import Basic_CNN
+from .model import Basic_CNN, Basic_EGNN
 from .loss import WTMAD2Loss
 
 
@@ -24,6 +24,7 @@ def get_architecture(name):
 
     architecture_dict = {
         "Basic_CNN": Basic_CNN,
+        "EGNN": Basic_EGNN,
     }
 
     return architecture_dict.get(name)
