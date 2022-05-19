@@ -16,7 +16,8 @@ def train():
     """Trains the model."""
 
     # load GMTKN55 from disk
-    dataset = get_gmtkn_dataset()
+    root = Path(__file__).resolve().parents[3]
+    dataset = get_gmtkn_dataset(Path(root, "data"))
 
     # TODO: maybe wrap this into a transforms module
     #   (i.e. module that act on dataset objects)
@@ -36,7 +37,9 @@ def train():
     }
 
     # load components
-    model, optimizer, loss_fn, scheduler = load_model_from_cfg(cfg_ml, load_state=False)
+    model, optimizer, loss_fn, scheduler = load_model_from_cfg(
+        root, cfg_ml, load_state=False
+    )
 
     # run training
     model.train()

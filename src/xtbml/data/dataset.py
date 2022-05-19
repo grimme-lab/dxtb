@@ -315,12 +315,22 @@ def get_dataset(
     return dataset
 
 
-def get_gmtkn_dataset(rel_path: str = "../data") -> ReactionDataset:
-    """Return total gmtkn55 dataset."""
+def get_gmtkn_dataset(path: Path) -> ReactionDataset:
+    """Return total GMTKN55 dataset.
+
+    Parameters
+    ----------
+    path : Path
+        Directory where JSON files are stored.
+
+    Returns
+    -------
+    ReactionDataset
+    """
 
     dataset = get_dataset(
-        path_reactions=Path(Path.cwd(), rel_path, "reactions.json"),
-        path_samples=Path(Path.cwd(), rel_path, "samples.json"),
+        path_reactions=Path(path, "reactions.json"),
+        path_samples=Path(path, "samples.json"),
         # path_reactions=Path(Path.cwd(), rel_path, "reactions-verysmall.json"),
         # path_samples=Path(Path.cwd(), rel_path, "samples-verysmall.json"),
     )
