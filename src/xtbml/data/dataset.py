@@ -1,4 +1,4 @@
-from typing import List, Optional, Union, Tuple
+from typing import List, Optional, Union, Tuple, overload
 from pydantic import BaseModel
 from pathlib import Path
 
@@ -84,23 +84,70 @@ class ReactionDataset(BaseModel, Dataset):
 
         return ReactionDataset(samples=samples.samples, reactions=reactions.reactions)
 
+    def get_samples_from_reaction_partners(self, reaction: Reaction) -> List[Sample]:
+        sample_list = []
+        for partner in reaction.partners:
+            for sample in self.samples:
+                if sample.uid == partner:
+                    sample_list.append(sample)
+
+        return sample_list
+
     def __len__(self):
         """Length of dataset defined by number of reactions."""
         return len(self.reactions)
 
-    def __getitem__(self, idx: int):
-        """Get all samples involved in specified reaction."""
-        reaction = self.reactions[idx]
-        samples = [s for s in self.samples if s.uid in reaction.partners]
-        if samples == []:
-            print(f"WARNING: Samples for reaction {reaction} not available")
-        return samples, reaction
+    @overload
+    def __getitem__(self, idx: int) -> Tuple[List[Sample], Reaction]:
+        ...
 
+    @overload
+    def __getitem__(self, idx: slice) -> "ReactionDataset":
+        ...
+
+    def __getitem__(
+        self, idx: Union[int, slice]
+    ) -> Union[Tuple[List[Sample], Reaction], "ReactionDataset"]:
+        """Get all samples involved in specified reaction."""
+
+        reactions = self.reactions[idx]
+
+        if isinstance(idx, slice) and isinstance(reactions, list):
+            samples = [
+                self.get_samples_from_reaction_partners(reaction)
+                for reaction in reactions
+            ]
+
+            return ReactionDataset(
+                samples=list(set(item for sublist in samples for item in sublist)),
+                reactions=reactions,
+            )
+        elif isinstance(idx, int) and isinstance(reactions, Reaction):
+            # NOTE:
+            # The order of partners in `List[Sample]` is preserved.
+            # It gets messed up when slicing and removing duplicates.
+            #
+            # The following does NOT preserve the order:
+            # `[s for s in self.samples if s.uid in reactions.partners]`
+
+            samples = self.get_samples_from_reaction_partners(reactions)
+
+            if len(samples) == 0:
+                raise RuntimeError(
+                    f"WARNING: No samples found for reaction {reactions}."
+                )
+
+            return samples, reactions
+        else:
+            raise TypeError(f"Invalid index '{idx}' type.")
+
+    # FIXME: Not needed currently -> remove?
     @classmethod
     def merge(cls, a, b):
         """Merge two datasets."""
         return cls(samples=a.samples + b.samples, reactions=a.reactions + b.reactions)
 
+    # FIXME: Not needed currently -> remove?
     def rm_reaction(self, idx: int):
         """Remove reaction from dataset."""
         # NOTE: Dataset might contain samples
@@ -154,7 +201,7 @@ class ReactionDataset(BaseModel, Dataset):
 
                 # pad each batch
                 for s in batch:
-                    for i in range(max_partner - len(s[0])):
+                    for _ in range(max_partner - len(s[0])):
                         s[0].append(padding_sample)
 
                 return batch
@@ -176,7 +223,6 @@ class ReactionDataset(BaseModel, Dataset):
 
                 # batch samples
                 for j, sample in enumerate(s[0]):
-                    # print(sample.uid)
                     if i == 0:
                         batched_samples[j] = sample.to_dict()
                         batched_samples[j]["uid"] = f"BATCH {j}"
@@ -333,6 +379,7 @@ def get_gmtkn_dataset(path: Path) -> ReactionDataset:
         path_samples=Path(path, "samples.json"),
         # path_reactions=Path(path, "reactions-verysmall.json"),
         # path_samples=Path(path, "samples-verysmall.json"), )
+    )
 
     assert len(dataset) == 1505
     return dataset
