@@ -1,7 +1,7 @@
 from json import load as json_load
 from pathlib import Path
 
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, overload
 from xtbml.typing import Tensor
 
 import torch
@@ -415,7 +415,15 @@ class Samples:
 
         return self.__class__([sample.type(dtype) for sample in self.samples])
 
-    def __getitem__(self, idx) -> Union[Sample, List[Sample]]:
+    @overload
+    def __getitem__(self, idx: int) -> Sample:
+        ...
+
+    @overload
+    def __getitem__(self, idx: slice) -> List[Sample]:
+        ...
+
+    def __getitem__(self, idx: Union[int, slice]) -> Union[Sample, List[Sample]]:
         """Defines standard list slicing/indexing for list of samples."""
         return self.samples[idx]
 

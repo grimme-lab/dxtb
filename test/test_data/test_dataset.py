@@ -34,29 +34,33 @@ class TestDataset:
         """Test loading the JSON files containing the samples and reactions."""
         samples, reactions, dataset = data
 
-        assert type(samples) == Samples
-        assert type(reactions) == Reactions
-        assert type(dataset) == ReactionDataset
+        assert isinstance(samples, Samples)
+        assert isinstance(reactions, Reactions)
+        assert isinstance(dataset, ReactionDataset)
 
     def test_indexing(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
         """Test dunder methods for indexing/slicing and length."""
-        samples, reactions, _ = data
+        samples, reactions, dataset = data
 
         # test samples
         sample = samples[0]
-        assert type(sample) == Sample
-        assert hasattr(sample, "uid") == True
+        assert isinstance(sample, Sample)
+        assert hasattr(sample, "uid") is True
 
-        assert type(samples[:3]) == list
+        assert isinstance(samples[:3], list)
         assert len(samples[:2]) == 2
 
         # test reactions
         reaction = reactions[0]
-        assert type(reaction) == Reaction
-        assert hasattr(reaction, "uid") == True
+        assert isinstance(reaction, Reaction)
+        assert hasattr(reaction, "uid") is True
 
-        assert type(reactions[:3]) == list
+        assert isinstance(reactions[:3], list)
         assert len(reactions[:2]) == 2
+        
+        # test dataset
+        assert isinstance(dataset[:3], ReactionDataset)
+        assert len(dataset[:2]) == 2
 
     def test_dict(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
         """Test conversion to dictionary."""
