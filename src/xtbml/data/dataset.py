@@ -381,6 +381,39 @@ class ReactionDataset(BaseModel, Dataset):
         self.samples = samples_new
 
 
+def store_subsets_on_disk(
+    dataset: ReactionDataset,
+    path: Union[Path, str],
+    subsets: List[str],
+):
+    """Store subsets on disk by first pruning the dataset and then saving to disk.
+
+    Parameters
+    ----------
+    dataset : ReactionDataset
+        Dataset to be stored on disk
+    path : Union[Path, str]
+        Path to folder where subsets are stored (creates a reactions.json and samples.json file)
+    subsets: List[str]
+        List of subset names to be kept
+    """
+    # NOTE: this modifies the dataset in place!
+
+    keep = [
+        i for i, r in enumerate(dataset.reactions) if r.uid.split("_")[0] in subsets
+    ]
+    idxs = [i for i in range(len(dataset)) if i not in keep]
+
+    for i in reversed(idxs):
+        dataset.rm_reaction(idx=i)
+
+    # remove unneeded samples
+    dataset.prune()
+
+    # store subsets on disk
+    dataset.to_disk(path)
+
+
 def get_dataset(
     path_reactions: Union[Path, str], path_samples: Union[Path, str]
 ) -> ReactionDataset:
