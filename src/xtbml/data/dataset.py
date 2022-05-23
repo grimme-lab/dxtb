@@ -368,6 +368,18 @@ class ReactionDataset(BaseModel, Dataset):
                         setattr(s, k, f)
         return
 
+    def prune(self) -> None:
+        """Remove samples from the dataset that are not contained in any reaction."""
+        # self.samples = [s for s in self.samples if len(s.partners) > 0]
+        samples_new = []
+        for s in self.samples:
+            # check whether needed in any reaction
+            for r in self.reactions:
+                if s.uid in r.partners:
+                    samples_new.append(s)
+                    continue
+        self.samples = samples_new
+
 
 def get_dataset(
     path_reactions: Union[Path, str], path_samples: Union[Path, str]
