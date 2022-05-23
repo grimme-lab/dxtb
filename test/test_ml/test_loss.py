@@ -3,7 +3,6 @@ from typing import List
 import pandas as pd
 import pytest
 import torch
-from xtbml.ml.evaluation import evaluate
 
 from xtbml.ml.loss import WTMAD2Loss
 from xtbml.data.dataset import ReactionDataset, get_gmtkn_dataset
@@ -195,6 +194,94 @@ class TestWTMAD2Loss:
         assert losses.shape == torch.Size([num_batches, batch_size])
         assert torch.allclose(losses, ref, rtol=self.rtol, atol=self.atol)
 
+    # @pytest.mark.parametrize("batch_size", [1, 5, 7])
+    # @pytest.mark.parametrize("shuffle", [False, True])
+    def test_gmtkn55_all(self, batch_size: int = 5, shuffle: bool = True):
+        dataset = self.dataset
+        num_batches = int(len(dataset) / batch_size)
+        dl = dataset.get_dataloader({"batch_size": batch_size, "shuffle": shuffle})
+
+        losses = []
+        for _, batched_reaction in dl:
+            y = batched_reaction.egfn1
+            y_true = batched_reaction.eref
+
+            subsets = [s.split("/")[0] for s in batched_reaction.partners]
+            # different number of partners per reaction
+            n_partner = torch.count_nonzero(batched_reaction.nu, dim=1)
+
+            # get WTMAD-2 for every sample in batch, i.e. no reduction
+            self.loss_fn.reduction = "none"
+            losses.append(self.loss_fn(y, y_true, subsets, n_partner))
+
+        losses = torch.stack(losses, dim=0)
+
+        assert losses.shape == torch.Size([num_batches, batch_size])
+        assert torch.allclose(
+            torch.sum(losses) / 1505,
+            torch.tensor(36.14),
+            rtol=self.rtol,
+            atol=self.atol,
+        )
+
+    def test_gmtkn55_subsets(self):
+        dtype = torch.float32
+        dataset = self.dataset
+
+        batch_size = 1
+        dl = dataset.get_dataloader({"batch_size": batch_size})
+
+        subset, egfn1, eref, losses = [], [], [], []
+        for _, batched_reaction in dl:
+            y = batched_reaction.egfn1
+            y_true = batched_reaction.eref
+
+            subsets = [s.split("/")[0] for s in batched_reaction.partners]
+            # different number of partners per reaction
+            n_partner = torch.count_nonzero(batched_reaction.nu, dim=1)
+
+            # get WTMAD-2 for every sample in batch, i.e. no reduction
+            self.loss_fn.reduction = "none"
+            loss = self.loss_fn(y, y_true, subsets, n_partner)
+
+            subset.append(subsets[0])
+            egfn1.append(y.item())
+            eref.append(y_true.item())
+            losses.append(loss.item())
+
+        df = pd.DataFrame(
+            list(zip(subset, eref, egfn1, losses)),
+            columns=["subset", "eref", "egfn1", "losses"],
+        )
+
+        refs = torch.tensor(
+            [
+                60.25,  # basic
+                28.89,  # reactions
+                32.66,  # barrieres
+                26.48,  # intra
+                15.87,  # inter
+                36.14,  # total
+            ],
+            dtype=dtype,
+        )
+
+        # sum up losses and divide by 1505
+        assert torch.allclose(
+            torch.tensor(df["losses"].sum() / len(df.index), dtype=dtype),
+            refs[-1],
+            rtol=self.rtol,
+            atol=self.atol,
+        )
+
+        egfn1 = wtmad2(df, "egfn1", "eref", verbose=False, calc_subsets=True)
+        assert torch.allclose(
+            torch.tensor(egfn1, dtype=dtype),
+            refs,
+            rtol=self.rtol,
+            atol=self.atol,
+        )
+
     def stest_evaluate(self):
         root = Path(__file__).resolve().parents[2]
 
@@ -280,73 +367,6 @@ class TestWTMAD2Loss:
             (input, target, label, n_partner),
             raise_exception=True,
         )
-
-    @pytest.mark.parametrize("batchsize", [1, 2, 10])
-    def stest_gmtkn(self, batchsize):
-        # TODO: compare subset and total WTMAD with paper and with implementation in evaluation.py
-
-        print("\nload dl with bs", batchsize)
-        dl = self.dataset.get_dataloader({"batch_size": batchsize, "shuffle": True})
-        self.loss_fn.reduction = "sum"
-
-        loss = torch.tensor([0.0])
-        for _, batched_reaction in dl:
-
-            # derive subset from partner list
-            subsets = [s.split("/")[0] for s in batched_reaction.partners]
-            # different number of partners per reaction
-            n_partner = torch.count_nonzero(batched_reaction.nu, dim=1)
-
-            loss += self.loss_fn(
-                batched_reaction.egfn1, batched_reaction.eref, subsets, n_partner
-            )
-
-        assert torch.allclose(
-            loss,
-            torch.tensor([44728.2891]),
-            rtol=1.0e-4,
-            atol=1.0e-6,
-            equal_nan=False,
-        )
-
-    def stest_gmtkn_subsets(self):
-
-        dl = self.dataset.get_dataloader({"batch_size": 2, "shuffle": False})
-        self.loss_fn.reduction = "none"
-
-        losses = {k: torch.tensor([0.0]) for k in self.all_sets}
-
-        # calc loss per subset
-        for i, (_, batched_reaction) in enumerate(dl):
-            # derive subset from partner list
-            subsets = [s.split("/")[0] for s in batched_reaction.partners]
-            # different number of partners per reaction
-            n_partner = torch.count_nonzero(batched_reaction.nu, dim=1)
-
-            loss = self.loss_fn(
-                batched_reaction.egfn1, batched_reaction.eref, subsets, n_partner
-            )
-
-            label = [subsets[i] for i in torch.cumsum(n_partner, dim=0) - 1]
-
-            # add each loss to corresponding subset
-            for j in range(len(label)):
-                losses[label[j]] += loss[j]
-
-        # normalise loss per subset (optional)
-        for k, v in losses.items():
-            losses[k] = v * len(self.dataset) / self.loss_fn.total_avg
-
-        # print(losses)
-
-        # TODO: compare subset and total WTMAD with paper and with implementation in evaluation.py
-        # assert torch.allclose(
-        #    loss,
-        #    torch.tensor([44055.55078125]),
-        #    rtol=1.0e-4,
-        #    atol=1.0e-6,
-        #    equal_nan=False,
-        # )
 
 
 def wtmad2(
@@ -455,6 +475,8 @@ def wtmad2(
 
     subsets = df.groupby([set_column])
     subset_names = df[set_column].unique()
+    print(subset_names)
+    print(len(subset_names))
 
     wtmad = 0
     for name in subset_names:
@@ -465,38 +487,42 @@ def wtmad2(
 
         # number of reactions in each subset
         count = target.count()
+        # print(name, count)
+        # print(target)
 
         # compute average reaction energy for each subset
         avg_subset = ref.abs().mean()
 
         # pandas' mad is not the MAD we usually use, our MAD is actually MUE/MAE
         # https://github.com/pandas-dev/pandas/blob/v1.4.2/pandas/core/generic.py#L10813
-        mue = (ref - target).abs().mean()
+        mae = (ref - target).abs().mean()
 
         if calc_subsets is True:
             if name in basic:
-                basic_wtmad += count * AVG / avg_subset * mue
+                basic_wtmad += count * AVG / avg_subset * mae
                 basic_count += count
             elif name in reactions:
-                reactions_wtmad += count * AVG / avg_subset * mue
+                reactions_wtmad += count * AVG / avg_subset * mae
                 reactions_count += count
             elif name in barriers:
-                barriers_wtmad += count * AVG / avg_subset * mue
+                barriers_wtmad += count * AVG / avg_subset * mae
                 barriers_count += count
+                print(f"nane: {name} |count: {count} | avg: {avg_subset} | mae: {mae}")
+
             elif name in intra:
-                intra_wtmad += count * AVG / avg_subset * mue
+                intra_wtmad += count * AVG / avg_subset * mae
                 intra_count += count
             elif name in inter:
-                inter_wtmad += count * AVG / avg_subset * mue
+                inter_wtmad += count * AVG / avg_subset * mae
                 inter_count += count
             else:
                 raise ValueError(f"Subset '{name}' not found in lists.")
 
-        wtmad += count * AVG / avg_subset * mue
+        wtmad += count * AVG / avg_subset * mae
 
         if verbose:
             print(
-                f"Subset {name} ({count} entries): MUE {mue:.3f} | count {count} | avg: {avg_subset} | AVG: {AVG}"
+                f"Subset {name} ({count} entries): MUE {mae:.3f} | count {count} | avg: {avg_subset} | AVG: {AVG}"
             )
 
     if calc_subsets is True:
