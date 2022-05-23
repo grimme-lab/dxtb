@@ -18,6 +18,9 @@ class TestWTMAD2Loss:
     path = Path(Path(__file__).resolve().parents[2], "data")
     """Absolute path to fit set data."""
 
+    atol = 0.1
+    rtol = 0.1
+
     def setup_class(self):
         print("Test custom loss function")
         self.dataset = get_gmtkn_dataset(self.path)
@@ -108,31 +111,34 @@ class TestWTMAD2Loss:
         subset = [s.split("/")[0] for s in reaction.partners]
         n_partner = torch.count_nonzero(reaction.nu).unsqueeze(0)
 
-        self.loss_fn.reduction = "mean"
+        self.loss_fn.reduction = "none"
         output = self.loss_fn(y, y_true, subset, n_partner)
 
         ref = torch.tensor(
             [
-                0.08502478,
-                0.09762104,
-                0.06927945,
-                0.33065193,
-                0.09762104,
-                0.10077011,
-                0.07872665,
-                0.19839116,
-                0.21413648,
-                0.07242852,
-                0.2960122,
-                0.32120473,
-                0.4251239,
-                0.3054594,
-                0.4251239,
+                8.53081967,
+                9.79464481,
+                6.95103825,
+                33.17540984,
+                9.79464481,
+                10.11060109,
+                7.8989071,
+                19.9052459,
+                21.48502732,
+                7.26699454,
+                29.69989071,
+                32.22754098,
+                42.65409836,
+                30.64775956,
+                42.65409836,
             ]
         )
 
-        assert output.shape == torch.Size([])
-        assert torch.allclose(output, ref[idx], rtol=0.01, atol=0.01)
+        print(torch.mean(ref))
+        print(torch.sum(ref))
+
+        assert output.shape == torch.Size([1])
+        assert torch.allclose(output, ref[idx], rtol=self.rtol, atol=self.atol)
 
     @pytest.mark.parametrize("batch_size", [1, 3, 5, 15])
     def test_aconf_batched(self, batch_size: int):
@@ -171,26 +177,26 @@ class TestWTMAD2Loss:
 
         ref = torch.tensor(
             [
-                0.08502478,
-                0.09762104,
-                0.06927945,
-                0.33065193,
-                0.09762104,
-                0.10077011,
-                0.07872665,
-                0.19839116,
-                0.21413648,
-                0.07242852,
-                0.2960122,
-                0.32120473,
-                0.4251239,
-                0.3054594,
-                0.4251239,
+                8.53081967,
+                9.79464481,
+                6.95103825,
+                33.17540984,
+                9.79464481,
+                10.11060109,
+                7.8989071,
+                19.9052459,
+                21.48502732,
+                7.26699454,
+                29.69989071,
+                32.22754098,
+                42.65409836,
+                30.64775956,
+                42.65409836,
             ]
         ).reshape(num_batches, batch_size)
 
         assert losses.shape == torch.Size([num_batches, batch_size])
-        assert torch.allclose(losses, ref, rtol=0.01, atol=0.01)
+        assert torch.allclose(losses, ref, rtol=self.rtol, atol=self.atol)
 
     def stest_evaluate(self):
         root = Path(__file__).resolve().parents[2]
@@ -206,11 +212,12 @@ class TestWTMAD2Loss:
             "model_architecture": "Basic_CNN",
             "training_optimizer": "Adam",
             "training_loss_fn": "WTMAD2Loss",
+            "training_loss_fn_path": Path(root, "data"),
             "training_lr": 0.01,
             "epochs": 3,
             "model_state_dict": torch.load(f"{root}/models/202205171935_model.pt"),
         }
-        model, _, loss_fn, _ = load_model_from_cfg(Path(root, "data"), cfg_ml)
+        model, _, loss_fn, _ = load_model_from_cfg(cfg_ml)
         model.eval()
 
         # evaluate model
@@ -286,7 +293,7 @@ class TestWTMAD2Loss:
         self.loss_fn.reduction = "sum"
 
         loss = torch.tensor([0.0])
-        for i, (_, batched_reaction) in enumerate(dl):
+        for _, batched_reaction in dl:
 
             # derive subset from partner list
             subsets = [s.split("/")[0] for s in batched_reaction.partners]

@@ -100,16 +100,13 @@ class WTMAD2Loss(torch.nn.Module):
         label = [label[i] for i in p_idx]
 
         # create vector of subset values from label
-        counts = torch.tensor([self.subsets[l]["count"].item() for l in label])
         avgs = torch.tensor([self.subsets[l]["avg"].item() for l in label])
 
-        # pytorchs' mad is not the MAD we usually use, our MAD is actually MAE
-        mae = F.l1_loss(input, target, reduction="none")
+        # absolute error for each sample
+        error = F.l1_loss(input, target, reduction="none")
 
-        wtmad2 = torch.div(counts * self.total_avg, avgs) * mae / 1505
-        # print(
-        #     f"Eref: {target} | input: {input} | MAE: {mae} | counts: {counts} | avg: {avgs} | AVG: {self.total_avg} | wtmad2: {wtmad2}"
-        # )
+        # wtmad2 scaling
+        wtmad2 = torch.div(self.total_avg, avgs) * error
         return self.reduction(wtmad2)
 
     def calc_properties(self, path: Path):
