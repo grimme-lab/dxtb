@@ -241,6 +241,29 @@ class Sample:
         """Custom print representation of class."""
         return f"{self.__class__.__name__}({self.uid})"
 
+    def equal(self, other):
+        if not isinstance(other, Sample):
+            return NotImplemented
+
+        return all(
+            [
+                self.uid == other.uid,
+                torch.equal(self.xyz, other.xyz),
+                torch.equal(self.numbers, other.numbers),
+                torch.equal(self.unpaired_e, other.unpaired_e),
+                torch.equal(self.charges, other.charges),
+                torch.equal(self.egfn1, other.egfn1),
+                torch.equal(self.egfn2, other.egfn2),
+                torch.equal(self.edisp, other.edisp),
+                torch.equal(self.erep, other.erep),
+                torch.equal(self.ees, other.ees),
+                torch.equal(self.qat, other.qat),
+                torch.equal(self.cn, other.cn),
+                torch.equal(self.h0, other.h0),
+                torch.equal(self.ovlp, other.ovlp),
+            ]
+        )
+
     def to_dict(
         self, skipped: Optional[List[str]] = None
     ) -> Dict[str, Union[str, Tensor]]:

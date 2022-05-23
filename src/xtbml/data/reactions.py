@@ -147,6 +147,21 @@ class Reaction:
         """Custom print representation of class."""
         return f"{self.__class__.__name__}({self.uid})"
 
+    def equal(self, other):
+        if not isinstance(other, Reaction):
+            return NotImplemented
+
+        return all(
+            [
+                self.uid == other.uid,
+                self.partners == other.partners,
+                torch.equal(self.nu, other.nu),
+                torch.equal(self.egfn1, other.egfn1),
+                torch.equal(self.egfn2, other.egfn2),
+                torch.equal(self.eref, other.eref),
+            ]
+        )
+
     def to_dict(
         self, skipped: Optional[List[str]] = None
     ) -> Dict[str, Union[str, Tensor]]:

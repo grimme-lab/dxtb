@@ -163,6 +163,21 @@ class ReactionDataset(BaseModel, Dataset):
         #       that are not required in any reaction anymore
         del self.reactions[idx]
 
+    def equal(self, other):
+        if not isinstance(other, ReactionDataset):
+            # do not compare against unrelated types
+            return NotImplemented
+
+        for i, sample in enumerate(self.samples):
+            if not sample.equal(other.samples[i]):
+                return False
+
+        for i, reaction in enumerate(self.reactions):
+            if not reaction.equal(other.reactions[i]):
+                return False
+
+        return True
+
     def get_dataloader(self, cfg: Optional[dict] = {}) -> DataLoader:
         """
         Return pytorch dataloader for batch-wise iteration over dataset object.
