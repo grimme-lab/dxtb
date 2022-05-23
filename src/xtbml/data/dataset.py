@@ -133,9 +133,9 @@ class ReactionDataset(BaseModel, Dataset):
             samples = self.get_samples_from_reaction_partners(reactions)
 
             if len(samples) == 0:
-                raise RuntimeError(
-                    f"WARNING: No samples found for reaction {reactions}."
-                )
+                # TODO: Use errir in production
+                # raise RuntimeError(f"WARNING: No samples found for reaction {reactions}.")
+                print(f"WARNING: No samples found for reaction {reactions}.")
 
             return samples, reactions
         else:

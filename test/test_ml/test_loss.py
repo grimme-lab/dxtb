@@ -134,9 +134,6 @@ class TestWTMAD2Loss:
             ]
         )
 
-        print(torch.mean(ref))
-        print(torch.sum(ref))
-
         assert output.shape == torch.Size([1])
         assert torch.allclose(output, ref[idx], rtol=self.rtol, atol=self.atol)
 
