@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from .model import Basic_CNN
+from .model import Basic_CNN  # , Basic_EGNN
 from .loss import WTMAD2Loss
 
 
@@ -27,6 +27,7 @@ def get_architecture(name: str):
 
     architecture_dict = {
         "Basic_CNN": Basic_CNN,
+        # "EGNN": Basic_EGNN,
     }
 
     return architecture_dict.get(name, Basic_CNN)
@@ -64,9 +65,11 @@ def get_scheduler(
         [nn.optim.lr_scheduler]: scheduler of the model
     """
 
+    const = optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=1.0)
+
     # Further options see: https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
     scheduler_dict = {
-        "Const": optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=1.0),
+        "Const": const,
         "StepLR": optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.5),
         "ReduceLROnPlateau": optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, patience=10, verbose=True
@@ -83,7 +86,7 @@ def get_scheduler(
         ),
     }
 
-    return scheduler_dict.get(name)
+    return scheduler_dict.get(name, const)
 
 
 def get_loss_fn(
@@ -110,7 +113,7 @@ def get_loss_fn(
         "WTMAD2Loss": WTMAD2Loss(path, reduction="mean"),
     }
 
-    return loss_fn_dict.get(name)
+    return loss_fn_dict.get(name, nn.L1Loss(reduction="mean"))
 
 
 def load_model_from_cfg(cfg: dict, load_state=True):

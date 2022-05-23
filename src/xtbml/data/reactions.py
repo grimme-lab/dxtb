@@ -1,7 +1,7 @@
 from json import load as json_load
 from pathlib import Path
 
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, overload
 from xtbml.typing import Tensor
 
 import torch
@@ -226,7 +226,15 @@ class Reactions:
         """Custom print representation of class."""
         return f"{self.__class__.__name__}(List of {len(self)} Reaction objects)"
 
-    def __getitem__(self, idx) -> Union[Reaction, List[Reaction]]:
+    @overload
+    def __getitem__(self, idx: int) -> Reaction:
+        ...
+
+    @overload
+    def __getitem__(self, idx: slice) -> List[Reaction]:
+        ...
+
+    def __getitem__(self, idx: Union[int, slice]) -> Union[Reaction, List[Reaction]]:
         """Defines standard list slicing/indexing for list of reactions."""
         return self.reactions[idx]
 

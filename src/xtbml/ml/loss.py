@@ -106,8 +106,10 @@ class WTMAD2Loss(torch.nn.Module):
         # pytorchs' mad is not the MAD we usually use, our MAD is actually MAE
         mae = F.l1_loss(input, target, reduction="none")
 
-        wtmad2 = torch.div(counts * self.total_avg, avgs) * mae / len(self.subsets)
-
+        wtmad2 = torch.div(counts * self.total_avg, avgs) * mae / 1505
+        # print(
+        #     f"Eref: {target} | input: {input} | MAE: {mae} | counts: {counts} | avg: {avgs} | AVG: {self.total_avg} | wtmad2: {wtmad2}"
+        # )
         return self.reduction(wtmad2)
 
     def calc_properties(self, path: Path):
