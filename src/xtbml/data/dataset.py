@@ -84,6 +84,15 @@ class ReactionDataset(BaseModel, Dataset):
 
         return ReactionDataset(samples=samples.samples, reactions=reactions.reactions)
 
+    def to_disk(self, path: Union[Path, str]):
+        """Save dataset to disk.
+
+        Args:
+            path (str): Path to save dataset to.
+        """
+        Reactions(reactions=self.reactions).to_json(path)
+        Samples(samples=self.samples).to_json(path)
+
     def get_samples_from_reaction_partners(self, reaction: Reaction) -> List[Sample]:
         sample_list = []
         for partner in reaction.partners:
@@ -378,7 +387,7 @@ def get_gmtkn_dataset(path: Path) -> ReactionDataset:
         path_reactions=Path(path, "reactions.json"),
         path_samples=Path(path, "samples.json"),
         # path_reactions=Path(path, "reactions-verysmall.json"),
-        # path_samples=Path(path, "samples-verysmall.json"), )
+        # path_samples=Path(path, "samples-verysmall.json"),
     )
 
     assert len(dataset) == 1505

@@ -1,4 +1,5 @@
 from json import load as json_load
+from json import dump as json_dump
 from pathlib import Path
 
 from typing import Dict, List, Optional, Union, overload
@@ -350,11 +351,25 @@ class Samples:
 
         return cls(sample_list)
 
-    def to_json(self) -> Dict:
+    def to_json(self, path: Union[Path, str]) -> None:
         """
-        Convert sample to json.
+        Convert samples to json.
         """
-        raise NotImplementedError
+        d = {}
+        for s in self.samples:
+            d[s.uid] = s.to_dict()
+            d[s.uid].pop("uid")
+
+            # make tensor json serializable
+            for k, v in d[s.uid].items():
+                if isinstance(v, torch.Tensor):
+                    try:
+                        d[s.uid][k] = v.item()
+                    except ValueError:
+                        d[s.uid][k] = v.tolist()
+
+        with open(Path(path, "samples.json"), "w") as f:
+            json_dump(d, f)
 
     @property
     def device(self) -> torch.device:
