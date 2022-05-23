@@ -446,8 +446,14 @@ def get_gmtkn_dataset(path: Path) -> ReactionDataset:
     dataset = get_dataset(
         path_reactions=Path(path, "reactions.json"),
         path_samples=Path(path, "samples.json"),
-        # path_reactions=Path(path, "reactions-verysmall.json"),
-        # path_samples=Path(path, "samples-verysmall.json"),
+        # path_reactions=Path(path, "reactions_0.json"),  # ACONF
+        # path_samples=Path(path, "samples_0.json"),
+        # path_reactions=Path(path, "reactions_1.json"), # ACONF, Amino20x4, MCONF, PCONF21
+        # path_samples=Path(path, "samples_1.json"),
+        # path_reactions=Path(path, "reactions_2.json"),  # ADIM6, S22, S66
+        # path_samples=Path(path, "samples_2.json"),
+        # path_reactions=Path(path, "reactions_12.json"), # ACONF, Amino20x4, MCONF, PCONF21, ADIM6, S22, S66
+        # path_samples=Path(path, "samples_12.json"),
     )
 
     assert len(dataset) == 1505
