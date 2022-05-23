@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Generator, Tuple
 import pytest
 import torch
+import tempfile
 
 from xtbml.data.dataset import ReactionDataset
 from xtbml.data.reactions import Reaction, Reactions
@@ -11,25 +12,26 @@ from xtbml.data.samples import Sample, Samples
 @pytest.fixture(scope="class")
 def data() -> Generator[Tuple[Samples, Reactions, ReactionDataset], None, None]:
     print("Loading JSON files for 'Samples', 'Reactions' and 'ReactionDataset'...")
-    
+
     path_samples = Path(Path.cwd(), "data/samples.json")
     path_reactions = Path(Path.cwd(), "data/reactions.json")
-    
+
     samples = Samples.from_json(path_samples)
     reactions = Reactions.from_json(path_reactions)
     dataset = ReactionDataset.create_from_disk(path_reactions, path_samples)
-    
+
     yield samples, reactions, dataset
-    
+
     # print("Teardown 'Loading'.")
-    
+
+
 class TestDataset:
     """Testing handling of batched Geometry objects."""
-    
+
     @classmethod
     def setUpClass(cls):
         print(cls.__name__)
-        
+
     def test_load(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
         """Test loading the JSON files containing the samples and reactions."""
         samples, reactions, dataset = data
@@ -57,7 +59,7 @@ class TestDataset:
 
         assert isinstance(reactions[:3], list)
         assert len(reactions[:2]) == 2
-        
+
         # test dataset
         assert isinstance(dataset[:3], ReactionDataset)
         assert len(dataset[:2]) == 2
@@ -74,7 +76,9 @@ class TestDataset:
         d = reactions[0].to_dict()
         assert "uid" in d.keys()
 
-    def test_change_dtype(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
+    def test_change_dtype(
+        self, data: Tuple[Samples, Reactions, ReactionDataset]
+    ) -> None:
         """Test for setting `torch.dtype` for tensor class attributes."""
         samples, reactions, _ = data
 
@@ -99,7 +103,9 @@ class TestDataset:
         assert reaction.egfn1.dtype == dtype
         assert reaction.eref.dtype == dtype
 
-    def test_change_device(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
+    def test_change_device(
+        self, data: Tuple[Samples, Reactions, ReactionDataset]
+    ) -> None:
         """Test for setting `torch.device` for tensor class attributes."""
         samples, reactions, _ = data
 
@@ -124,15 +130,27 @@ class TestDataset:
         assert reaction.egfn1.device == torch.device(device)
         assert reaction.eref.device == torch.device(device)
 
-    
-    def stest_singlepoint(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
+    def stest_singlepoint(
+        self, data: Tuple[Samples, Reactions, ReactionDataset]
+    ) -> None:
         """Test for (slow) on-the-fly feature generation."""
         samples, _, _ = data
 
         sample: Sample = samples[0]
-        
+
         h0, ovlp, cn = sample.calc_singlepoint()
-        
+
         print(h0, ovlp, cn)
-        
-        
+
+    def test_to_json(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
+        """Test for saving the dataset to disk. Check for identical saving-loading."""
+        __, __, dataset = data
+
+        # write to temporary directory
+        with tempfile.TemporaryDirectory() as td:
+            dataset.to_disk(Path(td))
+            dataset2 = ReactionDataset.create_from_disk(
+                path_reactions=Path(td, "reactions.json"),
+                path_samples=Path(td, "samples.json"),
+            )
+            assert dataset.equal(dataset2)

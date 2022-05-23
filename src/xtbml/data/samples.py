@@ -248,19 +248,19 @@ class Sample:
         return all(
             [
                 self.uid == other.uid,
-                torch.equal(self.xyz, other.xyz),
-                torch.equal(self.numbers, other.numbers),
-                torch.equal(self.unpaired_e, other.unpaired_e),
-                torch.equal(self.charges, other.charges),
-                torch.equal(self.egfn1, other.egfn1),
-                torch.equal(self.egfn2, other.egfn2),
-                torch.equal(self.edisp, other.edisp),
-                torch.equal(self.erep, other.erep),
-                torch.equal(self.ees, other.ees),
-                torch.equal(self.qat, other.qat),
-                torch.equal(self.cn, other.cn),
-                torch.equal(self.h0, other.h0),
-                torch.equal(self.ovlp, other.ovlp),
+                torch.all(torch.isclose(self.xyz, other.xyz)).item(),
+                torch.all(torch.isclose(self.numbers, other.numbers)).item(),
+                torch.all(torch.isclose(self.unpaired_e, other.unpaired_e)).item(),
+                torch.all(torch.isclose(self.charges, other.charges)).item(),
+                torch.all(torch.isclose(self.egfn1, other.egfn1)).item(),
+                torch.all(torch.isclose(self.egfn2, other.egfn2)).item(),
+                torch.all(torch.isclose(self.edisp, other.edisp)).item(),
+                torch.all(torch.isclose(self.erep, other.erep)).item(),
+                torch.all(torch.isclose(self.ees, other.ees)).item(),
+                torch.all(torch.isclose(self.qat, other.qat)).item(),
+                torch.all(torch.isclose(self.cn, other.cn)).item(),
+                torch.all(torch.isclose(self.h0, other.h0)).item(),
+                torch.all(torch.isclose(self.ovlp, other.ovlp)).item(),
             ]
         )
 

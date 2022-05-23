@@ -155,10 +155,10 @@ class Reaction:
             [
                 self.uid == other.uid,
                 self.partners == other.partners,
-                torch.equal(self.nu, other.nu),
-                torch.equal(self.egfn1, other.egfn1),
-                torch.equal(self.egfn2, other.egfn2),
-                torch.equal(self.eref, other.eref),
+                torch.all(torch.isclose(self.nu, other.nu)).item(),
+                torch.all(torch.isclose(self.egfn1, other.egfn1)).item(),
+                torch.all(torch.isclose(self.egfn2, other.egfn2)).item(),
+                torch.all(torch.isclose(self.eref, other.eref)).item(),
             ]
         )
 
