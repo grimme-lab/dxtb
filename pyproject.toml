@@ -6,6 +6,9 @@ build-backend = "setuptools.build_meta"
 testpaths = [
     "test"
 ]
+pythonpath = [
+  ".", "src",
+]
 markers = [
     "grad: Marks tests which perform 'gradcheck' evaluations, this can be slow."
 ]

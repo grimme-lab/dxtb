@@ -6,7 +6,7 @@ This module contains classes and helper functions associated with batch
 construction, handling and maintenance.
 """
 from functools import reduce, partial
-from typing import Optional, Any, Tuple, List, Union
+from typing import Optional, Any, Literal, Tuple, List, Union, overload
 import numpy as np
 from collections import namedtuple
 import torch
@@ -15,7 +15,29 @@ from .common import bool_like
 
 Tensor = torch.Tensor
 __sort = namedtuple("sort", ("values", "indices"))
-Sliceable = Union[List[Tensor], Tuple[Tensor]]
+Sliceable = Union[List[Tensor], Tuple[Tensor, Tensor]]
+
+
+@overload
+def pack(
+    tensors: Sliceable,
+    axis: int = 0,
+    value: Any = 0,
+    size: Optional[Union[Tuple[int], torch.Size]] = None,
+    return_mask: Literal[False] = False,
+) -> Tensor:
+    ...
+
+
+@overload
+def pack(
+    tensors: Sliceable,
+    axis: int = 0,
+    value: Any = 0,
+    size: Optional[Union[Tuple[int], torch.Size]] = None,
+    return_mask: Literal[True] = True,
+) -> Tuple[Tensor, Tensor]:
+    ...
 
 
 def pack(
@@ -24,7 +46,7 @@ def pack(
     value: Any = 0,
     size: Optional[Union[Tuple[int], torch.Size]] = None,
     return_mask: bool = False,
-) -> Union[Tensor, Optional[Tensor]]:
+) -> Union[Tensor, Tuple[Tensor, Tensor]]:
     """Pad and pack a sequence of tensors together.
 
     Pad a list of variable length tensors with zeros, or some other value, and
