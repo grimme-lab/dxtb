@@ -18,7 +18,12 @@ class TestWTMAD2Loss:
     """Absolute path to fit set data."""
 
     atol = 0.1
-    rtol = 0.1
+    """Absolute tolerance for `torch.allclose`"""
+
+    rtol = 0.05
+    """
+    Relative tolerance for `torch.allclose`. Must be somewhat larger as small reference values are rounded to two digits and then multiplied by the WTMAD-2 scaling factor, which is rather large for ACONF.
+    """
 
     def setup_class(self):
         print("Test custom loss function")
@@ -56,8 +61,6 @@ class TestWTMAD2Loss:
     def test_naming_consistent(self):
         for r in self.dataset.reactions:
             subset = r.uid.split("_")[0]
-            if subset == "BH76RC":
-                subset = "BH76"
             partners = [s.split("/")[0] for s in r.partners]
             assert {subset} == set(partners), "Partner and reaction naming inconsistent"
 
@@ -134,7 +137,9 @@ class TestWTMAD2Loss:
         )
 
         assert output.shape == torch.Size([1])
-        assert torch.allclose(output, ref[idx], rtol=self.rtol, atol=self.atol)
+        assert torch.allclose(
+            output, ref[idx], rtol=self.rtol, atol=self.atol
+        ), f"ref: {ref[idx]:.3f} vs. test: {output.item():.3f} ({y.item():.3f}, {y_true.item():.3f})"
 
     @pytest.mark.parametrize("batch_size", [1, 3, 5, 15])
     def test_aconf_batched(self, batch_size: int):
@@ -194,9 +199,9 @@ class TestWTMAD2Loss:
         assert losses.shape == torch.Size([num_batches, batch_size])
         assert torch.allclose(losses, ref, rtol=self.rtol, atol=self.atol)
 
-    # @pytest.mark.parametrize("batch_size", [1, 5, 7])
-    # @pytest.mark.parametrize("shuffle", [False, True])
-    def test_gmtkn55_all(self, batch_size: int = 5, shuffle: bool = True):
+    @pytest.mark.parametrize("batch_size", [1, 5, 7])
+    @pytest.mark.parametrize("shuffle", [False, True])
+    def test_gmtkn55_all(self, batch_size: int, shuffle: bool):
         dataset = self.dataset
         num_batches = int(len(dataset) / batch_size)
         dl = dataset.get_dataloader({"batch_size": batch_size, "shuffle": shuffle})
@@ -475,8 +480,6 @@ def wtmad2(
 
     subsets = df.groupby([set_column])
     subset_names = df[set_column].unique()
-    print(subset_names)
-    print(len(subset_names))
 
     wtmad = 0
     for name in subset_names:
@@ -507,8 +510,6 @@ def wtmad2(
             elif name in barriers:
                 barriers_wtmad += count * AVG / avg_subset * mae
                 barriers_count += count
-                print(f"nane: {name} |count: {count} | avg: {avg_subset} | mae: {mae}")
-
             elif name in intra:
                 intra_wtmad += count * AVG / avg_subset * mae
                 intra_count += count
