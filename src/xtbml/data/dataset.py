@@ -1,4 +1,4 @@
-from typing import List, Optional, Union, Tuple, overload
+from typing import List, Literal, Optional, Union, Tuple, overload
 from pydantic import BaseModel
 from pathlib import Path
 
@@ -163,7 +163,23 @@ class ReactionDataset(BaseModel, Dataset):
         #       that are not required in any reaction anymore
         del self.reactions[idx]
 
-    def equal(self, other):
+    def equal(self, other: "ReactionDataset") -> bool:
+        """Compare `ReactionsDataset` to another one.
+
+        Parameters
+        ----------
+        other : ReactionDataset
+
+
+        Returns
+        -------
+        bool
+            Result of comparison.
+
+        Note
+        ----
+        For the `ReactionDataset`s to be equal, the order of `ReactionDatasets.samples` and `ReactionDatasets.reactions` must be equal (see `ReactionDatasets.sort("both")`).
+        """
         if not isinstance(other, ReactionDataset):
             # do not compare against unrelated types
             return NotImplemented
@@ -177,6 +193,37 @@ class ReactionDataset(BaseModel, Dataset):
                 return False
 
         return True
+
+    def copy(self) -> "ReactionDataset":
+        return ReactionDataset(samples=self.samples, reactions=self.reactions)
+
+    def sort(self, target: Literal["samples", "reactions", "both"] = "samples") -> None:
+        """Sort the samples and reactions in the dataset by their unique identifiers (UIDs).
+
+        Parameters
+        ----------
+        target : Literal[samples, reactions, both], optional
+            Selects what will be sorted, by default "samples"
+        """
+        if target == "samples" or target == "both":
+            s = []
+            uids = sorted([s.uid for s in self.samples])
+            for uid in uids:
+                for sample in self.samples:
+                    if sample.uid == uid:
+                        s.append(sample)
+
+            self.samples = s
+
+        if target == "reactions" or target == "both":
+            r = []
+            uids = sorted([s.uid for s in self.reactions])
+            for uid in uids:
+                for reaction in self.reactions:
+                    if reaction.uid == uid:
+                        r.append(reaction)
+
+            self.reactions = r
 
     def get_dataloader(self, cfg: Optional[dict] = {}) -> DataLoader:
         """
@@ -411,7 +458,6 @@ def store_subsets_on_disk(
 
     # store subsets on disk
     dataset.to_disk(path)
-    # TODO: shape of single value tensors different here
 
 
 def get_dataset(

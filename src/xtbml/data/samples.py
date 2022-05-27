@@ -375,11 +375,8 @@ class Samples:
 
             # make tensor json serializable
             for k, v in d[s.uid].items():
-                if isinstance(v, torch.Tensor):
-                    try:
-                        d[s.uid][k] = v.item()
-                    except ValueError:
-                        d[s.uid][k] = v.tolist()
+                if isinstance(v, Tensor):
+                    d[s.uid][k] = v.tolist()
 
         with open(Path(path, "samples.json"), "w") as f:
             json_dump(d, f)

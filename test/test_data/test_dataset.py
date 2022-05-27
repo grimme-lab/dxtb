@@ -4,7 +4,7 @@ import pytest
 import torch
 import tempfile
 
-from xtbml.data.dataset import ReactionDataset
+from xtbml.data.dataset import ReactionDataset, store_subsets_on_disk
 from xtbml.data.reactions import Reaction, Reactions
 from xtbml.data.samples import Sample, Samples
 
@@ -142,7 +142,38 @@ class TestDataset:
 
         print(h0, ovlp, cn)
 
-    def test_to_json(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
+    def test_save_subset(
+        self, data: Tuple[Samples, Reactions, ReactionDataset]
+    ) -> None:
+        _, _, dataset = data
+
+        aconf = dataset[:15]
+        aconf.sort()
+
+        g21ip = dataset[575:611]
+        g21ip.sort()
+
+        # write to temporary directory
+        with tempfile.TemporaryDirectory() as td:
+            store_subsets_on_disk(dataset.copy(), Path(td), ["ACONF"])
+            dataset2 = ReactionDataset.create_from_disk(
+                path_reactions=Path(td, "reactions.json"),
+                path_samples=Path(td, "samples.json"),
+            )
+            dataset2.sort()
+
+            assert aconf.equal(dataset2)
+
+            store_subsets_on_disk(dataset.copy(), Path(td), ["G21IP"])
+            dataset3 = ReactionDataset.create_from_disk(
+                path_reactions=Path(td, "reactions.json"),
+                path_samples=Path(td, "samples.json"),
+            )
+            dataset3.sort()
+
+            assert g21ip.equal(dataset3)
+
+    def stest_to_json(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
         """Test for saving the dataset to disk. Check for identical saving-loading."""
         __, __, dataset = data
 

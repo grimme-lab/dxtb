@@ -239,11 +239,8 @@ class Reactions:
 
             # make tensor json serializable
             for k, v in d[r.uid].items():
-                if isinstance(v, torch.Tensor):
-                    try:
-                        d[r.uid][k] = v.item()
-                    except ValueError:
-                        d[r.uid][k] = v.tolist()
+                if isinstance(v, Tensor):
+                    d[r.uid][k] = v.tolist()
 
         with open(Path(path, "reactions.json"), "w") as f:
             json_dump(d, f)
