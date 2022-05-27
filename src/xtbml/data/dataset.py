@@ -412,6 +412,7 @@ def store_subsets_on_disk(
 
     # store subsets on disk
     dataset.to_disk(path)
+    # TODO: shape of single value tensors different here
 
 
 def get_dataset(
@@ -452,9 +453,13 @@ def get_gmtkn_dataset(path: Path) -> ReactionDataset:
         # path_samples=Path(path, "samples_1.json"),
         # path_reactions=Path(path, "reactions_2.json"),  # ADIM6, S22, S66
         # path_samples=Path(path, "samples_2.json"),
-        # path_reactions=Path(path, "reactions_12.json"), # ACONF, Amino20x4, MCONF, PCONF21, ADIM6, S22, S66
+        # path_reactions=Path(path, "reactions_12.json"),  # ACONF, Amino20x4, MCONF, PCONF21, ADIM6, S22, S66
         # path_samples=Path(path, "samples_12.json"),
+        # path_reactions=Path(
+        #    path, "reactions_345_barrier+thermo.json"
+        # ),  # barrier + thermo
+        # path_samples=Path(path, "samples_345_barrier+thermo.json"),
     )
 
-    assert len(dataset) == 1505
+    # assert len(dataset) == 1505
     return dataset
