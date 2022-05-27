@@ -39,8 +39,6 @@ class Sample:
     """Atomwise dispersion energy"""
     erep: Tensor
     """Atom-pairwise repulsion energy"""
-    ees: Tensor
-    """Atomwise electrostatic energy (from EEQ)"""
     qat: Tensor
     """Atomwise partial charges (from EEQ)"""
     cn: Tensor
@@ -60,7 +58,6 @@ class Sample:
         "egfn2",
         "edisp",
         "erep",
-        "ees",
         "qat",
         "cn",
         "h0",
@@ -83,7 +80,6 @@ class Sample:
         egfn2: Tensor,
         edisp: Tensor,
         erep: Tensor,
-        ees: Tensor,
         qat: Tensor,
         cn: Tensor,
         h0: Tensor,
@@ -98,7 +94,6 @@ class Sample:
         self.egfn2 = egfn2
         self.edisp = edisp
         self.erep = erep
-        self.ees = ees
         self.qat = qat
         self.cn = cn
         self.h0 = h0
@@ -119,7 +114,6 @@ class Sample:
                     self.egfn2,
                     self.edisp,
                     self.erep,
-                    self.ees,
                     self.qat,
                     self.cn,
                     self.h0,
@@ -138,7 +132,6 @@ class Sample:
                     self.egfn2,
                     self.edisp,
                     self.erep,
-                    self.ees,
                     self.qat,
                     self.cn,
                     self.h0,
@@ -193,7 +186,6 @@ class Sample:
             self.egfn2.to(device=device),
             self.edisp.to(device=device),
             self.erep.to(device=device),
-            self.ees.to(device=device),
             self.qat.to(device=device),
             self.cn.to(device=device),
             self.h0.to(device=device),
@@ -230,7 +222,6 @@ class Sample:
             self.egfn2.type(dtype),
             self.edisp.type(dtype),
             self.erep.type(dtype),
-            self.ees.type(dtype),
             self.qat.type(dtype),
             self.cn.type(dtype),
             self.h0.type(dtype),
@@ -256,7 +247,6 @@ class Sample:
                 torch.all(torch.isclose(self.egfn2, other.egfn2)).item(),
                 torch.all(torch.isclose(self.edisp, other.edisp)).item(),
                 torch.all(torch.isclose(self.erep, other.erep)).item(),
-                torch.all(torch.isclose(self.ees, other.ees)).item(),
                 torch.all(torch.isclose(self.qat, other.qat)).item(),
                 torch.all(torch.isclose(self.cn, other.cn)).item(),
                 torch.all(torch.isclose(self.h0, other.h0)).item(),

@@ -4,7 +4,8 @@ import torch
 from torch import Tensor
 import torch.nn as nn
 import torch.nn.functional as F
-from egnn_pytorch import EGNN, EGNN_Network
+
+# from egnn_pytorch import EGNN, EGNN_Network
 import sys
 
 from ..data.samples import Sample
