@@ -16,7 +16,7 @@ class Simple_Net(nn.Module):
     def __init__(self, simplicity):
         super().__init__()
 
-        simplicity = 3
+        simplicity = 2
 
         self.simplicity = simplicity
         # self.simplicity = kwargs.get('simplicity',1)
@@ -31,7 +31,10 @@ class Simple_Net(nn.Module):
         # * implement simplicity 2
         # * implement simplicity 3
 
-        if self.simplicity == 2:
+        if self.simplicity == 0 or self.simplicity == 1:
+            # dummy layer
+            self.fc = nn.Linear(1, 1)
+        elif self.simplicity == 2:
             self.input = 1
             self.fc = nn.Linear(self.input, 1)
         elif self.simplicity == 3:
@@ -114,11 +117,11 @@ class Basic_CNN(nn.Module):
         self.hidden_size = 3  # TODO: set as argument (bs/number of atomic features)
         self.kernel_size = 2  # dummy value
 
-        self.input = 44  # 2305  # 55697  # TODO: set as argument
+        self.input = 138  # 2305  # 55697  # TODO: set as argument
         self.hidden = 20  # TODO: make this a flexible parameter
         self.output = 1
 
-        self.input_atm = 20  # TODO: set as argument
+        self.input_atm = 81  # TODO: set as argument
 
         # NOTE: as of now, reuse same CNN for H and S
         self.conv1 = nn.Conv2d(
