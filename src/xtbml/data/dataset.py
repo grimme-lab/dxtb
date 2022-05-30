@@ -1,6 +1,7 @@
 from typing import List, Literal, Optional, Union, Tuple, overload
 from pydantic import BaseModel
 from pathlib import Path
+import pandas as pd
 
 import torch
 from torch import Tensor
@@ -426,6 +427,59 @@ class ReactionDataset(BaseModel, Dataset):
                     continue
         self.samples = samples_new
 
+    def to_df(
+        self, flatten: bool = True, path: Union[None, str] = None
+    ) -> pd.DataFrame:
+        """Convert dataset to pandas dataframe format.
+
+        Parameters
+        ----------
+        flatten : bool, optional
+            Flatten multidimensional features to scalar values, by default True.
+        path : Union[None, str], optional
+            Saving the dataframe to path on disk, by default None.
+
+        Returns
+        -------
+        pd.DataFrame
+            Dataset in dataframe format
+        """
+
+        # single padded batch
+        loader = self.get_dataloader({"batch_size": len(self), "num_workers": 1})
+        data = next(iter(loader))
+        d = {}
+
+        # reactions
+        skip = ["__", "device", "dtype", "uid", "partners", "nu"]
+        for slot in data[1].__slots__:
+            if not any([sl in slot for sl in skip]):
+                d[f"r_{slot}"] = getattr(data[1], slot)
+
+        # samples
+        skip = ["__", "device", "dtype", "uid"]
+        for i, s in enumerate(data[0]):
+            for slot in s.__slots__:
+                if not any([sl in slot for sl in skip]):
+                    attr = getattr(s, slot)
+                    if isinstance(attr, Tensor) and flatten:
+                        # simply add all entries together
+                        while len(attr.shape) > 1:
+                            attr = torch.sum(attr, -1)
+                        # TODO: find better ways to agglomerate vectors and matricies (sum, max, average, determinant, ..)
+                        d[f"s{i}_{slot}"] = attr
+
+        # TODO: multiply with stoichiometry factors
+
+        # convert to dataframe
+        df = pd.DataFrame(d)
+
+        # save to disk
+        if path:
+            df.to_csv(path)
+
+        return df
+
 
 def store_subsets_on_disk(
     dataset: ReactionDataset,
@@ -490,20 +544,10 @@ def get_gmtkn_dataset(path: Path) -> ReactionDataset:
     """
 
     dataset = get_dataset(
-        path_reactions=Path(path, "reactions.json"),
-        path_samples=Path(path, "samples.json"),
-        # path_reactions=Path(path, "reactions_0.json"),  # ACONF
-        # path_samples=Path(path, "samples_0.json"),
-        # path_reactions=Path(path, "reactions_1.json"), # ACONF, Amino20x4, MCONF, PCONF21
-        # path_samples=Path(path, "samples_1.json"),
-        # path_reactions=Path(path, "reactions_2.json"),  # ADIM6, S22, S66
-        # path_samples=Path(path, "samples_2.json"),
-        # path_reactions=Path(path, "reactions_12.json"),  # ACONF, Amino20x4, MCONF, PCONF21, ADIM6, S22, S66
-        # path_samples=Path(path, "samples_12.json"),
-        # path_reactions=Path(
-        #    path, "reactions_345_barrier+thermo.json"
-        # ),  # barrier + thermo
-        # path_samples=Path(path, "samples_345_barrier+thermo.json"),
+        # path_reactions=Path(path, "reactions.json"),
+        # path_samples=Path(path, "samples.json"),
+        path_reactions=Path(path, "reactions_0.json"),  # ACONF
+        path_samples=Path(path, "samples_0.json"),
     )
 
     # assert len(dataset) == 1505
