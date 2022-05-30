@@ -55,6 +55,18 @@ def padded_stack(
     return out
 
 
+def get_subsets_from_batched_reaction(batched_reaction: Reaction) -> List[str]:
+    # derive subset from partner list
+    subsets = [s.split("/")[0] for s in batched_reaction.partners]
+    # different number of partners per reaction
+    n_partner = torch.count_nonzero(batched_reaction.nu, dim=1)
+    # get reaction-partner idx
+    p_idx = torch.cumsum(n_partner, dim=0) - 1
+    # contract labels
+    label = [subsets[i] for i in p_idx]
+    return label
+
+
 class ReactionDataset(BaseModel, Dataset):
     """Dataset for storing features used for training."""
 
@@ -448,7 +460,7 @@ class ReactionDataset(BaseModel, Dataset):
         # single padded batch
         loader = self.get_dataloader({"batch_size": len(self), "num_workers": 1})
         data = next(iter(loader))
-        d = {}
+        d = {"subset": get_subsets_from_batched_reaction(data[1])}
 
         # reactions
         skip = ["__", "device", "dtype", "uid", "partners", "nu"]
