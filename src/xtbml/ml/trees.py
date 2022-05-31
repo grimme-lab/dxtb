@@ -1,3 +1,52 @@
+"""
+Decisiontree-based machine learning methods
+============================================
+
+Implementation of decisiontree algorthims for regression tasks.
+
+Example
+-------
+>>> from xtbml.data.dataset import get_gmtkn_dataset
+>>> from xtbml.ml.trees import TreeRegressor
+>>> from xtbml.ml.util import wtmad2
+>>> # load data from disk
+>>> features = TreeRegressor.get_data()
+>>> # alternatively load from csv: features = pd.read_csv("df.csv")
+>>> #
+>>> tr = TreeRegressor(features=features, target="r_eref", model="bdt")
+>>> tr.train()
+>>> # for simplicity test on train data
+>>> test_features, test_labels, _ = TreeRegressor.prep_data(features, target="r_eref")
+>>> predictions = tr.predict(test_features)
+>>> #
+>>> df = features.copy()  # avoid SettingWithCopyWarning
+>>> df = df[["subset", "r_egfn1", "r_eref"]]
+>>> df["predictions"] = predictions.tolist()
+>>> print(df)
+   subset   r_egfn1  r_eref  predictions
+0   ACONF  0.328462   0.598     0.598122
+1   ACONF  0.297663   0.614     0.613967
+2   ACONF  0.743076   0.961     0.961005
+3   ACONF  1.761008   2.813     2.812976
+4   ACONF  0.276938   0.595     0.595119
+5   ACONF  0.277891   0.604     0.604012
+6   ACONF  0.682718   0.934     0.934077
+7   ACONF  0.554463   1.178     1.177967
+8   ACONF  0.617511   1.302     1.301865
+9   ACONF  1.018668   1.250     1.250103
+10  ACONF  1.693739   2.632     2.632014
+11  ACONF  1.718680   2.740     2.739992
+12  ACONF  1.932725   3.283     3.282962
+13  ACONF  2.114138   3.083     3.082936
+14  ACONF  3.569065   4.925     4.924882
+>>> loss_gfn1 = wtmad2(df=df, colname_target="r_egfn1", colname_ref="r_eref")
+>>> print("GFN-1: ", loss_gfn1)
+GFN-1:  0.2078990332053096
+>>> loss_tree = wtmad2(df=df, colname_target="predictions", colname_ref="r_eref")
+>>> print("Tree: ", loss_tree)
+Tree:  1.902131842981567e-05
+"""
+
 from typing import List, Tuple, Union
 import numpy as np
 import pandas as pd
