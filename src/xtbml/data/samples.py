@@ -1,21 +1,11 @@
 from json import load as json_load
 from json import dump as json_dump
 from pathlib import Path
-
-from typing import Dict, List, Optional, Union, overload
-from xtbml.typing import Tensor
-
 import torch
+from typing import Dict, List, Optional, Union, overload
 
-from xtbml.adjlist import AdjacencyList
-from xtbml.basis.type import get_cutoff
-from xtbml.data.covrad import covalent_rad_d3
-from xtbml.xtb.calculator import Calculator
-from xtbml.ncoord.ncoord import get_coordination_number, exp_count
-from xtbml.param.gfn1 import GFN1_XTB as gfn1_par
-from xtbml.exlibs.tbmalt import Geometry
-from xtbml.exlibs.tbmalt.batch import deflate
 from xtbml.constants import FLOAT32
+from xtbml.typing import Tensor
 
 
 class Sample:
@@ -265,54 +255,16 @@ class Sample:
         Returns:
             Dict[str, Union[str, Tensor]]: Selected attributes and their respective values.
         """
-        d = dict()
+        d = {}
         skip = ["__", "device", "dtype"]
         if skipped is not None:
             skip = skip + skipped
 
         for slot in self.__slots__:
-            if not any([s in slot for s in skip]):
+            if not any(s in slot for s in skip):
                 d[slot] = getattr(self, slot)
 
         return d
-
-    def calc_singlepoint(self) -> List[Tensor]:
-        """Calculate QM features based on classicals input, such as geometry."""
-
-        # CALC FEATURES
-
-        # NOTE: singlepoint calculation so far only working with no padding
-        # quick and dirty hack to get rid of padding
-        mol = Geometry(
-            atomic_numbers=deflate(self.numbers),
-            positions=deflate(self.xyz, axis=1),
-            charges=self.charges,
-            unpaired_e=self.unpaired_e,
-        )
-
-        # check underlying data consistent
-        assert (
-            self.numbers.storage().data_ptr() == mol.atomic_numbers.storage().data_ptr()
-        )
-
-        # setup calculator
-        par = gfn1_par
-        calc = Calculator(mol, par)
-
-        # prepate cutoffs and lattice
-        # trans = get_lattice_points(mol_periodic, mol_lattice, cn_cutoff)
-        rcov = covalent_rad_d3
-        cn = get_coordination_number(mol, rcov, exp_count)
-
-        cutoff = get_cutoff(calc.basis)
-        # trans = get_lattice_points(mol_periodic, mol_lattice, cutoff)
-        trans = torch.zeros([3, 1])
-        adj = AdjacencyList(mol, trans, cutoff)
-
-        # build hamiltonian
-        h, overlap_int = calc.hamiltonian.build(calc.basis, adj, cn)
-
-        return h, overlap_int, cn
 
 
 class Samples:
