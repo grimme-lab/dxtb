@@ -55,8 +55,8 @@ class AdjacencyList:
         self.inl = torch.zeros(mol.get_length(), dtype=DTYPE)
         self.nnl = torch.zeros(mol.get_length(), dtype=DTYPE)
 
-        tmp_nlat = torch.zeros(30 * mol.get_length(), dtype=DTYPE)
-        tmp_nltr = torch.zeros(30 * mol.get_length(), dtype=DTYPE)
+        tmp_nlat = torch.zeros(1000 * mol.get_length(), dtype=DTYPE)
+        tmp_nltr = torch.zeros(1000 * mol.get_length(), dtype=DTYPE)
 
         img = 0
         cutoff2 = cutoff * cutoff

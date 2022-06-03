@@ -7,7 +7,7 @@ from ..basis.ortho import orthogonalize
 from ..basis.slater import slater_to_gauss
 from ..exlibs.tbmalt import Geometry
 from ..param import Param, Element
-from ..constants import UINT8 as DTYPE_INT
+from ..constants import INT16 as DTYPE_INT
 from ..constants import FLOAT64 as DTYPE_FLOAT
 
 
