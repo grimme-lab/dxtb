@@ -13,8 +13,8 @@ from xtbml.data.samples import Sample, Samples
 def data() -> Generator[Tuple[Samples, Reactions, ReactionDataset], None, None]:
     print("Loading JSON files for 'Samples', 'Reactions' and 'ReactionDataset'...")
 
-    path_samples = Path(Path.cwd(), "data/samples.json")
-    path_reactions = Path(Path.cwd(), "data/reactions.json")
+    path_samples = Path(Path.cwd(), "data/GMTKN55/samples_0.json")
+    path_reactions = Path(Path.cwd(), "data/GMTKN55/reactions_0.json")
 
     samples = Samples.from_json(path_samples)
     reactions = Reactions.from_json(path_reactions)
@@ -130,18 +130,6 @@ class TestDataset:
         assert reaction.egfn1.device == torch.device(device)
         assert reaction.eref.device == torch.device(device)
 
-    def stest_singlepoint(
-        self, data: Tuple[Samples, Reactions, ReactionDataset]
-    ) -> None:
-        """Test for (slow) on-the-fly feature generation."""
-        samples, _, _ = data
-
-        sample: Sample = samples[0]
-
-        h0, ovlp, cn = sample.calc_singlepoint()
-
-        print(h0, ovlp, cn)
-
     def test_save_subset(
         self, data: Tuple[Samples, Reactions, ReactionDataset]
     ) -> None:
@@ -175,7 +163,7 @@ class TestDataset:
 
     def stest_to_json(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
         """Test for saving the dataset to disk. Check for identical saving-loading."""
-        __, __, dataset = data
+        _, _, dataset = data
 
         # write to temporary directory
         with tempfile.TemporaryDirectory() as td:

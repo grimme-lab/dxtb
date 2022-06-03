@@ -1,3 +1,4 @@
+**/benchmark/
 samples.json
 devel.py
 
@@ -177,7 +178,7 @@ cython_debug/
 *.json
 *.csv
 *.txt
-coord 
+coord
 struc.xyz
 .CHRG
 .UHF
@@ -188,6 +189,5 @@ struc.xyz
 data/archive
 data/GMTKN55*
 
-
-# models 
+# models
 models/

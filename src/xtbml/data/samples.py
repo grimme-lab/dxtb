@@ -330,7 +330,7 @@ class Samples:
                 if isinstance(v, Tensor):
                     d[s.uid][k] = v.tolist()
 
-        with open(Path(path, "samples.json"), "w") as f:
+        with open(Path(path, "samples.json"), "w", encoding="utf-8") as f:
             json_dump(d, f)
 
     @property

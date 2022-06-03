@@ -1,9 +1,10 @@
 from __future__ import annotations
 from json import dumps as json_dump
+from json import dump as json_dump_file
 from json import loads as json_load
 import os
 from pathlib import Path
-from typing import List, Tuple, Optional, Union
+from typing import List, Literal, Tuple, Optional, Union
 
 import torch
 from torch.utils.data import DataLoader
@@ -13,8 +14,11 @@ from xtbml.constants.units import AU2KCAL
 from xtbml.data.covrad import to_number
 
 
-def walklevel(some_dir: str, level=1):
+def walklevel(some_dir: str | Path, level=1):
     """Identical to os.walk() but allowing for limited depth."""
+    if isinstance(some_dir, Path):
+        some_dir = str(some_dir)
+
     some_dir = some_dir.rstrip(os.path.sep)
     assert os.path.isdir(some_dir), f"Not a directory: {some_dir}"
     num_sep = some_dir.count(os.path.sep)
@@ -25,16 +29,88 @@ def walklevel(some_dir: str, level=1):
             del dirs[:]
 
 
-def read_coord(
-    fp: str,
-    breakpoints=["$user-defined bonds", "$redundant", "$end"],
-) -> List[List[Union[float, int]]]:
-    """Read a coord file."""
+def read_geo(fp, format: Literal["xyz", "coord"] = "xyz") -> list[list[float | int]]:
+    """Read geometry file.
+
+    Parameters
+    ----------
+    fp : str | Path
+        Path to coord file.
+    format : str
+        Format of the file.
+
+    Returns
+    -------
+    list[list[float | int]]
+        List containing the atomic numbers and coordinates.
+    """
+    if format == "xyz":
+        return read_xyz(fp)
+    elif format == "coord":
+        return read_coord(fp)
+    else:
+        raise ValueError(f"Unknown format: {format}")
+
+
+def read_xyz(fp: str | Path) -> list[list[float | int]]:
+    """Read xyz file.
+
+    Parameters
+    ----------
+    fp : str | Path
+        Path to coord file.
+
+    Returns
+    -------
+    list[list[float | int]]
+        List containing the atomic numbers and coordinates.
+    """
     arr = []
+    num_atoms = 0
+
+    with open(fp, "r", encoding="utf-8") as file:
+        for line_number, line in enumerate(file):
+            if line_number == 0:
+                num_atoms = int(line)
+            elif line_number == 1:
+                pass
+            else:
+                l = line.strip().split()
+                x, y, z = float(l[1]), float(l[2]), float(l[3])
+                atm = to_number(l[0])
+                arr.append([x, y, z, atm])
+
+    if len(arr) == 1:
+        if arr[0][0] == arr[0][1] == arr[0][2] == 0:
+            arr[0][0] = 1.0
+
+    if len(arr) != num_atoms:
+        raise ValueError(f"Number of atoms in {fp} does not match.")
+
+    return arr
+
+
+def read_coord(fp: str | Path) -> list[list[float | int]]:
+    """Read coord file.
+
+    Parameters
+    ----------
+    fp : str | Path
+        Path to coord file.
+
+    Returns
+    -------
+    list[list[float | int]]
+        List containing the atomic numbers and coordinates.
+    """
+    arr = []
+    breakpoints = ["$user-defined bonds", "$redundant", "$end"]
+
     with open(fp, "r", encoding="utf-8") as file:
         lines = file.readlines()
         for line in lines:
             l = line.split()
+
             # skip
             if len(l) == 0:
                 continue
@@ -50,9 +126,9 @@ def read_coord(
                 print(e)
                 print(f"WARNING: No correct values. Skip sample {fp}")
 
-        if len(arr) == 1:
-            if arr[0][0] == arr[0][1] == arr[0][2] == 0:
-                arr[0][0] = 1.0
+    if len(arr) == 1:
+        if arr[0][0] == arr[0][1] == arr[0][2] == 0:
+            arr[0][0] = 1.0
 
     return arr
 
@@ -73,7 +149,7 @@ def read_energy(fp: str) -> float:
         raise ValueError(f"File '{fp}' is not in Turbomole format.")
 
 
-def read_tblite_gfn(fp: str):
+def read_tblite_gfn(fp: Path | str) -> Tuple[float, List[float]]:
     """Read energy file from tblite json output."""
     with open(fp, "r", encoding="utf-8") as file:
         data = json_load(file.read())
@@ -84,70 +160,32 @@ def read_tblite_gfn(fp: str):
 class Datareader:
     """Class to read in data from disk to Geometry object."""
 
-    def __init__(self, root: Optional[str] = None):
-        """Fetch all data given in root directory."""
+    def __init__(self, benchmark: str):
 
+        path = str(Path(Path(__file__).resolve().parents[3], "data", benchmark))
+
+        if not Path(path).is_dir():
+            raise FileNotFoundError(f"Directory '{path}' not found.")
+
+        self.benchmark = benchmark
+        self.bpath = Path(path, "benchmark")
+        self.path = path
+
+    def get_sample_data(self):
+        """Fetch all data given in root directory."""
         self.data = []
         self.file_list = []
 
-        if root is None:
-            root = str(Path(Path(__file__).resolve().parents[3], "data/GMTKN55"))
-
-        if not Path(root).is_dir():
-            raise FileNotFoundError(f"Directory '{root}' not found.")
-
-        bh76rc = [
-            "C2H5",
-            "C2H6",
-            "CH4",
-            "H2",
-            "H2O",
-            "H2S",
-            "HS",
-            "NH",
-            "NH2",
-            "NH3",
-            "O",
-            "PH2",
-            "PH3",
-            "c2h4",
-            "c2h5",
-            "c3h7",
-            "ch3",
-            "ch3cl",
-            "ch3f",
-            "cl",
-            "cl-",
-            "clf",
-            "co",
-            "f",
-            "f-",
-            "f2",
-            "fch3clcomp1",
-            "fch3clcomp2",
-            "h",
-            "hcl",
-            "hcn",
-            "hco",
-            "hf",
-            "hn2",
-            "hnc",
-            "hoch3fcomp1",
-            "hoch3fcomp2",
-            "n2",
-            "n2o",
-            "oh",
-        ]
-
         FILE_CHARGE = ".CHRG"
         FILE_COORD = "coord"
+        FILE_XYZ = "mol.xyz"
         FILE_GFN1 = "gfn1.json"
         FILE_GFN2 = "gfn2.json"
         FILE_UHF = ".UHF"
 
         # loop through folders + subfolders only
-        for (dirpath, _, filenames) in walklevel(root, level=2):
-            if FILE_COORD not in filenames:
+        for (dirpath, _, filenames) in walklevel(self.bpath, level=2):
+            if FILE_COORD not in filenames and FILE_XYZ not in filenames:
                 continue
 
             if FILE_GFN1 not in filenames or FILE_GFN2 not in filenames:
@@ -162,8 +200,14 @@ class Datareader:
                 "/".join([dirpath, FILE_GFN2])
             )
 
-            # read coord file
-            geo = read_coord("/".join([dirpath, FILE_COORD]))
+            # read coord/xyz file
+            if FILE_COORD in filenames:
+                geo = read_geo("/".join([dirpath, FILE_COORD]), format="coord")
+            elif FILE_XYZ in filenames:
+                geo = read_geo("/".join([dirpath, FILE_XYZ]), format="xyz")
+            else:
+                raise FileNotFoundError(f"No coord/xyz file found in '{dirpath}'.")
+
             assert len(geo[0]) == 4
             xyz = [g[:3] for g in geo]
             q = [g[-1] for g in geo]
@@ -193,33 +237,77 @@ class Datareader:
                 ]
             )
 
-            sample = dirpath.replace(root, "")
+            sample = dirpath.replace(self.path, "").replace("benchmark", self.benchmark)
             if sample.startswith("/"):
                 sample = sample[1:]
-
             self.file_list.append(sample)
 
             # create entries for BH76RC separately (creates duplicates)
-            if "BH76/" in sample:
-                molecule = sample.rsplit("/", 1)[1]
-                if molecule in bh76rc:
-                    self.data.append(
-                        [
-                            xyz,
-                            q,
-                            chrg,
-                            uhf,
-                            gfn1_energy,
-                            gfn1_energy_atom_resolved,
-                            gfn2_energy,
-                            gfn2_energy_atom_resolved,
-                        ]
-                    )
-                    self.file_list.append(f"BH76RC/{molecule}")
+            if self.benchmark == "GMTKN55":
+                if "BH76/" in sample:
+                    molecule = sample.rsplit("/", 1)[1]
 
-        # GMTKN55 plus duplicates for BH76RC
-        print(len(self.file_list))
-        assert len(self.file_list) == 2462 + 40
+                    bh76rc = [
+                        "C2H5",
+                        "C2H6",
+                        "CH4",
+                        "H2",
+                        "H2O",
+                        "H2S",
+                        "HS",
+                        "NH",
+                        "NH2",
+                        "NH3",
+                        "O",
+                        "PH2",
+                        "PH3",
+                        "c2h4",
+                        "c2h5",
+                        "c3h7",
+                        "ch3",
+                        "ch3cl",
+                        "ch3f",
+                        "cl",
+                        "cl-",
+                        "clf",
+                        "co",
+                        "f",
+                        "f-",
+                        "f2",
+                        "fch3clcomp1",
+                        "fch3clcomp2",
+                        "h",
+                        "hcl",
+                        "hcn",
+                        "hco",
+                        "hf",
+                        "hn2",
+                        "hnc",
+                        "hoch3fcomp1",
+                        "hoch3fcomp2",
+                        "n2",
+                        "n2o",
+                        "oh",
+                    ]
+
+                    if molecule in bh76rc:
+                        self.data.append(
+                            [
+                                xyz,
+                                q,
+                                chrg,
+                                uhf,
+                                gfn1_energy,
+                                gfn1_energy_atom_resolved,
+                                gfn2_energy,
+                                gfn2_energy_atom_resolved,
+                            ]
+                        )
+                        self.file_list.append(f"BH76RC/{molecule}")
+
+        if self.benchmark == "GMTKN55":
+            # GMTKN55 plus duplicates for BH76RC
+            assert len(self.file_list) == 2462 + 40
 
     def __repr__(self) -> str:
         """Custom print representation of class."""
@@ -277,7 +365,7 @@ class Datareader:
     # FIXME: Dependency on Geometry object from tbmalt through Calculator/Hamiltonian
     def create_sample_json(
         self,
-        out_path: Optional[str | Path] = None,
+        out_name: str = "samples.json",
         dtype: Optional[torch.dtype] = FLOAT32,
         device: Optional[torch.device] = None,
     ) -> None:
@@ -285,8 +373,8 @@ class Datareader:
 
         Parameters
         ----------
-        out_path : Optional[str | Path], optional
-            Path where file is stored.
+        out_name : str, optional
+            Name of json file, by default "samples.json"
         dtype : Optional[torch.dtype], optional
             Dtype of float values, by default FLOAT32
         device : Optional[torch.device], optional
@@ -295,7 +383,7 @@ class Datareader:
         Raises
         ------
         FileNotFoundError
-            Parent directory of `out_path` does not exist.
+            Parent directory of `out_name` does not exist.
 
         Example
         -------
@@ -373,22 +461,16 @@ class Datareader:
 
             return h, overlap_int, cn, rep_energy, e_disp, qat
 
-        if out_path is None:
-            out_path = Path(
-                Path(__file__).resolve().parents[3], "data/samples-new.json"
-            )
-
-        if not Path(out_path).parent.is_dir():
-            raise FileNotFoundError(f"Directory '{out_path}' not found.")
+        path = Path(self.path, out_name)
 
         # opening curly bracket for json
-        with open(out_path, "w", encoding="utf-8") as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write("{")
 
         # append each sample to json
         for i, (file, data) in enumerate(zip(self.file_list, self.data)):
             print(i, file)
-            with open(out_path, "a", encoding="utf-8") as f:
+            with open(path, "a", encoding="utf-8") as f:
                 d = {}
 
                 positions = torch.tensor(data[0], device=device, dtype=dtype)
@@ -425,9 +507,98 @@ class Datareader:
                 if file != self.file_list[:-1]:
                     f.write(",")
 
-        with open(out_path, "a", encoding="utf-8") as f:
+        # closing curly bracket for json
+        with open(path, "a", encoding="utf-8") as f:
             f.write("}")
 
+    def create_reaction_json(self, out_name: str = "reactions.json") -> None:
+        """Create the json
+
+        Parameters
+        ----------
+        out_name : str, optional
+            Name of json file, by default "reactions.json"
+
+        Raises
+        ------
+        FileNotFoundError
+            Energy or ".ref" file does not exist.
+
+        Example
+        -------
+        >>> from xtbml.data.datareader import Datareader
+        >>> data = Datareader("MOR41")
+        >>> data.create_reaction_json()
+        """
+
+        if self.benchmark == "GMTKN55":
+            raise NotImplementedError(
+                "Nested directory structure cannot be handled currently."
+            )
+
+        def get_energy(system, energy_file="energy"):
+            path = Path(system, energy_file)
+            if not path.is_file():
+                raise FileNotFoundError(f"File '{path}' not found.")
+
+            energy, _ = read_tblite_gfn(path)
+
+            if energy == 0 or not energy:
+                raise ValueError(f"No energy found in {path}.")
+
+            return energy
+
+        reaction = {}
+        count = 1
+
+        path = Path(self.bpath, ".res")
+        if not path.is_file():
+            raise FileNotFoundError(f"File '{path}' not found.")
+
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("$tmer") or line.startswith("tmer2++"):
+                    print(f"{self.benchmark}_{count}", end="\r", flush=True)
+                    line = line.strip()
+                    line = line.split("#")[0]
+                    line = line.replace("$tmer ", "")
+                    line = line.replace("tmer2++ ", "")
+
+                    mols = line.split(" x ")[0].split()
+                    mols = [m.replace("/$f", "") for m in mols]
+                    stoichs = line.split(" x ")[1].split("$w")[0].split()
+                    stoichs = [int(s) for s in stoichs]
+                    ref = float(line.split()[-1])
+
+                    e_gfn1 = 0
+                    e_gfn2 = 0
+                    systems = []
+                    nus = []
+                    for mol, stoich in zip(mols, stoichs):
+                        mol_path = Path(self.bpath, mol)
+                        energy1 = get_energy(mol_path, "gfn1.json")
+                        energy2 = get_energy(mol_path, "gfn2.json")
+
+                        e_gfn1 += stoich * energy1
+                        e_gfn2 += stoich * energy2
+
+                        systems.append(mol)
+                        nus.append(stoich)
+
+                    reaction[f"{self.benchmark}_{count}"] = dict(
+                        nu=nus,
+                        partners=systems,
+                        egfn1=e_gfn1 * AU2KCAL,
+                        egfn2=e_gfn2 * AU2KCAL,
+                        eref=ref,
+                    )
+
+                    count += 1
+
+        with open(Path(self.bpath.parents[0], out_name), "w", encoding="utf-8") as f:
+            json_dump_file(reaction, f)
+
+    @staticmethod
     def get_dataloader(geometry, cfg: Optional[dict] = None) -> DataLoader:
         """
         Return pytorch dataloader for batch-wise iteration over Geometry object.
