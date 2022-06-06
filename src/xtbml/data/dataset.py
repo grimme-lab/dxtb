@@ -459,27 +459,77 @@ class ReactionDataset(BaseModel, Dataset):
 
         # single padded batch
         loader = self.get_dataloader({"batch_size": len(self), "num_workers": 1})
+
+        # data is "([Sample(BATCH 0), Sample(BATCH 1)], Reaction(BATCH))"
         data = next(iter(loader))
-        d = {"subset": get_subsets_from_batched_reaction(data[1])}
+        samples, reaction = data
+
+        d = {"subset": get_subsets_from_batched_reaction(reaction)}
 
         # reactions
-        skip = ["__", "device", "dtype", "uid", "partners", "nu"]
-        for slot in data[1].__slots__:
-            if not any([sl in slot for sl in skip]):
-                d[f"r_{slot}"] = getattr(data[1], slot)
+        skip = ["__", "device", "dtype", "uid", "partners", "nu", "egfn2"]
+        for slot in reaction.__slots__:
+            if not any(sl in slot for sl in skip):
+                d[f"r_{slot}"] = getattr(reaction, slot)
 
         # samples
-        skip = ["__", "device", "dtype", "uid"]
-        for i, s in enumerate(data[0]):
+        feat_skip = ["unpaired_e", "charges", "egfn2", "numbers", "xyz", "cn"]
+        skip = ["__", "device", "dtype", "uid", "qat"] + feat_skip
+        for i, s in enumerate(samples):
+
+            # FIXME: Cannot get nu this way, because uid is overwritten
+            # for reaction in self.reactions:
+            # if s.uid in reaction.partners:
+            # for j, partner in enumerate(reaction.partners):
+            # if partner == s.uid:
+            # nu = reaction.nu[j]
+
             for slot in s.__slots__:
-                if not any([sl in slot for sl in skip]):
+                if not any(sl in slot for sl in skip):
                     attr = getattr(s, slot)
+                    print(slot, attr.shape)
                     if isinstance(attr, Tensor) and flatten:
                         # simply add all entries together
-                        while len(attr.shape) > 1:
-                            attr = torch.sum(attr, -1)
-                        # TODO: find better ways to agglomerate vectors and matricies (sum, max, average, determinant, ..)
-                        d[f"s{i}_{slot}"] = attr
+
+                        if slot == "h0":
+                            d[f"s{i}_{slot}_max"] = torch.linalg.matrix_norm(
+                                attr, ord=1
+                            )
+                            d[f"s{i}_{slot}_nuc"] = torch.linalg.matrix_norm(
+                                attr, ord="nuc"
+                            )
+                            d[f"s{i}_{slot}_sing"] = torch.linalg.matrix_norm(
+                                attr, ord=2
+                            )
+                            d[f"s{i}_{slot}_frob"] = torch.linalg.matrix_norm(attr)
+
+                            d[f"s{i}_{slot}_det"] = torch.linalg.det(attr)
+
+                            # very slow
+                            # eigvals, _ = torch.lobpcg(attr)
+                            # d[f"s{i}_{slot}_eig"] = eigvals.squeeze(-1)
+
+                            d[f"s{i}_{slot}_eig"] = largest_eigenvalue(attr)
+
+                        elif slot == "ovlp":
+                            d[f"s{i}_{slot}_max"] = torch.linalg.matrix_norm(
+                                attr, ord=1
+                            )
+                            d[f"s{i}_{slot}_nuc"] = torch.linalg.matrix_norm(
+                                attr, ord="nuc"
+                            )
+                            d[f"s{i}_{slot}_sing"] = torch.linalg.matrix_norm(
+                                attr, ord=2
+                            )
+                            d[f"s{i}_{slot}_frob"] = torch.linalg.matrix_norm(attr)
+
+                            d[f"s{i}_{slot}_eig"] = largest_eigenvalue(attr)
+
+                        else:
+                            while len(attr.shape) > 1:
+                                attr = torch.sum(attr, -1)
+                            # TODO: find better ways to agglomerate vectors and matricies (sum, max, average, determinant, ..)
+                            d[f"s{i}_{slot}"] = attr
 
         # TODO: multiply with stoichiometry factors
 
@@ -558,9 +608,52 @@ def get_gmtkn_dataset(path: Path) -> ReactionDataset:
     dataset = get_dataset(
         # path_reactions=Path(path, "reactions.json"),
         # path_samples=Path(path, "samples.json"),
-        path_reactions=Path(path, "reactions_0.json"),  # ACONF
-        path_samples=Path(path, "samples_0.json"),
+        path_reactions=Path(path, "reactions.json"),  # ACONF
+        path_samples=Path(path, "samples.json"),
     )
 
     # assert len(dataset) == 1505
     return dataset
+
+
+# https://github.com/Thinklab-SJTU/ThinkMatch/issues/18
+# https://en.wikipedia.org/wiki/Power_iteration
+def largest_eigenvalue(matrix, n_iter=100):
+    """Calculate largest eigenvalue of a matrix with power iteration.
+
+    Parameters
+    ----------
+    matrix : torch.Tensor
+        Matrix of shape (n, n)
+    n_iter : int, optional
+        Number of iterations, by default 100
+
+    Returns
+    -------
+    float
+        Largest eigenvalue
+    """
+
+    eigvals = torch.zeros(matrix.shape[0])
+
+    for i in range(matrix.shape[0]):
+        m = matrix[i]
+
+        # initialize
+        eigenvector = torch.rand(m.shape[0])
+
+        for _ in range(n_iter):
+            last_eigenvector = eigenvector
+            eigenvector = m @ eigenvector
+            eigenvector = eigenvector / torch.norm(eigenvector)
+
+            if torch.norm(eigenvector - last_eigenvector) < 1e-4:
+                break
+
+        eigval = torch.dot(eigenvector, m @ eigenvector)
+        eigvals[i] = eigval
+
+        # eigval1 = torch.linalg.eigh(m)[0][0]
+        # print(eigval, eigval1)
+
+    return eigvals

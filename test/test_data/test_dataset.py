@@ -161,6 +161,19 @@ class TestDataset:
 
             assert g21ip.equal(dataset3)
 
+    # def test_to_df(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
+    #     _, _, dataset = data
+
+    #     aconf = dataset  # [:15]
+    #     aconf.sort()
+
+    #     print("now pad")
+    #     aconf.pad()
+    #     print("done padding")
+
+    #     df = aconf.to_df()
+    #     print(df)
+
     def stest_to_json(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
         """Test for saving the dataset to disk. Check for identical saving-loading."""
         _, _, dataset = data
