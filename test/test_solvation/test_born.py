@@ -1,10 +1,13 @@
+"""
+Run tests for calculation of Born radii according to the Onufriev-Bashford-Case
+model. Reference values are obtained from the tblite version.
+"""
 import pytest
 import torch
-from xtbml.exlibs.tbmalt import batch
 
+from xtbml.exlibs.tbmalt import batch
 from xtbml.solvation import born
 from xtbml.solvation.data import vdw_rad_d3
-
 
 from .samples import mb16_43
 
@@ -120,9 +123,9 @@ class TestBorn:
         assert torch.allclose(rads, ref)
 
     @pytest.mark.grad
-    @pytest.mark.parametrize("dtype", [torch.float64])
-    def test_psi_grad(self, dtype: torch.dtype):
-        """Test grad of psi for mb16_43_01."""
+    def test_psi_grad(self):
+        """Test autograd of psi w.r.t to positions for mb16_43_01."""
+        dtype = torch.float64
         sample = mb16_43["01"]
 
         numbers = sample["numbers"]
@@ -134,12 +137,15 @@ class TestBorn:
         def func(positions):
             return born.compute_psi(numbers, positions, rvdw)
 
-        assert torch.autograd.gradcheck(func, positions)
+        # pylint: disable=import-outside-toplevel
+        from torch.autograd.gradcheck import gradcheck
+
+        assert gradcheck(func, positions)
 
     @pytest.mark.grad
-    @pytest.mark.parametrize("dtype", [torch.float64])
-    def test_radii_grad(self, dtype: torch.dtype):
-        """Test grad of psi for mb16_43_01."""
+    def test_radii_grad(self):
+        """Test autograd of born radii w.r.t to positions for mb16_43_01."""
+        dtype = torch.float64
         sample = mb16_43["01"]
 
         numbers = sample["numbers"]
@@ -149,4 +155,7 @@ class TestBorn:
         def func(positions):
             return born.get_born_radii(numbers, positions)
 
-        assert torch.autograd.gradcheck(func, positions)
+        # pylint: disable=import-outside-toplevel
+        from torch.autograd.gradcheck import gradcheck
+
+        assert gradcheck(func, positions)

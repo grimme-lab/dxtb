@@ -6,7 +6,6 @@ Integrator for Born radii based on the Onufriev-Bashford-Case model.
 
 Example
 -------
-
 >>> import torch
 >>> from xtbml.solvation import born
 >>> numbers = torch.tensor([14, 1, 1, 1, 1])
@@ -52,21 +51,40 @@ def get_born_radii(
     obc: Tensor = torch.tensor([1.0, 0.8, 4.85]),
 ) -> Tensor:
     """
-    Calculate Born radii for a set of atoms using the Onufriev-Bashford-Case model published in
-    - A. Onufriev, D. Bashford, D. A. Case, *Proteins: Struct., Funct., Bioinf.*, **2004**, 55, 383–394. DOI: `10.1002/prot.20033 <https://doi.org/10.1002/prot.20033>`__
+    Calculate Born radii for a set of atoms using the Onufriev-Bashford-Case
+    model published in
+    - A. Onufriev, D. Bashford and D. A. Case, *Proteins: Struct., Funct., Bioinf.*,
+    **2004**, 55, 383–394. DOI: `10.1002/prot.20033 <https://doi.org/10.1002/prot.20033>`__
 
     Args:
-        numbers: Atomic numbers of the atoms
-        positions: Cartesian coordinates of the atoms
-        rvdw: Covalent radii of the atoms (default: D3 vdW radii)
-        cutoff: Real-space cutoff for Born radii integration (default: 66.0 Bohr)
-        born_scale: Scaling factor for Born radii (default: 1.0)
-        born_offset: Offset for Born radii (default: 0.0)
-        descreening: Dielectric descreening parameter (default: 0.8)
-        obc: Onufriev-Bashford-Case parameters (default: [1.0, 0.8, 4.85])
+    -----
+    numbers: Tensor, dtype long
+        Atomic numbers of the atoms.
+    positions: Tensor, dtype float
+        Cartesian coordinates of the atoms.
+    rvdw: Tensor, dtype float, optional
+        Covalent radii of the atoms (default: D3 vdW radii).
+    cutoff: Tensor, dtype float, optional
+        Real-space cutoff for Born radii integration (default: 66.0 Bohr).
+    born_scale: float, optional
+        Scaling factor for Born radii (default: 1.0).
+    born_offset: float, optional
+        Offset for Born radii (default: 0.0).
+    descreening: float, optional
+        Dielectric descreening parameter (default: 0.8).
+    obc: Tensor, dtype float, optional
+        Onufriev-Bashford-Case parameters (default: [1.0, 0.8, 4.85]).
 
     Returns:
-        Born radii for the atoms
+    --------
+    Tensor:
+        Born radii for the atoms.
+
+    Raises:
+    -------
+    ValueError:
+        The number of atoms is not equal to the number of positions or the
+        number of radii.
     """
 
     if rvdw is None:
