@@ -58,7 +58,7 @@ def get_born_radii(
     Args:
         numbers: Atomic numbers of the atoms
         positions: Cartesian coordinates of the atoms
-        rvdw: Covalent radii of the atoms (default: VdW radii)
+        rvdw: Covalent radii of the atoms (default: D3 vdW radii)
         cutoff: Real-space cutoff for Born radii integration (default: 66.0 Bohr)
         born_scale: Scaling factor for Born radii (default: 1.0)
         born_offset: Offset for Born radii (default: 0.0)
@@ -139,19 +139,25 @@ def compute_psi(
     # temporary variables
     d_pl = distances + rho.unsqueeze(-1)
     d_mi = distances - rho.unsqueeze(-1)
-    d_pr = torch.where(mask, d_pl * d_mi, zero)
+    d_pr = torch.where(mask, d_pl * d_mi, eps)  # eps avoids zero division in grad
     d_qu = torch.where(mask, d_mi / d_pl, zero)
 
     # contributions from non-overlapping atoms
     rho_dpr = torch.where(mask, rho.unsqueeze(-1) / d_pr, zero)
-    ln_dqu = torch.where(mask, 0.5 * torch.log(d_qu) * r1, zero)
+    ln_dqu = torch.where(
+        mask * (d_qu > 0), 0.5 * torch.log(torch.where(d_qu > 0, d_qu, eps)) * r1, zero
+    )
     non_ovlp = rho_dpr + ln_dqu
 
     # contributions from overlapping atoms
     rvdw1 = torch.where(mask, 1.0 / rvdw.unsqueeze(-2), zero)
     d_pl1 = 1.0 / d_pl
     dpl_rvdw1 = d_pl * rvdw1
-    ln_dpl_rvdw1 = torch.where(mask, torch.log(dpl_rvdw1), zero)
+    ln_dpl_rvdw1 = torch.where(
+        mask * (dpl_rvdw1 > 0),
+        torch.log(torch.where(dpl_rvdw1 > 0, dpl_rvdw1, eps)),
+        zero,
+    )
     ovlp = (
         rvdw1
         - d_pl1
