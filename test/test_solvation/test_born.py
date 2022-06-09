@@ -18,7 +18,7 @@ class TestBorn:
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     def test_psi_mb1643_01(self, dtype: torch.dtype):
-        """Test Born psi for mb16_43_01."""
+        """Test psi for mb16_43_01."""
         sample = mb16_43["01"]
 
         numbers = sample["numbers"]
@@ -118,3 +118,35 @@ class TestBorn:
 
         rads = born.get_born_radii(numbers, positions)
         assert torch.allclose(rads, ref)
+
+    @pytest.mark.grad
+    @pytest.mark.parametrize("dtype", [torch.float64])
+    def test_psi_grad(self, dtype: torch.dtype):
+        """Test grad of psi for mb16_43_01."""
+        sample = mb16_43["01"]
+
+        numbers = sample["numbers"]
+        positions = sample["positions"].type(dtype)
+        rvdw = vdw_rad_d3[numbers].type(dtype)
+
+        positions.requires_grad_(True)
+
+        def func(positions):
+            return born.compute_psi(numbers, positions, rvdw)
+
+        assert torch.autograd.gradcheck(func, positions)
+
+    @pytest.mark.grad
+    @pytest.mark.parametrize("dtype", [torch.float64])
+    def test_radii_grad(self, dtype: torch.dtype):
+        """Test grad of psi for mb16_43_01."""
+        sample = mb16_43["01"]
+
+        numbers = sample["numbers"]
+        positions = sample["positions"].type(dtype)
+        positions.requires_grad_(True)
+
+        def func(positions):
+            return born.get_born_radii(numbers, positions)
+
+        assert torch.autograd.gradcheck(func, positions)
