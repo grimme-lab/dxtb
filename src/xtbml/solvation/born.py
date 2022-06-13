@@ -33,6 +33,7 @@ Example
 tensor([3.6647, 2.4621, 2.4621, 2.4621, 2.4621])
 """
 
+from __future__ import annotations
 import torch
 from typing import Optional
 
@@ -47,7 +48,7 @@ def get_born_radii(
     cutoff: Tensor = torch.tensor(66.0),
     born_scale: float = 1.0,
     born_offset: float = 0.0,
-    descreening: float = 0.8,
+    descreening: float | Tensor = 0.8,
     obc: Tensor = torch.tensor([1.0, 0.8, 4.85]),
 ) -> Tensor:
     """
@@ -70,7 +71,7 @@ def get_born_radii(
         Scaling factor for Born radii (default: 1.0).
     born_offset: float, optional
         Offset for Born radii (default: 0.0).
-    descreening: float, optional
+    descreening: float | Tensor, optional
         Dielectric descreening parameter (default: 0.8).
     obc: Tensor, dtype float, optional
         Onufriev-Bashford-Case parameters (default: [1.0, 0.8, 4.85]).
@@ -91,10 +92,17 @@ def get_born_radii(
         rvdw = vdw_rad_d3[numbers].type(positions.dtype)
     if numbers.shape != rvdw.shape:
         raise ValueError(
-            "Shape of covalent radii is not consistent with atomic numbers"
+            f"Shape of covalent radii ({rvdw.shape}) is not consistent with atomic numbers ({numbers.shape})."
         )
     if numbers.shape != positions.shape[:-1]:
-        raise ValueError("Shape of positions is not consistent with atomic numbers")
+        raise ValueError(
+            f"Shape of positions ({positions.shape[:-1]}) is not consistent with atomic numbers ({numbers.shape})."
+        )
+    if isinstance(descreening, Tensor) is True:
+        if numbers.shape != descreening.shape:
+            raise ValueError(
+                f"Shape of descreening values ({descreening.shape}) is not consistent with atomic numbers ({numbers.shape})."
+            )
 
     # mask for padding
     mask = numbers != 0
@@ -124,10 +132,29 @@ def compute_psi(
     positions: Tensor,
     rvdw: Tensor,
     cutoff: Tensor = torch.tensor(66.0),
-    descreening: float = 0.8,
+    descreening: float | Tensor = 0.8,
 ) -> Tensor:
+    """Compute dielectric descreening integral I.
 
-    # TODO: implement individual descreening
+    Parameters
+    ----------
+    numbers : Tensor
+        Atomic numbers of the atoms.
+    positions : Tensor
+        Cartesian coordinates of the atoms.
+    rvdw : Tensor
+        Covalent radii of the atoms.
+    cutoff : Tensor, optional
+        Real-space cutoff for Born radii integration (default: 66.0 Bohr).
+    descreening : float | Tensor, optional
+        Dielectric descreening parameter (default: 0.8).
+
+    Returns
+    -------
+    Tensor
+        Dielectric descreening integral I.
+    """
+
     rho = rvdw * descreening
 
     # mask for padding

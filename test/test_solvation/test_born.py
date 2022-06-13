@@ -61,8 +61,9 @@ class TestBorn:
 
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
+        descreening = torch.full(numbers.shape, 0.8, dtype=dtype)
 
-        rads = born.get_born_radii(numbers, positions)
+        rads = born.get_born_radii(numbers, positions, descreening=descreening)
         assert torch.allclose(rads, sample["born"].type(dtype))
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
@@ -111,6 +112,12 @@ class TestBorn:
                 sample2["positions"].type(dtype),
             )
         )
+        descreening = batch.pack(
+            (
+                torch.full(sample1["numbers"].shape, 0.8, dtype=dtype),
+                torch.full(sample2["numbers"].shape, 0.8, dtype=dtype),
+            )
+        )
 
         ref = batch.pack(
             (
@@ -119,7 +126,7 @@ class TestBorn:
             ),
         )
 
-        rads = born.get_born_radii(numbers, positions)
+        rads = born.get_born_radii(numbers, positions, descreening=descreening)
         assert torch.allclose(rads, ref)
 
     @pytest.mark.grad
