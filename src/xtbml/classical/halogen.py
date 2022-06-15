@@ -29,9 +29,8 @@ def halogen_bond_correction(
     xbond = xbond[numbers]
 
     # add epsilon to avoid zero division in some terms
-    eps = torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype)
     zero = torch.tensor(0.0, dtype=positions.dtype)
-    huge = torch.tensor(1000.0, dtype=positions.dtype)
+    huge = torch.tensor(torch.finfo(positions.dtype).max, dtype=positions.dtype)
 
     # masks
     real = numbers != 0
@@ -49,19 +48,13 @@ def halogen_bond_correction(
     )
 
     # distance halogen-acceptor
-    d_ha = torch.where(halogen_mask, distances[acceptor_mask], zero)
+    # TODO: May not work for multiple acceptors
+    d_ha = torch.where(halogen_mask, distances[acceptor_mask].squeeze(-2), zero)
 
     # get closest neighbor of halogen (exluding acceptor)
     min_vals, min_idxs = torch.min(
         torch.where((~acceptor_mask).unsqueeze(-2), distances, huge), dim=-2
     )
-    # print("mins", min_vals)
-    # print("mins", min_idxs)
-    # print("distances_noa")
-    # print(torch.where((~acceptor_mask).unsqueeze(-2), distances, huge))
-    # print("\ndistances")
-    # print(distances)
-    # print("")
 
     # distance halogen-neighbor
     d_hn = torch.where(
@@ -73,12 +66,12 @@ def halogen_bond_correction(
     # distance acceptor-neighbor
     # TODO: batched indexing does not work for single sample
     if len(positions.shape) == 3:
-        d_an = batched_indexing(distances, min_idxs)
+        d_an_t = batched_indexing(distances, min_idxs)
     else:
-        d_an = distances[min_idxs]
+        d_an_t = distances[min_idxs]
 
-    d_an = torch.transpose(d_an, -1, -2)[acceptor_mask]
-    d_an = torch.where(halogen_mask, d_an, zero)
+    d_an = torch.transpose(d_an_t, -1, -2)
+    d_an = torch.where(halogen_mask, d_an[acceptor_mask].squeeze(-2), zero)
 
     # Lennard-Jones like potential
     r = torch.where(mask, rcov / distances, zero)
@@ -92,32 +85,27 @@ def halogen_bond_correction(
     )
     fdamp = torch.pow(0.5 - 0.25 * cosa, 6.0)
 
-    return (fdamp * xbond * term[acceptor_mask]).squeeze(-2)
+    return fdamp * xbond * term[acceptor_mask]
 
 
 def batched_indexing(inp: Tensor, idx: Tensor) -> Tensor:
+    """Batched indexing.
+
+    Parameters
+    ----------
+    inp : Tensor
+        Input tensor.
+    idx : Tensor
+        Index tensor.
+
+    Returns
+    -------
+    Tensor
+        Output tensor.
+    """
+
     dummy = idx.unsqueeze(-1).expand(idx.size(0), idx.size(-1), inp.size(-1))
     return torch.gather(inp, -2, dummy)
-
-
-class HalogenBond(EnergyContribution):
-
-    n_elements: int = 87
-    """
-    Number of elements (86, PSE up to Rn) plus dummy to allow indexing by atomic numbers.
-    """
-
-    def init_param(self, par: Param):
-        print(par.halogen)
-        if par.halogen is None:
-            raise ValueError("No halogen bond correction parameters provided.")
-
-        # self.rscale = par.halogen.classical.rscale
-        # self.damp = par.halogen.classical.damping
-        # self.par_element = par.element
-
-    def get_engrad(self, calc_gradient=False):
-        pass
 
 
 def get_xbond(par_element: dict[str, Element]) -> Tensor:
