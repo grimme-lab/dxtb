@@ -1,34 +1,60 @@
-import datetime
-import imp
-from typing import Any, Dict, Tuple
+from pathlib import Path
+from typing import Any, Dict, Tuple, List, Union
 import torch
-import torch.nn as nn
-import pandas as pd
-
 from xtbml.data.samples import Sample
 
-from ..ml.util import load_model_from_cfg
-from ..data.dataset import get_gmtkn_dataset
 from ..typing import Tensor
 
 from ..data.dataset import ReactionDataset
 
+# NOTE: THIS IS NOT PRODUCTION READY
+
 
 class Normalisation:
-    """Module containing normalisation functionality."""
+    def __init__(
+        self,
+        path: Union[None, str, Path] = None,  # TODO:
+        skip_reaction_params: List[str] = ["eref", "egfn1"],
+        skip_sample_params: List[str] = ["xyz", "egfn1"],
+    ) -> None:
+        """Module containing normalisation functionality.
+
+        Parameters
+        ----------
+        path : Union[None, str, Path], optional
+            Path for loading or saving normalisation, by default None
+        skip_reaction_params : List[str], optional
+            Reaction attributes to skip for calculation and application of normalisation, by default ["eref", "egfn1"]
+        skip_sample_params : List[str], optional
+            Sample attributes to skip for calculation and application of normalisation, by default ["xyz", "egfn1"]
+        """
+
+        # TODO: add functionality to read in normalisation factors from disk
+        # TODO: add functionality to store normalisation factors to disk
+        self.path = path
+
+        self.skip_r = skip_reaction_params
+        self.skip_s = skip_sample_params
 
     def normalise(
+        self,
         dataset: ReactionDataset,
     ) -> Tuple[Dict[str, Dict[str, Tensor]]]:
         # Normalise dataset in place.
         # use basic standard deviation
         # NOTE: optionally returns the normalisation factors
 
+        # NOTE: normalisation is conducted over all reactions - and not samples!
+
         loader = dataset.get_dataloader({"batch_size": len(dataset), "num_workers": 1})
         data = next(iter(loader))
 
+        # TODO
+        dataset.prune()
+
         # batch all samples in reaction to one single sample
         for j, sample in enumerate(data[0]):
+            print(j)
             if j == 0:
                 batched_sample = sample.to_dict()
                 batched_sample["uid"] = f"BATCH {j}"
@@ -37,6 +63,8 @@ class Normalisation:
                     if isinstance(v, Tensor):
                         batched_sample[k] = v.unsqueeze(0)
                 continue
+            print(batched_sample["egfn1"])
+            print(batched_sample["egfn1"].shape)
 
             for k, v in sample.to_dict().items():
                 if not isinstance(v, Tensor):
@@ -48,11 +76,54 @@ class Normalisation:
 
         s = Sample(**batched_sample)
         print(s.egfn1.shape)
+        print(len(dataset.samples))
+        print(len(dataset))
         # TODO: add test
 
+        # NOTE: merge all _flattened_ features together
+        for j, sample in enumerate(dataset.samples):
+            # batch together
+            if j == 0:
+                batched_sample = sample.to_dict()
+                batched_sample["uid"] = f"BATCH {j}"
+
+                for k, v in batched_sample.items():
+                    if isinstance(v, Tensor):
+                        if len(v.shape) == 0:
+                            batched_sample[k] = v.unsqueeze(0)
+                        else:
+                            batched_sample[k] = v.flatten()
+
+                continue
+
+            for k, v in sample.to_dict().items():
+                if not isinstance(v, Tensor):
+                    continue
+
+                print("batching", k)
+
+                if len(v.shape) == 0:
+                    v = v.unsqueeze(0)
+                v = v.flatten()
+                print(v.shape)
+                # add to single sample
+                batched_sample[k] = torch.concat((batched_sample[k], v), dim=0)
+
+        # print(batched_sample["egfn1"])
+        print(batched_sample["egfn1"].shape)
+        print(batched_sample["h0"].shape)
+        print(dataset.samples)
+        print(len(dataset.samples))
+
+        # TODO: normalisation should be conducted sample wise
+        #       esp. to conserve permutation invariance
+        # assert s.egfn1.shape == len(dataset)
+
+        # TODO: for correct normalisation, no padding should be applied
+
         # normalisation factors for reactions and samples
-        r_norm = Normalisation.calc_norm(data[1])
-        s_norm = Normalisation.calc_norm(s, skip=["xyz"])
+        r_norm = Normalisation.calc_norm(data[1], self.skip_r)
+        s_norm = Normalisation.calc_norm(s, self.skip_s)
         print(r_norm)
         print(s_norm)
 
@@ -78,24 +149,24 @@ class Normalisation:
         print("\n CHECKING real dataset now")
 
         print("BEFORE")
-        a, b = 9, 1  # TODO: for 4, 1 this does not look right for samples
+        a, b = 1, 1  # TODO: for 4, 1 this does not look right for samples
         print(dataset[a][1].egfn1)
         print(dataset[a][0][b].egfn1)
 
         for i in range(len(dataset.reactions)):
             r = dataset.reactions[i]
-            Normalisation.apply_norm(r, r_norm)
+            Normalisation.apply_norm(r, r_norm, self.skip_r)
 
         for i in range(len(dataset.samples)):
             s = dataset.samples[i]
-            Normalisation.apply_norm(s, s_norm, skip=["xyz"])
+            Normalisation.apply_norm(s, s_norm, self.skip_s)
 
         print("AFter")
         print(dataset[a][1].egfn1)
         print(dataset[a][0][b].egfn1)
         # TODO: add test (calculating by hand and with method)
 
-        print(s_norm["egfn1"])
+        # print(s_norm["egfn1"])
         # TODO: is this correct?
         #   because the dataset is not iterable
         #   --> replace for i, s in enumerate(data[0]): to for i in enumerate(data[0]): dataset[i]
@@ -108,12 +179,12 @@ class Normalisation:
         #       or add to a transforms class
 
         # TODO: as this takes a while, save to disk
+        #       ideally have a functionality to write to disk
 
         print("r_norm")
         print(r_norm)
         print("s_norm")
         print(s_norm)
-        print("save those to disk!")
 
         print("include normalisation")
         return r_norm, s_norm
