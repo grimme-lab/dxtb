@@ -2,8 +2,10 @@
 Type annotations for this project.
 """
 
-from typing import Any, Callable, Dict, TypedDict
+from typing import Any, Callable, Dict, TypedDict, List, Optional, Tuple, Union
 from torch import Tensor
+
+Sliceable = Union[List[Tensor], Tuple[Tensor]]
 
 CountingFunction = Callable[[Tensor, Tensor, Any], Tensor]
 

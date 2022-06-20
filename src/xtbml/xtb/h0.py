@@ -1,6 +1,6 @@
 from math import sqrt
 import torch
-from typing import List, Dict, Tuple, Union
+from typing import List, Dict, Tuple, Union, Optional
 
 from ..adjlist import AdjacencyList
 from ..basis.type import Basis
@@ -8,8 +8,9 @@ from ..constants import EV2AU
 from ..constants import FLOAT32 as DTYPE
 from ..data.atomicrad import get_atomic_rad
 from ..exlibs.tbmalt import Geometry
-from ..integral.overlap import msao, overlap_cgto
+from ..integral import mmd
 from ..param import Param, Element
+from ..typing import Tensor
 
 
 _aqm2lsh = {
@@ -136,7 +137,7 @@ class Hamiltonian:
     def get_selfenergy(
         self,
         basis: Basis,
-        cn: Union[torch.Tensor, None] = None,
+        cn: Optional[Tensor] = None,
         qat=None,
         dsedcn=None,
         dsedq=None,
@@ -194,34 +195,35 @@ class Hamiltonian:
         return self_energy  # , dsedcn, dsedq
 
     def build(
-        self, basis: Basis, adjlist: AdjacencyList, cn: Union[torch.Tensor, None]
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        self, basis: Basis, adjlist: AdjacencyList, cn: Optional[Tensor]
+    ) -> Tuple[Tensor, Tensor]:
         self_energy = self.get_selfenergy(basis, cn)
 
         # init matrices
         h0 = torch.zeros(basis.nao_tot, basis.nao_tot, dtype=DTYPE)
-        overlap_int = torch.zeros(basis.nao_tot, basis.nao_tot, dtype=DTYPE)
+        overlap = torch.zeros(basis.nao_tot, basis.nao_tot, dtype=DTYPE)
 
         # fill diagonal
+        torch.diagonal(overlap, dim1=-2, dim2=-1).fill_(1.0)
         h0 = self.build_diagonal_blocks(h0, basis, self_energy)
 
         # fill off-diagonal
-        h0, overlap_int = self.build_diatomic_blocks(
-            h0, overlap_int, basis, adjlist, self_energy
+        h0, overlap = self.build_diatomic_blocks(
+            self.mol, h0, overlap, basis, adjlist, self_energy
         )
 
-        return h0, overlap_int
+        return h0, overlap
 
     def build_diagonal_blocks(
-        self, h0: torch.Tensor, basis: Basis, self_energy: torch.Tensor
-    ) -> torch.Tensor:
+        self, h0: Tensor, basis: Basis, self_energy: Tensor
+    ) -> Tensor:
         for i, element in enumerate(self.mol.chemical_symbols):
             iss = basis.ish_at[i].item()
             for ish in range(basis.shells[element]):
                 ii = basis.iao_sh[iss + ish].item()
                 hii = self_energy[iss + ish]
 
-                i_nao = msao[basis.cgto[element][ish].ang]
+                i_nao = 2*basis.cgto[element][ish].ang + 1
                 for iao in range(i_nao):
                     h0[ii + iao, ii + iao] = hii
 
@@ -229,13 +231,18 @@ class Hamiltonian:
 
     def build_diatomic_blocks(
         self,
-        h0: torch.Tensor,
-        overlap_int: torch.Tensor,
+        mol: Geometry,
+        h0: Tensor,
+        overlap: Tensor,
         basis: Basis,
         adjlist: AdjacencyList,
-        self_energy: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        for i, el_i in enumerate(self.mol.chemical_symbols):
+        self_energy: Tensor,
+    ) -> Tuple[Tensor, Tensor]:
+        """
+        Construction of off-diagonal blocks of the Hamiltonian and overlap integrals.
+        """
+
+        for i, el_i in enumerate(mol.chemical_symbols):
             isa = basis.ish_at[i].item()
             inl = adjlist.inl[i].item()
 
@@ -244,12 +251,11 @@ class Hamiltonian:
                 j = adjlist.nlat[img + inl].item()
                 itr = adjlist.nltr[img + inl].item()
                 jsa = basis.ish_at[j].item()
-                el_j = self.mol.chemical_symbols[j]
+                el_j = mol.chemical_symbols[j]
 
-                vec = torch.sub(self.mol.positions[i, :], self.mol.positions[j, :])
-                vec = torch.sub(vec, adjlist.trans[itr, :])
-                r2 = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]
-                rr = sqrt(sqrt(r2) / (self.rad[el_i] + self.rad[el_j]))
+                vec = mol.positions[i, :] - mol.positions[j, :] - adjlist.trans[itr, :]
+                r2 = torch.sum(vec**2)
+                rr = torch.sqrt(torch.sqrt(r2) / (self.rad[el_i] + self.rad[el_j]))
 
                 for ish in range(basis.shells[el_i]):
                     ii = basis.iao_sh[isa + ish].item()
@@ -259,8 +265,12 @@ class Hamiltonian:
                         cgtoi = basis.cgto[el_i][ish]
                         cgtoj = basis.cgto[el_j][jsh]
 
-                        stmp = overlap_cgto(cgtoj, cgtoi, r2, vec, basis.intcut)
-                        stmp = torch.flatten(stmp)
+                        stmp = mmd.overlap(
+                            (cgtoi.ang, cgtoj.ang),
+                            (cgtoi.alpha[:cgtoi.nprim], cgtoj.alpha[:cgtoj.nprim]),
+                            (cgtoi.coeff[:cgtoi.nprim], cgtoj.coeff[:cgtoj.nprim]),
+                            -vec,
+                        )
 
                         shpoly = (1.0 + self.shpoly[el_i][ish] * rr) * (
                             1.0 + self.shpoly[el_j][jsh] * rr
@@ -274,20 +284,20 @@ class Hamiltonian:
                             * shpoly
                         )
 
-                        i_nao = msao[cgtoi.ang]
-                        j_nao = msao[cgtoj.ang]
+                        i_nao = 2*cgtoi.ang + 1
+                        j_nao = 2*cgtoj.ang + 1
                         for iao in range(i_nao):
                             for jao in range(j_nao):
                                 ij = jao + j_nao * iao
 
-                                overlap_int[jj + jao, ii + iao] += stmp[ij] * hij
-                                h0[jj + jao, ii + iao] += stmp[ij] * hij
+                                overlap[jj + jao, ii + iao].add_(stmp[iao, jao])
+                                h0[jj + jao, ii + iao].add_(stmp[iao, jao] * hij)
 
                                 if i != j:
-                                    overlap_int[ii + iao, jj + jao] += stmp[ij]
-                                    h0[ii + iao, jj + jao] += stmp[ij] * hij
+                                    overlap[ii + iao, jj + jao].add_(stmp[iao, jao])
+                                    h0[ii + iao, jj + jao].add_(stmp[iao, jao] * hij)
 
-        return h0, overlap_int
+        return h0, overlap
 
 
 def _get_valence_shells(record: Element) -> List[bool]:
