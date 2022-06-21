@@ -606,9 +606,7 @@ def get_gmtkn_dataset(path: Path) -> ReactionDataset:
     """
 
     dataset = get_dataset(
-        # path_reactions=Path(path, "reactions.json"),
-        # path_samples=Path(path, "samples.json"),
-        path_reactions=Path(path, "reactions.json"),  # ACONF
+        path_reactions=Path(path, "reactions.json"),
         path_samples=Path(path, "samples.json"),
     )
 
