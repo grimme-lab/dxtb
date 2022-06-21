@@ -4,8 +4,8 @@ from pathlib import Path
 import torch
 from typing import Dict, List, Optional, Union, overload
 
-from xtbml.constants import FLOAT32
-from xtbml.typing import Tensor
+from ..constants import FLOAT32
+from ..typing import Tensor
 
 
 class Sample:
@@ -37,6 +37,8 @@ class Sample:
     """Overlap matrix"""
     h0: Tensor
     """Hamiltonian matrix"""
+    adj: Tensor
+    """Adjacency matrix (optional)"""
 
     __slots__ = [
         "uid",
@@ -50,8 +52,9 @@ class Sample:
         "erep",
         "qat",
         "cn",
-        "h0",
         "ovlp",
+        "h0",
+        "adj",
         "__device",
         "__dtype",
     ]
@@ -74,6 +77,7 @@ class Sample:
         cn: Tensor,
         h0: Tensor,
         ovlp: Tensor,
+        adj: Tensor = Tensor([]),
     ) -> None:
         self.uid = uid
         self.xyz = xyz
@@ -88,6 +92,7 @@ class Sample:
         self.cn = cn
         self.h0 = h0
         self.ovlp = ovlp
+        self.adj = adj
 
         self.__device = xyz.device
         self.__dtype = xyz.dtype
@@ -108,6 +113,7 @@ class Sample:
                     self.cn,
                     self.h0,
                     self.ovlp,
+                    self.adj,
                 )
             ]
         ):
@@ -126,6 +132,7 @@ class Sample:
                     self.cn,
                     self.h0,
                     self.ovlp,
+                    self.adj,
                 )
             ]
         ):
@@ -180,6 +187,7 @@ class Sample:
             self.cn.to(device=device),
             self.h0.to(device=device),
             self.ovlp.to(device=device),
+            self.adj.to(device=device),
         )
 
     def type(self, dtype: torch.dtype) -> "Sample":
@@ -216,6 +224,7 @@ class Sample:
             self.cn.type(dtype),
             self.h0.type(dtype),
             self.ovlp.type(dtype),
+            self.adj.type(dtype),
         )
 
     def __repr__(self) -> str:
@@ -241,6 +250,7 @@ class Sample:
                 torch.all(torch.isclose(self.cn, other.cn)).item(),
                 torch.all(torch.isclose(self.h0, other.h0)).item(),
                 torch.all(torch.isclose(self.ovlp, other.ovlp)).item(),
+                torch.all(torch.isclose(self.adj, other.adj)).item(),
             ]
         )
 
