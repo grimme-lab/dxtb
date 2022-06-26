@@ -276,10 +276,11 @@ class ReactionDataset(BaseModel, Dataset):
                     egfn2=torch.zeros_like(ref.egfn2),
                     edisp=torch.zeros_like(ref.edisp),
                     erep=torch.zeros_like(ref.erep),
+                    qat=torch.zeros_like(ref.qat),
+                    cn=torch.zeros_like(ref.cn),
                     ovlp=torch.zeros_like(ref.ovlp),
                     h0=torch.zeros_like(ref.h0),
-                    cn=torch.zeros_like(ref.cn),
-                    qat=torch.zeros_like(ref.qat),
+                    adj=torch.zeros_like(ref.adj),
                 )
 
                 # pad each batch
@@ -720,6 +721,7 @@ def create_subset(dataset: ReactionDataset, keys: Union[str, List[str]]):
     ]
     idxs = [i for i in range(len(dataset)) if i not in keep]
 
+    # TODO: better use torch.utils.data.Subset
     for i in reversed(idxs):
         dataset.rm_reaction(idx=i)
     return
