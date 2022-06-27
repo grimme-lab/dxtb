@@ -15,13 +15,14 @@ while a deserialized model in `tblite`_ is already verified at this stage.
 from typing import Dict, Optional
 from pydantic import BaseModel
 
-
 from .dispersion import Dispersion
+from .charge import Charge
 from .element import Element
 from .halogen import Halogen
 from .hamiltonian import Hamiltonian
 from .meta import Meta
 from .repulsion import Repulsion
+from .thirdorder import ThirdOrder
 
 
 class Param(BaseModel):
@@ -36,14 +37,14 @@ class Param(BaseModel):
     hamiltonian: Hamiltonian
     """Definition of the Hamiltonian, always required"""
     dispersion: Optional[Dispersion]
-    """Definition of the dispersion correction (not implemented)"""
+    """Definition of the dispersion correction"""
     repulsion: Optional[Repulsion]
     """Definition of the repulsion contribution"""
-    charge: Optional[dict] = None
-    """Definition of the isotropic second-order charge interactions (not implemented)"""
+    charge: Optional[Charge]
+    """Definition of the isotropic second-order charge interactions"""
     multipole: Optional[dict] = None
     """Definition of the anisotropic second-order multipolar interactions (not implemented)"""
     halogen: Optional[Halogen] = None
     """Definition of the halogen bonding correction (not implemented)"""
-    thirdorder: Optional[dict] = None
-    """Definition of the isotropic third-order charge interactions (not implemented)"""
+    thirdorder: Optional[ThirdOrder]
+    """Definition of the isotropic third-order charge interactions"""

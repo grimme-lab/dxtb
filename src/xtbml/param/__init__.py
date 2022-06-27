@@ -11,5 +11,11 @@ included in the method.
 """
 
 from .base import Param
+from .charge import Charge
+from .dispersion import Dispersion
 from .element import Element
-from .repulsion import EffectiveRepulsion
+from .halogen import Halogen
+from .hamiltonian import Hamiltonian
+from .meta import Meta
+from .repulsion import EffectiveRepulsion, Repulsion
+from .thirdorder import ThirdOrder
