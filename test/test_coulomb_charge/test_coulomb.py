@@ -4,8 +4,8 @@ import pytest
 import torch
 from typing import Generator, Tuple
 
-from xtbml.coulomb.average import AveragingFunction
-from xtbml.coulomb.charge import get_second_order, get_hubbard_params
+import xtbml.coulomb.secondorder as es2
+from xtbml.coulomb import AveragingFunction
 from xtbml.exlibs.tbmalt import batch
 from xtbml.param.gfn1 import GFN1_XTB
 from xtbml.typing import Tensor
@@ -19,7 +19,7 @@ def param() -> Generator[Tuple[Tensor, AveragingFunction, Tensor], None, None]:
         raise ValueError("No charge parameters provided.")
 
     gexp = torch.tensor(GFN1_XTB.charge.effective.gexp)
-    hubbard = get_hubbard_params(GFN1_XTB.element)
+    hubbard = es2.get_hubbard_params(GFN1_XTB.element)
 
     if GFN1_XTB.charge.effective.average == "harmonic":
         from xtbml.coulomb.average import harmonic_average as average
@@ -57,7 +57,9 @@ class TestCoulomb:
         qat = sample["qat"].type(dtype)
         ref = sample["gfn1"].type(dtype)
 
-        e = get_second_order(numbers, positions, qat, hubbard, average, gexp)
+        e = es2.get_energy(numbers, positions, qat, hubbard, average, gexp)
+        torch.set_printoptions(precision=7)
+        print(torch.sum(e, dim=-1))
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
@@ -98,7 +100,7 @@ class TestCoulomb:
             ],
         )
 
-        e = get_second_order(numbers, positions, qat, hubbard, average, gexp)
+        e = es2.get_energy(numbers, positions, qat, hubbard, average, gexp)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.grad
@@ -117,7 +119,7 @@ class TestCoulomb:
         positions.requires_grad_(True)
 
         def func(positions):
-            return get_second_order(numbers, positions, qat, hubbard, average, gexp)
+            return es2.get_energy(numbers, positions, qat, hubbard, average, gexp)
 
         # pylint: disable=import-outside-toplevel
         from torch.autograd.gradcheck import gradcheck
@@ -139,7 +141,7 @@ class TestCoulomb:
         hubbard.requires_grad_(True)
 
         def func(gexp, hubbard):
-            return get_second_order(numbers, positions, qat, hubbard, average, gexp)
+            return es2.get_energy(numbers, positions, qat, hubbard, average, gexp)
 
         # pylint: disable=import-outside-toplevel
         from torch.autograd.gradcheck import gradcheck

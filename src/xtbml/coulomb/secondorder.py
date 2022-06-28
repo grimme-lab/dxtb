@@ -1,5 +1,42 @@
-from __future__ import annotations
+"""
+Isotropic second-order electrostatic energy
+===========================================
 
+This module implements the second-order electrostatic energy for GFN1-xTB.
+
+Example
+-------
+>>> import torch
+>>> import xtbml.coulomb.secondorder as es2
+>>> from xtbml.coulomb.average import harmonic_average as average
+>>> from xtbml.param.gfn1 import GFN1_XTB
+>>> numbers = torch.tensor([14, 1, 1, 1, 1])
+>>> positions = torch.tensor([
+...     [0.00000000000000, -0.00000000000000, 0.00000000000000],
+...     [1.61768389755830, 1.61768389755830, -1.61768389755830],
+...     [-1.61768389755830, -1.61768389755830, -1.61768389755830],
+...     [1.61768389755830, -1.61768389755830, 1.61768389755830],
+...     [-1.61768389755830, 1.61768389755830, 1.61768389755830],
+... ])
+>>> qat = torch.tensor([
+...     -8.41282505804719e-2,
+...     2.10320626451180e-2,
+...     2.10320626451178e-2,
+...     2.10320626451179e-2,
+...     2.10320626451179e-2,
+... ])
+>>> # get parametrization
+>>> gexp = torch.tensor(GFN1_XTB.charge.effective.gexp)
+>>> hubbard = es2.get_hubbard_params(GFN1_XTB.element)
+>>> # calculate energy
+>>> e = es2.get_energy(numbers, positions, qat, hubbard, average, gexp)
+>>> torch.set_printoptions(precision=7)
+>>> print(torch.sum(e, dim=-1))
+tensor(0.0005078)
+"""
+
+
+from __future__ import annotations
 import torch
 
 from ..param import Element
@@ -29,7 +66,7 @@ def get_hubbard_params(par_element: dict[str, Element]) -> Tensor:
     return torch.tensor(g)
 
 
-def get_second_order(
+def get_energy(
     numbers: Tensor,
     positions: Tensor,
     qat: Tensor,
