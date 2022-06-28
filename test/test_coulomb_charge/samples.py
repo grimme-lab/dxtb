@@ -12,19 +12,19 @@ class Record(Molecule):
     qat: Tensor
     """Atomic partial charges for this structure."""
 
-    gfn1: Tensor
-    """Reference values for GFN1-xTB"""
+    es2: Tensor
+    """Reference values for ES2 (GFN1-xTB)"""
 
-    gfn2: Tensor
-    """Reference values for GFN1-xTB"""
+    es3: Tensor
+    """Reference values for ES3 (GFN1-xTB)"""
 
 
 Samples = Dict[str, Record]
 
 mb16_43: Samples = {
     "01": {
-        "gfn1": torch.tensor(0.10952019883948200),
-        "gfn2": torch.tensor(0.0),
+        "es2": torch.tensor(0.10952019883948200),
+        "es3": torch.tensor(0.0212785489857197),
         "numbers": symbol2number(
             [
                 "Na",
@@ -119,8 +119,8 @@ mb16_43: Samples = {
         ),
     },
     "02": {
-        "gfn1": torch.tensor(0.16666303125798329 ),
-        "gfn2": torch.tensor(0.0),
+        "es2": torch.tensor(0.16666303125798329),
+        "es3": torch.tensor(0.0155668621882796),
         "numbers": symbol2number(
             [
                 "H",
@@ -215,8 +215,8 @@ mb16_43: Samples = {
         ),
     },
     "SiH4": {
-        "gfn1": torch.tensor(5.0778974565885598e-004),
-        "gfn2": torch.tensor(0.0),
+        "es2": torch.tensor(5.0778974565885598e-004),
+        "es3": torch.tensor(-2.9771152185276151e-005),
         "numbers": symbol2number(["Si", "H", "H", "H", "H"]),
         "positions": torch.tensor(
             [

@@ -14,8 +14,10 @@ from .base import Param
 from .charge import Charge
 from .dispersion import Dispersion
 from .element import Element
+from .gfn1 import GFN1_XTB
 from .halogen import Halogen
 from .hamiltonian import Hamiltonian
 from .meta import Meta
 from .repulsion import EffectiveRepulsion, Repulsion
+from .util import get_element_param
 from .thirdorder import ThirdOrder

@@ -1,6 +1,6 @@
 """
-Isotropic second-order electrostatic energy
-===========================================
+Isotropic second-order electrostatic energy (ES2)
+=================================================
 
 This module implements the second-order electrostatic energy for GFN1-xTB.
 
@@ -9,7 +9,7 @@ Example
 >>> import torch
 >>> import xtbml.coulomb.secondorder as es2
 >>> from xtbml.coulomb.average import harmonic_average as average
->>> from xtbml.param.gfn1 import GFN1_XTB
+>>> from xtbml.param import GFN1_XTB, get_element_param
 >>> numbers = torch.tensor([14, 1, 1, 1, 1])
 >>> positions = torch.tensor([
 ...     [0.00000000000000, -0.00000000000000, 0.00000000000000],
@@ -27,7 +27,7 @@ Example
 ... ])
 >>> # get parametrization
 >>> gexp = torch.tensor(GFN1_XTB.charge.effective.gexp)
->>> hubbard = es2.get_hubbard_params(GFN1_XTB.element)
+>>> hubbard = get_element_param(GFN1_XTB.element, "gam")
 >>> # calculate energy
 >>> e = es2.get_energy(numbers, positions, qat, hubbard, average, gexp)
 >>> torch.set_printoptions(precision=7)
@@ -39,31 +39,8 @@ tensor(0.0005078)
 from __future__ import annotations
 import torch
 
-from ..param import Element
-from ..typing import Tensor
 from .average import AveragingFunction, harmonic_average
-
-
-def get_hubbard_params(par_element: dict[str, Element]) -> Tensor:
-    """Obtain hubbard parameters from parametrization of elements.
-
-    Parameters
-    ----------
-    par : dict[str, Element]
-        Parametrization of elements.
-    Returns
-    -------
-    Tensor
-        Hubbard parameters of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
-    """
-
-    # dummy for indexing with atomic numbers
-    g = [0.0]
-
-    for item in par_element.values():
-        g.append(item.gam)
-
-    return torch.tensor(g)
+from ..typing import Tensor
 
 
 def get_energy(

@@ -1,4 +1,4 @@
-"""Run tests for energy contribution from Coulomb interaction."""
+"""Run tests for energy contribution from isotropic second-order electrostatic energy (ES2)."""
 
 import pytest
 import torch
@@ -7,7 +7,7 @@ from typing import Generator, Tuple
 import xtbml.coulomb.secondorder as es2
 from xtbml.coulomb import AveragingFunction
 from xtbml.exlibs.tbmalt import batch
-from xtbml.param.gfn1 import GFN1_XTB
+from xtbml.param import GFN1_XTB, get_element_param
 from xtbml.typing import Tensor
 
 from .samples import mb16_43
@@ -19,7 +19,7 @@ def param() -> Generator[Tuple[Tensor, AveragingFunction, Tensor], None, None]:
         raise ValueError("No charge parameters provided.")
 
     gexp = torch.tensor(GFN1_XTB.charge.effective.gexp)
-    hubbard = es2.get_hubbard_params(GFN1_XTB.element)
+    hubbard = get_element_param(GFN1_XTB.element, "gam")
 
     if GFN1_XTB.charge.effective.average == "harmonic":
         from xtbml.coulomb.average import harmonic_average as average
@@ -33,12 +33,12 @@ def param() -> Generator[Tuple[Tensor, AveragingFunction, Tensor], None, None]:
     yield gexp, average, hubbard
 
 
-class TestCoulomb:
-    """Test the Coulomb contribution."""
+class TestSecondOrderElectrostatics:
+    """Test the ES2 contribution."""
 
     @classmethod
     def setup_class(cls):
-        print(cls.__name__)
+        print(f"\n{cls.__name__}")
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     @pytest.mark.parametrize("name", ["01", "02", "SiH4"])
@@ -48,18 +48,16 @@ class TestCoulomb:
         dtype: torch.dtype,
         name: str,
     ) -> None:
-        """Test the Coulomb contribution for mb16_43."""
+        """Test ES2 for some samples from mb16_43."""
         gexp, average, hubbard = _cast(param, dtype)
 
         sample = mb16_43[name]
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
         qat = sample["qat"].type(dtype)
-        ref = sample["gfn1"].type(dtype)
+        ref = sample["es2"].type(dtype)
 
         e = es2.get_energy(numbers, positions, qat, hubbard, average, gexp)
-        torch.set_printoptions(precision=7)
-        print(torch.sum(e, dim=-1))
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
@@ -95,8 +93,8 @@ class TestCoulomb:
         )
         ref = torch.stack(
             [
-                sample1["gfn1"].type(dtype),
-                sample2["gfn1"].type(dtype),
+                sample1["es2"].type(dtype),
+                sample2["es2"].type(dtype),
             ],
         )
 
