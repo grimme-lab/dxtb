@@ -119,7 +119,7 @@ mb16_43: Samples = {
         ),
     },
     "02": {
-        "gfn1": torch.tensor(0.10635843572138280),
+        "gfn1": torch.tensor(0.16666303125798329 ),
         "gfn2": torch.tensor(0.0),
         "numbers": symbol2number(
             [
