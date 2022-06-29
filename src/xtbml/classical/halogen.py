@@ -32,9 +32,7 @@ def get_xbond(par_element: dict[str, Element]) -> Tensor:
     return torch.tensor(z)
 
 
-def get_xbond_list(
-    numbers: Tensor, positions: Tensor, dim: int, cutoff: Tensor
-) -> Tensor:
+def get_xbond_list(numbers: Tensor, positions: Tensor, cutoff: Tensor) -> Tensor:
     """Calculate triples for halogen bonding interactions.
 
     Parameters
@@ -43,8 +41,6 @@ def get_xbond_list(
         Atomic numbers of all atoms.
     positions : Tensor
         Cartesian coordinates of all atoms.
-    dim : int
-        Maximum number of halogen bonding interactions.
     cutoff : Tensor
         Real space cutoff for halogen bonding interactions.
 
@@ -55,27 +51,21 @@ def get_xbond_list(
     """
     acceptors = [7, 8, 15, 16]
     halogens = [17, 35, 53, 85]
+    adj = []
 
-    # init adjacency list
-    adj = torch.zeros((dim, 3), dtype=torch.long)
-
-    nxb = 0
-    resize = 0
+    # find all halogen-acceptor pairs
     for i, i_at in enumerate(numbers):
         for j, j_at in enumerate(numbers):
             if i_at in halogens and j_at in acceptors:
                 if torch.norm(positions[i, :] - positions[j, :]) > cutoff:
-                    resize += 1
                     continue
 
-                adj[nxb, 0] = i
-                adj[nxb, 1] = j
+                adj.append([i, j, 0])
 
-                nxb += 1
+    # convert to tensor
+    adj = torch.tensor(adj)
 
-    # resize adjacency list
-    adj = adj[: (dim - resize), :]
-
+    # find nearest neighbor of halogen
     for i in range(adj.size(-2)):
         iat = adj[i][0]
 
@@ -196,17 +186,15 @@ def get_energy(
     """
 
     acceptor_mask = (numbers == 7) | (numbers == 8) | (numbers == 15) | (numbers == 16)
-    num_accs = acceptor_mask.nonzero().size(-2)
-    if num_accs == 0:
+    if acceptor_mask.nonzero().size(-2) == 0:
         return torch.zeros(numbers.shape, dtype=positions.dtype)
 
     halogen_mask = (numbers == 17) | (numbers == 35) | (numbers == 53) | (numbers == 85)
-    num_hals = halogen_mask.nonzero().size(-2)
-    if num_hals == 0:
+    if halogen_mask.nonzero().size(-2) == 0:
         return torch.zeros(numbers.shape, dtype=positions.dtype)
 
     # triples for halogen bonding interactions
-    adj = get_xbond_list(numbers, positions, num_hals * num_accs, cutoff)
+    adj = get_xbond_list(numbers, positions, cutoff)
 
     return get_xbond_energy(numbers, positions, adj, damp, rscale, bond_strength)
 
