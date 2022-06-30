@@ -26,8 +26,6 @@ def param() -> Generator[Tuple[Tensor, Tensor, Tensor], None, None]:
 
     yield damp, rscale, bond_strength
 
-    # print("teardown")
-
 
 class TestHalogenBondCorrection:
     """Test the halogen bond correction."""
