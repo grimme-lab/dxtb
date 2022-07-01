@@ -38,8 +38,10 @@ tensor(0.0005078)
 
 from __future__ import annotations
 import torch
+from typing import Optional
 
 from .average import AveragingFunction, harmonic_average
+from ..basis.indexhelper import IndexHelper
 from ..typing import Tensor
 
 
@@ -50,6 +52,7 @@ def get_energy(
     hubbard: Tensor,
     average: AveragingFunction = harmonic_average,
     gexp: Tensor = torch.tensor(2.0),
+    lhubbard: Optional[dict] = None,
 ) -> Tensor:
     """
     Calculate the second-order Coulomb interaction.
@@ -79,8 +82,17 @@ def get_energy(
         Atomwise second-order Coulomb interaction energies.
     """
 
+    h = hubbard[numbers]
+
+    if lhubbard is not None:
+        ihelp = IndexHelper.from_numbers(numbers, lhubbard, dtype=positions.dtype)
+        shell_idxs = ihelp.shells_to_atom.type(torch.long)
+
+        h = h[shell_idxs] * ihelp.angular
+        positions = positions[shell_idxs]
+
     # masks
-    real = numbers != 0
+    real = h != 0
     mask = real.unsqueeze(-2) * real.unsqueeze(-1)
     mask.diagonal(dim1=-2, dim2=-1).fill_(False)
 
@@ -92,12 +104,15 @@ def get_energy(
     )
 
     # Eq.30: averaging function for hardnesses (Hubbard parameter)
-    avg = average(hubbard[numbers])
+    avg = average(h)
 
     # Eq.26: Coulomb matrix
     mat = 1.0 / torch.pow(dist_gexp + torch.pow(avg, -gexp), 1.0 / gexp)
 
     # Eq.25: single and batched matrix-vector multiplication
     mv = 0.5 * torch.einsum("...ik, ...k -> ...i", mat, qat)
+
+    if lhubbard is not None:
+        return torch.scatter_reduce(mv * qat, -1, ihelp.shells_to_atom, reduce="sum")
 
     return mv * qat
