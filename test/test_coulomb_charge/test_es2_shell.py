@@ -1,9 +1,12 @@
-"""Run tests for energy contribution from isotropic second-order electrostatic energy (ES2)."""
+"""
+Run tests for energy contribution from isotropic second-order
+electrostatic energy (ES2).
+"""
 
 from __future__ import annotations
+from collections.abc import Generator
 import pytest
 import torch
-from typing import Generator, Tuple
 
 import xtbml.coulomb.secondorder as es2
 from xtbml.coulomb import AveragingFunction
@@ -16,7 +19,7 @@ from .samples import mb16_43
 
 @pytest.fixture(scope="class")
 def param() -> Generator[
-    Tuple[Tensor, AveragingFunction, Tensor, dict[int, list]], None, None
+    tuple[Tensor, AveragingFunction, Tensor, dict[int, list]], None, None
 ]:
     if GFN1_XTB.charge is None:
         raise ValueError("No charge parameters provided.")
@@ -26,10 +29,13 @@ def param() -> Generator[
     lhubbard = get_elem_param_dict(GFN1_XTB.element, "lgam")
 
     if GFN1_XTB.charge.effective.average == "harmonic":
+        # pylint: disable=import-outside-toplevel
         from xtbml.coulomb.average import harmonic_average as average
     elif GFN1_XTB.charge.effective.average == "geometric":
+        # pylint: disable=import-outside-toplevel
         from xtbml.coulomb.average import geometric_average as average
     elif GFN1_XTB.charge.effective.average == "arithmetic":
+        # pylint: disable=import-outside-toplevel
         from xtbml.coulomb.average import arithmetic_average as average
     else:
         raise ValueError("Unknown average function.")
@@ -48,7 +54,7 @@ class TestSecondOrderElectrostatics:
     @pytest.mark.parametrize("name", ["07"])
     def test_mb16_43(
         self,
-        param: Tuple[Tensor, AveragingFunction, Tensor, dict[int, list]],
+        param: tuple[Tensor, AveragingFunction, Tensor, dict[int, list]],
         dtype: torch.dtype,
         name: str,
     ) -> None:
@@ -61,8 +67,7 @@ class TestSecondOrderElectrostatics:
         qat = sample["qat"].type(dtype)
         ref = sample["es2"].type(dtype)
 
-        e = es2.get_energy(numbers, positions, qat, hubbard, average, gexp, lhubbard)
-        print(e)
+        e = es2.get_energy(numbers, positions, qat, hubbard, lhubbard, average, gexp)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.parametrize("dtype", [torch.float32])
@@ -70,7 +75,7 @@ class TestSecondOrderElectrostatics:
     @pytest.mark.parametrize("name2", ["07"])
     def test_batch(
         self,
-        param: Tuple[Tensor, AveragingFunction, Tensor, dict[int, list]],
+        param: tuple[Tensor, AveragingFunction, Tensor, dict[int, list]],
         dtype: torch.dtype,
         name1: str,
         name2: str,
@@ -103,12 +108,65 @@ class TestSecondOrderElectrostatics:
             ],
         )
 
-        e = es2.get_energy(numbers, positions, qat, hubbard, average, gexp, lhubbard)
+        e = es2.get_energy(numbers, positions, qat, hubbard, lhubbard, average, gexp)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
+
+    @pytest.mark.grad
+    def stest_grad_positions(
+        self,
+        param: tuple[Tensor, AveragingFunction, Tensor, dict[int, list]],
+    ) -> None:
+        dtype = torch.float64
+        gexp, average, hubbard, lhubbard = _cast(param, dtype)
+
+        sample = mb16_43["07"]
+        numbers = sample["numbers"]
+        positions = sample["positions"].type(dtype)
+        qat = sample["qat"].type(dtype)
+
+        # variable to be differentiated
+        positions.requires_grad_(True)
+
+        def func(positions):
+            return es2.get_energy(
+                numbers, positions, qat, hubbard, lhubbard, average, gexp
+            )
+
+        # pylint: disable=import-outside-toplevel
+        from torch.autograd.gradcheck import gradcheck
+
+        assert gradcheck(func, positions)
+
+    @pytest.mark.grad
+    def test_grad_param(
+        self,
+        param: tuple[Tensor, AveragingFunction, Tensor, dict[int, list]],
+    ) -> None:
+        dtype = torch.float64
+        gexp, average, hubbard, lhubbard = _cast(param, dtype)
+
+        sample = mb16_43["07"]
+        numbers = sample["numbers"]
+        positions = sample["positions"].type(dtype)
+        qat = sample["qat"].type(dtype)
+
+        # variable to be differentiated
+        gexp.requires_grad_(True)
+        hubbard.requires_grad_(True)
+
+        def func(gexp, hubbard):
+            return es2.get_energy(
+                numbers, positions, qat, hubbard, lhubbard, average, gexp
+            )
+
+        # pylint: disable=import-outside-toplevel
+        from torch.autograd.gradcheck import gradcheck
+
+        assert gradcheck(func, (gexp, hubbard))
 
 
 def _cast(
-    param: Tuple[Tensor, AveragingFunction, Tensor, dict[int, list]], dtype: torch.dtype
-) -> Tuple[Tensor, AveragingFunction, Tensor, dict[int, list]]:
+    param: tuple[Tensor, AveragingFunction, Tensor, dict[int, list]], dtype: torch.dtype
+) -> tuple[Tensor, AveragingFunction, Tensor, dict[int, list]]:
     gexp, average, hubbard, lhubbard = param
     return gexp.type(dtype), average, hubbard.type(dtype), lhubbard

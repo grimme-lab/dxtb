@@ -40,8 +40,10 @@ from __future__ import annotations
 import torch
 from typing import Optional
 
+
 from .average import AveragingFunction, harmonic_average
 from ..basis.indexhelper import IndexHelper
+from ..exlibs.tbmalt import batch
 from ..typing import Tensor
 
 
@@ -50,9 +52,9 @@ def get_energy(
     positions: Tensor,
     qat: Tensor,
     hubbard: Tensor,
+    lhubbard: dict[int, list[float]] | None = None,
     average: AveragingFunction = harmonic_average,
     gexp: Tensor = torch.tensor(2.0),
-    lhubbard: Optional[dict] = None,
 ) -> Tensor:
     """
     Calculate the second-order Coulomb interaction.
@@ -88,8 +90,8 @@ def get_energy(
         ihelp = IndexHelper.from_numbers(numbers, lhubbard, dtype=positions.dtype)
         shell_idxs = ihelp.shells_to_atom.type(torch.long)
 
-        h = h[shell_idxs] * ihelp.angular
-        positions = positions[shell_idxs]
+        h = batch.index(h, shell_idxs) * ihelp.angular
+        positions = batch.index(positions, shell_idxs)
 
     # masks
     real = h != 0
