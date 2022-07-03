@@ -18,7 +18,7 @@ Example
 ...     [1.61768389755830, -1.61768389755830, 1.61768389755830],
 ...     [-1.61768389755830, 1.61768389755830, 1.61768389755830],
 ... ])
->>> qat = torch.tensor([
+>>> q = torch.tensor([
 ...     -8.41282505804719e-2,
 ...     2.10320626451180e-2,
 ...     2.10320626451178e-2,
@@ -29,7 +29,7 @@ Example
 >>> gexp = torch.tensor(GFN1_XTB.charge.effective.gexp)
 >>> hubbard = get_element_param(GFN1_XTB.element, "gam")
 >>> # calculate energy
->>> e = es2.get_energy(numbers, positions, qat, hubbard, average, gexp)
+>>> e = es2.get_energy(numbers, positions, q, hubbard, average, gexp)
 >>> torch.set_printoptions(precision=7)
 >>> print(torch.sum(e, dim=-1))
 tensor(0.0005078)
@@ -50,7 +50,7 @@ from ..typing import Tensor
 def get_energy(
     numbers: Tensor,
     positions: Tensor,
-    qat: Tensor,
+    q: Tensor,
     hubbard: Tensor,
     lhubbard: dict[int, list[float]] | None = None,
     average: AveragingFunction = harmonic_average,
@@ -69,8 +69,8 @@ def get_energy(
         Atomic numbers of the atoms.
     positions : Tensor
         Cartesian coordinates of all atoms in the system.
-    qat : Tensor
-        Atomic charges of all atoms.
+    q : Tensor
+        Atomic or shell-resolved charges of all atoms.
     hubbard : Tensor
         Hubbard parameters of all elements.
     average : AveragingFunction
@@ -112,9 +112,9 @@ def get_energy(
     mat = 1.0 / torch.pow(dist_gexp + torch.pow(avg, -gexp), 1.0 / gexp)
 
     # Eq.25: single and batched matrix-vector multiplication
-    mv = 0.5 * torch.einsum("...ik, ...k -> ...i", mat, qat)
+    mv = 0.5 * torch.einsum("...ik, ...k -> ...i", mat, q)
 
     if lhubbard is not None:
-        return torch.scatter_reduce(mv * qat, -1, ihelp.shells_to_atom, reduce="sum")
+        return torch.scatter_reduce(mv * q, -1, ihelp.shells_to_atom, reduce="sum")
 
-    return mv * qat
+    return mv * q

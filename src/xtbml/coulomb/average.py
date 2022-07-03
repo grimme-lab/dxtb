@@ -1,7 +1,8 @@
 """Averaging functions for hardnesses in GFN1-xTB."""
 
+from __future__ import annotations
+from collections.abc import Callable
 import torch
-from typing import Callable
 
 from ..typing import Tensor
 

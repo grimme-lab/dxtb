@@ -31,7 +31,6 @@ Example
 tensor(0.0155669)
 """
 
-from __future__ import annotations
 import torch
 
 from ..typing import Tensor

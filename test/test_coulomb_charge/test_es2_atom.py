@@ -1,6 +1,6 @@
 """
-Run tests for the shell-resolved energy contribution from the
-isotropic second-order electrostatic energy (ES2).
+Run tests for energy contribution from isotropic second-order
+electrostatic energy (ES2).
 """
 
 from __future__ import annotations
@@ -17,8 +17,8 @@ from xtbml.typing import Tensor
 from .samples import mb16_43
 
 
-@pytest.fixture(scope="class")
-def param() -> Generator[tuple[Tensor, AveragingFunction, Tensor], None, None]:
+@pytest.fixture(name="param", scope="class")
+def fixture_param() -> Generator[tuple[Tensor, AveragingFunction, Tensor], None, None]:
     if GFN1_XTB.charge is None:
         raise ValueError("No charge parameters provided.")
 
@@ -40,8 +40,8 @@ def param() -> Generator[tuple[Tensor, AveragingFunction, Tensor], None, None]:
     yield gexp, average, hubbard
 
 
-class TestSecondOrderElectrostaticsShell:
-    """Test the shell-resolved version of the ES2 contribution."""
+class TestSecondOrderElectrostatics:
+    """Test the ES2 contribution."""
 
     @classmethod
     def setup_class(cls):
@@ -143,7 +143,7 @@ class TestSecondOrderElectrostaticsShell:
         positions = sample["positions"].type(dtype)
         qat = sample["qat"].type(dtype)
 
-        # variable to be differentiated
+        # variables to be differentiated
         gexp.requires_grad_(True)
         hubbard.requires_grad_(True)
 

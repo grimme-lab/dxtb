@@ -1,8 +1,12 @@
-"""Run tests for energy contribution from on-site third-order electrostatic energy (ES3)."""
+"""
+Run tests for energy contribution from on-site third-order
+electrostatic energy (ES3).
+"""
 
+from __future__ import annotations
+from collections.abc import Generator
 import pytest
 import torch
-from typing import Generator
 
 import xtbml.coulomb.thirdorder as es3
 from xtbml.exlibs.tbmalt import batch
@@ -12,8 +16,8 @@ from xtbml.typing import Tensor
 from .samples import mb16_43
 
 
-@pytest.fixture(scope="class")
-def hubbard_derivs() -> Generator[Tensor, None, None]:
+@pytest.fixture(name="hubbard_derivs", scope="class")
+def fixture_hubbard_derivs() -> Generator[Tensor, None, None]:
     if GFN1_XTB.thirdorder is None:
         raise ValueError("No ES3 parameters provided.")
 
