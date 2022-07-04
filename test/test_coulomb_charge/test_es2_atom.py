@@ -17,7 +17,6 @@ from xtbml.typing import Tensor
 from .samples import mb16_43
 
 sample_list = ["01", "02", "SiH4"]
-sample_list = ["SiH4"]
 
 
 @pytest.fixture(name="param", scope="class")
@@ -50,7 +49,7 @@ class TestSecondOrderElectrostatics:
     def setup_class(cls):
         print(f"\n{cls.__name__}")
 
-    @pytest.mark.parametrize("dtype", [torch.float32])
+    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     @pytest.mark.parametrize("name", sample_list)
     def test_mb16_43(
         self,
@@ -67,19 +66,15 @@ class TestSecondOrderElectrostatics:
         qat = sample["q"].type(dtype)
         ref = sample["es2"].type(dtype)
 
-        e = es2.get_energy(numbers, positions, qat, hubbard, average=average, gexp=gexp)
-
         es = es2.ES2(hubbard=hubbard, average=average, gexp=gexp)
         cache = es.get_cache(numbers, positions)
-        nrg = es.get_energy(cache, qat)
-        print(nrg)
-        print(e)
+        e = es.get_energy(cache, qat)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     @pytest.mark.parametrize("name1", sample_list)
     @pytest.mark.parametrize("name2", sample_list)
-    def stest_batch(
+    def test_batch(
         self,
         param: tuple[Tensor, AveragingFunction, Tensor],
         dtype: torch.dtype,
@@ -114,12 +109,14 @@ class TestSecondOrderElectrostatics:
             ],
         )
 
-        e = es2.get_energy(numbers, positions, qat, hubbard, average=average, gexp=gexp)
+        es = es2.ES2(hubbard=hubbard, average=average, gexp=gexp)
+        cache = es.get_cache(numbers, positions)
+        e = es.get_energy(cache, qat)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.grad
     @pytest.mark.parametrize("name", sample_list)
-    def stest_grad_positions(
+    def test_grad_positions(
         self, param: tuple[Tensor, AveragingFunction, Tensor], name: str
     ) -> None:
         dtype = torch.float64
@@ -134,9 +131,9 @@ class TestSecondOrderElectrostatics:
         positions.requires_grad_(True)
 
         def func(positions):
-            return es2.get_energy(
-                numbers, positions, qat, hubbard, average=average, gexp=gexp
-            )
+            es = es2.ES2(hubbard=hubbard, average=average, gexp=gexp)
+            cache = es.get_cache(numbers, positions)
+            return es.get_energy(cache, qat)
 
         # pylint: disable=import-outside-toplevel
         from torch.autograd.gradcheck import gradcheck
@@ -145,7 +142,7 @@ class TestSecondOrderElectrostatics:
 
     @pytest.mark.grad
     @pytest.mark.parametrize("name", sample_list)
-    def stest_grad_param(
+    def test_grad_param(
         self, param: tuple[Tensor, AveragingFunction, Tensor], name: str
     ) -> None:
         dtype = torch.float64
@@ -161,9 +158,9 @@ class TestSecondOrderElectrostatics:
         hubbard.requires_grad_(True)
 
         def func(gexp, hubbard):
-            return es2.get_energy(
-                numbers, positions, qat, hubbard, average=average, gexp=gexp
-            )
+            es = es2.ES2(hubbard=hubbard, average=average, gexp=gexp)
+            cache = es.get_cache(numbers, positions)
+            return es.get_energy(cache, qat)
 
         # pylint: disable=import-outside-toplevel
         from torch.autograd.gradcheck import gradcheck

@@ -69,7 +69,9 @@ class TestSecondOrderElectrostaticsShell:
         qsh = sample["q"].type(dtype)
         ref = sample["es2"].type(dtype)
 
-        e = es2.get_energy(numbers, positions, qsh, hubbard, lhubbard, average, gexp)
+        es = es2.ES2(hubbard=hubbard, lhubbard=lhubbard, average=average, gexp=gexp)
+        cache = es.get_cache(numbers, positions)
+        e = es.get_energy(cache, qsh)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
@@ -110,7 +112,9 @@ class TestSecondOrderElectrostaticsShell:
             ],
         )
 
-        e = es2.get_energy(numbers, positions, qsh, hubbard, lhubbard, average, gexp)
+        es = es2.ES2(hubbard=hubbard, lhubbard=lhubbard, average=average, gexp=gexp)
+        cache = es.get_cache(numbers, positions)
+        e = es.get_energy(cache, qsh)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.grad
@@ -132,9 +136,9 @@ class TestSecondOrderElectrostaticsShell:
         positions.requires_grad_(True)
 
         def func(positions):
-            return es2.get_energy(
-                numbers, positions, qsh, hubbard, lhubbard, average, gexp
-            )
+            es = es2.ES2(hubbard=hubbard, lhubbard=lhubbard, average=average, gexp=gexp)
+            cache = es.get_cache(numbers, positions)
+            return es.get_energy(cache, qsh)
 
         # pylint: disable=import-outside-toplevel
         from torch.autograd.gradcheck import gradcheck
@@ -161,9 +165,9 @@ class TestSecondOrderElectrostaticsShell:
         hubbard.requires_grad_(True)
 
         def func(gexp, hubbard):
-            return es2.get_energy(
-                numbers, positions, qsh, hubbard, lhubbard, average, gexp
-            )
+            es = es2.ES2(hubbard=hubbard, lhubbard=lhubbard, average=average, gexp=gexp)
+            cache = es.get_cache(numbers, positions)
+            return es.get_energy(cache, qsh)
 
         # pylint: disable=import-outside-toplevel
         from torch.autograd.gradcheck import gradcheck
