@@ -38,8 +38,6 @@ tensor(0.0005078)
 
 from __future__ import annotations
 import torch
-from typing import Optional
-
 
 from .average import AveragingFunction, harmonic_average
 from ..basis.indexhelper import IndexHelper
@@ -87,6 +85,7 @@ def get_energy(
     h = hubbard[numbers]
 
     if lhubbard is not None:
+        # NOTE: Maybe use own function here and not "abusing" the IndexHelper?
         ihelp = IndexHelper.from_numbers(numbers, lhubbard, dtype=positions.dtype)
         shell_idxs = ihelp.shells_to_atom.type(torch.long)
 

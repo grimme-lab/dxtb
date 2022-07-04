@@ -15,6 +15,8 @@ from xtbml.typing import Tensor
 
 from .samples import mb16_43
 
+sample_list = ["01", "02", "SiH4"]
+
 
 @pytest.fixture(name="hubbard_derivs", scope="class")
 def fixture_hubbard_derivs() -> Generator[Tensor, None, None]:
@@ -35,7 +37,7 @@ class TestThirdOrderElectrostatics:
         print(f"\n{cls.__name__}")
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-    @pytest.mark.parametrize("name", ["01", "02", "SiH4"])
+    @pytest.mark.parametrize("name", sample_list)
     def test_mb16_43(
         self,
         hubbard_derivs: Tensor,
@@ -47,15 +49,15 @@ class TestThirdOrderElectrostatics:
 
         sample = mb16_43[name]
         numbers = sample["numbers"]
-        qat = sample["qat"].type(dtype)
+        qat = sample["q"].type(dtype)
         ref = sample["es3"].type(dtype)
 
         e = es3.get_energy(numbers, qat, hd)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-    @pytest.mark.parametrize("name1", ["01", "02", "SiH4"])
-    @pytest.mark.parametrize("name2", ["01", "02", "SiH4"])
+    @pytest.mark.parametrize("name1", sample_list)
+    @pytest.mark.parametrize("name2", sample_list)
     def test_batch(
         self,
         hubbard_derivs: Tensor,
@@ -74,8 +76,8 @@ class TestThirdOrderElectrostatics:
         )
         qat = batch.pack(
             (
-                sample1["qat"].type(dtype),
-                sample2["qat"].type(dtype),
+                sample1["q"].type(dtype),
+                sample2["q"].type(dtype),
             )
         )
         ref = torch.stack(
@@ -89,14 +91,14 @@ class TestThirdOrderElectrostatics:
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.grad
-    @pytest.mark.parametrize("name", ["01", "02", "SiH4"])
+    @pytest.mark.parametrize("name", sample_list)
     def test_grad_param(self, hubbard_derivs: Tensor, name: str) -> None:
         dtype = torch.float64
         hd = hubbard_derivs.type(dtype)
 
         sample = mb16_43[name]
         numbers = sample["numbers"]
-        qat = sample["qat"].type(dtype)
+        qat = sample["q"].type(dtype)
 
         # variable to be differentiated
         hd.requires_grad_(True)

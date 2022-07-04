@@ -16,6 +16,8 @@ from xtbml.typing import Tensor
 
 from .samples import mb16_43
 
+sample_list = ["07", "08", "SiH4_shell"]
+
 
 @pytest.fixture(name="param", scope="class")
 def fixture_param() -> Generator[
@@ -50,8 +52,8 @@ class TestSecondOrderElectrostaticsShell:
     def setup_class(cls):
         print(f"\n{cls.__name__}")
 
-    @pytest.mark.parametrize("dtype", [torch.float32])
-    @pytest.mark.parametrize("name", ["07"])
+    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+    @pytest.mark.parametrize("name", sample_list)
     def test_mb16_43(
         self,
         param: tuple[Tensor, AveragingFunction, Tensor, dict[int, list]],
@@ -64,15 +66,15 @@ class TestSecondOrderElectrostaticsShell:
         sample = mb16_43[name]
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
-        qat = sample["qat"].type(dtype)
+        qsh = sample["q"].type(dtype)
         ref = sample["es2"].type(dtype)
 
-        e = es2.get_energy(numbers, positions, qat, hubbard, lhubbard, average, gexp)
+        e = es2.get_energy(numbers, positions, qsh, hubbard, lhubbard, average, gexp)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
-    @pytest.mark.parametrize("dtype", [torch.float32])
-    @pytest.mark.parametrize("name1", ["07"])
-    @pytest.mark.parametrize("name2", ["07"])
+    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+    @pytest.mark.parametrize("name1", sample_list)
+    @pytest.mark.parametrize("name2", sample_list)
     def test_batch(
         self,
         param: tuple[Tensor, AveragingFunction, Tensor, dict[int, list]],
@@ -95,10 +97,10 @@ class TestSecondOrderElectrostaticsShell:
                 sample2["positions"].type(dtype),
             )
         )
-        qat = batch.pack(
+        qsh = batch.pack(
             (
-                sample1["qat"].type(dtype),
-                sample2["qat"].type(dtype),
+                sample1["q"].type(dtype),
+                sample2["q"].type(dtype),
             )
         )
         ref = torch.stack(
@@ -108,28 +110,30 @@ class TestSecondOrderElectrostaticsShell:
             ],
         )
 
-        e = es2.get_energy(numbers, positions, qat, hubbard, lhubbard, average, gexp)
+        e = es2.get_energy(numbers, positions, qsh, hubbard, lhubbard, average, gexp)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.grad
-    def stest_grad_positions(
+    @pytest.mark.parametrize("name", sample_list)
+    def test_grad_positions(
         self,
         param: tuple[Tensor, AveragingFunction, Tensor, dict[int, list]],
+        name: str,
     ) -> None:
         dtype = torch.float64
         gexp, average, hubbard, lhubbard = _cast(param, dtype)
 
-        sample = mb16_43["07"]
+        sample = mb16_43[name]
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
-        qat = sample["qat"].type(dtype)
+        qsh = sample["q"].type(dtype)
 
         # variable to be differentiated
         positions.requires_grad_(True)
 
         def func(positions):
             return es2.get_energy(
-                numbers, positions, qat, hubbard, lhubbard, average, gexp
+                numbers, positions, qsh, hubbard, lhubbard, average, gexp
             )
 
         # pylint: disable=import-outside-toplevel
@@ -138,17 +142,19 @@ class TestSecondOrderElectrostaticsShell:
         assert gradcheck(func, positions)
 
     @pytest.mark.grad
+    @pytest.mark.parametrize("name", sample_list)
     def test_grad_param(
         self,
         param: tuple[Tensor, AveragingFunction, Tensor, dict[int, list]],
+        name: str,
     ) -> None:
         dtype = torch.float64
         gexp, average, hubbard, lhubbard = _cast(param, dtype)
 
-        sample = mb16_43["07"]
+        sample = mb16_43[name]
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
-        qat = sample["qat"].type(dtype)
+        qsh = sample["q"].type(dtype)
 
         # variable to be differentiated
         gexp.requires_grad_(True)
@@ -156,7 +162,7 @@ class TestSecondOrderElectrostaticsShell:
 
         def func(gexp, hubbard):
             return es2.get_energy(
-                numbers, positions, qat, hubbard, lhubbard, average, gexp
+                numbers, positions, qsh, hubbard, lhubbard, average, gexp
             )
 
         # pylint: disable=import-outside-toplevel

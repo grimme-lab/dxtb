@@ -16,6 +16,8 @@ from xtbml.typing import Tensor
 
 from .samples import mb16_43
 
+sample_list = ["01", "02", "SiH4"]
+
 
 @pytest.fixture(name="param", scope="class")
 def fixture_param() -> Generator[tuple[Tensor, AveragingFunction, Tensor], None, None]:
@@ -48,7 +50,7 @@ class TestSecondOrderElectrostatics:
         print(f"\n{cls.__name__}")
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-    @pytest.mark.parametrize("name", ["01", "02", "SiH4"])
+    @pytest.mark.parametrize("name", sample_list)
     def test_mb16_43(
         self,
         param: tuple[Tensor, AveragingFunction, Tensor],
@@ -61,15 +63,15 @@ class TestSecondOrderElectrostatics:
         sample = mb16_43[name]
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
-        qat = sample["qat"].type(dtype)
+        qat = sample["q"].type(dtype)
         ref = sample["es2"].type(dtype)
 
         e = es2.get_energy(numbers, positions, qat, hubbard, average=average, gexp=gexp)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-    @pytest.mark.parametrize("name1", ["01", "02", "SiH4"])
-    @pytest.mark.parametrize("name2", ["01", "02", "SiH4"])
+    @pytest.mark.parametrize("name1", sample_list)
+    @pytest.mark.parametrize("name2", sample_list)
     def test_batch(
         self,
         param: tuple[Tensor, AveragingFunction, Tensor],
@@ -94,8 +96,8 @@ class TestSecondOrderElectrostatics:
         )
         qat = batch.pack(
             (
-                sample1["qat"].type(dtype),
-                sample2["qat"].type(dtype),
+                sample1["q"].type(dtype),
+                sample2["q"].type(dtype),
             )
         )
         ref = torch.stack(
@@ -109,16 +111,17 @@ class TestSecondOrderElectrostatics:
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.grad
+    @pytest.mark.parametrize("name", sample_list)
     def test_grad_positions(
-        self, param: tuple[Tensor, AveragingFunction, Tensor]
+        self, param: tuple[Tensor, AveragingFunction, Tensor], name: str
     ) -> None:
         dtype = torch.float64
         gexp, average, hubbard = _cast(param, dtype)
 
-        sample = mb16_43["SiH4"]
+        sample = mb16_43[name]
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
-        qat = sample["qat"].type(dtype)
+        qat = sample["q"].type(dtype)
 
         # variable to be differentiated
         positions.requires_grad_(True)
@@ -134,14 +137,17 @@ class TestSecondOrderElectrostatics:
         assert gradcheck(func, positions)
 
     @pytest.mark.grad
-    def test_grad_param(self, param: tuple[Tensor, AveragingFunction, Tensor]) -> None:
+    @pytest.mark.parametrize("name", sample_list)
+    def test_grad_param(
+        self, param: tuple[Tensor, AveragingFunction, Tensor], name: str
+    ) -> None:
         dtype = torch.float64
         gexp, average, hubbard = _cast(param, dtype)
 
-        sample = mb16_43["SiH4"]
+        sample = mb16_43[name]
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
-        qat = sample["qat"].type(dtype)
+        qat = sample["q"].type(dtype)
 
         # variables to be differentiated
         gexp.requires_grad_(True)
