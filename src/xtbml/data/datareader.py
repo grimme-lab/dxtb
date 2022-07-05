@@ -4,7 +4,7 @@ from json import dump as json_dump_file
 from json import loads as json_load
 import os
 from pathlib import Path
-from typing import List, Literal, Tuple, Optional, Union
+from typing import Literal, Optional
 
 import torch
 from torch.utils.data import DataLoader
@@ -42,7 +42,7 @@ def read_geo(fp, format: Literal["xyz", "coord"] = "xyz") -> list[list[float | i
     Returns
     -------
     list[list[float | int]]
-        List containing the atomic numbers and coordinates.
+        list containing the atomic numbers and coordinates.
     """
     if format == "xyz":
         return read_xyz(fp)
@@ -63,7 +63,7 @@ def read_xyz(fp: str | Path) -> list[list[float | int]]:
     Returns
     -------
     list[list[float | int]]
-        List containing the atomic numbers and coordinates.
+        list containing the atomic numbers and coordinates.
     """
     arr = []
     num_atoms = 0
@@ -101,10 +101,10 @@ def read_coord(fp: str | Path) -> list[list[float | int]]:
     Returns
     -------
     list[list[float | int]]
-        List containing the atomic numbers and coordinates.
+        list containing the atomic numbers and coordinates.
     """
     arr = []
-    breakpoints = ["$user-defined bonds", "$redundant", "$end"]
+    breakpoints = ["$user-defined bonds", "$redundant", "$end", "$periodic"]
 
     with open(fp, "r", encoding="utf-8") as file:
         lines = file.readlines()
@@ -149,12 +149,44 @@ def read_energy(fp: str) -> float:
         raise ValueError(f"File '{fp}' is not in Turbomole format.")
 
 
-def read_tblite_gfn(fp: Path | str) -> Tuple[float, List[float]]:
+def read_tblite_gfn(fp: Path | str) -> tuple[float, list[float]]:
     """Read energy file from tblite json output."""
     with open(fp, "r", encoding="utf-8") as file:
         data = json_load(file.read())
 
-        return data["energy"], data["energies"]
+        return data["energies"], torch.tensor(data["gradient"]).reshape(-1, 3).tolist()
+
+
+def read_orca_engrad(fp: Path | str) -> tuple[float, list[float]]:
+    """Read ORCA's engrad file."""
+    start_grad = -1
+    grad = []
+
+    start_energy = -1
+    energy = 0.0
+    with open(fp, "r", encoding="utf-8") as file:
+        for i, line in enumerate(file):
+            # energy
+            if line.startswith("# The current total energy in Eh"):
+                start_energy = i + 2
+
+            if i == start_energy:
+                energy = float(line.strip())
+                start_energy = -1
+
+            # gradient
+            if line.startswith("# The current gradient in Eh/bohr"):
+                start_grad = i + 2
+
+            if i == start_grad:
+                # abort if we hit the next "#"
+                if line.startswith("#"):
+                    break
+
+                grad.append(float(line.strip()))
+                start_grad += 1
+
+    return energy, torch.tensor(grad).reshape(-1, 3).tolist()
 
 
 class Datareader:
@@ -182,23 +214,26 @@ class Datareader:
         FILE_GFN1 = "gfn1.json"
         FILE_GFN2 = "gfn2.json"
         FILE_UHF = ".UHF"
+        FILE_ORCA_ENGRAD = "orca.engrad"
 
         # loop through folders + subfolders only
         for (dirpath, _, filenames) in walklevel(self.bpath, level=2):
             if FILE_COORD not in filenames and FILE_XYZ not in filenames:
                 continue
 
-            if FILE_GFN1 not in filenames or FILE_GFN2 not in filenames:
-                raise FileNotFoundError(
-                    f"GFN1 and GFN2 energy file not found in '{dirpath}'."
-                )
+            gfn1_energy, gfn1_grad = [], []
+            if FILE_GFN1 in filenames:
+                gfn1_energy, gfn1_grad = read_tblite_gfn("/".join([dirpath, FILE_GFN1]))
 
-            gfn1_energy, gfn1_energy_atom_resolved = read_tblite_gfn(
-                "/".join([dirpath, FILE_GFN1])
-            )
-            gfn2_energy, gfn2_energy_atom_resolved = read_tblite_gfn(
-                "/".join([dirpath, FILE_GFN2])
-            )
+            gfn2_energy, gfn2_grad = [], []
+            if FILE_GFN2 in filenames:
+                gfn2_energy, gfn2_grad = read_tblite_gfn("/".join([dirpath, FILE_GFN2]))
+
+            dft_energy, dft_grad = [], []
+            if FILE_ORCA_ENGRAD in filenames:
+                dft_energy, dft_grad = read_orca_engrad(
+                    "/".join([dirpath, FILE_ORCA_ENGRAD])
+                )
 
             # read coord/xyz file
             if FILE_COORD in filenames:
@@ -231,9 +266,11 @@ class Datareader:
                     chrg,
                     uhf,
                     gfn1_energy,
-                    gfn1_energy_atom_resolved,
+                    gfn1_grad,
                     gfn2_energy,
-                    gfn2_energy_atom_resolved,
+                    gfn2_grad,
+                    dft_energy,
+                    dft_grad,
                 ]
             )
 
@@ -313,7 +350,7 @@ class Datareader:
         """Custom print representation of class."""
         return f"{self.__class__.__name__}({len(self.file_list)} files)"
 
-    def slice(self, idx: Union[int, slice]) -> None:
+    def slice(self, idx: int | slice) -> None:
         if isinstance(idx, slice):
             self.data = self.data[idx]
             self.file_list = self.file_list[idx]
@@ -323,9 +360,53 @@ class Datareader:
         else:
             raise TypeError(f"Invalid index '{idx}' type.")
 
-    def sort(self) -> None:
+    def get_by_name(
+        self, name: str, inplace: bool = True
+    ) -> tuple[list[str], list[list]]:
+        """
+        Get data by name.
+
+        Parameters
+        ----------
+        name : str
+            Search string for file name.
+        inplace : bool, optional
+            If True, modify self.data and self.file_list.
+
+        Returns
+        -------
+        tuple[list[str], list[list]]
+            Tuple of file names and data.
+
+        Examples
+        --------
+        Get only data for aluminum.
+        >>> name = "AL"
+        >>> data = Datareader("PTB")
+        >>> data.get_sample_data()
+        >>> data.get_by_name(f"/{name}")
+        >>> data.sort()
+        >>> data.create_sample_json(f"samples_{name}.json")
+        """
         zipped_lists = zip(self.file_list, self.data)
-        sorted_pairs = sorted(zipped_lists)
+
+        selected_pairs = [x for x in zipped_lists if name in x[0]]
+        if len(selected_pairs) == 0:
+            raise ValueError(f"No data found for name '{name}'.")
+
+        tuples = zip(*selected_pairs)
+        file_list, data = [list(tuple) for tuple in tuples]
+
+        if inplace is True:
+            self.data = data
+            self.file_list = file_list
+
+        return file_list, data
+
+    def sort(self) -> None:
+        """Sort data by file name (case-insensitive)."""
+        zipped_lists = zip(self.file_list, self.data)
+        sorted_pairs = sorted(zipped_lists, key=lambda s: s[0].casefold())
         tuples = zip(*sorted_pairs)
         file_list, data = [list(tuple) for tuple in tuples]
 
@@ -338,7 +419,7 @@ class Datareader:
         dtype: Optional[torch.dtype] = FLOAT64,
         dtype_int: Optional[torch.dtype] = torch.long,  # TODO: adapt default dtype
         device: Optional[torch.device] = None,
-    ) -> Tuple:
+    ) -> tuple:
         """Convert data tensor into batched geometry object."""
 
         # TODO: add default dtype and device depending on config
@@ -487,8 +568,10 @@ class Datareader:
                     numbers=data[1],
                     unpaired_e=data[3],
                     charges=data[2],
-                    egfn1=[i * AU2KCAL for i in data[5]],
-                    egfn2=[i * AU2KCAL for i in data[7]],
+                    e_gfn1=[i * AU2KCAL for i in data[4]],
+                    grad_gfn1=data[5],
+                    e_ref=AU2KCAL * data[8],
+                    grad_ref=data[9],
                     edisp=[i * AU2KCAL for i in edisp.tolist()],
                     erep=[i * AU2KCAL for i in erep.tolist()],
                     qat=qat.tolist(),
