@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from typing import List, Literal, Optional, Union, Tuple, overload
 from pydantic import BaseModel
 from pathlib import Path
@@ -78,6 +79,7 @@ class DatasetModel(BaseModel, Dataset):
         arbitrary_types_allowed = True
 
     @overload
+    @abstractmethod
     @classmethod
     def from_json(
         cls, path_samples: Union[Path, List[Path], str, List[str]]
@@ -85,12 +87,14 @@ class DatasetModel(BaseModel, Dataset):
         ...
 
     @overload
+    @abstractmethod
     @classmethod
     def from_json(
         cls, path_samples: Union[Path, str], path_reactions: Union[Path, str]
     ) -> "ReactionDataset":
         ...
 
+    @abstractmethod
     @classmethod
     def from_json(
         cls,
@@ -150,8 +154,8 @@ class SampleDataset(DatasetModel):
         if isinstance(path_samples, list):
             sample_list = []
             for path in path_samples:
-                samples = Samples.from_json(path)
-                sample_list.extend(samples.samples)
+                samples = Samples.from_json(path).samples
+                sample_list.extend(samples)
         else:
             sample_list = Samples.from_json(path_samples).samples
 
@@ -176,18 +180,20 @@ class ReactionDataset(DatasetModel):
         path_samples: Union[Path, List[Path], str, List[str]],
         path_reactions: Union[Path, List[Path], str, List[str]],
     ) -> "ReactionDataset":
-        if isinstance(path_samples, list) and isinstance(path_reactions, list):
+        if isinstance(path_samples, list):
             sample_list = []
             for path in path_samples:
-                samples = Samples.from_json(path)
-                sample_list.extend(samples.samples)
-
-            reaction_list = []
-            for path in path_reactions:
-                reactions = Reactions.from_json(path)
-                reaction_list.extend(reactions.reactions)
+                samples = Samples.from_json(path).samples
+                sample_list.extend(samples)
         else:
             sample_list = Samples.from_json(path_samples).samples
+
+        if isinstance(path_reactions, list):
+            reaction_list = []
+            for path in path_reactions:
+                reactions = Reactions.from_json(path).reactions
+                reaction_list.extend(reactions)
+        else:
             reaction_list = Reactions.from_json(path_reactions).reactions
 
         return cls(samples=sample_list, reactions=reaction_list)
