@@ -247,7 +247,7 @@ class Sample:
             self.positions.type(dtype),
             self.numbers.type(torch.long),
             self.unpaired_e.type(torch.uint8),
-            self.charges.type(torch.uint8),
+            self.charges.type(torch.int8),
             self.gfn1_energy.type(dtype),
             self.gfn1_grad.type(dtype),
             self.gfn2_energy.type(dtype),
@@ -264,7 +264,7 @@ class Sample:
 
     def __repr__(self) -> str:
         """Custom print representation of class."""
-        return f"{self.__class__.__name__}({self.buid}: {self.uid})"
+        return f"{self.__class__.__name__}({self.uid})"
 
     def equal(self, other):
         if not isinstance(other, Sample):
@@ -360,11 +360,13 @@ class Samples:
             sample_list = []
             data = json_load(f)
             for uid, features in data.items():
+                buid = uid.split(":")[0]
+
                 # convert to tensor
                 for feature, value in features.items():
                     features[feature] = torch.tensor(value, dtype=dtype)
 
-                sample_list.append(Sample(uid=uid, **features))
+                sample_list.append(Sample(buid=buid, uid=uid, **features))
 
         return cls(sample_list)
 

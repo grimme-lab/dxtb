@@ -67,7 +67,98 @@ def get_subsets_from_batched_reaction(batched_reaction: Reaction) -> List[str]:
     return label
 
 
-class ReactionDataset(BaseModel, Dataset):
+class DatasetModel(BaseModel, Dataset):
+
+    samples: List[Sample]
+    """Samples in dataset"""
+    reactions: Optional[List[Reaction]] = None
+    """Reactions in dataset"""
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    @overload
+    @classmethod
+    def from_json(
+        cls, path_samples: Union[Path, List[Path], str, List[str]]
+    ) -> "SampleDataset":
+        ...
+
+    @overload
+    @classmethod
+    def from_json(
+        cls, path_samples: Union[Path, str], path_reactions: Union[Path, str]
+    ) -> "ReactionDataset":
+        ...
+
+    @classmethod
+    def from_json(
+        cls,
+        path_samples: Union[Path, List[Path], str, List[str]],
+        path_reactions: Union[Path, List[Path], str, List[str], None] = None,
+    ) -> Union["SampleDataset", "ReactionDataset"]:
+        """Load `Samples` from JSON files.
+
+        Parameters
+        ----------
+        path_samples : Union[Path, List[Path], str, List[str]]
+            Path of JSON file for samples.
+        path_reactions : Union[Path, List[Path], str, List[str], None]
+            Path of JSON file for reactions.
+
+        Returns
+        -------
+        Union[SampleDataset, ReactionDataset]
+            Dataset for storing features used for training.
+        """
+        ...
+
+    def to_json(self, path: Union[Path, str]) -> None:
+        """Save dataset to disk.
+
+        Parameters
+        ----------
+        path : Union[Path, str]
+            Path to save dataset to.
+        """
+        Samples(samples=self.samples).to_json(path)
+        if self.reactions is not None:
+            Reactions(reactions=self.reactions).to_json(path)
+
+    @classmethod
+    def merge(cls, a, b):
+        """Merge two datasets."""
+        return cls(samples=a.samples + b.samples, reactions=a.reactions + b.reactions)
+
+    def copy(self) -> "DatasetModel":
+        """Return a copy of the dataset."""
+        return DatasetModel(samples=self.samples, reactions=self.reactions)
+
+
+class SampleDataset(DatasetModel):
+
+    samples: List[Sample]
+    """Samples in dataset"""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @classmethod
+    def from_json(
+        cls, path_samples: Union[Path, List[Path], str, List[str]]
+    ) -> "SampleDataset":
+        if isinstance(path_samples, list):
+            sample_list = []
+            for path in path_samples:
+                samples = Samples.from_json(path)
+                sample_list.extend(samples.samples)
+        else:
+            sample_list = Samples.from_json(path_samples).samples
+
+        return cls(samples=sample_list)
+
+
+class ReactionDataset(DatasetModel):
     """Dataset for storing features used for training."""
 
     # TODO: better would be an object of lists than a list of objects
@@ -76,35 +167,30 @@ class ReactionDataset(BaseModel, Dataset):
     reactions: List[Reaction]
     """Reactions in dataset"""
 
-    class Config:
-        arbitrary_types_allowed = True
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
-    @staticmethod
-    def create_from_disk(
-        path_reactions: Union[Path, str], path_samples: Union[Path, str]
+    @classmethod
+    def from_json(
+        cls,
+        path_samples: Union[Path, List[Path], str, List[str]],
+        path_reactions: Union[Path, List[Path], str, List[str]],
     ) -> "ReactionDataset":
-        """Load `Samples` and `Reactions` from JSON files.
+        if isinstance(path_samples, list) and isinstance(path_reactions, list):
+            sample_list = []
+            for path in path_samples:
+                samples = Samples.from_json(path)
+                sample_list.extend(samples.samples)
 
-        Args:
-            path_reactions (str): Path of JSON file for reactions.
-            path_samples (str): Path of JSON file for samples.
+            reaction_list = []
+            for path in path_reactions:
+                reactions = Reactions.from_json(path)
+                reaction_list.extend(reactions.reactions)
+        else:
+            sample_list = Samples.from_json(path_samples).samples
+            reaction_list = Reactions.from_json(path_reactions).reactions
 
-        Returns:
-            ReactionDataset: Dataset for storing features used for training
-        """
-        reactions = Reactions.from_json(path_reactions)
-        samples = Samples.from_json(path_samples)
-
-        return ReactionDataset(samples=samples.samples, reactions=reactions.reactions)
-
-    def to_disk(self, path: Union[Path, str]):
-        """Save dataset to disk.
-
-        Args:
-            path (str): Path to save dataset to.
-        """
-        Reactions(reactions=self.reactions).to_json(path)
-        Samples(samples=self.samples).to_json(path)
+        return cls(samples=sample_list, reactions=reaction_list)
 
     def get_samples_from_reaction_partners(self, reaction: Reaction) -> List[Sample]:
         sample_list = []
@@ -164,12 +250,6 @@ class ReactionDataset(BaseModel, Dataset):
             raise TypeError(f"Invalid index '{idx}' type.")
 
     # FIXME: Not needed currently -> remove?
-    @classmethod
-    def merge(cls, a, b):
-        """Merge two datasets."""
-        return cls(samples=a.samples + b.samples, reactions=a.reactions + b.reactions)
-
-    # FIXME: Not needed currently -> remove?
     def rm_reaction(self, idx: int):
         """Remove reaction from dataset."""
         # NOTE: Dataset might contain samples
@@ -207,9 +287,6 @@ class ReactionDataset(BaseModel, Dataset):
 
         return True
 
-    def copy(self) -> "ReactionDataset":
-        return ReactionDataset(samples=self.samples, reactions=self.reactions)
-
     def sort(self, target: Literal["samples", "reactions", "both"] = "samples") -> None:
         """Sort the samples and reactions in the dataset by their unique identifiers (UIDs).
 
@@ -218,25 +295,32 @@ class ReactionDataset(BaseModel, Dataset):
         target : Literal[samples, reactions, both], optional
             Selects what will be sorted, by default "samples"
         """
-        if target == "samples" or target == "both":
-            s = []
-            uids = sorted([s.uid for s in self.samples])
-            for uid in uids:
-                for sample in self.samples:
-                    if sample.uid == uid:
-                        s.append(sample)
 
-            self.samples = s
+        @overload
+        def _sort(sort_target: List[Sample]) -> List[Sample]:
+            ...
+
+        @overload
+        def _sort(sort_target: List[Reaction]) -> List[Reaction]:
+            ...
+
+        def _sort(
+            sort_target: Union[List[Sample], List[Reaction]]
+        ) -> Union[List[Sample], List[Reaction]]:
+            l = []
+            uids = sorted([s.uid for s in sort_target])
+            for uid in uids:
+                for target in sort_target:
+                    if target.uid == uid:
+                        l.append(target)
+
+            return l
+
+        if target == "samples" or target == "both":
+            self.samples = _sort(self.samples)
 
         if target == "reactions" or target == "both":
-            r = []
-            uids = sorted([s.uid for s in self.reactions])
-            for uid in uids:
-                for reaction in self.reactions:
-                    if reaction.uid == uid:
-                        r.append(reaction)
-
-            self.reactions = r
+            self.reactions = _sort(self.reactions)
 
     def get_dataloader(self, cfg: Optional[dict] = {}) -> DataLoader:
         """
@@ -267,13 +351,18 @@ class ReactionDataset(BaseModel, Dataset):
                 # empty sample object used for padding
                 ref = batch[0][0][0]
                 padding_sample = Sample(
+                    buid=ref.buid,
                     uid="PADDING",
-                    xyz=torch.zeros_like(ref.xyz),
                     numbers=torch.zeros_like(ref.numbers),
+                    positions=torch.zeros_like(ref.positions),
                     unpaired_e=torch.zeros_like(ref.unpaired_e),
                     charges=torch.zeros_like(ref.charges),
-                    egfn1=torch.zeros_like(ref.egfn1),
-                    egfn2=torch.zeros_like(ref.egfn2),
+                    gfn1_energy=torch.zeros_like(ref.gfn1_energy),
+                    gfn1_grad=torch.zeros_like(ref.gfn1_grad),
+                    gfn2_energy=torch.zeros_like(ref.gfn2_energy),
+                    gfn2_grad=torch.zeros_like(ref.gfn2_grad),
+                    dft_energy=torch.zeros_like(ref.dft_energy),
+                    dft_grad=torch.zeros_like(ref.dft_grad),
                     edisp=torch.zeros_like(ref.edisp),
                     erep=torch.zeros_like(ref.erep),
                     ovlp=torch.zeros_like(ref.ovlp),
@@ -297,7 +386,9 @@ class ReactionDataset(BaseModel, Dataset):
 
             for i, s in enumerate(batch):
                 # assume standardised features
-                assert all(sample.xyz.shape == s[0][0].xyz.shape for sample in s[0])
+                assert all(
+                    sample.positions.shape == s[0][0].positions.shape for sample in s[0]
+                )
                 assert all(
                     sample.numbers.shape == s[0][0].numbers.shape for sample in s[0]
                 )
@@ -473,7 +564,7 @@ class ReactionDataset(BaseModel, Dataset):
                 d[f"r_{slot}"] = getattr(reaction, slot)
 
         # samples
-        feat_skip = ["unpaired_e", "charges", "egfn2", "numbers", "xyz", "cn"]
+        feat_skip = ["unpaired_e", "charges", "egfn2", "numbers", "positions", "cn"]
         skip = ["__", "device", "dtype", "uid", "qat"] + feat_skip
         for i, s in enumerate(samples):
 
@@ -543,7 +634,7 @@ class ReactionDataset(BaseModel, Dataset):
         return df
 
 
-def store_subsets_on_disk(
+def store_subsets_on_json(
     dataset: ReactionDataset,
     path: Union[Path, str],
     subsets: List[str],
@@ -573,7 +664,7 @@ def store_subsets_on_disk(
     dataset.prune()
 
     # store subsets on disk
-    dataset.to_disk(path)
+    dataset.to_json(path)
 
 
 def get_dataset(
@@ -582,7 +673,7 @@ def get_dataset(
     """Return a preliminary dataset for setting up the workflow."""
 
     # load json from disk
-    dataset = ReactionDataset.create_from_disk(
+    dataset = ReactionDataset.from_json(
         path_reactions=path_reactions, path_samples=path_samples
     )
 

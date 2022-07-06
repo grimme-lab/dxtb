@@ -274,7 +274,10 @@ class Datareader:
                 ]
             )
 
-            sample = dirpath.replace(self.path, "").replace("benchmark/", "")
+            sample = dirpath.replace(self.path, "").replace(
+                "benchmark/", f"{self.benchmark}:"
+            )
+
             if sample.startswith("/"):
                 sample = sample[1:]
             self.file_list.append(sample)
@@ -330,8 +333,8 @@ class Datareader:
                     if molecule in bh76rc:
                         self.data.append(
                             [
-                                xyz,
-                                q,
+                                numbers,
+                                positions,
                                 chrg,
                                 uhf,
                                 gfn1_energy,
@@ -556,8 +559,8 @@ class Datareader:
             with open(path, "a", encoding="utf-8") as f:
                 d = {}
 
-                positions = torch.tensor(data[0], device=device, dtype=dtype)
-                numbers = torch.tensor(data[1], device=device, dtype=torch.long)
+                numbers = torch.tensor(data[0], device=device, dtype=torch.long)
+                positions = torch.tensor(data[1], device=device, dtype=dtype)
                 charge = torch.tensor(data[2], device=device, dtype=torch.int16)
                 unpaired_e = torch.tensor(data[3], device=device, dtype=torch.int16)
 
@@ -566,14 +569,16 @@ class Datareader:
                 )
 
                 d[file] = dict(
-                    xyz=data[0],
-                    numbers=data[1],
+                    numbers=data[0],
+                    positions=data[1],
                     unpaired_e=data[3],
                     charges=data[2],
-                    e_gfn1=[i * AU2KCAL for i in data[4]],
-                    grad_gfn1=data[5],
-                    e_ref=AU2KCAL * data[8],
-                    grad_ref=data[9],
+                    gfn1_energy=[i * AU2KCAL for i in data[4]],
+                    gfn1_grad=data[5],
+                    gfn2_energy=[i * AU2KCAL for i in data[6]],
+                    gfn2_grad=data[7],
+                    dft_energy=AU2KCAL * data[8],
+                    dft_grad=data[9],
                     edisp=[i * AU2KCAL for i in edisp.tolist()],
                     erep=[i * AU2KCAL for i in erep.tolist()],
                     qat=qat.tolist(),
@@ -589,7 +594,7 @@ class Datareader:
                 f.write(out)
 
                 # do not add comma for last item
-                if file != self.file_list[:-1]:
+                if file != self.file_list[-1]:
                     f.write(",")
 
         # closing curly bracket for json
