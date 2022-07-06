@@ -5,26 +5,37 @@ import torch
 from typing import Dict, List, Optional, Union, overload
 
 from xtbml.constants import FLOAT32
+from xtbml.data.datareader import Datareader
 from xtbml.typing import Tensor
 
 
 class Sample:
     """Representation for single sample information."""
 
+    buid: str
+    """Unique identifier for the benchmark the sample is from."""
     uid: str
     """Unique identifier for sample"""
-    xyz: Tensor
-    """Atomic positions"""
     numbers: Tensor
     """Atomic numbers"""
+    positions: Tensor
+    """Atomic positions"""
     unpaired_e: Tensor
     """Number of unpaired electrons"""
     charges: Tensor
     """Charge of sample"""
-    egfn1: Tensor
+    gfn1_energy: Tensor
     """Atomwise energy calculated by GFN1-xTB"""
-    egfn2: Tensor
+    gfn1_grad: Tensor
+    """Gradient calculated by GFN1-xTB"""
+    gfn2_energy: Tensor
     """Atomwise energy calculated by GFN2-xTB"""
+    gfn2_grad: Tensor
+    """Gradient calculated with GFN2-xTB"""
+    dft_energy: Tensor
+    """Reference DFT energy"""
+    dft_grad: Tensor
+    """Gradient calculated with DFT"""
     edisp: Tensor
     """Atomwise dispersion energy"""
     erep: Tensor
@@ -39,13 +50,18 @@ class Sample:
     """Hamiltonian matrix"""
 
     __slots__ = [
+        "buid",
         "uid",
-        "xyz",
         "numbers",
+        "positions",
         "unpaired_e",
         "charges",
-        "egfn1",
-        "egfn2",
+        "gfn1_energy",
+        "gfn1_grad",
+        "gfn2_energy",
+        "gfn2_grad",
+        "dft_energy",
+        "dft_grad",
         "edisp",
         "erep",
         "qat",
@@ -61,13 +77,18 @@ class Sample:
 
     def __init__(
         self,
+        buid: str,
         uid: str,
-        xyz: Tensor,
         numbers: Tensor,
+        positions: Tensor,
         unpaired_e: Tensor,
         charges: Tensor,
-        egfn1: Tensor,
-        egfn2: Tensor,
+        gfn1_energy: Tensor,
+        gfn1_grad: Tensor,
+        gfn2_energy: Tensor,
+        gfn2_grad: Tensor,
+        dft_energy: Tensor,
+        dft_grad: Tensor,
         edisp: Tensor,
         erep: Tensor,
         qat: Tensor,
@@ -75,13 +96,18 @@ class Sample:
         h0: Tensor,
         ovlp: Tensor,
     ) -> None:
+        self.buid = buid
         self.uid = uid
-        self.xyz = xyz
         self.numbers = numbers
+        self.positions = positions
         self.unpaired_e = unpaired_e
         self.charges = charges
-        self.egfn1 = egfn1
-        self.egfn2 = egfn2
+        self.gfn1_energy = gfn1_energy
+        self.gfn1_grad = gfn1_grad
+        self.gfn2_energy = gfn2_energy
+        self.gfn2_grad = gfn2_grad
+        self.dft_energy = dft_energy
+        self.dft_grad = dft_grad
         self.edisp = edisp
         self.erep = erep
         self.qat = qat
@@ -89,19 +115,23 @@ class Sample:
         self.h0 = h0
         self.ovlp = ovlp
 
-        self.__device = xyz.device
-        self.__dtype = xyz.dtype
+        self.__device = self.positions.device
+        self.__dtype = self.positions.dtype
 
         if any(
             [
                 tensor.device != self.device
                 for tensor in (
-                    self.xyz,
                     self.numbers,
+                    self.positions,
                     self.unpaired_e,
                     self.charges,
-                    self.egfn1,
-                    self.egfn2,
+                    self.gfn1_energy,
+                    self.gfn1_grad,
+                    self.gfn2_energy,
+                    self.gfn2_grad,
+                    self.dft_energy,
+                    self.dft_grad,
                     self.edisp,
                     self.erep,
                     self.qat,
@@ -117,9 +147,13 @@ class Sample:
             [
                 tensor.dtype != self.dtype
                 for tensor in (
-                    self.xyz,
-                    self.egfn1,
-                    self.egfn2,
+                    self.positions,
+                    self.gfn1_energy,
+                    self.gfn1_grad,
+                    self.gfn2_energy,
+                    self.gfn2_grad,
+                    self.dft_energy,
+                    self.dft_grad,
                     self.edisp,
                     self.erep,
                     self.qat,
@@ -167,13 +201,18 @@ class Sample:
             return self
 
         return self.__class__(
+            self.buid,
             self.uid,
-            self.xyz.to(device=device),
+            self.positions.to(device=device),
             self.numbers.to(device=device),
             self.unpaired_e.to(device=device),
             self.charges.to(device=device),
-            self.egfn1.to(device=device),
-            self.egfn2.to(device=device),
+            self.gfn1_energy.to(device=device),
+            self.gfn1_grad.to(device=device),
+            self.gfn2_energy.to(device=device),
+            self.gfn2_grad.to(device=device),
+            self.dft_energy.to(device=device),
+            self.dft_grad.to(device=device),
             self.edisp.to(device=device),
             self.erep.to(device=device),
             self.qat.to(device=device),
@@ -203,13 +242,18 @@ class Sample:
             return self
 
         return self.__class__(
+            self.buid,
             self.uid,
-            self.xyz.type(dtype),
+            self.positions.type(dtype),
             self.numbers.type(torch.long),
             self.unpaired_e.type(torch.uint8),
             self.charges.type(torch.uint8),
-            self.egfn1.type(dtype),
-            self.egfn2.type(dtype),
+            self.gfn1_energy.type(dtype),
+            self.gfn1_grad.type(dtype),
+            self.gfn2_energy.type(dtype),
+            self.gfn2_grad.type(dtype),
+            self.dft_energy.type(dtype),
+            self.dft_grad.type(dtype),
             self.edisp.type(dtype),
             self.erep.type(dtype),
             self.qat.type(dtype),
@@ -220,7 +264,7 @@ class Sample:
 
     def __repr__(self) -> str:
         """Custom print representation of class."""
-        return f"{self.__class__.__name__}({self.uid})"
+        return f"{self.__class__.__name__}({self.buid}: {self.uid})"
 
     def equal(self, other):
         if not isinstance(other, Sample):
@@ -229,12 +273,16 @@ class Sample:
         return all(
             [
                 self.uid == other.uid,
-                torch.all(torch.isclose(self.xyz, other.xyz)).item(),
+                torch.all(torch.isclose(self.positions, other.positions)).item(),
                 torch.all(torch.isclose(self.numbers, other.numbers)).item(),
                 torch.all(torch.isclose(self.unpaired_e, other.unpaired_e)).item(),
                 torch.all(torch.isclose(self.charges, other.charges)).item(),
-                torch.all(torch.isclose(self.egfn1, other.egfn1)).item(),
-                torch.all(torch.isclose(self.egfn2, other.egfn2)).item(),
+                torch.all(torch.isclose(self.gfn1_energy, other.gfn1_energy)).item(),
+                torch.all(torch.isclose(self.gfn1_grad, other.gfn1_grad)).item(),
+                torch.all(torch.isclose(self.gfn2_energy, other.gfn2_energy)).item(),
+                torch.all(torch.isclose(self.gfn2_grad, other.gfn2_grad)).item(),
+                torch.all(torch.isclose(self.dft_energy, other.dft_energy)).item(),
+                torch.all(torch.isclose(self.dft_grad, other.dft_grad)).item(),
                 torch.all(torch.isclose(self.edisp, other.edisp)).item(),
                 torch.all(torch.isclose(self.erep, other.erep)).item(),
                 torch.all(torch.isclose(self.qat, other.qat)).item(),
@@ -282,8 +330,8 @@ class Samples:
     def __init__(self, samples: List[Sample]):
         self.samples = samples
 
-        self.__device = samples[0].egfn1.device
-        self.__dtype = samples[0].egfn1.dtype
+        self.__device = samples[0].gfn1_energy.device
+        self.__dtype = samples[0].gfn1_energy.dtype
 
     @classmethod
     def from_json(
@@ -291,15 +339,19 @@ class Samples:
     ) -> "Samples":
         """Create `Samples` from json.
 
-        Args:
-            path (Union[Path, str]): Path of JSON file.
+        Parameters
+        ----------
+        path : Union[Path, str]
+            Path to json file.
+        dtype : torch.dtype, optional
+            Type of the tensor. Defaults to FLOAT32.
 
-        Raises:
-            FileNotFoundError: Error if JSON file not found.
-
-        Returns:
-            Samples: Class that holds a list of `Sample`.
+        Returns
+        -------
+        Samples
+            `Samples` instance that holds a list of `Sample`.
         """
+
         path = Path(path)
         if not path.is_file():
             raise FileNotFoundError(f"JSON file '{path}' not found.")
@@ -315,6 +367,64 @@ class Samples:
                 sample_list.append(Sample(uid=uid, **features))
 
         return cls(sample_list)
+
+    @classmethod
+    def from_disk(
+        cls, benchmark: str, select_name: Union[str, None] = None
+    ) -> "Samples":
+        """Create `Samples` from disk. Features are set to zero.
+
+        Parameters
+        ----------
+        benchmark : str
+            Name of the benchmark.
+        select_name : str, optional
+            Name of the samples to select. Defaults to None.
+
+        Returns
+        -------
+        Samples:
+            `Samples` instance that holds a list of `Sample`.
+
+        Examples
+        --------
+        >>> samples = Samples.from_disk("PTB")
+        >>> print(samples)
+        Samples(List of 12603 Sample objects)
+        """
+
+        data = Datareader(benchmark)
+        data.get_sample_data()
+        data.sort()
+        if select_name is not None:
+            data.get_by_name(select_name)
+
+        samples_list = []
+        for file, data in zip(data.file_list, data.data):
+            samples_list.append(
+                Sample(
+                    buid=benchmark,
+                    uid=file,
+                    numbers=torch.tensor(data[0]),
+                    positions=torch.tensor(data[1]),
+                    charges=torch.tensor(data[2]),
+                    unpaired_e=torch.tensor(data[3]),
+                    gfn1_energy=torch.tensor(data[4]),
+                    gfn1_grad=torch.tensor(data[5]),
+                    gfn2_energy=torch.tensor(data[6]),
+                    gfn2_grad=torch.tensor(data[7]),
+                    dft_energy=torch.tensor(data[8]),
+                    dft_grad=torch.tensor(data[9]),
+                    edisp=torch.tensor(0.0),
+                    erep=torch.tensor(0.0),
+                    qat=torch.tensor(0.0),
+                    cn=torch.tensor(0.0),
+                    ovlp=torch.tensor(0.0),
+                    h0=torch.tensor(0.0),
+                ),
+            )
+
+        return cls(samples_list)
 
     def to_json(self, path: Union[Path, str]) -> None:
         """

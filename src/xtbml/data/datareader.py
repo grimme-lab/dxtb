@@ -244,8 +244,8 @@ class Datareader:
                 raise FileNotFoundError(f"No coord/xyz file found in '{dirpath}'.")
 
             assert len(geo[0]) == 4
-            xyz = [g[:3] for g in geo]
-            q = [g[-1] for g in geo]
+            positions = [g[:3] for g in geo]
+            numbers = [g[-1] for g in geo]
 
             # read chrg file
             if FILE_CHARGE in filenames:
@@ -261,8 +261,8 @@ class Datareader:
 
             self.data.append(
                 [
-                    xyz,
-                    q,
+                    numbers,
+                    positions,
                     chrg,
                     uhf,
                     gfn1_energy,
@@ -274,7 +274,7 @@ class Datareader:
                 ]
             )
 
-            sample = dirpath.replace(self.path, "").replace("benchmark", self.benchmark)
+            sample = dirpath.replace(self.path, "").replace("benchmark/", "")
             if sample.startswith("/"):
                 sample = sample[1:]
             self.file_list.append(sample)
@@ -335,9 +335,11 @@ class Datareader:
                                 chrg,
                                 uhf,
                                 gfn1_energy,
-                                gfn1_energy_atom_resolved,
+                                gfn1_grad,
                                 gfn2_energy,
-                                gfn2_energy_atom_resolved,
+                                gfn2_grad,
+                                dft_energy,
+                                dft_grad,
                             ]
                         )
                         self.file_list.append(f"BH76RC/{molecule}")
