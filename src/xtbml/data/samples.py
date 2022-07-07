@@ -378,6 +378,7 @@ class Samples:
 
         return cls(sample_list)
 
+    # NOTE: Extend with on-the-fly feature generation?
     @classmethod
     def from_disk(
         cls, benchmark: str, select_name: Union[str, None] = None
