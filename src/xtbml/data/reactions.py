@@ -191,7 +191,9 @@ class Reactions:
     reactions: List[Reaction]
     """List of reactions"""
 
-    def __init__(self, reactions) -> None:
+    __slots__ = ["reactions", "__device", "__dtype"]
+
+    def __init__(self, reactions: List[Reaction]) -> None:
         self.reactions = reactions
 
         self.__device = reactions[0].egfn1.device
