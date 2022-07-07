@@ -430,10 +430,11 @@ class ReactionDataset(DatasetModel):
                     gref=torch.zeros_like(ref.gref),
                     edisp=torch.zeros_like(ref.edisp),
                     erep=torch.zeros_like(ref.erep),
+                    qat=torch.zeros_like(ref.qat),
+                    cn=torch.zeros_like(ref.cn),
                     ovlp=torch.zeros_like(ref.ovlp),
                     h0=torch.zeros_like(ref.h0),
-                    cn=torch.zeros_like(ref.cn),
-                    qat=torch.zeros_like(ref.qat),
+                    adj=torch.zeros_like(ref.adj),
                 )
 
                 # pad each batch
@@ -762,9 +763,7 @@ def get_gmtkn_dataset(path: Path) -> ReactionDataset:
     """
 
     dataset = get_dataset(
-        # path_reactions=Path(path, "reactions.json"),
-        # path_samples=Path(path, "samples.json"),
-        path_reactions=Path(path, "reactions.json"),  # ACONF
+        path_reactions=Path(path, "reactions.json"),
         path_samples=Path(path, "samples.json"),
     )
 
@@ -813,3 +812,97 @@ def largest_eigenvalue(matrix, n_iter=100):
         # print(eigval, eigval1)
 
     return eigvals
+
+
+def create_subset(dataset: ReactionDataset, keys: Union[str, List[str]]):
+    """Prune given dataset to subsets indicated by keys. Note: changing the dataset in-place
+
+    Args:
+        dataset (ReactionDataset): Dataset to be reduced to subsets
+        keys (Union[str, List[str]]): List of keys indicating the wanted subsets
+    """
+
+    # FIXME: during writing and reading this to list changes the shape of single values e.g. "G21IP h"
+
+    subset_dict = {
+        "barrier": [
+            "BH76",
+            "BHPERI",
+            "BHDIV10",
+            "INV24",
+            "BHROT27",
+            "PX13",
+            "WCPT18",
+        ],
+        "thermo_small": [
+            "W4-11",
+            "G21EA",
+            "G21IP",
+            "DIPCS10",
+            "PA26",
+            "SIE4x4",
+            "ALKBDE10",
+            "YBDE18",
+            "AL2X6",
+            "HEAVYSB11",
+            "NBPRC",
+            "ALK8",
+            "RC21",
+            "G2RC",
+            "BH76RC",
+            "FH51",
+            "TAUT15",
+            "DC13",
+        ],
+        "thermo_large": [
+            "MB16-43",
+            "DARC",
+            "RSE43",
+            "BSR36",
+            "CDIE20",
+            "ISO34",
+            "ISOL24",
+            "C60ISO",
+            "PArel",
+        ],
+        "nci_inter": [
+            "RG18",
+            "ADIM6",
+            "S22",
+            "S66",
+            "HEAVY28",
+            "WATER27",
+            "CARBHB12",
+            "PNICO23",
+            "HAL59",
+            "AHB21",
+            "CHB6",
+            "IL16",
+        ],
+        "nci_intra": [
+            "IDISP",
+            "ICONF",
+            "ACONF",
+            "Amino20x4",
+            "PCONF21",
+            "MCONF",
+            "SCONF",
+            "UPU23",
+            "BUT14DIOL",
+        ],
+    }
+
+    if isinstance(keys, str):
+        keys = [keys]
+
+    subsets = [subset for k in keys for subset in subset_dict[k]]
+
+    keep = [
+        i for i, r in enumerate(dataset.reactions) if r.uid.split("_")[0] in subsets
+    ]
+    idxs = [i for i in range(len(dataset)) if i not in keep]
+
+    # TODO: better use torch.utils.data.Subset
+    for i in reversed(idxs):
+        dataset.rm_reaction(idx=i)
+    return

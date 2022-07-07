@@ -47,6 +47,8 @@ class Sample:
     """Overlap matrix"""
     h0: Tensor
     """Hamiltonian matrix"""
+    adj: Tensor
+    """Adjacency matrix (optional)"""
 
     __slots__ = [
         "buid",
@@ -65,8 +67,9 @@ class Sample:
         "erep",
         "qat",
         "cn",
-        "h0",
         "ovlp",
+        "h0",
+        "adj",
         "__device",
         "__dtype",
     ]
@@ -94,6 +97,7 @@ class Sample:
         cn: Tensor,
         h0: Tensor,
         ovlp: Tensor,
+        adj: Tensor = Tensor([]),
     ) -> None:
         self.buid = buid
         self.uid = uid
@@ -113,6 +117,7 @@ class Sample:
         self.cn = cn
         self.h0 = h0
         self.ovlp = ovlp
+        self.adj = adj
 
         self.__device = self.positions.device
         self.__dtype = self.positions.dtype
@@ -137,6 +142,7 @@ class Sample:
                     self.cn,
                     self.h0,
                     self.ovlp,
+                    self.adj,
                 )
             ]
         ):
@@ -159,6 +165,7 @@ class Sample:
                     self.cn,
                     self.h0,
                     self.ovlp,
+                    self.adj,
                 )
             ]
         ):
@@ -218,6 +225,7 @@ class Sample:
             self.cn.to(device=device),
             self.h0.to(device=device),
             self.ovlp.to(device=device),
+            self.adj.to(device=device),
         )
 
     def type(self, dtype: torch.dtype) -> "Sample":
@@ -259,6 +267,7 @@ class Sample:
             self.cn.type(dtype),
             self.h0.type(dtype),
             self.ovlp.type(dtype),
+            self.adj.type(dtype),
         )
 
     def __repr__(self) -> str:
@@ -289,6 +298,7 @@ class Sample:
                 torch.all(torch.isclose(self.cn, other.cn)).item(),
                 torch.all(torch.isclose(self.h0, other.h0)).item(),
                 torch.all(torch.isclose(self.ovlp, other.ovlp)).item(),
+                torch.all(torch.isclose(self.adj, other.adj)).item(),
             ]
         )
 
