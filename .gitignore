@@ -1,7 +1,3 @@
-**/benchmark/
-samples.json
-devel.py
-
 # Prerequisites
 *.d
 
@@ -186,8 +182,17 @@ struc.xyz
 .resRC
 .res
 
+# datasets
 data/archive
-data/GMTKN55*
+data/*/benchmark*
+
+# exclude some sample and reaction files for tests
+!data/PTB/samples_HE.json
+!data/GMTKN55/samples_ACONF.json
+!data/GMTKN55/reactions_ACONF.json
 
 # models
 models/
+
+# other
+devel.py
