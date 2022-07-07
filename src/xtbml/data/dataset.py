@@ -69,9 +69,12 @@ def get_subsets_from_batched_reaction(batched_reaction: Reaction) -> List[str]:
 
 
 class DatasetModel(BaseModel, Dataset):
+    """Base class for Datasets."""
 
+    # TODO: better would be an object of lists than a list of objects
     samples: List[Sample]
     """Samples in dataset"""
+
     reactions: Optional[List[Reaction]] = None
     """Reactions in dataset"""
 
@@ -79,23 +82,23 @@ class DatasetModel(BaseModel, Dataset):
         arbitrary_types_allowed = True
 
     @overload
+    @classmethod  # @classmethod must be used before @abstractmethod!
     @abstractmethod
-    @classmethod
     def from_json(
         cls, path_samples: Union[Path, List[Path], str, List[str]]
     ) -> "SampleDataset":
         ...
 
     @overload
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def from_json(
         cls, path_samples: Union[Path, str], path_reactions: Union[Path, str]
     ) -> "ReactionDataset":
         ...
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def from_json(
         cls,
         path_samples: Union[Path, List[Path], str, List[str]],
@@ -134,12 +137,13 @@ class DatasetModel(BaseModel, Dataset):
         """Merge two datasets."""
         return cls(samples=a.samples + b.samples, reactions=a.reactions + b.reactions)
 
-    def copy(self) -> "DatasetModel":
-        """Return a copy of the dataset."""
-        return DatasetModel(samples=self.samples, reactions=self.reactions)
+    def __len__(self):
+        """Length of dataset defined by number of reactions or samples."""
+        return len(self.samples) if self.reactions is None else len(self.reactions)
 
 
 class SampleDataset(DatasetModel):
+    """Dataset for storing features used for training."""
 
     samples: List[Sample]
     """Samples in dataset"""
@@ -161,13 +165,62 @@ class SampleDataset(DatasetModel):
 
         return cls(samples=sample_list)
 
+    def __eq__(self, other: "SampleDataset") -> bool:
+        """Compare `SampleDataset` to another one.
+
+        Parameters
+        ----------
+        other : SampleDataset
+            Dataset to compare to.
+
+        Returns
+        -------
+        bool
+            Result of comparison.
+
+        Raises
+        ------
+        NotImplementedError
+            If other is not of type `SampleDataset`.
+        """
+        if not isinstance(other, SampleDataset):
+            raise NotImplementedError(
+                "Comparison with other types than `SampleDataset` not possible."
+            )
+
+        for i, sample in enumerate(self.samples):
+            if not sample.equal(other.samples[i]):
+                return False
+
+        return True
+
+    @overload
+    def __getitem__(self, idx: int) -> "Sample":
+        ...
+
+    @overload
+    def __getitem__(self, idx: slice) -> "SampleDataset":
+        ...
+
+    def __getitem__(self, idx: Union[int, slice]) -> Union["Sample", "SampleDataset"]:
+        """Defines standard list slicing/indexing for list of `SampleDataset`."""
+        samples = self.samples[idx]
+
+        if isinstance(idx, slice) and isinstance(samples, list):
+            return SampleDataset(samples=self.samples[idx])
+
+        if isinstance(idx, int) and isinstance(samples, Sample):
+            return samples
+
+        raise TypeError(f"Invalid index '{idx}' type.")
+
 
 class ReactionDataset(DatasetModel):
     """Dataset for storing features used for training."""
 
-    # TODO: better would be an object of lists than a list of objects
     samples: List[Sample]
     """Samples in dataset"""
+
     reactions: List[Reaction]
     """Reactions in dataset"""
 
@@ -206,10 +259,6 @@ class ReactionDataset(DatasetModel):
                     sample_list.append(sample)
 
         return sample_list
-
-    def __len__(self):
-        """Length of dataset defined by number of reactions."""
-        return len(self.reactions)
 
     @overload
     def __getitem__(self, idx: int) -> Tuple[List[Sample], Reaction]:
@@ -262,26 +311,36 @@ class ReactionDataset(DatasetModel):
         #       that are not required in any reaction anymore
         del self.reactions[idx]
 
-    def equal(self, other: "ReactionDataset") -> bool:
+    def copy(self) -> "ReactionDataset":
+        """Return a copy of the dataset."""
+        return ReactionDataset(samples=self.samples, reactions=self.reactions)
+
+    def __eq__(self, other: "ReactionDataset") -> bool:
         """Compare `ReactionsDataset` to another one.
 
         Parameters
         ----------
         other : ReactionDataset
-
+            Dataset to compare to.
 
         Returns
         -------
         bool
             Result of comparison.
 
+        Raises
+        ------
+        NotImplementedError
+            If other is not of type `ReactionDataset`.
+
         Note
         ----
         For the `ReactionDataset`s to be equal, the order of `ReactionDatasets.samples` and `ReactionDatasets.reactions` must be equal (see `ReactionDatasets.sort("both")`).
         """
         if not isinstance(other, ReactionDataset):
-            # do not compare against unrelated types
-            return NotImplemented
+            raise NotImplementedError(
+                "Comparison with other types than `ReactionDataset` not possible."
+            )
 
         for i, sample in enumerate(self.samples):
             if not sample.equal(other.samples[i]):
@@ -363,12 +422,12 @@ class ReactionDataset(DatasetModel):
                     positions=torch.zeros_like(ref.positions),
                     unpaired_e=torch.zeros_like(ref.unpaired_e),
                     charges=torch.zeros_like(ref.charges),
-                    gfn1_energy=torch.zeros_like(ref.gfn1_energy),
-                    gfn1_grad=torch.zeros_like(ref.gfn1_grad),
-                    gfn2_energy=torch.zeros_like(ref.gfn2_energy),
-                    gfn2_grad=torch.zeros_like(ref.gfn2_grad),
-                    dft_energy=torch.zeros_like(ref.dft_energy),
-                    dft_grad=torch.zeros_like(ref.dft_grad),
+                    egfn1=torch.zeros_like(ref.egfn1),
+                    ggfn1=torch.zeros_like(ref.ggfn1),
+                    egfn2=torch.zeros_like(ref.egfn2),
+                    ggfn2=torch.zeros_like(ref.ggfn2),
+                    eref=torch.zeros_like(ref.eref),
+                    gref=torch.zeros_like(ref.gref),
                     edisp=torch.zeros_like(ref.edisp),
                     erep=torch.zeros_like(ref.erep),
                     ovlp=torch.zeros_like(ref.ovlp),
@@ -531,7 +590,7 @@ class ReactionDataset(DatasetModel):
         for s in self.samples:
             # check whether needed in any reaction
             for r in self.reactions:
-                if s.uid in r.partners:
+                if s.uid.split(":")[1] in r.partners:
                     samples_new.append(s)
                     continue
         self.samples = samples_new
@@ -640,7 +699,7 @@ class ReactionDataset(DatasetModel):
         return df
 
 
-def store_subsets_on_json(
+def store_subsets_on_disk(
     dataset: ReactionDataset,
     path: Union[Path, str],
     subsets: List[str],
