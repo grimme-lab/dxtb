@@ -126,9 +126,17 @@ def read_coord(fp: str | Path) -> list[list[float | int]]:
                 print(e)
                 print(f"WARNING: No correct values. Skip sample {fp}")
 
-    if len(arr) == 1:
-        if arr[0][0] == arr[0][1] == arr[0][2] == 0:
-            arr[0][0] = 1.0
+    # make sure last coord is not 0,0,0
+    if len(arr) == 0:
+        raise ValueError(f"File {fp} is empty.")
+    elif len(arr) == 1:
+        if arr[-1][:3] == [0.0, 0.0, 0.0]:
+            arr[-1][0] = 1.0
+    else:
+        if arr[-1][:3] == [0.0, 0.0, 0.0]:
+            raise ValueError(
+                f"Last coordinate is zero in '{fp}'. This will clash with padding."
+            )
 
     return arr
 
