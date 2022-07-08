@@ -126,9 +126,17 @@ def read_coord(fp: str | Path) -> list[list[float | int]]:
                 print(e)
                 print(f"WARNING: No correct values. Skip sample {fp}")
 
-    if len(arr) == 1:
-        if arr[0][0] == arr[0][1] == arr[0][2] == 0:
-            arr[0][0] = 1.0
+    # make sure last coord is not 0,0,0
+    if len(arr) == 0:
+        raise ValueError(f"File {fp} is empty.")
+    elif len(arr) == 1:
+        if arr[-1][:3] == [0.0, 0.0, 0.0]:
+            arr[-1][0] = 1.0
+    else:
+        if arr[-1][:3] == [0.0, 0.0, 0.0]:
+            raise ValueError(
+                f"Last coordinate is zero in '{fp}'. This will clash with padding."
+            )
 
     return arr
 
@@ -221,19 +229,17 @@ class Datareader:
             if FILE_COORD not in filenames and FILE_XYZ not in filenames:
                 continue
 
-            gfn1_energy, gfn1_grad = [], []
+            egfn1, ggfn1 = [], []
             if FILE_GFN1 in filenames:
-                gfn1_energy, gfn1_grad = read_tblite_gfn("/".join([dirpath, FILE_GFN1]))
+                egfn1, ggfn1 = read_tblite_gfn("/".join([dirpath, FILE_GFN1]))
 
-            gfn2_energy, gfn2_grad = [], []
+            egfn2, ggfn2 = [], []
             if FILE_GFN2 in filenames:
-                gfn2_energy, gfn2_grad = read_tblite_gfn("/".join([dirpath, FILE_GFN2]))
+                egfn2, ggfn2 = read_tblite_gfn("/".join([dirpath, FILE_GFN2]))
 
-            dft_energy, dft_grad = [], []
+            eref, gref = 0.0, []
             if FILE_ORCA_ENGRAD in filenames:
-                dft_energy, dft_grad = read_orca_engrad(
-                    "/".join([dirpath, FILE_ORCA_ENGRAD])
-                )
+                eref, gref = read_orca_engrad("/".join([dirpath, FILE_ORCA_ENGRAD]))
 
             # read coord/xyz file
             if FILE_COORD in filenames:
@@ -265,12 +271,12 @@ class Datareader:
                     positions,
                     chrg,
                     uhf,
-                    gfn1_energy,
-                    gfn1_grad,
-                    gfn2_energy,
-                    gfn2_grad,
-                    dft_energy,
-                    dft_grad,
+                    egfn1,
+                    ggfn1,
+                    egfn2,
+                    ggfn2,
+                    eref,
+                    gref,
                 ]
             )
 
@@ -337,12 +343,12 @@ class Datareader:
                                 positions,
                                 chrg,
                                 uhf,
-                                gfn1_energy,
-                                gfn1_grad,
-                                gfn2_energy,
-                                gfn2_grad,
-                                dft_energy,
-                                dft_grad,
+                                egfn1,
+                                ggfn1,
+                                egfn2,
+                                ggfn2,
+                                eref,
+                                gref,
                             ]
                         )
                         self.file_list.append(f"BH76RC/{molecule}")
@@ -573,12 +579,12 @@ class Datareader:
                     positions=data[1],
                     unpaired_e=data[3],
                     charges=data[2],
-                    gfn1_energy=[i * AU2KCAL for i in data[4]],
-                    gfn1_grad=data[5],
-                    gfn2_energy=[i * AU2KCAL for i in data[6]],
-                    gfn2_grad=data[7],
-                    dft_energy=AU2KCAL * data[8],
-                    dft_grad=data[9],
+                    egfn1=[i * AU2KCAL for i in data[4]],
+                    ggfn1=data[5],
+                    egfn2=[i * AU2KCAL for i in data[6]],
+                    ggfn2=data[7],
+                    eref=AU2KCAL * data[8],
+                    gref=data[9],
                     edisp=[i * AU2KCAL for i in edisp.tolist()],
                     erep=[i * AU2KCAL for i in erep.tolist()],
                     qat=qat.tolist(),
