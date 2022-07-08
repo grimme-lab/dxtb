@@ -1,12 +1,21 @@
 from math import sqrt
 import torch
 from typing import List, Dict, Tuple, Union, Optional
+from xtbml.exlibs.tbmalt import batch
+
+from xtbml.param.util import (
+    get_pair_param,
+    get_elem_param,
+    get_elem_param_dict,
+    get_elem_param_shells,
+)
 
 from ..adjlist import AdjacencyList
+from ..basis.indexhelper import IndexHelper
 from ..basis.type import Basis
 from ..constants import EV2AU
 from ..constants import FLOAT64 as DTYPE
-from ..data.atomicrad import get_atomic_rad
+from ..data.atomicrad import get_atomic_rad, atomic_rad
 from ..exlibs.tbmalt import Geometry
 from ..integral import mmd
 from ..param import Param, Element
@@ -27,6 +36,75 @@ _lsh2aqm = {
     3: "f",
     4: "g",
 }
+
+
+def get_hamiltonian(numbers: Tensor, positions: Tensor, par: Param):
+    # TODO: CN dependency
+    kcn = (
+        IndexHelper.from_numbers(
+            numbers, get_elem_param_dict(par.element, "kcn"), dtype=positions.dtype
+        ).angular
+        * EV2AU
+    )
+
+    # true IndexHelper for angular momentum
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_param_shells(par.element))
+    sh2at = ihelp.shells_to_atom.type(torch.long)
+    orb2sh = ihelp.orbitals_to_shell.type(torch.long)
+
+    print(ihelp.angular)
+    print("shells_to_atom", ihelp.shells_to_atom)
+    print("shells_per_atom", ihelp.shells_per_atom)
+    print("orbitals_to_shell", ihelp.orbitals_to_shell)
+    print("orbitals_per_shell", ihelp.orbitals_per_shell)
+
+    # ----------------
+    # Eq.29: H_(mu,mu)
+    # ----------------
+    selfenergy_shell = (
+        IndexHelper.from_numbers(
+            numbers, get_elem_param_dict(par.element, "levels"), dtype=positions.dtype
+        ).angular
+        * EV2AU
+    )
+    selfenergy = batch.index(selfenergy_shell, orb2sh)
+
+    # ----------------------
+    # Eq.24: PI(R_AB, l, l')
+    # ----------------------
+    shpoly_shell = IndexHelper.from_numbers(
+        numbers, get_elem_param_dict(par.element, "shpoly"), dtype=positions.dtype
+    ).angular
+
+    # polynomial scaling defined for shells -> spread to orbitals
+    shpoly = batch.index(shpoly_shell, orb2sh)
+
+    # positions/radii defined for each atom -> spread to shells and orbitals
+    positions = batch.index(batch.index(positions, sh2at), orb2sh)
+    distances = torch.cdist(positions, positions, p=2)
+    rad = batch.index(batch.index(atomic_rad[numbers], sh2at), orb2sh)
+    rr = torch.sqrt(distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2)))
+
+    PI = (1.0 + shpoly.unsqueeze(-1) * rr) * (1.0 + shpoly.unsqueeze(-2) * rr)
+
+    # --------------------
+    # Eq.28: X(EN_A, EN_B)
+    # --------------------
+    en = get_elem_param(par.element, "en")
+    X = 1.0 + par.hamiltonian.xtb.enscale * torch.pow(
+        en[numbers].unsqueeze(-1) - en[numbers].unsqueeze(-2), 2.0
+    )
+
+    # ------------
+    # Eq.23: H_EHT
+    # ------------
+    h = 0.5 * PI * (selfenergy.unsqueeze(-1) + selfenergy.unsqueeze(-2))
+    print("\nH0", h)
+
+    # TODO
+    print("\nhscale")
+    kpair = get_pair_param(par.hamiltonian.xtb.kpair)
+    km = torch.index_select(kpair[numbers], -1, numbers)
 
 
 class Hamiltonian:
@@ -85,6 +163,14 @@ class Hamiltonian:
             self.rad[isp] = get_atomic_rad(isp)
         lmax += 1
 
+        print("\n")
+        # print("self.rad", self.rad)
+        # print("self.selfenergy", self.selfenergy)
+        # print("self.kcn", self.kcn)
+        # print("self.shpoly", self.shpoly)
+        # print("self.refocc", self.refocc)
+        # print(atomic_rad[mol.atomic_numbers])
+
         # Collect shell specific scaling block
         #
         # FIXME: tblite implicitly spreads missing angular momenta, however this
@@ -100,7 +186,23 @@ class Hamiltonian:
                     if jsh > ish
                     else _lsh2aqm[jsh] + _lsh2aqm[ish]
                 )
+                print(
+                    "ish",
+                    ish,
+                    "kii",
+                    kii,
+                    "jsh",
+                    jsh,
+                    "kjj",
+                    kjj,
+                    "kij",
+                    kij,
+                    "(kii + kjj) / 2",
+                    (kii + kjj) / 2,
+                )
                 ksh[ish, jsh] = shell.get(kij, (kii + kjj) / 2)
+
+        print("ksh", ksh)
 
         def get_hscale(li, lj, ri, rj, vi, vj, km, ksh):
             """Calculate Hamiltonian scaling for a shell block"""
@@ -127,12 +229,14 @@ class Hamiltonian:
             for jsp in species:
                 rj = par.element[jsp]
                 enp = 1.0 + par.hamiltonian.xtb.enscale * (ri.en - rj.en) ** 2
-
+                print("enp", enp)
                 km = kpair.get(f"{isp}-{jsp}", kpair.get(f"{jsp}-{isp}", 1.0)) * enp
 
                 self.hscale[(isp, jsp)] = get_hscale(
                     lsh[isp], lsh[jsp], ri, rj, valence[isp], valence[jsp], km, ksh
                 )
+
+        print("self.hscale", self.hscale)
 
     def get_selfenergy(
         self,
@@ -207,6 +311,8 @@ class Hamiltonian:
         torch.diagonal(overlap, dim1=-2, dim2=-1).fill_(1.0)
         h0 = self.build_diagonal_blocks(h0, basis, self_energy)
 
+        print("h0", torch.diagonal(h0, 0))
+
         # fill off-diagonal
         h0, overlap = self.build_diatomic_blocks(
             self.mol, h0, overlap, basis, adjlist, self_energy
@@ -223,7 +329,7 @@ class Hamiltonian:
                 ii = basis.iao_sh[iss + ish].item()
                 hii = self_energy[iss + ish]
 
-                i_nao = 2*basis.cgto[element][ish].ang + 1
+                i_nao = 2 * basis.cgto[element][ish].ang + 1
                 for iao in range(i_nao):
                     h0[ii + iao, ii + iao] = hii
 
@@ -241,6 +347,8 @@ class Hamiltonian:
         """
         Construction of off-diagonal blocks of the Hamiltonian and overlap integrals.
         """
+
+        test = torch.zeros_like(h0)
 
         for i, el_i in enumerate(mol.chemical_symbols):
             isa = basis.ish_at[i].item()
@@ -267,14 +375,27 @@ class Hamiltonian:
 
                         stmp = mmd.overlap(
                             (cgtoi.ang, cgtoj.ang),
-                            (cgtoi.alpha[:cgtoi.nprim], cgtoj.alpha[:cgtoj.nprim]),
-                            (cgtoi.coeff[:cgtoi.nprim], cgtoj.coeff[:cgtoj.nprim]),
+                            (cgtoi.alpha[: cgtoi.nprim], cgtoj.alpha[: cgtoj.nprim]),
+                            (cgtoi.coeff[: cgtoi.nprim], cgtoj.coeff[: cgtoj.nprim]),
                             -vec,
                         )
 
                         shpoly = (1.0 + self.shpoly[el_i][ish] * rr) * (
                             1.0 + self.shpoly[el_j][jsh] * rr
                         )
+
+                        # print(
+                        #     "el_i",
+                        #     el_i,
+                        #     "el_j",
+                        #     el_j,
+                        #     "rr",
+                        #     rr,
+                        #     "shpoly",
+                        #     self.shpoly[el_i][ish],
+                        #     self.shpoly[el_j][jsh],
+                        #     shpoly,
+                        # )
 
                         hscale = self.hscale[(el_i, el_j)][ish, jsh].item()
                         hij = (
@@ -284,19 +405,29 @@ class Hamiltonian:
                             * shpoly
                         )
 
-                        i_nao = 2*cgtoi.ang + 1
-                        j_nao = 2*cgtoj.ang + 1
+                        print("hscale", hscale, "hij", hij)
+
+                        i_nao = 2 * cgtoi.ang + 1
+                        j_nao = 2 * cgtoj.ang + 1
                         for iao in range(i_nao):
                             for jao in range(j_nao):
                                 ij = jao + j_nao * iao
 
                                 overlap[jj + jao, ii + iao].add_(stmp[iao, jao])
                                 h0[jj + jao, ii + iao].add_(stmp[iao, jao] * hij)
+                                # print(
+                                #     "jj + jao", jj + jao, "ii + iao", ii + iao, shpoly
+                                # )
+                                test[jj + jao, ii + iao].add_(shpoly)
 
                                 if i != j:
                                     overlap[ii + iao, jj + jao].add_(stmp[iao, jao])
                                     h0[ii + iao, jj + jao].add_(stmp[iao, jao] * hij)
 
+                                    test[ii + iao, jj + jao].add_(shpoly)
+
+        print(test)
+        print(h0)
         return h0, overlap
 
 
