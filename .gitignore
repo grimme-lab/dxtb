@@ -169,3 +169,30 @@ cython_debug/
 
 # tensorboard
 *.pt.trace.json
+
+# data
+*.json
+*.csv
+*.txt
+coord
+struc.xyz
+.CHRG
+.UHF
+.SYM
+.resRC
+.res
+
+# datasets
+data/archive
+data/*/benchmark*
+
+# exclude some sample and reaction files for tests
+!data/PTB/samples_HE.json
+!data/GMTKN55/samples_ACONF.json
+!data/GMTKN55/reactions_ACONF.json
+
+# models
+models/
+
+# other
+devel.py
