@@ -7,7 +7,7 @@ import pandas as pd
 from pathlib import Path
 
 from ..ml.util import load_model_from_cfg
-from ..data.dataset import get_gmtkn_dataset, create_subset
+from ..data.dataset import get_gmtkn55_dataset, create_subset
 from .norm import Normalisation
 from .loss import WTMAD2Loss
 from ..data.adjacency import calc_adj
@@ -18,7 +18,7 @@ def train():
 
     # load GMTKN55 from disk
     root = Path(__file__).resolve().parents[3]
-    dataset = get_gmtkn_dataset(Path(root, "data"))
+    dataset = get_gmtkn55_dataset(Path(root, "data"))
 
     # OPTIONAL: select subset(s)
     create_subset(

@@ -749,7 +749,7 @@ def get_dataset(
     return dataset
 
 
-def get_gmtkn_dataset(path: Path) -> ReactionDataset:
+def get_gmtkn55_dataset(path: Path) -> ReactionDataset:
     """Return total GMTKN55 dataset.
 
     Parameters
@@ -763,8 +763,8 @@ def get_gmtkn_dataset(path: Path) -> ReactionDataset:
     """
 
     dataset = get_dataset(
-        path_reactions=Path(path, "reactions.json"),
-        path_samples=Path(path, "samples.json"),
+        path_reactions=Path(path, "GMTKN55/reactions_ACONF.json"),
+        path_samples=Path(path, "GMTKN55/samples_ACONF.json"),
     )
 
     # assert len(dataset) == 1505

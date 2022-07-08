@@ -6,7 +6,7 @@ Implementation of decisiontree algorthims for regression tasks.
 
 Example
 -------
->>> from xtbml.data.dataset import get_gmtkn_dataset
+>>> from xtbml.data.dataset import get_gmtkn55_dataset
 >>> from xtbml.ml.trees import TreeRegressor
 >>> from xtbml.ml.util import wtmad2
 >>> # load data from disk
@@ -57,7 +57,7 @@ from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from lightgbm import LGBMRegressor
 
 
-from ..data.dataset import get_gmtkn_dataset
+from ..data.dataset import get_gmtkn55_dataset
 
 
 class TreeRegressor:
@@ -86,7 +86,7 @@ class TreeRegressor:
             GMTKN55 dataset in pandas dataframe format
         """
         root = Path(__file__).resolve().parents[3]
-        dataset = get_gmtkn_dataset(Path(root, "data"))
+        dataset = get_gmtkn55_dataset(Path(root, "data"))
         return dataset.to_df()
 
     @staticmethod

@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from typing import List, Literal
 
 from ..typing import Tensor
-from ..data.dataset import get_gmtkn_dataset
+from ..data.dataset import get_gmtkn55_dataset
 
 
 class WTMAD2Loss(torch.nn.Module):
@@ -119,7 +119,7 @@ class WTMAD2Loss(torch.nn.Module):
         """
 
         # load data
-        dataset = get_gmtkn_dataset(path)
+        dataset = get_gmtkn55_dataset(path)
         d = {}
 
         # collect values
