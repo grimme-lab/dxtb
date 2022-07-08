@@ -25,8 +25,12 @@ def calc_adj(
         Tensor: Adjacency matrix of given sample (or bond order if masking set False).
     """
 
-    cn = get_coordination_number(sample.numbers.type(torch.int64), sample.xyz, cn_fn)
-    bond_order = guess_bond_order(sample.numbers.type(torch.int64), sample.xyz, cn)
+    cn = get_coordination_number(
+        sample.numbers.type(torch.int64), sample.positions, cn_fn
+    )
+    bond_order = guess_bond_order(
+        sample.numbers.type(torch.int64), sample.positions, cn
+    )
 
     if masking:
         # apply boolean masking
