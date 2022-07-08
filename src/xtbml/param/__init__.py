@@ -13,3 +13,4 @@ included in the method.
 from .base import Param
 from .element import Element
 from .repulsion import EffectiveRepulsion
+from .halogen import ClassicalHalogen
