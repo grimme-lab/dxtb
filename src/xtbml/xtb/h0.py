@@ -3,6 +3,7 @@ import torch
 from typing import List, Dict, Tuple, Union, Optional
 
 from ..adjlist import AdjacencyList
+from ..basis import IndexHelper
 from ..basis.type import Basis
 from ..constants import EV2AU
 from ..constants import FLOAT64 as DTYPE
@@ -193,6 +194,27 @@ class Hamiltonian:
         #                 )
 
         return self_energy  # , dsedcn, dsedq
+
+    def get_occupation(self, ihelp: IndexHelper):
+        """
+        Obtain the reference occupation numbers for each orbital.
+        """
+
+        occupation = torch.zeros(*ihelp.orbital_to_shell.shape, dtype=DTYPE)
+
+        for idx, sym in enumerate(self.mol.chemical_symbols):
+            shell_index = ihelp.shell_index[idx]
+
+            for ish in range(ihelp.shells_per_atom[idx]):
+                orbital_index = ihelp.orbital_index[shell_index + ish]
+                orbitals_per_shell = ihelp.orbital_per_shell[shell_index + ish]
+
+                for iao in range(ihelp.orbitals_per_shell[ish]):
+                    occupation[orbital_index + iao] = (
+                        self.occupation[sym][ish] / orbitals_per_shell
+                    )
+
+        return occupation
 
     def build(
         self, basis: Basis, adjlist: AdjacencyList, cn: Optional[Tensor]

@@ -35,9 +35,6 @@ class AdjacencyList:
     therefore two arrays are used for clarity.
     """
 
-    trans: torch.Tensor
-    """Generated lattice points (from :func:`~xtbml.cutoff.get_lattice_points`)"""
-
     inl: torch.Tensor
     """Offset index in the neighbour map"""
 
@@ -50,8 +47,7 @@ class AdjacencyList:
     nltr: torch.Tensor
     """Cell index of the neighbouring atom"""
 
-    def __init__(self, mol: Geometry, trans: torch.Tensor, cutoff: float) -> None:
-        self.trans = trans
+    def __init__(self, mol: Geometry, cutoff: float) -> None:
         self.inl = torch.zeros(mol.get_length(), dtype=DTYPE)
         self.nnl = torch.zeros(mol.get_length(), dtype=DTYPE)
 
@@ -65,16 +61,14 @@ class AdjacencyList:
             self.inl[iat] = img
 
             for jat in range(iat + 1):
-                for itr in range(trans.size(dim=1)):
-                    vec = torch.sub(mol.positions[iat, :], mol.positions[jat, :])
-                    vec = torch.sub(vec, trans[itr, :])
-                    r2 = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]
-                    if r2 < finfo(type(cutoff2)).eps or r2 > cutoff2:
-                        continue
+                vec = torch.sub(mol.positions[iat, :], mol.positions[jat, :])
+                r2 = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]
+                if r2 < finfo(type(cutoff2)).eps or r2 > cutoff2:
+                    continue
 
-                    tmp_nlat[img] = jat
-                    tmp_nltr[img] = itr
-                    img += 1
+                tmp_nlat[img] = jat
+                tmp_nltr[img] = itr
+                img += 1
 
             self.nnl[iat] = img - self.inl[iat]
 
