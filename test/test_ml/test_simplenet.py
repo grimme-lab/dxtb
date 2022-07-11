@@ -5,7 +5,7 @@ import pytest
 import torch
 from xtbml.ml.evaluation import evaluate
 
-from xtbml.data.dataset import get_gmtkn_dataset
+from xtbml.data.dataset import get_gmtkn55_dataset
 from xtbml.ml.loss import WTMAD2Loss
 from xtbml.ml.model import Simple_Net
 
@@ -21,7 +21,7 @@ class TestWTMAD2Loss:
 
     def setup_class(self):
         print("Test Simple_Net model")
-        self.dataset = get_gmtkn_dataset(self.path)
+        self.dataset = get_gmtkn55_dataset(self.path)
 
         self.loss_fn = WTMAD2Loss(self.path)
 

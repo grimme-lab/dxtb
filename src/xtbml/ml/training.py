@@ -7,7 +7,7 @@ import pandas as pd
 from pathlib import Path
 
 from ..ml.util import load_model_from_cfg
-from ..data.dataset import get_gmtkn_dataset
+from ..data.dataset import get_gmtkn55_dataset, create_subset
 from .norm import Normalisation
 from .loss import WTMAD2Loss
 from ..data.adjacency import calc_adj
@@ -18,9 +18,14 @@ def train():
 
     # load GMTKN55 from disk
     root = Path(__file__).resolve().parents[3]
-    dataset = get_gmtkn_dataset(Path(root, "data"))
+    dataset = get_gmtkn55_dataset(Path(root, "data"))
 
-    # optional pruning
+    # OPTIONAL: select subset(s)
+    create_subset(
+        dataset, ["thermo_small"]
+    )  # barrier thermo_small thermo_large nci_inter nci_intra
+
+    # OPTIONAL: pruning of dataset
     # dataset = dataset[:50]  # [4:6]
     print("len(dataset)", len(dataset))
 
@@ -35,7 +40,7 @@ def train():
 
     # set config for ML
     cfg_ml = {
-        "model_architecture": "GNN",  # "Basic_CNN" "EGNN" "Simple_Net" "GNN"
+        "model_architecture": "Basic_CNN",  # "Basic_CNN" "EGNN" "Simple_Net" "GNN"
         "training_optimizer": "Adam",
         "training_scheduler": "CyclicLR",
         "training_loss_fn": "WTMAD2Loss",
@@ -133,7 +138,7 @@ def train():
         list(zip(losses, gfn1_losses, gfn2_losses)),
         columns=["Losses", "GFN1", "GFN2"],
     )
-    df.to_csv(save_name + "_df.csv", index=True)
+    df.to_csv(save_name + "_losses.csv", index=True)
     pd.DataFrame(bookkeeping).to_csv(save_name + "_bookkeeping.csv", index=True)
     torch.save(model.state_dict(), save_name + "_model.pt")
     with open(save_name + "_cfg.txt", "w") as f:

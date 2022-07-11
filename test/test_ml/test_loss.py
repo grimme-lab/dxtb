@@ -5,7 +5,7 @@ import pytest
 import torch
 
 from xtbml.ml.loss import WTMAD2Loss
-from xtbml.data.dataset import ReactionDataset, get_gmtkn_dataset
+from xtbml.data.dataset import ReactionDataset, get_gmtkn55_dataset
 from xtbml.ml.util import load_model_from_cfg
 
 from .gmtkn55 import GMTKN55
@@ -27,7 +27,7 @@ class TestWTMAD2Loss:
 
     def setup_class(self):
         print("Test custom loss function")
-        self.dataset = get_gmtkn_dataset(self.path)
+        self.dataset = get_gmtkn55_dataset(self.path)
 
         # subsets in GMTKN55
         self.all_sets = set([r.uid.split("_")[0] for r in self.dataset.reactions])
