@@ -351,7 +351,7 @@ class Datareader:
                                 gref,
                             ]
                         )
-                        self.file_list.append(f"BH76RC/{molecule}")
+                        self.file_list.append(f"{self.benchmark}:BH76RC/{molecule}")
 
         if self.benchmark == "GMTKN55":
             # GMTKN55 plus duplicates for BH76RC
