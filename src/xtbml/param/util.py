@@ -111,20 +111,7 @@ def get_elem_param_shells(par_element: dict[str, Element], key: str = "shells") 
         # convert shells: [ "1s", "2s" ] -> [ 0, 0 ]
         l = []
         for shell in getattr(item, key):
-            if "s" in shell:
-                l.append(0)
-            elif "p" in shell:
-                l.append(1)
-            elif "d" in shell:
-                l.append(2)
-            elif "f" in shell:
-                l.append(3)
-            elif "g" in shell:
-                l.append(4)
-            elif "h" in shell:
-                l.append(5)
-            else:
-                raise ValueError(f"Unknown shell: {shell}")
+            l.append({"s": 0, "p": 1, "d": 2, "f": 3, "g": 4, "h": 5}[shell])
 
         d[i + 1] = l
 
