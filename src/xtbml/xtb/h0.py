@@ -37,8 +37,33 @@ _lsh2aqm = {
     4: "g",
 }
 
+# NOTE: Initial idea
+def get_ksh(aqm2lsh, shell, dtype):
+    """
+    Create a matrix looking something like:
+    ss sp sd sg sf
+    ps pp pd pf pg
+    ds dp dd df dg
+    fs fp fd ff fg
+    gs gp gd gf gg
+
+    This does not work with kpol!
+    """
+
+    ksh = torch.zeros((len(aqm2lsh), len(aqm2lsh)), dtype=dtype)
+    for aqm_i, lsh_i in aqm2lsh.items():
+        kii = shell.get(f"{aqm_i}{aqm_i}", 1.0)
+        for aqm_j, lsh_j in aqm2lsh.items():
+            kjj = shell.get(f"{aqm_j}{aqm_j}", 1.0)
+
+            ksh[lsh_i, lsh_j] = shell.get(
+                f"{aqm_i}{aqm_j}",
+                (kii + kjj) / 2.0,
+            )
+
 
 def get_hamiltonian(numbers: Tensor, positions: Tensor, par: Param):
+
     # TODO: CN dependency
     kcn = (
         IndexHelper.from_numbers(
@@ -48,9 +73,12 @@ def get_hamiltonian(numbers: Tensor, positions: Tensor, par: Param):
     )
 
     # true IndexHelper for angular momentum
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_param_shells(par.element))
+    angular, valence_shells = get_elem_param_shells(par.element, valence=True)
+    ihelp = IndexHelper.from_numbers(numbers, angular)
     sh2at = ihelp.shells_to_atom.type(torch.long)
     orb2sh = ihelp.orbitals_to_shell.type(torch.long)
+
+    numbers_orb = batch.index(batch.index(numbers, sh2at), orb2sh)
 
     print(ihelp.angular)
     print("shells_to_atom", ihelp.shells_to_atom)
@@ -92,19 +120,83 @@ def get_hamiltonian(numbers: Tensor, positions: Tensor, par: Param):
     # --------------------
     en = get_elem_param(par.element, "en")
     X = 1.0 + par.hamiltonian.xtb.enscale * torch.pow(
-        en[numbers].unsqueeze(-1) - en[numbers].unsqueeze(-2), 2.0
+        en[numbers_orb].unsqueeze(-1) - en[numbers_orb].unsqueeze(-2), 2.0
     )
+
+    shell = par.hamiltonian.xtb.shell
+    aqm2lsh = {"s": 0, "p": 1, "d": 2, "f": 3, "g": 4}
+
+    # ksh = get_ksh(aqm2lsh, shell, positions.dtype)
+
+    # Vector of angular momentum for each orbital. E.g. LiH:
+    # [Li 2s, Li 2p, Li 2p, Li 2p, H 1s, H 2s]
+    # [    0,     1,     1,     1,    0,    0]
+    angular_orb = batch.index(ihelp.angular, orb2sh)
+
+    # Check if shell belongs to valence. E.g. LiH:
+    # [Li 2s, Li 2p, Li 2p, Li 2p, H 1s, H 2s]
+    # [    1,     1,     1,     1,    1,    0]
+    valence = IndexHelper.from_numbers(numbers, valence_shells).angular
+    valence_orb = batch.index(valence, orb2sh)
+
+    # TODO: somehow vectorize this mess
+    hscale = torch.zeros((len(orb2sh), len(orb2sh)), dtype=positions.dtype)
+    ksh = torch.zeros((len(aqm2lsh), len(aqm2lsh)), dtype=positions.dtype)
+    for i, ksh_i in enumerate(angular_orb):
+        for j, ksh_j in enumerate(angular_orb):
+
+            for aqm_i, lsh_i in aqm2lsh.items():
+                if valence_orb[i] == 0:
+                    kii = par.hamiltonian.xtb.kpol
+                else:
+                    kii = shell.get(f"{aqm_i}{aqm_i}", 1.0)
+
+                for aqm_j, lsh_j in aqm2lsh.items():
+                    if valence_orb[j] == 0:
+                        kjj = par.hamiltonian.xtb.kpol
+                    else:
+                        kjj = shell.get(f"{aqm_j}{aqm_j}", 1.0)
+
+                    # only if both belong to the valence shell,
+                    # we will use this formula
+                    if valence_orb[i] == 1 and valence_orb[j] == 1:
+                        # check both "sp" and "ps"
+                        ksh[lsh_i, lsh_j] = shell.get(
+                            f"{aqm_i}{aqm_j}",
+                            shell.get(
+                                f"{aqm_j}{aqm_i}",
+                                (kii + kjj) / 2.0,
+                            ),
+                        )
+                    else:
+                        ksh[lsh_i, lsh_j] = (kii + kjj) / 2.0
+
+            hscale[i, j] = ksh[ksh_i, ksh_j]
+
+    kpair = get_pair_param(par.hamiltonian.xtb.kpair)
+    km = torch.index_select(kpair[numbers_orb], -1, numbers_orb)
+    print("\nkm", km)
+
+    g = torch.where(
+        (valence_orb.unsqueeze(-1) * valence_orb.unsqueeze(-2)).type(torch.bool),
+        hscale * km * X,
+        hscale,
+    )
+    print("\nhscale", hscale)
+    print("\n hscale * km * X", g)
+
+    # TODO: OVERLAP
 
     # ------------
     # Eq.23: H_EHT
     # ------------
-    h = 0.5 * PI * (selfenergy.unsqueeze(-1) + selfenergy.unsqueeze(-2))
-    print("\nH0", h)
+    slfnrg = 0.5 * (selfenergy.unsqueeze(-1) + selfenergy.unsqueeze(-2))
 
-    # TODO
-    print("\nhscale")
-    kpair = get_pair_param(par.hamiltonian.xtb.kpair)
-    km = torch.index_select(kpair[numbers], -1, numbers)
+    mask = torch.ones(g.shape, dtype=torch.bool)
+    mask.diagonal(dim1=-2, dim2=-1).fill_(False)
+
+    h = torch.where(mask, PI * g * slfnrg, slfnrg)
+    print("\nH0", h)
 
 
 class Hamiltonian:
@@ -186,23 +278,10 @@ class Hamiltonian:
                     if jsh > ish
                     else _lsh2aqm[jsh] + _lsh2aqm[ish]
                 )
-                print(
-                    "ish",
-                    ish,
-                    "kii",
-                    kii,
-                    "jsh",
-                    jsh,
-                    "kjj",
-                    kjj,
-                    "kij",
-                    kij,
-                    "(kii + kjj) / 2",
-                    (kii + kjj) / 2,
-                )
+
                 ksh[ish, jsh] = shell.get(kij, (kii + kjj) / 2)
 
-        print("ksh", ksh)
+        # print("ksh", ksh)
 
         def get_hscale(li, lj, ri, rj, vi, vj, km, ksh):
             """Calculate Hamiltonian scaling for a shell block"""
@@ -229,14 +308,11 @@ class Hamiltonian:
             for jsp in species:
                 rj = par.element[jsp]
                 enp = 1.0 + par.hamiltonian.xtb.enscale * (ri.en - rj.en) ** 2
-                print("enp", enp)
                 km = kpair.get(f"{isp}-{jsp}", kpair.get(f"{jsp}-{isp}", 1.0)) * enp
 
                 self.hscale[(isp, jsp)] = get_hscale(
                     lsh[isp], lsh[jsp], ri, rj, valence[isp], valence[jsp], km, ksh
                 )
-
-        print("self.hscale", self.hscale)
 
     def get_selfenergy(
         self,
@@ -384,28 +460,14 @@ class Hamiltonian:
                             1.0 + self.shpoly[el_j][jsh] * rr
                         )
 
-                        # print(
-                        #     "el_i",
-                        #     el_i,
-                        #     "el_j",
-                        #     el_j,
-                        #     "rr",
-                        #     rr,
-                        #     "shpoly",
-                        #     self.shpoly[el_i][ish],
-                        #     self.shpoly[el_j][jsh],
-                        #     shpoly,
-                        # )
-
                         hscale = self.hscale[(el_i, el_j)][ish, jsh].item()
+
                         hij = (
                             0.5
                             * (self_energy[isa + ish] + self_energy[jsa + jsh])
                             * hscale
                             * shpoly
                         )
-
-                        print("hscale", hscale, "hij", hij)
 
                         i_nao = 2 * cgtoi.ang + 1
                         j_nao = 2 * cgtoj.ang + 1
@@ -418,16 +480,17 @@ class Hamiltonian:
                                 # print(
                                 #     "jj + jao", jj + jao, "ii + iao", ii + iao, shpoly
                                 # )
-                                test[jj + jao, ii + iao].add_(shpoly)
+                                test[jj + jao, ii + iao].add_(hij)
 
                                 if i != j:
                                     overlap[ii + iao, jj + jao].add_(stmp[iao, jao])
                                     h0[ii + iao, jj + jao].add_(stmp[iao, jao] * hij)
 
-                                    test[ii + iao, jj + jao].add_(shpoly)
+                                    test[ii + iao, jj + jao].add_(hij)
 
         print(test)
-        print(h0)
+        print("h0", h0)
+        print("\n\n\n")
         return h0, overlap
 
 
