@@ -14,7 +14,7 @@ import torch
 # TODO: allow for usability with base Params object
 class EnergyContribution(BaseModel, ABC):
     """
-    Abstract base class for calculation of classical contributions, like repulsion interactions.
+    Abstract base class for calculation of classical contributions.
     This class provides a method to retrieve the contributions to the energy, gradient and virial
     within a given cutoff.
     """  # TODOC
