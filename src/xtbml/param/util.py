@@ -86,32 +86,33 @@ def get_elem_param_dict(par_element: dict[str, Element], key: str) -> dict:
     return d
 
 
-def get_elem_param_shells(par_element: dict[str, Element], key: str = "shells") -> dict:
+def get_elem_param_shells(par_element: dict[str, Element]) -> dict:
     """
-    Obtain a element-wise parametrized quantity for all elements.
-    Useful for shell-resolved parameters, combines nicely with `IndexHelper`.
+    Obtain angular momenta of the shells of all atoms.
+    This returns the required input for the `IndexHelper`.
 
     Parameters
     ----------
     par : dict[str, Element]
         Parametrization of elements.
-    key : str
-        Name of the quantity to obtain (default: shells).
 
     Returns
     -------
     dict
-        Parametrization of all elements.
+        Angular momenta of all elements.
     """
 
     d = {}
+    aqm2lsh = {"s": 0, "p": 1, "d": 2, "f": 3, "g": 4, "h": 5}
 
     for i, item in enumerate(par_element.values()):
-
         # convert shells: [ "1s", "2s" ] -> [ 0, 0 ]
         l = []
-        for shell in getattr(item, key):
-            l.append({"s": 0, "p": 1, "d": 2, "f": 3, "g": 4, "h": 5}[shell])
+        for shell in getattr(item, "shells"):
+            if shell[1] not in aqm2lsh:
+                raise ValueError(f"Unknown shell type '{shell[1]}'.")
+
+            l.append(aqm2lsh[shell[1]])
 
         d[i + 1] = l
 
