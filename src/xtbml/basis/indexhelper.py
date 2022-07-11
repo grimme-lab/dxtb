@@ -202,6 +202,138 @@ class IndexHelper:
             orbitals_to_shell=ao2sh,
         )
 
+    def reduce_orbital_to_shell(
+        self, x: Tensor, dim: int = -1, reduce: str = "sum"
+    ) -> Tensor:
+        """
+        Reduce orbital-resolved tensor to shell-resolved tensor
+
+        Parameters
+        ----------
+        x : Tensor
+            Orbital-resolved tensor
+        dim : int
+            Dimension to reduce over, defaults to -1
+        reduce : str
+            Reduction method, defaults to "sum"
+
+        Returns
+        -------
+        Tensor
+            Shell-resolved tensor
+        """
+
+        return torch.scatter_reduce(x, dim, self.orbitals_to_shell, reduce=reduce)
+
+    def reduce_shell_to_atom(
+        self, x: Tensor, dim: int = -1, reduce: str = "sum"
+    ) -> Tensor:
+        """
+        Reduce shell-resolved tensor to atom-resolved tensor
+
+        Parameters
+        ----------
+        x : Tensor
+            Shell-resolved tensor
+        dim : int
+            Dimension to reduce over, defaults to -1
+        reduce : str
+            Reduction method, defaults to "sum"
+
+        Returns
+        -------
+        Tensor
+            Atom-resolved tensor
+        """
+
+        return torch.scatter_reduce(x, dim, self.shells_to_atom, reduce=reduce)
+
+    def reduce_orbital_to_atom(
+        self, x: Tensor, dim: int = -1, reduce: str = "sum"
+    ) -> Tensor:
+        """
+        Reduce orbital-resolved tensor to atom-resolved tensor
+
+        Parameters
+        ----------
+        x : Tensor
+            Orbital-resolved tensor
+        dim : int
+            Dimension to reduce over, defaults to -1
+        reduce : str
+            Reduction method, defaults to "sum"
+
+        Returns
+        -------
+        Tensor
+            Atom-resolved tensor
+        """
+
+        return self.reduce_shell_to_atom(
+            self.reduce_orbital_to_shell(x, dim=dim, reduce=reduce),
+            dim=dim,
+            reduce=reduce,
+        )
+
+    def spread_atom_to_shell(self, x: Tensor, dim: int = -1) -> Tensor:
+        """
+        Spread atom-resolved tensor to shell-resolved tensor
+
+        Parameters
+        ----------
+        x : Tensor
+            Atom-resolved tensor
+        dim : int
+            Dimension to spread over, defaults to -1
+
+        Returns
+        -------
+        Tensor
+            Shell-resolved tensor
+        """
+
+        return torch.gather(x, dim, self.shells_to_atom)
+
+    def spread_shell_to_orbital(self, x: Tensor, dim: int = -1) -> Tensor:
+        """
+        Spread shell-resolved tensor to orbital-resolved tensor
+
+        Parameters
+        ----------
+        x : Tensor
+            Shell-resolved tensor
+        dim : int
+            Dimension to spread over, defaults to -1
+
+        Returns
+        -------
+        Tensor
+            Orbital-resolved tensor
+        """
+
+        return torch.gather(x, dim, self.orbitals_to_shell)
+
+    def spread_atom_to_orbital(self, x: Tensor, dim: int = -1) -> Tensor:
+        """
+        Spread atom-resolved tensor to orbital-resolved tensor
+
+        Parameters
+        ----------
+        x : Tensor
+            Atom-resolved tensor
+        dim : int
+            Dimension to spread over, defaults to -1
+
+        Returns
+        -------
+        Tensor
+            Orbital-resolved tensor
+        """
+
+        return self.spread_shell_to_orbital(
+            self.spread_atom_to_shell(x, dim=dim), dim=dim
+        )
+
     @property
     def device(self) -> torch.device:
         """The device on which the `IndexHelper` object resides."""
