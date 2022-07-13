@@ -1,8 +1,9 @@
 from __future__ import annotations
 import torch
 
+from ..constants import ATOMIC_NUMBER
 from ..param import Element
-from ..typing import Tensor
+from ..typing import Tensor, Dict, List
 
 
 def get_element_param(par_element: dict[str, Element], key: str) -> Tensor:
@@ -62,3 +63,22 @@ def get_elem_param_dict(par_element: dict[str, Element], key: str) -> dict:
         d[i + 1] = getattr(item, key)
 
     return d
+
+
+def get_element_angular(par_element: Dict[str, Element]) -> Dict[int, List[int]]:
+
+    label2angular = {
+        "s": 0,
+        "p": 1,
+        "d": 2,
+        "f": 3,
+        "g": 4,
+    }
+
+    return {
+        ATOMIC_NUMBER[sym]: [
+            label2angular[label[-1]]
+            for label in par.shells
+        ]
+        for sym, par in par_element.items()
+    }

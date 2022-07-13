@@ -10,10 +10,9 @@ from ..typing import Tensor, Dict
 
 
 class SelfConsistentCharges:
-    """
-    """
+    """ """
 
-    class Cache:
+    class _Data:
         """
         Restart data for the singlepoint calculation.
         """
@@ -33,14 +32,17 @@ class SelfConsistentCharges:
         ihelp: IndexHelper
         """Index mapping for the basis set"""
 
+        cache: "Cache"
+        """Restart data for the interaction"""
+
         def __init__(
             self,
-            interaction: Interaction,
             hcore: Tensor,
             overlap: Tensor,
             occupation: Tensor,
             n0: Tensor,
             ihelp: IndexHelper,
+            cache: "Cache",
         ):
 
             self.hcore = hcore
@@ -48,9 +50,10 @@ class SelfConsistentCharges:
             self.occupation = occupation
             self.n0 = n0
             self.ihelp = ihelp
+            self.cache = cache
 
-    cache: self.Cache
-    """"""
+    _data: self._Data
+    """Persistent data"""
 
     interaction: Interaction
     """Interactions to minimize in self-consistent iterations"""
@@ -71,7 +74,7 @@ class SelfConsistentCharges:
         **kwargs,
     ):
 
-        self.= self.Cache(*args, **kwargs)
+        self._date = self._Data(*args, **kwargs)
         self.interaction = interaction
 
         self.bck_options = {
@@ -89,39 +92,93 @@ class SelfConsistentCharges:
             "method": "exacteig",
         }
 
-    def equilibrium(self, density: Optional[Tensor] = None) -> Tensor:
+    def equilibrium(
+        self, charges: Optional[Tensor] = None, use_potential: bool = False
+    ) -> Tensor:
         """
         Run the self-consisten iterations until a stationary solution is reached
 
         Parameters
         ----------
-        density : Tensor, optional
-            Initial density matrix.
+        charges : Tensor, optional
+            Initial orbital charges vector.
+        use_potential : bool, optional
+            Iterate using the potential instead of the charges.
 
         Returns
         -------
         Tensor
-            Converged density matrix.
+            Converged orbital charges vector.
         """
 
-        hamiltonian0 = (
-            self.cache.hcore
-            if density is None
-            else self.density_to_hamiltonian(density)
-        )
+        if charges is None:
+            torch.zeros_like(self._data.occupation)
 
-        hamiltonian = xt.optimize.equilibrium(
-            fcn=self.iteration,
-            y0=hamiltonian0,
+        output = xt.optimize.equilibrium(
+            fcn=self.iterate_potential if use_potential else self.iterate_charges,
+            y0=self.charges_to_potential(charges) if use_potential else charges,
             bck_options={**self.bck_options},
             **fwd_options,
         )
 
-        return self.hamiltonian_to_density(hamiltonian)
+        return self.potential_to_charges(output) if use_potential else output
 
-    def iteration(self, potential: Tensor):
+    def iterate_charges(self, charges: Tensor):
         """
         Perform single self-consistent iteration.
+
+        Parameters
+        ----------
+        charges : Tensor
+            Orbital-resolved partial charges vector.
+
+        Returns
+        -------
+        Tensor
+            New orbital-resolved partial charges vector.
+        """
+
+        potential = self.charges_to_potential(charges)
+        return self.potential_to_charges(potential)
+
+    def iterate_potential(self, potential: Tensor):
+        """
+        Perform single self-consistent iteration.
+
+        Parameters
+        ----------
+        potential: Tensor
+            Potential vector for each orbital partial charge.
+
+        Returns
+        -------
+        Tensor
+            New potential vector for each orbital partial charge.
+        """
+
+        charges = self.potential_to_charges(potential)
+        return self.charges_to_potential(charges)
+
+    def charges_to_potential(self, charges: Tensor) -> Tensor:
+        """
+        Compute the potential from the orbital charges.
+
+        Parameters
+        ----------
+        charges : Tensor
+            Orbital-resolved partial charges vector.
+
+        Returns
+        -------
+        Tensor
+            Potential vector for each orbital partial charge.
+        """
+
+        return self.interaction.get_potential(charges, self._data.ihelp, self._data.cache)
+
+    def potential_to_charges(self, potential: Tensor) -> Tensor:
+        """
+        Compute the orbital charges from the potential.
 
         Parameters
         ----------
@@ -131,11 +188,11 @@ class SelfConsistentCharges:
         Returns
         -------
         Tensor
-            New potential vector.
+            Orbital-resolved partial charges vector.
         """
 
         density = self.potential_to_density(potential)
-        return self.density_to_potential(density)
+        return self.density_to_charges(density)
 
     def potential_to_density(self, potential: Tensor):
         """
@@ -153,9 +210,9 @@ class SelfConsistentCharges:
         """
 
         hamiltonian = self.potential_to_hamiltonian(potential)
-        density = self.hamiltonian_to_density(hamiltonian)
+        return self.hamiltonian_to_density(hamiltonian)
 
-    def density_to_potential(self, density: Tensor):
+    def density_to_charges(self, density: Tensor):
         """
         Obtain the Hamiltonian from the density matrix.
 
@@ -167,14 +224,11 @@ class SelfConsistentCharges:
         Returns
         -------
         Tensor
-            Potential vector for each orbital partial charge.
+            Orbital-resolved partial charges vector.
         """
 
-        populations = torch.diagonal(density @ self.cache.overlap, dim1=-2, dim2=-1)
-        charges = self.cache.n0 - populations
-
-        return self.interaction.get_potential(charges, self.cache.ihelp)
-
+        populations = torch.diagonal(density @ self._data.overlap, dim1=-2, dim2=-1)
+        return self._data.n0 - populations
 
     def potential_to_hamiltonian(self, potential: Tensor) -> Tensor:
         """
@@ -191,11 +245,9 @@ class SelfConsistentCharges:
             Hamiltonian matrix.
         """
 
-        return (
-            self.cache.hcore
-            - 0.5 * self.cache.overlap * (potential.unsqueeze(-1) + potential.unsqueeze(-2))
+        return self._data.hcore - 0.5 * self._data.overlap * (
+            potential.unsqueeze(-1) + potential.unsqueeze(-2)
         )
-
 
     def hamiltonian_to_density(self, hamiltonian: Tensor):
         """
@@ -213,8 +265,8 @@ class SelfConsistentCharges:
         """
 
         h_op = xt.LinearOperator.m(hamiltonian)
-        evals, evecs = self.diagnalize(h_op, self.cache.overlap)
-        return evecs @ self.cache.occupation @ evecs.mT
+        evals, evecs = self.diagnalize(h_op, self._data.overlap)
+        return evecs @ self._data.occupation @ evecs.mT
 
     def get_overlap(self) -> xt.LinearOperator:
         """
@@ -226,7 +278,7 @@ class SelfConsistentCharges:
             Overlap matrix.
         """
 
-        return xt.LinearOperator.m(self.cache.overlap)
+        return xt.LinearOperator.m(self._data.overlap)
 
     def diagnalize(self, hamiltonian: xt.LinearOperator):
         """

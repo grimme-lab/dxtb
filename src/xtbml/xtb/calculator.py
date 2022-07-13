@@ -34,9 +34,6 @@ class Calculator:
     hamiltonian: Hamiltonian
     """Core Hamiltonian definition."""
 
-    cache = None
-    """Restart info"""
-
     interaction: Interaction
     """Interactions to minimize in self-consistent iterations."""
 
@@ -45,29 +42,6 @@ class Calculator:
         self.basis = Basis(mol, par, acc)
         self.hamiltonian = Hamiltonian(mol, par)
         self.interaction = InteractionList([])
-
-    class Cache:
-        """
-        Restart data for the extended tight-binding model.
-        """
-
-        hcore: torch.Tensor
-        """Core Hamiltonian."""
-
-        overlap: torch.Tensor
-        """Overlap matrix."""
-
-    def get_cache(self) -> self.Cache:
-        """
-        Create restart data for the singlepoint calculation
-
-        Returns
-        -------
-        Cache
-            Restart data for the singlepoint calculation.
-        """
-
-        return self.Cache()
 
     def singlepoint(
         self,
@@ -81,8 +55,8 @@ class Calculator:
         ----------
         mol : Geometry
             Molecular structure data.
-        cache : Cache
-            Restart data for the singlepoint calculation.
+        ihelp : IndexHelper
+            Index mapping for the basis set.
 
         Returns
         -------
@@ -111,10 +85,10 @@ class Calculator:
             nel / 2,
         )
 
+        cache = self.interaction.get_cache(mol.numbers, mol.positions, ihelp)
         scc = scf.SelfConsistentCharges(
-            self.interaction, hcore, overlap, focc, n0, ihelp
+            self.interaction, hcore, overlap, focc, n0, ihelp, cache
         )
-        density = scc.equilibrium()
+        charges = scc.equilibrium(use_potential=False)
 
-        charges = n0 - torch.diagonal(density @ overlap, dim1=-2, dim2=-1)
         return self.interaction.get_energy(charges, ihelp)

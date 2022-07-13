@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import Callable  # Python 3.8
 import torch
 
-from ..typing import Tensor
+from ..typing import Tensor, Dict
 
 
 AveragingFunction = Callable[[Tensor], Tensor]
@@ -62,3 +62,11 @@ def geometric_average(hubbard: Tensor) -> Tensor:
     """
 
     return torch.sqrt(hubbard.unsqueeze(-1) * hubbard.unsqueeze(-2))
+
+
+averaging_function: Dict[str, AveragingFunction] = {
+    "arithmetic": arithmetic_average,
+    "geometric": geometric_average,
+    "harmonic": harmonic_average,
+}
+"""Available averaging functions for Hubbard parameters"""

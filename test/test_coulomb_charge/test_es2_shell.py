@@ -9,10 +9,11 @@ import pytest
 import torch
 
 import xtbml.coulomb.secondorder as es2
-from xtbml.coulomb import AveragingFunction
+from xtbml.basis import IndexHelper
+from xtbml.coulomb import AveragingFunction, averaging_function
 from xtbml.exlibs.tbmalt import batch
-from xtbml.param import GFN1_XTB, get_element_param, get_elem_param_dict
-from xtbml.typing import Tensor
+from xtbml.param import GFN1_XTB, get_element_param, get_elem_param_dict, get_element_angular
+from xtbml.typing import Tensor, Dict
 
 from .samples import mb16_43
 
@@ -21,7 +22,7 @@ sample_list = ["07", "08", "SiH4_shell"]
 
 @pytest.fixture(name="param", scope="class")
 def fixture_param() -> Generator[
-    tuple[Tensor, AveragingFunction, Tensor, dict[int, list]], None, None
+    tuple[Tensor, AveragingFunction, Tensor, dict[int, list], dict], None, None
 ]:
     if GFN1_XTB.charge is None:
         raise ValueError("No charge parameters provided.")
@@ -29,20 +30,10 @@ def fixture_param() -> Generator[
     gexp = torch.tensor(GFN1_XTB.charge.effective.gexp)
     hubbard = get_element_param(GFN1_XTB.element, "gam")
     lhubbard = get_elem_param_dict(GFN1_XTB.element, "lgam")
+    average = averaging_function[GFN1_XTB.charge.effective.average]
+    angular = get_element_angular(GFN1_XTB.element)
 
-    if GFN1_XTB.charge.effective.average == "harmonic":
-        # pylint: disable=import-outside-toplevel
-        from xtbml.coulomb.average import harmonic_average as average
-    elif GFN1_XTB.charge.effective.average == "geometric":
-        # pylint: disable=import-outside-toplevel
-        from xtbml.coulomb.average import geometric_average as average
-    elif GFN1_XTB.charge.effective.average == "arithmetic":
-        # pylint: disable=import-outside-toplevel
-        from xtbml.coulomb.average import arithmetic_average as average
-    else:
-        raise ValueError("Unknown average function.")
-
-    yield gexp, average, hubbard, lhubbard
+    yield gexp, average, hubbard, lhubbard, angular
 
 
 class TestSecondOrderElectrostaticsShell:
@@ -61,16 +52,17 @@ class TestSecondOrderElectrostaticsShell:
         name: str,
     ) -> None:
         """Test ES2 for some samples from mb16_43."""
-        gexp, average, hubbard, lhubbard = _cast(param, dtype)
+        gexp, average, hubbard, lhubbard, angular = _cast(param, dtype)
 
         sample = mb16_43[name]
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
         qsh = sample["q"].type(dtype)
         ref = sample["es2"].type(dtype)
+        ihelp = IndexHelper.from_numbers(numbers, angular)
 
         es = es2.ES2(hubbard=hubbard, lhubbard=lhubbard, average=average, gexp=gexp)
-        cache = es.get_cache(numbers, positions)
+        cache = es.get_cache(numbers, positions, None)
         e = es.get_energy(cache, qsh)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
@@ -84,7 +76,7 @@ class TestSecondOrderElectrostaticsShell:
         name1: str,
         name2: str,
     ) -> None:
-        gexp, average, hubbard, lhubbard = _cast(param, dtype)
+        gexp, average, hubbard, lhubbard, angular = _cast(param, dtype)
 
         sample1, sample2 = mb16_43[name1], mb16_43[name2]
         numbers = batch.pack(
@@ -111,9 +103,10 @@ class TestSecondOrderElectrostaticsShell:
                 sample2["es2"].type(dtype),
             ],
         )
+        ihelp = IndexHelper.from_numbers(numbers, angular)
 
         es = es2.ES2(hubbard=hubbard, lhubbard=lhubbard, average=average, gexp=gexp)
-        cache = es.get_cache(numbers, positions)
+        cache = es.get_cache(numbers, positions, None)
         e = es.get_energy(cache, qsh)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
@@ -125,19 +118,20 @@ class TestSecondOrderElectrostaticsShell:
         name: str,
     ) -> None:
         dtype = torch.float64
-        gexp, average, hubbard, lhubbard = _cast(param, dtype)
+        gexp, average, hubbard, lhubbard, angular = _cast(param, dtype)
 
         sample = mb16_43[name]
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
         qsh = sample["q"].type(dtype)
+        ihelp = IndexHelper.from_numbers(numbers, angular)
 
         # variable to be differentiated
         positions.requires_grad_(True)
 
         def func(positions):
             es = es2.ES2(hubbard=hubbard, lhubbard=lhubbard, average=average, gexp=gexp)
-            cache = es.get_cache(numbers, positions)
+            cache = es.get_cache(numbers, positions, None)
             return es.get_energy(cache, qsh)
 
         # pylint: disable=import-outside-toplevel
@@ -153,12 +147,13 @@ class TestSecondOrderElectrostaticsShell:
         name: str,
     ) -> None:
         dtype = torch.float64
-        gexp, average, hubbard, lhubbard = _cast(param, dtype)
+        gexp, average, hubbard, lhubbard, angular = _cast(param, dtype)
 
         sample = mb16_43[name]
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
         qsh = sample["q"].type(dtype)
+        ihelp = IndexHelper.from_numbers(numbers, angular)
 
         # variable to be differentiated
         gexp.requires_grad_(True)
@@ -166,7 +161,7 @@ class TestSecondOrderElectrostaticsShell:
 
         def func(gexp, hubbard):
             es = es2.ES2(hubbard=hubbard, lhubbard=lhubbard, average=average, gexp=gexp)
-            cache = es.get_cache(numbers, positions)
+            cache = es.get_cache(numbers, positions, None)
             return es.get_energy(cache, qsh)
 
         # pylint: disable=import-outside-toplevel
@@ -176,7 +171,7 @@ class TestSecondOrderElectrostaticsShell:
 
 
 def _cast(
-    param: tuple[Tensor, AveragingFunction, Tensor, dict[int, list]], dtype: torch.dtype
-) -> tuple[Tensor, AveragingFunction, Tensor, dict[int, list]]:
-    gexp, average, hubbard, lhubbard = param
-    return gexp.type(dtype), average, hubbard.type(dtype), lhubbard
+    param: tuple[Tensor, AveragingFunction, Tensor, dict[int, list], dict], dtype: torch.dtype
+) -> tuple[Tensor, AveragingFunction, Tensor, dict[int, list], dict]:
+    gexp, average, hubbard, lhubbard, angular = param
+    return gexp.type(dtype), average, hubbard.type(dtype), lhubbard, angular

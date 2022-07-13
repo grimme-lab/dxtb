@@ -45,9 +45,10 @@ from .average import AveragingFunction, harmonic_average
 from ..basis.indexhelper import IndexHelper
 from ..exlibs.tbmalt import batch
 from ..typing import Tensor
+from ..interaction import Interaction
 
 
-class ES2:
+class ES2(Interaction):
     """Isotropic second-order electrostatic energy (ES2)"""
 
     hubbard: Tensor
@@ -65,6 +66,15 @@ class ES2:
     ihelp: IndexHelper | None = None
     """Index helper for shell-resolved Hubbard parameters."""
 
+    shell_resolved: bool
+    """Electrostatics is shell-resolved"""
+
+    class Cache:
+        """Cache for Coulomb matrix."""
+
+        def __init__(self, mat):
+            self.mat = mat
+
     def __init__(
         self,
         hubbard: Tensor,
@@ -72,25 +82,28 @@ class ES2:
         average: AveragingFunction = harmonic_average,
         gexp: Tensor = torch.tensor(2.0),
     ) -> None:
+        Interaction.__init__(self)
         self.hubbard = hubbard
         self.lhubbard = lhubbard
         self.average = average
         self.gexp = gexp
 
+        self.shell_resolved = lhubbard is not None
+
     def get_cache(
         self,
         numbers: Tensor,
         positions: Tensor,
+        ihelp: IndexHelper,
     ):
-        class Cache:
-            """Cache for Coulomb matrix."""
 
-            def __init__(self, mat):
-                self.mat = mat
+        return self.Cache(
+            self.get_shell_coulomb_matrix(numbers, positions, ihelp)
+            if self.shell_resolved
+            else self.get_atom_coulomb_matrix(numbers, positions, ihelp)
+        )
 
-        return Cache(self.get_coulomb_matrix(numbers, positions))
-
-    def get_coulomb_matrix(self, numbers: Tensor, positions: Tensor):
+    def get_atom_coulomb_matrix(self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper):
         """Calculate the Coulomb matrix.
 
         Parameters
@@ -99,6 +112,8 @@ class ES2:
             Atomic numbers of all atoms in the system.
         positions : Tensor
             Cartesian coordinates of all atoms in the system.
+        ihelp : IndexHelper
+            Index mapping for the basis set.
 
         Returns
         -------
@@ -107,16 +122,6 @@ class ES2:
         """
 
         h = self.hubbard[numbers]
-
-        if self.lhubbard is not None:
-            # NOTE: Maybe use own function here instead of "misusing" the IndexHelper?
-            self.ihelp = IndexHelper.from_numbers(
-                numbers, self.lhubbard, dtype=positions.dtype
-            )
-            shell_idxs = self.ihelp.shells_to_atom.type(torch.long)
-
-            h = batch.index(h, shell_idxs) * self.ihelp.angular
-            positions = batch.index(positions, shell_idxs)
 
         # masks
         real = h != 0
@@ -135,6 +140,58 @@ class ES2:
 
         # Eq.26: Coulomb matrix
         return 1.0 / torch.pow(dist_gexp + torch.pow(avg, -self.gexp), 1.0 / self.gexp)
+
+    def get_shell_coulomb_matrix(self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper):
+        """Calculate the Coulomb matrix.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers of all atoms in the system.
+        positions : Tensor
+            Cartesian coordinates of all atoms in the system.
+        ihelp : IndexHelper
+            Index mapping for the basis set.
+
+        Returns
+        -------
+        Tensor
+            Coulomb matrix.
+        """
+
+        h = self.hubbard[numbers]
+
+        self.ihelp = IndexHelper.from_numbers(
+            numbers, self.lhubbard, dtype=positions.dtype
+        )
+        shell_idxs = self.ihelp.shells_to_atom.type(torch.long)
+
+        h = batch.index(h, shell_idxs) * self.ihelp.angular
+        positions = batch.index(positions, shell_idxs)
+
+        # masks
+        real = h != 0
+        mask = real.unsqueeze(-2) * real.unsqueeze(-1)
+        mask.diagonal(dim1=-2, dim2=-1).fill_(False)
+
+        # all distances to the power of "gexp" (R^2_AB from Eq.26)
+        dist_gexp = torch.where(
+            mask,
+            torch.pow(torch.cdist(positions, positions, p=2), self.gexp),
+            torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype),
+        )
+
+        # Eq.30: averaging function for hardnesses (Hubbard parameter)
+        avg = self.average(h)
+
+        # Eq.26: Coulomb matrix
+        return 1.0 / torch.pow(dist_gexp + torch.pow(avg, -self.gexp), 1.0 / self.gexp)
+
+    def get_atom_energy(self, charges: Tensor, ihelp: IndexHelper, cache: "Cache") -> Tensor:
+        return 0.5 * charges * self.get_atom_potential(charges, ihelp, cache)
+
+    def get_shell_energy(self, charges: Tensor, ihelp: IndexHelper, cache: "Cache") -> Tensor:
+        return 0.5 * charges * self.get_shell_potential(charges, ihelp, cache)
 
     def get_energy(self, cache, q: Tensor):
         """
@@ -160,12 +217,22 @@ class ES2:
         # Eq.25: single and batched matrix-vector multiplication
         mv = 0.5 * torch.einsum("...ik, ...k -> ...i", cache.mat, q)
 
-        if self.lhubbard is not None and self.ihelp is not None:
+        if self.shell_resolved:
             return torch.scatter_reduce(
                 mv * q, -1, self.ihelp.shells_to_atom, reduce="sum"
             )
 
         return mv * q
+
+    def get_atom_potential(
+        self, charges: Tensor, ihelp: IndexHelper, cache: "Cache"
+    ) -> Tensor:
+        return torch.zeros_like(charges) if self.shell_resolved else cache.mat @ charges
+
+    def get_shell_potential(
+        self, charges: Tensor, ihelp: IndexHelper, cache: "Cache"
+    ) -> Tensor:
+        return cache.mat @ charges if self.shell_resolved else torch.zeros_like(charges)
 
     def get_potential(self, cache, q: Tensor) -> Tensor:
         """Calculate the second-order Coulomb interaction potential.

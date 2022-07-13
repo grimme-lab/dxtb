@@ -13,7 +13,38 @@ class Interaction:
     Base class for defining interactions with the charge density.
     """
 
-    def get_potential(self, charges: Tensor, ihelp: IndexHelper) -> Tensor:
+    label: str
+    """Label for the interaction."""
+
+    def __init__(self):
+        self.label = self.__class__.__name__
+
+    def get_cache(
+        self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
+    ) -> "Cache":
+        """
+        Create restart data for individual interactions.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers.
+        positions : Tensor
+            Cartesian coordinates.
+        ihelp: IndexHelper
+            Index mapping for the basis set.
+
+        Returns
+        -------
+        Cache
+            Restart data for the interaction.
+        """
+
+        return None
+
+    def get_potential(
+        self, charges: Tensor, ihelp: IndexHelper, cache: "Cache"
+    ) -> Tensor:
         """
         Compute the potential from the charges, all quantities are orbital-resolved.
 
@@ -23,6 +54,8 @@ class Interaction:
             Orbital-resolved partial charges.
         ihelp : IndexHelper
             Index mapping for the basis set.
+        cache : Cache
+            Restart data for the interaction.
 
         Returns
         -------
@@ -30,15 +63,17 @@ class Interaction:
             Potential vector for each orbital partial charge.
         """
         qsh = ihelp.reduce_orbital_to_shell(charges)
-        vsh = self.get_shell_potential(qsh, ihelp)
+        vsh = self.get_shell_potential(qsh, ihelp, cache)
 
         qat = ihelp.reduce_shell_to_atom(qsh)
-        vat = self.get_atom_potential(qat, ihelp)
+        vat = self.get_atom_potential(qat, ihelp, cache)
 
         vsh += ihelp.spread_atom_to_shell(vat)
         return ihelp.spread_shell_to_orbital(vsh)
 
-    def get_shell_potential(self, charges: Tensor, ihelp: IndexHelper) -> Tensor:
+    def get_shell_potential(
+        self, charges: Tensor, ihelp: IndexHelper, cache: "Cache"
+    ) -> Tensor:
         """
         Compute the potential from the charges, all quantities are shell-resolved.
 
@@ -48,6 +83,8 @@ class Interaction:
             Shell-resolved partial charges.
         ihelp : IndexHelper
             Index mapping for the basis set.
+        cache : Cache
+            Restart data for the interaction.
 
         Returns
         -------
@@ -57,7 +94,9 @@ class Interaction:
 
         return torch.zeros_like(charges)
 
-    def get_atom_potential(self, charges: Tensor, ihelp: IndexHelper) -> Tensor:
+    def get_atom_potential(
+        self, charges: Tensor, ihelp: IndexHelper, cache: "Cache"
+    ) -> Tensor:
         """
         Compute the potential from the charges, all quantities are atom-resolved.
 
@@ -67,6 +106,8 @@ class Interaction:
             Atom-resolved partial charges.
         ihelp : IndexHelper
             Index mapping for the basis set.
+        cache : Cache
+            Restart data for the interaction.
 
         Returns
         -------
@@ -76,7 +117,7 @@ class Interaction:
 
         return torch.zeros_like(charges)
 
-    def get_energy(self, charges: Tensor, ihelp: IndexHelper) -> Tensor:
+    def get_energy(self, charges: Tensor, ihelp: IndexHelper, cache: "Cache") -> Tensor:
         """
         Compute the energy from the charges, all quantities are orbital-resolved.
 
@@ -86,6 +127,8 @@ class Interaction:
             Orbital-resolved partial charges.
         ihelp : IndexHelper
             Index mapping for the basis set.
+        cache : Cache
+            Restart data for the interaction.
 
         Returns
         -------
@@ -94,14 +137,16 @@ class Interaction:
         """
 
         qsh = ihelp.reduce_orbital_to_shell(charges)
-        esh = self.get_shell_energy(qsh, ihelp)
+        esh = self.get_shell_energy(qsh, ihelp, cache)
 
         qat = ihelp.reduce_shell_to_atom(qsh)
-        eat = self.get_atom_energy(qat, ihelp)
+        eat = self.get_atom_energy(qat, ihelp, cache)
 
         return eat + ihelp.reduce_shell_to_atom(esh)
 
-    def get_shell_energy(self, charges: Tensor, ihelp: IndexHelper) -> Tensor:
+    def get_shell_energy(
+        self, charges: Tensor, ihelp: IndexHelper, cache: "Cache"
+    ) -> Tensor:
         """
         Compute the energy from the charges, all quantities are shell-resolved.
 
@@ -111,6 +156,8 @@ class Interaction:
             Shell-resolved partial charges.
         ihelp : IndexHelper
             Index mapping for the basis set.
+        cache : Cache
+            Restart data for the interaction.
 
         Returns
         -------
@@ -120,7 +167,9 @@ class Interaction:
 
         return torch.zeros_like(charges)
 
-    def get_atom_energy(self, charges: Tensor, ihelp: IndexHelper) -> Tensor:
+    def get_atom_energy(
+        self, charges: Tensor, ihelp: IndexHelper, cache: "Cache"
+    ) -> Tensor:
         """
         Compute the energy from the charges, all quantities are atom-resolved.
 
@@ -130,6 +179,8 @@ class Interaction:
             Atom-resolved partial charges.
         ihelp : IndexHelper
             Index mapping for the basis set.
+        cache : Cache
+            Restart data for the interaction.
 
         Returns
         -------
