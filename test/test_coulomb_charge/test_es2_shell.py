@@ -62,8 +62,8 @@ class TestSecondOrderElectrostaticsShell:
         ihelp = IndexHelper.from_numbers(numbers, angular)
 
         es = es2.ES2(hubbard=hubbard, lhubbard=lhubbard, average=average, gexp=gexp)
-        cache = es.get_cache(numbers, positions, None)
-        e = es.get_energy(cache, qsh)
+        cache = es.get_cache(numbers, positions, ihelp)
+        e = es.get_shell_energy(qsh, ihelp, cache)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
@@ -106,8 +106,8 @@ class TestSecondOrderElectrostaticsShell:
         ihelp = IndexHelper.from_numbers(numbers, angular)
 
         es = es2.ES2(hubbard=hubbard, lhubbard=lhubbard, average=average, gexp=gexp)
-        cache = es.get_cache(numbers, positions, None)
-        e = es.get_energy(cache, qsh)
+        cache = es.get_cache(numbers, positions, ihelp)
+        e = es.get_shell_energy(qsh, ihelp, cache)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.grad
@@ -131,8 +131,8 @@ class TestSecondOrderElectrostaticsShell:
 
         def func(positions):
             es = es2.ES2(hubbard=hubbard, lhubbard=lhubbard, average=average, gexp=gexp)
-            cache = es.get_cache(numbers, positions, None)
-            return es.get_energy(cache, qsh)
+            cache = es.get_cache(numbers, positions, ihelp)
+            return es.get_shell_energy(qsh, ihelp, cache)
 
         # pylint: disable=import-outside-toplevel
         from torch.autograd.gradcheck import gradcheck
@@ -161,8 +161,8 @@ class TestSecondOrderElectrostaticsShell:
 
         def func(gexp, hubbard):
             es = es2.ES2(hubbard=hubbard, lhubbard=lhubbard, average=average, gexp=gexp)
-            cache = es.get_cache(numbers, positions, None)
-            return es.get_energy(cache, qsh)
+            cache = es.get_cache(numbers, positions, ihelp)
+            return es.get_shell_energy(qsh, ihelp, cache)
 
         # pylint: disable=import-outside-toplevel
         from torch.autograd.gradcheck import gradcheck

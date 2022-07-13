@@ -104,7 +104,8 @@ class ES2(Interaction):
         )
 
     def get_atom_coulomb_matrix(self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper):
-        """Calculate the Coulomb matrix.
+        """
+        Calculate the Coulomb matrix.
 
         Parameters
         ----------
@@ -142,7 +143,8 @@ class ES2(Interaction):
         return 1.0 / torch.pow(dist_gexp + torch.pow(avg, -self.gexp), 1.0 / self.gexp)
 
     def get_shell_coulomb_matrix(self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper):
-        """Calculate the Coulomb matrix.
+        """
+        Calculate the Coulomb matrix.
 
         Parameters
         ----------
@@ -159,30 +161,33 @@ class ES2(Interaction):
             Coulomb matrix.
         """
 
-        h = self.hubbard[numbers]
+        unique = torch.unique(numbers)
 
-        self.ihelp = IndexHelper.from_numbers(
-            numbers, self.lhubbard, dtype=positions.dtype
-        )
-        shell_idxs = self.ihelp.shells_to_atom.type(torch.long)
-
-        h = batch.index(h, shell_idxs) * self.ihelp.angular
-        positions = batch.index(positions, shell_idxs)
+        lh = batch.pack(
+            [
+                positions.new_tensor(self.lhubbard.get(specie.item(), [0.0]))
+                for specie in unique
+            ]
+        )[ihelp.ushells_to_unique, ihelp.unique_angular]
+        h = lh * self.hubbard[unique][ihelp.ushells_to_unique]
 
         # masks
-        real = h != 0
+        real = numbers != 0
         mask = real.unsqueeze(-2) * real.unsqueeze(-1)
         mask.diagonal(dim1=-2, dim2=-1).fill_(False)
 
         # all distances to the power of "gexp" (R^2_AB from Eq.26)
-        dist_gexp = torch.where(
-            mask,
-            torch.pow(torch.cdist(positions, positions, p=2), self.gexp),
-            torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype),
+        dist_gexp = ihelp.spread_atom_to_shell(
+            torch.where(
+                mask,
+                torch.pow(torch.cdist(positions, positions, p=2), self.gexp),
+                torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype),
+            ),
+            (-1, -2),
         )
 
         # Eq.30: averaging function for hardnesses (Hubbard parameter)
-        avg = self.average(h)
+        avg = self.average(h[ihelp.shells_to_ushell])
 
         # Eq.26: Coulomb matrix
         return 1.0 / torch.pow(dist_gexp + torch.pow(avg, -self.gexp), 1.0 / self.gexp)
@@ -193,62 +198,20 @@ class ES2(Interaction):
     def get_shell_energy(self, charges: Tensor, ihelp: IndexHelper, cache: "Cache") -> Tensor:
         return 0.5 * charges * self.get_shell_potential(charges, ihelp, cache)
 
-    def get_energy(self, cache, q: Tensor):
-        """
-        Calculate the second-order Coulomb interaction energy.
-
-        Implements Eq.25 of the following paper:
-        - C. Bannwarth, E. Caldeweyher, S. Ehlert, A. Hansen, P. Pracht, J. Seibert,
-        S. Spicher and S. Grimme, *WIREs Computational Molecular Science*, **2020**, 11, e1493. DOI: `10.1002/wcms.1493 <https://wires.onlinelibrary.wiley.com/doi/10.1002/wcms.1493>`__
-
-        Parameters
-        ----------
-        cache : Cache
-            Reusable cache for the Coulomb matrix.
-        q : Tensor
-            Atomic or shell-resolved charges of all atoms.
-
-        Returns
-        -------
-        Tensor
-            Atomwise second-order Coulomb interaction energies.
-        """
-
-        # Eq.25: single and batched matrix-vector multiplication
-        mv = 0.5 * torch.einsum("...ik, ...k -> ...i", cache.mat, q)
-
-        if self.shell_resolved:
-            return torch.scatter_reduce(
-                mv * q, -1, self.ihelp.shells_to_atom, reduce="sum"
-            )
-
-        return mv * q
-
     def get_atom_potential(
         self, charges: Tensor, ihelp: IndexHelper, cache: "Cache"
     ) -> Tensor:
-        return torch.zeros_like(charges) if self.shell_resolved else cache.mat @ charges
+        return (
+            torch.zeros_like(charges)
+            if self.shell_resolved
+            else torch.einsum("...ik,...k->...i", cache.mat, charges)
+        )
 
     def get_shell_potential(
         self, charges: Tensor, ihelp: IndexHelper, cache: "Cache"
     ) -> Tensor:
-        return cache.mat @ charges if self.shell_resolved else torch.zeros_like(charges)
-
-    def get_potential(self, cache, q: Tensor) -> Tensor:
-        """Calculate the second-order Coulomb interaction potential.
-        
-        Parameters
-        ----------
-        cache : Cache
-            Reusable cache for the Coulomb matrix.
-        q : Tensor
-            Atomic or shell-resolved charges of all atoms.
-
-        Returns
-        -------
-        Tensor
-            Atomwise second-order Coulomb interaction potential.
-        """
-        
-        return torch.einsum("...ik, ...k -> ...i", cache.mat, q)
-        
+        return (
+            torch.einsum("...ik,...k->...i", cache.mat, charges)
+            if self.shell_resolved
+            else torch.zeros_like(charges)
+        )

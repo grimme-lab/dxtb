@@ -54,7 +54,7 @@ class ES3(Interaction):
         Interaction.__init__(self)
         self.hubbard_derivs = hubbard_derivs
 
-    def get_cache(self, numbers: Tensor, positions: Tensor) -> "Cache":
+    def get_cache(self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper) -> "Cache":
         """
         Create restart data for individual interactions.
 
@@ -64,6 +64,8 @@ class ES3(Interaction):
             Atomic numbers.
         positions : Tensor
             Cartesian coordinates.
+        ihelp : IndexHelper
+            Index mapping for the basis set.
 
         Returns
         -------

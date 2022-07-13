@@ -59,8 +59,8 @@ class TestSecondOrderElectrostatics:
         ihelp = IndexHelper.from_numbers(numbers, angular)
 
         es = es2.ES2(hubbard=hubbard, average=average, gexp=gexp)
-        cache = es.get_cache(numbers, positions, None)
-        e = es.get_energy(cache, qat)
+        cache = es.get_cache(numbers, positions, ihelp)
+        e = es.get_atom_energy(qat, ihelp, cache)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
@@ -103,8 +103,8 @@ class TestSecondOrderElectrostatics:
         ihelp = IndexHelper.from_numbers(numbers, angular)
 
         es = es2.ES2(hubbard=hubbard, average=average, gexp=gexp)
-        cache = es.get_cache(numbers, positions, None)
-        e = es.get_energy(cache, qat)
+        cache = es.get_cache(numbers, positions, ihelp)
+        e = es.get_atom_energy(qat, ihelp, cache)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.grad
@@ -126,8 +126,8 @@ class TestSecondOrderElectrostatics:
 
         def func(positions):
             es = es2.ES2(hubbard=hubbard, average=average, gexp=gexp)
-            cache = es.get_cache(numbers, positions, None)
-            return es.get_energy(cache, qat)
+            cache = es.get_cache(numbers, positions, ihelp)
+            return es.get_atom_energy(qat, ihelp, cache)
 
         # pylint: disable=import-outside-toplevel
         from torch.autograd.gradcheck import gradcheck
@@ -154,8 +154,8 @@ class TestSecondOrderElectrostatics:
 
         def func(gexp, hubbard):
             es = es2.ES2(hubbard=hubbard, average=average, gexp=gexp)
-            cache = es.get_cache(numbers, positions, None)
-            return es.get_energy(cache, qat)
+            cache = es.get_cache(numbers, positions, ihelp)
+            return es.get_atom_energy(qat, ihelp, cache)
 
         # pylint: disable=import-outside-toplevel
         from torch.autograd.gradcheck import gradcheck
