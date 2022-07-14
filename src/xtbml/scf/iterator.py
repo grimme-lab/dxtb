@@ -1,15 +1,16 @@
 """
 """
 
+from __future__ import annotations
 import torch
-import xitorch as xt
+import xitorch as xt, xitorch.optimize as xto, xitorch.linalg as xtl
 
-from .interaction import Interaction
+from ..interaction import Interaction
 from ..basis import IndexHelper
 from ..typing import Tensor, Dict
 
 
-class SelfConsistentCharges:
+class SelfConsistentCharges(xt.EditableModule):
     """ """
 
     class _Data:
@@ -35,6 +36,9 @@ class SelfConsistentCharges:
         cache: "Cache"
         """Restart data for the interaction"""
 
+        energy: Tensor
+        """Electronic energy"""
+
         def __init__(
             self,
             hcore: Tensor,
@@ -52,19 +56,19 @@ class SelfConsistentCharges:
             self.ihelp = ihelp
             self.cache = cache
 
-    _data: self._Data
+    _data: "_Data"
     """Persistent data"""
 
     interaction: Interaction
     """Interactions to minimize in self-consistent iterations"""
 
-    fwd_options: Dict[str, ...]
+    fwd_options: dict[str, any]
     """Options for forwards pass"""
 
-    bck_options: Dict[str, ...]
+    bck_options: dict[str, any]
     """Options for backwards pass"""
 
-    eigen_options: Dict[str, ...]
+    eigen_options: dict[str, any]
     """Options for eigensolver"""
 
     def __init__(
@@ -74,7 +78,7 @@ class SelfConsistentCharges:
         **kwargs,
     ):
 
-        self._date = self._Data(*args, **kwargs)
+        self._data = self._Data(*args, **kwargs)
         self.interaction = interaction
 
         self.bck_options = {
@@ -82,10 +86,11 @@ class SelfConsistentCharges:
         }
 
         self.fwd_options = {
-            "method": "broyden1",
+            # "method": "broyden1",
+            "method": "linearmixing",
             "alpha": -0.5,
             "maxiter": 50,
-            "verbose": False,
+            "verbose": True,
         }
 
         self.eigen_options = {
@@ -94,7 +99,7 @@ class SelfConsistentCharges:
 
     def equilibrium(
         self, charges: Optional[Tensor] = None, use_potential: bool = False
-    ) -> Tensor:
+    ) -> Tuple[Tensor, Tensor]:
         """
         Run the self-consisten iterations until a stationary solution is reached
 
@@ -112,16 +117,19 @@ class SelfConsistentCharges:
         """
 
         if charges is None:
-            torch.zeros_like(self._data.occupation)
+            charges = torch.zeros_like(self._data.occupation)
 
-        output = xt.optimize.equilibrium(
+        output = xto.equilibrium(
             fcn=self.iterate_potential if use_potential else self.iterate_charges,
             y0=self.charges_to_potential(charges) if use_potential else charges,
             bck_options={**self.bck_options},
-            **fwd_options,
+            **self.fwd_options,
         )
 
-        return self.potential_to_charges(output) if use_potential else output
+        return (
+            self._data.energy,
+            self.potential_to_charges(output) if use_potential else output
+        )
 
     def iterate_charges(self, charges: Tensor):
         """
@@ -227,6 +235,10 @@ class SelfConsistentCharges:
             Orbital-resolved partial charges vector.
         """
 
+        self._data.energy = self._data.ihelp.reduce_orbital_to_atom(
+            torch.diagonal(density @ self._data.hcore)
+        )
+
         populations = torch.diagonal(density @ self._data.overlap, dim1=-2, dim2=-1)
         return self._data.n0 - populations
 
@@ -266,7 +278,11 @@ class SelfConsistentCharges:
 
         h_op = xt.LinearOperator.m(hamiltonian)
         evals, evecs = self.diagnalize(h_op, self._data.overlap)
-        return evecs @ self._data.occupation @ evecs.mT
+        return (
+            evecs
+            @ torch.diag_embed(self._data.occupation, dim1=-2, dim2=-1)
+            @ evecs.mT
+        )
 
     def get_overlap(self) -> xt.LinearOperator:
         """
@@ -280,14 +296,18 @@ class SelfConsistentCharges:
 
         return xt.LinearOperator.m(self._data.overlap)
 
-    def diagnalize(self, hamiltonian: xt.LinearOperator):
+    def diagnalize(
+        self, hamiltonian: xt.LinearOperator, overlap: xt.LinearOperator
+    ) -> Tuple[Tensor, Tensor]:
         """
         Diagnalize the Hamiltonian.
 
         Parameters
         ----------
-        hamiltonian : Tensor
+        hamiltonian : xt.LinearOperator
             Current Hamiltonian matrix.
+        overlap : xt.LinearOperator
+            Overlap matrix.
 
         Returns
         -------
@@ -298,4 +318,58 @@ class SelfConsistentCharges:
         """
 
         overlap = self.get_overlap()
-        return xt.linalg.lsymeig(A=hamiltonian, M=overlap, **self.eigen_options)
+        return xtl.lsymeig(A=hamiltonian, M=overlap, **self.eigen_options)
+
+    @property
+    def shape(self):
+        """
+        Returns the shape of the density matrix in this engine.
+        """
+        return self._data.hcore.shape
+
+    @property
+    def dtype(self) -> torch.dtype:
+        """
+        Returns the dtype of the tensors in this engine.
+        """
+        return self._data.hcore.dtype
+
+    @property
+    def device(self) -> torch.device:
+        """
+        Returns the device of the tensors in this engine.
+        """
+        return self._data.hcore.device
+
+    def getparamnames(self, methodname: str, prefix: str = "") -> List[str]:
+        if methodname == "iterate_charges":
+            return (
+                self.getparamnames("charges_to_potential", prefix=prefix)
+                + self.getparamnames("potential_to_charges", prefix=prefix)
+            )
+        if methodname == "iterate_potential":
+            return (
+                self.getparamnames("potential_to_charges", prefix=prefix)
+                + self.getparamnames("charges_to_potential", prefix=prefix)
+            )
+        if methodname == "charges_to_potential":
+            return []
+        if methodname == "potential_to_charges":
+            return (
+                self.getparamnames("potential_to_density", prefix=prefix)
+                + self.getparamnames("density_to_charges", prefix=prefix)
+            )
+        if methodname == "potential_to_density":
+            return (
+                self.getparamnames("potential_to_hamiltonian", prefix=prefix)
+                + self.getparamnames("hamiltonian_to_density", prefix=prefix)
+            )
+        if methodname == "density_to_charges":
+            return []
+        if methodname == "hamiltonian_to_density":
+            return [prefix + "_data.hcore"]
+        if methodname == "potential_to_hamiltonian":
+            return [prefix + "_data.hcore", prefix + "_data.overlap"]
+        if methodname == "diagonalize":
+            return [prefix + "_data.overlap"]
+        raise KeyError("Method %s has no paramnames set" % methodname)

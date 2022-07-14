@@ -200,18 +200,18 @@ class Hamiltonian:
         Obtain the reference occupation numbers for each orbital.
         """
 
-        occupation = torch.zeros(*ihelp.orbital_to_shell.shape, dtype=DTYPE)
+        occupation = torch.zeros(*ihelp.orbitals_to_shell.shape, dtype=DTYPE)
 
         for idx, sym in enumerate(self.mol.chemical_symbols):
             shell_index = ihelp.shell_index[idx]
 
             for ish in range(ihelp.shells_per_atom[idx]):
                 orbital_index = ihelp.orbital_index[shell_index + ish]
-                orbitals_per_shell = ihelp.orbital_per_shell[shell_index + ish]
+                orbitals_per_shell = ihelp.orbitals_per_shell[shell_index + ish]
 
-                for iao in range(ihelp.orbitals_per_shell[ish]):
+                for iao in range(orbitals_per_shell):
                     occupation[orbital_index + iao] = (
-                        self.occupation[sym][ish] / orbitals_per_shell
+                        self.refocc[sym][ish] / orbitals_per_shell
                     )
 
         return occupation
@@ -271,11 +271,10 @@ class Hamiltonian:
             imgs = int(adjlist.nnl[i].item())
             for img in range(imgs):
                 j = adjlist.nlat[img + inl].item()
-                itr = adjlist.nltr[img + inl].item()
                 jsa = basis.ish_at[j].item()
                 el_j = mol.chemical_symbols[j]
 
-                vec = mol.positions[i, :] - mol.positions[j, :] - adjlist.trans[itr, :]
+                vec = mol.positions[i, :] - mol.positions[j, :]
                 r2 = torch.sum(vec**2)
                 rr = torch.sqrt(torch.sqrt(r2) / (self.rad[el_i] + self.rad[el_j]))
 

@@ -64,7 +64,7 @@ class InteractionList(Interaction):
                 interaction.get_potential(charges, cache[interaction.label])
                 for interaction in self.interactions
             ]
-        ).sum(dim=0)
+        ).sum(dim=0) if len(self.interactions) > 0 else torch.zeros_like(charges)
 
     def get_energy(self, charges: Tensor, ihelp: IndexHelper, cache: "Cache") -> Tensor:
         """
@@ -90,4 +90,4 @@ class InteractionList(Interaction):
                 interaction.get_energy(charges, cache[interaction.label])
                 for interaction in self.interactions
             ]
-        ).sum(dim=0)
+        ).sum(dim=0) if len(self.interactions) > 0 else 0.0

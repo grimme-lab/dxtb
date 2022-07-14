@@ -17,7 +17,8 @@ from ..interaction import Interaction, InteractionList
 from ..adjlist import AdjacencyList
 from ..ncoord import ncoord
 from ..data.covrad import covalent_rad_d3
-from ..wavefunction import mulliken
+from ..wavefunction import mulliken, filling
+from ..typing import Tensor
 
 
 class Calculator:
@@ -64,12 +65,9 @@ class Calculator:
             Atom resolved energies.
         """
 
-        solver = scf.solver.eigh
-        # pot = scf.Potential()
-
-        rcov = covalent_rad_d3[mol.numbers]
+        rcov = covalent_rad_d3[mol.atomic_numbers]
         cn = ncoord.get_coordination_number(
-            mol.numbers, mol.positions, ncoord.exp_count, rcov
+            mol.atomic_numbers, mol.positions, ncoord.exp_count, rcov
         )
 
         cutoff = get_cutoff(self.basis)
@@ -78,17 +76,19 @@ class Calculator:
         hcore, overlap = self.hamiltonian.build(self.basis, adjlist, cn)
 
         # Obtain the reference occupations and total number of electrons
-        n0 = self.hamiltonian.get_occupation(self.basis)
-        nel = torch.sum(n0, -1) - mol.charges
-        focc = 2 * wavefunction.filling.get_aufbau_occupation(
+        n0 = self.hamiltonian.get_occupation(ihelp).type(mol.dtype)
+        nel = torch.sum(n0, -1) - torch.sum(mol.charges, -1)
+        focc = 2 * filling.get_aufbau_occupation(
             hcore.new_tensor(hcore.shape[-1], dtype=torch.int64),
             nel / 2,
         )
 
-        cache = self.interaction.get_cache(mol.numbers, mol.positions, ihelp)
+        cache = self.interaction.get_cache(mol.atomic_numbers, mol.positions, ihelp)
         scc = scf.SelfConsistentCharges(
             self.interaction, hcore, overlap, focc, n0, ihelp, cache
         )
-        charges = scc.equilibrium(use_potential=False)
+        energy, charges = scc.equilibrium(use_potential=False)
 
-        return self.interaction.get_energy(charges, ihelp)
+        return (
+            energy + self.interaction.get_energy(charges, ihelp, cache)
+        )

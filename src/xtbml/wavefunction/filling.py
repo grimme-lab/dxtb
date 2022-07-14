@@ -6,7 +6,7 @@ import torch
 from ..typing import Tensor
 
 
-def get_aufbau_filling(
+def get_aufbau_occupation(
     norb: Tensor,
     nel: Tensor,
 ) -> Tensor:
@@ -28,14 +28,14 @@ def get_aufbau_filling(
 
     Examples
     --------
-    >>> get_aufbau_filling(torch.tensor(5), torch.tensor(1.))  # 1 el. in 5 orb.
+    >>> get_aufbau_occupation(torch.tensor(5), torch.tensor(1.))  # 1 el. in 5 orb.
     tensor([1., 0., 0., 0., 0.])
-    >>> get_aufbau_filling(torch.tensor([8, 8, 5]), torch.tensor([2., 3., 1.]))
+    >>> get_aufbau_occupation(torch.tensor([8, 8, 5]), torch.tensor([2., 3., 1.]))
     tensor([[1., 1., 0., 0., 0., 0., 0., 0.],
             [1., 1., 1., 0., 0., 0., 0., 0.],
             [1., 0., 0., 0., 0., 0., 0., 0.]])
     >>> nel, norb = torch.tensor([2.0, 3.5, 1.5]), torch.tensor([4, 4, 2])
-    >>> occ = get_aufbau_filling(norb, nel)
+    >>> occ = get_aufbau_occupation(norb, nel)
     >>> occ
     tensor([[1.0000, 1.0000, 0.0000, 0.0000],
             [1.0000, 1.0000, 1.0000, 0.5000],
