@@ -7,7 +7,7 @@ Base calculator for the extended tight-binding model.
 from ..basis.type import Basis
 from ..exlibs.tbmalt import Geometry
 from ..param import Param
-from ..xtb.h0 import Hamiltonian
+from ..xtb.h0_loop import Hamiltonian
 
 
 class Calculator:
