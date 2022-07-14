@@ -390,7 +390,7 @@ class IndexHelper:
         )
 
     def spread_atom_to_shell(
-        self, x: Tensor, dim: Union[int, Tuple[int, int]] = -1
+        self, x: Tensor, dim: int | tuple[int, int] = -1
     ) -> Tensor:
         """
         Spread atom-resolved tensor to shell-resolved tensor
@@ -410,12 +410,12 @@ class IndexHelper:
 
         return (
             torch.gather(x, dim, self.shells_to_atom)
-            if isinstance(x, int)
+            if isinstance(dim, int)
             else gather_twice(x, *dim, self.shells_to_atom)
         )
 
     def spread_shell_to_orbital(
-        self, x: Tensor, dim: Union[int, Tuple[int, int]] = -1
+        self, x: Tensor, dim: int | tuple[int, int] = -1
     ) -> Tensor:
         """
         Spread shell-resolved tensor to orbital-resolved tensor
@@ -434,9 +434,9 @@ class IndexHelper:
         """
 
         return (
-            torch.gather(x, dim, self.orbitals_to_atom)
-            if isinstance(x, int)
-            else gather_twice(x, *dim, self.orbitals_to_atom)
+            torch.gather(x, dim, self.orbitals_to_shell)
+            if isinstance(dim, int)
+            else gather_twice(x, *dim, self.orbitals_to_shell)
         )
 
     def spread_atom_to_orbital(self, x: Tensor, dim: int = -1) -> Tensor:
