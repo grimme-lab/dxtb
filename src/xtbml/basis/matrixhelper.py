@@ -31,28 +31,6 @@ from ..typing import Tensor
 from ..basis import IndexHelper
 
 #################### TODO: these should be available in index helper ####################
-def get_elem_param_dict(par_element: dict[str, Element], key: str) -> dict:
-    """
-    Obtain a element-wise parametrized quantity for all elements.
-    Useful for shell-resolved parameters, combines nicely with `IndexHelper`.
-    Parameters
-    ----------
-    par : dict[str, Element]
-        Parametrization of elements.
-    key : str
-        Name of the quantity to obtain (e.g. gam3 for Hubbard derivatives).
-    Returns
-    -------
-    Tensor
-        Parametrization of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
-    """
-
-    d = {}
-
-    for i, item in enumerate(par_element.values()):
-        d[i + 1] = getattr(item, key)
-
-    return d
 
 
 def get_elem_param_shells(
@@ -114,77 +92,6 @@ def get_elem_param_shells(
 
     if valence:
         return d, v
-
-
-def reduce_orbital_to_shell(
-    x: Tensor, dim: int = -1, reduce: str = "sum", ihelp=None
-) -> Tensor:
-    return torch.scatter_reduce(x, dim, ihelp.orbitals_to_shell, reduce=reduce)
-
-
-def reduce_shell_to_atom(
-    x: Tensor, dim: int = -1, reduce: str = "sum", ihelp=None
-) -> Tensor:
-    return torch.scatter_reduce(x, dim, ihelp.shells_to_atom, reduce=reduce)
-
-
-def reduce_orbital_to_atom(
-    x: Tensor, dim: int = -1, reduce: str = "sum", ihelp=None
-) -> Tensor:
-    """
-    Reduce orbital-resolved tensor to atom-resolved tensor
-    Parameters
-    """
-    return reduce_shell_to_atom(
-        reduce_orbital_to_shell(x, dim=dim, reduce=reduce, ihelp=ihelp),
-        dim=dim,
-        reduce=reduce,
-        ihelp=ihelp,
-    )
-
-
-def index_batch(inp: Tensor, idx: Tensor) -> Tensor:
-    """Batched indexing using `torch.gather`.
-    Parameters
-    ----------
-    inp : Tensor
-        Input tensor.
-    idx : Tensor
-        Index tensor.
-    Returns
-    -------
-    Tensor
-        Output tensor.
-    Examples
-    --------
-    Batched indexing with same dimensions of `idx` and `inp` (n_batch, x).
-    >>> from xtbml.exlibs.tbmalt import batch
-    >>> inp = torch.tensor([
-    ...     [ 0.4800, 0.4701, 0.3405, 0.4701 ],
-    ...     [ 0.4701, 0.5833, 0.7882, 0.3542 ]
-    ... ])
-    >>> idx = torch.tensor([
-    ...     [ 0,  0,  1,  1,  2,  2,  3,  3 ],
-    ...     [ 0,  1,  1,  1,  2,  2,  3,  3 ]
-    ... ])
-    >>> print(batch.index(inp, idx))
-    tensor([[0.4800, 0.4800, 0.4701, 0.4701, 0.3405, 0.3405, 0.4701, 0.4701],
-            [0.4701, 0.5833, 0.5833, 0.5833, 0.7882, 0.7882, 0.3542, 0.3542]])
-    """
-
-    if len(inp.shape) == len(idx.shape):
-        return torch.gather(inp, -1, idx)
-
-    if len(inp.shape) == (len(idx.shape) + 1):
-        # also support non-batched by unpacking idx
-        size = [*idx.size(), inp.size(-1)]
-
-        dummy = idx.unsqueeze(-1).expand(*size)
-        return torch.gather(inp, -2, dummy)
-
-    raise NotImplementedError(
-        f"Indexing with input size '{len(inp.shape)}' and index size '{len(idx.shape)}' not implemented."
-    )
 
 
 #########################################################################################
@@ -339,3 +246,54 @@ class MatrixHelper:
 
         n_atoms = len(ihelp.shells_per_atom)
         return [MatrixHelper.get_atomblock(x, i, i, ihelp) for i in range(n_atoms)]
+
+    def dummy(sample):
+
+        # anuglar momenta and respective orbitals for different elements
+        angular, valence_shells = get_elem_param_shells(par.element, valence=True)
+
+        ihelp = IndexHelper.from_numbers(sample.numbers, angular)
+        print(ihelp)
+        print(ihelp.angular)
+        print(ihelp.shells_per_atom)
+        print(ihelp.shell_index)
+        print(ihelp.shells_to_atom)
+        print(ihelp.orbitals_per_shell)
+        print(ihelp.orbital_index)
+        print(ihelp.orbitals_to_shell)
+
+        print("Hamiltonian")
+        print(sample)
+        print(sample.h0.shape)
+        print(sample.h0)
+        h0 = sample.h0
+
+        print("columns")
+        columns = MatrixHelper.get_orbital_columns(h0, ihelp)
+        # TODO: write tests
+        assert len(columns) == list(sample.egfn1.shape)[0]
+        assert all(
+            [
+                j[1] == len(ihelp.orbitals_to_shell)
+                for j in [list(i.shape) for i in columns]
+            ]
+        )
+        print(columns)
+
+        print("scalars")
+        scalars = MatrixHelper.get_orbital_sum(h0, ihelp)
+        # print(scalars)
+        # NOTE: this induces a difference between similar atoms, e.g. the H in H20
+
+        # block for atom i, j
+        i, j = 0, 1
+        abc = MatrixHelper.get_atomblock(h0, i, j, ihelp)
+        print(abc)
+        print(abc.shape)
+
+        n_atoms = len(ihelp.shells_per_atom)
+        print(n_atoms)
+
+        # get diagonal blocks
+        diag_blocks = MatrixHelper.get_diagonal_blocks(h0, ihelp)
+        print(diag_blocks)
