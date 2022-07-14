@@ -4,13 +4,13 @@
 Element parametrization record containing the adjustable parameters for each species.
 """
 
-from typing import List, Optional, Tuple
+from typing import List
 from pydantic import BaseModel
 
 
 class Element(BaseModel):
     """
-    Representation of the parameters for a specie.
+    Representation of the parameters for a species.
     """
 
     zeff: float
@@ -40,7 +40,6 @@ class Element(BaseModel):
     """Chemical hardness / Hubbard parameter"""
     lgam: List[float]
     """Relative chemical hardness for each shell"""
-
     gam3 = 0.0
     """Atomic Hubbard derivative"""
 

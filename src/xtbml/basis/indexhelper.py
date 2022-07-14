@@ -13,12 +13,11 @@ Example
 torch.tensor(6)
 """
 
+from __future__ import annotations
 import torch
-from typing import Dict
 
 from ..exlibs.tbmalt import batch
-
-Tensor = torch.Tensor
+from ..typing import Tensor
 
 
 def _fill(index: Tensor, repeat: Tensor) -> Tensor:
@@ -75,14 +74,14 @@ class IndexHelper:
         self.orbital_index = orbital_index
         self.orbitals_to_shell = orbitals_to_shell
 
-        self.__device = angular.device
-        self.__dtype = angular.dtype
+        self.__device = shells_per_atom.device
+        self.__dtype = shells_per_atom.dtype
 
         if any(
             [
                 tensor.dtype != self.dtype
                 for tensor in (
-                    self.angular,
+                    # self.angular,
                     self.shells_per_atom,
                     self.shell_index,
                     self.shells_to_atom,
@@ -111,35 +110,41 @@ class IndexHelper:
             raise ValueError("All tensors must be on the same device")
 
     @classmethod
-    def from_numbers(cls, numbers: Tensor, angular: Dict[int, Tensor]) -> "IndexHelper":
+    def from_numbers(
+        cls,
+        numbers: Tensor,
+        angular: dict[int, list[int | float]],
+        dtype: torch.dtype = torch.int64,
+    ) -> "IndexHelper":
         """
         Construct an index helper instance from atomic numbers and their angular momenta.
 
         Args:
             numbers (Tensor)
                 Atomic numbers for the system
-            angular (Dict[int, Tensor])
+            angular (dict[int, Tensor])
                 Map between atomic numbers and angular momenta of all shells
 
         Returns:
             IndexHelper
                 Instance of index helper for given basis set
         """
+        pad_val = -999
 
         batched = numbers.ndim > 1
 
         _angular = batch.pack(
             [
-                torch.tensor(angular.get(number.item(), []), dtype=number.dtype)
+                torch.tensor(angular.get(number.item(), []), dtype=dtype)
                 for number in numbers.flatten()
             ],
-            value=-1,
+            value=pad_val,
         )
         _angular = _angular.reshape((*numbers.shape, _angular.shape[-1]))
 
         nsh_at = torch.sum(_angular >= 0, -1)
         ish_at = torch.cumsum(nsh_at, -1) - nsh_at
-        ish_at[nsh_at == 0] = -1
+        ish_at[nsh_at == 0] = pad_val
 
         if batched:
             sh2at = batch.pack(
@@ -158,14 +163,23 @@ class IndexHelper:
                     _angular[_batch, _angular[_batch, :] >= 0]
                     for _batch in range(numbers.shape[0])
                 ],
-                value=-1,
+                value=pad_val,
             )
         else:
-            lsh = _angular[_angular >= 0]
+            lsh = _angular[_angular > pad_val]
 
-        nao_sh = torch.where(lsh >= 0, 2 * lsh + 1, 0)
+        nao_sh = torch.where(lsh >= 0, 2 * lsh + 1, torch.tensor(0, dtype=dtype))
+
+        # NOTE:
+        # If we care for the actual values in `angular`, we must allow other
+        # dtypes apart from `torch.int64` (example: shell-resolved Hubbard
+        # parameters in ES2). For these cases, however, orbital indices become
+        # meaningless and we can simply convert to `torch.int64` to avoid an
+        # error in the `fill` function.
+        nao_sh = nao_sh.type(numbers.dtype)
+
         iao_sh = torch.cumsum(nao_sh, -1) - nao_sh
-        iao_sh[nao_sh == 0] = -1
+        iao_sh[nao_sh == 0] = pad_val
 
         if batched:
             ao2sh = batch.pack(
@@ -186,6 +200,138 @@ class IndexHelper:
             orbitals_per_shell=nao_sh,
             orbital_index=iao_sh,
             orbitals_to_shell=ao2sh,
+        )
+
+    def reduce_orbital_to_shell(
+        self, x: Tensor, dim: int = -1, reduce: str = "sum"
+    ) -> Tensor:
+        """
+        Reduce orbital-resolved tensor to shell-resolved tensor
+
+        Parameters
+        ----------
+        x : Tensor
+            Orbital-resolved tensor
+        dim : int
+            Dimension to reduce over, defaults to -1
+        reduce : str
+            Reduction method, defaults to "sum"
+
+        Returns
+        -------
+        Tensor
+            Shell-resolved tensor
+        """
+
+        return torch.scatter_reduce(x, dim, self.orbitals_to_shell, reduce=reduce)
+
+    def reduce_shell_to_atom(
+        self, x: Tensor, dim: int = -1, reduce: str = "sum"
+    ) -> Tensor:
+        """
+        Reduce shell-resolved tensor to atom-resolved tensor
+
+        Parameters
+        ----------
+        x : Tensor
+            Shell-resolved tensor
+        dim : int
+            Dimension to reduce over, defaults to -1
+        reduce : str
+            Reduction method, defaults to "sum"
+
+        Returns
+        -------
+        Tensor
+            Atom-resolved tensor
+        """
+
+        return torch.scatter_reduce(x, dim, self.shells_to_atom, reduce=reduce)
+
+    def reduce_orbital_to_atom(
+        self, x: Tensor, dim: int = -1, reduce: str = "sum"
+    ) -> Tensor:
+        """
+        Reduce orbital-resolved tensor to atom-resolved tensor
+
+        Parameters
+        ----------
+        x : Tensor
+            Orbital-resolved tensor
+        dim : int
+            Dimension to reduce over, defaults to -1
+        reduce : str
+            Reduction method, defaults to "sum"
+
+        Returns
+        -------
+        Tensor
+            Atom-resolved tensor
+        """
+
+        return self.reduce_shell_to_atom(
+            self.reduce_orbital_to_shell(x, dim=dim, reduce=reduce),
+            dim=dim,
+            reduce=reduce,
+        )
+
+    def spread_atom_to_shell(self, x: Tensor, dim: int = -1) -> Tensor:
+        """
+        Spread atom-resolved tensor to shell-resolved tensor
+
+        Parameters
+        ----------
+        x : Tensor
+            Atom-resolved tensor
+        dim : int
+            Dimension to spread over, defaults to -1
+
+        Returns
+        -------
+        Tensor
+            Shell-resolved tensor
+        """
+
+        return torch.gather(x, dim, self.shells_to_atom)
+
+    def spread_shell_to_orbital(self, x: Tensor, dim: int = -1) -> Tensor:
+        """
+        Spread shell-resolved tensor to orbital-resolved tensor
+
+        Parameters
+        ----------
+        x : Tensor
+            Shell-resolved tensor
+        dim : int
+            Dimension to spread over, defaults to -1
+
+        Returns
+        -------
+        Tensor
+            Orbital-resolved tensor
+        """
+
+        return torch.gather(x, dim, self.orbitals_to_shell)
+
+    def spread_atom_to_orbital(self, x: Tensor, dim: int = -1) -> Tensor:
+        """
+        Spread atom-resolved tensor to orbital-resolved tensor
+
+        Parameters
+        ----------
+        x : Tensor
+            Atom-resolved tensor
+        dim : int
+            Dimension to spread over, defaults to -1
+
+        Returns
+        -------
+        Tensor
+            Orbital-resolved tensor
+        """
+
+        return self.spread_shell_to_orbital(
+            self.spread_atom_to_shell(x, dim=dim), dim=dim
         )
 
     @property
