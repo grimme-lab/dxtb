@@ -83,12 +83,20 @@ class Calculator:
             nel / 2,
         )
 
+        fwd_options = {
+            "verbose": True
+        }
         cache = self.interaction.get_cache(mol.atomic_numbers, mol.positions, ihelp)
         scc = scf.SelfConsistentCharges(
-            self.interaction, hcore, overlap, focc, n0, ihelp, cache
+            self.interaction,
+            hcore,
+            overlap,
+            focc,
+            n0,
+            ihelp,
+            cache,
+            fwd_options=fwd_options,
         )
-        energy, charges = scc.equilibrium(use_potential=False)
+        results = scc.equilibrium(use_potential=True)
 
-        return (
-            energy + self.interaction.get_energy(charges, ihelp, cache)
-        )
+        return results["energy"]

@@ -39,6 +39,12 @@ class SelfConsistentCharges(xt.EditableModule):
         energy: Tensor
         """Electronic energy"""
 
+        hamiltonian: Tensor
+        """Self-consistent Hamiltonian"""
+
+        density: Tensor
+        """Density matrix"""
+
         def __init__(
             self,
             hcore: Tensor,
@@ -77,29 +83,24 @@ class SelfConsistentCharges(xt.EditableModule):
         *args,
         **kwargs,
     ):
+        self.bck_options = {"posdef": True, **kwargs.pop("bck_options", {})}
+
+        self.fwd_options = {
+            "method": "broyden1",
+            "alpha": -0.5,
+            "maxiter": 50,
+            "verbose": False,
+            **kwargs.pop("fwd_options", {}),
+        }
+
+        self.eigen_options = {"method": "exacteig", **kwargs.pop("eigen_options", {})}
 
         self._data = self._Data(*args, **kwargs)
         self.interaction = interaction
 
-        self.bck_options = {
-            "posdef": True,
-        }
-
-        self.fwd_options = {
-            # "method": "broyden1",
-            "method": "linearmixing",
-            "alpha": -0.5,
-            "maxiter": 50,
-            "verbose": True,
-        }
-
-        self.eigen_options = {
-            "method": "exacteig",
-        }
-
     def equilibrium(
         self, charges: Optional[Tensor] = None, use_potential: bool = False
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> dict[str, Tensor]:
         """
         Run the self-consisten iterations until a stationary solution is reached
 
@@ -126,10 +127,16 @@ class SelfConsistentCharges(xt.EditableModule):
             **self.fwd_options,
         )
 
-        return (
-            self._data.energy,
-            self.potential_to_charges(output) if use_potential else output
+        charges = self.potential_to_charges(output) if use_potential else output
+        energy = self._data.energy + self.interaction.get_energy(
+            charges, self._data.ihelp, self._data.cache
         )
+        return {
+            "energy": energy,
+            "charges": charges,
+            "hamiltonian": self._data.hamiltonian,
+            "density": self._data.density,
+        }
 
     def iterate_charges(self, charges: Tensor):
         """
@@ -182,7 +189,9 @@ class SelfConsistentCharges(xt.EditableModule):
             Potential vector for each orbital partial charge.
         """
 
-        return self.interaction.get_potential(charges, self._data.ihelp, self._data.cache)
+        return self.interaction.get_potential(
+            charges, self._data.ihelp, self._data.cache
+        )
 
     def potential_to_charges(self, potential: Tensor) -> Tensor:
         """
@@ -199,8 +208,8 @@ class SelfConsistentCharges(xt.EditableModule):
             Orbital-resolved partial charges vector.
         """
 
-        density = self.potential_to_density(potential)
-        return self.density_to_charges(density)
+        self._data.density = self.potential_to_density(potential)
+        return self.density_to_charges(self._data.density)
 
     def potential_to_density(self, potential: Tensor):
         """
@@ -217,8 +226,8 @@ class SelfConsistentCharges(xt.EditableModule):
             Density matrix.
         """
 
-        hamiltonian = self.potential_to_hamiltonian(potential)
-        return self.hamiltonian_to_density(hamiltonian)
+        self._data.hamiltonian = self.potential_to_hamiltonian(potential)
+        return self.hamiltonian_to_density(self._data.hamiltonian)
 
     def density_to_charges(self, density: Tensor):
         """
@@ -279,9 +288,7 @@ class SelfConsistentCharges(xt.EditableModule):
         h_op = xt.LinearOperator.m(hamiltonian)
         evals, evecs = self.diagnalize(h_op, self._data.overlap)
         return (
-            evecs
-            @ torch.diag_embed(self._data.occupation, dim1=-2, dim2=-1)
-            @ evecs.mT
+            evecs @ torch.diag_embed(self._data.occupation, dim1=-2, dim2=-1) @ evecs.mT
         )
 
     def get_overlap(self) -> xt.LinearOperator:
@@ -343,27 +350,23 @@ class SelfConsistentCharges(xt.EditableModule):
 
     def getparamnames(self, methodname: str, prefix: str = "") -> List[str]:
         if methodname == "iterate_charges":
-            return (
-                self.getparamnames("charges_to_potential", prefix=prefix)
-                + self.getparamnames("potential_to_charges", prefix=prefix)
-            )
+            return self.getparamnames(
+                "charges_to_potential", prefix=prefix
+            ) + self.getparamnames("potential_to_charges", prefix=prefix)
         if methodname == "iterate_potential":
-            return (
-                self.getparamnames("potential_to_charges", prefix=prefix)
-                + self.getparamnames("charges_to_potential", prefix=prefix)
-            )
+            return self.getparamnames(
+                "potential_to_charges", prefix=prefix
+            ) + self.getparamnames("charges_to_potential", prefix=prefix)
         if methodname == "charges_to_potential":
             return []
         if methodname == "potential_to_charges":
-            return (
-                self.getparamnames("potential_to_density", prefix=prefix)
-                + self.getparamnames("density_to_charges", prefix=prefix)
-            )
+            return self.getparamnames(
+                "potential_to_density", prefix=prefix
+            ) + self.getparamnames("density_to_charges", prefix=prefix)
         if methodname == "potential_to_density":
-            return (
-                self.getparamnames("potential_to_hamiltonian", prefix=prefix)
-                + self.getparamnames("hamiltonian_to_density", prefix=prefix)
-            )
+            return self.getparamnames(
+                "potential_to_hamiltonian", prefix=prefix
+            ) + self.getparamnames("hamiltonian_to_density", prefix=prefix)
         if methodname == "density_to_charges":
             return []
         if methodname == "hamiltonian_to_density":
