@@ -14,12 +14,52 @@ torch.tensor(6)
 """
 
 from __future__ import annotations
+from functools import wraps
 import torch
 
 from ..exlibs.tbmalt import batch
-from ..typing import Tensor, Union, Tuple
+from ..typing import Tensor
 
 
+def _fill(index: Tensor, repeat: Tensor) -> Tensor:
+    """
+    Fill an index map using index offsets and number of repeats
+    """
+    index_map = index.new_zeros(torch.sum(repeat))
+    for idx, offset, count in zip(torch.arange(index.shape[-1]), index, repeat):
+        index_map[offset : offset + count] = idx
+    return index_map
+
+
+def _expand(index: Tensor, repeat: Tensor) -> Tensor:
+    """
+    Expand an index map using index offsets and number of repeats
+    """
+
+    return index.new_tensor(
+        [
+            idx
+            for offset, count in zip(index, repeat)
+            for idx in torch.arange(offset.item(), (offset + count).item(), 1)
+        ]
+    )
+
+
+def gather_twice_remove_negative_index(func):
+    @wraps(func)
+    def wrapper(x: Tensor, dim0: int, dim1: int, idx: Tensor):
+        r = func(x, dim0, dim1, torch.where(idx >= 0, idx, 0))
+        idx = idx.unsqueeze(-1).expand(*r.shape)
+        return torch.where(
+            idx >= 0,
+            r,
+            torch.tensor(0, device=x.device, dtype=x.dtype),
+        )
+
+    return wrapper
+
+
+@gather_twice_remove_negative_index
 def gather_twice(x, dim0, dim1, index):
     """
     Spread a tensor along two dimensions
@@ -59,28 +99,25 @@ def gather_twice(x, dim0, dim1, index):
     return x
 
 
-def _fill(index: Tensor, repeat: Tensor) -> Tensor:
-    """
-    Fill an index map using index offsets and number of repeats
-    """
-    index_map = index.new_zeros(torch.sum(repeat))
-    for idx, offset, count in zip(torch.arange(index.shape[-1]), index, repeat):
-        index_map[offset : offset + count] = idx
-    return index_map
+def gather_remove_negative_index(func):
+    @wraps(func)
+    def wrapper(x: Tensor, dim: int | tuple[int, int], idx: Tensor):
+        return torch.where(
+            idx >= 0,
+            func(x, dim, torch.where(idx >= 0, idx, 0)),
+            torch.tensor(0, device=x.device, dtype=x.dtype),
+        )
+
+    return wrapper
 
 
-def _expand(index: Tensor, repeat: Tensor) -> Tensor:
-    """
-    Expand an index map using index offsets and number of repeats
-    """
+@gather_remove_negative_index
+def gather(x, dim, idx):
+    return torch.gather(x, dim, idx)
 
-    return index.new_tensor(
-        [
-            idx
-            for offset, count in zip(index, repeat)
-            for idx in torch.arange(offset.item(), (offset + count).item(), 1)
-        ]
-    )
+
+def wrap_gather(x: Tensor, idx: Tensor, dim: int | tuple[int, int] = -1) -> Tensor:
+    return gather(x, dim, idx) if isinstance(dim, int) else gather_twice(x, *dim, idx)
 
 
 class IndexHelper:
@@ -214,7 +251,7 @@ class IndexHelper:
         """
 
         batched = numbers.ndim > 1
-        pad_val = -999
+        pad_val = -1
 
         unique, atom_to_unique = torch.unique(numbers, return_inverse=True)
 
@@ -238,7 +275,7 @@ class IndexHelper:
                     )
                     for _batch in range(numbers.shape[0])
                 ],
-                value=-1,
+                value=0,  # otherwise inconsistent padding values
             )
         else:
             shells_to_ushell = _expand(
@@ -248,7 +285,7 @@ class IndexHelper:
 
         _angular = batch.pack(
             [
-                torch.tensor(angular.get(number.item(), []), dtype=dtype)
+                torch.tensor(angular.get(number.item(), [-1]), dtype=dtype)
                 for number in numbers.flatten()
             ],
             value=pad_val,
@@ -265,8 +302,9 @@ class IndexHelper:
                     _fill(shell_index[_batch, :], shells_per_atom[_batch, :])
                     for _batch in range(numbers.shape[0])
                 ],
-                value=0,
+                value=pad_val,
             )
+            print(shells_to_atom)
         else:
             shells_to_atom = _fill(shell_index, shells_per_atom)
 
@@ -297,7 +335,7 @@ class IndexHelper:
                     _fill(orbital_index[_batch, :], orbitals_per_shell[_batch, :])
                     for _batch in range(numbers.shape[0])
                 ],
-                value=0,
+                value=pad_val,
             )
         else:
             orbitals_to_shell = _fill(orbital_index, orbitals_per_shell)
@@ -408,11 +446,7 @@ class IndexHelper:
             Shell-resolved tensor
         """
 
-        return (
-            torch.gather(x, dim, self.shells_to_atom)
-            if isinstance(dim, int)
-            else gather_twice(x, *dim, self.shells_to_atom)
-        )
+        return wrap_gather(x, self.shells_to_atom, dim=dim)
 
     def spread_shell_to_orbital(
         self, x: Tensor, dim: int | tuple[int, int] = -1
@@ -433,11 +467,10 @@ class IndexHelper:
             Orbital-resolved tensor
         """
 
-        return (
-            torch.gather(x, dim, self.orbitals_to_shell)
-            if isinstance(dim, int)
-            else gather_twice(x, *dim, self.orbitals_to_shell)
-        )
+        print(x)
+        print(self.orbitals_to_shell)
+
+        return wrap_gather(x, self.orbitals_to_shell, dim=dim)
 
     def spread_atom_to_orbital(self, x: Tensor, dim: int = -1) -> Tensor:
         """
@@ -474,6 +507,11 @@ class IndexHelper:
         Tensor
             Atom-resolved tensor
         """
+
+        print(x)
+        print(self.atom_to_unique)
+        print(x[self.atom_to_unique])
+        print("\n")
 
         return x[self.atom_to_unique]
 
@@ -533,12 +571,23 @@ class IndexHelper:
         Tensor
             Shell-resolved tensor
         """
+        return self._gather(x, self.shells_to_ushell, dim)
 
-        return (
-            torch.gather(x, dim, self.shells_to_ushell)
-            if isinstance(dim, int)
-            else gather_twice(x, *dim, self.shells_to_ushell)
-        )
+    def _gather(self, x, idx, dim: int | tuple[int, int] = -1):
+        if idx.ndim > 1:
+
+            if isinstance(dim, int):
+                x = x.unsqueeze(0).expand(idx.size(0), -1)
+                return torch.where(
+                    idx >= 0,
+                    torch.gather(x, -1, torch.where(idx >= 0, idx, 0)),
+                    torch.tensor(-999.0, device=x.device, dtype=x.dtype),
+                )
+            else:
+                x = x.unsqueeze(0).expand(idx.size(0), -1, -1)
+                return gather_twice(x, *dim, idx)
+
+        return wrap_gather(x, idx, dim=dim)
 
     def spread_ushell_to_orbital(
         self, x: Tensor, dim: int | tuple[int, int] = -1

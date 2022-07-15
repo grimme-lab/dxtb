@@ -10,6 +10,7 @@ from xtbml.adjlist import AdjacencyList
 from xtbml.basis.type import get_cutoff
 from xtbml.cutoff import get_lattice_points
 from xtbml.exlibs.tbmalt import Geometry, batch
+from xtbml.integral import mmd
 from xtbml.ncoord.ncoord import get_coordination_number, exp_count
 from xtbml.param.gfn1 import GFN1_XTB as par
 from xtbml.typing import Tensor
@@ -347,6 +348,17 @@ ovlp_sih4 = torch.tensor(
     ]
 )
 
+ovlp_lih = torch.tensor(
+    [
+        [1.0000, 0.0000, 0.0000, 0.0000, 0.4056, -0.2010],
+        [0.0000, 1.0000, 0.0000, 0.0000, 0.0000, 0.0000],
+        [0.0000, 0.0000, 1.0000, 0.0000, 0.0000, 0.0000],
+        [0.0000, 0.0000, 0.0000, 1.0000, 0.4639, -0.0752],
+        [0.4056, 0.0000, 0.0000, 0.4639, 1.0000, 0.0000],
+        [-0.2010, 0.0000, 0.0000, -0.0752, 0.0000, 1.0000],
+    ]
+)
+
 
 class Setup:
     """Setup class to define constants for test class."""
@@ -389,7 +401,7 @@ class TestH0(Setup):
 
         # build hamiltonian
         h, ovlp = calc.hamiltonian.build(calc.basis, adjlist, None)
-        # print("ovlp", ovlp)
+        print("ovlp", ovlp)
         self.check_hamiltonian(h, ref)
 
     def base_test_cn(self, sample: Record, dtype: torch.dtype) -> None:
@@ -416,7 +428,6 @@ class TestH0(Setup):
 
         # build hamiltonian
         h, _ = calc.hamiltonian.build(calc.basis, adjlist, cn)
-        print(_)
         self.check_hamiltonian(h, ref)
 
     def check_hamiltonian(self, hamiltonian: Tensor, ref: Tensor) -> None:
@@ -454,6 +465,14 @@ class TestH0(Setup):
         """
         Compare against reference calculated with tblite-int: fpm run -- Li H 0,0,3.0159348779447 --bohr --hamiltonian --method gfn1
         """
+
+        sample = mb16_43["LiH"]
+        numbers = sample["numbers"]
+        positions = sample["positions"].type(dtype)
+        ref = sample["h0"].type(dtype)
+
+        # h0 = H0(numbers, positions, par)
+        # h = h0.build(ovlp_sih4)
 
         self.base_test(mb16_43["LiH"], dtype)
 
@@ -514,6 +533,31 @@ class TestH0(Setup):
 
         # self.base_test_cn(sample, dtype)
 
+        # vec = torch.tensor([[-1.6177, -1.6177, 1.6177], [-1.6177, -1.6177, 1.6177]])
+        # ang_i = torch.tensor([0, 0])
+        # ang_j = torch.tensor([0, 0])
+        # alpha_i = torch.tensor(
+        #     [[7.6120, 1.3929, 0.3870, 0.1284], [7.6120, 1.3929, 0.3870, 0.1284]]
+        # )
+        # alpha_j = torch.tensor(
+        #     [
+        #         [7.5815, 2.1312, 0.8324, 0.2001, 0.1111, 0.0631],
+        #         [7.5815, 2.1312, 0.8324, 0.2001, 0.1111, 0.0631],
+        #     ]
+        # )
+        # coeff_i = torch.tensor(
+        #     [[0.1854, 0.2377, 0.1863, 0.0446], [0.1854, 0.2377, 0.1863, 0.0446]]
+        # )
+        # coeff_j = torch.tensor(
+        #     [
+        #         [-0.0221, -0.0709, -0.0986, 0.1180, 0.0688, 0.0065],
+        #         [-0.0221, -0.0709, -0.0986, 0.1180, 0.0688, 0.0065],
+        #     ]
+        # )
+
+        # s = mmd.overlap((ang_i, ang_j), (alpha_i, alpha_j), (coeff_i, coeff_j), vec)
+        # print(s)
+
     @pytest.mark.parametrize("dtype", [torch.float32])
     def test_batch(self, dtype: torch.dtype) -> None:
         """
@@ -521,7 +565,7 @@ class TestH0(Setup):
         """
         # tblite: with "use dftd3_ncoord, only: get_coordination_number"
 
-        sample1, sample2 = mb16_43["SiH4"], mb16_43["SiH4_cn"]
+        sample1, sample2 = mb16_43["SiH4"], mb16_43["LiH"]
 
         numbers = batch.pack(
             (
@@ -535,19 +579,21 @@ class TestH0(Setup):
                 sample2["positions"].type(dtype),
             )
         )
-        ref = torch.stack(
-            [
+        ref = batch.pack(
+            (
                 sample1["h0"].type(dtype),
                 sample2["h0"].type(dtype),
-            ],
+            ),
         )
-        ovlp = batch.pack((ovlp_sih4, ovlp_sih4))
+        ovlp = batch.pack((ovlp_sih4, ovlp_lih))
 
         h0 = H0(numbers, positions, par)
         h = h0.build(ovlp)
 
-        print(torch.allclose(h, ref))
-        self.check_hamiltonian(h, ref)
+        print(torch.allclose(h, ref, atol=1e-4, rtol=1e-4))
+
+        for _batch in range(ref.shape[0]):
+            self.check_hamiltonian(h[_batch, ...], ref[_batch, ...])
 
         # self.base_test(sample, ref_hamiltonian)
 
