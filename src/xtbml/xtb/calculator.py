@@ -19,6 +19,8 @@ from ..ncoord import ncoord
 from ..data.covrad import covalent_rad_d3
 from ..wavefunction import mulliken, filling
 from ..typing import Tensor
+from ..coulomb import secondorder, thirdorder, averaging_function
+from ..param import get_element_param, get_elem_param_dict, get_element_angular
 
 
 class Calculator:
@@ -42,7 +44,17 @@ class Calculator:
 
         self.basis = Basis(mol, par, acc)
         self.hamiltonian = Hamiltonian(mol, par)
-        self.interaction = InteractionList([])
+
+        es2 = secondorder.ES2(
+            hubbard=get_element_param(par.element, "gam"),
+            lhubbard=get_elem_param_dict(par.element, "lgam"),
+            average=averaging_function[par.charge.effective.average],
+            gexp=torch.tensor(par.charge.effective.gexp),
+        )
+        es3 = thirdorder.ES3(
+            hubbard_derivs=get_element_param(par.element, "gam3")[mol.atomic_numbers],
+        )
+        self.interaction = InteractionList([es2, es3])
 
     def singlepoint(
         self,

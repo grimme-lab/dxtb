@@ -103,7 +103,9 @@ class ES2(Interaction):
             else self.get_atom_coulomb_matrix(numbers, positions, ihelp)
         )
 
-    def get_atom_coulomb_matrix(self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper):
+    def get_atom_coulomb_matrix(
+        self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
+    ):
         """
         Calculate the Coulomb matrix.
 
@@ -142,7 +144,9 @@ class ES2(Interaction):
         # Eq.26: Coulomb matrix
         return 1.0 / torch.pow(dist_gexp + torch.pow(avg, -self.gexp), 1.0 / self.gexp)
 
-    def get_shell_coulomb_matrix(self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper):
+    def get_shell_coulomb_matrix(
+        self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
+    ):
         """
         Calculate the Coulomb matrix.
 
@@ -163,11 +167,9 @@ class ES2(Interaction):
 
         unique = torch.unique(numbers)
 
-        lh = positions.new_tensor([
-            u
-            for specie in unique
-            for u in self.lhubbard.get(specie.item(), [0.0])
-        ])
+        lh = positions.new_tensor(
+            [u for specie in unique for u in self.lhubbard.get(specie.item(), [0.0])]
+        )
         h = lh * self.hubbard[unique][ihelp.ushells_to_unique]
 
         # masks
@@ -191,10 +193,14 @@ class ES2(Interaction):
         # Eq.26: Coulomb matrix
         return 1.0 / torch.pow(dist_gexp + torch.pow(avg, -self.gexp), 1.0 / self.gexp)
 
-    def get_atom_energy(self, charges: Tensor, ihelp: IndexHelper, cache: "Cache") -> Tensor:
+    def get_atom_energy(
+        self, charges: Tensor, ihelp: IndexHelper, cache: "Cache"
+    ) -> Tensor:
         return 0.5 * charges * self.get_atom_potential(charges, ihelp, cache)
 
-    def get_shell_energy(self, charges: Tensor, ihelp: IndexHelper, cache: "Cache") -> Tensor:
+    def get_shell_energy(
+        self, charges: Tensor, ihelp: IndexHelper, cache: "Cache"
+    ) -> Tensor:
         return 0.5 * charges * self.get_shell_potential(charges, ihelp, cache)
 
     def get_atom_potential(
