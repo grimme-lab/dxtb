@@ -163,12 +163,11 @@ class ES2(Interaction):
 
         unique = torch.unique(numbers)
 
-        lh = batch.pack(
-            [
-                positions.new_tensor(self.lhubbard.get(specie.item(), [0.0]))
-                for specie in unique
-            ]
-        )[ihelp.ushells_to_unique, ihelp.unique_angular]
+        lh = positions.new_tensor([
+            u
+            for specie in unique
+            for u in self.lhubbard.get(specie.item(), [0.0])
+        ])
         h = lh * self.hubbard[unique][ihelp.ushells_to_unique]
 
         # masks
