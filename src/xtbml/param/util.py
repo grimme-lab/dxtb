@@ -6,10 +6,11 @@ from ..param import Element
 from ..typing import Tensor
 
 
-def get_pair_param(par_pair: dict[str, float]) -> Tensor:
-    symbols = [*PSE.values()]
-    pair_mat = torch.ones((len(symbols), len(symbols)))
+def get_pair_param(symbols: list[str | int], par_pair: dict[str, float]) -> Tensor:
+    if all(isinstance(x, int) for x in symbols):
+        symbols = [PSE.get(i, "X") for i in symbols]
 
+    pair_mat = torch.ones((len(symbols), len(symbols)))
     for i, isp in enumerate(symbols):
         for j, jsp in enumerate(symbols):
             # Watch format! ("element1-element2")
@@ -77,9 +78,10 @@ def get_elem_param_dict(par_element: dict[str, Element], key: str) -> dict:
     for i, item in enumerate(par_element.values()):
         vals = getattr(item, key)
 
-        # convert shells: [ "1s", "2s" ] -> [ 0, 1 ]
-        if isinstance(vals[0], str):
-            vals = torch.arange(0, len(vals)).tolist()
+        if all(isinstance(x, int) or isinstance(x, float) for x in vals):
+            raise ValueError(
+                f"The key '{key}' contains the non-numeric values '{vals}'."
+            )
 
         d[i + 1] = vals
 

@@ -434,6 +434,7 @@ class TestH0(Setup):
         size = hamiltonian.size(dim=0)
         for i in range(size):
             for j in range(size):
+                # print(i, j, hamiltonian[i, j], ref[i, j])
                 diff = hamiltonian[i, j] - ref[i, j]
                 tol = self.atol + self.rtol * torch.abs(ref[i, j])
                 assert (
@@ -493,7 +494,7 @@ class TestH0(Setup):
         self.base_test(mb16_43["S2"], dtype)
 
     @pytest.mark.parametrize("dtype", [torch.float32])
-    def stest_hamiltonian_sih4_gfn1(self, dtype: torch.dtype) -> None:
+    def test_hamiltonian_sih4_gfn1(self, dtype: torch.dtype) -> None:
         """
         Compare against reference calculated with tblite
         """
@@ -508,12 +509,13 @@ class TestH0(Setup):
         h = h0.build(ovlp_sih4)
 
         print(torch.allclose(h, ref))
+        # print("ref", ref / ovlp_sih4)
         self.check_hamiltonian(h, ref)
 
         # self.base_test(sample, ref_hamiltonian)
 
     @pytest.mark.parametrize("dtype", [torch.float32])
-    def test_hamiltonian_sih4_gfn1_cn(self, dtype: torch.dtype) -> None:
+    def stest_hamiltonian_sih4_gfn1_cn(self, dtype: torch.dtype) -> None:
         """
         Compare against reference calculated with tblite
         """

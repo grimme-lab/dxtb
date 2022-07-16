@@ -1,7 +1,6 @@
 from __future__ import annotations
 import torch
 
-from ..exlibs.tbmalt import batch
 from ..basis.indexhelper import IndexHelper
 from ..constants import EV2AU
 from ..data import atomic_rad
@@ -14,7 +13,8 @@ from ..param import (
 )
 from ..typing import Tensor
 
-PAD = -999
+PAD = -1
+"""Value used for padding of tensors."""
 
 
 def get_param_tensor_from_dict(
@@ -112,14 +112,16 @@ class H0:
         self.rad = atomic_rad[self.unique]
         self.en = get_elem_param(self.par.element, "en")[self.unique]
 
-        # shell-resolved parameters
+        # shell-resolved element parameters
         self.kcn = self._get_elem_param("kcn")
-        self.kpair = get_pair_param(self.par.hamiltonian.xtb.kpair)
         self.selfenergy = self._get_elem_param("levels")
         self.shpoly = self._get_elem_param("shpoly")
         self.refocc = self._get_elem_param("refocc")
         self.valence = get_param_tensor_from_dict(self.unique, valence, torch.bool)
+
+        # shell-pair-resolved pair parameters
         self.hscale = self._get_hscale()
+        self.kpair = self._get_pair_param(self.par.hamiltonian.xtb.kpair)
 
         # unit conversion
         self.selfenergy = self.selfenergy * EV2AU
@@ -138,11 +140,28 @@ class H0:
         Tensor
             Parameters for each species.
         """
+
         return get_param_tensor_from_dict(
             self.unique,
             get_elem_param_dict(self.par.element, key),
             self.positions.dtype,
         )
+
+    def _get_pair_param(self, pair: dict[str, float]) -> Tensor:
+        """Obtain element-pair-specific parameters for all species.
+
+        Parameters
+        ----------
+        pair : dict[str, float]
+            Pair parametrization.
+
+        Returns
+        -------
+        Tensor
+            Pair parameters for each species.
+        """
+
+        return get_pair_param(self.unique.tolist(), pair)
 
     def _get_hscale(self) -> Tensor:
         """Obtain the off-site scaling factor for the Hamiltonian.
@@ -214,6 +233,7 @@ class H0:
     # TODO: overlap
     def build(self, ovlp, cn: Tensor | None = None) -> Tensor:
         """Build the Hamiltonian."""
+
         real = self.ihelp.spread_atom_to_shell(self.numbers) != 0
         mask = real.unsqueeze(-2) * real.unsqueeze(-1)
 
@@ -235,19 +255,9 @@ class H0:
         # ----------------------
         # Eq.24: PI(R_AB, l, l')
         # ----------------------
-        idx = self.ihelp.shells_to_atom
-        inp = self.positions
-        size = [*idx.size(), inp.size(-1)]
-
-        idx = idx.unsqueeze(-1).expand(*size)
-        positions = torch.where(
-            idx >= 0,
-            torch.gather(inp, -2, torch.where(idx >= 0, idx, 0)),
-            zero,
+        distances = self.ihelp.spread_atom_to_shell(
+            torch.cdist(self.positions, self.positions, p=2), dim=(-2, -1)
         )
-
-        # TODO: spread only at distances
-        distances = torch.cdist(positions, positions, p=2)
         rad = self.ihelp.spread_uspecies_to_shell(self.rad)
         rr = torch.where(
             mask,
@@ -274,8 +284,8 @@ class H0:
         # --------------------
         # Eq.23: K_{AB}^{l,l'}
         # --------------------
+        kpair = self.ihelp.spread_uspecies_to_shell(self.kpair, dim=(-2, -1))
         hscale = self.ihelp.spread_ushell_to_shell(self.hscale, dim=(-2, -1))
-        kpair = self.ihelp.spread_ushell_to_shell(self.kpair, dim=(-2, -1))
         valence = self.ihelp.spread_ushell_to_shell(self.valence)
         # torch.index_select(x[index], -1, index)
 
@@ -292,12 +302,11 @@ class H0:
             mask, 0.5 * (selfenergy.unsqueeze(-1) + selfenergy.unsqueeze(-2)), zero
         )
 
-        # TODO
-        var_s = ovlp
-
+        # scale off-diagonals
         mask.diagonal(dim1=-2, dim2=-1).fill_(False)
         h0 = torch.where(mask, var_pi * var_k * selfenergy, selfenergy)
 
-        print("h0", h0)
+        # TODO: overlap
+
         h = self.ihelp.spread_shell_to_orbital(h0, dim=(-2, -1))
-        return var_s * h
+        return h * ovlp
