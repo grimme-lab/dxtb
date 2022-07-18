@@ -154,6 +154,7 @@ disable=abstract-method,
         xrange-builtin,
         zip-builtin-not-iterating,
         E1102,  # added
+        E0402,  # added
 
 
 [REPORTS]
