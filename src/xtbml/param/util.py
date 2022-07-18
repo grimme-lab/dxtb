@@ -45,19 +45,25 @@ def get_pair_param(
 
 
 def get_elem_param(
+    numbers: Tensor,
     par_element: dict[str, Element],
     key: str,
+    pad_val: float = -1.0,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> Tensor:
-    """Obtain a element-wise parametrized quantity for all elements.
+    """Obtain a element-wise parametrized quantity for selected atomic numbers.
 
     Parameters
     ----------
+    numbers : Tensor
+        Atomic numbers.
     par : dict[str, Element]
         Parametrization of elements.
     key : str
         Name of the quantity to obtain (e.g. gam3 for Hubbard derivatives).
+    pad_val : float, optional
+        Value to pad the tensor with. Default is `-1.0`.
     device : torch.device | None
         Device to store the tensor. If `None` (default), the default device is used.
     dtype : torch.dtype | None
@@ -66,25 +72,36 @@ def get_elem_param(
     Returns
     -------
     Tensor
-        Parametrization of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
+        Parametrization of selected elements.
 
     Raises
     ------
     ValueError
         If the type of the value of `key` is neither `float` nor `int`.
     """
+    l = []
 
-    # dummy for indexing with atomic numbers
-    t = [0.0]
+    for number in numbers:
+        el = PSE.get(int(number.item()), "X")
+        if el in par_element:
+            vals = getattr(par_element[el], key)
 
-    for item in par_element.values():
-        val = getattr(item, key)
-        if not isinstance(val, float) and not isinstance(val, int):
-            raise ValueError(f"The key '{key}' contains the non-numeric value '{val}'.")
+            # convert to list so that we can use the same function for all
+            if isinstance(vals, float):
+                vals = [vals]
 
-        t.append(val)
+            if not all(isinstance(x, (int, float)) for x in vals):
+                raise ValueError(
+                    f"The key '{key}' contains the non-numeric values '{vals}'."
+                )
 
-    return torch.tensor(t, device=device, dtype=dtype)
+        else:
+            vals = [pad_val]
+
+        for val in vals:
+            l.append(val)
+
+    return torch.tensor(l, device=device, dtype=dtype)
 
 
 def get_elem_param_dict(par_element: dict[str, Element], key: str) -> dict:
@@ -112,7 +129,7 @@ def get_elem_param_dict(par_element: dict[str, Element], key: str) -> dict:
     for i, item in enumerate(par_element.values()):
         vals = getattr(item, key)
 
-        if not all((isinstance(x, int) or isinstance(x, float)) for x in vals):
+        if not all(isinstance(x, (int, float)) for x in vals):
             raise ValueError(
                 f"The key '{key}' contains the non-numeric values '{vals}'."
             )

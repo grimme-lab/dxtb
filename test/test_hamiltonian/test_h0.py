@@ -1,6 +1,4 @@
-"""
-Run tests for Hamiltonian.
-"""
+"""Run tests for Hamiltonian."""
 
 from __future__ import annotations
 import pytest
@@ -75,7 +73,7 @@ class TestHamiltonian(Setup):
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     @pytest.mark.parametrize("name1", ["H2", "LiH", "S2", "SiH4"])
     @pytest.mark.parametrize("name2", ["H2", "LiH", "S2", "SiH4"])
-    def stest_h0_gfn1_batch(self, dtype: torch.dtype, name1: str, name2: str) -> None:
+    def test_h0_gfn1_batch(self, dtype: torch.dtype, name1: str, name2: str) -> None:
         """Batched version."""
 
         sample1, sample2 = mb16_43[name1], mb16_43[name2]
