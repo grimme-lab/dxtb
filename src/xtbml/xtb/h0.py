@@ -42,14 +42,12 @@ def get_param_tensor_from_dict(
     )
 
 
-class H0:
+class Hamiltonian:
 
     numbers: Tensor
     """Atomic numbers of the atoms in the system."""
-
     unique: Tensor
     """Unique species of the system."""
-
     positions: Tensor
     """Positions of the atoms in the system."""
 
@@ -59,30 +57,23 @@ class H0:
     ihelp: IndexHelper
     """Helper class for indexing."""
 
-    selfenergy: Tensor
-    """Self-energy of each species."""
-
-    kcn: Tensor
-    """Coordination number dependent shift of the self energy."""
-
-    kpair: Tensor
-    """Element-pair-specific parameters for scaling the Hamiltonian."""
-
-    shpoly: Tensor
-    """Polynomial parameters for the distant dependent scaling."""
-
-    refocc: Tensor
-    """Reference occupation numbers."""
-
     hscale: Tensor
     """Off-site scaling factor for the Hamiltonian."""
-
+    kcn: Tensor
+    """Coordination number dependent shift of the self energy."""
+    kpair: Tensor
+    """Element-pair-specific parameters for scaling the Hamiltonian."""
+    refocc: Tensor
+    """Reference occupation numbers."""
+    selfenergy: Tensor
+    """Self-energy of each species."""
+    shpoly: Tensor
+    """Polynomial parameters for the distant dependent scaling."""
     valence: Tensor
     """Whether the shell belongs to the valence shell."""
 
     en: Tensor
     """Pauling electronegativity of each species."""
-
     rad: Tensor
     """Van-der-Waals radius of each species."""
 
@@ -91,6 +82,9 @@ class H0:
         self.unique = torch.unique(numbers)
         self.positions = positions
         self.par = par
+
+        self.__device = self.positions.device
+        self.__dtype = self.positions.dtype
 
         angular, valence = get_elem_param_shells(par.element, valence=True)
         self.ihelp = IndexHelper.from_numbers(numbers, angular)
@@ -126,6 +120,46 @@ class H0:
         # unit conversion
         self.selfenergy = self.selfenergy * EV2AU
         self.kcn = self.kcn * EV2AU
+
+        if any(
+            [
+                tensor.dtype != self.dtype
+                for tensor in (
+                    self.positions,
+                    self.hscale,
+                    self.kcn,
+                    self.kpair,
+                    self.refocc,
+                    self.selfenergy,
+                    self.shpoly,
+                    self.en,
+                    self.rad,
+                )
+            ]
+        ):
+            raise ValueError("All tensors must have same dtype")
+
+        if any(
+            [
+                tensor.device != self.device
+                for tensor in (
+                    self.numbers,
+                    self.unique,
+                    self.positions,
+                    self.ihelp,
+                    self.hscale,
+                    self.kcn,
+                    self.kpair,
+                    self.refocc,
+                    self.selfenergy,
+                    self.shpoly,
+                    self.valence,
+                    self.en,
+                    self.rad,
+                )
+            ]
+        ):
+            raise ValueError("All tensors must be on the same device")
 
     def _get_elem_param(self, key: str) -> Tensor:
         """Obtain element parameters for all species.
@@ -310,3 +344,75 @@ class H0:
 
         h = self.ihelp.spread_shell_to_orbital(h0, dim=(-2, -1))
         return h * ovlp
+
+    @property
+    def device(self) -> torch.device:
+        """The device on which the `IndexHelper` object resides."""
+        return self.__device
+
+    @device.setter
+    def device(self, *args):
+        """Instruct users to use the ".to" method if wanting to change device."""
+        raise AttributeError("Move object to device using the `.to` method")
+
+    @property
+    def dtype(self) -> torch.dtype:
+        """Floating point dtype used by IndexHelper object."""
+        return self.__dtype
+
+    def to(self, device: torch.device) -> "Hamiltonian":
+        """
+        Returns a copy of the `Hamiltonian` instance on the specified device.
+
+        This method creates and returns a new copy of the `Hamiltonian` instance
+        on the specified device "``device``".
+
+        Parameters
+        ----------
+        device : torch.device
+            Device to which all associated tensors should be moved.
+
+        Returns
+        -------
+        Hamiltonian
+            A copy of the `Hamiltonian` instance placed on the specified device.
+
+        Notes
+        -----
+        If the `Hamiltonian` instance is already on the desired device `self` will be returned.
+        """
+        if self.__device == device:
+            return self
+
+        return self.__class__(
+            self.numbers.to(device=device), self.positions.to(device=device), self.par
+        )
+
+    def type(self, dtype: torch.dtype) -> "Hamiltonian":
+        """
+        Returns a copy of the `Hamiltonian` instance with specified floating point type.
+        This method creates and returns a new copy of the `Hamiltonian` instance
+        with the specified dtype.
+
+        Parameters
+        ----------
+        dtype : torch.dtype
+            Type of the floating point numbers used by the `Hamiltonian` instance.
+
+        Returns
+        -------
+        Hamiltonian
+            A copy of the `Hamiltonian` instance with the specified dtype.
+
+        Notes
+        -----
+        If the `Hamiltonian` instance has already the desired dtype `self` will be returned.
+        """
+        if self.__dtype == dtype:
+            return self
+
+        return self.__class__(
+            self.numbers.type(dtype=torch.long),
+            self.positions.type(dtype=dtype),
+            self.par,
+        )

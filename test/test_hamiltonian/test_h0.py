@@ -1,5 +1,5 @@
 """
-Run tests for H0.
+Run tests for Hamiltonian.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from xtbml.ncoord.ncoord import get_coordination_number, exp_count
 from xtbml.param.gfn1 import GFN1_XTB as par
 from xtbml.typing import Tensor
 from xtbml.xtb.calculator import Calculator
-from xtbml.xtb.h0 import H0
+from xtbml.xtb.h0 import Hamiltonian
 
 from .samples import mb16_43, Record
 
@@ -373,7 +373,7 @@ class Setup:
     """Cutoff for calculation of coordination number."""
 
 
-class TestH0(Setup):
+class TestHamiltonian(Setup):
     """Testing the building of the Hamiltonian matrix."""
 
     @classmethod
@@ -472,7 +472,7 @@ class TestH0(Setup):
         positions = sample["positions"].type(dtype)
         ref = sample["h0"].type(dtype)
 
-        # h0 = H0(numbers, positions, par)
+        # h0 = Hamiltonian(numbers, positions, par)
         # h = h0.build(ovlp_sih4)
 
         self.base_test(mb16_43["LiH"], dtype)
@@ -505,7 +505,7 @@ class TestH0(Setup):
         positions = sample["positions"].type(dtype)
         ref = sample["h0"].type(dtype)
 
-        h0 = H0(numbers, positions, par)
+        h0 = Hamiltonian(numbers, positions, par)
         h = h0.build(ovlp_sih4)
 
         print(torch.allclose(h, ref))
@@ -526,7 +526,7 @@ class TestH0(Setup):
         positions = sample["positions"].type(dtype)
         ref = sample["h0"].type(dtype)
 
-        h0 = H0(numbers, positions, par)
+        h0 = Hamiltonian(numbers, positions, par)
         cn = get_coordination_number(numbers, positions, exp_count)
         h = h0.build(ovlp_sih4, cn)
 
@@ -589,7 +589,7 @@ class TestH0(Setup):
         )
         ovlp = batch.pack((ovlp_sih4, ovlp_lih))
 
-        h0 = H0(numbers, positions, par)
+        h0 = Hamiltonian(numbers, positions, par)
         h = h0.build(ovlp)
 
         print(torch.allclose(h, ref, atol=1e-4, rtol=1e-4))

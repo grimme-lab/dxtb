@@ -78,7 +78,7 @@ def get_elem_param_dict(par_element: dict[str, Element], key: str) -> dict:
     for i, item in enumerate(par_element.values()):
         vals = getattr(item, key)
 
-        if all(isinstance(x, int) or isinstance(x, float) for x in vals):
+        if not all((isinstance(x, int) or isinstance(x, float)) for x in vals):
             raise ValueError(
                 f"The key '{key}' contains the non-numeric values '{vals}'."
             )
