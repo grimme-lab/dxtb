@@ -361,7 +361,8 @@ class Hamiltonian:
         h0 = torch.where(mask, var_pi * var_k * selfenergy, selfenergy)
 
         h = self.ihelp.spread_shell_to_orbital(h0, dim=(-2, -1))
-        return h * self.overlap()
+        o = self.overlap()
+        return h * o
 
 
     def overlap(self):

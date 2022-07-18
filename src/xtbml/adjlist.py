@@ -1,8 +1,7 @@
-from numpy import finfo
 import torch
 
 from .constants import UINT8 as DTYPE
-
+from .typing import Tensor
 
 class AdjacencyList:
     """
@@ -46,7 +45,7 @@ class AdjacencyList:
     nltr: torch.Tensor
     """Cell index of the neighbouring atom"""
 
-    def __init__(self, numbers, positions, cutoff: float) -> None:
+    def __init__(self, numbers: Tensor, positions: Tensor, cutoff: float) -> None:
         l = torch.numel(numbers)
         self.inl = torch.zeros(l, dtype=DTYPE)
         self.nnl = torch.zeros(l, dtype=DTYPE)
@@ -56,13 +55,15 @@ class AdjacencyList:
         img = 0
         cutoff2 = cutoff * cutoff
 
+        eps = torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype)
+
         for iat in range(l):
             self.inl[iat] = img
 
             for jat in range(iat + 1):
                 vec = torch.sub(positions[iat, :], positions[jat, :])
                 r2 = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]
-                if r2 < finfo(type(cutoff2)).eps or r2 > cutoff2:
+                if r2 < eps or r2 > cutoff2:
                     continue
 
                 tmp_nlat[img] = jat

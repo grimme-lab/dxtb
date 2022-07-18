@@ -5,10 +5,9 @@ Base calculator for the extended tight-binding model.
 """
 
 from ..basis.type import Basis
-from ..exlibs.tbmalt import Geometry
 from ..param import Param
-from ..xtb.h0_loop import Hamiltonian
 from ..typing import Tensor
+from ..xtb.h0 import Hamiltonian
 
 
 class Calculator:
@@ -26,8 +25,8 @@ class Calculator:
     """Core Hamiltonian definition."""
 
     def __init__(
-        self, numbers: Tensor, mol: Geometry, par: Param, acc: float = 1.0
+        self, numbers: Tensor, positions: Tensor, par: Param, acc: float = 1.0
     ) -> None:
 
         self.basis = Basis(numbers, par, acc)
-        self.hamiltonian = Hamiltonian(mol, par)
+        self.hamiltonian = Hamiltonian(numbers, positions, par)

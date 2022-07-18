@@ -1,10 +1,8 @@
-from unittest import TestCase
 import pytest
 import torch
 
 from xtbml.basis.type import Basis
 from xtbml.basis import slater
-from xtbml.exlibs.tbmalt import Geometry
 from xtbml.integral import mmd
 from xtbml.exceptions import IntegralTransformError
 from xtbml.param.gfn1 import GFN1_XTB as par
@@ -16,11 +14,9 @@ def test_overlap_h_c():
     Compare against reference calculated with tblite-int H C 0,0,1.4 --bohr --method gfn1
     """
 
-    atomic_numbers = symbol2number(["H", "C"])
-    dummy_coords = torch.zeros(3)
-    mol = Geometry(atomic_numbers, dummy_coords)
+    numbers = symbol2number(["H", "C"])
 
-    basis = Basis(mol, par)
+    basis = Basis(numbers, par)
     h = basis.cgto.get("H")
     c = basis.cgto.get("C")
 
@@ -51,11 +47,9 @@ def test_overlap_h_he():
     Compare against reference calculated with tblite-int H He 0,0,1.7 --method gfn1 --bohr
     """
 
-    atomic_numbers = symbol2number(["H", "He"])
-    dummy_coords = torch.zeros(3)
-    mol = Geometry(atomic_numbers, dummy_coords)
+    numbers = symbol2number(["H", "He"])
 
-    basis = Basis(mol, par)
+    basis = Basis(numbers, par)
     h = basis.cgto.get("H")
     he = basis.cgto.get("He")
 
@@ -84,11 +78,9 @@ def test_overlap_s_cl():
     Compare against reference calculated with tblite-int S Cl 0,0,2.1 --method gfn1 --bohr
     """
 
-    atomic_numbers = symbol2number(["S", "Cl"])
-    dummy_coords = torch.zeros(3)
-    mol = Geometry(atomic_numbers, dummy_coords)
+    numbers = symbol2number(["S", "Cl"])
 
-    basis = Basis(mol, par)
+    basis = Basis(numbers, par)
     s = basis.cgto.get("S")
     cl = basis.cgto.get("Cl")
 
