@@ -167,11 +167,13 @@ def wrap_gather(x: Tensor, dim: int | tuple[int, int], idx: Tensor) -> Tensor:
         Gathered tensor
     """
 
-    if idx.ndim > 1 and idx.shape[0] != x.shape[0]:
+    if idx.ndim > 1:
         if isinstance(dim, int):
-            x = x.unsqueeze(0).expand(idx.size(0), -1)
+            if x.ndim < idx.ndim:
+                x = x.unsqueeze(0).expand(idx.size(0), -1)
         else:
-            x = x.unsqueeze(0).expand(idx.size(0), -1, -1)
+            if x.ndim <= idx.ndim:
+                x = x.unsqueeze(0).expand(idx.size(0), -1, -1)
 
     return gather(x, dim, idx) if isinstance(dim, int) else gather_twice(x, *dim, idx)
 

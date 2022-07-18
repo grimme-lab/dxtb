@@ -255,18 +255,17 @@ class Hamiltonian:
 
         test = torch.zeros_like(h0)
 
-        for i, el_i in enumerate(mol.chemical_symbols):
+        for i, el_i in enumerate(basis.symbols):
             isa = basis.ish_at[i].item()
             inl = adjlist.inl[i].item()
 
             imgs = int(adjlist.nnl[i].item())
             for img in range(imgs):
                 j = adjlist.nlat[img + inl].item()
-                itr = adjlist.nltr[img + inl].item()
                 jsa = basis.ish_at[j].item()
                 el_j = mol.chemical_symbols[j]
 
-                vec = mol.positions[i, :] - mol.positions[j, :] - adjlist.trans[itr, :]
+                vec = mol.positions[i, :] - mol.positions[j, :]
                 r2 = torch.sum(vec**2)
                 rr = torch.sqrt(torch.sqrt(r2) / (self.rad[el_i] + self.rad[el_j]))
 
@@ -278,7 +277,7 @@ class Hamiltonian:
                         cgtoi = basis.cgto[el_i][ish]
                         cgtoj = basis.cgto[el_j][jsh]
 
-                        print("ish", ish, "ii", ii, "jsh", jsh, "jj", jj)
+                        # print("ish", ish, "ii", ii, "jsh", jsh, "jj", jj)
 
                         stmp = mmd.overlap(
                             (cgtoi.ang, cgtoj.ang),
@@ -287,7 +286,7 @@ class Hamiltonian:
                             -vec,
                         )
 
-                        print("cgtoi.ang", cgtoi.ang, "cgtoj.ang", cgtoj.ang)
+                        # print("cgtoi.ang", cgtoi.ang, "cgtoj.ang", cgtoj.ang)
                         # print("cgtoi.nprim", cgtoi.nprim, "cgtoj.nprim", cgtoj.nprim)
                         # print(
                         #     "cgtoi.alpha",
@@ -299,8 +298,6 @@ class Hamiltonian:
                         # print(cgtoi.coeff[: cgtoi.nprim], cgtoj.coeff[: cgtoj.nprim])
                         # print(cgtoi.alpha[: cgtoi.nprim], cgtoj.alpha[: cgtoj.nprim])
                         # print(-vec)
-
-                        print("stmp", stmp)
 
                         shpoly = (1.0 + self.shpoly[el_i][ish] * rr) * (
                             1.0 + self.shpoly[el_j][jsh] * rr

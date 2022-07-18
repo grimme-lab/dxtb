@@ -6,11 +6,34 @@ from ..param import Element
 from ..typing import Tensor
 
 
-def get_pair_param(symbols: list[str | int], par_pair: dict[str, float]) -> Tensor:
+def get_pair_param(
+    symbols: list[str | int],
+    par_pair: dict[str, float],
+    device: torch.device | None = None,
+    dtype: torch.dtype | None = None,
+) -> Tensor:
+    """Obtain tensor of a pair-wise parametrized quantity for all pairs.
+
+    Parameters
+    ----------
+    symbols : list[str | int]
+        List of atomic symbols or atomic numbers.
+    par_pair : dict[str, float]
+        Parametrization of pairs.
+    device : torch.device | None, optional
+        Device to store the tensor. If `None` (default), the default device is used.
+    dtype : torch.dtype | None, optional
+        Data type of the tensor. If `None` (default), the data type is inferred.
+
+    Returns
+    -------
+    Tensor
+        Parametrization of all pairs of `symbols`.
+    """
     if all(isinstance(x, int) for x in symbols):
         symbols = [PSE.get(i, "X") for i in symbols]
 
-    pair_mat = torch.ones((len(symbols), len(symbols)))
+    pair_mat = torch.ones(len(symbols), len(symbols), device=device, dtype=dtype)
     for i, isp in enumerate(symbols):
         for j, jsp in enumerate(symbols):
             # Watch format! ("element1-element2")
@@ -21,7 +44,12 @@ def get_pair_param(symbols: list[str | int], par_pair: dict[str, float]) -> Tens
     return pair_mat
 
 
-def get_elem_param(par_element: dict[str, Element], key: str) -> Tensor:
+def get_elem_param(
+    par_element: dict[str, Element],
+    key: str,
+    device: torch.device | None = None,
+    dtype: torch.dtype | None = None,
+) -> Tensor:
     """Obtain a element-wise parametrized quantity for all elements.
 
     Parameters
@@ -30,6 +58,10 @@ def get_elem_param(par_element: dict[str, Element], key: str) -> Tensor:
         Parametrization of elements.
     key : str
         Name of the quantity to obtain (e.g. gam3 for Hubbard derivatives).
+    device : torch.device | None
+        Device to store the tensor. If `None` (default), the default device is used.
+    dtype : torch.dtype | None
+        Data type of the tensor. If `None` (default), the data type is inferred.
 
     Returns
     -------
@@ -52,7 +84,7 @@ def get_elem_param(par_element: dict[str, Element], key: str) -> Tensor:
 
         t.append(val)
 
-    return torch.tensor(t)
+    return torch.tensor(t, device=device, dtype=dtype)
 
 
 def get_elem_param_dict(par_element: dict[str, Element], key: str) -> dict:
@@ -74,6 +106,8 @@ def get_elem_param_dict(par_element: dict[str, Element], key: str) -> dict:
     """
 
     d = {}
+
+    # print(par_element.get("H"))
 
     for i, item in enumerate(par_element.values()):
         vals = getattr(item, key)

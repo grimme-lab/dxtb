@@ -1,9 +1,14 @@
 from __future__ import annotations
 import torch
 
+from xtbml.exlibs.tbmalt import batch
+
+from ..adjlist import AdjacencyList
 from ..basis.indexhelper import IndexHelper
+from ..basis.type import Basis, get_cutoff
 from ..constants import EV2AU
 from ..data import atomic_rad
+from ..integral import mmd
 from ..param import (
     get_pair_param,
     get_elem_param,
@@ -18,7 +23,7 @@ PAD = -1
 
 
 def get_param_tensor_from_dict(
-    numbers: Tensor, d: dict[int, list[bool | int | float]], dtype: torch.dtype
+    numbers: Tensor, d: dict[int, list[bool | int | float]], device: torch.device | None = None, dtype: torch.dtype | None = None
 ) -> Tensor:
     """Obtain parameters as tensor from dictionary. Taken from `IndexHelper`.
 
@@ -28,8 +33,10 @@ def get_param_tensor_from_dict(
         Atomic numbers.
     d : dict[int, list[bool|int|float]]
         Dictionary with the atomic numbers as keys and the values as lists.
-    dtype : torch.dtype
-        The `dtype` of the output tensor.
+    device : torch.device | None
+        Device to store the tensor. If `None` (default), the default device is used.
+    dtype : torch.dtype | None
+        Data type of the tensor. If `None` (default), the data type is inferred.
 
     Returns
     -------
@@ -38,7 +45,7 @@ def get_param_tensor_from_dict(
     """
     return torch.tensor(
         [l for number in numbers for l in d.get(number.item(), [PAD])],
-        dtype=dtype,
+        device=device, dtype=dtype,
     )
 
 
@@ -89,29 +96,31 @@ class Hamiltonian:
         angular, valence = get_elem_param_shells(par.element, valence=True)
         self.ihelp = IndexHelper.from_numbers(numbers, angular)
 
-        print("numbers", numbers)
-        print("unique", self.unique)
-        print("angular", self.ihelp.angular)
-        print("unique_angular", self.ihelp.unique_angular)
-        print("atom_to_unique", self.ihelp.atom_to_unique)
-        print("shells_to_ushell", self.ihelp.shells_to_ushell)
-        print("shell_index", self.ihelp.shell_index)
-        print("shells_to_atom", self.ihelp.shells_to_atom)
-        print("shells_per_atom", self.ihelp.shells_per_atom)
-        print("orbitals_to_shell", self.ihelp.orbitals_to_shell)
-        print("orbitals_per_shell", self.ihelp.orbitals_per_shell)
-        print("\n")
+        # print("numbers", numbers)
+        # print("unique", self.unique)
+        # print("angular", self.ihelp.angular)
+        # print("unique_angular", self.ihelp.unique_angular)
+        # print("atom_to_unique", self.ihelp.atom_to_unique)
+        # print("shells_to_ushell", self.ihelp.shells_to_ushell)
+        # print("shell_index", self.ihelp.shell_index)
+        # print("shells_to_atom", self.ihelp.shells_to_atom)
+        # print("shells_per_atom", self.ihelp.shells_per_atom)
+        # print("orbitals_to_shell", self.ihelp.orbitals_to_shell)
+        # print("orbitals_per_shell", self.ihelp.orbitals_per_shell)
+        # print("\n")
 
         # atom-resolved parameters
-        self.rad = atomic_rad[self.unique]
-        self.en = get_elem_param(self.par.element, "en")[self.unique]
+        self.rad = atomic_rad.type(self.dtype).to(device=self.device)[self.unique]
+        self.en = get_elem_param(self.par.element, "en", device=self.device, dtype=self.dtype)[self.unique]
+        # print(self.en)
+        #print(self._get_elem_param("en"))
 
         # shell-resolved element parameters
         self.kcn = self._get_elem_param("kcn")
         self.selfenergy = self._get_elem_param("levels")
         self.shpoly = self._get_elem_param("shpoly")
         self.refocc = self._get_elem_param("refocc")
-        self.valence = get_param_tensor_from_dict(self.unique, valence, torch.bool)
+        self.valence = get_param_tensor_from_dict(self.unique, valence, dtype=torch.bool)
 
         # shell-pair-resolved pair parameters
         self.hscale = self._get_hscale()
@@ -175,10 +184,12 @@ class Hamiltonian:
             Parameters for each species.
         """
 
+        # FIXME: not effective as get_element_param_dict gets parameters for all elements first
         return get_param_tensor_from_dict(
             self.unique,
             get_elem_param_dict(self.par.element, key),
-            self.positions.dtype,
+            device=self.device,
+            dtype=self.dtype,
         )
 
     def _get_pair_param(self, pair: dict[str, float]) -> Tensor:
@@ -195,7 +206,7 @@ class Hamiltonian:
             Pair parameters for each species.
         """
 
-        return get_pair_param(self.unique.tolist(), pair)
+        return get_pair_param(self.unique.tolist(), pair, device=self.device, dtype=self.dtype)
 
     def _get_hscale(self) -> Tensor:
         """Obtain the off-site scaling factor for the Hamiltonian.
@@ -215,7 +226,7 @@ class Hamiltonian:
         }
 
         def get_ksh(ushells: Tensor) -> Tensor:
-            ksh = torch.ones((len(ushells), len(ushells)), dtype=self.positions.dtype)
+            ksh = torch.ones((len(ushells), len(ushells)), dtype=self.dtype, device=self.device)
             shell = self.par.hamiltonian.xtb.shell
             kpol = self.par.hamiltonian.xtb.kpol
 
@@ -255,7 +266,7 @@ class Hamiltonian:
         if ushells.ndim > 1:
             ksh = torch.ones(
                 (ushells.shape[0], ushells.shape[1], ushells.shape[1]),
-                dtype=self.positions.dtype,
+                dtype=self.dtype, device=self.device
             )
             for _batch in range(ushells.shape[0]):
                 ksh[_batch] = get_ksh(ushells[_batch])
@@ -264,15 +275,25 @@ class Hamiltonian:
 
         return get_ksh(ushells)
 
-    # TODO: overlap
-    def build(self, ovlp, cn: Tensor | None = None) -> Tensor:
-        """Build the Hamiltonian."""
+    def build(self, cn: Tensor | None = None) -> Tensor:
+        """Build the xTB Hamiltonian
+
+        Parameters
+        ----------
+        cn : Tensor | None, optional
+            Coordination number, by default None
+
+        Returns
+        -------
+        Tensor
+            Hamiltonian
+        """        
 
         real = self.ihelp.spread_atom_to_shell(self.numbers) != 0
         mask = real.unsqueeze(-2) * real.unsqueeze(-1)
 
         zero = torch.tensor(
-            0.0, device=self.positions.device, dtype=self.positions.dtype
+            0.0, device=self.device, dtype=self.dtype
         )
 
         # ----------------
@@ -321,7 +342,6 @@ class Hamiltonian:
         kpair = self.ihelp.spread_uspecies_to_shell(self.kpair, dim=(-2, -1))
         hscale = self.ihelp.spread_ushell_to_shell(self.hscale, dim=(-2, -1))
         valence = self.ihelp.spread_ushell_to_shell(self.valence)
-        # torch.index_select(x[index], -1, index)
 
         var_k = torch.where(
             valence.unsqueeze(-1) * valence.unsqueeze(-2),
@@ -340,14 +360,76 @@ class Hamiltonian:
         mask.diagonal(dim1=-2, dim2=-1).fill_(False)
         h0 = torch.where(mask, var_pi * var_k * selfenergy, selfenergy)
 
-        # TODO: overlap
-
         h = self.ihelp.spread_shell_to_orbital(h0, dim=(-2, -1))
-        return h * ovlp
+        return h * self.overlap()
+
+
+    def overlap(self):
+        """Loop-based overlap calculation."""
+        
+        def get_overlap(numbers: Tensor, positions: Tensor) -> Tensor:
+            # remove padding
+            numbers = numbers[numbers.ne(0)]
+            
+            # FIXME: this acc includes all neighbors -> inefficient
+            acc = torch.finfo(self.dtype).max
+            bas = Basis(numbers, self.par, acc=acc)
+            
+            adjlist = AdjacencyList(numbers, positions, get_cutoff(bas))
+            
+            overlap = torch.zeros(bas.nao_tot, bas.nao_tot, dtype=self.dtype)
+            torch.diagonal(overlap, dim1=-2, dim2=-1).fill_(1.0)
+            
+            for i, el_i in enumerate(bas.symbols):
+                isa = int(bas.ish_at[i].item())
+                inl = int(adjlist.inl[i].item())
+                
+                imgs = int(adjlist.nnl[i].item())
+                for img in range(imgs):
+                    j = int(adjlist.nlat[img + inl].item())
+                    jsa = int(bas.ish_at[j].item())
+                    el_j = bas.symbols[j]
+
+                    vec = positions[i, :] - positions[j, :]
+                    
+                    for ish in range(bas.shells[el_i]):
+                        ii = bas.iao_sh[isa + ish].item()
+                        for jsh in range(bas.shells[el_j]):
+                            jj = bas.iao_sh[jsa + jsh].item()
+
+                            cgtoi = bas.cgto[el_i][ish]
+                            cgtoj = bas.cgto[el_j][jsh]
+
+                            stmp = mmd.overlap(
+                                (cgtoi.ang, cgtoj.ang),
+                                (cgtoi.alpha[: cgtoi.nprim], cgtoj.alpha[: cgtoj.nprim]),
+                                (cgtoi.coeff[: cgtoi.nprim], cgtoj.coeff[: cgtoj.nprim]),
+                                -vec,
+                            )
+
+                            i_nao = 2 * cgtoi.ang + 1
+                            j_nao = 2 * cgtoj.ang + 1
+                            for iao in range(i_nao):
+                                for jao in range(j_nao):
+                                    overlap[jj + jao, ii + iao].add_(stmp[iao, jao])
+
+                                    if i != j:
+                                        overlap[ii + iao, jj + jao].add_(stmp[iao, jao]) 
+        
+            return overlap
+            
+        if self.numbers.ndim > 1:
+            return batch.pack(
+                [
+                    get_overlap(self.numbers[_batch], self.positions[_batch]) for _batch in range(self.numbers.shape[0])
+                ]
+            )
+
+        return get_overlap(self.numbers, self.positions)
 
     @property
     def device(self) -> torch.device:
-        """The device on which the `IndexHelper` object resides."""
+        """The device on which the `Hamiltonian` object resides."""
         return self.__device
 
     @device.setter
@@ -357,7 +439,7 @@ class Hamiltonian:
 
     @property
     def dtype(self) -> torch.dtype:
-        """Floating point dtype used by IndexHelper object."""
+        """Floating point dtype used by Hamiltonian object."""
         return self.__dtype
 
     def to(self, device: torch.device) -> "Hamiltonian":
@@ -416,3 +498,7 @@ class Hamiltonian:
             self.positions.type(dtype=dtype),
             self.par,
         )
+
+
+
+    
