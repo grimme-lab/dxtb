@@ -88,7 +88,7 @@ class Calculator:
         hcore, overlap = self.hamiltonian.build(self.basis, adjlist, cn)
 
         # Obtain the reference occupations and total number of electrons
-        n0 = self.hamiltonian.get_occupation(ihelp).type(mol.dtype)
+        n0 = self.hamiltonian.get_occupation(ihelp)
         nel = torch.sum(n0, -1) - torch.sum(mol.charges, -1)
         focc = 2 * filling.get_aufbau_occupation(
             hcore.new_tensor(hcore.shape[-1], dtype=torch.int64),
@@ -96,7 +96,7 @@ class Calculator:
         )
 
         fwd_options = {
-            "verbose": True
+            "verbose": False,
         }
         cache = self.interaction.get_cache(mol.atomic_numbers, mol.positions, ihelp)
         scc = scf.SelfConsistentCharges(
@@ -111,4 +111,4 @@ class Calculator:
         )
         results = scc.equilibrium(use_potential=True)
 
-        return results["energy"]
+        return results

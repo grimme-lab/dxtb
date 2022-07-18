@@ -6,7 +6,6 @@ from ..adjlist import AdjacencyList
 from ..basis import IndexHelper
 from ..basis.type import Basis
 from ..constants import EV2AU
-from ..constants import FLOAT64 as DTYPE
 from ..data.atomicrad import get_atomic_rad
 from ..exlibs.tbmalt import Geometry
 from ..integral import mmd
@@ -145,16 +144,16 @@ class Hamiltonian:
     ):
 
         # calculate selfenergy using hamiltonian.selfenergy dict
-        self_energy = torch.zeros(basis.nsh_tot, dtype=DTYPE)
+        self_energy = torch.zeros(basis.nsh_tot, dtype=self.mol.dtype)
         for i, sym in enumerate(self.mol.chemical_symbols):
             ii = int(basis.ish_at[i].item())
             for ish in range(basis.shells[sym]):
                 self_energy[ii + ish] = self.selfenergy[sym][ish]
 
         if dsedcn is not None:
-            dsedcn = torch.zeros(basis.nsh_tot, dtype=DTYPE)
+            dsedcn = torch.zeros(basis.nsh_tot, dtype=self.mol.dtype)
         if dsedq is not None:
-            dsedq = torch.zeros(basis.nsh_tot, dtype=DTYPE)
+            dsedq = torch.zeros(basis.nsh_tot, dtype=self.mol.dtype)
 
         if cn is not None:
             if dsedcn is not None:
@@ -200,7 +199,7 @@ class Hamiltonian:
         Obtain the reference occupation numbers for each orbital.
         """
 
-        occupation = torch.zeros(*ihelp.orbitals_to_shell.shape, dtype=DTYPE)
+        occupation = torch.zeros(*ihelp.orbitals_to_shell.shape, dtype=self.mol.dtype)
 
         for idx, sym in enumerate(self.mol.chemical_symbols):
             shell_index = ihelp.shell_index[idx]
@@ -222,8 +221,8 @@ class Hamiltonian:
         self_energy = self.get_selfenergy(basis, cn)
 
         # init matrices
-        h0 = torch.zeros(basis.nao_tot, basis.nao_tot, dtype=DTYPE)
-        overlap = torch.zeros(basis.nao_tot, basis.nao_tot, dtype=DTYPE)
+        h0 = torch.zeros(basis.nao_tot, basis.nao_tot, dtype=self.mol.dtype)
+        overlap = torch.zeros(basis.nao_tot, basis.nao_tot, dtype=self.mol.dtype)
 
         # fill diagonal
         torch.diagonal(overlap, dim1=-2, dim2=-1).fill_(1.0)

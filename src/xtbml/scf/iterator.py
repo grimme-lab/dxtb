@@ -128,15 +128,31 @@ class SelfConsistentCharges(xt.EditableModule):
         )
 
         charges = self.potential_to_charges(output) if use_potential else output
-        energy = self._data.energy + self.interaction.get_energy(
-            charges, self._data.ihelp, self._data.cache
-        )
+        energy = self.get_energy(charges)
         return {
             "energy": energy,
             "charges": charges,
             "hamiltonian": self._data.hamiltonian,
             "density": self._data.density,
         }
+
+    def get_energy(self, charges: Tensor) -> Tensor:
+        """
+        Get the energy of the system with the given charges.
+
+        Parameters
+        ----------
+        charges : Tensor
+            Orbital charges vector.
+
+        Returns
+        -------
+        Tensor
+            Energy of the system.
+        """
+        return self._data.energy + self.interaction.get_energy(
+            charges, self._data.ihelp, self._data.cache
+        )
 
     def iterate_charges(self, charges: Tensor):
         """
@@ -153,6 +169,8 @@ class SelfConsistentCharges(xt.EditableModule):
             New orbital-resolved partial charges vector.
         """
 
+        if self.fwd_options["verbose"]:
+            print(self.get_energy(charges).sum(-1))
         potential = self.charges_to_potential(charges)
         return self.potential_to_charges(potential)
 
@@ -172,6 +190,8 @@ class SelfConsistentCharges(xt.EditableModule):
         """
 
         charges = self.potential_to_charges(potential)
+        if self.fwd_options["verbose"]:
+            print(self.get_energy(charges).sum(-1))
         return self.charges_to_potential(charges)
 
     def charges_to_potential(self, charges: Tensor) -> Tensor:
