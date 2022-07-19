@@ -1,4 +1,3 @@
-from numpy import finfo
 import torch
 
 from .constants import UINT8 as DTYPE
@@ -55,6 +54,7 @@ class AdjacencyList:
 
         img = 0
         cutoff2 = cutoff * cutoff
+        eps = torch.finfo(mol.dtype).eps
 
         for iat in range(mol.get_length()):
             self.inl[iat] = img
@@ -62,7 +62,7 @@ class AdjacencyList:
             for jat in range(iat + 1):
                 vec = torch.sub(mol.positions[iat, :], mol.positions[jat, :])
                 r2 = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]
-                if r2 < finfo(type(cutoff2)).eps or r2 > cutoff2:
+                if r2 < eps or r2 > cutoff2:
                     continue
 
                 tmp_nlat[img] = jat
