@@ -1,4 +1,17 @@
 """
+Self-consistent field iteration
+===============================
+
+Provides implementation of self consistent field iterations for the xTB Hamiltonian.
+The iterations are not like in ab initio calculations expressed in the density matrix
+and the derivative of the energy w.r.t. to the density matrix, i.e. the Hamiltonian,
+but the Mulliken populations (or partial charges) of the respective orbitals as well
+as the derivative of the energy w.r.t. to those populations, i.e. the potential vector.
+
+The implementation is based on the `xitorch <https://xitorch.readthedocs.io>`__ library,
+which happens to be abandoned and unmaintained at the time of writing, but still provides
+a reasonably good implementation of the iterative solver required for the self-consistent
+field iterations.
 """
 
 from __future__ import annotations
@@ -7,11 +20,14 @@ import xitorch as xt, xitorch.optimize as xto, xitorch.linalg as xtl
 
 from ..interaction import Interaction
 from ..basis import IndexHelper
-from ..typing import Any, Tensor 
+from ..typing import Any, Tensor
 
 
-class SelfConsistentCharges(xt.EditableModule):
-    """ """
+class SelfConsistentField(xt.EditableModule):
+    """
+    Self-consistent field iterator, which can be used to obtain a self-consistent
+    solution for a given Hamiltonian.
+    """
 
     class _Data:
         """
@@ -33,7 +49,7 @@ class SelfConsistentCharges(xt.EditableModule):
         ihelp: IndexHelper
         """Index mapping for the basis set"""
 
-        cache: "Cache"
+        cache: Interaction.Cache
         """Restart data for the interaction"""
 
         energy: Tensor
@@ -52,7 +68,7 @@ class SelfConsistentCharges(xt.EditableModule):
             occupation: Tensor,
             n0: Tensor,
             ihelp: IndexHelper,
-            cache: "Cache",
+            cache: Interaction.Cache,
         ):
 
             self.hcore = hcore
@@ -61,6 +77,7 @@ class SelfConsistentCharges(xt.EditableModule):
             self.n0 = n0
             self.ihelp = ihelp
             self.cache = cache
+            self.energy = 0.0
 
     _data: "_Data"
     """Persistent data"""
@@ -77,19 +94,28 @@ class SelfConsistentCharges(xt.EditableModule):
     eigen_options: dict[str, Any]
     """Options for eigensolver"""
 
+    use_potential: bool
+    """Whether to use the potential or the charges"""
+
     def __init__(
         self,
         interaction: Interaction,
         *args,
         **kwargs,
     ):
+        self.use_potential = kwargs.pop("use_potential", False)
         self.bck_options = {"posdef": True, **kwargs.pop("bck_options", {})}
 
         self.fwd_options = {
             "method": "broyden1",
             "alpha": -0.5,
+            "f_tol": 1.0e-5,
+            "x_tol": 1.0e-5,
+            "f_rtol": float("inf"),
+            "x_rtol": float("inf"),
             "maxiter": 50,
             "verbose": False,
+            "line_search": False,
             **kwargs.pop("fwd_options", {}),
         }
 
@@ -98,9 +124,7 @@ class SelfConsistentCharges(xt.EditableModule):
         self._data = self._Data(*args, **kwargs)
         self.interaction = interaction
 
-    def equilibrium(
-        self, charges: Tensor | None = None, use_potential: bool = False
-    ) -> dict[str, Tensor]:
+    def __call__(self, charges: Tensor | None = None) -> dict[str, Tensor]:
         """
         Run the self-consisten iterations until a stationary solution is reached
 
@@ -108,8 +132,6 @@ class SelfConsistentCharges(xt.EditableModule):
         ----------
         charges : Tensor, optional
             Initial orbital charges vector.
-        use_potential : bool, optional
-            Iterate using the potential instead of the charges.
 
         Returns
         -------
@@ -121,13 +143,13 @@ class SelfConsistentCharges(xt.EditableModule):
             charges = torch.zeros_like(self._data.occupation)
 
         output = xto.equilibrium(
-            fcn=self.iterate_potential if use_potential else self.iterate_charges,
-            y0=self.charges_to_potential(charges) if use_potential else charges,
+            fcn=self.iterate_potential if self.use_potential else self.iterate_charges,
+            y0=self.charges_to_potential(charges) if self.use_potential else charges,
             bck_options={**self.bck_options},
             **self.fwd_options,
         )
 
-        charges = self.potential_to_charges(output) if use_potential else output
+        charges = self.potential_to_charges(output) if self.use_potential else output
         energy = self.get_energy(charges)
         return {
             "energy": energy,
@@ -390,9 +412,49 @@ class SelfConsistentCharges(xt.EditableModule):
         if methodname == "density_to_charges":
             return []
         if methodname == "hamiltonian_to_density":
-            return [prefix + "_data.hcore"]
+            return [prefix + "_data.hcore"] + self.getparamnames(
+                "diagonalize", prefix=prefix
+            )
         if methodname == "potential_to_hamiltonian":
             return [prefix + "_data.hcore", prefix + "_data.overlap"]
         if methodname == "diagonalize":
             return [prefix + "_data.overlap"]
         raise KeyError("Method %s has no paramnames set" % methodname)
+
+
+def solve(
+    numbers: Tensor,
+    positions: Tensor,
+    interactions: Interaction,
+    ihelp: IndexHelper,
+    *args,
+    **kwargs,
+) -> dict[str, Tensor]:
+    """
+    Obtain self-consistent solution for a given Hamiltonian.
+
+    Parameters
+    ----------
+    numbers : Tensor
+        Atomic numbers of the system.
+    positions : Tensor
+        Positions of the system.
+    interactions : Interaction
+        Interaction object.
+    ihelp : IndexHelper
+        Index helper object.
+    args : Tuple
+        Positional arguments to pass to the engine.
+    kwargs : Dict
+        Keyword arguments to pass to the engine.
+
+    Returns
+    -------
+    Tensor
+        Orbital-resolved partial charges vector.
+    """
+
+    cache = interactions.get_cache(numbers, positions, ihelp)
+    return SelfConsistentField(
+        interactions, *args, ihelp=ihelp, cache=cache, **kwargs
+    )()

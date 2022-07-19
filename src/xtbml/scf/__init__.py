@@ -2,4 +2,4 @@
 Definition of the self-consistent iterations.
 """
 
-from .iterator import SelfConsistentCharges
+from .iterator import solve

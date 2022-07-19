@@ -69,7 +69,7 @@ class ES2(Interaction):
     shell_resolved: bool
     """Electrostatics is shell-resolved"""
 
-    class Cache:
+    class Cache(Interaction.Cache):
         """Cache for Coulomb matrix."""
 
         def __init__(self, mat):
@@ -95,7 +95,7 @@ class ES2(Interaction):
         numbers: Tensor,
         positions: Tensor,
         ihelp: IndexHelper,
-    ):
+    ) -> Interaction.Cache:
 
         return self.Cache(
             self.get_shell_coulomb_matrix(numbers, positions, ihelp)
@@ -194,17 +194,17 @@ class ES2(Interaction):
         return 1.0 / torch.pow(dist_gexp + torch.pow(avg, -self.gexp), 1.0 / self.gexp)
 
     def get_atom_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: "Cache"
+        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
     ) -> Tensor:
         return 0.5 * charges * self.get_atom_potential(charges, ihelp, cache)
 
     def get_shell_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: "Cache"
+        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
     ) -> Tensor:
         return 0.5 * charges * self.get_shell_potential(charges, ihelp, cache)
 
     def get_atom_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: "Cache"
+        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
     ) -> Tensor:
         return (
             torch.zeros_like(charges)
@@ -213,7 +213,7 @@ class ES2(Interaction):
         )
 
     def get_shell_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: "Cache"
+        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
     ) -> Tensor:
         return (
             torch.einsum("...ik,...k->...i", cache.mat, charges)

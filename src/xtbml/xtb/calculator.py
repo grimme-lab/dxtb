@@ -60,6 +60,7 @@ class Calculator:
         self,
         mol: Geometry,
         ihelp: IndexHelper,
+        verbosity: int = 1,
     ) -> dict[str, Tensor]:
         """
         Entry point for performing single point calculations.
@@ -96,19 +97,19 @@ class Calculator:
         )
 
         fwd_options = {
-            "verbose": False,
+            "verbose": verbosity > 0,
         }
-        cache = self.interaction.get_cache(mol.atomic_numbers, mol.positions, ihelp)
-        scc = scf.SelfConsistentCharges(
+        results = scf.solve(
+            mol.atomic_numbers,
+            mol.positions,
             self.interaction,
+            ihelp,
             hcore,
             overlap,
             focc,
             n0,
-            ihelp,
-            cache,
             fwd_options=fwd_options,
+            use_potential=True,
         )
-        results = scc.equilibrium(use_potential=True)
 
         return results

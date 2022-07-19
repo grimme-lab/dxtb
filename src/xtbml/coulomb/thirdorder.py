@@ -45,7 +45,7 @@ class ES3(Interaction):
     hubbard_derivs: Tensor
     "Hubbard derivatives of all atoms."
 
-    class Cache:
+    class Cache(Interaction.Cache):
         """Restart data for the interaction."""
 
         pass
@@ -54,7 +54,9 @@ class ES3(Interaction):
         Interaction.__init__(self)
         self.hubbard_derivs = hubbard_derivs
 
-    def get_cache(self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper) -> "Cache":
+    def get_cache(
+        self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
+    ) -> Interaction.Cache:
         """
         Create restart data for individual interactions.
 
@@ -69,7 +71,7 @@ class ES3(Interaction):
 
         Returns
         -------
-        Cache
+        Interaction.Cache
             Restart data for the interaction.
         """
 
@@ -79,7 +81,7 @@ class ES3(Interaction):
         self,
         charges: Tensor,
         ihelp: IndexHelper,
-        cache: "Cache",
+        cache: Interaction.Cache,
     ) -> Tensor:
         """
         Calculate the third-order electrostatic energy.
@@ -94,7 +96,7 @@ class ES3(Interaction):
             Atomic charges of all atoms.
         ihelp : IndexHelper
             Index mapping for the basis set.
-        cache : Cache
+        cache : Interaction.Cache
             Restart data for the interaction.
 
         Returns
@@ -105,7 +107,9 @@ class ES3(Interaction):
 
         return self.hubbard_derivs * torch.pow(charges, 3.0) / 3.0
 
-    def get_atom_potential(self, charges: Tensor, ihelp: IndexHelper, cache: "Cache") -> Tensor:
+    def get_atom_potential(
+        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
+    ) -> Tensor:
         """Calculate the third-order electrostatic potential.
 
         Parameters
@@ -114,7 +118,7 @@ class ES3(Interaction):
             Atomic charges of all atoms.
         ihelp : IndexHelper
             Index mapping for the basis set.
-        cache : Cache
+        cache : Interaction.Cache
             Restart data for the interaction.
 
         Returns
