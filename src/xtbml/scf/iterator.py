@@ -77,7 +77,7 @@ class SelfConsistentField(xt.EditableModule):
             self.n0 = n0
             self.ihelp = ihelp
             self.cache = cache
-            self.energy = 0.0
+            self.energy = hcore.new_tensor(0.0)
 
     _data: "_Data"
     """Persistent data"""
@@ -126,7 +126,7 @@ class SelfConsistentField(xt.EditableModule):
 
     def __call__(self, charges: Tensor | None = None) -> dict[str, Tensor]:
         """
-        Run the self-consisten iterations until a stationary solution is reached
+        Run the self-consistent iterations until a stationary solution is reached
 
         Parameters
         ----------
