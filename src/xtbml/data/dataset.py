@@ -763,8 +763,8 @@ def get_gmtkn55_dataset(path: Path) -> ReactionDataset:
     """
 
     dataset = get_dataset(
-        path_reactions=Path(path, "GMTKN55/reactions_ACONF.json"),
-        path_samples=Path(path, "GMTKN55/samples_ACONF.json"),
+        path_reactions=Path(path, "reactions_ACONF.json"),
+        path_samples=Path(path, "samples_ACONF.json"),
     )
 
     # assert len(dataset) == 1505
