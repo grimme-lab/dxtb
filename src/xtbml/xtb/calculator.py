@@ -91,7 +91,7 @@ class Calculator:
         # Obtain the reference occupations and total number of electrons
         n0 = self.hamiltonian.get_occupation(ihelp)
         nel = torch.sum(n0, -1) - torch.sum(mol.charges, -1)
-        focc = 2 * filling.get_aufbau_occupation(
+        occupation = 2 * filling.get_aufbau_occupation(
             hcore.new_tensor(hcore.shape[-1], dtype=torch.int64),
             nel / 2,
         )
@@ -106,7 +106,7 @@ class Calculator:
             ihelp,
             hcore,
             overlap,
-            focc,
+            occupation,
             n0,
             fwd_options=fwd_options,
             use_potential=True,
