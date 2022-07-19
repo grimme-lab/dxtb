@@ -7,7 +7,7 @@ import xitorch as xt, xitorch.optimize as xto, xitorch.linalg as xtl
 
 from ..interaction import Interaction
 from ..basis import IndexHelper
-from ..typing import Tensor, Dict
+from ..typing import Any, Tensor 
 
 
 class SelfConsistentCharges(xt.EditableModule):
@@ -68,13 +68,13 @@ class SelfConsistentCharges(xt.EditableModule):
     interaction: Interaction
     """Interactions to minimize in self-consistent iterations"""
 
-    fwd_options: dict[str, any]
+    fwd_options: dict[str, Any]
     """Options for forwards pass"""
 
-    bck_options: dict[str, any]
+    bck_options: dict[str, Any]
     """Options for backwards pass"""
 
-    eigen_options: dict[str, any]
+    eigen_options: dict[str, Any]
     """Options for eigensolver"""
 
     def __init__(
@@ -99,7 +99,7 @@ class SelfConsistentCharges(xt.EditableModule):
         self.interaction = interaction
 
     def equilibrium(
-        self, charges: Optional[Tensor] = None, use_potential: bool = False
+        self, charges: Tensor | None = None, use_potential: bool = False
     ) -> dict[str, Tensor]:
         """
         Run the self-consisten iterations until a stationary solution is reached
@@ -306,7 +306,7 @@ class SelfConsistentCharges(xt.EditableModule):
         """
 
         h_op = xt.LinearOperator.m(hamiltonian)
-        evals, evecs = self.diagnalize(h_op, self._data.overlap)
+        evals, evecs = self.diagonalize(h_op, self._data.overlap)
         return (
             evecs @ torch.diag_embed(self._data.occupation, dim1=-2, dim2=-1) @ evecs.mT
         )
@@ -323,9 +323,9 @@ class SelfConsistentCharges(xt.EditableModule):
 
         return xt.LinearOperator.m(self._data.overlap)
 
-    def diagnalize(
+    def diagonalize(
         self, hamiltonian: xt.LinearOperator, overlap: xt.LinearOperator
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """
         Diagnalize the Hamiltonian.
 
@@ -368,7 +368,7 @@ class SelfConsistentCharges(xt.EditableModule):
         """
         return self._data.hcore.device
 
-    def getparamnames(self, methodname: str, prefix: str = "") -> List[str]:
+    def getparamnames(self, methodname: str, prefix: str = "") -> list[str]:
         if methodname == "iterate_charges":
             return self.getparamnames(
                 "charges_to_potential", prefix=prefix

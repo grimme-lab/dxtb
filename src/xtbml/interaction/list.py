@@ -85,9 +85,13 @@ class InteractionList(Interaction):
             Energy vector for each orbital partial charge.
         """
 
-        return torch.stack(
-            [
-                interaction.get_energy(charges, ihelp, cache[interaction.label])
-                for interaction in self.interactions
-            ]
-        ).sum(dim=0) if len(self.interactions) > 0 else 0.0
+        return (
+            torch.stack(
+                [
+                    interaction.get_energy(charges, ihelp, cache[interaction.label])
+                    for interaction in self.interactions
+                ]
+            ).sum(dim=0)
+            if len(self.interactions) > 0
+            else torch.tensor(0.0, dtype=charges.dtype, device=charges.device)
+        )

@@ -4,8 +4,8 @@
 Base calculator for the extended tight-binding model.
 """
 
+from __future__ import annotations
 import torch
-import xitorch as xt
 
 from ..basis.type import Basis, get_cutoff
 from ..basis import IndexHelper
@@ -17,10 +17,10 @@ from ..interaction import Interaction, InteractionList
 from ..adjlist import AdjacencyList
 from ..ncoord import ncoord
 from ..data.covrad import covalent_rad_d3
-from ..wavefunction import mulliken, filling
+from ..wavefunction import filling
 from ..typing import Tensor
 from ..coulomb import secondorder, thirdorder, averaging_function
-from ..param import get_element_param, get_elem_param_dict, get_element_angular
+from ..param import get_element_param, get_elem_param_dict
 
 
 class Calculator:
@@ -60,7 +60,7 @@ class Calculator:
         self,
         mol: Geometry,
         ihelp: IndexHelper,
-    ) -> Tensor:
+    ) -> dict[str, Tensor]:
         """
         Entry point for performing single point calculations.
 
