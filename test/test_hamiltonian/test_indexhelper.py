@@ -7,7 +7,7 @@ from xtbml.exlibs.tbmalt import batch
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_indexhelper_single(dtype):
+def test_indexhelper_single(dtype: torch.dtype):
 
     numbers = utils.symbol2number("S H H H Mg N O S N N C H C H O N".split())
     angular = {
@@ -52,13 +52,13 @@ def test_indexhelper_single(dtype):
 
     assert torch.allclose(
         qat,
-        torch.scatter_reduce(qsh, -1, ihelp.shells_to_atom, reduce="sum"),
+        ihelp.reduce_shell_to_atom(qsh, reduce="sum"),
         atol=1.0e-4,
     )
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_indexhelper_batch(dtype):
+def test_indexhelper_batch(dtype: torch.dtype):
 
     numbers = batch.pack(
         (
