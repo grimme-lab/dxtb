@@ -328,7 +328,8 @@ class SelfConsistentField(xt.EditableModule):
         """
 
         h_op = xt.LinearOperator.m(hamiltonian)
-        evals, evecs = self.diagonalize(h_op, self._data.overlap)
+        o_op = self.get_overlap()
+        evals, evecs = self.diagonalize(h_op, o_op)
         return (
             evecs @ torch.diag_embed(self._data.occupation, dim1=-2, dim2=-1) @ evecs.mT
         )
@@ -366,7 +367,6 @@ class SelfConsistentField(xt.EditableModule):
             Eigenvectors of the Hamiltonian.
         """
 
-        overlap = self.get_overlap()
         return xtl.lsymeig(A=hamiltonian, M=overlap, **self.eigen_options)
 
     @property
