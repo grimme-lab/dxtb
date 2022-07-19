@@ -30,9 +30,8 @@ from ..param.gfn1 import GFN1_XTB as par
 from ..typing import Tensor
 from ..basis import IndexHelper
 
-#################### TODO: these should be available in index helper ####################
 
-
+# TODO: could be added to IndexHelper
 def get_elem_param_shells(
     par_element: dict[str, Element], valence: bool = False
 ) -> tuple[dict, dict]:
@@ -94,8 +93,6 @@ def get_elem_param_shells(
         return d, v
 
 
-#########################################################################################
-
 # TODO: could be added to IndexHelper
 def get_orbitals_per_atom(ihelp: IndexHelper) -> Tensor:
     """Number of orbitals per atom
@@ -124,7 +121,7 @@ class MatrixHelper:
     Matrix helper for dealing with e.g. Hamiltonian
     """
 
-    def get_orbital_columns(x: Tensor, ihelp: IndexHelper, dim=0) -> list[Tensor]:
+    def get_orbital_columns(x: Tensor, ihelp: IndexHelper, dim=1) -> list[Tensor]:
         """Retrieve atomwise orbital partitions by splitting hamiltonian
         row-wise or column-wise.
 
@@ -135,7 +132,7 @@ class MatrixHelper:
         ihelp : IndexHelper
             Index mapping for the basis set
         dim : int, optional
-            Dimension along split is conducted, by default 0 (row-wise)
+            Dimension along split is conducted, by default 0 (column-wise)
             leading to an output shape of [n_shells, n_orbitals] for each atom
 
         Returns
@@ -147,7 +144,7 @@ class MatrixHelper:
         return torch.split(x, orbitals_per_atom.tolist(), dim=dim)
 
     def get_orbital_sum(x: Tensor, ihelp: IndexHelper) -> Tensor:
-        """Retrieve atomwise partitions by summing over hamiltonian column-wise.
+        """Retrieve atomwise partitions by summing over hamiltonian row-wise.
 
         Parameters
         ----------
@@ -155,9 +152,6 @@ class MatrixHelper:
             Tensor to be partionised
         ihelp : IndexHelper
             Index mapping for the basis set.
-        dim : int, optional
-            Dimension along split is conducted, by default 0 (row-wise)
-            leading to an output shape of [n_shells, n_orbitals] for each atom
 
         Returns
         -------
@@ -165,7 +159,7 @@ class MatrixHelper:
             List of atomic partitions for orbitals
         """
         x = torch.sum(x, dim=1, keepdim=False)
-        return MatrixHelper.get_orbital_columns(x, ihelp)
+        return MatrixHelper.get_orbital_columns(x, ihelp, dim=0)
 
     def select_block(x: Tensor, idx0: Tensor, idx1: Tensor) -> Tensor:
         """Generate block from tensor given by indices specified in two 1D index-tensors.
@@ -246,54 +240,4 @@ class MatrixHelper:
 
         n_atoms = len(ihelp.shells_per_atom)
         return [MatrixHelper.get_atomblock(x, i, i, ihelp) for i in range(n_atoms)]
-
-    def dummy(sample):
-
-        # anuglar momenta and respective orbitals for different elements
-        angular, valence_shells = get_elem_param_shells(par.element, valence=True)
-
-        ihelp = IndexHelper.from_numbers(sample.numbers, angular)
-        print(ihelp)
-        print(ihelp.angular)
-        print(ihelp.shells_per_atom)
-        print(ihelp.shell_index)
-        print(ihelp.shells_to_atom)
-        print(ihelp.orbitals_per_shell)
-        print(ihelp.orbital_index)
-        print(ihelp.orbitals_to_shell)
-
-        print("Hamiltonian")
-        print(sample)
-        print(sample.h0.shape)
-        print(sample.h0)
-        h0 = sample.h0
-
-        print("columns")
-        columns = MatrixHelper.get_orbital_columns(h0, ihelp)
-        # TODO: write tests
-        assert len(columns) == list(sample.egfn1.shape)[0]
-        assert all(
-            [
-                j[1] == len(ihelp.orbitals_to_shell)
-                for j in [list(i.shape) for i in columns]
-            ]
-        )
-        print(columns)
-
-        print("scalars")
-        scalars = MatrixHelper.get_orbital_sum(h0, ihelp)
-        # print(scalars)
-        # NOTE: this induces a difference between similar atoms, e.g. the H in H20
-
-        # block for atom i, j
-        i, j = 0, 1
-        abc = MatrixHelper.get_atomblock(h0, i, j, ihelp)
-        print(abc)
-        print(abc.shape)
-
-        n_atoms = len(ihelp.shells_per_atom)
-        print(n_atoms)
-
-        # get diagonal blocks
-        diag_blocks = MatrixHelper.get_diagonal_blocks(h0, ihelp)
-        print(diag_blocks)
+ 
