@@ -3,7 +3,7 @@ import torch
 
 from ..constants import ATOMIC_NUMBER
 from ..param import Element
-from ..typing import Tensor, Dict, List
+from ..typing import Tensor
 
 
 def get_element_param(par_element: dict[str, Element], key: str) -> Tensor:
@@ -65,7 +65,7 @@ def get_elem_param_dict(par_element: dict[str, Element], key: str) -> dict:
     return d
 
 
-def get_element_angular(par_element: Dict[str, Element]) -> Dict[int, List[int]]:
+def get_element_angular(par_element: dict[str, Element]) -> dict[int, list[int]]:
 
     label2angular = {
         "s": 0,

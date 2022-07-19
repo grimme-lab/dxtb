@@ -1,8 +1,9 @@
+from __future__ import annotations
 import torch
 
 from .abc import Interaction
 from ..basis import IndexHelper
-from ..typing import Tensor, List
+from ..typing import Tensor
 
 
 class InteractionList(Interaction):
@@ -17,7 +18,7 @@ class InteractionList(Interaction):
 
         __slots__ = ()
 
-    def __init__(self, interactions: List[Interaction]):
+    def __init__(self, interactions: list[Interaction]):
         Interaction.__init__(self)
         self.interactions = interactions
 
