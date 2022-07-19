@@ -7,7 +7,6 @@ construction, handling and maintenance.
 """
 from functools import reduce, partial
 from typing import Optional, Any, Literal, Tuple, List, Union, overload
-import numpy as np
 from collections import namedtuple
 import torch
 
@@ -363,3 +362,100 @@ def unpack(tensor: Tensor, value: Any = 0, axis: int = 0) -> Tuple[Tensor]:
         tensors: Tuple of constituent tensors.
     """
     return tuple(deflate(i, value) for i in tensor.movedim(axis, 0))
+
+
+# by MF
+def index(inp: Tensor, idx: Tensor) -> Tensor:
+    """Batched indexing using `torch.gather`.
+
+    Parameters
+    ----------
+    inp : Tensor
+        Input tensor.
+    idx : Tensor
+        Index tensor.
+
+    Returns
+    -------
+    Tensor
+        Output tensor.
+
+    Examples
+    --------
+    Batched indexing with same dimensions of `idx` and `inp` (n_batch, x).
+    >>> from xtbml.exlibs.tbmalt import batch
+    >>> inp = torch.tensor([
+    ...     [ 0.4800, 0.4701, 0.3405, 0.4701 ],
+    ...     [ 0.4701, 0.5833, 0.7882, 0.3542 ]
+    ... ])
+    >>> idx = torch.tensor([
+    ...     [ 0,  0,  1,  1,  2,  2,  3,  3 ],
+    ...     [ 0,  1,  1,  1,  2,  2,  3,  3 ]
+    ... ])
+    >>> print(batch.index(inp, idx))
+    tensor([[0.4800, 0.4800, 0.4701, 0.4701, 0.3405, 0.3405, 0.4701, 0.4701],
+            [0.4701, 0.5833, 0.5833, 0.5833, 0.7882, 0.7882, 0.3542, 0.3542]])
+
+    Also works for non-batched versions.
+    >>> from xtbml.exlibs.tbmalt import batch
+    >>> inp = torch.tensor([ 0.4800, 0.4701, 0.3405, 0.4701 ])
+    >>> idx = torch.tensor([ 0,  0,  1,  1,  2,  2,  3,  3 ])
+    >>> print(batch.index(inp, idx))
+    tensor([0.4800, 0.4800, 0.4701, 0.4701, 0.3405, 0.3405, 0.4701, 0.4701])
+
+
+    Batched indexing with `idx` having one more dimension than `inp`.
+    >>> from xtbml.exlibs.tbmalt import batch
+    >>> inp = torch.tensor([
+    ...     [
+    ...         [-3.7510, -5.8131, -1.2251],
+    ...         [-1.4523, -3.0188,  2.3872],
+    ...         [-1.9942, -3.5295, -1.3030],
+    ...         [-4.3375, -6.6594,  0.5598],
+    ...     ],
+    ...     [
+    ...         [ 3.3579,  2.5251, -3.4608],
+    ...         [ 2.7920,  1.0176, -2.5924],
+    ...         [ 3.0536,  7.1525,  1.8216],
+    ...         [ 1.2930,  0.7893,  0.9190]
+    ...     ],
+    ... ])
+    >>> idx = torch.tensor([
+    ...     [ 0,  0,  1,  1,  2,  2,  3,  3 ],
+    ...     [ 0,  1,  1,  1,  2,  2,  3,  3 ]
+    ... ])
+    >>> print(batch.index(inp, idx))
+    tensor([[[-3.7510, -5.8131, -1.2251],
+             [-3.7510, -5.8131, -1.2251],
+             [-1.4523, -3.0188,  2.3872],
+             [-1.4523, -3.0188,  2.3872],
+             [-1.9942, -3.5295, -1.3030],
+             [-1.9942, -3.5295, -1.3030],
+             [-4.3375, -6.6594,  0.5598],
+             [-4.3375, -6.6594,  0.5598]],
+
+            [[ 3.3579,  2.5251, -3.4608],
+             [ 2.7920,  1.0176, -2.5924],
+             [ 2.7920,  1.0176, -2.5924],
+             [ 2.7920,  1.0176, -2.5924],
+             [ 3.0536,  7.1525,  1.8216],
+             [ 3.0536,  7.1525,  1.8216],
+             [ 1.2930,  0.7893,  0.9190],
+             [ 1.2930,  0.7893,  0.9190]]])
+
+    Also works for non-batched version.
+    """
+
+    if len(inp.shape) == len(idx.shape):
+        return torch.gather(inp, -1, idx)
+
+    if len(inp.shape) == (len(idx.shape) + 1):
+        # also support non-batched by unpacking idx
+        size = [*idx.size(), inp.size(-1)]
+
+        dummy = idx.unsqueeze(-1).expand(*size)
+        return torch.gather(inp, -2, dummy)
+
+    raise NotImplementedError(
+        f"Indexing with input size '{len(inp.shape)}' and index size '{len(idx.shape)}' not implemented."
+    )

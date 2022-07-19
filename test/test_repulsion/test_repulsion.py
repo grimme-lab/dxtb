@@ -11,7 +11,7 @@ import pytest
 
 from xtbml.exlibs.tbmalt import batch
 from xtbml.param.gfn1 import GFN1_XTB
-from xtbml.repulsion import RepulsionFactory
+from xtbml.classical import RepulsionFactory
 from xtbml.typing import Tensor
 
 from .samples import amino20x4, mb16_43

@@ -1,5 +1,5 @@
 from typing import Dict, List, Union
-from torch import tensor
+import torch
 
 from ..constants import AA2AU, PSE
 
@@ -7,9 +7,7 @@ from ..constants import AA2AU, PSE
 
 
 # fmt: off
-# Covalent radii (taken from Pyykko and Atsumi, Chem. Eur. J. 15, 2009,
-#  188-197), values for metals decreased by 10 %
-covalent_rad_2009 = AA2AU * tensor([ 
+covalent_rad_2009 = AA2AU * torch.tensor([ 
     0.00,  # None
     0.32,0.46,  # H,He
     1.20,0.94,0.77,0.75,0.71,0.63,0.64,0.67,  # Li-Ne
@@ -33,11 +31,13 @@ covalent_rad_2009 = AA2AU * tensor([
     1.49,1.51,1.51,1.48,1.50,1.56,1.58,  # Cm-No
     1.45,1.41,1.34,1.29,1.27,  # Lr-
     1.21,1.16,1.15,1.09,1.22,  # -Cn
-    1.36,1.43,1.46,1.58,1.48,1.57 ]) # Nh-Og
+    1.36,1.43,1.46,1.58,1.48,1.57  # Nh-Og
+])
+"""Covalent radii (taken from Pyykko and Atsumi, Chem. Eur. J. 15, 2009, 188-197), values for metals decreased by 10 %"""
 # fmt: on
 
-# D3 covalent radii used to construct the coordination number
 covalent_rad_d3 = 4.0 / 3.0 * covalent_rad_2009
+"""D3 covalent radii used to construct the coordination number"""
 
 
 def get_covalent_rad(
