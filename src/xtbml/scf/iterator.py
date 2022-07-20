@@ -257,7 +257,7 @@ class SelfConsistentField(xt.EditableModule):
 
     def potential_to_density(self, potential: Tensor):
         """
-        Obtain the density matrix from the Hamiltonian.
+        Obtain the density matrix from the potential.
 
         Parameters
         ----------
@@ -275,7 +275,7 @@ class SelfConsistentField(xt.EditableModule):
 
     def density_to_charges(self, density: Tensor):
         """
-        Obtain the Hamiltonian from the density matrix.
+        Compute the orbital charges from the density matrix.
 
         Parameters
         ----------
@@ -316,7 +316,7 @@ class SelfConsistentField(xt.EditableModule):
 
     def hamiltonian_to_density(self, hamiltonian: Tensor):
         """
-        Compute density matrix from the Hamiltonian.
+        Compute the density matrix from the Hamiltonian.
 
         Parameters
         ----------
@@ -352,7 +352,7 @@ class SelfConsistentField(xt.EditableModule):
         self, hamiltonian: xt.LinearOperator, overlap: xt.LinearOperator
     ) -> tuple[Tensor, Tensor]:
         """
-        Diagnalize the Hamiltonian.
+        Diagonalize the Hamiltonian.
 
         Parameters
         ----------
