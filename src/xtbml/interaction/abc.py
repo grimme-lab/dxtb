@@ -18,7 +18,7 @@ class Interaction:
 
     class Cache:
         """
-        Restart data for individual interactions.
+        Restart data for individual interactions, extended by subclasses as needed.
         """
 
         pass
