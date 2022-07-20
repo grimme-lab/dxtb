@@ -47,7 +47,7 @@ class Interaction:
             Restart data for the interaction.
         """
 
-        return None
+        return self.Cache()
 
     def get_potential(
         self, charges: Tensor, ihelp: IndexHelper, cache: "Interaction.Cache"
