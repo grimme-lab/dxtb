@@ -16,7 +16,9 @@ field iterations.
 
 from __future__ import annotations
 import torch
-import xitorch as xt, xitorch.optimize as xto, xitorch.linalg as xtl
+import xitorch as xt
+import xitorch.linalg as xtl
+import xitorch.optimize as xto
 
 from ..interaction import Interaction
 from ..basis import IndexHelper
@@ -329,7 +331,7 @@ class SelfConsistentField(xt.EditableModule):
 
         h_op = xt.LinearOperator.m(hamiltonian)
         o_op = self.get_overlap()
-        evals, evecs = self.diagonalize(h_op, o_op)
+        _, evecs = self.diagonalize(h_op, o_op)
         return (
             evecs @ torch.diag_embed(self._data.occupation, dim1=-2, dim2=-1) @ evecs.mT
         )
@@ -419,7 +421,7 @@ class SelfConsistentField(xt.EditableModule):
             return [prefix + "_data.hcore", prefix + "_data.overlap"]
         if methodname == "diagonalize":
             return [prefix + "_data.overlap"]
-        raise KeyError("Method %s has no paramnames set" % methodname)
+        raise KeyError(f"Method '{methodname}' has no paramnames set")
 
 
 def solve(
