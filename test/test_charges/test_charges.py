@@ -1,9 +1,11 @@
+"""Testing the charges module."""
+
 import torch
 import pytest
 
 from xtbml import charges
 from xtbml.exlibs.tbmalt import batch
-from xtbml.ncoord.ncoord import erf_count, get_coordination_number
+from xtbml.typing import Tensor
 
 from .samples import structures
 
@@ -277,9 +279,12 @@ def test_charges_grad(dtype: torch.dtype = torch.float64):
     positions.requires_grad_(True)
     total_charge.requires_grad_(True)
 
-    def func(positions, total_charge):
+    def func(positions: Tensor, total_charge: Tensor):
         return torch.sum(
             charges.solve(numbers, positions, total_charge, eeq, cn)[0], -1
         )
 
-    assert torch.autograd.gradcheck(func, (positions, total_charge))
+    # pylint: disable=import-outside-toplevel
+    from torch.autograd.gradcheck import gradcheck
+
+    assert gradcheck(func, (positions, total_charge))

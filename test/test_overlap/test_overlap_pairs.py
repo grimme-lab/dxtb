@@ -1,8 +1,7 @@
 import pytest
 import torch
 
-from xtbml.basis.type import Basis
-from xtbml.basis import slater
+from xtbml.basis import Basis, slater
 from xtbml.integral import mmd
 from xtbml.exceptions import IntegralTransformError
 from xtbml.param.gfn1 import GFN1_XTB as par
@@ -134,8 +133,9 @@ def test_overlap_s_cl():
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_overlap_higher_orbitals(dtype):
+def test_overlap_higher_orbitals(dtype: torch.dtype):
 
+    # pylint: disable=import-outside-toplevel
     from xtbml.basis.type import _process_record
     from test_overlap.test_cgto_ortho_data import ref_data
 
@@ -172,6 +172,7 @@ def test_overlap_higher_orbitals(dtype):
 def test_overlap_higher_orbital_fail():
     """No higher orbitals than 4 allowed."""
 
+    # pylint: disable=import-outside-toplevel
     from xtbml.basis.type import _process_record
 
     vec = torch.tensor([0.0, 0.0, 1.4])
@@ -202,7 +203,7 @@ def test_overlap_higher_orbital_fail():
 
 @pytest.mark.parametrize("ng", [1, 2, 3, 4, 5, 6])
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_sto_ng_batch(ng, dtype):
+def test_sto_ng_batch(ng: int, dtype: torch.dtype):
     """
     Test symmetry of s integrals
     """

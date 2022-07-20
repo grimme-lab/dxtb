@@ -1,11 +1,13 @@
 """Data for testing repulsion taken from https://github.com/grimme-lab/mstore"""
 
+from __future__ import annotations
 import torch
-from xtbml.typing import Samples
+
+from xtbml.typing import Molecule
 from xtbml.utils import symbol2number
 
 
-structures: Samples = {
+structures: dict[str, Molecule] = {
     "PbH4-BiH3": {
         "numbers": symbol2number("Pb H H H H Bi H H H".split()),
         "positions": torch.tensor(

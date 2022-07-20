@@ -3,8 +3,8 @@
 import pytest
 import tomli as toml
 import torch
-from xtbml.param.meta import Meta
 
+from xtbml.param.meta import Meta
 from xtbml.utils import symbol2number
 
 
