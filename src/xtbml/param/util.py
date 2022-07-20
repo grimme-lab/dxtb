@@ -1,3 +1,11 @@
+"""
+Parametrization Utility
+=======================
+
+Contains functions to obtain the parametrization of elements and pairs.
+Most functions convert the parametrization dictionary to a tensor. 
+"""
+
 from __future__ import annotations
 import torch
 
@@ -44,37 +52,6 @@ def get_pair_param(
     return pair_mat
 
 
-def get_element_param(par_element: dict[str, Element], key: str) -> Tensor:
-    """Obtain a element-wise parametrized quantity for all elements.
-    Parameters
-    ----------
-    par : dict[str, Element]
-        Parametrization of elements.
-    key : str
-        Name of the quantity to obtain (e.g. gam3 for Hubbard derivatives).
-    Returns
-    -------
-    Tensor
-        Parametrization of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
-    Raises
-    ------
-    ValueError
-        If the type of the value of `key` is neither `float` nor `int`.
-    """
-
-    # dummy for indexing with atomic numbers
-    t = [0.0]
-
-    for item in par_element.values():
-        val = getattr(item, key)
-        if not isinstance(val, float) and not isinstance(val, int):
-            raise ValueError(f"The key '{key}' contains the non-numeric value '{val}'.")
-
-        t.append(val)
-
-    return torch.tensor(t)
-
-
 def get_elem_param(
     numbers: Tensor,
     par_element: dict[str, Element],
@@ -117,7 +94,8 @@ def get_elem_param(
         if el in par_element:
             vals = getattr(par_element[el], key)
 
-            # convert to list so that we can use the same function for all
+            # convert to list so that we can use the same function
+            # for atom-resolved parameters too
             if isinstance(vals, float):
                 vals = [vals]
 
@@ -135,107 +113,19 @@ def get_elem_param(
     return torch.tensor(l, device=device, dtype=dtype)
 
 
-def get_elem_param_dict(par_element: dict[str, Element], key: str) -> dict:
-    """
-    Obtain a element-wise parametrized quantity for all elements.
-    Useful for shell-resolved parameters, combines nicely with `IndexHelper`.
+def get_element_angular(par_element: dict[str, Element]) -> dict[int, list[int]]:
+    """Obtain angular momenta of the shells of all atoms.
 
     Parameters
     ----------
-    par : dict[str, Element]
-        Parametrization of elements.
-    key : str
-        Name of the quantity to obtain (e.g. gam3 for Hubbard derivatives).
-
-    Returns
-    -------
-    dict
-        Parametrization of all elements.
-    """
-
-    d = {}
-
-    # print(par_element.get("H"))
-
-    for i, item in enumerate(par_element.values()):
-        vals = getattr(item, key)
-
-        if not all(isinstance(x, (int, float)) for x in vals):
-            raise ValueError(
-                f"The key '{key}' contains the non-numeric values '{vals}'."
-            )
-
-        d[i + 1] = vals
-
-    return d
-
-
-def get_elem_param_shells(
-    par_element: dict[str, Element], valence: bool = False
-) -> tuple[dict, dict]:
-    """
-    Obtain angular momenta of the shells of all atoms.
-    This returns the required input for the `IndexHelper`.
-
-    Parameters
-    ----------
-    par : dict[str, Element]
+    par_element : dict[str, Element]
         Parametrization of elements.
 
     Returns
     -------
-    dict
+    dict[int, list[int]]
         Angular momenta of all elements.
     """
-
-    d = {}
-    aqm2lsh = {"s": 0, "p": 1, "d": 2, "f": 3, "g": 4, "h": 5}
-
-    if valence:
-        v = {}
-
-    for i, item in enumerate(par_element.values()):
-        # convert shells: [ "1s", "2s" ] -> [ 0, 0 ]
-        l = []
-        for shell in getattr(item, "shells"):
-            if shell[1] not in aqm2lsh:
-                raise ValueError(f"Unknown shell type '{shell[1]}'.")
-
-            l.append(aqm2lsh[shell[1]])
-
-        d[i + 1] = l
-
-        if valence:
-            # https://stackoverflow.com/questions/62300404/how-can-i-zero-out-duplicate-values-in-each-row-of-a-pytorch-tensor
-
-            r = torch.tensor(l, dtype=torch.long)
-            tmp = torch.ones(r.shape, dtype=torch.bool)
-            if r.size(0) < 2:
-                v[i + 1] = tmp
-                continue
-
-            # sorting the rows so that duplicate values appear together
-            # e.g. [1, 2, 3, 3, 3, 4, 4]
-            y, idxs = torch.sort(r)
-
-            # subtracting, so duplicate values will become 0
-            # e.g. [1, 2, 3, 0, 0, 4, 0]
-            tmp[1:] = (y[1:] - y[:-1]) != 0
-
-            # retrieving the original indices of elements
-            _, idxs = torch.sort(idxs)
-
-            # re-organizing the rows following original order
-            # e.g. [1, 2, 3, 4, 0, 0, 0]
-            v[i + 1] = torch.gather(tmp, 0, idxs).tolist()
-
-    if valence:
-        return d, v
-
-    return d
-
-
-def get_element_angular(par_element: dict[str, Element]) -> dict[int, list[int]]:
 
     label2angular = {
         "s": 0,
@@ -249,3 +139,74 @@ def get_element_angular(par_element: dict[str, Element]) -> dict[int, list[int]]
         ATOMIC_NUMBER[sym]: [label2angular[label[-1]] for label in par.shells]
         for sym, par in par_element.items()
     }
+
+
+def get_elem_valence(
+    numbers: Tensor,
+    par_element: dict[str, Element],
+    pad_val: int = -1,
+    device: torch.device | None = None,
+    dtype: torch.dtype | None = None,
+) -> Tensor:
+    """Obtain valence of the shells of all atoms.
+
+    Parameters
+    ----------
+    par_element : dict[str, Element]
+        Parametrization of elements.
+
+    Returns
+    -------
+    dict[int, list[int]]
+        Valence of all elements.
+    """
+
+    l = []
+    key = "shells"
+    label2angular = {
+        "s": 0,
+        "p": 1,
+        "d": 2,
+        "f": 3,
+        "g": 4,
+    }
+
+    for number in numbers:
+        el = PSE.get(int(number.item()), "X")
+        shells = []
+        if el in par_element:
+            for shell in getattr(par_element[el], key):
+                shell = shell[-1]
+                if shell not in label2angular:
+                    raise ValueError(f"Unknown shell type '{shell}'.")
+
+                shells.append(label2angular[shell])
+
+        else:
+            shells = [pad_val]
+
+        # https://stackoverflow.com/questions/62300404/how-can-i-zero-out-duplicate-values-in-each-row-of-a-pytorch-tensor
+        r = torch.tensor(shells, dtype=torch.long)
+        tmp = torch.ones(r.shape, dtype=torch.bool)
+        if r.size(0) < 2:
+            vals = tmp
+        else:
+            # sorting the rows so that duplicate values appear together
+            # e.g. [1, 2, 3, 3, 3, 4, 4]
+            y, idxs = torch.sort(r)
+
+            # subtracting, so duplicate values will become 0
+            # e.g. [1, 2, 3, 0, 0, 4, 0]
+            tmp[1:] = (y[1:] - y[:-1]) != 0
+
+            # retrieving the original indices of elements
+            _, idxs = torch.sort(idxs)
+
+            # re-organizing the rows following original order
+            # e.g. [1, 2, 3, 4, 0, 0, 0]
+            vals = torch.gather(tmp, 0, idxs).tolist()
+
+        for val in vals:
+            l.append(val)
+
+    return torch.tensor(l, device=device, dtype=dtype)

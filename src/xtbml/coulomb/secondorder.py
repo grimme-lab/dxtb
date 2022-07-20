@@ -42,10 +42,9 @@ from __future__ import annotations
 import torch
 
 from .average import AveragingFunction, harmonic_average
-from ..basis.indexhelper import IndexHelper
-from ..exlibs.tbmalt import batch
-from ..typing import Tensor
+from ..basis import IndexHelper
 from ..interaction import Interaction
+from ..typing import Tensor
 
 
 class ES2(Interaction):
@@ -54,7 +53,7 @@ class ES2(Interaction):
     hubbard: Tensor
     """Hubbard parameters of all elements."""
 
-    lhubbard: dict[int, list[float]] | None = None
+    lhubbard: Tensor | None = None
     """Shell-resolved scaling factors for Hubbard parameters (default: None, i.e no shell resolution)."""
 
     average: AveragingFunction = harmonic_average
@@ -72,13 +71,16 @@ class ES2(Interaction):
     class Cache(Interaction.Cache):
         """Cache for Coulomb matrix."""
 
+        mat: Tensor
+        """Coulomb matrix"""
+
         def __init__(self, mat):
             self.mat = mat
 
     def __init__(
         self,
         hubbard: Tensor,
-        lhubbard: dict[int, list[float]] | None = None,
+        lhubbard: Tensor | None = None,
         average: AveragingFunction = harmonic_average,
         gexp: Tensor = torch.tensor(2.0),
     ) -> None:
@@ -124,7 +126,7 @@ class ES2(Interaction):
             Coulomb matrix.
         """
 
-        h = self.hubbard[numbers]
+        h = ihelp.spread_uspecies_to_atom(self.hubbard)
 
         # masks
         real = h != 0
@@ -165,12 +167,11 @@ class ES2(Interaction):
             Coulomb matrix.
         """
 
-        unique = torch.unique(numbers)
+        if self.lhubbard is None:
+            raise ValueError("No 'lhubbard' parameters set.")
 
-        lh = positions.new_tensor(
-            [u for specie in unique for u in self.lhubbard.get(specie.item(), [0.0])]
-        )
-        h = lh * self.hubbard[unique][ihelp.ushells_to_unique]
+        lh = ihelp.spread_ushell_to_shell(self.lhubbard)
+        h = lh * ihelp.spread_uspecies_to_shell(self.hubbard)
 
         # masks
         real = numbers != 0
@@ -188,7 +189,7 @@ class ES2(Interaction):
         )
 
         # Eq.30: averaging function for hardnesses (Hubbard parameter)
-        avg = self.average(h[ihelp.shells_to_ushell])
+        avg = self.average(h)
 
         # Eq.26: Coulomb matrix
         return 1.0 / torch.pow(dist_gexp + torch.pow(avg, -self.gexp), 1.0 / self.gexp)

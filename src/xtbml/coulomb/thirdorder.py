@@ -105,7 +105,11 @@ class ES3(Interaction):
             Atomwise third-order Coulomb interaction energies.
         """
 
-        return self.hubbard_derivs * torch.pow(charges, 3.0) / 3.0
+        return (
+            ihelp.spread_uspecies_to_atom(self.hubbard_derivs)
+            * torch.pow(charges, 3.0)
+            / 3.0
+        )
 
     def get_atom_potential(
         self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
@@ -127,4 +131,6 @@ class ES3(Interaction):
             Atomwise third-order Coulomb interaction potential.
         """
 
-        return self.hubbard_derivs * torch.pow(charges, 2.0)
+        return ihelp.spread_uspecies_to_atom(self.hubbard_derivs) * torch.pow(
+            charges, 2.0
+        )

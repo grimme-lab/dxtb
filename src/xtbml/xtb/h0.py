@@ -1,9 +1,6 @@
 from __future__ import annotations
 import torch
 
-from xtbml.constants.chemistry import PSE
-from xtbml.param.util import get_elem_param_dict, get_element_param
-
 from ..adjlist import AdjacencyList
 from ..basis.indexhelper import IndexHelper
 from ..basis.type import Basis, get_cutoff
@@ -14,45 +11,13 @@ from ..integral import mmd
 from ..param import (
     get_elem_param,
     get_pair_param,
-    get_elem_param_shells,
+    get_elem_valence,
     Param,
 )
-from ..utils import timing
 from ..typing import Tensor
 
 PAD = -1
 """Value used for padding of tensors."""
-
-
-def get_param_tensor_from_dict(
-    numbers: Tensor,
-    d: dict[int, list[bool | int | float]],
-    device: torch.device | None = None,
-    dtype: torch.dtype | None = None,
-) -> Tensor:
-    """Obtain parameters as tensor from dictionary. Taken from `IndexHelper`.
-
-    Parameters
-    ----------
-    numbers : Tensor
-        Atomic numbers.
-    d : dict[int, list[bool|int|float]]
-        Dictionary with the atomic numbers as keys and the values as lists.
-    device : torch.device | None
-        Device to store the tensor. If `None` (default), the default device is used.
-    dtype : torch.dtype | None
-        Data type of the tensor. If `None` (default), the data type is inferred.
-
-    Returns
-    -------
-    Tensor
-
-    """
-    return torch.tensor(
-        [l for number in numbers for l in d.get(int(number.item()), [PAD])],
-        device=device,
-        dtype=dtype,
-    )
 
 
 class Hamiltonian:
@@ -91,17 +56,17 @@ class Hamiltonian:
     rad: Tensor
     """Van-der-Waals radius of each species."""
 
-    def __init__(self, numbers: Tensor, positions: Tensor, par: Param) -> None:
+    def __init__(
+        self, numbers: Tensor, positions: Tensor, par: Param, ihelp: IndexHelper
+    ) -> None:
         self.numbers = numbers
         self.unique = torch.unique(numbers)
         self.positions = positions
         self.par = par
+        self.ihelp = ihelp
 
         self.__device = self.positions.device
         self.__dtype = self.positions.dtype
-
-        angular, valence = get_elem_param_shells(par.element, valence=True)
-        self.ihelp = IndexHelper.from_numbers(numbers, angular)
 
         # atom-resolved parameters
         self.rad = atomic_rad[self.unique].type(self.dtype).to(device=self.device)
@@ -112,10 +77,7 @@ class Hamiltonian:
         self.selfenergy = self._get_elem_param("levels")
         self.shpoly = self._get_elem_param("shpoly")
         self.refocc = self._get_elem_param("refocc")
-        self.refocc = get_elem_param_dict(par.element, "refocc")
-        self.valence = get_param_tensor_from_dict(
-            self.unique, valence, dtype=torch.bool
-        )
+        self.valence = self._get_elem_valence()
 
         # shell-pair-resolved pair parameters
         self.hscale = self._get_hscale()
@@ -132,7 +94,7 @@ class Hamiltonian:
                 self.hscale,
                 self.kcn,
                 self.kpair,
-                # self.refocc,
+                self.refocc,
                 self.selfenergy,
                 self.shpoly,
                 self.en,
@@ -151,7 +113,7 @@ class Hamiltonian:
                 self.hscale,
                 self.kcn,
                 self.kpair,
-                # self.refocc,
+                self.refocc,
                 self.selfenergy,
                 self.shpoly,
                 self.valence,
@@ -161,32 +123,20 @@ class Hamiltonian:
         ):
             raise ValueError("All tensors must be on the same device")
 
-    def get_occupation(self, ihelp: IndexHelper):
+    def get_occupation(self):
         """
         Obtain the reference occupation numbers for each orbital.
         """
 
-        occupation = torch.zeros(
-            *ihelp.orbitals_to_shell.shape, dtype=self.positions.dtype
+        refocc = self.ihelp.spread_ushell_to_orbital(self.refocc)
+        orb_per_shell = self.ihelp.spread_shell_to_orbital(
+            self.ihelp.orbitals_per_shell
         )
 
-        for idx, sym in enumerate(self.numbers):
-            sym = int(sym.item())
-            shell_index = ihelp.shell_index[idx]
-
-            for ish in range(ihelp.shells_per_atom[idx]):
-                orbital_index = ihelp.orbital_index[shell_index + ish]
-                orbitals_per_shell = ihelp.orbitals_per_shell[shell_index + ish]
-
-                for iao in range(orbitals_per_shell):
-                    occupation[orbital_index + iao] = (
-                        self.refocc[sym][ish] / orbitals_per_shell
-                    )
-
-        return occupation
+        return refocc / orb_per_shell
 
     def _get_elem_param(self, key: str) -> Tensor:
-        """Obtain element parameters for all species.
+        """Obtain element parameters for species.
 
         Parameters
         ----------
@@ -206,6 +156,23 @@ class Hamiltonian:
             pad_val=PAD,
             device=self.device,
             dtype=self.dtype,
+        )
+
+    def _get_elem_valence(self):
+        """Obtain "valence" parameters for shells of species.
+
+        Returns
+        -------
+        Tensor
+            Valence parameters for each species.
+        """
+
+        return get_elem_valence(
+            self.unique,
+            self.par.element,
+            pad_val=PAD,
+            device=self.device,
+            dtype=torch.bool,
         )
 
     def _get_pair_param(self, pair: dict[str, float]) -> Tensor:
@@ -235,7 +202,7 @@ class Hamiltonian:
             Off-site scaling factor for the Hamiltonian.
         """
 
-        _lsh2aqm = {
+        angular2label = {
             0: "s",
             1: "p",
             2: "d",
@@ -251,7 +218,7 @@ class Hamiltonian:
             kpol = self.par.hamiltonian.xtb.kpol
 
             for i, ang_i in enumerate(ushells):
-                ang_i = _lsh2aqm.get(int(ang_i.item()), PAD)
+                ang_i = angular2label.get(int(ang_i.item()), PAD)
 
                 if self.valence[i] == 0:
                     kii = kpol
@@ -259,7 +226,7 @@ class Hamiltonian:
                     kii = shell.get(f"{ang_i}{ang_i}", 1.0)
 
                 for j, ang_j in enumerate(ushells):
-                    ang_j = _lsh2aqm.get(int(ang_j.item()), PAD)
+                    ang_j = angular2label.get(int(ang_j.item()), PAD)
 
                     if self.valence[j] == 0:
                         kjj = kpol
@@ -296,7 +263,6 @@ class Hamiltonian:
 
         return get_ksh(ushells)
 
-    @timing
     def build(self, overlap: Tensor, cn: Tensor | None = None) -> Tensor:
         """Build the xTB Hamiltonian
 
@@ -378,14 +344,13 @@ class Hamiltonian:
             mask, 0.5 * (selfenergy.unsqueeze(-1) + selfenergy.unsqueeze(-2)), zero
         )
 
-        # scale off-diagonals
+        # scale only off-diagonals
         mask.diagonal(dim1=-2, dim2=-1).fill_(False)
         h0 = torch.where(mask, var_pi * var_k * selfenergy, selfenergy)
 
         h = self.ihelp.spread_shell_to_orbital(h0, dim=(-2, -1))
         return h * overlap
 
-    @timing
     def overlap(self) -> Tensor:
         """Loop-based overlap calculation."""
 
@@ -498,7 +463,10 @@ class Hamiltonian:
             return self
 
         return self.__class__(
-            self.numbers.to(device=device), self.positions.to(device=device), self.par
+            self.numbers.to(device=device),
+            self.positions.to(device=device),
+            self.par,
+            self.ihelp.to(device=device),
         )
 
     def type(self, dtype: torch.dtype) -> "Hamiltonian":
@@ -528,4 +496,5 @@ class Hamiltonian:
             self.numbers.type(dtype=torch.long),
             self.positions.type(dtype=dtype),
             self.par,
+            self.ihelp.type(dtype=dtype),
         )

@@ -9,7 +9,7 @@ but the Mulliken populations (or partial charges) of the respective orbitals as 
 as the derivative of the energy w.r.t. to those populations, i.e. the potential vector.
 
 The implementation is based on the `xitorch <https://xitorch.readthedocs.io>`__ library,
-which happens to be abandoned and unmaintained at the time of writing, but still provides
+which appears to be abandoned and unmaintained at the time of writing, but still provides
 a reasonably good implementation of the iterative solver required for the self-consistent
 field iterations.
 """
@@ -20,10 +20,8 @@ import xitorch as xt
 import xitorch.linalg as xtl
 import xitorch.optimize as xto
 
-from xtbml.utils.utils import timing
-
-from ..interaction import Interaction
 from ..basis import IndexHelper
+from ..interaction import Interaction
 from ..typing import Any, Tensor
 
 
@@ -426,7 +424,6 @@ class SelfConsistentField(xt.EditableModule):
         raise KeyError(f"Method '{methodname}' has no paramnames set")
 
 
-@timing
 def solve(
     numbers: Tensor,
     positions: Tensor,

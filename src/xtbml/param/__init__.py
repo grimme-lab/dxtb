@@ -21,10 +21,8 @@ from .meta import Meta
 from .repulsion import EffectiveRepulsion, Repulsion
 from .util import (
     get_elem_param,
-    get_element_param,
     get_element_angular,
-    get_elem_param_dict,
-    get_elem_param_shells,
+    get_elem_valence,
     get_pair_param,
 )
 from .thirdorder import ThirdOrder

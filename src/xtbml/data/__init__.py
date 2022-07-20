@@ -1,2 +1,1 @@
-from .atomicrad import atomic_rad
-from .covrad import covalent_rad_d3
+from .radii import atomic_rad, cov_rad_d3

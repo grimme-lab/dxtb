@@ -3,10 +3,12 @@
 from __future__ import annotations
 import pytest
 import torch
+from xtbml.basis.indexhelper import IndexHelper
 
 from xtbml.exlibs.tbmalt import batch
 from xtbml.ncoord.ncoord import get_coordination_number, exp_count
 from xtbml.param.gfn1 import GFN1_XTB as par
+from xtbml.param.util import get_element_angular
 from xtbml.typing import Tensor
 from xtbml.xtb.h0 import Hamiltonian
 
@@ -38,10 +40,9 @@ class TestHamiltonian(Setup):
     ##############
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-    # @pytest.mark.parametrize(
-    #     "name", ["H2", "H2_cn", "LiH", "HLi", "S2", "SiH4", "SiH4_cn"]
-    # )
-    @pytest.mark.parametrize("name", ["S2"])
+    @pytest.mark.parametrize(
+        "name", ["H2", "H2_cn", "LiH", "HLi", "S2", "SiH4", "SiH4_cn"]
+    )
     def test_h0_gfn1(self, dtype: torch.dtype, name: str) -> None:
         """
         Compare against reference calculated with tblite-int:
@@ -64,7 +65,8 @@ class TestHamiltonian(Setup):
         else:
             cn = None
 
-        h0 = Hamiltonian(numbers, positions, par)
+        ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+        h0 = Hamiltonian(numbers, positions, par, ihelp)
         o = h0.overlap()
         h = h0.build(o, cn=cn)
 
@@ -98,7 +100,8 @@ class TestHamiltonian(Setup):
             ),
         )
 
-        h0 = Hamiltonian(numbers, positions, par)
+        ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+        h0 = Hamiltonian(numbers, positions, par, ihelp)
         o = h0.overlap()
         h = h0.build(o)
 

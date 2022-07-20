@@ -6,8 +6,7 @@ import math
 import pytest
 import torch
 
-from xtbml.basis import IndexHelper
-from xtbml.param import GFN1_XTB as par, get_element_angular
+from xtbml.param import GFN1_XTB as par
 from xtbml.xtb.calculator import Calculator
 
 from .samples import samples
@@ -19,18 +18,15 @@ def test_single(dtype: torch.dtype, name: str):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
-    print(f"\nTesting {name}, {dtype}")
-
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
     ref = sample["escf"]
     charges = torch.tensor(0.0).type(dtype)
 
     calc = Calculator(numbers, positions, par)
-    ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
 
-    results = calc.singlepoint(numbers, positions, charges, ihelp)
-    assert pytest.approx(ref, abs=tol) == results.get("energy").sum(-1).item()
+    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    assert pytest.approx(ref, abs=tol) == results["energy"].sum(-1).item()
 
 
 @pytest.mark.parametrize("dtype", [torch.float])
@@ -40,15 +36,12 @@ def test_single2(dtype: torch.dtype, name: str):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
-    print(f"\nTesting {name}, {dtype}")
-
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
     ref = sample["escf"]
     charges = torch.tensor(0.0).type(dtype)
 
     calc = Calculator(numbers, positions, par)
-    ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
 
-    results = calc.singlepoint(numbers, positions, charges, ihelp)
-    assert pytest.approx(ref, abs=tol) == results.get("energy").sum(-1).item()
+    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    assert pytest.approx(ref, abs=tol) == results["energy"].sum(-1).item()

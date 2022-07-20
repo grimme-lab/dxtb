@@ -7,14 +7,15 @@ Base calculator for the extended tight-binding model.
 from __future__ import annotations
 import torch
 
+from xtbml.param.util import get_elem_param, get_element_angular
+
 from .. import scf
-from ..basis.type import Basis
-from ..basis import IndexHelper
+from ..basis import Basis, IndexHelper
 from ..coulomb import secondorder, thirdorder, averaging_function
-from ..data.covrad import covalent_rad_d3
+from ..data import cov_rad_d3
 from ..interaction import Interaction, InteractionList
 from ..ncoord import ncoord
-from ..param import Param, get_element_param, get_elem_param_dict
+from ..param import Param
 from ..typing import Tensor
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian
@@ -37,25 +38,47 @@ class Calculator:
     interaction: Interaction
     """Interactions to minimize in self-consistent iterations."""
 
+    ihelp: IndexHelper
+    """Helper class for indexing."""
+
     def __init__(
         self, numbers: Tensor, positions: Tensor, par: Param, acc: float = 1.0
     ) -> None:
-
+        self.ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
         self.basis = Basis(numbers, par, acc)
-        self.hamiltonian = Hamiltonian(numbers, positions, par)
+        self.hamiltonian = Hamiltonian(numbers, positions, par, self.ihelp)
 
         if par.charge is None:
             raise ValueError("No charge parameters provided.")
 
         es2 = secondorder.ES2(
-            hubbard=get_element_param(par.element, "gam"),
-            lhubbard=get_elem_param_dict(par.element, "lgam"),
+            hubbard=get_elem_param(
+                torch.unique(numbers),
+                par.element,
+                "gam",
+                device=positions.device,
+                dtype=positions.dtype,
+            ),
+            lhubbard=get_elem_param(
+                torch.unique(numbers),
+                par.element,
+                "lgam",
+                device=positions.device,
+                dtype=positions.dtype,
+            ),
             average=averaging_function[par.charge.effective.average],
             gexp=torch.tensor(par.charge.effective.gexp),
         )
         es3 = thirdorder.ES3(
-            hubbard_derivs=get_element_param(par.element, "gam3")[numbers],
+            hubbard_derivs=get_elem_param(
+                torch.unique(numbers),
+                par.element,
+                "gam3",
+                device=positions.device,
+                dtype=positions.dtype,
+            ),
         )
+
         self.interaction = InteractionList([es2, es3])
 
     def singlepoint(
@@ -63,7 +86,6 @@ class Calculator:
         numbers: Tensor,
         positions: Tensor,
         charges: Tensor,
-        ihelp: IndexHelper,
         verbosity: int = 1,
     ) -> dict[str, Tensor]:
         """
@@ -84,14 +106,14 @@ class Calculator:
             Atom resolved energies.
         """
 
-        rcov = covalent_rad_d3[numbers]
+        rcov = cov_rad_d3[numbers]
         cn = ncoord.get_coordination_number(numbers, positions, ncoord.exp_count, rcov)
 
         overlap = self.hamiltonian.overlap()
         hcore = self.hamiltonian.build(overlap, cn)
 
         # Obtain the reference occupations and total number of electrons
-        n0 = self.hamiltonian.get_occupation(ihelp)
+        n0 = self.hamiltonian.get_occupation()
         nel = torch.sum(n0, -1) - torch.sum(charges, -1)
         occupation = 2 * filling.get_aufbau_occupation(
             hcore.new_tensor(hcore.shape[-1], dtype=torch.int64),
@@ -99,13 +121,13 @@ class Calculator:
         )
 
         fwd_options = {
-            "verbose": verbosity > 1,
+            "verbose": verbosity > 0,
         }
         results = scf.solve(
             numbers,
             positions,
             self.interaction,
-            ihelp,
+            self.ihelp,
             hcore,
             overlap,
             occupation,

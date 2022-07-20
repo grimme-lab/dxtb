@@ -1,14 +1,21 @@
+"""
+Utility
+=======
+
+Collection of utility functions.
+"""
+
 from __future__ import annotations
 from functools import wraps
 from time import time
 import torch
 
-from ..data.covrad import to_number
+from ..constants import ATOMIC_NUMBER
 from ..typing import Tensor
 
 
 def symbol2number(sym_list: list[str]) -> Tensor:
-    return torch.flatten(torch.tensor([to_number(s) for s in sym_list]))
+    return torch.flatten(torch.tensor([ATOMIC_NUMBER[s.title()] for s in sym_list]))
 
 
 def timing(f):
