@@ -1,6 +1,9 @@
 from __future__ import annotations
 import torch
 
+from xtbml.constants.chemistry import PSE
+from xtbml.param.util import get_elem_param_dict, get_element_param
+
 from ..adjlist import AdjacencyList
 from ..basis.indexhelper import IndexHelper
 from ..basis.type import Basis, get_cutoff
@@ -14,6 +17,7 @@ from ..param import (
     get_elem_param_shells,
     Param,
 )
+from ..utils import timing
 from ..typing import Tensor
 
 PAD = -1
@@ -108,6 +112,7 @@ class Hamiltonian:
         self.selfenergy = self._get_elem_param("levels")
         self.shpoly = self._get_elem_param("shpoly")
         self.refocc = self._get_elem_param("refocc")
+        self.refocc = get_elem_param_dict(par.element, "refocc")
         self.valence = get_param_tensor_from_dict(
             self.unique, valence, dtype=torch.bool
         )
@@ -127,7 +132,7 @@ class Hamiltonian:
                 self.hscale,
                 self.kcn,
                 self.kpair,
-                self.refocc,
+                # self.refocc,
                 self.selfenergy,
                 self.shpoly,
                 self.en,
@@ -146,7 +151,7 @@ class Hamiltonian:
                 self.hscale,
                 self.kcn,
                 self.kpair,
-                self.refocc,
+                # self.refocc,
                 self.selfenergy,
                 self.shpoly,
                 self.valence,
@@ -155,6 +160,30 @@ class Hamiltonian:
             )
         ):
             raise ValueError("All tensors must be on the same device")
+
+    def get_occupation(self, ihelp: IndexHelper):
+        """
+        Obtain the reference occupation numbers for each orbital.
+        """
+
+        occupation = torch.zeros(
+            *ihelp.orbitals_to_shell.shape, dtype=self.positions.dtype
+        )
+
+        for idx, sym in enumerate(self.numbers):
+            sym = int(sym.item())
+            shell_index = ihelp.shell_index[idx]
+
+            for ish in range(ihelp.shells_per_atom[idx]):
+                orbital_index = ihelp.orbital_index[shell_index + ish]
+                orbitals_per_shell = ihelp.orbitals_per_shell[shell_index + ish]
+
+                for iao in range(orbitals_per_shell):
+                    occupation[orbital_index + iao] = (
+                        self.refocc[sym][ish] / orbitals_per_shell
+                    )
+
+        return occupation
 
     def _get_elem_param(self, key: str) -> Tensor:
         """Obtain element parameters for all species.
@@ -267,11 +296,14 @@ class Hamiltonian:
 
         return get_ksh(ushells)
 
-    def build(self, cn: Tensor | None = None) -> Tensor:
+    @timing
+    def build(self, overlap: Tensor, cn: Tensor | None = None) -> Tensor:
         """Build the xTB Hamiltonian
 
         Parameters
         ----------
+        overlap : Tensor
+            Overlap matrix.
         cn : Tensor | None, optional
             Coordination number, by default None
 
@@ -351,10 +383,10 @@ class Hamiltonian:
         h0 = torch.where(mask, var_pi * var_k * selfenergy, selfenergy)
 
         h = self.ihelp.spread_shell_to_orbital(h0, dim=(-2, -1))
-        o = self.overlap()
-        return h * o
+        return h * overlap
 
-    def overlap(self):
+    @timing
+    def overlap(self) -> Tensor:
         """Loop-based overlap calculation."""
 
         def get_overlap(numbers: Tensor, positions: Tensor) -> Tensor:
@@ -363,6 +395,8 @@ class Hamiltonian:
 
             # FIXME: this acc includes all neighbors -> inefficient
             acc = torch.finfo(self.dtype).max
+
+            # FIXME: basis should be the same for all numbers and be given as arg
             bas = Basis(numbers, self.par, acc=acc)
 
             adjlist = AdjacencyList(numbers, positions, get_cutoff(bas))

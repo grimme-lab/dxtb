@@ -52,8 +52,8 @@ class TestThirdOrderElectrostatics:
         qat = sample["q"].type(dtype)
         ref = sample["es3"].type(dtype)
 
-        es = es3.ES3(hd)
-        e = es.get_energy(numbers, qat)
+        es = es3.ES3(hd[numbers])
+        e = es.get_atom_energy(qat, None, None)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
@@ -88,8 +88,8 @@ class TestThirdOrderElectrostatics:
             ],
         )
 
-        es = es3.ES3(hd)
-        e = es.get_energy(numbers, qat)
+        es = es3.ES3(hd[numbers])
+        e = es.get_atom_energy(qat, None, None)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
     @pytest.mark.grad
@@ -106,8 +106,8 @@ class TestThirdOrderElectrostatics:
         hd.requires_grad_(True)
 
         def func(hubbard_derivs):
-            es = es3.ES3(hubbard_derivs)
-            return es.get_energy(numbers, qat)
+            es = es3.ES3(hubbard_derivs[numbers])
+            return es.get_atom_energy(qat, None, None)
 
         # pylint: disable=import-outside-toplevel
         from torch.autograd.gradcheck import gradcheck

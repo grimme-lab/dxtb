@@ -10,7 +10,7 @@ from xtbml.param.gfn1 import GFN1_XTB as par
 from xtbml.typing import Tensor
 from xtbml.xtb.h0 import Hamiltonian
 
-from .samples import mb16_43
+from .samples import samples
 
 
 class Setup:
@@ -54,7 +54,7 @@ class TestHamiltonian(Setup):
         - SiH4_cn: tblite with "use dftd3_ncoord, only: get_coordination_number"
         """
 
-        sample = mb16_43[name]
+        sample = samples[name]
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
         ref = sample["h0"].type(dtype)
@@ -65,7 +65,8 @@ class TestHamiltonian(Setup):
             cn = None
 
         h0 = Hamiltonian(numbers, positions, par)
-        h = h0.build(cn=cn)
+        o = h0.overlap()
+        h = h0.build(o, cn=cn)
 
         assert torch.all(h.transpose(-2, -1) == h)
         assert torch.allclose(h, ref, rtol=self.rtol, atol=self.atol)
@@ -76,7 +77,7 @@ class TestHamiltonian(Setup):
     def test_h0_gfn1_batch(self, dtype: torch.dtype, name1: str, name2: str) -> None:
         """Batched version."""
 
-        sample1, sample2 = mb16_43[name1], mb16_43[name2]
+        sample1, sample2 = samples[name1], samples[name2]
 
         numbers = batch.pack(
             (
@@ -98,7 +99,8 @@ class TestHamiltonian(Setup):
         )
 
         h0 = Hamiltonian(numbers, positions, par)
-        h = h0.build()
+        o = h0.overlap()
+        h = h0.build(o)
 
         assert torch.allclose(h, ref, atol=self.atol, rtol=self.rtol)
 

@@ -333,7 +333,7 @@ class IndexHelper:
         """
 
         batched = numbers.ndim > 1
-        pad_val = -1
+        pad_val = -999
 
         unique, atom_to_unique = torch.unique(numbers, return_inverse=True)
 
@@ -357,7 +357,7 @@ class IndexHelper:
                     )
                     for _batch in range(numbers.shape[0])
                 ],
-                value=pad_val,  # inconsistent padding values if pad_val is not 0
+                value=-1,
             )
         else:
             shells_to_ushell = _expand(
@@ -365,14 +365,7 @@ class IndexHelper:
                 ushells_per_unique[atom_to_unique],
             )
 
-        _angular = batch.pack(
-            [
-                torch.tensor(angular.get(number.item(), [-1]), dtype=dtype)
-                for number in numbers.flatten()
-            ],
-            value=pad_val,
-        )
-        _angular = _angular.reshape((*numbers.shape, _angular.shape[-1]))
+        unique, atom_to_unique = torch.unique(numbers, return_inverse=True)
 
         shells_per_atom = ushells_per_unique[atom_to_unique]
         shell_index = torch.cumsum(shells_per_atom, -1) - shells_per_atom
@@ -384,7 +377,7 @@ class IndexHelper:
                     _fill(shell_index[_batch, :], shells_per_atom[_batch, :])
                     for _batch in range(numbers.shape[0])
                 ],
-                value=pad_val,
+                value=pad_val,  # inconsistent padding values if pad_val is not 0
             )
         else:
             shells_to_atom = _fill(shell_index, shells_per_atom)

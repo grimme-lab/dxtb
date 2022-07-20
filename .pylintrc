@@ -154,7 +154,7 @@ disable=abstract-method,
         xrange-builtin,
         zip-builtin-not-iterating,
         E1102,  # added
-        E0402,  # added
+        E0402,  # added (relative-beyond-top-level error)
 
 
 [REPORTS]
@@ -203,7 +203,7 @@ property-classes=abc.abstractproperty,cached_property.cached_property,cached_pro
 function-rgx=^(?:(?P<exempt>setUp|tearDown|setUpModule|tearDownModule)|(?P<camel_case>_?[A-Z][a-zA-Z0-9]*)|(?P<snake_case>_?[a-z][a-z0-9_]*))$
 
 # Regular expression matching correct variable names
-variable-rgx=^[a-z][a-z0-9_]*$
+variable-rgx=^_?[a-z][a-z0-9_]*$
 
 # Regular expression matching correct constant names
 const-rgx=^(_?[A-Z][A-Z0-9_]*|__[a-z0-9_]+__|_?[a-z][a-z0-9_]*)$
@@ -218,7 +218,7 @@ argument-rgx=^[a-z][a-z0-9_]*$
 class-attribute-rgx=^(_?[A-Z][A-Z0-9_]*|__[a-z0-9_]+__|_?[a-z][a-z0-9_]*)$
 
 # Regular expression matching correct inline iteration names
-inlinevar-rgx=^[a-z][a-z0-9_]*$
+inlinevar-rgx=^_?[a-z][a-z0-9_]*$
 
 # Regular expression matching correct class names
 class-rgx=^_?[A-Z][a-zA-Z0-9]*$

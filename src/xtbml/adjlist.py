@@ -3,6 +3,7 @@ import torch
 from .constants import UINT8 as DTYPE
 from .typing import Tensor
 
+
 class AdjacencyList:
     """
     Sparse neighbour map in compressed sparse row format.
@@ -54,7 +55,6 @@ class AdjacencyList:
 
         img = 0
         cutoff2 = cutoff * cutoff
-
         eps = torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype)
 
         for iat in range(l):

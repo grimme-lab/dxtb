@@ -38,3 +38,4 @@ dependencies:
   - pydantic
   - pip:
       - tad-dftd3
+      - xitorch
