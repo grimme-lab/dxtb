@@ -19,5 +19,5 @@ from .halogen import Halogen
 from .hamiltonian import Hamiltonian
 from .meta import Meta
 from .repulsion import EffectiveRepulsion, Repulsion
-from .util import get_element_param, get_elem_param_dict
+from .util import get_element_param, get_elem_param_dict, get_element_angular
 from .thirdorder import ThirdOrder

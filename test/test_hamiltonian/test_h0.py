@@ -7,7 +7,6 @@ import torch
 
 from xtbml.adjlist import AdjacencyList
 from xtbml.basis.type import get_cutoff
-from xtbml.cutoff import get_lattice_points
 from xtbml.exlibs.tbmalt import Geometry
 from xtbml.ncoord.ncoord import get_coordination_number, exp_count
 from xtbml.param.gfn1 import GFN1_XTB as par
@@ -42,17 +41,12 @@ class TestH0(Setup):
         atomic_numbers = sample["numbers"]
         mol = Geometry(atomic_numbers, sample["positions"])
 
-        # TODO: extend geometry object with mol.lattice and mol.periodic
-        mol_periodic = [False]
-        mol_lattice = None
-
         # setup calculator
         calc = Calculator(mol, par)
 
         # prepate cutoffs and lattice
         cutoff = get_cutoff(calc.basis)
-        trans = get_lattice_points(mol_periodic, mol_lattice, cutoff)
-        adjlist = AdjacencyList(mol, trans, cutoff)
+        adjlist = AdjacencyList(mol, cutoff)
 
         # build hamiltonian
         h, _ = calc.hamiltonian.build(calc.basis, adjlist, None)
@@ -64,20 +58,14 @@ class TestH0(Setup):
         positions = sample["positions"].type(ref.dtype)
         mol = Geometry(numbers, positions)
 
-        # TODO: extend geometry object with mol.lattice and mol.periodic
-        mol_periodic = [False]
-        mol_lattice = None
-
         # setup calculator
         calc = Calculator(mol, par)
 
         # prepate cutoffs and lattice
-        trans = get_lattice_points(mol_periodic, mol_lattice, self.cutoff)
         cn = get_coordination_number(numbers, positions, exp_count)
 
         cutoff = get_cutoff(calc.basis)
-        trans = get_lattice_points(mol_periodic, mol_lattice, cutoff)
-        adjlist = AdjacencyList(mol, trans, cutoff)
+        adjlist = AdjacencyList(mol, cutoff)
 
         # build hamiltonian
         h, _ = calc.hamiltonian.build(calc.basis, adjlist, cn)

@@ -35,21 +35,53 @@ tensor(0.0155669)
 import torch
 
 from ..typing import Tensor
+from ..interaction import Interaction
+from ..basis import IndexHelper
 
 
-class ES3:
+class ES3(Interaction):
     """On-site third-order electrostatic energy."""
 
     hubbard_derivs: Tensor
-    "Hubbard derivatives of all elements."
+    "Hubbard derivatives of all atoms."
+
+    class Cache(Interaction.Cache):
+        """Restart data for the interaction."""
+
+        pass
 
     def __init__(self, hubbard_derivs: Tensor) -> None:
+        Interaction.__init__(self)
         self.hubbard_derivs = hubbard_derivs
 
-    def get_energy(
+    def get_cache(
+        self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
+    ) -> Interaction.Cache:
+        """
+        Create restart data for individual interactions.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers.
+        positions : Tensor
+            Cartesian coordinates.
+        ihelp : IndexHelper
+            Index mapping for the basis set.
+
+        Returns
+        -------
+        Interaction.Cache
+            Restart data for the interaction.
+        """
+
+        return self.Cache()
+
+    def get_atom_energy(
         self,
-        numbers: Tensor,
-        qat: Tensor,
+        charges: Tensor,
+        ihelp: IndexHelper,
+        cache: Interaction.Cache,
     ) -> Tensor:
         """
         Calculate the third-order electrostatic energy.
@@ -60,11 +92,12 @@ class ES3:
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers of the atoms.
-        qat : Tensor
+        charges : Tensor
             Atomic charges of all atoms.
-
+        ihelp : IndexHelper
+            Index mapping for the basis set.
+        cache : Interaction.Cache
+            Restart data for the interaction.
 
         Returns
         -------
@@ -72,17 +105,21 @@ class ES3:
             Atomwise third-order Coulomb interaction energies.
         """
 
-        return self.hubbard_derivs[numbers] * torch.pow(qat, 3.0) / 3.0
+        return self.hubbard_derivs * torch.pow(charges, 3.0) / 3.0
 
-    def get_potential(self, numbers: Tensor, qat: Tensor) -> Tensor:
+    def get_atom_potential(
+        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
+    ) -> Tensor:
         """Calculate the third-order electrostatic potential.
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers of the atoms.
-        qat : Tensor
+        charges : Tensor
             Atomic charges of all atoms.
+        ihelp : IndexHelper
+            Index mapping for the basis set.
+        cache : Interaction.Cache
+            Restart data for the interaction.
 
         Returns
         -------
@@ -90,4 +127,4 @@ class ES3:
             Atomwise third-order Coulomb interaction potential.
         """
 
-        return self.hubbard_derivs[numbers] * torch.pow(qat, 2.0)
+        return self.hubbard_derivs * torch.pow(charges, 2.0)

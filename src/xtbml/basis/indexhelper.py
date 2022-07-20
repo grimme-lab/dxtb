@@ -17,7 +17,46 @@ from __future__ import annotations
 import torch
 
 from ..exlibs.tbmalt import batch
-from ..typing import Tensor
+from ..typing import Tensor, Union, Tuple
+
+
+def gather_twice(x, dim0, dim1, index):
+    """
+    Spread a tensor along two dimensions
+
+    Parameters
+    ----------
+    x : Tensor
+        Tensor to spread
+    index : Tensor
+        Index to spread along
+    dim0 : int
+        Dimension to spread along
+    dim1 : int
+        Dimension to spread along
+
+    Returns
+    -------
+    Tensor
+        Spread tensor
+    """
+
+    shape0 = [-1] * x.dim()
+    shape0[dim0] = x.shape[dim0]
+    x = torch.gather(
+        x,
+        dim1,
+        index.unsqueeze(dim0).expand(*shape0),
+    )
+
+    shape1 = [-1] * x.dim()
+    shape1[dim1] = x.shape[dim1]
+    x = torch.gather(
+        x,
+        dim0,
+        index.unsqueeze(dim1).expand(*shape1),
+    )
+    return x
 
 
 def _fill(index: Tensor, repeat: Tensor) -> Tensor:
@@ -30,13 +69,39 @@ def _fill(index: Tensor, repeat: Tensor) -> Tensor:
     return index_map
 
 
+def _expand(index: Tensor, repeat: Tensor) -> Tensor:
+    """
+    Expand an index map using index offsets and number of repeats
+    """
+
+    return index.new_tensor(
+        [
+            idx
+            for offset, count in zip(index, repeat)
+            for idx in torch.arange(offset.item(), (offset + count).item(), 1)
+        ]
+    )
+
+
 class IndexHelper:
     """
     Index helper for basis set
     """
 
+    unique_angular: Tensor
+    """Angular momenta of all unique shells"""
+
     angular: Tensor
     """Angular momenta for all shells"""
+
+    atom_to_unique: Tensor
+    """Mapping of atoms to unique species"""
+
+    ushells_to_unique: Tensor
+    """Mapping of unique shells to unique species"""
+
+    shells_to_ushell: Tensor
+    """Mapping of shells to unique unique"""
 
     shells_per_atom: Tensor
     """Number of shells for each atom"""
@@ -58,7 +123,11 @@ class IndexHelper:
 
     def __init__(
         self,
+        unique_angular: Tensor,
         angular: Tensor,
+        atom_to_unique: Tensor,
+        ushells_to_unique: Tensor,
+        shells_to_ushell: Tensor,
         shells_per_atom: Tensor,
         shell_index: Tensor,
         shells_to_atom: Tensor,
@@ -66,7 +135,11 @@ class IndexHelper:
         orbital_index: Tensor,
         orbitals_to_shell: Tensor,
     ):
+        self.unique_angular = unique_angular
         self.angular = angular
+        self.atom_to_unique = atom_to_unique
+        self.ushells_to_unique = ushells_to_unique
+        self.shells_to_ushell = shells_to_ushell
         self.shells_per_atom = shells_per_atom
         self.shell_index = shell_index
         self.shells_to_atom = shells_to_atom
@@ -81,7 +154,11 @@ class IndexHelper:
             [
                 tensor.dtype != self.dtype
                 for tensor in (
+                    # self.unique_angular,
                     # self.angular,
+                    self.atom_to_unique,
+                    self.ushells_to_unique,
+                    self.shells_to_ushell,
                     self.shells_per_atom,
                     self.shell_index,
                     self.shells_to_atom,
@@ -97,7 +174,11 @@ class IndexHelper:
             [
                 tensor.device != self.device
                 for tensor in (
+                    self.unique_angular,
                     self.angular,
+                    self.atom_to_unique,
+                    self.ushells_to_unique,
+                    self.shells_to_ushell,
                     self.shells_per_atom,
                     self.shell_index,
                     self.shells_to_atom,
@@ -119,19 +200,51 @@ class IndexHelper:
         """
         Construct an index helper instance from atomic numbers and their angular momenta.
 
-        Args:
-            numbers (Tensor)
-                Atomic numbers for the system
-            angular (dict[int, Tensor])
-                Map between atomic numbers and angular momenta of all shells
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for the system
+        angular : Dict[int, Tensor]
+            Map between atomic numbers and angular momenta of all shells
 
-        Returns:
-            IndexHelper
-                Instance of index helper for given basis set
+        Returns
+        -------
+        IndexHelper
+            Instance of index helper for given basis set
         """
-        pad_val = -999
 
         batched = numbers.ndim > 1
+        pad_val = -999
+
+        unique, atom_to_unique = torch.unique(numbers, return_inverse=True)
+
+        unique_angular = torch.tensor(
+            [l for number in unique for l in angular.get(number.item(), [-1])],
+            dtype=dtype,
+        )
+        ushells_per_unique = torch.tensor(
+            [len(angular.get(number.item(), [-1])) for number in unique],
+            dtype=dtype,
+        )
+        ushell_index = torch.cumsum(ushells_per_unique, dim=-1) - ushells_per_unique
+        ushells_to_unique = _fill(ushell_index, ushells_per_unique)
+
+        if batched:
+            shells_to_ushell = batch.pack(
+                [
+                    _expand(
+                        ushell_index[atom_to_unique[_batch, :]],
+                        ushells_per_unique[atom_to_unique[_batch, :]],
+                    )
+                    for _batch in range(numbers.shape[0])
+                ],
+                value=-1,
+            )
+        else:
+            shells_to_ushell = _expand(
+                ushell_index[atom_to_unique],
+                ushells_per_unique[atom_to_unique],
+            )
 
         _angular = batch.pack(
             [
@@ -142,33 +255,30 @@ class IndexHelper:
         )
         _angular = _angular.reshape((*numbers.shape, _angular.shape[-1]))
 
-        nsh_at = torch.sum(_angular >= 0, -1)
-        ish_at = torch.cumsum(nsh_at, -1) - nsh_at
-        ish_at[nsh_at == 0] = pad_val
+        shells_per_atom = ushells_per_unique[atom_to_unique]
+        shell_index = torch.cumsum(shells_per_atom, -1) - shells_per_atom
+        shell_index[shells_per_atom == 0] = pad_val
 
         if batched:
-            sh2at = batch.pack(
+            shells_to_atom = batch.pack(
                 [
-                    _fill(ish_at[_batch, :], nsh_at[_batch, :])
+                    _fill(shell_index[_batch, :], shells_per_atom[_batch, :])
                     for _batch in range(numbers.shape[0])
                 ],
                 value=0,
             )
         else:
-            sh2at = _fill(ish_at, nsh_at)
+            shells_to_atom = _fill(shell_index, shells_per_atom)
 
-        if batched:
-            lsh = batch.pack(
-                [
-                    _angular[_batch, _angular[_batch, :] >= 0]
-                    for _batch in range(numbers.shape[0])
-                ],
-                value=pad_val,
-            )
-        else:
-            lsh = _angular[_angular > pad_val]
+        lsh = torch.where(
+            shells_to_ushell >= 0,
+            unique_angular[shells_to_ushell],
+            pad_val,
+        )
 
-        nao_sh = torch.where(lsh >= 0, 2 * lsh + 1, torch.tensor(0, dtype=dtype))
+        orbitals_per_shell = torch.where(
+            lsh >= 0, 2 * lsh + 1, torch.tensor(0, dtype=dtype)
+        )
 
         # NOTE:
         # If we care for the actual values in `angular`, we must allow other
@@ -176,30 +286,34 @@ class IndexHelper:
         # parameters in ES2). For these cases, however, orbital indices become
         # meaningless and we can simply convert to `torch.int64` to avoid an
         # error in the `fill` function.
-        nao_sh = nao_sh.type(numbers.dtype)
+        orbitals_per_shell = orbitals_per_shell.type(numbers.dtype)
 
-        iao_sh = torch.cumsum(nao_sh, -1) - nao_sh
-        iao_sh[nao_sh == 0] = pad_val
+        orbital_index = torch.cumsum(orbitals_per_shell, -1) - orbitals_per_shell
+        orbital_index[orbitals_per_shell == 0] = pad_val
 
         if batched:
-            ao2sh = batch.pack(
+            orbitals_to_shell = batch.pack(
                 [
-                    _fill(iao_sh[_batch, :], nao_sh[_batch, :])
+                    _fill(orbital_index[_batch, :], orbitals_per_shell[_batch, :])
                     for _batch in range(numbers.shape[0])
                 ],
                 value=0,
             )
         else:
-            ao2sh = _fill(iao_sh, nao_sh)
+            orbitals_to_shell = _fill(orbital_index, orbitals_per_shell)
 
         return cls(
+            unique_angular=unique_angular,
             angular=lsh,
-            shells_per_atom=nsh_at,
-            shell_index=ish_at,
-            shells_to_atom=sh2at,
-            orbitals_per_shell=nao_sh,
-            orbital_index=iao_sh,
-            orbitals_to_shell=ao2sh,
+            atom_to_unique=atom_to_unique,
+            ushells_to_unique=ushells_to_unique,
+            shells_to_ushell=shells_to_ushell,
+            shells_per_atom=shells_per_atom,
+            shell_index=shell_index,
+            shells_to_atom=shells_to_atom,
+            orbitals_per_shell=orbitals_per_shell,
+            orbital_index=orbital_index,
+            orbitals_to_shell=orbitals_to_shell,
         )
 
     def reduce_orbital_to_shell(
@@ -275,7 +389,9 @@ class IndexHelper:
             reduce=reduce,
         )
 
-    def spread_atom_to_shell(self, x: Tensor, dim: int = -1) -> Tensor:
+    def spread_atom_to_shell(
+        self, x: Tensor, dim: int | tuple[int, int] = -1
+    ) -> Tensor:
         """
         Spread atom-resolved tensor to shell-resolved tensor
 
@@ -283,7 +399,7 @@ class IndexHelper:
         ----------
         x : Tensor
             Atom-resolved tensor
-        dim : int
+        dim : int | (int, int)
             Dimension to spread over, defaults to -1
 
         Returns
@@ -292,9 +408,15 @@ class IndexHelper:
             Shell-resolved tensor
         """
 
-        return torch.gather(x, dim, self.shells_to_atom)
+        return (
+            torch.gather(x, dim, self.shells_to_atom)
+            if isinstance(dim, int)
+            else gather_twice(x, *dim, self.shells_to_atom)
+        )
 
-    def spread_shell_to_orbital(self, x: Tensor, dim: int = -1) -> Tensor:
+    def spread_shell_to_orbital(
+        self, x: Tensor, dim: int | tuple[int, int] = -1
+    ) -> Tensor:
         """
         Spread shell-resolved tensor to orbital-resolved tensor
 
@@ -302,7 +424,7 @@ class IndexHelper:
         ----------
         x : Tensor
             Shell-resolved tensor
-        dim : int
+        dim : int | (int, int)
             Dimension to spread over, defaults to -1
 
         Returns
@@ -311,7 +433,11 @@ class IndexHelper:
             Orbital-resolved tensor
         """
 
-        return torch.gather(x, dim, self.orbitals_to_shell)
+        return (
+            torch.gather(x, dim, self.orbitals_to_shell)
+            if isinstance(dim, int)
+            else gather_twice(x, *dim, self.orbitals_to_shell)
+        )
 
     def spread_atom_to_orbital(self, x: Tensor, dim: int = -1) -> Tensor:
         """
@@ -374,7 +500,11 @@ class IndexHelper:
             return self
 
         return self.__class__(
+            self.unique_angular.to(device=device),
             self.angular.to(device=device),
+            self.atom_to_unique.to(device=device),
+            self.ushells_to_unique.to(device=device),
+            self.shells_to_ushell.to(device=device),
             self.shells_per_atom.to(device=device),
             self.shell_index.to(device=device),
             self.shells_to_atom.to(device=device),
@@ -407,7 +537,11 @@ class IndexHelper:
             return self
 
         return self.__class__(
+            self.unique_angular.type(dtype=dtype),
             self.angular.type(dtype),
+            self.atom_to_unique.type(dtype),
+            self.ushells_to_unique.type(dtype),
+            self.shells_to_ushell.type(dtype),
             self.shells_per_atom.type(dtype),
             self.shell_index.type(dtype),
             self.shells_to_atom.type(dtype),
