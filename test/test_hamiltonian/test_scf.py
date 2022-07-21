@@ -1,6 +1,7 @@
 """
 Test for SCF.
-Reference values obtained with tblite 0.2.1 disabling repulsion and dispersion."""
+Reference values obtained with tblite 0.2.1 disabling repulsion and dispersion.
+"""
 
 import math
 import pytest

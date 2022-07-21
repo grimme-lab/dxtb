@@ -154,10 +154,11 @@ class SelfConsistentField(xt.EditableModule):
         charges = self.potential_to_charges(output) if self.use_potential else output
         energy = self.get_energy(charges)
         return {
-            "energy": energy,
             "charges": charges,
-            "hamiltonian": self._data.hamiltonian,
+            "energy": energy,
             "density": self._data.density,
+            "hamiltonian": self._data.hamiltonian,
+            "overlap": self._data.overlap,
         }
 
     def get_energy(self, charges: Tensor) -> Tensor:

@@ -38,6 +38,8 @@ def get_pair_param(
     Tensor
         Parametrization of all pairs of `symbols`.
     """
+
+    # convert atomic numbers to symbols
     if all(isinstance(x, int) for x in symbols):
         symbols = [PSE.get(i, "X") for i in symbols]
 
