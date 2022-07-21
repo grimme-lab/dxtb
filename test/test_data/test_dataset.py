@@ -1,19 +1,19 @@
-from copy import deepcopy
+from __future__ import annotations
 from pathlib import Path
-from typing import Generator, Tuple
 import pytest
-import torch
 import tempfile
+import torch
 
 from xtbml.data.dataset import ReactionDataset, SampleDataset, store_subsets_on_disk
 from xtbml.data.reactions import Reaction, Reactions
 from xtbml.data.samples import Sample, Samples
+from xtbml.typing import Generator, Tuple
+
+FixtureData = Tuple[Samples, Reactions, SampleDataset, ReactionDataset]
 
 
 @pytest.fixture(scope="class", name="data")
-def fixture_data() -> Generator[
-    Tuple[Samples, Reactions, SampleDataset, ReactionDataset], None, None
-]:
+def fixture_data() -> Generator[FixtureData, None, None]:
     print(
         "Loading JSON files for 'Samples', 'Reactions', 'SampleDataset' and 'ReactionDataset'..."
     )
@@ -38,9 +38,7 @@ class TestDataset:
         print("")
         print(cls.__name__)
 
-    def test_load(
-        self, data: Tuple[Samples, Reactions, SampleDataset, ReactionDataset]
-    ) -> None:
+    def test_load(self, data: FixtureData) -> None:
         """Test loading the JSON files containing the samples and reactions."""
         samples, reactions, sample_dataset, reaction_dataset = data
 
@@ -49,9 +47,7 @@ class TestDataset:
         assert isinstance(reaction_dataset, ReactionDataset)
         assert isinstance(sample_dataset, SampleDataset)
 
-    def test_indexing(
-        self, data: Tuple[Samples, Reactions, SampleDataset, ReactionDataset]
-    ) -> None:
+    def test_indexing(self, data: FixtureData) -> None:
         """Test dunder methods for indexing/slicing and length."""
         samples, reactions, sample_dataset, reaction_dataset = data
 
@@ -79,9 +75,7 @@ class TestDataset:
         assert isinstance(sample_dataset[:3], SampleDataset)
         assert len(sample_dataset[:2]) == 2
 
-    def test_dict(
-        self, data: Tuple[Samples, Reactions, SampleDataset, ReactionDataset]
-    ) -> None:
+    def test_dict(self, data: FixtureData) -> None:
         """Test conversion to dictionary."""
         samples, reactions, _, _ = data
 
@@ -93,9 +87,7 @@ class TestDataset:
         d = reactions[0].to_dict()
         assert "uid" in d.keys()
 
-    def test_change_dtype(
-        self, data: Tuple[Samples, Reactions, SampleDataset, ReactionDataset]
-    ) -> None:
+    def test_change_dtype(self, data: FixtureData) -> None:
         """Test for setting `torch.dtype` for tensor class attributes."""
         samples, reactions, _, _ = data
 
@@ -120,9 +112,7 @@ class TestDataset:
         assert reaction.egfn1.dtype == dtype
         assert reaction.eref.dtype == dtype
 
-    def test_change_device(
-        self, data: Tuple[Samples, Reactions, SampleDataset, ReactionDataset]
-    ) -> None:
+    def test_change_device(self, data: FixtureData) -> None:
         """Test for setting `torch.device` for tensor class attributes."""
         samples, reactions, _, _ = data
 
@@ -147,9 +137,7 @@ class TestDataset:
         assert reaction.egfn1.device == torch.device(device)
         assert reaction.eref.device == torch.device(device)
 
-    def test_save_subset(
-        self, data: Tuple[Samples, Reactions, SampleDataset, ReactionDataset]
-    ) -> None:
+    def test_save_subset(self, data: FixtureData) -> None:
         _, _, _, reaction_dataset = data
 
         aconf = reaction_dataset
@@ -166,20 +154,6 @@ class TestDataset:
 
             assert aconf == dataset2
 
-        # loading full dataset (all samples and reactions)
-        # g21ip = dataset[575:611]
-        # g21ip.sort()
-
-        # with tempfile.TemporaryDirectory() as td:
-        #     store_subsets_on_disk(dataset.copy(), Path(td), ["G21IP"])
-        #     dataset3 = ReactionDataset.from_json(
-        #         path_samples=Path(td, "samples.json"),
-        #         path_reactions=Path(td, "reactions.json"),
-        #     )
-        #     dataset3.sort()
-
-        #     assert g21ip.equal(dataset3)
-
     # def test_to_df(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
     #     _, _, dataset = data
 
@@ -193,9 +167,7 @@ class TestDataset:
     #     df = aconf.to_df()
     #     print(df)
 
-    def test_to_json(
-        self, data: Tuple[Samples, Reactions, SampleDataset, ReactionDataset]
-    ) -> None:
+    def test_to_json(self, data: FixtureData) -> None:
         """Test for saving the dataset to disk. Check for identical saving-loading."""
         _, _, sample_dataset, reaction_dataset = data
 
