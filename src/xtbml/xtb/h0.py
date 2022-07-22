@@ -287,13 +287,16 @@ class Hamiltonian:
         # ----------------
         # Eq.29: H_(mu,mu)
         # ----------------
-        selfenergy = self.ihelp.spread_ushell_to_shell(self.selfenergy)
-        if cn is not None:
-            cn = self.ihelp.spread_atom_to_shell(cn)
-            kcn = self.ihelp.spread_ushell_to_shell(self.kcn)
+        if cn is None:
+            cn = torch.zeros_like(self.numbers).type(self.dtype)
 
-            # formula differs from paper to be consistent with GFN2 -> "kcn" adapted
-            selfenergy -= kcn * cn
+        kcn = self.ihelp.spread_ushell_to_shell(self.kcn)
+
+        # formula differs from paper to be consistent with GFN2 -> "kcn" adapted
+        selfenergy = (
+            self.ihelp.spread_ushell_to_shell(self.selfenergy)
+            - kcn * self.ihelp.spread_atom_to_shell(cn.detach())  # FIXME
+        )
 
         # ----------------------
         # Eq.24: PI(R_AB, l, l')
@@ -306,7 +309,7 @@ class Hamiltonian:
             mask,
             torch.sqrt(distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2))),
             zero,
-        )
+        ).detach()  # FIXME
 
         shpoly = self.ihelp.spread_ushell_to_shell(self.shpoly)
 
@@ -340,13 +343,13 @@ class Hamiltonian:
         # ------------
         # Eq.23: H_EHT
         # ------------
-        selfenergy = torch.where(
+        var_h = torch.where(
             mask, 0.5 * (selfenergy.unsqueeze(-1) + selfenergy.unsqueeze(-2)), zero
         )
 
         # scale only off-diagonals
         mask.diagonal(dim1=-2, dim2=-1).fill_(False)
-        h0 = torch.where(mask, var_pi * var_k * selfenergy, selfenergy)
+        h0 = torch.where(mask, var_pi * var_k * var_h, var_h)
 
         h = self.ihelp.spread_shell_to_orbital(h0, dim=(-2, -1))
         return h * overlap
