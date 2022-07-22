@@ -133,7 +133,9 @@ class Hamiltonian:
             self.ihelp.orbitals_per_shell
         )
 
-        return refocc / orb_per_shell
+        return torch.where(
+            orb_per_shell != 0, refocc / orb_per_shell, refocc.new_tensor(0)
+        )
 
     def _get_elem_param(self, key: str) -> Tensor:
         """Obtain element parameters for species.

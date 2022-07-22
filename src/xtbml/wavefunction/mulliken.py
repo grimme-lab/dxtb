@@ -3,8 +3,9 @@ Wavefunction analysis via Mulliken populations.
 """
 
 import torch
-from ..typing import Tensor
+
 from ..basis import IndexHelper
+from ..typing import Tensor
 
 
 def get_orbital_populations(
@@ -53,11 +54,8 @@ def get_shell_populations(
         Shell populations.
     """
 
-    return torch.scatter_reduce(
-        get_orbital_populations(overlap, density),
-        -1,
-        indexhelper.orbitals_to_shell,
-        reduce="sum",
+    return indexhelper.reduce_orbital_to_shell(
+        get_orbital_populations(overlap, density)
     )
 
 
@@ -84,11 +82,8 @@ def get_atomic_populations(
         Atom populations.
     """
 
-    return torch.scatter_reduce(
-        get_shell_populations(indexhelper, overlap, density),
-        -1,
-        indexhelper.shells_to_atom,
-        reduce="sum",
+    return indexhelper.reduce_shell_to_atom(
+        get_shell_populations(indexhelper, overlap, density)
     )
 
 
@@ -110,7 +105,7 @@ def get_mulliken_shell_charges(
     density : Tensor
         Density matrix.
     n0 : Tensor
-        Reference occupancy numbers.
+        Shell-resolved reference occupancy numbers.
 
     Returns
     -------
@@ -139,7 +134,7 @@ def get_mulliken_atomic_charges(
     density : Tensor
         Density matrix.
     n0 : Tensor
-        Reference occupancy numbers.
+        Atom-resolved reference occupancy numbers.
 
     Returns
     -------

@@ -10,11 +10,20 @@ from xtbml.utils import symbol2number
 class Record(Molecule):
     """Format of reference records (calculated with xTB 6.5.1)."""
 
-    overlap: Tensor
-    """Overlap matrix for GFN1-xTB."""
-
     density: Tensor
     """Density matrix for GFN1-xTB."""
+
+    n_electrons: Tensor
+    """Number of valence electrons of molecule."""
+
+    mulliken_charges: Tensor
+    """Atom-resolved Mulliken partial charges."""
+
+    mulliken_pop: Tensor
+    """Shell-resolved Mulliken populations."""
+
+    overlap: Tensor
+    """Overlap matrix for GFN1-xTB."""
 
     wiberg: Tensor
     """Reference values for Wiberg bond orders."""
@@ -33,6 +42,7 @@ samples: dict[str, Record] = {
                 0.70252931147690,
             ],
         ).reshape((-1, 3)),
+        "n_electrons": torch.tensor(2.0),
         "density": torch.tensor(
             [
                 0.59854788165593265,
@@ -73,6 +83,8 @@ samples: dict[str, Record] = {
                 1.0000000000000000,
             ]
         ).reshape((4, 4)),
+        "mulliken_charges": torch.tensor([0.00000, 0.00000]),
+        "mulliken_pop": torch.tensor([1.000, 1.000]),
         "wiberg": torch.tensor(
             [
                 [0.0000000000000000, 1.0000000000000007],
@@ -92,6 +104,7 @@ samples: dict[str, Record] = {
                 1.50796743897235,
             ],
         ).reshape((-1, 3)),
+        "n_electrons": torch.tensor(2.0),
         "density": torch.tensor(
             [
                 0.20683869182353645,
@@ -172,6 +185,8 @@ samples: dict[str, Record] = {
                 1.0000000000000000,
             ]
         ).reshape((6, 6)),
+        "mulliken_charges": torch.tensor([0.27609, -0.27609]),
+        "mulliken_pop": torch.tensor([0.382, 0.342, 1.276]),
         "wiberg": torch.tensor(
             [
                 [0.0000000000000000, 0.92377265725501168],
@@ -200,6 +215,7 @@ samples: dict[str, Record] = {
                 1.61768389755830,
             ],
         ).reshape((-1, 3)),
+        "n_electrons": torch.tensor(8.0),
         "density": torch.tensor(
             [
                 0.95266977814088072,
@@ -786,6 +802,10 @@ samples: dict[str, Record] = {
                 1.0000000000000000,
             ]
         ).reshape((17, 17)),
+        "mulliken_charges": torch.tensor(
+            [0.27511, -0.06878, -0.06878, -0.06878, -0.06878]
+        ),
+        "mulliken_pop": torch.tensor([1.343, 1.964, 0.417, 1.069, 1.069, 1.069, 1.069]),
         "wiberg": torch.tensor(
             [
                 [
