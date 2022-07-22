@@ -1,39 +1,42 @@
 # This file is part of xtbml.
 
+import pytest
 import tomli as toml
 import torch
-from unittest import TestCase
 
-from xtbml.exlibs.tbmalt import Geometry
+from xtbml.param.meta import Meta
 from xtbml.utils import symbol2number
 
 
-class TestParam(TestCase):
+class TestParam:
+    """Test the parametrization of the Hamiltonian"""
+
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         print(cls.__name__)
 
     def test_builtin_gfn1(self):
         # pylint: disable=import-outside-toplevel
         from xtbml.param.gfn1 import GFN1_XTB as par
 
-        self.assertTrue(par.meta.name == "GFN1-xTB")
-        self.assertTrue(par.meta.version == 1)
+        assert isinstance(par.meta, Meta)
+        assert par.meta.name == "GFN1-xTB"
+        assert par.meta.version == 1
 
-        self.assertTrue(par.dispersion is not None)
-        self.assertTrue(par.repulsion is not None)
-        self.assertTrue(par.charge is not None)
-        self.assertTrue(par.multipole is None)
-        self.assertTrue(par.halogen is not None)
-        self.assertTrue(par.thirdorder is not None)
+        assert par.dispersion is not None
+        assert par.repulsion is not None
+        assert par.charge is not None
+        assert par.multipole is None
+        assert par.halogen is not None
+        assert par.thirdorder is not None
 
-        self.assertTrue(par.hamiltonian.xtb.cn == "exp")
-        self.assertTrue("sp" in par.hamiltonian.xtb.shell)
-        self.assertTrue(par.hamiltonian.xtb.wexp == 0.0)
-        self.assertTrue(par.hamiltonian.xtb.kpol == 2.85)
-        self.assertTrue(par.hamiltonian.xtb.enscale == -7.0e-3)
+        assert par.hamiltonian.xtb.cn == "exp"
+        assert "sp" in par.hamiltonian.xtb.shell
+        assert par.hamiltonian.xtb.wexp == 0.0
+        assert par.hamiltonian.xtb.kpol == 2.85
+        assert par.hamiltonian.xtb.enscale == -7.0e-3
 
-        self.assertTrue("Te" in par.element)
+        assert "Te" in par.element
 
     def test_param_minimal(self):
         # pylint: disable=import-outside-toplevel
@@ -88,25 +91,24 @@ class TestParam(TestCase):
 
         par = Param(**toml.loads(data))
 
-        self.assertTrue("H" in par.element)
-        self.assertTrue("C" in par.element)
+        assert "H" in par.element
+        assert "C" in par.element
 
-    def test_param_calculator(self):
+    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+    def test_param_calculator(self, dtype: torch.dtype):
         # pylint: disable=import-outside-toplevel
         from xtbml.xtb.calculator import Calculator
         from xtbml.param.gfn1 import GFN1_XTB as par
 
-        atomic_numbers = symbol2number(["H", "C"])
-        dummy_coords = torch.zeros(3)
-        mol = Geometry(atomic_numbers, dummy_coords)
+        numbers = symbol2number(["H", "C"])
+        dummy_coords = torch.zeros(3, dtype=dtype)
 
-        calc = Calculator(mol, par)
+        calc = Calculator(numbers, dummy_coords, par)
 
-        self.assertTrue("H" in calc.basis.cgto)
-        self.assertTrue("C" in calc.basis.cgto)
+        assert "H" in calc.basis.cgto
+        assert "C" in calc.basis.cgto
 
-        self.assertTrue("H" in calc.hamiltonian.refocc)
-        self.assertTrue("C" in calc.hamiltonian.refocc)
-
-        self.assertTrue(sum(calc.hamiltonian.refocc.get("H")) == 1)
-        self.assertTrue(sum(calc.hamiltonian.refocc.get("C")) == 4)
+        assert torch.allclose(
+            calc.hamiltonian.ihelp.reduce_shell_to_atom(calc.hamiltonian.refocc),
+            torch.tensor([1.0, 4.0], dtype=dtype),
+        )

@@ -4,15 +4,14 @@ Run tests for repulsion contribution.
 (Note that the analytical gradient tests fail for `torch.float32`.)
 """
 
-from typing import Union, Protocol
-
+from __future__ import annotations
 import torch
 import pytest
 
 from xtbml.exlibs.tbmalt import batch
 from xtbml.param.gfn1 import GFN1_XTB
 from xtbml.classical import RepulsionFactory
-from xtbml.typing import Tensor
+from xtbml.typing import Protocol, Tensor
 
 from .samples import amino20x4, mb16_43
 
@@ -33,6 +32,9 @@ class TestRepulsion:
     @classmethod
     def setup_class(cls):
         print(cls.__name__)
+
+        if GFN1_XTB.repulsion is None:
+            raise ValueError("GFN1-xTB repulsion not available")
 
     def repulsion_gfn1(
         self, numbers: Tensor, positions: Tensor, req_grad: bool = False
@@ -65,8 +67,8 @@ class TestRepulsion:
         numbers: Tensor,
         positions: Tensor,
         repulsion_factory: RepulsionSetup,
-        reference_energy: Union[Tensor, None],
-        reference_gradient: Union[Tensor, None],
+        reference_energy: Tensor | None,
+        reference_gradient: Tensor | None,
         dtype: torch.dtype,
     ) -> None:
         """Wrapper for testing versus reference energy and gradient"""
@@ -272,13 +274,15 @@ class TestRepulsion:
     @pytest.mark.parametrize("dtype", [torch.float64])
     def test_param_grad(self, dtype: torch.dtype):
         """
-        Check a single analytical gradient of `RepulsionFactory.alpha` against numerical gradient from `torch.autograd.gradcheck`.
+        Check a single analytical gradient of `RepulsionFactory.alpha` against
+        numerical gradient from `torch.autograd.gradcheck`.
 
         Args:
             dtype (torch.dtype): Numerical precision.
 
         Note:
-            Although `torch.float32` raises a warning that the gradient check without double precision will fail, it actually works here.
+            Although `torch.float32` raises a warning that the gradient check
+            without double precision will fail, it actually works here.
         """
         sample = mb16_43["01"]
 
@@ -291,19 +295,25 @@ class TestRepulsion:
 
         repulsion = self.repulsion_gfn1(numbers, positions, True)
         param = (repulsion.alpha, repulsion.zeff, repulsion.kexp)
-        assert torch.autograd.gradcheck(func, param)
+
+        # pylint: disable=import-outside-toplevel
+        from torch.autograd.gradcheck import gradcheck
+
+        assert gradcheck(func, param)
 
     @pytest.mark.grad
     @pytest.mark.parametrize("dtype", [torch.float64])
     def test_param_grad_batch(self, dtype: torch.dtype):
         """
-        Check batch analytical gradient against numerical gradient from `torch.autograd.gradcheck`.
+        Check batch analytical gradient against numerical gradient from
+        `torch.autograd.gradcheck`.
 
         Args:
             dtype (torch.dtype): Numerical precision.
 
         Note:
-            Although `torch.float32` raises a warning that the gradient check without double precision will fail, it actually works here.
+            Although `torch.float32` raises a warning that the gradient check
+            without double precision will fail, it actually works here.
         """
 
         sample1, sample2 = mb16_43["01"], mb16_43["SiH4"]
@@ -326,4 +336,8 @@ class TestRepulsion:
 
         repulsion = self.repulsion_gfn1(numbers, positions, True)
         param = (repulsion.alpha, repulsion.zeff, repulsion.kexp)
-        assert torch.autograd.gradcheck(func, param)
+
+        # pylint: disable=import-outside-toplevel
+        from torch.autograd.gradcheck import gradcheck
+
+        assert gradcheck(func, param)

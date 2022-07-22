@@ -86,7 +86,7 @@ structures = {
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_charges_single(dtype):
+def test_charges_single(dtype: torch.dtype):
     sample = structures["PbH4-BiH3"]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
@@ -117,7 +117,7 @@ def test_charges_single(dtype):
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_charges_ghost(dtype):
+def test_charges_ghost(dtype: torch.dtype):
     sample = structures["PbH4-BiH3"]
     numbers = sample["numbers"]
     numbers[[0, 1, 2, 3, 4]] = 0
@@ -131,7 +131,7 @@ def test_charges_ghost(dtype):
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_charges_batch(dtype):
+def test_charges_batch(dtype: torch.dtype):
     sample1, sample2 = (
         structures["PbH4-BiH3"],
         structures["C6H5I-CH3SH"],

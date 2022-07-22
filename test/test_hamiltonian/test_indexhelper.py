@@ -7,7 +7,7 @@ from xtbml.exlibs.tbmalt import batch
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_indexhelper_single(dtype):
+def test_indexhelper_single(dtype: torch.dtype):
 
     numbers = utils.symbol2number("S H H H Mg N O S N N C H C H O N".split())
     angular = {
@@ -58,7 +58,7 @@ def test_indexhelper_single(dtype):
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_indexhelper_batch(dtype):
+def test_indexhelper_batch(dtype: torch.dtype):
 
     numbers = batch.pack(
         (
@@ -192,8 +192,8 @@ def test_indexhelper_batch2(dtype):
             ),
             torch.tensor(
                 [
-                    *[+4.40703021483644E-1, -1.10175755370910E-1, -1.10175755370912E-1],
-                    *[-1.10175755370911E-1, -1.10175755370911E-1],
+                    *[+4.40703021483644e-1, -1.10175755370910e-1, -1.10175755370912e-1],
+                    *[-1.10175755370911e-1, -1.10175755370911e-1],
                 ],
                 dtype=dtype,
             ),
@@ -218,9 +218,9 @@ def test_indexhelper_batch2(dtype):
             ),
             torch.tensor(
                 [
-                    *[+1.10033553895207E-1, +5.54549482852800E-1, -2.23880015264363E-1],
-                    *[-1.10175755370910E-1, -1.10175755370912E-1, -1.10175755370911E-1],
-                    *[-1.10175755370911E-1],
+                    *[+1.10033553895207e-1, +5.54549482852800e-1, -2.23880015264363e-1],
+                    *[-1.10175755370910e-1, -1.10175755370912e-1, -1.10175755370911e-1],
+                    *[-1.10175755370911e-1],
                 ],
                 dtype=dtype,
             ),

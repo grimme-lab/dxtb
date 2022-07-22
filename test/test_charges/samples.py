@@ -1,8 +1,20 @@
+"""Molecules for testing the charges module."""
+
+from __future__ import annotations
 import torch
-from xtbml.typing import Samples
+
+from xtbml.typing import Molecule, Tensor
 from xtbml.utils import symbol2number
 
-structures: Samples = {
+
+class Record(Molecule):
+    """Format of reference records containing GFN1-xTB and GFN2-xTB reference values."""
+
+    total_charge: Tensor
+    """Reference values total charge of molecule."""
+
+
+structures: dict[str, Record] = {
     "NH3-dimer": {
         "numbers": symbol2number("N N H H H H H H".split()),
         "positions": torch.tensor(

@@ -1,7 +1,7 @@
 import torch
 
 from .constants import UINT8 as DTYPE
-from .exlibs.tbmalt import Geometry
+from .typing import Tensor
 
 
 class AdjacencyList:
@@ -46,21 +46,22 @@ class AdjacencyList:
     nltr: torch.Tensor
     """Cell index of the neighbouring atom"""
 
-    def __init__(self, mol: Geometry, cutoff: float) -> None:
-        self.inl = torch.zeros(mol.get_length(), dtype=DTYPE)
-        self.nnl = torch.zeros(mol.get_length(), dtype=DTYPE)
+    def __init__(self, numbers: Tensor, positions: Tensor, cutoff: float) -> None:
+        l = torch.numel(numbers)
+        self.inl = torch.zeros(l, dtype=DTYPE)
+        self.nnl = torch.zeros(l, dtype=DTYPE)
 
-        tmp_nlat = torch.zeros(10 * mol.get_length(), dtype=DTYPE)
+        tmp_nlat = torch.zeros(10 * l, dtype=DTYPE)
 
         img = 0
         cutoff2 = cutoff * cutoff
-        eps = torch.finfo(mol.dtype).eps
+        eps = torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype)
 
-        for iat in range(mol.get_length()):
+        for iat in range(l):
             self.inl[iat] = img
 
             for jat in range(iat + 1):
-                vec = torch.sub(mol.positions[iat, :], mol.positions[jat, :])
+                vec = torch.sub(positions[iat, :], positions[jat, :])
                 r2 = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]
                 if r2 < eps or r2 > cutoff2:
                     continue

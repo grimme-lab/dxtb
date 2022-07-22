@@ -3,9 +3,8 @@ from typing import List
 import torch
 from torch.utils.data import DataLoader
 
+from ..constants import ATOMIC_NUMBER, FLOAT64
 from ..exlibs.tbmalt import Geometry
-from ..data.covrad import to_number
-from ..constants import FLOAT64
 
 
 def walklevel(some_dir: str, level=1):
@@ -36,7 +35,7 @@ def read_coord(fp: str, breakpoints=["$user-defined bonds", "$redundant", "$end"
                 continue
             try:
                 x, y, z = float(l[0]), float(l[1]), float(l[2])
-                atm = to_number(l[3])
+                atm = ATOMIC_NUMBER[l[3].title()]
                 arr.append([x, y, z, atm])
             except ValueError as e:
                 print(e)

@@ -1,338 +1,500 @@
-from math import sqrt
+from __future__ import annotations
 import torch
-from typing import List, Dict, Tuple, Union, Optional
 
 from ..adjlist import AdjacencyList
-from ..basis import IndexHelper
-from ..basis.type import Basis
+from ..basis.indexhelper import IndexHelper
+from ..basis.type import Basis, get_cutoff
+from ..exlibs.tbmalt import batch
 from ..constants import EV2AU
-from ..data.atomicrad import get_atomic_rad
-from ..exlibs.tbmalt import Geometry
+from ..data import atomic_rad
 from ..integral import mmd
-from ..param import Param, Element
+from ..param import (
+    get_elem_param,
+    get_pair_param,
+    get_elem_valence,
+    Param,
+)
 from ..typing import Tensor
 
-
-_aqm2lsh = {
-    "s": 0,
-    "p": 1,
-    "d": 2,
-    "f": 3,
-    "g": 4,
-}
-_lsh2aqm = {
-    0: "s",
-    1: "p",
-    2: "d",
-    3: "f",
-    4: "g",
-}
+PAD = -1
+"""Value used for padding of tensors."""
 
 
 class Hamiltonian:
-    """
-    Model to obtain the core Hamiltonian from the overlap matrix elements.
-    """
+    """Hamiltonian from parametrization."""
 
-    selfenergy: Dict[str, List[float]] = {}
-    """Self-energy of each species"""
-
-    kcn: Dict[str, List[float]] = {}
-    """Coordination number dependent shift of the self energy"""
-
-    shpoly: Dict[str, List[float]] = {}
-    """Polynomial parameters for the distant dependent scaling"""
-
-    refocc: Dict[str, List[float]] = {}
-    """Reference occupation numbers"""
-
-    hscale: Dict[Tuple[str, str], Union[List[float], any]] = {}
-    """Off-site scaling factor for the Hamiltonian"""
-
-    rad: Dict[str, float] = {}
-    """Van-der-Waals radius of each species"""
-
-    mol: Geometry
-    """Geometry representation"""
+    numbers: Tensor
+    """Atomic numbers of the atoms in the system."""
+    unique: Tensor
+    """Unique species of the system."""
+    positions: Tensor
+    """Positions of the atoms in the system."""
 
     par: Param
-    """Representation of parametrization of xtb model"""
+    """Representation of parametrization of xtb model."""
 
-    def __init__(self, mol: Geometry, par: Param):
-        self.mol = mol
+    ihelp: IndexHelper
+    """Helper class for indexing."""
+
+    hscale: Tensor
+    """Off-site scaling factor for the Hamiltonian."""
+    kcn: Tensor
+    """Coordination number dependent shift of the self energy."""
+    kpair: Tensor
+    """Element-pair-specific parameters for scaling the Hamiltonian."""
+    refocc: Tensor
+    """Reference occupation numbers."""
+    selfenergy: Tensor
+    """Self-energy of each species."""
+    shpoly: Tensor
+    """Polynomial parameters for the distant dependent scaling."""
+    valence: Tensor
+    """Whether the shell belongs to the valence shell."""
+
+    en: Tensor
+    """Pauling electronegativity of each species."""
+    rad: Tensor
+    """Van-der-Waals radius of each species."""
+
+    def __init__(
+        self, numbers: Tensor, positions: Tensor, par: Param, ihelp: IndexHelper
+    ) -> None:
+        self.numbers = numbers
+        self.unique = torch.unique(numbers)
+        self.positions = positions
         self.par = par
+        self.ihelp = ihelp
 
-        lmax = 0
-        lsh = {}
-        valence = {}
-        species = mol.chemical_symbols
-        for isp in species:
-            record = par.element[isp]
+        self.__device = self.positions.device
+        self.__dtype = self.positions.dtype
 
-            lsh[isp] = [_aqm2lsh.get(shell[-1]) for shell in record.shells]
-            valence[isp] = _get_valence_shells(record)
-            lmax = max(lmax, *lsh[isp])
+        # atom-resolved parameters
+        self.rad = atomic_rad[self.unique].type(self.dtype).to(device=self.device)
+        self.en = self._get_elem_param("en")
 
-            self.selfenergy[isp] = [i * EV2AU for i in par.element[isp].levels]
-            self.kcn[isp] = [i * EV2AU for i in par.element[isp].kcn]
-            self.shpoly[isp] = par.element[isp].shpoly.copy()
+        # shell-resolved element parameters
+        self.kcn = self._get_elem_param("kcn")
+        self.selfenergy = self._get_elem_param("levels")
+        self.shpoly = self._get_elem_param("shpoly")
+        self.refocc = self._get_elem_param("refocc")
+        self.valence = self._get_elem_valence()
 
-            self.refocc[isp] = [
-                occ if val else 0.0
-                for occ, val in zip(par.element[isp].refocc, valence[isp])
-            ]
+        # shell-pair-resolved pair parameters
+        self.hscale = self._get_hscale()
+        self.kpair = self._get_pair_param(self.par.hamiltonian.xtb.kpair)
 
-            self.rad[isp] = get_atomic_rad(isp)
-        lmax += 1
+        # unit conversion
+        self.selfenergy = self.selfenergy * EV2AU
+        self.kcn = self.kcn * EV2AU
 
-        # Collect shell specific scaling block
-        #
-        # FIXME: tblite implicitly spreads missing angular momenta, however this
-        #        is only relevant for f shells and higher in present parametrizations.
-        shell = par.hamiltonian.xtb.shell
-        ksh = torch.zeros((lmax, lmax))
-        for ish in range(lmax):
-            kii = shell[2 * _lsh2aqm[ish]]
-            for jsh in range(lmax):
-                kjj = shell[2 * _lsh2aqm[jsh]]
-                kij = (
-                    _lsh2aqm[ish] + _lsh2aqm[jsh]
-                    if jsh > ish
-                    else _lsh2aqm[jsh] + _lsh2aqm[ish]
-                )
-                ksh[ish, jsh] = shell.get(kij, (kii + kjj) / 2)
+        if any(
+            tensor.dtype != self.dtype
+            for tensor in (
+                self.positions,
+                self.hscale,
+                self.kcn,
+                self.kpair,
+                self.refocc,
+                self.selfenergy,
+                self.shpoly,
+                self.en,
+                self.rad,
+            )
+        ):
+            raise ValueError("All tensors must have same dtype")
 
-        def get_hscale(li, lj, ri, rj, vi, vj, km, ksh):
-            """Calculate Hamiltonian scaling for a shell block"""
-            ni, nj = len(li), len(lj)
-            hscale = torch.zeros((ni, nj))
-            for ish in range(ni):
-                kii = ksh[li[ish], li[ish]] if vi[ish] else par.hamiltonian.xtb.kpol
-                for jsh in range(nj):
-                    kjj = ksh[lj[jsh], lj[jsh]] if vj[jsh] else par.hamiltonian.xtb.kpol
-                    zi = ri.slater[ish]
-                    zj = rj.slater[jsh]
-                    zij = (2 * sqrt(zi * zj) / (zi + zj)) ** par.hamiltonian.xtb.wexp
-                    hscale[ish, jsh] = zij * (
-                        km * ksh[li[ish], lj[jsh]]
-                        if vi[ish] and vj[jsh]
-                        else (kii + kjj) / 2
-                    )
+        if any(
+            tensor.device != self.device
+            for tensor in (
+                self.numbers,
+                self.unique,
+                self.positions,
+                self.ihelp,
+                self.hscale,
+                self.kcn,
+                self.kpair,
+                self.refocc,
+                self.selfenergy,
+                self.shpoly,
+                self.valence,
+                self.en,
+                self.rad,
+            )
+        ):
+            raise ValueError("All tensors must be on the same device")
 
-            return hscale
-
-        kpair = par.hamiltonian.xtb.kpair
-        for isp in species:
-            ri = par.element[isp]
-            for jsp in species:
-                rj = par.element[jsp]
-                enp = 1.0 + par.hamiltonian.xtb.enscale * (ri.en - rj.en) ** 2
-
-                km = kpair.get(f"{isp}-{jsp}", kpair.get(f"{jsp}-{isp}", 1.0)) * enp
-
-                self.hscale[(isp, jsp)] = get_hscale(
-                    lsh[isp], lsh[jsp], ri, rj, valence[isp], valence[jsp], km, ksh
-                )
-
-    def get_selfenergy(
-        self,
-        basis: Basis,
-        cn: Optional[Tensor] = None,
-        qat=None,
-        dsedcn=None,
-        dsedq=None,
-    ):
-
-        # calculate selfenergy using hamiltonian.selfenergy dict
-        self_energy = torch.zeros(basis.nsh_tot, dtype=self.mol.dtype)
-        for i, sym in enumerate(self.mol.chemical_symbols):
-            ii = int(basis.ish_at[i].item())
-            for ish in range(basis.shells[sym]):
-                self_energy[ii + ish] = self.selfenergy[sym][ish]
-
-        if dsedcn is not None:
-            dsedcn = torch.zeros(basis.nsh_tot, dtype=self.mol.dtype)
-        if dsedq is not None:
-            dsedq = torch.zeros(basis.nsh_tot, dtype=self.mol.dtype)
-
-        if cn is not None:
-            if dsedcn is not None:
-                for i, sym in enumerate(self.mol.chemical_symbols):
-                    ii = int(basis.ish_at[i].item())
-                    for ish in range(basis.shells[sym]):
-                        self_energy[ii + ish] -= self.kcn[sym][ish] * cn[i]
-                        dsedcn[ii + ish] = -self.kcn[sym][ish]
-            else:
-                for i, sym in enumerate(self.mol.chemical_symbols):
-                    ii = int(basis.ish_at[i].item())
-                    for ish in range(basis.shells[sym]):
-                        self_energy[ii + ish] -= self.kcn[sym][ish] * cn[i]
-
-        # TODO:
-        #  - requires init of self.kq1 and self.kq2
-        #  - figuring out return values
-        #
-        # if qat is not None:
-        #     if dsedq is not None:
-        #         for i, sym in enumerate(self.mol.chemical_symbols):
-        #             ii = int(basis.ish_at[i].item())
-        #             for ish in range(basis.shells[sym]):
-        #                 self_energy[ii + ish] -= (
-        #                     self.kq1[sym][ish] * qat[i] - self.kq2[sym][ish] * qat[i]**2
-        #                 )
-        #                 dsedq[ii + ish] = (
-        #                     -self.kq1[sym][ish] - self.kq2[sym][ish] * 2 * qat[i]
-        #                 )
-
-        #     else:
-        #         for i, sym in enumerate(self.mol.chemical_symbols):
-        #             ii = int(basis.ish_at[i].item())
-        #             for ish in range(basis.shells[sym]):
-        #                 self_energy[ii + ish] -= (
-        #                     self.kq1[sym][ish] * qat[i] - self.kq2[sym][ish] * qat[i]
-        #                 )
-
-        return self_energy  # , dsedcn, dsedq
-
-    def get_occupation(self, ihelp: IndexHelper):
+    def get_occupation(self):
         """
         Obtain the reference occupation numbers for each orbital.
         """
 
-        occupation = torch.zeros(*ihelp.orbitals_to_shell.shape, dtype=self.mol.dtype)
-
-        for idx, sym in enumerate(self.mol.chemical_symbols):
-            shell_index = ihelp.shell_index[idx]
-
-            for ish in range(ihelp.shells_per_atom[idx]):
-                orbital_index = ihelp.orbital_index[shell_index + ish]
-                orbitals_per_shell = ihelp.orbitals_per_shell[shell_index + ish]
-
-                for iao in range(orbitals_per_shell):
-                    occupation[orbital_index + iao] = (
-                        self.refocc[sym][ish] / orbitals_per_shell
-                    )
-
-        return occupation
-
-    def build(
-        self, basis: Basis, adjlist: AdjacencyList, cn: Optional[Tensor]
-    ) -> Tuple[Tensor, Tensor]:
-        self_energy = self.get_selfenergy(basis, cn)
-
-        # init matrices
-        h0 = torch.zeros(basis.nao_tot, basis.nao_tot, dtype=self.mol.dtype)
-        overlap = torch.zeros(basis.nao_tot, basis.nao_tot, dtype=self.mol.dtype)
-
-        # fill diagonal
-        torch.diagonal(overlap, dim1=-2, dim2=-1).fill_(1.0)
-        h0 = self.build_diagonal_blocks(h0, basis, self_energy)
-
-        # fill off-diagonal
-        h0, overlap = self.build_diatomic_blocks(
-            self.mol, h0, overlap, basis, adjlist, self_energy
+        refocc = self.ihelp.spread_ushell_to_orbital(self.refocc)
+        orb_per_shell = self.ihelp.spread_shell_to_orbital(
+            self.ihelp.orbitals_per_shell
         )
 
-        return h0, overlap
+        return refocc / orb_per_shell
 
-    def build_diagonal_blocks(
-        self, h0: Tensor, basis: Basis, self_energy: Tensor
-    ) -> Tensor:
-        for i, element in enumerate(self.mol.chemical_symbols):
-            iss = basis.ish_at[i].item()
-            for ish in range(basis.shells[element]):
-                ii = basis.iao_sh[iss + ish].item()
-                hii = self_energy[iss + ish]
+    def _get_elem_param(self, key: str) -> Tensor:
+        """Obtain element parameters for species.
 
-                i_nao = 2*basis.cgto[element][ish].ang + 1
-                for iao in range(i_nao):
-                    h0[ii + iao, ii + iao] = hii
+        Parameters
+        ----------
+        key : str
+            Name of the parameter to be retrieved.
 
-        return h0
-
-    def build_diatomic_blocks(
-        self,
-        mol: Geometry,
-        h0: Tensor,
-        overlap: Tensor,
-        basis: Basis,
-        adjlist: AdjacencyList,
-        self_energy: Tensor,
-    ) -> Tuple[Tensor, Tensor]:
-        """
-        Construction of off-diagonal blocks of the Hamiltonian and overlap integrals.
+        Returns
+        -------
+        Tensor
+            Parameters for each species.
         """
 
-        for i, el_i in enumerate(mol.chemical_symbols):
-            isa = basis.ish_at[i].item()
-            inl = adjlist.inl[i].item()
+        return get_elem_param(
+            self.unique,
+            self.par.element,
+            key,
+            pad_val=PAD,
+            device=self.device,
+            dtype=self.dtype,
+        )
 
-            imgs = int(adjlist.nnl[i].item())
-            for img in range(imgs):
-                j = adjlist.nlat[img + inl].item()
-                jsa = basis.ish_at[j].item()
-                el_j = mol.chemical_symbols[j]
+    def _get_elem_valence(self):
+        """Obtain "valence" parameters for shells of species.
 
-                vec = mol.positions[i, :] - mol.positions[j, :]
-                r2 = torch.sum(vec**2)
-                rr = torch.sqrt(torch.sqrt(r2) / (self.rad[el_i] + self.rad[el_j]))
+        Returns
+        -------
+        Tensor
+            Valence parameters for each species.
+        """
 
-                for ish in range(basis.shells[el_i]):
-                    ii = basis.iao_sh[isa + ish].item()
-                    for jsh in range(basis.shells[el_j]):
-                        jj = basis.iao_sh[jsa + jsh].item()
+        return get_elem_valence(
+            self.unique,
+            self.par.element,
+            pad_val=PAD,
+            device=self.device,
+            dtype=torch.bool,
+        )
 
-                        cgtoi = basis.cgto[el_i][ish]
-                        cgtoj = basis.cgto[el_j][jsh]
+    def _get_pair_param(self, pair: dict[str, float]) -> Tensor:
+        """Obtain element-pair-specific parameters for all species.
 
-                        stmp = mmd.overlap(
-                            (cgtoi.ang, cgtoj.ang),
-                            (cgtoi.alpha[:cgtoi.nprim], cgtoj.alpha[:cgtoj.nprim]),
-                            (cgtoi.coeff[:cgtoi.nprim], cgtoj.coeff[:cgtoj.nprim]),
-                            -vec,
+        Parameters
+        ----------
+        pair : dict[str, float]
+            Pair parametrization.
+
+        Returns
+        -------
+        Tensor
+            Pair parameters for each species.
+        """
+
+        return get_pair_param(
+            self.unique.tolist(), pair, device=self.device, dtype=self.dtype
+        )
+
+    def _get_hscale(self) -> Tensor:
+        """Obtain the off-site scaling factor for the Hamiltonian.
+
+        Returns
+        -------
+        Tensor
+            Off-site scaling factor for the Hamiltonian.
+        """
+
+        angular2label = {
+            0: "s",
+            1: "p",
+            2: "d",
+            3: "f",
+            4: "g",
+        }
+
+        def get_ksh(ushells: Tensor) -> Tensor:
+            ksh = torch.ones(
+                (len(ushells), len(ushells)), dtype=self.dtype, device=self.device
+            )
+            shell = self.par.hamiltonian.xtb.shell
+            kpol = self.par.hamiltonian.xtb.kpol
+
+            for i, ang_i in enumerate(ushells):
+                ang_i = angular2label.get(int(ang_i.item()), PAD)
+
+                if self.valence[i] == 0:
+                    kii = kpol
+                else:
+                    kii = shell.get(f"{ang_i}{ang_i}", 1.0)
+
+                for j, ang_j in enumerate(ushells):
+                    ang_j = angular2label.get(int(ang_j.item()), PAD)
+
+                    if self.valence[j] == 0:
+                        kjj = kpol
+                    else:
+                        kjj = shell.get(f"{ang_j}{ang_j}", 1.0)
+
+                    # only if both belong to the valence shell,
+                    # we will read from the parametrization
+                    if self.valence[i] == 1 and self.valence[j] == 1:
+                        # check both "sp" and "ps"
+                        ksh[i, j] = shell.get(
+                            f"{ang_i}{ang_j}",
+                            shell.get(
+                                f"{ang_j}{ang_i}",
+                                (kii + kjj) / 2.0,
+                            ),
                         )
+                    else:
+                        ksh[i, j] = (kii + kjj) / 2.0
 
-                        shpoly = (1.0 + self.shpoly[el_i][ish] * rr) * (
-                            1.0 + self.shpoly[el_j][jsh] * rr
-                        )
+            return ksh
 
-                        hscale = self.hscale[(el_i, el_j)][ish, jsh].item()
-                        hij = (
-                            0.5
-                            * (self_energy[isa + ish] + self_energy[jsa + jsh])
-                            * hscale
-                            * shpoly
-                        )
+        ushells = self.ihelp.unique_angular
+        if ushells.ndim > 1:
+            ksh = torch.ones(
+                (ushells.shape[0], ushells.shape[1], ushells.shape[1]),
+                dtype=self.dtype,
+                device=self.device,
+            )
+            for _batch in range(ushells.shape[0]):
+                ksh[_batch] = get_ksh(ushells[_batch])
 
-                        i_nao = 2*cgtoi.ang + 1
-                        j_nao = 2*cgtoj.ang + 1
-                        for iao in range(i_nao):
-                            for jao in range(j_nao):
-                                ij = jao + j_nao * iao
+            return ksh
 
-                                overlap[jj + jao, ii + iao].add_(stmp[iao, jao])
-                                h0[jj + jao, ii + iao].add_(stmp[iao, jao] * hij)
+        return get_ksh(ushells)
 
-                                if i != j:
-                                    overlap[ii + iao, jj + jao].add_(stmp[iao, jao])
-                                    h0[ii + iao, jj + jao].add_(stmp[iao, jao] * hij)
+    def build(self, overlap: Tensor, cn: Tensor | None = None) -> Tensor:
+        """Build the xTB Hamiltonian
 
-        return h0, overlap
+        Parameters
+        ----------
+        overlap : Tensor
+            Overlap matrix.
+        cn : Tensor | None, optional
+            Coordination number, by default None
 
+        Returns
+        -------
+        Tensor
+            Hamiltonian
+        """
 
-def _get_valence_shells(record: Element) -> List[bool]:
+        real = self.ihelp.spread_atom_to_shell(self.numbers) != 0
+        mask = real.unsqueeze(-2) * real.unsqueeze(-1)
 
-    valence = []
+        zero = torch.tensor(0.0, device=self.device, dtype=self.dtype)
 
-    nsh = len(record.shells)
-    ang_idx = nsh * [-1]
-    lsh = [_aqm2lsh[shell[-1]] for shell in record.shells]
+        # ----------------
+        # Eq.29: H_(mu,mu)
+        # ----------------
+        selfenergy = self.ihelp.spread_ushell_to_shell(self.selfenergy)
+        if cn is not None:
+            cn = self.ihelp.spread_atom_to_shell(cn)
+            kcn = self.ihelp.spread_ushell_to_shell(self.kcn)
 
-    for ish in range(nsh):
-        il = lsh[ish]
+            # formula differs from paper to be consistent with GFN2 -> "kcn" adapted
+            selfenergy -= kcn * cn
 
-        valence.append(ang_idx[il] < 0)
-        if valence[-1]:
-            ang_idx[il] = ish
+        # ----------------------
+        # Eq.24: PI(R_AB, l, l')
+        # ----------------------
+        distances = self.ihelp.spread_atom_to_shell(
+            torch.cdist(self.positions, self.positions, p=2), dim=(-2, -1)
+        )
+        rad = self.ihelp.spread_uspecies_to_shell(self.rad)
+        rr = torch.where(
+            mask,
+            torch.sqrt(distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2))),
+            zero,
+        )
 
-    return valence
+        shpoly = self.ihelp.spread_ushell_to_shell(self.shpoly)
+
+        var_pi = (1.0 + shpoly.unsqueeze(-1) * rr) * (1.0 + shpoly.unsqueeze(-2) * rr)
+
+        # --------------------
+        # Eq.28: X(EN_A, EN_B)
+        # --------------------
+        en = self.ihelp.spread_uspecies_to_shell(self.en)
+        var_x = torch.where(
+            mask,
+            1.0
+            + self.par.hamiltonian.xtb.enscale
+            * torch.pow(en.unsqueeze(-1) - en.unsqueeze(-2), 2.0),
+            zero,
+        )
+
+        # --------------------
+        # Eq.23: K_{AB}^{l,l'}
+        # --------------------
+        kpair = self.ihelp.spread_uspecies_to_shell(self.kpair, dim=(-2, -1))
+        hscale = self.ihelp.spread_ushell_to_shell(self.hscale, dim=(-2, -1))
+        valence = self.ihelp.spread_ushell_to_shell(self.valence)
+
+        var_k = torch.where(
+            valence.unsqueeze(-1) * valence.unsqueeze(-2),
+            hscale * kpair * var_x,
+            hscale,
+        )
+
+        # ------------
+        # Eq.23: H_EHT
+        # ------------
+        selfenergy = torch.where(
+            mask, 0.5 * (selfenergy.unsqueeze(-1) + selfenergy.unsqueeze(-2)), zero
+        )
+
+        # scale only off-diagonals
+        mask.diagonal(dim1=-2, dim2=-1).fill_(False)
+        h0 = torch.where(mask, var_pi * var_k * selfenergy, selfenergy)
+
+        h = self.ihelp.spread_shell_to_orbital(h0, dim=(-2, -1))
+        return h * overlap
+
+    def overlap(self) -> Tensor:
+        """Loop-based overlap calculation."""
+
+        def get_overlap(numbers: Tensor, positions: Tensor) -> Tensor:
+            # remove padding
+            numbers = numbers[numbers.ne(0)]
+
+            # FIXME: this acc includes all neighbors -> inefficient
+            acc = torch.finfo(self.dtype).max
+
+            # FIXME: basis should be the same for all numbers and be given as arg
+            bas = Basis(numbers, self.par, acc=acc)
+
+            adjlist = AdjacencyList(numbers, positions, get_cutoff(bas))
+
+            overlap = torch.zeros(bas.nao_tot, bas.nao_tot, dtype=self.dtype)
+            torch.diagonal(overlap, dim1=-2, dim2=-1).fill_(1.0)
+
+            for i, el_i in enumerate(bas.symbols):
+                isa = int(bas.ish_at[i].item())
+                inl = int(adjlist.inl[i].item())
+
+                imgs = int(adjlist.nnl[i].item())
+                for img in range(imgs):
+                    j = int(adjlist.nlat[img + inl].item())
+                    jsa = int(bas.ish_at[j].item())
+                    el_j = bas.symbols[j]
+
+                    vec = positions[i, :] - positions[j, :]
+
+                    for ish in range(bas.shells[el_i]):
+                        ii = bas.iao_sh[isa + ish].item()
+                        for jsh in range(bas.shells[el_j]):
+                            jj = bas.iao_sh[jsa + jsh].item()
+
+                            cgtoi = bas.cgto[el_i][ish]
+                            cgtoj = bas.cgto[el_j][jsh]
+
+                            stmp = mmd.overlap(
+                                (cgtoi.ang, cgtoj.ang),
+                                (
+                                    cgtoi.alpha[: cgtoi.nprim],
+                                    cgtoj.alpha[: cgtoj.nprim],
+                                ),
+                                (
+                                    cgtoi.coeff[: cgtoi.nprim],
+                                    cgtoj.coeff[: cgtoj.nprim],
+                                ),
+                                -vec,
+                            )
+
+                            i_nao = 2 * cgtoi.ang + 1
+                            j_nao = 2 * cgtoj.ang + 1
+                            for iao in range(i_nao):
+                                for jao in range(j_nao):
+                                    overlap[jj + jao, ii + iao].add_(stmp[iao, jao])
+
+                                    if i != j:
+                                        overlap[ii + iao, jj + jao].add_(stmp[iao, jao])
+
+            return overlap
+
+        if self.numbers.ndim > 1:
+            return batch.pack(
+                [
+                    get_overlap(self.numbers[_batch], self.positions[_batch])
+                    for _batch in range(self.numbers.shape[0])
+                ]
+            )
+
+        return get_overlap(self.numbers, self.positions)
+
+    @property
+    def device(self) -> torch.device:
+        """The device on which the `Hamiltonian` object resides."""
+        return self.__device
+
+    @device.setter
+    def device(self, *args):
+        """Instruct users to use the ".to" method if wanting to change device."""
+        raise AttributeError("Move object to device using the `.to` method")
+
+    @property
+    def dtype(self) -> torch.dtype:
+        """Floating point dtype used by Hamiltonian object."""
+        return self.__dtype
+
+    def to(self, device: torch.device) -> "Hamiltonian":
+        """
+        Returns a copy of the `Hamiltonian` instance on the specified device.
+
+        This method creates and returns a new copy of the `Hamiltonian` instance
+        on the specified device "``device``".
+
+        Parameters
+        ----------
+        device : torch.device
+            Device to which all associated tensors should be moved.
+
+        Returns
+        -------
+        Hamiltonian
+            A copy of the `Hamiltonian` instance placed on the specified device.
+
+        Notes
+        -----
+        If the `Hamiltonian` instance is already on the desired device `self` will be returned.
+        """
+        if self.__device == device:
+            return self
+
+        return self.__class__(
+            self.numbers.to(device=device),
+            self.positions.to(device=device),
+            self.par,
+            self.ihelp.to(device=device),
+        )
+
+    def type(self, dtype: torch.dtype) -> "Hamiltonian":
+        """
+        Returns a copy of the `Hamiltonian` instance with specified floating point type.
+        This method creates and returns a new copy of the `Hamiltonian` instance
+        with the specified dtype.
+
+        Parameters
+        ----------
+        dtype : torch.dtype
+            Type of the floating point numbers used by the `Hamiltonian` instance.
+
+        Returns
+        -------
+        Hamiltonian
+            A copy of the `Hamiltonian` instance with the specified dtype.
+
+        Notes
+        -----
+        If the `Hamiltonian` instance has already the desired dtype `self` will be returned.
+        """
+        if self.__dtype == dtype:
+            return self
+
+        return self.__class__(
+            self.numbers.type(dtype=torch.long),
+            self.positions.type(dtype=dtype),
+            self.par,
+            self.ihelp.type(dtype=dtype),
+        )

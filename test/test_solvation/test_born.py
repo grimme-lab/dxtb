@@ -2,12 +2,14 @@
 Run tests for calculation of Born radii according to the Onufriev-Bashford-Case
 model. Reference values are obtained from the tblite version.
 """
+
 import pytest
 import torch
 
 from xtbml.exlibs.tbmalt import batch
 from xtbml.solvation import born
 from xtbml.solvation.data import vdw_rad_d3
+from xtbml.typing import Tensor
 
 from .samples import mb16_43
 
@@ -141,7 +143,7 @@ class TestBorn:
 
         positions.requires_grad_(True)
 
-        def func(positions):
+        def func(positions: Tensor):
             return born.compute_psi(numbers, positions, rvdw)
 
         # pylint: disable=import-outside-toplevel
@@ -159,7 +161,7 @@ class TestBorn:
         positions = sample["positions"].type(dtype)
         positions.requires_grad_(True)
 
-        def func(positions):
+        def func(positions: Tensor):
             return born.get_born_radii(numbers, positions)
 
         # pylint: disable=import-outside-toplevel

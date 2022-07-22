@@ -4,11 +4,10 @@ import torch
 from typing import Union, Dict, List
 
 from ..basis import slater, orthogonalize
-from ..exlibs.tbmalt import Geometry
 from ..param import Param, Element
 from ..constants import UINT8 as DTYPE_INT
-from ..constants import FLOAT64 as DTYPE_FLOAT
-
+from ..constants import PSE
+from ..typing import Tensor
 
 MAXG = 12
 """Maximum contraction length of basis functions. The limit is chosen as twice the maximum size returned by the STO-NG expansion"""
@@ -88,7 +87,7 @@ class Basis:
     # nao_tot             nao
     # ish_at              ish_at
 
-    def __init__(self, mol: Geometry, par: Param, acc: float = 1.0) -> None:
+    def __init__(self, numbers: Tensor, par: Param, acc: float = 1.0) -> None:
         self.nsh_per_atom = []
         self.nsh_per_id = {}
         self.shells = {}
@@ -96,7 +95,10 @@ class Basis:
 
         self.intcut = integral_cutoff(acc)
 
-        for isp in mol.chemical_symbols:
+        self.symbols = [PSE.get(x, "X") for x in numbers.tolist()]
+        self.usymbols = [PSE.get(x, "X") for x in torch.unique(numbers[numbers.ne(0)]).tolist()]
+
+        for isp in self.symbols:
             record = par.element[isp]
             self.cgto[isp] = _process_record(record)
             self.shells[isp] = len(record.shells)
@@ -106,16 +108,16 @@ class Basis:
 
         # Create mapping between atoms and shells
         # (offset array for indexing (e.g. selfenergy) later)
-        self.ish_at = torch.zeros(mol.get_length(), dtype=DTYPE_INT)
+        self.ish_at = torch.zeros(torch.numel(numbers), dtype=DTYPE_INT)
         counter = 0
-        for i in range(mol.get_length()):
+        for i in range(torch.numel(numbers)):
             self.ish_at[i] = counter
             counter += self.nsh_per_atom[i]
 
         # Make count of spherical orbitals for each shell
         self.nao_sh = torch.zeros(self.nsh_tot, dtype=DTYPE_INT)
         counter = 0
-        for i, element in enumerate(mol.chemical_symbols):
+        for i, element in enumerate(self.symbols):
             counter = int(self.ish_at[i].item())
             for ish in range(self.nsh_per_atom[i]):
                 self.nao_sh[counter + ish] = 2 * self.cgto[element][ish].ang + 1
@@ -130,14 +132,14 @@ class Basis:
             counter += self.nao_sh[i]
 
         counter = 0
-        for i, element in enumerate(mol.chemical_symbols):
+        for i, element in enumerate(self.symbols):
             for ish in range(self.shells[element]):
                 iat = int(self.ish_at[i].item())
                 self.iao_sh[ish + iat] = counter
                 counter += 2 * self.cgto[element][ish].ang + 1
 
         # Generate min_alpha and maxl
-        for i, element in enumerate(mol.unique_chemical_symbols()):
+        for i, element in enumerate(self.usymbols):
             for ish in range(self.shells[element]):
                 cgto = self.cgto[element][ish]
                 self.maxl = max(self.maxl, cgto.ang)

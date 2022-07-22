@@ -14,13 +14,62 @@ torch.tensor(6)
 """
 
 from __future__ import annotations
+from collections.abc import Callable
+from functools import wraps
 import torch
 
 from ..exlibs.tbmalt import batch
-from ..typing import Tensor, Union, Tuple
+from ..typing import Tensor
 
 
-def gather_twice(x, dim0, dim1, index):
+def _fill(index: Tensor, repeat: Tensor) -> Tensor:
+    """
+    Fill an index map using index offsets and number of repeats
+    """
+    index_map = index.new_zeros(torch.sum(repeat))
+    for idx, offset, count in zip(torch.arange(index.shape[-1]), index, repeat):
+        index_map[offset : offset + count] = idx
+    return index_map
+
+
+def _expand(index: Tensor, repeat: Tensor) -> Tensor:
+    """
+    Expand an index map using index offsets and number of repeats
+    """
+
+    return index.new_tensor(
+        [
+            idx
+            for offset, count in zip(index, repeat)
+            for idx in torch.arange(offset.item(), (offset + count).item(), 1)
+        ]
+    )
+
+
+def gather_twice_remove_negative_index(
+    func: Callable[[Tensor, int, int, Tensor], Tensor]
+) -> Callable[[Tensor, int, int, Tensor], Tensor]:
+    """Wrapper for `gather_twice` function that removes negative indices."""
+
+    @wraps(func)
+    def wrapper(x: Tensor, dim0: int, dim1: int, idx: Tensor) -> Tensor:
+        mask = idx >= 0
+
+        if torch.all(mask):
+            return func(x, dim0, dim1, idx)
+
+        # gathering in two dimensions requires expanding the mask
+        return torch.where(
+            mask.unsqueeze(-1) * mask.unsqueeze(-2),
+            func(x, dim0, dim1, torch.where(mask, idx, 0)),
+            torch.tensor(0, device=x.device, dtype=x.dtype),
+        )
+
+    return wrapper
+
+
+@gather_twice_remove_negative_index
+def gather_twice(x: Tensor, dim0: int, dim1: int, index: Tensor):
     """
     Spread a tensor along two dimensions
 
@@ -59,28 +108,98 @@ def gather_twice(x, dim0, dim1, index):
     return x
 
 
-def _fill(index: Tensor, repeat: Tensor) -> Tensor:
-    """
-    Fill an index map using index offsets and number of repeats
-    """
-    index_map = index.new_zeros(torch.sum(repeat))
-    for idx, offset, count in zip(torch.arange(index.shape[-1]), index, repeat):
-        index_map[offset : offset + count] = idx
-    return index_map
+def gather_remove_negative_index(
+    func: Callable[[Tensor, int, Tensor], Tensor]
+) -> Callable[[Tensor, int, Tensor], Tensor]:
+    """Wrapper for `gather` function that removes negative indices."""
+
+    @wraps(func)
+    def wrapper(x: Tensor, dim: int, idx: Tensor, **kwargs: str) -> Tensor:
+        mask = idx >= 0
+        if torch.all(mask):
+            return func(x, dim, idx, **kwargs)
+
+        return torch.where(
+            mask,
+            func(x, dim, torch.where(mask, idx, 0), **kwargs),
+            torch.tensor(0, device=x.device, dtype=x.dtype),
+        )
+
+    return wrapper
 
 
-def _expand(index: Tensor, repeat: Tensor) -> Tensor:
+@gather_remove_negative_index
+def gather(x: Tensor, dim: int, idx: Tensor) -> Tensor:
+    """Wrapper for `torch.gather`.
+
+    Parameters
+    ----------
+    x : Tensor
+        Tensor to gather
+    dim : int
+        Dimension to gather over
+    idx : Tensor
+        Index to gather over
+
+    Returns
+    -------
+    Tensor
+        Gathered tensor
     """
-    Expand an index map using index offsets and number of repeats
+    return torch.gather(x, dim, idx)
+
+
+def wrap_gather(x: Tensor, dim: int | tuple[int, int], idx: Tensor) -> Tensor:
+    """Wrapper for gather function. Also handles multiple dimensions.
+
+    Parameters
+    ----------
+    x : Tensor
+        Tensor to gather
+    dim : int | tuple[int, int]
+        Dimension to gather over
+    idx : Tensor
+        Index to gather over
+
+    Returns
+    -------
+    Tensor
+        Gathered tensor
     """
 
-    return index.new_tensor(
-        [
-            idx
-            for offset, count in zip(index, repeat)
-            for idx in torch.arange(offset.item(), (offset + count).item(), 1)
-        ]
-    )
+    if idx.ndim > 1:
+        if isinstance(dim, int):
+            if x.ndim < idx.ndim:
+                x = x.unsqueeze(0).expand(idx.size(0), -1)
+        else:
+            if x.ndim <= idx.ndim:
+                x = x.unsqueeze(0).expand(idx.size(0), -1, -1)
+
+    return gather(x, dim, idx) if isinstance(dim, int) else gather_twice(x, *dim, idx)
+
+
+def wrap_scatter_reduce(x: Tensor, dim: int, idx: Tensor, reduce: str) -> Tensor:
+    """Wrapper for `torch.scatter_reduce` that removes negative indices.
+
+    Parameters
+    ----------
+    x : Tensor
+        Tensor to reduce
+    dim : int
+        Dimension to reduce over, defaults to -1
+    idx : Tensor
+        Index to reduce over
+    reduce : str
+        Reduction method, defaults to "sum"
+
+    Returns
+    -------
+    Tensor
+        Reduced tensor
+    """
+    kwargs = {"reduce": reduce}
+    idx = torch.where(idx >= 0, idx, 0)
+    return torch.scatter_reduce(x, dim, idx, **kwargs)
 
 
 class IndexHelper:
@@ -154,8 +273,8 @@ class IndexHelper:
             [
                 tensor.dtype != self.dtype
                 for tensor in (
-                    # self.unique_angular,
-                    # self.angular,
+                    self.unique_angular,
+                    self.angular,
                     self.atom_to_unique,
                     self.ushells_to_unique,
                     self.shells_to_ushell,
@@ -194,7 +313,7 @@ class IndexHelper:
     def from_numbers(
         cls,
         numbers: Tensor,
-        angular: dict[int, list[int | float]],
+        angular: dict[int, list[int]],
         dtype: torch.dtype = torch.int64,
     ) -> "IndexHelper":
         """
@@ -246,14 +365,7 @@ class IndexHelper:
                 ushells_per_unique[atom_to_unique],
             )
 
-        _angular = batch.pack(
-            [
-                torch.tensor(angular.get(number.item(), []), dtype=dtype)
-                for number in numbers.flatten()
-            ],
-            value=pad_val,
-        )
-        _angular = _angular.reshape((*numbers.shape, _angular.shape[-1]))
+        unique, atom_to_unique = torch.unique(numbers, return_inverse=True)
 
         shells_per_atom = ushells_per_unique[atom_to_unique]
         shell_index = torch.cumsum(shells_per_atom, -1) - shells_per_atom
@@ -265,7 +377,7 @@ class IndexHelper:
                     _fill(shell_index[_batch, :], shells_per_atom[_batch, :])
                     for _batch in range(numbers.shape[0])
                 ],
-                value=0,
+                value=pad_val,  # inconsistent padding values if pad_val is not 0
             )
         else:
             shells_to_atom = _fill(shell_index, shells_per_atom)
@@ -297,7 +409,7 @@ class IndexHelper:
                     _fill(orbital_index[_batch, :], orbitals_per_shell[_batch, :])
                     for _batch in range(numbers.shape[0])
                 ],
-                value=0,
+                value=pad_val,
             )
         else:
             orbitals_to_shell = _fill(orbital_index, orbitals_per_shell)
@@ -337,7 +449,7 @@ class IndexHelper:
             Shell-resolved tensor
         """
 
-        return torch.scatter_reduce(x, dim, self.orbitals_to_shell, reduce=reduce)
+        return wrap_scatter_reduce(x, dim, self.orbitals_to_shell, reduce)
 
     def reduce_shell_to_atom(
         self, x: Tensor, dim: int = -1, reduce: str = "sum"
@@ -360,7 +472,7 @@ class IndexHelper:
             Atom-resolved tensor
         """
 
-        return torch.scatter_reduce(x, dim, self.shells_to_atom, reduce=reduce)
+        return wrap_scatter_reduce(x, dim, self.shells_to_atom, reduce)
 
     def reduce_orbital_to_atom(
         self, x: Tensor, dim: int = -1, reduce: str = "sum"
@@ -408,11 +520,7 @@ class IndexHelper:
             Shell-resolved tensor
         """
 
-        return (
-            torch.gather(x, dim, self.shells_to_atom)
-            if isinstance(dim, int)
-            else gather_twice(x, *dim, self.shells_to_atom)
-        )
+        return wrap_gather(x, dim, self.shells_to_atom)
 
     def spread_shell_to_orbital(
         self, x: Tensor, dim: int | tuple[int, int] = -1
@@ -433,13 +541,11 @@ class IndexHelper:
             Orbital-resolved tensor
         """
 
-        return (
-            torch.gather(x, dim, self.orbitals_to_shell)
-            if isinstance(dim, int)
-            else gather_twice(x, *dim, self.orbitals_to_shell)
-        )
+        return wrap_gather(x, dim, self.orbitals_to_shell)
 
-    def spread_atom_to_orbital(self, x: Tensor, dim: int = -1) -> Tensor:
+    def spread_atom_to_orbital(
+        self, x: Tensor, dim: int | tuple[int, int] = -1
+    ) -> Tensor:
         """
         Spread atom-resolved tensor to orbital-resolved tensor
 
@@ -447,7 +553,7 @@ class IndexHelper:
         ----------
         x : Tensor
             Atom-resolved tensor
-        dim : int
+        dim : int | (int, int)
             Dimension to spread over, defaults to -1
 
         Returns
@@ -458,6 +564,117 @@ class IndexHelper:
 
         return self.spread_shell_to_orbital(
             self.spread_atom_to_shell(x, dim=dim), dim=dim
+        )
+
+    def spread_uspecies_to_atom(
+        self, x: Tensor, dim: int | tuple[int, int] = -1
+    ) -> Tensor:
+        """
+        Spread unique species tensor to atom-resolved tensor
+
+        Parameters
+        ----------
+        x : Tensor
+            Unique specie tensor
+        dim : int | (int, int)
+            Dimension to spread over, defaults to -1
+
+        Returns
+        -------
+        Tensor
+            Atom-resolved tensor
+        """
+
+        return wrap_gather(x, dim, self.atom_to_unique)
+
+    def spread_uspecies_to_shell(
+        self, x: Tensor, dim: int | tuple[int, int] = -1
+    ) -> Tensor:
+        """
+        Spread unique species tensor to shell-resolved tensor
+
+        Parameters
+        ----------
+        x : Tensor
+            Unique specie tensor
+        dim : int | (int, int)
+            Dimension to spread over, defaults to -1
+
+        Returns
+        -------
+        Tensor
+            Shell-resolved tensor
+        """
+
+        return self.spread_atom_to_shell(
+            self.spread_uspecies_to_atom(x, dim=dim), dim=dim
+        )
+
+    def spread_uspecies_to_orbital(
+        self, x: Tensor, dim: int | tuple[int, int] = -1
+    ) -> Tensor:
+        """
+        Spread unique species tensor to orbital-resolved tensor
+
+        Parameters
+        ----------
+        x : Tensor
+            Unique specie tensor
+        dim : int
+            Dimension to spread over, defaults to -1
+
+        Returns
+        -------
+        Tensor
+            Orbital-resolved tensor
+        """
+
+        return self.spread_atom_to_orbital(
+            self.spread_uspecies_to_atom(x, dim=dim), dim=dim
+        )
+
+    def spread_ushell_to_shell(
+        self, x: Tensor, dim: int | tuple[int, int] = -1
+    ) -> Tensor:
+        """
+        Spread unique shell tensor to shell-resolved tensor
+
+        Parameters
+        ----------
+        x : Tensor
+            Unique shell tensor
+        dim : int | (int, int)
+            Dimension to spread over, defaults to -1
+
+        Returns
+        -------
+        Tensor
+            Shell-resolved tensor
+        """
+
+        return wrap_gather(x, dim, self.shells_to_ushell)
+
+    def spread_ushell_to_orbital(
+        self, x: Tensor, dim: int | tuple[int, int] = -1
+    ) -> Tensor:
+        """
+        Spread unique shell tensor to orbital-resolved tensor
+
+        Parameters
+        ----------
+        x : Tensor
+            Unique shell tensor
+        dim : int | (int, int)
+            Dimension to spread over, defaults to -1
+
+        Returns
+        -------
+        Tensor
+            Orbital-resolved tensor
+        """
+
+        return self.spread_shell_to_orbital(
+            self.spread_ushell_to_shell(x, dim=dim), dim=dim
         )
 
     @property
@@ -537,7 +754,7 @@ class IndexHelper:
             return self
 
         return self.__class__(
-            self.unique_angular.type(dtype=dtype),
+            self.unique_angular.type(dtype),
             self.angular.type(dtype),
             self.atom_to_unique.type(dtype),
             self.ushells_to_unique.type(dtype),
