@@ -1213,4 +1213,17 @@ samples: dict[str, Record] = {
         "h0": torch.tensor(0.0),
         "escf": torch.tensor(-27.612142805843),
     },
+    "C2H2": {
+        "numbers": symbol2number("C C H H".split()),
+        "positions": torch.tensor(
+            [
+                [-0.731101, -0.036296, -0.000000],
+                [0.990357, -0.139998, 0.000004],
+                [-1.799165, 0.028045, -0.000003],
+                [2.058421, -0.204339, 0.000006],
+            ]
+        ),
+        "h0": torch.tensor(0.0),
+        "escf": torch.tensor(0.0),
+    },
 }
