@@ -28,7 +28,7 @@ def test_single(dtype: torch.dtype, name: str):
 
     ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
 
-    wbo = wiberg.get_bond_order(density, overlap, ihelp)
+    wbo = wiberg.get_bond_order(overlap, density, ihelp)
     assert torch.allclose(ref, wbo)
 
 
@@ -65,5 +65,5 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
 
     ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
 
-    wbo = wiberg.get_bond_order(density, overlap, ihelp)
+    wbo = wiberg.get_bond_order(overlap, density, ihelp)
     assert torch.allclose(ref, wbo)

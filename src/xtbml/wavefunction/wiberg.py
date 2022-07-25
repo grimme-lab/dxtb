@@ -10,16 +10,15 @@ from ..basis import IndexHelper
 from ..typing import Tensor
 
 
-def get_bond_order(density: Tensor, overlap: Tensor, ihelp: IndexHelper) -> Tensor:
-    """
-    Calculate Wiberg bond orders.
+def get_bond_order(overlap: Tensor, density: Tensor, ihelp: IndexHelper) -> Tensor:
+    """Calculate Wiberg bond orders.
 
     Parameters
     ----------
-    density : Tensor
-        Density matrix.
     overlap : Tensor
         Overlap matrix.
+    density : Tensor
+        Density matrix.
     ihelp : IndexHelper
         Helper class for indexing.
 

@@ -29,7 +29,7 @@ def test_single_number_electrons(dtype: torch.dtype, name: str):
 
     ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
 
-    pop = mulliken.get_atomic_populations(ihelp, density, overlap)
+    pop = mulliken.get_atomic_populations(overlap, density, ihelp)
     assert torch.allclose(ref, torch.sum(pop, dim=-1))
 
 
@@ -66,7 +66,7 @@ def test_batch_number_electrons(dtype: torch.dtype, name1: str, name2: str):
 
     ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
 
-    pop = mulliken.get_atomic_populations(ihelp, density, overlap)
+    pop = mulliken.get_atomic_populations(overlap, density, ihelp)
     assert torch.allclose(ref, torch.sum(pop, dim=-1))
 
 
@@ -80,7 +80,7 @@ def test_single_pop_shell(dtype: torch.dtype, name: str):
     ref = sample["mulliken_pop"].type(dtype)
 
     ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
-    pop = mulliken.get_shell_populations(ihelp, density, overlap)
+    pop = mulliken.get_shell_populations(overlap, density, ihelp)
 
     # manually reduce 1s and 2s of hydrogen as xtb does not resolve this
     if name == "H2":
@@ -128,7 +128,7 @@ def test_batch_pop_shell(dtype: torch.dtype, name1: str, name2: str):
     )
 
     ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
-    pop = mulliken.get_shell_populations(ihelp, density, overlap)
+    pop = mulliken.get_shell_populations(overlap, density, ihelp)
 
     # manually reduce 1s and 2s of hydrogen as xtb does not resolve this
     if name1 == "H2":
@@ -177,7 +177,7 @@ def test_single_charges(dtype: torch.dtype, name: str):
     h0 = Hamiltonian(numbers, positions, par, ihelp)
     n0 = ihelp.reduce_orbital_to_atom(h0.get_occupation())
 
-    pop = mulliken.get_mulliken_atomic_charges(ihelp, density, overlap, n0)
+    pop = mulliken.get_mulliken_atomic_charges(overlap, density, ihelp, n0)
     assert torch.allclose(ref, pop, atol=1e-5)
 
 
@@ -222,5 +222,5 @@ def test_batch_charges(dtype: torch.dtype, name1: str, name2: str):
     h0 = Hamiltonian(numbers, positions, par, ihelp)
     n0 = ihelp.reduce_orbital_to_atom(h0.get_occupation())
 
-    pop = mulliken.get_mulliken_atomic_charges(ihelp, density, overlap, n0)
+    pop = mulliken.get_mulliken_atomic_charges(overlap, density, ihelp, n0)
     assert torch.allclose(ref, pop, atol=1e-5)

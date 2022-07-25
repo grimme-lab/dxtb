@@ -32,21 +32,21 @@ def get_orbital_populations(
 
 
 def get_shell_populations(
-    indexhelper: IndexHelper,
     overlap: Tensor,
     density: Tensor,
+    indexhelper: IndexHelper,
 ) -> Tensor:
     """
     Compute shell-resolved populations using Mulliken population analysis.
 
     Parameters
     ----------
-    indexhelper : IndexHelper
-        Index mapping for the basis set.
     overlap : Tensor
         Overlap matrix.
     density : Tensor
         Density matrix.
+    indexhelper : IndexHelper
+        Index mapping for the basis set.
 
     Returns
     -------
@@ -60,21 +60,21 @@ def get_shell_populations(
 
 
 def get_atomic_populations(
-    indexhelper: IndexHelper,
     overlap: Tensor,
     density: Tensor,
+    indexhelper: IndexHelper,
 ) -> Tensor:
     """
     Compute atom-resolved populations.
 
     Parameters
     ----------
-    indexhelper : IndexHelper
-        Index mapping for the basis set.
     overlap : Tensor
         Overlap matrix.
     density : Tensor
         Density matrix.
+    indexhelper : IndexHelper
+        Index mapping for the basis set.
 
     Returns
     -------
@@ -83,14 +83,14 @@ def get_atomic_populations(
     """
 
     return indexhelper.reduce_shell_to_atom(
-        get_shell_populations(indexhelper, overlap, density)
+        get_shell_populations(overlap, density, indexhelper)
     )
 
 
 def get_mulliken_shell_charges(
-    indexhelper: IndexHelper,
     overlap: Tensor,
     density: Tensor,
+    indexhelper: IndexHelper,
     n0: Tensor,
 ) -> Tensor:
     """
@@ -98,12 +98,12 @@ def get_mulliken_shell_charges(
 
     Parameters
     ----------
-    indexhelper : IndexHelper
-        Index mapping for the basis set.
     overlap : Tensor
         Overlap matrix.
     density : Tensor
         Density matrix.
+    indexhelper : IndexHelper
+        Index mapping for the basis set.
     n0 : Tensor
         Shell-resolved reference occupancy numbers.
 
@@ -113,13 +113,13 @@ def get_mulliken_shell_charges(
         Shell-resolved Mulliken partial charges.
     """
 
-    return n0 - get_shell_populations(indexhelper, overlap, density)
+    return n0 - get_shell_populations(overlap, density, indexhelper)
 
 
 def get_mulliken_atomic_charges(
-    indexhelper: IndexHelper,
     overlap: Tensor,
     density: Tensor,
+    indexhelper: IndexHelper,
     n0: Tensor,
 ) -> Tensor:
     """
@@ -127,12 +127,12 @@ def get_mulliken_atomic_charges(
 
     Parameters
     ----------
-    indexhelper : IndexHelper
-        Index mapping for the basis set.
     overlap : Tensor
         Overlap matrix.
     density : Tensor
         Density matrix.
+    indexhelper : IndexHelper
+        Index mapping for the basis set.
     n0 : Tensor
         Atom-resolved reference occupancy numbers.
 
@@ -142,4 +142,4 @@ def get_mulliken_atomic_charges(
         Atom-resolved Mulliken partial charges.
     """
 
-    return n0 - get_atomic_populations(indexhelper, overlap, density)
+    return n0 - get_atomic_populations(overlap, density, indexhelper)
