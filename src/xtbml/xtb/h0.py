@@ -303,16 +303,15 @@ class Hamiltonian:
         # ----------------------
         # Eq.24: PI(R_AB, l, l')
         # ----------------------
-        distances = torch.cdist(self.positions, self.positions, p=2).detach()  # FIXME
+        distances = torch.cdist(self.positions, self.positions, p=2)
         rad = self.ihelp.spread_uspecies_to_atom(self.rad)
         rr = torch.where(
-            mask,
+            mask * ~torch.diag_embed(torch.ones_like(real)),
             distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2)),
-            zero,
+            distances.new_tensor(torch.finfo(distances.dtype).eps),
         )
-        rr_sqrt = torch.sqrt(rr)
         rr_sh = self.ihelp.spread_atom_to_shell(
-            rr_sqrt,
+            torch.sqrt(rr),
             (-2, -1),
         )
 

@@ -68,15 +68,14 @@ def test_grad(testcase, dtype=torch.float):
 
     name, ref = testcase
     numbers = samples[name]["numbers"]
-    with torch.autograd.detect_anomaly():
-        positions = samples[name]["positions"].type(dtype).requires_grad_(True)
-        charges = torch.tensor(0.0, dtype=dtype)
+    positions = samples[name]["positions"].type(dtype).requires_grad_(True)
+    charges = torch.tensor(0.0, dtype=dtype)
 
-        calc = Calculator(numbers, positions, par)
+    calc = Calculator(numbers, positions, par)
 
-        results = calc.singlepoint(numbers, positions, charges, verbosity=0)
-        energy = results.get("energy").sum(-1)
+    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    energy = results.get("energy").sum(-1)
 
-        energy.backward()
+    energy.backward()
     gradient = positions.grad.clone()
     assert torch.allclose(gradient, ref, atol=tol)
