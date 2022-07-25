@@ -185,6 +185,7 @@ struc.xyz
 # datasets
 data/archive
 data/*/benchmark*
+data/*/processed*
 data/misc
 
 # exclude some sample and reaction files for tests
