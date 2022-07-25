@@ -49,8 +49,7 @@ def get_coordination_number(
         raise ValueError("Shape of positions is not consistent with atomic numbers")
 
     real = numbers != 0
-    mask = real.unsqueeze(-2) * real.unsqueeze(-1)
-    mask.diagonal(dim1=-2, dim2=-1).fill_(False)
+    mask = real.unsqueeze(-2) * real.unsqueeze(-1) * ~torch.diag_embed(torch.ones_like(real))
 
     distances = torch.where(
         mask,
