@@ -1,4 +1,5 @@
-import sys
+from __future__ import annotations
+from tkinter import N
 import torch
 from torch_geometric.data import InMemoryDataset, Data as pygData
 from pathlib import Path
@@ -7,6 +8,8 @@ from .adjacency import calc_adj
 from .samples import Sample
 from ..typing import Tensor
 from .dataset import get_gmtkn55_dataset, SampleDataset
+from ..basis import MatrixHelper, IndexHelper, get_elem_param_shells
+from ..param.gfn1 import GFN1_XTB as par
 
 
 class MolecularGraph_Dataset_Parametrisation:
@@ -37,7 +40,9 @@ class MolecularGraph_Dataset_Parametrisation:
         elif root.name == "PTB":
 
             def get_ptb_dataset(root: Path) -> SampleDataset:
-                list_of_path = sorted(root.glob("samples_*.json"))
+                list_of_path = sorted(
+                    root.glob("samples_*.json")
+                )  # samples_*.json samples_HE*.json samples_DUMMY*.json
                 return SampleDataset.from_json(list_of_path)
 
             self.get_dataset = get_ptb_dataset
@@ -104,38 +109,49 @@ class MolecularGraph_Dataset(InMemoryDataset):
             sample.adj = calc_adj(sample).type(sample.dtype)
 
         edge_index = self._get_edge_index(sample.adj)  # [2, number of edges]
+        # print("edge_index", edge_index.shape)
 
         edge_attr = self._get_edge_attr(
-            edge_index.size(1)
+            edge_index.size(1), sample
         )  # [number of edges, number of edge attributes]
+        # print("edge_attr", edge_attr.shape)
 
         node_attr = self._get_node_attr(
             sample
         )  # [number of nodes, number of node features]
+        # print("node_attr", node_attr.shape)
 
         # atomic positions for e.g. equivariant calculations
         positions = sample.positions  # [number of nodes, 3]
+        # print("positions", positions.shape)
 
         # graph-wide target
         target = torch.sum(sample.egfn1).view([1, 1])  # [1, *]
-
-        # sample and dataset name
-        uid = sample.uid
-        buid = sample.buid
-        # dummy
-        egfn1 = torch.tensor(123.4)  # TODO
-        egfn2 = torch.tensor(666.6)
+        # print("target", target.shape)
 
         return pygData(
             x=node_attr,
             edge_index=edge_index,
             edge_attr=edge_attr,
             pos=positions,
-            y=target,
-            uid=uid,
-            buid=buid,
-            egfn1=egfn1,
-            egfn2=egfn2,
+            # y=target,
+            # sample and dataset name
+            uid=sample.uid,
+            buid=sample.buid,
+            # energies and gradients
+            egfn1=sample.egfn1,
+            egfn2=sample.egfn2,
+            eref=sample.eref,
+            ggfn1=sample.ggfn1,
+            ggfn2=sample.ggfn2,
+            gref=sample.gref,
+            # molecular properties
+            numbers=sample.numbers,
+            charges=sample.charges,
+            unpaired_e=sample.unpaired_e,
+            # shell resolved
+            h0=sample.h0,
+            ovlp=sample.ovlp,
         )
 
     def _get_edge_index(self, adjacency_matrix: Tensor) -> Tensor:
@@ -149,23 +165,57 @@ class MolecularGraph_Dataset(InMemoryDataset):
         """
         return adjacency_matrix.nonzero().t().contiguous()
 
-    def _get_edge_attr(self, num_edges: int) -> Tensor:
-
-        # TODO: add Hamiltonian and Overlap as edge weights
-        #       (use index helper), also add diagonal entries
-        #       to node attributes
+    def _get_edge_attr(self, num_edges: int, sample: Sample) -> Tensor:
 
         # NOTE: currently no edge attributes are added
         num_edge_features = 1
-
-        return torch.ones(
+        edge_attr = torch.ones(
             (num_edges, num_edge_features),
             dtype=torch.float,
-        )  # [number of edges, number of edge attributes]
+        )
+
+        if False:
+            # adding Hamiltonian blocks as edge attributes
+
+            # anuglar momenta and respective orbitals for different elements
+            angular, valence_shells = get_elem_param_shells(par.element, valence=True)
+
+            ihelp = IndexHelper.from_numbers(sample.numbers, angular)
+
+            n_atoms = sample.adj.shape[0]
+
+            # get hamiltonian block for all atomic combinations
+            combi = torch.combinations(
+                torch.arange(n_atoms), r=2, with_replacement=True
+            )
+            for i, j in combi:
+                block_ij = MatrixHelper.get_atomblock(sample.h0, i, j, ihelp)
+                print(block_ij.shape)
+            # TODO: how to add matricies of different size to pyg?
+            #       (physically meaningful mapping to graph)
+
+        return edge_attr  # [number of edges, number of edge attributes]
 
     def _get_node_attr(self, sample: Sample) -> Tensor:
+        """Stack all relevant atom-wise features to single node tensor.
+        Each node corresponds to single atom in molecule.
 
-        # NOTE: so far only atom-wise features
+        Parameters
+        ----------
+        sample : Sample
+            Sample containing information on single molecule
+
+        Returns
+        -------
+        Tensor
+            Node attributes of shape [number of nodes, number of node features]
+        """
+
+        # TODO (optional): hamiltonian spread on atoms
+        # orb_sums = MatrixHelper.get_orbital_sum(sample.h0, ihelp)
+        # atomic_sums = torch.stack([torch.sum(orb) for orb in orb_sums])
+        # print(atomic_sums)
+
         return torch.stack(
             [
                 sample.egfn1,
@@ -175,4 +225,4 @@ class MolecularGraph_Dataset(InMemoryDataset):
                 sample.cn,
             ],
             dim=1,
-        )  # [number of nodes, number of node features]
+        )
