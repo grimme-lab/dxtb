@@ -18,21 +18,19 @@ from functools import wraps
 import torch
 
 from ..exlibs.tbmalt import batch
-from ..typing import Callable, Tensor
+from ..typing import Callable, Tensor, Union
 
 
 Gather = Callable[[Tensor, int, Tensor], Tensor]
-
-# FIXME: Scatter takes an additional `str` argument -> overloading?
-# Scatter = Callable[[Tensor, int, Tensor, str], Tensor]
-ScatterOrGather = Gather
+Scatter = Callable[[Tensor, int, Tensor, str], Tensor]
+ScatterOrGather = Union[Gather, Scatter]
 
 
 def _fill(index: Tensor, repeat: Tensor) -> Tensor:
     """
     Fill an index map using index offsets and number of repeats
     """
-    index_map = index.new_zeros(torch.sum(repeat))
+    index_map = index.new_zeros(int(torch.sum(repeat).item()))
     for idx, offset, count in zip(torch.arange(index.shape[-1]), index, repeat):
         index_map[offset : offset + count] = idx
     return index_map
@@ -64,17 +62,17 @@ def twice_remove_negative_index(
         dim0: int,
         dim1: int,
         idx: Tensor,
-        **kwargs,
+        *args: str,
     ) -> Tensor:
         mask = idx >= 0
 
         if torch.all(mask):
-            return func(f, x, dim0, dim1, idx, **kwargs)
+            return func(f, x, dim0, dim1, idx, *args)
 
         # gathering in two dimensions requires expanding the mask
         return torch.where(
             mask.unsqueeze(-1) * mask.unsqueeze(-2),
-            func(f, x, dim0, dim1, torch.where(mask, idx, 0), **kwargs),
+            func(f, x, dim0, dim1, torch.where(mask, idx, 0), *args),
             x.new_tensor(0.0),
         )
 
@@ -83,12 +81,12 @@ def twice_remove_negative_index(
 
 @twice_remove_negative_index
 def twice(
-    func: Callable[[Tensor, int, Tensor], Tensor],
+    func: ScatterOrGather,
     x: Tensor,
     dim0: int,
     dim1: int,
     idx: Tensor,
-    **kwargs: str,
+    *args: str,
 ):
     """
     Spread or gather a tensor along two dimensions
@@ -118,7 +116,7 @@ def twice(
         x,
         dim1,
         idx.unsqueeze(dim0).expand(*shape0),
-        **kwargs,
+        *args,
     )
 
     shape1 = [-1] * x.dim()
@@ -127,7 +125,7 @@ def twice(
         x,
         dim0,
         idx.unsqueeze(dim1).expand(*shape1),
-        **kwargs,
+        *args,
     )
     return x
 
@@ -139,14 +137,14 @@ def gather_remove_negative_index(func: Gather) -> Gather:
     """Wrapper for `gather` function that removes negative indices."""
 
     @wraps(func)
-    def wrapper(x: Tensor, dim: int, idx: Tensor, **kwargs: str) -> Tensor:
+    def wrapper(x: Tensor, dim: int, idx: Tensor, *args: str) -> Tensor:
         mask = idx >= 0
         if torch.all(mask):
-            return func(x, dim, idx, **kwargs)
+            return func(x, dim, idx, *args)
 
         return torch.where(
             mask,
-            func(x, dim, torch.where(mask, idx, 0), **kwargs),
+            func(x, dim, torch.where(mask, idx, 0), *args),
             torch.tensor(0, device=x.device, dtype=x.dtype),
         )
 
@@ -210,8 +208,8 @@ def wrap_gather(x: Tensor, dim: int | tuple[int, int], idx: Tensor) -> Tensor:
 # scatter_reduce
 
 
-def scatter_reduce(x: Tensor, dim: int, idx: Tensor, **kwargs: str) -> Tensor:
-    return torch.scatter_reduce(x, dim, idx, **kwargs)
+def scatter_reduce(x: Tensor, dim: int, idx: Tensor, *args: str) -> Tensor:
+    return torch.scatter_reduce(x, dim, idx, *args)
 
 
 def wrap_scatter_reduce(
@@ -235,13 +233,12 @@ def wrap_scatter_reduce(
     Tensor
         Reduced tensor
     """
-    kwargs = {"reduce": reduce}
-    idx = torch.where(idx >= 0, idx, 0)
 
+    idx = torch.where(idx >= 0, idx, 0)
     return (
-        scatter_reduce(x, dim, idx, **kwargs)
+        scatter_reduce(x, dim, idx, reduce)
         if isinstance(dim, int)
-        else twice(torch.scatter_reduce, x, *dim, idx, **kwargs)
+        else twice(torch.scatter_reduce, x, *dim, idx, reduce)
     )
 
 
