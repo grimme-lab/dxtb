@@ -209,7 +209,9 @@ class Basic_CNN(nn.Module):
                     torch.unsqueeze(reactant.egfn1, 1),
                     torch.unsqueeze(reactant.edisp, 1),
                     torch.unsqueeze(reactant.erep, 1),
-                    torch.unsqueeze(reactant.ees, 1),
+                    torch.unsqueeze(
+                        reactant.qat, 1
+                    ),  # TODO: remove (substitute for ees)
                     torch.unsqueeze(reactant.qat, 1),
                 ),
                 1,
@@ -270,6 +272,8 @@ class Basic_EGNN(nn.Module):
     def __init__(self, cfg: Dict[str, int]):
         super().__init__()
 
+        print("Setup EGNN")
+
         self.egnn = EGNN_Network(
             num_tokens=21, dim=32, depth=3, only_sparse_neighbors=True
         )
@@ -277,12 +281,14 @@ class Basic_EGNN(nn.Module):
         self.layer1 = EGNN(dim=2)
         self.layer2 = EGNN(dim=2)
 
-        self.hidden_size = 2  # dummy value
+        self.hidden_size = 3  # dummy value
         self.kernel_size = 2  # dummy value
 
-        self.input = 14087  # TODO: set as argument
+        self.input = 148  # TODO: set as argument
         self.hidden = 30
         self.output = 1
+
+        self.input_atm = 81  # TODO: set as argument
 
         # NOTE: as of now, reuse same CNN for all features
         self.conv1 = nn.Conv2d(
@@ -301,6 +307,10 @@ class Basic_EGNN(nn.Module):
         )
 
         self.pool = nn.MaxPool2d(2, 2)
+        self.avgpool = nn.AdaptiveAvgPool3d((None, None, 1))
+        self.flattening = False  # empirically False (pooling) is better
+
+        self.fc_atm = nn.Linear(self.input_atm, self.hidden)
 
         self.fc1 = nn.Linear(self.input, self.hidden * 2)
         self.fc2 = nn.Linear(self.hidden * 2, self.hidden)
@@ -365,22 +375,91 @@ class Basic_EGNN(nn.Module):
             atm, coords = self.layer1(feats, reactant.xyz)
 
             # print(feats.shape, coords.shape)  # (bs, n_atms, n_feats), (bs, n_atms, 3)
-            import sys
-
             # sys.exit(0)
 
             # overlap
             o = torch.unsqueeze(reactant.ovlp, 1)
-            o = self.pool(F.leaky_relu(self.conv1(o)))
-            o = self.pool(F.leaky_relu(self.conv2(o)))
+            x1 = self.pool(F.leaky_relu(self.conv1(o)))
+            x1 = F.leaky_relu(self.conv2(x1))
 
             # hamiltonian
             h = torch.unsqueeze(reactant.h0, 1)
-            h = self.pool(F.leaky_relu(self.conv1(h)))
-            h = self.pool(F.leaky_relu(self.conv2(h)))
+            x2 = self.pool(F.leaky_relu(self.conv1(h)))
+            x2 = F.leaky_relu(self.conv2(x2))
 
             # merge features
-            x = torch.cat((o, h), 1)
+            x = torch.cat((x1, x2), 1)
+
+            # print(x.shape)
+            if self.flattening:
+                # flatten all dimensions except batch
+                x = torch.flatten(x, start_dim=2)
+                # torch.Size([2, 6, 576]) torch.Size([2, 6, 20])
+                # torch.Size([2, 6, 596])
+            else:
+                # pooling
+                x = self.avgpool(x)
+                x = x.view(x.size(0), x.size(1), -1)
+                # torch.Size([2, 6, 24]) torch.Size([2, 6, 20])
+                # torch.Size([2, 6, 44])
+                # NOTE: higher variance than flattening, peak results better(?)
+
+            # atomwise features
+            x_atm = torch.cat(
+                (
+                    torch.unsqueeze(reactant.cn, 1),
+                    torch.unsqueeze(reactant.egfn1, 1),
+                    torch.unsqueeze(reactant.edisp, 1),
+                    torch.unsqueeze(reactant.erep, 1),
+                    torch.unsqueeze(
+                        reactant.qat, 1
+                    ),  # TODO: remove (substitute for ees)
+                    torch.unsqueeze(reactant.qat, 1),
+                ),
+                1,
+            )  # (bs, n_f, X)
+
+            # TODO: not used yet
+            # print(reactant.charges)
+            # print(reactant.unpaired_e)
+
+            # encoding of atomwise features
+            x_atm = F.leaky_relu(self.fc_atm(x_atm))
+            # NOTE: due to permutational invariance of atoms MLP preferred over CNN
+
+            # merge
+            # print(x.shape, x_atm.shape)
+            x = torch.cat((x, x_atm), -1)
+            # print(x.shape)
+
+            # combined feature evaluation
+            x = F.leaky_relu(self.fc1(x))
+            x = F.leaky_relu(self.fc2(x))
+            x = self.fc3(x)
+
+            # weighting by stoichiometry factor
+            x = x.view(x.size(0), -1) * batched_reaction.nu[:, i].reshape(-1, 1)
+            # print(x.shape) # (bs, 1)
+            # TODO: check weighting applied correctly
+
+            # store reactant contributions
+            if i == 0:
+                reactant_contributions = x
+            else:
+                reactant_contributions = torch.cat((reactant_contributions, x), 1)
+
+        """print(
+            "reactant_contributions:",
+            reactant_contributions.shape,
+            reactant_contributions,
+        )"""
+
+        # sum over reactant contributions
+        result = torch.sum(reactant_contributions, 1)
+
+        return result
+
+        if True:
             x = torch.flatten(x, 1)  # flatten all dimensions except batch
             atm = torch.flatten(atm, 1)
             x = torch.cat((x, atm), 1)
@@ -393,8 +472,6 @@ class Basic_EGNN(nn.Module):
             x = torch.cat((x, e), 1)
 
             if False:
-                import sys
-
                 print("VERBOSE END")
                 sys.exit(0)
 

@@ -11,6 +11,8 @@ import torch.nn as nn
 import torch.optim as optim
 import pandas as pd
 
+from xtbml.ml.model_gnn import GNN
+
 from .model import Basic_CNN, Simple_Net  # , Basic_EGNN
 from .loss import WTMAD2Loss
 
@@ -30,6 +32,7 @@ def get_architecture(name: str):
         "Basic_CNN": Basic_CNN,
         # "EGNN": Basic_EGNN,
         "Simple_Net": Simple_Net,
+        "GNN": GNN,
     }
 
     return architecture_dict.get(name, Basic_CNN)
