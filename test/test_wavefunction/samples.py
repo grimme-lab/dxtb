@@ -19,6 +19,9 @@ class Record(Molecule):
     mulliken_charges: Tensor
     """Atom-resolved Mulliken partial charges."""
 
+    mulliken_charges_shell: Tensor
+    """Shell-resolved Mulliken partial charges."""
+
     mulliken_pop: Tensor
     """Shell-resolved Mulliken populations."""
 
@@ -84,7 +87,22 @@ samples: dict[str, Record] = {
             ]
         ).reshape((4, 4)),
         "mulliken_charges": torch.tensor([0.00000, 0.00000]),
-        "mulliken_pop": torch.tensor([1.000, 1.000]),
+        "mulliken_charges_shell": torch.tensor(
+            [
+                2.2700790464325049e-004,
+                -2.2700790464299256e-004,
+                2.2700790464325049e-004,
+                -2.2700790464297445e-004,
+            ]
+        ),
+        "mulliken_pop": torch.tensor(
+            [
+                0.99977299209535675,
+                2.2700790464299256e-004,
+                0.99977299209535675,
+                2.2700790464297445e-004,
+            ]
+        ),
         "wiberg": torch.tensor(
             [
                 [0.0000000000000000, 1.0000000000000007],
@@ -186,7 +204,22 @@ samples: dict[str, Record] = {
             ]
         ).reshape((6, 6)),
         "mulliken_charges": torch.tensor([0.27609, -0.27609]),
-        "mulliken_pop": torch.tensor([0.382, 0.342, 1.276]),
+        "mulliken_charges_shell": torch.tensor(
+            [
+                0.61767599778670401,
+                -0.34157592431816841,
+                -0.27789560584675255,
+                1.7955323782162611e-003,
+            ]
+        ),
+        "mulliken_pop": torch.tensor(
+            [
+                0.38232400221329599,
+                0.34157592431816841,
+                1.2778956058467525,
+                -1.7955323782162611e-003,
+            ]
+        ),
         "wiberg": torch.tensor(
             [
                 [0.0000000000000000, 0.92377265725501168],
@@ -805,7 +838,36 @@ samples: dict[str, Record] = {
         "mulliken_charges": torch.tensor(
             [0.27511, -0.06878, -0.06878, -0.06878, -0.06878]
         ),
-        "mulliken_pop": torch.tensor([1.343, 1.964, 0.417, 1.069, 1.069, 1.069, 1.069]),
+        "mulliken_charges_shell": torch.tensor(
+            [
+                0.65663937010219842,
+                3.5838834166484368e-002,
+                -0.41737062303296546,
+                -7.1859260070046282e-002,
+                3.0823647611154144e-003,
+                -7.1859260070044950e-002,
+                3.0823647611152557e-003,
+                -7.1859260070046727e-002,
+                3.0823647611154179e-003,
+                -7.1859260070045616e-002,
+                3.0823647611153034e-003,
+            ]
+        ),
+        "mulliken_pop": torch.tensor(
+            [
+                1.3433606298978016,
+                1.9641611658335156,
+                0.41737062303296546,
+                1.0718592600700463,
+                -3.0823647611154144e-003,
+                1.0718592600700450,
+                -3.0823647611152557e-003,
+                1.0718592600700467,
+                -3.0823647611154179e-003,
+                1.0718592600700456,
+                -3.0823647611153034e-003,
+            ]
+        ),
         "wiberg": torch.tensor(
             [
                 [
