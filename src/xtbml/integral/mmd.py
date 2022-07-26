@@ -171,6 +171,10 @@ _e_function_grad_jit = torch.jit.trace(
 
 
 class EFunction(torch.autograd.Function):
+    """
+    Autograd function for E-coefficients for McMurchie-Davidson algorithm.
+    """
+
     @staticmethod
     def forward(
         ctx,
@@ -179,6 +183,27 @@ class EFunction(torch.autograd.Function):
         rpj: Tensor,
         shape,
     ) -> Tensor:
+        """
+        Calculate E-coefficients for McMurchie-Davidson algorithm.
+        The number of coefficients is determined by the requested shape.
+
+        Parameters
+        ----------
+        xij : Tensor
+            One over two times the product Gaussian exponent of the two shells.
+        rpi : Tensor
+            Distance between the center of the first shell and the product Gaussian center.
+        rpj : Tensor
+            Distance between the center of the second shell and the product Gaussian center.
+        shape : Tuple[..., int, int]
+            Shape of the E-coefficients to calculate, the first dimensions identify the batch,
+            the last two identify the angular momentum of the first and second shell.
+
+        Returns
+        -------
+        Tensor
+            E-coefficients for the given shell pair.
+        """
 
         ctx.shape = (*shape, shape[-1] + shape[-2])
         E = _e_function_jit(xij.new_zeros(*ctx.shape), xij, rpi, rpj)
@@ -191,6 +216,25 @@ class EFunction(torch.autograd.Function):
         ctx,
         E_bar: Tensor,
     ) -> tuple[Tensor | None, Tensor | None, Tensor | None, None]:
+        """
+        Calculate derivative of E-coefficients for McMurchie-Davidson algorithm.
+
+        Parameters
+        ----------
+        E_bar: Tensor
+            Derivative with respect to the E-coefficients for the given shell pair.
+
+        Returns
+        -------
+        xij_bar : Tensor
+            Derivative with respect to the product Gaussian exponent of the two shells.
+        rpi_bar : Tensor
+            Derivative with respect to the distance between the center of the first shell
+            and the product Gaussian center.
+        rpj_bar : Tensor
+            Derivative with respect to the distance between the center of the second shell
+            and the product Gaussian center.
+        """
 
         shape = ctx.shape
         E, xij, rpi, rpj = ctx.saved_tensors
