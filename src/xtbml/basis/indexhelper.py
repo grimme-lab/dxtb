@@ -112,22 +112,22 @@ def twice(
 
     shape0 = [-1] * x.dim()
     shape0[dim0] = x.shape[dim0]
-    x = func(
+    y = func(
         x,
         dim1,
         idx.unsqueeze(dim0).expand(*shape0),
         *args,
     )
 
-    shape1 = [-1] * x.dim()
-    shape1[dim1] = x.shape[dim1]
-    x = func(
-        x,
+    shape1 = [-1] * y.dim()
+    shape1[dim1] = y.shape[dim1]
+    z = func(
+        y,
         dim0,
         idx.unsqueeze(dim1).expand(*shape1),
         *args,
     )
-    return x
+    return z
 
 
 # gather
