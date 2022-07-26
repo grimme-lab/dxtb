@@ -94,30 +94,34 @@ class TestHamiltonian(Setup):
         orbs = ihelp.spread_shell_to_orbital(
             ihelp.shells_to_ushell
         ) + ihelp.spread_shell_to_orbital(ihelp.orbitals_per_shell)
-        orbs = 2 * orbs.unsqueeze(-2) + orbs.unsqueeze(-1)
+        orbs = orbs.unsqueeze(-2) + orbs.unsqueeze(-1)
         print(orbs)
 
         atoms = ihelp.spread_atom_to_orbital(ihelp.atom_to_unique)
         atoms = atoms.unsqueeze(-2) + atoms.unsqueeze(-1)
 
         u = atoms * offset + orbs
-        unum, idx = torch.unique(u, return_inverse=True)
-        print(unum)
-        print(idx)
-        print(ihelp.reduce_orbital_to_atom(idx, dim=(-2, -1)))
+        _, umap = torch.unique(u, return_inverse=True)
+        print(umap)
+        print(ihelp.reduce_orbital_to_shell(umap, dim=(-2, -1)))
+        print(ihelp.reduce_orbital_to_atom(umap, dim=(-2, -1)))
 
         # number of unqiue shells
         n_uangular = len(ihelp.unique_angular)
 
         # calculated number of unique combinations of unique shells
-        n_unique_pairs = torch.max(idx) + 1
+        n_unique_pairs = torch.max(umap) + 1
 
         # check against theoretical number
         n_uangular_comb = torch.sum(torch.arange(1, n_uangular + 1))
-        if n_unique_pairs < n_uangular_comb:
+        if n_unique_pairs != n_uangular_comb:
             raise ValueError(
                 f"Internal error: {n_uangular_comb- n_unique_pairs} missing unique pairs."
             )
+
+        ###########################################
+
+        # create basis set (rewritten)
 
         def get_pqn(
             numbers: Tensor,
@@ -152,6 +156,8 @@ class TestHamiltonian(Setup):
         alphas = []
         angs = []
 
+        # maybe this can be batched too, but this loop is rather small
+        # so it is probably not worth it
         for i in range(len(slater)):
             ret = to_gauss(ngauss[i], pqn[i], ihelp.unique_angular[i], slater[i])
             cgtoi = Cgto_Type(ihelp.unique_angular[i], *ret)
@@ -171,7 +177,9 @@ class TestHamiltonian(Setup):
             coeffs.append(cgtoi.coeff)
             angs.append(cgtoi.ang)
 
-        # a little hacky...
+        #################################################
+
+        # spread stuff to orbitals... a little hacky...
         al = batch.index(
             batch.index(batch.pack(alphas, value=0), ihelp.shells_to_ushell),
             ihelp.orbitals_to_shell,
@@ -181,40 +189,34 @@ class TestHamiltonian(Setup):
             ihelp.orbitals_to_shell,
         )
 
-        ################################################
-
-        print(positions)
         positions = batch.index(positions, ihelp.shells_to_atom)
         positions = batch.index(positions, ihelp.orbitals_to_shell)
-        print(positions)
 
-        vec = positions.unsqueeze(-2) - positions
+        # vec = positions.unsqueeze(-2) - positions
+
+        #################################################
 
         ovlp = torch.zeros((len(orbs), len(orbs)))
         for i in range(n_unique_pairs):
             print(i)
-            pairs = (idx == i).nonzero(as_tuple=False)
+            pairs = (umap == i).nonzero(as_tuple=False)
+
+            # we only require one pair as all have the same basis function
             coeff = c[pairs[0]]
             alpha = al[pairs[0]]
             ang = ihelp.spread_shell_to_orbital(ihelp.angular)[pairs[0]]
+
             alpha_tuple = (batch.deflate(alpha[0]), batch.deflate(alpha[1]))
             coeff_tuple = (batch.deflate(coeff[0]), batch.deflate(coeff[1]))
             print(ang[0], ang[1], pairs[0])
-            print(pairs)
-            # print(ihelp.reduce_orbital_to_atom(pairs))
-            print(ihelp.spread_shell_to_orbital(ihelp.angular))
-            # print(alpha_tuple[0], alpha_tuple[1])
-            # print(coeff_tuple[0], coeff_tuple[1])
 
             vec = positions[pairs][:, 0, :] - positions[pairs][:, 1, :]
+            # print(positions[pairs][:, 0, :] - positions[pairs][:, 1, :])
+
             stmp = mmd.overlap((ang[0], ang[1]), alpha_tuple, coeff_tuple, -vec)
             print(stmp)
-            # ovlp[pairs[:, 0], pairs[:, 1]] = stmp.flatten()
-            # print(ovlp)
 
-            # print(positions[pairs][:, 0, :] - positions[pairs][:, 1, :])
-            # print(positions[pairs])
-            # print(positions[pairs[0]])
+            # print(ovlp)
             break
 
         print("\n")
@@ -222,7 +224,7 @@ class TestHamiltonian(Setup):
         # print(o)
         h = h0.build(o, cn=cn)
 
-        assert torch.all(h.transpose(-2, -1) == h)
+        # assert torch.all(h.mT == h)
         # assert torch.allclose(h, ref, rtol=self.rtol, atol=self.atol)
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
