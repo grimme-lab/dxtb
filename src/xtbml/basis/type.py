@@ -96,7 +96,9 @@ class Basis:
         self.intcut = integral_cutoff(acc)
 
         self.symbols = [PSE.get(x, "X") for x in numbers.tolist()]
-        self.usymbols = [PSE.get(x, "X") for x in torch.unique(numbers[numbers.ne(0)]).tolist()]
+        self.usymbols = [
+            PSE.get(x, "X") for x in torch.unique(numbers[numbers.ne(0)]).tolist()
+        ]
 
         for isp in self.symbols:
             record = par.element[isp]
@@ -166,11 +168,16 @@ def _process_record(record: Element) -> List[Cgto_Type]:
         il = lsh[ish]
         ng = record.ngauss[ish]
 
+        # print("ish:", ish, "il:", il)
+        # print("ang_idx:", ang_idx[il])
+
         if ang_idx[il] >= 0:
             ortho[ish] = ang_idx[il]
         else:
             ang_idx[il] = ish
 
+        # print("ng:", ng, "pqn:", pqn[ish], "ang:", il, "slater: ", record.slater[ish])
+        # print(slater.to_gauss(ng, pqn[ish], il, torch.tensor(record.slater[ish])))
         cgtoi = Cgto_Type(
             il, *slater.to_gauss(ng, pqn[ish], il, torch.tensor(record.slater[ish]))
         )

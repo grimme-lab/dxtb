@@ -4,13 +4,20 @@ from __future__ import annotations
 import pytest
 import torch
 from xtbml.basis.indexhelper import IndexHelper
+from xtbml.basis.ortho import orthogonalize
+from xtbml.basis.slater import to_gauss
+from xtbml.basis.type import Cgto_Type
 
 from xtbml.exlibs.tbmalt import batch
 from xtbml.ncoord.ncoord import get_coordination_number, exp_count
 from xtbml.param.gfn1 import GFN1_XTB as par
-from xtbml.param.util import get_element_angular
+from xtbml.param.util import get_elem_param, get_elem_valence, get_element_angular
 from xtbml.typing import Tensor
 from xtbml.xtb.h0 import Hamiltonian
+
+from xtbml.integral import mmd
+from xtbml.constants import ATOMIC_NUMBER, PSE
+from xtbml.param import Element
 
 from .samples import samples
 
@@ -81,11 +88,152 @@ class TestHamiltonian(Setup):
         print("orbitals_per_shell", ihelp.orbitals_per_shell)
         print("\n")
 
-        a = ihelp.spread_shell_to_orbital(ihelp.shells_to_ushell)
+        # offset to avoid duplication on addition
+        offset = 100
 
-        print(a)
+        orbs = ihelp.spread_shell_to_orbital(
+            ihelp.shells_to_ushell
+        ) + ihelp.spread_shell_to_orbital(ihelp.orbitals_per_shell)
+        orbs = orbs.unsqueeze(-2) + orbs.unsqueeze(-1)
 
+        atoms = ihelp.spread_atom_to_orbital(ihelp.atom_to_unique)
+        atoms = atoms.unsqueeze(-2) + atoms.unsqueeze(-1)
+
+        u = atoms * offset + orbs
+        unum, idx = torch.unique(u, return_inverse=True)
+        print(unum)
+        print(idx)
+
+        # number of unqiue shells
+        n_uangular = len(ihelp.unique_angular)
+
+        # calculated number of unique combinations of unique shells
+        n_unique_pairs = torch.max(idx) + 1
+
+        # check against theoretical number
+        n_uangular_comb = torch.sum(torch.arange(1, n_uangular + 1))
+        if n_unique_pairs != n_uangular_comb:
+            raise ValueError(
+                f"Internal error: {n_uangular_comb- n_unique_pairs} missing unique pairs."
+            )
+
+        def get_pqn(
+            numbers: Tensor,
+            par_element: dict[str, Element],
+            pad_val: int = -1,
+            device: torch.device | None = None,
+            dtype: torch.dtype | None = None,
+        ):
+            key = "shells"
+
+            shells = []
+            for number in numbers:
+                el = PSE.get(int(number.item()), "X")
+                if el in par_element:
+                    for shell in getattr(par_element[el], key):
+                        shells.append(int(shell[0]))
+
+                else:
+                    shells.append(pad_val)
+
+            return torch.tensor(shells, device=device, dtype=dtype)
+
+        pqn = get_pqn(unique, par.element)
+        print("\n\n\n")
+
+        ngauss = get_elem_param(unique, par.element, "ngauss")
+        slater = get_elem_param(unique, par.element, "slater", dtype=dtype)
+        valence = get_elem_valence(unique, par.element, dtype=torch.uint8)
+
+        cgto = []
+        coeffs = []
+        alphas = []
+        angs = []
+
+        for i in range(len(slater)):
+            ret = to_gauss(ngauss[i], pqn[i], ihelp.unique_angular[i], slater[i])
+            cgtoi = Cgto_Type(ihelp.unique_angular[i], *ret)
+
+            if valence[i].item() == 0:
+                cgtoi = Cgto_Type(
+                    ihelp.unique_angular[i],
+                    *orthogonalize(
+                        ihelp.unique_angular[i],
+                        (cgto[i - 1].alpha, cgtoi.alpha),
+                        (cgto[i - 1].coeff, cgtoi.coeff),
+                    ),
+                )
+
+            cgto.append(cgtoi)
+            alphas.append(cgtoi.alpha)
+            coeffs.append(cgtoi.coeff)
+            angs.append(cgtoi.ang)
+
+        # a little hacky...
+        al = batch.index(
+            batch.index(batch.pack(alphas, value=0), ihelp.shells_to_ushell),
+            ihelp.orbitals_to_shell,
+        )
+        c = batch.index(
+            batch.index(batch.pack(coeffs, value=0), ihelp.shells_to_ushell),
+            ihelp.orbitals_to_shell,
+        )
+
+        ################################################
+
+        print(positions)
+        positions = batch.index(positions, ihelp.shells_to_atom)
+        positions = batch.index(positions, ihelp.orbitals_to_shell)
+        print(positions)
+
+        vec = positions.unsqueeze(-2) - positions
+
+        a = torch.zeros((len(orbs), len(orbs)))
+        a_ = a[None, None, :, None, :]
+        print(a_.shape)
+        a_row_chunks = torch.cat(torch.chunk(a_, 3, dim=2), dim=1)
+        print(a_row_chunks.shape)
+        a_col_chunks = torch.cat(torch.chunk(a_row_chunks, 3, dim=4), dim=3)
+        a_chunks = a_col_chunks.reshape(1, 3, 3, 4, 4)
+
+        indx = torch.tensor([[0, 2, 0], [0, 2, 4], [0, 4, 0]])
+        indx_ = indx.clone().float()
+        indx_[:, 1:] /= 2
+        indx_ = indx_.long()
+        print(a_chunks)
+        return
+
+        ovlp = torch.zeros((len(orbs), len(orbs)))
+        for i in range(n_unique_pairs):
+            print(i)
+            i = 9
+            pairs = (idx == i).nonzero(as_tuple=False)
+            coeff = c[pairs[0]]
+            alpha = al[pairs[0]]
+            ang = ihelp.spread_shell_to_orbital(ihelp.angular)[pairs[0]]
+            alpha_tuple = (batch.deflate(alpha[0]), batch.deflate(alpha[1]))
+            coeff_tuple = (batch.deflate(coeff[0]), batch.deflate(coeff[1]))
+            print(ang[0], ang[1], pairs[0])
+            print(pairs)
+            # print(ihelp.reduce_orbital_to_atom(pairs))
+            print(ihelp.spread_shell_to_orbital(ihelp.angular))
+            # print(alpha_tuple[0], alpha_tuple[1])
+            # print(coeff_tuple[0], coeff_tuple[1])
+
+            vec = positions[pairs][:, 0, :] - positions[pairs][:, 1, :]
+            stmp = mmd.overlap((ang[0], ang[1]), alpha_tuple, coeff_tuple, -vec)
+            print(stmp)
+            # ovlp[pairs[:, 0], pairs[:, 1]] = stmp.flatten()
+            # print(ovlp)
+
+            # print(positions[pairs][:, 0, :] - positions[pairs][:, 1, :])
+            # print(positions[pairs])
+            # print(positions[pairs[0]])
+            break
+
+        print("\n")
         o = h0.overlap()
+        # print(o)
         h = h0.build(o, cn=cn)
 
         assert torch.all(h.transpose(-2, -1) == h)

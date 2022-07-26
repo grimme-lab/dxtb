@@ -389,6 +389,10 @@ class Hamiltonian:
                     el_j = bas.symbols[j]
 
                     vec = positions[i, :] - positions[j, :]
+                    # print(el_i, el_j)
+                    # print("positions i", positions[i, :])
+                    # print("positions j", positions[j, :])
+                    # print("vec", vec)
 
                     for ish in range(bas.shells[el_i]):
                         ii = bas.iao_sh[isa + ish].item()
@@ -409,7 +413,16 @@ class Hamiltonian:
                                     cgtoj.coeff[: cgtoj.nprim],
                                 ),
                                 -vec,
+                                # torch.tensor([-1.7215e00, 1.0370e-01, -4.0000e-06]),
                             )
+                            # print("")
+                            # print("cgtoi.ang", cgtoi.ang)
+                            # print("cgtoj.ang", cgtoj.ang)
+                            # print("cgtoi.alpha", cgtoi.alpha)
+                            # print("cgtoj.alpha", cgtoj.alpha)
+                            # print("cgtoi.coeff", cgtoi.coeff)
+                            # print("cgtoj.coeff", cgtoj.coeff)
+                            # print("stmp", stmp)
 
                             i_nao = 2 * cgtoi.ang + 1
                             j_nao = 2 * cgtoj.ang + 1
