@@ -92,20 +92,20 @@ def gather_twice(x: Tensor, dim0: int, dim1: int, index: Tensor):
 
     shape0 = [-1] * x.dim()
     shape0[dim0] = x.shape[dim0]
-    x = torch.gather(
+    y = torch.gather(
         x,
         dim1,
         index.unsqueeze(dim0).expand(*shape0),
     )
 
-    shape1 = [-1] * x.dim()
-    shape1[dim1] = x.shape[dim1]
-    x = torch.gather(
-        x,
+    shape1 = [-1] * y.dim()
+    shape1[dim1] = y.shape[dim1]
+    z = torch.gather(
+        y,
         dim0,
         index.unsqueeze(dim1).expand(*shape1),
     )
-    return x
+    return z
 
 
 def gather_remove_negative_index(

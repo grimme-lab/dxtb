@@ -279,45 +279,52 @@ class Hamiltonian:
             Hamiltonian
         """
 
-        real = self.ihelp.spread_atom_to_shell(self.numbers) != 0
-        mask = real.unsqueeze(-2) * real.unsqueeze(-1)
+        real = self.numbers != 0
+        mask = real.unsqueeze(-1) * real.unsqueeze(-2)
+        real_shell = self.ihelp.spread_atom_to_shell(self.numbers) != 0
+        mask_shell = real_shell.unsqueeze(-2) * real_shell.unsqueeze(-1)
 
         zero = torch.tensor(0.0, device=self.device, dtype=self.dtype)
 
         # ----------------
         # Eq.29: H_(mu,mu)
         # ----------------
-        selfenergy = self.ihelp.spread_ushell_to_shell(self.selfenergy)
-        if cn is not None:
-            cn = self.ihelp.spread_atom_to_shell(cn)
-            kcn = self.ihelp.spread_ushell_to_shell(self.kcn)
+        if cn is None:
+            cn = torch.zeros_like(self.numbers).type(self.dtype)
 
-            # formula differs from paper to be consistent with GFN2 -> "kcn" adapted
-            selfenergy -= kcn * cn
+        kcn = self.ihelp.spread_ushell_to_shell(self.kcn)
+
+        # formula differs from paper to be consistent with GFN2 -> "kcn" adapted
+        selfenergy = (
+            self.ihelp.spread_ushell_to_shell(self.selfenergy)
+            - kcn * self.ihelp.spread_atom_to_shell(cn)
+        )
 
         # ----------------------
         # Eq.24: PI(R_AB, l, l')
         # ----------------------
-        distances = self.ihelp.spread_atom_to_shell(
-            torch.cdist(self.positions, self.positions, p=2), dim=(-2, -1)
-        )
-        rad = self.ihelp.spread_uspecies_to_shell(self.rad)
+        distances = torch.cdist(self.positions, self.positions, p=2)
+        rad = self.ihelp.spread_uspecies_to_atom(self.rad)
         rr = torch.where(
-            mask,
-            torch.sqrt(distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2))),
-            zero,
+            mask * ~torch.diag_embed(torch.ones_like(real)),
+            distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2)),
+            distances.new_tensor(torch.finfo(distances.dtype).eps),
+        )
+        rr_sh = self.ihelp.spread_atom_to_shell(
+            torch.sqrt(rr),
+            (-2, -1),
         )
 
         shpoly = self.ihelp.spread_ushell_to_shell(self.shpoly)
 
-        var_pi = (1.0 + shpoly.unsqueeze(-1) * rr) * (1.0 + shpoly.unsqueeze(-2) * rr)
+        var_pi = (1.0 + shpoly.unsqueeze(-1) * rr_sh) * (1.0 + shpoly.unsqueeze(-2) * rr_sh)
 
         # --------------------
         # Eq.28: X(EN_A, EN_B)
         # --------------------
         en = self.ihelp.spread_uspecies_to_shell(self.en)
         var_x = torch.where(
-            mask,
+            mask_shell,
             1.0
             + self.par.hamiltonian.xtb.enscale
             * torch.pow(en.unsqueeze(-1) - en.unsqueeze(-2), 2.0),
@@ -340,13 +347,13 @@ class Hamiltonian:
         # ------------
         # Eq.23: H_EHT
         # ------------
-        selfenergy = torch.where(
-            mask, 0.5 * (selfenergy.unsqueeze(-1) + selfenergy.unsqueeze(-2)), zero
+        var_h = torch.where(
+            mask_shell, 0.5 * (selfenergy.unsqueeze(-1) + selfenergy.unsqueeze(-2)), zero
         )
 
         # scale only off-diagonals
-        mask.diagonal(dim1=-2, dim2=-1).fill_(False)
-        h0 = torch.where(mask, var_pi * var_k * selfenergy, selfenergy)
+        mask_shell = mask_shell * ~torch.diag_embed(torch.ones_like(real_shell))
+        h0 = torch.where(mask_shell, var_pi * var_k * var_h, var_h)
 
         h = self.ihelp.spread_shell_to_orbital(h0, dim=(-2, -1))
         return h * overlap
