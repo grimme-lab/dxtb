@@ -94,7 +94,8 @@ class TestHamiltonian(Setup):
         orbs = ihelp.spread_shell_to_orbital(
             ihelp.shells_to_ushell
         ) + ihelp.spread_shell_to_orbital(ihelp.orbitals_per_shell)
-        orbs = orbs.unsqueeze(-2) + orbs.unsqueeze(-1)
+        orbs = 2 * orbs.unsqueeze(-2) + orbs.unsqueeze(-1)
+        print(orbs)
 
         atoms = ihelp.spread_atom_to_orbital(ihelp.atom_to_unique)
         atoms = atoms.unsqueeze(-2) + atoms.unsqueeze(-1)
@@ -103,6 +104,7 @@ class TestHamiltonian(Setup):
         unum, idx = torch.unique(u, return_inverse=True)
         print(unum)
         print(idx)
+        print(ihelp.reduce_orbital_to_atom(idx, dim=(-2, -1)))
 
         # number of unqiue shells
         n_uangular = len(ihelp.unique_angular)
@@ -112,7 +114,7 @@ class TestHamiltonian(Setup):
 
         # check against theoretical number
         n_uangular_comb = torch.sum(torch.arange(1, n_uangular + 1))
-        if n_unique_pairs != n_uangular_comb:
+        if n_unique_pairs < n_uangular_comb:
             raise ValueError(
                 f"Internal error: {n_uangular_comb- n_unique_pairs} missing unique pairs."
             )
@@ -188,25 +190,9 @@ class TestHamiltonian(Setup):
 
         vec = positions.unsqueeze(-2) - positions
 
-        a = torch.zeros((len(orbs), len(orbs)))
-        a_ = a[None, None, :, None, :]
-        print(a_.shape)
-        a_row_chunks = torch.cat(torch.chunk(a_, 3, dim=2), dim=1)
-        print(a_row_chunks.shape)
-        a_col_chunks = torch.cat(torch.chunk(a_row_chunks, 3, dim=4), dim=3)
-        a_chunks = a_col_chunks.reshape(1, 3, 3, 4, 4)
-
-        indx = torch.tensor([[0, 2, 0], [0, 2, 4], [0, 4, 0]])
-        indx_ = indx.clone().float()
-        indx_[:, 1:] /= 2
-        indx_ = indx_.long()
-        print(a_chunks)
-        return
-
         ovlp = torch.zeros((len(orbs), len(orbs)))
         for i in range(n_unique_pairs):
             print(i)
-            i = 9
             pairs = (idx == i).nonzero(as_tuple=False)
             coeff = c[pairs[0]]
             alpha = al[pairs[0]]
