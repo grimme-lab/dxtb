@@ -362,12 +362,7 @@ class Hamiltonian:
         h0 = torch.where(mask_shell, var_pi * var_k * var_h, var_h)
 
         h = self.ihelp.spread_shell_to_orbital(h0, dim=(-2, -1))
-        print("h")
-        print(h)
         hcore = h * overlap
-
-        print("hcore")
-        print(hcore)
 
         # remove noise to guarantee symmetry
         return torch.where(
@@ -489,8 +484,6 @@ class Hamiltonian:
             umap, n_unique_pairs = bas.create_umap(self.ihelp)
             _, alphas, coeffs = bas.create_cgtos(self.ihelp)
 
-            print(alphas)
-
             #################################################
 
             # spread stuff to orbitals... a little hacky...
@@ -517,9 +510,9 @@ class Hamiltonian:
                 pairs = (umap == i).nonzero(as_tuple=False)
                 first_pair = pairs[0]
 
-                print(alpha)
-                print(first_pair)
-                print(alpha[first_pair])
+                # print(alpha)
+                # print(first_pair)
+                # print(alpha[first_pair])
 
                 ang_k, ang_l = ang[first_pair].tolist()
                 norb_per_sh_k = 2 * ang_k + 1
@@ -538,11 +531,11 @@ class Hamiltonian:
                     batch.deflate(coeff[first_pair][1]),
                 )
 
-                print(i)
-                print(positions[upairs])
+                # print(i)
+                # print(positions[upairs])
+                # print(vec)
+                # print("")
                 vec = positions[upairs][:, 0, :] - positions[upairs][:, 1, :]
-                print(vec)
-                print("")
                 stmp = mmd.overlap((ang_k, ang_l), alpha_tuple, coeff_tuple, -vec)
 
                 for r, pair in enumerate(upairs):

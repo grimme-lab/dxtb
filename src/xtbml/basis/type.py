@@ -76,7 +76,24 @@ class Bas:
         return cgto, alphas, coeffs
 
     @timing
-    def create_umap(self, ihelp: IndexHelper):
+    def create_umap(self, ihelp: IndexHelper) -> tuple[Tensor, Tensor]:
+        """Create a matrix of unique shell pairs.
+
+        Parameters
+        ----------
+        ihelp : IndexHelper
+            Helper class for indexing.
+
+        Returns
+        -------
+        (Tensor, Tensor)
+            Matrix of unique shell pairs and the number of unique shell pairs.
+
+        Raises
+        ------
+        ValueError
+            _description_
+        """
         primes = torch.tensor(
             [
                 2,
@@ -381,7 +398,7 @@ class Bas:
                 1987,
             ]
         )
-        torch.set_printoptions(linewidth=250)
+        torch.set_printoptions(linewidth=200)
 
         # offsets to avoid duplication on addition
         offset1 = 10000
@@ -397,21 +414,7 @@ class Bas:
 
         _, umap = torch.unique(orbs, return_inverse=True)
 
-        # print("sh2ush", ihelp.spread_shell_to_orbital(ihelp.shells_to_ushell))
-        # print("sh2orb", sh2orb)
-        # print(orbs)
         print(umap)
-
-        # NOTE: atom distinction should already be encoded through `offset1`
-        # unique atom combinations: offset to remove duplicates across atoms
-        # atoms = ihelp.spread_atom_to_orbital(ihelp.atom_to_unique)
-        # atoms = atoms.unsqueeze(-2) + atoms.unsqueeze(-1)
-        # print(atoms)
-        # u = atoms * offset3 + orbs
-
-        # # get unique map
-        # _, umap = torch.unique(u, return_inverse=True)
-        # print(umap)
 
         # number of unqiue shells
         n_uangular = len(ihelp.unique_angular)
