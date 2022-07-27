@@ -185,6 +185,8 @@ struc.xyz
 # datasets
 data/archive
 data/*/benchmark*
+data/*/processed*
+data/misc
 
 # exclude some sample and reaction files for tests
 !data/PTB/samples_HE.json
@@ -196,3 +198,9 @@ models/
 
 # other
 devel.py
+
+# plots
+plots/
+
+# pytorch lightning
+src/lightning_logs/*

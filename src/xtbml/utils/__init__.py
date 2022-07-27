@@ -1,2 +1,3 @@
-from .utils import symbol2number, timing
+from .utils import symbol2number, timing, dict_reorder
+
 from .types import SampleInfo

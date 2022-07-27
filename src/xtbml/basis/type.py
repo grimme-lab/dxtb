@@ -5,9 +5,11 @@ from typing import Union, Dict, List
 
 from ..basis import slater, orthogonalize
 from ..param import Param, Element
+
 from ..constants import UINT8 as DTYPE_INT
 from ..constants import PSE
 from ..typing import Tensor
+
 
 MAXG = 12
 """Maximum contraction length of basis functions. The limit is chosen as twice the maximum size returned by the STO-NG expansion"""

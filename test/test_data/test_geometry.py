@@ -32,6 +32,11 @@ class Test_Geometry(TestCase):
     def setUpClass(cls):
         print(cls.__name__)
 
+    def setUp(self):
+        # dtype for charges and unpaired electrons
+        self.dtype_charges = torch.int8
+        self.dtype_uhf = torch.uint8
+
     def test_from_ase(self) -> None:
         """Test creation of single geometry from ase."""
         geometry = Geometry.from_ase_atoms([molecule("CH4")])
@@ -116,7 +121,7 @@ class Test_Geometry(TestCase):
             [molecule("CH4"), molecule("CH4"), molecule("C2H4")]
         )
 
-        chg_intial = torch.tensor([0.0, 0.0, 0.0])
+        chg_intial = torch.tensor([0, 0, 0], dtype=self.dtype_charges)
         chg = torch.tensor([1.0, 2.0, 3.0])
 
         self.assertTrue(
@@ -152,8 +157,9 @@ class Test_Geometry(TestCase):
             [molecule("CH4"), molecule("CH4"), molecule("C2H4")]
         )
 
-        uhf_intial = torch.tensor([0.0, 0.0, 0.0])
+        uhf_intial = torch.tensor([0, 0, 0], dtype=self.dtype_uhf)
         uhf = torch.tensor([4.0, 5.0, 6.0])
+        # NOTE: manually setting allows for any dtype
 
         self.assertTrue(
             torch.equal(geometry.unpaired_e, uhf_intial),

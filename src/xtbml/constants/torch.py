@@ -3,6 +3,9 @@ import torch
 UINT8: torch.dtype = torch.uint8
 """PyTorch's uint8 data dtype"""
 
+INT16: torch.dtype = torch.int16
+"""PyTorch's int16 data dtype"""
+
 FLOAT32: torch.dtype = torch.float32
 """PyTorch's float32 data dtype"""
 

@@ -7,7 +7,7 @@ testpaths = [
     "test"
 ]
 pythonpath = [
-  ".", "src",
+  "src",
 ]
 markers = [
     "grad: Marks tests which perform 'gradcheck' evaluations, this can be slow."
