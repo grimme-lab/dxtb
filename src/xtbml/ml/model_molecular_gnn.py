@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv, NNConv, global_add_pool
-from torch_geometric.data import Data, Batch, LightningDataset
+from torch_geometric.nn import GCNConv, global_add_pool
+from torch_geometric.data import Batch, LightningDataset
 from typing import List, Dict
 from torch import optim, nn
 import pytorch_lightning as pl
@@ -9,7 +9,8 @@ from torch_geometric.loader import DataLoader as pygDataloader
 from argparse import ArgumentParser
 from pathlib import Path
 from pytorch_lightning.callbacks import LearningRateMonitor
-from pytorch_lightning.loggers.csv_logs import CSVLogger
+from pytorch_lightning.loggers import WandbLogger
+import wandb
 
 from .loss import WTMAD2Loss
 from ..data.graph_dataset import MolecularGraph_Dataset
@@ -17,23 +18,19 @@ from .transforms import Pad_Hamiltonian
 from ..typing import Tensor
 
 
-def get_lr(optimizer):
-    for param_group in optimizer.param_groups:
-        return param_group["lr"]
-
-
 class MolecularGNN(pl.LightningModule):
     """Graph based model for prediction on single molecules."""
 
-    def __init__(self):
+    def __init__(self, cfg=None):
         super().__init__()
 
         # TODO: wrap into config dictionary
         nf = 5
         out = 1
+        hidden = cfg.hidden if cfg.hidden else 10
 
-        self.gconv1 = GCNConv(nf, 50)
-        self.gconv2 = GCNConv(50, out)
+        self.gconv1 = GCNConv(nf, hidden)
+        self.gconv2 = GCNConv(hidden, out)
 
         # embedding
         self.node_embedding = None
@@ -48,6 +45,9 @@ class MolecularGNN(pl.LightningModule):
         self.loss_fn = WTMAD2Loss(wtmad2_path, reduction="mean")
         # self.loss_fn = nn.L1Loss(reduction="mean")
         self.loss_fn = nn.MSELoss(reduction="mean")
+
+        # wandb logging
+        # self.save_hyperparameters() # FIXME: issue when wandb.cfg is parsed
 
     def forward(self, batch: Batch):
         verbose = False
@@ -72,11 +72,6 @@ class MolecularGNN(pl.LightningModule):
         # sum over atomic energies to get molecular energies
         energies = global_add_pool(x=x, batch=batch.batch)  # [bs, 1]
 
-        print("here we are")
-        import sys
-
-        sys.exit(0)
-
         return energies
 
     def training_step(self, batch: Batch, batch_idx: int):
@@ -85,40 +80,26 @@ class MolecularGNN(pl.LightningModule):
         y = self(batch)
         y_true = torch.unsqueeze(batch.eref, -1)
 
-        print(y, y_true)
-
         loss = self.calc_loss(batch, y, y_true)
 
         # bookkeeping
-        if isinstance(self.loss_fn, WTMAD2Loss):
-            # derive subset from partner list
-            subsets = [s.split("/")[0] for s in batch.uid]
-            # number of partners per reaction
-            n_partner = torch.tensor([1] * batch.num_graphs)
+        egfn1_mol = batch.egfn1.scatter_reduce(0, batch.batch, reduce="sum")
+        egfn1_mol = torch.unsqueeze(egfn1_mol, -1)
+        gfn1_loss = self.loss_fn(egfn1_mol, y_true)
 
-            gfn1_loss = self.loss_fn(
-                batch.egfn1.unsqueeze(-1), y_true, subsets, n_partner
-            )
-            gfn2_loss = self.loss_fn(
-                batch.egfn2.unsqueeze(-1), y_true, subsets, n_partner
-            )
-        else:
-            egfn1_mol = batch.egfn1.scatter_reduce(0, batch.batch, reduce="sum")
-            egfn1_mol = torch.unsqueeze(egfn1_mol, -1)
-            gfn1_loss = self.loss_fn(egfn1_mol, y_true)
-
-        # Logging to TensorBoard by default
-        self.log("train_loss", loss, batch_size=batch.num_graphs)
-        self.log("gfn1_loss", gfn1_loss.item(), batch_size=batch.num_graphs)
-
+        self.log("train_loss", loss, on_epoch=True, batch_size=batch.num_graphs)
         self.log(
-            "lr",
-            get_lr(self.optimizers()),
-            prog_bar=True,
-            on_step=False,
-            on_epoch=True,
-            batch_size=batch.num_graphs,
+            "gfn1_loss", gfn1_loss.item(), on_epoch=True, batch_size=batch.num_graphs
         )
+
+        # store y vs y_true
+        if self.global_step % 10 == 0 and isinstance(self.logger, WandbLogger):
+            data = [x for x in torch.cat((y, y_true), 1)]
+            table = wandb.Table(data=data, columns=["y", "y_true"])
+            self.logger.experiment.log(
+                {"my_custom_id": wandb.plot.scatter(table, "y", "y_true")},
+            )
+
         return loss
 
     @torch.no_grad()
@@ -196,18 +177,34 @@ def get_trainer() -> pl.Trainer:
         pl.Trainer: Pytorch lightning trainer instance
     """
 
+    # TODO: refactor into get config (maybe setup an individual config class?)
+    #   * load config
+    #   * get_logger() (define logger)
+    #   * get_trainer()
+
+    # TODO: add get_val_dataloader() based on split_train_test(range(dataset.len))
+
+    # TODO: overfit single sample
+    #       - does it work? -> nope (or only very unsufficient)
+
     # parse arguments
     parser = ArgumentParser()
+    parser.add_argument(
+        "--no_wandb", dest="no_wandb", default=False, action="store_true"
+    )
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
     # print("args: ", args)
 
-    # some (temporary) default settings
-    # args.profiler = "simple"
+    # weights and biases interface
+    if not args.no_wandb:
+        args.logger = WandbLogger(project="dxtb", entity="hoelzerc")
+    del args.no_wandb
+
+    # some default settings
     args.max_epochs = 3
-    args.log_every_n_steps = 5
+    args.log_every_n_steps = 1
     args.callbacks = [LearningRateMonitor(logging_interval="epoch")]
-    args.logger = CSVLogger("logs", name="gnn", version=f"{args.max_epochs}")
 
     return pl.Trainer.from_argparse_args(args)
 
@@ -217,26 +214,46 @@ def train_gnn():
 
     # model and training setup
     trainer = get_trainer()
-    model = MolecularGNN()
+
+    # for sweeps aka. hyperparameter searchs
+    config_defaults = {"hidden": 50, "lr": 0.1, "channels": 16}
+    wandb.config.update(config_defaults)
+
+    model = MolecularGNN(wandb.config)
+
+    # log gradients, parameter histogram and model topology
+    if isinstance(trainer.logger, WandbLogger):
+        trainer.logger.watch(model, log_freq=5, log="all")
 
     # data
     transforms = torch.nn.Sequential(
-        Pad_Hamiltonian(n_shells=300),
+        Pad_Hamiltonian(n_shells=10),
     )
 
     dataset = MolecularGraph_Dataset(
         root=Path(__file__).resolve().parents[3] / "data" / "PTB",  # "GMTKN55"
         pre_transform=transforms,
     )
+
+    # during dev only operate on subset
+    dataset = torch.utils.data.Subset(dataset, range(10))
     print(len(dataset))
     print(type(dataset))
 
     train_loader = pygDataloader(
-        dataset, batch_size=10, drop_last=False, shuffle=False, num_workers=8
+        dataset, batch_size=5, drop_last=False, shuffle=False, num_workers=8
     )
 
     # train model
     trainer.fit(model=model, train_dataloaders=train_loader)
+
+    # To save pytorch lightning models with wandb, we use:
+    # trainer.save_checkpoint('EarlyStoppingADam-32-0.001.pth')
+    # wandb.save('EarlyStoppingADam-32-0.001.pth')
+    # This creates a checkpoint file in the local runtime, and uploads it to wandb. Now, when we decide to resume training even on a different system, we can simply load the checkpoint file from wandb and load it into our program like so:
+    # wandb.restore('EarlyStoppingADam-32-0.001.pth')
+    # model.load_from_checkpoint('EarlyStoppingADam-32-0.001.pth')
+    # Now the checkpoint has been loaded into the model and the training can be resumed using the desired training module.
 
 
 def test_gnn():
@@ -269,3 +286,17 @@ def test_gnn():
     # TODO: checkpoint_callback.best_model_path
     # https://pytorch-lightning.readthedocs.io/en/stable/api/pytorch_lightning.callbacks.ModelCheckpoint.html
     # https://pytorch-lightning.readthedocs.io/en/stable/common/checkpointing.html
+
+
+def sweep():
+    """Conduct a wandb hyperparameter search (sweep)."""
+
+    # sweep aka hyperparameter search
+    import wandb
+
+    sweep_config = {
+        "method": "grid",
+        "parameters": {"hidden": {"values": [50, 100]}},
+    }
+    sweep_id = wandb.sweep(sweep_config)
+    wandb.agent(sweep_id, function=train_gnn)
