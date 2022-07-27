@@ -204,3 +204,7 @@ plots/
 
 # pytorch lightning
 src/lightning_logs/*
+
+# weights and biases
+src/wandb/*
+src/dxtb/*
