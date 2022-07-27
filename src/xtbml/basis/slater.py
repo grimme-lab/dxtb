@@ -2,21 +2,21 @@
 Expansion coefficients for Slater functions into primitive Gaussian functions
 """
 
+from __future__ import annotations
 import math
 import numpy as np
 import os.path as op
 import torch
 
-from ..exlibs.tbmalt import batch
 from ..typing import Tensor
 
 
-sto_ng = ([
+sto_ng = [
     torch.from_numpy(np.load(op.join(op.dirname(__file__), f"sto-{n}g.npy"))).type(
         torch.float64
     )
     for n in range(1, 7)
-])
+]
 
 
 # Two over pi
@@ -36,7 +36,7 @@ def to_gauss(
     l: Tensor,
     zeta: Tensor,
     norm: bool = True,
-) -> Tensor:
+) -> tuple[Tensor, Tensor]:
     """
     Expand Slater function in primitive gaussian functions
 
@@ -73,13 +73,15 @@ def to_gauss(
 
     _coeff, _alpha = sto_ng[ng - 1][:, itype, :]
 
-    alpha = _alpha.type(zeta.dtype).to(zeta.device) * zeta.unsqueeze(-1)**2
+    alpha = _alpha.type(zeta.dtype).to(zeta.device) * zeta.unsqueeze(-1) ** 2
+    coeff = _coeff.type(zeta.dtype).to(zeta.device)
+
     # normalize the gaussian if requested
     # <φ|φ> = (2i-1)!!(2j-1)!!(2k-1)!!/(4α)^(i+j+k) · sqrt(π/2α)³
     # N² = (4α)^(i+j+k)/((2i-1)!!(2j-1)!!(2k-1)!!)  · sqrt(2α/π)³
     # N = (4α)^((i+j+k)/2) / sqrt((2i-1)!!(2j-1)!!(2k-1)!!) · (2α/π)^(3/4)
     if norm:
-        coeff = _coeff.type(zeta.dtype).to(zeta.device) * (
+        coeff = _coeff * (
             (top * alpha) ** 0.75
             * torch.sqrt(4 * alpha) ** l
             / torch.sqrt(dfactorial[l])

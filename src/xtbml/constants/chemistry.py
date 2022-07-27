@@ -1,4 +1,5 @@
 PSE = {
+    0: "X",
     1: "H",
     2: "He",
     3: "Li",
@@ -118,3 +119,5 @@ PSE = {
     117: "Ts",
     118: "Og",
 }
+
+ATOMIC_NUMBER = {sym: num for num, sym in PSE.items()}

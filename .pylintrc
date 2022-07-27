@@ -154,6 +154,7 @@ disable=abstract-method,
         xrange-builtin,
         zip-builtin-not-iterating,
         E1102,  # added
+        E0402,  # added (relative-beyond-top-level error)
 
 
 [REPORTS]
@@ -162,12 +163,6 @@ disable=abstract-method,
 # (visual studio) and html. You can also give a reporter class, eg
 # mypackage.mymodule.MyReporterClass.
 output-format=text
-
-# Put messages in a separate file for each module / package specified on the
-# command line instead of printing them on stdout. Reports (if any) will be
-# written in a file name "pylint_global.[txt|html]". This option is deprecated
-# and it will be removed in Pylint 2.0.
-files-output=no
 
 # Tells whether to display a full report or only the messages
 reports=no
@@ -208,7 +203,7 @@ property-classes=abc.abstractproperty,cached_property.cached_property,cached_pro
 function-rgx=^(?:(?P<exempt>setUp|tearDown|setUpModule|tearDownModule)|(?P<camel_case>_?[A-Z][a-zA-Z0-9]*)|(?P<snake_case>_?[a-z][a-z0-9_]*))$
 
 # Regular expression matching correct variable names
-variable-rgx=^[a-z][a-z0-9_]*$
+variable-rgx=^_?[a-z][a-z0-9_]*$
 
 # Regular expression matching correct constant names
 const-rgx=^(_?[A-Z][A-Z0-9_]*|__[a-z0-9_]+__|_?[a-z][a-z0-9_]*)$
@@ -223,7 +218,7 @@ argument-rgx=^[a-z][a-z0-9_]*$
 class-attribute-rgx=^(_?[A-Z][A-Z0-9_]*|__[a-z0-9_]+__|_?[a-z][a-z0-9_]*)$
 
 # Regular expression matching correct inline iteration names
-inlinevar-rgx=^[a-z][a-z0-9_]*$
+inlinevar-rgx=^_?[a-z][a-z0-9_]*$
 
 # Regular expression matching correct class names
 class-rgx=^_?[A-Z][a-zA-Z0-9]*$
@@ -287,12 +282,6 @@ ignore-long-lines=(?x)(
 # Allow the body of an if to be on the same line as the test if there is no
 # else.
 single-line-if-stmt=yes
-
-# List of optional constructs for which whitespace checking is disabled. `dict-
-# separator` is used to allow tabulation in dicts, etc.: {1  : 1,\n222: 2}.
-# `trailing-comma` allows a space between comma and closing bracket: (a, ).
-# `empty-line` allows space-only lines.
-no-space-check=
 
 # Maximum number of lines in a module
 max-module-lines=99999

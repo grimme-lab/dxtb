@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from xtbml.data.covrad import covalent_rad_d3
+from xtbml.data.radii import cov_rad_d3
 from xtbml.exlibs.tbmalt import batch
 from xtbml.ncoord import ncoord
 
@@ -14,7 +14,7 @@ def test_cn_single(dtype: torch.dtype):
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
 
-    rcov = covalent_rad_d3[numbers]
+    rcov = cov_rad_d3[numbers]
     ref = torch.tensor(
         [
             3.9388208389,
@@ -50,7 +50,7 @@ def test_cn_batch(dtype: torch.dtype):
         )
     )
 
-    rcov = covalent_rad_d3[numbers]
+    rcov = cov_rad_d3[numbers]
     ref = torch.tensor(
         [
             [

@@ -4,7 +4,7 @@ from __future__ import annotations
 import torch
 
 
-from ..data.atomicrad import atomic_rad
+from ..data import atomic_rad
 from ..param import Element
 from ..typing import Tensor
 
