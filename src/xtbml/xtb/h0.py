@@ -523,9 +523,9 @@ class Hamiltonian:
                     batch.deflate(coeff[first_pair][1]),
                 )
 
-                vec = positions[upairs][:, 0, :] - positions[upairs][:, 1, :]
+                vec = positions[upairs][:, 1, :] - positions[upairs][:, 0, :]
 
-                stmp = mmd.overlap((ang_k, ang_l), alpha_tuple, coeff_tuple, -vec)
+                stmp = mmd.overlap((ang_k, ang_l), alpha_tuple, coeff_tuple, vec)
 
                 for r, pair in enumerate(upairs):
                     # print(i, r, pair)
@@ -536,9 +536,6 @@ class Hamiltonian:
                         pair[1] : pair[1] + norb_per_sh_l,
                     ] = stmp[r]
 
-            torch.set_printoptions(linewidth=100)
-            print(umap)
-            print(umap[20, 11:16])
             return ovlp
 
         if self.numbers.ndim > 1:
@@ -551,12 +548,15 @@ class Hamiltonian:
         else:
             overlap = get_overlap(self.unique, self.positions)
 
+        # force symmetry
+        return torch.triu(overlap, diagonal=1) + torch.triu(overlap).mT
+
         # remove noise to guarantee symmetry
-        return torch.where(
-            torch.abs(overlap) > (torch.finfo(self.dtype).eps * 10),
-            overlap,
-            overlap.new_tensor(0.0),
-        )
+        # return torch.where(
+        #     torch.abs(overlap) > (torch.finfo(self.dtype).eps * 10),
+        #     overlap,
+        #     overlap.new_tensor(0.0),
+        # )
 
     @property
     def device(self) -> torch.device:

@@ -3,26 +3,14 @@
 from __future__ import annotations
 import pytest
 import torch
-from xtbml.basis.indexhelper import IndexHelper
-from xtbml.basis.ortho import orthogonalize
-from xtbml.basis.slater import to_gauss
-from xtbml.basis.type import Cgto_Type
 
+from xtbml.basis.indexhelper import IndexHelper
 from xtbml.exlibs.tbmalt import batch
 from xtbml.ncoord.ncoord import get_coordination_number, exp_count
 from xtbml.param.gfn1 import GFN1_XTB as par
-from xtbml.param.util import (
-    get_elem_param,
-    get_elem_pqn,
-    get_elem_valence,
-    get_element_angular,
-)
+from xtbml.param.util import get_element_angular
 from xtbml.typing import Tensor
 from xtbml.xtb.h0 import Hamiltonian
-
-from xtbml.integral import mmd
-from xtbml.constants import ATOMIC_NUMBER, PSE
-from xtbml.param import Element
 
 from .samples import samples
 
@@ -30,7 +18,7 @@ from .samples import samples
 class Setup:
     """Setup class to define constants for test class."""
 
-    atol: float = 1e-05
+    atol: float = 1e-06
     """Absolute tolerance for equality comparison in `torch.allclose`."""
 
     rtol: float = 1e-05
@@ -52,7 +40,9 @@ class TestHamiltonian(Setup):
     ##############
 
     @pytest.mark.parametrize("dtype", [torch.float])
-    @pytest.mark.parametrize("name", ["PbH4-BiH3"])
+    @pytest.mark.parametrize(
+        "name", ["H2", "H2_cn", "LiH", "HLi", "S2", "SiH4", "SiH4_cn"]
+    )
     def test_h0_gfn1(self, dtype: torch.dtype, name: str) -> None:
         """
         Compare against reference calculated with tblite-int:
@@ -92,24 +82,13 @@ class TestHamiltonian(Setup):
         # print("orbitals_per_shell", ihelp.orbitals_per_shell)
         # print("\n")
 
-        o = h0.overlap()
+        o_old = h0.overlap()
+        o = h0.overlap_new()
+        h = h0.build(o, cn=cn)
 
-        o2 = h0.overlap_new()
-        print(o[20, 12:15])
-        print(o2[20, 12:15])
-
-        for i in range(o.shape[0]):
-            for j in range(o.shape[1]):
-                f = i
-                # print(i, j, o[i, j] - o2[i, j])
-
-        return
-        assert torch.allclose(o2, o2.mT)
-
-        h = h0.build(o2, cn=cn)
-
-        assert torch.allclose(h, h.mT)
-        assert torch.allclose(h, ref, rtol=self.rtol, atol=self.atol)
+        assert torch.allclose(o, o.mT, atol=self.atol)
+        assert torch.allclose(h, h.mT, atol=self.atol)
+        assert torch.allclose(h, ref, atol=self.atol)
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     @pytest.mark.parametrize("name1", ["H2", "LiH", "S2", "SiH4"])

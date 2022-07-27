@@ -75,33 +75,28 @@ class Bas:
         return cgto, alphas, coeffs
 
     def create_umap(self, ihelp: IndexHelper):
+        torch.set_printoptions(linewidth=200)
+
         # offsets to avoid duplication on addition
         offset1 = 100
-        offset2 = 10000
+        offset2 = 1000
 
-        # generate orbital combinations (duplicates between atoms possible)
+        # orbital combinations (duplicates between atoms avoided by offset)
         sh2orb = ihelp.spread_shell_to_orbital(ihelp.orbitals_per_shell)
         sh2ush = ihelp.spread_shell_to_orbital(ihelp.shells_to_ushell)
-        orbs = sh2ush + sh2orb
-        orbs = orbs.unsqueeze(-2) + orbs.unsqueeze(-1)
-        torch.set_printoptions(linewidth=200)
-        print(orbs)
+        orbs = sh2ush + sh2orb * offset1
 
         # extra offset along only one dimension to distinguish (n, m) and
-        # (m, n) of the same orbitals (e.g. 1x3 sp and 3x1 ps block)
-        orbs += sh2orb * offset1
-        print(orbs)
+        # (m, n) of the same orbital block (e.g. 1x3 sp and 3x1 ps block)
+        u = orbs.unsqueeze(-2) + orbs.unsqueeze(-1) * offset2
 
-        # generate unique atom combinations
-        atoms = ihelp.spread_atom_to_orbital(ihelp.atom_to_unique)
-        print(atoms)
-        atoms = atoms.unsqueeze(-2) + atoms.unsqueeze(-1)
-        print("\natoms")
-        print(atoms)
+        # NOTE: atom distinction should already be encoded through `offset1`
+        # unique atom combinations: offset to remove duplicates across atoms
+        # atoms = ihelp.spread_atom_to_orbital(ihelp.atom_to_unique)
+        # atoms = atoms.unsqueeze(-2) * offset2 + atoms.unsqueeze(-1) * offset3
+        # u = atoms + orbs
 
-        # add offset to remove duplicates across atoms and get unique map
-        u = atoms * offset2 + orbs
-        print(u)
+        # get unique map
         _, umap = torch.unique(u, return_inverse=True)
 
         # number of unqiue shells
