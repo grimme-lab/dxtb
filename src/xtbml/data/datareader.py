@@ -5,10 +5,11 @@ from json import loads as json_load
 import os
 from pathlib import Path
 from typing import Literal, Optional
-from ..constants import FLOAT32, FLOAT64
-
 import torch
 from torch.utils.data import DataLoader
+
+from ..constants import FLOAT32, FLOAT64
+from ..constants.units import AU2KCAL
 
 
 def walklevel(some_dir: str | Path, level=1):
@@ -74,7 +75,7 @@ def read_xyz(fp: str | Path) -> list[list[float | int]]:
             else:
                 l = line.strip().split()
                 x, y, z = float(l[1]), float(l[2]), float(l[3])
-                atm = to_number(l[0])
+                atm = to_number(l[0])  # FIXME: re-add legacy function
                 arr.append([x, y, z, atm])
 
     if len(arr) == 1:
@@ -488,7 +489,7 @@ class Datareader:
         from xtbml import charges
         from xtbml.adjlist import AdjacencyList
         from xtbml.basis.type import get_cutoff
-        from xtbml.repulsion.repulsion import RepulsionFactory
+        from xtbml.classical.repulsion import RepulsionFactory
         from xtbml.xtb.calculator import Calculator
         from xtbml.ncoord.ncoord import get_coordination_number, exp_count
         from xtbml.param.gfn1 import GFN1_XTB as gfn1_par
