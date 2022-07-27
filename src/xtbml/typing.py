@@ -2,14 +2,16 @@
 Type annotations for this project.
 """
 
+from collections.abc import Generator
+
 from typing import (
     Any,
     Callable,
     Dict,
-    Generator,
     TypedDict,
     List,
     Optional,
+    Protocol,
     Tuple,
     Union,
 )
@@ -28,19 +30,3 @@ class Molecule(TypedDict):
 
     positions: Tensor
     """Tensor of 3D coordinates of shape (n, 3)"""
-
-
-class Record(Molecule, total=False):
-    """Format of reference records containing GFN1-xTB and GFN2-xTB reference values."""
-
-    gfn1: Tensor
-    """Reference values for GFN1-xTB"""
-
-    gfn2: Tensor
-    """Reference values for GFN1-xTB"""
-
-    total_charge: Tensor
-    """Reference values for GFN1-xTB"""
-
-
-Samples = Dict[str, Record]

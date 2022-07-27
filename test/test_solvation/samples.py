@@ -1,5 +1,8 @@
-from typing import Dict
+"""Molecules for testing the solvation module."""
+
+from __future__ import annotations
 import torch
+
 from xtbml.typing import Molecule, Tensor
 from xtbml.utils import symbol2number
 
@@ -14,9 +17,7 @@ class Record(Molecule):
     """Reference values for psi"""
 
 
-Samples = Dict[str, Record]
-
-mb16_43: Samples = {
+mb16_43: dict[str, Record] = {
     "01": {
         "numbers": symbol2number(
             [

@@ -62,3 +62,11 @@ def geometric_average(hubbard: Tensor) -> Tensor:
     """
 
     return torch.sqrt(hubbard.unsqueeze(-1) * hubbard.unsqueeze(-2))
+
+
+averaging_function: dict[str, AveragingFunction] = {
+    "arithmetic": arithmetic_average,
+    "geometric": geometric_average,
+    "harmonic": harmonic_average,
+}
+"""Available averaging functions for Hubbard parameters"""

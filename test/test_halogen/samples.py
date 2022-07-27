@@ -1,7 +1,8 @@
 """Samples for test of halogen bond correction."""
 
-from typing import Dict
+from __future__ import annotations
 import torch
+
 from xtbml.typing import Molecule, Tensor
 from xtbml.utils import symbol2number
 
@@ -13,7 +14,7 @@ class Record(Molecule):
     """Reference value for energy from halogen bond correction."""
 
 
-samples: Dict[str, Record] = {
+samples: dict[str, Record] = {
     "br2nh3": {
         "numbers": symbol2number(["Br", "Br", "N", "H", "H", "H"]),
         "positions": torch.tensor(

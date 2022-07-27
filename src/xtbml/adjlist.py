@@ -1,8 +1,7 @@
-from numpy import finfo
 import torch
 
-from .constants import INT16 as DTYPE
-from .exlibs.tbmalt import Geometry
+from .constants import UINT8 as DTYPE
+from .typing import Tensor
 
 
 class AdjacencyList:
@@ -35,9 +34,6 @@ class AdjacencyList:
     therefore two arrays are used for clarity.
     """
 
-    trans: torch.Tensor
-    """Generated lattice points (from :func:`~xtbml.cutoff.get_lattice_points`)"""
-
     inl: torch.Tensor
     """Offset index in the neighbour map"""
 
@@ -50,33 +46,29 @@ class AdjacencyList:
     nltr: torch.Tensor
     """Cell index of the neighbouring atom"""
 
-    def __init__(self, mol: Geometry, trans: torch.Tensor, cutoff: float) -> None:
-        self.trans = trans
-        self.inl = torch.zeros(mol.get_length(), dtype=DTYPE)
-        self.nnl = torch.zeros(mol.get_length(), dtype=DTYPE)
+    def __init__(self, numbers: Tensor, positions: Tensor, cutoff: float) -> None:
+        l = torch.numel(numbers)
+        self.inl = torch.zeros(l, dtype=DTYPE)
+        self.nnl = torch.zeros(l, dtype=DTYPE)
 
-        tmp_nlat = torch.zeros(1000 * mol.get_length(), dtype=DTYPE)
-        tmp_nltr = torch.zeros(1000 * mol.get_length(), dtype=DTYPE)
+        tmp_nlat = torch.zeros(10 * l, dtype=DTYPE)
 
         img = 0
         cutoff2 = cutoff * cutoff
+        eps = torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype)
 
-        for iat in range(mol.get_length()):
+        for iat in range(l):
             self.inl[iat] = img
 
             for jat in range(iat + 1):
-                for itr in range(trans.size(dim=1)):
-                    vec = torch.sub(mol.positions[iat, :], mol.positions[jat, :])
-                    vec = torch.sub(vec, trans[itr, :])
-                    r2 = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]
-                    if r2 < finfo(type(cutoff2)).eps or r2 > cutoff2:
-                        continue
+                vec = torch.sub(positions[iat, :], positions[jat, :])
+                r2 = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]
+                if r2 < eps or r2 > cutoff2:
+                    continue
 
-                    tmp_nlat[img] = jat
-                    tmp_nltr[img] = itr
-                    img += 1
+                tmp_nlat[img] = jat
+                img += 1
 
             self.nnl[iat] = img - self.inl[iat]
 
         self.nlat = tmp_nlat[:img]
-        self.nltr = tmp_nltr[:img]

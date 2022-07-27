@@ -9,11 +9,6 @@ from typing import Literal, Optional
 import torch
 from torch.utils.data import DataLoader
 
-from xtbml.constants.torch import FLOAT32, FLOAT64
-from xtbml.constants.units import AU2KCAL
-from xtbml.data.covrad import to_number
-
-
 def walklevel(some_dir: str | Path, level=1):
     """Identical to os.walk() but allowing for limited depth."""
     if isinstance(some_dir, Path):
@@ -120,7 +115,7 @@ def read_coord(fp: str | Path) -> list[list[float | int]]:
                 continue
             try:
                 x, y, z = float(l[0]), float(l[1]), float(l[2])
-                atm = to_number(l[3])
+                atm = ATOMIC_NUMBER[l[3].title()]
                 arr.append([x, y, z, atm])
             except ValueError as e:
                 print(e)

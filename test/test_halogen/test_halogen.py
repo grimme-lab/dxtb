@@ -1,8 +1,8 @@
 """Run tests for energy contribution from halogen bond correction."""
 
+from __future__ import annotations
 import pytest
 import torch
-from typing import Generator, Tuple
 
 from xtbml.classical.halogen import (
     get_xbond,
@@ -10,13 +10,15 @@ from xtbml.classical.halogen import (
 )
 from xtbml.exlibs.tbmalt import batch
 from xtbml.param.gfn1 import GFN1_XTB
-from xtbml.typing import Tensor
+from xtbml.typing import Generator, Tensor, Tuple
 
 from .samples import samples
 
+FixtureParams = Tuple[Tensor, Tensor, Tensor]
 
-@pytest.fixture(scope="class")
-def param() -> Generator[Tuple[Tensor, Tensor, Tensor], None, None]:
+
+@pytest.fixture(name="param", scope="class")
+def fixture_param() -> Generator[FixtureParams, None, None]:
     if GFN1_XTB.halogen is None:
         raise ValueError("No halogen bond correction parameters provided.")
 
@@ -36,10 +38,11 @@ class TestHalogenBondCorrection:
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     @pytest.mark.parametrize("name", ["br2nh3", "br2nh2o", "br2och2", "finch"])
-    def test_small(
-        self, param: Tuple[Tensor, Tensor, Tensor], dtype: torch.dtype, name: str
-    ) -> None:
-        """Test the halogen bond correction for small molecules taken from the tblite test suite."""
+    def test_small(self, param: FixtureParams, dtype: torch.dtype, name: str) -> None:
+        """
+        Test the halogen bond correction for small molecules taken from
+        the tblite test suite.
+        """
         damp, rscale, bond_strength = _cast(param, dtype)
 
         sample = samples[name]
@@ -53,10 +56,12 @@ class TestHalogenBondCorrection:
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     @pytest.mark.parametrize("name", ["tmpda", "tmpda_mod"])
-    def test_large(
-        self, param: Tuple[Tensor, Tensor, Tensor], dtype: torch.dtype, name: str
-    ) -> None:
-        """TMPDA@XB-donor from S30L (15AB). Contains three iodine donors and two nitrogen acceptors. In the modified version, one I is replaced with Br and one O is added in order to obtain different donors and acceptors."""
+    def test_large(self, param: FixtureParams, dtype: torch.dtype, name: str) -> None:
+        """
+        TMPDA@XB-donor from S30L (15AB). Contains three iodine donors and two
+        nitrogen acceptors. In the modified version, one I is replaced with
+        Br and one O is added in order to obtain different donors and acceptors.
+        """
         damp, rscale, bond_strength = _cast(param, dtype)
 
         sample = samples[name]
@@ -69,9 +74,7 @@ class TestHalogenBondCorrection:
         assert torch.allclose(ref, torch.sum(xb))
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-    def test_no_xb(
-        self, param: Tuple[Tensor, Tensor, Tensor], dtype: torch.dtype
-    ) -> None:
+    def test_no_xb(self, param: FixtureParams, dtype: torch.dtype) -> None:
         """Test system without halogen bonds."""
         damp, rscale, bond_strength = _cast(param, dtype)
 
@@ -87,7 +90,9 @@ class TestHalogenBondCorrection:
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     @pytest.mark.parametrize("name1", ["br2nh3", "br2och2"])
     @pytest.mark.parametrize("name2", ["finch", "tmpda"])
-    def test_batch(self, param, dtype: torch.dtype, name1: str, name2: str) -> None:
+    def test_batch(
+        self, param: FixtureParams, dtype: torch.dtype, name1: str, name2: str
+    ) -> None:
         damp, rscale, bond_strength = _cast(param, dtype)
 
         sample1, sample2 = samples[name1], samples[name2]
@@ -116,7 +121,7 @@ class TestHalogenBondCorrection:
 
     @pytest.mark.grad
     @pytest.mark.parametrize("sample_name", ["br2nh3", "br2och2"])
-    def stest_param_grad(self, param, sample_name: str):
+    def stest_param_grad(self, param: FixtureParams, sample_name: str):
         dtype = torch.float64
         damp, rscale, bond_strength = _cast(param, dtype)
         damp.requires_grad_(True)
@@ -139,21 +144,19 @@ class TestHalogenBondCorrection:
         assert gradcheck(func, (damp, rscale), atol=1e-2)
 
 
-def _cast(
-    param: Tuple[Tensor, Tensor, Tensor], dtype: torch.dtype
-) -> Tuple[Tensor, Tensor, Tensor]:
+def _cast(param: FixtureParams, dtype: torch.dtype) -> FixtureParams:
     """Cast the parameters to the given dtype.
 
     Args:
     -----
-    param: Tuple[Tensor, Tensor, Tensor]
+    param: FixtureParams
         The parameters to cast.
     dtype: torch.dtype
         The dtype to cast the parameters to.
 
     Returns:
     --------
-    Tuple[Tensor, Tensor, Tensor]
+    FixtureParams
         The parameters with the corresponding dtype.
 
     """
