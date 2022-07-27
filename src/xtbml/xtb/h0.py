@@ -3,7 +3,7 @@ import torch
 
 from ..adjlist import AdjacencyList
 from ..basis.indexhelper import IndexHelper
-from ..basis.type import Basis, get_cutoff
+from ..basis.type import Bas, Basis, get_cutoff
 from ..exlibs.tbmalt import batch
 from ..constants import EV2AU
 from ..data import atomic_rad
@@ -15,6 +15,7 @@ from ..param import (
     Param,
 )
 from ..typing import Tensor
+from ..utils import timing
 
 PAD = -1
 """Value used for padding of tensors."""
@@ -297,10 +298,9 @@ class Hamiltonian:
         kcn = self.ihelp.spread_ushell_to_shell(self.kcn)
 
         # formula differs from paper to be consistent with GFN2 -> "kcn" adapted
-        selfenergy = (
-            self.ihelp.spread_ushell_to_shell(self.selfenergy)
-            - kcn * self.ihelp.spread_atom_to_shell(cn)
-        )
+        selfenergy = self.ihelp.spread_ushell_to_shell(
+            self.selfenergy
+        ) - kcn * self.ihelp.spread_atom_to_shell(cn)
 
         # ----------------------
         # Eq.24: PI(R_AB, l, l')
@@ -319,7 +319,9 @@ class Hamiltonian:
 
         shpoly = self.ihelp.spread_ushell_to_shell(self.shpoly)
 
-        var_pi = (1.0 + shpoly.unsqueeze(-1) * rr_sh) * (1.0 + shpoly.unsqueeze(-2) * rr_sh)
+        var_pi = (1.0 + shpoly.unsqueeze(-1) * rr_sh) * (
+            1.0 + shpoly.unsqueeze(-2) * rr_sh
+        )
 
         # --------------------
         # Eq.28: X(EN_A, EN_B)
@@ -350,7 +352,9 @@ class Hamiltonian:
         # Eq.23: H_EHT
         # ------------
         var_h = torch.where(
-            mask_shell, 0.5 * (selfenergy.unsqueeze(-1) + selfenergy.unsqueeze(-2)), zero
+            mask_shell,
+            0.5 * (selfenergy.unsqueeze(-1) + selfenergy.unsqueeze(-2)),
+            zero,
         )
 
         # scale only off-diagonals
@@ -358,8 +362,16 @@ class Hamiltonian:
         h0 = torch.where(mask_shell, var_pi * var_k * var_h, var_h)
 
         h = self.ihelp.spread_shell_to_orbital(h0, dim=(-2, -1))
-        return h * overlap
+        hcore = h * overlap
 
+        # remove noise to guarantee symmetry
+        return torch.where(
+            torch.abs(hcore) > (torch.finfo(self.dtype).eps * 10),
+            hcore,
+            hcore.new_tensor(0.0),
+        )
+
+    @timing
     def overlap(self) -> Tensor:
         """Loop-based overlap calculation."""
 
@@ -444,6 +456,107 @@ class Hamiltonian:
             )
 
         return get_overlap(self.numbers, self.positions)
+
+    @timing
+    def overlap_new(self) -> Tensor:
+        """Vectorized overlap calculation."""
+
+        def get_overlap(numbers: Tensor, positions: Tensor) -> Tensor:
+            bas = Bas(numbers, self.par, dtype=self.dtype)
+            umap, n_unique_pairs = bas.create_umap(self.ihelp)
+            _, alphas, coeffs = bas.create_cgtos(self.ihelp)
+
+            #################################################
+
+            # spread stuff to orbitals... a little hacky...
+            alpha = batch.index(
+                batch.index(batch.pack(alphas, value=0), self.ihelp.shells_to_ushell),
+                self.ihelp.orbitals_to_shell,
+            )
+            coeff = batch.index(
+                batch.index(batch.pack(coeffs, value=0), self.ihelp.shells_to_ushell),
+                self.ihelp.orbitals_to_shell,
+            )
+            ang = self.ihelp.spread_shell_to_orbital(self.ihelp.angular)
+
+            positions = batch.index(positions, self.ihelp.shells_to_atom)
+            positions = batch.index(positions, self.ihelp.orbitals_to_shell)
+
+            # vec = positions.unsqueeze(-2) - positions
+
+            #################################################
+
+            ovlp = torch.zeros(*umap.shape, dtype=self.dtype, device=self.device)
+            for i in range(n_unique_pairs):
+                pairs = (umap == i).nonzero(as_tuple=False)
+                first_pair = pairs[0]
+
+                ang_k, ang_l = ang[first_pair].tolist()
+                norb_per_sh_k = 2 * ang_k + 1
+                norb_per_sh_l = 2 * ang_l + 1
+
+                # collect [0, 0] entry of each subblock
+                upairs = []
+                helper = []
+                for pair in pairs.tolist():
+                    if pair in helper:
+                        continue
+
+                    k, l = pair[0], pair[1]
+
+                    # create indices of other entries from subblock
+                    for ak in range(norb_per_sh_k):
+                        for al in range(norb_per_sh_l):
+                            helper.append([k + ak, l + al])
+
+                    upairs.append(pair)
+
+                upairs = torch.tensor(upairs, dtype=torch.long)
+
+                # we only require one pair as all have the same basis function
+                alpha_tuple = (
+                    batch.deflate(alpha[first_pair][0]),
+                    batch.deflate(alpha[first_pair][1]),
+                )
+                coeff_tuple = (
+                    batch.deflate(coeff[first_pair][0]),
+                    batch.deflate(coeff[first_pair][1]),
+                )
+
+                vec = positions[upairs][:, 0, :] - positions[upairs][:, 1, :]
+
+                stmp = mmd.overlap((ang_k, ang_l), alpha_tuple, coeff_tuple, -vec)
+
+                for r, pair in enumerate(upairs):
+                    # print(i, r, pair)
+                    # print(stmp[r])
+                    # print("")
+                    ovlp[
+                        pair[0] : pair[0] + norb_per_sh_k,
+                        pair[1] : pair[1] + norb_per_sh_l,
+                    ] = stmp[r]
+
+            torch.set_printoptions(linewidth=100)
+            print(umap)
+            print(umap[20, 11:16])
+            return ovlp
+
+        if self.numbers.ndim > 1:
+            overlap = batch.pack(
+                [
+                    get_overlap(self.unique, self.positions[_batch])
+                    for _batch in range(self.numbers.shape[0])
+                ]
+            )
+        else:
+            overlap = get_overlap(self.unique, self.positions)
+
+        # remove noise to guarantee symmetry
+        return torch.where(
+            torch.abs(overlap) > (torch.finfo(self.dtype).eps * 10),
+            overlap,
+            overlap.new_tensor(0.0),
+        )
 
     @property
     def device(self) -> torch.device:

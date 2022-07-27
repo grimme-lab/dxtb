@@ -22,6 +22,7 @@ from .repulsion import EffectiveRepulsion, Repulsion
 from .util import (
     get_elem_param,
     get_element_angular,
+    get_elem_pqn,
     get_elem_valence,
     get_pair_param,
 )

@@ -1,7 +1,11 @@
 """ Definition of basic data classes """
+from __future__ import annotations
 from math import log10, sqrt
 import torch
 from typing import Union, Dict, List
+from xtbml.basis.indexhelper import IndexHelper
+
+from xtbml.param.util import get_elem_param, get_elem_pqn, get_elem_valence
 
 from ..basis import slater, orthogonalize
 from ..param import Param, Element
@@ -19,6 +23,101 @@ _aqm2lsh = {
     "f": 3,
     "g": 4,
 }
+
+
+class Bas:
+    def __init__(
+        self,
+        numbers: Tensor,
+        par: Param,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+        acc: float = 1.0,
+    ) -> None:
+        self.intcut = integral_cutoff(acc)
+
+        self.ngauss = get_elem_param(numbers, par.element, "ngauss")
+        self.slater = get_elem_param(
+            numbers, par.element, "slater", dtype=dtype, device=device
+        )
+        self.valence = get_elem_valence(numbers, par.element, dtype=torch.uint8)
+        self.pqn = get_elem_pqn(numbers, par.element)
+
+    def create_cgtos(self, ihelp: IndexHelper):
+        cgto = []
+        coeffs = []
+        alphas = []
+
+        # maybe this can be batched too, but this loop is rather small
+        # so it is probably not worth it
+        for i in range(len(self.slater)):
+            ret = slater.to_gauss(
+                self.ngauss[i], self.pqn[i], ihelp.unique_angular[i], self.slater[i]
+            )
+            cgtoi = Cgto_Type(ihelp.unique_angular[i], *ret)
+
+            # FIXME: this only works for GFN1 with H being the only element
+            # with a non-valence shell
+            if self.valence[i].item() == 0:
+                cgtoi = Cgto_Type(
+                    ihelp.unique_angular[i],
+                    *orthogonalize(
+                        ihelp.unique_angular[i],
+                        (cgto[i - 1].alpha, cgtoi.alpha),
+                        (cgto[i - 1].coeff, cgtoi.coeff),
+                    ),
+                )
+
+            cgto.append(cgtoi)
+            alphas.append(cgtoi.alpha)
+            coeffs.append(cgtoi.coeff)
+
+        return cgto, alphas, coeffs
+
+    def create_umap(self, ihelp: IndexHelper):
+        # offsets to avoid duplication on addition
+        offset1 = 100
+        offset2 = 10000
+
+        # generate orbital combinations (duplicates between atoms possible)
+        sh2orb = ihelp.spread_shell_to_orbital(ihelp.orbitals_per_shell)
+        sh2ush = ihelp.spread_shell_to_orbital(ihelp.shells_to_ushell)
+        orbs = sh2ush + sh2orb
+        orbs = orbs.unsqueeze(-2) + orbs.unsqueeze(-1)
+        torch.set_printoptions(linewidth=200)
+        print(orbs)
+
+        # extra offset along only one dimension to distinguish (n, m) and
+        # (m, n) of the same orbitals (e.g. 1x3 sp and 3x1 ps block)
+        orbs += sh2orb * offset1
+        print(orbs)
+
+        # generate unique atom combinations
+        atoms = ihelp.spread_atom_to_orbital(ihelp.atom_to_unique)
+        print(atoms)
+        atoms = atoms.unsqueeze(-2) + atoms.unsqueeze(-1)
+        print("\natoms")
+        print(atoms)
+
+        # add offset to remove duplicates across atoms and get unique map
+        u = atoms * offset2 + orbs
+        print(u)
+        _, umap = torch.unique(u, return_inverse=True)
+
+        # number of unqiue shells
+        n_uangular = len(ihelp.unique_angular)
+
+        # calculated number of unique combinations of unique shells
+        n_unique_pairs = torch.max(umap) + 1
+
+        # check against theoretical number
+        n_uangular_comb = torch.sum(torch.arange(1, n_uangular + 1))
+        if n_unique_pairs < n_uangular_comb:
+            raise ValueError(
+                f"Internal error: {n_uangular_comb- n_unique_pairs} missing unique pairs."
+            )
+
+        return umap, n_unique_pairs
 
 
 class Cgto_Type:

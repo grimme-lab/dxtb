@@ -212,3 +212,25 @@ def get_elem_valence(
             l.append(val)
 
     return torch.tensor(l, device=device, dtype=dtype)
+
+
+def get_elem_pqn(
+    numbers: Tensor,
+    par_element: dict[str, Element],
+    pad_val: int = -1,
+    device: torch.device | None = None,
+    dtype: torch.dtype | None = None,
+):
+    key = "shells"
+
+    shells = []
+    for number in numbers:
+        el = PSE.get(int(number.item()), "X")
+        if el in par_element:
+            for shell in getattr(par_element[el], key):
+                shells.append(int(shell[0]))
+
+        else:
+            shells.append(pad_val)
+
+    return torch.tensor(shells, device=device, dtype=dtype)

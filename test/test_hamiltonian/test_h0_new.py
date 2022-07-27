@@ -11,7 +11,12 @@ from xtbml.basis.type import Cgto_Type
 from xtbml.exlibs.tbmalt import batch
 from xtbml.ncoord.ncoord import get_coordination_number, exp_count
 from xtbml.param.gfn1 import GFN1_XTB as par
-from xtbml.param.util import get_elem_param, get_elem_valence, get_element_angular
+from xtbml.param.util import (
+    get_elem_param,
+    get_elem_pqn,
+    get_elem_valence,
+    get_element_angular,
+)
 from xtbml.typing import Tensor
 from xtbml.xtb.h0 import Hamiltonian
 
@@ -46,8 +51,8 @@ class TestHamiltonian(Setup):
     #### GFN1 ####
     ##############
 
-    @pytest.mark.parametrize("dtype", [torch.float32])
-    @pytest.mark.parametrize("name", ["C2H2"])
+    @pytest.mark.parametrize("dtype", [torch.float])
+    @pytest.mark.parametrize("name", ["PbH4-BiH3"])
     def test_h0_gfn1(self, dtype: torch.dtype, name: str) -> None:
         """
         Compare against reference calculated with tblite-int:
@@ -62,7 +67,6 @@ class TestHamiltonian(Setup):
 
         sample = samples[name]
         numbers = sample["numbers"]
-        unique = torch.unique(numbers)
         positions = sample["positions"].type(dtype)
         ref = sample["h0"].type(dtype)
 
@@ -74,158 +78,38 @@ class TestHamiltonian(Setup):
         ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
         h0 = Hamiltonian(numbers, positions, par, ihelp)
 
-        print("numbers", numbers)
-        print("unique", unique)
-        print("angular", ihelp.angular)
-        print("unique_angular", ihelp.unique_angular)
-        print("atom_to_unique", ihelp.atom_to_unique)
-        print("shells_to_ushell", ihelp.shells_to_ushell)
-        print("shell_index", ihelp.shell_index)
-        print("shells_to_atom", ihelp.shells_to_atom)
-        print("shells_per_atom", ihelp.shells_per_atom)
-        print("orbital_index", ihelp.orbital_index)
-        print("orbitals_to_shell", ihelp.orbitals_to_shell)
-        print("orbitals_per_shell", ihelp.orbitals_per_shell)
-        print("\n")
+        # print("numbers", numbers)
+        # print("unique", unique)
+        # print("angular", ihelp.angular)
+        # print("unique_angular", ihelp.unique_angular)
+        # print("atom_to_unique", ihelp.atom_to_unique)
+        # print("shells_to_ushell", ihelp.shells_to_ushell)
+        # print("shell_index", ihelp.shell_index)
+        # print("shells_to_atom", ihelp.shells_to_atom)
+        # print("shells_per_atom", ihelp.shells_per_atom)
+        # print("orbital_index", ihelp.orbital_index)
+        # print("orbitals_to_shell", ihelp.orbitals_to_shell)
+        # print("orbitals_per_shell", ihelp.orbitals_per_shell)
+        # print("\n")
 
-        # offset to avoid duplication on addition
-        offset = 100
-
-        orbs = ihelp.spread_shell_to_orbital(
-            ihelp.shells_to_ushell
-        ) + ihelp.spread_shell_to_orbital(ihelp.orbitals_per_shell)
-        orbs = orbs.unsqueeze(-2) + orbs.unsqueeze(-1)
-        print(orbs)
-
-        atoms = ihelp.spread_atom_to_orbital(ihelp.atom_to_unique)
-        atoms = atoms.unsqueeze(-2) + atoms.unsqueeze(-1)
-
-        u = atoms * offset + orbs
-        _, umap = torch.unique(u, return_inverse=True)
-        print(umap)
-        print(ihelp.reduce_orbital_to_shell(umap, dim=(-2, -1)))
-        print(ihelp.reduce_orbital_to_atom(umap, dim=(-2, -1)))
-
-        # number of unqiue shells
-        n_uangular = len(ihelp.unique_angular)
-
-        # calculated number of unique combinations of unique shells
-        n_unique_pairs = torch.max(umap) + 1
-
-        # check against theoretical number
-        n_uangular_comb = torch.sum(torch.arange(1, n_uangular + 1))
-        if n_unique_pairs != n_uangular_comb:
-            raise ValueError(
-                f"Internal error: {n_uangular_comb- n_unique_pairs} missing unique pairs."
-            )
-
-        ###########################################
-
-        # create basis set (rewritten)
-
-        def get_pqn(
-            numbers: Tensor,
-            par_element: dict[str, Element],
-            pad_val: int = -1,
-            device: torch.device | None = None,
-            dtype: torch.dtype | None = None,
-        ):
-            key = "shells"
-
-            shells = []
-            for number in numbers:
-                el = PSE.get(int(number.item()), "X")
-                if el in par_element:
-                    for shell in getattr(par_element[el], key):
-                        shells.append(int(shell[0]))
-
-                else:
-                    shells.append(pad_val)
-
-            return torch.tensor(shells, device=device, dtype=dtype)
-
-        pqn = get_pqn(unique, par.element)
-        print("\n\n\n")
-
-        ngauss = get_elem_param(unique, par.element, "ngauss")
-        slater = get_elem_param(unique, par.element, "slater", dtype=dtype)
-        valence = get_elem_valence(unique, par.element, dtype=torch.uint8)
-
-        cgto = []
-        coeffs = []
-        alphas = []
-        angs = []
-
-        # maybe this can be batched too, but this loop is rather small
-        # so it is probably not worth it
-        for i in range(len(slater)):
-            ret = to_gauss(ngauss[i], pqn[i], ihelp.unique_angular[i], slater[i])
-            cgtoi = Cgto_Type(ihelp.unique_angular[i], *ret)
-
-            if valence[i].item() == 0:
-                cgtoi = Cgto_Type(
-                    ihelp.unique_angular[i],
-                    *orthogonalize(
-                        ihelp.unique_angular[i],
-                        (cgto[i - 1].alpha, cgtoi.alpha),
-                        (cgto[i - 1].coeff, cgtoi.coeff),
-                    ),
-                )
-
-            cgto.append(cgtoi)
-            alphas.append(cgtoi.alpha)
-            coeffs.append(cgtoi.coeff)
-            angs.append(cgtoi.ang)
-
-        #################################################
-
-        # spread stuff to orbitals... a little hacky...
-        al = batch.index(
-            batch.index(batch.pack(alphas, value=0), ihelp.shells_to_ushell),
-            ihelp.orbitals_to_shell,
-        )
-        c = batch.index(
-            batch.index(batch.pack(coeffs, value=0), ihelp.shells_to_ushell),
-            ihelp.orbitals_to_shell,
-        )
-
-        positions = batch.index(positions, ihelp.shells_to_atom)
-        positions = batch.index(positions, ihelp.orbitals_to_shell)
-
-        # vec = positions.unsqueeze(-2) - positions
-
-        #################################################
-
-        ovlp = torch.zeros((len(orbs), len(orbs)))
-        for i in range(n_unique_pairs):
-            print(i)
-            pairs = (umap == i).nonzero(as_tuple=False)
-
-            # we only require one pair as all have the same basis function
-            coeff = c[pairs[0]]
-            alpha = al[pairs[0]]
-            ang = ihelp.spread_shell_to_orbital(ihelp.angular)[pairs[0]]
-
-            alpha_tuple = (batch.deflate(alpha[0]), batch.deflate(alpha[1]))
-            coeff_tuple = (batch.deflate(coeff[0]), batch.deflate(coeff[1]))
-            print(ang[0], ang[1], pairs[0])
-
-            vec = positions[pairs][:, 0, :] - positions[pairs][:, 1, :]
-            # print(positions[pairs][:, 0, :] - positions[pairs][:, 1, :])
-
-            stmp = mmd.overlap((ang[0], ang[1]), alpha_tuple, coeff_tuple, -vec)
-            print(stmp)
-
-            # print(ovlp)
-            break
-
-        print("\n")
         o = h0.overlap()
-        # print(o)
-        h = h0.build(o, cn=cn)
 
-        # assert torch.all(h.mT == h)
-        # assert torch.allclose(h, ref, rtol=self.rtol, atol=self.atol)
+        o2 = h0.overlap_new()
+        print(o[20, 12:15])
+        print(o2[20, 12:15])
+
+        for i in range(o.shape[0]):
+            for j in range(o.shape[1]):
+                f = i
+                # print(i, j, o[i, j] - o2[i, j])
+
+        return
+        assert torch.allclose(o2, o2.mT)
+
+        h = h0.build(o2, cn=cn)
+
+        assert torch.allclose(h, h.mT)
+        assert torch.allclose(h, ref, rtol=self.rtol, atol=self.atol)
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     @pytest.mark.parametrize("name1", ["H2", "LiH", "S2", "SiH4"])
