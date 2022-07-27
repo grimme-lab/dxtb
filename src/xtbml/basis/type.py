@@ -5,13 +5,13 @@ import torch
 from typing import Union, Dict, List
 from xtbml.basis.indexhelper import IndexHelper
 
-from xtbml.param.util import get_elem_param, get_elem_pqn, get_elem_valence
 
 from ..basis import slater, orthogonalize
-from ..param import Param, Element
+from ..param import Param, Element, get_elem_param, get_elem_pqn, get_elem_valence
 from ..constants import UINT8 as DTYPE_INT
 from ..constants import PSE
 from ..typing import Tensor
+from ..utils import timing
 
 MAXG = 12
 """Maximum contraction length of basis functions. The limit is chosen as twice the maximum size returned by the STO-NG expansion"""
@@ -43,6 +43,7 @@ class Bas:
         self.valence = get_elem_valence(numbers, par.element, dtype=torch.uint8)
         self.pqn = get_elem_pqn(numbers, par.element)
 
+    @timing
     def create_cgtos(self, ihelp: IndexHelper):
         cgto = []
         coeffs = []
@@ -74,30 +75,343 @@ class Bas:
 
         return cgto, alphas, coeffs
 
+    @timing
     def create_umap(self, ihelp: IndexHelper):
-        torch.set_printoptions(linewidth=200)
+        primes = torch.tensor(
+            [
+                2,
+                3,
+                5,
+                7,
+                11,
+                13,
+                17,
+                19,
+                23,
+                29,
+                31,
+                37,
+                41,
+                43,
+                47,
+                53,
+                59,
+                61,
+                67,
+                71,
+                73,
+                79,
+                83,
+                89,
+                97,
+                101,
+                103,
+                107,
+                109,
+                113,
+                127,
+                131,
+                137,
+                139,
+                149,
+                151,
+                157,
+                163,
+                167,
+                173,
+                179,
+                181,
+                191,
+                193,
+                197,
+                199,
+                211,
+                223,
+                227,
+                229,
+                233,
+                239,
+                241,
+                251,
+                257,
+                263,
+                269,
+                271,
+                277,
+                281,
+                283,
+                293,
+                307,
+                311,
+                313,
+                317,
+                331,
+                337,
+                347,
+                349,
+                353,
+                359,
+                367,
+                373,
+                379,
+                383,
+                389,
+                397,
+                401,
+                409,
+                419,
+                421,
+                431,
+                433,
+                439,
+                443,
+                449,
+                457,
+                461,
+                463,
+                467,
+                479,
+                487,
+                491,
+                499,
+                503,
+                509,
+                521,
+                523,
+                541,
+                547,
+                557,
+                563,
+                569,
+                571,
+                577,
+                587,
+                593,
+                599,
+                601,
+                607,
+                613,
+                617,
+                619,
+                631,
+                641,
+                643,
+                647,
+                653,
+                659,
+                661,
+                673,
+                677,
+                683,
+                691,
+                701,
+                709,
+                719,
+                727,
+                733,
+                739,
+                743,
+                751,
+                757,
+                761,
+                769,
+                773,
+                787,
+                797,
+                809,
+                811,
+                821,
+                823,
+                827,
+                829,
+                839,
+                853,
+                857,
+                859,
+                863,
+                877,
+                881,
+                883,
+                887,
+                907,
+                911,
+                919,
+                929,
+                937,
+                941,
+                947,
+                953,
+                967,
+                971,
+                977,
+                983,
+                991,
+                997,
+                1009,
+                1013,
+                1019,
+                1021,
+                1031,
+                1033,
+                1039,
+                1049,
+                1051,
+                1061,
+                1063,
+                1069,
+                1087,
+                1091,
+                1093,
+                1097,
+                1103,
+                1109,
+                1117,
+                1123,
+                1129,
+                1151,
+                1153,
+                1163,
+                1171,
+                1181,
+                1187,
+                1193,
+                1201,
+                1213,
+                1217,
+                1223,
+                1229,
+                1231,
+                1237,
+                1249,
+                1259,
+                1277,
+                1279,
+                1283,
+                1289,
+                1291,
+                1297,
+                1301,
+                1303,
+                1307,
+                1319,
+                1321,
+                1327,
+                1361,
+                1367,
+                1373,
+                1381,
+                1399,
+                1409,
+                1423,
+                1427,
+                1429,
+                1433,
+                1439,
+                1447,
+                1451,
+                1453,
+                1459,
+                1471,
+                1481,
+                1483,
+                1487,
+                1489,
+                1493,
+                1499,
+                1511,
+                1523,
+                1531,
+                1543,
+                1549,
+                1553,
+                1559,
+                1567,
+                1571,
+                1579,
+                1583,
+                1597,
+                1601,
+                1607,
+                1609,
+                1613,
+                1619,
+                1621,
+                1627,
+                1637,
+                1657,
+                1663,
+                1667,
+                1669,
+                1693,
+                1697,
+                1699,
+                1709,
+                1721,
+                1723,
+                1733,
+                1741,
+                1747,
+                1753,
+                1759,
+                1777,
+                1783,
+                1787,
+                1789,
+                1801,
+                1811,
+                1823,
+                1831,
+                1847,
+                1861,
+                1867,
+                1871,
+                1873,
+                1877,
+                1879,
+                1889,
+                1901,
+                1907,
+                1913,
+                1931,
+                1933,
+                1949,
+                1951,
+                1973,
+                1979,
+                1987,
+            ]
+        )
+        torch.set_printoptions(linewidth=250)
 
         # offsets to avoid duplication on addition
-        offset1 = 100
-        offset2 = 1000
+        offset1 = 10000
 
-        # orbital combinations (duplicates between atoms avoided by offset)
-        sh2orb = ihelp.spread_shell_to_orbital(ihelp.orbitals_per_shell)
-        sh2ush = ihelp.spread_shell_to_orbital(ihelp.shells_to_ushell)
-        orbs = sh2ush + sh2orb * offset1
+        # convert unique shell indices to prime numbers for unique products
+        orbs = primes[ihelp.spread_shell_to_orbital(ihelp.shells_to_ushell)]
+        orbs = orbs.unsqueeze(-2) * orbs.unsqueeze(-1)
 
         # extra offset along only one dimension to distinguish (n, m) and
         # (m, n) of the same orbital block (e.g. 1x3 sp and 3x1 ps block)
-        u = orbs.unsqueeze(-2) + orbs.unsqueeze(-1) * offset2
+        sh2orb = ihelp.spread_shell_to_orbital(ihelp.orbitals_per_shell)
+        orbs += sh2orb * offset1
+
+        _, umap = torch.unique(orbs, return_inverse=True)
+
+        # print("sh2ush", ihelp.spread_shell_to_orbital(ihelp.shells_to_ushell))
+        # print("sh2orb", sh2orb)
+        # print(orbs)
+        print(umap)
 
         # NOTE: atom distinction should already be encoded through `offset1`
         # unique atom combinations: offset to remove duplicates across atoms
         # atoms = ihelp.spread_atom_to_orbital(ihelp.atom_to_unique)
-        # atoms = atoms.unsqueeze(-2) * offset2 + atoms.unsqueeze(-1) * offset3
-        # u = atoms + orbs
+        # atoms = atoms.unsqueeze(-2) + atoms.unsqueeze(-1)
+        # print(atoms)
+        # u = atoms * offset3 + orbs
 
-        # get unique map
-        _, umap = torch.unique(u, return_inverse=True)
+        # # get unique map
+        # _, umap = torch.unique(u, return_inverse=True)
+        # print(umap)
 
         # number of unqiue shells
         n_uangular = len(ihelp.unique_angular)

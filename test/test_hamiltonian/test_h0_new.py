@@ -40,9 +40,40 @@ class TestHamiltonian(Setup):
     ##############
 
     @pytest.mark.parametrize("dtype", [torch.float])
-    @pytest.mark.parametrize(
-        "name", ["H2", "H2_cn", "LiH", "HLi", "S2", "SiH4", "SiH4_cn"]
-    )
+    @pytest.mark.parametrize("name", ["SiH4", "PbH4-BiH3"])
+    def test_overlap(self, dtype: torch.dtype, name: str) -> None:
+        sample = samples[name]
+        numbers = sample["numbers"]
+        positions = sample["positions"].type(dtype)
+        ref = sample["overlap"].type(dtype)
+        # numbers = torch.tensor([2, 2, 1, 4])
+        # positions = torch.zeros(4, 3)
+
+        ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+        h0 = Hamiltonian(numbers, positions, par, ihelp)
+
+        o_old = h0.overlap()
+        o = h0.overlap_new()
+        for i in range(len(o)):
+            for j in range(len(o)):
+                if torch.abs(o[i, j] - ref[i, j]) > self.atol * 10:
+                    print(
+                        "new", i, j, o[i, j], ref[i, j], torch.abs(o[i, j] - ref[i, j])
+                    )
+
+                # if torch.abs(o_old[i, j] - ref[i, j]) > self.atol:
+                #     print("old", i, j, o_old[i, j], ref[i, j])
+
+        torch.set_printoptions(precision=1)
+        # print(o)
+        # print("")
+        # print(ref)
+
+        assert torch.allclose(o, o.mT, atol=self.atol)
+        assert torch.allclose(o, ref, atol=self.atol)
+
+    @pytest.mark.parametrize("dtype", [torch.float])
+    @pytest.mark.parametrize("name", ["SiH4_cn", "SiH4"])
     def test_h0_gfn1(self, dtype: torch.dtype, name: str) -> None:
         """
         Compare against reference calculated with tblite-int:
@@ -85,6 +116,68 @@ class TestHamiltonian(Setup):
         o_old = h0.overlap()
         o = h0.overlap_new()
         h = h0.build(o, cn=cn)
+
+        assert torch.allclose(o, o.mT, atol=self.atol)
+        assert torch.allclose(h, h.mT, atol=self.atol)
+        assert torch.allclose(h, ref, atol=self.atol)
+
+    @pytest.mark.parametrize("dtype", [torch.float])
+    @pytest.mark.parametrize("name", ["PbH4-BiH3"])
+    def test_h0_gfn1_medium(self, dtype: torch.dtype, name: str) -> None:
+        """
+        Compare against reference calculated with tblite
+        """
+
+        sample = samples[name]
+        numbers = sample["numbers"]
+        positions = sample["positions"].type(dtype)
+        ref = sample["h0"].type(dtype)
+
+        cn = get_coordination_number(numbers, positions, exp_count)
+        ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+        h0 = Hamiltonian(numbers, positions, par, ihelp)
+
+        o_old = h0.overlap()
+        o = h0.overlap_new()
+        print(torch.allclose(o, o_old, atol=self.atol))
+        print(o.shape)
+        h = h0.build(o_old, cn=cn)
+        print(h.shape)
+
+        for i in range(h.shape[0]):
+            for j in range(h.shape[1]):
+                print(f"{i} {j} {h[i,j] - ref[i,j]}")
+
+        assert torch.allclose(o, o.mT, atol=self.atol)
+        assert torch.allclose(h, h.mT, atol=self.atol)
+        assert torch.allclose(h, ref, atol=self.atol)
+
+    @pytest.mark.parametrize("dtype", [torch.float])
+    @pytest.mark.parametrize("name", ["LYS_xao"])
+    def test_h0_gfn1_large(self, dtype: torch.dtype, name: str) -> None:
+        """
+        Compare against reference calculated with tblite
+        """
+
+        sample = samples[name]
+        numbers = sample["numbers"]
+        positions = sample["positions"].type(dtype)
+        ref = sample["h0"].type(dtype)
+
+        cn = get_coordination_number(numbers, positions, exp_count)
+        ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+        h0 = Hamiltonian(numbers, positions, par, ihelp)
+
+        o_old = h0.overlap()
+        o = h0.overlap_new()
+        print(torch.allclose(o, o_old, atol=self.atol))
+        print(o.shape)
+        h = h0.build(o_old, cn=cn)
+        print(h.shape)
+
+        for i in range(h.shape[0]):
+            for j in range(h.shape[1]):
+                print(f"{i} {j} {h[i,j] - ref[i,j]}")
 
         assert torch.allclose(o, o.mT, atol=self.atol)
         assert torch.allclose(h, h.mT, atol=self.atol)

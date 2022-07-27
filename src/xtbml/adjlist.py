@@ -1,6 +1,6 @@
 import torch
 
-from .constants import UINT8 as DTYPE
+from .constants import INT64 as DTYPE
 from .typing import Tensor
 
 
@@ -51,7 +51,7 @@ class AdjacencyList:
         self.inl = torch.zeros(l, dtype=DTYPE)
         self.nnl = torch.zeros(l, dtype=DTYPE)
 
-        tmp_nlat = torch.zeros(10 * l, dtype=DTYPE)
+        tmp_nlat = torch.zeros(1000 * l, dtype=DTYPE)
 
         img = 0
         cutoff2 = cutoff * cutoff

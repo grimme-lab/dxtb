@@ -1,5 +1,8 @@
 import torch
 
+INT64: torch.dtype = torch.int64
+"""PyTorch's uint8 data dtype"""
+
 UINT8: torch.dtype = torch.uint8
 """PyTorch's uint8 data dtype"""
 
