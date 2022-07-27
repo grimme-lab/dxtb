@@ -6,7 +6,6 @@ from ..basis.indexhelper import IndexHelper
 from ..basis.type import Basis, get_cutoff
 from ..exlibs.tbmalt import batch
 from ..constants import EV2AU
-<
 from ..data import atomic_rad
 from ..integral import mmd
 from ..param import (
@@ -298,10 +297,9 @@ class Hamiltonian:
         kcn = self.ihelp.spread_ushell_to_shell(self.kcn)
 
         # formula differs from paper to be consistent with GFN2 -> "kcn" adapted
-        selfenergy = (
-            self.ihelp.spread_ushell_to_shell(self.selfenergy)
-            - kcn * self.ihelp.spread_atom_to_shell(cn)
-        )
+        selfenergy = self.ihelp.spread_ushell_to_shell(
+            self.selfenergy
+        ) - kcn * self.ihelp.spread_atom_to_shell(cn)
 
         # ----------------------
         # Eq.24: PI(R_AB, l, l')
@@ -320,7 +318,9 @@ class Hamiltonian:
 
         shpoly = self.ihelp.spread_ushell_to_shell(self.shpoly)
 
-        var_pi = (1.0 + shpoly.unsqueeze(-1) * rr_sh) * (1.0 + shpoly.unsqueeze(-2) * rr_sh)
+        var_pi = (1.0 + shpoly.unsqueeze(-1) * rr_sh) * (
+            1.0 + shpoly.unsqueeze(-2) * rr_sh
+        )
 
         # --------------------
         # Eq.28: X(EN_A, EN_B)
@@ -351,7 +351,9 @@ class Hamiltonian:
         # Eq.23: H_EHT
         # ------------
         var_h = torch.where(
-            mask_shell, 0.5 * (selfenergy.unsqueeze(-1) + selfenergy.unsqueeze(-2)), zero
+            mask_shell,
+            0.5 * (selfenergy.unsqueeze(-1) + selfenergy.unsqueeze(-2)),
+            zero,
         )
 
         # scale only off-diagonals
