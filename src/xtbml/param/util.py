@@ -150,7 +150,11 @@ def get_elem_valence(
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> Tensor:
-    """Obtain valence of the shells of all atoms.
+    """
+    WARNING: ONLY WORKS FOR GFN1-xTB
+    -> GFN1-xTB uses a minimal basis except for Hydrogen
+    
+    Obtain valence of the shells of all atoms.
 
     Parameters
     ----------

@@ -12,6 +12,10 @@ from xtbml.param.util import get_element_angular
 from xtbml.typing import Tensor
 from xtbml.xtb.h0 import Hamiltonian
 
+from xtbml.data.radii import cov_rad_d3
+from xtbml.exlibs.tbmalt import batch
+from xtbml.ncoord import ncoord
+
 from .samples import samples
 
 
@@ -28,26 +32,20 @@ class Setup:
     """Cutoff for calculation of coordination number."""
 
 
-class TestHamiltonian(Setup):
+class TestHamiltonianGFN1(Setup):
     """Testing the building of the Hamiltonian matrix."""
 
     @classmethod
     def setup_class(cls):
         print(f"\n{cls.__name__}")
 
-    ##############
-    #### GFN1 ####
-    ##############
-
     @pytest.mark.parametrize("dtype", [torch.float])
-    @pytest.mark.parametrize("name", ["SiH4", "PbH4-BiH3"])
+    @pytest.mark.parametrize("name", ["H2", "LiH", "HLi", "S2", "SiH4"])
     def test_overlap(self, dtype: torch.dtype, name: str) -> None:
         sample = samples[name]
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
         ref = sample["overlap"].type(dtype)
-        # numbers = torch.tensor([2, 2, 1, 4])
-        # positions = torch.zeros(4, 3)
 
         ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
         h0 = Hamiltonian(numbers, positions, par, ihelp)
@@ -57,6 +55,7 @@ class TestHamiltonian(Setup):
         for i in range(len(o)):
             for j in range(len(o)):
                 if torch.abs(o[i, j] - ref[i, j]) > self.atol * 10:
+                    torch.set_printoptions(precision=1)
                     print(
                         "new", i, j, o[i, j], ref[i, j], torch.abs(o[i, j] - ref[i, j])
                     )
@@ -64,7 +63,6 @@ class TestHamiltonian(Setup):
                 # if torch.abs(o_old[i, j] - ref[i, j]) > self.atol:
                 #     print("old", i, j, o_old[i, j], ref[i, j])
 
-        torch.set_printoptions(precision=1)
         # print(o)
         # print("")
         # print(ref)
@@ -72,18 +70,20 @@ class TestHamiltonian(Setup):
         assert torch.allclose(o, o.mT, atol=self.atol)
         assert torch.allclose(o, ref, atol=self.atol)
 
-    @pytest.mark.parametrize("dtype", [torch.float])
-    @pytest.mark.parametrize("name", ["SiH4_cn", "SiH4"])
-    def test_h0_gfn1(self, dtype: torch.dtype, name: str) -> None:
+    @pytest.mark.parametrize("dtype", [torch.double])
+    @pytest.mark.parametrize(
+        "name", ["H2", "H2_nocn", "LiH", "HLi", "S2", "SiH4", "SiH4_nocn"]
+    )
+    def test_h0(self, dtype: torch.dtype, name: str) -> None:
         """
         Compare against reference calculated with tblite-int:
-        - H2: fpm run -- H H 0,0,1.4050586229538 --bohr --hamiltonian --method gfn1
-        - H2_cn: fpm run -- H H 0,0,1.4050586229538 --bohr --hamiltonian --method gfn1 --cn 0.91396028097949444,0.91396028097949444
-        - LiH: fpm run -- Li H 0,0,3.0159348779447 --bohr --hamiltonian --method gfn1
-        - HLi: fpm run -- H Li 0,0,3.0159348779447 --bohr --hamiltonian --method gfn1
-        - S2: fpm run -- H H 0,0,1.4050586229538 --bohr --hamiltonian --method gfn1 --cn 0.91396028097949444,0.91396028097949444
+        - H2: fpm run -- H H 0,0,1.4050586229538 --bohr --hamiltonian --method gfn1 --cn 0.91396028097949444,0.91396028097949444
+        - H2_nocn: fpm run -- H H 0,0,1.4050586229538 --bohr --hamiltonian --method gfn1
+        - LiH: fpm run -- Li H 0,0,3.0159348779447 --bohr --hamiltonian --method gfn1 --cn 0.98684772035550494,0.98684772035550494
+        - HLi: fpm run -- H Li 0,0,3.0159348779447 --bohr --hamiltonian --method gfn1 --cn 0.98684772035550494,0.98684772035550494
+        - S2: fpm run -- S S 0,0,3.60562542949258 --bohr --hamiltonian --method gfn1 --cn 0.99889747382180494,0.99889747382180494
         - SiH4: tblite with "use dftd3_ncoord, only: get_coordination_number"
-        - SiH4_cn: tblite with "use dftd3_ncoord, only: get_coordination_number"
+        - SiH4_nocn: tblite
         """
 
         sample = samples[name]
@@ -91,31 +91,20 @@ class TestHamiltonian(Setup):
         positions = sample["positions"].type(dtype)
         ref = sample["h0"].type(dtype)
 
-        if "cn" in name:
-            cn = get_coordination_number(numbers, positions, exp_count)
-        else:
+        if "nocn" in name:
             cn = None
+        else:
+            cn = get_coordination_number(numbers, positions, exp_count)
 
         ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
         h0 = Hamiltonian(numbers, positions, par, ihelp)
 
-        # print("numbers", numbers)
-        # print("unique", unique)
-        # print("angular", ihelp.angular)
-        # print("unique_angular", ihelp.unique_angular)
-        # print("atom_to_unique", ihelp.atom_to_unique)
-        # print("shells_to_ushell", ihelp.shells_to_ushell)
-        # print("shell_index", ihelp.shell_index)
-        # print("shells_to_atom", ihelp.shells_to_atom)
-        # print("shells_per_atom", ihelp.shells_per_atom)
-        # print("orbital_index", ihelp.orbital_index)
-        # print("orbitals_to_shell", ihelp.orbitals_to_shell)
-        # print("orbitals_per_shell", ihelp.orbitals_per_shell)
-        # print("\n")
-
-        o_old = h0.overlap()
         o = h0.overlap_new()
         h = h0.build(o, cn=cn)
+
+        # check against old
+        o_old = h0.overlap()
+        assert torch.allclose(o, o_old, atol=self.atol)
 
         assert torch.allclose(o, o.mT, atol=self.atol)
         assert torch.allclose(h, h.mT, atol=self.atol)
@@ -123,7 +112,7 @@ class TestHamiltonian(Setup):
 
     @pytest.mark.parametrize("dtype", [torch.float])
     @pytest.mark.parametrize("name", ["PbH4-BiH3"])
-    def test_h0_gfn1_medium(self, dtype: torch.dtype, name: str) -> None:
+    def test_h0_medium(self, dtype: torch.dtype, name: str) -> None:
         """
         Compare against reference calculated with tblite
         """
@@ -154,7 +143,7 @@ class TestHamiltonian(Setup):
 
     @pytest.mark.parametrize("dtype", [torch.float])
     @pytest.mark.parametrize("name", ["LYS_xao"])
-    def test_h0_gfn1_large(self, dtype: torch.dtype, name: str) -> None:
+    def test_h0_large(self, dtype: torch.dtype, name: str) -> None:
         """
         Compare against reference calculated with tblite
         """
@@ -186,7 +175,7 @@ class TestHamiltonian(Setup):
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     @pytest.mark.parametrize("name1", ["H2", "LiH", "S2", "SiH4"])
     @pytest.mark.parametrize("name2", ["H2", "LiH", "S2", "SiH4"])
-    def stest_h0_gfn1_batch(self, dtype: torch.dtype, name1: str, name2: str) -> None:
+    def stest_h0_batch(self, dtype: torch.dtype, name1: str, name2: str) -> None:
         """Batched version."""
 
         sample1, sample2 = samples[name1], samples[name2]

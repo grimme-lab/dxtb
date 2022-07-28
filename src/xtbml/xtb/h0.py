@@ -364,12 +364,8 @@ class Hamiltonian:
         h = self.ihelp.spread_shell_to_orbital(h0, dim=(-2, -1))
         hcore = h * overlap
 
-        # remove noise to guarantee symmetry
-        return torch.where(
-            torch.abs(hcore) > (torch.finfo(self.dtype).eps * 10),
-            hcore,
-            hcore.new_tensor(0.0),
-        )
+        # force symmetry to avoid problems through numerical errors
+        return self._force_symmetry(hcore)
 
     @timing
     def overlap(self) -> Tensor:
@@ -512,7 +508,7 @@ class Hamiltonian:
                 dtype=self.dtype,
                 device=self.device,
             )
-            umap, n_unique_pairs = bas.create_umap(self.ihelp)
+            umap, n_unique_pairs = bas.unique_shell_pairs(self.ihelp)
             alphas, coeffs = bas.create_cgtos()
 
             #################################################
@@ -579,12 +575,35 @@ class Hamiltonian:
         else:
             overlap = get_overlap(self.unique, self.positions)
 
-        # remove noise to avoid problems regarding symmetry
-        return torch.where(
-            torch.abs(overlap) > (torch.finfo(self.dtype).eps),
-            overlap,
-            overlap.new_tensor(0.0),
-        )
+        # force symmetry to avoid problems through numerical errors
+        return self._force_symmetry(overlap)
+
+    def _force_symmetry(self, x: Tensor) -> Tensor:
+        """
+        Symmetrize a tensor after checking if it is symmetric within a threshold.
+
+        Parameters
+        ----------
+        x : Tensor
+            Tensor to check and symmetrize.
+
+        Returns
+        -------
+        Tensor
+            Symmetrized tensor.
+
+        Raises
+        ------
+        RuntimeError
+            If the tensor is not symmetric within the threshold.
+        """
+        atol = torch.finfo(self.dtype).eps * 10
+        if not torch.allclose(x, x.mT, atol=atol):
+            raise RuntimeError(
+                f"Matrix appears to be not symmetric (atol={atol}, dtype={self.dtype})."
+            )
+
+        return (x + x.mT) / 2
 
     @property
     def device(self) -> torch.device:
