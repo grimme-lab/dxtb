@@ -136,7 +136,7 @@ def test_overlap_s_cl():
 def test_overlap_higher_orbitals(dtype: torch.dtype):
 
     # pylint: disable=import-outside-toplevel
-    from xtbml.basis.type import _process_record
+    from xtbml.basis.basis import _process_record
     from test_overlap.test_cgto_ortho_data import ref_data
 
     vec = torch.tensor([0.0, 0.0, 1.4], dtype=dtype)
@@ -173,7 +173,7 @@ def test_overlap_higher_orbital_fail():
     """No higher orbitals than 4 allowed."""
 
     # pylint: disable=import-outside-toplevel
-    from xtbml.basis.type import _process_record
+    from xtbml.basis.basis import _process_record
 
     vec = torch.tensor([0.0, 0.0, 1.4])
 

@@ -65,7 +65,7 @@ def test_single2(dtype: torch.dtype, name: str):
         ),
     ],
 )
-def test_grad(testcase, dtype=torch.float):
+def test_grad(testcase, dtype: torch.dtype = torch.float):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
 
     name, ref = testcase
@@ -76,7 +76,7 @@ def test_grad(testcase, dtype=torch.float):
     calc = Calculator(numbers, positions, par)
 
     results = calc.singlepoint(numbers, positions, charges, verbosity=0)
-    energy = results.get("energy").sum(-1)
+    energy = results["energy"].sum(-1)
 
     energy.backward()
     gradient = positions.grad.clone()

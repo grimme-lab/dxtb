@@ -1,9 +1,7 @@
 from __future__ import annotations
 import torch
 
-from ..adjlist import AdjacencyList
-from ..basis.indexhelper import IndexHelper
-from ..basis.type import Bas, Basis, get_cutoff
+from ..basis import Basis, IndexHelper
 from ..exlibs.tbmalt import batch
 from ..constants import EV2AU
 from ..data import atomic_rad
@@ -367,92 +365,6 @@ class Hamiltonian:
         # force symmetry to avoid problems through numerical errors
         return self._symmetrize(hcore)
 
-    @timing
-    def overlap_old(self) -> Tensor:
-        """Loop-based overlap calculation."""
-
-        def get_overlap(numbers: Tensor, positions: Tensor) -> Tensor:
-            # remove padding
-            numbers = numbers[numbers.ne(0)]
-
-            # FIXME: this acc includes all neighbors -> inefficient
-            acc = torch.finfo(self.dtype).max
-
-            # FIXME: basis should be the same for all numbers and be given as arg
-            bas = Basis(numbers, self.par, acc=acc)
-
-            adjlist = AdjacencyList(numbers, positions, get_cutoff(bas))
-
-            overlap = torch.zeros(bas.nao_tot, bas.nao_tot, dtype=self.dtype)
-            torch.diagonal(overlap, dim1=-2, dim2=-1).fill_(1.0)
-
-            for i, el_i in enumerate(bas.symbols):
-                isa = int(bas.ish_at[i].item())
-                inl = int(adjlist.inl[i].item())
-
-                imgs = int(adjlist.nnl[i].item())
-                for img in range(imgs):
-                    j = int(adjlist.nlat[img + inl].item())
-                    jsa = int(bas.ish_at[j].item())
-                    el_j = bas.symbols[j]
-
-                    vec = positions[i, :] - positions[j, :]
-                    # print(el_i, el_j)
-                    # print("positions i", positions[i, :])
-                    # print("positions j", positions[j, :])
-                    # print("vec", vec)
-
-                    for ish in range(bas.shells[el_i]):
-                        ii = bas.iao_sh[isa + ish].item()
-                        for jsh in range(bas.shells[el_j]):
-                            jj = bas.iao_sh[jsa + jsh].item()
-
-                            cgtoi = bas.cgto[el_i][ish]
-                            cgtoj = bas.cgto[el_j][jsh]
-
-                            stmp = mmd.overlap(
-                                (cgtoi.ang, cgtoj.ang),
-                                (
-                                    cgtoi.alpha[: cgtoi.nprim],
-                                    cgtoj.alpha[: cgtoj.nprim],
-                                ),
-                                (
-                                    cgtoi.coeff[: cgtoi.nprim],
-                                    cgtoj.coeff[: cgtoj.nprim],
-                                ),
-                                -vec,
-                                # torch.tensor([-1.7215e00, 1.0370e-01, -4.0000e-06]),
-                            )
-                            # print("")
-                            # print("cgtoi.ang", cgtoi.ang)
-                            # print("cgtoj.ang", cgtoj.ang)
-                            # print("cgtoi.alpha", cgtoi.alpha)
-                            # print("cgtoj.alpha", cgtoj.alpha)
-                            # print("cgtoi.coeff", cgtoi.coeff)
-                            # print("cgtoj.coeff", cgtoj.coeff)
-                            # print("stmp", stmp)
-
-                            i_nao = 2 * cgtoi.ang + 1
-                            j_nao = 2 * cgtoj.ang + 1
-                            for iao in range(i_nao):
-                                for jao in range(j_nao):
-                                    overlap[jj + jao, ii + iao].add_(stmp[iao, jao])
-
-                                    if i != j:
-                                        overlap[ii + iao, jj + jao].add_(stmp[iao, jao])
-
-            return overlap
-
-        if self.numbers.ndim > 1:
-            return batch.pack(
-                [
-                    get_overlap(self.numbers[_batch], self.positions[_batch])
-                    for _batch in range(self.numbers.shape[0])
-                ]
-            )
-
-        return get_overlap(self.numbers, self.positions)
-
     # @timing
     def overlap(self) -> Tensor:
         """Overlap calculation of unique shells pairs.
@@ -526,7 +438,7 @@ class Hamiltonian:
                 Overlap matrix for single molecule.
             """
 
-            bas = Bas(
+            bas = Basis(
                 numbers,
                 self.par,
                 self.ihelp.unique_angular,
