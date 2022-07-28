@@ -1,24 +1,30 @@
-""" Gram-Schmidt orthonormalization routines for contracted Gaussian basis functions """
+"""Gram-Schmidt orthonormalization routines for contracted Gaussian basis functions."""
+
+from __future__ import annotations
 import math
 import torch
 
+from ..typing import Tensor
 
-def orthogonalize(angular, alpha, coeff):
+
+def orthogonalize(
+    alpha: tuple[Tensor, Tensor], coeff: tuple[Tensor, Tensor]
+) -> tuple[Tensor, Tensor]:
     """
     Orthogonalize a contracted Gaussian basis function to an existing basis function.
-    The second basis function is orthonormalized against the first basis function
+    The second basis function is orthonormalized against the first basis function.
 
-    Args:
-        coeff: (Tensor, Tensor)
-            Contraction coefficients for the shell pair.
-        alpha: (Tensor, Tensor)
-            Primitive Gaussian exponents for the shell pair.
-            the second basis function is orthonormalized against the first basis function
+    Parameters
+    ----------
+    alpha : (Tensor, Tensor)
+        Primitive Gaussian exponents for the shell pair.
+    coeff : (Tensor, Tensor)
+        Contraction coefficients for the shell pair.
 
-    Returns:
-        (Tensor, Tensor)
-            Primitive Gaussian exponents and contraction coefficients for
-            the orthonormalized basis function.
+    Returns
+    -------
+    (Tensor, Tensor)
+        Primitive Gaussian exponents and contraction coefficients for the orthonormalized basis function.
     """
 
     coeff_i, coeff_j = coeff
@@ -37,11 +43,14 @@ def orthogonalize(angular, alpha, coeff):
             overlap += ci * cj * kab
 
     # Create new basis function from the pair which is orthogonal to the first basis function
-    alpha_new[:alpha_j.shape[-1]], alpha_new[alpha_j.shape[-1]:] = alpha_j, alpha_i
-    coeff_new[:coeff_j.shape[-1]], coeff_new[coeff_j.shape[-1]:] = coeff_j, -overlap * coeff_i
+    alpha_new[: alpha_j.shape[-1]], alpha_new[alpha_j.shape[-1] :] = alpha_j, alpha_i
+    coeff_new[: coeff_j.shape[-1]], coeff_new[coeff_j.shape[-1] :] = (
+        coeff_j,
+        -overlap * coeff_i,
+    )
 
     # Normalization of the new basis function might be off, calculate self overlap
-    overlap = 0.0
+    overlap = torch.tensor(0.0)
     for ai, ci in zip(alpha_new, coeff_new):
         for aj, cj in zip(alpha_new, coeff_new):
             eab = ai + aj

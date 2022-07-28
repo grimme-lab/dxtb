@@ -59,10 +59,10 @@ class Bas:
         # maybe this can be batched too, but this loop is rather small
         # so it is probably not worth it
         for i in range(len(self.slater)):
-            ret = slater.to_gauss(
+            alpha, coeff = slater.to_gauss(
                 self.ngauss[i], self.pqn[i], ihelp.unique_angular[i], self.slater[i]
             )
-            cgtoi = Cgto_Type(ihelp.unique_angular[i], *ret)
+            cgtoi = Cgto_Type(ihelp.unique_angular[i], alpha, coeff)
 
             # FIXME: this only works for GFN1 with H being the only element
             # with a non-valence shell
@@ -70,15 +70,16 @@ class Bas:
                 cgtoi = Cgto_Type(
                     ihelp.unique_angular[i],
                     *orthogonalize(
-                        ihelp.unique_angular[i],
-                        (cgto[i - 1].alpha, cgtoi.alpha),
-                        (cgto[i - 1].coeff, cgtoi.coeff),
+                        (alphas[i - 1], alpha),
+                        (coeffs[i - 1], coeff),
                     ),
                 )
 
             cgto.append(cgtoi)
             alphas.append(cgtoi.alpha)
             coeffs.append(cgtoi.coeff)
+
+            print("alphas:", alphas)
 
         return cgto, alphas, coeffs
 
@@ -99,7 +100,7 @@ class Bas:
         Raises
         ------
         ValueError
-            _description_
+            If the number of unique shell pairs does not match the theoretical one.
         """
 
         torch.set_printoptions(linewidth=200)
@@ -314,7 +315,6 @@ def _process_record(record: Element) -> List[Cgto_Type]:
             cgto[ish] = Cgto_Type(
                 lsh[ish],
                 *orthogonalize(
-                    lsh[ish],
                     (cgto[ortho[ish]].alpha, cgto[ish].alpha),
                     (cgto[ortho[ish]].coeff, cgto[ish].coeff),
                 ),
