@@ -33,26 +33,50 @@ primes = torch.tensor(
 
 
 class Bas:
+    """Atomic orbital basis set."""
+
+    angular: Tensor
+    """Angular momenta of all shells (from `IndexHelper`)"""
+
+    ngauss: Tensor
+    """Number of Gaussians used in expansion from Slater orbital."""
+
+    slater: Tensor
+    """Exponent of Slater function."""
+
+    pqn: Tensor
+    """Principal quantum number of each shell"""
+
+    valence: Tensor
+    """Whether the shell is part of the valence shell."""
+
     def __init__(
         self,
         numbers: Tensor,
         par: Param,
+        angular: Tensor,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
-        acc: float = 1.0,
     ) -> None:
-        self.intcut = integral_cutoff(acc)
-
+        self.angular = angular
         self.ngauss = get_elem_param(numbers, par.element, "ngauss")
         self.slater = get_elem_param(
             numbers, par.element, "slater", dtype=dtype, device=device
         )
-        self.valence = get_elem_valence(numbers, par.element, dtype=torch.uint8)
         self.pqn = get_elem_pqn(numbers, par.element)
+        self.valence = get_elem_valence(numbers, par.element)
 
     @timing
-    def create_cgtos(self, ihelp: IndexHelper):
-        cgto = []
+    def create_cgtos(self) -> tuple[list[Tensor], list[Tensor]]:
+        """
+        Create contracted Gaussian type orbitals from parametrization.
+
+        Returns
+        -------
+        (list[Tensor], list[Tensor])
+            List of primitive Gaussian exponents and contraction coefficients
+            for the orthonormalized basis functions for each shell.
+        """
         coeffs = []
         alphas = []
 
@@ -60,28 +84,21 @@ class Bas:
         # so it is probably not worth it
         for i in range(len(self.slater)):
             alpha, coeff = slater.to_gauss(
-                self.ngauss[i], self.pqn[i], ihelp.unique_angular[i], self.slater[i]
+                self.ngauss[i], self.pqn[i], self.angular[i], self.slater[i]
             )
-            cgtoi = Cgto_Type(ihelp.unique_angular[i], alpha, coeff)
 
             # FIXME: this only works for GFN1 with H being the only element
             # with a non-valence shell
-            if self.valence[i].item() == 0:
-                cgtoi = Cgto_Type(
-                    ihelp.unique_angular[i],
-                    *orthogonalize(
-                        (alphas[i - 1], alpha),
-                        (coeffs[i - 1], coeff),
-                    ),
+            if self.valence[i].item() is False:
+                alpha, coeff = orthogonalize(
+                    (alphas[i - 1], alpha),
+                    (coeffs[i - 1], coeff),
                 )
 
-            cgto.append(cgtoi)
-            alphas.append(cgtoi.alpha)
-            coeffs.append(cgtoi.coeff)
+            alphas.append(alpha)
+            coeffs.append(coeff)
 
-            print("alphas:", alphas)
-
-        return cgto, alphas, coeffs
+        return alphas, coeffs
 
     @timing
     def create_umap(self, ihelp: IndexHelper) -> tuple[Tensor, Tensor]:
@@ -121,17 +138,17 @@ class Bas:
         _, umap = torch.unique(orbs, return_inverse=True)
 
         # minimum number of unqiue shells pairs
-        n_uang = ihelp.unique_angular.size(0)
+        n_uang = self.angular.size(0)
         n_pairs = torch.sum(torch.arange(1, n_uang + 1))
 
         # add combinations due to extra offset along one dimension
-        non_zero = torch.count_nonzero(ihelp.unique_angular).item()
+        non_zero = torch.count_nonzero(self.angular).item()
         if non_zero != 0:
             n_pairs += torch.arange(n_uang - non_zero, n_uang).sum()
 
             # remove all symmetric blocks (pp, dd)
-            remove = torch.bincount(ihelp.unique_angular)
-            if ihelp.unique_angular[0].item() == 0:
+            remove = torch.bincount(self.angular)
+            if self.angular[0].item() == 0:
                 # remove count of s orbital
                 remove = remove[1:]
             n_pairs -= torch.sum(remove - 1)

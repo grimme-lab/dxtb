@@ -461,8 +461,33 @@ class Hamiltonian:
     def overlap_new(self) -> Tensor:
         """Vectorized overlap calculation."""
 
-        def get_unique_pairs(pairs, norb_per_sh_k, norb_per_sh_l):
-            # collect [0, 0] entry of each subblock
+        def get_subblock_start(
+            pairs: Tensor, norb_per_sh_k: Tensor, norb_per_sh_l: Tensor
+        ) -> Tensor:
+            """
+            Filter out the top-left index of each subblock of unique shell pairs.
+
+            Example: A "s" and "p" orbital would give the following 4x4 matrix of unique shell pairs:
+            1 2 2 2
+            3 4 4 4
+            3 4 4 4
+            3 4 4 4
+            As the overlap routine gives back tensors of the shape `(norb_per_sh_k, norb_per_sh_l)`, i.e. 1x1, 1x3, 3x1 and 3x3 here, we require only the following four indices from the matrix of unique shell pairs: [0, 0] (1x1), [1, 0] (3x1), [0, 1] (1x3) and [1, 1] (3x3).
+
+            Parameters
+            ----------
+            pairs : Tensor
+                Indices of all unique shell pairs of one type (n, 2).
+            norb_per_sh_k : Tensor
+                Number of orbitals per shell.
+            norb_per_sh_l : Tensor
+                Number of orbitals per shell.
+
+            Returns
+            -------
+            Tensor
+                Top-left (i.e. [0, 0]) index of each subblock.
+            """
             helper, upairs = [], []
             for pair in pairs.tolist():
                 if pair in helper:
@@ -477,16 +502,22 @@ class Hamiltonian:
 
                 upairs.append(pair)
 
-            return torch.tensor(upairs, dtype=torch.long)
+            return torch.tensor(upairs, dtype=torch.long, device=self.device)
 
         def get_overlap(numbers: Tensor, positions: Tensor) -> Tensor:
-            bas = Bas(numbers, self.par, dtype=self.dtype)
+            bas = Bas(
+                numbers,
+                self.par,
+                self.ihelp.unique_angular,
+                dtype=self.dtype,
+                device=self.device,
+            )
             umap, n_unique_pairs = bas.create_umap(self.ihelp)
-            _, alphas, coeffs = bas.create_cgtos(self.ihelp)
+            alphas, coeffs = bas.create_cgtos()
 
             #################################################
 
-            # spread stuff to orbitals... a little hacky...
+            # spread stuff to orbitals for indexing
             alpha = batch.index(
                 batch.index(batch.pack(alphas), self.ihelp.shells_to_ushell),
                 self.ihelp.orbitals_to_shell,
@@ -499,9 +530,7 @@ class Hamiltonian:
                 batch.index(positions, self.ihelp.shells_to_atom),
                 self.ihelp.orbitals_to_shell,
             )
-
             ang = self.ihelp.spread_shell_to_orbital(self.ihelp.angular)
-            # vec = positions.unsqueeze(-2) - positions
 
             #################################################
 
@@ -510,16 +539,12 @@ class Hamiltonian:
                 pairs = (umap == i).nonzero(as_tuple=False)
                 first_pair = pairs[0]
 
-                # print(alpha)
-                # print(first_pair)
-                # print(alpha[first_pair])
-
-                ang_k, ang_l = ang[first_pair].tolist()
+                ang_k, ang_l = ang[first_pair]
                 norb_per_sh_k = 2 * ang_k + 1
                 norb_per_sh_l = 2 * ang_l + 1
 
                 # collect [0, 0] entry of each subblock
-                upairs = get_unique_pairs(pairs, norb_per_sh_k, norb_per_sh_l)
+                upairs = get_subblock_start(pairs, norb_per_sh_k, norb_per_sh_l)
 
                 # we only require one pair as all have the same basis function
                 alpha_tuple = (
@@ -530,18 +555,13 @@ class Hamiltonian:
                     batch.deflate(coeff[first_pair][0]),
                     batch.deflate(coeff[first_pair][1]),
                 )
+                ang_tuple = (ang_k, ang_l)
 
-                # print(i)
-                # print(positions[upairs])
-                # print(vec)
-                # print("")
                 vec = positions[upairs][:, 0, :] - positions[upairs][:, 1, :]
-                stmp = mmd.overlap((ang_k, ang_l), alpha_tuple, coeff_tuple, -vec)
+                stmp = mmd.overlap(ang_tuple, alpha_tuple, coeff_tuple, -vec)
 
+                # write overlap of unique pair to correct position in full overlap matrix
                 for r, pair in enumerate(upairs):
-                    # print(i, r, pair)
-                    # print(stmp[r])
-                    # print("")
                     ovlp[
                         pair[0] : pair[0] + norb_per_sh_k,
                         pair[1] : pair[1] + norb_per_sh_l,
@@ -559,13 +579,9 @@ class Hamiltonian:
         else:
             overlap = get_overlap(self.unique, self.positions)
 
-        return overlap
-        # force symmetry
-        # return torch.triu(overlap, diagonal=1) + torch.triu(overlap).mT
-
-        # remove noise to guarantee symmetry
+        # remove noise to avoid problems regarding symmetry
         return torch.where(
-            torch.abs(overlap) > (torch.finfo(self.dtype).eps * 10),
+            torch.abs(overlap) > (torch.finfo(self.dtype).eps),
             overlap,
             overlap.new_tensor(0.0),
         )
