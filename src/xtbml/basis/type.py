@@ -11,7 +11,6 @@ from ..param import Param, Element, get_elem_param, get_elem_pqn, get_elem_valen
 from ..constants import UINT8 as DTYPE_INT
 from ..constants import PSE
 from ..typing import Tensor
-from ..utils import timing
 
 MAXG = 12
 """Maximum contraction length of basis functions. The limit is chosen as twice the maximum size returned by the STO-NG expansion"""
@@ -66,7 +65,6 @@ class Bas:
         self.pqn = get_elem_pqn(numbers, par.element)
         self.valence = get_elem_valence(numbers, par.element)
 
-    @timing
     def create_cgtos(self) -> tuple[list[Tensor], list[Tensor]]:
         """
         Create contracted Gaussian type orbitals from parametrization.
@@ -106,7 +104,6 @@ class Bas:
 
         return alphas, coeffs
 
-    @timing
     def unique_shell_pairs(self, ihelp: IndexHelper) -> tuple[Tensor, Tensor]:
         """Create a matrix of unique shell pairs.
 
@@ -126,9 +123,6 @@ class Bas:
             If the number of unique shell pairs does not match the theoretical one.
         """
 
-        # offsets to avoid duplication on addition
-        offset1 = 10000
-
         # convert unique shell indices to prime numbers for unique products
         sh2orb = ihelp.spread_shell_to_orbital(ihelp.shells_to_ushell)
         orbs = primes[sh2orb]
@@ -136,39 +130,13 @@ class Bas:
 
         # extra offset along only one dimension to distinguish (n, m) and
         # (m, n) of the same orbital block (e.g. 1x3 sp and 3x1 ps block)
+        offset = 10000
         sh2orb = ihelp.spread_shell_to_orbital(ihelp.orbitals_per_shell)
-        orbs += sh2orb * offset1
+        orbs += sh2orb * offset
 
         _, umap = torch.unique(orbs, return_inverse=True)
 
-        # minimum number of unqiue shells pairs
-        n_uang = self.angular.size(0)
-        n_pairs = torch.sum(torch.arange(1, n_uang + 1))
-
-        # add combinations due to extra offset along one dimension
-        # non_zero = torch.count_nonzero(self.angular).item()
-        # if non_zero != 0:
-        #     n_pairs += torch.arange(n_uang - non_zero, n_uang).sum()
-
-        #     # remove all symmetric blocks (pp, dd)
-        #     remove = torch.bincount(self.angular)
-        #     if self.angular[0].item() == 0:
-        #         # remove count of s orbital
-        #         remove = remove[1:]
-        #     n_pairs -= torch.sum(remove - 1)
-
-        # actual number of unique combinations of unique shells
-        n_pairs_actual = torch.max(umap) + 1
-
-        # check against theoretical number
-        if n_pairs_actual < n_pairs:
-            torch.set_printoptions(linewidth=200)
-            print(umap)
-            raise ValueError(
-                f"Internal error: {n_pairs - n_pairs_actual} missing unique pairs."
-            )
-
-        return umap, n_pairs_actual
+        return umap, torch.max(umap) + 1
 
 
 class Cgto_Type:
