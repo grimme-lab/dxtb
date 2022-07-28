@@ -8,7 +8,7 @@ from typing import Literal, Optional
 import torch
 from torch.utils.data import DataLoader
 
-from ..constants import FLOAT32, FLOAT64
+from ..constants import FLOAT32, FLOAT64, ATOMIC_NUMBER
 from ..constants.units import AU2KCAL
 
 
@@ -492,64 +492,37 @@ class Datareader:
         from xtbml.classical.repulsion import RepulsionFactory
         from xtbml.xtb.calculator import Calculator
         from xtbml.ncoord.ncoord import get_coordination_number, exp_count
-        from xtbml.param.gfn1 import GFN1_XTB as gfn1_par
+        from xtbml.param.gfn1 import GFN1_XTB as par
         from xtbml.exlibs.tbmalt import Geometry
         from xtbml.exlibs.tbmalt.batch import deflate
 
         def calc_singlepoint(numbers, positions, charge, unpaired_e):
             """Calculate QM features based on classicals input, such as geometry."""
 
-            # CALC FEATURES
-
-            # NOTE: singlepoint calculation so far only working with no padding
-            # quick and dirty hack to get rid of padding
-            mol = Geometry(
-                atomic_numbers=deflate(numbers),
-                positions=deflate(positions, axis=1),
-                charges=charge,
-                unpaired_e=unpaired_e,
-            )
-
-            # check underlying data consistent
-            assert (
-                numbers.storage().data_ptr() == mol.atomic_numbers.storage().data_ptr()
-            )
-
             # setup calculator
-            par = gfn1_par
-            calc = Calculator(mol, par)
-
-            # prepate cutoffs and lattice
-            # trans = get_lattice_points(mol_periodic, mol_lattice, cn_cutoff)
-            cn = get_coordination_number(numbers, positions, exp_count)
-
-            cutoff = get_cutoff(calc.basis)
-            # trans = get_lattice_points(mol_periodic, mol_lattice, cutoff)
-            trans = torch.zeros([3, 1])
-            adj = AdjacencyList(mol, trans, cutoff)
-
-            # build hamiltonian
-            h, overlap_int = calc.hamiltonian.build(calc.basis, adj, cn)
+            calc = Calculator(numbers, positions, par)
+            results = calc.singlepoint(numbers, positions, charge, verbosity=0)
 
             # repulsion
             repulsion = RepulsionFactory(
-                numbers=mol.atomic_numbers,
-                positions=mol.positions,
+                numbers=numbers,
+                positions=positions,
                 req_grad=False,
-                cutoff=torch.tensor(cutoff),
+                cutoff=torch.tensor(get_cutoff(calc.basis)),
             )
             repulsion.setup(par.element, par.repulsion.effective)
             rep_energy = repulsion.get_engrad()
 
             # dispersion
             param = dict(a1=0.63, s8=2.4, a2=5.0)
-            e_disp = d3.dftd3(mol.atomic_numbers, mol.positions, param)
+            e_disp = d3.dftd3(numbers, positions, param)
 
             # partial charges
+            cn = get_coordination_number(numbers, positions, exp_count)
             eeq = charges.ChargeModel.param2019()
             _, qat = charges.solve(numbers, positions, charge, eeq, cn)
 
-            return h, overlap_int, cn, rep_energy, e_disp, qat
+            return results["hcore"], results["overlap"], cn, rep_energy, e_disp, qat
 
         path = Path(self.path, out_name)
 

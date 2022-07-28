@@ -157,6 +157,7 @@ class SelfConsistentField(xt.EditableModule):
             "charges": charges,
             "energy": energy,
             "density": self._data.density,
+            "hcore": self._data.hcore,
             "hamiltonian": self._data.hamiltonian,
             "overlap": self._data.overlap,
         }
