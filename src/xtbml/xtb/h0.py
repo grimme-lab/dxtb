@@ -365,10 +365,10 @@ class Hamiltonian:
         hcore = h * overlap
 
         # force symmetry to avoid problems through numerical errors
-        return self._force_symmetry(hcore)
+        return self._symmetrize(hcore)
 
     @timing
-    def overlap(self) -> Tensor:
+    def overlap_old(self) -> Tensor:
         """Loop-based overlap calculation."""
 
         def get_overlap(numbers: Tensor, positions: Tensor) -> Tensor:
@@ -453,9 +453,15 @@ class Hamiltonian:
 
         return get_overlap(self.numbers, self.positions)
 
-    @timing
-    def overlap_new(self) -> Tensor:
-        """Vectorized overlap calculation."""
+    # @timing
+    def overlap(self) -> Tensor:
+        """Overlap calculation of unique shells pairs.
+
+        Returns
+        -------
+        Tensor
+            Overlap matrix
+        """
 
         def get_subblock_start(
             pairs: Tensor, norb_per_sh_k: Tensor, norb_per_sh_l: Tensor
@@ -463,12 +469,16 @@ class Hamiltonian:
             """
             Filter out the top-left index of each subblock of unique shell pairs.
 
-            Example: A "s" and "p" orbital would give the following 4x4 matrix of unique shell pairs:
+            Example: A "s" and "p" orbital would give the following 4x4 matrix
+            of unique shell pairs:
             1 2 2 2
             3 4 4 4
             3 4 4 4
             3 4 4 4
-            As the overlap routine gives back tensors of the shape `(norb_per_sh_k, norb_per_sh_l)`, i.e. 1x1, 1x3, 3x1 and 3x3 here, we require only the following four indices from the matrix of unique shell pairs: [0, 0] (1x1), [1, 0] (3x1), [0, 1] (1x3) and [1, 1] (3x3).
+            As the overlap routine gives back tensors of the shape
+            `(norb_per_sh_k, norb_per_sh_l)`, i.e. 1x1, 1x3, 3x1 and 3x3 here,
+            we require only the following four indices from the matrix of unique
+            shell pairs: [0, 0] (1x1), [1, 0] (3x1), [0, 1] (1x3) and [1, 1] (3x3).
 
             Parameters
             ----------
@@ -501,6 +511,21 @@ class Hamiltonian:
             return torch.tensor(upairs, dtype=torch.long, device=self.device)
 
         def get_overlap(numbers: Tensor, positions: Tensor) -> Tensor:
+            """Overlap calculation for a single molecule.
+
+            Parameters
+            ----------
+            numbers : Tensor
+                Unique atomic numbers of whole batch.
+            positions : Tensor
+                Positions of single molecule.
+
+            Returns
+            -------
+            Tensor
+                Overlap matrix for single molecule.
+            """
+
             bas = Bas(
                 numbers,
                 self.par,
@@ -510,8 +535,6 @@ class Hamiltonian:
             )
             umap, n_unique_pairs = bas.unique_shell_pairs(self.ihelp)
             alphas, coeffs = bas.create_cgtos()
-
-            #################################################
 
             # spread stuff to orbitals for indexing
             alpha = batch.index(
@@ -528,8 +551,7 @@ class Hamiltonian:
             )
             ang = self.ihelp.spread_shell_to_orbital(self.ihelp.angular)
 
-            #################################################
-
+            # overlap calculation
             ovlp = torch.zeros(*umap.shape, dtype=self.dtype, device=self.device)
             for i in range(n_unique_pairs):
                 pairs = (umap == i).nonzero(as_tuple=False)
@@ -576,9 +598,9 @@ class Hamiltonian:
             overlap = get_overlap(self.unique, self.positions)
 
         # force symmetry to avoid problems through numerical errors
-        return self._force_symmetry(overlap)
+        return self._symmetrize(overlap)
 
-    def _force_symmetry(self, x: Tensor) -> Tensor:
+    def _symmetrize(self, x: Tensor) -> Tensor:
         """
         Symmetrize a tensor after checking if it is symmetric within a threshold.
 

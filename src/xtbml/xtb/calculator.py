@@ -110,7 +110,6 @@ class Calculator:
         cn = ncoord.get_coordination_number(numbers, positions, ncoord.exp_count, rcov)
 
         overlap = self.hamiltonian.overlap()
-        overlap = self.hamiltonian.overlap_new()
         hcore = self.hamiltonian.build(overlap, cn)
 
         # Obtain the reference occupations and total number of electrons
