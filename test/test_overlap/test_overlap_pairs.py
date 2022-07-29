@@ -4,36 +4,19 @@ import pytest
 import torch
 
 from xtbml.basis import Basis, IndexHelper, slater
+from xtbml.exlibs.tbmalt import batch
 from xtbml.integral import mmd
 from xtbml.exceptions import IntegralTransformError
 from xtbml.param.gfn1 import GFN1_XTB as par
 from xtbml.param.util import get_element_angular
-from xtbml.utils import combinations as combis
 from xtbml.xtb.h0 import Hamiltonian
 
 from .samples import samples
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["C"])
-def test_overlap_monoatomic(dtype: torch.dtype, name: str):
-    """Overlap matrix for monoatomic molecule should be unity."""
-
-    sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    ref = sample["overlap"].type(dtype)
-
-    ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
-    hamiltonian = Hamiltonian(numbers, positions, par, ihelp)
-    overlap = hamiltonian.overlap()
-
-    assert torch.allclose(overlap, ref, rtol=1e-05, atol=1e-05, equal_nan=False)
-
-
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["HC", "HHe", "SCl"])
-def test_overlap_diatomic(dtype: torch.dtype, name: str):
+def test_overlap_single(dtype: torch.dtype, name: str):
     """
     Compare against reference calculated with tblite-int:
     - HC: fpm run -- H C 0,0,1.4 --bohr --method gfn1
@@ -53,22 +36,40 @@ def test_overlap_diatomic(dtype: torch.dtype, name: str):
     assert torch.allclose(overlap, ref, rtol=1e-05, atol=1e-05, equal_nan=False)
 
 
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["SiH4", "PbH4-BiH3", "LYS_xao"])
-def test_overlap_molecule(dtype: torch.dtype, name: str) -> None:
+@pytest.mark.parametrize("dtype", [torch.float])
+@pytest.mark.parametrize("name1", ["C", "HC", "HHe", "SCl"])
+@pytest.mark.parametrize("name2", ["C", "HC", "HHe", "SCl"])
+def test_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    """Batched version."""
     atol = 1e-06
 
-    sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    ref = sample["overlap"].type(dtype)
+    sample1, sample2 = samples[name1], samples[name2]
+
+    numbers = batch.pack(
+        (
+            sample1["numbers"],
+            sample2["numbers"],
+        )
+    )
+    positions = batch.pack(
+        (
+            sample1["positions"].type(dtype),
+            sample2["positions"].type(dtype),
+        )
+    )
+    ref = batch.pack(
+        (
+            sample1["overlap"].type(dtype),
+            sample2["overlap"].type(dtype),
+        ),
+    )
 
     ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
     h0 = Hamiltonian(numbers, positions, par, ihelp)
 
     o = h0.overlap()
     assert torch.allclose(o, o.mT, atol=atol)
-    assert torch.allclose(combis(o), combis(ref), atol=atol)
+    assert torch.allclose(o, ref, atol=atol)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

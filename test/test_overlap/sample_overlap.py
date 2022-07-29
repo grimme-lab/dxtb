@@ -4,6 +4,8 @@ import torch
 
 c = torch.eye(4)
 
+rn = torch.eye(9)
+
 h2 = torch.tensor(
     [
         [1.00000000e00, 8.50399640e-10, 6.69982971e-01, 6.52057457e-02],

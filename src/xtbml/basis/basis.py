@@ -109,15 +109,16 @@ class Basis:
         """
 
         # convert unique shell indices to prime numbers for unique products
-        sh2orb = ihelp.spread_shell_to_orbital(ihelp.shells_to_ushell)
-        orbs = primes[sh2orb]
+        sh2ush = ihelp.spread_shell_to_orbital(ihelp.shells_to_ushell)
+
+        orbs = primes[sh2ush]
         orbs = orbs.unsqueeze(-2) * orbs.unsqueeze(-1)
 
         # extra offset along only one dimension to distinguish (n, m) and
         # (m, n) of the same orbital block (e.g. 1x3 sp and 3x1 ps block)
         offset = 10000
         sh2orb = ihelp.spread_shell_to_orbital(ihelp.orbitals_per_shell)
-        orbs += sh2orb * offset
+        orbs += sh2orb.unsqueeze(-1) * offset
 
         _, umap = torch.unique(orbs, return_inverse=True)
 

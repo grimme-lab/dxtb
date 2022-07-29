@@ -15,7 +15,7 @@ from xtbml.xtb.h0 import Hamiltonian
 
 from .samples import samples
 
-small = ["H2", "H2_nocn", "LiH", "HLi", "S2", "SiH4", "SiH4_nocn"]
+small = ["C", "Rn", "H2", "H2_nocn", "LiH", "HLi", "S2", "SiH4", "SiH4_nocn"]
 large = ["PbH4-BiH3", "LYS_xao"]
 
 
@@ -67,40 +67,15 @@ class TestHamiltonianGFN1(Setup):
         h0 = Hamiltonian(numbers, positions, par, ihelp)
 
         o = h0.overlap()
-        h = h0.build(o, cn=cn)
-
         assert torch.allclose(o, o.mT, atol=self.atol)
+
+        h = h0.build(o, cn=cn)
         assert torch.allclose(h, h.mT, atol=self.atol)
         assert torch.allclose(h, ref, atol=self.atol)
 
     @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-    @pytest.mark.parametrize("name", large)
-    def test_h0_large(self, dtype: torch.dtype, name: str) -> None:
-        """Compare against reference calculated with tblite"""
-
-        sample = samples[name]
-        numbers = sample["numbers"]
-        positions = sample["positions"].type(dtype)
-        ref = sample["h0"].type(dtype)
-
-        cn = get_coordination_number(numbers, positions, exp_count)
-        ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
-        h0 = Hamiltonian(numbers, positions, par, ihelp)
-
-        o = h0.overlap()
-        assert torch.allclose(o, o.mT, atol=self.atol)
-
-        h = h0.build(o, cn=cn)
-        assert torch.allclose(h, h.mT, atol=self.atol)
-
-        assert torch.allclose(combis(h), combis(ref), atol=self.atol)
-
-    # @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-    # @pytest.mark.parametrize("name1", ["H2", "LiH", "S2", "SiH4"])
-    # @pytest.mark.parametrize("name2", ["H2", "LiH", "S2", "SiH4"])
-    @pytest.mark.parametrize("dtype", [torch.float])
-    @pytest.mark.parametrize("name1", ["H2"])
-    @pytest.mark.parametrize("name2", ["SiH4"])
+    @pytest.mark.parametrize("name1", ["C", "Rn", "H2", "LiH", "S2", "SiH4"])
+    @pytest.mark.parametrize("name2", ["C", "Rn", "H2", "LiH", "S2", "SiH4"])
     def test_h0_batch(self, dtype: torch.dtype, name1: str, name2: str) -> None:
         """Batched version."""
 
@@ -125,9 +100,76 @@ class TestHamiltonianGFN1(Setup):
             ),
         )
 
+        cn = get_coordination_number(numbers, positions, exp_count)
         ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
         h0 = Hamiltonian(numbers, positions, par, ihelp)
-        o = h0.overlap()
-        h = h0.build(o)
 
+        o = h0.overlap()
+        assert torch.allclose(o, o.mT, atol=self.atol)
+
+        h = h0.build(o, cn)
+        assert torch.allclose(h, h.mT, atol=self.atol)
         assert torch.allclose(h, ref, atol=self.atol, rtol=self.rtol)
+
+    @pytest.mark.parametrize("dtype", [torch.float, torch.double])
+    @pytest.mark.parametrize("name", large)
+    def test_h0_large(self, dtype: torch.dtype, name: str) -> None:
+        """Compare against reference calculated with tblite"""
+
+        sample = samples[name]
+        numbers = sample["numbers"]
+        positions = sample["positions"].type(dtype)
+        ref = sample["h0"].type(dtype)
+
+        cn = get_coordination_number(numbers, positions, exp_count)
+        ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+        h0 = Hamiltonian(numbers, positions, par, ihelp)
+
+        o = h0.overlap()
+        assert torch.allclose(o, o.mT, atol=self.atol)
+
+        h = h0.build(o, cn=cn)
+        assert torch.allclose(h, h.mT, atol=self.atol)
+        assert torch.allclose(combis(h), combis(ref), atol=self.atol)
+
+    @pytest.mark.parametrize("dtype", [torch.float, torch.double])
+    @pytest.mark.parametrize("name1", large)
+    @pytest.mark.parametrize("name2", large)
+    def test_h0_large_batch(self, dtype: torch.dtype, name1: str, name2: str) -> None:
+        """Batched version."""
+
+        sample1, sample2 = samples[name1], samples[name2]
+
+        numbers = batch.pack(
+            (
+                sample1["numbers"],
+                sample2["numbers"],
+            )
+        )
+        positions = batch.pack(
+            (
+                sample1["positions"].type(dtype),
+                sample2["positions"].type(dtype),
+            )
+        )
+        ref = batch.pack(
+            (
+                sample1["h0"].type(dtype),
+                sample2["h0"].type(dtype),
+            ),
+        )
+
+        cn = get_coordination_number(numbers, positions, exp_count)
+        ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+        h0 = Hamiltonian(numbers, positions, par, ihelp)
+
+        o = h0.overlap()
+        assert torch.allclose(o, o.mT, atol=self.atol)
+
+        h = h0.build(o, cn)
+        assert torch.allclose(h, h.mT, atol=self.atol)
+
+        for _batch in range(numbers.shape[0]):
+            assert torch.allclose(
+                combis(h[_batch]), combis(ref[_batch]), atol=self.atol
+            )

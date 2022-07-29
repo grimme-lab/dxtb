@@ -24,6 +24,13 @@ samples: dict[str, Record] = {
         ),
         "overlap": overlap.c,
     },
+    "Rn": {
+        "numbers": symbol2number(["Rn"]),
+        "positions": torch.tensor(
+            [[0.00000000000000, 0.00000000000000, 0.00000000000000]],
+        ),
+        "overlap": overlap.rn,
+    },
     "H2": {
         "numbers": symbol2number(["H", "H"]),
         "positions": torch.tensor(

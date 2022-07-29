@@ -20,6 +20,14 @@ class Record(Molecule):
 
 
 samples: dict[str, Record] = {
+    "H": {
+        "numbers": symbol2number(["H"]),
+        "positions": torch.tensor(
+            [[0.00000000000000, 0.00000000000000, 0.00000000000000]],
+        ),
+        "h0": h0.h,
+        "escf": torch.tensor(-4.0142947446183E-01),
+    },
     "C": {
         "numbers": symbol2number(["C"]),
         "positions": torch.tensor(
@@ -27,6 +35,14 @@ samples: dict[str, Record] = {
         ),
         "h0": h0.c,
         "escf": torch.tensor(-1.7411359557542),
+    },
+    "Rn": {
+        "numbers": symbol2number(["Rn"]),
+        "positions": torch.tensor(
+            [[0.00000000000000, 0.00000000000000, 0.00000000000000]],
+        ),
+        "h0": h0.rn,
+        "escf": torch.tensor(-3.6081562853046e00),
     },
     "H2": {
         "numbers": symbol2number(["H", "H"]),

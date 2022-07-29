@@ -1,6 +1,8 @@
 from __future__ import annotations
 import torch
 
+from xtbml.param.util import get_element_angular
+
 from ..basis import Basis, IndexHelper
 from ..exlibs.tbmalt import batch
 from ..constants import EV2AU
@@ -13,7 +15,6 @@ from ..param import (
     Param,
 )
 from ..typing import Tensor
-from ..utils import timing
 
 PAD = -1
 """Value used for padding of tensors."""
@@ -365,7 +366,6 @@ class Hamiltonian:
         # force symmetry to avoid problems through numerical errors
         return self._symmetrize(hcore)
 
-    # @timing
     def overlap(self) -> Tensor:
         """Overlap calculation of unique shells pairs.
 
@@ -422,7 +422,7 @@ class Hamiltonian:
 
             return torch.tensor(upairs, dtype=torch.long, device=self.device)
 
-        def get_overlap(numbers: Tensor, positions: Tensor) -> Tensor:
+        def get_overlap(bas: Basis, positions: Tensor, ihelp: IndexHelper) -> Tensor:
             """Overlap calculation for a single molecule.
 
             Parameters
@@ -438,30 +438,23 @@ class Hamiltonian:
                 Overlap matrix for single molecule.
             """
 
-            bas = Basis(
-                numbers,
-                self.par,
-                self.ihelp.unique_angular,
-                dtype=self.dtype,
-                device=self.device,
-            )
-            umap, n_unique_pairs = bas.unique_shell_pairs(self.ihelp)
+            umap, n_unique_pairs = bas.unique_shell_pairs(ihelp)
             alphas, coeffs = bas.create_cgtos()
 
             # spread stuff to orbitals for indexing
             alpha = batch.index(
-                batch.index(batch.pack(alphas), self.ihelp.shells_to_ushell),
-                self.ihelp.orbitals_to_shell,
+                batch.index(batch.pack(alphas), ihelp.shells_to_ushell),
+                ihelp.orbitals_to_shell,
             )
             coeff = batch.index(
-                batch.index(batch.pack(coeffs), self.ihelp.shells_to_ushell),
-                self.ihelp.orbitals_to_shell,
+                batch.index(batch.pack(coeffs), ihelp.shells_to_ushell),
+                ihelp.orbitals_to_shell,
             )
             positions = batch.index(
-                batch.index(positions, self.ihelp.shells_to_atom),
-                self.ihelp.orbitals_to_shell,
+                batch.index(positions, ihelp.shells_to_atom),
+                ihelp.orbitals_to_shell,
             )
-            ang = self.ihelp.spread_shell_to_orbital(self.ihelp.angular)
+            ang = ihelp.spread_shell_to_orbital(ihelp.angular)
 
             # overlap calculation
             ovlp = torch.zeros(*umap.shape, dtype=self.dtype, device=self.device)
@@ -500,14 +493,35 @@ class Hamiltonian:
             return ovlp
 
         if self.numbers.ndim > 1:
-            overlap = batch.pack(
-                [
-                    get_overlap(self.unique, self.positions[_batch])
-                    for _batch in range(self.numbers.shape[0])
-                ]
-            )
+            o = []
+            for _batch in range(self.numbers.shape[0]):
+                # unfortunately, we need a new IndexHelper for each batch,
+                # but this is 3 orders of magnitude faster than `get_overlap`
+                nums = batch.deflate(self.numbers[_batch])
+                ihelp = IndexHelper.from_numbers(
+                    nums, get_element_angular(self.par.element)
+                )
+
+                bas = Basis(
+                    torch.unique(nums),
+                    self.par,
+                    ihelp.unique_angular,
+                    dtype=self.dtype,
+                    device=self.device,
+                )
+
+                o.append(get_overlap(bas, self.positions[_batch], ihelp))
+
+            overlap = batch.pack(o)
         else:
-            overlap = get_overlap(self.unique, self.positions)
+            bas = Basis(
+                self.unique,
+                self.par,
+                self.ihelp.unique_angular,
+                dtype=self.dtype,
+                device=self.device,
+            )
+            overlap = get_overlap(bas, self.positions, self.ihelp)
 
         # force symmetry to avoid problems through numerical errors
         return self._symmetrize(overlap)
