@@ -58,7 +58,7 @@ def get_elem_param(
     numbers: Tensor,
     par_element: dict[str, Element],
     key: str,
-    pad_val: float = -1.0,
+    pad_val: int = -1,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> Tensor:
@@ -72,8 +72,8 @@ def get_elem_param(
         Parametrization of elements.
     key : str
         Name of the quantity to obtain (e.g. gam3 for Hubbard derivatives).
-    pad_val : float, optional
-        Value to pad the tensor with. Default is `-1.0`.
+    pad_val : int, optional
+        Value to pad the tensor with. Default is `-1`.
     device : torch.device | None
         Device to store the tensor. If `None` (default), the default device is used.
     dtype : torch.dtype | None
@@ -153,7 +153,7 @@ def get_elem_valence(
     """
     WARNING: ONLY WORKS FOR GFN1-xTB
     -> GFN1-xTB uses a minimal basis except for Hydrogen
-    
+
     Obtain valence of the shells of all atoms.
 
     Parameters

@@ -8,6 +8,7 @@ from xtbml.integral import mmd
 from xtbml.exceptions import IntegralTransformError
 from xtbml.param.gfn1 import GFN1_XTB as par
 from xtbml.param.util import get_element_angular
+from xtbml.utils import combinations as combis
 from xtbml.xtb.h0 import Hamiltonian
 
 from .samples import samples
@@ -50,6 +51,24 @@ def test_overlap_diatomic(dtype: torch.dtype, name: str):
     overlap = hamiltonian.overlap()
 
     assert torch.allclose(overlap, ref, rtol=1e-05, atol=1e-05, equal_nan=False)
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["SiH4", "PbH4-BiH3", "LYS_xao"])
+def test_overlap_molecule(dtype: torch.dtype, name: str) -> None:
+    atol = 1e-06
+
+    sample = samples[name]
+    numbers = sample["numbers"]
+    positions = sample["positions"].type(dtype)
+    ref = sample["overlap"].type(dtype)
+
+    ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+    h0 = Hamiltonian(numbers, positions, par, ihelp)
+
+    o = h0.overlap()
+    assert torch.allclose(o, o.mT, atol=atol)
+    assert torch.allclose(combis(o), combis(ref), atol=atol)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
