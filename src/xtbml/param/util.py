@@ -151,8 +151,10 @@ def get_elem_valence(
     dtype: torch.dtype | None = None,
 ) -> Tensor:
     """
-    WARNING: ONLY WORKS FOR GFN1-xTB!!!!
-    -> GFN1-xTB uses a minimal basis except for Hydrogen
+    .. warning::
+
+       Only works if shells of same angular momentum are consecutive,
+       like the GFN1-xTB hydrogen basis set.
 
     Obtain valence of the shells of all atoms.
 
