@@ -6,17 +6,14 @@ import torch
 from xtbml.typing import Tensor, Molecule
 from xtbml.utils import symbol2number
 
-from . import sample_h0 as h0
+from . import sample_overlap as overlap
 
 
 class Record(Molecule):
     """Format of reference records containing GFN1-xTB and GFN2-xTB reference values."""
 
-    h0: Tensor
-    """Reference Hamiltonian for GFN1-xTB"""
-
-    escf: Tensor
-    """SCF energy for GFN1-xTB"""
+    overlap: Tensor
+    """Reference overlap for GFN1-xTB"""
 
 
 samples: dict[str, Record] = {
@@ -25,8 +22,7 @@ samples: dict[str, Record] = {
         "positions": torch.tensor(
             [[0.00000000000000, 0.00000000000000, 0.00000000000000]],
         ),
-        "h0": h0.c,
-        "escf": torch.tensor(-1.7411359557542),
+        "overlap": overlap.c,
     },
     "H2": {
         "numbers": symbol2number(["H", "H"]),
@@ -36,19 +32,7 @@ samples: dict[str, Record] = {
                 [0.00000000000000, 0.00000000000000, 0.70252931147690],
             ],
         ),
-        "h0": h0.h2,
-        "escf": torch.tensor(-1.0585984032484),
-    },
-    "H2_nocn": {
-        "numbers": symbol2number(["H", "H"]),
-        "positions": torch.tensor(
-            [
-                [0.00000000000000, 0.00000000000000, -0.70252931147690],
-                [0.00000000000000, 0.00000000000000, 0.70252931147690],
-            ],
-        ),
-        "h0": h0.h2_nocn,
-        "escf": torch.tensor(0.0),
+        "overlap": overlap.h2,
     },
     "LiH": {
         "numbers": symbol2number(["Li", "H"]),
@@ -58,8 +42,7 @@ samples: dict[str, Record] = {
                 [0.00000000000000, 0.00000000000000, 1.50796743897235],
             ],
         ),
-        "h0": h0.lih,
-        "escf": torch.tensor(-0.88306406116865),
+        "overlap": overlap.lih,
     },
     "HLi": {
         "numbers": symbol2number(["H", "Li"]),
@@ -69,8 +52,7 @@ samples: dict[str, Record] = {
                 [0.00000000000000, 0.00000000000000, 1.50796743897235],
             ],
         ),
-        "h0": h0.hli,
-        "escf": torch.tensor(0.0),
+        "overlap": overlap.hli,
     },
     "HC": {
         "numbers": symbol2number(["H", "C"]),
@@ -80,8 +62,7 @@ samples: dict[str, Record] = {
                 [0.00000000000000, 0.00000000000000, 1.40000000000000],
             ]
         ),
-        "h0": h0.hc,
-        "escf": torch.tensor(0.0),
+        "overlap": overlap.hc,
     },
     "HHe": {
         "numbers": symbol2number(["H", "He"]),
@@ -91,8 +72,17 @@ samples: dict[str, Record] = {
                 [0.00000000000000, 0.00000000000000, 1.70000000000000],
             ]
         ),
-        "h0": h0.hhe,
-        "escf": torch.tensor(0.0),
+        "overlap": overlap.hhe,
+    },
+    "SCl": {
+        "numbers": symbol2number(["S", "Cl"]),
+        "positions": torch.tensor(
+            [
+                [0.00000000000000, 0.00000000000000, 0.00000000000000],
+                [0.00000000000000, 0.00000000000000, 2.10000000000000],
+            ]
+        ),
+        "overlap": overlap.scl,
     },
     "S2": {
         "numbers": symbol2number(["S", "S"]),
@@ -102,22 +92,7 @@ samples: dict[str, Record] = {
                 [0.00000000000000, 0.00000000000000, 1.80281271474629],
             ],
         ),
-        "h0": h0.s2,
-        "escf": torch.tensor(-7.3285116888517),
-    },
-    "SiH4_nocn": {
-        "numbers": symbol2number(["Si", "H", "H", "H", "H"]),
-        "positions": torch.tensor(
-            [
-                [0.00000000000000, -0.00000000000000, 0.00000000000000],
-                [1.61768389755830, 1.61768389755830, -1.61768389755830],
-                [-1.61768389755830, -1.61768389755830, -1.61768389755830],
-                [1.61768389755830, -1.61768389755830, 1.61768389755830],
-                [-1.61768389755830, 1.61768389755830, 1.61768389755830],
-            ],
-        ),
-        "h0": h0.sih4_nocn,
-        "escf": torch.tensor(0.0),
+        "overlap": overlap.s2,
     },
     "SiH4": {
         "numbers": symbol2number(["Si", "H", "H", "H", "H"]),
@@ -130,8 +105,7 @@ samples: dict[str, Record] = {
                 [-1.61768389755830, 1.61768389755830, 1.61768389755830],
             ],
         ),
-        "h0": h0.sih4,
-        "escf": torch.tensor(-4.0384093532453),
+        "overlap": overlap.sih4,
     },
     "PbH4-BiH3": {
         "numbers": symbol2number("Pb H H H H Bi H H H".split()),
@@ -148,8 +122,7 @@ samples: dict[str, Record] = {
                 [+1.35700257511111, +6.70626379422222, +2.35039772300000],
             ]
         ),
-        "h0": h0.pbh4bih3,
-        "escf": torch.tensor(-7.6074262079844),
+        "overlap": overlap.pbh4bih3,
     },
     "C6H5I-CH3SH": {
         "numbers": symbol2number("C C C C C C I H H H H H S H C H H H".split()),
@@ -175,8 +148,7 @@ samples: dict[str, Record] = {
                 [-6.35955320518616, 14.08073002965080, -1.68204314084441],
             ]
         ),
-        "h0": torch.tensor(0.0),
-        "escf": torch.tensor(-27.612142805843),
+        "overlap": torch.tensor(0.0),
     },
     "C2H2": {
         "numbers": symbol2number("C C H H".split()),
@@ -188,8 +160,7 @@ samples: dict[str, Record] = {
                 [2.058421, -0.204339, 0.000006],
             ]
         ),
-        "h0": torch.tensor(0.0),
-        "escf": torch.tensor(0.0),
+        "overlap": torch.tensor(0.0),
     },
     "MB16_43_01": {
         "numbers": symbol2number("Na H O H F H H O N H H Cl B B N Al".split()),
@@ -213,8 +184,7 @@ samples: dict[str, Record] = {
                 [+1.12226554109716, -1.36942007032045, +0.48455055461782],
             ],
         ),
-        "h0": h0.mb16_43_01,
-        "escf": torch.tensor(-33.200116717478),
+        "overlap": overlap.mb16_43_01,
     },
     "LYS_xao": {
         "numbers": symbol2number(
@@ -257,8 +227,7 @@ samples: dict[str, Record] = {
                 [11.15655125465616, -2.46919075399082, +0.40005961272418],
             ]
         ),
-        "h0": h0.lysxao,
-        "escf": torch.tensor(-48.850798066902),
+        "overlap": overlap.lysxao,
     },
     "C60": {
         "numbers": torch.tensor(60 * [6]),
@@ -326,7 +295,6 @@ samples: dict[str, Record] = {
                 [+0.72192527745475, -2.22185754149319, -6.29274336133455],
             ]
         ),
-        "h0": h0.c60,
-        "escf": torch.tensor(-128.79148324775),
+        "overlap": overlap.c60,
     },
 }

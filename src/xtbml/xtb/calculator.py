@@ -45,7 +45,7 @@ class Calculator:
         self, numbers: Tensor, positions: Tensor, par: Param, acc: float = 1.0
     ) -> None:
         self.ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
-        self.basis = Basis(numbers, par, acc)
+        self.basis = Basis(numbers, par, self.ihelp.unique_angular)
         self.hamiltonian = Hamiltonian(numbers, positions, par, self.ihelp)
 
         if par.charge is None:

@@ -14,7 +14,7 @@ from .samples import samples
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["H2_cn", "LiH", "SiH4_cn"])
+@pytest.mark.parametrize("name", ["C", "H2", "LiH", "SiH4"])
 def test_single(dtype: torch.dtype, name: str):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
 
