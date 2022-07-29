@@ -8,7 +8,7 @@ import pytorch_lightning as pl
 from torch_geometric.loader import DataLoader as pygDataloader
 from argparse import ArgumentParser
 from pathlib import Path
-from pytorch_lightning.callbacks import LearningRateMonitor
+
 from pytorch_lightning.loggers import WandbLogger
 import wandb
 
@@ -16,18 +16,19 @@ from .loss import WTMAD2Loss
 from ..data.graph_dataset import MolecularGraph_Dataset
 from .transforms import Pad_Hamiltonian
 from ..typing import Tensor
+from .config import Lightning_Configuration
 
 
 class MolecularGNN(pl.LightningModule):
     """Graph based model for prediction on single molecules."""
 
-    def __init__(self, cfg=None):
+    def __init__(self, cfg: dict):
         super().__init__()
 
         # TODO: wrap into config dictionary
         nf = 5
         out = 1
-        hidden = cfg.hidden if cfg.hidden else 10
+        hidden = cfg["hidden"]
 
         self.gconv1 = GCNConv(nf, hidden)
         self.gconv2 = GCNConv(hidden, out)
@@ -50,11 +51,23 @@ class MolecularGNN(pl.LightningModule):
         # self.save_hyperparameters() # FIXME: issue when wandb.cfg is parsed
 
     def forward(self, batch: Batch):
-        verbose = False
+        verbose = True
 
         if verbose:
             print("inside forward")
             print("before", batch.x.shape)
+
+        ###############################
+        # calculate SCF
+
+        print(type(batch))
+
+        # for sample in batch:
+
+        # 1. train on Etot + gradient --> Eref
+        # 2. calculate loss based on gradient
+
+        ###############################
 
         # embedding
         # TODO: add embedding layer for node features
@@ -170,56 +183,47 @@ class MolecularGNN(pl.LightningModule):
         return loss
 
 
-def get_trainer() -> pl.Trainer:
+def get_trainer(cfg: dict) -> pl.Trainer:
     """Construct pytorch lightning trainer from argparse. Otherwise default settings.
+
+    Args:
+        cfg (dict): Configuration for obtaining trainer
 
     Returns:
         pl.Trainer: Pytorch lightning trainer instance
     """
 
-    # TODO: refactor into get config (maybe setup an individual config class?)
-    #   * load config
-    #   * get_logger() (define logger)
-    #   * get_trainer()
+    # weights and biases interface
+    if not cfg["no_wandb"]:
+        cfg["logger"] = WandbLogger(project="dxtb", entity="hoelzerc")
+
+    # update defaults
+    defaults = pl.Trainer.default_attributes()
+    defaults.update((k, cfg[k]) for k in defaults.keys() & cfg.keys())
+
+    return pl.Trainer(**defaults)
+
+
+def train_gnn():
+    print("Train GNN")
 
     # TODO: add get_val_dataloader() based on split_train_test(range(dataset.len))
 
     # TODO: overfit single sample
     #       - does it work? -> nope (or only very unsufficient)
 
-    # parse arguments
-    parser = ArgumentParser()
-    parser.add_argument(
-        "--no_wandb", dest="no_wandb", default=False, action="store_true"
-    )
-    parser = pl.Trainer.add_argparse_args(parser)
-    args = parser.parse_args()
-    # print("args: ", args)
-
-    # weights and biases interface
-    if not args.no_wandb:
-        args.logger = WandbLogger(project="dxtb", entity="hoelzerc")
-    del args.no_wandb
-
-    # some default settings
-    args.max_epochs = 3
-    args.log_every_n_steps = 1
-    args.callbacks = [LearningRateMonitor(logging_interval="epoch")]
-
-    return pl.Trainer.from_argparse_args(args)
-
-
-def train_gnn():
-    print("Train GNN")
-
-    # model and training setup
-    trainer = get_trainer()
+    # configuration setup
+    cfg = Lightning_Configuration()
 
     # for sweeps aka. hyperparameter searchs
-    config_defaults = {"hidden": 50, "lr": 0.1, "channels": 16}
-    wandb.config.update(config_defaults)
+    if cfg.train_no_wandb == False:
+        wandb.config.update(cfg.dict())
 
-    model = MolecularGNN(wandb.config)
+    # model and training setup
+    trainer = get_trainer(cfg.get_train_cfg())
+    model = MolecularGNN(cfg.get_model_cfg())
+
+    ###################################
 
     # log gradients, parameter histogram and model topology
     if isinstance(trainer.logger, WandbLogger):
@@ -236,12 +240,12 @@ def train_gnn():
     )
 
     # during dev only operate on subset
-    dataset = torch.utils.data.Subset(dataset, range(10))
+    # dataset = torch.utils.data.Subset(dataset, range(10))
     print(len(dataset))
     print(type(dataset))
 
     train_loader = pygDataloader(
-        dataset, batch_size=5, drop_last=False, shuffle=False, num_workers=8
+        dataset, batch_size=2, drop_last=False, shuffle=False, num_workers=8
     )
 
     # train model
