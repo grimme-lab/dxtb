@@ -108,9 +108,11 @@ class Basis:
             If the number of unique shell pairs does not match the theoretical one.
         """
 
-        # convert unique shell indices to prime numbers for unique products
         sh2ush = ihelp.spread_shell_to_orbital(ihelp.shells_to_ushell)
 
+        # FIXME: Maybe a bitwise operation is easier to understand? For now,
+        # we convert unique shell indices to prime numbers to obtain unique
+        # products upon multiplication (fundamental theorem of arithmetic).
         orbs = primes[sh2ush]
         orbs = orbs.unsqueeze(-2) * orbs.unsqueeze(-1)
 
