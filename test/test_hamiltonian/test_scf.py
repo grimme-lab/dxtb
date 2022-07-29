@@ -31,7 +31,7 @@ def test_single(dtype: torch.dtype, name: str):
 
 
 @pytest.mark.parametrize("dtype", [torch.float])
-@pytest.mark.parametrize("name", ["S2", "PbH4-BiH3", "C6H5I-CH3SH"])
+@pytest.mark.parametrize("name", ["S2", "PbH4-BiH3", "C6H5I-CH3SH", "01", "LYS_xao"])
 def test_single2(dtype: torch.dtype, name: str):
     """Test a few larger system (only float32 as they take some time)."""
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
