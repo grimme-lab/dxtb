@@ -14,23 +14,6 @@ from .samples import samples
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["H", "C", "Rn"])
-def test_monoatomic(dtype: torch.dtype, name: str):
-    tol = math.sqrt(torch.finfo(dtype).eps) * 10
-
-    sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    ref = sample["escf"]
-    charges = torch.tensor(0.0).type(dtype)
-
-    calc = Calculator(numbers, positions, par)
-
-    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
-    assert pytest.approx(ref, abs=tol) == results["energy"].sum(-1).item()
-
-
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "LiH", "SiH4"])
 def test_single(dtype: torch.dtype, name: str):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
