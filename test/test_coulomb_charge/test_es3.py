@@ -11,7 +11,7 @@ import torch
 import xtbml.coulomb.thirdorder as es3
 from xtbml.basis import IndexHelper
 from xtbml.exlibs.tbmalt import batch
-from xtbml.param import GFN1_XTB, get_elem_param, get_element_angular
+from xtbml.param import GFN1_XTB, get_elem_param, get_elem_angular
 from xtbml.typing import Tensor, Dict, List
 
 from .samples import mb16_43
@@ -29,7 +29,7 @@ def fixture_param() -> Generator[FixtureParams, None, None]:
     if GFN1_XTB.thirdorder.shell is True:
         raise NotImplementedError("Shell-resolved ES3 treatment not implemented.")
 
-    yield get_element_angular(GFN1_XTB.element)
+    yield get_elem_angular(GFN1_XTB.element)
 
 
 class TestThirdOrderElectrostatics:

@@ -6,7 +6,7 @@ import torch
 from xtbml.basis import IndexHelper
 from xtbml.exlibs.tbmalt import batch
 from xtbml.param.gfn1 import GFN1_XTB as par
-from xtbml.param.util import get_element_angular
+from xtbml.param.util import get_elem_angular
 from xtbml.utils import combinations as combis
 from xtbml.xtb.h0 import Hamiltonian
 
@@ -23,7 +23,7 @@ def test_overlap_single(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].type(dtype)
     ref = sample["overlap"].type(dtype)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     h0 = Hamiltonian(numbers, positions, par, ihelp)
 
     o = h0.overlap()
@@ -59,7 +59,7 @@ def test_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         ),
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     h0 = Hamiltonian(numbers, positions, par, ihelp)
 
     o = h0.overlap()

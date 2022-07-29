@@ -115,7 +115,7 @@ def get_elem_param(
     return torch.tensor(l, device=device, dtype=dtype)
 
 
-def get_element_angular(par_element: dict[str, Element]) -> dict[int, list[int]]:
+def get_elem_angular(par_element: dict[str, Element]) -> dict[int, list[int]]:
     """Obtain angular momenta of the shells of all atoms.
 
     Parameters
@@ -151,7 +151,7 @@ def get_elem_valence(
     dtype: torch.dtype | None = None,
 ) -> Tensor:
     """
-    WARNING: ONLY WORKS FOR GFN1-xTB
+    WARNING: ONLY WORKS FOR GFN1-xTB!!!!
     -> GFN1-xTB uses a minimal basis except for Hydrogen
 
     Obtain valence of the shells of all atoms.

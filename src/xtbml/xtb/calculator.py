@@ -7,7 +7,7 @@ Base calculator for the extended tight-binding model.
 from __future__ import annotations
 import torch
 
-from xtbml.param.util import get_elem_param, get_element_angular
+from xtbml.param.util import get_elem_param, get_elem_angular
 
 from .. import scf
 from ..basis import Basis, IndexHelper
@@ -44,7 +44,7 @@ class Calculator:
     def __init__(
         self, numbers: Tensor, positions: Tensor, par: Param, acc: float = 1.0
     ) -> None:
-        self.ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+        self.ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         self.basis = Basis(numbers, par, self.ihelp.unique_angular)
         self.hamiltonian = Hamiltonian(numbers, positions, par, self.ihelp)
 

@@ -15,7 +15,7 @@ from xtbml.exlibs.tbmalt import batch
 from xtbml.param import (
     GFN1_XTB,
     get_elem_param,
-    get_element_angular,
+    get_elem_angular,
 )
 from xtbml.typing import Tensor, Tuple
 
@@ -32,7 +32,7 @@ def fixture_param() -> Generator[FixtureParams, None, None]:
 
     gexp = torch.tensor(GFN1_XTB.charge.effective.gexp)
     average = averaging_function[GFN1_XTB.charge.effective.average]
-    angular = get_element_angular(GFN1_XTB.element)
+    angular = get_elem_angular(GFN1_XTB.element)
 
     yield gexp, average, angular
 

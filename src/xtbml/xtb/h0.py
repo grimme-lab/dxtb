@@ -1,7 +1,7 @@
 from __future__ import annotations
 import torch
 
-from xtbml.param.util import get_element_angular
+from xtbml.param.util import get_elem_angular
 
 from ..basis import Basis, IndexHelper
 from ..exlibs.tbmalt import batch
@@ -499,7 +499,7 @@ class Hamiltonian:
                 # but this is 3 orders of magnitude faster than `get_overlap`
                 nums = batch.deflate(self.numbers[_batch])
                 ihelp = IndexHelper.from_numbers(
-                    nums, get_element_angular(self.par.element)
+                    nums, get_elem_angular(self.par.element)
                 )
 
                 bas = Basis(
