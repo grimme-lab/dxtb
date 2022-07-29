@@ -8,7 +8,7 @@ from xtbml.basis.indexhelper import IndexHelper
 from xtbml.exlibs.tbmalt import batch
 from xtbml.ncoord.ncoord import get_coordination_number, exp_count
 from xtbml.param.gfn1 import GFN1_XTB as par
-from xtbml.param.util import get_element_angular
+from xtbml.param.util import get_elem_angular
 from xtbml.typing import Tensor
 from xtbml.utils import combinations as combis
 from xtbml.xtb.h0 import Hamiltonian
@@ -63,7 +63,7 @@ class TestHamiltonianGFN1(Setup):
         else:
             cn = get_coordination_number(numbers, positions, exp_count)
 
-        ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         h0 = Hamiltonian(numbers, positions, par, ihelp)
 
         o = h0.overlap()
@@ -101,7 +101,7 @@ class TestHamiltonianGFN1(Setup):
         )
 
         cn = get_coordination_number(numbers, positions, exp_count)
-        ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         h0 = Hamiltonian(numbers, positions, par, ihelp)
 
         o = h0.overlap()
@@ -122,7 +122,7 @@ class TestHamiltonianGFN1(Setup):
         ref = sample["h0"].type(dtype)
 
         cn = get_coordination_number(numbers, positions, exp_count)
-        ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         h0 = Hamiltonian(numbers, positions, par, ihelp)
 
         o = h0.overlap()
@@ -160,7 +160,7 @@ class TestHamiltonianGFN1(Setup):
         )
 
         cn = get_coordination_number(numbers, positions, exp_count)
-        ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         h0 = Hamiltonian(numbers, positions, par, ihelp)
 
         o = h0.overlap()
