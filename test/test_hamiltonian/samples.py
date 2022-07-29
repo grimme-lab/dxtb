@@ -26,7 +26,7 @@ samples: dict[str, Record] = {
             [[0.00000000000000, 0.00000000000000, 0.00000000000000]],
         ),
         "h0": h0.h,
-        "escf": torch.tensor(-4.0142947446183E-01),
+        "escf": torch.tensor(-4.0142947446183e-01),
     },
     "C": {
         "numbers": symbol2number(["C"]),
@@ -42,7 +42,7 @@ samples: dict[str, Record] = {
             [[0.00000000000000, 0.00000000000000, 0.00000000000000]],
         ),
         "h0": h0.rn,
-        "escf": torch.tensor(-3.6081562853046e00),
+        "escf": torch.tensor(-3.6081562853046),
     },
     "H2": {
         "numbers": symbol2number(["H", "H"]),
