@@ -17,15 +17,15 @@ def test_ortho_1s_2s(dtype):
 
     # create gaussians
     alphai, coeffi = slater.to_gauss(
-        vec.new_tensor(5),
-        vec.new_tensor(1),
-        vec.new_tensor(l),
+        torch.tensor(5),
+        torch.tensor(1),
+        torch.tensor(l),
         vec.new_tensor(1.2),
     )
     alphaj, coeffj = slater.to_gauss(
-        vec.new_tensor(2),
-        vec.new_tensor(2),
-        vec.new_tensor(l),
+        torch.tensor(2),
+        torch.tensor(2),
+        torch.tensor(l),
         vec.new_tensor(0.7),
     )
 
