@@ -370,7 +370,7 @@ def overlap(
     eij = ai + aj
     oij = 1.0 / eij
     xij = 0.5 * oij
-    est = ai * aj * oij * r2
+    est = ai * aj * oij * r2.unsqueeze(-1).unsqueeze(-2)
     sij = torch.exp(-est) * sqrtpi3 * torch.pow(oij, 1.5) * ci * cj
     rpi = +vec.unsqueeze(-1).unsqueeze(-1) * aj * oij
     rpj = -vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
