@@ -1,5 +1,6 @@
 """Run tests for overlap."""
 
+import numpy as np
 import pytest
 import torch
 
@@ -9,9 +10,12 @@ from xtbml.integral import mmd
 from xtbml.exceptions import IntegralTransformError
 from xtbml.param.gfn1 import GFN1_XTB as par
 from xtbml.param.util import get_elem_angular
+from xtbml.utils import load_from_npz
 from xtbml.xtb.h0 import Hamiltonian
 
 from .samples import samples
+
+ref_overlap = np.load("test/test_overlap/overlap.npz")
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -27,7 +31,7 @@ def test_overlap_single(dtype: torch.dtype, name: str):
     sample = samples[name]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
-    ref = sample["overlap"].type(dtype)
+    ref = load_from_npz(ref_overlap, name, dtype)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     hamiltonian = Hamiltonian(numbers, positions, par, ihelp)
@@ -59,8 +63,8 @@ def test_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
     ref = batch.pack(
         (
-            sample1["overlap"].type(dtype),
-            sample2["overlap"].type(dtype),
+            load_from_npz(ref_overlap, name1, dtype),
+            load_from_npz(ref_overlap, name2, dtype),
         ),
     )
 

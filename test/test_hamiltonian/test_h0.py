@@ -1,6 +1,7 @@
 """Run tests for Hamiltonian."""
 
 from __future__ import annotations
+import numpy as np
 import pytest
 import torch
 
@@ -11,12 +12,15 @@ from xtbml.param.gfn1 import GFN1_XTB as par
 from xtbml.param.util import get_elem_angular
 from xtbml.typing import Tensor
 from xtbml.utils import combinations as combis
+from xtbml.utils import load_from_npz
 from xtbml.xtb.h0 import Hamiltonian
 
 from .samples import samples
 
 small = ["C", "Rn", "H2", "H2_nocn", "LiH", "HLi", "S2", "SiH4", "SiH4_nocn"]
 large = ["PbH4-BiH3", "LYS_xao"]
+
+ref_h0 = np.load("test/test_hamiltonian/h0.npz")
 
 
 class Setup:
@@ -56,7 +60,7 @@ class TestHamiltonianGFN1(Setup):
         sample = samples[name]
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
-        ref = sample["h0"].type(dtype)
+        ref = load_from_npz(ref_h0, name, dtype)
 
         if "nocn" in name:
             cn = None
@@ -95,8 +99,8 @@ class TestHamiltonianGFN1(Setup):
         )
         ref = batch.pack(
             (
-                sample1["h0"].type(dtype),
-                sample2["h0"].type(dtype),
+                load_from_npz(ref_h0, name1, dtype),
+                load_from_npz(ref_h0, name2, dtype),
             ),
         )
 
@@ -119,7 +123,7 @@ class TestHamiltonianGFN1(Setup):
         sample = samples[name]
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
-        ref = sample["h0"].type(dtype)
+        ref = load_from_npz(ref_h0, name, dtype)
 
         cn = get_coordination_number(numbers, positions, exp_count)
         ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
@@ -153,10 +157,7 @@ class TestHamiltonianGFN1(Setup):
             )
         )
         ref = batch.pack(
-            (
-                sample1["h0"].type(dtype),
-                sample2["h0"].type(dtype),
-            ),
+            (load_from_npz(ref_h0, name1, dtype), load_from_npz(ref_h0, name2, dtype)),
         )
 
         cn = get_coordination_number(numbers, positions, exp_count)

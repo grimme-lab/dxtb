@@ -3,7 +3,7 @@
 from __future__ import annotations
 import torch
 
-from ..typing import Tensor
+from ..typing import Any, Tensor
 
 
 def combinations(x: Tensor, r: int = 2) -> Tensor:
@@ -26,3 +26,24 @@ def combinations(x: Tensor, r: int = 2) -> Tensor:
         Matrix of combinations (n, 2).
     """
     return torch.combinations(torch.sort(x.flatten())[0], r)
+
+
+def load_from_npz(npzfile: Any, name: str, dtype: torch.dtype) -> Tensor:
+    """Get torch tensor from npz file
+
+    Parameters
+    ----------
+    npzfile : Any
+        Loaded npz file.
+    name : str
+        Name of the tensor in the npz file.
+    dtype : torch.dtype
+        Data type of the tensor.
+
+    Returns
+    -------
+    Tensor
+        Tensor from the npz file.
+    """
+    name = name.replace("-", "").lower()
+    return torch.from_numpy(npzfile[name]).type(dtype)

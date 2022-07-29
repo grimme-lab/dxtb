@@ -6,14 +6,9 @@ import torch
 from xtbml.typing import Tensor, Molecule
 from xtbml.utils import symbol2number
 
-from . import sample_h0 as h0
-
 
 class Record(Molecule):
     """Format of reference records containing GFN1-xTB and GFN2-xTB reference values."""
-
-    h0: Tensor
-    """Reference Hamiltonian for GFN1-xTB"""
 
     escf: Tensor
     """SCF energy for GFN1-xTB"""
@@ -25,7 +20,6 @@ samples: dict[str, Record] = {
         "positions": torch.tensor(
             [[0.00000000000000, 0.00000000000000, 0.00000000000000]],
         ),
-        "h0": h0.h,
         "escf": torch.tensor(-4.0142947446183e-01),
     },
     "C": {
@@ -33,7 +27,6 @@ samples: dict[str, Record] = {
         "positions": torch.tensor(
             [[0.00000000000000, 0.00000000000000, 0.00000000000000]],
         ),
-        "h0": h0.c,
         "escf": torch.tensor(-1.7411359557542),
     },
     "Rn": {
@@ -41,7 +34,6 @@ samples: dict[str, Record] = {
         "positions": torch.tensor(
             [[0.00000000000000, 0.00000000000000, 0.00000000000000]],
         ),
-        "h0": h0.rn,
         "escf": torch.tensor(-3.6081562853046),
     },
     "H2": {
@@ -52,7 +44,6 @@ samples: dict[str, Record] = {
                 [0.00000000000000, 0.00000000000000, 0.70252931147690],
             ],
         ),
-        "h0": h0.h2,
         "escf": torch.tensor(-1.0585984032484),
     },
     "H2_nocn": {
@@ -63,7 +54,6 @@ samples: dict[str, Record] = {
                 [0.00000000000000, 0.00000000000000, 0.70252931147690],
             ],
         ),
-        "h0": h0.h2_nocn,
         "escf": torch.tensor(0.0),
     },
     "LiH": {
@@ -74,7 +64,6 @@ samples: dict[str, Record] = {
                 [0.00000000000000, 0.00000000000000, 1.50796743897235],
             ],
         ),
-        "h0": h0.lih,
         "escf": torch.tensor(-0.88306406116865),
     },
     "HLi": {
@@ -85,7 +74,6 @@ samples: dict[str, Record] = {
                 [0.00000000000000, 0.00000000000000, 1.50796743897235],
             ],
         ),
-        "h0": h0.hli,
         "escf": torch.tensor(0.0),
     },
     "HC": {
@@ -96,7 +84,6 @@ samples: dict[str, Record] = {
                 [0.00000000000000, 0.00000000000000, 1.40000000000000],
             ]
         ),
-        "h0": h0.hc,
         "escf": torch.tensor(0.0),
     },
     "HHe": {
@@ -107,7 +94,6 @@ samples: dict[str, Record] = {
                 [0.00000000000000, 0.00000000000000, 1.70000000000000],
             ]
         ),
-        "h0": h0.hhe,
         "escf": torch.tensor(0.0),
     },
     "S2": {
@@ -118,7 +104,6 @@ samples: dict[str, Record] = {
                 [0.00000000000000, 0.00000000000000, 1.80281271474629],
             ],
         ),
-        "h0": h0.s2,
         "escf": torch.tensor(-7.3285116888517),
     },
     "SiH4_nocn": {
@@ -132,7 +117,6 @@ samples: dict[str, Record] = {
                 [-1.61768389755830, 1.61768389755830, 1.61768389755830],
             ],
         ),
-        "h0": h0.sih4_nocn,
         "escf": torch.tensor(0.0),
     },
     "SiH4": {
@@ -146,7 +130,6 @@ samples: dict[str, Record] = {
                 [-1.61768389755830, 1.61768389755830, 1.61768389755830],
             ],
         ),
-        "h0": h0.sih4,
         "escf": torch.tensor(-4.0384093532453),
     },
     "PbH4-BiH3": {
@@ -164,7 +147,6 @@ samples: dict[str, Record] = {
                 [+1.35700257511111, +6.70626379422222, +2.35039772300000],
             ]
         ),
-        "h0": h0.pbh4bih3,
         "escf": torch.tensor(-7.6074262079844),
     },
     "C6H5I-CH3SH": {
@@ -191,7 +173,6 @@ samples: dict[str, Record] = {
                 [-6.35955320518616, 14.08073002965080, -1.68204314084441],
             ]
         ),
-        "h0": torch.tensor(0.0),
         "escf": torch.tensor(-27.612142805843),
     },
     "MB16_43_01": {
@@ -216,7 +197,6 @@ samples: dict[str, Record] = {
                 [+1.12226554109716, -1.36942007032045, +0.48455055461782],
             ],
         ),
-        "h0": h0.mb16_43_01,
         "escf": torch.tensor(-33.200116717478),
     },
     "LYS_xao": {
@@ -260,7 +240,6 @@ samples: dict[str, Record] = {
                 [11.15655125465616, -2.46919075399082, +0.40005961272418],
             ]
         ),
-        "h0": h0.lysxao,
         "escf": torch.tensor(-48.850798066902),
     },
     "C60": {
@@ -329,7 +308,6 @@ samples: dict[str, Record] = {
                 [+0.72192527745475, -2.22185754149319, -6.29274336133455],
             ]
         ),
-        "h0": h0.c60,
         "escf": torch.tensor(-128.79148324775),
     },
 }
