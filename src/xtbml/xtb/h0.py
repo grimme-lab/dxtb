@@ -375,11 +375,31 @@ class Hamiltonian:
             Overlap matrix
         """
 
+        def filter_pairs_manually(pairs, norb_per_sh_k, norb_per_sh_l):
+            helper, upairs = [], []
+            for pair in pairs.tolist():
+                if pair in helper:
+                    continue
+
+                # create indices of other entries from subblock
+                k, l = pair[0], pair[1]
+                for ak in range(norb_per_sh_k):
+                    for al in range(norb_per_sh_l):
+                        helper.append([k + ak, l + al])
+
+                upairs.append(pair)
+
+            return torch.tensor(upairs, dtype=torch.long, device=self.device)
+
+        def get_pairs(x: Tensor, i: int) -> Tensor:
+            return (x == i).nonzero(as_tuple=False)
+
         def get_subblock_start(
-            pairs: Tensor, norb_per_sh_k: Tensor, norb_per_sh_l: Tensor
+            umap: Tensor, i: int, norb_per_sh_k: Tensor, norb_per_sh_l: Tensor
         ) -> Tensor:
             """
-            Filter out the top-left index of each subblock of unique shell pairs.
+            Filter out the top-left index of each subblock of unique shell pairs. This makes use of the fact that the pairs are sorted along
+            the rows.
 
             Example: A "s" and "p" orbital would give the following 4x4 matrix
             of unique shell pairs:
@@ -391,6 +411,7 @@ class Hamiltonian:
             `(norb_per_sh_k, norb_per_sh_l)`, i.e. 1x1, 1x3, 3x1 and 3x3 here,
             we require only the following four indices from the matrix of unique
             shell pairs: [0, 0] (1x1), [1, 0] (3x1), [0, 1] (1x3) and [1, 1] (3x3).
+
 
             Parameters
             ----------
@@ -406,21 +427,62 @@ class Hamiltonian:
             Tensor
                 Top-left (i.e. [0, 0]) index of each subblock.
             """
-            helper, upairs = [], []
-            for pair in pairs.tolist():
-                if pair in helper:
-                    continue
 
-                k, l = pair[0], pair[1]
+            # no need to filter out a 1x1 block
+            if norb_per_sh_k == 1 and norb_per_sh_l == 1:
+                return get_pairs(umap, i)
 
-                # create indices of other entries from subblock
-                for ak in range(norb_per_sh_k):
-                    for al in range(norb_per_sh_l):
-                        helper.append([k + ak, l + al])
+            # sorting along rows allows only selecting every nth pair
+            if norb_per_sh_k == 1:
+                pairs = get_pairs(umap, i)
+                return pairs[::norb_per_sh_l]
 
-                upairs.append(pair)
+            if norb_per_sh_l == 1:
+                pairs = get_pairs(umap.mT, i)
 
-            return torch.tensor(upairs, dtype=torch.long, device=self.device)
+                # do the same for the transposed pairs, but switch columns
+                return torch.index_select(
+                    pairs[::norb_per_sh_k], 1, torch.tensor([1, 0])
+                )
+
+            # more intricate because we can have variation in two dimensions
+            # NOTE: may also work for all other cases, but not yet tested
+            if norb_per_sh_k == norb_per_sh_l:
+                pairs = get_pairs(umap, i)
+
+                pairs = pairs[::norb_per_sh_l]
+
+                start = 0
+                rest = pairs
+
+                # init with dummy
+                final = torch.tensor([[-1, -1]])
+
+                for _ in range(100000):
+                    # get number of blocks in a row
+                    nb = (pairs[:, 0] == pairs[start, 0]).nonzero().flatten().size(0)
+
+                    # we need to skip the amount of rows in the block
+                    skip = nb * int(norb_per_sh_k.item())
+
+                    # separate for blocks in rows because there can be different numbers of blocks in a row
+                    target, rest = torch.split(rest, [skip, rest.size(-2) - skip])
+
+                    # select only the top left index of each block
+                    final = torch.cat((final, target[:nb]), 0)
+
+                    start += skip
+                    if start >= pairs.size(-2):
+                        break
+
+                # remove dummy
+                return final[1:]
+
+            ###############################################################
+
+            pairs = get_pairs(umap, i)
+            pairs = pairs[::norb_per_sh_l]
+            return filter_pairs_manually(pairs, norb_per_sh_k, norb_per_sh_l)
 
         def get_overlap(bas: Basis, positions: Tensor, ihelp: IndexHelper) -> Tensor:
             """Overlap calculation for a single molecule.
@@ -459,7 +521,7 @@ class Hamiltonian:
             # overlap calculation
             ovlp = torch.zeros(*umap.shape, dtype=self.dtype, device=self.device)
             for i in range(n_unique_pairs):
-                pairs = (umap == i).nonzero(as_tuple=False)
+                pairs = get_pairs(umap, i)
                 first_pair = pairs[0]
 
                 ang_k, ang_l = ang[first_pair]
@@ -467,7 +529,7 @@ class Hamiltonian:
                 norb_per_sh_l = 2 * ang_l + 1
 
                 # collect [0, 0] entry of each subblock
-                upairs = get_subblock_start(pairs, norb_per_sh_k, norb_per_sh_l)
+                upairs = get_subblock_start(umap, i, norb_per_sh_k, norb_per_sh_l)
 
                 # we only require one pair as all have the same basis function
                 alpha_tuple = (
