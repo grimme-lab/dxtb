@@ -336,6 +336,9 @@ def test_element(dtype: torch.dtype, number: int) -> None:
     if number == 25:
         return
 
+    if uhf[number - 1] != 0:
+        return
+
     numbers = torch.tensor([number])
     positions = torch.zeros((1, 3), dtype=dtype)
     r = ref[number - 1].item()
@@ -354,6 +357,9 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
 
     # SCF does not converge for gold
     if number == 79:
+        return
+
+    if uhf_cation[number - 1] != 0:
         return
 
     numbers = torch.tensor([number])
@@ -378,6 +384,9 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
 
     # SCF does not converge
     if number in [21, 22, 23, 25, 43, 57, 58, 59]:
+        return
+
+    if uhf_anion[number - 1] != 0:
         return
 
     numbers = torch.tensor([number])
