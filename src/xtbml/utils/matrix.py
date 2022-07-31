@@ -47,3 +47,20 @@ def load_from_npz(npzfile: Any, name: str, dtype: torch.dtype) -> Tensor:
     """
     name = name.replace("-", "").lower()
     return torch.from_numpy(npzfile[name]).type(dtype)
+
+
+def t2int(x:Tensor) -> int:
+    """
+    Convert tensor to int.
+
+    Parameters
+    ----------
+    x : Tensor
+        Tensor to convert.
+
+    Returns
+    -------
+    int
+        Integer value of the tensor.
+    """
+    return int(x.item())
