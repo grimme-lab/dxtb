@@ -365,26 +365,26 @@ def overlap(
     except IndexError:
         raise IntegralTransformError()
 
-    for ai, ci in zip(alpha[0], coeff[0]):
-        for aj, cj in zip(alpha[1], coeff[1]):
-            eij = ai + aj
-            oij = 1.0 / eij
-            xij = 0.5 * oij
-            est = ai * aj * oij * r2
-            sij = torch.exp(-est) * sqrtpi3 * torch.pow(oij, 1.5) * ci * cj
-            rpi = +vec * aj * oij
-            rpj = -vec * ai * oij
-            E = e_function(xij, rpi, rpj, (*vec.shape, li + 1, lj + 1))
-            for mli in range(s3d.shape[-2]):
-                for mlj in range(s3d.shape[-1]):
-                    mi = nlm_cart[li][mli, :]
-                    mj = nlm_cart[lj][mlj, :]
-                    s3d[..., mli, mlj] += (
-                        sij
-                        * E[..., 0, mi[0], mj[0], 0]
-                        * E[..., 1, mi[1], mj[1], 0]
-                        * E[..., 2, mi[2], mj[2], 0]
-                    )
+    ai, aj = alpha[0].unsqueeze(-1), alpha[1].unsqueeze(-2)
+    ci, cj = coeff[0].unsqueeze(-1), coeff[1].unsqueeze(-2)
+    eij = ai + aj
+    oij = 1.0 / eij
+    xij = 0.5 * oij
+    est = ai * aj * oij * r2.unsqueeze(-1).unsqueeze(-2)
+    sij = torch.exp(-est) * sqrtpi3 * torch.pow(oij, 1.5) * ci * cj
+    rpi = +vec.unsqueeze(-1).unsqueeze(-1) * aj * oij
+    rpj = -vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
+    E = e_function(xij, rpi, rpj, (*vec.shape, ai.shape[-2], aj.shape[-1], li + 1, lj + 1))
+    for mli in range(s3d.shape[-2]):
+        for mlj in range(s3d.shape[-1]):
+            mi = nlm_cart[li][mli, :]
+            mj = nlm_cart[lj][mlj, :]
+            s3d[..., mli, mlj] += (
+                sij
+                * E[..., 0, :, :, mi[0], mj[0], 0]
+                * E[..., 1, :, :, mi[1], mj[1], 0]
+                * E[..., 2, :, :, mi[2], mj[2], 0]
+            ).sum((-2, -1))
 
     overlap = torch.einsum("...ji,...jk,...kl->...il", itrafo, s3d, jtrafo)
     return overlap
