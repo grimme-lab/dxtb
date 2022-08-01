@@ -179,6 +179,7 @@ class GeneralizedBorn(Interaction):
         kernel: str = "p16",
         **kwargs,
     ):
+        Interaction.__init__(self)
         dtype = dielectric_constant.dtype
 
         self.alpbet = alpha / dielectric_constant if alpb else 0
