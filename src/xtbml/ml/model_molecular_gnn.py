@@ -1,8 +1,9 @@
+from turtle import position
 import torch
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, global_add_pool
 from torch_geometric.data import Batch, LightningDataset
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from torch import optim, nn
 import pytorch_lightning as pl
 from torch_geometric.loader import DataLoader as pygDataloader
@@ -17,6 +18,8 @@ from ..data.graph_dataset import MolecularGraph_Dataset
 from .transforms import Pad_Hamiltonian
 from ..typing import Tensor
 from .config import Lightning_Configuration
+from ..param import GFN1_XTB as par
+from ..xtb.calculator import Calculator
 
 
 class MolecularGNN(pl.LightningModule):
@@ -42,13 +45,12 @@ class MolecularGNN(pl.LightningModule):
         self.dropout = torch.nn.Dropout(p=0.2)
 
         # loss
-        wtmad2_path = Path(__file__).resolve().parents[3] / "data" / "GMTKN55"
-        self.loss_fn = WTMAD2Loss(wtmad2_path, reduction="mean")
-        # self.loss_fn = nn.L1Loss(reduction="mean")
+        # wtmad2_path = Path(__file__).resolve().parents[3] / "data" / "GMTKN55"
+        # self.loss_fn = WTMAD2Loss(wtmad2_path, reduction="mean")
         self.loss_fn = nn.MSELoss(reduction="mean")
 
         # wandb logging
-        # self.save_hyperparameters() # FIXME: issue when wandb.cfg is parsed
+        self.save_hyperparameters()  # FIXME: issue when wandb.cfg is parsed
 
     def forward(self, batch: Batch):
         verbose = True
@@ -56,18 +58,6 @@ class MolecularGNN(pl.LightningModule):
         if verbose:
             print("inside forward")
             print("before", batch.x.shape)
-
-        ###############################
-        # calculate SCF
-
-        print(type(batch))
-
-        # for sample in batch:
-
-        # 1. train on Etot + gradient --> Eref
-        # 2. calculate loss based on gradient
-
-        ###############################
 
         # embedding
         # TODO: add embedding layer for node features
@@ -89,29 +79,121 @@ class MolecularGNN(pl.LightningModule):
 
     def training_step(self, batch: Batch, batch_idx: int):
 
-        # prediction based on QM features
-        y = self(batch)
-        y_true = torch.unsqueeze(batch.eref, -1)
+        verbose = False
 
-        loss = self.calc_loss(batch, y, y_true)
+        ###############################
+        losses = torch.empty([batch.num_graphs, 1])
+        i = 0
+        # calculate SCF
+        for sample in batch.to_data_list():
+            print(sample.uid)
 
-        # bookkeeping
-        egfn1_mol = batch.egfn1.scatter_reduce(0, batch.batch, reduce="sum")
-        egfn1_mol = torch.unsqueeze(egfn1_mol, -1)
-        gfn1_loss = self.loss_fn(egfn1_mol, y_true)
+            results, energy, gradient = self.calc_xtb(sample)
 
-        self.log("train_loss", loss, on_epoch=True, batch_size=batch.num_graphs)
-        self.log(
-            "gfn1_loss", gfn1_loss.item(), on_epoch=True, batch_size=batch.num_graphs
-        )
+            if verbose:
+                # print("results: ", results)
+                # print("energy: ", energy)
+                # print("gradient: ", gradient)
+                print(
+                    "results: ",
+                    results["charges"].shape,
+                    results["energy"].shape,
+                    results["density"].shape,
+                    results["hcore"].shape,
+                    results["hamiltonian"].shape,
+                    results["overlap"].shape,
+                )
+                print("energy: ", energy.shape)
+                print("gradient: ", gradient.shape)
 
-        # store y vs y_true
-        if self.global_step % 10 == 0 and isinstance(self.logger, WandbLogger):
-            data = [x for x in torch.cat((y, y_true), 1)]
-            table = wandb.Table(data=data, columns=["y", "y_true"])
-            self.logger.experiment.log(
-                {"my_custom_id": wandb.plot.scatter(table, "y", "y_true")},
+                print("compare gradients")
+                print(
+                    f" {sample.gref.shape} || {sample.ggfn1.shape} || {gradient.shape}"
+                )
+                assert all(
+                    [
+                        x.shape == sample.pos.shape
+                        for x in [sample.gref, sample.ggfn1, gradient]
+                    ]
+                )
+
+                print(
+                    f" {sample.gref.shape} || {sample.ggfn1.shape} || {gradient.shape}"
+                )
+                print(f"sample.gref")
+                print(sample.gref)
+                print(f"sample.ggfn1")
+                print(sample.ggfn1)
+                print(f"gradient")
+                print(gradient)
+            # NOTE: ensure that sorting of gradient entries is identical!
+
+            # loss over total gradient (no batch size required)
+            loss = self.loss_fn(gradient, sample.gref)
+            if verbose:
+                print(loss)
+
+            assert loss == self.loss_fn(gradient.unsqueeze(0), sample.gref.unsqueeze(0))
+
+            losses[i] = loss
+            i += 1
+
+            # TODO:
+            # * train on E and grad
+            # * concat SCF results
+
+            # 1. train on Etot + gradient --> Eref
+            # 2. calculate loss based on gradient
+
+        print("concat SCF results")
+
+        if True:
+            # only optimising on gradient
+
+            if verbose:
+                print(losses)
+                print(losses.requires_grad)
+
+            # TODO: does assigning the graph work? (for cases with bs!=1)
+            # check also: https://discuss.pytorch.org/t/solved-getting-batches-of-gradients/19583
+            losses.requires_grad_(True)
+            print(losses.requires_grad)
+            loss = losses
+
+            # TODO: what to update inside xtbML?
+
+            import sys
+
+            # sys.exit(0)
+
+            ###############################
+        else:
+            # prediction based on QM features
+            y = self(batch)
+            y_true = torch.unsqueeze(batch.eref, -1)
+
+            loss = self.calc_loss(batch, y, y_true)
+
+            # bookkeeping
+            egfn1_mol = batch.egfn1.scatter_reduce(0, batch.batch, reduce="sum")
+            egfn1_mol = torch.unsqueeze(egfn1_mol, -1)
+            gfn1_loss = self.loss_fn(egfn1_mol, y_true)
+
+            self.log("train_loss", loss, on_epoch=True, batch_size=batch.num_graphs)
+            self.log(
+                "gfn1_loss",
+                gfn1_loss.item(),
+                on_epoch=True,
+                batch_size=batch.num_graphs,
             )
+
+            # store y vs y_true
+            if self.global_step % 10 == 0 and isinstance(self.logger, WandbLogger):
+                data = [x for x in torch.cat((y, y_true), 1)]
+                table = wandb.Table(data=data, columns=["y", "y_true"])
+                self.logger.experiment.log(
+                    {"my_custom_id": wandb.plot.scatter(table, "y", "y_true")},
+                )
 
         return loss
 
@@ -182,6 +264,33 @@ class MolecularGNN(pl.LightningModule):
 
         return loss
 
+    def calc_xtb(self, sample) -> Tuple[Dict, Tensor, Tensor]:
+
+        import time
+
+        start_scf = time.time()
+
+        numbers = sample.numbers
+        positions = sample.pos.requires_grad_(True)  # TODO: clone here
+        charges = sample.charges.float()
+
+        # calculate xtb via SCF
+        calc = Calculator(numbers, positions, par)
+        results = calc.singlepoint(numbers, positions, charges, verbosity=0)
+
+        print("time needed for SCF: ", time.time() - start_scf)
+        start_grad = time.time()
+
+        # calculate gradient
+        energy = results.get("energy").sum(-1)
+        energy.backward()
+        gradient = positions.grad
+        gradient.requires_grad_(True)
+
+        print("time needed for GRAD: ", time.time() - start_grad)
+
+        return results, energy, gradient
+
 
 def get_trainer(cfg: dict) -> pl.Trainer:
     """Construct pytorch lightning trainer from argparse. Otherwise default settings.
@@ -192,10 +301,6 @@ def get_trainer(cfg: dict) -> pl.Trainer:
     Returns:
         pl.Trainer: Pytorch lightning trainer instance
     """
-
-    # weights and biases interface
-    if not cfg["no_wandb"]:
-        cfg["logger"] = WandbLogger(project="dxtb", entity="hoelzerc")
 
     # update defaults
     defaults = pl.Trainer.default_attributes()
@@ -208,6 +313,7 @@ def train_gnn():
     print("Train GNN")
 
     # TODO: add get_val_dataloader() based on split_train_test(range(dataset.len))
+    #   * add config cli parsing -- see: https://github.com/mpkocher/pydantic-cli
 
     # TODO: overfit single sample
     #       - does it work? -> nope (or only very unsufficient)
@@ -215,15 +321,15 @@ def train_gnn():
     # configuration setup
     cfg = Lightning_Configuration()
 
+    # weights and biases interface
     # for sweeps aka. hyperparameter searchs
     if cfg.train_no_wandb == False:
+        cfg.train_logger = WandbLogger(project="dxtb", entity="hoelzerc")
         wandb.config.update(cfg.dict())
 
     # model and training setup
     trainer = get_trainer(cfg.get_train_cfg())
     model = MolecularGNN(cfg.get_model_cfg())
-
-    ###################################
 
     # log gradients, parameter histogram and model topology
     if isinstance(trainer.logger, WandbLogger):
@@ -240,12 +346,12 @@ def train_gnn():
     )
 
     # during dev only operate on subset
-    # dataset = torch.utils.data.Subset(dataset, range(10))
+    dataset = torch.utils.data.Subset(dataset, range(3))
     print(len(dataset))
     print(type(dataset))
 
     train_loader = pygDataloader(
-        dataset, batch_size=2, drop_last=False, shuffle=False, num_workers=8
+        dataset, batch_size=1, drop_last=False, shuffle=False, num_workers=8
     )
 
     # train model
@@ -269,7 +375,7 @@ def test_gnn():
 
     # data
     transforms = torch.nn.Sequential(
-        Pad_Hamiltonian(n_shells=300),
+        Pad_Hamiltonian(n_shells=10),
     )
     dataset = MolecularGraph_Dataset(
         root=Path(__file__).resolve().parents[3] / "data" / "PTB",  # "GMTKN55"
