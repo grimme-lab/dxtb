@@ -50,6 +50,26 @@ def test_single2(dtype: torch.dtype, name: str):
     assert pytest.approx(ref, abs=tol) == results["energy"].sum(-1).item()
 
 
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.float])
+@pytest.mark.parametrize("name", ["vancoh2"])
+def test_single_large(dtype: torch.dtype, name: str):
+    """Test a large systems (only float32 as they take some time)."""
+    tol = math.sqrt(torch.finfo(dtype).eps) * 10
+
+    sample = samples[name]
+    numbers = sample["numbers"]
+    positions = sample["positions"].type(dtype)
+    ref = sample["escf"]
+    charges = torch.tensor(0.0).type(dtype)
+
+    calc = Calculator(numbers, positions, par)
+
+    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    assert pytest.approx(ref, abs=tol) == results["energy"].sum(-1).item()
+
+
+@pytest.mark.grad
 @pytest.mark.parametrize(
     "testcase",
     [
