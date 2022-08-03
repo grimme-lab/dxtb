@@ -14,7 +14,7 @@ from .samples import samples
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["H2_cn", "LiH", "SiH4_cn"])
+@pytest.mark.parametrize("name", ["H2", "LiH", "SiH4"])
 def test_single(dtype: torch.dtype, name: str):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
 
@@ -31,7 +31,9 @@ def test_single(dtype: torch.dtype, name: str):
 
 
 @pytest.mark.parametrize("dtype", [torch.float])
-@pytest.mark.parametrize("name", ["S2", "PbH4-BiH3", "C6H5I-CH3SH", "01", "LYS_xao"])
+@pytest.mark.parametrize(
+    "name", ["S2", "PbH4-BiH3", "C6H5I-CH3SH", "MB16_43_01", "LYS_xao", "C60"]
+)
 def test_single2(dtype: torch.dtype, name: str):
     """Test a few larger system (only float32 as they take some time)."""
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
@@ -48,6 +50,26 @@ def test_single2(dtype: torch.dtype, name: str):
     assert pytest.approx(ref, abs=tol) == results["energy"].sum(-1).item()
 
 
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.float])
+@pytest.mark.parametrize("name", ["vancoh2"])
+def test_single_large(dtype: torch.dtype, name: str):
+    """Test a large systems (only float32 as they take some time)."""
+    tol = math.sqrt(torch.finfo(dtype).eps) * 10
+
+    sample = samples[name]
+    numbers = sample["numbers"]
+    positions = sample["positions"].type(dtype)
+    ref = sample["escf"]
+    charges = torch.tensor(0.0).type(dtype)
+
+    calc = Calculator(numbers, positions, par)
+
+    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    assert pytest.approx(ref, abs=tol) == results["energy"].sum(-1).item()
+
+
+@pytest.mark.grad
 @pytest.mark.parametrize(
     "testcase",
     [
@@ -63,7 +85,7 @@ def test_single2(dtype: torch.dtype, name: str):
         ),
     ],
 )
-def test_grad(testcase, dtype=torch.float):
+def test_grad(testcase, dtype: torch.dtype = torch.float):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
 
     name, ref = testcase
@@ -74,7 +96,7 @@ def test_grad(testcase, dtype=torch.float):
     calc = Calculator(numbers, positions, par)
 
     results = calc.singlepoint(numbers, positions, charges, verbosity=0)
-    energy = results.get("energy").sum(-1)
+    energy = results["energy"].sum(-1)
 
     energy.backward()
     gradient = positions.grad.clone()
