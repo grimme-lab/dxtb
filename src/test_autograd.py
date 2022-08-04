@@ -119,6 +119,40 @@ def main():
 
     loss_fn = nn.MSELoss(reduction="mean")
 
+    # optimising based on energies (classical)
+    if False:
+        energies = model(sample)
+        loss = loss_fn(energies, e_ref)
+        assert loss.equal(torch.tensor(100.0))
+        assert loss.requires_grad
+
+        """# compute dloss/dx
+        dx = torch.autograd.grad(loss, sample.scf, create_graph=True)[0]
+        print(dx)
+        # compute d/dx(dloss/dx) = d2loss/dx2
+        external_gradient = torch.ones_like(sample.scf)
+        dx2 = torch.autograd.grad(dx, sample.scf, grad_outputs=external_gradient)[0]
+        print(dx2)"""
+
+        print(model.layer.weight)
+        print(model.layer.bias)
+        print(model.layer.weight.grad)
+        print(model.layer.bias.grad)
+
+        # gradient to NN parameter
+        loss.backward()
+
+        print(model.layer.weight)
+        print(model.layer.bias)
+        print(model.layer.weight.grad)  # gradient propagated
+        print(model.layer.bias.grad)
+
+        assert model.layer.weight.grad != None
+        assert model.layer.bias.grad != None
+
+        return
+
+    # optimising based on forces (novel)
     with fwAD.dual_level():
         # NOTE: existing tensors only converted to dual number if
         #       previously gradient calculated, i.e. via .backward().
@@ -157,6 +191,8 @@ def main():
 
         # 5. calculate force based on forward graph
         energies.backward()
+        # NOTE: in real application set opt.zero_grad() before
+
         print("after")
         print(sample.a.grad)  # this has a gradient (tangent)!
         print(sample.b.grad)
@@ -173,9 +209,17 @@ def main():
         )
 
         # 6. calculate loss and update model parameters
-        loss = loss_fn(sample.a.grad, grad_ref)
-        print("loss", loss)
-        print("loss.has_grad", loss.requires_grad)
+        # loss = loss_fn(sample.a.grad, grad_ref)
+        # print("loss", loss)  # loss tensor(184856.5000, tangent=53820.0)
+        # print("loss.has_grad", loss.requires_grad)
+
+        loss2 = mlloss(sample.a.grad, grad_ref)
+        print("loss2", loss2)
+        print("loss2.has_grad", loss2.requires_grad)
+
+        loss2.backward()
+
+        return
         gg = fwAD.unpack_dual(loss).tangent
         print(
             gg, gg.requires_grad
@@ -183,6 +227,13 @@ def main():
 
         # loss.backward()  # <-- does not accept the tangent as gradient!
         # TODO: write custom autograd function for this (does the backward argument require .requires_grad?)
+        #   * should the loss function be a custom autograd function
+        #   * should the NN model be a custom autograd function
+
+        print(model.layer.weight)
+        print(model.layer.bias)
+        print(model.layer.weight.grad)  # gradient propagated
+        print(model.layer.bias.grad)  # TODO: why non-leaf Tensor?
 
     print("has loss a gradient now?")
     return
@@ -194,6 +245,87 @@ def main():
     # * jax cookbook: https://jax.readthedocs.io/en/latest/notebooks/autodiff_cookbook.html#jacobian-vector-products-jvps-aka-forward-mode-autodiff
 
     ############
+
+
+def custom_autograd():
+    class ML_Loss(torch.autograd.Function):
+        @staticmethod
+        def forward(ctx, y, y_true):
+            # NOTE: for dual tensors only the primal is used as input
+
+            # forward calculation
+            result = torch.exp(y)  # dummy
+            ctx.result = result
+
+            return result  # nn.MSELoss(reduction="mean")(y, y_true)
+
+        @staticmethod
+        def backward(ctx, grad_output):
+            # backward autodiff
+            (tangent,) = ctx.saved_tensors
+            # TODO: define proper backward loss (taken from forward loss of tangent)
+
+            raise NotImplementedError
+
+            print("inside backward")
+            print(grad_output.shape)
+            print(tangent)
+
+            if grad_output is None:
+                return None, None
+
+            # We return as many input gradients as there were arguments.
+            # Gradients of non-Tensor arguments to forward must be None.
+            return grad_output + ctx.constant, None
+
+        @staticmethod
+        def jvp(ctx, jvp, jvp_true):
+            # NOTE: .jvp() is called directly after forward pass
+            # NOTE: ith argument is the tangent of the ith-input dual-tensor
+            # Further details see: https://pytorch.org/docs/master/notes/extending.html#forward-mode-ad
+
+            # forward autodiff
+            gO = jvp * ctx.result  # dummy
+
+            # free variables that are not needed for .backward() pass
+            del ctx.result
+            return gO
+
+    mlloss = ML_Loss.apply
+
+    primal = torch.tensor(
+        [[1.0, 2.0], [3.0, 4.0]], dtype=torch.double, requires_grad=True
+    )
+    tangent = torch.tensor([[1.1, 2.1], [3.1, 4.1]])
+    y_true = torch.tensor(
+        [[9.0, 8.0], [7.0, 6.0]], dtype=torch.double, requires_grad=True
+    )
+    tangent_true = torch.tensor([[1.2, 2.2], [3.2, 4.2]])
+
+    with fwAD.dual_level():
+        # NOTE: dual tensors tangents only exist in scope of context manager
+        y_dual = fwAD.make_dual(primal, tangent)
+        y_true_dual = fwAD.make_dual(y_true, tangent_true)
+        dual_output = mlloss(y_dual, y_true_dual)
+        # print("dual_output", dual_output)
+
+    # It is important to use ``autograd.gradcheck`` to verify that your
+    # custom autograd Function computes the gradients correctly. By default,
+    # gradcheck only checks the backward-mode (reverse-mode) AD gradients. Specify
+    # ``check_forward_ad=True`` to also check forward grads. If you did not
+    # implement the backward formula for your function, you can also tell gradcheck
+    # to skip the tests that require backward-mode AD by specifying
+    # ``check_backward_ad=False``, ``check_undefined_grad=False``, and
+    # ``check_batched_grad=False``.
+    torch.autograd.gradcheck(
+        mlloss,
+        (primal, y_true),
+        check_forward_ad=True,
+        check_backward_ad=False,
+        check_undefined_grad=False,
+        check_batched_grad=False,
+    )
+    print("gradcheck successfully passed")
 
 
 if __name__ == "__main__":
