@@ -1,4 +1,3 @@
-from turtle import position
 import torch
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, global_add_pool
@@ -9,9 +8,12 @@ import pytorch_lightning as pl
 from torch_geometric.loader import DataLoader as pygDataloader
 from argparse import ArgumentParser
 from pathlib import Path
+import time
 
 from pytorch_lightning.loggers import WandbLogger
 import wandb
+
+from xtbml.param import charge
 
 from .loss import WTMAD2Loss
 from ..data.graph_dataset import MolecularGraph_Dataset
@@ -20,6 +22,12 @@ from ..typing import Tensor
 from .config import Lightning_Configuration
 from ..param import GFN1_XTB as par
 from ..xtb.calculator import Calculator
+from ..wavefunction import mulliken
+from ..basis.indexhelper import IndexHelper
+from ..param.gfn1 import GFN1_XTB as par
+from ..param.util import get_element_angular
+
+import sys
 
 
 class MolecularGNN(pl.LightningModule):
@@ -29,7 +37,7 @@ class MolecularGNN(pl.LightningModule):
         super().__init__()
 
         # TODO: wrap into config dictionary
-        nf = 5
+        nf = 8
         out = 1
         hidden = cfg["hidden"]
 
@@ -45,19 +53,90 @@ class MolecularGNN(pl.LightningModule):
         self.dropout = torch.nn.Dropout(p=0.2)
 
         # loss
-        # wtmad2_path = Path(__file__).resolve().parents[3] / "data" / "GMTKN55"
-        # self.loss_fn = WTMAD2Loss(wtmad2_path, reduction="mean")
         self.loss_fn = nn.MSELoss(reduction="mean")
 
         # wandb logging
         self.save_hyperparameters()  # FIXME: issue when wandb.cfg is parsed
 
     def forward(self, batch: Batch):
-        verbose = True
+        verbose = False
 
         if verbose:
             print("inside forward")
             print("before", batch.x.shape)
+
+        ###############################
+        # calculate SCF
+        data_list = batch.to_data_list()
+        for sample in data_list:
+            if verbose:
+                print(sample.uid)
+
+            # setup for backpropagation
+            sample.pos.requires_grad_(True)
+
+            # calc singlepoint
+            results = self.calc_xtb(sample)
+
+            # get SCF features (energies, population and charges)
+            energies = results["energy"]
+            ihelp = IndexHelper.from_numbers(
+                sample.numbers, get_element_angular(par.element)
+            )
+            pop = mulliken.get_atomic_populations(
+                results["overlap"], results["density"], ihelp
+            )
+            charges = ihelp.reduce_orbital_to_atom(results["charges"])
+
+            # add SCF features to batch
+            sample.x = torch.cat(
+                [
+                    sample.x,
+                    energies.unsqueeze(1),
+                    pop.unsqueeze(1),
+                    charges.unsqueeze(1),
+                ],
+                dim=1,
+            )
+
+            # normalise energies
+            energy_indices = torch.LongTensor(
+                [
+                    0,
+                    1,
+                    2,
+                    5,
+                ]
+            )  # FIXME: dodgy indexing by order in node-features
+
+            sample.x[:, energy_indices] = -1 * sample.x[:, energy_indices]
+            sample.x[:, 2] = -1 * sample.x[:, 2]
+            sample.x[:, energy_indices] = (
+                sample.x[:, energy_indices]
+                / sample.x[:, energy_indices].max(0, keepdim=True)[0]
+            )
+            # TODO: loosing information about total values -- better normalise over total dataset?
+
+            if verbose:
+                print(sample.x)
+
+            if verbose and False:
+                # print("results: ", results)
+                # print("energy: ", energy)
+                # print("gradient: ", gradient)
+                print(
+                    "results: ",
+                    results["charges"].shape,
+                    results["energy"].shape,
+                    results["density"].shape,
+                    results["hcore"].shape,
+                    results["hamiltonian"].shape,
+                    results["overlap"].shape,
+                )
+
+        batch = batch.from_data_list(data_list)
+        # NOTE: this breaks the graph, i.e. gradients only
+        #       available within data_list, but not in batch
 
         # embedding
         # TODO: add embedding layer for node features
@@ -75,125 +154,180 @@ class MolecularGNN(pl.LightningModule):
         # sum over atomic energies to get molecular energies
         energies = global_add_pool(x=x, batch=batch.batch)  # [bs, 1]
 
-        return energies
+        ##########
 
-    def training_step(self, batch: Batch, batch_idx: int):
-
-        verbose = False
-
-        ###############################
-        losses = torch.empty([batch.num_graphs, 1])
-        i = 0
-        # calculate SCF
-        for sample in batch.to_data_list():
-            print(sample.uid)
-
-            results, energy, gradient = self.calc_xtb(sample)
-
+        # calculate gradient
+        gradients = []
+        for i, sample in enumerate(data_list):
             if verbose:
-                # print("results: ", results)
-                # print("energy: ", energy)
-                # print("gradient: ", gradient)
-                print(
-                    "results: ",
-                    results["charges"].shape,
-                    results["energy"].shape,
-                    results["density"].shape,
-                    results["hcore"].shape,
-                    results["hamiltonian"].shape,
-                    results["overlap"].shape,
-                )
-                print("energy: ", energy.shape)
-                print("gradient: ", gradient.shape)
+                print(i, sample.uid)
 
-                print("compare gradients")
-                print(
-                    f" {sample.gref.shape} || {sample.ggfn1.shape} || {gradient.shape}"
-                )
-                assert all(
-                    [
-                        x.shape == sample.pos.shape
-                        for x in [sample.gref, sample.ggfn1, gradient]
-                    ]
-                )
+            start_grad = time.time()
+            """energies[i].backward(retain_graph=True)
+            gradient = sample.pos.grad"""
 
-                print(
-                    f" {sample.gref.shape} || {sample.ggfn1.shape} || {gradient.shape}"
-                )
-                print(f"sample.gref")
-                print(sample.gref)
-                print(f"sample.ggfn1")
-                print(sample.ggfn1)
-                print(f"gradient")
-                print(gradient)
-            # NOTE: ensure that sorting of gradient entries is identical!
+            ##############
+            print("time needed for GRAD: ", time.time() - start_grad)
 
-            # loss over total gradient (no batch size required)
-            loss = self.loss_fn(gradient, sample.gref)
-            if verbose:
-                print(loss)
+            print(energies[i].shape)
 
-            assert loss == self.loss_fn(gradient.unsqueeze(0), sample.gref.unsqueeze(0))
-
-            losses[i] = loss
-            i += 1
-
-            # TODO:
-            # * train on E and grad
-            # * concat SCF results
-
-            # 1. train on Etot + gradient --> Eref
-            # 2. calculate loss based on gradient
-
-        print("concat SCF results")
-
-        if True:
-            # only optimising on gradient
-
-            if verbose:
-                print(losses)
-                print(losses.requires_grad)
-
-            # TODO: does assigning the graph work? (for cases with bs!=1)
-            # check also: https://discuss.pytorch.org/t/solved-getting-batches-of-gradients/19583
-            losses.requires_grad_(True)
-            print(losses.requires_grad)
-            loss = losses
-
-            # TODO: what to update inside xtbML?
-
-            import sys
-
-            # sys.exit(0)
-
-            ###############################
-        else:
-            # prediction based on QM features
-            y = self(batch)
-            y_true = torch.unsqueeze(batch.eref, -1)
-
-            loss = self.calc_loss(batch, y, y_true)
-
-            # bookkeeping
-            egfn1_mol = batch.egfn1.scatter_reduce(0, batch.batch, reduce="sum")
-            egfn1_mol = torch.unsqueeze(egfn1_mol, -1)
-            gfn1_loss = self.loss_fn(egfn1_mol, y_true)
-
-            self.log("train_loss", loss, on_epoch=True, batch_size=batch.num_graphs)
-            self.log(
-                "gfn1_loss",
-                gfn1_loss.item(),
-                on_epoch=True,
-                batch_size=batch.num_graphs,
+            # calculate force based on autograd AD
+            force = torch.autograd.grad(
+                energies[i],
+                # energies,
+                sample.pos,
+                grad_outputs=torch.ones_like(energies[i]),
+                # grad_outputs=torch.ones_like(energies),
+                # retain_graph=True,
+                create_graph=True,
+                # is_grads_batched=True,  # Not working, since sample.pos have different shapes
             )
+            # NOTE: in real application set opt.zero_grad() before
 
-            # store y vs y_true
-            if self.global_step % 10 == 0 and isinstance(self.logger, WandbLogger):
-                data = [x for x in torch.cat((y, y_true), 1)]
-                table = wandb.Table(data=data, columns=["y", "y_true"])
-                self.logger.experiment.log(
-                    {"my_custom_id": wandb.plot.scatter(table, "y", "y_true")},
-                )
+            print("energies", energies)
+            # print("gradient", gradient)
+            print("force", force)  # this has a gradient!
+
+            print("energies", energies.shape)
+            print("energies[i]", energies[i].shape)
+            # print("gradient", gradient.shape)
+            print("force", force[0].shape)
+            # TODO: probably need double() precision here!
+
+            # TODO: check whether force changes if no prev cacl is done
+
+            """energies tensor([[-9.0825],
+                    [-3.5994],
+                    [-7.0515]], grad_fn=<ScatterAddBackward0>)
+            gradient tensor([[-0.0012,  0.0021,  0.0085],
+                    [ 0.0004, -0.0008, -0.0035],
+                    [-0.0004, -0.0011, -0.0025],
+                    [ 0.0012, -0.0002, -0.0025]])
+            force (tensor([[-0.0012,  0.0021,  0.0085],
+                    [ 0.0004, -0.0008, -0.0035],
+                    [-0.0004, -0.0011, -0.0025],
+                    [ 0.0012, -0.0002, -0.0025]], grad_fn=<AddBackward0>),)"""
+
+            if i != 1:
+                continue
+            sys.exit(0)
+            ##############
+            if verbose:
+                print("time needed for GRAD: ", time.time() - start_grad)
+
+                print("gradient", gradient)
+                sys.exit(0)
+
+                assert gradient != None
+
+                # TODO: solve this for backpropagation and NN model update
+                print(sample.pos.requires_grad)
+                print(sample.pos.grad.requires_grad)
+                print(gradient.requires_grad)
+                # see: https://discuss.pytorch.org/t/error-by-recursively-calling-jacobian-in-a-for-loop/125924
+                #       https://pytorch.org/docs/stable/generated/torch.autograd.functional.hessian.html
+                #       https://stackoverflow.com/questions/64997817/how-to-compute-hessian-of-the-loss-w-r-t-the-parameters-in-pytorch-using-autogr
+
+            # required for backpropagation
+            gradient.requires_grad_(True)
+            # TODO: how to allow for correct backpropagation
+
+            gradients.append(gradient)
+
+        ##########
+
+        return energies, gradients
+
+    def training_step(self, batch: Batch, batch_idx: int) -> Tensor:
+
+        # 1. train on energies --> E_ML
+        # 2. calculate loss based on gradient (g_ml - g_ref)
+
+        # prediction based on QM features
+        y, gradients = self(batch)
+        y_true = torch.unsqueeze(batch.eref, -1)
+
+        # use gradient for loss calculation
+        # TODO: how to calculate batchwise loss? -- looping as first option
+        loss = torch.zeros([len(gradients)])
+        for i, gradient in enumerate(gradients):
+            # TODO: check gradient remains intact
+
+            # print("grad functions: ", y.grad_fn, gradient.grad_fn)
+            loss_e = 10e-15 * self.loss_fn(y, batch.get_example(i).eref)
+            loss_g = self.loss_fn(gradient, batch.get_example(i).gref)
+            loss[i] = loss_e + loss_g
+
+            print("loss_e", loss_e)
+            print("loss_g", loss_g)
+            print("loss[i]", loss[i])
+        # TODO: loss needs to have correct gradient
+        #       -- gradient of gradient needs to update NN params
+
+        # TODO: build a simple test case to verify that gradient calculation (for forces and loss) works!
+
+        loss = torch.mean(loss)
+        print("loss", loss)
+
+        #################################
+        #################################
+        # ensure that loss is not backpropagated
+        # until positions but only until NN parameters
+        sample.a.requires_grad_(False)
+        sample.b.requires_grad_(False)
+
+        # propagate gradients for updating model parameters
+
+        # 6. calculate loss and update model parameters
+        loss = self.loss_fn(force[0], grad_ref)  # loss tensor(184856.5000)
+        # also see: https://stackoverflow.com/questions/71294401/pytorch-loss-function-that-depends-on-gradient-of-network-with-respect-to-input
+
+        print("loss", loss)  # loss tensor(184856.5000, tangent=53820.0)
+        print("loss.has_grad", loss.requires_grad)
+
+        assert model.layer.weight.grad != None  # tensor([[ 7812., 46008.]])
+        # NOTE: does not change, regardless whether sample.requires_grad(True/False)
+        # TODO: check why this is the case
+
+        assert model.layer.bias.grad == None
+        assert model.layer2.bias.grad == None
+        # NOTE: since loss depends only on force and force only on non-constant parts of the NN
+        #       resulting in not updating weights during optimisation (would require bias.grad != None)
+
+        torch.autograd.gradcheck(
+            self.loss_fn,
+            (force[0].double(), grad_ref.double()),
+            check_backward_ad=True,
+        )
+        #################################
+        #################################
+
+        print("issue2 -- get gradient of gradient")
+        sys.exit(0)
+        ##################
+
+        # loss = self.calc_loss(batch, y, y_true)
+
+        # bookkeeping
+        egfn1_mol = batch.egfn1.scatter_reduce(0, batch.batch, reduce="sum")
+        egfn1_mol = torch.unsqueeze(egfn1_mol, -1)
+        gfn1_loss = self.loss_fn(egfn1_mol, y_true)
+
+        self.log("train_loss", loss, on_epoch=True, batch_size=batch.num_graphs)
+        self.log(
+            "gfn1_loss",
+            gfn1_loss.item(),
+            on_epoch=True,
+            batch_size=batch.num_graphs,
+        )
+
+        # store y vs y_true
+        if self.global_step % 10 == 0 and isinstance(self.logger, WandbLogger):
+            data = [x for x in torch.cat((y, y_true), 1)]
+            table = wandb.Table(data=data, columns=["y", "y_true"])
+            self.logger.experiment.log(
+                {"my_custom_id": wandb.plot.scatter(table, "y", "y_true")},
+            )
 
         return loss
 
@@ -264,14 +398,12 @@ class MolecularGNN(pl.LightningModule):
 
         return loss
 
-    def calc_xtb(self, sample) -> Tuple[Dict, Tensor, Tensor]:
-
-        import time
+    def calc_xtb(self, sample) -> Dict[str, Tensor]:
 
         start_scf = time.time()
 
         numbers = sample.numbers
-        positions = sample.pos.requires_grad_(True)  # TODO: clone here
+        positions = sample.pos.clone()
         charges = sample.charges.float()
 
         # calculate xtb via SCF
@@ -279,17 +411,8 @@ class MolecularGNN(pl.LightningModule):
         results = calc.singlepoint(numbers, positions, charges, verbosity=0)
 
         print("time needed for SCF: ", time.time() - start_scf)
-        start_grad = time.time()
 
-        # calculate gradient
-        energy = results.get("energy").sum(-1)
-        energy.backward()
-        gradient = positions.grad
-        gradient.requires_grad_(True)
-
-        print("time needed for GRAD: ", time.time() - start_grad)
-
-        return results, energy, gradient
+        return results
 
 
 def get_trainer(cfg: dict) -> pl.Trainer:
@@ -351,7 +474,7 @@ def train_gnn():
     print(type(dataset))
 
     train_loader = pygDataloader(
-        dataset, batch_size=1, drop_last=False, shuffle=False, num_workers=8
+        dataset, batch_size=10, drop_last=False, shuffle=False, num_workers=8
     )
 
     # train model
