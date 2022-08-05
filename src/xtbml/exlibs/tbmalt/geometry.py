@@ -163,7 +163,7 @@ class Geometry:
     @property
     def distances(self) -> Tensor:
         """Distance matrix between atoms in the system."""
-        dist = torch.cdist(self.positions, self.positions, p=2)
+        dist = torch.cdist(self.positions, self.positions, p=2, compute_mode="use_mm_for_euclid_dist")
         # Ensure padding area is zeroed out
         dist[self._mask_dist] = 0
         return dist

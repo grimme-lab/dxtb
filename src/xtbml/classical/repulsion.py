@@ -233,7 +233,7 @@ class RepulsionFactory(EnergyContribution):
 
         distances = torch.where(
             mask,
-            torch.cdist(self.positions, self.positions, p=2),
+            torch.cdist(self.positions, self.positions, p=2, compute_mode="use_mm_for_euclid_dist"),
             eps,
         )
 
