@@ -37,16 +37,19 @@ class MolecularGNN(pl.LightningModule):
         super().__init__()
 
         # TODO: wrap into config dictionary
-        nf = 8
+        nf = 6  # 8
         out = 1
         hidden = cfg["hidden"]
 
         self.gconv1 = GCNConv(nf, hidden)
         self.gconv2 = GCNConv(hidden, out)
+        self.gconvtmp = GCNConv(nf, out)
 
         # embedding
         self.node_embedding = None
         self.node_decoding = None  # torch.nn.Linear(out, 1) --> atomic energies
+        self.node_embedding = torch.nn.Linear(nf, out)  # dummy for testing gradients
+        self.node_decoding = torch.nn.Linear(out, out)  # dummy for testing gradients
 
         # misc
         self.activation_fn = torch.nn.SiLU()
@@ -66,7 +69,71 @@ class MolecularGNN(pl.LightningModule):
             print("before", batch.x.shape)
 
         ###############################
-        # calculate SCF
+        # TODO: single sample (bs=1)
+
+        # setup for backpropagation
+        batch.pos.requires_grad_(True)
+        print(batch.pos)
+
+        ###
+        def dummy_scf(batch):
+            # return {
+            #     "energy": torch.sum(batch.pos, dim=1)
+            # }  # works (also learnnig gets better)
+
+            b = torch.tensor([[-2.1763, -0.4713, 212], [-0.6986, 1.3702, 43]])
+            cdist = torch.cdist(
+                batch.pos, b, p=2, compute_mode="use_mm_for_euclid_dist"
+            )
+            return {"energy": torch.sum(cdist, dim=1)}  # check cdist
+
+        ###
+
+        # calc singlepoint
+        # results = self.calc_xtb(batch)
+        results = dummy_scf(batch)
+
+        # get SCF features (energies, population and charges)
+        energies = results["energy"]
+        """ihelp = IndexHelper.from_numbers(
+            batch.numbers, get_element_angular(par.element)
+        )
+        pop = mulliken.get_atomic_populations(
+            results["overlap"], results["density"], ihelp
+        )
+        charges = ihelp.reduce_orbital_to_atom(results["charges"])"""
+
+        print("batch.x size", batch.x.shape)
+        # add SCF features to batch
+        batch.x = torch.cat(
+            [
+                batch.x,
+                energies.unsqueeze(1),
+                # pop.unsqueeze(1),
+                # charges.unsqueeze(1),
+            ],
+            dim=1,
+        )
+
+        # normalise energies
+        """energy_indices = torch.LongTensor(
+            [
+                0,
+                1,
+                2,
+                5,
+            ]
+        )  # FIXME: dodgy indexing by order in node-features
+
+        batch.x[:, energy_indices] = -1 * batch.x[:, energy_indices]
+        batch.x[:, 2] = -1 * batch.x[:, 2]
+        batch.x[:, energy_indices] = (
+            batch.x[:, energy_indices]
+            / batch.x[:, energy_indices].max(0, keepdim=True)[0]
+        )"""
+        # TODO: loosing information about total values -- better normalise over total dataset?
+
+        """# calculate SCF
         data_list = batch.to_data_list()
         for sample in data_list:
             if verbose:
@@ -134,7 +201,7 @@ class MolecularGNN(pl.LightningModule):
                     results["overlap"].shape,
                 )
 
-        batch = batch.from_data_list(data_list)
+        batch = batch.from_data_list(data_list)"""
         # NOTE: this breaks the graph, i.e. gradients only
         #       available within data_list, but not in batch
 
@@ -143,33 +210,118 @@ class MolecularGNN(pl.LightningModule):
 
         # TODO: add decoding layer for node features
 
-        x = self.gconv1(batch.x, batch.edge_index)
+        """x = self.node_embedding(batch.x)"""  # dummy for testing gradients
+
+        """x = self.gconv1(x, batch.edge_index)
+        # x = self.gconv1(batch.x, batch.edge_index)
         x = self.activation_fn(x)
         x = self.dropout(x)
-        x = self.gconv2(x, batch.edge_index)
+        x = self.gconv2(x, batch.edge_index)"""
 
-        if verbose:
+        """if verbose:
             print("after", x.shape)
 
         # sum over atomic energies to get molecular energies
-        energies = global_add_pool(x=x, batch=batch.batch)  # [bs, 1]
+        energies = global_add_pool(x=x, batch=batch.batch)  # [bs, 1]"""
+
+        """energies = self.node_decoding(energies)  # dummy for testing gradients"""
 
         ##########
 
-        # calculate gradient
+        # energies = self.node_embedding(batch.x)
+        """print("batch.x", batch.x)
+        energies = self.gconvtmp(batch.x, batch.edge_index)
+        energies = energies.sum()"""
+
+        print("batch.x", batch.x)
+        print(batch.x[0].unsqueeze(0).shape)
+
+        energies = self.node_embedding(batch.x[0].unsqueeze(0))
+
+        # TODO: for single sample
+        print("ener", energies, energies.shape)
+
+        # energies.backward()
+        # sys.exit(0)
+
+        start_grad = time.time()
+
+        # calculate force based on autograd AD
+        force = torch.autograd.grad(
+            energies,
+            batch.pos,
+            grad_outputs=torch.ones_like(energies),
+            create_graph=True,
+            retain_graph=True,  # for getting access to batch.pos.grad # TODO: not working
+        )
+        # NOTE: in real application set opt.zero_grad() before
+
+        """e = force[0].sum()
+        # e = energies.sum()  # works
+        print(e)
+        e.backward()
+        print(batch.pos)
+        print(batch.pos.grad)
+        print()
+        sys.exit(0)"""
+
+        # ensure that loss is not backpropagated
+        # until positions but only until NN parameters
+        # batch.pos.requires_grad_(False)
+
+        gradients = force[0]
+
+        #############
+        print("gradients", gradients)
+        gradients = gradients.sum()
+        print("gradients sum", gradients)
+
+        loss = self.loss_fn(force[0], batch.gref)
+
+        # NOTE: important to get _all_ leaf tensors of the NN,
+        #       otherwise gradient propagation incorrect
+        #       (this setup might change if architecture is different)
+        nn_leaf_tensors = [t for t in self.node_embedding.parameters()]
+
+        for t in nn_leaf_tensors:
+            print(t, type(t))
+
+        print(type(batch.x))
+
+        """print("BEFORE: batch.x", batch.x)
+        print("BEFORE: batch.x.grad", batch.x.grad)
+        # print("BEFORE: batch.pos", batch.pos)
+        print("BEFORE: batch.pos.grad", batch.pos.grad)
+        # print("BEFORE: nn_leaf_tensors", nn_leaf_tensors[0])
+        print("BEFORE: nn_leaf_tensors.grad", nn_leaf_tensors[0].grad)
+        print("BEFORE: nn_leaf_tensors.grad", nn_leaf_tensors[1].grad)
+
+        print("checking how to ensure not to pass grad to far")
+        #loss.backward()  # working (but cdist issue)
+        # loss.backward(inputs=batch.x)  # not working
+        # loss.backward(inputs=nn_leaf_tensors)  # working (but cdist issue)
+        # TODO: why?
+
+        # print("AFTER: batch.x", batch.x)
+        print("AFTER: batch.x.grad", batch.x.grad)
+        # print("AFTER: batch.pos", batch.pos)
+        print("AFTER: batch.pos.grad", batch.pos.grad)
+        # print("AFTER: nn_leaf_tensors", nn_leaf_tensors[0])
+        print("AFTER: nn_leaf_tensors.grad", nn_leaf_tensors[0].grad)
+        print("AFTER: nn_leaf_tensors.grad", nn_leaf_tensors[1].grad)
+        sys.exit(0)
+        assert batch.pos.grad == None
+        assert batch.x.grad == None
+        assert nn_leaf_tensors[0].grad != None"""
+        #############
+
+        """# calculate gradient
         gradients = []
         for i, sample in enumerate(data_list):
             if verbose:
                 print(i, sample.uid)
 
             start_grad = time.time()
-            """energies[i].backward(retain_graph=True)
-            gradient = sample.pos.grad"""
-
-            ##############
-            print("time needed for GRAD: ", time.time() - start_grad)
-
-            print(energies[i].shape)
 
             # calculate force based on autograd AD
             force = torch.autograd.grad(
@@ -184,59 +336,79 @@ class MolecularGNN(pl.LightningModule):
             )
             # NOTE: in real application set opt.zero_grad() before
 
-            print("energies", energies)
-            # print("gradient", gradient)
-            print("force", force)  # this has a gradient!
+            # TODO: set optimiser gradients to zero at every point!
 
-            print("energies", energies.shape)
-            print("energies[i]", energies[i].shape)
-            # print("gradient", gradient.shape)
-            print("force", force[0].shape)
-            # TODO: probably need double() precision here!
+            # TODO: check whether batch wise gradient calculation is possible
 
-            # TODO: check whether force changes if no prev cacl is done
+            print("time needed for GRAD: ", time.time() - start_grad)
+            assert len(force) == 1
 
-            """energies tensor([[-9.0825],
-                    [-3.5994],
-                    [-7.0515]], grad_fn=<ScatterAddBackward0>)
-            gradient tensor([[-0.0012,  0.0021,  0.0085],
-                    [ 0.0004, -0.0008, -0.0035],
-                    [-0.0004, -0.0011, -0.0025],
-                    [ 0.0012, -0.0002, -0.0025]])
-            force (tensor([[-0.0012,  0.0021,  0.0085],
-                    [ 0.0004, -0.0008, -0.0035],
-                    [-0.0004, -0.0011, -0.0025],
-                    [ 0.0012, -0.0002, -0.0025]], grad_fn=<AddBackward0>),)"""
+            if verbose:
+                print("energies", energies)
+                print("force", force)  # this has a gradient!
 
-            if i != 1:
-                continue
-            sys.exit(0)
+                print("energies", energies.shape)
+                print("energies[i]", energies[i].shape)
+                print("force", force[0].shape)
+
+            # if i != 1:
+            #    continue
+            # sys.exit(0)
             ##############
+
+            # ensure that loss is not backpropagated
+            # until positions but only until NN parameters
+            sample.pos.requires_grad_(False)
+            # TODO: check that all non-NN parameter have no gradient
+
             if verbose:
                 print("time needed for GRAD: ", time.time() - start_grad)
 
-                print("gradient", gradient)
-                sys.exit(0)
-
-                assert gradient != None
+                assert force != None
 
                 # TODO: solve this for backpropagation and NN model update
                 print(sample.pos.requires_grad)
                 print(sample.pos.grad.requires_grad)
-                print(gradient.requires_grad)
+                print(force.requires_grad)
                 # see: https://discuss.pytorch.org/t/error-by-recursively-calling-jacobian-in-a-for-loop/125924
                 #       https://pytorch.org/docs/stable/generated/torch.autograd.functional.hessian.html
                 #       https://stackoverflow.com/questions/64997817/how-to-compute-hessian-of-the-loss-w-r-t-the-parameters-in-pytorch-using-autogr
 
-            # required for backpropagation
-            gradient.requires_grad_(True)
-            # TODO: how to allow for correct backpropagation
-
-            gradients.append(gradient)
+            gradients.append(force[0])"""
 
         ##########
 
         return energies, gradients
+
+    def backward(self, loss, optimizer, optimizer_idx):
+        # custom backward implementation
+
+        print("inside backward")
+        print(loss)
+        print(optimizer)
+        print(optimizer_idx)
+        # NOTE: important to get _all_ leaf tensors of the NN,
+        #       otherwise gradient propagation incorrect
+        #       (this setup might change if architecture is different)
+        nn_leaf_tensors = [t for t in self.node_embedding.parameters()]
+
+        # only propagating gradient through model parameters
+        # nn_leaf_tensors = [t for t in self.parameters()]
+
+        # print("BEFORE: a.grad", a.grad)
+        print("BEFORE: nn_leaf_tensors.grad", nn_leaf_tensors[0].grad)
+        print("BEFORE: nn_leaf_tensors.grad", nn_leaf_tensors[1].grad)
+
+        # loss.backward() # a.grad != None
+        loss.backward(inputs=nn_leaf_tensors)  # required for sample.pos.grad == None
+
+        print("AFTER: nn_leaf_tensors.grad", nn_leaf_tensors[0].grad)
+        print("AFTER: nn_leaf_tensors.grad", nn_leaf_tensors[1].grad)
+        # assert sample.pos.grad == None # reminder that positions should not receive a gradient
+        assert nn_leaf_tensors[0].grad != None  # weights
+        assert nn_leaf_tensors[1].grad == None  # bias
+
+        sys.exit(0)
 
     def training_step(self, batch: Batch, batch_idx: int) -> Tensor:
 
@@ -247,64 +419,112 @@ class MolecularGNN(pl.LightningModule):
         y, gradients = self(batch)
         y_true = torch.unsqueeze(batch.eref, -1)
 
+        # TODO: check gradient remains intact
+
         # use gradient for loss calculation
         # TODO: how to calculate batchwise loss? -- looping as first option
-        loss = torch.zeros([len(gradients)])
-        for i, gradient in enumerate(gradients):
-            # TODO: check gradient remains intact
 
-            # print("grad functions: ", y.grad_fn, gradient.grad_fn)
-            loss_e = 10e-15 * self.loss_fn(y, batch.get_example(i).eref)
-            loss_g = self.loss_fn(gradient, batch.get_example(i).gref)
-            loss[i] = loss_e + loss_g
+        print("her er we are after forward")
 
-            print("loss_e", loss_e)
-            print("loss_g", loss_g)
-            print("loss[i]", loss[i])
-        # TODO: loss needs to have correct gradient
-        #       -- gradient of gradient needs to update NN params
-
-        # TODO: build a simple test case to verify that gradient calculation (for forces and loss) works!
-
-        loss = torch.mean(loss)
-        print("loss", loss)
-
-        #################################
-        #################################
-        # ensure that loss is not backpropagated
-        # until positions but only until NN parameters
-        sample.a.requires_grad_(False)
-        sample.b.requires_grad_(False)
-
+        # calculate loss
+        gref = batch.gref
+        force = gradients
+        loss = self.loss_fn(force, gref)
+        print(force.shape, gref.shape)
+        print("Force", force)
+        print("Reference", gref)
         # propagate gradients for updating model parameters
-
-        # 6. calculate loss and update model parameters
-        loss = self.loss_fn(force[0], grad_ref)  # loss tensor(184856.5000)
-        # also see: https://stackoverflow.com/questions/71294401/pytorch-loss-function-that-depends-on-gradient-of-network-with-respect-to-input
-
-        print("loss", loss)  # loss tensor(184856.5000, tangent=53820.0)
+        print("loss", loss)
         print("loss.has_grad", loss.requires_grad)
 
-        assert model.layer.weight.grad != None  # tensor([[ 7812., 46008.]])
-        # NOTE: does not change, regardless whether sample.requires_grad(True/False)
-        # TODO: check why this is the case
+        """abc = force.sum()
+        print(abc)
+        abc.backward()
+        # loss.backward()
 
-        assert model.layer.bias.grad == None
-        assert model.layer2.bias.grad == None
-        # NOTE: since loss depends only on force and force only on non-constant parts of the NN
-        #       resulting in not updating weights during optimisation (would require bias.grad != None)
-
+        # TODO: incorporate into testsuite
         torch.autograd.gradcheck(
             self.loss_fn,
-            (force[0].double(), grad_ref.double()),
+            (force.double(), gref.double()),
             check_backward_ad=True,
-        )
-        #################################
-        #################################
+        )"""
 
-        print("issue2 -- get gradient of gradient")
+        print("weight update")
+        print("node_embedding")
+        print(self.node_embedding.weight)
+        print(self.node_embedding.weight.grad)  # TODO: why is that zero?
+        print(self.node_embedding.bias)
+        print(self.node_embedding.bias.grad)
+        print("node_decoding")
+        print(self.node_decoding.weight)
+        print(self.node_decoding.weight.grad)  # TODO: why is that zero?
+        print(self.node_decoding.bias)
+        print(self.node_decoding.bias.grad)
+
+        # TODO: maybe easier to debug in batch_size = 1 scenario?
+        # TODO: maybe the SCF is not differentiable twice ...
+        #       --> substitute SCF with dummy function
+        #   --> yes, the SCF is the issue, either
+        #       a) the gradient propagation does not work correctly (e.g. too deep)
+        #       b) we need to implement for (at least) torch.cdist a different backward
+
+        print("something breaks the gradient (weight.grad should not be zero)")
+        # sys.exit(0)
+        return loss
+        ###
+
+        for i, force in enumerate(gradients):
+            gref = batch.get_example(i).gref
+            print(force.shape, gref.shape)
+            print("Force", force)
+            print("Reference", gref)
+
+            # calculate loss
+            loss = self.loss_fn(force, gref)
+
+            # propagate gradients for updating model parameters
+            print("loss", loss)
+            print("loss.has_grad", loss.requires_grad)
+
+            # TODO: incorporate into testsuite
+            torch.autograd.gradcheck(
+                self.loss_fn,
+                (force.double(), gref.double()),
+                check_backward_ad=True,
+            )
+
+            print("weight update")
+            print("node_embedding")
+            print(self.node_embedding.weight)
+            print(self.node_embedding.weight.grad)  # TODO: why is that zero?
+            print(self.node_embedding.bias)
+            print(self.node_embedding.bias.grad)
+            print("node_decoding")
+            print(self.node_decoding.weight)
+            print(self.node_decoding.weight.grad)  # TODO: why is that zero?
+            print(self.node_decoding.bias)
+            print(self.node_decoding.bias.grad)
+
+            # TODO: maybe easier to debug in batch_size = 1 scenario?
+
+            print("something breaks the gradient (weight.grad should not be zero)")
+            sys.exit(0)
+
+            assert self.node_embedding.weight.grad != None
+            assert self.node_decoding.weight.grad != None
+            # NOTE: does not change, regardless whether sample.requires_grad(True/False)
+            # TODO: check why this is the case
+
+            assert self.node_embedding.bias.grad == None
+            assert self.node_decoding.bias.grad == None
+            # NOTE: since loss depends only on force and force only on non-constant parts of the NN
+            #       resulting in not updating weights during optimisation (would require bias.grad != None)
+
         sys.exit(0)
-        ##################
+        # also see: https://stackoverflow.com/questions/71294401/pytorch-loss-function-that-depends-on-gradient-of-network-with-respect-to-input
+
+        #################################
+        #################################
 
         # loss = self.calc_loss(batch, y, y_true)
 
@@ -474,7 +694,7 @@ def train_gnn():
     print(type(dataset))
 
     train_loader = pygDataloader(
-        dataset, batch_size=10, drop_last=False, shuffle=False, num_workers=8
+        dataset, batch_size=1, drop_last=False, shuffle=False, num_workers=8
     )
 
     # train model
