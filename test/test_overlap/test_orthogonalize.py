@@ -16,10 +16,20 @@ def test_ortho_1s_2s(dtype):
     vec = torch.tensor([0.0, 0.0, 0.0], dtype=dtype)
 
     # create gaussians
-    alphai, coeffi = slater.to_gauss(5, 1, l, torch.tensor(1.2, dtype=dtype))
-    alphaj, coeffj = slater.to_gauss(2, 2, l, torch.tensor(0.7, dtype=dtype))
+    alphai, coeffi = slater.to_gauss(
+        torch.tensor(5),
+        torch.tensor(1),
+        torch.tensor(l),
+        vec.new_tensor(1.2),
+    )
+    alphaj, coeffj = slater.to_gauss(
+        torch.tensor(2),
+        torch.tensor(2),
+        torch.tensor(l),
+        vec.new_tensor(0.7),
+    )
 
-    alphaj, coeffj = orthogonalize(l, (alphai, alphaj), (coeffi, coeffj))
+    alphaj, coeffj = orthogonalize((alphai, alphaj), (coeffi, coeffj))
 
     # normalised self-overlap
     s = mmd.overlap((l, l), (alphaj, alphaj), (coeffj, coeffj), vec)

@@ -105,9 +105,6 @@ class TestParam:
 
         calc = Calculator(numbers, dummy_coords, par)
 
-        assert "H" in calc.basis.cgto
-        assert "C" in calc.basis.cgto
-
         assert torch.allclose(
             calc.hamiltonian.ihelp.reduce_shell_to_atom(calc.hamiltonian.refocc),
             torch.tensor([1.0, 4.0], dtype=dtype),

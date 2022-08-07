@@ -43,13 +43,19 @@ def get_coordination_number(
         rcov = cov_rad_d3[numbers].type(positions.dtype)
     if numbers.shape != rcov.shape:
         raise ValueError(
-            "Shape of covalent radii is not consistent with atomic numbers"
+            f"Shape of covalent radii {rcov.shape} is not consistent with  ({numbers.shape})."
         )
     if numbers.shape != positions.shape[:-1]:
-        raise ValueError("Shape of positions is not consistent with atomic numbers")
+        raise ValueError(
+            f"Shape of positions ({positions.shape[:-1]}) is not consistent with atomic numbers ({numbers.shape})."
+        )
 
     real = numbers != 0
-    mask = real.unsqueeze(-2) * real.unsqueeze(-1) * ~torch.diag_embed(torch.ones_like(real))
+    mask = (
+        real.unsqueeze(-2)
+        * real.unsqueeze(-1)
+        * ~torch.diag_embed(torch.ones_like(real))
+    )
 
     distances = torch.where(
         mask,

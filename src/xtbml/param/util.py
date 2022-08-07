@@ -58,7 +58,7 @@ def get_elem_param(
     numbers: Tensor,
     par_element: dict[str, Element],
     key: str,
-    pad_val: float = -1.0,
+    pad_val: int = -1,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> Tensor:
@@ -72,8 +72,8 @@ def get_elem_param(
         Parametrization of elements.
     key : str
         Name of the quantity to obtain (e.g. gam3 for Hubbard derivatives).
-    pad_val : float, optional
-        Value to pad the tensor with. Default is `-1.0`.
+    pad_val : int, optional
+        Value to pad the tensor with. Default is `-1`.
     device : torch.device | None
         Device to store the tensor. If `None` (default), the default device is used.
     dtype : torch.dtype | None
@@ -115,7 +115,7 @@ def get_elem_param(
     return torch.tensor(l, device=device, dtype=dtype)
 
 
-def get_element_angular(par_element: dict[str, Element]) -> dict[int, list[int]]:
+def get_elem_angular(par_element: dict[str, Element]) -> dict[int, list[int]]:
     """Obtain angular momenta of the shells of all atoms.
 
     Parameters
@@ -150,7 +150,13 @@ def get_elem_valence(
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> Tensor:
-    """Obtain valence of the shells of all atoms.
+    """
+    .. warning::
+
+       Only works if shells of same angular momentum are consecutive,
+       like the GFN1-xTB hydrogen basis set.
+
+    Obtain valence of the shells of all atoms.
 
     Parameters
     ----------
@@ -212,3 +218,25 @@ def get_elem_valence(
             l.append(val)
 
     return torch.tensor(l, device=device, dtype=dtype)
+
+
+def get_elem_pqn(
+    numbers: Tensor,
+    par_element: dict[str, Element],
+    pad_val: int = -1,
+    device: torch.device | None = None,
+    dtype: torch.dtype | None = None,
+):
+    key = "shells"
+
+    shells = []
+    for number in numbers:
+        el = PSE.get(int(number.item()), "X")
+        if el in par_element:
+            for shell in getattr(par_element[el], key):
+                shells.append(int(shell[0]))
+
+        else:
+            shells.append(pad_val)
+
+    return torch.tensor(shells, device=device, dtype=dtype)

@@ -9,7 +9,7 @@ import torch
 from xtbml.exlibs.tbmalt import batch
 from xtbml.basis.indexhelper import IndexHelper
 from xtbml.param import GFN1_XTB as par
-from xtbml.param import get_element_angular
+from xtbml.param import get_elem_angular
 from xtbml.wavefunction import mulliken
 from xtbml.xtb.h0 import Hamiltonian
 
@@ -27,7 +27,7 @@ def test_single_number_electrons(dtype: torch.dtype, name: str):
     overlap = sample["overlap"].type(dtype)
     ref = sample["n_electrons"].type(dtype)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
 
     pop = mulliken.get_atomic_populations(overlap, density, ihelp)
     assert torch.allclose(ref, torch.sum(pop, dim=-1))
@@ -64,7 +64,7 @@ def test_batch_number_electrons(dtype: torch.dtype, name1: str, name2: str):
         ),
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
 
     pop = mulliken.get_atomic_populations(overlap, density, ihelp)
     assert torch.allclose(ref, torch.sum(pop, dim=-1))
@@ -79,7 +79,7 @@ def test_single_pop_shell(dtype: torch.dtype, name: str):
     overlap = sample["overlap"].type(dtype)
     ref = sample["mulliken_pop"].type(dtype)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     pop = mulliken.get_shell_populations(overlap, density, ihelp)
 
     assert torch.allclose(ref, pop, atol=1e-5)
@@ -116,7 +116,7 @@ def test_batch_pop_shell(dtype: torch.dtype, name1: str, name2: str):
         ),
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     pop = mulliken.get_shell_populations(overlap, density, ihelp)
 
     assert torch.allclose(ref, pop, atol=1e-5)
@@ -132,7 +132,7 @@ def test_single_charges(dtype: torch.dtype, name: str):
     overlap = sample["overlap"].type(dtype)
     ref = sample["mulliken_charges"].type(dtype)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     h0 = Hamiltonian(numbers, positions, par, ihelp)
     n0 = ihelp.reduce_orbital_to_atom(h0.get_occupation())
 
@@ -177,7 +177,7 @@ def test_batch_charges(dtype: torch.dtype, name1: str, name2: str):
         ),
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     h0 = Hamiltonian(numbers, positions, par, ihelp)
     n0 = ihelp.reduce_orbital_to_atom(h0.get_occupation())
 
@@ -195,7 +195,7 @@ def test_single_charges_shell(dtype: torch.dtype, name: str):
     overlap = sample["overlap"].type(dtype)
     ref = sample["mulliken_charges_shell"].type(dtype)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     h0 = Hamiltonian(numbers, positions, par, ihelp)
     n0 = ihelp.reduce_orbital_to_shell(h0.get_occupation())
 
@@ -240,7 +240,7 @@ def test_batch_charges_shell(dtype: torch.dtype, name1: str, name2: str):
         ),
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     h0 = Hamiltonian(numbers, positions, par, ihelp)
     n0 = ihelp.reduce_orbital_to_shell(h0.get_occupation())
 

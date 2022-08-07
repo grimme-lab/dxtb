@@ -9,7 +9,7 @@ import torch
 from xtbml.exlibs.tbmalt import batch
 from xtbml.basis.indexhelper import IndexHelper
 from xtbml.param import GFN1_XTB as par
-from xtbml.param import get_element_angular
+from xtbml.param import get_elem_angular
 from xtbml.wavefunction import wiberg
 
 from .samples import samples
@@ -26,7 +26,7 @@ def test_single(dtype: torch.dtype, name: str):
     overlap = sample["overlap"].type(dtype)
     ref = sample["wiberg"].type(dtype)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
 
     wbo = wiberg.get_bond_order(overlap, density, ihelp)
     assert torch.allclose(ref, wbo)
@@ -63,7 +63,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
         ),
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_element_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
 
     wbo = wiberg.get_bond_order(overlap, density, ihelp)
     assert torch.allclose(ref, wbo)

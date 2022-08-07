@@ -310,42 +310,38 @@ class IndexHelper:
         self.__dtype = shells_per_atom.dtype
 
         if any(
-            [
-                tensor.dtype != self.dtype
-                for tensor in (
-                    self.unique_angular,
-                    self.angular,
-                    self.atom_to_unique,
-                    self.ushells_to_unique,
-                    self.shells_to_ushell,
-                    self.shells_per_atom,
-                    self.shell_index,
-                    self.shells_to_atom,
-                    self.orbitals_per_shell,
-                    self.orbital_index,
-                    self.orbitals_to_shell,
-                )
-            ]
+            tensor.dtype != self.dtype
+            for tensor in (
+                self.unique_angular,
+                self.angular,
+                self.atom_to_unique,
+                self.ushells_to_unique,
+                self.shells_to_ushell,
+                self.shells_per_atom,
+                self.shell_index,
+                self.shells_to_atom,
+                self.orbitals_per_shell,
+                self.orbital_index,
+                self.orbitals_to_shell,
+            )
         ):
             raise ValueError("All tensors must have same dtype")
 
         if any(
-            [
-                tensor.device != self.device
-                for tensor in (
-                    self.unique_angular,
-                    self.angular,
-                    self.atom_to_unique,
-                    self.ushells_to_unique,
-                    self.shells_to_ushell,
-                    self.shells_per_atom,
-                    self.shell_index,
-                    self.shells_to_atom,
-                    self.orbitals_per_shell,
-                    self.orbital_index,
-                    self.orbitals_to_shell,
-                )
-            ]
+            tensor.device != self.device
+            for tensor in (
+                self.unique_angular,
+                self.angular,
+                self.atom_to_unique,
+                self.ushells_to_unique,
+                self.shells_to_ushell,
+                self.shells_per_atom,
+                self.shell_index,
+                self.shells_to_atom,
+                self.orbitals_per_shell,
+                self.orbital_index,
+                self.orbitals_to_shell,
+            )
         ):
             raise ValueError("All tensors must be on the same device")
 
