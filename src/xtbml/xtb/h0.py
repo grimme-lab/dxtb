@@ -1,9 +1,9 @@
 from __future__ import annotations
 import torch
 
-from ..adjlist import AdjacencyList
-from ..basis.indexhelper import IndexHelper
-from ..basis.type import Basis, get_cutoff
+from xtbml.param.util import get_elem_angular
+
+from ..basis import Basis, IndexHelper
 from ..exlibs.tbmalt import batch
 from ..constants import EV2AU
 from ..data import atomic_rad
@@ -15,6 +15,7 @@ from ..param import (
     Param,
 )
 from ..typing import Tensor
+from ..utils import t2int
 
 PAD = -1
 """Value used for padding of tensors."""
@@ -363,79 +364,150 @@ class Hamiltonian:
         h0 = torch.where(mask_shell, var_pi * var_k * var_h, var_h)
 
         h = self.ihelp.spread_shell_to_orbital(h0, dim=(-2, -1))
-        return h * overlap
+        hcore = h * overlap
+
+        # force symmetry to avoid problems through numerical errors
+        return self._symmetrize(hcore)
 
     def overlap(self) -> Tensor:
-        """Loop-based overlap calculation."""
+        """Overlap calculation of unique shells pairs.
 
-        def get_overlap(numbers: Tensor, positions: Tensor) -> Tensor:
-            # remove padding
-            numbers = numbers[numbers.ne(0)]
+        Returns
+        -------
+        Tensor
+            Overlap matrix
+        """
 
-            # FIXME: this acc includes all neighbors -> inefficient
-            acc = torch.finfo(self.dtype).max
+        def get_overlap(bas: Basis, positions: Tensor, ihelp: IndexHelper) -> Tensor:
+            """Overlap calculation for a single molecule.
 
-            # FIXME: basis should be the same for all numbers and be given as arg
-            bas = Basis(numbers, self.par, acc=acc)
+            Parameters
+            ----------
+            numbers : Tensor
+                Unique atomic numbers of whole batch.
+            positions : Tensor
+                Positions of single molecule.
 
-            adjlist = AdjacencyList(numbers, positions, get_cutoff(bas))
+            Returns
+            -------
+            Tensor
+                Overlap matrix for single molecule.
+            """
 
-            overlap = torch.zeros(bas.nao_tot, bas.nao_tot, dtype=self.dtype)
-            torch.diagonal(overlap, dim1=-2, dim2=-1).fill_(1.0)
+            umap, n_unique_pairs = bas.unique_shell_pairs(ihelp)
+            alphas, coeffs = bas.create_cgtos()
 
-            for i, el_i in enumerate(bas.symbols):
-                isa = int(bas.ish_at[i].item())
-                inl = int(adjlist.inl[i].item())
+            # spread stuff to orbitals for indexing
+            alpha = batch.index(
+                batch.index(batch.pack(alphas), ihelp.shells_to_ushell),
+                ihelp.orbitals_to_shell,
+            )
+            coeff = batch.index(
+                batch.index(batch.pack(coeffs), ihelp.shells_to_ushell),
+                ihelp.orbitals_to_shell,
+            )
+            positions = batch.index(
+                batch.index(positions, ihelp.shells_to_atom),
+                ihelp.orbitals_to_shell,
+            )
+            ang = ihelp.spread_shell_to_orbital(ihelp.angular)
 
-                imgs = int(adjlist.nnl[i].item())
-                for img in range(imgs):
-                    j = int(adjlist.nlat[img + inl].item())
-                    jsa = int(bas.ish_at[j].item())
-                    el_j = bas.symbols[j]
+            # overlap calculation
+            ovlp = torch.zeros(*umap.shape, dtype=self.dtype, device=self.device)
+            for uval in range(n_unique_pairs):
+                pairs = get_pairs(umap, uval)
+                first_pair = pairs[0]
 
-                    vec = positions[i, :] - positions[j, :]
+                angi, angj = ang[first_pair]
+                norbi = 2 * t2int(angi) + 1
+                norbj = 2 * t2int(angj) + 1
 
-                    for ish in range(bas.shells[el_i]):
-                        ii = bas.iao_sh[isa + ish].item()
-                        for jsh in range(bas.shells[el_j]):
-                            jj = bas.iao_sh[jsa + jsh].item()
+                # collect [0, 0] entry of each subblock
+                upairs = get_subblock_start(umap, uval, norbi, norbj)
 
-                            cgtoi = bas.cgto[el_i][ish]
-                            cgtoj = bas.cgto[el_j][jsh]
+                # we only require one pair as all have the same basis function
+                alpha_tuple = (
+                    batch.deflate(alpha[first_pair][0]),
+                    batch.deflate(alpha[first_pair][1]),
+                )
+                coeff_tuple = (
+                    batch.deflate(coeff[first_pair][0]),
+                    batch.deflate(coeff[first_pair][1]),
+                )
+                ang_tuple = (angi, angj)
 
-                            stmp = mmd.overlap(
-                                (cgtoi.ang, cgtoj.ang),
-                                (
-                                    cgtoi.alpha[: cgtoi.nprim],
-                                    cgtoj.alpha[: cgtoj.nprim],
-                                ),
-                                (
-                                    cgtoi.coeff[: cgtoi.nprim],
-                                    cgtoj.coeff[: cgtoj.nprim],
-                                ),
-                                -vec,
-                            )
+                vec = positions[upairs][:, 0, :] - positions[upairs][:, 1, :]
+                stmp = mmd.overlap(ang_tuple, alpha_tuple, coeff_tuple, -vec)
 
-                            i_nao = 2 * cgtoi.ang + 1
-                            j_nao = 2 * cgtoj.ang + 1
-                            for iao in range(i_nao):
-                                for jao in range(j_nao):
-                                    overlap[jj + jao, ii + iao].add_(stmp[iao, jao])
+                # write overlap of unique pair to correct position in full overlap matrix
+                for r, pair in enumerate(upairs):
+                    ovlp[
+                        pair[0] : pair[0] + norbi,
+                        pair[1] : pair[1] + norbj,
+                    ] = stmp[r]
 
-                                    if i != j:
-                                        overlap[ii + iao, jj + jao].add_(stmp[iao, jao])
-
-            return overlap
+            return ovlp
 
         if self.numbers.ndim > 1:
-            return batch.pack(
-                [
-                    get_overlap(self.numbers[_batch], self.positions[_batch])
-                    for _batch in range(self.numbers.shape[0])
-                ]
+            o = []
+            for _batch in range(self.numbers.shape[0]):
+                # unfortunately, we need a new IndexHelper for each batch,
+                # but this is much faster than `get_overlap`
+                nums = batch.deflate(self.numbers[_batch])
+                ihelp = IndexHelper.from_numbers(
+                    nums, get_elem_angular(self.par.element)
+                )
+
+                bas = Basis(
+                    torch.unique(nums),
+                    self.par,
+                    ihelp.unique_angular,
+                    dtype=self.dtype,
+                    device=self.device,
+                )
+
+                o.append(get_overlap(bas, self.positions[_batch], ihelp))
+
+            overlap = batch.pack(o)
+        else:
+            bas = Basis(
+                self.unique,
+                self.par,
+                self.ihelp.unique_angular,
+                dtype=self.dtype,
+                device=self.device,
+            )
+            overlap = get_overlap(bas, self.positions, self.ihelp)
+
+        # force symmetry to avoid problems through numerical errors
+        return self._symmetrize(overlap)
+
+    def _symmetrize(self, x: Tensor) -> Tensor:
+        """
+        Symmetrize a tensor after checking if it is symmetric within a threshold.
+
+        Parameters
+        ----------
+        x : Tensor
+            Tensor to check and symmetrize.
+
+        Returns
+        -------
+        Tensor
+            Symmetrized tensor.
+
+        Raises
+        ------
+        RuntimeError
+            If the tensor is not symmetric within the threshold.
+        """
+        atol = torch.finfo(self.dtype).eps * 10
+        if not torch.allclose(x, x.mT, atol=atol):
+            raise RuntimeError(
+                f"Matrix appears to be not symmetric (atol={atol}, dtype={self.dtype})."
             )
 
-        return get_overlap(self.numbers, self.positions)
+        return (x + x.mT) / 2
 
     @property
     def device(self) -> torch.device:
@@ -512,3 +584,106 @@ class Hamiltonian:
             self.par,
             self.ihelp.type(dtype=dtype),
         )
+
+
+# helpers for overlap calculation
+
+
+def get_pairs(x: Tensor, i: int) -> Tensor:
+    """Get indices of all unqiue shells pairs with index value `i`.
+
+    Parameters
+    ----------
+    x : Tensor
+        Matrix of unique shell pairs.
+    i : int
+        Value representing all unique shells in the matrix.
+
+    Returns
+    -------
+    Tensor
+        Indices of all unique shells pairs with index value `i` in the matrix.
+    """
+
+    return (x == i).nonzero(as_tuple=False)
+
+
+def get_subblock_start(umap: Tensor, i: int, norbi: int, norbj: int) -> Tensor:
+    """
+    Filter out the top-left index of each subblock of unique shell pairs. This makes use of the fact that the pairs are sorted along
+    the rows.
+
+    Example: A "s" and "p" orbital would give the following 4x4 matrix
+    of unique shell pairs:
+    1 2 2 2
+    3 4 4 4
+    3 4 4 4
+    3 4 4 4
+    As the overlap routine gives back tensors of the shape `(norbi, norbj)`,
+    i.e. 1x1, 1x3, 3x1 and 3x3 here, we require only the following four
+    indices from the matrix of unique shell pairs: [0, 0] (1x1), [1, 0]
+    (3x1), [0, 1] (1x3) and [1, 1] (3x3).
+
+
+    Parameters
+    ----------
+    pairs : Tensor
+        Indices of all unique shell pairs of one type (n, 2).
+    norbi : int
+        Number of orbitals per shell.
+    norbj : int
+        Number of orbitals per shell.
+
+    Returns
+    -------
+    Tensor
+        Top-left (i.e. [0, 0]) index of each subblock.
+    """
+
+    # no need to filter out a 1x1 block
+    if norbi == 1 and norbj == 1:
+        return get_pairs(umap, i)
+
+    # sorting along rows allows only selecting every `norbj`th pair
+    if norbi == 1:
+        pairs = get_pairs(umap, i)
+        return pairs[::norbj]
+
+    if norbj == 1:
+        pairs = get_pairs(umap.mT, i)
+
+        # do the same for the transposed pairs, but switch columns
+        return torch.index_select(pairs[::norbi], 1, torch.tensor([1, 0]))
+
+    # more intricate because we can have variation in two dimensions
+    pairs = get_pairs(umap, i)
+
+    # remove every `norbj`th pair as before; only second dim is tricky
+    pairs = pairs[::norbj]
+
+    start = 0
+    rest = pairs
+
+    # init with dummy
+    final = torch.tensor([[-1, -1]])
+
+    while True:
+        # get number of blocks in a row by counting the number of
+        # same indices in the first dimension
+        nb = (pairs[:, 0] == pairs[start, 0]).nonzero().flatten().size(0)
+
+        # we need to skip the amount of rows in the block
+        skip = nb * norbi
+
+        # split for the blocks in each row because there can be different numbers of blocks in a row
+        target, rest = torch.split(rest, [skip, rest.size(-2) - skip])
+
+        # select only the top left index of each block
+        final = torch.cat((final, target[:nb]), 0)
+
+        start += skip
+        if start >= pairs.size(-2):
+            break
+
+    # remove dummy
+    return final[1:]

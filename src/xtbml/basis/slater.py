@@ -81,7 +81,7 @@ def to_gauss(
     # N² = (4α)^(i+j+k)/((2i-1)!!(2j-1)!!(2k-1)!!)  · sqrt(2α/π)³
     # N = (4α)^((i+j+k)/2) / sqrt((2i-1)!!(2j-1)!!(2k-1)!!) · (2α/π)^(3/4)
     if norm:
-        coeff = _coeff * (
+        coeff = coeff * (
             (top * alpha) ** 0.75
             * torch.sqrt(4 * alpha) ** l
             / torch.sqrt(dfactorial[l])
