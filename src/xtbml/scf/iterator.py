@@ -290,10 +290,18 @@ class SelfConsistentField(xt.EditableModule):
         """
 
         self._data.energy = self._data.ihelp.reduce_orbital_to_atom(
-            torch.diagonal(density @ self._data.hcore)
+            torch.diagonal(
+                torch.einsum("...ik,...kj->...ij", density, self._data.hcore),
+                dim1=-2,
+                dim2=-1,
+            )
         )
 
-        populations = torch.diagonal(density @ self._data.overlap, dim1=-2, dim2=-1)
+        populations = torch.diagonal(
+            torch.einsum("...ik,...kj->...ij", density, self._data.overlap),
+            dim1=-2,
+            dim2=-1,
+        )
         return self._data.n0 - populations
 
     def potential_to_hamiltonian(self, potential: Tensor) -> Tensor:
@@ -333,8 +341,11 @@ class SelfConsistentField(xt.EditableModule):
         h_op = xt.LinearOperator.m(hamiltonian)
         o_op = self.get_overlap()
         _, evecs = self.diagonalize(h_op, o_op)
-        return (
-            evecs @ torch.diag_embed(self._data.occupation, dim1=-2, dim2=-1) @ evecs.mT
+        return torch.einsum(
+            "...ik,...k,...kj->...ij",
+            evecs,
+            self._data.occupation,
+            evecs.mT,
         )
 
     def get_overlap(self) -> xt.LinearOperator:
@@ -347,7 +358,14 @@ class SelfConsistentField(xt.EditableModule):
             Overlap matrix.
         """
 
-        return xt.LinearOperator.m(self._data.overlap)
+        smat = self._data.overlap
+
+        zeros = torch.eq(smat, 0)
+        mask = torch.all(zeros, dim=-1) & torch.all(zeros, dim=-2)
+
+        return xt.LinearOperator.m(
+            smat + torch.diag_embed(smat.new_ones(*smat.shape[:-2], 1) * mask)
+        )
 
     def diagonalize(
         self, hamiltonian: xt.LinearOperator, overlap: xt.LinearOperator

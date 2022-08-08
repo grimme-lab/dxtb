@@ -136,7 +136,12 @@ class ES2(Interaction):
         # all distances to the power of "gexp" (R^2_AB from Eq.26)
         dist_gexp = torch.where(
             mask,
-            torch.pow(torch.cdist(positions, positions, p=2), self.gexp),
+            torch.pow(
+                torch.cdist(
+                    positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
+                ),
+                self.gexp,
+            ),
             torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype),
         )
 
@@ -182,7 +187,12 @@ class ES2(Interaction):
         dist_gexp = ihelp.spread_atom_to_shell(
             torch.where(
                 mask,
-                torch.pow(torch.cdist(positions, positions, p=2), self.gexp),
+                torch.pow(
+                    torch.cdist(
+                        positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
+                    ),
+                    self.gexp,
+                ),
                 torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype),
             ),
             (-1, -2),
