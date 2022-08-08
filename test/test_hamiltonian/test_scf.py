@@ -85,7 +85,7 @@ def test_single_large(dtype: torch.dtype, name: str):
         ),
     ],
 )
-def test_grad(testcase, dtype: torch.dtype = torch.float):
+def test_grad_backwards(testcase, dtype: torch.dtype = torch.float):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
 
     name, ref = testcase
@@ -101,3 +101,91 @@ def test_grad(testcase, dtype: torch.dtype = torch.float):
     energy.backward()
     gradient = positions.grad.clone()
     assert torch.allclose(gradient, ref, atol=tol)
+
+
+@pytest.mark.grad
+@pytest.mark.parametrize(
+    "testcase",
+    [
+        # Values obtain with tblite 0.2.1 disabling repulsion and dispersion
+        (
+            "LiH",
+            torch.tensor(
+                [
+                    [0.0, 0.0, -1.9003812730202383e-2],
+                    [0.0, 0.0, +1.9003812730202383e-2],
+                ]
+            ),
+        ),
+    ],
+)
+def test_grad(testcase, dtype: torch.dtype = torch.float):
+    tol = math.sqrt(torch.finfo(dtype).eps) * 10
+
+    name, ref = testcase
+    numbers = samples[name]["numbers"]
+    positions = samples[name]["positions"].type(dtype).requires_grad_(True)
+    charges = torch.tensor(0.0, dtype=dtype)
+
+    calc = Calculator(numbers, positions, par)
+
+    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    energy = results["energy"].sum(-1)
+
+    gradient = torch.autograd.grad(
+        energy,
+        positions,
+    )[0]
+    assert torch.allclose(gradient, ref, atol=tol)
+
+
+@pytest.mark.grad
+@pytest.mark.parametrize(
+    "testcase",
+    [
+        (
+            "LiH",
+            {
+                "selfenergy": torch.tensor(
+                    [+0.0002029369, +0.0017547115, +0.1379896402, -0.1265652627]
+                ),
+                "kcn": torch.tensor(
+                    [-0.1432282478, -0.0013212233, -0.1811404824, +0.0755317509]
+                ),
+                "shpoly": torch.tensor(
+                    [+0.0408593193, -0.0007219329, -0.0385218151, +0.0689999014]
+                ),
+            },
+        ),
+    ],
+)
+def test_gradgrad(testcase, dtype: torch.dtype = torch.float):
+    tol = math.sqrt(torch.finfo(dtype).eps) * 10
+
+    name, ref = testcase
+    numbers = samples[name]["numbers"]
+    positions = samples[name]["positions"].type(dtype).requires_grad_(True)
+    charges = torch.tensor(0.0, dtype=dtype)
+
+    calc = Calculator(numbers, positions, par)
+    calc.hamiltonian.selfenergy.requires_grad_(True)
+    calc.hamiltonian.kcn.requires_grad_(True)
+    calc.hamiltonian.shpoly.requires_grad_(True)
+
+    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    energy = results["energy"].sum(-1)
+
+    gradient = torch.autograd.grad(
+        energy,
+        positions,
+        create_graph=True,
+    )[0]
+
+    pgrad = torch.autograd.grad(
+        gradient[0, :].sum(),
+        (calc.hamiltonian.selfenergy, calc.hamiltonian.kcn, calc.hamiltonian.shpoly),
+    )
+
+    assert torch.allclose(pgrad[0], ref["selfenergy"], atol=tol)
+    assert torch.allclose(pgrad[1], ref["kcn"], atol=tol)
+    assert torch.allclose(pgrad[2], ref["shpoly"], atol=tol)

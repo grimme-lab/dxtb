@@ -356,7 +356,7 @@ def solve(
 
     distances = torch.where(
         mask,
-        torch.cdist(positions, positions, p=2),
+        torch.cdist(positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"),
         eps,
     )
     diagonal = mask.new_zeros(mask.shape)
