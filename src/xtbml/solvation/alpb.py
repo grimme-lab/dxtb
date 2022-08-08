@@ -43,23 +43,10 @@ from .data import vdw_rad_d3
 from ..basis import IndexHelper
 from ..interaction import Interaction
 from ..typing import Tensor, Any
+from ..utils.utils import real_atoms, real_pairs
 
 
 alpha = 0.571412
-
-
-@torch.jit.script
-def real_atoms(numbers: Tensor) -> Tensor:
-    return numbers != 0
-
-
-@torch.jit.script
-def real_pairs(numbers: Tensor, diagonal: bool = False) -> Tensor:
-    real = real_atoms(numbers)
-    mask = real.unsqueeze(-2) * real.unsqueeze(-1)
-    if not diagonal:
-        mask *= ~torch.diag_embed(torch.ones_like(real))
-    return mask
 
 
 @torch.jit.script
