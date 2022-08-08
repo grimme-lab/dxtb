@@ -9,6 +9,7 @@ import torch
 
 from xtbml.param import GFN1_XTB as par
 from xtbml.xtb.calculator import Calculator
+from xtbml.exlibs.tbmalt import batch
 
 from .samples import samples
 
@@ -67,6 +68,23 @@ def test_single_large(dtype: torch.dtype, name: str):
 
     results = calc.singlepoint(numbers, positions, charges, verbosity=0)
     assert pytest.approx(ref, abs=tol) == results["energy"].sum(-1).item()
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", [("H2", "LiH"), ("LiH", "SiH4")])
+def test_batch(dtype: torch.dtype, name: str):
+    tol = math.sqrt(torch.finfo(dtype).eps) * 10
+
+    sample = samples[name[0]], samples[name[1]]
+    numbers = batch.pack((sample[0]["numbers"], sample[1]["numbers"]))
+    positions = batch.pack((sample[0]["positions"], sample[1]["positions"])).type(dtype)
+    ref = batch.pack((sample[0]["escf"], sample[1]["escf"])).type(dtype)
+    charges = torch.tensor([0.0, 0.0]).type(dtype)
+
+    calc = Calculator(numbers, positions, par)
+
+    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    assert torch.allclose(ref, results["energy"].sum(-1), atol=tol)
 
 
 @pytest.mark.grad
