@@ -7,7 +7,7 @@ from ..typing import Tensor
 
 import torch
 
-from ..param import Element, EffectiveRepulsion
+from ..param import Element, EffectiveRepulsion, Param
 from .base import EnergyContribution
 
 
@@ -289,3 +289,59 @@ class RepulsionFactory(EnergyContribution):
         # torch.Size([n_batch, n_atoms, 3])
 
         return E, dG
+
+
+class Repulsion:
+    """Representation of the classical repulsion."""
+
+    def __init__(self, numbers: Tensor, positions: Tensor, par: Param) -> None:
+        self.numbers = numbers
+        self.positions = positions
+        self.par = par
+
+    def get_energy(self) -> Tensor:
+        """
+        Get dispersion energy.
+
+        Returns
+        -------
+        Tensor
+            Atom-resolved dispersion energy.
+        """
+
+        repulsion = RepulsionFactory(
+            numbers=self.numbers, positions=self.positions, cutoff=torch.tensor(25.0)
+        )
+        repulsion.setup(self.par.element, self.par.repulsion.effective)
+
+        return repulsion.get_engrad(calc_gradient=False)
+
+
+def new_repulsion(numbers: Tensor, positions: Tensor, par: Param) -> Repulsion:
+    """
+    Create new instance of Repulsion class.
+
+    Parameters
+    ----------
+    numbers : Tensor
+        Atomic numbers of all atoms.
+    positions : Tensor
+        Cartesian coordinates of all atoms.
+    par : Param
+        Representation of an extended tight-binding model.
+
+    Returns
+    -------
+    Repulsion
+        Instance of the Halogen class.
+
+    Raises
+    ------
+    ValueError
+        If parametrization does not contain a halogen bond correction.
+    """
+
+    if par.repulsion is None:
+        raise ValueError("No repulsion schemes provided.")
+
+    return Repulsion(numbers, positions, par)
