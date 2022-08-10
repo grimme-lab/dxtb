@@ -27,8 +27,8 @@ def test_single(dtype: torch.dtype, name: str):
 
     calc = Calculator(numbers, positions, par)
 
-    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
-    assert pytest.approx(ref, abs=tol) == results["energy"].sum(-1).item()
+    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
 
 
 @pytest.mark.parametrize("dtype", [torch.float])
@@ -47,8 +47,12 @@ def test_single2(dtype: torch.dtype, name: str):
 
     calc = Calculator(numbers, positions, par)
 
-    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
-    assert pytest.approx(ref, abs=tol) == results["energy"].sum(-1).item()
+    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    print(result.halogen)
+    print(result.dispersion)
+    print(result.repulsion)
+    print(result.scf)
+    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
 
 
 @pytest.mark.large
@@ -66,8 +70,8 @@ def test_single_large(dtype: torch.dtype, name: str):
 
     calc = Calculator(numbers, positions, par)
 
-    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
-    assert pytest.approx(ref, abs=tol) == results["energy"].sum(-1).item()
+    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -83,8 +87,8 @@ def test_batch(dtype: torch.dtype, name: str):
 
     calc = Calculator(numbers, positions, par)
 
-    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
-    assert torch.allclose(ref, results["energy"].sum(-1), atol=tol)
+    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    assert torch.allclose(ref, result.scf.sum(-1), atol=tol)
 
 
 @pytest.mark.grad
@@ -113,8 +117,8 @@ def test_grad_backwards(testcase, dtype: torch.dtype = torch.float):
 
     calc = Calculator(numbers, positions, par)
 
-    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
-    energy = results["energy"].sum(-1)
+    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    energy = result.scf.sum(-1)
 
     energy.backward()
     gradient = positions.grad.clone()
@@ -147,8 +151,8 @@ def test_grad(testcase, dtype: torch.dtype = torch.float):
 
     calc = Calculator(numbers, positions, par)
 
-    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
-    energy = results["energy"].sum(-1)
+    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    energy = result.scf.sum(-1)
 
     gradient = torch.autograd.grad(
         energy,
@@ -190,8 +194,8 @@ def test_gradgrad(testcase, dtype: torch.dtype = torch.float):
     calc.hamiltonian.kcn.requires_grad_(True)
     calc.hamiltonian.shpoly.requires_grad_(True)
 
-    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
-    energy = results["energy"].sum(-1)
+    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    energy = result.scf.sum(-1)
 
     gradient = torch.autograd.grad(
         energy,

@@ -158,7 +158,6 @@ class SelfConsistentField(xt.EditableModule):
             "energy": energy,
             "density": self._data.density,
             "hamiltonian": self._data.hamiltonian,
-            "overlap": self._data.overlap,
         }
 
     def get_energy(self, charges: Tensor) -> Tensor:

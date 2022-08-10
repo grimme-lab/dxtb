@@ -43,7 +43,7 @@ def test_gb_scf(dtype=torch.float, sample=mb16_43["01"], dielectric_constant=78.
     results_vac = calc_vac.singlepoint(numbers, positions, charges, verbosity=0)
     results_sol = calc_sol.singlepoint(numbers, positions, charges, verbosity=0)
 
-    gsolv = results_sol["energy"] - results_vac["energy"]
+    gsolv = results_sol.scf - results_vac.scf
 
     assert pytest.approx(ref, abs=tol) == gsolv
 
@@ -63,7 +63,7 @@ def test_gb_scf_grad(dtype=torch.float, sample=mb16_43["01"], dielectric_constan
 
     results = calc.singlepoint(numbers, positions, charges, verbosity=0)
 
-    energy = results["energy"].sum(-1)
+    energy = results.scf.sum(-1)
     energy.backward()
     gradient = positions.grad.clone()
 

@@ -121,16 +121,17 @@ def get_adet(positions: Tensor, rad: Tensor) -> Tensor:
     center = (positions * vol.unsqueeze(-1)).sum(-2) / vol.sum(-1)
 
     displ = positions - center.unsqueeze(-2)
-    diag = torch.pow(displ, 2).sum(-1) + 2*torch.pow(rad, 2)/5
+    diag = torch.pow(displ, 2).sum(-1) + 2 * torch.pow(rad, 2) / 5
     inertia = (
-        vol.unsqueeze(-1).unsqueeze(-2) * (
-            - displ.unsqueeze(-1) * displ.unsqueeze(-2)
+        vol.unsqueeze(-1).unsqueeze(-2)
+        * (
+            -displ.unsqueeze(-1) * displ.unsqueeze(-2)
             + torch.diag_embed(diag.unsqueeze(-1).expand(*positions.shape))
         )
     ).sum(-3)
 
     adet = (
-        + inertia[..., 0, 0] * inertia[..., 1, 1] * inertia[..., 2, 2]
+        +inertia[..., 0, 0] * inertia[..., 1, 1] * inertia[..., 2, 2]
         - inertia[..., 0, 0] * inertia[..., 1, 2] * inertia[..., 2, 1]
         - inertia[..., 0, 1] * inertia[..., 1, 0] * inertia[..., 2, 2]
         + inertia[..., 0, 1] * inertia[..., 1, 2] * inertia[..., 2, 0]
@@ -138,7 +139,7 @@ def get_adet(positions: Tensor, rad: Tensor) -> Tensor:
         - inertia[..., 0, 2] * inertia[..., 1, 1] * inertia[..., 2, 0]
     )
 
-    return torch.sqrt(5*torch.pow(adet, 1/3) / (2*vol.sum(-1)))
+    return torch.sqrt(5 * torch.pow(adet, 1 / 3) / (2 * vol.sum(-1)))
 
 
 class GeneralizedBorn(Interaction):
@@ -169,7 +170,9 @@ class GeneralizedBorn(Interaction):
         Interaction.__init__(self)
         dtype = dielectric_constant.dtype
 
-        self.alpbet = alpha / dielectric_constant if alpb else 0
+        self.alpbet = (
+            alpha / dielectric_constant if alpb else dielectric_constant.new_tensor(0.0)
+        )
         self.keps = (1 / dielectric_constant - 1) / (1 + self.alpbet)
         self.kernel = kernel
 
@@ -194,7 +197,6 @@ class GeneralizedBorn(Interaction):
         born = get_born_radii(numbers, positions, **self.born_kwargs)
         eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
 
-        real = real_atoms(numbers)
         mask = real_pairs(numbers)
 
         dist = torch.where(mask, torch.cdist(positions, positions, p=2), eps)

@@ -26,8 +26,47 @@ from ..utils import Timers
 
 class Result:
     """
-    Result container of the calculation.
+    Result container for singlepoint calculation.
     """
+
+    scf: Tensor
+    """Energy from the self-consistent field (SCF) calculation."""
+
+    dispersion: Tensor
+    """Dispersion energy."""
+
+    repulsion: Tensor
+    """Repulsion energy."""
+
+    halogen: Tensor
+    """Halogen bond energy."""
+
+    total: Tensor
+    """Total energy."""
+
+    hcore: Tensor
+    """Core Hamiltonian matrix (H0)."""
+
+    hamiltonian: Tensor
+    """Full Hamiltonian matrix (H0 + H1)."""
+
+    overlap: Tensor
+    """Overlap matrix."""
+
+    density: Tensor
+    """Density matrix."""
+
+    __slots__ = [
+        "scf",
+        "dispersion",
+        "repulsion",
+        "halogen",
+        "total",
+        "hcore",
+        "hamiltonian",
+        "overlap",
+        "density",
+    ]
 
 
 class Calculator:
@@ -109,7 +148,7 @@ class Calculator:
         positions: Tensor,
         charges: Tensor,
         verbosity: int = 1,
-    ) -> dict[str, Tensor]:
+    ) -> Result:
         """
         Entry point for performing single point calculations.
 
@@ -124,8 +163,8 @@ class Calculator:
 
         Returns
         -------
-        Tensor
-            Atom resolved energies.
+        Result
+            Results.
         """
 
         result = Result()
@@ -135,6 +174,7 @@ class Calculator:
         # overlap
         timer.start("overlap")
         overlap = self.hamiltonian.overlap()
+        result.overlap = overlap
         timer.stop("overlap")
 
         # Hamiltonian
@@ -142,6 +182,7 @@ class Calculator:
         rcov = cov_rad_d3[numbers]
         cn = ncoord.get_coordination_number(numbers, positions, ncoord.exp_count, rcov)
         hcore = self.hamiltonian.build(overlap, cn)
+        result.hcore = hcore
         timer.stop("h0")
 
         # SCF
@@ -158,7 +199,7 @@ class Calculator:
         fwd_options = {
             "verbose": verbosity > 0,
         }
-        results = scf.solve(
+        scf_results = scf.solve(
             numbers,
             positions,
             self.interaction,
@@ -170,26 +211,28 @@ class Calculator:
             fwd_options=fwd_options,
             use_potential=True,
         )
+        result.scf = scf_results["energy"]
 
         timer.stop("scf")
 
         if self.halogen is not None:
             timer.start("halogen")
-            results["e_xbond"] = self.halogen.get_energy()
+            result.halogen = self.halogen.get_energy()
             timer.stop("halogen")
 
         if self.dispersion is not None:
             timer.start("dispersion")
-            results["e_disp"] = self.dispersion.get_energy()
+            result.dispersion = self.dispersion.get_energy()
             timer.stop("dispersion")
 
         if self.repulsion is not None:
             timer.start("repulsion")
-            results["e_rep"] = self.repulsion.get_energy()
+            result.repulsion = self.repulsion.get_energy()
             timer.stop("repulsion")
 
         timer.stop("total")
 
-        print(timer.print_times())
+        if verbosity > 1:
+            print(timer.print_times())
 
-        return results
+        return result

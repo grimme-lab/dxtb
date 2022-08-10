@@ -55,4 +55,4 @@ def new_dispersion(numbers: Tensor, positions: Tensor, par: Param) -> Dispersion
         }
         return DispersionD4(numbers, positions, param)
 
-    raise ValueError("No parameters for D3 or D4 found.")
+    raise ValueError("No parameters for D3 or D4 found. Or for both (please decide).")
