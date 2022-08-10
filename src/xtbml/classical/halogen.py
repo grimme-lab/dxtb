@@ -199,49 +199,71 @@ def get_energy(
     return get_xbond_energy(numbers, positions, adj, damp, rscale, bond_strength)
 
 
-def halogen_bond_correction(
-    numbers: Tensor,
-    positions: Tensor,
-    damp: Tensor,
-    rscale: Tensor,
-    bond_strength: Tensor,
-    cutoff: Tensor = torch.tensor(20.0),
-) -> Tensor:
-    """Handle batchwise and single calculation of halogen bonding energy.
+class Halogen:
+    def __init__(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        damp: Tensor,
+        rscale: Tensor,
+        bond_strength: Tensor,
+        cutoff: Tensor = torch.tensor(20.0),
+    ) -> None:
+        self.numbers = numbers
+        self.positions = positions
+        self.damp = damp
+        self.rscale = rscale
+        self.bond_strength = bond_strength
+        self.cutoff = cutoff
 
-    Parameters
-    ----------
-    numbers : Tensor
-        Atomic numbers of all atoms.
-    positions : Tensor
-        Cartesian coordinates of all atoms.
-    damp : Tensor
-        Damping factor in Lennard-Jones like potential.
-    rscale : Tensor
-        Scaling factor for atomic radii.
-    bond_strength : Tensor
-        Halogen bond strengths.
-    cutoff : Tensor, optional
-        Real space cutoff for halogen bonding interactions (default: 20.0).
+    def get_energy(self) -> Tensor:
+        """Handle batchwise and single calculation of halogen bonding energy.
 
-    Returns
-    -------
-    Tensor
-        Atomwise energy contributions from halogen bonds.
-    """
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers of all atoms.
+        positions : Tensor
+            Cartesian coordinates of all atoms.
+        damp : Tensor
+            Damping factor in Lennard-Jones like potential.
+        rscale : Tensor
+            Scaling factor for atomic radii.
+        bond_strength : Tensor
+            Halogen bond strengths.
+        cutoff : Tensor, optional
+            Real space cutoff for halogen bonding interactions (default: 20.0).
 
-    if len(numbers.shape) > 1:
-        energies = torch.stack(
-            [
-                get_energy(
-                    numbers[i], positions[i], damp, rscale, bond_strength, cutoff
-                )
-                for i in range(numbers.shape[0])
-            ],
-            dim=0,
-        )
+        Returns
+        -------
+        Tensor
+            Atomwise energy contributions from halogen bonds.
+        """
 
-    else:
-        energies = get_energy(numbers, positions, damp, rscale, bond_strength, cutoff)
+        if len(self.numbers.shape) > 1:
+            energies = torch.stack(
+                [
+                    get_energy(
+                        self.numbers[i],
+                        self.positions[i],
+                        self.damp,
+                        self.rscale,
+                        self.bond_strength,
+                        self.cutoff,
+                    )
+                    for i in range(self.numbers.shape[0])
+                ],
+                dim=0,
+            )
 
-    return energies
+        else:
+            energies = get_energy(
+                self.numbers,
+                self.positions,
+                self.damp,
+                self.rscale,
+                self.bond_strength,
+                self.cutoff,
+            )
+
+        return energies

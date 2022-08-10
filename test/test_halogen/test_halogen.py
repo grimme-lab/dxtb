@@ -4,10 +4,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from xtbml.classical.halogen import (
-    get_xbond,
-    halogen_bond_correction,
-)
+from xtbml.classical.halogen import get_xbond, Halogen
 from xtbml.exlibs.tbmalt import batch
 from xtbml.param.gfn1 import GFN1_XTB
 from xtbml.typing import Generator, Tensor, Tuple
@@ -51,8 +48,9 @@ class TestHalogenBondCorrection:
         positions = sample["positions"].type(dtype)
         ref = sample["energy"].type(dtype)
 
-        xb = halogen_bond_correction(numbers, positions, damp, rscale, bond_strength)
-        assert torch.allclose(ref, torch.sum(xb))
+        xb = Halogen(numbers, positions, damp, rscale, bond_strength)
+        energy = xb.get_energy()
+        assert torch.allclose(ref, torch.sum(energy))
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     @pytest.mark.parametrize("name", ["tmpda", "tmpda_mod"])
@@ -70,8 +68,9 @@ class TestHalogenBondCorrection:
         positions = sample["positions"].type(dtype)
         ref = sample["energy"].type(dtype)
 
-        xb = halogen_bond_correction(numbers, positions, damp, rscale, bond_strength)
-        assert torch.allclose(ref, torch.sum(xb))
+        xb = Halogen(numbers, positions, damp, rscale, bond_strength)
+        energy = xb.get_energy()
+        assert torch.allclose(ref, torch.sum(energy))
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     def test_no_xb(self, param: FixtureParams, dtype: torch.dtype) -> None:
@@ -84,8 +83,9 @@ class TestHalogenBondCorrection:
         positions = sample["positions"].type(dtype)
         ref = sample["energy"].type(dtype)
 
-        xb = halogen_bond_correction(numbers, positions, damp, rscale, bond_strength)
-        assert torch.allclose(ref, torch.sum(xb))
+        xb = Halogen(numbers, positions, damp, rscale, bond_strength)
+        energy = xb.get_energy()
+        assert torch.allclose(ref, torch.sum(energy))
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     @pytest.mark.parametrize("name1", ["br2nh3", "br2och2"])
@@ -116,8 +116,9 @@ class TestHalogenBondCorrection:
             ],
         )
 
-        xb = halogen_bond_correction(numbers, positions, damp, rscale, bond_strength)
-        assert torch.allclose(ref, torch.sum(xb, dim=-1))
+        xb = Halogen(numbers, positions, damp, rscale, bond_strength)
+        energy = xb.get_energy()
+        assert torch.allclose(ref, torch.sum(energy, dim=-1))
 
     @pytest.mark.grad
     @pytest.mark.parametrize("sample_name", ["br2nh3", "br2och2"])
@@ -133,9 +134,8 @@ class TestHalogenBondCorrection:
         positions = sample["positions"].type(dtype)
 
         def func(damping, rscaling):
-            return halogen_bond_correction(
-                numbers, positions, damping, rscaling, bond_strength
-            )
+            xb = Halogen(numbers, positions, damping, rscaling, bond_strength)
+            return xb.get_energy()
 
         # pylint: disable=import-outside-toplevel
         from torch.autograd.gradcheck import gradcheck
