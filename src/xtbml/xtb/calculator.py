@@ -10,7 +10,10 @@ import torch
 
 from .. import scf
 from ..basis import IndexHelper
+from ..classical.halogen import Halogen, new_halogen
+from ..classical.repulsion import Repulsion, new_repulsion
 from ..coulomb import secondorder, thirdorder, averaging_function
+from ..dispersion import new_dispersion, Dispersion
 from ..data import cov_rad_d3
 from ..interaction import Interaction, InteractionList
 from ..ncoord import ncoord
@@ -18,6 +21,13 @@ from ..param import Param, get_elem_param, get_elem_angular
 from ..typing import Tensor
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian
+from ..utils import Timers
+
+
+class Result:
+    """
+    Result container of the calculation.
+    """
 
 
 class Calculator:
@@ -30,6 +40,15 @@ class Calculator:
 
     hamiltonian: Hamiltonian
     """Core Hamiltonian definition."""
+
+    dispersion: Dispersion | None = None
+    """Dispersion definition."""
+
+    repulsion: Repulsion | None = None
+    """Repulsion definition."""
+
+    halogen: Halogen | None = None
+    """Halogen bond definition."""
 
     interaction: Interaction
     """Interactions to minimize in self-consistent iterations."""
@@ -80,6 +99,10 @@ class Calculator:
 
         self.interaction = InteractionList(es2, es3, interaction)
 
+        self.halogen = new_halogen(numbers, positions, par)
+        self.dispersion = new_dispersion(numbers, positions, par)
+        self.repulsion = new_repulsion(numbers, positions, par)
+
     def singlepoint(
         self,
         numbers: Tensor,
@@ -105,11 +128,24 @@ class Calculator:
             Atom resolved energies.
         """
 
+        result = Result()
+        timer = Timers()
+        timer.start("total")
+
+        # overlap
+        timer.start("overlap")
+        overlap = self.hamiltonian.overlap()
+        timer.stop("overlap")
+
+        # Hamiltonian
+        timer.start("h0")
         rcov = cov_rad_d3[numbers]
         cn = ncoord.get_coordination_number(numbers, positions, ncoord.exp_count, rcov)
-
-        overlap = self.hamiltonian.overlap()
         hcore = self.hamiltonian.build(overlap, cn)
+        timer.stop("h0")
+
+        # SCF
+        timer.start("scf")
 
         # Obtain the reference occupations and total number of electrons
         n0 = self.hamiltonian.get_occupation()
@@ -134,5 +170,26 @@ class Calculator:
             fwd_options=fwd_options,
             use_potential=True,
         )
+
+        timer.stop("scf")
+
+        if self.halogen is not None:
+            timer.start("halogen")
+            results["e_xbond"] = self.halogen.get_energy()
+            timer.stop("halogen")
+
+        if self.dispersion is not None:
+            timer.start("dispersion")
+            results["e_disp"] = self.dispersion.get_energy()
+            timer.stop("dispersion")
+
+        if self.repulsion is not None:
+            timer.start("repulsion")
+            results["e_rep"] = self.repulsion.get_energy()
+            timer.stop("repulsion")
+
+        timer.stop("total")
+
+        print(timer.print_times())
 
         return results
