@@ -9,7 +9,7 @@ from ..typing import Tensor
 
 def new_dispersion(numbers: Tensor, positions: Tensor, par: Param) -> Dispersion:
     """
-    Create new instance of DispersionD3 class.
+    Create new instance of the Dispersion class.
 
     Parameters
     ----------
@@ -22,8 +22,8 @@ def new_dispersion(numbers: Tensor, positions: Tensor, par: Param) -> Dispersion
 
     Returns
     -------
-    Halogen
-        Instance of the Halogen class.
+    Dispersion
+        Instance of the Dispersion class.
 
     Raises
     ------
