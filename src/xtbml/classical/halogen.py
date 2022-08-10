@@ -200,6 +200,25 @@ def get_energy(
 
 
 class Halogen:
+
+    numbers: Tensor
+    """ Atomic numbers of all atoms."""
+
+    positions: Tensor
+    """Cartesian coordinates of all atoms."""
+
+    damp: Tensor
+    """Damping factor in Lennard-Jones like potential."""
+
+    rscale: Tensor
+    """Scaling factor for atomic radii."""
+
+    bond_strength: Tensor
+    """Halogen bond strengths."""
+
+    cutoff: Tensor = torch.tensor(20.0)
+    """Real space cutoff for halogen bonding interactions (default: 20.0)."""
+
     def __init__(
         self,
         numbers: Tensor,
@@ -217,22 +236,8 @@ class Halogen:
         self.cutoff = cutoff
 
     def get_energy(self) -> Tensor:
-        """Handle batchwise and single calculation of halogen bonding energy.
-
-        Parameters
-        ----------
-        numbers : Tensor
-            Atomic numbers of all atoms.
-        positions : Tensor
-            Cartesian coordinates of all atoms.
-        damp : Tensor
-            Damping factor in Lennard-Jones like potential.
-        rscale : Tensor
-            Scaling factor for atomic radii.
-        bond_strength : Tensor
-            Halogen bond strengths.
-        cutoff : Tensor, optional
-            Real space cutoff for halogen bonding interactions (default: 20.0).
+        """
+        Handle batchwise and single calculation of halogen bonding energy.
 
         Returns
         -------
