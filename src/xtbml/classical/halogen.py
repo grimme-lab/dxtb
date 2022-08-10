@@ -4,8 +4,9 @@ from __future__ import annotations
 import torch
 
 
+
 from ..data import atomic_rad
-from ..param import Element
+from ..param import Element, Param
 from ..typing import Tensor
 
 
@@ -272,3 +273,36 @@ class Halogen:
             )
 
         return energies
+
+
+def new_halogen(numbers: Tensor, positions: Tensor, par: Param) -> Halogen:
+    """Create new instance of Halogen class.
+
+    Parameters
+    ----------
+    numbers : Tensor
+        Atomic numbers of all atoms.
+    positions : Tensor
+        Cartesian coordinates of all atoms.
+    par : Param
+        Representation of an extended tight-binding model.
+
+    Returns
+    -------
+    Halogen
+        Instance of the Halogen class.
+
+    Raises
+    ------
+    ValueError
+        If parametrization does not contain a halogen bond correction.
+    """
+
+    if par.halogen is None:
+        raise ValueError("No halogen bond correction parameters provided.")
+
+    damp = torch.tensor(par.halogen.classical.damping)
+    rscale = torch.tensor(par.halogen.classical.rscale)
+    bond_strength = get_xbond(par.element)
+
+    return Halogen(numbers, positions, damp, rscale, bond_strength)
