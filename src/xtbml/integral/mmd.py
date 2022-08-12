@@ -43,25 +43,42 @@ def _e_function(E, xij, rpi, rpj):
     """
 
     E[:] = 0.0
+
+    # do j = 0 and i = 0 (starting coefficient of recursion, zeroth order HP)
     E[..., 0, 0, 0] = 1.0
+
+    # do j = 0 for all i > 0 (all orders of HP)
     for i in range(1, E.shape[-3]):
+
+        # t = 0 (excludes t - 1 term)
         E[..., i, 0, 0] = rpi * E[..., i - 1, 0, 0] + E[..., i - 1, 0, 1]
+
+        # t > 0
         for n in range(1, i):
             E[..., i, 0, n] = (
                 xij * E[..., i - 1, 0, n - 1]
                 + rpi * E[..., i - 1, 0, n]
                 + (1 + n) * E[..., i - 1, 0, n + 1]
             )
+
+        # t = tmax (excludes t + 1 term)
         E[..., i, 0, i] = xij * E[..., i - 1, 0, i - 1] + rpi * E[..., i - 1, 0, i]
+
+    # do all j > 0 for all i's (all orders of HP)
     for j in range(1, E.shape[-2]):
         for i in range(0, E.shape[-3]):
+            # t = 0 (excludes t - 1 term)
             E[..., i, j, 0] = rpj * E[..., i, j - 1, 0] + E[..., i, j - 1, 1]
+
+            # t > 0
             for n in range(1, i + j):
                 E[..., i, j, n] = (
                     xij * E[..., i, j - 1, n - 1]
                     + rpj * E[..., i, j - 1, n]
                     + (1 + n) * E[..., i, j - 1, n + 1]
                 )
+
+            # t = tmax (excludes t + 1 term)
             E[..., i, j, i + j] = (
                 xij * E[..., i, j - 1, i + j - 1] + rpj * E[..., i, j - 1, i + j]
             )
@@ -76,7 +93,7 @@ _e_function_jit = torch.jit.trace(
         torch.tensor(1.0),
         torch.rand((3,)),
         torch.rand((3,)),
-    )
+    ),
 )
 
 
@@ -166,7 +183,7 @@ _e_function_grad_jit = torch.jit.trace(
         torch.tensor(1.0),
         torch.tensor(1.0),
         torch.tensor(1.0),
-    )
+    ),
 )
 
 
@@ -236,7 +253,6 @@ class EFunction(torch.autograd.Function):
             and the product Gaussian center.
         """
 
-        shape = ctx.shape
         E, xij, rpi, rpj = ctx.saved_tensors
         xij_grad, rpi_grad, rpj_grad, _ = ctx.needs_input_grad
         xij_bar = rpi_bar = rpj_bar = None
@@ -327,9 +343,9 @@ nlm_cart = (
 
 
 def overlap(
-    angular: Tuple[Tensor, Tensor],
-    alpha: Tuple[Tensor, Tensor],
-    coeff: Tuple[Tensor, Tensor],
+    angular: tuple[Tensor, Tensor],
+    alpha: tuple[Tensor, Tensor],
+    coeff: tuple[Tensor, Tensor],
     vec: Tensor,
 ) -> Tensor:
     """
@@ -357,24 +373,32 @@ def overlap(
     ncartj = torch.div((lj + 1) * (lj + 2), 2, rounding_mode="floor")
     r2 = torch.sum(vec.pow(2), -1)
 
-    s3d = vec.new_zeros((*vec.shape[:-1], ncarti, ncartj))
+    shape = [*vec.shape[:-1], ncarti, ncartj]
+    s3d = vec.new_zeros(*shape)
 
     try:
         itrafo = transform.trafo[li].type(s3d.dtype).to(s3d.device)
         jtrafo = transform.trafo[lj].type(s3d.dtype).to(s3d.device)
-    except IndexError:
-        raise IntegralTransformError()
+    except IndexError as e:
+        raise IntegralTransformError() from e
 
     ai, aj = alpha[0].unsqueeze(-1), alpha[1].unsqueeze(-2)
     ci, cj = coeff[0].unsqueeze(-1), coeff[1].unsqueeze(-2)
     eij = ai + aj
     oij = 1.0 / eij
     xij = 0.5 * oij
+
+    # p * (R_A - R_B)² with p = a*b/(a+b)
     est = ai * aj * oij * r2.unsqueeze(-1).unsqueeze(-2)
+
+    # K_AB * Gaussian integral (√(pi/(a+b))) in 3D * c_A * c_B
     sij = torch.exp(-est) * sqrtpi3 * torch.pow(oij, 1.5) * ci * cj
+
     rpi = +vec.unsqueeze(-1).unsqueeze(-1) * aj * oij
     rpj = -vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
-    E = e_function(xij, rpi, rpj, (*vec.shape, ai.shape[-2], aj.shape[-1], li + 1, lj + 1))
+    E = e_function(
+        xij, rpi, rpj, (*vec.shape, ai.shape[-2], aj.shape[-1], li + 1, lj + 1)
+    )
     for mli in range(s3d.shape[-2]):
         for mlj in range(s3d.shape[-1]):
             mi = nlm_cart[li][mli, :]
@@ -386,5 +410,5 @@ def overlap(
                 * E[..., 2, :, :, mi[2], mj[2], 0]
             ).sum((-2, -1))
 
-    overlap = torch.einsum("...ji,...jk,...kl->...il", itrafo, s3d, jtrafo)
-    return overlap
+    # transform to cartesian basis functions (itrafo^T * S * jtrafo)
+    return torch.einsum("...ji,...jk,...kl->...il", itrafo, s3d, jtrafo)
