@@ -68,6 +68,17 @@ class Result:
         "density",
     ]
 
+    def __init__(self, positions: Tensor):
+        shape = positions.shape[:-1]
+        device = positions.device
+        dtype = positions.dtype
+
+        self.scf = torch.zeros(shape, dtype=dtype, device=device)
+        self.dispersion = torch.zeros(shape, dtype=dtype, device=device)
+        self.repulsion = torch.zeros(shape, dtype=dtype, device=device)
+        self.halogen = torch.zeros(shape, dtype=dtype, device=device)
+        self.total = torch.zeros(shape, dtype=dtype, device=device)
+
 
 class Calculator:
     """
@@ -167,7 +178,7 @@ class Calculator:
             Results.
         """
 
-        result = Result()
+        result = Result(positions)
         timer = Timers()
         timer.start("total")
 
@@ -211,8 +222,8 @@ class Calculator:
             fwd_options=fwd_options,
             use_potential=True,
         )
-        result.scf = scf_results["energy"]
-        result.total = result.scf
+        result.scf += scf_results["energy"]
+        result.total += scf_results["energy"]
         timer.stop("scf")
 
         if self.halogen is not None:
