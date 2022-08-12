@@ -195,4 +195,4 @@ data/*/benchmark*
 models/
 
 # other
-devel.py
+devel.*

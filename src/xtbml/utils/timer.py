@@ -139,11 +139,12 @@ class Timers:
         print(width * "-")
 
         for label, t in d.items():
-            print("{:<20} {:<18.3f} {:<12.3f}".format(label, t, t / total))
+            perc = t / total * 100
+            print(f"{label:<20} {t:<18.3f} {perc:^10.2f}")
 
         print(width * "-")
-        print("{:<20} {:<18.3f} {:<12.3f}".format("sum", s, s / total))
-        print("{:<20} {:<18.3f} {:<12.3f}".format("total", total, total / total))
+        print("{:<20} {:<18.3f} {:^9.2f}".format("sum", s, s / total * 100))
+        print("{:<20} {:<18.3f} {:^9.2f}".format("total", total, total / total * 100))
 
         print("")
         print(width * "*")

@@ -212,27 +212,30 @@ class Calculator:
             use_potential=True,
         )
         result.scf = scf_results["energy"]
-
+        result.total = result.scf
         timer.stop("scf")
 
         if self.halogen is not None:
             timer.start("halogen")
             result.halogen = self.halogen.get_energy()
+            result.total += result.halogen
             timer.stop("halogen")
 
         if self.dispersion is not None:
             timer.start("dispersion")
             result.dispersion = self.dispersion.get_energy()
+            result.total += result.dispersion
             timer.stop("dispersion")
 
         if self.repulsion is not None:
             timer.start("repulsion")
             result.repulsion = self.repulsion.get_energy()
+            result.total += result.repulsion
             timer.stop("repulsion")
 
         timer.stop("total")
 
-        if verbosity > 1:
-            print(timer.print_times())
+        if verbosity > -1:
+            timer.print_times()
 
         return result
