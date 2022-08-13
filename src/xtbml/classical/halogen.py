@@ -4,7 +4,6 @@ from __future__ import annotations
 import torch
 
 
-
 from ..data import atomic_rad
 from ..param import Element, Param
 from ..typing import Tensor
@@ -64,7 +63,7 @@ def get_xbond_list(numbers: Tensor, positions: Tensor, cutoff: Tensor) -> Tensor
                 adj.append([i, j, 0])
 
     # convert to tensor
-    adj = torch.tensor(adj)
+    adj = torch.tensor(adj, dtype=torch.long, device=positions.device)
 
     # find nearest neighbor of halogen
     for i in range(adj.size(-2)):
@@ -120,7 +119,9 @@ def get_xbond_energy(
     xbond = bond_strength[numbers]
 
     # init tensor for atomwise energies
-    energies = torch.zeros(numbers.size(-1), dtype=positions.dtype)
+    energies = torch.zeros(
+        numbers.size(-1), dtype=positions.dtype, device=positions.device
+    )
 
     for i in range(adj.size(-2)):
         xat = adj[i][0]  # index of halogen atom
@@ -246,18 +247,18 @@ class Halogen:
             Atomwise energy contributions from halogen bonds.
         """
 
-        if len(self.numbers.shape) > 1:
+        if self.numbers.ndim > 1:
             energies = torch.stack(
                 [
                     get_energy(
-                        self.numbers[i],
-                        self.positions[i],
+                        self.numbers[_batch],
+                        self.positions[_batch],
                         self.damp,
                         self.rscale,
                         self.bond_strength,
                         self.cutoff,
                     )
-                    for i in range(self.numbers.shape[0])
+                    for _batch in range(self.numbers.shape[0])
                 ],
                 dim=0,
             )
@@ -275,7 +276,9 @@ class Halogen:
         return energies
 
 
-def new_halogen(numbers: Tensor, positions: Tensor, par: Param) -> Halogen:
+def new_halogen(
+    numbers: Tensor, positions: Tensor, par: Param, cutoff: Tensor = torch.tensor(20.0)
+) -> Halogen | None:
     """Create new instance of Halogen class.
 
     Parameters
@@ -286,11 +289,13 @@ def new_halogen(numbers: Tensor, positions: Tensor, par: Param) -> Halogen:
         Cartesian coordinates of all atoms.
     par : Param
         Representation of an extended tight-binding model.
+    cutoff : Tensor
+        Real space cutoff for halogen bonding interactions (default: 20.0).
 
     Returns
     -------
-    Halogen
-        Instance of the Halogen class.
+    Halogen | None
+        Instance of the Halogen class or `None` if no halogen bond correction is used.
 
     Raises
     ------
@@ -299,10 +304,10 @@ def new_halogen(numbers: Tensor, positions: Tensor, par: Param) -> Halogen:
     """
 
     if par.halogen is None:
-        raise ValueError("No halogen bond correction parameters provided.")
+        return None
 
     damp = torch.tensor(par.halogen.classical.damping)
     rscale = torch.tensor(par.halogen.classical.rscale)
     bond_strength = get_xbond(par.element)
 
-    return Halogen(numbers, positions, damp, rscale, bond_strength)
+    return Halogen(numbers, positions, damp, rscale, bond_strength, cutoff=cutoff)

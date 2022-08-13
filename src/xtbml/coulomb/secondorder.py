@@ -45,6 +45,7 @@ from .average import AveragingFunction, harmonic_average
 from ..basis import IndexHelper
 from ..interaction import Interaction
 from ..typing import Tensor
+from ..utils import real_pairs
 
 
 class ES2(Interaction):
@@ -128,10 +129,8 @@ class ES2(Interaction):
 
         h = ihelp.spread_uspecies_to_atom(self.hubbard)
 
-        # masks
-        real = h != 0
-        mask = real.unsqueeze(-2) * real.unsqueeze(-1)
-        mask.diagonal(dim1=-2, dim2=-1).fill_(False)
+        # mask
+        mask = real_pairs(numbers, diagonal=True)
 
         # all distances to the power of "gexp" (R^2_AB from Eq.26)
         dist_gexp = torch.where(
@@ -205,17 +204,17 @@ class ES2(Interaction):
         return 1.0 / torch.pow(dist_gexp + torch.pow(avg, -self.gexp), 1.0 / self.gexp)
 
     def get_atom_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
+        self, charges: Tensor, ihelp: IndexHelper, cache: ES2.Cache
     ) -> Tensor:
         return 0.5 * charges * self.get_atom_potential(charges, ihelp, cache)
 
     def get_shell_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
+        self, charges: Tensor, ihelp: IndexHelper, cache: ES2.Cache
     ) -> Tensor:
         return 0.5 * charges * self.get_shell_potential(charges, ihelp, cache)
 
     def get_atom_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
+        self, charges: Tensor, ihelp: IndexHelper, cache: ES2.Cache
     ) -> Tensor:
         return (
             torch.zeros_like(charges)
@@ -224,7 +223,7 @@ class ES2(Interaction):
         )
 
     def get_shell_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
+        self, charges: Tensor, ihelp: IndexHelper, cache: ES2.Cache
     ) -> Tensor:
         return (
             torch.einsum("...ik,...k->...i", cache.mat, charges)

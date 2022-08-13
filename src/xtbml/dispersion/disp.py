@@ -1,13 +1,15 @@
 from __future__ import annotations
+import warnings
 
 from .d3 import DispersionD3
 from .d4 import DispersionD4
 from .type import Dispersion
+from ..exceptions import ParameterWarning
 from ..param import Param
 from ..typing import Tensor
 
 
-def new_dispersion(numbers: Tensor, positions: Tensor, par: Param) -> Dispersion:
+def new_dispersion(numbers: Tensor, positions: Tensor, par: Param) -> Dispersion | None:
     """
     Create new instance of the Dispersion class.
 
@@ -22,8 +24,8 @@ def new_dispersion(numbers: Tensor, positions: Tensor, par: Param) -> Dispersion
 
     Returns
     -------
-    Dispersion
-        Instance of the Dispersion class.
+    Dispersion | None
+        Instance of the Dispersion class or `None` if no dispersion is used.
 
     Raises
     ------
@@ -32,7 +34,9 @@ def new_dispersion(numbers: Tensor, positions: Tensor, par: Param) -> Dispersion
     """
 
     if par.dispersion is None:
-        raise ValueError("No dispersion schemes provided.")
+        # TODO: Dispersion is used in all models, so error or just warning?
+        warnings.warn("No dispersion scheme found.", ParameterWarning)
+        return None
 
     if par.dispersion.d3 is not None and par.dispersion.d4 is None:
         # FIXME: TypeError: rational_damping() got an unexpected keyword argument 's9'
@@ -55,4 +59,7 @@ def new_dispersion(numbers: Tensor, positions: Tensor, par: Param) -> Dispersion
         }
         return DispersionD4(numbers, positions, param)
 
-    raise ValueError("No parameters for D3 or D4 found. Or for both (please decide).")
+    if par.dispersion.d3 is not None and par.dispersion.d4 is not None:
+        raise ValueError("Parameters for both D3 and D4 found. Please decide.")
+
+    
