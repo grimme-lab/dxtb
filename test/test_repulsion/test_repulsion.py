@@ -21,9 +21,6 @@ from .samples import samples
 class TestRepulsion:
     """Testing the calculation of repulsion energy and gradients."""
 
-    cutoff: Tensor = torch.tensor(25.0)
-    """Cutoff for repulsion calculation."""
-
     @classmethod
     def setup_class(cls):
         print(cls.__name__)
@@ -40,10 +37,9 @@ class TestRepulsion:
 
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
-        cutoff = self.cutoff.type(dtype)
         ref = sample["gfn1"].type(dtype)
 
-        rep = new_repulsion(numbers, positions, GFN1_XTB, cutoff)
+        rep = new_repulsion(numbers, positions, GFN1_XTB)
         if rep is None:
             assert False
 
@@ -79,9 +75,8 @@ class TestRepulsion:
                 sample2["gfn1"].type(dtype),
             ],
         )
-        cutoff = self.cutoff.type(dtype)
 
-        rep = new_repulsion(numbers, positions, GFN1_XTB, cutoff)
+        rep = new_repulsion(numbers, positions, GFN1_XTB)
         if rep is not None:
             ihelp = IndexHelper.from_numbers(
                 numbers, get_elem_angular(GFN1_XTB.element)
@@ -102,9 +97,8 @@ class TestRepulsion:
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
         positions.requires_grad_(True)
-        cutoff = self.cutoff.type(dtype)
 
-        rep = new_repulsion(numbers, positions, GFN1_XTB, cutoff)
+        rep = new_repulsion(numbers, positions, GFN1_XTB)
         if rep is None:
             assert False
 
@@ -133,9 +127,8 @@ class TestRepulsion:
 
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
-        cutoff = self.cutoff.type(dtype)
 
-        rep = new_repulsion(numbers, positions, GFN1_XTB, cutoff)
+        rep = new_repulsion(numbers, positions, GFN1_XTB)
         if rep is None:
             assert False
 

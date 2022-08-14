@@ -44,6 +44,8 @@ from ..param import Param, get_elem_param
 from ..typing import Tensor, TensorLike
 from ..utils import real_pairs
 
+default_cutoff: float = 25.0
+
 
 class Repulsion(TensorLike):
     """
@@ -76,11 +78,23 @@ class Repulsion(TensorLike):
     the repulsion energy for light elements, i.e., H and He (only GFN2).
     """
 
-    cutoff: Tensor = torch.tensor(25.0)
-    """Real space cutoff for halogen bonding interactions (default: 20.0)."""
+    cutoff: float = default_cutoff
+    """Real space cutoff for repulsion interactions (default: 25.0)."""
 
     class Cache:
         """Cache for the repulsion parameters."""
+
+        arep: Tensor
+        """Atom-specific screening parameters."""
+
+        zeff: Tensor
+        """Effective nuclear charges."""
+
+        kexp: Tensor
+        """
+        Scaling of the interatomic distance in the exponential damping function 
+        of the repulsion energy.
+        """
 
         __slots__ = ["alpha", "zeff", "kexp"]
 
@@ -103,8 +117,10 @@ class Repulsion(TensorLike):
         zeff: Tensor,
         kexp: float,
         kexp_light: float | None = None,
-        cutoff: Tensor = torch.tensor(25.0),
+        cutoff: float = default_cutoff,
     ) -> None:
+        super().__init__(positions.device, positions.dtype)
+
         self.numbers = numbers
         self.par = par
         self.arep = arep
@@ -112,8 +128,6 @@ class Repulsion(TensorLike):
         self.kexp = kexp
         self.kexp_light = kexp_light
         self.cutoff = cutoff
-
-        super().__init__(positions.device, positions.dtype)
 
     def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> "Repulsion.Cache":
         """
@@ -196,7 +210,7 @@ class Repulsion(TensorLike):
 
         # Eq.13: repulsion energy
         dE = torch.where(
-            mask * (distances <= self.cutoff),
+            mask * (distances <= distances.new_tensor(self.cutoff)),
             cache.zeff * exp_term / distances,
             distances.new_tensor(0.0),
         )
@@ -264,7 +278,7 @@ def new_repulsion(
     numbers: Tensor,
     positions: Tensor,
     par: Param,
-    cutoff: Tensor = torch.tensor(25.0),
+    cutoff: float = default_cutoff,
 ) -> Repulsion | None:
     """
     Create new instance of Repulsion class.
@@ -277,7 +291,8 @@ def new_repulsion(
         Cartesian coordinates of all atoms.
     par : Param
         Representation of an extended tight-binding model.
-
+    cutoff : float
+        Real space cutoff for repulsion interactions (default: 25.0).
 
     Returns
     -------
