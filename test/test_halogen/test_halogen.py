@@ -20,7 +20,7 @@ class TestHalogen:
 
     @classmethod
     def setup_class(cls):
-        print(cls.__name__)
+        print(f"\n{cls.__name__}")
 
         if GFN1_XTB.halogen is None:
             raise ValueError("No halogen bond correction parameters provided.")
@@ -168,13 +168,13 @@ class TestHalogen:
         if GFN1_XTB.halogen is None:
             assert False
 
-        damp = torch.tensor(
+        _damp = torch.tensor(
             GFN1_XTB.halogen.classical.damping, dtype=dtype, requires_grad=True
         )
-        rscale = torch.tensor(
+        _rscale = torch.tensor(
             GFN1_XTB.halogen.classical.rscale, dtype=dtype, requires_grad=True
         )
-        bond_strength = get_elem_param(
+        _xbond = get_elem_param(
             torch.unique(numbers),
             GFN1_XTB.element,
             "xbond",
@@ -183,8 +183,8 @@ class TestHalogen:
             requires_grad=True,
         )
 
-        def func(damping: Tensor, rscaling: Tensor, xbond: Tensor) -> Tensor:
-            xb = Halogen(numbers, positions, damping, rscaling, xbond)
+        def func(damp: Tensor, rscale: Tensor, xbond: Tensor) -> Tensor:
+            xb = Halogen(numbers, positions, damp, rscale, xbond)
 
             cache = xb.get_cache(numbers, ihelp)
             return xb.get_energy(positions, cache)
@@ -193,4 +193,4 @@ class TestHalogen:
         from torch.autograd.gradcheck import gradcheck
 
         # NOTE: For smaller values of atol, it fails.
-        assert gradcheck(func, (damp, rscale, bond_strength))
+        assert gradcheck(func, (_damp, _rscale, _xbond))

@@ -61,18 +61,18 @@ class Repulsion(TensorLike):
     """ Atomic numbers of all atoms."""
 
     arep: Tensor
-    """Atom-specific screening parameters."""
+    """Atom-specific screening parameters for unique species."""
 
     zeff: Tensor
-    """Effective nuclear charges."""
+    """Effective nuclear charges for unique species."""
 
-    kexp: float
+    kexp: Tensor
     """
     Scaling of the interatomic distance in the exponential damping function of
     the repulsion energy.
     """
 
-    kexp_light: float | None = None
+    kexp_light: Tensor | None = None
     """
     Scaling of the interatomic distance in the exponential damping function of
     the repulsion energy for light elements, i.e., H and He (only GFN2).
@@ -80,6 +80,27 @@ class Repulsion(TensorLike):
 
     cutoff: float = default_cutoff
     """Real space cutoff for repulsion interactions (default: 25.0)."""
+
+    def __init__(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        arep: Tensor,
+        zeff: Tensor,
+        kexp: Tensor,
+        kexp_light: Tensor | None = None,
+        cutoff: float = default_cutoff,
+    ) -> None:
+        super().__init__(positions.device, positions.dtype)
+
+        self.numbers = numbers
+        self.arep = arep.to(self.device).type(self.dtype)
+        self.zeff = zeff.to(self.device).type(self.dtype)
+        self.cutoff = cutoff
+
+        self.kexp = kexp.to(self.device).type(self.dtype)
+        if kexp_light is not None:
+            self.kexp_light = kexp_light.to(self.device).type(self.dtype)
 
     class Cache:
         """Cache for the repulsion parameters."""
@@ -108,27 +129,6 @@ class Repulsion(TensorLike):
             self.zeff = zeff
             self.kexp = kexp
 
-    def __init__(
-        self,
-        numbers: Tensor,
-        positions: Tensor,
-        par: Param,
-        arep: Tensor,
-        zeff: Tensor,
-        kexp: float,
-        kexp_light: float | None = None,
-        cutoff: float = default_cutoff,
-    ) -> None:
-        super().__init__(positions.device, positions.dtype)
-
-        self.numbers = numbers
-        self.par = par
-        self.arep = arep
-        self.zeff = zeff
-        self.kexp = kexp
-        self.kexp_light = kexp_light
-        self.cutoff = cutoff
-
     def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> "Repulsion.Cache":
         """
         Store variables for energy and gradient calculation.
@@ -147,7 +147,7 @@ class Repulsion(TensorLike):
         """
 
         unique = torch.unique(numbers)
-        kexp = torch.full(unique.shape, self.kexp, dtype=self.dtype, device=self.device)
+        kexp = self.kexp.expand(unique.shape)
         if self.kexp_light is not None:
             kexp = torch.where(unique > 2, kexp.new_tensor(self.kexp_light), kexp)
 
@@ -310,12 +310,16 @@ def new_repulsion(
         warnings.warn("No repulsion scheme found.", ParameterWarning)
         return None
 
-    kexp = par.repulsion.effective.kexp
-    kexp_light = par.repulsion.effective.kexp_light
+    kexp = torch.tensor(par.repulsion.effective.kexp)
+    kexp_light = (
+        torch.tensor(par.repulsion.effective.kexp_light)
+        if par.repulsion.effective.kexp_light
+        else None
+    )
 
     # get parameters for unique species
     unique = torch.unique(numbers)
     arep = get_elem_param(unique, par.element, "arep", pad_val=0)
     zeff = get_elem_param(unique, par.element, "zeff", pad_val=0)
 
-    return Repulsion(numbers, positions, par, arep, zeff, kexp, kexp_light, cutoff)
+    return Repulsion(numbers, positions, arep, zeff, kexp, kexp_light, cutoff)

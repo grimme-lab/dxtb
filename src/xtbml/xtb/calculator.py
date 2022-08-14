@@ -235,9 +235,8 @@ class Calculator:
 
         if self.dispersion is not None:
             timer.start("dispersion")
-            cache_disp = self.dispersion.get_cache(numbers, self.ihelp)
-            result.dispersion = self.dispersion.get_energy(positions, cache_disp)
-
+            # cache_disp = self.dispersion.get_cache(numbers, self.ihelp)
+            # result.dispersion = self.dispersion.get_energy(positions, cache_disp)
             result.dispersion = self.dispersion.get_energy()
             result.total += result.dispersion
             timer.stop("dispersion")
@@ -251,7 +250,7 @@ class Calculator:
 
         timer.stop("total")
 
-        if verbosity > -1:
+        if verbosity > 1:
             timer.print_times()
 
         return result

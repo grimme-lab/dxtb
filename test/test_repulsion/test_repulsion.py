@@ -1,7 +1,7 @@
 """
 Run tests for repulsion contribution.
 
-(Note that the analytical gradient tests fail for `torch.float32`.)
+(Note that the analytical gradient tests fail for `torch.float`.)
 """
 
 from __future__ import annotations
@@ -12,7 +12,8 @@ import pytest
 from xtbml.basis.indexhelper import IndexHelper
 from xtbml.classical import Repulsion, new_repulsion
 from xtbml.exlibs.tbmalt import batch
-from xtbml.param import GFN1_XTB, get_elem_angular
+from xtbml.param import get_elem_angular, get_elem_param
+from xtbml.param import GFN1_XTB as par
 from xtbml.typing import Tensor
 
 from .samples import samples
@@ -23,9 +24,9 @@ class TestRepulsion:
 
     @classmethod
     def setup_class(cls):
-        print(cls.__name__)
+        print(f"\n{cls.__name__}")
 
-        if GFN1_XTB.repulsion is None:
+        if par.repulsion is None:
             raise ValueError("GFN1-xTB repulsion not available")
 
     @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -39,11 +40,11 @@ class TestRepulsion:
         positions = sample["positions"].type(dtype)
         ref = sample["gfn1"].type(dtype)
 
-        rep = new_repulsion(numbers, positions, GFN1_XTB)
+        rep = new_repulsion(numbers, positions, par)
         if rep is None:
             assert False
 
-        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         cache = rep.get_cache(numbers, ihelp)
         e = rep.get_energy(positions, cache)
 
@@ -76,33 +77,31 @@ class TestRepulsion:
             ],
         )
 
-        rep = new_repulsion(numbers, positions, GFN1_XTB)
-        if rep is not None:
-            ihelp = IndexHelper.from_numbers(
-                numbers, get_elem_angular(GFN1_XTB.element)
-            )
-            cache = rep.get_cache(numbers, ihelp)
-            e = rep.get_energy(positions, cache)
+        rep = new_repulsion(numbers, positions, par)
+        if rep is None:
+            assert False
 
-            assert pytest.approx(ref, abs=tol) == e.sum(-1)
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+        cache = rep.get_cache(numbers, ihelp)
+        e = rep.get_energy(positions, cache)
+
+        assert pytest.approx(ref, abs=tol) == e.sum(-1)
 
     @pytest.mark.grad
-    @pytest.mark.parametrize("dtype", [torch.float64])
+    @pytest.mark.parametrize("dtype", [torch.double])
     @pytest.mark.parametrize("name", ["SiH4", "01", "02", "03", "LYS_xao"])
     def test_grad_pos_backward(self, dtype: torch.dtype, name: str) -> None:
         tol = sqrt(torch.finfo(dtype).eps) * 10
 
         sample = samples[name]
-
         numbers = sample["numbers"]
-        positions = sample["positions"].type(dtype)
-        positions.requires_grad_(True)
+        positions = sample["positions"].type(dtype).requires_grad_(True)
 
-        rep = new_repulsion(numbers, positions, GFN1_XTB)
+        rep = new_repulsion(numbers, positions, par)
         if rep is None:
             assert False
 
-        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         cache = rep.get_cache(numbers, ihelp)
 
         # analytical gradient
@@ -118,21 +117,20 @@ class TestRepulsion:
 
         assert torch.allclose(grad_analytical, grad_backward, atol=tol)
 
-    @pytest.mark.parametrize("dtype", [torch.float64])
+    @pytest.mark.parametrize("dtype", [torch.double])
     @pytest.mark.parametrize("name", ["SiH4", "01", "02", "03", "LYS_xao"])
     def test_grad_pos_analytical(self, dtype: torch.dtype, name: str) -> None:
         tol = sqrt(torch.finfo(dtype).eps) * 10
 
         sample = samples[name]
-
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
 
-        rep = new_repulsion(numbers, positions, GFN1_XTB)
+        rep = new_repulsion(numbers, positions, par)
         if rep is None:
             assert False
 
-        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         cache = rep.get_cache(numbers, ihelp)
 
         # analytical gradient
@@ -143,47 +141,60 @@ class TestRepulsion:
 
         assert torch.allclose(grad_analytical, grad_numerical, atol=tol)
 
-    # @pytest.mark.grad
-    # @pytest.mark.parametrize("dtype", [torch.float64])
-    # @pytest.mark.parametrize("name", ["SiH4", "01", "02", "03", "LYS_xao"])
-    # def test_grad_param(self, dtype: torch.dtype, name: str) -> None:
-    #     """
-    #     Check a single analytical gradient of positions against numerical
-    #     gradient from `torch.autograd.gradcheck`.
+    @pytest.mark.grad
+    @pytest.mark.parametrize("dtype", [torch.double])
+    @pytest.mark.parametrize("name", ["SiH4", "01", "02", "03", "LYS_xao"])
+    def test_grad_param(self, dtype: torch.dtype, name: str) -> None:
+        """
+        Check a single analytical gradient of parameters against numerical
+        gradient from `torch.autograd.gradcheck`.
 
-    #     Args
-    #     ----
-    #     dtype : torch.dtype
-    #         Data type of the tensor.
+        Args
+        ----
+        dtype : torch.dtype
+            Data type of the tensor.
+        """
+        tol = sqrt(torch.finfo(dtype).eps) * 10
 
-    #     Note
-    #     ----
-    #     Although `torch.float32` raises a warning that the gradient check
-    #     without double precision will fail, it actually works here.
-    #     """
-    #     sample = samples[name]
+        sample = samples[name]
+        numbers = sample["numbers"]
+        positions = sample["positions"].type(dtype)
 
-    #     numbers = sample["numbers"]
-    #     positions = sample["positions"].type(dtype)
-    #     cutoff = self.cutoff.type(dtype)
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
 
-    #     rep = new_repulsion(numbers, positions, GFN1_XTB, cutoff)
-    #     if rep is None:
-    #         assert False
+        if par.repulsion is None:
+            assert False
 
-    #     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
-    #     cache = rep.get_cache(numbers, ihelp)
+        # variables to be differentiated
+        _arep = get_elem_param(
+            torch.unique(numbers),
+            par.element,
+            "arep",
+            pad_val=0,
+            dtype=dtype,
+            requires_grad=True,
+        )
+        _zeff = get_elem_param(
+            torch.unique(numbers),
+            par.element,
+            "zeff",
+            pad_val=0,
+            dtype=dtype,
+            requires_grad=True,
+        )
+        _kexp = torch.tensor(
+            par.repulsion.effective.kexp, dtype=dtype, requires_grad=True
+        )
 
-    #     # variable to be differentiated
-    #     positions.requires_grad_(True)
+        def func(arep: Tensor, zeff: Tensor, kexp: Tensor) -> Tensor:
+            rep = Repulsion(numbers, positions, arep, zeff, kexp)
+            cache = rep.get_cache(numbers, ihelp)
+            return rep.get_energy(positions, cache)
 
-    #     def func(positions: Tensor):
-    #         return rep.get_energy(positions, cache)
+        # pylint: disable=import-outside-toplevel
+        from torch.autograd.gradcheck import gradcheck
 
-    #     # pylint: disable=import-outside-toplevel
-    #     from torch.autograd.gradcheck import gradcheck
-
-    #     assert gradcheck(func, positions)
+        assert gradcheck(func, (_arep, _zeff, _kexp), atol=tol)
 
 
 def calc_numerical_gradient(

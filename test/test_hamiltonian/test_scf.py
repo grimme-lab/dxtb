@@ -48,10 +48,6 @@ def test_single2(dtype: torch.dtype, name: str):
     calc = Calculator(numbers, positions, par)
 
     result = calc.singlepoint(numbers, positions, charges, verbosity=0)
-    print(result.halogen)
-    print(result.dispersion)
-    print(result.repulsion)
-    print(result.scf)
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
 
 
