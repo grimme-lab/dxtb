@@ -61,6 +61,7 @@ def get_elem_param(
     pad_val: int = -1,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
+    requires_grad: bool = False,
 ) -> Tensor:
     """Obtain a element-wise parametrized quantity for selected atomic numbers.
 
@@ -112,7 +113,7 @@ def get_elem_param(
         for val in vals:
             l.append(val)
 
-    return torch.tensor(l, device=device, dtype=dtype)
+    return torch.tensor(l, device=device, dtype=dtype, requires_grad=requires_grad)
 
 
 def get_elem_angular(par_element: dict[str, Element]) -> dict[int, list[int]]:

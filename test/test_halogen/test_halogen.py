@@ -1,46 +1,37 @@
-"""Run tests for energy contribution from halogen bond correction."""
+"""
+Run tests for energy contribution from halogen bond correction.
+"""
 
 from __future__ import annotations
 import pytest
 import torch
 
-from xtbml.classical.halogen import get_xbond, Halogen
+from xtbml.basis import IndexHelper
+from xtbml.classical import Halogen, new_halogen
 from xtbml.exlibs.tbmalt import batch
-from xtbml.param.gfn1 import GFN1_XTB
-from xtbml.typing import Generator, Tensor, Tuple
+from xtbml.param import GFN1_XTB, get_elem_angular, get_elem_param
+from xtbml.typing import Tensor
 
 from .samples import samples
 
-FixtureParams = Tuple[Tensor, Tensor, Tensor]
 
-
-@pytest.fixture(name="param", scope="class")
-def fixture_param() -> Generator[FixtureParams, None, None]:
-    if GFN1_XTB.halogen is None:
-        raise ValueError("No halogen bond correction parameters provided.")
-
-    damp = torch.tensor(GFN1_XTB.halogen.classical.damping)
-    rscale = torch.tensor(GFN1_XTB.halogen.classical.rscale)
-    bond_strength = get_xbond(GFN1_XTB.element)
-
-    yield damp, rscale, bond_strength
-
-
-class TestHalogenBondCorrection:
+class TestHalogen:
     """Test the halogen bond correction."""
 
     @classmethod
     def setup_class(cls):
         print(cls.__name__)
 
-    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+        if GFN1_XTB.halogen is None:
+            raise ValueError("No halogen bond correction parameters provided.")
+
+    @pytest.mark.parametrize("dtype", [torch.float, torch.double])
     @pytest.mark.parametrize("name", ["br2nh3", "br2nh2o", "br2och2", "finch"])
-    def test_small(self, param: FixtureParams, dtype: torch.dtype, name: str) -> None:
+    def test_small(self, dtype: torch.dtype, name: str) -> None:
         """
         Test the halogen bond correction for small molecules taken from
         the tblite test suite.
         """
-        damp, rscale, bond_strength = _cast(param, dtype)
 
         sample = samples[name]
 
@@ -48,19 +39,23 @@ class TestHalogenBondCorrection:
         positions = sample["positions"].type(dtype)
         ref = sample["energy"].type(dtype)
 
-        xb = Halogen(numbers, positions, damp, rscale, bond_strength)
-        energy = xb.get_energy()
+        xb = new_halogen(numbers, positions, GFN1_XTB)
+        if xb is None:
+            assert False
+
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+        cache = xb.get_cache(numbers, ihelp)
+        energy = xb.get_energy(positions, cache)
         assert torch.allclose(ref, torch.sum(energy))
 
-    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+    @pytest.mark.parametrize("dtype", [torch.float, torch.double])
     @pytest.mark.parametrize("name", ["tmpda", "tmpda_mod"])
-    def test_large(self, param: FixtureParams, dtype: torch.dtype, name: str) -> None:
+    def test_large(self, dtype: torch.dtype, name: str) -> None:
         """
         TMPDA@XB-donor from S30L (15AB). Contains three iodine donors and two
         nitrogen acceptors. In the modified version, one I is replaced with
         Br and one O is added in order to obtain different donors and acceptors.
         """
-        damp, rscale, bond_strength = _cast(param, dtype)
 
         sample = samples[name]
 
@@ -68,14 +63,18 @@ class TestHalogenBondCorrection:
         positions = sample["positions"].type(dtype)
         ref = sample["energy"].type(dtype)
 
-        xb = Halogen(numbers, positions, damp, rscale, bond_strength)
-        energy = xb.get_energy()
+        xb = new_halogen(numbers, positions, GFN1_XTB)
+        if xb is None:
+            assert False
+
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+        cache = xb.get_cache(numbers, ihelp)
+        energy = xb.get_energy(positions, cache)
         assert torch.allclose(ref, torch.sum(energy))
 
-    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-    def test_no_xb(self, param: FixtureParams, dtype: torch.dtype) -> None:
+    @pytest.mark.parametrize("dtype", [torch.float, torch.double])
+    def test_no_xb(self, dtype: torch.dtype) -> None:
         """Test system without halogen bonds."""
-        damp, rscale, bond_strength = _cast(param, dtype)
 
         sample = samples["LYS_xao"]
 
@@ -83,17 +82,19 @@ class TestHalogenBondCorrection:
         positions = sample["positions"].type(dtype)
         ref = sample["energy"].type(dtype)
 
-        xb = Halogen(numbers, positions, damp, rscale, bond_strength)
-        energy = xb.get_energy()
+        xb = new_halogen(numbers, positions, GFN1_XTB)
+        if xb is None:
+            assert False
+
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+        cache = xb.get_cache(numbers, ihelp)
+        energy = xb.get_energy(positions, cache)
         assert torch.allclose(ref, torch.sum(energy))
 
-    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+    @pytest.mark.parametrize("dtype", [torch.float, torch.double])
     @pytest.mark.parametrize("name1", ["br2nh3", "br2och2"])
     @pytest.mark.parametrize("name2", ["finch", "tmpda"])
-    def test_batch(
-        self, param: FixtureParams, dtype: torch.dtype, name1: str, name2: str
-    ) -> None:
-        damp, rscale, bond_strength = _cast(param, dtype)
+    def test_batch(self, dtype: torch.dtype, name1: str, name2: str) -> None:
 
         sample1, sample2 = samples[name1], samples[name2]
 
@@ -116,49 +117,80 @@ class TestHalogenBondCorrection:
             ],
         )
 
-        xb = Halogen(numbers, positions, damp, rscale, bond_strength)
-        energy = xb.get_energy()
+        xb = new_halogen(numbers, positions, GFN1_XTB)
+        if xb is None:
+            assert False
+
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+        cache = xb.get_cache(numbers, ihelp)
+        energy = xb.get_energy(positions, cache)
         assert torch.allclose(ref, torch.sum(energy, dim=-1))
 
     @pytest.mark.grad
-    @pytest.mark.parametrize("sample_name", ["br2nh3", "br2och2"])
-    def stest_param_grad(self, param: FixtureParams, sample_name: str):
-        dtype = torch.float64
-        damp, rscale, bond_strength = _cast(param, dtype)
-        damp.requires_grad_(True)
-        rscale.requires_grad_(True)
+    @pytest.mark.parametrize("name", ["br2nh3", "br2och2", "tmpda"])
+    def test_grad_pos(self, name: str) -> None:
+        dtype = torch.double
 
-        sample = samples[sample_name]
+        sample = samples[name]
 
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
 
-        def func(damping, rscaling):
-            xb = Halogen(numbers, positions, damping, rscaling, bond_strength)
-            return xb.get_energy()
+        # variable to be differentiated
+        positions.requires_grad_(True)
+
+        xb = new_halogen(numbers, positions, GFN1_XTB)
+        if xb is None:
+            assert False
+
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+        cache = xb.get_cache(numbers, ihelp)
+
+        def func(positions: Tensor) -> Tensor:
+            return xb.get_energy(positions, cache)
+
+        # pylint: disable=import-outside-toplevel
+        from torch.autograd.gradcheck import gradcheck
+
+        assert gradcheck(func, positions)
+
+    @pytest.mark.grad
+    @pytest.mark.parametrize("sample_name", ["br2nh3", "br2och2", "tmpda"])
+    def test_grad_param(self, sample_name: str):
+        dtype = torch.double
+
+        sample = samples[sample_name]
+        numbers = sample["numbers"]
+        positions = sample["positions"].type(dtype)
+
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+
+        if GFN1_XTB.halogen is None:
+            assert False
+
+        damp = torch.tensor(
+            GFN1_XTB.halogen.classical.damping, dtype=dtype, requires_grad=True
+        )
+        rscale = torch.tensor(
+            GFN1_XTB.halogen.classical.rscale, dtype=dtype, requires_grad=True
+        )
+        bond_strength = get_elem_param(
+            torch.unique(numbers),
+            GFN1_XTB.element,
+            "xbond",
+            pad_val=0,
+            dtype=dtype,
+            requires_grad=True,
+        )
+
+        def func(damping: Tensor, rscaling: Tensor, xbond: Tensor) -> Tensor:
+            xb = Halogen(numbers, positions, damping, rscaling, xbond)
+
+            cache = xb.get_cache(numbers, ihelp)
+            return xb.get_energy(positions, cache)
 
         # pylint: disable=import-outside-toplevel
         from torch.autograd.gradcheck import gradcheck
 
         # NOTE: For smaller values of atol, it fails.
-        assert gradcheck(func, (damp, rscale), atol=1e-2)
-
-
-def _cast(param: FixtureParams, dtype: torch.dtype) -> FixtureParams:
-    """Cast the parameters to the given dtype.
-
-    Args:
-    -----
-    param: FixtureParams
-        The parameters to cast.
-    dtype: torch.dtype
-        The dtype to cast the parameters to.
-
-    Returns:
-    --------
-    FixtureParams
-        The parameters with the corresponding dtype.
-
-    """
-    damp, rscale, bond_strength = param
-    return damp.type(dtype), rscale.type(dtype), bond_strength.type(dtype)
+        assert gradcheck(func, (damp, rscale, bond_strength))
