@@ -91,9 +91,44 @@ class TestRepulsion:
 
             assert pytest.approx(ref, abs=tol) == e.sum(-1)
 
+    @pytest.mark.grad
     @pytest.mark.parametrize("dtype", [torch.float64])
     @pytest.mark.parametrize("name", ["SiH4", "01", "02", "03", "LYS_xao"])
-    def test_grad(self, dtype: torch.dtype, name: str) -> None:
+    def test_grad_pos_backward(self, dtype: torch.dtype, name: str) -> None:
+        tol = sqrt(torch.finfo(dtype).eps) * 10
+
+        sample = samples[name]
+
+        numbers = sample["numbers"]
+        positions = sample["positions"].type(dtype)
+        positions.requires_grad_(True)
+        cutoff = self.cutoff.type(dtype)
+
+        rep = new_repulsion(numbers, positions, GFN1_XTB, cutoff)
+        if rep is None:
+            assert False
+
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+        cache = rep.get_cache(numbers, ihelp)
+
+        # analytical gradient
+        grad_analytical = rep.get_grad(positions, cache)
+
+        # automatic gradient
+        energy = torch.sum(rep.get_energy(positions, cache), dim=-1)
+        energy.backward()
+
+        if positions.grad is None:
+            assert False
+        grad_backward = positions.grad.clone()
+
+        assert torch.allclose(grad_analytical, grad_backward, atol=tol)
+
+    @pytest.mark.parametrize("dtype", [torch.float64])
+    @pytest.mark.parametrize("name", ["SiH4", "01", "02", "03", "LYS_xao"])
+    def test_grad_pos_analytical(self, dtype: torch.dtype, name: str) -> None:
+        tol = sqrt(torch.finfo(dtype).eps) * 10
+
         sample = samples[name]
 
         numbers = sample["numbers"]
@@ -107,81 +142,55 @@ class TestRepulsion:
         ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
         cache = rep.get_cache(numbers, ihelp)
 
+        # analytical gradient
         grad_analytical = rep.get_grad(positions, cache)
+
+        # numerical gradient
         grad_numerical = calc_numerical_gradient(positions, rep, cache)
-        assert torch.allclose(grad_analytical, grad_numerical, rtol=1e-4, atol=1e-6)
+
+        assert torch.allclose(grad_analytical, grad_numerical, atol=tol)
 
     # @pytest.mark.grad
     # @pytest.mark.parametrize("dtype", [torch.float64])
-    # def test_param_grad(self, dtype: torch.dtype):
+    # @pytest.mark.parametrize("name", ["SiH4", "01", "02", "03", "LYS_xao"])
+    # def test_grad_param(self, dtype: torch.dtype, name: str) -> None:
     #     """
-    #     Check a single analytical gradient of `RepulsionFactory.alpha` against
-    #     numerical gradient from `torch.autograd.gradcheck`.
+    #     Check a single analytical gradient of positions against numerical
+    #     gradient from `torch.autograd.gradcheck`.
 
-    #     Args:
-    #         dtype (torch.dtype): Numerical precision.
+    #     Args
+    #     ----
+    #     dtype : torch.dtype
+    #         Data type of the tensor.
 
-    #     Note:
-    #         Although `torch.float32` raises a warning that the gradient check
-    #         without double precision will fail, it actually works here.
+    #     Note
+    #     ----
+    #     Although `torch.float32` raises a warning that the gradient check
+    #     without double precision will fail, it actually works here.
     #     """
-    #     sample = samples["01"]
+    #     sample = samples[name]
 
     #     numbers = sample["numbers"]
     #     positions = sample["positions"].type(dtype)
+    #     cutoff = self.cutoff.type(dtype)
 
-    #     def func(*_):
-    #         repulsion = self.repulsion_gfn1(numbers, positions, True)
-    #         return repulsion.get_engrad()
+    #     rep = new_repulsion(numbers, positions, GFN1_XTB, cutoff)
+    #     if rep is None:
+    #         assert False
 
-    #     repulsion = self.repulsion_gfn1(numbers, positions, True)
-    #     param = (repulsion.alpha, repulsion.zeff, repulsion.kexp)
+    #     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    #     cache = rep.get_cache(numbers, ihelp)
 
-    #     # pylint: disable=import-outside-toplevel
-    #     from torch.autograd.gradcheck import gradcheck
+    #     # variable to be differentiated
+    #     positions.requires_grad_(True)
 
-    #     assert gradcheck(func, param)
-
-    # @pytest.mark.grad
-    # @pytest.mark.parametrize("dtype", [torch.float64])
-    # def test_param_grad_batch(self, dtype: torch.dtype):
-    #     """
-    #     Check batch analytical gradient against numerical gradient from
-    #     `torch.autograd.gradcheck`.
-
-    #     Args:
-    #         dtype (torch.dtype): Numerical precision.
-
-    #     Note:
-    #         Although `torch.float32` raises a warning that the gradient check
-    #         without double precision will fail, it actually works here.
-    #     """
-
-    #     sample1, sample2 = samples["01"], samples["SiH4"]
-    #     numbers: Tensor = batch.pack(
-    #         (
-    #             sample1["numbers"],
-    #             sample2["numbers"],
-    #         )
-    #     )
-    #     positions: Tensor = batch.pack(
-    #         (
-    #             sample1["positions"].type(dtype),
-    #             sample2["positions"].type(dtype),
-    #         )
-    #     )
-
-    #     def func(*_):
-    #         repulsion = self.repulsion_gfn1(numbers, positions, True)
-    #         return repulsion.get_engrad()
-
-    #     repulsion = self.repulsion_gfn1(numbers, positions, True)
-    #     param = (repulsion.alpha, repulsion.zeff, repulsion.kexp)
+    #     def func(positions: Tensor):
+    #         return rep.get_energy(positions, cache)
 
     #     # pylint: disable=import-outside-toplevel
     #     from torch.autograd.gradcheck import gradcheck
 
-    #     assert gradcheck(func, param)
+    #     assert gradcheck(func, positions)
 
 
 def calc_numerical_gradient(
