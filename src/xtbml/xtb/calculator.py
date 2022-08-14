@@ -228,19 +228,24 @@ class Calculator:
 
         if self.halogen is not None:
             timer.start("halogen")
-            result.halogen = self.halogen.get_energy()
+            cache_hal = self.halogen.get_cache(numbers, self.ihelp)
+            result.halogen = self.halogen.get_energy(positions, cache_hal)
             result.total += result.halogen
             timer.stop("halogen")
 
         if self.dispersion is not None:
             timer.start("dispersion")
+            cache_disp = self.dispersion.get_cache(numbers, self.ihelp)
+            result.dispersion = self.dispersion.get_energy(positions, cache_disp)
+
             result.dispersion = self.dispersion.get_energy()
             result.total += result.dispersion
             timer.stop("dispersion")
 
         if self.repulsion is not None:
             timer.start("repulsion")
-            result.repulsion = self.repulsion.get_energy()
+            cache_rep = self.repulsion.get_cache(numbers, self.ihelp)
+            result.repulsion = self.repulsion.get_energy(positions, cache_rep)
             result.total += result.repulsion
             timer.stop("repulsion")
 

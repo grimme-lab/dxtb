@@ -121,6 +121,8 @@ def test_grad_backwards(testcase, dtype: torch.dtype = torch.float):
     energy = result.scf.sum(-1)
 
     energy.backward()
+    if positions.grad is None:
+        assert False
     gradient = positions.grad.clone()
     assert torch.allclose(gradient, ref, atol=tol)
 
