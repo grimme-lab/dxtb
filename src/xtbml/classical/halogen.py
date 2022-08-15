@@ -1,8 +1,35 @@
-"""Halogen bond correction."""
+"""
+Halogen bond correction
+=======================
+
+This module implements the halogen bond correction. The Halogen class is
+constructed similar to the Repulsion class.
+
+Example
+-------
+>>> import torch
+>>> from xtbml.basis import IndexHelper
+>>> from xtbml.classical import new_halogen
+>>> from xtbml.param import GFN1_XTB, get_elem_param
+>>> numbers = torch.tensor([35, 35, 7, 1, 1, 1])
+>>> positions = torch.tensor([
+...     [+0.00000000000000, +0.00000000000000, +3.11495251300000],
+...     [+0.00000000000000, +0.00000000000000, -1.25671880600000],
+...     [+0.00000000000000, +0.00000000000000, -6.30201130100000],
+...     [+0.00000000000000, +1.78712709700000, -6.97470840000000],
+...     [-1.54769692500000, -0.89356260400000, -6.97470840000000],
+...     [+1.54769692500000, -0.89356260400000, -6.97470840000000],
+... ])
+>>> xb = new_halogen(numbers, positions, GFN1_XTB)
+>>> ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+>>> cache = xb.get_cache(numbers, ihelp)
+>>> energy = xb.get_energy(positions, cache)
+>>> print(energy.sum(-1))
+tensor(0.0025)
+"""
 
 from __future__ import annotations
 import torch
-
 
 from ..basis import IndexHelper
 from ..data import atomic_rad
@@ -11,11 +38,19 @@ from ..param import Param, get_elem_param
 from ..typing import Tensor, TensorLike
 
 
-default_cutoff = 20.0
+default_cutoff: float = 20.0
+"""Default real space cutoff for halogen bonding interactions."""
 
 
 class Halogen(TensorLike):
-    """Representation of a halogen bond correction."""
+    """
+    Representation of the halogen bond correction.
+
+    Note
+    ----
+    The positions are only passed to the constructor for `dtype` and `device`,
+    they are no class property, as this setup facilitates geometry optimization.
+    """
 
     numbers: Tensor
     """Atomic numbers of all atoms."""

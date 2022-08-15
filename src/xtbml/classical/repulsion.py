@@ -16,7 +16,7 @@ Example
 >>> import torch
 >>> from xtbml.basis import IndexHelper
 >>> from xtbml.classical import new_repulsion
->>> from xtbml.param import GFN1_XTB
+>>> from xtbml.param import GFN1_XTB, get_elem_param
 >>> numbers = torch.tensor([14, 1, 1, 1, 1])
 >>> positions = torch.tensor([
 ...     [+0.00000000000000, +0.00000000000000, +0.00000000000000],
@@ -28,14 +28,13 @@ Example
 >>> rep = new_repulsion(numbers, positions, GFN1_XTB)
 >>> ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
 >>> cache = rep.get_cache(numbers, ihelp)
->>> e = rep.get_energy(positions, cache)
->>> print(e.sum(-1))
+>>> energy = rep.get_energy(positions, cache)
+>>> print(energy.sum(-1))
 tensor(0.0303)
 """
 
 from __future__ import annotations
 import warnings
-
 import torch
 
 from ..basis import IndexHelper
@@ -44,7 +43,9 @@ from ..param import Param, get_elem_param
 from ..typing import Tensor, TensorLike
 from ..utils import real_pairs
 
+
 default_cutoff: float = 25.0
+"""Default real space cutoff for repulsion interactions."""
 
 
 class Repulsion(TensorLike):

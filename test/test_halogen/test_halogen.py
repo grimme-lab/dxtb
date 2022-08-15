@@ -9,7 +9,8 @@ import torch
 from xtbml.basis import IndexHelper
 from xtbml.classical import Halogen, new_halogen
 from xtbml.exlibs.tbmalt import batch
-from xtbml.param import GFN1_XTB, get_elem_angular, get_elem_param
+from xtbml.param import get_elem_angular, get_elem_param
+from xtbml.param import GFN1_XTB as par
 from xtbml.typing import Tensor
 
 from .samples import samples
@@ -22,7 +23,7 @@ class TestHalogen:
     def setup_class(cls):
         print(f"\n{cls.__name__}")
 
-        if GFN1_XTB.halogen is None:
+        if par.halogen is None:
             raise ValueError("No halogen bond correction parameters provided.")
 
     @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -39,11 +40,11 @@ class TestHalogen:
         positions = sample["positions"].type(dtype)
         ref = sample["energy"].type(dtype)
 
-        xb = new_halogen(numbers, positions, GFN1_XTB)
+        xb = new_halogen(numbers, positions, par)
         if xb is None:
             assert False
 
-        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         cache = xb.get_cache(numbers, ihelp)
         energy = xb.get_energy(positions, cache)
         assert torch.allclose(ref, torch.sum(energy))
@@ -63,11 +64,11 @@ class TestHalogen:
         positions = sample["positions"].type(dtype)
         ref = sample["energy"].type(dtype)
 
-        xb = new_halogen(numbers, positions, GFN1_XTB)
+        xb = new_halogen(numbers, positions, par)
         if xb is None:
             assert False
 
-        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         cache = xb.get_cache(numbers, ihelp)
         energy = xb.get_energy(positions, cache)
         assert torch.allclose(ref, torch.sum(energy))
@@ -82,11 +83,11 @@ class TestHalogen:
         positions = sample["positions"].type(dtype)
         ref = sample["energy"].type(dtype)
 
-        xb = new_halogen(numbers, positions, GFN1_XTB)
+        xb = new_halogen(numbers, positions, par)
         if xb is None:
             assert False
 
-        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         cache = xb.get_cache(numbers, ihelp)
         energy = xb.get_energy(positions, cache)
         assert torch.allclose(ref, torch.sum(energy))
@@ -117,11 +118,11 @@ class TestHalogen:
             ],
         )
 
-        xb = new_halogen(numbers, positions, GFN1_XTB)
+        xb = new_halogen(numbers, positions, par)
         if xb is None:
             assert False
 
-        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         cache = xb.get_cache(numbers, ihelp)
         energy = xb.get_energy(positions, cache)
         assert torch.allclose(ref, torch.sum(energy, dim=-1))
@@ -139,11 +140,11 @@ class TestHalogen:
         # variable to be differentiated
         positions.requires_grad_(True)
 
-        xb = new_halogen(numbers, positions, GFN1_XTB)
+        xb = new_halogen(numbers, positions, par)
         if xb is None:
             assert False
 
-        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         cache = xb.get_cache(numbers, ihelp)
 
         def func(positions: Tensor) -> Tensor:
@@ -163,20 +164,20 @@ class TestHalogen:
         numbers = sample["numbers"]
         positions = sample["positions"].type(dtype)
 
-        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
 
-        if GFN1_XTB.halogen is None:
+        if par.halogen is None:
             assert False
 
         _damp = torch.tensor(
-            GFN1_XTB.halogen.classical.damping, dtype=dtype, requires_grad=True
+            par.halogen.classical.damping, dtype=dtype, requires_grad=True
         )
         _rscale = torch.tensor(
-            GFN1_XTB.halogen.classical.rscale, dtype=dtype, requires_grad=True
+            par.halogen.classical.rscale, dtype=dtype, requires_grad=True
         )
         _xbond = get_elem_param(
             torch.unique(numbers),
-            GFN1_XTB.element,
+            par.element,
             "xbond",
             pad_val=0,
             dtype=dtype,
@@ -185,12 +186,10 @@ class TestHalogen:
 
         def func(damp: Tensor, rscale: Tensor, xbond: Tensor) -> Tensor:
             xb = Halogen(numbers, positions, damp, rscale, xbond)
-
             cache = xb.get_cache(numbers, ihelp)
             return xb.get_energy(positions, cache)
 
         # pylint: disable=import-outside-toplevel
         from torch.autograd.gradcheck import gradcheck
 
-        # NOTE: For smaller values of atol, it fails.
         assert gradcheck(func, (_damp, _rscale, _xbond))
