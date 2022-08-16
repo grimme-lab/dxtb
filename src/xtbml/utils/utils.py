@@ -47,3 +47,16 @@ def dict_reorder(d: dict) -> dict:
     return {
         k: dict_reorder(v) if isinstance(v, dict) else v for k, v in sorted(d.items())
     }
+
+@torch.jit.script
+def real_atoms(numbers: Tensor) -> Tensor:
+    return numbers != 0
+
+
+@torch.jit.script
+def real_pairs(numbers: Tensor, diagonal: bool = False) -> Tensor:
+    real = real_atoms(numbers)
+    mask = real.unsqueeze(-2) * real.unsqueeze(-1)
+    if not diagonal:
+        mask *= ~torch.diag_embed(torch.ones_like(real))
+    return mask

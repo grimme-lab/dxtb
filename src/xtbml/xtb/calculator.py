@@ -9,7 +9,7 @@ import torch
 
 
 from .. import scf
-from ..basis import Basis, IndexHelper
+from ..basis import IndexHelper
 from ..coulomb import secondorder, thirdorder, averaging_function
 from ..data import cov_rad_d3
 from ..interaction import Interaction, InteractionList
@@ -28,9 +28,6 @@ class Calculator:
     and the overlap matrix.
     """
 
-    basis: Basis
-    """Atomic orbital basis set definition."""
-
     hamiltonian: Hamiltonian
     """Core Hamiltonian definition."""
 
@@ -40,9 +37,14 @@ class Calculator:
     ihelp: IndexHelper
     """Helper class for indexing."""
 
-    def __init__(self, numbers: Tensor, positions: Tensor, par: Param) -> None:
+    def __init__(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        par: Param,
+        interaction: Interaction | None = None,
+    ) -> None:
         self.ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-        self.basis = Basis(numbers, par, self.ihelp.unique_angular)
         self.hamiltonian = Hamiltonian(numbers, positions, par, self.ihelp)
 
         if par.charge is None:
@@ -76,7 +78,7 @@ class Calculator:
             ),
         )
 
-        self.interaction = InteractionList([es2, es3])
+        self.interaction = InteractionList(es2, es3, interaction)
 
     def singlepoint(
         self,
