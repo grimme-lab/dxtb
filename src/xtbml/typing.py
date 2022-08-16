@@ -3,6 +3,7 @@ Type annotations for this project.
 """
 
 from collections.abc import Generator
+
 from typing import (
     Any,
     Callable,
