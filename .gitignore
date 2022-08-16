@@ -194,5 +194,10 @@ data/*/benchmark*
 # models
 models/
 
+# ML model bookkeeping
+src/dxtb/
+src/lightning_logs/
+src/wandb/
+
 # other
 devel.py
