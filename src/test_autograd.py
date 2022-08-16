@@ -67,8 +67,15 @@ class ML(nn.Module):
         self.layer.weight = torch.nn.Parameter(torch.tensor([[7.0, 8.0]]))
         self.layer.bias = torch.nn.Parameter(torch.tensor([-0.5]))
 
+        # for checking gradient of constant bias parameters
+        self.layer2 = torch.nn.Linear(1, 1)
+        self.layer2.weight = torch.nn.Parameter(torch.tensor([[2.0]]))
+        self.layer2.bias = torch.nn.Parameter(torch.tensor([-0.0]))
+
     def forward(self, sample):
         x = self.layer(sample.scf)
+        print("here", x.shape)
+        x = self.layer2(x)
         return x
 
 
@@ -78,10 +85,7 @@ def main():
 
     # 1. get sample and set requires_grad
     sample = Sample()
-    # sample.pos = torch.arange(9.0, requires_grad=True).reshape([3, 3])
-    # print(sample.pos)
-    # assert sample.pos.requires_grad
-    sample.a = torch.tensor([2.0, 3.0], requires_grad=True)
+    sample.a = torch.tensor([2.0, 3.0], requires_grad=True)  # e.g. positions
     sample.b = torch.tensor([6.0, 4.0], requires_grad=True)
     assert sample.a.requires_grad
 
@@ -132,10 +136,10 @@ def main():
     # QUESTION: does that set all ml.params.require_grad == TRUE?
     # QUESTION / TODO: require to turn off require grad to avoid leave nodes (e.g. biases) to store gradient for force calc
     # with torch.nograd(): ...
-    assert energies.equal(torch.tensor([435.5]))
+    # assert energies.equal(torch.tensor([435.5]))
     print("energies", energies)
 
-    # 5. calculate force based on forward graph
+    # 5. calculate force based on autograd AD
     force = torch.autograd.grad(
         energies,
         sample.a,
@@ -162,6 +166,12 @@ def main():
     print("loss", loss)  # loss tensor(184856.5000, tangent=53820.0)
     print("loss.has_grad", loss.requires_grad)
 
+    torch.autograd.gradcheck(
+        loss_fn,
+        (force[0].double(), grad_ref.double()),
+        check_backward_ad=True,
+    )
+
     print("before")
     print(sample.a.grad)
     print(sample.b.grad)
@@ -181,13 +191,21 @@ def main():
     print(model.layer.bias)
     print(model.layer.weight.grad)
     print(model.layer.bias.grad)
+    print(model.layer2.bias.grad)
 
     assert model.layer.weight.grad != None  # tensor([[ 7812., 46008.]])
     # NOTE: does not change, regardless whether sample.requires_grad(True/False)
-    assert model.layer.bias.grad == None  # TODO: why different from energy-loss?
+    assert model.layer.bias.grad == None
+    assert model.layer2.bias.grad == None
+    # NOTE: since loss depends only on force and force only on non-constant parts of the NN
+    #       resulting in not updating weights during optimisation (would require bias.grad != None)
 
-    # loss needs a gradient!
-    print("does autograd solve the gradient issue?")
+    torch.autograd.gradcheck(
+        loss_fn,
+        (force[0].double(), grad_ref.double()),
+        check_backward_ad=True,
+    )
+
     return
 
     ############
