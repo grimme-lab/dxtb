@@ -9,6 +9,7 @@ from typing import (
     Dict,
     TypedDict,
     List,
+    Literal,
     Optional,
     Protocol,
     Tuple,
