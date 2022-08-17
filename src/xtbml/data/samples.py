@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Union, overload
 
 from xtbml.data.datareader import Datareader
 from xtbml.typing import Tensor
+from xtbml.exlibs.tbmalt import batch
 
 
 class Sample:
@@ -323,6 +324,84 @@ class Sample:
                 d[slot] = getattr(self, slot)
 
         return d
+
+    @staticmethod
+    def pack(samples: List["Sample"]) -> "Sample":
+        """Concatenate list of Samples into single Sample object.
+            The properties are packed along a new first dimension.
+            Further dimensions are padded accordingly. Dtypes are inferred.
+
+        Parameters
+        ----------
+        samples : List[Sample]
+            List of Sample to be concatenated
+
+        Returns
+        -------
+        Sample
+            Single Sample instance holding concatenated properties
+
+        Raises
+        ------
+        TypeError
+            Raises error if not all objects are Sample objects.
+        NotImplementedError
+            Raises error if property is neither of type Tensor, nor string.
+        """
+
+        if not all([isinstance(s, Sample) for s in samples]):
+            raise TypeError("Packing only implemented for list of Sample objects.")
+
+        d = {}
+        skip = ["__", "device", "dtype"]
+        for slot in samples[0].__slots__:
+            if not any(s in slot for s in skip):
+                v = [getattr(s, slot) for s in samples]
+
+                if all([isinstance(i, Tensor) for i in v]):
+                    # NOTE: default padding value is 0
+                    d[slot] = batch.pack(v)
+                else:
+                    if all([isinstance(i, str) for i in v]):
+                        d[slot] = "+".join(v)
+                    else:
+                        raise NotImplementedError(
+                            f"No packing specified for property {slot}"
+                        )
+        print("finished concating")
+        return Sample(**d)
+
+    @staticmethod
+    def get_empty() -> "Sample":
+        """Create an empty Sample object, containing no values.
+
+        Returns
+        -------
+        Sample
+            Empty Sample instance
+        """
+
+        return Sample(
+            buid="NONE",
+            uid="NONE",
+            numbers=Tensor([]),
+            positions=Tensor([]),
+            unpaired_e=Tensor([]),
+            charges=Tensor([]),
+            egfn1=Tensor([]),
+            ggfn1=Tensor([]),
+            egfn2=Tensor([]),
+            ggfn2=Tensor([]),
+            eref=Tensor([]),
+            gref=Tensor([]),
+            edisp=Tensor([]),
+            erep=Tensor([]),
+            qat=Tensor([]),
+            cn=Tensor([]),
+            ovlp=Tensor([]),
+            h0=Tensor([]),
+            adj=Tensor([]),
+        )
 
 
 class Samples:
