@@ -368,7 +368,6 @@ class Sample:
                         raise NotImplementedError(
                             f"No packing specified for property {slot}"
                         )
-        print("finished concating")
         return Sample(**d)
 
     @staticmethod
