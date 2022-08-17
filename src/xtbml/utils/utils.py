@@ -9,6 +9,7 @@ from __future__ import annotations
 from functools import wraps
 from time import time
 import torch
+import functools
 
 from ..constants import ATOMIC_NUMBER
 from ..typing import Tensor
@@ -29,6 +30,7 @@ def timing(f):
 
     return wrap
 
+
 def dict_reorder(d: dict) -> dict:
     """Reorder a dictionary by keys. Includes sorting of sub-directories.
     Courtesy to https://stackoverflow.com/questions/9001509/how-can-i-sort-a-dictionary-by-key/47017849#47017849
@@ -48,6 +50,7 @@ def dict_reorder(d: dict) -> dict:
         k: dict_reorder(v) if isinstance(v, dict) else v for k, v in sorted(d.items())
     }
 
+
 @torch.jit.script
 def real_atoms(numbers: Tensor) -> Tensor:
     return numbers != 0
@@ -60,3 +63,21 @@ def real_pairs(numbers: Tensor, diagonal: bool = False) -> Tensor:
     if not diagonal:
         mask *= ~torch.diag_embed(torch.ones_like(real))
     return mask
+
+
+###  Helper functions for accesing nested object properties. ###
+def rsetattr(obj, attr, val):
+    pre, _, post = attr.rpartition(".")
+    return setattr(rgetattr(obj, pre) if pre else obj, post, val)
+
+
+def rdelattr(obj, attr):
+    pre, _, post = attr.rpartition(".")
+    return delattr(rgetattr(obj, pre) if pre else obj, post)
+
+
+def rgetattr(obj, attr, *args):
+    def _getattr(obj, attr):
+        return getattr(obj, attr, *args)
+
+    return functools.reduce(_getattr, [obj] + attr.split("."))
