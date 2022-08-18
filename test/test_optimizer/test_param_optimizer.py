@@ -30,7 +30,7 @@ class TestParameterOptimizer:
         opt = torch.optim.Adam(model.parameters(), lr=0.1)
         training_loop(model, opt, self.loss_fn, self.batch, n=20)
 
-    def test_simple_param_optimisation(self):
+    """def test_simple_param_optimisation(self):
 
         # get parameter to optimise
         param_to_opt = torch.tensor([0.6])
@@ -42,16 +42,16 @@ class TestParameterOptimizer:
         class SimpleParameterOptimizer(ParameterOptimizer):
             def calc_gradient(self, energy, positions):
                 # scaling the reference gradient
-                gradient = self.weights * batch.gref
+                gradient = self.params[0] * batch.gref
                 return gradient
 
         # optimise xtb
-        model = SimpleParameterOptimizer(param_to_opt, name)
+        model = SimpleParameterOptimizer([param_to_opt], [name])
         self.optimisation(model)
-        # print("FINAL model.weights", model.weights)
+        # print("FINAL model.params", model.params)
 
         # should converge to 1.0
-        assert param_to_opt.data_ptr() == model.weights.data_ptr()
+        assert param_to_opt.data_ptr() == model.params[0].data_ptr()
         assert torch.isclose(param_to_opt, torch.tensor(1.0).double(), rtol=0.1)
 
     def test_param_optimisation(self):
@@ -62,7 +62,7 @@ class TestParameterOptimizer:
         param_to_opt = Calculator.get_param(calc, name)
 
         # optimise xtb
-        model = ParameterOptimizer(param_to_opt, name)
+        model = ParameterOptimizer([param_to_opt], [name])
         self.optimisation(model)
 
         # inference
@@ -83,14 +83,14 @@ class TestParameterOptimizer:
         name = "hamiltonian.shpoly"
         param_to_opt = Calculator.get_param(calc, name)
 
-        model = ParameterOptimizer(param_to_opt, name)
+        model = ParameterOptimizer([param_to_opt], [name])
         _, grad = model(self.batch)
         y_true = self.batch.gref.double()
         loss = self.loss_fn(grad, y_true)
 
         # gradients via loss backward
-        loss.backward(inputs=model.weights)
-        grad_bw = model.weights.grad
+        loss.backward(inputs=model.params)
+        grad_bw = model.params[0].grad
 
         _, grad = model(self.batch)
         loss = self.loss_fn(grad, y_true)
@@ -98,11 +98,48 @@ class TestParameterOptimizer:
         # gradients via (manual) autograd
         grad_ad = torch.autograd.grad(
             loss,
-            model.weights,
+            model.params,
         )[0]
 
         assert torch.allclose(
             grad_bw,
             grad_ad,
+            atol=1e-4,
+        )"""
+
+    def test_multiple_param_optimisation(self):
+
+        # get parameter to optimise
+        calc = Calculator(self.batch.numbers, self.batch.positions, GFN1_XTB)
+        names = ["hamiltonian.kcn", "hamiltonian.hscale"]
+        params_to_opt = [Calculator.get_param(calc, name) for name in names]
+
+        # optimise xtb
+        model = ParameterOptimizer(params_to_opt, names)
+        self.optimisation(model)
+
+        # inference
+        prediction, grad = model(self.batch)
+        lopt = self.loss_fn(grad, self.batch.gref)
+
+        assert torch.isclose(
+            lopt, torch.tensor(9.3381e-06, dtype=torch.float64), atol=1e-5
+        )
+        assert torch.allclose(
+            model.params[0],
+            torch.tensor([-0.3844, -0.0527, 0.3224, -0.2267], dtype=torch.float64),
+            atol=1e-4,
+        )
+        assert torch.allclose(
+            model.params[1],
+            torch.tensor(
+                [
+                    [2.1530, 2.5532, 1.7393, 1.6536],
+                    [2.5532, 2.6529, 2.4780, 2.8068],
+                    [1.7393, 2.4780, 1.8500, 2.0800],
+                    [1.6536, 2.8068, 2.0800, 2.2500],
+                ],
+                dtype=torch.float64,
+            ),
             atol=1e-4,
         )
