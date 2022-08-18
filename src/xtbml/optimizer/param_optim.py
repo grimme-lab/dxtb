@@ -47,11 +47,6 @@ class ParameterOptimizer(nn.Module):
 
         energy = results["energy"] + edisp
 
-        # convert to kcal
-        # energy = energy * AU2KCAL
-        # TODO: why does this conversion change the training outcome of the gradient?
-        #   could it be that the gradient in JSON is not converted to kcal? (i.e. |dE/dxyz|)
-
         # calculate gradients
         gradient = self.calc_gradient(energy, positions)
 
@@ -160,7 +155,7 @@ def example():
     print(lgfn1)
     print(lopt)
 
-    print("prediction")
+    print("prediction")  # NOTE: energies in JSON in kcal/mol
     print(batch.egfn1)
     print(preds * AU2KCAL)
     print(batch.eref)
