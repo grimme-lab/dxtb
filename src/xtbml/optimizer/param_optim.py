@@ -43,8 +43,9 @@ class ParameterOptimizer(nn.Module):
 
         # calculate energies
         results = calc.singlepoint(x.numbers, positions, x.charges, verbosity=0)
-        energy = results["energy"]
-        # TODO: add dispersion correction
+        edisp = self.calc_dispersion(x.numbers, positions)
+
+        energy = results["energy"] + edisp
 
         # convert to kcal
         # energy = energy * AU2KCAL
@@ -55,6 +56,24 @@ class ParameterOptimizer(nn.Module):
         gradient = self.calc_gradient(energy, positions)
 
         return energy, gradient
+
+    def calc_dispersion(self, numbers: Tensor, positions: Tensor) -> Tensor:
+        """Calculate D3 dispersion correction for given sample.
+
+        Args:
+            numbers (Tensor): Atomic charges for sample
+            positions (Tensor): Atomic positions for sample
+
+        Returns:
+            Tensor: The dispersion correction edisp
+        """
+        pdisp = {
+            "s6": GFN1_XTB.dispersion.d3.s6,
+            "s8": GFN1_XTB.dispersion.d3.s8,
+            "a1": GFN1_XTB.dispersion.d3.a1,
+            "a2": GFN1_XTB.dispersion.d3.a2,
+        }
+        return dftd3(numbers, positions, pdisp)
 
     def calc_gradient(self, energy: Tensor, positions: Tensor) -> Tensor:
         """Calculate gradient (i.e. force) via pytorch autodiff framework.
@@ -112,9 +131,7 @@ def example():
     # load data as batched sample
     path = Path(__file__).resolve().parents[3] / "data" / "PTB"
     dataset = get_ptb_dataset(path)
-    batch = Sample.pack(dataset.samples[5:6])
-    # TODO: currently batch SCF not working (due to batching?)
-    #       - check charge(?) batching with einsum mapping in SCF
+    batch = Sample.pack(dataset.samples)
     print(type(batch))
     print(batch.numbers.shape)
 
