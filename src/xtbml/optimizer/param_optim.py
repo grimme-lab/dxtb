@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Callable, List
 import torch
 from torch import nn
@@ -16,16 +17,15 @@ from ..constants import AU2KCAL
 class ParameterOptimizer(nn.Module):
     """Pytorch model for gradient optimization of given forward() function."""
 
-    def __init__(self, weights, weights_name):
+    def __init__(self, params: list[Tensor], params_name: list[str]):
         super().__init__()
 
-        # register weights as model parameters
-        self.weights = torch.nn.Parameter(weights)
-        # TODO: allow for multiple parameters to be set
-        # check via print(list(model.parameters()))
+        # register as learnable model parameters
+        self.params = nn.ParameterList([nn.Parameter(param) for param in params])
+        # TODO: write test for optimising multiple params
 
         # name of parameter within calculator
-        self.weights_name = weights_name
+        self.params_name = params_name
 
     def forward(self, x: Sample):
         """
@@ -39,7 +39,8 @@ class ParameterOptimizer(nn.Module):
         calc = Calculator(x.numbers, positions, GFN1_XTB)
 
         # assign model weights (= learnable parameter) to calculator
-        Calculator.set_param(calc, self.weights_name, self.weights)
+        for i, param in enumerate(self.params):
+            Calculator.set_param(calc, self.params_name[i], self.params[i])
 
         # calculate energies
         results = calc.singlepoint(x.numbers, positions, x.charges, verbosity=0)
@@ -94,13 +95,19 @@ class ParameterOptimizer(nn.Module):
 
 
 def training_loop(
-    model: nn.Module, optimizer: torch.optim, loss_fn: Callable, x: Sample, n: int = 100
+    model: nn.Module,
+    optimizer: torch.optim,
+    loss_fn: Callable,
+    x: Sample,
+    n: int = 100,
+    verbose: bool = True,
 ) -> List[Tensor]:
     "Optmisation loop conducting gradient descent."
     losses = []
 
     for i in range(n):
-        print(f"epoch {i}")
+        if verbose:
+            print(f"epoch {i}")
         optimizer.zero_grad()
         energy, grad = model(x)
         y_true = x.gref.double()
@@ -108,11 +115,12 @@ def training_loop(
         # alternative: Jacobian of loss
 
         # calculate gradient to update model parameters
-        loss.backward(inputs=model.weights)
+        loss.backward(inputs=model.params)
 
         optimizer.step()
         losses.append(loss)
-        print(loss)
+        if verbose:
+            print(loss)
     return losses
 
 
@@ -132,19 +140,23 @@ def example():
 
     # setup calculator and get parameters
     calc = Calculator(batch.numbers, batch.positions, GFN1_XTB)
-    name = "hamiltonian.kcn"
-    param_to_opt = Calculator.get_param(calc, name)
+    names = ["hamiltonian.kcn", "hamiltonian.hscale", "hamiltonian.shpoly"]
+    params_to_opt = [Calculator.get_param(calc, name) for name in names]
 
     # setup model, optimizer and loss function
-    model = ParameterOptimizer(param_to_opt, name)
+    model = ParameterOptimizer(params_to_opt, names)
     opt = torch.optim.Adam(model.parameters(), lr=0.1)
     loss_fn = torch.nn.MSELoss(reduction="sum")
 
-    print("INITAL model.weights", model.weights)
+    print("INITAL model.params", model.params)
+    for param in model.params:
+        print(param)
 
-    losses = training_loop(model, opt, loss_fn, batch)
+    losses = training_loop(model, opt, loss_fn, batch, n=100)
 
-    print("FINAL model.weights", model.weights)
+    print("FINAL model.params", model.params)
+    for param in model.params:
+        print(param)
 
     # inference
     preds, grad = model(batch)
