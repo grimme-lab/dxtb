@@ -22,7 +22,6 @@ class ParameterOptimizer(nn.Module):
 
         # register as learnable model parameters
         self.params = nn.ParameterList([nn.Parameter(param) for param in params])
-        # TODO: write test for optimising multiple params
 
         # name of parameter within calculator
         self.params_name = params_name
