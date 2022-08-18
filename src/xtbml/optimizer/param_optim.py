@@ -1,3 +1,4 @@
+from typing import Callable, List
 import torch
 from torch import nn
 from pathlib import Path
@@ -23,6 +24,7 @@ class ParameterOptimizer(nn.Module):
         # TODO: allow for multiple parameters to be set
         # check via print(list(model.parameters()))
 
+        # name of parameter within calculator
         self.weights_name = weights_name
 
     def forward(self, x: Sample):
@@ -30,8 +32,7 @@ class ParameterOptimizer(nn.Module):
         Function to be optimised.
         """
 
-        # TODO: optional detaching
-        positions = x.positions  # x.positions.detach()
+        positions = x.positions.detach()
         positions = positions.double()
         positions.requires_grad_(True)
 
@@ -39,56 +40,49 @@ class ParameterOptimizer(nn.Module):
 
         # assign model weights (= learnable parameter) to calculator
         Calculator.set_param(calc, self.weights_name, self.weights)
-        # calc.hamiltonian.shpoly = self.weights
-        # TODO: implement this flexibly for all parameter
 
-        """print("investigate calc update")
-        print(self.weights)
-        print(calc.hamiltonian.shpoly)
-        print(calc.hamiltonian.shpoly.dtype)
-        print(self.weights.data_ptr() == calc.hamiltonian.shpoly.data_ptr())
-        print("tensors should not be copied but moved")"""
-        assert self.weights.data_ptr() == calc.hamiltonian.shpoly.data_ptr()
-
-        # loss
-        # tensor(8.1559e-06)
-        # tensor(1.0621e-07, dtype=torch.float64, grad_fn=<MseLossBackward0>)
-        # prediction
-        # tensor([[-3052.8406,  -283.5126,  -283.5126]])
-        # tensor([[-4.9355, -0.4757, -0.4757]], dtype=torch.float64, grad_fn=<AddBackward0>)
-        # tensor([-10837.7598])
-
-        # singlepoint calculation
+        # calculate energies
         results = calc.singlepoint(x.numbers, positions, x.charges, verbosity=0)
-
         energy = results["energy"]
+        # TODO: add dispersion correction
 
         # convert to kcal
         # energy = energy * AU2KCAL
         # TODO: why does this conversion change the training outcome of the gradient?
         #   could it be that the gradient in JSON is not converted to kcal? (i.e. |dE/dxyz|)
 
+        # calculate gradients
+        gradient = self.calc_gradient(energy, positions)
+
+        return energy, gradient
+
+    def calc_gradient(self, energy: Tensor, positions: Tensor) -> Tensor:
+        """Calculate gradient (i.e. force) via pytorch autodiff framework.
+
+        Parameters
+        ----------
+        energy : Tensor
+            Energy output for given prediction model
+        positions : Tensor
+            Positions for given system
+
+        Returns
+        -------
+        Tensor
+            Force tensor dE/dxyz
+        """
         gradient = torch.autograd.grad(
             energy.sum(),
             positions,
             create_graph=True,
         )[0]
-
-        # positions.requires_grad_(False)
-        # NOTE: this is not necessary, as long as loss backward is applied to model params
-
-        ##
-        # gradient = self.weights * x.gref
-        # TODO: nice test with
-        # param_to_opt = torch.tensor([0.2])
-        #  (should converge to 1.0)
-        ##
-
-        return energy, gradient
+        return gradient
 
 
-def training_loop(model, optimizer, loss_fn, x, n=100):
-    "Training loop for torch model."
+def training_loop(
+    model: nn.Module, optimizer: torch.optim, loss_fn: Callable, x: Sample, n: int = 100
+) -> List[Tensor]:
+    "Optmisation loop conducting gradient descent."
     losses = []
 
     for i in range(n):
@@ -99,14 +93,8 @@ def training_loop(model, optimizer, loss_fn, x, n=100):
         loss = loss_fn(grad, y_true)
         # alternative: Jacobian of loss
 
-        # TODO: write test dldh == loss.backward(inputs=model.weights)
-        """dldh = torch.autograd.grad(
-            loss,
-            model.weights,
-        )[0]"""
-
+        # calculate gradient to update model parameters
         loss.backward(inputs=model.weights)
-        # print("grad after backward", model.weights.grad)
 
         optimizer.step()
         losses.append(loss)
@@ -117,45 +105,39 @@ def training_loop(model, optimizer, loss_fn, x, n=100):
 def example():
     def get_ptb_dataset(root: Path) -> SampleDataset:
         list_of_path = sorted(
-            root.glob("samples_DUMMY*.json")
-        )  # samples_*.json samples_HE*.json samples_DUMMY*.json
+            root.glob("samples_HCNO.json")
+        )  # samples_*.json samples_HE*.json samples_DUMMY.json
         return SampleDataset.from_json(list_of_path)
 
     # load data as batched sample
     path = Path(__file__).resolve().parents[3] / "data" / "PTB"
     dataset = get_ptb_dataset(path)
-    batch = Sample.pack(dataset.samples[:1])
+    batch = Sample.pack(dataset.samples[5:6])
     # TODO: currently batch SCF not working (due to batching?)
     #       - check charge(?) batching with einsum mapping in SCF
     print(type(batch))
     print(batch.numbers.shape)
 
-    # setup calculator
+    # setup calculator and get parameters
     calc = Calculator(batch.numbers, batch.positions, GFN1_XTB)
-
-    name = "hamiltonian.shpoly"
-
-    # TODO: set these weights from calculator object
+    name = "hamiltonian.kcn"
     param_to_opt = Calculator.get_param(calc, name)
-    # param_to_opt = shpoly
-    # param_to_opt = torch.tensor([0.6])
 
     # setup model, optimizer and loss function
-    m = ParameterOptimizer(param_to_opt, name)
-    opt = torch.optim.Adam(m.parameters(), lr=0.1)
+    model = ParameterOptimizer(param_to_opt, name)
+    opt = torch.optim.Adam(model.parameters(), lr=0.1)
     loss_fn = torch.nn.MSELoss(reduction="sum")
 
-    print("INITAL model.weights", m.weights)
+    print("INITAL model.weights", model.weights)
 
-    losses = training_loop(m, opt, loss_fn, batch)
+    losses = training_loop(model, opt, loss_fn, batch)
 
-    print("FINAL model.weights", m.weights)
+    print("FINAL model.weights", model.weights)
 
     # inference
-    preds, grad = m(batch)
+    preds, grad = model(batch)
 
     print("loss")
-    # TODO: do we have GFN2 values?
     lgfn1 = loss_fn(batch.ggfn1, batch.gref)
     lopt = loss_fn(grad, batch.gref)
     print(lgfn1)
@@ -163,7 +145,12 @@ def example():
 
     print("prediction")
     print(batch.egfn1)
-    print(preds)
+    print(preds * AU2KCAL)
     print(batch.eref)
+
+    # print("grad comparison")
+    # print(batch.ggfn1)
+    # print(grad)
+    # print(batch.gref)
 
     return
