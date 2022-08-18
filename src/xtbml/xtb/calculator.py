@@ -209,6 +209,7 @@ class Calculator:
 
         fwd_options = {
             "verbose": verbosity > 0,
+            "maxiter": 20,
         }
         scf_results = scf.solve(
             numbers,
@@ -250,7 +251,7 @@ class Calculator:
 
         timer.stop("total")
 
-        if verbosity > 1:
+        if verbosity > -1:
             timer.print_times()
 
         return result

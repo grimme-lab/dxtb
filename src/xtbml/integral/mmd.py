@@ -411,4 +411,8 @@ def overlap(
             ).sum((-2, -1))
 
     # transform to cartesian basis functions (itrafo^T * S * jtrafo)
-    return torch.einsum("...ji,...jk,...kl->...il", itrafo, s3d, jtrafo)
+    o = torch.einsum("...ji,...jk,...kl->...il", itrafo, s3d, jtrafo)
+
+    eps = vec.new_tensor(torch.finfo(vec.dtype).eps)
+    g = torch.where(torch.abs(o) < eps, vec.new_tensor(0.0), o)
+    return g
