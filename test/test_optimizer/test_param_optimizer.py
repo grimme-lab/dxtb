@@ -24,13 +24,21 @@ class TestParameterOptimizer:
         dataset = SampleDataset.from_json(path)
         self.batch = Sample.pack(dataset.samples)
 
+        self.dataloader = torch.utils.data.DataLoader(
+            dataset,
+            batch_size=1,
+            shuffle=False,
+            collate_fn=Sample.pack,
+            drop_last=False,
+        )
+
         self.loss_fn = torch.nn.MSELoss(reduction="sum")
 
     def optimisation(self, model):
         opt = torch.optim.Adam(model.parameters(), lr=0.1)
-        training_loop(model, opt, self.loss_fn, self.batch, n=20)
+        training_loop(model, opt, self.loss_fn, self.dataloader, n=20)
 
-    """def test_simple_param_optimisation(self):
+    def test_simple_param_optimisation(self):
 
         # get parameter to optimise
         param_to_opt = torch.tensor([0.6])
@@ -105,7 +113,7 @@ class TestParameterOptimizer:
             grad_bw,
             grad_ad,
             atol=1e-4,
-        )"""
+        )
 
     def test_multiple_param_optimisation(self):
 
