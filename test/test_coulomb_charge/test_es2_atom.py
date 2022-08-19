@@ -61,6 +61,7 @@ class TestSecondOrderElectrostatics:
         )
 
         es = es2.ES2(
+            positions=positions,
             hubbard=hubbard,
             average=average,
             gexp=gexp,
@@ -113,6 +114,7 @@ class TestSecondOrderElectrostatics:
         )
 
         es = es2.ES2(
+            positions=positions,
             hubbard=hubbard,
             average=average,
             gexp=gexp,
@@ -138,6 +140,7 @@ class TestSecondOrderElectrostatics:
 
         def func(positions: Tensor):
             es = es2.ES2(
+                positions=positions,
                 hubbard=get_elem_param(
                     torch.unique(numbers),
                     GFN1_XTB.element,
@@ -183,6 +186,7 @@ class TestSecondOrderElectrostatics:
 
         def func(gexp: Tensor, hubbard: Tensor):
             es = es2.ES2(
+                positions=positions,
                 hubbard=hubbard,
                 average=average,
                 gexp=gexp,

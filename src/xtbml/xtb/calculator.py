@@ -12,12 +12,12 @@ from .. import scf
 from ..basis import IndexHelper
 from ..classical.halogen import Halogen, new_halogen
 from ..classical.repulsion import Repulsion, new_repulsion
-from ..coulomb import secondorder, thirdorder, averaging_function
+from ..coulomb import new_es2, new_es3
 from ..dispersion import new_dispersion, Dispersion
 from ..data import cov_rad_d3
 from ..interaction import Interaction, InteractionList
 from ..ncoord import ncoord
-from ..param import Param, get_elem_param, get_elem_angular
+from ..param import Param, get_elem_angular
 from ..typing import Tensor
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian
@@ -116,37 +116,8 @@ class Calculator:
         self.ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         self.hamiltonian = Hamiltonian(numbers, positions, par, self.ihelp)
 
-        if par.charge is None:
-            raise ValueError("No charge parameters provided.")
-
-        es2 = secondorder.ES2(
-            hubbard=get_elem_param(
-                torch.unique(numbers),
-                par.element,
-                "gam",
-                device=positions.device,
-                dtype=positions.dtype,
-            ),
-            lhubbard=get_elem_param(
-                torch.unique(numbers),
-                par.element,
-                "lgam",
-                device=positions.device,
-                dtype=positions.dtype,
-            ),
-            average=averaging_function[par.charge.effective.average],
-            gexp=torch.tensor(par.charge.effective.gexp),
-        )
-        es3 = thirdorder.ES3(
-            hubbard_derivs=get_elem_param(
-                torch.unique(numbers),
-                par.element,
-                "gam3",
-                device=positions.device,
-                dtype=positions.dtype,
-            ),
-        )
-
+        es2 = new_es2(numbers, positions, par)
+        es3 = new_es3(numbers, positions, par)
         self.interaction = InteractionList(es2, es3, interaction)
 
         self.halogen = new_halogen(numbers, positions, par)
@@ -251,7 +222,7 @@ class Calculator:
 
         timer.stop("total")
 
-        if verbosity > -1:
+        if verbosity > 1:
             timer.print_times()
 
         return result

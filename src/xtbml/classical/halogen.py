@@ -58,8 +58,8 @@ class Halogen(TensorLike):
     halogens: list[int]
     """Atomic numbers of halogen atoms considered in correction."""
 
-    acceptors: list[int]
-    """Atomic numbers of acceptor atoms considered in correction."""
+    bases: list[int]
+    """Atomic numbers of base atoms considered in correction."""
 
     damp: Tensor
     """Damping factor in Lennard-Jones like potential."""
@@ -70,7 +70,7 @@ class Halogen(TensorLike):
     bond_strength: Tensor
     """Halogen bond strengths for unique species."""
 
-    cutoff: float = default_cutoff
+    cutoff: Tensor = torch.tensor(default_cutoff)
     """Real space cutoff for halogen bonding interactions (default: 20.0)."""
 
     def __init__(
@@ -80,7 +80,7 @@ class Halogen(TensorLike):
         damp: Tensor,
         rscale: Tensor,
         bond_strength: Tensor,
-        cutoff: float = default_cutoff,
+        cutoff: Tensor = torch.tensor(default_cutoff),
     ) -> None:
         super().__init__(positions.device, positions.dtype)
 
@@ -88,11 +88,11 @@ class Halogen(TensorLike):
         self.damp = damp.to(self.device).type(self.dtype)
         self.rscale = rscale.to(self.device).type(self.dtype)
         self.bond_strength = bond_strength.to(self.device).type(self.dtype)
-        self.cutoff = cutoff
+        self.cutoff = cutoff.to(self.device).type(self.dtype)
 
-        # element numbers of halogens and acceptors
+        # element numbers of halogens and bases
         self.halogens = [17, 35, 53, 85]
-        self.acceptors = [7, 8, 15, 16]
+        self.base = [7, 8, 15, 16]
 
     class Cache:
         """Cache for the halogen bond parameters."""
@@ -176,13 +176,11 @@ class Halogen(TensorLike):
 
         adj = []
 
-        c = positions.new_tensor(self.cutoff)
-
-        # find all halogen-acceptor pairs
+        # find all halogen-base pairs
         for i, i_at in enumerate(numbers):
             for j, j_at in enumerate(numbers):
-                if i_at in self.halogens and j_at in self.acceptors:
-                    if torch.norm(positions[i, :] - positions[j, :]) > c:
+                if i_at in self.halogens and j_at in self.base:
+                    if torch.norm(positions[i, :] - positions[j, :]) > self.cutoff:
                         continue
 
                     adj.append([i, j, 0])
@@ -201,7 +199,7 @@ class Halogen(TensorLike):
                     continue
 
                 r1 = torch.norm(positions[iat, :] - positions[k, :])
-                if r1 < dist and r1 > 0.0:
+                if 0.0 < r1 < dist:
                     adj[i, 2] = k
                     dist = r1
 
@@ -243,12 +241,12 @@ class Halogen(TensorLike):
         if halogen_mask.nonzero().size(-2) == 0:
             return torch.zeros(numbers.shape, dtype=positions.dtype)
 
-        acceptor_mask = torch.zeros_like(numbers).type(torch.bool)
-        for acceptor in self.acceptors:
-            acceptor_mask += numbers == acceptor
+        base_mask = torch.zeros_like(numbers).type(torch.bool)
+        for base in self.base:
+            base_mask += numbers == base
 
-        # return if no acceptors are present
-        if acceptor_mask.nonzero().size(-2) == 0:
+        # return if no bases are present
+        if base_mask.nonzero().size(-2) == 0:
             return torch.zeros(numbers.shape, dtype=positions.dtype)
 
         # triples for halogen bonding interactions
@@ -262,7 +260,7 @@ class Halogen(TensorLike):
 
         for i in range(adj.size(-2)):
             xat = adj[i][0]  # index of halogen atom
-            jat = adj[i][1]  # index of acceptor atom
+            jat = adj[i][1]  # index of base atom
             kat = adj[i][2]  # index of nearest neighbor of halogen atom
 
             r0xj = rads[xat] + rads[jat]
@@ -282,7 +280,7 @@ class Halogen(TensorLike):
             lj12 = torch.pow(lj6, 2.0)
             lj = (lj12 - self.damp * lj6) / (1.0 + lj12)
 
-            # cosine of angle (acceptor-halogen-neighbor) via rule of cosines
+            # cosine of angle (base-halogen-neighbor) via rule of cosines
             cosa = (d2xk + d2xj - d2kj) / xy
 
             # angle-dependent damping function
@@ -297,10 +295,10 @@ def new_halogen(
     numbers: Tensor,
     positions: Tensor,
     par: Param,
-    cutoff: float = default_cutoff,
-    grad: bool = False,
+    cutoff: Tensor = torch.tensor(default_cutoff),
 ) -> Halogen | None:
-    """Create new instance of Halogen class.
+    """
+    Create new instance of Halogen class.
 
     Parameters
     ----------

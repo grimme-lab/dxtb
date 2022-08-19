@@ -29,7 +29,7 @@ Example
 >>> gexp = torch.tensor(GFN1_XTB.charge.effective.gexp)
 >>> hubbard = get_element_param(GFN1_XTB.element, "gam")
 >>> # calculate energy
->>> es = es2.ES2(hubbard=hubbard, average=average, gexp=gexp)
+>>> es = es2.ES2(positions, hubbard=hubbard, average=average, gexp=gexp)
 >>> cache = es.get_cache(numbers, positions)
 >>> e = es.get_energy(cache, qat)
 >>> torch.set_printoptions(precision=7)
@@ -41,11 +41,16 @@ tensor(0.0005078)
 from __future__ import annotations
 import torch
 
-from .average import AveragingFunction, harmonic_average
+from .average import AveragingFunction, averaging_function, harmonic_average
 from ..basis import IndexHelper
 from ..interaction import Interaction
+from ..param import Param, get_elem_param
 from ..typing import Tensor
 from ..utils import real_pairs
+
+
+default_gexp: float = 2.0
+"""Default exponent of the second-order Coulomb interaction (2.0)."""
 
 
 class ES2(Interaction):
@@ -55,12 +60,18 @@ class ES2(Interaction):
     """Hubbard parameters of all elements."""
 
     lhubbard: Tensor | None = None
-    """Shell-resolved scaling factors for Hubbard parameters (default: None, i.e no shell resolution)."""
+    """
+    Shell-resolved scaling factors for Hubbard parameters (default: None, i.e.,
+    no shell resolution).
+    """
 
     average: AveragingFunction = harmonic_average
-    """Function to use for averaging the Hubbard parameters (default: harmonic_average)."""
+    """
+    Function to use for averaging the Hubbard parameters (default:
+    harmonic_average).
+    """
 
-    gexp: Tensor = torch.tensor(2.0)
+    gexp: Tensor = torch.tensor(default_gexp)
     """Exponent of the second-order Coulomb interaction (default: 2.0)."""
 
     ihelp: IndexHelper | None = None
@@ -80,16 +91,20 @@ class ES2(Interaction):
 
     def __init__(
         self,
+        positions: Tensor,
         hubbard: Tensor,
         lhubbard: Tensor | None = None,
         average: AveragingFunction = harmonic_average,
-        gexp: Tensor = torch.tensor(2.0),
+        gexp: Tensor = torch.tensor(default_gexp),
     ) -> None:
-        Interaction.__init__(self)
-        self.hubbard = hubbard
-        self.lhubbard = lhubbard
+        super().__init__(positions.device, positions.dtype)
+
+        self.hubbard = hubbard.to(self.device).type(self.dtype)
+        self.lhubbard = (
+            lhubbard if lhubbard is None else lhubbard.to(self.device).type(self.dtype)
+        )
+        self.gexp = gexp.to(self.device).type(self.dtype)
         self.average = average
-        self.gexp = gexp
 
         self.shell_resolved = lhubbard is not None
 
@@ -230,3 +245,34 @@ class ES2(Interaction):
             if self.shell_resolved
             else torch.zeros_like(charges)
         )
+
+
+def new_es2(numbers: Tensor, positions: Tensor, par: Param) -> ES2 | None:
+    """
+    Create new instance of ES2.
+
+    Parameters
+    ----------
+    numbers : Tensor
+        Atomic numbers of all atoms.
+    positions : Tensor
+        Cartesian coordinates of all atoms.
+    par : Param
+        Representation of an extended tight-binding model.
+
+    Returns
+    -------
+    ES2 | None
+        Instance of the ES2 class or `None` if no ES2 is used.
+    """
+
+    if par.charge is None:
+        return None
+
+    unique = torch.unique(numbers)
+    hubbard = get_elem_param(unique, par.element, "gam")
+    lhubbard = get_elem_param(unique, par.element, "lgam")
+    average = averaging_function[par.charge.effective.average]
+    gexp = torch.tensor(par.charge.effective.gexp)
+
+    return ES2(positions, hubbard, lhubbard, average, gexp)
