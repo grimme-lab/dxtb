@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Callable, List
 import torch
 from torch import nn
+from torch.utils.data import DataLoader
 from pathlib import Path
 
 from tad_dftd3 import dftd3
@@ -97,7 +98,7 @@ def training_loop(
     model: nn.Module,
     optimizer: torch.optim,
     loss_fn: Callable,
-    x: Sample,
+    dataloader: DataLoader,
     n: int = 100,
     verbose: bool = True,
 ) -> List[Tensor]:
@@ -105,21 +106,22 @@ def training_loop(
     losses = []
 
     for i in range(n):
-        if verbose:
-            print(f"epoch {i}")
-        optimizer.zero_grad()
-        energy, grad = model(x)
-        y_true = x.gref.double()
-        loss = loss_fn(grad, y_true)
-        # alternative: Jacobian of loss
+        for batch in dataloader:
+            if verbose:
+                print(f"epoch {i}")
+            optimizer.zero_grad()
+            energy, grad = model(batch)
+            y_true = batch.gref.double()
+            loss = loss_fn(grad, y_true)
+            # alternative: Jacobian of loss
 
-        # calculate gradient to update model parameters
-        loss.backward(inputs=model.params)
+            # calculate gradient to update model parameters
+            loss.backward(inputs=model.params)
 
-        optimizer.step()
-        losses.append(loss)
-        if verbose:
-            print(loss)
+            optimizer.step()
+            losses.append(loss)
+            if verbose:
+                print(loss)
     return losses
 
 
@@ -137,10 +139,21 @@ def example():
     print(type(batch))
     print(batch.numbers.shape)
 
+    # dynamic packing for each batch
+    dataloader = DataLoader(
+        dataset,
+        batch_size=1,
+        shuffle=False,
+        collate_fn=Sample.pack,
+        drop_last=False,
+    )
+
     # setup calculator and get parameters
     calc = Calculator(batch.numbers, batch.positions, GFN1_XTB)
     names = ["hamiltonian.kcn", "hamiltonian.hscale", "hamiltonian.shpoly"]
     params_to_opt = [Calculator.get_param(calc, name) for name in names]
+    # TODO: check dataloader is setup for _all_ elements in samples, during batch only limited might occur
+    #       --> does that work with calculator internal unique element representation in batch?
 
     # setup model, optimizer and loss function
     model = ParameterOptimizer(params_to_opt, names)
@@ -151,7 +164,7 @@ def example():
     for param in model.params:
         print(param)
 
-    losses = training_loop(model, opt, loss_fn, batch, n=100)
+    losses = training_loop(model, opt, loss_fn, dataloader, n=100)
 
     print("FINAL model.params", model.params)
     for param in model.params:
