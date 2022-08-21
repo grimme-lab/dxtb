@@ -17,43 +17,6 @@ from ..param.gfn1 import GFN1_XTB
 from ..param.base import Param
 from ..constants import AU2KCAL
 
-from ..utils.utils import rgetattr, rsetattr
-
-
-def convert_to_tensor(
-    params: Param,
-    name: str,
-    requires_grad: bool = True,
-    dtype: torch.dtype = torch.float64,
-) -> Tensor:
-
-    # TODO: check that converting entries to tensors does not break anything
-    def convert(x: int | float) -> Tensor:
-        print("convert ", type(x))
-        assert isinstance(x, int) or isinstance(x, float), f"Of type: {type(x)}"
-        return torch.tensor(x, requires_grad=requires_grad, dtype=dtype)
-
-    # for dict entries allow to split name by dict key
-    # i.e. name= "hamiltonian.xtb.kpair['Pt-Ti']" ->['Pt-Ti'] as key
-    key = None
-    split = name.split("[")
-    if len(split) > 1:
-        name, key = split
-        for s in ["'", '"', "]"]:
-            key = key.replace(s, "")
-        v = rgetattr(params, name)
-        v[key] = convert(v[key])
-        rev = v[key]
-    elif len(split) > 2:
-        raise AttributeError
-    else:
-        v = convert(rgetattr(params, name))
-        rev = v
-
-    rsetattr(params, name, v)
-
-    return rev
-
 
 class ParameterOptimizer(nn.Module):
     """Pytorch model for gradient optimization of given forward() function."""
@@ -67,26 +30,22 @@ class ParameterOptimizer(nn.Module):
         # parametrisation as proprietary attribute
         self.parametrisation = parametrisation
 
-        # TODO: better naming for parametrisation and parameters
-
-        abc = [convert_to_tensor(self.parametrisation, name) for name in names]
+        # get parameters from parametrisation
+        params = [
+            torch.tensor(
+                self.parametrisation.get_param(name),
+                requires_grad=True,
+                dtype=torch.float64,
+            )
+            for name in names
+        ]
 
         # register as learnable model parameters
-        self.params = nn.ParameterList(
-            [nn.Parameter(i) for i in abc]
-            # [
-            #     # convert all trainable parameters to tensors
-            #     nn.Parameter(convert_to_tensor(self.parametrisation, name))
-            #     for name in names
-            # ]
-        )
+        self.params = nn.ParameterList([nn.Parameter(p) for p in params])
 
-        # TODO: write a getter/setter function for Params object
-        # TODO: check that params are updated in self.parametrisation
-        # TODO: check that params are not overwritten in Calculator setup (i.e. floats converted to tensors)
-        import sys
-
-        # sys.exit(0)
+        # assign parameters to parametrisation
+        for name, param in zip(names, self.params):
+            self.parametrisation.set_param(name, param)
 
     def forward(self, x: Sample):
         """
@@ -98,10 +57,6 @@ class ParameterOptimizer(nn.Module):
         positions.requires_grad_(True)
 
         calc = Calculator(x.numbers, positions, self.parametrisation)
-
-        # # assign model weights (= learnable parameter) to calculator
-        # for i, param in enumerate(self.params):
-        #     Calculator.set_param(calc, self.params_name[i], self.params[i])
 
         # calculate energies
         results = calc.singlepoint(x.numbers, positions, x.charges, verbosity=0)
@@ -191,8 +146,7 @@ def training_loop(
 def example():
     def get_ptb_dataset(root: Path) -> SampleDataset:
         list_of_path = sorted(
-            root.glob("samples_DUMMY.json")
-            # root.glob("samples_HCNO_tiny.json")
+            root.glob("samples_HCNO_tiny.json")
         )  # samples_*.json samples_HE*.json samples_DUMMY.json
         return SampleDataset.from_json(list_of_path)
 
@@ -211,27 +165,16 @@ def example():
         drop_last=False,
     )
 
-    # setup calculator and get parameters
-    calc = Calculator(batch.numbers, batch.positions, GFN1_XTB)
+    # NOTE: Add attributes directly to Param object. The Calculator constructor handles the correct
+    #       assignment of unique elements and their orbitals and shells in batch
+
     # names = ["hamiltonian.kcn", "hamiltonian.hscale", "hamiltonian.shpoly"]
-    names = ["hamiltonian.kpair"]
-    params_to_opt = [Calculator.get_param(calc, name) for name in names]
-    # TODO: check dataloader is setup for _all_ elements in samples, during batch only limited might occur
-    #       --> does that work with calculator internal unique element representation in batch?
-
-    # TODO: better to add attributes directly to Param toml object (GFN1_XTB)
-    #       -- then Calculator constructor handles the correct assignment
-
     names = ["hamiltonian.xtb.kpair"]
     names = [
         "hamiltonian.xtb.kpair['H-H']",
         "hamiltonian.xtb.kpair['N-H']",
     ]
     # TODO: get all dict entries as strings and add to list
-
-    print(batch.numbers)
-    # return
-
     """print("GFN1_XTB.meta", GFN1_XTB.meta)
     print("GFN1_XTB.element", GFN1_XTB.element)
     print("GFN1_XTB.hamiltonian", GFN1_XTB.hamiltonian)
@@ -242,31 +185,17 @@ def example():
     print("GFN1_XTB.halogen", GFN1_XTB.halogen)
     print("GFN1_XTB.thirdorder", GFN1_XTB.thirdorder)"""
 
-    print("add stuff directly to GFN1_XTB param file")
-    # return
-
     # setup model, optimizer and loss function
     model = ParameterOptimizer(GFN1_XTB.copy(deep=True), names)
-    # model = ParameterOptimizer(params_to_opt, names)
     opt = torch.optim.Adam(model.parameters(), lr=0.1)
     loss_fn = torch.nn.MSELoss(reduction="sum")
     # optmizier options: Adagrad, RMSPROP
-
-    """epoch 4
-    tensor(0.3194, dtype=torch.float64, grad_fn=<MseLossBackward0>)
-    FINAL model.params ParameterList(  (0): Parameter containing: [torch.DoubleTensor of size 5x5])
-    Parameter containing:
-    tensor([[1.0000, 1.0000, 1.0000, 1.0000, 1.0000],
-            [1.0000, 1.1010, 1.0620, 0.8050, 0.7036],
-            [1.0000, 1.0620, 0.5571, 1.0000, 0.8423],
-            [1.0000, 0.8050, 1.0000, 0.6918, 1.0000],
-            [1.0000, 0.7036, 0.8423, 1.0000, 1.3667]], dtype=torch.float64, requires_grad=True)"""
 
     print("INITAL model.params", model.params)
     for param in model.params:
         print(param)
 
-    losses = training_loop(model, opt, loss_fn, dataloader, n=5)
+    losses = training_loop(model, opt, loss_fn, dataloader, n=20)
 
     print("FINAL model.params", model.params)
     for param in model.params:
