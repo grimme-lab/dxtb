@@ -81,3 +81,37 @@ def rgetattr(obj, attr, *args):
         return getattr(obj, attr, *args)
 
     return functools.reduce(_getattr, [obj] + attr.split("."))
+
+
+def get_attribute_name_key(name: str) -> tuple[str, str]:
+    """Get name of nested attributes including dict key for given input.
+
+    Parameters
+    ----------
+    name : str
+        Input string containing name of object attribute (nested and possibly containing dict entry).
+
+    Returns
+    -------
+    tuple[str, str]
+        The name of nested attribute and if present the key of dictionary entry.
+
+    Raises
+    ------
+    AttributeError
+        If input string contains more than single '[', e.g. multiple dictionary entries
+
+    Example:
+    > input = "hamiltonian.xtb.kpair['Pt-Ti']"
+    > print(get_attribute_name_key(input))
+    ('hamiltonian.xtb.kpair', 'Pt-Ti')
+    """
+    key = None
+    split = name.split("[")
+    if len(split) > 1:
+        name, key = split
+        for s in ["'", '"', "]"]:
+            key = key.replace(s, "")
+    elif len(split) > 2:
+        raise AttributeError
+    return name, key

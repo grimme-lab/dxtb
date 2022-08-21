@@ -12,7 +12,7 @@ The respective checks are therefore deferred to the instantiation of the calcula
 while a deserialized model in `tblite`_ is already verified at this stage.
 """
 
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 from pydantic import BaseModel
 
 from .dispersion import Dispersion
@@ -23,6 +23,8 @@ from .hamiltonian import Hamiltonian
 from .meta import Meta
 from .repulsion import Repulsion
 from .thirdorder import ThirdOrder
+from ..typing import Tensor
+from ..utils.utils import rgetattr, rsetattr, get_attribute_name_key
 
 
 class Param(BaseModel):
@@ -48,3 +50,45 @@ class Param(BaseModel):
     """Definition of the halogen bonding correction (not implemented)"""
     thirdorder: Optional[ThirdOrder]
     """Definition of the isotropic third-order charge interactions"""
+
+    def get_param(
+        self,
+        name: str,
+    ) -> Any:
+        """Get single parameter based on string. Works on nested attributes including dictionary entries.
+
+        Parameters
+        ----------
+        name : str
+            Identifier for specific (nested) attribute.
+
+        Returns
+        -------
+        Any
+            Return value from parametrisation.
+        """
+        name, key = get_attribute_name_key(name)
+
+        if key is None:
+            return rgetattr(self, name)
+        else:
+            return rgetattr(self, name)[key]
+
+    def set_param(self, name: str, value: Any):
+        """Set value of single parameter.
+
+        Parameters
+        ----------
+        name : str
+            Identifier for specific (nested) attribute.
+        value : Any
+            Value to be assigned.
+        """
+        name, key = get_attribute_name_key(name)
+
+        if key is None:
+            rsetattr(self, name, value)
+        else:
+            d = rgetattr(self, name)
+            d[key] = value
+            rsetattr(self, name, d)
