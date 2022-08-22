@@ -8,6 +8,7 @@ Collection of utility functions.
 from __future__ import annotations
 from functools import wraps
 from time import time
+from typing import Any
 import torch
 import functools
 
@@ -115,3 +116,27 @@ def get_attribute_name_key(name: str) -> tuple[str, str]:
     elif len(split) > 2:
         raise AttributeError
     return name, key
+
+
+def get_all_entries(obj: Any, name: str) -> str | list[str]:
+    """Get all entries from dict-like object attribute
+
+    Parameters
+    ----------
+    obj : Any
+        Object to be parsed for attribute
+    name : str
+        Nested attribute identifier
+
+    Returns
+    -------
+    str | list[str]
+        Name of the attribute or names of attributes for all keys in dict.
+    """
+    attr = rgetattr(obj, name)
+
+    if isinstance(attr, dict):
+        # create string for every key in dict
+        return [f"{name}['{k}']" for k in attr]
+    else:
+        return name
