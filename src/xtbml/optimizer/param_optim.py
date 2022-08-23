@@ -16,6 +16,7 @@ from ..xtb.calculator import Calculator
 from ..param.gfn1 import GFN1_XTB
 from ..param.base import Param
 from ..constants import AU2KCAL
+from ..utils.utils import get_all_entries
 
 
 class ParameterOptimizer(nn.Module):
@@ -34,7 +35,6 @@ class ParameterOptimizer(nn.Module):
         params = [
             torch.tensor(
                 self.parametrisation.get_param(name),
-                requires_grad=True,
                 dtype=torch.float64,
             )
             for name in names
@@ -56,11 +56,15 @@ class ParameterOptimizer(nn.Module):
         positions = positions.double()
         positions.requires_grad_(True)
 
-        calc = Calculator(x.numbers, positions, self.parametrisation)
+        # detached graph for reduce the RAM footprint
+        numbers = x.numbers.detach()
+        charges = x.charges.detach()
+
+        calc = Calculator(numbers, positions, self.parametrisation)
 
         # calculate energies
-        results = calc.singlepoint(x.numbers, positions, x.charges, verbosity=0)
-        edisp = self.calc_dispersion(x.numbers, positions)
+        results = calc.singlepoint(numbers, positions, charges, verbosity=0)
+        edisp = self.calc_dispersion(numbers, positions)
 
         energy = results["energy"] + edisp
 
@@ -127,7 +131,7 @@ def training_loop(
         for batch in dataloader:
             if verbose:
                 print(f"batch: {batch}")
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=True)
             energy, grad = model(batch)
             y_true = batch.gref.double()
             loss = loss_fn(grad, y_true)
@@ -137,7 +141,7 @@ def training_loop(
             loss.backward(inputs=model.params)
 
             optimizer.step()
-            losses.append(loss)
+            losses.append(loss.item())
             if verbose:
                 print(loss)
     return losses
@@ -146,20 +150,26 @@ def training_loop(
 def example():
     def get_ptb_dataset(root: Path) -> SampleDataset:
         list_of_path = sorted(
-            root.glob("samples_HCNO_tiny.json")
-        )  # samples_*.json samples_HE*.json samples_DUMMY.json
+            root.glob("samples_HCNO.json")
+        )  # samples_*.json samples_HE*.json samples_DUMMY.json samples_HCNO_debug
         return SampleDataset.from_json(list_of_path)
 
     # load data as batched sample
     path = Path(__file__).resolve().parents[3] / "data" / "PTB"
     dataset = get_ptb_dataset(path)
-    batch = Sample.pack(dataset.samples)
+
+    # only neutral samples
+    dataset.samples = [s for s in dataset.samples if s.charges == torch.tensor(0)]
+    # small samples only
+    dataset.samples = [s for s in dataset.samples if s.positions.shape[0] <= 50]
+
+    # batch = Sample.pack(dataset.samples)
     print("Number samples", len(dataset))
 
     # dynamic packing for each batch
     dataloader = DataLoader(
         dataset,
-        batch_size=6,
+        batch_size=1,
         shuffle=False,
         collate_fn=Sample.pack,
         drop_last=False,
@@ -168,22 +178,12 @@ def example():
     # NOTE: Add attributes directly to Param object. The Calculator constructor handles the correct
     #       assignment of unique elements and their orbitals and shells in batch
 
+    names = get_all_entries(GFN1_XTB, "hamiltonian.xtb.kpair")
     # names = ["hamiltonian.kcn", "hamiltonian.hscale", "hamiltonian.shpoly"]
-    names = ["hamiltonian.xtb.kpair"]
-    names = [
-        "hamiltonian.xtb.kpair['H-H']",
-        "hamiltonian.xtb.kpair['N-H']",
-    ]
-    # TODO: get all dict entries as strings and add to list
-    """print("GFN1_XTB.meta", GFN1_XTB.meta)
-    print("GFN1_XTB.element", GFN1_XTB.element)
-    print("GFN1_XTB.hamiltonian", GFN1_XTB.hamiltonian)
-    print("GFN1_XTB.dispersion", GFN1_XTB.dispersion)
-    print("GFN1_XTB.repulsion", GFN1_XTB.repulsion)
-    print("GFN1_XTB.charge", GFN1_XTB.charge)
-    print("GFN1_XTB.multipole", GFN1_XTB.multipole)
-    print("GFN1_XTB.halogen", GFN1_XTB.halogen)
-    print("GFN1_XTB.thirdorder", GFN1_XTB.thirdorder)"""
+    # names = [
+    #     "hamiltonian.xtb.kpair['H-H']",
+    #     "hamiltonian.xtb.kpair['N-H']",
+    # ]
 
     # setup model, optimizer and loss function
     model = ParameterOptimizer(GFN1_XTB.copy(deep=True), names)
@@ -192,15 +192,18 @@ def example():
     # optmizier options: Adagrad, RMSPROP
 
     print("INITAL model.params", model.params)
-    for param in model.params:
-        print(param)
+    for name, param in zip(names, model.params):
+        print(name, param)
 
     losses = training_loop(model, opt, loss_fn, dataloader, n=20)
 
     print("FINAL model.params", model.params)
-    for param in model.params:
-        print(param)
+    for name, param in zip(names, model.params):
+        print(name, param)
 
+    print("Losses: ", losses)
+
+    # TODO: Save params to file (check toml reader to Param.to_toml())
     return
 
     # inference
