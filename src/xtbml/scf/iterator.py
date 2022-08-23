@@ -193,7 +193,7 @@ class SelfConsistentField(xt.EditableModule):
             New orbital-resolved partial charges vector.
         """
 
-        if self.fwd_options["verbose"]:
+        if self.fwd_options["verbose"] > 1:
             print(self.get_energy(charges).sum(-1))
         potential = self.charges_to_potential(charges)
         return self.potential_to_charges(potential)
