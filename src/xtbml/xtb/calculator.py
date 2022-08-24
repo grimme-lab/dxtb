@@ -22,7 +22,7 @@ from ..typing import Tensor
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian
 from ..utils import Timers
-
+from ..utils.utils import rgetattr, rsetattr
 
 class Result:
     """
@@ -226,3 +226,43 @@ class Calculator:
             timer.print_times()
 
         return result
+
+    @staticmethod
+    def get_param(calc: "Calculator", name: str, dtype=torch.float64) -> Tensor:
+        """Get parameter from calculator object by a given name.
+           Nested parameters can be accesses via punctuation,
+           e.g. 'hamiltonian.shpoly'.
+
+        Parameters
+        ----------
+        calc : Calculator
+            The calculator object to retrieve parameters from. The
+            parameter tensor will be detached from original calculator.
+        name : str
+            Name of the parameter to be accessed.
+        dtype : torch.dtype, optional
+            Dtype of parameter tensor, by default torch.float64
+
+        Returns
+        -------
+        Tensor
+            The detached tensor containing the parameter values.
+        """
+        param = rgetattr(calc, name).detach()
+        return param.to(dtype)
+
+    @staticmethod
+    def set_param(calc: "Calculator", name: str, param: Tensor):
+        """Set parameter for given calculator. Tensor properties
+           such as 'dtype' and 'requires_grad' will be conserved.
+
+        Parameters
+        ----------
+        calc : Calculator
+            Calculator object to be updated
+        name : str
+            Name of the parameter within calculator class
+        param : Tensor
+            Parameter tensor used for updating
+        """
+        rsetattr(calc, name, param)

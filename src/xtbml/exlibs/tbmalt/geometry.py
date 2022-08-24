@@ -132,13 +132,15 @@ class Geometry:
         if self.positions.device != self.positions.device:
             raise RuntimeError("All tensors must be on the same device!")
 
-        self._charges = (
-            charges if charges is not None else torch.zeros(self.positions.shape[0])
+        self._charges: Tensor = (
+            pack(charges)
+            if charges is not None
+            else torch.zeros(self.positions.shape[0], dtype=torch.int8)
         )
         self._unpaired_e = (
-            unpaired_e
+            pack(unpaired_e)
             if unpaired_e is not None
-            else torch.zeros(self.positions.shape[0])
+            else torch.zeros(self.positions.shape[0], dtype=torch.uint8)
         )
 
     @property
@@ -161,7 +163,7 @@ class Geometry:
     @property
     def distances(self) -> Tensor:
         """Distance matrix between atoms in the system."""
-        dist = torch.cdist(self.positions, self.positions, p=2)
+        dist = torch.cdist(self.positions, self.positions, p=2, compute_mode="use_mm_for_euclid_dist")
         # Ensure padding area is zeroed out
         dist[self._mask_dist] = 0
         return dist
@@ -373,10 +375,7 @@ class Geometry:
 
     def __len__(self) -> int:
         """Returns length of geometry batch."""
-        if len(self.positions.shape) == 2:
-            return 1
-        else:
-            return self.positions.shape[0]
+        return 1 if self._n_batch is None else self._n_batch
 
     def __getitem__(self, selector) -> "Geometry":
         """Permits batched Geometry instances to be sliced as needed."""
@@ -407,24 +406,18 @@ class Geometry:
         an_1 = torch.atleast_2d(self.atomic_numbers)
         an_2 = torch.atleast_2d(other.atomic_numbers)
 
-        pos_1 = self.positions
-        pos_2 = other.positions
+        pos_1 = self.positions if s_batch else self.positions.unsqueeze(0)
+        pos_2 = other.positions if o_batch else other.positions.unsqueeze(0)
 
-        pos_1 = pos_1 if s_batch else pos_1.unsqueeze(0)
-        pos_2 = pos_2 if o_batch else pos_2.unsqueeze(0)
+        try:
+            chrg = torch.stack((self.charges, other.charges))
+        except RuntimeError:
+            chrg = torch.concat((self.charges, other.charges.unsqueeze(0)), dim=0)
 
-        chrg_1 = self.charges
-        chrg_2 = other.charges
         try:
-            chrg = torch.stack((chrg_1, chrg_2))
+            ue = torch.stack((self.unpaired_e, other.unpaired_e))
         except RuntimeError:
-            chrg = torch.concat((chrg_1, chrg_2.unsqueeze(0)), dim=0)
-        ue_1 = self.unpaired_e
-        ue_2 = other.unpaired_e
-        try:
-            ue = torch.stack((ue_1, ue_2))
-        except RuntimeError:
-            ue = torch.concat((ue_1, ue_2.unsqueeze(0)), dim=0)
+            ue = torch.concat((self.unpaired_e, other.unpaired_e.unsqueeze(0)), dim=0)
 
         return self.__class__(merge([an_1, an_2]), merge([pos_1, pos_2]), chrg, ue)
 
