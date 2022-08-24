@@ -12,8 +12,10 @@ The respective checks are therefore deferred to the instantiation of the calcula
 while a deserialized model in `tblite`_ is already verified at this stage.
 """
 
+from __future__ import annotations
 from typing import Any, Dict, Optional
 from pydantic import BaseModel
+from pathlib import Path
 
 from .dispersion import Dispersion
 from .charge import Charge
@@ -23,7 +25,6 @@ from .hamiltonian import Hamiltonian
 from .meta import Meta
 from .repulsion import Repulsion
 from .thirdorder import ThirdOrder
-from ..typing import Tensor
 from ..utils.utils import rgetattr, rsetattr, get_attribute_name_key
 
 
@@ -92,3 +93,27 @@ class Param(BaseModel):
             d = rgetattr(self, name)
             d[key] = value
             rsetattr(self, name, d)
+
+    def to_toml(
+        self, path: str | Path = "gfn1-xtb.toml", overwrite: bool = False
+    ) -> None:
+        """
+        Export parametrization to TOML file.
+
+        Parameters
+        ----------
+        path : str | Path, optional
+            Path for output file (default: "gfn1-xtb.toml")
+        overwrite: bool
+            Whether to overwrite the file if it already exists.
+        """
+
+        # pylint: disable=import-outside-toplevel
+        import toml
+
+        path = Path(path)
+        if path.is_file() is True and overwrite is False:
+            raise FileExistsError(f"File '{path}' already exists.")
+
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(toml.dumps(self.dict()))
