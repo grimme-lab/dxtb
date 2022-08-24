@@ -418,3 +418,6 @@ mb16_43: dict[str, Record] = {
         ).reshape((-1, 3)),
     },
 }
+
+# samples = amino20x4 | mb16_43 # Python 3.9+
+samples = {**amino20x4, **mb16_43}

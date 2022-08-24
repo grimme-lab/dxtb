@@ -4,8 +4,10 @@
 Definition of the dispersion contribution.
 """
 
-from typing import Optional
+from __future__ import annotations
 from pydantic import BaseModel
+
+from ..typing import Optional
 
 
 class D3Model(BaseModel):
@@ -13,13 +15,13 @@ class D3Model(BaseModel):
     Representation of the DFT-D3(BJ) contribution for a parametrization.
     """
 
-    s6: Optional[float] = 1.0
+    s6: float = 1.0
     """Scaling factor for multipolar (dipole-dipole contribution) terms"""
 
     s8: float
     """Scaling factor for multipolar (dipole-quadrupole contribution) terms"""
 
-    s9: Optional[float] = 0.0
+    s9: float = 0.0
     """Scaling factor for the many-body dispersion term (ATM/RPA-like)"""
 
     a1: float
@@ -34,5 +36,8 @@ class Dispersion(BaseModel):
     Possible dispersion parametrizations. Currently only the DFT-D3(BJ) is supported.
     """
 
-    d3: D3Model
+    d3: Optional[D3Model]
     """Name of the represented method"""
+
+    d4: Optional[D3Model] = None
+    """D4 model for dispersion (not implemented)."""

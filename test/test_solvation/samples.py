@@ -10,6 +10,18 @@ from xtbml.utils import symbol2number
 class Record(Molecule):
     """Format of reference records containing GFN1-xTB and GFN2-xTB reference values."""
 
+    energies: Tensor
+    """Energy vector for each atom partial charge."""
+
+    gradient: Tensor
+    """Gradient of the energy."""
+
+    gsolv: Tensor
+    """Solvation energy."""
+
+    charges: Tensor
+    """Partial charges."""
+
     born: Tensor
     """Reference values for Born radii"""
 
@@ -285,6 +297,8 @@ mb16_43: dict[str, Record] = {
                 -1.39117477789609,
             ],
         ).reshape((-1, 3)),
+        "gradient": torch.tensor([]),
+        "gsolv": torch.tensor([]),
         "energies": torch.tensor(
             [
                 +1.47620109527236e-4,
@@ -387,6 +401,10 @@ mb16_43: dict[str, Record] = {
                 1.61768389755830,
             ],
         ).reshape((-1, 3)),
+        "gradient": torch.tensor([]),
+        "gsolv": torch.tensor([]),
+        "energies": torch.tensor([]),
+        "charges": torch.tensor([]),
         "born": torch.tensor(
             [
                 3.66468951140369,

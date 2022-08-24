@@ -19,7 +19,7 @@ class InteractionList(Interaction):
         __slots__ = ()
 
     def __init__(self, *interactions):
-        Interaction.__init__(self)
+        Interaction.__init__(self, torch.device("cpu"), torch.float)
         self.interactions = [
             interaction for interaction in interactions if interaction is not None
         ]

@@ -7,7 +7,9 @@ import pytest
 import tad_dftd3 as d3
 import torch
 
+from xtbml.dispersion import new_dispersion
 from xtbml.exlibs.tbmalt import batch
+from xtbml.param.gfn1 import GFN1_XTB as par
 
 from .samples import structures
 
@@ -60,6 +62,19 @@ class TestDispersion:
 
         assert energy.dtype == dtype
         assert torch.allclose(energy, ref)
+
+        # set parameters explicitly
+        par.dispersion.d3.a1 = param["a1"]
+        par.dispersion.d3.a2 = param["a2"]
+        par.dispersion.d3.s8 = param["s8"]
+
+        disp = new_dispersion(numbers, positions, par)
+        edisp = disp.get_energy()
+
+        assert edisp.dtype == dtype
+        assert torch.allclose(edisp, ref)
+
+        assert torch.allclose(edisp, energy)
 
     @pytest.mark.grad
     def test_param_grad(self):

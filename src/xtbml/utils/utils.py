@@ -61,10 +61,9 @@ def real_atoms(numbers: Tensor) -> Tensor:
 def real_pairs(numbers: Tensor, diagonal: bool = False) -> Tensor:
     real = real_atoms(numbers)
     mask = real.unsqueeze(-2) * real.unsqueeze(-1)
-    if not diagonal:
+    if diagonal is True:
         mask *= ~torch.diag_embed(torch.ones_like(real))
     return mask
-
 
 ###  Helper functions for accesing nested object properties. ###
 def rsetattr(obj, attr, val):
