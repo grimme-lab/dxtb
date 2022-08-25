@@ -8,10 +8,10 @@ from __future__ import annotations
 import torch
 
 
+from .h0 import Hamiltonian
 from .. import scf
 from ..basis import IndexHelper
-from ..classical.halogen import Halogen, new_halogen
-from ..classical.repulsion import Repulsion, new_repulsion
+from ..classical import Halogen, new_halogen, Repulsion, new_repulsion
 from ..coulomb import new_es2, new_es3
 from ..dispersion import new_dispersion, Dispersion
 from ..data import cov_rad_d3
@@ -20,9 +20,7 @@ from ..ncoord import ncoord
 from ..param import Param, get_elem_angular
 from ..typing import Tensor
 from ..wavefunction import filling
-from ..xtb.h0 import Hamiltonian
 from ..utils import Timers
-from ..utils.utils import rgetattr, rsetattr
 
 
 class Result:
