@@ -22,6 +22,7 @@ from ..typing import Tensor
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian
 from ..utils import Timers
+from ..utils.utils import rgetattr, rsetattr
 
 
 class Result:
@@ -209,7 +210,7 @@ class Calculator:
             timer.start("dispersion")
             # cache_disp = self.dispersion.get_cache(numbers, self.ihelp)
             # result.dispersion = self.dispersion.get_energy(positions, cache_disp)
-            result.dispersion = self.dispersion.get_energy()
+            result.dispersion = self.dispersion.get_energy(positions)
             result.total += result.dispersion
             timer.stop("dispersion")
 
@@ -226,3 +227,5 @@ class Calculator:
             timer.print_times()
 
         return result
+
+   
