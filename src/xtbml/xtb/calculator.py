@@ -56,6 +56,9 @@ class Result:
     density: Tensor
     """Density matrix."""
 
+    charges: Tensor
+    """Self-consistent orbital-resolved Mulliken partial charges"""
+
     __slots__ = [
         "scf",
         "dispersion",
@@ -66,6 +69,7 @@ class Result:
         "hamiltonian",
         "overlap",
         "density",
+        "charges",
     ]
 
     def __init__(self, positions: Tensor):
@@ -173,10 +177,14 @@ class Calculator:
         # Obtain the reference occupations and total number of electrons
         n0 = self.hamiltonian.get_occupation()
         nel = torch.sum(n0, -1) - torch.sum(charges, -1)
+        print("charge", charges, "nel", nel, "n0", torch.sum(n0, -1))
         occupation = 2 * filling.get_aufbau_occupation(
             hcore.new_tensor(hcore.shape[-1], dtype=torch.int64),
             nel / 2,
         )
+        # print("occupation", occupation)
+
+        print("\n\n")
 
         fwd_options = {
             "verbose": verbosity,
@@ -194,6 +202,9 @@ class Calculator:
             fwd_options=fwd_options,
             use_potential=True,
         )
+        result.charges = scf_results["charges"]
+        result.density = scf_results["density"]
+        result.hamiltonian = scf_results["hamiltonian"]
         result.scf += scf_results["energy"]
         result.total += scf_results["energy"]
         timer.stop("scf")
