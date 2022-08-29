@@ -274,8 +274,18 @@ def new_es2(
         return None
 
     unique = torch.unique(numbers)
-    hubbard = get_elem_param(unique, par.element, "gam", requires_grad=grad_par)
-    lhubbard = get_elem_param(unique, par.element, "lgam", requires_grad=grad_par)
+    hubbard = get_elem_param(
+        unique,
+        par.element,
+        "gam",
+        requires_grad=grad_par,
+    )
+    lhubbard = get_elem_param(
+        unique,
+        par.element,
+        "lgam",
+        requires_grad=grad_par,
+    )
     average = averaging_function[par.charge.effective.average]
     gexp = torch.tensor(par.charge.effective.gexp, requires_grad=grad_par)
 

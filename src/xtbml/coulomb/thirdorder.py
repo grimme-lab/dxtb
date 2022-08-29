@@ -166,6 +166,4 @@ def new_es3(
         torch.unique(numbers), par.element, "gam3", requires_grad=grad_par
     )
 
-    print("hubbard_derivs", hubbard_derivs)
-
     return ES3(positions, hubbard_derivs)

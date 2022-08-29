@@ -119,8 +119,8 @@ class Calculator:
             numbers, positions, par, self.ihelp, grad_par=grad_par
         )
 
-        es2 = new_es2(numbers, positions, par, grad_par=False)
-        es3 = new_es3(numbers, positions, par, grad_par=False)
+        es2 = new_es2(numbers, positions, par, grad_par=grad_par)
+        es3 = new_es3(numbers, positions, par, grad_par=grad_par)
         self.interaction = InteractionList(es2, es3, interaction)
 
         self.halogen = new_halogen(numbers, positions, par, grad_par=grad_par)
@@ -201,15 +201,12 @@ class Calculator:
         result.total += scf_results["energy"]
         timer.stop("scf")
 
-        print(self.halogen)
         if self.halogen is not None:
             timer.start("halogen")
             cache_hal = self.halogen.get_cache(numbers, self.ihelp)
             result.halogen = self.halogen.get_energy(positions, cache_hal)
             result.total += result.halogen
             timer.stop("halogen")
-
-        print(result.halogen)
 
         if self.dispersion is not None:
             timer.start("dispersion")

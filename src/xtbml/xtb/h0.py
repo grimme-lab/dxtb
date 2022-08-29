@@ -84,9 +84,6 @@ class Hamiltonian(TensorLike):
         self.refocc = self._get_elem_param("refocc")
         self.valence = self._get_elem_valence()
 
-        # BUG: Heaviside function in occupation has no autograd
-        self.refocc.requires_grad_(False)
-
         # shell-pair-resolved pair parameters
         self.hscale = self._get_hscale()
         self.kpair = self._get_pair_param(self.par.hamiltonian.xtb.kpair)
