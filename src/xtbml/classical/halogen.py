@@ -31,6 +31,7 @@ tensor(0.0025)
 from __future__ import annotations
 import torch
 
+from .abc import Classical
 from ..basis import IndexHelper
 from ..data import atomic_rad
 from ..exlibs.tbmalt import batch
@@ -43,7 +44,7 @@ default_cutoff: float = 20.0
 """Default real space cutoff for halogen bonding interactions."""
 
 
-class Halogen(TensorLike):
+class Halogen(Classical, TensorLike):
     """
     Representation of the halogen bond correction.
 
@@ -130,10 +131,17 @@ class Halogen(TensorLike):
         """
         Handle batchwise and single calculation of halogen bonding energy.
 
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms.
+        cache : Halogen.Cache
+            Cache for the halogen bond parameters.
+
         Returns
         -------
         Tensor
-            Atomwise energy contributions from halogen bonds.
+             Atomwise energy contributions from halogen bonds.
         """
 
         if self.numbers.ndim > 1:

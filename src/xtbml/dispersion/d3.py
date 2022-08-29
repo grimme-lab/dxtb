@@ -1,7 +1,5 @@
 from __future__ import annotations
-
 import tad_dftd3 as d3
-
 
 from .type import Dispersion
 from ..typing import Tensor
@@ -10,21 +8,25 @@ from ..typing import Tensor
 class DispersionD3(Dispersion):
     """Representation of the DFT-D3(BJ) dispersion correction."""
 
-    def __init__(
-        self, numbers: Tensor, positions: Tensor, param: dict[str, float]
-    ) -> None:
-        self.numbers = numbers
-        self.positions = positions
-        self.param = param
+    numbers: Tensor
+    """Atomic numbers of all atoms."""
 
-    def get_energy(self) -> Tensor:
+    param: dict[str, float]
+    """Dispersion parameters."""
+
+    def get_energy(self, positions: Tensor, **kwargs) -> Tensor:
         """
-        Get dispersion energy.
+        Get D3 dispersion energy.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms.
 
         Returns
         -------
         Tensor
-            Atom-resolved dispersion energy.
+            Atom-resolved D3 dispersion energy.
         """
 
-        return d3.dftd3(self.numbers, self.positions, self.param)
+        return d3.dftd3(self.numbers, positions, self.param, **kwargs)
