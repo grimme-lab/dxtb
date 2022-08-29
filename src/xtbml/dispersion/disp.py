@@ -1,6 +1,8 @@
 from __future__ import annotations
 import warnings
 
+import torch
+
 from .d3 import DispersionD3
 from .d4 import DispersionD4
 from .type import Dispersion
@@ -9,7 +11,12 @@ from ..param import Param
 from ..typing import Tensor
 
 
-def new_dispersion(numbers: Tensor, positions: Tensor, par: Param) -> Dispersion | None:
+def new_dispersion(
+    numbers: Tensor,
+    positions: Tensor,
+    par: Param,
+    grad_par: bool = False,
+) -> Dispersion | None:
     """
     Create new instance of the Dispersion class.
 
@@ -41,10 +48,10 @@ def new_dispersion(numbers: Tensor, positions: Tensor, par: Param) -> Dispersion
     if par.dispersion.d3 is not None and par.dispersion.d4 is None:
         # FIXME: TypeError: rational_damping() got an unexpected keyword argument 's9'
         param = {
-            "a1": par.dispersion.d3.a1,
-            "a2": par.dispersion.d3.a2,
-            "s6": par.dispersion.d3.s6,
-            "s8": par.dispersion.d3.s8,
+            "a1": torch.tensor(par.dispersion.d3.a1, requires_grad=grad_par),
+            "a2": torch.tensor(par.dispersion.d3.a2, requires_grad=grad_par),
+            "s6": torch.tensor(par.dispersion.d3.s6, requires_grad=grad_par),
+            "s8": torch.tensor(par.dispersion.d3.s8, requires_grad=grad_par),
             # "s9": par.dispersion.d3.s9,
         }
         return DispersionD3(numbers, positions, param)

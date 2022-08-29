@@ -100,7 +100,7 @@ class Calculator:
     halogen: Halogen | None = None
     """Halogen bond definition."""
 
-    interaction: Interaction
+    interaction: InteractionList
     """Interactions to minimize in self-consistent iterations."""
 
     ihelp: IndexHelper
@@ -111,18 +111,21 @@ class Calculator:
         numbers: Tensor,
         positions: Tensor,
         par: Param,
-        interaction: Interaction | None = None,
+        interaction: InteractionList | None = None,
+        grad_par: bool = False,
     ) -> None:
         self.ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-        self.hamiltonian = Hamiltonian(numbers, positions, par, self.ihelp)
+        self.hamiltonian = Hamiltonian(
+            numbers, positions, par, self.ihelp, grad_par=grad_par
+        )
 
-        es2 = new_es2(numbers, positions, par)
-        es3 = new_es3(numbers, positions, par)
+        es2 = new_es2(numbers, positions, par, grad_par=False)
+        es3 = new_es3(numbers, positions, par, grad_par=False)
         self.interaction = InteractionList(es2, es3, interaction)
 
-        self.halogen = new_halogen(numbers, positions, par)
-        self.dispersion = new_dispersion(numbers, positions, par)
-        self.repulsion = new_repulsion(numbers, positions, par)
+        self.halogen = new_halogen(numbers, positions, par, grad_par=grad_par)
+        self.dispersion = new_dispersion(numbers, positions, par, grad_par=grad_par)
+        self.repulsion = new_repulsion(numbers, positions, par, grad_par=grad_par)
 
     def singlepoint(
         self,
@@ -198,12 +201,15 @@ class Calculator:
         result.total += scf_results["energy"]
         timer.stop("scf")
 
+        print(self.halogen)
         if self.halogen is not None:
             timer.start("halogen")
             cache_hal = self.halogen.get_cache(numbers, self.ihelp)
             result.halogen = self.halogen.get_energy(positions, cache_hal)
             result.total += result.halogen
             timer.stop("halogen")
+
+        print(result.halogen)
 
         if self.dispersion is not None:
             timer.start("dispersion")

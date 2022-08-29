@@ -42,7 +42,7 @@ from ..basis import IndexHelper
 from ..exceptions import ParameterWarning
 from ..param import Param, get_elem_param
 from ..typing import Tensor, TensorLike
-from ..utils import real_pairs
+from ..utils import maybe_move, real_pairs
 
 
 default_cutoff: float = 25.0
@@ -91,18 +91,18 @@ class Repulsion(Classical, TensorLike):
         zeff: Tensor,
         kexp: Tensor,
         kexp_light: Tensor | None = None,
-        cutoff: float = default_cutoff,
+    cutoff: Tensor = torch.tensor(default_cutoff),
     ) -> None:
         super().__init__(positions.device, positions.dtype)
 
         self.numbers = numbers
-        self.arep = arep.to(self.device).type(self.dtype)
-        self.zeff = zeff.to(self.device).type(self.dtype)
-        self.cutoff = cutoff
+        self.arep = maybe_move(arep, self.device, self.dtype)
+        self.zeff = maybe_move(zeff, self.device, self.dtype)
+        self.cutoff = maybe_move(cutoff, self.device, self.dtype)
 
-        self.kexp = kexp.to(self.device).type(self.dtype)
+        self.kexp = maybe_move(kexp, self.device, self.dtype)
         if kexp_light is not None:
-            self.kexp_light = kexp_light.to(self.device).type(self.dtype)
+            self.kexp_light = maybe_move(kexp_light, self.device, self.dtype)
 
     class Cache:
         """Cache for the repulsion parameters."""
@@ -207,7 +207,7 @@ class Repulsion(Classical, TensorLike):
 
         # Eq.13: repulsion energy
         dE = torch.where(
-            mask * (distances <= distances.new_tensor(self.cutoff)),
+            mask * (distances <= self.cutoff),
             cache.zeff * exp_term / distances,
             distances.new_tensor(0.0),
         )
@@ -275,7 +275,8 @@ def new_repulsion(
     numbers: Tensor,
     positions: Tensor,
     par: Param,
-    cutoff: float = default_cutoff,
+    cutoff: Tensor = torch.tensor(default_cutoff),
+    grad_par: bool = False,
 ) -> Repulsion | None:
     """
     Create new instance of Repulsion class.
@@ -307,16 +308,20 @@ def new_repulsion(
         warnings.warn("No repulsion scheme found.", ParameterWarning)
         return None
 
-    kexp = torch.tensor(par.repulsion.effective.kexp)
+    kexp = torch.tensor(par.repulsion.effective.kexp, requires_grad=grad_par)
     kexp_light = (
-        torch.tensor(par.repulsion.effective.kexp_light)
+        torch.tensor(par.repulsion.effective.kexp_light, requires_grad=grad_par)
         if par.repulsion.effective.kexp_light
         else None
     )
 
     # get parameters for unique species
     unique = torch.unique(numbers)
-    arep = get_elem_param(unique, par.element, "arep", pad_val=0)
-    zeff = get_elem_param(unique, par.element, "zeff", pad_val=0)
+    arep = get_elem_param(
+        unique, par.element, "arep", pad_val=0, requires_grad=grad_par
+    )
+    zeff = get_elem_param(
+        unique, par.element, "zeff", pad_val=0, requires_grad=grad_par
+    )
 
     return Repulsion(numbers, positions, arep, zeff, kexp, kexp_light, cutoff)
