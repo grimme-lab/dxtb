@@ -138,7 +138,9 @@ class ES3(Interaction):
         )
 
 
-def new_es3(numbers: Tensor, positions: Tensor, par: Param) -> ES3 | None:
+def new_es3(
+    numbers: Tensor, positions: Tensor, par: Param, grad_par: bool = False
+) -> ES3 | None:
     """
     Create new instance of ES3.
 
@@ -161,9 +163,7 @@ def new_es3(numbers: Tensor, positions: Tensor, par: Param) -> ES3 | None:
         return None
 
     hubbard_derivs = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "gam3",
+        torch.unique(numbers), par.element, "gam3", requires_grad=grad_par
     )
 
     return ES3(positions, hubbard_derivs)

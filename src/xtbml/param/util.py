@@ -19,6 +19,7 @@ def get_pair_param(
     par_pair: dict[str, float],
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
+    requires_grad: bool = False,
 ) -> Tensor:
     """Obtain tensor of a pair-wise parametrized quantity for all pairs.
 
@@ -51,7 +52,7 @@ def get_pair_param(
                 f"{isp}-{jsp}", par_pair.get(f"{jsp}-{isp}", 1.0)
             )
 
-    return pair_mat
+    return pair_mat.clone().detach().requires_grad_(requires_grad)
 
 
 def get_elem_param(
@@ -59,6 +60,7 @@ def get_elem_param(
     par_element: dict[str, Element],
     key: str,
     pad_val: int = -1,
+    unit_factor: float | None = None,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
     requires_grad: bool = False,
@@ -73,7 +75,9 @@ def get_elem_param(
         Parametrization of elements.
     key : str
         Name of the quantity to obtain (e.g. gam3 for Hubbard derivatives).
-    pad_val : int, optional
+    unit_factor : float | none
+        Unit conversion factor. If `None` (default), no unit conversion is done.
+    pad_val : int | None
         Value to pad the tensor with. Default is `-1`.
     device : torch.device | None
         Device to store the tensor. If `None` (default), the default device is used.
@@ -106,6 +110,9 @@ def get_elem_param(
                 raise ValueError(
                     f"The key '{key}' contains the non-numeric values '{vals}'."
                 )
+
+            if unit_factor is not None:
+                vals = [val * unit_factor for val in vals]
 
         else:
             vals = [pad_val]

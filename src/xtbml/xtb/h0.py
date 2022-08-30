@@ -1,27 +1,26 @@
 from __future__ import annotations
 import torch
 
-from xtbml.param.util import get_elem_angular
-
 from ..basis import Basis, IndexHelper
 from ..exlibs.tbmalt import batch
 from ..constants import EV2AU
 from ..data import atomic_rad
 from ..integral import mmd
 from ..param import (
+    get_elem_angular,
     get_elem_param,
     get_pair_param,
     get_elem_valence,
     Param,
 )
-from ..typing import Tensor
+from ..typing import Tensor, TensorLike
 from ..utils import t2int
 
 PAD = -1
 """Value used for padding of tensors."""
 
 
-class Hamiltonian:
+class Hamiltonian(TensorLike):
     """Hamiltonian from parametrization."""
 
     numbers: Tensor
@@ -58,24 +57,29 @@ class Hamiltonian:
     """Van-der-Waals radius of each species."""
 
     def __init__(
-        self, numbers: Tensor, positions: Tensor, par: Param, ihelp: IndexHelper
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        par: Param,
+        ihelp: IndexHelper,
+        grad_par: bool = False,
     ) -> None:
+        super().__init__(positions.device, positions.dtype)
+        self.requires_grad = grad_par
+
         self.numbers = numbers
         self.unique = torch.unique(numbers)
         self.positions = positions
         self.par = par
         self.ihelp = ihelp
 
-        self.__device = self.positions.device
-        self.__dtype = self.positions.dtype
-
         # atom-resolved parameters
         self.rad = atomic_rad[self.unique].type(self.dtype).to(device=self.device)
         self.en = self._get_elem_param("en")
 
         # shell-resolved element parameters
-        self.kcn = self._get_elem_param("kcn")
-        self.selfenergy = self._get_elem_param("levels")
+        self.kcn = self._get_elem_param("kcn", EV2AU)
+        self.selfenergy = self._get_elem_param("levels", EV2AU)
         self.shpoly = self._get_elem_param("shpoly")
         self.refocc = self._get_elem_param("refocc")
         self.valence = self._get_elem_valence()
@@ -83,10 +87,6 @@ class Hamiltonian:
         # shell-pair-resolved pair parameters
         self.hscale = self._get_hscale()
         self.kpair = self._get_pair_param(self.par.hamiltonian.xtb.kpair)
-
-        # unit conversion
-        self.selfenergy = self.selfenergy * EV2AU
-        self.kcn = self.kcn * EV2AU
 
         if any(
             tensor.dtype != self.dtype
@@ -138,13 +138,15 @@ class Hamiltonian:
             orb_per_shell != 0, refocc / orb_per_shell, refocc.new_tensor(0)
         )
 
-    def _get_elem_param(self, key: str) -> Tensor:
+    def _get_elem_param(self, key: str, unit_factor: float | None = None) -> Tensor:
         """Obtain element parameters for species.
 
         Parameters
         ----------
         key : str
             Name of the parameter to be retrieved.
+        unit_factor : float | None
+            Factor for unit conversion. Default is `None`.
 
         Returns
         -------
@@ -157,8 +159,10 @@ class Hamiltonian:
             self.par.element,
             key,
             pad_val=PAD,
+            unit_factor=unit_factor,
             device=self.device,
             dtype=self.dtype,
+            requires_grad=self.requires_grad,
         )
 
     def _get_elem_valence(self):
@@ -193,7 +197,11 @@ class Hamiltonian:
         """
 
         return get_pair_param(
-            self.unique.tolist(), pair, device=self.device, dtype=self.dtype
+            self.unique.tolist(),
+            pair,
+            device=self.device,
+            dtype=self.dtype,
+            requires_grad=self.requires_grad,
         )
 
     def _get_hscale(self) -> Tensor:
@@ -508,21 +516,6 @@ class Hamiltonian:
             )
 
         return (x + x.mT) / 2
-
-    @property
-    def device(self) -> torch.device:
-        """The device on which the `Hamiltonian` object resides."""
-        return self.__device
-
-    @device.setter
-    def device(self, *args):
-        """Instruct users to use the ".to" method if wanting to change device."""
-        raise AttributeError("Move object to device using the `.to` method")
-
-    @property
-    def dtype(self) -> torch.dtype:
-        """Floating point dtype used by Hamiltonian object."""
-        return self.__dtype
 
     def to(self, device: torch.device) -> "Hamiltonian":
         """

@@ -31,10 +31,12 @@ tensor(0.0025)
 from __future__ import annotations
 import torch
 
+from .abc import Classical
 from ..basis import IndexHelper
 from ..data import atomic_rad
 from ..exlibs.tbmalt import batch
 from ..param import Param, get_elem_param
+from ..utils import maybe_move
 from ..typing import Tensor, TensorLike
 
 
@@ -42,7 +44,7 @@ default_cutoff: float = 20.0
 """Default real space cutoff for halogen bonding interactions."""
 
 
-class Halogen(TensorLike):
+class Halogen(Classical, TensorLike):
     """
     Representation of the halogen bond correction.
 
@@ -85,10 +87,10 @@ class Halogen(TensorLike):
         super().__init__(positions.device, positions.dtype)
 
         self.numbers = numbers
-        self.damp = damp.to(self.device).type(self.dtype)
-        self.rscale = rscale.to(self.device).type(self.dtype)
-        self.bond_strength = bond_strength.to(self.device).type(self.dtype)
-        self.cutoff = cutoff.to(self.device).type(self.dtype)
+        self.damp = maybe_move(damp, self.device, self.dtype)
+        self.rscale = maybe_move(rscale, self.device, self.dtype)
+        self.bond_strength = maybe_move(bond_strength, self.device, self.dtype)
+        self.cutoff = maybe_move(cutoff, self.device, self.dtype)
 
         # element numbers of halogens and bases
         self.halogens = [17, 35, 53, 85]
@@ -129,10 +131,17 @@ class Halogen(TensorLike):
         """
         Handle batchwise and single calculation of halogen bonding energy.
 
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms.
+        cache : Halogen.Cache
+            Cache for the halogen bond parameters.
+
         Returns
         -------
         Tensor
-            Atomwise energy contributions from halogen bonds.
+             Atomwise energy contributions from halogen bonds.
         """
 
         if self.numbers.ndim > 1:
@@ -239,7 +248,7 @@ class Halogen(TensorLike):
 
         # return if no halogens are present
         if halogen_mask.nonzero().size(-2) == 0:
-            return torch.zeros(numbers.shape, dtype=positions.dtype)
+            return torch.zeros(numbers.shape, device=self.device, dtype=self.dtype)
 
         base_mask = torch.zeros_like(numbers).type(torch.bool)
         for base in self.base:
@@ -247,7 +256,7 @@ class Halogen(TensorLike):
 
         # return if no bases are present
         if base_mask.nonzero().size(-2) == 0:
-            return torch.zeros(numbers.shape, dtype=positions.dtype)
+            return torch.zeros(numbers.shape, device=self.device, dtype=self.dtype)
 
         # triples for halogen bonding interactions
         adj = self._xbond_list(numbers, positions)
@@ -296,6 +305,7 @@ def new_halogen(
     positions: Tensor,
     par: Param,
     cutoff: Tensor = torch.tensor(default_cutoff),
+    grad_par: bool = False,
 ) -> Halogen | None:
     """
     Create new instance of Halogen class.
@@ -325,10 +335,12 @@ def new_halogen(
     if par.halogen is None:
         return None
 
-    damp = torch.tensor(par.halogen.classical.damping)
-    rscale = torch.tensor(par.halogen.classical.rscale)
+    damp = torch.tensor(par.halogen.classical.damping, requires_grad=grad_par)
+    rscale = torch.tensor(par.halogen.classical.rscale, requires_grad=grad_par)
 
     unique = torch.unique(numbers)
-    bond_strength = get_elem_param(unique, par.element, "xbond", pad_val=0)
+    bond_strength = get_elem_param(
+        unique, par.element, "xbond", pad_val=0, requires_grad=grad_par
+    )
 
     return Halogen(numbers, positions, damp, rscale, bond_strength, cutoff=cutoff)

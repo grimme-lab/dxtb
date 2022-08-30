@@ -8,10 +8,10 @@ from __future__ import annotations
 import torch
 
 
+from .h0 import Hamiltonian
 from .. import scf
 from ..basis import IndexHelper
-from ..classical.halogen import Halogen, new_halogen
-from ..classical.repulsion import Repulsion, new_repulsion
+from ..classical import Halogen, new_halogen, Repulsion, new_repulsion
 from ..coulomb import new_es2, new_es3
 from ..dispersion import new_dispersion, Dispersion
 from ..data import cov_rad_d3
@@ -20,7 +20,6 @@ from ..ncoord import ncoord
 from ..param import Param, get_elem_angular
 from ..typing import Tensor
 from ..wavefunction import filling
-from ..xtb.h0 import Hamiltonian
 from ..utils import Timers
 from ..utils.utils import rgetattr, rsetattr
 from xtbml import interaction
@@ -28,6 +27,7 @@ from xtbml import interaction
 from memory_profiler import profile
 
 from ..scf.iterator import cpuStats
+
 
 
 class Result:
@@ -106,7 +106,7 @@ class Calculator:
     halogen: Halogen | None = None
     """Halogen bond definition."""
 
-    interaction: Interaction
+    interaction: InteractionList
     """Interactions to minimize in self-consistent iterations."""
 
     ihelp: IndexHelper
@@ -117,18 +117,21 @@ class Calculator:
         numbers: Tensor,
         positions: Tensor,
         par: Param,
-        interaction: Interaction | None = None,
+        interaction: InteractionList | None = None,
+        grad_par: bool = False,
     ) -> None:
         self.ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-        self.hamiltonian = Hamiltonian(numbers, positions, par, self.ihelp)
+        self.hamiltonian = Hamiltonian(
+            numbers, positions, par, self.ihelp, grad_par=grad_par
+        )
 
-        es2 = new_es2(numbers, positions, par)
-        es3 = new_es3(numbers, positions, par)
+        es2 = new_es2(numbers, positions, par, grad_par=grad_par)
+        es3 = new_es3(numbers, positions, par, grad_par=grad_par)
         self.interaction = InteractionList(es2, es3, interaction)
 
-        self.halogen = new_halogen(numbers, positions, par)
-        self.dispersion = new_dispersion(numbers, positions, par)
-        self.repulsion = new_repulsion(numbers, positions, par)
+        self.halogen = new_halogen(numbers, positions, par, grad_par=grad_par)
+        self.dispersion = new_dispersion(numbers, positions, par, grad_par=grad_par)
+        self.repulsion = new_repulsion(numbers, positions, par, grad_par=grad_par)
 
     def singlepoint(
         self,
@@ -215,7 +218,7 @@ class Calculator:
             timer.start("dispersion")
             # cache_disp = self.dispersion.get_cache(numbers, self.ihelp)
             # result.dispersion = self.dispersion.get_energy(positions, cache_disp)
-            result.dispersion = self.dispersion.get_energy()
+            result.dispersion = self.dispersion.get_energy(positions)
             result.total += result.dispersion
             timer.stop("dispersion")
 

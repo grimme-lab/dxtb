@@ -6,6 +6,32 @@ import torch
 from ..typing import Tensor
 
 
+def heaviside(input: Tensor, values: Tensor) -> Tensor:
+    """
+    Manual implementation of `torch.heaviside` as the derivative of the PyTorch
+    version is not implemented due to possibly undefined derivatives.
+
+
+    Parameters
+    ----------
+    input : Tensor
+        Input tensor.
+    values : Tensor
+        The values to use where `input` is zero.
+
+    Returns
+    -------
+    Tensor
+        Output tensor.
+    """
+
+    return torch.where(
+        input < 0.0,
+        torch.where(input == 0.0, values, values.new_tensor(0.0)),
+        values.new_tensor(1.0),
+    )
+
+
 def get_aufbau_occupation(
     norb: Tensor,
     nel: Tensor,
@@ -45,14 +71,14 @@ def get_aufbau_occupation(
     """
 
     # We represent the aufbau filling with a heaviside function, using the following steps
-    occupation = torch.heaviside(
+    occupation = heaviside(
         # 1. creating orbital indices using arange from 1 to norb, inclusively
         # 2. remove the orbital index from the total number of electrons
         #    (negative numbers are filled with ones, positive numbers with zeros)
         # 3. fractional occupations will be in the range [-1, 0], therefore we round up
         torch.ceil(
             nel.unsqueeze(-1)
-             - torch.arange(1, 1 + torch.max(norb).item()).unsqueeze(-2)
+            - torch.arange(1, 1 + torch.max(norb).item()).unsqueeze(-2)
         ),
         # 4. heaviside uses the actual values at 0, therefore we provide the remainder
         # 5. to not lose whole electrons we take the negative and add one
