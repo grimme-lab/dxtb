@@ -24,12 +24,10 @@ from ..basis import IndexHelper
 from ..interaction import Interaction
 from ..typing import Any, Tensor
 
-import psutil
 import os
-
+import psutil
 
 memoryCurrent = 0.0
-memoryIncrease = 0.0
 
 
 def cpuStats():
