@@ -248,7 +248,7 @@ class Halogen(Classical, TensorLike):
 
         # return if no halogens are present
         if halogen_mask.nonzero().size(-2) == 0:
-            return torch.zeros(numbers.shape, dtype=positions.dtype)
+            return torch.zeros(numbers.shape, device=self.device, dtype=self.dtype)
 
         base_mask = torch.zeros_like(numbers).type(torch.bool)
         for base in self.base:
@@ -256,7 +256,7 @@ class Halogen(Classical, TensorLike):
 
         # return if no bases are present
         if base_mask.nonzero().size(-2) == 0:
-            return torch.zeros(numbers.shape, dtype=positions.dtype)
+            return torch.zeros(numbers.shape, device=self.device, dtype=self.dtype)
 
         # triples for halogen bonding interactions
         adj = self._xbond_list(numbers, positions)

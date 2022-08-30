@@ -1,27 +1,26 @@
 from __future__ import annotations
 import torch
 
-from xtbml.param.util import get_elem_angular
-
 from ..basis import Basis, IndexHelper
 from ..exlibs.tbmalt import batch
 from ..constants import EV2AU
 from ..data import atomic_rad
 from ..integral import mmd
 from ..param import (
+    get_elem_angular,
     get_elem_param,
     get_pair_param,
     get_elem_valence,
     Param,
 )
-from ..typing import Tensor
+from ..typing import Tensor, TensorLike
 from ..utils import t2int
 
 PAD = -1
 """Value used for padding of tensors."""
 
 
-class Hamiltonian:
+class Hamiltonian(TensorLike):
     """Hamiltonian from parametrization."""
 
     numbers: Tensor
@@ -58,16 +57,19 @@ class Hamiltonian:
     """Van-der-Waals radius of each species."""
 
     def __init__(
-        self, numbers: Tensor, positions: Tensor, par: Param, ihelp: IndexHelper
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        par: Param,
+        ihelp: IndexHelper,
     ) -> None:
+        super().__init__(positions.device, positions.dtype)
+
         self.numbers = numbers
         self.unique = torch.unique(numbers)
         self.positions = positions
         self.par = par
         self.ihelp = ihelp
-
-        self.__device = self.positions.device
-        self.__dtype = self.positions.dtype
 
         # atom-resolved parameters
         self.rad = atomic_rad[self.unique].type(self.dtype).to(device=self.device)
@@ -87,7 +89,6 @@ class Hamiltonian:
         # unit conversion
         self.selfenergy = self.selfenergy * EV2AU
         self.kcn = self.kcn * EV2AU
-
         if any(
             tensor.dtype != self.dtype
             for tensor in (
@@ -508,21 +509,6 @@ class Hamiltonian:
             )
 
         return (x + x.mT) / 2
-
-    @property
-    def device(self) -> torch.device:
-        """The device on which the `Hamiltonian` object resides."""
-        return self.__device
-
-    @device.setter
-    def device(self, *args):
-        """Instruct users to use the ".to" method if wanting to change device."""
-        raise AttributeError("Move object to device using the `.to` method")
-
-    @property
-    def dtype(self) -> torch.dtype:
-        """Floating point dtype used by Hamiltonian object."""
-        return self.__dtype
 
     def to(self, device: torch.device) -> "Hamiltonian":
         """

@@ -46,7 +46,7 @@ from ..basis import IndexHelper
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
 from ..typing import Tensor
-from ..utils import real_pairs
+from ..utils import maybe_move, real_pairs
 
 
 default_gexp: float = 2.0
@@ -99,11 +99,13 @@ class ES2(Interaction):
     ) -> None:
         super().__init__(positions.device, positions.dtype)
 
-        self.hubbard = hubbard.to(self.device).type(self.dtype)
+        self.hubbard = maybe_move(hubbard, self.device, self.dtype)
         self.lhubbard = (
-            lhubbard if lhubbard is None else lhubbard.to(self.device).type(self.dtype)
+            lhubbard
+            if lhubbard is None
+            else maybe_move(lhubbard, self.device, self.dtype)
         )
-        self.gexp = gexp.to(self.device).type(self.dtype)
+        self.gexp = maybe_move(gexp, self.device, self.dtype)
         self.average = average
 
         self.shell_resolved = lhubbard is not None
