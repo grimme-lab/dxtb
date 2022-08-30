@@ -65,6 +65,7 @@ def real_pairs(numbers: Tensor, diagonal: bool = False) -> Tensor:
         mask *= ~torch.diag_embed(torch.ones_like(real))
     return mask
 
+
 ###  Helper functions for accesing nested object properties. ###
 def rsetattr(obj, attr, val):
     pre, _, post = attr.rpartition(".")

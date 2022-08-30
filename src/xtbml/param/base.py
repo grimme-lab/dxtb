@@ -30,7 +30,7 @@ from ..utils.utils import (
     rgetattr,
     rsetattr,
     get_attribute_name_key,
-    get_all_entries_from_dict,
+    get_all_entries,
 )
 
 
@@ -160,7 +160,7 @@ class Param(BaseModel):
         # expand dictionary and lists
         li = []
         for s in str_list:
-            ent = get_all_entries_from_dict(self, s)
+            ent = get_all_entries(self, s)
             if isinstance(ent, list):
                 li.extend(ent)
             else:
