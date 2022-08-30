@@ -307,7 +307,11 @@ def new_repulsion(
         warnings.warn("No repulsion scheme found.", ParameterWarning)
         return None
 
-    kexp = torch.tensor(par.repulsion.effective.kexp)
+    kexp = (
+        par.repulsion.effective.kexp
+        if torch.is_tensor(par.repulsion.effective.kexp)
+        else torch.tensor(par.repulsion.effective.kexp)
+    )
     kexp_light = (
         torch.tensor(par.repulsion.effective.kexp_light)
         if par.repulsion.effective.kexp_light

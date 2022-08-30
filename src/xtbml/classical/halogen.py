@@ -305,7 +305,6 @@ def new_halogen(
     positions: Tensor,
     par: Param,
     cutoff: Tensor = torch.tensor(default_cutoff),
-    grad_par: bool = False,
 ) -> Halogen | None:
     """
     Create new instance of Halogen class.
@@ -335,12 +334,18 @@ def new_halogen(
     if par.halogen is None:
         return None
 
-    damp = torch.tensor(par.halogen.classical.damping, requires_grad=grad_par)
-    rscale = torch.tensor(par.halogen.classical.rscale, requires_grad=grad_par)
+    damp = (
+        par.halogen.classical.damping
+        if torch.is_tensor(par.halogen.classical.damping)
+        else torch.tensor(par.halogen.classical.damping)
+    )
+    rscale = (
+        par.halogen.classical.rscale
+        if torch.is_tensor(par.halogen.classical.rscale)
+        else torch.tensor(par.halogen.classical.rscale)
+    )
 
     unique = torch.unique(numbers)
-    bond_strength = get_elem_param(
-        unique, par.element, "xbond", pad_val=0, requires_grad=grad_par
-    )
+    bond_strength = get_elem_param(unique, par.element, "xbond", pad_val=0)
 
     return Halogen(numbers, positions, damp, rscale, bond_strength, cutoff=cutoff)

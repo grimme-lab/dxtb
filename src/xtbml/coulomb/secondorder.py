@@ -275,6 +275,9 @@ def new_es2(numbers: Tensor, positions: Tensor, par: Param) -> ES2 | None:
     hubbard = get_elem_param(unique, par.element, "gam")
     lhubbard = get_elem_param(unique, par.element, "lgam")
     average = averaging_function[par.charge.effective.average]
-    gexp = torch.tensor(par.charge.effective.gexp)
-
+    gexp = (
+        par.charge.effective.gexp
+        if torch.is_tensor(par.charge.effective.gexp)
+        else torch.tensor(par.charge.effective.gexp)
+    )
     return ES2(positions, hubbard, lhubbard, average, gexp)
