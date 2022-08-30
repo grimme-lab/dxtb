@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 from pydantic import BaseModel
 from pathlib import Path
+import torch
 
 from .dispersion import Dispersion
 from .charge import Charge
@@ -25,7 +26,12 @@ from .hamiltonian import Hamiltonian
 from .meta import Meta
 from .repulsion import Repulsion
 from .thirdorder import ThirdOrder
-from ..utils.utils import rgetattr, rsetattr, get_attribute_name_key
+from ..utils.utils import (
+    rgetattr,
+    rsetattr,
+    get_attribute_name_key,
+    get_all_entries_from_dict,
+)
 
 
 class Param(BaseModel):
@@ -72,6 +78,9 @@ class Param(BaseModel):
 
         if key is None:
             return rgetattr(self, name)
+        elif "." in key:
+            key, attr = key.split(".")
+            return rgetattr(rgetattr(self, name)[key], attr)
         else:
             return rgetattr(self, name)[key]
 
@@ -117,3 +126,57 @@ class Param(BaseModel):
 
         with open(path, "w", encoding="utf-8") as f:
             f.write(toml.dumps(self.dict()))
+
+    def get_all_param_names(self) -> list[str]:
+        """Obtain all parameter names contained in Parametrisation object.
+
+        Returns
+        -------
+        list[str]
+            List with all parameter names.
+        """
+
+        def obj_to_list_of_strings(
+            obj, list_str=[], running_str=[]
+        ) -> tuple[list[str], list[str]]:
+            """Recursively iterate through nested object and concat attributes to strings."""
+
+            for item in sorted(obj.__dict__):
+                running_str.append(str(item))
+
+                if hasattr(obj.__dict__[item], "__dict__"):
+                    _, running_str = obj_to_list_of_strings(
+                        obj.__dict__[item], list_str, running_str
+                    )
+
+                if len(running_str) > 1:
+                    list_str.append(".".join(running_str))
+                running_str = running_str[:-1]
+
+            return list_str, running_str
+
+        str_list, _ = obj_to_list_of_strings(self, [])
+
+        # expand dictionary and lists
+        li = []
+        for s in str_list:
+            ent = get_all_entries_from_dict(self, s)
+            if isinstance(ent, list):
+                li.extend(ent)
+            else:
+                li.append(ent)
+
+        # add element variables
+        for k, v in self.element.items():
+            for k2 in vars(v).keys():
+                if k2 != "shells":
+                    li.append(f"element['{k}'].{k2}")
+
+        # remove non-numeric and "duplicated" entries
+        li = [
+            s for s in li if type(self.get_param(s)) in [int, float, list, torch.tensor]
+        ]
+
+        assert len(li) == 2348  # 2446 - 6 dups - 6 non-numerical - 86 shells
+
+        return li
