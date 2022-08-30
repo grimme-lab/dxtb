@@ -24,6 +24,25 @@ from ..basis import IndexHelper
 from ..interaction import Interaction
 from ..typing import Any, Tensor
 
+import psutil
+import os
+
+
+memoryCurrent = 0.0
+memoryIncrease = 0.0
+
+
+def cpuStats():
+    pid = os.getpid()
+    py = psutil.Process(pid)
+    memoryUse = py.memory_info()[0] / 2.0**30
+    print("memory GB:", memoryUse)
+
+    global memoryCurrent
+    memoryIncrease = memoryUse - memoryCurrent
+    memoryCurrent = memoryUse
+    print("memory In:", memoryIncrease)
+
 
 class SelfConsistentField(xt.EditableModule):
     """
