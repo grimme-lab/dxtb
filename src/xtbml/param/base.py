@@ -174,6 +174,7 @@ class Param(BaseModel):
         # add element variables
         for k, v in self.element.items():
             for k2 in vars(v).keys():
+                # NOTE: ignore non-numerical shell specification
                 if k2 != "shells":
                     li.append(f"element['{k}'].{k2}")
 
