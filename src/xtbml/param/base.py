@@ -98,6 +98,11 @@ class Param(BaseModel):
 
         if key is None:
             rsetattr(self, name, value)
+        elif "." in key:
+            key, attr = key.split(".")
+            d = rgetattr(self, name)
+            rsetattr(d[key], attr, value)
+            rsetattr(self, name, d)
         else:
             d = rgetattr(self, name)
             d[key] = value
@@ -176,7 +181,4 @@ class Param(BaseModel):
         li = [
             s for s in li if type(self.get_param(s)) in [int, float, list, torch.tensor]
         ]
-
-        assert len(li) == 2348  # 2446 - 6 dups - 6 non-numerical - 86 shells
-
         return li
