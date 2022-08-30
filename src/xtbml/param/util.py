@@ -97,12 +97,15 @@ def get_elem_param(
         if el in par_element:
             vals = getattr(par_element[el], key)
 
+            # parameter optimisation can require tensors
+            scalar_tensor = torch.is_tensor(vals) and len(vals.shape) == 0
+
             # convert to list so that we can use the same function
             # for atom-resolved parameters too
-            if isinstance(vals, float):
+            if isinstance(vals, float) or scalar_tensor:
                 vals = [vals]
 
-            if not all(isinstance(x, (int, float)) for x in vals):
+            if not scalar_tensor and not all(isinstance(x, (int, float)) for x in vals):
                 raise ValueError(
                     f"The key '{key}' contains the non-numeric values '{vals}'."
                 )
