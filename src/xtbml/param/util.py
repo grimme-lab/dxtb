@@ -105,7 +105,9 @@ def get_elem_param(
             if isinstance(vals, float) or scalar_tensor:
                 vals = [vals]
 
-            if not scalar_tensor and not all(isinstance(x, (int, float)) for x in vals):
+            if not scalar_tensor and not all(
+                isinstance(x, (int, float, Tensor)) for x in vals
+            ):
                 raise ValueError(
                     f"The key '{key}' contains the non-numeric values '{vals}'."
                 )
