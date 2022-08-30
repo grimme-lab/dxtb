@@ -23,6 +23,12 @@ from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian
 from ..utils import Timers
 from ..utils.utils import rgetattr, rsetattr
+from xtbml import interaction
+
+from memory_profiler import profile
+
+from ..scf.iterator import cpuStats
+
 
 class Result:
     """
@@ -226,6 +232,120 @@ class Calculator:
             timer.print_times()
 
         return result
+
+    # @profile
+    def dummypoint(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        charges: Tensor,
+        verbosity: int = 1,
+    ) -> Result:
+
+        print("BEGIN DUMMYPOINT")
+        cpuStats()
+        result = Result(positions)
+        timer = Timers()
+        timer.start("total")
+        print("AFTER Timer")
+        cpuStats()
+
+        # overlap
+
+        with torch.no_grad():
+            overlap = (
+                self.hamiltonian.overlap()
+            )  # TODO: RAM overflow (even wo/ pos.grads)
+        # result.overlap = overlap
+
+        print("AFTER overlap")
+        cpuStats()
+
+        # Hamiltonian
+        timer.start("h0")
+        rcov = cov_rad_d3[numbers]
+        cn = ncoord.get_coordination_number(numbers, positions, ncoord.exp_count, rcov)
+        hcore = self.hamiltonian.build(overlap, cn)
+
+        print("AFTER HAMILTONIAN")
+        cpuStats()
+
+        # # Obtain the reference occupations and total number of electrons
+        n0 = self.hamiltonian.get_occupation()
+        nel = torch.sum(n0, -1) - torch.sum(charges, -1)
+        occupation = 2 * filling.get_aufbau_occupation(
+            hcore.new_tensor(hcore.shape[-1], dtype=torch.int64),
+            nel / 2,
+        )
+
+        print("AFTER OCCUPTATION")
+        cpuStats()
+
+        fwd_options = {
+            "verbose": verbosity,
+            "maxiter": 30,
+        }
+        scf_results = scf.solve(
+            numbers,
+            positions,
+            self.interaction,
+            self.ihelp,
+            hcore,
+            overlap,
+            occupation,
+            n0,
+            fwd_options=fwd_options,
+            use_potential=True,
+        )
+
+        # print("SCF result")
+        # print(result.total)
+        # print(scf_results["energy"])
+        """result.total = scf_results["energy"]"""
+
+        # result.total += torch.sum(positions, dim=1)
+        # result.scf += positions * charges
+        # result.total += torch.sum(positions, dim=2) * charges
+        # result.scf += torch.sum(positions, dim=2) * charges
+
+        """print("compare scf")
+        print(positions)
+        print(torch.sum(positions, dim=2))
+        print(result.total)
+        print("shape", result.total.shape)
+        print(type(result.total))
+        abc = torch.sum(positions, dim=2) * charges
+        print(abc.shape)
+        print(torch.sum(positions, dim=1).shape)
+        print(torch.sum(positions, dim=0).shape)
+        print("here scf")
+        import sys
+        import gc"""
+
+        """del self.ihelp
+        # del self.interaction
+        del hcore
+        del overlap  # TODO: maybe this does a large deal
+        del occupation
+        del nel
+        del n0"""
+
+        # gc.collect()
+        # torch.cuda.empty_cache()
+
+        # TODO: delete Inteyoaction Cache objects
+        """print(self.interaction)
+        for inter in self.interaction.interactions:
+            print(inter)
+        del self.interaction.interactions[1]
+        del self.interaction.interactions[0]
+        print(len(self.interaction.interactions))
+        print("delete Cache objects")
+        """
+
+        # sys.exit(0)
+        return
+        return result.total.clone()
 
     @staticmethod
     def get_param(calc: "Calculator", name: str, dtype=torch.float64) -> Tensor:
