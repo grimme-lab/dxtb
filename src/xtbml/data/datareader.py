@@ -485,16 +485,10 @@ class Datareader:
         """
 
         # pylint: disable=import-outside-toplevel
-        import tad_dftd3 as d3
         from xtbml import charges
-        from xtbml.adjlist import AdjacencyList
-        from xtbml.basis.type import get_cutoff
-        from xtbml.classical.repulsion import RepulsionFactory
         from xtbml.xtb.calculator import Calculator
         from xtbml.ncoord.ncoord import get_coordination_number, exp_count
         from xtbml.param.gfn1 import GFN1_XTB as par
-        from xtbml.exlibs.tbmalt import Geometry
-        from xtbml.exlibs.tbmalt.batch import deflate
 
         def calc_singlepoint(numbers, positions, charge, unpaired_e):
             """Calculate QM features based on classicals input, such as geometry."""
@@ -503,26 +497,19 @@ class Datareader:
             calc = Calculator(numbers, positions, par)
             results = calc.singlepoint(numbers, positions, charge, verbosity=0)
 
-            # repulsion
-            repulsion = RepulsionFactory(
-                numbers=numbers,
-                positions=positions,
-                req_grad=False,
-                cutoff=torch.tensor(get_cutoff(calc.basis)),
-            )
-            repulsion.setup(par.element, par.repulsion.effective)
-            rep_energy = repulsion.get_engrad()
-
-            # dispersion
-            param = dict(a1=0.63, s8=2.4, a2=5.0)
-            e_disp = d3.dftd3(numbers, positions, param)
-
             # partial charges
             cn = get_coordination_number(numbers, positions, exp_count)
             eeq = charges.ChargeModel.param2019()
             _, qat = charges.solve(numbers, positions, charge, eeq, cn)
 
-            return results["hcore"], results["overlap"], cn, rep_energy, e_disp, qat
+            return (
+                results.hcore,
+                results.overlap,
+                cn,
+                results.repulsion,
+                results.dispersion,
+                qat,
+            )
 
         path = Path(self.path, out_name)
 

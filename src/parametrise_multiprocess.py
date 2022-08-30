@@ -21,6 +21,20 @@ from xtbml.typing import Tensor
 from xtbml.scf.iterator import cpuStats
 
 
+EPOCHS = 100
+LEARNING_RATE = 0.01
+DATA_SET = "Amino20x4"
+
+
+"""
+ACONF: MD= -0.660 MAD=  0.660 RMS= 0.77472576
+SCONF: MD= -0.912 MAD=  2.502 RMS= 4.62769921
+PCONF: MD=  0.859 MAD=  2.171 RMS= 2.73447842
+Amino: MD= -0.546 MAD=  1.114 RMS= 1.38088377
+MCONF: MD= -1.377 MAD=  1.443 RMS= 1.63631580
+"""
+
+
 def zero_grad_(x):
     if x.grad is not None:
         x.grad.detach_()
@@ -141,7 +155,7 @@ def training_epoch(dataloader, names, epoch):
 
     # setup model, optimizer and loss function
     model = ParameterOptimizer(gfn1_xtb, names)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
     loss_fn = torch.nn.MSELoss(reduction="sum")
     if epoch != 0:
         # reload optimizer and model from disk
@@ -218,8 +232,22 @@ def parametrise_dyn_loading():
     memReport()
 
     # load data as batched sample
-    path = Path(__file__).resolve().parents[1] / "data" / "PTB"
-    dataset = SampleDataset.from_json(path / "samples_HCNO.json")
+    path1 = Path(__file__).resolve().parents[1] / "data" / "ACONF"
+    path2 = Path(__file__).resolve().parents[1] / "data" / "MCONF"
+    path3 = Path(__file__).resolve().parents[1] / "data" / "SCONF"
+    path4 = Path(__file__).resolve().parents[1] / "data" / "PCONF21"
+    path5 = Path(__file__).resolve().parents[1] / "data" / "Amino20x4"
+
+    paths = [path1 / "samples.json"]
+    paths = [
+        path1 / "samples.json",
+        path2 / "samples.json",
+        path3 / "samples.json",
+        path4 / "samples.json",
+        path5 / "samples.json",
+    ]
+
+    dataset = SampleDataset.from_json(paths)
     cpuStats()
     memReport()
 
@@ -239,18 +267,32 @@ def parametrise_dyn_loading():
     )
 
     names = get_all_entries_from_dict(GFN1_XTB, "hamiltonian.xtb.kpair")
-    names = [
-        "hamiltonian.xtb.kpair['H-H']",
-        "hamiltonian.xtb.kpair['B-H']",
-        "hamiltonian.xtb.kpair['N-H']",
-        "hamiltonian.xtb.kpair['Si-N']",
+
+    names = names + [
+        "hamiltonian.xtb.enscale",
+        "hamiltonian.xtb.kpol",
+        "hamiltonian.xtb.shell['ss']",
+        "hamiltonian.xtb.shell['pp']",
+        "hamiltonian.xtb.shell['dd']",
+        "hamiltonian.xtb.shell['sp']",
+        "repulsion.effective.kexp",
+        "dispersion.d3.s6",
+        "dispersion.d3.s8",
+        "dispersion.d3.a1",
+        "dispersion.d3.a2",
+        # "charge.effective.gexp", # NaN error
+        # "halogen.classical.damping",
+        # "halogen.classical.rscale",
+        # "hamiltonian.xtb.kpair['H-H']",
+        # "hamiltonian.xtb.kpair['B-H']",
+        # "hamiltonian.xtb.kpair['N-H']",
+        # "hamiltonian.xtb.kpair['Si-N']",
     ]
 
-    cpuStats()
-    memReport()
+    # cpuStats()
+    # memReport()
 
-    epochs = 10
-    for i in range(epochs):
+    for i in range(EPOCHS):
         print(f"epoch {i}")
 
         # spawn subprocess for each epoch (avoid memory leak)
