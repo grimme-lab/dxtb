@@ -65,6 +65,7 @@ def real_pairs(numbers: Tensor, diagonal: bool = False) -> Tensor:
         mask *= ~torch.diag_embed(torch.ones_like(real))
     return mask
 
+
 ###  Helper functions for accesing nested object properties. ###
 def rsetattr(obj, attr, val):
     pre, _, post = attr.rpartition(".")
@@ -117,7 +118,7 @@ def get_attribute_name_key(name: str) -> tuple[str, str]:
     return name, key
 
 
-def get_all_entries(obj: Any, name: str) -> str | list[str]:
+def get_all_entries_from_dict(obj: Any, name: str) -> str | list[str]:
     """Get all entries from dict-like object attribute
 
     Parameters
