@@ -167,8 +167,7 @@ class GeneralizedBorn(Interaction):
         kernel: str = "p16",
         **kwargs,
     ):
-        Interaction.__init__(self)
-        dtype = dielectric_constant.dtype
+        super().__init__(dielectric_constant.device, dielectric_constant.dtype)
 
         self.alpbet = (
             alpha / dielectric_constant if alpb else dielectric_constant.new_tensor(0.0)
@@ -177,7 +176,7 @@ class GeneralizedBorn(Interaction):
         self.kernel = kernel
 
         if "rvdw" not in kwargs:
-            kwargs["rvdw"] = vdw_rad_d3[numbers].type(dtype)
+            kwargs["rvdw"] = vdw_rad_d3[numbers].type(self.dtype)
         self.born_kwargs = kwargs
 
     class Cache(Interaction.Cache):

@@ -69,7 +69,9 @@ class TestDispersion:
         par.dispersion.d3.s8 = param["s8"]
 
         disp = new_dispersion(numbers, positions, par)
-        edisp = disp.get_energy()
+        if disp is None:
+            assert False
+        edisp = disp.get_energy(positions)
 
         assert edisp.dtype == dtype
         assert torch.allclose(edisp, ref)

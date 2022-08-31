@@ -294,7 +294,7 @@ def guess_bond_order(
     mask.diagonal(dim1=-2, dim2=-1).fill_(False)
     distances = torch.where(
         mask,
-        cdist(positions),
+        cdist(positions, mask),
         eps,
     )
 
