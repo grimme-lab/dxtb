@@ -31,11 +31,11 @@ class RMSELoss(nn.Module):
         return torch.sqrt(self.mse(yhat, y) + self.eps)
 
 
-EPOCHS = 20
-LEARNING_RATE = 0.05
+EPOCHS = 100
+LEARNING_RATE = 0.01
 LOSS_FN = RMSELoss()
 # LOSS_FN = torch.nn.MSELoss(reduction="sum")
-FILE = "gfn1-xtb_tmp"
+FILE = "gfn1-xtb_tmp2"
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -149,7 +149,7 @@ def l1_regularisation(model: ParameterOptimizer, parametrisation: Param):
     reg_loss = 0
     for name, p in zip(model.names, model.parameters()):
         p_org = parametrisation.get_param(name)
-        reg_loss += (p - p_org) / p_org
+        reg_loss += torch.abs((torch.abs(p - p_org)) / p_org)
 
     # TODO: think about turning off gradients here
     return reg_loss
@@ -167,7 +167,10 @@ def train_step(optimizer, model, batch, loss_fn):
     # optional: L1 regularisation
     #           NOTE: parameter difference to initial parameters is used as penalty
     l1_lambda = 0.0005
-    loss = loss + l1_lambda * l1_regularisation(model, GFN1_XTB)
+
+    reg = l1_lambda * l1_regularisation(model, GFN1_XTB)
+    print("loss =", loss.item(), " ; reg =", reg.item())
+    loss = loss + reg
 
     # calculate gradient to update model parameters
     loss.backward(inputs=model.params)
@@ -293,7 +296,8 @@ def parametrise_dyn_loading():
     path6 = Path(__file__).resolve().parents[1] / "data" / "BUT14DIOL" / "samples.json"
     path7 = Path(__file__).resolve().parents[1] / "data" / "UPU23" / "samples.json"
     path8 = Path(__file__).resolve().parents[1] / "data" / "IDISP" / "samples.json"
-    dataset = SampleDataset.from_json([path1])
+
+    dataset = SampleDataset.from_json([path4])
     cpuStats()
     memReport()
 
@@ -312,7 +316,7 @@ def parametrise_dyn_loading():
         drop_last=False,
     )
 
-    names = get_all_entries_from_dict(GFN1_XTB, "hamiltonian.xtb.kpair")
+    # names = get_all_entries_from_dict(GFN1_XTB, "hamiltonian.xtb.kpair")
 
     names = [
         "hamiltonian.xtb.enscale",
@@ -326,13 +330,21 @@ def parametrise_dyn_loading():
         "dispersion.d3.s8",
         "dispersion.d3.a1",
         "dispersion.d3.a2",
-        "charge.effective.gexp",  # NaN error
+        "charge.effective.gexp",
         "halogen.classical.damping",
         "halogen.classical.rscale",
-        # "element['H'].arep",
-        # "element['C'].arep",
-        # "element['N'].arep",
-        # "element['O'].arep",
+        "element['H'].arep",
+        "element['C'].arep",
+        "element['N'].arep",
+        "element['O'].arep",
+        "element['S'].arep",
+        "element['P'].arep",
+        "element['H'].zeff",
+        "element['C'].zeff",
+        "element['N'].zeff",
+        "element['O'].zeff",
+        "element['S'].zeff",
+        "element['P'].zeff",
         # "hamiltonian.xtb.kpair['H-H']",
         # "hamiltonian.xtb.kpair['B-H']",
         # "hamiltonian.xtb.kpair['N-H']",
