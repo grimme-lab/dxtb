@@ -43,7 +43,7 @@ from .data import vdw_rad_d3
 from ..basis import IndexHelper
 from ..interaction import Interaction
 from ..typing import Tensor, Any
-from ..utils.utils import real_atoms, real_pairs
+from ..utils import cdist, real_pairs
 
 
 alpha = 0.571412
@@ -199,7 +199,7 @@ class GeneralizedBorn(Interaction):
 
         mask = real_pairs(numbers)
 
-        dist = torch.where(mask, torch.cdist(positions, positions, p=2), eps)
+        dist = cdist(positions, mask)
         ab = torch.where(mask, born.unsqueeze(-1) * born.unsqueeze(-2), eps)
         ab = born.unsqueeze(-1) * born.unsqueeze(-2)
 

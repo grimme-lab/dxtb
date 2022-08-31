@@ -52,6 +52,7 @@ import torch
 from typing import Callable, Any
 
 from .ncoord.ncoord import erf_count
+from .utils import cdist
 
 Tensor = torch.Tensor
 
@@ -293,7 +294,7 @@ def guess_bond_order(
     mask.diagonal(dim1=-2, dim2=-1).fill_(False)
     distances = torch.where(
         mask,
-        torch.cdist(positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"),
+        cdist(positions),
         eps,
     )
 

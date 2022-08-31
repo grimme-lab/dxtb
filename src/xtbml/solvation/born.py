@@ -27,8 +27,9 @@ from __future__ import annotations
 import torch
 from typing import Optional
 
-from ..typing import Tensor
 from .data import vdw_rad_d3
+from ..typing import Tensor, Optional
+from ..utils import cdist
 
 
 def get_born_radii(
@@ -155,11 +156,7 @@ def compute_psi(
     eps = torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype)
     zero = torch.tensor(0.0, dtype=positions.dtype)
 
-    distances = torch.where(
-        mask,
-        torch.cdist(positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"),
-        eps,
-    )
+    distances = cdist(positions, mask)
     r1 = 1.0 / distances
 
     # mask determining overlapping atoms

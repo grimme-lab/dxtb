@@ -5,6 +5,7 @@ import torch
 from ..constants import KCN, KCN_EEQ
 from ..data import cov_rad_d3
 from ..typing import CountingFunction, Tensor
+from ..utils import cdist
 
 
 # TODO: differentiate GFN1 and GFN2
@@ -57,11 +58,7 @@ def get_coordination_number(
         * ~torch.diag_embed(torch.ones_like(real))
     )
 
-    distances = torch.where(
-        mask,
-        torch.cdist(positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"),
-        positions.new_tensor(torch.finfo(positions.dtype).eps),
-    )
+    distances = cdist(positions, mask)
 
     rc = rcov.unsqueeze(-2) + rcov.unsqueeze(-1)
     cf = torch.where(
