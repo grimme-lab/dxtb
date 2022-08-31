@@ -27,8 +27,7 @@ def cdist(positions: Tensor, mask: Tensor) -> Tensor:
     Tensor
         Matripositions of euclidean distances of `positions` with itself.
     """
-
-    # add epsilon to avoid zero division in some terms
+    zero = positions.new_tensor(0.0)
     eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
 
     norm = torch.norm(positions, dim=-1) ** 2
@@ -39,6 +38,10 @@ def cdist(positions: Tensor, mask: Tensor) -> Tensor:
 
     # sum of squared differences or L2-norm of differences
     # important: remove negative values that give NaN in backward
-    ssd = torch.where(mask, n - 2 * prod, eps)
+    _ssd = torch.where(mask, n - 2 * prod, zero)
 
+    # remove small negative values, somehow fails for zero instead of eps
+    ssd = torch.where(torch.abs(_ssd) > torch.sqrt(eps), _ssd, eps)
+
+    # add epsilon to avoid zero division in later terms
     return torch.where(mask, torch.sqrt(ssd), eps)
