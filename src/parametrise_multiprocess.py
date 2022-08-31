@@ -21,9 +21,8 @@ from xtbml.typing import Tensor
 from xtbml.scf.iterator import cpuStats
 
 
-EPOCHS = 100
-LEARNING_RATE = 0.01
-DATA_SET = "Amino20x4"
+EPOCHS = 50
+LEARNING_RATE = 0.02
 
 
 """
@@ -147,6 +146,7 @@ def train_step(optimizer, model, batch, loss_fn):
 def training_epoch(dataloader, names, epoch):
 
     losses = []
+    tracked_losses = []
 
     # reload GFN1_XTB parametrisation in every epoch
     root = Path(__file__).resolve().parents[0]
@@ -159,11 +159,14 @@ def training_epoch(dataloader, names, epoch):
     loss_fn = torch.nn.MSELoss(reduction="sum")
     if epoch != 0:
         # reload optimizer and model from disk
-        losses = load_checkpoint(root / f"gfn1-xtb_tmp.pt", model, optimizer)
+        losses, tracked_losses = load_checkpoint(
+            root / f"gfn1-xtb_tmp.pt", model, optimizer
+        )
 
-    print("INITAL model.params", model.params)
+    print("INITAL model.params")
     for name, param in zip(names, model.params):
         print(name, param)
+    print("")
 
     for batch in dataloader:
         print(f"batch: {batch}")
@@ -175,6 +178,8 @@ def training_epoch(dataloader, names, epoch):
         gc.collect()  # garbage collection
         # TODO: check https://stackify.com/python-garbage-collection/ for detailed gc
 
+    tracked_losses.append(sum(losses) / len(losses))
+
     # TODO: check which part of comp graph is overflowing here
 
     # convert 0-d tensors to floats
@@ -183,19 +188,32 @@ def training_epoch(dataloader, names, epoch):
         if v.shape == torch.Size([]):
             model.parametrisation.set_param(name, v.item())
 
-    print("saving parametrisation")
+    print("\nsaving parametrisation")
     save_parametrisation(gfn1_xtb, root / f"gfn1-xtb_tmp.toml")
-    save_checkpoint(model, optimizer, path=root / f"gfn1-xtb_tmp.pt", losses=losses)
+    save_checkpoint(
+        model,
+        optimizer,
+        path=root / f"gfn1-xtb_tmp.pt",
+        losses=losses,
+        tracked_losses=tracked_losses,
+    )
 
-    print("FINAL model.params", model.params)
+    print("FINAL model.params")
     for name, param in zip(names, model.params):
         print(name, param)
 
-    cpuStats()
-    memReport()
+    # cpuStats()
+    # memReport()
 
-    print(f"END of EPOCH {epoch}")
-    print("losses ", losses)
+    print(f"\nEND of EPOCH {epoch}")
+    print("losses ", sum(losses) / len(losses))
+
+    if epoch == EPOCHS - 1:
+        # reload optimizer and model from disk
+        _, tracked_losses = load_checkpoint(root / f"gfn1-xtb_tmp.pt", model, optimizer)
+
+        print("\nAll losses")
+        [print(l) for l in tracked_losses]
 
 
 def load_parametrisation(path=op.join(op.dirname(__file__), "gfn1-xtb.toml")):
@@ -212,15 +230,16 @@ def load_checkpoint(path, model, optimizer, losses=None):
     checkpoint = torch.load(path)
     model.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-    return checkpoint["losses"]
+    return checkpoint["losses"], checkpoint["tracked_losses"]
 
 
-def save_checkpoint(model, optimizer, path, losses=None):
+def save_checkpoint(model, optimizer, path, losses=None, tracked_losses=None):
     torch.save(
         {
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
             "losses": losses,
+            "tracked_losses": tracked_losses,
         },
         path,
     )
@@ -232,27 +251,22 @@ def parametrise_dyn_loading():
     memReport()
 
     # load data as batched sample
-    path1 = Path(__file__).resolve().parents[1] / "data" / "ACONF"
-    path2 = Path(__file__).resolve().parents[1] / "data" / "MCONF"
-    path3 = Path(__file__).resolve().parents[1] / "data" / "SCONF"
-    path4 = Path(__file__).resolve().parents[1] / "data" / "PCONF21"
-    path5 = Path(__file__).resolve().parents[1] / "data" / "Amino20x4"
+    path1 = Path(__file__).resolve().parents[1] / "data" / "ACONF" / "samples.json"
+    path2 = Path(__file__).resolve().parents[1] / "data" / "MCONF" / "samples.json"
+    path3 = Path(__file__).resolve().parents[1] / "data" / "SCONF" / "samples.json"
+    path4 = Path(__file__).resolve().parents[1] / "data" / "PCONF21" / "samples.json"
+    path5 = Path(__file__).resolve().parents[1] / "data" / "Amino20x4" / "samples.json"
 
-    paths = [path1 / "samples.json"]
-    paths = [
-        path1 / "samples.json",
-        path2 / "samples.json",
-        path3 / "samples.json",
-        path4 / "samples.json",
-        path5 / "samples.json",
-    ]
+    # paths = [path1 / "samples.json"]
+
+    paths = [path4, path2]
 
     dataset = SampleDataset.from_json(paths)
     cpuStats()
     memReport()
 
     # dataset.samples = [s for s in dataset.samples if s.positions.shape[0] >= 100]
-    dataset.samples = [dataset.samples[0]]
+    # dataset.samples = [dataset.samples[0]]
 
     # batch = Sample.pack(dataset.samples)
     print("Number samples", len(dataset))
@@ -268,7 +282,7 @@ def parametrise_dyn_loading():
 
     names = get_all_entries_from_dict(GFN1_XTB, "hamiltonian.xtb.kpair")
 
-    names = names + [
+    names = [
         "hamiltonian.xtb.enscale",
         "hamiltonian.xtb.kpol",
         "hamiltonian.xtb.shell['ss']",
@@ -281,8 +295,8 @@ def parametrise_dyn_loading():
         "dispersion.d3.a1",
         "dispersion.d3.a2",
         # "charge.effective.gexp", # NaN error
-        # "halogen.classical.damping",
-        # "halogen.classical.rscale",
+        "halogen.classical.damping",
+        "halogen.classical.rscale",
         # "hamiltonian.xtb.kpair['H-H']",
         # "hamiltonian.xtb.kpair['B-H']",
         # "hamiltonian.xtb.kpair['N-H']",
@@ -293,7 +307,7 @@ def parametrise_dyn_loading():
     # memReport()
 
     for i in range(EPOCHS):
-        print(f"epoch {i}")
+        print(f"\n\nepoch {i}")
 
         # spawn subprocess for each epoch (avoid memory leak)
         p = Process(target=training_epoch, args=(dataloader, names, i))
