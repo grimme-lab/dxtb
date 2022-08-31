@@ -58,6 +58,7 @@ def orthogonalize(
             kab = torch.sqrt(math.pi * oab) ** 3
             overlap += ci * cj * kab
 
-    coeff_new /= torch.sqrt(overlap)
+    # avoid in-place modification
+    coeff_res = coeff_new / torch.sqrt(overlap)
 
-    return alpha_new, coeff_new
+    return alpha_new, coeff_res

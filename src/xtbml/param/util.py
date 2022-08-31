@@ -118,7 +118,12 @@ def get_elem_param(
         for val in vals:
             l.append(val)
 
-    return torch.tensor(l, device=device, dtype=dtype, requires_grad=requires_grad)
+    if any([torch.is_tensor(v) for v in l]):
+        # retain computational graph
+        l = [torch.tensor(v) if not torch.is_tensor(v) else v for v in l]
+        return torch.stack(l, dim=0).to(device=device, dtype=dtype)
+    else:
+        return torch.tensor(l, device=device, dtype=dtype, requires_grad=requires_grad)
 
 
 def get_elem_angular(par_element: dict[str, Element]) -> dict[int, list[int]]:
