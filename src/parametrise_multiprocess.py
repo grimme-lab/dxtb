@@ -21,9 +21,23 @@ from xtbml.typing import Tensor
 from xtbml.scf.iterator import cpuStats
 
 
-EPOCHS = 50
-LEARNING_RATE = 0.02
+class RMSELoss(nn.Module):
+    def __init__(self, eps=1e-7):
+        super().__init__()
+        self.mse = nn.MSELoss(reduction="sum")
+        self.eps = eps
 
+    def forward(self, yhat, y):
+        return torch.sqrt(self.mse(yhat, y) + self.eps)
+
+
+EPOCHS = 20
+LEARNING_RATE = 0.05
+LOSS_FN = RMSELoss()
+# LOSS_FN = torch.nn.MSELoss(reduction="sum")
+FILE = "gfn1-xtb_tmp"
+
+torch.autograd.set_detect_anomaly(True)
 
 """
 ACONF: MD= -0.660 MAD=  0.660 RMS= 0.77472576
@@ -31,6 +45,8 @@ SCONF: MD= -0.912 MAD=  2.502 RMS= 4.62769921
 PCONF: MD=  0.859 MAD=  2.171 RMS= 2.73447842
 Amino: MD= -0.546 MAD=  1.114 RMS= 1.38088377
 MCONF: MD= -1.377 MAD=  1.443 RMS= 1.63631580
+ADIM6: MD= -1.007 MAD=  1.007 RMS= 1.07390254
+BUT14: MD= -0.736 MAD=  0.953 RMS= 1.13553333
 """
 
 
@@ -150,18 +166,15 @@ def training_epoch(dataloader, names, epoch):
 
     # reload GFN1_XTB parametrisation in every epoch
     root = Path(__file__).resolve().parents[0]
-    file = "gfn1-xtb_ORIGINAL.toml" if epoch == 0 else "gfn1-xtb_tmp.toml"
+    file = "gfn1-xtb_ORIGINAL.toml" if epoch == 0 else f"{FILE}.toml"
     gfn1_xtb = load_parametrisation(root / file)
 
     # setup model, optimizer and loss function
     model = ParameterOptimizer(gfn1_xtb, names)
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    loss_fn = torch.nn.MSELoss(reduction="sum")
     if epoch != 0:
         # reload optimizer and model from disk
-        losses, tracked_losses = load_checkpoint(
-            root / f"gfn1-xtb_tmp.pt", model, optimizer
-        )
+        losses, tracked_losses = load_checkpoint(root / f"{FILE}.pt", model, optimizer)
 
     print("INITAL model.params")
     for name, param in zip(names, model.params):
@@ -171,7 +184,7 @@ def training_epoch(dataloader, names, epoch):
     for batch in dataloader:
         print(f"batch: {batch}")
 
-        loss = train_step(optimizer, model, batch, loss_fn)
+        loss = train_step(optimizer, model, batch, LOSS_FN)
         print(loss)
         losses.append(loss.item())
 
@@ -189,11 +202,11 @@ def training_epoch(dataloader, names, epoch):
             model.parametrisation.set_param(name, v.item())
 
     print("\nsaving parametrisation")
-    save_parametrisation(gfn1_xtb, root / f"gfn1-xtb_tmp.toml")
+    save_parametrisation(gfn1_xtb, root / f"{FILE}.toml")
     save_checkpoint(
         model,
         optimizer,
-        path=root / f"gfn1-xtb_tmp.pt",
+        path=root / f"{FILE}.pt",
         losses=losses,
         tracked_losses=tracked_losses,
     )
@@ -210,7 +223,7 @@ def training_epoch(dataloader, names, epoch):
 
     if epoch == EPOCHS - 1:
         # reload optimizer and model from disk
-        _, tracked_losses = load_checkpoint(root / f"gfn1-xtb_tmp.pt", model, optimizer)
+        _, tracked_losses = load_checkpoint(root / f"{FILE}.pt", model, optimizer)
 
         print("\nAll losses")
         [print(l) for l in tracked_losses]
@@ -256,10 +269,13 @@ def parametrise_dyn_loading():
     path3 = Path(__file__).resolve().parents[1] / "data" / "SCONF" / "samples.json"
     path4 = Path(__file__).resolve().parents[1] / "data" / "PCONF21" / "samples.json"
     path5 = Path(__file__).resolve().parents[1] / "data" / "Amino20x4" / "samples.json"
+    path6 = Path(__file__).resolve().parents[1] / "data" / "BUT14DIOL" / "samples.json"
+    path7 = Path(__file__).resolve().parents[1] / "data" / "UPU23" / "samples.json"
+    path8 = Path(__file__).resolve().parents[1] / "data" / "IDISP" / "samples.json"
 
     # paths = [path1 / "samples.json"]
 
-    paths = [path4, path2]
+    paths = [path4]
 
     dataset = SampleDataset.from_json(paths)
     cpuStats()
@@ -290,13 +306,17 @@ def parametrise_dyn_loading():
         "hamiltonian.xtb.shell['dd']",
         "hamiltonian.xtb.shell['sp']",
         "repulsion.effective.kexp",
-        "dispersion.d3.s6",
+        # "dispersion.d3.s6",
         "dispersion.d3.s8",
         "dispersion.d3.a1",
         "dispersion.d3.a2",
-        # "charge.effective.gexp", # NaN error
+        "charge.effective.gexp",  # NaN error
         "halogen.classical.damping",
         "halogen.classical.rscale",
+        # "element['H'].arep",
+        # "element['C'].arep",
+        # "element['N'].arep",
+        # "element['O'].arep",
         # "hamiltonian.xtb.kpair['H-H']",
         # "hamiltonian.xtb.kpair['B-H']",
         # "hamiltonian.xtb.kpair['N-H']",
