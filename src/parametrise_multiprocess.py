@@ -70,6 +70,8 @@ class ParameterOptimizer(nn.Module):
         # don't mess with global variables
         assert id(parametrisation) != id(GFN1_XTB)
 
+        self.names = names
+
         # parametrisation as proprietary attribute
         self.parametrisation = parametrisation
 
@@ -142,6 +144,17 @@ class ParameterOptimizer(nn.Module):
         return gradient
 
 
+def l1_regularisation(model: ParameterOptimizer, parametrisation: Param):
+
+    reg_loss = 0
+    for name, p in zip(model.names, model.parameters()):
+        p_org = parametrisation.get_param(name)
+        reg_loss += (p - p_org) / p_org
+
+    # TODO: think about turning off gradients here
+    return reg_loss
+
+
 def train_step(optimizer, model, batch, loss_fn):
 
     optimizer.zero_grad(set_to_none=True)
@@ -150,6 +163,11 @@ def train_step(optimizer, model, batch, loss_fn):
     y_true = batch.gref.double()
     loss = loss_fn(grad, y_true)
     # alternative: Jacobian of loss
+
+    # optional: L1 regularisation
+    #           NOTE: parameter difference to initial parameters is used as penalty
+    l1_lambda = 0.0005
+    loss = loss + l1_lambda * l1_regularisation(model, GFN1_XTB)
 
     # calculate gradient to update model parameters
     loss.backward(inputs=model.params)
@@ -171,7 +189,10 @@ def training_epoch(dataloader, names, epoch):
 
     # setup model, optimizer and loss function
     model = ParameterOptimizer(gfn1_xtb, names)
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    optimizer = torch.optim.Adam(
+        model.parameters(), lr=LEARNING_RATE, weight_decay=1e-5
+    )  # NOTE: use weight decay as proxy for L2-normalisation
+
     if epoch != 0:
         # reload optimizer and model from disk
         losses, tracked_losses = load_checkpoint(root / f"{FILE}.pt", model, optimizer)
@@ -272,12 +293,7 @@ def parametrise_dyn_loading():
     path6 = Path(__file__).resolve().parents[1] / "data" / "BUT14DIOL" / "samples.json"
     path7 = Path(__file__).resolve().parents[1] / "data" / "UPU23" / "samples.json"
     path8 = Path(__file__).resolve().parents[1] / "data" / "IDISP" / "samples.json"
-
-    # paths = [path1 / "samples.json"]
-
-    paths = [path4]
-
-    dataset = SampleDataset.from_json(paths)
+    dataset = SampleDataset.from_json([path1])
     cpuStats()
     memReport()
 
