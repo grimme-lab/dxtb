@@ -61,7 +61,6 @@ def get_coordination_number(
     distances = cdist(positions, mask)
 
     rc = rcov.unsqueeze(-2) + rcov.unsqueeze(-1)
-    print(rc)
     cf = torch.where(
         mask * (distances <= cutoff),
         counting_function(distances, rc.type(positions.dtype), **kwargs),

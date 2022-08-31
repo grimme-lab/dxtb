@@ -37,9 +37,6 @@ def cdist(positions: Tensor, mask: Tensor) -> Tensor:
     # positions @ positions.mT
     prod = torch.einsum("...ik, ...jk -> ...ij", positions, positions)
 
-    # mask for diagonal
-    mask = ~torch.diag_embed(torch.ones(prod.shape[0], dtype=torch.bool))
-
     # sum of squared differences or L2-norm of differences
     # important: remove negative values that give NaN in backward
     ssd = torch.where(mask, n - 2 * prod, eps)
