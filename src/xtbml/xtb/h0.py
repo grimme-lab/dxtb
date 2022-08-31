@@ -14,7 +14,7 @@ from ..param import (
     Param,
 )
 from ..typing import Tensor, TensorLike
-from ..utils import t2int
+from ..utils import cdist, t2int
 
 PAD = -1
 """Value used for padding of tensors."""
@@ -306,9 +306,8 @@ class Hamiltonian(TensorLike):
         # ----------------------
         # Eq.24: PI(R_AB, l, l')
         # ----------------------
-        distances = torch.cdist(
-            self.positions, self.positions, p=2, compute_mode="use_mm_for_euclid_dist"
-        )
+
+        distances = cdist(self.positions, mask)
         rad = self.ihelp.spread_uspecies_to_atom(self.rad)
         rr = torch.where(
             mask * ~torch.diag_embed(torch.ones_like(real)),

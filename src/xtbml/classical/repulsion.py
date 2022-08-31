@@ -42,7 +42,7 @@ from ..basis import IndexHelper
 from ..exceptions import ParameterWarning
 from ..param import Param, get_elem_param
 from ..typing import Tensor, TensorLike
-from ..utils import maybe_move, real_pairs
+from ..utils import cdist, maybe_move, real_pairs
 
 
 default_cutoff: float = 25.0
@@ -187,17 +187,7 @@ class Repulsion(Classical, TensorLike):
         # mask for padding
         mask = real_pairs(self.numbers, diagonal=True)
 
-        distances = torch.where(
-            mask,
-            torch.cdist(
-                positions,
-                positions,
-                p=2,
-                compute_mode="use_mm_for_euclid_dist",
-            ),
-            # add epsilon to avoid zero division in some terms
-            positions.new_tensor(torch.finfo(self.dtype).eps),
-        )
+        distances = cdist(positions, mask)
 
         # Eq.13: R_AB ** k_f
         r1k = torch.pow(distances, cache.kexp)
@@ -235,17 +225,7 @@ class Repulsion(Classical, TensorLike):
         """
         mask = real_pairs(self.numbers, diagonal=True)
 
-        distances = torch.where(
-            mask,
-            torch.cdist(
-                positions,
-                positions,
-                p=2,
-                compute_mode="use_mm_for_euclid_dist",
-            ),
-            # add epsilon to avoid zero division in some terms
-            positions.new_tensor(torch.finfo(self.dtype).eps),
-        )
+        distances = cdist(positions, mask)
 
         r1k = torch.pow(distances, cache.kexp)
 

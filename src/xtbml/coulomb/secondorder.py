@@ -46,7 +46,7 @@ from ..basis import IndexHelper
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
 from ..typing import Tensor
-from ..utils import maybe_move, real_pairs
+from ..utils import cdist, maybe_move, real_pairs
 
 
 default_gexp: float = 2.0
@@ -153,12 +153,10 @@ class ES2(Interaction):
         dist_gexp = torch.where(
             mask,
             torch.pow(
-                torch.cdist(
-                    positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
-                ),
+                cdist(positions, mask),
                 self.gexp,
             ),
-            torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype),
+            positions.new_tensor(torch.finfo(positions.dtype).eps),
         )
 
         # Eq.30: averaging function for hardnesses (Hubbard parameter)
@@ -203,13 +201,8 @@ class ES2(Interaction):
         dist_gexp = ihelp.spread_atom_to_shell(
             torch.where(
                 mask,
-                torch.pow(
-                    torch.cdist(
-                        positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
-                    ),
-                    self.gexp,
-                ),
-                torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype),
+                torch.pow(cdist(positions, mask), self.gexp),
+                positions.new_tensor(torch.finfo(positions.dtype).eps),
             ),
             (-1, -2),
         )
