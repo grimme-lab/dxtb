@@ -7,13 +7,14 @@ JSON_FIT = "gfn1.fit.json"
 
 l = []
 l_fit = []
-loss_fn = torch.nn.MSELoss(reduction="sum")
+loss_fn = torch.nn.L1Loss(reduction="sum")
 
 with open(path, "rb") as f:
 	data = json_load(f)
 	for uid, features in data.items():
 		suid = uid.split(":")[1]
 		gref = torch.tensor(features["gref"])
+		#print(suid, gref)
 
 		with open(f"benchmark/{suid}/{JSON}") as j:
 			js = json_load(j)

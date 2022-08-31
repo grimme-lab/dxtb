@@ -16,7 +16,7 @@ else
 	FUNC="$1"
 fi
 
-for i in ACONF SCONF PCONF21 Amino20x4 MCONF; do
+for i in ACONF SCONF PCONF21 Amino20x4 MCONF ADIM6 BUT14DIOL IDISP UPU23; do
 	echo $i
 	pushd $i
 
@@ -37,7 +37,7 @@ for i in ACONF SCONF PCONF21 Amino20x4 MCONF; do
 	popd
 done
 
-for i in ACONF SCONF PCONF21 Amino20x4 MCONF; do
+for i in ACONF SCONF PCONF21 Amino20x4 MCONF ADIM6 BUT14DIOL IDISP UPU23; do
 	echo $i
 	pushd $i
 
