@@ -30,7 +30,8 @@ def cdist(positions: Tensor, mask: Tensor) -> Tensor:
     zero = positions.new_tensor(0.0)
     eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
 
-    norm = torch.norm(positions, dim=-1) ** 2
+    # norm = torch.linalg.norm(positions, dim=-1) ** 2
+    norm = torch.pow(positions, 2.0).sum(-1)
     n = norm.unsqueeze(-1) + norm.unsqueeze(-2)
 
     # positions @ positions.mT
