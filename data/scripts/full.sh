@@ -37,11 +37,14 @@ for i in ACONF SCONF PCONF21 Amino20x4 MCONF ADIM6 BUT14DIOL IDISP UPU23; do
 	popd
 done
 
+rm -f grad.txt
+touch grad.txt
+
 for i in ACONF SCONF PCONF21 Amino20x4 MCONF ADIM6 BUT14DIOL IDISP UPU23; do
 	echo $i
 	pushd $i
 
-	python3 ../scripts/grad.py
+	python3 ../scripts/grad.py $i
 
 	popd
 done

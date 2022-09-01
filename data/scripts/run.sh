@@ -23,9 +23,11 @@ MAIN=$PWD
 
 function run_tblite {
 	tblite run --guess eeq $ARGS --json $METHOD.json coord > $METHOD.out
+	#tblite run --guess eeq --grad --method gfn2 --json gfn2.json coord > gfn2.out
 
 	if [ $? -ne 0 ]; then
 		tblite run --guess sad $ARGS --json $METHOD.json coord > $METHOD.out
+		#tblite run --guess eeq --grad --method gfn2 --json gfn2.json coord > gfn2.out
 	fi
 }
 
