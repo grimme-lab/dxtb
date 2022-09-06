@@ -35,7 +35,7 @@ EPOCHS = 100
 LEARNING_RATE = 0.01
 LOSS_FN = RMSELoss()
 # LOSS_FN = torch.nn.MSELoss(reduction="sum")
-FILE = "gfn1-xtb_tmp2"
+FILE = f"mconf_{EPOCHS}_{LEARNING_RATE}"
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -47,6 +47,13 @@ Amino: MD= -0.546 MAD=  1.114 RMS= 1.38088377
 MCONF: MD= -1.377 MAD=  1.443 RMS= 1.63631580
 ADIM6: MD= -1.007 MAD=  1.007 RMS= 1.07390254
 BUT14: MD= -0.736 MAD=  0.953 RMS= 1.13553333
+IDISP: MD= -6.208 MAE=  6.528 RMS= 10.37706686
+UPU23: MD=  0.028 MAE=  1.239 RMS= 1.44304479
+S22:   MD= -1.275 MAE=  1.330 RMS= 1.66241746
+S66:   MD= -1.052 MAE=  1.081 RMS= 1.23126813
+ICONF: MD= -2.533 MAE=  2.627 RMS= 4.07162202
+WATER: MD= -0.001 MAE=  7.514 RMS= 9.25648321
+
 """
 
 
@@ -287,6 +294,17 @@ def parametrise_dyn_loading():
     cpuStats()
     memReport()
 
+    """
+    ACONF:   ['H', 'C']
+    MCONF:   ['H', 'C', 'N', 'O']
+    SCONF:   ['H', 'C', 'O']
+    PCONF21: ['H', 'C', 'N', 'O']
+    Amino:   ['H', 'C', 'N', 'O', 'S']
+    BUT14:   ['H', 'C', 'O']
+    UPU23:   ['H', 'C', 'N', 'O', 'P']
+    IDISP:   ['H', 'C']
+    """
+
     # load data as batched sample
     path1 = Path(__file__).resolve().parents[1] / "data" / "ACONF" / "samples.json"
     path2 = Path(__file__).resolve().parents[1] / "data" / "MCONF" / "samples.json"
@@ -296,8 +314,11 @@ def parametrise_dyn_loading():
     path6 = Path(__file__).resolve().parents[1] / "data" / "BUT14DIOL" / "samples.json"
     path7 = Path(__file__).resolve().parents[1] / "data" / "UPU23" / "samples.json"
     path8 = Path(__file__).resolve().parents[1] / "data" / "IDISP" / "samples.json"
+    path9 = Path(__file__).resolve().parents[1] / "data" / "S22" / "samples.json"
+    path10 = Path(__file__).resolve().parents[1] / "data" / "S66" / "samples.json"
+    path11 = Path(__file__).resolve().parents[1] / "data" / "WATER27" / "samples.json"
 
-    dataset = SampleDataset.from_json([path4])
+    dataset = SampleDataset.from_json([path2])
     cpuStats()
     memReport()
 
@@ -306,6 +327,7 @@ def parametrise_dyn_loading():
 
     # batch = Sample.pack(dataset.samples)
     print("Number samples", len(dataset))
+    print("Atom types", dataset.get_atom_types())
 
     # dynamic packing for each batch
     dataloader = DataLoader(
@@ -333,18 +355,18 @@ def parametrise_dyn_loading():
         "charge.effective.gexp",
         "halogen.classical.damping",
         "halogen.classical.rscale",
-        "element['H'].arep",
-        "element['C'].arep",
-        "element['N'].arep",
-        "element['O'].arep",
-        "element['S'].arep",
-        "element['P'].arep",
-        "element['H'].zeff",
-        "element['C'].zeff",
-        "element['N'].zeff",
-        "element['O'].zeff",
-        "element['S'].zeff",
-        "element['P'].zeff",
+        # "element['H'].arep",
+        # "element['C'].arep",
+        # "element['N'].arep",
+        # "element['O'].arep",
+        # "element['S'].arep",
+        # "element['P'].arep",
+        # "element['H'].zeff",
+        # "element['C'].zeff",
+        # "element['N'].zeff",
+        # "element['O'].zeff",
+        # "element['S'].zeff",
+        # "element['P'].zeff",
         # "hamiltonian.xtb.kpair['H-H']",
         # "hamiltonian.xtb.kpair['B-H']",
         # "hamiltonian.xtb.kpair['N-H']",
