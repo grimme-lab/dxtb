@@ -10,6 +10,7 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 
+from xtbml.constants import PSE
 from xtbml.data.reactions import Reaction, Reactions
 from xtbml.data.samples import Sample, Samples
 
@@ -150,6 +151,16 @@ class SampleDataset(DatasetModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+    def get_atom_types(self):
+        """Returns a list of all atom types in the Dataset."""
+
+        l = []
+        for sample in self.samples:
+            uniques = torch.unique(sample.numbers)
+            l.extend(uniques.tolist())
+
+        return [PSE.get(num, "X") for num in sorted(list(set(l)))]
 
     @classmethod
     def from_json(
