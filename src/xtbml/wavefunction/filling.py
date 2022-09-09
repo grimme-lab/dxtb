@@ -4,6 +4,7 @@ Handle the occupation of the orbitals with electrons.
 
 import torch
 from ..typing import Tensor
+from ..utils import t2int
 
 
 def get_aufbau_occupation(
@@ -52,7 +53,7 @@ def get_aufbau_occupation(
         # 3. fractional occupations will be in the range [-1, 0], therefore we round up
         torch.ceil(
             nel.unsqueeze(-1)
-             - torch.arange(1, 1 + torch.max(norb).item()).unsqueeze(-2)
+            - torch.arange(1, 1 + torch.max(norb).item()).unsqueeze(-2)
         ),
         # 4. heaviside uses the actual values at 0, therefore we provide the remainder
         # 5. to not lose whole electrons we take the negative and add one
@@ -60,3 +61,38 @@ def get_aufbau_occupation(
     )
 
     return occupation.flatten() if nel.dim() == 0 else occupation
+
+
+def get_fermi_occupation(
+    nel: Tensor, occupation: Tensor, emo: Tensor, kt: Tensor, maxiter: int, thr
+):
+
+    kt = kt * 100
+
+    # indexing starts with zero -> -1
+    homo = t2int(torch.floor(nel / 2))
+    homo = homo + 1 if nel / 2 % 1 > 0.5 else homo
+    occt = homo
+
+    e_fermi = 0.5 * (emo[max(homo - 1, 0)] + emo[min(homo, emo.size(0) - 1)])
+
+    occ = torch.zeros_like(occupation)
+    eps = torch.tensor(torch.finfo(emo.dtype).eps, device=emo.device)
+    zero = emo.new_tensor(0.0)
+
+    for _ in range(maxiter):
+        exponent = (emo - e_fermi) / kt
+        eterm = torch.exp(exponent)
+
+        fermi = torch.where(exponent < 50, 1.0 / (eterm + 1.0), zero)
+        dfermi = torch.where(exponent < 50, eterm / (kt * (eterm + 1.0) ** 2), eps)
+
+        n_el = fermi.sum(-1)
+        change = (occt - n_el) / (dfermi.sum(-1))
+        e_fermi += change
+
+        if abs(occt - n_el) <= thr:
+            break
+
+    print(fermi)
+    return occ * 2
