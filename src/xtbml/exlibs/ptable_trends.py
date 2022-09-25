@@ -48,6 +48,7 @@ def ptable_plotter(
     over_color: str = "#140F0E",
     special_elements: List[str] = None,
     special_color: str = "#6F3023",
+    title=None,
 ) -> figure:
 
     """
@@ -94,6 +95,8 @@ def ptable_plotter(
         List of elements to be colored with special_color.
     special_color: str
         Hexadecimal color to be used for the special elements.
+    title: str
+        Optional title plotted on the figure.
     Returns
     -------
     figure
@@ -262,6 +265,12 @@ def ptable_plotter(
 
     if cbar_height is not None:
         color_bar.height = cbar_height
+
+    if title is not None:
+        p.title.text = title
+        p.title.text_font_size = "18pt"
+        p.title.text_font_style = "bold"
+        p.title.align = "center"
 
     p.add_layout(color_bar, "right")
     p.grid.grid_line_color = None
