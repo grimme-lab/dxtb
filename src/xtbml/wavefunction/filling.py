@@ -186,7 +186,7 @@ def get_fermi_occupation(
     e_fermi, homo = get_fermi_energy(nel, emo)
     for _ in range(maxiter):
         exponent = (emo - e_fermi) / kt
-        eterm = torch.exp(exponent)
+        eterm = torch.exp(torch.where(exponent < 50, exponent, zero))
 
         # only singly occupied here         v
         fermi = torch.where(exponent < 50, 1.0 / (eterm + 1.0), zero)

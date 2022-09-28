@@ -13,7 +13,7 @@ from xtbml.exlibs.tbmalt import batch
 
 from .samples import samples
 
-torch.autograd.set_detect_anomaly(True)
+# torch.autograd.set_detect_anomaly(True)
 opts = {"verbosity": 0, "etemp": 300.0}
 
 
