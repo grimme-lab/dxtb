@@ -4,11 +4,11 @@ Provides abstract base class for interactions in the extended tight-binding Hami
 
 import torch
 
-from ..typing import Tensor
+from ..typing import Tensor, TensorLike
 from ..basis import IndexHelper
 
 
-class Interaction:
+class Interaction(TensorLike):
     """
     Base class for defining interactions with the charge density.
     """
@@ -23,7 +23,8 @@ class Interaction:
 
         pass
 
-    def __init__(self):
+    def __init__(self, device: torch.device, dtype: torch.dtype):
+        super().__init__(device, dtype)
         self.label = self.__class__.__name__
 
     def get_cache(

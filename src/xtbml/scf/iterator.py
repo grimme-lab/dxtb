@@ -158,7 +158,6 @@ class SelfConsistentField(xt.EditableModule):
             "energy": energy,
             "density": self._data.density,
             "hamiltonian": self._data.hamiltonian,
-            "overlap": self._data.overlap,
         }
 
     def get_energy(self, charges: Tensor) -> Tensor:
@@ -194,7 +193,7 @@ class SelfConsistentField(xt.EditableModule):
             New orbital-resolved partial charges vector.
         """
 
-        if self.fwd_options["verbose"]:
+        if self.fwd_options["verbose"] > 1:
             print(self.get_energy(charges).sum(-1))
         potential = self.charges_to_potential(charges)
         return self.potential_to_charges(potential)

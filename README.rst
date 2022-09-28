@@ -69,3 +69,9 @@ You can check your installation by running the test suite with
 .. code::
 
    pytest test/ --pyargs xtbml --doctest-modules
+
+or with xtbml module path in pyproject.toml:
+
+.. code::
+
+   python -m pytest test/ --doctest-modules

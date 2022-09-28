@@ -1,2 +1,3 @@
-from .repulsion import RepulsionFactory
-from .base import EnergyContribution
+from .abc import Classical
+from .halogen import Halogen, new_halogen
+from .repulsion import Repulsion, new_repulsion
