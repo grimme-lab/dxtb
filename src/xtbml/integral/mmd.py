@@ -43,25 +43,42 @@ def _e_function(E, xij, rpi, rpj):
     """
 
     E[:] = 0.0
+
+    # do j = 0 and i = 0 (starting coefficient of recursion, zeroth order HP)
     E[..., 0, 0, 0] = 1.0
+
+    # do j = 0 for all i > 0 (all orders of HP)
     for i in range(1, E.shape[-3]):
+
+        # t = 0 (excludes t - 1 term)
         E[..., i, 0, 0] = rpi * E[..., i - 1, 0, 0] + E[..., i - 1, 0, 1]
+
+        # t > 0
         for n in range(1, i):
             E[..., i, 0, n] = (
                 xij * E[..., i - 1, 0, n - 1]
                 + rpi * E[..., i - 1, 0, n]
                 + (1 + n) * E[..., i - 1, 0, n + 1]
             )
+
+        # t = tmax (excludes t + 1 term)
         E[..., i, 0, i] = xij * E[..., i - 1, 0, i - 1] + rpi * E[..., i - 1, 0, i]
+
+    # do all j > 0 for all i's (all orders of HP)
     for j in range(1, E.shape[-2]):
         for i in range(0, E.shape[-3]):
+            # t = 0 (excludes t - 1 term)
             E[..., i, j, 0] = rpj * E[..., i, j - 1, 0] + E[..., i, j - 1, 1]
+
+            # t > 0
             for n in range(1, i + j):
                 E[..., i, j, n] = (
                     xij * E[..., i, j - 1, n - 1]
                     + rpj * E[..., i, j - 1, n]
                     + (1 + n) * E[..., i, j - 1, n + 1]
                 )
+
+            # t = tmax (excludes t + 1 term)
             E[..., i, j, i + j] = (
                 xij * E[..., i, j - 1, i + j - 1] + rpj * E[..., i, j - 1, i + j]
             )
@@ -236,7 +253,6 @@ class EFunction(torch.autograd.Function):
             and the product Gaussian center.
         """
 
-        shape = ctx.shape
         E, xij, rpi, rpj = ctx.saved_tensors
         xij_grad, rpi_grad, rpj_grad, _ = ctx.needs_input_grad
         xij_bar = rpi_bar = rpj_bar = None
@@ -371,8 +387,13 @@ def overlap(
     eij = ai + aj
     oij = 1.0 / eij
     xij = 0.5 * oij
+
+    # p * (R_A - R_B)² with p = a*b/(a+b)
     est = ai * aj * oij * r2.unsqueeze(-1).unsqueeze(-2)
+
+    # K_AB * Gaussian integral (√(pi/(a+b))) in 3D * c_A * c_B
     sij = torch.exp(-est) * sqrtpi3 * torch.pow(oij, 1.5) * ci * cj
+
     rpi = +vec.unsqueeze(-1).unsqueeze(-1) * aj * oij
     rpj = -vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
     E = e_function(
@@ -390,4 +411,8 @@ def overlap(
             ).sum((-2, -1))
 
     # transform to cartesian basis functions (itrafo^T * S * jtrafo)
-    return torch.einsum("...ji,...jk,...kl->...il", itrafo, s3d, jtrafo)
+    o = torch.einsum("...ji,...jk,...kl->...il", itrafo, s3d, jtrafo)
+
+    eps = vec.new_tensor(torch.finfo(vec.dtype).eps)
+    g = torch.where(torch.abs(o) < eps, vec.new_tensor(0.0), o)
+    return g

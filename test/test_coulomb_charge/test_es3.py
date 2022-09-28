@@ -42,11 +42,12 @@ class TestThirdOrderElectrostatics:
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     @pytest.mark.parametrize("name", sample_list)
     def test_mb16_43(self, param: FixtureParams, dtype: torch.dtype, name: str) -> None:
-        """Test ES3 for some samples from 16_43."""
+        """Test ES3 for some samples from MB16_43."""
         angular = param
 
         sample = mb16_43[name]
         numbers = sample["numbers"]
+        positions = sample["positions"].type(dtype)
         qat = sample["q"].type(dtype)
         ref = sample["es3"].type(dtype)
         ihelp = IndexHelper.from_numbers(numbers, angular)
@@ -59,7 +60,7 @@ class TestThirdOrderElectrostatics:
             dtype=dtype,
         )
 
-        es = es3.ES3(hd)
+        es = es3.ES3(positions, hd)
         e = es.get_atom_energy(qat, ihelp, None)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
@@ -77,6 +78,12 @@ class TestThirdOrderElectrostatics:
             (
                 sample1["numbers"],
                 sample2["numbers"],
+            )
+        )
+        positions = batch.pack(
+            (
+                sample1["positions"].type(dtype),
+                sample2["positions"].type(dtype),
             )
         )
         qat = batch.pack(
@@ -101,7 +108,7 @@ class TestThirdOrderElectrostatics:
             dtype=dtype,
         )
 
-        es = es3.ES3(hd)
+        es = es3.ES3(positions, hd)
         e = es.get_atom_energy(qat, ihelp, None)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
 
@@ -114,6 +121,7 @@ class TestThirdOrderElectrostatics:
 
         sample = mb16_43[name]
         numbers = sample["numbers"]
+        positions = sample["positions"].type(dtype)
         qat = sample["q"].type(dtype)
         ihelp = IndexHelper.from_numbers(numbers, angular)
 
@@ -129,7 +137,7 @@ class TestThirdOrderElectrostatics:
         hd.requires_grad_(True)
 
         def func(hubbard_derivs: Tensor):
-            es = es3.ES3(hubbard_derivs)
+            es = es3.ES3(positions, hubbard_derivs)
             return es.get_atom_energy(qat, ihelp, None)
 
         # pylint: disable=import-outside-toplevel

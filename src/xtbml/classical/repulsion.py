@@ -1,286 +1,322 @@
-# This file is part of xtbml.
+"""
+Classical repulsion energy contribution
+======================================= 
 
-"""Definition of repulsion energy terms."""
+This module implements the classical repulsion energy term.
 
-from typing import Dict, List, Literal, Optional, overload, Tuple, Union
-from ..typing import Tensor
+Note
+----
+The Repulsion class is constructed for geometry optimization, i.e., the atomic
+numbers are set upon instantiation (`numbers` is a property), and the parameters
+in the cache are created for only those atomic numbers. The positions, however, 
+must be supplied to the `get_energy` (or `get_grad`) method. 
 
+Example
+-------
+>>> import torch
+>>> from xtbml.basis import IndexHelper
+>>> from xtbml.classical import new_repulsion
+>>> from xtbml.param import GFN1_XTB, get_elem_param
+>>> numbers = torch.tensor([14, 1, 1, 1, 1])
+>>> positions = torch.tensor([
+...     [+0.00000000000000, +0.00000000000000, +0.00000000000000],
+...     [+1.61768389755830, +1.61768389755830, -1.61768389755830],
+...     [-1.61768389755830, -1.61768389755830, -1.61768389755830],
+...     [+1.61768389755830, -1.61768389755830, +1.61768389755830],
+...     [-1.61768389755830, +1.61768389755830, +1.61768389755830],
+... ])
+>>> rep = new_repulsion(numbers, positions, GFN1_XTB)
+>>> ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+>>> cache = rep.get_cache(numbers, ihelp)
+>>> energy = rep.get_energy(positions, cache)
+>>> print(energy.sum(-1))
+tensor(0.0303)
+"""
+
+from __future__ import annotations
+import warnings
 import torch
 
-from ..param import Element, EffectiveRepulsion
-from .base import EnergyContribution
+from .abc import Classical
+from ..basis import IndexHelper
+from ..exceptions import ParameterWarning
+from ..param import Param, get_elem_param
+from ..typing import Tensor, TensorLike
+from ..utils import real_pairs
 
 
-class RepulsionFactory(EnergyContribution):
+default_cutoff: float = 25.0
+"""Default real space cutoff for repulsion interactions."""
+
+
+class Repulsion(Classical, TensorLike):
     """
-    Classical repulsion interaction as used with the xTB Hamiltonian.
-    Calculated is the effective repulsion as given in the TB framework.
-    Container to evaluate classical repulsion interactions for the xTB Hamiltonian.
+    Representation of the classical repulsion.
 
-    For details, see GFN1-xTB paper:
-    Grimme, S.; Bannwarth, C.; Shushkov, P. A Robust and Accurate Tight-Binding Quantum Chemical Method for Structures, Vibrational Frequencies, and Noncovalent Interactions of Large Molecular Systems Parameterized for All spd-Block Elements (Z = 1-86). J. Chem. Theory Comput. 2017, 13 (5), 1989-2009 DOI: 10.1021/acs.jctc.7b00118
-
-    """
-
-    n_elements: int = 87
-    """
-    Number of elements (86, PSE up to Rn) plus dummy to allow indexing by atomic numbers.
-    """
-
-    dummy_value: float = 0.0
-    """
-    Dummy value for zero index of tensors indexed by atomic numbers.
+    Note
+    ----
+    The positions are only passed to the constructor for `dtype` and `device`,
+    they are no class property, as this setup facilitates geometry optimization.
     """
 
-    alpha: Optional[Tensor] = None
-    """
-    Repulsion interaction exponent for all elements (not pairs!).
-    Always has size `RepulsionFactory.n_elements`.
-    """
+    numbers: Tensor
+    """ Atomic numbers of all atoms."""
 
-    w_alpha: Optional[Tensor] = None
-    """
-    Working tensor for repulsion interaction exponent for all element pairs.
-    Size is `(n_batch, n_atoms, n_atoms)` (with `n_atoms` from `RepulsionFactory.numbers`).
-    """
+    arep: Tensor
+    """Atom-specific screening parameters for unique species."""
 
-    zeff: Optional[Tensor] = None
+    zeff: Tensor
+    """Effective nuclear charges for unique species."""
+
+    kexp: Tensor
     """
-    Effective nuclear charge for all element pairs.
-    Always has size `RepulsionFactory.n_elements`.
+    Scaling of the interatomic distance in the exponential damping function of
+    the repulsion energy.
     """
 
-    w_zeff: Optional[Tensor] = None
+    kexp_light: Tensor | None = None
     """
-    Working tensor for effective nuclear charge for all element pairs.
-    Size is `(n_batch, n_atoms, n_atoms)` (with `n_atoms` from `RepulsionFactory.numbers`).
-    """
-
-    kexp: Optional[Tensor] = None
-    """
-    Scaling of the repulsion exponents.
-    Always has size `RepulsionFactory.n_elements`.
+    Scaling of the interatomic distance in the exponential damping function of
+    the repulsion energy for light elements, i.e., H and He (only GFN2).
     """
 
-    w_kexp: Optional[Tensor] = None
-    """
-    Working tensor for scaling of the repulsion exponents.
-    Size is `(n_batch, n_atoms, n_atoms)` (with `n_atoms` from `RepulsionFactory.numbers`).
-    """
+    cutoff: float = default_cutoff
+    """Real space cutoff for repulsion interactions (default: 25.0)."""
 
-    def get_kexp(self, par_repulsion: EffectiveRepulsion) -> List[float]:
-        """Obtain exponential scaling factors of effective repulsion.
-
-        Parameters
-        ----------
-        par_repulsion : EffectiveRepulsion
-            Repulsion parametrization.
-
-        Returns
-        -------
-        List[float]
-            Exponential scaling factors of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
-        """
-
-        kexp = [par_repulsion.kexp] * self.n_elements
-
-        # dummy for indexing with atomic numbers
-        kexp[0] = self.dummy_value
-
-        # change value for H and He (GFN2-xTB)
-        if par_repulsion.kexp_light is not None:
-            kexp[1] = par_repulsion.kexp_light
-            kexp[2] = par_repulsion.kexp_light
-
-        return kexp
-
-    def get_alpha(self, par: Dict[str, Element]) -> List[float]:
-        """Obtain alpha parameters as List.
-
-        Parameters
-        ----------
-        par : Dict[str, Element]
-            Parametrization of elements.
-
-        Returns
-        -------
-        List[float]
-            Alpha parameter of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
-        """
-
-        # dummy for indexing with atomic numbers
-        a = [self.dummy_value]
-
-        for item in par.values():
-            a.append(item.arep)
-
-        return a
-
-    def get_zeff(self, par: Dict[str, Element]) -> List[float]:
-        """Obtain effective charges as List.
-
-        Parameters
-        ----------
-        par : Dict[str, Element]
-            Parametrization of elements.
-
-        Returns
-        -------
-        List[float]
-            Effective charges of all elements (with 0 index being a dummy to allow indexing by atomic numbers).
-        """
-
-        # dummy for indexing with atomic numbers
-        z = [self.dummy_value]
-
-        for item in par.values():
-            z.append(item.zeff)
-
-        return z
-
-    def setup(
-        self, par_element: Dict[str, Element], par_repulsion: EffectiveRepulsion
+    def __init__(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        arep: Tensor,
+        zeff: Tensor,
+        kexp: Tensor,
+        kexp_light: Tensor | None = None,
+        cutoff: float = default_cutoff,
     ) -> None:
-        """Setup `RepulsionFactory.alpha`, `RepulsionFactory.zeff` and `RepulsionFactory.kexp` and corresponding working tensors `RepulsionFactory.w_alpha`, `RepulsionFactory.w_zeff` and `RepulsionFactory.w_kexp` for a structure.
+        super().__init__(positions.device, positions.dtype)
+
+        self.numbers = numbers
+        self.arep = arep.to(self.device).type(self.dtype)
+        self.zeff = zeff.to(self.device).type(self.dtype)
+        self.cutoff = cutoff
+
+        self.kexp = kexp.to(self.device).type(self.dtype)
+        if kexp_light is not None:
+            self.kexp_light = kexp_light.to(self.device).type(self.dtype)
+
+    class Cache:
+        """Cache for the repulsion parameters."""
+
+        arep: Tensor
+        """Atom-specific screening parameters."""
+
+        zeff: Tensor
+        """Effective nuclear charges."""
+
+        kexp: Tensor
+        """
+        Scaling of the interatomic distance in the exponential damping function 
+        of the repulsion energy.
+        """
+
+        __slots__ = ["alpha", "zeff", "kexp"]
+
+        def __init__(self, alpha: Tensor, zeff: Tensor, kexp: Tensor):
+            self.alpha = alpha
+            self.zeff = zeff
+            self.kexp = kexp
+
+    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> "Repulsion.Cache":
+        """
+        Store variables for energy and gradient calculation.
 
         Parameters
         ----------
-        par_element : Dict[str, Element]
-            Parametrization of elements.
-        par_repulsion : EffectiveRepulsion
-            Parametrization of repulsion.
+        numbers : Tensor
+            Atomic numbers of all atoms.
+        ihelp : IndexHelper
+            Helper class for indexing.
+
+        Returns
+        -------
+        Repulsion.Cache
+            Cache for repulsion.
         """
 
-        if self.req_grad is None:
-            self.req_grad = False
+        unique = torch.unique(numbers)
+        kexp = self.kexp.expand(unique.shape)
+        if self.kexp_light is not None:
+            kexp = torch.where(unique > 2, kexp.new_tensor(self.kexp_light), kexp)
 
-        numbers = self.numbers
-        dtype = self.positions.dtype
-
-        # get parameters for whole PSE and format to tensors
-        self.alpha = torch.tensor(
-            self.get_alpha(par_element), dtype=dtype, requires_grad=self.req_grad
-        )
-        self.zeff = torch.tensor(
-            self.get_zeff(par_element), dtype=dtype, requires_grad=self.req_grad
-        )
-        self.kexp = torch.tensor(
-            self.get_kexp(par_repulsion), dtype=dtype, requires_grad=self.req_grad
-        )
-
-        # get parameters for structure
-        alpha_mol = self.alpha[numbers]
-        zeff_mol = self.zeff[numbers]
-        kexp_mol = self.kexp[numbers]
+        # spread
+        arep = ihelp.spread_uspecies_to_atom(self.arep)
+        zeff = ihelp.spread_uspecies_to_atom(self.zeff)
+        kexp = ihelp.spread_uspecies_to_atom(kexp)
 
         # mask for padding
-        real = numbers != 0
-        mask = real.unsqueeze(-2) * real.unsqueeze(-1)
+        mask = real_pairs(self.numbers, diagonal=True)
 
-        # set diagonal to 0 to remove A=B case in summation
-        mask.diagonal(dim1=-2, dim2=-1).fill_(False)
+        # create matrices
+        a = torch.sqrt(arep.unsqueeze(-1) * arep.unsqueeze(-2)) * mask
+        z = zeff.unsqueeze(-2) * zeff.unsqueeze(-1) * mask
+        k = kexp.unsqueeze(-2) * kexp.new_ones(kexp.shape).unsqueeze(-1) * mask
 
-        # create padded arrays and write to working tensor
-        alpha_mul = alpha_mol.unsqueeze(-1) * alpha_mol.unsqueeze(-2)
-        self.w_alpha = torch.sqrt(alpha_mul) * mask
+        return self.Cache(a, z, k)
 
-        zeff_mul = zeff_mol.unsqueeze(-2) * zeff_mol.unsqueeze(-1)
-        self.w_zeff = zeff_mul * mask
-
-        kexp_ones = kexp_mol.new_ones(kexp_mol.shape)
-        kexp_mul = kexp_mol.unsqueeze(-2) * kexp_ones.unsqueeze(-1)
-        self.w_kexp = kexp_mul * mask
-
-    @overload
-    def get_engrad(self, calc_gradient: Literal[False] = False) -> Tensor:
-        ...
-
-    @overload
-    def get_engrad(self, calc_gradient: Literal[True] = True) -> Tuple[Tensor, Tensor]:
-        ...
-
-    def get_engrad(
-        self,
-        calc_gradient: bool = False,
-    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
-        """Obtain repulsion energy and gradient.
+    def get_energy(
+        self, positions: Tensor, cache: "Repulsion.Cache", atom_resolved: bool = True
+    ) -> Tensor:
+        """
+        Get repulsion energy.
 
         Parameters
         ----------
-        calc_gradient : bool, optional
-            Flag for calculating gradient. Defaults to `False`.
+        cache : Repulsion.Cache
+            Cache for repulsion.
+        positions : Tensor
+            Cartesian coordinates of all atoms.
+        atom_resolved : bool
+            Whether to return atom-resolved energy (True) or full matrix (False).
 
         Returns
         -------
-        Tensor | Tuple[Tensor, Tensor]
-            Repulsion energy (and gradient). Gradient is `None` if `calc_gradient` is set to `False`.
+        Tensor
+            (Atom-resolved) repulsion energy.
         """
 
-        if self.w_alpha is None or self.w_zeff is None or self.w_kexp is None:
-            raise ValueError("Working tensor is not initialized.")
-
-        if self.cutoff is None:
-            self.cutoff = torch.tensor(50.0, dtype=self.positions.dtype)
-
-        # add epsilon to avoid zero division in some terms
-        eps = torch.tensor(
-            torch.finfo(self.positions.dtype).eps, dtype=self.positions.dtype
-        )
-
-        real = self.numbers != 0
-        mask = real.unsqueeze(-2) * real.unsqueeze(-1)
-        mask.diagonal(dim1=-2, dim2=-1).fill_(False)
+        # mask for padding
+        mask = real_pairs(self.numbers, diagonal=True)
 
         distances = torch.where(
             mask,
-            torch.cdist(self.positions, self.positions, p=2),
-            eps,
+            torch.cdist(
+                positions,
+                positions,
+                p=2,
+                compute_mode="use_mm_for_euclid_dist",
+            ),
+            # add epsilon to avoid zero division in some terms
+            positions.new_tensor(torch.finfo(self.dtype).eps),
         )
 
         # Eq.13: R_AB ** k_f
-        r1k = torch.pow(distances, self.w_kexp)
+        r1k = torch.pow(distances, cache.kexp)
 
         # Eq.13: exp(- (alpha_A * alpha_B)**0.5 * R_AB ** k_f )
-        exp_term = torch.exp(-self.w_alpha * r1k)
+        exp_term = torch.exp(-cache.alpha * r1k)
 
         # Eq.13: repulsion energy
         dE = torch.where(
-            mask * (distances <= self.cutoff),
-            self.w_zeff * exp_term / distances,
-            torch.tensor(0.0, dtype=distances.dtype),
+            mask * (distances <= distances.new_tensor(self.cutoff)),
+            cache.zeff * exp_term / distances,
+            distances.new_tensor(0.0),
         )
 
-        # atom resolved energies
-        E = 0.5 * torch.sum(dE, dim=-1)
+        if atom_resolved is True:
+            return 0.5 * torch.sum(dE, dim=-1)
+        else:
+            return dE
 
-        if calc_gradient is False:
-            return E
+    def get_grad(self, positions: Tensor, cache: "Repulsion.Cache") -> Tensor:
+        """
+        Get analytical gradient of repulsion energy.
 
-        # GRADIENT #
+        Parameters
+        ----------
+        cache : Repulsion.Cache
+            Cache for repulsion.
+        positions : Tensor
+            Cartesian coordinates of all atoms.
 
-        dG = -(self.w_alpha * r1k * self.w_kexp + 1.0) * dE
-        # >>> print(dG.shape)
-        # torch.Size([n_batch, n_atoms, n_atoms])
+        Returns
+        -------
+        Tensor
+            Atom-resolved repulsion gradient, size (n_batch, n_atoms, 3).
+        """
+        mask = real_pairs(self.numbers, diagonal=True)
 
+        distances = torch.where(
+            mask,
+            torch.cdist(
+                positions,
+                positions,
+                p=2,
+                compute_mode="use_mm_for_euclid_dist",
+            ),
+            # add epsilon to avoid zero division in some terms
+            positions.new_tensor(torch.finfo(self.dtype).eps),
+        )
+
+        r1k = torch.pow(distances, cache.kexp)
+
+        # (n_batch, n_atoms, n_atoms)
+        dE = self.get_energy(positions, cache, False)
+        dG = -(cache.alpha * r1k * cache.kexp + 1.0) * dE
+
+        # (n_batch, n_atoms, n_atoms, 3)
         rij = torch.where(
             mask.unsqueeze(-1),
-            self.positions.unsqueeze(-2) - self.positions.unsqueeze(-3),
-            torch.tensor(0.0, dtype=distances.dtype),
+            positions.unsqueeze(-2) - positions.unsqueeze(-3),
+            distances.new_tensor(0.0),
         )
-        # >>> print(rij.shape)
-        # torch.Size([n_batch, n_atoms, n_atoms, 3])
 
+        # (n_batch, n_atoms, n_atoms)
         r2 = torch.pow(distances, 2)
-        # >>> print(r2.shape)
-        # torch.Size([n_batch, n_atoms, n_atoms])
 
+        # (n_batch, n_atoms, n_atoms, 3)
         dG = dG / r2
         dG = dG.unsqueeze(-1) * rij
-        # >>> print(dG.shape)
-        # torch.Size([n_batch, n_atoms, n_atoms, 3])
 
-        dG = torch.sum(dG, dim=-2)
-        # >>> print(dG.shape)
-        # torch.Size([n_batch, n_atoms, 3])
+        # (n_batch, n_atoms, 3)
+        return torch.sum(dG, dim=-2)
 
-        return E, dG
+
+def new_repulsion(
+    numbers: Tensor,
+    positions: Tensor,
+    par: Param,
+    cutoff: float = default_cutoff,
+) -> Repulsion | None:
+    """
+    Create new instance of Repulsion class.
+
+    Parameters
+    ----------
+    numbers : Tensor
+        Atomic numbers of all atoms.
+    positions : Tensor
+        Cartesian coordinates of all atoms.
+    par : Param
+        Representation of an extended tight-binding model.
+    cutoff : float
+        Real space cutoff for repulsion interactions (default: 25.0).
+
+    Returns
+    -------
+    Repulsion | None
+        Instance of the Repulsion class or `None` if no repulsion is used.
+
+    Raises
+    ------
+    ValueError
+        If parametrization does not contain a halogen bond correction.
+    """
+
+    if par.repulsion is None:
+        # TODO: Repulsion is used in all models, so error or just warning?
+        warnings.warn("No repulsion scheme found.", ParameterWarning)
+        return None
+
+    kexp = torch.tensor(par.repulsion.effective.kexp)
+    kexp_light = (
+        torch.tensor(par.repulsion.effective.kexp_light)
+        if par.repulsion.effective.kexp_light
+        else None
+    )
+
+    # get parameters for unique species
+    unique = torch.unique(numbers)
+    arep = get_elem_param(unique, par.element, "arep", pad_val=0)
+    zeff = get_elem_param(unique, par.element, "zeff", pad_val=0)
+
+    return Repulsion(numbers, positions, arep, zeff, kexp, kexp_light, cutoff)

@@ -157,7 +157,7 @@ def compute_psi(
 
     distances = torch.where(
         mask,
-        torch.cdist(positions, positions, p=2),
+        torch.cdist(positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"),
         eps,
     )
     r1 = 1.0 / distances

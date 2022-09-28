@@ -72,7 +72,13 @@ class TestSecondOrderElectrostaticsShell:
             dtype=positions.dtype,
         )
 
-        es = es2.ES2(hubbard=hubbard, lhubbard=lhubbard, average=average, gexp=gexp)
+        es = es2.ES2(
+            positions=positions,
+            hubbard=hubbard,
+            lhubbard=lhubbard,
+            average=average,
+            gexp=gexp,
+        )
         cache = es.get_cache(numbers, positions, ihelp)
         e = es.get_shell_energy(qsh, ihelp, cache)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
@@ -127,7 +133,13 @@ class TestSecondOrderElectrostaticsShell:
             dtype=positions.dtype,
         )
 
-        es = es2.ES2(hubbard=hubbard, lhubbard=lhubbard, average=average, gexp=gexp)
+        es = es2.ES2(
+            positions=positions,
+            hubbard=hubbard,
+            lhubbard=lhubbard,
+            average=average,
+            gexp=gexp,
+        )
         cache = es.get_cache(numbers, positions, ihelp)
         e = es.get_shell_energy(qsh, ihelp, cache)
         assert torch.allclose(torch.sum(e, dim=-1), ref)
@@ -163,7 +175,13 @@ class TestSecondOrderElectrostaticsShell:
         positions.requires_grad_(True)
 
         def func(positions: Tensor):
-            es = es2.ES2(hubbard=hubbard, lhubbard=lhubbard, average=average, gexp=gexp)
+            es = es2.ES2(
+                positions=positions,
+                hubbard=hubbard,
+                lhubbard=lhubbard,
+                average=average,
+                gexp=gexp,
+            )
             cache = es.get_cache(numbers, positions, ihelp)
             return es.get_shell_energy(qsh, ihelp, cache)
 
@@ -204,7 +222,9 @@ class TestSecondOrderElectrostaticsShell:
         hubbard.requires_grad_(True)
 
         def func(gexp: Tensor, hubbard: Tensor):
-            es = es2.ES2(hubbard=hubbard, lhubbard=lhubbard, average=average, gexp=gexp)
+            es = es2.ES2(
+                positions=positions,
+                hubbard=hubbard, lhubbard=lhubbard, average=average, gexp=gexp)
             cache = es.get_cache(numbers, positions, ihelp)
             return es.get_shell_energy(qsh, ihelp, cache)
 

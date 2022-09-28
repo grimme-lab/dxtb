@@ -18,9 +18,11 @@ class InteractionList(Interaction):
 
         __slots__ = ()
 
-    def __init__(self, interactions: list[Interaction]):
-        Interaction.__init__(self)
-        self.interactions = interactions
+    def __init__(self, *interactions):
+        Interaction.__init__(self, torch.device("cpu"), torch.float)
+        self.interactions = [
+            interaction for interaction in interactions if interaction is not None
+        ]
 
     def get_cache(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
