@@ -13,6 +13,9 @@ from xtbml.exlibs.tbmalt import batch
 
 from .samples import samples
 
+torch.autograd.set_detect_anomaly(True)
+opts = {"verbosity": 0, "etemp": 300.0}
+
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "LiH", "SiH4"])
@@ -27,7 +30,7 @@ def test_single(dtype: torch.dtype, name: str):
 
     calc = Calculator(numbers, positions, par)
 
-    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    result = calc.singlepoint(numbers, positions, charges, opts)
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
 
 
@@ -47,7 +50,7 @@ def test_single2(dtype: torch.dtype, name: str):
 
     calc = Calculator(numbers, positions, par)
 
-    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    result = calc.singlepoint(numbers, positions, charges, opts)
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
 
 
@@ -66,7 +69,7 @@ def test_single_large(dtype: torch.dtype, name: str):
 
     calc = Calculator(numbers, positions, par)
 
-    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    result = calc.singlepoint(numbers, positions, charges, opts)
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
 
 
@@ -83,7 +86,7 @@ def test_batch(dtype: torch.dtype, name: str):
 
     calc = Calculator(numbers, positions, par)
 
-    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    result = calc.singlepoint(numbers, positions, charges, opts)
     assert torch.allclose(ref, result.scf.sum(-1), atol=tol)
 
 
@@ -113,7 +116,7 @@ def test_grad_backwards(testcase, dtype: torch.dtype = torch.float):
 
     calc = Calculator(numbers, positions, par)
 
-    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    result = calc.singlepoint(numbers, positions, charges, opts)
     energy = result.scf.sum(-1)
 
     energy.backward()
@@ -149,7 +152,7 @@ def test_grad(testcase, dtype: torch.dtype = torch.float):
 
     calc = Calculator(numbers, positions, par)
 
-    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    result = calc.singlepoint(numbers, positions, charges, opts)
     energy = result.scf.sum(-1)
 
     gradient = torch.autograd.grad(
@@ -192,7 +195,7 @@ def test_gradgrad(testcase, dtype: torch.dtype = torch.float):
     calc.hamiltonian.kcn.requires_grad_(True)
     calc.hamiltonian.shpoly.requires_grad_(True)
 
-    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    result = calc.singlepoint(numbers, positions, charges, opts)
     energy = result.scf.sum(-1)
 
     gradient = torch.autograd.grad(

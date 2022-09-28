@@ -2,9 +2,16 @@
 Handle the occupation of the orbitals with electrons.
 """
 
+# NOTE: Parts of the Fermi smearing are taken from https://github.com/tbmalt/tbmalt
+
+
+from __future__ import annotations
+
 import torch
-from ..typing import Tensor
-from ..utils import t2int
+
+from xtbml.constants.units import K2AU
+from ..typing import Literal, Tensor
+from ..constants.defaults import THRESH
 
 
 def get_aufbau_occupation(
@@ -63,36 +70,161 @@ def get_aufbau_occupation(
     return occupation.flatten() if nel.dim() == 0 else occupation
 
 
+def get_fermi_energy(
+    nel: Tensor, emo: Tensor, max_orb_occ: float = 2.0
+) -> tuple[Tensor, Tensor]:
+    """
+    Get Fermi energy as midpoint between the HOMO and LUMO.
+
+    Parameters
+    ----------
+    nel : Tensor
+        Number of electrons.
+    emo : Tensor
+        Orbital energies
+    max_orb_occ : float, optional
+        Maximum orbital occupation, by default 2.0
+
+    Returns
+    -------
+    tuple[Tensor, Tensor]
+        Fermi energy and index of HOMO.
+    """
+    shp = torch.Size([*emo.shape[:-1], -1])
+
+    # maximum occupation of each orbital
+    occ = torch.ones_like(emo) * max_orb_occ
+
+    # transition: negative values indicate end of occupied orbitals
+    if emo.ndim == 1:
+        occ_cs = occ.cumsum(-1) - nel
+    else:
+        # transpose sum because `nel` may contain multiple values
+        occ_cs = occ.cumsum(-1).T - nel
+
+    temp = occ_cs >= (-torch.finfo(emo.dtype).resolution * 5)
+    if emo.ndim > 1:
+        temp = temp.T
+
+    # index of first non-negative value
+    homo = torch.argmax(temp.type(torch.long), dim=-1).view(shp)
+
+    hl = torch.cat((homo, homo + 1), -1)
+    e_fermi = torch.gather(emo, -1, hl).mean(-1).view(shp)
+    return e_fermi, homo
+
+
 def get_fermi_occupation(
-    nel: Tensor, occupation: Tensor, emo: Tensor, kt: Tensor, maxiter: int, thr
-):
+    nel: Tensor,
+    emo: Tensor,
+    kt: Tensor | None = None,
+    thr: Tensor | None = None,
+    maxiter: int = 200,
+    max_orb_occ: float = 2.0,
+    unit: Literal["atomic", "kelvin"] = "atomic",
+) -> Tensor:
+    """
+    Set occupation numbers according to Fermi distribution.
 
-    kt = kt * 100
+    Parameters
+    ----------
+    nel : Tensor
+        Number of electrons.
+    emo : Tensor
+        Orbital energies
+    kt : Tensor | None, optional
+        Electronic temperature in atomic units, by default None.
+    thr : Tensor | None, optional
+        Threshold for converging Fermi energy, by default None.
+    maxiter : int, optional
+        Maximum number of iterations for converging Fermi energy, by default 200.
+    max_orb_occ : float, optional
+        Maximum orbital occupation, by default 2.0.
 
-    # indexing starts with zero -> -1
-    homo = t2int(torch.floor(nel / 2))
-    homo = homo + 1 if nel / 2 % 1 > 0.5 else homo
-    occt = homo
+    Returns
+    -------
+    Tensor
+        Occupation numbers.
 
-    e_fermi = 0.5 * (emo[max(homo - 1, 0)] + emo[min(homo, emo.size(0) - 1)])
+    Raises
+    ------
+    RuntimeError
+        Fermi energy fails to converge.
+    TypeError
+        Electronic temperature is not given as `Tensor`.
+    ValueError
+        Electronic temperature is negative or number of electrons is zero.
+    """
 
-    occ = torch.zeros_like(occupation)
-    eps = torch.tensor(torch.finfo(emo.dtype).eps, device=emo.device)
+    # wrong type of kt
+    if not isinstance(kt, Tensor) and kt is not None:
+        raise TypeError("Electronic temperature must be `Tensor` or `None`.")
+
+    # negative etemp
+    if kt is not None and (kt < 0.0).any():
+        raise ValueError(f"Electronic Temperature must be positive or None ({kt}).")
+
+    eps = emo.new_tensor(torch.finfo(emo.dtype).eps)
     zero = emo.new_tensor(0.0)
 
+    # no electrons
+    if (torch.abs(nel) < eps).any():
+        raise ValueError("Number of elections cannot be zero.")
+
+    # convert unit
+    if kt is not None and unit == "kelvin":
+        kt *= K2AU
+
+    # no electronic temperature: just return aufbau occupation
+    if kt is None or torch.all(kt < (0.1 * K2AU)):
+        return 2.0 * get_aufbau_occupation(emo.new_tensor(emo.shape[-1]), nel / 2.0)
+
+    if thr is None:
+        thr = THRESH[emo.dtype].to(emo.device)
+
+    # iterate fermi energy
+    e_fermi, homo = get_fermi_energy(nel, emo)
     for _ in range(maxiter):
         exponent = (emo - e_fermi) / kt
         eterm = torch.exp(exponent)
 
+        # only singly occupied here         v
         fermi = torch.where(exponent < 50, 1.0 / (eterm + 1.0), zero)
         dfermi = torch.where(exponent < 50, eterm / (kt * (eterm + 1.0) ** 2), eps)
 
-        n_el = fermi.sum(-1)
-        change = (occt - n_el) / (dfermi.sum(-1))
+        _nel = torch.sum(fermi, dim=-1, keepdim=True)
+        change = (homo - _nel + 1) / torch.sum(dfermi, dim=-1, keepdim=True)
         e_fermi += change
 
-        if abs(occt - n_el) <= thr:
-            break
+        if torch.all(torch.abs(homo - _nel + 1) <= thr):
+            return max_orb_occ * fermi
 
-    print(fermi)
-    return occ * 2
+    raise RuntimeError("Fermi energy failed to converge.")
+
+
+def get_electronic_free_energy(
+    occ: Tensor, kt: Tensor, max_orb_occ: float = 2.0
+) -> Tensor:
+    r"""
+    Calculate electronic free energy from entropy.
+
+    .. math::
+
+        G = -TS = k_B\sum_{i}f_i \; ln(f_i) + (1 - f_i)\; ln(1 - f_i))
+
+    Parameters
+    ----------
+    occ : Tensor
+        Fractional occupation from Fermi smearing.
+    kt : Tensor
+        Electronic temperature
+    max_orb_occ : float, optional
+        Maximum occupation of orbitals, by default 2.0
+
+    Returns
+    -------
+    Tensor
+        Electronic free energy (G = -TS).
+    """
+    occ = occ / max_orb_occ
+    return torch.log(occ**occ * (1 - occ) ** (1 - occ)).sum(-1) * kt

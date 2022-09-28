@@ -36,5 +36,5 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     calc = Calculator(numbers, positions, par)
 
     ref = samples[name]["etot"].item()
-    result = calc.singlepoint(numbers, positions, charge, verbosity=0)
+    result = calc.singlepoint(numbers, positions, charge, {"verbosity":0})
     assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1).item()

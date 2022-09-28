@@ -15,16 +15,16 @@ field iterations.
 """
 
 from __future__ import annotations
-import math
 import torch
 import xitorch as xt
 import xitorch.linalg as xtl
 import xitorch.optimize as xto
 
 from ..basis import IndexHelper
+from ..constants import K2AU
 from ..interaction import Interaction
 from ..typing import Any, Tensor
-from ..utils import t2int
+from ..wavefunction import filling
 
 
 class SelfConsistentField(xt.EditableModule):
@@ -98,6 +98,9 @@ class SelfConsistentField(xt.EditableModule):
     eigen_options: dict[str, Any]
     """Options for eigensolver"""
 
+    scf_options: dict[str, Any]
+    """Options for SCF"""
+
     use_potential: bool
     """Whether to use the potential or the charges"""
 
@@ -125,6 +128,8 @@ class SelfConsistentField(xt.EditableModule):
 
         self.eigen_options = {"method": "exacteig", **kwargs.pop("eigen_options", {})}
 
+        self.scf_options = {**kwargs.pop("scf_options", {})}
+
         self._data = self._Data(*args, **kwargs)
         self.interaction = interaction
 
@@ -146,7 +151,6 @@ class SelfConsistentField(xt.EditableModule):
         if charges is None:
             charges = torch.zeros_like(self._data.occupation)
 
-        print("guess", self.charges_to_potential(charges))
         output = xto.equilibrium(
             fcn=self.iterate_potential if self.use_potential else self.iterate_charges,
             y0=self.charges_to_potential(charges) if self.use_potential else charges,
@@ -217,7 +221,6 @@ class SelfConsistentField(xt.EditableModule):
         """
 
         charges = self.potential_to_charges(potential)
-        print("\niterate pot: charges", charges)
         if self.fwd_options["verbose"]:
             print(self.get_energy(charges).sum(-1))
         return self.charges_to_potential(charges)
@@ -345,69 +348,30 @@ class SelfConsistentField(xt.EditableModule):
         o_op = self.get_overlap()
         evals, evecs = self.diagonalize(h_op, o_op)
 
-        nel = self._data.occupation.sum(-1)
+        # round to integers to avoid numerical errors
+        nel = self._data.occupation.sum(-1).round()
 
-        # electronic temp
-        kt = 9.5004257356353500e-004
+        kt = hamiltonian.new_tensor(self.scf_options["etemp"])
 
-        maxiter = 200
-        thr = math.sqrt(torch.finfo(self.dtype).eps)
+        # Fermi smearing only for non-zero electronic temperature
+        if kt is not None and not torch.isclose(kt, kt.new_tensor(0.0)):
+            self._data.occupation = filling.get_fermi_occupation(
+                nel, evals, kt, unit="kelvin"
+            )
 
-        # indexing starts with zero -> -1
-        homo = t2int(torch.floor(nel / 2))
-        homo = homo + 1 if nel / 2 % 1 > 0.5 else homo
-        occt = homo
+            # check if number of electrons is still correct
+            _nel = self._data.occupation.sum(-1)
+            if torch.any(torch.abs(nel - _nel.round(decimals=3)) > 1e-4):
+                raise RuntimeError(
+                    f"Number of electrons changed during Fermi smearing ({nel:.3f} -> {_nel:.3f})."
+                )
 
-        e_fermi = 0.5 * (evals[max(homo - 1, 0)] + evals[min(homo, evals.size(0) - 1)])
-
-        # print("nel", nel, "homo", homo)
-        print("evals", evals)
-        # print("efermi", e_fermi)
-
-        occ = torch.zeros_like(self._data.occupation)
-        eps = torch.tensor(torch.finfo(self.dtype).eps, device=self.device)
-
-        for iter in range(maxiter):
-            total_number = 0.0
-            total_dfermi = 0.0
-
-            for iao in range(evals.size(0)):
-                fermifunc = 0.0
-                if (evals[iao] - e_fermi) / kt < 50:
-                    fermifunc = 1.0 / (torch.exp((evals[iao] - e_fermi) / kt) + 1.0)
-                    dfermifunc = torch.exp((evals[iao] - e_fermi) / kt) / (
-                        kt * (torch.exp((evals[iao] - e_fermi) / kt) + 1.0) ** 2
-                    )
-                    fermifunc = float(fermifunc)
-                    dfermifunc = float(dfermifunc)
-                else:
-                    dfermifunc = 0.0
-
-                occ[iao] = fermifunc
-                total_number += fermifunc
-                total_dfermi += dfermifunc
-
-                # print(iao, occ[iao], evals[iao], e_fermi)
-
-            change_fermi = (occt - total_number) / (total_dfermi + eps)
-            # print("total_number", total_number, occt, total_dfermi, change_fermi)
-            e_fermi = e_fermi + change_fermi
-
-            if abs(occt - total_number) <= thr:
-                break
-
-        # print("occ", occ)
-        # print("evals", evals)
-        # print("self._data.occupation\n", self._data.occupation)
-        # self._data.occupation = occ * 2
-        ret = torch.einsum(
+        return torch.einsum(
             "...ik,...k,...kj->...ij",
             evecs,
             self._data.occupation,
             evecs.mT,
         )
-        print("denisty", ret)
-        return ret
 
     def get_overlap(self) -> xt.LinearOperator:
         """

@@ -18,10 +18,15 @@ from ..data import cov_rad_d3
 from ..interaction import Interaction, InteractionList
 from ..ncoord import ncoord
 from ..param import Param, get_elem_angular
-from ..typing import Tensor
+from ..typing import Any, Tensor
+from ..utils import Timers
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian
-from ..utils import Timers
+
+
+DEFAULT_ETEMP = 300
+DEFAULT_MAXITER = 20
+DEFAULT_VERBOSITY = 1
 
 
 class Result:
@@ -133,7 +138,7 @@ class Calculator:
         numbers: Tensor,
         positions: Tensor,
         charges: Tensor,
-        verbosity: int = 1,
+        opts: dict[str, Any],
     ) -> Result:
         """
         Entry point for performing single point calculations.
@@ -177,19 +182,17 @@ class Calculator:
         # Obtain the reference occupations and total number of electrons
         n0 = self.hamiltonian.get_occupation()
         nel = torch.sum(n0, -1) - torch.sum(charges, -1)
-        print("charge", charges, "nel", nel, "n0", torch.sum(n0, -1))
         occupation = 2 * filling.get_aufbau_occupation(
             hcore.new_tensor(hcore.shape[-1], dtype=torch.int64),
             nel / 2,
         )
-        # print("occupation", occupation)
-
-        print("\n\n")
 
         fwd_options = {
-            "verbose": verbosity,
-            "maxiter": 30,
+            "verbose": opts.get("verbosity", DEFAULT_VERBOSITY),
+            "maxiter": opts.get("maxiter", DEFAULT_MAXITER),
         }
+        scf_options = {"etemp": opts.get("etemp", DEFAULT_ETEMP)}
+
         scf_results = scf.solve(
             numbers,
             positions,
@@ -200,6 +203,7 @@ class Calculator:
             occupation,
             n0,
             fwd_options=fwd_options,
+            scf_options=scf_options,
             use_potential=True,
         )
         result.charges = scf_results["charges"]
@@ -233,7 +237,7 @@ class Calculator:
 
         timer.stop("total")
 
-        if verbosity > 0:
+        if opts["verbosity"] > 0:
             timer.print_times()
 
         return result
