@@ -22,7 +22,7 @@ def test_single(dtype: torch.dtype, name: str):
     sample = samples[name]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
-    ref = sample["escf"]
+    ref = sample["escf"].item()
     charges = torch.tensor(0.0).type(dtype)
 
     calc = Calculator(numbers, positions, par)
@@ -42,7 +42,7 @@ def test_single2(dtype: torch.dtype, name: str):
     sample = samples[name]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
-    ref = sample["escf"]
+    ref = sample["escf"].item()
     charges = torch.tensor(0.0).type(dtype)
 
     calc = Calculator(numbers, positions, par)
