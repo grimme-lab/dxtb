@@ -37,6 +37,7 @@ from __future__ import annotations
 import warnings
 import torch
 
+from .abc import Classical
 from ..basis import IndexHelper
 from ..exceptions import ParameterWarning
 from ..param import Param, get_elem_param
@@ -48,7 +49,7 @@ default_cutoff: float = 25.0
 """Default real space cutoff for repulsion interactions."""
 
 
-class Repulsion(TensorLike):
+class Repulsion(Classical, TensorLike):
     """
     Representation of the classical repulsion.
 
@@ -120,12 +121,7 @@ class Repulsion(TensorLike):
 
         __slots__ = ["alpha", "zeff", "kexp"]
 
-        def __init__(
-            self,
-            alpha: Tensor,
-            zeff: Tensor,
-            kexp: Tensor,
-        ):
+        def __init__(self, alpha: Tensor, zeff: Tensor, kexp: Tensor):
             self.alpha = alpha
             self.zeff = zeff
             self.kexp = kexp

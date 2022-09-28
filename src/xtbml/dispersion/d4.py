@@ -7,21 +7,29 @@ from ..typing import Tensor
 class DispersionD4(Dispersion):
     """Representation of the DFT-D4 dispersion correction."""
 
-    def __init__(
-        self, numbers: Tensor, positions: Tensor, param: dict[str, float]
-    ) -> None:
-        self.numbers = numbers
-        self.positions = positions
-        self.param = param
+    numbers: Tensor
+    """Atomic numbers of all atoms."""
 
-    def get_energy(self) -> Tensor:
+    param: dict[str, float]
+    """Dispersion parameters."""
+
+    def __init__(self, *args):
+        raise NotImplementedError("D4 dispersion scheme not implemented.")
+
+    def get_energy(self, positions: Tensor, **kwargs) -> Tensor:
         """
-        Get dispersion energy.
+        Get D4 dispersion energy.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms.
 
         Returns
         -------
         Tensor
-            Atom-resolved dispersion energy.
+            Atom-resolved D4 dispersion energy.
         """
 
-        raise NotImplementedError()
+        raise NotImplementedError("D4 dispersion scheme not implemented.")
+    

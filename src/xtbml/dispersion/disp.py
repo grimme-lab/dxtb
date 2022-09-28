@@ -61,5 +61,3 @@ def new_dispersion(numbers: Tensor, positions: Tensor, par: Param) -> Dispersion
 
     if par.dispersion.d3 is not None and par.dispersion.d4 is not None:
         raise ValueError("Parameters for both D3 and D4 found. Please decide.")
-
-    

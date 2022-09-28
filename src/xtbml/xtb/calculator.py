@@ -8,12 +8,14 @@ from __future__ import annotations
 import torch
 
 
+from .h0 import Hamiltonian
 from .. import scf
 from ..basis import IndexHelper
-from ..classical.halogen import Halogen, new_halogen
-from ..classical.repulsion import Repulsion, new_repulsion
+from ..classical import Halogen, new_halogen
+from ..classical import Repulsion, new_repulsion
+from ..constants import defaults
 from ..coulomb import new_es2, new_es3
-from ..dispersion import new_dispersion, Dispersion
+from ..dispersion import Dispersion, new_dispersion 
 from ..data import cov_rad_d3
 from ..interaction import Interaction, InteractionList
 from ..ncoord import ncoord
@@ -188,10 +190,10 @@ class Calculator:
         )
 
         fwd_options = {
-            "verbose": opts.get("verbosity", DEFAULT_VERBOSITY),
-            "maxiter": opts.get("maxiter", DEFAULT_MAXITER),
+            "verbose": opts.get("verbosity", defaults.VERBOSITY),
+            "maxiter": opts.get("maxiter", defaults.MAXITER),
         }
-        scf_options = {"etemp": opts.get("etemp", DEFAULT_ETEMP)}
+        scf_options = {"etemp": opts.get("etemp", defaults.ETEMP)}
 
         scf_results = scf.solve(
             numbers,
@@ -224,7 +226,7 @@ class Calculator:
             timer.start("dispersion")
             # cache_disp = self.dispersion.get_cache(numbers, self.ihelp)
             # result.dispersion = self.dispersion.get_energy(positions, cache_disp)
-            result.dispersion = self.dispersion.get_energy()
+            result.dispersion = self.dispersion.get_energy(positions)
             result.total += result.dispersion
             timer.stop("dispersion")
 
@@ -237,7 +239,9 @@ class Calculator:
 
         timer.stop("total")
 
-        if opts["verbosity"] > 0:
+        if fwd_options["verbosity"] > 0:
             timer.print_times()
 
         return result
+
+   
