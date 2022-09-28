@@ -15,6 +15,8 @@ from xtbml.xtb.calculator import Calculator
 
 from .samples_charged import samples
 
+opts = {"verbosity": 0}
+
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["Ag2Cl22-", "Al3+Ar6", "AD7en+", "C2H4F+", "ZnOOH-"])
@@ -29,7 +31,7 @@ def test_single(dtype: torch.dtype, name: str):
 
     calc = Calculator(numbers, positions, par)
 
-    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    results = calc.singlepoint(numbers, positions, charges, opts)
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     pop = mulliken.get_atomic_populations(results.overlap, results.density, ihelp)
     print(pop.sum(-1))
