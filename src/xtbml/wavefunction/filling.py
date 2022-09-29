@@ -109,7 +109,18 @@ def get_fermi_energy(
     # index of first non-negative value
     homo = torch.argmax(temp.type(torch.long), dim=-1).view(shp)
 
-    hl = torch.cat((homo, homo + 1), -1)
+    # some atoms (e.g., He) do not have a LUMO because of the valence basis
+    hl = torch.where(
+        homo + 1 >= emo.size(-1),  # LUMO index larger than number of MOs
+        torch.cat((homo, homo), -1),
+        torch.cat((homo, homo + 1), -1),
+    )
+    # FIXME: BATCHED CALCULATIONS
+    # In batched calculations the missing LUMO is replaced by padding, which is
+    # not caught by the above `torch.where`. Consequently, the Fermi energy is
+    # no correct. To fix this, one would require a mask from `numbers`. The
+    # `numbers` are, however, currently not passed down to the SCF.
+
     e_fermi = torch.gather(emo, -1, hl).mean(-1).view(shp)
     return e_fermi, homo
 
@@ -118,7 +129,7 @@ def get_fermi_occupation(
     nel: Tensor,
     emo: Tensor,
     kt: Tensor | None = None,
-    thr: Tensor | None = None,
+    thr: dict[torch.dtype, Tensor] | None = None,
     maxiter: int = 200,
     max_orb_occ: float = 2.0,
     unit: Literal["atomic", "kelvin"] = "atomic",
@@ -180,7 +191,8 @@ def get_fermi_occupation(
         return 2.0 * get_aufbau_occupation(emo.new_tensor(emo.shape[-1]), nel / 2.0)
 
     if thr is None:
-        thr = THRESH[emo.dtype].to(emo.device)
+        thr = THRESH
+    thresh = thr.get(emo.dtype, torch.tensor(1e-5, dtype=torch.float)).to(emo.device)
 
     # iterate fermi energy
     e_fermi, homo = get_fermi_energy(nel, emo)
@@ -196,7 +208,7 @@ def get_fermi_occupation(
         change = (homo - _nel + 1) / torch.sum(dfermi, dim=-1, keepdim=True)
         e_fermi += change
 
-        if torch.all(torch.abs(homo - _nel + 1) <= thr):
+        if torch.all(torch.abs(homo - _nel + 1) <= thresh):
             return max_orb_occ * fermi
 
     raise RuntimeError("Fermi energy failed to converge.")

@@ -196,8 +196,10 @@ class Calculator:
             "maxiter": opts.get("maxiter", defaults.MAXITER),
         }
         scf_options = {
-            "etemp": opts.get("etemp", defaults.ETEMP),
             "guess": opts.get("guess", defaults.GUESS),
+            "etemp": opts.get("etemp", defaults.ETEMP),
+            "fermi_maxiter": opts.get("fermi_maxiter", defaults.FERMI_MAXITER),
+            "fermi_thresh": opts.get("fermi_thresh", defaults.THRESH),
         }
         
         scf_results = scf.solve(

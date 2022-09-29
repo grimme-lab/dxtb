@@ -1,10 +1,5 @@
 import torch
 
-# SCF settings
-ETEMP = 300
-GUESS = "eeq"
-MAXITER = 20
-VERBOSITY = 1
 
 # Convergence thresholds
 THRESH = {
@@ -12,3 +7,12 @@ THRESH = {
     torch.float32: torch.tensor(1e-5, dtype=torch.float32),
     torch.float64: torch.tensor(1e-10, dtype=torch.float64),
 }
+
+# SCF settings
+GUESS = "eeq"
+MAXITER = 20
+VERBOSITY = 1
+
+# Fermi smeating
+ETEMP = 300
+FERMI_MAXITER = 200

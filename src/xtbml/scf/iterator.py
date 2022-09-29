@@ -353,17 +353,22 @@ class SelfConsistentField(xt.EditableModule):
         nel = self._data.occupation.sum(-1).round()
 
         # Fermi smearing only for non-zero electronic temperature
-        kt = hamiltonian.new_tensor(self.scf_options.get("etemp", None))
+        kt = hamiltonian.new_tensor(self.scf_options.get("etemp", defaults.ETEMP))
         if kt is not None and not torch.isclose(kt, kt.new_tensor(0.0)):
             self._data.occupation = filling.get_fermi_occupation(
-                nel, evals, kt, unit="kelvin"
+                nel,
+                evals,
+                kt,
+                unit="kelvin",
+                maxiter=self.scf_options.get("fermi_maxiter", defaults.FERMI_MAXITER),
+                thr=self.scf_options.get("fermi_thresh", defaults.THRESH),
             )
 
             # check if number of electrons is still correct
             _nel = self._data.occupation.sum(-1)
             if torch.any(torch.abs(nel - _nel.round(decimals=3)) > 1e-4):
                 raise RuntimeError(
-                    f"Number of electrons changed during Fermi smearing ({nel:.3f} -> {_nel:.3f})."
+                    f"Number of electrons changed during Fermi smearing ({nel} -> {_nel})."
                 )
 
         return torch.einsum(
