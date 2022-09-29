@@ -21,10 +21,12 @@ import xitorch.linalg as xtl
 import xitorch.optimize as xto
 
 from .guess import get_guess
+from ..constants import K2AU
 from ..basis import IndexHelper
 from ..constants import defaults
 from ..interaction import Interaction
 from ..typing import Any, Tensor
+from ..utils import real_atoms
 from ..wavefunction import filling
 
 
@@ -38,6 +40,9 @@ class SelfConsistentField(xt.EditableModule):
         """
         Restart data for the singlepoint calculation.
         """
+
+        numbers: Tensor
+        """Atomic numbers"""
 
         hcore: Tensor
         """Core Hamiltonian"""
@@ -72,14 +77,15 @@ class SelfConsistentField(xt.EditableModule):
             overlap: Tensor,
             occupation: Tensor,
             n0: Tensor,
+            numbers: Tensor,
             ihelp: IndexHelper,
             cache: Interaction.Cache,
-        ):
-
+        ) -> None:
             self.hcore = hcore
             self.overlap = overlap
             self.occupation = occupation
             self.n0 = n0
+            self.numbers = numbers
             self.ihelp = ihelp
             self.cache = cache
             self.energy = hcore.new_tensor(0.0)
@@ -161,9 +167,12 @@ class SelfConsistentField(xt.EditableModule):
 
         charges = self.potential_to_charges(output) if self.use_potential else output
         energy = self.get_energy(charges)
+        fenergy = self.get_electronic_free_energy()
+
         return {
             "charges": charges,
             "energy": energy,
+            "fenergy": fenergy,
             "density": self._data.density,
             "hamiltonian": self._data.hamiltonian,
         }
@@ -184,6 +193,44 @@ class SelfConsistentField(xt.EditableModule):
         """
         return self._data.energy + self.interaction.get_energy(
             charges, self._data.ihelp, self._data.cache
+        )
+
+    def get_electronic_free_energy(self, max_orb_occ: float = 2.0) -> Tensor:
+        r"""
+        Calculate electronic free energy from entropy.
+
+        .. math::
+
+            G = -TS = k_B\sum_{i}f_i \; ln(f_i) + (1 - f_i)\; ln(1 - f_i))
+
+        Parameters
+        ----------
+        max_orb_occ : float, optional
+            Maximum occupation of orbitals, by default 2.0
+
+        Returns
+        -------
+        Tensor
+            Orbital-resolved electronic free energy (G = -TS).
+
+        Note
+        ----
+        Orbitals are sorted by energy, starting with the lowest (ascending order).
+        """
+        real = real_atoms(self._data.numbers)
+
+        occ = self._data.occupation / max_orb_occ
+        kt = occ.new_tensor(self.scf_options.get("etemp", defaults.ETEMP)) * K2AU
+        g = torch.log(occ**occ * (1 - occ) ** (1 - occ)) * kt
+
+        # reduce to atoms
+        count = real.count_nonzero(dim=-1).unsqueeze(-1)
+        g_atomic = torch.sum(g, dim=-1, keepdim=True) / count
+
+        return torch.where(
+            real,
+            g_atomic.expand(*real.shape),
+            g.new_tensor(0.0),
         )
 
     def iterate_charges(self, charges: Tensor):
@@ -517,6 +564,6 @@ def solve(
         kwargs["scf_options"].pop("guess", defaults.GUESS),
     )
 
-    return SelfConsistentField(interactions, *args, ihelp=ihelp, cache=cache, **kwargs)(
-        guess
-    )
+    return SelfConsistentField(
+        interactions, *args, numbers=numbers, ihelp=ihelp, cache=cache, **kwargs
+    )(guess)

@@ -214,29 +214,3 @@ def get_fermi_occupation(
     raise RuntimeError("Fermi energy failed to converge.")
 
 
-def get_electronic_free_energy(
-    occ: Tensor, kt: Tensor, max_orb_occ: float = 2.0
-) -> Tensor:
-    r"""
-    Calculate electronic free energy from entropy.
-
-    .. math::
-
-        G = -TS = k_B\sum_{i}f_i \; ln(f_i) + (1 - f_i)\; ln(1 - f_i))
-
-    Parameters
-    ----------
-    occ : Tensor
-        Fractional occupation from Fermi smearing.
-    kt : Tensor
-        Electronic temperature
-    max_orb_occ : float, optional
-        Maximum occupation of orbitals, by default 2.0
-
-    Returns
-    -------
-    Tensor
-        Electronic free energy (G = -TS).
-    """
-    occ = occ / max_orb_occ
-    return torch.log(occ**occ * (1 - occ) ** (1 - occ)).sum(-1) * kt
