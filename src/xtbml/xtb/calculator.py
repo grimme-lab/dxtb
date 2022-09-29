@@ -139,7 +139,7 @@ class Calculator:
         self,
         numbers: Tensor,
         positions: Tensor,
-        charges: Tensor,
+        chrg: Tensor,
         opts: dict[str, Any],
     ) -> Result:
         """
@@ -151,6 +151,8 @@ class Calculator:
             Atomic numbers.
         positions : Tensor
             Atomic positions.
+        chrg : Tensor
+            Total charge.
         ihelp : IndexHelper
             Index mapping for the basis set.
 
@@ -183,7 +185,7 @@ class Calculator:
 
         # Obtain the reference occupations and total number of electrons
         n0 = self.hamiltonian.get_occupation()
-        nel = torch.sum(n0, -1) - torch.sum(charges, -1)
+        nel = torch.sum(n0, -1) - torch.sum(chrg, -1)
         occupation = 2 * filling.get_aufbau_occupation(
             hcore.new_tensor(hcore.shape[-1], dtype=torch.int64),
             nel / 2,
@@ -193,11 +195,15 @@ class Calculator:
             "verbose": opts.get("verbosity", defaults.VERBOSITY),
             "maxiter": opts.get("maxiter", defaults.MAXITER),
         }
-        scf_options = {"etemp": opts.get("etemp", defaults.ETEMP)}
-
+        scf_options = {
+            "etemp": opts.get("etemp", defaults.ETEMP),
+            "guess": opts.get("guess", defaults.GUESS),
+        }
+        
         scf_results = scf.solve(
             numbers,
             positions,
+            chrg,
             self.interaction,
             self.ihelp,
             hcore,
@@ -239,7 +245,7 @@ class Calculator:
 
         timer.stop("total")
 
-        if fwd_options["verbosity"] > 0:
+        if fwd_options["verbose"] > 0:
             timer.print_times()
 
         return result

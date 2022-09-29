@@ -14,7 +14,7 @@ from xtbml.exlibs.tbmalt import batch
 from .samples import samples
 
 # torch.autograd.set_detect_anomaly(True)
-opts = {"verbosity": 0, "etemp": 300.0}
+opts = {"verbosity": 0, "etemp": 300.0, "guess": "eeq"}
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -74,11 +74,12 @@ def test_single_large(dtype: torch.dtype, name: str):
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", [("H2", "LiH"), ("LiH", "SiH4")])
-def test_batch(dtype: torch.dtype, name: str):
+@pytest.mark.parametrize("name1", ["H2", "LiH"])
+@pytest.mark.parametrize("name2", ["LiH", "SiH4"])
+def test_batch(dtype: torch.dtype, name1: str, name2: str):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
 
-    sample = samples[name[0]], samples[name[1]]
+    sample = samples[name1], samples[name2]
     numbers = batch.pack((sample[0]["numbers"], sample[1]["numbers"]))
     positions = batch.pack((sample[0]["positions"], sample[1]["positions"])).type(dtype)
     ref = batch.pack((sample[0]["escf"], sample[1]["escf"])).type(dtype)

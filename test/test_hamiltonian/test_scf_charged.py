@@ -7,15 +7,12 @@ import math
 import pytest
 import torch
 
-from xtbml.basis.indexhelper import IndexHelper
 from xtbml.param import GFN1_XTB as par
-from xtbml.param import get_elem_angular
-from xtbml.wavefunction import mulliken
 from xtbml.xtb.calculator import Calculator
 
 from .samples_charged import samples
 
-opts = {"verbosity": 0}
+opts = {"verbosity": 0, "etemp": 300, "guess": "eeq"}
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -27,12 +24,9 @@ def test_single(dtype: torch.dtype, name: str):
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
     ref = sample["escf"].item()
-    charges = sample["charge"].type(dtype)
+    chrg = sample["charge"].type(dtype)
 
     calc = Calculator(numbers, positions, par)
+    results = calc.singlepoint(numbers, positions, chrg, opts)
 
-    results = calc.singlepoint(numbers, positions, charges, opts)
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    pop = mulliken.get_atomic_populations(results.overlap, results.density, ihelp)
-    print(pop.sum(-1))
-    assert pytest.approx(ref, abs=tol) == results.scf.sum(-1).item()
+    assert pytest.approx(ref, abs=tol, rel=tol) == results.scf.sum(-1).item()

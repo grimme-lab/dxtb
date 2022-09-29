@@ -326,6 +326,8 @@ uhf_anion = torch.tensor(
 )
 # fmt: on
 
+opts = {"verbosity": 0, "etemp": 300, "guess": "eeq"}
+
 
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -345,9 +347,9 @@ def test_element(dtype: torch.dtype, number: int) -> None:
     charges = torch.tensor(0.0).type(dtype)
 
     calc = Calculator(numbers, positions, par)
-    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    results = calc.singlepoint(numbers, positions, charges, opts)
 
-    assert pytest.approx(r, abs=tol) == results["energy"].sum(-1).item()
+    assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
 
 
 @pytest.mark.parametrize("number", range(1, 87))
@@ -368,9 +370,9 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
     charges = torch.tensor(1.0).type(dtype)
 
     calc = Calculator(numbers, positions, par)
-    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    results = calc.singlepoint(numbers, positions, charges, opts)
 
-    assert pytest.approx(r, abs=tol) == results["energy"].sum(-1).item()
+    assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
 
 
 @pytest.mark.parametrize("number", range(1, 87))
@@ -395,6 +397,6 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
     charges = torch.tensor(-1.0).type(dtype)
 
     calc = Calculator(numbers, positions, par)
-    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    results = calc.singlepoint(numbers, positions, charges, opts)
 
-    assert pytest.approx(r, abs=tol) == results["energy"].sum(-1).item()
+    assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()

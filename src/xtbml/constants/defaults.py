@@ -2,6 +2,7 @@ import torch
 
 # SCF settings
 ETEMP = 300
+GUESS = "eeq"
 MAXITER = 20
 VERBOSITY = 1
 

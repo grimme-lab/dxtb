@@ -30,10 +30,13 @@ tensor(-0.1750)
 tensor([-0.8347, -0.8347,  0.2731,  0.2886,  0.2731,  0.2731,  0.2886,  0.2731])
 """
 
+from __future__ import annotations
 import math
+
 import torch
-from typing import Tuple
+
 from .typing import Tensor
+from .utils import real_atoms, real_pairs
 
 
 class ChargeModel:
@@ -290,7 +293,7 @@ def solve(
     total_charge: Tensor,
     model: ChargeModel,
     cn: Tensor,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     """
     Solve the electronegativity equilibration for the partial charges minimizing
     the electrostatic energy.
@@ -348,11 +351,10 @@ def solve(
             f"All tensors of '{model.__class__.__name__}' must have the same dtype!\nUse `{model.__class__.__name__}.param2019().type(dtype)` to correctly set the dtype."
         )
 
-    eps = torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype)
+    eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
 
-    real = numbers > 0
-    mask = real.unsqueeze(-2) * real.unsqueeze(-1)
-    mask.diagonal(dim1=-2, dim2=-1).fill_(False)
+    real = real_atoms(numbers)
+    mask = real_pairs(numbers, diagonal=True)
 
     distances = torch.where(
         mask,

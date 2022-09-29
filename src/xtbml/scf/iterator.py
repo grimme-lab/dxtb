@@ -20,8 +20,9 @@ import xitorch as xt
 import xitorch.linalg as xtl
 import xitorch.optimize as xto
 
+from .guess import get_guess
 from ..basis import IndexHelper
-from ..constants import K2AU
+from ..constants import defaults
 from ..interaction import Interaction
 from ..typing import Any, Tensor
 from ..wavefunction import filling
@@ -351,9 +352,8 @@ class SelfConsistentField(xt.EditableModule):
         # round to integers to avoid numerical errors
         nel = self._data.occupation.sum(-1).round()
 
-        kt = hamiltonian.new_tensor(self.scf_options["etemp"])
-
         # Fermi smearing only for non-zero electronic temperature
+        kt = hamiltonian.new_tensor(self.scf_options.get("etemp", None))
         if kt is not None and not torch.isclose(kt, kt.new_tensor(0.0)):
             self._data.occupation = filling.get_fermi_occupation(
                 nel, evals, kt, unit="kelvin"
@@ -471,6 +471,7 @@ class SelfConsistentField(xt.EditableModule):
 def solve(
     numbers: Tensor,
     positions: Tensor,
+    chrg: Tensor,
     interactions: Interaction,
     ihelp: IndexHelper,
     *args,
@@ -485,6 +486,8 @@ def solve(
         Atomic numbers of the system.
     positions : Tensor
         Positions of the system.
+    chrg : Tensor
+        Total charge.
     interactions : Interaction
         Interaction object.
     ihelp : IndexHelper
@@ -501,6 +504,14 @@ def solve(
     """
 
     cache = interactions.get_cache(numbers, positions, ihelp)
-    return SelfConsistentField(
-        interactions, *args, ihelp=ihelp, cache=cache, **kwargs
-    )()
+    guess = get_guess(
+        numbers,
+        positions,
+        chrg,
+        ihelp,
+        kwargs["scf_options"].pop("guess", defaults.GUESS),
+    )
+
+    return SelfConsistentField(interactions, *args, ihelp=ihelp, cache=cache, **kwargs)(
+        guess
+    )
