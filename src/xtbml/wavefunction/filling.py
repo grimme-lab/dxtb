@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import torch
 
-from xtbml.constants.units import K2AU
-from ..typing import Literal, Tensor
-from ..constants.defaults import THRESH
+from ..typing import Tensor
+from ..constants import defaults
 
 
 def get_aufbau_occupation(
@@ -132,7 +131,6 @@ def get_fermi_occupation(
     thr: dict[torch.dtype, Tensor] | None = None,
     maxiter: int = 200,
     max_orb_occ: float = 2.0,
-    unit: Literal["atomic", "kelvin"] = "atomic",
 ) -> Tensor:
     """
     Set occupation numbers according to Fermi distribution.
@@ -182,16 +180,12 @@ def get_fermi_occupation(
     if (torch.abs(nel) < eps).any():
         raise ValueError("Number of elections cannot be zero.")
 
-    # convert unit
-    if kt is not None and unit == "kelvin":
-        kt *= K2AU
-
     # no electronic temperature: just return aufbau occupation
-    if kt is None or torch.all(kt < (0.1 * K2AU)):
+    if kt is None or torch.all(kt < 3e-7):  # 0.1 Kelvin * K2AU
         return 2.0 * get_aufbau_occupation(emo.new_tensor(emo.shape[-1]), nel / 2.0)
 
     if thr is None:
-        thr = THRESH
+        thr = defaults.THRESH
     thresh = thr.get(emo.dtype, torch.tensor(1e-5, dtype=torch.float)).to(emo.device)
 
     # iterate fermi energy
@@ -212,5 +206,3 @@ def get_fermi_occupation(
             return max_orb_occ * fermi
 
     raise RuntimeError("Fermi energy failed to converge.")
-
-

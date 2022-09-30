@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 
 from ..basis import IndexHelper
-from ..typing import Literal, Tensor
+from ..typing import Tensor
 
 
 def get_guess(
@@ -11,10 +11,14 @@ def get_guess(
     positions: Tensor,
     chrg: Tensor,
     ihelp: IndexHelper,
-    name: Literal["eeq", "sad"] = "eeq",
+    name: str = "eeq",
 ) -> Tensor:
     """
     Obtain initial guess for charges.
+    Currently the following methods are supported:
+     - electronegativity equilibration charge model ("eeq")
+     - superposition of atomic densities ("sad")
+
 
     Parameters
     ----------
@@ -26,8 +30,8 @@ def get_guess(
         Total charge of system.
     ihelp : IndexHelper
         Helper class for indexing.
-    name : Literal[&quot;eeq&quot;, &quot;sad&quot;], optional
-        Name of guess method, by default "eeq"
+    name : str, optional
+        Name of guess method, by default "eeq".
 
     Returns
     -------
@@ -37,7 +41,7 @@ def get_guess(
     Raises
     ------
     ValueError
-        Name of guess method is unknown
+        Name of guess method is unknown.
     """
     if name == "eeq":
         charges = get_eeq_guess(numbers, positions, chrg)
