@@ -20,13 +20,11 @@ import xitorch as xt
 import xitorch.linalg as xtl
 import xitorch.optimize as xto
 
-
 from .guess import get_guess
-from ..constants import K2AU
 from ..basis import IndexHelper
-from ..constants import defaults
+from ..constants import defaults, K2AU
 from ..interaction import Interaction
-from ..typing import Any, Literal, Tensor
+from ..typing import Any, Tensor
 from ..utils import real_atoms
 from ..wavefunction import filling, mulliken
 
@@ -206,9 +204,7 @@ class SelfConsistentField(xt.EditableModule):
             charges, self._data.ihelp, self._data.cache
         )
 
-    def get_electronic_free_energy(
-        self, max_orb_occ: float = 2.0, mode: Literal["equal", "atomic"] = "atomic"
-    ) -> Tensor:
+    def get_electronic_free_energy(self, max_orb_occ: float = 2.0) -> Tensor:
         r"""
         Calculate electronic free energy from entropy.
 
@@ -227,8 +223,6 @@ class SelfConsistentField(xt.EditableModule):
         ----------
         max_orb_occ : float, optional
             Maximum occupation of orbitals, by default 2.0
-        mode: Literal["equal", "atomic"], optional
-            Partitioning scheme for energy, by default "atomic"
 
         Returns
         -------
@@ -242,6 +236,10 @@ class SelfConsistentField(xt.EditableModule):
 
         occ = self._data.occupation / max_orb_occ
         g = torch.log(occ**occ * (1 - occ) ** (1 - occ)) * self.kt
+
+        mode = self.scf_options.get(
+            "fermi_fenergy_partition", defaults.FERMI_FENERGY_PARTITION
+        )
 
         # partition to atoms equally
         if mode == "equal":

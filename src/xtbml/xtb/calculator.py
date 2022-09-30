@@ -199,6 +199,9 @@ class Calculator:
             "etemp": opts.get("etemp", defaults.ETEMP),
             "fermi_maxiter": opts.get("fermi_maxiter", defaults.FERMI_MAXITER),
             "fermi_thresh": opts.get("fermi_thresh", defaults.THRESH),
+            "fermi_fenergy_partition": opts.get(
+                "fermi_fenergy_partition", defaults.FERMI_FENERGY_PARTITION
+            ),
         }
         guess = opts.get("guess", defaults.GUESS)
 

@@ -1,3 +1,7 @@
+"""
+Default settings for `dxtb` calculations.
+"""
+
 import torch
 
 
@@ -9,10 +13,11 @@ THRESH = {
 }
 
 # SCF settings
-GUESS = "eeq"
+GUESS = "eeq"  # "sad"
 MAXITER = 20
 VERBOSITY = 1
 
-# Fermi smeating
+# Fermi smearing
 ETEMP = 300
 FERMI_MAXITER = 200
+FERMI_FENERGY_PARTITION = "equal"  # "atomic"
