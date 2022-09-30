@@ -9,8 +9,37 @@ from __future__ import annotations
 
 import torch
 
-from ..typing import Tensor
 from ..constants import defaults
+from ..typing import Tensor
+
+
+def get_alpha_beta_occupation(nel: Tensor, uhf: Tensor) -> Tensor:
+    """
+    Generate alpha and beta electrons from total number of electrons.
+
+    Parameters
+    ----------
+    nel : Tensor
+        Total number of electrons.
+    uhf : Tensor
+        Number of unpaired electrons.
+
+    Returns
+    -------
+    Tensor
+        Alpha (first column, 0 index) and beta (second column, 1 index) electrons.
+    """
+    nuhf = torch.where(
+        torch.remainder(uhf, 2) == torch.remainder(nel.round(), 2),
+        uhf,
+        torch.remainder(nel.round(), 2),
+    )
+
+    diff = torch.minimum(nuhf, nel)
+    nb = (nel - diff) / 2.0
+    na = nb + diff
+
+    return torch.stack([na, nb], dim=-1)
 
 
 def get_aufbau_occupation(
@@ -170,7 +199,7 @@ def get_fermi_occupation(
         raise TypeError("Electronic temperature must be `Tensor` or `None`.")
 
     # negative etemp
-    if kt is not None and (kt < 0.0).any():
+    if kt is not None and torch.any(kt < 0.0):
         raise ValueError(f"Electronic Temperature must be positive or None ({kt}).")
 
     eps = emo.new_tensor(torch.finfo(emo.dtype).eps)
@@ -178,11 +207,7 @@ def get_fermi_occupation(
 
     # no electrons
     if (torch.abs(nel) < eps).any():
-        raise ValueError("Number of elections cannot be zero.")
-
-    # no electronic temperature: just return aufbau occupation
-    if kt is None or torch.all(kt < 3e-7):  # 0.1 Kelvin * K2AU
-        return 2.0 * get_aufbau_occupation(emo.new_tensor(emo.shape[-1]), nel / 2.0)
+        raise ValueError("Number of electrons cannot be zero.")
 
     if thr is None:
         thr = defaults.THRESH

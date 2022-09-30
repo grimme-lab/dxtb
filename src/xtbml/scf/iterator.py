@@ -433,7 +433,7 @@ class SelfConsistentField(xt.EditableModule):
         nel = self._data.occupation.sum(-1).round()
 
         # Fermi smearing only for non-zero electronic temperature
-        if self.kt is not None and not torch.isclose(self.kt, self.kt.new_tensor(0.0)):
+        if self.kt is not None and not torch.all(self.kt < 3e-7):  # 0.1 Kelvin * K2AU
             self._data.occupation = filling.get_fermi_occupation(
                 nel,
                 self._data.evals,
