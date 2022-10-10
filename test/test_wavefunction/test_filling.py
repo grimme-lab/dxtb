@@ -9,6 +9,7 @@ import torch
 
 from xtbml.constants import K2AU
 from xtbml.exlibs.tbmalt import batch
+from xtbml.scf.iterator import SelfConsistentField
 from xtbml.wavefunction import filling
 
 from .samples import samples
@@ -106,78 +107,73 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-def test_kt_5000(dtype: torch.dtype):
+@pytest.mark.parametrize("kt", [0.0, 5000.0])
+def test_kt(dtype: torch.dtype, kt: float):
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples["SiH4"]
+    numbers = sample["numbers"]
     emo = sample["emo"].type(dtype)
     nel = sample["n_electrons"].type(dtype)
 
-    ref_fenergy = emo.new_tensor(-8.3794146962989959e-05)
-    ref_focc = 2.0 * emo.new_tensor(
-        [
-            9.9999999175256182e-01,
-            9.9991512540882155e-01,
-            9.9991512540882155e-01,
-            9.9991512487283929e-01,
-            8.4440926154236417e-05,
-            8.4440926154236417e-05,
-            8.4439859676605750e-05,
-            4.6985250846112805e-07,
-            4.6984657378830206e-07,
-            1.1147396117351576e-07,
-            1.1147184915019690e-07,
-            1.1147184915019690e-07,
-            3.6765533462748988e-08,
-            2.3794149525230911e-20,
-            8.8097582624279734e-44,
-            8.8095913497538218e-44,
-            8.8091462647498442e-44,
-        ]
-    )
+    ref_fenergy = {
+        "0.0": emo.new_tensor(0.0),
+        "5000.0": emo.new_tensor(-8.3794146962989959e-05),
+    }
+    ref_focc = {
+        "0.0": 2.0
+        * emo.new_tensor(
+            [
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+            ]
+        ),
+        "5000.0": 2.0
+        * emo.new_tensor(
+            [
+                9.9999999175256182e-01,
+                9.9991512540882155e-01,
+                9.9991512540882155e-01,
+                9.9991512487283929e-01,
+                8.4440926154236417e-05,
+                8.4440926154236417e-05,
+                8.4439859676605750e-05,
+                4.6985250846112805e-07,
+                4.6984657378830206e-07,
+                1.1147396117351576e-07,
+                1.1147184915019690e-07,
+                1.1147184915019690e-07,
+                3.6765533462748988e-08,
+                2.3794149525230911e-20,
+                8.8097582624279734e-44,
+                8.8095913497538218e-44,
+                8.8091462647498442e-44,
+            ]
+        ),
+    }
 
-    kt = emo.new_tensor(5000 * K2AU)
+    # occupation
+    focc = filling.get_fermi_occupation(nel, emo, emo.new_tensor(kt * K2AU))
+    assert torch.allclose(ref_focc[str(kt)], focc, atol=tol)
 
-    focc = filling.get_fermi_occupation(nel, emo, kt)
-    assert torch.allclose(ref_focc, focc, atol=tol)
-
-    fenergy = filling.get_electronic_free_energy(focc, kt)
-    assert torch.allclose(ref_fenergy, fenergy)
-
-
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-def test_kt_0(dtype: torch.dtype):
-    sample = samples["SiH4"]
-    emo = sample["emo"].type(dtype)
-    nel = sample["n_electrons"].type(dtype)
-
-    ref_fenergy = emo.new_tensor(0.0)
-    ref_focc = 2.0 * emo.new_tensor(
-        [
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-        ]
-    )
-
-    kt = emo.new_tensor(0.0)
-
-    focc = filling.get_fermi_occupation(nel, emo, kt)
-    assert torch.allclose(ref_focc, focc)
-
-    fenergy = filling.get_electronic_free_energy(focc, kt)
-    assert torch.allclose(ref_fenergy, fenergy)
+    # electronic free energy
+    d = torch.zeros_like(focc)  # dummy
+    fenergy = SelfConsistentField(
+        d, d, d, focc, d, numbers, d, d, scf_options={"etemp": kt}  # type: ignore
+    ).get_electronic_free_energy()
+    assert pytest.approx(ref_fenergy[str(kt)], abs=tol, rel=tol) == fenergy.sum(-1)
