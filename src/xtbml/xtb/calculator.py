@@ -195,19 +195,6 @@ class Calculator:
             hcore.new_tensor(hcore.shape[-1], dtype=torch.int64), nab
         ).sum(-2)
 
-        print("nel", nel)
-        print("torch.remainder(uhf, 2)", torch.remainder(uhf, 2))
-        print("torch.remainder(nel.round(), 2)", torch.remainder(nel.round(), 2))
-        print("nab", nab)
-        print(
-            filling.get_aufbau_occupation(
-                hcore.new_tensor(hcore.shape[-1], dtype=torch.int64),
-                nab,
-            ).sum(-2)
-        )
-
-        print("occupation", occupation)
-
         fwd_options = {
             "verbose": opts.get("verbosity", defaults.VERBOSITY),
             "maxiter": opts.get("maxiter", defaults.MAXITER),
