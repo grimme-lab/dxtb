@@ -1,5 +1,5 @@
 """
-Test for SCF.
+Test for SCF with charged samples.
 Reference values obtained with tblite 0.2.1 disabling repulsion and dispersion.
 """
 
@@ -27,4 +27,4 @@ def test_single(dtype: torch.dtype, name: str):
     calc = Calculator(numbers, positions, par)
 
     results = calc.singlepoint(numbers, positions, charges, verbosity=0)
-    assert pytest.approx(ref, abs=tol) == results["energy"].sum(-1).item()
+    assert pytest.approx(ref, abs=tol) == results.scf.sum(-1).item()
