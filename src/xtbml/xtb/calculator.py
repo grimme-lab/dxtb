@@ -186,14 +186,10 @@ class Calculator:
         # Obtain the reference occupations and total number of electrons
         n0 = self.hamiltonian.get_occupation()
         nel = torch.sum(n0, -1) - torch.sum(chrg, -1)
-
-        # get alpha and beta electrons
-        uhf = torch.zeros_like(nel)
-        nab = filling.get_alpha_beta_occupation(nel, uhf)
-
-        occupation = filling.get_aufbau_occupation(
-            hcore.new_tensor(hcore.shape[-1], dtype=torch.int64), nab
-        ).sum(-2)
+        occupation = 2 * filling.get_aufbau_occupation(
+            hcore.new_tensor(hcore.shape[-1], dtype=torch.int64),
+            nel / 2,
+        )
 
         fwd_options = {
             "verbose": opts.get("verbosity", defaults.VERBOSITY),
