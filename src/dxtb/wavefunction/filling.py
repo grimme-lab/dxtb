@@ -10,6 +10,35 @@ from ..constants import defaults
 from ..typing import Tensor
 
 
+def get_alpha_beta_occupation(nel: Tensor, uhf: Tensor) -> Tensor:
+    """
+    Generate alpha and beta electrons from total number of electrons.
+
+    Parameters
+    ----------
+    nel : Tensor
+        Total number of electrons.
+    uhf : Tensor
+        Number of unpaired electrons.
+
+    Returns
+    -------
+    Tensor
+        Alpha (first column, 0 index) and beta (second column, 1 index) electrons.
+    """
+    nuhf = torch.where(
+        torch.remainder(uhf, 2) == torch.remainder(nel.round(), 2),
+        uhf,
+        torch.remainder(nel.round(), 2),
+    )
+
+    diff = torch.minimum(nuhf, nel)
+    nb = (nel - diff) / 2.0
+    na = nb + diff
+
+    return torch.stack([na, nb], dim=-1)
+
+
 def get_aufbau_occupation(
     norb: Tensor,
     nel: Tensor,
