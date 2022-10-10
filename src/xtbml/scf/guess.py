@@ -17,7 +17,7 @@ def get_guess(
     Obtain initial guess for charges.
     Currently the following methods are supported:
      - electronegativity equilibration charge model ("eeq")
-     - superposition of atomic densities ("sad")
+     - superposition of atomic densities ("sad"), i.e. zero charges
 
 
     Parameters

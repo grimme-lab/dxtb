@@ -111,7 +111,13 @@ class SelfConsistentField(xt.EditableModule):
     """Options for eigensolver"""
 
     scf_options: dict[str, Any]
-    """Options for SCF"""
+    """
+    Options for SCF:
+    - "etemp": Electronic temperature (in a.u.) for Fermi smearing.
+    - "fermi_maxiter": Maximum number of iterations for Fermi smearing.
+    - "fermi_thresh": Float data type dependent threshold for Fermi iterations. 
+    - "fermi_fenergy_partition": Partitioning scheme for electronic free energy.
+    """
 
     use_potential: bool
     """Whether to use the potential or the charges"""
@@ -212,12 +218,14 @@ class SelfConsistentField(xt.EditableModule):
 
             G = -TS = k_B\sum_{i}f_i \; ln(f_i) + (1 - f_i)\; ln(1 - f_i))
 
-        The atomic partitioning is performed by means of Mulliken population
+        The atomic partitioning can be performed by means of Mulliken population
         analysis using an "electronic entropy" density matrix.
 
         .. math::
 
-            E_\kappa^\text{TS} = (\mathbf P^\text{TS} \mathbf S)_{\kappa\kappa} \qquad\text{with}\quad \mathbf P^\text{TS} = \mathbf C^T \cdot \text{diag}(g) \cdot \mathbf C
+            E_\kappa^\text{TS} = (\mathbf P^\text{TS} \mathbf S)_{\kappa\kappa}
+            \qquad\text{with}\quad \mathbf P^\text{TS} = \mathbf C^T \cdot
+            \text{diag}(g) \cdot \mathbf C
 
         Parameters
         ----------
@@ -231,7 +239,9 @@ class SelfConsistentField(xt.EditableModule):
 
         Note
         ----
-        Orbitals are sorted by energy, starting with the lowest (ascending order).
+        Partitioning scheme is set through SCF options
+        (`scf_options["fermi_fenergy_partition"]`).
+        Defaults to an equal partitioning to all atoms (`"equal"`).
         """
 
         occ = self._data.occupation / max_orb_occ
@@ -255,9 +265,9 @@ class SelfConsistentField(xt.EditableModule):
             # "electronic entropy" density matrix
             density = torch.einsum(
                 "...ik,...k,...jk->...ij",
-                self._data.evecs,
+                self._data.evecs,  # sorted by energy, starting with lowest
                 g,
-                self._data.evecs,
+                self._data.evecs,  # transposed
             )
 
             return mulliken.get_atomic_populations(
