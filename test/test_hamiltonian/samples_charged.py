@@ -31,7 +31,7 @@ samples: dict[str, Record] = {
             ],
         ),
         "charge": torch.tensor(-2.0),
-        "escf": torch.tensor(-2.4713391084895e01),
+        "escf": torch.tensor(-2.5297870091005e01),
     },
     "Al3+Ar6": {
         "numbers": symbol2number("Al Ar Ar Ar Ar Ar Ar".split()),
@@ -47,7 +47,7 @@ samples: dict[str, Record] = {
             ],
         ),
         "charge": torch.tensor(3.0),
-        "escf": torch.tensor(-3.8072747736815e01),
+        "escf": torch.tensor(-3.6303223981129e01),
     },
     "AD7en+": {
         "numbers": symbol2number(
@@ -97,7 +97,23 @@ samples: dict[str, Record] = {
             ],
         ),
         "charge": torch.tensor(1.0),
-        "escf": torch.tensor(-4.3676623600634e01),
+        "escf": torch.tensor(-4.3226840214360e01),
+    },
+    "C2H4F+": {
+        "numbers": symbol2number("C C F H H H H".split()),
+        "positions": torch.tensor(
+            [
+                [-0.00000000000000, +1.38825959869068, -0.28096500207358],
+                [-0.00000000000000, -1.38825959869068, -0.28096500207358],
+                [+0.00000000000000, +0.00000000000000, +2.33689103853566],
+                [-1.78408589032842, +2.42537442958257, -0.44374025859713],
+                [+1.78408589032842, +2.42537442958257, -0.44374025859713],
+                [-1.78408589032842, -2.42537442958257, -0.44374025859713],
+                [+1.78408589032842, -2.42537442958257, -0.44374025859713],
+            ],
+        ),
+        "charge": torch.tensor(1.0),
+        "escf": torch.tensor(-1.1004178291636e01),
     },
     "ZnOOH-": {
         "numbers": symbol2number("Zn O O H".split()),
@@ -110,6 +126,6 @@ samples: dict[str, Record] = {
             ],
         ),
         "charge": torch.tensor(-1.0),
-        "escf": torch.tensor(-1.0588206707918e01),
+        "escf": torch.tensor(-1.0913986485487e01),
     },
 }

@@ -11,16 +11,19 @@ import torch
 from .h0 import Hamiltonian
 from .. import scf
 from ..basis import IndexHelper
-from ..classical import Halogen, new_halogen, Repulsion, new_repulsion
+from ..classical import Halogen, new_halogen
+from ..classical import Repulsion, new_repulsion
+from ..constants import defaults
 from ..coulomb import new_es2, new_es3
-from ..dispersion import new_dispersion, Dispersion
+from ..dispersion import Dispersion, new_dispersion
 from ..data import cov_rad_d3
 from ..interaction import Interaction, InteractionList
 from ..ncoord import ncoord
 from ..param import Param, get_elem_angular
-from ..typing import Tensor
-from ..wavefunction import filling
+from ..typing import Any, Tensor
 from ..utils import Timers
+from ..wavefunction import filling
+from ..xtb.h0 import Hamiltonian
 
 
 class Result:
@@ -29,7 +32,10 @@ class Result:
     """
 
     scf: Tensor
-    """Energy from the self-consistent field (SCF) calculation."""
+    """Atom-resolved energy from the self-consistent field (SCF) calculation."""
+
+    fenergy: Tensor
+    """Atom-resolved electronic free energy from fractional occupation."""
 
     dispersion: Tensor
     """Dispersion energy."""
@@ -55,8 +61,12 @@ class Result:
     density: Tensor
     """Density matrix."""
 
+    charges: Tensor
+    """Self-consistent orbital-resolved Mulliken partial charges"""
+
     __slots__ = [
         "scf",
+        "fenergy",
         "dispersion",
         "repulsion",
         "halogen",
@@ -65,6 +75,7 @@ class Result:
         "hamiltonian",
         "overlap",
         "density",
+        "charges",
     ]
 
     def __init__(self, positions: Tensor):
@@ -73,6 +84,7 @@ class Result:
         dtype = positions.dtype
 
         self.scf = torch.zeros(shape, dtype=dtype, device=device)
+        self.fenergy = torch.zeros(shape, dtype=dtype, device=device)
         self.dispersion = torch.zeros(shape, dtype=dtype, device=device)
         self.repulsion = torch.zeros(shape, dtype=dtype, device=device)
         self.halogen = torch.zeros(shape, dtype=dtype, device=device)
@@ -127,8 +139,8 @@ class Calculator:
         self,
         numbers: Tensor,
         positions: Tensor,
-        charges: Tensor,
-        verbosity: int = 1,
+        chrg: Tensor,
+        opts: dict[str, Any],
     ) -> Result:
         """
         Entry point for performing single point calculations.
@@ -139,8 +151,10 @@ class Calculator:
             Atomic numbers.
         positions : Tensor
             Atomic positions.
-        ihelp : IndexHelper
-            Index mapping for the basis set.
+        chrg : Tensor
+            Total charge.
+        opts : dict[str, Any]
+            Options.
 
         Returns
         -------
@@ -171,30 +185,47 @@ class Calculator:
 
         # Obtain the reference occupations and total number of electrons
         n0 = self.hamiltonian.get_occupation()
-        nel = torch.sum(n0, -1) - torch.sum(charges, -1)
+        nel = torch.sum(n0, -1) - torch.sum(chrg, -1)
         occupation = 2 * filling.get_aufbau_occupation(
             hcore.new_tensor(hcore.shape[-1], dtype=torch.int64),
             nel / 2,
         )
 
         fwd_options = {
-            "verbose": verbosity,
-            "maxiter": 30,
+            "verbose": opts.get("verbosity", defaults.VERBOSITY),
+            "maxiter": opts.get("maxiter", defaults.MAXITER),
         }
+        scf_options = {
+            "etemp": opts.get("etemp", defaults.ETEMP),
+            "fermi_maxiter": opts.get("fermi_maxiter", defaults.FERMI_MAXITER),
+            "fermi_thresh": opts.get("fermi_thresh", defaults.THRESH),
+            "fermi_fenergy_partition": opts.get(
+                "fermi_fenergy_partition", defaults.FERMI_FENERGY_PARTITION
+            ),
+        }
+        guess = opts.get("guess", defaults.GUESS)
+
         scf_results = scf.solve(
             numbers,
             positions,
+            chrg,
             self.interaction,
             self.ihelp,
+            guess,
             hcore,
             overlap,
             occupation,
             n0,
             fwd_options=fwd_options,
+            scf_options=scf_options,
             use_potential=True,
         )
+        result.charges = scf_results["charges"]
+        result.density = scf_results["density"]
+        result.hamiltonian = scf_results["hamiltonian"]
         result.scf += scf_results["energy"]
-        result.total += scf_results["energy"]
+        result.fenergy = scf_results["fenergy"]
+        result.total += scf_results["energy"] + scf_results["fenergy"]
         timer.stop("scf")
 
         if self.halogen is not None:
@@ -221,9 +252,7 @@ class Calculator:
 
         timer.stop("total")
 
-        if verbosity > 0:
+        if fwd_options["verbose"] > 0:
             timer.print_times()
 
         return result
-
-   

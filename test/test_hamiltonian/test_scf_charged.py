@@ -12,9 +12,11 @@ from xtbml.xtb.calculator import Calculator
 
 from .samples_charged import samples
 
+opts = {"verbosity": 0, "etemp": 300, "guess": "eeq"}
+
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["Ag2Cl22-", "Al3+Ar6", "AD7en+", "ZnOOH-"])
+@pytest.mark.parametrize("name", ["Ag2Cl22-", "Al3+Ar6", "AD7en+", "C2H4F+", "ZnOOH-"])
 def test_single(dtype: torch.dtype, name: str):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
 
@@ -22,9 +24,9 @@ def test_single(dtype: torch.dtype, name: str):
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
     ref = sample["escf"].item()
-    charges = sample["charge"].type(dtype)
+    chrg = sample["charge"].type(dtype)
 
     calc = Calculator(numbers, positions, par)
+    results = calc.singlepoint(numbers, positions, chrg, opts)
 
-    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
-    assert pytest.approx(ref, abs=tol) == results.scf.sum(-1).item()
+    assert pytest.approx(ref, abs=tol, rel=tol) == results.scf.sum(-1).item()

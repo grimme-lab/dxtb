@@ -6,8 +6,11 @@ Reference values obtained with tblite 0.2.1 disabling repulsion and dispersion.
 import pytest
 import torch
 
+from xtbml.exlibs.tbmalt import batch
 from xtbml.param import GFN1_XTB as par
 from xtbml.xtb.calculator import Calculator
+
+from .samples import samples
 
 
 ref = torch.tensor(
@@ -326,6 +329,17 @@ uhf_anion = torch.tensor(
 )
 # fmt: on
 
+opts = {
+    "verbosity": 0,
+    "etemp": 300,
+    "guess": "eeq",
+    "fermi_maxiter": 500,
+    "fermi_thresh": {
+        torch.float32: torch.tensor(1e-4, dtype=torch.float32),  # instead of 1e-5
+        torch.float64: torch.tensor(1e-10, dtype=torch.float64),
+    },
+}
+
 
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -345,15 +359,15 @@ def test_element(dtype: torch.dtype, number: int) -> None:
     charges = torch.tensor(0.0).type(dtype)
 
     calc = Calculator(numbers, positions, par)
-    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    results = calc.singlepoint(numbers, positions, charges, opts)
 
-    assert pytest.approx(r, abs=tol) == results["energy"].sum(-1).item()
+    assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
 
 
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_cation(dtype: torch.dtype, number: int) -> None:
-    tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
+    tol = 1e-2  #
 
     # SCF does not converge for gold
     if number == 79:
@@ -368,9 +382,14 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
     charges = torch.tensor(1.0).type(dtype)
 
     calc = Calculator(numbers, positions, par)
-    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
 
-    assert pytest.approx(r, abs=tol) == results["energy"].sum(-1).item()
+    # no (valence) electrons
+    if number in [1, 3, 11, 19, 37, 55]:
+        with pytest.raises(ValueError):
+            calc.singlepoint(numbers, positions, charges, opts)
+    else:
+        results = calc.singlepoint(numbers, positions, charges, opts)
+        assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
 
 
 @pytest.mark.parametrize("number", range(1, 87))
@@ -395,6 +414,27 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
     charges = torch.tensor(-1.0).type(dtype)
 
     calc = Calculator(numbers, positions, par)
-    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    results = calc.singlepoint(numbers, positions, charges, opts)
 
-    assert pytest.approx(r, abs=tol) == results["energy"].sum(-1).item()
+    assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
+
+
+@pytest.mark.parametrize("number", range(1, 87))
+@pytest.mark.parametrize("mol", ["SiH4"])
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:
+    if uhf[number - 1] != 0:
+        return
+
+    tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
+
+    sample = samples[mol]
+    numbers = batch.pack((sample["numbers"], torch.tensor([number])))
+    positions = batch.pack((sample["positions"], torch.zeros((1, 3)))).type(dtype)
+    refs = batch.pack((sample["escf"], ref[number - 1])).type(dtype)
+    charges = torch.tensor([0.0, 0.0]).type(dtype)
+
+    calc = Calculator(numbers, positions, par)
+    results = calc.singlepoint(numbers, positions, charges, opts)
+
+    assert torch.allclose(refs, results.scf.sum(-1), atol=tol)

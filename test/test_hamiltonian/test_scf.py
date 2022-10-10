@@ -13,6 +13,9 @@ from xtbml.exlibs.tbmalt import batch
 
 from .samples import samples
 
+# torch.autograd.set_detect_anomaly(True)
+opts = {"verbosity": 0, "etemp": 300.0, "guess": "eeq"}
+
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "LiH", "SiH4"])
@@ -27,7 +30,7 @@ def test_single(dtype: torch.dtype, name: str):
 
     calc = Calculator(numbers, positions, par)
 
-    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    result = calc.singlepoint(numbers, positions, charges, opts)
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
 
 
@@ -47,7 +50,7 @@ def test_single2(dtype: torch.dtype, name: str):
 
     calc = Calculator(numbers, positions, par)
 
-    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    result = calc.singlepoint(numbers, positions, charges, opts)
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
 
 
@@ -66,16 +69,17 @@ def test_single_large(dtype: torch.dtype, name: str):
 
     calc = Calculator(numbers, positions, par)
 
-    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    result = calc.singlepoint(numbers, positions, charges, opts)
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", [("H2", "LiH"), ("LiH", "SiH4")])
-def test_batch(dtype: torch.dtype, name: str):
+@pytest.mark.parametrize("name1", ["H2", "LiH"])
+@pytest.mark.parametrize("name2", ["LiH", "SiH4"])
+def test_batch(dtype: torch.dtype, name1: str, name2: str):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
 
-    sample = samples[name[0]], samples[name[1]]
+    sample = samples[name1], samples[name2]
     numbers = batch.pack((sample[0]["numbers"], sample[1]["numbers"]))
     positions = batch.pack((sample[0]["positions"], sample[1]["positions"])).type(dtype)
     ref = batch.pack((sample[0]["escf"], sample[1]["escf"])).type(dtype)
@@ -83,7 +87,7 @@ def test_batch(dtype: torch.dtype, name: str):
 
     calc = Calculator(numbers, positions, par)
 
-    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    result = calc.singlepoint(numbers, positions, charges, opts)
     assert torch.allclose(ref, result.scf.sum(-1), atol=tol)
 
 
@@ -113,7 +117,7 @@ def test_grad_backwards(testcase, dtype: torch.dtype = torch.float):
 
     calc = Calculator(numbers, positions, par)
 
-    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    result = calc.singlepoint(numbers, positions, charges, opts)
     energy = result.scf.sum(-1)
 
     energy.backward()
@@ -149,7 +153,7 @@ def test_grad(testcase, dtype: torch.dtype = torch.float):
 
     calc = Calculator(numbers, positions, par)
 
-    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    result = calc.singlepoint(numbers, positions, charges, opts)
     energy = result.scf.sum(-1)
 
     gradient = torch.autograd.grad(
@@ -192,7 +196,7 @@ def test_gradgrad(testcase, dtype: torch.dtype = torch.float):
     calc.hamiltonian.kcn.requires_grad_(True)
     calc.hamiltonian.shpoly.requires_grad_(True)
 
-    result = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    result = calc.singlepoint(numbers, positions, charges, opts)
     energy = result.scf.sum(-1)
 
     gradient = torch.autograd.grad(
