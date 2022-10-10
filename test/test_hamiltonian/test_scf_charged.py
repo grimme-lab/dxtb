@@ -1,5 +1,5 @@
 """
-Test for SCF.
+Test for SCF with charged samples.
 Reference values obtained with tblite 0.2.1 disabling repulsion and dispersion.
 """
 
