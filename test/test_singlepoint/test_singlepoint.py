@@ -11,9 +11,14 @@ import torch
 # from xtbml.exlibs.tbmalt import batch
 from xtbml.io import read_chrg, read_coord
 from xtbml.param import GFN1_XTB as par
-from xtbml.xtb.calculator import Calculator
+from xtbml.xtb import Calculator
 
 from .samples import samples
+
+
+def test_fail():
+    with pytest.raises(FileNotFoundError):
+        read_coord(Path("non-existing-coord-file"))
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
