@@ -1,6 +1,7 @@
-"""Molecules for testing the solvation module."""
+"""
+Molecules for testing the solvation module.
+"""
 
-from __future__ import annotations
 import torch
 
 from xtbml.typing import Molecule, Tensor

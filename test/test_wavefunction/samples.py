@@ -1,6 +1,7 @@
-"""Molecules for testing properties."""
+"""
+Molecules for testing the wavefunctions and properties.
+"""
 
-from __future__ import annotations
 import torch
 
 from xtbml.typing import Tensor, Molecule

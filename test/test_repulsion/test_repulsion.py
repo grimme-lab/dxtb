@@ -4,7 +4,6 @@ Run tests for repulsion contribution.
 (Note that the analytical gradient tests fail for `torch.float`.)
 """
 
-from __future__ import annotations
 from math import sqrt
 import torch
 import pytest

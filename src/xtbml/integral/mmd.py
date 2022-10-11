@@ -6,7 +6,6 @@ Calculation of overlap integrals using the McMurchie-Davidson algorithm.
   (`DOI <https://doi.org/10.1016/0021-9991(78)90092-X>`__)
 """
 
-from __future__ import annotations
 import math
 import torch
 

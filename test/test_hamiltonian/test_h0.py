@@ -1,6 +1,7 @@
-"""Run tests for building the Hamiltonian matrix."""
+"""
+Run tests for building the Hamiltonian matrix.
+"""
 
-from __future__ import annotations
 from math import sqrt
 import numpy as np
 import pytest

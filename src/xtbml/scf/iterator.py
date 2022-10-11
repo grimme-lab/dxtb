@@ -14,7 +14,6 @@ a reasonably good implementation of the iterative solver required for the self-c
 field iterations.
 """
 
-from __future__ import annotations
 import torch
 import xitorch as xt
 import xitorch.linalg as xtl

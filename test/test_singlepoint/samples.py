@@ -1,6 +1,7 @@
-"""Data for testing repulsion taken from https://github.com/grimme-lab/mstore"""
+"""
+Data for testing repulsion taken from https://github.com/grimme-lab/mstore.
+"""
 
-from __future__ import annotations
 import torch
 
 from xtbml.typing import Tensor, Molecule
@@ -23,7 +24,7 @@ samples: dict[str, Record] = {
                 [0.00000000000000, 0.00000000000000, 0.70252931147690],
             ],
         ),
-        "etot": torch.tensor(-1.0362714373390E+00),
+        "etot": torch.tensor(-1.0362714373390e00),
     },
     "SiH4": {
         "numbers": symbol2number(["Si", "H", "H", "H", "H"]),
@@ -36,7 +37,7 @@ samples: dict[str, Record] = {
                 [-1.61768389755830, 1.61768389755830, 1.61768389755830],
             ],
         ),
-        "etot": torch.tensor(-4.0087585461086E+00),
+        "etot": torch.tensor(-4.0087585461086e00),
     },
     "LYS_xao": {
         "numbers": symbol2number(

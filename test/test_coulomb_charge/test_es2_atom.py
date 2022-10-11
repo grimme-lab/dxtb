@@ -3,7 +3,6 @@ Run tests for energy contribution from isotropic second-order
 electrostatic energy (ES2).
 """
 
-from __future__ import annotations
 import pytest
 import torch
 

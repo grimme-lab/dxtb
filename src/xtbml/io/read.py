@@ -1,4 +1,3 @@
-from __future__ import annotations
 from pathlib import Path
 from json import dumps as json_dump
 from json import dump as json_dump_file

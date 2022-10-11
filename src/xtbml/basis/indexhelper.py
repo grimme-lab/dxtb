@@ -13,7 +13,6 @@ Example
 torch.tensor(6)
 """
 
-from __future__ import annotations
 from functools import wraps
 import torch
 
@@ -203,6 +202,9 @@ def wrap_gather(x: Tensor, dim: int | tuple[int, int], idx: Tensor) -> Tensor:
         if isinstance(dim, int)
         else twice(torch.gather, x, *dim, idx)
     )
+
+
+# scatter
 
 
 def scatter_reduce(x: Tensor, dim: int, idx: Tensor, *args: str) -> Tensor:

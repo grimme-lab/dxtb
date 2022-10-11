@@ -3,8 +3,6 @@ Run tests for the shell-resolved energy contribution from the
 isotropic second-order electrostatic energy (ES2).
 """
 
-from __future__ import annotations
-from collections.abc import Generator
 import pytest
 import torch
 
@@ -16,7 +14,7 @@ from xtbml.param import (
     get_elem_param,
     get_elem_angular,
 )
-from xtbml.typing import Tensor
+from xtbml.typing import Tensor, Generator
 from xtbml.utils import batch
 
 from .samples import mb16_43

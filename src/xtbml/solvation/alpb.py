@@ -210,11 +210,11 @@ class GeneralizedBorn(Interaction):
         return self.Cache(mat)
 
     def get_atom_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
+        self, charges: Tensor, ihelp: IndexHelper, cache: "GeneralizedBorn.Cache"
     ) -> Tensor:
         return 0.5 * charges * self.get_atom_potential(charges, ihelp, cache)
 
     def get_atom_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
+        self, charges: Tensor, ihelp: IndexHelper, cache: "GeneralizedBorn.Cache"
     ) -> Tensor:
         return torch.einsum("...ik,...k->...i", cache.mat, charges)

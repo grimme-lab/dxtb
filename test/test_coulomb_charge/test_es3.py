@@ -3,8 +3,6 @@ Run tests for energy contribution from on-site third-order
 electrostatic energy (ES3).
 """
 
-from __future__ import annotations
-from collections.abc import Generator
 import pytest
 import torch
 
@@ -12,7 +10,7 @@ import xtbml.coulomb.thirdorder as es3
 from xtbml.basis import IndexHelper
 from xtbml.utils import batch
 from xtbml.param import GFN1_XTB, get_elem_param, get_elem_angular
-from xtbml.typing import Tensor
+from xtbml.typing import Generator, Tensor
 
 from .samples import mb16_43
 

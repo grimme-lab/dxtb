@@ -11,13 +11,14 @@ from typing import (
     Optional,
     overload,
     Protocol,
+    TypeGuard
 )
 import torch
 from torch import Tensor
 
 Sliceable = list[Tensor] | tuple[Tensor]
 
-CountingFunction = Callable[[Tensor, Tensor, Any], Tensor]
+CountingFunction = Callable[[Tensor, Tensor], Tensor]
 
 
 class Molecule(TypedDict):

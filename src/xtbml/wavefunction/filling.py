@@ -4,9 +4,6 @@ Handle the occupation of the orbitals with electrons.
 
 # NOTE: Parts of the Fermi smearing are taken from https://github.com/tbmalt/tbmalt
 
-
-from __future__ import annotations
-
 import torch
 
 from ..constants import defaults

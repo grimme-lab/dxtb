@@ -1,3 +1,7 @@
+"""
+PyTorch related constants like data types.
+"""
+
 import torch
 
 UINT8: torch.dtype = torch.uint8

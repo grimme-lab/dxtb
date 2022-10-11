@@ -2,12 +2,9 @@
 Definition of a timer class that can contain multiple timers.
 """
 
-from __future__ import annotations
 import time
 
-
-class TimerError(Exception):
-    """A custom exception used to report errors in use of Timer class"""
+from ..exceptions import TimerError
 
 
 class Timers:

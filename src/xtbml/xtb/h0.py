@@ -1,4 +1,7 @@
-from __future__ import annotations
+"""
+The GFN1-xTB Hamiltonian.
+"""
+
 import torch
 
 from ..basis import Basis, IndexHelper

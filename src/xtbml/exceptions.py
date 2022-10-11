@@ -8,7 +8,10 @@ class ParameterWarning(UserWarning):
     Warning for when a parameter is not set.
     """
 
-    pass
+class TimerError(Exception):
+    """
+    A custom exception used to report errors in use of Timer class.
+    """
 
 
 class IntegralTransformError(ValueError):

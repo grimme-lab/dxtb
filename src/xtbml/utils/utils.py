@@ -5,13 +5,16 @@ Utility
 Collection of utility functions.
 """
 
-from __future__ import annotations
 from functools import wraps
 from time import time
 import torch
 
 from ..constants import ATOMIC_NUMBER
-from ..typing import Tensor
+from ..typing import Any, Tensor, TypeGuard
+
+
+def is_int_list(x: list[Any]) -> TypeGuard[list[int]]:
+    return all(isinstance(i, int) for i in x)
 
 
 def symbol2number(sym_list: list[str]) -> Tensor:

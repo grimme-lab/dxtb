@@ -1,5 +1,6 @@
 """
-Provides abstract base class for interactions in the extended tight-binding Hamiltonian
+Provides base class for interactions in the extended tight-binding Hamiltonian.
+The `Interaction` class is not purely abstract as its methods return zero.
 """
 
 import torch

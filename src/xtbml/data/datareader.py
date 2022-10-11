@@ -4,7 +4,6 @@ import torch
 from torch.utils.data import DataLoader
 
 from ..constants import ATOMIC_NUMBER, FLOAT64
-from ..exlibs.tbmalt import Geometry
 
 
 def walklevel(some_dir: str, level=1):
@@ -91,21 +90,6 @@ class Datareader:
             file_list.append(dirpath)
 
         return data, file_list
-
-    def setup_geometry(data: torch.Tensor) -> Geometry:
-        """Convert data tensor into batched geometry object."""
-        device = None
-
-        positions = [
-            torch.tensor(xyz, device=device, dtype=FLOAT64) for xyz, *_ in data
-        ]
-        atomic_numbers = [torch.tensor(q, device=device) for _, q, *_ in data]
-
-        charges = [torch.tensor(chrg, device=device) for *_, chrg, _ in data]
-        unpaired_e = [torch.tensor(uhf, device=device) for *_, uhf in data]
-
-        # convert into geometry object
-        return Geometry(atomic_numbers, positions, charges, unpaired_e, units="bohr")
 
     def get_dataloader(geometry: Geometry, cfg: dict = None) -> DataLoader:
         """

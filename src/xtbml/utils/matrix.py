@@ -1,6 +1,5 @@
 """Collection of utility functions for matrices/tensors."""
 
-from __future__ import annotations
 import torch
 
 from ..typing import Any, Tensor
@@ -49,7 +48,7 @@ def load_from_npz(npzfile: Any, name: str, dtype: torch.dtype) -> Tensor:
     return torch.from_numpy(npzfile[name]).type(dtype)
 
 
-def t2int(x:Tensor) -> int:
+def t2int(x: Tensor) -> int:
     """
     Convert tensor to int.
 

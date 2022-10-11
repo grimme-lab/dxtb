@@ -1,9 +1,12 @@
-from __future__ import annotations
+"""
+Function for creating a new instance of a Dispersion.
+"""
+
 import warnings
 
+from .abc import Dispersion
 from .d3 import DispersionD3
 from .d4 import DispersionD4
-from .type import Dispersion
 from ..exceptions import ParameterWarning
 from ..param import Param
 from ..typing import Tensor

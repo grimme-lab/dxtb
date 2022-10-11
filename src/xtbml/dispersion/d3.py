@@ -1,7 +1,11 @@
-from __future__ import annotations
+"""
+DFT-D3(BJ) dispersion model.
+"""
+
+
 import tad_dftd3 as d3
 
-from .type import Dispersion
+from .abc import Dispersion
 from ..typing import Tensor
 
 

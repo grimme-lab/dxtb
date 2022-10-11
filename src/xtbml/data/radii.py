@@ -1,4 +1,6 @@
-# This file is part of xtbml.
+"""
+Atomic and covalent radii in atomic units for all elements. 
+"""
 
 import torch
 from ..constants import AA2AU

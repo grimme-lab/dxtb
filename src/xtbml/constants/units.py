@@ -1,3 +1,8 @@
+"""
+Unit conversion factors.
+"""
+
+
 AA2AU = 1.8897261246204404
 """Factor for conversion from angstrom to atomic units."""
 

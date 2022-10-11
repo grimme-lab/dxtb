@@ -1,6 +1,5 @@
 """Molecules for testing the charges module."""
 
-from __future__ import annotations
 import torch
 
 from xtbml.typing import Molecule, Tensor

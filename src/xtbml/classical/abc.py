@@ -4,7 +4,6 @@
 Definition of energy terms as abstract base class for classical interactions.
 """
 
-from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from ..basis import IndexHelper
@@ -20,7 +19,9 @@ class Classical(ABC):
     """The atomic numbers of the atoms in the system."""
 
     class Cache(ABC):
-        pass
+        """
+        Abstract base class for the Cache of the contribution.
+        """
 
     @abstractmethod
     def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> "Cache":
@@ -39,7 +40,6 @@ class Classical(ABC):
         Cache
             Cache class for storage of variables.
         """
-        ...
 
     @abstractmethod
     def get_energy(self, positions: Tensor, cache: "Cache") -> Tensor:
@@ -58,4 +58,3 @@ class Classical(ABC):
         Tensor
              Atomwise energy contributions.
         """
-        ...

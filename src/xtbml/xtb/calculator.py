@@ -1,12 +1,8 @@
-# This file is part of xtbml.
-
 """
 Base calculator for the extended tight-binding model.
 """
 
-from __future__ import annotations
 import torch
-
 
 from .h0 import Hamiltonian
 from .. import scf
@@ -18,7 +14,7 @@ from ..coulomb import new_es2, new_es3
 from ..dispersion import Dispersion, new_dispersion
 from ..data import cov_rad_d3
 from ..interaction import Interaction, InteractionList
-from ..ncoord import ncoord
+from ..ncoord import exp_count, get_coordination_number
 from ..param import Param, get_elem_angular
 from ..typing import Any, Tensor
 from ..utils import Timers
@@ -175,7 +171,7 @@ class Calculator:
         # Hamiltonian
         timer.start("h0")
         rcov = cov_rad_d3[numbers]
-        cn = ncoord.get_coordination_number(numbers, positions, ncoord.exp_count, rcov)
+        cn = get_coordination_number(numbers, positions, exp_count, rcov)
         hcore = self.hamiltonian.build(overlap, cn)
         result.hcore = hcore
         timer.stop("h0")
