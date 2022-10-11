@@ -4,9 +4,12 @@ import math
 
 from xtbml.solvation import alpb
 from xtbml.param import GFN1_XTB as par
-from xtbml.xtb.calculator import Calculator
+from xtbml.xtb import Calculator
 
 from .samples import mb16_43
+
+
+opts = {"verbosity": 0}
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
@@ -40,8 +43,8 @@ def test_gb_scf(dtype=torch.float, sample=mb16_43["01"], dielectric_constant=78.
     calc_vac = Calculator(numbers, positions, par)
     calc_sol = Calculator(numbers, positions, par, interaction=gb)
 
-    results_vac = calc_vac.singlepoint(numbers, positions, charges, verbosity=0)
-    results_sol = calc_sol.singlepoint(numbers, positions, charges, verbosity=0)
+    results_vac = calc_vac.singlepoint(numbers, positions, charges, opts)
+    results_sol = calc_sol.singlepoint(numbers, positions, charges, opts)
 
     gsolv = results_sol.scf - results_vac.scf
 
@@ -61,7 +64,7 @@ def test_gb_scf_grad(dtype=torch.float, sample=mb16_43["01"], dielectric_constan
 
     calc = Calculator(numbers, positions, par, interaction=gb)
 
-    results = calc.singlepoint(numbers, positions, charges, verbosity=0)
+    results = calc.singlepoint(numbers, positions, charges, opts)
 
     energy = results.scf.sum(-1)
     energy.backward()
