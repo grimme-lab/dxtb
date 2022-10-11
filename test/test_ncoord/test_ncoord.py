@@ -1,14 +1,18 @@
+"""
+Test calculation of (D3) coordination number.
+"""
+
 import pytest
 import torch
 
 from xtbml.data import cov_rad_d3
-from xtbml.ncoord import ncoord
+from xtbml.ncoord import get_coordination_number, exp_count
 from xtbml.utils import batch
 
 from .samples import structures
 
 
-@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_cn_single(dtype: torch.dtype):
     sample = structures["PbH4-BiH3"]
     numbers = sample["numbers"]
@@ -30,7 +34,7 @@ def test_cn_single(dtype: torch.dtype):
         dtype=dtype,
     )
 
-    cn = ncoord.get_coordination_number(numbers, positions, ncoord.exp_count, rcov)
+    cn = get_coordination_number(numbers, positions, exp_count, rcov)
     assert torch.allclose(cn, ref)
 
 
@@ -97,5 +101,5 @@ def test_cn_batch(dtype: torch.dtype):
         dtype=dtype,
     )
 
-    cn = ncoord.get_coordination_number(numbers, positions, ncoord.exp_count, rcov)
+    cn = get_coordination_number(numbers, positions, exp_count, rcov)
     assert torch.allclose(cn, ref)
