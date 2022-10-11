@@ -4,8 +4,8 @@ import torch
 import pytest
 
 from xtbml import charges
-from xtbml.exlibs.tbmalt import batch
 from xtbml.typing import Tensor
+from xtbml.utils import batch
 
 from .samples import structures
 

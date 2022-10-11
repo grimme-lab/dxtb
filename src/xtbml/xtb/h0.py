@@ -1,21 +1,19 @@
 from __future__ import annotations
 import torch
 
-from xtbml.param.util import get_elem_angular
-
 from ..basis import Basis, IndexHelper
-from ..exlibs.tbmalt import batch
 from ..constants import EV2AU
 from ..data import atomic_rad
 from ..integral import mmd
 from ..param import (
+    get_elem_angular,
     get_elem_param,
-    get_pair_param,
     get_elem_valence,
+    get_pair_param,
     Param,
 )
 from ..typing import Tensor
-from ..utils import t2int
+from ..utils import batch, t2int
 
 PAD = -1
 """Value used for padding of tensors."""

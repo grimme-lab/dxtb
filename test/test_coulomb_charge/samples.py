@@ -1,6 +1,5 @@
 """Data for testing Coulomb contribution."""
 
-from typing import Dict
 import torch
 from xtbml.typing import Molecule, Tensor
 from xtbml.utils import symbol2number
@@ -19,7 +18,7 @@ class Record(Molecule):
     """Reference values for ES3 (GFN1-xTB)"""
 
 
-Samples = Dict[str, Record]
+Samples = dict[str, Record]
 
 mb16_43: Samples = {
     "01": {

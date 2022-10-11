@@ -17,13 +17,13 @@ from __future__ import annotations
 from functools import wraps
 import torch
 
-from ..exlibs.tbmalt import batch
-from ..typing import Callable, Tensor, Union
+from ..typing import Callable, Tensor
+from ..utils import batch
 
 
 Gather = Callable[[Tensor, int, Tensor], Tensor]
 Scatter = Callable[[Tensor, int, Tensor, str], Tensor]
-ScatterOrGather = Union[Gather, Scatter]
+ScatterOrGather = Gather | Scatter
 
 
 def _fill(index: Tensor, repeat: Tensor) -> Tensor:
@@ -384,7 +384,7 @@ class IndexHelper:
         ----------
         numbers : Tensor
             Atomic numbers for the system
-        angular : Dict[int, Tensor]
+        angular : dict[int, Tensor]
             Map between atomic numbers and angular momenta of all shells
 
         Returns

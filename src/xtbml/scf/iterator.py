@@ -590,7 +590,7 @@ def solve(
         Name of the method for the initial charge guess.
     args : Tuple
         Positional arguments to pass to the engine.
-    kwargs : Dict
+    kwargs : dict
         Keyword arguments to pass to the engine.
 
     Returns

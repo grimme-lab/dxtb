@@ -11,18 +11,18 @@ import torch
 import xtbml.coulomb.secondorder as es2
 from xtbml.basis import IndexHelper
 from xtbml.coulomb import AveragingFunction, averaging_function
-from xtbml.exlibs.tbmalt import batch
 from xtbml.param import (
     GFN1_XTB,
     get_elem_param,
     get_elem_angular,
 )
-from xtbml.typing import Tensor, Tuple
+from xtbml.typing import Tensor
+from xtbml.utils import batch
 
 from .samples import mb16_43
 
 sample_list = ["07", "08", "SiH4_shell"]
-FixtureParams = Tuple[Tensor, AveragingFunction, dict]
+FixtureParams = tuple[Tensor, AveragingFunction, dict]
 
 
 @pytest.fixture(name="param", scope="class")
@@ -224,7 +224,11 @@ class TestSecondOrderElectrostaticsShell:
         def func(gexp: Tensor, hubbard: Tensor):
             es = es2.ES2(
                 positions=positions,
-                hubbard=hubbard, lhubbard=lhubbard, average=average, gexp=gexp)
+                hubbard=hubbard,
+                lhubbard=lhubbard,
+                average=average,
+                gexp=gexp,
+            )
             cache = es.get_cache(numbers, positions, ihelp)
             return es.get_shell_energy(qsh, ihelp, cache)
 

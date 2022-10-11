@@ -6,14 +6,13 @@ import numpy as np
 import pytest
 import torch
 
-from xtbml.basis.indexhelper import IndexHelper
-from xtbml.exlibs.tbmalt import batch
-from xtbml.ncoord.ncoord import get_coordination_number, exp_count
-from xtbml.param.gfn1 import GFN1_XTB as par
-from xtbml.param.util import get_elem_angular
+from xtbml.basis import IndexHelper
+from xtbml.ncoord import get_coordination_number, exp_count
+from xtbml.param import GFN1_XTB as par
+from xtbml.param import get_elem_angular
 from xtbml.utils import combinations as combis
-from xtbml.utils import load_from_npz
-from xtbml.xtb.h0 import Hamiltonian
+from xtbml.utils import batch, load_from_npz
+from xtbml.xtb import Hamiltonian
 
 from .samples import samples
 

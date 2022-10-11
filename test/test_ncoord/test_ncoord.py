@@ -1,9 +1,9 @@
 import pytest
 import torch
 
-from xtbml.data.radii import cov_rad_d3
-from xtbml.exlibs.tbmalt import batch
+from xtbml.data import cov_rad_d3
 from xtbml.ncoord import ncoord
+from xtbml.utils import batch
 
 from .samples import structures
 

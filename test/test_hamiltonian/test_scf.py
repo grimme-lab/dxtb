@@ -8,8 +8,8 @@ import pytest
 import torch
 
 from xtbml.param import GFN1_XTB as par
-from xtbml.xtb.calculator import Calculator
-from xtbml.exlibs.tbmalt import batch
+from xtbml.utils import batch
+from xtbml.xtb import Calculator
 
 from .samples import samples
 

@@ -1,13 +1,13 @@
 import torch
 import pytest
 
-from xtbml import bond, utils
-from xtbml.exlibs.tbmalt import batch
+from xtbml import bond
+from xtbml.utils import batch, symbol2number
 
 
 structures = {
     "PbH4-BiH3": dict(
-        numbers=utils.symbol2number("Pb H H H H Bi H H H".split()),
+        numbers=symbol2number("Pb H H H H Bi H H H".split()),
         positions=torch.tensor(
             [
                 [-0.00000020988889, -4.98043478877778, +0.00000000000000],
@@ -21,7 +21,7 @@ structures = {
                 [+1.35700257511111, +6.70626379422222, +2.35039772300000],
             ]
         ),
-        cn=torch.Tensor(
+        cn=torch.tensor(
             [
                 3.9388208389,
                 0.9832025766,
@@ -36,7 +36,7 @@ structures = {
         ),
     ),
     "C6H5I-CH3SH": dict(
-        numbers=utils.symbol2number("C C C C C C I H H H H H S H C H H H".split()),
+        numbers=symbol2number("C C C C C C I H H H H H S H C H H H".split()),
         positions=torch.tensor(
             [
                 [-1.42754169820131, -1.50508961850828, -1.93430551124333],
@@ -59,7 +59,7 @@ structures = {
                 [-6.35955320518616, 14.08073002965080, -1.68204314084441],
             ]
         ),
-        cn=torch.Tensor(
+        cn=torch.tensor(
             [
                 3.1393690109,
                 3.1313166618,

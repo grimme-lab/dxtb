@@ -10,14 +10,14 @@ import torch
 
 import xtbml.coulomb.thirdorder as es3
 from xtbml.basis import IndexHelper
-from xtbml.exlibs.tbmalt import batch
+from xtbml.utils import batch
 from xtbml.param import GFN1_XTB, get_elem_param, get_elem_angular
-from xtbml.typing import Tensor, Dict, List
+from xtbml.typing import Tensor
 
 from .samples import mb16_43
 
 sample_list = ["01", "02", "SiH4"]
-FixtureParams = Dict[int, List[int]]
+FixtureParams = dict[int, list[int]]
 
 
 @pytest.fixture(name="param", scope="class")

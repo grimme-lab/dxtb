@@ -6,9 +6,9 @@ Reference values obtained with tblite 0.2.1 disabling repulsion and dispersion.
 import pytest
 import torch
 
-from xtbml.exlibs.tbmalt import batch
 from xtbml.param import GFN1_XTB as par
-from xtbml.xtb.calculator import Calculator
+from xtbml.utils import batch
+from xtbml.xtb import Calculator
 
 from .samples import samples
 

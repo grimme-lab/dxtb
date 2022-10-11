@@ -6,15 +6,14 @@ This module contains classes and helper functions associated with batch
 construction, handling and maintenance.
 """
 from functools import reduce, partial
-from typing import Optional, Any, Literal, Tuple, List, Union, overload
 from collections import namedtuple
 import torch
 
-from .common import bool_like
+from ..typing import Any, Literal, overload, Tensor
 
-Tensor = torch.Tensor
 __sort = namedtuple("sort", ("values", "indices"))
-Sliceable = Union[List[Tensor], Tuple[Tensor, Tensor]]
+Sliceable = list[Tensor] | tuple[Tensor, Tensor]
+bool_like = Tensor | bool
 
 
 @overload
@@ -22,7 +21,7 @@ def pack(
     tensors: Sliceable,
     axis: int = 0,
     value: Any = 0,
-    size: Optional[Union[Tuple[int], torch.Size]] = None,
+    size: tuple[int] | torch.Size | None = None,
     return_mask: Literal[False] = False,
 ) -> Tensor:
     ...
@@ -33,9 +32,9 @@ def pack(
     tensors: Sliceable,
     axis: int = 0,
     value: Any = 0,
-    size: Optional[Union[Tuple[int], torch.Size]] = None,
+    size: tuple[int] | torch.Size | None = None,
     return_mask: Literal[True] = True,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     ...
 
 
@@ -43,16 +42,16 @@ def pack(
     tensors: Sliceable,
     axis: int = 0,
     value: Any = 0,
-    size: Optional[Union[Tuple[int], torch.Size]] = None,
+    size: tuple[int] | torch.Size | None = None,
     return_mask: bool = False,
-) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+) -> Tensor | tuple[Tensor, Tensor]:
     """Pad and pack a sequence of tensors together.
 
     Pad a list of variable length tensors with zeros, or some other value, and
     pack them into a single tensor.
 
     Arguments:
-        tensors: List of tensors to be packed, all with identical dtypes.
+        tensors: list of tensors to be packed, all with identical dtypes.
         axis: Axis along which tensors should be packed; 0 for first axis -1
             for the last axis, etc. This will be a new dimension. [DEFAULT=0]
         value: The value with which the tensor is to be padded. [DEFAULT=0]
@@ -155,7 +154,7 @@ def pack(
     return (padded, mask) if return_mask else padded
 
 
-def pargsort(tensor: Tensor, mask: Optional[bool_like] = None, dim: int = -1) -> Tensor:
+def pargsort(tensor: Tensor, mask: bool_like | None = None, dim: int = -1) -> Tensor:
     """Returns indices that sort packed tensors while ignoring padding values.
 
     Returns the indices that sorts the elements of ``tensor`` along ``dim`` in
@@ -187,7 +186,7 @@ def pargsort(tensor: Tensor, mask: Optional[bool_like] = None, dim: int = -1) ->
         return s1.gather(dim, s2)
 
 
-def psort(tensor: Tensor, mask: Optional[bool_like] = None, dim: int = -1) -> __sort:
+def psort(tensor: Tensor, mask: bool_like | None = None, dim: int = -1) -> __sort:
     """Sort a packed ``tensor`` while ignoring any padding values.
 
     Sorts the elements of ``tensor`` along ``dim`` in ascending order by value
@@ -254,7 +253,7 @@ def merge(tensors: Sliceable, value: Any = 0, axis: int = 0) -> Tensor:
     return merged if axis == 0 else merged.transpose(0, axis)
 
 
-def deflate(tensor: Tensor, value: Any = 0, axis: Optional[int] = None) -> Tensor:
+def deflate(tensor: Tensor, value: Any = 0, axis: int | None = None) -> Tensor:
     """Shrinks ``tensor`` to remove extraneous, trailing padding values.
 
     Returns a narrowed view of ``tensor`` containing no superfluous trailing
@@ -348,7 +347,7 @@ def deflate(tensor: Tensor, value: Any = 0, axis: Optional[int] = None) -> Tenso
     return tensor[slices]
 
 
-def unpack(tensor: Tensor, value: Any = 0, axis: int = 0) -> Tuple[Tensor]:
+def unpack(tensor: Tensor, value: Any = 0, axis: int = 0) -> tuple[Tensor]:
     """Unpacks packed tensors into their constituents and removes padding.
 
     This acts as the inverse of the `pack` operation.
@@ -359,7 +358,7 @@ def unpack(tensor: Tensor, value: Any = 0, axis: int = 0) -> Tuple[Tensor]:
         axis: Axis along which ``tensor`` was packed. [DEFAULT=0]
 
     Returns:
-        tensors: Tuple of constituent tensors.
+        tensors: tuple of constituent tensors.
     """
     return tuple(deflate(i, value) for i in tensor.movedim(axis, 0))
 

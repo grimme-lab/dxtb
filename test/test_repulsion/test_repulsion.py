@@ -9,12 +9,12 @@ from math import sqrt
 import torch
 import pytest
 
-from xtbml.basis.indexhelper import IndexHelper
+from xtbml.basis import IndexHelper
 from xtbml.classical import Repulsion, new_repulsion
-from xtbml.exlibs.tbmalt import batch
 from xtbml.param import get_elem_angular, get_elem_param
 from xtbml.param import GFN1_XTB as par
 from xtbml.typing import Tensor
+from xtbml.utils import batch
 
 from .samples import samples
 

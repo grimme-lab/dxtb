@@ -10,14 +10,14 @@ import torch
 import xtbml.coulomb.secondorder as es2
 from xtbml.basis import IndexHelper
 from xtbml.coulomb import AveragingFunction, averaging_function
-from xtbml.exlibs.tbmalt import batch
 from xtbml.param import GFN1_XTB, get_elem_param, get_elem_angular
-from xtbml.typing import Generator, Tensor, Tuple
+from xtbml.typing import Generator, Tensor
+from xtbml.utils import batch
 
 from .samples import mb16_43
 
 sample_list = ["01", "02", "SiH4"]
-FixtureParams = Tuple[Tensor, AveragingFunction, dict]
+FixtureParams = tuple[Tensor, AveragingFunction, dict]
 
 
 @pytest.fixture(name="param", scope="class")

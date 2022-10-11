@@ -34,9 +34,9 @@ import torch
 from .abc import Classical
 from ..basis import IndexHelper
 from ..data import atomic_rad
-from ..exlibs.tbmalt import batch
 from ..param import Param, get_elem_param
 from ..typing import Tensor, TensorLike
+from ..utils import batch
 
 
 default_cutoff: float = 20.0

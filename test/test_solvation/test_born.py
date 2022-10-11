@@ -6,10 +6,9 @@ model. Reference values are obtained from the tblite version.
 import pytest
 import torch
 
-from xtbml.exlibs.tbmalt import batch
-from xtbml.solvation import born
-from xtbml.solvation.data import vdw_rad_d3
+from xtbml.solvation import born, vdw_rad_d3
 from xtbml.typing import Tensor
+from xtbml.utils import batch
 
 from .samples import mb16_43
 
