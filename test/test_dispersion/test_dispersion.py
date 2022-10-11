@@ -64,11 +64,23 @@ class TestDispersion:
         assert torch.allclose(energy, ref)
 
         # set parameters explicitly
+        if par.dispersion is None or par.dispersion.d3 is None:
+            assert False
+        default_a1 = par.dispersion.d3.a1
+        default_a2 = par.dispersion.d3.a2
+        default_s8 = par.dispersion.d3.s8
         par.dispersion.d3.a1 = param["a1"]
         par.dispersion.d3.a2 = param["a2"]
         par.dispersion.d3.s8 = param["s8"]
 
-        disp = new_dispersion(numbers, positions, par)
+        try:
+            disp = new_dispersion(numbers, positions, par)
+        finally:
+            # reset parameters as `par` lives in global scope
+            par.dispersion.d3.a1 = default_a1
+            par.dispersion.d3.a2 = default_a2
+            par.dispersion.d3.s8 = default_s8
+
         if disp is None:
             assert False
         edisp = disp.get_energy(positions)
