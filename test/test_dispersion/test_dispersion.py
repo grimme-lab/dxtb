@@ -63,24 +63,17 @@ class TestDispersion:
         assert energy.dtype == dtype
         assert torch.allclose(energy, ref)
 
-        # set parameters explicitly
-        if par.dispersion is None or par.dispersion.d3 is None:
+        # create copy as par lives in global scope
+        _par = par.copy(deep=True)
+        if _par.dispersion is None or _par.dispersion.d3 is None:
             assert False
-        default_a1 = par.dispersion.d3.a1
-        default_a2 = par.dispersion.d3.a2
-        default_s8 = par.dispersion.d3.s8
-        par.dispersion.d3.a1 = param["a1"]
-        par.dispersion.d3.a2 = param["a2"]
-        par.dispersion.d3.s8 = param["s8"]
 
-        try:
-            disp = new_dispersion(numbers, positions, par)
-        finally:
-            # reset parameters as `par` lives in global scope
-            par.dispersion.d3.a1 = default_a1
-            par.dispersion.d3.a2 = default_a2
-            par.dispersion.d3.s8 = default_s8
+        # set parameters explicitly
+        _par.dispersion.d3.a1 = param["a1"]
+        _par.dispersion.d3.a2 = param["a2"]
+        _par.dispersion.d3.s8 = param["s8"]
 
+        disp = new_dispersion(numbers, positions, par)
         if disp is None:
             assert False
         edisp = disp.get_energy(positions)

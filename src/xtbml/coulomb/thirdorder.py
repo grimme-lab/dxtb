@@ -82,7 +82,7 @@ class ES3(Interaction):
         self,
         charges: Tensor,
         ihelp: IndexHelper,
-        cache: Interaction.Cache,
+        cache: Interaction.Cache | None,
     ) -> Tensor:
         """
         Calculate the third-order electrostatic energy.
@@ -97,7 +97,7 @@ class ES3(Interaction):
             Atomic charges of all atoms.
         ihelp : IndexHelper
             Index mapping for the basis set.
-        cache : Interaction.Cache
+        cache : Interaction.Cache | None
             Restart data for the interaction.
 
         Returns
@@ -156,8 +156,13 @@ def new_es3(numbers: Tensor, positions: Tensor, par: Param) -> ES3 | None:
         Instance of the ES3 class or `None` if no ES3 is used.
     """
 
-    if par.charge is None:
+    if par.thirdorder is None:
         return None
+
+    if par.thirdorder.shell is True:
+        raise NotImplementedError(
+            "Shell-resolved third order electrostatics are not implemented. Set `thirdorder.shell` parameter to `False`."
+        )
 
     hubbard_derivs = get_elem_param(
         torch.unique(numbers),

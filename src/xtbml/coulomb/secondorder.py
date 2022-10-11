@@ -108,7 +108,7 @@ class ES2(Interaction):
         numbers: Tensor,
         positions: Tensor,
         ihelp: IndexHelper,
-    ) -> Interaction.Cache:
+    ) -> "ES2.Cache":
 
         return self.Cache(
             self.get_shell_coulomb_matrix(numbers, positions, ihelp)
@@ -242,7 +242,9 @@ class ES2(Interaction):
         )
 
 
-def new_es2(numbers: Tensor, positions: Tensor, par: Param) -> ES2 | None:
+def new_es2(
+    numbers: Tensor, positions: Tensor, par: Param, shell_resolved: bool = True
+) -> ES2 | None:
     """
     Create new instance of ES2.
 
@@ -254,6 +256,8 @@ def new_es2(numbers: Tensor, positions: Tensor, par: Param) -> ES2 | None:
         Cartesian coordinates of all atoms.
     par : Param
         Representation of an extended tight-binding model.
+    shell_resolved: bool
+        Electrostatics is shell-resolved.
 
     Returns
     -------
@@ -266,7 +270,9 @@ def new_es2(numbers: Tensor, positions: Tensor, par: Param) -> ES2 | None:
 
     unique = torch.unique(numbers)
     hubbard = get_elem_param(unique, par.element, "gam")
-    lhubbard = get_elem_param(unique, par.element, "lgam")
+    lhubbard = (
+        get_elem_param(unique, par.element, "lgam") if shell_resolved is True else None
+    )
     average = averaging_function[par.charge.effective.average]
     gexp = torch.tensor(par.charge.effective.gexp)
 
