@@ -1,6 +1,12 @@
 Fully Differentiable Extended Tight Binding
 ===========================================
 
+.. image:: https://img.shields.io/badge/python-3.10.6-blue.svg
+    :target: https://www.python.org/downloads/release/python-3106/
+
+.. image:: https://img.shields.io/badge/PyTorch-1.11-blue.svg
+    :target: https://pytorch.org/blog/pytorch-1.11-released/
+
 .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
     :target: https://github.com/psf/black
 
