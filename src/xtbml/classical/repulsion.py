@@ -298,7 +298,7 @@ def new_repulsion(
         If parametrization does not contain a halogen bond correction.
     """
 
-    if par.repulsion is None:
+    if hasattr(par, "repulsion") is False or par.repulsion is None:
         # TODO: Repulsion is used in all models, so error or just warning?
         warnings.warn("No repulsion scheme found.", ParameterWarning)
         return None

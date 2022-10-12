@@ -36,7 +36,7 @@ def new_dispersion(numbers: Tensor, positions: Tensor, par: Param) -> Dispersion
         If parametrization does not contain a halogen bond correction.
     """
 
-    if par.dispersion is None:
+    if hasattr(par, "dispersion") is False or par.dispersion is None:
         # TODO: Dispersion is used in all models, so error or just warning?
         warnings.warn("No dispersion scheme found.", ParameterWarning)
         return None

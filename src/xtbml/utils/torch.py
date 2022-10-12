@@ -5,6 +5,20 @@ import torch
 from ..typing import Any, Tensor
 
 
+@torch.jit.script
+def real_atoms(numbers: Tensor) -> Tensor:
+    return numbers != 0
+
+
+@torch.jit.script
+def real_pairs(numbers: Tensor, diagonal: bool = False) -> Tensor:
+    real = real_atoms(numbers)
+    mask = real.unsqueeze(-2) * real.unsqueeze(-1)
+    if diagonal is True:
+        mask *= ~torch.diag_embed(torch.ones_like(real))
+    return mask
+
+
 def combinations(x: Tensor, r: int = 2) -> Tensor:
     """
     Generate all combinations of matrix elements.

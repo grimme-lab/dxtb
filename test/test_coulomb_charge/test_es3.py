@@ -19,10 +19,12 @@ sample_list = ["01", "02", "SiH4"]
 
 def test_none() -> None:
     dummy = torch.tensor(0.0)
-
     par = GFN1_XTB.copy(deep=True)
-    par.thirdorder = None
 
+    par.thirdorder = None
+    assert es3.new_es3(dummy, dummy, par) is None
+
+    del par.thirdorder
     assert es3.new_es3(dummy, dummy, par) is None
 
 

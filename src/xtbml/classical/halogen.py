@@ -326,7 +326,7 @@ def new_halogen(
         If parametrization does not contain a halogen bond correction.
     """
 
-    if par.halogen is None:
+    if hasattr(par, "halogen") is False or par.halogen is None:
         return None
 
     damp = torch.tensor(par.halogen.classical.damping)

@@ -49,7 +49,9 @@ from ..utils import real_pairs
 
 
 class ES2(Interaction):
-    """Isotropic second-order electrostatic energy (ES2)"""
+    """
+    Isotropic second-order electrostatic energy (ES2).
+    """
 
     hubbard: Tensor
     """Hubbard parameters of all elements."""
@@ -76,7 +78,9 @@ class ES2(Interaction):
     """Electrostatics is shell-resolved"""
 
     class Cache(Interaction.Cache):
-        """Cache for Coulomb matrix."""
+        """
+        Cache for Coulomb matrix in ES2.
+        """
 
         mat: Tensor
         """Coulomb matrix"""
@@ -214,17 +218,17 @@ class ES2(Interaction):
         return 1.0 / torch.pow(dist_gexp + torch.pow(avg, -self.gexp), 1.0 / self.gexp)
 
     def get_atom_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: "ES2.Cache"
+        self, charges: Tensor, ihelp: IndexHelper, cache: Cache
     ) -> Tensor:
         return 0.5 * charges * self.get_atom_potential(charges, ihelp, cache)
 
     def get_shell_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: "ES2.Cache"
+        self, charges: Tensor, ihelp: IndexHelper, cache: Cache
     ) -> Tensor:
         return 0.5 * charges * self.get_shell_potential(charges, ihelp, cache)
 
     def get_atom_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: "ES2.Cache"
+        self, charges: Tensor, ihelp: IndexHelper, cache: Cache
     ) -> Tensor:
         return (
             torch.zeros_like(charges)
@@ -265,7 +269,7 @@ def new_es2(
         Instance of the ES2 class or `None` if no ES2 is used.
     """
 
-    if par.charge is None:
+    if hasattr(par, "charge") is False or par.charge is None:
         return None
 
     unique = torch.unique(numbers)

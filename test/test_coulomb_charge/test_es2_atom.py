@@ -20,10 +20,12 @@ sample_list = ["01", "02", "SiH4"]
 
 def test_none() -> None:
     dummy = torch.tensor(0.0)
-
     par = GFN1_XTB.copy(deep=True)
-    par.charge = None
 
+    par.charge = None
+    assert es2.new_es2(dummy, dummy, par) is None
+
+    del par.charge
     assert es2.new_es2(dummy, dummy, par) is None
 
 
