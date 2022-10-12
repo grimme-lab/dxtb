@@ -15,6 +15,7 @@ from .samples_charged import samples
 opts = {"verbosity": 0, "etemp": 300, "guess": "eeq"}
 
 
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["Ag2Cl22-", "Al3+Ar6", "AD7en+", "C2H4F+", "ZnOOH-"])
 def test_single(dtype: torch.dtype, name: str):

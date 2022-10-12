@@ -346,10 +346,6 @@ opts = {
 def test_element(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
 
-    # SCF does not converge for manganese
-    if number == 25:
-        return
-
     if uhf[number - 1] != 0:
         return
 
@@ -364,14 +360,11 @@ def test_element(dtype: torch.dtype, number: int) -> None:
     assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
 
 
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_cation(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2  #
-
-    # SCF does not converge for gold
-    if number == 79:
-        return
 
     if uhf_cation[number - 1] != 0:
         return
@@ -392,6 +385,7 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
         assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
 
 
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_anion(dtype: torch.dtype, number: int) -> None:
@@ -402,7 +396,7 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
         return
 
     # SCF does not converge
-    if number in [21, 22, 23, 25, 43, 57, 58, 59]:
+    if number == 23:
         return
 
     if uhf_anion[number - 1] != 0:

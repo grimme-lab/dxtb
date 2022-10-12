@@ -17,6 +17,7 @@ from .samples import samples
 opts = {"verbosity": 0, "etemp": 300.0, "guess": "eeq"}
 
 
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "LiH", "SiH4"])
 def test_single(dtype: torch.dtype, name: str):
@@ -34,6 +35,7 @@ def test_single(dtype: torch.dtype, name: str):
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
 
 
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float])
 @pytest.mark.parametrize(
     "name", ["S2", "PbH4-BiH3", "C6H5I-CH3SH", "MB16_43_01", "LYS_xao", "C60"]
@@ -55,6 +57,7 @@ def test_single2(dtype: torch.dtype, name: str):
 
 
 @pytest.mark.large
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float])
 @pytest.mark.parametrize("name", ["vancoh2"])
 def test_single_large(dtype: torch.dtype, name: str):
