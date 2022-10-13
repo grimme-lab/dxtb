@@ -185,9 +185,10 @@ class SelfConsistentField(xt.EditableModule):
 
         return {
             "charges": charges,
+            "density": self._data.density,
+            "emo": self._data.evals,
             "energy": energy,
             "fenergy": fenergy,
-            "density": self._data.density,
             "hamiltonian": self._data.hamiltonian,
         }
 

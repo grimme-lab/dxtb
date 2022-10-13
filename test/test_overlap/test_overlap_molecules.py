@@ -16,7 +16,7 @@ from .samples import samples
 
 ref_overlap = np.load("test/test_overlap/overlap.npz")
 
-molecules = ["SiH4", "PbH4-BiH3"]  # , "LYS_xao"]
+molecules = ["H2O", "CH4", "SiH4", "PbH4-BiH3"]
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

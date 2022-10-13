@@ -22,7 +22,9 @@ def test_fail():
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["H2", "SiH4", "LYS_xao", "C60", "vancoh2"])
+@pytest.mark.parametrize(
+    "name", ["H2", "H2O", "CH4", "SiH4", "LYS_xao", "C60", "vancoh2"]
+)
 def test_single(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
 

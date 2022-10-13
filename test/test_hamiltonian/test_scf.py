@@ -19,7 +19,7 @@ opts = {"verbosity": 0, "etemp": 300.0, "guess": "eeq"}
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["H2", "LiH", "SiH4"])
+@pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
 def test_single(dtype: torch.dtype, name: str):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
 
@@ -32,7 +32,7 @@ def test_single(dtype: torch.dtype, name: str):
     calc = Calculator(numbers, positions, par)
 
     result = calc.singlepoint(numbers, positions, charges, opts)
-    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
+    assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1).item()
 
 
 @pytest.mark.filterwarnings("ignore")
