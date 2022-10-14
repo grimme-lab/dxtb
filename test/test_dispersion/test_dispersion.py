@@ -14,7 +14,7 @@ from xtbml.exceptions import ParameterWarning
 from xtbml.param import GFN1_XTB as par
 from xtbml.utils import batch
 
-from .samples import structures
+from .samples import samples
 
 
 def test_none() -> None:
@@ -32,8 +32,8 @@ def test_none() -> None:
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_disp_batch(dtype: torch.dtype) -> None:
     sample1, sample2 = (
-        structures["PbH4-BiH3"],
-        structures["C6H5I-CH3SH"],
+        samples["PbH4-BiH3"],
+        samples["C6H5I-CH3SH"],
     )
     numbers = batch.pack(
         (
@@ -93,7 +93,7 @@ def test_disp_batch(dtype: torch.dtype) -> None:
 @pytest.mark.grad
 def test_param_grad():
     dtype = torch.float64
-    sample = structures["C4H5NCS"]
+    sample = samples["C4H5NCS"]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
     param = (

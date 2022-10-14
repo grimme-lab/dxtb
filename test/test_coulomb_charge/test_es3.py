@@ -12,9 +12,9 @@ from xtbml.utils import batch
 from xtbml.param import GFN1_XTB, get_elem_param, get_elem_angular
 from xtbml.typing import Tensor
 
-from .samples import mb16_43
+from .samples import samples
 
-sample_list = ["01", "02", "SiH4"]
+sample_list = ["MB16_43_01", "MB16_43_02", "SiH4_atom"]
 
 
 def test_none() -> None:
@@ -42,10 +42,10 @@ def test_fail() -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 @pytest.mark.parametrize("name", sample_list)
-def test_mb16_43(dtype: torch.dtype, name: str) -> None:
+def test_single(dtype: torch.dtype, name: str) -> None:
     """Test ES3 for some samples from MB16_43."""
 
-    sample = mb16_43[name]
+    sample = samples[name]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
     qat = sample["q"].type(dtype)
@@ -66,7 +66,7 @@ def test_mb16_43(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Test batched calculation of ES3."""
-    sample1, sample2 = mb16_43[name1], mb16_43[name2]
+    sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         (
             sample1["numbers"],
@@ -107,7 +107,7 @@ def test_grad_param(name: str) -> None:
     """Test autograd for ES3 parameters."""
     dtype = torch.float64
 
-    sample = mb16_43[name]
+    sample = samples[name]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
     qat = sample["q"].type(dtype)

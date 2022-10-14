@@ -6,14 +6,14 @@ from xtbml.solvation import alpb
 from xtbml.param import GFN1_XTB as par
 from xtbml.xtb import Calculator
 
-from .samples import mb16_43
+from .samples import samples
 
 
 opts = {"verbosity": 0}
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-@pytest.mark.parametrize("sample", [mb16_43["01"], mb16_43["02"]])
+@pytest.mark.parametrize("sample", [samples["MB16_43_01"], samples["MB16_43_02"]])
 def test_gb_single(dtype: torch.dtype, sample, dielectric_constant=78.9):
 
     dielectric_constant = torch.tensor(dielectric_constant, dtype=dtype)
@@ -29,7 +29,9 @@ def test_gb_single(dtype: torch.dtype, sample, dielectric_constant=78.9):
     assert torch.allclose(energies, sample["energies"].type(dtype))
 
 
-def test_gb_scf(dtype=torch.float, sample=mb16_43["01"], dielectric_constant=78.9):
+def test_gb_scf(
+    dtype=torch.float, sample=samples["MB16_43_01"], dielectric_constant=78.9
+):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
 
     numbers = sample["numbers"]
@@ -51,7 +53,9 @@ def test_gb_scf(dtype=torch.float, sample=mb16_43["01"], dielectric_constant=78.
     assert pytest.approx(ref, abs=tol) == gsolv
 
 
-def test_gb_scf_grad(dtype=torch.float, sample=mb16_43["01"], dielectric_constant=78.9):
+def test_gb_scf_grad(
+    dtype=torch.float, sample=samples["MB16_43_01"], dielectric_constant=78.9
+):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
 
     numbers = sample["numbers"]

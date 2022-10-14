@@ -10,14 +10,14 @@ from xtbml.solvation import born, vdw_rad_d3
 from xtbml.typing import Tensor
 from xtbml.utils import batch
 
-from .samples import mb16_43
+from .samples import samples
 
 
-@pytest.mark.parametrize("name", ["01", "02"])
+@pytest.mark.parametrize("name", ["MB16_43_01", "MB16_43_02"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_psi(name: str, dtype: torch.dtype):
     """Test psi for mb16_43_01 and mb16_43_02."""
-    sample = mb16_43[name]
+    sample = samples[name]
 
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
@@ -27,11 +27,11 @@ def test_psi(name: str, dtype: torch.dtype):
     assert torch.allclose(psi, sample["psi"].type(dtype))
 
 
-@pytest.mark.parametrize("name", ["01", "02"])
+@pytest.mark.parametrize("name", ["MB16_43_01", "MB16_43_02"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_radii(name: str, dtype: torch.dtype):
     """Test Born radii for mb16_43_01 and mb16_43_02."""
-    sample = mb16_43[name]
+    sample = samples[name]
 
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
@@ -40,12 +40,12 @@ def test_radii(name: str, dtype: torch.dtype):
     assert torch.allclose(rads, sample["born"].type(dtype))
 
 
-@pytest.mark.parametrize("name1", ["01", "02"])
-@pytest.mark.parametrize("name2", ["01", "SiH4"])
+@pytest.mark.parametrize("name1", ["MB16_43_01", "MB16_43_02"])
+@pytest.mark.parametrize("name2", ["MB16_43_01", "SiH4"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_psi_batch(name1: str, name2: str, dtype: torch.dtype):
     """Test psi for batch."""
-    sample1, sample2 = mb16_43[name1], mb16_43[name2]
+    sample1, sample2 = samples[name1], samples[name2]
 
     numbers = batch.pack(
         (
@@ -72,12 +72,12 @@ def test_psi_batch(name1: str, name2: str, dtype: torch.dtype):
     assert torch.allclose(psi, ref)
 
 
-@pytest.mark.parametrize("name1", ["01", "02"])
-@pytest.mark.parametrize("name2", ["01", "SiH4"])
+@pytest.mark.parametrize("name1", ["MB16_43_01", "MB16_43_02"])
+@pytest.mark.parametrize("name2", ["MB16_43_01", "SiH4"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_radii_batch(name1: str, name2: str, dtype: torch.dtype):
     """Test Born radii for batch."""
-    sample1, sample2 = mb16_43[name1], mb16_43[name2]
+    sample1, sample2 = samples[name1], samples[name2]
 
     numbers = batch.pack(
         (
@@ -110,11 +110,11 @@ def test_radii_batch(name1: str, name2: str, dtype: torch.dtype):
 
 
 @pytest.mark.grad
-@pytest.mark.parametrize("name", ["01", "SiH4"])
+@pytest.mark.parametrize("name", ["MB16_43_01", "SiH4"])
 def test_psi_grad(name: str):
     """Test autograd of psi w.r.t to positions."""
     dtype = torch.double
-    sample = mb16_43[name]
+    sample = samples[name]
 
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
@@ -132,11 +132,11 @@ def test_psi_grad(name: str):
 
 
 @pytest.mark.grad
-@pytest.mark.parametrize("name", ["01", "SiH4"])
+@pytest.mark.parametrize("name", ["MB16_43_01", "SiH4"])
 def test_radii_grad(name: str):
     """Test autograd of born radii w.r.t to positions."""
     dtype = torch.double
-    sample = mb16_43[name]
+    sample = samples[name]
 
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)

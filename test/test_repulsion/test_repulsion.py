@@ -19,6 +19,9 @@ from xtbml.utils import batch
 from .samples import samples
 
 
+sample_list = ["SiH4", "MB16_43_01", "MB16_43_02", "LYS_xao"]
+
+
 def test_none() -> None:
     dummy = torch.tensor(0.0)
     _par = par.copy(deep=True)
@@ -30,8 +33,9 @@ def test_none() -> None:
         del _par.repulsion
         assert new_repulsion(dummy, dummy, _par) is None
 
+
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["SiH4", "01", "02", "LYS_xao"])
+@pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
@@ -51,9 +55,10 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     assert pytest.approx(ref, abs=tol) == e.sum(-1).item()
 
+
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name1", ["SiH4", "01", "02", "LYS_xao"])
-@pytest.mark.parametrize("name2", ["SiH4", "01", "02", "LYS_xao"])
+@pytest.mark.parametrize("name1", sample_list)
+@pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
@@ -88,9 +93,10 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     assert pytest.approx(ref, abs=tol) == e.sum(-1)
 
+
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", ["SiH4", "01", "02", "03", "LYS_xao"])
+@pytest.mark.parametrize("name", sample_list + ["MB16_43_03"])
 def test_grad_pos_backward(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
@@ -118,8 +124,9 @@ def test_grad_pos_backward(dtype: torch.dtype, name: str) -> None:
 
     assert torch.allclose(grad_analytical, grad_backward, atol=tol)
 
+
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", ["SiH4", "01", "02", "03", "LYS_xao"])
+@pytest.mark.parametrize("name", sample_list + ["MB16_43_03"])
 def test_grad_pos_analytical(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
@@ -142,9 +149,10 @@ def test_grad_pos_analytical(dtype: torch.dtype, name: str) -> None:
 
     assert torch.allclose(grad_analytical, grad_numerical, atol=tol)
 
+
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", ["SiH4", "01", "02", "03", "LYS_xao"])
+@pytest.mark.parametrize("name", sample_list + ["MB16_43_03"])
 def test_grad_param(dtype: torch.dtype, name: str) -> None:
     """
     Check a single analytical gradient of parameters against numerical
@@ -183,9 +191,7 @@ def test_grad_param(dtype: torch.dtype, name: str) -> None:
         dtype=dtype,
         requires_grad=True,
     )
-    _kexp = torch.tensor(
-        par.repulsion.effective.kexp, dtype=dtype, requires_grad=True
-    )
+    _kexp = torch.tensor(par.repulsion.effective.kexp, dtype=dtype, requires_grad=True)
 
     def func(arep: Tensor, zeff: Tensor, kexp: Tensor) -> Tensor:
         rep = Repulsion(numbers, positions, arep, zeff, kexp)

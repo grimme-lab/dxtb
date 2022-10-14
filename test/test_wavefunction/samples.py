@@ -4,11 +4,12 @@ Molecules for testing the wavefunctions and properties.
 
 import torch
 
-from xtbml.typing import Tensor, Molecule
-from xtbml.utils import symbol2number
+from ..molecules import merge_nested_dicts, mols
+
+from xtbml.typing import Molecule, Tensor, TypedDict
 
 
-class Record(Molecule):
+class Refs(TypedDict):
     """Format of reference records (calculated with xTB 6.5.1)."""
 
     density: Tensor
@@ -48,19 +49,12 @@ class Record(Molecule):
     """Reference values for Wiberg bond orders."""
 
 
-samples: dict[str, Record] = {
+class Record(Molecule, Refs):
+    """Store for molecular information and reference values"""
+
+
+refs: dict[str, Refs] = {
     "H2": {
-        "numbers": symbol2number(["H", "H"]),
-        "positions": torch.tensor(
-            [
-                0.00000000000000,
-                0.00000000000000,
-                -0.70252931147690,
-                0.00000000000000,
-                0.00000000000000,
-                0.70252931147690,
-            ],
-        ).reshape((-1, 3)),
         "n_electrons": torch.tensor(2.0),
         "charges": torch.tensor(0.0),
         "density": torch.tensor(
@@ -146,17 +140,6 @@ samples: dict[str, Record] = {
         ),
     },
     "LiH": {
-        "numbers": symbol2number(["Li", "H"]),
-        "positions": torch.tensor(
-            [
-                0.00000000000000,
-                0.00000000000000,
-                -1.50796743897235,
-                0.00000000000000,
-                0.00000000000000,
-                1.50796743897235,
-            ],
-        ).reshape((-1, 3)),
         "n_electrons": torch.tensor(2.0),
         "charges": torch.tensor(0.0),
         "density": torch.tensor(
@@ -286,26 +269,6 @@ samples: dict[str, Record] = {
         ),
     },
     "SiH4": {
-        "numbers": symbol2number(["Si", "H", "H", "H", "H"]),
-        "positions": torch.tensor(
-            [
-                0.00000000000000,
-                -0.00000000000000,
-                0.00000000000000,
-                1.61768389755830,
-                1.61768389755830,
-                -1.61768389755830,
-                -1.61768389755830,
-                -1.61768389755830,
-                -1.61768389755830,
-                1.61768389755830,
-                -1.61768389755830,
-                1.61768389755830,
-                -1.61768389755830,
-                1.61768389755830,
-                1.61768389755830,
-            ],
-        ).reshape((-1, 3)),
         "n_electrons": torch.tensor(8.0),
         "charges": torch.tensor(0.0),
         "density": torch.tensor(
@@ -1012,13 +975,6 @@ samples: dict[str, Record] = {
         ),
     },
     "S2": {
-        "numbers": symbol2number(["S", "S"]),
-        "positions": torch.tensor(
-            [
-                [0.00000000000000, 0.00000000000000, -1.80281271474629],
-                [0.00000000000000, 0.00000000000000, 1.80281271474629],
-            ],
-        ),
         "n_electrons": torch.tensor(12.0),
         "charges": torch.tensor(0.0),
         "density": torch.tensor([0.0]),
@@ -1075,3 +1031,6 @@ samples: dict[str, Record] = {
         "wiberg": torch.tensor([0.0]),
     },
 }
+
+
+samples: dict[str, Record] = merge_nested_dicts(mols, refs)

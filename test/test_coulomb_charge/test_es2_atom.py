@@ -13,9 +13,9 @@ from xtbml.param import GFN1_XTB, get_elem_param, get_elem_angular
 from xtbml.typing import Tensor
 from xtbml.utils import batch
 
-from .samples import mb16_43
+from .samples import samples
 
-sample_list = ["01", "02", "SiH4"]
+sample_list = ["MB16_43_01", "MB16_43_02", "SiH4_atom"]
 
 
 def test_none() -> None:
@@ -31,10 +31,10 @@ def test_none() -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 @pytest.mark.parametrize("name", sample_list)
-def test_mb16_43(dtype: torch.dtype, name: str) -> None:
-    """Test ES2 for some samples from mb16_43."""
+def test_single(dtype: torch.dtype, name: str) -> None:
+    """Test ES2 for some samples from MB16_43."""
 
-    sample = mb16_43[name]
+    sample = samples[name]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
     qat = sample["q"].type(dtype)
@@ -43,7 +43,7 @@ def test_mb16_43(dtype: torch.dtype, name: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
     es = es2.new_es2(numbers, positions, GFN1_XTB, shell_resolved=False)
     if es is None:
-        assert False
+        assert False, es
 
     cache = es.get_cache(numbers, positions, ihelp)
     e = es.get_atom_energy(qat, ihelp, cache)
@@ -54,7 +54,7 @@ def test_mb16_43(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
-    sample1, sample2 = mb16_43[name1], mb16_43[name2]
+    sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         (
             sample1["numbers"],
@@ -95,7 +95,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 def test_grad_positions(name: str) -> None:
     dtype = torch.float64
 
-    sample = mb16_43[name]
+    sample = samples[name]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
     qat = sample["q"].type(dtype)
@@ -124,7 +124,7 @@ def test_grad_positions(name: str) -> None:
 def test_grad_param(name: str) -> None:
     dtype = torch.float64
 
-    sample = mb16_43[name]
+    sample = samples[name]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
     qat = sample["q"].type(dtype)
