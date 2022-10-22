@@ -5,8 +5,8 @@ DFT-D3(BJ) dispersion model.
 
 import tad_dftd3 as d3
 
-from .abc import Dispersion
 from ..typing import Tensor
+from .abc import Dispersion
 
 
 class DispersionD3(Dispersion):

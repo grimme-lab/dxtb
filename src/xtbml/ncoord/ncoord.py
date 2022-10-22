@@ -7,7 +7,6 @@ import torch
 from ..data import cov_rad_d3
 from ..typing import CountingFunction, Tensor
 
-
 # TODO: differentiate GFN1 and GFN2
 # from xtbml.constants import KCN, KA, KB, R_SHIFT
 
@@ -71,5 +70,3 @@ def get_coordination_number(
         positions.new_tensor(0.0),
     )
     return torch.sum(cf, dim=-1)
-
-

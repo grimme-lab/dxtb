@@ -4,10 +4,9 @@ Basis set class.
 
 import torch
 
-from . import IndexHelper, orthogonalize, slater
 from ..param import Param, get_elem_param, get_elem_pqn, get_elem_valence
 from ..typing import Tensor
-
+from . import IndexHelper, orthogonalize, slater
 
 # fmt: off
 primes = torch.tensor(

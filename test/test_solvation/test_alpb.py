@@ -1,13 +1,13 @@
-import pytest
-import torch
 import math
 
-from xtbml.solvation import alpb
+import pytest
+import torch
+
 from xtbml.param import GFN1_XTB as par
+from xtbml.solvation import alpb
 from xtbml.xtb import Calculator
 
 from .samples import samples
-
 
 opts = {"verbosity": 0}
 

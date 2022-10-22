@@ -1,6 +1,7 @@
 """Run tests for overlap."""
 
 from math import sqrt
+
 import numpy as np
 import pytest
 import torch
@@ -11,8 +12,8 @@ from xtbml.param import get_elem_angular
 from xtbml.utils import batch, load_from_npz
 from xtbml.xtb import Hamiltonian
 
-from .samples import samples
 from ..utils import combinations as combis
+from .samples import samples
 
 ref_overlap = np.load("test/test_overlap/overlap.npz")
 

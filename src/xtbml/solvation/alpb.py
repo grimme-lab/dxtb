@@ -37,13 +37,12 @@ tensor(-5.0762e-05)
 
 import torch
 
-from .born import get_born_radii
-from .data import vdw_rad_d3
 from ..basis import IndexHelper
 from ..interaction import Interaction
-from ..typing import Tensor, Any
+from ..typing import Any, Tensor
 from ..utils import real_pairs
-
+from .born import get_born_radii
+from .data import vdw_rad_d3
 
 alpha = 0.571412
 

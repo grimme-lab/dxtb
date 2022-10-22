@@ -9,11 +9,11 @@ from ..constants import EV2AU
 from ..data import atomic_rad
 from ..integral import mmd
 from ..param import (
+    Param,
     get_elem_angular,
     get_elem_param,
     get_elem_valence,
     get_pair_param,
-    Param,
 )
 from ..typing import Tensor
 from ..utils import batch, t2int

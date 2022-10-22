@@ -1,6 +1,7 @@
-from typing import Callable, Union, List, Tuple
-import torch
 from pathlib import Path
+from typing import Callable, List, Tuple, Union
+
+import torch
 
 from ..exlibs.tbmalt import Geometry
 
@@ -85,9 +86,9 @@ class Geometry_Handler:
 
     def filter_geometry_by_filelist(
         geometry: Geometry,
-        file_list: List[str],
-        filter_rule: Callable[[List[str]], List[int]],
-    ) -> Union[Tuple[Geometry, List[str]], Tuple[None, List[str]]]:
+        file_list: list[str],
+        filter_rule: Callable[[list[str]], list[int]],
+    ) -> Union[tuple[Geometry, list[str]], tuple[None, list[str]]]:
 
         filter = filter_rule(file_list)
         mask = [i for i in range(len(geometry)) if i not in filter]
@@ -98,7 +99,7 @@ class Geometry_Handler:
 
         return geometry, file_list
 
-    def filter_only_charged(file_list: List[str]) -> List[int]:
+    def filter_only_charged(file_list: list[str]) -> list[int]:
         """Filter for samples with charged (i.e. not neutral) compounds.
 
         Args:

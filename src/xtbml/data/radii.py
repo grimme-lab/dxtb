@@ -1,8 +1,9 @@
 """
-Atomic and covalent radii in atomic units for all elements. 
+Atomic and covalent radii in atomic units for all elements.
 """
 
 import torch
+
 from ..constants import AA2AU
 
 atomic_rad = AA2AU * torch.tensor(
@@ -130,7 +131,7 @@ atomic_rad = AA2AU * torch.tensor(
 )
 
 # fmt: off
-cov_rad_2009 = AA2AU * torch.tensor([ 
+cov_rad_2009 = AA2AU * torch.tensor([
     0.00,  # None
     0.32,0.46,  # H,He
     1.20,0.94,0.77,0.75,0.71,0.63,0.64,0.67,  # Li-Ne

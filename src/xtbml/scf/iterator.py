@@ -19,13 +19,13 @@ import xitorch as xt
 import xitorch.linalg as xtl
 import xitorch.optimize as xto
 
-from .guess import get_guess
 from ..basis import IndexHelper
-from ..constants import defaults, K2AU
+from ..constants import K2AU, defaults
 from ..interaction import Interaction
 from ..typing import Any, Tensor
 from ..utils import real_atoms
 from ..wavefunction import filling, mulliken
+from .guess import get_guess
 
 
 class SelfConsistentField(xt.EditableModule):
@@ -114,7 +114,7 @@ class SelfConsistentField(xt.EditableModule):
     Options for SCF:
     - "etemp": Electronic temperature (in a.u.) for Fermi smearing.
     - "fermi_maxiter": Maximum number of iterations for Fermi smearing.
-    - "fermi_thresh": Float data type dependent threshold for Fermi iterations. 
+    - "fermi_thresh": Float data type dependent threshold for Fermi iterations.
     - "fermi_fenergy_partition": Partitioning scheme for electronic free energy.
     """
 

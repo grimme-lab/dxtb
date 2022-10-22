@@ -7,11 +7,12 @@ Calculation of overlap integrals using the McMurchie-Davidson algorithm.
 """
 
 import math
+
 import torch
 
-from . import transform
 from ..exceptions import IntegralTransformError
 from ..typing import Tensor
+from . import transform
 
 sqrtpi = math.sqrt(math.pi)
 sqrtpi3 = sqrtpi**3

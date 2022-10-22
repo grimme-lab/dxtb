@@ -4,9 +4,9 @@ Models for the initial charge guess for the SCF.
 
 import torch
 
-from ..charges import ChargeModel, solve
 from ..basis import IndexHelper
-from ..ncoord import get_coordination_number, exp_count
+from ..charges import ChargeModel, solve
+from ..ncoord import exp_count, get_coordination_number
 from ..typing import Tensor
 
 

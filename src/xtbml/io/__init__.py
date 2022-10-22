@@ -1,5 +1,5 @@
 """
-Functions for reading and writing files. 
+Functions for reading and writing files.
 """
 
 from . import read

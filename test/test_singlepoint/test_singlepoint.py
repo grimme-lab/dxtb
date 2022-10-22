@@ -4,6 +4,7 @@ Run tests for singlepoint calculation with read from coord file.
 
 from math import sqrt
 from pathlib import Path
+
 import pytest
 import torch
 

@@ -7,8 +7,8 @@ import torch
 
 from xtbml.basis import IndexHelper
 from xtbml.classical import Halogen, new_halogen
-from xtbml.param import get_elem_angular, get_elem_param
 from xtbml.param import GFN1_XTB as par
+from xtbml.param import get_elem_angular, get_elem_param
 from xtbml.typing import Tensor
 from xtbml.utils import batch
 

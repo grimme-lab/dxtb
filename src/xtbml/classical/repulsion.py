@@ -1,6 +1,6 @@
 """
 Classical repulsion energy contribution
-======================================= 
+=======================================
 
 This module implements the classical repulsion energy term.
 
@@ -8,8 +8,8 @@ Note
 ----
 The Repulsion class is constructed for geometry optimization, i.e., the atomic
 numbers are set upon instantiation (`numbers` is a property), and the parameters
-in the cache are created for only those atomic numbers. The positions, however, 
-must be supplied to the `get_energy` (or `get_grad`) method. 
+in the cache are created for only those atomic numbers. The positions, however,
+must be supplied to the `get_energy` (or `get_grad`) method.
 
 Example
 -------
@@ -34,15 +34,16 @@ tensor(0.0303)
 """
 
 import warnings
+
 import torch
 
-from .abc import Classical
 from ..basis import IndexHelper
 from ..constants import xtb
 from ..exceptions import ParameterWarning
 from ..param import Param, get_elem_param
 from ..typing import Tensor, TensorLike
 from ..utils import real_pairs
+from .abc import Classical
 
 
 class Repulsion(Classical, TensorLike):
@@ -111,7 +112,7 @@ class Repulsion(Classical, TensorLike):
 
         kexp: Tensor
         """
-        Scaling of the interatomic distance in the exponential damping function 
+        Scaling of the interatomic distance in the exponential damping function
         of the repulsion energy.
         """
 

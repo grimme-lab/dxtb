@@ -2,8 +2,8 @@
 Test bond order functionality.
 """
 
-import torch
 import pytest
+import torch
 
 from xtbml import bond
 from xtbml.utils import batch

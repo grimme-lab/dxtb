@@ -1,7 +1,7 @@
 """Testing the charges module."""
 
-import torch
 import pytest
+import torch
 
 from xtbml import charges
 from xtbml.typing import Tensor
