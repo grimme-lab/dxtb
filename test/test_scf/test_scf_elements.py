@@ -12,7 +12,6 @@ from xtbml.xtb import Calculator
 
 from .samples import samples
 
-
 ref = torch.tensor(
     [
         -0.4014294744618301,

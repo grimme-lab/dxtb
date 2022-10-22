@@ -5,6 +5,7 @@ Meta data associated with a parametrization. Mainly used for identification of d
 """
 
 from typing import Optional
+
 from pydantic import BaseModel
 
 

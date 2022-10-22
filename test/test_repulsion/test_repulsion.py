@@ -5,19 +5,19 @@ Run tests for repulsion contribution.
 """
 
 from math import sqrt
-import torch
+
 import pytest
+import torch
 
 from xtbml.basis import IndexHelper
 from xtbml.classical import Repulsion, new_repulsion
 from xtbml.exceptions import ParameterWarning
-from xtbml.param import get_elem_angular, get_elem_param
 from xtbml.param import GFN1_XTB as par
+from xtbml.param import get_elem_angular, get_elem_param
 from xtbml.typing import Tensor
 from xtbml.utils import batch
 
 from .samples import samples
-
 
 sample_list = ["SiH4", "MB16_43_01", "MB16_43_02", "LYS_xao"]
 

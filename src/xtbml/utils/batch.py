@@ -1,15 +1,15 @@
-# -*- coding: utf-8 -*-
 # NOTE: THANKS TO THE COURTESY OF https://github.com/tbmalt/tbmalt
 """Helper functions for batch operations.
 
 This module contains classes and helper functions associated with batch
 construction, handling and maintenance.
 """
-from functools import reduce, partial
 from collections import namedtuple
+from functools import partial, reduce
+
 import torch
 
-from ..typing import Any, Literal, overload, Tensor
+from ..typing import Any, Literal, Tensor, overload
 
 __sort = namedtuple("sort", ("values", "indices"))
 Sliceable = list[Tensor] | tuple[Tensor, Tensor]

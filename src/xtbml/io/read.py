@@ -1,7 +1,8 @@
-from pathlib import Path
-from json import dumps as json_dump
 from json import dump as json_dump_file
+from json import dumps as json_dump
 from json import loads as json_load
+from pathlib import Path
+
 import torch
 
 from ..constants import ATOMIC_NUMBER
@@ -46,7 +47,7 @@ def read_xyz(fp: str | Path) -> list[list[float | int]]:
     arr = []
     num_atoms = 0
 
-    with open(fp, "r", encoding="utf-8") as file:
+    with open(fp, encoding="utf-8") as file:
         for line_number, line in enumerate(file):
             if line_number == 0:
                 num_atoms = int(line)
@@ -85,7 +86,7 @@ def read_coord(fp: str | Path) -> list[list[float | int]]:
     arr = []
     breakpoints = ["$user-defined bonds", "$redundant", "$end", "$periodic"]
 
-    with open(fp, "r", encoding="utf-8") as file:
+    with open(fp, encoding="utf-8") as file:
         lines = file.readlines()
         for line in lines:
             l = line.split()
@@ -126,13 +127,13 @@ def read_chrg(fp: str | Path) -> int:
     if not Path(fp).is_file():
         return 0
 
-    with open(fp, "r", encoding="utf-8") as file:
+    with open(fp, encoding="utf-8") as file:
         return int(file.read())
 
 
 def read_energy(fp: str) -> float:
     """Read energy file in TM format (energy is three times on second line)."""
-    with open(fp, "r", encoding="utf-8") as file:
+    with open(fp, encoding="utf-8") as file:
         for i, line in enumerate(file):
             if i == 1:
                 return float(line.strip().split()[-1])
@@ -142,7 +143,7 @@ def read_energy(fp: str) -> float:
 
 def read_tblite_gfn(fp: Path | str) -> tuple[float, list[float]]:
     """Read energy file from tblite json output."""
-    with open(fp, "r", encoding="utf-8") as file:
+    with open(fp, encoding="utf-8") as file:
         data = json_load(file.read())
 
         return data["energies"], torch.tensor(data["gradient"]).reshape(-1, 3).tolist()
@@ -155,7 +156,7 @@ def read_orca_engrad(fp: Path | str) -> tuple[float, list[float]]:
 
     start_energy = -1
     energy = 0.0
-    with open(fp, "r", encoding="utf-8") as file:
+    with open(fp, encoding="utf-8") as file:
         for i, line in enumerate(file):
             # energy
             if line.startswith("# The current total energy in Eh"):

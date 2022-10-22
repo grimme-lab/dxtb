@@ -4,9 +4,9 @@ Container for interactions.
 
 import torch
 
-from .abc import Interaction
 from ..basis import IndexHelper
 from ..typing import Tensor
+from .abc import Interaction
 
 
 class InteractionList(Interaction):

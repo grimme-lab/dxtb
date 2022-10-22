@@ -30,13 +30,13 @@ tensor(0.0025)
 
 import torch
 
-from .abc import Classical
 from ..basis import IndexHelper
 from ..constants import xtb
 from ..data import atomic_rad
 from ..param import Param, get_elem_param
 from ..typing import Tensor, TensorLike
 from ..utils import batch
+from .abc import Classical
 
 
 class Halogen(Classical, TensorLike):

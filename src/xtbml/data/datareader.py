@@ -1,15 +1,15 @@
-from json import dumps as json_dump
-from json import dump as json_dump_file
-from pathlib import Path
 import os
+from json import dump as json_dump_file
+from json import dumps as json_dump
+from pathlib import Path
 
-from torch.utils.data import DataLoader
 import torch
+from torch.utils.data import DataLoader
 
 from ..charges import ChargeModel, solve
 from ..constants import units
 from ..io import read
-from ..ncoord import get_coordination_number, exp_count
+from ..ncoord import exp_count, get_coordination_number
 from ..param import GFN1_XTB as par
 from ..xtb import Calculator
 
@@ -243,7 +243,7 @@ class Datareader:
             raise ValueError(f"No data found for name '{name}'.")
 
         tuples = zip(*selected_pairs)
-        file_list, data = [list(tuple) for tuple in tuples]
+        file_list, data = (list(tuple) for tuple in tuples)
 
         if inplace is True:
             self.data = data
@@ -256,7 +256,7 @@ class Datareader:
         zipped_lists = zip(self.file_list, self.data)
         sorted_pairs = sorted(zipped_lists, key=lambda s: s[0].casefold())
         tuples = zip(*sorted_pairs)
-        file_list, data = [list(tuple) for tuple in tuples]
+        file_list, data = (list(tuple) for tuple in tuples)
 
         self.data = data
         self.file_list = file_list
@@ -411,7 +411,7 @@ class Datareader:
         if not path.is_file():
             raise FileNotFoundError(f"File '{path}' not found.")
 
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             for line in f:
                 if line.startswith("$tmer") or line.startswith("tmer2++"):
                     print(f"{self.benchmark}_{count}", end="\r", flush=True)

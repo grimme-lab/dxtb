@@ -3,6 +3,7 @@ Counting functions and their analytical derivatives.
 """
 
 from math import pi, sqrt
+
 import torch
 
 from ..constants import xtb

@@ -2,9 +2,9 @@
 Molecules for testing the Hamiltonian. Reference values are stored in npz file.
 """
 
-from ..molecules import mols
-
 from xtbml.typing import Molecule
+
+from ..molecules import mols
 
 extra: dict[str, Molecule] = {
     "H2_nocn": {

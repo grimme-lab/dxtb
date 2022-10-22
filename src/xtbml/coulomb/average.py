@@ -6,7 +6,6 @@ import torch
 
 from ..typing import Callable, Tensor
 
-
 AveragingFunction = Callable[[Tensor], Tensor]
 
 

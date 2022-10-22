@@ -39,13 +39,13 @@ tensor(0.0005078)
 
 import torch
 
-from .average import AveragingFunction, averaging_function, harmonic_average
 from ..basis import IndexHelper
 from ..constants import xtb
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
 from ..typing import Tensor
 from ..utils import real_pairs
+from .average import AveragingFunction, averaging_function, harmonic_average
 
 
 class ES2(Interaction):

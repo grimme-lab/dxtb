@@ -3,16 +3,8 @@ Type annotations for this project.
 """
 
 from collections.abc import Callable, Generator
+from typing import Any, Literal, Optional, Protocol, TypedDict, TypeGuard, overload
 
-from typing import (
-    Any,
-    TypedDict,
-    Literal,
-    Optional,
-    overload,
-    Protocol,
-    TypeGuard
-)
 import torch
 from torch import Tensor
 

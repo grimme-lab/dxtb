@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from xtbml.data import cov_rad_d3
-from xtbml.ncoord import get_coordination_number, exp_count
+from xtbml.ncoord import exp_count, get_coordination_number
 from xtbml.utils import batch
 
 from .samples import samples

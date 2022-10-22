@@ -4,7 +4,6 @@ Default settings for `dxtb` calculations.
 
 import torch
 
-
 THRESH = {
     torch.float16: torch.tensor(1e-2, dtype=torch.float16),
     torch.float32: torch.tensor(1e-5, dtype=torch.float32),

@@ -4,6 +4,7 @@ Reference values obtained with tbmalt.
 """
 
 from math import sqrt
+
 import pytest
 import torch
 

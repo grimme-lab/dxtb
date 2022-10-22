@@ -4,15 +4,13 @@ Base calculator for the extended tight-binding model.
 
 import torch
 
-from .h0 import Hamiltonian
 from .. import scf
 from ..basis import IndexHelper
-from ..classical import Halogen, new_halogen
-from ..classical import Repulsion, new_repulsion
+from ..classical import Halogen, Repulsion, new_halogen, new_repulsion
 from ..constants import defaults
 from ..coulomb import new_es2, new_es3
-from ..dispersion import Dispersion, new_dispersion
 from ..data import cov_rad_d3
+from ..dispersion import Dispersion, new_dispersion
 from ..interaction import Interaction, InteractionList
 from ..ncoord import exp_count, get_coordination_number
 from ..param import Param, get_elem_angular
@@ -20,6 +18,7 @@ from ..typing import Any, Tensor
 from ..utils import Timers
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian
+from .h0 import Hamiltonian
 
 
 class Result:

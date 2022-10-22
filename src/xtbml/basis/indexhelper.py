@@ -14,11 +14,11 @@ torch.tensor(6)
 """
 
 from functools import wraps
+
 import torch
 
 from ..typing import Callable, Tensor
 from ..utils import batch
-
 
 Gather = Callable[[Tensor, int, Tensor], Tensor]
 Scatter = Callable[[Tensor, int, Tensor, str], Tensor]

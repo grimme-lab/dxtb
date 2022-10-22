@@ -8,6 +8,7 @@ class ParameterWarning(UserWarning):
     Warning for when a parameter is not set.
     """
 
+
 class TimerError(Exception):
     """
     A custom exception used to report errors in use of Timer class.

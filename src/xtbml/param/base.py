@@ -14,8 +14,8 @@ while a deserialized model in `tblite`_ is already verified at this stage.
 
 from pydantic import BaseModel
 
-from .dispersion import Dispersion
 from .charge import Charge
+from .dispersion import Dispersion
 from .element import Element
 from .halogen import Halogen
 from .hamiltonian import Hamiltonian

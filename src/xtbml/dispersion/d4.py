@@ -2,8 +2,8 @@
 DFT-D4 dispersion model.
 """
 
-from .abc import Dispersion
 from ..typing import Tensor
+from .abc import Dispersion
 
 
 class DispersionD4(Dispersion):
@@ -34,4 +34,3 @@ class DispersionD4(Dispersion):
         """
 
         raise NotImplementedError("D4 dispersion scheme not implemented.")
-    

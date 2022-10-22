@@ -2,9 +2,9 @@
 Definition of the isotropic second-order charge interactions.
 """
 
-from ..constants import xtb
-
 from pydantic import BaseModel
+
+from ..constants import xtb
 
 
 class ChargeEffective(BaseModel):
