@@ -1,5 +1,6 @@
 """
-Provides abstract base class for interactions in the extended tight-binding Hamiltonian
+Provides base class for interactions in the extended tight-binding Hamiltonian.
+The `Interaction` class is not purely abstract as its methods return zero.
 """
 
 import torch
@@ -20,8 +21,6 @@ class Interaction(TensorLike):
         """
         Restart data for individual interactions, extended by subclasses as needed.
         """
-
-        pass
 
     def __init__(self, device: torch.device, dtype: torch.dtype):
         super().__init__(device, dtype)

@@ -1,9 +1,12 @@
-from __future__ import annotations
+"""
+Function for creating a new instance of a Dispersion.
+"""
+
 import warnings
 
+from .abc import Dispersion
 from .d3 import DispersionD3
 from .d4 import DispersionD4
-from .type import Dispersion
 from ..exceptions import ParameterWarning
 from ..param import Param
 from ..typing import Tensor
@@ -33,7 +36,7 @@ def new_dispersion(numbers: Tensor, positions: Tensor, par: Param) -> Dispersion
         If parametrization does not contain a halogen bond correction.
     """
 
-    if par.dispersion is None:
+    if hasattr(par, "dispersion") is False or par.dispersion is None:
         # TODO: Dispersion is used in all models, so error or just warning?
         warnings.warn("No dispersion scheme found.", ParameterWarning)
         return None

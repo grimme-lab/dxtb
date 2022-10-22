@@ -8,8 +8,8 @@ import pytest
 import torch
 
 from xtbml.constants import K2AU
-from xtbml.exlibs.tbmalt import batch
 from xtbml.scf.iterator import SelfConsistentField
+from xtbml.utils import batch
 from xtbml.wavefunction import filling
 
 from .samples import samples

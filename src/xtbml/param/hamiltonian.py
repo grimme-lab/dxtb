@@ -8,7 +8,6 @@ over the basis set by the average of the atomic self-energies and an additional
 distance dependent function formed from the element parametrization.
 """
 
-from typing import Dict, Tuple, Optional
 from pydantic import BaseModel
 
 
@@ -19,15 +18,15 @@ class XTBHamiltonian(BaseModel):
     off-site scaling functions independent of the self-energy and the distance polynomial.
     """
 
-    shell: Dict[str, float]
+    shell: dict[str, float]
     """Shell-pair dependent scaling factor for off-site blocks"""
-    kpair: Dict[str, float] = {}
+    kpair: dict[str, float] = {}
     """Atom-pair dependent scaling factor for off-site valence blocks"""
     enscale: float
     """Electronegativity scaling factor for off-site valence blocks"""
     wexp: float
     """Exponent of the orbital exponent dependent off-site scaling factor"""
-    cn: Optional[str]
+    cn: str | None
     """Local environment descriptor for shifting the atomic self-energies"""
     kpol: float = 2.0
     """Scaling factor for polarization functions"""

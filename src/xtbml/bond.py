@@ -47,10 +47,12 @@ tensor([[False, False,  True,  True,  True, False, False, False],
         [False,  True, False, False, False, False, False, False]])
 
 """
-import torch
-from typing import Callable, Any
 
-Tensor = torch.Tensor
+import torch
+
+from .ncoord import erf_count
+from .typing import CountingFunction, Tensor
+from .utils import real_pairs
 
 
 _en = torch.tensor(
@@ -139,40 +141,25 @@ _ir = torch.tensor([0] + 2 * [1] + 8 * [2] + 8 * [3] + 18 * [4] + 18 * [5] + 32 
 Row index in the periodic table
 """
 
-_p1 = 0.01 * torch.tensor(
-    [0.0, 29.84522887, -1.70549806, 6.54013762, 6.39169003, 6.00, 5.6],
-)[_ir]
+_p1 = (
+    0.01
+    * torch.tensor(
+        [0.0, 29.84522887, -1.70549806, 6.54013762, 6.39169003, 6.00, 5.6],
+    )[_ir]
+)
 """
 Polynomial parameters for contributions linear in the electronegativity difference.
 """
 
-_p2 = 0.01 * torch.tensor(
-    [0.0, -8.87843763, 2.10878369, 0.08009374, -0.85808076, -1.15, -1.3],
-)[_ir]
+_p2 = (
+    0.01
+    * torch.tensor(
+        [0.0, -8.87843763, 2.10878369, 0.08009374, -0.85808076, -1.15, -1.3],
+    )[_ir]
+)
 """
 Polynomial parameters for contributions quadratic in the electronegativity difference.
 """
-
-
-def erf_count(r: Tensor, r0: Tensor, kcn: float = 7.5) -> Tensor:
-    """
-    Error function counting for coordination number contributions.
-
-    Parameters
-    ----------
-    r : Tensor
-        Current distance.
-    r0 : Tensor
-        Cutoff radius.
-    kcn : float
-        Steepness of the counting function.
-
-    Returns
-    -------
-    Tensor
-        Count of coordination number contribution.
-    """
-    return 0.5 * (1.0 + torch.erf(-kcn * (r / r0 - 1.0)))
 
 
 def guess_bond_length(
@@ -220,8 +207,8 @@ def guess_bond_length(
     ediff = torch.abs(en.unsqueeze(-1) - en.unsqueeze(-2))
     scale = (
         ediff.new_ones(ediff.shape)
-        - (p1.unsqueeze(-1) + p1.unsqueeze(-2))/2 * ediff
-        - (p2.unsqueeze(-1) + p2.unsqueeze(-2))/2 * ediff**2
+        - (p1.unsqueeze(-1) + p1.unsqueeze(-2)) / 2 * ediff
+        - (p2.unsqueeze(-1) + p2.unsqueeze(-2)) / 2 * ediff**2
     )
 
     return scale * (ratom.unsqueeze(-1) + ratom.unsqueeze(-2))
@@ -231,7 +218,7 @@ def guess_bond_order(
     numbers: Tensor,
     positions: Tensor,
     cn: Tensor,
-    counting_function: Callable[[Tensor, Tensor, Any], Tensor] = erf_count,
+    counting_function: CountingFunction = erf_count,
     **kwargs,
 ) -> Tensor:
     """
@@ -299,19 +286,16 @@ def guess_bond_order(
             [0.0000, 0.3347, 0.0000, 0.0000, 0.0000]])
     """
 
-    eps = torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype)
-    real = numbers != 0
-    mask = real.unsqueeze(-2) * real.unsqueeze(-1)
-    mask.diagonal(dim1=-2, dim2=-1).fill_(False)
+    mask = real_pairs(numbers, True)
     distances = torch.where(
         mask,
         torch.cdist(positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"),
-        eps,
+        positions.new_tensor(torch.finfo(positions.dtype).eps),
     )
 
     bond_length = guess_bond_length(numbers, cn)
     return torch.where(
         mask,
         counting_function(distances, bond_length, **kwargs),
-        torch.tensor(0.0, dtype=distances.dtype),
+        positions.new_tensor(0.0),
     )

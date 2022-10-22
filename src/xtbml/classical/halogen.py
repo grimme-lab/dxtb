@@ -28,19 +28,15 @@ Example
 tensor(0.0025)
 """
 
-from __future__ import annotations
 import torch
 
 from .abc import Classical
 from ..basis import IndexHelper
+from ..constants import xtb
 from ..data import atomic_rad
-from ..exlibs.tbmalt import batch
 from ..param import Param, get_elem_param
 from ..typing import Tensor, TensorLike
-
-
-default_cutoff: float = 20.0
-"""Default real space cutoff for halogen bonding interactions."""
+from ..utils import batch
 
 
 class Halogen(Classical, TensorLike):
@@ -71,7 +67,7 @@ class Halogen(Classical, TensorLike):
     bond_strength: Tensor
     """Halogen bond strengths for unique species."""
 
-    cutoff: Tensor = torch.tensor(default_cutoff)
+    cutoff: Tensor = torch.tensor(xtb.DEFAULT_XB_CUTOFF)
     """Real space cutoff for halogen bonding interactions (default: 20.0)."""
 
     def __init__(
@@ -81,7 +77,7 @@ class Halogen(Classical, TensorLike):
         damp: Tensor,
         rscale: Tensor,
         bond_strength: Tensor,
-        cutoff: Tensor = torch.tensor(default_cutoff),
+        cutoff: Tensor = torch.tensor(xtb.DEFAULT_XB_CUTOFF),
     ) -> None:
         super().__init__(positions.device, positions.dtype)
 
@@ -303,7 +299,7 @@ def new_halogen(
     numbers: Tensor,
     positions: Tensor,
     par: Param,
-    cutoff: Tensor = torch.tensor(default_cutoff),
+    cutoff: Tensor = torch.tensor(xtb.DEFAULT_XB_CUTOFF),
 ) -> Halogen | None:
     """
     Create new instance of Halogen class.
@@ -330,7 +326,7 @@ def new_halogen(
         If parametrization does not contain a halogen bond correction.
     """
 
-    if par.halogen is None:
+    if hasattr(par, "halogen") is False or par.halogen is None:
         return None
 
     damp = torch.tensor(par.halogen.classical.damping)

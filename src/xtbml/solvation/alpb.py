@@ -35,7 +35,6 @@ Example
 tensor(-5.0762e-05)
 """
 
-from __future__ import annotations
 import torch
 
 from .born import get_born_radii
@@ -43,13 +42,13 @@ from .data import vdw_rad_d3
 from ..basis import IndexHelper
 from ..interaction import Interaction
 from ..typing import Tensor, Any
-from ..utils.utils import real_atoms, real_pairs
+from ..utils import real_pairs
 
 
 alpha = 0.571412
 
 
-@torch.jit.script
+@torch.jit.script  # type: ignore
 def p16_kernel(r1: Tensor, ab: Tensor) -> Tensor:
     """
     Evaluate P16 interaction kernel: 1 / (R + √ab / (1 + ζR/(16·√ab))¹⁶)
@@ -73,7 +72,7 @@ def p16_kernel(r1: Tensor, ab: Tensor) -> Tensor:
     return 1.0 / (r1 + ab * arg)
 
 
-@torch.jit.script
+@torch.jit.script  # type: ignore
 def still_kernel(r1: Tensor, ab: Tensor) -> Tensor:
     """
     Evaluate Still interaction kernel: 1 / √(R² + ab · exp[R²/(4·ab)])
@@ -167,8 +166,7 @@ class GeneralizedBorn(Interaction):
         kernel: str = "p16",
         **kwargs,
     ):
-        Interaction.__init__(self)
-        dtype = dielectric_constant.dtype
+        super().__init__(dielectric_constant.device, dielectric_constant.dtype)
 
         self.alpbet = (
             alpha / dielectric_constant if alpb else dielectric_constant.new_tensor(0.0)
@@ -177,7 +175,7 @@ class GeneralizedBorn(Interaction):
         self.kernel = kernel
 
         if "rvdw" not in kwargs:
-            kwargs["rvdw"] = vdw_rad_d3[numbers].type(dtype)
+            kwargs["rvdw"] = vdw_rad_d3[numbers].type(self.dtype)
         self.born_kwargs = kwargs
 
     class Cache(Interaction.Cache):
@@ -212,11 +210,11 @@ class GeneralizedBorn(Interaction):
         return self.Cache(mat)
 
     def get_atom_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
+        self, charges: Tensor, ihelp: IndexHelper, cache: "GeneralizedBorn.Cache"
     ) -> Tensor:
         return 0.5 * charges * self.get_atom_potential(charges, ihelp, cache)
 
     def get_atom_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
+        self, charges: Tensor, ihelp: IndexHelper, cache: "GeneralizedBorn.Cache"
     ) -> Tensor:
         return torch.einsum("...ik,...k->...i", cache.mat, charges)

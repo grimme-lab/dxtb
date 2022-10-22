@@ -1,12 +1,8 @@
-# This file is part of xtbml.
-
 """
 Base calculator for the extended tight-binding model.
 """
 
-from __future__ import annotations
 import torch
-
 
 from .h0 import Hamiltonian
 from .. import scf
@@ -18,7 +14,7 @@ from ..coulomb import new_es2, new_es3
 from ..dispersion import Dispersion, new_dispersion
 from ..data import cov_rad_d3
 from ..interaction import Interaction, InteractionList
-from ..ncoord import ncoord
+from ..ncoord import exp_count, get_coordination_number
 from ..param import Param, get_elem_angular
 from ..typing import Any, Tensor
 from ..utils import Timers
@@ -31,51 +27,55 @@ class Result:
     Result container for singlepoint calculation.
     """
 
-    scf: Tensor
-    """Atom-resolved energy from the self-consistent field (SCF) calculation."""
-
-    fenergy: Tensor
-    """Atom-resolved electronic free energy from fractional occupation."""
-
-    dispersion: Tensor
-    """Dispersion energy."""
-
-    repulsion: Tensor
-    """Repulsion energy."""
-
-    halogen: Tensor
-    """Halogen bond energy."""
-
-    total: Tensor
-    """Total energy."""
-
-    hcore: Tensor
-    """Core Hamiltonian matrix (H0)."""
-
-    hamiltonian: Tensor
-    """Full Hamiltonian matrix (H0 + H1)."""
-
-    overlap: Tensor
-    """Overlap matrix."""
+    charges: Tensor
+    """Self-consistent orbital-resolved Mulliken partial charges"""
 
     density: Tensor
     """Density matrix."""
 
-    charges: Tensor
-    """Self-consistent orbital-resolved Mulliken partial charges"""
+    dispersion: Tensor
+    """Dispersion energy."""
+
+    emo: Tensor
+    """Energy of molecular orbitals (sorted by increasing energy)."""
+
+    fenergy: Tensor
+    """Atom-resolved electronic free energy from fractional occupation."""
+
+    halogen: Tensor
+    """Halogen bond energy."""
+
+    hamiltonian: Tensor
+    """Full Hamiltonian matrix (H0 + H1)."""
+
+    hcore: Tensor
+    """Core Hamiltonian matrix (H0)."""
+
+    overlap: Tensor
+    """Overlap matrix."""
+
+    repulsion: Tensor
+    """Repulsion energy."""
+
+    scf: Tensor
+    """Atom-resolved energy from the self-consistent field (SCF) calculation."""
+
+    total: Tensor
+    """Total energy."""
 
     __slots__ = [
-        "scf",
-        "fenergy",
-        "dispersion",
-        "repulsion",
-        "halogen",
-        "total",
-        "hcore",
-        "hamiltonian",
-        "overlap",
-        "density",
         "charges",
+        "density",
+        "dispersion",
+        "emo",
+        "fenergy",
+        "halogen",
+        "hamiltonian",
+        "hcore",
+        "overlap",
+        "repulsion",
+        "scf",
+        "total",
     ]
 
     def __init__(self, positions: Tensor):
@@ -175,7 +175,7 @@ class Calculator:
         # Hamiltonian
         timer.start("h0")
         rcov = cov_rad_d3[numbers]
-        cn = ncoord.get_coordination_number(numbers, positions, ncoord.exp_count, rcov)
+        cn = get_coordination_number(numbers, positions, exp_count, rcov)
         hcore = self.hamiltonian.build(overlap, cn)
         result.hcore = hcore
         timer.stop("h0")
@@ -222,6 +222,7 @@ class Calculator:
         )
         result.charges = scf_results["charges"]
         result.density = scf_results["density"]
+        result.emo = scf_results["emo"]
         result.hamiltonian = scf_results["hamiltonian"]
         result.scf += scf_results["energy"]
         result.fenergy = scf_results["fenergy"]

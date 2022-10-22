@@ -2,12 +2,11 @@
 Definition of a timer class that can contain multiple timers.
 """
 
-from __future__ import annotations
+from functools import wraps
 import time
 
-
-class TimerError(Exception):
-    """A custom exception used to report errors in use of Timer class"""
+from ..exceptions import TimerError
+from ..typing import Any, Callable
 
 
 class Timers:
@@ -148,3 +147,29 @@ class Timers:
 
         print("")
         print(width * "*")
+
+
+def timings(f: Callable) -> Any:
+    """
+    Decorator that prints execution time of a function.
+
+    Parameters
+    ----------
+    f : Callable
+        Function for which execution time should be timed.
+
+    Returns
+    -------
+    Any
+        Return value of input function.
+    """
+
+    @wraps(f)
+    def wrap(*args, **kwargs):
+        ts = time.time()
+        result = f(*args, **kwargs)
+        te = time.time()
+        print(f"func '{f.__name__}' took: {te-ts:2.4f} sec")
+        return result
+
+    return wrap

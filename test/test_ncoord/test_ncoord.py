@@ -1,42 +1,38 @@
+"""
+Test calculation of (D3) coordination number.
+"""
+
 import pytest
 import torch
 
-from xtbml.data.radii import cov_rad_d3
-from xtbml.exlibs.tbmalt import batch
-from xtbml.ncoord import ncoord
+from xtbml.data import cov_rad_d3
+from xtbml.ncoord import get_coordination_number, exp_count
+from xtbml.utils import batch
 
-from .samples import structures
+from .samples import samples
+
+sample_list = ["PbH4-BiH3", "C6H5I-CH3SH"]
 
 
-@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_cn_single(dtype: torch.dtype):
-    sample = structures["PbH4-BiH3"]
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", sample_list)
+def test_single(dtype: torch.dtype, name: str) -> None:
+    sample = samples[name]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
 
     rcov = cov_rad_d3[numbers]
-    ref = torch.tensor(
-        [
-            3.9388208389,
-            0.9832025766,
-            0.9832026958,
-            0.9832026958,
-            0.9865897894,
-            2.9714603424,
-            0.9870455265,
-            0.9870456457,
-            0.9870455265,
-        ],
-        dtype=dtype,
-    )
+    ref = sample["cn"].type(dtype)
 
-    cn = ncoord.get_coordination_number(numbers, positions, ncoord.exp_count, rcov)
+    cn = get_coordination_number(numbers, positions, exp_count, rcov)
     assert torch.allclose(cn, ref)
 
 
-@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_cn_batch(dtype: torch.dtype):
-    sample1, sample2 = structures["PbH4-BiH3"], structures["C6H5I-CH3SH"]
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name1", sample_list)
+@pytest.mark.parametrize("name2", sample_list)
+def test_cn_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         (
             sample1["numbers"],
@@ -51,51 +47,12 @@ def test_cn_batch(dtype: torch.dtype):
     )
 
     rcov = cov_rad_d3[numbers]
-    ref = torch.tensor(
-        [
-            [
-                3.9388208389,
-                0.9832025766,
-                0.9832026958,
-                0.9832026958,
-                0.9865897894,
-                2.9714603424,
-                0.9870455265,
-                0.9870456457,
-                0.9870455265,
-                0.0000000000,
-                0.0000000000,
-                0.0000000000,
-                0.0000000000,
-                0.0000000000,
-                0.0000000000,
-                0.0000000000,
-                0.0000000000,
-                0.0000000000,
-            ],
-            [
-                3.1393690109,
-                3.1313166618,
-                3.1393768787,
-                3.3153429031,
-                3.1376547813,
-                3.3148119450,
-                1.5363609791,
-                1.0035246611,
-                1.0122337341,
-                1.0036621094,
-                1.0121959448,
-                1.0036619902,
-                2.1570565701,
-                0.9981809855,
-                3.9841127396,
-                1.0146225691,
-                1.0123561621,
-                1.0085891485,
-            ],
-        ],
-        dtype=dtype,
+    ref = batch.pack(
+        (
+            sample1["cn"].type(dtype),
+            sample2["cn"].type(dtype),
+        )
     )
 
-    cn = ncoord.get_coordination_number(numbers, positions, ncoord.exp_count, rcov)
+    cn = get_coordination_number(numbers, positions, exp_count, rcov)
     assert torch.allclose(cn, ref)

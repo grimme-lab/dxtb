@@ -2,26 +2,23 @@
 Type annotations for this project.
 """
 
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 
 from typing import (
     Any,
-    Callable,
-    Dict,
     TypedDict,
-    List,
     Literal,
     Optional,
+    overload,
     Protocol,
-    Tuple,
-    Union,
+    TypeGuard
 )
 import torch
 from torch import Tensor
 
-Sliceable = Union[List[Tensor], Tuple[Tensor]]
+Sliceable = list[Tensor] | tuple[Tensor]
 
-CountingFunction = Callable[[Tensor, Tensor, Any], Tensor]
+CountingFunction = Callable[[Tensor, Tensor], Tensor]
 
 
 class Molecule(TypedDict):

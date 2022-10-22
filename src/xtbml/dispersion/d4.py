@@ -1,6 +1,8 @@
-from __future__ import annotations
+"""
+DFT-D4 dispersion model.
+"""
 
-from .type import Dispersion
+from .abc import Dispersion
 from ..typing import Tensor
 
 

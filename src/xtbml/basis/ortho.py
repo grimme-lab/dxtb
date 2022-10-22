@@ -1,6 +1,5 @@
 """Gram-Schmidt orthonormalization routines for contracted Gaussian basis functions."""
 
-from __future__ import annotations
 import math
 import torch
 
@@ -24,7 +23,8 @@ def orthogonalize(
     Returns
     -------
     (Tensor, Tensor)
-        Primitive Gaussian exponents and contraction coefficients for the orthonormalized basis function.
+        Primitive Gaussian exponents and contraction coefficients for the
+        orthonormalized basis function.
     """
 
     coeff_i, coeff_j = coeff

@@ -6,10 +6,10 @@ Reference values obtained with xTB 6.5.1.
 import pytest
 import torch
 
-from xtbml.exlibs.tbmalt import batch
 from xtbml.basis.indexhelper import IndexHelper
 from xtbml.param import GFN1_XTB as par
 from xtbml.param import get_elem_angular
+from xtbml.utils import batch
 from xtbml.wavefunction import wiberg
 
 from .samples import samples

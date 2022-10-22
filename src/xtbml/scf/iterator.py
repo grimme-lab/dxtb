@@ -14,7 +14,6 @@ a reasonably good implementation of the iterative solver required for the self-c
 field iterations.
 """
 
-from __future__ import annotations
 import torch
 import xitorch as xt
 import xitorch.linalg as xtl
@@ -186,9 +185,10 @@ class SelfConsistentField(xt.EditableModule):
 
         return {
             "charges": charges,
+            "density": self._data.density,
+            "emo": self._data.evals,
             "energy": energy,
             "fenergy": fenergy,
-            "density": self._data.density,
             "hamiltonian": self._data.hamiltonian,
         }
 
@@ -590,7 +590,7 @@ def solve(
         Name of the method for the initial charge guess.
     args : Tuple
         Positional arguments to pass to the engine.
-    kwargs : Dict
+    kwargs : dict
         Keyword arguments to pass to the engine.
 
     Returns

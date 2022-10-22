@@ -30,9 +30,7 @@ tensor(-0.1750)
 tensor([-0.8347, -0.8347,  0.2731,  0.2886,  0.2731,  0.2731,  0.2886,  0.2731])
 """
 
-from __future__ import annotations
 import math
-
 import torch
 
 from .typing import Tensor

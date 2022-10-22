@@ -1,4 +1,3 @@
-from __future__ import annotations
 from pathlib import Path
 from json import dumps as json_dump
 from json import dump as json_dump_file
@@ -9,25 +8,25 @@ from ..constants import ATOMIC_NUMBER
 from ..typing import Literal
 
 
-def read_geo(fp, format: Literal["xyz", "coord"] = "xyz") -> list[list[float | int]]:
+def read_geo(fp, frmt: Literal["xyz", "coord"] = "xyz") -> list[list[float | int]]:
     """Read geometry file.
     Parameters
     ----------
     fp : str | Path
         Path to coord file.
-    format : str
+    frmt : str
         Format of the file.
     Returns
     -------
     list[list[float | int]]
         list containing the atomic numbers and coordinates.
     """
-    if format == "xyz":
+    if frmt == "xyz":
         return read_xyz(fp)
-    elif format == "coord":
+    elif frmt == "coord":
         return read_coord(fp)
     else:
-        raise ValueError(f"Unknown format: {format}")
+        raise ValueError(f"Unknown format: {frmt}")
 
 
 def read_xyz(fp: str | Path) -> list[list[float | int]]:

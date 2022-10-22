@@ -1,4 +1,7 @@
-from __future__ import annotations
+"""
+Container for interactions.
+"""
+
 import torch
 
 from .abc import Interaction
@@ -18,7 +21,7 @@ class InteractionList(Interaction):
 
         __slots__ = ()
 
-    def __init__(self, *interactions):
+    def __init__(self, *interactions: Interaction | None):
         Interaction.__init__(self, torch.device("cpu"), torch.float)
         self.interactions = [
             interaction for interaction in interactions if interaction is not None

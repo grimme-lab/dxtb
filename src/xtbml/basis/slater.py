@@ -2,7 +2,6 @@
 Expansion coefficients for Slater functions into primitive Gaussian functions
 """
 
-from __future__ import annotations
 import math
 import numpy as np
 import os.path as op

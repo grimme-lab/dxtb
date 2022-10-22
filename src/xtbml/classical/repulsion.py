@@ -33,20 +33,16 @@ Example
 tensor(0.0303)
 """
 
-from __future__ import annotations
 import warnings
 import torch
 
 from .abc import Classical
 from ..basis import IndexHelper
+from ..constants import xtb
 from ..exceptions import ParameterWarning
 from ..param import Param, get_elem_param
 from ..typing import Tensor, TensorLike
 from ..utils import real_pairs
-
-
-default_cutoff: float = 25.0
-"""Default real space cutoff for repulsion interactions."""
 
 
 class Repulsion(Classical, TensorLike):
@@ -80,7 +76,7 @@ class Repulsion(Classical, TensorLike):
     the repulsion energy for light elements, i.e., H and He (only GFN2).
     """
 
-    cutoff: float = default_cutoff
+    cutoff: float = xtb.DEFAULT_REPULSION_CUTOFF
     """Real space cutoff for repulsion interactions (default: 25.0)."""
 
     def __init__(
@@ -91,7 +87,7 @@ class Repulsion(Classical, TensorLike):
         zeff: Tensor,
         kexp: Tensor,
         kexp_light: Tensor | None = None,
-        cutoff: float = default_cutoff,
+        cutoff: float = xtb.DEFAULT_REPULSION_CUTOFF,
     ) -> None:
         super().__init__(positions.device, positions.dtype)
 
@@ -275,7 +271,7 @@ def new_repulsion(
     numbers: Tensor,
     positions: Tensor,
     par: Param,
-    cutoff: float = default_cutoff,
+    cutoff: float = xtb.DEFAULT_REPULSION_CUTOFF,
 ) -> Repulsion | None:
     """
     Create new instance of Repulsion class.
@@ -302,7 +298,7 @@ def new_repulsion(
         If parametrization does not contain a halogen bond correction.
     """
 
-    if par.repulsion is None:
+    if hasattr(par, "repulsion") is False or par.repulsion is None:
         # TODO: Repulsion is used in all models, so error or just warning?
         warnings.warn("No repulsion scheme found.", ParameterWarning)
         return None

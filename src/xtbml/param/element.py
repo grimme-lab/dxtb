@@ -4,7 +4,6 @@
 Element parametrization record containing the adjustable parameters for each species.
 """
 
-from typing import List
 from pydantic import BaseModel
 
 
@@ -21,24 +20,24 @@ class Element(BaseModel):
     en: float
     """Electronnegativity"""
 
-    shells: List[str]
+    shells: list[str]
     """Included shells with principal quantum number and angular momentum"""
-    ngauss: List[int]
+    ngauss: list[int]
     """Number of primitive Gaussian functions used in the STO-NG expansion for each shell"""
-    levels: List[float]
+    levels: list[float]
     """Atomic level energies for each shell"""
-    slater: List[float]
+    slater: list[float]
     """Slater exponents of the STO-NG functions for each shell"""
-    refocc: List[float]
+    refocc: list[float]
     """Reference occupation for each shell"""
-    kcn: List[float]
+    kcn: list[float]
     """CN dependent shift of the self energy for each shell"""
-    shpoly: List[float]
+    shpoly: list[float]
     """Polynomial enhancement for Hamiltonian elements"""
 
     gam: float
     """Chemical hardness / Hubbard parameter"""
-    lgam: List[float]
+    lgam: list[float]
     """Relative chemical hardness for each shell"""
     gam3 = 0.0
     """Atomic Hubbard derivative"""

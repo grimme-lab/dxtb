@@ -12,7 +12,6 @@ The respective checks are therefore deferred to the instantiation of the calcula
 while a deserialized model in `tblite`_ is already verified at this stage.
 """
 
-from typing import Dict, Optional
 from pydantic import BaseModel
 
 from .dispersion import Dispersion
@@ -30,21 +29,21 @@ class Param(BaseModel):
     Complete self-contained representation of an extended tight-binding model.
     """
 
-    meta: Optional[Meta]
+    meta: Meta | None
     """Descriptive data on the model"""
-    element: Dict[str, Element]
+    element: dict[str, Element]
     """Element specific parameter records"""
     hamiltonian: Hamiltonian
     """Definition of the Hamiltonian, always required"""
-    dispersion: Optional[Dispersion]
+    dispersion: Dispersion | None
     """Definition of the dispersion correction"""
-    repulsion: Optional[Repulsion]
+    repulsion: Repulsion | None
     """Definition of the repulsion contribution"""
-    charge: Optional[Charge]
+    charge: Charge | None
     """Definition of the isotropic second-order charge interactions"""
-    multipole: Optional[dict] = None
+    multipole: dict | None = None
     """Definition of the anisotropic second-order multipolar interactions (not implemented)"""
-    halogen: Optional[Halogen] = None
+    halogen: Halogen | None = None
     """Definition of the halogen bonding correction (not implemented)"""
-    thirdorder: Optional[ThirdOrder]
+    thirdorder: ThirdOrder | None
     """Definition of the isotropic third-order charge interactions"""

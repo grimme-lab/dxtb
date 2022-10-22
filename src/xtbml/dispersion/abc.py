@@ -1,4 +1,7 @@
-from __future__ import annotations
+"""
+Abstract base class for dispersion models.
+"""
+
 from abc import abstractmethod
 
 from ..interaction import Interaction
@@ -42,4 +45,3 @@ class Dispersion(Interaction):
         Tensor
             Atom-resolved dispersion energy.
         """
-        ...

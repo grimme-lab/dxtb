@@ -37,24 +37,21 @@ Example
 tensor(0.0005078)
 """
 
-
-from __future__ import annotations
 import torch
 
 from .average import AveragingFunction, averaging_function, harmonic_average
 from ..basis import IndexHelper
+from ..constants import xtb
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
 from ..typing import Tensor
 from ..utils import real_pairs
 
 
-default_gexp: float = 2.0
-"""Default exponent of the second-order Coulomb interaction (2.0)."""
-
-
 class ES2(Interaction):
-    """Isotropic second-order electrostatic energy (ES2)"""
+    """
+    Isotropic second-order electrostatic energy (ES2).
+    """
 
     hubbard: Tensor
     """Hubbard parameters of all elements."""
@@ -71,7 +68,7 @@ class ES2(Interaction):
     harmonic_average).
     """
 
-    gexp: Tensor = torch.tensor(default_gexp)
+    gexp: Tensor = torch.tensor(xtb.DEFAULT_ES2_GEXP)
     """Exponent of the second-order Coulomb interaction (default: 2.0)."""
 
     ihelp: IndexHelper | None = None
@@ -81,7 +78,9 @@ class ES2(Interaction):
     """Electrostatics is shell-resolved"""
 
     class Cache(Interaction.Cache):
-        """Cache for Coulomb matrix."""
+        """
+        Cache for Coulomb matrix in ES2.
+        """
 
         mat: Tensor
         """Coulomb matrix"""
@@ -95,7 +94,7 @@ class ES2(Interaction):
         hubbard: Tensor,
         lhubbard: Tensor | None = None,
         average: AveragingFunction = harmonic_average,
-        gexp: Tensor = torch.tensor(default_gexp),
+        gexp: Tensor = torch.tensor(xtb.DEFAULT_ES2_GEXP),
     ) -> None:
         super().__init__(positions.device, positions.dtype)
 
@@ -113,7 +112,7 @@ class ES2(Interaction):
         numbers: Tensor,
         positions: Tensor,
         ihelp: IndexHelper,
-    ) -> Interaction.Cache:
+    ) -> "ES2.Cache":
 
         return self.Cache(
             self.get_shell_coulomb_matrix(numbers, positions, ihelp)
@@ -219,17 +218,17 @@ class ES2(Interaction):
         return 1.0 / torch.pow(dist_gexp + torch.pow(avg, -self.gexp), 1.0 / self.gexp)
 
     def get_atom_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: ES2.Cache
+        self, charges: Tensor, ihelp: IndexHelper, cache: Cache
     ) -> Tensor:
         return 0.5 * charges * self.get_atom_potential(charges, ihelp, cache)
 
     def get_shell_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: ES2.Cache
+        self, charges: Tensor, ihelp: IndexHelper, cache: Cache
     ) -> Tensor:
         return 0.5 * charges * self.get_shell_potential(charges, ihelp, cache)
 
     def get_atom_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: ES2.Cache
+        self, charges: Tensor, ihelp: IndexHelper, cache: Cache
     ) -> Tensor:
         return (
             torch.zeros_like(charges)
@@ -238,7 +237,7 @@ class ES2(Interaction):
         )
 
     def get_shell_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: ES2.Cache
+        self, charges: Tensor, ihelp: IndexHelper, cache: "ES2.Cache"
     ) -> Tensor:
         return (
             torch.einsum("...ik,...k->...i", cache.mat, charges)
@@ -247,7 +246,9 @@ class ES2(Interaction):
         )
 
 
-def new_es2(numbers: Tensor, positions: Tensor, par: Param) -> ES2 | None:
+def new_es2(
+    numbers: Tensor, positions: Tensor, par: Param, shell_resolved: bool = True
+) -> ES2 | None:
     """
     Create new instance of ES2.
 
@@ -259,6 +260,8 @@ def new_es2(numbers: Tensor, positions: Tensor, par: Param) -> ES2 | None:
         Cartesian coordinates of all atoms.
     par : Param
         Representation of an extended tight-binding model.
+    shell_resolved: bool
+        Electrostatics is shell-resolved.
 
     Returns
     -------
@@ -266,12 +269,14 @@ def new_es2(numbers: Tensor, positions: Tensor, par: Param) -> ES2 | None:
         Instance of the ES2 class or `None` if no ES2 is used.
     """
 
-    if par.charge is None:
+    if hasattr(par, "charge") is False or par.charge is None:
         return None
 
     unique = torch.unique(numbers)
     hubbard = get_elem_param(unique, par.element, "gam")
-    lhubbard = get_elem_param(unique, par.element, "lgam")
+    lhubbard = (
+        get_elem_param(unique, par.element, "lgam") if shell_resolved is True else None
+    )
     average = averaging_function[par.charge.effective.average]
     gexp = torch.tensor(par.charge.effective.gexp)
 

@@ -6,18 +6,17 @@ import pytest
 import torch
 
 from xtbml.basis import IndexHelper
-from xtbml.exlibs.tbmalt import batch
-from xtbml.param.gfn1 import GFN1_XTB as par
-from xtbml.param.util import get_elem_angular
-from xtbml.utils import combinations as combis
-from xtbml.utils import load_from_npz
-from xtbml.xtb.h0 import Hamiltonian
+from xtbml.param import GFN1_XTB as par
+from xtbml.param import get_elem_angular
+from xtbml.utils import batch, load_from_npz
+from xtbml.xtb import Hamiltonian
 
 from .samples import samples
+from ..utils import combinations as combis
 
 ref_overlap = np.load("test/test_overlap/overlap.npz")
 
-molecules = ["SiH4", "PbH4-BiH3"]  # , "LYS_xao"]
+molecules = ["H2O", "CH4", "SiH4", "PbH4-BiH3"]
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

@@ -1,15 +1,14 @@
 import pytest
 import torch
 
-from xtbml import utils
 from xtbml.basis import IndexHelper
-from xtbml.exlibs.tbmalt import batch
+from xtbml.utils import batch, symbol2number
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_indexhelper_single(dtype: torch.dtype):
 
-    numbers = utils.symbol2number("S H H H Mg N O S N N C H C H O N".split())
+    numbers = symbol2number("S H H H Mg N O S N N C H C H O N".split())
     angular = {
         1: [0],  # H
         6: [0, 1],  # C
@@ -62,8 +61,8 @@ def test_indexhelper_batch(dtype: torch.dtype):
 
     numbers = batch.pack(
         (
-            utils.symbol2number("O Al Si H Li H Cl Al H H B H H B H H".split()),
-            utils.symbol2number("H H Si H Na S H H Al H C Si Cl B B H".split()),
+            symbol2number("O Al Si H Li H Cl Al H H B H H B H H".split()),
+            symbol2number("H H Si H Na S H H Al H C Si Cl B B H".split()),
         )
     )
     angular = {
@@ -156,8 +155,8 @@ def test_indexhelper_batch2(dtype):
 
     numbers = batch.pack(
         (
-            utils.symbol2number("O Al Si H Li H Cl Al H H B H H B H H".split()),
-            utils.symbol2number("Si H H H H".split()),
+            symbol2number("O Al Si H Li H Cl Al H H B H H B H H".split()),
+            symbol2number("Si H H H H".split()),
         )
     )
     angular = {

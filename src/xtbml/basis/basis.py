@@ -1,6 +1,7 @@
-"""Basis set class."""
+"""
+Basis set class.
+"""
 
-from __future__ import annotations
 import torch
 
 from . import IndexHelper, orthogonalize, slater

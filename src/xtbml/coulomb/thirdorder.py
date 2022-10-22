@@ -32,7 +32,6 @@ Example
 tensor(0.0155669)
 """
 
-from __future__ import annotations
 import torch
 
 from ..basis import IndexHelper
@@ -42,15 +41,17 @@ from ..typing import Tensor
 
 
 class ES3(Interaction):
-    """On-site third-order electrostatic energy."""
+    """
+    On-site third-order electrostatic energy.
+    """
 
     hubbard_derivs: Tensor
     "Hubbard derivatives of all atoms."
 
     class Cache(Interaction.Cache):
-        """Restart data for the interaction."""
-
-        pass
+        """
+        Restart data for the ES3 interaction.
+        """
 
     def __init__(self, positions: Tensor, hubbard_derivs: Tensor) -> None:
         super().__init__(positions.device, positions.dtype)
@@ -58,7 +59,7 @@ class ES3(Interaction):
 
     def get_cache(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
-    ) -> Interaction.Cache:
+    ) -> Cache:
         """
         Create restart data for individual interactions.
 
@@ -83,7 +84,7 @@ class ES3(Interaction):
         self,
         charges: Tensor,
         ihelp: IndexHelper,
-        cache: Interaction.Cache,
+        cache: Cache | None = None,
     ) -> Tensor:
         """
         Calculate the third-order electrostatic energy.
@@ -98,7 +99,7 @@ class ES3(Interaction):
             Atomic charges of all atoms.
         ihelp : IndexHelper
             Index mapping for the basis set.
-        cache : Interaction.Cache
+        cache : Interaction.Cache | None
             Restart data for the interaction.
 
         Returns
@@ -157,8 +158,13 @@ def new_es3(numbers: Tensor, positions: Tensor, par: Param) -> ES3 | None:
         Instance of the ES3 class or `None` if no ES3 is used.
     """
 
-    if par.charge is None:
+    if hasattr(par, "thirdorder") is False or par.thirdorder is None:
         return None
+
+    if par.thirdorder.shell is True:
+        raise NotImplementedError(
+            "Shell-resolved third order electrostatics are not implemented. Set `thirdorder.shell` parameter to `False`."
+        )
 
     hubbard_derivs = get_elem_param(
         torch.unique(numbers),

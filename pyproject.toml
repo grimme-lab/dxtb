@@ -1,15 +1,43 @@
+[project]
+name = "dxtb"
+version = "0.0.1"
+description = "Fully Differentiable Approach to Extended Tight Binding"
+readme = "README.rst"
+requires-python = ">=3.10"
+keywords = [
+  "pytorch",
+  "tight-binding",
+  "xtb",
+  "computational chemistry",
+  "quantum chemistry",
+]
+authors = [
+  { name = "Sebastian Ehlert", email = "awvwgk@gmail.com" },
+  { name = "Marvin Friede", email = "friede@thch.uni-bonn.de" },
+  { name = "Christian Hölzer", email = "hoelzer@thch.uni-bonn.de" },
+]
+classifiers = [
+  "Intended Audience :: Science/Research",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Framework :: Pytorch",
+  "Topic :: Scientific/Engineering :: Chemistry",
+]
+
+[project.urls]
+homepage = "https://github.com/grimme-lab/dxtb"
+documentation = "https://readthedocs.org"
+repository = "https://github.com/grimme-lab/dxtb"
+
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
-testpaths = [
-    "test"
-]
-pythonpath = [
-  "src",
-]
+testpaths = ["test"]
+pythonpath = ["src"]
 markers = [
-    "grad: Marks tests which perform 'gradcheck' evaluations, this can be slow.",
-    "large: Marks tests for large molecules, this can be slow.",
+  "grad: Marks tests which perform 'gradcheck' evaluations, this can be slow.",
+  "large: Marks tests for large molecules, this can be slow.",
 ]

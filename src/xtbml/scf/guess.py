@@ -1,8 +1,12 @@
-from __future__ import annotations
+"""
+Models for the initial charge guess for the SCF.
+"""
 
 import torch
 
+from ..charges import ChargeModel, solve
 from ..basis import IndexHelper
+from ..ncoord import get_coordination_number, exp_count
 from ..typing import Tensor
 
 
@@ -71,10 +75,6 @@ def get_eeq_guess(numbers: Tensor, positions: Tensor, chrg: Tensor) -> Tensor:
     Tensor
         Atomic charges.
     """
-    # pylint: disable=import-outside-toplevel
-    from xtbml.charges import ChargeModel, solve
-    from xtbml.ncoord import get_coordination_number, exp_count
-
     eeq = ChargeModel.param2019().to(positions.device).type(positions.dtype)
     cn = get_coordination_number(numbers, positions, exp_count)
     _, qat = solve(numbers, positions, chrg, eeq, cn)
