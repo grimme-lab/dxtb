@@ -6,8 +6,66 @@ import os
 from torch.utils.data import DataLoader
 import torch
 
-from ..constants import FLOAT32, units
+from ..charges import ChargeModel, solve
+from ..constants import units
 from ..io import read
+from ..ncoord import get_coordination_number, exp_count
+from ..param import GFN1_XTB as par
+from ..xtb import Calculator
+
+FILES = {
+    "charge": ".CHRG",
+    "coord": "coord",
+    "xyz": "mol.xyz",
+    "gfn1": "gfn1.json",
+    "gfn2": "gfn2.json",
+    "uhf": ".UHF",
+    "orca_engrad": "orca.engrad",
+}
+
+
+bh76rc = [
+    "C2H5",
+    "C2H6",
+    "CH4",
+    "H2",
+    "H2O",
+    "H2S",
+    "HS",
+    "NH",
+    "NH2",
+    "NH3",
+    "O",
+    "PH2",
+    "PH3",
+    "c2h4",
+    "c2h5",
+    "c3h7",
+    "ch3",
+    "ch3cl",
+    "ch3f",
+    "cl",
+    "cl-",
+    "clf",
+    "co",
+    "f",
+    "f-",
+    "f2",
+    "fch3clcomp1",
+    "fch3clcomp2",
+    "h",
+    "hcl",
+    "hcn",
+    "hco",
+    "hf",
+    "hn2",
+    "hnc",
+    "hoch3fcomp1",
+    "hoch3fcomp2",
+    "n2",
+    "n2o",
+    "oh",
+]
 
 
 def walklevel(some_dir: str | Path, level=1):
@@ -26,7 +84,7 @@ def walklevel(some_dir: str | Path, level=1):
 
 
 class Datareader:
-    """Class to read in data from disk to Geometry object."""
+    """Class to read in data from disk to data model."""
 
     def __init__(self, benchmark: str):
 
@@ -44,38 +102,30 @@ class Datareader:
         self.data = []
         self.file_list = []
 
-        FILE_CHARGE = ".CHRG"
-        FILE_COORD = "coord"
-        FILE_XYZ = "mol.xyz"
-        FILE_GFN1 = "gfn1.json"
-        FILE_GFN2 = "gfn2.json"
-        FILE_UHF = ".UHF"
-        FILE_ORCA_ENGRAD = "orca.engrad"
-
         # loop through folders + subfolders only
         for (dirpath, _, filenames) in walklevel(self.bpath, level=2):
-            if FILE_COORD not in filenames and FILE_XYZ not in filenames:
+            if FILES["coord"] not in filenames and FILES["xyz"] not in filenames:
                 continue
 
             egfn1, ggfn1 = [], []
-            if FILE_GFN1 in filenames:
-                egfn1, ggfn1 = read.read_tblite_gfn("/".join([dirpath, FILE_GFN1]))
+            if FILES["gfn1"] in filenames:
+                egfn1, ggfn1 = read.read_tblite_gfn("/".join([dirpath, FILES["gfn1"]]))
 
             egfn2, ggfn2 = [], []
-            if FILE_GFN2 in filenames:
-                egfn2, ggfn2 = read.read_tblite_gfn("/".join([dirpath, FILE_GFN2]))
+            if FILES["gfn2"] in filenames:
+                egfn2, ggfn2 = read.read_tblite_gfn("/".join([dirpath, FILES["gfn2"]]))
 
             eref, gref = 0.0, []
-            if FILE_ORCA_ENGRAD in filenames:
+            if FILES["orca_engrad"] in filenames:
                 eref, gref = read.read_orca_engrad(
-                    "/".join([dirpath, FILE_ORCA_ENGRAD])
+                    "/".join([dirpath, FILES["orca_engrad"]])
                 )
 
             # read coord/xyz file
-            if FILE_COORD in filenames:
-                geo = read.read_coord("/".join([dirpath, FILE_COORD]))
-            elif FILE_XYZ in filenames:
-                geo = read.read_xyz("/".join([dirpath, FILE_XYZ]))
+            if FILES["coord"] in filenames:
+                geo = read.read_coord("/".join([dirpath, FILES["coord"]]))
+            elif FILES["xyz"] in filenames:
+                geo = read.read_xyz("/".join([dirpath, FILES["xyz"]]))
             else:
                 raise FileNotFoundError(f"No coord/xyz file found in '{dirpath}'.")
 
@@ -84,14 +134,14 @@ class Datareader:
             numbers = [g[-1] for g in geo]
 
             # read chrg file
-            if FILE_CHARGE in filenames:
-                chrg = read.read_chrg("/".join([dirpath, FILE_CHARGE]))
+            if FILES["charge"] in filenames:
+                chrg = read.read_chrg("/".join([dirpath, FILES["charge"]]))
             else:
                 chrg = 0
 
             # read uhf file
-            if FILE_UHF in filenames:
-                uhf = read.read_chrg("/".join([dirpath, FILE_UHF]))
+            if FILES["uhf"] in filenames:
+                uhf = read.read_chrg("/".join([dirpath, FILES["uhf"]]))
             else:
                 uhf = 0
 
@@ -122,49 +172,6 @@ class Datareader:
             if self.benchmark == "GMTKN55":
                 if "BH76/" in sample:
                     molecule = sample.rsplit("/", 1)[1]
-
-                    bh76rc = [
-                        "C2H5",
-                        "C2H6",
-                        "CH4",
-                        "H2",
-                        "H2O",
-                        "H2S",
-                        "HS",
-                        "NH",
-                        "NH2",
-                        "NH3",
-                        "O",
-                        "PH2",
-                        "PH3",
-                        "c2h4",
-                        "c2h5",
-                        "c3h7",
-                        "ch3",
-                        "ch3cl",
-                        "ch3f",
-                        "cl",
-                        "cl-",
-                        "clf",
-                        "co",
-                        "f",
-                        "f-",
-                        "f2",
-                        "fch3clcomp1",
-                        "fch3clcomp2",
-                        "h",
-                        "hcl",
-                        "hcn",
-                        "hco",
-                        "hf",
-                        "hn2",
-                        "hnc",
-                        "hoch3fcomp1",
-                        "hoch3fcomp2",
-                        "n2",
-                        "n2o",
-                        "oh",
-                    ]
 
                     if molecule in bh76rc:
                         self.data.append(
@@ -212,7 +219,7 @@ class Datareader:
         name : str
             Search string for file name.
         inplace : bool, optional
-            If True, modify self.data and self.file_list.
+            If `True`, modify `self.data` and `self.file_list`. Defaults to `True`.
 
         Returns
         -------
@@ -254,11 +261,10 @@ class Datareader:
         self.data = data
         self.file_list = file_list
 
-    # FIXME: Dependency on Geometry object from tbmalt through Calculator/Hamiltonian
     def create_sample_json(
         self,
         out_name: str = "samples.json",
-        dtype: torch.dtype | None = FLOAT32,
+        dtype: torch.dtype | None = None,
         device: torch.device | None = None,
     ) -> None:
         """Create the samples.json file containing the features for each sample.
@@ -267,10 +273,10 @@ class Datareader:
         ----------
         out_name : str, optional
             Name of json file, by default "samples.json"
-        dtype : Optional[torch.dtype], optional
-            Dtype of float values, by default FLOAT32
-        device : Optional[torch.device], optional
-            Device on which the tensors reside, by default None
+        dtype : torch.dtype, optional
+            Dtype of float values. Defaults to `None`.
+        device : torch.device, optional
+            Device on which the tensors reside. Defaults to `None`.
 
         Raises
         ------
@@ -286,12 +292,6 @@ class Datareader:
         >>> data.create_sample_json()
         """
 
-        # pylint: disable=import-outside-toplevel
-        from xtbml import charges
-        from xtbml.xtb import Calculator
-        from xtbml.ncoord import get_coordination_number, exp_count
-        from xtbml.param.gfn1 import GFN1_XTB as par
-
         def calc_singlepoint(numbers, positions, charge, unpaired_e):
             """Calculate QM features based on classicals input, such as geometry."""
 
@@ -301,8 +301,8 @@ class Datareader:
 
             # partial charges
             cn = get_coordination_number(numbers, positions, exp_count)
-            eeq = charges.ChargeModel.param2019()
-            _, qat = charges.solve(numbers, positions, charge, eeq, cn)
+            eeq = ChargeModel.param2019()
+            _, qat = solve(numbers, positions, charge, eeq, cn)
 
             return (
                 result.hcore,
@@ -459,12 +459,17 @@ class Datareader:
         """
         Return pytorch dataloader for batch-wise iteration over Geometry object.
 
-        Args:
-            geometry (Geometry): Geometry object containing _all_ geometries in dataset.
-            cfg (dict, optional): Optional configuration for dataloader settings. Defaults to None.
+        Parameters
+        ----------
+        geometry : Tensor
+            Geometry object containing _all_ geometries in dataset.
+        cfg : dict | None, optional
+            Optional configuration for dataloader settings. Defaults to None.
 
-        Returns:
-            DataLoader: Pytorch dataloader
+        Returns
+        -------
+        DataLoader
+            Pytorch dataloader
         """
 
         def collate_fn(batch):
