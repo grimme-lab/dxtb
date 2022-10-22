@@ -11,11 +11,11 @@ from xtbml.basis import IndexHelper
 from xtbml.ncoord import get_coordination_number, exp_count
 from xtbml.param import GFN1_XTB as par
 from xtbml.param import get_elem_angular
-from xtbml.utils import combinations as combis
 from xtbml.utils import batch, load_from_npz
 from xtbml.xtb import Hamiltonian
 
 from .samples import samples
+from ..utils import combinations as combis
 
 small = ["C", "Rn", "H2", "H2_nocn", "LiH", "HLi", "S2", "SiH4", "SiH4_nocn"]
 large = ["PbH4-BiH3"]  # , "MB16_43_01"]  # , "LYS_xao"]

@@ -8,11 +8,11 @@ import torch
 from xtbml.basis import IndexHelper
 from xtbml.param import GFN1_XTB as par
 from xtbml.param import get_elem_angular
-from xtbml.utils import combinations as combis
 from xtbml.utils import batch, load_from_npz
 from xtbml.xtb import Hamiltonian
 
 from .samples import samples
+from ..utils import combinations as combis
 
 ref_overlap = np.load("test/test_overlap/overlap.npz")
 
