@@ -10,9 +10,8 @@ import tad_dftd3 as d3
 import torch
 
 from xtbml.dispersion import new_dispersion
-from xtbml.exceptions import ParameterWarning
 from xtbml.param import GFN1_XTB as par
-from xtbml.utils import batch
+from xtbml.utils import ParameterWarning, batch
 
 from .samples import samples
 

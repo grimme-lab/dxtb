@@ -4,9 +4,9 @@ Function for creating a new instance of a Dispersion.
 
 import warnings
 
-from ..exceptions import ParameterWarning
 from ..param import Param
 from ..typing import Tensor
+from ..utils import ParameterWarning
 from .abc import Dispersion
 from .d3 import DispersionD3
 from .d4 import DispersionD4

@@ -46,12 +46,12 @@ class EtempAction(argparse.Action):
         self,
         parser: argparse.ArgumentParser,
         args: argparse.Namespace,
-        values,
-        option_string=None,
+        values: float,
+        option_string: str | None = None,
     ) -> None:
         if values < 0.0:
             parser.error(
-                f"Electronic Temperature must be positive or None ({option_string})."
+                f"Electronic Temperature ({option_string}) must be positive or None ({values})."
             )
 
         setattr(args, self.dest, values)

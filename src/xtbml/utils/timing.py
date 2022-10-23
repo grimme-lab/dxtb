@@ -5,8 +5,8 @@ Definition of a timer class that can contain multiple timers.
 import time
 from functools import wraps
 
-from ..exceptions import TimerError
 from ..typing import Any, Callable
+from .exceptions import TimerError
 
 
 class Timers:

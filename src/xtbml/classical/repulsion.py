@@ -39,10 +39,9 @@ import torch
 
 from ..basis import IndexHelper
 from ..constants import xtb
-from ..exceptions import ParameterWarning
 from ..param import Param, get_elem_param
 from ..typing import Tensor, TensorLike
-from ..utils import real_pairs
+from ..utils import ParameterWarning, real_pairs
 from .abc import Classical
 
 
