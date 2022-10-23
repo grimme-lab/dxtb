@@ -89,6 +89,32 @@ class Result:
         self.halogen = torch.zeros(shape, dtype=dtype, device=device)
         self.total = torch.zeros(shape, dtype=dtype, device=device)
 
+    def print_energies(self, name: str = "Energy", width: int = 50) -> None:
+        """Print energies in a table."""
+
+        labels = {
+            "dispersion": "Dispersion energy",
+            "repulsion": "Repulsion energy",
+            "halogen": "Halogen bond correction",
+            "fenergy": "Electronic free energy",
+            "scf": "Electronic Energy (SCF)",
+        }
+
+        print(f"{name:*^50}\n")
+        print("{:<27}  {:<18}".format("Contribution", "Energy in a.u."))
+        print(width * "-")
+
+        tot = "Total Energy"
+        total = torch.sum(self.total, dim=-1)
+
+        for label, name in labels.items():
+            e = torch.sum(getattr(self, label), dim=-1)
+            print(f"{name:<27} {e: .16f}")
+
+        print(width * "-")
+        print(f"{tot:<27} {total: .16f}")
+        print("")
+
 
 class Calculator:
     """
@@ -254,5 +280,7 @@ class Calculator:
 
         if fwd_options["verbose"] > 0:
             timer.print_times()
+            print("")
+            result.print_energies()
 
         return result
