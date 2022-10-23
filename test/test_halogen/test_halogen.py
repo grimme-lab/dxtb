@@ -132,7 +132,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
 
 @pytest.mark.grad
-@pytest.mark.parametrize("name", ["br2nh3", "br2och2", "tmpda"])
+@pytest.mark.parametrize("name", ["br2nh3", "br2och2"])
 def test_grad_pos(name: str) -> None:
     dtype = torch.double
 
