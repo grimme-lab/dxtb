@@ -4,6 +4,7 @@ Main module and command line entrypoint for dxtb.
 
 import sys
 
+from . import cli
 from .__version import __version__
 
 __all__ = ["__version__"]
@@ -38,15 +39,17 @@ def entry_point() -> None:
     Wrapper for singlepoint driver.
     """
 
-    from .cli import Driver, argparser
+    args = cli.argparser().parse_args()
 
-    args = argparser().parse_args()
-
-    if args.version:
-        print(__version__)
+    if hasattr(args, "version") is True:
+        print(f"dxtb {__version__}")
         sys.exit(0)
 
-    d = Driver(args)
+    if args.file is None:
+        print("No coordinate file given.")
+        sys.exit(0)
+
+    d = cli.Driver(args)
     d.singlepoint()
 
 
