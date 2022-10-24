@@ -167,7 +167,7 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
     parser.add_argument(
         "--chrg",
         type=int,
-        default=defaults.CHARGE,
+        default=defaults.CHRG,
         help="R|Molecular charge.",
     )
     parser.add_argument(
