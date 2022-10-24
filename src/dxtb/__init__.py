@@ -5,7 +5,7 @@ Main module and command line entrypoint for dxtb.
 import sys
 
 from . import cli
-from .__version import __version__
+from .__version__ import __version__
 
 __all__ = ["__version__"]
 
