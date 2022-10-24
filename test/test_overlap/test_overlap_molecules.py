@@ -6,11 +6,11 @@ import numpy as np
 import pytest
 import torch
 
-from xtbml.basis import IndexHelper
-from xtbml.param import GFN1_XTB as par
-from xtbml.param import get_elem_angular
-from xtbml.utils import batch, load_from_npz
-from xtbml.xtb import Hamiltonian
+from dxtb.basis import IndexHelper
+from dxtb.param import GFN1_XTB as par
+from dxtb.param import get_elem_angular
+from dxtb.utils import batch, load_from_npz
+from dxtb.xtb import Hamiltonian
 
 from ..utils import combinations as combis
 from .samples import samples

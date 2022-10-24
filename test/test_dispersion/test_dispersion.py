@@ -9,9 +9,9 @@ import pytest
 import tad_dftd3 as d3
 import torch
 
-from xtbml.dispersion import new_dispersion
-from xtbml.param import GFN1_XTB as par
-from xtbml.utils import ParameterWarning, batch
+from dxtb.dispersion import new_dispersion
+from dxtb.param import GFN1_XTB as par
+from dxtb.utils import ParameterWarning, batch
 
 from .samples import samples
 

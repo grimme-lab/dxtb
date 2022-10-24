@@ -4,7 +4,7 @@ Collection of utility functions for testing.
 
 import torch
 
-from xtbml.typing import Tensor
+from dxtb.typing import Tensor
 
 
 def combinations(x: Tensor, r: int = 2) -> Tensor:

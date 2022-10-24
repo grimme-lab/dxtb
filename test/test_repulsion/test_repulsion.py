@@ -9,13 +9,13 @@ from math import sqrt
 import pytest
 import torch
 
-from xtbml.basis import IndexHelper
-from xtbml.classical import Repulsion, new_repulsion
-from xtbml.param import GFN1_XTB as par
-from xtbml.param import get_elem_angular, get_elem_param
-from xtbml.typing import Tensor
-from xtbml.utils import batch
-from xtbml.utils.exceptions import ParameterWarning
+from dxtb.basis import IndexHelper
+from dxtb.classical import Repulsion, new_repulsion
+from dxtb.param import GFN1_XTB as par
+from dxtb.param import get_elem_angular, get_elem_param
+from dxtb.typing import Tensor
+from dxtb.utils import batch
+from dxtb.utils.exceptions import ParameterWarning
 
 from .samples import samples
 

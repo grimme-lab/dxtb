@@ -5,9 +5,9 @@ Test calculation of (D3) coordination number.
 import pytest
 import torch
 
-from xtbml.data import cov_rad_d3
-from xtbml.ncoord import exp_count, get_coordination_number
-from xtbml.utils import batch
+from dxtb.data import cov_rad_d3
+from dxtb.ncoord import exp_count, get_coordination_number
+from dxtb.utils import batch
 
 from .samples import samples
 

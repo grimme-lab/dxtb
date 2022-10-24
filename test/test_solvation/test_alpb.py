@@ -3,9 +3,9 @@ import math
 import pytest
 import torch
 
-from xtbml.param import GFN1_XTB as par
-from xtbml.solvation import alpb
-from xtbml.xtb import Calculator
+from dxtb.param import GFN1_XTB as par
+from dxtb.solvation import alpb
+from dxtb.xtb import Calculator
 
 from .samples import samples
 

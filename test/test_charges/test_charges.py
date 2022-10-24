@@ -3,9 +3,9 @@
 import pytest
 import torch
 
-from xtbml import charges
-from xtbml.typing import Tensor
-from xtbml.utils import batch
+from dxtb import charges
+from dxtb.typing import Tensor
+from dxtb.utils import batch
 
 from .samples import samples
 

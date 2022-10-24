@@ -4,8 +4,8 @@ Data for testing repulsion taken from https://github.com/grimme-lab/mstore.
 
 import torch
 
-from xtbml.typing import Molecule
-from xtbml.utils import symbol2number
+from dxtb.typing import Molecule
+from dxtb.utils import symbol2number
 
 
 def merge_nested_dicts(a: dict, b: dict) -> dict:

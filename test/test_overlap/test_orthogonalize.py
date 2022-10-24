@@ -1,8 +1,8 @@
 import pytest
 import torch
 
-from xtbml.basis import orthogonalize, slater
-from xtbml.integral import mmd
+from dxtb.basis import orthogonalize, slater
+from dxtb.integral import mmd
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

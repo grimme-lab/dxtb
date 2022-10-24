@@ -4,7 +4,7 @@ Data for testing Coulomb contribution.
 
 import torch
 
-from xtbml.typing import Molecule, Tensor, TypedDict
+from dxtb.typing import Molecule, Tensor, TypedDict
 
 from ..molecules import merge_nested_dicts, mols
 
