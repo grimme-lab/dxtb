@@ -14,7 +14,7 @@ from dxtb.constants import defaults
 
 def test_defaults() -> None:
     dummy = Path(Path(__file__).parent.parent, "test_singlepoint/H2/coord").resolve()
-    args = argparser().parse_args(f" {dummy}".split())
+    args = argparser().parse_args([str(dummy)])
 
     assert isinstance(args.chrg, int)
     assert args.chrg == defaults.CHRG
@@ -85,3 +85,13 @@ def test_fail_value():
 
         with pytest.raises(SystemExit):
             parser.parse_args("--method dftb3".split())
+
+        with pytest.raises(SystemExit):
+            parser.parse_args("--guess zero".split())
+
+        with pytest.raises(SystemExit):
+            parser.parse_args(["non-existing-coord-file"])
+
+        with pytest.raises(SystemExit):
+            directory = Path(__file__).parent.resolve()
+            parser.parse_args([str(directory)])
