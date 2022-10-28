@@ -9,12 +9,6 @@ from .abc import Dispersion
 class DispersionD4(Dispersion):
     """Representation of the DFT-D4 dispersion correction."""
 
-    numbers: Tensor
-    """Atomic numbers of all atoms."""
-
-    param: dict[str, float]
-    """Dispersion parameters."""
-
     def __init__(self, *args):
         raise NotImplementedError("D4 dispersion scheme not implemented.")
 

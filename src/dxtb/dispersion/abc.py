@@ -23,6 +23,8 @@ class Dispersion(Interaction):
     param: dict[str, float]
     """Dispersion parameters."""
 
+    __slots__ = ["numbers", "param"]
+
     def __init__(
         self, numbers: Tensor, positions: Tensor, param: dict[str, float]
     ) -> None:

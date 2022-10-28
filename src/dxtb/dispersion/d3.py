@@ -2,7 +2,6 @@
 DFT-D3(BJ) dispersion model.
 """
 
-
 import tad_dftd3 as d3
 
 from ..typing import Tensor
@@ -11,12 +10,6 @@ from .abc import Dispersion
 
 class DispersionD3(Dispersion):
     """Representation of the DFT-D3(BJ) dispersion correction."""
-
-    numbers: Tensor
-    """Atomic numbers of all atoms."""
-
-    param: dict[str, float]
-    """Dispersion parameters."""
 
     def get_energy(self, positions: Tensor, **kwargs) -> Tensor:
         """
