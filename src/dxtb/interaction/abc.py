@@ -26,7 +26,9 @@ class Interaction(TensorLike):
         super().__init__(device, dtype)
         self.label = self.__class__.__name__
 
-    def get_cache(self, numbers: Tensor, ihelp: IndexHelper | None) -> "Cache":
+    def get_cache(
+        self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper | None
+    ) -> "Cache":
         """
         Create restart data for individual interactions.
 
