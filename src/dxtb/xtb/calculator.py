@@ -89,6 +89,10 @@ class Result:
         self.halogen = torch.zeros(shape, dtype=dtype, device=device)
         self.total = torch.zeros(shape, dtype=dtype, device=device)
 
+    def __repr__(self) -> str:
+        """Custom print representation showing all available slots."""
+        return f"{self.__class__.__name__}({self.__slots__})"
+
     def print_energies(self, name: str = "Energy", width: int = 50) -> None:
         """Print energies in a table."""
 

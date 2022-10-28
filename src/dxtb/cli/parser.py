@@ -148,21 +148,28 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
     """
 
     desc = kwargs.pop(
-        "description", "dxtb - Fully differentiable extended tight-binding."
+        "description", "dxtb - Fully differentiable extended tight-binding program."
     )
 
     parser = argparse.ArgumentParser(
         description=desc,
         prog=name,
         formatter_class=lambda prog: Formatter(prog, max_help_position=60),
+        add_help=False,
         **kwargs,
     )
-
+    parser.add_argument(
+        "-h",
+        "--help",
+        action="help",
+        default=argparse.SUPPRESS,
+        help="Show this help message and exit.",
+    )
     parser.add_argument(
         "--version",
         action="store_true",
         default=argparse.SUPPRESS,
-        help="Show version.",
+        help="Show version and exit.",
     )
     parser.add_argument(
         "--chrg",
@@ -229,6 +236,14 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
         "--grad",
         action="store_true",
         help="R|Whether to compute gradients for positions w.r.t. energy.",
+    )
+    parser.add_argument(
+        "--profile",
+        action="store_true",
+        help=(
+            "R|Profile the program.\n"
+            "Creates 'dxtb.profile' that can be analyzed with 'snakeviz'."
+        ),
     )
     parser.add_argument(
         "file",
