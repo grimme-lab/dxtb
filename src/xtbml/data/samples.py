@@ -1,15 +1,14 @@
 from json import dump as json_dump
 from json import load as json_load
 from pathlib import Path
-from typing import Dict, List, Optional, Union, overload
 
 import torch
 
-from xtbml.data.datareader import Datareader
-from xtbml.typing import Tensor
+from ..data.datareader import Datareader
+from ..typing import Tensor, TensorLike, overload
 
 
-class Sample:
+class Sample(TensorLike):
     """Representation for single sample information."""
 
     buid: str
@@ -71,8 +70,6 @@ class Sample:
         "ovlp",
         "h0",
         "adj",
-        "__device",
-        "__dtype",
     ]
 
     # ...
@@ -100,6 +97,7 @@ class Sample:
         ovlp: Tensor,
         adj: Tensor = Tensor([]),
     ) -> None:
+        super().__init__(positions.device, positions.dtype)
         self.buid = buid
         self.uid = uid
         self.numbers = numbers
@@ -120,72 +118,50 @@ class Sample:
         self.ovlp = ovlp
         self.adj = adj
 
-        self.__device = self.positions.device
-        self.__dtype = self.positions.dtype
-
         if any(
-            [
-                tensor.device != self.device
-                for tensor in (
-                    self.numbers,
-                    self.positions,
-                    self.unpaired_e,
-                    self.charges,
-                    self.egfn1,
-                    self.ggfn1,
-                    self.egfn2,
-                    self.ggfn2,
-                    self.eref,
-                    self.gref,
-                    self.edisp,
-                    self.erep,
-                    self.qat,
-                    self.cn,
-                    self.h0,
-                    self.ovlp,
-                    self.adj,
-                )
-            ]
+            tensor.device != self.device
+            for tensor in (
+                self.numbers,
+                self.positions,
+                self.unpaired_e,
+                self.charges,
+                self.egfn1,
+                self.ggfn1,
+                self.egfn2,
+                self.ggfn2,
+                self.eref,
+                self.gref,
+                self.edisp,
+                self.erep,
+                self.qat,
+                self.cn,
+                self.h0,
+                self.ovlp,
+                self.adj,
+            )
         ):
             raise RuntimeError("All tensors must be on the same device!")
 
         if any(
-            [
-                tensor.dtype != self.dtype
-                for tensor in (
-                    self.positions,
-                    self.egfn1,
-                    self.ggfn1,
-                    self.egfn2,
-                    self.ggfn2,
-                    self.eref,
-                    self.gref,
-                    self.edisp,
-                    self.erep,
-                    self.qat,
-                    self.cn,
-                    self.h0,
-                    self.ovlp,
-                    self.adj,
-                )
-            ]
+            tensor.dtype != self.dtype
+            for tensor in (
+                self.positions,
+                self.egfn1,
+                self.ggfn1,
+                self.egfn2,
+                self.ggfn2,
+                self.eref,
+                self.gref,
+                self.edisp,
+                self.erep,
+                self.qat,
+                self.cn,
+                self.h0,
+                self.ovlp,
+                self.adj,
+            )
         ):
             raise RuntimeError("All tensors must have the same dtype!")
-
-    @property
-    def device(self) -> torch.device:
-        """The device on which the `Sample` object resides."""
-        return self.__device
-
-    @device.setter
-    def device(self, *args):
-        """Instruct users to use the ".to" method if wanting to change device."""
-        raise AttributeError("Move object to device using the `.to` method")
-
-    @property
-    def dtype(self) -> torch.dtype:
-        """Floating point dtype used by Sample object."""
-        return self.__dtype
 
     def to(self, device: torch.device) -> "Sample":
         """
@@ -303,9 +279,7 @@ class Sample:
             ]
         )
 
-    def to_dict(
-        self, skipped: Optional[list[str]] = None
-    ) -> dict[str, Union[str, Tensor]]:
+    def to_dict(self, skipped: list[str] | None = None) -> dict[str, str | Tensor]:
         """Create dictionary of class attributes (exluding dunder methods, `device`, `dtype` and callables).
 
         Args:
@@ -326,26 +300,20 @@ class Sample:
         return d
 
 
-class Samples:
+class Samples(TensorLike):
     """Representation for list of samples."""
 
     samples: list[Sample]
     """List of samples"""
 
-    __slots__ = [
-        "samples",
-        "__device",
-        "__dtype",
-    ]
+    __slots__ = ["samples"]
 
     def __init__(self, samples: list[Sample]):
+        super().__init__(samples[0].egfn1.dtype, samples[0].egfn1.device)
         self.samples = samples
 
-        self.__device = samples[0].egfn1.device
-        self.__dtype = samples[0].egfn1.dtype
-
     @classmethod
-    def from_json(cls, path: Union[Path, str]) -> "Samples":
+    def from_json(cls, path: Path | str) -> "Samples":
         """Create `Samples` from json.
 
         Parameters
@@ -381,9 +349,7 @@ class Samples:
 
     # NOTE: Extend with on-the-fly feature generation?
     @classmethod
-    def from_disk(
-        cls, benchmark: str, select_name: Union[str, None] = None
-    ) -> "Samples":
+    def from_disk(cls, benchmark: str, select_name: str | None = None) -> "Samples":
         """Create `Samples` from disk. Features are set to zero.
 
         Parameters
@@ -438,7 +404,7 @@ class Samples:
 
         return cls(samples_list)
 
-    def to_json(self, path: Union[Path, str]) -> None:
+    def to_json(self, path: Path | str) -> None:
         """
         Convert samples to json.
         """
@@ -455,21 +421,6 @@ class Samples:
 
         with open(Path(path, "samples.json"), "w", encoding="utf-8") as f:
             json_dump(d, f)
-
-    @property
-    def device(self) -> torch.device:
-        """The device on which the `Samples` object resides."""
-        return self.__device
-
-    @device.setter
-    def device(self, *args):
-        """Instruct users to use the ".to" method if wanting to change device."""
-        raise AttributeError("Move object to device using the `.to` method")
-
-    @property
-    def dtype(self) -> torch.dtype:
-        """Floating point dtype used by Samples object."""
-        return self.__dtype
 
     def to(self, device: torch.device) -> "Samples":
         """
@@ -523,7 +474,7 @@ class Samples:
     def __getitem__(self, idx: slice) -> list[Sample]:
         ...
 
-    def __getitem__(self, idx: Union[int, slice]) -> Union[Sample, list[Sample]]:
+    def __getitem__(self, idx: int | slice) -> Sample | list[Sample]:
         """Defines standard list slicing/indexing for list of samples."""
         return self.samples[idx]
 

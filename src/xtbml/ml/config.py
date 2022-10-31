@@ -1,7 +1,5 @@
 """ A collection of configuration classes """
 
-from typing import List, Union
-
 import pytorch_lightning as pl
 from pydantic import BaseModel
 from pytorch_lightning.callbacks import LearningRateMonitor
@@ -17,7 +15,7 @@ class Lightning_Configuration(BaseModel):
     """Configuration utilised to set up pytorch lightning modules.
     This includes preparing a Trainer(), model and the data."""
 
-    uid: Union[int, str] = "default"
+    uid: int | str = "default"
     """ Unique identifier for configuration """
 
     # ML model configuration

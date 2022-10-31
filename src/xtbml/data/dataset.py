@@ -1,6 +1,5 @@
 from abc import abstractmethod
 from pathlib import Path
-from typing import List, Literal, Optional, Tuple, Union, overload
 
 import pandas as pd
 import torch
@@ -9,31 +8,45 @@ from pydantic import BaseModel
 from torch import Tensor
 from torch.utils.data import DataLoader, Dataset
 
-from xtbml.data.reactions import Reaction, Reactions
-from xtbml.data.samples import Sample, Samples
+from ..data.reactions import Reaction, Reactions
+from ..data.samples import Sample, Samples
+from ..typing import Literal, overload
 
 
 # TODO: add to general utils
 # With courtesy to https://pytorch-forecasting.readthedocs.io
 def padded_stack(
-    tensors: list[torch.Tensor],
-    side: str = "right",
-    mode: str = "constant",
-    value: Union[int, float] = 0,
-) -> torch.Tensor:
+    tensors: list[Tensor],
+    side: Literal["left", "right"] = "right",
+    mode: Literal["constant", "reflect", "replicate", "circular"] = "constant",
+    value: int | float = 0,
+) -> Tensor:
     """
     Stack tensors along first dimension and pad them along last dimension to ensure their size is equal.
 
-    Args:
-        tensors (List[torch.Tensor]): list of tensors to stack
-        side (str): side on which to pad - "left" or "right". Defaults to "right".
-        mode (str): 'constant', 'reflect', 'replicate' or 'circular'. Default: 'constant'
-        value (Union[int, float]): value to use for constant padding
+    Parameters
+    ----------
+    tensors : list[Tensor]
+       List of tensors to stack.
+    side : Literal['left', 'right'], optional
+        Side on which to pad - "left" or "right". Defaults to "right".
+    mode : Literal['constant', 'reflect', 'replicate', 'circular'], optional
+        "constant", "reflect", "replicate" or "circular". Default: "constant"
+    value : int | float, optional
+        Value to use for constant padding. Defaults to 0.
 
-    Returns:
-        torch.Tensor: stacked tensor
+    Returns
+    -------
+    Tensor
+        Stacked tensor.
+
+    Raises
+    ------
+    ValueError
+        Unknown side for padding set.
     """
-    full_size = max([x.size(-1) for x in tensors])
+
+    full_size = max(x.size(-1) for x in tensors)
 
     def make_padding(pad):
         if side == "left":
@@ -74,7 +87,7 @@ class DatasetModel(BaseModel, Dataset):
     samples: list[Sample]
     """Samples in dataset"""
 
-    reactions: Optional[list[Reaction]] = None
+    reactions: list[Reaction] | None = None
     """Reactions in dataset"""
 
     class Config:
@@ -84,7 +97,7 @@ class DatasetModel(BaseModel, Dataset):
     @classmethod  # @classmethod must be used before @abstractmethod!
     @abstractmethod
     def from_json(
-        cls, path_samples: Union[Path, list[Path], str, list[str]]
+        cls, path_samples: Path | list[Path] | str | list[str]
     ) -> "SampleDataset":
         ...
 
@@ -92,7 +105,7 @@ class DatasetModel(BaseModel, Dataset):
     @classmethod
     @abstractmethod
     def from_json(
-        cls, path_samples: Union[Path, str], path_reactions: Union[Path, str]
+        cls, path_samples: Path | str, path_reactions: Path | str
     ) -> "ReactionDataset":
         ...
 
@@ -100,9 +113,9 @@ class DatasetModel(BaseModel, Dataset):
     @abstractmethod
     def from_json(
         cls,
-        path_samples: Union[Path, list[Path], str, list[str]],
-        path_reactions: Union[Path, list[Path], str, list[str], None] = None,
-    ) -> Union["SampleDataset", "ReactionDataset"]:
+        path_samples: Path | list[Path] | str | list[str],
+        path_reactions: Path | list[Path] | str | list[str] | None = None,
+    ) -> "SampleDataset" | "ReactionDataset":
         """Load `Samples` from JSON files.
 
         Parameters
@@ -119,7 +132,7 @@ class DatasetModel(BaseModel, Dataset):
         """
         ...
 
-    def to_json(self, path: Union[Path, str]) -> None:
+    def to_json(self, path: Path | str) -> None:
         """Save dataset to disk.
 
         Parameters
@@ -152,7 +165,7 @@ class SampleDataset(DatasetModel):
 
     @classmethod
     def from_json(
-        cls, path_samples: Union[Path, list[Path], str, list[str]]
+        cls, path_samples: Path | list[Path] | str | list[str]
     ) -> "SampleDataset":
         if isinstance(path_samples, list):
             sample_list = []
@@ -201,7 +214,7 @@ class SampleDataset(DatasetModel):
     def __getitem__(self, idx: slice) -> "SampleDataset":
         ...
 
-    def __getitem__(self, idx: Union[int, slice]) -> Union["Sample", "SampleDataset"]:
+    def __getitem__(self, idx: int | slice) -> "Sample" | "SampleDataset":
         """Defines standard list slicing/indexing for list of `SampleDataset`."""
         samples = self.samples[idx]
 
@@ -229,8 +242,8 @@ class ReactionDataset(DatasetModel):
     @classmethod
     def from_json(
         cls,
-        path_samples: Union[Path, list[Path], str, list[str]],
-        path_reactions: Union[Path, list[Path], str, list[str]],
+        path_samples: Path | list[Path] | str | list[str],
+        path_reactions: Path | list[Path] | str | list[str],
     ) -> "ReactionDataset":
         if isinstance(path_samples, list):
             sample_list = []
@@ -268,8 +281,8 @@ class ReactionDataset(DatasetModel):
         ...
 
     def __getitem__(
-        self, idx: Union[int, slice]
-    ) -> Union[tuple[list[Sample], Reaction], "ReactionDataset"]:
+        self, idx: int | slice
+    ) -> tuple[list[Sample], Reaction] | "ReactionDataset":
         """Get all samples involved in specified reaction."""
 
         reactions = self.reactions[idx]
@@ -369,8 +382,8 @@ class ReactionDataset(DatasetModel):
             ...
 
         def _sort(
-            sort_target: Union[list[Sample], list[Reaction]]
-        ) -> Union[list[Sample], list[Reaction]]:
+            sort_target: list[Sample] | list[Reaction],
+        ) -> list[Sample] | list[Reaction]:
             l = []
             uids = sorted([s.uid for s in sort_target])
             for uid in uids:
@@ -380,13 +393,13 @@ class ReactionDataset(DatasetModel):
 
             return l
 
-        if target == "samples" or target == "both":
+        if target in ("samples", "both"):
             self.samples = _sort(self.samples)
 
-        if target == "reactions" or target == "both":
+        if target in ("reactions", "both"):
             self.reactions = _sort(self.reactions)
 
-    def get_dataloader(self, cfg: Optional[dict] = {}) -> DataLoader:
+    def get_dataloader(self, cfg: dict = {}) -> DataLoader:
         """
         Return pytorch dataloader for batch-wise iteration over dataset object.
 
@@ -538,7 +551,7 @@ class ReactionDataset(DatasetModel):
 
         def get_max_shape(
             dataset: ReactionDataset,
-        ) -> list[Union[None, tuple[int, int]]]:
+        ) -> list[None | tuple[int, int]]:
             # ordered list containing each key
             features = list(dataset.samples[0].to_dict().keys())
             max_shape = [None for f in features]
@@ -595,9 +608,7 @@ class ReactionDataset(DatasetModel):
                     continue
         self.samples = samples_new
 
-    def to_df(
-        self, flatten: bool = True, path: Union[None, str] = None
-    ) -> pd.DataFrame:
+    def to_df(self, flatten: bool = True, path: str | None = None) -> pd.DataFrame:
         """Convert dataset to pandas dataframe format.
 
         Parameters
@@ -701,7 +712,7 @@ class ReactionDataset(DatasetModel):
 
 def store_subsets_on_disk(
     dataset: ReactionDataset,
-    path: Union[Path, str],
+    path: Path | str,
     subsets: list[str],
 ):
     """Store subsets on disk by first pruning the dataset and then saving to disk.
@@ -733,7 +744,7 @@ def store_subsets_on_disk(
 
 
 def get_dataset(
-    path_reactions: Union[Path, str], path_samples: Union[Path, str]
+    path_reactions: Path | str, path_samples: Path | str
 ) -> ReactionDataset:
     """Return a preliminary dataset for setting up the workflow."""
 
@@ -813,7 +824,7 @@ def largest_eigenvalue(matrix, n_iter=100):
     return eigvals
 
 
-def create_subset(dataset: ReactionDataset, keys: Union[str, list[str]]):
+def create_subset(dataset: ReactionDataset, keys: str | list[str]):
     """Prune given dataset to subsets indicated by keys. Note: changing the dataset in-place
 
     Args:

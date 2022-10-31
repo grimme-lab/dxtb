@@ -48,7 +48,6 @@ Tree:  1.902131842981567e-05
 """
 
 from pathlib import Path
-from typing import List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -64,7 +63,7 @@ class TreeRegressor:
     """Class for training and predicting for regression task utilizing decision-tree like methods."""
 
     def __init__(
-        self, features: pd.DataFrame, target: str, model: Union[RegressorMixin, str]
+        self, features: pd.DataFrame, target: str, model: RegressorMixin | str
     ) -> None:
 
         self.features, self.labels, self.feature_list = TreeRegressor.prep_data(

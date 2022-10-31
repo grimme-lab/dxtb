@@ -1,7 +1,6 @@
 """ Simple pytoch ML model for training purposes. """
 # from egnn_pytorch import EGNN, EGNN_Network
 import sys
-from typing import Dict, List
 
 import torch
 import torch.nn as nn

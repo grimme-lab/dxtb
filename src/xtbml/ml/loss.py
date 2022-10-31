@@ -1,7 +1,7 @@
 """ Module for custom loss functions."""
 
 from pathlib import Path
-from typing import List, Literal
+from typing import Literal
 
 import torch
 import torch.nn.functional as F

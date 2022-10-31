@@ -1,8 +1,6 @@
 import sys
 import time
-from argparse import ArgumentParser
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import pytorch_lightning as pl
 import torch

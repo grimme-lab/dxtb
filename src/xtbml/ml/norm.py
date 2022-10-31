@@ -1,12 +1,11 @@
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, Union
 
 import torch
 
 from xtbml.data.samples import Sample
 
 from ..data.dataset import ReactionDataset
-from ..typing import Tensor
+from ..typing import Any, Tensor
 
 # NOTE: THIS IS NOT PRODUCTION READY
 
@@ -14,7 +13,7 @@ from ..typing import Tensor
 class Normalisation:
     def __init__(
         self,
-        path: Union[None, str, Path] = None,  # TODO:
+        path: str | Path | None = None,  # TODO:
         skip_reaction_params: list[str] = ["eref", "egfn1"],
         skip_sample_params: list[str] = ["xyz", "egfn1"],
     ) -> None:

@@ -1,14 +1,13 @@
 from json import dump as json_dump
 from json import load as json_load
 from pathlib import Path
-from typing import Dict, List, Optional, Union, overload
 
 import torch
 
-from xtbml.typing import Tensor
+from ..typing import Tensor, TensorLike, overload
 
 
-class Reaction:
+class Reaction(TensorLike):
     """Representation for single reaction involving multiple `Reaction`s."""
 
     uid: str
@@ -31,8 +30,6 @@ class Reaction:
         "egfn1",
         "egfn2",
         "eref",
-        "__device",
-        "__dtype",
     ]
 
     def __init__(
@@ -44,6 +41,7 @@ class Reaction:
         egfn2: Tensor,
         eref: Tensor,
     ) -> None:
+        super().__init__(egfn1.device, egfn1.dtype)
         self.uid = uid
         self.partners = partners
         self.nu = nu
@@ -51,39 +49,16 @@ class Reaction:
         self.egfn2 = egfn2
         self.eref = eref
 
-        self.__dtype = egfn1.dtype
-        self.__device = egfn1.device
-
         if any(
-            [
-                tensor.device != self.device
-                for tensor in (self.nu, self.egfn1, self.egfn2, self.eref)
-            ]
+            tensor.device != self.device
+            for tensor in (self.nu, self.egfn1, self.egfn2, self.eref)
         ):
             raise RuntimeError("All tensors must be on the same device!")
 
         if any(
-            [
-                tensor.dtype != self.dtype
-                for tensor in (self.egfn1, self.egfn2, self.eref)
-            ]
+            tensor.dtype != self.dtype for tensor in (self.egfn1, self.egfn2, self.eref)
         ):
             raise RuntimeError("All tensors must have the same dtype!")
-
-    @property
-    def device(self) -> torch.device:
-        """The device on which the `Reaction` object resides."""
-        return self.__device
-
-    @device.setter
-    def device(self, *args):
-        """Instruct users to use the ".to" method if wanting to change device."""
-        raise AttributeError("Move object to device using the `.to` method")
-
-    @property
-    def dtype(self) -> torch.dtype:
-        """Floating point dtype used by Reaction object."""
-        return self.__dtype
 
     def to(self, device: torch.device) -> "Reaction":
         """
@@ -162,9 +137,7 @@ class Reaction:
             ]
         )
 
-    def to_dict(
-        self, skipped: Optional[list[str]] = None
-    ) -> dict[str, Union[str, Tensor]]:
+    def to_dict(self, skipped: list[str] | None = None) -> dict[str, str | Tensor]:
         """Create dictionary of class attributes (exluding dunder methods, `device`, `dtype` and callables).
 
         Args:
@@ -173,34 +146,32 @@ class Reaction:
         Returns:
             Dict[str, Union[str, Tensor]]: Selected attributes and their respective values.
         """
-        d = dict()
+        d = {}
         skip = ["__", "device", "dtype"]
         if skipped is not None:
             skip = skip + skipped
 
         for slot in self.__slots__:
-            if not any([s in slot for s in skip]):
+            if not any(s in slot for s in skip):
                 d[slot] = getattr(self, slot)
 
         return d
 
 
-class Reactions:
+class Reactions(TensorLike):
     """Representation for list of `Reaction`s."""
 
     reactions: list[Reaction]
     """List of reactions"""
 
-    __slots__ = ["reactions", "__device", "__dtype"]
+    __slots__ = ["reactions"]
 
     def __init__(self, reactions: list[Reaction]) -> None:
+        super().__init__(reactions[0].egfn1.device, reactions[0].egfn1.dtype)
         self.reactions = reactions
 
-        self.__device = reactions[0].egfn1.device
-        self.__dtype = reactions[0].egfn1.dtype
-
     @classmethod
-    def from_json(cls, path: Union[Path, str]) -> "Reactions":
+    def from_json(cls, path: Path | str) -> "Reactions":
         """Create `Reactions` from json.
 
         Args:
@@ -230,7 +201,7 @@ class Reactions:
 
         return cls(reaction_list)
 
-    def to_json(self, path: Union[Path, str]) -> None:
+    def to_json(self, path: Path | str) -> None:
         """
         Convert reactions to json.
         """
@@ -263,24 +234,9 @@ class Reactions:
     def __getitem__(self, idx: slice) -> list[Reaction]:
         ...
 
-    def __getitem__(self, idx: Union[int, slice]) -> Union[Reaction, list[Reaction]]:
+    def __getitem__(self, idx: int | slice) -> Reaction | list[Reaction]:
         """Defines standard list slicing/indexing for list of reactions."""
         return self.reactions[idx]
-
-    @property
-    def device(self) -> torch.device:
-        """The device on which the `Reactions` object resides."""
-        return self.__device
-
-    @device.setter
-    def device(self, *args):
-        """Instruct users to use the ".to" method if wanting to change device."""
-        raise AttributeError("Move object to device using the `.to` method")
-
-    @property
-    def dtype(self) -> torch.dtype:
-        """Floating point dtype used by Reactions object."""
-        return self.__dtype
 
     def to(self, device: torch.device) -> "Reactions":
         """
