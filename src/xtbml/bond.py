@@ -49,12 +49,10 @@ tensor([[False, False,  True,  True,  True, False, False, False],
 """
 
 import torch
-from typing import Callable, Any
 
-from .ncoord.ncoord import erf_count
-
-Tensor = torch.Tensor
-
+from .ncoord import erf_count
+from .typing import CountingFunction, Tensor
+from .utils import real_pairs
 
 _en = torch.tensor(
     [
@@ -219,7 +217,7 @@ def guess_bond_order(
     numbers: Tensor,
     positions: Tensor,
     cn: Tensor,
-    counting_function: Callable[[Tensor, Tensor, Any], Tensor] = erf_count,
+    counting_function: CountingFunction = erf_count,
     **kwargs,
 ) -> Tensor:
     """
@@ -287,19 +285,16 @@ def guess_bond_order(
             [0.0000, 0.3347, 0.0000, 0.0000, 0.0000]])
     """
 
-    eps = torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype)
-    real = numbers != 0
-    mask = real.unsqueeze(-2) * real.unsqueeze(-1)
-    mask.diagonal(dim1=-2, dim2=-1).fill_(False)
+    mask = real_pairs(numbers, True)
     distances = torch.where(
         mask,
         torch.cdist(positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"),
-        eps,
+        positions.new_tensor(torch.finfo(positions.dtype).eps),
     )
 
     bond_length = guess_bond_length(numbers, cn)
     return torch.where(
         mask,
         counting_function(distances, bond_length, **kwargs),
-        torch.tensor(0.0, dtype=distances.dtype),
+        positions.new_tensor(0.0),
     )

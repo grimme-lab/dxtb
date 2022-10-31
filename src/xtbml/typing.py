@@ -2,24 +2,15 @@
 Type annotations for this project.
 """
 
-from collections.abc import Generator
+from collections.abc import Callable, Generator
+from typing import Any, Literal, Optional, Protocol, TypedDict, TypeGuard, overload
 
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    TypedDict,
-    List,
-    Optional,
-    Protocol,
-    Tuple,
-    Union,
-)
+import torch
 from torch import Tensor
 
-Sliceable = Union[List[Tensor], Tuple[Tensor]]
+Sliceable = list[Tensor] | tuple[Tensor]
 
-CountingFunction = Callable[[Tensor, Tensor, Any], Tensor]
+CountingFunction = Callable[[Tensor, Tensor], Tensor]
 
 
 class Molecule(TypedDict):
@@ -30,3 +21,31 @@ class Molecule(TypedDict):
 
     positions: Tensor
     """Tensor of 3D coordinates of shape (n, 3)"""
+
+
+# TODO: Extend with type() and to() methods.
+class TensorLike:
+    """
+    Provide `device` and `dtype` for other classes.
+    """
+
+    __slots__ = ["__device", "__dtype"]
+
+    def __init__(self, device: torch.device, dtype: torch.dtype):
+        self.__device = device
+        self.__dtype = dtype
+
+    @property
+    def device(self) -> torch.device:
+        """The device on which the `IndexHelper` object resides."""
+        return self.__device
+
+    @device.setter
+    def device(self, *args):
+        """Instruct users to use the ".to" method if wanting to change device."""
+        raise AttributeError("Move object to device using the `.to` method")
+
+    @property
+    def dtype(self) -> torch.dtype:
+        """Floating point dtype used by IndexHelper object."""
+        return self.__dtype

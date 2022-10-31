@@ -3,15 +3,15 @@ Parametrization Utility
 =======================
 
 Contains functions to obtain the parametrization of elements and pairs.
-Most functions convert the parametrization dictionary to a tensor. 
+Most functions convert the parametrization dictionary to a tensor.
 """
 
-from __future__ import annotations
 import torch
 
 from ..constants import ATOMIC_NUMBER, PSE
 from ..param import Element
 from ..typing import Tensor
+from ..utils import is_int_list
 
 
 def get_pair_param(
@@ -40,10 +40,11 @@ def get_pair_param(
     """
 
     # convert atomic numbers to symbols
-    if all(isinstance(x, int) for x in symbols):
+    if is_int_list(symbols):
         symbols = [PSE.get(i, "X") for i in symbols]
 
-    pair_mat = torch.ones(len(symbols), len(symbols), device=device, dtype=dtype)
+    ndim = len(symbols)
+    pair_mat = torch.ones(*[ndim, ndim], dtype=dtype, device=device)
     for i, isp in enumerate(symbols):
         for j, jsp in enumerate(symbols):
             # Watch format! ("element1-element2")
@@ -61,6 +62,7 @@ def get_elem_param(
     pad_val: int = -1,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
+    requires_grad: bool = False,
 ) -> Tensor:
     """Obtain a element-wise parametrized quantity for selected atomic numbers.
 
@@ -112,7 +114,7 @@ def get_elem_param(
         for val in vals:
             l.append(val)
 
-    return torch.tensor(l, device=device, dtype=dtype)
+    return torch.tensor(l, device=device, dtype=dtype, requires_grad=requires_grad)
 
 
 def get_elem_angular(par_element: dict[str, Element]) -> dict[int, list[int]]:

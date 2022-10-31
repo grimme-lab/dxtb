@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from xtbml.basis import slater, orthogonalize
+from xtbml.basis import orthogonalize, slater
 from xtbml.integral import mmd
 
 

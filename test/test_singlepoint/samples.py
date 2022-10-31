@@ -1,0 +1,48 @@
+"""
+Data for testing repulsion taken from https://github.com/grimme-lab/mstore.
+"""
+
+import torch
+
+from xtbml.typing import Molecule, Tensor, TypedDict
+
+from ..molecules import merge_nested_dicts, mols
+
+
+class Refs(TypedDict):
+    """Format of reference records containing GFN1-xTB and GFN2-xTB reference values."""
+
+    etot: Tensor
+    """Total energy for GFN1-xTB"""
+
+
+class Record(Molecule, Refs):
+    """Store for molecular information and reference values"""
+
+
+refs: dict[str, Refs] = {
+    "H2": {
+        "etot": torch.tensor(-1.0362714373390e00),
+    },
+    "H2O": {
+        "etot": torch.tensor(-5.7686218257620e00),
+    },
+    "CH4": {
+        "etot": torch.tensor(-4.2741992424931e00),
+    },
+    "SiH4": {
+        "etot": torch.tensor(-4.0087585461086e00),
+    },
+    "LYS_xao": {
+        "etot": torch.tensor(-4.8324739766346e01),
+    },
+    "C60": {
+        "etot": torch.tensor(-1.2673081838911e02),
+    },
+    "vancoh2": {
+        "etot": torch.tensor(-3.2295379428673e02),
+    },
+}
+
+
+samples: dict[str, Record] = merge_nested_dicts(mols, refs)

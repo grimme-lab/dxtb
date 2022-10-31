@@ -1,9 +1,9 @@
 import pytest
 import torch
-
 from torch_geometric.data import Data as pygData
 
 from xtbml.ml.transforms import Pad_Hamiltonian
+
 from .gmtkn55 import GMTKN55
 
 

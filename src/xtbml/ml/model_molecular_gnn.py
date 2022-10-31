@@ -1,33 +1,32 @@
-import torch
-import torch.nn.functional as F
-from torch_geometric.nn import GCNConv, global_add_pool
-from torch_geometric.data import Batch, LightningDataset
-from typing import List, Dict, Tuple
-from torch import optim, nn
-import pytorch_lightning as pl
-from torch_geometric.loader import DataLoader as pygDataloader
+import sys
+import time
 from argparse import ArgumentParser
 from pathlib import Path
-import time
+from typing import Dict, List, Tuple
 
-from pytorch_lightning.loggers import WandbLogger
+import pytorch_lightning as pl
+import torch
+import torch.nn.functional as F
 import wandb
+from pytorch_lightning.loggers import WandbLogger
+from torch import nn, optim
+from torch_geometric.data import Batch, LightningDataset
+from torch_geometric.loader import DataLoader as pygDataloader
+from torch_geometric.nn import GCNConv, global_add_pool
 
 from xtbml.param import charge
 
-from .loss import WTMAD2Loss
-from ..data.graph_dataset import MolecularGraph_Dataset
-from .transforms import Pad_Hamiltonian
-from ..typing import Tensor
-from .config import Lightning_Configuration
-from ..param import GFN1_XTB as par
-from ..xtb.calculator import Calculator
-from ..wavefunction import mulliken
 from ..basis.indexhelper import IndexHelper
+from ..data.graph_dataset import MolecularGraph_Dataset
+from ..param import GFN1_XTB as par
 from ..param.gfn1 import GFN1_XTB as par
 from ..param.util import get_elem_angular
-
-import sys
+from ..typing import Tensor
+from ..wavefunction import mulliken
+from ..xtb.calculator import Calculator
+from .config import Lightning_Configuration
+from .loss import WTMAD2Loss
+from .transforms import Pad_Hamiltonian
 
 
 class MolecularGNN(pl.LightningModule):
@@ -334,7 +333,7 @@ class MolecularGNN(pl.LightningModule):
 
         return loss
 
-    def calc_xtb(self, sample) -> Dict[str, Tensor]:
+    def calc_xtb(self, sample) -> dict[str, Tensor]:
 
         start_scf = time.time()
 

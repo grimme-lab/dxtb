@@ -1,8 +1,8 @@
 import pytest
 import torch
 
-from xtbml.integral import mmd
 from xtbml.basis import slater
+from xtbml.integral import mmd
 
 
 @pytest.mark.parametrize("ng", [1, 2, 3, 4, 5, 6])

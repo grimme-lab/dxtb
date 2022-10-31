@@ -1,11 +1,12 @@
 from pathlib import Path
 from typing import List
+
 import pandas as pd
 import pytest
 import torch
 
-from xtbml.ml.loss import WTMAD2Loss
 from xtbml.data.dataset import ReactionDataset, get_gmtkn55_dataset
+from xtbml.ml.loss import WTMAD2Loss
 from xtbml.ml.util import load_model_from_cfg
 
 from .gmtkn55 import GMTKN55
@@ -30,7 +31,7 @@ class TestWTMAD2Loss:
         self.dataset = get_gmtkn55_dataset(self.path)
 
         # subsets in GMTKN55
-        self.all_sets = set([r.uid.split("_")[0] for r in self.dataset.reactions])
+        self.all_sets = {r.uid.split("_")[0] for r in self.dataset.reactions}
 
         # loss function
         self.loss_fn = WTMAD2Loss(self.path)
@@ -381,7 +382,7 @@ def wtmad2(
     set_column: str = "subset",
     verbose: bool = True,
     calc_subsets=False,
-) -> List[float]:
+) -> list[float]:
     """Calculate the weighted total mean absolute deviation, as defined in
 
     - L. Goerigk, A. Hansen, C. Bauer, S. Ehrlich,A. Najibi, Asim, S. Grimme,

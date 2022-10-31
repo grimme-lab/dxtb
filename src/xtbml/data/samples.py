@@ -1,8 +1,9 @@
-from json import load as json_load
 from json import dump as json_dump
+from json import load as json_load
 from pathlib import Path
-import torch
 from typing import Dict, List, Optional, Union, overload
+
+import torch
 
 from xtbml.data.datareader import Datareader
 from xtbml.typing import Tensor
@@ -303,8 +304,8 @@ class Sample:
         )
 
     def to_dict(
-        self, skipped: Optional[List[str]] = None
-    ) -> Dict[str, Union[str, Tensor]]:
+        self, skipped: Optional[list[str]] = None
+    ) -> dict[str, Union[str, Tensor]]:
         """Create dictionary of class attributes (exluding dunder methods, `device`, `dtype` and callables).
 
         Args:
@@ -328,7 +329,7 @@ class Sample:
 class Samples:
     """Representation for list of samples."""
 
-    samples: List[Sample]
+    samples: list[Sample]
     """List of samples"""
 
     __slots__ = [
@@ -337,7 +338,7 @@ class Samples:
         "__dtype",
     ]
 
-    def __init__(self, samples: List[Sample]):
+    def __init__(self, samples: list[Sample]):
         self.samples = samples
 
         self.__device = samples[0].egfn1.device
@@ -519,10 +520,10 @@ class Samples:
         ...
 
     @overload
-    def __getitem__(self, idx: slice) -> List[Sample]:
+    def __getitem__(self, idx: slice) -> list[Sample]:
         ...
 
-    def __getitem__(self, idx: Union[int, slice]) -> Union[Sample, List[Sample]]:
+    def __getitem__(self, idx: Union[int, slice]) -> Union[Sample, list[Sample]]:
         """Defines standard list slicing/indexing for list of samples."""
         return self.samples[idx]
 

@@ -1,3 +1,7 @@
+"""
+Chemical constants.
+"""
+
 PSE = {
     0: "X",
     1: "H",

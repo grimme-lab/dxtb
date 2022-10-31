@@ -13,17 +13,16 @@ Example
 torch.tensor(6)
 """
 
-from __future__ import annotations
 from functools import wraps
+
 import torch
 
-from ..exlibs.tbmalt import batch
-from ..typing import Callable, Tensor, Union
-
+from ..typing import Callable, Tensor
+from ..utils import batch
 
 Gather = Callable[[Tensor, int, Tensor], Tensor]
 Scatter = Callable[[Tensor, int, Tensor, str], Tensor]
-ScatterOrGather = Union[Gather, Scatter]
+ScatterOrGather = Gather | Scatter
 
 
 def _fill(index: Tensor, repeat: Tensor) -> Tensor:
@@ -205,10 +204,38 @@ def wrap_gather(x: Tensor, dim: int | tuple[int, int], idx: Tensor) -> Tensor:
     )
 
 
-# scatter_reduce
+# scatter
 
 
 def scatter_reduce(x: Tensor, dim: int, idx: Tensor, *args: str) -> Tensor:
+    """
+
+    .. warning::
+
+        `scatter_reduce` is only introduced in v11.1 and the API changes in v12.1
+        in a BC-breaking way. `scatter_reduce` in v12.1 is still in beta and CPU-only.
+
+        Related links:
+        - https://pytorch.org/docs/1.12/generated/torch.Tensor.scatter_reduce_.html#torch.Tensor.scatter_reduce_
+        - https://pytorch.org/docs/1.11/generated/torch.scatter_reduce.html
+        - https://github.com/pytorch/pytorch/releases/tag/v1.12.0 (section "Sparse")
+
+    Thin wrapper for pytorch's `scatter_reduce` function.
+
+    Parameters
+    ----------
+    x : Tensor
+        Tensor to reduce
+    dim : int
+        Dimension to reduce over
+    idx : Tensor
+        Index to reduce over
+
+    Returns
+    -------
+    Tensor
+        Reduced tensor.
+    """
     return torch.scatter_reduce(x, dim, idx, *args)
 
 
@@ -359,7 +386,7 @@ class IndexHelper:
         ----------
         numbers : Tensor
             Atomic numbers for the system
-        angular : Dict[int, Tensor]
+        angular : dict[int, Tensor]
             Map between atomic numbers and angular momenta of all shells
 
         Returns

@@ -1,14 +1,13 @@
 from abc import abstractmethod
-from typing import List, Literal, Optional, Union, Tuple, overload
-from pydantic import BaseModel
 from pathlib import Path
-import pandas as pd
+from typing import List, Literal, Optional, Tuple, Union, overload
 
+import pandas as pd
 import torch
-from torch import Tensor
-from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
 import torch.nn.functional as F
+from pydantic import BaseModel
+from torch import Tensor
+from torch.utils.data import DataLoader, Dataset
 
 from xtbml.data.reactions import Reaction, Reactions
 from xtbml.data.samples import Sample, Samples
@@ -17,7 +16,7 @@ from xtbml.data.samples import Sample, Samples
 # TODO: add to general utils
 # With courtesy to https://pytorch-forecasting.readthedocs.io
 def padded_stack(
-    tensors: List[torch.Tensor],
+    tensors: list[torch.Tensor],
     side: str = "right",
     mode: str = "constant",
     value: Union[int, float] = 0,
@@ -56,7 +55,7 @@ def padded_stack(
     return out
 
 
-def get_subsets_from_batched_reaction(batched_reaction: Reaction) -> List[str]:
+def get_subsets_from_batched_reaction(batched_reaction: Reaction) -> list[str]:
     # derive subset from partner list
     subsets = [s.split("/")[0] for s in batched_reaction.partners]
     # different number of partners per reaction
@@ -72,10 +71,10 @@ class DatasetModel(BaseModel, Dataset):
     """Base class for Datasets."""
 
     # TODO: better would be an object of lists than a list of objects
-    samples: List[Sample]
+    samples: list[Sample]
     """Samples in dataset"""
 
-    reactions: Optional[List[Reaction]] = None
+    reactions: Optional[list[Reaction]] = None
     """Reactions in dataset"""
 
     class Config:
@@ -85,7 +84,7 @@ class DatasetModel(BaseModel, Dataset):
     @classmethod  # @classmethod must be used before @abstractmethod!
     @abstractmethod
     def from_json(
-        cls, path_samples: Union[Path, List[Path], str, List[str]]
+        cls, path_samples: Union[Path, list[Path], str, list[str]]
     ) -> "SampleDataset":
         ...
 
@@ -101,8 +100,8 @@ class DatasetModel(BaseModel, Dataset):
     @abstractmethod
     def from_json(
         cls,
-        path_samples: Union[Path, List[Path], str, List[str]],
-        path_reactions: Union[Path, List[Path], str, List[str], None] = None,
+        path_samples: Union[Path, list[Path], str, list[str]],
+        path_reactions: Union[Path, list[Path], str, list[str], None] = None,
     ) -> Union["SampleDataset", "ReactionDataset"]:
         """Load `Samples` from JSON files.
 
@@ -145,7 +144,7 @@ class DatasetModel(BaseModel, Dataset):
 class SampleDataset(DatasetModel):
     """Dataset for storing features used for training."""
 
-    samples: List[Sample]
+    samples: list[Sample]
     """Samples in dataset"""
 
     def __init__(self, **kwargs):
@@ -153,7 +152,7 @@ class SampleDataset(DatasetModel):
 
     @classmethod
     def from_json(
-        cls, path_samples: Union[Path, List[Path], str, List[str]]
+        cls, path_samples: Union[Path, list[Path], str, list[str]]
     ) -> "SampleDataset":
         if isinstance(path_samples, list):
             sample_list = []
@@ -218,10 +217,10 @@ class SampleDataset(DatasetModel):
 class ReactionDataset(DatasetModel):
     """Dataset for storing features used for training."""
 
-    samples: List[Sample]
+    samples: list[Sample]
     """Samples in dataset"""
 
-    reactions: List[Reaction]
+    reactions: list[Reaction]
     """Reactions in dataset"""
 
     def __init__(self, **kwargs):
@@ -230,8 +229,8 @@ class ReactionDataset(DatasetModel):
     @classmethod
     def from_json(
         cls,
-        path_samples: Union[Path, List[Path], str, List[str]],
-        path_reactions: Union[Path, List[Path], str, List[str]],
+        path_samples: Union[Path, list[Path], str, list[str]],
+        path_reactions: Union[Path, list[Path], str, list[str]],
     ) -> "ReactionDataset":
         if isinstance(path_samples, list):
             sample_list = []
@@ -251,7 +250,7 @@ class ReactionDataset(DatasetModel):
 
         return cls(samples=sample_list, reactions=reaction_list)
 
-    def get_samples_from_reaction_partners(self, reaction: Reaction) -> List[Sample]:
+    def get_samples_from_reaction_partners(self, reaction: Reaction) -> list[Sample]:
         sample_list = []
         for partner in reaction.partners:
             for sample in self.samples:
@@ -261,7 +260,7 @@ class ReactionDataset(DatasetModel):
         return sample_list
 
     @overload
-    def __getitem__(self, idx: int) -> Tuple[List[Sample], Reaction]:
+    def __getitem__(self, idx: int) -> tuple[list[Sample], Reaction]:
         ...
 
     @overload
@@ -270,7 +269,7 @@ class ReactionDataset(DatasetModel):
 
     def __getitem__(
         self, idx: Union[int, slice]
-    ) -> Union[Tuple[List[Sample], Reaction], "ReactionDataset"]:
+    ) -> Union[tuple[list[Sample], Reaction], "ReactionDataset"]:
         """Get all samples involved in specified reaction."""
 
         reactions = self.reactions[idx]
@@ -282,7 +281,7 @@ class ReactionDataset(DatasetModel):
             ]
 
             return ReactionDataset(
-                samples=list(set(item for sublist in samples for item in sublist)),
+                samples=list({item for sublist in samples for item in sublist}),
                 reactions=reactions,
             )
         elif isinstance(idx, int) and isinstance(reactions, Reaction):
@@ -362,16 +361,16 @@ class ReactionDataset(DatasetModel):
         """
 
         @overload
-        def _sort(sort_target: List[Sample]) -> List[Sample]:
+        def _sort(sort_target: list[Sample]) -> list[Sample]:
             ...
 
         @overload
-        def _sort(sort_target: List[Reaction]) -> List[Reaction]:
+        def _sort(sort_target: list[Reaction]) -> list[Reaction]:
             ...
 
         def _sort(
-            sort_target: Union[List[Sample], List[Reaction]]
-        ) -> Union[List[Sample], List[Reaction]]:
+            sort_target: Union[list[Sample], list[Reaction]]
+        ) -> Union[list[Sample], list[Reaction]]:
             l = []
             uids = sorted([s.uid for s in sort_target])
             for uid in uids:
@@ -398,7 +397,7 @@ class ReactionDataset(DatasetModel):
             DataLoader: Pytorch dataloader
         """
 
-        def collate_fn(batch) -> Tuple[List[Sample], List[Reaction]]:
+        def collate_fn(batch) -> tuple[list[Sample], list[Reaction]]:
             # NOTE: for first setup simply take in list of (samples, reaction) tuples
             # TODO: this does not parallelize well, for correct handling, tensorwise
             #       concatenation of samples and reactions properties is necessary
@@ -539,7 +538,7 @@ class ReactionDataset(DatasetModel):
 
         def get_max_shape(
             dataset: ReactionDataset,
-        ) -> List[Union[None, Tuple[int, int]]]:
+        ) -> list[Union[None, tuple[int, int]]]:
             # ordered list containing each key
             features = list(dataset.samples[0].to_dict().keys())
             max_shape = [None for f in features]
@@ -703,7 +702,7 @@ class ReactionDataset(DatasetModel):
 def store_subsets_on_disk(
     dataset: ReactionDataset,
     path: Union[Path, str],
-    subsets: List[str],
+    subsets: list[str],
 ):
     """Store subsets on disk by first pruning the dataset and then saving to disk.
 
@@ -814,7 +813,7 @@ def largest_eigenvalue(matrix, n_iter=100):
     return eigvals
 
 
-def create_subset(dataset: ReactionDataset, keys: Union[str, List[str]]):
+def create_subset(dataset: ReactionDataset, keys: Union[str, list[str]]):
     """Prune given dataset to subsets indicated by keys. Note: changing the dataset in-place
 
     Args:

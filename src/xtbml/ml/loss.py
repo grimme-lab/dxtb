@@ -1,12 +1,13 @@
 """ Module for custom loss functions."""
 
 from pathlib import Path
-import torch
-import torch.nn.functional as F
 from typing import List, Literal
 
-from ..typing import Tensor
+import torch
+import torch.nn.functional as F
+
 from ..data.dataset import get_gmtkn55_dataset
+from ..typing import Tensor
 
 
 class WTMAD2Loss(torch.nn.Module):
@@ -36,7 +37,7 @@ class WTMAD2Loss(torch.nn.Module):
         TypeError
             Invalid loss given
         """
-        super(WTMAD2Loss, self).__init__()
+        super().__init__()
 
         # calculate properties dynamically
         self.path = path
@@ -72,7 +73,7 @@ class WTMAD2Loss(torch.nn.Module):
             raise TypeError(f"Reduction mode '{mode}' unknown.")
 
     def forward(
-        self, input: Tensor, target: Tensor, label: List[str], n_partner: Tensor
+        self, input: Tensor, target: Tensor, label: list[str], n_partner: Tensor
     ) -> Tensor:
         """Calculate WTMAD2 batch loss
 

@@ -1,13 +1,14 @@
-import torch
-from torch import nn
-import torch.nn.functional as F
-from typing import List, Dict, Tuple
-import time
-import torch.autograd.forward_ad as fwAD
-import torchviz
 import functools
-from xtbml.typing import Tensor
+import time
+from typing import Dict, List, Tuple
 
+import torch
+import torch.autograd.forward_ad as fwAD
+import torch.nn.functional as F
+import torchviz
+from torch import nn
+
+from xtbml.typing import Tensor
 
 # TODO: check that for model=Identity() the force gradient is identical to scf force gradient (e.g. from tblite)
 

@@ -1,12 +1,12 @@
 """ Simple pytoch ML model for training purposes. """
-from typing import Dict, List
-import torch
-from torch import Tensor
-import torch.nn as nn
-import torch.nn.functional as F
-
 # from egnn_pytorch import EGNN, EGNN_Network
 import sys
+from typing import Dict, List
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch import Tensor
 
 from ..data.samples import Sample
 
@@ -50,7 +50,7 @@ class Simple_Net(nn.Module):
         # self.fc1 = nn.Linear(self.input, self.hidden)
         # self.fc2 = nn.Linear(self.hidden, self.output)
 
-    def forward(self, batched_samples: List, batched_reaction: List) -> Tensor:
+    def forward(self, batched_samples: list, batched_reaction: list) -> Tensor:
         """Forward pass of model, i.e. prediction on single reaction and can be batched along first dimension.
 
         Args:
@@ -112,7 +112,7 @@ class Simple_Net(nn.Module):
 
 
 class Basic_CNN(nn.Module):
-    def __init__(self, cfg: Dict[str, int]):
+    def __init__(self, cfg: dict[str, int]):
         super().__init__()
 
         self.hidden_size = 3  # TODO: set as argument (bs/number of atomic features)
@@ -151,7 +151,7 @@ class Basic_CNN(nn.Module):
         self.fc2 = nn.Linear(self.hidden * 2, self.hidden)
         self.fc3 = nn.Linear(self.hidden, self.output)
 
-    def forward(self, batched_samples: List, batched_reaction: List) -> Tensor:
+    def forward(self, batched_samples: list, batched_reaction: list) -> Tensor:
         """Forward pass of model, i.e. prediction on single reaction and can be batched along first dimension.
 
         Args:
@@ -227,7 +227,7 @@ class Basic_CNN(nn.Module):
             # NOTE: requires CNNs
             """
             padding_idx = reactant.numbers.nonzero(as_tuple=True)[1][-1] + 1
-            cn = torch.unsqueeze(reactant.cn[:, :padding_idx], 1)         
+            cn = torch.unsqueeze(reactant.cn[:, :padding_idx], 1)
             """
             # TODO: remove
 
@@ -269,7 +269,7 @@ class Basic_CNN(nn.Module):
 
 
 class Basic_EGNN(nn.Module):
-    def __init__(self, cfg: Dict[str, int]):
+    def __init__(self, cfg: dict[str, int]):
         super().__init__()
 
         print("Setup EGNN")
@@ -330,7 +330,7 @@ class Basic_EGNN(nn.Module):
         # TODO fix adjacency by coordination number cutoff
         return adj_mat
 
-    def forward(self, batched_samples: List, batched_reaction: List) -> Tensor:
+    def forward(self, batched_samples: list, batched_reaction: list) -> Tensor:
         # prediction on single reaction (can be batched along first dimension)
 
         # TODO: add typing List[Samples] List[Reactions]

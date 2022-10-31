@@ -1,11 +1,12 @@
 from pathlib import Path
-from typing import Any, Dict, Tuple, List, Union
+from typing import Any, Dict, List, Tuple, Union
+
 import torch
+
 from xtbml.data.samples import Sample
 
-from ..typing import Tensor
-
 from ..data.dataset import ReactionDataset
+from ..typing import Tensor
 
 # NOTE: THIS IS NOT PRODUCTION READY
 
@@ -14,8 +15,8 @@ class Normalisation:
     def __init__(
         self,
         path: Union[None, str, Path] = None,  # TODO:
-        skip_reaction_params: List[str] = ["eref", "egfn1"],
-        skip_sample_params: List[str] = ["xyz", "egfn1"],
+        skip_reaction_params: list[str] = ["eref", "egfn1"],
+        skip_sample_params: list[str] = ["xyz", "egfn1"],
     ) -> None:
         """Module containing normalisation functionality.
 
@@ -39,7 +40,7 @@ class Normalisation:
     def normalise(
         self,
         dataset: ReactionDataset,
-    ) -> Tuple[Dict[str, Dict[str, Tensor]]]:
+    ) -> tuple[dict[str, dict[str, Tensor]]]:
         # Normalise dataset in place.
         # use basic standard deviation
         # NOTE: optionally returns the normalisation factors
@@ -192,7 +193,7 @@ class Normalisation:
     # calc normalisation factors
     def calc_norm(
         obj, skip=[], dtypes=[torch.float32, torch.float64]
-    ) -> Dict[str, Dict[str, Tensor]]:
+    ) -> dict[str, dict[str, Tensor]]:
         # calculate normalisation factor for tensor based object
         obj_norm = {}
 
@@ -218,7 +219,7 @@ class Normalisation:
             obj.__setattr__(slot, (attr - norm[slot]["mean"]) / norm[slot]["std"])
             # print(obj.__getattribute__(slot))
 
-    def yield_slot_attributes(obj: Any, skip: list, dtypes: list) -> Tuple[str, Tensor]:
+    def yield_slot_attributes(obj: Any, skip: list, dtypes: list) -> tuple[str, Tensor]:
         """Generator that yields all slotted attributes of obj
 
         Args:

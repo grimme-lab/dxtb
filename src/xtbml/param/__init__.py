@@ -19,11 +19,11 @@ from .halogen import Halogen
 from .hamiltonian import Hamiltonian
 from .meta import Meta
 from .repulsion import EffectiveRepulsion, Repulsion
+from .thirdorder import ThirdOrder
 from .util import (
-    get_elem_param,
     get_elem_angular,
+    get_elem_param,
     get_elem_pqn,
     get_elem_valence,
     get_pair_param,
 )
-from .thirdorder import ThirdOrder

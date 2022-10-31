@@ -11,7 +11,7 @@ Example
 >>> # index helper
 >>> ihelp = IndexHelper.from_numbers(sample.numbers, angular)
 >>> # columns
->>> columns = MatrixHelper.get_orbital_columns(h0, ihelp)>>> 
+>>> columns = MatrixHelper.get_orbital_columns(h0, ihelp)>>>
 >>> # scalars
 >>> scalars = MatrixHelper.get_orbital_sum(h0, ihelp)
 >>> # NOTE: this induces a difference between similar atoms, e.g. the H in H20
@@ -23,12 +23,13 @@ Example
 """
 
 from __future__ import annotations
+
 import torch
 
+from ..basis import IndexHelper
 from ..param import Element
 from ..param.gfn1 import GFN1_XTB as par
 from ..typing import Tensor
-from ..basis import IndexHelper
 
 
 # TODO: could be added to IndexHelper
@@ -240,4 +241,3 @@ class MatrixHelper:
 
         n_atoms = len(ihelp.shells_per_atom)
         return [MatrixHelper.get_atomblock(x, i, i, ihelp) for i in range(n_atoms)]
- 

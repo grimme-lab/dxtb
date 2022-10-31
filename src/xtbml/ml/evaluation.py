@@ -1,11 +1,12 @@
-import torch
 from pathlib import Path
-import pandas as pd
 
-from ..data.dataset import get_gmtkn55_dataset, create_subset
-from .util import load_model_from_cfg
+import pandas as pd
+import torch
+
 from ..data.adjacency import calc_adj
+from ..data.dataset import create_subset, get_gmtkn55_dataset
 from .loss import WTMAD2Loss
+from .util import load_model_from_cfg
 
 """ Load ML model from disk and conduct basic evaluation. """
 

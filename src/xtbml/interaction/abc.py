@@ -1,14 +1,15 @@
 """
-Provides abstract base class for interactions in the extended tight-binding Hamiltonian
+Provides base class for interactions in the extended tight-binding Hamiltonian.
+The `Interaction` class is not purely abstract as its methods return zero.
 """
 
 import torch
 
-from ..typing import Tensor
 from ..basis import IndexHelper
+from ..typing import Tensor, TensorLike
 
 
-class Interaction:
+class Interaction(TensorLike):
     """
     Base class for defining interactions with the charge density.
     """
@@ -21,9 +22,8 @@ class Interaction:
         Restart data for individual interactions, extended by subclasses as needed.
         """
 
-        pass
-
-    def __init__(self):
+    def __init__(self, device: torch.device, dtype: torch.dtype):
+        super().__init__(device, dtype)
         self.label = self.__class__.__name__
 
     def get_cache(

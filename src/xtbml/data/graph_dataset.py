@@ -1,15 +1,18 @@
 from __future__ import annotations
-from tkinter import N
-import torch
-from torch_geometric.data import InMemoryDataset, Data as pygData
-from pathlib import Path
 
-from .adjacency import calc_adj
-from .samples import Sample
-from ..typing import Tensor
-from .dataset import get_gmtkn55_dataset, SampleDataset
-from ..basis import MatrixHelper, IndexHelper, get_elem_param_shells
+from pathlib import Path
+from tkinter import N
+
+import torch
+from torch_geometric.data import Data as pygData
+from torch_geometric.data import InMemoryDataset
+
+from ..basis import IndexHelper, MatrixHelper, get_elem_param_shells
 from ..param.gfn1 import GFN1_XTB as par
+from ..typing import Tensor
+from .adjacency import calc_adj
+from .dataset import SampleDataset, get_gmtkn55_dataset
+from .samples import Sample
 
 
 class MolecularGraph_Dataset_Parametrisation:

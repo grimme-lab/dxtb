@@ -1,17 +1,16 @@
+import sys
+from typing import Dict, List
+
 import torch
 import torch.nn.functional as F
+from torch_geometric.data import Batch, Data
 from torch_geometric.nn import GCNConv, NNConv
-from torch_geometric.data import Data, Batch
-from typing import List, Dict
-
-
-import sys
 
 
 class GNN(torch.nn.Module):
     """Graph based model."""
 
-    def __init__(self, cfg: Dict[str, int]):
+    def __init__(self, cfg: dict[str, int]):
         super().__init__()
 
         # TODO: wrap into config dictionary
@@ -24,7 +23,7 @@ class GNN(torch.nn.Module):
         # atomwise energies:
         self.energy_atm = torch.nn.Linear(out, 1)
 
-    def forward(self, batched_samples: List, batched_reaction: List):
+    def forward(self, batched_samples: list, batched_reaction: list):
         verbose = False
 
         if verbose:

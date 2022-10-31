@@ -1,10 +1,11 @@
-import torch
 from typing import Callable
 
-from .samples import Sample
-from ..ncoord import get_coordination_number, exp_count
+import torch
+
 from ..bond import guess_bond_order
+from ..ncoord import exp_count, get_coordination_number
 from ..typing import Tensor
+from .samples import Sample
 
 
 def calc_adj(

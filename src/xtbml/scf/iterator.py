@@ -14,15 +14,18 @@ a reasonably good implementation of the iterative solver required for the self-c
 field iterations.
 """
 
-from __future__ import annotations
 import torch
 import xitorch as xt
 import xitorch.linalg as xtl
 import xitorch.optimize as xto
 
 from ..basis import IndexHelper
+from ..constants import K2AU, defaults
 from ..interaction import Interaction
 from ..typing import Any, Tensor
+from ..utils import real_atoms
+from ..wavefunction import filling, mulliken
+from .guess import get_guess
 
 
 class SelfConsistentField(xt.EditableModule):
@@ -35,6 +38,9 @@ class SelfConsistentField(xt.EditableModule):
         """
         Restart data for the singlepoint calculation.
         """
+
+        numbers: Tensor
+        """Atomic numbers"""
 
         hcore: Tensor
         """Core Hamiltonian"""
@@ -63,20 +69,27 @@ class SelfConsistentField(xt.EditableModule):
         density: Tensor
         """Density matrix"""
 
+        evals: Tensor
+        """Orbital energies (eigenvalues of Fockian)"""
+
+        evecs: Tensor
+        """LCAO coefficients (eigenvectors of Fockian)"""
+
         def __init__(
             self,
             hcore: Tensor,
             overlap: Tensor,
             occupation: Tensor,
             n0: Tensor,
+            numbers: Tensor,
             ihelp: IndexHelper,
             cache: Interaction.Cache,
-        ):
-
+        ) -> None:
             self.hcore = hcore
             self.overlap = overlap
             self.occupation = occupation
             self.n0 = n0
+            self.numbers = numbers
             self.ihelp = ihelp
             self.cache = cache
             self.energy = hcore.new_tensor(0.0)
@@ -95,6 +108,15 @@ class SelfConsistentField(xt.EditableModule):
 
     eigen_options: dict[str, Any]
     """Options for eigensolver"""
+
+    scf_options: dict[str, Any]
+    """
+    Options for SCF:
+    - "etemp": Electronic temperature (in a.u.) for Fermi smearing.
+    - "fermi_maxiter": Maximum number of iterations for Fermi smearing.
+    - "fermi_thresh": Float data type dependent threshold for Fermi iterations.
+    - "fermi_fenergy_partition": Partitioning scheme for electronic free energy.
+    """
 
     use_potential: bool
     """Whether to use the potential or the charges"""
@@ -123,7 +145,13 @@ class SelfConsistentField(xt.EditableModule):
 
         self.eigen_options = {"method": "exacteig", **kwargs.pop("eigen_options", {})}
 
+        self.scf_options = {**kwargs.pop("scf_options", {})}
+
         self._data = self._Data(*args, **kwargs)
+
+        self.kt = self._data.hcore.new_tensor(
+            self.scf_options.get("etemp", defaults.ETEMP) * K2AU
+        )
         self.interaction = interaction
 
     def __call__(self, charges: Tensor | None = None) -> dict[str, Tensor]:
@@ -153,13 +181,15 @@ class SelfConsistentField(xt.EditableModule):
 
         charges = self.potential_to_charges(output) if self.use_potential else output
         energy = self.get_energy(charges)
+        fenergy = self.get_electronic_free_energy()
+
         return {
             "charges": charges,
-            "energy": energy,
             "density": self._data.density,
-            "hcore": self._data.hcore,
+            "emo": self._data.evals,
+            "energy": energy,
+            "fenergy": fenergy,
             "hamiltonian": self._data.hamiltonian,
-            "overlap": self._data.overlap,
         }
 
     def get_energy(self, charges: Tensor) -> Tensor:
@@ -180,6 +210,72 @@ class SelfConsistentField(xt.EditableModule):
             charges, self._data.ihelp, self._data.cache
         )
 
+    def get_electronic_free_energy(self, max_orb_occ: float = 2.0) -> Tensor:
+        r"""
+        Calculate electronic free energy from entropy.
+
+        .. math::
+
+            G = -TS = k_B\sum_{i}f_i \; ln(f_i) + (1 - f_i)\; ln(1 - f_i))
+
+        The atomic partitioning can be performed by means of Mulliken population
+        analysis using an "electronic entropy" density matrix.
+
+        .. math::
+
+            E_\kappa^\text{TS} = (\mathbf P^\text{TS} \mathbf S)_{\kappa\kappa}
+            \qquad\text{with}\quad \mathbf P^\text{TS} = \mathbf C^T \cdot
+            \text{diag}(g) \cdot \mathbf C
+
+        Parameters
+        ----------
+        max_orb_occ : float, optional
+            Maximum occupation of orbitals, by default 2.0
+
+        Returns
+        -------
+        Tensor
+            Orbital-resolved electronic free energy (G = -TS).
+
+        Note
+        ----
+        Partitioning scheme is set through SCF options
+        (`scf_options["fermi_fenergy_partition"]`).
+        Defaults to an equal partitioning to all atoms (`"equal"`).
+        """
+
+        occ = self._data.occupation / max_orb_occ
+        g = torch.log(occ**occ * (1 - occ) ** (1 - occ)) * self.kt
+
+        mode = self.scf_options.get(
+            "fermi_fenergy_partition", defaults.FERMI_FENERGY_PARTITION
+        )
+
+        # partition to atoms equally
+        if mode == "equal":
+            real = real_atoms(self._data.numbers)
+
+            count = real.count_nonzero(dim=-1).unsqueeze(-1)
+            g_atomic = torch.sum(g, dim=-1, keepdim=True) / count
+
+            return torch.where(real, g_atomic.expand(*real.shape), g.new_tensor(0.0))
+
+        # partition to atoms via Mulliken population analysis
+        if mode == "atomic":
+            # "electronic entropy" density matrix
+            density = torch.einsum(
+                "...ik,...k,...jk->...ij",
+                self._data.evecs,  # sorted by energy, starting with lowest
+                g,
+                self._data.evecs,  # transposed
+            )
+
+            return mulliken.get_atomic_populations(
+                self._data.overlap, density, self._data.ihelp
+            )
+
+        raise ValueError(f"Unknown partitioning mode '{mode}'.")
+
     def iterate_charges(self, charges: Tensor):
         """
         Perform single self-consistent iteration.
@@ -195,7 +291,7 @@ class SelfConsistentField(xt.EditableModule):
             New orbital-resolved partial charges vector.
         """
 
-        if self.fwd_options["verbose"]:
+        if self.fwd_options["verbose"] > 1:
             print(self.get_energy(charges).sum(-1))
         potential = self.charges_to_potential(charges)
         return self.potential_to_charges(potential)
@@ -341,12 +437,33 @@ class SelfConsistentField(xt.EditableModule):
 
         h_op = xt.LinearOperator.m(hamiltonian)
         o_op = self.get_overlap()
-        _, evecs = self.diagonalize(h_op, o_op)
+        self._data.evals, self._data.evecs = self.diagonalize(h_op, o_op)
+
+        # round to integers to avoid numerical errors
+        nel = self._data.occupation.sum(-1).round()
+
+        # Fermi smearing only for non-zero electronic temperature
+        if self.kt is not None and not torch.all(self.kt < 3e-7):  # 0.1 Kelvin * K2AU
+            self._data.occupation = filling.get_fermi_occupation(
+                nel,
+                self._data.evals,
+                self.kt,
+                maxiter=self.scf_options.get("fermi_maxiter", defaults.FERMI_MAXITER),
+                thr=self.scf_options.get("fermi_thresh", defaults.THRESH),
+            )
+
+            # check if number of electrons is still correct
+            _nel = self._data.occupation.sum(-1)
+            if torch.any(torch.abs(nel - _nel.round(decimals=3)) > 1e-4):
+                raise RuntimeError(
+                    f"Number of electrons changed during Fermi smearing ({nel} -> {_nel})."
+                )
+
         return torch.einsum(
             "...ik,...k,...kj->...ij",
-            evecs,
+            self._data.evecs,
             self._data.occupation,
-            evecs.mT,
+            self._data.evecs.mT,
         )
 
     def get_overlap(self) -> xt.LinearOperator:
@@ -447,8 +564,10 @@ class SelfConsistentField(xt.EditableModule):
 def solve(
     numbers: Tensor,
     positions: Tensor,
+    chrg: Tensor,
     interactions: Interaction,
     ihelp: IndexHelper,
+    guess: str,
     *args,
     **kwargs,
 ) -> dict[str, Tensor]:
@@ -461,13 +580,17 @@ def solve(
         Atomic numbers of the system.
     positions : Tensor
         Positions of the system.
+    chrg : Tensor
+        Total charge.
     interactions : Interaction
         Interaction object.
     ihelp : IndexHelper
         Index helper object.
+    guess : str
+        Name of the method for the initial charge guess.
     args : Tuple
         Positional arguments to pass to the engine.
-    kwargs : Dict
+    kwargs : dict
         Keyword arguments to pass to the engine.
 
     Returns
@@ -477,6 +600,8 @@ def solve(
     """
 
     cache = interactions.get_cache(numbers, positions, ihelp)
+    charges = get_guess(numbers, positions, chrg, ihelp, guess)
+
     return SelfConsistentField(
-        interactions, *args, ihelp=ihelp, cache=cache, **kwargs
-    )()
+        interactions, *args, numbers=numbers, ihelp=ihelp, cache=cache, **kwargs
+    )(charges)

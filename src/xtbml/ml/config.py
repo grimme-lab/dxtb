@@ -1,10 +1,11 @@
 """ A collection of configuration classes """
 
-from pydantic import BaseModel
-from typing import Union, List
+from typing import List, Union
+
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks.base import Callback
+from pydantic import BaseModel
 from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.callbacks.base import Callback
 
 # TODO:
 # * for cli parsing, see: https://github.com/mpkocher/pydantic-cli
@@ -28,7 +29,7 @@ class Lightning_Configuration(BaseModel):
     """ Learning rate during training """
     train_max_epochs: int = 3
     """ Number of epochs """
-    train_callbacks: List[Callback] = [LearningRateMonitor(logging_interval="epoch")]
+    train_callbacks: list[Callback] = [LearningRateMonitor(logging_interval="epoch")]
     """ Callbacks for training """
     train_log_every_n_steps: int = 1
     """ Update logger every n-steps """

@@ -47,15 +47,15 @@ GFN-1:  0.2078990332053096
 Tree:  1.902131842981567e-05
 """
 
+from pathlib import Path
 from typing import List, Tuple, Union
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
-from sklearn.model_selection import train_test_split
+from lightgbm import LGBMRegressor
 from sklearn.base import RegressorMixin
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
-from lightgbm import LGBMRegressor
-
+from sklearn.model_selection import train_test_split
 
 from ..data.dataset import get_gmtkn55_dataset
 
@@ -133,7 +133,7 @@ class TreeRegressor:
         predictions = self.model.predict(test_features)
         return predictions
 
-    def feature_importance(self, verbose: bool = True) -> List[Tuple[str, float]]:
+    def feature_importance(self, verbose: bool = True) -> list[tuple[str, float]]:
         """Get feature importance for the given model.
 
         Parameters

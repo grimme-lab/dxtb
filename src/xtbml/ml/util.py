@@ -4,17 +4,19 @@
 ######################################################################
 
 from __future__ import annotations
+
 from pathlib import Path
 from typing import List, Optional
+
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import pandas as pd
 
 from xtbml.ml.model_gnn import GNN
 
-from .model import Basic_CNN, Simple_Net  # , Basic_EGNN
 from .loss import WTMAD2Loss
+from .model import Basic_CNN, Simple_Net  # , Basic_EGNN
 
 
 def get_architecture(name: str):
@@ -95,7 +97,7 @@ def get_scheduler(
 
 
 def get_loss_fn(
-    name: str, path: Optional[Path] = None
+    name: str, path: Path | None = None
 ) -> nn.L1Loss | nn.MSELoss | WTMAD2Loss:
     """Returns loss function for the given choice from the predefined archetypes.
 
@@ -156,7 +158,7 @@ def wtmad2(
     set_column: str = "subset",
     verbose: bool = True,
     calc_subsets=False,
-) -> List[float]:
+) -> list[float]:
     """Calculate the weighted total mean absolute deviation, as defined in
 
     - L. Goerigk, A. Hansen, C. Bauer, S. Ehrlich,A. Najibi, Asim, S. Grimme,

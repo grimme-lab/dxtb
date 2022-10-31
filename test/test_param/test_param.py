@@ -97,8 +97,8 @@ class TestParam:
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     def test_param_calculator(self, dtype: torch.dtype):
         # pylint: disable=import-outside-toplevel
-        from xtbml.xtb.calculator import Calculator
         from xtbml.param.gfn1 import GFN1_XTB as par
+        from xtbml.xtb.calculator import Calculator
 
         numbers = symbol2number(["H", "C"])
         dummy_coords = torch.zeros(3, dtype=dtype)

@@ -6,7 +6,10 @@
     "editor.insertSpaces": true,
     "editor.tabSize": 4
   },
-  "python.defaultInterpreterPath": "${env:CONDA_PREFIX}/envs/xtbML/bin/python",
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportPrivateImportUsage": "information"
+  },
+  "python.defaultInterpreterPath": "${env:CONDA_PREFIX}/envs/dxtb/bin/python",
   "python.formatting.provider": "black",
   "python.linting.enabled": true,
   "python.linting.pylintEnabled": true,

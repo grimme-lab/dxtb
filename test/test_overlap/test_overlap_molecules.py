@@ -1,26 +1,29 @@
 """Run tests for overlap."""
 
+from math import sqrt
+
 import numpy as np
 import pytest
 import torch
 
 from xtbml.basis import IndexHelper
-from xtbml.exlibs.tbmalt import batch
-from xtbml.param.gfn1 import GFN1_XTB as par
-from xtbml.param.util import get_elem_angular
-from xtbml.utils import combinations as combis
-from xtbml.utils import load_from_npz
-from xtbml.xtb.h0 import Hamiltonian
+from xtbml.param import GFN1_XTB as par
+from xtbml.param import get_elem_angular
+from xtbml.utils import batch, load_from_npz
+from xtbml.xtb import Hamiltonian
 
+from ..utils import combinations as combis
 from .samples import samples
 
 ref_overlap = np.load("test/test_overlap/overlap.npz")
 
+molecules = ["H2O", "CH4", "SiH4", "PbH4-BiH3"]
+
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["SiH4", "PbH4-BiH3", "LYS_xao"])
+@pytest.mark.parametrize("name", molecules)
 def test_overlap_single(dtype: torch.dtype, name: str) -> None:
-    atol = 1e-06
+    tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
     numbers = sample["numbers"]
@@ -31,16 +34,16 @@ def test_overlap_single(dtype: torch.dtype, name: str) -> None:
     h0 = Hamiltonian(numbers, positions, par, ihelp)
 
     o = h0.overlap()
-    assert torch.allclose(o, o.mT, atol=atol)
-    assert torch.allclose(combis(o), combis(ref), atol=atol)
+    assert torch.allclose(o, o.mT, atol=tol)
+    assert torch.allclose(combis(o), combis(ref), atol=tol)
 
 
 @pytest.mark.parametrize("dtype", [torch.float])
-@pytest.mark.parametrize("name1", ["SiH4", "PbH4-BiH3", "LYS_xao"])
-@pytest.mark.parametrize("name2", ["SiH4", "PbH4-BiH3", "LYS_xao"])
+@pytest.mark.parametrize("name1", molecules)
+@pytest.mark.parametrize("name2", molecules)
 def test_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Batched version."""
-    atol = 1e-06
+    tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample1, sample2 = samples[name1], samples[name2]
 
@@ -67,7 +70,7 @@ def test_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     h0 = Hamiltonian(numbers, positions, par, ihelp)
 
     o = h0.overlap()
-    assert torch.allclose(o, o.mT, atol=atol)
+    assert torch.allclose(o, o.mT, atol=tol)
 
     for _batch in range(numbers.shape[0]):
-        assert torch.allclose(combis(o[_batch]), combis(ref[_batch]), atol=atol)
+        assert torch.allclose(combis(o[_batch]), combis(ref[_batch]), atol=tol)

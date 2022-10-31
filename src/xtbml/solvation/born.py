@@ -23,18 +23,17 @@ Example
 tensor([3.6647, 2.4621, 2.4621, 2.4621, 2.4621])
 """
 
-from __future__ import annotations
 import torch
-from typing import Optional
 
 from ..typing import Tensor
+from ..utils import real_atoms, real_pairs
 from .data import vdw_rad_d3
 
 
 def get_born_radii(
     numbers: Tensor,
     positions: Tensor,
-    rvdw: Optional[Tensor] = None,
+    rvdw: Tensor | None = None,
     cutoff: Tensor = torch.tensor(66.0),
     born_scale: float = 1.0,
     born_offset: float = 0.0,
@@ -95,8 +94,8 @@ def get_born_radii(
             )
 
     # mask for padding
-    mask = numbers != 0
-    zero = torch.tensor(0.0, dtype=positions.dtype)
+    mask = real_atoms(numbers)
+    zero = positions.new_tensor(0.0)
 
     # get dielectric descreening integral I for Eq.6 (psi = I * scaled_rho)
     # NOTE: compute_psi actually only computes I not psi
@@ -148,12 +147,10 @@ def compute_psi(
     rho = rvdw * descreening
 
     # mask for padding
-    real = numbers != 0
-    mask = real.unsqueeze(-2) * real.unsqueeze(-1)
-    mask.diagonal(dim1=-2, dim2=-1).fill_(False)
+    mask = real_pairs(numbers, True)
 
-    eps = torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype)
-    zero = torch.tensor(0.0, dtype=positions.dtype)
+    eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
+    zero = positions.new_tensor(0.0)
 
     distances = torch.where(
         mask,

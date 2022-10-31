@@ -1,11 +1,11 @@
-from json import load as json_load
 from json import dump as json_dump
+from json import load as json_load
 from pathlib import Path
-
 from typing import Dict, List, Optional, Union, overload
-from xtbml.typing import Tensor
 
 import torch
+
+from xtbml.typing import Tensor
 
 
 class Reaction:
@@ -13,7 +13,7 @@ class Reaction:
 
     uid: str
     """Unique identifier for reaction"""
-    partners: List[str]
+    partners: list[str]
     """List of participants in the reaction"""
     nu: Tensor
     """Stoichiometry coefficient for respective participant"""
@@ -38,7 +38,7 @@ class Reaction:
     def __init__(
         self,
         uid: str,
-        partners: List[str],
+        partners: list[str],
         nu: Tensor,
         egfn1: Tensor,
         egfn2: Tensor,
@@ -163,8 +163,8 @@ class Reaction:
         )
 
     def to_dict(
-        self, skipped: Optional[List[str]] = None
-    ) -> Dict[str, Union[str, Tensor]]:
+        self, skipped: Optional[list[str]] = None
+    ) -> dict[str, Union[str, Tensor]]:
         """Create dictionary of class attributes (exluding dunder methods, `device`, `dtype` and callables).
 
         Args:
@@ -188,12 +188,12 @@ class Reaction:
 class Reactions:
     """Representation for list of `Reaction`s."""
 
-    reactions: List[Reaction]
+    reactions: list[Reaction]
     """List of reactions"""
 
     __slots__ = ["reactions", "__device", "__dtype"]
 
-    def __init__(self, reactions: List[Reaction]) -> None:
+    def __init__(self, reactions: list[Reaction]) -> None:
         self.reactions = reactions
 
         self.__device = reactions[0].egfn1.device
@@ -260,10 +260,10 @@ class Reactions:
         ...
 
     @overload
-    def __getitem__(self, idx: slice) -> List[Reaction]:
+    def __getitem__(self, idx: slice) -> list[Reaction]:
         ...
 
-    def __getitem__(self, idx: Union[int, slice]) -> Union[Reaction, List[Reaction]]:
+    def __getitem__(self, idx: Union[int, slice]) -> Union[Reaction, list[Reaction]]:
         """Defines standard list slicing/indexing for list of reactions."""
         return self.reactions[idx]
 

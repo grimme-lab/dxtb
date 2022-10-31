@@ -2,15 +2,16 @@
 
 
 import datetime
-import torch
-import pandas as pd
 from pathlib import Path
 
-from ..ml.util import load_model_from_cfg
-from ..data.dataset import get_gmtkn55_dataset, create_subset
-from .norm import Normalisation
-from .loss import WTMAD2Loss
+import pandas as pd
+import torch
+
 from ..data.adjacency import calc_adj
+from ..data.dataset import create_subset, get_gmtkn55_dataset
+from ..ml.util import load_model_from_cfg
+from .loss import WTMAD2Loss
+from .norm import Normalisation
 
 
 def train():
