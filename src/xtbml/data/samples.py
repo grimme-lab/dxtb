@@ -168,14 +168,17 @@ class Sample(TensorLike):
         Returns a copy of the `Sample` instance on the specified device.
         This method creates and returns a new copy of the `Sample` instance
         on the specified device "``device``".
+
         Parameters
         ----------
         device : torch.device
             Device to which all associated tensors should be moved.
+
         Returns
         -------
         Sample
             A copy of the `Sample` instance placed on the specified device.
+
         Notes
         -----
         If the `Sample` instance is already on the desired device `self` will be returned.
@@ -210,14 +213,17 @@ class Sample(TensorLike):
         Returns a copy of the `Sample` instance with specified floating point type.
         This method creates and returns a new copy of the `Sample` instance
         with the specified dtype.
+
         Parameters
         ----------
         dtype : torch.dtype
-            Type of the
+            Type of the floating point numbers used by the class instance.
+
         Returns
         -------
         Sample
             A copy of the `Sample` instance with the specified dtype.
+
         Notes
         -----
         If the `Sample` instance has already the desired dtype `self` will be returned.
@@ -280,14 +286,21 @@ class Sample(TensorLike):
         )
 
     def to_dict(self, skipped: list[str] | None = None) -> dict[str, str | Tensor]:
-        """Create dictionary of class attributes (exluding dunder methods, `device`, `dtype` and callables).
-
-        Args:
-            skipped (List[str], optional): Attributes to exclude. Defaults to None.
-
-        Returns:
-            Dict[str, Union[str, Tensor]]: Selected attributes and their respective values.
         """
+        Create dictionary of class attributes (exluding dunder methods,
+        `device`, `dtype` and callables).
+
+        Parameters
+        ----------
+        skipped : list[str] | None, optional
+            Attributes to exclude. Defaults to None.
+
+        Returns
+        -------
+        dict[str, str | Tensor]
+            Selected attributes and their respective values.
+        """
+
         d = {}
         skip = ["__", "device", "dtype"]
         if skipped is not None:
@@ -309,7 +322,7 @@ class Samples(TensorLike):
     __slots__ = ["samples"]
 
     def __init__(self, samples: list[Sample]):
-        super().__init__(samples[0].egfn1.dtype, samples[0].egfn1.device)
+        super().__init__(samples[0].egfn1.device, samples[0].egfn1.dtype)
         self.samples = samples
 
     @classmethod
@@ -427,17 +440,21 @@ class Samples(TensorLike):
         Returns a copy of the `Samples` instance on the specified device.
         This method creates and returns a new copy of the `Samples` instance
         on the specified device "``device``".
+
         Parameters
         ----------
         device : torch.device
             Device to which all associated tensors should be moved.
+
         Returns
         -------
         Samples
             A copy of the `Samples` instance placed on the specified device.
+
         Notes
         -----
-        If the `Samples` instance is already on the desired device `self` will be returned.
+        If the `Samples` instance is already on the desired device `self` will
+        be returned.
         """
         if self.__device == device:
             return self
@@ -449,14 +466,17 @@ class Samples(TensorLike):
         Returns a copy of the `Samples` instance with specified floating point type.
         This method creates and returns a new copy of the `Samples` instance
         with the specified dtype.
+
         Parameters
         ----------
         dtype : torch.dtype
-            Type of the
+            Type of the floating point numbers used by the class instance.
+
         Returns
         -------
         Samples
             A copy of the `Samples` instance with the specified dtype.
+
         Notes
         -----
         If the `Samples` instance has already the desired dtype `self` will be returned.

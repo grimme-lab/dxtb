@@ -365,7 +365,9 @@ class ReactionDataset(DatasetModel):
         return True
 
     def sort(self, target: Literal["samples", "reactions", "both"] = "samples") -> None:
-        """Sort the samples and reactions in the dataset by their unique identifiers (UIDs).
+        """
+        Sort the samples and reactions in the dataset by their unique
+        identifiers (UIDs).
 
         Parameters
         ----------

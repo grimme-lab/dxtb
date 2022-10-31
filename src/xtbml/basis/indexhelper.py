@@ -17,7 +17,7 @@ from functools import wraps
 
 import torch
 
-from ..typing import Callable, Tensor
+from ..typing import Callable, Tensor, TensorLike
 from ..utils import batch
 
 Gather = Callable[[Tensor, int, Tensor], Tensor]
@@ -269,7 +269,7 @@ def wrap_scatter_reduce(
     )
 
 
-class IndexHelper:
+class IndexHelper(TensorLike):
     """
     Index helper for basis set
     """
@@ -321,6 +321,7 @@ class IndexHelper:
         orbital_index: Tensor,
         orbitals_to_shell: Tensor,
     ):
+        super().__init__(shells_per_atom.device, shells_per_atom.dtype)
         self.unique_angular = unique_angular
         self.angular = angular
         self.atom_to_unique = atom_to_unique
@@ -332,9 +333,6 @@ class IndexHelper:
         self.orbitals_per_shell = orbitals_per_shell
         self.orbital_index = orbital_index
         self.orbitals_to_shell = orbitals_to_shell
-
-        self.__device = shells_per_atom.device
-        self.__dtype = shells_per_atom.dtype
 
         if any(
             tensor.dtype != self.dtype
@@ -740,21 +738,6 @@ class IndexHelper:
             self.spread_ushell_to_shell(x, dim=dim), dim=dim
         )
 
-    @property
-    def device(self) -> torch.device:
-        """The device on which the `IndexHelper` object resides."""
-        return self.__device
-
-    @device.setter
-    def device(self, *args):
-        """Instruct users to use the ".to" method if wanting to change device."""
-        raise AttributeError("Move object to device using the `.to` method")
-
-    @property
-    def dtype(self) -> torch.dtype:
-        """Floating point dtype used by IndexHelper object."""
-        return self.__dtype
-
     def to(self, device: torch.device) -> "IndexHelper":
         """
         Returns a copy of the `IndexHelper` instance on the specified device.
@@ -774,7 +757,8 @@ class IndexHelper:
 
         Notes
         -----
-        If the `IndexHelper` instance is already on the desired device `self` will be returned.
+        If the `IndexHelper` instance is already on the desired device `self`
+        will be returned.
         """
         if self.__device == device:
             return self
@@ -811,7 +795,8 @@ class IndexHelper:
 
         Notes
         -----
-        If the `IndexHelper` instance has already the desired dtype `self` will be returned.
+        If the `IndexHelper` instance has already the desired dtype `self` will
+        be returned.
         """
         if self.__dtype == dtype:
             return self

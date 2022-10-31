@@ -8,7 +8,7 @@ from ..typing import Tensor, TensorLike, overload
 
 
 class Reaction(TensorLike):
-    """Representation for single reaction involving multiple `Reaction`s."""
+    """Representation of a single reaction."""
 
     uid: str
     """Unique identifier for reaction"""
@@ -65,17 +65,21 @@ class Reaction(TensorLike):
         Returns a copy of the `Reaction` instance on the specified device.
         This method creates and returns a new copy of the `Reaction` instance
         on the specified device "``device``".
+
         Parameters
         ----------
         device : torch.device
             Device to which all associated tensors should be moved.
+
         Returns
         -------
         Reaction
             A copy of the `Reaction` instance placed on the specified device.
+
         Notes
         -----
-        If the `Reaction` instance is already on the desired device `self` will be returned.
+        If the `Reaction` instance is already on the desired device `self` will
+        be returned.
         """
         if self.__device == device:
             return self
@@ -94,14 +98,17 @@ class Reaction(TensorLike):
         Returns a copy of the `Reaction` instance with specified floating point type.
         This method creates and returns a new copy of the `Reaction` instance
         with the specified dtype.
+
         Parameters
         ----------
         dtype : torch.dtype
-            Type of the
+            Type of the floating point numbers used by the class instance.
+
         Returns
         -------
         Reaction
             A copy of the `Reaction` instance with the specified dtype.
+
         Notes
         -----
         If the `Reaction` instance has already the desired dtype `self` will be returned.
@@ -138,13 +145,19 @@ class Reaction(TensorLike):
         )
 
     def to_dict(self, skipped: list[str] | None = None) -> dict[str, str | Tensor]:
-        """Create dictionary of class attributes (exluding dunder methods, `device`, `dtype` and callables).
+        """
+        Create dictionary of class attributes (exluding dunder methods,
+        `device`, `dtype` and callables).
 
-        Args:
-            skipped (List[str], optional): Attributes to exclude. Defaults to None.
+        Parameters
+        ----------
+        skipped : list[str] | None, optional
+            Attributes to exclude. Defaults to None.
 
-        Returns:
-            Dict[str, Union[str, Tensor]]: Selected attributes and their respective values.
+        Returns
+        -------
+        dict[str, str | Tensor]
+            Selected attributes and their respective values.
         """
         d = {}
         skip = ["__", "device", "dtype"]
@@ -172,16 +185,23 @@ class Reactions(TensorLike):
 
     @classmethod
     def from_json(cls, path: Path | str) -> "Reactions":
-        """Create `Reactions` from json.
+        """
+        Create `Reactions` from json.
 
-        Args:
-            path (Union[Path, str]): Path of JSON file to read.
+        Parameters
+        ----------
+        path : Path | str
+           Path of JSON file to read.
 
-        Raises:
-            FileNotFoundError: Error if JSON file not found.
+        Returns
+        -------
+        Reactions
+            Class that holds a list of `Reaction`.
 
-        Returns:
-            Reactions: Class that holds a list of `Reaction`.
+        Raises
+        ------
+        FileNotFoundError
+            Error if JSON file not found.
         """
         path = Path(path)
         if not path.is_file():
@@ -243,17 +263,21 @@ class Reactions(TensorLike):
         Returns a copy of the `Reactions` instance on the specified device.
         This method creates and returns a new copy of the `Reactions` instance
         on the specified device "``device``".
+
         Parameters
         ----------
         device : torch.device
             Device to which all associated tensors should be moved.
+
         Returns
         -------
         Reactions
             A copy of the `Reactions` instance placed on the specified device.
+
         Notes
         -----
-        If the `Reactions` instance is already on the desired device `self` will be returned.
+        If the `Reactions` instance is already on the desired device `self`
+        will be returned.
         """
         if self.__device == device:
             return self
@@ -265,14 +289,17 @@ class Reactions(TensorLike):
         Returns a copy of the `Reactions` instance with specified floating point type.
         This method creates and returns a new copy of the `Reactions` instance
         with the specified dtype.
+
         Parameters
         ----------
         dtype : torch.dtype
-            Type of the
+            Type of the floating point numbers used by the class instance.
+
         Returns
         -------
         Reactions
             A copy of the `Reactions` instance with the specified dtype.
+
         Notes
         -----
         If the `Reactions` instance has already the desired dtype `self` will be returned.
