@@ -2,19 +2,14 @@
 Abstract base class for dispersion models.
 """
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
-from ..interaction import Interaction
-from ..typing import Tensor
+from ..typing import Tensor, TensorLike
 
 
-class Dispersion(Interaction):
+class Dispersion(TensorLike):
     """
     Base class for dispersion correction.
-
-    Note:
-    -----
-    Dispersion should be an `Interaction` as D4 can be self-consistent.
     """
 
     numbers: Tensor
@@ -22,6 +17,13 @@ class Dispersion(Interaction):
 
     param: dict[str, float]
     """Dispersion parameters."""
+
+    __slots__ = ["numbers", "param"]
+
+    class Cache(ABC):
+        """
+        Abstract base class for the dispersion Cache.
+        """
 
     def __init__(
         self, numbers: Tensor, positions: Tensor, param: dict[str, float]
@@ -31,7 +33,23 @@ class Dispersion(Interaction):
         self.param = param
 
     @abstractmethod
-    def get_energy(self, positions: Tensor, **kwargs) -> Tensor:
+    def get_cache(self, numbers: Tensor) -> "Cache":
+        """
+        Store variables for energy calculation.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers of all atoms.
+
+        Returns
+        -------
+        Cache
+            Cache class for storage of variables.
+        """
+
+    @abstractmethod
+    def get_energy(self, positions: Tensor, cache: "Cache") -> Tensor:
         """
         Get dispersion energy.
 

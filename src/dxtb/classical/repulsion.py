@@ -137,6 +137,12 @@ class Repulsion(Classical, TensorLike):
         -------
         Repulsion.Cache
             Cache for repulsion.
+
+        Note
+        ----
+        The cache of a classical contribution does not require `positions` as
+        it only becomes useful if `numbers` remain unchanged and `positions`
+        vary, i.e., during geometry optimization.
         """
 
         unique = torch.unique(numbers)
