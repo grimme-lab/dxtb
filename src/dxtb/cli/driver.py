@@ -120,6 +120,6 @@ class Driver:
         timer.stop("total")
         timer.print_times("")
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         """Custom print representation of class."""
         return f"{self.__class__.__name__}(chrg={self.chrg}, spin={self.spin})"
