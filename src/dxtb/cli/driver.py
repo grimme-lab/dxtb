@@ -46,16 +46,16 @@ class Driver:
         """
         return Path(self.args.file).resolve().parent
 
-    def _set_chrg_spin(self, prop: str):
+    def _set_attr(self, attr: str):
 
         # set charge to input from Namespace
-        val = getattr(self.args, prop)
+        val = getattr(self.args, attr)
 
         # only search for file if not specified
         if val is None:
-            # use charge from file or set to zero
-            if Path(self.base, FILES[prop]).is_file():
-                val = read_chrg(Path(self.base, FILES[prop]))
+            # use charge (or spin) from file or set to zero
+            if Path(self.base, FILES[attr]).is_file():
+                val = read_chrg(Path(self.base, FILES[attr]))
             else:
                 val = 0
 
