@@ -7,7 +7,7 @@ from pathlib import Path
 
 import torch
 
-from ..constants import ATOMIC_NUMBER
+from ..constants import ATOMIC_NUMBER, units
 from ..typing import PathLike
 
 
@@ -48,6 +48,73 @@ def check_xyz(fp: PathLike, xyz: list[list[float]]) -> list[list[float]]:
     return xyz
 
 
+def read_structure_from_file(
+    file: PathLike, ftype: str | None = None
+) -> tuple[list[int], list[list[float]]]:
+    """
+    Helper to read the structure from the given file.
+
+    Parameters
+    ----------
+    file : PathLike
+        Path of file containing the structure.
+    ftype : str | None, optional
+        File type. Defaults to `None`, i.e., infered from the extension.
+
+    Returns
+    -------
+    tuple[list[int], list[list[float]]]
+        Lists of atoms and coordinates.
+
+    Raises
+    ------
+    FileNotFoundError
+        File given does not exist.
+    NotImplementedError
+        Reader for specific file type not implemented.
+    ValueError
+        Unknown file type.
+    """
+
+    f = Path(file)
+    if f.exists() is False:
+        raise FileNotFoundError(f"File '{f}' not found.")
+
+    if ftype is None:
+        ftype = f.suffix.lower()[1:]
+
+    match [ftype, f.name.lower()]:
+        case ["xyz" | "log", *_]:
+            numbers, positions = read_xyz(f)
+        case ["", "coord"] | ["tmol" | "tm" | "turbomole", *_]:
+            numbers, positions = read_coord(f)
+        case ["mol", *_] | ["sdf", *_] | ["gen", *_] | ["pdb", *_]:
+            raise NotImplementedError(
+                f"Filetype '{ftype}' recognized but no reader available."
+            )
+        case ["qchem", *_]:
+            raise NotImplementedError(
+                f"Filetype '{ftype}' (Q-Chem) recognized but no reader available."
+            )
+        case ["poscar" | "contcar" | "vasp" | "crystal", *_] | [
+            "",
+            "poscar" | "contcar" | "vasp",
+        ]:
+            raise NotImplementedError(
+                "VASP/CRYSTAL file recognized but no reader available."
+            )
+        case ["ein" | "gaussian", *_]:
+            raise NotImplementedError(
+                f"Filetype '{ftype}' (Gaussian) recognized but no reader available."
+            )
+        case ["json" | "qcschema", *_]:
+            numbers, positions = read_qcschema(f)
+        case _:
+            raise ValueError(f"Unknown filetype '{ftype}' in '{f}'.")
+
+    return numbers, positions
+
+
 def read_xyz(fp: PathLike) -> tuple[list[int], list[list[float]]]:
     """
     Read xyz file.
@@ -75,7 +142,7 @@ def read_xyz(fp: PathLike) -> tuple[list[int], list[list[float]]]:
             else:
                 l = line.strip().split()
                 atom, x, y, z = l
-                xyz.append([float(x), float(y), float(z)])
+                xyz.append([i * units.AA2AU for i in [float(x), float(y), float(z)]])
                 atoms.append(ATOMIC_NUMBER[atom.title()])
 
     if len(xyz) != num_atoms:
@@ -157,7 +224,7 @@ def read_coord(fp: PathLike) -> tuple[list[int], list[list[float]]]:
             elif l[0].startswith("$"):
                 continue
             try:
-                atom, x, y, z = l
+                x, y, z, atom = l
                 xyz.append([float(x), float(y), float(z)])
                 atoms.append(ATOMIC_NUMBER[atom.title()])
             except ValueError as e:
