@@ -3,6 +3,7 @@ Type annotations for this project.
 """
 
 from collections.abc import Callable, Generator
+from pathlib import Path
 from typing import Any, Literal, Optional, Protocol, TypedDict, TypeGuard, overload
 
 import torch
@@ -11,6 +12,8 @@ from torch import Tensor
 Sliceable = list[Tensor] | tuple[Tensor]
 
 CountingFunction = Callable[[Tensor, Tensor], Tensor]
+
+PathLike = str | Path
 
 
 class Molecule(TypedDict):

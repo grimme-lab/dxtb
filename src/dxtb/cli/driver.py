@@ -7,19 +7,76 @@ from pathlib import Path
 
 import torch
 
-from ..io import read_chrg, read_coord
+from .. import io
 from ..utils import Timers
 from ..xtb import Calculator
 
 FILES = {"spin": ".UHF", "chrg": ".CHRG"}
 
 
-def read_mol(file):
+def read_structure_from_file(
+    file: str, ftype: str | None = None
+) -> tuple[list[int], list[list[float]]]:
+    """
+    Helper to read the structure from the given file.
 
-    geo = read_coord(file)
-    assert len(geo[0]) == 4
-    positions = [g[:3] for g in geo]
-    numbers = [g[-1] for g in geo]
+    Parameters
+    ----------
+    file : str
+        Path of file containing the structure.
+    ftype : str | None, optional
+        File type. Defaults to `None`, i.e., infered from the extension.
+
+    Returns
+    -------
+    tuple[list[int], list[list[float]]]
+        Lists of atoms and coordinates.
+
+    Raises
+    ------
+    FileNotFoundError
+        File given does not exist.
+    NotImplementedError
+        Reader for specific file type not implemented.
+    ValueError
+        Unknown file type.
+    """
+
+    f = Path(file)
+    if f.exists() is False:
+        raise FileNotFoundError(f"File '{f}' not found.")
+
+    if ftype is None:
+        ftype = f.suffix.lower()[1:]
+
+    match [ftype, f.name.lower()]:
+        case ["xyz" | "log", *_]:
+            numbers, positions = io.read_xyz(f)
+        case ["", "coord"] | ["tmol" | "tm" | "turbomole", *_]:
+            numbers, positions = io.read_coord(f)
+        case ["mol", *_] | ["sdf", *_] | ["gen", *_] | ["pdb", *_]:
+            raise NotImplementedError(
+                f"Filetype '{ftype}' recognized but no reader available."
+            )
+        case ["qchem", *_]:
+            raise NotImplementedError(
+                f"Filetype '{ftype}' (Q-Chem) recognized but no reader available."
+            )
+        case ["poscar" | "contcar" | "vasp" | "crystal", *_] | [
+            "",
+            "poscar" | "contcar" | "vasp",
+        ]:
+            raise NotImplementedError(
+                "VASP/CRYSTAL file recognized but no reader available."
+            )
+        case ["ein" | "gaussian", *_]:
+            raise NotImplementedError(
+                f"Filetype '{ftype}' (Gaussian) recognized but no reader available."
+            )
+        case ["json" | "qcschema", *_]:
+            numbers, positions = io.read_qcschema(f)
+        case _:
+            raise ValueError(f"Unknown filetype '{ftype}' in '{f}'.")
 
     return numbers, positions
 
@@ -55,7 +112,7 @@ class Driver:
         if val is None:
             # use charge from file or set to zero
             if Path(self.base, FILES[prop]).is_file():
-                val = read_chrg(Path(self.base, FILES[prop]))
+                val = io.read_chrg(Path(self.base, FILES[prop]))
             else:
                 val = 0
 
@@ -74,8 +131,7 @@ class Driver:
             "maxiter": args.maxiter,
         }
 
-        numbers, positions = read_mol(args.file)
-
+        numbers, positions = read_structure_from_file(args.file)
         numbers = torch.tensor(numbers)
         positions = torch.tensor(positions)
         chrg = torch.tensor(self.chrg)

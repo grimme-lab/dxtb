@@ -246,6 +246,12 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--filetype",
+        type=str,
+        choices=["xyz", "tm/tmol/turbomole", "json/qcschema"],
+        help="R|Explicitly set file type of input.",
+    )
+    parser.add_argument(
         "file",
         nargs="?",
         type=is_file,  # manual validation

@@ -1,50 +1,69 @@
-from json import dump as json_dump_file
-from json import dumps as json_dump
+"""
+IO utility for reading files.
+"""
+
 from json import loads as json_load
 from pathlib import Path
 
 import torch
 
 from ..constants import ATOMIC_NUMBER
-from ..typing import Literal
+from ..typing import PathLike
 
 
-def read_geo(fp, frmt: Literal["xyz", "coord"] = "xyz") -> list[list[float | int]]:
-    """Read geometry file.
+def check_xyz(fp: PathLike, xyz: list[list[float]]) -> list[list[float]]:
+    """
+    Check coordinates of file. Particularly, we check for the last coordinate
+    being at the origin as this might clash with padding.
+
     Parameters
     ----------
-    fp : str | Path
-        Path to coord file.
-    frmt : str
-        Format of the file.
+    fp : PathLike
+        Path to coordinate file.
+    xyz : list[list[float]]
+        Coordinates of structure.
+
     Returns
     -------
-    list[list[float | int]]
-        list containing the atomic numbers and coordinates.
+    list[list[float]]
+        Coordinates of structure.
+
+    Raises
+    ------
+    ValueError
+        File is actually empty or last coordinate is at origin.
     """
-    if frmt == "xyz":
-        return read_xyz(fp)
-    elif frmt == "coord":
-        return read_coord(fp)
+
+    if len(xyz) == 0:
+        raise ValueError(f"File '{fp}' is empty.")
+    elif len(xyz) == 1:
+        if xyz[-1] == [0.0, 0.0, 0.0]:
+            xyz[-1][0] = 1.0
     else:
-        raise ValueError(f"Unknown format: {frmt}")
+        if xyz[-1] == [0.0, 0.0, 0.0]:
+            raise ValueError(
+                f"Last coordinate is zero in '{fp}'. This will clash with padding."
+            )
+
+    return xyz
 
 
-def read_xyz(fp: str | Path) -> list[list[float | int]]:
+def read_xyz(fp: PathLike) -> tuple[list[int], list[list[float]]]:
     """
     Read xyz file.
 
     Parameters
     ----------
-    fp : str | Path
-        Path to coord file.
+    fp : PathLike
+        Path to coordinate file.
 
     Returns
     -------
-    list[list[float | int]]
-        list containing the atomic numbers and coordinates.
+    tuple[list[int], list[list[float]]]
+        Lists containing the atomic numbers and coordinates.
     """
-    arr = []
+    atoms = []
+    xyz = []
     num_atoms = 0
 
     with open(fp, encoding="utf-8") as file:
@@ -55,35 +74,74 @@ def read_xyz(fp: str | Path) -> list[list[float | int]]:
                 pass
             else:
                 l = line.strip().split()
-                x, y, z = float(l[1]), float(l[2]), float(l[3])
-                atm = ATOMIC_NUMBER[l[0].title()]
-                arr.append([x, y, z, atm])
+                atom, x, y, z = l
+                xyz.append([float(x), float(y), float(z)])
+                atoms.append(ATOMIC_NUMBER[atom.title()])
 
-    if len(arr) == 1:
-        if arr[0][0] == arr[0][1] == arr[0][2] == 0:
-            arr[0][0] = 1.0
-
-    if len(arr) != num_atoms:
+    if len(xyz) != num_atoms:
         raise ValueError(f"Number of atoms in {fp} does not match.")
 
-    return arr
+    xyz = check_xyz(fp, xyz)
+    return atoms, xyz
 
 
-def read_coord(fp: str | Path) -> list[list[float | int]]:
+def read_qcschema(fp: PathLike) -> tuple[list[int], list[list[float]]]:
     """
-    Read coord file.
+    Read json/QCSchema file.
 
     Parameters
     ----------
-    fp : str | Path
+    fp : PathLike
         Path to coord file.
 
     Returns
     -------
-    list[list[float | int]]
-        list containing the atomic numbers and coordinates.
+    tuple[list[int], list[list[float]]]
+        Lists containing the atomic numbers and coordinates.
     """
-    arr = []
+
+    with open(fp, encoding="utf-8") as file:
+        data = json_load(file.read())
+
+    if "molecule" not in data:
+        raise KeyError(f"Invalid schema: Key 'molecule' not found in '{fp}'.")
+
+    mol = data["molecule"]
+
+    if "symbols" not in mol:
+        raise KeyError(f"Invalid schema: Key 'symbols' not found in '{fp}'.")
+    if "geometry" not in mol:
+        raise KeyError(f"Invalid schema: Key 'geometry' not found in '{fp}'.")
+
+    atoms = []
+    for atom in mol["symbols"]:
+        atoms.append(ATOMIC_NUMBER[atom.title()])
+
+    xyz = []
+    geo = mol["geometry"]
+    for i in range(0, len(geo), 3):
+        xyz.append([float(geo[i]), float(geo[i + 1]), float(geo[i + 2])])
+
+    xyz = check_xyz(fp, xyz)
+    return atoms, xyz
+
+
+def read_coord(fp: PathLike) -> tuple[list[int], list[list[float]]]:
+    """
+    Read Turbomole/coord file.
+
+    Parameters
+    ----------
+    fp : PathLike
+        Path to coord file.
+
+    Returns
+    -------
+    tuple[list[int], list[list[float]]]
+        Lists containing the atomic numbers and coordinates.
+    """
+    atoms = []
+    xyz = []
     breakpoints = ["$user-defined bonds", "$redundant", "$end", "$periodic"]
 
     with open(fp, encoding="utf-8") as file:
@@ -99,29 +157,18 @@ def read_coord(fp: str | Path) -> list[list[float | int]]:
             elif l[0].startswith("$"):
                 continue
             try:
-                x, y, z = float(l[0]), float(l[1]), float(l[2])
-                atm = ATOMIC_NUMBER[l[3].title()]
-                arr.append([x, y, z, atm])
+                atom, x, y, z = l
+                xyz.append([float(x), float(y), float(z)])
+                atoms.append(ATOMIC_NUMBER[atom.title()])
             except ValueError as e:
                 print(e)
                 print(f"WARNING: No correct values. Skip sample {fp}")
 
-    # make sure last coord is not 0,0,0
-    if len(arr) == 0:
-        raise ValueError(f"File {fp} is empty.")
-    elif len(arr) == 1:
-        if arr[-1][:3] == [0.0, 0.0, 0.0]:
-            arr[-1][0] = 1.0
-    else:
-        if arr[-1][:3] == [0.0, 0.0, 0.0]:
-            raise ValueError(
-                f"Last coordinate is zero in '{fp}'. This will clash with padding."
-            )
-
-    return arr
+    xyz = check_xyz(fp, xyz)
+    return atoms, xyz
 
 
-def read_chrg(fp: str | Path) -> int:
+def read_chrg(fp: PathLike) -> int:
     """Read a chrg (or uhf) file."""
 
     if not Path(fp).is_file():
