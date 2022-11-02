@@ -7,21 +7,11 @@ from pathlib import Path
 
 import torch
 
-from ..io import read_chrg, read_coord
+from .. import io
 from ..utils import Timers
 from ..xtb import Calculator
 
 FILES = {"spin": ".UHF", "chrg": ".CHRG"}
-
-
-def read_mol(file):
-
-    geo = read_coord(file)
-    assert len(geo[0]) == 4
-    positions = [g[:3] for g in geo]
-    numbers = [g[-1] for g in geo]
-
-    return numbers, positions
 
 
 class Driver:
@@ -74,8 +64,7 @@ class Driver:
             "maxiter": args.maxiter,
         }
 
-        numbers, positions = read_mol(args.file)
-
+        numbers, positions = io.read_structure_from_file(args.file)
         numbers = torch.tensor(numbers)
         positions = torch.tensor(positions)
         chrg = torch.tensor(self.chrg)
