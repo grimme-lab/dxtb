@@ -1,16 +1,16 @@
 import pytest
 import torch
 
-from xtbml.basis import orthogonalize, slater
-from xtbml.integral import mmd
+from dxtb.basis import orthogonalize, slater
+from dxtb.integral import mmd
 
 
-@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_ortho_1s_2s(dtype):
     """Test orthogonality of 1s and 2s orbitals"""
 
     # azimuthal quantum number of s-orbital
-    l = 0
+    l = torch.tensor(0)
 
     # same site
     vec = torch.tensor([0.0, 0.0, 0.0], dtype=dtype)
@@ -19,13 +19,13 @@ def test_ortho_1s_2s(dtype):
     alphai, coeffi = slater.to_gauss(
         torch.tensor(5),
         torch.tensor(1),
-        torch.tensor(l),
+        l,
         vec.new_tensor(1.2),
     )
     alphaj, coeffj = slater.to_gauss(
         torch.tensor(2),
         torch.tensor(2),
-        torch.tensor(l),
+        l,
         vec.new_tensor(0.7),
     )
 

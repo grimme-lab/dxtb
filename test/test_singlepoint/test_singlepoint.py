@@ -9,9 +9,9 @@ import pytest
 import torch
 
 # from xtbml.exlibs.tbmalt import batch
-from xtbml.io import read_chrg, read_coord
-from xtbml.param import GFN1_XTB as par
-from xtbml.xtb import Calculator
+from dxtb.io import read_chrg, read_coord
+from dxtb.param import GFN1_XTB as par
+from dxtb.xtb import Calculator
 
 from .samples import samples
 

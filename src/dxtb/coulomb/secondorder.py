@@ -113,6 +113,28 @@ class ES2(Interaction):
         positions: Tensor,
         ihelp: IndexHelper,
     ) -> "ES2.Cache":
+        """
+        Obtain the cache object containing the Coulomb matrix.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers of all atoms in the system.
+        positions : Tensor
+            Cartesian coordinates of all atoms in the system.
+        ihelp : IndexHelper
+            Index mapping for the basis set.
+
+        Returns
+        -------
+        ES2.Cache
+            Cache object for second order electrostatics.
+
+        Note
+        ----
+        The cache of an interaction requires `positions` as they do not change
+        during the self-consistent charge iterations.
+        """
 
         return self.Cache(
             self.get_shell_coulomb_matrix(numbers, positions, ihelp)

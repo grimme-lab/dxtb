@@ -46,7 +46,7 @@ class ES3(Interaction):
     """
 
     hubbard_derivs: Tensor
-    "Hubbard derivatives of all atoms."
+    """Hubbard derivatives of all atoms."""
 
     class Cache(Interaction.Cache):
         """
@@ -76,6 +76,11 @@ class ES3(Interaction):
         -------
         Interaction.Cache
             Restart data for the interaction.
+
+        Note
+        ----
+        The cache of an interaction requires `positions` as they do not change
+        during the self-consistent charge iterations.
         """
 
         return self.Cache()

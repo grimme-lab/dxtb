@@ -10,8 +10,8 @@ import math
 
 import torch
 
-from ..exceptions import IntegralTransformError
 from ..typing import Tensor
+from ..utils import IntegralTransformError
 from . import transform
 
 sqrtpi = math.sqrt(math.pi)

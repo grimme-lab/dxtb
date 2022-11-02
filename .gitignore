@@ -200,7 +200,6 @@ data/misc
 models/
 
 # ML model bookkeeping
-src/dxtb/
 src/lightning_logs/
 src/wandb/
 
@@ -215,4 +214,3 @@ src/lightning_logs/*
 
 # weights and biases
 src/wandb/*
-src/dxtb/*

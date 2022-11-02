@@ -4,8 +4,8 @@ import pytest
 import tomli as toml
 import torch
 
-from xtbml.param.meta import Meta
-from xtbml.utils import symbol2number
+from dxtb.param.meta import Meta
+from dxtb.utils import symbol2number
 
 
 class TestParam:
@@ -17,7 +17,7 @@ class TestParam:
 
     def test_builtin_gfn1(self):
         # pylint: disable=import-outside-toplevel
-        from xtbml.param.gfn1 import GFN1_XTB as par
+        from dxtb.param.gfn1 import GFN1_XTB as par
 
         assert isinstance(par.meta, Meta)
         assert par.meta.name == "GFN1-xTB"
@@ -40,7 +40,7 @@ class TestParam:
 
     def test_param_minimal(self):
         # pylint: disable=import-outside-toplevel
-        from xtbml.param import Param
+        from dxtb.param import Param
 
         data = """
         [hamiltonian.xtb]
@@ -97,8 +97,8 @@ class TestParam:
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     def test_param_calculator(self, dtype: torch.dtype):
         # pylint: disable=import-outside-toplevel
-        from xtbml.param.gfn1 import GFN1_XTB as par
-        from xtbml.xtb.calculator import Calculator
+        from dxtb.param.gfn1 import GFN1_XTB as par
+        from dxtb.xtb.calculator import Calculator
 
         numbers = symbol2number(["H", "C"])
         dummy_coords = torch.zeros(3, dtype=dtype)

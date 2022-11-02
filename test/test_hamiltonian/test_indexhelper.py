@@ -1,8 +1,8 @@
 import pytest
 import torch
 
-from xtbml.basis import IndexHelper
-from xtbml.utils import batch, symbol2number
+from dxtb.basis import IndexHelper
+from dxtb.utils import batch, symbol2number
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])

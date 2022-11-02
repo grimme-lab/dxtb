@@ -39,10 +39,9 @@ import torch
 
 from ..basis import IndexHelper
 from ..constants import xtb
-from ..exceptions import ParameterWarning
 from ..param import Param, get_elem_param
 from ..typing import Tensor, TensorLike
-from ..utils import real_pairs
+from ..utils import ParameterWarning, real_pairs
 from .abc import Classical
 
 
@@ -138,6 +137,12 @@ class Repulsion(Classical, TensorLike):
         -------
         Repulsion.Cache
             Cache for repulsion.
+
+        Note
+        ----
+        The cache of a classical contribution does not require `positions` as
+        it only becomes useful if `numbers` remain unchanged and `positions`
+        vary, i.e., during geometry optimization.
         """
 
         unique = torch.unique(numbers)

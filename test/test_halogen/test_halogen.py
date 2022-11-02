@@ -5,12 +5,12 @@ Run tests for energy contribution from halogen bond correction.
 import pytest
 import torch
 
-from xtbml.basis import IndexHelper
-from xtbml.classical import Halogen, new_halogen
-from xtbml.param import GFN1_XTB as par
-from xtbml.param import get_elem_angular, get_elem_param
-from xtbml.typing import Tensor
-from xtbml.utils import batch
+from dxtb.basis import IndexHelper
+from dxtb.classical import Halogen, new_halogen
+from dxtb.param import GFN1_XTB as par
+from dxtb.param import get_elem_angular, get_elem_param
+from dxtb.typing import Tensor
+from dxtb.utils import batch
 
 from .samples import samples
 
@@ -132,7 +132,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
 
 @pytest.mark.grad
-@pytest.mark.parametrize("name", ["br2nh3", "br2och2", "tmpda"])
+@pytest.mark.parametrize("name", ["br2nh3", "br2och2"])
 def test_grad_pos(name: str) -> None:
     dtype = torch.double
 

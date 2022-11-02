@@ -9,10 +9,10 @@ import pytest
 import tad_dftd3 as d3
 import torch
 
-from xtbml.dispersion import new_dispersion
-from xtbml.exceptions import ParameterWarning
-from xtbml.param import GFN1_XTB as par
-from xtbml.utils import batch
+from dxtb.dispersion import DispersionD3, new_dispersion
+from dxtb.param import GFN1_XTB as par
+from dxtb.typing import Tensor
+from dxtb.utils import ParameterWarning, batch
 
 from .samples import samples
 
@@ -84,15 +84,42 @@ def test_disp_batch(dtype: torch.dtype) -> None:
     if disp is None:
         assert False
 
-    edisp = disp.get_energy(positions)
+    cache = disp.get_cache(numbers)
+    edisp = disp.get_energy(positions, cache)
     assert edisp.dtype == dtype
     assert torch.allclose(edisp, ref)
     assert torch.allclose(edisp, energy)
 
 
 @pytest.mark.grad
-def test_param_grad():
-    dtype = torch.float64
+def test_grad_pos() -> None:
+    dtype = torch.double
+
+    sample = samples["C4H5NCS"]
+    numbers = sample["numbers"]
+    positions = sample["positions"].type(dtype)
+
+    # variable to be differentiated
+    positions.requires_grad_(True)
+
+    disp = new_dispersion(numbers, positions, par)
+    if disp is None:
+        assert False
+
+    cache = disp.get_cache(numbers)
+
+    def func(positions: Tensor) -> Tensor:
+        return disp.get_energy(positions, cache)
+
+    # pylint: disable=import-outside-toplevel
+    from torch.autograd.gradcheck import gradcheck
+
+    assert gradcheck(func, positions)
+
+
+@pytest.mark.grad
+def test_grad_param() -> None:
+    dtype = torch.double
     sample = samples["C4H5NCS"]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
@@ -106,7 +133,9 @@ def test_param_grad():
 
     def func(*inputs):
         input_param = {label[i]: input for i, input in enumerate(inputs)}
-        return d3.dftd3(numbers, positions, input_param)
+        disp = DispersionD3(numbers, positions, input_param)
+        cache = disp.get_cache(numbers)
+        return disp.get_energy(positions, cache)
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradcheck

@@ -37,7 +37,7 @@ class TensorLike:
 
     @property
     def device(self) -> torch.device:
-        """The device on which the `IndexHelper` object resides."""
+        """The device on which the class object resides."""
         return self.__device
 
     @device.setter
@@ -47,5 +47,5 @@ class TensorLike:
 
     @property
     def dtype(self) -> torch.dtype:
-        """Floating point dtype used by IndexHelper object."""
+        """Floating point dtype used by class object."""
         return self.__dtype

@@ -5,8 +5,8 @@ Test bond order functionality.
 import pytest
 import torch
 
-from xtbml import bond
-from xtbml.utils import batch
+from dxtb import bond
+from dxtb.utils import batch
 
 from .samples import samples
 

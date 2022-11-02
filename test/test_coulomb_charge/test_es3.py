@@ -6,11 +6,11 @@ electrostatic energy (ES3).
 import pytest
 import torch
 
-from xtbml.basis import IndexHelper
-from xtbml.coulomb import thirdorder as es3
-from xtbml.param import GFN1_XTB, get_elem_angular, get_elem_param
-from xtbml.typing import Tensor
-from xtbml.utils import batch
+from dxtb.basis import IndexHelper
+from dxtb.coulomb import thirdorder as es3
+from dxtb.param import GFN1_XTB, get_elem_angular, get_elem_param
+from dxtb.typing import Tensor
+from dxtb.utils import batch
 
 from .samples import samples
 

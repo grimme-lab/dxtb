@@ -6,12 +6,12 @@ isotropic second-order electrostatic energy (ES2).
 import pytest
 import torch
 
-from xtbml.basis import IndexHelper
-from xtbml.coulomb import averaging_function
-from xtbml.coulomb import secondorder as es2
-from xtbml.param import GFN1_XTB, get_elem_angular, get_elem_param
-from xtbml.typing import Tensor
-from xtbml.utils import batch
+from dxtb.basis import IndexHelper
+from dxtb.coulomb import averaging_function
+from dxtb.coulomb import secondorder as es2
+from dxtb.param import GFN1_XTB, get_elem_angular, get_elem_param
+from dxtb.typing import Tensor
+from dxtb.utils import batch
 
 from .samples import samples
 

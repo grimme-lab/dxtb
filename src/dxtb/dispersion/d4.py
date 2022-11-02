@@ -2,18 +2,19 @@
 DFT-D4 dispersion model.
 """
 
+from ..interaction import Interaction
 from ..typing import Tensor
 from .abc import Dispersion
 
 
-class DispersionD4(Dispersion):
-    """Representation of the DFT-D4 dispersion correction."""
+class DispersionD4(Dispersion, Interaction):
+    """
+    Representation of the DFT-D4 dispersion correction.
 
-    numbers: Tensor
-    """Atomic numbers of all atoms."""
-
-    param: dict[str, float]
-    """Dispersion parameters."""
+    Note:
+    -----
+    DispersionD4 should be an `Interaction` as D4 can be self-consistent.
+    """
 
     def __init__(self, *args):
         raise NotImplementedError("D4 dispersion scheme not implemented.")

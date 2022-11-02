@@ -5,8 +5,8 @@ Definition of a timer class that can contain multiple timers.
 import time
 from functools import wraps
 
-from ..exceptions import TimerError
 from ..typing import Any, Callable
+from .exceptions import TimerError
 
 
 class Timers:
@@ -123,15 +123,13 @@ class Timers:
 
         return {label: t.elapsed_time for label, t in self.timers.items()}
 
-    def print_times(self) -> None:
+    def print_times(self, name: str = "Timings", width: int = 50) -> None:
         """Print the elapsed times of all timers in a table."""
         d = self.get_times()
         total = d.pop("total")
         s = sum(d.values())
-        width = 50
 
-        print("{:*^50}".format("Timings"))
-        print("")
+        print(f"{name:*^50}\n")
 
         print("{:<20} {:<18} {:<12}".format("Objective", "Time in s", "Time in %"))
 
@@ -146,7 +144,6 @@ class Timers:
         print("{:<20} {:<18.3f} {:^9.2f}".format("total", total, total / total * 100))
 
         print("")
-        print(width * "*")
 
 
 def timings(f: Callable) -> Any:
