@@ -210,7 +210,7 @@ class SelfConsistentField(xt.EditableModule):
             charges, self._data.ihelp, self._data.cache
         )
 
-    def get_electronic_free_energy(self, max_orb_occ: float = 2.0) -> Tensor:
+    def get_electronic_free_energy(self) -> Tensor:
         r"""
         Calculate electronic free energy from entropy.
 
@@ -227,11 +227,6 @@ class SelfConsistentField(xt.EditableModule):
             \qquad\text{with}\quad \mathbf P^\text{TS} = \mathbf C^T \cdot
             \text{diag}(g) \cdot \mathbf C
 
-        Parameters
-        ----------
-        max_orb_occ : float, optional
-            Maximum occupation of orbitals, by default 2.0
-
         Returns
         -------
         Tensor
@@ -244,7 +239,7 @@ class SelfConsistentField(xt.EditableModule):
         Defaults to an equal partitioning to all atoms (`"equal"`).
         """
 
-        occ = self._data.occupation / max_orb_occ
+        occ = self._data.occupation.sum(-2) / 2.0
         g = torch.log(occ**occ * (1 - occ) ** (1 - occ)) * self.kt
 
         mode = self.scf_options.get(
@@ -441,6 +436,7 @@ class SelfConsistentField(xt.EditableModule):
 
         # round to integers to avoid numerical errors
         nel = self._data.occupation.sum(-1).round()
+        print("nel", nel)
 
         # Fermi smearing only for non-zero electronic temperature
         if self.kt is not None and not torch.all(self.kt < 3e-7):  # 0.1 Kelvin * K2AU
@@ -459,10 +455,14 @@ class SelfConsistentField(xt.EditableModule):
                     f"Number of electrons changed during Fermi smearing ({nel} -> {_nel})."
                 )
 
+        print("self._data.evals", self._data.evals)
+        print("self._data.occupation", self._data.occupation)
+        print("self._data.occupation", self._data.occupation.sum(-1))
+
         return torch.einsum(
             "...ik,...k,...kj->...ij",
             self._data.evecs,
-            self._data.occupation,
+            self._data.occupation.sum(-2),
             self._data.evecs.mT,
         )
 

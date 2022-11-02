@@ -95,9 +95,7 @@ def get_aufbau_occupation(
     return occupation.flatten() if nel.dim() == 0 else occupation
 
 
-def get_fermi_energy(
-    nel: Tensor, emo: Tensor, max_orb_occ: float = 2.0
-) -> tuple[Tensor, Tensor]:
+def get_fermi_energy(nel: Tensor, emo: Tensor) -> tuple[Tensor, Tensor]:
     """
     Get Fermi energy as midpoint between the HOMO and LUMO.
 
@@ -107,46 +105,51 @@ def get_fermi_energy(
         Number of electrons.
     emo : Tensor
         Orbital energies
-    max_orb_occ : float, optional
-        Maximum orbital occupation, by default 2.0
 
     Returns
     -------
     tuple[Tensor, Tensor]
         Fermi energy and index of HOMO.
     """
-    shp = torch.Size([*emo.shape[:-1], -1])
+    # expand emo to second dim (for alpha/beta electrons)
+    if emo.ndim == 1:
+        emo = emo.unsqueeze(-2).expand(nel.shape[-1], -1)
 
-    # maximum occupation of each orbital
-    occ = torch.ones_like(emo) * max_orb_occ
+    occ = torch.ones_like(emo)
+    occ_cs = occ.cumsum(-1) - nel.unsqueeze(-1)
 
     # transition: negative values indicate end of occupied orbitals
-    if emo.ndim == 1:
-        occ_cs = occ.cumsum(-1) - nel
-    else:
-        # transpose sum because `nel` may contain multiple values
-        occ_cs = occ.cumsum(-1).T - nel
-
     temp = occ_cs >= (-torch.finfo(emo.dtype).resolution * 5)
-    if emo.ndim > 1:
-        temp = temp.T
 
     # index of first non-negative value
-    homo = torch.argmax(temp.type(torch.long), dim=-1).view(shp)
+    homo = torch.argmax(temp.type(torch.long), dim=-1)
+
+    # unsqueeze for stacking and stack along that dim
+    homo = homo.unsqueeze(-1)
+    hl = torch.cat((homo, homo + 1), -1)
 
     # some atoms (e.g., He) do not have a LUMO because of the valence basis
-    hl = torch.where(
-        homo + 1 >= emo.size(-1),  # LUMO index larger than number of MOs
-        torch.cat((homo, homo), -1),
-        torch.cat((homo, homo + 1), -1),
-    )
+    # hl = torch.where(
+    #     homo + 1 >= emo.size(-1),  # LUMO index larger than number of MOs
+    #     torch.cat((homo, homo), -1),
+    #     torch.cat((homo, homo + 1), -1),
+    # )
     # FIXME: BATCHED CALCULATIONS
     # In batched calculations the missing LUMO is replaced by padding, which is
     # not caught by the above `torch.where`. Consequently, the Fermi energy is
     # no correct. To fix this, one would require a mask from `numbers`. The
     # `numbers` are, however, currently not passed down to the SCF.
 
-    e_fermi = torch.gather(emo, -1, hl).mean(-1).view(shp)
+    # expand emo to third dim (for batched calcs)
+    if nel.ndim == 2 and emo.ndim == 2:
+        emo = emo.unsqueeze(-2).expand(-1, nel.shape[0], -1)
+
+    e_fermi = torch.gather(emo, -1, hl).mean(-1)
+    print("GAP", hl)
+    print(emo)
+    print(torch.gather(emo, -1, hl))
+    print(torch.gather(emo, -1, hl).mean(-1))
+    print("e_fermi", e_fermi)
     return e_fermi, homo
 
 
@@ -156,7 +159,6 @@ def get_fermi_occupation(
     kt: Tensor | None = None,
     thr: dict[torch.dtype, Tensor] | None = None,
     maxiter: int = 200,
-    max_orb_occ: float = 2.0,
 ) -> Tensor:
     """
     Set occupation numbers according to Fermi distribution.
@@ -173,8 +175,6 @@ def get_fermi_occupation(
         Threshold for converging Fermi energy, by default None.
     maxiter : int, optional
         Maximum number of iterations for converging Fermi energy, by default 200.
-    max_orb_occ : float, optional
-        Maximum orbital occupation, by default 2.0.
 
     Returns
     -------
@@ -203,15 +203,25 @@ def get_fermi_occupation(
     zero = emo.new_tensor(0.0)
 
     # no valence electrons
-    if (torch.abs(nel) < eps).any():
+    if (torch.abs(nel.sum(-1)) < eps).any():
         raise ValueError("Number of valence electrons cannot be zero.")
 
     if thr is None:
         thr = defaults.THRESH
     thresh = thr.get(emo.dtype, torch.tensor(1e-5, dtype=torch.float)).to(emo.device)
 
-    # iterate fermi energy
+    # expand emo to second dim (for alpha/beta electrons)
+    if emo.ndim == 1:
+        emo = emo.unsqueeze(-2).expand(nel.shape[-1], -1)
+
+    # expand emo to third dim (for batched calcs)
+    if nel.ndim == 2 and emo.ndim == 2:
+        emo = emo.unsqueeze(-2).expand(-1, nel.shape[0], -1)
+
     e_fermi, homo = get_fermi_energy(nel, emo)
+    e_fermi = e_fermi.view([*emo.shape[:-1], -1])  # add dim for subtraction
+
+    # iterate fermi energy
     for _ in range(maxiter):
         exponent = (emo - e_fermi) / kt
         eterm = torch.exp(torch.where(exponent < 50, exponent, zero))
@@ -225,6 +235,6 @@ def get_fermi_occupation(
         e_fermi += change
 
         if torch.all(torch.abs(homo - _nel + 1) <= thresh):
-            return max_orb_occ * fermi
+            return fermi
 
     raise RuntimeError("Fermi energy failed to converge.")

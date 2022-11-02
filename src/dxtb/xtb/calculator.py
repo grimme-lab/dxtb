@@ -222,7 +222,7 @@ class Calculator:
 
         occupation = filling.get_aufbau_occupation(
             hcore.new_tensor(hcore.shape[-1], dtype=torch.int64), nab
-        ).sum(-2)
+        )
 
         print("nel", nel)
         print("torch.remainder(uhf, 2)", torch.remainder(uhf, 2))

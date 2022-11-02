@@ -21,7 +21,7 @@ sample_list = ["H2", "LiH", "SiH4", "S2"]
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_fail(dtype: torch.dtype):
     evals = torch.arange(1, 6, dtype=dtype)
-    nel = torch.tensor(4.0, dtype=dtype)
+    nel = torch.tensor([4.0, 4.0], dtype=dtype)
 
     # wrong type
     with pytest.raises(TypeError):
@@ -43,8 +43,9 @@ def test_fail(dtype: torch.dtype):
         sample = samples["SiH4"]
         emo = sample["emo"].type(dtype)
         nel = sample["n_electrons"].type(dtype)
+        nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
         kt = torch.tensor(10000 * K2AU, dtype=dtype)
-        filling.get_fermi_occupation(nel, emo, kt, maxiter=1)
+        filling.get_fermi_occupation(nab, emo, kt, maxiter=1)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -53,17 +54,18 @@ def test_single(dtype: torch.dtype, name: str):
     sample = samples[name]
     emo = sample["emo"].type(dtype)
     nel = sample["n_electrons"].type(dtype)
+    nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
 
     ref_focc = 2 * sample["focc"].type(dtype)
     ref_efermi = sample["e_fermi"].type(dtype)
 
     kt = emo.new_tensor(300 * K2AU)
 
-    efermi, _ = filling.get_fermi_energy(nel, emo)
+    efermi, _ = filling.get_fermi_energy(nab, emo)
     assert torch.allclose(ref_efermi, efermi)
 
-    focc = filling.get_fermi_occupation(nel, emo, kt)
-    assert torch.allclose(ref_focc, focc)
+    focc = filling.get_fermi_occupation(nab, emo, kt)
+    assert torch.allclose(ref_focc, focc.sum(-2))
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -78,6 +80,8 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
             sample2["n_electrons"].type(dtype),
         )
     )
+    nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
+
     emo = batch.pack(
         (
             sample1["emo"].type(dtype),
@@ -100,11 +104,11 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
 
     kt = emo.new_tensor(300 * K2AU)
 
-    efermi, _ = filling.get_fermi_energy(nel, emo)
-    assert torch.allclose(ref_efermi, efermi)
+    efermi, _ = filling.get_fermi_energy(nab, emo)
+    assert torch.allclose(ref_efermi.expand(-1, 2), efermi)
 
-    focc = filling.get_fermi_occupation(nel, emo, kt)
-    assert torch.allclose(ref_focc, focc)
+    focc = filling.get_fermi_occupation(nab, emo, kt)
+    assert torch.allclose(ref_focc, focc.sum(-2))
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -116,6 +120,7 @@ def test_kt(dtype: torch.dtype, kt: float):
     numbers = sample["numbers"]
     emo = sample["emo"].type(dtype)
     nel = sample["n_electrons"].type(dtype)
+    nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
 
     ref_fenergy = {
         "0.0": emo.new_tensor(0.0),
@@ -169,8 +174,8 @@ def test_kt(dtype: torch.dtype, kt: float):
     }
 
     # occupation
-    focc = filling.get_fermi_occupation(nel, emo, emo.new_tensor(kt * K2AU))
-    assert torch.allclose(ref_focc[str(kt)], focc, atol=tol)
+    focc = filling.get_fermi_occupation(nab, emo, emo.new_tensor(kt * K2AU))
+    assert torch.allclose(ref_focc[str(kt)], focc.sum(-2), atol=tol)
 
     # electronic free energy
     d = torch.zeros_like(focc)  # dummy
