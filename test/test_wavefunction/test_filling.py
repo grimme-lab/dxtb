@@ -75,31 +75,35 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     sample1, sample2 = samples[name1], samples[name2]
 
     nel = batch.pack(
-        (
+        [
             sample1["n_electrons"].type(dtype),
             sample2["n_electrons"].type(dtype),
-        )
+            sample2["n_electrons"].type(dtype),
+        ]
     )
     nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
 
     emo = batch.pack(
-        (
+        [
             sample1["emo"].type(dtype),
             sample2["emo"].type(dtype),
-        )
+            sample2["emo"].type(dtype),
+        ]
     )
 
     ref_efermi = batch.pack(
-        (
+        [
             sample1["e_fermi"].type(dtype),
             sample2["e_fermi"].type(dtype),
-        ),
+            sample2["e_fermi"].type(dtype),
+        ]
     )
     ref_focc = batch.pack(
-        (
+        [
             2.0 * sample1["focc"].type(dtype),
             2.0 * sample2["focc"].type(dtype),
-        ),
+            2.0 * sample2["focc"].type(dtype),
+        ]
     )
 
     kt = emo.new_tensor(300 * K2AU)
@@ -183,3 +187,49 @@ def test_kt(dtype: torch.dtype, kt: float):
         d, d, d, focc, d, numbers, d, d, scf_options={"etemp": kt}  # type: ignore
     ).get_electronic_free_energy()
     assert pytest.approx(ref_fenergy[str(kt)], abs=tol, rel=tol) == fenergy.sum(-1)
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_lumo_not_existing(dtype: torch.dtype) -> None:
+    """Helium has no LUMO due to the minimal basis."""
+    sample = samples["He"]
+
+    nel = batch.pack(
+        [
+            sample["n_electrons"].type(dtype),
+            sample["n_electrons"].type(dtype),
+            sample["n_electrons"].type(dtype),
+        ]
+    )
+    nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
+
+    emo = batch.pack(
+        [
+            sample["emo"].type(dtype),
+            sample["emo"].type(dtype),
+            sample["emo"].type(dtype),
+        ]
+    )
+
+    ref_efermi = batch.pack(
+        [
+            sample["e_fermi"].type(dtype),
+            sample["e_fermi"].type(dtype),
+            sample["e_fermi"].type(dtype),
+        ]
+    )
+    ref_focc = batch.pack(
+        [
+            2.0 * sample["focc"].type(dtype),
+            2.0 * sample["focc"].type(dtype),
+            2.0 * sample["focc"].type(dtype),
+        ]
+    )
+
+    kt = emo.new_tensor(300 * K2AU)
+
+    efermi, _ = filling.get_fermi_energy(nab, emo)
+    assert torch.allclose(ref_efermi, efermi)
+
+    focc = filling.get_fermi_occupation(nab, emo, kt)
+    assert torch.allclose(ref_focc, focc.sum(-2))
