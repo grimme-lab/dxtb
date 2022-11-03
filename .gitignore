@@ -196,6 +196,9 @@ data/misc
 !test/test_singlepoint/*/coord
 !test/test_singlepoint/*/.CHRG
 
+!test/test_io/files/mol.json
+!test/test_io/files/coord
+
 # models
 models/
 
