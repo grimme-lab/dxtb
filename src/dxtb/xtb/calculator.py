@@ -217,7 +217,7 @@ class Calculator:
         nel = torch.sum(n0, -1) - torch.sum(chrg, -1)
 
         # get alpha and beta electrons
-        uhf = torch.zeros_like(nel)
+        uhf = nel.new_tensor(opts.get("spin", defaults.SPIN))
         nab = filling.get_alpha_beta_occupation(nel, uhf)
 
         occupation = filling.get_aufbau_occupation(

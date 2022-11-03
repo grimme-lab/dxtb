@@ -101,12 +101,19 @@ def get_fermi_energy(
     """
     Get Fermi energy as midpoint between the HOMO and LUMO.
 
+    The orbital energies `emo` and the `mask` must already have the correct
+    shape for using alpha/beta electron channels. Spreading to the channels can
+    be done with `x.unsqueeze(-2).expand([*nel.shape, -1])`.
+
     Parameters
     ----------
     nel : Tensor
         Number of electrons.
     emo : Tensor
         Orbital energies
+    mask : Tensor | None, optional
+        Mask from orbitals to avoid reading padding as LUMO for elements
+        without LUMO due to minimal basis.
 
     Returns
     -------
@@ -141,7 +148,7 @@ def get_fermi_energy(
     # Fermi energy. The `prod(-1)` reduces the dimension as `mean(-1)` does.
     # Finally, multiplication by two corrects the mean, taken with E_LUMO = 0.
     if mask is not None:
-        mask[mask != 0] = 1
+        mask = torch.where(mask == 0, mask, torch.ones_like(mask))
         mask = torch.gather(mask, -1, gap).prod(-1)
         e_fermi = torch.where(mask != 0, e_fermi, e_fermi * 2.0)
 
@@ -232,6 +239,7 @@ def get_fermi_occupation(
         e_fermi += change
 
         if torch.all(torch.abs(homo - _nel + 1) <= thresh):
-            return fermi
+            # check if beta channel is empty
+            return torch.where(nel.unsqueeze(-1) != 0, fermi, torch.zeros_like(fermi))
 
     raise RuntimeError("Fermi energy failed to converge.")

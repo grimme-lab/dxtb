@@ -21,6 +21,9 @@ class Record(Molecule, Refs):
 
 
 refs: dict[str, Refs] = {
+    "H": {
+        "etot": torch.tensor(-4.0142947446183e-01),
+    },
     "H2": {
         "etot": torch.tensor(-1.0362714373390e00),
     },

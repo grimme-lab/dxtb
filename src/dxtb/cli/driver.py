@@ -22,8 +22,8 @@ class Driver:
     def __init__(self, args: Namespace) -> None:
         self.args = args
         self.base = self._set_base()
-        self.chrg = self._set_chrg_spin("chrg")
-        self.spin = self._set_chrg_spin("spin")
+        self.chrg = self._set_attr("chrg")
+        self.spin = self._set_attr("spin")
 
     def _set_base(self) -> Path:
         """
@@ -45,7 +45,7 @@ class Driver:
         if val is None:
             # use charge (or spin) from file or set to zero
             if Path(self.base, FILES[attr]).is_file():
-                val = read_chrg(Path(self.base, FILES[attr]))
+                val = io.read_chrg(Path(self.base, FILES[attr]))
             else:
                 val = 0
 

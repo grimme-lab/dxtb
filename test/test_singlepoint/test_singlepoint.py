@@ -43,3 +43,25 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     ref = samples[name]["etot"].item()
     result = calc.singlepoint(numbers, positions, charge, {"verbosity": 0})
     assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1).item()
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["H"])
+def test_single_uhf(dtype: torch.dtype, name: str) -> None:
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+
+    base = Path(Path(__file__).parent, name)
+
+    numbers, positions = read_coord(Path(base, "coord"))
+    charge = read_chrg(Path(base, ".CHRG"))
+
+    numbers = torch.tensor(numbers, dtype=torch.long)
+    positions = torch.tensor(positions).type(dtype)
+    charge = torch.tensor(charge).type(dtype)
+
+    calc = Calculator(numbers, positions, par)
+
+    ref = samples[name]["etot"].item()
+    result = calc.singlepoint(numbers, positions, charge, {"verbosity": 0})
+    assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1).item()
