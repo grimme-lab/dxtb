@@ -8,7 +8,9 @@ from math import sqrt
 import pytest
 import torch
 
+from dxtb.basis import IndexHelper
 from dxtb.constants import K2AU
+from dxtb.param import GFN1_XTB, get_elem_angular
 from dxtb.scf.iterator import SelfConsistentField
 from dxtb.utils import batch
 from dxtb.wavefunction import filling
@@ -52,9 +54,12 @@ def test_fail(dtype: torch.dtype):
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str):
     sample = samples[name]
-    emo = sample["emo"].type(dtype)
+
     nel = sample["n_electrons"].type(dtype)
     nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
+
+    emo = sample["emo"].type(dtype)
+    emo = emo.unsqueeze(-2).expand([*nab.shape, -1])
 
     ref_focc = 2 * sample["focc"].type(dtype)
     ref_efermi = sample["e_fermi"].type(dtype)
@@ -90,6 +95,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
             sample2["emo"].type(dtype),
         ]
     )
+    emo = emo.unsqueeze(-2).expand([*nab.shape, -1])
 
     ref_efermi = batch.pack(
         [
@@ -122,9 +128,12 @@ def test_kt(dtype: torch.dtype, kt: float):
 
     sample = samples["SiH4"]
     numbers = sample["numbers"]
-    emo = sample["emo"].type(dtype)
+
     nel = sample["n_electrons"].type(dtype)
     nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
+
+    emo = sample["emo"].type(dtype)
+    emo = emo.unsqueeze(-2).expand([*nab.shape, -1])
 
     ref_fenergy = {
         "0.0": emo.new_tensor(0.0),
@@ -210,6 +219,7 @@ def test_lumo_not_existing(dtype: torch.dtype) -> None:
             sample["emo"].type(dtype),
         ]
     )
+    emo = emo.unsqueeze(-2).expand([*nab.shape, -1])
 
     ref_efermi = batch.pack(
         [
@@ -232,4 +242,63 @@ def test_lumo_not_existing(dtype: torch.dtype) -> None:
     assert torch.allclose(ref_efermi, efermi)
 
     focc = filling.get_fermi_occupation(nab, emo, kt)
+    assert torch.allclose(ref_focc, focc.sum(-2))
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_lumo_obscured_by_padding(dtype: torch.dtype) -> None:
+    """A missing LUMO can be obscured by padding."""
+    sample1, sample2 = samples["H2"], samples["He"]
+
+    numbers = batch.pack(
+        [
+            sample1["numbers"],
+            sample2["numbers"],
+            sample2["numbers"],
+        ]
+    )
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+
+    nel = batch.pack(
+        [
+            sample1["n_electrons"].type(dtype),
+            sample2["n_electrons"].type(dtype),
+            sample2["n_electrons"].type(dtype),
+        ]
+    )
+    nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
+
+    emo = batch.pack(
+        [
+            sample1["emo"].type(dtype),
+            sample2["emo"].type(dtype),
+            sample2["emo"].type(dtype),
+        ]
+    )
+    emo = emo.unsqueeze(-2).expand([*nab.shape, -1])
+
+    ref_efermi = batch.pack(
+        [
+            sample1["e_fermi"].type(dtype),
+            sample2["e_fermi"].type(dtype),
+            sample2["e_fermi"].type(dtype),
+        ]
+    )
+    ref_focc = batch.pack(
+        [
+            2.0 * sample1["focc"].type(dtype),
+            2.0 * sample2["focc"].type(dtype),
+            2.0 * sample2["focc"].type(dtype),
+        ]
+    )
+
+    kt = emo.new_tensor(300 * K2AU)
+
+    mask = ihelp.orbitals_per_shell
+    mask = mask.unsqueeze(-2).expand([*nab.shape, -1])
+
+    efermi, _ = filling.get_fermi_energy(nab, emo, mask=mask)
+    assert torch.allclose(ref_efermi, efermi)
+
+    focc = filling.get_fermi_occupation(nab, emo, kt, mask=mask)
     assert torch.allclose(ref_focc, focc.sum(-2))

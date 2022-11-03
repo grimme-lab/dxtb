@@ -139,6 +139,20 @@ refs: dict[str, Refs] = {
             ]
         ),
     },
+    "He": {
+        "n_electrons": torch.tensor(2.0),
+        "charges": torch.tensor(0.0),
+        "density": torch.tensor([0.0000000000000000]),
+        "overlap": torch.tensor([0.0000000000000000]),
+        "e_fermi": torch.tensor([-0.81293234281729443]),
+        "entropy": torch.tensor([0.0000000000000000]),
+        "emo": torch.tensor([-0.81293234281729443]),
+        "focc": torch.tensor([1.0000000000000000e00]),
+        "mulliken_charges": torch.tensor([0.0]),
+        "mulliken_charges_shell": torch.tensor([0.0]),
+        "mulliken_pop": torch.tensor([0.0]),
+        "wiberg": torch.tensor([0.0]),
+    },
     "LiH": {
         "n_electrons": torch.tensor(2.0),
         "charges": torch.tensor(0.0),

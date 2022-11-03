@@ -38,6 +38,12 @@ mols: dict[str, Molecule] = {
             [[0.00000000000000, 0.00000000000000, 0.00000000000000]],
         ),
     },
+    "He": {
+        "numbers": symbol2number(["He"]),
+        "positions": torch.tensor(
+            [[0.00000000000000, 0.00000000000000, 0.00000000000000]],
+        ),
+    },
     "C": {
         "numbers": symbol2number(["C"]),
         "positions": torch.tensor(

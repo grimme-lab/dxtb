@@ -436,14 +436,21 @@ class SelfConsistentField(xt.EditableModule):
 
         # round to integers to avoid numerical errors
         nel = self._data.occupation.sum(-1).round()
-        print("nel", nel)
+
+        # expand emo/mask to second dim (for alpha/beta electrons)
+        emo = self._data.evals.unsqueeze(-2).expand([*nel.shape, -1])
+        mask = self._data.ihelp.spread_shell_to_orbital(
+            self._data.ihelp.orbitals_per_shell
+        )
+        mask = mask.unsqueeze(-2).expand([*nel.shape, -1])
 
         # Fermi smearing only for non-zero electronic temperature
         if self.kt is not None and not torch.all(self.kt < 3e-7):  # 0.1 Kelvin * K2AU
             self._data.occupation = filling.get_fermi_occupation(
                 nel,
-                self._data.evals,
-                self.kt,
+                emo,
+                kt=self.kt,
+                mask=mask,
                 maxiter=self.scf_options.get("fermi_maxiter", defaults.FERMI_MAXITER),
                 thr=self.scf_options.get("fermi_thresh", defaults.THRESH),
             )
@@ -454,10 +461,6 @@ class SelfConsistentField(xt.EditableModule):
                 raise RuntimeError(
                     f"Number of electrons changed during Fermi smearing ({nel} -> {_nel})."
                 )
-
-        print("self._data.evals", self._data.evals)
-        print("self._data.occupation", self._data.occupation)
-        print("self._data.occupation", self._data.occupation.sum(-1))
 
         return torch.einsum(
             "...ik,...k,...kj->...ij",
