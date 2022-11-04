@@ -172,14 +172,24 @@ class SelfConsistentField(xt.EditableModule):
         if charges is None:
             charges = torch.zeros_like(self._data.occupation)
 
-        output = xto.equilibrium(
-            fcn=self.iterate_potential if self.use_potential else self.iterate_charges,
-            y0=self.charges_to_potential(charges) if self.use_potential else charges,
-            bck_options={**self.bck_options},
-            **self.fwd_options,
-        )
+        with torch.no_grad():
+            fcn = self.iterate_potential if self.use_potential else self.iterate_charges
+            y0 = self.charges_to_potential(charges) if self.use_potential else charges
+            output = xto.equilibrium(
+                fcn=fcn,
+                y0=y0,
+                bck_options={**self.bck_options},
+                **self.fwd_options,
+            )
 
-        charges = self.potential_to_charges(output) if self.use_potential else output
+            q_conv = self.potential_to_charges(output) if self.use_potential else output
+
+        out = (
+            self.iterate_potential(self.charges_to_potential(q_conv))
+            if self.use_potential
+            else self.iterate_charges(q_conv)
+        )
+        charges = self.potential_to_charges(out) if self.use_potential else out
         energy = self.get_energy(charges)
         fenergy = self.get_electronic_free_energy()
 
