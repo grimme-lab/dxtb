@@ -287,7 +287,7 @@ class SelfConsistentField(xt.EditableModule):
         """
 
         if self.fwd_options["verbose"] > 1:
-            print(self.get_energy(charges).sum(-1))
+            print(f"energy: {self.get_energy(charges).sum(-1)}")
         potential = self.charges_to_potential(charges)
         return self.potential_to_charges(potential)
 
@@ -308,7 +308,7 @@ class SelfConsistentField(xt.EditableModule):
 
         charges = self.potential_to_charges(potential)
         if self.fwd_options["verbose"]:
-            print(self.get_energy(charges).sum(-1))
+            print(f"energy: {self.get_energy(charges).sum(-1)}")
         return self.charges_to_potential(charges)
 
     def charges_to_potential(self, charges: Tensor) -> Tensor:

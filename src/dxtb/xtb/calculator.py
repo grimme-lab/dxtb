@@ -216,27 +216,13 @@ class Calculator:
         n0 = self.hamiltonian.get_occupation()
         nel = torch.sum(n0, -1) - torch.sum(chrg, -1)
 
-        # get alpha and beta electrons
-        uhf = nel.new_tensor(opts.get("spin", defaults.SPIN))
-        nab = filling.get_alpha_beta_occupation(nel, uhf)
-
+        # get alpha and beta electrons and occupation
+        nab = filling.get_alpha_beta_occupation(nel, opts.get("spin", defaults.SPIN))
         occupation = filling.get_aufbau_occupation(
             hcore.new_tensor(hcore.shape[-1], dtype=torch.int64), nab
         )
 
-        print("nel", nel)
-        print("torch.remainder(uhf, 2)", torch.remainder(uhf, 2))
-        print("torch.remainder(nel.round(), 2)", torch.remainder(nel.round(), 2))
-        print("nab", nab)
-        print(
-            filling.get_aufbau_occupation(
-                hcore.new_tensor(hcore.shape[-1], dtype=torch.int64),
-                nab,
-            ).sum(-2)
-        )
-
-        print("occupation", occupation)
-
+        # set options
         fwd_options = {
             "verbose": opts.get("verbosity", defaults.VERBOSITY),
             "maxiter": opts.get("maxiter", defaults.MAXITER),

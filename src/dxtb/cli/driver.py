@@ -60,8 +60,9 @@ class Driver:
 
         opts = {
             "etemp": args.etemp,
-            "verbosity": args.verbosity,
             "maxiter": args.maxiter,
+            "spin": args.spin,
+            "verbosity": args.verbosity,
         }
 
         numbers, positions = io.read_structure_from_file(args.file)

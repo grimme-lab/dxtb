@@ -10,7 +10,7 @@ from ..constants import defaults
 from ..typing import Tensor
 
 
-def get_alpha_beta_occupation(nel: Tensor, uhf: Tensor) -> Tensor:
+def get_alpha_beta_occupation(nel: Tensor, uhf: Tensor | float | None = None) -> Tensor:
     """
     Generate alpha and beta electrons from total number of electrons.
 
@@ -18,14 +18,46 @@ def get_alpha_beta_occupation(nel: Tensor, uhf: Tensor) -> Tensor:
     ----------
     nel : Tensor
         Total number of electrons.
-    uhf : Tensor
-        Number of unpaired electrons.
+    uhf : Tensor | float | None
+        Number of unpaired electrons. If `None`, spin is figured out automatically.
 
     Returns
     -------
     Tensor
         Alpha (first column, 0 index) and beta (second column, 1 index) electrons.
+
+    Raises
+    ------
+    ValueError
+        Number of electrons and unpaired electrons does not match.
     """
+    if uhf is not None:
+        if isinstance(uhf, float):
+            uhf = nel.new_tensor(uhf)
+
+        if (uhf > nel).any():
+            raise ValueError(
+                f"Number of unpaired electrons ({uhf.item()}) larger than "
+                f"number of electrons ({nel.item()})."
+            )
+
+        # odd spin and even number of electrons
+        if ~torch.remainder(uhf, 2).any() and torch.remainder(nel, 2).any():
+            raise ValueError(
+                f"Odd number of unpaired electrons ({uhf.item()}) but even "
+                f"number of electrons ({nel.item()}) given."
+            )
+
+        # even spin and odd number of electrons
+        if torch.remainder(uhf, 2).any() and ~torch.remainder(nel, 2).any():
+            raise ValueError(
+                f"Odd number of electrons ({nel.item()}) but even "
+                f"number of unpaired electrons ({nel.item()}) given."
+            )
+    else:
+        # set to zero and figure out via remainder
+        uhf = torch.zeros_like(nel)
+
     nuhf = torch.where(
         torch.remainder(uhf, 2) == torch.remainder(nel.round(), 2),
         uhf,
@@ -39,10 +71,7 @@ def get_alpha_beta_occupation(nel: Tensor, uhf: Tensor) -> Tensor:
     return torch.stack([na, nb], dim=-1)
 
 
-def get_aufbau_occupation(
-    norb: Tensor,
-    nel: Tensor,
-) -> Tensor:
+def get_aufbau_occupation(norb: Tensor, nel: Tensor) -> Tensor:
     """
     Set occupation numbers according to the aufbau principle.
     The number of electrons is a real number and can be fractional.

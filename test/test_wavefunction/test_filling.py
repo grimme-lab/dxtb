@@ -143,13 +143,12 @@ def test_kt(dtype: torch.dtype, kt: float):
         5000.0: emo.new_tensor(-1.6758385176418445e-004),
     }
     ref_focc = {
-        0.0: 2.0
-        * emo.new_tensor(
+        0.0: emo.new_tensor(
             [
-                1.0,
-                1.0,
-                1.0,
-                1.0,
+                2.0,
+                2.0,
+                2.0,
+                2.0,
                 0.0,
                 0.0,
                 0.0,
