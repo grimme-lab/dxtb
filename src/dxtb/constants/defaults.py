@@ -12,7 +12,7 @@ METHOD = "gfn1"
 METHOD_CHOICES = ["gfn1", "gfn1-xtb", "gfn2", "gfn2-xtb"]
 """List of possible choices for `METHOD`."""
 
-SPIN = 0
+SPIN = None
 """Total spin of the system."""
 
 CHRG = 0

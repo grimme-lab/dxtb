@@ -49,13 +49,19 @@ def action_not_less_than(min_value: float = 0.0):
             self,
             parser: argparse.ArgumentParser,
             args: argparse.Namespace,
-            values: float,
+            values: list[float | int] | float | int,
             option_string: str | None = None,
         ) -> None:
-            if values < min_value:
+            if isinstance(values, (int, float)):
+                values = [values]
+
+            if any(value < min_value for value in values):
                 parser.error(
                     f"Option '{option_string}' takes only positive values ({values})."
                 )
+
+            if len(values) == 1:
+                values = values[0]
 
             setattr(args, self.dest, values)
 
@@ -173,8 +179,10 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--chrg",
+        action=action_not_less_than(-10.0),
         type=int,
         default=defaults.CHRG,
+        nargs="+",
         help="R|Molecular charge.",
     )
     parser.add_argument(
@@ -183,6 +191,7 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
         action=action_not_less_than(0.0),
         type=int,
         default=defaults.SPIN,
+        nargs="+",
         help="R|Molecular spin.",
     )
     parser.add_argument(

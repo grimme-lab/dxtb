@@ -30,6 +30,9 @@ refs: dict[str, Refs] = {
     "H2O": {
         "etot": torch.tensor(-5.7686218257620e00),
     },
+    "NO2": {
+        "etot": torch.tensor(-1.2409798675060e01),
+    },
     "CH4": {
         "etot": torch.tensor(-4.2741992424931e00),
     },

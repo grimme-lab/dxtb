@@ -10,7 +10,9 @@ from ..constants import defaults
 from ..typing import Tensor
 
 
-def get_alpha_beta_occupation(nel: Tensor, uhf: Tensor | float | None = None) -> Tensor:
+def get_alpha_beta_occupation(
+    nel: Tensor, uhf: Tensor | int | list[int] | None = None
+) -> Tensor:
     """
     Generate alpha and beta electrons from total number of electrons.
 
@@ -18,7 +20,7 @@ def get_alpha_beta_occupation(nel: Tensor, uhf: Tensor | float | None = None) ->
     ----------
     nel : Tensor
         Total number of electrons.
-    uhf : Tensor | float | None
+    uhf : Tensor | int | list[int] | None
         Number of unpaired electrons. If `None`, spin is figured out automatically.
 
     Returns
@@ -32,27 +34,35 @@ def get_alpha_beta_occupation(nel: Tensor, uhf: Tensor | float | None = None) ->
         Number of electrons and unpaired electrons does not match.
     """
     if uhf is not None:
-        if isinstance(uhf, float):
+        if isinstance(uhf, (list, int)):
             uhf = nel.new_tensor(uhf)
+        else:
+            uhf = uhf.type(nel.dtype).to(nel.device)
 
-        if (uhf > nel).any():
+        if uhf.shape != nel.shape:
+            raise RuntimeError(
+                f"Shape mismatch for unpaired electrons ({uhf.shape}) and "
+                f"number of electrons ({nel.shape})."
+            )
+
+        if (uhf > nel.round()).any():
             raise ValueError(
-                f"Number of unpaired electrons ({uhf.item()}) larger than "
-                f"number of electrons ({nel.item()})."
+                f"Number of unpaired electrons ({uhf}) larger than "
+                f"number of electrons ({nel})."
             )
 
         # odd spin and even number of electrons
-        if ~torch.remainder(uhf, 2).any() and torch.remainder(nel, 2).any():
+        if ~torch.remainder(uhf, 2).any() and torch.remainder(nel.round(), 2).any():
             raise ValueError(
-                f"Odd number of unpaired electrons ({uhf.item()}) but even "
-                f"number of electrons ({nel.item()}) given."
+                f"Odd number of unpaired electrons ({uhf}) but even "
+                f"number of electrons ({nel}) given."
             )
 
         # even spin and odd number of electrons
-        if torch.remainder(uhf, 2).any() and ~torch.remainder(nel, 2).any():
+        if torch.remainder(uhf, 2).any() and ~torch.remainder(nel.round(), 2).any():
             raise ValueError(
-                f"Odd number of electrons ({nel.item()}) but even "
-                f"number of unpaired electrons ({nel.item()}) given."
+                f"Odd number of electrons ({nel}) but even "
+                f"number of unpaired electrons ({nel}) given."
             )
     else:
         # set to zero and figure out via remainder
