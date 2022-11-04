@@ -1,1 +1,1 @@
-from .param_optim import ParameterOptimizer, training_loop
+from .param_optim import ParameterOptimizer, reparametrise

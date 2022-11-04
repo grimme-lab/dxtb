@@ -1,15 +1,40 @@
+"""
+Reparametrisation of GFN-xTB
+---------------------
+
+Module for reparametrisation of GFN-xTB parametrisation. The fit of new parameters
+is based on gradient descent, and automatically conducted using the pytorch framework.
+Hence, new parameters are only dependent on train data and training setup.
+
+Example
+-------
+>>> from pathlib import Path
+>>> from dxtb.data.dataset import SampleDataset
+>>> from dxtb.optimizer import reparametrise
+>>> from dxtb.utils.utils import get_all_entries_from_dict
+>>> # load data as batched sample
+>>> path = "dxtb" / "data" / "PTB"
+>>> dataset = SampleDataset.from_json(sorted(path.glob("samples_HCNO.json")))
+>>> # only neutral samples
+>>> dataset.samples = [s for s in dataset.samples if s.charges == torch.tensor(0)]
+>>> # only small samples
+>>> dataset.samples = [s for s in dataset.samples if s.positions.shape[0] <= 50] 
+>>> # select all parameters
+>>> names = get_all_entries_from_dict(GFN1_XTB, "hamiltonian.xtb.kpair")
+>>> # select specific parameters
+>>> # names = ["hamiltonian.kcn", "hamiltonian.hscale", "hamiltonian.shpoly", "hamiltonian.xtb.kpair['H-H']"]
+>>> # NOTE: Add attributes directly to Param object. The Calculator constructor handles the correct
+>>> #       assignment of unique elements and their orbitals and shells in batch 
+>>> reparametrise(dataset, parameters=names, epochs=20)
+
+"""
+
 from __future__ import annotations
-from typing import Callable, List
+from typing import Callable
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from pathlib import Path
-
-from memory_profiler import profile
-import gc
-import sys
-import psutil
-import os
 
 from ..typing import Tensor
 from ..data.dataset import SampleDataset
@@ -17,30 +42,6 @@ from ..data.samples import Sample
 from ..xtb.calculator import Calculator
 from ..param.gfn1 import GFN1_XTB
 from ..param.base import Param
-from ..constants import AU2KCAL
-from ..utils.utils import get_all_entries_from_dict
-
-
-def zero_grad_(x):
-    if x.grad is not None:
-        x.grad.detach_()
-        x.grad.zero_()
-
-
-def memReport():
-    for obj in gc.get_objects():
-        if torch.is_tensor(obj):
-            print(type(obj), obj.size())
-
-
-def cpuStats():
-    print(sys.version)
-    print(psutil.cpu_percent())
-    print(psutil.virtual_memory())  # physical memory usage
-    pid = os.getpid()
-    py = psutil.Process(pid)
-    memoryUse = py.memory_info()[0] / 2.0**30  # memory use in GB...I think
-    print("memory GB:", memoryUse)
 
 
 class ParameterOptimizer(nn.Module):
@@ -48,9 +49,9 @@ class ParameterOptimizer(nn.Module):
 
     def __init__(self, parametrisation: Param, names: list[str]):
         super().__init__()
-
-        # don't mess with global variables
-        assert id(parametrisation) != id(GFN1_XTB)
+        assert id(parametrisation) != id(
+            GFN1_XTB
+        ), "Don't mess with global variables. Please use a copy of the GFN-xTB parametrisation."
 
         # parametrisation as proprietary attribute
         self.parametrisation = parametrisation
@@ -71,109 +72,33 @@ class ParameterOptimizer(nn.Module):
         for name, param in zip(names, self.params):
             self.parametrisation.set_param(name, param)
 
-        # TODO: check that params are updated in self.parametrisation during multiple batches
-        # TODO: check that params are not overwritten in Calculator setup (i.e. floats converted to tensors)
-
-    @profile
     def forward(self, x: Sample):
         """
-        Function to be optimised.
+        Calculate singlepoint to obtain total energy and force gradient.
         """
 
-        if False:
-
-            positions = x.positions.detach()
-            positions = positions.double()
-            positions.requires_grad_(True)
-
-            # detached graph for reduce the RAM footprint
-            numbers = x.numbers.detach()
-            charges = x.charges.detach()
-
-            calc = Calculator(numbers, positions, self.parametrisation)
-            # TODO: need to free all other parameters in self.parametrisation from graph?
-            #       --> should already be only floats (except for model params?)
-
-            # calculate energies
-            results = calc.singlepoint(numbers, positions, charges, verbosity=0)
-
-            # total energy including repulsion, dispersion and halogen contribution
-            energy = results.total
-
-            # calculate gradients
-            gradient = self.calc_gradient(energy, positions)
-
-            return energy, gradient
-
-        if False:
-            # temporary testing
-            dim = x.numbers.shape
-
-            energy = torch.ones_like(x.numbers, dtype=torch.float64).requires_grad_(
-                True
-            )
-            gradient = torch.ones(
-                [dim[0], dim[1], 3], dtype=torch.float64
-            ).requires_grad_(True)
-            # TODO: even this way, 0.5Mb RAM increase per epoch
-
-        #####################
-
-        # TODO: maybe clone(), .data() or deepcopy those?
-        positions = x.positions.detach().clone().double()
+        # detached graph to reduce the RAM footprint
+        positions = x.positions.detach().clone()
+        positions = positions.double()
         positions.requires_grad_(True)
+
         numbers = x.numbers.detach().clone()
         charges = x.charges.detach().clone()
 
-        assert id(x.positions) != id(positions)
-        assert id(x.charges) != id(charges)
-        assert id(x.numbers) != id(numbers)
+        # calculate singlepoint
+        calc = Calculator(numbers, positions, self.parametrisation)
+        results = calc.singlepoint(numbers, positions, charges, verbosity=0)
 
-        def get_energy(numbers, positions, parametrisation):
+        # total energy including repulsion, dispersion and halogen contribution
+        energy = results.total
 
-            calc = Calculator(numbers, positions, parametrisation)
-            # return (
-            #     torch.sum(positions) * parametrisation.hamiltonian.xtb.kpair["H-H"]
-            # )  # TODO: that solves the RAM issue
-
-            # TODO: somewhere inside singlepoint - sth is not freed correctly
-            # results = calc.dummypoint(numbers, positions, charges, verbosity=0)
-            results = calc.singlepoint(numbers, positions, charges, verbosity=0)
-            # TODO: raises RAM footprint
-
-            # TODO: overlap and SCF cause the largest RAM increase
-
-            del calc
-            gc.collect()  # garbage collection
-            # TODO: maybe some part of the calculator object remains and still holds some values?
-
-            return results.total.double()
-
-        print("compare")
-        energy = get_energy(numbers, positions, self.parametrisation)
-        print(energy)
-        # del results
-        print("here we are")
-
+        # calculate gradients
         gradient = self.calc_gradient(energy, positions)
-        # TODO: raises RAM footprint
-        # gradient = None
-
-        # TODO: for total HCNO it seems that gradient is main reason for rising RAM
-        #       -- how to delete gradient and free computational graph?
-
-        #####################
-
-        del positions
-        del numbers
-        del charges
-
-        gc.collect()  # garbage collection
 
         return energy, gradient
 
     def calc_gradient(self, energy: Tensor, positions: Tensor) -> Tensor:
-        """Calculate gradient (i.e. force) via pytorch autodiff framework.
+        """Calculate force gradient via autograd.
 
         Parameters
         ----------
@@ -197,231 +122,101 @@ class ParameterOptimizer(nn.Module):
         return gradient
 
 
-def train_step(optimizer, model, batch, loss_fn):
-
-    optimizer.zero_grad(set_to_none=True)
-
-    energy, grad = model(batch)
-    y_true = batch.gref.double()
-    loss = loss_fn(grad, y_true)
-    # alternative: Jacobian of loss
-
-    # calculate gradient to update model parameters
-    loss.backward(inputs=model.params)
-
-    optimizer.step()
-
-    """print(grad)
-    for t in [grad, loss]:
-        t.detach_()
-        t.zero_()
-        # t.grad.detach_()
-        # t.grad.zero_()
-    model.zero_grad(set_to_none=True)"""
-
-    del energy
-    del grad
-    del y_true
-
-    return loss
-
-
-def training_loop(
-    model: nn.Module,
+def train(
+    model: ParameterOptimizer,
+    dataloader: DataLoader,
     optimizer: torch.optim,
     loss_fn: Callable,
-    dataloader: DataLoader,
-    n: int = 100,
-    verbose: bool = True,
-) -> List[Tensor]:
-    "Optmisation loop conducting gradient descent."
+    epochs: int = 100,
+    verbose: bool = False,
+) -> list[Tensor]:
+    """Optmisation loop conducting gradient descent.
+
+    Args:
+        model (ParameterOptimizer): Model containing trainable parametrisation.
+        dataloader (DataLoader): Dataloader containing training data.
+        optimizer (torch.optim): Optimizer for updating parameters.
+        loss_fn (Callable): Criterion for calculation of loss.
+        epochs (int, optional): Number of epochs. Defaults to 100.
+        verbose (bool, optional): Additional print output. Defaults to False.
+
+    Returns:
+        list[Tensor]: Epochwise losses
+    """
+
     losses = []
 
-    for i in range(n):
+    for i in range(epochs):
         if verbose:
-            print(f"epoch {i}")
+            print(f"Epoch {i}")
         for batch in dataloader:
-            if verbose:
-                print(f"batch: {batch}")
+            # conduct train step
 
-            '''optimizer.zero_grad(set_to_none=True)
+            optimizer.zero_grad(set_to_none=True)
 
-            """print("check gradients BEFORE")
-            print(model.params[0].grad)
-            print(model.parametrisation.hamiltonian.xtb.kpair["H-H"].grad)
-            # print("Memory allocated", torch.cuda.memory_allocated())
-
-            print("-----------")"""
-
+            # compare against reference gradient
             energy, grad = model(batch)
-            y_true = batch.gref.double()
-            loss = loss_fn(grad, y_true)
+            loss = loss_fn(grad, batch.gref.double())
             # alternative: Jacobian of loss
 
-            # calculate gradient to update model parameters
+            # calculate gradient and update model parameters
             loss.backward(inputs=model.params)
+            optimizer.step()
 
-            optimizer.step()'''
-
-            loss = train_step(optimizer, model, batch, loss_fn)
-            # losses.append(loss.item())
             losses.append(loss.detach().item())
             if verbose:
-                print(loss)
-
-            # TODO: to avoid RAM overflow maybe zero_grad parameters withhin model.parametrisation (and model.params)
-            # TODO: gradients (forces) should also be freed(?)
-            # TODO: for small(why?) systems the increment of SCF is actually big
-
-            # del energy
-            # del grad
-            del loss
-
-            gc.collect()  # garbage collection
-            print("GARBAGE", gc.garbage)
-
-            """print("check gradients AFTER")
-            print(model.params[0].grad)
-            print(model.parametrisation.hamiltonian.xtb.kpair["H-H"].grad)
-            print(id(model.params[0].grad))
-            print(id(model.parametrisation.hamiltonian.xtb.kpair["H-H"].grad))
-
-            def zero_grad(tensor):
-                tensor.grad.detach_()
-                tensor.grad.zero_()
-
-            # print("Memory allocated", torch.cuda.memory_allocated())
-            print("-----------")"""
-
-    """print("check what part of comp graph is overflowing here")
-    import sys
-
-    # sys.exit(0)"""
+                print(f"Batch: {batch}")
+                print(f"Loss: {loss}")
 
     return losses
 
 
-def plot_losses(losses: list[float], path: str = "losses.png"):
-
-    import matplotlib.pyplot as plt
-    import numpy as np
-
-    plt.plot(np.array(losses), "r")
-    plt.savefig(path)
-
-
-def example():
-    @profile
-    def get_ptb_dataset(root: Path) -> SampleDataset:
-        list_of_path = sorted(
-            root.glob("samples_DUMMY.json")
-        )  # samples_*.json samples_HE*.json samples_DUMMY.json samples_HCNO_debug
-        return SampleDataset.from_json(list_of_path)
-
-    # load data as batched sample
-    path = Path(__file__).resolve().parents[3] / "data" / "PTB"
-    dataset = get_ptb_dataset(path)
-
-    # only neutral samples
-    # dataset.samples = [s for s in dataset.samples if s.charges == torch.tensor(0)]
-    # small samples only
-    # dataset.samples = [s for s in dataset.samples if s.positions.shape[0] <= 50]
-    # dataset.samples = [s for s in dataset.samples if s.positions.shape[0] >= 50]
-
-    # batch = Sample.pack(dataset.samples)
-    print("Number samples", len(dataset))
+def reparametrise(
+    dataset: SampleDataset,
+    parameters: list[str],
+    outpath: str | Path | None = None,
+    **kwargs,
+) -> list[Tensor]:
 
     # dynamic packing for each batch
     dataloader = DataLoader(
         dataset,
-        batch_size=1,
+        batch_size=1,  # currently only stochastic gradient descent supported
         shuffle=False,
         collate_fn=Sample.pack,
         drop_last=False,
     )
 
-    # NOTE: Add attributes directly to Param object. The Calculator constructor handles the correct
-    #       assignment of unique elements and their orbitals and shells in batch
-
-    names = get_all_entries_from_dict(GFN1_XTB, "hamiltonian.xtb.kpair")
-    # names = ["hamiltonian.kcn", "hamiltonian.hscale", "hamiltonian.shpoly"]
-    # names = [
-    #     "hamiltonian.xtb.kpair['H-H']",
-    #     "hamiltonian.xtb.kpair['B-H']",
-    #     "hamiltonian.xtb.kpair['N-H']",
-    #     "hamiltonian.xtb.kpair['Si-N']",
-    # ]
-    names = ["hamiltonian.xtb.kpair['H-H']"]
-
-    # TODO: still a lot of RAM groth during batches/epochs (are SCF calculation entirely freed from RAM?)
-    # TODO: check garbage collector
-
-    # TODO: write test, that only H-H and H-O changes for water
-
-    """tensor(0.0224, dtype=torch.float64, grad_fn=<MseLossBackward0>)
-    GARBAGE []
-    FINAL model.params ParameterList(  (0): Parameter containing: [torch.DoubleTensor of size ])
-    hamiltonian.xtb.kpair['H-H'] Parameter containing:
-    tensor(1.3564, dtype=torch.float64, requires_grad=True)"""
+    # GFN-xTB parametrisation to be optimised
+    parametrisation = kwargs.get("parametrisation", GFN1_XTB.copy(deep=True))
 
     # setup model, optimizer and loss function
-    model = ParameterOptimizer(GFN1_XTB.copy(deep=True), names)
-    opt = torch.optim.Adam(model.parameters(), lr=0.1)
-    loss_fn = torch.nn.MSELoss(reduction="sum")
-    # optmizier options: Adagrad, RMSPROP
+    model = ParameterOptimizer(parametrisation, parameters)
+    lr = kwargs.get("lr", 0.1)
+    opt = kwargs.get("optimizer", torch.optim.Adam(model.parameters(), lr=lr))
+    loss_fn = kwargs.get("loss_fn", torch.nn.MSELoss(reduction="sum"))
+    epochs = kwargs.get("epochs", 100)
 
-    print("INITAL model.params", model.params)
-    for name, param in zip(names, model.params):
-        print(name, param)
+    # print("Initial model.params", model.params)
+    # for name, param in zip(parameters, model.params):
+    #     print(name, param)
 
-    losses = training_loop(model, opt, loss_fn, dataloader, n=4)
+    # train model
+    losses = train(model, dataloader, opt, loss_fn, epochs)
 
-    print("FINAL model.params", model.params)
-    for name, param in zip(names, model.params):
-        print(name, param)
+    # print("Final model.params", model.params)
+    # for name, param in zip(parameters, model.params):
+    #     print(name, param)
 
-    cpuStats()
+    # save new parametrisation to file
+    if outpath is not None:
+        # convert 0-d tensors to floats
+        for name in parameters:
+            v = model.parametrisation.get_param(name)
+            if v.shape == torch.Size([]):
+                model.parametrisation.set_param(name, v.item())
 
-    # convert 0-d tensors to floats
-    for name in names:
-        v = model.parametrisation.get_param(name)
-        if v.shape == torch.Size([]):
-            model.parametrisation.set_param(name, v.item())
+        model.parametrisation.to_toml(outpath, overwrite=True)
 
-    return
-
-    # save new parametrisation
-    model.parametrisation.to_toml("gfn1-xtb_out.toml", overwrite=True)
-
-    print("Losses: ", losses)
-    plot_losses(losses)
-    return
-
-    # inference
-    preds, grad = model(batch)
-
-    print("loss")
-    lgfn1 = loss_fn(batch.ggfn1, batch.gref)
-    lopt = loss_fn(grad, batch.gref)
-    print(lgfn1)
-    print(lopt)
-
-    print("prediction")  # NOTE: energies in JSON in kcal/mol
-    print(batch.egfn1)
-    print(preds * AU2KCAL)
-    print(batch.eref)
-
-    # print("grad comparison")
-    # print(batch.ggfn1)
-    # print(grad)
-    # print(batch.gref)
-
-    return
-
-
-# for single vs einmal über total data
-# names = all_toml
-# positions.no_grad
-# e = singlepoint
-# e.backward()
-# print(model.params.grad)
+    # NOTE: also inference possible via '''predicted_energy, predicted_gradient = model(batch)'''
+    return losses
