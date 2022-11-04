@@ -181,7 +181,7 @@ def reparametrise(
     # dynamic packing for each batch
     dataloader = DataLoader(
         dataset,
-        batch_size=1,  # currently only stochastic gradient descent supported
+        batch_size=10,
         shuffle=False,
         collate_fn=Sample.pack,
         drop_last=False,
