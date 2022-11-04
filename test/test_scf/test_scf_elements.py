@@ -410,12 +410,11 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
     assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
 
 
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("mol", ["SiH4"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:
-    if uhf[number - 1] != 0:
-        return
 
     tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
 
@@ -425,6 +424,7 @@ def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:
     refs = batch.pack((sample["escf"], ref[number - 1])).type(dtype)
     charges = torch.tensor([0.0, 0.0]).type(dtype)
 
+    opts["spin"] = [0, uhf[number - 1]]
     calc = Calculator(numbers, positions, par)
     results = calc.singlepoint(numbers, positions, charges, opts)
 
