@@ -121,6 +121,9 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     assert torch.allclose(ref_focc, focc.sum(-2))
 
 
+torch.set_printoptions(precision=16)
+
+
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("kt", [0.0, 5000.0])
 def test_kt(dtype: torch.dtype, kt: float):
@@ -136,11 +139,11 @@ def test_kt(dtype: torch.dtype, kt: float):
     emo = emo.unsqueeze(-2).expand([*nab.shape, -1])
 
     ref_fenergy = {
-        "0.0": emo.new_tensor(0.0),
-        "5000.0": emo.new_tensor(-8.3794146962989959e-05),
+        0.0: emo.new_tensor(0.0),
+        5000.0: emo.new_tensor(-1.6758385176418445e-004),
     }
     ref_focc = {
-        "0.0": 2.0
+        0.0: 2.0
         * emo.new_tensor(
             [
                 1.0,
@@ -162,40 +165,39 @@ def test_kt(dtype: torch.dtype, kt: float):
                 0.0,
             ]
         ),
-        "5000.0": 2.0
-        * emo.new_tensor(
+        5000.0: emo.new_tensor(
             [
-                9.9999999175256182e-01,
-                9.9991512540882155e-01,
-                9.9991512540882155e-01,
-                9.9991512487283929e-01,
-                8.4440926154236417e-05,
-                8.4440926154236417e-05,
-                8.4439859676605750e-05,
-                4.6985250846112805e-07,
-                4.6984657378830206e-07,
-                1.1147396117351576e-07,
-                1.1147184915019690e-07,
-                1.1147184915019690e-07,
-                3.6765533462748988e-08,
-                2.3794149525230911e-20,
-                8.8097582624279734e-44,
-                8.8095913497538218e-44,
-                8.8091462647498442e-44,
+                1.9999999835050197,
+                1.9998302497800045,
+                1.9998302497800045,
+                1.9998302497800045,
+                1.6888179157220813e-004,
+                1.6888179157220572e-004,
+                1.6888179157220273e-004,
+                9.3970980586158547e-007,
+                9.3970980586158028e-007,
+                2.2294515200028562e-007,
+                2.2294515200028403e-007,
+                2.2294515200027612e-007,
+                7.3530914097230426e-008,
+                4.7590701921523143e-020,
+                0.0000000000000000,
+                0.0000000000000000,
+                0.0000000000000000,
             ]
         ),
     }
 
     # occupation
     focc = filling.get_fermi_occupation(nab, emo, emo.new_tensor(kt * K2AU))
-    assert torch.allclose(ref_focc[str(kt)], focc.sum(-2), atol=tol)
+    assert torch.allclose(ref_focc[kt], focc.sum(-2), atol=tol)
 
     # electronic free energy
     d = torch.zeros_like(focc)  # dummy
     fenergy = SelfConsistentField(
         d, d, d, focc, d, numbers, d, d, scf_options={"etemp": kt}  # type: ignore
     ).get_electronic_free_energy()
-    assert pytest.approx(ref_fenergy[str(kt)], abs=tol, rel=tol) == fenergy.sum(-1)
+    assert pytest.approx(ref_fenergy[kt], abs=tol, rel=tol) == fenergy.sum(-1)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
