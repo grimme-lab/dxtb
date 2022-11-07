@@ -26,7 +26,7 @@ opts = {"verbosity": 0}
 def test_single(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
-    base = Path(Path(__file__).parent, name)
+    base = Path(Path(__file__).parent, "mols", name)
 
     numbers, positions = read_coord(Path(base, "coord"))
     charge = read_chrg(Path(base, ".CHRG"))
@@ -52,7 +52,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, name3: str) -> None:
 
     numbers, positions, charge = [], [], []
     for name in [name1, name2, name3]:
-        base = Path(Path(__file__).parent, name)
+        base = Path(Path(__file__).parent, "mols", name)
 
         nums, pos = read_coord(Path(base, "coord"))
         chrg = read_chrg(Path(base, ".CHRG"))
@@ -83,7 +83,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, name3: str) -> None:
 def test_uhf_single(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
-    base = Path(Path(__file__).parent, name)
+    base = Path(Path(__file__).parent, "mols", name)
 
     numbers, positions = read_coord(Path(base, "coord"))
     charge = read_chrg(Path(base, ".CHRG"))
@@ -105,7 +105,7 @@ def test_fail() -> None:
 
 
 def test_uhf_fail() -> None:
-    base = Path(Path(__file__).parent, "H")
+    base = Path(Path(__file__).parent, "mols", "H")
 
     numbers, positions = read_coord(Path(base, "coord"))
     charge = read_chrg(Path(base, ".CHRG"))
