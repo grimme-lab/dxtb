@@ -213,3 +213,6 @@ src/lightning_logs/*
 # weights and biases
 src/wandb/*
 src/dxtb/*
+
+# reparametrisation
+src/parametrisations/

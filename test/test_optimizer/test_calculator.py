@@ -5,7 +5,7 @@ import torch
 
 from xtbml.data.dataset import SampleDataset
 from xtbml.data.samples import Sample
-from xtbml.optimizer.param_optim import ParameterOptimizer, training_loop
+from xtbml.optimizer.param_optim import ParameterOptimizer, reparametrise
 from xtbml.xtb.calculator import Calculator
 from xtbml.param.gfn1 import GFN1_XTB
 
