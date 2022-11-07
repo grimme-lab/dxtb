@@ -15,7 +15,7 @@ from ..param import (
     get_elem_valence,
     get_pair_param,
 )
-from ..typing import Tensor
+from ..typing import Tensor, TensorLike
 from ..utils import batch, t2int
 
 PAD = -1
