@@ -21,8 +21,7 @@ from ..utils import batch, t2int
 PAD = -1
 """Value used for padding of tensors."""
 
-
-class Hamiltonian:
+class Hamiltonian(TensorLike):
     """Hamiltonian from parametrization."""
 
     numbers: Tensor
@@ -59,16 +58,18 @@ class Hamiltonian:
     """Van-der-Waals radius of each species."""
 
     def __init__(
-        self, numbers: Tensor, positions: Tensor, par: Param, ihelp: IndexHelper
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        par: Param,
+        ihelp: IndexHelper,
     ) -> None:
+        super().__init__(positions.device, positions.dtype)
         self.numbers = numbers
         self.unique = torch.unique(numbers)
         self.positions = positions
         self.par = par
         self.ihelp = ihelp
-
-        self.__device = self.positions.device
-        self.__dtype = self.positions.dtype
 
         # atom-resolved parameters
         self.rad = atomic_rad[self.unique].type(self.dtype).to(device=self.device)
@@ -306,9 +307,7 @@ class Hamiltonian:
         # ----------------------
         # Eq.24: PI(R_AB, l, l')
         # ----------------------
-        distances = torch.cdist(
-            self.positions, self.positions, p=2, compute_mode="use_mm_for_euclid_dist"
-        )
+        distances = cdist(self.positions, mask)
         rad = self.ihelp.spread_uspecies_to_atom(self.rad)
         rr = torch.where(
             mask * ~torch.diag_embed(torch.ones_like(real)),

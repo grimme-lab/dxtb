@@ -14,9 +14,9 @@ must be supplied to the `get_energy` (or `get_grad`) method.
 Example
 -------
 >>> import torch
->>> from xtbml.basis import IndexHelper
->>> from xtbml.classical import new_repulsion
->>> from xtbml.param import GFN1_XTB, get_elem_param
+>>> from dxtb.basis import IndexHelper
+>>> from dxtb.classical import new_repulsion
+>>> from dxtb.param import GFN1_XTB, get_elem_param
 >>> numbers = torch.tensor([14, 1, 1, 1, 1])
 >>> positions = torch.tensor([
 ...     [+0.00000000000000, +0.00000000000000, +0.00000000000000],
@@ -92,13 +92,13 @@ class Repulsion(Classical, TensorLike):
         super().__init__(positions.device, positions.dtype)
 
         self.numbers = numbers
-        self.arep = arep.to(self.device).type(self.dtype)
-        self.zeff = zeff.to(self.device).type(self.dtype)
-        self.cutoff = cutoff
+        self.arep = maybe_move(arep, self.device, self.dtype)
+        self.zeff = maybe_move(zeff, self.device, self.dtype)
+        self.cutoff = maybe_move(cutoff, self.device, self.dtype)
 
-        self.kexp = kexp.to(self.device).type(self.dtype)
+        self.kexp = maybe_move(kexp, self.device, self.dtype)
         if kexp_light is not None:
-            self.kexp_light = kexp_light.to(self.device).type(self.dtype)
+            self.kexp_light = maybe_move(kexp_light, self.device, self.dtype)
 
     class Cache:
         """Cache for the repulsion parameters."""
@@ -189,17 +189,7 @@ class Repulsion(Classical, TensorLike):
         # mask for padding
         mask = real_pairs(self.numbers, diagonal=True)
 
-        distances = torch.where(
-            mask,
-            torch.cdist(
-                positions,
-                positions,
-                p=2,
-                compute_mode="use_mm_for_euclid_dist",
-            ),
-            # add epsilon to avoid zero division in some terms
-            positions.new_tensor(torch.finfo(self.dtype).eps),
-        )
+        distances = cdist(positions, mask)
 
         # Eq.13: R_AB ** k_f
         r1k = torch.pow(distances, cache.kexp)
@@ -209,7 +199,7 @@ class Repulsion(Classical, TensorLike):
 
         # Eq.13: repulsion energy
         dE = torch.where(
-            mask * (distances <= distances.new_tensor(self.cutoff)),
+            mask * (distances <= self.cutoff),
             cache.zeff * exp_term / distances,
             distances.new_tensor(0.0),
         )
@@ -237,17 +227,7 @@ class Repulsion(Classical, TensorLike):
         """
         mask = real_pairs(self.numbers, diagonal=True)
 
-        distances = torch.where(
-            mask,
-            torch.cdist(
-                positions,
-                positions,
-                p=2,
-                compute_mode="use_mm_for_euclid_dist",
-            ),
-            # add epsilon to avoid zero division in some terms
-            positions.new_tensor(torch.finfo(self.dtype).eps),
-        )
+        distances = cdist(positions, mask)
 
         r1k = torch.pow(distances, cache.kexp)
 
@@ -309,7 +289,11 @@ def new_repulsion(
         warnings.warn("No repulsion scheme found.", ParameterWarning)
         return None
 
-    kexp = torch.tensor(par.repulsion.effective.kexp)
+    kexp = (
+        par.repulsion.effective.kexp
+        if torch.is_tensor(par.repulsion.effective.kexp)
+        else torch.tensor(par.repulsion.effective.kexp)
+    )
     kexp_light = (
         torch.tensor(par.repulsion.effective.kexp_light)
         if par.repulsion.effective.kexp_light

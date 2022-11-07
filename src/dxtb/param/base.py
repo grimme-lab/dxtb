@@ -13,6 +13,8 @@ while a deserialized model in `tblite`_ is already verified at this stage.
 """
 
 from pydantic import BaseModel
+from pathlib import Path
+import torch
 
 from .charge import Charge
 from .dispersion import Dispersion
@@ -22,7 +24,13 @@ from .hamiltonian import Hamiltonian
 from .meta import Meta
 from .repulsion import Repulsion
 from .thirdorder import ThirdOrder
-
+from ..utils import (
+    rgetattr,
+    rsetattr,
+    get_attribute_name_key,
+    get_all_entries_from_dict,
+)
+from ..typing import Any
 
 class Param(BaseModel):
     """
@@ -47,3 +55,129 @@ class Param(BaseModel):
     """Definition of the halogen bonding correction (not implemented)"""
     thirdorder: ThirdOrder | None
     """Definition of the isotropic third-order charge interactions"""
+
+    def get_param(
+        self,
+        name: str,
+    ) -> Any:
+        """Get single parameter based on string. Works on nested attributes including dictionary entries.
+
+        Parameters
+        ----------
+        name : str
+            Identifier for specific (nested) attribute.
+
+        Returns
+        -------
+        Any
+            Return value from parametrisation.
+        """
+        name, key = get_attribute_name_key(name)
+
+        if key is None:
+            return rgetattr(self, name)
+        elif "." in key:
+            key, attr = key.split(".")
+            return rgetattr(rgetattr(self, name)[key], attr)
+        else:
+            return rgetattr(self, name)[key]
+
+    def set_param(self, name: str, value: Any):
+        """Set value of single parameter.
+
+        Parameters
+        ----------
+        name : str
+            Identifier for specific (nested) attribute.
+        value : Any
+            Value to be assigned.
+        """
+        name, key = get_attribute_name_key(name)
+
+        if key is None:
+            rsetattr(self, name, value)
+        elif "." in key:
+            key, attr = key.split(".")
+            d = rgetattr(self, name)
+            rsetattr(d[key], attr, value)
+            rsetattr(self, name, d)
+        else:
+            d = rgetattr(self, name)
+            d[key] = value
+            rsetattr(self, name, d)
+
+    def to_toml(
+        self, path: str | Path = "gfn1-xtb.toml", overwrite: bool = False
+    ) -> None:
+        """
+        Export parametrization to TOML file.
+
+        Parameters
+        ----------
+        path : str | Path, optional
+            Path for output file (default: "gfn1-xtb.toml")
+        overwrite: bool
+            Whether to overwrite the file if it already exists.
+        """
+
+        # pylint: disable=import-outside-toplevel
+        import toml
+
+        path = Path(path)
+        if path.is_file() is True and overwrite is False:
+            raise FileExistsError(f"File '{path}' already exists.")
+
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(toml.dumps(self.dict()))
+
+    def get_all_param_names(self) -> list[str]:
+        """Obtain all parameter names contained in Parametrisation object.
+
+        Returns
+        -------
+        list[str]
+            List with all parameter names.
+        """
+
+        def obj_to_list_of_strings(
+            obj, list_str=[], running_str=[]
+        ) -> tuple[list[str], list[str]]:
+            """Recursively iterate through nested object and concat attributes to strings."""
+
+            for item in sorted(obj.__dict__):
+                running_str.append(str(item))
+
+                if hasattr(obj.__dict__[item], "__dict__"):
+                    _, running_str = obj_to_list_of_strings(
+                        obj.__dict__[item], list_str, running_str
+                    )
+
+                if len(running_str) > 1:
+                    list_str.append(".".join(running_str))
+                running_str = running_str[:-1]
+
+            return list_str, running_str
+
+        str_list, _ = obj_to_list_of_strings(self, [])
+
+        # expand dictionary and lists
+        li = []
+        for s in str_list:
+            ent = get_all_entries_from_dict(self, s)
+            if isinstance(ent, list):
+                li.extend(ent)
+            else:
+                li.append(ent)
+
+        # add element variables
+        for k, v in self.element.items():
+            for k2 in vars(v).keys():
+                # NOTE: ignore non-numerical shell specification
+                if k2 != "shells":
+                    li.append(f"element['{k}'].{k2}")
+
+        # remove non-numeric and "duplicated" entries
+        li = [
+            s for s in li if type(self.get_param(s)) in [int, float, list, torch.tensor]
+        ]
+        return li

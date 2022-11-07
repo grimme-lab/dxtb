@@ -382,7 +382,7 @@ def index(inp: Tensor, idx: Tensor) -> Tensor:
     Examples
     --------
     Batched indexing with same dimensions of `idx` and `inp` (n_batch, x).
-    >>> from xtbml.exlibs.tbmalt import batch
+    >>> from dxtb.exlibs.tbmalt import batch
     >>> inp = torch.tensor([
     ...     [ 0.4800, 0.4701, 0.3405, 0.4701 ],
     ...     [ 0.4701, 0.5833, 0.7882, 0.3542 ]
@@ -396,7 +396,7 @@ def index(inp: Tensor, idx: Tensor) -> Tensor:
             [0.4701, 0.5833, 0.5833, 0.5833, 0.7882, 0.7882, 0.3542, 0.3542]])
 
     Also works for non-batched versions.
-    >>> from xtbml.exlibs.tbmalt import batch
+    >>> from dxtb.exlibs.tbmalt import batch
     >>> inp = torch.tensor([ 0.4800, 0.4701, 0.3405, 0.4701 ])
     >>> idx = torch.tensor([ 0,  0,  1,  1,  2,  2,  3,  3 ])
     >>> print(batch.index(inp, idx))
@@ -404,7 +404,7 @@ def index(inp: Tensor, idx: Tensor) -> Tensor:
 
 
     Batched indexing with `idx` having one more dimension than `inp`.
-    >>> from xtbml.exlibs.tbmalt import batch
+    >>> from dxtb.exlibs.tbmalt import batch
     >>> inp = torch.tensor([
     ...     [
     ...         [-3.7510, -5.8131, -1.2251],

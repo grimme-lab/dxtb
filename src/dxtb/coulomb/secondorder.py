@@ -8,8 +8,8 @@ Example
 -------
 >>> import torch
 >>> import xtbml.coulomb.secondorder as es2
->>> from xtbml.coulomb.average import harmonic_average as average
->>> from xtbml.param import GFN1_XTB, get_element_param
+>>> from dxtb.coulomb.average import harmonic_average as average
+>>> from dxtb.param import GFN1_XTB, get_element_param
 >>> numbers = torch.tensor([14, 1, 1, 1, 1])
 >>> positions = torch.tensor([
 ...     [0.00000000000000, -0.00000000000000, 0.00000000000000],
@@ -98,11 +98,14 @@ class ES2(Interaction):
     ) -> None:
         super().__init__(positions.device, positions.dtype)
 
-        self.hubbard = hubbard.to(self.device).type(self.dtype)
+        self.hubbard = maybe_move(hubbard, self.device, self.dtype)
         self.lhubbard = (
-            lhubbard if lhubbard is None else lhubbard.to(self.device).type(self.dtype)
+            lhubbard
+            if lhubbard is None
+            else maybe_move(lhubbard, self.device, self.dtype)
         )
-        self.gexp = gexp.to(self.device).type(self.dtype)
+        self.gexp = maybe_move(gexp, self.device, self.dtype)
+
         self.average = average
 
         self.shell_resolved = lhubbard is not None
@@ -172,12 +175,10 @@ class ES2(Interaction):
         dist_gexp = torch.where(
             mask,
             torch.pow(
-                torch.cdist(
-                    positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
-                ),
+                cdist(positions, mask),
                 self.gexp,
             ),
-            torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype),
+            positions.new_tensor(torch.finfo(positions.dtype).eps),
         )
 
         # Eq.30: averaging function for hardnesses (Hubbard parameter)
@@ -222,13 +223,8 @@ class ES2(Interaction):
         dist_gexp = ihelp.spread_atom_to_shell(
             torch.where(
                 mask,
-                torch.pow(
-                    torch.cdist(
-                        positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
-                    ),
-                    self.gexp,
-                ),
-                torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype),
+                torch.pow(cdist(positions, mask), self.gexp),
+                positions.new_tensor(torch.finfo(positions.dtype).eps),
             ),
             (-1, -2),
         )
@@ -300,6 +296,10 @@ def new_es2(
         get_elem_param(unique, par.element, "lgam") if shell_resolved is True else None
     )
     average = averaging_function[par.charge.effective.average]
-    gexp = torch.tensor(par.charge.effective.gexp)
+    gexp = (
+        par.charge.effective.gexp
+        if torch.is_tensor(par.charge.effective.gexp)
+        else torch.tensor(par.charge.effective.gexp)
+    )
 
     return ES2(positions, hubbard, lhubbard, average, gexp)

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 import torch
 
-# from xtbml.exlibs.tbmalt import batch
+# from dxtb.exlibs.tbmalt import batch
 from dxtb.io import read_chrg, read_coord
 from dxtb.param import GFN1_XTB as par
 from dxtb.xtb import Calculator

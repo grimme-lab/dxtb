@@ -56,3 +56,40 @@ def test_cn_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     cn = get_coordination_number(numbers, positions, exp_count, rcov)
     assert torch.allclose(cn, ref)
+
+
+@pytest.mark.grad
+@pytest.mark.parametrize("name", ["PbH4-BiH3"])
+def test_grad(name: str):
+    dtype = torch.double
+
+    sample = structures[name]
+    numbers = sample["numbers"]
+    positions = sample["positions"].type(dtype)
+    positions.requires_grad_(True)
+
+    rcov = cov_rad_d3[numbers]
+    ref = torch.tensor(
+        [
+            3.9388208389,
+            0.9832025766,
+            0.9832026958,
+            0.9832026958,
+            0.9865897894,
+            2.9714603424,
+            0.9870455265,
+            0.9870456457,
+            0.9870455265,
+        ],
+        dtype=dtype,
+    )
+
+    torch.autograd.set_detect_anomaly(True)
+
+    def func(pos: Tensor) -> Tensor:
+        return ncoord.get_coordination_number(numbers, pos, ncoord.exp_count, rcov)
+
+    # pylint: disable=import-outside-toplevel
+    from torch.autograd.gradcheck import gradcheck
+
+    assert gradcheck(func, positions)

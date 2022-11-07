@@ -8,7 +8,7 @@ Example
 -------
 >>> import torch
 >>> import xtbml.coulomb.thirdorder as es3
->>> from xtbml.param import GFN1_XTB, get_element_param
+>>> from dxtb.param import GFN1_XTB, get_element_param
 >>> numbers = torch.tensor([14, 1, 1, 1, 1])
 >>> positions = torch.tensor([
 ...     [0.00000000000000, -0.00000000000000, 0.00000000000000],

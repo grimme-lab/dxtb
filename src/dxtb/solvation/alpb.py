@@ -7,7 +7,7 @@ This module implements implicit solvation models of the generalized Born type.
 Example
 -------
 >>> import torch
->>> from xtbml.solvation.alpb import GeneralizedBorn
+>>> from dxtb.solvation.alpb import GeneralizedBorn
 >>> numbers = torch.tensor([14, 1, 1, 1, 1])
 >>> positions = torch.tensor(
 ...     [
@@ -195,8 +195,8 @@ class GeneralizedBorn(Interaction):
         eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
 
         mask = real_pairs(numbers)
+        dist = cdist(positions, mask)
 
-        dist = torch.where(mask, torch.cdist(positions, positions, p=2), eps)
         ab = torch.where(mask, born.unsqueeze(-1) * born.unsqueeze(-2), eps)
         ab = born.unsqueeze(-1) * born.unsqueeze(-2)
 

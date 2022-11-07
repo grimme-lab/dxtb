@@ -7,7 +7,7 @@ Integrator for Born radii based on the Onufriev-Bashford-Case model.
 Example
 -------
 >>> import torch
->>> from xtbml.solvation import born
+>>> from dxtb.solvation import born
 >>> numbers = torch.tensor([14, 1, 1, 1, 1])
 >>> positions = torch.tensor(
 ...     [
@@ -28,6 +28,8 @@ import torch
 from ..typing import Tensor
 from ..utils import real_atoms, real_pairs
 from .data import vdw_rad_d3
+from ..typing import Tensor, Optional
+from ..utils import cdist
 
 
 def get_born_radii(
@@ -152,11 +154,7 @@ def compute_psi(
     eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
     zero = positions.new_tensor(0.0)
 
-    distances = torch.where(
-        mask,
-        torch.cdist(positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"),
-        eps,
-    )
+    distances = cdist(positions, mask)
     r1 = 1.0 / distances
 
     # mask determining overlapping atoms

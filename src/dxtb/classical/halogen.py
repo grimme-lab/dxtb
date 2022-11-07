@@ -8,9 +8,9 @@ constructed similar to the Repulsion class.
 Example
 -------
 >>> import torch
->>> from xtbml.basis import IndexHelper
->>> from xtbml.classical import new_halogen
->>> from xtbml.param import GFN1_XTB, get_elem_param
+>>> from dxtb.basis import IndexHelper
+>>> from dxtb.classical import new_halogen
+>>> from dxtb.param import GFN1_XTB, get_elem_param
 >>> numbers = torch.tensor([35, 35, 7, 1, 1, 1])
 >>> positions = torch.tensor([
 ...     [+0.00000000000000, +0.00000000000000, +3.11495251300000],
@@ -34,6 +34,7 @@ from ..basis import IndexHelper
 from ..constants import xtb
 from ..data import atomic_rad
 from ..param import Param, get_elem_param
+from ..utils import maybe_move
 from ..typing import Tensor, TensorLike
 from ..utils import batch
 from .abc import Classical
@@ -82,10 +83,10 @@ class Halogen(Classical, TensorLike):
         super().__init__(positions.device, positions.dtype)
 
         self.numbers = numbers
-        self.damp = damp.to(self.device).type(self.dtype)
-        self.rscale = rscale.to(self.device).type(self.dtype)
-        self.bond_strength = bond_strength.to(self.device).type(self.dtype)
-        self.cutoff = cutoff.to(self.device).type(self.dtype)
+        self.damp = maybe_move(damp, self.device, self.dtype)
+        self.rscale = maybe_move(rscale, self.device, self.dtype)
+        self.bond_strength = maybe_move(bond_strength, self.device, self.dtype)
+        self.cutoff = maybe_move(cutoff, self.device, self.dtype)
 
         # element numbers of halogens and bases
         self.halogens = [17, 35, 53, 85]
@@ -249,7 +250,7 @@ class Halogen(Classical, TensorLike):
 
         # return if no halogens are present
         if halogen_mask.nonzero().size(-2) == 0:
-            return torch.zeros(numbers.shape, dtype=positions.dtype)
+            return torch.zeros(numbers.shape, device=self.device, dtype=self.dtype)
 
         base_mask = torch.zeros_like(numbers).type(torch.bool)
         for base in self.base:
@@ -257,7 +258,7 @@ class Halogen(Classical, TensorLike):
 
         # return if no bases are present
         if base_mask.nonzero().size(-2) == 0:
-            return torch.zeros(numbers.shape, dtype=positions.dtype)
+            return torch.zeros(numbers.shape, device=self.device, dtype=self.dtype)
 
         # triples for halogen bonding interactions
         adj = self._xbond_list(numbers, positions)
@@ -335,8 +336,16 @@ def new_halogen(
     if hasattr(par, "halogen") is False or par.halogen is None:
         return None
 
-    damp = torch.tensor(par.halogen.classical.damping)
-    rscale = torch.tensor(par.halogen.classical.rscale)
+    damp = (
+        par.halogen.classical.damping
+        if torch.is_tensor(par.halogen.classical.damping)
+        else torch.tensor(par.halogen.classical.damping)
+    )
+    rscale = (
+        par.halogen.classical.rscale
+        if torch.is_tensor(par.halogen.classical.rscale)
+        else torch.tensor(par.halogen.classical.rscale)
+    )
 
     unique = torch.unique(numbers)
     bond_strength = get_elem_param(unique, par.element, "xbond", pad_val=0)

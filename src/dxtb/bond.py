@@ -13,7 +13,7 @@ Based on S. Spicher and S. Grimme, *Angew. Chem. Int. Ed.*, **2020**, 59, 15665â
 Example
 -------
 >>> import torch
->>> from xtbml.bond import guess_bond_order
+>>> from dxtb.bond import guess_bond_order
 >>> numbers = torch.tensor([7, 7, 1, 1, 1, 1, 1, 1])
 >>> positions = torch.tensor([
 ...     [-2.98334550857544, -0.08808205276728, +0.00000000000000],
@@ -184,7 +184,7 @@ def guess_bond_length(
     Example
     -------
     >>> import torch
-    >>> from xtbml.bond import guess_bond_length
+    >>> from dxtb.bond import guess_bond_length
     >>> numbers = torch.tensor([6, 8, 7, 1, 1, 1])
     >>> cn = torch.tensor([3.0059586, 1.0318390, 3.0268824, 1.0061584, 1.0036336, 0.9989871])
     >>> print(guess_bond_length(numbers, cn))
@@ -245,8 +245,8 @@ def guess_bond_order(
     Example
     -------
     >>> import torch
-    >>> from xtbml.bond import guess_bond_order
-    >>> from xtbml.exlibs.tbmalt import batch
+    >>> from dxtb.bond import guess_bond_order
+    >>> from dxtb.exlibs.tbmalt import batch
     >>> numbers = batch.pack((
     ...     torch.tensor([7, 1, 1, 1]),
     ...     torch.tensor([6, 8, 8, 1, 1]),

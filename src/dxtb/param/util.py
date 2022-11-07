@@ -98,12 +98,17 @@ def get_elem_param(
         if el in par_element:
             vals = getattr(par_element[el], key)
 
+            # parameter optimisation can require tensors
+            scalar_tensor = torch.is_tensor(vals) and len(vals.shape) == 0
+
             # convert to list so that we can use the same function
             # for atom-resolved parameters too
-            if isinstance(vals, float):
+            if isinstance(vals, float) or scalar_tensor:
                 vals = [vals]
 
-            if not all(isinstance(x, (int, float)) for x in vals):
+            if not scalar_tensor and not all(
+                isinstance(x, (int, float, Tensor)) for x in vals
+            ):
                 raise ValueError(
                     f"The key '{key}' contains the non-numeric values '{vals}'."
                 )
@@ -114,7 +119,12 @@ def get_elem_param(
         for val in vals:
             l.append(val)
 
-    return torch.tensor(l, device=device, dtype=dtype, requires_grad=requires_grad)
+    if any([torch.is_tensor(v) for v in l]):
+        # retain computational graph
+        l = [torch.tensor(v) if not torch.is_tensor(v) else v for v in l]
+        return torch.stack(l, dim=0).to(device=device, dtype=dtype)
+    else:
+        return torch.tensor(l, device=device, dtype=dtype, requires_grad=requires_grad)
 
 
 def get_elem_angular(par_element: dict[str, Element]) -> dict[int, list[int]]:
