@@ -4,10 +4,9 @@ from pathlib import Path
 import torch
 from typing import Dict, List, Optional, Union, overload
 
-from dxtb.data.datareader import Datareader
-from dxtb.typing import Tensor
-from dxtb.exlibs.tbmalt import batch
-
+from ..data.datareader import Datareader
+from ..typing import Tensor
+from ..utils import pack
 
 class Sample:
     """Representation for single sample information."""
@@ -360,7 +359,7 @@ class Sample:
 
                 if all([isinstance(i, Tensor) for i in v]):
                     # NOTE: default padding value is 0
-                    d[slot] = batch.pack(v)
+                    d[slot] = pack(v)
                 else:
                     if all([isinstance(i, str) for i in v]):
                         d[slot] = "+".join(v)

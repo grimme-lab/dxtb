@@ -1,4 +1,3 @@
-from __future__ import annotations
 from pathlib import Path
 import pytest
 import tempfile
@@ -7,9 +6,9 @@ import torch
 from dxtb.data.dataset import ReactionDataset, SampleDataset, store_subsets_on_disk
 from dxtb.data.reactions import Reaction, Reactions
 from dxtb.data.samples import Sample, Samples
-from dxtb.typing import Generator, Tuple
+from dxtb.typing import Generator
 
-FixtureData = Tuple[Samples, Reactions, SampleDataset, ReactionDataset]
+FixtureData = tuple[Samples, Reactions, SampleDataset, ReactionDataset]
 
 
 @pytest.fixture(scope="class", name="data")

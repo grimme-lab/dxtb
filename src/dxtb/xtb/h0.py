@@ -15,13 +15,14 @@ from ..param import (
     get_elem_valence,
     get_pair_param,
 )
-from ..typing import Tensor, TensorLike
+from ..typing import Tensor
 from ..utils import batch, t2int
 
 PAD = -1
 """Value used for padding of tensors."""
 
-class Hamiltonian(TensorLike):
+
+class Hamiltonian:
     """Hamiltonian from parametrization."""
 
     numbers: Tensor
@@ -58,18 +59,16 @@ class Hamiltonian(TensorLike):
     """Van-der-Waals radius of each species."""
 
     def __init__(
-        self,
-        numbers: Tensor,
-        positions: Tensor,
-        par: Param,
-        ihelp: IndexHelper,
+        self, numbers: Tensor, positions: Tensor, par: Param, ihelp: IndexHelper
     ) -> None:
-        super().__init__(positions.device, positions.dtype)
         self.numbers = numbers
         self.unique = torch.unique(numbers)
         self.positions = positions
         self.par = par
         self.ihelp = ihelp
+
+        self.__device = self.positions.device
+        self.__dtype = self.positions.dtype
 
         # atom-resolved parameters
         self.rad = atomic_rad[self.unique].type(self.dtype).to(device=self.device)
@@ -142,12 +141,10 @@ class Hamiltonian(TensorLike):
 
     def _get_elem_param(self, key: str) -> Tensor:
         """Obtain element parameters for species.
-
         Parameters
         ----------
         key : str
             Name of the parameter to be retrieved.
-
         Returns
         -------
         Tensor
@@ -165,7 +162,6 @@ class Hamiltonian(TensorLike):
 
     def _get_elem_valence(self):
         """Obtain "valence" parameters for shells of species.
-
         Returns
         -------
         Tensor
@@ -182,12 +178,10 @@ class Hamiltonian(TensorLike):
 
     def _get_pair_param(self, pair: dict[str, float]) -> Tensor:
         """Obtain element-pair-specific parameters for all species.
-
         Parameters
         ----------
         pair : dict[str, float]
             Pair parametrization.
-
         Returns
         -------
         Tensor
@@ -200,7 +194,6 @@ class Hamiltonian(TensorLike):
 
     def _get_hscale(self) -> Tensor:
         """Obtain the off-site scaling factor for the Hamiltonian.
-
         Returns
         -------
         Tensor
@@ -270,14 +263,12 @@ class Hamiltonian(TensorLike):
 
     def build(self, overlap: Tensor, cn: Tensor | None = None) -> Tensor:
         """Build the xTB Hamiltonian
-
         Parameters
         ----------
         overlap : Tensor
             Overlap matrix.
         cn : Tensor | None, optional
             Coordination number, by default None
-
         Returns
         -------
         Tensor
@@ -307,7 +298,9 @@ class Hamiltonian(TensorLike):
         # ----------------------
         # Eq.24: PI(R_AB, l, l')
         # ----------------------
-        distances = cdist(self.positions, mask)
+        distances = torch.cdist(
+            self.positions, self.positions, p=2, compute_mode="use_mm_for_euclid_dist"
+        )
         rad = self.ihelp.spread_uspecies_to_atom(self.rad)
         rr = torch.where(
             mask * ~torch.diag_embed(torch.ones_like(real)),
@@ -371,7 +364,6 @@ class Hamiltonian(TensorLike):
 
     def overlap(self) -> Tensor:
         """Overlap calculation of unique shells pairs.
-
         Returns
         -------
         Tensor
@@ -380,14 +372,12 @@ class Hamiltonian(TensorLike):
 
         def get_overlap(bas: Basis, positions: Tensor, ihelp: IndexHelper) -> Tensor:
             """Overlap calculation for a single molecule.
-
             Parameters
             ----------
             numbers : Tensor
                 Unique atomic numbers of whole batch.
             positions : Tensor
                 Positions of single molecule.
-
             Returns
             -------
             Tensor
@@ -485,17 +475,14 @@ class Hamiltonian(TensorLike):
     def _symmetrize(self, x: Tensor) -> Tensor:
         """
         Symmetrize a tensor after checking if it is symmetric within a threshold.
-
         Parameters
         ----------
         x : Tensor
             Tensor to check and symmetrize.
-
         Returns
         -------
         Tensor
             Symmetrized tensor.
-
         Raises
         ------
         RuntimeError
@@ -527,20 +514,16 @@ class Hamiltonian(TensorLike):
     def to(self, device: torch.device) -> "Hamiltonian":
         """
         Returns a copy of the `Hamiltonian` instance on the specified device.
-
         This method creates and returns a new copy of the `Hamiltonian` instance
         on the specified device "``device``".
-
         Parameters
         ----------
         device : torch.device
             Device to which all associated tensors should be moved.
-
         Returns
         -------
         Hamiltonian
             A copy of the `Hamiltonian` instance placed on the specified device.
-
         Notes
         -----
         If the `Hamiltonian` instance is already on the desired device `self` will be returned.
@@ -560,17 +543,14 @@ class Hamiltonian(TensorLike):
         Returns a copy of the `Hamiltonian` instance with specified floating point type.
         This method creates and returns a new copy of the `Hamiltonian` instance
         with the specified dtype.
-
         Parameters
         ----------
         dtype : torch.dtype
             Type of the floating point numbers used by the `Hamiltonian` instance.
-
         Returns
         -------
         Hamiltonian
             A copy of the `Hamiltonian` instance with the specified dtype.
-
         Notes
         -----
         If the `Hamiltonian` instance has already the desired dtype `self` will be returned.
@@ -591,14 +571,12 @@ class Hamiltonian(TensorLike):
 
 def get_pairs(x: Tensor, i: int) -> Tensor:
     """Get indices of all unqiue shells pairs with index value `i`.
-
     Parameters
     ----------
     x : Tensor
         Matrix of unique shell pairs.
     i : int
         Value representing all unique shells in the matrix.
-
     Returns
     -------
     Tensor
@@ -612,7 +590,6 @@ def get_subblock_start(umap: Tensor, i: int, norbi: int, norbj: int) -> Tensor:
     """
     Filter out the top-left index of each subblock of unique shell pairs. This makes use of the fact that the pairs are sorted along
     the rows.
-
     Example: A "s" and "p" orbital would give the following 4x4 matrix
     of unique shell pairs:
     1 2 2 2
@@ -623,8 +600,6 @@ def get_subblock_start(umap: Tensor, i: int, norbi: int, norbj: int) -> Tensor:
     i.e. 1x1, 1x3, 3x1 and 3x3 here, we require only the following four
     indices from the matrix of unique shell pairs: [0, 0] (1x1), [1, 0]
     (3x1), [0, 1] (1x3) and [1, 1] (3x3).
-
-
     Parameters
     ----------
     pairs : Tensor
@@ -633,7 +608,6 @@ def get_subblock_start(umap: Tensor, i: int, norbi: int, norbj: int) -> Tensor:
         Number of orbitals per shell.
     norbj : int
         Number of orbitals per shell.
-
     Returns
     -------
     Tensor

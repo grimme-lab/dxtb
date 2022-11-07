@@ -1,16 +1,13 @@
 """
 Classical repulsion energy contribution
 =======================================
-
 This module implements the classical repulsion energy term.
-
 Note
 ----
 The Repulsion class is constructed for geometry optimization, i.e., the atomic
 numbers are set upon instantiation (`numbers` is a property), and the parameters
 in the cache are created for only those atomic numbers. The positions, however,
 must be supplied to the `get_energy` (or `get_grad`) method.
-
 Example
 -------
 >>> import torch
@@ -48,7 +45,6 @@ from .abc import Classical
 class Repulsion(Classical, TensorLike):
     """
     Representation of the classical repulsion.
-
     Note
     ----
     The positions are only passed to the constructor for `dtype` and `device`,
@@ -92,13 +88,13 @@ class Repulsion(Classical, TensorLike):
         super().__init__(positions.device, positions.dtype)
 
         self.numbers = numbers
-        self.arep = maybe_move(arep, self.device, self.dtype)
-        self.zeff = maybe_move(zeff, self.device, self.dtype)
-        self.cutoff = maybe_move(cutoff, self.device, self.dtype)
+        self.arep = arep.to(self.device).type(self.dtype)
+        self.zeff = zeff.to(self.device).type(self.dtype)
+        self.cutoff = cutoff
 
-        self.kexp = maybe_move(kexp, self.device, self.dtype)
+        self.kexp = kexp.to(self.device).type(self.dtype)
         if kexp_light is not None:
-            self.kexp_light = maybe_move(kexp_light, self.device, self.dtype)
+            self.kexp_light = kexp_light.to(self.device).type(self.dtype)
 
     class Cache:
         """Cache for the repulsion parameters."""
@@ -125,19 +121,16 @@ class Repulsion(Classical, TensorLike):
     def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> "Repulsion.Cache":
         """
         Store variables for energy and gradient calculation.
-
         Parameters
         ----------
         numbers : Tensor
             Atomic numbers of all atoms.
         ihelp : IndexHelper
             Helper class for indexing.
-
         Returns
         -------
         Repulsion.Cache
             Cache for repulsion.
-
         Note
         ----
         The cache of a classical contribution does not require `positions` as
@@ -170,7 +163,6 @@ class Repulsion(Classical, TensorLike):
     ) -> Tensor:
         """
         Get repulsion energy.
-
         Parameters
         ----------
         cache : Repulsion.Cache
@@ -179,7 +171,6 @@ class Repulsion(Classical, TensorLike):
             Cartesian coordinates of all atoms.
         atom_resolved : bool
             Whether to return atom-resolved energy (True) or full matrix (False).
-
         Returns
         -------
         Tensor
@@ -189,7 +180,17 @@ class Repulsion(Classical, TensorLike):
         # mask for padding
         mask = real_pairs(self.numbers, diagonal=True)
 
-        distances = cdist(positions, mask)
+        distances = torch.where(
+            mask,
+            torch.cdist(
+                positions,
+                positions,
+                p=2,
+                compute_mode="use_mm_for_euclid_dist",
+            ),
+            # add epsilon to avoid zero division in some terms
+            positions.new_tensor(torch.finfo(self.dtype).eps),
+        )
 
         # Eq.13: R_AB ** k_f
         r1k = torch.pow(distances, cache.kexp)
@@ -199,7 +200,7 @@ class Repulsion(Classical, TensorLike):
 
         # Eq.13: repulsion energy
         dE = torch.where(
-            mask * (distances <= self.cutoff),
+            mask * (distances <= distances.new_tensor(self.cutoff)),
             cache.zeff * exp_term / distances,
             distances.new_tensor(0.0),
         )
@@ -212,14 +213,12 @@ class Repulsion(Classical, TensorLike):
     def get_grad(self, positions: Tensor, cache: "Repulsion.Cache") -> Tensor:
         """
         Get analytical gradient of repulsion energy.
-
         Parameters
         ----------
         cache : Repulsion.Cache
             Cache for repulsion.
         positions : Tensor
             Cartesian coordinates of all atoms.
-
         Returns
         -------
         Tensor
@@ -227,7 +226,17 @@ class Repulsion(Classical, TensorLike):
         """
         mask = real_pairs(self.numbers, diagonal=True)
 
-        distances = cdist(positions, mask)
+        distances = torch.where(
+            mask,
+            torch.cdist(
+                positions,
+                positions,
+                p=2,
+                compute_mode="use_mm_for_euclid_dist",
+            ),
+            # add epsilon to avoid zero division in some terms
+            positions.new_tensor(torch.finfo(self.dtype).eps),
+        )
 
         r1k = torch.pow(distances, cache.kexp)
 
@@ -261,7 +270,6 @@ def new_repulsion(
 ) -> Repulsion | None:
     """
     Create new instance of Repulsion class.
-
     Parameters
     ----------
     numbers : Tensor
@@ -272,12 +280,10 @@ def new_repulsion(
         Representation of an extended tight-binding model.
     cutoff : float
         Real space cutoff for repulsion interactions (default: 25.0).
-
     Returns
     -------
     Repulsion | None
         Instance of the Repulsion class or `None` if no repulsion is used.
-
     Raises
     ------
     ValueError
@@ -289,11 +295,7 @@ def new_repulsion(
         warnings.warn("No repulsion scheme found.", ParameterWarning)
         return None
 
-    kexp = (
-        par.repulsion.effective.kexp
-        if torch.is_tensor(par.repulsion.effective.kexp)
-        else torch.tensor(par.repulsion.effective.kexp)
-    )
+    kexp = torch.tensor(par.repulsion.effective.kexp)
     kexp_light = (
         torch.tensor(par.repulsion.effective.kexp_light)
         if par.repulsion.effective.kexp_light

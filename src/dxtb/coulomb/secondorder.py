@@ -44,7 +44,7 @@ from ..constants import xtb
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
 from ..typing import Tensor
-from ..utils import real_pairs
+from ..utils import real_pairs, maybe_move, cdist
 from .average import AveragingFunction, averaging_function, harmonic_average
 
 
