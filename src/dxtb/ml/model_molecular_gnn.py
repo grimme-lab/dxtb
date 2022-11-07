@@ -13,7 +13,7 @@ import time
 from pytorch_lightning.loggers import WandbLogger
 import wandb
 
-from xtbml.param import charge
+from dxtb.param import charge
 
 from .loss import WTMAD2Loss
 from ..data.graph_dataset import MolecularGraph_Dataset

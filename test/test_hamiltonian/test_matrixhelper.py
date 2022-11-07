@@ -1,11 +1,11 @@
 import torch
 
-from xtbml.basis import (
+from dxtb.basis import (
     MatrixHelper,
     IndexHelper,
     get_elem_param_shells,
 )
-from xtbml.param.gfn1 import GFN1_XTB as par
+from dxtb.param.gfn1 import GFN1_XTB as par
 
 # TEST matricies (range matrix for H2O example)
 test_matrix = torch.arange(64).reshape(8, 8)

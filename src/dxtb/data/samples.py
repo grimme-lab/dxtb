@@ -4,9 +4,9 @@ from pathlib import Path
 import torch
 from typing import Dict, List, Optional, Union, overload
 
-from xtbml.data.datareader import Datareader
-from xtbml.typing import Tensor
-from xtbml.exlibs.tbmalt import batch
+from dxtb.data.datareader import Datareader
+from dxtb.typing import Tensor
+from dxtb.exlibs.tbmalt import batch
 
 
 class Sample:

@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any, Dict, Tuple, List, Union
 import torch
-from xtbml.data.samples import Sample
+from dxtb.data.samples import Sample
 
 from ..typing import Tensor
 

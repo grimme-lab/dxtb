@@ -3,11 +3,11 @@ from pathlib import Path
 
 import torch
 
-from xtbml.data.dataset import SampleDataset
-from xtbml.data.samples import Sample
-from xtbml.optimizer.param_optim import ParameterOptimizer, reparametrise
-from xtbml.xtb.calculator import Calculator
-from xtbml.param.gfn1 import GFN1_XTB
+from dxtb.data.dataset import SampleDataset
+from dxtb.data.samples import Sample
+from dxtb.optimizer.param_optim import ParameterOptimizer, reparametrise
+from dxtb.xtb.calculator import Calculator
+from dxtb.param.gfn1 import GFN1_XTB
 
 
 class TestCalculator:

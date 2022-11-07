@@ -3,11 +3,11 @@ from typing import List
 import pandas as pd
 import pytest
 import torch
-from xtbml.ml.evaluation import evaluate
+from dxtb.ml.evaluation import evaluate
 
-from xtbml.data.dataset import get_gmtkn55_dataset
-from xtbml.ml.loss import WTMAD2Loss
-from xtbml.ml.model import Simple_Net
+from dxtb.data.dataset import get_gmtkn55_dataset
+from dxtb.ml.loss import WTMAD2Loss
+from dxtb.ml.model import Simple_Net
 
 
 from .gmtkn55 import GMTKN55

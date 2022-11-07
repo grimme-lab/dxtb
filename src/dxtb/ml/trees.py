@@ -6,9 +6,9 @@ Implementation of decisiontree algorthims for regression tasks.
 
 Example
 -------
->>> from xtbml.data.dataset import get_gmtkn55_dataset
->>> from xtbml.ml.trees import TreeRegressor
->>> from xtbml.ml.util import wtmad2
+>>> from dxtb.data.dataset import get_gmtkn55_dataset
+>>> from dxtb.ml.trees import TreeRegressor
+>>> from dxtb.ml.util import wtmad2
 >>> # load data from disk
 >>> features = TreeRegressor.get_data()
 >>> # alternatively load from csv: features = pd.read_csv("df.csv")

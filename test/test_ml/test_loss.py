@@ -4,9 +4,9 @@ import pandas as pd
 import pytest
 import torch
 
-from xtbml.ml.loss import WTMAD2Loss
-from xtbml.data.dataset import ReactionDataset, get_gmtkn55_dataset
-from xtbml.ml.util import load_model_from_cfg
+from dxtb.ml.loss import WTMAD2Loss
+from dxtb.data.dataset import ReactionDataset, get_gmtkn55_dataset
+from dxtb.ml.util import load_model_from_cfg
 
 from .gmtkn55 import GMTKN55
 

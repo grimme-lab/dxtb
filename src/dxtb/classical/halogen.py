@@ -8,9 +8,9 @@ constructed similar to the Repulsion class.
 Example
 -------
 >>> import torch
->>> from xtbml.basis import IndexHelper
->>> from xtbml.classical import new_halogen
->>> from xtbml.param import GFN1_XTB, get_elem_param
+>>> from dxtb.basis import IndexHelper
+>>> from dxtb.classical import new_halogen
+>>> from dxtb.param import GFN1_XTB, get_elem_param
 >>> numbers = torch.tensor([35, 35, 7, 1, 1, 1])
 >>> positions = torch.tensor([
 ...     [+0.00000000000000, +0.00000000000000, +3.11495251300000],

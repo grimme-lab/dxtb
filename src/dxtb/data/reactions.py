@@ -3,7 +3,7 @@ from json import dump as json_dump
 from pathlib import Path
 
 from typing import Dict, List, Optional, Union, overload
-from xtbml.typing import Tensor
+from dxtb.typing import Tensor
 
 import torch
 

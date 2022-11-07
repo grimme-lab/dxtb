@@ -5,7 +5,7 @@ orbital resolved representations of quantities.
 Example
 -------
 >>> import torch
->>> from xtbml.basis import IndexHelper
+>>> from dxtb.basis import IndexHelper
 >>> numbers = torch.tensor([6, 1, 1, 1, 1])
 >>> angular = {1: [0], 6: [0, 1]}
 >>> ihelp = IndexHelper.from_numbers(numbers, angular)

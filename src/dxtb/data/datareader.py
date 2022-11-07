@@ -285,7 +285,7 @@ class Datareader:
 
         Example
         -------
-        >>> from xtbml.data.datareader import Datareader
+        >>> from dxtb.data.datareader import Datareader
         >>> data = Datareader()
         >>> data.sort()
         >>> data.slice(slice(600))
@@ -382,7 +382,7 @@ class Datareader:
 
         Example
         -------
-        >>> from xtbml.data.datareader import Datareader
+        >>> from dxtb.data.datareader import Datareader
         >>> data = Datareader("MOR41")
         >>> data.create_reaction_json()
         """

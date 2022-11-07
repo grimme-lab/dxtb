@@ -6,7 +6,7 @@ import time
 import torch.autograd.forward_ad as fwAD
 import torchviz
 import functools
-from xtbml.typing import Tensor
+from dxtb.typing import Tensor
 
 
 # TODO: check that for model=Identity() the force gradient is identical to scf force gradient (e.g. from tblite)

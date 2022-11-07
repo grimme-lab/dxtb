@@ -4,10 +4,10 @@ import pytest
 import tempfile
 import torch
 
-from xtbml.data.dataset import ReactionDataset, SampleDataset, store_subsets_on_disk
-from xtbml.data.reactions import Reaction, Reactions
-from xtbml.data.samples import Sample, Samples
-from xtbml.typing import Generator, Tuple
+from dxtb.data.dataset import ReactionDataset, SampleDataset, store_subsets_on_disk
+from dxtb.data.reactions import Reaction, Reactions
+from dxtb.data.samples import Sample, Samples
+from dxtb.typing import Generator, Tuple
 
 FixtureData = Tuple[Samples, Reactions, SampleDataset, ReactionDataset]
 

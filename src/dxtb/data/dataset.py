@@ -10,9 +10,9 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 
-from xtbml.constants import PSE
-from xtbml.data.reactions import Reaction, Reactions
-from xtbml.data.samples import Sample, Samples
+from dxtb.constants import PSE
+from dxtb.data.reactions import Reaction, Reactions
+from dxtb.data.samples import Sample, Samples
 
 
 # TODO: add to general utils

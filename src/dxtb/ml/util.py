@@ -11,7 +11,7 @@ import torch.nn as nn
 import torch.optim as optim
 import pandas as pd
 
-from xtbml.ml.model_gnn import GNN
+from dxtb.ml.model_gnn import GNN
 
 from .model import Basic_CNN, Simple_Net  # , Basic_EGNN
 from .loss import WTMAD2Loss

@@ -7,7 +7,7 @@ Integrator for Born radii based on the Onufriev-Bashford-Case model.
 Example
 -------
 >>> import torch
->>> from xtbml.solvation import born
+>>> from dxtb.solvation import born
 >>> numbers = torch.tensor([14, 1, 1, 1, 1])
 >>> positions = torch.tensor(
 ...     [
