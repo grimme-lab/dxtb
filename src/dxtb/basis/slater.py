@@ -70,7 +70,7 @@ def to_gauss(
     if n == 6 and ng == 6:
         itype = 15 + l
 
-    _coeff, _alpha = sto_ng[int(ng.item()) - 1][:, itype, :]
+    _coeff, _alpha = sto_ng[ng - 1][:, itype, :]
 
     alpha = _alpha.type(zeta.dtype).to(zeta.device) * zeta.unsqueeze(-1) ** 2
     coeff = _coeff.type(zeta.dtype).to(zeta.device)

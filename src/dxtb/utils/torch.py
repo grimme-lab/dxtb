@@ -1,9 +1,44 @@
-from __future__ import annotations
+"""
+Collection of utility functions for matrices/tensors.
+"""
 
 import torch
 
-from ..typing import Tensor
+from ..typing import Any, Tensor
 
+
+@torch.jit.script
+def real_atoms(numbers: Tensor) -> Tensor:
+    return numbers != 0
+
+
+@torch.jit.script
+def real_pairs(numbers: Tensor, diagonal: bool = False) -> Tensor:
+    real = real_atoms(numbers)
+    mask = real.unsqueeze(-2) * real.unsqueeze(-1)
+    if diagonal is True:
+        mask *= ~torch.diag_embed(torch.ones_like(real))
+    return mask
+
+
+def load_from_npz(npzfile: Any, name: str, dtype: torch.dtype) -> Tensor:
+    """Get torch tensor from npz file
+
+    Parameters
+    ----------
+    npzfile : Any
+        Loaded npz file.
+    name : str
+        Name of the tensor in the npz file.
+    dtype : torch.dtype
+        Data type of the tensor.
+    Returns
+    -------
+    Tensor   
+                Tensor from the npz file.
+    """
+    name = name.replace("-", "").lower()
+    return torch.from_numpy(npzfile[name]).type(dtype)
 
 def maybe_move(x: Tensor, device: torch.device, dtype: torch.dtype) -> Tensor:
     if x.device != device:
@@ -11,6 +46,7 @@ def maybe_move(x: Tensor, device: torch.device, dtype: torch.dtype) -> Tensor:
     if x.dtype != dtype:
         x = x.type(dtype)
     return x
+
 
 
 def cdist(positions: Tensor, mask: Tensor) -> Tensor:
@@ -21,11 +57,10 @@ def cdist(positions: Tensor, mask: Tensor) -> Tensor:
     ----------
     positions : Tensor
         Input positions.
-
     Returns
     -------
     Tensor
-        Matripositions of euclidean distances of `positions` with itself.
+         Matripositions of euclidean distances of `positions` with itself.
     """
     zero = positions.new_tensor(0.0)
     eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
@@ -46,3 +81,19 @@ def cdist(positions: Tensor, mask: Tensor) -> Tensor:
 
     # add epsilon to avoid zero division in later terms
     return torch.where(mask, torch.sqrt(ssd), eps)
+    
+def t2int(x: Tensor) -> int:
+    """
+    Convert tensor to int.
+
+    Parameters
+    ----------
+    x : Tensor
+        Tensor to convert.
+
+    Returns
+    -------
+    int
+        Integer value of the tensor.
+    """
+    return int(x.item())

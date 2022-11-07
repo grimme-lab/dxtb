@@ -32,7 +32,6 @@ from ..utils import (
 )
 from ..typing import Any
 
-
 class Param(BaseModel):
     """
     Complete self-contained representation of an extended tight-binding model.

@@ -21,7 +21,6 @@ from ..utils import batch, t2int
 PAD = -1
 """Value used for padding of tensors."""
 
-
 class Hamiltonian(TensorLike):
     """Hamiltonian from parametrization."""
 
@@ -66,7 +65,6 @@ class Hamiltonian(TensorLike):
         ihelp: IndexHelper,
     ) -> None:
         super().__init__(positions.device, positions.dtype)
-
         self.numbers = numbers
         self.unique = torch.unique(numbers)
         self.positions = positions
@@ -91,6 +89,7 @@ class Hamiltonian(TensorLike):
         # unit conversion
         self.selfenergy = self.selfenergy * EV2AU
         self.kcn = self.kcn * EV2AU
+
         if any(
             tensor.dtype != self.dtype
             for tensor in (
@@ -308,7 +307,6 @@ class Hamiltonian(TensorLike):
         # ----------------------
         # Eq.24: PI(R_AB, l, l')
         # ----------------------
-
         distances = cdist(self.positions, mask)
         rad = self.ihelp.spread_uspecies_to_atom(self.rad)
         rr = torch.where(
@@ -510,6 +508,21 @@ class Hamiltonian(TensorLike):
             )
 
         return (x + x.mT) / 2
+
+    @property
+    def device(self) -> torch.device:
+        """The device on which the `Hamiltonian` object resides."""
+        return self.__device
+
+    @device.setter
+    def device(self, *args):
+        """Instruct users to use the ".to" method if wanting to change device."""
+        raise AttributeError("Move object to device using the `.to` method")
+
+    @property
+    def dtype(self) -> torch.dtype:
+        """Floating point dtype used by Hamiltonian object."""
+        return self.__dtype
 
     def to(self, device: torch.device) -> "Hamiltonian":
         """

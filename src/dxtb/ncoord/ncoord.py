@@ -11,7 +11,6 @@ from ..utils import cdist
 # TODO: differentiate GFN1 and GFN2
 # from dxtb.constants import KCN, KA, KB, R_SHIFT
 
-
 def get_coordination_number(
     numbers: Tensor,
     positions: Tensor,

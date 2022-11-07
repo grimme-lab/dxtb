@@ -6,12 +6,14 @@ Collection of utility functions.
 """
 
 import torch
+
 import functools
 from functools import wraps
 from time import time
 
 from ..constants import ATOMIC_NUMBER
 from ..typing import Any, Tensor, TypeGuard
+
 
 def is_str_list(x: list[Any]) -> TypeGuard[list[str]]:
     """
@@ -49,7 +51,6 @@ def is_int_list(x: list[Any]) -> TypeGuard[list[int]]:
 
 def symbol2number(sym_list: list[str]) -> Tensor:
     return torch.flatten(torch.tensor([ATOMIC_NUMBER[s.title()] for s in sym_list]))
-
 
 def timing(f):
     @wraps(f)

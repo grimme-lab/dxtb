@@ -105,6 +105,7 @@ class ES2(Interaction):
             else maybe_move(lhubbard, self.device, self.dtype)
         )
         self.gexp = maybe_move(gexp, self.device, self.dtype)
+
         self.average = average
 
         self.shell_resolved = lhubbard is not None
@@ -300,4 +301,5 @@ def new_es2(
         if torch.is_tensor(par.charge.effective.gexp)
         else torch.tensor(par.charge.effective.gexp)
     )
+
     return ES2(positions, hubbard, lhubbard, average, gexp)
