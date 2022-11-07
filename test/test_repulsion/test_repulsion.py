@@ -28,15 +28,16 @@ def test_none() -> None:
 
     with pytest.warns(ParameterWarning):
         _par.repulsion = None
-        assert new_repulsion(dummy, dummy, _par) is None
+        assert new_repulsion(dummy, _par) is None
 
         del _par.repulsion
-        assert new_repulsion(dummy, dummy, _par) is None
+        assert new_repulsion(dummy, _par) is None
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
+    dd = {"dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
@@ -45,7 +46,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].type(dtype)
     ref = sample["gfn1"].type(dtype)
 
-    rep = new_repulsion(numbers, positions, par)
+    rep = new_repulsion(numbers, par, **dd)
     if rep is None:
         assert False
 
@@ -60,6 +61,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    dd = {"dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample1, sample2 = samples[name1], samples[name2]
@@ -83,7 +85,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         ],
     )
 
-    rep = new_repulsion(numbers, positions, par)
+    rep = new_repulsion(numbers, par, **dd)
     if rep is None:
         assert False
 
@@ -99,6 +101,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.parametrize("name", ["H2O", "SiH4"])
 def test_grad_pos_tblite(dtype: torch.dtype, name: str) -> None:
     """Compare with reference values from tblite."""
+    dd = {"dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
@@ -106,7 +109,7 @@ def test_grad_pos_tblite(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].type(dtype).requires_grad_(True)
     ref = sample["gfn1_grad"].type(dtype)
 
-    rep = new_repulsion(numbers, positions, par)
+    rep = new_repulsion(numbers, par, **dd)
     if rep is None:
         assert False
 
@@ -128,13 +131,14 @@ def test_grad_pos_tblite(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list + ["MB16_43_03"])
 def test_grad_pos_backward(dtype: torch.dtype, name: str) -> None:
+    dd = {"dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype).requires_grad_(True)
 
-    rep = new_repulsion(numbers, positions, par)
+    rep = new_repulsion(numbers, par, **dd)
     if rep is None:
         assert False
 
@@ -158,13 +162,14 @@ def test_grad_pos_backward(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list + ["MB16_43_03"])
 def test_grad_pos_analytical(dtype: torch.dtype, name: str) -> None:
+    dd = {"dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
 
-    rep = new_repulsion(numbers, positions, par)
+    rep = new_repulsion(numbers, par, **dd)
     if rep is None:
         assert False
 
@@ -192,6 +197,7 @@ def test_grad_param(dtype: torch.dtype, name: str) -> None:
     dtype : torch.dtype
         Data type of the tensor.
     """
+    dd = {"dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
@@ -223,7 +229,7 @@ def test_grad_param(dtype: torch.dtype, name: str) -> None:
     _kexp = torch.tensor(par.repulsion.effective.kexp, dtype=dtype, requires_grad=True)
 
     def func(arep: Tensor, zeff: Tensor, kexp: Tensor) -> Tensor:
-        rep = Repulsion(numbers, positions, arep, zeff, kexp)
+        rep = Repulsion(numbers, arep, zeff, kexp, **dd)
         cache = rep.get_cache(numbers, ihelp)
         return rep.get_energy(positions, cache)
 

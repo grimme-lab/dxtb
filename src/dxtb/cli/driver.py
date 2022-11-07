@@ -111,7 +111,9 @@ class Driver:
 
         # print results
         timer.stop("total")
-        timer.print_times("")
+
+        if args.verbosity is not None and args.verbosity > 1:
+            timer.print_times("")
 
     def __str__(self) -> str:
         """Custom print representation of class."""

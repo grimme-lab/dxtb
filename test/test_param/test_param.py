@@ -103,7 +103,7 @@ class TestParam:
         numbers = symbol2number(["H", "C"])
         dummy_coords = torch.zeros(3, dtype=dtype)
 
-        calc = Calculator(numbers, dummy_coords, par)
+        calc = Calculator(numbers, dummy_coords, par, dtype=dtype)
 
         assert torch.allclose(
             calc.hamiltonian.ihelp.reduce_shell_to_atom(calc.hamiltonian.refocc),

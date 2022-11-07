@@ -28,6 +28,10 @@ THRESH = {
 EXCLUDE = []
 """List of xTB components to exclude during the calculation."""
 
+EXCLUDE_CHOICES = ["disp", "rep", "hal", "es2", "es3", "scf", "all"]
+"""List of possible choices for `EXCLUDE`."""
+
+
 # SCF settings
 
 GUESS = "eeq"
@@ -41,6 +45,12 @@ MAXITER = 20
 
 VERBOSITY = 1
 """Verbosity of printout."""
+
+XITORCH_XATOL = 1.0e-5
+"""The absolute tolerance of the norm of the input of the equilibrium function."""
+
+XITORCH_FATOL = 1.0e-5
+"""The absolute tolerance of the norm of the output of the equilibrium function."""
 
 # Fermi smearing
 

@@ -75,6 +75,9 @@ class SelfConsistentField(xt.EditableModule):
         evecs: Tensor
         """LCAO coefficients (eigenvectors of Fockian)"""
 
+        iter: int
+        """Number of iterations."""
+
         def __init__(
             self,
             hcore: Tensor,
@@ -93,6 +96,9 @@ class SelfConsistentField(xt.EditableModule):
             self.ihelp = ihelp
             self.cache = cache
             self.energy = hcore.new_tensor(0.0)
+            self.old_energy = n0.new_tensor(0.0)
+            self.old_density = overlap.new_tensor(0.0)
+            self.iter = 1
 
     _data: "_Data"
     """Persistent data"""
@@ -173,6 +179,13 @@ class SelfConsistentField(xt.EditableModule):
             charges = torch.zeros_like(self._data.occupation)
 
         with torch.no_grad():
+            print(
+                "\n{:<5} {:<24} {:<15} {:<16}".format(
+                    "iter", "energy", "energy change", "P norm change"
+                )
+            )
+            print(60 * "-")
+
             fcn = self.iterate_potential if self.use_potential else self.iterate_charges
             y0 = self.charges_to_potential(charges) if self.use_potential else charges
             output = xto.equilibrium(
@@ -183,6 +196,8 @@ class SelfConsistentField(xt.EditableModule):
             )
 
             q_conv = self.potential_to_charges(output) if self.use_potential else output
+
+            print(60 * "-")
 
         out = (
             self.iterate_potential(self.charges_to_potential(q_conv))
@@ -319,6 +334,20 @@ class SelfConsistentField(xt.EditableModule):
         charges = self.potential_to_charges(potential)
         if self.fwd_options["verbose"]:
             print(f"energy: {self.get_energy(charges).sum(-1)}")
+
+        if charges.ndim < 2:
+            energy = self.get_energy(charges).sum(-1).detach().clone()
+            ediff = energy - self._data.old_energy
+
+            density = self._data.density.detach().clone()
+            norm = torch.linalg.matrix_norm(self._data.old_density - density)
+
+            print(f"{self._data.iter:2}    {energy: .16E}  {ediff: .6E}  {norm: .6E}")
+
+            self._data.old_energy = energy
+            self._data.old_density = density
+            self._data.iter += 1
+
         return self.charges_to_potential(charges)
 
     def charges_to_potential(self, charges: Tensor) -> Tensor:

@@ -34,9 +34,11 @@ class TensorLike:
 
     __slots__ = ["__device", "__dtype"]
 
-    def __init__(self, device: torch.device, dtype: torch.dtype):
-        self.__device = device
-        self.__dtype = dtype
+    def __init__(
+        self, device: torch.device | None = None, dtype: torch.dtype | None = None
+    ):
+        self.__device = device if device is not None else torch.device("cpu")
+        self.__dtype = dtype if dtype is not None else torch.get_default_dtype()
 
     @property
     def device(self) -> torch.device:

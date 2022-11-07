@@ -14,14 +14,14 @@ from ..dispersion import Dispersion, new_dispersion
 from ..interaction import Interaction, InteractionList
 from ..ncoord import exp_count, get_coordination_number
 from ..param import Param, get_elem_angular
-from ..typing import Any, Tensor
+from ..typing import Any, Tensor, TensorLike
 from ..utils import Timers
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian
 from .h0 import Hamiltonian
 
 
-class Result:
+class Result(TensorLike):
     """
     Result container for singlepoint calculation.
     """
@@ -77,17 +77,21 @@ class Result:
         "total",
     ]
 
-    def __init__(self, positions: Tensor):
+    def __init__(
+        self,
+        positions: Tensor,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ):
+        super().__init__(device, dtype)
         shape = positions.shape[:-1]
-        device = positions.device
-        dtype = positions.dtype
 
-        self.scf = torch.zeros(shape, dtype=dtype, device=device)
-        self.fenergy = torch.zeros(shape, dtype=dtype, device=device)
-        self.dispersion = torch.zeros(shape, dtype=dtype, device=device)
-        self.repulsion = torch.zeros(shape, dtype=dtype, device=device)
-        self.halogen = torch.zeros(shape, dtype=dtype, device=device)
-        self.total = torch.zeros(shape, dtype=dtype, device=device)
+        self.scf = torch.zeros(shape, dtype=self.dtype, device=self.device)
+        self.fenergy = torch.zeros(shape, dtype=self.dtype, device=self.device)
+        self.dispersion = torch.zeros(shape, dtype=self.dtype, device=self.device)
+        self.repulsion = torch.zeros(shape, dtype=self.dtype, device=self.device)
+        self.halogen = torch.zeros(shape, dtype=self.dtype, device=self.device)
+        self.total = torch.zeros(shape, dtype=self.dtype, device=self.device)
 
     def __repr__(self) -> str:
         """Custom print representation showing all available slots."""
@@ -120,7 +124,7 @@ class Result:
         print("")
 
 
-class Calculator:
+class Calculator(TensorLike):
     """
     Parametrized calculator defining the extended tight-binding model.
 
@@ -156,11 +160,18 @@ class Calculator:
         par: Param,
         interaction: Interaction | None = None,
         opts: dict[str, Any] | None = None,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
     ) -> None:
+        super().__init__(device, dtype)
+        dd = {"device": self.device, "dtype": self.dtype}
+
         opts = opts if opts is not None else {}
         self.opts = {
             "fwd_options": {
                 "maxiter": opts.get("maxiter", defaults.MAXITER),
+                "f_tol": opts.get("xitorch_fatol", defaults.XITORCH_FATOL),
+                "x_tol": opts.get("xitorch_xatol", defaults.XITORCH_XATOL),
             },
             "scf_options": {
                 "etemp": opts.get("etemp", defaults.ETEMP),
@@ -184,7 +195,7 @@ class Calculator:
         }
 
         self.ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-        self.hamiltonian = Hamiltonian(numbers, positions, par, self.ihelp)
+        self.hamiltonian = Hamiltonian(numbers, par, self.ihelp, **dd)
 
         es2 = (
             new_es2(numbers, positions, par)
@@ -199,17 +210,17 @@ class Calculator:
         self.interaction = InteractionList(es2, es3, interaction)
 
         self.halogen = (
-            new_halogen(numbers, positions, par)
+            new_halogen(numbers, par, **dd)
             if "hal" not in self.opts["exclude"]
             else None
         )
         self.dispersion = (
-            new_dispersion(numbers, positions, par)
+            new_dispersion(numbers, par, **dd)
             if "disp" not in self.opts["exclude"]
             else None
         )
         self.repulsion = (
-            new_repulsion(numbers, positions, par)
+            new_repulsion(numbers, par, **dd)
             if "rep" not in self.opts["exclude"]
             else None
         )
@@ -244,14 +255,14 @@ class Calculator:
             Results.
         """
 
-        result = Result(positions)
+        result = Result(positions, device=self.device, dtype=self.dtype)
         timer = Timers()
         timer.start("total")
 
         if "scf" not in self.opts["exclude"]:
             # overlap
             timer.start("overlap")
-            overlap = self.hamiltonian.overlap()
+            overlap = self.hamiltonian.overlap(positions)
             result.overlap = overlap
             timer.stop("overlap")
 
@@ -259,7 +270,7 @@ class Calculator:
             timer.start("h0")
             rcov = cov_rad_d3[numbers]
             cn = get_coordination_number(numbers, positions, exp_count, rcov)
-            hcore = self.hamiltonian.build(overlap, cn)
+            hcore = self.hamiltonian.build(positions, overlap, cn)
             result.hcore = hcore
             timer.stop("h0")
 
@@ -324,8 +335,9 @@ class Calculator:
         timer.stop("total")
 
         if self.opts["verbose"] > 0:
-            timer.print_times()
-            print("")
             result.print_energies()
+        if self.opts["verbose"] > 1:
+            print("")
+            timer.print_times()
 
         return result

@@ -198,8 +198,8 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
         "--exclude",
         type=str,
         default=defaults.EXCLUDE,
+        choices=defaults.EXCLUDE_CHOICES,
         nargs="+",
-        choices=["disp", "rep", "hal", "es2", "es3"],
         help="R|Turn off energy contributions.",
     )
     parser.add_argument(

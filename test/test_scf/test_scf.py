@@ -30,7 +30,7 @@ def test_single(dtype: torch.dtype, name: str):
     ref = sample["escf"].item()
     charges = torch.tensor(0.0).type(dtype)
 
-    calc = Calculator(numbers, positions, par, opts=opts)
+    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
 
     result = calc.singlepoint(numbers, positions, charges)
     assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1).item()
@@ -51,7 +51,7 @@ def test_single2(dtype: torch.dtype, name: str):
     ref = sample["escf"].item()
     charges = torch.tensor(0.0).type(dtype)
 
-    calc = Calculator(numbers, positions, par, opts=opts)
+    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
 
     result = calc.singlepoint(numbers, positions, charges)
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
@@ -71,7 +71,7 @@ def test_single_large(dtype: torch.dtype, name: str):
     ref = sample["escf"]
     charges = torch.tensor(0.0).type(dtype)
 
-    calc = Calculator(numbers, positions, par, opts=opts)
+    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
 
     result = calc.singlepoint(numbers, positions, charges)
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
@@ -89,7 +89,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     ref = batch.pack((sample[0]["escf"], sample[1]["escf"])).type(dtype)
     charges = torch.tensor([0.0, 0.0]).type(dtype)
 
-    calc = Calculator(numbers, positions, par, opts=opts)
+    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
 
     result = calc.singlepoint(numbers, positions, charges)
     assert torch.allclose(ref, result.scf.sum(-1), atol=tol)
@@ -119,7 +119,7 @@ def test_grad_backwards(testcase, dtype: torch.dtype = torch.float):
     positions = samples[name]["positions"].type(dtype).requires_grad_(True)
     charges = torch.tensor(0.0, dtype=dtype)
 
-    calc = Calculator(numbers, positions, par, opts=opts)
+    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
 
     result = calc.singlepoint(numbers, positions, charges)
     energy = result.scf.sum(-1)
@@ -155,7 +155,7 @@ def test_grad(testcase, dtype: torch.dtype = torch.float):
     positions = samples[name]["positions"].type(dtype).requires_grad_(True)
     charges = torch.tensor(0.0, dtype=dtype)
 
-    calc = Calculator(numbers, positions, par, opts=opts)
+    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
 
     result = calc.singlepoint(numbers, positions, charges)
     energy = result.scf.sum(-1)
@@ -252,7 +252,7 @@ def test_gradgrad(testcase, dtype: torch.dtype = torch.float):
     positions = samples[name]["positions"].type(dtype).requires_grad_(True)
     charges = torch.tensor(0.0, dtype=dtype)
 
-    calc = Calculator(numbers, positions, par, opts=opts)
+    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
     calc.hamiltonian.selfenergy.requires_grad_(True)
     calc.hamiltonian.kcn.requires_grad_(True)
     calc.hamiltonian.shpoly.requires_grad_(True)

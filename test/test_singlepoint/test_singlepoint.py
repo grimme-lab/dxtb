@@ -37,7 +37,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     ref = samples[name]["etot"].item()
 
-    calc = Calculator(numbers, positions, par, opts=opts)
+    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
     result = calc.singlepoint(numbers, positions, charge)
     assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1).item()
 
@@ -72,7 +72,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, name3: str) -> None:
         ]
     )
 
-    calc = Calculator(numbers, positions, par, opts=opts)
+    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
     result = calc.singlepoint(numbers, positions, charge)
     assert torch.allclose(ref, result.total.sum(-1), atol=tol, rtol=tol)
 
@@ -92,7 +92,7 @@ def test_uhf_single(dtype: torch.dtype, name: str) -> None:
     positions = torch.tensor(positions).type(dtype)
     charge = torch.tensor(charge).type(dtype)
 
-    calc = Calculator(numbers, positions, par, opts=opts)
+    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
 
     ref = samples[name]["etot"].item()
     result = calc.singlepoint(numbers, positions, charge)

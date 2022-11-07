@@ -15,22 +15,20 @@ from ..param import (
     get_elem_valence,
     get_pair_param,
 )
-from ..typing import Tensor
+from ..typing import Tensor, TensorLike
 from ..utils import batch, t2int
 
 PAD = -1
 """Value used for padding of tensors."""
 
 
-class Hamiltonian:
+class Hamiltonian(TensorLike):
     """Hamiltonian from parametrization."""
 
     numbers: Tensor
     """Atomic numbers of the atoms in the system."""
     unique: Tensor
     """Unique species of the system."""
-    positions: Tensor
-    """Positions of the atoms in the system."""
 
     par: Param
     """Representation of parametrization of xtb model."""
@@ -59,16 +57,18 @@ class Hamiltonian:
     """Van-der-Waals radius of each species."""
 
     def __init__(
-        self, numbers: Tensor, positions: Tensor, par: Param, ihelp: IndexHelper
+        self,
+        numbers: Tensor,
+        par: Param,
+        ihelp: IndexHelper,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
     ) -> None:
+        super().__init__(device, dtype)
         self.numbers = numbers
         self.unique = torch.unique(numbers)
-        self.positions = positions
         self.par = par
         self.ihelp = ihelp
-
-        self.__device = self.positions.device
-        self.__dtype = self.positions.dtype
 
         # atom-resolved parameters
         self.rad = atomic_rad[self.unique].type(self.dtype).to(device=self.device)
@@ -92,7 +92,6 @@ class Hamiltonian:
         if any(
             tensor.dtype != self.dtype
             for tensor in (
-                self.positions,
                 self.hscale,
                 self.kcn,
                 self.kpair,
@@ -110,7 +109,6 @@ class Hamiltonian:
             for tensor in (
                 self.numbers,
                 self.unique,
-                self.positions,
                 self.ihelp,
                 self.hscale,
                 self.kcn,
@@ -267,7 +265,9 @@ class Hamiltonian:
 
         return get_ksh(ushells)
 
-    def build(self, overlap: Tensor, cn: Tensor | None = None) -> Tensor:
+    def build(
+        self, positions: Tensor, overlap: Tensor, cn: Tensor | None = None
+    ) -> Tensor:
         """Build the xTB Hamiltonian
 
         Parameters
@@ -307,7 +307,7 @@ class Hamiltonian:
         # Eq.24: PI(R_AB, l, l')
         # ----------------------
         distances = torch.cdist(
-            self.positions, self.positions, p=2, compute_mode="use_mm_for_euclid_dist"
+            positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
         )
         rad = self.ihelp.spread_uspecies_to_atom(self.rad)
         rr = torch.where(
@@ -370,7 +370,7 @@ class Hamiltonian:
         # force symmetry to avoid problems through numerical errors
         return self._symmetrize(hcore)
 
-    def overlap(self) -> Tensor:
+    def overlap(self, positions: Tensor) -> Tensor:
         """Overlap calculation of unique shells pairs.
 
         Returns
@@ -467,7 +467,7 @@ class Hamiltonian:
                     device=self.device,
                 )
 
-                o.append(get_overlap(bas, self.positions[_batch], ihelp))
+                o.append(get_overlap(bas, positions[_batch], ihelp))
 
             overlap = batch.pack(o)
         else:
@@ -478,7 +478,7 @@ class Hamiltonian:
                 dtype=self.dtype,
                 device=self.device,
             )
-            overlap = get_overlap(bas, self.positions, self.ihelp)
+            overlap = get_overlap(bas, positions, self.ihelp)
 
         # force symmetry to avoid problems through numerical errors
         return self._symmetrize(overlap)
@@ -510,21 +510,6 @@ class Hamiltonian:
 
         return (x + x.mT) / 2
 
-    @property
-    def device(self) -> torch.device:
-        """The device on which the `Hamiltonian` object resides."""
-        return self.__device
-
-    @device.setter
-    def device(self, *args):
-        """Instruct users to use the ".to" method if wanting to change device."""
-        raise AttributeError("Move object to device using the `.to` method")
-
-    @property
-    def dtype(self) -> torch.dtype:
-        """Floating point dtype used by Hamiltonian object."""
-        return self.__dtype
-
     def to(self, device: torch.device) -> "Hamiltonian":
         """
         Returns a copy of the `Hamiltonian` instance on the specified device.
@@ -551,9 +536,9 @@ class Hamiltonian:
 
         return self.__class__(
             self.numbers.to(device=device),
-            self.positions.to(device=device),
             self.par,
             self.ihelp.to(device=device),
+            device=device,
         )
 
     def type(self, dtype: torch.dtype) -> "Hamiltonian":
@@ -581,9 +566,9 @@ class Hamiltonian:
 
         return self.__class__(
             self.numbers.type(dtype=torch.long),
-            self.positions.type(dtype=dtype),
             self.par,
             self.ihelp.type(dtype=dtype),
+            dtype=dtype,
         )
 
 
