@@ -118,6 +118,36 @@ def test_grad_pos() -> None:
 
 
 @pytest.mark.grad
+@pytest.mark.parametrize("dtype", [torch.double])
+def test_grad_pos_tblite(dtype: torch.dtype) -> None:
+    """Compare with reference values from tblite."""
+
+    sample = samples["PbH4-BiH3"]
+    numbers = sample["numbers"]
+    positions = sample["positions"].type(dtype)
+    ref = sample["grad"].type(dtype)
+
+    # variable to be differentiated
+    positions.requires_grad_(True)
+
+    disp = new_dispersion(numbers, positions, par)
+    if disp is None:
+        assert False
+
+    cache = disp.get_cache(numbers)
+
+    # automatic gradient
+    energy = torch.sum(disp.get_energy(positions, cache), dim=-1)
+    energy.backward()
+
+    if positions.grad is None:
+        assert False
+    grad_backward = positions.grad.clone()
+
+    assert torch.allclose(ref, grad_backward)
+
+
+@pytest.mark.grad
 def test_grad_param() -> None:
     dtype = torch.double
     sample = samples["C4H5NCS"]
