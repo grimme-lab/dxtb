@@ -6,12 +6,12 @@ Reference values obtained with xTB 6.5.1 and tblite 0.2.1.
 import pytest
 import torch
 
-from xtbml.exlibs.tbmalt import batch
-from xtbml.basis.indexhelper import IndexHelper
-from xtbml.param import GFN1_XTB as par
-from xtbml.param import get_elem_angular
-from xtbml.wavefunction import mulliken
-from xtbml.xtb.h0 import Hamiltonian
+from dxtb.basis.indexhelper import IndexHelper
+from dxtb.param import GFN1_XTB as par
+from dxtb.param import get_elem_angular
+from dxtb.utils import batch
+from dxtb.wavefunction import mulliken
+from dxtb.xtb import Hamiltonian
 
 from .samples import samples
 

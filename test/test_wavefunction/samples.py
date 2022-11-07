@@ -1,13 +1,15 @@
-"""Molecules for testing properties."""
+"""
+Molecules for testing the wavefunctions and properties.
+"""
 
-from __future__ import annotations
 import torch
 
-from xtbml.typing import Tensor, Molecule
-from xtbml.utils import symbol2number
+from dxtb.typing import Molecule, Tensor, TypedDict
+
+from ..molecules import merge_nested_dicts, mols
 
 
-class Record(Molecule):
+class Refs(TypedDict):
     """Format of reference records (calculated with xTB 6.5.1)."""
 
     density: Tensor
@@ -15,6 +17,21 @@ class Record(Molecule):
 
     n_electrons: Tensor
     """Number of valence electrons of molecule."""
+
+    charges: Tensor
+    """Charge of molecule (total or resolved)."""
+
+    emo: Tensor
+    """Orbital energies (taken from first iteration)."""
+
+    e_fermi: Tensor
+    """Fermi energy (taken from first iteration)."""
+
+    entropy: Tensor
+    """Electronic entropy at 300 K."""
+
+    focc: Tensor
+    """Fractional occupation at 300 K."""
 
     mulliken_charges: Tensor
     """Atom-resolved Mulliken partial charges."""
@@ -32,20 +49,14 @@ class Record(Molecule):
     """Reference values for Wiberg bond orders."""
 
 
-samples: dict[str, Record] = {
+class Record(Molecule, Refs):
+    """Store for molecular information and reference values"""
+
+
+refs: dict[str, Refs] = {
     "H2": {
-        "numbers": symbol2number(["H", "H"]),
-        "positions": torch.tensor(
-            [
-                0.00000000000000,
-                0.00000000000000,
-                -0.70252931147690,
-                0.00000000000000,
-                0.00000000000000,
-                0.70252931147690,
-            ],
-        ).reshape((-1, 3)),
         "n_electrons": torch.tensor(2.0),
+        "charges": torch.tensor(0.0),
         "density": torch.tensor(
             [
                 0.59854788165593265,
@@ -86,6 +97,24 @@ samples: dict[str, Record] = {
                 1.0000000000000000,
             ]
         ).reshape((4, 4)),
+        "e_fermi": torch.tensor([-0.3110880516469479]),
+        "entropy": torch.tensor([0.0000000000000000]),
+        "emo": torch.tensor(
+            [
+                -0.5292992591857910,
+                -0.0928768441081047,
+                -0.0746814981102943,
+                0.2626818716526031,
+            ]
+        ),
+        "focc": torch.tensor(
+            [
+                1.0000000000000000e00,
+                1.7731362462295247e-100,
+                8.5328773404458140e-109,
+                5.1478349564629082e-263,
+            ]
+        ),
         "mulliken_charges": torch.tensor([0.00000, 0.00000]),
         "mulliken_charges_shell": torch.tensor(
             [
@@ -111,18 +140,8 @@ samples: dict[str, Record] = {
         ),
     },
     "LiH": {
-        "numbers": symbol2number(["Li", "H"]),
-        "positions": torch.tensor(
-            [
-                0.00000000000000,
-                0.00000000000000,
-                -1.50796743897235,
-                0.00000000000000,
-                0.00000000000000,
-                1.50796743897235,
-            ],
-        ).reshape((-1, 3)),
         "n_electrons": torch.tensor(2.0),
+        "charges": torch.tensor(0.0),
         "density": torch.tensor(
             [
                 0.20683869182353645,
@@ -203,6 +222,28 @@ samples: dict[str, Record] = {
                 1.0000000000000000,
             ]
         ).reshape((6, 6)),
+        "emo": torch.tensor(
+            [
+                -0.4501341879367828,
+                -0.2407598942518234,
+                -0.1693878620862961,
+                -0.1693877726793289,
+                -0.0793312489986420,
+                0.2863629460334778,
+            ]
+        ),
+        "e_fermi": torch.tensor([-0.3454470410943031]),
+        "entropy": torch.tensor([0.0000000000000000]),
+        "focc": torch.tensor(
+            [
+                1.0000000000000000e00,
+                1.3937844053026810e-48,
+                3.2945722200787142e-81,
+                3.2942254567938899e-81,
+                2.2389049326083313e-122,
+                1.5125388537358539e-289,
+            ]
+        ),
         "mulliken_charges": torch.tensor([0.27609, -0.27609]),
         "mulliken_charges_shell": torch.tensor(
             [
@@ -228,27 +269,8 @@ samples: dict[str, Record] = {
         ),
     },
     "SiH4": {
-        "numbers": symbol2number(["Si", "H", "H", "H", "H"]),
-        "positions": torch.tensor(
-            [
-                0.00000000000000,
-                -0.00000000000000,
-                0.00000000000000,
-                1.61768389755830,
-                1.61768389755830,
-                -1.61768389755830,
-                -1.61768389755830,
-                -1.61768389755830,
-                -1.61768389755830,
-                1.61768389755830,
-                -1.61768389755830,
-                1.61768389755830,
-                -1.61768389755830,
-                1.61768389755830,
-                1.61768389755830,
-            ],
-        ).reshape((-1, 3)),
         "n_electrons": torch.tensor(8.0),
+        "charges": torch.tensor(0.0),
         "density": torch.tensor(
             [
                 0.95266977814088072,
@@ -835,6 +857,50 @@ samples: dict[str, Record] = {
                 1.0000000000000000,
             ]
         ).reshape((17, 17)),
+        "emo": torch.tensor(
+            [
+                -0.6158187985420227,
+                -0.4695263206958771,
+                -0.4695262610912323,
+                -0.4695262312889099,
+                -0.1725806295871735,
+                -0.1725805550813675,
+                -0.1725803762674332,
+                -0.0903786197304726,
+                -0.0903783515095711,
+                -0.0675993412733078,
+                -0.0675990283489227,
+                -0.0675989910960197,
+                -0.0500356517732143,
+                0.3943647742271423,
+                1.2486594915390015,
+                1.2486598491668701,
+                1.2486605644226074,
+            ]
+        ),
+        "e_fermi": torch.tensor([-0.3210534304380417]),
+        "entropy": torch.tensor([0.0000000000000000]),
+        "focc": torch.tensor(
+            [
+                1.0000000000000000e00,
+                1.0000000000000000e00,
+                1.0000000000000000e00,
+                1.0000000000000000e00,
+                1.3439754976862796e-68,
+                1.3439754976862796e-68,
+                1.3436925979341226e-68,
+                3.5584392189446305e-106,
+                3.5576901862615917e-106,
+                1.3744270436278056e-116,
+                1.3739931020026147e-116,
+                1.3739931020026147e-116,
+                1.2860122892070556e-124,
+                0.0000000000000000e00,
+                0.0000000000000000e00,
+                0.0000000000000000e00,
+                0.0000000000000000e00,
+            ]
+        ),
         "mulliken_charges": torch.tensor(
             [0.27511, -0.06878, -0.06878, -0.06878, -0.06878]
         ),
@@ -908,4 +974,63 @@ samples: dict[str, Record] = {
             ]
         ),
     },
+    "S2": {
+        "n_electrons": torch.tensor(12.0),
+        "charges": torch.tensor(0.0),
+        "density": torch.tensor([0.0]),
+        "overlap": torch.tensor([0.0]),
+        "e_fermi": torch.tensor([-0.38648638884647568]),
+        "entropy": torch.tensor([0.0]),
+        "emo": torch.tensor(
+            [
+                -0.91044152961192060,
+                -0.85637829714691738,
+                -0.52215404077561622,
+                -0.49373935245513334,
+                -0.49373935245513323,
+                -0.38648638884647579,
+                -0.38648638884647551,
+                -0.23834743677590314,
+                -6.9709071441550821e-002,
+                -6.9709071441550780e-002,
+                -6.7441589665420631e-002,
+                -6.7441589665420187e-002,
+                -5.4310235785884023e-002,
+                -5.4310235785884009e-002,
+                -3.6572329964911998e-002,
+                1.6310109000505803e-002,
+                1.6310109000506279e-002,
+                0.45417011472823121,
+            ]
+        ),
+        "focc": torch.tensor(
+            [
+                1.0000000000000000e00,
+                1.0000000000000000e00,
+                1.0000000000000000e00,
+                1.0000000000000000e00,
+                1.0000000000000000e00,
+                5.0000000000000000e-01,
+                5.0000000000000000e-01,
+                1.8680225545649920e-68,
+                1.4689097425274104e-145,
+                1.4689097425274104e-145,
+                1.3468101442471582e-146,
+                1.3468101442471582e-146,
+                1.3401964658258330e-152,
+                1.3401964658258330e-152,
+                1.0414870660814827e-160,
+                6.9909285390079426e-185,
+                6.9909285390079426e-185,
+                0.0000000000000000e00,
+            ]
+        ),
+        "mulliken_charges": torch.tensor([0.00000, 0.00000]),
+        "mulliken_charges_shell": torch.tensor([0.0]),
+        "mulliken_pop": torch.tensor([0.0]),
+        "wiberg": torch.tensor([0.0]),
+    },
 }
+
+
+samples: dict[str, Record] = merge_nested_dicts(mols, refs)

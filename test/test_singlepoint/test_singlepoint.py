@@ -2,22 +2,30 @@
 Run tests for singlepoint calculation with read from coord file.
 """
 
-from __future__ import annotations
 from math import sqrt
 from pathlib import Path
+
 import pytest
 import torch
 
-from xtbml.exlibs.tbmalt import batch
-from xtbml.io import read_chrg, read_coord
-from xtbml.param import GFN1_XTB as par
-from xtbml.xtb.calculator import Calculator
+# from xtbml.exlibs.tbmalt import batch
+from dxtb.io import read_chrg, read_coord
+from dxtb.param import GFN1_XTB as par
+from dxtb.xtb import Calculator
 
 from .samples import samples
 
 
+def test_fail():
+    with pytest.raises(FileNotFoundError):
+        read_coord(Path("non-existing-coord-file"))
+
+
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["H2", "SiH4", "LYS_xao", "C60", "vancoh2"])
+@pytest.mark.parametrize(
+    "name", ["H2", "H2O", "CH4", "SiH4", "LYS_xao", "C60", "vancoh2"]
+)
 def test_single(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
@@ -36,5 +44,5 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     calc = Calculator(numbers, positions, par)
 
     ref = samples[name]["etot"].item()
-    result = calc.singlepoint(numbers, positions, charge, verbosity=0)
+    result = calc.singlepoint(numbers, positions, charge, {"verbosity": 0})
     assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1).item()

@@ -2,7 +2,6 @@
 
 import torch
 
-
 ref_data = {
     "0-0": torch.tensor([[0.5781]]),
     "0-1": torch.tensor([[0.0000], [0.0000], [-0.5193]]),

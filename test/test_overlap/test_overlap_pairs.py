@@ -4,14 +4,12 @@ import numpy as np
 import pytest
 import torch
 
-from xtbml.basis import Basis, IndexHelper, slater
-from xtbml.exlibs.tbmalt import batch
-from xtbml.integral import mmd
-from xtbml.exceptions import IntegralTransformError
-from xtbml.param.gfn1 import GFN1_XTB as par
-from xtbml.param.util import get_elem_angular
-from xtbml.utils import load_from_npz
-from xtbml.xtb.h0 import Hamiltonian
+from dxtb.basis import Basis, IndexHelper, slater
+from dxtb.integral import mmd
+from dxtb.param import GFN1_XTB as par
+from dxtb.param import get_elem_angular
+from dxtb.utils import IntegralTransformError, batch, load_from_npz
+from dxtb.xtb import Hamiltonian
 
 from .samples import samples
 
@@ -80,7 +78,7 @@ def test_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 def test_overlap_higher_orbitals(dtype: torch.dtype):
 
     # pylint: disable=import-outside-toplevel
-    from test_overlap.test_cgto_ortho_data import ref_data
+    from .test_cgto_ortho_data import ref_data
 
     vec = torch.tensor([0.0, 0.0, 1.4], dtype=dtype)
 
@@ -101,7 +99,7 @@ def test_overlap_higher_orbitals(dtype: torch.dtype):
         for j in range(2):
             ref = ref_data[f"{i}-{j}"].type(dtype).T
             overlap = mmd.overlap(
-                (i, j),
+                (torch.tensor(i), torch.tensor(j)),
                 (ai, aj),
                 (ci, cj),
                 vec,
@@ -128,20 +126,20 @@ def test_overlap_higher_orbital_fail():
     bas = Basis(number, par, ihelp.unique_angular)
     alpha, coeff = bas.create_cgtos()
 
-    j = 5
+    j = torch.tensor(5)
     for i in range(5):
         with pytest.raises(IntegralTransformError):
             mmd.overlap(
-                (i, j),
+                (torch.tensor(i), j),
                 (alpha[0], alpha[1]),
                 (coeff[0], coeff[1]),
                 vec,
             )
-    i = 5
+    i = torch.tensor(5)
     for j in range(5):
         with pytest.raises(IntegralTransformError):
             mmd.overlap(
-                (i, j),
+                (i, torch.tensor(j)),
                 (alpha[0], alpha[1]),
                 (coeff[0], coeff[1]),
                 vec,

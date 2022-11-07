@@ -1,49 +1,26 @@
 """Testing the charges module."""
 
-import torch
 import pytest
+import torch
 
-from xtbml import charges
-from xtbml.exlibs.tbmalt import batch
-from xtbml.typing import Tensor
+from dxtb import charges
+from dxtb.typing import Tensor
+from dxtb.utils import batch
 
-from .samples import structures
+from .samples import samples
 
 
-@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_charges_single(dtype: torch.dtype):
-    sample = structures["NH3-dimer"]
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_single(dtype: torch.dtype):
+    sample = samples["NH3-dimer"]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
     total_charge = sample["total_charge"].type(dtype)
+    qref = sample["q"].type(dtype)
+    eref = sample["energy"].type(dtype)
+
     cn = torch.tensor(
         [3.0, 3.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-        dtype=dtype,
-    )
-    qref = torch.tensor(
-        [
-            -0.8347351804,
-            -0.8347351804,
-            +0.2730523336,
-            +0.2886305132,
-            +0.2730523336,
-            +0.2730523336,
-            +0.2886305132,
-            +0.2730523336,
-        ],
-        dtype=dtype,
-    )
-    eref = torch.tensor(
-        [
-            -0.5832575193,
-            -0.5832575193,
-            +0.1621643199,
-            +0.1714161174,
-            +0.1621643199,
-            +0.1621643199,
-            +0.1714161174,
-            +0.1621643199,
-        ],
         dtype=dtype,
     )
     eeq = charges.ChargeModel.param2019().type(dtype)
@@ -55,10 +32,10 @@ def test_charges_single(dtype: torch.dtype):
     assert torch.allclose(energy, eref)
 
 
-@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_charges_ghost(dtype: torch.dtype):
-    sample = structures["NH3-dimer"]
-    numbers = sample["numbers"]
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_ghost(dtype: torch.dtype):
+    sample = samples["NH3-dimer"]
+    numbers = sample["numbers"].detach().clone()
     numbers[[1, 5, 6, 7]] = 0
     positions = sample["positions"].type(dtype)
     total_charge = sample["total_charge"].type(dtype)
@@ -101,11 +78,11 @@ def test_charges_ghost(dtype: torch.dtype):
     assert torch.allclose(energy, eref)
 
 
-@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_charges_batch(dtype: torch.dtype):
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_batch(dtype: torch.dtype):
     sample1, sample2 = (
-        structures["PbH4-BiH3"],
-        structures["C6H5I-CH3SH"],
+        samples["PbH4-BiH3"],
+        samples["C6H5I-CH3SH"],
     )
     numbers = batch.pack(
         (
@@ -120,6 +97,19 @@ def test_charges_batch(dtype: torch.dtype):
         )
     )
     total_charge = torch.tensor([0.0, 0.0], dtype=dtype)
+    eref = batch.pack(
+        (
+            sample1["energy"].type(dtype),
+            sample2["energy"].type(dtype),
+        )
+    )
+    qref = batch.pack(
+        (
+            sample1["q"].type(dtype),
+            sample2["q"].type(dtype),
+        )
+    )
+
     cn = torch.tensor(
         [
             [
@@ -165,96 +155,6 @@ def test_charges_batch(dtype: torch.dtype):
         ],
         dtype=dtype,
     )
-    eref = torch.tensor(
-        [
-            [
-                +0.1035379745,
-                -0.0258195114,
-                -0.0258195151,
-                -0.0258195151,
-                -0.0268938305,
-                +0.0422307903,
-                -0.0158831963,
-                -0.0158831978,
-                -0.0158831963,
-                +0.0000000000,
-                +0.0000000000,
-                +0.0000000000,
-                +0.0000000000,
-                +0.0000000000,
-                +0.0000000000,
-                +0.0000000000,
-                +0.0000000000,
-                +0.0000000000,
-            ],
-            [
-                -0.0666956672,
-                -0.0649253132,
-                -0.0666156432,
-                -0.0501240988,
-                -0.0004746778,
-                -0.0504921903,
-                -0.1274747615,
-                +0.0665769222,
-                +0.0715759533,
-                +0.0667190716,
-                +0.0711318128,
-                +0.0666212167,
-                -0.1116992442,
-                +0.0720166288,
-                -0.1300663998,
-                +0.0685131245,
-                +0.0679318540,
-                +0.0622901437,
-            ],
-        ],
-        dtype=dtype,
-    )
-    qref = torch.tensor(
-        [
-            [
-                +0.1830965969,
-                -0.0434600885,
-                -0.0434600949,
-                -0.0434600949,
-                -0.0452680726,
-                +0.0727632554,
-                -0.0267371663,
-                -0.0267371688,
-                -0.0267371663,
-                +0.0000000000,
-                +0.0000000000,
-                +0.0000000000,
-                +0.0000000000,
-                +0.0000000000,
-                +0.0000000000,
-                +0.0000000000,
-                +0.0000000000,
-                +0.0000000000,
-            ],
-            [
-                -0.1029278713,
-                -0.1001905841,
-                -0.1028043772,
-                -0.0774975738,
-                -0.0007325498,
-                -0.0780660341,
-                -0.1962493355,
-                +0.1120891066,
-                +0.1205055899,
-                +0.1123282728,
-                +0.1197578368,
-                +0.1121635250,
-                -0.1711138357,
-                +0.1212508178,
-                -0.2031014175,
-                +0.1153482095,
-                +0.1143692362,
-                +0.1048709842,
-            ],
-        ],
-        dtype=dtype,
-    )
     eeq = charges.ChargeModel.param2019().type(dtype)
 
     energy, qat = charges.solve(numbers, positions, total_charge, eeq, cn)
@@ -265,8 +165,8 @@ def test_charges_batch(dtype: torch.dtype):
 
 
 @pytest.mark.grad
-def test_charges_grad(dtype: torch.dtype = torch.float64):
-    sample = structures["NH3"]
+def test_charges_grad(dtype: torch.dtype = torch.double):
+    sample = samples["NH3"]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
     total_charge = sample["total_charge"].type(dtype)

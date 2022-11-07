@@ -193,11 +193,13 @@ data/misc
 !data/GMTKN55/samples_ACONF.json
 !data/GMTKN55/reactions_ACONF.json
 
+!test/test_singlepoint/*/coord
+!test/test_singlepoint/*/.CHRG
+
 # models
 models/
 
 # ML model bookkeeping
-src/dxtb/
 src/lightning_logs/
 src/wandb/
 
