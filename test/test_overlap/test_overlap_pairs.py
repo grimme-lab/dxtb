@@ -8,9 +8,10 @@ from dxtb.basis import Basis, IndexHelper, slater
 from dxtb.integral import mmd
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
-from dxtb.utils import IntegralTransformError, batch, load_from_npz
+from dxtb.utils import IntegralTransformError, batch
 from dxtb.xtb import Hamiltonian
 
+from ..utils import load_from_npz
 from .samples import samples
 
 ref_overlap = np.load("test/test_overlap/overlap.npz")

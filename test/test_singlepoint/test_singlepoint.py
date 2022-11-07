@@ -15,6 +15,8 @@ from dxtb.xtb import Calculator
 
 from .samples import samples
 
+opts = {"verbosity": 0}
+
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -35,8 +37,8 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     ref = samples[name]["etot"].item()
 
-    calc = Calculator(numbers, positions, par)
-    result = calc.singlepoint(numbers, positions, charge, {"verbosity": 0})
+    calc = Calculator(numbers, positions, par, opts=opts)
+    result = calc.singlepoint(numbers, positions, charge)
     assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1).item()
 
 
@@ -70,8 +72,8 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, name3: str) -> None:
         ]
     )
 
-    calc = Calculator(numbers, positions, par)
-    result = calc.singlepoint(numbers, positions, charge, {"verbosity": 0})
+    calc = Calculator(numbers, positions, par, opts=opts)
+    result = calc.singlepoint(numbers, positions, charge)
     assert torch.allclose(ref, result.total.sum(-1), atol=tol, rtol=tol)
 
 
@@ -90,10 +92,10 @@ def test_uhf_single(dtype: torch.dtype, name: str) -> None:
     positions = torch.tensor(positions).type(dtype)
     charge = torch.tensor(charge).type(dtype)
 
-    calc = Calculator(numbers, positions, par)
+    calc = Calculator(numbers, positions, par, opts=opts)
 
     ref = samples[name]["etot"].item()
-    result = calc.singlepoint(numbers, positions, charge, {"verbosity": 0})
+    result = calc.singlepoint(numbers, positions, charge)
     assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1).item()
 
 
@@ -112,10 +114,12 @@ def test_uhf_fail() -> None:
     positions = torch.tensor(positions)
     charge = torch.tensor(charge)
 
-    calc = Calculator(numbers, positions, par)
+    calc = Calculator(numbers, positions, par, opts=opts)
 
     with pytest.raises(ValueError):
-        calc.singlepoint(numbers, positions, charge, {"spin": 0})
+        calc.set_option("spin", 0)
+        calc.singlepoint(numbers, positions, charge)
 
     with pytest.raises(ValueError):
-        calc.singlepoint(numbers, positions, charge, {"spin": 2})
+        calc.set_option("spin", 2)
+        calc.singlepoint(numbers, positions, charge)

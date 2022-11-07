@@ -25,6 +25,9 @@ THRESH = {
 }
 """Convergence thresholds for different float data types."""
 
+EXCLUDE = []
+"""List of xTB components to exclude during the calculation."""
+
 # SCF settings
 
 GUESS = "eeq"

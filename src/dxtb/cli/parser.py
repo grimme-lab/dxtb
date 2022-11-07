@@ -195,6 +195,14 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
         help="R|Molecular spin.",
     )
     parser.add_argument(
+        "--exclude",
+        type=str,
+        default=defaults.EXCLUDE,
+        nargs="+",
+        choices=["disp", "rep", "hal", "es2", "es3"],
+        help="R|Turn off energy contributions.",
+    )
+    parser.add_argument(
         "--etemp",
         action=action_not_less_than(0.0),
         type=float,

@@ -42,11 +42,11 @@ def test_gb_scf(
     dielectric_constant = torch.tensor(dielectric_constant, dtype=dtype)
     gb = alpb.GeneralizedBorn(numbers, dielectric_constant)
 
-    calc_vac = Calculator(numbers, positions, par)
-    calc_sol = Calculator(numbers, positions, par, interaction=gb)
+    calc_vac = Calculator(numbers, positions, par, opts=opts)
+    calc_sol = Calculator(numbers, positions, par, interaction=gb, opts=opts)
 
-    results_vac = calc_vac.singlepoint(numbers, positions, charges, opts)
-    results_sol = calc_sol.singlepoint(numbers, positions, charges, opts)
+    results_vac = calc_vac.singlepoint(numbers, positions, charges)
+    results_sol = calc_sol.singlepoint(numbers, positions, charges)
 
     gsolv = results_sol.scf - results_vac.scf
 
@@ -66,12 +66,14 @@ def test_gb_scf_grad(
     dielectric_constant = torch.tensor(dielectric_constant, dtype=dtype)
     gb = alpb.GeneralizedBorn(numbers, dielectric_constant)
 
-    calc = Calculator(numbers, positions, par, interaction=gb)
+    calc = Calculator(numbers, positions, par, interaction=gb, opts=opts)
 
-    results = calc.singlepoint(numbers, positions, charges, opts)
-
+    results = calc.singlepoint(numbers, positions, charges)
     energy = results.scf.sum(-1)
     energy.backward()
+
+    if positions.grad is None:
+        assert False
     gradient = positions.grad.clone()
 
     assert pytest.approx(ref, abs=tol) == gradient

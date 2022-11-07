@@ -28,7 +28,7 @@ def test_single(dtype: torch.dtype, name: str):
     ref = sample["escf"].item()
     chrg = sample["charge"].type(dtype)
 
-    calc = Calculator(numbers, positions, par)
-    results = calc.singlepoint(numbers, positions, chrg, opts)
+    calc = Calculator(numbers, positions, par, opts=opts)
+    results = calc.singlepoint(numbers, positions, chrg)
 
     assert pytest.approx(ref, abs=tol, rel=tol) == results.scf.sum(-1).item()

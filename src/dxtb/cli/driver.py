@@ -63,6 +63,7 @@ class Driver:
             "maxiter": args.maxiter,
             "spin": args.spin,
             "verbosity": args.verbosity,
+            "exclude": args.exclude,
         }
 
         numbers, positions = io.read_structure_from_file(args.file)
@@ -89,12 +90,12 @@ class Driver:
             raise ValueError(f"Unknown guess method '{args.guess}'.")
 
         # setup calculator
-        calc = Calculator(numbers, positions, par)
+        calc = Calculator(numbers, positions, par, opts=opts)
         timer.stop("setup")
 
         # run singlepoint calculation
         timer.start("singlepoint")
-        result = calc.singlepoint(numbers, positions, chrg, opts)
+        result = calc.singlepoint(numbers, positions, chrg)
         total = result.total.sum(-1)
         timer.stop("singlepoint")
 
@@ -105,6 +106,8 @@ class Driver:
             if positions.grad is None:
                 raise RuntimeError("No gradients found for positions.")
             timer.stop("grad")
+
+            print(positions.grad)
 
         # print results
         timer.stop("total")
