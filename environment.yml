@@ -32,6 +32,7 @@ dependencies:
   - numpy=1.23.3=py310h53a5b5f_0
   - openssl=1.1.1q=h7f8727e_0
   - packaging=21.3=pyhd3eb1b0_0
+  - pandas==1.5.1==py310h769672d_1
   - pip=22.0.3=pyhd8ed1ab_0
   - pluggy=1.0.0=py310h06a4308_1
   - py=1.11.0=pyhd3eb1b0_0
