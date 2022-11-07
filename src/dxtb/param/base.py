@@ -24,12 +24,13 @@ from .hamiltonian import Hamiltonian
 from .meta import Meta
 from .repulsion import Repulsion
 from .thirdorder import ThirdOrder
-from ..utils.utils import (
+from ..utils import (
     rgetattr,
     rsetattr,
     get_attribute_name_key,
     get_all_entries_from_dict,
 )
+from ..typing import Any
 
 
 class Param(BaseModel):

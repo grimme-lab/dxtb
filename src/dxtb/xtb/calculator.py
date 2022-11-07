@@ -16,7 +16,7 @@ from ..ncoord import exp_count, get_coordination_number
 from ..param import Param, get_elem_angular
 from ..typing import Any, Tensor
 from ..utils import Timers
-from ..utils.utils import rgetattr, rsetattr
+from ..utils import rgetattr, rsetattr
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian
 from .h0 import Hamiltonian
