@@ -229,7 +229,7 @@ class ES2(Interaction):
                     ),
                     self.gexp,
                 ),
-                torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype),
+                positions.new_tensor(torch.finfo(positions.dtype).eps),
             ),
             (-1, -2),
         )

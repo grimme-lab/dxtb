@@ -283,7 +283,7 @@ class Calculator(TensorLike):
 
             # Hamiltonian
             timer.start("h0")
-            rcov = cov_rad_d3[numbers]
+            rcov = cov_rad_d3.to(self.device)[numbers]
             cn = get_coordination_number(numbers, positions, exp_count, rcov)
             hcore = self.hamiltonian.build(positions, overlap, cn)
             result.hcore = hcore

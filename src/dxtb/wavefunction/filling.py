@@ -115,15 +115,13 @@ def get_aufbau_occupation(norb: Tensor, nel: Tensor) -> Tensor:
     """
 
     # We represent the aufbau filling with a heaviside function, using the following steps
+    # 1. creating orbital indices using arange from 1 to norb, inclusively
+    idxs = torch.arange(1, 1 + torch.max(norb).item(), device=nel.device)
     occupation = torch.heaviside(
-        # 1. creating orbital indices using arange from 1 to norb, inclusively
         # 2. remove the orbital index from the total number of electrons
         #    (negative numbers are filled with ones, positive numbers with zeros)
         # 3. fractional occupations will be in the range [-1, 0], therefore we round up
-        torch.ceil(
-            nel.unsqueeze(-1)
-            - torch.arange(1, 1 + torch.max(norb).item()).unsqueeze(-2)
-        ),
+        torch.ceil(nel.unsqueeze(-1) - idxs).unsqueeze(-2),
         # 4. heaviside uses the actual values at 0, therefore we provide the remainder
         # 5. to not lose whole electrons we take the negative and add one
         torch.remainder(nel, -1).unsqueeze(-1) + 1,

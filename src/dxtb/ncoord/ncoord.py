@@ -38,16 +38,18 @@ def get_coordination_number(
     """
 
     if cutoff is None:
-        cutoff = torch.tensor(25.0, dtype=positions.dtype)
+        cutoff = positions.new_tensor(25.0)
     if rcov is None:
-        rcov = cov_rad_d3[numbers].type(positions.dtype)
+        rcov = cov_rad_d3.type(positions.dtype).to(positions.device)[numbers]
     if numbers.shape != rcov.shape:
         raise ValueError(
-            f"Shape of covalent radii {rcov.shape} is not consistent with  ({numbers.shape})."
+            f"Shape of covalent radii {rcov.shape} is not consistent with "
+            f"({numbers.shape})."
         )
     if numbers.shape != positions.shape[:-1]:
         raise ValueError(
-            f"Shape of positions ({positions.shape[:-1]}) is not consistent with atomic numbers ({numbers.shape})."
+            f"Shape of positions ({positions.shape[:-1]}) is not consistent "
+            f"with atomic numbers ({numbers.shape})."
         )
 
     real = numbers != 0
