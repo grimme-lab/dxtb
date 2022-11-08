@@ -58,6 +58,8 @@ class Driver:
         timer.start("total")
         timer.start("setup")
 
+        dd = {"device": args.device, "dtype": args.dtype}
+
         opts = {
             "etemp": args.etemp,
             "maxiter": args.maxiter,
@@ -67,9 +69,9 @@ class Driver:
         }
 
         numbers, positions = io.read_structure_from_file(args.file)
-        numbers = torch.tensor(numbers)
-        positions = torch.tensor(positions)
-        chrg = torch.tensor(self.chrg)
+        numbers = torch.tensor(numbers, dtype=torch.long, device=dd["device"])
+        positions = torch.tensor(positions, **dd)
+        chrg = torch.tensor(self.chrg, **dd)
 
         if args.grad is True:
             positions.requires_grad = True
@@ -90,7 +92,7 @@ class Driver:
             raise ValueError(f"Unknown guess method '{args.guess}'.")
 
         # setup calculator
-        calc = Calculator(numbers, positions, par, opts=opts)
+        calc = Calculator(numbers, par, opts=opts, **dd)
         timer.stop("setup")
 
         # run singlepoint calculation

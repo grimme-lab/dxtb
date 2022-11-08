@@ -156,7 +156,6 @@ class Calculator(TensorLike):
     def __init__(
         self,
         numbers: Tensor,
-        positions: Tensor,
         par: Param,
         interaction: Interaction | None = None,
         opts: dict[str, Any] | None = None,
@@ -197,16 +196,8 @@ class Calculator(TensorLike):
         self.ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         self.hamiltonian = Hamiltonian(numbers, par, self.ihelp, **dd)
 
-        es2 = (
-            new_es2(numbers, positions, par)
-            if "es2" not in self.opts["exclude"]
-            else None
-        )
-        es3 = (
-            new_es3(numbers, positions, par)
-            if "es3" not in self.opts["exclude"]
-            else None
-        )
+        es2 = new_es2(numbers, par, **dd) if "es2" not in self.opts["exclude"] else None
+        es3 = new_es3(numbers, par, **dd) if "es3" not in self.opts["exclude"] else None
         self.interaction = InteractionList(es2, es3, interaction)
 
         self.halogen = (

@@ -22,7 +22,9 @@ class Interaction(TensorLike):
         Restart data for individual interactions, extended by subclasses as needed.
         """
 
-    def __init__(self, device: torch.device, dtype: torch.dtype):
+    def __init__(
+        self, device: torch.device | None = None, dtype: torch.dtype | None = None
+    ):
         super().__init__(device, dtype)
         self.label = self.__class__.__name__
 

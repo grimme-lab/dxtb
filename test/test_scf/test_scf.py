@@ -23,6 +23,7 @@ opts = {"verbosity": 0, "etemp": 300.0, "guess": "eeq"}
 @pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
 def test_single(dtype: torch.dtype, name: str):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
 
     sample = samples[name]
     numbers = sample["numbers"]
@@ -30,7 +31,7 @@ def test_single(dtype: torch.dtype, name: str):
     ref = sample["escf"].item()
     charges = torch.tensor(0.0).type(dtype)
 
-    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
+    calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
     assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1).item()
@@ -44,6 +45,7 @@ def test_single(dtype: torch.dtype, name: str):
 def test_single2(dtype: torch.dtype, name: str):
     """Test a few larger system (only float32 as they take some time)."""
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
 
     sample = samples[name]
     numbers = sample["numbers"]
@@ -51,7 +53,7 @@ def test_single2(dtype: torch.dtype, name: str):
     ref = sample["escf"].item()
     charges = torch.tensor(0.0).type(dtype)
 
-    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
+    calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
@@ -64,6 +66,7 @@ def test_single2(dtype: torch.dtype, name: str):
 def test_single_large(dtype: torch.dtype, name: str):
     """Test a large systems (only float32 as they take some time)."""
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
 
     sample = samples[name]
     numbers = sample["numbers"]
@@ -71,7 +74,7 @@ def test_single_large(dtype: torch.dtype, name: str):
     ref = sample["escf"]
     charges = torch.tensor(0.0).type(dtype)
 
-    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
+    calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
@@ -82,14 +85,30 @@ def test_single_large(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize("name2", ["LiH", "SiH4"])
 def test_batch(dtype: torch.dtype, name1: str, name2: str):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
 
     sample = samples[name1], samples[name2]
-    numbers = batch.pack((sample[0]["numbers"], sample[1]["numbers"]))
-    positions = batch.pack((sample[0]["positions"], sample[1]["positions"])).type(dtype)
-    ref = batch.pack((sample[0]["escf"], sample[1]["escf"])).type(dtype)
-    charges = torch.tensor([0.0, 0.0]).type(dtype)
+    numbers = batch.pack(
+        (
+            sample[0]["numbers"],
+            sample[1]["numbers"],
+        )
+    )
+    positions = batch.pack(
+        (
+            sample[0]["positions"],
+            sample[1]["positions"],
+        )
+    ).type(dtype)
+    ref = batch.pack(
+        (
+            sample[0]["escf"],
+            sample[1]["escf"],
+        )
+    ).type(dtype)
+    charges = torch.tensor([0.0, 0.0], **dd)
 
-    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
+    calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
     assert torch.allclose(ref, result.scf.sum(-1), atol=tol)
@@ -113,13 +132,15 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
 )
 def test_grad_backwards(testcase, dtype: torch.dtype = torch.float):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
 
     name, ref = testcase
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype).requires_grad_(True)
-    charges = torch.tensor(0.0, dtype=dtype)
+    pos = samples[name]["positions"].type(dtype)
+    positions = pos.detach().clone().requires_grad_(True)
+    charges = torch.tensor(0.0, **dd)
 
-    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
+    calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
     energy = result.scf.sum(-1)
@@ -149,13 +170,15 @@ def test_grad_backwards(testcase, dtype: torch.dtype = torch.float):
 )
 def test_grad(testcase, dtype: torch.dtype = torch.float):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
 
     name, ref = testcase
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype).requires_grad_(True)
+    pos = samples[name]["positions"].type(dtype)
+    positions = pos.detach().clone().requires_grad_(True)
     charges = torch.tensor(0.0, dtype=dtype)
 
-    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
+    calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
     energy = result.scf.sum(-1)
@@ -165,63 +188,7 @@ def test_grad(testcase, dtype: torch.dtype = torch.float):
         positions,
     )[0]
 
-    torch.set_printoptions(precision=10)
-    g = calc_numerical_gradient(numbers, positions.clone().detach(), charges)
-    print("\n")
-    print(gradient)
-    print(g)
-    print(torch.allclose(gradient, g))
-
     assert torch.allclose(gradient, ref, atol=tol)
-
-
-def calc_numerical_gradient(numbers, positions, charge):
-    """Calculate gradient numerically for reference."""
-
-    calc = Calculator(numbers, positions, par, opts=opts)
-
-    gradient = torch.zeros_like(positions)
-    step = 1.0e-6
-
-    # for i in range(numbers.shape[0]):
-    #     for j in range(3):
-    #         print(i, j)
-    #         print(positions)
-
-    #         positions[i, j] += 2 * step
-    #         result = calc.singlepoint(numbers, positions, charge)
-    #         er = result.scf.sum(-1)
-
-    #         positions[i, j] -= 2 * step
-    #         result = calc.singlepoint(numbers, positions, charge)
-    #         el = result.scf.sum(-1)
-    #         print(el, er)
-    #         positions[i, j] += step
-    #         gradient[i, j] = 0.5 * (er - el) / step
-
-    for i in range(numbers.shape[0]):
-        for j in range(3):
-
-            positions[i, j] += 2 * step  # +2h
-            result = calc.singlepoint(numbers, positions, charge)
-            e1 = result.scf.sum(-1)
-
-            positions[i, j] -= step  # +h
-            result = calc.singlepoint(numbers, positions, charge)
-            e2 = result.scf.sum(-1)
-
-            positions[i, j] -= 2 * step  # -h
-            result = calc.singlepoint(numbers, positions, charge)
-            e3 = result.scf.sum(-1)
-
-            positions[i, j] -= step  # -2h
-            result = calc.singlepoint(numbers, positions, charge)
-            e4 = result.scf.sum(-1)
-
-            positions[i, j] -= step  # h
-            gradient[i, j] = (-e1 + 8 * e2 - 8 * e3 + e4) / (12 * step)
-
-    return gradient
 
 
 @pytest.mark.grad
@@ -246,13 +213,15 @@ def calc_numerical_gradient(numbers, positions, charge):
 )
 def test_gradgrad(testcase, dtype: torch.dtype = torch.float):
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
 
     name, ref = testcase
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype).requires_grad_(True)
-    charges = torch.tensor(0.0, dtype=dtype)
+    pos = samples[name]["positions"].type(dtype)
+    positions = pos.detach().clone().requires_grad_(True)
+    charges = torch.tensor(0.0, **dd)
 
-    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
+    calc = Calculator(numbers, par, opts=opts, **dd)
     calc.hamiltonian.selfenergy.requires_grad_(True)
     calc.hamiltonian.kcn.requires_grad_(True)
     calc.hamiltonian.shpoly.requires_grad_(True)

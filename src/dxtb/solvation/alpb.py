@@ -163,9 +163,11 @@ class GeneralizedBorn(Interaction):
         dielectric_constant: Tensor,
         alpb: bool = True,
         kernel: str = "p16",
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
         **kwargs,
     ):
-        super().__init__(dielectric_constant.device, dielectric_constant.dtype)
+        super().__init__(device, dtype)
 
         self.alpbet = (
             alpha / dielectric_constant if alpb else dielectric_constant.new_tensor(0.0)

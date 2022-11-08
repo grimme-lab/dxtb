@@ -348,6 +348,7 @@ opts = {
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
 
     numbers = torch.tensor([number])
     positions = torch.zeros((1, 3), dtype=dtype)
@@ -355,7 +356,7 @@ def test_element(dtype: torch.dtype, number: int) -> None:
     charges = torch.tensor(0.0).type(dtype)
 
     # opts["spin"] = uhf[number - 1]
-    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
+    calc = Calculator(numbers, par, opts=opts, **dd)
     results = calc.singlepoint(numbers, positions, charges)
 
     assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
@@ -365,15 +366,16 @@ def test_element(dtype: torch.dtype, number: int) -> None:
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_cation(dtype: torch.dtype, number: int) -> None:
-    tol = 1e-2  #
+    tol = 1e-2
+    dd = {"dtype": dtype}
 
     numbers = torch.tensor([number])
-    positions = torch.zeros((1, 3), dtype=dtype)
+    positions = torch.zeros((1, 3), **dd)
     r = ref_cation[number - 1].item()
     charges = torch.tensor(1.0).type(dtype)
 
     opts["spin"] = uhf_cation[number - 1]
-    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
+    calc = Calculator(numbers, par, opts=opts, **dd)
 
     # no (valence) electrons
     if number in [1, 3, 11, 19, 37, 55]:
@@ -389,6 +391,7 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_anion(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
 
     # Helium doesn't have enough orbitals for negative charge
     if number == 2:
@@ -399,12 +402,12 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
         return
 
     numbers = torch.tensor([number])
-    positions = torch.zeros((1, 3), dtype=dtype)
+    positions = torch.zeros((1, 3), **dd)
     r = ref_anion[number - 1].item()
     charges = torch.tensor(-1.0).type(dtype)
 
     opts["spin"] = uhf_anion[number - 1]
-    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
+    calc = Calculator(numbers, par, opts=opts, **dd)
     results = calc.singlepoint(numbers, positions, charges)
 
     assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
@@ -415,8 +418,8 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
 @pytest.mark.parametrize("mol", ["SiH4"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:
-
     tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
 
     sample = samples[mol]
     numbers = batch.pack((sample["numbers"], torch.tensor([number])))
@@ -425,7 +428,7 @@ def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:
     charges = torch.tensor([0.0, 0.0]).type(dtype)
 
     opts["spin"] = [0, uhf[number - 1]]
-    calc = Calculator(numbers, positions, par, opts=opts, dtype=dtype)
+    calc = Calculator(numbers, par, opts=opts, **dd)
     results = calc.singlepoint(numbers, positions, charges)
 
     assert torch.allclose(refs, results.scf.sum(-1), atol=tol)
