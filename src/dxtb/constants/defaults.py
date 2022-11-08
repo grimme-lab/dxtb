@@ -65,3 +65,17 @@ FERMI_FENERGY_PARTITION = "equal"
 
 FERMI_FENERGY_PARTITION_CHOICES = ["equal", "atomic"]
 """List of possible choices for `FERMI_FENERGY_PARTITION`."""
+
+# PyTorch
+
+TORCH_DTYPE = None
+"""Default data type for floating point tensors."""
+
+TORCH_DTYPE_CHOICES = ["float16", "float32", "float64", "double", "sp", "dp"]
+"""List of possible choices for `TORCH_DTYPE`."""
+
+TORCH_DEVICE = None
+"""Default device for tensors."""
+
+TORCH_DEVICE_CHOICES = ["cpu", "cuda"]
+"""List of possible choices for `TORCH_DEVICE`."""

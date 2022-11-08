@@ -5,6 +5,8 @@ Parser for command line options.
 import argparse
 from pathlib import Path
 
+import torch
+
 from ..constants import defaults
 
 
@@ -66,6 +68,74 @@ def action_not_less_than(min_value: float = 0.0):
             setattr(args, self.dest, values)
 
     return CustomAction
+
+
+class ConvertToTorchDtype(argparse.Action):
+    """
+    Custom action for converting an input value string to a PyTorch dtype.
+    """
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        args: argparse.Namespace,
+        values: str | torch.dtype,
+        option_string: str | None = None,
+    ) -> None:
+        match values:
+            case "float16":
+                values = torch.float16
+            case "float32" | "sp":
+                values = torch.float32
+            case "float64" | "double" | "dp":
+                values = torch.float64
+            case _:
+                parser.error(
+                    f"Option '{option_string}' was passed an unknown keyword ({values})."
+                )
+
+        setattr(args, self.dest, values)
+
+
+class ConvertToTorchDevice(argparse.Action):
+    """
+    Custom action for converting an input string to a PyTorch device.
+    """
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        args: argparse.Namespace,
+        values: str,
+        option_string: str | None = None,
+    ) -> None:
+        allowed_devices = ("cpu", "cuda")
+        err_msg = (
+            f"Option '{option_string}' was passed an unknown keyword ({values})."
+            "Use 'cpu', 'cpu:<INTEGER>', 'cuda', or 'cuda:<INTEGER>'."
+        )
+
+        if values == "cpu":
+            setattr(args, self.dest, torch.device(values))
+            return
+
+        if values == "cuda":
+            dev = f"{values}:{torch.cuda.current_device()}"
+            setattr(args, self.dest, torch.device(dev))
+            return
+
+        if ":" in values:
+            dev, idx = values.split(":")
+            if dev not in allowed_devices:
+                parser.error(err_msg)
+
+            if idx.isdigit() is False:
+                parser.error(err_msg)
+
+            setattr(args, self.dest, torch.device(values))
+            return
+
+        parser.error(err_msg)
 
 
 class ActionNonNegative(argparse.Action):
@@ -208,6 +278,21 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
         type=float,
         default=defaults.ETEMP,
         help="R|Electronic Temperature in K.",
+    )
+    parser.add_argument(
+        "--dtype",
+        action=ConvertToTorchDtype,
+        type=str,
+        default=defaults.TORCH_DTYPE,
+        choices=defaults.TORCH_DTYPE_CHOICES,
+        help="R|Data type for PyTorch floating point tensors.",
+    )
+    parser.add_argument(
+        "--device",
+        action=ConvertToTorchDevice,
+        type=str,
+        default=defaults.TORCH_DEVICE,
+        help="R|Device for PyTorch tensors.",
     )
     parser.add_argument(
         "--fermi_maxiter",
