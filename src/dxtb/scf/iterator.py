@@ -179,12 +179,13 @@ class SelfConsistentField(xt.EditableModule):
             charges = torch.zeros_like(self._data.occupation)
 
         with torch.no_grad():
-            print(
-                "\n{:<5} {:<24} {:<15} {:<16}".format(
-                    "iter", "energy", "energy change", "P norm change"
+            if self.fwd_options["verbose"] > 0 and charges.ndim < 2:
+                print(
+                    "\n{:<5} {:<24} {:<15} {:<16}".format(
+                        "iter", "energy", "energy change", "P norm change"
+                    )
                 )
-            )
-            print(60 * "-")
+                print(60 * "-")
 
             fcn = self.iterate_potential if self.use_potential else self.iterate_charges
             y0 = self.charges_to_potential(charges) if self.use_potential else charges
@@ -197,7 +198,8 @@ class SelfConsistentField(xt.EditableModule):
 
             q_conv = self.potential_to_charges(output) if self.use_potential else output
 
-            print(60 * "-")
+            if self.fwd_options["verbose"] > 0 and charges.ndim < 2:
+                print(60 * "-")
 
         out = (
             self.iterate_potential(self.charges_to_potential(q_conv))
@@ -332,21 +334,23 @@ class SelfConsistentField(xt.EditableModule):
         """
 
         charges = self.potential_to_charges(potential)
-        if self.fwd_options["verbose"]:
+        if self.fwd_options["verbose"] > 0:
             print(f"energy: {self.get_energy(charges).sum(-1)}")
 
-        if charges.ndim < 2:
-            energy = self.get_energy(charges).sum(-1).detach().clone()
-            ediff = energy - self._data.old_energy
+            if charges.ndim < 2:
+                energy = self.get_energy(charges).sum(-1).detach().clone()
+                ediff = energy - self._data.old_energy
 
-            density = self._data.density.detach().clone()
-            norm = torch.linalg.matrix_norm(self._data.old_density - density)
+                density = self._data.density.detach().clone()
+                norm = torch.linalg.matrix_norm(self._data.old_density - density)
 
-            print(f"{self._data.iter:2}    {energy: .16E}  {ediff: .6E}  {norm: .6E}")
+                print(
+                    f"{self._data.iter:2}    {energy: .16E}  {ediff: .6E}  {norm: .6E}"
+                )
 
-            self._data.old_energy = energy
-            self._data.old_density = density
-            self._data.iter += 1
+                self._data.old_energy = energy
+                self._data.old_density = density
+                self._data.iter += 1
 
         return self.charges_to_potential(charges)
 

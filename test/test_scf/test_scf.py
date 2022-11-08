@@ -5,6 +5,7 @@ Reference values obtained with tblite 0.2.1 disabling repulsion and dispersion.
 
 import math
 
+import numpy as np
 import pytest
 import torch
 
@@ -12,10 +13,13 @@ from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
 
+from ..utils import load_from_npz
 from .samples import samples
 
 # torch.autograd.set_detect_anomaly(True)
 opts = {"verbosity": 0, "etemp": 300.0, "guess": "eeq"}
+
+ref_grad = np.load("test/test_scf/grad.npz")
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -115,30 +119,17 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
 
 
 @pytest.mark.grad
-@pytest.mark.parametrize(
-    "testcase",
-    [
-        # Values obtain with tblite 0.2.1 disabling repulsion and dispersion
-        (
-            "LiH",
-            torch.tensor(
-                [
-                    [0.0, 0.0, -1.9003812730202383e-2],
-                    [0.0, 0.0, +1.9003812730202383e-2],
-                ]
-            ),
-        ),
-    ],
-)
-def test_grad_backwards(testcase, dtype: torch.dtype = torch.float):
+@pytest.mark.parametrize("name", ["LiH"])
+def test_grad_backwards(name: str, dtype: torch.dtype = torch.float):
+    # Values obtain with tblite 0.2.1 disabling repulsion and dispersion
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
 
-    name, ref = testcase
     numbers = samples[name]["numbers"]
     pos = samples[name]["positions"].type(dtype)
     positions = pos.detach().clone().requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
+    ref = load_from_npz(ref_grad, name, dtype)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
 
@@ -153,32 +144,21 @@ def test_grad_backwards(testcase, dtype: torch.dtype = torch.float):
 
 
 @pytest.mark.grad
-@pytest.mark.parametrize(
-    "testcase",
-    [
-        # Values obtain with tblite 0.2.1 disabling repulsion and dispersion
-        (
-            "LiH",
-            torch.tensor(
-                [
-                    [0.0, 0.0, -1.9003812730202383e-2],
-                    [0.0, 0.0, +1.9003812730202383e-2],
-                ]
-            ),
-        ),
-    ],
-)
-def test_grad(testcase, dtype: torch.dtype = torch.float):
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
+def test_grad(name: str, dtype: torch.dtype):
+    # Values obtain with tblite 0.2.1 disabling repulsion and dispersion
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
 
-    name, ref = testcase
     numbers = samples[name]["numbers"]
-    pos = samples[name]["positions"].type(dtype)
-    positions = pos.detach().clone().requires_grad_(True)
-    charges = torch.tensor(0.0, dtype=dtype)
+    positions = samples[name]["positions"].type(dtype).detach().clone()
+    positions.requires_grad_(True)
+    charges = torch.tensor(0.0, **dd)
+    ref = load_from_npz(ref_grad, name, dtype)
 
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    op = dict(opts, **{"exclude": ["rep", "disp", "hal"]})
+    calc = Calculator(numbers, par, opts=op, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
     energy = result.scf.sum(-1)
@@ -187,6 +167,35 @@ def test_grad(testcase, dtype: torch.dtype = torch.float):
         energy,
         positions,
     )[0]
+
+    assert torch.allclose(gradient, ref, atol=tol)
+
+
+@pytest.mark.grad
+@pytest.mark.parametrize("name", ["LYS_xao", "C60", "vancoh2"])
+def test_grad_large(name: str, dtype: torch.dtype = torch.float):
+    # Values obtain with tblite 0.2.1 disabling repulsion and dispersion
+    tol = math.sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
+
+    numbers = samples[name]["numbers"]
+    positions = samples[name]["positions"].type(dtype).detach().clone()
+    positions.requires_grad_(True)
+    charges = torch.tensor(0.0, **dd)
+    ref = load_from_npz(ref_grad, name, dtype)
+
+    op = dict(opts, **{"exclude": ["rep", "disp", "hal"]})
+    calc = Calculator(numbers, par, opts=op, **dd)
+
+    result = calc.singlepoint(numbers, positions, charges)
+    energy = result.scf.sum(-1)
+
+    gradient = torch.autograd.grad(
+        energy,
+        positions,
+    )[0]
+
+    print(gradient)
 
     assert torch.allclose(gradient, ref, atol=tol)
 
