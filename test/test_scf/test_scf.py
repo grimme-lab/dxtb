@@ -17,7 +17,7 @@ from ..utils import load_from_npz
 from .samples import samples
 
 # torch.autograd.set_detect_anomaly(True)
-opts = {"verbosity": 0, "etemp": 300.0, "guess": "eeq"}
+opts = {"verbosity": 0}
 
 ref_grad = np.load("test/test_scf/grad.npz")
 
@@ -157,8 +157,16 @@ def test_grad(name: str, dtype: torch.dtype):
     charges = torch.tensor(0.0, **dd)
     ref = load_from_npz(ref_grad, name, dtype)
 
-    op = dict(opts, **{"exclude": ["rep", "disp", "hal"]})
-    calc = Calculator(numbers, par, opts=op, **dd)
+    options = dict(
+        opts,
+        **{
+            "exclude": ["rep", "disp", "hal"],
+            "maxiter": 50,
+            "xitorch_fatol": 1.0e-10,
+            "xitorch_xatol": 1.0e-10,
+        }
+    )
+    calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
     energy = result.scf.sum(-1)
@@ -172,8 +180,9 @@ def test_grad(name: str, dtype: torch.dtype):
 
 
 @pytest.mark.grad
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["LYS_xao", "C60", "vancoh2"])
-def test_grad_large(name: str, dtype: torch.dtype = torch.float):
+def test_grad_large(name: str, dtype: torch.dtype):
     # Values obtain with tblite 0.2.1 disabling repulsion and dispersion
     tol = math.sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
@@ -184,8 +193,16 @@ def test_grad_large(name: str, dtype: torch.dtype = torch.float):
     charges = torch.tensor(0.0, **dd)
     ref = load_from_npz(ref_grad, name, dtype)
 
-    op = dict(opts, **{"exclude": ["rep", "disp", "hal"]})
-    calc = Calculator(numbers, par, opts=op, **dd)
+    options = dict(
+        opts,
+        **{
+            "exclude": ["rep", "disp", "hal"],
+            "maxiter": 50,
+            "xitorch_fatol": 1.0e-10,
+            "xitorch_xatol": 1.0e-10,
+        }
+    )
+    calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
     energy = result.scf.sum(-1)
