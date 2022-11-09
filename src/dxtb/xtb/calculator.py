@@ -2,6 +2,8 @@
 Base calculator for the extended tight-binding model.
 """
 
+import warnings
+
 import torch
 
 from .. import scf
@@ -15,7 +17,7 @@ from ..interaction import Interaction, InteractionList
 from ..ncoord import exp_count, get_coordination_number
 from ..param import Param, get_elem_angular
 from ..typing import Any, Tensor, TensorLike
-from ..utils import Timers
+from ..utils import Timers, ToleranceWarning
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian
 from .h0 import Hamiltonian
@@ -169,8 +171,6 @@ class Calculator(TensorLike):
         self.opts = {
             "fwd_options": {
                 "maxiter": opts.get("maxiter", defaults.MAXITER),
-                "f_tol": opts.get("xitorch_fatol", defaults.XITORCH_FATOL),
-                "x_tol": opts.get("xitorch_xatol", defaults.XITORCH_XATOL),
             },
             "scf_options": {
                 "etemp": opts.get("etemp", defaults.ETEMP),
@@ -192,6 +192,10 @@ class Calculator(TensorLike):
             "spin": opts.get("spin", defaults.SPIN),
             "verbose": opts.get("verbosity", defaults.VERBOSITY),
         }
+
+        # set tolerances separately to catch unreasonably small values
+        self.set_tol("f_tol", opts.get("xitorch_fatol", defaults.XITORCH_FATOL))
+        self.set_tol("x_tol", opts.get("xitorch_xatol", defaults.XITORCH_XATOL))
 
         self.ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         self.hamiltonian = Hamiltonian(numbers, par, self.ihelp, **dd)
@@ -221,6 +225,22 @@ class Calculator(TensorLike):
             raise KeyError(f"Option '{name}' does not exist.")
 
         self.opts[name] = value
+
+    def set_tol(self, name: str, value: float):
+        if name not in ("f_tol", "x_tol"):
+            raise KeyError(f"Tolerance option '{name}' does not exist.")
+
+        eps = torch.finfo(self.dtype).eps
+        if value < eps:
+            warnings.warn(
+                f"Selected tolerance ({value:.2E}) is smaller than the "
+                f"smallest value for the selected dtype ({self.dtype}, "
+                f"{eps:.2E}). Switching to {eps:.2E} instead.",
+                ToleranceWarning,
+            )
+            value = eps
+
+        self.opts["fwd_options"][name] = value
 
     def singlepoint(
         self,
