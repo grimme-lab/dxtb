@@ -351,12 +351,13 @@ def test_element(dtype: torch.dtype, number: int) -> None:
     dd = {"dtype": dtype}
 
     numbers = torch.tensor([number])
-    positions = torch.zeros((1, 3), dtype=dtype)
+    positions = torch.zeros((1, 3), **dd)
     r = ref[number - 1].item()
-    charges = torch.tensor(0.0).type(dtype)
+    charges = torch.tensor(0.0, **dd)
 
     # opts["spin"] = uhf[number - 1]
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    options = dict(opts, **{"xitorch_fatol": 1e-5, "xitorch_xatol": 1e-6})
+    calc = Calculator(numbers, par, opts=options, **dd)
     results = calc.singlepoint(numbers, positions, charges)
 
     assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
@@ -372,7 +373,7 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
     numbers = torch.tensor([number])
     positions = torch.zeros((1, 3), **dd)
     r = ref_cation[number - 1].item()
-    charges = torch.tensor(1.0).type(dtype)
+    charges = torch.tensor(1.0, **dd)
 
     opts["spin"] = uhf_cation[number - 1]
     calc = Calculator(numbers, par, opts=opts, **dd)
@@ -404,10 +405,10 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
     numbers = torch.tensor([number])
     positions = torch.zeros((1, 3), **dd)
     r = ref_anion[number - 1].item()
-    charges = torch.tensor(-1.0).type(dtype)
+    charges = torch.tensor(-1.0, **dd)
 
-    opts["spin"] = uhf_anion[number - 1]
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    options = dict(opts, **{"spin": uhf_anion[number - 1]})
+    calc = Calculator(numbers, par, opts=options, **dd)
     results = calc.singlepoint(numbers, positions, charges)
 
     assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
@@ -425,7 +426,7 @@ def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:
     numbers = batch.pack((sample["numbers"], torch.tensor([number])))
     positions = batch.pack((sample["positions"], torch.zeros((1, 3)))).type(dtype)
     refs = batch.pack((sample["escf"], ref[number - 1])).type(dtype)
-    charges = torch.tensor([0.0, 0.0]).type(dtype)
+    charges = torch.tensor([0.0, 0.0], **dd)
 
     opts["spin"] = [0, uhf[number - 1]]
     calc = Calculator(numbers, par, opts=opts, **dd)

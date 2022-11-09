@@ -37,7 +37,7 @@ refs: dict[str, Refs] = {
         "escf": torch.tensor(-0.88306406116865),
     },
     "HLi": {
-        "escf": torch.tensor(0.0),
+        "escf": torch.tensor(-0.88306406116865),
     },
     "HC": {
         "escf": torch.tensor(0.0),

@@ -3,7 +3,7 @@ Test for SCF.
 Reference values obtained with tblite 0.2.1 disabling repulsion and dispersion.
 """
 
-import math
+from math import sqrt
 
 import numpy as np
 import pytest
@@ -16,7 +16,6 @@ from dxtb.xtb import Calculator
 from ..utils import load_from_npz
 from .samples import samples
 
-# torch.autograd.set_detect_anomaly(True)
 opts = {"verbosity": 0}
 
 ref_grad = np.load("test/test_scf/grad.npz")
@@ -26,7 +25,7 @@ ref_grad = np.load("test/test_scf/grad.npz")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
 def test_single(dtype: torch.dtype, name: str):
-    tol = math.sqrt(torch.finfo(dtype).eps) * 10
+    tol = sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
 
     sample = samples[name]
@@ -48,7 +47,7 @@ def test_single(dtype: torch.dtype, name: str):
 )
 def test_single2(dtype: torch.dtype, name: str):
     """Test a few larger system (only float32 as they take some time)."""
-    tol = math.sqrt(torch.finfo(dtype).eps) * 10
+    tol = sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
 
     sample = samples[name]
@@ -69,7 +68,7 @@ def test_single2(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize("name", ["vancoh2"])
 def test_single_large(dtype: torch.dtype, name: str):
     """Test a large systems (only float32 as they take some time)."""
-    tol = math.sqrt(torch.finfo(dtype).eps) * 10
+    tol = sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
 
     sample = samples[name]
@@ -88,7 +87,7 @@ def test_single_large(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize("name1", ["H2", "LiH"])
 @pytest.mark.parametrize("name2", ["LiH", "SiH4"])
 def test_batch(dtype: torch.dtype, name1: str, name2: str):
-    tol = math.sqrt(torch.finfo(dtype).eps) * 10
+    tol = sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
 
     sample = samples[name1], samples[name2]
@@ -115,23 +114,27 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
-    assert torch.allclose(ref, result.scf.sum(-1), atol=tol)
+    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
 
 
 @pytest.mark.grad
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["LiH"])
-def test_grad_backwards(name: str, dtype: torch.dtype = torch.float):
-    # Values obtain with tblite 0.2.1 disabling repulsion and dispersion
-    tol = math.sqrt(torch.finfo(dtype).eps) * 10
+def test_grad_backwards(name: str, dtype: torch.dtype):
+    tol = sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
 
     numbers = samples[name]["numbers"]
     pos = samples[name]["positions"].type(dtype)
     positions = pos.detach().clone().requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
+
+    # Values obtained with tblite 0.2.1 disabling repulsion and dispersion
     ref = load_from_npz(ref_grad, name, dtype)
 
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    options = dict(opts, **{"exclude": ["rep", "disp", "hal"]})
+    calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
     energy = result.scf.sum(-1)
@@ -140,21 +143,23 @@ def test_grad_backwards(name: str, dtype: torch.dtype = torch.float):
     if positions.grad is None:
         assert False
     gradient = positions.grad.clone()
-    assert torch.allclose(gradient, ref, atol=tol)
+    assert pytest.approx(gradient, abs=tol) == ref
 
 
 @pytest.mark.grad
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
 def test_grad(name: str, dtype: torch.dtype):
-    # Values obtain with tblite 0.2.1 disabling repulsion and dispersion
-    tol = math.sqrt(torch.finfo(dtype).eps) * 10
+    tol = sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
 
     numbers = samples[name]["numbers"]
     positions = samples[name]["positions"].type(dtype).detach().clone()
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
+
+    # Values obtained with tblite 0.2.1 disabling repulsion and dispersion
     ref = load_from_npz(ref_grad, name, dtype)
 
     options = dict(
@@ -162,8 +167,8 @@ def test_grad(name: str, dtype: torch.dtype):
         **{
             "exclude": ["rep", "disp", "hal"],
             "maxiter": 50,
-            "xitorch_fatol": 1.0e-10,
-            "xitorch_xatol": 1.0e-10,
+            "xitorch_fatol": 1.0e-8,
+            "xitorch_xatol": 1.0e-8,
         }
     )
     calc = Calculator(numbers, par, opts=options, **dd)
@@ -176,21 +181,24 @@ def test_grad(name: str, dtype: torch.dtype):
         positions,
     )[0]
 
-    assert torch.allclose(gradient, ref, atol=tol)
+    assert pytest.approx(gradient, abs=tol, rel=1e-5) == ref
 
 
 @pytest.mark.grad
+@pytest.mark.large
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["LYS_xao", "C60", "vancoh2"])
 def test_grad_large(name: str, dtype: torch.dtype):
-    # Values obtain with tblite 0.2.1 disabling repulsion and dispersion
-    tol = math.sqrt(torch.finfo(dtype).eps) * 10
+    tol = sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
 
     numbers = samples[name]["numbers"]
     positions = samples[name]["positions"].type(dtype).detach().clone()
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
+
+    # Values obtain with tblite 0.2.1 disabling repulsion and dispersion
     ref = load_from_npz(ref_grad, name, dtype)
 
     options = dict(
@@ -212,9 +220,7 @@ def test_grad_large(name: str, dtype: torch.dtype):
         positions,
     )[0]
 
-    print(gradient)
-
-    assert torch.allclose(gradient, ref, atol=tol)
+    assert pytest.approx(gradient, abs=tol, rel=1e-5) == ref
 
 
 @pytest.mark.grad
@@ -238,7 +244,7 @@ def test_grad_large(name: str, dtype: torch.dtype):
     ],
 )
 def test_gradgrad(testcase, dtype: torch.dtype = torch.float):
-    tol = math.sqrt(torch.finfo(dtype).eps) * 10
+    tol = sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
 
     name, ref = testcase
@@ -266,6 +272,6 @@ def test_gradgrad(testcase, dtype: torch.dtype = torch.float):
         (calc.hamiltonian.selfenergy, calc.hamiltonian.kcn, calc.hamiltonian.shpoly),
     )
 
-    assert torch.allclose(pgrad[0], ref["selfenergy"], atol=tol)
-    assert torch.allclose(pgrad[1], ref["kcn"], atol=tol)
-    assert torch.allclose(pgrad[2], ref["shpoly"], atol=tol)
+    assert pytest.approx(pgrad[0], abs=tol) == ref["selfenergy"]
+    assert pytest.approx(pgrad[1], abs=tol) == ref["kcn"]
+    assert pytest.approx(pgrad[2], abs=tol) == ref["shpoly"]

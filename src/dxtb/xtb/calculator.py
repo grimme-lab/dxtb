@@ -167,10 +167,12 @@ class Calculator(TensorLike):
         super().__init__(device, dtype)
         dd = {"device": self.device, "dtype": self.dtype}
 
+        # setup calculator options
         opts = opts if opts is not None else {}
         self.opts = {
             "fwd_options": {
                 "maxiter": opts.get("maxiter", defaults.MAXITER),
+                "verbose": opts.get("verbosity", defaults.VERBOSITY),
             },
             "scf_options": {
                 "etemp": opts.get("etemp", defaults.ETEMP),
@@ -190,7 +192,6 @@ class Calculator(TensorLike):
             "exclude": opts.get("exclude", defaults.EXCLUDE),
             "guess": opts.get("guess", defaults.GUESS),
             "spin": opts.get("spin", defaults.SPIN),
-            "verbose": opts.get("verbosity", defaults.VERBOSITY),
         }
 
         # set tolerances separately to catch unreasonably small values
@@ -200,10 +201,12 @@ class Calculator(TensorLike):
         self.ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         self.hamiltonian = Hamiltonian(numbers, par, self.ihelp, **dd)
 
+        # setup self-consistent contributions
         es2 = new_es2(numbers, par, **dd) if "es2" not in self.opts["exclude"] else None
         es3 = new_es3(numbers, par, **dd) if "es3" not in self.opts["exclude"] else None
         self.interaction = InteractionList(es2, es3, interaction)
 
+        # setup non-self-consistent contributions
         self.halogen = (
             new_halogen(numbers, par, **dd)
             if "hal" not in self.opts["exclude"]
@@ -345,9 +348,9 @@ class Calculator(TensorLike):
 
         timer.stop("total")
 
-        if self.opts["verbose"] > 0:
+        if self.opts["fwd_options"]["verbose"] > 0:
             result.print_energies()
-        if self.opts["verbose"] > 1:
+        if self.opts["fwd_options"]["verbose"] > 1:
             print("")
             timer.print_times()
 

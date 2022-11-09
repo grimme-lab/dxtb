@@ -51,6 +51,7 @@ def test_small(dtype: torch.dtype, name: str) -> None:
     assert torch.allclose(ref, torch.sum(energy))
 
 
+@pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["tmpda", "tmpda_mod"])
 def test_large(dtype: torch.dtype, name: str) -> None:

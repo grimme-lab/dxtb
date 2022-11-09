@@ -103,6 +103,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     assert torch.allclose(h, ref, atol=tol, rtol=tol)
 
 
+@pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", large)
 def test_large(dtype: torch.dtype, name: str) -> None:
@@ -127,6 +128,7 @@ def test_large(dtype: torch.dtype, name: str) -> None:
     assert torch.allclose(combis(h), combis(ref), atol=tol)
 
 
+@pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", large)
 @pytest.mark.parametrize("name2", large)

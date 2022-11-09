@@ -14,6 +14,8 @@ a reasonably good implementation of the iterative solver required for the self-c
 field iterations.
 """
 
+import warnings
+
 import torch
 import xitorch as xt
 import xitorch.linalg as xtl
@@ -179,34 +181,29 @@ class SelfConsistentField(xt.EditableModule):
             charges = torch.zeros_like(self._data.occupation)
 
         with torch.no_grad():
-            if self.fwd_options["verbose"] > 0 and charges.ndim < 2:
-                print(
-                    "\n{:<5} {:<24} {:<15} {:<16}".format(
-                        "iter", "energy", "energy change", "P norm change"
-                    )
-                )
-                print(60 * "-")
+            q_conv = self.scf(charges)
 
-            fcn = self.iterate_potential if self.use_potential else self.iterate_charges
-            y0 = self.charges_to_potential(charges) if self.use_potential else charges
-            output = xto.equilibrium(
-                fcn=fcn,
-                y0=y0,
-                bck_options={**self.bck_options},
-                **self.fwd_options,
-            )
-
-            q_conv = self.potential_to_charges(output) if self.use_potential else output
-
-            if self.fwd_options["verbose"] > 0 and charges.ndim < 2:
-                print(60 * "-")
-
+        # SCF step with gradient using converged result as "perfect" guess
         out = (
             self.iterate_potential(self.charges_to_potential(q_conv))
             if self.use_potential
             else self.iterate_charges(q_conv)
         )
         charges = self.potential_to_charges(out) if self.use_potential else out
+
+        # Check consistency between SCF solution and single step.
+        # Especially for elements and their ions, the SCF may oscillate and the
+        # single step for the gradient may differ from the converged solution.
+        if (
+            torch.allclose(q_conv, charges, atol=self.fwd_options["x_tol"] * 10)
+            is False
+        ):
+            warnings.warn(
+                "The single SCF step differs from the converged solution. "
+                "Re-calculating with full gradient tracking!"
+            )
+            charges = self.scf(q_conv)
+
         energy = self.get_energy(charges)
         fenergy = self.get_electronic_free_energy()
 
@@ -218,6 +215,29 @@ class SelfConsistentField(xt.EditableModule):
             "fenergy": fenergy,
             "hamiltonian": self._data.hamiltonian,
         }
+
+    def scf(self, charges: Tensor) -> Tensor:
+        if self.fwd_options["verbose"] > 0 and charges.ndim < 2:
+            print(
+                "\n{:<5} {:<24} {:<15} {:<16}".format(
+                    "iter", "energy", "energy change", "P norm change"
+                )
+            )
+            print(60 * "-")
+
+        fcn = self.iterate_potential if self.use_potential else self.iterate_charges
+        y0 = self.charges_to_potential(charges) if self.use_potential else charges
+        output = xto.equilibrium(
+            fcn=fcn,
+            y0=y0,
+            bck_options={**self.bck_options},
+            **self.fwd_options,
+        )
+
+        if self.fwd_options["verbose"] > 0 and charges.ndim < 2:
+            print(60 * "-")
+
+        return self.potential_to_charges(output) if self.use_potential else output
 
     def get_energy(self, charges: Tensor) -> Tensor:
         """
