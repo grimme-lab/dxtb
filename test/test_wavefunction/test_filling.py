@@ -17,7 +17,7 @@ from dxtb.wavefunction import filling
 
 from .samples import samples
 
-sample_list = ["H2", "LiH", "SiH4", "S2"]
+sample_list = ["H", "H2", "LiH", "SiH4", "S2"]
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -50,33 +50,43 @@ def test_fail(dtype: torch.dtype):
         filling.get_fermi_occupation(nab, emo, kt, maxiter=1)
 
 
+@pytest.mark.parametrize("uhf", [[0, 0, 0], [1, 1, 0], [3, 1, 0]])
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_fail_uhf(dtype: torch.dtype, uhf: list):
+    with pytest.raises(ValueError):
+        nel = torch.tensor([2, 1, 2], dtype=dtype)
+        filling.get_alpha_beta_occupation(nel, nel.new_tensor(uhf))
+
+
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str):
+    tol = sqrt(torch.finfo(dtype).eps) * 10
     sample = samples[name]
 
     nel = sample["n_electrons"].type(dtype)
-    nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
+    uhf = sample["spin"].type(dtype)
+    nab = filling.get_alpha_beta_occupation(nel, uhf)
 
     emo = sample["emo"].type(dtype)
-    emo = emo.unsqueeze(-2).expand([*nab.shape, -1])
 
-    ref_focc = 2 * sample["focc"].type(dtype)
+    ref_focc = sample["focc"].type(dtype)
     ref_efermi = sample["e_fermi"].type(dtype)
 
     kt = emo.new_tensor(300 * K2AU)
 
     efermi, _ = filling.get_fermi_energy(nab, emo)
-    assert torch.allclose(ref_efermi, efermi)
+    assert pytest.approx(ref_efermi, abs=tol) == efermi
 
     focc = filling.get_fermi_occupation(nab, emo, kt)
-    assert torch.allclose(ref_focc, focc.sum(-2))
+    assert pytest.approx(ref_focc, abs=tol) == focc
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str):
+    tol = sqrt(torch.finfo(dtype).eps) * 10
     sample1, sample2 = samples[name1], samples[name2]
 
     nel = batch.pack(
@@ -86,7 +96,14 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
             sample2["n_electrons"].type(dtype),
         ]
     )
-    nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
+    uhf = batch.pack(
+        [
+            sample1["spin"].type(dtype),
+            sample2["spin"].type(dtype),
+            sample2["spin"].type(dtype),
+        ]
+    )
+    nab = filling.get_alpha_beta_occupation(nel, uhf)
 
     emo = batch.pack(
         [
@@ -95,7 +112,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
             sample2["emo"].type(dtype),
         ]
     )
-    emo = emo.unsqueeze(-2).expand([*nab.shape, -1])
+    # emo = emo.unsqueeze(-2).expand([*nab.shape, -1]) # if only one ref channel
 
     ref_efermi = batch.pack(
         [
@@ -104,24 +121,23 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
             sample2["e_fermi"].type(dtype),
         ]
     )
+    # ref_efermi = ref_efermi.expand([*nab.shape]) # if only one ref channel
+
     ref_focc = batch.pack(
         [
-            2.0 * sample1["focc"].type(dtype),
-            2.0 * sample2["focc"].type(dtype),
-            2.0 * sample2["focc"].type(dtype),
+            sample1["focc"].type(dtype),
+            sample2["focc"].type(dtype),
+            sample2["focc"].type(dtype),
         ]
     )
 
     kt = emo.new_tensor(300 * K2AU)
 
     efermi, _ = filling.get_fermi_energy(nab, emo)
-    assert torch.allclose(ref_efermi.expand(-1, 2), efermi)
+    assert pytest.approx(ref_efermi, abs=tol) == efermi
 
     focc = filling.get_fermi_occupation(nab, emo, kt)
-    assert torch.allclose(ref_focc, focc.sum(-2))
-
-
-torch.set_printoptions(precision=16)
+    assert pytest.approx(ref_focc, abs=tol) == focc
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -136,7 +152,6 @@ def test_kt(dtype: torch.dtype, kt: float):
     nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
 
     emo = sample["emo"].type(dtype)
-    emo = emo.unsqueeze(-2).expand([*nab.shape, -1])
 
     ref_fenergy = {
         0.0: emo.new_tensor(0.0),
@@ -202,6 +217,7 @@ def test_kt(dtype: torch.dtype, kt: float):
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_lumo_not_existing(dtype: torch.dtype) -> None:
     """Helium has no LUMO due to the minimal basis."""
+    tol = sqrt(torch.finfo(dtype).eps) * 10
     sample = samples["He"]
 
     nel = batch.pack(
@@ -220,7 +236,6 @@ def test_lumo_not_existing(dtype: torch.dtype) -> None:
             sample["emo"].type(dtype),
         ]
     )
-    emo = emo.unsqueeze(-2).expand([*nab.shape, -1])
 
     ref_efermi = batch.pack(
         [
@@ -231,24 +246,25 @@ def test_lumo_not_existing(dtype: torch.dtype) -> None:
     )
     ref_focc = batch.pack(
         [
-            2.0 * sample["focc"].type(dtype),
-            2.0 * sample["focc"].type(dtype),
-            2.0 * sample["focc"].type(dtype),
+            sample["focc"].type(dtype),
+            sample["focc"].type(dtype),
+            sample["focc"].type(dtype),
         ]
     )
 
     kt = emo.new_tensor(300 * K2AU)
 
     efermi, _ = filling.get_fermi_energy(nab, emo)
-    assert torch.allclose(ref_efermi, efermi)
+    assert pytest.approx(ref_efermi, abs=tol) == efermi
 
     focc = filling.get_fermi_occupation(nab, emo, kt)
-    assert torch.allclose(ref_focc, focc.sum(-2))
+    assert pytest.approx(ref_focc, abs=tol) == focc
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_lumo_obscured_by_padding(dtype: torch.dtype) -> None:
     """A missing LUMO can be obscured by padding."""
+    tol = sqrt(torch.finfo(dtype).eps) * 10
     sample1, sample2 = samples["H2"], samples["He"]
 
     numbers = batch.pack(
@@ -276,7 +292,6 @@ def test_lumo_obscured_by_padding(dtype: torch.dtype) -> None:
             sample2["emo"].type(dtype),
         ]
     )
-    emo = emo.unsqueeze(-2).expand([*nab.shape, -1])
 
     ref_efermi = batch.pack(
         [
@@ -287,9 +302,9 @@ def test_lumo_obscured_by_padding(dtype: torch.dtype) -> None:
     )
     ref_focc = batch.pack(
         [
-            2.0 * sample1["focc"].type(dtype),
-            2.0 * sample2["focc"].type(dtype),
-            2.0 * sample2["focc"].type(dtype),
+            sample1["focc"].type(dtype),
+            sample2["focc"].type(dtype),
+            sample2["focc"].type(dtype),
         ]
     )
 
@@ -299,7 +314,7 @@ def test_lumo_obscured_by_padding(dtype: torch.dtype) -> None:
     mask = mask.unsqueeze(-2).expand([*nab.shape, -1])
 
     efermi, _ = filling.get_fermi_energy(nab, emo, mask=mask)
-    assert torch.allclose(ref_efermi, efermi)
+    assert pytest.approx(ref_efermi, abs=tol) == efermi
 
     focc = filling.get_fermi_occupation(nab, emo, kt, mask=mask)
-    assert torch.allclose(ref_focc, focc.sum(-2))
+    assert pytest.approx(ref_focc, abs=tol) == focc

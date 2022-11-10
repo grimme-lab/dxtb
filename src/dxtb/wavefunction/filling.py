@@ -51,18 +51,11 @@ def get_alpha_beta_occupation(
                 f"number of electrons ({nel})."
             )
 
-        # odd spin and even number of electrons
-        if ~torch.remainder(uhf, 2).any() and torch.remainder(nel.round(), 2).any():
+        # odd/even spin and even/odd number of electrons
+        if (torch.remainder(uhf, 2) != torch.remainder(nel.round(), 2)).any():
             raise ValueError(
-                f"Odd number of unpaired electrons ({uhf}) but even "
-                f"number of electrons ({nel}) given."
-            )
-
-        # even spin and odd number of electrons
-        if torch.remainder(uhf, 2).any() and ~torch.remainder(nel.round(), 2).any():
-            raise ValueError(
-                f"Odd number of electrons ({nel}) but even "
-                f"number of unpaired electrons ({nel}) given."
+                f"Odd (even) number of unpaired electrons ({uhf}) but even "
+                f"(odd) number of electrons ({nel}) given."
             )
     else:
         # set to zero and figure out via remainder
@@ -169,15 +162,21 @@ def get_fermi_energy(
     # stacking will happen along that dim
     homo = torch.argmax(temp.type(torch.long), dim=-1).unsqueeze(-1)
 
-    # some atoms (e.g., He) do not have a LUMO because of the valence basis
+    # some atoms (e.g., He) do not have a LUMO because of the valence basis and
+    # the LUMO index becomes larger than No. MOs
+    lumo_missing = occ.sum(-1, keepdim=True) - 1 <= homo
     gap = torch.where(
-        occ.sum(-1, keepdim=True) - 1 <= homo,  # LUMO index larger than No. MOs
+        lumo_missing,
         torch.cat((homo, homo), -1),  # Fermi energy becomes HOMO energy
         torch.cat((homo, homo + 1), -1),
     )
 
     # Fermi energy as midpoint between HOMO and LUMO
-    e_fermi = torch.gather(emo, -1, gap).mean(-1)
+    e_fermi = torch.where(
+        nel != 0,  # detect empty beta channel
+        torch.gather(emo, -1, gap).mean(-1),
+        emo.new_tensor(0.0),  # no electrons yield Fermi energy of 0.0
+    )
 
     # NOTE:
     # In batched calculations, the missing LUMO is replaced by padding, which is
@@ -264,6 +263,10 @@ def get_fermi_occupation(
     # and we need to add a dim to `e_fermi` for subtraction in that dim
     e_fermi = e_fermi.view([*nel.shape, -1])  # [b, 2, 1]
 
+    # check if (beta) channel contains electrons
+    not_empty = nel.unsqueeze(-1) != 0
+    emo = torch.where(not_empty, emo, zero)
+
     # iterate fermi energy
     for _ in range(maxiter):
         exponent = (emo - e_fermi) / kt
@@ -279,6 +282,6 @@ def get_fermi_occupation(
 
         if torch.all(torch.abs(homo - _nel + 1) <= thresh):
             # check if beta channel is empty
-            return torch.where(nel.unsqueeze(-1) != 0, fermi, torch.zeros_like(fermi))
+            return torch.where(not_empty, fermi, torch.zeros_like(fermi))
 
     raise RuntimeError("Fermi energy failed to converge.")
