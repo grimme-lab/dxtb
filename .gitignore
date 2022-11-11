@@ -208,6 +208,7 @@ devel*
 
 # plots
 plots/
+figs/
 
 # pytorch lightning
 src/lightning_logs/*
@@ -217,4 +218,3 @@ src/wandb/*
 
 # reparametrisation
 src/parametrisations/
-
