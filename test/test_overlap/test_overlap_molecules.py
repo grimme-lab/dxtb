@@ -7,10 +7,10 @@ import pytest
 import torch
 
 from dxtb.basis import IndexHelper
+from dxtb.integral import Overlap
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 from dxtb.utils import batch
-from dxtb.xtb import Hamiltonian
 
 from ..utils import combinations as combis
 from ..utils import load_from_npz
@@ -33,11 +33,11 @@ def test_overlap_single(dtype: torch.dtype, name: str) -> None:
     ref = load_from_npz(ref_overlap, name, dtype)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    h0 = Hamiltonian(numbers, par, ihelp, **dd)
+    overlap = Overlap(numbers, par, ihelp, **dd)
+    s = overlap.build(positions)
 
-    o = h0.overlap(positions)
-    assert torch.allclose(o, o.mT, atol=tol)
-    assert torch.allclose(combis(o), combis(ref), atol=tol)
+    assert pytest.approx(s, abs=tol) == s.mT
+    assert pytest.approx(combis(s), abs=tol) == combis(ref)
 
 
 @pytest.mark.parametrize("dtype", [torch.float])
@@ -70,10 +70,10 @@ def test_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    h0 = Hamiltonian(numbers, par, ihelp, **dd)
+    overlap = Overlap(numbers, par, ihelp, **dd)
+    s = overlap.build(positions)
 
-    o = h0.overlap(positions)
-    assert torch.allclose(o, o.mT, atol=tol)
+    assert pytest.approx(s, abs=tol) == s.mT
 
     for _batch in range(numbers.shape[0]):
-        assert torch.allclose(combis(o[_batch]), combis(ref[_batch]), atol=tol)
+        assert pytest.approx(combis(s[_batch]), abs=tol) == combis(ref[_batch])

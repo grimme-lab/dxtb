@@ -1,17 +1,14 @@
 """Run tests for overlap."""
 
-from math import sqrt
-
 import numpy as np
 import pytest
 import torch
 
 from dxtb.basis import Basis, IndexHelper, slater
-from dxtb.integral import mmd
+from dxtb.integral import Overlap, mmd
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 from dxtb.utils import IntegralTransformError, batch
-from dxtb.xtb import Hamiltonian
 
 from ..utils import load_from_npz
 from .samples import samples
@@ -29,7 +26,7 @@ def test_single(dtype: torch.dtype, name: str):
     - SCl: fpm run -- S Cl 0,0,2.1 --bohr --method gfn1
     """
     dd = {"dtype": dtype}
-    tol = sqrt(torch.finfo(dtype).eps) * 100
+    tol = 1e-05
 
     sample = samples[name]
     numbers = sample["numbers"]
@@ -37,10 +34,10 @@ def test_single(dtype: torch.dtype, name: str):
     ref = load_from_npz(ref_overlap, name, dtype)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    hamiltonian = Hamiltonian(numbers, par, ihelp, **dd)
-    overlap = hamiltonian.overlap(positions)
+    overlap = Overlap(numbers, par, ihelp, **dd)
+    s = overlap.build(positions)
 
-    assert torch.allclose(overlap, ref, rtol=tol, atol=tol, equal_nan=False)
+    assert pytest.approx(s, rel=tol, abs=tol) == ref
 
 
 @pytest.mark.parametrize("dtype", [torch.float])
@@ -49,7 +46,7 @@ def test_single(dtype: torch.dtype, name: str):
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Batched version."""
     dd = {"dtype": dtype}
-    tol = sqrt(torch.finfo(dtype).eps) * 10
+    tol = 1e-05
 
     sample1, sample2 = samples[name1], samples[name2]
 
@@ -73,11 +70,11 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    h0 = Hamiltonian(numbers, par, ihelp, **dd)
+    overlap = Overlap(numbers, par, ihelp, **dd)
+    s = overlap.build(positions)
 
-    o = h0.overlap(positions)
-    assert torch.allclose(o, o.mT, atol=tol)
-    assert torch.allclose(o, ref, atol=tol)
+    assert pytest.approx(s, abs=tol) == s.mT
+    assert pytest.approx(s, abs=tol) == ref
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
