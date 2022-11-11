@@ -32,6 +32,11 @@ def get_alpha_beta_occupation(
     ------
     ValueError
         Number of electrons and unpaired electrons does not match.
+
+    Note
+    ----
+    The number of electrons is rounded to integers via `torch.round` for
+    numerical stability, i.e., non-integer electrons are not supported.
     """
     if uhf is not None:
         if isinstance(uhf, (list, int)):
