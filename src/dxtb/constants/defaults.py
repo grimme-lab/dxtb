@@ -46,10 +46,10 @@ MAXITER = 20
 VERBOSITY = 1
 """Verbosity of printout."""
 
-XITORCH_XATOL = 1.0e-5
+XITORCH_XATOL = 1.0e-6
 """The absolute tolerance of the norm of the input of the equilibrium function."""
 
-XITORCH_FATOL = 1.0e-5
+XITORCH_FATOL = 1.0e-6
 """The absolute tolerance of the norm of the output of the equilibrium function."""
 
 # Fermi smearing

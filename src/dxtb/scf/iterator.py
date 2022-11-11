@@ -141,8 +141,8 @@ class SelfConsistentField(xt.EditableModule):
         self.fwd_options = {
             "method": "broyden1",
             "alpha": -0.5,
-            "f_tol": 1.0e-5,
-            "x_tol": 1.0e-5,
+            "f_tol": 1.0e-6,
+            "x_tol": 1.0e-6,
             "f_rtol": float("inf"),
             "x_rtol": float("inf"),
             "maxiter": 50,

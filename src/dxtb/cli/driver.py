@@ -66,6 +66,8 @@ class Driver:
             "spin": args.spin,
             "verbosity": args.verbosity,
             "exclude": args.exclude,
+            "xitorch_xatol": 1e-6,
+            "xitorch_fatol": 1e-6,
         }
 
         numbers, positions = io.read_structure_from_file(args.file)

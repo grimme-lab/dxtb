@@ -348,9 +348,22 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--xtol",
+        type=float,
+        default=defaults.XITORCH_XATOL,
+        help="R|Set absolute tolerance for SCF (input).",
+    )
+    parser.add_argument(
+        "--ftol",
+        type=float,
+        default=defaults.XITORCH_FATOL,
+        help="R|Set absolute tolerance for SCF (output).",
+    )
+
+    parser.add_argument(
         "--filetype",
         type=str,
-        choices=["xyz", "tm/tmol/turbomole", "json/qcschema"],
+        choices=["xyz", "tm", "tmol", "turbomole", "json", "qcschema"],
         help="R|Explicitly set file type of input.",
     )
     parser.add_argument(
