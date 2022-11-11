@@ -43,7 +43,8 @@ def test_single(dtype: torch.dtype, name: str):
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float])
 @pytest.mark.parametrize(
-    "name", ["S2", "PbH4-BiH3", "C6H5I-CH3SH", "MB16_43_01", "LYS_xao", "C60"]
+    "name",
+    ["S2", "PbH4-BiH3", "C6H5I-CH3SH", "MB16_43_01", "LYS_xao", "LYS_xao_dist", "C60"],
 )
 def test_single2(dtype: torch.dtype, name: str):
     """Test a few larger system (only float32 as they take some time)."""
@@ -75,7 +76,7 @@ def test_single_large(dtype: torch.dtype, name: str):
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
     ref = sample["escf"]
-    charges = torch.tensor(0.0).type(dtype)
+    charges = torch.tensor(0.0, **dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
 
@@ -83,6 +84,7 @@ def test_single_large(dtype: torch.dtype, name: str):
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
 
 
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["H2", "LiH"])
 @pytest.mark.parametrize("name2", ["LiH", "SiH4"])
@@ -187,8 +189,8 @@ def test_grad(name: str, dtype: torch.dtype):
 @pytest.mark.grad
 @pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["LYS_xao", "C60", "vancoh2"])
+@pytest.mark.parametrize("dtype", [torch.float])
+@pytest.mark.parametrize("name", ["LYS_xao", "LYS_xao_dist", "C60", "vancoh2"])
 def test_grad_large(name: str, dtype: torch.dtype):
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}

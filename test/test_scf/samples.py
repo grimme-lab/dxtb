@@ -69,6 +69,9 @@ refs: dict[str, Refs] = {
     "LYS_xao": {
         "escf": torch.tensor(-48.850798066902),
     },
+    "LYS_xao_dist": {
+        "escf": torch.tensor(-47.020544162958),
+    },
     "C60": {
         "escf": torch.tensor(-128.79148324775),
     },
