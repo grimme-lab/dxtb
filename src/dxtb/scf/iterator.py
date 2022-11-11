@@ -210,7 +210,7 @@ class SelfConsistentField(xt.EditableModule):
             charges, self._data.ihelp, self._data.cache
         )
 
-    def get_electronic_free_energy(self, max_orb_occ: float = 2.0) -> Tensor:
+    def get_electronic_free_energy(self) -> Tensor:
         r"""
         Calculate electronic free energy from entropy.
 
@@ -227,11 +227,6 @@ class SelfConsistentField(xt.EditableModule):
             \qquad\text{with}\quad \mathbf P^\text{TS} = \mathbf C^T \cdot
             \text{diag}(g) \cdot \mathbf C
 
-        Parameters
-        ----------
-        max_orb_occ : float, optional
-            Maximum occupation of orbitals, by default 2.0
-
         Returns
         -------
         Tensor
@@ -244,8 +239,8 @@ class SelfConsistentField(xt.EditableModule):
         Defaults to an equal partitioning to all atoms (`"equal"`).
         """
 
-        occ = self._data.occupation / max_orb_occ
-        g = torch.log(occ**occ * (1 - occ) ** (1 - occ)) * self.kt
+        occ = self._data.occupation
+        g = torch.log(occ**occ * (1 - occ) ** (1 - occ)).sum(-2) * self.kt
 
         mode = self.scf_options.get(
             "fermi_fenergy_partition", defaults.FERMI_FENERGY_PARTITION
@@ -292,7 +287,7 @@ class SelfConsistentField(xt.EditableModule):
         """
 
         if self.fwd_options["verbose"] > 1:
-            print(self.get_energy(charges).sum(-1))
+            print(f"energy: {self.get_energy(charges).sum(-1)}")
         potential = self.charges_to_potential(charges)
         return self.potential_to_charges(potential)
 
@@ -313,7 +308,7 @@ class SelfConsistentField(xt.EditableModule):
 
         charges = self.potential_to_charges(potential)
         if self.fwd_options["verbose"]:
-            print(self.get_energy(charges).sum(-1))
+            print(f"energy: {self.get_energy(charges).sum(-1)}")
         return self.charges_to_potential(charges)
 
     def charges_to_potential(self, charges: Tensor) -> Tensor:
@@ -442,12 +437,20 @@ class SelfConsistentField(xt.EditableModule):
         # round to integers to avoid numerical errors
         nel = self._data.occupation.sum(-1).round()
 
+        # expand emo/mask to second dim (for alpha/beta electrons)
+        emo = self._data.evals.unsqueeze(-2).expand([*nel.shape, -1])
+        mask = self._data.ihelp.spread_shell_to_orbital(
+            self._data.ihelp.orbitals_per_shell
+        )
+        mask = mask.unsqueeze(-2).expand([*nel.shape, -1])
+
         # Fermi smearing only for non-zero electronic temperature
         if self.kt is not None and not torch.all(self.kt < 3e-7):  # 0.1 Kelvin * K2AU
             self._data.occupation = filling.get_fermi_occupation(
                 nel,
-                self._data.evals,
-                self.kt,
+                emo,
+                kt=self.kt,
+                mask=mask,
                 maxiter=self.scf_options.get("fermi_maxiter", defaults.FERMI_MAXITER),
                 thr=self.scf_options.get("fermi_thresh", defaults.THRESH),
             )
@@ -462,7 +465,7 @@ class SelfConsistentField(xt.EditableModule):
         return torch.einsum(
             "...ik,...k,...kj->...ij",
             self._data.evecs,
-            self._data.occupation,
+            self._data.occupation.sum(-2),
             self._data.evecs.mT,
         )
 

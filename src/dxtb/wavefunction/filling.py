@@ -10,10 +10,76 @@ from ..constants import defaults
 from ..typing import Tensor
 
 
-def get_aufbau_occupation(
-    norb: Tensor,
-    nel: Tensor,
+def get_alpha_beta_occupation(
+    nel: Tensor, uhf: Tensor | int | list[int] | None = None
 ) -> Tensor:
+    """
+    Generate alpha and beta electrons from total number of electrons.
+
+    Parameters
+    ----------
+    nel : Tensor
+        Total number of electrons.
+    uhf : Tensor | int | list[int] | None
+        Number of unpaired electrons. If `None`, spin is figured out automatically.
+
+    Returns
+    -------
+    Tensor
+        Alpha (first column, 0 index) and beta (second column, 1 index) electrons.
+
+    Raises
+    ------
+    ValueError
+        Number of electrons and unpaired electrons does not match.
+
+    Note
+    ----
+    The number of electrons is rounded to integers via `torch.round` for
+    numerical stability, i.e., non-integer electrons are not supported.
+    """
+    if uhf is not None:
+        if isinstance(uhf, (list, int)):
+            uhf = nel.new_tensor(uhf)
+        else:
+            uhf = uhf.type(nel.dtype).to(nel.device)
+
+        if uhf.shape != nel.shape:
+            raise RuntimeError(
+                f"Shape mismatch for unpaired electrons ({uhf.shape}) and "
+                f"number of electrons ({nel.shape})."
+            )
+
+        if (uhf > nel.round()).any():
+            raise ValueError(
+                f"Number of unpaired electrons ({uhf}) larger than "
+                f"number of electrons ({nel})."
+            )
+
+        # odd/even spin and even/odd number of electrons
+        if (torch.remainder(uhf, 2) != torch.remainder(nel.round(), 2)).any():
+            raise ValueError(
+                f"Odd (even) number of unpaired electrons ({uhf}) but even "
+                f"(odd) number of electrons ({nel}) given."
+            )
+    else:
+        # set to zero and figure out via remainder
+        uhf = torch.zeros_like(nel)
+
+    nuhf = torch.where(
+        torch.remainder(uhf, 2) == torch.remainder(nel.round(), 2),
+        uhf,
+        torch.remainder(nel.round(), 2),
+    )
+
+    diff = torch.minimum(nuhf, nel)
+    nb = (nel - diff) / 2.0
+    na = nb + diff
+
+    return torch.stack([na, nb], dim=-1)
+
+
+def get_aufbau_occupation(norb: Tensor, nel: Tensor) -> Tensor:
     """
     Set occupation numbers according to the aufbau principle.
     The number of electrons is a real number and can be fractional.
@@ -67,10 +133,14 @@ def get_aufbau_occupation(
 
 
 def get_fermi_energy(
-    nel: Tensor, emo: Tensor, max_orb_occ: float = 2.0
+    nel: Tensor, emo: Tensor, mask: Tensor | None = None
 ) -> tuple[Tensor, Tensor]:
     """
     Get Fermi energy as midpoint between the HOMO and LUMO.
+
+    The orbital energies `emo` and the `mask` must already have the correct
+    shape for using alpha/beta electron channels. Spreading to the channels can
+    be done with `x.unsqueeze(-2).expand([*nel.shape, -1])`.
 
     Parameters
     ----------
@@ -78,46 +148,53 @@ def get_fermi_energy(
         Number of electrons.
     emo : Tensor
         Orbital energies
-    max_orb_occ : float, optional
-        Maximum orbital occupation, by default 2.0
+    mask : Tensor | None, optional
+        Mask from orbitals to avoid reading padding as LUMO for elements
+        without LUMO due to minimal basis.
 
     Returns
     -------
     tuple[Tensor, Tensor]
         Fermi energy and index of HOMO.
     """
-    shp = torch.Size([*emo.shape[:-1], -1])
-
-    # maximum occupation of each orbital
-    occ = torch.ones_like(emo) * max_orb_occ
+    occ = torch.ones_like(emo)
+    occ_cs = occ.cumsum(-1) - nel.unsqueeze(-1)
 
     # transition: negative values indicate end of occupied orbitals
-    if emo.ndim == 1:
-        occ_cs = occ.cumsum(-1) - nel
-    else:
-        # transpose sum because `nel` may contain multiple values
-        occ_cs = occ.cumsum(-1).T - nel
-
     temp = occ_cs >= (-torch.finfo(emo.dtype).resolution * 5)
-    if emo.ndim > 1:
-        temp = temp.T
 
-    # index of first non-negative value
-    homo = torch.argmax(temp.type(torch.long), dim=-1).view(shp)
+    # index of first non-negative value and unsqueeze for stacking;
+    # stacking will happen along that dim
+    homo = torch.argmax(temp.type(torch.long), dim=-1).unsqueeze(-1)
 
-    # some atoms (e.g., He) do not have a LUMO because of the valence basis
-    hl = torch.where(
-        homo + 1 >= emo.size(-1),  # LUMO index larger than number of MOs
-        torch.cat((homo, homo), -1),
+    # some atoms (e.g., He) do not have a LUMO because of the valence basis and
+    # the LUMO index becomes larger than No. MOs
+    lumo_missing = occ.sum(-1, keepdim=True) - 1 <= homo
+    gap = torch.where(
+        lumo_missing,
+        torch.cat((homo, homo), -1),  # Fermi energy becomes HOMO energy
         torch.cat((homo, homo + 1), -1),
     )
-    # FIXME: BATCHED CALCULATIONS
-    # In batched calculations the missing LUMO is replaced by padding, which is
-    # not caught by the above `torch.where`. Consequently, the Fermi energy is
-    # no correct. To fix this, one would require a mask from `numbers`. The
-    # `numbers` are, however, currently not passed down to the SCF.
 
-    e_fermi = torch.gather(emo, -1, hl).mean(-1).view(shp)
+    # Fermi energy as midpoint between HOMO and LUMO
+    e_fermi = torch.where(
+        nel != 0,  # detect empty beta channel
+        torch.gather(emo, -1, gap).mean(-1),
+        emo.new_tensor(0.0),  # no electrons yield Fermi energy of 0.0
+    )
+
+    # NOTE:
+    # In batched calculations, the missing LUMO is replaced by padding, which is
+    # not caught by the above `torch.where`. Consequently, the LUMO is 0.0 and
+    # the Fermi energy is exactly half of the correct value. To fix this, a mask
+    # from the orbitals of the IndexHelper is gathered in the same way as the
+    # Fermi energy. The `prod(-1)` reduces the dimension as `mean(-1)` does.
+    # Finally, multiplication by two corrects the mean, taken with E_LUMO = 0.
+    if mask is not None:
+        mask = torch.where(mask == 0, mask, torch.ones_like(mask))
+        mask = torch.gather(mask, -1, gap).prod(-1)
+        e_fermi = torch.where(mask != 0, e_fermi, e_fermi * 2.0)
+
     return e_fermi, homo
 
 
@@ -125,27 +202,31 @@ def get_fermi_occupation(
     nel: Tensor,
     emo: Tensor,
     kt: Tensor | None = None,
-    thr: dict[torch.dtype, Tensor] | None = None,
+    mask: Tensor | None = None,
+    thr: dict[torch.dtype, Tensor] = defaults.THRESH,
     maxiter: int = 200,
-    max_orb_occ: float = 2.0,
 ) -> Tensor:
     """
     Set occupation numbers according to Fermi distribution.
+
+    The orbital energies `emo` must already have the correct shape for using
+    alpha/beta electron channels. Spreading to the channels can be done with
+    `emo.unsqueeze(-2).expand([*nel.shape, -1])`.
 
     Parameters
     ----------
     nel : Tensor
         Number of electrons.
     emo : Tensor
-        Orbital energies
+        Orbital energies.
     kt : Tensor | None, optional
         Electronic temperature in atomic units, by default None.
+    mask : Tensor | None, optional
+        Mask for Fermi energy. Just passed through.
     thr : Tensor | None, optional
         Threshold for converging Fermi energy, by default None.
     maxiter : int, optional
         Maximum number of iterations for converging Fermi energy, by default 200.
-    max_orb_occ : float, optional
-        Maximum orbital occupation, by default 2.0.
 
     Returns
     -------
@@ -174,15 +255,22 @@ def get_fermi_occupation(
     zero = emo.new_tensor(0.0)
 
     # no valence electrons
-    if (torch.abs(nel) < eps).any():
+    if (torch.abs(nel.sum(-1)) < eps).any():
         raise ValueError("Number of valence electrons cannot be zero.")
 
-    if thr is None:
-        thr = defaults.THRESH
     thresh = thr.get(emo.dtype, torch.tensor(1e-5, dtype=torch.float)).to(emo.device)
 
+    e_fermi, homo = get_fermi_energy(nel, emo, mask=mask)
+
+    # `emo` ([b, 2, n]) was expanded to second dim (for alpha/beta electrons)
+    # and we need to add a dim to `e_fermi` for subtraction in that dim
+    e_fermi = e_fermi.view([*nel.shape, -1])  # [b, 2, 1]
+
+    # check if (beta) channel contains electrons
+    not_empty = nel.unsqueeze(-1) != 0
+    emo = torch.where(not_empty, emo, zero)
+
     # iterate fermi energy
-    e_fermi, homo = get_fermi_energy(nel, emo)
     for _ in range(maxiter):
         exponent = (emo - e_fermi) / kt
         eterm = torch.exp(torch.where(exponent < 50, exponent, zero))
@@ -196,6 +284,7 @@ def get_fermi_occupation(
         e_fermi += change
 
         if torch.all(torch.abs(homo - _nel + 1) <= thresh):
-            return max_orb_occ * fermi
+            # check if beta channel is empty
+            return torch.where(not_empty, fermi, torch.zeros_like(fermi))
 
     raise RuntimeError("Fermi energy failed to converge.")

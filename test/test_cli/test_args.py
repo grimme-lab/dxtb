@@ -19,7 +19,7 @@ def test_defaults() -> None:
     assert isinstance(args.chrg, int)
     assert args.chrg == defaults.CHRG
 
-    assert isinstance(args.spin, int)
+    assert args.spin is None
     assert args.spin == defaults.SPIN
 
     assert isinstance(args.verbosity, int)
