@@ -334,7 +334,6 @@ uhf_anion = torch.tensor(
 opts = {
     "verbosity": 0,
     "etemp": 300,
-    "guess": "eeq",
     "fermi_maxiter": 500,
     "fermi_thresh": {
         torch.float32: torch.tensor(1e-4, dtype=torch.float32),  # instead of 1e-5
@@ -343,6 +342,7 @@ opts = {
 }
 
 
+@pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -363,6 +363,7 @@ def test_element(dtype: torch.dtype, number: int) -> None:
     assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
 
 
+@pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -387,6 +388,7 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
         assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
 
 
+@pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -415,7 +417,7 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
 
 
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("number", range(1, 87))
+@pytest.mark.parametrize("number", [1, 2, 10, 25, 50, 86])
 @pytest.mark.parametrize("mol", ["SiH4"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:
