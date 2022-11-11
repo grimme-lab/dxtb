@@ -119,7 +119,7 @@ class WTMAD2Loss(torch.nn.Module):
         """
 
         # load data
-        dataset = get_gmtkn55_dataset(path)
+        dataset = get_gmtkn55_dataset(path, file_reactions= "reactions.json", file_samples= "samples.json")
         d = {}
 
         # collect values

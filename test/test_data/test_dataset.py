@@ -144,7 +144,7 @@ class TestDataset:
 
         # write to temporary directory
         with tempfile.TemporaryDirectory() as td:
-            store_subsets_on_disk(reaction_dataset.copy(), Path(td), ["ACONF"])
+            store_subsets_on_disk(reaction_dataset.copy(), Path(td), ["GMTKN55:ACONF"])
             dataset2 = ReactionDataset.from_json(
                 path_samples=Path(td, "samples.json"),
                 path_reactions=Path(td, "reactions.json"),
@@ -152,19 +152,6 @@ class TestDataset:
             dataset2.sort()
 
             assert aconf == dataset2
-
-    # def test_to_df(self, data: Tuple[Samples, Reactions, ReactionDataset]) -> None:
-    #     _, _, dataset = data
-
-    #     aconf = dataset  # [:15]
-    #     aconf.sort()
-
-    #     print("now pad")
-    #     aconf.pad()
-    #     print("done padding")
-
-    #     df = aconf.to_df()
-    #     print(df)
 
     def test_to_json(self, data: FixtureData) -> None:
         """Test for saving the dataset to disk. Check for identical saving-loading."""

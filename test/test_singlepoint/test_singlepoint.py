@@ -31,9 +31,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     base = Path(Path(__file__).parent, name)
 
-    geo = read_coord(Path(base, "coord"))
-    numbers = [g[-1] for g in geo]
-    positions = [g[:3] for g in geo]
+    numbers, positions = read_coord(Path(base, "coord"))
 
     charge = read_chrg(Path(base, ".CHRG"))
 

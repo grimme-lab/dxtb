@@ -195,7 +195,7 @@ class GeneralizedBorn(Interaction):
         eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
 
         mask = real_pairs(numbers)
-        dist = cdist(positions, mask)
+        dist = torch.where(mask, torch.cdist(positions, positions, p=2), eps)
 
         ab = torch.where(mask, born.unsqueeze(-1) * born.unsqueeze(-2), eps)
         ab = born.unsqueeze(-1) * born.unsqueeze(-2)

@@ -36,7 +36,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from pathlib import Path
 
-from ..typing import Tensor
+from ..typing import Tensor, Any
 from ..data.dataset import SampleDataset
 from ..data.samples import Sample
 from ..xtb.calculator import Calculator
@@ -47,8 +47,17 @@ from ..param.base import Param
 class ParameterOptimizer(nn.Module):
     """Pytorch model for gradient optimization of given forward() function."""
 
-    def __init__(self, parametrisation: Param, names: list[str]):
+    def __init__(self, parametrisation: Param, names: list[str], options: dict[str, Any] = {}):
+        """ Optimise parameters specified by names. Optional options for singlepoint and scf supported.s
+
+        Args:
+            parametrisation (Param): Initial parametrisation to be optimised.
+            names (list[str]): Keys for parameters which shall be optimised.
+            options (dict[str, Any], optional): Options for singlepoint calculation. Defaults to {}.
+        """
         super().__init__()
+        self.options = options
+
         assert id(parametrisation) != id(
             GFN1_XTB
         ), "Don't mess with global variables. Please use a copy of the GFN-xTB parametrisation."
@@ -87,7 +96,7 @@ class ParameterOptimizer(nn.Module):
 
         # calculate singlepoint
         calc = Calculator(numbers, positions, self.parametrisation)
-        results = calc.singlepoint(numbers, positions, charges, verbosity=0)
+        results = calc.singlepoint(numbers, positions, charges, self.options)
 
         # total energy including repulsion, dispersion and halogen contribution
         energy = results.total

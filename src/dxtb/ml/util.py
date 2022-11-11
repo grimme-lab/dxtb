@@ -13,7 +13,7 @@ import pandas as pd
 
 from dxtb.ml.model_gnn import GNN
 
-from .model import Basic_CNN, Simple_Net  # , Basic_EGNN
+from .model import Simple_Net
 from .loss import WTMAD2Loss
 
 
@@ -29,13 +29,11 @@ def get_architecture(name: str):
     """
 
     architecture_dict = {
-        "Basic_CNN": Basic_CNN,
-        # "EGNN": Basic_EGNN,
         "Simple_Net": Simple_Net,
         "GNN": GNN,
     }
 
-    return architecture_dict.get(name, Basic_CNN)
+    return architecture_dict.get(name, Simple_Net)
 
 
 def get_optimizer(name: str) -> torch.optim.Adam | torch.optim.SGD:

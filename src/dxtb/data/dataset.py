@@ -307,9 +307,7 @@ class ReactionDataset(DatasetModel):
             samples = self.get_samples_from_reaction_partners(reactions)
 
             if len(samples) == 0:
-                # TODO: Use errir in production
-                # raise RuntimeError(f"WARNING: No samples found for reaction {reactions}.")
-                print(f"WARNING: No samples found for reaction {reactions}.")
+                raise RuntimeError(f"WARNING: No samples found for reaction {reactions}.")
 
             return samples, reactions
         else:
@@ -597,12 +595,11 @@ class ReactionDataset(DatasetModel):
 
     def prune(self) -> None:
         """Remove samples from the dataset that are not contained in any reaction."""
-        # self.samples = [s for s in self.samples if len(s.partners) > 0]
         samples_new = []
         for s in self.samples:
             # check whether needed in any reaction
             for r in self.reactions:
-                if s.uid.split(":")[1] in r.partners:
+                if s.uid in r.partners:
                     samples_new.append(s)
                     continue
         self.samples = samples_new
@@ -760,7 +757,7 @@ def get_dataset(
     return dataset
 
 
-def get_gmtkn55_dataset(path: Path) -> ReactionDataset:
+def get_gmtkn55_dataset(path: Path, file_reactions: str = "reactions_ACONF.json", file_samples: str = "samples_ACONF.json") -> ReactionDataset:
     """Return total GMTKN55 dataset.
 
     Parameters
@@ -774,11 +771,10 @@ def get_gmtkn55_dataset(path: Path) -> ReactionDataset:
     """
 
     dataset = get_dataset(
-        path_reactions=Path(path, "reactions_ACONF.json"),
-        path_samples=Path(path, "samples_ACONF.json"),
+        path_reactions=Path(path, file_reactions),
+        path_samples=Path(path, file_samples),
     )
 
-    # assert len(dataset) == 1505
     return dataset
 
 

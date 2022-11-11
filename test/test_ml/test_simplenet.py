@@ -1,27 +1,23 @@
 from pathlib import Path
-from typing import List
-import pandas as pd
-import pytest
 import torch
-from dxtb.ml.evaluation import evaluate
 
 from dxtb.data.dataset import get_gmtkn55_dataset
 from dxtb.ml.loss import WTMAD2Loss
 from dxtb.ml.model import Simple_Net
 
 
-from .gmtkn55 import GMTKN55
 
 
 class TestWTMAD2Loss:
     """Testing the loss calulation based on GMTKN55 weighting."""
 
-    path = Path(Path(__file__).resolve().parents[2], "data")
+    path = Path(Path(__file__).resolve().parents[2], "data", "GMTKN55")
     """Absolute path to fit set data."""
 
     def setup_class(self):
-        print("Test Simple_Net model")
-        self.dataset = get_gmtkn55_dataset(self.path)
+        self.dataset = get_gmtkn55_dataset(
+            self.path, file_reactions="reactions.json", file_samples="samples.json"
+        )
 
         self.loss_fn = WTMAD2Loss(self.path)
 
@@ -36,7 +32,7 @@ class TestWTMAD2Loss:
             lr=0.01,
         )
 
-        dl = self.dataset.get_dataloader({"batch_size": 1, "shuffle": True})
+        dl = self.dataset.get_dataloader({"batch_size": 1, "shuffle": False})
 
         losses = []
         wtm2_ref = [], []
@@ -72,7 +68,6 @@ class TestWTMAD2Loss:
 
         losses = sum(losses_epoch) / len(losses_epoch)
         wtm2_ref = sum(wtm2_ref_epoch) / len(wtm2_ref_epoch)
-        print(f"Loss: {losses} WTM2_REF: {wtm2_ref}")
         return losses
 
     def test_simplicity0(self):
@@ -80,15 +75,3 @@ class TestWTMAD2Loss:
         losses = self.basic_training(simplicity=0)
         assert losses == 0.0
 
-    def test_simplicity1(self):
-        """Model return Egfn1."""
-        losses = self.basic_training(simplicity=1)
-        gmtkn55 = 29.719778135001807
-        assert losses == gmtkn55
-
-    def test_simplicity2(self):
-        """Model use sample Egfn1."""
-        losses = self.basic_training(simplicity=2)
-
-        # TODO: not implemented yet
-        # assert losses == gmtkn55
