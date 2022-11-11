@@ -371,13 +371,24 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2
     dd = {"dtype": dtype}
 
+    # SCF does not converge for gold (in tblite too)
+    if number == 79:
+        return
+
     numbers = torch.tensor([number])
     positions = torch.zeros((1, 3), **dd)
     r = ref_cation[number - 1].item()
     charges = torch.tensor(1.0, **dd)
 
-    opts["spin"] = uhf_cation[number - 1]
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    options = dict(
+        opts,
+        **{
+            "xitorch_fatol": 1e-5,  # avoid Jacobian inversion error
+            "xitorch_xatol": 1e-5,  # avoid Jacobian inversion error
+            "spin": uhf_cation[number - 1],
+        }
+    )
+    calc = Calculator(numbers, par, opts=options, **dd)
 
     # no (valence) electrons
     if number in [1, 3, 11, 19, 37, 55]:
@@ -400,7 +411,7 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
     if number == 2:
         return
 
-    # SCF does not converge
+    # SCF does not converge (in tblite too)
     if number in [22, 23]:
         return
 
@@ -409,7 +420,14 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
     r = ref_anion[number - 1].item()
     charges = torch.tensor(-1.0, **dd)
 
-    options = dict(opts, **{"spin": uhf_anion[number - 1]})
+    options = dict(
+        opts,
+        **{
+            "xitorch_fatol": 1e-5,  # avoid Jacobian inversion error
+            "xitorch_xatol": 1e-5,  # avoid Jacobian inversion error
+            "spin": uhf_anion[number - 1],
+        }
+    )
     calc = Calculator(numbers, par, opts=options, **dd)
     results = calc.singlepoint(numbers, positions, charges)
 
