@@ -9,7 +9,7 @@ import torch
 
 from .. import io
 from ..utils import Timers
-from ..xtb import Calculator
+from ..xtb import Calculator, Result
 
 FILES = {"spin": ".UHF", "chrg": ".CHRG"}
 
@@ -51,7 +51,7 @@ class Driver:
 
         return val
 
-    def singlepoint(self) -> None:
+    def singlepoint(self) -> tuple[Result, Timers]:
         args = self.args
 
         timer = Timers()
@@ -94,7 +94,7 @@ class Driver:
             raise ValueError(f"Unknown guess method '{args.guess}'.")
 
         # setup calculator
-        calc = Calculator(numbers, par, opts=opts, **dd)
+        calc = Calculator(numbers, par, opts=opts, timer=timer, **dd)
         timer.stop("setup")
 
         # run singlepoint calculation
@@ -109,16 +109,14 @@ class Driver:
             total.backward()
             if positions.grad is None:
                 raise RuntimeError("No gradients found for positions.")
+            result.grad = positions.grad
             timer.stop("grad")
 
-            print(positions.grad)
-
-        # print results
+        # stop timer
         timer.stop("total")
 
-        if args.verbosity is not None and args.verbosity > 1:
-            timer.print_times("")
+        return result, timer
 
     def __str__(self) -> str:
         """Custom print representation of class."""
-        return f"{self.__class__.__name__}(chrg={self.chrg}, spin={self.spin})"
+        return f"{self.__class__.__name__}({self.args})"

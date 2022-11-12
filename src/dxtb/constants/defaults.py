@@ -15,7 +15,7 @@ METHOD_CHOICES = ["gfn1", "gfn1-xtb", "gfn2", "gfn2-xtb"]
 SPIN = None
 """Total spin of the system."""
 
-CHRG = 0
+CHRG = None
 """Total charge of the system."""
 
 THRESH = {
