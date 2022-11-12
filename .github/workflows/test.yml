@@ -45,4 +45,6 @@ jobs:
         run: pytest -svv -m "not large" --cov=dxtb --cov-report=term-missing
 
       - name: Upload coverage to Codecov
-        run: codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
