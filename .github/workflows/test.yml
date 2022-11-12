@@ -2,6 +2,8 @@ name: Test
 
 on:
   push:
+    branches:
+      - master
     paths-ignore:
       - "docs/**"
       - "*.md"
@@ -13,7 +15,7 @@ on:
       - "*.md"
       - "*.rst"
 
-    workflow_dispatch:
+  workflow_dispatch:
 
 jobs:
   main:
@@ -26,10 +28,10 @@ jobs:
 
     steps:
       - name: Checkout code
-      - uses: actions/checkout@v3
+        uses: actions/checkout@v3
 
       - name: Set up Python ${{ matrix.python-version }}
-      - uses: actions/setup-python@v4
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -42,6 +44,5 @@ jobs:
       - name: Unittests with pytest
         run: pytest -svv -m "not large" --cov=dxtb --cov-report=term-missing
 
-      # Coverage does not work for private repos
-      # - name: Upload coverage to Codecov
-      #   run: codecov
+      - name: Upload coverage to Codecov
+        run: codecov
