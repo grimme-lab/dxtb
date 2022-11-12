@@ -20,10 +20,32 @@ opts = {"verbosity": 0}
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize(
-    "name", ["H2", "H2O", "CH4", "SiH4", "LYS_xao", "C60", "vancoh2", "AD7en+"]
-)
+@pytest.mark.parametrize("name", ["H2", "H2O", "CH4", "SiH4", "LYS_xao"])
 def test_single(dtype: torch.dtype, name: str) -> None:
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
+
+    base = Path(Path(__file__).parent, "mols", name)
+
+    numbers, positions = read_coord(Path(base, "coord"))
+    charge = read_chrg(Path(base, ".CHRG"))
+
+    numbers = torch.tensor(numbers, dtype=torch.long)
+    positions = torch.tensor(positions).type(dtype)
+    charge = torch.tensor(charge).type(dtype)
+
+    ref = samples[name]["etot"].item()
+
+    calc = Calculator(numbers, par, opts=opts, **dd)
+    result = calc.singlepoint(numbers, positions, charge)
+    assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1).item()
+
+
+@pytest.mark.large
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["C60", "vancoh2", "AD7en+"])
+def test_single_large(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
 
