@@ -5,6 +5,10 @@ Setup for pytest.
 import pytest
 import torch
 
+# avoid randomness and non-deterministic algorithms
+torch.manual_seed(0)
+torch.use_deterministic_algorithms(True)
+
 torch.set_printoptions(precision=10)
 
 
