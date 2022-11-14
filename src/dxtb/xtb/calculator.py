@@ -64,6 +64,9 @@ class Result(TensorLike):
     scf: Tensor
     """Atom-resolved energy from the self-consistent field (SCF) calculation."""
 
+    timer: Timers | None
+    """Collection of timers for all steps."""
+
     total: Tensor
     """Total energy."""
 
@@ -80,6 +83,7 @@ class Result(TensorLike):
         "overlap",
         "repulsion",
         "scf",
+        "timer",
         "total",
     ]
 
@@ -93,6 +97,7 @@ class Result(TensorLike):
         shape = positions.shape[:-1]
 
         self.grad = None
+        self.timer = None
         self.scf = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.fenergy = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.dispersion = torch.zeros(shape, dtype=self.dtype, device=self.device)
@@ -122,9 +127,9 @@ class Result(TensorLike):
         tot = "Total Energy"
         total = torch.sum(self.total, dim=-1)
 
-        for label, name in labels.items():
+        for label, n in labels.items():
             e = torch.sum(getattr(self, label), dim=-1)
-            print(f"{name:<27} {e: .16f}")
+            print(f"{n:<27} {e: .16f}")
 
         print(width * "-")
         print(f"{tot:<27} {total: .16f}")
@@ -166,15 +171,11 @@ class Calculator(TensorLike):
         par: Param,
         interaction: Interaction | None = None,
         opts: dict[str, Any] | None = None,
-        timer: Timers | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
         super().__init__(device, dtype)
         dd = {"device": self.device, "dtype": self.dtype}
-
-        # setup timer
-        self.timer = Timers() if timer is None else timer
 
         # setup calculator options
         opts = opts if opts is not None else {}
@@ -260,6 +261,7 @@ class Calculator(TensorLike):
         numbers: Tensor,
         positions: Tensor,
         chrg: Tensor,
+        timer: Timers | None = None,
     ) -> Result:
         """
         Entry point for performing single point calculations.
@@ -280,25 +282,26 @@ class Calculator(TensorLike):
         """
 
         result = Result(positions, device=self.device, dtype=self.dtype)
-        self.timer.start("energy")
+        timer = Timers() if timer is None else timer
+        timer.start("singlepoint")
 
         if "scf" not in self.opts["exclude"]:
             # overlap
-            self.timer.start("overlap")
+            timer.start("overlap")
             overlap = self.hamiltonian.overlap(positions)
             result.overlap = overlap
-            self.timer.stop("overlap")
+            timer.stop("overlap")
 
             # Hamiltonian
-            self.timer.start("h0")
+            timer.start("h0")
             rcov = cov_rad_d3[numbers].to(self.device)
             cn = get_coordination_number(numbers, positions, exp_count, rcov)
             hcore = self.hamiltonian.build(positions, overlap, cn)
             result.hcore = hcore
-            self.timer.stop("h0")
+            timer.stop("h0")
 
             # SCF
-            self.timer.start("scf")
+            timer.start("scf")
 
             # Obtain the reference occupations and total number of electrons
             n0 = self.hamiltonian.get_occupation()
@@ -332,35 +335,36 @@ class Calculator(TensorLike):
             result.scf += scf_results["energy"]
             result.fenergy = scf_results["fenergy"]
             result.total += scf_results["energy"] + scf_results["fenergy"]
-            self.timer.stop("scf")
+            timer.stop("scf")
 
         if self.halogen is not None:
-            self.timer.start("halogen")
+            timer.start("halogen")
             cache_hal = self.halogen.get_cache(numbers, self.ihelp)
             result.halogen = self.halogen.get_energy(positions, cache_hal)
             result.total += result.halogen
-            self.timer.stop("halogen")
+            timer.stop("halogen")
 
         if self.dispersion is not None:
-            self.timer.start("dispersion")
+            timer.start("dispersion")
             cache_disp = self.dispersion.get_cache(numbers)
             result.dispersion = self.dispersion.get_energy(positions, cache_disp)
             result.total += result.dispersion
-            self.timer.stop("dispersion")
+            timer.stop("dispersion")
 
         if self.repulsion is not None:
-            self.timer.start("repulsion")
+            timer.start("repulsion")
             cache_rep = self.repulsion.get_cache(numbers, self.ihelp)
             result.repulsion = self.repulsion.get_energy(positions, cache_rep)
             result.total += result.repulsion
-            self.timer.stop("repulsion")
+            timer.stop("repulsion")
 
-        self.timer.stop("energy")
+        timer.stop("singlepoint")
+        result.timer = timer
 
         if self.opts["scf_options"]["verbosity"] > 0:
             result.print_energies()
         if self.opts["scf_options"]["verbosity"] > 1:
             print("")
-            self.timer.print_times()
+            timer.print_times()
 
         return result

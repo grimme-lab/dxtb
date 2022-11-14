@@ -6,12 +6,34 @@ import pytest
 import torch
 
 from dxtb.data import cov_rad_d3
-from dxtb.ncoord import exp_count, get_coordination_number
+from dxtb.ncoord import (
+    exp_count,
+    dexp_count,
+    erf_count,
+    derf_count,
+    get_coordination_number,
+)
 from dxtb.utils import batch
+from dxtb.typing import CountingFunction
 
 from .samples import samples
 
 sample_list = ["PbH4-BiH3", "C6H5I-CH3SH"]
+
+
+def test_fail() -> None:
+    numbers = torch.tensor([1, 1])
+    positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+
+    # rcov wrong shape
+    with pytest.raises(ValueError):
+        rcov = torch.tensor([1.0])
+        get_coordination_number(numbers, positions, exp_count, rcov)
+
+    # wrong numbers
+    with pytest.raises(ValueError):
+        numbers = torch.tensor([1])
+        get_coordination_number(numbers, positions, exp_count)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -25,7 +47,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     ref = sample["cn"].type(dtype)
 
     cn = get_coordination_number(numbers, positions, exp_count, rcov)
-    assert torch.allclose(cn, ref)
+    assert pytest.approx(cn) == ref
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -55,4 +77,29 @@ def test_cn_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     cn = get_coordination_number(numbers, positions, exp_count, rcov)
-    assert torch.allclose(cn, ref)
+    assert pytest.approx(cn) == ref
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize(
+    "function",
+    [
+        (exp_count, dexp_count),
+        (erf_count, derf_count),
+    ],
+)
+def test_count_grad(
+    dtype: torch.dtype, function: tuple[CountingFunction, CountingFunction]
+) -> None:
+    cf, dcf = function
+
+    a = torch.rand(4, dtype=dtype)
+    b = torch.rand(4, dtype=dtype)
+
+    a_grad = a.detach().clone().requires_grad_(True)
+    count = cf(a_grad, b)
+
+    grad_auto = torch.autograd.grad(count.sum(-1), a_grad)[0]
+    grad_expl = dcf(a, b)
+
+    assert pytest.approx(grad_auto) == grad_expl

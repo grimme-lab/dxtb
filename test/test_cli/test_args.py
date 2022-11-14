@@ -86,6 +86,10 @@ def test_dir() -> None:
     assert Path(getattr(args, option)).is_dir()
 
 
+@pytest.mark.skipif(
+    not torch.cuda.is_available(),
+    reason="Torch not compiled with CUDA enabled.",
+)
 @pytest.mark.parametrize("value", ["cpu", "cuda", "cuda:0"])
 def test_torch_device(value: str) -> None:
     option = "device"

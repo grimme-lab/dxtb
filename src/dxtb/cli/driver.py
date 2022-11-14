@@ -51,11 +51,10 @@ class Driver:
 
         return val
 
-    def singlepoint(self) -> tuple[Result, Timers]:
+    def singlepoint(self) -> Result:
         args = self.args
 
         timer = Timers()
-        timer.start("total")
         timer.start("setup")
 
         dd = {"device": args.device, "dtype": args.dtype}
@@ -94,14 +93,12 @@ class Driver:
             raise ValueError(f"Unknown guess method '{args.guess}'.")
 
         # setup calculator
-        calc = Calculator(numbers, par, opts=opts, timer=timer, **dd)
+        calc = Calculator(numbers, par, opts=opts, **dd)
         timer.stop("setup")
 
-        # run singlepoint calculation
-        timer.start("singlepoint")
-        result = calc.singlepoint(numbers, positions, chrg)
+        # run singlepoint calculation, timer set within
+        result = calc.singlepoint(numbers, positions, chrg, timer=timer)
         total = result.total.sum(-1)
-        timer.stop("singlepoint")
 
         # gradient of total energy w.r.t. positions
         if args.grad is True:
@@ -114,8 +111,9 @@ class Driver:
 
         # stop timer
         timer.stop("total")
+        result.timer = timer
 
-        return result, timer
+        return result
 
     def __str__(self) -> str:
         """Custom print representation of class."""

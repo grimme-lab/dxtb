@@ -10,7 +10,10 @@ from .exceptions import TimerError
 
 
 class Timers:
-    """Collection of Timers"""
+    """
+    Collection of Timers.
+    Upon instantiation, a timer with the label 'total' is started.
+    """
 
     class Timer:
         """Instance of a Timer"""
@@ -62,6 +65,7 @@ class Timers:
 
     def __init__(self) -> None:
         self.timers = {}
+        self.start("total")
 
     def start(self, label: str) -> None:
         """

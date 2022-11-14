@@ -21,7 +21,7 @@ def test_driver(dtype: torch.dtype) -> None:
     opts = f"-v 0 --grad --dtype {dtype_str} {file}"
     args = argparser().parse_args(opts.split())
     d = Driver(args)
-    result, _ = d.singlepoint()
+    result = d.singlepoint()
 
     energy = result.total.sum(-1).detach()
     assert pytest.approx(energy) == ref
