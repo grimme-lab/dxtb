@@ -1,5 +1,5 @@
 """
-Data for testing repulsion taken from https://github.com/grimme-lab/mstore.
+Data for SCF energies.
 """
 
 import torch

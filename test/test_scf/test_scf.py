@@ -277,3 +277,56 @@ def test_gradgrad(testcase, dtype: torch.dtype = torch.float):
     assert pytest.approx(pgrad[0], abs=tol) == ref["selfenergy"]
     assert pytest.approx(pgrad[1], abs=tol) == ref["kcn"]
     assert pytest.approx(pgrad[2], abs=tol) == ref["shpoly"]
+
+
+@pytest.mark.grad
+@pytest.mark.parametrize("name", ["LiH", "H2O", "SiH4", "LYS_xao"])
+def skip_test_gradgrad_full(name: str, dtype: torch.dtype = torch.float):
+    """
+    Test autograd of SCF without gradient tracking vs. SCF with full gradient
+    tracking. References obtained with full tracking and `torch.float`.
+    """
+
+    # pylint: disable=import-outside-toplevel
+    from .samples_pgrad import refs_pgrad
+
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
+
+    numbers = samples[name]["numbers"]
+    positions = samples[name]["positions"].type(dtype).detach().clone()
+    positions.requires_grad_(True)
+    ref = refs_pgrad[name]
+    charges = torch.tensor(0.0, **dd)
+
+    options = dict(
+        opts,
+        **{
+            "exclude": ["rep", "disp", "hal"],
+            "maxiter": 50,
+            "xitorch_fatol": 1.0e-6,
+            "xitorch_xatol": 1.0e-6,
+        }
+    )
+    calc = Calculator(numbers, par, opts=options, **dd)
+    calc.hamiltonian.selfenergy.requires_grad_(True)
+    calc.hamiltonian.kcn.requires_grad_(True)
+    calc.hamiltonian.shpoly.requires_grad_(True)
+
+    result = calc.singlepoint(numbers, positions, charges)
+    energy = result.scf.sum(-1)
+
+    gradient = torch.autograd.grad(
+        energy,
+        positions,
+        create_graph=True,
+    )[0]
+
+    pgrad = torch.autograd.grad(
+        gradient[0, :].sum(),
+        (calc.hamiltonian.selfenergy, calc.hamiltonian.kcn, calc.hamiltonian.shpoly),
+    )
+
+    assert pytest.approx(pgrad[0], abs=tol) == ref["selfenergy"]
+    assert pytest.approx(pgrad[1], abs=tol) == ref["kcn"]
+    assert pytest.approx(pgrad[2], abs=tol) == ref["shpoly"]
