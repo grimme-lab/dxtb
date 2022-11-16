@@ -83,11 +83,11 @@ class ConvertToTorchDtype(argparse.Action):
         option_string: str | None = None,
     ) -> None:
         match values:
-            case "float16":
+            case "float16" | torch.float16:
                 values = torch.float16
-            case "float32" | "sp":
+            case "float32" | torch.float32 | "sp":
                 values = torch.float32
-            case "float64" | "double" | "dp":
+            case "float64" | torch.float64 | "double" | torch.double | "dp":
                 values = torch.float64
             case _:
                 parser.error(

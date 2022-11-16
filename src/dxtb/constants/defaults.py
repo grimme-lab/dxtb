@@ -68,13 +68,13 @@ FERMI_FENERGY_PARTITION_CHOICES = ["equal", "atomic"]
 
 # PyTorch
 
-TORCH_DTYPE = None
+TORCH_DTYPE = torch.float32
 """Default data type for floating point tensors."""
 
 TORCH_DTYPE_CHOICES = ["float16", "float32", "float64", "double", "sp", "dp"]
 """List of possible choices for `TORCH_DTYPE`."""
 
-TORCH_DEVICE = None
+TORCH_DEVICE = "cpu"
 """Default device for tensors."""
 
 TORCH_DEVICE_CHOICES = ["cpu", "cuda"]
