@@ -18,7 +18,9 @@ from functools import wraps
 import torch
 
 from ..typing import Callable, Tensor
-from ..utils import batch
+from ..utils import batch, t2int
+
+__all__ = ["IndexHelper"]
 
 Gather = Callable[[Tensor, int, Tensor], Tensor]
 Scatter = Callable[[Tensor, int, Tensor, str], Tensor]
@@ -207,13 +209,16 @@ def wrap_gather(x: Tensor, dim: int | tuple[int, int], idx: Tensor) -> Tensor:
 # scatter
 
 
-def scatter_reduce(x: Tensor, dim: int, idx: Tensor, *args: str) -> Tensor:
+def scatter_reduce(
+    x: Tensor, dim: int, idx: Tensor, *args: str, fill_value: float | int | None = 0
+) -> Tensor:
     """
 
     .. warning::
 
-        `scatter_reduce` is only introduced in v11.1 and the API changes in v12.1
-        in a BC-breaking way. `scatter_reduce` in v12.1 is still in beta and CPU-only.
+        `scatter_reduce` is only introduced in 1.11.1 and the API changes in
+        v12.1 in a BC-breaking way. `scatter_reduce` in 1.12.1 and 1.13.0 is
+        still in beta and CPU-only.
 
         Related links:
         - https://pytorch.org/docs/1.12/generated/torch.Tensor.scatter_reduce_.html#torch.Tensor.scatter_reduce_
@@ -225,18 +230,42 @@ def scatter_reduce(x: Tensor, dim: int, idx: Tensor, *args: str) -> Tensor:
     Parameters
     ----------
     x : Tensor
-        Tensor to reduce
+        Tensor to reduce.
     dim : int
-        Dimension to reduce over
+        Dimension to reduce over.
     idx : Tensor
-        Index to reduce over
+        Index to reduce over.
+    fill_value : float | int | None
+        Value with which the output is inititally filled (reduction units for
+        indices not scattered to).
 
     Returns
     -------
     Tensor
         Reduced tensor.
     """
-    return torch.scatter_reduce(x, dim, idx, *args)
+
+    version = torch.__version__.split("+", maxsplit=1)[0].split(".")
+
+    if version[1] == "11":
+        output = torch.scatter_reduce(x, dim, idx, *args)  # type: ignore
+    elif version[1] == "12" or version[1] == "13":
+        out_shape = list(x.shape)
+        out_shape[dim] = t2int(idx.max()) + 1
+
+        # filling the output is only necessary if the user wants to preserve
+        # the behavior in 1.11, where indices not scattered to are filled with
+        # reduction inits (sum: 0, prod: 1)
+        if fill_value is None:
+            out = x.new_empty(out_shape)
+        else:
+            out = x.new_empty(out_shape).fill_(fill_value)
+
+        output = torch.scatter_reduce(out, dim, idx, x, *args)  # type: ignore
+    else:
+        raise RuntimeError(f"Unsupported PyTorch version ({version}) used.")
+
+    return output
 
 
 def wrap_scatter_reduce(
@@ -265,7 +294,7 @@ def wrap_scatter_reduce(
     return (
         scatter_reduce(x, dim, idx, reduce)
         if isinstance(dim, int)
-        else twice(torch.scatter_reduce, x, *dim, idx, reduce)
+        else twice(scatter_reduce, x, *dim, idx, reduce)
     )
 
 
