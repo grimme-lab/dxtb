@@ -21,7 +21,7 @@ ref_overlap = np.load("test/test_overlap/overlap.npz")
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["HC", "HHe", "SCl"])
-def test_overlap_single(dtype: torch.dtype, name: str):
+def test_single(dtype: torch.dtype, name: str):
     """
     Compare against reference calculated with tblite-int:
     - HC: fpm run -- H C 0,0,1.4 --bohr --method gfn1
@@ -46,7 +46,7 @@ def test_overlap_single(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize("dtype", [torch.float])
 @pytest.mark.parametrize("name1", ["C", "HC", "HHe", "SCl"])
 @pytest.mark.parametrize("name2", ["C", "HC", "HHe", "SCl"])
-def test_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Batched version."""
     dd = {"dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
