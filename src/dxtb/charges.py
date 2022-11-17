@@ -131,6 +131,7 @@ class ChargeModel(TensorLike):
             self.kcn.to(device=device),
             self.eta.to(device=device),
             self.rad.to(device=device),
+            device=device,
         )
 
     def type(self, dtype: torch.dtype) -> "ChargeModel":
@@ -151,7 +152,8 @@ class ChargeModel(TensorLike):
 
         Notes
         -----
-        If the `ChargeModel` instance has already the desired dtype `self` will be returned.
+        If the `ChargeModel` instance has already the desired dtype `self` will
+        be returned.
         """
         if self.dtype == dtype:
             return self
@@ -161,6 +163,7 @@ class ChargeModel(TensorLike):
             self.kcn.type(dtype),
             self.eta.type(dtype),
             self.rad.type(dtype),
+            dtype=dtype,
         )
 
 
