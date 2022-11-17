@@ -6,7 +6,7 @@ from dxtb.utils import batch, symbol2number
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_indexhelper_single(dtype: torch.dtype):
+def test_single(dtype: torch.dtype):
 
     numbers = symbol2number("S H H H Mg N O S N N C H C H O N".split())
     angular = {
@@ -49,15 +49,11 @@ def test_indexhelper_single(dtype: torch.dtype):
         dtype=dtype,
     )
 
-    assert torch.allclose(
-        qat,
-        ihelp.reduce_shell_to_atom(qsh),
-        atol=1.0e-4,
-    )
+    assert pytest.approx(qat, abs=1.0e-4) == ihelp.reduce_shell_to_atom(qsh)
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_indexhelper_batch(dtype: torch.dtype):
+def test_batch(dtype: torch.dtype):
 
     numbers = batch.pack(
         (
