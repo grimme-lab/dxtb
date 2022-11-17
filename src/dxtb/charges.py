@@ -64,7 +64,11 @@ class ChargeModel(TensorLike):
         eta: Tensor,
         rad: Tensor,
     ):
-        super().__init__(chi.device, chi.dtype)
+        ...
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> None:
+        super().__init__(device, dtype)
         self.chi = chi
         self.kcn = kcn
         self.eta = eta
