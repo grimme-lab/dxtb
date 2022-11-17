@@ -101,7 +101,9 @@ class TestParam:
         from dxtb.xtb.calculator import Calculator
 
         numbers = symbol2number(["H", "C"])
-        calc = Calculator(numbers, par, dtype=dtype)
+        dummy_coords = torch.zeros(3, dtype=dtype)
+
+        calc = Calculator(numbers, dummy_coords, par)
 
         assert torch.allclose(
             calc.hamiltonian.ihelp.reduce_shell_to_atom(calc.hamiltonian.refocc),

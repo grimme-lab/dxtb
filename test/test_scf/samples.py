@@ -1,5 +1,5 @@
 """
-Data for SCF energies.
+Data for testing repulsion taken from https://github.com/grimme-lab/mstore.
 """
 
 import torch
@@ -37,7 +37,7 @@ refs: dict[str, Refs] = {
         "escf": torch.tensor(-0.88306406116865),
     },
     "HLi": {
-        "escf": torch.tensor(-0.88306406116865),
+        "escf": torch.tensor(0.0),
     },
     "HC": {
         "escf": torch.tensor(0.0),
@@ -68,9 +68,6 @@ refs: dict[str, Refs] = {
     },
     "LYS_xao": {
         "escf": torch.tensor(-48.850798066902),
-    },
-    "LYS_xao_dist": {
-        "escf": torch.tensor(-47.020544162958),
     },
     "C60": {
         "escf": torch.tensor(-128.79148324775),

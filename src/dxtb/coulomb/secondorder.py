@@ -90,14 +90,13 @@ class ES2(Interaction):
 
     def __init__(
         self,
+        positions: Tensor,
         hubbard: Tensor,
         lhubbard: Tensor | None = None,
         average: AveragingFunction = harmonic_average,
         gexp: Tensor = torch.tensor(xtb.DEFAULT_ES2_GEXP),
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
     ) -> None:
-        super().__init__(device, dtype)
+        super().__init__(positions.device, positions.dtype)
 
         self.hubbard = hubbard.to(self.device).type(self.dtype)
         self.lhubbard = (
@@ -270,11 +269,7 @@ class ES2(Interaction):
 
 
 def new_es2(
-    numbers: Tensor,
-    par: Param,
-    shell_resolved: bool = True,
-    device: torch.device | None = None,
-    dtype: torch.dtype | None = None,
+    numbers: Tensor, positions: Tensor, par: Param, shell_resolved: bool = True
 ) -> ES2 | None:
     """
     Create new instance of ES2.
@@ -283,6 +278,8 @@ def new_es2(
     ----------
     numbers : Tensor
         Atomic numbers of all atoms.
+    positions : Tensor
+        Cartesian coordinates of all atoms.
     par : Param
         Representation of an extended tight-binding model.
     shell_resolved: bool
@@ -305,4 +302,4 @@ def new_es2(
     average = averaging_function[par.charge.effective.average]
     gexp = torch.tensor(par.charge.effective.gexp)
 
-    return ES2(hubbard, lhubbard, average, gexp, device=device, dtype=dtype)
+    return ES2(positions, hubbard, lhubbard, average, gexp)

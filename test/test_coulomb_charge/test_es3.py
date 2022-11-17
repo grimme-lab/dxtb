@@ -22,10 +22,10 @@ def test_none() -> None:
     par = GFN1_XTB.copy(deep=True)
 
     par.thirdorder = None
-    assert es3.new_es3(dummy, par) is None
+    assert es3.new_es3(dummy, dummy, par) is None
 
     del par.thirdorder
-    assert es3.new_es3(dummy, par) is None
+    assert es3.new_es3(dummy, dummy, par) is None
 
 
 def test_fail() -> None:
@@ -37,14 +37,13 @@ def test_fail() -> None:
 
     with pytest.raises(NotImplementedError):
         par.thirdorder.shell = True
-        es3.new_es3(dummy, par)
+        es3.new_es3(dummy, dummy, par)
 
 
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
     """Test ES3 for some samples from MB16_43."""
-    dd = {"dtype": dtype}
 
     sample = samples[name]
     numbers = sample["numbers"]
@@ -53,27 +52,31 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     ref = sample["es3"].type(dtype)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
-    es = es3.new_es3(numbers, GFN1_XTB, **dd)
+    es = es3.new_es3(numbers, positions, GFN1_XTB)
     if es is None:
         assert False
 
     cache = es.get_cache(numbers, positions, ihelp)  # cache is empty
     e = es.get_atom_energy(qat, ihelp, cache)
-    assert pytest.approx(torch.sum(e, dim=-1)) == ref
+    assert torch.allclose(torch.sum(e, dim=-1), ref)
 
 
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Test batched calculation of ES3."""
-    dd = {"dtype": dtype}
-
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         (
             sample1["numbers"],
             sample2["numbers"],
+        )
+    )
+    positions = batch.pack(
+        (
+            sample1["positions"].type(dtype),
+            sample2["positions"].type(dtype),
         )
     )
     qat = batch.pack(
@@ -90,7 +93,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
-    es = es3.new_es3(numbers, GFN1_XTB, **dd)
+    es = es3.new_es3(numbers, positions, GFN1_XTB)
     if es is None:
         assert False
 
@@ -102,11 +105,11 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.parametrize("name", sample_list)
 def test_grad_param(name: str) -> None:
     """Test autograd for ES3 parameters."""
-    dtype = torch.double
-    dd = {"dtype": dtype}
+    dtype = torch.float64
 
     sample = samples[name]
     numbers = sample["numbers"]
+    positions = sample["positions"].type(dtype)
     qat = sample["q"].type(dtype)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
@@ -123,7 +126,7 @@ def test_grad_param(name: str) -> None:
     hd.requires_grad_(True)
 
     def func(hubbard_derivs: Tensor):
-        es = es3.ES3(hubbard_derivs, **dd)
+        es = es3.ES3(positions, hubbard_derivs)
         return es.get_atom_energy(qat, ihelp, None)
 
     # pylint: disable=import-outside-toplevel

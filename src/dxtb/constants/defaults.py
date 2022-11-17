@@ -25,13 +25,6 @@ THRESH = {
 }
 """Convergence thresholds for different float data types."""
 
-EXCLUDE = []
-"""List of xTB components to exclude during the calculation."""
-
-EXCLUDE_CHOICES = ["disp", "rep", "hal", "es2", "es3", "scf", "all"]
-"""List of possible choices for `EXCLUDE`."""
-
-
 # SCF settings
 
 GUESS = "eeq"
@@ -46,12 +39,6 @@ MAXITER = 20
 VERBOSITY = 1
 """Verbosity of printout."""
 
-XITORCH_XATOL = 1.0e-6
-"""The absolute tolerance of the norm of the input of the equilibrium function."""
-
-XITORCH_FATOL = 1.0e-6
-"""The absolute tolerance of the norm of the output of the equilibrium function."""
-
 # Fermi smearing
 
 ETEMP = 300.0
@@ -65,17 +52,3 @@ FERMI_FENERGY_PARTITION = "equal"
 
 FERMI_FENERGY_PARTITION_CHOICES = ["equal", "atomic"]
 """List of possible choices for `FERMI_FENERGY_PARTITION`."""
-
-# PyTorch
-
-TORCH_DTYPE = torch.float32
-"""Default data type for floating point tensors."""
-
-TORCH_DTYPE_CHOICES = ["float16", "float32", "float64", "double", "sp", "dp"]
-"""List of possible choices for `TORCH_DTYPE`."""
-
-TORCH_DEVICE = "cpu"
-"""Default device for tensors."""
-
-TORCH_DEVICE_CHOICES = ["cpu", "cuda"]
-"""List of possible choices for `TORCH_DEVICE`."""

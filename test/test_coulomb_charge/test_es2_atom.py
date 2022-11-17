@@ -23,17 +23,16 @@ def test_none() -> None:
     par = GFN1_XTB.copy(deep=True)
 
     par.charge = None
-    assert es2.new_es2(dummy, par) is None
+    assert es2.new_es2(dummy, dummy, par) is None
 
     del par.charge
-    assert es2.new_es2(dummy, par) is None
+    assert es2.new_es2(dummy, dummy, par) is None
 
 
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
     """Test ES2 for some samples from MB16_43."""
-    dd = {"dtype": dtype}
 
     sample = samples[name]
     numbers = sample["numbers"]
@@ -42,21 +41,19 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     ref = sample["es2"].type(dtype)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
-    es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=False, **dd)
+    es = es2.new_es2(numbers, positions, GFN1_XTB, shell_resolved=False)
     if es is None:
         assert False, es
 
     cache = es.get_cache(numbers, positions, ihelp)
     e = es.get_atom_energy(qat, ihelp, cache)
-    assert pytest.approx(torch.sum(e, dim=-1)) == ref
+    assert torch.allclose(torch.sum(e, dim=-1), ref)
 
 
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
-    dd = {"dtype": dtype}
-
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         (
@@ -84,7 +81,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
-    es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=False, **dd)
+    es = es2.new_es2(numbers, positions, GFN1_XTB, shell_resolved=False)
     if es is None:
         assert False
 
@@ -96,8 +93,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.grad
 @pytest.mark.parametrize("name", sample_list)
 def test_grad_positions(name: str) -> None:
-    dtype = torch.double
-    dd = {"dtype": dtype}
+    dtype = torch.float64
 
     sample = samples[name]
     numbers = sample["numbers"]
@@ -110,7 +106,7 @@ def test_grad_positions(name: str) -> None:
     positions.requires_grad_(True)
 
     def func(positions: Tensor):
-        es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=False, **dd)
+        es = es2.new_es2(numbers, positions, GFN1_XTB, shell_resolved=False)
         if es is None:
             assert False
 
@@ -126,8 +122,7 @@ def test_grad_positions(name: str) -> None:
 @pytest.mark.grad
 @pytest.mark.parametrize("name", sample_list)
 def test_grad_param(name: str) -> None:
-    dtype = torch.double
-    dd = {"dtype": dtype}
+    dtype = torch.float64
 
     sample = samples[name]
     numbers = sample["numbers"]
@@ -139,7 +134,13 @@ def test_grad_param(name: str) -> None:
     if GFN1_XTB.charge is None:
         assert False
 
-    hubbard = get_elem_param(torch.unique(numbers), GFN1_XTB.element, "gam", **dd)
+    hubbard = get_elem_param(
+        torch.unique(numbers),
+        GFN1_XTB.element,
+        "gam",
+        device=positions.device,
+        dtype=positions.dtype,
+    )
     gexp = torch.tensor(GFN1_XTB.charge.effective.gexp).type(dtype)
     average = averaging_function[GFN1_XTB.charge.effective.average]
 
@@ -148,7 +149,12 @@ def test_grad_param(name: str) -> None:
     hubbard.requires_grad_(True)
 
     def func(gexp: Tensor, hubbard: Tensor):
-        es = es2.ES2(hubbard, average=average, gexp=gexp, **dd)
+        es = es2.ES2(
+            positions=positions,
+            hubbard=hubbard,
+            average=average,
+            gexp=gexp,
+        )
         cache = es.get_cache(numbers, positions, ihelp)
         return es.get_atom_energy(qat, ihelp, cache)
 

@@ -14,8 +14,6 @@ a reasonably good implementation of the iterative solver required for the self-c
 field iterations.
 """
 
-import warnings
-
 import torch
 import xitorch as xt
 import xitorch.linalg as xtl
@@ -77,9 +75,6 @@ class SelfConsistentField(xt.EditableModule):
         evecs: Tensor
         """LCAO coefficients (eigenvectors of Fockian)"""
 
-        iter: int
-        """Number of iterations."""
-
         def __init__(
             self,
             hcore: Tensor,
@@ -98,9 +93,6 @@ class SelfConsistentField(xt.EditableModule):
             self.ihelp = ihelp
             self.cache = cache
             self.energy = hcore.new_tensor(0.0)
-            self.old_energy = n0.new_tensor(0.0)
-            self.old_density = overlap.new_tensor(0.0)
-            self.iter = 1
 
     _data: "_Data"
     """Persistent data"""
@@ -141,8 +133,8 @@ class SelfConsistentField(xt.EditableModule):
         self.fwd_options = {
             "method": "broyden1",
             "alpha": -0.5,
-            "f_tol": 1.0e-6,
-            "x_tol": 1.0e-6,
+            "f_tol": 1.0e-5,
+            "x_tol": 1.0e-5,
             "f_rtol": float("inf"),
             "x_rtol": float("inf"),
             "maxiter": 50,
@@ -180,30 +172,14 @@ class SelfConsistentField(xt.EditableModule):
         if charges is None:
             charges = torch.zeros_like(self._data.occupation)
 
-        with torch.no_grad():
-            q_conv = self.scf(charges)
-
-        # SCF step with gradient using converged result as "perfect" guess
-        out = (
-            self.iterate_potential(self.charges_to_potential(q_conv))
-            if self.use_potential
-            else self.iterate_charges(q_conv)
+        output = xto.equilibrium(
+            fcn=self.iterate_potential if self.use_potential else self.iterate_charges,
+            y0=self.charges_to_potential(charges) if self.use_potential else charges,
+            bck_options={**self.bck_options},
+            **self.fwd_options,
         )
-        charges = self.potential_to_charges(out) if self.use_potential else out
 
-        # Check consistency between SCF solution and single step.
-        # Especially for elements and their ions, the SCF may oscillate and the
-        # single step for the gradient may differ from the converged solution.
-        if (
-            torch.allclose(q_conv, charges, atol=self.fwd_options["x_tol"] * 10)
-            is False
-        ):
-            warnings.warn(
-                "The single SCF step differs from the converged solution. "
-                "Re-calculating with full gradient tracking!"
-            )
-            charges = self.scf(q_conv)
-
+        charges = self.potential_to_charges(output) if self.use_potential else output
         energy = self.get_energy(charges)
         fenergy = self.get_electronic_free_energy()
 
@@ -215,29 +191,6 @@ class SelfConsistentField(xt.EditableModule):
             "fenergy": fenergy,
             "hamiltonian": self._data.hamiltonian,
         }
-
-    def scf(self, charges: Tensor) -> Tensor:
-        if self.fwd_options["verbose"] > 0 and charges.ndim < 2:
-            print(
-                "\n{:<5} {:<24} {:<15} {:<16}".format(
-                    "iter", "energy", "energy change", "P norm change"
-                )
-            )
-            print(60 * "-")
-
-        fcn = self.iterate_potential if self.use_potential else self.iterate_charges
-        y0 = self.charges_to_potential(charges) if self.use_potential else charges
-        output = xto.equilibrium(
-            fcn=fcn,
-            y0=y0,
-            bck_options={**self.bck_options},
-            **self.fwd_options,
-        )
-
-        if self.fwd_options["verbose"] > 0 and charges.ndim < 2:
-            print(60 * "-")
-
-        return self.potential_to_charges(output) if self.use_potential else output
 
     def get_energy(self, charges: Tensor) -> Tensor:
         """
@@ -354,24 +307,8 @@ class SelfConsistentField(xt.EditableModule):
         """
 
         charges = self.potential_to_charges(potential)
-        if self.fwd_options["verbose"] > 0:
+        if self.fwd_options["verbose"]:
             print(f"energy: {self.get_energy(charges).sum(-1)}")
-
-            if charges.ndim < 2:
-                energy = self.get_energy(charges).sum(-1).detach().clone()
-                ediff = energy - self._data.old_energy
-
-                density = self._data.density.detach().clone()
-                norm = torch.linalg.matrix_norm(self._data.old_density - density)
-
-                print(
-                    f"{self._data.iter:2}    {energy: .16E}  {ediff: .6E}  {norm: .6E}"
-                )
-
-                self._data.old_energy = energy
-                self._data.old_density = density
-                self._data.iter += 1
-
         return self.charges_to_potential(charges)
 
     def charges_to_potential(self, charges: Tensor) -> Tensor:

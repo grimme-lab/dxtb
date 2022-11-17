@@ -193,8 +193,8 @@ data/misc
 !data/GMTKN55/samples_ACONF.json
 !data/GMTKN55/reactions_ACONF.json
 
-!test/test_singlepoint/**/coord
-!test/test_singlepoint/**/.CHRG
+!test/test_singlepoint/*/coord
+!test/test_singlepoint/*/.CHRG
 
 !test/test_io/files/mol.json
 !test/test_io/files/coord

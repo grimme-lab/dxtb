@@ -53,13 +53,8 @@ class ES3(Interaction):
         Restart data for the ES3 interaction.
         """
 
-    def __init__(
-        self,
-        hubbard_derivs: Tensor,
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
-    ) -> None:
-        super().__init__(device, dtype)
+    def __init__(self, positions: Tensor, hubbard_derivs: Tensor) -> None:
+        super().__init__(positions.device, positions.dtype)
         self.hubbard_derivs = hubbard_derivs
 
     def get_cache(
@@ -149,12 +144,7 @@ class ES3(Interaction):
         )
 
 
-def new_es3(
-    numbers: Tensor,
-    par: Param,
-    device: torch.device | None = None,
-    dtype: torch.dtype | None = None,
-) -> ES3 | None:
+def new_es3(numbers: Tensor, positions: Tensor, par: Param) -> ES3 | None:
     """
     Create new instance of ES3.
 
@@ -162,6 +152,8 @@ def new_es3(
     ----------
     numbers : Tensor
         Atomic numbers of all atoms.
+    positions : Tensor
+        Cartesian coordinates of all atoms.
     par : Param
         Representation of an extended tight-binding model.
 
@@ -185,4 +177,4 @@ def new_es3(
         "gam3",
     )
 
-    return ES3(hubbard_derivs, device=device, dtype=dtype)
+    return ES3(positions, hubbard_derivs)

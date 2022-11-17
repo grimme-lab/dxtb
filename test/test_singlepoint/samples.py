@@ -48,9 +48,6 @@ refs: dict[str, Refs] = {
     "vancoh2": {
         "etot": torch.tensor(-3.2295379428673e02),
     },
-    "AD7en+": {
-        "etot": torch.tensor(-4.2547841532513e01),
-    },
 }
 
 

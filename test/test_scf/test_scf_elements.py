@@ -334,6 +334,7 @@ uhf_anion = torch.tensor(
 opts = {
     "verbosity": 0,
     "etemp": 300,
+    "guess": "eeq",
     "fermi_maxiter": 500,
     "fermi_thresh": {
         torch.float32: torch.tensor(1e-4, dtype=torch.float32),  # instead of 1e-5
@@ -342,114 +343,89 @@ opts = {
 }
 
 
-@pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
 
     numbers = torch.tensor([number])
-    positions = torch.zeros((1, 3), **dd)
+    positions = torch.zeros((1, 3), dtype=dtype)
     r = ref[number - 1].item()
-    charges = torch.tensor(0.0, **dd)
+    charges = torch.tensor(0.0).type(dtype)
 
     # opts["spin"] = uhf[number - 1]
-    options = dict(opts, **{"xitorch_fatol": 1e-5, "xitorch_xatol": 1e-6})
-    calc = Calculator(numbers, par, opts=options, **dd)
-    results = calc.singlepoint(numbers, positions, charges)
+    calc = Calculator(numbers, positions, par)
+    results = calc.singlepoint(numbers, positions, charges, opts)
 
     assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
 
 
-@pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_cation(dtype: torch.dtype, number: int) -> None:
-    tol = 1e-2
-    dd = {"dtype": dtype}
-
-    # SCF does not converge for gold (in tblite too)
-    if number == 79:
-        return
+    tol = 1e-2  #
 
     numbers = torch.tensor([number])
-    positions = torch.zeros((1, 3), **dd)
+    positions = torch.zeros((1, 3), dtype=dtype)
     r = ref_cation[number - 1].item()
-    charges = torch.tensor(1.0, **dd)
+    charges = torch.tensor(1.0).type(dtype)
 
-    options = dict(
-        opts,
-        **{
-            "xitorch_fatol": 1e-5,  # avoid Jacobian inversion error
-            "xitorch_xatol": 1e-5,  # avoid Jacobian inversion error
-            "spin": uhf_cation[number - 1],
-        }
-    )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    opts["spin"] = uhf_cation[number - 1]
+    calc = Calculator(numbers, positions, par)
 
     # no (valence) electrons
     if number in [1, 3, 11, 19, 37, 55]:
         with pytest.raises(ValueError):
-            calc.singlepoint(numbers, positions, charges)
+            calc.singlepoint(numbers, positions, charges, opts)
     else:
-        results = calc.singlepoint(numbers, positions, charges)
+        results = calc.singlepoint(numbers, positions, charges, opts)
         assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
 
 
-@pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_anion(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
 
     # Helium doesn't have enough orbitals for negative charge
     if number == 2:
         return
 
-    # SCF does not converge (in tblite too)
+    # SCF does not converge
     if number in [22, 23]:
         return
 
     numbers = torch.tensor([number])
-    positions = torch.zeros((1, 3), **dd)
+    positions = torch.zeros((1, 3), dtype=dtype)
     r = ref_anion[number - 1].item()
-    charges = torch.tensor(-1.0, **dd)
+    charges = torch.tensor(-1.0).type(dtype)
 
-    options = dict(
-        opts,
-        **{
-            "xitorch_fatol": 1e-5,  # avoid Jacobian inversion error
-            "xitorch_xatol": 1e-5,  # avoid Jacobian inversion error
-            "spin": uhf_anion[number - 1],
-        }
-    )
-    calc = Calculator(numbers, par, opts=options, **dd)
-    results = calc.singlepoint(numbers, positions, charges)
+    opts["spin"] = uhf_anion[number - 1]
+    calc = Calculator(numbers, positions, par)
+    results = calc.singlepoint(numbers, positions, charges, opts)
 
     assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
 
 
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("number", [1, 2, 10, 25, 50, 86])
+@pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("mol", ["SiH4"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:
+
     tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
 
     sample = samples[mol]
     numbers = batch.pack((sample["numbers"], torch.tensor([number])))
     positions = batch.pack((sample["positions"], torch.zeros((1, 3)))).type(dtype)
     refs = batch.pack((sample["escf"], ref[number - 1])).type(dtype)
-    charges = torch.tensor([0.0, 0.0], **dd)
+    charges = torch.tensor([0.0, 0.0]).type(dtype)
 
     opts["spin"] = [0, uhf[number - 1]]
-    calc = Calculator(numbers, par, opts=opts, **dd)
-    results = calc.singlepoint(numbers, positions, charges)
+    calc = Calculator(numbers, positions, par)
+    results = calc.singlepoint(numbers, positions, charges, opts)
 
     assert torch.allclose(refs, results.scf.sum(-1), atol=tol)

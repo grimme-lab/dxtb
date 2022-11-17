@@ -23,16 +23,14 @@ def test_none() -> None:
 
     with pytest.warns(ParameterWarning):
         _par.dispersion = None
-        assert new_dispersion(dummy, _par) is None
+        assert new_dispersion(dummy, dummy, _par) is None
 
         del _par.dispersion
-        assert new_dispersion(dummy, _par) is None
+        assert new_dispersion(dummy, dummy, _par) is None
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_disp_batch(dtype: torch.dtype) -> None:
-    dd = {"dtype": dtype}
-
     sample1, sample2 = (
         samples["PbH4-BiH3"],
         samples["C6H5I-CH3SH"],
@@ -82,7 +80,7 @@ def test_disp_batch(dtype: torch.dtype) -> None:
     _par.dispersion.d3.a2 = param["a2"]
     _par.dispersion.d3.s8 = param["s8"]
 
-    disp = new_dispersion(numbers, _par, **dd)
+    disp = new_dispersion(numbers, positions, _par)
     if disp is None:
         assert False
 
@@ -96,7 +94,6 @@ def test_disp_batch(dtype: torch.dtype) -> None:
 @pytest.mark.grad
 def test_grad_pos() -> None:
     dtype = torch.double
-    dd = {"dtype": dtype}
 
     sample = samples["C4H5NCS"]
     numbers = sample["numbers"]
@@ -105,7 +102,7 @@ def test_grad_pos() -> None:
     # variable to be differentiated
     positions.requires_grad_(True)
 
-    disp = new_dispersion(numbers, par, **dd)
+    disp = new_dispersion(numbers, positions, par)
     if disp is None:
         assert False
 
@@ -121,41 +118,8 @@ def test_grad_pos() -> None:
 
 
 @pytest.mark.grad
-@pytest.mark.parametrize("dtype", [torch.double])
-def test_grad_pos_tblite(dtype: torch.dtype) -> None:
-    """Compare with reference values from tblite."""
-    dd = {"dtype": dtype}
-
-    sample = samples["PbH4-BiH3"]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    ref = sample["grad"].type(dtype)
-
-    # variable to be differentiated
-    positions.requires_grad_(True)
-
-    disp = new_dispersion(numbers, par, **dd)
-    if disp is None:
-        assert False
-
-    cache = disp.get_cache(numbers)
-
-    # automatic gradient
-    energy = torch.sum(disp.get_energy(positions, cache), dim=-1)
-    energy.backward()
-
-    if positions.grad is None:
-        assert False
-    grad_backward = positions.grad.clone()
-
-    assert torch.allclose(ref, grad_backward)
-
-
-@pytest.mark.grad
 def test_grad_param() -> None:
     dtype = torch.double
-    dd = {"dtype": dtype}
-
     sample = samples["C4H5NCS"]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
@@ -169,7 +133,7 @@ def test_grad_param() -> None:
 
     def func(*inputs):
         input_param = {label[i]: input for i, input in enumerate(inputs)}
-        disp = DispersionD3(numbers, input_param, **dd)
+        disp = DispersionD3(numbers, positions, input_param)
         cache = disp.get_cache(numbers)
         return disp.get_energy(positions, cache)
 

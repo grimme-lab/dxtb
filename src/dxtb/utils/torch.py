@@ -4,7 +4,7 @@ Collection of utility functions for matrices/tensors.
 
 import torch
 
-from ..typing import Tensor
+from ..typing import Any, Tensor
 
 
 @torch.jit.script
@@ -19,6 +19,27 @@ def real_pairs(numbers: Tensor, diagonal: bool = False) -> Tensor:
     if diagonal is True:
         mask *= ~torch.diag_embed(torch.ones_like(real))
     return mask
+
+
+def load_from_npz(npzfile: Any, name: str, dtype: torch.dtype) -> Tensor:
+    """Get torch tensor from npz file
+
+    Parameters
+    ----------
+    npzfile : Any
+        Loaded npz file.
+    name : str
+        Name of the tensor in the npz file.
+    dtype : torch.dtype
+        Data type of the tensor.
+
+    Returns
+    -------
+    Tensor
+        Tensor from the npz file.
+    """
+    name = name.replace("-", "").lower()
+    return torch.from_numpy(npzfile[name]).type(dtype)
 
 
 def t2int(x: Tensor) -> int:

@@ -4,8 +4,6 @@ Function for creating a new instance of a Dispersion.
 
 import warnings
 
-import torch
-
 from ..param import Param
 from ..typing import Tensor
 from ..utils import ParameterWarning
@@ -14,12 +12,7 @@ from .d3 import DispersionD3
 from .d4 import DispersionD4
 
 
-def new_dispersion(
-    numbers: Tensor,
-    par: Param,
-    device: torch.device | None = None,
-    dtype: torch.dtype | None = None,
-) -> Dispersion | None:
+def new_dispersion(numbers: Tensor, positions: Tensor, par: Param) -> Dispersion | None:
     """
     Create new instance of the Dispersion class.
 
@@ -27,6 +20,8 @@ def new_dispersion(
     ----------
     numbers : Tensor
         Atomic numbers of all atoms.
+    positions : Tensor
+        Cartesian coordinates of all atoms.
     par : Param
         Representation of an extended tight-binding model.
 
@@ -55,7 +50,7 @@ def new_dispersion(
             "s8": par.dispersion.d3.s8,
             # "s9": par.dispersion.d3.s9,
         }
-        return DispersionD3(numbers, param, device=device, dtype=dtype)
+        return DispersionD3(numbers, positions, param)
 
     if par.dispersion.d4 is not None and par.dispersion.d3 is None:
         param = {
@@ -65,7 +60,7 @@ def new_dispersion(
             "s8": par.dispersion.d4.s8,
             "s9": par.dispersion.d4.s9,
         }
-        return DispersionD4(numbers, param, device=device, dtype=dtype)
+        return DispersionD4(numbers, positions, param)
 
     if par.dispersion.d3 is not None and par.dispersion.d4 is not None:
         raise ValueError("Parameters for both D3 and D4 found. Please decide.")

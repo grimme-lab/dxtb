@@ -13,9 +13,7 @@ from dxtb.constants import defaults
 
 
 def test_defaults() -> None:
-    dummy = Path(
-        Path(__file__).parent.parent, "test_singlepoint/mols/H2/coord"
-    ).resolve()
+    dummy = Path(Path(__file__).parent.parent, "test_singlepoint/H2/coord").resolve()
     args = argparser().parse_args([str(dummy)])
 
     assert isinstance(args.chrg, int)
