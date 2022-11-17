@@ -172,7 +172,7 @@ class Calculator(TensorLike):
         self.opts = {
             "fwd_options": {
                 "maxiter": opts.get("maxiter", defaults.MAXITER),
-                "verbose": opts.get("verbosity", defaults.VERBOSITY),
+                "verbose": opts.get("verbose", defaults.XITORCH_VERBOSITY),
             },
             "scf_options": {
                 "etemp": opts.get("etemp", defaults.ETEMP),
@@ -188,6 +188,7 @@ class Calculator(TensorLike):
                     "fermi_fenergy_partition",
                     defaults.FERMI_FENERGY_PARTITION,
                 ),
+                "verbosity": opts.get("verbosity", defaults.VERBOSITY),
             },
             "exclude": opts.get("exclude", defaults.EXCLUDE),
             "guess": opts.get("guess", defaults.GUESS),
@@ -348,9 +349,9 @@ class Calculator(TensorLike):
 
         timer.stop("total")
 
-        if self.opts["fwd_options"]["verbose"] > 0:
+        if self.opts["scf_options"]["verbosity"] > 0:
             result.print_energies()
-        if self.opts["fwd_options"]["verbose"] > 1:
+        if self.opts["scf_options"]["verbosity"] > 1:
             print("")
             timer.print_times()
 

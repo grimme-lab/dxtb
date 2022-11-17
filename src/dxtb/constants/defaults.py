@@ -46,6 +46,9 @@ MAXITER = 20
 VERBOSITY = 1
 """Verbosity of printout."""
 
+XITORCH_VERBOSITY = False
+"""Verbosity of printout."""
+
 XITORCH_XATOL = 1.0e-6
 """The absolute tolerance of the norm of the input of the equilibrium function."""
 
