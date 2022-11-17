@@ -59,6 +59,7 @@ def test_single2(dtype: torch.dtype, name: str):
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
 
 
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float])
 @pytest.mark.parametrize("name", ["S2", "LYS_xao_dist"])
 def test_single3(dtype: torch.dtype, name: str):
