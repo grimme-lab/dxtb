@@ -63,8 +63,6 @@ class ChargeModel(TensorLike):
         kcn: Tensor,
         eta: Tensor,
         rad: Tensor,
-    ):
-        ...
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
