@@ -114,10 +114,10 @@ class Result:
 
         for label, name in labels.items():
             e = torch.sum(getattr(self, label), dim=-1)
-            print(f"{name:<27} {e: .16f}")
+            print(f"{name:<27} {e}")
 
         print(width * "-")
-        print(f"{tot:<27} {total: .16f}")
+        print(f"{tot:<27} {total}")
         print("")
 
 
