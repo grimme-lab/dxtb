@@ -15,6 +15,7 @@ field iterations.
 """
 
 import warnings
+from math import sqrt
 
 import torch
 import xitorch as xt
@@ -99,6 +100,7 @@ class SelfConsistentField(xt.EditableModule):
             self.cache = cache
             self.energy = hcore.new_tensor(0.0)
             self.old_energy = n0.new_tensor(0.0)
+            self.old_charges = n0.new_tensor(0.0)
             self.old_density = overlap.new_tensor(0.0)
             self.iter = 1
 
@@ -195,9 +197,9 @@ class SelfConsistentField(xt.EditableModule):
         # Especially for elements and their ions, the SCF may oscillate and the
         # single step for the gradient may differ from the converged solution.
         if (
-            torch.allclose(q_conv, charges, atol=self.fwd_options["x_tol"] * 10)
-            is False
-        ):
+            torch.linalg.vector_norm(q_conv - charges)
+            > sqrt(torch.finfo(self.dtype).eps) * 10
+        ).any():
             warnings.warn(
                 "The single SCF step differs from the converged solution. "
                 "Re-calculating with full gradient tracking!"
@@ -217,13 +219,13 @@ class SelfConsistentField(xt.EditableModule):
         }
 
     def scf(self, charges: Tensor) -> Tensor:
-        if self.fwd_options["verbose"] > 0 and charges.ndim < 2:
+        if self.scf_options["verbosity"] > 0 and charges.ndim < 2:
             print(
-                "\n{:<5} {:<24} {:<15} {:<16}".format(
-                    "iter", "energy", "energy change", "P norm change"
+                "\n{:<5} {:<24} {:<15} {:<15} {:<15}".format(
+                    "iter", "energy", "energy change", "P norm change", "charge change"
                 )
             )
-            print(60 * "-")
+            print(77 * "-")
 
         fcn = self.iterate_potential if self.use_potential else self.iterate_charges
         y0 = self.charges_to_potential(charges) if self.use_potential else charges
@@ -234,8 +236,8 @@ class SelfConsistentField(xt.EditableModule):
             **self.fwd_options,
         )
 
-        if self.fwd_options["verbose"] > 0 and charges.ndim < 2:
-            print(60 * "-")
+        if self.scf_options["verbosity"] > 0 and charges.ndim < 2:
+            print(77 * "-")
 
         return self.potential_to_charges(output) if self.use_potential else output
 
@@ -354,21 +356,23 @@ class SelfConsistentField(xt.EditableModule):
         """
 
         charges = self.potential_to_charges(potential)
-        if self.fwd_options["verbose"] > 0:
-            print(f"energy: {self.get_energy(charges).sum(-1)}")
-
+        if self.scf_options["verbosity"] > 0:
             if charges.ndim < 2:
                 energy = self.get_energy(charges).sum(-1).detach().clone()
-                ediff = energy - self._data.old_energy
+                ediff = torch.linalg.vector_norm(self._data.old_energy - energy)
 
                 density = self._data.density.detach().clone()
-                norm = torch.linalg.matrix_norm(self._data.old_density - density)
+                pnorm = torch.linalg.matrix_norm(self._data.old_density - density)
+
+                q = charges.detach().clone()
+                qdiff = torch.linalg.vector_norm(self._data.old_charges - q)
 
                 print(
-                    f"{self._data.iter:2}    {energy: .16E}  {ediff: .6E}  {norm: .6E}"
+                    f"{self._data.iter:2}    {energy: .16E}  {ediff: .6E}  {pnorm: .6E}   {qdiff: .6E}"
                 )
 
                 self._data.old_energy = energy
+                self._data.old_charges = q
                 self._data.old_density = density
                 self._data.iter += 1
 
