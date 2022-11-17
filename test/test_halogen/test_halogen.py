@@ -20,10 +20,10 @@ def test_none() -> None:
     _par = par.copy(deep=True)
 
     _par.halogen = None
-    assert new_halogen(dummy, dummy, _par) is None
+    assert new_halogen(dummy, _par) is None
 
     del _par.halogen
-    assert new_halogen(dummy, dummy, _par) is None
+    assert new_halogen(dummy, _par) is None
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -33,6 +33,7 @@ def test_small(dtype: torch.dtype, name: str) -> None:
     Test the halogen bond correction for small molecules taken from
     the tblite test suite.
     """
+    dd = {"dtype": dtype}
 
     sample = samples[name]
 
@@ -40,7 +41,7 @@ def test_small(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].type(dtype)
     ref = sample["energy"].type(dtype)
 
-    xb = new_halogen(numbers, positions, par)
+    xb = new_halogen(numbers, par, **dd)
     if xb is None:
         assert False
 
@@ -50,6 +51,7 @@ def test_small(dtype: torch.dtype, name: str) -> None:
     assert torch.allclose(ref, torch.sum(energy))
 
 
+@pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["tmpda", "tmpda_mod"])
 def test_large(dtype: torch.dtype, name: str) -> None:
@@ -58,6 +60,7 @@ def test_large(dtype: torch.dtype, name: str) -> None:
     nitrogen acceptors. In the modified version, one I is replaced with
     Br and one O is added in order to obtain different donors and acceptors.
     """
+    dd = {"dtype": dtype}
 
     sample = samples[name]
 
@@ -65,7 +68,7 @@ def test_large(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].type(dtype)
     ref = sample["energy"].type(dtype)
 
-    xb = new_halogen(numbers, positions, par)
+    xb = new_halogen(numbers, par, **dd)
     if xb is None:
         assert False
 
@@ -78,6 +81,7 @@ def test_large(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_no_xb(dtype: torch.dtype) -> None:
     """Test system without halogen bonds."""
+    dd = {"dtype": dtype}
 
     sample = samples["LYS_xao"]
 
@@ -85,7 +89,7 @@ def test_no_xb(dtype: torch.dtype) -> None:
     positions = sample["positions"].type(dtype)
     ref = sample["energy"].type(dtype)
 
-    xb = new_halogen(numbers, positions, par)
+    xb = new_halogen(numbers, par, **dd)
     if xb is None:
         assert False
 
@@ -99,6 +103,7 @@ def test_no_xb(dtype: torch.dtype) -> None:
 @pytest.mark.parametrize("name1", ["br2nh3", "br2och2"])
 @pytest.mark.parametrize("name2", ["finch", "tmpda"])
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    dd = {"dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
 
@@ -121,7 +126,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         ],
     )
 
-    xb = new_halogen(numbers, positions, par)
+    xb = new_halogen(numbers, par, **dd)
     if xb is None:
         assert False
 
@@ -135,6 +140,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.parametrize("name", ["br2nh3", "br2och2"])
 def test_grad_pos(name: str) -> None:
     dtype = torch.double
+    dd = {"dtype": dtype}
 
     sample = samples[name]
 
@@ -144,7 +150,7 @@ def test_grad_pos(name: str) -> None:
     # variable to be differentiated
     positions.requires_grad_(True)
 
-    xb = new_halogen(numbers, positions, par)
+    xb = new_halogen(numbers, par, **dd)
     if xb is None:
         assert False
 
@@ -164,6 +170,7 @@ def test_grad_pos(name: str) -> None:
 @pytest.mark.parametrize("sample_name", ["br2nh3", "br2och2", "tmpda"])
 def test_grad_param(sample_name: str):
     dtype = torch.double
+    dd = {"dtype": dtype}
 
     sample = samples[sample_name]
     numbers = sample["numbers"]
@@ -188,7 +195,7 @@ def test_grad_param(sample_name: str):
     )
 
     def func(damp: Tensor, rscale: Tensor, xbond: Tensor) -> Tensor:
-        xb = Halogen(numbers, positions, damp, rscale, xbond)
+        xb = Halogen(numbers, damp, rscale, xbond, **dd)
         cache = xb.get_cache(numbers, ihelp)
         return xb.get_energy(positions, cache)
 

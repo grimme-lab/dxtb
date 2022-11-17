@@ -73,13 +73,14 @@ class Halogen(Classical, TensorLike):
     def __init__(
         self,
         numbers: Tensor,
-        positions: Tensor,
         damp: Tensor,
         rscale: Tensor,
         bond_strength: Tensor,
         cutoff: Tensor = torch.tensor(xtb.DEFAULT_XB_CUTOFF),
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
     ) -> None:
-        super().__init__(positions.device, positions.dtype)
+        super().__init__(device, dtype)
 
         self.numbers = numbers
         self.damp = damp.to(self.device).type(self.dtype)
@@ -303,9 +304,10 @@ class Halogen(Classical, TensorLike):
 
 def new_halogen(
     numbers: Tensor,
-    positions: Tensor,
     par: Param,
     cutoff: Tensor = torch.tensor(xtb.DEFAULT_XB_CUTOFF),
+    device: torch.device | None = None,
+    dtype: torch.dtype | None = None,
 ) -> Halogen | None:
     """
     Create new instance of Halogen class.
@@ -314,8 +316,6 @@ def new_halogen(
     ----------
     numbers : Tensor
         Atomic numbers of all atoms.
-    positions : Tensor
-        Cartesian coordinates of all atoms.
     par : Param
         Representation of an extended tight-binding model.
     cutoff : Tensor
@@ -341,4 +341,6 @@ def new_halogen(
     unique = torch.unique(numbers)
     bond_strength = get_elem_param(unique, par.element, "xbond", pad_val=0)
 
-    return Halogen(numbers, positions, damp, rscale, bond_strength, cutoff=cutoff)
+    return Halogen(
+        numbers, damp, rscale, bond_strength, cutoff=cutoff, device=device, dtype=dtype
+    )

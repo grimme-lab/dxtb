@@ -9,6 +9,8 @@ from typing import Any, Literal, Optional, Protocol, TypedDict, TypeGuard, overl
 import torch
 from torch import Tensor
 
+from .constants import defaults
+
 Sliceable = list[Tensor] | tuple[Tensor]
 
 CountingFunction = Callable[[Tensor, Tensor], Tensor]
@@ -34,9 +36,13 @@ class TensorLike:
 
     __slots__ = ["__device", "__dtype"]
 
-    def __init__(self, device: torch.device, dtype: torch.dtype):
-        self.__device = device
-        self.__dtype = dtype
+    def __init__(
+        self, device: torch.device | None = None, dtype: torch.dtype | None = None
+    ):
+        self.__device = (
+            device if device is not None else torch.device(defaults.TORCH_DEVICE)
+        )
+        self.__dtype = dtype if dtype is not None else defaults.TORCH_DTYPE
 
     @property
     def device(self) -> torch.device:

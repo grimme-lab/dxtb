@@ -15,16 +15,19 @@ from dxtb.xtb import Calculator
 
 from .samples import samples
 
+opts = {"verbosity": 0}
+
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize(
-    "name", ["H2", "H2O", "CH4", "SiH4", "LYS_xao", "C60", "vancoh2"]
+    "name", ["H2", "H2O", "CH4", "SiH4", "LYS_xao", "C60", "vancoh2", "AD7en+"]
 )
 def test_single(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
 
-    base = Path(Path(__file__).parent, name)
+    base = Path(Path(__file__).parent, "mols", name)
 
     numbers, positions = read_coord(Path(base, "coord"))
     charge = read_chrg(Path(base, ".CHRG"))
@@ -35,8 +38,8 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     ref = samples[name]["etot"].item()
 
-    calc = Calculator(numbers, positions, par)
-    result = calc.singlepoint(numbers, positions, charge, {"verbosity": 0})
+    calc = Calculator(numbers, par, opts=opts, **dd)
+    result = calc.singlepoint(numbers, positions, charge)
     assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1).item()
 
 
@@ -47,10 +50,11 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name3", ["H2", "SiH4", "LYS_xao"])
 def test_batch(dtype: torch.dtype, name1: str, name2: str, name3: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
 
     numbers, positions, charge = [], [], []
     for name in [name1, name2, name3]:
-        base = Path(Path(__file__).parent, name)
+        base = Path(Path(__file__).parent, "mols", name)
 
         nums, pos = read_coord(Path(base, "coord"))
         chrg = read_chrg(Path(base, ".CHRG"))
@@ -70,8 +74,8 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, name3: str) -> None:
         ]
     )
 
-    calc = Calculator(numbers, positions, par)
-    result = calc.singlepoint(numbers, positions, charge, {"verbosity": 0})
+    calc = Calculator(numbers, par, opts=opts, **dd)
+    result = calc.singlepoint(numbers, positions, charge)
     assert torch.allclose(ref, result.total.sum(-1), atol=tol, rtol=tol)
 
 
@@ -80,8 +84,9 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, name3: str) -> None:
 @pytest.mark.parametrize("name", ["H", "NO2"])
 def test_uhf_single(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
 
-    base = Path(Path(__file__).parent, name)
+    base = Path(Path(__file__).parent, "mols", name)
 
     numbers, positions = read_coord(Path(base, "coord"))
     charge = read_chrg(Path(base, ".CHRG"))
@@ -90,10 +95,10 @@ def test_uhf_single(dtype: torch.dtype, name: str) -> None:
     positions = torch.tensor(positions).type(dtype)
     charge = torch.tensor(charge).type(dtype)
 
-    calc = Calculator(numbers, positions, par)
+    calc = Calculator(numbers, par, opts=opts, **dd)
 
     ref = samples[name]["etot"].item()
-    result = calc.singlepoint(numbers, positions, charge, {"verbosity": 0})
+    result = calc.singlepoint(numbers, positions, charge)
     assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1).item()
 
 
@@ -103,7 +108,7 @@ def test_fail() -> None:
 
 
 def test_uhf_fail() -> None:
-    base = Path(Path(__file__).parent, "H")
+    base = Path(Path(__file__).parent, "mols", "H")
 
     numbers, positions = read_coord(Path(base, "coord"))
     charge = read_chrg(Path(base, ".CHRG"))
@@ -112,10 +117,12 @@ def test_uhf_fail() -> None:
     positions = torch.tensor(positions)
     charge = torch.tensor(charge)
 
-    calc = Calculator(numbers, positions, par)
+    calc = Calculator(numbers, par, opts=opts)
 
     with pytest.raises(ValueError):
-        calc.singlepoint(numbers, positions, charge, {"spin": 0})
+        calc.set_option("spin", 0)
+        calc.singlepoint(numbers, positions, charge)
 
     with pytest.raises(ValueError):
-        calc.singlepoint(numbers, positions, charge, {"spin": 2})
+        calc.set_option("spin", 2)
+        calc.singlepoint(numbers, positions, charge)

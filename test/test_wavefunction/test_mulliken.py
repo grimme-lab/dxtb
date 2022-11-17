@@ -125,37 +125,36 @@ def test_batch_pop_shell(dtype: torch.dtype, name1: str, name2: str):
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single_charges(dtype: torch.dtype, name: str):
+    dd = {"dtype": dtype}
+    tol = 1e-5
+
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
     density = sample["density"].type(dtype)
     overlap = sample["overlap"].type(dtype)
     ref = sample["mulliken_charges"].type(dtype)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    h0 = Hamiltonian(numbers, positions, par, ihelp)
+    h0 = Hamiltonian(numbers, par, ihelp, **dd)
     n0 = ihelp.reduce_orbital_to_atom(h0.get_occupation())
 
     pop = mulliken.get_mulliken_atomic_charges(overlap, density, ihelp, n0)
-    assert torch.allclose(ref, pop, atol=1e-5)
+    assert torch.allclose(ref, pop, atol=tol)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch_charges(dtype: torch.dtype, name1: str, name2: str):
+    dd = {"dtype": dtype}
+    tol = 1e-5
+
     sample1, sample2 = samples[name1], samples[name2]
 
     numbers = batch.pack(
         (
             sample1["numbers"],
             sample2["numbers"],
-        )
-    )
-    positions = batch.pack(
-        (
-            sample1["positions"],
-            sample2["positions"],
         )
     )
     density = batch.pack(
@@ -178,47 +177,46 @@ def test_batch_charges(dtype: torch.dtype, name1: str, name2: str):
     )
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    h0 = Hamiltonian(numbers, positions, par, ihelp)
+    h0 = Hamiltonian(numbers, par, ihelp, **dd)
     n0 = ihelp.reduce_orbital_to_atom(h0.get_occupation())
 
     pop = mulliken.get_mulliken_atomic_charges(overlap, density, ihelp, n0)
-    assert torch.allclose(ref, pop, atol=1e-5)
+    assert torch.allclose(ref, pop, atol=tol)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single_charges_shell(dtype: torch.dtype, name: str):
+    dd = {"dtype": dtype}
+    tol = 1e-5
+
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
     density = sample["density"].type(dtype)
     overlap = sample["overlap"].type(dtype)
     ref = sample["mulliken_charges_shell"].type(dtype)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    h0 = Hamiltonian(numbers, positions, par, ihelp)
+    h0 = Hamiltonian(numbers, par, ihelp, **dd)
     n0 = ihelp.reduce_orbital_to_shell(h0.get_occupation())
 
     pop = mulliken.get_mulliken_shell_charges(overlap, density, ihelp, n0)
-    assert torch.allclose(ref, pop, atol=1e-5)
+    assert torch.allclose(ref, pop, atol=tol)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch_charges_shell(dtype: torch.dtype, name1: str, name2: str):
+    dd = {"dtype": dtype}
+    tol = 1e-5
+
     sample1, sample2 = samples[name1], samples[name2]
 
     numbers = batch.pack(
         (
             sample1["numbers"],
             sample2["numbers"],
-        )
-    )
-    positions = batch.pack(
-        (
-            sample1["positions"],
-            sample2["positions"],
         )
     )
     density = batch.pack(
@@ -241,8 +239,8 @@ def test_batch_charges_shell(dtype: torch.dtype, name1: str, name2: str):
     )
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    h0 = Hamiltonian(numbers, positions, par, ihelp)
+    h0 = Hamiltonian(numbers, par, ihelp, **dd)
     n0 = ihelp.reduce_orbital_to_shell(h0.get_occupation())
 
     pop = mulliken.get_mulliken_shell_charges(overlap, density, ihelp, n0)
-    assert torch.allclose(ref, pop, atol=1e-5)
+    assert torch.allclose(ref, pop, atol=tol)

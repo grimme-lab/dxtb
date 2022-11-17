@@ -58,17 +58,22 @@ class Driver:
         timer.start("total")
         timer.start("setup")
 
+        dd = {"device": args.device, "dtype": args.dtype}
+
         opts = {
             "etemp": args.etemp,
             "maxiter": args.maxiter,
             "spin": args.spin,
             "verbosity": args.verbosity,
+            "exclude": args.exclude,
+            "xitorch_xatol": 1e-6,
+            "xitorch_fatol": 1e-6,
         }
 
         numbers, positions = io.read_structure_from_file(args.file)
-        numbers = torch.tensor(numbers)
-        positions = torch.tensor(positions)
-        chrg = torch.tensor(self.chrg)
+        numbers = torch.tensor(numbers, dtype=torch.long, device=dd["device"])
+        positions = torch.tensor(positions, **dd)
+        chrg = torch.tensor(self.chrg, **dd)
 
         if args.grad is True:
             positions.requires_grad = True
@@ -89,12 +94,12 @@ class Driver:
             raise ValueError(f"Unknown guess method '{args.guess}'.")
 
         # setup calculator
-        calc = Calculator(numbers, positions, par)
+        calc = Calculator(numbers, par, opts=opts, **dd)
         timer.stop("setup")
 
         # run singlepoint calculation
         timer.start("singlepoint")
-        result = calc.singlepoint(numbers, positions, chrg, opts)
+        result = calc.singlepoint(numbers, positions, chrg)
         total = result.total.sum(-1)
         timer.stop("singlepoint")
 
@@ -106,9 +111,13 @@ class Driver:
                 raise RuntimeError("No gradients found for positions.")
             timer.stop("grad")
 
+            print(positions.grad)
+
         # print results
         timer.stop("total")
-        timer.print_times("")
+
+        if args.verbosity is not None and args.verbosity > 1:
+            timer.print_times("")
 
     def __str__(self) -> str:
         """Custom print representation of class."""

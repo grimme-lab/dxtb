@@ -4,6 +4,8 @@ Abstract base class for dispersion models.
 
 from abc import ABC, abstractmethod
 
+import torch
+
 from ..typing import Tensor, TensorLike
 
 
@@ -26,9 +28,13 @@ class Dispersion(TensorLike):
         """
 
     def __init__(
-        self, numbers: Tensor, positions: Tensor, param: dict[str, float]
+        self,
+        numbers: Tensor,
+        param: dict[str, float],
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
     ) -> None:
-        super().__init__(positions.device, positions.dtype)
+        super().__init__(device, dtype)
         self.numbers = numbers
         self.param = param
 

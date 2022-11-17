@@ -16,7 +16,7 @@ class DispersionD4(Dispersion, Interaction):
     DispersionD4 should be an `Interaction` as D4 can be self-consistent.
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         raise NotImplementedError("D4 dispersion scheme not implemented.")
 
     def get_energy(self, positions: Tensor, **kwargs) -> Tensor:

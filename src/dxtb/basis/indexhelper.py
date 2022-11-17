@@ -374,10 +374,7 @@ class IndexHelper:
 
     @classmethod
     def from_numbers(
-        cls,
-        numbers: Tensor,
-        angular: dict[int, list[int]],
-        dtype: torch.dtype = torch.int64,
+        cls, numbers: Tensor, angular: dict[int, list[int]]
     ) -> "IndexHelper":
         """
         Construct an index helper instance from atomic numbers and their angular momenta.
@@ -395,6 +392,7 @@ class IndexHelper:
             Instance of index helper for given basis set
         """
 
+        device = numbers.device
         batched = numbers.ndim > 1
         pad_val = -999
 
@@ -402,11 +400,11 @@ class IndexHelper:
 
         unique_angular = torch.tensor(
             [l for number in unique for l in angular.get(number.item(), [-1])],
-            dtype=dtype,
+            device=device,
         )
         ushells_per_unique = torch.tensor(
             [len(angular.get(number.item(), [-1])) for number in unique],
-            dtype=dtype,
+            device=device,
         )
         ushell_index = torch.cumsum(ushells_per_unique, dim=-1) - ushells_per_unique
         ushells_to_unique = _fill(ushell_index, ushells_per_unique)
@@ -452,16 +450,8 @@ class IndexHelper:
         )
 
         orbitals_per_shell = torch.where(
-            lsh >= 0, 2 * lsh + 1, torch.tensor(0, dtype=dtype)
+            lsh >= 0, 2 * lsh + 1, torch.tensor(0, device=device)
         )
-
-        # NOTE:
-        # If we care for the actual values in `angular`, we must allow other
-        # dtypes apart from `torch.int64` (example: shell-resolved Hubbard
-        # parameters in ES2). For these cases, however, orbital indices become
-        # meaningless and we can simply convert to `torch.int64` to avoid an
-        # error in the `fill` function.
-        orbitals_per_shell = orbitals_per_shell.type(numbers.dtype)
 
         orbital_index = torch.cumsum(orbitals_per_shell, -1) - orbitals_per_shell
         orbital_index[orbitals_per_shell == 0] = pad_val

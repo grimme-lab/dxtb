@@ -82,14 +82,15 @@ class Repulsion(Classical, TensorLike):
     def __init__(
         self,
         numbers: Tensor,
-        positions: Tensor,
         arep: Tensor,
         zeff: Tensor,
         kexp: Tensor,
         kexp_light: Tensor | None = None,
         cutoff: float = xtb.DEFAULT_REPULSION_CUTOFF,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
     ) -> None:
-        super().__init__(positions.device, positions.dtype)
+        super().__init__(device, dtype)
 
         self.numbers = numbers
         self.arep = arep.to(self.device).type(self.dtype)
@@ -275,9 +276,10 @@ class Repulsion(Classical, TensorLike):
 
 def new_repulsion(
     numbers: Tensor,
-    positions: Tensor,
     par: Param,
     cutoff: float = xtb.DEFAULT_REPULSION_CUTOFF,
+    device: torch.device | None = None,
+    dtype: torch.dtype | None = None,
 ) -> Repulsion | None:
     """
     Create new instance of Repulsion class.
@@ -286,8 +288,6 @@ def new_repulsion(
     ----------
     numbers : Tensor
         Atomic numbers of all atoms.
-    positions : Tensor
-        Cartesian coordinates of all atoms.
     par : Param
         Representation of an extended tight-binding model.
     cutoff : float
@@ -321,4 +321,6 @@ def new_repulsion(
     arep = get_elem_param(unique, par.element, "arep", pad_val=0)
     zeff = get_elem_param(unique, par.element, "zeff", pad_val=0)
 
-    return Repulsion(numbers, positions, arep, zeff, kexp, kexp_light, cutoff)
+    return Repulsion(
+        numbers, arep, zeff, kexp, kexp_light, cutoff, device=device, dtype=dtype
+    )
