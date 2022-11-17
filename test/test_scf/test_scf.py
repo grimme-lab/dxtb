@@ -14,7 +14,7 @@ from dxtb.xtb import Calculator
 
 from .samples import samples
 
-opts = {"verbosity": 1, "maxiter": 50}
+opts = {"verbosity": 0, "maxiter": 50}
 
 
 @pytest.mark.filterwarnings("ignore")
