@@ -1,5 +1,5 @@
 """
-Data for testing repulsion taken from https://github.com/grimme-lab/mstore.
+Data for SCF energies of charged samples.
 """
 
 import torch
@@ -26,23 +26,23 @@ class Record(Molecule, Refs):
 refs: dict[str, Refs] = {
     "Ag2Cl22-": {
         "charge": torch.tensor(-2.0),
-        "escf": torch.tensor(-2.5297870091005e01),
+        "escf": torch.tensor(-2.5297870091005e01, dtype=torch.float64),
     },
     "Al3+Ar6": {
         "charge": torch.tensor(3.0),
-        "escf": torch.tensor(-3.6303223981129e01),
+        "escf": torch.tensor(-3.6303223981129e01, dtype=torch.float64),
     },
     "AD7en+": {
         "charge": torch.tensor(1.0),
-        "escf": torch.tensor(-4.3226840214360e01),
+        "escf": torch.tensor(-4.3226840214360e01, dtype=torch.float64),
     },
     "C2H4F+": {
         "charge": torch.tensor(1.0),
-        "escf": torch.tensor(-1.1004178291636e01),
+        "escf": torch.tensor(-1.1004178291636e01, dtype=torch.float64),
     },
     "ZnOOH-": {
         "charge": torch.tensor(-1.0),
-        "escf": torch.tensor(-1.0913986485487e01),
+        "escf": torch.tensor(-1.0913986485487e01, dtype=torch.float64),
     },
 }
 

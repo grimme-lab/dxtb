@@ -14,7 +14,7 @@ from dxtb.xtb import Calculator
 
 from .samples import samples
 
-opts = {"verbosity": 0}
+opts = {"verbosity": 1, "maxiter": 50}
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -27,20 +27,19 @@ def test_single(dtype: torch.dtype, name: str):
     sample = samples[name]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
-    ref = sample["escf"].item()
-    charges = torch.tensor(0.0).type(dtype)
+    ref = sample["escf"].type(dtype)
+    charges = torch.tensor(0.0, **dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
-    assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1).item()
+    assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
 
 
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.float])
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize(
-    "name",
-    ["S2", "PbH4-BiH3", "C6H5I-CH3SH", "MB16_43_01", "LYS_xao", "LYS_xao_dist", "C60"],
+    "name", ["PbH4-BiH3", "C6H5I-CH3SH", "MB16_43_01", "LYS_xao", "C60"]
 )
 def test_single2(dtype: torch.dtype, name: str):
     """Test a few larger system (only float32 as they take some time)."""
@@ -50,18 +49,39 @@ def test_single2(dtype: torch.dtype, name: str):
     sample = samples[name]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
-    ref = sample["escf"].item()
-    charges = torch.tensor(0.0).type(dtype)
+    ref = sample["escf"].type(dtype)
+    charges = torch.tensor(0.0, **dd)
 
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    options = dict(opts, **{"xitorch_fatol": tol**2, "xitorch_xatol": tol**2})
+    calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
-    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
+    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
+
+
+@pytest.mark.parametrize("dtype", [torch.float])
+@pytest.mark.parametrize("name", ["S2", "LYS_xao_dist"])
+def test_single3(dtype: torch.dtype, name: str):
+    """Test a few larger system (only float32 within tolerance)."""
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
+
+    sample = samples[name]
+    numbers = sample["numbers"]
+    positions = sample["positions"].type(dtype)
+    ref = sample["escf"].type(dtype)
+    charges = torch.tensor(0.0, **dd)
+
+    options = dict(opts, **{"xitorch_fatol": 1e-6, "xitorch_xatol": 1e-6})
+    calc = Calculator(numbers, par, opts=options, **dd)
+
+    result = calc.singlepoint(numbers, positions, charges)
+    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
 
 
 @pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.float])
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["vancoh2"])
 def test_single_large(dtype: torch.dtype, name: str):
     """Test a large systems (only float32 as they take some time)."""
