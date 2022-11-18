@@ -106,7 +106,7 @@ class Driver:
             total.backward()
             if positions.grad is None:
                 raise RuntimeError("No gradients found for positions.")
-            result.grad = positions.grad
+            result.gradient = positions.grad
             timer.stop("grad")
 
         # stop timer

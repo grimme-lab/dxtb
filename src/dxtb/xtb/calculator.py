@@ -43,7 +43,7 @@ class Result(TensorLike):
     fenergy: Tensor
     """Atom-resolved electronic free energy from fractional occupation."""
 
-    grad: Tensor | None
+    gradient: Tensor | None
     """Gradient of total energy w.r.t. positions"""
 
     halogen: Tensor
@@ -76,7 +76,7 @@ class Result(TensorLike):
         "dispersion",
         "emo",
         "fenergy",
-        "grad",
+        "gradient",
         "halogen",
         "hamiltonian",
         "hcore",
@@ -96,7 +96,7 @@ class Result(TensorLike):
         super().__init__(device, dtype)
         shape = positions.shape[:-1]
 
-        self.grad = None
+        self.gradient = None
         self.timer = None
         self.scf = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.fenergy = torch.zeros(shape, dtype=self.dtype, device=self.device)
