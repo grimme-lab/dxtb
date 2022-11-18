@@ -115,10 +115,8 @@ class ConvertToTorchDevice(argparse.Action):
             "Use 'cpu', 'cpu:<INTEGER>', 'cuda', or 'cuda:<INTEGER>'."
         )
 
-        print("values", values)
         if values == "cpu":
             setattr(args, self.dest, torch.device(values))
-            print(self.dest)
             return
 
         if values == "cuda":
