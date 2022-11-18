@@ -115,8 +115,10 @@ class ConvertToTorchDevice(argparse.Action):
             "Use 'cpu', 'cpu:<INTEGER>', 'cuda', or 'cuda:<INTEGER>'."
         )
 
+        print("values", values)
         if values == "cpu":
             setattr(args, self.dest, torch.device(values))
+            print(self.dest)
             return
 
         if values == "cuda":
@@ -271,7 +273,7 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
         "--device",
         action=ConvertToTorchDevice,
         type=str,
-        default=defaults.TORCH_DEVICE,
+        default=torch.device(defaults.TORCH_DEVICE),
         help="R|Device for PyTorch tensors.",
     )
     parser.add_argument(
