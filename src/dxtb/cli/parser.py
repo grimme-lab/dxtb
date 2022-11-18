@@ -28,14 +28,14 @@ def is_file(path: str | Path) -> str | Path:
 def is_dir(path: str | Path) -> str | Path:
     p = Path(path)
 
-    if p.is_file() is False:
+    if p.is_file() is True:
         raise argparse.ArgumentTypeError(
-            f"Cannot open '{path}': No such file or directory.",
+            f"Cannot open '{path}': Is not a directory.",
         )
 
     if p.is_dir() is False:
         raise argparse.ArgumentTypeError(
-            f"Cannot open '{path}': Is not a directory.",
+            f"Cannot open '{path}': No such file or directory.",
         )
 
     return path
@@ -89,7 +89,7 @@ class ConvertToTorchDtype(argparse.Action):
                 values = torch.float32
             case "float64" | torch.float64 | "double" | torch.double | "dp":
                 values = torch.float64
-            case _:
+            case _:  # unreachable due to choices
                 parser.error(
                     f"Option '{option_string}' was passed an unknown keyword ({values})."
                 )
@@ -136,26 +136,6 @@ class ConvertToTorchDevice(argparse.Action):
             return
 
         parser.error(err_msg)
-
-
-class ActionNonNegative(argparse.Action):
-    """
-    Custom action for limiting possible input values for the electronic temperature.
-    """
-
-    def __call__(
-        self,
-        parser: argparse.ArgumentParser,
-        args: argparse.Namespace,
-        values: float,
-        option_string: str | None = None,
-    ) -> None:
-        if values < 0.0:
-            parser.error(
-                f"Electronic Temperature ({option_string}) must be positive or None ({values})."
-            )
-
-        setattr(args, self.dest, values)
 
 
 class Formatter(argparse.HelpFormatter):
@@ -239,7 +219,7 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
         "--help",
         action="help",
         default=argparse.SUPPRESS,
-        help="Show this help message and exit.",
+        help="R|Show this help message and exit.",
     )
     parser.add_argument(
         "--version",
@@ -291,7 +271,7 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
         "--device",
         action=ConvertToTorchDevice,
         type=str,
-        default=defaults.TORCH_DEVICE,
+        default=torch.device(defaults.TORCH_DEVICE),
         help="R|Device for PyTorch tensors.",
     )
     parser.add_argument(
@@ -360,6 +340,12 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
         help="R|Set absolute tolerance for SCF (output).",
     )
 
+    parser.add_argument(
+        "--dir",
+        nargs="?",
+        type=is_dir,  # manual validation
+        help="R|Directory with all files. Searches recursively.",
+    )
     parser.add_argument(
         "--filetype",
         type=str,

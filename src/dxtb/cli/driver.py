@@ -9,7 +9,7 @@ import torch
 
 from .. import io
 from ..utils import Timers
-from ..xtb import Calculator
+from ..xtb import Calculator, Result
 
 FILES = {"spin": ".UHF", "chrg": ".CHRG"}
 
@@ -51,11 +51,10 @@ class Driver:
 
         return val
 
-    def singlepoint(self) -> None:
+    def singlepoint(self) -> Result:
         args = self.args
 
         timer = Timers()
-        timer.start("total")
         timer.start("setup")
 
         dd = {"device": args.device, "dtype": args.dtype}
@@ -97,11 +96,9 @@ class Driver:
         calc = Calculator(numbers, par, opts=opts, **dd)
         timer.stop("setup")
 
-        # run singlepoint calculation
-        timer.start("singlepoint")
-        result = calc.singlepoint(numbers, positions, chrg)
+        # run singlepoint calculation, timer set within
+        result = calc.singlepoint(numbers, positions, chrg, timer=timer)
         total = result.total.sum(-1)
-        timer.stop("singlepoint")
 
         # gradient of total energy w.r.t. positions
         if args.grad is True:
@@ -109,16 +106,15 @@ class Driver:
             total.backward()
             if positions.grad is None:
                 raise RuntimeError("No gradients found for positions.")
+            result.gradient = positions.grad
             timer.stop("grad")
 
-            print(positions.grad)
-
-        # print results
+        # stop timer
         timer.stop("total")
+        result.timer = timer
 
-        if args.verbosity is not None and args.verbosity > 1:
-            timer.print_times("")
+        return result
 
     def __str__(self) -> str:
         """Custom print representation of class."""
-        return f"{self.__class__.__name__}(chrg={self.chrg}, spin={self.spin})"
+        return f"{self.__class__.__name__}({self.args})"

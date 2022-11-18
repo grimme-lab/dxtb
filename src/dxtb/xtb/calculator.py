@@ -43,6 +43,9 @@ class Result(TensorLike):
     fenergy: Tensor
     """Atom-resolved electronic free energy from fractional occupation."""
 
+    gradient: Tensor | None
+    """Gradient of total energy w.r.t. positions"""
+
     halogen: Tensor
     """Halogen bond energy."""
 
@@ -61,6 +64,9 @@ class Result(TensorLike):
     scf: Tensor
     """Atom-resolved energy from the self-consistent field (SCF) calculation."""
 
+    timer: Timers | None
+    """Collection of timers for all steps."""
+
     total: Tensor
     """Total energy."""
 
@@ -70,12 +76,14 @@ class Result(TensorLike):
         "dispersion",
         "emo",
         "fenergy",
+        "gradient",
         "halogen",
         "hamiltonian",
         "hcore",
         "overlap",
         "repulsion",
         "scf",
+        "timer",
         "total",
     ]
 
@@ -88,6 +96,8 @@ class Result(TensorLike):
         super().__init__(device, dtype)
         shape = positions.shape[:-1]
 
+        self.gradient = None
+        self.timer = None
         self.scf = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.fenergy = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.dispersion = torch.zeros(shape, dtype=self.dtype, device=self.device)
@@ -117,9 +127,9 @@ class Result(TensorLike):
         tot = "Total Energy"
         total = torch.sum(self.total, dim=-1)
 
-        for label, name in labels.items():
+        for label, n in labels.items():
             e = torch.sum(getattr(self, label), dim=-1)
-            print(f"{name:<27} {e: .16f}")
+            print(f"{n:<27} {e: .16f}")
 
         print(width * "-")
         print(f"{tot:<27} {total: .16f}")
@@ -251,6 +261,7 @@ class Calculator(TensorLike):
         numbers: Tensor,
         positions: Tensor,
         chrg: Tensor,
+        timer: Timers | None = None,
     ) -> Result:
         """
         Entry point for performing single point calculations.
@@ -271,8 +282,8 @@ class Calculator(TensorLike):
         """
 
         result = Result(positions, device=self.device, dtype=self.dtype)
-        timer = Timers()
-        timer.start("total")
+        timer = Timers() if timer is None else timer
+        timer.start("singlepoint")
 
         if "scf" not in self.opts["exclude"]:
             # overlap
@@ -283,7 +294,7 @@ class Calculator(TensorLike):
 
             # Hamiltonian
             timer.start("h0")
-            rcov = cov_rad_d3.to(self.device)[numbers]
+            rcov = cov_rad_d3[numbers].to(self.device)
             cn = get_coordination_number(numbers, positions, exp_count, rcov)
             hcore = self.hamiltonian.build(positions, overlap, cn)
             result.hcore = hcore
@@ -347,7 +358,8 @@ class Calculator(TensorLike):
             result.total += result.repulsion
             timer.stop("repulsion")
 
-        timer.stop("total")
+        timer.stop("singlepoint")
+        result.timer = timer
 
         if self.opts["scf_options"]["verbosity"] > 0:
             result.print_energies()
