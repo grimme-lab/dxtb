@@ -349,6 +349,7 @@ class IndexHelper:
         orbitals_per_shell: Tensor,
         orbital_index: Tensor,
         orbitals_to_shell: Tensor,
+        device: torch.device | None = None,
     ):
         self.unique_angular = unique_angular
         self.angular = angular
@@ -362,7 +363,7 @@ class IndexHelper:
         self.orbital_index = orbital_index
         self.orbitals_to_shell = orbitals_to_shell
 
-        self.__device = shells_per_atom.device
+        self.__device = device
         self.__dtype = shells_per_atom.dtype
 
         if any(
@@ -508,6 +509,7 @@ class IndexHelper:
             orbitals_per_shell=orbitals_per_shell,
             orbital_index=orbital_index,
             orbitals_to_shell=orbitals_to_shell,
+            device=device,
         )
 
     def reduce_orbital_to_shell(
@@ -760,7 +762,7 @@ class IndexHelper:
         )
 
     @property
-    def device(self) -> torch.device:
+    def device(self) -> torch.device | None:
         """The device on which the `IndexHelper` object resides."""
         return self.__device
 
@@ -793,7 +795,8 @@ class IndexHelper:
 
         Notes
         -----
-        If the `IndexHelper` instance is already on the desired device `self` will be returned.
+        If the `IndexHelper` instance is already on the desired device `self`
+        will be returned.
         """
         if self.__device == device:
             return self
@@ -810,6 +813,7 @@ class IndexHelper:
             self.orbitals_per_shell.to(device=device),
             self.orbital_index.to(device=device),
             self.orbitals_to_shell.to(device=device),
+            device=self.device,
         )
 
     def type(self, dtype: torch.dtype) -> "IndexHelper":
@@ -830,7 +834,8 @@ class IndexHelper:
 
         Notes
         -----
-        If the `IndexHelper` instance has already the desired dtype `self` will be returned.
+        If the `IndexHelper` instance has already the desired dtype `self` will
+        be returned.
         """
         if self.__dtype == dtype:
             return self

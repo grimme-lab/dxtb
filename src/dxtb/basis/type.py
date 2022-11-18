@@ -5,7 +5,7 @@ Basis set class.
 import torch
 
 from ..param import Param, get_elem_param, get_elem_pqn, get_elem_valence
-from ..typing import Tensor
+from ..typing import Tensor, TensorLike
 from . import IndexHelper, orthogonalize, slater
 
 # fmt: off
@@ -16,7 +16,7 @@ primes = torch.tensor(
 # fmt: on
 
 
-class Basis:
+class Basis(TensorLike):
     """Atomic orbital basis set."""
 
     angular: Tensor
@@ -42,13 +42,23 @@ class Basis:
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
+        super().__init__(device, dtype)
         self.angular = angular
-        self.ngauss = get_elem_param(numbers, par.element, "ngauss")
-        self.slater = get_elem_param(
-            numbers, par.element, "slater", dtype=dtype, device=device
+        self.ngauss = get_elem_param(
+            numbers,
+            par.element,
+            "ngauss",
+            device=self.device,
         )
-        self.pqn = get_elem_pqn(numbers, par.element)
-        self.valence = get_elem_valence(numbers, par.element)
+        self.slater = get_elem_param(
+            numbers,
+            par.element,
+            "slater",
+            device=self.device,
+            dtype=self.dtype,
+        )
+        self.pqn = get_elem_pqn(numbers, par.element, device=self.device)
+        self.valence = get_elem_valence(numbers, par.element, device=self.device)
 
     def create_cgtos(self) -> tuple[list[Tensor], list[Tensor]]:
         """
@@ -113,7 +123,7 @@ class Basis:
         # FIXME: Maybe a bitwise operation is easier to understand? For now,
         # we convert unique shell indices to prime numbers to obtain unique
         # products upon multiplication (fundamental theorem of arithmetic).
-        orbs = primes[sh2ush]
+        orbs = primes.to(self.device)[sh2ush]
         orbs = orbs.unsqueeze(-2) * orbs.unsqueeze(-1)
 
         # extra offset along only one dimension to distinguish (n, m) and

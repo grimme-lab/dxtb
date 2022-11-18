@@ -92,7 +92,7 @@ class Repulsion(Classical, TensorLike):
     ) -> None:
         super().__init__(device, dtype)
 
-        self.numbers = numbers
+        self.numbers = numbers.to(self.device)
         self.arep = arep.to(self.device).type(self.dtype)
         self.zeff = zeff.to(self.device).type(self.dtype)
         self.cutoff = cutoff

@@ -34,11 +34,11 @@ import math
 
 import torch
 
-from .typing import Tensor
+from .typing import Tensor, TensorLike
 from .utils import real_atoms, real_pairs
 
 
-class ChargeModel:
+class ChargeModel(TensorLike):
     """
     Model for electronegativity equilibration
     """
@@ -55,14 +55,7 @@ class ChargeModel:
     rad: Tensor
     """Atomic radii for each element"""
 
-    __slots__ = [
-        "chi",
-        "kcn",
-        "eta",
-        "rad",
-        "__device",
-        "__dtype",
-    ]
+    __slots__ = ["chi", "kcn", "eta", "rad"]
 
     def __init__(
         self,
@@ -70,33 +63,33 @@ class ChargeModel:
         kcn: Tensor,
         eta: Tensor,
         rad: Tensor,
-    ):
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> None:
+        super().__init__(device, dtype)
         self.chi = chi
         self.kcn = kcn
         self.eta = eta
         self.rad = rad
 
-        self.__device = chi.device
-        self.__dtype = chi.dtype
-
         if any(
-            [
-                tensor.device != self.device
-                for tensor in (self.chi, self.kcn, self.eta, self.rad)
-            ]
+            tensor.device != self.device
+            for tensor in (self.chi, self.kcn, self.eta, self.rad)
         ):
             raise RuntimeError("All tensors must be on the same device!")
 
         if any(
-            [
-                tensor.dtype != self.dtype
-                for tensor in (self.chi, self.kcn, self.eta, self.rad)
-            ]
+            tensor.dtype != self.dtype
+            for tensor in (self.chi, self.kcn, self.eta, self.rad)
         ):
             raise RuntimeError("All tensors must have the same dtype!")
 
     @classmethod
-    def param2019(cls) -> "ChargeModel":
+    def param2019(
+        cls,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> "ChargeModel":
         """
         Electronegativity equilibration charge model published in
 
@@ -110,22 +103,9 @@ class ChargeModel:
             _kcn2019,
             _eta2019,
             _rad2019,
+            device=device,
+            dtype=dtype,
         )
-
-    @property
-    def device(self) -> torch.device:
-        """The device on which the `ChargeModel` object resides."""
-        return self.__device
-
-    @device.setter
-    def device(self, *args):
-        """Instruct users to use the ".to" method if wanting to change device."""
-        raise AttributeError("Move object to device using the `.to` method")
-
-    @property
-    def dtype(self) -> torch.dtype:
-        """Floating point dtype used by ChargeModel object."""
-        return self.__dtype
 
     def to(self, device: torch.device) -> "ChargeModel":
         """
@@ -146,9 +126,10 @@ class ChargeModel:
 
         Notes
         -----
-        If the `ChargeModel` instance is already on the desired device `self` will be returned.
+        If the `ChargeModel` instance is already on the desired device `self`
+        will be returned.
         """
-        if self.__device == device:
+        if self.device == device:
             return self
 
         return self.__class__(
@@ -156,6 +137,7 @@ class ChargeModel:
             self.kcn.to(device=device),
             self.eta.to(device=device),
             self.rad.to(device=device),
+            device=device,
         )
 
     def type(self, dtype: torch.dtype) -> "ChargeModel":
@@ -176,9 +158,10 @@ class ChargeModel:
 
         Notes
         -----
-        If the `ChargeModel` instance has already the desired dtype `self` will be returned.
+        If the `ChargeModel` instance has already the desired dtype `self` will
+        be returned.
         """
-        if self.__dtype == dtype:
+        if self.dtype == dtype:
             return self
 
         return self.__class__(
@@ -186,6 +169,7 @@ class ChargeModel:
             self.kcn.type(dtype),
             self.eta.type(dtype),
             self.rad.type(dtype),
+            dtype=dtype,
         )
 
 
@@ -342,12 +326,16 @@ def solve(
 
     if model.device != positions.device:
         raise RuntimeError(
-            f"All tensors of '{model.__class__.__name__}' must be on the same device!\nUse `{model.__class__.__name__}.param2019().to(device)` to correctly set the device."
+            f"All tensors of '{model.__class__.__name__}' must be on the same "
+            f"device!\nUse `{model.__class__.__name__}.param2019().to(device)` "
+            "to correctly set the device."
         )
 
     if model.dtype != positions.dtype:
         raise RuntimeError(
-            f"All tensors of '{model.__class__.__name__}' must have the same dtype!\nUse `{model.__class__.__name__}.param2019().type(dtype)` to correctly set the dtype."
+            f"All tensors of '{model.__class__.__name__}' must have the same "
+            f"dtype!\nUse `{model.__class__.__name__}.param2019().type(dtype)` "
+            "to correctly set the dtype."
         )
 
     eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
@@ -376,7 +364,7 @@ def solve(
     eta = torch.where(
         real,
         model.eta[numbers] + torch.sqrt(torch.tensor(2.0 / math.pi)) / rad,
-        torch.tensor(1.0, dtype=distances.dtype),
+        distances.new_tensor(1.0),
     )
     coulomb = torch.where(
         diagonal,
@@ -384,7 +372,7 @@ def solve(
         torch.where(
             mask,
             torch.erf(distances * gamma) / distances,
-            torch.tensor(0.0, dtype=distances.dtype),
+            distances.new_tensor(0.0),
         ),
     )
     constraint = torch.where(

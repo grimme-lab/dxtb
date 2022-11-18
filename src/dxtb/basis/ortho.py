@@ -51,7 +51,7 @@ def orthogonalize(
     )
 
     # Normalization of the new basis function might be off, calculate self overlap
-    overlap = torch.tensor(0.0)
+    overlap = alpha_i.new_tensor(0.0)
     for ai, ci in zip(alpha_new, coeff_new):
         for aj, cj in zip(alpha_new, coeff_new):
             eab = ai + aj

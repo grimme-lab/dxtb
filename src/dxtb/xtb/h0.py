@@ -529,7 +529,8 @@ class Hamiltonian(TensorLike):
 
         Notes
         -----
-        If the `Hamiltonian` instance is already on the desired device `self` will be returned.
+        If the `Hamiltonian` instance is already on the desired device `self`
+        will be returned.
         """
         if self.__device == device:
             return self
@@ -559,7 +560,8 @@ class Hamiltonian(TensorLike):
 
         Notes
         -----
-        If the `Hamiltonian` instance has already the desired dtype `self` will be returned.
+        If the `Hamiltonian` instance has already the desired dtype `self` will
+        be returned.
         """
         if self.__dtype == dtype:
             return self
@@ -596,8 +598,8 @@ def get_pairs(x: Tensor, i: int) -> Tensor:
 
 def get_subblock_start(umap: Tensor, i: int, norbi: int, norbj: int) -> Tensor:
     """
-    Filter out the top-left index of each subblock of unique shell pairs. This makes use of the fact that the pairs are sorted along
-    the rows.
+    Filter out the top-left index of each subblock of unique shell pairs.
+    This makes use of the fact that the pairs are sorted along the rows.
 
     Example: A "s" and "p" orbital would give the following 4x4 matrix
     of unique shell pairs:
@@ -639,7 +641,7 @@ def get_subblock_start(umap: Tensor, i: int, norbi: int, norbj: int) -> Tensor:
         pairs = get_pairs(umap.mT, i)
 
         # do the same for the transposed pairs, but switch columns
-        return torch.index_select(pairs[::norbi], 1, torch.tensor([1, 0]))
+        return torch.index_select(pairs[::norbi], 1, umap.new_tensor([1, 0]))
 
     # more intricate because we can have variation in two dimensions
     pairs = get_pairs(umap, i)
@@ -651,7 +653,7 @@ def get_subblock_start(umap: Tensor, i: int, norbi: int, norbj: int) -> Tensor:
     rest = pairs
 
     # init with dummy
-    final = torch.tensor([[-1, -1]])
+    final = umap.new_tensor([[-1, -1]])
 
     while True:
         # get number of blocks in a row by counting the number of
