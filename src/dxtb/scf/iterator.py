@@ -172,6 +172,7 @@ class SelfConsistentField(xt.EditableModule):
         if charges is None:
             charges = torch.zeros_like(self._data.occupation)
 
+        #if True:
         with torch.no_grad():
             output = xto.equilibrium(
                 fcn=self.iterate_potential
@@ -257,7 +258,43 @@ class SelfConsistentField(xt.EditableModule):
         """
 
         occ = self._data.occupation / max_orb_occ
-        g = torch.log(occ**occ * (1 - occ) ** (1 - occ)) * self.kt
+        #occ = occ + 0.1  # solves it
+        
+        print("self._data.occupation",  self._data.occupation)
+        print("max_orb_occ",  max_orb_occ)
+        print("occ",  occ)
+
+        # g = torch.log(occ**occ * (1 - occ)**(1 - occ)) * self.kt
+
+        o2 = torch.where(occ!=0.0, torch.pow(occ, occ), occ.new_tensor(1.0))
+        no = (1 - occ)
+        no2 = torch.pow(no, no)
+        #no2 = torch.ones_like(no ** no) # solves it
+        tot = o2 * no2
+
+        print("o2", o2)
+        print("no", no)
+        print("no2", no2)
+        print("tot", tot)
+
+        #g = torch.log(tot)
+
+
+        a = occ * torch.log(occ)
+        b = (1 - occ) *  torch.log((1 - occ)) 
+        min_v = -123.
+        #b = torch.where((1 - occ) !=0.0, (1 - occ) * torch.log((1 - occ)), occ.new_tensor(min_v)) 
+        b = torch.where((1 - occ) !=0.0, torch.log((1 - occ)), occ.new_tensor(min_v)) 
+        #a = torch.where(occ!=0.0, occ * torch.log(occ), occ.new_tensor(min_v)) 
+        #occ2 = torch.where(occ==1.0, 0.99, occ)
+        a = torch.where(occ!=0.0, torch.where(occ!=1.0, torch.log(occ),  occ.new_tensor(0.0)), occ.new_tensor(min_v)) 
+        print("a", a)
+        print("b", b)
+
+        g = a + b
+
+        g = g * self.kt
+        print("g",  g)
 
         mode = self.scf_options.get(
             "fermi_fenergy_partition", defaults.FERMI_FENERGY_PARTITION

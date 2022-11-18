@@ -298,9 +298,18 @@ class Hamiltonian:
         # ----------------------
         # Eq.24: PI(R_AB, l, l')
         # ----------------------
-        distances = torch.cdist(
-            self.positions, self.positions, p=2, compute_mode="use_mm_for_euclid_dist"
-        )
+
+        # TODO: loss.backward leads to nan
+        # distances = torch.cdist(
+        #     self.positions, self.positions, p=2, compute_mode="use_mm_for_euclid_dist"
+        # )
+        # print("TRUE distances", distances)
+
+        from ..utils import cdist
+        mask = torch.ones_like(self.positions, dtype=torch.bool)
+        distances = cdist(self.positions, mask)
+        #print("distances", distances)
+
         rad = self.ihelp.spread_uspecies_to_atom(self.rad)
         rr = torch.where(
             mask * ~torch.diag_embed(torch.ones_like(real)),

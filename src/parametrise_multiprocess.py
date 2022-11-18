@@ -9,16 +9,16 @@ import gc
 import os.path as op
 import tomli as toml
 
-from xtbml.data.dataset import SampleDataset
-from xtbml.data.samples import Sample
-from xtbml.xtb.calculator import Calculator
-from xtbml.param.gfn1 import GFN1_XTB
-from xtbml.param.base import Param
-from xtbml.utils.utils import get_all_entries_from_dict
-from xtbml.typing import Tensor
+from dxtb.data.dataset import SampleDataset
+from dxtb.data.samples import Sample
+from dxtb.xtb.calculator import Calculator
+from dxtb.param.gfn1 import GFN1_XTB
+from dxtb.param.base import Param
+from dxtb.utils.utils import get_all_entries_from_dict
+from dxtb.typing import Tensor
 
 """Script for investigating RAM usage"""
-from xtbml.scf.iterator import cpuStats
+from dxtb.scf.iterator import cpuStats
 
 
 class RMSELoss(nn.Module):

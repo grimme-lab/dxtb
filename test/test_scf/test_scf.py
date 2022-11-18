@@ -211,6 +211,7 @@ def test_gradgrad(testcase, dtype: torch.dtype = torch.float):
 
     pgrad = torch.autograd.grad(
         gradient[0, :].sum(),
+        # why is this indexing required?
         (calc.hamiltonian.selfenergy, calc.hamiltonian.kcn, calc.hamiltonian.shpoly),
     )
 

@@ -47,16 +47,18 @@ from ..param.base import Param
 class ParameterOptimizer(nn.Module):
     """Pytorch model for gradient optimization of given forward() function."""
 
-    def __init__(self, parametrisation: Param, names: list[str], options: dict[str, Any] = {}):
+    def __init__(self, parametrisation: Param, names: list[str], options: dict[str, Any] = {"verbosity": 0}, dtype: torch.dtype=torch.float64):
         """ Optimise parameters specified by names. Optional options for singlepoint and scf supported.s
 
         Args:
             parametrisation (Param): Initial parametrisation to be optimised.
             names (list[str]): Keys for parameters which shall be optimised.
-            options (dict[str, Any], optional): Options for singlepoint calculation. Defaults to {}.
+            options (dict[str, Any], optional): Options for singlepoint calculation. Defaults to low verbosity {"verbosity": 0}.
+            dtype (torch.dtype): Precision of calculation. Defaults to torch.float64.
         """
         super().__init__()
         self.options = options
+        self.dtype = dtype
 
         assert id(parametrisation) != id(
             GFN1_XTB
@@ -69,7 +71,7 @@ class ParameterOptimizer(nn.Module):
         params = [
             torch.tensor(
                 self.parametrisation.get_param(name),
-                dtype=torch.float64,
+                dtype=self.dtype,
             )
             for name in names
         ]
@@ -88,7 +90,7 @@ class ParameterOptimizer(nn.Module):
 
         # detached graph to reduce the RAM footprint
         positions = x.positions.detach().clone()
-        positions = positions.double()
+        positions = positions.type(self.dtype)
         positions.requires_grad_(True)
 
         numbers = x.numbers.detach().clone()
@@ -102,7 +104,7 @@ class ParameterOptimizer(nn.Module):
         energy = results.total
 
         # calculate gradients
-        gradient = self.calc_gradient(energy, positions)
+        gradient = self.calc_gradient(energy, positions).type(self.dtype)
 
         return energy, gradient
 
@@ -125,8 +127,7 @@ class ParameterOptimizer(nn.Module):
             energy.sum(),
             positions,
             create_graph=True,
-            grad_outputs=energy.sum().data.new(energy.sum().shape).fill_(1),
-            # also works: https://discuss.pytorch.org/t/using-the-gradients-in-a-loss-function/10821
+            #grad_outputs=energy.sum().data.new(energy.sum().shape).fill_(1),
         )[0]
         return gradient
 
@@ -162,15 +163,23 @@ def train(
             # conduct train step
 
             optimizer.zero_grad(set_to_none=True)
+            print("Params before", model.params[0])
 
             # compare against reference gradient
             energy, grad = model(batch)
-            loss = loss_fn(grad, batch.gref.double())
+            loss = loss_fn(grad, batch.gref.type(model.dtype))
             # alternative: Jacobian of loss
+
+            print("energy", energy)
+            print("grad", grad)
+            print("Loss", loss)
+            print("Params", model.params[0])
 
             # calculate gradient and update model parameters
             loss.backward(inputs=model.params)
             optimizer.step()
+
+            print("Params after", model.params[0])
 
             losses.append(loss.detach().item())
             if verbose:
@@ -206,13 +215,10 @@ def reparametrise(
     loss_fn = kwargs.get("loss_fn", torch.nn.MSELoss(reduction="sum"))
     epochs = kwargs.get("epochs", 100)
 
-    # print("Initial model.params", model.params)
-    # for name, param in zip(parameters, model.params):
-    #     print(name, param)
-
     # train model
     losses = train(model, dataloader, opt, loss_fn, epochs)
 
+    # Check parameter via:
     # print("Final model.params", model.params)
     # for name, param in zip(parameters, model.params):
     #     print(name, param)

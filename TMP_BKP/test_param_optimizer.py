@@ -16,6 +16,10 @@ class TestParameterOptimizer:
     """Test the parameter optimizer functionality, especially
     in the context of re-parametrising the GFN-xTB parametrisation."""
 
+    @classmethod
+    def setup_class(cls):
+        print(f"\n{cls.__name__}")
+
     def setup(self):
         # load data as batched sample
         path = Path(__file__).resolve().parents[0] / "samples.json"
@@ -31,129 +35,74 @@ class TestParameterOptimizer:
         )
         self.loss_fn = torch.nn.MSELoss(reduction="sum")
 
-        # parameter to optimise
+        # get parameter to optimise
         with open(
-            #Path(__file__).resolve().parents[0] / "parametrisation.toml", "rb"
-            Path(__file__).resolve().parents[0] / "gfn1-xtb.toml", "rb"
+            Path(__file__).resolve().parents[0] / "parametrisation.toml", "rb"
         ) as fd:
             self.param = Param(**toml.load(fd))
 
     def optimisation(self, model, epochs=1):
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
         return train(model, self.dataloader, optimizer, self.loss_fn, epochs)
 
-    @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-    def test_optimisation_by_identity(self, dtype: torch.dtype):
+    def test_simple_param_optimisation(self):
+
+        param_to_opt = self.param
 
         # set dummy parameter
         name = "hamiltonian.xtb.enscale"
-        value = 123.0
-        self.param.set_param(name, value)
-        fake_reference = self.batch.gref
+        value = torch.tensor([0.6], dtype=torch.double, requires_grad=True)
+        param_to_opt.set_param(name, value)
 
-        class ParameterOptimizerByIdentity(ParameterOptimizer):
+        with open(Path(__file__).resolve().parents[0] / "gfn1-xtb.toml", "rb") as fd:
+            param_to_opt = Param(**toml.load(fd))
+
+        batch = self.batch
+
+        class SimpleParameterOptimizer(ParameterOptimizer):
             def calc_gradient(self, energy, positions):
                 # scaling the reference gradient
-                gradient = self.params[0] * fake_reference
+                gradient = self.params[0] * batch.gref
                 return gradient
 
+        print("BERFORE")
+
         # optimise xtb
-        model = ParameterOptimizerByIdentity(self.param, [name], dtype=dtype)
+        model = SimpleParameterOptimizer(param_to_opt, [name])
         self.optimisation(model)
 
-        res = self.param.get_param(name)
+        res = param_to_opt.get_param(name)
+        print("VALUE", res)
 
-        # should converge to identical value as input
+        # should converge to 1.0
         assert res.data_ptr() == model.params[0].data_ptr()
-        assert torch.isclose(res, torch.tensor(value, dtype=dtype), atol=0.1)
+        assert torch.isclose(res, torch.tensor(1.0).double(), rtol=0.1)
 
-    @pytest.mark.parametrize("dtype", [torch.float32])#, torch.float64
-    def test_param_optimisation(self, dtype: torch.dtype):
+    def test_param_optimisation(self):
 
-        # AUTOGRAD RuntimeError: Function 'DivBackward0' returned nan values in its 0th output.
-        print("start")
-        with open(
-            Path(__file__).resolve().parents[0] / "gfn1-xtb.toml", "rb"
-        ) as fd:
-            parameters = Param(**toml.load(fd))
-
-        print(self.batch)
-
-        torch.autograd.set_detect_anomaly(True)
-
-        name = "hamiltonian.xtb.enscale"
-        model = ParameterOptimizer(parameters, [name], dtype=dtype)
-        loss_fn = torch.nn.MSELoss(reduction="sum")
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
-        optimizer.zero_grad(set_to_none=False)
-
-        print("Params before", model.params[0])
-
-        energy, grad = model(self.batch)
-        print("energy", energy)
-        print("grad", grad)
-        print("grad.sum", grad.sum())
-        print("grad_ref", self.batch.gref)
-        loss = loss_fn(grad, self.batch.gref.type(model.dtype))
-        
-        loss.backward(inputs=model.params)
-        #energy.backward(inputs=model.params)
-        
-        print("Params", model.params[0])
-        print("Param grads", model.params[0].grad)
-        optimizer.step() # updating value to nan
-
-        print("Params after", model.params[0])
-
-        return
-
-        torch.autograd.anomaly_mode.set_detect_anomaly(True)
-
-        with open(
-            Path(__file__).resolve().parents[0] / "gfn1-xtb.toml", "rb"
-        ) as fd:
-            self.param = Param(**toml.load(fd))
+        param_to_opt = self.get_param()
 
         # set dummy parameter
-        name = "hamiltonian.xtb.kpol" #enscale
-        value = -0.007 # for 123 runs into Nan
-        #self.param.set_param(name, value)
+        name = "hamiltonian.xtb.enscale"
+        value = torch.tensor([0.6], dtype=torch.double, requires_grad=True)
+        param_to_opt.set_param(name, value)
 
-        # # get parameter to optimise
-        # calc = Calculator(self.batch.numbers, self.batch.positions, GFN1_XTB)
-        # name = "hamiltonian.shpoly"
-        # self.param = Calculator.get_param(calc, name)
+        # get parameter to optimise
+        calc = Calculator(self.batch.numbers, self.batch.positions, GFN1_XTB)
+        name = "hamiltonian.shpoly"
+        param_to_opt = Calculator.get_param(calc, name)
 
-        print('START')
-        print("init", self.param.get_param(name))
-
-        model = ParameterOptimizer(self.param, [name], dtype=dtype)
-        # assert torch.equal(self.param.get_param(name), torch.tensor(value, dtype=dtype, requires_grad=True)), "Parameters not converted correctly inside ParameterOptimizer constructor."
-        # assert torch.equal(self.param.get_param(name), model.params[0]), "Parameters not correctly added to model params."
-        
-        self.optimisation(model)
-
-        res = self.param.get_param(name)
-        print("res", res)
-
-
-        return
+        print("HERE WE ARE", param_to_opt)
 
         # optimise xtb
-        model = ParameterOptimizer(self.param, [name], dtype=dtype)
+        model = ParameterOptimizer([param_to_opt], [name])
         self.optimisation(model)
 
         # inference
         prediction, grad = model(self.batch)
-        loss = self.loss_fn(grad, self.batch.gref)
+        lopt = self.loss_fn(grad, self.batch.gref)
 
-        res = self.param.get_param(name)
-
-        print("Loss", loss)
-        print(grad, self.batch.gref)
-        print("res", res)
-
-        assert torch.isclose(loss, torch.tensor(0.0006, dtype=torch.float64), atol=1e-5)
+        assert torch.isclose(lopt, torch.tensor(0.0006, dtype=torch.float64), atol=1e-5)
         assert torch.allclose(
             prediction,
             torch.tensor([[-5.0109, -0.3922, -0.3922]], dtype=torch.float64),
