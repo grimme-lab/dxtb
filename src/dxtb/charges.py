@@ -85,7 +85,11 @@ class ChargeModel(TensorLike):
             raise RuntimeError("All tensors must have the same dtype!")
 
     @classmethod
-    def param2019(cls) -> "ChargeModel":
+    def param2019(
+        cls,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> "ChargeModel":
         """
         Electronegativity equilibration charge model published in
 
@@ -99,6 +103,8 @@ class ChargeModel(TensorLike):
             _kcn2019,
             _eta2019,
             _rad2019,
+            device=device,
+            dtype=dtype,
         )
 
     def to(self, device: torch.device) -> "ChargeModel":

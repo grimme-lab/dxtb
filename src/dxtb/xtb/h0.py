@@ -529,7 +529,8 @@ class Hamiltonian(TensorLike):
 
         Notes
         -----
-        If the `Hamiltonian` instance is already on the desired device `self` will be returned.
+        If the `Hamiltonian` instance is already on the desired device `self`
+        will be returned.
         """
         if self.__device == device:
             return self
@@ -559,7 +560,8 @@ class Hamiltonian(TensorLike):
 
         Notes
         -----
-        If the `Hamiltonian` instance has already the desired dtype `self` will be returned.
+        If the `Hamiltonian` instance has already the desired dtype `self` will
+        be returned.
         """
         if self.__dtype == dtype:
             return self

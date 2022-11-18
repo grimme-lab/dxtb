@@ -4,11 +4,9 @@ Calculation of coordination number with various counting functions.
 
 import torch
 
+from ..constants import xtb
 from ..data import cov_rad_d3
 from ..typing import CountingFunction, Tensor
-
-# TODO: differentiate GFN1 and GFN2
-# from xtbml.constants import KCN, KA, KB, R_SHIFT
 
 
 def get_coordination_number(
@@ -22,25 +20,36 @@ def get_coordination_number(
     """
     Compute fractional coordination number using an exponential counting function.
 
-    Args:
-        numbers (Tensor): Atomic numbers of molecular structure.
-        positions (Tensor): Atomic positions of molecular structure
-        counting_function (Callable): Calculate weight for pairs.
-        rcov (Tensor, optional): Covalent radii for each species. Defaults to `None`.
-        cutoff (Tensor, optional): Real-space cutoff. Defaults to `None`.
-        kwargs: Pass-through arguments for counting function.
+    Parameters
+    ----------
+    numbers : Tensor
+        Atomic numbers of molecular structure.
+    positions : Tensor
+        Atomic positions of molecular structure.
+    counting_function : CountingFunction
+        Calculate weight for pairs.
+    rcov : Tensor | None, optional
+        Covalent radii for each species. Defaults to `None`.
+    cutoff : Tensor | None, optional
+        Real-space cutoff. Defaults to `None`.
+    kwargs : dict[str, Any]
+        Pass-through arguments for counting function.
 
-    Raises:
-        ValueError: If shape mismatch between `numbers`, `positions` and `rcov` is detected
+    Returns
+    -------
+    Tensor
+        Coordination numbers for all atoms.
 
-    Returns:
-        cn (Tensor): Coordination numbers for all atoms
+    Raises
+    ------
+    ValueError
+        If shape mismatch between `numbers`, `positions` and `rcov` is detected.
     """
 
     if cutoff is None:
-        cutoff = positions.new_tensor(25.0)
+        cutoff = positions.new_tensor(xtb.NCOORD_DEFAULT_CUTOFF)
     if rcov is None:
-        rcov = cov_rad_d3.type(positions.dtype).to(positions.device)[numbers]
+        rcov = cov_rad_d3[numbers].type(positions.dtype).to(positions.device)
     if numbers.shape != rcov.shape:
         raise ValueError(
             f"Shape of covalent radii {rcov.shape} is not consistent with "

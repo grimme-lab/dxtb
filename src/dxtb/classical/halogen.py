@@ -82,7 +82,7 @@ class Halogen(Classical, TensorLike):
     ) -> None:
         super().__init__(device, dtype)
 
-        self.numbers = numbers
+        self.numbers = numbers.to(self.device)
         self.damp = damp.to(self.device).type(self.dtype)
         self.rscale = rscale.to(self.device).type(self.dtype)
         self.bond_strength = bond_strength.to(self.device).type(self.dtype)
