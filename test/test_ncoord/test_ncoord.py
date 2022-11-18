@@ -2,19 +2,21 @@
 Test calculation of (D3) coordination number.
 """
 
+from math import sqrt
+
 import pytest
 import torch
 
 from dxtb.data import cov_rad_d3
 from dxtb.ncoord import (
-    exp_count,
+    derf_count,
     dexp_count,
     erf_count,
-    derf_count,
+    exp_count,
     get_coordination_number,
 )
-from dxtb.utils import batch
 from dxtb.typing import CountingFunction
+from dxtb.utils import batch
 
 from .samples import samples
 
@@ -91,6 +93,7 @@ def test_cn_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 def test_count_grad(
     dtype: torch.dtype, function: tuple[CountingFunction, CountingFunction]
 ) -> None:
+    tol = sqrt(torch.finfo(dtype).eps) * 10
     cf, dcf = function
 
     a = torch.rand(4, dtype=dtype)
@@ -102,4 +105,4 @@ def test_count_grad(
     grad_auto = torch.autograd.grad(count.sum(-1), a_grad)[0]
     grad_expl = dcf(a, b)
 
-    assert pytest.approx(grad_auto) == grad_expl
+    assert pytest.approx(grad_auto, abs=tol) == grad_expl

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import torch
 
-from dxtb.cli import argparser, Driver
+from dxtb.cli import Driver, argparser
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
