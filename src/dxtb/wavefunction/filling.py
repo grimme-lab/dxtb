@@ -121,7 +121,7 @@ def get_aufbau_occupation(norb: Tensor, nel: Tensor) -> Tensor:
         # 2. remove the orbital index from the total number of electrons
         #    (negative numbers are filled with ones, positive numbers with zeros)
         # 3. fractional occupations will be in the range [-1, 0], therefore we round up
-        torch.ceil(nel.unsqueeze(-1) - idxs).unsqueeze(-2),
+        torch.ceil(nel.unsqueeze(-1) - idxs.unsqueeze(-2)),
         # 4. heaviside uses the actual values at 0, therefore we provide the remainder
         # 5. to not lose whole electrons we take the negative and add one
         torch.remainder(nel, -1).unsqueeze(-1) + 1,
