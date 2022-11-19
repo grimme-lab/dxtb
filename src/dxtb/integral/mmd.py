@@ -291,9 +291,10 @@ nlm_cart = (
     ),
     torch.tensor(
         [
-            [1, 0, 0],  # px
+            # tblite order: x (+1), y (-1), z (0) in [-1, 0, 1] sorting
             [0, 1, 0],  # py
             [0, 0, 1],  # pz
+            [1, 0, 0],  # px
         ]
     ),
     torch.tensor(
