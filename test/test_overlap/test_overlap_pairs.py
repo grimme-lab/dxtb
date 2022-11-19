@@ -1,4 +1,7 @@
-"""Run tests for overlap."""
+"""
+Run tests for overlap of diatomic systems.
+References calculated with tblite 0.3.0.
+"""
 
 import numpy as np
 import pytest
@@ -19,12 +22,6 @@ ref_overlap = np.load("test/test_overlap/overlap.npz")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["HC", "HHe", "SCl"])
 def test_single(dtype: torch.dtype, name: str):
-    """
-    Compare against reference calculated with tblite-int:
-    - HC: fpm run -- H C 0,0,1.4 --bohr --method gfn1
-    - HHe: fpm run -- H He 0,0,1.7 --bohr --method gfn1
-    - SCl: fpm run -- S Cl 0,0,2.1 --bohr --method gfn1
-    """
     dd = {"dtype": dtype}
     tol = 1e-05
 
@@ -108,13 +105,7 @@ def test_overlap_higher_orbitals(dtype: torch.dtype):
                 vec,
             )
 
-            assert torch.allclose(
-                overlap,
-                ref,
-                rtol=1e-05,
-                atol=1e-03,
-                equal_nan=False,
-            )
+            assert pytest.approx(overlap, rel=1e-05, abs=1e-03) == ref
 
 
 def test_overlap_higher_orbital_fail():
@@ -171,5 +162,5 @@ def test_sto_ng_batch(ng: int, dtype: torch.dtype):
 
     s = mmd.overlap((l, l), (alpha, alpha), (coeff, coeff), vec)
 
-    assert torch.allclose(s[0, :], s[1, :])
-    assert torch.allclose(s[0, :], s[2, :])
+    assert pytest.approx(s[0, :]) == s[1, :]
+    assert pytest.approx(s[0, :]) == s[2, :]

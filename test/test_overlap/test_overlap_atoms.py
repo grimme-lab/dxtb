@@ -1,4 +1,7 @@
-"""Run tests for overlap."""
+"""
+Run tests for overlap of atoms.
+References calculated with tblite 0.3.0.
+"""
 
 from math import sqrt
 
