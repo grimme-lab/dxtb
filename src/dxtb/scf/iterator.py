@@ -18,12 +18,12 @@ import warnings
 from math import sqrt
 
 import torch
-import xitorch as xt
-import xitorch.linalg as xtl
-import xitorch.optimize as xto
 
 from ..basis import IndexHelper
 from ..constants import K2AU, defaults
+from ..exlibs.xitorch import EditableModule, LinearOperator
+from ..exlibs.xitorch import linalg as xtl
+from ..exlibs.xitorch import optimize as xto
 from ..interaction import Interaction
 from ..typing import Any, Tensor
 from ..utils import real_atoms
@@ -31,7 +31,7 @@ from ..wavefunction import filling, mulliken
 from .guess import get_guess
 
 
-class SelfConsistentField(xt.EditableModule):
+class SelfConsistentField(EditableModule):
     """
     Self-consistent field iterator, which can be used to obtain a self-consistent
     solution for a given Hamiltonian.
@@ -497,7 +497,7 @@ class SelfConsistentField(xt.EditableModule):
             Density matrix.
         """
 
-        h_op = xt.LinearOperator.m(hamiltonian)
+        h_op = LinearOperator.m(hamiltonian)
         o_op = self.get_overlap()
         self._data.evals, self._data.evecs = self.diagonalize(h_op, o_op)
 
@@ -536,13 +536,13 @@ class SelfConsistentField(xt.EditableModule):
             self._data.evecs.mT,
         )
 
-    def get_overlap(self) -> xt.LinearOperator:
+    def get_overlap(self) -> LinearOperator:
         """
         Get the overlap matrix.
 
         Returns
         -------
-        xt.LinearOperator
+        LinearOperator
             Overlap matrix.
         """
 
@@ -551,21 +551,21 @@ class SelfConsistentField(xt.EditableModule):
         zeros = torch.eq(smat, 0)
         mask = torch.all(zeros, dim=-1) & torch.all(zeros, dim=-2)
 
-        return xt.LinearOperator.m(
+        return LinearOperator.m(
             smat + torch.diag_embed(smat.new_ones(*smat.shape[:-2], 1) * mask)
         )
 
     def diagonalize(
-        self, hamiltonian: xt.LinearOperator, overlap: xt.LinearOperator
+        self, hamiltonian: LinearOperator, overlap: LinearOperator
     ) -> tuple[Tensor, Tensor]:
         """
         Diagonalize the Hamiltonian.
 
         Parameters
         ----------
-        hamiltonian : xt.LinearOperator
+        hamiltonian : LinearOperator
             Current Hamiltonian matrix.
-        overlap : xt.LinearOperator
+        overlap : LinearOperator
             Overlap matrix.
 
         Returns
