@@ -119,7 +119,7 @@ class Overlap(TensorLike):
                         pair[1] : pair[1] + norbj,
                     ] = stmp[r]
 
-            return ovlp
+            return ovlp.fill_diagonal_(1.0)
 
         if self.numbers.ndim > 1:
             o = []
