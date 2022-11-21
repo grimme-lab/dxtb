@@ -526,7 +526,8 @@ class SelfConsistentField(EditableModule):
             _nel = self._data.occupation.sum(-1)
             if torch.any(torch.abs(nel - _nel.round(decimals=3)) > 1e-4):
                 raise RuntimeError(
-                    f"Number of electrons changed during Fermi smearing ({nel} -> {_nel})."
+                    f"Number of electrons changed during Fermi smearing "
+                    f"({nel} -> {_nel})."
                 )
 
         return torch.einsum(

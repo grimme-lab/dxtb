@@ -13,6 +13,7 @@ from ..constants import defaults
 from ..coulomb import new_es2, new_es3
 from ..data import cov_rad_d3
 from ..dispersion import Dispersion, new_dispersion
+from ..integral import Overlap
 from ..interaction import Interaction, InteractionList
 from ..ncoord import exp_count, get_coordination_number
 from ..param import Param, get_elem_angular
@@ -211,6 +212,7 @@ class Calculator(TensorLike):
 
         self.ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         self.hamiltonian = Hamiltonian(numbers, par, self.ihelp, **dd)
+        self.overlap = Overlap(numbers, par, self.ihelp, **dd)
 
         # setup self-consistent contributions
         es2 = new_es2(numbers, par, **dd) if "es2" not in self.opts["exclude"] else None
@@ -288,7 +290,7 @@ class Calculator(TensorLike):
         if "scf" not in self.opts["exclude"]:
             # overlap
             timer.start("overlap")
-            overlap = self.hamiltonian.overlap(positions)
+            overlap = self.overlap.build(positions)
             result.overlap = overlap
             timer.stop("overlap")
 

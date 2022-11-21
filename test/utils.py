@@ -7,28 +7,6 @@ import torch
 from dxtb.typing import Any, Tensor
 
 
-def combinations(x: Tensor, r: int = 2) -> Tensor:
-    """
-    Generate all combinations of matrix elements.
-
-    This is required for the comparision of overlap and Hmailtonian for
-    larger systems because these matrices do not coincide with tblite.
-    This is possibly due to switched indices, which were introduced in
-    the initial Fortran-to-Python port.
-
-    Parameters
-    ----------
-    x : Tensor
-        Matrix to generate combinations from.
-
-    Returns
-    -------
-    Tensor
-        Matrix of combinations (n, 2).
-    """
-    return torch.combinations(torch.sort(x.flatten())[0], r)
-
-
 def load_from_npz(npzfile: Any, name: str, dtype: torch.dtype) -> Tensor:
     """Get torch tensor from npz file
 
