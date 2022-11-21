@@ -265,3 +265,7 @@ class Interaction(TensorLike):
         """
 
         return torch.zeros_like(charges)
+
+    def get_gradient(self) -> Tensor:
+        """Compute the gradient w.r.t. geometrical positions and further parameters."""
+        raise NotImplementedError

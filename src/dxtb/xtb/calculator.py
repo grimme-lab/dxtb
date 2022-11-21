@@ -23,6 +23,7 @@ from ..utils import Timers, ToleranceWarning
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian
 from .h0 import Hamiltonian
+from ..scf.scf import SelfConsistentField_AG
 
 
 class Result(TensorLike):
@@ -328,7 +329,11 @@ class Calculator(TensorLike):
                 hcore.new_tensor(hcore.shape[-1], dtype=torch.int64), nab
             )
 
-            scf_results = scf.solve(
+            # autograd implementation
+            scf = SelfConsistentField_AG.apply
+
+            # NOTE: no keyword arguments allowed
+            scf_results = scf(
                 numbers,
                 positions,
                 chrg,
@@ -339,10 +344,21 @@ class Calculator(TensorLike):
                 overlap,
                 occupation,
                 n0,
-                fwd_options=self.opts["fwd_options"],
-                scf_options=self.opts["scf_options"],
-                use_potential=True,
+                self.opts["fwd_options"],
+                self.opts["scf_options"],
+                True,
             )
+
+            # recast to dict
+            scf_results = {
+                "charges": scf_results[0],
+                "density": scf_results[1],
+                "emo": scf_results[2],
+                "energy": scf_results[3],
+                "fenergy": scf_results[4],
+                "hamiltonian": scf_results[5],
+            }
+
             result.charges = scf_results["charges"]
             result.coefficients = scf_results["coefficients"]
             result.density = scf_results["density"]
