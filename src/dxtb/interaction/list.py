@@ -121,3 +121,7 @@ class InteractionList(Interaction):
             if len(self.interactions) > 0
             else charges.new_zeros(())
         )
+
+    def get_gradient(self) -> Tensor:
+        """Calculate gradient for a list of interactions."""
+        raise NotImplementedError
