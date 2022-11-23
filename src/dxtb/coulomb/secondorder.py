@@ -44,8 +44,10 @@ from ..constants import xtb
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
 from ..typing import Tensor
-from ..utils import real_pairs, batch
+from ..utils import batch, real_pairs, wrap_scatter_reduce
 from .average import AveragingFunction, averaging_function, harmonic_average
+
+__all__ = ["ES2", "new_es2"]
 
 
 class ES2(Interaction):
@@ -273,6 +275,59 @@ class ES2(Interaction):
         charges: Tensor,
         cache: "ES2.Cache",
     ) -> Tensor:
+        return (
+            self.get_shell_gradient(numbers, positions, ihelp, charges, cache)
+            if self.shell_resolved
+            else self.get_atom_gradient(numbers, positions, charges, cache)
+        )
+
+    def get_atom_gradient(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        charges: Tensor,
+        cache: "ES2.Cache",
+    ) -> Tensor:
+        mask = real_pairs(numbers, diagonal=False)
+
+        distances = torch.where(
+            mask,
+            torch.cdist(
+                positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
+            ),
+            positions.new_tensor(torch.finfo(positions.dtype).eps),
+        )
+
+        # (n_batch, shells_i, shells_j, 3)
+        rij = torch.where(
+            mask.unsqueeze(-1),
+            positions.unsqueeze(-2) - positions.unsqueeze(-3),
+            positions.new_tensor(0.0),
+        )
+
+        # (n_batch, shells_i) * (n_batch, shells_i, 1)
+        charges = charges.unsqueeze(-1)
+
+        # (n_batch, shells_i, shells_j) * (n_batch, shells_i, 1)
+        # every column is multiplied by the charge vector
+        dmat = (
+            -(distances ** (self.gexp - 2.0)) * cache.mat * cache.mat**self.gexp
+        ) * charges
+
+        # (n_batch, shells_i, shells_j) -> (n_batch, shells_i, shells_j, 3)
+        dmat = dmat.unsqueeze(-1) * rij
+
+        # (n_batch, atoms, shells_j, 3) -> (n_batch, atoms, 3)
+        return torch.einsum("...ijx,...jx->...ix", dmat, charges)
+
+    def get_shell_gradient(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        ihelp: IndexHelper,
+        charges: Tensor,
+        cache: "ES2.Cache",
+    ) -> Tensor:
         mask = real_pairs(numbers, diagonal=False)
 
         # all distances to the power of "gexp" (R^2_AB from Eq.26)
@@ -312,9 +367,9 @@ class ES2(Interaction):
         idx = (
             ihelp.shells_to_atom.unsqueeze(-1)
             .unsqueeze(-1)
-            .expand(*[-1, *dmat.shape[-2:]])
+            .expand(*[*dmat.shape[:-3], -1, *dmat.shape[-2:]])
         )
-        dmat = torch.scatter_reduce(dmat, -3, idx, reduce="sum")
+        dmat = wrap_scatter_reduce(dmat, -3, idx, reduce="sum")
 
         # (n_batch, atoms, shells_j, 3) -> (n_batch, atoms, 3)
         return torch.einsum("...ijx,...jx->...ix", dmat, charges)

@@ -39,6 +39,8 @@ from ..interaction import Interaction
 from ..param import Param, get_elem_param
 from ..typing import Tensor
 
+__all__ = ["ES3", "new_es3"]
+
 
 class ES3(Interaction):
     """
