@@ -16,7 +16,7 @@ def real_atoms(numbers: Tensor) -> Tensor:
 def real_pairs(numbers: Tensor, diagonal: bool = False) -> Tensor:
     real = real_atoms(numbers)
     mask = real.unsqueeze(-2) * real.unsqueeze(-1)
-    if diagonal is True:
+    if diagonal is False:
         mask *= ~torch.diag_embed(torch.ones_like(real))
     return mask
 
