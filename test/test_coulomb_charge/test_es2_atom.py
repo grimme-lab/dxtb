@@ -48,7 +48,6 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     cache = es.get_cache(numbers, positions, ihelp)
     e = es.get_atom_energy(qat, ihelp, cache)
-    print(e)
     assert pytest.approx(torch.sum(e, dim=-1)) == ref
 
 

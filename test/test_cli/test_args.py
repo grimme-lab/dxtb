@@ -86,17 +86,30 @@ def test_dir() -> None:
     assert Path(getattr(args, option)).is_dir()
 
 
-@pytest.mark.skipif(
-    not torch.cuda.is_available(),
-    reason="Torch not compiled with CUDA enabled.",
-)
-@pytest.mark.parametrize("value", ["cpu", "cuda", "cuda:0"])
-def test_torch_device(value: str) -> None:
+@pytest.mark.parametrize("value", ["cpu", "cpu:0"])
+def test_torch_device_cpu(value: str) -> None:
     option = "device"
     args = argparser().parse_args(f"--{option} {value}".split())
 
     ref = {
         "cpu": torch.device("cpu"),
+        "cpu:0": torch.device("cpu:0"),
+    }
+
+    assert isinstance(getattr(args, option), torch.device)
+    assert getattr(args, option) == ref[value]
+
+
+@pytest.mark.skipif(
+    not torch.cuda.is_available(),
+    reason="Torch not compiled with CUDA enabled or no CUDA device available.",
+)
+@pytest.mark.parametrize("value", ["cuda", "cuda:0"])
+def test_torch_device(value: str) -> None:
+    option = "device"
+    args = argparser().parse_args(f"--{option} {value}".split())
+
+    ref = {
         "cuda": torch.device("cuda", index=torch.cuda.current_device()),
         "cuda:0": torch.device("cuda:0"),
     }

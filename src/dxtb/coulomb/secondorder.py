@@ -217,7 +217,8 @@ class ES2(Interaction):
         h = lh * ihelp.spread_uspecies_to_shell(self.hubbard)
 
         # masks
-        mask = real_pairs(numbers, diagonal=False)
+        mask = real_pairs(numbers, diagonal=True)
+
         # all distances to the power of "gexp" (R^2_AB from Eq.26)
         dist_gexp = ihelp.spread_atom_to_shell(
             torch.where(
@@ -288,14 +289,14 @@ class ES2(Interaction):
         charges: Tensor,
         cache: "ES2.Cache",
     ) -> Tensor:
-        mask = real_pairs(numbers, diagonal=False)
+        mask = real_pairs(numbers, diagonal=True)
 
         distances = torch.where(
             mask,
             torch.cdist(
                 positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
             ),
-            positions.new_tensor(torch.finfo(positions.dtype).eps),
+            positions.new_tensor(0.0),
         )
 
         # (n_batch, shells_i, shells_j, 3)
@@ -328,7 +329,7 @@ class ES2(Interaction):
         charges: Tensor,
         cache: "ES2.Cache",
     ) -> Tensor:
-        mask = real_pairs(numbers, diagonal=False)
+        mask = real_pairs(numbers, diagonal=True)
 
         # all distances to the power of "gexp" (R^2_AB from Eq.26)
         distances = ihelp.spread_atom_to_shell(
