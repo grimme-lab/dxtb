@@ -9,7 +9,7 @@ from ..constants import EV2AU
 from ..data import atomic_rad
 from ..param import Param, get_elem_param, get_elem_valence, get_pair_param
 from ..typing import Tensor, TensorLike
-from ..utils import symmetrize
+from ..utils import symmetrize, real_atoms, real_pairs
 
 PAD = -1
 """Value used for padding of tensors."""
@@ -276,9 +276,9 @@ class Hamiltonian(TensorLike):
             Hamiltonian
         """
 
-        real = self.numbers != 0
+        real = real_atoms(self.numbers)
         mask = real.unsqueeze(-1) * real.unsqueeze(-2)
-        real_shell = self.ihelp.spread_atom_to_shell(self.numbers) != 0
+        real_shell = real_atoms(self.ihelp.spread_atom_to_shell(self.numbers))
         mask_shell = real_shell.unsqueeze(-2) * real_shell.unsqueeze(-1)
 
         zero = torch.tensor(0.0, device=self.device, dtype=self.dtype)
@@ -362,6 +362,119 @@ class Hamiltonian(TensorLike):
 
         # force symmetry to avoid problems through numerical errors
         return symmetrize(hcore)
+
+    def get_gradient(
+        self,
+        positions: Tensor,
+        overlap: Tensor,
+        doverlap: Tensor,
+        pmat: Tensor,
+        wmat: Tensor,
+        pot: Tensor,
+        cn: Tensor | None = None,
+    ) -> Tensor:
+
+        real = real_atoms(self.numbers)
+        mask = real.unsqueeze(-1) * real.unsqueeze(-2)
+        real_shell = real_atoms(self.ihelp.spread_atom_to_shell(self.numbers))
+        mask_shell = real_shell.unsqueeze(-2) * real_shell.unsqueeze(-1)
+
+        mask_sh_dia = self.ihelp.spread_atom_to_shell(
+            real_pairs(self.numbers, diagonal=True), dim=(-2, -1)
+        )
+
+        zero = torch.tensor(0.0, device=self.device, dtype=self.dtype)
+
+        # ------------------------------------
+        # derivative of Eq.24: PI(R_AB, l, l')
+        # ------------------------------------
+        distances = torch.cdist(
+            positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
+        )
+        rad = self.ihelp.spread_uspecies_to_atom(self.rad)
+        rr = torch.where(
+            mask * ~torch.diag_embed(torch.ones_like(real)),
+            distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2)),
+            distances.new_tensor(torch.finfo(distances.dtype).eps),
+        )
+        rr_sh = self.ihelp.spread_atom_to_shell(
+            torch.sqrt(rr),
+            (-2, -1),
+        )
+
+        shpoly = self.ihelp.spread_ushell_to_shell(self.shpoly)
+        var_pi = (1.0 + shpoly.unsqueeze(-1) * rr_sh) * (
+            1.0 + shpoly.unsqueeze(-2) * rr_sh
+        )
+
+        shpoly_a = shpoly.unsqueeze(-1)
+        tmp_a = 1.0 + shpoly_a * rr_sh
+        shpoly_b = shpoly.unsqueeze(-2)
+        tmp_b = 1.0 + shpoly_b * rr_sh
+
+        distances_sh = self.ihelp.spread_atom_to_shell(distances, (-2, -1))
+
+        var_pi = tmp_a * tmp_b
+        dvar_pi = torch.where(
+            mask_sh_dia,
+            (tmp_a * shpoly_b + tmp_b * shpoly_a)
+            * rr_sh
+            * 0.5
+            / torch.pow(distances_sh, 2.0),
+            zero,
+        )
+
+        # --------------------
+        # Eq.28: X(EN_A, EN_B)
+        # --------------------
+        en = self.ihelp.spread_uspecies_to_shell(self.en)
+        var_x = torch.where(
+            mask_shell,
+            1.0
+            + self.par.hamiltonian.xtb.enscale
+            * torch.pow(en.unsqueeze(-1) - en.unsqueeze(-2), 2.0),
+            zero,
+        )
+
+        # --------------------
+        # Eq.23: K_{AB}^{l,l'}
+        # --------------------
+        kpair = self.ihelp.spread_uspecies_to_shell(self.kpair, dim=(-2, -1))
+        hscale = self.ihelp.spread_ushell_to_shell(self.hscale, dim=(-2, -1))
+        valence = self.ihelp.spread_ushell_to_shell(self.valence)
+
+        var_k = torch.where(
+            valence.unsqueeze(-1) * valence.unsqueeze(-2),
+            hscale * kpair * var_x,
+            hscale,
+        )
+        # print("pot\n", pot)
+
+        # ----------------------------------------------------------------------
+        # Derivative of the electronic energy w.r.t. the coordination number
+        # ----------------------------------------------------------------------
+        # E = P * H = P * 0.5 * (H_mm(CN) + H_nn(CN)) * S * F
+        # -> with: H_mm(CN) = se_mm(CN) = selfenergy - kcn * CN
+        #          F = K_{AB}^{l,l'} * X(EN_A, EN_B)
+        # ----------------------------------------------------------------------
+
+        # `kcn` differs from paper (Eq.29) to be consistent with GFN2
+        dsedcn = -self.ihelp.spread_ushell_to_shell(self.kcn)
+
+        # avoid symmetric matrix by only passing `dsedcn` vector
+        dhdcn = torch.where(
+            mask_sh_dia,
+            dsedcn * var_pi * var_k,  # only scale off-diagonals
+            dsedcn,
+        )
+
+        # reduce orbital-resolved `P*S` for mult with shell-resolved `dhdcn`
+        dcn = self.ihelp.reduce_orbital_to_shell(pmat * overlap, dim=(-2, -1)) * dhdcn
+
+        # reduce to atoms and sum for vector (requires non-symmetric matrix)
+        dedcn = self.ihelp.reduce_shell_to_atom(dcn, dim=(-2, -1)).sum(-2)
+
+        return dedcn
 
     def to(self, device: torch.device) -> "Hamiltonian":
         """
