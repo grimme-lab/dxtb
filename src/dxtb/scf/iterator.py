@@ -211,11 +211,14 @@ class SelfConsistentField(EditableModule):
 
         return {
             "charges": charges,
+            "coefficients": self._data.evecs,
             "density": self._data.density,
             "emo": self._data.evals,
             "energy": energy,
             "fenergy": fenergy,
             "hamiltonian": self._data.hamiltonian,
+            "occupation": self._data.occupation,
+            "potential": self.charges_to_potential(charges),
         }
 
     def scf(self, charges: Tensor) -> Tensor:
