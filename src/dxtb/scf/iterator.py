@@ -533,12 +533,7 @@ class SelfConsistentField(EditableModule):
                     f"({nel} -> {_nel})."
                 )
 
-        return torch.einsum(
-            "...ik,...k,...kj->...ij",
-            self._data.evecs,
-            self._data.occupation.sum(-2),
-            self._data.evecs.mT,
-        )
+        return get_density(self._data.evecs, self._data.occupation.sum(-2))
 
     def get_overlap(self) -> LinearOperator:
         """
@@ -679,3 +674,29 @@ def solve(
     return SelfConsistentField(
         interactions, *args, numbers=numbers, ihelp=ihelp, cache=cache, **kwargs
     )(charges)
+
+
+def get_density(coeffs: Tensor, occ: Tensor, emo: Tensor | None = None) -> Tensor:
+    """
+    Calculate the density matrix from the coefficient vector and the occupation.
+
+    Parameters
+    ----------
+    evecs : Tensor
+        _description_
+    occ : Tensor
+        Occupation numbers (diagonal matrix).
+    emo : Tensor | None, optional
+        Orbital energies for energy weighted density matrix. Defaults to `None`.
+
+    Returns
+    -------
+    Tensor
+        (Energy-weighted) Density matrix.
+    """
+    return torch.einsum(
+        "...ik,...k,...jk->...ij",
+        coeffs,
+        occ if emo is None else occ * emo,
+        coeffs,  # transposed
+    )
