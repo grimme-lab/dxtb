@@ -9,6 +9,7 @@ from functools import partial, reduce
 
 import torch
 
+from . import wrap_gather
 from ..typing import Any, Literal, Tensor, overload
 
 __sort = namedtuple("sort", ("values", "indices"))
@@ -453,7 +454,12 @@ def index(inp: Tensor, idx: Tensor) -> Tensor:
         size = [*idx.size(), inp.size(-1)]
 
         dummy = idx.unsqueeze(-1).expand(*size)
-        return torch.gather(inp, -2, dummy)
+
+        return wrap_gather(
+            inp,
+            -2,
+            torch.where(dummy >= 0, dummy, dummy.new_tensor(0)),
+        )
 
     if len(inp.shape) == (len(idx.shape) - 1):
         dummy = inp.unsqueeze(-2).expand(idx.size(0), -1)
@@ -464,5 +470,6 @@ def index(inp: Tensor, idx: Tensor) -> Tensor:
         )
 
     raise NotImplementedError(
-        f"Indexing with input size '{len(inp.shape)}' and index size '{len(idx.shape)}' not implemented."
+        f"Indexing with input size '{len(inp.shape)}' and index size "
+        f"'{len(idx.shape)}' not implemented."
     )
