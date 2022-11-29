@@ -441,21 +441,7 @@ class Hamiltonian(TensorLike):
         tmp_a = 1.0 + shpoly_a * rr_sh
         shpoly_b = shpoly.unsqueeze(-2)
         tmp_b = 1.0 + shpoly_b * rr_sh
-
         var_pi = tmp_a * tmp_b
-
-        # ------------------------------------
-        # derivative of Eq.24: PI(R_AB, l, l')
-        # ------------------------------------
-        distances_sh = self.ihelp.spread_atom_to_shell(distances, (-2, -1))
-        dvar_pi = torch.where(
-            mask_shell_diagonal,
-            (tmp_a * shpoly_b + tmp_b * shpoly_a)
-            * rr_sh
-            * 0.5
-            / torch.pow(distances_sh, 2.0),
-            zero,
-        )
 
         # ------------
         # Eq.23: H_EHT
@@ -472,9 +458,23 @@ class Hamiltonian(TensorLike):
         h = self.ihelp.spread_shell_to_orbital(h0, dim=(-2, -1))
 
         # ----------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         # Derivative of the electronic energy w.r.t. the atomic positions
         # ----------------------------------------------------------------------
         # ----------------------------------------------------------------------
+
+        # ------------------------------------
+        # derivative of Eq.24: PI(R_AB, l, l')
+        # ------------------------------------
+        distances_sh = self.ihelp.spread_atom_to_shell(distances, (-2, -1))
+        dvar_pi = torch.where(
+            mask_shell_diagonal,
+            (tmp_a * shpoly_b + tmp_b * shpoly_a)
+            * rr_sh
+            * 0.5
+            / torch.pow(distances_sh, 2.0),
+            zero,
+        )
 
         # xTB Hamiltonian (without overlap) times density matrix
         hp = h * pmat
@@ -508,9 +508,8 @@ class Hamiltonian(TensorLike):
         # multiplying with `rij` automatically includes the sign change on
         # switching atoms, which is manually done in the Fortran code
         # TODO: same must be done for `sval` via the derivative of the
-        # overlap
-        gradient = dpi.unsqueeze(-1) * rij
-        # g = sval.unsqueeze(-1) * doverlap + gradient.unsqueeze(-1) * rij
+        # overlap -> currently doverlap=0
+        gradient = sval.unsqueeze(-1) * doverlap + dpi.unsqueeze(-1) * rij
 
         # ----------------------------------------------------------------------
         # Derivative of the electronic energy w.r.t. the coordination number
