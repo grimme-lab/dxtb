@@ -145,7 +145,7 @@ def test_grad_pos(name: str) -> None:
     sample = samples[name]
 
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    positions = sample["positions"].type(dtype).detach().clone()
 
     # variable to be differentiated
     positions.requires_grad_(True)
@@ -181,16 +181,14 @@ def test_grad_param(sample_name: str):
     if par.halogen is None:
         assert False
 
-    _damp = torch.tensor(par.halogen.classical.damping, dtype=dtype, requires_grad=True)
-    _rscale = torch.tensor(
-        par.halogen.classical.rscale, dtype=dtype, requires_grad=True
-    )
+    _damp = torch.tensor(par.halogen.classical.damping, **dd, requires_grad=True)
+    _rscale = torch.tensor(par.halogen.classical.rscale, **dd, requires_grad=True)
     _xbond = get_elem_param(
         torch.unique(numbers),
         par.element,
         "xbond",
         pad_val=0,
-        dtype=dtype,
+        **dd,
         requires_grad=True,
     )
 

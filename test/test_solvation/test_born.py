@@ -117,10 +117,9 @@ def test_psi_grad(name: str):
     sample = samples[name]
 
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    rvdw = vdw_rad_d3[numbers].type(dtype)
-
+    positions = sample["positions"].type(dtype).detach().clone()
     positions.requires_grad_(True)
+    rvdw = vdw_rad_d3[numbers].type(dtype)
 
     def func(positions: Tensor):
         return born.compute_psi(numbers, positions, rvdw)
@@ -139,7 +138,7 @@ def test_radii_grad(name: str):
     sample = samples[name]
 
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    positions = sample["positions"].type(dtype).detach().clone()
     positions.requires_grad_(True)
 
     def func(positions: Tensor):

@@ -106,7 +106,8 @@ def test_grad_pos_tblite(dtype: torch.dtype, name: str) -> None:
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).requires_grad_(True)
+    positions = sample["positions"].type(dtype).detach().clone()
+    positions.requires_grad_(True)
     ref = sample["gfn1_grad"].type(dtype)
 
     rep = new_repulsion(numbers, par, **dd)
@@ -136,7 +137,8 @@ def test_grad_pos_backward(dtype: torch.dtype, name: str) -> None:
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).requires_grad_(True)
+    positions = sample["positions"].type(dtype).detach().clone()
+    positions.requires_grad_(True)
 
     rep = new_repulsion(numbers, par, **dd)
     if rep is None:
@@ -215,7 +217,7 @@ def test_grad_param(dtype: torch.dtype, name: str) -> None:
         par.element,
         "arep",
         pad_val=0,
-        dtype=dtype,
+        **dd,
         requires_grad=True,
     )
     _zeff = get_elem_param(
@@ -223,10 +225,10 @@ def test_grad_param(dtype: torch.dtype, name: str) -> None:
         par.element,
         "zeff",
         pad_val=0,
-        dtype=dtype,
+        **dd,
         requires_grad=True,
     )
-    _kexp = torch.tensor(par.repulsion.effective.kexp, dtype=dtype, requires_grad=True)
+    _kexp = torch.tensor(par.repulsion.effective.kexp, **dd, requires_grad=True)
 
     def func(arep: Tensor, zeff: Tensor, kexp: Tensor) -> Tensor:
         rep = Repulsion(numbers, arep, zeff, kexp, **dd)

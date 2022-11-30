@@ -168,8 +168,8 @@ def test_batch(dtype: torch.dtype):
 def test_charges_grad(dtype: torch.dtype = torch.double):
     sample = samples["NH3"]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    total_charge = sample["total_charge"].type(dtype)
+    positions = sample["positions"].type(dtype).detach().clone()
+    total_charge = sample["total_charge"].type(dtype).detach().clone()
     cn = torch.tensor(
         [3.0, 1.0, 1.0, 1.0],
         dtype=dtype,
