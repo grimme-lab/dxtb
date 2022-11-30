@@ -520,9 +520,10 @@ class Hamiltonian(TensorLike):
         # ----------------------------------------------------------------------
 
         # `kcn` differs from paper (Eq.29) to be consistent with GFN2
-        dsedcn = -self.ihelp.spread_ushell_to_shell(self.kcn)
+        dsedcn = -self.ihelp.spread_ushell_to_shell(self.kcn).unsqueeze(-2)
 
-        # avoid symmetric matrix by only passing `dsedcn` vector
+        # avoid symmetric matrix by only passing `dsedcn` vector, which must be
+        # unsqueeze(-2)'d for batched calculations
         dhdcn = torch.where(
             mask_shell_diagonal,
             dsedcn * var_pi * var_k,  # only scale off-diagonals
@@ -533,9 +534,9 @@ class Hamiltonian(TensorLike):
         dcn = self.ihelp.reduce_orbital_to_shell(pmat * overlap, dim=(-2, -1)) * dhdcn
 
         # reduce to atoms and sum for vector (requires non-symmetric matrix)
-        dedcn = self.ihelp.reduce_shell_to_atom(dcn, dim=(-2, -1)).sum(-2)
+        dedcn = self.ihelp.reduce_shell_to_atom(dcn, dim=(-2, -1))
 
-        return dedcn, gradient.sum(-2)
+        return dedcn.sum(-2), gradient.sum(-2)
 
     def to(self, device: torch.device) -> "Hamiltonian":
         """
