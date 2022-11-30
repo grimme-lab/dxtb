@@ -448,8 +448,8 @@ def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:
     refs = batch.pack((sample["escf"], ref[number - 1])).type(dtype)
     charges = torch.tensor([0.0, 0.0], **dd)
 
-    opts["spin"] = [0, uhf[number - 1]]
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    options = dict(opts, **{"spin": [0, uhf[number - 1]]})
+    calc = Calculator(numbers, par, opts=options, **dd)
     results = calc.singlepoint(numbers, positions, charges)
 
     assert torch.allclose(refs, results.scf.sum(-1), atol=tol)
