@@ -20,7 +20,7 @@ from dxtb.utils import batch
 
 from .samples import samples
 
-sample_list = ["PbH4-BiH3", "C6H5I-CH3SH"]
+sample_list = ["PbH4-BiH3", "C6H5I-CH3SH", "SiH4"]
 
 
 def test_fail() -> None:
@@ -55,7 +55,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
-def test_cn_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         (
