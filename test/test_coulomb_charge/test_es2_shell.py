@@ -92,7 +92,7 @@ def test_grad_positions(name: str) -> None:
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    positions = sample["positions"].type(dtype).detach().clone()
     qsh = sample["q"].type(dtype)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
@@ -132,7 +132,7 @@ def test_grad_param(name: str) -> None:
 
     hubbard = get_elem_param(torch.unique(numbers), GFN1_XTB.element, "gam", **dd)
     lhubbard = get_elem_param(torch.unique(numbers), GFN1_XTB.element, "lgam", **dd)
-    gexp = torch.tensor(GFN1_XTB.charge.effective.gexp).type(dtype)
+    gexp = torch.tensor(GFN1_XTB.charge.effective.gexp, **dd)
     average = averaging_function[GFN1_XTB.charge.effective.average]
 
     # variable to be differentiated

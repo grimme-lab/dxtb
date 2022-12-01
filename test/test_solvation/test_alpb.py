@@ -70,8 +70,8 @@ def test_gb_scf_grad(dtype: torch.dtype, name: str, dielectric_constant=78.9):
 
     sample = samples[name]
     numbers = sample["numbers"]
-    pos = sample["positions"].type(dtype)
-    positions = pos.detach().clone().requires_grad_(True)
+    positions = sample["positions"].type(dtype).detach().clone()
+    positions.requires_grad_(True)
     ref = sample["gradient"]
     charges = torch.tensor(0.0).type(dtype)
 

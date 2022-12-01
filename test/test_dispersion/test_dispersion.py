@@ -100,7 +100,7 @@ def test_grad_pos() -> None:
 
     sample = samples["C4H5NCS"]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    positions = sample["positions"].type(dtype).detach().clone()
 
     # variable to be differentiated
     positions.requires_grad_(True)
@@ -128,11 +128,9 @@ def test_grad_pos_tblite(dtype: torch.dtype) -> None:
 
     sample = samples["PbH4-BiH3"]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    ref = sample["grad"].type(dtype)
-
-    # variable to be differentiated
+    positions = sample["positions"].type(dtype).detach().clone()
     positions.requires_grad_(True)
+    ref = sample["grad"].type(dtype)
 
     disp = new_dispersion(numbers, par, **dd)
     if disp is None:
