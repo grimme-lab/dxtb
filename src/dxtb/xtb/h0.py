@@ -9,7 +9,7 @@ from ..constants import EV2AU
 from ..data import atomic_rad
 from ..param import Param, get_elem_param, get_elem_valence, get_pair_param
 from ..typing import Tensor, TensorLike
-from ..utils import symmetrize, real_atoms, real_pairs
+from ..utils import real_pairs, symmetrize
 
 PAD = -1
 """Value used for padding of tensors."""
@@ -261,25 +261,30 @@ class Hamiltonian(TensorLike):
     def build(
         self, positions: Tensor, overlap: Tensor, cn: Tensor | None = None
     ) -> Tensor:
-        """Build the xTB Hamiltonian
+        """
+        Build the xTB Hamiltonian.
 
         Parameters
         ----------
+        positions : Tensor
+            Atomic positions of molecular structure.
         overlap : Tensor
             Overlap matrix.
         cn : Tensor | None, optional
-            Coordination number, by default None
+            Coordination number. Defaults to `None`.
 
         Returns
         -------
         Tensor
-            Hamiltonian
+            Hamiltonian (always symmetric).
         """
 
-        real = real_atoms(self.numbers)
-        mask = real.unsqueeze(-1) * real.unsqueeze(-2)
-        real_shell = real_atoms(self.ihelp.spread_atom_to_shell(self.numbers))
-        mask_shell = real_shell.unsqueeze(-2) * real_shell.unsqueeze(-1)
+        # masks
+        mask_atom_diagonal = real_pairs(self.numbers, diagonal=True)
+        mask_shell = real_pairs(self.ihelp.spread_atom_to_shell(self.numbers))
+        mask_shell_diagonal = self.ihelp.spread_atom_to_shell(
+            mask_atom_diagonal, dim=(-2, -1)
+        )
 
         zero = torch.tensor(0.0, device=self.device, dtype=self.dtype)
 
@@ -304,19 +309,18 @@ class Hamiltonian(TensorLike):
         )
         rad = self.ihelp.spread_uspecies_to_atom(self.rad)
         rr = torch.where(
-            mask * ~torch.diag_embed(torch.ones_like(real)),
+            mask_atom_diagonal,
             distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2)),
             distances.new_tensor(torch.finfo(distances.dtype).eps),
         )
-        rr_sh = self.ihelp.spread_atom_to_shell(
+        rr_shell = self.ihelp.spread_atom_to_shell(
             torch.sqrt(rr),
             (-2, -1),
         )
 
         shpoly = self.ihelp.spread_ushell_to_shell(self.shpoly)
-
-        var_pi = (1.0 + shpoly.unsqueeze(-1) * rr_sh) * (
-            1.0 + shpoly.unsqueeze(-2) * rr_sh
+        var_pi = (1.0 + shpoly.unsqueeze(-1) * rr_shell) * (
+            1.0 + shpoly.unsqueeze(-2) * rr_shell
         )
 
         # --------------------
@@ -324,7 +328,7 @@ class Hamiltonian(TensorLike):
         # --------------------
         en = self.ihelp.spread_uspecies_to_shell(self.en)
         var_x = torch.where(
-            mask_shell,
+            mask_shell_diagonal,
             1.0
             + self.par.hamiltonian.xtb.enscale
             * torch.pow(en.unsqueeze(-1) - en.unsqueeze(-2), 2.0),
@@ -353,15 +357,18 @@ class Hamiltonian(TensorLike):
             zero,
         )
 
-        # scale only off-diagonals
-        mask_shell = mask_shell * ~torch.diag_embed(torch.ones_like(real_shell))
-        h0 = torch.where(mask_shell, var_pi * var_k * var_h, var_h)
-
-        h = self.ihelp.spread_shell_to_orbital(h0, dim=(-2, -1))
-        hcore = h * overlap
+        hcore = self.ihelp.spread_shell_to_orbital(
+            torch.where(
+                mask_shell_diagonal,
+                var_pi * var_k * var_h,  # scale only off-diagonals
+                var_h,
+            ),
+            dim=(-2, -1),
+        )
+        h = hcore * overlap
 
         # force symmetry to avoid problems through numerical errors
-        return symmetrize(hcore)
+        return symmetrize(h)
 
     def get_gradient(
         self,
@@ -373,33 +380,53 @@ class Hamiltonian(TensorLike):
         pot: Tensor,
         cn: Tensor,
     ) -> tuple[Tensor, Tensor]:
+        """
+        Calculate gradient of the full Hamiltonian with respect ot atomic positions.
 
-        real = real_atoms(self.numbers)
-        mask = real.unsqueeze(-1) * real.unsqueeze(-2)
-        real_shell = real_atoms(self.ihelp.spread_atom_to_shell(self.numbers))
-        mask_shell = real_shell.unsqueeze(-2) * real_shell.unsqueeze(-1)
+        Parameters
+        ----------
+        positions : Tensor
+            Atomic positions of molecular structure.
+        overlap : Tensor
+            Overlap matrix.
+        doverlap : Tensor
+            Derivative of the overlap matrix.
+        pmat : Tensor
+            Density matrix.
+        wmat : Tensor
+            Energy-weighted density.
+        pot : Tensor
+            Self-consistent electrostatic potential.
+        cn : Tensor
+            Coordination number.
 
+        Returns
+        -------
+        tuple[Tensor, Tensor]
+            Derivative of energy with respect to coordination number (first
+            tensor) and atomic positions (second tensor).
+        """
+        # masks
+        mask_atom = real_pairs(self.numbers)
+        mask_atom_diagonal = real_pairs(self.numbers, diagonal=True)
+
+        mask_shell = real_pairs(self.ihelp.spread_atom_to_shell(self.numbers))
         mask_shell_diagonal = self.ihelp.spread_atom_to_shell(
-            real_pairs(self.numbers, diagonal=True), dim=(-2, -1)
+            mask_atom_diagonal, dim=(-2, -1)
         )
+
         mask_orb_diagonal = self.ihelp.spread_atom_to_orbital(
-            real_pairs(self.numbers, diagonal=True), dim=(-2, -1)
+            mask_atom_diagonal, dim=(-2, -1)
         )
 
         zero = torch.tensor(0.0, device=self.device, dtype=self.dtype)
-
-        # formula differs from paper to be consistent with GFN2 -> "kcn" adapted
-        kcn = self.ihelp.spread_ushell_to_shell(self.kcn)
-        selfenergy = self.ihelp.spread_ushell_to_shell(
-            self.selfenergy
-        ) - kcn * self.ihelp.spread_atom_to_shell(cn)
 
         # --------------------
         # Eq.28: X(EN_A, EN_B)
         # --------------------
         en = self.ihelp.spread_uspecies_to_shell(self.en)
         var_x = torch.where(
-            mask_shell,
+            mask_shell_diagonal,
             1.0
             + self.par.hamiltonian.xtb.enscale
             * torch.pow(en.unsqueeze(-1) - en.unsqueeze(-2), 2.0),
@@ -427,83 +454,95 @@ class Hamiltonian(TensorLike):
         )
         rad = self.ihelp.spread_uspecies_to_atom(self.rad)
         rr = torch.where(
-            mask * ~torch.diag_embed(torch.ones_like(real)),
+            mask_atom_diagonal,
             distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2)),
             distances.new_tensor(torch.finfo(distances.dtype).eps),
         )
-        rr_sh = self.ihelp.spread_atom_to_shell(
+        rr_shell = self.ihelp.spread_atom_to_shell(
             torch.sqrt(rr),
             (-2, -1),
         )
 
         shpoly = self.ihelp.spread_ushell_to_shell(self.shpoly)
         shpoly_a = shpoly.unsqueeze(-1)
-        tmp_a = 1.0 + shpoly_a * rr_sh
+        tmp_a = 1.0 + shpoly_a * rr_shell
         shpoly_b = shpoly.unsqueeze(-2)
-        tmp_b = 1.0 + shpoly_b * rr_sh
+        tmp_b = 1.0 + shpoly_b * rr_shell
         var_pi = tmp_a * tmp_b
 
         # ------------
         # Eq.23: H_EHT
         # ------------
+
+        # `kcn` differs from paper (Eq.29) to be consistent with GFN2
+        kcn = self.ihelp.spread_ushell_to_shell(self.kcn)
+        selfenergy = self.ihelp.spread_ushell_to_shell(
+            self.selfenergy
+        ) - kcn * self.ihelp.spread_atom_to_shell(cn)
+
         var_h = torch.where(
             mask_shell,
             0.5 * (selfenergy.unsqueeze(-1) + selfenergy.unsqueeze(-2)),
             zero,
         )
 
-        # scale only off-diagonals
-        mask_shell = mask_shell * ~torch.diag_embed(torch.ones_like(real_shell))
-        h0 = torch.where(mask_shell, var_pi * var_k * var_h, var_h)
-        h = self.ihelp.spread_shell_to_orbital(h0, dim=(-2, -1))
+        hcore = self.ihelp.spread_shell_to_orbital(
+            torch.where(
+                mask_shell_diagonal,
+                var_pi * var_k * var_h,  # scale only off-diagonals
+                var_h,
+            ),
+            dim=(-2, -1),
+        )
 
         # ----------------------------------------------------------------------
+        # Derivative of the electronic energy w.r.t. the atomic positions r
         # ----------------------------------------------------------------------
-        # Derivative of the electronic energy w.r.t. the atomic positions
-        # ----------------------------------------------------------------------
+        # dE/dr = dE_EHT/dr * dE_coulomb/dr * dL_constraint/dr
+        #       = [2*P*H - 2*W - P*(V + V^T)] * dS/dr + 2*P*H*S * dPI/dr / PI
         # ----------------------------------------------------------------------
 
-        # ------------------------------------
-        # derivative of Eq.24: PI(R_AB, l, l')
-        # ------------------------------------
-        distances_sh = self.ihelp.spread_atom_to_shell(distances, (-2, -1))
+        # ------------------------------------------------------------
+        # derivative of Eq.24: PI(R_AB, l, l') -> dPI/dr (without rij)
+        # ------------------------------------------------------------
+        distances_shell = self.ihelp.spread_atom_to_shell(distances, (-2, -1))
         dvar_pi = torch.where(
             mask_shell_diagonal,
             (tmp_a * shpoly_b + tmp_b * shpoly_a)
-            * rr_sh
+            * rr_shell
             * 0.5
-            / torch.pow(distances_sh, 2.0),
+            / torch.pow(distances_shell, 2.0),
             zero,
         )
 
-        # xTB Hamiltonian (without overlap) times density matrix
-        hp = h * pmat
+        # xTB Hamiltonian (without overlap, Hcore) times density matrix
+        ph = pmat * hcore
 
-        # E_EHT derivative for polynomial scaling function `PI`
+        # E_EHT derivative for scaling function `PI` (2*P*H*S * dPI/dr / PI)
         dpi = (
             2
-            * hp
-            * overlap
-            * self.ihelp.spread_shell_to_orbital(dvar_pi / var_pi, dim=(-2, -1))
+            * self.ihelp.reduce_orbital_to_shell(ph * overlap, dim=(-2, -1))
+            * dvar_pi
+            / var_pi
         )
 
-        # factors for all derivatives of the overlap
+        # factors for all derivatives of the overlap (2*P*H - 2*W - P*(V + V^T))
         sval = torch.where(
             mask_orb_diagonal,
-            2 * (hp - wmat) - pmat * (pot.unsqueeze(-1) + pot.unsqueeze(-2)),
+            2 * (ph - wmat) - pmat * (pot.unsqueeze(-1) + pot.unsqueeze(-2)),
             zero,
         )
 
-        # (n_batch, atoms_i, atoms_j, 3)
+        # distance vector from dR_AB/dr_a (n_batch, atoms_i, atoms_j, 3)
         rij = torch.where(
-            mask.unsqueeze(-1),
+            mask_atom.unsqueeze(-1),
             positions.unsqueeze(-2) - positions.unsqueeze(-3),
             positions.new_tensor(0.0),
         )
 
         # reduce to atoms
         sval = self.ihelp.reduce_orbital_to_atom(sval, dim=(-2, -1))
-        dpi = self.ihelp.reduce_orbital_to_atom(dpi, dim=(-2, -1))
+        dpi = self.ihelp.reduce_shell_to_atom(dpi, dim=(-2, -1))
 
         # multiplying with `rij` automatically includes the sign change on
         # switching atoms, which is manually done in the Fortran code
