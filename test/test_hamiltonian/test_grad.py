@@ -87,8 +87,8 @@ def no_overlap_single(dtype: torch.dtype, name: str) -> None:
     dcndr = get_coordination_number_gradient(numbers, positions, dexp_count)
     dcn = get_dcn(dcndr, dedcn)
 
-    # ref_dcn = load_from_npz(ref_grad, f"{name}_dcn", dtype)
-    # assert pytest.approx(dcn, abs=tol) == ref_dcn
+    ref_dcn = load_from_npz(ref_grad, f"{name}_dcn", dtype)
+    assert pytest.approx(dcn, abs=tol) == ref_dcn
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -174,11 +174,10 @@ def no_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     dcndr = get_coordination_number_gradient(numbers, positions, dexp_count)
     dcn = get_dcn(dcndr, dedcn)
 
-    # ref_dcn = batch.pack(
-    #     (
-    #         load_from_npz(ref_grad, f"{name1}_dcn", dtype),
-    #         load_from_npz(ref_grad, f"{name2}_dcn", dtype),
-    #     )
-    # )
-
-    # assert pytest.approx(dcn, abs=tol) == ref_dcn
+    ref_dcn = batch.pack(
+        (
+            load_from_npz(ref_grad, f"{name1}_dcn", dtype),
+            load_from_npz(ref_grad, f"{name2}_dcn", dtype),
+        )
+    )
+    assert pytest.approx(dcn, abs=tol) == ref_dcn
