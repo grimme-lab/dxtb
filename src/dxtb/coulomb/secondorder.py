@@ -180,7 +180,7 @@ class ES2(Interaction):
                 ),
                 self.gexp,
             ),
-            torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype),
+            positions.new_tensor(torch.finfo(positions.dtype).eps),
         )
 
         # Eq.30: averaging function for hardnesses (Hubbard parameter)

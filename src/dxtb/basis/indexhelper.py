@@ -179,14 +179,24 @@ class IndexHelper:
             [l for number in unique for l in angular.get(number.item(), [-1])],
             device=device,
         )
+
+        # note that padding (i.e., when number = 0) is assigned one shell
         ushells_per_unique = torch.tensor(
             [len(angular.get(number.item(), [-1])) for number in unique],
             device=device,
         )
+
         ushell_index = torch.cumsum(ushells_per_unique, dim=-1) - ushells_per_unique
         ushells_to_unique = _fill(ushell_index, ushells_per_unique)
 
         if batched:
+            # remove the single shell assigned to the padding value in order to 
+            # avoid an additional count in the expansion as this will cause 
+            # errors in certain situations
+            # (see https://github.com/grimme-lab/xtbML/issues/67)
+            if (unique == 0.0).any():
+                ushells_per_unique[0] = 0
+
             shells_to_ushell = batch.pack(
                 [
                     _expand(
@@ -203,8 +213,6 @@ class IndexHelper:
                 ushells_per_unique[atom_to_unique],
             )
 
-        unique, atom_to_unique = torch.unique(numbers, return_inverse=True)
-
         shells_per_atom = ushells_per_unique[atom_to_unique]
         shell_index = torch.cumsum(shells_per_atom, -1) - shells_per_atom
         shell_index[shells_per_atom == 0] = pad_val
@@ -215,7 +223,7 @@ class IndexHelper:
                     _fill(shell_index[_batch, :], shells_per_atom[_batch, :])
                     for _batch in range(numbers.shape[0])
                 ],
-                value=pad_val,  # inconsistent padding values if pad_val is not 0
+                value=pad_val,
             )
         else:
             shells_to_atom = _fill(shell_index, shells_per_atom)
