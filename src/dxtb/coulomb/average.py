@@ -1,6 +1,7 @@
 """
 Averaging functions for hardnesses in GFN1-xTB.
 """
+from __future__ import annotations
 
 import torch
 

@@ -1,6 +1,7 @@
 """
 Base calculator for the extended tight-binding model.
 """
+from __future__ import annotations
 
 import warnings
 

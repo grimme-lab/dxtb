@@ -1,5 +1,4 @@
 # This file is part of xtbml.
-
 """
 Definition of the full parametrization data for the extended tight-binding methods.
 
@@ -11,12 +10,14 @@ transformations, like extracting the principal quantum numbers from the shells.
 The respective checks are therefore deferred to the instantiation of the calculator,
 while a deserialized model in `tblite`_ is already verified at this stage.
 """
+from __future__ import annotations
 
 from pydantic import BaseModel
 
+from .._types import Optional
 from .charge import Charge
 from .dispersion import Dispersion
-from .element import Element
+from .element import Elements
 from .halogen import Halogen
 from .hamiltonian import Hamiltonian
 from .meta import Meta
@@ -29,21 +30,21 @@ class Param(BaseModel):
     Complete self-contained representation of an extended tight-binding model.
     """
 
-    meta: Meta | None
+    meta: Optional[Meta]
     """Descriptive data on the model"""
-    element: dict[str, Element]
+    element: Elements
     """Element specific parameter records"""
     hamiltonian: Hamiltonian
     """Definition of the Hamiltonian, always required"""
-    dispersion: Dispersion | None
+    dispersion: Optional[Dispersion]
     """Definition of the dispersion correction"""
-    repulsion: Repulsion | None
+    repulsion: Optional[Repulsion]
     """Definition of the repulsion contribution"""
-    charge: Charge | None
+    charge: Optional[Charge]
     """Definition of the isotropic second-order charge interactions"""
-    multipole: dict | None = None
+    multipole: Optional[dict] = None
     """Definition of the anisotropic second-order multipolar interactions (not implemented)"""
-    halogen: Halogen | None = None
+    halogen: Optional[Halogen] = None
     """Definition of the halogen bonding correction (not implemented)"""
-    thirdorder: ThirdOrder | None
+    thirdorder: Optional[ThirdOrder]
     """Definition of the isotropic third-order charge interactions"""

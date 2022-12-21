@@ -3,6 +3,7 @@ Run tests for repulsion contribution.
 
 (Note that the analytical gradient tests fail for `torch.float`.)
 """
+from __future__ import annotations
 
 from math import sqrt
 
@@ -242,7 +243,7 @@ def test_grad_param(dtype: torch.dtype, name: str) -> None:
 
 
 def calc_numerical_gradient(
-    positions: Tensor, rep: Repulsion, cache: "Repulsion.Cache"
+    positions: Tensor, rep: Repulsion, cache: Repulsion.Cache
 ) -> Tensor:
     """Calculate gradient numerically for reference."""
 

@@ -29,6 +29,7 @@ tensor(-0.1750)
 >>> print(qat)
 tensor([-0.8347, -0.8347,  0.2731,  0.2886,  0.2731,  0.2731,  0.2886,  0.2731])
 """
+from __future__ import annotations
 
 import math
 
@@ -89,7 +90,7 @@ class ChargeModel(TensorLike):
         cls,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
-    ) -> "ChargeModel":
+    ) -> ChargeModel:
         """
         Electronegativity equilibration charge model published in
 
@@ -107,7 +108,7 @@ class ChargeModel(TensorLike):
             dtype=dtype,
         )
 
-    def to(self, device: torch.device) -> "ChargeModel":
+    def to(self, device: torch.device) -> ChargeModel:
         """
         Returns a copy of the `ChargeModel` instance on the specified device.
 
@@ -140,7 +141,7 @@ class ChargeModel(TensorLike):
             device=device,
         )
 
-    def type(self, dtype: torch.dtype) -> "ChargeModel":
+    def type(self, dtype: torch.dtype) -> ChargeModel:
         """
         Returns a copy of the `ChargeModel` instance with specified floating point type.
         This method creates and returns a new copy of the `ChargeModel` instance

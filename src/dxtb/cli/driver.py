@@ -1,6 +1,7 @@
 """
 Driver class for running dxtb.
 """
+from __future__ import annotations
 
 from argparse import Namespace
 from pathlib import Path

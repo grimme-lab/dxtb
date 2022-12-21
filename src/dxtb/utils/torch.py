@@ -1,6 +1,7 @@
 """
 Collection of utility functions for matrices/tensors.
 """
+from __future__ import annotations
 
 import torch
 

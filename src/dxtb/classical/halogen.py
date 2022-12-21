@@ -27,6 +27,7 @@ Example
 >>> print(energy.sum(-1))
 tensor(0.0025)
 """
+from __future__ import annotations
 
 import torch
 
@@ -103,7 +104,7 @@ class Halogen(Classical, TensorLike):
         def __init__(self, xbond: Tensor):
             self.xbond = xbond
 
-    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> "Halogen.Cache":
+    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> Halogen.Cache:
         """
         Store variables for energy calculation.
 
@@ -129,7 +130,7 @@ class Halogen(Classical, TensorLike):
         xbond = ihelp.spread_uspecies_to_atom(self.bond_strength)
         return self.Cache(xbond)
 
-    def get_energy(self, positions: Tensor, cache: "Halogen.Cache") -> Tensor:
+    def get_energy(self, positions: Tensor, cache: Halogen.Cache) -> Tensor:
         """
         Handle batchwise and single calculation of halogen bonding energy.
 

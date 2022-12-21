@@ -1,10 +1,16 @@
 # This file is part of xtbml.
-
 """
 Element parametrization record containing the adjustable parameters for each species.
 """
+from __future__ import annotations
+
+from typing import Dict, List
 
 from pydantic import BaseModel
+
+list_str = List[str]
+list_int = List[int]
+list_float = List[float]
 
 
 class Element(BaseModel):
@@ -20,24 +26,24 @@ class Element(BaseModel):
     en: float
     """Electronnegativity"""
 
-    shells: list[str]
+    shells: list_str
     """Included shells with principal quantum number and angular momentum"""
-    ngauss: list[int]
+    ngauss: list_int
     """Number of primitive Gaussian functions used in the STO-NG expansion for each shell"""
-    levels: list[float]
+    levels: list_float
     """Atomic level energies for each shell"""
-    slater: list[float]
+    slater: list_float
     """Slater exponents of the STO-NG functions for each shell"""
-    refocc: list[float]
+    refocc: list_float
     """Reference occupation for each shell"""
-    kcn: list[float]
+    kcn: list_float
     """CN dependent shift of the self energy for each shell"""
-    shpoly: list[float]
+    shpoly: list_float
     """Polynomial enhancement for Hamiltonian elements"""
 
     gam: float
     """Chemical hardness / Hubbard parameter"""
-    lgam: list[float]
+    lgam: list_float
     """Relative chemical hardness for each shell"""
     gam3 = 0.0
     """Atomic Hubbard derivative"""
@@ -53,3 +59,6 @@ class Element(BaseModel):
 
     xbond: float = 0.0
     """Halogen bonding strength"""
+
+
+Elements = Dict[str, Element]

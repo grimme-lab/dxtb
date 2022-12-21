@@ -1,6 +1,7 @@
 """
 Calculation of coordination number with various counting functions.
 """
+from __future__ import annotations
 
 import torch
 

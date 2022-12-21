@@ -1,6 +1,7 @@
 """
 Molecules for testing the Hamiltonian. Reference values are stored in npz file.
 """
+from __future__ import annotations
 
 from dxtb._types import Molecule
 

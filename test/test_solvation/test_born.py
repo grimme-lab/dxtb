@@ -2,6 +2,7 @@
 Run tests for calculation of Born radii according to the Onufriev-Bashford-Case
 model. Reference values are obtained from the tblite version.
 """
+from __future__ import annotations
 
 import pytest
 import torch

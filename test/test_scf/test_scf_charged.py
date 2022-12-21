@@ -2,6 +2,7 @@
 Test for SCF with charged samples.
 Reference values obtained with tblite 0.2.1 disabling repulsion and dispersion.
 """
+from __future__ import annotations
 
 from math import sqrt
 
@@ -63,7 +64,7 @@ def test_grad(dtype: torch.dtype, name: str):
             "maxiter": 50,
             "xitorch_fatol": 1.0e-6,
             "xitorch_xatol": 1.0e-6,
-        }
+        },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
     result = calc.singlepoint(numbers, positions, chrg)

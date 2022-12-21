@@ -1,4 +1,5 @@
 """Run tests for overlap."""
+from __future__ import annotations
 
 from math import sqrt
 
@@ -187,7 +188,7 @@ def test_ss(dtype: torch.dtype):
             -4.9026890822886887e-002,
             -2.1284755990262944e-002,
         ],
-        **dd
+        **dd,
     )
 
     step = 1e-6

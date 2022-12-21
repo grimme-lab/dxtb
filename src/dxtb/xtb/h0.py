@@ -1,6 +1,7 @@
 """
 The GFN1-xTB Hamiltonian.
 """
+from __future__ import annotations
 
 import torch
 
@@ -363,7 +364,7 @@ class Hamiltonian(TensorLike):
         # force symmetry to avoid problems through numerical errors
         return symmetrize(hcore)
 
-    def to(self, device: torch.device) -> "Hamiltonian":
+    def to(self, device: torch.device) -> Hamiltonian:
         """
         Returns a copy of the `Hamiltonian` instance on the specified device.
 
@@ -395,7 +396,7 @@ class Hamiltonian(TensorLike):
             device=device,
         )
 
-    def type(self, dtype: torch.dtype) -> "Hamiltonian":
+    def type(self, dtype: torch.dtype) -> Hamiltonian:
         """
         Returns a copy of the `Hamiltonian` instance with specified floating point type.
         This method creates and returns a new copy of the `Hamiltonian` instance

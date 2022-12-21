@@ -2,6 +2,7 @@
 Run tests for energy contribution from on-site third-order
 electrostatic energy (ES3).
 """
+from __future__ import annotations
 
 import pytest
 import torch

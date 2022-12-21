@@ -1,6 +1,7 @@
 """
 Definition of a timer class that can contain multiple timers.
 """
+from __future__ import annotations
 
 import time
 from functools import wraps

@@ -1,6 +1,7 @@
 """
 Wavefunction analysis via Mulliken populations.
 """
+from __future__ import annotations
 
 import torch
 

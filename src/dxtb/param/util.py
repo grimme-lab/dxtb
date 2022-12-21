@@ -5,6 +5,7 @@ Parametrization Utility
 Contains functions to obtain the parametrization of elements and pairs.
 Most functions convert the parametrization dictionary to a tensor.
 """
+from __future__ import annotations
 
 import torch
 

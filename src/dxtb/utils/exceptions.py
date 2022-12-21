@@ -1,6 +1,7 @@
 """
 Contains custom exceptions and warnings.
 """
+from __future__ import annotations
 
 
 class ParameterWarning(UserWarning):

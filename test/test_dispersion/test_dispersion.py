@@ -4,6 +4,7 @@ Testing dispersion energy and autodiff.
 These tests are taken from https://github.com/awvwgk/tad-dftd3/tree/main/tests
 and are only included for the sake of completeness.
 """
+from __future__ import annotations
 
 import pytest
 import tad_dftd3 as d3

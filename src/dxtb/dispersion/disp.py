@@ -1,6 +1,7 @@
 """
 Function for creating a new instance of a Dispersion.
 """
+from __future__ import annotations
 
 import warnings
 

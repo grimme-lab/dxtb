@@ -1,16 +1,13 @@
+from __future__ import annotations
+
 from functools import wraps
 
 import torch
 
-from .._types import Callable, Tensor
-from . import t2int
+from .._types import Callable, Gather, ScatterOrGather, Tensor
+from .torch import t2int
 
 __all__ = ["scatter_reduce", "wrap_scatter_reduce", "wrap_gather"]
-
-
-Gather = Callable[[Tensor, int, Tensor], Tensor]
-Scatter = Callable[[Tensor, int, Tensor, str], Tensor]
-ScatterOrGather = Gather | Scatter
 
 
 def twice_remove_negative_index(

@@ -1,6 +1,7 @@
 """
 DFT-D4 dispersion model.
 """
+from __future__ import annotations
 
 from .._types import Tensor
 from ..interaction import Interaction

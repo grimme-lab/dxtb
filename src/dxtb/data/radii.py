@@ -1,6 +1,7 @@
 """
 Atomic and covalent radii in atomic units for all elements.
 """
+from __future__ import annotations
 
 import torch
 

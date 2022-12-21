@@ -1,7 +1,6 @@
 """
 Constants used in xtb model that are not contained in the parametrization file.
 """
-
 # Coordination number
 
 KCN_EEQ = 7.5

@@ -22,6 +22,7 @@ Example
 >>> print(rads)
 tensor([3.6647, 2.4621, 2.4621, 2.4621, 2.4621])
 """
+from __future__ import annotations
 
 import torch
 

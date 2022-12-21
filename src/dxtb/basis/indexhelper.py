@@ -12,6 +12,7 @@ Example
 >>> torch.sum(ihelp.angular >= 0)
 torch.tensor(6)
 """
+from __future__ import annotations
 
 import torch
 
@@ -152,7 +153,7 @@ class IndexHelper:
     @classmethod
     def from_numbers(
         cls, numbers: Tensor, angular: dict[int, list[int]]
-    ) -> "IndexHelper":
+    ) -> IndexHelper:
         """
         Construct an index helper instance from atomic numbers and their angular momenta.
 
@@ -531,7 +532,7 @@ class IndexHelper:
         """Floating point dtype used by IndexHelper object."""
         return self.__dtype
 
-    def to(self, device: torch.device) -> "IndexHelper":
+    def to(self, device: torch.device) -> IndexHelper:
         """
         Returns a copy of the `IndexHelper` instance on the specified device.
 
@@ -571,7 +572,7 @@ class IndexHelper:
             device=self.device,
         )
 
-    def type(self, dtype: torch.dtype) -> "IndexHelper":
+    def type(self, dtype: torch.dtype) -> IndexHelper:
         """
         Returns a copy of the `IndexHelper` instance with specified floating point type.
         This method creates and returns a new copy of the `IndexHelper` instance

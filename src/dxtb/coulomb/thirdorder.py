@@ -31,6 +31,7 @@ Example
 >>> print(torch.sum(e, dim=-1))
 tensor(0.0155669)
 """
+from __future__ import annotations
 
 import torch
 

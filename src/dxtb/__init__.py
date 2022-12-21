@@ -1,6 +1,7 @@
 """
 Main module and command line entrypoint for dxtb.
 """
+from __future__ import annotations
 
 import sys
 

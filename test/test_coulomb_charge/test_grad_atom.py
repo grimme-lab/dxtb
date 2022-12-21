@@ -1,6 +1,7 @@
 """
 Run tests for gradient from isotropic second-order electrostatic energy (ES2).
 """
+from __future__ import annotations
 
 from math import sqrt
 

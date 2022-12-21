@@ -13,6 +13,7 @@ which appears to be abandoned and unmaintained at the time of writing, but still
 a reasonably good implementation of the iterative solver required for the self-consistent
 field iterations.
 """
+from __future__ import annotations
 
 import warnings
 from math import sqrt
@@ -104,7 +105,7 @@ class SelfConsistentField(EditableModule):
             self.old_density = overlap.new_tensor(0.0)
             self.iter = 1
 
-    _data: "_Data"
+    _data: _Data
     """Persistent data"""
 
     interaction: Interaction

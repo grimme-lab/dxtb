@@ -1,5 +1,4 @@
 # This file is part of xtbml.
-
 """
 Definition of the global core Hamiltonian parameters.
 
@@ -7,28 +6,35 @@ The core Hamiltonian is rescaling the shell-blocks of the overlap integrals form
 over the basis set by the average of the atomic self-energies and an additional
 distance dependent function formed from the element parametrization.
 """
+from __future__ import annotations
+
+from typing import Dict, Optional
 
 from pydantic import BaseModel
+
+dict_str_float = Dict[str, float]
+optional_str = Optional[str]
 
 
 class XTBHamiltonian(BaseModel):
     """
-    Global parameters for the formation of the core Hamiltonian from the overlap integrals.
-    Contains the required atomic and shell dependent scaling parameters to obtain the
-    off-site scaling functions independent of the self-energy and the distance polynomial.
+    Global parameters for the formation of the core Hamiltonian from the
+    overlap integrals. Contains the required atomic and shell dependent scaling
+    parameters to obtain the off-site scaling functions independent of the
+    self-energy and the distance polynomial.
     """
 
-    shell: dict[str, float]
+    shell: dict_str_float
     """Shell-pair dependent scaling factor for off-site blocks"""
-    kpair: dict[str, float] = {}
+    kpair: dict_str_float
     """Atom-pair dependent scaling factor for off-site valence blocks"""
     enscale: float
     """Electronegativity scaling factor for off-site valence blocks"""
     wexp: float
     """Exponent of the orbital exponent dependent off-site scaling factor"""
-    cn: str | None
+    cn: optional_str
     """Local environment descriptor for shifting the atomic self-energies"""
-    kpol: float = 2.0
+    kpol: Optional[float] = 2.0
     """Scaling factor for polarization functions"""
 
 

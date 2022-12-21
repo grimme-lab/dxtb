@@ -2,6 +2,7 @@
 Test for Wiberg bond orders.
 Reference values obtained with xTB 6.5.1.
 """
+from __future__ import annotations
 
 import pytest
 import torch

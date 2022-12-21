@@ -1,6 +1,7 @@
 """
 The GFNn-xTB overlap matrix.
 """
+from __future__ import annotations
 
 import torch
 

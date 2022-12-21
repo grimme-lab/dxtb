@@ -5,6 +5,7 @@ Calculation of overlap integrals using the McMurchie-Davidson algorithm.
   cartesian gaussian functions, *J. Comput. Phys.*, **1978**, *26*, 218-231.
   (`DOI <https://doi.org/10.1016/0021-9991(78)90092-X>`__)
 """
+from __future__ import annotations
 
 import math
 

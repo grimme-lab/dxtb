@@ -5,6 +5,7 @@ Wiberg/Mayer bond orders
 Wiberg (or better Mayer) bond orders are calculated from the off-diagonal
 elements of the matrix product of the density and the overlap matrix.
 """
+from __future__ import annotations
 
 from .._types import Tensor
 from ..basis import IndexHelper

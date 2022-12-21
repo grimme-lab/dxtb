@@ -1,6 +1,7 @@
 """
 Abstract base class for dispersion models.
 """
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
@@ -39,7 +40,7 @@ class Dispersion(TensorLike):
         self.param = param
 
     @abstractmethod
-    def get_cache(self, numbers: Tensor) -> "Cache":
+    def get_cache(self, numbers: Tensor) -> Cache:
         """
         Store variables for energy calculation.
 
@@ -55,7 +56,7 @@ class Dispersion(TensorLike):
         """
 
     @abstractmethod
-    def get_energy(self, positions: Tensor, cache: "Cache") -> Tensor:
+    def get_energy(self, positions: Tensor, cache: Cache) -> Tensor:
         """
         Get dispersion energy.
 

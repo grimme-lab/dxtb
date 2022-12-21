@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from json import dump as json_dump_file
 from json import dumps as json_dump

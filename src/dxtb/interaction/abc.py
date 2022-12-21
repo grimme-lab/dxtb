@@ -2,6 +2,7 @@
 Provides base class for interactions in the extended tight-binding Hamiltonian.
 The `Interaction` class is not purely abstract as its methods return zero.
 """
+from __future__ import annotations
 
 import torch
 
@@ -30,7 +31,7 @@ class Interaction(TensorLike):
 
     def get_cache(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper | None
-    ) -> "Cache":
+    ) -> Cache:
         """
         Create restart data for individual interactions.
 
@@ -50,7 +51,7 @@ class Interaction(TensorLike):
         return self.Cache()
 
     def get_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: "Interaction.Cache"
+        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
     ) -> Tensor:
         """
         Compute the potential from the charges, all quantities are orbital-resolved.
@@ -79,7 +80,7 @@ class Interaction(TensorLike):
         return ihelp.spread_shell_to_orbital(vsh)
 
     def get_shell_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: "Interaction.Cache"
+        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
     ) -> Tensor:
         """
         Compute the potential from the charges, all quantities are shell-resolved.
@@ -102,7 +103,7 @@ class Interaction(TensorLike):
         return torch.zeros_like(charges)
 
     def get_atom_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: "Interaction.Cache"
+        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
     ) -> Tensor:
         """
         Compute the potential from the charges, all quantities are atom-resolved.
@@ -125,7 +126,7 @@ class Interaction(TensorLike):
         return torch.zeros_like(charges)
 
     def get_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: "Interaction.Cache"
+        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
     ) -> Tensor:
         """
         Compute the energy from the charges, all quantities are orbital-resolved.
@@ -154,7 +155,7 @@ class Interaction(TensorLike):
         return eat + ihelp.reduce_shell_to_atom(esh)
 
     def get_shell_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: "Interaction.Cache"
+        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
     ) -> Tensor:
         """
         Compute the energy from the charges, all quantities are shell-resolved.
@@ -177,7 +178,7 @@ class Interaction(TensorLike):
         return torch.zeros_like(charges)
 
     def get_atom_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: "Interaction.Cache"
+        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
     ) -> Tensor:
         """
         Compute the energy from the charges, all quantities are atom-resolved.

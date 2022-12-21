@@ -1,8 +1,8 @@
 # This file is part of xtbml.
-
 """
 Definition of the halogen binding contribution.
 """
+from __future__ import annotations
 
 from pydantic import BaseModel
 

@@ -1,6 +1,7 @@
 """
 Run tests for energy contribution from halogen bond correction.
 """
+from __future__ import annotations
 
 import pytest
 import torch

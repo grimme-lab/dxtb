@@ -1,6 +1,7 @@
 """
 Run tests for singlepoint gradient calculation with read from coord file.
 """
+from __future__ import annotations
 
 from math import sqrt
 from pathlib import Path

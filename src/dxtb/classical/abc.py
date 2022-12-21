@@ -1,8 +1,8 @@
 # This file is part of xtbml.
-
 """
 Definition of energy terms as abstract base class for classical interactions.
 """
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
@@ -24,7 +24,7 @@ class Classical(ABC):
         """
 
     @abstractmethod
-    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> "Cache":
+    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> Cache:
         """
         Store variables for energy calculation.
 
@@ -48,7 +48,7 @@ class Classical(ABC):
         """
 
     @abstractmethod
-    def get_energy(self, positions: Tensor, cache: "Cache") -> Tensor:
+    def get_energy(self, positions: Tensor, cache: Cache) -> Tensor:
         """
         Obtain energy of the contribution.
 

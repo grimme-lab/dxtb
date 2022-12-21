@@ -1,6 +1,7 @@
 """
 Test calculation of (D3) coordination number.
 """
+from __future__ import annotations
 
 from math import sqrt
 

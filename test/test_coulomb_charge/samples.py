@@ -1,6 +1,7 @@
 """
 Data for testing Coulomb contribution.
 """
+from __future__ import annotations
 
 import torch
 
