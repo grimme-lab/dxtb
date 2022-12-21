@@ -8,9 +8,9 @@ Most functions convert the parametrization dictionary to a tensor.
 
 import torch
 
+from .._types import Tensor
 from ..constants import ATOMIC_NUMBER, PSE
 from ..param import Element
-from .._types import Tensor
 from ..utils import is_int_list
 
 

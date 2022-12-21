@@ -39,11 +39,11 @@ tensor(0.0005078)
 
 import torch
 
+from .._types import Tensor
 from ..basis import IndexHelper
 from ..constants import xtb
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
-from .._types import Tensor
 from ..utils import batch, real_pairs, wrap_scatter_reduce
 from .average import AveragingFunction, averaging_function, harmonic_average
 

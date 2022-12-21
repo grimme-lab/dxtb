@@ -5,8 +5,8 @@ The `Interaction` class is not purely abstract as its methods return zero.
 
 import torch
 
-from ..basis import IndexHelper
 from .._types import Tensor, TensorLike
+from ..basis import IndexHelper
 
 
 class Interaction(TensorLike):

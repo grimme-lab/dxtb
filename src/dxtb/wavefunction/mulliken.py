@@ -4,8 +4,8 @@ Wavefunction analysis via Mulliken populations.
 
 import torch
 
-from ..basis import IndexHelper
 from .._types import Tensor
+from ..basis import IndexHelper
 
 
 def get_orbital_populations(

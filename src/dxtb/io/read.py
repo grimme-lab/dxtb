@@ -7,8 +7,8 @@ from pathlib import Path
 
 import torch
 
-from ..constants import ATOMIC_NUMBER, units
 from .._types import PathLike
+from ..constants import ATOMIC_NUMBER, units
 
 
 def check_xyz(fp: PathLike, xyz: list[list[float]]) -> list[list[float]]:

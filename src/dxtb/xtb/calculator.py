@@ -7,6 +7,7 @@ import warnings
 import torch
 
 from .. import scf
+from .._types import Any, Tensor, TensorLike
 from ..basis import IndexHelper
 from ..classical import Halogen, Repulsion, new_halogen, new_repulsion
 from ..constants import defaults
@@ -17,7 +18,6 @@ from ..integral import Overlap
 from ..interaction import Interaction, InteractionList
 from ..ncoord import exp_count, get_coordination_number
 from ..param import Param, get_elem_angular
-from .._types import Any, Tensor, TensorLike
 from ..utils import Timers, ToleranceWarning
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian

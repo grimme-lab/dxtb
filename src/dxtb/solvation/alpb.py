@@ -37,9 +37,9 @@ tensor(-5.0762e-05)
 
 import torch
 
+from .._types import Any, Tensor
 from ..basis import IndexHelper
 from ..interaction import Interaction
-from .._types import Any, Tensor
 from ..utils import real_pairs
 from .born import get_born_radii
 from .data import vdw_rad_d3

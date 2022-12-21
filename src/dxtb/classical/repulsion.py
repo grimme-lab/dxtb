@@ -37,10 +37,10 @@ import warnings
 
 import torch
 
+from .._types import Tensor, TensorLike
 from ..basis import IndexHelper
 from ..constants import xtb
 from ..param import Param, get_elem_param
-from .._types import Tensor, TensorLike
 from ..utils import ParameterWarning, real_pairs
 from .abc import Classical
 

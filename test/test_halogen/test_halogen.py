@@ -5,11 +5,11 @@ Run tests for energy contribution from halogen bond correction.
 import pytest
 import torch
 
+from dxtb._types import Tensor
 from dxtb.basis import IndexHelper
 from dxtb.classical import Halogen, new_halogen
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular, get_elem_param
-from dxtb._types import Tensor
 from dxtb.utils import batch
 
 from .samples import samples

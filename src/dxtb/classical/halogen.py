@@ -30,11 +30,11 @@ tensor(0.0025)
 
 import torch
 
+from .._types import Tensor, TensorLike
 from ..basis import IndexHelper
 from ..constants import xtb
 from ..data import atomic_rad
 from ..param import Param, get_elem_param
-from .._types import Tensor, TensorLike
 from ..utils import batch
 from .abc import Classical
 

@@ -50,8 +50,8 @@ tensor([[False, False,  True,  True,  True, False, False, False],
 
 import torch
 
-from .ncoord import erf_count
 from ._types import CountingFunction, Tensor
+from .ncoord import erf_count
 from .utils import real_pairs
 
 _en = torch.tensor(

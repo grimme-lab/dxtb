@@ -6,8 +6,8 @@ Wiberg (or better Mayer) bond orders are calculated from the off-diagonal
 elements of the matrix product of the density and the overlap matrix.
 """
 
-from ..basis import IndexHelper
 from .._types import Tensor
+from ..basis import IndexHelper
 
 
 def get_bond_order(overlap: Tensor, density: Tensor, ihelp: IndexHelper) -> Tensor:

@@ -19,13 +19,13 @@ from math import sqrt
 
 import torch
 
+from .._types import Any, Tensor
 from ..basis import IndexHelper
 from ..constants import K2AU, defaults
 from ..exlibs.xitorch import EditableModule, LinearOperator
 from ..exlibs.xitorch import linalg as xtl
 from ..exlibs.xitorch import optimize as xto
 from ..interaction import Interaction
-from .._types import Any, Tensor
 from ..utils import real_atoms
 from ..wavefunction import filling, mulliken
 from .guess import get_guess

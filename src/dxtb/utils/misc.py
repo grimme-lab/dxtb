@@ -7,8 +7,8 @@ Collection of utility functions.
 
 import torch
 
-from ..constants import ATOMIC_NUMBER
 from .._types import Any, Tensor, TypeGuard
+from ..constants import ATOMIC_NUMBER
 
 
 def is_str_list(x: list[Any]) -> TypeGuard[list[str]]:

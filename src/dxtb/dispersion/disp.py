@@ -6,8 +6,8 @@ import warnings
 
 import torch
 
-from ..param import Param
 from .._types import Tensor
+from ..param import Param
 from ..utils import ParameterWarning
 from .abc import Dispersion
 from .d3 import DispersionD3

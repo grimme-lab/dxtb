@@ -6,8 +6,8 @@ Definition of the dispersion contribution.
 
 from pydantic import BaseModel
 
-from ..constants import xtb
 from .._types import Optional
+from ..constants import xtb
 
 
 class D3Model(BaseModel):

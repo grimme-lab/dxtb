@@ -4,11 +4,11 @@ The GFN1-xTB Hamiltonian.
 
 import torch
 
+from .._types import Tensor, TensorLike
 from ..basis import IndexHelper
 from ..constants import EV2AU
 from ..data import atomic_rad
 from ..param import Param, get_elem_param, get_elem_valence, get_pair_param
-from .._types import Tensor, TensorLike
 from ..utils import symmetrize
 
 PAD = -1

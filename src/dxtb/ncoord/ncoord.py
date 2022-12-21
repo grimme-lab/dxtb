@@ -4,9 +4,9 @@ Calculation of coordination number with various counting functions.
 
 import torch
 
+from .._types import CountingFunction, Tensor
 from ..constants import xtb
 from ..data import cov_rad_d3
-from .._types import CountingFunction, Tensor
 from ..utils import real_pairs
 
 

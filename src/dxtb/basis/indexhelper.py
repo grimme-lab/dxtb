@@ -16,7 +16,7 @@ torch.tensor(6)
 import torch
 
 from .._types import Tensor
-from ..utils import batch, wrap_scatter_reduce, wrap_gather
+from ..utils import batch, wrap_gather, wrap_scatter_reduce
 
 __all__ = ["IndexHelper"]
 
@@ -190,8 +190,8 @@ class IndexHelper:
         ushells_to_unique = _fill(ushell_index, ushells_per_unique)
 
         if batched:
-            # remove the single shell assigned to the padding value in order to 
-            # avoid an additional count in the expansion as this will cause 
+            # remove the single shell assigned to the padding value in order to
+            # avoid an additional count in the expansion as this will cause
             # errors in certain situations
             # (see https://github.com/grimme-lab/xtbML/issues/67)
             if (unique == 0.0).any():

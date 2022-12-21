@@ -34,10 +34,10 @@ tensor(0.0155669)
 
 import torch
 
+from .._types import Tensor
 from ..basis import IndexHelper
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
-from .._types import Tensor
 
 __all__ = ["ES3", "new_es3"]
 

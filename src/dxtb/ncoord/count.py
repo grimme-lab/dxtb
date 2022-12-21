@@ -6,8 +6,8 @@ from math import pi, sqrt
 
 import torch
 
-from ..constants import xtb
 from .._types import Tensor
+from ..constants import xtb
 
 
 def exp_count(r: Tensor, r0: Tensor, kcn: float = xtb.KCN) -> Tensor:

@@ -6,8 +6,8 @@ model. Reference values are obtained from the tblite version.
 import pytest
 import torch
 
-from dxtb.solvation import born, vdw_rad_d3
 from dxtb._types import Tensor
+from dxtb.solvation import born, vdw_rad_d3
 from dxtb.utils import batch
 
 from .samples import samples

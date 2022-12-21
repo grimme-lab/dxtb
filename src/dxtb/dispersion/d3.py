@@ -4,8 +4,8 @@ DFT-D3 dispersion model.
 
 import tad_dftd3 as d3
 
-from ..ncoord import exp_count, get_coordination_number
 from .._types import CountingFunction, Tensor
+from ..ncoord import exp_count, get_coordination_number
 from .abc import Dispersion
 
 

@@ -7,6 +7,7 @@ from math import sqrt
 import pytest
 import torch
 
+from dxtb._types import CountingFunction
 from dxtb.data import cov_rad_d3
 from dxtb.ncoord import (
     derf_count,
@@ -15,7 +16,6 @@ from dxtb.ncoord import (
     exp_count,
     get_coordination_number,
 )
-from dxtb._types import CountingFunction
 from dxtb.utils import batch
 
 from .samples import samples

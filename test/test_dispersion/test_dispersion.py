@@ -9,9 +9,9 @@ import pytest
 import tad_dftd3 as d3
 import torch
 
+from dxtb._types import Tensor
 from dxtb.dispersion import DispersionD3, new_dispersion
 from dxtb.param import GFN1_XTB as par
-from dxtb._types import Tensor
 from dxtb.utils import ParameterWarning, batch
 
 from .samples import samples
