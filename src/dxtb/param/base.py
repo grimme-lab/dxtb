@@ -31,20 +31,20 @@ class Param(BaseModel):
     """
 
     meta: Optional[Meta]
-    """Descriptive data on the model"""
+    """Descriptive data on the model."""
     element: Elements
-    """Element specific parameter records"""
+    """Element specific parameter records."""
     hamiltonian: Hamiltonian
-    """Definition of the Hamiltonian, always required"""
-    dispersion: Optional[Dispersion]
-    """Definition of the dispersion correction"""
-    repulsion: Optional[Repulsion]
-    """Definition of the repulsion contribution"""
-    charge: Optional[Charge]
-    """Definition of the isotropic second-order charge interactions"""
+    """Definition of the Hamiltonian, always required."""
+    dispersion: Optional[Dispersion] = None
+    """Definition of the dispersion correction."""
+    repulsion: Optional[Repulsion] = None
+    """Definition of the repulsion contribution."""
+    charge: Optional[Charge] = None
+    """Definition of the isotropic second-order charge interactions."""
     multipole: Optional[dict] = None
-    """Definition of the anisotropic second-order multipolar interactions (not implemented)"""
+    """Definition of the anisotropic second-order multipolar interactions."""
     halogen: Optional[Halogen] = None
-    """Definition of the halogen bonding correction (not implemented)"""
-    thirdorder: Optional[ThirdOrder]
-    """Definition of the isotropic third-order charge interactions"""
+    """Definition of the halogen bonding correction."""
+    thirdorder: Optional[ThirdOrder] = None
+    """Definition of the isotropic third-order charge interactions."""

@@ -8,10 +8,6 @@ from typing import Dict, List
 
 from pydantic import BaseModel
 
-list_str = List[str]
-list_int = List[int]
-list_float = List[float]
-
 
 class Element(BaseModel):
     """
@@ -26,24 +22,27 @@ class Element(BaseModel):
     en: float
     """Electronnegativity"""
 
-    shells: list_str
+    shells: List[str]
     """Included shells with principal quantum number and angular momentum"""
-    ngauss: list_int
-    """Number of primitive Gaussian functions used in the STO-NG expansion for each shell"""
-    levels: list_float
+    ngauss: List[int]
+    """
+    Number of primitive Gaussian functions used in the STO-NG expansion for
+    each shell
+    """
+    levels: List[float]
     """Atomic level energies for each shell"""
-    slater: list_float
+    slater: List[float]
     """Slater exponents of the STO-NG functions for each shell"""
-    refocc: list_float
+    refocc: List[float]
     """Reference occupation for each shell"""
-    kcn: list_float
+    kcn: List[float]
     """CN dependent shift of the self energy for each shell"""
-    shpoly: list_float
+    shpoly: List[float]
     """Polynomial enhancement for Hamiltonian elements"""
 
     gam: float
     """Chemical hardness / Hubbard parameter"""
-    lgam: list_float
+    lgam: List[float]
     """Relative chemical hardness for each shell"""
     gam3 = 0.0
     """Atomic Hubbard derivative"""

@@ -8,8 +8,9 @@ This module tests the EEQ charge model including:
  - ghost atoms
  - autograd via `gradcheck`
 
-Note that `torch.linalg.solve` gives slightly different results (around 1e-5 to 1e-6) across different Python versions for single precision. For double
-precision, however the results are identical.
+Note that `torch.linalg.solve` gives slightly different results (around 1e-5
+to 1e-6) across different PyTorch versions (1.11.0 vs 1.13.0) for single
+precision. For double precision, however the results are identical.
 """
 from __future__ import annotations
 

@@ -12,9 +12,6 @@ from typing import Dict, Optional
 
 from pydantic import BaseModel
 
-dict_str_float = Dict[str, float]
-optional_str = Optional[str]
-
 
 class XTBHamiltonian(BaseModel):
     """
@@ -24,23 +21,24 @@ class XTBHamiltonian(BaseModel):
     self-energy and the distance polynomial.
     """
 
-    shell: dict_str_float
+    shell: Dict[str, float]
     """Shell-pair dependent scaling factor for off-site blocks"""
-    kpair: dict_str_float
+    kpair: Dict[str, float] = {}
     """Atom-pair dependent scaling factor for off-site valence blocks"""
     enscale: float
     """Electronegativity scaling factor for off-site valence blocks"""
     wexp: float
     """Exponent of the orbital exponent dependent off-site scaling factor"""
-    cn: optional_str
+    cn: Optional[str]
     """Local environment descriptor for shifting the atomic self-energies"""
-    kpol: Optional[float] = 2.0
+    kpol: float = 2.0
     """Scaling factor for polarization functions"""
 
 
 class Hamiltonian(BaseModel):
     """
-    Possible Hamiltonian parametrizations. Currently only the xTB Hamiltonian is supported.
+    Possible Hamiltonian parametrizations.
+    Currently only the xTB Hamiltonian is supported.
     """
 
     xtb: XTBHamiltonian
