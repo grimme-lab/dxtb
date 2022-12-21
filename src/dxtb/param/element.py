@@ -8,10 +8,6 @@ from typing import Dict, List
 
 from pydantic import BaseModel
 
-list_str = List[str]
-list_int = List[int]
-list_float = List[float]
-
 
 class Element(BaseModel):
     """
