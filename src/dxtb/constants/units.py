@@ -1,7 +1,6 @@
 """
 Unit conversion factors.
 """
-from __future__ import annotations
 
 AA2AU = 1.8897261246204404
 """Factor for conversion from angstrom to atomic units."""

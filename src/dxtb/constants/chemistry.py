@@ -1,7 +1,6 @@
 """
 Chemical constants.
 """
-from __future__ import annotations
 
 PSE = {
     0: "X",

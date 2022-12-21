@@ -1,7 +1,6 @@
 """
 Default settings for `dxtb` calculations.
 """
-from __future__ import annotations
 
 import torch
 
