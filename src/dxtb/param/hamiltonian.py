@@ -12,6 +12,9 @@ from typing import Dict, Optional
 
 from pydantic import BaseModel
 
+dict_str_float = Dict[str, float]
+optional_str = Optional[str]
+
 
 class XTBHamiltonian(BaseModel):
     """
@@ -31,7 +34,7 @@ class XTBHamiltonian(BaseModel):
     """Exponent of the orbital exponent dependent off-site scaling factor"""
     cn: Optional[str]
     """Local environment descriptor for shifting the atomic self-energies"""
-    kpol: float = 2.0
+    kpol: Optional[float] = 2.0
     """Scaling factor for polarization functions"""
 
 
