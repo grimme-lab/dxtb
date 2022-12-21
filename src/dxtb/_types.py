@@ -1,72 +1,21 @@
 """
-Type annotations
-================
-
-This module contains all type annotations for this project.
-
-Since typing still significantly changes across different Python versions,
-all the special cases are handled here as well.
+Type annotations for this project.
 """
-# pylint: disable=unused-import
-from __future__ import annotations
 
-import sys
+from collections.abc import Callable, Generator
 from pathlib import Path
-from typing import Any, Literal, Protocol, TypedDict, overload, NoReturn
+from typing import Any, Literal, Optional, Protocol, TypedDict, TypeGuard, overload
 
 import torch
 from torch import Tensor
 
 from .constants import defaults
 
-# "Self" (since Python 3.11)
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing_extensions import Self
+Sliceable = list[Tensor] | tuple[Tensor]
 
-# "TypeGuard" (since Python 3.10)
-if sys.version_info >= (3, 10):
-    from typing import TypeGuard
-else:  # pragma: <3.10 cover
-    from typing_extensions import TypeGuard
-
-# starting with Python 3.9, type hinting generics have been moved
-# from the "typing" to the "collections" module
-# (see PEP 585: https://peps.python.org/pep-0585/)
-if sys.version_info >= (3, 9):
-    from collections.abc import Callable, Generator, Sequence
-else:
-    from typing import Callable, Generator, Sequence
-
-# type aliases that do not require "from __future__ import annotations"
 CountingFunction = Callable[[Tensor, Tensor], Tensor]
-Gather = Callable[[Tensor, int, Tensor], Tensor]
-Scatter = Callable[[Tensor, int, Tensor, str], Tensor]
 
-# "from __future__ import annotations" only affects type annotations
-# not type aliases, hence "|" is not allowed before Python 3.10
-if sys.version_info >= (3, 10):
-    Sliceable = list[Tensor] | tuple[Tensor, ...]
-    PathLike = str | Path
-    ScatterOrGather = Gather | Scatter
-elif sys.version_info >= (3, 9):
-    from typing import Union
-
-    Sliceable = Union[list[Tensor], tuple[Tensor, ...]]
-    PathLike = Union[str, Path]
-    ScatterOrGather = Union[Gather, Scatter]
-elif sys.version_info >= (3, 8):
-    from typing import List, Tuple, Union
-
-    Sliceable = Union[List[Tensor], Tuple[Tensor, ...]]
-    PathLike = Union[str, Path]
-    ScatterOrGather = Union[Gather, Scatter]
-else:
-    raise RuntimeError(
-        f"'dxtb' requires at least Python 3.8 (Python {sys.version_info.major}."
-        f"{sys.version_info.minor}.{sys.version_info.micro} found)."
-    )
+PathLike = str | Path
 
 
 class Molecule(TypedDict):
@@ -101,10 +50,8 @@ class TensorLike:
         return self.__device
 
     @device.setter
-    def device(self, *_: Any) -> NoReturn:
-        """
-        Instruct users to use the ".to" method if wanting to change device.
-        """
+    def device(self, *args):
+        """Instruct users to use the ".to" method if wanting to change device."""
         raise AttributeError("Move object to device using the `.to` method")
 
     @property
