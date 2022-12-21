@@ -4,14 +4,54 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - numpy
-  - pydantic
-  - python >=3.8
-  - pytorch >=1.11.0
-  - scipy # for xitorch
-  - black
-  - pre-commit
-  - pylint
-  - pytest
+  - _libgcc_mutex=0.1=conda_forge
+  - _openmp_mutex=4.5=1_gnu
+  - attrs=21.4.0=pyhd3eb1b0_0
+  - blas=1.0=mkl
+  - bzip2=1.0.8=h7b6447c_0
+  - ca-certificates=2022.9.24=ha878542_0
+  - certifi=2022.9.24=py310h06a4308_0
+  - cudatoolkit=10.2.89=h8f6ccaa_10
+  - iniconfig=1.1.1=pyhd3eb1b0_0
+  - intel-openmp=2022.0.1=h06a4308_3633
+  - ld_impl_linux-64=2.38=h1181459_1
+  - libblas=3.9.0=14_linux64_mkl
+  - libcblas=3.9.0=14_linux64_mkl
+  - libffi=3.4.2=h295c915_4
+  - libgcc-ng=12.1.0=h8d9b700_16
+  - libgomp=12.1.0=h8d9b700_16
+  - liblapack=3.9.0=14_linux64_mkl
+  - libnsl=2.0.0=h7f98852_0
+  - libsqlite=3.39.4=h753d276_0
+  - libstdcxx-ng=12.1.0=ha89aaad_16
+  - libuuid=2.32.1=h7f98852_1000
+  - libuv=1.40.0=h7b6447c_0
+  - libzlib=1.2.12=h166bdaf_3
+  - mkl=2022.0.1=h06a4308_117
+  - ncurses=6.3=h5eee18b_3
+  - numpy=1.23.3=py310h53a5b5f_0
+  - openssl=1.1.1q=h7f8727e_0
+  - packaging=21.3=pyhd3eb1b0_0
+  - pip=22.0.3=pyhd8ed1ab_0
+  - pluggy=1.0.0=py310h06a4308_1
+  - py=1.11.0=pyhd3eb1b0_0
+  - pydantic=1.9.0=py310h7f8727e_1
+  - pyparsing=3.0.9=py310h06a4308_0
+  - pytest=7.1.2=py310h06a4308_0
+  - python=3.10.6=h582c2e5_0_cpython
+  - python_abi=3.10=2_cp310
+  - pytorch=1.11.0=py3.10_cuda10.2_cudnn7.6.5_0
+  - pytorch-mutex=1.0=cuda
+  - readline=8.1.2=h7f8727e_1
+  - setuptools=63.4.1=py310h06a4308_0
+  - sqlite=3.39.3=h5082296_0
+  - tk=8.6.12=h1ccaba5_0
+  - tomli=2.0.1=py310h06a4308_0
+  - typing-extensions=4.3.0=py310h06a4308_0
+  - typing_extensions=4.3.0=py310h06a4308_0
+  - tzdata=2022c=h04d1e81_0
+  - wheel=0.37.1=pyhd3eb1b0_0
+  - xz=5.2.6=h5eee18b_0
+  - zlib=1.2.12=h5eee18b_3
   - pip:
       - tad-dftd3==0.0.2
