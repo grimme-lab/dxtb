@@ -82,17 +82,16 @@ class ConvertToTorchDtype(argparse.Action):
         values: str | torch.dtype,
         option_string: str | None = None,
     ) -> None:
-        match values:
-            case "float16" | torch.float16:
-                values = torch.float16
-            case "float32" | torch.float32 | "sp":
-                values = torch.float32
-            case "float64" | torch.float64 | "double" | torch.double | "dp":
-                values = torch.float64
-            case _:  # unreachable due to choices
-                parser.error(
-                    f"Option '{option_string}' was passed an unknown keyword ({values})."
-                )
+        if values in ("float16", torch.float16):
+            values = torch.float16
+        elif values in ("float32", torch.float32, "sp"):
+            values = torch.float32
+        elif values in ("float64", torch.float64, "double", torch.double, "dp"):
+            values = torch.float64
+        else:  # unreachable due to choices
+            parser.error(
+                f"Option '{option_string}' was passed an unknown keyword ({values})."
+            )
 
         setattr(args, self.dest, values)
 

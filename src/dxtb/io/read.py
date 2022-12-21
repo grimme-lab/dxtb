@@ -8,7 +8,7 @@ from pathlib import Path
 import torch
 
 from ..constants import ATOMIC_NUMBER, units
-from ..typing import PathLike
+from .._types import PathLike
 
 
 def check_xyz(fp: PathLike, xyz: list[list[float]]) -> list[list[float]]:
@@ -82,35 +82,36 @@ def read_structure_from_file(
 
     if ftype is None:
         ftype = f.suffix.lower()[1:]
+    fname = f.name.lower()
 
-    match [ftype, f.name.lower()]:
-        case ["xyz" | "log", *_]:
-            numbers, positions = read_xyz(f)
-        case ["", "coord"] | ["tmol" | "tm" | "turbomole", *_]:
-            numbers, positions = read_coord(f)
-        case ["mol", *_] | ["sdf", *_] | ["gen", *_] | ["pdb", *_]:
-            raise NotImplementedError(
-                f"Filetype '{ftype}' recognized but no reader available."
-            )
-        case ["qchem", *_]:
-            raise NotImplementedError(
-                f"Filetype '{ftype}' (Q-Chem) recognized but no reader available."
-            )
-        case ["poscar" | "contcar" | "vasp" | "crystal", *_] | [
-            "",
-            "poscar" | "contcar" | "vasp",
-        ]:
-            raise NotImplementedError(
-                "VASP/CRYSTAL file recognized but no reader available."
-            )
-        case ["ein" | "gaussian", *_]:
-            raise NotImplementedError(
-                f"Filetype '{ftype}' (Gaussian) recognized but no reader available."
-            )
-        case ["json" | "qcschema", *_]:
-            numbers, positions = read_qcschema(f)
-        case _:
-            raise ValueError(f"Unknown filetype '{ftype}' in '{f}'.")
+    if ftype in ("xyz", "log"):
+        numbers, positions = read_xyz(f)
+    elif ftype in ("tmol", "tm", "turbomole") or fname in ("coord"):
+        numbers, positions = read_coord(f)
+    elif ftype in ("mol", "sdf", "gen", "pdb"):
+        raise NotImplementedError(
+            f"Filetype '{ftype}' recognized but no reader available."
+        )
+    elif ftype in ("qchem"):
+        raise NotImplementedError(
+            f"Filetype '{ftype}' (Q-Chem) recognized but no reader available."
+        )
+    elif ftype in ("poscar", "contcar", "vasp", "crystal") or fname in (
+        "poscar",
+        "contcar",
+        "vasp",
+    ):
+        raise NotImplementedError(
+            "VASP/CRYSTAL file recognized but no reader available."
+        )
+    elif ftype in ("ein", "gaussian"):
+        raise NotImplementedError(
+            f"Filetype '{ftype}' (Gaussian) recognized but no reader available."
+        )
+    elif ftype in ("json", "qcschema"):
+        numbers, positions = read_qcschema(f)
+    else:
+        raise ValueError(f"Unknown filetype '{ftype}' in '{f}'.")
 
     return numbers, positions
 
