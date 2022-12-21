@@ -23,6 +23,7 @@ from dxtb import charges
 from dxtb._types import Tensor
 from dxtb.utils import batch
 
+from ..utils import get_device_from_str
 from .samples import samples
 
 
@@ -210,3 +211,37 @@ def test_charges_grad(dtype: torch.dtype = torch.double):
     from torch.autograd.gradcheck import gradcheck
 
     assert gradcheck(func, (positions, total_charge))
+
+
+@pytest.mark.parametrize("dtype", [torch.float16, torch.float32, torch.float64])
+def test_change_type(dtype: torch.dtype) -> None:
+    model = charges.ChargeModel.param2019().type(dtype)
+    assert model.dtype == dtype
+
+
+def test_change_type_fail() -> None:
+    model = charges.ChargeModel.param2019()
+
+    # trying to use setter
+    with pytest.raises(AttributeError):
+        model.dtype = torch.float64
+
+    # passing disallowed dtype
+    with pytest.raises(ValueError):
+        model.type(torch.bool)
+
+
+@pytest.mark.cuda
+@pytest.mark.parametrize("device_str", ["cpu", "cuda"])
+def test_change_device(device_str: str) -> None:
+    device = get_device_from_str(device_str)
+    model = charges.ChargeModel.param2019().to(device)
+    assert model.device == device
+
+
+def test_change_device_fail() -> None:
+    model = charges.ChargeModel.param2019()
+
+    # trying to use setter
+    with pytest.raises(AttributeError):
+        model.device = "cpu"

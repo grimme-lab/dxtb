@@ -101,10 +101,7 @@ def test_torch_device_cpu(value: str) -> None:
     assert getattr(args, option) == ref[value]
 
 
-@pytest.mark.skipif(
-    not torch.cuda.is_available(),
-    reason="Torch not compiled with CUDA enabled or no CUDA device available.",
-)
+@pytest.mark.cuda
 @pytest.mark.parametrize("value", ["cuda", "cuda:0"])
 def test_torch_device(value: str) -> None:
     option = "device"
