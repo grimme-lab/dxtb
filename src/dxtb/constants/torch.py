@@ -1,7 +1,6 @@
 """
 PyTorch related constants like data types.
 """
-from __future__ import annotations
 
 import torch
 
