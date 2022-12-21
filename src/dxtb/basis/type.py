@@ -5,7 +5,7 @@ Basis set class.
 import torch
 
 from ..param import Param, get_elem_param, get_elem_pqn, get_elem_valence
-from ..typing import Tensor, TensorLike
+from .._types import Tensor, TensorLike
 from . import IndexHelper, orthogonalize, slater
 
 # fmt: off

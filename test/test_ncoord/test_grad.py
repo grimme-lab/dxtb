@@ -14,7 +14,7 @@ from dxtb.ncoord import (
     get_coordination_number,
     get_coordination_number_gradient,
 )
-from dxtb.typing import Tensor
+from dxtb._types import Tensor
 from dxtb.utils import batch, real_pairs
 
 from .samples import samples

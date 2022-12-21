@@ -17,7 +17,7 @@ from ..integral import Overlap
 from ..interaction import Interaction, InteractionList
 from ..ncoord import exp_count, get_coordination_number
 from ..param import Param, get_elem_angular
-from ..typing import Any, Tensor, TensorLike
+from .._types import Any, Tensor, TensorLike
 from ..utils import Timers, ToleranceWarning
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian

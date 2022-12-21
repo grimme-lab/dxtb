@@ -6,7 +6,7 @@ The `Interaction` class is not purely abstract as its methods return zero.
 import torch
 
 from ..basis import IndexHelper
-from ..typing import Tensor, TensorLike
+from .._types import Tensor, TensorLike
 
 
 class Interaction(TensorLike):

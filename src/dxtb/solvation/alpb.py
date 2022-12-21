@@ -39,7 +39,7 @@ import torch
 
 from ..basis import IndexHelper
 from ..interaction import Interaction
-from ..typing import Any, Tensor
+from .._types import Any, Tensor
 from ..utils import real_pairs
 from .born import get_born_radii
 from .data import vdw_rad_d3

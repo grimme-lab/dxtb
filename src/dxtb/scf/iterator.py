@@ -25,7 +25,7 @@ from ..exlibs.xitorch import EditableModule, LinearOperator
 from ..exlibs.xitorch import linalg as xtl
 from ..exlibs.xitorch import optimize as xto
 from ..interaction import Interaction
-from ..typing import Any, Tensor
+from .._types import Any, Tensor
 from ..utils import real_atoms
 from ..wavefunction import filling, mulliken
 from .guess import get_guess

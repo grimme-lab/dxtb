@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 
 import torch
 
-from ..typing import Tensor, TensorLike
+from .._types import Tensor, TensorLike
 
 
 class Dispersion(TensorLike):

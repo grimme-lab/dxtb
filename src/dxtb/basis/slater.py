@@ -8,7 +8,7 @@ import os.path as op
 import numpy as np
 import torch
 
-from ..typing import Tensor
+from .._types import Tensor
 
 sto_ng = [
     torch.from_numpy(np.load(op.join(op.dirname(__file__), f"sto-{n}g.npy"))).type(

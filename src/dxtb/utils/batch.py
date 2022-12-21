@@ -10,7 +10,7 @@ from functools import partial, reduce
 import torch
 
 from . import wrap_gather
-from ..typing import Any, Literal, Tensor, overload
+from .._types import Any, Literal, Tensor, overload
 
 __sort = namedtuple("sort", ("values", "indices"))
 Sliceable = list[Tensor] | tuple[Tensor, Tensor]

@@ -7,7 +7,7 @@ import pytest
 import torch
 
 from dxtb.solvation import born, vdw_rad_d3
-from dxtb.typing import Tensor
+from dxtb._types import Tensor
 from dxtb.utils import batch
 
 from .samples import samples

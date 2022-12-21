@@ -4,7 +4,7 @@ Samples for test of halogen bond correction.
 
 import torch
 
-from dxtb.typing import Molecule, Tensor, TypedDict
+from dxtb._types import Molecule, Tensor, TypedDict
 
 from ..molecules import merge_nested_dicts, mols
 

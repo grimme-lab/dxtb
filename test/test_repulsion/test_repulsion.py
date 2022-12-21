@@ -13,7 +13,7 @@ from dxtb.basis import IndexHelper
 from dxtb.classical import Repulsion, new_repulsion
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular, get_elem_param
-from dxtb.typing import Tensor
+from dxtb._types import Tensor
 from dxtb.utils import batch
 from dxtb.utils.exceptions import ParameterWarning
 

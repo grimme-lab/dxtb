@@ -6,7 +6,7 @@ import torch
 
 from ..constants import xtb
 from ..data import cov_rad_d3
-from ..typing import CountingFunction, Tensor
+from .._types import CountingFunction, Tensor
 from ..utils import real_pairs
 
 

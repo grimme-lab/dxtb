@@ -5,7 +5,7 @@ Container for interactions.
 import torch
 
 from ..basis import IndexHelper
-from ..typing import Tensor
+from .._types import Tensor
 from .abc import Interaction
 
 

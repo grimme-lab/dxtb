@@ -15,7 +15,7 @@ torch.tensor(6)
 
 import torch
 
-from ..typing import Tensor
+from .._types import Tensor
 from ..utils import batch, wrap_scatter_reduce, wrap_gather
 
 __all__ = ["IndexHelper"]

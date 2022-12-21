@@ -37,7 +37,7 @@ import torch
 from ..basis import IndexHelper
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
-from ..typing import Tensor
+from .._types import Tensor
 
 __all__ = ["ES3", "new_es3"]
 

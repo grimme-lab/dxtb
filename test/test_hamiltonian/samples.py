@@ -2,7 +2,7 @@
 Molecules for testing the Hamiltonian. Reference values are stored in npz file.
 """
 
-from dxtb.typing import Molecule
+from dxtb._types import Molecule
 
 from ..molecules import mols
 

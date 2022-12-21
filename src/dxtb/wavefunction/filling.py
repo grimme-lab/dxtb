@@ -7,7 +7,7 @@ Handle the occupation of the orbitals with electrons.
 import torch
 
 from ..constants import defaults
-from ..typing import Tensor
+from .._types import Tensor
 
 
 def get_alpha_beta_occupation(

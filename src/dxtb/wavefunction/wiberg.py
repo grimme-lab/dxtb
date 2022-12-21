@@ -7,7 +7,7 @@ elements of the matrix product of the density and the overlap matrix.
 """
 
 from ..basis import IndexHelper
-from ..typing import Tensor
+from .._types import Tensor
 
 
 def get_bond_order(overlap: Tensor, density: Tensor, ihelp: IndexHelper) -> Tensor:

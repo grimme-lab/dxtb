@@ -34,7 +34,7 @@ import math
 
 import torch
 
-from .typing import Tensor, TensorLike
+from ._types import Tensor, TensorLike
 from .utils import real_atoms, real_pairs
 
 

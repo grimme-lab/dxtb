@@ -15,7 +15,7 @@ from dxtb.ncoord import (
     exp_count,
     get_coordination_number,
 )
-from dxtb.typing import CountingFunction
+from dxtb._types import CountingFunction
 from dxtb.utils import batch
 
 from .samples import samples

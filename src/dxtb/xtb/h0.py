@@ -8,7 +8,7 @@ from ..basis import IndexHelper
 from ..constants import EV2AU
 from ..data import atomic_rad
 from ..param import Param, get_elem_param, get_elem_valence, get_pair_param
-from ..typing import Tensor, TensorLike
+from .._types import Tensor, TensorLike
 from ..utils import symmetrize
 
 PAD = -1

@@ -11,7 +11,7 @@ import torch
 
 from dxtb.dispersion import DispersionD3, new_dispersion
 from dxtb.param import GFN1_XTB as par
-from dxtb.typing import Tensor
+from dxtb._types import Tensor
 from dxtb.utils import ParameterWarning, batch
 
 from .samples import samples

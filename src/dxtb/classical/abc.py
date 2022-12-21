@@ -7,7 +7,7 @@ Definition of energy terms as abstract base class for classical interactions.
 from abc import ABC, abstractmethod
 
 from ..basis import IndexHelper
-from ..typing import Tensor
+from .._types import Tensor
 
 
 class Classical(ABC):

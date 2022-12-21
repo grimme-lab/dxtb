@@ -10,7 +10,7 @@ import torch
 from dxtb.basis import IndexHelper
 from dxtb.coulomb import secondorder as es2
 from dxtb.param import GFN1_XTB, get_elem_angular
-from dxtb.typing import Tensor
+from dxtb._types import Tensor
 from dxtb.utils import batch
 
 from .samples import samples
@@ -109,6 +109,8 @@ def calc_numerical_gradient(
         dtype=dtype,
         device=positions.device,
     )
+    if es is None:
+        assert False
     positions = positions.type(dtype)
     charges = charges.type(dtype)
 

@@ -4,7 +4,7 @@ Data for testing repulsion taken from https://github.com/grimme-lab/mstore.
 
 import torch
 
-from dxtb.typing import Molecule
+from dxtb._types import Molecule
 from dxtb.utils import symbol2number
 
 

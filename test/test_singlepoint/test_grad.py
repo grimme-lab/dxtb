@@ -11,7 +11,7 @@ import torch
 
 from dxtb.io import read_chrg, read_coord
 from dxtb.param import GFN1_XTB as par
-from dxtb.typing import Any, Tensor
+from dxtb._types import Any, Tensor
 from dxtb.xtb import Calculator
 
 from ..utils import load_from_npz

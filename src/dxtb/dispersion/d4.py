@@ -3,7 +3,7 @@ DFT-D4 dispersion model.
 """
 
 from ..interaction import Interaction
-from ..typing import Tensor
+from .._types import Tensor
 from .abc import Dispersion
 
 

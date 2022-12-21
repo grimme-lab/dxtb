@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from dxtb import charges
-from dxtb.typing import Tensor
+from dxtb._types import Tensor
 from dxtb.utils import batch
 
 from .samples import samples

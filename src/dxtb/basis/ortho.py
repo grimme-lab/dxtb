@@ -4,7 +4,7 @@ import math
 
 import torch
 
-from ..typing import Tensor
+from .._types import Tensor
 
 
 def orthogonalize(
