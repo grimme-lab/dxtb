@@ -6,12 +6,13 @@ import functools
 import warnings
 
 import torch
-from xitorch._impls.optimize.root._jacobian import (
+
+from dxtb.exlibs.xitorch._impls.optimize.root._jacobian import (
     BroydenFirst,
     BroydenSecond,
     LinearMixing,
 )
-from xitorch._utils.exceptions import ConvergenceWarning
+from dxtb.exlibs.xitorch._utils.exceptions import ConvergenceWarning
 
 __all__ = ["broyden1", "broyden2", "linearmixing"]
 

@@ -21,7 +21,7 @@ def get_bcasted_dims(*shapes):
     return [max(*a) for a in zip(*shapes)]
 
 
-def match_dim(*xs: torch.Tensor, contiguous: bool = False) -> tuple[torch.Tensor, ...]:
+def match_dim(*xs: torch.Tensor, contiguous: bool = False) -> Tuple[torch.Tensor, ...]:
     # match the N-1 dimensions of x and xq for searchsorted and gather with dim=-1
     orig_shapes = tuple(x.shape[:-1] for x in xs)
     shape = tuple(get_bcasted_dims(*orig_shapes))

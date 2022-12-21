@@ -1,22 +1,22 @@
 import warnings
-from collections.abc import Mapping
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any, Callable, Mapping, Optional, Tuple, Union
 
 import torch
-from xitorch import LinearOperator
-from xitorch._core.linop import MatrixLinearOperator
-from xitorch._docstr.api_docstr import get_methods_docstr
-from xitorch._impls.linalg.symeig import davidson, exacteig
-from xitorch._utils.assertfuncs import assert_runtime
-from xitorch._utils.exceptions import MathWarning
-from xitorch._utils.misc import (
+
+from dxtb.exlibs.xitorch import LinearOperator
+from dxtb.exlibs.xitorch._core.linop import MatrixLinearOperator
+from dxtb.exlibs.xitorch._docstr.api_docstr import get_methods_docstr
+from dxtb.exlibs.xitorch._impls.linalg.symeig import davidson, exacteig
+from dxtb.exlibs.xitorch._utils.assertfuncs import assert_runtime
+from dxtb.exlibs.xitorch._utils.exceptions import MathWarning
+from dxtb.exlibs.xitorch._utils.misc import (
     dummy_context_manager,
     get_and_pop_keys,
     get_method,
     set_default_option,
 )
-from xitorch.debug.modes import is_debug_enabled
-from xitorch.linalg.solve import solve
+from dxtb.exlibs.xitorch.debug.modes import is_debug_enabled
+from dxtb.exlibs.xitorch.linalg.solve import solve
 
 __all__ = ["lsymeig", "usymeig", "symeig", "svd"]
 
@@ -28,7 +28,7 @@ def lsymeig(
     bck_options: Mapping[str, Any] = {},
     method: Union[str, Callable, None] = None,
     **fwd_options,
-) -> tuple[torch.Tensor, torch.Tensor]:
+) -> Tuple[torch.Tensor, torch.Tensor]:
     return symeig(
         A, neig, "lowest", M, method=method, bck_options=bck_options, **fwd_options
     )
@@ -41,7 +41,7 @@ def usymeig(
     bck_options: Mapping[str, Any] = {},
     method: Union[str, Callable, None] = None,
     **fwd_options,
-) -> tuple[torch.Tensor, torch.Tensor]:
+) -> Tuple[torch.Tensor, torch.Tensor]:
     return symeig(
         A, neig, "uppest", M, method=method, bck_options=bck_options, **fwd_options
     )
@@ -55,7 +55,7 @@ def symeig(
     bck_options: Mapping[str, Any] = {},
     method: Union[str, Callable, None] = None,
     **fwd_options,
-) -> tuple[torch.Tensor, torch.Tensor]:
+) -> Tuple[torch.Tensor, torch.Tensor]:
     r"""
     Obtain ``neig`` lowest eigenvalues and eigenvectors of a linear operator,
 
@@ -72,7 +72,7 @@ def symeig(
 
     Arguments
     ---------
-    A: xitorch.LinearOperator
+    A: dxtb.exlibs.xitorch.LinearOperator
         The linear operator object on which the eigenpairs are constructed.
         It must be a Hermitian linear operator with shape ``(*BA, q, q)``
     neig: int or None
@@ -82,7 +82,7 @@ def symeig(
         ``"lowest"`` or ``"uppermost"``/``"uppest"``. If ``"lowest"``,
         it will take the lowest ``neig`` eigenpairs.
         If ``"uppest"``, it will take the uppermost ``neig``.
-    M: xitorch.LinearOperator
+    M: dxtb.exlibs.xitorch.LinearOperator
         The transformation on the right hand side. If ``None``, then ``M=I``.
         If specified, it must be a Hermitian with shape ``(*BM, q, q)``.
     bck_options: dict
@@ -180,7 +180,7 @@ def svd(
     bck_options: Mapping[str, Any] = {},
     method: Union[str, Callable, None] = None,
     **fwd_options,
-) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     r"""
     Perform the singular value decomposition (SVD):
 
@@ -197,7 +197,7 @@ def svd(
 
     Arguments
     ---------
-    A: xitorch.LinearOperator
+    A: dxtb.exlibs.xitorch.LinearOperator
         The linear operator to be decomposed. It has a shape of ``(*BA, m, n)``
         where ``(*BA)`` is the batched dimension of ``A``.
     k: int or None
@@ -453,7 +453,7 @@ class symeig_torchfcn(torch.autograd.Function):
 
 def _check_degen(
     evals: torch.Tensor, degen_atol: float, degen_rtol: float
-) -> tuple[torch.Tensor, bool]:
+) -> Tuple[torch.Tensor, bool]:
     # evals: (*BAM, neig)
 
     # get the index of degeneracies

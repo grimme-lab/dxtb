@@ -2,12 +2,12 @@ import copy
 import inspect
 import warnings
 from abc import abstractmethod
-from collections.abc import Sequence
-from typing import Dict, List, Union
+from typing import Dict, List, Sequence, Union
 
 import torch
-from xitorch._utils.attr import del_attr, get_attr, set_attr
-from xitorch._utils.exceptions import GetSetParamsError
+
+from dxtb.exlibs.xitorch._utils.attr import del_attr, get_attr, set_attr
+from dxtb.exlibs.xitorch._utils.exceptions import GetSetParamsError
 
 __all__ = ["EditableModule"]
 
@@ -41,17 +41,17 @@ class EditableModule:
 
         return len(params)
 
-    def cached_getparamnames(self, methodname: str, refresh: bool = False) -> list[str]:
+    def cached_getparamnames(self, methodname: str, refresh: bool = False) -> List[str]:
         # getparamnames, but cached, so it is only called once
         if not hasattr(self, "_paramnames_"):
-            self._paramnames_: dict[str, list[str]] = {}
+            self._paramnames_: Dict[str, List[str]] = {}
 
         if methodname not in self._paramnames_:
             self._paramnames_[methodname] = self.getparamnames(methodname)
         return self._paramnames_[methodname]
 
     @abstractmethod
-    def getparamnames(self, methodname: str, prefix: str = "") -> list[str]:
+    def getparamnames(self, methodname: str, prefix: str = "") -> List[str]:
         """
         This method should list tensor names that affect the output of the
         method with name indicated in ``methodname``.
@@ -85,7 +85,7 @@ class EditableModule:
 
         .. doctest::
 
-            >>> class A(xitorch.EditableModule):
+            >>> class A(dxtb.exlibs.xitorch.EditableModule):
             ...     def __init__(self, a):
             ...         self.b = a*a
             ...
@@ -102,7 +102,7 @@ class EditableModule:
 
     def getuniqueparams(
         self, methodname: str, onlyleaves: bool = False
-    ) -> list[torch.Tensor]:
+    ) -> List[torch.Tensor]:
         """
         Returns the list of unique parameters involved in the method specified
         by `methodname`.
@@ -208,7 +208,7 @@ class EditableModule:
 
         .. doctest:: assertparams
 
-            >>> class AClass(xitorch.EditableModule):
+            >>> class AClass(dxtb.exlibs.xitorch.EditableModule):
             ...     def __init__(self, a):
             ...         self.a = a
             ...         self.b = a*a
@@ -261,7 +261,8 @@ class EditableModule:
         methodname = method.__name__
         msg = (
             "The method {}.{} does not preserve the object's float tensors: \n".format(
-                clsname, methodname
+                clsname,
+                methodname,
             )
         )
         if len(all_params0) != len(all_params1):
@@ -327,7 +328,9 @@ class EditableModule:
         # are never set to require grad)
         if len(missing_names) > 0:
             msg = "getparams for {}.{} does not include: {}".format(
-                clsname, methodname, ", ".join(missing_names)
+                clsname,
+                methodname,
+                ", ".join(missing_names),
             )
             warnings.warn(msg, stacklevel=3)
 

@@ -1,12 +1,16 @@
 import warnings
-from collections.abc import Sequence
-from typing import Any, Callable, List, Union
+from typing import Any, Callable, List, Sequence, Union
 
 import torch
-from xitorch import LinearOperator
-from xitorch._core.pure_function import PureFunction, get_pure_function, make_sibling
-from xitorch._utils.assertfuncs import assert_type
-from xitorch._utils.misc import TensorNonTensorSeparator
+
+from dxtb.exlibs.xitorch import LinearOperator
+from dxtb.exlibs.xitorch._core.pure_function import (
+    PureFunction,
+    get_pure_function,
+    make_sibling,
+)
+from dxtb.exlibs.xitorch._utils.assertfuncs import assert_type
+from dxtb.exlibs.xitorch._utils.misc import TensorNonTensorSeparator
 
 __all__ = ["jac", "hess"]
 
@@ -15,7 +19,7 @@ def jac(
     fcn: Callable[..., torch.Tensor],
     params: Sequence[Any],
     idxs: Union[None, int, Sequence[int]] = None,
-) -> Union[LinearOperator, list]:
+) -> Union[LinearOperator, List]:
     """
     Returns the LinearOperator that acts as the jacobian of the params.
     The shape of LinearOperator is (nout, nin) where `nout` and `nin` are the
@@ -53,7 +57,7 @@ def hess(
     fcn: Callable[..., torch.Tensor],
     params: Sequence[Any],
     idxs: Union[None, int, Sequence[int]] = None,
-) -> Union[LinearOperator, list]:
+) -> Union[LinearOperator, List]:
     """
     Returns the LinearOperator that acts as the Hessian of the params.
     The shape of LinearOperator is (nin, nin) where `nin` is the
@@ -158,7 +162,7 @@ class _Jac(LinearOperator):
         self.id_params_tensor = [id(param) for param in self.params_tensor]
         self.id_objparams_tensor = [id(param) for param in self.objparams]
 
-    def _getparamnames(self, prefix: str = "") -> list[str]:
+    def _getparamnames(self, prefix: str = "") -> List[str]:
         return (
             [prefix + "yparam"]
             + [
