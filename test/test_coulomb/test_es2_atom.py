@@ -19,17 +19,6 @@ from .samples import samples
 sample_list = ["MB16_43_01", "MB16_43_02", "SiH4_atom"]
 
 
-def test_none() -> None:
-    dummy = torch.tensor(0.0)
-    par = GFN1_XTB.copy(deep=True)
-
-    par.charge = None
-    assert es2.new_es2(dummy, par) is None
-
-    del par.charge
-    assert es2.new_es2(dummy, par) is None
-
-
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:

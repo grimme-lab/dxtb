@@ -59,31 +59,32 @@ class ES2(Interaction):
     hubbard: Tensor
     """Hubbard parameters of all elements."""
 
-    lhubbard: Tensor | None = None
+    lhubbard: Tensor | None
     """
     Shell-resolved scaling factors for Hubbard parameters (default: None, i.e.,
     no shell resolution).
     """
 
-    average: AveragingFunction = harmonic_average
+    average: AveragingFunction
     """
     Function to use for averaging the Hubbard parameters (default:
     harmonic_average).
     """
 
-    gexp: Tensor = torch.tensor(xtb.DEFAULT_ES2_GEXP)
+    gexp: Tensor
     """Exponent of the second-order Coulomb interaction (default: 2.0)."""
-
-    ihelp: IndexHelper | None = None
-    """Index helper for shell-resolved Hubbard parameters."""
 
     shell_resolved: bool
     """Electrostatics is shell-resolved"""
+
+    __slots__ = ["hubbard", "lhubbard", "average", "gexp"]
 
     class Cache(Interaction.Cache):
         """
         Cache for Coulomb matrix in ES2.
         """
+
+        __slots__ = ["mat"]
 
         mat: Tensor
         """Coulomb matrix"""

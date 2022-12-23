@@ -51,6 +51,8 @@ class ES3(Interaction):
     hubbard_derivs: Tensor
     """Hubbard derivatives of all atoms."""
 
+    __slots__ = ["hubbard_derivs"]
+
     class Cache(Interaction.Cache):
         """
         Restart data for the ES3 interaction.

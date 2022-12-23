@@ -30,7 +30,7 @@ class InteractionList(Interaction):
 
     def get_cache(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
-    ) -> Interaction.Cache:
+    ) -> Cache:
         """
         Create restart data for individual interactions.
 
