@@ -13,6 +13,7 @@ from dxtb.coulomb import thirdorder as es3
 from dxtb.param import GFN1_XTB, get_elem_angular, get_elem_param
 from dxtb.utils import batch
 
+from ..utils import get_device_from_str
 from .samples import samples
 
 sample_list = ["MB16_43_01", "MB16_43_02", "SiH4_atom"]
