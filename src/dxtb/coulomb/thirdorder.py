@@ -55,8 +55,6 @@ class ES3(Interaction):
 
     __slots__ = ["hubbard_derivs"]
 
-    __slots__ = ["hubbard_derivs"]
-
     class Cache(Interaction.Cache, TensorLike):
         """
         Restart data for the ES3 interaction.
