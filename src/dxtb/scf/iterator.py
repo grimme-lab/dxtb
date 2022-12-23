@@ -669,7 +669,7 @@ def solve(
         Orbital-resolved partial charges vector.
     """
 
-    cache = interactions.get_cache(numbers, positions, ihelp=ihelp)
+    cache = interactions.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
     charges = get_guess(numbers, positions, chrg, ihelp, guess)
 
     return SelfConsistentField(

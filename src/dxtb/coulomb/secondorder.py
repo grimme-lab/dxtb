@@ -29,9 +29,9 @@ Example
 >>> gexp = torch.tensor(GFN1_XTB.charge.effective.gexp)
 >>> hubbard = get_element_param(GFN1_XTB.element, "gam")
 >>> # calculate energy
->>> es = es2.ES2(positions, hubbard=hubbard, average=average, gexp=gexp)
+>>> es = es2.ES2(hubbard=hubbard, average=average, gexp=gexp)
 >>> cache = es.get_cache(numbers, positions)
->>> e = es.get_energy(cache, qat)
+>>> e = es.get_energy(qat, cache)
 >>> torch.set_printoptions(precision=7)
 >>> print(torch.sum(e, dim=-1))
 tensor(0.0005078)
@@ -61,8 +61,8 @@ class ES2(Interaction):
 
     lhubbard: Tensor | None
     """
-    Shell-resolved scaling factors for Hubbard parameters (default: None, i.e.,
-    no shell resolution).
+    Shell-resolved scaling factors for Hubbard parameters (default: `None`,
+    i.e., no shell resolution).
     """
 
     average: AveragingFunction
@@ -75,7 +75,7 @@ class ES2(Interaction):
     """Exponent of the second-order Coulomb interaction (default: 2.0)."""
 
     shell_resolved: bool
-    """Electrostatics is shell-resolved."""
+    """Electrostatics is shell-resolved (default: `True`)."""
 
     __slots__ = ["hubbard", "lhubbard", "average", "gexp", "shell_resolved"]
 

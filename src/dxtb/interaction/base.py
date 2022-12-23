@@ -33,7 +33,7 @@ class Interaction(TensorLike):
 
     # pylint: disable=unused-argument
     def get_cache(
-        self, numbers: Tensor, positions: Tensor, *, ihelp: IndexHelper
+        self, *, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
     ) -> Cache:
         """
         Create restart data for individual interactions.

@@ -53,7 +53,7 @@ class InteractionList(Interaction):
         cache.update(
             **{
                 interaction.label: interaction.get_cache(
-                    numbers, positions, ihelp=ihelp
+                    numbers=numbers, positions=positions, ihelp=ihelp
                 )
                 for interaction in self.interactions
             }

@@ -221,9 +221,9 @@ class GeneralizedBorn(Interaction):
 
         Note
         ----
-        If this `Interaction` is evaluated within the `InteractionList`,
-        the `IndexHelper` will be passed as argument. Hence, the `**_` in
-        the argument list is necessary to absorb it.
+        If the `GeneralizedBorn` interaction is evaluated within the
+        `InteractionList`, the `IndexHelper` will be passed as argument.
+        Hence, the `**_` in the argument list is necessary to absorb it.
         """
         born = get_born_radii(numbers, positions, **self.born_kwargs)
         eps = positions.new_tensor(torch.finfo(positions.dtype).eps)

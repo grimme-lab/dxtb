@@ -86,7 +86,7 @@ class ES3(Interaction):
         super().__init__(device, dtype)
         self.hubbard_derivs = hubbard_derivs
 
-    def get_cache(self, *_, ihelp: IndexHelper) -> Cache:
+    def get_cache(self, ihelp: IndexHelper, **_) -> Cache:
         """
         Create restart data for individual interactions.
 
@@ -102,11 +102,10 @@ class ES3(Interaction):
 
         Note
         ----
-        If this `Interaction` is evaluated within the `InteractionList`,
-        `numbers` and `positions` will be passed as argument too. The `*_` in
-        the argument list will absorb those unnecessary arguments and `ihelp`
-        remains the keyword-only argument as defined within the `Interaction`
-        base class.
+        If this `ES3` interaction is evaluated within the `InteractionList`,
+        `numbers` and `positions` will be passed as argument, too. The `**_` in
+        the argument list will absorb those unnecessary arguments which are
+        given as keyword-only arguments (see `Interaction.get_cache()`).
         """
 
         return self.Cache(ihelp.spread_uspecies_to_atom(self.hubbard_derivs))
