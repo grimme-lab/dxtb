@@ -37,21 +37,15 @@ from ..constants import xtb
 from ..data import atomic_rad
 from ..param import Param, get_elem_param
 from ..utils import batch
-from .abc import Classical
+from .base import Classical
+
+__all__ = ["Halogen", "new_halogen"]
 
 
 class Halogen(Classical, TensorLike):
     """
     Representation of the halogen bond correction.
-
-    Note
-    ----
-    The positions are only passed to the constructor for `dtype` and `device`,
-    they are no class property, as this setup facilitates geometry optimization.
     """
-
-    numbers: Tensor
-    """Atomic numbers of all atoms."""
 
     halogens: list[int]
     """Atomic numbers of halogen atoms considered in correction."""
@@ -68,12 +62,13 @@ class Halogen(Classical, TensorLike):
     bond_strength: Tensor
     """Halogen bond strengths for unique species."""
 
-    cutoff: Tensor = torch.tensor(xtb.DEFAULT_XB_CUTOFF)
+    cutoff: Tensor
     """Real space cutoff for halogen bonding interactions (default: 20.0)."""
+
+    __slots__ = ["damp", "rscale", "bond_strength", "cutoff"]
 
     def __init__(
         self,
-        numbers: Tensor,
         damp: Tensor,
         rscale: Tensor,
         bond_strength: Tensor,
@@ -83,7 +78,6 @@ class Halogen(Classical, TensorLike):
     ) -> None:
         super().__init__(device, dtype)
 
-        self.numbers = numbers.to(self.device)
         self.damp = damp.to(self.device).type(self.dtype)
         self.rscale = rscale.to(self.device).type(self.dtype)
         self.bond_strength = bond_strength.to(self.device).type(self.dtype)
@@ -93,15 +87,26 @@ class Halogen(Classical, TensorLike):
         self.halogens = [17, 35, 53, 85]
         self.base = [7, 8, 15, 16]
 
-    class Cache:
+    class Cache(TensorLike):
         """Cache for the halogen bond parameters."""
 
         xbond: Tensor
         """Halogen bond strengths."""
 
-        __slots__ = ["xbond"]
+        __slots__ = ("numbers", "xbond")
 
-        def __init__(self, xbond: Tensor):
+        def __init__(
+            self,
+            numbers: Tensor,
+            xbond: Tensor,
+            device: torch.device | None = None,
+            dtype: torch.dtype | None = None,
+        ):
+            super().__init__(
+                device=device if device is None else xbond.device,
+                dtype=dtype if dtype is None else xbond.dtype,
+            )
+            self.numbers = numbers
             self.xbond = xbond
 
     def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> Halogen.Cache:
@@ -128,7 +133,7 @@ class Halogen(Classical, TensorLike):
         """
 
         xbond = ihelp.spread_uspecies_to_atom(self.bond_strength)
-        return self.Cache(xbond)
+        return self.Cache(numbers, xbond)
 
     def get_energy(self, positions: Tensor, cache: Halogen.Cache) -> Tensor:
         """
@@ -147,20 +152,20 @@ class Halogen(Classical, TensorLike):
              Atomwise energy contributions from halogen bonds.
         """
 
-        if self.numbers.ndim > 1:
+        if cache.numbers.ndim > 1:
             return batch.pack(
                 [
                     self._xbond_energy(
-                        self.numbers[_batch],
+                        cache.numbers[_batch],
                         positions[_batch],
                         cache.xbond[_batch],
                     )
-                    for _batch in range(self.numbers.shape[0])
+                    for _batch in range(cache.numbers.shape[0])
                 ]
             )
         else:
             return self._xbond_energy(
-                self.numbers,
+                cache.numbers,
                 positions,
                 cache.xbond,
             )
@@ -224,7 +229,8 @@ class Halogen(Classical, TensorLike):
         xbond: Tensor,
     ) -> Tensor:
         """
-        Calculate atomwise energy contribution for each triple of halogen bonding interactions.
+        Calculate atomwise energy contribution for each triple of halogen
+        bonding interactions.
 
         Parameters
         ----------
@@ -343,5 +349,5 @@ def new_halogen(
     bond_strength = get_elem_param(unique, par.element, "xbond", pad_val=0)
 
     return Halogen(
-        numbers, damp, rscale, bond_strength, cutoff=cutoff, device=device, dtype=dtype
+        damp, rscale, bond_strength, cutoff=cutoff, device=device, dtype=dtype
     )
