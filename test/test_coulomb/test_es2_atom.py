@@ -37,7 +37,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
         assert False, es
 
     cache = es.get_cache(numbers, positions, ihelp)
-    e = es.get_atom_energy(qat, ihelp, cache)
+    e = es.get_atom_energy(qat, cache)
     assert pytest.approx(torch.sum(e, dim=-1)) == ref
 
 
@@ -79,7 +79,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         assert False
 
     cache = es.get_cache(numbers, positions, ihelp)
-    e = es.get_atom_energy(qat, ihelp, cache)
+    e = es.get_atom_energy(qat, cache)
     assert torch.allclose(torch.sum(e, dim=-1), ref)
 
 
@@ -105,7 +105,7 @@ def test_grad_positions(name: str) -> None:
             assert False
 
         cache = es.get_cache(numbers, positions, ihelp)
-        return es.get_atom_energy(qat, ihelp, cache)
+        return es.get_atom_energy(qat, cache)
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradcheck
@@ -140,7 +140,7 @@ def test_grad_param(name: str) -> None:
     def func(gexp: Tensor, hubbard: Tensor):
         es = es2.ES2(hubbard, average=average, gexp=gexp, **dd)
         cache = es.get_cache(numbers, positions, ihelp)
-        return es.get_atom_energy(qat, ihelp, cache)
+        return es.get_atom_energy(qat, cache)
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradcheck

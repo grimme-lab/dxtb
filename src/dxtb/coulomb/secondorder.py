@@ -40,7 +40,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Tensor
+from .._types import Tensor, TensorLike
 from ..basis import IndexHelper
 from ..constants import xtb
 from ..interaction import Interaction
@@ -75,11 +75,11 @@ class ES2(Interaction):
     """Exponent of the second-order Coulomb interaction (default: 2.0)."""
 
     shell_resolved: bool
-    """Electrostatics is shell-resolved"""
+    """Electrostatics is shell-resolved."""
 
-    __slots__ = ["hubbard", "lhubbard", "average", "gexp"]
+    __slots__ = ["hubbard", "lhubbard", "average", "gexp", "shell_resolved"]
 
-    class Cache(Interaction.Cache):
+    class Cache(Interaction.Cache, TensorLike):
         """
         Cache for Coulomb matrix in ES2.
         """
@@ -89,7 +89,16 @@ class ES2(Interaction):
         mat: Tensor
         """Coulomb matrix"""
 
-        def __init__(self, mat: Tensor) -> None:
+        def __init__(
+            self,
+            mat: Tensor,
+            device: torch.device | None = None,
+            dtype: torch.dtype | None = None,
+        ) -> None:
+            super().__init__(
+                device=device if device is None else mat.device,
+                dtype=dtype if dtype is None else mat.dtype,
+            )
             self.mat = mat
 
     def __init__(
@@ -98,6 +107,7 @@ class ES2(Interaction):
         lhubbard: Tensor | None = None,
         average: AveragingFunction = harmonic_average,
         gexp: Tensor = torch.tensor(xtb.DEFAULT_ES2_GEXP),
+        shell_resolved: bool = True,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
@@ -110,7 +120,7 @@ class ES2(Interaction):
         self.gexp = gexp.to(self.device).type(self.dtype)
         self.average = average
 
-        self.shell_resolved = lhubbard is not None
+        self.shell_resolved = shell_resolved and lhubbard is not None
 
     def get_cache(
         self,
@@ -242,28 +252,20 @@ class ES2(Interaction):
         # Eq.26: Coulomb matrix
         return 1.0 / torch.pow(dist_gexp + torch.pow(avg, -self.gexp), 1.0 / self.gexp)
 
-    def get_atom_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Cache
-    ) -> Tensor:
-        return 0.5 * charges * self.get_atom_potential(charges, ihelp, cache)
+    def get_atom_energy(self, charges: Tensor, cache: Cache) -> Tensor:
+        return 0.5 * charges * self.get_atom_potential(charges, cache)
 
-    def get_shell_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Cache
-    ) -> Tensor:
-        return 0.5 * charges * self.get_shell_potential(charges, ihelp, cache)
+    def get_shell_energy(self, charges: Tensor, cache: Cache) -> Tensor:
+        return 0.5 * charges * self.get_shell_potential(charges, cache)
 
-    def get_atom_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Cache
-    ) -> Tensor:
+    def get_atom_potential(self, charges: Tensor, cache: Cache) -> Tensor:
         return (
             torch.zeros_like(charges)
             if self.shell_resolved
             else torch.einsum("...ik,...k->...i", cache.mat, charges)
         )
 
-    def get_shell_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: ES2.Cache
-    ) -> Tensor:
+    def get_shell_potential(self, charges: Tensor, cache: ES2.Cache) -> Tensor:
         return (
             torch.einsum("...ik,...k->...i", cache.mat, charges)
             if self.shell_resolved

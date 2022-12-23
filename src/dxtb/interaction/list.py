@@ -7,7 +7,7 @@ import torch
 
 from .._types import Tensor
 from ..basis import IndexHelper
-from .abc import Interaction
+from .base import Interaction
 
 
 class InteractionList(Interaction):
@@ -23,7 +23,7 @@ class InteractionList(Interaction):
         __slots__ = ()
 
     def __init__(self, *interactions: Interaction | None) -> None:
-        Interaction.__init__(self, torch.device("cpu"), torch.float)
+        super().__init__(torch.device("cpu"), torch.float)
         self.interactions = [
             interaction for interaction in interactions if interaction is not None
         ]
@@ -52,14 +52,16 @@ class InteractionList(Interaction):
         cache = self.Cache()
         cache.update(
             **{
-                interaction.label: interaction.get_cache(numbers, positions, ihelp)
+                interaction.label: interaction.get_cache(
+                    numbers, positions, ihelp=ihelp
+                )
                 for interaction in self.interactions
             }
         )
         return cache
 
     def get_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Cache
+        self, charges: Tensor, cache: Cache, ihelp: IndexHelper
     ) -> Tensor:
         """
         Compute the potential for a list of interactions.
@@ -82,7 +84,7 @@ class InteractionList(Interaction):
         return (
             torch.stack(
                 [
-                    interaction.get_potential(charges, ihelp, cache[interaction.label])
+                    interaction.get_potential(charges, cache[interaction.label], ihelp)
                     for interaction in self.interactions
                 ]
             ).sum(dim=0)
@@ -90,7 +92,7 @@ class InteractionList(Interaction):
             else torch.zeros_like(charges)
         )
 
-    def get_energy(self, charges: Tensor, ihelp: IndexHelper, cache: Cache) -> Tensor:
+    def get_energy(self, charges: Tensor, cache: Cache, ihelp: IndexHelper) -> Tensor:
         """
         Compute the energy for a list of interactions.
 
@@ -112,7 +114,7 @@ class InteractionList(Interaction):
         return (
             torch.stack(
                 [
-                    interaction.get_energy(charges, ihelp, cache[interaction.label])
+                    interaction.get_energy(charges, cache[interaction.label], ihelp)
                     for interaction in self.interactions
                 ]
             ).sum(dim=0)

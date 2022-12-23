@@ -27,10 +27,9 @@ Example
 ...         +2.10320626451179e-2,
 ...     ]
 ... )
->>> ihelp = None
 >>> gb = GeneralizedBorn(numbers, torch.tensor(78.9), kernel="still")
->>> cache = gb.get_cache(numbers, positions, ihelp)
->>> energy = gb.get_atom_energy(charges, ihelp, cache)
+>>> cache = gb.get_cache(numbers, positions)
+>>> energy = gb.get_atom_energy(charges, cache)
 >>> energy.sum(-1)
 tensor(-5.0762e-05)
 """
@@ -38,8 +37,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Any, Tensor
-from ..basis import IndexHelper
+from .._types import Any, Tensor, TensorLike
 from ..interaction import Interaction
 from ..utils import real_pairs
 from .born import get_born_radii
@@ -107,14 +105,14 @@ def get_adet(positions: Tensor, rad: Tensor) -> Tensor:
     Parameters
     ----------
     positions : Tensor
-        Cartesian coordinates of all atoms
+        Cartesian coordinates of all atoms.
     rad : Tensor
-        Radii of all atoms
+        Radii of all atoms.
 
     Returns
     -------
     Tensor
-        Electrostatic shape function
+        Electrostatic shape function.
     """
 
     vol = torch.pow(rad, 3)
@@ -148,16 +146,16 @@ class GeneralizedBorn(Interaction):
     """
 
     kernel: str
-    """Interaction kernel"""
+    """Interaction kernel."""
 
     alpbet: Tensor
-    """Finite dielectric constant correction"""
+    """Finite dielectric constant correction."""
 
     keps: Tensor
-    """Dielectric function"""
+    """Dielectric function."""
 
     born_kwargs: dict[str, Any]
-    """Parameters for Born radii integration"""
+    """Parameters for Born radii integration."""
 
     def __init__(
         self,
@@ -181,20 +179,52 @@ class GeneralizedBorn(Interaction):
             kwargs["rvdw"] = vdw_rad_d3[numbers].type(self.dtype)
         self.born_kwargs = kwargs
 
-    class Cache(Interaction.Cache):
+    class Cache(Interaction.Cache, TensorLike):
         """
         Restart data for the generalized Born solvation model.
         """
 
-        mat: Tensor
-        """Born screening matrix"""
+        __slots__ = ["mat"]
 
-        def __init__(self, mat: Tensor) -> None:
+        mat: Tensor
+        """Coulomb matrix"""
+
+        def __init__(
+            self,
+            mat,
+            device: torch.device | None = None,
+            dtype: torch.dtype | None = None,
+        ):
+            super().__init__(
+                device=device if device is None else mat.device,
+                dtype=dtype if dtype is None else mat.dtype,
+            )
             self.mat = mat
 
     def get_cache(
-        self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
-    ) -> Interaction.Cache:
+        self, numbers: Tensor, positions: Tensor, **_
+    ) -> GeneralizedBorn.Cache:
+        """
+        Create restart data for individual interactions.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers of all atoms in the system.
+        positions : Tensor
+            Cartesian coordinates of all atoms in the system.
+
+        Returns
+        -------
+        GeneralizedBorn.Cache
+            Cache object for second order electrostatics.
+
+        Note
+        ----
+        If this `Interaction` is evaluated within the `InteractionList`,
+        the `IndexHelper` will be passed as argument. Hence, the `**_` in
+        the argument list is necessary to absorb it.
+        """
         born = get_born_radii(numbers, positions, **self.born_kwargs)
         eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
 
@@ -202,7 +232,6 @@ class GeneralizedBorn(Interaction):
 
         dist = torch.where(mask, torch.cdist(positions, positions, p=2), eps)
         ab = torch.where(mask, born.unsqueeze(-1) * born.unsqueeze(-2), eps)
-        ab = born.unsqueeze(-1) * born.unsqueeze(-2)
 
         mat = self.keps * born_kernel[self.kernel](dist, ab)
 
@@ -212,12 +241,10 @@ class GeneralizedBorn(Interaction):
 
         return self.Cache(mat)
 
-    def get_atom_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: GeneralizedBorn.Cache
-    ) -> Tensor:
-        return 0.5 * charges * self.get_atom_potential(charges, ihelp, cache)
+    def get_atom_energy(self, charges: Tensor, cache: GeneralizedBorn.Cache) -> Tensor:
+        return 0.5 * charges * self.get_atom_potential(charges, cache)
 
     def get_atom_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: GeneralizedBorn.Cache
+        self, charges: Tensor, cache: GeneralizedBorn.Cache
     ) -> Tensor:
         return torch.einsum("...ik,...k->...i", cache.mat, charges)
