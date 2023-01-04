@@ -10,14 +10,14 @@ from pathlib import Path
 import pytest
 import torch
 
-from dxtb.cli import argparser
+from dxtb.cli import parser
 from dxtb.constants import defaults
 
-dummy = Path(Path(__file__).parent.parent, "test_singlepoint/mols/H2/coord").resolve()
+from ..utils import coordfile as dummy
 
 
 def test_defaults() -> None:
-    args = argparser().parse_args([str(dummy)])
+    args = parser().parse_args([str(dummy)])
 
     assert args.chrg is None
     assert args.chrg == defaults.CHRG
@@ -49,7 +49,7 @@ def test_defaults() -> None:
 )
 def test_int(option: str) -> None:
     value = 1
-    args = argparser().parse_args(f"--{option} {value}".split())
+    args = parser().parse_args(f"--{option} {value}".split())
 
     assert isinstance(getattr(args, option), int)
     assert getattr(args, option) == value
@@ -58,7 +58,7 @@ def test_int(option: str) -> None:
 @pytest.mark.parametrize("option", ["etemp"])
 def test_float(option: str) -> None:
     value = 200.0
-    args = argparser().parse_args(f"--{option} {value}".split())
+    args = parser().parse_args(f"--{option} {value}".split())
 
     assert isinstance(getattr(args, option), float)
     assert getattr(args, option) == value
@@ -67,7 +67,7 @@ def test_float(option: str) -> None:
 @pytest.mark.parametrize("value", ["float16", "float32", "float64"])
 def test_torch_dtype(value: str) -> None:
     option = "dtype"
-    args = argparser().parse_args(f"--{option} {value}".split())
+    args = parser().parse_args(f"--{option} {value}".split())
 
     ref = {
         "float16": torch.float16,
@@ -81,7 +81,7 @@ def test_torch_dtype(value: str) -> None:
 
 def test_dir() -> None:
     option = "dir"
-    args = argparser().parse_args(f"--{option} {Path(__file__).parent}".split())
+    args = parser().parse_args(f"--{option} {Path(__file__).parent}".split())
 
     assert isinstance(getattr(args, option), str)
     assert Path(getattr(args, option)).is_dir()
@@ -90,7 +90,7 @@ def test_dir() -> None:
 @pytest.mark.parametrize("value", ["cpu", "cpu:0"])
 def test_torch_device_cpu(value: str) -> None:
     option = "device"
-    args = argparser().parse_args(f"--{option} {value}".split())
+    args = parser().parse_args(f"--{option} {value}".split())
 
     ref = {
         "cpu": torch.device("cpu"),
@@ -105,7 +105,7 @@ def test_torch_device_cpu(value: str) -> None:
 @pytest.mark.parametrize("value", ["cuda", "cuda:0"])
 def test_torch_device(value: str) -> None:
     option = "device"
-    args = argparser().parse_args(f"--{option} {value}".split())
+    args = parser().parse_args(f"--{option} {value}".split())
 
     ref = {
         "cuda": torch.device("cuda", index=torch.cuda.current_device()),
@@ -122,55 +122,55 @@ def test_fail_type():
     f = StringIO()
     with redirect_stderr(f):
         with pytest.raises(SystemExit):
-            argparser().parse_args("--chrg 2.0".split())
+            parser().parse_args("--chrg 2.0".split())
 
         with pytest.raises(SystemExit):
-            argparser().parse_args("--method 2.0".split())
+            parser().parse_args("--method 2.0".split())
 
         with pytest.raises(SystemExit):
-            argparser().parse_args("--dtype int64".split())
+            parser().parse_args("--dtype int64".split())
 
         with pytest.raises(SystemExit):
-            argparser().parse_args("--device laptop".split())
+            parser().parse_args("--device laptop".split())
 
         with pytest.raises(SystemExit):
-            argparser().parse_args("--device laptop:0".split())
+            parser().parse_args("--device laptop:0".split())
 
         with pytest.raises(SystemExit):
-            argparser().parse_args("--device cuda:zero".split())
+            parser().parse_args("--device cuda:zero".split())
 
 
 def test_fail_value():
     """Test behavior if disallowed values are given."""
-    parser = argparser()
+    p = parser()
 
     f = StringIO()
     with redirect_stderr(f):
         with pytest.raises(SystemExit):
-            parser.parse_args("--spin -1".split())
+            p.parse_args("--spin -1".split())
 
         with pytest.raises(SystemExit):
-            parser.parse_args("--method dftb3".split())
+            p.parse_args("--method dftb3".split())
 
         with pytest.raises(SystemExit):
-            parser.parse_args("--guess zero".split())
+            p.parse_args("--guess zero".split())
 
         with pytest.raises(SystemExit):
-            parser.parse_args("--etemp -1.0".split())
+            p.parse_args("--etemp -1.0".split())
 
         with pytest.raises(SystemExit):
-            parser.parse_args(["non-existing-coord-file"])
+            p.parse_args(["non-existing-coord-file"])
 
         with pytest.raises(SystemExit):
             directory = Path(__file__).parent.resolve()
-            parser.parse_args([str(directory)])
+            p.parse_args([str(directory)])
 
         with pytest.raises(SystemExit):
-            parser.parse_args("--dir non-existing-dir".split())
+            p.parse_args("--dir non-existing-dir".split())
 
         with pytest.raises(SystemExit):
-            parser.parse_args(f"--dir {dummy}".split())
+            p.parse_args(f"--dir {dummy}".split())
 
     with redirect_stdout(f):
         with pytest.raises(SystemExit):
-            parser.parse_args(["--help"])
+            p.parse_args(["--help"])
