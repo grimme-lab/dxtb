@@ -27,8 +27,8 @@ from __future__ import annotations
 import torch
 
 from .._types import Tensor
+from ..data import vdw_rad_d3
 from ..utils import real_atoms, real_pairs
-from .data import vdw_rad_d3
 
 
 def get_born_radii(
@@ -44,11 +44,12 @@ def get_born_radii(
     """
     Calculate Born radii for a set of atoms using the Onufriev-Bashford-Case
     model published in
-    - A. Onufriev, D. Bashford and D. A. Case, *Proteins: Struct., Funct., Bioinf.*,
-    **2004**, 55, 383–394. DOI: `10.1002/prot.20033 <https://doi.org/10.1002/prot.20033>`__
+    - A. Onufriev, D. Bashford and D. A. Case, *Proteins: Struct., Funct.,
+    Bioinf.*, **2004**, 55, 383–394. DOI: `10.1002/prot.20033
+    <https://doi.org/10.1002/prot.20033>`__
 
-    Args:
-    -----
+    Parameters:
+    -----------
     numbers: Tensor, dtype long
         Atomic numbers of the atoms.
     positions: Tensor, dtype float
@@ -82,16 +83,19 @@ def get_born_radii(
         rvdw = vdw_rad_d3[numbers].type(positions.dtype)
     if numbers.shape != rvdw.shape:
         raise ValueError(
-            f"Shape of covalent radii ({rvdw.shape}) is not consistent with atomic numbers ({numbers.shape})."
+            f"Shape of covalent radii ({rvdw.shape}) is not consistent with "
+            f"atomic numbers ({numbers.shape})."
         )
     if numbers.shape != positions.shape[:-1]:
         raise ValueError(
-            f"Shape of positions ({positions.shape[:-1]}) is not consistent with atomic numbers ({numbers.shape})."
+            f"Shape of positions ({positions.shape[:-1]}) is not consistent "
+            f"with atomic numbers ({numbers.shape})."
         )
-    if isinstance(descreening, Tensor) is True:
+    if isinstance(descreening, Tensor):
         if numbers.shape != descreening.shape:
             raise ValueError(
-                f"Shape of descreening values ({descreening.shape}) is not consistent with atomic numbers ({numbers.shape})."
+                f"Shape of descreening values ({descreening.shape}) is not "
+                f"consistent with atomic numbers ({numbers.shape})."
             )
 
     # mask for padding
