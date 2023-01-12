@@ -16,7 +16,6 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from .._types import Optional
 from .charge import Charge
 from .dispersion import Dispersion
 from .element import Elements
