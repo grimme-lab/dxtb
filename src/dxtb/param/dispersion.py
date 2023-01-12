@@ -4,9 +4,10 @@ Definition of the dispersion contribution.
 """
 from __future__ import annotations
 
+from typing import Optional
+
 from pydantic import BaseModel
 
-from .._types import Optional
 from ..constants import xtb
 
 

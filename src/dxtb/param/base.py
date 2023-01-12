@@ -12,9 +12,10 @@ while a deserialized model in `tblite`_ is already verified at this stage.
 """
 from __future__ import annotations
 
+from typing import Optional
+
 from pydantic import BaseModel
 
-from .._types import Optional
 from .charge import Charge
 from .dispersion import Dispersion
 from .element import Elements
