@@ -2,6 +2,7 @@
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
+
 [tool.pytest.ini_options]
 testpaths = ["test"]
 pythonpath = ["src"]
@@ -9,3 +10,22 @@ markers = [
   "grad: Marks tests which perform 'gradcheck' evaluations, this can be slow.",
   "large: Marks tests for large molecules, this can be slow.",
 ]
+
+
+[tool.mypy]
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+warn_redundant_casts = true
+warn_unreachable = true
+warn_unused_ignores = true
+
+
+[tool.coverage.run]
+plugins = ["covdefaults"]
+source = ["./src"]
+omit = ["./src/dxtb/exlibs/*"]
+
+[tool.coverage.report]
+fail_under = 50
