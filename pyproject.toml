@@ -20,6 +20,7 @@ disallow_untyped_defs = true
 warn_redundant_casts = true
 warn_unreachable = true
 warn_unused_ignores = true
+exclude = ["./src/dxtb/exlibs/*"]
 
 
 [tool.coverage.run]
