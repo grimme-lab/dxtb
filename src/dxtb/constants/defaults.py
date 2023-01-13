@@ -1,6 +1,11 @@
 """
-Default settings for `dxtb` calculations.
+Default Settings
+================
+
+This module contains the defaults for all `dxtb` calculations.
 """
+
+from __future__ import annotations
 
 import torch
 
