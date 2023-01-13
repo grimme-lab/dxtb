@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Any, Literal, Protocol, TypedDict, overload
+from typing import Any, Literal, Protocol, TypedDict, overload, NoReturn
 
 import torch
 from torch import Tensor
@@ -101,8 +101,10 @@ class TensorLike:
         return self.__device
 
     @device.setter
-    def device(self, *args):
-        """Instruct users to use the ".to" method if wanting to change device."""
+    def device(self, *_: Any) -> NoReturn:
+        """
+        Instruct users to use the ".to" method if wanting to change device.
+        """
         raise AttributeError("Move object to device using the `.to` method")
 
     @property
