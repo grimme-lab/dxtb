@@ -117,7 +117,7 @@ class Hamiltonian(TensorLike):
         ):
             raise ValueError("All tensors must be on the same device")
 
-    def get_occupation(self):
+    def get_occupation(self) -> Tensor:
         """
         Obtain the reference occupation numbers for each orbital.
         """
@@ -154,7 +154,7 @@ class Hamiltonian(TensorLike):
             dtype=self.dtype,
         )
 
-    def _get_elem_valence(self):
+    def _get_elem_valence(self) -> Tensor:
         """Obtain "valence" parameters for shells of species.
 
         Returns

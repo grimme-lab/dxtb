@@ -48,7 +48,7 @@ class Classical(ABC):
         """
 
     @abstractmethod
-    def get_energy(self, positions: Tensor, cache: Cache) -> Tensor:
+    def get_energy(self, positions: Tensor, cache: Cache, **kwargs: str) -> Tensor:
         """
         Obtain energy of the contribution.
 

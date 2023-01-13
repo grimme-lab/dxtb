@@ -7,7 +7,7 @@ import warnings
 
 import torch
 
-from .._types import Tensor
+from .._types import Tensor, NoReturn
 from ..param import Param
 from ..utils import ParameterWarning
 from .abc import Dispersion
@@ -20,7 +20,7 @@ def new_dispersion(
     par: Param,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
-) -> Dispersion | None:
+) -> Dispersion | None | NoReturn:
     """
     Create new instance of the Dispersion class.
 
@@ -70,3 +70,5 @@ def new_dispersion(
 
     if par.dispersion.d3 is not None and par.dispersion.d4 is not None:
         raise ValueError("Parameters for both D3 and D4 found. Please decide.")
+
+    return None

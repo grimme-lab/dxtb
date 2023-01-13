@@ -9,6 +9,7 @@ from pathlib import Path
 import torch
 
 from ..constants import defaults
+from .._types import Any
 
 
 def is_file(path: str | Path) -> str | Path:
@@ -193,7 +194,7 @@ class Formatter(argparse.HelpFormatter):
         return argparse.HelpFormatter._split_lines(self, text, width)
 
 
-def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
+def argparser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
     """
     Parses the command line arguments.
 

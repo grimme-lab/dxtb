@@ -186,7 +186,7 @@ class Halogen(Classical, TensorLike):
         We cannot use `self.numbers` here, because it is not batched.
         """
 
-        adj = []
+        adjlist = []
 
         # find all halogen-base pairs
         for i, i_at in enumerate(numbers):
@@ -195,10 +195,10 @@ class Halogen(Classical, TensorLike):
                     if torch.norm(positions[i, :] - positions[j, :]) > self.cutoff:
                         continue
 
-                    adj.append([i, j, 0])
+                    adjlist.append([i, j, 0])
 
         # convert to tensor
-        adj = torch.tensor(adj, dtype=torch.long, device=self.device)
+        adj = torch.tensor(adjlist, dtype=torch.long, device=self.device)
 
         # find nearest neighbor of halogen
         for i in range(adj.size(-2)):

@@ -27,30 +27,30 @@ class ToleranceWarning(UserWarning):
 
 
 class IntegralTransformError(ValueError):
-    def __init__(self):
+    def __init__(self) -> None:
         self.message = "[Fatal] Moments higher than g are not supported"
         super().__init__(self.message)
 
 
 class CgtoNegativeExponentsError(ValueError):
-    def __init__(self):
+    def __init__(self) -> None:
         self.message = "Negative exponents not allowed"
         super().__init__(self.message)
 
 
 class CgtoQuantumNumberError(ValueError):
-    def __init__(self):
+    def __init__(self) -> None:
         self.message = "Only QN up to 6 supported"
         super().__init__(self.message)
 
 
 class CgtoAzimudalQuantumNumberError(ValueError):
-    def __init__(self):
+    def __init__(self) -> None:
         self.message = "No QM h-functions available"
         super().__init__(self.message)
 
 
 class CgtoMaxPrimitivesError(ValueError):
-    def __init__(self):
+    def __init__(self) -> None:
         self.message = "Max number of primitives is 6"
         super().__init__(self.message)

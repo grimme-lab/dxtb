@@ -44,7 +44,8 @@ def orthogonalize(
             kab = torch.sqrt(math.pi * oab) ** 3
             overlap += ci * cj * kab
 
-    # Create new basis function from the pair which is orthogonal to the first basis function
+    # Create new basis function from the pair which is orthogonal to the first
+    # basis function
     alpha_new[: alpha_j.shape[-1]], alpha_new[alpha_j.shape[-1] :] = alpha_j, alpha_i
     coeff_new[: coeff_j.shape[-1]], coeff_new[coeff_j.shape[-1] :] = (
         coeff_j,

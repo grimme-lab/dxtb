@@ -200,7 +200,7 @@ def get_elem_valence(
         r = torch.tensor(shells, dtype=torch.long)
         tmp = torch.ones(r.shape, dtype=torch.bool)
         if r.size(0) < 2:
-            vals = tmp
+            vals = tmp.tolist()
         else:
             # sorting the rows so that duplicate values appear together
             # e.g. [1, 2, 3, 3, 3, 4, 4]
@@ -229,7 +229,7 @@ def get_elem_pqn(
     pad_val: int = -1,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
-):
+) -> Tensor:
     key = "shells"
 
     shells = []

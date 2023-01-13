@@ -48,7 +48,7 @@ from .data import vdw_rad_d3
 alpha = 0.571412
 
 
-@torch.jit.script  # type: ignore
+@torch.jit.script
 def p16_kernel(r1: Tensor, ab: Tensor) -> Tensor:
     """
     Evaluate P16 interaction kernel: 1 / (R + √ab / (1 + ζR/(16·√ab))¹⁶)
@@ -72,7 +72,7 @@ def p16_kernel(r1: Tensor, ab: Tensor) -> Tensor:
     return 1.0 / (r1 + ab * arg)
 
 
-@torch.jit.script  # type: ignore
+@torch.jit.script
 def still_kernel(r1: Tensor, ab: Tensor) -> Tensor:
     """
     Evaluate Still interaction kernel: 1 / √(R² + ab · exp[R²/(4·ab)])
@@ -101,7 +101,8 @@ born_kernel = {"p16": p16_kernel, "still": still_kernel}
 
 def get_adet(positions: Tensor, rad: Tensor) -> Tensor:
     """
-    Calculate electrostatic shape function based on the moments of inertia of solid spheres.
+    Calculate electrostatic shape function based on the moments of inertia
+    of solid spheres.
 
     Parameters
     ----------
@@ -166,8 +167,8 @@ class GeneralizedBorn(Interaction):
         kernel: str = "p16",
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(device, dtype)
 
         self.alpbet = (
@@ -188,7 +189,7 @@ class GeneralizedBorn(Interaction):
         mat: Tensor
         """Born screening matrix"""
 
-        def __init__(self, mat):
+        def __init__(self, mat: Tensor) -> None:
             self.mat = mat
 
     def get_cache(

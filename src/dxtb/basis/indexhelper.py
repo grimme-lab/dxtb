@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Tensor
+from .._types import Tensor, Any, NoReturn
 from ..utils import batch, wrap_gather, wrap_scatter_reduce
 
 __all__ = ["IndexHelper"]
@@ -523,7 +523,7 @@ class IndexHelper:
         return self.__device
 
     @device.setter
-    def device(self, *args):
+    def device(self, *args: Any) -> NoReturn:
         """Instruct users to use the ".to" method if wanting to change device."""
         raise AttributeError("Move object to device using the `.to` method")
 

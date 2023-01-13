@@ -88,7 +88,7 @@ class ES2(Interaction):
         mat: Tensor
         """Coulomb matrix"""
 
-        def __init__(self, mat):
+        def __init__(self, mat: Tensor) -> None:
             self.mat = mat
 
     def __init__(
@@ -148,7 +148,7 @@ class ES2(Interaction):
 
     def get_atom_coulomb_matrix(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
-    ):
+    ) -> Tensor:
         """
         Calculate the Coulomb matrix.
 
@@ -192,7 +192,7 @@ class ES2(Interaction):
 
     def get_shell_coulomb_matrix(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
-    ):
+    ) -> Tensor:
         """
         Calculate the Coulomb matrix.
 

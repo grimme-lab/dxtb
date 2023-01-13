@@ -47,7 +47,7 @@ def twice(
     dim1: int,
     idx: Tensor,
     *args: str,
-):
+) -> Tensor:
     """
     Spread or gather a tensor along two dimensions
 

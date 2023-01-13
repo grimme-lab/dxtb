@@ -24,6 +24,7 @@ from .hamiltonian import Hamiltonian
 from .meta import Meta
 from .repulsion import Repulsion
 from .thirdorder import ThirdOrder
+from .multipole import Multipole
 
 
 class Param(BaseModel):
@@ -43,7 +44,7 @@ class Param(BaseModel):
     """Definition of the repulsion contribution."""
     charge: Optional[Charge] = None
     """Definition of the isotropic second-order charge interactions."""
-    multipole: Optional[dict] = None
+    multipole: Optional[Multipole] = None
     """Definition of the anisotropic second-order multipolar interactions."""
     halogen: Optional[Halogen] = None
     """Definition of the halogen bonding correction."""

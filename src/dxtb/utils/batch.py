@@ -350,7 +350,7 @@ def deflate(tensor: Tensor, value: Any = 0, axis: int | None = None) -> Tensor:
     return tensor[slices]
 
 
-def unpack(tensor: Tensor, value: Any = 0, axis: int = 0) -> tuple[Tensor]:
+def unpack(tensor: Tensor, value: Any = 0, axis: int = 0) -> tuple[Tensor, ...]:
     """Unpacks packed tensors into their constituents and removes padding.
 
     This acts as the inverse of the `pack` operation.

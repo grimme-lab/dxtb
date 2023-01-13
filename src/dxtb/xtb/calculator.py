@@ -243,7 +243,7 @@ class Calculator(TensorLike):
 
         self.opts[name] = value
 
-    def set_tol(self, name: str, value: float):
+    def set_tol(self, name: str, value: float) -> None:
         if name not in ("f_tol", "x_tol"):
             raise KeyError(f"Tolerance option '{name}' does not exist.")
 

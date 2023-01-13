@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import tad_dftd3 as d3
 
-from .._types import CountingFunction, Tensor
+from .._types import CountingFunction, Tensor, Any
 from ..ncoord import exp_count, get_coordination_number
 from .abc import Dispersion
 
@@ -50,7 +50,7 @@ class DispersionD3(Dispersion):
             self.weighting_function = weighting_function
             self.damping_function = damping_function
 
-    def get_cache(self, numbers: Tensor, **kwargs) -> DispersionD3.Cache:
+    def get_cache(self, numbers: Tensor, **kwargs: Any) -> DispersionD3.Cache:
         """
         Obtain cache for storage of settings.
 

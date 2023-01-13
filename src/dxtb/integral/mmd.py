@@ -11,7 +11,7 @@ import math
 
 import torch
 
-from .._types import Tensor
+from .._types import Tensor, Any
 from ..utils import IntegralTransformError
 from . import transform
 
@@ -20,7 +20,7 @@ sqrtpi3 = sqrtpi**3
 
 
 @torch.jit.script
-def _e_function(E, xij, rpi, rpj):
+def _e_function(E: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> Tensor:
     """
     Calculate E-coefficients for McMurchie-Davidson algorithm. Rather than computing
     them recursively, they are computed iteratively in this implementation.
@@ -99,7 +99,15 @@ _e_function_jit = torch.jit.trace(
 
 
 @torch.jit.script
-def _e_function_grad(E, xij, rpi, rpj, dxij, drpi, drpj):
+def _e_function_grad(
+    E: Tensor,
+    xij: Tensor,
+    rpi: Tensor,
+    rpj: Tensor,
+    dxij: Tensor,
+    drpi: Tensor,
+    drpj: Tensor,
+) -> Tensor:
     """
     Calculate derivative of E-coefficients for McMurchie-Davidson algorithm.
 
@@ -195,11 +203,11 @@ class EFunction(torch.autograd.Function):
 
     @staticmethod
     def forward(
-        ctx,
+        ctx: Any,
         xij: Tensor,
         rpi: Tensor,
         rpj: Tensor,
-        shape,
+        shape: tuple[int, ...],
     ) -> Tensor:
         """
         Calculate E-coefficients for McMurchie-Davidson algorithm.
@@ -210,12 +218,15 @@ class EFunction(torch.autograd.Function):
         xij : Tensor
             One over two times the product Gaussian exponent of the two shells.
         rpi : Tensor
-            Distance between the center of the first shell and the product Gaussian center.
+            Distance between the center of the first shell and the product
+            Gaussian center.
         rpj : Tensor
-            Distance between the center of the second shell and the product Gaussian center.
+            Distance between the center of the second shell and the product
+            Gaussian center.
         shape : Tuple[..., int, int]
-            Shape of the E-coefficients to calculate, the first dimensions identify the batch,
-            the last two identify the angular momentum of the first and second shell.
+            Shape of the E-coefficients to calculate, the first dimensions
+            identify the batch, the last two identify the angular momentum of
+            the first and second shell.
 
         Returns
         -------
@@ -231,7 +242,7 @@ class EFunction(torch.autograd.Function):
 
     @staticmethod
     def backward(
-        ctx,
+        ctx: Any,
         E_bar: Tensor,
     ) -> tuple[Tensor | None, Tensor | None, Tensor | None, None]:
         """

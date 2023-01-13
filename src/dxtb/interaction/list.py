@@ -22,7 +22,7 @@ class InteractionList(Interaction):
 
         __slots__ = ()
 
-    def __init__(self, *interactions: Interaction | None):
+    def __init__(self, *interactions: Interaction | None) -> None:
         Interaction.__init__(self, torch.device("cpu"), torch.float)
         self.interactions = [
             interaction for interaction in interactions if interaction is not None
@@ -59,7 +59,7 @@ class InteractionList(Interaction):
         return cache
 
     def get_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
+        self, charges: Tensor, ihelp: IndexHelper, cache: Cache
     ) -> Tensor:
         """
         Compute the potential for a list of interactions.
@@ -90,9 +90,7 @@ class InteractionList(Interaction):
             else torch.zeros_like(charges)
         )
 
-    def get_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
-    ) -> Tensor:
+    def get_energy(self, charges: Tensor, ihelp: IndexHelper, cache: Cache) -> Tensor:
         """
         Compute the energy for a list of interactions.
 
