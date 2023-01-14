@@ -31,7 +31,10 @@ class Result(TensorLike):
     """
 
     charges: Tensor
-    """Self-consistent orbital-resolved Mulliken partial charges"""
+    """Self-consistent orbital-resolved Mulliken partial charges."""
+
+    coefficients: Tensor
+    """LCAO-MO coefficients (eigenvectors of Fockian)."""
 
     density: Tensor
     """Density matrix."""
@@ -57,8 +60,14 @@ class Result(TensorLike):
     hcore: Tensor
     """Core Hamiltonian matrix (H0)."""
 
+    occupation: Tensor
+    """Orbital occupations."""
+
     overlap: Tensor
     """Overlap matrix."""
+
+    potential: Tensor
+    """Self-consistent orbital-resolved potential."""
 
     repulsion: Tensor
     """Repulsion energy."""
@@ -74,6 +83,7 @@ class Result(TensorLike):
 
     __slots__ = [
         "charges",
+        "coefficients",
         "density",
         "dispersion",
         "emo",
@@ -82,7 +92,9 @@ class Result(TensorLike):
         "halogen",
         "hamiltonian",
         "hcore",
+        "occupation",
         "overlap",
+        "potential",
         "repulsion",
         "scf",
         "timer",
@@ -332,11 +344,14 @@ class Calculator(TensorLike):
                 use_potential=True,
             )
             result.charges = scf_results["charges"]
+            result.coefficients = scf_results["coefficients"]
             result.density = scf_results["density"]
             result.emo = scf_results["emo"]
-            result.hamiltonian = scf_results["hamiltonian"]
-            result.scf += scf_results["energy"]
             result.fenergy = scf_results["fenergy"]
+            result.hamiltonian = scf_results["hamiltonian"]
+            result.occupation = scf_results["occupation"]
+            result.potential = scf_results["potential"]
+            result.scf += scf_results["energy"]
             result.total += scf_results["energy"] + scf_results["fenergy"]
             timer.stop("scf")
 
