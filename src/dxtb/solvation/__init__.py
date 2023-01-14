@@ -1,1 +1,8 @@
-from .data import vdw_rad_d3
+"""
+Solvation models
+================
+
+This subpackage contains the available solvation models.
+"""
+
+from .alpb import GeneralizedBorn

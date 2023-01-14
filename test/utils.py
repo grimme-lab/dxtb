@@ -2,9 +2,15 @@
 Collection of utility functions for testing.
 """
 
+from pathlib import Path
+
 import torch
 
 from dxtb._types import Any, Tensor
+
+coordfile = file = Path(
+    Path(__file__).parent, "test_singlepoint/mols/H2/coord"
+).resolve()
 
 
 def get_device_from_str(s: str) -> torch.device:
