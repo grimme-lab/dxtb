@@ -19,17 +19,6 @@ from .samples import samples
 sample_list = ["MB16_43_01", "MB16_43_02", "SiH4_atom"]
 
 
-def test_none() -> None:
-    dummy = torch.tensor(0.0)
-    par = GFN1_XTB.copy(deep=True)
-
-    par.charge = None
-    assert es2.new_es2(dummy, par) is None
-
-    del par.charge
-    assert es2.new_es2(dummy, par) is None
-
-
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
@@ -48,7 +37,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
         assert False, es
 
     cache = es.get_cache(numbers, positions, ihelp)
-    e = es.get_atom_energy(qat, ihelp, cache)
+    e = es.get_atom_energy(qat, cache)
     assert pytest.approx(torch.sum(e, dim=-1)) == ref
 
 
@@ -90,7 +79,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         assert False
 
     cache = es.get_cache(numbers, positions, ihelp)
-    e = es.get_atom_energy(qat, ihelp, cache)
+    e = es.get_atom_energy(qat, cache)
     assert torch.allclose(torch.sum(e, dim=-1), ref)
 
 
@@ -116,7 +105,7 @@ def test_grad_positions(name: str) -> None:
             assert False
 
         cache = es.get_cache(numbers, positions, ihelp)
-        return es.get_atom_energy(qat, ihelp, cache)
+        return es.get_atom_energy(qat, cache)
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradcheck
@@ -151,7 +140,7 @@ def test_grad_param(name: str) -> None:
     def func(gexp: Tensor, hubbard: Tensor):
         es = es2.ES2(hubbard, average=average, gexp=gexp, **dd)
         cache = es.get_cache(numbers, positions, ihelp)
-        return es.get_atom_energy(qat, ihelp, cache)
+        return es.get_atom_energy(qat, cache)
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradcheck

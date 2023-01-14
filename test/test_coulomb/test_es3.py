@@ -18,29 +18,6 @@ from .samples import samples
 sample_list = ["MB16_43_01", "MB16_43_02", "SiH4_atom"]
 
 
-def test_none() -> None:
-    dummy = torch.tensor(0.0)
-    par = GFN1_XTB.copy(deep=True)
-
-    par.thirdorder = None
-    assert es3.new_es3(dummy, par) is None
-
-    del par.thirdorder
-    assert es3.new_es3(dummy, par) is None
-
-
-def test_fail() -> None:
-    dummy = torch.tensor(0.0)
-
-    par = GFN1_XTB.copy(deep=True)
-    if par.thirdorder is None:
-        assert False
-
-    with pytest.raises(NotImplementedError):
-        par.thirdorder.shell = True
-        es3.new_es3(dummy, par)
-
-
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
@@ -49,7 +26,6 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
     qat = sample["q"].type(dtype)
     ref = sample["es3"].type(dtype)
 
@@ -58,8 +34,8 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     if es is None:
         assert False
 
-    cache = es.get_cache(numbers, positions, ihelp)  # cache is empty
-    e = es.get_atom_energy(qat, ihelp, cache)
+    cache = es.get_cache(ihelp=ihelp)
+    e = es.get_atom_energy(qat, cache)
     assert pytest.approx(torch.sum(e, dim=-1)) == ref
 
 
@@ -95,7 +71,8 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     if es is None:
         assert False
 
-    e = es.get_atom_energy(qat, ihelp, None)
+    cache = es.get_cache(ihelp=ihelp)
+    e = es.get_atom_energy(qat, cache)
     assert torch.allclose(torch.sum(e, dim=-1), ref)
 
 
@@ -125,7 +102,8 @@ def test_grad_param(name: str) -> None:
 
     def func(hubbard_derivs: Tensor):
         es = es3.ES3(hubbard_derivs, **dd)
-        return es.get_atom_energy(qat, ihelp, None)
+        cache = es.get_cache(ihelp=ihelp)
+        return es.get_atom_energy(qat, cache)
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradcheck

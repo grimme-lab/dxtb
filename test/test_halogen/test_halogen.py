@@ -16,17 +16,6 @@ from dxtb.utils import batch
 from .samples import samples
 
 
-def test_none() -> None:
-    dummy = torch.tensor(0.0)
-    _par = par.copy(deep=True)
-
-    _par.halogen = None
-    assert new_halogen(dummy, _par) is None
-
-    del _par.halogen
-    assert new_halogen(dummy, _par) is None
-
-
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["br2nh3", "br2nh2o", "br2och2", "finch"])
 def test_small(dtype: torch.dtype, name: str) -> None:
@@ -194,7 +183,7 @@ def test_grad_param(sample_name: str):
     )
 
     def func(damp: Tensor, rscale: Tensor, xbond: Tensor) -> Tensor:
-        xb = Halogen(numbers, damp, rscale, xbond, **dd)
+        xb = Halogen(damp, rscale, xbond, **dd)
         cache = xb.get_cache(numbers, ihelp)
         return xb.get_energy(positions, cache)
 

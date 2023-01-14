@@ -28,10 +28,9 @@ def test_gb_single(dtype: torch.dtype, name: str, dielectric_constant=78.9):
     charges = sample["charges"].type(dtype)
     ref = sample["energies"].type(dtype)
 
-    ihelp = "IndexHelper"
     gb = alpb.GeneralizedBorn(numbers, dielectric_constant, **dd)
-    cache = gb.get_cache(numbers, positions, ihelp)
-    energies = gb.get_atom_energy(charges, ihelp, cache)
+    cache = gb.get_cache(numbers, positions)
+    energies = gb.get_atom_energy(charges, cache)
 
     assert pytest.approx(energies, abs=tol) == ref
 

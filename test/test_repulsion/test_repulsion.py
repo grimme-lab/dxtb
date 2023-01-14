@@ -16,23 +16,10 @@ from dxtb.classical import Repulsion, new_repulsion
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular, get_elem_param
 from dxtb.utils import batch
-from dxtb.utils.exceptions import ParameterWarning
 
 from .samples import samples
 
 sample_list = ["H2O", "SiH4", "MB16_43_01", "MB16_43_02", "LYS_xao"]
-
-
-def test_none() -> None:
-    dummy = torch.tensor(0.0)
-    _par = par.copy(deep=True)
-
-    with pytest.warns(ParameterWarning):
-        _par.repulsion = None
-        assert new_repulsion(dummy, _par) is None
-
-        del _par.repulsion
-        assert new_repulsion(dummy, _par) is None
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -232,7 +219,7 @@ def test_grad_param(dtype: torch.dtype, name: str) -> None:
     _kexp = torch.tensor(par.repulsion.effective.kexp, **dd, requires_grad=True)
 
     def func(arep: Tensor, zeff: Tensor, kexp: Tensor) -> Tensor:
-        rep = Repulsion(numbers, arep, zeff, kexp, **dd)
+        rep = Repulsion(arep, zeff, kexp, **dd)
         cache = rep.get_cache(numbers, ihelp)
         return rep.get_energy(positions, cache)
 

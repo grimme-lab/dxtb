@@ -260,7 +260,7 @@ class SelfConsistentField(EditableModule):
             Energy of the system.
         """
         return self._data.energy + self.interaction.get_energy(
-            charges, self._data.ihelp, self._data.cache
+            charges, self._data.cache, self._data.ihelp
         )
 
     def get_electronic_free_energy(self) -> Tensor:
@@ -398,7 +398,7 @@ class SelfConsistentField(EditableModule):
         """
 
         return self.interaction.get_potential(
-            charges, self._data.ihelp, self._data.cache
+            charges, self._data.cache, self._data.ihelp
         )
 
     def potential_to_charges(self, potential: Tensor) -> Tensor:
@@ -669,7 +669,7 @@ def solve(
         Orbital-resolved partial charges vector.
     """
 
-    cache = interactions.get_cache(numbers, positions, ihelp)
+    cache = interactions.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
     charges = get_guess(numbers, positions, chrg, ihelp, guess)
 
     return SelfConsistentField(

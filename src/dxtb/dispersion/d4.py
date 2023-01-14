@@ -8,7 +8,7 @@ from ..interaction import Interaction
 from .abc import Dispersion
 
 
-class DispersionD4(Dispersion, Interaction):
+class DispersionD4(Dispersion):
     """
     Representation of the DFT-D4 dispersion correction.
 
