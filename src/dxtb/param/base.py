@@ -36,7 +36,7 @@ class Param(BaseModel):
     """Descriptive data on the model."""
     element: Elements
     """Element specific parameter records."""
-    hamiltonian: Hamiltonian
+    hamiltonian: Optional[Hamiltonian] = None
     """Definition of the Hamiltonian, always required."""
     dispersion: Optional[Dispersion] = None
     """Definition of the dispersion correction."""
