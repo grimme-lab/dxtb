@@ -37,7 +37,7 @@ def _get_git_version():
     cwd = os.getcwd()
 
     # go to the main directory
-    fdir = os.path.dirname(__file__)
+    fdir = os.path.dirname(os.path.abspath(__file__))
     maindir = os.path.abspath(os.path.join(fdir, ".."))
     # maindir = fdir # os.path.join(fdir, "..")
     os.chdir(maindir)

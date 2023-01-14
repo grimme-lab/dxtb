@@ -1,42 +1,7 @@
-[project]
-name = "dxtb"
-dynamic = ["version"]
-description = "Fully Differentiable Approach to Extended Tight Binding"
-readme = "README.rst"
-requires-python = ">=3.10"
-keywords = [
-  "pytorch",
-  "autograd",
-  "tight-binding",
-  "xtb",
-  "computational chemistry",
-  "quantum chemistry",
-]
-authors = [
-  { name = "Sebastian Ehlert", email = "awvwgk@gmail.com" },
-  { name = "Marvin Friede", email = "friede@thch.uni-bonn.de" },
-  { name = "Christian Hölzer", email = "hoelzer@thch.uni-bonn.de" },
-]
-classifiers = [
-  "Intended Audience :: Science/Research",
-  "Operating System :: POSIX :: Linux",
-  "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.10",
-  "Framework :: Pytorch",
-  "Topic :: Scientific/Engineering :: Chemistry",
-]
-
-[project.urls]
-homepage = "https://github.com/grimme-lab/dxtb"
-documentation = "https://readthedocs.org"
-repository = "https://github.com/grimme-lab/dxtb"
-
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.dynamic]
-version = {attr = "dxtb.__version__.__version__"}
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
@@ -45,3 +10,23 @@ markers = [
   "grad: Marks tests which perform 'gradcheck' evaluations, this can be slow.",
   "large: Marks tests for large molecules, this can be slow.",
 ]
+
+
+[tool.mypy]
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+warn_redundant_casts = true
+warn_unreachable = true
+warn_unused_ignores = true
+exclude = ["./src/dxtb/exlibs/*"]
+
+
+[tool.coverage.run]
+plugins = ["covdefaults"]
+source = ["./src"]
+omit = ["./src/dxtb/exlibs/*"]
+
+[tool.coverage.report]
+fail_under = 50

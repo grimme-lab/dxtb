@@ -2,12 +2,13 @@
 Run tests for calculation of Born radii according to the Onufriev-Bashford-Case
 model. Reference values are obtained from the tblite version.
 """
+from __future__ import annotations
 
 import pytest
 import torch
 
+from dxtb._types import Tensor
 from dxtb.solvation import born, vdw_rad_d3
-from dxtb.typing import Tensor
 from dxtb.utils import batch
 
 from .samples import samples

@@ -13,19 +13,20 @@ which appears to be abandoned and unmaintained at the time of writing, but still
 a reasonably good implementation of the iterative solver required for the self-consistent
 field iterations.
 """
+from __future__ import annotations
 
 import warnings
 from math import sqrt
 
 import torch
 
+from .._types import Any, Tensor
 from ..basis import IndexHelper
 from ..constants import K2AU, defaults
 from ..exlibs.xitorch import EditableModule, LinearOperator
 from ..exlibs.xitorch import linalg as xtl
 from ..exlibs.xitorch import optimize as xto
 from ..interaction import Interaction
-from ..typing import Any, Tensor
 from ..utils import real_atoms
 from ..wavefunction import filling, mulliken
 from .guess import get_guess
@@ -104,7 +105,7 @@ class SelfConsistentField(EditableModule):
             self.old_density = overlap.new_tensor(0.0)
             self.iter = 1
 
-    _data: "_Data"
+    _data: _Data
     """Persistent data"""
 
     interaction: Interaction
@@ -134,9 +135,9 @@ class SelfConsistentField(EditableModule):
     def __init__(
         self,
         interaction: Interaction,
-        *args,
-        **kwargs,
-    ):
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
         self.use_potential = kwargs.pop("use_potential", False)
         self.bck_options = {"posdef": True, **kwargs.pop("bck_options", {})}
 
@@ -323,7 +324,7 @@ class SelfConsistentField(EditableModule):
 
         raise ValueError(f"Unknown partitioning mode '{mode}'.")
 
-    def iterate_charges(self, charges: Tensor):
+    def iterate_charges(self, charges: Tensor) -> Tensor:
         """
         Perform single self-consistent iteration.
 
@@ -343,7 +344,7 @@ class SelfConsistentField(EditableModule):
         potential = self.charges_to_potential(charges)
         return self.potential_to_charges(potential)
 
-    def iterate_potential(self, potential: Tensor):
+    def iterate_potential(self, potential: Tensor) -> Tensor:
         """
         Perform single self-consistent iteration.
 
@@ -418,7 +419,7 @@ class SelfConsistentField(EditableModule):
         self._data.density = self.potential_to_density(potential)
         return self.density_to_charges(self._data.density)
 
-    def potential_to_density(self, potential: Tensor):
+    def potential_to_density(self, potential: Tensor) -> Tensor:
         """
         Obtain the density matrix from the potential.
 
@@ -436,7 +437,7 @@ class SelfConsistentField(EditableModule):
         self._data.hamiltonian = self.potential_to_hamiltonian(potential)
         return self.hamiltonian_to_density(self._data.hamiltonian)
 
-    def density_to_charges(self, density: Tensor):
+    def density_to_charges(self, density: Tensor) -> Tensor:
         """
         Compute the orbital charges from the density matrix.
 
@@ -485,7 +486,7 @@ class SelfConsistentField(EditableModule):
             potential.unsqueeze(-1) + potential.unsqueeze(-2)
         )
 
-    def hamiltonian_to_density(self, hamiltonian: Tensor):
+    def hamiltonian_to_density(self, hamiltonian: Tensor) -> Tensor:
         """
         Compute the density matrix from the Hamiltonian.
 
@@ -578,7 +579,7 @@ class SelfConsistentField(EditableModule):
         return xtl.lsymeig(A=hamiltonian, M=overlap, **self.eigen_options)
 
     @property
-    def shape(self):
+    def shape(self) -> torch.Size:
         """
         Returns the shape of the density matrix in this engine.
         """
@@ -637,8 +638,8 @@ def solve(
     interactions: Interaction,
     ihelp: IndexHelper,
     guess: str,
-    *args,
-    **kwargs,
+    *args: Any,
+    **kwargs: Any,
 ) -> dict[str, Tensor]:
     """
     Obtain self-consistent solution for a given Hamiltonian.

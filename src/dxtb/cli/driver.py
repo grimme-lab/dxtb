@@ -1,6 +1,7 @@
 """
 Driver class for running dxtb.
 """
+from __future__ import annotations
 
 from argparse import Namespace
 from pathlib import Path
@@ -36,7 +37,7 @@ class Driver:
         """
         return Path(self.args.file).resolve().parent
 
-    def _set_attr(self, attr: str):
+    def _set_attr(self, attr: str) -> int:
 
         # set charge to input from Namespace
         val = getattr(self.args, attr)
@@ -69,9 +70,9 @@ class Driver:
             "xitorch_fatol": 1e-6,
         }
 
-        numbers, positions = io.read_structure_from_file(args.file)
-        numbers = torch.tensor(numbers, dtype=torch.long, device=dd["device"])
-        positions = torch.tensor(positions, **dd)
+        _numbers, _positions = io.read_structure_from_file(args.file)
+        numbers = torch.tensor(_numbers, dtype=torch.long, device=dd["device"])
+        positions = torch.tensor(_positions, **dd)
         chrg = torch.tensor(self.chrg, **dd)
 
         if args.grad is True:

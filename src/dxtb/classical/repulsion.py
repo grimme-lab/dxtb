@@ -32,15 +32,16 @@ Example
 >>> print(energy.sum(-1))
 tensor(0.0303)
 """
+from __future__ import annotations
 
 import warnings
 
 import torch
 
+from .._types import Tensor, TensorLike
 from ..basis import IndexHelper
 from ..constants import xtb
 from ..param import Param, get_elem_param
-from ..typing import Tensor, TensorLike
 from ..utils import ParameterWarning, real_pairs
 from .abc import Classical
 
@@ -123,7 +124,7 @@ class Repulsion(Classical, TensorLike):
             self.zeff = zeff
             self.kexp = kexp
 
-    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> "Repulsion.Cache":
+    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> Repulsion.Cache:
         """
         Store variables for energy and gradient calculation.
 
@@ -167,7 +168,7 @@ class Repulsion(Classical, TensorLike):
         return self.Cache(a, z, k)
 
     def get_energy(
-        self, positions: Tensor, cache: "Repulsion.Cache", atom_resolved: bool = True
+        self, positions: Tensor, cache: Repulsion.Cache, atom_resolved: bool = True
     ) -> Tensor:
         """
         Get repulsion energy.
@@ -220,7 +221,7 @@ class Repulsion(Classical, TensorLike):
         else:
             return dE
 
-    def get_grad(self, positions: Tensor, cache: "Repulsion.Cache") -> Tensor:
+    def get_grad(self, positions: Tensor, cache: Repulsion.Cache) -> Tensor:
         """
         Get analytical gradient of repulsion energy.
 

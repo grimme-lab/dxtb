@@ -5,12 +5,13 @@ Parametrization Utility
 Contains functions to obtain the parametrization of elements and pairs.
 Most functions convert the parametrization dictionary to a tensor.
 """
+from __future__ import annotations
 
 import torch
 
+from .._types import Tensor
 from ..constants import ATOMIC_NUMBER, PSE
 from ..param import Element
-from ..typing import Tensor
 from ..utils import is_int_list
 
 
@@ -199,7 +200,7 @@ def get_elem_valence(
         r = torch.tensor(shells, dtype=torch.long)
         tmp = torch.ones(r.shape, dtype=torch.bool)
         if r.size(0) < 2:
-            vals = tmp
+            vals = tmp.tolist()
         else:
             # sorting the rows so that duplicate values appear together
             # e.g. [1, 2, 3, 3, 3, 4, 4]
@@ -228,7 +229,7 @@ def get_elem_pqn(
     pad_val: int = -1,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
-):
+) -> Tensor:
     key = "shells"
 
     shells = []

@@ -1,12 +1,14 @@
 """
 Base calculator for the extended tight-binding model.
 """
+from __future__ import annotations
 
 import warnings
 
 import torch
 
 from .. import scf
+from .._types import Any, Tensor, TensorLike
 from ..basis import IndexHelper
 from ..classical import Halogen, Repulsion, new_halogen, new_repulsion
 from ..constants import defaults
@@ -17,7 +19,6 @@ from ..integral import Overlap
 from ..interaction import Interaction, InteractionList
 from ..ncoord import exp_count, get_coordination_number
 from ..param import Param, get_elem_angular
-from ..typing import Any, Tensor, TensorLike
 from ..utils import Timers, ToleranceWarning
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian
@@ -254,7 +255,7 @@ class Calculator(TensorLike):
 
         self.opts[name] = value
 
-    def set_tol(self, name: str, value: float):
+    def set_tol(self, name: str, value: float) -> None:
         if name not in ("f_tol", "x_tol"):
             raise KeyError(f"Tolerance option '{name}' does not exist.")
 

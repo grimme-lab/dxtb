@@ -3,17 +3,18 @@ Run tests for repulsion contribution.
 
 (Note that the analytical gradient tests fail for `torch.float`.)
 """
+from __future__ import annotations
 
 from math import sqrt
 
 import pytest
 import torch
 
+from dxtb._types import Tensor
 from dxtb.basis import IndexHelper
 from dxtb.classical import Repulsion, new_repulsion
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular, get_elem_param
-from dxtb.typing import Tensor
 from dxtb.utils import batch
 from dxtb.utils.exceptions import ParameterWarning
 
@@ -242,7 +243,7 @@ def test_grad_param(dtype: torch.dtype, name: str) -> None:
 
 
 def calc_numerical_gradient(
-    positions: Tensor, rep: Repulsion, cache: "Repulsion.Cache"
+    positions: Tensor, rep: Repulsion, cache: Repulsion.Cache
 ) -> Tensor:
     """Calculate gradient numerically for reference."""
 

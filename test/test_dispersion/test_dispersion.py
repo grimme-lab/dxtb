@@ -4,14 +4,15 @@ Testing dispersion energy and autodiff.
 These tests are taken from https://github.com/awvwgk/tad-dftd3/tree/main/tests
 and are only included for the sake of completeness.
 """
+from __future__ import annotations
 
 import pytest
 import tad_dftd3 as d3
 import torch
 
+from dxtb._types import Tensor
 from dxtb.dispersion import DispersionD3, new_dispersion
 from dxtb.param import GFN1_XTB as par
-from dxtb.typing import Tensor
 from dxtb.utils import ParameterWarning, batch
 
 from .samples import samples

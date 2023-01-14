@@ -27,14 +27,15 @@ Example
 >>> print(energy.sum(-1))
 tensor(0.0025)
 """
+from __future__ import annotations
 
 import torch
 
+from .._types import Tensor, TensorLike
 from ..basis import IndexHelper
 from ..constants import xtb
 from ..data import atomic_rad
 from ..param import Param, get_elem_param
-from ..typing import Tensor, TensorLike
 from ..utils import batch
 from .abc import Classical
 
@@ -103,7 +104,7 @@ class Halogen(Classical, TensorLike):
         def __init__(self, xbond: Tensor):
             self.xbond = xbond
 
-    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> "Halogen.Cache":
+    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> Halogen.Cache:
         """
         Store variables for energy calculation.
 
@@ -129,7 +130,7 @@ class Halogen(Classical, TensorLike):
         xbond = ihelp.spread_uspecies_to_atom(self.bond_strength)
         return self.Cache(xbond)
 
-    def get_energy(self, positions: Tensor, cache: "Halogen.Cache") -> Tensor:
+    def get_energy(self, positions: Tensor, cache: Halogen.Cache) -> Tensor:
         """
         Handle batchwise and single calculation of halogen bonding energy.
 
@@ -185,7 +186,7 @@ class Halogen(Classical, TensorLike):
         We cannot use `self.numbers` here, because it is not batched.
         """
 
-        adj = []
+        adjlist = []
 
         # find all halogen-base pairs
         for i, i_at in enumerate(numbers):
@@ -194,10 +195,10 @@ class Halogen(Classical, TensorLike):
                     if torch.norm(positions[i, :] - positions[j, :]) > self.cutoff:
                         continue
 
-                    adj.append([i, j, 0])
+                    adjlist.append([i, j, 0])
 
         # convert to tensor
-        adj = torch.tensor(adj, dtype=torch.long, device=self.device)
+        adj = torch.tensor(adjlist, dtype=torch.long, device=self.device)
 
         # find nearest neighbor of halogen
         for i in range(adj.size(-2)):

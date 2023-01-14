@@ -1,12 +1,13 @@
 """
 Calculation of coordination number with various counting functions.
 """
+from __future__ import annotations
 
 import torch
 
+from .._types import CountingFunction, Tensor, Any
 from ..constants import xtb
 from ..data import cov_rad_d3
-from ..typing import CountingFunction, Tensor
 from ..utils import real_pairs
 
 
@@ -16,7 +17,7 @@ def get_coordination_number(
     counting_function: CountingFunction,
     rcov: Tensor | None = None,
     cutoff: Tensor | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> Tensor:
     """
     Compute fractional coordination number using an exponential counting function.
@@ -84,7 +85,7 @@ def get_coordination_number_gradient(
     dcounting_function: CountingFunction,
     rcov: Tensor | None = None,
     cutoff: Tensor | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> Tensor:
     if cutoff is None:
         cutoff = positions.new_tensor(xtb.NCOORD_DEFAULT_CUTOFF)

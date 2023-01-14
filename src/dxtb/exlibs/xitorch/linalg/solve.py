@@ -1,12 +1,12 @@
 import warnings
-from collections.abc import Mapping
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Mapping, Optional, Union
 
 import torch
-from xitorch import LinearOperator
-from xitorch._core.linop import MatrixLinearOperator
-from xitorch._docstr.api_docstr import get_methods_docstr
-from xitorch._impls.linalg.solve import (
+
+from dxtb.exlibs.xitorch import LinearOperator
+from dxtb.exlibs.xitorch._core.linop import MatrixLinearOperator
+from dxtb.exlibs.xitorch._docstr.api_docstr import get_methods_docstr
+from dxtb.exlibs.xitorch._impls.linalg.solve import (
     _get_batchdims,
     bicgstab,
     broyden1_solve,
@@ -15,9 +15,13 @@ from xitorch._impls.linalg.solve import (
     gmres,
     wrap_gmres,
 )
-from xitorch._utils.assertfuncs import assert_runtime
-from xitorch._utils.misc import dummy_context_manager, get_method, set_default_option
-from xitorch.debug.modes import is_debug_enabled
+from dxtb.exlibs.xitorch._utils.assertfuncs import assert_runtime
+from dxtb.exlibs.xitorch._utils.misc import (
+    dummy_context_manager,
+    get_method,
+    set_default_option,
+)
+from dxtb.exlibs.xitorch.debug.modes import is_debug_enabled
 
 
 def solve(
@@ -50,7 +54,7 @@ def solve(
 
     Arguments
     ---------
-    A: xitorch.LinearOperator
+    A: dxtb.exlibs.xitorch.LinearOperator
         A linear operator that takes an input ``X`` and produce the vectors in the same
         space as ``B``.
         It should have the shape of ``(*BA, na, na)``
@@ -61,7 +65,7 @@ def solve(
         It will be regarded as the diagonal of the matrix.
         Otherwise, it just solves :math:`\mathbf{AX = B}` and ``M`` is ignored.
         If it is a tensor, it should have shape of ``(*BE, ncols)``.
-    M: xitorch.LinearOperator or None
+    M: dxtb.exlibs.xitorch.LinearOperator or None
         The transformation on the ``E`` side. If ``E`` is ``None``,
         then this argument is ignored.
         If E is not ``None`` and ``M`` is ``None``, then ``M=I``.
@@ -112,9 +116,8 @@ def solve(
     if E is not None:
         assert_runtime(
             E.shape[-1] == B.shape[-1],
-            "The last dimension of E & B must match (E: {}, B: {})".format(
-                E.shape, B.shape
-            ),
+            "The last dimension of E & B must match (E: %s, B: %s)"
+            % (E.shape, B.shape),
         )
     if E is None and M is not None:
         warnings.warn("M is supplied but will be ignored because E is not supplied")

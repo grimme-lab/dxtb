@@ -1,7 +1,8 @@
 from abc import abstractmethod
 
 import torch
-from xitorch.grad import jac
+
+from dxtb.exlibs.xitorch.grad import jac
 
 # taking most of the part from SciPy
 
@@ -202,7 +203,7 @@ class FullRankMatrix:
 
 
 def _get_svd_uv0(func, x0):
-    from xitorch.linalg import svd
+    from dxtb.exlibs.xitorch.linalg import svd
 
     # raise RuntimeError
     fjac = jac(func, (x0.clone().requires_grad_(),), idxs=[0])[0]

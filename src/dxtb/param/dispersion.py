@@ -1,13 +1,14 @@
 # This file is part of xtbml.
-
 """
 Definition of the dispersion contribution.
 """
+from __future__ import annotations
+
+from typing import Optional
 
 from pydantic import BaseModel
 
 from ..constants import xtb
-from ..typing import Optional
 
 
 class D3Model(BaseModel):
@@ -21,7 +22,7 @@ class D3Model(BaseModel):
     s8: float
     """Scaling factor for multipolar (dipole-quadrupole contribution) terms"""
 
-    s9: float = xtb.DEFAULT_DISP_S6
+    s9: float = xtb.DEFAULT_DISP_S9
     """Scaling factor for the many-body dispersion term (ATM/RPA-like)"""
 
     a1: float

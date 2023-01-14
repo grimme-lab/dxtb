@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Callable, List, Tuple, Union
 
@@ -11,7 +13,7 @@ class Geometry_Handler:
 
     def remove_sample_from_geometry(
         geometry: Geometry, idx_to_remove: int
-    ) -> Union[Geometry, None]:
+    ) -> Geometry | None:
         """Crude implementation of removing single geometry from batch geometry object.
 
         Args:
@@ -88,7 +90,7 @@ class Geometry_Handler:
         geometry: Geometry,
         file_list: list[str],
         filter_rule: Callable[[list[str]], list[int]],
-    ) -> Union[tuple[Geometry, list[str]], tuple[None, list[str]]]:
+    ) -> tuple[Geometry, list[str]] | tuple[None, list[str]]:
 
         filter = filter_rule(file_list)
         mask = [i for i in range(len(geometry)) if i not in filter]

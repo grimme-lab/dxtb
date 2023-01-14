@@ -2,6 +2,7 @@
 Routines for transformation from cartesian basis functions to spherical harmonics.
 The convention for spherial harmonics ordering is [0, ..., l, -l].
 """
+from __future__ import annotations
 
 import math
 

@@ -2,14 +2,15 @@
 Run tests for energy contribution from on-site third-order
 electrostatic energy (ES3).
 """
+from __future__ import annotations
 
 import pytest
 import torch
 
+from dxtb._types import Tensor
 from dxtb.basis import IndexHelper
 from dxtb.coulomb import thirdorder as es3
 from dxtb.param import GFN1_XTB, get_elem_angular, get_elem_param
-from dxtb.typing import Tensor
 from dxtb.utils import batch
 
 from .samples import samples

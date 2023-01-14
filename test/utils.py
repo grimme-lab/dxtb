@@ -4,7 +4,7 @@ Collection of utility functions for testing.
 
 import torch
 
-from dxtb.typing import Any, Tensor
+from dxtb._types import Any, Tensor
 
 
 def load_from_npz(npzfile: Any, name: str, dtype: torch.dtype) -> Tensor:

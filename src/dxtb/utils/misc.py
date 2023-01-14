@@ -4,11 +4,12 @@ Utility
 
 Collection of utility functions.
 """
+from __future__ import annotations
 
 import torch
 
+from .._types import Any, Tensor, TypeGuard
 from ..constants import ATOMIC_NUMBER
-from ..typing import Any, Tensor, TypeGuard
 
 
 def is_str_list(x: list[Any]) -> TypeGuard[list[str]]:

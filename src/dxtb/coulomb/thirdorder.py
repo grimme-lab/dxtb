@@ -31,13 +31,14 @@ Example
 >>> print(torch.sum(e, dim=-1))
 tensor(0.0155669)
 """
+from __future__ import annotations
 
 import torch
 
+from .._types import Tensor
 from ..basis import IndexHelper
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
-from ..typing import Tensor
 
 __all__ = ["ES3", "new_es3"]
 

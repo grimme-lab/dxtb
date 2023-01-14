@@ -1,16 +1,16 @@
 from typing import Dict, List, Optional
 
-from xitorch._utils.assertfuncs import assert_runtime
+from dxtb.exlibs.xitorch._utils.assertfuncs import assert_runtime
 
 
 class Uniquifier:
-    def __init__(self, allobjs: list):
+    def __init__(self, allobjs: List):
         self.nobjs = len(allobjs)
 
-        id2idx: dict[int, int] = {}
-        unique_objs: list[int] = []
-        unique_idxs: list[int] = []
-        nonunique_map_idxs: list[int] = [-self.nobjs * 2] * self.nobjs
+        id2idx: Dict[int, int] = {}
+        unique_objs: List[int] = []
+        unique_idxs: List[int] = []
+        nonunique_map_idxs: List[int] = [-self.nobjs * 2] * self.nobjs
         num_unique = 0
         for i, obj in enumerate(allobjs):
             id_obj = id(obj)
@@ -29,7 +29,7 @@ class Uniquifier:
         self.num_unique = num_unique
         self.all_unique = self.nobjs == self.num_unique
 
-    def get_unique_objs(self, allobjs: Optional[list] = None) -> list:
+    def get_unique_objs(self, allobjs: Optional[List] = None) -> List:
         if allobjs is None:
             return self.unique_objs
         assert_runtime(
@@ -39,7 +39,7 @@ class Uniquifier:
             return allobjs
         return [allobjs[i] for i in self.unique_idxs]
 
-    def map_unique_objs(self, uniqueobjs: list) -> list:
+    def map_unique_objs(self, uniqueobjs: List) -> List:
         assert_runtime(
             len(uniqueobjs) == self.num_unique,
             "The uniqueobjs must have %d elements" % self.num_unique,

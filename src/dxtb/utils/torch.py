@@ -1,10 +1,11 @@
 """
 Collection of utility functions for matrices/tensors.
 """
+from __future__ import annotations
 
 import torch
 
-from ..typing import Tensor
+from .._types import Tensor
 
 
 @torch.jit.script

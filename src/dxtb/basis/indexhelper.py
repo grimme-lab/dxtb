@@ -12,11 +12,12 @@ Example
 >>> torch.sum(ihelp.angular >= 0)
 torch.tensor(6)
 """
+from __future__ import annotations
 
 import torch
 
-from ..typing import Tensor
-from ..utils import batch, wrap_scatter_reduce, wrap_gather
+from .._types import Tensor, Any, NoReturn
+from ..utils import batch, wrap_gather, wrap_scatter_reduce
 
 __all__ = ["IndexHelper"]
 
@@ -152,7 +153,7 @@ class IndexHelper:
     @classmethod
     def from_numbers(
         cls, numbers: Tensor, angular: dict[int, list[int]]
-    ) -> "IndexHelper":
+    ) -> IndexHelper:
         """
         Construct an index helper instance from atomic numbers and their angular momenta.
 
@@ -190,8 +191,8 @@ class IndexHelper:
         ushells_to_unique = _fill(ushell_index, ushells_per_unique)
 
         if batched:
-            # remove the single shell assigned to the padding value in order to 
-            # avoid an additional count in the expansion as this will cause 
+            # remove the single shell assigned to the padding value in order to
+            # avoid an additional count in the expansion as this will cause
             # errors in certain situations
             # (see https://github.com/grimme-lab/xtbML/issues/67)
             if (unique == 0.0).any():
@@ -522,7 +523,7 @@ class IndexHelper:
         return self.__device
 
     @device.setter
-    def device(self, *args):
+    def device(self, *args: Any) -> NoReturn:
         """Instruct users to use the ".to" method if wanting to change device."""
         raise AttributeError("Move object to device using the `.to` method")
 
@@ -531,7 +532,7 @@ class IndexHelper:
         """Floating point dtype used by IndexHelper object."""
         return self.__dtype
 
-    def to(self, device: torch.device) -> "IndexHelper":
+    def to(self, device: torch.device) -> IndexHelper:
         """
         Returns a copy of the `IndexHelper` instance on the specified device.
 
@@ -571,7 +572,7 @@ class IndexHelper:
             device=self.device,
         )
 
-    def type(self, dtype: torch.dtype) -> "IndexHelper":
+    def type(self, dtype: torch.dtype) -> IndexHelper:
         """
         Returns a copy of the `IndexHelper` instance with specified floating point type.
         This method creates and returns a new copy of the `IndexHelper` instance

@@ -1,12 +1,14 @@
 """
 Test derivative of (D3) coordination number w.r.t. positions.
 """
+from __future__ import annotations
 
 from math import sqrt
 
 import pytest
 import torch
 
+from dxtb._types import Tensor
 from dxtb.data import cov_rad_d3
 from dxtb.ncoord import (
     dexp_count,
@@ -14,7 +16,6 @@ from dxtb.ncoord import (
     get_coordination_number,
     get_coordination_number_gradient,
 )
-from dxtb.typing import Tensor
 from dxtb.utils import batch, real_pairs
 
 from .samples import samples

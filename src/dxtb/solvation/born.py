@@ -22,10 +22,11 @@ Example
 >>> print(rads)
 tensor([3.6647, 2.4621, 2.4621, 2.4621, 2.4621])
 """
+from __future__ import annotations
 
 import torch
 
-from ..typing import Tensor
+from .._types import Tensor
 from ..utils import real_atoms, real_pairs
 from .data import vdw_rad_d3
 

@@ -1,16 +1,20 @@
-from collections.abc import Mapping, Sequence
-from typing import Any, Callable, List, Union
+from typing import Any, Callable, List, Mapping, Sequence, Union
 
 import torch
-from xitorch._core.pure_function import get_pure_function, make_sibling
-from xitorch._docstr.api_docstr import get_methods_docstr
-from xitorch._impls.optimize.minimizer import adam, gd
-from xitorch._impls.optimize.root.rootsolver import broyden1, broyden2, linearmixing
-from xitorch._utils.assertfuncs import assert_fcn_params
-from xitorch._utils.misc import TensorNonTensorSeparator, get_method
-from xitorch.debug.modes import is_debug_enabled
-from xitorch.grad.jachess import jac
-from xitorch.linalg.solve import solve
+
+from dxtb.exlibs.xitorch._core.pure_function import get_pure_function, make_sibling
+from dxtb.exlibs.xitorch._docstr.api_docstr import get_methods_docstr
+from dxtb.exlibs.xitorch._impls.optimize.minimizer import adam, gd
+from dxtb.exlibs.xitorch._impls.optimize.root.rootsolver import (
+    broyden1,
+    broyden2,
+    linearmixing,
+)
+from dxtb.exlibs.xitorch._utils.assertfuncs import assert_fcn_params
+from dxtb.exlibs.xitorch._utils.misc import TensorNonTensorSeparator, get_method
+from dxtb.exlibs.xitorch.debug.modes import is_debug_enabled
+from dxtb.exlibs.xitorch.grad.jachess import jac
+from dxtb.exlibs.xitorch.linalg.solve import solve
 
 __all__ = ["equilibrium", "rootfinder", "minimize"]
 
@@ -56,7 +60,7 @@ def rootfinder(
     params : list
         Sequence of any other parameters to be put in ``fcn``
     bck_options : dict
-        Method-specific options for the backward solve (see :func:`xitorch.linalg.solve`)
+        Method-specific options for the backward solve (see :func:`dxtb.exlibs.xitorch.linalg.solve`)
     method : str or callable or None
         Rootfinder method. If None, it will choose ``"broyden1"``.
     **fwd_options
@@ -74,7 +78,7 @@ def rootfinder(
     .. testsetup:: root1
 
         import torch
-        from xitorch.optimize import rootfinder
+        from dxtb.exlibs.xitorch.optimize import rootfinder
 
     .. doctest:: root1
 
@@ -136,7 +140,7 @@ def equilibrium(
     params : list
         Sequence of any other parameters to be put in ``fcn``
     bck_options : dict
-        Method-specific options for the backward solve (see :func:`xitorch.linalg.solve`)
+        Method-specific options for the backward solve (see :func:`dxtb.exlibs.xitorch.linalg.solve`)
     method : str or None
         Rootfinder method. If None, it will choose ``"broyden1"``.
     **fwd_options
@@ -154,7 +158,7 @@ def equilibrium(
     .. testsetup:: equil1
 
         import torch
-        from xitorch.optimize import equilibrium
+        from dxtb.exlibs.xitorch.optimize import equilibrium
 
     .. doctest:: equil1
 
@@ -223,7 +227,7 @@ def minimize(
     params: list
         Sequence of any other parameters to be put in ``fcn``
     bck_options: dict
-        Method-specific options for the backward solve (see :func:`xitorch.linalg.solve`)
+        Method-specific options for the backward solve (see :func:`dxtb.exlibs.xitorch.linalg.solve`)
     method: str or callable or None
         Minimization method. If None, it will choose ``"broyden1"``.
     **fwd_options
@@ -239,7 +243,7 @@ def minimize(
     .. testsetup:: root1
 
         import torch
-        from xitorch.optimize import minimize
+        from dxtb.exlibs.xitorch.optimize import minimize
 
     .. doctest:: root1
 
@@ -255,7 +259,7 @@ def minimize(
 
     assert not torch.is_complex(
         y0
-    ), "complex number is not supported on xitorch.optimize.rootfinder at the moment"
+    ), "complex number is not supported on dxtb.exlibs.xitorch.optimize.rootfinder at the moment"
 
     # perform implementation check if debug mode is enabled
     if is_debug_enabled():
@@ -415,8 +419,8 @@ def _get_minimizer_default_method(method):
 
 
 # docstring completion
-rf_methods: list[Callable] = [broyden1, broyden2, linearmixing]
-opt_methods: list[Callable] = [gd, adam]
+rf_methods: List[Callable] = [broyden1, broyden2, linearmixing]
+opt_methods: List[Callable] = [gd, adam]
 rootfinder.__doc__ = get_methods_docstr(rootfinder, rf_methods)
 equilibrium.__doc__ = get_methods_docstr(equilibrium, rf_methods)
 minimize.__doc__ = get_methods_docstr(minimize, rf_methods + opt_methods)

@@ -1,9 +1,9 @@
-from xitorch._core.editable_module import *
-from xitorch._core.linop import *
-from xitorch._core.packer import *
-from xitorch._core.pure_function import *
-from xitorch._utils.exceptions import *
-from xitorch.debug.modes import *
-from xitorch.version import get_version as _get_version
+from dxtb.exlibs.xitorch._core.editable_module import *
+from dxtb.exlibs.xitorch._core.linop import *
+from dxtb.exlibs.xitorch._core.packer import *
+from dxtb.exlibs.xitorch._core.pure_function import *
+from dxtb.exlibs.xitorch._utils.exceptions import *
+from dxtb.exlibs.xitorch.debug.modes import *
+from dxtb.exlibs.xitorch.version import get_version as _get_version
 
 __version__ = _get_version()

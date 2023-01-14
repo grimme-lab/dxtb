@@ -7,7 +7,7 @@ import torch
 def gd(
     fcn: Callable[..., torch.Tensor],
     x0: torch.Tensor,
-    params: list,
+    params: List,
     # gd parameters
     step: float = 1e-3,
     gamma: float = 0.9,
@@ -74,7 +74,7 @@ def gd(
 def adam(
     fcn: Callable[..., torch.Tensor],
     x0: torch.Tensor,
-    params: list,
+    params: List,
     # gd parameters
     step: float = 1e-3,
     beta1: float = 0.9,

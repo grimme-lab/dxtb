@@ -1,6 +1,7 @@
 """
 Parser for command line options.
 """
+from __future__ import annotations
 
 import argparse
 from pathlib import Path
@@ -8,6 +9,7 @@ from pathlib import Path
 import torch
 
 from ..constants import defaults
+from .._types import Any
 
 
 def is_file(path: str | Path) -> str | Path:
@@ -82,17 +84,16 @@ class ConvertToTorchDtype(argparse.Action):
         values: str | torch.dtype,
         option_string: str | None = None,
     ) -> None:
-        match values:
-            case "float16" | torch.float16:
-                values = torch.float16
-            case "float32" | torch.float32 | "sp":
-                values = torch.float32
-            case "float64" | torch.float64 | "double" | torch.double | "dp":
-                values = torch.float64
-            case _:  # unreachable due to choices
-                parser.error(
-                    f"Option '{option_string}' was passed an unknown keyword ({values})."
-                )
+        if values in ("float16", torch.float16):
+            values = torch.float16
+        elif values in ("float32", torch.float32, "sp"):
+            values = torch.float32
+        elif values in ("float64", torch.float64, "double", torch.double, "dp"):
+            values = torch.float64
+        else:  # unreachable due to choices
+            parser.error(
+                f"Option '{option_string}' was passed an unknown keyword ({values})."
+            )
 
         setattr(args, self.dest, values)
 
@@ -193,7 +194,7 @@ class Formatter(argparse.HelpFormatter):
         return argparse.HelpFormatter._split_lines(self, text, width)
 
 
-def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
+def argparser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
     """
     Parses the command line arguments.
 

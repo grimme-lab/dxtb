@@ -1,19 +1,19 @@
 import functools
 import warnings
-from collections.abc import Sequence
-from typing import Optional, Tuple, Union
+from typing import Optional, Sequence, Tuple, Union
 
 import torch
-from xitorch import LinearOperator
-from xitorch._utils.bcast import get_bcasted_dims
-from xitorch._utils.exceptions import MathWarning
-from xitorch._utils.tensor import tallqr, to_fortran_order
-from xitorch.debug.modes import is_debug_enabled
+
+from dxtb.exlibs.xitorch import LinearOperator
+from dxtb.exlibs.xitorch._utils.bcast import get_bcasted_dims
+from dxtb.exlibs.xitorch._utils.exceptions import MathWarning
+from dxtb.exlibs.xitorch._utils.tensor import tallqr, to_fortran_order
+from dxtb.exlibs.xitorch.debug.modes import is_debug_enabled
 
 
 def exacteig(
     A: LinearOperator, neig: int, mode: str, M: Optional[LinearOperator]
-) -> tuple[torch.Tensor, torch.Tensor]:
+) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Eigendecomposition using explicit matrix construction.
     No additional option for this method.
@@ -119,7 +119,7 @@ def davidson(
     min_eps: float = 1e-6,
     verbose: bool = False,
     **unused
-) -> tuple[torch.Tensor, torch.Tensor]:
+) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Using Davidson method for large sparse matrix eigendecomposition [2]_.
 

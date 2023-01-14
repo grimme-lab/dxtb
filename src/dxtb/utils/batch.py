@@ -4,17 +4,17 @@
 This module contains classes and helper functions associated with batch
 construction, handling and maintenance.
 """
+from __future__ import annotations
+
 from collections import namedtuple
 from functools import partial, reduce
 
 import torch
 
+from .._types import Any, Literal, Sliceable, Tensor, overload
 from . import wrap_gather
-from ..typing import Any, Literal, Tensor, overload
 
 __sort = namedtuple("sort", ("values", "indices"))
-Sliceable = list[Tensor] | tuple[Tensor, Tensor]
-bool_like = Tensor | bool
 
 
 @overload
@@ -155,7 +155,9 @@ def pack(
     return (padded, mask) if return_mask else padded
 
 
-def pargsort(tensor: Tensor, mask: bool_like | None = None, dim: int = -1) -> Tensor:
+def pargsort(
+    tensor: Tensor, mask: Tensor | bool | None = None, dim: int = -1
+) -> Tensor:
     """Returns indices that sort packed tensors while ignoring padding values.
 
     Returns the indices that sorts the elements of ``tensor`` along ``dim`` in
@@ -187,7 +189,7 @@ def pargsort(tensor: Tensor, mask: bool_like | None = None, dim: int = -1) -> Te
         return s1.gather(dim, s2)
 
 
-def psort(tensor: Tensor, mask: bool_like | None = None, dim: int = -1) -> __sort:
+def psort(tensor: Tensor, mask: Tensor | bool | None = None, dim: int = -1) -> __sort:
     """Sort a packed ``tensor`` while ignoring any padding values.
 
     Sorts the elements of ``tensor`` along ``dim`` in ascending order by value
@@ -348,7 +350,7 @@ def deflate(tensor: Tensor, value: Any = 0, axis: int | None = None) -> Tensor:
     return tensor[slices]
 
 
-def unpack(tensor: Tensor, value: Any = 0, axis: int = 0) -> tuple[Tensor]:
+def unpack(tensor: Tensor, value: Any = 0, axis: int = 0) -> tuple[Tensor, ...]:
     """Unpacks packed tensors into their constituents and removes padding.
 
     This acts as the inverse of the `pack` operation.

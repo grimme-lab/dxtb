@@ -1,16 +1,16 @@
 import functools
 import warnings
-from collections.abc import Sequence
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch
 from scipy.sparse.linalg import gmres as scipy_gmres
-from xitorch import LinearOperator
-from xitorch._impls.optimize.root.rootsolver import broyden1
-from xitorch._utils.bcast import get_bcasted_dims, normalize_bcast_dims
-from xitorch._utils.exceptions import ConvergenceWarning
-from xitorch._utils.types import get_np_dtype
+
+from dxtb.exlibs.xitorch import LinearOperator
+from dxtb.exlibs.xitorch._impls.optimize.root.rootsolver import broyden1
+from dxtb.exlibs.xitorch._utils.bcast import get_bcasted_dims, normalize_bcast_dims
+from dxtb.exlibs.xitorch._utils.exceptions import ConvergenceWarning
+from dxtb.exlibs.xitorch._utils.types import get_np_dtype
 
 __all__ = ["wrap_gmres", "cg", "bicgstab", "broyden1_solve", "exactsolve", "gmres"]
 
@@ -614,7 +614,7 @@ def _setup_linear_problem(
     batchdims: Sequence[int],
     posdef: Optional[bool],
     need_hermit: bool,
-) -> tuple[
+) -> Tuple[
     Callable[[torch.Tensor], torch.Tensor],
     Callable[[torch.Tensor], torch.Tensor],
     torch.Tensor,

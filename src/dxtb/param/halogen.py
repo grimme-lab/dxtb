@@ -1,15 +1,16 @@
 # This file is part of xtbml.
-
 """
 Definition of the halogen binding contribution.
 """
+from __future__ import annotations
 
 from pydantic import BaseModel
 
 
 class ClassicalHalogen(BaseModel):
     """
-    Representation of the classical geometry dependent halogen-bond (XB) correction for a parametrization.
+    Representation of the classical geometry dependent halogen-bond (XB)
+    correction for a parametrization.
     """
 
     damping: float

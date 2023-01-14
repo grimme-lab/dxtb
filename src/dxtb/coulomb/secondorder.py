@@ -36,14 +36,15 @@ Example
 >>> print(torch.sum(e, dim=-1))
 tensor(0.0005078)
 """
+from __future__ import annotations
 
 import torch
 
+from .._types import Tensor
 from ..basis import IndexHelper
 from ..constants import xtb
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
-from ..typing import Tensor
 from ..utils import batch, real_pairs, wrap_scatter_reduce
 from .average import AveragingFunction, averaging_function, harmonic_average
 
@@ -87,7 +88,7 @@ class ES2(Interaction):
         mat: Tensor
         """Coulomb matrix"""
 
-        def __init__(self, mat):
+        def __init__(self, mat: Tensor) -> None:
             self.mat = mat
 
     def __init__(
@@ -115,7 +116,7 @@ class ES2(Interaction):
         numbers: Tensor,
         positions: Tensor,
         ihelp: IndexHelper,
-    ) -> "ES2.Cache":
+    ) -> ES2.Cache:
         """
         Obtain the cache object containing the Coulomb matrix.
 
@@ -147,7 +148,7 @@ class ES2(Interaction):
 
     def get_atom_coulomb_matrix(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
-    ):
+    ) -> Tensor:
         """
         Calculate the Coulomb matrix.
 
@@ -191,7 +192,7 @@ class ES2(Interaction):
 
     def get_shell_coulomb_matrix(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
-    ):
+    ) -> Tensor:
         """
         Calculate the Coulomb matrix.
 
@@ -260,7 +261,7 @@ class ES2(Interaction):
         )
 
     def get_shell_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: "ES2.Cache"
+        self, charges: Tensor, ihelp: IndexHelper, cache: ES2.Cache
     ) -> Tensor:
         return (
             torch.einsum("...ik,...k->...i", cache.mat, charges)
@@ -274,7 +275,7 @@ class ES2(Interaction):
         positions: Tensor,
         ihelp: IndexHelper,
         charges: Tensor,
-        cache: "ES2.Cache",
+        cache: ES2.Cache,
     ) -> Tensor:
         return (
             self.get_shell_gradient(numbers, positions, ihelp, charges, cache)
@@ -287,7 +288,7 @@ class ES2(Interaction):
         numbers: Tensor,
         positions: Tensor,
         charges: Tensor,
-        cache: "ES2.Cache",
+        cache: ES2.Cache,
     ) -> Tensor:
         mask = real_pairs(numbers, diagonal=True)
 
@@ -327,7 +328,7 @@ class ES2(Interaction):
         positions: Tensor,
         ihelp: IndexHelper,
         charges: Tensor,
-        cache: "ES2.Cache",
+        cache: ES2.Cache,
     ) -> Tensor:
         mask = real_pairs(numbers, diagonal=True)
 

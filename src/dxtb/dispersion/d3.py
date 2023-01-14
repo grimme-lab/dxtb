@@ -1,11 +1,12 @@
 """
 DFT-D3 dispersion model.
 """
+from __future__ import annotations
 
 import tad_dftd3 as d3
 
+from .._types import CountingFunction, Tensor, Any
 from ..ncoord import exp_count, get_coordination_number
-from ..typing import CountingFunction, Tensor
 from .abc import Dispersion
 
 
@@ -49,7 +50,7 @@ class DispersionD3(Dispersion):
             self.weighting_function = weighting_function
             self.damping_function = damping_function
 
-    def get_cache(self, numbers: Tensor, **kwargs) -> "DispersionD3.Cache":
+    def get_cache(self, numbers: Tensor, **kwargs: Any) -> DispersionD3.Cache:
         """
         Obtain cache for storage of settings.
 
@@ -105,7 +106,7 @@ class DispersionD3(Dispersion):
 
         return self.Cache(ref, rcov, rvdw, r4r2, cf, wf, df)
 
-    def get_energy(self, positions: Tensor, cache: "DispersionD3.Cache") -> Tensor:
+    def get_energy(self, positions: Tensor, cache: DispersionD3.Cache) -> Tensor:
         """
         Get D3 dispersion energy.
 
@@ -137,5 +138,5 @@ class DispersionD3(Dispersion):
             cache.rvdw,
             cache.r4r2,
             cache.damping_function,
-            **self.param
+            **self.param,
         )

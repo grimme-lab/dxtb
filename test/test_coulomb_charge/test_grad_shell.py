@@ -1,16 +1,17 @@
 """
 Run tests for gradient from isotropic second-order electrostatic energy (ES2).
 """
+from __future__ import annotations
 
 from math import sqrt
 
 import pytest
 import torch
 
+from dxtb._types import Tensor
 from dxtb.basis import IndexHelper
 from dxtb.coulomb import secondorder as es2
 from dxtb.param import GFN1_XTB, get_elem_angular
-from dxtb.typing import Tensor
 from dxtb.utils import batch
 
 from .samples import samples
@@ -106,6 +107,8 @@ def calc_numerical_gradient(
         dtype=dtype,
         device=positions.device,
     )
+    if es is None:
+        assert False
     positions = positions.type(dtype)
     charges = charges.type(dtype)
 

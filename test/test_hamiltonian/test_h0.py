@@ -2,6 +2,7 @@
 Run tests for building the Hamiltonian matrix.
 References calculated with tblite 0.3.0.
 """
+from __future__ import annotations
 
 from math import sqrt
 

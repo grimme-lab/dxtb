@@ -2,6 +2,7 @@
 Test for Mulliken population analysis and charges.
 Reference values obtained with xTB 6.5.1 and tblite 0.2.1.
 """
+from __future__ import annotations
 
 import pytest
 import torch
