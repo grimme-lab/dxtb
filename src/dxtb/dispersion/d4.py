@@ -3,7 +3,7 @@ DFT-D4 dispersion model.
 """
 from __future__ import annotations
 
-from .._types import Tensor, Any, NoReturn
+from .._types import Any, NoReturn, Tensor
 from ..interaction import Interaction
 from .abc import Dispersion
 

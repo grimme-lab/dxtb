@@ -6,8 +6,6 @@ This module contains the defaults for all `dxtb` calculations.
 """
 from __future__ import annotations
 
-from __future__ import annotations
-
 import torch
 
 # General

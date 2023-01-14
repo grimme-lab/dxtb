@@ -11,7 +11,7 @@ import math
 
 import torch
 
-from .._types import Tensor, Any
+from .._types import Any, Tensor
 from ..utils import IntegralTransformError
 from . import transform
 

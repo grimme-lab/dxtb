@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import CountingFunction, Tensor, Any
+from .._types import Any, CountingFunction, Tensor
 from ..constants import xtb
 from ..data import cov_rad_d3
 from ..utils import real_pairs

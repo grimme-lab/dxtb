@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Tensor, Any, NoReturn
+from .._types import Any, NoReturn, Tensor
 from ..utils import batch, wrap_gather, wrap_scatter_reduce
 
 __all__ = ["IndexHelper"]

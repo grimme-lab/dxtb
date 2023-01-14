@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import tad_dftd3 as d3
 
-from .._types import CountingFunction, Tensor, Any
+from .._types import Any, CountingFunction, Tensor
 from ..ncoord import exp_count, get_coordination_number
 from .abc import Dispersion
 
