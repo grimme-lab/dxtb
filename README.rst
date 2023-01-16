@@ -64,8 +64,8 @@ The following dependencies are required
 
 - `numpy <https://numpy.org/>`__
 - `tomli <https://github.com/hukkin/tomli>`__
-- `torch <https://pytorch.org/>`__ version 1.11
-- `tad-dftd3 <https://github.com/dftd3/tad-dftd3>`__
+- `torch <https://pytorch.org/>`__ (>=1.11)
+- `tad-dftd3 <https://github.com/dftd3/tad-dftd3>`__ (>=0.1.0)
 - `pydantic <https://github.com/samuelcolvin/pydantic>`__
 - `pytest <https://docs.pytest.org/>`__ (tests only)
 
@@ -89,7 +89,7 @@ For development, additionally install the following tools in your environment.
 
 .. code::
 
-   mamba install black pre-commit pylint pytest pytest-cov
+   mamba install black coverage covdefaults pre-commit pylint
 
 
 With pip, add the option ``-e`` and the development dependencies for installing in development mode.
@@ -97,6 +97,19 @@ With pip, add the option ``-e`` and the development dependencies for installing 
 .. code::
 
    pip install -e .[dev]
+
+To test across different Python version, simply run tox.
+
+.. code::
+
+   tox
+
+This also includes test randomization and skips large tests. To avoid these default settings, overwrite the *posargs*.
+
+.. code::
+
+   tox -- test
+
 
 The pre-commit hooks are initialized by running the following command in the root of the repository.
 
