@@ -18,7 +18,7 @@ class Dispersion(TensorLike):
     numbers: Tensor
     """Atomic numbers of all atoms."""
 
-    param: dict[str, float]
+    param: dict[str, Tensor]
     """Dispersion parameters."""
 
     __slots__ = ["numbers", "param"]
@@ -31,7 +31,7 @@ class Dispersion(TensorLike):
     def __init__(
         self,
         numbers: Tensor,
-        param: dict[str, float],
+        param: dict[str, Tensor],
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:

@@ -9,9 +9,6 @@ dependencies:
   - python >=3.8
   - pytorch >=1.11.0
   - scipy # for xitorch
-  - black
-  - pre-commit
-  - pylint
   - pytest
   - pip:
-      - tad-dftd3==0.0.2
+      - tad-dftd3==0.1.0
