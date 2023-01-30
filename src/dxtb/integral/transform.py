@@ -4,6 +4,8 @@ The convention for spherial harmonics ordering is [0, ..., l, -l].
 """
 from __future__ import annotations
 
+# For Latex equations see: https://theochem.github.io/horton/2.0.1/tech_ref_gaussian_basis.html
+
 import math
 
 import torch
