@@ -37,7 +37,7 @@ class Dispersion(BaseModel):
     Possible dispersion parametrizations. Currently only the DFT-D3(BJ) is supported.
     """
 
-    d3: Optional[D3Model]
+    d3: Optional[D3Model] = None
     """Name of the represented method"""
 
     d4: Optional[D3Model] = None

@@ -5,7 +5,7 @@ from functools import wraps
 import torch
 
 from .._types import Callable, Gather, ScatterOrGather, Tensor
-from .torch import t2int
+from .tensors import t2int
 
 __all__ = ["scatter_reduce", "wrap_scatter_reduce", "wrap_gather"]
 

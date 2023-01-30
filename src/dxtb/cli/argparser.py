@@ -8,8 +8,8 @@ from pathlib import Path
 
 import torch
 
-from ..constants import defaults
 from .._types import Any
+from ..constants import defaults
 
 
 def is_file(path: str | Path) -> str | Path:
@@ -51,7 +51,7 @@ def action_not_less_than(min_value: float = 0.0):
 
         def __call__(
             self,
-            parser: argparse.ArgumentParser,
+            p: argparse.ArgumentParser,
             args: argparse.Namespace,
             values: list[float | int] | float | int,
             option_string: str | None = None,
@@ -60,7 +60,7 @@ def action_not_less_than(min_value: float = 0.0):
                 values = [values]
 
             if any(value < min_value for value in values):
-                parser.error(
+                p.error(
                     f"Option '{option_string}' takes only positive values ({values})."
                 )
 
@@ -79,7 +79,7 @@ class ConvertToTorchDtype(argparse.Action):
 
     def __call__(
         self,
-        parser: argparse.ArgumentParser,
+        p: argparse.ArgumentParser,
         args: argparse.Namespace,
         values: str | torch.dtype,
         option_string: str | None = None,
@@ -91,7 +91,7 @@ class ConvertToTorchDtype(argparse.Action):
         elif values in ("float64", torch.float64, "double", torch.double, "dp"):
             values = torch.float64
         else:  # unreachable due to choices
-            parser.error(
+            p.error(
                 f"Option '{option_string}' was passed an unknown keyword ({values})."
             )
 
@@ -105,7 +105,7 @@ class ConvertToTorchDevice(argparse.Action):
 
     def __call__(
         self,
-        parser: argparse.ArgumentParser,
+        p: argparse.ArgumentParser,
         args: argparse.Namespace,
         values: str,
         option_string: str | None = None,
@@ -128,15 +128,15 @@ class ConvertToTorchDevice(argparse.Action):
         if ":" in values:
             dev, idx = values.split(":")
             if dev not in allowed_devices:
-                parser.error(err_msg)
+                p.error(err_msg)
 
             if idx.isdigit() is False:
-                parser.error(err_msg)
+                p.error(err_msg)
 
             setattr(args, self.dest, torch.device(values))
             return
 
-        parser.error(err_msg)
+        p.error(err_msg)
 
 
 class Formatter(argparse.HelpFormatter):
@@ -194,7 +194,7 @@ class Formatter(argparse.HelpFormatter):
         return argparse.HelpFormatter._split_lines(self, text, width)
 
 
-def argparser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
+def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
     """
     Parses the command line arguments.
 

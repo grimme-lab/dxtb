@@ -9,11 +9,17 @@ import numpy as np
 import pytest
 import torch
 
-from dxtb.ncoord import exp_count, get_coordination_number
+from dxtb.ncoord import (
+    dexp_count,
+    exp_count,
+    get_coordination_number,
+    get_coordination_number_gradient,
+    get_dcn,
+)
 from dxtb.param import GFN1_XTB as par
+from dxtb.scf import get_density
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
-from dxtb.scf import get_density
 
 from ..utils import load_from_npz
 from .samples import samples
@@ -76,6 +82,13 @@ def no_overlap_single(dtype: torch.dtype, name: str) -> None:
 
     assert pytest.approx(dedcn, abs=tol) == ref_dedcn
     assert pytest.approx(dedr, abs=tol) == ref_dedr
+
+    # full CN gradient
+    dcndr = get_coordination_number_gradient(numbers, positions, dexp_count)
+    dcn = get_dcn(dcndr, dedcn)
+
+    ref_dcn = load_from_npz(ref_grad, f"{name}_dcn", dtype)
+    assert pytest.approx(dcn, abs=tol) == ref_dcn
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -156,3 +169,15 @@ def no_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     assert pytest.approx(dedcn, abs=tol) == ref_dedcn
     assert pytest.approx(dedr, abs=tol) == ref_dedr
+
+    # full CN
+    dcndr = get_coordination_number_gradient(numbers, positions, dexp_count)
+    dcn = get_dcn(dcndr, dedcn)
+
+    ref_dcn = batch.pack(
+        (
+            load_from_npz(ref_grad, f"{name1}_dcn", dtype),
+            load_from_npz(ref_grad, f"{name2}_dcn", dtype),
+        )
+    )
+    assert pytest.approx(dcn, abs=tol) == ref_dcn

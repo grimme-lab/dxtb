@@ -1,6 +1,9 @@
 # This file is part of xtbml.
 
 """
+Extended tight-binding parametrization
+======================================
+
 This module defines the parametrization of the extended tight-binding Hamiltonian.
 
 The structure of the parametrization is adapted from the `tblite`_ library and

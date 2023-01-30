@@ -7,7 +7,7 @@ import warnings
 
 import torch
 
-from .._types import Tensor, NoReturn
+from .._types import NoReturn, Tensor
 from ..param import Param
 from ..utils import ParameterWarning
 from .abc import Dispersion

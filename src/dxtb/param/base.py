@@ -16,16 +16,15 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from .._types import Optional
 from .charge import Charge
 from .dispersion import Dispersion
 from .element import Elements
 from .halogen import Halogen
 from .hamiltonian import Hamiltonian
 from .meta import Meta
+from .multipole import Multipole
 from .repulsion import Repulsion
 from .thirdorder import ThirdOrder
-from .multipole import Multipole
 
 
 class Param(BaseModel):
@@ -37,7 +36,7 @@ class Param(BaseModel):
     """Descriptive data on the model."""
     element: Elements
     """Element specific parameter records."""
-    hamiltonian: Hamiltonian
+    hamiltonian: Optional[Hamiltonian] = None
     """Definition of the Hamiltonian, always required."""
     dispersion: Optional[Dispersion] = None
     """Definition of the dispersion correction."""

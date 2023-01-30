@@ -25,7 +25,10 @@ exclude = ["./src/dxtb/exlibs/*"]
 [tool.coverage.run]
 plugins = ["covdefaults"]
 source = ["./src"]
-omit = ["./src/dxtb/exlibs/*"]
+omit = [
+  "./src/dxtb/exlibs/*",
+  "./src/dxtb/_types.py"
+]
 
 [tool.coverage.report]
-fail_under = 50
+fail_under = 70
