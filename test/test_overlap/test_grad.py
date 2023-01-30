@@ -1,6 +1,8 @@
 """Run tests for overlap."""
 from __future__ import annotations
 
+from math import sqrt
+
 import pytest
 import torch
 from torch.autograd.gradcheck import gradcheck, gradgradcheck
@@ -9,7 +11,7 @@ from torch.autograd.functional import jacobian
 
 from dxtb.basis import slater
 from dxtb.integral import mmd
-from dxtb.typing import Tensor
+from dxtb._types import Tensor
 from dxtb.basis import IndexHelper
 from dxtb.integral import Overlap
 from dxtb.param import GFN1_XTB as par
