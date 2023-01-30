@@ -68,7 +68,7 @@ class ES2(Interaction):
     average: AveragingFunction
     """
     Function to use for averaging the Hubbard parameters (default:
-    harmonic_average).
+    `~dxtb.coulomb.average.harmonic_average`).
     """
 
     gexp: Tensor
