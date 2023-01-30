@@ -134,9 +134,9 @@ class DispersionD3(Dispersion):
         return d3.disp.dispersion(
             self.numbers,
             positions,
+            self.param,
             c6,
             cache.rvdw,
             cache.r4r2,
             cache.damping_function,
-            **self.param,
         )
