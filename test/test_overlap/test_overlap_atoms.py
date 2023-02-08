@@ -24,7 +24,7 @@ ref_overlap = np.load("test/test_overlap/overlap.npz")
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H", "C", "Rn"])
-def test_overlap_single(dtype: torch.dtype, name: str):
+def test_single(dtype: torch.dtype, name: str):
     """Overlap matrix for monoatomic molecule should be unity."""
     dd = {"dtype": dtype}
     tol = 1e-05
@@ -44,7 +44,7 @@ def test_overlap_single(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize("dtype", [torch.float])
 @pytest.mark.parametrize("name1", ["C", "Rn"])
 @pytest.mark.parametrize("name2", ["C", "Rn"])
-def test_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Batched version."""
     dd = {"dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10

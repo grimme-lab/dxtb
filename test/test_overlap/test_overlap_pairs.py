@@ -9,7 +9,7 @@ import pytest
 import torch
 
 from dxtb.basis import Basis, IndexHelper, slater
-from dxtb.integral import Overlap, mmd
+from dxtb.integral import Overlap, overlap_gto
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 from dxtb.utils import IntegralTransformError, batch
@@ -99,7 +99,7 @@ def test_overlap_higher_orbitals(dtype: torch.dtype):
     for i in range(2):
         for j in range(2):
             ref = ref_data[f"{i}-{j}"].type(dtype).T
-            overlap = mmd.overlap(
+            overlap = overlap_gto(
                 (torch.tensor(i), torch.tensor(j)),
                 (ai, aj),
                 (ci, cj),
@@ -124,7 +124,7 @@ def test_overlap_higher_orbital_fail():
     j = torch.tensor(5)
     for i in range(5):
         with pytest.raises(IntegralTransformError):
-            mmd.overlap(
+            overlap_gto(
                 (torch.tensor(i), j),
                 (alpha[0], alpha[1]),
                 (coeff[0], coeff[1]),
@@ -133,7 +133,7 @@ def test_overlap_higher_orbital_fail():
     i = torch.tensor(5)
     for j in range(5):
         with pytest.raises(IntegralTransformError):
-            mmd.overlap(
+            overlap_gto(
                 (i, torch.tensor(j)),
                 (alpha[0], alpha[1]),
                 (coeff[0], coeff[1]),
@@ -161,7 +161,7 @@ def test_sto_ng_batch(ng: int, dtype: torch.dtype):
         dtype=dtype,
     )
 
-    s = mmd.overlap((l, l), (alpha, alpha), (coeff, coeff), vec)
+    s = overlap_gto((l, l), (alpha, alpha), (coeff, coeff), vec)
 
     assert pytest.approx(s[0, :]) == s[1, :]
     assert pytest.approx(s[0, :]) == s[2, :]

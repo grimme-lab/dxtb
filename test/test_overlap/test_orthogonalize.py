@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from dxtb.basis import orthogonalize, slater
-from dxtb.integral import mmd
+from dxtb.integral import overlap_gto
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -34,13 +34,13 @@ def test_ortho_1s_2s(dtype):
     alphaj, coeffj = orthogonalize((alphai, alphaj), (coeffi, coeffj))
 
     # normalised self-overlap
-    s = mmd.overlap((l, l), (alphaj, alphaj), (coeffj, coeffj), vec)
+    s = overlap_gto((l, l), (alphaj, alphaj), (coeffj, coeffj), vec)
     assert torch.allclose(
         s, torch.eye(1, dtype=dtype), rtol=1e-05, atol=1e-05, equal_nan=False
     )
 
     # orthogonal overlap
-    s = mmd.overlap((l, l), (alphai, alphaj), (coeffi, coeffj), vec)
+    s = overlap_gto((l, l), (alphai, alphaj), (coeffi, coeffj), vec)
     assert torch.allclose(
         s, torch.zeros(1, dtype=dtype), rtol=1e-05, atol=1e-05, equal_nan=False
     )
