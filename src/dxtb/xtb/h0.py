@@ -534,7 +534,7 @@ class Hamiltonian(TensorLike):
             zero,
         )
 
-        # distance vector from dR_AB/dr_a (n_batch, atoms_i, atoms_j, 3)
+        # distance vector from dR_AB/dr_a [n_batch, atoms_i, atoms_j, 3]
         rij = torch.where(
             mask_atom.unsqueeze(-1),
             positions.unsqueeze(-2) - positions.unsqueeze(-3),
@@ -542,14 +542,25 @@ class Hamiltonian(TensorLike):
         )
 
         # reduce to atoms
-        sval = self.ihelp.reduce_orbital_to_atom(sval, dim=(-2, -1))
         dpi = self.ihelp.reduce_shell_to_atom(dpi, dim=(-2, -1))
 
-        # multiplying with `rij` automatically includes the sign change on
-        # switching atoms, which is manually done in the Fortran code
-        # TODO: same must be done for `sval` via the derivative of the
-        # overlap -> currently doverlap=0
-        gradient = sval.unsqueeze(-1) * doverlap + dpi.unsqueeze(-1) * rij
+        # contract within orbital representation
+        doverlap = torch.permute(doverlap, (1, 2, 0))
+        ss_orb = sval.unsqueeze(-1) * doverlap
+
+        # agglomerate orbitals atom-wise
+        natm = positions.shape[-2]
+        gradient = torch.zeros([natm, 3])
+        for i in range(natm):
+            for j in range(i + 1):
+                for orbi in self.ihelp.orbital_atom_mapping(i):
+                    for orbj in self.ihelp.orbital_atom_mapping(j):
+                        # apply sign change to opposite combinations
+                        gradient[i, :] += ss_orb[orbi, orbj]
+                        gradient[j, :] -= ss_orb[orbi, orbj]
+
+        # add E_EHT contribution
+        gradient += torch.sum(dpi.unsqueeze(-1) * rij, dim=-2)
 
         # ----------------------------------------------------------------------
         # Derivative of the electronic energy w.r.t. the coordination number
@@ -576,7 +587,7 @@ class Hamiltonian(TensorLike):
         # reduce to atoms and sum for vector (requires non-symmetric matrix)
         dedcn = self.ihelp.reduce_shell_to_atom(dcn, dim=(-2, -1))
 
-        return dedcn.sum(-2), gradient.sum(-2)
+        return dedcn.sum(-2), gradient
 
     def to(self, device: torch.device) -> Hamiltonian:
         """

@@ -431,21 +431,23 @@ def overlap(
     return g
 
 
+def e_function_derivative(e, ai, li, lj):
+    # TODO: integrate into e_function
+
+    de = torch.zeros((1, li + 3, lj + 3, 3))
+
+    for m in range(3):
+        for i in range(li + 1):
+            for j in range(lj + 1):
+                de[0, j, i, m] = 2 * ai * e[m, i + 1, j, 0]
+                if i > 0:
+                    de[0, j, i, m] -= i * e[m, i - 1, j, 0]
+
+    return de
+
+
 def overlap_gradient(angular: tuple, alpha: tuple, coeff: tuple, vec: Tensor):
     """Implementation identical to tblite overlap gradient."""
-
-    def e_function_derivative(e, ai, li, lj):
-
-        de = torch.zeros((1, li + 3, lj + 3, 3))
-
-        for m in range(3):
-            for i in range(li + 1):
-                for j in range(lj + 1):
-                    de[0, j, i, m] = 2 * ai * e[m, i + 1, j, 0]
-                    if i > 0:
-                        de[0, j, i, m] -= i * e[m, i - 1, j, 0]
-
-        return de
 
     # number of primitive gaussians
     nprim_i = len(alpha[0].nonzero(as_tuple=True)[0])
