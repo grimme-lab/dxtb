@@ -228,7 +228,6 @@ def test_hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
         wmat,
         result.potential,
         cn,
-        calc.ihelp,
     )
 
     # NOTE: Autograd and especially numerical gradient are not robust.

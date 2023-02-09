@@ -609,3 +609,54 @@ class IndexHelper:
             self.orbital_index.type(dtype),
             self.orbitals_to_shell.type(dtype),
         )
+
+    def get_shell_indices(self, atom_idx: int) -> Tensor:
+        """Get shell indices belong to given atom.
+
+        Parameters
+        ----------
+        atom_idx : int
+            Index of given atom.
+
+        Returns
+        -------
+        Tensor
+            Index list of shells belonging to given atom.
+        """
+        return (self.shells_to_atom == atom_idx).nonzero(as_tuple=True)[0]
+
+    def get_orbital_indices(self, shell_idx: int) -> Tensor:
+        """Get orbital indices belong to given shell.
+
+        Parameters
+        ----------
+        shell_idx : int
+            Index of given shell.
+
+        Returns
+        -------
+        Tensor
+            Index list of orbitals belonging to given shell.
+        """
+        return (self.orbitals_to_shell == shell_idx).nonzero(as_tuple=True)[0]
+
+    def orbital_atom_mapping(self, atom_idx: int) -> Tensor:
+        """Mapping of atom index to orbital index,
+            i.e. return indices of orbitals belonging
+            to given atom. The orbital order is given
+            by the IndexHelper ihelp.orbitals_to_shell
+            attribute.
+
+        Args:
+            atom_idx (int): Index of target atom
+
+        Returns:
+            Tensor: 1d-Tensor containing the indices of the orbitals
+        """
+        return torch.tensor(
+            [
+                oidx
+                for sidx in self.get_shell_indices(atom_idx)
+                for oidx in self.get_orbital_indices(sidx).tolist()
+            ]
+        )
