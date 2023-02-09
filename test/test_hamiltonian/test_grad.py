@@ -188,8 +188,8 @@ def no_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", small + large)
 def test_hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
-    """ Test implementation of analytical gradient de/dr against tblite reference gradient.
-        Optionally, autograd and numerical gradient can also be calculated, although they may be numerically unstable.
+    """Test implementation of analytical gradient de/dr against tblite reference gradient.
+    Optionally, autograd and numerical gradient can also be calculated, although they may be numerically unstable.
     """
 
     dd = {"dtype": dtype}
@@ -210,8 +210,7 @@ def test_hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     result = calc.singlepoint(numbers, positions, chrg)
 
     # analytical overlap gradient
-    atomwise = False # [natm, 3] vs [natm, natm, 3]
-    doverlap = calc.overlap.get_gradient(positions, atomwise)
+    doverlap = calc.overlap.get_gradient(positions)
 
     cn = get_coordination_number(numbers, positions, exp_count)
     wmat = get_density(
@@ -234,7 +233,7 @@ def test_hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
 
     # NOTE: Autograd and especially numerical gradient are not robust.
     #       Therefore only mentioned for completeness here.
-    '''# autograd gradient
+    """# autograd gradient
     energy = result.scf.sum(-1)
     autograd = torch.autograd.grad(
         energy,
@@ -244,7 +243,7 @@ def test_hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     # numerical gradient
     positions.requires_grad_(False)
     numerical = calc_numerical_gradient(calc, positions, numbers, chrg)
-    '''
+    """
 
     dedr = dedr.detach().numpy()
     assert pytest.approx(dedr, abs=atol) == ref
@@ -253,11 +252,12 @@ def test_hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     dedcn = dedcn.detach().numpy()
     assert pytest.approx(dedcn, abs=atol) == ref_dedcn
 
+
 def calc_numerical_gradient(
     calc: Calculator, positions: Tensor, numbers: Tensor, chrg: Tensor
 ) -> Tensor:
     """Calculate numerical gradient of Energies to positions (de/dr)
-        by shifting atom positions.
+    by shifting atom positions.
     """
 
     # setup numerical gradient

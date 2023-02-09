@@ -270,7 +270,7 @@ class Overlap(TensorLike):
         # remove dummy
         return final[1:]
 
-    def get_overlap_grad(
+    def calc_overlap_grad(
         self, bas: Basis, positions: Tensor, ihelp: IndexHelper
     ) -> Tensor:
         """Overlap gradient dS/dr for a single molecule.
@@ -334,7 +334,7 @@ class Overlap(TensorLike):
             tmp_ = []
             for vec in vecs:
                 tmp_.append(
-                    mmd.get_ovlp_grad(ang_tuple, alpha_tuple, coeff_tuple, +vec)
+                    mmd.overlap_gradient(ang_tuple, alpha_tuple, coeff_tuple, +vec)
                 )
 
             dstmp = torch.stack(tmp_, dim=-4)  # [upairs, 3, norbi, norbj]
@@ -349,118 +349,22 @@ class Overlap(TensorLike):
 
         return grad  # [3, norb, norb]
 
-    def get_overlap_grad_atomwise(
-        self, bas: Basis, positions: Tensor, ihelp: IndexHelper
-    ) -> Tensor:
-        """Overlap gradient dS/dr for a single molecule.
+    def get_gradient(self, positions: Tensor) -> Tensor:
 
-        Args:
-            bas (Basis): Basis set for calculation.
-            positions (Tensor): Positions of single molecule.
-            ihelp (IndexHelper): Index helper for orbital mapping.
+        # TODO: setup batch mode
+        if self.numbers.ndim > 1:
+            raise NotImplementedError
+        else:
 
-        Returns:
-            Tensor: Gradient of overlap for single molecule.
-        """
-        natms = positions.shape[-2]
-        gradient = torch.zeros([natms, 3], dtype=self.dtype, device=self.device)
+            bas = Basis(
+                self.unique,
+                self.par,
+                self.ihelp.unique_angular,
+                dtype=self.dtype,
+                device=self.device,
+            )
 
-        angular_per_atom = [
-            ihelp.angular[ihelp.shells_to_atom == i]
-            for i in torch.unique_consecutive(ihelp.shells_to_atom)
-        ]
-
-        # spread coefficients to shells for indexing
-        alphas, coeffs = bas.create_cgtos()
-
-        _alpha = batch.index(batch.pack(alphas), ihelp.shells_to_ushell)
-        _coeff = batch.index(batch.pack(coeffs), ihelp.shells_to_ushell)
-
-        # TODO: for vectorised and batched cases, other solutions required
-        #       e.g. create a AtomOrderedBasis in basis.type.py with def from_basis(bas: Basis):
-        def get_atom_sorted(x: Tensor):
-            # Spread to atom sorted representation
-            x_per_atom = [
-                x[ihelp.shells_to_atom == i]
-                for i in torch.unique_consecutive(ihelp.shells_to_atom)
-            ]
-            x_atm = []
-            for atm in range(natms):
-                lmax = max(angular_per_atom[atm])
-                if lmax > 0:
-                    # x_atm.append(x_per_atom[atm])  # append dimension / view
-                    x_atm.append([[x_per_atom[atm][l]] for l in range(lmax + 1)])
-                else:
-                    x_atm.append([x_per_atom[atm]])
-                # alternatively wrap nsh = [tensor, tensor] --> [x_per_atom[atm][i] for i in x_per_atom[atm]] and [[x_per_atom[atm][l]] ...]
-            # x = [[x_per_atom[atm][l] for l in range(max(angular_per_atom[atm]))] if max(angular_per_atom[atm]) > 0 else x_per_atom[atm] for atm in range(natms)]
-
-            return x_atm
-
-        # map coefficients to atom-wise representation
-        coeff = get_atom_sorted(_coeff)
-        alpha = get_atom_sorted(_alpha)
-
-        # loop atomwise
-        for A in range(natms):
-            for B in range(A + 1):
-                if A == B:
-                    continue
-
-                vec = positions[..., A, :] - positions[..., B, :]
-
-                for li in torch.unique(angular_per_atom[A]):
-                    for lj in torch.unique(angular_per_atom[B]):
-
-                        ang_tuple = (li, lj)
-
-                        # number of shells of angular momentum li(lj) for atom A (B)
-                        nshi = len(alpha[A][li])
-                        nshj = len(alpha[B][lj])
-
-                        # number of orbitals
-                        norbi = 2 * t2int(li) + 1
-                        norbj = 2 * t2int(lj) + 1
-
-                        # TODO: directly loop over orbitals
-                        for ish in range(nshi):
-                            for jsh in range(nshj):
-                                # obtain respective coefficients
-                                alpha_tuple = (alpha[A][li][ish], alpha[B][lj][jsh])
-                                coeff_tuple = (coeff[A][li][ish], coeff[B][lj][jsh])
-
-                                stmp = mmd.get_ovlp_grad(
-                                    ang_tuple, alpha_tuple, coeff_tuple, vec
-                                )
-
-                                # correct assignment of overlap components
-                                for i in range(norbi):
-                                    for j in range(norbj):
-                                        gradient[A, :] += stmp[:, i, j]
-                                        gradient[B, :] -= stmp[:, i, j]
-
-        return gradient
-
-    def get_gradient(self, positions: Tensor, atomwise: bool = False) -> Tensor:
-
-        print("self.numbers.ndim > 1", self.numbers.ndim > 1)
-
-        bas = Basis(
-            self.unique,
-            self.par,
-            self.ihelp.unique_angular,
-            dtype=self.dtype,
-            device=self.device,
-        )
-
-        # obtain overlap gradient
-        if atomwise:  # [natm, 3]
-            dsdr = self.get_overlap_grad_atomwise(bas, positions, self.ihelp)
-        else:  # [natm, natm, 3]
-            dsdr = self.get_overlap_grad(bas, positions, self.ihelp)  # [3, norb, norb]
-
-            # reduce to atom-resolved representation (since xyz-directions
-            # are linear independent, apply to each dimension individually)
-            # dsdr = torch.stack([self.ihelp.reduce_orbital_to_atom(x, dim=(-2, -1)) for x in dsdr], dim=-1)
+            # obtain overlap gradient
+            dsdr = self.calc_overlap_grad(bas, positions, self.ihelp)  # [3, norb, norb]
 
         return dsdr
