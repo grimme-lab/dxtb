@@ -19,16 +19,10 @@ def test_ortho_1s_2s(dtype):
 
     # create gaussians
     alphai, coeffi = slater.to_gauss(
-        torch.tensor(5),
-        torch.tensor(1),
-        l,
-        vec.new_tensor(1.2),
+        torch.tensor(5), torch.tensor(1), l, vec.new_tensor(1.2)
     )
     alphaj, coeffj = slater.to_gauss(
-        torch.tensor(2),
-        torch.tensor(2),
-        l,
-        vec.new_tensor(0.7),
+        torch.tensor(2), torch.tensor(2), l, vec.new_tensor(0.7)
     )
 
     alphaj, coeffj = orthogonalize((alphai, alphaj), (coeffi, coeffj))

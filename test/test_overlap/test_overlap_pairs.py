@@ -48,23 +48,15 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
-        (
-            sample1["numbers"],
-            sample2["numbers"],
-        )
-    )
+    numbers = batch.pack((sample1["numbers"], sample2["numbers"]))
     positions = batch.pack(
-        (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
-        )
+        (sample1["positions"].type(dtype), sample2["positions"].type(dtype))
     )
     ref = batch.pack(
         (
             load_from_npz(ref_overlap, name1, dtype),
             load_from_npz(ref_overlap, name2, dtype),
-        ),
+        )
     )
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
@@ -100,10 +92,7 @@ def test_overlap_higher_orbitals(dtype: torch.dtype):
         for j in range(2):
             ref = ref_data[f"{i}-{j}"].type(dtype).T
             overlap = mmd.overlap(
-                (torch.tensor(i), torch.tensor(j)),
-                (ai, aj),
-                (ci, cj),
-                vec,
+                (torch.tensor(i), torch.tensor(j)), (ai, aj), (ci, cj), vec
             )
 
             assert pytest.approx(overlap, rel=1e-05, abs=1e-03) == ref
@@ -125,19 +114,13 @@ def test_overlap_higher_orbital_fail():
     for i in range(5):
         with pytest.raises(IntegralTransformError):
             mmd.overlap(
-                (torch.tensor(i), j),
-                (alpha[0], alpha[1]),
-                (coeff[0], coeff[1]),
-                vec,
+                (torch.tensor(i), j), (alpha[0], alpha[1]), (coeff[0], coeff[1]), vec
             )
     i = torch.tensor(5)
     for j in range(5):
         with pytest.raises(IntegralTransformError):
             mmd.overlap(
-                (i, torch.tensor(j)),
-                (alpha[0], alpha[1]),
-                (coeff[0], coeff[1]),
-                vec,
+                (i, torch.tensor(j)), (alpha[0], alpha[1]), (coeff[0], coeff[1]), vec
             )
 
 
@@ -152,14 +135,7 @@ def test_sto_ng_batch(ng: int, dtype: torch.dtype):
 
     coeff, alpha = slater.to_gauss(ng_, n, l, torch.tensor(1.0, dtype=dtype))
     coeff, alpha = coeff.type(dtype)[:ng_], alpha.type(dtype)[:ng_]
-    vec = torch.tensor(
-        [
-            [1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-            [0.0, 0.0, 1.0],
-        ],
-        dtype=dtype,
-    )
+    vec = torch.tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], dtype=dtype)
 
     s = mmd.overlap((l, l), (alpha, alpha), (coeff, coeff), vec)
 
