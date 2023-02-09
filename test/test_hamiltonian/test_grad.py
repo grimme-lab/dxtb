@@ -20,9 +20,11 @@ from dxtb.param import GFN1_XTB as par
 from dxtb.scf import get_density
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
+from dxtb._types import Tensor
 
 from ..utils import load_from_npz
 from .samples import samples
+from .gradients import gradients
 
 ref_grad = np.load("test/test_hamiltonian/grad.npz")
 
@@ -181,3 +183,99 @@ def no_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         )
     )
     assert pytest.approx(dcn, abs=tol) == ref_dcn
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", small + large)
+def test_hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
+    """ Test implementation of analytical gradient de/dr against tblite reference gradient.
+        Optionally, autograd and numerical gradient can also be calculated, although they may be numerically unstable.
+    """
+
+    dd = {"dtype": dtype}
+    atol = 1e-4
+
+    # tblite references
+    ref = gradients[name]
+    ref_dedcn = load_from_npz(ref_grad, f"{name}_dedcn", dtype)
+
+    # setup
+    sample = samples[name]
+    numbers = sample["numbers"]
+    positions = sample["positions"].type(dtype)
+    positions.requires_grad_(True)
+    chrg = torch.tensor(0.0, **dd)
+
+    calc = Calculator(numbers, par, opts=opts, **dd)
+    result = calc.singlepoint(numbers, positions, chrg)
+
+    # analytical overlap gradient
+    atomwise = False # [natm, 3] vs [natm, natm, 3]
+    doverlap = calc.overlap.get_gradient(positions, atomwise)
+
+    cn = get_coordination_number(numbers, positions, exp_count)
+    wmat = get_density(
+        result.coefficients,
+        result.occupation.sum(-2),
+        emo=result.emo,
+    )
+
+    # analytical gradient
+    dedcn, dedr = calc.hamiltonian.get_gradient(
+        positions,
+        result.overlap,
+        doverlap,
+        result.density,
+        wmat,
+        result.potential,
+        cn,
+        calc.ihelp,
+    )
+
+    # NOTE: Autograd and especially numerical gradient are not robust.
+    #       Therefore only mentioned for completeness here.
+    '''# autograd gradient
+    energy = result.scf.sum(-1)
+    autograd = torch.autograd.grad(
+        energy,
+        positions,
+    )[0]
+
+    # numerical gradient
+    positions.requires_grad_(False)
+    numerical = calc_numerical_gradient(calc, positions, numbers, chrg)
+    '''
+
+    dedr = dedr.detach().numpy()
+    assert pytest.approx(dedr, abs=atol) == ref
+
+    # NOTE: dedcn is already tested in test_hamiltonian
+    dedcn = dedcn.detach().numpy()
+    assert pytest.approx(dedcn, abs=atol) == ref_dedcn
+
+def calc_numerical_gradient(
+    calc: Calculator, positions: Tensor, numbers: Tensor, chrg: Tensor
+) -> Tensor:
+    """Calculate numerical gradient of Energies to positions (de/dr)
+        by shifting atom positions.
+    """
+
+    # setup numerical gradient
+    step = 1.0e-6
+    natm = positions.shape[0]
+    gradient = torch.zeros((natm, 3), dtype=positions.dtype)
+
+    for i in range(natm):
+        for j in range(3):
+            positions[i, j] += step
+            sR = calc.singlepoint(numbers, positions, chrg)
+            eR = sR.scf.sum(-1)
+
+            positions[i, j] -= 2 * step
+            sL = calc.singlepoint(numbers, positions, chrg)
+            eL = sL.scf.sum(-1)
+
+            positions[i, j] += step
+            gradient[i, j] = 0.5 * (eR - eL) / step
+
+    return gradient
