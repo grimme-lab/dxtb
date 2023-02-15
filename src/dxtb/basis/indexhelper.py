@@ -84,6 +84,9 @@ class IndexHelper:
     orbitals_to_shell: Tensor
     """Mapping of orbitals to shells"""
 
+    batched: bool
+    """Whether multiple systems or a single one are handled"""
+
     def __init__(
         self,
         unique_angular: Tensor,
@@ -113,6 +116,8 @@ class IndexHelper:
 
         self.__device = device
         self.__dtype = shells_per_atom.dtype
+
+        self.batched = angular.ndim > 1
 
         if any(
             tensor.dtype != self.dtype

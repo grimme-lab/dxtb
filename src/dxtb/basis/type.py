@@ -8,6 +8,7 @@ import torch
 from .._types import Tensor, TensorLike
 from ..param import Param, get_elem_param, get_elem_pqn, get_elem_valence
 from . import IndexHelper, orthogonalize, slater
+from ..utils import real_pairs
 
 # fmt: off
 primes = torch.tensor(
@@ -118,7 +119,8 @@ class Basis(TensorLike):
         ValueError
             If the number of unique shell pairs does not match the theoretical one.
         """
-
+        # NOTE: Zeros correspond to padding only if batched. They have
+        # meaning for single runs and cannot be ignored in this case.
         sh2ush = ihelp.spread_shell_to_orbital(ihelp.shells_to_ushell)
 
         # FIXME: Maybe a bitwise operation is easier to understand? For now,
@@ -126,12 +128,20 @@ class Basis(TensorLike):
         # products upon multiplication (fundamental theorem of arithmetic).
         orbs = primes.to(self.device)[sh2ush]
         orbs = orbs.unsqueeze(-2) * orbs.unsqueeze(-1)
+        sh2orb = ihelp.spread_shell_to_orbital(ihelp.orbitals_per_shell)
 
         # extra offset along only one dimension to distinguish (n, m) and
         # (m, n) of the same orbital block (e.g. 1x3 sp and 3x1 ps block)
         offset = 10000
-        sh2orb = ihelp.spread_shell_to_orbital(ihelp.orbitals_per_shell)
-        orbs += sh2orb.unsqueeze(-1) * offset
+
+        if ihelp.batched:
+            orbs = torch.where(
+                real_pairs(sh2ush),
+                orbs + sh2orb.unsqueeze(-1) * offset,
+                orbs.new_tensor(0),
+            )
+        else:
+            orbs += sh2orb.unsqueeze(-1) * offset
 
         _, umap = torch.unique(orbs, return_inverse=True)
 
