@@ -673,9 +673,17 @@ class IndexHelper:
             Tensor: Atom indices for each orbital.
         """
 
-        pad = torch.nn.utils.rnn.pad_sequence(
-            [self.shells_to_atom.T, self.orbitals_to_shell.T], padding_value=-999
-        ).T  # [2, bs, norb_max]
+        try:
+            # batch mode
+            pad = torch.nn.utils.rnn.pad_sequence(
+                [self.shells_to_atom.T, self.orbitals_to_shell.T], padding_value=-999
+            )  
+            pad = torch.einsum("ijk->kji", pad) # [2, bs, norb_max]
+        except RuntimeError:
+            # single mode
+            pad = torch.nn.utils.rnn.pad_sequence(
+                [self.shells_to_atom, self.orbitals_to_shell], padding_value=-999
+            ).T # [2, norb_max]
 
         if len(pad.shape) > 2:
             # gathering over subentries to avoid padded value (-999) in index tensor
