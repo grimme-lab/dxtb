@@ -544,20 +544,239 @@ class Hamiltonian(TensorLike):
         # reduce to atoms
         dpi = self.ihelp.reduce_shell_to_atom(dpi, dim=(-2, -1))
 
+        # equivalent to permute(..., -2, -1, -3)
+        doverlap = torch.swapaxes(doverlap, -3, -1)
+        doverlap = torch.swapaxes(doverlap, -3, -2)
+
         # contract within orbital representation
-        doverlap = torch.permute(doverlap, (1, 2, 0))
         ss_orb = sval.unsqueeze(-1) * doverlap
 
-        # agglomerate orbitals atom-wise
+        ##########
+        import sys
+
         natm = positions.shape[-2]
-        gradient = torch.zeros([natm, 3])
+        gradient = torch.zeros_like(positions)
+        if False:
+            # vectorise single
+            ilist = [
+                self.ihelp.orbital_atom_mapping(i) for i in range(natm)
+            ]  # list of lists
+            for i in range(natm):
+                for j in range(i + 1):
+                    for orbi in ilist[i]:
+                        for orbj in ilist[j]:
+                            print(orbi, orbj)
+                            gradient[..., i, :] += ss_orb[orbi, orbj]
+            print("gradient single\n", gradient)
+
+            # + part reference
+            # [[0.0000000000, 0.0000000000, 0.0000000000],
+            # [0.0000000000, 0.0000000000, 0.0758697167]]
+
+            print("ss_orb", ss_orb, ss_orb.shape)
+
+        ilist = [self.ihelp.orbital_atom_mapping(i) for i in range(natm)]
+        if False:
+            # gradient permuting contribution
+            ilist_stacked = torch.stack(ilist, dim=1)
+            print("ilist", ilist)
+            print("ilist_stacked", ilist_stacked, ilist_stacked.shape)
+            abc = ilist_stacked[..., None, :, None] == torch.arange(natm)
+            print("abc", abc, abc.shape)
+            print("ss_orb", ss_orb.shape)
+
+            gradient += torch.einsum(
+                "ijk,ij->ik",
+                ss_orb,
+                (ilist_stacked[..., None, :, None] == torch.arange(natm))
+                .to(ss_orb.dtype)
+                .sum(-2),
+            )
+            # gradient += torch.einsum("ijk,ij->ik", (ilist_stacked[..., None, :, None] == torch.arange(natm)).to(ss_orb.dtype).sum(-2), ss_orb)
+            gradient -= gradient.permute(0, 2, 1)
+            print("gradient new", gradient)
+        if False:
+
+            # get triangular matrix
+            triu_indices = torch.triu_indices(natm, natm, offset=0)
+            idx = torch.einsum("ij->ji", [triu_indices])
+            print("triu_indices", triu_indices)
+            print("idx", idx, idx.shape)
+
+            i_idx, j_idx = torch.meshgrid(torch.arange(natm), torch.arange(natm))
+            i_idx = i_idx.flatten()
+            j_idx = j_idx.flatten()
+
+            print(i_idx, i_idx.shape)
+            print(j_idx, j_idx.shape)
+
+            # Maske für untere Dreiecksmatrix erzeugen
+            mask = i_idx >= j_idx
+            i_idx = i_idx[mask]
+            j_idx = j_idx[mask]
+
+            print(i_idx, i_idx.shape)
+            print(j_idx, j_idx.shape)
+
+            orbi_idx, orbj_idx = torch.stack(
+                [
+                    torch.repeat_interleave(torch.cat(ilist, dim=0), len(ilist[i])),
+                    torch.cat(
+                        [torch.tensor(ilist[i], dtype=torch.long) for i in range(natm)],
+                        dim=0,
+                    ),
+                ],
+                dim=1,
+            )
+            orbi_idx = orbi_idx[mask]
+            orbj_idx = orbj_idx[mask]
+
+            print("here we are")
+        if False:
+            # summation over master tensor
+            # obtain norb_max
+
+            natm = positions.shape[-2]
+            ilist = [
+                self.ihelp.orbital_atom_mapping(i) for i in range(natm)
+            ]  # list of lists
+            flattened_ilist = torch.stack(ilist)  # [2, max number of orbitals per atom]
+            print("flattened_ilist", flattened_ilist, flattened_ilist.shape)
+            norb_max = torch.max(flattened_ilist) + 1
+            print("norb_max", norb_max)
+
+            master = torch.zeros([natm, natm, norb_max, norb_max, 3])
+            for i in range(natm):
+                for j in range(i + 1):
+                    for orbi in ilist[i]:
+                        for orbj in ilist[j]:
+                            master[i, j, orbi, orbj, :] = ss_orb[orbi, orbj]
+            # atomwise contributions
+            abc = master.sum((-2, -3))  # [natm, natm, 3]
+            print(abc, abc.shape)
+            gradient = abc.sum((-2))
+            print(gradient, gradient.shape)
+
+        def orbital_to_atom_mask(
+            ihelp: IndexHelper, orb_idx: int, atm_idx: int
+        ) -> bool:
+            "Returns whether orbital belongs to given atom."
+            return ihelp.shells_to_atom[ihelp.orbitals_to_shell[orb_idx]] == atm_idx
+
+        print("ss_orb", ss_orb, ss_orb.shape)
+
+        # spread to all atom-pairs
+        master = ss_orb.repeat(natm, natm, 1, 1, 1)  # [natm, natm, norb, norb, 3]
+        print("master", master.shape)
+        # TODO: obtain correct norb_max for batch
+
+        print("shells_to_atom", self.ihelp.shells_to_atom)
+        print("orbitals_to_shell", self.ihelp.orbitals_to_shell)
+
+        # mask all non-contributing pairs
+        master_mask = torch.zeros_like(master).bool()
+        o2a = self.ihelp.orbitals_per_atom
+        print("o2a", o2a)
         for i in range(natm):
-            for j in range(i + 1):
-                for orbi in self.ihelp.orbital_atom_mapping(i):
-                    for orbj in self.ihelp.orbital_atom_mapping(j):
-                        # apply sign change to opposite combinations
-                        gradient[i, :] += ss_orb[orbi, orbj]
-                        gradient[j, :] -= ss_orb[orbi, orbj]
+            for j in range(natm):
+                mask_ij = (o2a.unsqueeze(-2) == i) & (o2a.unsqueeze(-1) == j)
+                master_mask[j, i] = mask_ij.unsqueeze(-1).repeat(1, 1, 3)
+        # TODO: remove this loops here
+
+        # apply mask
+        _zero = master.new_tensor(0.0)
+        master = torch.where(master_mask, master, _zero)
+
+        # sum over orbital- and atom-wise contributions
+        # [natm, natm, norb, norb, 3] -> [natm, 3]
+        gradient = torch.einsum("ijklm->im", [master])  # master.sum((-2, -3, -4))
+        print(gradient, gradient.shape)
+        # NOTE: no (-1)*grad contribution required?
+
+        # TODO: gib den code zum schön machen nochmal in GPT
+
+        # TODO: test for batch mode
+        # TODO: be aware of correct index helper orb2atm mapping in batch
+        print("Prelim finsih")
+
+        if False:
+            # 0.1 -- batch simple loop
+            print("positions here", positions.shape)
+            batch_size = positions.shape[-3]
+            gradient = torch.zeros_like(positions)
+
+            print("ss_orb here", ss_orb.shape)
+
+            from dxtb.utils import batch
+
+            for n in range(batch_size):
+                # remove padding
+                # mask = positions[n].sum(dim=1) != 0
+                # pos_n = torch.masked_select(positions[n], mask.unsqueeze(-1))
+                # pos_n = pos_n.view(-1, positions[n].size(1))
+
+                pos_n = batch.deflate(positions[n])
+                natm = pos_n.shape[-2]
+                ilist = [self.ihelp.orbital_atom_mapping(i) for i in range(natm)]
+                # TODO: these list indices are incorrect
+                #       access correct indexhelper
+
+                ss_orb_n = batch.deflate(ss_orb[n])
+                print(ss_orb_n.shape)
+                continue
+
+                for i in range(natm):
+                    for j in range(i + 1):
+                        for orbi in ilist[i]:
+                            for orbj in ilist[j]:
+                                gradient[..., i, :] += ss_orb_n[orbi, orbj]
+                                gradient[..., j, :] -= ss_orb_n[orbi, orbj]
+
+        ##########
+
+        # orginal
+        # natm = positions.shape[-2]
+        # gradient = torch.zeros_like(positions)
+        # for i in range(natm):
+        #     for j in range(i + 1):
+        #         for orbi in self.ihelp.orbital_atom_mapping(i):
+        #             for orbj in self.ihelp.orbital_atom_mapping(j):
+        #                 gradient[..., i, :] += ss_orb[orbi, orbj]
+        #                 gradient[..., j, :] -= ss_orb[orbi, orbj]
+
+        # 2 -- pre calc orbital combinations
+        # natm = positions.shape[-2]
+        # gradient = torch.zeros_like(positions)
+        # ilist = [self.ihelp.orbital_atom_mapping(i) for i in range(natm)]
+        # for i in range(natm):
+        #     for j in range(i + 1):
+        #         for orbi in ilist[i]:
+        #             for orbj in ilist[j]:
+        #                 gradient[..., i, :] += values[orbi, orbj]
+        #                 gradient[..., j, :] -= values[orbi, orbj]
+
+        # 3 -- omit orb loops
+        # natm = positions.shape[-2]
+        # gradient = torch.zeros_like(positions)
+        # ilist = [self.ihelp.orbital_atom_mapping(i) for i in range(natm)]
+        # for i in range(natm):
+        #     for j in range(i + 1):
+        #         combi = torch.cartesian_prod(ilist[i], ilist[j])
+        #         _inc = ss_orb[combi[:, 0], combi[:, 1]].sum(dim=(-2))
+        #         gradient[..., i, :] += _inc
+        #         gradient[..., j, :] -= _inc
+
+        # 4 -- vectorised attempt
+        # gradient = torch.zeros_like(positions)
+        # list1 = [self.ihelp.orbital_atom_mapping(i) for i in range(natm)]
+        # list2 = [self.ihelp.orbital_atom_mapping(i) for i in range(natm)]
+        # idx1, idx2 = torch.meshgrid(torch.arange(natm), torch.arange(natm))
+        # mask = idx1 <= idx2
+        # value_masked = ss_orb[list1[idx1[mask]], list2[idx2[mask]], :]
+        # gradient[idx1] += value_masked
+        # gradient[idx2] -= value_masked
+
+        ###################
 
         # add E_EHT contribution
         gradient += torch.sum(dpi.unsqueeze(-1) * rij, dim=-2)
