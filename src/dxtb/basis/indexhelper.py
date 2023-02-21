@@ -72,6 +72,9 @@ class IndexHelper:
     orbitals_per_shell: Tensor
     """Number of orbitals for each shell"""
 
+    orbitals_per_atom: Tensor
+    """Number of orbitals for each atom"""
+
     shell_index: Tensor
     """Offset index for starting the next shell block"""
 
@@ -653,6 +656,7 @@ class IndexHelper:
         Returns:
             Tensor: 1d-Tensor containing the indices of the orbitals
         """
+        # NOTE: currently only single sample supported (no batch)
         return torch.tensor(
             [
                 oidx
@@ -660,3 +664,23 @@ class IndexHelper:
                 for oidx in self.get_orbital_indices(sidx).tolist()
             ]
         )
+
+    @property
+    def orbitals_per_atom(self) -> Tensor:
+        """Orbitals per atom mapping.
+
+        Returns:
+            Tensor: Atom indices for each orbital.
+        """
+
+        pad = torch.nn.utils.rnn.pad_sequence(
+            [self.shells_to_atom.T, self.orbitals_to_shell.T], padding_value=-999
+        ).T  # [2, bs, norb_max]
+
+        if len(pad.shape) > 2:
+            # gathering over subentries to avoid padded value (-999) in index tensor
+            return batch.pack([torch.gather(a[b != -999], 0, b[b != -999]) for a, b in pad], value=-999)
+            # TODO: masked_tensor could be a vectorised solution (though only available in pytorch1.13)
+            #       alternatively write all values into extra column
+        else:
+            return torch.gather(pad[0], 0, pad[1])

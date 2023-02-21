@@ -63,7 +63,7 @@ def no_overlap_single(dtype: torch.dtype, name: str) -> None:
     result = calc.singlepoint(numbers, positions, chrg)
 
     # set derivative of overlap to zero
-    doverlap = torch.tensor(0.0, **dd)
+    doverlap = torch.zeros((*result.overlap.shape, 3), **dd)
 
     cn = get_coordination_number(numbers, positions, exp_count)
     wmat = get_density(
@@ -150,7 +150,7 @@ def no_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     result = calc.singlepoint(numbers, positions, chrg)
 
     # set derivative of overlap to zero
-    doverlap = torch.tensor(0.0, **dd)
+    doverlap = torch.zeros((*result.overlap.shape, 3), **dd)
 
     cn = get_coordination_number(numbers, positions, exp_count)
     wmat = get_density(
@@ -185,9 +185,7 @@ def no_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     assert pytest.approx(dcn, abs=tol) == ref_dcn
 
 
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", small + large)
-def test_hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
+def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     """Test implementation of analytical gradient de/dr against tblite reference gradient.
     Optionally, autograd and numerical gradient can also be calculated, although they may be numerically unstable.
     """
@@ -278,3 +276,107 @@ def calc_numerical_gradient(
             gradient[i, j] = 0.5 * (eR - eL) / step
 
     return gradient
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", small)
+def test_hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
+    hamiltonian_grad_single(dtype, name)
+
+
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", large)
+def test_hamiltonian_grad_single_large(dtype: torch.dtype, name: str) -> None:
+    hamiltonian_grad_single(dtype, name)
+
+
+def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    dd = {"dtype": dtype}
+    # tol = sqrt(torch.finfo(dtype).eps) * 10
+    atol = 1e-4
+
+    sample1, sample2 = samples[name1], samples[name2]
+
+    numbers = batch.pack(
+        (
+            sample1["numbers"],
+            sample2["numbers"],
+        )
+    )
+    positions = batch.pack(
+        (
+            sample1["positions"].type(dtype),
+            sample2["positions"].type(dtype),
+        )
+    )
+    chrg = batch.pack(
+        (
+            torch.tensor(0.0, **dd),
+            torch.tensor(0.0, **dd),
+        )
+    )
+
+    ref_dedr = batch.pack(
+        (
+            gradients[name1],
+            gradients[name2],
+        )
+    )
+    ref_dedcn = batch.pack(
+        (
+            load_from_npz(ref_grad, f"{name1}_dedcn", dtype),
+            load_from_npz(ref_grad, f"{name2}_dedcn", dtype),
+        )
+    )
+
+    calc = Calculator(numbers, par, opts=opts, **dd)
+    result = calc.singlepoint(numbers, positions, chrg)
+
+    # analytical overlap gradient
+    doverlap = calc.overlap.get_gradient(positions)  # TODO
+
+    cn = get_coordination_number(numbers, positions, exp_count)
+    wmat = get_density(
+        result.coefficients,
+        result.occupation.sum(-2),
+        emo=result.emo,
+    )
+
+    dedcn, dedr = calc.hamiltonian.get_gradient(  # TODO
+        positions,
+        result.overlap,
+        doverlap,
+        result.density,
+        wmat,
+        result.potential,
+        cn,
+    )
+
+    assert pytest.approx(dedcn, abs=atol) == ref_dedcn
+    assert pytest.approx(dedr, abs=atol) == ref_dedr
+
+    # full CN
+    dcndr = get_coordination_number_gradient(numbers, positions, dexp_count)
+    dcn = get_dcn(dcndr, dedcn)
+
+    ref_dcn = batch.pack(
+        (
+            load_from_npz(ref_grad, f"{name1}_dcn", dtype),
+            load_from_npz(ref_grad, f"{name2}_dcn", dtype),
+        )
+    )
+    assert pytest.approx(dcn, abs=atol) == ref_dcn
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", small)
+def test_hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    hamiltonian_grad_batch(dtype, name1, name2)
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name1", ["LiH", "PbH4-BiH3"])
+@pytest.mark.parametrize("name2", large)
+def test_hamiltonian_grad_batch_large(dtype: torch.dtype, name1: str, name2: str) -> None:
+    hamiltonian_grad_batch(dtype, name1, name2)

@@ -58,7 +58,8 @@ class Overlap(TensorLike):
         self.ihelp = ihelp
 
     def build(self, positions: Tensor) -> Tensor:
-        """Overlap calculation of unique shells pairs.
+        """Overlap calculation of unique shells pairs,
+        using the McMurchie-Davidson algorithm.
 
         Returns
         -------
@@ -70,7 +71,7 @@ class Overlap(TensorLike):
             o = []
             for _batch in range(self.numbers.shape[0]):
                 # unfortunately, we need a new IndexHelper for each batch,
-                # but this is much faster than `get_overlap`
+                # but this is much faster than `calc_overlap`
                 nums = batch.deflate(self.numbers[_batch])
                 ihelp = IndexHelper.from_numbers(
                     nums, get_elem_angular(self.par.element)
@@ -84,7 +85,7 @@ class Overlap(TensorLike):
                     device=self.device,
                 )
 
-                o.append(self.get_overlap(bas, positions[_batch], ihelp))
+                o.append(self.calc_overlap(bas, positions[_batch], ihelp))
 
             overlap = batch.pack(o)
         else:
@@ -95,12 +96,12 @@ class Overlap(TensorLike):
                 dtype=self.dtype,
                 device=self.device,
             )
-            overlap = self.get_overlap(bas, positions, self.ihelp)
+            overlap = self.calc_overlap(bas, positions, self.ihelp)
 
         # force symmetry to avoid problems through numerical errors
         return symmetrize(overlap)
 
-    def get_overlap(self, bas: Basis, positions: Tensor, ihelp: IndexHelper) -> Tensor:
+    def calc_overlap(self, bas: Basis, positions: Tensor, ihelp: IndexHelper) -> Tensor:
         """Overlap calculation for a single molecule.
 
         Parameters
@@ -350,10 +351,41 @@ class Overlap(TensorLike):
         return grad  # [3, norb, norb]
 
     def get_gradient(self, positions: Tensor) -> Tensor:
+        """Gradient calculation for McMurchie-Davidson overlap.
 
-        # TODO: setup batch mode
+        Parameters
+        ----------
+        positions : Tensor
+            Positions of given molecule.
+
+        Returns
+        -------
+        Tensor
+            Gradient of the overlap w.r.t. given positions.
+        """
+
         if self.numbers.ndim > 1:
-            raise NotImplementedError
+            _grads = []
+            for _batch in range(self.numbers.shape[0]):
+                # setup individual `IndexHelper` and `Basis`
+                nums = batch.deflate(self.numbers[_batch])
+                ihelp = IndexHelper.from_numbers(
+                    nums, get_elem_angular(self.par.element)
+                )
+
+                bas = Basis(
+                    torch.unique(nums),
+                    self.par,
+                    ihelp.unique_angular,
+                    dtype=self.dtype,
+                    device=self.device,
+                )
+
+                dsdr_i = self.calc_overlap_grad(bas, positions[_batch], ihelp)   
+                _grads.append(torch.einsum("ijk ->kji", dsdr_i)) # [norb, norb, 3]
+
+            dsdr = batch.pack(_grads)
+
         else:
 
             bas = Basis(
@@ -365,6 +397,7 @@ class Overlap(TensorLike):
             )
 
             # obtain overlap gradient
-            dsdr = self.calc_overlap_grad(bas, positions, self.ihelp)  # [3, norb, norb]
+            dsdr = self.calc_overlap_grad(bas, positions, self.ihelp)
+            dsdr = torch.einsum("ijk ->kji", dsdr)  # [norb, norb, 3]
 
         return dsdr
