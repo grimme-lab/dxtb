@@ -13,4 +13,4 @@ from . import explicit
 from . import recursion
 
 # set default
-from .explicit import mmd_explicit as overlap_gto
+from .recursion import mmd_recursion as overlap_gto
