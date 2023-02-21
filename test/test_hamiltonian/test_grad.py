@@ -353,6 +353,8 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         cn,
     )
 
+    dedr = dedr.detach()
+    dedcn = dedcn.detach()
     assert pytest.approx(dedcn, abs=atol) == ref_dedcn
     assert pytest.approx(dedr, abs=atol) == ref_dedr
 
@@ -366,6 +368,7 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
             load_from_npz(ref_grad, f"{name2}_dcn", dtype),
         )
     )
+    dcn = dcn.detach()
     assert pytest.approx(dcn, abs=atol) == ref_dcn
 
 
