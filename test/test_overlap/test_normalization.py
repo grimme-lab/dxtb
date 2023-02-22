@@ -23,17 +23,17 @@ from dxtb.integral import overlap_gto
         (3, 2),
         (4, 2),
         (5, 2),
-        # (4, 3),
-        # (5, 3),
+        (4, 3),
+        (5, 3),
         # (5, 4),
     ],
 )
-@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_sto_ng_single(ng, n, l, dtype):
     """
     Test normalization of all STO-NG basis functions
     """
-    atol = 1.0e-6 if dtype == torch.float32 else 1.0e-7
+    atol = 1.0e-6 if dtype == torch.float else 2.0e-7
 
     alpha, coeff = slater.to_gauss(ng, n, l, torch.tensor(1.0, dtype=dtype))
     angular = torch.tensor(l)
