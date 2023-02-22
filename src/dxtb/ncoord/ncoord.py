@@ -1,22 +1,24 @@
 """
 Calculation of coordination number with various counting functions.
 """
+from __future__ import annotations
 
 import torch
 
+from .._types import Any, CountingFunction, Tensor
 from ..constants import xtb
 from ..data import cov_rad_d3
-from ..typing import CountingFunction, Tensor
 from ..utils import real_pairs
+from .count import dexp_count, exp_count
 
 
 def get_coordination_number(
     numbers: Tensor,
     positions: Tensor,
-    counting_function: CountingFunction,
+    counting_function: CountingFunction = exp_count,
     rcov: Tensor | None = None,
     cutoff: Tensor | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> Tensor:
     """
     Compute fractional coordination number using an exponential counting function.
@@ -81,11 +83,40 @@ def get_coordination_number(
 def get_coordination_number_gradient(
     numbers: Tensor,
     positions: Tensor,
-    dcounting_function: CountingFunction,
+    dcounting_function: CountingFunction = dexp_count,
     rcov: Tensor | None = None,
     cutoff: Tensor | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> Tensor:
+    """
+    Compute the derivative of the fractional coordination number with respect
+    to atomic positions.
+
+    Parameters
+    ----------
+    numbers : Tensor
+        Atomic numbers of molecular structure.
+    positions : Tensor
+        Atomic positions of molecular structure.
+    dcounting_function : CountingFunction
+        Derivative of the counting function.
+    rcov : Tensor | None, optional
+        Covalent radii for each species. Defaults to `None`.
+    cutoff : Tensor | None, optional
+        Real-space cutoff. Defaults to `None`.
+    kwargs : dict[str, Any]
+        Pass-through arguments for counting function.
+
+    Returns
+    -------
+    Tensor
+        Coordination numbers for all atoms.
+
+    Raises
+    ------
+    ValueError
+        If shape mismatch between `numbers`, `positions` and `rcov` is detected.
+    """
     if cutoff is None:
         cutoff = positions.new_tensor(xtb.NCOORD_DEFAULT_CUTOFF)
     if rcov is None:
@@ -116,13 +147,34 @@ def get_coordination_number_gradient(
     )
 
     # (n_batch, n_atoms, n_atoms, 3)
-    rij = torch.where(
-        mask.unsqueeze(-1),
-        positions.unsqueeze(-2) - positions.unsqueeze(-3),
-        positions.new_tensor(0.0),
-    )
+    rij = positions.unsqueeze(-2) - positions.unsqueeze(-3)
 
     # (n_batch, n_atoms, n_atoms, 3)
     dcf = (dcf / distances).unsqueeze(-1) * rij
 
     return dcf
+
+
+def get_dcn(dcndr: Tensor, dedcn: Tensor) -> Tensor:
+    """
+    Calculate complete derivative for coordination number.
+
+    Parameters
+    ----------
+    dcndr : Tensor
+        Derivative of CN with resprect to atomic positions.
+        Shape: (batch, natoms, natoms, 3)
+    dedcn : Tensor
+        Derivative of energy with respect to CN.
+        Shape: (batch, natoms, 3)
+
+    Returns
+    -------
+    Tensor
+        Gradient originating from the coordination number.
+    """
+
+    # same atom terms added separately (missing due to mask)
+    return torch.einsum("...ijx, ...j -> ...ix", dcndr, dedcn) + (
+        dcndr.sum(-2) * dedcn.unsqueeze(-1)
+    )

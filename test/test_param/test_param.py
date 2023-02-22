@@ -1,4 +1,5 @@
 # This file is part of xtbml.
+from __future__ import annotations
 
 import pytest
 import tomli as toml

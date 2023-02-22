@@ -1,57 +1,20 @@
 """
-Main module and command line entrypoint for dxtb.
+dxtb
+====
+
+A fully differentiable extended tight-binding package.
 """
 
-import sys
+from __future__ import annotations
 
-from . import cli
 from .__version__ import __version__
-
-__all__ = ["__version__"]
-
-
-def main() -> None:
-    if getattr(sys, "frozen", False):
-        # pylint: disable=import-outside-toplevel
-        from multiprocessing import freeze_support
-
-        freeze_support()
-
-    if "--profile" in sys.argv:
-        # pylint: disable=import-outside-toplevel
-        import cProfile
-        import pstats
-
-        with cProfile.Profile() as profile:
-            entry_point()
-
-        stats = pstats.Stats(profile)
-        stats.sort_stats(pstats.SortKey.TIME)
-
-        # Use snakeviz to visualize the profile
-        stats.dump_stats("dxtb.profile")
-    else:
-        entry_point()
-
-
-def entry_point() -> None:
-    """
-    Wrapper for singlepoint driver.
-    """
-
-    args = cli.argparser().parse_args()
-
-    if hasattr(args, "version") is True:
-        print(f"dxtb {__version__}")
-        sys.exit(0)
-
-    if args.file is None:
-        print("No coordinate file given.")
-        sys.exit(0)
-
-    d = cli.Driver(args)
-    d.singlepoint()
-
-
-if __name__ == "__main__":
-    main()
+from .basis import Basis, IndexHelper
+from .bond import guess_bond_length, guess_bond_order
+from .charges import ChargeModel, solve
+from .classical import Halogen, Repulsion, new_halogen, new_repulsion
+from .coulomb import ES2, ES3, new_es2, new_es3
+from .dispersion import DispersionD3, new_dispersion
+from .integral import Overlap
+from .param import Param
+from .solvation import GeneralizedBorn
+from .xtb import Calculator, Hamiltonian

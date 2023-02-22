@@ -1,9 +1,8 @@
 """
-Main module and command line entrypoint for dxtb.
-(Allows running with `python -m`.)
+Entry point for command line interface via `python -m <prog>`.
 """
 
-from . import main
+from .cli import console_entry_point
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(console_entry_point())

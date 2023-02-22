@@ -1,12 +1,13 @@
 """
 Abstract base class for dispersion models.
 """
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
 import torch
 
-from ..typing import Tensor, TensorLike
+from .._types import Tensor, TensorLike
 
 
 class Dispersion(TensorLike):
@@ -17,7 +18,7 @@ class Dispersion(TensorLike):
     numbers: Tensor
     """Atomic numbers of all atoms."""
 
-    param: dict[str, float]
+    param: dict[str, Tensor]
     """Dispersion parameters."""
 
     __slots__ = ["numbers", "param"]
@@ -30,7 +31,7 @@ class Dispersion(TensorLike):
     def __init__(
         self,
         numbers: Tensor,
-        param: dict[str, float],
+        param: dict[str, Tensor],
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
@@ -39,7 +40,7 @@ class Dispersion(TensorLike):
         self.param = param
 
     @abstractmethod
-    def get_cache(self, numbers: Tensor) -> "Cache":
+    def get_cache(self, numbers: Tensor) -> Cache:
         """
         Store variables for energy calculation.
 
@@ -55,7 +56,7 @@ class Dispersion(TensorLike):
         """
 
     @abstractmethod
-    def get_energy(self, positions: Tensor, cache: "Cache") -> Tensor:
+    def get_energy(self, positions: Tensor, cache: Cache) -> Tensor:
         """
         Get dispersion energy.
 

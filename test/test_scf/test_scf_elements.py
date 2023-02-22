@@ -5,6 +5,7 @@ Reference values obtained with tblite 0.2.1 disabling repulsion and dispersion.
 Note: Spin can be explicitly passed through options but it also works by letting
 the corresponding function figure out the alpha/beta occupation automatically.
 """
+from __future__ import annotations
 
 import pytest
 import torch
@@ -386,7 +387,7 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
             "xitorch_fatol": 1e-5,  # avoid Jacobian inversion error
             "xitorch_xatol": 1e-5,  # avoid Jacobian inversion error
             "spin": uhf_cation[number - 1],
-        }
+        },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
 
@@ -426,7 +427,7 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
             "xitorch_fatol": 1e-5,  # avoid Jacobian inversion error
             "xitorch_xatol": 1e-5,  # avoid Jacobian inversion error
             "spin": uhf_anion[number - 1],
-        }
+        },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
     results = calc.singlepoint(numbers, positions, charges)
@@ -448,8 +449,8 @@ def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:
     refs = batch.pack((sample["escf"], ref[number - 1])).type(dtype)
     charges = torch.tensor([0.0, 0.0], **dd)
 
-    opts["spin"] = [0, uhf[number - 1]]
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    options = dict(opts, **{"spin": [0, uhf[number - 1]]})
+    calc = Calculator(numbers, par, opts=options, **dd)
     results = calc.singlepoint(numbers, positions, charges)
 
     assert torch.allclose(refs, results.scf.sum(-1), atol=tol)

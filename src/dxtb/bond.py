@@ -47,11 +47,12 @@ tensor([[False, False,  True,  True,  True, False, False, False],
         [False,  True, False, False, False, False, False, False]])
 
 """
+from __future__ import annotations
 
 import torch
 
+from ._types import Any, CountingFunction, Tensor
 from .ncoord import erf_count
-from .typing import CountingFunction, Tensor
 from .utils import real_pairs
 
 _en = torch.tensor(
@@ -218,7 +219,7 @@ def guess_bond_order(
     positions: Tensor,
     cn: Tensor,
     counting_function: CountingFunction = erf_count,
-    **kwargs,
+    **kwargs: Any,
 ) -> Tensor:
     """
     Try to guess whether an atom pair is bonded using a geometric criterium.

@@ -1,12 +1,14 @@
 """
 Parser for command line options.
 """
+from __future__ import annotations
 
 import argparse
 from pathlib import Path
 
 import torch
 
+from .._types import Any
 from ..constants import defaults
 
 
@@ -49,7 +51,7 @@ def action_not_less_than(min_value: float = 0.0):
 
         def __call__(
             self,
-            parser: argparse.ArgumentParser,
+            p: argparse.ArgumentParser,
             args: argparse.Namespace,
             values: list[float | int] | float | int,
             option_string: str | None = None,
@@ -58,7 +60,7 @@ def action_not_less_than(min_value: float = 0.0):
                 values = [values]
 
             if any(value < min_value for value in values):
-                parser.error(
+                p.error(
                     f"Option '{option_string}' takes only positive values ({values})."
                 )
 
@@ -77,22 +79,21 @@ class ConvertToTorchDtype(argparse.Action):
 
     def __call__(
         self,
-        parser: argparse.ArgumentParser,
+        p: argparse.ArgumentParser,
         args: argparse.Namespace,
         values: str | torch.dtype,
         option_string: str | None = None,
     ) -> None:
-        match values:
-            case "float16" | torch.float16:
-                values = torch.float16
-            case "float32" | torch.float32 | "sp":
-                values = torch.float32
-            case "float64" | torch.float64 | "double" | torch.double | "dp":
-                values = torch.float64
-            case _:  # unreachable due to choices
-                parser.error(
-                    f"Option '{option_string}' was passed an unknown keyword ({values})."
-                )
+        if values in ("float16", torch.float16):
+            values = torch.float16
+        elif values in ("float32", torch.float32, "sp"):
+            values = torch.float32
+        elif values in ("float64", torch.float64, "double", torch.double, "dp"):
+            values = torch.float64
+        else:  # unreachable due to choices
+            p.error(
+                f"Option '{option_string}' was passed an unknown keyword ({values})."
+            )
 
         setattr(args, self.dest, values)
 
@@ -104,7 +105,7 @@ class ConvertToTorchDevice(argparse.Action):
 
     def __call__(
         self,
-        parser: argparse.ArgumentParser,
+        p: argparse.ArgumentParser,
         args: argparse.Namespace,
         values: str,
         option_string: str | None = None,
@@ -127,15 +128,15 @@ class ConvertToTorchDevice(argparse.Action):
         if ":" in values:
             dev, idx = values.split(":")
             if dev not in allowed_devices:
-                parser.error(err_msg)
+                p.error(err_msg)
 
             if idx.isdigit() is False:
-                parser.error(err_msg)
+                p.error(err_msg)
 
             setattr(args, self.dest, torch.device(values))
             return
 
-        parser.error(err_msg)
+        p.error(err_msg)
 
 
 class Formatter(argparse.HelpFormatter):
@@ -193,7 +194,7 @@ class Formatter(argparse.HelpFormatter):
         return argparse.HelpFormatter._split_lines(self, text, width)
 
 
-def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
+def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
     """
     Parses the command line arguments.
 
@@ -207,27 +208,27 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
         "description", "dxtb - Fully differentiable extended tight-binding program."
     )
 
-    parser = argparse.ArgumentParser(
+    p = argparse.ArgumentParser(
         description=desc,
         prog=name,
         formatter_class=lambda prog: Formatter(prog, max_help_position=60),
         add_help=False,
         **kwargs,
     )
-    parser.add_argument(
+    p.add_argument(
         "-h",
         "--help",
         action="help",
         default=argparse.SUPPRESS,
         help="R|Show this help message and exit.",
     )
-    parser.add_argument(
+    p.add_argument(
         "--version",
         action="store_true",
         default=argparse.SUPPRESS,
         help="Show version and exit.",
     )
-    parser.add_argument(
+    p.add_argument(
         "--chrg",
         action=action_not_less_than(-10.0),
         type=int,
@@ -235,7 +236,7 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
         nargs="+",
         help="R|Molecular charge.",
     )
-    parser.add_argument(
+    p.add_argument(
         "--spin",
         "--uhf",
         action=action_not_less_than(0.0),
@@ -244,7 +245,7 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
         nargs="+",
         help="R|Molecular spin.",
     )
-    parser.add_argument(
+    p.add_argument(
         "--exclude",
         type=str,
         default=defaults.EXCLUDE,
@@ -252,14 +253,14 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
         nargs="+",
         help="R|Turn off energy contributions.",
     )
-    parser.add_argument(
+    p.add_argument(
         "--etemp",
         action=action_not_less_than(0.0),
         type=float,
         default=defaults.ETEMP,
         help="R|Electronic Temperature in K.",
     )
-    parser.add_argument(
+    p.add_argument(
         "--dtype",
         action=ConvertToTorchDtype,
         type=str,
@@ -267,59 +268,59 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
         choices=defaults.TORCH_DTYPE_CHOICES,
         help="R|Data type for PyTorch floating point tensors.",
     )
-    parser.add_argument(
+    p.add_argument(
         "--device",
         action=ConvertToTorchDevice,
         type=str,
         default=torch.device(defaults.TORCH_DEVICE),
         help="R|Device for PyTorch tensors.",
     )
-    parser.add_argument(
+    p.add_argument(
         "--fermi_maxiter",
         type=int,
         default=defaults.FERMI_MAXITER,
         help="R|Maximum number of iterations for Fermi smearing.",
     )
-    parser.add_argument(
+    p.add_argument(
         "--fermi_energy_partition",
         type=str,
         default=defaults.FERMI_FENERGY_PARTITION,
         choices=defaults.FERMI_FENERGY_PARTITION_CHOICES,
         help="R|Partitioning scheme for electronic free energy.",
     )
-    parser.add_argument(
+    p.add_argument(
         "--maxiter",
         type=int,
         default=defaults.MAXITER,
         help="R|Maximum number of SCF iterations.",
     )
-    parser.add_argument(
+    p.add_argument(
         "-v",
         "--verbosity",
         type=int,
         default=defaults.VERBOSITY,
         help="R|Verbosity level of printout.",
     )
-    parser.add_argument(
+    p.add_argument(
         "--method",
         type=str,
         default=defaults.METHOD,
         choices=defaults.METHOD_CHOICES,
         help="R|Method for calculation.",
     )
-    parser.add_argument(
+    p.add_argument(
         "--guess",
         type=str,
         default=defaults.GUESS,
         choices=defaults.GUESS_CHOICES,
         help="R|Model for initial charges.",
     )
-    parser.add_argument(
+    p.add_argument(
         "--grad",
         action="store_true",
         help="R|Whether to compute gradients for positions w.r.t. energy.",
     )
-    parser.add_argument(
+    p.add_argument(
         "--profile",
         action="store_true",
         help=(
@@ -327,36 +328,36 @@ def argparser(name: str = "dxtb", **kwargs) -> argparse.ArgumentParser:
             "Creates 'dxtb.profile' that can be analyzed with 'snakeviz'."
         ),
     )
-    parser.add_argument(
+    p.add_argument(
         "--xtol",
         type=float,
         default=defaults.XITORCH_XATOL,
         help="R|Set absolute tolerance for SCF (input).",
     )
-    parser.add_argument(
+    p.add_argument(
         "--ftol",
         type=float,
         default=defaults.XITORCH_FATOL,
         help="R|Set absolute tolerance for SCF (output).",
     )
 
-    parser.add_argument(
+    p.add_argument(
         "--dir",
         nargs="?",
         type=is_dir,  # manual validation
         help="R|Directory with all files. Searches recursively.",
     )
-    parser.add_argument(
+    p.add_argument(
         "--filetype",
         type=str,
         choices=["xyz", "tm", "tmol", "turbomole", "json", "qcschema"],
         help="R|Explicitly set file type of input.",
     )
-    parser.add_argument(
+    p.add_argument(
         "file",
         nargs="?",
         type=is_file,  # manual validation
         help="R|Path to coordinate file.",
     )
 
-    return parser
+    return p

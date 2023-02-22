@@ -1,11 +1,12 @@
 """
 Wavefunction analysis via Mulliken populations.
 """
+from __future__ import annotations
 
 import torch
 
+from .._types import Tensor
 from ..basis import IndexHelper
-from ..typing import Tensor
 
 
 def get_orbital_populations(

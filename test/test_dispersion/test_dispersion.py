@@ -4,14 +4,15 @@ Testing dispersion energy and autodiff.
 These tests are taken from https://github.com/awvwgk/tad-dftd3/tree/main/tests
 and are only included for the sake of completeness.
 """
+from __future__ import annotations
 
 import pytest
 import tad_dftd3 as d3
 import torch
 
+from dxtb._types import Tensor
 from dxtb.dispersion import DispersionD3, new_dispersion
 from dxtb.param import GFN1_XTB as par
-from dxtb.typing import Tensor
 from dxtb.utils import ParameterWarning, batch
 
 from .samples import samples
@@ -64,15 +65,19 @@ def test_disp_batch(dtype: torch.dtype) -> None:
 
     rvdw = d3.data.vdw_rad_d3[numbers.unsqueeze(-1), numbers.unsqueeze(-2)]
     r4r2 = d3.data.sqrt_z_r4_over_r2[numbers]
-    param = dict(a1=0.49484001, s8=0.78981345, a2=5.73083694)
+    param = {
+        "a1": torch.tensor(0.49484001, **dd),
+        "s8": torch.tensor(0.78981345, **dd),
+        "a2": torch.tensor(5.73083694, **dd),
+    }
 
     energy = d3.disp.dispersion(
-        numbers, positions, c6, rvdw, r4r2, d3.disp.rational_damping, **param
+        numbers, positions, param, c6, rvdw, r4r2, d3.disp.rational_damping
     )
     assert energy.dtype == dtype
     assert torch.allclose(energy, ref)
 
-    # create copy as par lives in global scope
+    # create copy as `par` lives in global scope
     _par = par.copy(deep=True)
     if _par.dispersion is None or _par.dispersion.d3 is None:
         assert False
@@ -89,8 +94,8 @@ def test_disp_batch(dtype: torch.dtype) -> None:
     cache = disp.get_cache(numbers)
     edisp = disp.get_energy(positions, cache)
     assert edisp.dtype == dtype
-    assert torch.allclose(edisp, ref)
-    assert torch.allclose(edisp, energy)
+    assert pytest.approx(edisp) == ref
+    assert pytest.approx(edisp) == energy
 
 
 @pytest.mark.grad
@@ -100,7 +105,7 @@ def test_grad_pos() -> None:
 
     sample = samples["C4H5NCS"]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    positions = sample["positions"].type(dtype).detach().clone()
 
     # variable to be differentiated
     positions.requires_grad_(True)
@@ -128,11 +133,9 @@ def test_grad_pos_tblite(dtype: torch.dtype) -> None:
 
     sample = samples["PbH4-BiH3"]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    ref = sample["grad"].type(dtype)
-
-    # variable to be differentiated
+    positions = sample["positions"].type(dtype).detach().clone()
     positions.requires_grad_(True)
+    ref = sample["grad"].type(dtype)
 
     disp = new_dispersion(numbers, par, **dd)
     if disp is None:
@@ -148,7 +151,7 @@ def test_grad_pos_tblite(dtype: torch.dtype) -> None:
         assert False
     grad_backward = positions.grad.clone()
 
-    assert torch.allclose(ref, grad_backward)
+    assert pytest.approx(grad_backward, abs=1e-10) == ref
 
 
 @pytest.mark.grad

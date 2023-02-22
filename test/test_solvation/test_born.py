@@ -2,12 +2,14 @@
 Run tests for calculation of Born radii according to the Onufriev-Bashford-Case
 model. Reference values are obtained from the tblite version.
 """
+from __future__ import annotations
 
 import pytest
 import torch
 
-from dxtb.solvation import born, vdw_rad_d3
-from dxtb.typing import Tensor
+from dxtb._types import Tensor
+from dxtb.data import vdw_rad_d3
+from dxtb.solvation import born
 from dxtb.utils import batch
 
 from .samples import samples
@@ -117,10 +119,9 @@ def test_psi_grad(name: str):
     sample = samples[name]
 
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    rvdw = vdw_rad_d3[numbers].type(dtype)
-
+    positions = sample["positions"].type(dtype).detach().clone()
     positions.requires_grad_(True)
+    rvdw = vdw_rad_d3[numbers].type(dtype)
 
     def func(positions: Tensor):
         return born.compute_psi(numbers, positions, rvdw)
@@ -139,7 +140,7 @@ def test_radii_grad(name: str):
     sample = samples[name]
 
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    positions = sample["positions"].type(dtype).detach().clone()
     positions.requires_grad_(True)
 
     def func(positions: Tensor):

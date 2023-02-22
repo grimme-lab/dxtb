@@ -8,7 +8,7 @@ Example
 -------
 >>> import torch
 >>> import xtbml.coulomb.thirdorder as es3
->>> from xtbml.param import GFN1_XTB, get_element_param
+>>> from xtbml.param import GFN1_XTB, get_element_param, get_elem_angular
 >>> numbers = torch.tensor([14, 1, 1, 1, 1])
 >>> positions = torch.tensor([
 ...     [0.00000000000000, -0.00000000000000, 0.00000000000000],
@@ -25,19 +25,22 @@ Example
 ...     2.10320626451179e-2,
 ... ])
 >>> hubbard_derivs = get_element_param(GFN1_XTB.element, "gam3")
+>>> ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
 >>> es = es3.ES3(positions, hubbard_derivs)
->>> e = es.get_energy(numbers, qat)
+>>> cache = es.get_cache(ihelp)
+>>> e = es.get_atom_energy(qat, cache)
 >>> torch.set_printoptions(precision=7)
 >>> print(torch.sum(e, dim=-1))
 tensor(0.0155669)
 """
+from __future__ import annotations
 
 import torch
 
+from .._types import Tensor, TensorLike
 from ..basis import IndexHelper
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
-from ..typing import Tensor
 
 __all__ = ["ES3", "new_es3"]
 
@@ -50,10 +53,29 @@ class ES3(Interaction):
     hubbard_derivs: Tensor
     """Hubbard derivatives of all atoms."""
 
-    class Cache(Interaction.Cache):
+    __slots__ = ["hubbard_derivs"]
+
+    class Cache(Interaction.Cache, TensorLike):
         """
         Restart data for the ES3 interaction.
         """
+
+        hd: Tensor
+        """Spread Hubbard derivatives of all atoms (not only unique)."""
+
+        __slots__ = ["hd"]
+
+        def __init__(
+            self,
+            hd: Tensor,
+            device: torch.device | None = None,
+            dtype: torch.dtype | None = None,
+        ):
+            super().__init__(
+                device=device if device is None else hd.device,
+                dtype=dtype if dtype is None else hd.dtype,
+            )
+            self.hd = hd
 
     def __init__(
         self,
@@ -64,18 +86,12 @@ class ES3(Interaction):
         super().__init__(device, dtype)
         self.hubbard_derivs = hubbard_derivs
 
-    def get_cache(
-        self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
-    ) -> Cache:
+    def get_cache(self, ihelp: IndexHelper, **_) -> Cache:
         """
         Create restart data for individual interactions.
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers.
-        positions : Tensor
-            Cartesian coordinates.
         ihelp : IndexHelper
             Index mapping for the basis set.
 
@@ -86,32 +102,29 @@ class ES3(Interaction):
 
         Note
         ----
-        The cache of an interaction requires `positions` as they do not change
-        during the self-consistent charge iterations.
+        If this `ES3` interaction is evaluated within the `InteractionList`,
+        `numbers` and `positions` will be passed as argument, too. The `**_` in
+        the argument list will absorb those unnecessary arguments which are
+        given as keyword-only arguments (see `Interaction.get_cache()`).
         """
 
-        return self.Cache()
+        return self.Cache(ihelp.spread_uspecies_to_atom(self.hubbard_derivs))
 
-    def get_atom_energy(
-        self,
-        charges: Tensor,
-        ihelp: IndexHelper,
-        cache: Cache | None = None,
-    ) -> Tensor:
+    def get_atom_energy(self, charges: Tensor, cache: Cache) -> Tensor:
         """
         Calculate the third-order electrostatic energy.
 
         Implements Eq.30 of the following paper:
-        - C. Bannwarth, E. Caldeweyher, S. Ehlert, A. Hansen, P. Pracht, J. Seibert,
-        S. Spicher and S. Grimme, *WIREs Computational Molecular Science*, **2020**, 11, e1493. DOI: `10.1002/wcms.1493 <https://wires.onlinelibrary.wiley.com/doi/10.1002/wcms.1493>`__
+        - C. Bannwarth, E. Caldeweyher, S. Ehlert, A. Hansen, P. Pracht,
+        J. Seibert, S. Spicher and S. Grimme, *WIREs Computational Molecular
+        Science*, **2020**, 11, e1493. DOI: `10.1002/wcms.1493
+        <https://wires.onlinelibrary.wiley.com/doi/10.1002/wcms.1493>`__
 
         Parameters
         ----------
         charges : Tensor
             Atomic charges of all atoms.
-        ihelp : IndexHelper
-            Index mapping for the basis set.
-        cache : Interaction.Cache | None
+        cache : Interaction.Cache
             Restart data for the interaction.
 
         Returns
@@ -120,23 +133,15 @@ class ES3(Interaction):
             Atomwise third-order Coulomb interaction energies.
         """
 
-        return (
-            ihelp.spread_uspecies_to_atom(self.hubbard_derivs)
-            * torch.pow(charges, 3.0)
-            / 3.0
-        )
+        return cache.hd * torch.pow(charges, 3.0) / 3.0
 
-    def get_atom_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
-    ) -> Tensor:
+    def get_atom_potential(self, charges: Tensor, cache: Cache) -> Tensor:
         """Calculate the third-order electrostatic potential.
 
         Parameters
         ----------
         charges : Tensor
             Atomic charges of all atoms.
-        ihelp : IndexHelper
-            Index mapping for the basis set.
         cache : Interaction.Cache
             Restart data for the interaction.
 
@@ -146,9 +151,7 @@ class ES3(Interaction):
             Atomwise third-order Coulomb interaction potential.
         """
 
-        return ihelp.spread_uspecies_to_atom(self.hubbard_derivs) * torch.pow(
-            charges, 2.0
-        )
+        return cache.hd * torch.pow(charges, 2.0)
 
 
 def new_es3(
@@ -178,7 +181,8 @@ def new_es3(
 
     if par.thirdorder.shell is True:
         raise NotImplementedError(
-            "Shell-resolved third order electrostatics are not implemented. Set `thirdorder.shell` parameter to `False`."
+            "Shell-resolved third order electrostatics are not implemented. "
+            "Set `thirdorder.shell` parameter to `False`."
         )
 
     hubbard_derivs = get_elem_param(

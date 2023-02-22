@@ -35,7 +35,7 @@ class Packer:
         ...     "b": a * 3,
         ...     "c": a,
         ... }
-        >>> packer = xitorch.Packer(obj)
+        >>> packer = dxtb.exlibs.xitorch.Packer(obj)
         >>> tensors = packer.get_param_tensor_list()
         >>> print(tensors)
         [tensor(1.), tensor(3.)]
@@ -111,7 +111,7 @@ class Packer:
         """
         Returns the tensor parameters as a single tensor. This can be used,
         for example, if there are multiple parameters to be optimized using
-        ``xitorch.optimize.minimize``.
+        ``dxtb.exlibs.xitorch.optimize.minimize``.
 
         Arguments
         ---------

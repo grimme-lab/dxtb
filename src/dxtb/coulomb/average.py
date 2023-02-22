@@ -1,10 +1,11 @@
 """
 Averaging functions for hardnesses in GFN1-xTB.
 """
+from __future__ import annotations
 
 import torch
 
-from ..typing import Callable, Tensor
+from .._types import Callable, Tensor
 
 AveragingFunction = Callable[[Tensor], Tensor]
 

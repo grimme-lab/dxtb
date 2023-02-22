@@ -1,4 +1,5 @@
 # This file is part of xtbml.
+from __future__ import annotations
 
 import os.path as op
 

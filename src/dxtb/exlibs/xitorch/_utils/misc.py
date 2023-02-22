@@ -1,12 +1,11 @@
 import contextlib
 import copy
-from collections.abc import Mapping
-from typing import Callable, Dict, List, Union
+from typing import Callable, Dict, List, Mapping, Union
 
 import torch
 
 
-def set_default_option(defopt: dict, opt: dict) -> dict:
+def set_default_option(defopt: Dict, opt: Dict) -> Dict:
     # return a dictionary based on the options and if no item from option,
     # take it from defopt
 
@@ -16,7 +15,7 @@ def set_default_option(defopt: dict, opt: dict) -> dict:
     return res
 
 
-def get_and_pop_keys(dct: dict, keys: list) -> dict:
+def get_and_pop_keys(dct: Dict, keys: List) -> Dict:
     res = {}
     for k in keys:
         res[k] = dct.pop(k)

@@ -1,6 +1,10 @@
 """
-Default settings for `dxtb` calculations.
+Default Settings
+================
+
+This module contains the defaults for all `dxtb` calculations.
 """
+from __future__ import annotations
 
 import torch
 
@@ -25,7 +29,7 @@ THRESH = {
 }
 """Convergence thresholds for different float data types."""
 
-EXCLUDE = []
+EXCLUDE: list[str] = []
 """List of xTB components to exclude during the calculation."""
 
 EXCLUDE_CHOICES = ["disp", "rep", "hal", "es2", "es3", "scf", "all"]

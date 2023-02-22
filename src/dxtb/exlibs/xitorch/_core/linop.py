@@ -3,15 +3,15 @@ from __future__ import annotations
 import traceback
 import warnings
 from abc import abstractmethod
-from collections.abc import Sequence
 from contextlib import contextmanager
-from typing import List, Optional, Union
+from typing import List, Optional, Sequence, Union
 
 import torch
 from scipy.sparse.linalg import LinearOperator as spLinearOperator
-from xitorch._core.editable_module import EditableModule
-from xitorch._utils.bcast import get_bcasted_dims
-from xitorch.debug.modes import is_debug_enabled
+
+from dxtb.exlibs.xitorch._core.editable_module import EditableModule
+from dxtb.exlibs.xitorch._utils.bcast import get_bcasted_dims
+from dxtb.exlibs.xitorch.debug.modes import is_debug_enabled
 
 __all__ = ["LinearOperator"]
 
@@ -91,7 +91,7 @@ class LinearOperator(EditableModule):
         .. doctest::
 
             >>> mat = torch.rand(1,3,1,2)  # 1x2 matrix with (1,3) batch dimensions
-            >>> linop = xitorch.LinearOperator.m(mat)
+            >>> linop = dxtb.exlibs.xitorch.LinearOperator.m(mat)
             >>> print(linop)
             MatrixLinearOperator with shape (1, 3, 1, 2):
                tensor([[[[0.1117, 0.8158]],

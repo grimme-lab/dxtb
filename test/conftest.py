@@ -27,3 +27,16 @@ def pytest_configure(config: pytest.Config):
 
     if config.getoption("--detect-anomaly"):
         torch.autograd.anomaly_mode.set_detect_anomaly(True)
+
+    # register an additional marker
+    config.addinivalue_line("markers", "cuda: mark test that require CUDA.")
+
+
+def pytest_runtest_setup(item: pytest.Function):
+    """Custom marker for tests requiring CUDA."""
+
+    for _ in item.iter_markers(name="cuda"):
+        if not torch.cuda.is_available():
+            pytest.skip(
+                "Torch not compiled with CUDA enabled or no CUDA device available."
+            )

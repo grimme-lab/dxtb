@@ -1,11 +1,12 @@
 """
 Basis set class.
 """
+from __future__ import annotations
 
 import torch
 
+from .._types import Tensor, TensorLike
 from ..param import Param, get_elem_param, get_elem_pqn, get_elem_valence
-from ..typing import Tensor, TensorLike
 from . import IndexHelper, orthogonalize, slater
 
 # fmt: off

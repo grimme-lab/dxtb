@@ -1,10 +1,11 @@
 """
 Data for testing repulsion taken from https://github.com/grimme-lab/mstore.
 """
+from __future__ import annotations
 
 import torch
 
-from dxtb.typing import Molecule
+from dxtb._types import Molecule
 from dxtb.utils import symbol2number
 
 

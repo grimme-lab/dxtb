@@ -1,4 +1,5 @@
 """Run tests for overlap."""
+from __future__ import annotations
 
 from math import sqrt
 
@@ -239,7 +240,7 @@ def test_gradcheck_overlap(dtype: torch.dtype, name: str):
 def test_overlap_jacobian(dtype: torch.dtype, name: str):
     """Jacobian calculation with AD and numerical gradient."""
     rtol, atol = 1e-1, 3e-1
-
+    
     sample = samples[name]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)

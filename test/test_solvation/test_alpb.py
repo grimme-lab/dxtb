@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from math import sqrt
 
 import pytest
@@ -26,10 +28,9 @@ def test_gb_single(dtype: torch.dtype, name: str, dielectric_constant=78.9):
     charges = sample["charges"].type(dtype)
     ref = sample["energies"].type(dtype)
 
-    ihelp = "IndexHelper"
     gb = alpb.GeneralizedBorn(numbers, dielectric_constant, **dd)
-    cache = gb.get_cache(numbers, positions, ihelp)
-    energies = gb.get_atom_energy(charges, ihelp, cache)
+    cache = gb.get_cache(numbers, positions)
+    energies = gb.get_atom_energy(charges, cache)
 
     assert pytest.approx(energies, abs=tol) == ref
 
@@ -70,8 +71,8 @@ def test_gb_scf_grad(dtype: torch.dtype, name: str, dielectric_constant=78.9):
 
     sample = samples[name]
     numbers = sample["numbers"]
-    pos = sample["positions"].type(dtype)
-    positions = pos.detach().clone().requires_grad_(True)
+    positions = sample["positions"].type(dtype).detach().clone()
+    positions.requires_grad_(True)
     ref = sample["gradient"]
     charges = torch.tensor(0.0).type(dtype)
 

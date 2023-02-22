@@ -1,13 +1,14 @@
 """
 The GFNn-xTB overlap matrix.
 """
+from __future__ import annotations
 
 import torch
 
+from .._types import Tensor, TensorLike
 from ..basis import Basis, IndexHelper
 from ..integral import mmd
 from ..param import Param, get_elem_angular
-from ..typing import Tensor, TensorLike
 from ..utils import batch, symmetrize, t2int
 
 

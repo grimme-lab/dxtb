@@ -1,1 +1,1 @@
-from xitorch.optimize.rootfinder import *
+from dxtb.exlibs.xitorch.optimize.rootfinder import *

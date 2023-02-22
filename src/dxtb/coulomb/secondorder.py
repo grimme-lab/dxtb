@@ -29,21 +29,22 @@ Example
 >>> gexp = torch.tensor(GFN1_XTB.charge.effective.gexp)
 >>> hubbard = get_element_param(GFN1_XTB.element, "gam")
 >>> # calculate energy
->>> es = es2.ES2(positions, hubbard=hubbard, average=average, gexp=gexp)
+>>> es = es2.ES2(hubbard=hubbard, average=average, gexp=gexp)
 >>> cache = es.get_cache(numbers, positions)
->>> e = es.get_energy(cache, qat)
+>>> e = es.get_energy(qat, cache)
 >>> torch.set_printoptions(precision=7)
 >>> print(torch.sum(e, dim=-1))
 tensor(0.0005078)
 """
+from __future__ import annotations
 
 import torch
 
+from .._types import Tensor, TensorLike
 from ..basis import IndexHelper
 from ..constants import xtb
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
-from ..typing import Tensor
 from ..utils import batch, real_pairs, wrap_scatter_reduce
 from .average import AveragingFunction, averaging_function, harmonic_average
 
@@ -58,36 +59,46 @@ class ES2(Interaction):
     hubbard: Tensor
     """Hubbard parameters of all elements."""
 
-    lhubbard: Tensor | None = None
+    lhubbard: Tensor | None
     """
-    Shell-resolved scaling factors for Hubbard parameters (default: None, i.e.,
-    no shell resolution).
+    Shell-resolved scaling factors for Hubbard parameters (default: `None`,
+    i.e., no shell resolution).
     """
 
-    average: AveragingFunction = harmonic_average
+    average: AveragingFunction
     """
     Function to use for averaging the Hubbard parameters (default:
-    harmonic_average).
+    `~dxtb.coulomb.average.harmonic_average`).
     """
 
-    gexp: Tensor = torch.tensor(xtb.DEFAULT_ES2_GEXP)
+    gexp: Tensor
     """Exponent of the second-order Coulomb interaction (default: 2.0)."""
 
-    ihelp: IndexHelper | None = None
-    """Index helper for shell-resolved Hubbard parameters."""
-
     shell_resolved: bool
-    """Electrostatics is shell-resolved"""
+    """Electrostatics is shell-resolved (default: `True`)."""
 
-    class Cache(Interaction.Cache):
+    __slots__ = ["hubbard", "lhubbard", "average", "gexp", "shell_resolved"]
+
+    class Cache(Interaction.Cache, TensorLike):
         """
         Cache for Coulomb matrix in ES2.
         """
 
+        __slots__ = ["mat"]
+
         mat: Tensor
         """Coulomb matrix"""
 
-        def __init__(self, mat):
+        def __init__(
+            self,
+            mat: Tensor,
+            device: torch.device | None = None,
+            dtype: torch.dtype | None = None,
+        ) -> None:
+            super().__init__(
+                device=device if device is None else mat.device,
+                dtype=dtype if dtype is None else mat.dtype,
+            )
             self.mat = mat
 
     def __init__(
@@ -96,6 +107,7 @@ class ES2(Interaction):
         lhubbard: Tensor | None = None,
         average: AveragingFunction = harmonic_average,
         gexp: Tensor = torch.tensor(xtb.DEFAULT_ES2_GEXP),
+        shell_resolved: bool = True,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
@@ -108,14 +120,14 @@ class ES2(Interaction):
         self.gexp = gexp.to(self.device).type(self.dtype)
         self.average = average
 
-        self.shell_resolved = lhubbard is not None
+        self.shell_resolved = shell_resolved and lhubbard is not None
 
     def get_cache(
         self,
         numbers: Tensor,
         positions: Tensor,
         ihelp: IndexHelper,
-    ) -> "ES2.Cache":
+    ) -> ES2.Cache:
         """
         Obtain the cache object containing the Coulomb matrix.
 
@@ -147,7 +159,7 @@ class ES2(Interaction):
 
     def get_atom_coulomb_matrix(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
-    ):
+    ) -> Tensor:
         """
         Calculate the Coulomb matrix.
 
@@ -180,7 +192,7 @@ class ES2(Interaction):
                 ),
                 self.gexp,
             ),
-            torch.tensor(torch.finfo(positions.dtype).eps, dtype=positions.dtype),
+            positions.new_tensor(torch.finfo(positions.dtype).eps),
         )
 
         # Eq.30: averaging function for hardnesses (Hubbard parameter)
@@ -191,7 +203,7 @@ class ES2(Interaction):
 
     def get_shell_coulomb_matrix(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
-    ):
+    ) -> Tensor:
         """
         Calculate the Coulomb matrix.
 
@@ -240,28 +252,20 @@ class ES2(Interaction):
         # Eq.26: Coulomb matrix
         return 1.0 / torch.pow(dist_gexp + torch.pow(avg, -self.gexp), 1.0 / self.gexp)
 
-    def get_atom_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Cache
-    ) -> Tensor:
-        return 0.5 * charges * self.get_atom_potential(charges, ihelp, cache)
+    def get_atom_energy(self, charges: Tensor, cache: Cache) -> Tensor:
+        return 0.5 * charges * self.get_atom_potential(charges, cache)
 
-    def get_shell_energy(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Cache
-    ) -> Tensor:
-        return 0.5 * charges * self.get_shell_potential(charges, ihelp, cache)
+    def get_shell_energy(self, charges: Tensor, cache: Cache) -> Tensor:
+        return 0.5 * charges * self.get_shell_potential(charges, cache)
 
-    def get_atom_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Cache
-    ) -> Tensor:
+    def get_atom_potential(self, charges: Tensor, cache: Cache) -> Tensor:
         return (
             torch.zeros_like(charges)
             if self.shell_resolved
             else torch.einsum("...ik,...k->...i", cache.mat, charges)
         )
 
-    def get_shell_potential(
-        self, charges: Tensor, ihelp: IndexHelper, cache: "ES2.Cache"
-    ) -> Tensor:
+    def get_shell_potential(self, charges: Tensor, cache: ES2.Cache) -> Tensor:
         return (
             torch.einsum("...ik,...k->...i", cache.mat, charges)
             if self.shell_resolved
@@ -274,7 +278,7 @@ class ES2(Interaction):
         positions: Tensor,
         ihelp: IndexHelper,
         charges: Tensor,
-        cache: "ES2.Cache",
+        cache: ES2.Cache,
     ) -> Tensor:
         return (
             self.get_shell_gradient(numbers, positions, ihelp, charges, cache)
@@ -287,7 +291,7 @@ class ES2(Interaction):
         numbers: Tensor,
         positions: Tensor,
         charges: Tensor,
-        cache: "ES2.Cache",
+        cache: ES2.Cache,
     ) -> Tensor:
         mask = real_pairs(numbers, diagonal=True)
 
@@ -327,7 +331,7 @@ class ES2(Interaction):
         positions: Tensor,
         ihelp: IndexHelper,
         charges: Tensor,
-        cache: "ES2.Cache",
+        cache: ES2.Cache,
     ) -> Tensor:
         mask = real_pairs(numbers, diagonal=True)
 

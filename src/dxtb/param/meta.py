@@ -1,8 +1,8 @@
 # This file is part of xtbml.
-
 """
 Meta data associated with a parametrization. Mainly used for identification of data format.
 """
+from __future__ import annotations
 
 from typing import Optional
 

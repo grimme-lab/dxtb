@@ -1,10 +1,11 @@
 """
 Data for testing Coulomb contribution.
 """
+from __future__ import annotations
 
 import torch
 
-from dxtb.typing import Molecule, Tensor, TypedDict
+from dxtb._types import Molecule, Tensor, TypedDict
 
 from ..molecules import merge_nested_dicts, mols
 

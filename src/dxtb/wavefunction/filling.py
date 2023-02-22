@@ -1,13 +1,13 @@
 """
 Handle the occupation of the orbitals with electrons.
 """
-
 # NOTE: Parts of the Fermi smearing are taken from https://github.com/tbmalt/tbmalt
+from __future__ import annotations
 
 import torch
 
+from .._types import Tensor
 from ..constants import defaults
-from ..typing import Tensor
 
 
 def get_alpha_beta_occupation(

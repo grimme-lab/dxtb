@@ -1,25 +1,23 @@
 """
 Test command line driver.
 """
-
-from pathlib import Path
+from __future__ import annotations
 
 import pytest
 import torch
 
-from dxtb.cli import Driver, argparser
+from dxtb.cli import Driver, parser
+
+from ..utils import coordfile
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_driver(dtype: torch.dtype) -> None:
-    file = Path(
-        Path(__file__).parent.parent, "test_singlepoint/mols/H2/coord"
-    ).resolve()
     ref = torch.tensor(-1.0362714373390, dtype=dtype)
 
     dtype_str = "float32" if dtype == torch.float else "double"
-    opts = f"-v 0 --grad --dtype {dtype_str} {file}"
-    args = argparser().parse_args(opts.split())
+    opts = f"-v 0 --grad --dtype {dtype_str} {coordfile}"
+    args = parser().parse_args(opts.split())
     d = Driver(args)
     result = d.singlepoint()
 
@@ -28,11 +26,7 @@ def test_driver(dtype: torch.dtype) -> None:
 
 
 def test_fail() -> None:
-    file = Path(
-        Path(__file__).parent.parent, "test_singlepoint/mols/H2/coord"
-    ).resolve()
-
-    args = argparser().parse_args([str(file)])
+    args = parser().parse_args([str(coordfile)])
 
     with pytest.raises(ValueError):
         setattr(args, "method", "xtb")

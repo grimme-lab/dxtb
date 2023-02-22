@@ -2,6 +2,7 @@
 Test for fractional occupation (Fermi smearing).
 Reference values obtained with tbmalt.
 """
+from __future__ import annotations
 
 from math import sqrt
 

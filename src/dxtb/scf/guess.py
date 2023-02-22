@@ -1,13 +1,14 @@
 """
 Models for the initial charge guess for the SCF.
 """
+from __future__ import annotations
 
 import torch
 
+from .._types import Tensor
 from ..basis import IndexHelper
 from ..charges import ChargeModel, solve
 from ..ncoord import exp_count, get_coordination_number
-from ..typing import Tensor
 
 
 def get_guess(

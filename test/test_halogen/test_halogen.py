@@ -1,29 +1,19 @@
 """
 Run tests for energy contribution from halogen bond correction.
 """
+from __future__ import annotations
 
 import pytest
 import torch
 
+from dxtb._types import Tensor
 from dxtb.basis import IndexHelper
 from dxtb.classical import Halogen, new_halogen
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular, get_elem_param
-from dxtb.typing import Tensor
 from dxtb.utils import batch
 
 from .samples import samples
-
-
-def test_none() -> None:
-    dummy = torch.tensor(0.0)
-    _par = par.copy(deep=True)
-
-    _par.halogen = None
-    assert new_halogen(dummy, _par) is None
-
-    del _par.halogen
-    assert new_halogen(dummy, _par) is None
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -145,7 +135,7 @@ def test_grad_pos(name: str) -> None:
     sample = samples[name]
 
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    positions = sample["positions"].type(dtype).detach().clone()
 
     # variable to be differentiated
     positions.requires_grad_(True)
@@ -181,21 +171,19 @@ def test_grad_param(sample_name: str):
     if par.halogen is None:
         assert False
 
-    _damp = torch.tensor(par.halogen.classical.damping, dtype=dtype, requires_grad=True)
-    _rscale = torch.tensor(
-        par.halogen.classical.rscale, dtype=dtype, requires_grad=True
-    )
+    _damp = torch.tensor(par.halogen.classical.damping, **dd, requires_grad=True)
+    _rscale = torch.tensor(par.halogen.classical.rscale, **dd, requires_grad=True)
     _xbond = get_elem_param(
         torch.unique(numbers),
         par.element,
         "xbond",
         pad_val=0,
-        dtype=dtype,
+        **dd,
         requires_grad=True,
     )
 
     def func(damp: Tensor, rscale: Tensor, xbond: Tensor) -> Tensor:
-        xb = Halogen(numbers, damp, rscale, xbond, **dd)
+        xb = Halogen(damp, rscale, xbond, **dd)
         cache = xb.get_cache(numbers, ihelp)
         return xb.get_energy(positions, cache)
 

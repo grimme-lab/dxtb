@@ -1,13 +1,14 @@
 """
 Counting functions and their analytical derivatives.
 """
+from __future__ import annotations
 
 from math import pi, sqrt
 
 import torch
 
+from .._types import Tensor
 from ..constants import xtb
-from ..typing import Tensor
 
 
 def exp_count(r: Tensor, r0: Tensor, kcn: float = xtb.KCN) -> Tensor:

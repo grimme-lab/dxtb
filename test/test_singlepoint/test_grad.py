@@ -1,6 +1,7 @@
 """
 Run tests for singlepoint gradient calculation with read from coord file.
 """
+from __future__ import annotations
 
 from math import sqrt
 from pathlib import Path
@@ -9,9 +10,9 @@ import numpy as np
 import pytest
 import torch
 
+from dxtb._types import Any, Tensor
 from dxtb.io import read_chrg, read_coord
 from dxtb.param import GFN1_XTB as par
-from dxtb.typing import Any, Tensor
 from dxtb.xtb import Calculator
 
 from ..utils import load_from_npz

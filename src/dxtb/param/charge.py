@@ -1,6 +1,7 @@
 """
 Definition of the isotropic second-order charge interactions.
 """
+from __future__ import annotations
 
 from pydantic import BaseModel
 
@@ -9,7 +10,8 @@ from ..constants import xtb
 
 class ChargeEffective(BaseModel):
     """
-    Representation of the isotropic second-order charge interactions for a parametrization.
+    Representation of the isotropic second-order charge interactions for a
+    parametrization.
     """
 
     gexp: float = xtb.DEFAULT_ES2_GEXP
@@ -21,7 +23,8 @@ class ChargeEffective(BaseModel):
 
 class Charge(BaseModel):
     """
-    Possible charge parametrizations. Currently only the interaction kernel for the Klopman-Ohno electrostatics (effective) is supported.
+    Possible charge parametrizations. Currently only the interaction kernel
+    for the Klopman-Ohno electrostatics (effective) is supported.
     """
 
     effective: ChargeEffective

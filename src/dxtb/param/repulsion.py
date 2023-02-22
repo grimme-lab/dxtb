@@ -1,8 +1,8 @@
 # This file is part of xtbml.
-
 """
 Definition of the repulsion contribution.
 """
+from __future__ import annotations
 
 from typing import Optional
 

@@ -32,31 +32,26 @@ Example
 >>> print(energy.sum(-1))
 tensor(0.0303)
 """
+from __future__ import annotations
 
 import warnings
 
 import torch
 
+from .._types import Tensor, TensorLike
 from ..basis import IndexHelper
 from ..constants import xtb
 from ..param import Param, get_elem_param
-from ..typing import Tensor, TensorLike
 from ..utils import ParameterWarning, real_pairs
-from .abc import Classical
+from .base import Classical
+
+__all__ = ["Repulsion", "new_repulsion"]
 
 
 class Repulsion(Classical, TensorLike):
     """
     Representation of the classical repulsion.
-
-    Note
-    ----
-    The positions are only passed to the constructor for `dtype` and `device`,
-    they are no class property, as this setup facilitates geometry optimization.
     """
-
-    numbers: Tensor
-    """ Atomic numbers of all atoms."""
 
     arep: Tensor
     """Atom-specific screening parameters for unique species."""
@@ -70,18 +65,19 @@ class Repulsion(Classical, TensorLike):
     the repulsion energy.
     """
 
-    kexp_light: Tensor | None = None
+    kexp_light: Tensor | None
     """
     Scaling of the interatomic distance in the exponential damping function of
     the repulsion energy for light elements, i.e., H and He (only GFN2).
     """
 
-    cutoff: float = xtb.DEFAULT_REPULSION_CUTOFF
+    cutoff: float
     """Real space cutoff for repulsion interactions (default: 25.0)."""
+
+    __slots__ = ["arep", "zeff", "kexp", "kexp_light", "cutoff"]
 
     def __init__(
         self,
-        numbers: Tensor,
         arep: Tensor,
         zeff: Tensor,
         kexp: Tensor,
@@ -92,17 +88,19 @@ class Repulsion(Classical, TensorLike):
     ) -> None:
         super().__init__(device, dtype)
 
-        self.numbers = numbers.to(self.device)
         self.arep = arep.to(self.device).type(self.dtype)
         self.zeff = zeff.to(self.device).type(self.dtype)
+        self.kexp = kexp.to(self.device).type(self.dtype)
         self.cutoff = cutoff
 
-        self.kexp = kexp.to(self.device).type(self.dtype)
         if kexp_light is not None:
-            self.kexp_light = kexp_light.to(self.device).type(self.dtype)
+            kexp_light = kexp_light.to(self.device).type(self.dtype)
+        self.kexp_light = kexp_light
 
-    class Cache:
-        """Cache for the repulsion parameters."""
+    class Cache(TensorLike):
+        """
+        Cache for the repulsion parameters.
+        """
 
         arep: Tensor
         """Atom-specific screening parameters."""
@@ -116,14 +114,30 @@ class Repulsion(Classical, TensorLike):
         of the repulsion energy.
         """
 
-        __slots__ = ["alpha", "zeff", "kexp"]
+        mask: Tensor
+        """Mask for padding from numbers."""
 
-        def __init__(self, alpha: Tensor, zeff: Tensor, kexp: Tensor):
+        __slots__ = ["mask", "alpha", "zeff", "kexp"]
+
+        def __init__(
+            self,
+            mask: Tensor,
+            alpha: Tensor,
+            zeff: Tensor,
+            kexp: Tensor,
+            device: torch.device | None = None,
+            dtype: torch.dtype | None = None,
+        ):
+            super().__init__(
+                device=device if device is None else alpha.device,
+                dtype=dtype if dtype is None else alpha.dtype,
+            )
+            self.mask = mask
             self.alpha = alpha
             self.zeff = zeff
             self.kexp = kexp
 
-    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> "Repulsion.Cache":
+    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> Repulsion.Cache:
         """
         Store variables for energy and gradient calculation.
 
@@ -157,17 +171,17 @@ class Repulsion(Classical, TensorLike):
         kexp = ihelp.spread_uspecies_to_atom(kexp)
 
         # mask for padding
-        mask = real_pairs(self.numbers, diagonal=True)
+        mask = real_pairs(numbers, diagonal=True)
 
         # create matrices
         a = torch.sqrt(arep.unsqueeze(-1) * arep.unsqueeze(-2)) * mask
         z = zeff.unsqueeze(-2) * zeff.unsqueeze(-1) * mask
         k = kexp.unsqueeze(-2) * kexp.new_ones(kexp.shape).unsqueeze(-1) * mask
 
-        return self.Cache(a, z, k)
+        return self.Cache(mask, a, z, k)
 
     def get_energy(
-        self, positions: Tensor, cache: "Repulsion.Cache", atom_resolved: bool = True
+        self, positions: Tensor, cache: Repulsion.Cache, atom_resolved: bool = True
     ) -> Tensor:
         """
         Get repulsion energy.
@@ -187,11 +201,8 @@ class Repulsion(Classical, TensorLike):
             (Atom-resolved) repulsion energy.
         """
 
-        # mask for padding
-        mask = real_pairs(self.numbers, diagonal=True)
-
         distances = torch.where(
-            mask,
+            cache.mask,
             torch.cdist(
                 positions,
                 positions,
@@ -209,18 +220,18 @@ class Repulsion(Classical, TensorLike):
         exp_term = torch.exp(-cache.alpha * r1k)
 
         # Eq.13: repulsion energy
-        dE = torch.where(
-            mask * (distances <= distances.new_tensor(self.cutoff)),
+        e = torch.where(
+            cache.mask * (distances <= distances.new_tensor(self.cutoff)),
             cache.zeff * exp_term / distances,
             distances.new_tensor(0.0),
         )
 
         if atom_resolved is True:
-            return 0.5 * torch.sum(dE, dim=-1)
+            return 0.5 * torch.sum(e, dim=-1)
         else:
-            return dE
+            return e
 
-    def get_grad(self, positions: Tensor, cache: "Repulsion.Cache") -> Tensor:
+    def get_grad(self, positions: Tensor, cache: Repulsion.Cache) -> Tensor:
         """
         Get analytical gradient of repulsion energy.
 
@@ -236,10 +247,9 @@ class Repulsion(Classical, TensorLike):
         Tensor
             Atom-resolved repulsion gradient, size (n_batch, n_atoms, 3).
         """
-        mask = real_pairs(self.numbers, diagonal=True)
 
         distances = torch.where(
-            mask,
+            cache.mask,
             torch.cdist(
                 positions,
                 positions,
@@ -253,12 +263,12 @@ class Repulsion(Classical, TensorLike):
         r1k = torch.pow(distances, cache.kexp)
 
         # (n_batch, n_atoms, n_atoms)
-        dE = self.get_energy(positions, cache, False)
-        dG = -(cache.alpha * r1k * cache.kexp + 1.0) * dE
+        e = self.get_energy(positions, cache, False)
+        grad = -(cache.alpha * r1k * cache.kexp + 1.0) * e
 
         # (n_batch, n_atoms, n_atoms, 3)
         rij = torch.where(
-            mask.unsqueeze(-1),
+            cache.mask.unsqueeze(-1),
             positions.unsqueeze(-2) - positions.unsqueeze(-3),
             distances.new_tensor(0.0),
         )
@@ -267,11 +277,11 @@ class Repulsion(Classical, TensorLike):
         r2 = torch.pow(distances, 2)
 
         # (n_batch, n_atoms, n_atoms, 3)
-        dG = dG / r2
-        dG = dG.unsqueeze(-1) * rij
+        grad = grad / r2
+        grad = grad.unsqueeze(-1) * rij
 
         # (n_batch, n_atoms, 3)
-        return torch.sum(dG, dim=-2)
+        return torch.sum(grad, dim=-2)
 
 
 def new_repulsion(
@@ -321,6 +331,4 @@ def new_repulsion(
     arep = get_elem_param(unique, par.element, "arep", pad_val=0)
     zeff = get_elem_param(unique, par.element, "zeff", pad_val=0)
 
-    return Repulsion(
-        numbers, arep, zeff, kexp, kexp_light, cutoff, device=device, dtype=dtype
-    )
+    return Repulsion(arep, zeff, kexp, kexp_light, cutoff, device=device, dtype=dtype)

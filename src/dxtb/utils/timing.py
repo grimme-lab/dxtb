@@ -1,11 +1,12 @@
 """
 Definition of a timer class that can contain multiple timers.
 """
+from __future__ import annotations
 
 import time
 from functools import wraps
 
-from ..typing import Any, Callable
+from .._types import Any, Callable
 from .exceptions import TimerError
 
 
@@ -17,6 +18,8 @@ class Timers:
 
     class Timer:
         """Instance of a Timer"""
+
+        _start_time: float | None
 
         def __init__(self) -> None:
             self._start_time = None
@@ -150,7 +153,7 @@ class Timers:
         print("")
 
 
-def timings(f: Callable) -> Any:
+def timings(f: Callable[..., Any]) -> Any:
     """
     Decorator that prints execution time of a function.
 
@@ -166,7 +169,7 @@ def timings(f: Callable) -> Any:
     """
 
     @wraps(f)
-    def wrap(*args, **kwargs):
+    def wrap(*args: Any, **kwargs: Any) -> Any:
         ts = time.time()
         result = f(*args, **kwargs)
         te = time.time()

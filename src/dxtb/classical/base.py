@@ -1,13 +1,20 @@
-# This file is part of xtbml.
+"""
+Classical contributions (ABC)
+=============================
 
+This module contains the abstract base class for all classical (i.e., non-
+selfconsistent or density-dependent) energy terms.
+
+Every contribution contains a `Cache` that holds position-independent
+variables. Therefore, the positions must always be supplied to the `get_energy`
+(or `get_grad`) method.
 """
-Definition of energy terms as abstract base class for classical interactions.
-"""
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from .._types import Tensor
 from ..basis import IndexHelper
-from ..typing import Tensor
 
 
 class Classical(ABC):
@@ -15,16 +22,13 @@ class Classical(ABC):
     Abstract base class for calculation of classical contributions.
     """
 
-    numbers: Tensor
-    """The atomic numbers of the atoms in the system."""
-
     class Cache(ABC):
         """
         Abstract base class for the Cache of the contribution.
         """
 
     @abstractmethod
-    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> "Cache":
+    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> Cache:
         """
         Store variables for energy calculation.
 
@@ -48,7 +52,7 @@ class Classical(ABC):
         """
 
     @abstractmethod
-    def get_energy(self, positions: Tensor, cache: "Cache") -> Tensor:
+    def get_energy(self, positions: Tensor, cache: Cache, **kwargs: str) -> Tensor:
         """
         Obtain energy of the contribution.
 

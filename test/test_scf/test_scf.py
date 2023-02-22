@@ -2,6 +2,7 @@
 Test for SCF.
 Reference values obtained with tblite 0.2.1 disabling repulsion and dispersion.
 """
+from __future__ import annotations
 
 from math import sqrt
 
@@ -133,4 +134,33 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
+    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_batch_special(dtype: torch.dtype):
+    """
+    Test case for https://github.com/grimme-lab/xtbML/issues/67.
+
+    Note that the tolerance for the energy is quite high because atoms always
+    show larger deviations w.r.t. the tblite reference. Secondly, this test
+    should check if the overcounting in the IndexHelper and the corresponing
+    additional padding upon spreading is prevented.
+    """
+    tol = 1e-2  # atoms show larger deviat
+    dd = {"dtype": dtype}
+
+    numbers = torch.tensor([[2, 2], [17, 0]])
+    positions = batch.pack(
+        [
+            torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.5]], **dd),
+            torch.tensor([[0.0, 0.0, 0.0]], **dd),
+        ]
+    )
+    chrg = torch.tensor([0.0, 0.0], **dd)
+    ref = torch.tensor([-2.8629311088577, -4.1663539440167], **dd)
+
+    calc = Calculator(numbers, par, **dd, opts=opts)
+    result = calc.singlepoint(numbers, positions, chrg)
+
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
