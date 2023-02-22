@@ -12,7 +12,7 @@ def test_single(dtype: torch.dtype):
 
     numbers = symbol2number("S H H H Mg N O S N N C H C H O N".split())
     angular = {
-        1: [0],  # H
+        1: [0],  # H (GFN2!)
         6: [0, 1],  # C
         7: [0, 1],  # N
         8: [0, 1],  # O
@@ -64,7 +64,7 @@ def test_batch(dtype: torch.dtype):
         )
     )
     angular = {
-        1: [0],  # H
+        1: [0],  # H (GFN2!)
         3: [0, 1],  # Li
         5: [0, 1],  # B
         6: [0, 1],  # C
@@ -148,9 +148,8 @@ def test_batch(dtype: torch.dtype):
     )
 
 
-@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_indexhelper_batch2(dtype):
-
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_batch2(dtype: torch.dtype):
     numbers = batch.pack(
         (
             symbol2number("O Al Si H Li H Cl Al H H B H H B H H".split()),
@@ -158,7 +157,7 @@ def test_indexhelper_batch2(dtype):
         )
     )
     angular = {
-        1: [0],  # H
+        1: [0],  # H (GFN2!)
         3: [0, 1],  # Li
         5: [0, 1],  # B
         6: [0, 1],  # C
@@ -229,3 +228,122 @@ def test_indexhelper_batch2(dtype):
         ihelp.reduce_shell_to_atom(qsh),
         atol=1.0e-4,
     )
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_batch_2dim(dtype: torch.dtype) -> None:
+    numbers = batch.pack(
+        (
+            symbol2number("H H".split()),
+            symbol2number("Li H".split()),
+        )
+    )
+    angular = {
+        1: [0, 0],  # H
+        3: [0, 1],  # Li
+    }
+
+    ihelp = IndexHelper.from_numbers(numbers, angular)
+
+    ref = torch.tensor(
+        [
+            [
+                [2.0000000000, 0.9030375481],
+                [0.9030375481, 2.0000000000],
+            ],
+            [
+                [4.0000000000, 0.5933173895],
+                [0.5933173895, 2.0000000000],
+            ],
+        ],
+        dtype=dtype,
+    )
+
+    s_h2 = torch.tensor(
+        [
+            [
+                1.0000000000e00,
+                8.5040041675e-10,
+                6.6998297092e-01,
+                6.5205745748e-02,
+            ],
+            [
+                8.5040041675e-10,
+                1.0000000000e00,
+                6.5205745748e-02,
+                1.0264305273e-01,
+            ],
+            [
+                6.6998297092e-01,
+                6.5205745748e-02,
+                1.0000000000e00,
+                8.5040041675e-10,
+            ],
+            [
+                6.5205745748e-02,
+                1.0264305273e-01,
+                8.5040041675e-10,
+                1.0000000000e00,
+            ],
+        ],
+        dtype=dtype,
+    )
+
+    s_lih = torch.tensor(
+        [
+            [
+                1.0000000000e00,
+                0.0000000000e00,
+                0.0000000000e00,
+                0.0000000000e00,
+                4.0560702913e-01,
+                -2.0099517671e-01,
+            ],
+            [
+                0.0000000000e00,
+                1.0000000000e00,
+                0.0000000000e00,
+                0.0000000000e00,
+                0.0000000000e00,
+                0.0000000000e00,
+            ],
+            [
+                0.0000000000e00,
+                0.0000000000e00,
+                1.0000000000e00,
+                0.0000000000e00,
+                4.6387245497e-01,
+                -7.5166942324e-02,
+            ],
+            [
+                0.0000000000e00,
+                0.0000000000e00,
+                0.0000000000e00,
+                1.0000000000e00,
+                0.0000000000e00,
+                0.0000000000e00,
+            ],
+            [
+                4.0560702913e-01,
+                0.0000000000e00,
+                4.6387245497e-01,
+                0.0000000000e00,
+                1.0000000000e00,
+                8.5040041675e-10,
+            ],
+            [
+                -2.0099517671e-01,
+                0.0000000000e00,
+                -7.5166942324e-02,
+                0.0000000000e00,
+                8.5040041675e-10,
+                1.0000000000e00,
+            ],
+        ],
+        dtype=dtype,
+    )
+
+    s = batch.pack([s_h2, s_lih])
+
+    s_atom = ihelp.reduce_orbital_to_atom(s, dim=(-2, -1))
+    assert pytest.approx(ref) == s_atom
