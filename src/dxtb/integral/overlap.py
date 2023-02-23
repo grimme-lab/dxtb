@@ -7,9 +7,9 @@ import torch
 
 from .._types import Tensor, TensorLike
 from ..basis import Basis, IndexHelper
-from .mmd import overlap_gto
 from ..param import Param, get_elem_angular
 from ..utils import batch, symmetrize, t2int
+from .mmd import overlap_gto
 
 
 class Overlap(TensorLike):

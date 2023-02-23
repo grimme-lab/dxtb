@@ -7,8 +7,8 @@ import torch
 
 from .._types import Tensor, TensorLike
 from ..param import Param, get_elem_param, get_elem_pqn, get_elem_valence
-from . import IndexHelper, orthogonalize, slater
 from ..utils import real_pairs
+from . import IndexHelper, orthogonalize, slater
 
 # fmt: off
 primes = torch.tensor(
