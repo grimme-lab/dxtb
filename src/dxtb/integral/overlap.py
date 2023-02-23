@@ -9,21 +9,7 @@ from .._types import Tensor, TensorLike
 from ..basis import Basis, IndexHelper
 from ..integral import mmd
 from ..param import Param, get_elem_angular
-from ..utils import batch, symmetrize, t2int, IntegralTransformError
-from .mmd import sqrtpi3, nlm_cart, e_function, EFunction
-from . import transform
-import sys
-import os
-
-
-class HiddenPrints:
-    def __enter__(self):
-        self._original_stdout = sys.stdout
-        sys.stdout = open(os.devnull, "w")
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        sys.stdout.close()
-        sys.stdout = self._original_stdout
+from ..utils import batch, symmetrize, t2int
 
 
 class Overlap(TensorLike):
@@ -381,8 +367,8 @@ class Overlap(TensorLike):
                     device=self.device,
                 )
 
-                dsdr_i = self.calc_overlap_grad(bas, positions[_batch], ihelp)   
-                _grads.append(torch.einsum("ijk ->kji", dsdr_i)) # [norb, norb, 3]
+                dsdr_i = self.calc_overlap_grad(bas, positions[_batch], ihelp)
+                _grads.append(torch.einsum("ijk ->kji", dsdr_i))  # [norb, norb, 3]
 
             dsdr = batch.pack(_grads)
 
