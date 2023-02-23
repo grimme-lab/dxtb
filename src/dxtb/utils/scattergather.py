@@ -184,7 +184,7 @@ def scatter_reduce(
         - https://pytorch.org/docs/1.11/generated/torch.scatter_reduce.html
         - https://github.com/pytorch/pytorch/releases/tag/v1.12.0 (section "Sparse")
 
-    Thin wrapper for pytorch's `scatter_reduce` function.
+    Thin wrapper for pytorch's `scatter_reduce` function for handling API changes.
 
     Parameters
     ----------
@@ -196,7 +196,7 @@ def scatter_reduce(
         Index to reduce over.
     fill_value : float | int | None
         Value with which the output is inititally filled (reduction units for
-        indices not scattered to).
+        indices not scattered to). Defaults to `0`.
 
     Returns
     -------

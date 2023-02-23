@@ -7,9 +7,9 @@ import torch
 
 from .._types import Tensor, TensorLike
 from ..basis import Basis, IndexHelper
-from ..integral import mmd
 from ..param import Param, get_elem_angular
 from ..utils import batch, symmetrize, t2int
+from .mmd import overlap_gto
 
 
 class Overlap(TensorLike):
@@ -111,7 +111,7 @@ class Overlap(TensorLike):
                 ang_tuple = (angi, angj)
 
                 vec = positions[upairs][:, 0, :] - positions[upairs][:, 1, :]
-                stmp = mmd.overlap(ang_tuple, alpha_tuple, coeff_tuple, -vec)
+                stmp = overlap_gto(ang_tuple, alpha_tuple, coeff_tuple, -vec)
 
                 # write overlap of unique pair to correct position in full overlap matrix
                 for r, pair in enumerate(upairs):
@@ -178,7 +178,8 @@ class Overlap(TensorLike):
         self, umap: Tensor, i: int, norbi: int, norbj: int
     ) -> Tensor:
         """
-        Filter out the top-left index of each subblock of unique shell pairs. This makes use of the fact that the pairs are sorted along
+        Filter out the top-left index of each subblock of unique shell pairs.
+        This makes use of the fact that the pairs are sorted along
         the rows.
 
         Example: A "s" and "p" orbital would give the following 4x4 matrix

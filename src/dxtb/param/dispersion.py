@@ -8,8 +8,8 @@ from typing import Optional, Union
 
 from pydantic import BaseModel
 
-from ..constants import xtb
 from .._types import Tensor
+from ..constants import xtb
 
 
 class D3Model(BaseModel):

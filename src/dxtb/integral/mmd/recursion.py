@@ -7,16 +7,15 @@ Calculation of overlap integrals using the McMurchie-Davidson algorithm.
 """
 from __future__ import annotations
 
-import math
+from math import pi, sqrt
 
 import torch
 
-from .._types import Any, Tensor
-from ..utils import IntegralTransformError
-from . import transform
+from ..._types import Any, Callable, Tensor
+from ...utils import IntegralTransformError
+from ..constants import NLM_CART, TRAFO
 
-sqrtpi = math.sqrt(math.pi)
-sqrtpi3 = sqrtpi**3
+sqrtpi3 = sqrt(pi) ** 3
 
 
 @torch.jit.script
@@ -87,7 +86,7 @@ def _e_function(E: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> Tensor:
     return E
 
 
-_e_function_jit = torch.jit.trace(
+_e_function_jit: Callable[[Tensor, Tensor, Tensor, Tensor], Tensor] = torch.jit.trace(
     _e_function,
     (
         torch.rand((3, 5, 5, 11)),
@@ -95,7 +94,7 @@ _e_function_jit = torch.jit.trace(
         torch.rand((3,)),
         torch.rand((3,)),
     ),
-)
+)  # type: ignore
 
 
 @torch.jit.script
@@ -182,7 +181,9 @@ def _e_function_grad(
     return dE
 
 
-_e_function_grad_jit = torch.jit.trace(
+_e_function_grad_jit: Callable[
+    [Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor], Tensor
+] = torch.jit.trace(
     _e_function_grad,
     (
         torch.rand((3, 5, 5, 11)),
@@ -193,7 +194,7 @@ _e_function_grad_jit = torch.jit.trace(
         torch.tensor(1.0),
         torch.tensor(1.0),
     ),
-)
+)  # type: ignore
 
 
 class EFunction(torch.autograd.Function):
@@ -295,74 +296,14 @@ class EFunction(torch.autograd.Function):
 e_function = EFunction.apply
 
 
-nlm_cart = (
-    torch.tensor(
-        [
-            [0, 0, 0],  # s
-        ]
-    ),
-    torch.tensor(
-        [
-            # tblite order: x (+1), y (-1), z (0) in [-1, 0, 1] sorting
-            [0, 1, 0],  # py
-            [0, 0, 1],  # pz
-            [1, 0, 0],  # px
-        ]
-    ),
-    torch.tensor(
-        [
-            [2, 0, 0],  # dxx
-            [1, 1, 0],  # dxy
-            [1, 0, 1],  # dxz
-            [0, 2, 0],  # dyy
-            [0, 1, 1],  # dyz
-            [0, 0, 2],  # dzz
-        ]
-    ),
-    torch.tensor(
-        [
-            [3, 0, 0],  # fxxx
-            [2, 1, 0],  # fxxy
-            [2, 0, 1],  # fxxz
-            [1, 2, 0],  # fxyy
-            [1, 1, 1],  # fxyz
-            [1, 0, 2],  # fxzz
-            [0, 3, 0],  # fyyy
-            [0, 2, 1],  # fyyz
-            [0, 1, 2],  # fyzz
-            [0, 0, 3],  # fzzz
-        ]
-    ),
-    torch.tensor(
-        [
-            [4, 0, 0],  # gxxxx
-            [3, 1, 0],  # gxxxy
-            [3, 0, 1],  # gxxxz
-            [2, 2, 0],  # gxxyy
-            [2, 1, 1],  # gxxyz
-            [2, 0, 2],  # gxxzz
-            [1, 3, 0],  # gxyyy
-            [1, 2, 1],  # gxyyz
-            [1, 1, 2],  # gxyzz
-            [1, 0, 3],  # gxzzz
-            [0, 4, 0],  # gyyyy
-            [0, 3, 1],  # gyyyz
-            [0, 2, 2],  # gyyzz
-            [0, 1, 3],  # gyzzz
-            [0, 0, 4],  # gzzzz
-        ]
-    ),
-)
-
-
-def overlap(
+def mmd_recursion(
     angular: tuple[Tensor, Tensor],
     alpha: tuple[Tensor, Tensor],
     coeff: tuple[Tensor, Tensor],
     vec: Tensor,
 ) -> Tensor:
     """
-    Calculate overlap integrals using McMurchie-Davidson algorithm.
+    Calculate overlap integrals using (recursive) McMurchie-Davidson algorithm.
 
     Parameters
     ----------
@@ -390,8 +331,8 @@ def overlap(
     s3d = vec.new_zeros(*shape)
 
     try:
-        itrafo = transform.trafo[li].type(s3d.dtype).to(s3d.device)
-        jtrafo = transform.trafo[lj].type(s3d.dtype).to(s3d.device)
+        itrafo = TRAFO[li].type(s3d.dtype).to(s3d.device)
+        jtrafo = TRAFO[lj].type(s3d.dtype).to(s3d.device)
     except IndexError as e:
         raise IntegralTransformError() from e
 
@@ -409,13 +350,14 @@ def overlap(
 
     rpi = +vec.unsqueeze(-1).unsqueeze(-1) * aj * oij
     rpj = -vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
+
     E = e_function(
         xij, rpi, rpj, (*vec.shape, ai.shape[-2], aj.shape[-1], li + 1, lj + 1)
     )
     for mli in range(s3d.shape[-2]):
         for mlj in range(s3d.shape[-1]):
-            mi = nlm_cart[li][mli, :]
-            mj = nlm_cart[lj][mlj, :]
+            mi = NLM_CART[li][mli, :]
+            mj = NLM_CART[lj][mlj, :]
             s3d[..., mli, mlj] += (
                 sij
                 * E[..., 0, :, :, mi[0], mj[0], 0]
@@ -426,6 +368,6 @@ def overlap(
     # transform to cartesian basis functions (itrafo^T * S * jtrafo)
     o = torch.einsum("...ji,...jk,...kl->...il", itrafo, s3d, jtrafo)
 
+    # remove small values
     eps = vec.new_tensor(torch.finfo(vec.dtype).eps)
-    g = torch.where(torch.abs(o) < eps, vec.new_tensor(0.0), o)
-    return g
+    return torch.where(torch.abs(o) < eps, vec.new_tensor(0.0), o)
