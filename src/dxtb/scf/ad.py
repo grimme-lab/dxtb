@@ -1,18 +1,19 @@
-import warnings
 import torch
 
 from ..basis import IndexHelper
 from ..interaction import Interaction
-from ..typing import Any, Tensor
+from .._types import Any, Tensor
 from .iterator import solve
 
 
-class SelfConsistentField_AG(torch.autograd.Function):
-    """Pytorch autograd class to allow for analytical gradient for SCF calculation."""
+class SelfConsistentFieldAD(torch.autograd.Function):
+    """
+    Pytorch autograd class to allow for analytical gradient for SCF calculation.
+    """
 
     @staticmethod
     def forward(
-        ctx: "SelfConsistentField_AG",
+        ctx: "SelfConsistentFieldAD",
         numbers: Tensor,
         positions: Tensor,
         chrg: Tensor,
@@ -26,12 +27,12 @@ class SelfConsistentField_AG(torch.autograd.Function):
         fwd_options: dict[str, Any],
         scf_options: dict[str, Any],
         use_potential: bool,
-    ) -> tuple[Tensor]:
+    ) -> tuple[Tensor, ...]:
         """Forward pass for evaluation of SCF procedure.
 
         Parameters
         ----------
-        ctx : SelfConsistentField_AG
+        ctx : SelfConsistentFieldAD
             Context object required to stash values to `.backward()`.
             You can cache arbitrary objects for use in the backward pass
             using the ctx.save_for_backward method.
