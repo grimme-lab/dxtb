@@ -206,15 +206,23 @@ def compare_mmd(
     ovlp_grad_ref: Tensor,
     dtype: torch.dtype,
 ) -> None:
+) -> None:
     """Helper method to compare MMD overlap and gradient with references.
 
-    Args:
-        cgtoi (Tensor): Specification for first CGTO, containing ng, n, l
-        cgtoj (Tensor): Specification for second CGTO, containing ng, n, l
-        vec (Tensor): Shift vector of two CGTO centers
-        ovlp_ref (Tensor): Reference for overlap value
-        ovlp_grad_ref (Tensor): Reference for overlap gradient value
-        dtype (torch.dtype): Dtype for tensors
+    Parameters
+    ----------
+    cgtoi : Tensor
+        Specification for first CGTO, containing ng, n, l
+    cgtoj : Tensor
+        Specification for second CGTO, containing ng, n, l
+    vec : Tensor
+        Shift vector of two CGTO centers
+    ovlp_ref : Tensor
+        Reference for overlap value
+    ovlp_grad_ref : Tensor
+        Reference for overlap gradient value
+    dtype : torch.dtype
+        Dtype for tensors
     """
 
     # define tolerances
