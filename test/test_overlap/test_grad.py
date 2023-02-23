@@ -2,30 +2,17 @@
 from __future__ import annotations
 
 from math import sqrt
-
 import pytest
 import torch
 from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
 from dxtb.basis import slater
 from dxtb.integral import mmd
-from dxtb._types import Tensor
-from dxtb.basis import IndexHelper
-from dxtb.integral import Overlap
-from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
-
-from .samples import samples
-from .gradients import gradients
-
-
-# tmp
 from dxtb.integral.overlap import get_ovlp_grad
 from dxtb._types import Tensor
 
 
 def test_gradcheck(dtype: torch.dtype = torch.double) -> None:
-
     xij = torch.tensor(
         [
             [0.0328428932, 0.0555253364, 0.0625081286, 0.0645959303],
