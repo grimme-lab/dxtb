@@ -382,6 +382,7 @@ def test_hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> N
     hamiltonian_grad_batch(dtype, name1, name2)
 
 
+@pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["LiH", "PbH4-BiH3"])
 @pytest.mark.parametrize("name2", large)
