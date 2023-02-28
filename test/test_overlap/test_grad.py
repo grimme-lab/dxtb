@@ -8,7 +8,6 @@ from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
 from dxtb.basis import slater
 from dxtb.integral import mmd
-from dxtb.integral.overlap import get_ovlp_grad
 from dxtb._types import Tensor
 
 
@@ -157,7 +156,6 @@ def test_gradcheck_overlap(dtype: torch.dtype = torch.double) -> None:
 
 @pytest.mark.parametrize("dtype", [torch.double])
 def test_ss(dtype: torch.dtype):
-
     dd = {"dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
@@ -206,7 +204,6 @@ def compare_mmd(
     ovlp_grad_ref: Tensor,
     dtype: torch.dtype,
 ) -> None:
-) -> None:
     """Helper method to compare MMD overlap and gradient with references.
 
     Parameters
@@ -238,7 +235,9 @@ def compare_mmd(
     assert pytest.approx(ovlp, abs=atol) == ovlp_ref
 
     # overlap gradient
-    ovlp_grad = mmd.overlap_gradient((li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec)   
+    ovlp_grad = mmd.overlap_gradient(
+        (li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec
+    )
 
     # obtain Fortran ordering (row wise)
     ovlp_grad = torch.stack([ovlp_grad[i].flatten() for i in range(3)]).transpose(0, 1)

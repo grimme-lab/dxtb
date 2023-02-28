@@ -249,6 +249,9 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     dedcn = dedcn.detach().numpy()
     assert pytest.approx(dedcn, abs=atol) == ref_dedcn
 
+    # tear down
+    positions.requires_grad_(False)
+
 
 def calc_numerical_gradient(
     calc: Calculator, positions: Tensor, numbers: Tensor, chrg: Tensor
@@ -378,8 +381,11 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 def test_hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     hamiltonian_grad_batch(dtype, name1, name2)
 
+
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["LiH", "PbH4-BiH3"])
 @pytest.mark.parametrize("name2", large)
-def test_hamiltonian_grad_batch_large(dtype: torch.dtype, name1: str, name2: str) -> None:
+def test_hamiltonian_grad_batch_large(
+    dtype: torch.dtype, name1: str, name2: str
+) -> None:
     hamiltonian_grad_batch(dtype, name1, name2)
