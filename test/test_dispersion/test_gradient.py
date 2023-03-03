@@ -12,7 +12,6 @@ from dxtb.param import GFN1_XTB as par
 
 from .samples import samples
 
-
 sample_list = ["PbH4-BiH3"]
 
 

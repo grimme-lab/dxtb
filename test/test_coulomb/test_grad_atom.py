@@ -43,7 +43,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
         assert False
 
     cache = es.get_cache(numbers, positions, ihelp)
-    grad = es.get_gradient(numbers, positions, ihelp, charges, cache)
+    grad = es.get_atom_gradient(numbers, positions, charges, cache)
     assert pytest.approx(grad, abs=tol) == ref
 
     num_grad = calc_numerical_gradient(numbers, positions, ihelp, charges)
@@ -94,7 +94,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         assert False
 
     cache = es.get_cache(numbers, positions, ihelp)
-    grad = es.get_gradient(numbers, positions, ihelp, charges, cache)
+    grad = es.get_atom_gradient(numbers, positions, charges, cache)
     assert pytest.approx(grad, abs=tol) == ref
 
 
