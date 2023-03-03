@@ -4,8 +4,7 @@ DFT-D4 dispersion model.
 from __future__ import annotations
 
 from .._types import Any, NoReturn, Tensor
-from ..interaction import Interaction
-from .abc import Dispersion
+from .base import Dispersion
 
 
 class DispersionD4(Dispersion):
@@ -15,6 +14,7 @@ class DispersionD4(Dispersion):
     Note:
     -----
     DispersionD4 should be an `Interaction` as D4 can be self-consistent.
+    However, this requires a different setup starting with the base class.
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> NoReturn:

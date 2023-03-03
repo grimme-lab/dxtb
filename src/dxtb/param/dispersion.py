@@ -22,28 +22,32 @@ class D3Model(BaseModel):
         arbitrary_types_allowed = True
 
     s6: Union[float, Tensor] = xtb.DEFAULT_DISP_S6
-    """Scaling factor for multipolar (dipole-dipole contribution) terms"""
+    """Scaling factor for dipole-dipole term."""
 
-    s8: Union[float, Tensor]
-    """Scaling factor for multipolar (dipole-quadrupole contribution) terms"""
+    s8: Union[float, Tensor] = xtb.DEFAULT_DISP_S9
+    """Scaling factor for dipole-quadrupole term."""
 
     s9: Union[float, Tensor] = xtb.DEFAULT_DISP_S9
-    """Scaling factor for the many-body dispersion term (ATM/RPA-like)"""
+    """Scaling factor for the many-body dispersion term (ATM/RPA-like)."""
+
+    s10: Union[float, Tensor] = xtb.DEFAULT_DISP_S10
+    """Scaling factor for quadrupole-quadrupole term."""
 
     a1: Union[float, Tensor]
-    """Becke-Johnson damping parameter"""
+    """Becke-Johnson damping parameter."""
 
     a2: Union[float, Tensor]
-    """Becke-Johnson damping parameter"""
+    """Becke-Johnson damping parameter."""
 
 
 class Dispersion(BaseModel):
     """
-    Possible dispersion parametrizations. Currently only the DFT-D3(BJ) is supported.
+    Possible dispersion parametrizations. Currently only the DFT-D3(BJ) is
+    supported.
     """
 
     d3: Optional[D3Model] = None
-    """Name of the represented method"""
+    """Name of the represented method."""
 
     d4: Optional[D3Model] = None
     """D4 model for dispersion (not implemented)."""

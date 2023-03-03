@@ -37,8 +37,14 @@ DEFAULT_ES2_GEXP: float = 2.0
 DEFAULT_DISP_S6: float = 1.0
 """Default scaling of dipol-dipol term (1.0 to retain correct limit)."""
 
+DEFAULT_DISP_S8: float = 1.0
+"""Default scaling of dipol-quadrupol term (1.0)."""
+
 DEFAULT_DISP_S9: float = 1.0
 """Default scaling of three-body term (1.0)."""
+
+DEFAULT_DISP_S10: float = 0.0
+"""Default scaling of quadrupol-quadrupol term (0.0)."""
 
 
 # Classical contributions
