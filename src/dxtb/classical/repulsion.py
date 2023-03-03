@@ -231,7 +231,9 @@ class Repulsion(Classical, TensorLike):
         else:
             return e
 
-    def get_grad(self, positions: Tensor, cache: Repulsion.Cache) -> Tensor:
+    def get_gradient_analytical(
+        self, positions: Tensor, cache: Repulsion.Cache
+    ) -> Tensor:
         """
         Get analytical gradient of repulsion energy.
 

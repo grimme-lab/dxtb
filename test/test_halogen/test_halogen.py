@@ -191,3 +191,34 @@ def test_grad_param(sample_name: str):
     from torch.autograd.gradcheck import gradcheck
 
     assert gradcheck(func, (_damp, _rscale, _xbond))
+
+
+@pytest.mark.grad
+@pytest.mark.parametrize("name", ["br2nh3", "finch"])
+def test_grad_autograd(name: str) -> None:
+    dtype = torch.double
+    dd = {"dtype": dtype}
+    tol = 1e-7
+
+    sample = samples[name]
+
+    numbers = sample["numbers"]
+    positions = sample["positions"].type(dtype).detach().clone()
+    ref = sample["gradient"]
+
+    # variable to be differentiated
+    positions.requires_grad_(True)
+
+    xb = new_halogen(numbers, par, **dd)
+    if xb is None:
+        assert False
+
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    cache = xb.get_cache(numbers, ihelp)
+    energy = xb.get_energy(positions, cache)
+
+    (gradient,) = torch.autograd.grad(
+        energy, positions, grad_outputs=torch.ones_like(energy)
+    )
+
+    assert pytest.approx(ref, abs=tol) == gradient
