@@ -262,14 +262,20 @@ class Overlap(TensorLike):
     ) -> Tensor:
         """Overlap gradient dS/dr for a single molecule.
 
-        Args:
-            bas (Basis): Basis set for calculation.
-            positions (Tensor): Positions of single molecule.
-            ihelp (IndexHelper): Index helper for orbital mapping.
+        Parameters
+        ----------
+        bas : Basis
+                Basis set for calculation.
+        positions : Tensor
+                Positions of single molecule.
+        ihelp : IndexHelper
+                Index helper for orbital mapping.
 
-        Returns:
-            Tensor: Gradient of overlap for single molecule.
-        """
+        Returns
+        -------
+        Tensor
+                Gradient of overlap for single molecule.
+    """   
 
         umap, n_unique_pairs = bas.unique_shell_pairs(ihelp)
         alphas, coeffs = bas.create_cgtos()

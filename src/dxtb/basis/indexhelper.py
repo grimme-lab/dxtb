@@ -644,18 +644,22 @@ class IndexHelper:
         return (self.orbitals_to_shell == shell_idx).nonzero(as_tuple=True)[0]
 
     def orbital_atom_mapping(self, atom_idx: int) -> Tensor:
-        """Mapping of atom index to orbital index,
+       """Mapping of atom index to orbital index,
             i.e. return indices of orbitals belonging
             to given atom. The orbital order is given
             by the IndexHelper ihelp.orbitals_to_shell
             attribute.
 
-        Args:
-            atom_idx (int): Index of target atom
+    Parameters
+    ----------
+    atom_idx : int
+        Index of target atom
 
-        Returns:
-            Tensor: 1d-Tensor containing the indices of the orbitals
-        """
+    Returns
+    -------
+    Tensor
+        1d-Tensor containing the indices of the orbitals
+    """    
         # NOTE: currently only single sample supported (no batch)
         return torch.tensor(
             [
@@ -667,11 +671,13 @@ class IndexHelper:
 
     @property
     def orbitals_per_atom(self) -> Tensor:
-        """Orbitals per atom mapping.
+       """Orbitals per atom mapping.
 
-        Returns:
-            Tensor: Atom indices for each orbital.
-        """
+       Returns
+       -------
+       Tensor
+            Atom indices for each orbital.
+       """   
 
         try:
             # batch mode
