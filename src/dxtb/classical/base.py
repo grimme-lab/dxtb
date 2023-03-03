@@ -102,6 +102,10 @@ class Classical(ClassicalABC, TensorLike):
         if positions.requires_grad is False:
             raise RuntimeError("Position tensor needs `requires_grad=True`.")
 
+        # avoid autograd call if energy is zero (autograd fails anyway)
+        if torch.equal(energy, torch.zeros_like(energy)):
+            return torch.zeros_like(positions)
+
         (gradient,) = torch.autograd.grad(
             energy, positions, grad_outputs=torch.ones_like(energy)
         )
