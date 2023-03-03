@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 import torch
 
+from dxtb._types import Tensor
 from dxtb.ncoord import (
     dexp_count,
     exp_count,
@@ -20,11 +21,9 @@ from dxtb.param import GFN1_XTB as par
 from dxtb.scf import get_density
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
-from dxtb._types import Tensor
 
 from ..utils import load_from_npz
 from .samples import samples
-
 
 # references
 ref_grad_no_overlap = np.load("test/test_hamiltonian/grad_no_overlap.npz")

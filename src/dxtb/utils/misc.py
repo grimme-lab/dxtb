@@ -6,9 +6,10 @@ Collection of utility functions.
 """
 from __future__ import annotations
 
-import torch
-import sys
 import os
+import sys
+
+import torch
 
 from .._types import Any, Tensor, TypeGuard
 from ..constants import ATOMIC_NUMBER

@@ -548,7 +548,7 @@ class Hamiltonian(TensorLike):
         ss_orb = sval.unsqueeze(-1) * doverlap
 
         # instead of looping over atom and orbital combinations to obtain
-        # correct overlap chunks, mask out irrelevant ones 
+        # correct overlap chunks, mask out irrelevant ones
         natm = positions.shape[-2]
         batch_mode = len(positions.shape) > 2
 
@@ -581,7 +581,6 @@ class Hamiltonian(TensorLike):
             gradient = torch.einsum("bijklm->bim", master)
         else:
             gradient = torch.einsum("ijklm->im", master)
-
 
         # add E_EHT contribution
         gradient += torch.sum(dpi.unsqueeze(-1) * rij, dim=-2)

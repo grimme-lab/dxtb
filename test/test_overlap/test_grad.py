@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 from math import sqrt
+
 import pytest
 import torch
 from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
+from dxtb._types import Tensor
 from dxtb.basis import slater
 from dxtb.integral import mmd
-from dxtb._types import Tensor
 
 
 def test_gradcheck(dtype: torch.dtype = torch.double) -> None:

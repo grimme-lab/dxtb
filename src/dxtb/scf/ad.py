@@ -1,8 +1,8 @@
 import torch
 
+from .._types import Any, Tensor
 from ..basis import IndexHelper
 from ..interaction import Interaction
-from .._types import Any, Tensor
 from .iterator import solve
 
 

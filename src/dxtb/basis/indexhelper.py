@@ -677,17 +677,20 @@ class IndexHelper:
             # batch mode
             pad = torch.nn.utils.rnn.pad_sequence(
                 [self.shells_to_atom.T, self.orbitals_to_shell.T], padding_value=-999
-            )  
-            pad = torch.einsum("ijk->kji", pad) # [2, bs, norb_max]
+            )
+            pad = torch.einsum("ijk->kji", pad)  # [2, bs, norb_max]
         except RuntimeError:
             # single mode
             pad = torch.nn.utils.rnn.pad_sequence(
                 [self.shells_to_atom, self.orbitals_to_shell], padding_value=-999
-            ).T # [2, norb_max]
+            ).T  # [2, norb_max]
 
         if len(pad.shape) > 2:
             # gathering over subentries to avoid padded value (-999) in index tensor
-            return batch.pack([torch.gather(a[b != -999], 0, b[b != -999]) for a, b in pad], value=-999)
+            return batch.pack(
+                [torch.gather(a[b != -999], 0, b[b != -999]) for a, b in pad],
+                value=-999,
+            )
             # TODO: masked_tensor could be a vectorised solution (though only available in pytorch1.13)
             #       alternatively write all values into extra column
         else:
