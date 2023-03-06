@@ -211,7 +211,7 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     # setup
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    positions = sample["positions"].type(dtype).detach().clone()
     positions.requires_grad_(True)
     chrg = torch.tensor(0.0, **dd)
 
@@ -259,9 +259,6 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     # NOTE: dedcn is already tested in test_hamiltonian
     dedcn = dedcn.detach().numpy()
     assert pytest.approx(dedcn, abs=atol) == ref_dedcn
-
-    # tear down
-    positions.requires_grad_(False)
 
 
 @pytest.mark.grad

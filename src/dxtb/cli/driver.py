@@ -112,7 +112,6 @@ class Driver:
 
         # stop timer
         timer.stop("total")
-        timer.print_times()
         result.timer = timer
 
         return result

@@ -1,20 +1,18 @@
-"""Run tests for overlap."""
+"""
+Run tests for overlap gradient.
+"""
 from __future__ import annotations
 
 from math import sqrt
 
 import pytest
 import torch
-from torch.autograd.gradcheck import gradcheck, gradgradcheck
 from torch.autograd.functional import jacobian
-
+from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
 from dxtb._types import Tensor
-from dxtb.basis import slater
-from dxtb.integral import mmd
-from dxtb._types import Tensor
-from dxtb.basis import IndexHelper
-from dxtb.integral import Overlap
+from dxtb.basis import IndexHelper, slater
+from dxtb.integral import Overlap, mmd
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 
@@ -23,7 +21,6 @@ from .samples import samples
 
 @pytest.mark.parametrize("dtype", [torch.double])
 def test_ss(dtype: torch.dtype):
-
     dd = {"dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
@@ -73,7 +70,6 @@ def test_ss(dtype: torch.dtype):
 
 
 def test_gradcheck_efunction(dtype: torch.dtype = torch.double) -> None:
-
     xij = torch.tensor(
         [
             [0.0328428932, 0.0555253364, 0.0625081286, 0.0645959303],
@@ -224,6 +220,7 @@ def test_gradcheck_mmd(dtype: torch.dtype = torch.double) -> None:
     )
 
 
+@pytest.mark.filterwarnings("ignore")  # works for single precision
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2O", "CH4", "SiH4", "PbH4-BiH3"])
 def test_gradcheck_overlap(dtype: torch.dtype, name: str):
@@ -233,12 +230,13 @@ def test_gradcheck_overlap(dtype: torch.dtype, name: str):
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    positions = sample["positions"].type(dtype).detach().clone()
     positions.requires_grad_(True)
 
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    overlap = Overlap(numbers, par, ihelp, **dd)
+
     def func(pos: Tensor) -> Tensor:
-        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-        overlap = Overlap(numbers, par, ihelp, **dd)
         return overlap.build(pos)
 
     assert gradcheck(func, (positions), atol=tol)
@@ -252,7 +250,7 @@ def test_overlap_jacobian(dtype: torch.dtype, name: str):
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    positions = sample["positions"].type(dtype).detach().clone()
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     overlap = Overlap(numbers, par, ihelp, **{"dtype": dtype})
 
@@ -263,14 +261,13 @@ def test_overlap_jacobian(dtype: torch.dtype, name: str):
     positions.requires_grad_(True)
     jac = jacobian(lambda x: overlap.build(x), positions)  # [norb, norb, natm, 3]
     jac = torch.movedim(jac, -2, 0)
-    positions.requires_grad_(False)  # turn off for multi parametrized tests
 
     # check whether dimensions are swapped
     assert torch.equal(ngrad - jac, ngrad - torch.movedim(jac, 1, 2))
 
     # jacobian and numerical gradient mismatch
     # print("diff", ngrad - jac)
-    print("max diff", torch.max(ngrad - jac))
+    # print("max diff", torch.max(ngrad - jac))
 
     assert pytest.approx(ngrad, rel=rtol, abs=atol) == jac
 
