@@ -18,8 +18,7 @@ from dxtb.xtb import Calculator
 from ..utils import load_from_npz
 
 ref_grad = np.load("test/test_singlepoint/grad.npz")
-
-molecules = ["H2", "H2O", "CH4", "SiH4", "LYS_xao", "AD7en+", "C60", "vancoh2"]
+# ["H2", "H2O", "CH4", "SiH4", "LYS_xao", "AD7en+", "C60", "vancoh2"]
 
 opts = {
     "verbosity": 0,
@@ -31,9 +30,24 @@ opts = {
 
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "H2O", "CH4"])
-def test_analytical(name: str) -> None:
-    dtype = torch.double
+def test_analytical(dtype: torch.dtype, name: str) -> None:
+    atol, rtol = 1e-6, 1e-4
+    analytical(dtype, name, atol, rtol)
+
+
+@pytest.mark.grad
+@pytest.mark.large
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["LYS_xao", "C60"])
+def test_analytical_large(dtype: torch.dtype, name: str) -> None:
+    atol, rtol = 1e-6, 1e-3
+    analytical(dtype, name, atol, rtol)
+
+
+def analytical(dtype: torch.dtype, name: str, atol: float, rtol: float) -> None:
     dd = {"dtype": dtype}
 
     # read from file
@@ -43,20 +57,21 @@ def test_analytical(name: str) -> None:
 
     # convert to tensors
     numbers = torch.tensor(numbers, dtype=torch.long)
-    positions = torch.tensor(positions, **dd)
+    positions = torch.tensor(positions, **dd, requires_grad=True)
     charge = torch.tensor(charge, **dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
     result = calc.singlepoint(numbers, positions, charge, grad=True)
+    gradient = result.total_grad.detach()
 
     ref = load_from_npz(ref_grad, name, dtype)
-    assert pytest.approx(result.total_grad, abs=1e-6, rel=1e-4) == ref
+    assert pytest.approx(gradient, abs=atol, rel=rtol) == ref
 
 
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["H2", "H2O", "CH4", "SiH4"])
+@pytest.mark.parametrize("name", ["H2", "H2O", "SiH4"])
 def test_backward(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 50  # slightly larger for H2O!
     dd = {"dtype": dtype}

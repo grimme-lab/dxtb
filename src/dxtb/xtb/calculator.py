@@ -63,7 +63,7 @@ class Result(TensorLike):
     """Full Hamiltonian matrix (H0 + H1)."""
 
     hamiltonian_grad: Tensor
-    """Nuclear gradient of core Hamiltonian matrix (H0)."""
+    """Nuclear gradient of Hamiltonian matrix."""
 
     interaction_grad: Tensor
     """Nuclear gradient of interactions"""
@@ -113,10 +113,12 @@ class Result(TensorLike):
         "halogen",
         "halogen_grad",
         "hamiltonian",
+        "hamiltonian_grad",
         "hcore",
         "interaction_grad",
         "occupation",
         "overlap",
+        "overlap_grad",
         "potential",
         "repulsion",
         "repulsion_grad",
@@ -141,9 +143,11 @@ class Result(TensorLike):
         self.fenergy = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.dispersion = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.dispersion_grad = torch.zeros_like(positions)
+        self.hamiltonian_grad = torch.zeros_like(positions)
         self.halogen = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.halogen_grad = torch.zeros_like(positions)
         self.interaction_grad = torch.zeros_like(positions)
+        self.overlap_grad = torch.zeros_like(positions)
         self.repulsion = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.repulsion_grad = torch.zeros_like(positions)
         self.total = torch.zeros(shape, dtype=self.dtype, device=self.device)

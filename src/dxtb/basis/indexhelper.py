@@ -694,7 +694,7 @@ class IndexHelper:
         try:
             # batch mode
             pad = torch.nn.utils.rnn.pad_sequence(
-                [self.shells_to_atom.T, self.orbitals_to_shell.T], padding_value=PAD
+                [self.shells_to_atom.mT, self.orbitals_to_shell.T], padding_value=PAD
             )
             pad = torch.einsum("ijk->kji", pad)  # [2, bs, norb_max]
         except RuntimeError:
