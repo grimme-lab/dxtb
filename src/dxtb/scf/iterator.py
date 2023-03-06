@@ -183,29 +183,32 @@ class SelfConsistentField(EditableModule):
         if charges is None:
             charges = torch.zeros_like(self._data.occupation)
 
-        with torch.no_grad():
-            q_conv = self.scf(charges)
+        if self.scf_options.get("full", True) is True:
+            charges = self.scf(charges)
+        else:
+            with torch.no_grad():
+                q_conv = self.scf(charges)
 
-        # SCF step with gradient using converged result as "perfect" guess
-        out = (
-            self.iterate_potential(self.charges_to_potential(q_conv))
-            if self.use_potential
-            else self.iterate_charges(q_conv)
-        )
-        charges = self.potential_to_charges(out) if self.use_potential else out
-
-        # Check consistency between SCF solution and single step.
-        # Especially for elements and their ions, the SCF may oscillate and the
-        # single step for the gradient may differ from the converged solution.
-        if (
-            torch.linalg.vector_norm(q_conv - charges)
-            > sqrt(torch.finfo(self.dtype).eps) * 10
-        ).any():
-            warnings.warn(
-                "The single SCF step differs from the converged solution. "
-                "Re-calculating with full gradient tracking!"
+            # SCF step with gradient using converged result as "perfect" guess
+            out = (
+                self.iterate_potential(self.charges_to_potential(q_conv))
+                if self.use_potential
+                else self.iterate_charges(q_conv)
             )
-            charges = self.scf(q_conv)
+            charges = self.potential_to_charges(out) if self.use_potential else out
+
+            # Check consistency between SCF solution and single step.
+            # Especially for elements and their ions, the SCF may oscillate and the
+            # single step for the gradient may differ from the converged solution.
+            if (
+                torch.linalg.vector_norm(q_conv - charges)
+                > sqrt(torch.finfo(self.dtype).eps) * 10
+            ).any():
+                warnings.warn(
+                    "The single SCF step differs from the converged solution. "
+                    "Re-calculating with full gradient tracking!"
+                )
+                charges = self.scf(q_conv)
 
         energy = self.get_energy(charges)
         fenergy = self.get_electronic_free_energy()
