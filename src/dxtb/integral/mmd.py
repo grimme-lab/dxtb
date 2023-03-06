@@ -457,12 +457,18 @@ def overlap_gradient(angular: tuple, alpha: tuple, coeff: tuple, vec: Tensor):
     li, lj = angular
     ncarti = torch.div((li + 1) * (li + 2), 2, rounding_mode="floor")
     ncartj = torch.div((lj + 1) * (lj + 2), 2, rounding_mode="floor")
+    r2 = torch.sum(vec.pow(2), -1)
 
     # cartesian overlap and overlap gradient
     s3d = vec.new_zeros([ncarti, ncartj])
     ds3d = vec.new_zeros([3, ncarti, ncartj])
 
-    r2 = torch.sum(vec.pow(2), -1)
+    # transform from cartesian to spherical gaussians
+    try:
+        itrafo = transform.trafo[li].type(ds3d.dtype).to(ds3d.device)
+        jtrafo = transform.trafo[lj].type(ds3d.dtype).to(ds3d.device)
+    except IndexError as e:
+        raise IntegralTransformError() from e
 
     for ip in range(nprim_i):
         for jp in range(nprim_j):
@@ -511,13 +517,6 @@ def overlap_gradient(angular: tuple, alpha: tuple, coeff: tuple, vec: Tensor):
                         ]
                     )
                     ds3d[:, mli, mlj] += cc * grad
-
-    # transform from cartesian to spherical gaussians
-    try:
-        itrafo = transform.trafo[li].type(ds3d.dtype).to(ds3d.device)
-        jtrafo = transform.trafo[lj].type(ds3d.dtype).to(ds3d.device)
-    except IndexError as e:
-        raise IntegralTransformError() from e
 
     # transform to spherical basis functions (itrafo^T * S * jtrafo)
     sphr = [

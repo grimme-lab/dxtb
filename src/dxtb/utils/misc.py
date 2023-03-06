@@ -6,9 +6,6 @@ Collection of utility functions.
 """
 from __future__ import annotations
 
-import os
-import sys
-
 import torch
 
 from .._types import Any, Tensor, TypeGuard
@@ -51,5 +48,3 @@ def is_int_list(x: list[Any]) -> TypeGuard[list[int]]:
 
 def symbol2number(sym_list: list[str]) -> Tensor:
     return torch.flatten(torch.tensor([ATOMIC_NUMBER[s.title()] for s in sym_list]))
-
-

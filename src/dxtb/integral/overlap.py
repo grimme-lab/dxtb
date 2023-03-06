@@ -179,8 +179,8 @@ class Overlap(TensorLike):
         self, umap: Tensor, i: int, norbi: int, norbj: int
     ) -> Tensor:
         """
-        Filter out the top-left index of each subblock of unique shell pairs. This makes use of the fact that the pairs are sorted along
-        the rows.
+        Filter out the top-left index of each subblock of unique shell pairs.
+        This makes use of the fact that the pairs are sorted along the rows.
 
         Example: A "s" and "p" orbital would give the following 4x4 matrix
         of unique shell pairs:
@@ -275,7 +275,7 @@ class Overlap(TensorLike):
         -------
         Tensor
                 Gradient of overlap for single molecule.
-    """   
+        """
 
         umap, n_unique_pairs = bas.unique_shell_pairs(ihelp)
         alphas, coeffs = bas.create_cgtos()
