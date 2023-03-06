@@ -9,6 +9,7 @@ from torch.autograd.gradcheck import gradcheck, gradgradcheck
 from torch.autograd.functional import jacobian
 
 
+from dxtb._types import Tensor
 from dxtb.basis import slater
 from dxtb.integral import mmd
 from dxtb._types import Tensor
