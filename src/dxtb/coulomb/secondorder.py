@@ -304,7 +304,7 @@ class ES2(Interaction):
         cache: ES2.Cache,
     ) -> Tensor:
         if self.shell_resolved:
-            return torch.zeros_like(charges)
+            return torch.zeros_like(positions)
 
         mask = real_pairs(numbers, diagonal=True)
 
@@ -347,7 +347,7 @@ class ES2(Interaction):
         ihelp: IndexHelper,
     ) -> Tensor:
         if not self.shell_resolved:
-            return torch.zeros_like(charges)
+            return torch.zeros_like(positions)
 
         mask = real_pairs(numbers, diagonal=True)
 
