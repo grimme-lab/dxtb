@@ -7,7 +7,7 @@ import warnings
 
 import torch
 
-from .. import scf
+from .. import ncoord, scf
 from .._types import Any, Tensor, TensorLike
 from ..basis import IndexHelper
 from ..classical import Halogen, Repulsion, new_halogen, new_repulsion
@@ -17,7 +17,6 @@ from ..data import cov_rad_d3
 from ..dispersion import Dispersion, new_dispersion
 from ..integral import Overlap
 from ..interaction import Interaction, InteractionList
-from ..ncoord import exp_count, get_coordination_number
 from ..param import Param, get_elem_angular
 from ..utils import Timers, ToleranceWarning
 from ..wavefunction import filling
@@ -63,6 +62,9 @@ class Result(TensorLike):
     hamiltonian: Tensor
     """Full Hamiltonian matrix (H0 + H1)."""
 
+    hamiltonian_grad: Tensor
+    """Nuclear gradient of core Hamiltonian matrix (H0)."""
+
     interaction_grad: Tensor
     """Nuclear gradient of interactions"""
 
@@ -74,6 +76,9 @@ class Result(TensorLike):
 
     overlap: Tensor
     """Overlap matrix."""
+
+    overlap_grad: Tensor
+    """Nuclear gradient of overlap matrix."""
 
     potential: Tensor
     """Self-consistent orbital-resolved potential."""
@@ -343,7 +348,9 @@ class Calculator(TensorLike):
             # Hamiltonian
             timer.start("h0", "Core Hamiltonian")
             rcov = cov_rad_d3[numbers].to(self.device)
-            cn = get_coordination_number(numbers, positions, exp_count, rcov)
+            cn = ncoord.get_coordination_number(
+                numbers, positions, ncoord.exp_count, rcov
+            )
             hcore = self.hamiltonian.build(positions, overlap, cn)
             result.hcore = hcore
             timer.stop("h0")
@@ -433,6 +440,37 @@ class Calculator(TensorLike):
                     )
                     result.total_grad += result.interaction_grad
                     timer.stop("igrad")
+
+                timer.start("ograd", "Overlap Gradient")
+                result.overlap_grad = self.overlap.get_gradient(positions)
+                timer.stop("ograd")
+
+                timer.start("hgrad", "Hamiltonian Gradient")
+                wmat = scf.get_density(
+                    result.coefficients,
+                    result.occupation.sum(-2),
+                    emo=result.emo,
+                )
+                dedcn, dedr = self.hamiltonian.get_gradient(
+                    positions,
+                    result.overlap,
+                    result.overlap_grad,
+                    result.density,
+                    wmat,
+                    result.potential,
+                    cn,
+                )
+
+                # CN gradient
+                dcndr = ncoord.get_coordination_number_gradient(
+                    numbers, positions, ncoord.dexp_count
+                )
+                dcn = ncoord.get_dcn(dcndr, dedcn)
+
+                # sum up hamiltonian gradient and CN gradient
+                result.hamiltonian_grad += dedr + dcn
+                result.total_grad += result.hamiltonian_grad
+                timer.stop("hgrad")
 
         if self.halogen is not None:
             timer.start("Halogen")

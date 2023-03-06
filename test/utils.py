@@ -8,9 +8,8 @@ import torch
 
 from dxtb._types import Any, Tensor
 
-coordfile = file = Path(
-    Path(__file__).parent, "test_singlepoint/mols/H2/coord"
-).resolve()
+coordfile = Path(Path(__file__).parent, "test_singlepoint/mols/H2/coord").resolve()
+"""Path to coord file of H2."""
 
 
 def get_device_from_str(s: str) -> torch.device:

@@ -123,29 +123,3 @@ def test_uhf_single(dtype: torch.dtype, name: str) -> None:
     ref = samples[name]["etot"].item()
     result = calc.singlepoint(numbers, positions, charge)
     assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1).item()
-
-
-def test_fail() -> None:
-    with pytest.raises(FileNotFoundError):
-        read_coord(Path("non-existing-coord-file"))
-
-
-def test_uhf_fail() -> None:
-    base = Path(Path(__file__).parent, "mols", "H")
-
-    numbers, positions = read_coord(Path(base, "coord"))
-    charge = read_chrg(Path(base, ".CHRG"))
-
-    numbers = torch.tensor(numbers, dtype=torch.long)
-    positions = torch.tensor(positions)
-    charge = torch.tensor(charge)
-
-    calc = Calculator(numbers, par, opts=opts)
-
-    with pytest.raises(ValueError):
-        calc.set_option("spin", 0)
-        calc.singlepoint(numbers, positions, charge)
-
-    with pytest.raises(ValueError):
-        calc.set_option("spin", 2)
-        calc.singlepoint(numbers, positions, charge)

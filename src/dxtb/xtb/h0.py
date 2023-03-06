@@ -64,6 +64,9 @@ class Hamiltonian(TensorLike):
         self.par = par
         self.ihelp = ihelp
 
+        if self.par.hamiltonian is None:
+            raise RuntimeError("Parametrization does not specify a Hamiltonian.")
+
         # atom-resolved parameters
         self.rad = atomic_rad[self.unique].type(self.dtype).to(device=self.device)
         self.en = self._get_elem_param("en")

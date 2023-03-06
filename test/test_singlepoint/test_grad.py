@@ -31,9 +31,33 @@ opts = {
 
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("name", ["H2", "H2O", "CH4"])
+def test_analytical(name: str) -> None:
+    dtype = torch.double
+    dd = {"dtype": dtype}
+
+    # read from file
+    base = Path(Path(__file__).parent, "mols", name)
+    numbers, positions = read_coord(Path(base, "coord"))
+    charge = read_chrg(Path(base, ".CHRG"))
+
+    # convert to tensors
+    numbers = torch.tensor(numbers, dtype=torch.long)
+    positions = torch.tensor(positions, **dd)
+    charge = torch.tensor(charge, **dd)
+
+    calc = Calculator(numbers, par, opts=opts, **dd)
+    result = calc.singlepoint(numbers, positions, charge, grad=True)
+
+    ref = load_from_npz(ref_grad, name, dtype)
+    assert pytest.approx(result.total_grad, abs=1e-6, rel=1e-4) == ref
+
+
+@pytest.mark.grad
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "H2O", "CH4", "SiH4"])
-def test_single(dtype: torch.dtype, name: str) -> None:
+def test_backward(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 50  # slightly larger for H2O!
     dd = {"dtype": dtype}
 
@@ -66,7 +90,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("name", ["H2", "H2O", "CH4"])
-def test_grad_num(name: str) -> None:
+def test_num(name: str) -> None:
     dtype = torch.double
     dd = {"dtype": dtype}
 
@@ -84,7 +108,6 @@ def test_grad_num(name: str) -> None:
     gradient = calc_numerical_gradient(numbers, positions, charge, dd)
 
     ref = load_from_npz(ref_grad, name, dtype)
-
     assert pytest.approx(gradient, abs=1e-6, rel=1e-4) == ref
 
 

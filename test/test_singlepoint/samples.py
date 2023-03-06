@@ -1,5 +1,5 @@
 """
-Data for testing repulsion taken from https://github.com/grimme-lab/mstore.
+Reference single point energies (from tblite).
 """
 from __future__ import annotations
 
@@ -11,7 +11,9 @@ from ..molecules import merge_nested_dicts, mols
 
 
 class Refs(TypedDict):
-    """Format of reference records containing GFN1-xTB and GFN2-xTB reference values."""
+    """
+    Format of reference records containing GFN1-xTB and GFN2-xTB reference values.
+    """
 
     etot: Tensor
     """Total energy for GFN1-xTB"""
