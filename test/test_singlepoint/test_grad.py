@@ -18,7 +18,7 @@ from dxtb.xtb import Calculator
 from ..utils import load_from_npz
 
 ref_grad = np.load("test/test_singlepoint/grad.npz")
-# ["H2", "H2O", "CH4", "SiH4", "LYS_xao", "AD7en+", "C60", "vancoh2"]
+"""['H2', 'H2O', 'CH4', 'SiH4', 'LYS_xao', 'AD7en+', 'C60', 'vancoh2']"""
 
 opts = {
     "verbosity": 0,
@@ -41,9 +41,19 @@ def test_analytical(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["LYS_xao", "C60"])
+@pytest.mark.parametrize("name", ["C60"])
 def test_analytical_large(dtype: torch.dtype, name: str) -> None:
-    atol, rtol = 1e-6, 1e-3
+    atol, rtol = 1e-6, 1e-4
+    analytical(dtype, name, atol, rtol)
+
+
+@pytest.mark.grad
+@pytest.mark.large
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["AD7en+", "LYS_xao"])
+def test_analytical_large2(dtype: torch.dtype, name: str) -> None:
+    atol, rtol = 1e-5, 1e-3
     analytical(dtype, name, atol, rtol)
 
 

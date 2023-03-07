@@ -125,7 +125,8 @@ def spread_charges_atomic_to_orbital(charges: Tensor, ihelp: IndexHelper) -> Ten
         > torch.sqrt(charges.new_tensor(torch.finfo(charges.dtype).eps))
     ):
         raise RuntimeError(
-            f"Total charge changed during spreading from atomic to orbital charges ({tot_chrg_old:.6f} -> {tot_chrg_new:.6f})."
+            "Total charge changed during spreading from atomic to orbital "
+            f"charges ({tot_chrg_old:.6f} -> {tot_chrg_new:.6f})."
         )
 
     return orb_charges

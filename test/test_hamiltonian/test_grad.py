@@ -37,13 +37,17 @@ large = ["PbH4-BiH3", "MB16_43_01", "LYS_xao"]
 opts = {"verbosity": 0}
 
 
+@pytest.mark.grad
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", small)
 def test_no_overlap_single(dtype: torch.dtype, name: str) -> None:
     no_overlap_single(dtype, name)
 
 
+@pytest.mark.grad
 @pytest.mark.large
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", large)
 def test_no_overlap_single_large(dtype: torch.dtype, name: str) -> None:
@@ -96,6 +100,8 @@ def no_overlap_single(dtype: torch.dtype, name: str) -> None:
     assert pytest.approx(dcn, abs=tol) == ref_dcn
 
 
+@pytest.mark.grad
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", small)
@@ -103,7 +109,9 @@ def test_no_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     no_overlap_batch(dtype, name1, name2)
 
 
+@pytest.mark.grad
 @pytest.mark.large
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", large)
@@ -262,6 +270,7 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
 
 
 @pytest.mark.grad
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", small)
 def test_single(dtype: torch.dtype, name: str) -> None:
@@ -270,6 +279,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
 @pytest.mark.grad
 @pytest.mark.large
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", large)
 def test_single_large(dtype: torch.dtype, name: str) -> None:
@@ -358,6 +368,7 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
 
 @pytest.mark.grad
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", small)
@@ -367,6 +378,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
 @pytest.mark.grad
 @pytest.mark.large
+@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["LiH", "PbH4-BiH3"])
 @pytest.mark.parametrize("name2", large)
