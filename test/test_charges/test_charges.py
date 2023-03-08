@@ -54,7 +54,7 @@ def test_ghost(dtype: torch.dtype):
     tol = sqrt(torch.finfo(dtype).eps)
 
     sample = samples["NH3-dimer"]
-    numbers = sample["numbers"].detach().clone()
+    numbers = sample["numbers"].detach()
     numbers[[1, 5, 6, 7]] = 0
     positions = sample["positions"].type(dtype)
     total_charge = sample["total_charge"].type(dtype)

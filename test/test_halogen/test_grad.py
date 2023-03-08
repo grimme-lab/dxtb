@@ -24,7 +24,7 @@ def test_grad_pos_gradcheck(name: str) -> None:
     sample = samples[name]
 
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach().clone()
+    positions = sample["positions"].type(dtype).detach()
 
     # variable to be differentiated
     positions.requires_grad_(True)
@@ -55,7 +55,7 @@ def test_grad_pos_autograd(name: str) -> None:
     sample = samples[name]
 
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach().clone()
+    positions = sample["positions"].type(dtype).detach()
     ref = sample["gradient"]
 
     # variable to be differentiated

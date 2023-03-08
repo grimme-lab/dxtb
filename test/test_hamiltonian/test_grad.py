@@ -219,7 +219,7 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     # setup
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach().clone()
+    positions = sample["positions"].type(dtype).detach()
     positions.requires_grad_(True)
     chrg = torch.tensor(0.0, **dd)
 

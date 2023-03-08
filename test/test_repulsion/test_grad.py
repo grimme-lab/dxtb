@@ -31,7 +31,7 @@ def test_grad_pos_tblite(dtype: torch.dtype, name: str) -> None:
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach().clone()
+    positions = sample["positions"].type(dtype).detach()
     positions.requires_grad_(True)
     ref = sample["gfn1_grad"].type(dtype)
 
@@ -62,7 +62,7 @@ def test_grad_pos_autograd(dtype: torch.dtype, name: str) -> None:
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach().clone()
+    positions = sample["positions"].type(dtype).detach()
 
     rep = new_repulsion(numbers, par, **dd)
     if rep is None:
@@ -90,7 +90,7 @@ def test_grad_pos_backward(dtype: torch.dtype, name: str) -> None:
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach().clone()
+    positions = sample["positions"].type(dtype).detach()
     positions.requires_grad_(True)
 
     rep = new_repulsion(numbers, par, **dd)

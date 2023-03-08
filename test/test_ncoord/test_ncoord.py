@@ -100,7 +100,7 @@ def test_count_grad(
     a = torch.rand(4, dtype=dtype)
     b = torch.rand(4, dtype=dtype)
 
-    a_grad = a.detach().clone().requires_grad_(True)
+    a_grad = a.detach().requires_grad_(True)
     count = cf(a_grad, b)
 
     grad_auto = torch.autograd.grad(count.sum(-1), a_grad)[0]

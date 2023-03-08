@@ -27,7 +27,7 @@ def test_grad_backwards(name: str, dtype: torch.dtype):
     dd = {"dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype).detach().clone()
+    positions = samples[name]["positions"].type(dtype).detach()
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
@@ -56,7 +56,7 @@ def test_grad_autograd(name: str, dtype: torch.dtype):
     dd = {"dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype).detach().clone()
+    positions = samples[name]["positions"].type(dtype).detach()
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
@@ -94,7 +94,7 @@ def test_grad_large(name: str, dtype: torch.dtype):
     dd = {"dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype).detach().clone()
+    positions = samples[name]["positions"].type(dtype).detach()
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
@@ -132,7 +132,7 @@ def test_param_grad_energy(name: str, dtype: torch.dtype = torch.float):
     dd = {"dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype).detach().clone()
+    positions = samples[name]["positions"].type(dtype).detach()
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
@@ -170,7 +170,7 @@ def skip_test_param_grad_force(name: str, dtype: torch.dtype = torch.float):
     dd = {"dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype).detach().clone()
+    positions = samples[name]["positions"].type(dtype).detach()
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 

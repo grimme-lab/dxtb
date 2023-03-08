@@ -34,7 +34,7 @@ def test_ss(dtype: torch.dtype):
     rndm = torch.tensor(
         [0.13695892585203528, 0.47746994997214642, 0.20729096231197164], **dd
     )
-    vec = rndm.detach().clone().requires_grad_(True)
+    vec = rndm.detach().requires_grad_(True)
     s = mmd.overlap_gto((l1, l2), (alpha1, alpha2), (coeff1, coeff2), vec)
 
     # autograd
@@ -230,7 +230,7 @@ def test_gradcheck_overlap(dtype: torch.dtype, name: str):
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach().clone()
+    positions = sample["positions"].type(dtype).detach()
     positions.requires_grad_(True)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
@@ -250,7 +250,7 @@ def test_overlap_jacobian(dtype: torch.dtype, name: str):
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach().clone()
+    positions = sample["positions"].type(dtype).detach()
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     overlap = Overlap(numbers, par, ihelp, **{"dtype": dtype})
 
@@ -273,7 +273,6 @@ def test_overlap_jacobian(dtype: torch.dtype, name: str):
 
 
 def calc_numerical_gradient(overlap: Overlap, positions: Tensor) -> Tensor:
-
     # setup numerical gradient
     step = 1.0e-4  # require larger deviations for overlap change
     natm = positions.shape[0]

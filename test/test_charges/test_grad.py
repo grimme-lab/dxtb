@@ -27,8 +27,8 @@ from .samples import samples
 def test_gradcheck(dtype: torch.dtype = torch.double):
     sample = samples["NH3"]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach().clone()
-    total_charge = sample["total_charge"].type(dtype).detach().clone()
+    positions = sample["positions"].type(dtype).detach()
+    total_charge = sample["total_charge"].type(dtype).detach()
     cn = torch.tensor(
         [3.0, 1.0, 1.0, 1.0],
         dtype=dtype,
