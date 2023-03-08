@@ -250,8 +250,9 @@ class Interaction(TensorLike):
 
         This method should be implemented by the subclass.
         However, returning zeros here serves three purposes:
-         - the interaction can be empty
-         - the gradient of the interaction is indeed zero
+         - the interaction can (theoretically) be empty
+         - the gradient of the interaction is indeed zero and thus requires no
+           gradient implementation (one can, however, implement a method that returns zeros to make this more obvious)
          - the interaction always uses atom-resolved charges and shell-resolved
            charges are never required
 
@@ -274,8 +275,10 @@ class Interaction(TensorLike):
 
         This method should be implemented by the subclass.
         However, returning zeros here serves three purposes:
-         - the interaction can be empty
-         - the gradient of the interaction is indeed zero
+         - the interaction can (theoretically) be empty
+         - the gradient of the interaction is indeed zero and thus requires no
+           gradient implementation (one can, however, implement a method that
+           returns zeros to make this more obvious)
          - the interaction always uses shell-resolved charges and atom-resolved
            charges are never required
 

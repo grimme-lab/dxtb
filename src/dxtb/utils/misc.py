@@ -48,3 +48,15 @@ def is_int_list(x: list[Any]) -> TypeGuard[list[int]]:
 
 def symbol2number(sym_list: list[str]) -> Tensor:
     return torch.flatten(torch.tensor([ATOMIC_NUMBER[s.title()] for s in sym_list]))
+
+
+def convert_float_tensor(
+    d: dict[str, float | Tensor],
+    device: torch.device | None = None,
+    dtype: torch.dtype | None = None,
+) -> dict[str, Tensor]:
+    for key, value in d.items():
+        if isinstance(value, float):
+            d[key] = torch.tensor(value, device=device, dtype=dtype)
+
+    return d  # type: ignore

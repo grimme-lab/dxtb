@@ -2,7 +2,7 @@
 Testing the charges module
 ==========================
 
-This module tests the EEQ charge model including:
+The tests surrounding the EEQ charge model include:
  - single molecule
  - batched
  - ghost atoms

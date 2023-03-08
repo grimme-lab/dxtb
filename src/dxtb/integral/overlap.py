@@ -155,7 +155,8 @@ class Overlap(TensorLike):
                     pair[1] : pair[1] + norbj,
                 ] = stmp[r]
 
-        return ovlp  # .fill_diagonal_(1.0)
+        # force ones on diagonal for more robustness
+        return ovlp.fill_diagonal_(1.0)
 
     def get_pairs(self, x: Tensor, i: int) -> Tensor:
         """Get indices of all unqiue shells pairs with index value `i`.

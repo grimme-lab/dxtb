@@ -151,15 +151,14 @@ class InteractionList(Interaction):
         Tensor
             Nuclear gradient of all interactions.
         """
-        return (
-            torch.stack(
-                [
-                    interaction.get_gradient(
-                        numbers, positions, charges, cache[interaction.label], ihelp
-                    )
-                    for interaction in self.interactions
-                ]
-            ).sum(dim=0)
-            if len(self.interactions) > 0
-            else torch.zeros_like(positions)
-        )
+        if len(self.interactions) <= 0:
+            return torch.zeros_like(positions)
+
+        return torch.stack(
+            [
+                interaction.get_gradient(
+                    numbers, positions, charges, cache[interaction.label], ihelp
+                )
+                for interaction in self.interactions
+            ]
+        ).sum(dim=0)

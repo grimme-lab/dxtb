@@ -24,7 +24,7 @@ class D3Model(BaseModel):
     s6: Union[float, Tensor] = xtb.DEFAULT_DISP_S6
     """Scaling factor for dipole-dipole term."""
 
-    s8: Union[float, Tensor] = xtb.DEFAULT_DISP_S9
+    s8: Union[float, Tensor] = xtb.DEFAULT_DISP_S8
     """Scaling factor for dipole-quadrupole term."""
 
     s9: Union[float, Tensor] = xtb.DEFAULT_DISP_S9
