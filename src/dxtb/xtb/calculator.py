@@ -377,36 +377,6 @@ class Calculator(TensorLike):
                 numbers=numbers, positions=positions, ihelp=self.ihelp
             )
 
-            # # autograd implementation
-            # scf_solve = scf.ad.SelfConsistentFieldAD.apply
-
-            # # NOTE: no keyword arguments allowed
-            # scf_results = scf_solve(
-            #     numbers,
-            #     positions,
-            #     chrg,
-            #     self.interaction,
-            #     self.ihelp,
-            #     self.opts["guess"],
-            #     hcore,
-            #     overlap,
-            #     occupation,
-            #     n0,
-            #     self.opts["fwd_options"],
-            #     self.opts["scf_options"],
-            #     True,
-            # )
-
-            # # recast to dict
-            # scf_results = {
-            #     "charges": scf_results[0],
-            #     "density": scf_results[1],
-            #     "emo": scf_results[2],
-            #     "energy": scf_results[3],
-            #     "fenergy": scf_results[4],
-            #     "hamiltonian": scf_results[5],
-            # }
-
             scf_results = scf.solve(
                 numbers,
                 positions,
