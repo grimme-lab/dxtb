@@ -7,7 +7,7 @@ import tad_dftd3 as d3
 
 from .._types import Any, CountingFunction, Tensor
 from ..ncoord import exp_count, get_coordination_number
-from .abc import Dispersion
+from .base import Dispersion
 
 
 class DispersionD3(Dispersion):
@@ -54,8 +54,9 @@ class DispersionD3(Dispersion):
         """
         Obtain cache for storage of settings.
 
-        Settings can be passed as `kwargs`. The available optional parameters are
-        the same as in `tad_dftd3.dftd3`, i.e., "ref", "rcov", "rvdw", and "r4r2".
+        Settings can be passed as `kwargs`. The available optional parameters
+        are the same as in `tad_dftd3.dftd3`, i.e., "ref", "rcov", "rvdw", and
+        "r4r2".
 
         Parameters
         ----------

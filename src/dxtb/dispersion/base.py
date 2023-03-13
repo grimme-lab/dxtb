@@ -70,3 +70,33 @@ class Dispersion(TensorLike):
         Tensor
             Atom-resolved dispersion energy.
         """
+
+    def get_gradient(self, energy: Tensor, positions: Tensor) -> Tensor:
+        """
+        Calculates nuclear gradient of an classical energy contribution via
+        PyTorch's autograd engine.
+
+        Parameters
+        ----------
+        energy : Tensor
+            Energy that will be differentiated.
+        positions : Tensor
+            Nuclear positions. Needs `requires_grad=True`.
+
+        Returns
+        -------
+        Tensor
+            Nuclear gradient of `energy`.
+
+        Raises
+        ------
+        RuntimeError
+            `positions` tensor does not have `requires_grad=True`.
+        """
+        if positions.requires_grad is False:
+            raise RuntimeError("Position tensor needs `requires_grad=True`.")
+
+        (gradient,) = torch.autograd.grad(
+            energy, positions, grad_outputs=torch.ones_like(energy)
+        )
+        return gradient

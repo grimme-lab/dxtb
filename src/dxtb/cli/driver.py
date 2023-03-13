@@ -98,17 +98,17 @@ class Driver:
         timer.stop("setup")
 
         # run singlepoint calculation, timer set within
-        result = calc.singlepoint(numbers, positions, chrg, timer=timer)
-        total = result.total.sum(-1)
+        result = calc.singlepoint(numbers, positions, chrg, timer=timer, grad=args.grad)
 
         # gradient of total energy w.r.t. positions
-        if args.grad is True:
-            timer.start("grad")
-            total.backward()
-            if positions.grad is None:
-                raise RuntimeError("No gradients found for positions.")
-            result.gradient = positions.grad
-            timer.stop("grad")
+        # if args.grad is True:
+        #     timer.start("grad")
+        #     total = result.total.sum(-1)
+        #     total.backward()
+        #     if positions.grad is None:
+        #         raise RuntimeError("No gradients found for positions.")
+        #     result.gradient = positions.grad
+        #     timer.stop("grad")
 
         # stop timer
         timer.stop("total")

@@ -17,9 +17,12 @@ from __future__ import annotations
 import torch
 
 from .._types import Any, NoReturn, Tensor
-from ..utils import batch, wrap_gather, wrap_scatter_reduce
+from ..utils import batch, t2int, wrap_gather, wrap_scatter_reduce
 
 __all__ = ["IndexHelper"]
+
+
+PAD = -999
 
 
 def _fill(index: Tensor, repeat: Tensor) -> Tensor:
@@ -177,7 +180,7 @@ class IndexHelper:
 
         device = numbers.device
         batched = numbers.ndim > 1
-        pad_val = -999
+        pad_val = PAD
 
         unique, atom_to_unique = torch.unique(numbers, return_inverse=True)
 
@@ -614,3 +617,101 @@ class IndexHelper:
             self.orbital_index.type(dtype),
             self.orbitals_to_shell.type(dtype),
         )
+
+    def get_shell_indices(self, atom_idx: int) -> Tensor:
+        """
+        Get shell indices belong to given atom.
+
+        Parameters
+        ----------
+        atom_idx : int
+            Index of given atom.
+
+        Returns
+        -------
+        Tensor
+            Index list of shells belonging to given atom.
+        """
+        return (self.shells_to_atom == atom_idx).nonzero(as_tuple=True)[0]
+
+    def get_orbital_indices(self, shell_idx: int) -> Tensor:
+        """
+        Get orbital indices belong to given shell.
+
+        Parameters
+        ----------
+        shell_idx : int
+            Index of given shell.
+
+        Returns
+        -------
+        Tensor
+            Index list of orbitals belonging to given shell.
+        """
+        return (self.orbitals_to_shell == shell_idx).nonzero(as_tuple=True)[0]
+
+    def orbital_atom_mapping(self, idx: int) -> Tensor:
+        """
+        Mapping of atom index to orbital index, i.e., return indices of orbitals
+        belonging to given atom. The orbital order is given by
+        `IndexHelper.orbitals_to_shell`.
+
+        Parameters
+        ----------
+        idx : int
+            Index of target atom.
+
+        Returns
+        -------
+        Tensor
+            1d-Tensor containing the indices of the orbitals.
+        """
+        # FIXME: batched mode
+        if self.batched:
+            raise NotImplementedError(
+                "Currently, `orbital_atom_mapping` only supports a single sample."
+            )
+
+        return torch.tensor(
+            [
+                oidx
+                for sidx in self.get_shell_indices(idx)
+                for oidx in self.get_orbital_indices(t2int(sidx)).tolist()
+            ]
+        )
+
+    @property
+    def orbitals_per_atom(self) -> Tensor:
+        """
+        Number of orbitals for each atom.
+
+        Returns
+        -------
+        Tensor
+            Atom indices for each orbital.
+        """
+
+        try:
+            # batch mode
+            pad = torch.nn.utils.rnn.pad_sequence(
+                [self.shells_to_atom.mT, self.orbitals_to_shell.T], padding_value=PAD
+            )
+            pad = torch.einsum("ijk->kji", pad)  # [2, bs, norb_max]
+        except RuntimeError:
+            # single mode
+            pad = torch.nn.utils.rnn.pad_sequence(
+                [self.shells_to_atom, self.orbitals_to_shell], padding_value=PAD
+            ).T  # [2, norb_max]
+
+        if len(pad.shape) > 2:
+            # gathering over subentries to avoid padded value (PAD) in index tensor
+            return batch.pack(
+                [torch.gather(a[b != PAD], 0, b[b != PAD]) for a, b in pad],
+                value=PAD,
+            )
+            # TODO:
+            # masked_tensor could be a vectorised solution (though only
+            # available in pytorch 1.13)
+            # alternatively write all values into extra column
+        else:
+            return torch.gather(pad[0], 0, pad[1])

@@ -48,23 +48,15 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
-        (
-            sample1["numbers"],
-            sample2["numbers"],
-        )
-    )
+    numbers = batch.pack((sample1["numbers"], sample2["numbers"]))
     positions = batch.pack(
-        (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
-        )
+        (sample1["positions"].type(dtype), sample2["positions"].type(dtype))
     )
     ref = batch.pack(
         (
             load_from_npz(ref_overlap, name1, dtype),
             load_from_npz(ref_overlap, name2, dtype),
-        ),
+        )
     )
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
@@ -152,14 +144,7 @@ def test_sto_ng_batch(ng: int, dtype: torch.dtype):
 
     coeff, alpha = slater.to_gauss(ng_, n, l, torch.tensor(1.0, dtype=dtype))
     coeff, alpha = coeff.type(dtype)[:ng_], alpha.type(dtype)[:ng_]
-    vec = torch.tensor(
-        [
-            [1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-            [0.0, 0.0, 1.0],
-        ],
-        dtype=dtype,
-    )
+    vec = torch.tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], dtype=dtype)
 
     s = overlap_gto((l, l), (alpha, alpha), (coeff, coeff), vec)
 

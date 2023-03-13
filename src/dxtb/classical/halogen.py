@@ -42,7 +42,7 @@ from .base import Classical
 __all__ = ["Halogen", "new_halogen"]
 
 
-class Halogen(Classical, TensorLike):
+class Halogen(Classical):
     """
     Representation of the halogen bond correction.
     """

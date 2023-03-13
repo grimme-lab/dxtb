@@ -50,7 +50,7 @@ def test_grad(dtype: torch.dtype, name: str):
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = samples[name]["positions"].type(dtype).detach().clone()
+    positions = samples[name]["positions"].type(dtype).detach()
     positions.requires_grad_(True)
     chrg = sample["charge"].type(dtype)
 

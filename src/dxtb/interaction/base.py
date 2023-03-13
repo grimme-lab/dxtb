@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Tensor, TensorLike
+from .._types import Any, Tensor, TensorLike
 from ..basis import IndexHelper
 
 
@@ -147,8 +147,12 @@ class Interaction(TensorLike):
         -------
         Tensor
             Atom resolved energy vector.
-        """
 
+        Note
+        ----
+        The subclasses of `Interaction` should implement the `get_atom_energy`
+        and `get_shell_energy` methods.
+        """
         qsh = ihelp.reduce_orbital_to_shell(charges)
         esh = self.get_shell_energy(qsh, cache)
 
@@ -157,7 +161,7 @@ class Interaction(TensorLike):
 
         return eat + ihelp.reduce_shell_to_atom(esh)
 
-    def get_shell_energy(self, charges: Tensor, *_) -> Tensor:
+    def get_shell_energy(self, charges: Tensor, *_: Any) -> Tensor:
         """
         Compute the energy from the charges, all quantities are shell-resolved.
 
@@ -177,7 +181,7 @@ class Interaction(TensorLike):
 
         return torch.zeros_like(charges)
 
-    def get_atom_energy(self, charges: Tensor, *_) -> Tensor:
+    def get_atom_energy(self, charges: Tensor, *_: Any) -> Tensor:
         """
         Compute the energy from the charges, all quantities are atom-resolved.
 
@@ -198,70 +202,95 @@ class Interaction(TensorLike):
         return torch.zeros_like(charges)
 
     def get_gradient(
-        self, charges: Tensor, ihelp: IndexHelper, cache: Interaction.Cache
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        charges: Tensor,
+        cache: Interaction.Cache,
+        ihelp: IndexHelper,
     ) -> Tensor:
         """
-        Compute the energy from the charges, all quantities are orbital-resolved.
+        Compute the nuclear gradient using orbital-resolved charges.
+
+        Note
+        ----
+        This method calls both `get_atom_gradient` and `get_shell_gradient` and
+        adds up both gradients. Hence, one of the contributions must be zero.
 
         Parameters
         ----------
+        numbers : Tensor
+            Atomic numbers.
+        positions : Tensor
+            Cartesian coordinates.
         charges : Tensor
             Orbital-resolved partial charges.
-        ihelp : IndexHelper
-            Index mapping for the basis set.
         cache : Interaction.Cache
             Restart data for the interaction.
+        ihelp : IndexHelper
+            Index mapping for the basis set.
 
         Returns
         -------
         Tensor
-            Atom resolved energy vector.
+            Nuclear gradient for each atom.
         """
 
         qsh = ihelp.reduce_orbital_to_shell(charges)
-        esh = self.get_shell_energy(qsh, ihelp, cache)
+        gsh = self.get_shell_gradient(numbers, positions, qsh, cache, ihelp)
 
         qat = ihelp.reduce_shell_to_atom(qsh)
-        eat = self.get_atom_energy(qat, ihelp, cache)
+        gat = self.get_atom_gradient(numbers, positions, qat, cache)
 
-        return eat + ihelp.reduce_shell_to_atom(esh)
+        return gsh + gat
 
-    def get_shell_gradient(self, charges: Tensor, *_) -> Tensor:
+    def get_shell_gradient(self, _: Any, positions: Tensor, *__: Any) -> Tensor:
         """
-        Compute the energy from the charges, all quantities are shell-resolved.
+        Return zero gradient.
 
-        This method should be implemented by the subclass. Here, it serves
-        only to create an empty `Interaction` by returning zeros.
+        This method should be implemented by the subclass.
+        However, returning zeros here serves three purposes:
+         - the interaction can (theoretically) be empty
+         - the gradient of the interaction is indeed zero and thus requires no
+           gradient implementation (one can, however, implement a method that returns zeros to make this more obvious)
+         - the interaction always uses atom-resolved charges and shell-resolved
+           charges are never required
 
         Parameters
         ----------
-        charges : Tensor
-            Shell-resolved partial charges.
+        positions : Tensor
+            Cartesian coordinates (for shape of gradient).
 
         Returns
         -------
         Tensor
-            Energy vector for each shell partial charge.
+            Nuclear gradient for each atom.
         """
 
-        return torch.zeros_like(charges)
+        return torch.zeros_like(positions)
 
-    def get_atom_gradient(self, charges: Tensor, *_) -> Tensor:
+    def get_atom_gradient(self, _: Any, positions: Tensor, *__: Any) -> Tensor:
         """
-        Compute the energy from the charges, all quantities are atom-resolved.
+        Return zero gradient.
 
-        This method should be implemented by the subclass. Here, it serves
-        only to create an empty `Interaction` by returning zeros.
+        This method should be implemented by the subclass.
+        However, returning zeros here serves three purposes:
+         - the interaction can (theoretically) be empty
+         - the gradient of the interaction is indeed zero and thus requires no
+           gradient implementation (one can, however, implement a method that
+           returns zeros to make this more obvious)
+         - the interaction always uses shell-resolved charges and atom-resolved
+           charges are never required
 
         Parameters
         ----------
-        charges : Tensor
-            Atom-resolved partial charges.
+        positions : Tensor
+            Cartesian coordinates (for shape of gradient).
 
         Returns
         -------
         Tensor
-            Energy vector for each atom partial charge.
+            Nuclear gradient for each atom.
         """
 
-        return torch.zeros_like(charges)
+        return torch.zeros_like(positions)

@@ -30,7 +30,7 @@ class InteractionList(Interaction):
 
     def get_cache(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
-    ) -> Cache:
+    ) -> InteractionList.Cache:
         """
         Create restart data for individual interactions.
 
@@ -45,8 +45,8 @@ class InteractionList(Interaction):
 
         Returns
         -------
-        Interaction.Cache
-            Restart data for the interaction.
+        InteractionList.Cache
+            Restart data for the interactions.
         """
 
         cache = self.Cache()
@@ -61,7 +61,7 @@ class InteractionList(Interaction):
         return cache
 
     def get_potential(
-        self, charges: Tensor, cache: Cache, ihelp: IndexHelper
+        self, charges: Tensor, cache: InteractionList.Cache, ihelp: IndexHelper
     ) -> Tensor:
         """
         Compute the potential for a list of interactions.
@@ -72,8 +72,8 @@ class InteractionList(Interaction):
             Orbital-resolved partial charges.
         ihelp : IndexHelper
             Index mapping for the basis set.
-        cache : Interaction.Cache
-            Restart data for the interaction.
+        cache : InteractionList.Cache
+            Restart data for the interactions.
 
         Returns
         -------
@@ -102,7 +102,7 @@ class InteractionList(Interaction):
             Orbital-resolved partial charges.
         ihelp : IndexHelper
             Index mapping for the basis set.
-        cache : Interaction.Cache
+        cache : Cache
             Restart data for the interaction.
 
         Returns
@@ -119,5 +119,46 @@ class InteractionList(Interaction):
                 ]
             ).sum(dim=0)
             if len(self.interactions) > 0
-            else charges.new_zeros(())
+            else torch.zeros_like(charges)
         )
+
+    def get_gradient(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        charges: Tensor,
+        cache: InteractionList.Cache,
+        ihelp: IndexHelper,
+    ) -> Tensor:
+        """
+        Calculate gradient for a list of interactions.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers.
+        positions : Tensor
+            Cartesian coordinates.
+        charges : Tensor
+            Orbital-resolved partial charges.
+        cache : InteractionList.Cache
+            Restart data for the interaction.
+        ihelp : IndexHelper
+            Index mapping for the basis set.
+
+        Returns
+        -------
+        Tensor
+            Nuclear gradient of all interactions.
+        """
+        if len(self.interactions) <= 0:
+            return torch.zeros_like(positions)
+
+        return torch.stack(
+            [
+                interaction.get_gradient(
+                    numbers, positions, charges, cache[interaction.label], ihelp
+                )
+                for interaction in self.interactions
+            ]
+        ).sum(dim=0)

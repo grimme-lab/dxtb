@@ -64,6 +64,9 @@ class Hamiltonian(TensorLike):
         self.par = par
         self.ihelp = ihelp
 
+        if self.par.hamiltonian is None:
+            raise RuntimeError("Parametrization does not specify a Hamiltonian.")
+
         # atom-resolved parameters
         self.rad = atomic_rad[self.unique].type(self.dtype).to(device=self.device)
         self.en = self._get_elem_param("en")
@@ -534,7 +537,7 @@ class Hamiltonian(TensorLike):
             zero,
         )
 
-        # distance vector from dR_AB/dr_a (n_batch, atoms_i, atoms_j, 3)
+        # distance vector from dR_AB/dr_a [n_batch, atoms_i, atoms_j, 3]
         rij = torch.where(
             mask_atom.unsqueeze(-1),
             positions.unsqueeze(-2) - positions.unsqueeze(-3),
@@ -542,14 +545,48 @@ class Hamiltonian(TensorLike):
         )
 
         # reduce to atoms
-        sval = self.ihelp.reduce_orbital_to_atom(sval, dim=(-2, -1))
         dpi = self.ihelp.reduce_shell_to_atom(dpi, dim=(-2, -1))
 
-        # multiplying with `rij` automatically includes the sign change on
-        # switching atoms, which is manually done in the Fortran code
-        # TODO: same must be done for `sval` via the derivative of the
-        # overlap -> currently doverlap=0
-        gradient = sval.unsqueeze(-1) * doverlap + dpi.unsqueeze(-1) * rij
+        # contract within orbital representation
+        ss_orb = sval.unsqueeze(-1) * doverlap
+
+        # instead of looping over atom and orbital combinations to obtain
+        # correct overlap chunks, mask out irrelevant ones
+        natm = positions.shape[-2]
+        batch_mode = len(positions.shape) > 2
+
+        # spread to all atom-pairs
+        master = torch.einsum(
+            "ijklmn->kijlmn", ss_orb.repeat(natm, natm, 1, 1, 1, 1)
+        )  # [bs, natm, natm, norb, norb, 3]
+        if not batch_mode:
+            master = ss_orb.repeat(natm, natm, 1, 1, 1)
+
+        # mask all non-contributing pairs
+        master_mask = torch.zeros_like(master).bool()
+        o2a = self.ihelp.orbitals_per_atom
+
+        for i in range(natm):
+            for j in range(natm):
+                mask_ij = (o2a.unsqueeze(-2) == i) & (o2a.unsqueeze(-1) == j)
+                if batch_mode:
+                    master_mask[:, i, j] = mask_ij.unsqueeze(-1).repeat(1, 1, 1, 3)
+                else:
+                    master_mask[i, j] = mask_ij.unsqueeze(-1).repeat(1, 1, 3)
+
+        # apply mask
+        _zero = master.new_tensor(0.0)
+        master = torch.where(master_mask, master, _zero)
+
+        # sum over orbital- and atom-wise contributions
+        # [natm, natm, norb, norb, 3] -> [natm, 3]
+        if batch_mode:
+            gradient = torch.einsum("bijklm->bim", master)
+        else:
+            gradient = torch.einsum("ijklm->im", master)
+
+        # add E_EHT contribution
+        gradient += torch.sum(dpi.unsqueeze(-1) * rij, dim=-2)
 
         # ----------------------------------------------------------------------
         # Derivative of the electronic energy w.r.t. the coordination number
@@ -576,7 +613,7 @@ class Hamiltonian(TensorLike):
         # reduce to atoms and sum for vector (requires non-symmetric matrix)
         dedcn = self.ihelp.reduce_shell_to_atom(dcn, dim=(-2, -1))
 
-        return dedcn.sum(-2), gradient.sum(-2)
+        return dedcn.sum(-2), gradient
 
     def to(self, device: torch.device) -> Hamiltonian:
         """

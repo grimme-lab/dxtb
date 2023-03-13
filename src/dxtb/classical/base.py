@@ -13,11 +13,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from .._types import Tensor
+import torch
+
+from .._types import Tensor, TensorLike
 from ..basis import IndexHelper
 
 
-class Classical(ABC):
+class ClassicalABC(ABC):
     """
     Abstract base class for calculation of classical contributions.
     """
@@ -68,3 +70,43 @@ class Classical(ABC):
         Tensor
              Atomwise energy contributions.
         """
+
+
+class Classical(ClassicalABC, TensorLike):
+    """
+    Base class for calculation of classical contributions.
+    """
+
+    def get_gradient(self, energy: Tensor, positions: Tensor) -> Tensor:
+        """
+        Calculates nuclear gradient of an classical energy contribution via
+        PyTorch's autograd engine.
+
+        Parameters
+        ----------
+        energy : Tensor
+            Energy that will be differentiated.
+        positions : Tensor
+            Nuclear positions. Needs `requires_grad=True`.
+
+        Returns
+        -------
+        Tensor
+            Nuclear gradient of `energy`.
+
+        Raises
+        ------
+        RuntimeError
+            `positions` tensor does not have `requires_grad=True`.
+        """
+        if positions.requires_grad is False:
+            raise RuntimeError("Position tensor needs `requires_grad=True`.")
+
+        # avoid autograd call if energy is zero (autograd fails anyway)
+        if torch.equal(energy, torch.zeros_like(energy)):
+            return torch.zeros_like(positions)
+
+        (gradient,) = torch.autograd.grad(
+            energy, positions, grad_outputs=torch.ones_like(energy)
+        )
+        return gradient

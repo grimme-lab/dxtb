@@ -248,3 +248,13 @@ class GeneralizedBorn(Interaction):
         self, charges: Tensor, cache: GeneralizedBorn.Cache
     ) -> Tensor:
         return torch.einsum("...ik,...k->...i", cache.mat, charges)
+
+    # TODO: Implement gradient before using solvation in SCF
+    def get_atom_gradient(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        charges: Tensor,
+        cache: Cache,
+    ) -> Tensor:
+        raise NotImplementedError("Solvation gradient not implemented")

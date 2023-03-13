@@ -53,23 +53,15 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
-        (
-            sample1["numbers"],
-            sample2["numbers"],
-        )
-    )
+    numbers = batch.pack((sample1["numbers"], sample2["numbers"]))
     positions = batch.pack(
-        (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
-        )
+        (sample1["positions"].type(dtype), sample2["positions"].type(dtype))
     )
     ref = batch.pack(
         (
             load_from_npz(ref_overlap, name1, dtype),
             load_from_npz(ref_overlap, name2, dtype),
-        ),
+        )
     )
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))

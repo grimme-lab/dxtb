@@ -13,3 +13,4 @@ from . import explicit, recursion
 
 # set default
 from .recursion import mmd_recursion as overlap_gto
+from .recursion import mmd_recursion_gradient as overlap_gto_grad

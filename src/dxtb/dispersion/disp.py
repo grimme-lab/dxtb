@@ -9,8 +9,8 @@ import torch
 
 from .._types import NoReturn, Tensor
 from ..param import Param
-from ..utils import ParameterWarning
-from .abc import Dispersion
+from ..utils import ParameterWarning, convert_float_tensor
+from .base import Dispersion
 from .d3 import DispersionD3
 from .d4 import DispersionD4
 
@@ -43,29 +43,37 @@ def new_dispersion(
     """
 
     if hasattr(par, "dispersion") is False or par.dispersion is None:
-        # TODO: Dispersion is used in all models, so error or just warning?
         warnings.warn("No dispersion scheme found.", ParameterWarning)
         return None
 
     if par.dispersion.d3 is not None and par.dispersion.d4 is None:
-        # FIXME: TypeError: rational_damping() got an unexpected keyword argument 's9'
-        param = {
-            "a1": par.dispersion.d3.a1,
-            "a2": par.dispersion.d3.a2,
-            "s6": par.dispersion.d3.s6,
-            "s8": par.dispersion.d3.s8,
-            # "s9": par.dispersion.d3.s9,
-        }
+        param = convert_float_tensor(
+            {
+                "a1": par.dispersion.d3.a1,
+                "a2": par.dispersion.d3.a2,
+                "s6": par.dispersion.d3.s6,
+                "s8": par.dispersion.d3.s8,
+                "s9": par.dispersion.d3.s9,
+            },
+            device=device,
+            dtype=dtype,
+        )
+
         return DispersionD3(numbers, param, device=device, dtype=dtype)
 
     if par.dispersion.d4 is not None and par.dispersion.d3 is None:
-        param = {
-            "a1": par.dispersion.d4.a1,
-            "a2": par.dispersion.d4.a2,
-            "s6": par.dispersion.d4.s6,
-            "s8": par.dispersion.d4.s8,
-            "s9": par.dispersion.d4.s9,
-        }
+        param = convert_float_tensor(
+            {
+                "a1": par.dispersion.d4.a1,
+                "a2": par.dispersion.d4.a2,
+                "s6": par.dispersion.d4.s6,
+                "s8": par.dispersion.d4.s8,
+                "s9": par.dispersion.d4.s9,
+                "s10": par.dispersion.d4.s10,
+            },
+            device=device,
+            dtype=dtype,
+        )
         return DispersionD4(numbers, param, device=device, dtype=dtype)
 
     if par.dispersion.d3 is not None and par.dispersion.d4 is not None:

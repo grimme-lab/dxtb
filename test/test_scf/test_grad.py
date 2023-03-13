@@ -27,8 +27,8 @@ def test_grad_backwards(name: str, dtype: torch.dtype):
     dd = {"dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    pos = samples[name]["positions"].type(dtype)
-    positions = pos.detach().clone().requires_grad_(True)
+    positions = samples[name]["positions"].type(dtype).detach()
+    positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
     # Values obtained with tblite 0.2.1 disabling repulsion and dispersion
@@ -51,12 +51,12 @@ def test_grad_backwards(name: str, dtype: torch.dtype):
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float])
 @pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
-def test_grad(name: str, dtype: torch.dtype):
+def test_grad_autograd(name: str, dtype: torch.dtype):
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype).detach().clone()
+    positions = samples[name]["positions"].type(dtype).detach()
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
@@ -94,7 +94,7 @@ def test_grad_large(name: str, dtype: torch.dtype):
     dd = {"dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype).detach().clone()
+    positions = samples[name]["positions"].type(dtype).detach()
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
@@ -132,7 +132,7 @@ def test_param_grad_energy(name: str, dtype: torch.dtype = torch.float):
     dd = {"dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype).detach().clone()
+    positions = samples[name]["positions"].type(dtype).detach()
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
@@ -170,7 +170,7 @@ def skip_test_param_grad_force(name: str, dtype: torch.dtype = torch.float):
     dd = {"dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype).detach().clone()
+    positions = samples[name]["positions"].type(dtype).detach()
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 

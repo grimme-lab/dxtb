@@ -26,7 +26,7 @@ from ..constants import K2AU, defaults
 from ..exlibs.xitorch import EditableModule, LinearOperator
 from ..exlibs.xitorch import linalg as xtl
 from ..exlibs.xitorch import optimize as xto
-from ..interaction import Interaction
+from ..interaction import InteractionList
 from ..utils import real_atoms
 from ..wavefunction import filling, mulliken
 from .guess import get_guess
@@ -61,8 +61,8 @@ class SelfConsistentField(EditableModule):
         ihelp: IndexHelper
         """Index mapping for the basis set"""
 
-        cache: Interaction.Cache
-        """Restart data for the interaction"""
+        cache: InteractionList.Cache
+        """Restart data for the interactions"""
 
         energy: Tensor
         """Electronic energy"""
@@ -90,7 +90,7 @@ class SelfConsistentField(EditableModule):
             n0: Tensor,
             numbers: Tensor,
             ihelp: IndexHelper,
-            cache: Interaction.Cache,
+            cache: InteractionList.Cache,
         ) -> None:
             self.hcore = hcore
             self.overlap = overlap
@@ -108,7 +108,7 @@ class SelfConsistentField(EditableModule):
     _data: _Data
     """Persistent data"""
 
-    interaction: Interaction
+    interactions: InteractionList
     """Interactions to minimize in self-consistent iterations"""
 
     fwd_options: dict[str, Any]
@@ -134,7 +134,7 @@ class SelfConsistentField(EditableModule):
 
     def __init__(
         self,
-        interaction: Interaction,
+        interactions: InteractionList,
         *args: Any,
         **kwargs: Any,
     ) -> None:
@@ -163,7 +163,7 @@ class SelfConsistentField(EditableModule):
         self.kt = self._data.hcore.new_tensor(
             self.scf_options.get("etemp", defaults.ETEMP) * K2AU
         )
-        self.interaction = interaction
+        self.interactions = interactions
 
     def __call__(self, charges: Tensor | None = None) -> dict[str, Tensor]:
         """
@@ -183,29 +183,32 @@ class SelfConsistentField(EditableModule):
         if charges is None:
             charges = torch.zeros_like(self._data.occupation)
 
-        with torch.no_grad():
-            q_conv = self.scf(charges)
+        if self.scf_options.get("full", True) is True:
+            charges = self.scf(charges)
+        else:
+            with torch.no_grad():
+                q_conv = self.scf(charges)
 
-        # SCF step with gradient using converged result as "perfect" guess
-        out = (
-            self.iterate_potential(self.charges_to_potential(q_conv))
-            if self.use_potential
-            else self.iterate_charges(q_conv)
-        )
-        charges = self.potential_to_charges(out) if self.use_potential else out
-
-        # Check consistency between SCF solution and single step.
-        # Especially for elements and their ions, the SCF may oscillate and the
-        # single step for the gradient may differ from the converged solution.
-        if (
-            torch.linalg.vector_norm(q_conv - charges)
-            > sqrt(torch.finfo(self.dtype).eps) * 10
-        ).any():
-            warnings.warn(
-                "The single SCF step differs from the converged solution. "
-                "Re-calculating with full gradient tracking!"
+            # SCF step with gradient using converged result as "perfect" guess
+            out = (
+                self.iterate_potential(self.charges_to_potential(q_conv))
+                if self.use_potential
+                else self.iterate_charges(q_conv)
             )
-            charges = self.scf(q_conv)
+            charges = self.potential_to_charges(out) if self.use_potential else out
+
+            # Check consistency between SCF solution and single step.
+            # Especially for elements and their ions, the SCF may oscillate and the
+            # single step for the gradient may differ from the converged solution.
+            if (
+                torch.linalg.vector_norm(q_conv - charges)
+                > sqrt(torch.finfo(self.dtype).eps) * 10
+            ).any():
+                warnings.warn(
+                    "The single SCF step differs from the converged solution. "
+                    "Re-calculating with full gradient tracking!"
+                )
+                charges = self.scf(q_conv)
 
         energy = self.get_energy(charges)
         fenergy = self.get_electronic_free_energy()
@@ -259,7 +262,7 @@ class SelfConsistentField(EditableModule):
         Tensor
             Energy of the system.
         """
-        return self._data.energy + self.interaction.get_energy(
+        return self._data.energy + self.interactions.get_energy(
             charges, self._data.cache, self._data.ihelp
         )
 
@@ -397,7 +400,7 @@ class SelfConsistentField(EditableModule):
             Potential vector for each orbital partial charge.
         """
 
-        return self.interaction.get_potential(
+        return self.interactions.get_potential(
             charges, self._data.cache, self._data.ihelp
         )
 
@@ -635,7 +638,8 @@ def solve(
     numbers: Tensor,
     positions: Tensor,
     chrg: Tensor,
-    interactions: Interaction,
+    interactions: InteractionList,
+    cache: InteractionList.Cache,
     ihelp: IndexHelper,
     guess: str,
     *args: Any,
@@ -652,8 +656,8 @@ def solve(
         Positions of the system.
     chrg : Tensor
         Total charge.
-    interactions : Interaction
-        Interaction object.
+    interactions : InteractionList
+        Collection of `Interation` objects.
     ihelp : IndexHelper
         Index helper object.
     guess : str
@@ -668,8 +672,6 @@ def solve(
     Tensor
         Orbital-resolved partial charges vector.
     """
-
-    cache = interactions.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
     charges = get_guess(numbers, positions, chrg, ihelp, guess)
 
     return SelfConsistentField(

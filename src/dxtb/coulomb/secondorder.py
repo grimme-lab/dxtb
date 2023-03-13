@@ -253,10 +253,18 @@ class ES2(Interaction):
         return 1.0 / torch.pow(dist_gexp + torch.pow(avg, -self.gexp), 1.0 / self.gexp)
 
     def get_atom_energy(self, charges: Tensor, cache: Cache) -> Tensor:
-        return 0.5 * charges * self.get_atom_potential(charges, cache)
+        return (
+            torch.zeros_like(charges)
+            if self.shell_resolved
+            else 0.5 * charges * self.get_atom_potential(charges, cache)
+        )
 
     def get_shell_energy(self, charges: Tensor, cache: Cache) -> Tensor:
-        return 0.5 * charges * self.get_shell_potential(charges, cache)
+        return (
+            0.5 * charges * self.get_shell_potential(charges, cache)
+            if self.shell_resolved
+            else torch.zeros_like(charges)
+        )
 
     def get_atom_potential(self, charges: Tensor, cache: Cache) -> Tensor:
         return (
@@ -266,24 +274,26 @@ class ES2(Interaction):
         )
 
     def get_shell_potential(self, charges: Tensor, cache: ES2.Cache) -> Tensor:
+        """
+        Calculate shell-resolved potential. Zero if this interaction is only
+        atom-resolved.
+
+        Parameters
+        ----------
+        charges : Tensor
+            Shell-resolved partial charges.
+        cache : ES2.Cache
+            Cache object for second order electrostatics.
+
+        Returns
+        -------
+        Tensor
+            Shell-resolved potential.
+        """
         return (
             torch.einsum("...ik,...k->...i", cache.mat, charges)
             if self.shell_resolved
             else torch.zeros_like(charges)
-        )
-
-    def get_gradient(
-        self,
-        numbers: Tensor,
-        positions: Tensor,
-        ihelp: IndexHelper,
-        charges: Tensor,
-        cache: ES2.Cache,
-    ) -> Tensor:
-        return (
-            self.get_shell_gradient(numbers, positions, ihelp, charges, cache)
-            if self.shell_resolved
-            else self.get_atom_gradient(numbers, positions, charges, cache)
         )
 
     def get_atom_gradient(
@@ -293,6 +303,9 @@ class ES2(Interaction):
         charges: Tensor,
         cache: ES2.Cache,
     ) -> Tensor:
+        if self.shell_resolved:
+            return torch.zeros_like(positions)
+
         mask = real_pairs(numbers, diagonal=True)
 
         distances = torch.where(
@@ -310,7 +323,7 @@ class ES2(Interaction):
             positions.new_tensor(0.0),
         )
 
-        # (n_batch, shells_i) * (n_batch, shells_i, 1)
+        # (n_batch, shells_i) -> (n_batch, shells_i, 1)
         charges = charges.unsqueeze(-1)
 
         # (n_batch, shells_i, shells_j) * (n_batch, shells_i, 1)
@@ -329,10 +342,13 @@ class ES2(Interaction):
         self,
         numbers: Tensor,
         positions: Tensor,
-        ihelp: IndexHelper,
         charges: Tensor,
         cache: ES2.Cache,
+        ihelp: IndexHelper,
     ) -> Tensor:
+        if not self.shell_resolved:
+            return torch.zeros_like(positions)
+
         mask = real_pairs(numbers, diagonal=True)
 
         # all distances to the power of "gexp" (R^2_AB from Eq.26)
@@ -356,7 +372,7 @@ class ES2(Interaction):
             positions.new_tensor(0.0),
         )
 
-        # (n_batch, shells_i) * (n_batch, shells_i, 1)
+        # (n_batch, shells_i) -> (n_batch, shells_i, 1)
         charges = charges.unsqueeze(-1)
 
         # (n_batch, shells_i, shells_j) * (n_batch, shells_i, 1)
