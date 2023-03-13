@@ -68,7 +68,7 @@ class Basis(TensorLike):
 
         Returns
         -------
-        (list[Tensor], list[Tensor])
+        tuple[list[Tensor], list[Tensor]]
             List of primitive Gaussian exponents and contraction coefficients
             for the orthonormalized basis functions for each shell.
         """
