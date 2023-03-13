@@ -416,7 +416,8 @@ class Calculator(TensorLike):
                     timer.stop("igrad")
 
                 timer.start("ograd", "Overlap Gradient")
-                result.overlap_grad = self.overlap.get_gradient(positions)
+                # TODO: avoid duplicate overlap calculation
+                _overlap, result.overlap_grad = self.overlap.get_gradient(positions)
                 timer.stop("ograd")
 
                 timer.start("hgrad", "Hamiltonian Gradient")
