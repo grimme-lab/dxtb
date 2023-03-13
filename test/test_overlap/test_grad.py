@@ -332,9 +332,12 @@ def compare_mmd(
     assert pytest.approx(ovlp, abs=atol) == ovlp_ref
 
     # overlap gradient
-    ovlp_grad = mmd.overlap_gto_grad(
+    ovlp2, ovlp_grad = mmd.overlap_gto_grad(
         (li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec
     )
+
+    # check overlap from gradient calculation
+    assert torch.allclose(ovlp, ovlp2, atol=1e-04)
 
     # obtain Fortran ordering (row wise)
     ovlp_grad = torch.squeeze(ovlp_grad, 0)
@@ -349,7 +352,7 @@ def test_overlap_grad_single_1(dtype: torch.dtype):
     # define CGTOs (by ng, n, l)
     cgtoi = torch.tensor([6, 2, 0])
     cgtoj = torch.tensor([6, 1, 0])
-    vec = torch.tensor([0.00, 0.00, 1.405], dtype=dtype)
+    vec = -torch.tensor([0.00, 0.00, 1.405], dtype=dtype)
 
     # define references
     ovlp_ref = torch.tensor([[0.762953]])
@@ -365,7 +368,7 @@ def test_overlap_grad_single_2(dtype: torch.dtype):
     # define CGTOs (by ng, n, l)
     cgtoi = torch.tensor([6, 3, 0])
     cgtoj = torch.tensor([6, 4, 0])
-    vec = torch.tensor([0.00, 0.00, 1.405], dtype=dtype)
+    vec = -torch.tensor([0.00, 0.00, 1.405], dtype=dtype)
 
     # define references
     ovlp_ref = torch.tensor([[0.893829]])
@@ -381,7 +384,7 @@ def test_overlap_grad_single_3(dtype: torch.dtype):
     # define CGTOs (by ng, n, l)
     cgtoi = torch.tensor([6, 3, 2])
     cgtoj = torch.tensor([6, 4, 2])
-    vec = torch.tensor([6.2571, -3.5633, -2.5369], dtype=dtype)
+    vec = -torch.tensor([6.2571, -3.5633, -2.5369], dtype=dtype)
 
     # define references
     ovlp_ref = torch.tensor(
@@ -445,7 +448,7 @@ def test_overlap_grad_single_5(dtype: torch.dtype):
     # define CGTOs (by ng, n, l)
     cgtoi = torch.tensor([6, 4, 3])
     cgtoj = torch.tensor([6, 2, 1])
-    vec = torch.tensor([1.245, -6.789, 0.123], dtype=dtype)
+    vec = -torch.tensor([1.245, -6.789, 0.123], dtype=dtype)
 
     # define references
     ovlp_ref = torch.tensor(
@@ -495,7 +498,7 @@ def test_overlap_grad_single_6(dtype: torch.dtype):
     # define CGTOs (by ng, n, l)
     cgtoi = torch.tensor([6, 3, 2])
     cgtoj = torch.tensor([6, 5, 4])
-    vec = torch.tensor([1.245, -6.789, 0.123], dtype=dtype)
+    vec = -torch.tensor([1.245, -6.789, 0.123], dtype=dtype)
 
     # define references
     ovlp_ref = torch.tensor(
