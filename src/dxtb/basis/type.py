@@ -104,6 +104,7 @@ class Basis(TensorLike):
     def unique_shell_pairs(
         self,
         ihelp: IndexHelper,
+        mask: Tensor | None = None,
         uplo: Literal["n", "N", "u", "U", "l", "L"] = "l",
     ) -> tuple[Tensor, Tensor]:
         """
@@ -113,6 +114,8 @@ class Basis(TensorLike):
         ----------
         ihelp : IndexHelper
             Helper class for indexing.
+        mask : Tensor
+            Mask for
         uplo : Literal["n", "N", "u", "U", "l", "L"]
             Whether the matrix of unique shell pairs should be create as a
             triangular matrix (`l`: lower, `u`: upper) or full matrix (`n`).
@@ -157,6 +160,14 @@ class Basis(TensorLike):
             if ihelp.batched:
                 raise NotImplementedError()
             return torch.tensor([[0]]), torch.tensor(1)
+
+        if mask is not None:
+            if orbs.shape != mask.shape:
+                raise RuntimeError(
+                    f"Shape of mask ({mask.shape}) and orbitals ({orbs.shape}) "
+                    "does not match."
+                )
+            orbs = torch.where(mask, orbs, orbs.new_tensor(0))
 
         # fill remaining triangular matrix with dummy values
         # (must be negative to not interfere with the unique values)

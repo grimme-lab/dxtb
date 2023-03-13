@@ -10,6 +10,7 @@ import torch
 
 from .._types import Literal, Tensor, TensorLike
 from ..basis import Basis, IndexHelper
+from ..constants import defaults
 from ..param import Param, get_elem_angular
 from ..utils import batch, symmetrize, t2int
 from .mmd import overlap_gto, overlap_gto_grad
@@ -39,12 +40,19 @@ class Overlap(TensorLike):
     Defaults to `l` (lower triangular matrix).
     """
 
+    cutoff: Tensor | float | int = 50.0
+    """
+    Real-space cutoff for integral calculation. Defaults to
+    `constans.defaults.INTCUTOFF`.
+    """
+
     def __init__(
         self,
         numbers: Tensor,
         par: Param,
         ihelp: IndexHelper,
         uplo: Literal["n", "N", "u", "U", "l", "L"] = "l",
+        cutoff: Tensor | float | int = defaults.INTCUTOFF,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ):
@@ -53,6 +61,7 @@ class Overlap(TensorLike):
         self.unique = torch.unique(numbers)
         self.par = par
         self.ihelp = ihelp
+        self.cutoff = cutoff
 
         if uplo not in ("n", "N", "u", "U", "l", "L"):
             raise ValueError(f"Unknown option for `uplo` chosen: '{uplo}'.")
@@ -119,15 +128,14 @@ class Overlap(TensorLike):
             Unique atomic numbers of whole batch.
         positions : Tensor
             Positions of single molecule.
+        ihelp : IndexHelper
+            Helper class for indexing.
 
         Returns
         -------
         Tensor
             Overlap matrix for single molecule.
         """
-
-        # umap, n_unique_pairs = bas.unique_shell_pairs(ihelp)
-        umap, n_unique_pairs = bas.unique_shell_pairs(ihelp, uplo=self.uplo)
         alphas, coeffs = bas.create_cgtos()
 
         # spread stuff to orbitals for indexing
@@ -144,6 +152,13 @@ class Overlap(TensorLike):
             ihelp.orbitals_to_shell,
         )
         ang = ihelp.spread_shell_to_orbital(ihelp.angular)
+
+        # real-space integral cutoff; assumes proper orthogonalization of basis
+        # functions as "self-overlap" is  explicitly removed with `dist > 0`
+        dist = torch.cdist(positions, positions)
+        mask = (dist < self.cutoff) & (dist > 0)
+
+        umap, n_unique_pairs = bas.unique_shell_pairs(ihelp, mask=mask, uplo=self.uplo)
 
         # overlap calculation
         ovlp = torch.zeros(*umap.shape, dtype=self.dtype, device=self.device)
@@ -185,7 +200,8 @@ class Overlap(TensorLike):
         elif self.uplo == "u":
             ovlp = torch.triu(ovlp, diagonal=1) + torch.tril(ovlp.mT)
 
-        return ovlp  # .fill_diagonal_(1.0)
+        # fix diagonal as "self-overlap" was removed via mask earlier
+        return ovlp.fill_diagonal_(1.0)
 
     def get_pairs(self, x: Tensor, i: int) -> Tensor:
         """
