@@ -227,7 +227,8 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     result = calc.singlepoint(numbers, positions, chrg)
 
     # analytical overlap gradient
-    doverlap = calc.overlap.get_gradient(positions)
+    overlap, doverlap = calc.overlap.get_gradient(positions)
+    assert torch.allclose(overlap, calc.overlap.build(positions))
 
     cn = get_coordination_number(numbers, positions, exp_count)
     wmat = get_density(
@@ -329,7 +330,7 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     result = calc.singlepoint(numbers, positions, chrg)
 
     # analytical overlap gradient
-    doverlap = calc.overlap.get_gradient(positions)
+    overlap, doverlap = calc.overlap.get_gradient(positions)
 
     cn = get_coordination_number(numbers, positions, exp_count)
     wmat = get_density(

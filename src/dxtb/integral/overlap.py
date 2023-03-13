@@ -296,7 +296,8 @@ class Overlap(TensorLike):
         )
         ang = ihelp.spread_shell_to_orbital(ihelp.angular)
 
-        # overlap tensor
+        # overlap tensors
+        ovlp = torch.zeros(*umap.shape, dtype=self.dtype, device=self.device)
         grad = torch.zeros((3, *umap.shape), dtype=self.dtype, device=self.device)
 
         # loop over unique pairs
@@ -324,18 +325,22 @@ class Overlap(TensorLike):
 
             vec = positions[upairs][:, 0, :] - positions[upairs][:, 1, :]
 
-            dstmp = overlap_gto_grad(ang_tuple, alpha_tuple, coeff_tuple, +vec)
-            # [upairs, 3, norbi, norbj]
+            stmp, dstmp = overlap_gto_grad(ang_tuple, alpha_tuple, coeff_tuple, -vec)
+            # [upairs, norbi, norbj], [upairs, 3, norbi, norbj]
 
             # write overlap of unique pair to correct position in full overlap matrix
             for r, pair in enumerate(upairs):
+                ovlp[
+                    pair[0] : pair[0] + norbi,
+                    pair[1] : pair[1] + norbj,
+                ] = stmp[r]
                 grad[
                     :,
                     pair[0] : pair[0] + norbi,
                     pair[1] : pair[1] + norbj,
                 ] = dstmp[r]
 
-        return grad  # [3, norb, norb]
+        return ovlp, grad  # [norb, norb], [3, norb, norb]
 
     def get_gradient(self, positions: Tensor) -> Tensor:
         """Gradient calculation for McMurchie-Davidson overlap.
@@ -352,7 +357,7 @@ class Overlap(TensorLike):
         """
 
         if self.numbers.ndim > 1:
-            _grads = []
+            _ovlps, _grads = [], []
             for _batch in range(self.numbers.shape[0]):
                 # setup individual `IndexHelper` and `Basis`
                 nums = batch.deflate(self.numbers[_batch])
@@ -368,9 +373,11 @@ class Overlap(TensorLike):
                     device=self.device,
                 )
 
-                dsdr_i = self.calc_overlap_grad(bas, positions[_batch], ihelp)
+                ds_i, dsdr_i = self.calc_overlap_grad(bas, positions[_batch], ihelp)
+                _ovlps.append(ds_i)
                 _grads.append(torch.einsum("ijk ->kji", dsdr_i))  # [norb, norb, 3]
 
+            s = batch.pack(_ovlps)
             dsdr = batch.pack(_grads)
 
         else:
@@ -383,7 +390,7 @@ class Overlap(TensorLike):
             )
 
             # obtain overlap gradient
-            dsdr = self.calc_overlap_grad(bas, positions, self.ihelp)
+            s, dsdr = self.calc_overlap_grad(bas, positions, self.ihelp)
             dsdr = torch.einsum("ijk ->kji", dsdr)  # [norb, norb, 3]
 
-        return dsdr
+        return s, dsdr

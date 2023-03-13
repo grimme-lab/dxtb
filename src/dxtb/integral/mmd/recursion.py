@@ -437,8 +437,8 @@ def mmd_recursion_gradient(
     # K_AB * Gaussian integral (√(pi/(a+b))) in 3D * c_A * c_B
     sij = torch.exp(-est) * sqrtpi3 * torch.pow(oij, 1.5) * ci * cj
 
-    rpi = -vec.unsqueeze(-1).unsqueeze(-1) * aj * oij
-    rpj = +vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
+    rpi = +vec.unsqueeze(-1).unsqueeze(-1) * aj * oij
+    rpj = -vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
     # NOTE: watch out for correct +/- vec (definition + argument)
 
     # for single gaussians (e.g. in tests)
@@ -484,5 +484,10 @@ def mmd_recursion_gradient(
     rt = torch.arange(ds3d.shape[-3], device=ds3d.device)
     grad = torch.einsum("...ji,...jk,...kl->...il", itrafo, ds3d[..., rt, :, :], jtrafo)
 
-    return grad
+    # remove small values
+    eps = vec.new_tensor(torch.finfo(vec.dtype).eps)
+    ovlp = torch.where(torch.abs(ovlp) < eps, vec.new_tensor(0.0), ovlp)
+    grad = torch.where(torch.abs(grad) < eps, vec.new_tensor(0.0), grad)
+
+    return ovlp, grad
     # [bs, upairs, 3, norbi, norbj] == [vec[0], vec[1], 3, norbi, norbj]
