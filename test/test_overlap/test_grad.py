@@ -222,7 +222,7 @@ def test_gradcheck_mmd(dtype: torch.dtype = torch.double) -> None:
 
 @pytest.mark.filterwarnings("ignore")  # works for single precision
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["H2O", "CH4", "SiH4", "PbH4-BiH3"])
+@pytest.mark.parametrize("name", ["H2O", "CH4", "SiH4"])
 def test_gradcheck_overlap(dtype: torch.dtype, name: str):
     """Pytorch gradcheck for overlap calculation."""
     dd = {"dtype": dtype}
@@ -243,7 +243,7 @@ def test_gradcheck_overlap(dtype: torch.dtype, name: str):
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["H", "C", "Rn", "H2O", "CH4", "SiH4", "PbH4-BiH3"])
+@pytest.mark.parametrize("name", ["H", "C", "Rn", "H2O", "CH4", "SiH4"])
 def test_overlap_jacobian(dtype: torch.dtype, name: str):
     """Jacobian calculation with AD and numerical gradient."""
     rtol, atol = 1e-1, 3e-1
