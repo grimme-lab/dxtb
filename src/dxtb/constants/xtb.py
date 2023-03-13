@@ -34,18 +34,29 @@ DEFAULT_ES2_GEXP: float = 2.0
 
 # Dispersion
 
-DEFAULT_DISP_S6: float = 1.0
-"""Default scaling of dipol-dipol term (1.0 to retain correct limit)."""
+DEFAULT_DISP_A1 = 0.4
+"""Scaling for the C8 / C6 ratio in the critical radius (0.4)."""
 
-DEFAULT_DISP_S8: float = 1.0
-"""Default scaling of dipol-quadrupol term (1.0)."""
+DEFAULT_DISP_A2 = 5.0
+"""Offset parameter for the critical radius (5.0)."""
 
-DEFAULT_DISP_S9: float = 1.0
+DEFAULT_DISP_S6 = 1.0
+"""Default scaling of dipole-dipole term (1.0 to retain correct limit)."""
+
+DEFAULT_DISP_S8 = 1.0
+"""Default scaling of dipole-quadrupole term (1.0)."""
+
+DEFAULT_DISP_S9 = 1.0
 """Default scaling of three-body term (1.0)."""
 
-DEFAULT_DISP_S10: float = 0.0
-"""Default scaling of quadrupol-quadrupol term (0.0)."""
+DEFAULT_DISP_S10 = 0.0
+"""Default scaling of quadrupole-quadrupole term (0.0)."""
 
+DEFAULT_DISP_RS9 = 4.0 / 3.0
+"""Scaling for van-der-Waals radii in damping function (4.0/3.0)."""
+
+DEFAULT_DISP_ALP = 16.0
+"""Exponent of zero damping function (16.0)."""
 
 # Classical contributions
 

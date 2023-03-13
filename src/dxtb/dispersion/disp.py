@@ -18,6 +18,7 @@ from .d4 import DispersionD4
 def new_dispersion(
     numbers: Tensor,
     par: Param,
+    charge: Tensor | None = None,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> Dispersion | None | NoReturn:
@@ -62,6 +63,8 @@ def new_dispersion(
         return DispersionD3(numbers, param, device=device, dtype=dtype)
 
     if par.dispersion.d4 is not None and par.dispersion.d3 is None:
+        if charge is None:
+            raise ValueError("The total charge is required for DFT-D4.")
         param = convert_float_tensor(
             {
                 "a1": par.dispersion.d4.a1,
@@ -74,7 +77,7 @@ def new_dispersion(
             device=device,
             dtype=dtype,
         )
-        return DispersionD4(numbers, param, device=device, dtype=dtype)
+        return DispersionD4(numbers, param, charge, device=device, dtype=dtype)
 
     if par.dispersion.d3 is not None and par.dispersion.d4 is not None:
         raise ValueError("Parameters for both D3 and D4 found. Please decide.")
