@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Tensor, TensorLike
+from .._types import Literal, Tensor, TensorLike
 from ..param import Param, get_elem_param, get_elem_pqn, get_elem_valence
 from ..utils import real_pairs
 from . import IndexHelper, orthogonalize, slater
@@ -101,13 +101,22 @@ class Basis(TensorLike):
 
         return alphas, coeffs
 
-    def unique_shell_pairs(self, ihelp: IndexHelper) -> tuple[Tensor, Tensor]:
-        """Create a matrix of unique shell pairs.
+    def unique_shell_pairs(
+        self,
+        ihelp: IndexHelper,
+        uplo: Literal["n", "N", "u", "U", "l", "L"] = "l",
+    ) -> tuple[Tensor, Tensor]:
+        """
+        Create a matrix of unique shell pairs.
 
         Parameters
         ----------
         ihelp : IndexHelper
             Helper class for indexing.
+        uplo : Literal["n", "N", "u", "U", "l", "L"]
+            Whether the matrix of unique shell pairs should be create as a
+            triangular matrix (`l`: lower, `u`: upper) or full matrix (`n`).
+            Defaults to `l` (lower triangular matrix).
 
         Returns
         -------
@@ -117,7 +126,7 @@ class Basis(TensorLike):
         Raises
         ------
         ValueError
-            If the number of unique shell pairs does not match the theoretical one.
+            The number of unique shell pairs does not match the theoretical one.
         """
         # NOTE: Zeros correspond to padding only if batched. They have
         # meaning for single runs and cannot be ignored in this case.
@@ -143,6 +152,21 @@ class Basis(TensorLike):
         else:
             orbs += sh2orb.unsqueeze(-1) * offset
 
-        _, umap = torch.unique(orbs, return_inverse=True)
+        # catch systems with one single orbital (e.g. Helium)
+        if orbs.size(-1) == 1:
+            if ihelp.batched:
+                raise NotImplementedError()
+            return torch.tensor([[0]]), torch.tensor(1)
+
+        # fill remaining triangular matrix with dummy values
+        # (must be negative to not interfere with the unique values)
+        if uplo.casefold() == "l":
+            umap = torch.unique(torch.tril(orbs), return_inverse=True)[1] - 1
+        elif uplo.casefold() == "u":
+            umap = torch.unique(torch.triu(orbs), return_inverse=True)[1] - 1
+        elif uplo.casefold() == "n":
+            _, umap = torch.unique(orbs, return_inverse=True)
+        else:
+            raise ValueError("Unknown option for `uplo`.")
 
         return umap, torch.max(umap) + 1

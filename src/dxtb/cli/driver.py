@@ -114,6 +114,9 @@ class Driver:
         timer.stop("total")
         result.timer = timer
 
+        if args.verbosity > 0:
+            timer.print_times()
+
         return result
 
     def __str__(self) -> str:

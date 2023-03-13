@@ -21,12 +21,23 @@ def pytest_addoption(parser: pytest.Parser):
         help="Enable more comprehensive gradient tests.",
     )
 
+    parser.addoption(
+        "--tpo-linewidth",
+        action="store",
+        default=400,
+        type=int,
+        help="Maximum linewidth of tensor printout.",
+    )
+
 
 def pytest_configure(config: pytest.Config):
     """Pytest configuration hook."""
 
     if config.getoption("--detect-anomaly"):
         torch.autograd.anomaly_mode.set_detect_anomaly(True)
+
+    if config.getoption("--tpo-linewidth"):
+        torch.set_printoptions(linewidth=config.getoption("--tpo-linewidth"))
 
     # register an additional marker
     config.addinivalue_line("markers", "cuda: mark test that require CUDA.")
