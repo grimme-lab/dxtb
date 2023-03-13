@@ -322,14 +322,10 @@ class Overlap(TensorLike):
             )
             ang_tuple = (li, lj)
 
-            vecs = positions[upairs][:, 0, :] - positions[upairs][:, 1, :]
+            vec = positions[upairs][:, 0, :] - positions[upairs][:, 1, :]
 
-            # TODO: vectorize w.r.t. multiple vectors
-            tmp_ = []
-            for vec in vecs:
-                tmp_.append(overlap_gto_grad(ang_tuple, alpha_tuple, coeff_tuple, +vec))
-
-            dstmp = torch.stack(tmp_, dim=-4)  # [upairs, 3, norbi, norbj]
+            dstmp = overlap_gto_grad(ang_tuple, alpha_tuple, coeff_tuple, +vec)
+            # [upairs, 3, norbi, norbj]
 
             # write overlap of unique pair to correct position in full overlap matrix
             for r, pair in enumerate(upairs):
@@ -378,7 +374,6 @@ class Overlap(TensorLike):
             dsdr = batch.pack(_grads)
 
         else:
-
             bas = Basis(
                 self.unique,
                 self.par,

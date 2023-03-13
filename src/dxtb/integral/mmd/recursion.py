@@ -5,10 +5,9 @@ Calculation of overlap integrals using the McMurchie-Davidson algorithm.
   cartesian gaussian functions, *J. Comput. Phys.*, **1978**, *26*, 218-231.
   (`DOI <https://doi.org/10.1016/0021-9991(78)90092-X>`__)
 """
+
 from __future__ import annotations
-
 from math import pi, sqrt
-
 import torch
 
 from ..._types import Any, Callable, Tensor
@@ -49,7 +48,6 @@ def _e_function(E: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> Tensor:
 
     # do j = 0 for all i > 0 (all orders of HP)
     for i in range(1, E.shape[-3]):
-
         # t = 0 (excludes t - 1 term)
         E[..., i, 0, 0] = rpi * E[..., i - 1, 0, 0] + E[..., i - 1, 0, 1]
 
@@ -375,26 +373,42 @@ def mmd_recursion(
 
 
 def e_function_derivative(e, ai, li, lj):
-    # TODO: integrate into e_function
-
-    de = torch.zeros((1, li + 3, lj + 3, 3))
-
-    for m in range(3):
-        for i in range(li + 1):
-            for j in range(lj + 1):
-                de[0, j, i, m] = 2 * ai * e[m, i + 1, j, 0]
+    """Calculate derivative of E coefficients."""
+    de = torch.zeros((e.shape[0], 3, e.shape[-5], e.shape[-4], li + 1, lj + 1, 1))
+    for k in range(e.shape[-4]):  # aj
+        for i in range(li + 1):  # li
+            for j in range(lj + 1):  # lj
+                de[:, :, :, k, i, j, 0] = 2 * ai * e[:, :, :, k, i + 1, j, 0]
                 if i > 0:
-                    de[0, j, i, m] -= i * e[m, i - 1, j, 0]
-
+                    de[:, :, :, k, i, j, 0] -= i * e[:, :, :, k, i - 1, j, 0]
     return de
 
 
-def mmd_recursion_gradient(angular: tuple, alpha: tuple, coeff: tuple, vec: Tensor):
-    """Implementation identical to tblite overlap gradient."""
+def mmd_recursion_gradient(
+    angular: tuple[Tensor, Tensor],
+    alpha: tuple[Tensor, Tensor],
+    coeff: tuple[Tensor, Tensor],
+    vec: Tensor,
+) -> tuple[Tensor, Tensor]:
+    """
+    Calculate overlap gradients using (recursive) McMurchie-Davidson algorithm.
 
-    # number of primitive gaussians
-    nprim_i = len(alpha[0].nonzero(as_tuple=True)[0])
-    nprim_j = len(alpha[1].nonzero(as_tuple=True)[0])
+    Parameters
+    ----------
+    angular : (Tensor, Tensor)
+        Angular momentum of the shell pair(s).
+    alpha : (Tensor, Tensor)
+        Primitive Gaussian exponents of the shell pair(s).
+    coeff : (Tensor, Tensor)
+        Contraction coefficients of the shell pair(s).
+    vec : Tensor
+        Displacement vector between shell pair(s).
+
+    Returns
+    -------
+    (Tensor, Tensor)
+        Overlap and overlap gradient for shell pair(s).
+    """
 
     # angular momenta and number of cartesian gaussian basis functions
     li, lj = angular
@@ -403,8 +417,8 @@ def mmd_recursion_gradient(angular: tuple, alpha: tuple, coeff: tuple, vec: Tens
     r2 = torch.sum(vec.pow(2), -1)
 
     # cartesian overlap and overlap gradient
-    s3d = vec.new_zeros([ncarti, ncartj])
-    ds3d = vec.new_zeros([3, ncarti, ncartj])
+    s3d = vec.new_zeros([*vec.shape[:-1], ncarti, ncartj])
+    ds3d = vec.new_zeros([*vec.shape[:-1], 3, ncarti, ncartj])
 
     # transform from cartesian to spherical gaussians
     try:
@@ -413,58 +427,67 @@ def mmd_recursion_gradient(angular: tuple, alpha: tuple, coeff: tuple, vec: Tens
     except IndexError as e:
         raise IntegralTransformError() from e
 
-    for ip in range(nprim_i):
-        for jp in range(nprim_j):
+    ai, aj = alpha[0].unsqueeze(-1), alpha[1].unsqueeze(-2)
+    ci, cj = coeff[0].unsqueeze(-1), coeff[1].unsqueeze(-2)
+    oij = 1.0 / (ai + aj)
 
-            ai, aj = alpha[0][ip], alpha[1][jp]
-            ci, cj = coeff[0][ip], coeff[1][jp]
-            oij = 1.0 / (ai + aj)
-            est = ai * aj * r2 * oij
-            cc = torch.exp(-est) * sqrtpi3 * torch.pow(oij, 1.5) * ci * cj
+    # p * (R_A - R_B)² with p = a*b/(a+b)
+    est = ai * aj * oij * r2.unsqueeze(-1).unsqueeze(-2)
 
-            rpi = -vec * aj * oij
-            rpj = +vec * ai * oij
+    # K_AB * Gaussian integral (√(pi/(a+b))) in 3D * c_A * c_B
+    sij = torch.exp(-est) * sqrtpi3 * torch.pow(oij, 1.5) * ci * cj
 
-            E = e_function(0.5 * oij, rpi, rpj, (3, li + 2, lj + 2))
+    rpi = -vec.unsqueeze(-1).unsqueeze(-1) * aj * oij
+    rpj = +vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
+    # NOTE: watch out for correct +/- vec (definition + argument)
 
-            dE = e_function_derivative(E, ai, li, lj)
+    # for single gaussian (e.g. in tests)
+    if r2.shape == torch.Size([]):
+        r2 = r2.reshape([1])
+    if len(vec.shape) == 1:
+        vec = torch.unsqueeze(vec, 0)
 
-            for mli in range(ncarti):
-                for mlj in range(ncartj):
-                    mi = NLM_CART[li][mli, :]  # [3]
-                    mj = NLM_CART[lj][mlj, :]  # [3]
+    # calc E function for all (ai, aj)-combis for all vecs in batch
+    E = e_function(
+        0.5 * oij, rpi, rpj, (*vec.shape, ai.shape[-2], aj.shape[-1], li + 2, lj + 2)
+    )
+    dE = e_function_derivative(E, alpha[0], li, lj)
 
-                    e0 = torch.tensor(
-                        [
-                            E[..., 0, mi[0], mj[0], 0],
-                            E[..., 1, mi[1], mj[1], 0],
-                            E[..., 2, mi[2], mj[2], 0],
-                        ]
-                    )
-                    d0 = torch.tensor(
-                        [
-                            dE[0, mj[0], mi[0], 0],
-                            dE[0, mj[1], mi[1], 1],
-                            dE[0, mj[2], mi[2], 2],
-                        ]
-                    )
+    for mli in range(ncarti):
+        for mlj in range(ncartj):
+            mi = NLM_CART[li][mli, :]  # [3]
+            mj = NLM_CART[lj][mlj, :]  # [3]
 
-                    # NOTE: calculating overlap for free
-                    s3d[mli, mlj] += cc * torch.prod(e0)
+            e0 = E[..., 0, :, :, mi[0], mj[0], 0]
+            e1 = E[..., 1, :, :, mi[1], mj[1], 0]
+            e2 = E[..., 2, :, :, mi[2], mj[2], 0]
 
-                    grad = torch.tensor(
-                        [
-                            d0[0] * e0[1] * e0[2],
-                            e0[0] * d0[1] * e0[2],
-                            e0[0] * e0[1] * d0[2],
-                        ]
-                    )
-                    ds3d[:, mli, mlj] += cc * grad
+            d0 = dE[..., 0, :, :, mi[0], mj[0], 0]
+            d1 = dE[..., 1, :, :, mi[1], mj[1], 0]
+            d2 = dE[..., 2, :, :, mi[2], mj[2], 0]
+
+            # NOTE: calculating overlap for free
+            s3d[..., mli, mlj] += (sij * e0 * e1 * e2).sum((-2, -1))
+
+            ds3d[..., :, mli, mlj] += torch.stack(
+                [
+                    (sij * d0 * e1 * e2).sum((-2, -1)),
+                    (sij * e0 * d1 * e2).sum((-2, -1)),
+                    (sij * e0 * e1 * d2).sum((-2, -1)),
+                ],
+                dim=-1,
+            )  # [bs, 3]
 
     # transform to spherical basis functions (itrafo^T * S * jtrafo)
-    sphr = [
-        torch.einsum("...ji,...jk,...kl->...il", itrafo, ds3d[k, :, :], jtrafo)
-        for k in range(ds3d.shape[-3])
-    ]
+    ovlp = torch.einsum("...ji,...jk,...kl->...il", itrafo, s3d, jtrafo)
 
-    return torch.stack(sphr)  # [3, norb, norb]
+    grad = torch.stack(
+        [
+            torch.einsum("...ji,...jk,...kl->...il", itrafo, ds3d[..., k, :, :], jtrafo)
+            for k in range(ds3d.shape[-3])
+        ],
+        dim=-3,
+    )
+
+    return grad
+    # [bs, upairs, 3, norbi, norbj] == [vec[0], vec[1], 3, norbi, norbj]
