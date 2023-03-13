@@ -344,10 +344,16 @@ class Calculator(TensorLike):
 
         if "scf" not in self.opts["exclude"]:
             # overlap
-            timer.start("Overlap")
-            overlap = self.overlap.build(positions)
-            result.overlap = overlap
-            timer.stop("Overlap")
+            if grad is True:
+                timer.start("ograd", "Overlap Gradient")
+                result.overlap, result.overlap_grad = self.overlap.get_gradient(
+                    positions
+                )
+                timer.stop("ograd")
+            else:
+                timer.start("Overlap")
+                result.overlap = self.overlap.build(positions)
+                timer.stop("Overlap")
 
             # Hamiltonian
             timer.start("h0", "Core Hamiltonian")
@@ -355,7 +361,7 @@ class Calculator(TensorLike):
             cn = ncoord.get_coordination_number(
                 numbers, positions, ncoord.exp_count, rcov
             )
-            hcore = self.hamiltonian.build(positions, overlap, cn)
+            hcore = self.hamiltonian.build(positions, result.overlap, cn)
             result.hcore = hcore
             timer.stop("h0")
 
@@ -386,7 +392,7 @@ class Calculator(TensorLike):
                 self.ihelp,
                 self.opts["guess"],
                 hcore,
-                overlap,
+                result.overlap,
                 occupation,
                 n0,
                 fwd_options=self.opts["fwd_options"],
@@ -414,11 +420,6 @@ class Calculator(TensorLike):
                     )
                     result.total_grad += result.interaction_grad
                     timer.stop("igrad")
-
-                timer.start("ograd", "Overlap Gradient")
-                # TODO: avoid duplicate overlap calculation
-                _overlap, result.overlap_grad = self.overlap.get_gradient(positions)
-                timer.stop("ograd")
 
                 timer.start("hgrad", "Hamiltonian Gradient")
                 wmat = scf.get_density(

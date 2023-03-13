@@ -27,8 +27,8 @@ from .samples import samples
 def test_gradcheck(dtype: torch.dtype = torch.double):
     sample = samples["NH3"]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach()
-    total_charge = sample["total_charge"].type(dtype).detach()
+    positions = sample["positions"].type(dtype)
+    total_charge = sample["total_charge"].type(dtype)
     cn = torch.tensor(
         [3.0, 1.0, 1.0, 1.0],
         dtype=dtype,
@@ -47,3 +47,6 @@ def test_gradcheck(dtype: torch.dtype = torch.double):
     from torch.autograd.gradcheck import gradcheck
 
     assert gradcheck(func, (positions, total_charge))
+
+    positions.detach()
+    total_charge.detach()

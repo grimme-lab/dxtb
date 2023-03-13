@@ -1,4 +1,7 @@
 """
+Overlap
+=======
+
 The GFNn-xTB overlap matrix.
 """
 from __future__ import annotations
@@ -44,15 +47,15 @@ class Overlap(TensorLike):
         self.ihelp = ihelp
 
     def build(self, positions: Tensor) -> Tensor:
-        """Overlap calculation of unique shells pairs,
-        using the McMurchie-Davidson algorithm.
+        """
+        Overlap calculation of unique shells pairs, using the
+        McMurchie-Davidson algorithm.
 
         Returns
         -------
         Tensor
             Overlap matrix.
         """
-
         if self.numbers.ndim > 1:
             o = []
             for _batch in range(self.numbers.shape[0]):
@@ -88,7 +91,8 @@ class Overlap(TensorLike):
         return symmetrize(overlap)
 
     def calc_overlap(self, bas: Basis, positions: Tensor, ihelp: IndexHelper) -> Tensor:
-        """Overlap calculation for a single molecule.
+        """
+        Overlap calculation for a single molecule.
 
         Parameters
         ----------
@@ -260,22 +264,23 @@ class Overlap(TensorLike):
 
     def calc_overlap_grad(
         self, bas: Basis, positions: Tensor, ihelp: IndexHelper
-    ) -> Tensor:
-        """Overlap gradient dS/dr for a single molecule.
+    ) -> tuple[Tensor, Tensor]:
+        """
+        Overlap gradient dS/dr for a single molecule.
 
         Parameters
         ----------
         bas : Basis
-                Basis set for calculation.
+            Basis set for calculation.
         positions : Tensor
-                Positions of single molecule.
+            Positions of single molecule.
         ihelp : IndexHelper
-                Index helper for orbital mapping.
+            Index helper for orbital mapping.
 
         Returns
         -------
-        Tensor
-                Gradient of overlap for single molecule.
+        tuple[Tensor, Tensor]
+            Overlap and gradient of overlap for single molecule.
         """
 
         umap, n_unique_pairs = bas.unique_shell_pairs(ihelp)
@@ -342,8 +347,9 @@ class Overlap(TensorLike):
 
         return ovlp, grad  # [norb, norb], [3, norb, norb]
 
-    def get_gradient(self, positions: Tensor) -> Tensor:
-        """Gradient calculation for McMurchie-Davidson overlap.
+    def get_gradient(self, positions: Tensor) -> tuple[Tensor, Tensor]:
+        """
+        Gradient calculation for McMurchie-Davidson overlap.
 
         Parameters
         ----------
@@ -352,8 +358,8 @@ class Overlap(TensorLike):
 
         Returns
         -------
-        Tensor
-            Gradient of the overlap w.r.t. given positions.
+        tuple[Tensor, Tensor]
+            Overlap and gradient of overlap for single molecule.
         """
 
         if self.numbers.ndim > 1:
@@ -391,6 +397,6 @@ class Overlap(TensorLike):
 
             # obtain overlap gradient
             s, dsdr = self.calc_overlap_grad(bas, positions, self.ihelp)
-            dsdr = torch.einsum("ijk ->kji", dsdr)  # [norb, norb, 3]
+            dsdr: Tensor = torch.einsum("ijk ->kji", dsdr)  # [norb, norb, 3]
 
         return s, dsdr
