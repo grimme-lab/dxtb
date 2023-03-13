@@ -378,9 +378,9 @@ def e_function_derivative(e, ai, li, lj):
     for k in range(e.shape[-4]):  # aj
         for i in range(li + 1):  # li
             for j in range(lj + 1):  # lj
-                de[:, :, :, k, i, j, 0] = 2 * ai * e[:, :, :, k, i + 1, j, 0]
+                de[..., k, i, j, 0] = 2 * ai * e[..., k, i + 1, j, 0]
                 if i > 0:
-                    de[:, :, :, k, i, j, 0] -= i * e[:, :, :, k, i - 1, j, 0]
+                    de[..., k, i, j, 0] -= i * e[..., k, i - 1, j, 0]
     return de
 
 
@@ -441,11 +441,11 @@ def mmd_recursion_gradient(
     rpj = +vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
     # NOTE: watch out for correct +/- vec (definition + argument)
 
-    # for single gaussian (e.g. in tests)
-    if r2.shape == torch.Size([]):
-        r2 = r2.reshape([1])
+    # for single gaussians (e.g. in tests)
     if len(vec.shape) == 1:
         vec = torch.unsqueeze(vec, 0)
+        s3d = torch.unsqueeze(s3d, 0)
+        ds3d = torch.unsqueeze(ds3d, 0)
 
     # calc E function for all (ai, aj)-combis for all vecs in batch
     E = e_function(
@@ -481,13 +481,8 @@ def mmd_recursion_gradient(
     # transform to spherical basis functions (itrafo^T * S * jtrafo)
     ovlp = torch.einsum("...ji,...jk,...kl->...il", itrafo, s3d, jtrafo)
 
-    grad = torch.stack(
-        [
-            torch.einsum("...ji,...jk,...kl->...il", itrafo, ds3d[..., k, :, :], jtrafo)
-            for k in range(ds3d.shape[-3])
-        ],
-        dim=-3,
-    )
+    rt = torch.arange(ds3d.shape[-3], device=ds3d.device)
+    grad = torch.einsum("...ji,...jk,...kl->...il", itrafo, ds3d[..., rt, :, :], jtrafo)
 
     return grad
     # [bs, upairs, 3, norbi, norbj] == [vec[0], vec[1], 3, norbi, norbj]
