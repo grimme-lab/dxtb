@@ -294,7 +294,7 @@ class Overlap(TensorLike):
                     pair[1] : pair[1] + norbj,
                 ] = dstmp[r]
 
-        return ovlp, grad  # [norb, norb], [3, norb, norb]
+        return symmetrize(ovlp), grad  # [norb, norb], [3, norb, norb]
 
     def get_pairs(self, x: Tensor, i: int) -> Tensor:
         """

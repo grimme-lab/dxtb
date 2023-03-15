@@ -200,7 +200,6 @@ class Hamiltonian(TensorLike):
         Tensor
             Off-site scaling factor for the Hamiltonian.
         """
-
         angular2label = {
             0: "s",
             1: "p",
@@ -210,6 +209,9 @@ class Hamiltonian(TensorLike):
         }
 
         def get_ksh(ushells: Tensor) -> Tensor:
+            if self.par.hamiltonian is None:
+                raise RuntimeError("No Hamiltonian specified.")
+
             ksh = torch.ones(
                 (len(ushells), len(ushells)), dtype=self.dtype, device=self.device
             )
@@ -282,6 +284,8 @@ class Hamiltonian(TensorLike):
         Tensor
             Hamiltonian (always symmetric).
         """
+        if self.par.hamiltonian is None:
+            raise RuntimeError("No Hamiltonian specified.")
 
         # masks
         mask_atom_diagonal = real_pairs(self.numbers, diagonal=True)
@@ -410,6 +414,9 @@ class Hamiltonian(TensorLike):
             Derivative of energy with respect to coordination number (first
             tensor) and atomic positions (second tensor).
         """
+        if self.par.hamiltonian is None:
+            raise RuntimeError("No Hamiltonian specified.")
+
         # masks
         mask_atom = real_pairs(self.numbers)
         mask_atom_diagonal = real_pairs(self.numbers, diagonal=True)
