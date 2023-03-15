@@ -178,9 +178,7 @@ class Basis(TensorLike):
         elif uplo.casefold() == "n":
             umap = torch.unique(orbs, return_inverse=True)[1]
 
-            # subtract -1 in return is required for all maps that use a mask
-            # (which is the default); without a mask, add 1 to avoid negative
-            # values and an off-by-one-error
+            # subtract 1 to mark masked values and avoid off-by-one-error
             if mask is not None and not mask.any():
                 umap -= 1
         else:

@@ -211,6 +211,91 @@ class Overlap(TensorLike):
         # fix diagonal as "self-overlap" was removed via mask earlier
         return ovlp.fill_diagonal_(1.0)
 
+    def calc_overlap_grad(
+        self, bas: Basis, positions: Tensor, ihelp: IndexHelper
+    ) -> tuple[Tensor, Tensor]:
+        """
+        Overlap gradient dS/dr for a single molecule.
+
+        Parameters
+        ----------
+        bas : Basis
+            Basis set for calculation.
+        positions : Tensor
+            Positions of single molecule.
+        ihelp : IndexHelper
+            Index helper for orbital mapping.
+
+        Returns
+        -------
+        tuple[Tensor, Tensor]
+            Overlap and gradient of overlap for single molecule.
+        """
+
+        umap, n_unique_pairs = bas.unique_shell_pairs(ihelp, uplo="n")
+        alphas, coeffs = bas.create_cgtos()
+
+        # spread stuff to orbitals for indexing
+        alpha = batch.index(
+            batch.index(batch.pack(alphas), ihelp.shells_to_ushell),
+            ihelp.orbitals_to_shell,
+        )
+        coeff = batch.index(
+            batch.index(batch.pack(coeffs), ihelp.shells_to_ushell),
+            ihelp.orbitals_to_shell,
+        )
+        positions = batch.index(
+            batch.index(positions, ihelp.shells_to_atom),
+            ihelp.orbitals_to_shell,
+        )
+        ang = ihelp.spread_shell_to_orbital(ihelp.angular)
+
+        # overlap tensors
+        ovlp = torch.zeros(*umap.shape, dtype=self.dtype, device=self.device)
+        grad = torch.zeros((3, *umap.shape), dtype=self.dtype, device=self.device)
+
+        # loop over unique pairs
+        for uval in range(n_unique_pairs):
+            pairs = self.get_pairs(umap, uval)
+            first_pair = pairs[0]
+
+            li, lj = ang[first_pair]
+            norbi = 2 * t2int(li) + 1
+            norbj = 2 * t2int(lj) + 1
+
+            # collect [0, 0] entry of each subblock
+            upairs = self.get_subblock_start(umap, uval, norbi, norbj)
+
+            # we only require one pair as all have the same basis function
+            alpha_tuple = (
+                batch.deflate(alpha[first_pair][0]),
+                batch.deflate(alpha[first_pair][1]),
+            )
+            coeff_tuple = (
+                batch.deflate(coeff[first_pair][0]),
+                batch.deflate(coeff[first_pair][1]),
+            )
+            ang_tuple = (li, lj)
+
+            vec = positions[upairs][:, 0, :] - positions[upairs][:, 1, :]
+
+            stmp, dstmp = overlap_gto_grad(ang_tuple, alpha_tuple, coeff_tuple, -vec)
+            # [upairs, norbi, norbj], [upairs, 3, norbi, norbj]
+
+            # write overlap of unique pair to correct position in full overlap matrix
+            for r, pair in enumerate(upairs):
+                ovlp[
+                    pair[0] : pair[0] + norbi,
+                    pair[1] : pair[1] + norbj,
+                ] = stmp[r]
+                grad[
+                    :,
+                    pair[0] : pair[0] + norbi,
+                    pair[1] : pair[1] + norbj,
+                ] = dstmp[r]
+
+        return ovlp, grad  # [norb, norb], [3, norb, norb]
+
     def get_pairs(self, x: Tensor, i: int) -> Tensor:
         """
         Get indices of all unqiue shells pairs with index value `i`.
@@ -327,91 +412,6 @@ class Overlap(TensorLike):
 
         # remove dummy
         return final[1:]
-
-    def calc_overlap_grad(
-        self, bas: Basis, positions: Tensor, ihelp: IndexHelper
-    ) -> tuple[Tensor, Tensor]:
-        """
-        Overlap gradient dS/dr for a single molecule.
-
-        Parameters
-        ----------
-        bas : Basis
-            Basis set for calculation.
-        positions : Tensor
-            Positions of single molecule.
-        ihelp : IndexHelper
-            Index helper for orbital mapping.
-
-        Returns
-        -------
-        tuple[Tensor, Tensor]
-            Overlap and gradient of overlap for single molecule.
-        """
-
-        umap, n_unique_pairs = bas.unique_shell_pairs(ihelp, uplo="n")
-        alphas, coeffs = bas.create_cgtos()
-
-        # spread stuff to orbitals for indexing
-        alpha = batch.index(
-            batch.index(batch.pack(alphas), ihelp.shells_to_ushell),
-            ihelp.orbitals_to_shell,
-        )
-        coeff = batch.index(
-            batch.index(batch.pack(coeffs), ihelp.shells_to_ushell),
-            ihelp.orbitals_to_shell,
-        )
-        positions = batch.index(
-            batch.index(positions, ihelp.shells_to_atom),
-            ihelp.orbitals_to_shell,
-        )
-        ang = ihelp.spread_shell_to_orbital(ihelp.angular)
-
-        # overlap tensors
-        ovlp = torch.zeros(*umap.shape, dtype=self.dtype, device=self.device)
-        grad = torch.zeros((3, *umap.shape), dtype=self.dtype, device=self.device)
-
-        # loop over unique pairs
-        for uval in range(n_unique_pairs):
-            pairs = self.get_pairs(umap, uval)
-            first_pair = pairs[0]
-
-            li, lj = ang[first_pair]
-            norbi = 2 * t2int(li) + 1
-            norbj = 2 * t2int(lj) + 1
-
-            # collect [0, 0] entry of each subblock
-            upairs = self.get_subblock_start(umap, uval, norbi, norbj)
-
-            # we only require one pair as all have the same basis function
-            alpha_tuple = (
-                batch.deflate(alpha[first_pair][0]),
-                batch.deflate(alpha[first_pair][1]),
-            )
-            coeff_tuple = (
-                batch.deflate(coeff[first_pair][0]),
-                batch.deflate(coeff[first_pair][1]),
-            )
-            ang_tuple = (li, lj)
-
-            vec = positions[upairs][:, 0, :] - positions[upairs][:, 1, :]
-
-            stmp, dstmp = overlap_gto_grad(ang_tuple, alpha_tuple, coeff_tuple, -vec)
-            # [upairs, norbi, norbj], [upairs, 3, norbi, norbj]
-
-            # write overlap of unique pair to correct position in full overlap matrix
-            for r, pair in enumerate(upairs):
-                ovlp[
-                    pair[0] : pair[0] + norbi,
-                    pair[1] : pair[1] + norbj,
-                ] = stmp[r]
-                grad[
-                    :,
-                    pair[0] : pair[0] + norbi,
-                    pair[1] : pair[1] + norbj,
-                ] = dstmp[r]
-
-        return ovlp, grad  # [norb, norb], [3, norb, norb]
 
     def get_gradient(self, positions: Tensor) -> tuple[Tensor, Tensor]:
         """
