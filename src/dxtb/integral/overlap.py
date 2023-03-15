@@ -43,7 +43,7 @@ class Overlap(TensorLike):
     cutoff: Tensor | float | int | None = 50.0
     """
     Real-space cutoff for integral calculation. Defaults to
-    `constans.defaults.INTCUTOFF`.
+    `constants.defaults.INTCUTOFF`.
     """
 
     def __init__(
