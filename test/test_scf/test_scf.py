@@ -147,7 +147,7 @@ def test_batch_special(dtype: torch.dtype):
     should check if the overcounting in the IndexHelper and the corresponing
     additional padding upon spreading is prevented.
     """
-    tol = 1e-2  # atoms show larger deviat
+    tol = 1e-2  # atoms show larger deviations
     dd = {"dtype": dtype}
 
     numbers = torch.tensor([[2, 2], [17, 0]])

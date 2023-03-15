@@ -40,7 +40,7 @@ class Overlap(TensorLike):
     Defaults to `l` (lower triangular matrix).
     """
 
-    cutoff: Tensor | float | int = 50.0
+    cutoff: Tensor | float | int | None = 50.0
     """
     Real-space cutoff for integral calculation. Defaults to
     `constans.defaults.INTCUTOFF`.
@@ -52,7 +52,7 @@ class Overlap(TensorLike):
         par: Param,
         ihelp: IndexHelper,
         uplo: Literal["n", "N", "u", "U", "l", "L"] = "l",
-        cutoff: Tensor | float | int = defaults.INTCUTOFF,
+        cutoff: Tensor | float | int | None = defaults.INTCUTOFF,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ):
@@ -153,15 +153,23 @@ class Overlap(TensorLike):
         )
         ang = ihelp.spread_shell_to_orbital(ihelp.angular)
 
-        # real-space integral cutoff; assumes proper orthogonalization of basis
+        # real-space integral cutoff; assumes orthogonalization of basis
         # functions as "self-overlap" is  explicitly removed with `dist > 0`
-        dist = torch.cdist(positions, positions)
-        mask = (dist < self.cutoff) & (dist > 0)
+        if self.cutoff is None:
+            mask = None
+        else:
+            # cdist does not return zero for distance between same vectors
+            # https://github.com/pytorch/pytorch/issues/57690
+            dist = torch.cdist(
+                positions, positions, compute_mode="donot_use_mm_for_euclid_dist"
+            )
+            mask = (dist < self.cutoff) & (dist > 0.1)
 
         umap, n_unique_pairs = bas.unique_shell_pairs(ihelp, mask=mask, uplo=self.uplo)
 
         # overlap calculation
         ovlp = torch.zeros(*umap.shape, dtype=self.dtype, device=self.device)
+
         for uval in range(n_unique_pairs):
             pairs = self.get_pairs(umap, uval)
             first_pair = pairs[0]

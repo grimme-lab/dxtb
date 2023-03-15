@@ -208,7 +208,6 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     Optionally, autograd and numerical gradient can also be calculated,
     although they may be numerically unstable.
     """
-
     dd = {"dtype": dtype}
     atol = 1e-4
 
@@ -225,10 +224,14 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
 
     calc = Calculator(numbers, par, opts=opts, **dd)
     result = calc.singlepoint(numbers, positions, chrg)
-
-    # analytical overlap gradient
     overlap, doverlap = calc.overlap.get_gradient(positions)
-    assert torch.allclose(overlap, calc.overlap.build(positions))
+
+    # compare different overlap calculations
+    tol = sqrt(torch.finfo(dtype).eps) * 5
+    s = calc.overlap.build(positions).detach()
+    s2 = result.overlap.detach()
+    assert pytest.approx(s, abs=tol, rel=tol) == overlap.detach()
+    assert pytest.approx(s2, abs=tol, rel=tol) == overlap.detach()
 
     cn = get_coordination_number(numbers, positions, exp_count)
     wmat = get_density(
@@ -330,7 +333,7 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     result = calc.singlepoint(numbers, positions, chrg)
 
     # analytical overlap gradient
-    overlap, doverlap = calc.overlap.get_gradient(positions)
+    _, doverlap = calc.overlap.get_gradient(positions)
 
     cn = get_coordination_number(numbers, positions, exp_count)
     wmat = get_density(
