@@ -552,35 +552,33 @@ class Hamiltonian(TensorLike):
         natm = positions.shape[-2]
         batch_mode = len(positions.shape) > 2
 
-        # spread to all atom-pairs
-        master = torch.einsum(
-            "ijklmn->kijlmn", ss_orb.repeat(natm, natm, 1, 1, 1, 1)
-        )  # [bs, natm, natm, norb, norb, 3]
-        if not batch_mode:
-            master = ss_orb.repeat(natm, natm, 1, 1, 1)
+        # vectorised masking in chunks over atom-pairs
+        if batch_mode:
+            gradient = torch.zeros([ss_orb.shape[0], natm, 3])
+        else:
+            gradient = torch.zeros([natm, 3])
 
-        # mask all non-contributing pairs
-        master_mask = torch.zeros_like(master).bool()
         o2a = self.ihelp.orbitals_per_atom
+        master = ss_orb.float()
+        _zero = gradient.new_tensor(0.0)
 
         for i in range(natm):
             for j in range(natm):
                 mask_ij = (o2a.unsqueeze(-2) == i) & (o2a.unsqueeze(-1) == j)
+
                 if batch_mode:
-                    master_mask[:, i, j] = mask_ij.unsqueeze(-1).repeat(1, 1, 1, 3)
+                    mask_ij = mask_ij.unsqueeze(-1).repeat(1, 1, 1, 3)
+                    master_ij = torch.where(mask_ij, master, _zero)
+                    gradient[..., i, :] += torch.einsum("bijm->bm", master_ij)
+                    # [bs, norb, norb, 3] -> [bs, 3]
                 else:
-                    master_mask[i, j] = mask_ij.unsqueeze(-1).repeat(1, 1, 3)
-
-        # apply mask
-        _zero = master.new_tensor(0.0)
-        master = torch.where(master_mask, master, _zero)
-
-        # sum over orbital- and atom-wise contributions
-        # [natm, natm, norb, norb, 3] -> [natm, 3]
-        if batch_mode:
-            gradient = torch.einsum("bijklm->bim", master)
-        else:
-            gradient = torch.einsum("ijklm->im", master)
+                    # spread to all atom-pairs
+                    mask_ij = mask_ij.unsqueeze(-1).repeat(1, 1, 3)
+                    # mask all non-contributing pairs
+                    master_ij = torch.where(mask_ij, master, _zero)
+                    # sum over orbital- and atom-wise contributions
+                    gradient[..., i, :] += torch.einsum("ijm->m", master_ij)
+            # NOTE: pytorch autograd requires a lot of RAM here (for large molecules)
 
         # add E_EHT contribution
         gradient += torch.sum(dpi.unsqueeze(-1) * rij, dim=-2)
