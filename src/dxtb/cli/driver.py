@@ -38,7 +38,6 @@ class Driver:
         return Path(self.args.file).resolve().parent
 
     def _set_attr(self, attr: str) -> int:
-
         # set charge to input from Namespace
         val = getattr(self.args, attr)
 
@@ -113,6 +112,9 @@ class Driver:
         # stop timer
         timer.stop("total")
         result.timer = timer
+
+        if args.verbosity > 0:
+            timer.print_times()
 
         return result
 

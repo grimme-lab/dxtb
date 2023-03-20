@@ -25,7 +25,7 @@ def test_grad_pos_tblite(dtype: torch.dtype, name: str) -> None:
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach().clone()
+    positions = sample["positions"].type(dtype)
     positions.requires_grad_(True)
     ref = sample["grad"].type(dtype)
 
@@ -45,6 +45,8 @@ def test_grad_pos_tblite(dtype: torch.dtype, name: str) -> None:
 
     assert pytest.approx(grad_backward, abs=tol) == ref
 
+    positions.detach_()
+
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
@@ -53,7 +55,7 @@ def test_grad_pos_gradcheck(dtype: torch.dtype) -> None:
 
     sample = samples["C4H5NCS"]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach().clone()
+    positions = sample["positions"].type(dtype)
 
     # variable to be differentiated
     positions.requires_grad_(True)
@@ -72,6 +74,8 @@ def test_grad_pos_gradcheck(dtype: torch.dtype) -> None:
 
     assert gradcheck(func, positions)
 
+    positions.detach_()
+
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
@@ -82,7 +86,7 @@ def test_grad_pos_autograd(dtype: torch.dtype, name: str) -> None:
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach().clone()
+    positions = sample["positions"].type(dtype)
     positions.requires_grad_(True)
     ref = sample["grad"].type(dtype)
 
@@ -96,6 +100,8 @@ def test_grad_pos_autograd(dtype: torch.dtype, name: str) -> None:
     grad_autograd = disp.get_gradient(energy, positions)
 
     assert pytest.approx(ref, abs=tol) == grad_autograd
+
+    positions.detach_()
 
 
 @pytest.mark.grad

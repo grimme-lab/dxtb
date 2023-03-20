@@ -122,7 +122,6 @@ class LinearOperator(EditableModule):
         device: torch.device | None = None,
         _suppress_hermit_warning: bool = False,
     ) -> None:
-
         super().__init__()
         if len(shape) < 2:
             raise RuntimeError("The shape must have at least 2 dimensions")
@@ -758,7 +757,6 @@ class MulLinearOperator(LinearOperator):
 
 class MatrixLinearOperator(LinearOperator):
     def __init__(self, mat: torch.Tensor, is_hermitian: bool) -> None:
-
         super().__init__(
             shape=mat.shape,
             is_hermitian=is_hermitian,
@@ -870,7 +868,7 @@ def checklinop(linop: LinearOperator) -> None:
     ]
     # test matvec and matmat, run input in multiple shapes to make sure no error is raised
     r = 2
-    for (mv_xshape, mv_yshape) in zip(mv_xshapes, mv_yshapes):
+    for mv_xshape, mv_yshape in zip(mv_xshapes, mv_yshapes):
         runtest("mv", mv_xshape, mv_yshape)
         runtest("mm", (*mv_xshape, r), (*mv_yshape, r))
 
@@ -891,7 +889,7 @@ def checklinop(linop: LinearOperator) -> None:
         (*batchshape, q),
         (1, *batchshape, q),
     ]
-    for (rmv_xshape, rmv_yshape) in zip(rmv_xshapes, rmv_yshapes):
+    for rmv_xshape, rmv_yshape in zip(rmv_xshapes, rmv_yshapes):
         runtest("rmv", rmv_xshape, rmv_yshape)
         runtest("rmm", (*rmv_xshape, r), (*rmv_yshape, r))
 

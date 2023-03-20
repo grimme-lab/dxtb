@@ -89,7 +89,6 @@ class Datareader:
     """Class to read in data from disk to data model."""
 
     def __init__(self, benchmark: str):
-
         path = str(Path(Path(__file__).resolve().parents[3], "data", benchmark))
 
         if not Path(path).is_dir():
@@ -105,7 +104,7 @@ class Datareader:
         self.file_list = []
 
         # loop through folders + subfolders only
-        for (dirpath, _, filenames) in walklevel(self.bpath, level=2):
+        for dirpath, _, filenames in walklevel(self.bpath, level=2):
             if FILES["coord"] not in filenames and FILES["xyz"] not in filenames:
                 continue
 

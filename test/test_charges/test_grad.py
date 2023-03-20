@@ -48,5 +48,5 @@ def test_gradcheck(dtype: torch.dtype = torch.double):
 
     assert gradcheck(func, (positions, total_charge))
 
-    positions.detach()
+    positions.detach_()
     total_charge.detach()

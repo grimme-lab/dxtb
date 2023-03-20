@@ -52,7 +52,6 @@ def convert_none_grads_to_zeros(grads, inputs):
 def create_random_square_matrix(
     n, is_hermitian=False, min_eival=1.0, max_eival=1.0, minabs_eival=0.0, seed=-1
 ):
-
     dtype = torch.float64
     eivals = torch.linspace(min_eival, max_eival, n, dtype=dtype)
 

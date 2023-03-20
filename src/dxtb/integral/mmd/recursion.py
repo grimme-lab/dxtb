@@ -7,7 +7,9 @@ Calculation of overlap integrals using the McMurchie-Davidson algorithm.
 """
 
 from __future__ import annotations
+
 from math import pi, sqrt
+
 import torch
 
 from ..._types import Any, Callable, Tensor
@@ -320,19 +322,22 @@ def mmd_recursion(
         Overlap integrals for shell pair(s).
     """
 
+    # angular momenta and number of cartesian gaussian basis functions
     li, lj = angular
     ncarti = torch.div((li + 1) * (li + 2), 2, rounding_mode="floor")
     ncartj = torch.div((lj + 1) * (lj + 2), 2, rounding_mode="floor")
     r2 = torch.sum(vec.pow(2), -1)
 
-    shape = [*vec.shape[:-1], ncarti, ncartj]
-    s3d = vec.new_zeros(*shape)
-
+    # transform from cartesian to spherical gaussians
     try:
-        itrafo = TRAFO[li].type(s3d.dtype).to(s3d.device)
-        jtrafo = TRAFO[lj].type(s3d.dtype).to(s3d.device)
+        itrafo = TRAFO[li].type(vec.dtype).to(vec.device)
+        jtrafo = TRAFO[lj].type(vec.dtype).to(vec.device)
     except IndexError as e:
         raise IntegralTransformError() from e
+
+    # cartesian overlap (`vec.shape[:-1]` accounts for possible batch dimension)
+    shape = [*vec.shape[:-1], ncarti, ncartj]
+    s3d = vec.new_zeros(*shape)
 
     ai, aj = alpha[0].unsqueeze(-1), alpha[1].unsqueeze(-2)
     ci, cj = coeff[0].unsqueeze(-1), coeff[1].unsqueeze(-2)
@@ -416,16 +421,16 @@ def mmd_recursion_gradient(
     ncartj = torch.div((lj + 1) * (lj + 2), 2, rounding_mode="floor")
     r2 = torch.sum(vec.pow(2), -1)
 
-    # cartesian overlap and overlap gradient
-    s3d = vec.new_zeros([*vec.shape[:-1], ncarti, ncartj])
-    ds3d = vec.new_zeros([*vec.shape[:-1], 3, ncarti, ncartj])
-
     # transform from cartesian to spherical gaussians
     try:
-        itrafo = TRAFO[li].type(ds3d.dtype).to(ds3d.device)
-        jtrafo = TRAFO[lj].type(ds3d.dtype).to(ds3d.device)
+        itrafo = TRAFO[li].type(vec.dtype).to(vec.device)
+        jtrafo = TRAFO[lj].type(vec.dtype).to(vec.device)
     except IndexError as e:
         raise IntegralTransformError() from e
+
+    # cartesian overlap and overlap gradient
+    s3d = vec.new_zeros(*[*vec.shape[:-1], ncarti, ncartj])
+    ds3d = vec.new_zeros(*[*vec.shape[:-1], 3, ncarti, ncartj])
 
     ai, aj = alpha[0].unsqueeze(-1), alpha[1].unsqueeze(-2)
     ci, cj = coeff[0].unsqueeze(-1), coeff[1].unsqueeze(-2)

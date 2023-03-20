@@ -11,7 +11,7 @@ from functools import partial, reduce
 
 import torch
 
-from .._types import Any, Literal, Sliceable, Tensor, overload
+from .._types import Any, Literal, Size, Tensor, TensorOrTensors, overload
 from . import wrap_gather
 
 __sort = namedtuple("sort", ("values", "indices"))
@@ -19,10 +19,10 @@ __sort = namedtuple("sort", ("values", "indices"))
 
 @overload
 def pack(
-    tensors: Sliceable,
+    tensors: TensorOrTensors,
     axis: int = 0,
     value: Any = 0,
-    size: tuple[int] | torch.Size | None = None,
+    size: Size | None = None,
     return_mask: Literal[False] = False,
 ) -> Tensor:
     ...
@@ -30,24 +30,23 @@ def pack(
 
 @overload
 def pack(
-    tensors: Sliceable,
+    tensors: TensorOrTensors,
     axis: int = 0,
     value: Any = 0,
-    size: tuple[int] | torch.Size | None = None,
+    size: Size | None = None,
     return_mask: Literal[True] = True,
 ) -> tuple[Tensor, Tensor]:
     ...
 
 
 def pack(
-    tensors: Sliceable,
+    tensors: TensorOrTensors,
     axis: int = 0,
     value: Any = 0,
-    size: tuple[int] | torch.Size | None = None,
+    size: Size | None = None,
     return_mask: bool = False,
 ) -> Tensor | tuple[Tensor, Tensor]:
-    """Pad and pack a sequence of tensors together.
-
+    """
     Pad a list of variable length tensors with zeros, or some other value, and
     pack them into a single tensor.
 
@@ -118,12 +117,13 @@ def pack(
 
     # Identify the maximum size, if one was not specified.
     if size is None:
-        size = torch.tensor([i.shape for i in tensors]).max(0).values
+        size = torch.tensor([i.shape for i in tensors]).max(0).values.tolist()
 
     # Tensor to pack into, filled with padding value.
     padded = torch.full((count, *size), value, dtype=dtype, device=device)
 
-    if return_mask:  # Generate the mask if requested.
+    # Generate the mask if requested.
+    if return_mask is True:
         mask = torch.full((count, *size), False, dtype=torch.bool, device=device)
 
     # Loop over & pack "tensors" into "padded". A proxy index "n" must be used
@@ -131,7 +131,9 @@ def pack(
     for n, source in enumerate(tensors):
         # Slice operations not elegant but they are dimension agnostic & fast.
         padded[(n, *[slice(0, s) for s in source.shape])] = source
-        if return_mask:  # Update the mask if required.
+
+        # Update the mask if required.
+        if return_mask is True:
             mask[(n, *[slice(0, s) for s in source.shape])] = True
 
     # If "axis" was anything other than 0, then "padded" must be permuted.
@@ -142,17 +144,19 @@ def pack(
 
         # Build a list of axes indices; but omit the axis on which the data
         # was concatenated (i.e. 0).
-        ax = list(range(1, padded.dim()))
+        order = list(range(1, padded.dim()))
 
-        ax.insert(axis, 0)  # Re-insert the concatenation axis as specified
+        # Re-insert the concatenation axis as specified
+        order.insert(axis, 0)
 
-        padded = padded.permute(ax)  # Perform the permeation
+        padded = padded.permute(order)  # Perform the permeation
 
-        if return_mask:  # Perform permeation on the mask is present.
-            mask = mask.permute(ax)
+        # Perform permeation on the mask is present.
+        if return_mask is True:
+            mask = mask.permute(order)
 
     # Return the packed tensor, and the mask if requested.
-    return (padded, mask) if return_mask else padded
+    return (padded, mask) if return_mask is True else padded
 
 
 def pargsort(
@@ -216,7 +220,7 @@ def psort(tensor: Tensor, mask: Tensor | bool | None = None, dim: int = -1) -> _
         return __sort(tensor.gather(dim, indices), indices)
 
 
-def merge(tensors: Sliceable, value: Any = 0, axis: int = 0) -> Tensor:
+def merge(tensors: TensorOrTensors, value: Any = 0, axis: int = 0) -> Tensor:
     """Merge two or more packed tensors into a single packed tensor.
 
     Arguments:

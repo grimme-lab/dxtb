@@ -585,7 +585,6 @@ def _get_batchdims(
     E: Union[torch.Tensor, None],
     M: Union[LinearOperator, None],
 ):
-
     batchdims = [A.shape[:-2], B.shape[:-2]]
     if E is not None:
         batchdims.append(E.shape[:-1])
@@ -620,7 +619,6 @@ def _setup_linear_problem(
     torch.Tensor,
     bool,
 ]:
-
     # get the linear operator (including the MXE part)
     if E is None:
         A_fcn = lambda x: A.mm(x)

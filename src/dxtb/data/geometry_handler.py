@@ -91,7 +91,6 @@ class Geometry_Handler:
         file_list: list[str],
         filter_rule: Callable[[list[str]], list[int]],
     ) -> tuple[Geometry, list[str]] | tuple[None, list[str]]:
-
         filter = filter_rule(file_list)
         mask = [i for i in range(len(geometry)) if i not in filter]
         file_list = [f for i, f in enumerate(file_list) if i in filter]

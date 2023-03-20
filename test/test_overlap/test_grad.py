@@ -15,6 +15,7 @@ from dxtb.basis import IndexHelper, slater
 from dxtb.integral import Overlap, mmd
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
+from dxtb.utils import t2int
 
 from .samples import samples
 
@@ -230,7 +231,7 @@ def test_gradcheck_overlap(dtype: torch.dtype, name: str):
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach()
+    positions = sample["positions"].type(dtype)
     positions.requires_grad_(True)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
@@ -241,6 +242,8 @@ def test_gradcheck_overlap(dtype: torch.dtype, name: str):
 
     assert gradcheck(func, (positions), atol=tol)
 
+    positions.detach_()
+
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H", "C", "Rn", "H2O", "CH4", "SiH4"])
@@ -250,7 +253,7 @@ def test_overlap_jacobian(dtype: torch.dtype, name: str):
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach()
+    positions = sample["positions"].type(dtype)
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     overlap = Overlap(numbers, par, ihelp, **{"dtype": dtype})
 
@@ -271,13 +274,15 @@ def test_overlap_jacobian(dtype: torch.dtype, name: str):
 
     assert pytest.approx(ngrad, rel=rtol, abs=atol) == jac
 
+    positions.detach_()
+
 
 def calc_numerical_gradient(overlap: Overlap, positions: Tensor) -> Tensor:
     # setup numerical gradient
     step = 1.0e-4  # require larger deviations for overlap change
     natm = positions.shape[0]
-    norb = overlap.ihelp.orbitals_per_shell.sum()
-    gradient = torch.zeros((natm, norb, norb, 3), dtype=positions.dtype)
+    norb = t2int(overlap.ihelp.orbitals_per_shell.sum())
+    gradient = positions.new_zeros((natm, norb, norb, 3))
 
     # coordinates shift preferred to orbitals shift
     for i in range(natm):

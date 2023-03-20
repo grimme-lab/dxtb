@@ -44,9 +44,9 @@ def test_single(dtype: torch.dtype):
     energy, qat = charges.solve(numbers, positions, total_charge, eeq, cn)
 
     assert qat.dtype == energy.dtype == dtype
-    assert pytest.approx(torch.sum(qat, -1), abs=1e-6) == total_charge
-    assert pytest.approx(qat, abs=tol) == qref
-    assert pytest.approx(energy, abs=tol) == eref
+    assert pytest.approx(total_charge, abs=1e-6) == torch.sum(qat, -1)
+    assert pytest.approx(qref, abs=tol) == qat
+    assert pytest.approx(eref, abs=tol) == energy
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -54,7 +54,7 @@ def test_ghost(dtype: torch.dtype):
     tol = sqrt(torch.finfo(dtype).eps)
 
     sample = samples["NH3-dimer"]
-    numbers = sample["numbers"].detach()
+    numbers = sample["numbers"].clone()
     numbers[[1, 5, 6, 7]] = 0
     positions = sample["positions"].type(dtype)
     total_charge = sample["total_charge"].type(dtype)
@@ -92,9 +92,9 @@ def test_ghost(dtype: torch.dtype):
     energy, qat = charges.solve(numbers, positions, total_charge, eeq, cn)
 
     assert qat.dtype == energy.dtype == dtype
-    assert pytest.approx(torch.sum(qat, -1), abs=1e-6) == total_charge
-    assert pytest.approx(qat, abs=tol) == qref
-    assert pytest.approx(energy, abs=tol) == eref
+    assert pytest.approx(total_charge, abs=1e-6) == torch.sum(qat, -1)
+    assert pytest.approx(qref, abs=tol) == qat
+    assert pytest.approx(eref, abs=tol) == energy
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -180,6 +180,6 @@ def test_batch(dtype: torch.dtype):
     energy, qat = charges.solve(numbers, positions, total_charge, eeq, cn)
 
     assert qat.dtype == energy.dtype == dtype
-    assert pytest.approx(torch.sum(qat, -1), abs=1e-6) == total_charge
-    assert pytest.approx(qat, abs=tol) == qref
-    assert pytest.approx(energy, abs=tol) == eref
+    assert pytest.approx(total_charge, abs=1e-6) == torch.sum(qat, -1)
+    assert pytest.approx(qref, abs=tol) == qat
+    assert pytest.approx(eref, abs=tol) == energy

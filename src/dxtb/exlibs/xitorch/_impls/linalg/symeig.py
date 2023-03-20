@@ -253,7 +253,6 @@ def _set_initial_v(
     nguess: int,
     M: Optional[LinearOperator] = None,
 ) -> torch.Tensor:
-
     torch.manual_seed(12421)
     if vinit_type == "eye":
         nbatch = functools.reduce(lambda x, y: x * y, batch_dims, 1)

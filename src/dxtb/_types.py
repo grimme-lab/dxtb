@@ -44,24 +44,31 @@ CountingFunction = Callable[[Tensor, Tensor], Tensor]
 Gather = Callable[[Tensor, int, Tensor], Tensor]
 Scatter = Callable[[Tensor, int, Tensor, str], Tensor]
 
-# "from __future__ import annotations" only affects type annotations
-# not type aliases, hence "|" is not allowed before Python 3.10
 if sys.version_info >= (3, 10):
-    Sliceable = list[Tensor] | tuple[Tensor, ...]
+    # "from __future__ import annotations" only affects type annotations
+    # not type aliases, hence "|" is not allowed before Python 3.10
     PathLike = str | Path
     ScatterOrGather = Gather | Scatter
+    Size = list[int] | tuple[int] | torch.Size
+    TensorOrTensors = list[Tensor] | tuple[Tensor, ...] | Tensor
 elif sys.version_info >= (3, 9):
+    # in Python 3.9, "from __future__ import annotations" works with type
+    # aliases but requires using `Union` from typing
     from typing import Union
 
-    Sliceable = Union[list[Tensor], tuple[Tensor, ...]]
     PathLike = Union[str, Path]
     ScatterOrGather = Union[Gather, Scatter]
+    Size = Union[list[int], tuple[int], torch.Size]
+    TensorOrTensors = Union[list[Tensor], tuple[Tensor, ...], Tensor]
 elif sys.version_info >= (3, 8):
+    # in Python 3.8, "from __future__ import annotations" only affects
+    # type annotations not type aliases
     from typing import List, Tuple, Union
 
-    Sliceable = Union[List[Tensor], Tuple[Tensor, ...]]
     PathLike = Union[str, Path]
     ScatterOrGather = Union[Gather, Scatter]
+    Size = Union[List[int], Tuple[int], torch.Size]
+    TensorOrTensors = Union[List[Tensor], Tuple[Tensor, ...], Tensor]
 else:
     raise RuntimeError(
         f"'dxtb' requires at least Python 3.8 (Python {sys.version_info.major}."

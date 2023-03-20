@@ -69,7 +69,6 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_overlap_higher_orbitals(dtype: torch.dtype):
-
     # pylint: disable=import-outside-toplevel
     from .test_cgto_ortho_data import ref_data
 

@@ -119,7 +119,6 @@ class _Jac(LinearOperator):
     def __init__(
         self, fcn: PureFunction, params: Sequence[Any], idx: int, is_hermitian=False
     ) -> None:
-
         # TODO: check if fcn has kwargs
 
         # run once to get the shapes and numels

@@ -35,6 +35,10 @@ EXCLUDE: list[str] = []
 EXCLUDE_CHOICES = ["disp", "rep", "hal", "es2", "es3", "scf", "all"]
 """List of possible choices for `EXCLUDE`."""
 
+# Integral settings
+
+INTCUTOFF = 50.0
+"""Real-space cutoff for integral evaluation."""
 
 # SCF settings
 

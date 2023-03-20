@@ -208,7 +208,6 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     Optionally, autograd and numerical gradient can also be calculated,
     although they may be numerically unstable.
     """
-
     dd = {"dtype": dtype}
     atol = 1e-4
 
@@ -219,16 +218,20 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     # setup
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach()
+    positions = sample["positions"].type(dtype)
     positions.requires_grad_(True)
     chrg = torch.tensor(0.0, **dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
     result = calc.singlepoint(numbers, positions, chrg)
-
-    # analytical overlap gradient
     overlap, doverlap = calc.overlap.get_gradient(positions)
-    assert torch.allclose(overlap, calc.overlap.build(positions))
+
+    # compare different overlap calculations
+    tol = sqrt(torch.finfo(dtype).eps) * 5
+    s = calc.overlap.build(positions).detach()
+    s2 = result.overlap.detach()
+    assert pytest.approx(s, abs=tol, rel=tol) == overlap.detach()
+    assert pytest.approx(s2, abs=tol, rel=tol) == overlap.detach()
 
     cn = get_coordination_number(numbers, positions, exp_count)
     wmat = get_density(
@@ -262,12 +265,12 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     # positions.requires_grad_(False)
     # numerical = calc_numerical_gradient(calc, positions, numbers, chrg)
 
-    dedr = dedr.detach().numpy()
-    assert pytest.approx(dedr, abs=atol) == ref
+    assert pytest.approx(ref, abs=atol) == dedr.detach()
 
     # NOTE: dedcn is already tested in test_hamiltonian
-    dedcn = dedcn.detach().numpy()
-    assert pytest.approx(dedcn, abs=atol) == ref_dedcn
+    assert pytest.approx(ref_dedcn, abs=atol) == dedcn.detach()
+
+    positions.detach_()
 
 
 @pytest.mark.grad
@@ -330,7 +333,7 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     result = calc.singlepoint(numbers, positions, chrg)
 
     # analytical overlap gradient
-    overlap, doverlap = calc.overlap.get_gradient(positions)
+    _, doverlap = calc.overlap.get_gradient(positions)
 
     cn = get_coordination_number(numbers, positions, exp_count)
     wmat = get_density(
@@ -349,10 +352,8 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         cn,
     )
 
-    dedr = dedr.detach()
-    dedcn = dedcn.detach()
-    assert pytest.approx(dedcn, abs=atol) == ref_dedcn
-    assert pytest.approx(dedr, abs=atol) == ref_dedr
+    assert pytest.approx(ref_dedcn, abs=atol) == dedcn.detach()
+    assert pytest.approx(ref_dedr, abs=atol) == dedr.detach()
 
     # full CN
     dcndr = get_coordination_number_gradient(numbers, positions, dexp_count)
@@ -364,8 +365,7 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
             load_from_npz(ref_grad_no_overlap, f"{name2}_dcn", dtype),
         )
     )
-    dcn = dcn.detach()
-    assert pytest.approx(dcn, abs=atol) == ref_dcn
+    assert pytest.approx(ref_dcn, abs=atol) == dcn.detach()
 
 
 @pytest.mark.grad

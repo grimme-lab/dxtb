@@ -23,9 +23,8 @@ ref_overlap = np.load("test/test_overlap/overlap.npz")
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["H", "C", "Rn"])
+@pytest.mark.parametrize("name", ["H", "C", "LiH", "SiH4"])
 def test_single(dtype: torch.dtype, name: str):
-    """Overlap matrix for monoatomic molecule should be unity."""
     dd = {"dtype": dtype}
     tol = 1e-05
 
@@ -35,10 +34,15 @@ def test_single(dtype: torch.dtype, name: str):
     ref = load_from_npz(ref_overlap, name, dtype)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    overlap = Overlap(numbers, par, ihelp, uplo="n", **dd)
+    overlap = Overlap(numbers, par, ihelp, uplo="n", cutoff=None, **dd)
     s = overlap.build(positions)
 
-    assert pytest.approx(s, rel=tol, abs=tol) == ref
+    overlap_uplo = Overlap(numbers, par, ihelp, **dd)
+    s_uplo = overlap_uplo.build(positions)
+
+    assert pytest.approx(ref, rel=tol, abs=tol) == s
+    assert pytest.approx(ref, rel=tol, abs=tol) == s_uplo
+    assert pytest.approx(s_uplo, rel=tol, abs=tol) == s
 
 
 @pytest.mark.parametrize("dtype", [torch.float])
@@ -66,5 +70,9 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     overlap = Overlap(numbers, par, ihelp, uplo="n", **dd)
     s = overlap.build(positions)
 
-    assert pytest.approx(s, abs=tol) == s.mT
-    assert pytest.approx(s, abs=tol) == ref
+    overlap_uplo = Overlap(numbers, par, ihelp, **dd)
+    s_uplo = overlap_uplo.build(positions)
+
+    assert pytest.approx(ref, rel=tol, abs=tol) == s
+    assert pytest.approx(ref, rel=tol, abs=tol) == s_uplo
+    assert pytest.approx(s_uplo, rel=tol, abs=tol) == s
