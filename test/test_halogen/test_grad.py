@@ -24,7 +24,7 @@ def test_grad_pos_gradcheck(name: str) -> None:
     sample = samples[name]
 
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach()
+    positions = sample["positions"].type(dtype)
 
     # variable to be differentiated
     positions.requires_grad_(True)
@@ -44,6 +44,8 @@ def test_grad_pos_gradcheck(name: str) -> None:
 
     assert gradcheck(func, positions)
 
+    positions.detach_()
+
 
 @pytest.mark.grad
 @pytest.mark.parametrize("name", ["br2nh3", "finch", "LYS_xao"])
@@ -55,7 +57,7 @@ def test_grad_pos_autograd(name: str) -> None:
     sample = samples[name]
 
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach()
+    positions = sample["positions"].type(dtype)
     ref = sample["gradient"]
 
     # variable to be differentiated
@@ -71,6 +73,8 @@ def test_grad_pos_autograd(name: str) -> None:
     gradient = xb.get_gradient(energy, positions)
 
     assert pytest.approx(ref, abs=tol) == gradient
+
+    positions.detach_()
 
 
 @pytest.mark.grad

@@ -39,6 +39,29 @@ def real_pairs(numbers: Tensor, diagonal: bool = False) -> Tensor:
     return mask
 
 
+@torch.jit.script
+def real_triples(numbers: Tensor, diagonal: bool = False) -> Tensor:
+    """
+    Generates mask that differentiates real atom triples and padding.
+    Parameters
+    ----------
+    numbers : Tensor
+        Atomic numbers of the atoms in the system.
+    diagonal : bool, optional
+        Whether the diagonal should be masked, i.e. filled with `False`.
+        Defaults to `False`, i.e., `True` remains on the diagonal for real atoms.
+    Returns
+    -------
+    Tensor
+        Mask for real atom triples.
+    """
+    real = real_pairs(numbers, diagonal=False)
+    mask = real.unsqueeze(-3) * real.unsqueeze(-2) * real.unsqueeze(-1)
+    if diagonal is True:
+        mask *= ~torch.diag_embed(torch.ones_like(real))
+    return mask
+
+
 def t2int(x: Tensor) -> int:
     """
     Convert tensor to int.

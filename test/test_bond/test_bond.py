@@ -23,7 +23,7 @@ def test_single(dtype: torch.dtype, name: str):
 
     bond_order = bond.guess_bond_order(numbers, positions, cn)
     assert bond_order.dtype == dtype
-    assert torch.allclose(bond_order[bond_order > 0.3], ref, atol=1.0e-3)
+    assert pytest.approx(ref, abs=1.0e3) == bond_order[bond_order > 0.3]
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -37,7 +37,7 @@ def test_ghost(dtype: torch.dtype):
 
     bond_order = bond.guess_bond_order(numbers, positions, cn)
     assert bond_order.dtype == dtype
-    assert torch.allclose(bond_order[bond_order > 0.3], ref, atol=1.0e-3)
+    assert pytest.approx(ref, abs=1.0e3) == bond_order[bond_order > 0.3]
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -73,4 +73,4 @@ def test_batch(dtype: torch.dtype):
 
     bond_order = bond.guess_bond_order(numbers, positions, cn)
     assert bond_order.dtype == dtype
-    assert torch.allclose(bond_order[bond_order > 0.3], ref, atol=1.0e-3)
+    assert pytest.approx(ref, abs=1.0e3) == bond_order[bond_order > 0.3]

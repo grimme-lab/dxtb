@@ -143,7 +143,6 @@ class EditableModule:
     def _get_unique_params_idxs(
         self, methodname: str, allparams: Union[Sequence[torch.Tensor], None] = None
     ) -> Sequence[int]:
-
         if not hasattr(self, "_unique_params_idxs"):
             self._unique_params_idxs = {}  # type: Dict[str,Sequence[int]]
             self._unique_params_maps = {}

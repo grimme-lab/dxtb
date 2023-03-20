@@ -7,6 +7,7 @@ MICRO = 0
 ISRELEASED = False
 VERSION = "%d.%d.%d" % (MAJOR, MINOR, MICRO)
 
+
 # Return the git revision as a string
 # taken from numpy/numpy
 def git_version():

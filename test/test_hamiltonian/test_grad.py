@@ -218,7 +218,7 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     # setup
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach()
+    positions = sample["positions"].type(dtype)
     positions.requires_grad_(True)
     chrg = torch.tensor(0.0, **dd)
 
@@ -265,12 +265,12 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     # positions.requires_grad_(False)
     # numerical = calc_numerical_gradient(calc, positions, numbers, chrg)
 
-    dedr = dedr.detach().numpy()
-    assert pytest.approx(dedr, abs=atol) == ref
+    assert pytest.approx(ref, abs=atol) == dedr.detach()
 
     # NOTE: dedcn is already tested in test_hamiltonian
-    dedcn = dedcn.detach().numpy()
-    assert pytest.approx(dedcn, abs=atol) == ref_dedcn
+    assert pytest.approx(ref_dedcn, abs=atol) == dedcn.detach()
+
+    positions.detach_()
 
 
 @pytest.mark.grad
@@ -352,10 +352,8 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         cn,
     )
 
-    dedr = dedr.detach()
-    dedcn = dedcn.detach()
-    assert pytest.approx(dedcn, abs=atol) == ref_dedcn
-    assert pytest.approx(dedr, abs=atol) == ref_dedr
+    assert pytest.approx(ref_dedcn, abs=atol) == dedcn.detach()
+    assert pytest.approx(ref_dedr, abs=atol) == dedr.detach()
 
     # full CN
     dcndr = get_coordination_number_gradient(numbers, positions, dexp_count)
@@ -367,8 +365,7 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
             load_from_npz(ref_grad_no_overlap, f"{name2}_dcn", dtype),
         )
     )
-    dcn = dcn.detach()
-    assert pytest.approx(dcn, abs=atol) == ref_dcn
+    assert pytest.approx(ref_dcn, abs=atol) == dcn.detach()
 
 
 @pytest.mark.grad

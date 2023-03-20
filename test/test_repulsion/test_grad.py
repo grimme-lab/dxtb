@@ -31,7 +31,7 @@ def test_grad_pos_tblite(dtype: torch.dtype, name: str) -> None:
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach()
+    positions = sample["positions"].type(dtype)
     positions.requires_grad_(True)
     ref = sample["gfn1_grad"].type(dtype)
 
@@ -50,7 +50,9 @@ def test_grad_pos_tblite(dtype: torch.dtype, name: str) -> None:
         assert False
     grad_backward = positions.grad.clone()
 
-    assert torch.allclose(ref, grad_backward, atol=tol)
+    assert pytest.approx(ref, abs=tol) == grad_backward
+
+    positions.detach_()
 
 
 @pytest.mark.grad
@@ -62,7 +64,7 @@ def test_grad_pos_autograd(dtype: torch.dtype, name: str) -> None:
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach()
+    positions = sample["positions"].type(dtype)
 
     rep = new_repulsion(numbers, par, **dd)
     if rep is None:
@@ -78,7 +80,9 @@ def test_grad_pos_autograd(dtype: torch.dtype, name: str) -> None:
     energy = rep.get_energy(positions, cache)
     grad_autograd = rep.get_gradient(energy, positions)
 
-    assert torch.allclose(grad_analytical, grad_autograd, atol=tol)
+    assert pytest.approx(grad_analytical, abs=tol) == grad_autograd
+
+    positions.detach_()
 
 
 @pytest.mark.grad
@@ -90,8 +94,7 @@ def test_grad_pos_backward(dtype: torch.dtype, name: str) -> None:
 
     sample = samples[name]
     numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach()
-    positions.requires_grad_(True)
+    positions = sample["positions"].type(dtype)
 
     rep = new_repulsion(numbers, par, **dd)
     if rep is None:
@@ -104,6 +107,7 @@ def test_grad_pos_backward(dtype: torch.dtype, name: str) -> None:
     grad_analytical = rep.get_gradient_analytical(positions, cache)
 
     # automatic gradient
+    positions.requires_grad_(True)
     energy = torch.sum(rep.get_energy(positions, cache), dim=-1)
     energy.backward()
 
@@ -111,7 +115,9 @@ def test_grad_pos_backward(dtype: torch.dtype, name: str) -> None:
         assert False
     grad_backward = positions.grad.clone()
 
-    assert torch.allclose(grad_analytical, grad_backward, atol=tol)
+    assert pytest.approx(grad_analytical, abs=tol) == grad_backward
+
+    positions.detach_()
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
@@ -136,7 +142,7 @@ def test_grad_pos_analytical(dtype: torch.dtype, name: str) -> None:
 
     # numerical gradient
     grad_numerical = calc_numerical_gradient(positions, rep, cache)
-    assert torch.allclose(grad_analytical, grad_numerical, atol=tol)
+    assert pytest.approx(grad_numerical, abs=tol) == grad_analytical
 
 
 @pytest.mark.grad

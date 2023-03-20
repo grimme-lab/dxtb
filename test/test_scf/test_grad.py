@@ -27,7 +27,7 @@ def test_grad_backwards(name: str, dtype: torch.dtype):
     dd = {"dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype).detach()
+    positions = samples[name]["positions"].type(dtype)
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
@@ -46,6 +46,8 @@ def test_grad_backwards(name: str, dtype: torch.dtype):
     gradient = positions.grad.clone()
     assert pytest.approx(gradient, abs=tol) == ref
 
+    positions.detach_()
+
 
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
@@ -56,7 +58,7 @@ def test_grad_autograd(name: str, dtype: torch.dtype):
     dd = {"dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype).detach()
+    positions = samples[name]["positions"].type(dtype)
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
@@ -82,6 +84,8 @@ def test_grad_autograd(name: str, dtype: torch.dtype):
     assert pytest.approx(gradient, abs=tol) == ref
     assert pytest.approx(gradient, abs=tol) == ref_full
 
+    positions.detach_()
+
 
 # FIXME: fails for LYS_xao_dist
 @pytest.mark.grad
@@ -94,7 +98,7 @@ def test_grad_large(name: str, dtype: torch.dtype):
     dd = {"dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype).detach()
+    positions = samples[name]["positions"].type(dtype)
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
@@ -120,6 +124,8 @@ def test_grad_large(name: str, dtype: torch.dtype):
     assert pytest.approx(gradient, abs=tol, rel=1e-5) == ref
     assert pytest.approx(gradient, abs=tol, rel=1e-5) == ref_full
 
+    positions.detach_()
+
 
 @pytest.mark.grad
 @pytest.mark.parametrize("name", ["LiH", "H2O", "SiH4", "LYS_xao"])
@@ -132,7 +138,7 @@ def test_param_grad_energy(name: str, dtype: torch.dtype = torch.float):
     dd = {"dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype).detach()
+    positions = samples[name]["positions"].type(dtype)
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
@@ -157,6 +163,8 @@ def test_param_grad_energy(name: str, dtype: torch.dtype = torch.float):
     ref_shpoly = load_from_npz(ref_grad_param, f"{name}_egrad_shpoly", dtype)
     assert pytest.approx(pgrad[2], abs=tol) == ref_shpoly
 
+    positions.detach_()
+
 
 # FIXME!
 @pytest.mark.grad
@@ -170,7 +178,7 @@ def skip_test_param_grad_force(name: str, dtype: torch.dtype = torch.float):
     dd = {"dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype).detach()
+    positions = samples[name]["positions"].type(dtype)
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
@@ -200,3 +208,5 @@ def skip_test_param_grad_force(name: str, dtype: torch.dtype = torch.float):
     assert pytest.approx(pgrad[1], abs=tol) == ref_kcn
     ref_shpoly = load_from_npz(ref_grad_param, f"{name}_ggrad_shpoly", dtype)
     assert pytest.approx(pgrad[2], abs=tol) == ref_shpoly
+
+    positions.detach_()

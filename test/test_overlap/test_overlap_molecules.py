@@ -63,7 +63,6 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
             load_from_npz(ref_overlap, name2, dtype),
         )
     )
-
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     overlap = Overlap(numbers, par, ihelp, **dd)
     s = overlap.build(positions)

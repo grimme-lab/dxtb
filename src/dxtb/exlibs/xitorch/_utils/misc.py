@@ -25,7 +25,6 @@ def get_and_pop_keys(dct: Dict, keys: List) -> Dict:
 def get_method(
     algname: str, methods: Mapping[str, Callable], method: Union[str, Callable]
 ) -> Callable:
-
     if isinstance(method, str):
         methodname = method.lower()
         if methodname in methods:
@@ -68,7 +67,7 @@ class TensorNonTensorSeparator:
         self.nontensor_idxs = []
         self.nontensor_params = []
         self.nparams = len(params)
-        for (i, p) in enumerate(params):
+        for i, p in enumerate(params):
             if isinstance(p, torch.Tensor) and (
                 (varonly and p.requires_grad) or (not varonly)
             ):

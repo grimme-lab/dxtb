@@ -337,7 +337,6 @@ class _RootFinder(torch.autograd.Function):
         objparams = allparams[nparams:]
 
         with fwd_fcn.useobjparams(objparams):
-
             method = config.pop("method")
             methods = _RF_METHODS if not is_opt_method else _OPT_METHODS
             name = "rootfinder" if not is_opt_method else "minimizer"
@@ -370,7 +369,6 @@ class _RootFinder(torch.autograd.Function):
 
         # dL/df
         with ctx.fcn.useobjparams(objparams):
-
             jac_dfdy = jac(fcn, params=(yout, *params), idxs=[0])[0]
             gyfcn = solve(
                 A=jac_dfdy.H,

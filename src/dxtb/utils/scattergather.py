@@ -204,11 +204,13 @@ def scatter_reduce(
         Reduced tensor.
     """
 
-    version = torch.__version__.split("+", maxsplit=1)[0].split(".")
+    version = tuple(
+        int(x) for x in torch.__version__.split("+", maxsplit=1)[0].split(".")
+    )
 
-    if version[1] == "11":
+    if version >= (1, 11, 0) and version < (1, 12, 0):
         output = torch.scatter_reduce(x, dim, idx, *args)  # type: ignore
-    elif version[1] == "12" or version[1] == "13":
+    elif version >= (1, 12, 0) or version >= (2, 0, 0):
         out_shape = list(x.shape)
         out_shape[dim] = t2int(idx.max()) + 1
 

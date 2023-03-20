@@ -11,6 +11,7 @@ from dxtb.exlibs.xitorch._utils.unique import Uniquifier
 
 __all__ = ["get_pure_function", "make_sibling"]
 
+
 ############################ functional ###############################
 class PureFunction:
     """
@@ -123,7 +124,7 @@ class TorchNNPureFunction(PureFunction):
         return obj_params
 
     def _set_all_obj_params(self, objparams: List):
-        for (name, param) in zip(self.names, objparams):
+        for name, param in zip(self.names, objparams):
             del_attr(
                 self.obj, name
             )  # delete required in case the param is not a torch.nn.Parameter
