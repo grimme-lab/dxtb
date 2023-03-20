@@ -10,7 +10,7 @@ import torch
 
 from .._types import Literal, Tensor, TensorLike
 from ..basis import Basis, IndexHelper
-from ..constants import defaults
+from ..constants import defaults, units
 from ..param import Param, get_elem_angular
 from ..utils import batch, symmetrize, t2int
 from .mmd import overlap_gto, overlap_gto_grad
@@ -42,8 +42,8 @@ class Overlap(TensorLike):
 
     cutoff: Tensor | float | int | None = 50.0
     """
-    Real-space cutoff for integral calculation. Defaults to
-    `constants.defaults.INTCUTOFF`.
+    Real-space cutoff for integral calculation in Angstrom. Defaults to
+    `constants.defaults.INTCUTOFF` (50.0).
     """
 
     def __init__(
@@ -61,7 +61,7 @@ class Overlap(TensorLike):
         self.unique = torch.unique(numbers)
         self.par = par
         self.ihelp = ihelp
-        self.cutoff = cutoff
+        self.cutoff = cutoff if cutoff is None else cutoff * units.AA2AU
 
         if uplo not in ("n", "N", "u", "U", "l", "L"):
             raise ValueError(f"Unknown option for `uplo` chosen: '{uplo}'.")
