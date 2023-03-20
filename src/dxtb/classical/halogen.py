@@ -33,8 +33,7 @@ import torch
 
 from .._types import Tensor, TensorLike
 from ..basis import IndexHelper
-from ..constants import xtb
-from ..data import atomic_rad
+from ..constants import xtb, atomic_rad
 from ..param import Param, get_elem_param
 from ..utils import batch
 from .base import Classical

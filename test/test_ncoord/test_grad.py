@@ -9,7 +9,7 @@ import pytest
 import torch
 
 from dxtb._types import Tensor
-from dxtb.data import cov_rad_d3
+from dxtb.constants import cov_rad_d3
 from dxtb.ncoord import (
     dexp_count,
     exp_count,

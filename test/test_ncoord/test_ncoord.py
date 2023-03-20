@@ -9,7 +9,7 @@ import pytest
 import torch
 
 from dxtb._types import CountingFunction
-from dxtb.data import cov_rad_d3
+from dxtb.constants import cov_rad_d3
 from dxtb.ncoord import (
     derf_count,
     dexp_count,

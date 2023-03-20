@@ -8,7 +8,7 @@ import pytest
 import torch
 
 from dxtb._types import Tensor
-from dxtb.data import vdw_rad_d3
+from dxtb.constants import vdw_rad_d3
 from dxtb.solvation import born
 from dxtb.utils import batch
 

@@ -27,7 +27,7 @@ from __future__ import annotations
 import torch
 
 from .._types import Tensor
-from ..data import vdw_rad_d3
+from ..constants import vdw_rad_d3
 from ..utils import real_atoms, real_pairs
 
 

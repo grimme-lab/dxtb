@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import torch
 
-from ..constants import AA2AU
+from .units import AA2AU
 
 atomic_rad = AA2AU * torch.tensor(
     [

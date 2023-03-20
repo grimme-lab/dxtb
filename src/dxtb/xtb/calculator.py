@@ -11,9 +11,8 @@ from .. import ncoord, scf
 from .._types import Any, Tensor, TensorLike
 from ..basis import IndexHelper
 from ..classical import Halogen, Repulsion, new_halogen, new_repulsion
-from ..constants import defaults
+from ..constants import defaults, cov_rad_d3
 from ..coulomb import new_es2, new_es3
-from ..data import cov_rad_d3
 from ..dispersion import Dispersion, new_dispersion
 from ..integral import Overlap
 from ..interaction import Interaction, InteractionList

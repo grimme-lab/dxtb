@@ -38,7 +38,7 @@ from __future__ import annotations
 import torch
 
 from .._types import Any, Tensor, TensorLike
-from ..data import vdw_rad_d3
+from ..constants import vdw_rad_d3
 from ..interaction import Interaction
 from ..utils import real_pairs
 from .born import get_born_radii
