@@ -45,7 +45,7 @@ from ..basis import IndexHelper
 from ..constants import xtb
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
-from ..utils import batch, real_pairs, wrap_scatter_reduce
+from ..utils import batch, real_pairs
 from .average import AveragingFunction, averaging_function, harmonic_average
 
 __all__ = ["ES2", "new_es2"]
@@ -382,12 +382,7 @@ class ES2(Interaction):
         dmat = dmat.unsqueeze(-1) * rij
 
         # (n_batch, shells_i, shells_j, 3) -> (n_batch, atoms, shells_j, 3)
-        idx = (
-            ihelp.shells_to_atom.unsqueeze(-1)
-            .unsqueeze(-1)
-            .expand(*[*dmat.shape[:-3], -1, *dmat.shape[-2:]])
-        )
-        dmat = wrap_scatter_reduce(dmat, -3, idx, reduce="sum")
+        dmat = ihelp.reduce_shell_to_atom(dmat, dim=-3, extra=True)
 
         # (n_batch, atoms, shells_j, 3) -> (n_batch, atoms, 3)
         return torch.einsum("...ijx,...jx->...ix", dmat, charges)

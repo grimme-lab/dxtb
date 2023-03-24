@@ -292,7 +292,11 @@ class IndexHelper(TensorLike):
         )
 
     def reduce_orbital_to_shell(
-        self, x: Tensor, dim: int | tuple[int, int] = -1, reduce: str = "sum"
+        self,
+        x: Tensor,
+        dim: int | tuple[int, int] = -1,
+        reduce: str = "sum",
+        extra: bool = False,
     ) -> Tensor:
         """
         Reduce orbital-resolved tensor to shell-resolved tensor
@@ -305,6 +309,9 @@ class IndexHelper(TensorLike):
             Dimension to reduce over, defaults to -1
         reduce : str
             Reduction method, defaults to "sum"
+        extra : bool
+            Tensor to reduce contains a extra dimension of arbitrary size.
+            Defaults to `False`.
 
         Returns
         -------
@@ -312,33 +319,44 @@ class IndexHelper(TensorLike):
             Shell-resolved tensor
         """
 
-        return wrap_scatter_reduce(x, dim, self.orbitals_to_shell, reduce)
+        return wrap_scatter_reduce(x, dim, self.orbitals_to_shell, reduce, extra=extra)
 
     def reduce_shell_to_atom(
-        self, x: Tensor, dim: int | tuple[int, int] = -1, reduce: str = "sum"
+        self,
+        x: Tensor,
+        dim: int | tuple[int, int] = -1,
+        reduce: str = "sum",
+        extra: bool = False,
     ) -> Tensor:
         """
-        Reduce shell-resolved tensor to atom-resolved tensor
+         Reduce shell-resolved tensor to atom-resolved tensor
 
-        Parameters
-        ----------
-        x : Tensor
-            Shell-resolved tensor
-        dim : int | (int, int)
-            Dimension to reduce over, defaults to -1
-        reduce : str
-            Reduction method, defaults to "sum"
+         Parameters
+         ----------
+         x : Tensor
+             Shell-resolved tensor
+         dim : int | (int, int)
+             Dimension to reduce over, defaults to -1
+         reduce : str
+             Reduction method, defaults to "sum"
+        extra : bool
+             Tensor to reduce contains a extra dimension of arbitrary size.
+             Defaults to `False`.
 
-        Returns
-        -------
-        Tensor
-            Atom-resolved tensor
+         Returns
+         -------
+         Tensor
+             Atom-resolved tensor
         """
 
-        return wrap_scatter_reduce(x, dim, self.shells_to_atom, reduce)
+        return wrap_scatter_reduce(x, dim, self.shells_to_atom, reduce, extra=extra)
 
     def reduce_orbital_to_atom(
-        self, x: Tensor, dim: int | tuple[int, int] = -1, reduce: str = "sum"
+        self,
+        x: Tensor,
+        dim: int | tuple[int, int] = -1,
+        reduce: str = "sum",
+        extra: bool = False,
     ) -> Tensor:
         """
         Reduce orbital-resolved tensor to atom-resolved tensor
@@ -351,6 +369,9 @@ class IndexHelper(TensorLike):
             Dimension to reduce over, defaults to -1
         reduce : str
             Reduction method, defaults to "sum"
+        extra : bool
+            Tensor to reduce contains a extra dimension of arbitrary size.
+            Defaults to `False`.
 
         Returns
         -------
@@ -359,9 +380,10 @@ class IndexHelper(TensorLike):
         """
 
         return self.reduce_shell_to_atom(
-            self.reduce_orbital_to_shell(x, dim=dim, reduce=reduce),
+            self.reduce_orbital_to_shell(x, dim=dim, reduce=reduce, extra=extra),
             dim=dim,
             reduce=reduce,
+            extra=extra,
         )
 
     def spread_atom_to_shell(

@@ -230,7 +230,11 @@ def scatter_reduce(
 
 
 def wrap_scatter_reduce(
-    x: Tensor, dim: int | tuple[int, int], idx: Tensor, reduce: str
+    x: Tensor,
+    dim: int | tuple[int, int],
+    idx: Tensor,
+    reduce: str,
+    extra: bool = False,
 ) -> Tensor:
     """Wrapper for `torch.scatter_reduce` that removes negative indices.
 
@@ -244,12 +248,26 @@ def wrap_scatter_reduce(
         Index to reduce over
     reduce : str
         Reduction method, defaults to "sum"
+    extra : bool
+        If the tensor to reduce contains a extra dimension of arbitrary size
+        that is generally different from the size of the indexing tensor
+        (e.g. gradient tensors with extra xyz dimension), the indexing tensor
+        has to be modified. This feature is only tested for the aforementioned
+        gradient tensors and does only work for one dimension.
+        Defaults to `False`.
 
     Returns
     -------
     Tensor
         Reduced tensor
     """
+
+    if extra is True and isinstance(dim, int):
+        idx = (
+            idx.unsqueeze(-1)
+            .unsqueeze(-1)
+            .expand(*[*x.shape[:dim], -1, *x.shape[(dim + 1) :]])
+        )
 
     idx = torch.where(idx >= 0, idx, 0)
     return (
