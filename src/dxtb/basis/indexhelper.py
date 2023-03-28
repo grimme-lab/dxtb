@@ -329,7 +329,7 @@ class IndexHelper(TensorLike):
         extra: bool = False,
     ) -> Tensor:
         """
-         Reduce shell-resolved tensor to atom-resolved tensor
+        Reduce shell-resolved tensor to atom-resolved tensor
 
         Parameters
         ----------
@@ -343,10 +343,10 @@ class IndexHelper(TensorLike):
              Tensor to reduce contains a extra dimension of arbitrary size.
              Defaults to `False`.
 
-         Returns
-         -------
-         Tensor
-             Atom-resolved tensor
+        Returns
+        -------
+        Tensor
+            Atom-resolved tensor
         """
 
         return wrap_scatter_reduce(x, dim, self.shells_to_atom, reduce, extra=extra)
