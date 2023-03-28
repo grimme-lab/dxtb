@@ -353,7 +353,6 @@ def compare_mmd(
     # check overlap from gradient calculation
     assert pytest.approx(ovlp, abs=atol) == ovlp_exp
     assert pytest.approx(ovlp, abs=atol) == ovlp_rec
-    print(ovlp_grad_exp)
 
     # obtain Fortran ordering (row wise)
     ovlp_grad_rec = torch.stack(
@@ -362,9 +361,6 @@ def compare_mmd(
     ovlp_grad_exp = torch.stack(
         [ovlp_grad_exp[i].flatten() for i in range(3)]
     ).transpose(0, 1)
-
-    print(ovlp_grad_exp)
-    print(ovlp_grad_ref)
 
     assert pytest.approx(ovlp_grad_exp, abs=atol) == ovlp_grad_rec
     assert pytest.approx(ovlp_grad_ref, abs=atol) == ovlp_grad_rec

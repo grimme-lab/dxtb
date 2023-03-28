@@ -1,9 +1,24 @@
 """
+Explicit McMurchie-Davidson
+===========================
+
 Calculation of overlap integrals using the McMurchie-Davidson algorithm.
 
 - L. E. McMurchie, E. R. Davidson, One- and two-electron integrals over
   cartesian gaussian functions, *J. Comput. Phys.*, **1978**, *26*, 218-231.
   (`DOI <https://doi.org/10.1016/0021-9991(78)90092-X>`__)
+
+Here, the E-coefficients are explicitly written down to avoid custom autograd
+functions.
+
+For the gradients, check out the following papers.
+
+- T. Helgaker, P. R. Taylor, On the evaluation of derivatives of Gaussian
+  integrals, *Theor. Chim. Acta*, **1992**, *83*, 177.
+  (`DOI <https://doi.org/10.1007/BF01132826>`__)
+- K. Doll, V. R. Saunders, N. M. Harrison, Analytical Hartree–Fock gradients
+  for periodic systems, *Int. J. Quantum Chem.*, **2001** *82*, 1-13.
+  (`DOI <https://doi.org/10.1002/1097-461X(2001)82:1%3C1::AID-QUA1017%3E3.0.CO;2-W>`__)
 """
 from __future__ import annotations
 
@@ -12,7 +27,7 @@ from math import pi, sqrt
 import torch
 
 from ..._types import Tensor
-from ...utils import IntegralTransformError
+from ...utils import CgtoAzimudalQuantumNumberError, IntegralTransformError
 from ..trafo import NLM_CART, TRAFO
 
 sqrtpi3 = sqrt(pi) ** 3
@@ -86,7 +101,7 @@ def mmd_explicit(
         elif li == 3:
             e0 = ecoeffs_f(lj, xij, rpi, rpj)
         else:
-            raise RuntimeError(f"Unsupported angular momentum {li}.")
+            raise CgtoAzimudalQuantumNumberError(li)
 
         for mli in range(ncarti):
             mi = NLM_CART[li][mli, :]
@@ -107,19 +122,41 @@ def mmd_explicit(
     return torch.where(torch.abs(o) < eps, vec.new_tensor(0.0), o)
 
 
-def e_function_derivative(e, ai, li, lj):
-    """Calculate derivative of E coefficients."""
-    de = torch.zeros((e.shape[0], 3, e.shape[-5], e.shape[-4], li + 1, lj + 1, 1))
-    for k in range(e.shape[-4]):  # aj
-        for i in range(li + 1):  # li
-            for j in range(lj + 1):  # lj
-                de[..., k, i, j, 0] = 2 * ai * e[..., k, i + 1, j, 0]
-                if i > 0:
-                    de[..., k, i, j, 0] -= i * e[..., k, i - 1, j, 0]
-    return de
+def mmd_explicit_gradient(
+    angular: tuple[Tensor, Tensor],
+    alpha: tuple[Tensor, Tensor],
+    coeff: tuple[Tensor, Tensor],
+    vec: Tensor,
+) -> tuple[Tensor, Tensor]:
+    r"""
+    Overlap and gradient of two orbitals.
 
+    .. math::
 
-def mmd_explicit_gradient(angular: tuple, alpha: tuple, coeff: tuple, vec: Tensor):
+        F^{i,j}_t &= 2 a E^{i+1,j}_t - iE^{i-1,j}_t \\
+        F^{i,j}_t &= 2 b E^{i,j+1}_t - jE^{i,j-1}_t
+
+    Parameters
+    ----------
+    angular : tuple[Tensor, Tensor]
+        Angular momenta of orbital i and j.
+    alpha : tuple[Tensor, Tensor]
+        Exponents of GTOs of orbital i and j.
+    coeff : tuple[Tensor, Tensor]
+        Coefficients in contracted GTOs of orbital i and j.
+    vec : Tensor
+        Distance vectors for all unique overlap pairs.
+
+    Returns
+    -------
+    tuple[Tensor, Tensor]
+        Overlap and gradient of overlap.
+
+    Raises
+    ------
+    IntegralTransformError, CgtoAzimudalQuantumNumberError
+        Unsupported angular momentum.
+    """
     # angular momenta and number of cartesian gaussian basis functions
     li, lj = angular
     ncarti = torch.div((li + 1) * (li + 2), 2, rounding_mode="floor")
@@ -161,9 +198,8 @@ def mmd_explicit_gradient(angular: tuple, alpha: tuple, coeff: tuple, vec: Tenso
     elif li == 3:
         e0, d0 = de_f(lj, xij, rpi, rpj, ai, aj)
     else:
-        raise RuntimeError(f"Unsupported angular momentum {li}.")
+        raise CgtoAzimudalQuantumNumberError(li)
 
-    # print("\nexplicit", li, lj, "\n\n")
     for mli in range(ncarti):
         mi = NLM_CART[li][mli, :]
         for mlj in range(ncartj):
@@ -177,12 +213,6 @@ def mmd_explicit_gradient(angular: tuple, alpha: tuple, coeff: tuple, vec: Tenso
             dy = d0[mi[1]][mj[1]][..., 1, :, :]
             dz = d0[mi[2]][mj[2]][..., 2, :, :]
 
-            # print("\n")
-            # print(mi, mj)
-            # print(mi[0], mj[0], dx)
-            # print(mi[1], mj[1], dy)
-            # print(mi[2], mj[2], dz)
-
             # NOTE: calculating overlap for free
             s3d[..., mli, mlj] += (sij * sx * sy * sz).sum((-2, -1))
 
@@ -195,13 +225,11 @@ def mmd_explicit_gradient(angular: tuple, alpha: tuple, coeff: tuple, vec: Tenso
                 dim=-1,
             )  # [bs, 3]
 
-    # print("s3d\n", s3d)
-    # print("ds3d\n", ds3d)
-
     # transform to spherical basis functions (itrafo * S * jtrafo^T)
     ovlp = torch.einsum("...ij,...jk,...lk->...il", itrafo, s3d, jtrafo)
 
     rt = torch.arange(ds3d.shape[-3], device=ds3d.device)
+    # [bs, upairs, 3, norbi, norbj] == [vec[0], vec[1], 3, norbi, norbj]
     grad = torch.einsum("...ij,...jk,...lk->...il", itrafo, ds3d[..., rt, :, :], jtrafo)
 
     # remove small values
@@ -210,7 +238,6 @@ def mmd_explicit_gradient(angular: tuple, alpha: tuple, coeff: tuple, vec: Tenso
     grad = torch.where(torch.abs(grad) < eps, vec.new_tensor(0.0), grad)
 
     return ovlp, grad
-    # [bs, upairs, 3, norbi, norbj] == [vec[0], vec[1], 3, norbi, norbj]
 
 
 def ecoeffs_s(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Tensor]]:
@@ -238,7 +265,7 @@ def ecoeffs_s(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
 
     Raises
     ------
-    RuntimeError
+    CgtoAzimudalQuantumNumberError
         If angular momentum is not supported. Currently, the highest supported
         angular momentum is 3 (f-orbitals).
     """
@@ -275,7 +302,7 @@ def ecoeffs_s(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
             [e000, e010, e020, e030],
         ]
 
-    raise RuntimeError(f"Unsupported angular momentum {lj}.")
+    raise CgtoAzimudalQuantumNumberError(lj)
 
 
 def de_s(
@@ -315,7 +342,7 @@ def de_s(
 
     Raises
     ------
-    RuntimeError
+    CgtoAzimudalQuantumNumberError
         If angular momentum is not supported. Currently, the highest supported
         angular momentum is 3 (f-orbitals).
     """
@@ -394,7 +421,7 @@ def de_s(
             ],
         )
 
-    raise RuntimeError(f"Unsupported angular momentum {lj}.")
+    raise CgtoAzimudalQuantumNumberError(lj)
 
 
 def ecoeffs_p(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Tensor]]:
@@ -422,7 +449,7 @@ def ecoeffs_p(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
 
     Raises
     ------
-    RuntimeError
+    CgtoAzimudalQuantumNumberError
         If angular momentum is not supported. Currently, the highest supported
         angular momentum is 3 (f-orbitals).
     """
@@ -477,7 +504,7 @@ def ecoeffs_p(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
             [e100, e110, e120, e130],
         ]
 
-    raise RuntimeError(f"Unsupported angular momentum {lj}.")
+    raise CgtoAzimudalQuantumNumberError(lj)
 
 
 def de_p(
@@ -517,7 +544,7 @@ def de_p(
 
     Raises
     ------
-    RuntimeError
+    CgtoAzimudalQuantumNumberError
         If angular momentum is not supported. Currently, the highest supported
         angular momentum is 3 (f-orbitals).
     """
@@ -666,7 +693,7 @@ def de_p(
             ],
         )
 
-    raise RuntimeError(f"Unsupported angular momentum {lj}.")
+    raise CgtoAzimudalQuantumNumberError(lj)
 
 
 def ecoeffs_d(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Tensor]]:
@@ -694,7 +721,7 @@ def ecoeffs_d(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
 
     Raises
     ------
-    RuntimeError
+    CgtoAzimudalQuantumNumberError
         If angular momentum is not supported. Currently, the highest supported
         angular momentum is 3 (f-orbitals).
     """
@@ -768,7 +795,7 @@ def ecoeffs_d(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
             [e200, e210, e220, e230],
         ]
 
-    raise RuntimeError(f"Unsupported angular momentum {lj}.")
+    raise CgtoAzimudalQuantumNumberError(lj)
 
 
 def de_d(
@@ -808,7 +835,7 @@ def de_d(
 
     Raises
     ------
-    RuntimeError
+    CgtoAzimudalQuantumNumberError
         If angular momentum is not supported. Currently, the highest supported
         angular momentum is 3 (f-orbitals).
     """
@@ -1004,7 +1031,7 @@ def de_d(
             ],
         )
 
-    raise RuntimeError(f"Unsupported angular momentum {lj}.")
+    raise CgtoAzimudalQuantumNumberError(lj)
 
 
 def ecoeffs_f(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list:
@@ -1032,7 +1059,7 @@ def ecoeffs_f(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list:
 
     Raises
     ------
-    RuntimeError
+    CgtoAzimudalQuantumNumberError
         If angular momentum is not supported. Currently, the highest supported
         angular momentum is 3 (f-orbitals).
     """
@@ -1139,7 +1166,7 @@ def ecoeffs_f(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list:
             [e300, e310, e320, e330],
         ]
 
-    raise RuntimeError(f"Unsupported angular momentum {lj}.")
+    raise CgtoAzimudalQuantumNumberError(lj)
 
 
 def de_f(
@@ -1179,7 +1206,7 @@ def de_f(
 
     Raises
     ------
-    RuntimeError
+    CgtoAzimudalQuantumNumberError
         If angular momentum is not supported. Currently, the highest supported
         angular momentum is 3 (f-orbitals).
     """
@@ -1457,4 +1484,4 @@ def de_f(
             ],
         )
 
-    raise RuntimeError(f"Unsupported angular momentum {lj}.")
+    raise CgtoAzimudalQuantumNumberError(lj)

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Literal, Tensor, TensorLike
+from .._types import Literal, Tensor, TensorLike, overload
 from ..basis import Basis, IndexHelper
 from ..constants import defaults, units
 from ..param import Param, get_elem_angular
@@ -118,9 +118,87 @@ class Overlap(TensorLike):
             return symmetrize(overlap)
         return overlap
 
-    def calc_overlap(self, bas: Basis, positions: Tensor, ihelp: IndexHelper) -> Tensor:
+    def get_gradient(self, positions: Tensor) -> tuple[Tensor, Tensor]:
         """
-        Overlap calculation for a single molecule.
+        Gradient calculation for McMurchie-Davidson overlap.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Positions of given molecule.
+
+        Returns
+        -------
+        tuple[Tensor, Tensor]
+            Overlap and gradient of overlap for single molecule.
+        """
+
+        if self.numbers.ndim > 1:
+            _ovlps, _grads = [], []
+            for _batch in range(self.numbers.shape[0]):
+                # setup individual `IndexHelper` and `Basis`
+                nums = batch.deflate(self.numbers[_batch])
+                ihelp = IndexHelper.from_numbers(
+                    nums, get_elem_angular(self.par.element)
+                )
+
+                bas = Basis(
+                    torch.unique(nums),
+                    self.par,
+                    ihelp.unique_angular,
+                    dtype=self.dtype,
+                    device=self.device,
+                )
+
+                ds_i, dsdr_i = self.calc_overlap(
+                    bas, positions[_batch], ihelp, grad=True
+                )
+                _ovlps.append(ds_i)
+                _grads.append(torch.einsum("ijk ->kji", dsdr_i))  # [norb, norb, 3]
+
+            s = batch.pack(_ovlps)
+            dsdr = batch.pack(_grads)
+
+        else:
+            bas = Basis(
+                self.unique,
+                self.par,
+                self.ihelp.unique_angular,
+                dtype=self.dtype,
+                device=self.device,
+            )
+
+            # obtain overlap gradient
+            s, dsdr = self.calc_overlap(bas, positions, self.ihelp, grad=True)
+            dsdr: Tensor = torch.einsum("ijk ->kji", dsdr)  # [norb, norb, 3]
+
+        return s, dsdr
+
+    @overload
+    def calc_overlap(
+        self,
+        bas: Basis,
+        positions: Tensor,
+        ihelp: IndexHelper,
+        grad: Literal[False] = False,
+    ) -> Tensor:
+        ...
+
+    @overload
+    def calc_overlap(
+        self,
+        bas: Basis,
+        positions: Tensor,
+        ihelp: IndexHelper,
+        grad: Literal[True],
+    ) -> tuple[Tensor, Tensor]:
+        ...
+
+    def calc_overlap(
+        self, bas: Basis, positions: Tensor, ihelp: IndexHelper, grad: bool = False
+    ) -> Tensor | tuple[Tensor, Tensor]:
+        """
+        Overlap (gradient) calculation for a single molecule.
 
         Parameters
         ----------
@@ -130,11 +208,13 @@ class Overlap(TensorLike):
             Positions of single molecule.
         ihelp : IndexHelper
             Helper class for indexing.
+        grad : bool
+            Whether the gradient should be calculated. Defaults to `False`.
 
         Returns
         -------
-        Tensor
-            Overlap matrix for single molecule.
+        Tensor, tuple[Tensor, Tensor]
+            Overlap matrix for single molecule and overlap gradientif requested.
         """
         alphas, coeffs = bas.create_cgtos()
 
@@ -170,152 +250,98 @@ class Overlap(TensorLike):
         # overlap calculation
         ovlp = torch.zeros(*umap.shape, dtype=self.dtype, device=self.device)
 
-        for uval in range(n_unique_pairs):
-            pairs = self.get_pairs(umap, uval)
-            first_pair = pairs[0]
+        if grad is True:
+            ds = torch.zeros((3, *umap.shape), dtype=self.dtype, device=self.device)
 
-            angi, angj = ang[first_pair]
-            norbi = 2 * t2int(angi) + 1
-            norbj = 2 * t2int(angj) + 1
+            # loop over unique pairs
+            for uval in range(n_unique_pairs):
+                pairs = self.get_pairs(umap, uval)
+                first_pair = pairs[0]
 
-            # collect [0, 0] entry of each subblock
-            upairs = self.get_subblock_start(umap, uval, norbi, norbj)
+                li, lj = ang[first_pair]
+                norbi = 2 * t2int(li) + 1
+                norbj = 2 * t2int(lj) + 1
 
-            # we only require one pair as all have the same basis function
-            alpha_tuple = (
-                batch.deflate(alpha[first_pair][0]),
-                batch.deflate(alpha[first_pair][1]),
-            )
-            coeff_tuple = (
-                batch.deflate(coeff[first_pair][0]),
-                batch.deflate(coeff[first_pair][1]),
-            )
-            ang_tuple = (angi, angj)
+                # collect [0, 0] entry of each subblock
+                upairs = self.get_subblock_start(umap, uval, norbi, norbj)
 
-            vec = positions[upairs][:, 0, :] - positions[upairs][:, 1, :]
-            stmp = overlap_gto(ang_tuple, alpha_tuple, coeff_tuple, -vec)
+                # we only require one pair as all have the same basis function
+                alpha_tuple = (
+                    batch.deflate(alpha[first_pair][0]),
+                    batch.deflate(alpha[first_pair][1]),
+                )
+                coeff_tuple = (
+                    batch.deflate(coeff[first_pair][0]),
+                    batch.deflate(coeff[first_pair][1]),
+                )
+                ang_tuple = (li, lj)
 
-            # write overlap of unique pair to correct position in full overlap matrix
-            for r, pair in enumerate(upairs):
-                ovlp[
-                    pair[0] : pair[0] + norbi,
-                    pair[1] : pair[1] + norbj,
-                ] = stmp[r]
+                vec = positions[upairs][:, 0, :] - positions[upairs][:, 1, :]
 
-        # fill empty triangular matrix
-        if self.uplo == "l":
-            ovlp = torch.tril(ovlp, diagonal=-1) + torch.triu(ovlp.mT)
-        elif self.uplo == "u":
-            ovlp = torch.triu(ovlp, diagonal=1) + torch.tril(ovlp.mT)
+                stmp, dstmp = overlap_gto_grad(
+                    ang_tuple, alpha_tuple, coeff_tuple, -vec
+                )
 
-        # fix diagonal as "self-overlap" was removed via mask earlier
-        return ovlp.fill_diagonal_(1.0)
-
-    def calc_overlap_grad(
-        self, bas: Basis, positions: Tensor, ihelp: IndexHelper
-    ) -> tuple[Tensor, Tensor]:
-        """
-        Overlap gradient dS/dr for a single molecule.
-
-        Parameters
-        ----------
-        bas : Basis
-            Basis set for calculation.
-        positions : Tensor
-            Positions of single molecule.
-        ihelp : IndexHelper
-            Index helper for orbital mapping.
-
-        Returns
-        -------
-        tuple[Tensor, Tensor]
-            Overlap and gradient of overlap for single molecule.
-        """
-        alphas, coeffs = bas.create_cgtos()
-
-        # spread stuff to orbitals for indexing
-        alpha = batch.index(
-            batch.index(batch.pack(alphas), ihelp.shells_to_ushell),
-            ihelp.orbitals_to_shell,
-        )
-        coeff = batch.index(
-            batch.index(batch.pack(coeffs), ihelp.shells_to_ushell),
-            ihelp.orbitals_to_shell,
-        )
-        positions = batch.index(
-            batch.index(positions, ihelp.shells_to_atom),
-            ihelp.orbitals_to_shell,
-        )
-        ang = ihelp.spread_shell_to_orbital(ihelp.angular)
-
-        # real-space integral cutoff; assumes orthogonalization of basis
-        # functions as "self-overlap" is  explicitly removed with `dist > 0`
-        if self.cutoff is None:
-            mask = None
+                # write overlap of unique pair to correct position in full overlap matrix
+                for r, pair in enumerate(upairs):
+                    ovlp[
+                        pair[0] : pair[0] + norbi,
+                        pair[1] : pair[1] + norbj,
+                    ] = stmp[r]
+                    ds[
+                        :,
+                        pair[0] : pair[0] + norbi,
+                        pair[1] : pair[1] + norbj,
+                    ] = dstmp[r]
         else:
-            # cdist does not return zero for distance between same vectors
-            # https://github.com/pytorch/pytorch/issues/57690
-            dist = torch.cdist(
-                positions, positions, compute_mode="donot_use_mm_for_euclid_dist"
-            )
-            mask = (dist < self.cutoff) & (dist > 0.1)
+            for uval in range(n_unique_pairs):
+                pairs = self.get_pairs(umap, uval)
+                first_pair = pairs[0]
 
-        umap, n_unique_pairs = bas.unique_shell_pairs(ihelp, mask=mask, uplo=self.uplo)
+                angi, angj = ang[first_pair]
+                norbi = 2 * t2int(angi) + 1
+                norbj = 2 * t2int(angj) + 1
 
-        # overlap calculation
-        ovlp = torch.zeros(*umap.shape, dtype=self.dtype, device=self.device)
-        grad = torch.zeros((3, *umap.shape), dtype=self.dtype, device=self.device)
+                # collect [0, 0] entry of each subblock
+                upairs = self.get_subblock_start(umap, uval, norbi, norbj)
 
-        # loop over unique pairs
-        for uval in range(n_unique_pairs):
-            pairs = self.get_pairs(umap, uval)
-            first_pair = pairs[0]
+                # we only require one pair as all have the same basis function
+                alpha_tuple = (
+                    batch.deflate(alpha[first_pair][0]),
+                    batch.deflate(alpha[first_pair][1]),
+                )
+                coeff_tuple = (
+                    batch.deflate(coeff[first_pair][0]),
+                    batch.deflate(coeff[first_pair][1]),
+                )
+                ang_tuple = (angi, angj)
 
-            li, lj = ang[first_pair]
-            norbi = 2 * t2int(li) + 1
-            norbj = 2 * t2int(lj) + 1
+                vec = positions[upairs][:, 0, :] - positions[upairs][:, 1, :]
+                stmp = overlap_gto(ang_tuple, alpha_tuple, coeff_tuple, -vec)
 
-            # collect [0, 0] entry of each subblock
-            upairs = self.get_subblock_start(umap, uval, norbi, norbj)
-
-            # we only require one pair as all have the same basis function
-            alpha_tuple = (
-                batch.deflate(alpha[first_pair][0]),
-                batch.deflate(alpha[first_pair][1]),
-            )
-            coeff_tuple = (
-                batch.deflate(coeff[first_pair][0]),
-                batch.deflate(coeff[first_pair][1]),
-            )
-            ang_tuple = (li, lj)
-
-            vec = positions[upairs][:, 0, :] - positions[upairs][:, 1, :]
-
-            stmp, dstmp = overlap_gto_grad(ang_tuple, alpha_tuple, coeff_tuple, -vec)
-
-            # write overlap of unique pair to correct position in full overlap matrix
-            for r, pair in enumerate(upairs):
-                ovlp[
-                    pair[0] : pair[0] + norbi,
-                    pair[1] : pair[1] + norbj,
-                ] = stmp[r]
-                grad[
-                    :,
-                    pair[0] : pair[0] + norbi,
-                    pair[1] : pair[1] + norbj,
-                ] = dstmp[r]
+                # write overlap of unique pair to correct position in full overlap matrix
+                for r, pair in enumerate(upairs):
+                    ovlp[
+                        pair[0] : pair[0] + norbi,
+                        pair[1] : pair[1] + norbj,
+                    ] = stmp[r]
 
         # fill empty triangular matrix
         if self.uplo == "l":
             ovlp = torch.tril(ovlp, diagonal=-1) + torch.triu(ovlp.mT)
-            grad = torch.tril(grad, diagonal=-1) - torch.triu(grad.mT)
+            if grad is True:
+                ds = torch.tril(ds, diagonal=-1) - torch.triu(ds.mT)
         elif self.uplo == "u":
             ovlp = torch.triu(ovlp, diagonal=1) + torch.tril(ovlp.mT)
-            grad = torch.triu(grad, diagonal=1) - torch.tril(grad.mT)
+            if grad is True:
+                ds = torch.triu(ds, diagonal=1) - torch.tril(ds.mT)
 
         # fix diagonal as "self-overlap" was removed via mask earlier
-        # [norb, norb], [3, norb, norb]
-        return ovlp.fill_diagonal_(1.0), grad
+        ovlp.fill_diagonal_(1.0)
+        if grad is True:
+            # [norb, norb], [3, norb, norb]
+            return ovlp, ds
+        return ovlp
 
     def get_pairs(self, x: Tensor, i: int) -> Tensor:
         """
@@ -433,57 +459,3 @@ class Overlap(TensorLike):
 
         # remove dummy
         return final[1:]
-
-    def get_gradient(self, positions: Tensor) -> tuple[Tensor, Tensor]:
-        """
-        Gradient calculation for McMurchie-Davidson overlap.
-
-        Parameters
-        ----------
-        positions : Tensor
-            Positions of given molecule.
-
-        Returns
-        -------
-        tuple[Tensor, Tensor]
-            Overlap and gradient of overlap for single molecule.
-        """
-
-        if self.numbers.ndim > 1:
-            _ovlps, _grads = [], []
-            for _batch in range(self.numbers.shape[0]):
-                # setup individual `IndexHelper` and `Basis`
-                nums = batch.deflate(self.numbers[_batch])
-                ihelp = IndexHelper.from_numbers(
-                    nums, get_elem_angular(self.par.element)
-                )
-
-                bas = Basis(
-                    torch.unique(nums),
-                    self.par,
-                    ihelp.unique_angular,
-                    dtype=self.dtype,
-                    device=self.device,
-                )
-
-                ds_i, dsdr_i = self.calc_overlap_grad(bas, positions[_batch], ihelp)
-                _ovlps.append(ds_i)
-                _grads.append(torch.einsum("ijk ->kji", dsdr_i))  # [norb, norb, 3]
-
-            s = batch.pack(_ovlps)
-            dsdr = batch.pack(_grads)
-
-        else:
-            bas = Basis(
-                self.unique,
-                self.par,
-                self.ihelp.unique_angular,
-                dtype=self.dtype,
-                device=self.device,
-            )
-
-            # obtain overlap gradient
-            s, dsdr = self.calc_overlap_grad(bas, positions, self.ihelp)
-            dsdr: Tensor = torch.einsum("ijk ->kji", dsdr)  # [norb, norb, 3]
-
-        return s, dsdr

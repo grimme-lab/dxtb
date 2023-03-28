@@ -463,11 +463,10 @@ def mmd_recursion_gradient(
         0.5 * oij, rpi, rpj, (*vec.shape, ai.shape[-2], aj.shape[-1], li + 2, lj + 2)
     )
     dE = e_function_derivative(E, alpha[0], li, lj)
-    # print("\nrec", li, lj, "\n\n")
 
     for mli in range(ncarti):
+        mi = NLM_CART[li][mli, :]  # [3]
         for mlj in range(ncartj):
-            mi = NLM_CART[li][mli, :]  # [3]
             mj = NLM_CART[lj][mlj, :]  # [3]
 
             e0 = E[..., 0, :, :, mi[0], mj[0], 0]
@@ -477,12 +476,6 @@ def mmd_recursion_gradient(
             d0 = dE[..., 0, :, :, mi[0], mj[0], 0]
             d1 = dE[..., 1, :, :, mi[1], mj[1], 0]
             d2 = dE[..., 2, :, :, mi[2], mj[2], 0]
-
-            # print("\n")
-            # print(mi, mj)
-            # print(mi[0], mj[0], d0)
-            # print(mi[1], mj[1], d1)
-            # print(mi[2], mj[2], d2)
 
             # NOTE: calculating overlap for free
             s3d[..., mli, mlj] += (sij * e0 * e1 * e2).sum((-2, -1))
@@ -496,13 +489,11 @@ def mmd_recursion_gradient(
                 dim=-1,
             )  # [bs, 3]
 
-    # print("s3d\n", s3d)
-    # print("ds3d\n", ds3d)
-
     # transform to spherical basis functions (itrafo * S * jtrafo^T)
     ovlp = torch.einsum("...ij,...jk,...lk->...il", itrafo, s3d, jtrafo)
 
     rt = torch.arange(ds3d.shape[-3], device=ds3d.device)
+    # [bs, upairs, 3, norbi, norbj] == [vec[0], vec[1], 3, norbi, norbj]
     grad = torch.einsum("...ij,...jk,...lk->...il", itrafo, ds3d[..., rt, :, :], jtrafo)
 
     # remove small values
@@ -511,4 +502,3 @@ def mmd_recursion_gradient(
     grad = torch.where(torch.abs(grad) < eps, vec.new_tensor(0.0), grad)
 
     return ovlp, grad
-    # [bs, upairs, 3, norbi, norbj] == [vec[0], vec[1], 3, norbi, norbj]
