@@ -231,8 +231,6 @@ class Overlap(TensorLike):
         tuple[Tensor, Tensor]
             Overlap and gradient of overlap for single molecule.
         """
-
-        umap, n_unique_pairs = bas.unique_shell_pairs(ihelp, uplo="n")
         alphas, coeffs = bas.create_cgtos()
 
         # spread stuff to orbitals for indexing
@@ -250,7 +248,21 @@ class Overlap(TensorLike):
         )
         ang = ihelp.spread_shell_to_orbital(ihelp.angular)
 
-        # overlap tensors
+        # real-space integral cutoff; assumes orthogonalization of basis
+        # functions as "self-overlap" is  explicitly removed with `dist > 0`
+        if self.cutoff is None:
+            mask = None
+        else:
+            # cdist does not return zero for distance between same vectors
+            # https://github.com/pytorch/pytorch/issues/57690
+            dist = torch.cdist(
+                positions, positions, compute_mode="donot_use_mm_for_euclid_dist"
+            )
+            mask = (dist < self.cutoff) & (dist > 0.1)
+
+        umap, n_unique_pairs = bas.unique_shell_pairs(ihelp, mask=mask, uplo=self.uplo)
+
+        # overlap calculation
         ovlp = torch.zeros(*umap.shape, dtype=self.dtype, device=self.device)
         grad = torch.zeros((3, *umap.shape), dtype=self.dtype, device=self.device)
 
@@ -280,7 +292,6 @@ class Overlap(TensorLike):
             vec = positions[upairs][:, 0, :] - positions[upairs][:, 1, :]
 
             stmp, dstmp = overlap_gto_grad(ang_tuple, alpha_tuple, coeff_tuple, -vec)
-            # [upairs, norbi, norbj], [upairs, 3, norbi, norbj]
 
             # write overlap of unique pair to correct position in full overlap matrix
             for r, pair in enumerate(upairs):
@@ -294,7 +305,17 @@ class Overlap(TensorLike):
                     pair[1] : pair[1] + norbj,
                 ] = dstmp[r]
 
-        return symmetrize(ovlp), grad  # [norb, norb], [3, norb, norb]
+        # fill empty triangular matrix
+        if self.uplo == "l":
+            ovlp = torch.tril(ovlp, diagonal=-1) + torch.triu(ovlp.mT)
+            grad = torch.tril(grad, diagonal=-1) - torch.triu(grad.mT)
+        elif self.uplo == "u":
+            ovlp = torch.triu(ovlp, diagonal=1) + torch.tril(ovlp.mT)
+            grad = torch.triu(grad, diagonal=1) - torch.tril(grad.mT)
+
+        # fix diagonal as "self-overlap" was removed via mask earlier
+        # [norb, norb], [3, norb, norb]
+        return ovlp.fill_diagonal_(1.0), grad
 
     def get_pairs(self, x: Tensor, i: int) -> Tensor:
         """

@@ -28,7 +28,7 @@ class ToleranceWarning(UserWarning):
 
 class IntegralTransformError(ValueError):
     def __init__(self) -> None:
-        self.message = "[Fatal] Moments higher than g are not supported"
+        self.message = "[Fatal] Moments higher than f are not supported"
         super().__init__(self.message)
 
 
