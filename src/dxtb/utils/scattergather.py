@@ -1,3 +1,11 @@
+"""
+Torch's `scatter_reduce` and `gather`
+=====================================
+
+Wrappers and convenience functions for `torch.scatter_reduce` and
+`torch.gather`.
+"""
+
 from __future__ import annotations
 
 from functools import wraps
@@ -94,7 +102,19 @@ def twice(
 
 
 def gather_remove_negative_index(func: Gather) -> Gather:
-    """Wrapper for `gather` function that removes negative indices."""
+    """
+    Wrapper for `gather` function that removes negative indices.
+
+    Parameters
+    ----------
+    func : Gather
+        `torch.gather`.
+
+    Returns
+    -------
+    Gather
+        Wrapped `torch.gather` (for use as decorator).
+    """
 
     @wraps(func)
     def wrapper(x: Tensor, dim: int, idx: Tensor, *args: str) -> Tensor:
@@ -113,7 +133,8 @@ def gather_remove_negative_index(func: Gather) -> Gather:
 
 @gather_remove_negative_index
 def gather(x: Tensor, dim: int, idx: Tensor) -> Tensor:
-    """Wrapper for `torch.gather`.
+    """
+    Wrapper for `torch.gather`.
 
     Parameters
     ----------
@@ -133,7 +154,8 @@ def gather(x: Tensor, dim: int, idx: Tensor) -> Tensor:
 
 
 def wrap_gather(x: Tensor, dim: int | tuple[int, int], idx: Tensor) -> Tensor:
-    """Wrapper for gather function. Also handles multiple dimensions.
+    """
+    Wrapper for gather function. Also handles multiple dimensions.
 
     Parameters
     ----------
@@ -236,7 +258,8 @@ def wrap_scatter_reduce(
     reduce: str,
     extra: bool = False,
 ) -> Tensor:
-    """Wrapper for `torch.scatter_reduce` that removes negative indices.
+    """
+    Wrapper for `torch.scatter_reduce` that removes negative indices.
 
     Parameters
     ----------
