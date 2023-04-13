@@ -21,7 +21,10 @@ class Dispersion(TensorLike):
     param: dict[str, Tensor]
     """Dispersion parameters."""
 
-    __slots__ = ["numbers", "param"]
+    charge: Tensor | None
+    """Total charge of the system."""
+
+    __slots__ = ["numbers", "param", "charge"]
 
     class Cache(ABC):
         """
@@ -32,12 +35,14 @@ class Dispersion(TensorLike):
         self,
         numbers: Tensor,
         param: dict[str, Tensor],
+        charge: Tensor | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
         super().__init__(device, dtype)
         self.numbers = numbers
         self.param = param
+        self.charge = charge
 
     @abstractmethod
     def get_cache(self, numbers: Tensor) -> Cache:

@@ -12,3 +12,4 @@ dependencies:
   - pytest
   - pip:
       - tad-dftd3==0.1.0
+      - tad-dftd4
