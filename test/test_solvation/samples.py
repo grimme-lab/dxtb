@@ -16,6 +16,9 @@ class Refs(TypedDict):
     energies: Tensor
     """Energy vector for each atom partial charge."""
 
+    energies_still: Tensor
+    """Energy vector for each atom partial charge using Still kernel."""
+
     gradient: Tensor
     """Gradient of the energy."""
 
@@ -96,7 +99,29 @@ refs: dict[str, Refs] = {
                 +0.00087715042795,
                 -0.00626537040940,
                 +0.00325295650828,
-            ]
+            ],
+            dtype=torch.float64,
+        ),
+        "energies_still": torch.tensor(
+            [
+                -0.02071792398963,
+                -0.00058358797468,
+                -0.00698410286366,
+                -0.00090182246565,
+                -0.00642619308152,
+                +0.00034269941686,
+                -0.00047306218709,
+                -0.01205522633928,
+                -0.00238143215787,
+                +0.00172413742047,
+                +0.00268813121667,
+                -0.00014180520495,
+                +0.00213395288424,
+                +0.00087896227215,
+                -0.00586188638503,
+                +0.00376980373433,
+            ],
+            dtype=torch.float64,
         ),
         "charges": torch.tensor(
             [
@@ -116,7 +141,8 @@ refs: dict[str, Refs] = {
                 +3.84585237785621e-2,
                 -5.05851088366940e-1,
                 +5.17677238544189e-1,
-            ]
+            ],
+            dtype=torch.float64,
         ),
         "born": torch.tensor(
             [
@@ -136,7 +162,8 @@ refs: dict[str, Refs] = {
                 3.6669782787601948,
                 3.3780928475676446,
                 4.5793201340354424,
-            ]
+            ],
+            dtype=torch.float64,
         ),
         "psi": torch.tensor(
             [
@@ -156,7 +183,8 @@ refs: dict[str, Refs] = {
                 0.11322683604308532,
                 0.20032842544403756,
                 9.1330919858808965e-002,
-            ]
+            ],
+            dtype=torch.float64,
         ),
     },
     "MB16_43_02": {
@@ -180,7 +208,29 @@ refs: dict[str, Refs] = {
                 -9.34384898116227e-5,
                 +4.41237944616590e-4,
                 -3.16940603695238e-3,
-            ]
+            ],
+            dtype=torch.float64,
+        ),
+        "energies_still": torch.tensor(
+            [
+                +1.43691262858709e-04,
+                -5.93932291047515e-04,
+                -1.31554164676859e-03,
+                -9.98116042901729e-03,
+                -9.46940208443388e-03,
+                +1.37342373546611e-03,
+                +6.09754783224372e-04,
+                +1.96007030001473e-04,
+                +7.70310954326422e-05,
+                +1.79038211766585e-03,
+                -2.05177674708673e-03,
+                -6.50077699673564e-03,
+                -1.47025413809430e-03,
+                -6.07497302117305e-05,
+                +4.39574259603324e-04,
+                -2.80170449505814e-03,
+            ],
+            dtype=torch.float64,
         ),
         "charges": torch.tensor(
             [
@@ -200,7 +250,8 @@ refs: dict[str, Refs] = {
                 +6.57536027459275e-2,
                 +1.08259054549882e-1,
                 -3.58215329983396e-1,
-            ]
+            ],
+            dtype=torch.float64,
         ),
         "born": torch.tensor(
             [
@@ -220,7 +271,8 @@ refs: dict[str, Refs] = {
                 2.55620671005682,
                 3.80403388029348,
                 3.73108898118882,
-            ]
+            ],
+            dtype=torch.float64,
         ),
         "psi": torch.tensor(
             [
@@ -240,13 +292,15 @@ refs: dict[str, Refs] = {
                 0.18510761926294442,
                 0.35398294635573041,
                 0.10437172832421032,
-            ]
+            ],
+            dtype=torch.float64,
         ),
     },
     "SiH4": {
         "gradient": torch.tensor([]),
         "gsolv": torch.tensor([]),
         "energies": torch.tensor([]),
+        "energies_still": torch.tensor([]),
         "charges": torch.tensor([]),
         "born": torch.tensor(
             [

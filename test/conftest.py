@@ -22,6 +22,12 @@ def pytest_addoption(parser: pytest.Parser):
     )
 
     parser.addoption(
+        "--jit",
+        action="store_true",
+        help="Enable JIT during tests (default = False).",
+    )
+
+    parser.addoption(
         "--tpo-linewidth",
         action="store",
         default=400,
@@ -60,6 +66,11 @@ def pytest_configure(config: pytest.Config):
 
     if config.getoption("--detect-anomaly"):
         torch.autograd.anomaly_mode.set_detect_anomaly(True)
+
+    if config.getoption("--jit"):
+        torch.jit._state.enable()  # type: ignore
+    else:
+        torch.jit._state.disable()  # type: ignore
 
     if config.getoption("--tpo-linewidth"):
         torch.set_printoptions(linewidth=config.getoption("--tpo-linewidth"))

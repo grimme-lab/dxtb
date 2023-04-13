@@ -16,6 +16,28 @@ from .samples import samples
 
 
 @pytest.mark.grad
+@pytest.mark.parametrize("name", ["br2nh3"])
+def test_grad_fail(name: str) -> None:
+    dtype = torch.double
+    dd = {"dtype": dtype}
+
+    sample = samples[name]
+    numbers = sample["numbers"]
+    positions = sample["positions"].type(dtype)
+
+    xb = new_halogen(numbers, par, **dd)
+    if xb is None:
+        assert False
+
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    cache = xb.get_cache(numbers, ihelp)
+    energy = xb.get_energy(positions, cache)
+
+    with pytest.raises(RuntimeError):
+        xb.get_gradient(energy, positions)
+
+
+@pytest.mark.grad
 @pytest.mark.parametrize("name", ["br2nh3", "br2och2", "LYS_xao"])
 def test_grad_pos_gradcheck(name: str) -> None:
     dtype = torch.double

@@ -90,9 +90,10 @@ class ConvertToTorchDtype(argparse.Action):
             values = torch.float32
         elif values in ("float64", torch.float64, "double", torch.double, "dp"):
             values = torch.float64
-        else:  # unreachable due to choices
+        # unreachable due to choices
+        else:  # pragma: no cover
             p.error(
-                f"Option '{option_string}' was passed an unknown keyword ({values})."
+                f"Option '{option_string}' was passed unknown keyword " f"({values})."
             )
 
         setattr(args, self.dest, values)
@@ -112,7 +113,7 @@ class ConvertToTorchDevice(argparse.Action):
     ) -> None:
         allowed_devices = ("cpu", "cuda")
         err_msg = (
-            f"Option '{option_string}' was passed an unknown keyword ({values})."
+            f"Option '{option_string}' was passed unknown keyword ({values})."
             "Use 'cpu', 'cpu:<INTEGER>', 'cuda', or 'cuda:<INTEGER>'."
         )
 
@@ -144,7 +145,9 @@ class Formatter(argparse.HelpFormatter):
     Custom format for help message.
     """
 
-    def _get_help_string(self, action: argparse.Action) -> str | None:
+    def _get_help_string(
+        self, action: argparse.Action
+    ) -> str | None:  # pragma: no cover
         """
         Append default value and type of action to help string.
 

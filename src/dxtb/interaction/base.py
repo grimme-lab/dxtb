@@ -55,7 +55,6 @@ class Interaction(TensorLike):
         Interaction.Cache
             Restart data for the interaction.
         """
-
         return self.Cache()
 
     def get_potential(
@@ -78,7 +77,6 @@ class Interaction(TensorLike):
         Tensor
             Potential vector for each orbital partial charge.
         """
-
         qsh = ihelp.reduce_orbital_to_shell(charges)
         vsh = self.get_shell_potential(qsh, cache)
 
@@ -105,7 +103,6 @@ class Interaction(TensorLike):
         Tensor
             Potential vector for each atom partial charge.
         """
-
         return torch.zeros_like(charges)
 
     def get_atom_potential(self, charges: Tensor, *_) -> Tensor:
@@ -125,7 +122,6 @@ class Interaction(TensorLike):
         Tensor
             Potential vector for each atom partial charge.
         """
-
         return torch.zeros_like(charges)
 
     def get_energy(
@@ -178,7 +174,6 @@ class Interaction(TensorLike):
         Tensor
             Energy vector for each shell partial charge.
         """
-
         return torch.zeros_like(charges)
 
     def get_atom_energy(self, charges: Tensor, *_: Any) -> Tensor:
@@ -198,7 +193,6 @@ class Interaction(TensorLike):
         Tensor
             Energy vector for each atom partial charge.
         """
-
         return torch.zeros_like(charges)
 
     def get_gradient(
@@ -235,7 +229,6 @@ class Interaction(TensorLike):
         Tensor
             Nuclear gradient for each atom.
         """
-
         qsh = ihelp.reduce_orbital_to_shell(charges)
         gsh = self.get_shell_gradient(numbers, positions, qsh, cache, ihelp)
 
@@ -252,7 +245,8 @@ class Interaction(TensorLike):
         However, returning zeros here serves three purposes:
          - the interaction can (theoretically) be empty
          - the gradient of the interaction is indeed zero and thus requires no
-           gradient implementation (one can, however, implement a method that returns zeros to make this more obvious)
+           gradient implementation (one can, however, implement a method that
+           returns zeros to make this more obvious)
          - the interaction always uses atom-resolved charges and shell-resolved
            charges are never required
 
@@ -266,7 +260,6 @@ class Interaction(TensorLike):
         Tensor
             Nuclear gradient for each atom.
         """
-
         return torch.zeros_like(positions)
 
     def get_atom_gradient(self, _: Any, positions: Tensor, *__: Any) -> Tensor:
@@ -292,5 +285,4 @@ class Interaction(TensorLike):
         Tensor
             Nuclear gradient for each atom.
         """
-
         return torch.zeros_like(positions)

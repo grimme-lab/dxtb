@@ -8,6 +8,7 @@ from math import sqrt
 import pytest
 import torch
 
+from dxtb.data.radii import vdw_rad_d3
 from dxtb.param import GFN1_XTB as par
 from dxtb.solvation import alpb
 from dxtb.xtb import Calculator
@@ -32,6 +33,28 @@ def test_gb_single(dtype: torch.dtype, name: str, dielectric_constant=78.9):
     ref = sample["energies"].type(dtype)
 
     gb = alpb.GeneralizedBorn(numbers, dielectric_constant, **dd)
+    cache = gb.get_cache(numbers, positions)
+    energies = gb.get_atom_energy(charges, cache)
+
+    assert pytest.approx(energies, abs=tol) == ref
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["MB16_43_01", "MB16_43_02"])
+def test_gb_still_single(dtype: torch.dtype, name: str, dielectric_constant=78.9):
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
+
+    dc = torch.tensor(dielectric_constant, **dd)
+
+    sample = samples[name]
+    numbers = sample["numbers"]
+    positions = sample["positions"].type(dtype)
+    charges = sample["charges"].type(dtype)
+    rvdw = vdw_rad_d3[numbers].type(dtype)
+    ref = sample["energies_still"].type(dtype)
+
+    gb = alpb.GeneralizedBorn(numbers, dc, kernel="still", rvdw=rvdw, alpb=False, **dd)
     cache = gb.get_cache(numbers, positions)
     energies = gb.get_atom_energy(charges, cache)
 

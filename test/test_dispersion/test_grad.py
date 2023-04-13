@@ -16,6 +16,27 @@ sample_list = ["PbH4-BiH3"]
 
 
 @pytest.mark.grad
+@pytest.mark.parametrize("name", sample_list)
+def test_grad_fail(name: str) -> None:
+    dtype = torch.double
+    dd = {"dtype": dtype}
+
+    sample = samples[name]
+    numbers = sample["numbers"]
+    positions = sample["positions"].type(dtype)
+
+    xb = new_dispersion(numbers, par, **dd)
+    if xb is None:
+        assert False
+
+    cache = xb.get_cache(numbers)
+    energy = xb.get_energy(positions, cache)
+
+    with pytest.raises(RuntimeError):
+        xb.get_gradient(energy, positions)
+
+
+@pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_grad_pos_tblite(dtype: torch.dtype, name: str) -> None:

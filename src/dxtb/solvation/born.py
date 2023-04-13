@@ -78,7 +78,6 @@ def get_born_radii(
         The number of atoms is not equal to the number of positions or the
         number of radii.
     """
-
     if rvdw is None:
         rvdw = vdw_rad_d3[numbers].type(positions.dtype)
     if numbers.shape != rvdw.shape:

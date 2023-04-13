@@ -55,6 +55,14 @@ def test_int(option: str) -> None:
     assert getattr(args, option) == value
 
 
+@pytest.mark.parametrize("option", ["chrg", "spin"])
+def test_int_multiple(option: str) -> None:
+    args = parser().parse_args(f"--{option} 1 1".split())
+
+    assert isinstance(getattr(args, option), list)
+    assert getattr(args, option) == [1, 1]
+
+
 @pytest.mark.parametrize("option", ["etemp"])
 def test_float(option: str) -> None:
     value = 200.0
@@ -148,6 +156,9 @@ def test_fail_value():
     with redirect_stderr(f):
         with pytest.raises(SystemExit):
             p.parse_args("--spin -1".split())
+
+        with pytest.raises(SystemExit):
+            p.parse_args("--spin -1 -1".split())
 
         with pytest.raises(SystemExit):
             p.parse_args("--method dftb3".split())

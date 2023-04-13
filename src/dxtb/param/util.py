@@ -16,12 +16,13 @@ from ..utils import is_int_list
 
 
 def get_pair_param(
-    symbols: list[str | int],
+    symbols: list[str] | list[int],
     par_pair: dict[str, float],
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> Tensor:
-    """Obtain tensor of a pair-wise parametrized quantity for all pairs.
+    """
+    Obtain tensor of a pair-wise parametrized quantity for all pairs.
 
     Parameters
     ----------
@@ -39,7 +40,6 @@ def get_pair_param(
     Tensor
         Parametrization of all pairs of `symbols`.
     """
-
     # convert atomic numbers to symbols
     if is_int_list(symbols):
         symbols = [PSE.get(i, "X") for i in symbols]
@@ -65,7 +65,8 @@ def get_elem_param(
     dtype: torch.dtype | None = None,
     requires_grad: bool = False,
 ) -> Tensor:
-    """Obtain a element-wise parametrized quantity for selected atomic numbers.
+    """
+    Obtain a element-wise parametrized quantity for selected atomic numbers.
 
     Parameters
     ----------
@@ -97,7 +98,12 @@ def get_elem_param(
     for number in numbers:
         el = PSE.get(int(number.item()), "X")
         if el in par_element:
-            vals = getattr(par_element[el], key)
+            p = par_element[el]
+            if key not in p.__fields__:
+                raise KeyError(
+                    f"The key '{key}' is not in the element parameterization"
+                )
+            vals = getattr(p, key)
 
             # convert to list so that we can use the same function
             # for atom-resolved parameters too
@@ -119,7 +125,8 @@ def get_elem_param(
 
 
 def get_elem_angular(par_element: dict[str, Element]) -> dict[int, list[int]]:
-    """Obtain angular momenta of the shells of all atoms.
+    """
+    Obtain angular momenta of the shells of all atoms.
 
     Parameters
     ----------
@@ -131,7 +138,6 @@ def get_elem_angular(par_element: dict[str, Element]) -> dict[int, list[int]]:
     dict[int, list[int]]
         Angular momenta of all elements.
     """
-
     label2angular = {
         "s": 0,
         "p": 1,
@@ -171,7 +177,6 @@ def get_elem_valence(
     dict[int, list[int]]
         Valence of all elements.
     """
-
     l = []
     key = "shells"
     label2angular = {
@@ -238,7 +243,6 @@ def get_elem_pqn(
         if el in par_element:
             for shell in getattr(par_element[el], key):
                 shells.append(int(shell[0]))
-
         else:
             shells.append(pad_val)
 

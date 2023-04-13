@@ -259,14 +259,12 @@ def solve(
     >>> print(total_charge.grad)
     tensor(0.6312)
     """
-
     if model.device != positions.device:
         raise RuntimeError(
             f"All tensors of '{model.__class__.__name__}' must be on the same "
             f"device!\nUse `{model.__class__.__name__}.param2019().to(device)` "
             "to correctly set the device."
         )
-
     if model.dtype != positions.dtype:
         raise RuntimeError(
             f"All tensors of '{model.__class__.__name__}' must have the same "

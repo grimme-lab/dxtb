@@ -20,6 +20,16 @@ def test_version(capsys: pytest.CaptureFixture) -> None:
     assert out == f"dxtb {__version__}\n"
 
 
+def test_no_file(capsys: pytest.CaptureFixture) -> None:
+    with pytest.raises(SystemExit):
+        ret = console_entry_point([])
+        assert ret == 1
+
+    out, err = capsys.readouterr()
+    assert err == ""
+    assert out == "No coordinate file given.\n"
+
+
 def test_entrypoint(capsys: pytest.CaptureFixture) -> None:
     ret = console_entry_point([str(coordfile)])
     assert ret == 0

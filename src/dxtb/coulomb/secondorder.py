@@ -150,7 +150,6 @@ class ES2(Interaction):
         The cache of an interaction requires `positions` as they do not change
         during the self-consistent charge iterations.
         """
-
         return self.Cache(
             self.get_shell_coulomb_matrix(numbers, positions, ihelp)
             if self.shell_resolved
@@ -177,7 +176,6 @@ class ES2(Interaction):
         Tensor
             Coulomb matrix.
         """
-
         h = ihelp.spread_uspecies_to_atom(self.hubbard)
 
         # mask
@@ -221,7 +219,6 @@ class ES2(Interaction):
         Tensor
             Coulomb matrix.
         """
-
         if self.lhubbard is None:
             raise ValueError("No 'lhubbard' parameters set.")
 

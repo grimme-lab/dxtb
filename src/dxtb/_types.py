@@ -111,6 +111,16 @@ class TensorLike:
     def device(self, *_: Any) -> NoReturn:
         """
         Instruct users to use the ".to" method if wanting to change device.
+
+        Returns
+        -------
+        NoReturn
+            Always raises an `AttributeError`.
+
+        Raises
+        ------
+        AttributeError
+            Setter is called.
         """
         raise AttributeError("Move object to device using the `.to` method")
 
@@ -120,13 +130,23 @@ class TensorLike:
         return self.__dtype
 
     @dtype.setter
-    def dtype(self, *_):
+    def dtype(self, *_: Any) -> NoReturn:
         """
         Instruct users to use the `.type` method if wanting to change dtype.
+
+        Returns
+        -------
+        NoReturn
+            Always raises an `AttributeError`.
+
+        Raises
+        ------
+        AttributeError
+            Setter is called.
         """
         raise AttributeError("Change object to dtype using the `.type` method")
 
-    def type(self, dtype: torch.dtype) -> Self:
+    def type(self, dtype: torch.dtype) -> Self | NoReturn:
         """
         Returns a copy of the `TensorLike` instance with specified floating
         point type.
@@ -157,22 +177,23 @@ class TensorLike:
                 f"'{self.__class__.__name__}' class."
             )
 
-        allowed_dtypes = (torch.float16, torch.float32, torch.float64)
-        if dtype not in allowed_dtypes:
-            raise ValueError(f"Only float types allowed (received '{dtype}').")
+        if dtype not in self.allowed_dtypes:
+            raise ValueError(
+                f"Only '{self.allowed_dtypes}' allowed (received '{dtype}')."
+            )
 
         args = {}
         for s in self.__slots__:
             if not s.startswith("__"):
                 attr = getattr(self, s)
                 if isinstance(attr, Tensor) or issubclass(type(attr), TensorLike):
-                    if attr.dtype in allowed_dtypes:
+                    if attr.dtype in self.allowed_dtypes:
                         attr = attr.type(dtype)  # type: ignore
                 args[s] = attr
 
         return self.__class__(**args, dtype=dtype)
 
-    def to(self, device: torch.device) -> Self:
+    def to(self, device: torch.device) -> Self | NoReturn:
         """
         Returns a copy of the `TensorLike` instance on the specified device.
 
@@ -212,3 +233,17 @@ class TensorLike:
                 args[s] = attr
 
         return self.__class__(**args, device=device)
+
+    @property
+    def allowed_dtypes(self) -> tuple[torch.dtype, ...]:
+        """
+        Specification of dtypes that the TensorLike object can take. Defaults
+        to float types and must be overridden by subclass if float are not
+        allowed. The IndexHelper is an example that should only allow integers.
+
+        Returns
+        -------
+        tuple[torch.dtype, ...]
+            Collection of allowed dtypes the TensorLike object can take.
+        """
+        return (torch.float16, torch.float32, torch.float64)
