@@ -16,7 +16,7 @@ def test_driver(dtype: torch.dtype) -> None:
     ref = torch.tensor(-1.0362714373390, dtype=dtype)
 
     dtype_str = "float32" if dtype == torch.float else "double"
-    opts = f"-v 0 --grad --dtype {dtype_str} {coordfile}"
+    opts = f"-v 0 --grad --chrg 0 --dtype {dtype_str} {coordfile}"
     args = parser().parse_args(opts.split())
     d = Driver(args)
     result = d.singlepoint()

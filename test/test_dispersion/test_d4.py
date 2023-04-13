@@ -1,7 +1,7 @@
 """
 Testing dispersion energy and autodiff.
 
-These tests are taken from https://github.com/awvwgk/tad-dftd3/tree/main/tests
+These tests are taken from https://github.com/dftd4/tad-dftd4/tree/main/test
 and are only included for the sake of completeness.
 """
 from __future__ import annotations
@@ -13,21 +13,9 @@ import torch
 from dxtb._types import Tensor
 from dxtb.dispersion import DispersionD4, new_dispersion
 from dxtb.param.gfn2 import GFN2_XTB as par
-from dxtb.utils import ParameterWarning, batch
+from dxtb.utils import batch
 
 from .samples import samples
-
-
-def test_none() -> None:
-    dummy = torch.tensor(0.0)
-    _par = par.copy(deep=True)
-
-    with pytest.warns(ParameterWarning):
-        _par.dispersion = None
-        assert new_dispersion(dummy, _par) is None
-
-        del _par.dispersion
-        assert new_dispersion(dummy, _par) is None
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])

@@ -1,4 +1,9 @@
-# This file is part of xtbml.
+"""
+GFN1-xTB
+========
+
+This module loads the standard GFN1-xTB parametrization.
+"""
 from __future__ import annotations
 
 import os.path as op

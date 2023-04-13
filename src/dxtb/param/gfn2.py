@@ -1,4 +1,13 @@
-# This file is part of xtbml.
+"""
+GFN2-xTB
+========
+
+This module loads the GFN2-xTB parametrization.
+
+.. warning::
+
+    GFN2-xTB is not implemented. The parameters should only be used for testing.
+"""
 from __future__ import annotations
 
 import os.path as op
