@@ -170,7 +170,7 @@ def wrap_gather(x: Tensor, dim: int | tuple[int, int], idx: Tensor) -> Tensor:
 
 def scatter_reduce(
     x: Tensor, dim: int, idx: Tensor, *args: str, fill_value: float | int | None = 0
-) -> Tensor:
+) -> Tensor:  # pragma: no cover
     """
 
     .. warning::
@@ -208,7 +208,7 @@ def scatter_reduce(
         int(x) for x in torch.__version__.split("+", maxsplit=1)[0].split(".")
     )
 
-    if version >= (1, 11, 0) and version < (1, 12, 0):
+    if (1, 11, 0) <= version < (1, 12, 0):
         output = torch.scatter_reduce(x, dim, idx, *args)  # type: ignore
     elif version >= (1, 12, 0) or version >= (2, 0, 0):
         out_shape = list(x.shape)

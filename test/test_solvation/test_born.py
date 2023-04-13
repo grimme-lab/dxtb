@@ -29,6 +29,25 @@ def test_psi(name: str, dtype: torch.dtype):
     assert torch.allclose(psi, sample["psi"].type(dtype))
 
 
+def test_fail_shape():
+    numbers = torch.tensor([1, 1])
+    positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+
+    # rcov wrong shape
+    with pytest.raises(ValueError):
+        rvdw = torch.tensor([1.0])
+        born.get_born_radii(numbers, positions, rvdw)
+
+    # wrong numbers
+    with pytest.raises(ValueError):
+        born.get_born_radii(torch.tensor([1]), positions)
+
+    # wrong
+    with pytest.raises(ValueError):
+        descreening = torch.tensor([1])
+        born.get_born_radii(numbers, positions, descreening=descreening)
+
+
 @pytest.mark.parametrize("name", ["MB16_43_01", "MB16_43_02"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_radii(name: str, dtype: torch.dtype):

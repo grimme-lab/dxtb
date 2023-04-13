@@ -10,6 +10,13 @@ import numpy as np
 import torch
 
 from .._types import Tensor
+from ..utils import (
+    CGTOAzimuthalQuantumNumberError,
+    CGTOPrimitivesError,
+    CGTOPrincipalQuantumNumberError,
+    CGTOQuantumNumberError,
+    CGTOSlaterExponentsError,
+)
 
 sto_ng = [
     torch.from_numpy(np.load(op.join(op.dirname(__file__), f"sto-{n}g.npy"))).type(
@@ -29,6 +36,12 @@ Double factorial up to 7!! for normalization of the Gaussian basis functions.
 See `OEIS A001147 <https://oeis.org/A001147>`__.
 """
 
+MAX_PRINCIPAL = 6
+"""Maximum principal quantum number."""
+
+MAX_AZIMUTHAL = 4
+"""Maximum azimuthal quantum number."""
+
 
 def to_gauss(
     ng: Tensor,
@@ -38,18 +51,18 @@ def to_gauss(
     norm: bool = True,
 ) -> tuple[Tensor, Tensor]:
     """
-    Expand Slater function in primitive gaussian functions
+    Expand Slater function in primitive gaussian functions.
 
     Parameters
     ----
     ng : int
-        Number of Gaussian functions for the expansion
+        Number of Gaussian functions for the expansion.
     n : int
-        Principal quantum number of shell
+        Principal quantum number of shell.
     l : int
-        Azimudal quantum number of shell
+        Azimuthal quantum number of shell.
     zeta : Tensor
-        Exponent of Slater function to expand
+        Exponent of Slater function to expand.
     norm : bool, optional
         Include normalization in contraction coefficients.
         Defaults to True.
@@ -57,16 +70,25 @@ def to_gauss(
     Returns
     -------
     (Tensor, Tensor):
-        Contraction coefficients of primitive gaussians, can contain normalization,
-        and exponents of primitive gaussian functions.
+        Contraction coefficients of primitive gaussians, can contain
+        normalization, and exponents of primitive gaussian functions.
     """
+    if not 1 <= ng <= 6:
+        raise CGTOPrimitivesError()
+    if zeta <= 0:
+        raise CGTOSlaterExponentsError()
+    if l > MAX_AZIMUTHAL:
+        raise CGTOAzimuthalQuantumNumberError(MAX_AZIMUTHAL)
+    if n > MAX_PRINCIPAL:
+        raise CGTOPrincipalQuantumNumberError(MAX_PRINCIPAL)
+    if n <= l:  # l ∊ [n-1, n-2, ..., 1, 0]
+        raise CGTOQuantumNumberError()
 
     # we have to use a little hack here,
     # if you pass n and l correctly, everything is fine
     # ityp: 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17
     #    n: 1 2 3 4 5 2 3 4 5  3  4  5  4  5  5  6  6
     #    l: 0 0 0 0 0 1 1 1 1  2  2  2  3  3  4  0  1
-
     itype = n + torch.tensor([0, 4, 7, 9, 10])[l].to(zeta.device) - 1
     if n == 6 and ng == 6:
         itype = 15 + l

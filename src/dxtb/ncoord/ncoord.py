@@ -48,7 +48,6 @@ def get_coordination_number(
     ValueError
         If shape mismatch between `numbers`, `positions` and `rcov` is detected.
     """
-
     if cutoff is None:
         cutoff = positions.new_tensor(xtb.NCOORD_DEFAULT_CUTOFF)
     if rcov is None:

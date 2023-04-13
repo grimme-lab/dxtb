@@ -32,25 +32,35 @@ class IntegralTransformError(ValueError):
         super().__init__(self.message)
 
 
-class CgtoNegativeExponentsError(ValueError):
+class CGTOSlaterExponentsError(ValueError):
     def __init__(self) -> None:
-        self.message = "Negative exponents not allowed"
+        self.message = "Negative Slater exponents not allowed."
         super().__init__(self.message)
 
 
-class CgtoQuantumNumberError(ValueError):
-    def __init__(self) -> None:
-        self.message = "Only QN up to 6 supported"
+class CGTOPrincipalQuantumNumberError(ValueError):
+    def __init__(self, n: int) -> None:
+        self.message = f"Maximum principal QN supported is {n}."
         super().__init__(self.message)
 
 
-class CgtoAzimudalQuantumNumberError(ValueError):
-    def __init__(self) -> None:
-        self.message = "No QM h-functions available"
+class CGTOAzimuthalQuantumNumberError(ValueError):
+    def __init__(self, l: int) -> None:
+        s = ["s", "p", "d", "f", "g", "h"][l]
+        self.message = f"Maximum azimuthal QN supported is {l} ({s}-orbitals)."
         super().__init__(self.message)
 
 
-class CgtoMaxPrimitivesError(ValueError):
+class CGTOQuantumNumberError(ValueError):
     def __init__(self) -> None:
-        self.message = "Max number of primitives is 6"
+        self.message = (
+            "Azimuthal QN 'l' and principal QN 'n' must adhere to "
+            "l ∊ [n-1, n-2, ..., 1, 0]."
+        )
+        super().__init__(self.message)
+
+
+class CGTOPrimitivesError(ValueError):
+    def __init__(self) -> None:
+        self.message = "Number of primitives must be between 1 and 6."
         super().__init__(self.message)

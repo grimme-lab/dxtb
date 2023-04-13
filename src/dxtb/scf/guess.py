@@ -24,7 +24,6 @@ def get_guess(
      - electronegativity equilibration charge model ("eeq")
      - superposition of atomic densities ("sad"), i.e. zero charges
 
-
     Parameters
     ----------
     numbers : Tensor
@@ -121,7 +120,7 @@ def spread_charges_atomic_to_orbital(charges: Tensor, ihelp: IndexHelper) -> Ten
     tot_chrg_old = charges.sum(-1)
     tot_chrg_new = orb_charges.sum(-1)
     if torch.any(
-        tot_chrg_old - tot_chrg_new
+        torch.abs(tot_chrg_new - tot_chrg_old)
         > torch.sqrt(charges.new_tensor(torch.finfo(charges.dtype).eps))
     ):
         raise RuntimeError(

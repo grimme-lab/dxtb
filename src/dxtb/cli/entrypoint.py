@@ -12,7 +12,9 @@ from .argparser import parser
 from .driver import Driver
 
 
-def console_entry_point(argv: Sequence[str] | None = None) -> int:
+def console_entry_point(
+    argv: Sequence[str] | None = None,
+) -> int:  # pragma: no cover
     """
     Entry point for CLI.
 

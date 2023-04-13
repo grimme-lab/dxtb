@@ -60,3 +60,18 @@ def convert_float_tensor(
             d[key] = torch.tensor(value, device=device, dtype=dtype)
 
     return d  # type: ignore
+
+
+def set_jit_enabled(enabled: bool) -> None:
+    """
+    Enables/disables JIT.
+
+    Parameters
+    ----------
+    enabled : bool
+        State to set JIT to.
+    """
+    if enabled:
+        torch.jit._state.enable()  # type: ignore
+    else:
+        torch.jit._state.disable()  # type: ignore

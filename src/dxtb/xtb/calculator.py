@@ -153,7 +153,7 @@ class Result(TensorLike):
         self.total = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.total_grad = torch.zeros_like(positions)
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         """Custom print representation showing all available slots."""
         return f"{self.__class__.__name__}({self.__slots__})"
 
@@ -251,6 +251,7 @@ class Calculator(TensorLike):
             "exclude": opts.get("exclude", defaults.EXCLUDE),
             "guess": opts.get("guess", defaults.GUESS),
             "spin": opts.get("spin", defaults.SPIN),
+            "use_potential": opts.get("use_potential", True),
         }
 
         # set tolerances separately to catch unreasonably small values
@@ -262,24 +263,32 @@ class Calculator(TensorLike):
         self.overlap = Overlap(numbers, par, self.ihelp, **dd)
 
         # setup self-consistent contributions
-        es2 = new_es2(numbers, par, **dd) if "es2" not in self.opts["exclude"] else None
-        es3 = new_es3(numbers, par, **dd) if "es3" not in self.opts["exclude"] else None
+        es2 = (
+            new_es2(numbers, par, **dd)
+            if not any(x in ["all", "es2"] for x in self.opts["exclude"])
+            else None
+        )
+        es3 = (
+            new_es3(numbers, par, **dd)
+            if not any(x in ["all", "es3"] for x in self.opts["exclude"])
+            else None
+        )
         self.interactions = InteractionList(es2, es3, interaction)
 
         # setup non-self-consistent contributions
         self.halogen = (
             new_halogen(numbers, par, **dd)
-            if "hal" not in self.opts["exclude"]
+            if not any(x in ["all", "hal"] for x in self.opts["exclude"])
             else None
         )
         self.dispersion = (
             new_dispersion(numbers, par, **dd)
-            if "disp" not in self.opts["exclude"]
+            if not any(x in ["all", "disp"] for x in self.opts["exclude"])
             else None
         )
         self.repulsion = (
             new_repulsion(numbers, par, **dd)
-            if "rep" not in self.opts["exclude"]
+            if not any(x in ["all", "rep"] for x in self.opts["exclude"])
             else None
         )
 
@@ -335,14 +344,13 @@ class Calculator(TensorLike):
         Result
             Results container.
         """
-
         result = Result(positions, device=self.device, dtype=self.dtype)
 
         if timer is None:
             timer = Timers("singlepoint")
             timer.start("singlepoint")
 
-        if "scf" not in self.opts["exclude"]:
+        if not any(x in ["all", "scf"] for x in self.opts["exclude"]):
             # overlap
             if grad is True:
                 timer.start("ograd", "Overlap Gradient")
@@ -397,7 +405,7 @@ class Calculator(TensorLike):
                 n0,
                 fwd_options=self.opts["fwd_options"],
                 scf_options=self.opts["scf_options"],
-                use_potential=True,
+                use_potential=self.opts["use_potential"],
             )
             timer.stop("SCF")
 

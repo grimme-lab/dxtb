@@ -34,10 +34,17 @@ def test_axis() -> None:
             [8, 1, 1],  # H2O
         ],
     )
+    ref_mask = torch.tensor(
+        [
+            [True, True, False],
+            [True, True, True],
+        ]
+    )
 
     # different axis
-    packed = pack([mol1, mol2], axis=-1)
+    packed, mask = pack([mol1, mol2], axis=-1, return_mask=True)
     assert (packed == ref.T).all()
+    assert (mask == ref_mask.T).all()
 
 
 def test_size() -> None:

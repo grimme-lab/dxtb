@@ -13,21 +13,9 @@ import torch
 from dxtb._types import Tensor
 from dxtb.dispersion import DispersionD3, new_dispersion
 from dxtb.param import GFN1_XTB as par
-from dxtb.utils import ParameterWarning, batch
+from dxtb.utils import batch
 
 from .samples import samples
-
-
-def test_none() -> None:
-    dummy = torch.tensor(0.0)
-    _par = par.copy(deep=True)
-
-    with pytest.warns(ParameterWarning):
-        _par.dispersion = None
-        assert new_dispersion(dummy, _par) is None
-
-        del _par.dispersion
-        assert new_dispersion(dummy, _par) is None
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])

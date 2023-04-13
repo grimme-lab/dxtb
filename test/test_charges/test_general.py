@@ -54,3 +54,40 @@ def test_change_device_fail() -> None:
     # trying to use setter
     with pytest.raises(AttributeError):
         model.device = "cpu"
+
+
+def test_init_dtype_fail() -> None:
+    t = torch.rand(5)
+
+    # all tensor must have the same type
+    with pytest.raises(RuntimeError):
+        charges.ChargeModel(t.type(torch.double), t, t, t)
+
+
+@pytest.mark.cuda
+def test_init_device_fail() -> None:
+    t = torch.rand(5)
+
+    # all tensor must be on the same device
+    with pytest.raises(RuntimeError):
+        charges.ChargeModel(t.to("cuda"), t, t, t)
+
+
+@pytest.mark.cuda
+def test_solve_dtype_fail() -> None:
+    t = torch.rand(5)
+    model = charges.ChargeModel.param2019()
+
+    # all tensor must have the same type
+    with pytest.raises(RuntimeError):
+        charges.solve(t, t.type(torch.double), t, model, t)
+
+
+@pytest.mark.cuda
+def test_solve_device_fail() -> None:
+    t = torch.rand(5)
+    model = charges.ChargeModel.param2019()
+
+    # all tensor must be on the same device
+    with pytest.raises(RuntimeError):
+        charges.solve(t, t.to("cuda"), t, model, t)

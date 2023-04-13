@@ -46,6 +46,8 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     assert pytest.approx(s, abs=tol) == s.mT
 
     cn = get_coordination_number(numbers, positions, exp_count)
+    if name == "C":
+        cn = None
     h = h0.build(positions, s, cn=cn)
     assert pytest.approx(h, abs=tol) == h.mT
     assert pytest.approx(h, abs=tol) == ref

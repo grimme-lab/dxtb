@@ -1,3 +1,6 @@
+"""
+Test spread and reduce capabilities of IndexHelper.
+"""
 from __future__ import annotations
 
 import pytest
@@ -5,6 +8,35 @@ import torch
 
 from dxtb.basis import IndexHelper
 from dxtb.utils import batch, symbol2number
+
+
+def test_spread() -> None:
+    unique = torch.tensor([1, 6])  # include sorting
+    atom = torch.tensor([6, 1, 1, 1, 1])
+    shell = torch.tensor([6, 6, 1, 1, 1, 1, 1, 1, 1, 1])
+    orbital = torch.tensor([6, 6, 6, 6, 1, 1, 1, 1, 1, 1, 1, 1])
+
+    angular = {
+        1: [0, 0],  # H
+        6: [0, 1],  # C
+    }
+    ihelp = IndexHelper.from_numbers(atom, angular)
+
+    assert (ihelp.spread_uspecies_to_atom(unique) == atom).all()
+    assert (ihelp.spread_uspecies_to_shell(unique) == shell).all()
+    assert (ihelp.spread_uspecies_to_orbital(unique) == orbital).all()
+    assert (ihelp.spread_atom_to_shell(atom) == shell).all()
+    assert (ihelp.spread_atom_to_orbital(atom) == orbital).all()
+    assert (ihelp.spread_atom_to_shell(atom) == shell).all()
+    assert (ihelp.spread_atom_to_orbital(atom) == orbital).all()
+    assert (ihelp.spread_shell_to_orbital(shell) == orbital).all()
+
+    # spread a "unique shell"-resolved property
+    ushell = ihelp.unique_angular
+    shell = torch.tensor([0, 1, 0, 0, 0, 0, 0, 0, 0, 0])
+    orbital = torch.tensor([0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0])
+    assert (ihelp.spread_ushell_to_shell(ushell) == shell).all()
+    assert (ihelp.spread_ushell_to_orbital(ushell) == orbital).all()
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])

@@ -40,9 +40,10 @@ def new_dispersion(
     Raises
     ------
     ValueError
-        If parametrization does not contain a halogen bond correction.
+        Parametrization does not contain a dispersion correction.
+    ValueError
+        D4 parametrization is requested but no charge given.
     """
-
     if hasattr(par, "dispersion") is False or par.dispersion is None:
         warnings.warn("No dispersion scheme found.", ParameterWarning)
         return None
@@ -59,7 +60,6 @@ def new_dispersion(
             device=device,
             dtype=dtype,
         )
-
         return DispersionD3(numbers, param, device=device, dtype=dtype)
 
     if par.dispersion.d4 is not None and par.dispersion.d3 is None:

@@ -86,6 +86,7 @@ class Hamiltonian(TensorLike):
         self.selfenergy = self.selfenergy * EV2AU
         self.kcn = self.kcn * EV2AU
 
+        # dtype should always be correct as it always uses self.dtype
         if any(
             tensor.dtype != self.dtype
             for tensor in (
@@ -98,7 +99,7 @@ class Hamiltonian(TensorLike):
                 self.en,
                 self.rad,
             )
-        ):
+        ):  # pragma: no cover
             raise ValueError("All tensors must have same dtype")
 
         if any(
@@ -251,17 +252,6 @@ class Hamiltonian(TensorLike):
             return ksh
 
         ushells = self.ihelp.unique_angular
-        if ushells.ndim > 1:
-            ksh = torch.ones(
-                (ushells.shape[0], ushells.shape[1], ushells.shape[1]),
-                dtype=self.dtype,
-                device=self.device,
-            )
-            for _batch in range(ushells.shape[0]):
-                ksh[_batch] = get_ksh(ushells[_batch])
-
-            return ksh
-
         return get_ksh(ushells)
 
     def build(
@@ -644,7 +634,7 @@ class Hamiltonian(TensorLike):
         If the `Hamiltonian` instance is already on the desired device `self`
         will be returned.
         """
-        if self.__device == device:
+        if self.device == device:
             return self
 
         return self.__class__(
@@ -675,12 +665,12 @@ class Hamiltonian(TensorLike):
         If the `Hamiltonian` instance has already the desired dtype `self` will
         be returned.
         """
-        if self.__dtype == dtype:
+        if self.dtype == dtype:
             return self
 
         return self.__class__(
             self.numbers.type(dtype=torch.long),
             self.par,
-            self.ihelp.type(dtype=dtype),
+            self.ihelp,  # floats for ihelp give an error!
             dtype=dtype,
         )

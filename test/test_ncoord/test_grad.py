@@ -32,11 +32,14 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
 
+    cutoff = positions.new_tensor(30.0)
     rcov = cov_rad_d3[numbers].type(dtype)
     ref = sample["dcndr"].type(dtype)
     ref = ref.reshape(numbers.shape[0], numbers.shape[0], 3).transpose(0, 1)
 
-    dcndr = get_coordination_number_gradient(numbers, positions, dexp_count, rcov)
+    dcndr = get_coordination_number_gradient(
+        numbers, positions, dexp_count, rcov, cutoff
+    )
     numdr = calc_numerical_gradient(numbers, positions, rcov)
 
     # the same atom gets masked in the PyTorch implementation

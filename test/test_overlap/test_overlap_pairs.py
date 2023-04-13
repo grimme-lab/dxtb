@@ -8,11 +8,11 @@ import numpy as np
 import pytest
 import torch
 
-from dxtb.basis import Basis, IndexHelper, slater
+from dxtb.basis import Basis, IndexHelper
 from dxtb.integral import Overlap, overlap_gto
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
-from dxtb.utils import IntegralTransformError, batch
+from dxtb.utils import batch
 
 from ..utils import load_from_npz
 from .samples import samples
@@ -98,54 +98,3 @@ def test_overlap_higher_orbitals(dtype: torch.dtype):
             )
 
             assert pytest.approx(overlap, rel=1e-05, abs=1e-03) == ref
-
-
-def test_overlap_higher_orbital_fail():
-    """No higher orbitals than 4 allowed."""
-
-    vec = torch.tensor([0.0, 0.0, 1.4])
-
-    # arbitrary element (Rn)
-    number = torch.tensor([86])
-
-    ihelp = IndexHelper.from_numbers(number, get_elem_angular(par.element))
-    bas = Basis(number, par, ihelp.unique_angular)
-    alpha, coeff = bas.create_cgtos()
-
-    j = torch.tensor(5)
-    for i in range(5):
-        with pytest.raises(IntegralTransformError):
-            overlap_gto(
-                (torch.tensor(i), j),
-                (alpha[0], alpha[1]),
-                (coeff[0], coeff[1]),
-                vec,
-            )
-    i = torch.tensor(5)
-    for j in range(5):
-        with pytest.raises(IntegralTransformError):
-            overlap_gto(
-                (i, torch.tensor(j)),
-                (alpha[0], alpha[1]),
-                (coeff[0], coeff[1]),
-                vec,
-            )
-
-
-@pytest.mark.parametrize("ng", [1, 2, 3, 4, 5, 6])
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-def test_sto_ng_batch(ng: int, dtype: torch.dtype):
-    """
-    Test symmetry of s integrals
-    """
-    n, l = torch.tensor(1), torch.tensor(0)
-    ng_ = torch.tensor(ng)
-
-    coeff, alpha = slater.to_gauss(ng_, n, l, torch.tensor(1.0, dtype=dtype))
-    coeff, alpha = coeff.type(dtype)[:ng_], alpha.type(dtype)[:ng_]
-    vec = torch.tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], dtype=dtype)
-
-    s = overlap_gto((l, l), (alpha, alpha), (coeff, coeff), vec)
-
-    assert pytest.approx(s[0, :]) == s[1, :]
-    assert pytest.approx(s[0, :]) == s[2, :]

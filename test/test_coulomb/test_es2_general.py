@@ -7,6 +7,7 @@ from __future__ import annotations
 import pytest
 import torch
 
+from dxtb.basis import IndexHelper
 from dxtb.coulomb import secondorder as es2
 from dxtb.param import GFN1_XTB
 
@@ -64,3 +65,41 @@ def test_change_device_fail() -> None:
     # trying to use setter
     with pytest.raises(AttributeError):
         cls.device = "cpu"
+
+
+def test_fail_shell_resolved() -> None:
+    cls = es2.new_es2(torch.tensor(0.0), GFN1_XTB, shell_resolved=False)
+    assert cls is not None
+
+    numbers = torch.tensor([6, 1])
+    ihelp = IndexHelper.from_numbers(numbers, {1: [0, 0], 6: [0, 1]})
+
+    # shell-resolved function fails if initialzed with `shell_resolved=False`
+    with pytest.raises(ValueError):
+        cls.get_shell_coulomb_matrix(numbers, numbers, ihelp)
+
+
+def test_zeros_atom_resolved() -> None:
+    cls = es2.new_es2(torch.tensor(0.0), GFN1_XTB, shell_resolved=False)
+    assert cls is not None
+
+    n = torch.tensor([6, 1])
+
+    shell_energy = cls.get_shell_energy(n, n)  # type: ignore
+    assert (shell_energy == torch.zeros_like(shell_energy)).all()
+
+    shell_gradient = cls.get_shell_gradient(n, n, n, n, n)  # type: ignore
+    assert (shell_gradient == torch.zeros_like(shell_gradient)).all()
+
+
+def test_zeros_shell_resolved() -> None:
+    cls = es2.new_es2(torch.tensor(0.0), GFN1_XTB)
+    assert cls is not None
+
+    n = torch.tensor([6, 1])
+
+    atom_energy = cls.get_atom_energy(n, n)  # type: ignore
+    assert (atom_energy == torch.zeros_like(atom_energy)).all()
+
+    atom_gradient = cls.get_atom_gradient(n, n, n, n)  # type: ignore
+    assert (atom_gradient == torch.zeros_like(atom_gradient)).all()

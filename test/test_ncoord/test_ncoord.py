@@ -46,10 +46,11 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
 
+    cutoff = positions.new_tensor(30.0)
     rcov = cov_rad_d3[numbers]
     ref = sample["cn"].type(dtype)
 
-    cn = get_coordination_number(numbers, positions, exp_count, rcov)
+    cn = get_coordination_number(numbers, positions, exp_count, rcov, cutoff)
     assert pytest.approx(cn) == ref
 
 
@@ -71,7 +72,6 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         )
     )
 
-    rcov = cov_rad_d3[numbers]
     ref = batch.pack(
         (
             sample1["cn"].type(dtype),
@@ -79,7 +79,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         )
     )
 
-    cn = get_coordination_number(numbers, positions, exp_count, rcov)
+    cn = get_coordination_number(numbers, positions, exp_count)
     assert pytest.approx(cn) == ref
 
 

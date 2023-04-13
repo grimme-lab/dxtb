@@ -201,7 +201,7 @@ def get_fermi_occupation(
     emo: Tensor,
     kt: Tensor | None = None,
     mask: Tensor | None = None,
-    thr: dict[torch.dtype, Tensor] = defaults.THRESH,
+    thr: dict[torch.dtype, Tensor] | None = None,
     maxiter: int = 200,
 ) -> Tensor:
     """
@@ -256,6 +256,8 @@ def get_fermi_occupation(
     if (torch.abs(nel.sum(-1)) < eps).any():
         raise ValueError("Number of valence electrons cannot be zero.")
 
+    if thr is None:
+        thr = defaults.THRESH
     thresh = thr.get(emo.dtype, torch.tensor(1e-5, dtype=torch.float)).to(emo.device)
 
     e_fermi, homo = get_fermi_energy(nel, emo, mask=mask)

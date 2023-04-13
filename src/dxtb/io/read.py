@@ -1,4 +1,7 @@
 """
+IO: Reading Files
+=================
+
 IO utility for reading files.
 """
 from __future__ import annotations
@@ -8,7 +11,7 @@ from pathlib import Path
 
 import torch
 
-from .._types import PathLike
+from .._types import Any, PathLike
 from ..constants import ATOMIC_NUMBER, units
 
 
@@ -34,7 +37,6 @@ def check_xyz(fp: PathLike, xyz: list[list[float]]) -> list[list[float]]:
     ValueError
         File is actually empty or last coordinate is at origin.
     """
-
     if len(xyz) == 0:
         raise ValueError(f"File '{fp}' is empty.")
     elif len(xyz) == 1:
@@ -45,7 +47,6 @@ def check_xyz(fp: PathLike, xyz: list[list[float]]) -> list[list[float]]:
             raise ValueError(
                 f"Last coordinate is zero in '{fp}'. This will clash with padding."
             )
-
     return xyz
 
 
@@ -76,7 +77,6 @@ def read_structure_from_file(
     ValueError
         Unknown file type.
     """
-
     f = Path(file)
     if f.exists() is False:
         raise FileNotFoundError(f"File '{f}' not found.")
@@ -140,7 +140,7 @@ def read_xyz(fp: PathLike) -> tuple[list[int], list[list[float]]]:
             if line_number == 0:
                 num_atoms = int(line)
             elif line_number == 1:
-                pass
+                continue
             else:
                 l = line.strip().split()
                 atom, x, y, z = l
@@ -168,7 +168,6 @@ def read_qcschema(fp: PathLike) -> tuple[list[int], list[list[float]]]:
     tuple[list[int], list[list[float]]]
         Lists containing the atomic numbers and coordinates.
     """
-
     with open(fp, encoding="utf-8") as file:
         data = json_load(file.read())
 
@@ -214,8 +213,8 @@ def read_coord(fp: PathLike) -> tuple[list[int], list[list[float]]]:
     breakpoints = ["$user-defined bonds", "$redundant", "$end", "$periodic"]
 
     with open(fp, encoding="utf-8") as file:
-        lines = file.readlines()
-        for line in lines:
+        for line in file:  # pragma: no branch
+            # tests exist but somehow not covered?
             l = line.split()
 
             # skip
@@ -225,13 +224,13 @@ def read_coord(fp: PathLike) -> tuple[list[int], list[list[float]]]:
                 break
             elif l[0].startswith("$"):
                 continue
-            try:
-                x, y, z, atom = l
-                xyz.append([float(x), float(y), float(z)])
-                atoms.append(ATOMIC_NUMBER[atom.title()])
-            except ValueError as e:
-                print(e)
-                print(f"WARNING: No correct values. Skip sample {fp}")
+
+            if len(l) != 4:
+                raise ValueError(f"Format error in {fp}")
+
+            x, y, z, atom = l
+            xyz.append([float(x), float(y), float(z)])
+            atoms.append(ATOMIC_NUMBER[atom.title()])
 
     xyz = check_xyz(fp, xyz)
     return atoms, xyz
@@ -247,22 +246,28 @@ def read_chrg(fp: PathLike) -> int:
         return int(file.read())
 
 
-def read_energy(fp: str) -> float:
+def read_tm_energy(fp: PathLike) -> float:
     """Read energy file in TM format (energy is three times on second line)."""
     with open(fp, encoding="utf-8") as file:
         for i, line in enumerate(file):
-            if i == 1:
-                return float(line.strip().split()[-1])
+            if i == 0:
+                if line.strip().split()[0] != "$energy":
+                    raise ValueError(f"File '{fp}' is not in Turbomole format.")
+            elif i == 1:  # pragma: no branch
+                # tests exist but somehow not covered?
+                l = line.strip().split()
+                if len(l) != 4:
+                    raise ValueError(f"File '{fp}' is not in Turbomole format.")
+
+                return float(l[1])
 
         raise ValueError(f"File '{fp}' is not in Turbomole format.")
 
 
-def read_tblite_gfn(fp: Path | str) -> tuple[float, list[float]]:
+def read_tblite_gfn(fp: Path | str) -> dict[str, Any]:
     """Read energy file from tblite json output."""
     with open(fp, encoding="utf-8") as file:
-        data = json_load(file.read())
-
-        return data["energies"], torch.tensor(data["gradient"]).reshape(-1, 3).tolist()
+        return json_load(file.read())
 
 
 def read_orca_engrad(fp: Path | str) -> tuple[float, list[float]]:
@@ -273,13 +278,18 @@ def read_orca_engrad(fp: Path | str) -> tuple[float, list[float]]:
     start_energy = -1
     energy = 0.0
     with open(fp, encoding="utf-8") as file:
-        for i, line in enumerate(file):
+        for i, line in enumerate(file):  # pragma: no branch
+            # tests exist but somehow not covered?
+
             # energy
             if line.startswith("# The current total energy in Eh"):
                 start_energy = i + 2
 
             if i == start_energy:
-                energy = float(line.strip())
+                l = line.strip()
+                if len(l) == 0:
+                    raise ValueError(f"No energy found in {fp}.")
+                energy = float(l)
                 start_energy = -1
 
             # gradient
@@ -291,7 +301,11 @@ def read_orca_engrad(fp: Path | str) -> tuple[float, list[float]]:
                 if line.startswith("#"):
                     break
 
-                grad.append(float(line.strip()))
+                l = line.strip()
+                if len(l) == 0:
+                    raise ValueError(f"No gradient found in {fp}.")
+
+                grad.append(float(l))
                 start_grad += 1
 
     return energy, torch.tensor(grad).reshape(-1, 3).tolist()

@@ -38,7 +38,6 @@ class Timers:
             TimerError
                 If timer is already running.
             """
-
             if self._start_time is not None:
                 raise TimerError("Timer is running. Use `.stop()` to stop it.")
 
@@ -58,7 +57,6 @@ class Timers:
             TimerError
                 If timer is not running.
             """
-
             if self._start_time is None:
                 raise TimerError("Timer is not running. Use .start() to start it")
 
@@ -90,7 +88,6 @@ class Timers:
             Name of the timer (used for printing). Defaults to `None`.
             If no `label` is given, the `uid` is used.
         """
-
         if uid in self.timers:
             t = self.timers[uid]
             t.start()
@@ -120,7 +117,6 @@ class Timers:
         TimerError
             If timer dubbed `uid` does not exist.
         """
-
         if uid not in self.timers:
             raise TimerError(f"Timer '{uid}' does not exist.")
 
@@ -138,13 +134,14 @@ class Timers:
         dict[str, float]
             Dictionary of timer IDs and elapsed times.
         """
-
         return {
             (uid if t.label is None else t.label): t.elapsed_time
             for uid, t in self.timers.items()
         }
 
-    def print_times(self, name: str = "Timings", width: int = 55) -> None:
+    def print_times(
+        self, name: str = "Timings", width: int = 55
+    ) -> None:  # pragma: no cover
         """Print the elapsed times of all timers in a table."""
         d = self.get_times()
         total = d.pop("total")
@@ -167,7 +164,7 @@ class Timers:
         print("")
 
 
-def timings(f: Callable[..., Any]) -> Any:
+def timings(f: Callable[..., Any]) -> Any:  # pragma: no cover
     """
     Decorator that prints execution time of a function.
 

@@ -26,6 +26,10 @@ def test_fail(dtype: torch.dtype):
     evals = torch.arange(1, 6, dtype=dtype)
     nel = torch.tensor([4.0, 4.0], dtype=dtype)
 
+    #
+    with pytest.raises(RuntimeError):
+        filling.get_alpha_beta_occupation(nel, uhf=torch.tensor([0.0]))
+
     # wrong type
     with pytest.raises(TypeError):
         kt = 300.0
@@ -209,10 +213,15 @@ def test_kt(dtype: torch.dtype, kt: float):
 
     # electronic free energy
     d = torch.zeros_like(focc)  # dummy
-    fenergy = SelfConsistentField(
+    scf = SelfConsistentField(
         d, d, d, focc, d, numbers, d, d, scf_options={"etemp": kt}  # type: ignore
-    ).get_electronic_free_energy()
+    )
+    fenergy = scf.get_electronic_free_energy()
     assert pytest.approx(ref_fenergy[kt], abs=tol, rel=tol) == fenergy.sum(-1)
+
+    scf.scf_options["fermi_fenergy_partition"] = "wrong"
+    with pytest.raises(ValueError):
+        scf.get_electronic_free_energy()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

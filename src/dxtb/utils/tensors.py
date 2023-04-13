@@ -98,10 +98,18 @@ def symmetrize(x: Tensor) -> Tensor:
     RuntimeError
         If the tensor is not symmetric within the threshold.
     """
-    atol = torch.finfo(x.dtype).eps * 10
+    try:
+        atol = torch.finfo(x.dtype).eps * 10
+    except TypeError:
+        atol = 1e-5
+
+    if x.ndim < 2:
+        raise RuntimeError("Only matrices and batches thereof allowed.")
+
     if not torch.allclose(x, x.mT, atol=atol):
         raise RuntimeError(
-            f"Matrix appears to be not symmetric (atol={atol}, dtype={x.dtype})."
+            f"Matrix appears to be not symmetric (atol={atol:.3e}, "
+            f"dtype={x.dtype})."
         )
 
     return (x + x.mT) / 2

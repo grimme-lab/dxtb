@@ -53,7 +53,15 @@ def test_single2(dtype: torch.dtype, name: str):
     ref = sample["escf"].type(dtype)
     charges = torch.tensor(0.0, **dd)
 
-    options = dict(opts, **{"xitorch_fatol": tol**2, "xitorch_xatol": tol**2})
+    options = dict(
+        opts,
+        **{
+            "fermi_fenergy_partition": "atomic",
+            "use_potential": False,
+            "xitorch_fatol": tol**2,
+            "xitorch_xatol": tol**2,
+        },
+    )
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)

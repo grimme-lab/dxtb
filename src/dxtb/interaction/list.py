@@ -48,7 +48,6 @@ class InteractionList(Interaction):
         InteractionList.Cache
             Restart data for the interactions.
         """
-
         cache = self.Cache()
         cache.update(
             **{
@@ -80,7 +79,6 @@ class InteractionList(Interaction):
         Tensor
             Potential vector for each orbital partial charge.
         """
-
         return (
             torch.stack(
                 [
@@ -110,17 +108,15 @@ class InteractionList(Interaction):
         Tensor
             Energy vector for each orbital partial charge.
         """
+        if len(self.interactions) <= 0:
+            return ihelp.reduce_orbital_to_atom(torch.zeros_like(charges))
 
-        return (
-            torch.stack(
-                [
-                    interaction.get_energy(charges, cache[interaction.label], ihelp)
-                    for interaction in self.interactions
-                ]
-            ).sum(dim=0)
-            if len(self.interactions) > 0
-            else torch.zeros_like(charges)
-        )
+        return torch.stack(
+            [
+                interaction.get_energy(charges, cache[interaction.label], ihelp)
+                for interaction in self.interactions
+            ]
+        ).sum(dim=0)
 
     def get_gradient(
         self,

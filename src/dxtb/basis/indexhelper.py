@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Any, NoReturn, Tensor
+from .._types import Tensor, TensorLike
 from ..utils import batch, t2int, wrap_gather, wrap_scatter_reduce
 
 __all__ = ["IndexHelper"]
@@ -49,7 +49,7 @@ def _expand(index: Tensor, repeat: Tensor) -> Tensor:
     )
 
 
-class IndexHelper:
+class IndexHelper(TensorLike):
     """
     Index helper for basis set
     """
@@ -90,6 +90,21 @@ class IndexHelper:
     batched: bool
     """Whether multiple systems or a single one are handled"""
 
+    __slots__ = [
+        "unique_angular",
+        "angular",
+        "atom_to_unique",
+        "ushells_to_unique",
+        "shells_to_ushell",
+        "shells_per_atom",
+        "shell_index",
+        "shells_to_atom",
+        "orbitals_per_shell",
+        "orbital_index",
+        "orbitals_to_shell",
+        "batched",
+    ]
+
     def __init__(
         self,
         unique_angular: Tensor,
@@ -104,7 +119,10 @@ class IndexHelper:
         orbital_index: Tensor,
         orbitals_to_shell: Tensor,
         device: torch.device | None = None,
+        dtype: torch.dtype = torch.int64,
+        **_,
     ):
+        super().__init__(device, dtype)
         self.unique_angular = unique_angular
         self.angular = angular
         self.atom_to_unique = atom_to_unique
@@ -116,9 +134,6 @@ class IndexHelper:
         self.orbitals_per_shell = orbitals_per_shell
         self.orbital_index = orbital_index
         self.orbitals_to_shell = orbitals_to_shell
-
-        self.__device = device
-        self.__dtype = shells_per_atom.dtype
 
         self.batched = angular.ndim > 1
 
@@ -525,99 +540,6 @@ class IndexHelper:
             self.spread_ushell_to_shell(x, dim=dim), dim=dim
         )
 
-    @property
-    def device(self) -> torch.device | None:
-        """The device on which the `IndexHelper` object resides."""
-        return self.__device
-
-    @device.setter
-    def device(self, *args: Any) -> NoReturn:
-        """Instruct users to use the ".to" method if wanting to change device."""
-        raise AttributeError("Move object to device using the `.to` method")
-
-    @property
-    def dtype(self) -> torch.dtype:
-        """Floating point dtype used by IndexHelper object."""
-        return self.__dtype
-
-    def to(self, device: torch.device) -> IndexHelper:
-        """
-        Returns a copy of the `IndexHelper` instance on the specified device.
-
-        This method creates and returns a new copy of the `IndexHelper` instance
-        on the specified device "``device``".
-
-        Parameters
-        ----------
-        device : torch.device
-            Device to which all associated tensors should be moved.
-
-        Returns
-        -------
-        IndexHelper
-            A copy of the `IndexHelper` instance placed on the specified device.
-
-        Notes
-        -----
-        If the `IndexHelper` instance is already on the desired device `self`
-        will be returned.
-        """
-        if self.__device == device:
-            return self
-
-        return self.__class__(
-            self.unique_angular.to(device=device),
-            self.angular.to(device=device),
-            self.atom_to_unique.to(device=device),
-            self.ushells_to_unique.to(device=device),
-            self.shells_to_ushell.to(device=device),
-            self.shells_per_atom.to(device=device),
-            self.shell_index.to(device=device),
-            self.shells_to_atom.to(device=device),
-            self.orbitals_per_shell.to(device=device),
-            self.orbital_index.to(device=device),
-            self.orbitals_to_shell.to(device=device),
-            device=self.device,
-        )
-
-    def type(self, dtype: torch.dtype) -> IndexHelper:
-        """
-        Returns a copy of the `IndexHelper` instance with specified floating point type.
-        This method creates and returns a new copy of the `IndexHelper` instance
-        with the specified dtype.
-
-        Parameters
-        ----------
-        dtype : torch.dtype
-            Type of the floating point numbers used by the `IndexHelper` instance.
-
-        Returns
-        -------
-        IndexHelper
-            A copy of the `IndexHelper` instance with the specified dtype.
-
-        Notes
-        -----
-        If the `IndexHelper` instance has already the desired dtype `self` will
-        be returned.
-        """
-        if self.__dtype == dtype:
-            return self
-
-        return self.__class__(
-            self.unique_angular.type(dtype),
-            self.angular.type(dtype),
-            self.atom_to_unique.type(dtype),
-            self.ushells_to_unique.type(dtype),
-            self.shells_to_ushell.type(dtype),
-            self.shells_per_atom.type(dtype),
-            self.shell_index.type(dtype),
-            self.shells_to_atom.type(dtype),
-            self.orbitals_per_shell.type(dtype),
-            self.orbital_index.type(dtype),
-            self.orbitals_to_shell.type(dtype),
-        )
-
     def get_shell_indices(self, atom_idx: int) -> Tensor:
         """
         Get shell indices belong to given atom.
@@ -715,3 +637,15 @@ class IndexHelper:
             # alternatively write all values into extra column
         else:
             return torch.gather(pad[0], 0, pad[1])
+
+    @property
+    def allowed_dtypes(self) -> tuple[torch.dtype, ...]:
+        """
+        Specification of dtypes that the TensorLike object can take.
+
+        Returns
+        -------
+        tuple[torch.dtype, ...]
+            Collection of allowed dtypes the TensorLike object can take.
+        """
+        return (torch.int16, torch.int32, torch.int64, torch.long)

@@ -170,7 +170,7 @@ class Halogen(Classical):
                 cache.xbond,
             )
 
-    def _xbond_list(self, numbers: Tensor, positions: Tensor) -> Tensor:
+    def _xbond_list(self, numbers: Tensor, positions: Tensor) -> Tensor | None:
         """
         Calculate triples for halogen bonding interactions.
 
@@ -183,8 +183,9 @@ class Halogen(Classical):
 
         Returns
         -------
-        Tensor
-            Triples for halogen bonding interactions.
+        Tensor | None
+            Triples for halogen bonding interactions or `None` if no triples
+            where found.
 
         Note
         ----
@@ -195,12 +196,20 @@ class Halogen(Classical):
 
         # find all halogen-base pairs
         for i, i_at in enumerate(numbers):
-            for j, j_at in enumerate(numbers):
-                if i_at in self.halogens and j_at in self.base:
-                    if torch.norm(positions[i, :] - positions[j, :]) > self.cutoff:
-                        continue
+            if i_at not in self.halogens:
+                continue
 
-                    adjlist.append([i, j, 0])
+            for j, j_at in enumerate(numbers):
+                if j_at not in self.base:
+                    continue
+
+                if torch.norm(positions[i, :] - positions[j, :]) > self.cutoff:
+                    continue
+
+                adjlist.append([i, j, 0])
+
+        if len(adjlist) == 0:
+            return None
 
         # convert to tensor
         adj = torch.tensor(adjlist, dtype=torch.long, device=self.device)
@@ -269,6 +278,8 @@ class Halogen(Classical):
 
         # triples for halogen bonding interactions
         adj = self._xbond_list(numbers, positions)
+        if adj is None:
+            return torch.zeros(numbers.shape, dtype=positions.dtype)
 
         # parameters
         rads = atomic_rad[numbers].to(self.device).type(self.dtype) * self.rscale

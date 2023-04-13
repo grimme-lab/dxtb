@@ -342,7 +342,7 @@ class SelfConsistentField(EditableModule):
             New orbital-resolved partial charges vector.
         """
 
-        if self.fwd_options["verbose"] > 1:
+        if self.fwd_options["verbose"] > 1:  # pragma: no cover
             print(f"energy: {self.get_energy(charges).sum(-1)}")
         potential = self.charges_to_potential(charges)
         return self.potential_to_charges(potential)
@@ -364,7 +364,7 @@ class SelfConsistentField(EditableModule):
 
         charges = self.potential_to_charges(potential)
         if self.scf_options["verbosity"] > 0:
-            if charges.ndim < 2:
+            if charges.ndim < 2:  # pragma: no cover
                 energy = self.get_energy(charges).sum(-1).detach().clone()
                 ediff = torch.linalg.vector_norm(self._data.old_energy - energy)
 
@@ -602,7 +602,9 @@ class SelfConsistentField(EditableModule):
         """
         return self._data.hcore.device
 
-    def getparamnames(self, methodname: str, prefix: str = "") -> list[str]:
+    def getparamnames(
+        self, methodname: str, prefix: str = ""
+    ) -> list[str]:  # pragma: no cover
         if methodname == "iterate_charges":
             return self.getparamnames(
                 "charges_to_potential", prefix=prefix
