@@ -56,6 +56,7 @@ def test_batch(dtype: torch.dtype) -> None:
         "a1": positions.new_tensor(0.49484001),
         "a2": positions.new_tensor(5.73083694),
         "s8": positions.new_tensor(0.78981345),
+        "s9": positions.new_tensor(1.00000000),
     }
 
     energy = d4.dftd4(numbers, positions, charge, param)
@@ -70,6 +71,7 @@ def test_batch(dtype: torch.dtype) -> None:
     _par.dispersion.d4.a1 = param["a1"]
     _par.dispersion.d4.a2 = param["a2"]
     _par.dispersion.d4.s8 = param["s8"]
+    _par.dispersion.d4.s9 = param["s9"]
 
     disp = new_dispersion(numbers, _par, charge=charge, **dd)
     if disp is None:

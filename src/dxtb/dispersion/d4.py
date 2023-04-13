@@ -6,7 +6,7 @@ from __future__ import annotations
 import tad_dftd4 as d4
 
 from .._types import Any, Tensor
-from .abc import Dispersion
+from .base import Dispersion
 
 
 class DispersionD4(Dispersion):
@@ -107,7 +107,7 @@ class DispersionD4(Dispersion):
             .type(self.dtype)
             .to(self.device)
         )
-        cf = kwargs.pop("counting_function", d4.ncoord.exp_count)
+        cf = kwargs.pop("counting_function", d4.ncoord.erf_count)
         df = kwargs.pop("damping_function", d4.damping.rational_damping)
 
         return self.Cache(q, model, rcov, r4r2, cutoff, cf, df)
