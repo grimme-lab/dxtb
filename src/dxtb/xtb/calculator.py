@@ -10,7 +10,14 @@ import torch
 from .. import ncoord, scf
 from .._types import Any, Tensor, TensorLike
 from ..basis import IndexHelper
-from ..classical import Halogen, Repulsion, new_halogen, new_repulsion
+from ..classical import (
+    Classical,
+    ClassicalList,
+    Halogen,
+    Repulsion,
+    new_halogen,
+    new_repulsion,
+)
 from ..constants import defaults
 from ..coulomb import new_es2, new_es3
 from ..data import cov_rad_d3
@@ -38,11 +45,11 @@ class Result(TensorLike):
     density: Tensor
     """Density matrix."""
 
-    dispersion: Tensor
-    """Dispersion energy."""
+    cenergies: dict[str, Tensor]
+    """Energies of classical contributions."""
 
-    dispersion_grad: Tensor
-    """Nuclear gradient of dispersion energy."""
+    cgradients: dict[str, Tensor]
+    """Gradients of classical contributions."""
 
     emo: Tensor
     """Energy of molecular orbitals (sorted by increasing energy)."""
@@ -52,12 +59,6 @@ class Result(TensorLike):
 
     gradient: Tensor | None
     """Gradient of total energy w.r.t. positions"""
-
-    halogen: Tensor
-    """Halogen bond energy."""
-
-    halogen_grad: Tensor
-    """Nuclear gradient of halogen bond energy."""
 
     hamiltonian: Tensor
     """Full Hamiltonian matrix (H0 + H1)."""
@@ -83,12 +84,6 @@ class Result(TensorLike):
     potential: Tensor
     """Self-consistent orbital-resolved potential."""
 
-    repulsion: Tensor
-    """Repulsion energy."""
-
-    repulsion_grad: Tensor
-    """Nuclear gradient of repulsion energy."""
-
     scf: Tensor
     """Atom-resolved energy from the self-consistent field (SCF) calculation."""
 
@@ -104,14 +99,12 @@ class Result(TensorLike):
     __slots__ = [
         "charges",
         "coefficients",
+        "cenergies",
+        "cgradients",
         "density",
-        "dispersion",
-        "dispersion_grad",
         "emo",
         "fenergy",
         "gradient",
-        "halogen",
-        "halogen_grad",
         "hamiltonian",
         "hamiltonian_grad",
         "hcore",
@@ -120,8 +113,6 @@ class Result(TensorLike):
         "overlap",
         "overlap_grad",
         "potential",
-        "repulsion",
-        "repulsion_grad",
         "scf",
         "timer",
         "total",
@@ -141,15 +132,9 @@ class Result(TensorLike):
         self.timer = None
         self.scf = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.fenergy = torch.zeros(shape, dtype=self.dtype, device=self.device)
-        self.dispersion = torch.zeros(shape, dtype=self.dtype, device=self.device)
-        self.dispersion_grad = torch.zeros_like(positions)
         self.hamiltonian_grad = torch.zeros_like(positions)
-        self.halogen = torch.zeros(shape, dtype=self.dtype, device=self.device)
-        self.halogen_grad = torch.zeros_like(positions)
         self.interaction_grad = torch.zeros_like(positions)
         self.overlap_grad = torch.zeros_like(positions)
-        self.repulsion = torch.zeros(shape, dtype=self.dtype, device=self.device)
-        self.repulsion_grad = torch.zeros_like(positions)
         self.total = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.total_grad = torch.zeros_like(positions)
 
@@ -161,9 +146,7 @@ class Result(TensorLike):
         """Print energies in a table."""
 
         labels = {
-            "dispersion": "Dispersion energy",
-            "repulsion": "Repulsion energy",
-            "halogen": "Halogen bond correction",
+            "cenergies": "Classical contribution energies",
             "fenergy": "Electronic free energy",
             "scf": "Electronic Energy (SCF)",
         }
@@ -176,6 +159,13 @@ class Result(TensorLike):
         total = torch.sum(self.total, dim=-1)
 
         for label, n in labels.items():
+            energy = getattr(self, label)
+            if isinstance(energy, dict):
+                for key, value in energy.items():
+                    e = torch.sum(value, dim=-1)
+                    print(f"{key:<27} {e: .16f}")
+                continue
+
             e = torch.sum(getattr(self, label), dim=-1)
             print(f"{n:<27} {e: .16f}")
 
@@ -207,23 +197,58 @@ class Calculator(TensorLike):
     interactions: InteractionList
     """Interactions to minimize in self-consistent iterations."""
 
+    classicals: ClassicalList
+    """Classical contributions."""
+
     ihelp: IndexHelper
     """Helper class for indexing."""
 
     opts: dict[str, Any]
     """Calculator options."""
 
+    timer: Timers
+    """Collection of timers."""
+
     def __init__(
         self,
         numbers: Tensor,
         par: Param,
+        *,
+        classical: Classical | None = None,
         interaction: Interaction | None = None,
         opts: dict[str, Any] | None = None,
+        timer: Timers | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
+        """
+        Instantiation of the Calculator object.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            _description_
+        par : Param
+            _description_
+        classical : Classical | None, optional
+            _description_, by default None
+        interaction : Interaction | None, optional
+            _description_, by default None
+        opts : dict[str, Any] | None, optional
+            _description_, by default None
+        timer : Timers | None
+            Pass an existing `Timers` instance. Defaults to `None`, which
+            creates a new timer instance.
+        device : torch.device | None, optional
+            _description_, by default None
+        dtype : torch.dtype | None, optional
+            _description_, by default None
+        """
         super().__init__(device, dtype)
         dd = {"device": self.device, "dtype": self.dtype}
+
+        self.timer = Timers("calculator") if timer is None else timer
+        self.timer.start("setup calculator")
 
         # setup calculator options
         opts = opts if opts is not None else {}
@@ -276,21 +301,26 @@ class Calculator(TensorLike):
         self.interactions = InteractionList(es2, es3, interaction)
 
         # setup non-self-consistent contributions
-        self.halogen = (
+        halogen = (
             new_halogen(numbers, par, **dd)
             if not any(x in ["all", "hal"] for x in self.opts["exclude"])
             else None
         )
-        self.dispersion = (
+        dispersion = (
             new_dispersion(numbers, par, **dd)
             if not any(x in ["all", "disp"] for x in self.opts["exclude"])
             else None
         )
-        self.repulsion = (
+        repulsion = (
             new_repulsion(numbers, par, **dd)
             if not any(x in ["all", "rep"] for x in self.opts["exclude"])
             else None
         )
+        self.classicals = ClassicalList(
+            halogen, dispersion, repulsion, classical, timer=self.timer
+        )
+
+        self.timer.stop("setup calculator")
 
     def set_option(self, name: str, value: Any) -> None:
         if name not in self.opts:
@@ -319,7 +349,6 @@ class Calculator(TensorLike):
         numbers: Tensor,
         positions: Tensor,
         chrg: Tensor,
-        timer: Timers | None = None,
         grad: bool = False,
     ) -> Result:
         """
@@ -333,9 +362,6 @@ class Calculator(TensorLike):
             Atomic positions.
         chrg : Tensor
             Total charge.
-        timer : Timers | None
-            Pass an existing `Timers` instance. Defaults to `None`, which
-            creates a new timer instance.
         grad : bool
             Flag for computing nuclear gradient w.r.t. the energy.
 
@@ -346,35 +372,32 @@ class Calculator(TensorLike):
         """
         result = Result(positions, device=self.device, dtype=self.dtype)
 
-        if timer is None:
-            timer = Timers("singlepoint")
-            timer.start("singlepoint")
-
+        # SELF-CONSISTENT FIELD PROCEDURE
         if not any(x in ["all", "scf"] for x in self.opts["exclude"]):
             # overlap
             if grad is True:
-                timer.start("ograd", "Overlap Gradient")
+                self.timer.start("ograd", "Overlap Gradient")
                 result.overlap, result.overlap_grad = self.overlap.get_gradient(
                     positions
                 )
-                timer.stop("ograd")
+                self.timer.stop("ograd")
             else:
-                timer.start("Overlap")
+                self.timer.start("Overlap")
                 result.overlap = self.overlap.build(positions)
-                timer.stop("Overlap")
+                self.timer.stop("Overlap")
 
             # Hamiltonian
-            timer.start("h0", "Core Hamiltonian")
+            self.timer.start("h0", "Core Hamiltonian")
             rcov = cov_rad_d3[numbers].to(self.device)
             cn = ncoord.get_coordination_number(
                 numbers, positions, ncoord.exp_count, rcov
             )
             hcore = self.hamiltonian.build(positions, result.overlap, cn)
             result.hcore = hcore
-            timer.stop("h0")
+            self.timer.stop("h0")
 
             # SCF
-            timer.start("SCF")
+            self.timer.start("SCF")
 
             # Obtain the reference occupations and total number of electrons
             n0 = self.hamiltonian.get_occupation()
@@ -407,7 +430,7 @@ class Calculator(TensorLike):
                 scf_options=self.opts["scf_options"],
                 use_potential=self.opts["use_potential"],
             )
-            timer.stop("SCF")
+            self.timer.stop("SCF")
 
             result.charges = scf_results["charges"]
             result.coefficients = scf_results["coefficients"]
@@ -422,14 +445,14 @@ class Calculator(TensorLike):
 
             if grad is True:
                 if len(self.interactions.interactions) > 0:
-                    timer.start("igrad", "Interaction Gradient")
+                    self.timer.start("igrad", "Interaction Gradient")
                     result.interaction_grad = self.interactions.get_gradient(
                         numbers, positions, result.charges, icaches, self.ihelp
                     )
                     result.total_grad += result.interaction_grad
-                    timer.stop("igrad")
+                    self.timer.stop("igrad")
 
-                timer.start("hgrad", "Hamiltonian Gradient")
+                self.timer.start("hgrad", "Hamiltonian Gradient")
                 wmat = scf.get_density(
                     result.coefficients,
                     result.occupation.sum(-2),
@@ -454,61 +477,27 @@ class Calculator(TensorLike):
                 # sum up hamiltonian gradient and CN gradient
                 result.hamiltonian_grad += dedr + dcn
                 result.total_grad += result.hamiltonian_grad
-                timer.stop("hgrad")
+                self.timer.stop("hgrad")
 
-        if self.halogen is not None:
-            timer.start("Halogen")
-            cache_hal = self.halogen.get_cache(numbers, self.ihelp)
-            result.halogen = self.halogen.get_energy(positions, cache_hal)
-            result.total += result.halogen
-            timer.stop("Halogen")
-
-            if grad is True:
-                timer.start("hgrad", "Halogen Gradient")
-                result.halogen_grad = self.halogen.get_gradient(
-                    result.halogen, positions
-                )
-                result.total_grad += result.halogen_grad
-                timer.stop("hgrad")
-
-        if self.dispersion is not None:
-            timer.start("Dispersion")
-            cache_disp = self.dispersion.get_cache(numbers)
-            result.dispersion = self.dispersion.get_energy(positions, cache_disp)
-            result.total += result.dispersion
-            timer.stop("Dispersion")
+        # CLASSICAL CONTRIBUTIONS
+        if len(self.classicals.classicals) > 0:
+            ccaches = self.classicals.get_cache(numbers, self.ihelp)
+            cenergies = self.classicals.get_energy(positions, ccaches)
+            result.cenergies = cenergies
+            result.total += torch.stack(list(cenergies.values())).sum(0)
 
             if grad is True:
-                timer.start("dgrad", "Dispersion Gradient")
-                result.dispersion_grad = self.dispersion.get_gradient(
-                    result.dispersion, positions
-                )
-                result.total_grad += result.dispersion_grad
-                timer.stop("dgrad")
+                cgradients = self.classicals.get_gradient(cenergies, positions)
+                result.cgradients = cgradients
+                result.total_grad += torch.stack(list(cgradients.values())).sum(0)
 
-        if self.repulsion is not None:
-            timer.start("Repulsion")
-            cache_rep = self.repulsion.get_cache(numbers, self.ihelp)
-            result.repulsion = self.repulsion.get_energy(positions, cache_rep)
-            result.total += result.repulsion
-            timer.stop("Repulsion")
-
-            if grad is True:
-                timer.start("rgrad", "Repulsion Gradient")
-                result.repulsion_grad = self.repulsion.get_gradient(
-                    result.repulsion, positions
-                )
-                result.total_grad += result.repulsion_grad
-                timer.stop("rgrad")
-
-        if timer.label == "singlepoint":
-            timer.stop("singlepoint")
-        result.timer = timer
+        # TIMERS AND PRINTOUT
+        result.timer = self.timer
 
         if self.opts["scf_options"]["verbosity"] > 0:
             result.print_energies()
         if self.opts["scf_options"]["verbosity"] > 1:
             print("")
-            timer.print_times()
+            self.timer.print_times()
 
         return result

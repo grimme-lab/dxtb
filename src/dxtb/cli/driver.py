@@ -9,6 +9,7 @@ from pathlib import Path
 import torch
 
 from .. import io
+from ..constants import defaults
 from ..utils import Timers
 from ..xtb import Calculator, Result
 
@@ -65,8 +66,8 @@ class Driver:
             "spin": args.spin,
             "verbosity": args.verbosity,
             "exclude": args.exclude,
-            "xitorch_xatol": 1e-6,
-            "xitorch_fatol": 1e-6,
+            "xitorch_xatol": defaults.XITORCH_XATOL,
+            "xitorch_fatol": defaults.XITORCH_XATOL,
         }
 
         _numbers, _positions = io.read_structure_from_file(args.file)
@@ -93,15 +94,11 @@ class Driver:
             raise ValueError(f"Unknown guess method '{args.guess}'.")
 
         # setup calculator
-        calc = Calculator(numbers, par, opts=opts, **dd)
         timer.stop("setup")
+        calc = Calculator(numbers, par, opts=opts, timer=timer, **dd)
 
-        # run singlepoint calculation, timer set within
-        result = calc.singlepoint(numbers, positions, chrg, timer=timer, grad=args.grad)
-
-        # stop timer
-        timer.stop("total")
-        result.timer = timer
+        # run singlepoint calculation
+        result = calc.singlepoint(numbers, positions, chrg, grad=args.grad)
 
         if args.verbosity > 0:
             timer.print_times()

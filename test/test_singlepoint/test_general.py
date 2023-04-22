@@ -36,6 +36,10 @@ def test_uhf_fail() -> None:
         calc.set_option("spin", 0)
         calc.singlepoint(numbers, positions, charge)
 
+    # singlepoint starts SCF timer, but exception is thrown before the SCF
+    # timer is stopped, so we must stop it manually here
+    calc.timer.stop("SCF")
+
     with pytest.raises(ValueError):
         calc.set_option("spin", 2)
         calc.singlepoint(numbers, positions, charge)

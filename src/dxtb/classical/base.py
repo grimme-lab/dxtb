@@ -62,13 +62,13 @@ class ClassicalABC(ABC):
         ----------
         positions : Tensor
             Cartesian coordinates of all atoms.
-        cache : Halogen.Cache
-            Cache for the halogen bond parameters.
+        cache : Cache
+            Cache for the parameters.
 
         Returns
         -------
         Tensor
-             Atomwise energy contributions.
+            Atomwise energy contributions.
         """
 
 
@@ -76,6 +76,19 @@ class Classical(ClassicalABC, TensorLike):
     """
     Base class for calculation of classical contributions.
     """
+
+    label: str
+    """Label for the classical contribution."""
+
+    __slots__ = ["label"]
+
+    def __init__(
+        self,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ):
+        super().__init__(device, dtype)
+        self.label = self.__class__.__name__
 
     def get_gradient(self, energy: Tensor, positions: Tensor) -> Tensor:
         """

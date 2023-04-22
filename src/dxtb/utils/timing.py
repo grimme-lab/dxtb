@@ -39,7 +39,9 @@ class Timers:
                 If timer is already running.
             """
             if self._start_time is not None:
-                raise TimerError("Timer is running. Use `.stop()` to stop it.")
+                raise TimerError(
+                    f"Timer '{self.label}' is running. Use `.stop()` to stop it."
+                )
 
             self._start_time = time.perf_counter()
 
@@ -58,12 +60,27 @@ class Timers:
                 If timer is not running.
             """
             if self._start_time is None:
-                raise TimerError("Timer is not running. Use .start() to start it")
+                raise TimerError(
+                    f"Timer '{self.label}' is not running. Use .start() to " "start it."
+                )
 
             self.elapsed_time += time.perf_counter() - self._start_time
             self._start_time = None
 
             return self.elapsed_time
+
+        def is_running(self) -> bool:
+            """
+            Check if the timer is running.
+
+            Returns
+            -------
+            bool
+                Whether the timer currently runs (`True`) or not (`False`).
+            """
+            if self._start_time is not None and self.elapsed_time == 0.0:
+                return True
+            return False
 
     timers: dict[str, Timer]
     """Dictionary of timers."""
@@ -90,10 +107,11 @@ class Timers:
         """
         if uid in self.timers:
             t = self.timers[uid]
+            print(t, uid)
             t.start()
             return
 
-        t = self.Timer(label)
+        t = self.Timer(uid if label is None else label)
         t.start()
 
         self.timers[uid] = t
@@ -125,6 +143,12 @@ class Timers:
 
         return elapsed_time
 
+    def stop_all(self) -> None:
+        """Stop all running timers."""
+        for t in self.timers.values():
+            if t.is_running():
+                t.stop()
+
     def get_times(self) -> dict[str, float]:
         """
         Get the elapsed times of all timers,
@@ -143,6 +167,9 @@ class Timers:
         self, name: str = "Timings", width: int = 55
     ) -> None:  # pragma: no cover
         """Print the elapsed times of all timers in a table."""
+        if self.timers["total"].is_running():
+            self.timers["total"].stop()
+
         d = self.get_times()
         total = d.pop("total")
         s = sum(d.values())
