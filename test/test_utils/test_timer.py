@@ -24,3 +24,25 @@ def test_fail() -> None:
     timer.stop("test")
     with pytest.raises(TimerError):
         timer.timers["test"].stop()
+
+
+def test_running() -> None:
+    timer = Timers()
+    timer.start("test")
+    assert timer.timers["test"].is_running()
+
+    timer.stop("test")
+    assert not timer.timers["test"].is_running()
+
+
+def test_stopall() -> None:
+    timer = Timers()
+    timer.start("test")
+    timer.start("test2")
+    timer.start("test3")
+
+    timer.stop("test")
+    timer.stop_all()
+
+    assert not timer.timers["test"].is_running()
+    assert not timer.timers["test2"].is_running()
