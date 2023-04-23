@@ -44,7 +44,6 @@ def test_change_type(dtype: torch.dtype) -> None:
     numbers = torch.tensor([1])
     ihelp = IndexHelper.from_numbers(numbers, {1: [0]})
     h0 = Hamiltonian(numbers, par, ihelp)
-    print(h0.allowed_dtypes)
     assert h0.type(dtype).dtype == dtype
 
 

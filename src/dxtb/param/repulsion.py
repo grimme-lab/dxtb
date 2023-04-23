@@ -20,7 +20,7 @@ class EffectiveRepulsion(BaseModel):
     the repulsion energy.
     """
 
-    kexp_light: Optional[float] = None
+    klight: Optional[float] = None
     """
     Scaling of the interatomic distance in the exponential damping function of
     the repulsion energy for light elements, i.e., H and He (only GFN2).

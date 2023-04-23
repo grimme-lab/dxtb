@@ -107,7 +107,6 @@ class Timers:
         """
         if uid in self.timers:
             t = self.timers[uid]
-            print(t, uid)
             t.start()
             return
 
