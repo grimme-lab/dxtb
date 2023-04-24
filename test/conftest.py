@@ -90,6 +90,4 @@ def pytest_runtest_setup(item: pytest.Function):
 
     for _ in item.iter_markers(name="cuda"):
         if not torch.cuda.is_available():
-            pytest.skip(
-                "Torch not compiled with CUDA enabled or no CUDA device available."
-            )
+            pytest.skip("Torch not compiled with CUDA or no CUDA device available.")

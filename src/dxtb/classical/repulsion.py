@@ -117,23 +117,23 @@ class Repulsion(Classical, TensorLike):
         mask: Tensor
         """Mask for padding from numbers."""
 
-        __slots__ = ["mask", "alpha", "zeff", "kexp"]
+        __slots__ = ["mask", "arep", "zeff", "kexp"]
 
         def __init__(
             self,
             mask: Tensor,
-            alpha: Tensor,
+            arep: Tensor,
             zeff: Tensor,
             kexp: Tensor,
             device: torch.device | None = None,
             dtype: torch.dtype | None = None,
         ):
             super().__init__(
-                device=device if device is None else alpha.device,
-                dtype=dtype if dtype is None else alpha.dtype,
+                device=device if device is None else arep.device,
+                dtype=dtype if dtype is None else arep.dtype,
             )
             self.mask = mask
-            self.alpha = alpha
+            self.arep = arep
             self.zeff = zeff
             self.kexp = kexp
 
@@ -202,90 +202,236 @@ class Repulsion(Classical, TensorLike):
         Tensor
             (Atom-resolved) repulsion energy.
         """
-
-        distances = torch.where(
+        e = RepulsionAG.apply(
+            positions,
             cache.mask,
-            torch.cdist(
-                positions,
-                positions,
-                p=2,
-                compute_mode="use_mm_for_euclid_dist",
-            ),
-            # add epsilon to avoid zero division in some terms
-            positions.new_tensor(torch.finfo(self.dtype).eps),
+            cache.arep,
+            cache.kexp,
+            cache.zeff,
+            self.cutoff,
         )
-
-        # Eq.13: R_AB ** k_f
-        r1k = torch.pow(distances, cache.kexp)
-
-        # Eq.13: exp(- (alpha_A * alpha_B)**0.5 * R_AB ** k_f )
-        exp_term = torch.exp(-cache.alpha * r1k)
-
-        # Eq.13: repulsion energy
-        e = torch.where(
-            cache.mask * (distances <= distances.new_tensor(self.cutoff)),
-            cache.zeff * exp_term / distances,
-            distances.new_tensor(0.0),
-        )
+        assert e is not None
 
         if atom_resolved is True:
             return 0.5 * torch.sum(e, dim=-1)
-        else:
-            return e
+        return e
 
-    def get_gradient_analytical(
-        self, positions: Tensor, cache: Repulsion.Cache
+
+def repulsion_energy(
+    positions: Tensor,
+    mask: Tensor,
+    arep: Tensor,
+    kexp: Tensor,
+    zeff: Tensor,
+    cutoff: float = xtb.DEFAULT_REPULSION_CUTOFF,
+) -> Tensor:
+    """
+    Clasical repulsion energy.
+
+    Parameters
+    ----------
+    positions : Tensor
+        Cartesian coordinates of all atoms.
+    mask : Tensor
+        Mask for padding.
+    arep : Tensor
+        Atom-specific screening parameters.
+    kexp : Tensor
+        Scaling of the interatomic distance in the exponential damping function
+        of the repulsion energy.
+    zeff : Tensor
+        Effective nuclear charges.
+    cutoff : float, optional
+        Real-space cutoff. Defaults to `xtb.DEFAULT_REPULSION_CUTOFF`.
+
+    Returns
+    -------
+    Tensor
+        Atom-resolved repulsion energy
+    """
+    distances = torch.where(
+        mask,
+        torch.cdist(
+            positions,
+            positions,
+            p=2,
+            compute_mode="use_mm_for_euclid_dist",
+        ),
+        # add epsilon to avoid zero division in some terms
+        positions.new_tensor(torch.finfo(positions.dtype).eps),
+    )
+
+    # Eq.13: R_AB ** k_f
+    r1k = torch.pow(distances, kexp)
+
+    # Eq.13: exp(- (alpha_A * alpha_B)**0.5 * R_AB ** k_f )
+    exp_term = torch.exp(-arep * r1k)
+
+    # Eq.13: repulsion energy
+    erep = torch.where(
+        mask * (distances <= distances.new_tensor(cutoff)),
+        zeff * exp_term / distances,
+        distances.new_tensor(0.0),
+    )
+    return erep
+
+
+def repulsion_gradient(
+    erep: Tensor,
+    positions: Tensor,
+    mask: Tensor,
+    arep: Tensor,
+    kexp: Tensor,
+    *,
+    reduced: bool = False,
+) -> Tensor:
+    """
+    Nuclear gradient of classical repulsion energy.
+
+    Parameters
+    ----------
+    erep : Tensor
+        Atom-resolved repulsion energy (from `repulsion_energy`).
+    positions : Tensor
+        Cartesian coordinates of all atoms.
+    mask : Tensor
+        Mask for padding.
+    arep : Tensor
+        Atom-specific screening parameters.
+    kexp : Tensor
+        Scaling of the interatomic distance in the exponential damping function
+        of the repulsion energy.
+    cutoff : float, optional
+        Real-space cutoff. Defaults to `xtb.DEFAULT_REPULSION_CUTOFF`.
+    reduced : bool, optional
+        Shape of the output gradient. Defaults to `False`, which returns a
+        gradient of shape `(natoms, natoms, 3)`. This is required for the custom
+        backward function. If `reduced=True`, the output gradient has the
+        typical shape `(natoms, 3)`.
+
+    Returns
+    -------
+    Tensor
+        Nuclear gradient of repulsion energy. The shape is specified by the
+        `reduced` keyword argument.
+    """
+    distances = torch.where(
+        mask,
+        torch.cdist(
+            positions,
+            positions,
+            p=2,
+            compute_mode="use_mm_for_euclid_dist",
+        ),
+        # add epsilon to avoid zero division in some terms
+        positions.new_tensor(torch.finfo(positions.dtype).eps),
+    )
+
+    # Eq.13: R_AB ** k_f
+    r1k = torch.pow(distances, kexp)
+
+    # (n_batch, n_atoms, n_atoms)
+    grad = -(arep * r1k * kexp + 1.0) * erep
+
+    # (n_batch, n_atoms, n_atoms, 3)
+    rij = torch.where(
+        mask.unsqueeze(-1),
+        positions.unsqueeze(-2) - positions.unsqueeze(-3),
+        distances.new_tensor(0.0),
+    )
+
+    # (n_batch, n_atoms, n_atoms)
+    r2 = torch.pow(distances, 2)
+
+    # (n_batch, n_atoms, n_atoms, 3)
+    grad = grad / r2
+    grad = grad.unsqueeze(-1) * rij
+
+    # reduction gives (n_batch, n_atoms, 3)
+    return grad if reduced is False else torch.sum(grad, dim=-2)
+
+
+class RepulsionAG(torch.autograd.Function):
+    """
+    Autograd function for repulsion energy.
+    """
+
+    @staticmethod
+    def forward(
+        ctx,
+        positions: Tensor,
+        mask: Tensor,
+        arep: Tensor,
+        kexp: Tensor,
+        zeff: Tensor,
+        cutoff: float,
     ) -> Tensor:
-        """
-        Get analytical gradient of repulsion energy.
+        with torch.enable_grad():
+            erep = repulsion_energy(positions, mask, arep, kexp, zeff, cutoff)
 
-        Parameters
-        ----------
-        cache : Repulsion.Cache
-            Cache for repulsion.
-        positions : Tensor
-            Cartesian coordinates of all atoms.
+        ctx.save_for_backward(erep, positions, mask, arep, kexp, zeff)
 
-        Returns
-        -------
-        Tensor
-            Atom-resolved repulsion gradient, size (n_batch, n_atoms, 3).
-        """
+        return erep.clone()
 
-        distances = torch.where(
-            cache.mask,
-            torch.cdist(
+    @staticmethod
+    def backward(
+        ctx, grad_out: Tensor
+    ) -> tuple[
+        None | Tensor,  # positions
+        None,  # mask
+        None | Tensor,  # arep
+        None | Tensor,  # kexp
+        None | Tensor,  # zeff
+        None,  # cutoff
+    ]:
+        # initialize gradients with `None`
+        positions_bar = arep_bar = kexp_bar = zeff_bar = None
+
+        # check which of the input variables of `forward()` requires gradients
+        grad_positions, _, grad_arep, grad_kexp, grad_zeff, _ = ctx.needs_input_grad
+
+        erep, positions, mask, arep, kexp, zeff = ctx.saved_tensors
+
+        # analytical gradient for positions
+        if grad_positions:
+            # (n_batch, n_atoms, n_atoms, 3)
+            g = repulsion_gradient(
+                erep,
                 positions,
-                positions,
-                p=2,
-                compute_mode="use_mm_for_euclid_dist",
-            ),
-            # add epsilon to avoid zero division in some terms
-            positions.new_tensor(torch.finfo(self.dtype).eps),
-        )
+                mask,
+                arep,
+                kexp,
+                reduced=False,
+            )
 
-        r1k = torch.pow(distances, cache.kexp)
+            _gi = torch.einsum("ij,ijd->id", grad_out, g)
+            _gj = torch.einsum("ij,ijd->jd", grad_out, g)
+            positions_bar = _gi - _gj
 
-        # (n_batch, n_atoms, n_atoms)
-        e = self.get_energy(positions, cache, False)
-        grad = -(cache.alpha * r1k * cache.kexp + 1.0) * e
+        # automatic gradient for parameters
+        if grad_arep:
+            (arep_bar,) = torch.autograd.grad(
+                erep,
+                arep,
+                grad_outputs=grad_out,
+                create_graph=True,
+            )
+        if grad_kexp:
+            (kexp_bar,) = torch.autograd.grad(
+                erep,
+                kexp,
+                grad_outputs=grad_out,
+                create_graph=True,
+            )
+        if grad_zeff:
+            (zeff_bar,) = torch.autograd.grad(
+                erep,
+                zeff,
+                grad_outputs=grad_out,
+                create_graph=True,
+            )
 
-        # (n_batch, n_atoms, n_atoms, 3)
-        rij = torch.where(
-            cache.mask.unsqueeze(-1),
-            positions.unsqueeze(-2) - positions.unsqueeze(-3),
-            distances.new_tensor(0.0),
-        )
-
-        # (n_batch, n_atoms, n_atoms)
-        r2 = torch.pow(distances, 2)
-
-        # (n_batch, n_atoms, n_atoms, 3)
-        grad = grad / r2
-        grad = grad.unsqueeze(-1) * rij
-
-        # (n_batch, n_atoms, 3)
-        return torch.sum(grad, dim=-2)
+        return positions_bar, None, arep_bar, kexp_bar, zeff_bar, None
 
 
 def new_repulsion(
