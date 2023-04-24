@@ -21,7 +21,8 @@ class DispersionD4(Dispersion):
 
         Note
         ----
-        The dispersion parameters (a1, a2, ...) are given in the constructor.
+        The dispersion parameters (a1, a2, ...) are given in the dispersion
+        class constructor.
         """
 
         __slots__ = [
@@ -73,7 +74,7 @@ class DispersionD4(Dispersion):
             Cache for the D4 dispersion.
         """
 
-        model = (
+        model: d4.model.D4Model = (
             kwargs.pop(
                 "model",
                 d4.model.D4Model(numbers, device=self.device, dtype=self.dtype),
@@ -81,7 +82,7 @@ class DispersionD4(Dispersion):
             .type(self.dtype)
             .to(self.device)
         )
-        rcov = (
+        rcov: Tensor = (
             kwargs.pop(
                 "rcov",
                 d4.data.cov_rad_d3[numbers],
@@ -90,7 +91,7 @@ class DispersionD4(Dispersion):
             .to(self.device)
         )
         q = kwargs.pop("q", None)
-        r4r2 = (
+        r4r2: Tensor = (
             kwargs.pop(
                 "r4r2",
                 d4.data.r4r2[numbers],
@@ -98,7 +99,7 @@ class DispersionD4(Dispersion):
             .type(self.dtype)
             .to(self.device)
         )
-        cutoff = (
+        cutoff: d4.cutoff.Cutoff = (
             (
                 kwargs.pop(
                     "cutoff", d4.cutoff.Cutoff(device=self.device, dtype=self.dtype)

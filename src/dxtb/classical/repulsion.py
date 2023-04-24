@@ -65,7 +65,7 @@ class Repulsion(Classical, TensorLike):
     the repulsion energy.
     """
 
-    kexp_light: Tensor | None
+    klight: Tensor | None
     """
     Scaling of the interatomic distance in the exponential damping function of
     the repulsion energy for light elements, i.e., H and He (only GFN2).
@@ -74,14 +74,14 @@ class Repulsion(Classical, TensorLike):
     cutoff: float
     """Real space cutoff for repulsion interactions (default: 25.0)."""
 
-    __slots__ = ["arep", "zeff", "kexp", "kexp_light", "cutoff"]
+    __slots__ = ["arep", "zeff", "kexp", "klight", "cutoff"]
 
     def __init__(
         self,
         arep: Tensor,
         zeff: Tensor,
         kexp: Tensor,
-        kexp_light: Tensor | None = None,
+        klight: Tensor | None = None,
         cutoff: float = xtb.DEFAULT_REPULSION_CUTOFF,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
@@ -93,9 +93,9 @@ class Repulsion(Classical, TensorLike):
         self.kexp = kexp.to(self.device).type(self.dtype)
         self.cutoff = cutoff
 
-        if kexp_light is not None:
-            kexp_light = kexp_light.to(self.device).type(self.dtype)
-        self.kexp_light = kexp_light
+        if klight is not None:
+            klight = klight.to(self.device).type(self.dtype)
+        self.klight = klight
 
     class Cache(TensorLike):
         """
@@ -160,23 +160,25 @@ class Repulsion(Classical, TensorLike):
         vary, i.e., during geometry optimization.
         """
 
-        unique = torch.unique(numbers)
-        kexp = self.kexp.expand(unique.shape)
-        if self.kexp_light is not None:
-            kexp = torch.where(unique > 2, kexp.new_tensor(self.kexp_light), kexp)
-
         # spread
         arep = ihelp.spread_uspecies_to_atom(self.arep)
         zeff = ihelp.spread_uspecies_to_atom(self.zeff)
-        kexp = ihelp.spread_uspecies_to_atom(kexp)
+        kexp = ihelp.spread_uspecies_to_atom(
+            self.kexp.expand(torch.unique(numbers).shape)
+        )
 
         # mask for padding
         mask = real_pairs(numbers, diagonal=True)
 
         # create matrices
         a = torch.sqrt(arep.unsqueeze(-1) * arep.unsqueeze(-2)) * mask
-        z = zeff.unsqueeze(-2) * zeff.unsqueeze(-1) * mask
-        k = kexp.unsqueeze(-2) * kexp.new_ones(kexp.shape).unsqueeze(-1) * mask
+        z = zeff.unsqueeze(-1) * zeff.unsqueeze(-2) * mask
+        k = kexp.unsqueeze(-1) * kexp.new_ones(kexp.shape).unsqueeze(-2) * mask
+
+        # GFN2 uses a different value for H and He
+        if self.klight is not None:
+            kmask = ~real_pairs(numbers <= 2)
+            k = torch.where(kmask, k, self.klight) * mask
 
         return self.Cache(mask, a, z, k)
 
@@ -322,9 +324,9 @@ def new_repulsion(
         return None
 
     kexp = torch.tensor(par.repulsion.effective.kexp)
-    kexp_light = (
-        torch.tensor(par.repulsion.effective.kexp_light)
-        if par.repulsion.effective.kexp_light
+    klight = (
+        torch.tensor(par.repulsion.effective.klight)
+        if par.repulsion.effective.klight
         else None
     )
 
@@ -333,4 +335,4 @@ def new_repulsion(
     arep = get_elem_param(unique, par.element, "arep", pad_val=0)
     zeff = get_elem_param(unique, par.element, "zeff", pad_val=0)
 
-    return Repulsion(arep, zeff, kexp, kexp_light, cutoff, device=device, dtype=dtype)
+    return Repulsion(arep, zeff, kexp, klight, cutoff, device=device, dtype=dtype)

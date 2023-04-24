@@ -26,7 +26,9 @@ class Interaction(TensorLike):
         """
 
     def __init__(
-        self, device: torch.device | None = None, dtype: torch.dtype | None = None
+        self,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
     ):
         super().__init__(device, dtype)
         self.label = self.__class__.__name__

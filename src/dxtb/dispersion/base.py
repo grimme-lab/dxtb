@@ -3,14 +3,15 @@ Abstract base class for dispersion models.
 """
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 import torch
 
 from .._types import Tensor, TensorLike
+from ..classical import Classical
 
 
-class Dispersion(TensorLike):
+class Dispersion(Classical, TensorLike):
     """
     Base class for dispersion correction.
     """
@@ -26,11 +27,6 @@ class Dispersion(TensorLike):
 
     __slots__ = ["numbers", "param", "charge"]
 
-    class Cache(ABC):
-        """
-        Abstract base class for the dispersion Cache.
-        """
-
     def __init__(
         self,
         numbers: Tensor,
@@ -45,7 +41,7 @@ class Dispersion(TensorLike):
         self.charge = charge
 
     @abstractmethod
-    def get_cache(self, numbers: Tensor) -> Cache:
+    def get_cache(self, numbers: Tensor) -> Classical.Cache:
         """
         Store variables for energy calculation.
 
@@ -59,49 +55,3 @@ class Dispersion(TensorLike):
         Cache
             Cache class for storage of variables.
         """
-
-    @abstractmethod
-    def get_energy(self, positions: Tensor, cache: Cache) -> Tensor:
-        """
-        Get dispersion energy.
-
-        Parameters
-        ----------
-        positions : Tensor
-            Cartesian coordinates of all atoms.
-
-        Returns
-        -------
-        Tensor
-            Atom-resolved dispersion energy.
-        """
-
-    def get_gradient(self, energy: Tensor, positions: Tensor) -> Tensor:
-        """
-        Calculates nuclear gradient of an classical energy contribution via
-        PyTorch's autograd engine.
-
-        Parameters
-        ----------
-        energy : Tensor
-            Energy that will be differentiated.
-        positions : Tensor
-            Nuclear positions. Needs `requires_grad=True`.
-
-        Returns
-        -------
-        Tensor
-            Nuclear gradient of `energy`.
-
-        Raises
-        ------
-        RuntimeError
-            `positions` tensor does not have `requires_grad=True`.
-        """
-        if positions.requires_grad is False:
-            raise RuntimeError("Position tensor needs `requires_grad=True`.")
-
-        (gradient,) = torch.autograd.grad(
-            energy, positions, grad_outputs=torch.ones_like(energy)
-        )
-        return gradient
