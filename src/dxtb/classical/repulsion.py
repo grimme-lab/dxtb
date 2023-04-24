@@ -170,8 +170,17 @@ class Repulsion(Classical, TensorLike):
         # mask for padding
         mask = real_pairs(numbers, diagonal=True)
 
-        # create matrices
-        a = torch.sqrt(arep.unsqueeze(-1) * arep.unsqueeze(-2)) * mask
+        # Without the eps, the first backward returns nan's as described in
+        # https://github.com/pytorch/pytorch/issues/2421. The second backward
+        # gives nan's in gradgradcheck, because the epsilon is smaller than the
+        # step size. But the actual gradient should be correct.
+        eps = torch.finfo(arep.dtype).tiny
+        a = torch.where(
+            mask,
+            torch.sqrt(arep.unsqueeze(-1) * arep.unsqueeze(-2) + eps),
+            arep.new_tensor(0.0),
+        )
+
         z = zeff.unsqueeze(-1) * zeff.unsqueeze(-2) * mask
         k = kexp.unsqueeze(-1) * kexp.new_ones(kexp.shape).unsqueeze(-2) * mask
 
@@ -404,8 +413,9 @@ class RepulsionAG(torch.autograd.Function):
                 reduced=False,
             )
 
-            _gi = torch.einsum("ij,ijd->id", grad_out, g)
-            _gj = torch.einsum("ij,ijd->jd", grad_out, g)
+            # vjp: (nb, na, na) * (nb, na, na, 3) -> (nb, na, 3)
+            _gi = torch.einsum("...ij,...ijd->...id", grad_out, g)
+            _gj = torch.einsum("...ij,...ijd->...jd", grad_out, g)
             positions_bar = _gi - _gj
 
         # automatic gradient for parameters
