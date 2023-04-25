@@ -1,3 +1,11 @@
+"""
+Torch's `scatter_reduce` and `gather`
+=====================================
+
+Wrappers and convenience functions for `torch.scatter_reduce` and
+`torch.gather`.
+"""
+
 from __future__ import annotations
 
 from functools import wraps
@@ -94,7 +102,19 @@ def twice(
 
 
 def gather_remove_negative_index(func: Gather) -> Gather:
-    """Wrapper for `gather` function that removes negative indices."""
+    """
+    Wrapper for `gather` function that removes negative indices.
+
+    Parameters
+    ----------
+    func : Gather
+        `torch.gather`.
+
+    Returns
+    -------
+    Gather
+        Wrapped `torch.gather` (for use as decorator).
+    """
 
     @wraps(func)
     def wrapper(x: Tensor, dim: int, idx: Tensor, *args: str) -> Tensor:
@@ -113,7 +133,8 @@ def gather_remove_negative_index(func: Gather) -> Gather:
 
 @gather_remove_negative_index
 def gather(x: Tensor, dim: int, idx: Tensor) -> Tensor:
-    """Wrapper for `torch.gather`.
+    """
+    Wrapper for `torch.gather`.
 
     Parameters
     ----------
@@ -133,7 +154,8 @@ def gather(x: Tensor, dim: int, idx: Tensor) -> Tensor:
 
 
 def wrap_gather(x: Tensor, dim: int | tuple[int, int], idx: Tensor) -> Tensor:
-    """Wrapper for gather function. Also handles multiple dimensions.
+    """
+    Wrapper for gather function. Also handles multiple dimensions.
 
     Parameters
     ----------
@@ -230,9 +252,14 @@ def scatter_reduce(
 
 
 def wrap_scatter_reduce(
-    x: Tensor, dim: int | tuple[int, int], idx: Tensor, reduce: str
+    x: Tensor,
+    dim: int | tuple[int, int],
+    idx: Tensor,
+    reduce: str,
+    extra: bool = False,
 ) -> Tensor:
-    """Wrapper for `torch.scatter_reduce` that removes negative indices.
+    """
+    Wrapper for `torch.scatter_reduce` that removes negative indices.
 
     Parameters
     ----------
@@ -244,12 +271,26 @@ def wrap_scatter_reduce(
         Index to reduce over
     reduce : str
         Reduction method, defaults to "sum"
+    extra : bool
+        If the tensor to reduce contains a extra dimension of arbitrary size
+        that is generally different from the size of the indexing tensor
+        (e.g. gradient tensors with extra xyz dimension), the indexing tensor
+        has to be modified. This feature is only tested for the aforementioned
+        gradient tensors and does only work for one dimension.
+        Defaults to `False`.
 
     Returns
     -------
     Tensor
         Reduced tensor
     """
+
+    if extra is True and isinstance(dim, int):
+        idx = (
+            idx.unsqueeze(-1)
+            .unsqueeze(-1)
+            .expand(*[*x.shape[:dim], -1, *x.shape[(dim + 1) :]])
+        )
 
     idx = torch.where(idx >= 0, idx, 0)
     return (

@@ -534,56 +534,37 @@ class Hamiltonian(TensorLike):
             zero,
         )
 
-        # distance vector from dR_AB/dr_a [n_batch, atoms_i, atoms_j, 3]
+        # distance vector from dR_AB/dr_A
+        # (n_batch, atoms_i, atoms_j, 3)
         rij = torch.where(
             mask_atom.unsqueeze(-1),
             positions.unsqueeze(-2) - positions.unsqueeze(-3),
             positions.new_tensor(0.0),
         )
 
-        # reduce to atoms
+        # (n_batch, shells_i, shells_j) -> (n_batch, atoms_i, atoms_j)
         dpi = self.ihelp.reduce_shell_to_atom(dpi, dim=(-2, -1))
 
-        # contract within orbital representation
-        ss_orb = sval.unsqueeze(-1) * doverlap
+        # Multiplying with `rij` automatically includes the sign change on
+        # switching atoms, which is manually done in the Fortran code.
+        # (n_batch, atoms_i, atoms_j, 3) -> (n_batch, atoms_i, 3)
+        g1 = torch.sum(dpi.unsqueeze(-1) * rij, dim=-2)
 
-        # instead of looping over atom and orbital combinations to obtain
-        # correct overlap chunks, mask out irrelevant ones
-        natm = positions.shape[-2]
-        batch_mode = len(positions.shape) > 2
+        # (n_batch, orbs_i, orbs_j, 3) -> (n_batch, atoms_i, orbs_i, 3)
+        ds = self.ihelp.reduce_orbital_to_atom(
+            doverlap * sval.unsqueeze(-1), dim=-3, extra=True
+        )
 
-        # spread to all atom-pairs
-        master = torch.einsum(
-            "ijklmn->kijlmn", ss_orb.repeat(natm, natm, 1, 1, 1, 1)
-        )  # [bs, natm, natm, norb, norb, 3]
-        if not batch_mode:
-            master = ss_orb.repeat(natm, natm, 1, 1, 1)
+        # The Fortran code only calculates a triangular matrix and distributes
+        # a positive gradient contribution to the ith atom and a negative
+        # gradient contribution to the jth atom. Here, we have the full matrix,
+        # which is why we get the same numeric value after summing along -2.
+        # However, the sign is wrong. So we just change it...
+        # (n_batch, atoms_i, orbs_i, 3) -> (n_batch, atoms_i, 3)
+        g2 = -torch.sum(ds, dim=-2)
 
-        # mask all non-contributing pairs
-        master_mask = torch.zeros_like(master).bool()
-        o2a = self.ihelp.orbitals_per_atom
-
-        for i in range(natm):
-            for j in range(natm):
-                mask_ij = (o2a.unsqueeze(-2) == i) & (o2a.unsqueeze(-1) == j)
-                if batch_mode:
-                    master_mask[:, i, j] = mask_ij.unsqueeze(-1).repeat(1, 1, 1, 3)
-                else:
-                    master_mask[i, j] = mask_ij.unsqueeze(-1).repeat(1, 1, 3)
-
-        # apply mask
-        _zero = master.new_tensor(0.0)
-        master = torch.where(master_mask, master, _zero)
-
-        # sum over orbital- and atom-wise contributions
-        # [natm, natm, norb, norb, 3] -> [natm, 3]
-        if batch_mode:
-            gradient = torch.einsum("bijklm->bim", master)
-        else:
-            gradient = torch.einsum("ijklm->im", master)
-
-        # add E_EHT contribution
-        gradient += torch.sum(dpi.unsqueeze(-1) * rij, dim=-2)
+        # we cannot sum after adding both contributions (different shapes!)
+        gradient = g1 + g2
 
         # ----------------------------------------------------------------------
         # Derivative of the electronic energy w.r.t. the coordination number
