@@ -40,7 +40,7 @@ class Overlap(TensorLike):
     Defaults to `l` (lower triangular matrix).
     """
 
-    cutoff: Tensor | float | int | None = constants.defaults.INTCUTOFF`
+    cutoff: Tensor | float | int | None = defaults.INTCUTOFF
     """
     Real-space cutoff for integral calculation in Angstrom. Defaults to
     `constants.defaults.INTCUTOFF` (50.0).

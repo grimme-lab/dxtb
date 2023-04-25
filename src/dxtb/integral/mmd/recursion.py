@@ -293,7 +293,9 @@ class EFunction(torch.autograd.Function):
         return xij_bar, rpi_bar, rpj_bar, None
 
 
-e_function = EFunction.apply
+e_function: Callable[
+    [Tensor, Tensor, Tensor, tuple[tuple[int, ...], int, int, Tensor, Tensor]], Tensor
+] = EFunction.apply  # type:ignore
 
 
 def mmd_recursion(
@@ -370,14 +372,9 @@ def mmd_recursion(
             ).sum((-2, -1))
 
     # transform to cartesian basis functions (itrafo * S * jtrafo^T)
-    # o = torch.einsum("...ij,...jk,...lk->...il", itrafo, s3d, jtrafo)
+    o = torch.einsum("...ij,...jk,...lk->...il", itrafo, s3d, jtrafo)
 
-    o = itrafo @ s3d @ jtrafo.mT
-    # print("itrafo\n", itrafo)
-    # print("\ns3d\n", s3d)
-    # print("\nsphr\n", o)
-    # assert False
-
+    # remove small values
     eps = vec.new_tensor(torch.finfo(vec.dtype).eps)
     g = torch.where(torch.abs(o) < eps, vec.new_tensor(0.0), o)
     return g

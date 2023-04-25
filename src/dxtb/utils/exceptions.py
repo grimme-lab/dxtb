@@ -3,6 +3,8 @@ Contains custom exceptions and warnings.
 """
 from __future__ import annotations
 
+from .._types import Tensor
+
 
 class ParameterWarning(UserWarning):
     """
@@ -45,7 +47,7 @@ class CGTOPrincipalQuantumNumberError(ValueError):
 
 
 class CGTOAzimuthalQuantumNumberError(ValueError):
-    def __init__(self, l: int) -> None:
+    def __init__(self, l: int | Tensor) -> None:
         s = ["s", "p", "d", "f", "g", "h"][l]
         self.message = f"Maximum azimuthal QN supported is {l} ({s}-orbitals)."
         super().__init__(self.message)

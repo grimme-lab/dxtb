@@ -27,7 +27,7 @@ from math import pi, sqrt
 import torch
 
 from ..._types import Tensor
-from ...utils import CgtoAzimudalQuantumNumberError, IntegralTransformError
+from ...utils import CGTOAzimuthalQuantumNumberError, IntegralTransformError
 from ..trafo import NLM_CART, TRAFO
 
 sqrtpi3 = sqrt(pi) ** 3
@@ -101,7 +101,7 @@ def mmd_explicit(
         elif li == 3:
             e0 = ecoeffs_f(lj, xij, rpi, rpj)
         else:
-            raise CgtoAzimudalQuantumNumberError(li)
+            raise CGTOAzimuthalQuantumNumberError(li)
 
         for mli in range(ncarti):
             mi = NLM_CART[li][mli, :]
@@ -154,7 +154,7 @@ def mmd_explicit_gradient(
 
     Raises
     ------
-    IntegralTransformError, CgtoAzimudalQuantumNumberError
+    IntegralTransformError, CGTOAzimuthalQuantumNumberError
         Unsupported angular momentum.
     """
     # angular momenta and number of cartesian gaussian basis functions
@@ -198,7 +198,7 @@ def mmd_explicit_gradient(
     elif li == 3:
         e0, d0 = de_f(lj, xij, rpi, rpj, ai, aj)
     else:
-        raise CgtoAzimudalQuantumNumberError(li)
+        raise CGTOAzimuthalQuantumNumberError(li)
 
     for mli in range(ncarti):
         mi = NLM_CART[li][mli, :]
@@ -265,7 +265,7 @@ def ecoeffs_s(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
 
     Raises
     ------
-    CgtoAzimudalQuantumNumberError
+    CGTOAzimuthalQuantumNumberError
         If angular momentum is not supported. Currently, the highest supported
         angular momentum is 3 (f-orbitals).
     """
@@ -302,7 +302,7 @@ def ecoeffs_s(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
             [e000, e010, e020, e030],
         ]
 
-    raise CgtoAzimudalQuantumNumberError(lj)
+    raise CGTOAzimuthalQuantumNumberError(lj)
 
 
 def de_s(
@@ -342,7 +342,7 @@ def de_s(
 
     Raises
     ------
-    CgtoAzimudalQuantumNumberError
+    CGTOAzimuthalQuantumNumberError
         If angular momentum is not supported. Currently, the highest supported
         angular momentum is 3 (f-orbitals).
     """
@@ -421,7 +421,7 @@ def de_s(
             ],
         )
 
-    raise CgtoAzimudalQuantumNumberError(lj)
+    raise CGTOAzimuthalQuantumNumberError(lj)
 
 
 def ecoeffs_p(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Tensor]]:
@@ -449,7 +449,7 @@ def ecoeffs_p(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
 
     Raises
     ------
-    CgtoAzimudalQuantumNumberError
+    CGTOAzimuthalQuantumNumberError
         If angular momentum is not supported. Currently, the highest supported
         angular momentum is 3 (f-orbitals).
     """
@@ -504,7 +504,7 @@ def ecoeffs_p(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
             [e100, e110, e120, e130],
         ]
 
-    raise CgtoAzimudalQuantumNumberError(lj)
+    raise CGTOAzimuthalQuantumNumberError(lj)
 
 
 def de_p(
@@ -544,7 +544,7 @@ def de_p(
 
     Raises
     ------
-    CgtoAzimudalQuantumNumberError
+    CGTOAzimuthalQuantumNumberError
         If angular momentum is not supported. Currently, the highest supported
         angular momentum is 3 (f-orbitals).
     """
@@ -693,7 +693,7 @@ def de_p(
             ],
         )
 
-    raise CgtoAzimudalQuantumNumberError(lj)
+    raise CGTOAzimuthalQuantumNumberError(lj)
 
 
 def ecoeffs_d(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Tensor]]:
@@ -721,7 +721,7 @@ def ecoeffs_d(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
 
     Raises
     ------
-    CgtoAzimudalQuantumNumberError
+    CGTOAzimuthalQuantumNumberError
         If angular momentum is not supported. Currently, the highest supported
         angular momentum is 3 (f-orbitals).
     """
@@ -795,7 +795,7 @@ def ecoeffs_d(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
             [e200, e210, e220, e230],
         ]
 
-    raise CgtoAzimudalQuantumNumberError(lj)
+    raise CGTOAzimuthalQuantumNumberError(lj)
 
 
 def de_d(
@@ -835,7 +835,7 @@ def de_d(
 
     Raises
     ------
-    CgtoAzimudalQuantumNumberError
+    CGTOAzimuthalQuantumNumberError
         If angular momentum is not supported. Currently, the highest supported
         angular momentum is 3 (f-orbitals).
     """
@@ -1031,7 +1031,7 @@ def de_d(
             ],
         )
 
-    raise CgtoAzimudalQuantumNumberError(lj)
+    raise CGTOAzimuthalQuantumNumberError(lj)
 
 
 def ecoeffs_f(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list:
@@ -1059,7 +1059,7 @@ def ecoeffs_f(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list:
 
     Raises
     ------
-    CgtoAzimudalQuantumNumberError
+    CGTOAzimuthalQuantumNumberError
         If angular momentum is not supported. Currently, the highest supported
         angular momentum is 3 (f-orbitals).
     """
@@ -1166,7 +1166,7 @@ def ecoeffs_f(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list:
             [e300, e310, e320, e330],
         ]
 
-    raise CgtoAzimudalQuantumNumberError(lj)
+    raise CGTOAzimuthalQuantumNumberError(lj)
 
 
 def de_f(
@@ -1206,7 +1206,7 @@ def de_f(
 
     Raises
     ------
-    CgtoAzimudalQuantumNumberError
+    CGTOAzimuthalQuantumNumberError
         If angular momentum is not supported. Currently, the highest supported
         angular momentum is 3 (f-orbitals).
     """
@@ -1484,4 +1484,4 @@ def de_f(
             ],
         )
 
-    raise CgtoAzimudalQuantumNumberError(lj)
+    raise CGTOAzimuthalQuantumNumberError(lj)
