@@ -32,15 +32,16 @@ def get_device_from_str(s: str) -> torch.device:
     KeyError
         Unknown device name is given.
     """
-    d = {
-        "cpu": torch.device("cpu"),
-        "cuda": torch.device("cuda", index=torch.cuda.current_device()),
-    }
+    if s == "cpu":
+        return torch.device("cpu")
+    if s == "cuda":
+        if not torch.cuda.is_available():
+            raise RuntimeError(
+                "Torch not compiled with CUDA or no CUDA device available."
+            )
+        return torch.device("cuda", index=torch.cuda.current_device())
 
-    if s not in d:
-        raise KeyError(f"Unknown device '{s}' given.")
-
-    return d[s]
+    raise KeyError(f"Unknown device '{s}' given.")
 
 
 def load_from_npz(npzfile: Any, name: str, dtype: torch.dtype) -> Tensor:

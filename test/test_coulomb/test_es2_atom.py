@@ -96,14 +96,13 @@ def test_grad_positions(name: str) -> None:
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
 
+    es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=False, **dd)
+    assert es is not None
+
     # variable to be differentiated
     positions.requires_grad_(True)
 
     def func(positions: Tensor):
-        es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=False, **dd)
-        if es is None:
-            assert False
-
         cache = es.get_cache(numbers, positions, ihelp)
         return es.get_atom_energy(qat, cache)
 
