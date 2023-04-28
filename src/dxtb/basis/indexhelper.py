@@ -299,16 +299,16 @@ class IndexHelper(TensorLike):
         extra: bool = False,
     ) -> Tensor:
         """
-        Reduce orbital-resolved tensor to shell-resolved tensor
+        Reduce orbital-resolved tensor to shell-resolved tensor.
 
         Parameters
         ----------
         x : Tensor
-            Orbital-resolved tensor
+            Orbital-resolved tensor.
         dim : int | (int, int)
-            Dimension to reduce over, defaults to -1
+            Dimension to reduce over, defaults to -1.
         reduce : str
-            Reduction method, defaults to "sum"
+            Reduction method, defaults to "sum".
         extra : bool
             Tensor to reduce contains a extra dimension of arbitrary size.
             Defaults to `False`.
@@ -316,7 +316,7 @@ class IndexHelper(TensorLike):
         Returns
         -------
         Tensor
-            Shell-resolved tensor
+            Shell-resolved tensor.
         """
 
         return wrap_scatter_reduce(x, dim, self.orbitals_to_shell, reduce, extra=extra)
@@ -329,16 +329,16 @@ class IndexHelper(TensorLike):
         extra: bool = False,
     ) -> Tensor:
         """
-        Reduce shell-resolved tensor to atom-resolved tensor
+        Reduce shell-resolved tensor to atom-resolved tensor.
 
         Parameters
         ----------
         x : Tensor
             Shell-resolved tensor
         dim : int | (int, int)
-            Dimension to reduce over, defaults to -1
+            Dimension to reduce over, defaults to -1.
         reduce : str
-            Reduction method, defaults to "sum"
+            Reduction method, defaults to "sum".
         extra : bool
              Tensor to reduce contains a extra dimension of arbitrary size.
              Defaults to `False`.
@@ -346,7 +346,7 @@ class IndexHelper(TensorLike):
         Returns
         -------
         Tensor
-            Atom-resolved tensor
+            Atom-resolved tensor.
         """
 
         return wrap_scatter_reduce(x, dim, self.shells_to_atom, reduce, extra=extra)
@@ -359,16 +359,16 @@ class IndexHelper(TensorLike):
         extra: bool = False,
     ) -> Tensor:
         """
-        Reduce orbital-resolved tensor to atom-resolved tensor
+        Reduce orbital-resolved tensor to atom-resolved tensor.
 
         Parameters
         ----------
         x : Tensor
-            Orbital-resolved tensor
+            Orbital-resolved tensor.
         dim : int | (int, int)
-            Dimension to reduce over, defaults to -1
+            Dimension to reduce over, defaults to -1.
         reduce : str
-            Reduction method, defaults to "sum"
+            Reduction method, defaults to "sum".
         extra : bool
             Tensor to reduce contains a extra dimension of arbitrary size.
             Defaults to `False`.
@@ -376,7 +376,7 @@ class IndexHelper(TensorLike):
         Returns
         -------
         Tensor
-            Atom-resolved tensor
+            Atom-resolved tensor.
         """
 
         return self.reduce_shell_to_atom(
@@ -390,19 +390,19 @@ class IndexHelper(TensorLike):
         self, x: Tensor, dim: int | tuple[int, int] = -1
     ) -> Tensor:
         """
-        Spread atom-resolved tensor to shell-resolved tensor
+        Spread atom-resolved tensor to shell-resolved tensor.
 
         Parameters
         ----------
         x : Tensor
-            Atom-resolved tensor
+            Atom-resolved tensor.
         dim : int | (int, int)
-            Dimension to spread over, defaults to -1
+            Dimension to spread over, defaults to -1.
 
         Returns
         -------
         Tensor
-            Shell-resolved tensor
+            Shell-resolved tensor.
         """
 
         return wrap_gather(x, dim, self.shells_to_atom)
@@ -411,19 +411,19 @@ class IndexHelper(TensorLike):
         self, x: Tensor, dim: int | tuple[int, int] = -1
     ) -> Tensor:
         """
-        Spread shell-resolved tensor to orbital-resolved tensor
+        Spread shell-resolved tensor to orbital-resolved tensor.
 
         Parameters
         ----------
         x : Tensor
-            Shell-resolved tensor
+            Shell-resolved tensor.
         dim : int | (int, int)
-            Dimension to spread over, defaults to -1
+            Dimension to spread over, defaults to -1.
 
         Returns
         -------
         Tensor
-            Orbital-resolved tensor
+            Orbital-resolved tensor.
         """
 
         return wrap_gather(x, dim, self.orbitals_to_shell)
@@ -432,19 +432,19 @@ class IndexHelper(TensorLike):
         self, x: Tensor, dim: int | tuple[int, int] = -1
     ) -> Tensor:
         """
-        Spread atom-resolved tensor to orbital-resolved tensor
+        Spread atom-resolved tensor to orbital-resolved tensor.
 
         Parameters
         ----------
         x : Tensor
-            Atom-resolved tensor
+            Atom-resolved tensor.
         dim : int | (int, int)
-            Dimension to spread over, defaults to -1
+            Dimension to spread over, defaults to -1.
 
         Returns
         -------
         Tensor
-            Orbital-resolved tensor
+            Orbital-resolved tensor.
         """
 
         return self.spread_shell_to_orbital(
@@ -455,19 +455,19 @@ class IndexHelper(TensorLike):
         self, x: Tensor, dim: int | tuple[int, int] = -1
     ) -> Tensor:
         """
-        Spread unique species tensor to atom-resolved tensor
+        Spread unique species tensor to atom-resolved tensor.
 
         Parameters
         ----------
         x : Tensor
-            Unique specie tensor
+            Unique specie tensor.
         dim : int | (int, int)
-            Dimension to spread over, defaults to -1
+            Dimension to spread over, defaults to -1.
 
         Returns
         -------
         Tensor
-            Atom-resolved tensor
+            Atom-resolved tensor.
         """
 
         return wrap_gather(x, dim, self.atom_to_unique)
@@ -476,19 +476,19 @@ class IndexHelper(TensorLike):
         self, x: Tensor, dim: int | tuple[int, int] = -1
     ) -> Tensor:
         """
-        Spread unique species tensor to shell-resolved tensor
+        Spread unique species tensor to shell-resolved tensor.
 
         Parameters
         ----------
         x : Tensor
-            Unique specie tensor
+            Unique specie tensor.
         dim : int | (int, int)
-            Dimension to spread over, defaults to -1
+            Dimension to spread over, defaults to -1.
 
         Returns
         -------
         Tensor
-            Shell-resolved tensor
+            Shell-resolved tensor.
         """
 
         return self.spread_atom_to_shell(
@@ -499,19 +499,19 @@ class IndexHelper(TensorLike):
         self, x: Tensor, dim: int | tuple[int, int] = -1
     ) -> Tensor:
         """
-        Spread unique species tensor to orbital-resolved tensor
+        Spread unique species tensor to orbital-resolved tensor.
 
         Parameters
         ----------
         x : Tensor
-            Unique specie tensor
+            Unique specie tensor.
         dim : int
-            Dimension to spread over, defaults to -1
+            Dimension to spread over, defaults to -1.
 
         Returns
         -------
         Tensor
-            Orbital-resolved tensor
+            Orbital-resolved tensor.
         """
 
         return self.spread_atom_to_orbital(
@@ -522,19 +522,19 @@ class IndexHelper(TensorLike):
         self, x: Tensor, dim: int | tuple[int, int] = -1
     ) -> Tensor:
         """
-        Spread unique shell tensor to shell-resolved tensor
+        Spread unique shell tensor to shell-resolved tensor.
 
         Parameters
         ----------
         x : Tensor
-            Unique shell tensor
+            Unique shell tensor.
         dim : int | (int, int)
-            Dimension to spread over, defaults to -1
+            Dimension to spread over, defaults to -1.
 
         Returns
         -------
         Tensor
-            Shell-resolved tensor
+            Shell-resolved tensor.
         """
 
         return wrap_gather(x, dim, self.shells_to_ushell)
@@ -543,19 +543,19 @@ class IndexHelper(TensorLike):
         self, x: Tensor, dim: int | tuple[int, int] = -1
     ) -> Tensor:
         """
-        Spread unique shell tensor to orbital-resolved tensor
+        Spread unique shell tensor to orbital-resolved tensor.
 
         Parameters
         ----------
         x : Tensor
-            Unique shell tensor
+            Unique shell tensor.
         dim : int | (int, int)
-            Dimension to spread over, defaults to -1
+            Dimension to spread over, defaults to -1.
 
         Returns
         -------
         Tensor
-            Orbital-resolved tensor
+            Orbital-resolved tensor.
         """
 
         return self.spread_shell_to_orbital(

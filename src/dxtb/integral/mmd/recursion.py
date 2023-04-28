@@ -14,7 +14,7 @@ import torch
 
 from ..._types import Any, Callable, Tensor
 from ...utils import IntegralTransformError
-from ..constants import NLM_CART, TRAFO
+from ..trafo import NLM_CART, TRAFO
 
 sqrtpi3 = sqrt(pi) ** 3
 
@@ -293,7 +293,9 @@ class EFunction(torch.autograd.Function):
         return xij_bar, rpi_bar, rpj_bar, None
 
 
-e_function = EFunction.apply
+e_function: Callable[
+    [Tensor, Tensor, Tensor, tuple[tuple[int, ...], int, int, Tensor, Tensor]], Tensor
+] = EFunction.apply  # type:ignore
 
 
 def mmd_recursion(
@@ -357,6 +359,7 @@ def mmd_recursion(
     E = e_function(
         xij, rpi, rpj, (*vec.shape, ai.shape[-2], aj.shape[-1], li + 1, lj + 1)
     )
+
     for mli in range(s3d.shape[-2]):
         for mlj in range(s3d.shape[-1]):
             mi = NLM_CART[li][mli, :]
@@ -368,8 +371,8 @@ def mmd_recursion(
                 * E[..., 2, :, :, mi[2], mj[2], 0]
             ).sum((-2, -1))
 
-    # transform to cartesian basis functions (itrafo^T * S * jtrafo)
-    o = torch.einsum("...ji,...jk,...kl->...il", itrafo, s3d, jtrafo)
+    # transform to cartesian basis functions (itrafo * S * jtrafo^T)
+    o = torch.einsum("...ij,...jk,...lk->...il", itrafo, s3d, jtrafo)
 
     # remove small values
     eps = vec.new_tensor(torch.finfo(vec.dtype).eps)
@@ -421,7 +424,7 @@ def mmd_recursion_gradient(
     ncartj = torch.div((lj + 1) * (lj + 2), 2, rounding_mode="floor")
     r2 = torch.sum(vec.pow(2), -1)
 
-    # transform from cartesian to spherical gaussians
+    # init transformation from cartesian to spherical gaussians
     try:
         itrafo = TRAFO[li].type(vec.dtype).to(vec.device)
         jtrafo = TRAFO[lj].type(vec.dtype).to(vec.device)
@@ -459,8 +462,8 @@ def mmd_recursion_gradient(
     dE = e_function_derivative(E, alpha[0], li, lj)
 
     for mli in range(ncarti):
+        mi = NLM_CART[li][mli, :]  # [3]
         for mlj in range(ncartj):
-            mi = NLM_CART[li][mli, :]  # [3]
             mj = NLM_CART[lj][mlj, :]  # [3]
 
             e0 = E[..., 0, :, :, mi[0], mj[0], 0]
@@ -483,11 +486,12 @@ def mmd_recursion_gradient(
                 dim=-1,
             )  # [bs, 3]
 
-    # transform to spherical basis functions (itrafo^T * S * jtrafo)
-    ovlp = torch.einsum("...ji,...jk,...kl->...il", itrafo, s3d, jtrafo)
+    # transform to spherical basis functions (itrafo * S * jtrafo^T)
+    ovlp = torch.einsum("...ij,...jk,...lk->...il", itrafo, s3d, jtrafo)
 
     rt = torch.arange(ds3d.shape[-3], device=ds3d.device)
-    grad = torch.einsum("...ji,...jk,...kl->...il", itrafo, ds3d[..., rt, :, :], jtrafo)
+    # [bs, upairs, 3, norbi, norbj] == [vec[0], vec[1], 3, norbi, norbj]
+    grad = torch.einsum("...ij,...jk,...lk->...il", itrafo, ds3d[..., rt, :, :], jtrafo)
 
     # remove small values
     eps = vec.new_tensor(torch.finfo(vec.dtype).eps)
@@ -495,4 +499,3 @@ def mmd_recursion_gradient(
     grad = torch.where(torch.abs(grad) < eps, vec.new_tensor(0.0), grad)
 
     return ovlp, grad
-    # [bs, upairs, 3, norbi, norbj] == [vec[0], vec[1], 3, norbi, norbj]
