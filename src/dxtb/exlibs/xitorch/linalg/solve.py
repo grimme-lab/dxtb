@@ -5,7 +5,6 @@ import torch
 
 from dxtb.exlibs.xitorch import LinearOperator
 from dxtb.exlibs.xitorch._core.linop import MatrixLinearOperator
-from dxtb.exlibs.xitorch._docstr.api_docstr import get_methods_docstr
 from dxtb.exlibs.xitorch._impls.linalg.solve import (
     _get_batchdims,
     bicgstab,
@@ -284,13 +283,4 @@ def custom_exactsolve(A, B, E=None, M=None, **options):
 
 
 # docstring completion
-_solve_methods = {
-    "cg": cg,
-    "bicgstab": bicgstab,
-    "exactsolve": exactsolve,
-    "broyden1": broyden1_solve,
-    "scipy_gmres": wrap_gmres,
-    "gmres": gmres,
-}
 ignore_kwargs = ["E", "M", "mparams"]
-solve.__doc__ = get_methods_docstr(solve, _solve_methods, ignore_kwargs)
