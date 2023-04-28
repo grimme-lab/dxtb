@@ -27,9 +27,10 @@ from ..exlibs.xitorch import EditableModule, LinearOperator
 from ..exlibs.xitorch import linalg as xtl
 from ..exlibs.xitorch import optimize as xto
 from ..interaction import InteractionList
-from ..utils import real_atoms
+from ..utils import SCFConvergenceError, real_atoms
 from ..wavefunction import filling, mulliken
 from .guess import get_guess
+from .mixer import Anderson, Broyden, Simple
 
 
 class SelfConsistentField(EditableModule):
@@ -53,10 +54,10 @@ class SelfConsistentField(EditableModule):
         """Overlap matrix"""
 
         occupation: Tensor
-        """Occupation numbers"""
+        """Occupation numbers (shape: [..., 2, orbs])"""
 
         n0: Tensor
-        """Reference occupations for each orbital"""
+        """Reference occupations for each orbital (shape: [..., orbs])"""
 
         ihelp: IndexHelper
         """Index mapping for the basis set"""
@@ -65,19 +66,25 @@ class SelfConsistentField(EditableModule):
         """Restart data for the interactions"""
 
         energy: Tensor
-        """Electronic energy"""
+        """Electronic energy (shape: [..., orbs])"""
 
         hamiltonian: Tensor
-        """Self-consistent Hamiltonian"""
+        """Self-consistent Hamiltonian (shape: [..., orbs, orbs])"""
 
         density: Tensor
         """Density matrix"""
 
         evals: Tensor
-        """Orbital energies (eigenvalues of Fockian)"""
+        """
+        Orbital energies, i.e., eigenvalues of Fock matrix
+        (shape: [..., orbs])
+        """
 
         evecs: Tensor
-        """LCAO coefficients (eigenvectors of Fockian)"""
+        """
+        LCAO coefficients, i.e., eigenvectors of Fock matrix
+        (shape: [..., orbs, orbs])
+        """
 
         iter: int
         """Number of iterations."""
@@ -99,11 +106,38 @@ class SelfConsistentField(EditableModule):
             self.numbers = numbers
             self.ihelp = ihelp
             self.cache = cache
-            self.energy = hcore.new_tensor(0.0)
-            self.old_energy = n0.new_tensor(0.0)
-            self.old_charges = n0.new_tensor(0.0)
-            self.old_density = overlap.new_tensor(0.0)
+            self.init_zeros()
+
             self.iter = 1
+
+        def init_zeros(self) -> None:
+            self.energy = torch.zeros_like(self.n0)
+            self.hamiltonian = torch.zeros_like(self.hcore)
+            self.density = torch.zeros_like(self.hcore)
+            self.evals = torch.zeros_like(self.n0)
+            self.evecs = torch.zeros_like(self.hcore)
+
+            self.old_energy = torch.zeros_like(self.energy)
+            self.old_charges = torch.zeros_like(self.energy)
+            self.old_density = torch.zeros_like(self.density)
+
+        def reset(self) -> None:
+            self.iter = 0
+            self.init_zeros()
+
+        def cull(self, conv: Tensor, slicers) -> None:
+            onedim = [~conv, *slicers]
+            twodim = [~conv, *slicers, *slicers]
+
+            self.overlap = self.overlap[twodim]
+            self.hamiltonian = self.hamiltonian[twodim]
+            self.hcore = self.hcore[twodim]
+            self.occupation = self.occupation[twodim]
+            self.evecs = self.evecs[twodim]
+            self.evals = self.evals[onedim]
+            self.n0 = self.n0[onedim]
+            self.ihelp.cull(conv, slicers=slicers)
+            self.cache.cull(conv, slicers=slicers)
 
     _data: _Data
     """Persistent data"""
@@ -132,6 +166,9 @@ class SelfConsistentField(EditableModule):
     use_potential: bool
     """Whether to use the potential or the charges"""
 
+    batched: bool
+    """Whether multiple systems or a single one are handled"""
+
     def __init__(
         self,
         interactions: InteractionList,
@@ -140,7 +177,6 @@ class SelfConsistentField(EditableModule):
     ) -> None:
         self.use_potential = kwargs.pop("use_potential", defaults.USE_POTENTIAL)
         self.bck_options = {"posdef": True, **kwargs.pop("bck_options", {})}
-
         self.fwd_options = {
             "method": "broyden1",
             "alpha": -0.5,
@@ -164,6 +200,7 @@ class SelfConsistentField(EditableModule):
             self.scf_options.get("etemp", defaults.ETEMP) * K2AU
         )
         self.interactions = interactions
+        self.batched = self._data.numbers.ndim > 1
 
     def __call__(self, charges: Tensor | None = None) -> dict[str, Tensor]:
         """
@@ -228,28 +265,154 @@ class SelfConsistentField(EditableModule):
     def scf(self, charges: Tensor) -> Tensor:
         if self.scf_options["verbosity"] > 0 and charges.ndim < 2:
             print(
-                "\n{:<5} {:<24} {:<15} {:<15} {:<15}".format(
-                    "iter", "energy", "energy change", "P norm change", "charge change"
-                )
+                f"\n{'iter':<5} {'energy':<24} {'energy change':<15}"
+                f"{'P norm change':<15} {'charge change':<15}"
             )
             print(77 * "-")
 
+        # "SCF function" and starting value
         fcn = self.iterate_potential if self.use_potential else self.iterate_charges
-        y0 = self.charges_to_potential(charges) if self.use_potential else charges
-        output = xto.equilibrium(
-            fcn=fcn,
-            y0=y0,
-            bck_options={**self.bck_options},
-            **self.fwd_options,
-        )
+        q = self.charges_to_potential(charges) if self.use_potential else charges
+
+        mixer = self.scf_options["mixer"]
+        maxiter = self.fwd_options["maxiter"]
+
+        print(mixer)
+
+        # broyden does not work with culling
+        if isinstance(mixer, Broyden) or mixer == "broyden":
+            q_converged = xto.equilibrium(
+                fcn=fcn,
+                y0=q,
+                bck_options={**self.bck_options},
+                **self.fwd_options,
+            )
+        else:
+            # initialize the correct mixer with tolerances etc.
+            if isinstance(mixer, str):
+                mixers = {"anderson": Anderson, "simple": Simple}
+                if mixer.casefold() not in mixers:
+                    raise ValueError(f"Unknown mixer '{mixer}'.")
+                mixer = mixers[mixer.casefold()](self.fwd_options)
+
+            # single-system (non-batched) case, which does not require culling
+            if not self.batched:
+                for _ in range(maxiter):
+                    q_new = fcn(q)
+                    q = mixer.iter(q_new, q)
+
+                    if mixer.converged:
+                        q_converged = q
+                        break
+
+                else:
+                    raise SCFConvergenceError(maxiter, mixer)
+
+            # batched SCF with culling
+            else:
+                culled = True
+
+                # Initialize variables that change throughout the SCF. Later, we
+                # fill these with the converged values and simultaneously cull
+                # them from `self._data`
+                q_converged = torch.zeros_like(charges)
+                ce = torch.zeros_like(charges)
+                ch = torch.zeros_like(self._data.hamiltonian)
+                cevals = torch.zeros_like(self._data.evals)
+                cevecs = torch.zeros_like(self._data.evecs)
+                co = torch.zeros_like(self._data.occupation)
+                overlap = self._data.overlap
+                n0 = self._data.n0
+                hcore = self._data.hcore
+
+                # indices for systems in batch, required for culling
+                idxs = torch.arange(charges.size(0))
+
+                # maximum number of orbitals in batch
+                norb = self._data.hcore.shape[-1]
+
+                for _ in range(maxiter):
+                    q_new = fcn(q)
+                    q = mixer.iter(q_new, q)
+
+                    conv = mixer.converged
+                    if conv.any():
+                        # Simultaneous convergence does not require culling.
+                        # Occurs if batch size equals amount of True in `conv`.
+                        if charges.shape[0] == conv.count_nonzero():
+                            q_converged = q
+                            culled = False
+                            break
+
+                        # save all necessary variables for converged system
+                        iconv = idxs[conv]
+                        q_converged[iconv, :norb] = q[conv, :]
+                        ch[iconv, :norb, :norb] = self._data.hamiltonian[conv, :, :]
+                        cevecs[iconv, :norb, :norb] = self._data.evecs[conv, :, :]
+                        cevals[iconv, :norb] = self._data.evals[conv, :]
+                        ce[iconv, :norb] = self._data.energy[conv, :]
+                        co[iconv, :norb, :norb] = self._data.occupation[conv, :, :]
+
+                        # end SCF if all systems are converged
+                        if conv.all():
+                            break
+
+                        # cull `orbitals_per_shell` to calculate maximum number
+                        # of orbitals, which corresponds to the maximum padding
+                        norb_new = (
+                            self._data.ihelp.orbitals_per_shell[~conv, ...]
+                            .sum(-1)
+                            .max()
+                        )
+
+                        # if the largest system was culled from batch, cut the
+                        # properties down to size to remove superfluous padding
+                        # values
+                        if norb != norb_new:
+                            slicers = [slice(0, i) for i in [norb_new]]
+                            norb = norb_new
+                        else:
+                            slicers = (...,)
+
+                        # cull SCF variables
+                        self._data.cull(conv, slicers=slicers)
+
+                        # cull local variables
+                        q = q[~conv, :norb]
+                        idxs = idxs[~conv]
+
+                        # cull mixer
+                        mixer.cull(conv, slicers=slicers)
+
+                else:
+                    raise SCFConvergenceError(maxiter, mixer)
+
+                if culled:
+                    # write converged variables back to `self._data` for final
+                    # energy evaluation
+                    self._data.evals = cevals
+                    self._data.evecs = cevecs
+                    self._data.energy = ce
+                    self._data.hamiltonian = ch
+                    self._data.occupation = co
+
+                    # write culled variables (that did not change throughout the
+                    # SCF) back to `self._data` for the final energy evaluation
+                    self._data.n0 = n0
+                    self._data.hcore = hcore
+                    self._data.overlap = overlap
+
+                    # reset IndexHelper and caches which were culled as well
+                    self._data.ihelp.restore()
+                    self._data.cache.restore()
 
         if self.scf_options["verbosity"] > 0 and charges.ndim < 2:
             print(77 * "-")
 
         return (
-            self.potential_to_charges(output)
+            self.potential_to_charges(q_converged)
             if self.use_potential
-            else self.iterate_charges(output)
+            else q_converged
         )
 
     def get_energy(self, charges: Tensor) -> Tensor:
@@ -266,7 +429,8 @@ class SelfConsistentField(EditableModule):
         Tensor
             Energy of the system.
         """
-        return self._data.energy + self.interactions.get_energy(
+        energy = self._data.ihelp.reduce_orbital_to_atom(self._data.energy)
+        return energy + self.interactions.get_energy(
             charges, self._data.cache, self._data.ihelp
         )
 
@@ -379,7 +543,8 @@ class SelfConsistentField(EditableModule):
                 qdiff = torch.linalg.vector_norm(self._data.old_charges - q)
 
                 print(
-                    f"{self._data.iter:2}    {energy: .16E}  {ediff: .6E}  {pnorm: .6E}   {qdiff: .6E}"
+                    f"{self._data.iter:3}   {energy: .16E}  {ediff: .6E} "
+                    f"{pnorm: .6E}   {qdiff: .6E}"
                 )
 
                 self._data.old_energy = energy
@@ -459,12 +624,10 @@ class SelfConsistentField(EditableModule):
             Orbital-resolved partial charges vector.
         """
 
-        self._data.energy = self._data.ihelp.reduce_orbital_to_atom(
-            torch.diagonal(
-                torch.einsum("...ik,...kj->...ij", density, self._data.hcore),
-                dim1=-2,
-                dim2=-1,
-            )
+        self._data.energy = torch.diagonal(
+            torch.einsum("...ik,...kj->...ij", density, self._data.hcore),
+            dim1=-2,
+            dim2=-1,
         )
 
         populations = torch.diagonal(

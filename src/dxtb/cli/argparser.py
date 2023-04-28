@@ -298,6 +298,19 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         help="R|Maximum number of SCF iterations.",
     )
     p.add_argument(
+        "--mixer",
+        type=str,
+        default=defaults.MIXER,
+        choices=defaults.MIXER_CHOICES,
+        help="R|Mixing algorithm for convergence acceleration.",
+    )
+    p.add_argument(
+        "--damp",
+        type=float,
+        default=defaults.DAMP,
+        help="R|Damping factor for mixing in SCF iterations.",
+    )
+    p.add_argument(
         "-v",
         "--verbosity",
         type=int,

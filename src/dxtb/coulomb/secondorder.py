@@ -40,7 +40,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Tensor, TensorLike
+from .._types import Slicer, Tensor, TensorLike
 from ..basis import IndexHelper
 from ..constants import xtb
 from ..interaction import Interaction
@@ -84,10 +84,13 @@ class ES2(Interaction):
         Cache for Coulomb matrix in ES2.
         """
 
-        __slots__ = ["mat"]
+        __store: Store | None
+        """Storage for cache (required for culling)."""
 
         mat: Tensor
-        """Coulomb matrix"""
+        """Coulomb matrix."""
+
+        __slots__ = ["__store", "mat"]
 
         def __init__(
             self,
@@ -100,6 +103,30 @@ class ES2(Interaction):
                 dtype=dtype if dtype is None else mat.dtype,
             )
             self.mat = mat
+            self.__store = None
+
+        class Store:
+            """
+            Storage container for cache containing `__slots__` before culling.
+            """
+
+            mat: Tensor
+            """Coulomb matrix"""
+
+            def __init__(self, mat: Tensor) -> None:
+                self.mat = mat
+
+        def cull(self, conv: Tensor, slicers: Slicer) -> None:
+            if self.__store is None:
+                self.__store = self.Store(self.mat)
+
+            self.mat = self.mat[[~conv, *slicers, *slicers]]
+
+        def restore(self) -> None:
+            if self.__store is None:
+                raise RuntimeError("Nothing to restore. Store is empty.")
+
+            self.mat = self.__store.mat
 
     def __init__(
         self,

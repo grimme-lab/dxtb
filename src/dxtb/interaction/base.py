@@ -61,6 +61,8 @@ class Interaction(TensorLike):
         needed.
         """
 
+        __slots__ = []
+
     def __init__(
         self,
         device: torch.device | None = None,

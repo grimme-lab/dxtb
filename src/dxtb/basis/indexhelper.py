@@ -90,6 +90,9 @@ class IndexHelper(TensorLike):
     batched: bool
     """Whether multiple systems or a single one are handled"""
 
+    store: Store | None
+    """Storage to restore from after culling."""
+
     __slots__ = [
         "unique_angular",
         "angular",
@@ -103,6 +106,7 @@ class IndexHelper(TensorLike):
         "orbital_index",
         "orbitals_to_shell",
         "batched",
+        "store",
     ]
 
     def __init__(
@@ -120,6 +124,8 @@ class IndexHelper(TensorLike):
         orbitals_to_shell: Tensor,
         device: torch.device | None = None,
         dtype: torch.dtype = torch.int64,
+        *,
+        store: Store | None = None,
         **_,
     ):
         super().__init__(device, dtype)
@@ -136,6 +142,7 @@ class IndexHelper(TensorLike):
         self.orbitals_to_shell = orbitals_to_shell
 
         self.batched = angular.ndim > 1
+        self.store = store
 
         if any(
             tensor.dtype != self.dtype
@@ -561,6 +568,82 @@ class IndexHelper(TensorLike):
         return self.spread_shell_to_orbital(
             self.spread_ushell_to_shell(x, dim=dim), dim=dim
         )
+
+    class Store:
+        """
+        Storage container for IndexHelper containing `__slots__` before culling.
+        """
+
+        def __init__(
+            self,
+            unique_angular: Tensor,
+            angular: Tensor,
+            atom_to_unique: Tensor,
+            ushells_to_unique: Tensor,
+            shells_to_ushell: Tensor,
+            shells_per_atom: Tensor,
+            shell_index: Tensor,
+            shells_to_atom: Tensor,
+            orbitals_per_shell: Tensor,
+            orbital_index: Tensor,
+            orbitals_to_shell: Tensor,
+        ):
+            self.unique_angular = unique_angular
+            self.angular = angular
+            self.atom_to_unique = atom_to_unique
+            self.ushells_to_unique = ushells_to_unique
+            self.shells_to_ushell = shells_to_ushell
+            self.shells_per_atom = shells_per_atom
+            self.shell_index = shell_index
+            self.shells_to_atom = shells_to_atom
+            self.orbitals_per_shell = orbitals_per_shell
+            self.orbital_index = orbital_index
+            self.orbitals_to_shell = orbitals_to_shell
+
+    def cull(self, conv: Tensor, slicers) -> None:
+        if self.batched is False:
+            raise RuntimeError("Culling only possible in batch mode.")
+
+        if self.store is None:
+            self.store = self.Store(
+                unique_angular=self.unique_angular,
+                angular=self.angular,
+                atom_to_unique=self.atom_to_unique,
+                ushells_to_unique=self.ushells_to_unique,
+                shells_to_ushell=self.shells_to_ushell,
+                shells_per_atom=self.shells_per_atom,
+                shell_index=self.shell_index,
+                shells_to_atom=self.shells_to_atom,
+                orbitals_per_shell=self.orbitals_per_shell,
+                orbital_index=self.orbital_index,
+                orbitals_to_shell=self.orbitals_to_shell,
+            )
+
+        onedim = [~conv, *slicers]
+
+        self.angular = self.angular[onedim]
+        self.atom_to_unique = self.atom_to_unique[onedim]
+        self.shells_to_ushell = self.shells_to_ushell[onedim]
+        self.shells_per_atom = self.shells_per_atom[onedim]
+        self.shell_index = self.shell_index[onedim]
+        self.shells_to_atom = self.shells_to_atom[onedim]
+        self.orbitals_per_shell = self.orbitals_per_shell[onedim]
+        self.orbital_index = self.orbital_index[onedim]
+        self.orbitals_to_shell = self.orbitals_to_shell[onedim]
+
+    def restore(self) -> None:
+        if self.store is None:
+            raise RuntimeError("Nothing to restore. Store is empty.")
+
+        self.angular = self.store.angular
+        self.atom_to_unique = self.store.atom_to_unique
+        self.shells_to_ushell = self.store.shells_to_ushell
+        self.shells_per_atom = self.store.shells_per_atom
+        self.shell_index = self.store.shell_index
+        self.shells_to_atom = self.store.shells_to_atom
+        self.orbitals_per_shell = self.store.orbitals_per_shell
+        self.orbital_index = self.store.orbital_index
+        self.orbitals_to_shell = self.store.orbitals_to_shell
 
     def get_shell_indices(self, atom_idx: int) -> Tensor:
         """

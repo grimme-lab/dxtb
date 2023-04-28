@@ -28,6 +28,16 @@ class ToleranceWarning(UserWarning):
     """
 
 
+class SCFConvergenceError(RuntimeError):
+    def __init__(self, maxiter, mixer) -> None:
+        self.message = (
+            f"\n[Fatal] SCF does not converge after {maxiter} cycles using "
+            f"{mixer.label} mixing with a damping factor of "
+            f"{mixer.options['damp']}."
+        )
+        super().__init__(self.message)
+
+
 class IntegralTransformError(ValueError):
     def __init__(self) -> None:
         self.message = "[Fatal] Moments higher than f are not supported"

@@ -68,6 +68,8 @@ class Driver:
 
         opts = {
             "etemp": args.etemp,
+            "damp": args.damp,
+            "mixer": args.mixer,
             "maxiter": args.maxiter,
             "spin": args.spin,
             "verbosity": args.verbosity,
