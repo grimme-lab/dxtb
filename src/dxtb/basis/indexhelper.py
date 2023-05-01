@@ -661,6 +661,22 @@ class IndexHelper(TensorLike):
             return torch.gather(pad[0], 0, pad[1])
 
     @property
+    def nat(self) -> int:
+        return self.atom_to_unique.shape[-1]
+
+    @property
+    def nsh(self) -> int:
+        return int(self.shells_per_atom.sum(-1).max())
+
+    @property
+    def nao(self) -> int:
+        return int(self.orbitals_per_shell.sum(-1).max())
+
+    @property
+    def nbatch(self) -> int | None:
+        return self.atom_to_unique.ndim if self.batched else None
+
+    @property
     def allowed_dtypes(self) -> tuple[torch.dtype, ...]:
         """
         Specification of dtypes that the TensorLike object can take.

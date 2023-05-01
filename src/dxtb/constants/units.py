@@ -16,3 +16,12 @@ AU2KCAL = 627.5096080305927
 
 CAL2J = 4.184
 """Factor for conversion from Calorie to Joule"""
+
+C2AU = 1.0 / 1.60217653e-19
+"""Factor for conversion from Coulomb to to atomic units"""
+
+J2AU = 1.0 / 4.3597441775e-18
+"""Factor for conversion from Joule to atomic units"""
+
+VAA2AU = J2AU / (C2AU * AA2AU)
+"""Factor for conversion from  V/Å = J/(C·Å) to atomic units"""

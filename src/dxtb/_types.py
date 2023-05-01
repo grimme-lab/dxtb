@@ -90,6 +90,10 @@ class TensorLike:
     """
     Provide `device` and `dtype` as well as `to()` and `type()` for other
     classes.
+
+    The selection of `torch.Tensor` variables to change within the class is
+    handled by searching `__slots__`. Hence, if one wants to use this
+    functionality the subclass of `TensorLike` must specify `__slots__`.
     """
 
     __slots__ = ["__device", "__dtype"]

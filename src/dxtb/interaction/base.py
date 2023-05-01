@@ -9,10 +9,45 @@ import torch
 from .._types import Any, Tensor, TensorLike
 from ..basis import IndexHelper
 
+__all__ = ["Interaction"]
+
 
 class Interaction(TensorLike):
     """
     Base class for defining interactions with the charge density.
+
+    Every charge-dependent energy contribution should inherit from this class
+    as it conveniently handles the different resolutions (atom, shell, orbital)
+    required for all subclasses. Depending on the contribution the user must
+    implement a `get_<atom/shell>_<potential/energy/gradient>` method. The
+    methods that are not implemented automatically evaluate to zero. As they
+    are always called in the process of collecting the different resolutions,
+    you must NOT implement them.
+
+    .. warning::
+
+        Never overwrite the `get_potential`, `get_energy` and `get_gradient`
+        methods in the subclass. These methods collect the respective variable
+        for their (internally-handled) evaluation.
+
+    Additionally, a `get_cache` method is required that should precalculate
+    and store all charge-independent variables to avoid repeated calculations
+    during the SCF.
+
+    Note
+    ----
+    The nuclear gradient of the Mulliken charges essentially yields a
+    derivative of the overlap integral. This is handled elsewhere and must
+    not be implemented by the `get_<atom/shell>_gradient` methods.
+
+    Example
+    -------
+    The third-order electrostatics `ES3` of GFN1-xTB contain only atom-resolved
+    parameters. Hence, it only implements `get_atom_energy` and
+    `get_atom_potential` (besides the required `get_cache` method).
+    Since there is not positional dependence (except for the charges, which is
+    handled elsewhere) in the third-order electrostatics, no gradient method
+    must be implemented.
     """
 
     label: str
@@ -22,7 +57,8 @@ class Interaction(TensorLike):
 
     class Cache:
         """
-        Restart data for individual interactions, extended by subclasses as needed.
+        Restart data for individual interactions, extended by subclasses as
+        needed.
         """
 
     def __init__(

@@ -31,8 +31,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
     es = es3.new_es3(numbers, GFN1_XTB, **dd)
-    if es is None:
-        assert False
+    assert es is not None
 
     cache = es.get_cache(ihelp=ihelp)
     e = es.get_atom_energy(qat, cache)
@@ -68,8 +67,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
     es = es3.new_es3(numbers, GFN1_XTB, **dd)
-    if es is None:
-        assert False
+    assert es is not None
 
     cache = es.get_cache(ihelp=ihelp)
     e = es.get_atom_energy(qat, cache)
