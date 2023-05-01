@@ -138,17 +138,17 @@ class SelfConsistentField(EditableModule):
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        self.use_potential = kwargs.pop("use_potential", False)
+        self.use_potential = kwargs.pop("use_potential", defaults.USE_POTENTIAL)
         self.bck_options = {"posdef": True, **kwargs.pop("bck_options", {})}
 
         self.fwd_options = {
             "method": "broyden1",
             "alpha": -0.5,
-            "f_tol": 1.0e-6,
-            "x_tol": 1.0e-6,
+            "f_tol": defaults.XITORCH_FATOL,
+            "x_tol": defaults.XITORCH_XATOL,
             "f_rtol": float("inf"),
             "x_rtol": float("inf"),
-            "maxiter": 50,
+            "maxiter": defaults.MAXITER,
             "verbose": False,
             "line_search": False,
             **kwargs.pop("fwd_options", {}),
@@ -246,7 +246,11 @@ class SelfConsistentField(EditableModule):
         if self.scf_options["verbosity"] > 0 and charges.ndim < 2:
             print(77 * "-")
 
-        return self.potential_to_charges(output) if self.use_potential else output
+        return (
+            self.potential_to_charges(output)
+            if self.use_potential
+            else self.iterate_charges(output)
+        )
 
     def get_energy(self, charges: Tensor) -> Tensor:
         """
@@ -605,34 +609,63 @@ class SelfConsistentField(EditableModule):
     def getparamnames(
         self, methodname: str, prefix: str = ""
     ) -> list[str]:  # pragma: no cover
+        if methodname == "scf":
+            a = self.getparamnames("iterate_potential")
+            b = self.getparamnames("charges_to_potential")
+            c = self.getparamnames("potential_to_charges")
+            return a + b + c
+
+        if methodname == "get_energy":
+            return [prefix + "_data.energy"]
+
         if methodname == "iterate_charges":
-            return self.getparamnames(
-                "charges_to_potential", prefix=prefix
-            ) + self.getparamnames("potential_to_charges", prefix=prefix)
+            a = self.getparamnames("charges_to_potential", prefix=prefix)
+            b = self.getparamnames("potential_to_charges", prefix=prefix)
+            return a + b
+
         if methodname == "iterate_potential":
-            return self.getparamnames(
-                "potential_to_charges", prefix=prefix
-            ) + self.getparamnames("charges_to_potential", prefix=prefix)
+            a = self.getparamnames("potential_to_charges", prefix=prefix)
+            b = self.getparamnames("charges_to_potential", prefix=prefix)
+            return a + b
+
         if methodname == "charges_to_potential":
             return []
+
         if methodname == "potential_to_charges":
-            return self.getparamnames(
-                "potential_to_density", prefix=prefix
-            ) + self.getparamnames("density_to_charges", prefix=prefix)
+            a = self.getparamnames("potential_to_density", prefix=prefix)
+            b = self.getparamnames("density_to_charges", prefix=prefix)
+            return a + b
+
         if methodname == "potential_to_density":
-            return self.getparamnames(
-                "potential_to_hamiltonian", prefix=prefix
-            ) + self.getparamnames("hamiltonian_to_density", prefix=prefix)
+            a = self.getparamnames("potential_to_hamiltonian", prefix=prefix)
+            b = self.getparamnames("hamiltonian_to_density", prefix=prefix)
+            return a + b
+
         if methodname == "density_to_charges":
-            return []
-        if methodname == "hamiltonian_to_density":
-            return [prefix + "_data.hcore"] + self.getparamnames(
-                "diagonalize", prefix=prefix
-            )
+            return [
+                prefix + "_data.hcore",
+                prefix + "_data.overlap",
+                prefix + "_data.n0",
+            ]
+
         if methodname == "potential_to_hamiltonian":
-            return [prefix + "_data.hcore", prefix + "_data.overlap"]
-        if methodname == "diagonalize":
+            return [
+                prefix + "_data.hcore",
+                prefix + "_data.overlap",
+            ]
+
+        if methodname == "hamiltonian_to_density":
+            a = [prefix + "_data.occupation"]
+            b = self.getparamnames("diagonalize", prefix=prefix)
+            c = self.getparamnames("get_overlap", prefix=prefix)
+            return a + b + c
+
+        if methodname == "get_overlap":
             return [prefix + "_data.overlap"]
+
+        if methodname == "diagonalize":
+            return []
+
         raise KeyError(f"Method '{methodname}' has no paramnames set")
 
 
