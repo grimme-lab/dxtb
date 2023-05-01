@@ -39,10 +39,13 @@ def test_grad_backwards(name: str, dtype: torch.dtype):
 
     result = calc.singlepoint(numbers, positions, charges)
     energy = result.scf.sum(-1)
+    print("\n\n\n")
 
     energy.backward()
     assert positions.grad is not None
+
     gradient = positions.grad.clone()
+
     positions.detach_()
 
     assert pytest.approx(ref, abs=tol) == gradient

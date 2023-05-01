@@ -79,16 +79,15 @@ class InteractionList(Interaction):
         Tensor
             Potential vector for each orbital partial charge.
         """
-        return (
-            torch.stack(
-                [
-                    interaction.get_potential(charges, cache[interaction.label], ihelp)
-                    for interaction in self.interactions
-                ]
-            ).sum(dim=0)
-            if len(self.interactions) > 0
-            else torch.zeros_like(charges)
-        )
+        if len(self.interactions) <= 0:
+            return torch.zeros_like(charges)
+
+        return torch.stack(
+            [
+                interaction.get_potential(charges, cache[interaction.label], ihelp)
+                for interaction in self.interactions
+            ]
+        ).sum(dim=0)
 
     def get_energy(self, charges: Tensor, cache: Cache, ihelp: IndexHelper) -> Tensor:
         """
@@ -106,7 +105,7 @@ class InteractionList(Interaction):
         Returns
         -------
         Tensor
-            Energy vector for each orbital partial charge.
+            Atom-resolved energy vector for orbital partial charges.
         """
         if len(self.interactions) <= 0:
             return ihelp.reduce_orbital_to_atom(torch.zeros_like(charges))
