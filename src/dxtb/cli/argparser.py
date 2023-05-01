@@ -343,6 +343,11 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         default=defaults.XITORCH_FATOL,
         help="R|Set absolute tolerance for SCF (output).",
     )
+    p.add_argument(
+        "--detect-anomaly",
+        action="store_true",
+        help=("R|Enable PyTorch's anomaly detection mode."),
+    )
 
     p.add_argument(
         "--dir",
