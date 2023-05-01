@@ -21,7 +21,7 @@ ref_grad_param = np.load("test/test_scf/grad_param.npz")
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["LiH"])
+@pytest.mark.parametrize("name", ["LiH", "SiH4"])
 def test_grad_backwards(name: str, dtype: torch.dtype):
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
@@ -41,12 +41,11 @@ def test_grad_backwards(name: str, dtype: torch.dtype):
     energy = result.scf.sum(-1)
 
     energy.backward()
-    if positions.grad is None:
-        assert False
+    assert positions.grad is not None
     gradient = positions.grad.clone()
-    assert pytest.approx(gradient, abs=tol) == ref
-
     positions.detach_()
+
+    assert pytest.approx(ref, abs=tol) == gradient
 
 
 @pytest.mark.grad

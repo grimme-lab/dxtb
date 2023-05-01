@@ -159,6 +159,8 @@ class Result(TensorLike):
         total = torch.sum(self.total, dim=-1)
 
         for label, n in labels.items():
+            if not hasattr(self, label):
+                continue
             energy = getattr(self, label)
             if isinstance(energy, dict):
                 for key, value in energy.items():
@@ -276,7 +278,7 @@ class Calculator(TensorLike):
             "exclude": opts.get("exclude", defaults.EXCLUDE),
             "guess": opts.get("guess", defaults.GUESS),
             "spin": opts.get("spin", defaults.SPIN),
-            "use_potential": opts.get("use_potential", True),
+            "use_potential": opts.get("use_potential", defaults.USE_POTENTIAL),
         }
 
         # set tolerances separately to catch unreasonably small values

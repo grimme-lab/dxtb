@@ -58,10 +58,20 @@ XITORCH_VERBOSITY = False
 """Verbosity of printout."""
 
 XITORCH_XATOL = 1.0e-5
-"""The absolute tolerance of the norm of the input of the equilibrium function."""
+"""
+The absolute tolerance of the norm of the input of the equilibrium function.
+"""
 
 XITORCH_FATOL = 1.0e-5
-"""The absolute tolerance of the norm of the output of the equilibrium function."""
+"""
+The absolute tolerance of the norm of the output of the equilibrium function.
+"""
+
+USE_POTENTIAL = True
+"""
+Whether the potential vector or the charges should be the target of the
+convergence check in the SCF iterations.
+"""
 
 # Fermi smearing
 
