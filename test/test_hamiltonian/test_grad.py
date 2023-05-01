@@ -30,7 +30,7 @@ ref_grad_no_overlap = np.load("test/test_hamiltonian/grad_no_overlap.npz")
 ref_grad = np.load("test/test_hamiltonian/grad.npz")
 
 # lists of test molecules
-small = ["H2", "LiH", "S2", "H2O", "CH4", "SiH4", "MB16_43_01"]
+small = ["H2", "LiH", "S2", "H2O", "CH4", "SiH4"]
 large = ["PbH4-BiH3", "MB16_43_01", "LYS_xao"]
 
 # SCF options

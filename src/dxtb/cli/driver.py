@@ -55,6 +55,12 @@ class Driver:
     def singlepoint(self) -> Result:
         args = self.args
 
+        if args.detect_anomaly:
+            # pylint: disable=import-outside-toplevel
+            from torch.autograd.anomaly_mode import set_detect_anomaly
+
+            set_detect_anomaly(True)
+
         timer = Timers()
         timer.start("setup")
 

@@ -107,7 +107,7 @@ def test_single_large(dtype: torch.dtype, name: str):
     calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
-    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1).item()
+    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
 
 
 @pytest.mark.filterwarnings("ignore")
