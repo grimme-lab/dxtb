@@ -364,7 +364,7 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
 
     p.add_argument(
         "--dir",
-        nargs="?",
+        nargs="*",
         type=is_dir,  # manual validation
         help="R|Directory with all files. Searches recursively.",
     )
@@ -376,7 +376,7 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
     )
     p.add_argument(
         "file",
-        nargs="?",
+        nargs="*",
         type=is_file,  # manual validation
         help="R|Path to coordinate file.",
     )

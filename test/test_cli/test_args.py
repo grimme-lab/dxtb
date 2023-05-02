@@ -91,8 +91,12 @@ def test_dir() -> None:
     option = "dir"
     args = parser().parse_args(f"--{option} {Path(__file__).parent}".split())
 
-    assert isinstance(getattr(args, option), str)
-    assert Path(getattr(args, option)).is_dir()
+    d = getattr(args, option)
+    assert isinstance(d, list)
+
+    d = d[0]
+    assert isinstance(d, str)
+    assert Path(d).is_dir()
 
 
 @pytest.mark.parametrize("value", ["cpu", "cpu:0"])

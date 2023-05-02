@@ -27,7 +27,7 @@ from ..exlibs.xitorch import EditableModule, LinearOperator
 from ..exlibs.xitorch import linalg as xtl
 from ..exlibs.xitorch import optimize as xto
 from ..interaction import InteractionList
-from ..utils import SCFConvergenceError, real_atoms
+from ..utils import SCFConvergenceError, SCFConvergenceWarning, real_atoms
 from ..wavefunction import filling, mulliken
 from .guess import get_guess
 from .mixer import Anderson, Broyden, Simple
@@ -117,8 +117,8 @@ class SelfConsistentField(EditableModule):
             self.evals = torch.zeros_like(self.n0)
             self.evecs = torch.zeros_like(self.hcore)
 
-            self.old_energy = torch.zeros_like(self.energy)
             self.old_charges = torch.zeros_like(self.energy)
+            self.old_energy = torch.zeros_like(self.numbers)
             self.old_density = torch.zeros_like(self.density)
 
         def reset(self) -> None:
@@ -138,6 +138,10 @@ class SelfConsistentField(EditableModule):
             self.n0 = self.n0[onedim]
             self.ihelp.cull(conv, slicers=slicers)
             self.cache.cull(conv, slicers=slicers)
+
+            self.old_charges = self.old_charges[onedim]
+            self.old_energy = self.old_energy[onedim]
+            self.old_density = self.old_density[twodim]
 
     _data: _Data
     """Persistent data"""
@@ -178,6 +182,7 @@ class SelfConsistentField(EditableModule):
         self.use_potential = kwargs.pop("use_potential", defaults.USE_POTENTIAL)
         self.bck_options = {"posdef": True, **kwargs.pop("bck_options", {})}
         self.fwd_options = {
+            "force_convergence": False,
             "method": "broyden1",
             "alpha": -0.5,
             "f_tol": defaults.XITORCH_FATOL,
@@ -263,7 +268,7 @@ class SelfConsistentField(EditableModule):
         }
 
     def scf(self, charges: Tensor) -> Tensor:
-        if self.scf_options["verbosity"] > 0 and charges.ndim < 2:
+        if self.scf_options["verbosity"] > 0:
             print(
                 f"\n{'iter':<5} {'energy':<24} {'energy change':<15}"
                 f"{'P norm change':<15} {'charge change':<15}"
@@ -276,8 +281,6 @@ class SelfConsistentField(EditableModule):
 
         mixer = self.scf_options["mixer"]
         maxiter = self.fwd_options["maxiter"]
-
-        print(mixer)
 
         # broyden does not work with culling
         if isinstance(mixer, Broyden) or mixer == "broyden":
@@ -294,7 +297,6 @@ class SelfConsistentField(EditableModule):
                 if mixer.casefold() not in mixers:
                     raise ValueError(f"Unknown mixer '{mixer}'.")
                 mixer = mixers[mixer.casefold()](self.fwd_options)
-
             # single-system (non-batched) case, which does not require culling
             if not self.batched:
                 for _ in range(maxiter):
@@ -306,7 +308,17 @@ class SelfConsistentField(EditableModule):
                         break
 
                 else:
-                    raise SCFConvergenceError(maxiter, mixer)
+                    msg = (
+                        f"\nSCF does not converge after {maxiter} cycles using "
+                        f"{mixer.label} mixing with a damping factor of "
+                        f"{mixer.options['damp']}."
+                    )
+                    if self.fwd_options["force_convergence"]:
+                        raise SCFConvergenceError(msg)
+
+                    # only issue warning, return anyway
+                    warnings.warn(msg, SCFConvergenceWarning)
+                    q_converged = q
 
             # batched SCF with culling
             else:
@@ -337,6 +349,7 @@ class SelfConsistentField(EditableModule):
 
                     conv = mixer.converged
                     if conv.any():
+                        print(conv)
                         # Simultaneous convergence does not require culling.
                         # Occurs if batch size equals amount of True in `conv`.
                         if charges.shape[0] == conv.count_nonzero():
@@ -385,7 +398,20 @@ class SelfConsistentField(EditableModule):
                         mixer.cull(conv, slicers=slicers)
 
                 else:
-                    raise SCFConvergenceError(maxiter, mixer)
+                    msg = (
+                        f"\nSCF does not converge after {maxiter} cycles using "
+                        f"{mixer.label} mixing with a damping factor of "
+                        f"{mixer.options['damp']}."
+                    )
+                    if self.fwd_options["force_convergence"]:
+                        raise SCFConvergenceError(msg)
+
+                    # only issue warning, return anyway
+                    warnings.warn(msg, SCFConvergenceWarning)
+                    if not mixer.converged.any():
+                        q_converged = q
+                    else:
+                        pass
 
                 if culled:
                     # write converged variables back to `self._data` for final
@@ -406,7 +432,7 @@ class SelfConsistentField(EditableModule):
                     self._data.ihelp.restore()
                     self._data.cache.restore()
 
-        if self.scf_options["verbosity"] > 0 and charges.ndim < 2:
+        if self.scf_options["verbosity"] > 0:
             print(77 * "-")
 
         return (
@@ -545,6 +571,25 @@ class SelfConsistentField(EditableModule):
                 print(
                     f"{self._data.iter:3}   {energy: .16E}  {ediff: .6E} "
                     f"{pnorm: .6E}   {qdiff: .6E}"
+                )
+
+                self._data.old_energy = energy
+                self._data.old_charges = q
+                self._data.old_density = density
+                self._data.iter += 1
+            else:
+                energy = self.get_energy(charges).detach().clone()
+                ediff = torch.linalg.norm(self._data.old_energy - energy)
+
+                density = self._data.density.detach().clone()
+                pnorm = torch.linalg.norm(self._data.old_density - density)
+
+                q = charges.detach().clone()
+                qdiff = torch.linalg.norm(self._data.old_charges - q)
+
+                print(
+                    f"{self._data.iter:3}   {energy.sum(): .16E}  {ediff: .6E} "
+                    f"{qdiff: .6E}"
                 )
 
                 self._data.old_energy = energy

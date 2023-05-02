@@ -29,13 +29,15 @@ class ToleranceWarning(UserWarning):
 
 
 class SCFConvergenceError(RuntimeError):
-    def __init__(self, maxiter, mixer) -> None:
-        self.message = (
-            f"\n[Fatal] SCF does not converge after {maxiter} cycles using "
-            f"{mixer.label} mixing with a damping factor of "
-            f"{mixer.options['damp']}."
-        )
+    def __init__(self, msg) -> None:
+        self.message = msg
         super().__init__(self.message)
+
+
+class SCFConvergenceWarning(RuntimeWarning):
+    """
+    Warning for failed SCF convergence.
+    """
 
 
 class IntegralTransformError(ValueError):

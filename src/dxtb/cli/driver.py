@@ -10,7 +10,7 @@ import torch
 
 from .. import io
 from ..constants import defaults
-from ..utils import Timers
+from ..utils import Timers, batch
 from ..xtb import Calculator, Result
 
 FILES = {"spin": ".UHF", "chrg": ".CHRG"}
@@ -23,11 +23,12 @@ class Driver:
 
     def __init__(self, args: Namespace) -> None:
         self.args = args
+        self.batched = True
         self.base = self._set_base()
         self.chrg = self._set_attr("chrg")
         self.spin = self._set_attr("spin")
 
-    def _set_base(self) -> Path:
+    def _set_base(self) -> list[Path]:
         """
         Set the base path from `args.file`.
 
@@ -36,21 +37,32 @@ class Driver:
         Path
             Parent directory of given coordinate file.
         """
-        return Path(self.args.file).resolve().parent
+        return [Path(f).resolve().parent for f in self.args.file]
 
-    def _set_attr(self, attr: str) -> int:
+    def _set_attr(self, attr: str) -> int | list[int]:
         # set charge to input from Namespace
         val = getattr(self.args, attr)
 
-        # only search for file if not specified
-        if val is None:
-            # use charge (or spin) from file or set to zero
-            if Path(self.base, FILES[attr]).is_file():
-                val = io.read_chrg(Path(self.base, FILES[attr]))
-            else:
-                val = 0
+        if isinstance(val, list):
+            raise NotImplementedError("Setting charges as list not working.")
 
-        return val
+        # only search for file if not specified
+        if val is not None:
+            return val
+
+        vals = []
+        for path in self.base:
+            # use charge (or spin) from file or set to zero
+            if Path(path, FILES[attr]).is_file():
+                vals.append(io.read_chrg(Path(path, FILES[attr])))
+            else:
+                vals.append(0)
+
+        # do not return list if only one system is considered
+        if len(vals) == 1:
+            vals = vals[0]
+
+        return vals
 
     def singlepoint(self) -> Result:
         args = self.args
@@ -78,9 +90,20 @@ class Driver:
             "xitorch_fatol": defaults.XITORCH_XATOL,
         }
 
-        _numbers, _positions = io.read_structure_from_file(args.file)
-        numbers = torch.tensor(_numbers, dtype=torch.long, device=dd["device"])
-        positions = torch.tensor(_positions, **dd)
+        if len(self.args.file) > 1:
+            _n = []
+            _p = []
+            for f in self.args.file:
+                n, p = io.read_structure_from_file(f)
+                _n.append(torch.tensor(n, dtype=torch.long, device=dd["device"]))
+                _p.append(torch.tensor(p, **dd))
+            numbers = batch.pack(_n)
+            positions = batch.pack(_p)
+        else:
+            _n, _p = io.read_structure_from_file(args.file[0])
+            numbers = torch.tensor(_n, dtype=torch.long, device=dd["device"])
+            positions = torch.tensor(_p, **dd)
+
         chrg = torch.tensor(self.chrg, **dd)
 
         if args.grad is True:

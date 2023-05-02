@@ -81,7 +81,7 @@ def entry_point_wrapper(argv: Sequence[str] | None = None) -> int:
         print(f"dxtb {__version__}")
         raise SystemExit(0)
 
-    if args.file is None:
+    if args.file is None or len(args.file) == 0:
         print("No coordinate file given.")
         raise SystemExit(1)
 
