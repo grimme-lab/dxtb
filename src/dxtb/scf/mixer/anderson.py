@@ -230,7 +230,8 @@ class Anderson(Mixer):
             # vectors by adding 1 + offset^2 to the diagonals of "a", see
             # equation 8.2 (Eyert)
             if self.diagonal_offset is not None:
-                a += a.new_ones(a.shape).fill_diagonal_(1 + self.diagonal_offset**2)
+                eye = torch.eye(a.shape[-1], device=x_new.device)
+                a *= torch.where(eye != 0, eye + self.diagonal_offset**2, 1)
 
             # Solve for the coefficients. As torch.solve cannot solve for 1D
             # tensors a blank dimension must be added
