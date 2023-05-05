@@ -23,12 +23,13 @@ import torch
 
 from .._types import Any, Tensor
 from ..basis import IndexHelper
+from ..constants import defaults
 from ..exlibs.xitorch import optimize as xto
 from ..interaction import InteractionList
 from ..utils import SCFConvergenceError, SCFConvergenceWarning
 from .base import BaseSelfConsistentField
 from .guess import get_guess
-from .mixer import Anderson, Broyden, Simple
+from .mixer import Anderson, Simple
 
 
 class SelfConsistentField(BaseSelfConsistentField):
@@ -44,19 +45,27 @@ class SelfConsistentField(BaseSelfConsistentField):
     """
 
     def scf(self, guess: Tensor) -> Tensor:
+        fcn = self.iterate_potential if self.use_potential else self.iterate_charges
+
         q_converged = xto.equilibrium(
-            fcn=(
-                self.iterate_potential if self.use_potential else self.iterate_charges
-            ),
+            fcn=fcn,
             y0=guess,
             bck_options={**self.bck_options},
             **self.fwd_options,
         )
 
+        # To reconnecting the H0 energy with the computational graph, we
+        # compute one extra SCF cycle with strong damping.
+        # (see https://github.com/grimme-lab/xtbML/issues/124)
+        if not self.use_potential:
+            mixer = Simple({**self.fwd_options, "damp": 1e-4})
+            q_new = fcn(q_converged)
+            q_converged = mixer.iter(q_new, q_converged)
+
         return (
             self.potential_to_charges(q_converged)
             if self.use_potential
-            else q_converged  # TODO: extra SCF step with simple mixing if gradient
+            else q_converged
         )
 
 
@@ -234,6 +243,7 @@ class SelfConsistentFieldSingleShot(SelfConsistentFieldFull):
     self-consistent solution for a given Hamiltonian.
 
     .. warning:
+
         Do not use in production. The gradients of the single-shot method
         are not exact (derivative w.r.t. the input features is missing).
 
@@ -344,38 +354,11 @@ def solve(
     """
     charges = get_guess(numbers, positions, chrg, ihelp, guess)
 
-    mixer = kwargs["scf_options"].get("mixer", "broyden")
-    if isinstance(mixer, Broyden) or mixer == "broyden":
-        scf = SelfConsistentField
-    else:
+    if kwargs["scf_options"].pop("full_tracking", defaults.FULL_TRACKING):
         scf = SelfConsistentFieldFull
+    else:
+        scf = SelfConsistentField
 
     return scf(
         interactions, *args, numbers=numbers, ihelp=ihelp, cache=cache, **kwargs
     )(charges)
-
-
-def get_density(coeffs: Tensor, occ: Tensor, emo: Tensor | None = None) -> Tensor:
-    """
-    Calculate the density matrix from the coefficient vector and the occupation.
-
-    Parameters
-    ----------
-    evecs : Tensor
-        _description_
-    occ : Tensor
-        Occupation numbers (diagonal matrix).
-    emo : Tensor | None, optional
-        Orbital energies for energy weighted density matrix. Defaults to `None`.
-
-    Returns
-    -------
-    Tensor
-        (Energy-weighted) Density matrix.
-    """
-    return torch.einsum(
-        "...ik,...k,...jk->...ij",
-        coeffs,
-        occ if emo is None else occ * emo,
-        coeffs,  # transposed
-    )

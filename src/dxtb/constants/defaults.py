@@ -60,6 +60,12 @@ MIXER = "broyden"
 MIXER_CHOICES = ["anderson", "broyden", "simple"]
 """List of possible choices for `MIXER`."""
 
+FULL_TRACKING = False
+"""
+Whether to use full gradient tracking in SCF or make use of the implicit
+function theorem as provided by `xitorch.optimize.equilibrium`.
+"""
+
 VERBOSITY = 1
 """Verbosity of printout."""
 

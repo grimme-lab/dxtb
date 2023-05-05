@@ -311,6 +311,11 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         help="R|Damping factor for mixing in SCF iterations.",
     )
     p.add_argument(
+        "--full-tracking",
+        action="store_true",
+        help="R|Use full gradient tracking in SCF iterations.",
+    )
+    p.add_argument(
         "-v",
         "--verbosity",
         type=int,

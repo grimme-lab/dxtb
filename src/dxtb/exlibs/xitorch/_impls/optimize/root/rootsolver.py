@@ -147,7 +147,7 @@ def _nonlin_solver(
             )
         else:
             s = 0.95  # modified!!
-            xnew = x + 1 * dx
+            xnew = x + s * dx
             ynew = func(xnew)
             y_norm_new = ynew.norm()
 

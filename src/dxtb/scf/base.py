@@ -16,7 +16,6 @@ from ..exlibs.xitorch import linalg as xtl
 from ..interaction import InteractionList
 from ..utils import real_atoms
 from ..wavefunction import filling, mulliken
-from .iterator import get_density
 
 
 class BaseSelfConsistentField(EditableModule):
@@ -28,7 +27,7 @@ class BaseSelfConsistentField(EditableModule):
     convergence.
     """
 
-    class Data:
+    class _Data:
         """
         Restart data for the singlepoint calculation.
         """
@@ -132,7 +131,7 @@ class BaseSelfConsistentField(EditableModule):
             self.old_energy = self.old_energy[onedim]
             self.old_density = self.old_density[twodim]
 
-    _data: Data
+    _data: _Data
     """Persistent data"""
 
     interactions: InteractionList
@@ -188,7 +187,7 @@ class BaseSelfConsistentField(EditableModule):
 
         self.scf_options = {**kwargs.pop("scf_options", {})}
 
-        self._data = self.Data(*args, **kwargs)
+        self._data = self._Data(*args, **kwargs)
 
         self.kt = self._data.hcore.new_tensor(
             self.scf_options.get("etemp", defaults.ETEMP) * K2AU
@@ -354,6 +353,45 @@ class BaseSelfConsistentField(EditableModule):
         Tensor
             New orbital-resolved partial charges vector.
         """
+        if self.scf_options["verbosity"] > 0:
+            if charges.ndim < 2:  # pragma: no cover
+                energy = self.get_energy(charges).sum(-1).detach().clone()
+                ediff = torch.linalg.vector_norm(self._data.old_energy - energy)
+
+                density = self._data.density.detach().clone()
+                pnorm = torch.linalg.matrix_norm(self._data.old_density - density)
+
+                q = charges.detach().clone()
+                qdiff = torch.linalg.vector_norm(self._data.old_charges - q)
+
+                print(
+                    f"{self._data.iter:3}   {energy: .16E}  {ediff: .6E} "
+                    f"{pnorm: .6E}   {qdiff: .6E}"
+                )
+
+                self._data.old_energy = energy
+                self._data.old_charges = q
+                self._data.old_density = density
+                self._data.iter += 1
+            else:
+                energy = self.get_energy(charges).detach().clone()
+                ediff = torch.linalg.norm(self._data.old_energy - energy)
+
+                density = self._data.density.detach().clone()
+                pnorm = torch.linalg.norm(self._data.old_density - density)
+
+                q = charges.detach().clone()
+                qdiff = torch.linalg.norm(self._data.old_charges - q)
+
+                print(
+                    f"{self._data.iter:3}   {energy.sum(): .16E}  {ediff: .6E} "
+                    f"{qdiff: .6E}"
+                )
+
+                self._data.old_energy = energy
+                self._data.old_charges = q
+                self._data.old_density = density
+                self._data.iter += 1
 
         if self.fwd_options["verbose"] > 1:  # pragma: no cover
             print(f"energy: {self.get_energy(charges).sum(-1)}")
@@ -694,3 +732,29 @@ class BaseSelfConsistentField(EditableModule):
             return []
 
         raise KeyError(f"Method '{methodname}' has no paramnames set")
+
+
+def get_density(coeffs: Tensor, occ: Tensor, emo: Tensor | None = None) -> Tensor:
+    """
+    Calculate the density matrix from the coefficient vector and the occupation.
+
+    Parameters
+    ----------
+    evecs : Tensor
+        _description_
+    occ : Tensor
+        Occupation numbers (diagonal matrix).
+    emo : Tensor | None, optional
+        Orbital energies for energy weighted density matrix. Defaults to `None`.
+
+    Returns
+    -------
+    Tensor
+        (Energy-weighted) Density matrix.
+    """
+    return torch.einsum(
+        "...ik,...k,...jk->...ij",
+        coeffs,
+        occ if emo is None else occ * emo,
+        coeffs,  # transposed
+    )
