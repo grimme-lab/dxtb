@@ -218,7 +218,8 @@ class BaseSelfConsistentField(EditableModule):
         Parameters
         ----------
         charges : Tensor, optional
-            Initial orbital charges vector.
+            Initial orbital charges vector. If `None` is given (default), a
+            zeros vector is used.
 
         Returns
         -------
