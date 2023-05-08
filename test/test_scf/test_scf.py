@@ -42,9 +42,9 @@ def test_single(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize(
     "name", ["PbH4-BiH3", "C6H5I-CH3SH", "MB16_43_01", "LYS_xao", "C60"]
 )
-@pytest.mark.parametrize("mixer", ["anderson", "simple"])
-def test_single2(dtype: torch.dtype, name: str, mixer: str):
-    """Test a few larger system (only float32 as they take some time)."""
+@pytest.mark.parametrize("mixer", ["anderson", "broyden", "simple"])
+def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
+    """Test a few larger system."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
 
@@ -75,7 +75,7 @@ def test_single2(dtype: torch.dtype, name: str, mixer: str):
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float])
 @pytest.mark.parametrize("name", ["S2", "LYS_xao_dist"])
-def test_single3(dtype: torch.dtype, name: str):
+def test_single_difficult(dtype: torch.dtype, name: str):
     """Test a few larger system (only float32 within tolerance)."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
