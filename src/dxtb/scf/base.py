@@ -124,6 +124,7 @@ class BaseSelfConsistentField(EditableModule):
             self.occupation = self.occupation[twodim]
             self.evecs = self.evecs[twodim]
             self.evals = self.evals[onedim]
+            self.energy = self.energy[onedim]
             self.n0 = self.n0[onedim]
             self.ihelp.cull(conv, slicers=slicers)
             self.cache.cull(conv, slicers=slicers)

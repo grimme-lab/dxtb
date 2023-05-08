@@ -250,7 +250,20 @@ class SelfConsistentFieldFull(BaseSelfConsistentField):
 
             if culled:
                 # write converged variables back to `self._data` for final
-                # energy evaluation
+                # energy evaluation; if we continue with unconverged properties,
+                # we first need to write the unconverged values from the
+                # `_data` object back to the converged variable before saving it
+                # for the final energy evaluation
+                if not converged.all():
+                    idxs = torch.arange(guess.size(0))
+                    iconv = idxs[~converged]
+
+                    cevals[iconv, :] = self._data.evals
+                    cevecs[iconv, :, :] = self._data.evecs
+                    ce[iconv, :] = self._data.energy
+                    ch[iconv, :, :] = self._data.hamiltonian
+                    co[iconv, :, :] = self._data.occupation
+
                 self._data.evals = cevals
                 self._data.evecs = cevecs
                 self._data.energy = ce
