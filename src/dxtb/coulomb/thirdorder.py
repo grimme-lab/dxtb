@@ -37,7 +37,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Tensor, TensorLike
+from .._types import Slicers, Tensor, TensorLike
 from ..basis import IndexHelper
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
@@ -92,11 +92,12 @@ class ES3(Interaction):
             def __init__(self, hd: Tensor) -> None:
                 self.hd = hd
 
-        def cull(self, conv: Tensor, slicers: list[slice]) -> None:
+        def cull(self, conv: Tensor, slicers: Slicers) -> None:
             if self.__store is None:
                 self.__store = self.Store(self.hd)
 
-            self.hd = self.hd[[~conv, *slicers]]
+            slicer = slicers["atom"]
+            self.hd = self.hd[[~conv, *slicer]]
 
         def restore(self) -> None:
             if self.__store is None:

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Tensor, TensorLike
+from .._types import Slicers, Tensor, TensorLike
 from ..utils import batch, t2int, wrap_gather, wrap_scatter_reduce
 
 __all__ = ["IndexHelper"]
@@ -600,7 +600,7 @@ class IndexHelper(TensorLike):
             self.orbital_index = orbital_index
             self.orbitals_to_shell = orbitals_to_shell
 
-    def cull(self, conv: Tensor, slicers) -> None:
+    def cull(self, conv: Tensor, slicers: Slicers) -> None:
         if self.batched is False:
             raise RuntimeError("Culling only possible in batch mode.")
 
@@ -619,17 +619,19 @@ class IndexHelper(TensorLike):
                 orbitals_to_shell=self.orbitals_to_shell,
             )
 
-        onedim = [~conv, *slicers]
+        at = [~conv, *slicers["atom"]]
+        sh = [~conv, *slicers["shell"]]
+        orb = [~conv, *slicers["orbital"]]
 
-        self.angular = self.angular[onedim]
-        self.atom_to_unique = self.atom_to_unique[onedim]
-        self.shells_to_ushell = self.shells_to_ushell[onedim]
-        self.shells_per_atom = self.shells_per_atom[onedim]
-        self.shell_index = self.shell_index[onedim]
-        self.shells_to_atom = self.shells_to_atom[onedim]
-        self.orbitals_per_shell = self.orbitals_per_shell[onedim]
-        self.orbital_index = self.orbital_index[onedim]
-        self.orbitals_to_shell = self.orbitals_to_shell[onedim]
+        self.angular = self.angular[sh]
+        self.atom_to_unique = self.atom_to_unique[at]
+        self.shell_index = self.shell_index[at]
+        self.shells_per_atom = self.shells_per_atom[at]
+        self.shells_to_ushell = self.shells_to_ushell[sh]
+        self.shells_to_atom = self.shells_to_atom[sh]
+        self.orbitals_per_shell = self.orbitals_per_shell[sh]
+        self.orbital_index = self.orbital_index[sh]
+        self.orbitals_to_shell = self.orbitals_to_shell[orb]
 
     def restore(self) -> None:
         if self.store is None:

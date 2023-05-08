@@ -21,7 +21,7 @@ from math import sqrt
 
 import torch
 
-from .._types import Any, Tensor
+from .._types import Any, Slicers, Tensor
 from ..basis import IndexHelper
 from ..constants import defaults
 from ..exlibs.xitorch import optimize as xto
@@ -29,7 +29,7 @@ from ..interaction import InteractionList
 from ..utils import SCFConvergenceError, SCFConvergenceWarning
 from .base import BaseSelfConsistentField
 from .guess import get_guess
-from .mixer import Anderson, Simple
+from .mixer import Anderson, Mixer, Simple
 
 
 class SelfConsistentField(BaseSelfConsistentField):
@@ -56,6 +56,7 @@ class SelfConsistentField(BaseSelfConsistentField):
 
         # To reconnecting the H0 energy with the computational graph, we
         # compute one extra SCF cycle with strong damping.
+        # Note that this is not required for SCF with full gradient tracking.
         # (see https://github.com/grimme-lab/xtbML/issues/124)
         if not self.use_potential:
             mixer = Simple({**self.fwd_options, "damp": 1e-4})
@@ -94,7 +95,7 @@ class SelfConsistentFieldFull(BaseSelfConsistentField):
             mixers = {"anderson": Anderson, "simple": Simple}
             if mixer.casefold() not in mixers:
                 raise ValueError(f"Unknown mixer '{mixer}'.")
-            mixer = mixers[mixer.casefold()](self.fwd_options)
+            mixer: Mixer = mixers[mixer.casefold()](self.fwd_options)
 
         q = guess
 
@@ -137,12 +138,18 @@ class SelfConsistentFieldFull(BaseSelfConsistentField):
             overlap = self._data.overlap
             n0 = self._data.n0
             hcore = self._data.hcore
+            numbers = self._data.numbers
 
             # indices for systems in batch, required for culling
             idxs = torch.arange(guess.size(0))
 
+            # tracker for converged systems
+            converged = torch.full(idxs.shape, False)
+
             # maximum number of orbitals in batch
-            norb = self._data.hcore.shape[-1]
+            norb = self._data.ihelp.nao
+            nsh = self._data.ihelp.nsh
+            nat = self._data.ihelp.nat
 
             for _ in range(maxiter):
                 q_new = fcn(q)
@@ -154,6 +161,7 @@ class SelfConsistentFieldFull(BaseSelfConsistentField):
                     # Occurs if batch size equals amount of True in `conv`.
                     if guess.shape[0] == conv.count_nonzero():
                         q_converged = q
+                        converged[:] = True
                         culled = False
                         break
 
@@ -166,24 +174,39 @@ class SelfConsistentFieldFull(BaseSelfConsistentField):
                     ce[iconv, :norb] = self._data.energy[conv, :]
                     co[iconv, :norb, :norb] = self._data.occupation[conv, :, :]
 
+                    # update convergence tracker
+                    converged[iconv] = True
+
                     # end SCF if all systems are converged
                     if conv.all():
                         break
 
-                    # cull `orbitals_per_shell` to calculate maximum number
-                    # of orbitals, which corresponds to the maximum padding
+                    # cull `orbitals_per_shell` (`shells_per_atom`) to
+                    # calculate maximum number of orbitals (shells), which
+                    # corresponds to the maximum padding
                     norb_new = (
                         self._data.ihelp.orbitals_per_shell[~conv, ...].sum(-1).max()
                     )
+                    nsh_new = self._data.ihelp.shells_per_atom[~conv, ...].sum(-1).max()
+                    nat_new = self._data.numbers[~conv, ...].count_nonzero(dim=-1).max()
 
                     # if the largest system was culled from batch, cut the
                     # properties down to the new size to remove superfluous
                     # padding values
+                    slicers: Slicers = {
+                        "orbital": (...,),
+                        "shell": (...,),
+                        "atom": (...,),
+                    }
                     if norb != norb_new:
-                        slicers = [slice(0, i) for i in [norb_new]]
+                        slicers["orbital"] = [slice(0, i) for i in [norb_new]]
                         norb = norb_new
-                    else:
-                        slicers = (...,)
+                    if nsh != nsh_new:
+                        slicers["shell"] = [slice(0, i) for i in [nsh_new]]
+                        nsh = nsh_new
+                    if nat != nat_new:
+                        slicers["atom"] = [slice(0, i) for i in [nat_new]]
+                        nat = nat_new
 
                     # cull SCF variables
                     self._data.cull(conv, slicers=slicers)
@@ -192,24 +215,38 @@ class SelfConsistentFieldFull(BaseSelfConsistentField):
                     q = q[~conv, :norb]
                     idxs = idxs[~conv]
 
-                    # cull mixer
-                    mixer.cull(conv, slicers=slicers)
+                    # cull mixer (only contains orbital resolved properties)
+                    mixer.cull(conv, slicers=slicers["orbital"])
 
+            # handle unconverged case (`maxiter` iterations)
             else:
                 msg = (
-                    f"\nSCF does not converge after {maxiter} cycles using "
-                    f"{mixer.label} mixing with a damping factor of "
-                    f"{mixer.options['damp']}."
+                    f"\nSCF does not converge after '{maxiter}' cycles using "
+                    f"'{mixer.label}' mixing with a damping factor of "
+                    f"'{mixer.options['damp']}'."
                 )
                 if self.fwd_options["force_convergence"]:
                     raise SCFConvergenceError(msg)
 
-                # only issue warning, return anyway
-                warnings.warn(msg, SCFConvergenceWarning)
-                if not mixer.converged.any():
-                    q_converged = q
-                else:
-                    pass
+                # collect unconverged indices with convergence tracker; charges
+                # are already culled, and hence, require no further indexing
+                idxs = torch.arange(guess.size(0))
+                iconv = idxs[~converged]
+                q_converged[iconv, :] = q
+
+                # if nothing converged, skip culling
+                if (~converged).all():
+                    culled = False
+
+                # at least issue a helpful warning
+                msg_converged = (
+                    "\nForced convergence is turned off. The calculation will "
+                    "continue with the current unconverged charges."
+                    f"\nIn total, {len(iconv)} systems did not converge "
+                    f"({iconv.tolist()}), and {len(idxs[converged])} converged "
+                    f"({idxs[converged].tolist()})."
+                )
+                warnings.warn(msg + msg_converged, SCFConvergenceWarning)
 
             if culled:
                 # write converged variables back to `self._data` for final
@@ -225,6 +262,7 @@ class SelfConsistentFieldFull(BaseSelfConsistentField):
                 self._data.n0 = n0
                 self._data.hcore = hcore
                 self._data.overlap = overlap
+                self._data.numbers = numbers
 
                 # reset IndexHelper and caches which were culled as well
                 self._data.ihelp.restore()

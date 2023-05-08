@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Slicer, Tensor
+from .._types import Slicers, Tensor
 from ..basis import IndexHelper
 from .base import Interaction
 
@@ -22,7 +22,7 @@ class InteractionList(Interaction):
 
         __slots__ = ()
 
-        def cull(self, conv: Tensor, slicers: Slicer) -> None:
+        def cull(self, conv: Tensor, slicers: Slicers) -> None:
             """
             Cull all interaction caches.
 

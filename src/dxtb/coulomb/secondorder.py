@@ -40,7 +40,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Slicer, Tensor, TensorLike
+from .._types import Slicers, Tensor, TensorLike
 from ..basis import IndexHelper
 from ..constants import xtb
 from ..interaction import Interaction
@@ -90,11 +90,15 @@ class ES2(Interaction):
         mat: Tensor
         """Coulomb matrix."""
 
-        __slots__ = ["__store", "mat"]
+        shell_resolved: bool
+        """Electrostatics is shell-resolved (default: `True`)."""
+
+        __slots__ = ["__store", "mat", "shell_resolved"]
 
         def __init__(
             self,
             mat: Tensor,
+            shell_resolved: bool = True,
             device: torch.device | None = None,
             dtype: torch.dtype | None = None,
         ) -> None:
@@ -103,6 +107,7 @@ class ES2(Interaction):
                 dtype=dtype if dtype is None else mat.dtype,
             )
             self.mat = mat
+            self.shell_resolved = shell_resolved
             self.__store = None
 
         class Store:
@@ -116,11 +121,12 @@ class ES2(Interaction):
             def __init__(self, mat: Tensor) -> None:
                 self.mat = mat
 
-        def cull(self, conv: Tensor, slicers: Slicer) -> None:
+        def cull(self, conv: Tensor, slicers: Slicers) -> None:
             if self.__store is None:
                 self.__store = self.Store(self.mat)
 
-            self.mat = self.mat[[~conv, *slicers, *slicers]]
+            slicer = slicers["shell"] if self.shell_resolved else slicers["atom"]
+            self.mat = self.mat[[~conv, *slicer, *slicer]]
 
         def restore(self) -> None:
             if self.__store is None:
@@ -180,7 +186,8 @@ class ES2(Interaction):
         return self.Cache(
             self.get_shell_coulomb_matrix(numbers, positions, ihelp)
             if self.shell_resolved
-            else self.get_atom_coulomb_matrix(numbers, positions, ihelp)
+            else self.get_atom_coulomb_matrix(numbers, positions, ihelp),
+            shell_resolved=self.shell_resolved,
         )
 
     def get_atom_coulomb_matrix(

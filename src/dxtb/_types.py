@@ -79,8 +79,21 @@ else:
     )
 
 
+class Slicers(TypedDict):
+    """Collection of slicers of different resolutions for culling in SCF."""
+
+    orbital: Slicer
+    """Slicer for orbital-resolved variables."""
+    shell: Slicer
+    """Slicer for shell-resolved variables."""
+    atom: Slicer
+    """Slicer for atom-resolved variables."""
+
+
 class Molecule(TypedDict):
-    """Representation of fundamental molecular structure (atom types and postions)."""
+    """
+    Representation of fundamental molecular structure (atom types and postions).
+    """
 
     numbers: Tensor
     """Tensor of atomic numbers"""

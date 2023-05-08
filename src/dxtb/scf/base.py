@@ -8,7 +8,7 @@ from abc import abstractmethod
 
 import torch
 
-from .._types import Any, Tensor
+from .._types import Any, Slicers, Tensor
 from ..basis import IndexHelper
 from ..constants import K2AU, defaults
 from ..exlibs.xitorch import EditableModule, LinearOperator
@@ -113,10 +113,11 @@ class BaseSelfConsistentField(EditableModule):
             self.iter = 0
             self.init_zeros()
 
-        def cull(self, conv: Tensor, slicers) -> None:
-            onedim = [~conv, *slicers]
-            twodim = [~conv, *slicers, *slicers]
+        def cull(self, conv: Tensor, slicers: Slicers) -> None:
+            onedim = [~conv, *slicers["orbital"]]
+            twodim = [~conv, *slicers["orbital"], *slicers["orbital"]]
 
+            self.numbers = self.numbers[[~conv, *slicers["atom"]]]
             self.overlap = self.overlap[twodim]
             self.hamiltonian = self.hamiltonian[twodim]
             self.hcore = self.hcore[twodim]
