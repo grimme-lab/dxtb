@@ -325,6 +325,7 @@ class SelfConsistentFieldSingleShot(SelfConsistentFieldFull):
         if charges is None:
             charges = torch.zeros_like(self._data.occupation)
 
+        # calculate charges in SCF without gradient tracking  
         with torch.no_grad():
             q_conv = self.scf(charges)
 
