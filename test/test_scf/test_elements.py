@@ -442,7 +442,7 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
 
 
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("number", [1, 2, 10, 25, 50, 86])
+@pytest.mark.parametrize("number", [1, 2, 10, 25, 26, 50, 86])
 @pytest.mark.parametrize("mol", ["SiH4"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:

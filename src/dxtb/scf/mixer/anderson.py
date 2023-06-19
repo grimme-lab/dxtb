@@ -85,7 +85,7 @@ class Anderson(Mixer):
     generations: int
     """
     Number of generations to use during mixing.
-    Defaults to 5 as suggest by [Eyert]_.
+    Defaults to 5 as suggested by [Eyert]_.
     """
 
     def __init__(self, options: dict[str, Any] | None = None):
@@ -289,7 +289,7 @@ class Anderson(Mixer):
 
     def cull(self, conv: Tensor, slicers: Slicer = (...,)) -> None:
         """
-        Purge select systems form the mixer.
+        Purge selected systems from the mixer.
 
         This is useful when a subset of systems have converged during mixing.
 
@@ -302,10 +302,6 @@ class Anderson(Mixer):
             New anticipated size of future inputs excluding the batch
             dimension. This is used to allow superfluous padding values to
             be removed form subsequent inputs. Defaults to `(...,)`.
-
-        Warning
-        -------
-        The current size only works for 2D batch system.
         """
         if (
             self._shape_out is None
@@ -325,7 +321,7 @@ class Anderson(Mixer):
             shape = [t2int(tmp)]
 
         # Length of flattened arrays after factoring in the new
-        l = t2int(torch.prod(torch.tensor(shape)))
+        l = t2int(torch.prod(torch.tensor(shape, device=self._x_hist.device)))
 
         # Invert the cull_list, gather & reassign self._delta self._x_hist &
         # self._f so only those marked False remain.
@@ -335,13 +331,14 @@ class Anderson(Mixer):
         self._x_hist = self._x_hist[:, notconv, :l]
 
         # Adjust the the shapes accordingly
-        self._shape_in[0] -= list(conv).count(torch.tensor(True))
+        self._shape_in[0] -= list(conv).count(
+            torch.tensor(True, device=self._x_hist.device)
+        )
         self._shape_in[-1] = l
         self._shape_out = [self._shape_in[0], *shape]
 
     def reset(self):
         """Reset mixer to its initial state."""
-        # Reset all internal attributes.
         self.iter_step = 0
         self._x_hist = self._f = self._delta = None
         self._shape_in = self._shape_out = None
