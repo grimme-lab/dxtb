@@ -89,9 +89,10 @@ class Anderson(Mixer):
     """
 
     def __init__(self, options: dict[str, Any] | None = None):
+        opts = dict(default_opts)
         if options is not None:
-            default_opts.update(options)
-        super().__init__(default_opts)
+            opts.update(options)
+        super().__init__(opts)
 
         self.mix_param = self.options["damp"]
         self.generations = self.options["generations"]

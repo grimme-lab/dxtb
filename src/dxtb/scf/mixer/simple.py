@@ -12,18 +12,18 @@ default_opts = {"maxiter": 100, "damp": 0.3}
 
 class Simple(Mixer):
     """
-   """
-    A class that performs simple mixing, i.e. updates by damped difference during each step.
-    Inherits from the Mixer class.
+    Perform simple or linear mixing for root finding. In simple mixing, a
+    scalar Jacobian approximation is used, i.e., he damped differences are
+    updated during each step.
 
-    """
-
+    Inherits from the `Mixer` class.
     """
 
     def __init__(self, options: dict[str, Any] | None = None) -> None:
+        opts = dict(default_opts)
         if options is not None:
-            default_opts.update(options)
-        super().__init__(default_opts)
+            opts.update(options)
+        super().__init__(opts)
 
         # Holds the system from the previous iteration.
         self.x_old: Tensor | None = None

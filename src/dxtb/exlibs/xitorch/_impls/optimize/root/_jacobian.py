@@ -121,6 +121,7 @@ class BroydenSecond(BroydenFirst):
 class Anderson(Jacobian):
     """
     https://docs.scipy.org/doc/scipy/reference/optimize.root-anderson.html#optimize-root-anderson
+    https://github.com/scipy/scipy/blob/c634fb9c96edde5a800077a764e70d1ef72a4bd2/scipy/optimize/_nonlin.py#L982
 
     Could use some clean-up and vectorization.
     """
