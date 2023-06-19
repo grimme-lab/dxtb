@@ -32,4 +32,4 @@ class Broyden(Mixer):
         super().__init__(default_opts)
 
     def iter(self):
-        pass
+        raise NotImplementedError

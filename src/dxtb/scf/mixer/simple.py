@@ -12,7 +12,12 @@ default_opts = {"maxiter": 100, "damp": 0.3}
 
 class Simple(Mixer):
     """
-    Simple mixing.
+   """
+    A class that performs simple mixing, i.e. updates by damped difference during each step.
+    Inherits from the Mixer class.
+
+    """
+
     """
 
     def __init__(self, options: dict[str, Any] | None = None) -> None:
