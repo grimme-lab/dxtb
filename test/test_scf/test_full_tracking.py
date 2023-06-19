@@ -186,11 +186,12 @@ def batched_unconverged(
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
+    print(result.scf.sum(-1))
     assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
 
 
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.float])
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["H2"])
 @pytest.mark.parametrize("name2", ["LiH"])
 @pytest.mark.parametrize("name3", ["SiH4"])
@@ -201,16 +202,20 @@ def test_batch_unconverged_partly(
     dd = {"dtype": dtype}
 
     # only for regression testing (copied unconverged energies)
-    ref = torch.tensor(
-        [-1.058598518371582, -0.881345808506012, -4.027128219604492],
-        **dd,
-    )
+    ref = {
+        torch.float: torch.tensor(
+            [-1.058598518371582, -0.881345808506012, -4.027128219604492], **dd
+        ),
+        torch.double: torch.tensor(
+            [-1.058598403609326, -0.883023379304565, -4.037984174801687], **dd
+        ),
+    }[dtype]
 
     batched_unconverged(ref, dtype, name1, name2, name3, mixer, 1)
 
 
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.float])
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", ["LiH"])
 @pytest.mark.parametrize("name3", ["SiH4"])
@@ -221,10 +226,14 @@ def test_batch_unconverged_fully(
     dd = {"dtype": dtype}
 
     # only for regression testing (copied unconverged energies)
-    ref = torch.tensor(
-        [-0.882636666297913, -0.882636666297913, -4.036954402923584],
-        **dd,
-    )
+    ref = {
+        torch.float: torch.tensor(
+            [-0.882636666297913, -0.882636666297913, -4.036954402923584], **dd
+        ),
+        torch.double: torch.tensor(
+            [-0.883023379304565, -0.883023379304565, -4.037984174801687], **dd
+        ),
+    }[dtype]
 
     batched_unconverged(ref, dtype, name1, name2, name3, mixer, 1)
 
