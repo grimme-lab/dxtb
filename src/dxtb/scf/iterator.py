@@ -325,7 +325,7 @@ class SelfConsistentFieldSingleShot(SelfConsistentFieldFull):
         if charges is None:
             charges = torch.zeros_like(self._data.occupation)
 
-        # calculate charges in SCF without gradient tracking  
+        # calculate charges in SCF without gradient tracking
         with torch.no_grad():
             q_conv = self.scf(charges)
 
@@ -404,13 +404,17 @@ def solve(
     Tensor
         Orbital-resolved partial charges vector.
     """
-    charges = get_guess(numbers, positions, chrg, ihelp, guess)
-
-    if kwargs["scf_options"].pop("full_tracking", defaults.FULL_TRACKING):
-        scf = SelfConsistentFieldFull
-    else:
+    scf_mode = kwargs["scf_options"].pop("scf_mode", defaults.SCF_MODE)
+    if scf_mode in ("default", "implicit"):
         scf = SelfConsistentField
+    elif scf_mode == "full":
+        scf = SelfConsistentFieldFull
+    elif scf_mode == "experimental":
+        scf = SelfConsistentFieldSingleShot
+    else:
+        raise ValueError(f"Unknown SCF mode '{scf_mode}'.")
 
+    charges = get_guess(numbers, positions, chrg, ihelp, guess)
     return scf(
         interactions, *args, numbers=numbers, ihelp=ihelp, cache=cache, **kwargs
     )(charges)

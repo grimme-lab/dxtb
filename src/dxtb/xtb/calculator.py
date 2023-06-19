@@ -274,7 +274,7 @@ class Calculator(TensorLike):
                     "fermi_fenergy_partition",
                     defaults.FERMI_FENERGY_PARTITION,
                 ),
-                "full_tracking": opts.get("full_tracking", defaults.FULL_TRACKING),
+                "scf_mode": opts.get("scf_mode", defaults.SCF_MODE),
                 "mixer": opts.get("mixer", defaults.MIXER),
                 "verbosity": opts.get("verbosity", defaults.VERBOSITY),
             },
