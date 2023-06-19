@@ -122,7 +122,7 @@ class Mixer(ABC):
         """
         Resets the mixer to its initial state.
 
-        Calling this function will rest the class & its internal attributes.
+        Calling this function will reset the class & its internal attributes.
         However, any properties set during the initialisation process will be
         retained.
         """
