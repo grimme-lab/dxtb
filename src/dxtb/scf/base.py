@@ -384,9 +384,15 @@ class BaseSelfConsistentField(EditableModule):
         (`scf_options["fermi_fenergy_partition"]`).
         Defaults to an equal partitioning to all atoms (`"equal"`).
         """
+        eps = torch.tensor(
+            torch.finfo(self._data.occupation.dtype).eps,
+            device=self.device,
+            dtype=self.dtype,
+        )
 
-        occ = self._data.occupation
-        g = torch.log(occ**occ * (1 - occ) ** (1 - occ)).sum(-2) * self.kt
+        occ = torch.clamp(self._data.occupation, min=eps)
+        occ1 = torch.clamp(1 - self._data.occupation, min=eps)
+        g = torch.log(occ**occ * occ1**occ1).sum(-2) * self.kt
 
         mode = self.scf_options.get(
             "fermi_fenergy_partition", defaults.FERMI_FENERGY_PARTITION

@@ -155,7 +155,8 @@ def mmd_explicit(
     # Previously, I removed small values for numerical stability of the SCF
     # (and some portions are also faster) by using the following expression
     # `torch.where(torch.abs(o) < eps, eps, o)`. This, however, leads to wrong
-    # gradients (gradcheck fails). A related issue concerning `abs()` might be
+    # gradients (gradcheck fails), because the gradient of `abs()` is not
+    # defined for zero. A related issue concerning `abs()` was already raised at
     # https://github.com/pytorch/pytorch/issues/7172
     return o
 
