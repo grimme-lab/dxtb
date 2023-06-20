@@ -12,13 +12,14 @@ torch.use_deterministic_algorithms(True)
 torch.set_printoptions(precision=10)
 
 
-def pytest_addoption(parser: pytest.Parser):
+def pytest_addoption(parser: pytest.Parser) -> None:
     """Set up additional command line options."""
 
     parser.addoption(
         "--detect-anomaly",
+        "--da",
         action="store_true",
-        help="Enable more comprehensive gradient tests.",
+        help="Enable PyTorch's debug mode for gradient tests.",
     )
 
     parser.addoption(
@@ -61,7 +62,7 @@ def pytest_addoption(parser: pytest.Parser):
     )
 
 
-def pytest_configure(config: pytest.Config):
+def pytest_configure(config: pytest.Config) -> None:
     """Pytest configuration hook."""
 
     if config.getoption("--detect-anomaly"):
@@ -85,7 +86,7 @@ def pytest_configure(config: pytest.Config):
     config.addinivalue_line("markers", "cuda: mark test that require CUDA.")
 
 
-def pytest_runtest_setup(item: pytest.Function):
+def pytest_runtest_setup(item: pytest.Function) -> None:
     """Custom marker for tests requiring CUDA."""
 
     for _ in item.iter_markers(name="cuda"):

@@ -1,7 +1,5 @@
 """
-Run tests for repulsion contribution.
-
-(Note that the analytical gradient tests fail for `torch.float`.)
+Testing halogen bond correction gradient (autodiff).
 """
 from __future__ import annotations
 
@@ -11,14 +9,14 @@ from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
 from dxtb._types import Callable, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.classical import Repulsion
+from dxtb.classical import Halogen
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular, get_elem_param
 from dxtb.utils import batch
 
 from .samples import samples
 
-sample_list = ["H2O", "SiH4", "MB16_43_01", "MB16_43_02", "LYS_xao"]
+sample_list = ["br2nh3", "br2och2", "tmpda"]
 
 tol = 1e-8
 
@@ -30,7 +28,7 @@ def gradchecker(
     tuple[Tensor, Tensor, Tensor],  # differentiable variables
 ]:
     """Prepare gradient check from `torch.autograd`."""
-    assert par.repulsion is not None
+    assert par.halogen is not None
 
     dd = {"dtype": dtype}
 
@@ -40,30 +38,31 @@ def gradchecker(
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
 
     # variables to be differentiated
-    _arep = get_elem_param(
+    _damp = torch.tensor(
+        par.halogen.classical.damping,
+        **dd,
+        requires_grad=True,
+    )
+    _rscale = torch.tensor(
+        par.halogen.classical.rscale,
+        **dd,
+        requires_grad=True,
+    )
+    _xbond = get_elem_param(
         torch.unique(numbers),
         par.element,
-        "arep",
+        "xbond",
         pad_val=0,
         **dd,
         requires_grad=True,
     )
-    _zeff = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "zeff",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
-    )
-    _kexp = torch.tensor(par.repulsion.effective.kexp, **dd, requires_grad=True)
 
-    def func(arep: Tensor, zeff: Tensor, kexp: Tensor) -> Tensor:
-        rep = Repulsion(arep, zeff, kexp, **dd)
-        cache = rep.get_cache(numbers, ihelp)
-        return rep.get_energy(positions, cache)
+    def func(damp: Tensor, rscale: Tensor, xbond: Tensor) -> Tensor:
+        xb = Halogen(damp, rscale, xbond, **dd)
+        cache = xb.get_cache(numbers, ihelp)
+        return xb.get_energy(positions, cache)
 
-    return func, (_arep, _zeff, _kexp)
+    return func, (_damp, _rscale, _xbond)
 
 
 @pytest.mark.grad
@@ -97,7 +96,7 @@ def gradchecker_batch(
     tuple[Tensor, Tensor, Tensor],  # differentiable variables
 ]:
     """Prepare gradient check from `torch.autograd`."""
-    assert par.repulsion is not None
+    assert par.halogen is not None
 
     dd = {"dtype": dtype}
 
@@ -117,35 +116,36 @@ def gradchecker_batch(
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
 
     # variables to be differentiated
-    _arep = get_elem_param(
+    _damp = torch.tensor(
+        par.halogen.classical.damping,
+        **dd,
+        requires_grad=True,
+    )
+    _rscale = torch.tensor(
+        par.halogen.classical.rscale,
+        **dd,
+        requires_grad=True,
+    )
+    _xbond = get_elem_param(
         torch.unique(numbers),
         par.element,
-        "arep",
+        "xbond",
         pad_val=0,
         **dd,
         requires_grad=True,
     )
-    _zeff = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "zeff",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
-    )
-    _kexp = torch.tensor(par.repulsion.effective.kexp, **dd, requires_grad=True)
 
-    def func(arep: Tensor, zeff: Tensor, kexp: Tensor) -> Tensor:
-        rep = Repulsion(arep, zeff, kexp, **dd)
-        cache = rep.get_cache(numbers, ihelp)
-        return rep.get_energy(positions, cache)
+    def func(damp: Tensor, rscale: Tensor, xbond: Tensor) -> Tensor:
+        xb = Halogen(damp, rscale, xbond, **dd)
+        cache = xb.get_cache(numbers, ihelp)
+        return xb.get_energy(positions, cache)
 
-    return func, (_arep, _zeff, _kexp)
+    return func, (_damp, _rscale, _xbond)
 
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name1", ["SiH4"])
+@pytest.mark.parametrize("name1", ["br2nh3"])
 @pytest.mark.parametrize("name2", sample_list)
 def test_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """
@@ -158,7 +158,7 @@ def test_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name1", ["SiH4"])
+@pytest.mark.parametrize("name1", ["br2nh3"])
 @pytest.mark.parametrize("name2", sample_list)
 def test_gradgrad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """
@@ -166,11 +166,4 @@ def test_gradgrad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradchecker_batch(dtype, name1, name2)
-
-    # Although, we add an epsilon within the square root of arep to avoid
-    # taking the square root at zero, the step size in gradgradcheck is larger
-    # than this epsilon, which leads to nan's again. As this does not effect
-    # regular second order derivatives, we omit the arep parameter here.
-    diffvars[0].requires_grad_(False)
-
     assert gradgradcheck(func, diffvars, atol=tol)

@@ -4,8 +4,9 @@ DFT-D3 dispersion model.
 from __future__ import annotations
 
 import tad_dftd3 as d3
+import torch
 
-from .._types import Any, CountingFunction, Tensor
+from .._types import Any, CountingFunction, Tensor, TensorLike
 from ..ncoord import exp_count, get_coordination_number
 from .base import Dispersion
 
@@ -13,7 +14,7 @@ from .base import Dispersion
 class DispersionD3(Dispersion):
     """Representation of the DFT-D3(BJ) dispersion correction."""
 
-    class Cache:
+    class Cache(TensorLike):
         """
         Cache for the dispersion settings.
 
@@ -41,7 +42,13 @@ class DispersionD3(Dispersion):
             counting_function: CountingFunction,
             weighting_function: d3.WeightingFunction,
             damping_function: d3.DampingFunction,
+            device: torch.device | None = None,
+            dtype: torch.dtype | None = None,
         ) -> None:
+            super().__init__(
+                device=device if device is None else rcov.device,
+                dtype=dtype if dtype is None else rcov.dtype,
+            )
             self.ref = ref
             self.rcov = rcov
             self.rvdw = rvdw

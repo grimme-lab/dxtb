@@ -20,7 +20,7 @@ from .samples import samples
 sample_list = ["LiH", "SiH4", "MB16_43_01"]
 
 
-def gradcheck_pos(
+def gradchecker(
     dtype: torch.dtype, name: str
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
@@ -66,13 +66,13 @@ def gradcheck_pos(
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
-def test_grad_pos(dtype: torch.dtype, name: str) -> None:
+def test_grad(dtype: torch.dtype, name: str) -> None:
     """
     Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradcheck`.
     """
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    func, diffvars = gradcheck_pos(dtype, name)
+    func, diffvars = gradchecker(dtype, name)
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradcheck
@@ -84,13 +84,13 @@ def test_grad_pos(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
-def test_gradgrad_pos(dtype: torch.dtype, name: str) -> None:
+def test_gradgrad(dtype: torch.dtype, name: str) -> None:
     """
     Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    func, diffvars = gradcheck_pos(dtype, name)
+    func, diffvars = gradchecker(dtype, name)
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradgradcheck
@@ -99,7 +99,7 @@ def test_gradgrad_pos(dtype: torch.dtype, name: str) -> None:
     diffvars.detach_()
 
 
-def gradcheck_pos_batch(
+def gradchecker_batch(
     dtype: torch.dtype, name1: str, name2: str
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
@@ -156,13 +156,13 @@ def gradcheck_pos_batch(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["SiH4"])
 @pytest.mark.parametrize("name2", sample_list)
-def test_grad_pos_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+def test_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """
     Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradcheck`.
     """
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    func, diffvars = gradcheck_pos_batch(dtype, name1, name2)
+    func, diffvars = gradchecker_batch(dtype, name1, name2)
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradcheck
@@ -175,13 +175,13 @@ def test_grad_pos_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["SiH4"])
 @pytest.mark.parametrize("name2", sample_list)
-def test_gradgrad_pos_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+def test_gradgrad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """
     Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    func, diffvars = gradcheck_pos_batch(dtype, name1, name2)
+    func, diffvars = gradchecker_batch(dtype, name1, name2)
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradgradcheck

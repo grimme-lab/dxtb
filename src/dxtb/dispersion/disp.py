@@ -21,7 +21,7 @@ def new_dispersion(
     charge: Tensor | None = None,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
-) -> Dispersion | None | NoReturn:
+) -> Dispersion | None:
     """
     Create new instance of the Dispersion class.
 

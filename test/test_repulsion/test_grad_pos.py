@@ -9,6 +9,7 @@ from math import sqrt
 
 import pytest
 import torch
+from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
 from dxtb._types import Callable, Tensor
 from dxtb.basis import IndexHelper
@@ -26,7 +27,7 @@ sample_list = ["H2O", "SiH4", "MB16_43_01", "MB16_43_02", "LYS_xao"]
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", ["H2O", "SiH4"])
-def test_grad_pos_backward_vs_tblite(dtype: torch.dtype, name: str) -> None:
+def test_backward_vs_tblite(dtype: torch.dtype, name: str) -> None:
     """Compare with reference values from tblite."""
     dd = {"dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
@@ -58,9 +59,7 @@ def test_grad_pos_backward_vs_tblite(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["H2O", "SiH4"])
 @pytest.mark.parametrize("name2", ["H2O", "SiH4"])
-def test_grad_pos_batch_backward_vs_tblite(
-    dtype: torch.dtype, name1: str, name2: str
-) -> None:
+def test_backward_batch_vs_tblite(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Compare with reference values from tblite."""
     dd = {"dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
@@ -232,9 +231,6 @@ def test_grad_pos(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     func, diffvars = gradcheck_pos(dtype, name)
 
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradcheck
-
     assert gradcheck(func, diffvars, atol=tol)
     diffvars.detach_()
 
@@ -250,19 +246,14 @@ def test_gradgrad_pos(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     func, diffvars = gradcheck_pos(dtype, name)
 
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradgradcheck
-
     assert gradgradcheck(func, diffvars, atol=tol)
     diffvars.detach_()
 
 
-def gradcheck_pos_batch(
+def gradchecker_batch(
     dtype: torch.dtype, name1: str, name2: str
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
-    assert par.repulsion is not None
-
     dd = {"dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
@@ -304,10 +295,7 @@ def test_grad_pos_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    func, diffvars = gradcheck_pos_batch(dtype, name1, name2)
-
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradcheck
+    func, diffvars = gradchecker_batch(dtype, name1, name2)
 
     assert gradcheck(func, diffvars, atol=tol)
     diffvars.detach_()
@@ -323,10 +311,7 @@ def test_gradgrad_pos_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     gradient from `torch.autograd.gradgradcheck`.
     """
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    func, diffvars = gradcheck_pos_batch(dtype, name1, name2)
-
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradgradcheck
+    func, diffvars = gradchecker_batch(dtype, name1, name2)
 
     assert gradgradcheck(func, diffvars, atol=tol)
     diffvars.detach_()

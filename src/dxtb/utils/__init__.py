@@ -3,6 +3,7 @@ Collection of utility functions.
 """
 
 from .exceptions import *
+from .grad import *
 from .misc import *
 from .scattergather import *
 from .tensors import *
