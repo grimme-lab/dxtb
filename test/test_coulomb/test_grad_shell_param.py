@@ -23,8 +23,8 @@ sample_list = ["LiH", "SiH4", "MB16_43_01"]
 def gradcheck_param(
     dtype: torch.dtype, name: str
 ) -> tuple[
-    Callable[[Tensor, Tensor], Tensor],  # autograd function
-    tuple[Tensor, Tensor],  # differentiable variables
+    Callable[[Tensor, Tensor, Tensor], Tensor],  # autograd function
+    tuple[Tensor, Tensor, Tensor],  # differentiable variables
 ]:
     """Prepare gradient check from `torch.autograd`."""
     dd = {"dtype": dtype}
@@ -44,14 +44,23 @@ def gradcheck_param(
         requires_grad=True,
     )
 
+    _lhubbard = get_elem_param(
+        torch.unique(numbers),
+        par.element,
+        "lgam",
+        pad_val=0,
+        **dd,
+        requires_grad=True,
+    )
+
     assert par.charge is not None
     _gexp = torch.tensor(par.charge.effective.gexp, **dd, requires_grad=True)
 
-    def func(hubbard: Tensor, gexp: Tensor) -> Tensor:
-        es2 = ES2(hubbard, None, gexp=gexp, shell_resolved=False, **dd)
-        return es2.get_atom_coulomb_matrix(numbers, positions, ihelp)
+    def func(hubbard: Tensor, lhubbard: Tensor, gexp: Tensor) -> Tensor:
+        es2 = ES2(hubbard, lhubbard, gexp=gexp, shell_resolved=True, **dd)
+        return es2.get_shell_coulomb_matrix(numbers, positions, ihelp)
 
-    return func, (_hubbard, _gexp)
+    return func, (_hubbard, _lhubbard, _gexp)
 
 
 @pytest.mark.grad
@@ -91,8 +100,8 @@ def test_gradgrad_param(dtype: torch.dtype, name: str) -> None:
 def gradcheck_param_batch(
     dtype: torch.dtype, name1: str, name2: str
 ) -> tuple[
-    Callable[[Tensor, Tensor], Tensor],  # autograd function
-    tuple[Tensor, Tensor],  # differentiable variables
+    Callable[[Tensor, Tensor, Tensor], Tensor],  # autograd function
+    tuple[Tensor, Tensor, Tensor],  # differentiable variables
 ]:
     """Prepare gradient check from `torch.autograd`."""
     assert par.repulsion is not None
@@ -123,13 +132,24 @@ def gradcheck_param_batch(
         **dd,
         requires_grad=True,
     )
-    _gexp = torch.tensor(par.repulsion.effective.kexp, **dd, requires_grad=True)
 
-    def func(hubbard: Tensor, gexp: Tensor) -> Tensor:
-        es2 = ES2(hubbard, None, gexp=gexp, shell_resolved=False, **dd)
-        return es2.get_atom_coulomb_matrix(numbers, positions, ihelp)
+    _lhubbard = get_elem_param(
+        torch.unique(numbers),
+        par.element,
+        "lgam",
+        pad_val=0,
+        **dd,
+        requires_grad=True,
+    )
 
-    return func, (_hubbard, _gexp)
+    assert par.charge is not None
+    _gexp = torch.tensor(par.charge.effective.gexp, **dd, requires_grad=True)
+
+    def func(hubbard: Tensor, lhubbard: Tensor, gexp: Tensor) -> Tensor:
+        es2 = ES2(hubbard, lhubbard, gexp=gexp, shell_resolved=True, **dd)
+        return es2.get_shell_coulomb_matrix(numbers, positions, ihelp)
+
+    return func, (_hubbard, _lhubbard, _gexp)
 
 
 @pytest.mark.grad
@@ -143,6 +163,7 @@ def test_grad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """
     tol = sqrt(torch.finfo(dtype).eps) * 10
     func, diffvars = gradcheck_param_batch(dtype, name1, name2)
+    # diffvars[2].requires_grad_(False)
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradcheck

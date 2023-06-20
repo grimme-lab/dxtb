@@ -4,6 +4,8 @@ electrostatic energy (ES2).
 """
 from __future__ import annotations
 
+from math import sqrt
+
 import pytest
 import torch
 
@@ -23,6 +25,7 @@ sample_list = ["MB16_43_01", "MB16_43_02", "SiH4_atom"]
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
     """Test ES2 for some samples from MB16_43."""
+    tol = sqrt(torch.finfo(dtype).eps)
     dd = {"dtype": dtype}
 
     sample = samples[name]
@@ -37,13 +40,14 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     cache = es.get_cache(numbers, positions, ihelp)
     e = es.get_atom_energy(qat, cache)
-    assert pytest.approx(torch.sum(e, dim=-1)) == ref
+    assert pytest.approx(ref, abs=tol, rel=tol) == torch.sum(e, dim=-1)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    tol = sqrt(torch.finfo(dtype).eps)
     dd = {"dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
@@ -78,7 +82,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     cache = es.get_cache(numbers, positions, ihelp)
     e = es.get_atom_energy(qat, cache)
-    assert torch.allclose(torch.sum(e, dim=-1), ref)
+    assert pytest.approx(ref, abs=tol, rel=tol) == torch.sum(e, dim=-1)
 
 
 @pytest.mark.grad

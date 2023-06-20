@@ -210,10 +210,18 @@ class ES2(Interaction):
         Tensor
             Coulomb matrix.
         """
+        # only calculate mask once and save it for backward
         mask = real_pairs(numbers, diagonal=True)
 
         mat = CoulombMatrixAG.apply(
-            mask, positions, ihelp, self.hubbard, self.gexp, self.average
+            mask,
+            positions,
+            ihelp,
+            self.hubbard,
+            self.lhubbard,
+            self.gexp,
+            self.average,
+            self.shell_resolved,
         )
         assert mat is not None
 
@@ -242,32 +250,22 @@ class ES2(Interaction):
         if self.lhubbard is None:
             raise ValueError("No 'lhubbard' parameters set.")
 
-        lh = ihelp.spread_ushell_to_shell(self.lhubbard)
-        h = lh * ihelp.spread_uspecies_to_shell(self.hubbard)
-
-        # masks
+        # only calculate mask once and save it for backward
         mask = real_pairs(numbers, diagonal=True)
 
-        # all distances to the power of "gexp" (R^2_AB from Eq.26)
-        dist_gexp = ihelp.spread_atom_to_shell(
-            torch.where(
-                mask,
-                torch.pow(
-                    torch.cdist(
-                        positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
-                    ),
-                    self.gexp,
-                ),
-                positions.new_tensor(torch.finfo(positions.dtype).eps),
-            ),
-            (-1, -2),
+        mat = CoulombMatrixAG.apply(
+            mask,
+            positions,
+            ihelp,
+            self.hubbard,
+            self.lhubbard,
+            self.gexp,
+            self.average,
+            self.shell_resolved,
         )
+        assert mat is not None
 
-        # Eq.30: averaging function for hardnesses (Hubbard parameter)
-        avg = self.average(h)
-
-        # Eq.26: Coulomb matrix
-        return 1.0 / torch.pow(dist_gexp + torch.pow(avg, -self.gexp), 1.0 / self.gexp)
+        return mat
 
     def get_atom_energy(self, charges: Tensor, cache: Cache) -> Tensor:
         return (
@@ -314,6 +312,95 @@ class ES2(Interaction):
         )
 
     def get_atom_gradient(
+        self, energy: Tensor, positions: Tensor, grad_out: Tensor | None = None
+    ) -> Tensor:
+        """
+        Calculates nuclear gradient of an second order electrostatic energy
+        contribution via PyTorch's autograd engine.
+
+        Parameters
+        ----------
+        energy : Tensor
+            Energy that will be differentiated.
+        positions : Tensor
+            Nuclear positions. Needs `requires_grad=True`.
+        grad_out : Tensor | None
+            Gradient of previous computation, i.e., "vector" in VJP of this
+            gradient computation.
+
+        Returns
+        -------
+        Tensor
+            Nuclear gradient of `energy`.
+
+        Raises
+        ------
+        RuntimeError
+            `positions` tensor does not have `requires_grad=True`.
+        """
+        if self.shell_resolved:
+            return torch.zeros_like(positions)
+
+        if positions.requires_grad is False:
+            raise RuntimeError("Position tensor needs `requires_grad=True`.")
+
+        # avoid autograd call if energy is zero (autograd fails anyway)
+        if torch.equal(energy, torch.zeros_like(energy)):
+            return torch.zeros_like(positions)
+
+        (gradient,) = torch.autograd.grad(
+            energy,
+            positions,
+            grad_outputs=torch.ones_like(energy) if grad_out is None else grad_out,
+        )
+        return gradient
+
+    def get_shell_gradient(
+        self, energy: Tensor, positions: Tensor, grad_out: Tensor | None = None
+    ) -> Tensor:
+        """
+        Calculates nuclear gradient of an second order electrostatic energy
+        contribution via PyTorch's autograd engine.
+
+        Parameters
+        ----------
+        energy : Tensor
+            Energy that will be differentiated.
+        positions : Tensor
+            Nuclear positions. Needs `requires_grad=True`.
+        grad_out : Tensor | None
+            Gradient of previous computation, i.e., "vector" in VJP of this
+            gradient computation.
+
+        Returns
+        -------
+        Tensor
+            Nuclear gradient of `energy`.
+
+        Raises
+        ------
+        RuntimeError
+            `positions` tensor does not have `requires_grad=True`.
+        """
+        if not self.shell_resolved:
+            return torch.zeros_like(positions)
+
+        if positions.requires_grad is False:
+            raise RuntimeError("Position tensor needs `requires_grad=True`.")
+
+        # avoid autograd call if energy is zero (autograd fails anyway)
+        if torch.equal(energy, torch.zeros_like(energy)):
+            return torch.zeros_like(positions)
+
+        (gradient,) = torch.autograd.grad(
+            energy,
+            positions,
+            grad_outputs=torch.ones_like(energy) if grad_out is None else grad_out,
+        )
+        return gradient
+
+    # DEPRECATED
+    def _get_atom_gradient(
         self,
         numbers: Tensor,
         positions: Tensor,
@@ -355,7 +442,8 @@ class ES2(Interaction):
         # (n_batch, atoms_i, atoms_j, 3) -> (n_batch, atoms_i, 3)
         return torch.einsum("...ijx,...jx->...ix", dmat, charges)
 
-    def get_shell_gradient(
+    # DEPRECATED
+    def _get_shell_gradient(
         self,
         numbers: Tensor,
         positions: Tensor,
@@ -407,40 +495,6 @@ class ES2(Interaction):
         # (n_batch, atoms, shells_j, 3) -> (n_batch, atoms, 3)
         return torch.einsum("...ijx,...jx->...ix", dmat, charges)
 
-    def _get_atom_gradient(self, energy: Tensor, positions: Tensor) -> Tensor:
-        """
-        Calculates nuclear gradient of an second order electrostatic energy
-        contribution via PyTorch's autograd engine.
-
-        Parameters
-        ----------
-        energy : Tensor
-            Energy that will be differentiated.
-        positions : Tensor
-            Nuclear positions. Needs `requires_grad=True`.
-
-        Returns
-        -------
-        Tensor
-            Nuclear gradient of `energy`.
-
-        Raises
-        ------
-        RuntimeError
-            `positions` tensor does not have `requires_grad=True`.
-        """
-        if positions.requires_grad is False:
-            raise RuntimeError("Position tensor needs `requires_grad=True`.")
-
-        # avoid autograd call if energy is zero (autograd fails anyway)
-        if torch.equal(energy, torch.zeros_like(energy)):
-            return torch.zeros_like(positions)
-
-        (gradient,) = torch.autograd.grad(
-            energy, positions, grad_outputs=torch.ones_like(energy)
-        )
-        return gradient
-
 
 def coulomb_matrix_atom(
     mask: Tensor,
@@ -474,6 +528,9 @@ def coulomb_matrix_atom(
     Tensor
         Coulomb matrix.
     """
+    eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
+    zero = positions.new_tensor(0.0)
+
     h = ihelp.spread_uspecies_to_atom(hubbard)
 
     dist = torch.cdist(
@@ -483,9 +540,6 @@ def coulomb_matrix_atom(
         compute_mode="use_mm_for_euclid_dist",
     )
 
-    eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
-    zero = positions.new_tensor(0.0)
-
     # all distances to the power of "gexp" (R^2_AB from Eq.26)
     dist_gexp = torch.where(
         mask,
@@ -494,12 +548,15 @@ def coulomb_matrix_atom(
         eps,
     )
 
+    # re-include diagonal for hardness
+    mask = mask + torch.diag_embed(torch.ones_like(h).type(torch.bool))
+
     # Eq.30: averaging function for hardnesses (Hubbard parameter)
-    avg = torch.where(mask, average(h), zero)
+    avg = torch.where(mask, average(h), eps)
 
     # Eq.26: Coulomb matrix
-    tmp = torch.where(mask, torch.pow(avg + eps, -gexp), zero)
-    return torch.where(mask, 1.0 / torch.pow(dist_gexp + tmp, 1.0 / gexp), zero)
+    tmp = dist_gexp + torch.where(mask, torch.pow(avg, -gexp), zero)
+    return torch.where(mask, 1.0 / torch.pow(tmp, 1.0 / gexp), zero)
 
 
 def coulomb_matrix_atom_gradient(
@@ -557,13 +614,27 @@ class CoulombMatrixAG(torch.autograd.Function):
         positions: Tensor,
         ihelp: IndexHelper,
         hubbard: Tensor,
+        lhubbard: Tensor,
         gexp: Tensor,
         average: AveragingFunction,
+        shell_resolved: bool,
     ) -> Tensor:
         with torch.enable_grad():
-            mat = coulomb_matrix_atom(mask, positions, ihelp, hubbard, gexp, average)
+            if shell_resolved:
+                mat = coulomb_matrix_shell(
+                    mask, positions, ihelp, hubbard, lhubbard, gexp, average
+                )
+            else:
+                mat = coulomb_matrix_atom(
+                    mask, positions, ihelp, hubbard, gexp, average
+                )
 
-        ctx.save_for_backward(mat, positions, mask, gexp, hubbard)
+        # save tensor variables the intended way
+        ctx.save_for_backward(mat, mask, positions, gexp, hubbard, lhubbard)
+
+        # save non-tensor variables (required in backward) directly
+        ctx.shell_resolved = shell_resolved
+        ctx.ihelp = ihelp
 
         return mat.clone()
 
@@ -575,32 +646,62 @@ class CoulombMatrixAG(torch.autograd.Function):
         None | Tensor,  # positions
         None,  # ihelp
         None | Tensor,  # hubbard
+        None | Tensor,  # lhubbard
         None | Tensor,  # gexp
         None,  # average
+        None,  # shell_resolved
     ]:
         # initialize gradients with `None`
-        positions_bar = hubbard_bar = gexp_bar = None
+        positions_bar = hubbard_bar = lhubbard_bar = gexp_bar = None
 
         # check which of the input variables of `forward()` requires gradients
-        _, grad_positions, _, grad_hubbard, grad_gexp, _ = ctx.needs_input_grad
+        (
+            _,
+            grad_positions,
+            _,
+            grad_hubbard,
+            grad_lhubbard,
+            grad_gexp,
+            _,
+            _,
+        ) = ctx.needs_input_grad
 
-        mat, positions, mask, gexp, hubbard = ctx.saved_tensors
+        mat, mask, positions, gexp, hubbard, lhubbard = ctx.saved_tensors
+        shell_resolved: bool = ctx.shell_resolved
+        ihelp: IndexHelper = ctx.ihelp
 
         # analytical gradient for positions
         if grad_positions:
-            # (n_batch, n_atoms, n_atoms, 3)
-            g = coulomb_matrix_atom_gradient(mask, positions, mat, gexp)
+            # (n_batch, n, n, 3)
+            if shell_resolved:
+                g = coulomb_matrix_shell_gradient(mask, positions, mat, ihelp, gexp)
+            else:
+                g = coulomb_matrix_atom_gradient(mask, positions, mat, gexp)
 
-            # vjp: (nb, na, na) * (nb, na, na, 3) -> (nb, na, 3)
+            # vjp: (nb, n, n) * (nb, n, n, 3) -> (nb, n, 3)
             _gi = torch.einsum("...ij,...ijd->...id", grad_out, g)
             _gj = torch.einsum("...ij,...ijd->...jd", grad_out, g)
-            positions_bar = _gi - _gj
+
+            if shell_resolved:
+                positions_bar = ihelp.reduce_shell_to_atom(
+                    _gi - _gj, dim=-2, extra=True
+                )
+            else:
+                positions_bar = _gi - _gj
 
         # automatic gradient for parameters
         if grad_hubbard:
             (hubbard_bar,) = torch.autograd.grad(
                 mat,
                 hubbard,
+                grad_outputs=grad_out,
+                create_graph=True,
+            )
+
+        if grad_lhubbard:
+            (lhubbard_bar,) = torch.autograd.grad(
+                mat,
+                lhubbard,
                 grad_outputs=grad_out,
                 create_graph=True,
             )
@@ -613,7 +714,146 @@ class CoulombMatrixAG(torch.autograd.Function):
                 create_graph=True,
             )
 
-        return None, positions_bar, None, hubbard_bar, gexp_bar, None
+        return (
+            None,
+            positions_bar,
+            None,
+            hubbard_bar,
+            lhubbard_bar,
+            gexp_bar,
+            None,
+            None,
+        )
+
+
+def coulomb_matrix_shell(
+    mask: Tensor,
+    positions: Tensor,
+    ihelp: IndexHelper,
+    hubbard: Tensor,
+    lhubbard: Tensor,
+    gexp: Tensor,
+    average: AveragingFunction,
+) -> Tensor:
+    """
+    Calculate the shell-resolved Coulomb matrix.
+
+    Parameters
+    ----------
+    mask : Tensor
+        Mask from atomic numbers of all atoms in the system.
+    positions : Tensor
+        Cartesian coordinates of all atoms in the system.
+    ihelp : IndexHelper
+        Index mapping for the basis set.
+    hubbard : Tensor
+        Hubbard parameters of all elements.
+    lhubbard: Tensor
+        Shell-resolved scaling factors for Hubbard parameters (default: `None`,
+        i.e., no shell resolution).
+    gexp: Tensor
+        Exponent of the second-order Coulomb interaction (default: 2.0).
+    average: AveragingFunction
+        Function to use for averaging the Hubbard parameters (default:
+        `~dxtb.coulomb.average.harmonic_average`).
+
+    Returns
+    -------
+    Tensor
+        Coulomb matrix.
+    """
+    eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
+
+    lh = ihelp.spread_ushell_to_shell(lhubbard)
+    h = lh * ihelp.spread_uspecies_to_shell(hubbard)
+
+    dist = torch.cdist(
+        positions,
+        positions,
+        p=2,
+        compute_mode="use_mm_for_euclid_dist",
+    )
+
+    # all distances to the power of "gexp" (R^2_AB from Eq.26)
+    dist_gexp = ihelp.spread_atom_to_shell(
+        torch.where(
+            mask,
+            # eps to avoid nan in double backward (negative base?)
+            torch.pow(dist + eps, gexp),
+            eps,
+        ),
+        (-1, -2),
+    )
+
+    # re-include diagonal for hardness
+    mask = ihelp.spread_atom_to_shell(
+        mask + torch.diag_embed(torch.ones_like(ihelp.atom_to_unique).type(torch.bool)),
+        (-2, -1),
+    )
+
+    # Eq.30: averaging function for hardnesses (Hubbard parameter)
+    avg = torch.where(mask, average(h), eps)
+
+    # Eq.26: Coulomb matrix
+    tmp = dist_gexp + torch.where(mask, torch.pow(avg, -gexp), eps)
+    return torch.where(
+        mask, 1.0 / torch.pow(tmp, 1.0 / gexp), positions.new_tensor(0.0)
+    )
+
+
+def coulomb_matrix_shell_gradient(
+    mask: Tensor, positions: Tensor, mat: Tensor, ihelp: IndexHelper, gexp: Tensor
+) -> Tensor:
+    """
+    Nuclear gradient of shell-resolved Coulomb matrix.
+
+    Parameters
+    ----------
+    mask : Tensor
+        Mask from atomic numbers of all atoms in the system.
+    positions : Tensor
+        Cartesian coordinates of all atoms in the system.
+    mat : Tensor
+        Shell-resolved Coulomb matrix.
+    gexp: Tensor
+        Exponent of the second-order Coulomb interaction (default: 2.0).
+
+    Returns
+    -------
+    Tensor
+        Derivative of shell-resolved Coulomb matrix. The derivative has the
+        following shape: `(n_batch, shell_i, shell_j, 3)`.
+    """
+    # all distances to the power of "gexp" (R^2_AB from Eq.26)
+    distances = ihelp.spread_atom_to_shell(
+        torch.where(
+            mask,
+            torch.cdist(
+                positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
+            ),
+            positions.new_tensor(torch.finfo(positions.dtype).eps),
+        ),
+        (-1, -2),
+    )
+
+    # (n_batch, shells_i, shells_j, 3)
+    positions = batch.index(positions, ihelp.shells_to_atom)
+    mask = ihelp.spread_atom_to_shell(mask, (-2, -1))
+    rij = torch.where(
+        mask.unsqueeze(-1),
+        positions.unsqueeze(-2) - positions.unsqueeze(-3),
+        positions.new_tensor(0.0),
+    )
+
+    # (n_batch, shells_i, shells_j) * (n_batch, shells_i, 1)
+    dmat = -(distances ** (gexp - 2.0)) * mat * mat**gexp
+
+    # (n_batch, shells_i, shells_j) -> (n_batch, shells_i, shells_j, 3)
+    dmat = dmat.unsqueeze(-1) * rij
+    return dmat
+
+    # (n_batch, shells_i, shells_j, 3) -> (n_batch, atoms, shells_j, 3)
+    dmat = ihelp.reduce_shell_to_atom(dmat, dim=-3, extra=True)
 
 
 def new_es2(

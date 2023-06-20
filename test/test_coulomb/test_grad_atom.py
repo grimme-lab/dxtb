@@ -38,9 +38,9 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=is_shell_resolved, **dd)
     assert es is not None
 
-    # analytical
+    # analytical (old)
     cache = es.get_cache(numbers, positions, ihelp)
-    grad = es.get_atom_gradient(numbers, positions, charges, cache)
+    grad = es._get_atom_gradient(numbers, positions, charges, cache)
     assert pytest.approx(ref, abs=tol) == grad
 
     # numerical
@@ -51,9 +51,16 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     # automatic
     positions.requires_grad_(True)
     mat = es.get_atom_coulomb_matrix(numbers, positions, ihelp)
-    mat = 0.5 * mat * charges.unsqueeze(-1) * charges.unsqueeze(-2)
-    (agrad,) = torch.autograd.grad(mat.sum(), positions)
+    energy = 0.5 * mat * charges.unsqueeze(-1) * charges.unsqueeze(-2)
+    (agrad,) = torch.autograd.grad(energy.sum(), positions)
     assert pytest.approx(ref, abs=tol) == agrad
+
+    # analytical (automatic)
+    cache = es.get_cache(numbers, positions, ihelp)  # recalc with gradients
+    energy = es.get_atom_energy(charges, cache)
+    egrad = es.get_atom_gradient(energy, positions)
+    assert pytest.approx(ref, abs=tol) == egrad
+    assert pytest.approx(egrad, abs=tol) == agrad
 
     positions.detach_()
 
@@ -96,16 +103,24 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=is_shell_resolved, **dd)
     assert es is not None
 
+    # analytical (old)
     cache = es.get_cache(numbers, positions, ihelp)
-    grad = es.get_atom_gradient(numbers, positions, charges, cache)
+    grad = es._get_atom_gradient(numbers, positions, charges, cache)
     assert pytest.approx(ref, abs=tol) == grad
 
     # automatic
     positions.requires_grad_(True)
     mat = es.get_atom_coulomb_matrix(numbers, positions, ihelp)
-    mat = 0.5 * mat * charges.unsqueeze(-1) * charges.unsqueeze(-2)
-    (agrad,) = torch.autograd.grad(mat.sum(), positions)
+    energy = 0.5 * mat * charges.unsqueeze(-1) * charges.unsqueeze(-2)
+    (agrad,) = torch.autograd.grad(energy.sum(), positions)
     assert pytest.approx(ref, abs=tol) == agrad
+
+    # analytical (automatic)
+    cache = es.get_cache(numbers, positions, ihelp)  # recalc with gradients
+    energy = es.get_atom_energy(charges, cache)
+    egrad = es.get_atom_gradient(energy, positions)
+    assert pytest.approx(ref, abs=tol) == egrad
+    assert pytest.approx(egrad, abs=tol) == agrad
 
     positions.detach_()
 
