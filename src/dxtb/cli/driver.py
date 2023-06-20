@@ -81,7 +81,8 @@ class Driver:
         opts = {
             "etemp": args.etemp,
             "damp": args.damp,
-            "full_tracking": args.full_tracking,
+            "scf_mode": args.scf_mode,
+            "scp_mode": args.scp_mode,
             "mixer": args.mixer,
             "maxiter": args.maxiter,
             "spin": args.spin,

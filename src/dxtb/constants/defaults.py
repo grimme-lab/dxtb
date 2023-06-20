@@ -67,8 +67,17 @@ function theorem as provided by `xitorch.optimize.equilibrium`, or use the
 experimental single-shot procedure.
 """
 
-SCF_MODE_CHOICES = ["default", "implicit", "full", "experimental"]
+SCF_MODE_CHOICES = ["default", "implicit", "full", "full_tracking", "experimental"]
 """List of possible choices for `SCF_MODE`."""
+
+SCP_MODE = "potential"
+"""
+Type of self-consistent parameter, i.e., which quantity is converged in the SCF
+iterations.
+"""
+
+SCP_MODE_CHOICES = ["charge", "charges", "potential", "fock"]
+"""List of possible choices for `SCP_MODE`."""
 
 VERBOSITY = 1
 """Verbosity of printout."""
@@ -84,12 +93,6 @@ The absolute tolerance of the norm of the input of the equilibrium function.
 XITORCH_FATOL = 1.0e-5
 """
 The absolute tolerance of the norm of the output of the equilibrium function.
-"""
-
-USE_POTENTIAL = True
-"""
-Whether the potential vector or the charges should be the target of the
-convergence check in the SCF iterations.
 """
 
 # Fermi smearing

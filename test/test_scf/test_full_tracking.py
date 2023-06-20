@@ -15,7 +15,7 @@ from dxtb.xtb import Calculator
 
 from .samples import samples
 
-opts = {"verbosity": 0, "maxiter": 300, "full_tracking": True}
+opts = {"verbosity": 0, "maxiter": 300, "scf_mode": "full_tracking"}
 
 
 def single(
@@ -23,7 +23,7 @@ def single(
     name: str,
     mixer: str,
     tol: float,
-    use_potential: bool = False,
+    scp_mode: str = "charge",
 ) -> None:
     dd = {"dtype": dtype}
 
@@ -38,7 +38,7 @@ def single(
         **{
             "damp": 0.05 if mixer == "simple" else 0.4,
             "mixer": mixer,
-            "use_potential": use_potential,
+            "scp_mode": scp_mode,
             "xitorch_fatol": tol,
             "xitorch_xatol": tol,
         },
@@ -75,7 +75,7 @@ def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
 def test_single_difficult(dtype: torch.dtype, name: str, mixer: str):
     """These systems do not reproduce tblite energies to high accuracy."""
     tol = 5e-3
-    single(dtype, name, mixer, tol, use_potential=True)
+    single(dtype, name, mixer, tol, scp_mode="potential")
 
 
 @pytest.mark.large
@@ -118,7 +118,7 @@ def batched(dtype: torch.dtype, name1: str, name2: str, mixer: str, tol: float) 
         **{
             "damp": 0.05 if mixer == "simple" else 0.4,
             "mixer": mixer,
-            "use_potential": False,
+            "scp_mode": "charge",
             "xitorch_fatol": tol,
             "xitorch_xatol": tol,
         },
@@ -179,6 +179,8 @@ def batched_unconverged(
             "damp": 0.3,
             "maxiter": maxiter,
             "mixer": mixer,
+            "scf_mode": "full",
+            "scp_mode": "potential",
             "xitorch_fatol": tol,
             "xitorch_xatol": tol,
         },
@@ -186,56 +188,63 @@ def batched_unconverged(
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
+    torch.set_printoptions(precision=15)
     print(result.scf.sum(-1))
     assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
 
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name1", ["H2"])
-@pytest.mark.parametrize("name2", ["LiH"])
-@pytest.mark.parametrize("name3", ["SiH4"])
-@pytest.mark.parametrize("mixer", ["simple", "anderson"])
-def test_batch_unconverged_partly(
-    dtype: torch.dtype, name1: str, name2: str, name3: str, mixer: str
-) -> None:
+def test_batch_unconverged_partly_anderson(dtype: torch.dtype) -> None:
     dd = {"dtype": dtype}
 
     # only for regression testing (copied unconverged energies)
-    ref = {
-        torch.float: torch.tensor(
-            [-1.058598518371582, -0.881345808506012, -4.027128219604492], **dd
-        ),
-        torch.double: torch.tensor(
-            [-1.058598403609326, -0.883023379304565, -4.037984174801687], **dd
-        ),
-    }[dtype]
+    ref = torch.tensor(
+        [-1.058598403609326, -0.881055307373386, -4.024551310332887], **dd
+    )
 
-    batched_unconverged(ref, dtype, name1, name2, name3, mixer, 1)
+    batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "anderson", 1)
 
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name1", ["LiH"])
-@pytest.mark.parametrize("name2", ["LiH"])
-@pytest.mark.parametrize("name3", ["SiH4"])
-@pytest.mark.parametrize("mixer", ["anderson", "simple"])
-def test_batch_unconverged_fully(
-    dtype: torch.dtype, name1: str, name2: str, name3: str, mixer: str
+def test_batch_unconverged_partly_simple(dtype: torch.dtype) -> None:
+    dd = {"dtype": dtype}
+
+    # only for regression testing (copied unconverged energies)
+    ref = torch.tensor(
+        [-1.058598403609325, -0.882636830465807, -4.036953625762340], **dd
+    )
+
+    batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "simple", 1)
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_batch_unconverged_fully_anderson(dtype: torch.dtype) -> None:
+    dd = {"dtype": dtype}
+
+    # only for regression testing (copied unconverged energies)
+    ref = torch.tensor(
+        [-0.881055307373386, -0.881055307373386, -4.024551310332887], **dd
+    )
+
+    batched_unconverged(ref, dtype, "LiH", "LiH", "SiH4", "anderson", 1)
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_batch_unconverged_fully_simple(
+    dtype: torch.dtype,
 ) -> None:
     dd = {"dtype": dtype}
 
     # only for regression testing (copied unconverged energies)
-    ref = {
-        torch.float: torch.tensor(
-            [-0.882636666297913, -0.882636666297913, -4.036954402923584], **dd
-        ),
-        torch.double: torch.tensor(
-            [-0.883023379304565, -0.883023379304565, -4.037984174801687], **dd
-        ),
-    }[dtype]
+    ref = torch.tensor(
+        [-0.882636830465807, -0.882636830465807, -4.036953625762340], **dd
+    )
 
-    batched_unconverged(ref, dtype, name1, name2, name3, mixer, 1)
+    batched_unconverged(ref, dtype, "LiH", "LiH", "SiH4", "simple", 1)
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -279,7 +288,8 @@ def test_batch_three(
         **{
             "damp": 0.1 if mixer == "simple" else 0.4,
             "mixer": mixer,
-            "use_potential": False,
+            "scf_mode": "full",
+            "scp_mode": "charge",
             "xitorch_fatol": tol,
             "xitorch_xatol": tol,
         },

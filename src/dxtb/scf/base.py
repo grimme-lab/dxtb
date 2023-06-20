@@ -169,7 +169,6 @@ class BaseSelfConsistentField(EditableModule):
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        self.use_potential = kwargs.pop("use_potential", defaults.USE_POTENTIAL)
         self.bck_options = {"posdef": True, **kwargs.pop("bck_options", {})}
         self.fwd_options = {
             "force_convergence": False,
@@ -188,6 +187,17 @@ class BaseSelfConsistentField(EditableModule):
         self.eigen_options = {"method": "exacteig", **kwargs.pop("eigen_options", {})}
 
         self.scf_options = {**kwargs.pop("scf_options", {})}
+        self.scp_mode = self.scf_options.get("scp_mode", defaults.SCP_MODE)
+        if self.scp_mode in ("charge", "charges"):
+            self._fcn = self.iterate_charges
+        elif self.scp_mode == "potential":
+            self._fcn = self.iterate_potential
+        elif self.scp_mode == "fock":
+            self._fcn = self.iterate_fockian
+        else:
+            raise ValueError(
+                f"Unknown convergence target (SCP mode) '{self.scp_mode}'."
+            )
 
         self._data = self._Data(*args, **kwargs)
 
@@ -215,13 +225,14 @@ class BaseSelfConsistentField(EditableModule):
 
     def __call__(self, charges: Tensor | None = None) -> dict[str, Tensor]:
         """
-        Run the self-consistent iterations until a stationary solution is reached
+        Run the self-consistent iterations until a stationary solution is
+        reached.
 
         Parameters
         ----------
         charges : Tensor, optional
             Initial orbital charges vector. If `None` is given (default), a
-            zeros vector is used.
+            zero vector is used.
 
         Returns
         -------
@@ -231,7 +242,18 @@ class BaseSelfConsistentField(EditableModule):
 
         if charges is None:
             charges = torch.zeros_like(self._data.occupation)
-        guess = self.charges_to_potential(charges) if self.use_potential else charges
+
+        if self.scp_mode in ("charge", "charges"):
+            guess = charges
+        elif self.scp_mode == "potential":
+            guess = self.charges_to_potential(charges)
+        elif self.scp_mode == "fock":
+            potential = self.charges_to_potential(charges)
+            guess = self.potential_to_hamiltonian(potential)
+        else:
+            raise ValueError(
+                f"Unknown convergence target (SCP mode) '{self.scp_mode}'."
+            )
 
         if self.scf_options["verbosity"] > 0:
             print(
@@ -261,6 +283,37 @@ class BaseSelfConsistentField(EditableModule):
             "occupation": self._data.occupation,
             "potential": self.charges_to_potential(charges),
         }
+
+    def converged_to_charges(self, x: Tensor) -> Tensor:
+        """
+        Convert the converged property to charges.
+
+        Parameters
+        ----------
+        x : Tensor
+            Converged property (scp).
+
+        Returns
+        -------
+        Tensor
+            Orbital-resolved partial charges
+
+        Raises
+        ------
+        ValueError
+            Unknown `scp_mode` given.
+        """
+        if self.scp_mode in ("charge", "charges"):
+            return x
+
+        if self.scp_mode == "potential":
+            return self.potential_to_charges(x)
+
+        if self.scp_mode == "fock":
+            self._data.density = self.hamiltonian_to_density(x)
+            return self.density_to_charges(self._data.density)
+
+        raise ValueError(f"Unknown convergence target (SCP mode) '{self.scp_mode}'.")
 
     def get_energy(self, charges: Tensor) -> Tensor:
         """
@@ -458,6 +511,27 @@ class BaseSelfConsistentField(EditableModule):
                 self._data.iter += 1
 
         return self.charges_to_potential(charges)
+
+    def iterate_fockian(self, fockian: Tensor) -> Tensor:
+        """
+        Perform single self-consistent iteration using the Fock matrix.
+
+        Parameters
+        ----------
+        fockian : Tensor
+            Fock matrix.
+
+        Returns
+        -------
+        Tensor
+            New Fock matrix.
+        """
+        self._data.density = self.hamiltonian_to_density(fockian)
+        charges = self.density_to_charges(self._data.density)
+        potential = self.charges_to_potential(charges)
+        self._data.hamiltonian = self.potential_to_hamiltonian(potential)
+
+        return self._data.hamiltonian
 
     def charges_to_potential(self, charges: Tensor) -> Tensor:
         """
@@ -695,6 +769,13 @@ class BaseSelfConsistentField(EditableModule):
             a = self.getparamnames("potential_to_charges", prefix=prefix)
             b = self.getparamnames("charges_to_potential", prefix=prefix)
             return a + b
+
+        if methodname == "iterate_fockian":
+            a = self.getparamnames("hamiltonian_to_density", prefix=prefix)
+            b = self.getparamnames("density_to_charges", prefix=prefix)
+            c = self.getparamnames("charges_to_potential", prefix=prefix)
+            d = self.getparamnames("potential_to_hamiltonian", prefix=prefix)
+            return a + b + c + d
 
         if methodname == "charges_to_potential":
             return []

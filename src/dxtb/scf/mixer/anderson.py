@@ -88,11 +88,13 @@ class Anderson(Mixer):
     Defaults to 5 as suggested by [Eyert]_.
     """
 
-    def __init__(self, options: dict[str, Any] | None = None):
+    def __init__(
+        self, options: dict[str, Any] | None = None, is_batch: bool = False
+    ) -> None:
         opts = dict(default_opts)
         if options is not None:
             opts.update(options)
-        super().__init__(opts)
+        super().__init__(opts, is_batch=is_batch)
 
         self.mix_param = self.options["damp"]
         self.generations = self.options["generations"]
@@ -123,7 +125,6 @@ class Anderson(Mixer):
         # original shape _shape_out when returned to the user.
         self._shape_out = list(x_new.shape)
 
-        self._is_batch = x_new.ndim > 1
         if self._is_batch:
             self._shape_in = list(x_new.reshape(x_new.shape[0], -1).shape)
         else:
@@ -145,6 +146,7 @@ class Anderson(Mixer):
         """
         if self._delta is None or self._shape_out is None:
             raise RuntimeError("Mixer has no been started yet.")
+
         return self._delta.reshape(self._shape_out)
 
     def iter(self, x_new: Tensor, x_old: Tensor | None = None) -> Tensor:
@@ -231,8 +233,12 @@ class Anderson(Mixer):
             # vectors by adding 1 + offset^2 to the diagonals of "a", see
             # equation 8.2 (Eyert)
             if self.diagonal_offset is not None:
-                eye = torch.eye(a.shape[-1], device=x_new.device)
-                a *= torch.where(eye != 0, eye + self.diagonal_offset**2, 1)
+                eye = torch.eye(a.shape[-1], device=x_new.device, dtype=x_new.dtype)
+                a *= torch.where(
+                    eye != 0,
+                    eye + self.diagonal_offset**2,
+                    torch.tensor(1.0, device=x_new.device, dtype=x_new.dtype),
+                )
 
             # Solve for the coefficients. As torch.solve cannot solve for 1D
             # tensors a blank dimension must be added
