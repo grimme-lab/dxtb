@@ -1,7 +1,5 @@
 """
-Run tests for repulsion contribution.
-
-(Note that the analytical gradient tests fail for `torch.float`.)
+Run autograd tests for atom-resolved coulomb matrix contribution.
 """
 from __future__ import annotations
 
@@ -12,22 +10,19 @@ import torch
 
 from dxtb._types import Callable, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.classical import Repulsion
+from dxtb.coulomb import ES2
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular, get_elem_param
 from dxtb.utils import batch
 
 from .samples import samples
 
-sample_list = ["H2O", "SiH4", "MB16_43_01", "MB16_43_02", "LYS_xao"]
+sample_list = ["LiH", "SiH4", "MB16_43_01"]
 
 
-def gradcheck_param(
+def gradcheck_pos(
     dtype: torch.dtype, name: str
-) -> tuple[
-    Callable[[Tensor, Tensor, Tensor], Tensor],  # autograd function
-    tuple[Tensor, Tensor, Tensor],  # differentiable variables
-]:
+) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
     assert par.repulsion is not None
 
@@ -36,75 +31,70 @@ def gradcheck_param(
     sample = samples[name]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
+
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
 
+    hubbard = get_elem_param(
+        torch.unique(numbers),
+        par.element,
+        "gam",
+        pad_val=0,
+        **dd,
+    )
+
+    assert par.charge is not None
+    gexp = torch.tensor(par.charge.effective.gexp, **dd)
+
     # variables to be differentiated
-    _arep = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "arep",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
-    )
-    _zeff = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "zeff",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
-    )
-    _kexp = torch.tensor(par.repulsion.effective.kexp, **dd, requires_grad=True)
+    positions.requires_grad_(True)
 
-    def func(arep: Tensor, zeff: Tensor, kexp: Tensor) -> Tensor:
-        rep = Repulsion(arep, zeff, kexp, **dd)
-        cache = rep.get_cache(numbers, ihelp)
-        return rep.get_energy(positions, cache)
+    es2 = ES2(hubbard, None, gexp=gexp, shell_resolved=False, **dd)
 
-    return func, (_arep, _zeff, _kexp)
+    def func(positions: Tensor) -> Tensor:
+        return es2.get_atom_coulomb_matrix(numbers, positions, ihelp)
+
+    return func, positions
 
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
-def test_grad_param(dtype: torch.dtype, name: str) -> None:
+def test_grad_pos(dtype: torch.dtype, name: str) -> None:
     """
-    Check a single analytical gradient of parameters against numerical
+    Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradcheck`.
     """
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    func, diffvars = gradcheck_param(dtype, name)
+    func, diffvars = gradcheck_pos(dtype, name)
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradcheck
 
     assert gradcheck(func, diffvars, atol=tol)
+    diffvars.detach_()
 
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
-def test_gradgrad_param(dtype: torch.dtype, name: str) -> None:
+def test_gradgrad_pos(dtype: torch.dtype, name: str) -> None:
     """
-    Check a single analytical gradient of parameters against numerical
+    Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    func, diffvars = gradcheck_param(dtype, name)
+    func, diffvars = gradcheck_pos(dtype, name)
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradgradcheck
 
     assert gradgradcheck(func, diffvars, atol=tol)
+    diffvars.detach_()
 
 
-def gradcheck_param_batch(
+def gradcheck_pos_batch(
     dtype: torch.dtype, name1: str, name2: str
-) -> tuple[
-    Callable[[Tensor, Tensor, Tensor], Tensor],  # autograd function
-    tuple[Tensor, Tensor, Tensor],  # differentiable variables
-]:
+) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
     assert par.repulsion is not None
 
@@ -123,70 +113,64 @@ def gradcheck_param_batch(
             sample2["positions"].type(dtype),
         ]
     )
+
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
 
+    hubbard = get_elem_param(
+        torch.unique(numbers),
+        par.element,
+        "gam",
+        pad_val=0,
+        **dd,
+    )
+
+    assert par.charge is not None
+    gexp = torch.tensor(par.charge.effective.gexp, **dd)
+
     # variables to be differentiated
-    _arep = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "arep",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
-    )
-    _zeff = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "zeff",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
-    )
-    _kexp = torch.tensor(par.repulsion.effective.kexp, **dd, requires_grad=True)
+    positions.requires_grad_(True)
 
-    def func(arep: Tensor, zeff: Tensor, kexp: Tensor) -> Tensor:
-        rep = Repulsion(arep, zeff, kexp, **dd)
-        cache = rep.get_cache(numbers, ihelp)
-        return rep.get_energy(positions, cache)
+    es2 = ES2(hubbard, None, gexp=gexp, shell_resolved=False, **dd)
 
-    return func, (_arep, _zeff, _kexp)
+    def func(positions: Tensor) -> Tensor:
+        return es2.get_atom_coulomb_matrix(numbers, positions, ihelp)
+
+    return func, positions
 
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["SiH4"])
 @pytest.mark.parametrize("name2", sample_list)
-def test_grad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+def test_grad_pos_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """
-    Check a single analytical gradient of parameters against numerical
+    Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradcheck`.
     """
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    func, diffvars = gradcheck_param_batch(dtype, name1, name2)
+    func, diffvars = gradcheck_pos_batch(dtype, name1, name2)
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradcheck
 
     assert gradcheck(func, diffvars, atol=tol)
+    diffvars.detach_()
 
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["SiH4"])
 @pytest.mark.parametrize("name2", sample_list)
-def test_gradgrad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+def test_gradgrad_pos_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """
-    Check a single analytical gradient of parameters against numerical
+    Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    func, diffvars = gradcheck_param_batch(dtype, name1, name2)
+    func, diffvars = gradcheck_pos_batch(dtype, name1, name2)
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradgradcheck
 
-    # Although, we add an epsilon within the square root of arep to avoid
-    # taking the square root at zero, the step size in gradgradcheck is smaller
-    # than this epsilon, which leads to nan's again. Therefore, we omit arep.
-    diffvars[0].requires_grad_(False)
     assert gradgradcheck(func, diffvars, atol=tol)
+    diffvars.detach_()

@@ -33,8 +33,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
     es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=False, **dd)
-    if es is None:
-        assert False, es
+    assert es is not None
 
     cache = es.get_cache(numbers, positions, ihelp)
     e = es.get_atom_energy(qat, cache)
@@ -75,8 +74,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
     es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=False, **dd)
-    if es is None:
-        assert False
+    assert es is not None
 
     cache = es.get_cache(numbers, positions, ihelp)
     e = es.get_atom_energy(qat, cache)
@@ -125,8 +123,7 @@ def test_grad_param(name: str) -> None:
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
 
-    if GFN1_XTB.charge is None:
-        assert False
+    assert GFN1_XTB.charge is not None
 
     hubbard = get_elem_param(torch.unique(numbers), GFN1_XTB.element, "gam", **dd)
     gexp = torch.tensor(GFN1_XTB.charge.effective.gexp, **dd)
