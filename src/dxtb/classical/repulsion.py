@@ -42,7 +42,7 @@ from .._types import Tensor, TensorLike
 from ..basis import IndexHelper
 from ..constants import xtb
 from ..param import Param, get_elem_param
-from ..utils import ParameterWarning, real_pairs
+from ..utils import ParameterWarning, cdist, real_pairs
 from .base import Classical
 
 __all__ = ["Repulsion", "new_repulsion"]
@@ -276,12 +276,7 @@ def repulsion_energy(
 
     distances = torch.where(
         mask,
-        torch.cdist(
-            positions,
-            positions,
-            p=2,
-            compute_mode="use_mm_for_euclid_dist",
-        ),
+        cdist(positions, positions, p=2),
         eps,
     )
 
@@ -345,12 +340,7 @@ def repulsion_gradient(
 
     distances = torch.where(
         mask,
-        torch.cdist(
-            positions,
-            positions,
-            p=2,
-            compute_mode="use_mm_for_euclid_dist",
-        ),
+        cdist(positions, positions, p=2),
         eps,
     )
 
@@ -382,7 +372,7 @@ class RepulsionAG(torch.autograd.Function):
     Autograd function for repulsion energy.
     """
 
-    generate_vmap_rule = True
+    # generate_vmap_rule = True
     # https://pytorch.org/docs/master/notes/extending.func.html#automatically-generate-a-vmap-rule
     # should work since we only use PyTorch operations
 

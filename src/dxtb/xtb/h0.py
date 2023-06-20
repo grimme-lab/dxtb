@@ -10,7 +10,7 @@ from ..basis import IndexHelper
 from ..constants import EV2AU
 from ..data import atomic_rad
 from ..param import Param, get_elem_param, get_elem_valence, get_pair_param
-from ..utils import real_pairs, symmetrize
+from ..utils import cdist, real_pairs, symmetrize
 
 PAD = -1
 """Value used for padding of tensors."""
@@ -285,6 +285,9 @@ class Hamiltonian(TensorLike):
         )
 
         zero = torch.tensor(0.0, device=self.device, dtype=self.dtype)
+        eps = torch.tensor(
+            torch.finfo(self.dtype).eps, device=self.device, dtype=self.dtype
+        )
 
         # ----------------
         # Eq.29: H_(mu,mu)
@@ -302,17 +305,16 @@ class Hamiltonian(TensorLike):
         # ----------------------
         # Eq.24: PI(R_AB, l, l')
         # ----------------------
-        distances = torch.cdist(
-            positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
-        )
+        distances = cdist(positions, positions, p=2)
         rad = self.ihelp.spread_uspecies_to_atom(self.rad)
-        rr = torch.where(
-            mask_atom_diagonal,
-            distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2)),
-            distances.new_tensor(torch.finfo(distances.dtype).eps),
-        )
+
+        rr = distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2) + eps)
         rr_shell = self.ihelp.spread_atom_to_shell(
-            torch.sqrt(rr),
+            torch.where(
+                mask_atom_diagonal,
+                torch.sqrt(torch.clamp(rr, min=eps)),
+                zero,
+            ),
             (-2, -1),
         )
 
@@ -421,6 +423,9 @@ class Hamiltonian(TensorLike):
         )
 
         zero = torch.tensor(0.0, device=self.device, dtype=self.dtype)
+        eps = torch.tensor(
+            torch.finfo(self.dtype).eps, device=self.device, dtype=self.dtype
+        )
 
         # --------------------
         # Eq.28: X(EN_A, EN_B)
@@ -450,17 +455,16 @@ class Hamiltonian(TensorLike):
         # ----------------------
         # Eq.24: PI(R_AB, l, l')
         # ----------------------
-        distances = torch.cdist(
-            positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
-        )
+        distances = cdist(positions, positions, p=2)
         rad = self.ihelp.spread_uspecies_to_atom(self.rad)
-        rr = torch.where(
-            mask_atom_diagonal,
-            distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2)),
-            distances.new_tensor(torch.finfo(distances.dtype).eps),
-        )
+
+        rr = distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2) + eps)
         rr_shell = self.ihelp.spread_atom_to_shell(
-            torch.sqrt(rr),
+            torch.where(
+                mask_atom_diagonal,
+                torch.sqrt(torch.clamp(rr, min=eps)),
+                zero,
+            ),
             (-2, -1),
         )
 

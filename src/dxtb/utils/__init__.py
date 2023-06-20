@@ -2,6 +2,7 @@
 Collection of utility functions.
 """
 
+from .distance import cdist
 from .exceptions import *
 from .grad import *
 from .misc import *

@@ -136,7 +136,7 @@ def get_coordination_number_gradient(
     mask = real_pairs(numbers, diagonal=True)
     distances = torch.where(
         mask,
-        torch.cdist(positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"),
+        cdist(positions, positions, p=2),
         positions.new_tensor(torch.finfo(positions.dtype).eps),
     )
 

@@ -36,7 +36,7 @@ import math
 import torch
 
 from ._types import Tensor, TensorLike
-from .utils import real_atoms, real_pairs
+from .utils import cdist, real_atoms, real_pairs
 
 
 class ChargeModel(TensorLike):
@@ -277,11 +277,7 @@ def solve(
     real = real_atoms(numbers)
     mask = real_pairs(numbers, diagonal=True)
 
-    distances = torch.where(
-        mask,
-        torch.cdist(positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"),
-        eps,
-    )
+    distances = torch.where(mask, cdist(positions, positions, p=2), eps)
     diagonal = mask.new_zeros(mask.shape)
     diagonal.diagonal(dim1=-2, dim2=-1).fill_(True)
 

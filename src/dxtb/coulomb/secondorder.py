@@ -45,7 +45,7 @@ from ..basis import IndexHelper
 from ..constants import xtb
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
-from ..utils import batch, real_pairs
+from ..utils import batch, cdist, real_pairs
 from .average import AveragingFunction, averaging_function, harmonic_average
 
 __all__ = ["ES2", "new_es2"]
@@ -446,9 +446,7 @@ class ES2(Interaction):
 
         distances = torch.where(
             mask,
-            torch.cdist(
-                positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
-            ),
+            cdist(positions, positions, p=2),
             positions.new_tensor(0.0),
         )
 
@@ -492,9 +490,7 @@ class ES2(Interaction):
         distances = ihelp.spread_atom_to_shell(
             torch.where(
                 mask,
-                torch.cdist(
-                    positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
-                ),
+                cdist(positions, positions, p=2),
                 positions.new_tensor(torch.finfo(positions.dtype).eps),
             ),
             (-1, -2),
@@ -565,12 +561,7 @@ def coulomb_matrix_atom(
 
     h = ihelp.spread_uspecies_to_atom(hubbard)
 
-    dist = torch.cdist(
-        positions,
-        positions,
-        p=2,
-        compute_mode="use_mm_for_euclid_dist",
-    )
+    dist = cdist(positions, positions, p=2)
 
     # all distances to the power of "gexp" (R^2_AB from Eq.26)
     dist_gexp = torch.where(
@@ -616,7 +607,7 @@ def coulomb_matrix_atom_gradient(
     """
     distances = torch.where(
         mask,
-        torch.cdist(positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"),
+        cdist(positions, positions, p=2),
         positions.new_tensor(0.0),
     )
 
@@ -676,12 +667,7 @@ def coulomb_matrix_shell(
     lh = ihelp.spread_ushell_to_shell(lhubbard)
     h = lh * ihelp.spread_uspecies_to_shell(hubbard)
 
-    dist = torch.cdist(
-        positions,
-        positions,
-        p=2,
-        compute_mode="use_mm_for_euclid_dist",
-    )
+    dist = cdist(positions, positions, p=2)
 
     # all distances to the power of "gexp" (R^2_AB from Eq.26)
     dist_gexp = ihelp.spread_atom_to_shell(
@@ -737,9 +723,7 @@ def coulomb_matrix_shell_gradient(
     distances = ihelp.spread_atom_to_shell(
         torch.where(
             mask,
-            torch.cdist(
-                positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
-            ),
+            cdist(positions, positions, p=2),
             positions.new_tensor(torch.finfo(positions.dtype).eps),
         ),
         (-1, -2),
