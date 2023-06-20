@@ -149,6 +149,10 @@ def test_grad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradcheck
 
+    # The numerical gradient is not correct here. The problem arises in
+    # `avg = torch.where(mask, average(h + eps), eps)`. When a larger value is
+    # added to `h`, the test succeeds. Note that the analytical gradient is the
+    # same for both values.
     diffvars[0].requires_grad_(False)
 
     assert gradcheck(func, diffvars, atol=tol)
@@ -169,6 +173,10 @@ def test_gradgrad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> Non
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradgradcheck
 
+    # The numerical gradient is not correct here. The problem arises in
+    # `avg = torch.where(mask, average(h + eps), eps)`. When a larger value is
+    # added to `h`, the test succeeds. Note that the analytical gradient is the
+    # same for both values.
     diffvars[0].requires_grad_(False)
 
     assert gradgradcheck(func, diffvars, atol=tol)
