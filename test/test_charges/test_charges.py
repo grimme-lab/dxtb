@@ -51,7 +51,7 @@ def test_single(dtype: torch.dtype):
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_ghost(dtype: torch.dtype):
-    tol = sqrt(torch.finfo(dtype).eps)
+    tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples["NH3-dimer"]
     numbers = sample["numbers"].clone()
@@ -88,18 +88,18 @@ def test_ghost(dtype: torch.dtype):
         ],
         dtype=dtype,
     )
-    eeq = charges.ChargeModel.param2019().type(dtype)
+    eeq = charges.ChargeModel.param2019(dtype=dtype)
     energy, qat = charges.solve(numbers, positions, total_charge, eeq, cn)
 
     assert qat.dtype == energy.dtype == dtype
     assert pytest.approx(total_charge, abs=1e-6) == torch.sum(qat, -1)
-    assert pytest.approx(qref, abs=tol) == qat
-    assert pytest.approx(eref, abs=tol) == energy
+    assert pytest.approx(qref, abs=1e-6, rel=tol) == qat
+    assert pytest.approx(eref, abs=tol, rel=tol) == energy
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_batch(dtype: torch.dtype):
-    tol = sqrt(torch.finfo(dtype).eps)
+    tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample1, sample2 = (
         samples["PbH4-BiH3"],

@@ -16,37 +16,136 @@ from __future__ import annotations
 
 import pytest
 import torch
+from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
 from dxtb import charges
-from dxtb._types import Tensor
+from dxtb._types import Callable, Tensor
+from dxtb.ncoord import get_coordination_number
+from dxtb.utils import batch
 
 from .samples import samples
 
+sample_list = ["NH3", "NH3-dimer", "PbH4-BiH3", "C6H5I-CH3SH"]
 
-@pytest.mark.grad
-def test_gradcheck(dtype: torch.dtype = torch.double):
-    sample = samples["NH3"]
+tol = 1e-7
+
+
+def gradchecker(
+    dtype: torch.dtype, name: str
+) -> tuple[Callable[[Tensor, Tensor], Tensor], tuple[Tensor, Tensor]]:
+    """Prepare gradient check from `torch.autograd`."""
+    sample = samples[name]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
     total_charge = sample["total_charge"].type(dtype)
-    cn = torch.tensor(
-        [3.0, 1.0, 1.0, 1.0],
-        dtype=dtype,
-    )
-    eeq = charges.ChargeModel.param2019().type(dtype)
 
+    eeq = charges.ChargeModel.param2019(dtype=dtype)
+
+    # variables to be differentiated
     positions.requires_grad_(True)
     total_charge.requires_grad_(True)
 
-    def func(positions: Tensor, total_charge: Tensor):
-        return torch.sum(
-            charges.solve(numbers, positions, total_charge, eeq, cn)[0], -1
-        )
+    def func(pos: Tensor, tchrg: Tensor):
+        cn = get_coordination_number(numbers, positions)
+        return charges.solve(numbers, pos, tchrg, eeq, cn)[0]
 
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradcheck
+    return func, (positions, total_charge)
 
-    assert gradcheck(func, (positions, total_charge))
 
-    positions.detach_()
-    total_charge.detach()
+@pytest.mark.grad
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", sample_list)
+def test_grad(dtype: torch.dtype, name: str) -> None:
+    """
+    Check a single analytical gradient of positions against numerical
+    gradient from `torch.autograd.gradcheck`.
+    """
+    func, diffvars = gradchecker(dtype, name)
+    assert gradcheck(func, diffvars, atol=tol)
+
+    diffvars[0].detach_()
+    diffvars[1].detach_()
+
+
+@pytest.mark.grad
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", sample_list)
+def test_gradgrad(dtype: torch.dtype, name: str) -> None:
+    """
+    Check a single analytical gradient of positions against numerical
+    gradient from `torch.autograd.gradgradcheck`.
+    """
+    func, diffvars = gradchecker(dtype, name)
+    assert gradgradcheck(func, diffvars, atol=tol)
+
+    diffvars[0].detach_()
+    diffvars[1].detach_()
+
+
+def gradchecker_batch(
+    dtype: torch.dtype, name1: str, name2: str
+) -> tuple[Callable[[Tensor, Tensor], Tensor], tuple[Tensor, Tensor]]:
+    """Prepare gradient check from `torch.autograd`."""
+    sample1, sample2 = samples[name1], samples[name2]
+    numbers = batch.pack(
+        [
+            sample1["numbers"],
+            sample2["numbers"],
+        ]
+    )
+    positions = batch.pack(
+        [
+            sample1["positions"].type(dtype),
+            sample2["positions"].type(dtype),
+        ]
+    )
+    total_charge = batch.pack(
+        [
+            sample1["total_charge"].type(dtype),
+            sample2["total_charge"].type(dtype),
+        ]
+    )
+
+    eeq = charges.ChargeModel.param2019(dtype=dtype)
+
+    # variables to be differentiated
+    positions.requires_grad_(True)
+    total_charge.requires_grad_(True)
+
+    def func(pos: Tensor, tchrg: Tensor):
+        cn = get_coordination_number(numbers, positions)
+        return charges.solve(numbers, pos, tchrg, eeq, cn)[0]
+
+    return func, (positions, total_charge)
+
+
+@pytest.mark.grad
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name1", ["NH3"])
+@pytest.mark.parametrize("name2", sample_list)
+def test_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    """
+    Check a single analytical gradient of positions against numerical
+    gradient from `torch.autograd.gradcheck`.
+    """
+    func, diffvars = gradchecker_batch(dtype, name1, name2)
+    assert gradcheck(func, diffvars, atol=tol)
+
+    diffvars[0].detach_()
+    diffvars[1].detach_()
+
+
+@pytest.mark.grad
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name1", ["NH3"])
+@pytest.mark.parametrize("name2", sample_list)
+def test_gradgrad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    """
+    Check a single analytical gradient of positions against numerical
+    gradient from `torch.autograd.gradgradcheck`.
+    """
+    func, diffvars = gradchecker_batch(dtype, name1, name2)
+    assert gradgradcheck(func, diffvars, atol=tol)
+
+    diffvars[0].detach_()
+    diffvars[1].detach_()
