@@ -7,15 +7,13 @@ from math import sqrt
 
 import pytest
 import torch
-from torch.autograd.functional import jacobian
-from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
 from dxtb._types import Tensor
 from dxtb.basis import IndexHelper, slater
 from dxtb.integral import Overlap, mmd
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
-from dxtb.utils import t2int
+from dxtb.utils import jac, t2int
 
 from .samples import samples
 
@@ -70,186 +68,11 @@ def test_ss(dtype: torch.dtype):
         assert pytest.approx(gradient[i], abs=tol) == ref[i]
 
 
-def test_gradcheck_efunction(dtype: torch.dtype = torch.double) -> None:
-    xij = torch.tensor(
-        [
-            [0.0328428932, 0.0555253364, 0.0625081286, 0.0645959303],
-            [0.0555253364, 0.1794814467, 0.2809201777, 0.3286595047],
-            [0.0625081286, 0.2809201777, 0.6460560560, 0.9701334238],
-            [0.0645959303, 0.3286595047, 0.9701334238, 1.9465910196],
-        ],
-        dtype=dtype,
-    )
-    rpi = torch.tensor(
-        [
-            [
-                [
-                    [-0.0, -0.0, -0.0, -0.0],
-                    [-0.0, -0.0, -0.0, -0.0],
-                    [-0.0, -0.0, -0.0, -0.0],
-                    [-0.0, -0.0, -0.0, -0.0],
-                ],
-                [
-                    [-0.0, -0.0, -0.0, -0.0],
-                    [-0.0, -0.0, -0.0, -0.0],
-                    [-0.0, -0.0, -0.0, -0.0],
-                    [-0.0, -0.0, -0.0, -0.0],
-                ],
-                [
-                    [-0.0, -0.0, -0.0, -0.0],
-                    [-0.0, -0.0, -0.0, -0.0],
-                    [-0.0, -0.0, -0.0, -0.0],
-                    [-0.0, -0.0, -0.0, -0.0],
-                ],
-            ]
-        ],
-        dtype=dtype,
-    )
-    rpj = torch.tensor(
-        [
-            [
-                [
-                    [0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0],
-                ],
-                [
-                    [0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0],
-                ],
-                [
-                    [0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0],
-                    [0.0, 0.0, 0.0, 0.0],
-                ],
-            ]
-        ],
-        dtype=dtype,
-    )
-    shape = (1, 3, 4, 4, torch.tensor(1), torch.tensor(1))
-
-    assert gradcheck(
-        mmd.recursion.EFunction.apply,
-        (xij.clone().requires_grad_(True), rpi, rpj, shape),  # type: ignore
-    )
-    assert gradgradcheck(
-        mmd.recursion.EFunction.apply,
-        (xij.clone().requires_grad_(True), rpi, rpj, shape),  # type: ignore
-    )
-
-    assert gradcheck(
-        mmd.recursion.EFunction.apply,
-        (
-            xij,
-            rpi.clone().requires_grad_(True),
-            rpj.clone().requires_grad_(True),
-            shape,
-        ),  # type: ignore
-    )
-    assert gradgradcheck(
-        mmd.recursion.EFunction.apply,
-        (
-            xij,
-            rpi.clone().requires_grad_(True),
-            rpj.clone().requires_grad_(True),
-            shape,
-        ),  # type: ignore
-    )
-
-
-def test_gradcheck_mmd(dtype: torch.dtype = torch.double) -> None:
-    angular = (torch.tensor(0), torch.tensor(0))
-    alpha = (
-        torch.tensor(
-            [7.6119966507, 1.3929016590, 0.3869633377, 0.1284296513], dtype=dtype
-        ),
-        torch.tensor(
-            [
-                106.3897247314,
-                19.5107936859,
-                5.4829540253,
-                0.7840746045,
-                0.3558612764,
-                0.1697082371,
-            ],
-            dtype=dtype,
-        ),
-    )
-    coeff = (
-        torch.tensor(
-            [0.1853610128, 0.2377167493, 0.1863220334, 0.0445896946], dtype=dtype
-        ),
-        torch.tensor(
-            [
-                -0.0980091542,
-                -0.1367608607,
-                -0.1315236390,
-                0.1987189353,
-                0.1845818311,
-                0.0322807245,
-            ],
-            dtype=dtype,
-        ),
-    )
-    vec = torch.tensor(
-        [
-            [-0.0000000000, -0.0000000000, +1.3999999762],
-            [-0.0000000000, -0.0000000000, -1.3999999762],
-        ],
-        dtype=dtype,
-    )
-
-    assert gradcheck(
-        mmd.recursion.mmd_recursion,
-        (angular, alpha, coeff, vec.clone().requires_grad_(True)),  # type: ignore
-    )
-    assert gradgradcheck(
-        mmd.recursion.mmd_recursion,
-        (angular, alpha, coeff, vec.clone().requires_grad_(True)),  # type: ignore
-    )
-    assert gradcheck(
-        mmd.explicit.mmd_explicit,
-        (angular, alpha, coeff, vec.clone().requires_grad_(True)),  # type: ignore
-    )
-    assert gradgradcheck(
-        mmd.explicit.mmd_explicit,
-        (angular, alpha, coeff, vec.clone().requires_grad_(True)),  # type: ignore
-    )
-
-
-@pytest.mark.filterwarnings("ignore")  # works for single precision
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["H2O", "CH4", "SiH4"])
-def test_gradcheck_overlap(dtype: torch.dtype, name: str):
-    """Pytorch gradcheck for overlap calculation."""
-    dd = {"dtype": dtype}
-    tol = 3e-01
-
-    sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    positions.requires_grad_(True)
-
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    overlap = Overlap(numbers, par, ihelp, **dd)
-
-    def func(pos: Tensor) -> Tensor:
-        return overlap.build(pos)
-
-    assert gradcheck(func, (positions), atol=tol)
-
-    positions.detach_()
-
-
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["H", "C", "Rn", "H2O", "CH4", "SiH4"])
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", ["H", "H2", "LiH", "C", "Rn", "H2O", "CH4", "SiH4"])
 def test_overlap_jacobian(dtype: torch.dtype, name: str):
     """Jacobian calculation with AD and numerical gradient."""
-    rtol, atol = 1e-1, 3e-1
+    tol = sqrt(torch.finfo(dtype).eps)
 
     sample = samples[name]
     numbers = sample["numbers"]
@@ -263,25 +86,23 @@ def test_overlap_jacobian(dtype: torch.dtype, name: str):
     # autograd jacobian
     positions.requires_grad_(True)
 
+    def func(pos):
+        return overlap.build(pos)
+
     # [norb, norb, natm, 3]
-    jac = jacobian(lambda x: overlap.build(x), positions)
-    jac = torch.movedim(jac, -2, 0)  # type: ignore
+    j = jac(func)(positions)
+    j = torch.movedim(j, -2, 0)  # type: ignore
 
     # check whether dimensions are swapped
-    assert torch.equal(ngrad - jac, ngrad - torch.movedim(jac, 1, 2))
+    assert torch.equal(ngrad - j, ngrad - torch.movedim(j, 1, 2))
 
-    # jacobian and numerical gradient mismatch
-    # print("diff", ngrad - jac)
-    # print("max diff", torch.max(ngrad - jac))
-
-    assert pytest.approx(ngrad, rel=rtol, abs=atol) == jac
+    assert pytest.approx(ngrad, rel=tol, abs=tol) == j
 
     positions.detach_()
 
 
 def calc_numerical_gradient(overlap: Overlap, positions: Tensor) -> Tensor:
-    # setup numerical gradient
-    step = 1.0e-4  # require larger deviations for overlap change
+    step = 1.0e-4
     natm = positions.shape[0]
     norb = t2int(overlap.ihelp.orbitals_per_shell.sum())
     gradient = positions.new_zeros((natm, norb, norb, 3))

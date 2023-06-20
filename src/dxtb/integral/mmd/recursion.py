@@ -361,8 +361,8 @@ def mmd_recursion(
     )
 
     for mli in range(s3d.shape[-2]):
+        mi = NLM_CART[li][mli, :]
         for mlj in range(s3d.shape[-1]):
-            mi = NLM_CART[li][mli, :]
             mj = NLM_CART[lj][mlj, :]
             s3d[..., mli, mlj] += (
                 sij
@@ -374,10 +374,7 @@ def mmd_recursion(
     # transform to cartesian basis functions (itrafo * S * jtrafo^T)
     o = torch.einsum("...ij,...jk,...lk->...il", itrafo, s3d, jtrafo)
 
-    # remove small values
-    eps = vec.new_tensor(torch.finfo(vec.dtype).eps)
-    g = torch.where(torch.abs(o) < eps, vec.new_tensor(0.0), o)
-    return g
+    return o
 
 
 def e_function_derivative(e, ai, li, lj):

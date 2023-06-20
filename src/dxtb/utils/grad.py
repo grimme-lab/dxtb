@@ -16,9 +16,14 @@ import torch
 from ..__version__ import __torch_version__
 from .._types import Any, Callable, Tensor
 
-if __torch_version__ < (2, 0, 0):
-    from functorch import jacrev  # type: ignore
-else:
+if __torch_version__ < (2, 0, 0):  # pragma: no cover
+    try:
+        from functorch import jacrev  # type: ignore
+    except ModuleNotFoundError:
+        jacrev = None
+        from torch.autograd.functional import jacobian  # type: ignore
+
+else:  # pragma: no cover
     from torch.func import jacrev  # type: ignore
 
 
@@ -106,15 +111,23 @@ def hessian(
 ########################################
 
 
-def jacobian(f, argnums):
+def jac(f: Callable[..., Tensor], argnums: int = 0) -> Any:
     """
     Wrapper for Jacobian calcluation.
 
-    Note
-    ----
-    Only reverse mode AD is given through the custom autograd classes. Forward
-    mode requires implementation of `jvp`.
+    Parameters
+    ----------
+    f : Callable[[Any], Tensor]
+        The function whose result is differentiated.
+    argnums : int, optional
+        The variable w.r.t. which will be differentiated. Defaults to 0.
     """
+    if jacrev is None:  # pragma: no cover
+
+        def wrap(*args) -> Any:
+            return jacobian(f, *args)  # type: ignore
+
+        return wrap
 
     return jacrev(f, argnums=argnums)  # type: ignore
 
@@ -164,7 +177,7 @@ def hessian_functorch(
         )
         return g
 
-    _jac = jacobian(_grad, argnums=argnums)
+    _jac = jac(_grad, argnums=argnums)
 
     if is_batched:
         raise NotImplementedError("Batched Hessian not available.")

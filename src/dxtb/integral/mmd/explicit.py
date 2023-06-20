@@ -30,6 +30,8 @@ from ..._types import Tensor
 from ...utils import CGTOAzimuthalQuantumNumberError, IntegralTransformError
 from ..trafo import NLM_CART, TRAFO
 
+__all__ = ["mmd_explicit", "mmd_explicit_gradient"]
+
 sqrtpi3 = sqrt(pi) ** 3
 
 
@@ -85,13 +87,14 @@ def mmd_explicit(
     # K_AB * Gaussian integral (√(pi/(a+b))) in 3D * c_A * c_B
     sij = torch.exp(-est) * sqrtpi3 * torch.pow(oij, 1.5) * ci * cj
 
-    rpi = +vec.unsqueeze(-1).unsqueeze(-1) * aj * oij
-    rpj = -vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
-
     # ss does not require E-coefficients (e000 = 1)
     if li == 0 and lj == 0:
         s3d = sij.sum((-2, -1), keepdim=True)
     else:
+        rpi = +vec.unsqueeze(-1).unsqueeze(-1) * aj * oij
+        rpj = -vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
+
+        # e0: (li+1, lj+1, nat, 3, ai, aj)
         if li == 0:
             e0 = ecoeffs_s(lj, xij, rpi, rpj)
         elif li == 1:
@@ -103,23 +106,58 @@ def mmd_explicit(
         else:
             raise CGTOAzimuthalQuantumNumberError(li)
 
-        for mli in range(ncarti):
-            mi = NLM_CART[li][mli, :]
-            for mlj in range(ncartj):
-                mj = NLM_CART[lj][mlj, :]
+        nlmi = NLM_CART[li]
+        nlmj = NLM_CART[lj]
 
-                x = e0[mi[0]][mj[0]][..., 0, :, :]
-                y = e0[mi[1]][mj[1]][..., 1, :, :]
-                z = e0[mi[2]][mj[2]][..., 2, :, :]
+        # Collect E-coefficients for each cartesian direction for first (i)
+        # center. Getting the E-coefficients for the three directions from
+        # `NLM_CART` replaces the first dimension with a `3`, which finally
+        # yields the following shape: (3, lj+1, nbatch, 3 ai, aj)
+        e0x = e0[nlmi[:, 0]]
+        e0y = e0[nlmi[:, 1]]
+        e0z = e0[nlmi[:, 2]]
 
-                s3d[..., mli, mlj] += (sij * x * y * z).sum((-2, -1))
+        # Collect E-coefficients for each cartesian direction for second (j)
+        # center. Getting the E-coefficients for the three directions from
+        # `NLM_CART` replaces the second dimension with a `3`. Selecting the
+        # cartesian directions eliminates the `-3`rd dimension, which
+        # ultimately yields the following shape: (3, 3, nbatch, ai, aj)
+        sx = e0x[:, nlmj[:, 0], ..., 0, :, :]  # type: ignore
+        sy = e0y[:, nlmj[:, 1], ..., 1, :, :]  # type: ignore
+        sz = e0z[:, nlmj[:, 2], ..., 2, :, :]  # type: ignore
+
+        # First, we multiply sx, sy and sz with sij using the inidces a (ai)
+        # and b (aj). Then, we sum over the alphas (a and b), reducing the
+        # tensor to (li, lj, nbatch). Since `nbatch` denotes our batch
+        # dimension, we cycle the indices. The latter part was determined by
+        # inspection to conform with previous code.
+        s3d = torch.einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", sx, sy, sz, sij)
+
+        # This is the loop-based version of the above indexing atrocities. I
+        # left it here, as it may be better to understand...
+        # for mli in range(ncarti):
+        #     mi = nlmi[mli, :]
+        #     _e0x = e0[mi[0]]
+        #     _e0y = e0[mi[1]]
+        #     _e0z = e0[mi[2]]
+        #
+        #     for mlj in range(ncartj):
+        #         mj = nlmj[mlj, :]
+        #         x = _e0x[mj[0]][..., 0, :, :]
+        #         y = _e0y[mj[1]][..., 1, :, :]
+        #         z = _e0z[mj[2]][..., 2, :, :]
+        #
+        #         s3d[..., mli, mlj] += (sij * x * y * z).sum((-2, -1))
 
     # transform to cartesian basis functions (itrafo * S * jtrafo^T)
     o = torch.einsum("...ij,...jk,...lk->...il", itrafo, s3d, jtrafo)
 
-    # remove small values
-    eps = vec.new_tensor(torch.finfo(vec.dtype).eps)
-    return torch.where(torch.abs(o) < eps, vec.new_tensor(0.0), o)
+    # Previously, I removed small values for numerical stability of the SCF
+    # (and some portions are also faster) by using the following expression
+    # `torch.where(torch.abs(o) < eps, eps, o)`. This, however, leads to wrong
+    # gradients (gradcheck fails). A related issue concerning `abs()` might be
+    # https://github.com/pytorch/pytorch/issues/7172
+    return o
 
 
 def mmd_explicit_gradient(
@@ -232,15 +270,10 @@ def mmd_explicit_gradient(
     # [bs, upairs, 3, norbi, norbj] == [vec[0], vec[1], 3, norbi, norbj]
     grad = torch.einsum("...ij,...jk,...lk->...il", itrafo, ds3d[..., rt, :, :], jtrafo)
 
-    # remove small values
-    eps = vec.new_tensor(torch.finfo(vec.dtype).eps)
-    ovlp = torch.where(torch.abs(ovlp) < eps, vec.new_tensor(0.0), ovlp)
-    grad = torch.where(torch.abs(grad) < eps, vec.new_tensor(0.0), grad)
-
     return ovlp, grad
 
 
-def ecoeffs_s(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Tensor]]:
+def ecoeffs_s(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> Tensor:
     """
     Explicitly calculate E-coefficients for s-orbitals with s/p/d/f-orbitals.
 
@@ -259,7 +292,7 @@ def ecoeffs_s(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
 
     Returns
     -------
-    list[list[Tensor]]
+    Tensor
         "Matrix" of E-coefficients. The shape depends on the angular momenta
         involved.
 
@@ -272,7 +305,7 @@ def ecoeffs_s(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
 
     # ss -> not required since 0
     if lj == 0:
-        return [[torch.zeros_like(rpi)]]
+        return torch.zeros_like(rpi).unsqueeze(0).unsqueeze(0)
 
     e011 = xij
     e100 = rpi
@@ -281,16 +314,14 @@ def ecoeffs_s(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
 
     # sp
     if lj == 1:
-        return [
-            [e000, e010],
-        ]
+        return torch.stack([e000, e010]).unsqueeze(0)
+
     # sd
     if lj == 2:
         e020 = rpj * e010 + e011
 
-        return [
-            [e000, e010, e020],
-        ]
+        return torch.stack([e000, e010, e020]).unsqueeze(0)
+
     # sf
     if lj == 3:
         e020 = rpj * e010 + e011
@@ -298,9 +329,7 @@ def ecoeffs_s(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
         e021 = xij * e010 + rpj * e011
         e030 = rpj * e020 + e021
 
-        return [
-            [e000, e010, e020, e030],
-        ]
+        return torch.stack([e000, e010, e020, e030]).unsqueeze(0)
 
     raise CGTOAzimuthalQuantumNumberError(lj)
 
@@ -424,7 +453,7 @@ def de_s(
     raise CGTOAzimuthalQuantumNumberError(lj)
 
 
-def ecoeffs_p(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Tensor]]:
+def ecoeffs_p(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> Tensor:
     """
     Explicitly calculate E-coefficients for p-orbitals with s/p/d/f-orbitals.
 
@@ -443,7 +472,7 @@ def ecoeffs_p(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
 
     Returns
     -------
-    list[list[Tensor]]
+    Tensor
         "Matrix" of E-coefficients. The shape depends on the angular momenta
         involved.
 
@@ -461,18 +490,23 @@ def ecoeffs_p(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
 
     # ps
     if lj == 0:
-        return [
-            [e000],
-            [e100],
-        ]
+        # return [[e000], [e100]]
+        return torch.stack(
+            [
+                e000.unsqueeze(0),
+                e100.unsqueeze(0),
+            ]
+        )
     # pp
     if lj == 1:
         e110 = rpj * e100 + e101
 
-        return [
-            [e000, e010],
-            [e100, e110],
-        ]
+        return torch.stack(
+            [
+                torch.stack([e000, e010]),
+                torch.stack([e100, e110]),
+            ]
+        )
     # pd
     if lj == 2:
         e110 = rpj * e100 + e101
@@ -481,10 +515,12 @@ def ecoeffs_p(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
         e020 = rpj * e010 + e011
         e120 = rpj * e110 + e111
 
-        return [
-            [e000, e010, e020],
-            [e100, e110, e120],
-        ]
+        return torch.stack(
+            [
+                torch.stack([e000, e010, e020]),
+                torch.stack([e100, e110, e120]),
+            ]
+        )
     # pf
     if lj == 3:
         e110 = rpj * e100 + e101
@@ -499,10 +535,12 @@ def ecoeffs_p(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
         e031 = xij * e020 + rpj * e021 + 2 * e022
         e130 = rpi * e030 + e031
 
-        return [
-            [e000, e010, e020, e030],
-            [e100, e110, e120, e130],
-        ]
+        return torch.stack(
+            [
+                torch.stack([e000, e010, e020, e030]),
+                torch.stack([e100, e110, e120, e130]),
+            ]
+        )
 
     raise CGTOAzimuthalQuantumNumberError(lj)
 
@@ -696,7 +734,7 @@ def de_p(
     raise CGTOAzimuthalQuantumNumberError(lj)
 
 
-def ecoeffs_d(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Tensor]]:
+def ecoeffs_d(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> Tensor:
     """
     Explicitly calculate E-coefficients for d-orbitals with s/p/d/f-orbitals.
 
@@ -715,7 +753,7 @@ def ecoeffs_d(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
 
     Returns
     -------
-    list[list[Tensor]]
+    Tensor
         "Matrix" of E-coefficients. The shape depends on the angular momenta
         involved.
 
@@ -736,11 +774,13 @@ def ecoeffs_d(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
 
     # ds
     if lj == 0:
-        return [
-            [e000],
-            [e100],
-            [e200],
-        ]
+        return torch.stack(
+            [
+                e000.unsqueeze(0),
+                e100.unsqueeze(0),
+                e200.unsqueeze(0),
+            ]
+        )
     # dp
     if lj == 1:
         e111 = xij * e100 + rpj * e101
@@ -748,11 +788,13 @@ def ecoeffs_d(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
         e020 = rpj * e010 + e011
         e210 = rpi * e110 + e111
 
-        return [
-            [e000, e010],
-            [e100, e110],
-            [e200, e210],
-        ]
+        return torch.stack(
+            [
+                torch.stack([e000, e010]),
+                torch.stack([e100, e110]),
+                torch.stack([e200, e210]),
+            ]
+        )
     # dd
     if lj == 2:
         e111 = xij * e100 + rpj * e101
@@ -764,11 +806,13 @@ def ecoeffs_d(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
         e120 = rpj * e110 + e111
         e220 = rpj * e210 + e211
 
-        return [
-            [e000, e010, e020],
-            [e100, e110, e120],
-            [e200, e210, e220],
-        ]
+        return torch.stack(
+            [
+                torch.stack([e000, e010, e020]),
+                torch.stack([e100, e110, e120]),
+                torch.stack([e200, e210, e220]),
+            ]
+        )
     # df
     if lj == 3:
         e111 = xij * e100 + rpj * e101
@@ -789,11 +833,13 @@ def ecoeffs_d(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list[list[Te
         e131 = xij * e030 + rpi * e031 + 2 * e032
         e230 = rpi * e130 + e131
 
-        return [
-            [e000, e010, e020, e030],
-            [e100, e110, e120, e130],
-            [e200, e210, e220, e230],
-        ]
+        return torch.stack(
+            [
+                torch.stack([e000, e010, e020, e030]),
+                torch.stack([e100, e110, e120, e130]),
+                torch.stack([e200, e210, e220, e230]),
+            ]
+        )
 
     raise CGTOAzimuthalQuantumNumberError(lj)
 
@@ -1034,7 +1080,7 @@ def de_d(
     raise CGTOAzimuthalQuantumNumberError(lj)
 
 
-def ecoeffs_f(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list:
+def ecoeffs_f(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> Tensor:
     """
     Explicitly calculate E-coefficients for f-orbitals with s/p/d/f-orbitals.
 
@@ -1053,7 +1099,7 @@ def ecoeffs_f(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list:
 
     Returns
     -------
-    list[list[Tensor]]
+    Tensor
         "Matrix" of E-coefficients. The shape depends on the angular momenta
         involved.
 
@@ -1076,12 +1122,14 @@ def ecoeffs_f(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list:
 
     # fs
     if lj == 0:
-        return [
-            [e000],
-            [e100],
-            [e200],
-            [e300],
-        ]
+        return torch.stack(
+            [
+                e000.unsqueeze(0),
+                e100.unsqueeze(0),
+                e200.unsqueeze(0),
+                e300.unsqueeze(0),
+            ]
+        )
     # fp
     if lj == 1:
         e110 = rpj * e100 + e101
@@ -1094,12 +1142,14 @@ def ecoeffs_f(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list:
         e301 = xij * e200 + rpi * e201 + 2 * e202
         e310 = rpj * e300 + e301
 
-        return [
-            [e000, e010],
-            [e100, e110],
-            [e200, e210],
-            [e300, e310],
-        ]
+        return torch.stack(
+            [
+                torch.stack([e000, e010]),
+                torch.stack([e100, e110]),
+                torch.stack([e200, e210]),
+                torch.stack([e300, e310]),
+            ]
+        )
     # fd
     if lj == 2:
         e110 = rpj * e100 + e101
@@ -1120,12 +1170,14 @@ def ecoeffs_f(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list:
         e311 = xij * e300 + rpj * e301 + 2 * e302
         e320 = rpj * e310 + e311
 
-        return [
-            [e000, e010, e020],
-            [e100, e110, e120],
-            [e200, e210, e220],
-            [e300, e310, e320],
-        ]
+        return torch.stack(
+            [
+                torch.stack([e000, e010, e020]),
+                torch.stack([e100, e110, e120]),
+                torch.stack([e200, e210, e220]),
+                torch.stack([e300, e310, e320]),
+            ]
+        )
     # ff
     if lj == 3:
         e110 = rpj * e100 + e101
@@ -1159,12 +1211,14 @@ def ecoeffs_f(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> list:
         e231 = xij * e130 + rpi * e131 + 2 * e132
         e330 = rpi * e230 + e231
 
-        return [
-            [e000, e010, e020, e030],
-            [e100, e110, e120, e130],
-            [e200, e210, e220, e230],
-            [e300, e310, e320, e330],
-        ]
+        return torch.stack(
+            [
+                torch.stack([e000, e010, e020, e030]),
+                torch.stack([e100, e110, e120, e130]),
+                torch.stack([e200, e210, e220, e230]),
+                torch.stack([e300, e310, e320, e330]),
+            ]
+        )
 
     raise CGTOAzimuthalQuantumNumberError(lj)
 
