@@ -8,7 +8,7 @@ from abc import abstractmethod
 
 import torch
 
-from .._types import Any, Slicers, Tensor
+from .._types import Any, SCFResult, Slicers, Tensor
 from ..basis import IndexHelper
 from ..constants import K2AU, defaults
 from ..exlibs.xitorch import EditableModule, LinearOperator
@@ -223,7 +223,7 @@ class BaseSelfConsistentField(EditableModule):
             Converged, orbital-resolved charges.
         """
 
-    def __call__(self, charges: Tensor | None = None) -> dict[str, Tensor]:
+    def __call__(self, charges: Tensor | None = None) -> SCFResult:
         """
         Run the self-consistent iterations until a stationary solution is
         reached.
@@ -333,6 +333,28 @@ class BaseSelfConsistentField(EditableModule):
         return energy + self.interactions.get_energy(
             charges, self._data.cache, self._data.ihelp
         )
+
+    def get_energy_as_dict(self, charges: Tensor) -> dict[str, Tensor]:
+        """
+        Get the energy of the system with the given charges.
+
+        Parameters
+        ----------
+        charges : Tensor
+            Orbital charges vector.
+
+        Returns
+        -------
+        Tensor
+            Energy of the system.
+        """
+        energy_h0 = {"h0": self._data.energy}
+
+        energy_interactions = self.interactions.get_energy_as_dict(
+            charges, self._data.cache, self._data.ihelp
+        )
+
+        return {**energy_h0, **energy_interactions}
 
     def get_electronic_free_energy(self) -> Tensor:
         r"""

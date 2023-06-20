@@ -90,6 +90,37 @@ class Slicers(TypedDict):
     """Slicer for atom-resolved variables."""
 
 
+class SCFResult(TypedDict):
+    """Collection of SCF result variables."""
+
+    charges: Tensor
+    """Self-consistent orbital-resolved Mulliken partial charges."""
+
+    coefficients: Tensor
+    """LCAO-MO coefficients (eigenvectors of Fockian)."""
+
+    density: Tensor
+    """Density matrix."""
+
+    emo: Tensor
+    """Energy of molecular orbitals (sorted by increasing energy)."""
+
+    energy: Tensor
+    """Energies of the self-consistent contributions (interactions)."""
+
+    fenergy: Tensor
+    """Atom-resolved electronic free energy from fractional occupation."""
+
+    hamiltonian: Tensor
+    """Full Hamiltonian matrix (H0 + H1)."""
+
+    occupation: Tensor
+    """Orbital occupations."""
+
+    potential: Tensor
+    """Self-consistent orbital-resolved potential."""
+
+
 class Molecule(TypedDict):
     """
     Representation of fundamental molecular structure (atom types and postions).

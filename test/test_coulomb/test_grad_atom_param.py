@@ -149,6 +149,8 @@ def test_grad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradcheck
 
+    diffvars[0].requires_grad_(False)
+
     assert gradcheck(func, diffvars, atol=tol)
 
 
@@ -166,5 +168,7 @@ def test_gradgrad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> Non
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradgradcheck
+
+    diffvars[0].requires_grad_(False)
 
     assert gradgradcheck(func, diffvars, atol=tol)

@@ -163,7 +163,6 @@ def test_grad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """
     tol = sqrt(torch.finfo(dtype).eps) * 10
     func, diffvars = gradcheck_param_batch(dtype, name1, name2)
-    # diffvars[2].requires_grad_(False)
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradcheck

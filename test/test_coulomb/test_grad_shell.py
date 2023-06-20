@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 """
 Run tests for gradient from isotropic second-order electrostatic energy (ES2).
 """
@@ -54,8 +55,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     # analytical (automatic)
     cache = es.get_cache(numbers, positions, ihelp)  # recalc with gradients
-    energy = es.get_shell_energy(charges, cache)
-    egrad = es.get_shell_gradient(energy, positions)
+    egrad = es.get_shell_gradient(charges, positions, cache)
     assert pytest.approx(ref, abs=tol) == egrad
     assert pytest.approx(egrad, abs=tol) == agrad
 
@@ -114,8 +114,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     # analytical (automatic)
     cache = es.get_cache(numbers, positions, ihelp)  # recalc with gradients
-    energy = es.get_shell_energy(charges, cache)
-    egrad = es.get_shell_gradient(energy, positions)
+    egrad = es.get_shell_gradient(charges, positions, cache)
     assert pytest.approx(ref, abs=tol) == egrad
     assert pytest.approx(egrad, abs=tol) == agrad
 

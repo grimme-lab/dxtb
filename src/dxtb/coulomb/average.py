@@ -24,7 +24,7 @@ def harmonic_average(hubbard: Tensor) -> Tensor:
     Tensor
         Harmonic average of the Hubbard parameters.
     """
-    hubbard1 = 1.0 / (hubbard + torch.finfo(hubbard.dtype).eps)
+    hubbard1 = 1.0 / hubbard
     return 2.0 / (hubbard1.unsqueeze(-1) + hubbard1.unsqueeze(-2))
 
 

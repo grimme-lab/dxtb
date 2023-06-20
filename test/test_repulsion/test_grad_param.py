@@ -186,7 +186,9 @@ def test_gradgrad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> Non
     from torch.autograd.gradcheck import gradgradcheck
 
     # Although, we add an epsilon within the square root of arep to avoid
-    # taking the square root at zero, the step size in gradgradcheck is smaller
-    # than this epsilon, which leads to nan's again. Therefore, we omit arep.
+    # taking the square root at zero, the step size in gradgradcheck is larger
+    # than this epsilon, which leads to nan's again. As this does not effect
+    # regular second order derivatives, we omit the arep parameter here.
     diffvars[0].requires_grad_(False)
+
     assert gradgradcheck(func, diffvars, atol=tol)

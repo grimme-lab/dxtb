@@ -237,9 +237,8 @@ class Interaction(TensorLike):
 
     def get_gradient(
         self,
-        numbers: Tensor,
-        positions: Tensor,
         charges: Tensor,
+        positions: Tensor,
         cache: Interaction.Cache,
         ihelp: IndexHelper,
     ) -> Tensor:
@@ -253,12 +252,10 @@ class Interaction(TensorLike):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers.
-        positions : Tensor
-            Cartesian coordinates.
         charges : Tensor
             Orbital-resolved partial charges.
+        positions : Tensor
+            Cartesian coordinates.
         cache : Interaction.Cache
             Restart data for the interaction.
         ihelp : IndexHelper
@@ -270,10 +267,10 @@ class Interaction(TensorLike):
             Nuclear gradient for each atom.
         """
         qsh = ihelp.reduce_orbital_to_shell(charges)
-        gsh = self.get_shell_gradient(numbers, positions, qsh, cache, ihelp)
+        gsh = self.get_shell_gradient(qsh, positions, cache)
 
         qat = ihelp.reduce_shell_to_atom(qsh)
-        gat = self.get_atom_gradient(numbers, positions, qat, cache)
+        gat = self.get_atom_gradient(qat, positions, cache)
 
         return gsh + gat
 

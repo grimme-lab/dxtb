@@ -21,7 +21,7 @@ from math import sqrt
 
 import torch
 
-from .._types import Any, Slicers, Tensor
+from .._types import Any, SCFResult, Slicers, Tensor
 from ..basis import IndexHelper
 from ..constants import defaults
 from ..exlibs.xitorch import optimize as xto
@@ -370,7 +370,7 @@ def solve(
     guess: str,
     *args: Any,
     **kwargs: Any,
-) -> dict[str, Tensor]:
+) -> SCFResult:
     """
     Obtain self-consistent solution for a given Hamiltonian.
 
