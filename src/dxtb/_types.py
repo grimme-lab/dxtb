@@ -49,7 +49,8 @@ if sys.version_info >= (3, 10):
     # not type aliases, hence "|" is not allowed before Python 3.10
     PathLike = str | Path
     ScatterOrGather = Gather | Scatter
-    Size = list[int] | tuple[int] | torch.Size
+    Slicer = list[slice] | tuple[slice] | tuple[Ellipsis]
+    Size = list[Tensor] | list[int] | tuple[int] | torch.Size
     TensorOrTensors = list[Tensor] | tuple[Tensor, ...] | Tensor
 elif sys.version_info >= (3, 9):
     # in Python 3.9, "from __future__ import annotations" works with type
@@ -58,7 +59,8 @@ elif sys.version_info >= (3, 9):
 
     PathLike = Union[str, Path]
     ScatterOrGather = Union[Gather, Scatter]
-    Size = Union[list[int], tuple[int], torch.Size]
+    Slicer = Union[list[slice], tuple[slice], tuple[Ellipsis]]
+    Size = Union[list[Tensor], list[int], tuple[int], torch.Size]
     TensorOrTensors = Union[list[Tensor], tuple[Tensor, ...], Tensor]
 elif sys.version_info >= (3, 8):
     # in Python 3.8, "from __future__ import annotations" only affects
@@ -67,7 +69,8 @@ elif sys.version_info >= (3, 8):
 
     PathLike = Union[str, Path]
     ScatterOrGather = Union[Gather, Scatter]
-    Size = Union[List[int], Tuple[int], torch.Size]
+    Slicer = Union[List[slice], Tuple[slice], Tuple]
+    Size = Union[List[Tensor], List[int], Tuple[int], torch.Size]
     TensorOrTensors = Union[List[Tensor], Tuple[Tensor, ...], Tensor]
 else:
     raise RuntimeError(
@@ -76,8 +79,21 @@ else:
     )
 
 
+class Slicers(TypedDict):
+    """Collection of slicers of different resolutions for culling in SCF."""
+
+    orbital: Slicer
+    """Slicer for orbital-resolved variables."""
+    shell: Slicer
+    """Slicer for shell-resolved variables."""
+    atom: Slicer
+    """Slicer for atom-resolved variables."""
+
+
 class Molecule(TypedDict):
-    """Representation of fundamental molecular structure (atom types and postions)."""
+    """
+    Representation of fundamental molecular structure (atom types and postions).
+    """
 
     numbers: Tensor
     """Tensor of atomic numbers"""

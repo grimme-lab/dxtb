@@ -256,6 +256,7 @@ class Calculator(TensorLike):
         opts = opts if opts is not None else {}
         self.opts = {
             "fwd_options": {
+                "damp": opts.get("damp", defaults.DAMP),
                 "maxiter": opts.get("maxiter", defaults.MAXITER),
                 "verbose": opts.get("verbose", defaults.XITORCH_VERBOSITY),
             },
@@ -273,6 +274,8 @@ class Calculator(TensorLike):
                     "fermi_fenergy_partition",
                     defaults.FERMI_FENERGY_PARTITION,
                 ),
+                "scf_mode": opts.get("scf_mode", defaults.SCF_MODE),
+                "mixer": opts.get("mixer", defaults.MIXER),
                 "verbosity": opts.get("verbosity", defaults.VERBOSITY),
             },
             "exclude": opts.get("exclude", defaults.EXCLUDE),
@@ -415,7 +418,6 @@ class Calculator(TensorLike):
             icaches = self.interactions.get_cache(
                 numbers=numbers, positions=positions, ihelp=self.ihelp
             )
-
             scf_results = scf.solve(
                 numbers,
                 positions,

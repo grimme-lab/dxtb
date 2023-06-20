@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Tensor
+from .._types import Slicers, Tensor
 from ..basis import IndexHelper
 from .base import Interaction
 
@@ -15,12 +15,31 @@ class InteractionList(Interaction):
     List of interactions.
     """
 
-    class Cache(Interaction.Cache, dict):
+    class Cache(dict):
         """
         List of interaction caches.
         """
 
         __slots__ = ()
+
+        def cull(self, conv: Tensor, slicers: Slicers) -> None:
+            """
+            Cull all interaction caches.
+
+            Parameters
+            ----------
+            conv : Tensor
+                Mask of converged systems.
+            """
+            for cache in self.values():
+                cache.cull(conv, slicers)
+
+        def restore(self) -> None:
+            """
+            Restore all interaction caches.
+            """
+            for cache in self.values():
+                cache.restore()
 
     def __init__(self, *interactions: Interaction | None) -> None:
         super().__init__(torch.device("cpu"), torch.float)

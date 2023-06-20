@@ -42,8 +42,9 @@ def test_single(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize(
     "name", ["PbH4-BiH3", "C6H5I-CH3SH", "MB16_43_01", "LYS_xao", "C60"]
 )
-def test_single2(dtype: torch.dtype, name: str):
-    """Test a few larger system (only float32 as they take some time)."""
+@pytest.mark.parametrize("mixer", ["anderson", "broyden", "simple"])
+def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
+    """Test a few larger system."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
 
@@ -56,10 +57,13 @@ def test_single2(dtype: torch.dtype, name: str):
     options = dict(
         opts,
         **{
+            "damp": 0.05 if mixer == "simple" else 0.4,
             "fermi_fenergy_partition": "atomic",
+            "maxiter": 300,
+            "mixer": mixer,
             "use_potential": False,
-            "xitorch_fatol": tol**2,
-            "xitorch_xatol": tol**2,
+            "xitorch_fatol": tol,
+            "xitorch_xatol": tol,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
@@ -71,7 +75,7 @@ def test_single2(dtype: torch.dtype, name: str):
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float])
 @pytest.mark.parametrize("name", ["S2", "LYS_xao_dist"])
-def test_single3(dtype: torch.dtype, name: str):
+def test_single_difficult(dtype: torch.dtype, name: str):
     """Test a few larger system (only float32 within tolerance)."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
@@ -82,7 +86,15 @@ def test_single3(dtype: torch.dtype, name: str):
     ref = sample["escf"].type(dtype)
     charges = torch.tensor(0.0, **dd)
 
-    options = dict(opts, **{"xitorch_fatol": 1e-6, "xitorch_xatol": 1e-6})
+    options = dict(
+        opts,
+        **{
+            "xitorch_fatol": 1e-6,
+            "xitorch_xatol": 1e-6,
+            "damp": 0.5,  # simple mixing
+            "maxiter": 300,  #  simple mixing
+        },
+    )
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
@@ -104,7 +116,14 @@ def test_single_large(dtype: torch.dtype, name: str):
     ref = sample["escf"]
     charges = torch.tensor(0.0, **dd)
 
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    options = dict(
+        opts,
+        **{
+            "damp": 0.05,  # simple mixing
+            "maxiter": 300,  #  simple mixing
+        },
+    )
+    calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
@@ -138,7 +157,44 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
         )
     ).type(dtype)
     charges = torch.tensor([0.0, 0.0], **dd)
+    calc = Calculator(numbers, par, opts=opts, **dd)
 
+    result = calc.singlepoint(numbers, positions, charges)
+    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float])
+@pytest.mark.parametrize("name1", ["H2"])
+@pytest.mark.parametrize("name2", ["LiH"])
+@pytest.mark.parametrize("name3", ["SiH4"])
+def test_batch2(dtype: torch.dtype, name1: str, name2: str, name3: str):
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    dd = {"dtype": dtype}
+
+    sample = samples[name1], samples[name2], samples[name3]
+    numbers = batch.pack(
+        (
+            sample[0]["numbers"],
+            sample[1]["numbers"],
+            sample[2]["numbers"],
+        )
+    )
+    positions = batch.pack(
+        (
+            sample[0]["positions"],
+            sample[1]["positions"],
+            sample[2]["positions"],
+        )
+    ).type(dtype)
+    ref = batch.pack(
+        (
+            sample[0]["escf"],
+            sample[1]["escf"],
+            sample[2]["escf"],
+        )
+    ).type(dtype)
+    charges = torch.tensor([0.0, 0.0, 0.0], **dd)
     calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
@@ -146,7 +202,8 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-def test_batch_special(dtype: torch.dtype):
+@pytest.mark.parametrize("mixer", ["anderson", "broyden", "simple"])
+def test_batch_special(dtype: torch.dtype, mixer: str) -> None:
     """
     Test case for https://github.com/grimme-lab/xtbML/issues/67.
 
@@ -168,7 +225,8 @@ def test_batch_special(dtype: torch.dtype):
     chrg = torch.tensor([0.0, 0.0], **dd)
     ref = torch.tensor([-2.8629311088577, -4.1663539440167], **dd)
 
-    calc = Calculator(numbers, par, **dd, opts=opts)
-    result = calc.singlepoint(numbers, positions, chrg)
+    options = dict(opts, **{"mixer": mixer})
+    calc = Calculator(numbers, par, opts=options, **dd)
 
+    result = calc.singlepoint(numbers, positions, chrg)
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)

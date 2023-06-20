@@ -5,7 +5,6 @@ import torch
 
 from dxtb.exlibs.xitorch import LinearOperator
 from dxtb.exlibs.xitorch._core.linop import MatrixLinearOperator
-from dxtb.exlibs.xitorch._docstr.api_docstr import get_methods_docstr
 from dxtb.exlibs.xitorch._impls.linalg.symeig import davidson, exacteig
 from dxtb.exlibs.xitorch._utils.assertfuncs import assert_runtime
 from dxtb.exlibs.xitorch._utils.exceptions import MathWarning
@@ -508,13 +507,3 @@ def _ortho(
 
 def custom_exacteig(A, neig, mode, M=None, **options):
     return exacteig(A, neig, mode, M)
-
-
-# docstring completion
-_symeig_methods = {
-    "exacteig": exacteig,
-    "davidson": davidson,
-}
-ignore_kwargs = ["M", "mparams"]
-symeig.__doc__ = get_methods_docstr(symeig, _symeig_methods, ignore_kwargs)
-svd.__doc__ = get_methods_docstr(svd, _symeig_methods)

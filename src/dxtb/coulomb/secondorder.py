@@ -40,7 +40,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Tensor, TensorLike
+from .._types import Slicers, Tensor, TensorLike
 from ..basis import IndexHelper
 from ..constants import xtb
 from ..interaction import Interaction
@@ -84,14 +84,21 @@ class ES2(Interaction):
         Cache for Coulomb matrix in ES2.
         """
 
-        __slots__ = ["mat"]
+        __store: Store | None
+        """Storage for cache (required for culling)."""
 
         mat: Tensor
-        """Coulomb matrix"""
+        """Coulomb matrix."""
+
+        shell_resolved: bool
+        """Electrostatics is shell-resolved (default: `True`)."""
+
+        __slots__ = ["__store", "mat", "shell_resolved"]
 
         def __init__(
             self,
             mat: Tensor,
+            shell_resolved: bool = True,
             device: torch.device | None = None,
             dtype: torch.dtype | None = None,
         ) -> None:
@@ -100,6 +107,32 @@ class ES2(Interaction):
                 dtype=dtype if dtype is None else mat.dtype,
             )
             self.mat = mat
+            self.shell_resolved = shell_resolved
+            self.__store = None
+
+        class Store:
+            """
+            Storage container for cache containing `__slots__` before culling.
+            """
+
+            mat: Tensor
+            """Coulomb matrix"""
+
+            def __init__(self, mat: Tensor) -> None:
+                self.mat = mat
+
+        def cull(self, conv: Tensor, slicers: Slicers) -> None:
+            if self.__store is None:
+                self.__store = self.Store(self.mat)
+
+            slicer = slicers["shell"] if self.shell_resolved else slicers["atom"]
+            self.mat = self.mat[[~conv, *slicer, *slicer]]
+
+        def restore(self) -> None:
+            if self.__store is None:
+                raise RuntimeError("Nothing to restore. Store is empty.")
+
+            self.mat = self.__store.mat
 
     def __init__(
         self,
@@ -153,7 +186,8 @@ class ES2(Interaction):
         return self.Cache(
             self.get_shell_coulomb_matrix(numbers, positions, ihelp)
             if self.shell_resolved
-            else self.get_atom_coulomb_matrix(numbers, positions, ihelp)
+            else self.get_atom_coulomb_matrix(numbers, positions, ihelp),
+            shell_resolved=self.shell_resolved,
         )
 
     def get_atom_coulomb_matrix(

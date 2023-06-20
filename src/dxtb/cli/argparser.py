@@ -298,6 +298,24 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         help="R|Maximum number of SCF iterations.",
     )
     p.add_argument(
+        "--mixer",
+        type=str,
+        default=defaults.MIXER,
+        choices=defaults.MIXER_CHOICES,
+        help="R|Mixing algorithm for convergence acceleration.",
+    )
+    p.add_argument(
+        "--damp",
+        type=float,
+        default=defaults.DAMP,
+        help="R|Damping factor for mixing in SCF iterations.",
+    )
+    p.add_argument(
+        "--full-tracking",
+        action="store_true",
+        help="R|Use full gradient tracking in SCF iterations.",
+    )
+    p.add_argument(
         "-v",
         "--verbosity",
         type=int,
@@ -351,7 +369,7 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
 
     p.add_argument(
         "--dir",
-        nargs="?",
+        nargs="*",
         type=is_dir,  # manual validation
         help="R|Directory with all files. Searches recursively.",
     )
@@ -363,7 +381,7 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
     )
     p.add_argument(
         "file",
-        nargs="?",
+        nargs="*",
         type=is_file,  # manual validation
         help="R|Path to coordinate file.",
     )

@@ -48,8 +48,27 @@ GUESS = "eeq"
 GUESS_CHOICES = ["eeq", "sad"]
 """List of possible choices for `GUESS`."""
 
+DAMP = 0.3
+"""Damping factor for mixing in SCF iterations."""
+
 MAXITER = 20
 """Maximum number of SCF iterations."""
+
+MIXER = "broyden"
+"""SCF mixing scheme for convergence acceleration."""
+
+MIXER_CHOICES = ["anderson", "broyden", "simple"]
+"""List of possible choices for `MIXER`."""
+
+SCF_MODE = "default"
+"""
+Whether to use full gradient tracking in SCF, make use of the implicit
+function theorem as provided by `xitorch.optimize.equilibrium`, or use the
+experimental single-shot procedure.
+"""
+
+SCF_MODE_CHOICES = ["default", "implicit", "full", "experimental"]
+"""List of possible choices for `SCF_MODE`."""
 
 VERBOSITY = 1
 """Verbosity of printout."""

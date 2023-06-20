@@ -1,11 +1,11 @@
-from typing import Any, Callable, List, Mapping, Sequence, Union
+from typing import Any, Callable, Mapping, Sequence, Union
 
 import torch
 
 from dxtb.exlibs.xitorch._core.pure_function import get_pure_function, make_sibling
-from dxtb.exlibs.xitorch._docstr.api_docstr import get_methods_docstr
 from dxtb.exlibs.xitorch._impls.optimize.minimizer import adam, gd
 from dxtb.exlibs.xitorch._impls.optimize.root.rootsolver import (
+    anderson,
     broyden1,
     broyden2,
     linearmixing,
@@ -19,9 +19,11 @@ from dxtb.exlibs.xitorch.linalg.solve import solve
 __all__ = ["equilibrium", "rootfinder", "minimize"]
 
 _RF_METHODS = {
+    "anderson": anderson,
     "broyden1": broyden1,
     "broyden2": broyden2,
     "linearmixing": linearmixing,
+    "simple": linearmixing,
 }
 
 _OPT_METHODS = {
@@ -414,11 +416,3 @@ def _get_minimizer_default_method(method):
         return "broyden1"
     else:
         return method
-
-
-# docstring completion
-rf_methods: List[Callable] = [broyden1, broyden2, linearmixing]
-opt_methods: List[Callable] = [gd, adam]
-rootfinder.__doc__ = get_methods_docstr(rootfinder, rf_methods)
-equilibrium.__doc__ = get_methods_docstr(equilibrium, rf_methods)
-minimize.__doc__ = get_methods_docstr(minimize, rf_methods + opt_methods)

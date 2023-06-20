@@ -118,6 +118,97 @@ class BroydenSecond(BroydenFirst):
         self.Gm = self.Gm.append(c, d)
 
 
+class Anderson(Jacobian):
+    """
+    https://docs.scipy.org/doc/scipy/reference/optimize.root-anderson.html#optimize-root-anderson
+    https://github.com/scipy/scipy/blob/c634fb9c96edde5a800077a764e70d1ef72a4bd2/scipy/optimize/_nonlin.py#L982
+
+    Could use some clean-up and vectorization.
+    """
+
+    def __init__(self, alpha=None, uv0=None, max_rank=None, w0=0.01):
+        self.alpha = alpha
+        self.uv0 = uv0
+        self.max_rank = max_rank
+        self.dx = []
+        self.df = []
+        self.w0 = w0
+
+    def setup(self, x0, y0, func):
+        self.x_prev = x0
+        self.y_prev = y0
+
+        if self.max_rank is None:
+            self.max_rank = 5
+
+        if self.alpha is None:
+            normy0 = torch.norm(y0)
+            ones = torch.ones_like(normy0)
+            if normy0:
+                self.alpha = 0.5 * torch.max(torch.norm(x0), ones) / normy0
+            else:
+                self.alpha = ones
+
+    def solve(self, f: torch.Tensor, tol=0):
+        if self.alpha is None:
+            raise RuntimeError("alpha should not be None")
+        dx = -self.alpha * f
+
+        n = len(self.dx)
+        if n == 0:
+            return dx
+
+        df_f = f.new_empty(n)
+        for k in range(n):
+            df_f[k] = torch.dot(self.df[k], f)
+
+        try:
+            gamma = torch.linalg.solve(self.a, df_f)
+        except torch.linalg.LinAlgError:
+            # singular; reset the Jacobian approximation
+            del self.dx[:]
+            del self.df[:]
+            return dx
+
+        for m in range(n):
+            dx += gamma[m] * (self.dx[m] + self.alpha * self.df[m])
+        return dx
+
+    def update(self, x, y):
+        dy = y - self.y_prev
+        dx = x - self.x_prev
+        # update Gm
+        self._update(x, y, dx, dy, dx.norm(), dy.norm())
+
+        self.y_prev = y
+        self.x_prev = x
+
+    def _update(self, x, f: torch.Tensor, dx, df, dx_norm, df_norm):
+        if self.max_rank is None:
+            raise RuntimeError("max_rank should not be None.")
+
+        if self.max_rank == 0:
+            return
+
+        self.dx.append(dx)
+        self.df.append(df)
+
+        while len(self.dx) > self.max_rank:
+            self.dx.pop(0)
+            self.df.pop(0)
+
+        n = len(self.dx)
+        a = f.new_zeros((n, n))
+
+        for i in range(n):
+            for j in range(i, n):
+                a[i, j] = torch.dot(self.df[i], self.df[j])
+
+        offset = a.new_ones(a.shape).fill_diagonal_(1 + self.w0**2)
+        a += torch.triu(a * offset, 1).H
+        self.a = a
+
+
 class LinearMixing(Jacobian):
     def __init__(self, alpha=None):
         # The initial guess of inverse Jacobian is ``-alpha * I``

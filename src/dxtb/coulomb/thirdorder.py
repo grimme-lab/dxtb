@@ -37,7 +37,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Tensor, TensorLike
+from .._types import Slicers, Tensor, TensorLike
 from ..basis import IndexHelper
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
@@ -60,10 +60,13 @@ class ES3(Interaction):
         Restart data for the ES3 interaction.
         """
 
+        __store: Store | None
+        """Storage for cache (required for culling)."""
+
         hd: Tensor
         """Spread Hubbard derivatives of all atoms (not only unique)."""
 
-        __slots__ = ["hd"]
+        __slots__ = ["__store", "hd"]
 
         def __init__(
             self,
@@ -76,6 +79,31 @@ class ES3(Interaction):
                 dtype=dtype if dtype is None else hd.dtype,
             )
             self.hd = hd
+            self.__store = None
+
+        class Store:
+            """
+            Storage container for cache containing `__slots__` before culling.
+            """
+
+            hd: Tensor
+            """Spread Hubbard derivatives of all atoms (not only unique)."""
+
+            def __init__(self, hd: Tensor) -> None:
+                self.hd = hd
+
+        def cull(self, conv: Tensor, slicers: Slicers) -> None:
+            if self.__store is None:
+                self.__store = self.Store(self.hd)
+
+            slicer = slicers["atom"]
+            self.hd = self.hd[[~conv, *slicer]]
+
+        def restore(self) -> None:
+            if self.__store is None:
+                raise RuntimeError("Nothing to restore. Store is empty.")
+
+            self.hd = self.__store.hd
 
     def __init__(
         self,

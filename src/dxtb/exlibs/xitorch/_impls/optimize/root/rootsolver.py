@@ -8,13 +8,14 @@ import warnings
 import torch
 
 from dxtb.exlibs.xitorch._impls.optimize.root._jacobian import (
+    Anderson,
     BroydenFirst,
     BroydenSecond,
     LinearMixing,
 )
 from dxtb.exlibs.xitorch._utils.exceptions import ConvergenceWarning
 
-__all__ = ["broyden1", "broyden2", "linearmixing"]
+__all__ = ["anderson", "broyden1", "broyden2", "linearmixing"]
 
 
 def _nonlin_solver(
@@ -70,8 +71,10 @@ def _nonlin_solver(
         jacobian = BroydenFirst(alpha=alpha, uv0=uv0, max_rank=max_rank)
     elif method == "broyden2":
         jacobian = BroydenSecond(alpha=alpha, uv0=uv0, max_rank=max_rank)
-    elif method == "linearmixing":
+    elif method in ("linearmixing", "simple"):
         jacobian = LinearMixing(alpha=alpha)
+    elif method == "anderson":
+        jacobian = Anderson(alpha=alpha, uv0=uv0, max_rank=max_rank)
     else:
         raise RuntimeError("Unknown method: %s" % method)
 
@@ -143,7 +146,7 @@ def _nonlin_solver(
                 func, x, y, dx, search_type=line_search
             )
         else:
-            s = 0.95
+            s = 0.95  # modified!!
             xnew = x + s * dx
             ynew = func(xnew)
             y_norm_new = ynew.norm()
@@ -185,6 +188,16 @@ def _nonlin_solver(
         warnings.warn(ConvergenceWarning(msg))
         x = best_x
     return _pack(x)
+
+
+@functools.wraps(
+    _nonlin_solver, assigned=("__annotations__",)
+)  # takes only the signature
+def anderson(fcn, x0, params=(), **kwargs):
+    """
+    Anderson acceleration
+    """
+    return _nonlin_solver(fcn, x0, params, "anderson", **kwargs)
 
 
 @functools.wraps(
