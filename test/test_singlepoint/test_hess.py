@@ -43,7 +43,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     # convert to tensors
     numbers = torch.tensor(numbers, dtype=torch.long)
-    positions = torch.tensor(positions, **dd, requires_grad=True)
+    positions = torch.tensor(positions, **dd)
     charge = torch.tensor(charge, **dd)
 
     # variable to be differentiated
@@ -64,7 +64,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
             + samples_hal[name]["hessian"]
             + samples_rep[name]["gfn1_hess"]
         ).type(dtype),
-        torch.Size((numbers.shape[0], 3, numbers.shape[0], 3)),
+        torch.Size(2 * (numbers.shape[-1], 3)),
     )
 
     hess = hessian(singlepoint, (numbers, positions, charge), argnums=1)

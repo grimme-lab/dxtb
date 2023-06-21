@@ -113,7 +113,7 @@ class ConvertToTorchDevice(argparse.Action):
     ) -> None:
         allowed_devices = ("cpu", "cuda")
         err_msg = (
-            f"Option '{option_string}' was passed unknown keyword ({values})."
+            f"Option '{option_string}' was passed unknown keyword ({values}). "
             "Use 'cpu', 'cpu:<INTEGER>', 'cuda', or 'cuda:<INTEGER>'."
         )
 

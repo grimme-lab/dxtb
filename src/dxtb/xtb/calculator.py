@@ -468,8 +468,8 @@ class Calculator(TensorLike):
                     )
                     result.total_grad += result.interaction_grad
                     self.timer.stop("igrad")
-                    print("grad interaction done")
-                    print(result.interaction_grad)
+                    # print("grad interaction done")
+                    # print(result.interaction_grad)
 
                 self.timer.start("hgrad", "Hamiltonian Gradient")
                 wmat = scf.get_density(

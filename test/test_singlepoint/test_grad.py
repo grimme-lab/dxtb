@@ -43,7 +43,7 @@ def test_analytical(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["C60"])
 def test_analytical_large(dtype: torch.dtype, name: str) -> None:
-    atol, rtol = 1e-6, 1e-4
+    atol = rtol = sqrt(torch.finfo(dtype).eps)
     analytical(dtype, name, atol, rtol)
 
 
@@ -75,7 +75,7 @@ def analytical(dtype: torch.dtype, name: str, atol: float, rtol: float) -> None:
     gradient = result.total_grad.detach()
 
     ref = load_from_npz(ref_grad, name, dtype)
-    assert pytest.approx(gradient, abs=atol, rel=rtol) == ref
+    assert pytest.approx(ref, abs=atol, rel=rtol) == gradient
 
 
 @pytest.mark.grad
@@ -103,13 +103,12 @@ def test_backward(dtype: torch.dtype, name: str) -> None:
 
     # autograd
     energy.backward()
-    if positions.grad is None:
-        assert False
+    assert positions.grad is not None
     autograd = positions.grad.clone()
 
     # tblite reference grad
     ref = load_from_npz(ref_grad, name, dtype)
-    assert pytest.approx(autograd, abs=tol, rel=1e-4) == ref
+    assert pytest.approx(ref, abs=tol, rel=1e-4) == autograd
 
 
 @pytest.mark.grad
@@ -133,7 +132,7 @@ def test_num(name: str) -> None:
     gradient = calc_numerical_gradient(numbers, positions, charge, dd)
 
     ref = load_from_npz(ref_grad, name, dtype)
-    assert pytest.approx(gradient, abs=1e-6, rel=1e-4) == ref
+    assert pytest.approx(ref, abs=1e-6, rel=1e-4) == gradient
 
 
 def calc_numerical_gradient(

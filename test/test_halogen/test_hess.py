@@ -30,7 +30,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].type(dtype)
     ref = reshape_fortran(
         sample["hessian"].type(dtype),
-        torch.Size((numbers.shape[0], 3, numbers.shape[0], 3)),
+        torch.Size(2 * (numbers.shape[-1], 3)),
     )
 
     # variable to be differentiated
@@ -74,15 +74,11 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
         [
             reshape_fortran(
                 sample1["hessian"].type(dtype),
-                torch.Size(
-                    (sample1["numbers"].shape[0], 3, sample1["numbers"].shape[0], 3)
-                ),
+                torch.Size(2 * (sample1["numbers"].shape[-1], 3)),
             ),
             reshape_fortran(
                 sample2["hessian"].type(dtype),
-                torch.Size(
-                    (sample2["numbers"].shape[0], 3, sample2["numbers"].shape[0], 3)
-                ),
+                torch.Size(2 * (sample2["numbers"].shape[-1], 3)),
             ),
         ]
     )

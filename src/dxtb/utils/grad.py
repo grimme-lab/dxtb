@@ -16,7 +16,7 @@ import torch
 from ..__version__ import __torch_version__
 from .._types import Any, Callable, Tensor
 
-if __torch_version__ < (2, 0, 0):  # pragma: no cover
+if __torch_version__ < (2, 0, 0):  # type: ignore, pragma: no cover
     try:
         from functorch import jacrev  # type: ignore
     except ModuleNotFoundError:
@@ -125,7 +125,7 @@ def jac(f: Callable[..., Tensor], argnums: int = 0) -> Any:
     if jacrev is None:  # pragma: no cover
 
         def wrap(*args) -> Any:
-            return jacobian(f, *args)  # type: ignore
+            return jacobian(f, *args)  # type: ignore. pylint: disable=used-before-assignment
 
         return wrap
 

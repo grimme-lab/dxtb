@@ -17,7 +17,7 @@ from dxtb.utils import batch
 
 from .samples import samples
 
-sample_list = ["LiH", "SiH4", "MB16_43_01"]
+sample_list = ["LiH", "SiH4"]  # "MB16_43_01" requires a lot of RAM
 
 
 def gradcheck_param(

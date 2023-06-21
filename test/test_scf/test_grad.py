@@ -1,3 +1,6 @@
+"""
+Gradient tests for SCF.
+"""
 from __future__ import annotations
 
 from math import sqrt
@@ -114,7 +117,6 @@ def test_grad_large(name: str, dtype: torch.dtype):
 
     numbers = samples[name]["numbers"]
     positions = samples[name]["positions"].type(dtype)
-    positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
     # Values obtain with tblite 0.2.1 disabling repulsion and dispersion
@@ -125,16 +127,16 @@ def test_grad_large(name: str, dtype: torch.dtype):
 
     assert pytest.approx(ref_full, abs=tol, rel=1e-5) == ref
 
+    # variable to be differentiated
+    positions.requires_grad_(True)
+
     options = dict(opts, **{"xitorch_fatol": tol**2, "xitorch_xatol": tol**2})
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
     energy = result.scf.sum(-1)
 
-    gradient = torch.autograd.grad(
-        energy,
-        positions,
-    )[0]
+    (gradient,) = torch.autograd.grad(energy, positions)
 
     assert pytest.approx(gradient, abs=tol, rel=1e-5) == ref
     assert pytest.approx(gradient, abs=tol, rel=1e-5) == ref_full
