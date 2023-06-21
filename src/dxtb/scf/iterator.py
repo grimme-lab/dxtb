@@ -27,12 +27,12 @@ from ..constants import defaults
 from ..exlibs.xitorch import optimize as xto
 from ..interaction import InteractionList
 from ..utils import SCFConvergenceError, SCFConvergenceWarning
-from .base import BaseSelfConsistentField
+from .base import BaseTSCF, BaseXSCF
 from .guess import get_guess
 from .mixer import Anderson, Mixer, Simple
 
 
-class SelfConsistentField(BaseSelfConsistentField):
+class SelfConsistentField(BaseXSCF):
     """
     Self-consistent field iterator, which can be used to obtain a
     self-consistent solution for a given Hamiltonian.
@@ -66,7 +66,7 @@ class SelfConsistentField(BaseSelfConsistentField):
         return self.converged_to_charges(q_converged)
 
 
-class SelfConsistentFieldFull(BaseSelfConsistentField):
+class SelfConsistentFieldFull(BaseTSCF):
     """
     Self-consistent field iterator, which can be used to obtain a
     self-consistent solution for a given Hamiltonian.

@@ -14,17 +14,18 @@ from ..constants import K2AU, defaults
 from ..exlibs.xitorch import EditableModule, LinearOperator
 from ..exlibs.xitorch import linalg as xtl
 from ..interaction import InteractionList
-from ..utils import real_atoms
+from ..utils import eighb, real_atoms
 from ..wavefunction import filling, mulliken
 
 
-class BaseSelfConsistentField(EditableModule):
+class BaseSCF:
     """
     Self-consistent field iterator, which can be used to obtain a
     self-consistent solution for a given Hamiltonian.
 
-    This base class only lacks the `scf` method, which implements mixing and
-    convergence.
+    This base class lacks the `scf` method, which implements mixing and
+    convergence. Additionally, the `get_overlap` and `diagonalize` method
+    must be implemented.
     """
 
     class _Data:
@@ -221,6 +222,38 @@ class BaseSelfConsistentField(EditableModule):
         -------
         Tensor
             Converged, orbital-resolved charges.
+        """
+
+    @abstractmethod
+    def get_overlap(self) -> LinearOperator | Tensor:
+        """
+        Get the overlap matrix.
+
+        Returns
+        -------
+        LinearOperator | Tensor
+            Overlap matrix.
+        """
+
+    @abstractmethod
+    def diagonalize(self, hamiltonian: Tensor) -> tuple[Tensor, Tensor]:
+        """
+        Diagonalize the Hamiltonian.
+
+        The overlap matrix is retrieved within this method using the
+        `get_overlap` method.
+
+        Parameters
+        ----------
+        hamiltonian : Tensor
+            Current Hamiltonian matrix.
+
+        Returns
+        -------
+        evals : Tensor
+            Eigenvalues of the Hamiltonian.
+        evecs : Tensor
+            Eigenvectors of the Hamiltonian.
         """
 
     def __call__(self, charges: Tensor | None = None) -> SCFResult:
@@ -678,9 +711,7 @@ class BaseSelfConsistentField(EditableModule):
             Density matrix.
         """
 
-        h_op = LinearOperator.m(hamiltonian)
-        o_op = self.get_overlap()
-        self._data.evals, self._data.evecs = self.diagonalize(h_op, o_op)
+        self._data.evals, self._data.evecs = self.diagonalize(hamiltonian)
 
         # round to integers to avoid numerical errors
         nel = self._data.occupation.sum(-1).round()
@@ -713,48 +744,6 @@ class BaseSelfConsistentField(EditableModule):
 
         return get_density(self._data.evecs, self._data.occupation.sum(-2))
 
-    def get_overlap(self) -> LinearOperator:
-        """
-        Get the overlap matrix.
-
-        Returns
-        -------
-        LinearOperator
-            Overlap matrix.
-        """
-
-        smat = self._data.overlap
-
-        zeros = torch.eq(smat, 0)
-        mask = torch.all(zeros, dim=-1) & torch.all(zeros, dim=-2)
-
-        return LinearOperator.m(
-            smat + torch.diag_embed(smat.new_ones(*smat.shape[:-2], 1) * mask)
-        )
-
-    def diagonalize(
-        self, hamiltonian: LinearOperator, overlap: LinearOperator
-    ) -> tuple[Tensor, Tensor]:
-        """
-        Diagonalize the Hamiltonian.
-
-        Parameters
-        ----------
-        hamiltonian : LinearOperator
-            Current Hamiltonian matrix.
-        overlap : LinearOperator
-            Overlap matrix.
-
-        Returns
-        -------
-        evals : Tensor
-            Eigenvalues of the Hamiltonian.
-        evecs : Tensor
-            Eigenvectors of the Hamiltonian.
-        """
-
-        return xtl.lsymeig(A=hamiltonian, M=overlap, **self.eigen_options)
-
     @property
     def shape(self) -> torch.Size:
         """
@@ -775,6 +764,64 @@ class BaseSelfConsistentField(EditableModule):
         Returns the device of the tensors in this engine.
         """
         return self._data.hcore.device
+
+
+class BaseXSCF(BaseSCF, EditableModule):
+    """
+    Base class for the `xitorch`-based self-consistent field iterator.
+
+    This base class implements the `get_overlap` and the `diagonalize` methods
+    that use `LinearOperator`s. Additionally, `getparamnames` is implemented,
+    which is mandatory for all descendents of `xitorch`s base class called
+    `EditableModule`.
+
+    This class only lacks the `scf` method, which implements mixing and
+    convergence.
+    """
+
+    def get_overlap(self) -> LinearOperator:
+        """
+        Get the overlap matrix.
+
+        Returns
+        -------
+        LinearOperator
+            Overlap matrix.
+        """
+
+        smat = self._data.overlap
+
+        zeros = torch.eq(smat, 0)
+        mask = torch.all(zeros, dim=-1) & torch.all(zeros, dim=-2)
+
+        return LinearOperator.m(
+            smat + torch.diag_embed(smat.new_ones(*smat.shape[:-2], 1) * mask)
+        )
+
+    def diagonalize(self, hamiltonian: Tensor) -> tuple[Tensor, Tensor]:
+        """
+        Diagonalize the Hamiltonian.
+
+        The overlap matrix is retrieved within this method using the
+        `get_overlap` method.
+
+        Parameters
+        ----------
+        hamiltonian : Tensor
+            Current Hamiltonian matrix.
+
+        Returns
+        -------
+        evals : Tensor
+            Eigenvalues of the Hamiltonian.
+        evecs : Tensor
+            Eigenvectors of the Hamiltonian.
+        """
+
+        h_op = LinearOperator.m(hamiltonian)
+        o_op = self.get_overlap()
+
+        return xtl.lsymeig(A=h_op, M=o_op, **self.eigen_options)
 
     def getparamnames(
         self, methodname: str, prefix: str = ""
@@ -844,6 +891,59 @@ class BaseSelfConsistentField(EditableModule):
             return []
 
         raise KeyError(f"Method '{methodname}' has no paramnames set")
+
+
+class BaseTSCF(BaseSCF):
+    """
+    Base class for a standard self-consistent field iterator.
+
+    This base class implements the `get_overlap` and the `diagonalize` methods
+    using plain tensors. The diagonalization routine is taken from TBMaLT
+    (hence the T in the class name).
+
+    This base class only lacks the `scf` method, which implements mixing and
+    convergence.
+    """
+
+    def get_overlap(self) -> Tensor:
+        """
+        Get the overlap matrix.
+
+        Returns
+        -------
+        Tensor
+            Overlap matrix.
+        """
+
+        smat = self._data.overlap
+
+        zeros = torch.eq(smat, 0)
+        mask = torch.all(zeros, dim=-1) & torch.all(zeros, dim=-2)
+
+        return smat + torch.diag_embed(smat.new_ones(*smat.shape[:-2], 1) * mask)
+
+    def diagonalize(self, hamiltonian: Tensor) -> tuple[Tensor, Tensor]:
+        """
+        Diagonalize the Hamiltonian.
+
+        The overlap matrix is retrieved within this method using the
+        `get_overlap` method.
+
+        Parameters
+        ----------
+        hamiltonian : Tensor
+            Current Hamiltonian matrix.
+
+        Returns
+        -------
+        evals : Tensor
+            Eigenvalues of the Hamiltonian.
+        evecs : Tensor
+            Eigenvectors of the Hamiltonian.
+        """
+
+        o = self.get_overlap()
+        return eighb(a=hamiltonian, b=o, is_posdef=True)
 
 
 def get_density(coeffs: Tensor, occ: Tensor, emo: Tensor | None = None) -> Tensor:
