@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Slicers, Tensor
+from .._types import Slicers, Tensor, TensorOrTensors
 from ..basis import IndexHelper
 from .base import Interaction
 
@@ -172,6 +172,9 @@ class InteractionList(Interaction):
         positions: Tensor,
         cache: InteractionList.Cache,
         ihelp: IndexHelper,
+        grad_outputs: TensorOrTensors | None = None,
+        retain_graph: bool | None = True,
+        create_graph: bool | None = None,
     ) -> Tensor:
         """
         Calculate gradient for a list of interactions.
@@ -202,6 +205,9 @@ class InteractionList(Interaction):
                     positions,
                     cache[interaction.label],
                     ihelp,
+                    grad_outputs=grad_outputs,
+                    retain_graph=retain_graph,
+                    create_graph=create_graph,
                 )
                 for interaction in self.interactions
             ]

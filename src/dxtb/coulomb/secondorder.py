@@ -40,7 +40,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Slicers, Tensor, TensorLike
+from .._types import Slicers, Tensor, TensorLike, TensorOrTensors
 from ..basis import IndexHelper
 from ..constants import xtb
 from ..interaction import Interaction
@@ -332,7 +332,9 @@ class ES2(Interaction):
         charges: Tensor,
         positions: Tensor,
         cache: ES2.Cache,
-        grad_out: Tensor | None = None,
+        grad_outputs: TensorOrTensors | None = None,
+        retain_graph: bool | None = True,
+        create_graph: bool | None = None,
     ) -> Tensor:
         """
         Calculates nuclear gradient of an second order electrostatic energy
@@ -363,28 +365,23 @@ class ES2(Interaction):
         if self.shell_resolved:
             return torch.zeros_like(positions)
 
-        if positions.requires_grad is False:
-            raise RuntimeError("Position tensor needs `requires_grad=True`.")
-
-        energy = self.get_atom_energy(charges, cache)
-
-        # avoid autograd call if energy is zero (autograd fails anyway)
-        if torch.equal(energy, torch.zeros_like(energy)):
-            return torch.zeros_like(positions)
-
-        (gradient,) = torch.autograd.grad(
-            energy,
+        return self._gradient(
+            charges,
             positions,
-            grad_outputs=torch.ones_like(energy) if grad_out is None else grad_out,
+            cache,
+            grad_outputs=grad_outputs,
+            retain_graph=retain_graph,
+            create_graph=create_graph,
         )
-        return gradient
 
     def get_shell_gradient(
         self,
         charges: Tensor,
         positions: Tensor,
         cache: ES2.Cache,
-        grad_out: Tensor | None = None,
+        grad_outputs: TensorOrTensors | None = None,
+        retain_graph: bool | None = True,
+        create_graph: bool | None = None,
     ) -> Tensor:
         """
         Calculates nuclear gradient of an second order electrostatic energy
@@ -415,6 +412,50 @@ class ES2(Interaction):
         if not self.shell_resolved:
             return torch.zeros_like(positions)
 
+        return self._gradient(
+            charges,
+            positions,
+            cache,
+            grad_outputs=grad_outputs,
+            retain_graph=retain_graph,
+            create_graph=create_graph,
+        )
+
+    def _gradient(
+        self,
+        charges: Tensor,
+        positions: Tensor,
+        cache: ES2.Cache,
+        grad_outputs: TensorOrTensors | None = None,
+        retain_graph: bool | None = True,
+        create_graph: bool | None = None,
+    ) -> Tensor:
+        """
+        Calculates nuclear gradient of an second order electrostatic energy
+        contribution via PyTorch's autograd engine.
+
+        Parameters
+        ----------
+        charges : Tensor
+            Shell-resolved partial charges.
+        positions : Tensor
+            Nuclear positions. Needs `requires_grad=True`.
+        cache : ES2.Cache
+            Cache object for second order electrostatics.
+        grad_out : Tensor | None
+            Gradient of previous computation, i.e., "vector" in VJP of this
+            gradient computation.
+
+        Returns
+        -------
+        Tensor
+            Nuclear gradient of energy.
+
+        Raises
+        ------
+        RuntimeError
+            `positions` tensor does not have `requires_grad=True`.
+        """
         if positions.requires_grad is False:
             raise RuntimeError("Position tensor needs `requires_grad=True`.")
 
@@ -424,10 +465,18 @@ class ES2(Interaction):
         if torch.equal(energy, torch.zeros_like(energy)):
             return torch.zeros_like(positions)
 
+        if create_graph is None:
+            create_graph = torch.is_grad_enabled()
+
+        if grad_outputs is None:
+            grad_outputs = torch.ones_like(energy)
+
         (gradient,) = torch.autograd.grad(
             energy,
             positions,
-            grad_outputs=torch.ones_like(energy) if grad_out is None else grad_out,
+            grad_outputs=grad_outputs,
+            retain_graph=retain_graph,
+            create_graph=create_graph,
         )
         return gradient
 
