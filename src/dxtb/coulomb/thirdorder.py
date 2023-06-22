@@ -214,9 +214,7 @@ def new_es3(
         )
 
     hubbard_derivs = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "gam3",
+        torch.unique(numbers), par.element, "gam3", device=device, dtype=dtype
     )
 
     return ES3(hubbard_derivs, device=device, dtype=dtype)

@@ -78,7 +78,9 @@ def get_subblock_start(
         pairs = get_pairs(umap.mT, i)
 
         # do the same for the transposed pairs, but switch columns
-        return torch.index_select(pairs[::norbi], 1, torch.tensor([1, 0]))
+        return torch.index_select(
+            pairs[::norbi], 1, torch.tensor([1, 0], device=umap.device)
+        )
 
     # the remaining cases, i.e., if no s-orbitals are involved, are more
     # intricate because we can have variation in two dimensions...
@@ -105,7 +107,7 @@ def get_subblock_start(
     rest = pairs
 
     # init with dummy
-    final = torch.tensor([[-1, -1]])
+    final = torch.tensor([[-1, -1]], device=umap.device)
 
     while True:
         # get number of blocks in a row by counting the number of same

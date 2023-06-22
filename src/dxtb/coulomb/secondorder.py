@@ -365,10 +365,10 @@ class ES2(Interaction):
         if self.shell_resolved:
             return torch.zeros_like(positions)
 
+        energy = self.get_atom_energy(charges, cache)
         return self._gradient(
-            charges,
+            energy,
             positions,
-            cache,
             grad_outputs=grad_outputs,
             retain_graph=retain_graph,
             create_graph=create_graph,
@@ -412,10 +412,10 @@ class ES2(Interaction):
         if not self.shell_resolved:
             return torch.zeros_like(positions)
 
+        energy = self.get_shell_energy(charges, cache)
         return self._gradient(
-            charges,
+            energy,
             positions,
-            cache,
             grad_outputs=grad_outputs,
             retain_graph=retain_graph,
             create_graph=create_graph,
@@ -423,9 +423,8 @@ class ES2(Interaction):
 
     def _gradient(
         self,
-        charges: Tensor,
+        energy: Tensor,
         positions: Tensor,
-        cache: ES2.Cache,
         grad_outputs: TensorOrTensors | None = None,
         retain_graph: bool | None = True,
         create_graph: bool | None = None,
@@ -436,12 +435,10 @@ class ES2(Interaction):
 
         Parameters
         ----------
-        charges : Tensor
-            Shell-resolved partial charges.
+        energy : Tensor
+            Shell-resolved energy.
         positions : Tensor
             Nuclear positions. Needs `requires_grad=True`.
-        cache : ES2.Cache
-            Cache object for second order electrostatics.
         grad_out : Tensor | None
             Gradient of previous computation, i.e., "vector" in VJP of this
             gradient computation.
@@ -459,9 +456,7 @@ class ES2(Interaction):
         if positions.requires_grad is False:
             raise RuntimeError("Position tensor needs `requires_grad=True`.")
 
-        energy = self.get_shell_energy(charges, cache)
-
-        # avoid autograd call if energy is zero (autograd fails anyway)
+            # avoid autograd call if energy is zero (autograd fails anyway)
         if torch.equal(energy, torch.zeros_like(energy)):
             return torch.zeros_like(positions)
 

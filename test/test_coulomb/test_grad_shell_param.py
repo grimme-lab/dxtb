@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import pytest
 import torch
-from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
 from dxtb._types import Callable, Tensor
 from dxtb.basis import IndexHelper
@@ -15,6 +14,7 @@ from dxtb.param import get_elem_angular, get_elem_param
 from dxtb.utils import batch
 
 from .samples import samples
+from ..utils import dgradcheck, dgradgradcheck
 
 sample_list = ["LiH", "SiH4"]  # "MB16_43_01" requires a lot of RAM
 
@@ -73,7 +73,7 @@ def test_grad_param(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradcheck_param(dtype, name)
-    assert gradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol)
 
 
 @pytest.mark.grad
@@ -86,7 +86,7 @@ def test_grad_param_large(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradcheck_param(dtype, name)
-    assert gradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol)
 
 
 @pytest.mark.grad
@@ -98,7 +98,7 @@ def test_gradgrad_param(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradcheck_param(dtype, name)
-    assert gradgradcheck(func, diffvars, atol=tol)
+    assert dgradgradcheck(func, diffvars, atol=tol)
 
 
 @pytest.mark.grad
@@ -111,7 +111,7 @@ def test_gradgrad_param_large(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradcheck_param(dtype, name)
-    assert gradgradcheck(func, diffvars, atol=tol)
+    assert dgradgradcheck(func, diffvars, atol=tol)
 
 
 def gradcheck_param_batch(
@@ -179,7 +179,7 @@ def test_grad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradcheck_param_batch(dtype, name1, name2)
-    assert gradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol)
 
 
 @pytest.mark.grad
@@ -192,4 +192,4 @@ def test_gradgrad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> Non
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradcheck_param_batch(dtype, name1, name2)
-    assert gradgradcheck(func, diffvars, atol=tol)
+    assert dgradgradcheck(func, diffvars, atol=tol)

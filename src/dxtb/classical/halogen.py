@@ -270,7 +270,9 @@ class Halogen(Classical):
 
         # return if no halogens are present
         if halogen_mask.nonzero().size(-2) == 0:
-            return torch.zeros(numbers.shape, dtype=positions.dtype)
+            return torch.zeros(
+                numbers.shape, dtype=positions.dtype, device=positions.device
+            )
 
         base_mask = torch.zeros_like(numbers).type(torch.bool)
         for base in self.base:
@@ -278,12 +280,16 @@ class Halogen(Classical):
 
         # return if no bases are present
         if base_mask.nonzero().size(-2) == 0:
-            return torch.zeros(numbers.shape, dtype=positions.dtype)
+            return torch.zeros(
+                numbers.shape, dtype=positions.dtype, device=positions.device
+            )
 
         # triples for halogen bonding interactions
         adj = self._xbond_list(numbers, positions)
         if adj is None:
-            return torch.zeros(numbers.shape, dtype=positions.dtype)
+            return torch.zeros(
+                numbers.shape, dtype=positions.dtype, device=positions.device
+            )
 
         # parameters
         rads = atomic_rad[numbers].to(self.device).type(self.dtype) * self.rscale

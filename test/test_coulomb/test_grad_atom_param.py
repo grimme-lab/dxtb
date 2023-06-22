@@ -3,8 +3,6 @@ Run autograd tests for atom-resolved coulomb matrix contribution.
 """
 from __future__ import annotations
 
-from math import sqrt
-
 import pytest
 import torch
 
@@ -16,8 +14,11 @@ from dxtb.param import get_elem_angular, get_elem_param
 from dxtb.utils import batch
 
 from .samples import samples
+from ..utils import dgradcheck, dgradgradcheck
 
 sample_list = ["LiH", "SiH4", "MB16_43_01"]
+
+tol = 1e-7
 
 
 def gradcheck_param(
@@ -62,13 +63,8 @@ def test_grad_param(dtype: torch.dtype, name: str) -> None:
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradcheck`.
     """
-    tol = sqrt(torch.finfo(dtype).eps) * 10
     func, diffvars = gradcheck_param(dtype, name)
-
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradcheck
-
-    assert gradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol)
 
 
 @pytest.mark.grad
@@ -79,13 +75,8 @@ def test_gradgrad_param(dtype: torch.dtype, name: str) -> None:
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
-    tol = sqrt(torch.finfo(dtype).eps) * 10
     func, diffvars = gradcheck_param(dtype, name)
-
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradgradcheck
-
-    assert gradgradcheck(func, diffvars, atol=tol)
+    assert dgradgradcheck(func, diffvars, atol=tol)
 
 
 def gradcheck_param_batch(
@@ -143,11 +134,7 @@ def test_grad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradcheck`.
     """
-    tol = sqrt(torch.finfo(dtype).eps) * 10
     func, diffvars = gradcheck_param_batch(dtype, name1, name2)
-
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradcheck
 
     # The numerical gradient is not correct here. The problem arises in
     # `avg = torch.where(mask, average(h + eps), eps)`. When a larger value is
@@ -155,7 +142,7 @@ def test_grad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     # same for both values.
     diffvars[0].requires_grad_(False)
 
-    assert gradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol)
 
 
 @pytest.mark.grad
@@ -167,11 +154,7 @@ def test_gradgrad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> Non
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
-    tol = sqrt(torch.finfo(dtype).eps) * 10
     func, diffvars = gradcheck_param_batch(dtype, name1, name2)
-
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradgradcheck
 
     # The numerical gradient is not correct here. The problem arises in
     # `avg = torch.where(mask, average(h + eps), eps)`. When a larger value is
@@ -179,4 +162,4 @@ def test_gradgrad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> Non
     # same for both values.
     diffvars[0].requires_grad_(False)
 
-    assert gradgradcheck(func, diffvars, atol=tol)
+    assert dgradgradcheck(func, diffvars, atol=tol)

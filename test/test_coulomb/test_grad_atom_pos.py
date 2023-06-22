@@ -3,8 +3,6 @@ Run autograd tests for atom-resolved coulomb matrix contribution.
 """
 from __future__ import annotations
 
-from math import sqrt
-
 import pytest
 import torch
 
@@ -16,8 +14,11 @@ from dxtb.param import get_elem_angular, get_elem_param
 from dxtb.utils import batch
 
 from .samples import samples
+from ..utils import dgradcheck, dgradgradcheck
 
 sample_list = ["LiH", "SiH4", "MB16_43_01"]
+
+tol = 1e-7
 
 
 def gradcheck_pos(
@@ -64,14 +65,8 @@ def test_grad_pos(dtype: torch.dtype, name: str) -> None:
     Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradcheck`.
     """
-    tol = sqrt(torch.finfo(dtype).eps) * 10
     func, diffvars = gradcheck_pos(dtype, name)
-
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradcheck
-
-    assert gradcheck(func, diffvars, atol=tol)
-    diffvars.detach_()
+    assert dgradcheck(func, diffvars, atol=tol)
 
 
 @pytest.mark.grad
@@ -82,14 +77,8 @@ def test_gradgrad_pos(dtype: torch.dtype, name: str) -> None:
     Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
-    tol = sqrt(torch.finfo(dtype).eps) * 10
     func, diffvars = gradcheck_pos(dtype, name)
-
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradgradcheck
-
-    assert gradgradcheck(func, diffvars, atol=tol)
-    diffvars.detach_()
+    assert dgradgradcheck(func, diffvars, atol=tol)
 
 
 def gradcheck_pos_batch(
@@ -147,14 +136,8 @@ def test_grad_pos_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradcheck`.
     """
-    tol = sqrt(torch.finfo(dtype).eps) * 10
     func, diffvars = gradcheck_pos_batch(dtype, name1, name2)
-
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradcheck
-
-    assert gradcheck(func, diffvars, atol=tol)
-    diffvars.detach_()
+    assert dgradcheck(func, diffvars, atol=tol)
 
 
 @pytest.mark.grad
@@ -166,11 +149,5 @@ def test_gradgrad_pos_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
-    tol = sqrt(torch.finfo(dtype).eps) * 10
     func, diffvars = gradcheck_pos_batch(dtype, name1, name2)
-
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradgradcheck
-
-    assert gradgradcheck(func, diffvars, atol=tol)
-    diffvars.detach_()
+    assert dgradgradcheck(func, diffvars, atol=tol)

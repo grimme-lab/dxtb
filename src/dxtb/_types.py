@@ -79,15 +79,26 @@ else:
     )
 
 
-class Slicers(TypedDict):
-    """Collection of slicers of different resolutions for culling in SCF."""
+class DD(TypedDict):
+    """Collection of torch.device and torch.dtype."""
 
-    orbital: Slicer
-    """Slicer for orbital-resolved variables."""
-    shell: Slicer
-    """Slicer for shell-resolved variables."""
-    atom: Slicer
-    """Slicer for atom-resolved variables."""
+    device: torch.device | None
+    """Device on which a tensor lives."""
+
+    dtype: torch.dtype
+    """Floating point precision of a tensor."""
+
+
+class Molecule(TypedDict):
+    """
+    Representation of fundamental molecular structure (atom types and postions).
+    """
+
+    numbers: Tensor
+    """Tensor of atomic numbers"""
+
+    positions: Tensor
+    """Tensor of 3D coordinates of shape (n, 3)"""
 
 
 class SCFResult(TypedDict):
@@ -121,16 +132,15 @@ class SCFResult(TypedDict):
     """Self-consistent orbital-resolved potential."""
 
 
-class Molecule(TypedDict):
-    """
-    Representation of fundamental molecular structure (atom types and postions).
-    """
+class Slicers(TypedDict):
+    """Collection of slicers of different resolutions for culling in SCF."""
 
-    numbers: Tensor
-    """Tensor of atomic numbers"""
-
-    positions: Tensor
-    """Tensor of 3D coordinates of shape (n, 3)"""
+    orbital: Slicer
+    """Slicer for orbital-resolved variables."""
+    shell: Slicer
+    """Slicer for shell-resolved variables."""
+    atom: Slicer
+    """Slicer for atom-resolved variables."""
 
 
 class TensorLike:

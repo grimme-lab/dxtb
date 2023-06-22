@@ -16,7 +16,7 @@ import torch
 from ..__version__ import __torch_version__
 from .._types import Any, Callable, Tensor
 
-if __torch_version__ < (2, 0, 0):  # type: ignore, pragma: no cover
+if __torch_version__ < (2, 0, 0):  # type: ignore # pragma: no cover
     try:
         from functorch import jacrev  # type: ignore
     except ModuleNotFoundError:
@@ -132,10 +132,46 @@ def jac(f: Callable[..., Tensor], argnums: int = 0) -> Any:
     argnums : int, optional
         The variable w.r.t. which will be differentiated. Defaults to 0.
     """
+
     if jacrev is None:  # pragma: no cover
 
-        def wrap(*args) -> Any:
-            return jacobian(f, *args)  # type: ignore. pylint: disable=used-before-assignment
+        def wrap(*inps: Any) -> Any:
+            """
+            Wrapper to imitate the calling signature of functorch's `jacrev`
+            with `torch.autograd.functional.jacobian`.
+
+            Parameters
+            ----------
+            inps : tuple[Any, ...]
+                The input parameters of the function `f`.
+
+            Returns
+            -------
+            Any
+                Jacobian function.
+
+            Raises
+            ------
+            RuntimeError
+                The parameter selected for differentiation (via `argnums`) is
+                not a tensor.
+            """
+            diffarg = inps[argnums]
+            if not isinstance(diffarg, Tensor):
+                raise RuntimeError(
+                    f"The {argnums}'th input parameter must be a tensor but is "
+                    f"of type '{type(diffarg)}'."
+                )
+
+            before = inps[:argnums]
+            after = inps[(argnums + 1) :]
+
+            # `jacobian` only takes tensors, requiring another wrapper than
+            # passes the non-tensor arguments to the function `f`
+            def _f(arg: Tensor) -> Tensor:
+                return f(*(*before, arg, *after))
+
+            return jacobian(_f, inputs=diffarg)  # type: ignore # pylint: disable=used-before-assignment
 
         return wrap
 

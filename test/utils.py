@@ -9,6 +9,8 @@ from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
 from dxtb._types import Any, Callable, Protocol, Tensor, TensorOrTensors
 
+from .conftest import FAST_MODE
+
 coordfile = Path(Path(__file__).parent, "test_singlepoint/mols/H2/coord").resolve()
 """Path to coord file of H2."""
 
@@ -161,8 +163,9 @@ def _wrap_gradcheck(
     diffvars: TensorOrTensors,
     **kwargs,
 ) -> bool:
+    fast_mode = kwargs.pop("fast_mode", FAST_MODE)
     try:
-        assert gradcheck_func(func, diffvars, **kwargs)
+        assert gradcheck_func(func, diffvars, fast_mode=fast_mode, **kwargs)
     finally:
         if isinstance(diffvars, Tensor):
             diffvars.detach_()

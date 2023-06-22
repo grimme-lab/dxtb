@@ -12,6 +12,10 @@ torch.use_deterministic_algorithms(True)
 torch.set_printoptions(precision=10)
 
 
+FAST_MODE: bool = True
+"""Flag for fast gradient tests."""
+
+
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Set up additional command line options."""
 
@@ -26,6 +30,18 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         "--jit",
         action="store_true",
         help="Enable JIT during tests (default = False).",
+    )
+
+    parser.addoption(
+        "--fast",
+        action="store_true",
+        help="Use `fast_mode` for gradient checks (default = True).",
+    )
+
+    parser.addoption(
+        "--slow",
+        action="store_true",
+        help="Do *not* use `fast_mode` for gradient checks (default = False).",
     )
 
     parser.addoption(
@@ -69,9 +85,15 @@ def pytest_configure(config: pytest.Config) -> None:
         torch.autograd.anomaly_mode.set_detect_anomaly(True)
 
     if config.getoption("--jit"):
-        torch.jit._state.enable()  # type: ignore
+        torch.jit._state.enable()  # type: ignore # pylint: disable=protected-access
     else:
-        torch.jit._state.disable()  # type: ignore
+        torch.jit._state.disable()  # type: ignore # pylint: disable=protected-access
+
+    global FAST_MODE
+    if config.getoption("--fast"):
+        FAST_MODE = True
+    if config.getoption("--slow"):
+        FAST_MODE = False
 
     if config.getoption("--tpo-linewidth"):
         torch.set_printoptions(linewidth=config.getoption("--tpo-linewidth"))

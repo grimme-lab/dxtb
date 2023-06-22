@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import pytest
 import torch
-from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
 from dxtb import charges
 from dxtb._types import Callable, Tensor
@@ -24,6 +23,7 @@ from dxtb.ncoord import get_coordination_number
 from dxtb.utils import batch
 
 from .samples import samples
+from ..utils import dgradcheck, dgradgradcheck
 
 sample_list = ["NH3", "NH3-dimer", "PbH4-BiH3", "C6H5I-CH3SH"]
 
@@ -61,10 +61,7 @@ def test_grad(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradchecker(dtype, name)
-    assert gradcheck(func, diffvars, atol=tol)
-
-    diffvars[0].detach_()
-    diffvars[1].detach_()
+    assert dgradcheck(func, diffvars, atol=tol)
 
 
 @pytest.mark.grad
@@ -76,10 +73,7 @@ def test_gradgrad(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradchecker(dtype, name)
-    assert gradgradcheck(func, diffvars, atol=tol)
-
-    diffvars[0].detach_()
-    diffvars[1].detach_()
+    assert dgradgradcheck(func, diffvars, atol=tol)
 
 
 def gradchecker_batch(
@@ -129,10 +123,7 @@ def test_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradchecker_batch(dtype, name1, name2)
-    assert gradcheck(func, diffvars, atol=tol)
-
-    diffvars[0].detach_()
-    diffvars[1].detach_()
+    assert dgradcheck(func, diffvars, atol=tol)
 
 
 @pytest.mark.grad
@@ -145,7 +136,4 @@ def test_gradgrad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradchecker_batch(dtype, name1, name2)
-    assert gradgradcheck(func, diffvars, atol=tol)
-
-    diffvars[0].detach_()
-    diffvars[1].detach_()
+    assert dgradgradcheck(func, diffvars, atol=tol)
