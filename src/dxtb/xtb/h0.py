@@ -503,8 +503,8 @@ class Hamiltonian(TensorLike):
         # ----------------------------------------------------------------------
         # Derivative of the electronic energy w.r.t. the atomic positions r
         # ----------------------------------------------------------------------
-        # dE/dr = dE_EHT/dr * dE_coulomb/dr * dL_constraint/dr
-        #       = [2*P*H - 2*W - P*(V + V^T)] * dS/dr + 2*P*H*S * dPI/dr / PI
+        # dE/dr = dE_EHT/dr + dE_coulomb/dr + dL_constraint/dr
+        #       = [2*P*H - 2*W - P*(v + v^T)] * dS/dr + 2*P*H*S * dPI/dr / PI
         # ----------------------------------------------------------------------
 
         # ------------------------------------------------------------

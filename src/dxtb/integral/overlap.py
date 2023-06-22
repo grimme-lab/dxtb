@@ -41,7 +41,7 @@ class OverlapFunction(Protocol):
             Basis set information.
         ihelp : IndexHelper
             Helper class for indexing.
-        uplo : Literal[&quot;n&quot;, &quot;u&quot;, &quot;l&quot;], optional
+        uplo : Literal['n';, 'u', 'l'], optional
             Whether the matrix of unique shell pairs should be create as a
             triangular matrix (`l`: lower, `u`: upper) or full matrix (`n`).
             Defaults to `l` (lower triangular matrix).
@@ -60,6 +60,12 @@ class OverlapFunction(Protocol):
 class Overlap(TensorLike):
     """
     Overlap from atomic orbitals.
+
+    Use the `build()` method to calculate the overlap integral. The returned
+    matrix uses a custom autograd function to calculate the backward pass with
+    the analytical gradient.
+    For the full gradient, i.e., a matrix of shape `(nb, norb, norb, 3)`, the
+    `get_gradient()` method should be used.
     """
 
     numbers: Tensor
@@ -117,6 +123,11 @@ class Overlap(TensorLike):
         ----------
         positions : Tensor
             Cartesian coordinates of all atoms in the system.
+        mask : Tensor | None
+            Mask for positions to make batched computations easier. The overlap
+            does not work in a batched fashion. Hence, we loop over the batch
+            dimension and must remove the padding. Defaults to `None`, i.e.,
+            `batch.deflate()` is used.
 
         Returns
         -------
@@ -134,6 +145,25 @@ class Overlap(TensorLike):
         return s
 
     def get_gradient(self, positions: Tensor, mask: Tensor | None = None):
+        """
+        Overlap gradient calculation of unique shells pairs, using the
+        McMurchie-Davidson algorithm.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms in the system.
+        mask : Tensor | None
+            Mask for positions to make batched computations easier. The overlap
+            does not work in a batched fashion. Hence, we loop over the batch
+            dimension and must remove the padding. Defaults to `None`, i.e.,
+            `batch.deflate()` is used.
+
+        Returns
+        -------
+        Tensor
+            Overlap gradient of shape `(nb, norb, norb, 3)`.
+        """
         if self.numbers.ndim > 1:
             grad = self._batch(overlap_gradient, positions, mask)
         else:
@@ -261,6 +291,30 @@ def overlap(
     uplo: Literal["n", "u", "l"] = "l",
     cutoff: Tensor | float | int | None = None,
 ) -> Tensor:
+    """
+    Calculate the full overlap matrix.
+
+    Parameters
+    ----------
+    positions : Tensor
+        Cartesian coordinates of all atoms in the system.
+    bas : Basis
+        Basis set information.
+    ihelp : IndexHelper
+        Helper class for indexing.
+    uplo : Literal['n';, 'u', 'l'], optional
+        Whether the matrix of unique shell pairs should be create as a
+        triangular matrix (`l`: lower, `u`: upper) or full matrix (`n`).
+        Defaults to `l` (lower triangular matrix).
+    cutoff : Tensor | float | int | None, optional
+        Real-space cutoff for integral calculation in Angstrom. Defaults to
+        `constants.defaults.INTCUTOFF` (50.0).
+
+    Returns
+    -------
+    Tensor
+        Orbital-resolved overlap matrix of shape `(nb, norb, norb)`.
+    """
     alphas, coeffs = bas.create_cgtos()
 
     # spread stuff to orbitals for indexing
@@ -343,6 +397,30 @@ def overlap_gradient(
     uplo: Literal["n", "u", "l"] = "l",
     cutoff: Tensor | float | int | None = None,
 ) -> Tensor:
+    """
+    Calculate the gradient of the overlap.
+
+    Parameters
+    ----------
+    positions : Tensor
+        Cartesian coordinates of all atoms in the system.
+    bas : Basis
+        Basis set information.
+    ihelp : IndexHelper
+        Helper class for indexing.
+    uplo : Literal['n';, 'u', 'l'], optional
+        Whether the matrix of unique shell pairs should be create as a
+        triangular matrix (`l`: lower, `u`: upper) or full matrix (`n`).
+        Defaults to `l` (lower triangular matrix).
+    cutoff : Tensor | float | int | None, optional
+        Real-space cutoff for integral calculation in Angstrom. Defaults to
+        `constants.defaults.INTCUTOFF` (50.0).
+
+    Returns
+    -------
+    Tensor
+        Orbital-resolved overlap gradient of shape `(nb, norb, norb, 3)`.
+    """
     alphas, coeffs = bas.create_cgtos()
 
     # spread stuff to orbitals for indexing
