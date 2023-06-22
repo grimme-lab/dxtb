@@ -8,6 +8,7 @@ from dxtb.utils.batch import pack
 
 mol1 = torch.tensor([1, 1])  # H2
 mol2 = torch.tensor([8, 1, 1])  # H2O
+mol3 = torch.tensor([6, 1, 1, 1, 1])  # CH4
 
 
 def test_single_tensor() -> None:
@@ -30,19 +31,21 @@ def test_standard() -> None:
 def test_axis() -> None:
     ref = torch.tensor(
         [
-            [1, 1, 0],  # H2
-            [8, 1, 1],  # H2O
+            [1, 1, 0, 0, 0],  # H2
+            [8, 1, 1, 0, 0],  # H2O
+            [6, 1, 1, 1, 1],  # CH4
         ],
     )
     ref_mask = torch.tensor(
         [
-            [True, True, False],
-            [True, True, True],
+            [True, True, False, False, False],
+            [True, True, True, False, False],
+            [True, True, True, True, True],
         ]
     )
 
     # different axis
-    packed, mask = pack([mol1, mol2], axis=-1, return_mask=True)
+    packed, mask = pack([mol1, mol2, mol3], axis=-1, return_mask=True)
     assert (packed == ref.T).all()
     assert (mask == ref_mask.T).all()
 

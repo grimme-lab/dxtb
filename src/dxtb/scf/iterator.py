@@ -8,11 +8,6 @@ the density matrix and the derivative of the energy w.r.t. to the density
 matrix, i.e. the Hamiltonian, but the Mulliken populations (or partial charges)
 of the respective orbitals as well as the derivative of the energy w.r.t. to
 those populations, i.e. the potential vector.
-
-The implementation is based on the `xitorch <https://xitorch.readthedocs.io>`__
-library, which appears to be abandoned and unmaintained at the time of writing,
-but still provides a reasonably good implementation of the iterative solver
-required for the self-consistent field iterations.
 """
 from __future__ import annotations
 
@@ -40,8 +35,12 @@ class SelfConsistentField(BaseXSCF):
     The default class makes use of the implicit function theorem. Hence, the
     derivatives of the iterative procedure are only calculated from the
     equilibrium solution, i.e., the gradient must not be tracked through all
-    iterations. This functionality is provided by
-    `xitorch <https://xitorch.readthedocs.io>`__.
+    iterations.
+
+    The implementation is based on `xitorch <https://xitorch.readthedocs.io>`__,
+    which appears to be abandoned and unmaintained at the time of
+    writing, but still provides a reasonably good implementation of the
+    iterative solver required for the self-consistent field iterations.
     """
 
     def scf(self, guess: Tensor) -> Tensor:

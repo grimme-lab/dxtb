@@ -470,7 +470,7 @@ class BaseSCF:
         Tensor
             New orbital-resolved partial charges vector.
         """
-        if self.scf_options["verbosity"] > 0:
+        if self.scf_options.get("verbosity", defaults.VERBOSITY) > 0:
             if charges.ndim < 2:  # pragma: no cover
                 energy = self.get_energy(charges).sum(-1).detach().clone()
                 ediff = torch.linalg.vector_norm(self._data.old_energy - energy)

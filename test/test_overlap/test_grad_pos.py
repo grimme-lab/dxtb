@@ -80,11 +80,15 @@ def gradchecker_batch(
             sample2["numbers"],
         ]
     )
-    positions = batch.pack(
+
+    # mask needed for un-batched overlap calculation (numerical jacobian in
+    # gradcheck also changes the padding values, prohibiting `batch.deflate()`)
+    positions, mask = batch.pack(
         [
             sample1["positions"].type(dtype),
             sample2["positions"].type(dtype),
-        ]
+        ],
+        return_mask=True,
     )
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
@@ -94,12 +98,13 @@ def gradchecker_batch(
     positions.requires_grad_(True)
 
     def func(pos: Tensor) -> Tensor:
-        return overlap.build(pos)
+        return overlap.build(pos, mask=mask)
 
     return func, positions
 
 
 @pytest.mark.grad
+@pytest.mark.filterwarnings("ignore")  # torch.meshgrid from batch.deflate
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["H2"])
 @pytest.mark.parametrize("name2", sample_list)
@@ -115,6 +120,7 @@ def test_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
 
 @pytest.mark.grad
+@pytest.mark.filterwarnings("ignore")  # torch.meshgrid from batch.deflate
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["H2"])
 @pytest.mark.parametrize("name2", sample_list)

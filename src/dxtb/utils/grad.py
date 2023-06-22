@@ -84,18 +84,22 @@ def hessian(
     # NOTE: This is a (non-vectorized, slow) workaround that probably only
     # works for the nuclear Hessian! The use of functorch causes issues!
     def _jac(a: Tensor, b: Tensor) -> Tensor:
+        # catch missing gradients (e.g., halogen bond correction evaluates to
+        # zero if no donors/acceptors are present)
+        if a.grad_fn is None:
+            return torch.zeros(
+                (*b.shape, *b.shape),
+                dtype=b.dtype,
+                device=b.device,
+            )
+
+        aflat = a.reshape(-1)
         res = torch.empty(
             (a.numel(), b.numel()),
             dtype=a.dtype,
             device=a.device,
         )
 
-        # catch missing gradients (e.g., halogen bond correction evaluates to
-        # zero if no donors/acceptors are present)
-        if a.grad_fn is None:
-            return torch.zeros((*b.shape, *b.shape), device=b.device, dtype=b.dtype)
-
-        aflat = a.reshape(-1)
         for i in range(aflat.numel()):
             (g,) = torch.autograd.grad(
                 aflat[i],
@@ -112,9 +116,9 @@ def hessian(
     return hess
 
 
-########################################
-# `torch.func`-reliant implementations #
-########################################
+#####################################
+# functorch-reliant implementations #
+#####################################
 
 
 def jac(f: Callable[..., Tensor], argnums: int = 0) -> Any:

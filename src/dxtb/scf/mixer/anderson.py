@@ -234,11 +234,8 @@ class Anderson(Mixer):
             # equation 8.2 (Eyert)
             if self.diagonal_offset is not None:
                 eye = torch.eye(a.shape[-1], device=x_new.device, dtype=x_new.dtype)
-                a *= torch.where(
-                    eye != 0,
-                    eye + self.diagonal_offset**2,
-                    torch.tensor(1.0, device=x_new.device, dtype=x_new.dtype),
-                )
+                one = torch.tensor(1.0, device=x_new.device, dtype=x_new.dtype)
+                a *= torch.where(eye != 0, eye + self.diagonal_offset**2, one)
 
             # Solve for the coefficients. As torch.solve cannot solve for 1D
             # tensors a blank dimension must be added

@@ -3,10 +3,9 @@ Run autograd tests for atom-resolved coulomb matrix contribution.
 """
 from __future__ import annotations
 
-from math import sqrt
-
 import pytest
 import torch
+from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
 from dxtb._types import Callable, Tensor
 from dxtb.basis import IndexHelper
@@ -18,6 +17,8 @@ from dxtb.utils import batch
 from .samples import samples
 
 sample_list = ["LiH", "SiH4"]  # "MB16_43_01" requires a lot of RAM
+
+tol = 1e-7
 
 
 def gradcheck_param(
@@ -71,12 +72,20 @@ def test_grad_param(dtype: torch.dtype, name: str) -> None:
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradcheck`.
     """
-    tol = sqrt(torch.finfo(dtype).eps) * 10
     func, diffvars = gradcheck_param(dtype, name)
+    assert gradcheck(func, diffvars, atol=tol)
 
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradcheck
 
+@pytest.mark.grad
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", ["MB16_43_01"])
+def test_grad_param_large(dtype: torch.dtype, name: str) -> None:
+    """
+    Check a single analytical gradient of parameters against numerical
+    gradient from `torch.autograd.gradcheck`.
+    """
+    func, diffvars = gradcheck_param(dtype, name)
     assert gradcheck(func, diffvars, atol=tol)
 
 
@@ -88,12 +97,20 @@ def test_gradgrad_param(dtype: torch.dtype, name: str) -> None:
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
-    tol = sqrt(torch.finfo(dtype).eps) * 10
     func, diffvars = gradcheck_param(dtype, name)
+    assert gradgradcheck(func, diffvars, atol=tol)
 
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradgradcheck
 
+@pytest.mark.grad
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", ["MB16_43_01"])
+def test_gradgrad_param_large(dtype: torch.dtype, name: str) -> None:
+    """
+    Check a single analytical gradient of parameters against numerical
+    gradient from `torch.autograd.gradcheck`.
+    """
+    func, diffvars = gradcheck_param(dtype, name)
     assert gradgradcheck(func, diffvars, atol=tol)
 
 
@@ -161,12 +178,7 @@ def test_grad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradcheck`.
     """
-    tol = sqrt(torch.finfo(dtype).eps) * 10
     func, diffvars = gradcheck_param_batch(dtype, name1, name2)
-
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradcheck
-
     assert gradcheck(func, diffvars, atol=tol)
 
 
@@ -179,10 +191,5 @@ def test_gradgrad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> Non
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
-    tol = sqrt(torch.finfo(dtype).eps) * 10
     func, diffvars = gradcheck_param_batch(dtype, name1, name2)
-
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradgradcheck
-
     assert gradgradcheck(func, diffvars, atol=tol)

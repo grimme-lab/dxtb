@@ -554,6 +554,9 @@ class Hamiltonian(TensorLike):
         # (n_batch, atoms_i, atoms_j, 3) -> (n_batch, atoms_i, 3)
         g1 = torch.sum(dpi.unsqueeze(-1) * rij, dim=-2)
 
+        # We cannot use the autograd of the overlap since the returned shape
+        # will be (n_batch, atoms_i, 3). We need to multiply in an orbital-
+        # resolved fashion before reducing.
         # (n_batch, orbs_i, orbs_j, 3) -> (n_batch, atoms_i, orbs_j, 3)
         ds = self.ihelp.reduce_orbital_to_atom(
             doverlap * sval.unsqueeze(-1), dim=-3, extra=True
@@ -563,9 +566,8 @@ class Hamiltonian(TensorLike):
         # a positive gradient contribution to the ith atom and a negative
         # gradient contribution to the jth atom. Here, we have the full matrix,
         # which is why we get the same numeric value after summing along -2.
-        # However, the sign is wrong. So we just change it...
-        # (n_batch, atoms_i, orbs_j, 3) -> (n_batch, atoms_i, 3)
-        g2 = -torch.sum(ds, dim=-2)
+        # (n_batch, atoms_i, orbs_i, 3) -> (n_batch, atoms_i, 3)
+        g2 = torch.sum(ds, dim=-2)
 
         # we cannot sum after adding both contributions (different shapes!)
         gradient = g1 + g2
