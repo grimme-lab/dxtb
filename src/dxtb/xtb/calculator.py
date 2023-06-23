@@ -8,7 +8,7 @@ import warnings
 import torch
 
 from .. import ncoord, scf
-from .._types import Any, Tensor, TensorLike
+from .._types import Any, Sequence, Tensor, TensorLike
 from ..basis import IndexHelper
 from ..classical import (
     Classical,
@@ -82,7 +82,7 @@ class Result(TensorLike):
     """Nuclear gradient of overlap matrix."""
 
     potential: Tensor
-    """Self-consistent orbital-resolved potential."""
+    """Self-consistent orbital-resolved, monopolar potential."""
 
     scf: Tensor
     """Atom-resolved energy from the self-consistent field (SCF) calculation."""
@@ -216,8 +216,8 @@ class Calculator(TensorLike):
         numbers: Tensor,
         par: Param,
         *,
-        classical: Classical | None = None,
-        interaction: Interaction | None = None,
+        classical: Sequence[Classical] | None = None,
+        interaction: Sequence[Interaction] | None = None,
         opts: dict[str, Any] | None = None,
         timer: Timers | None = None,
         device: torch.device | None = None,
@@ -229,22 +229,26 @@ class Calculator(TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            _description_
+            Atomic numbers for all atoms in the system
         par : Param
-            _description_
-        classical : Classical | None, optional
-            _description_, by default None
-        interaction : Interaction | None, optional
-            _description_, by default None
+            Full xtb parametrization. Decides energy contributions.
+        classical : Sequence[Classical] | None, optional
+            Additional classical contributions. Defaults to `None`.
+        interaction : Sequence[Interaction] | None, optional
+            Additional self-consistent contributions (interactions).
+            Defaults to `None`.
         opts : dict[str, Any] | None, optional
-            _description_, by default None
+            Calculator options. If `None` (default) is given, default options
+            are used automatically.
         timer : Timers | None
             Pass an existing `Timers` instance. Defaults to `None`, which
             creates a new timer instance.
         device : torch.device | None, optional
-            _description_, by default None
+            Device to store the tensor on. If `None` (default), the default
+            device is used.
         dtype : torch.dtype | None, optional
-            _description_, by default None
+            Data type of the tensor. If `None` (default), the data type is
+            inferred.
         """
         super().__init__(device, dtype)
         dd = {"device": self.device, "dtype": self.dtype}
@@ -303,7 +307,11 @@ class Calculator(TensorLike):
             if not any(x in ["all", "es3"] for x in self.opts["exclude"])
             else None
         )
-        self.interactions = InteractionList(es2, es3, interaction)
+
+        if interaction is None:
+            self.interactions = InteractionList(es2, es3, interaction)
+        else:
+            self.interactions = InteractionList(es2, es3, *interaction)
 
         # setup non-self-consistent contributions
         halogen = (
@@ -321,9 +329,15 @@ class Calculator(TensorLike):
             if not any(x in ["all", "rep"] for x in self.opts["exclude"])
             else None
         )
-        self.classicals = ClassicalList(
-            halogen, dispersion, repulsion, classical, timer=self.timer
-        )
+
+        if classical is None:
+            self.classicals = ClassicalList(
+                halogen, dispersion, repulsion, timer=self.timer
+            )
+        else:
+            self.classicals = ClassicalList(
+                halogen, dispersion, repulsion, *classical, timer=self.timer
+            )
 
         self.timer.stop("setup calculator")
 
@@ -432,7 +446,6 @@ class Calculator(TensorLike):
                 n0,
                 fwd_options=self.opts["fwd_options"],
                 scf_options=self.opts["scf_options"],
-                use_potential=self.opts["use_potential"],
             )
             self.timer.stop("SCF")
 

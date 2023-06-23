@@ -160,7 +160,7 @@ class Interaction(TensorLike):
         Returns
         -------
         Tensor
-            Potential vector for each atom partial charge.
+            Atom-resolved potential vector for each atom partial charge.
         """
         return torch.zeros_like(charges)
 
@@ -182,7 +182,7 @@ class Interaction(TensorLike):
         Returns
         -------
         Tensor
-            Atom resolved energy vector.
+            Atom-resolved energy vector.
 
         Note
         ----

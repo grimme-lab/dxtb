@@ -32,7 +32,7 @@ def test_gb_scf_grad(dtype: torch.dtype, name: str, dielectric_constant=78.9):
     dielectric_constant = torch.tensor(dielectric_constant, **dd)
     gb = alpb.GeneralizedBorn(numbers, dielectric_constant, **dd)
 
-    calc = Calculator(numbers, par, interaction=gb, opts=opts, **dd)
+    calc = Calculator(numbers, par, interaction=[gb], opts=opts, **dd)
 
     results = calc.singlepoint(numbers, positions, charges)
     energy = results.scf.sum(-1)
