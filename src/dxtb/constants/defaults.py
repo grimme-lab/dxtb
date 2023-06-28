@@ -77,7 +77,9 @@ iterations.
 """
 
 SCP_MODE_CHOICES = ["charge", "charges", "potential", "fock"]
-"""List of possible choices for `SCP_MODE`."""
+"""
+List of possible choices for `SCP_MODE`. 'charge' and 'charges' are identical.
+"""
 
 VERBOSITY = 1
 """Verbosity of printout."""

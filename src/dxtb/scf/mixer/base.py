@@ -33,7 +33,13 @@ class Mixer(ABC):
     """Difference between the current and previous systems."""
 
     _is_batch: bool
-    """Whether the mixer operates in batch mode."""
+    """
+    Whether the mixer operates in batch mode.
+    Inferring batch mode from within the mixer is unreliable as the mixer can 
+    converge vector- or matrix-valued quantities. Hence, we must set it from 
+    outside. In the context of dxtb, inference from the `numbers` variable is 
+    the best/safest option.
+    """
 
     def __init__(
         self, options: dict[str, Any] | None = None, is_batch: bool = False
