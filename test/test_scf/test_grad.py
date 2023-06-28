@@ -22,7 +22,11 @@ ref_grad_param = np.load("test/test_scf/grad_param.npz")
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["LiH", "SiH4"])
-def test_grad_backwards(name: str, dtype: torch.dtype):
+@pytest.mark.parametrize("scp_mode", ["potential", "fock"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
+def test_grad_backwards(
+    name: str, dtype: torch.dtype, scf_mode: str, scp_mode: str
+) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd = {"dtype": dtype}
 
@@ -34,7 +38,14 @@ def test_grad_backwards(name: str, dtype: torch.dtype):
     # Values obtained with tblite 0.2.1 disabling repulsion and dispersion
     ref = load_from_npz(ref_grad, name, dtype)
 
-    options = dict(opts, **{"exclude": ["rep", "disp", "hal"]})
+    options = dict(
+        opts,
+        **{
+            "scf_mode": scf_mode,
+            "scp_mode": scp_mode,
+            "mixer": "anderson" if scf_mode == "full" else "broyden",
+        },
+    )
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
@@ -46,7 +57,9 @@ def test_grad_backwards(name: str, dtype: torch.dtype):
 
     gradient = positions.grad.clone()
 
+    # also zero out gradients when using `.backward()`
     positions.detach_()
+    positions.grad.data.zero_()
 
     assert pytest.approx(ref, abs=tol) == gradient
 

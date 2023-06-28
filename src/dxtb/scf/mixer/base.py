@@ -32,11 +32,26 @@ class Mixer(ABC):
     _delta: Tensor | None
     """Difference between the current and previous systems."""
 
-    def __init__(self, options: dict[str, Any] | None = None) -> None:
+    _is_batch: bool
+    """
+    Whether the mixer operates in batch mode.
+    Inferring batch mode from within the mixer is unreliable as the mixer can 
+    converge vector- or matrix-valued quantities. Hence, we must set it from 
+    outside. In the context of dxtb, inference from the `numbers` variable is 
+    the best/safest option.
+    """
+
+    def __init__(
+        self, options: dict[str, Any] | None = None, is_batch: bool = False
+    ) -> None:
         self.label = self.__class__.__name__
         self.options = options if options is not None else default_opts
         self.iter_step = 0
         self._delta = None
+
+        # inferring batch mode from shapes of tensor is unreliable, so we
+        # explicitly set this information
+        self._is_batch = is_batch
 
     def __repr__(self) -> str:
         """
@@ -75,7 +90,7 @@ class Mixer(ABC):
     @abstractmethod
     def cull(self, conv: Tensor, slicers: Slicer = (...,)) -> None:
         """
-        Purge select systems form the mixer.
+        Purge selected systems from the mixer.
 
         This is useful when a subset of systems have converged during mixing.
 
@@ -115,7 +130,13 @@ class Mixer(ABC):
         if self.delta is None:
             raise RuntimeError("Nothing has been mixed")
 
-        delta_norm = torch.norm(self.delta, dim=(-1))
+        if self._is_batch is True:
+            # norm goes over all dims except first (batch dimension)
+            dims = tuple(range(-(self.delta.ndim - 1), 0))
+            delta_norm = torch.norm(self.delta, dim=dims)
+        else:
+            delta_norm = torch.norm(self.delta)
+
         return delta_norm < self.options["x_tol"]
 
     def reset(self):

@@ -311,9 +311,30 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         help="R|Damping factor for mixing in SCF iterations.",
     )
     p.add_argument(
-        "--full-tracking",
-        action="store_true",
-        help="R|Use full gradient tracking in SCF iterations.",
+        "--scf-mode",
+        type=str,
+        default=defaults.SCF_MODE,
+        choices=defaults.SCF_MODE_CHOICES,
+        help=(
+            "R|Method of gradient tracking in SCF iterations.\n"
+            " - 'default' is equivalent to 'implicit' and requests SCF\n"
+            "   gradient computation via a single derivative facilitated\n"
+            "   by the implicit function theorem.\n"
+            " - 'full' and 'full_tracking' both request complete gradient\n"
+            "   tracking through all SCF iterations.\n"
+            " - 'experimental' converges the SCF without gradient tracking\n"
+            "   then runs a single additional iteration to reconnect gradients."
+        ),
+    )
+    p.add_argument(
+        "--scp-mode",
+        type=str,
+        default=defaults.SCP_MODE,
+        choices=defaults.SCP_MODE_CHOICES,
+        help=(
+            "R|Self-consistent parameter, i.e., which variable is converged\n"
+            "in the SCF. Note that 'charge' and 'charges' is identical."
+        ),
     )
     p.add_argument(
         "-v",

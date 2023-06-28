@@ -279,13 +279,13 @@ class Calculator(TensorLike):
                     defaults.FERMI_FENERGY_PARTITION,
                 ),
                 "scf_mode": opts.get("scf_mode", defaults.SCF_MODE),
+                "scp_mode": opts.get("scp_mode", defaults.SCP_MODE),
                 "mixer": opts.get("mixer", defaults.MIXER),
                 "verbosity": opts.get("verbosity", defaults.VERBOSITY),
             },
             "exclude": opts.get("exclude", defaults.EXCLUDE),
             "guess": opts.get("guess", defaults.GUESS),
             "spin": opts.get("spin", defaults.SPIN),
-            "use_potential": opts.get("use_potential", defaults.USE_POTENTIAL),
         }
 
         # set tolerances separately to catch unreasonably small values

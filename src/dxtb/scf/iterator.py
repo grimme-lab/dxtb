@@ -45,7 +45,7 @@ class SelfConsistentField(BaseSelfConsistentField):
     """
 
     def scf(self, guess: Tensor) -> Tensor:
-        fcn = self.iterate_potential if self.use_potential else self.iterate_charges
+        fcn = self._fcn
 
         q_converged = xto.equilibrium(
             fcn=fcn,
@@ -54,20 +54,16 @@ class SelfConsistentField(BaseSelfConsistentField):
             **self.fwd_options,
         )
 
-        # To reconnecting the H0 energy with the computational graph, we
+        # To reconnect the H0 energy with the computational graph, we
         # compute one extra SCF cycle with strong damping.
         # Note that this is not required for SCF with full gradient tracking.
         # (see https://github.com/grimme-lab/xtbML/issues/124)
-        if not self.use_potential:
+        if self.scp_mode in ("charge", "charges"):
             mixer = Simple({**self.fwd_options, "damp": 1e-4})
             q_new = fcn(q_converged)
             q_converged = mixer.iter(q_new, q_converged)
 
-        return (
-            self.potential_to_charges(q_converged)
-            if self.use_potential
-            else q_converged
-        )
+        return self.converged_to_charges(q_converged)
 
 
 class SelfConsistentFieldFull(BaseSelfConsistentField):
@@ -85,7 +81,7 @@ class SelfConsistentFieldFull(BaseSelfConsistentField):
 
     def scf(self, guess: Tensor) -> Tensor:
         # "SCF function"
-        fcn = self.iterate_potential if self.use_potential else self.iterate_charges
+        fcn = self._fcn
 
         mixer = self.scf_options["mixer"]
         maxiter = self.fwd_options["maxiter"]
@@ -95,7 +91,9 @@ class SelfConsistentFieldFull(BaseSelfConsistentField):
             mixers = {"anderson": Anderson, "simple": Simple}
             if mixer.casefold() not in mixers:
                 raise ValueError(f"Unknown mixer '{mixer}'.")
-            mixer: Mixer = mixers[mixer.casefold()](self.fwd_options)
+            mixer: Mixer = mixers[mixer.casefold()](
+                self.fwd_options, is_batch=self.batched
+            )
 
         q = guess
 
@@ -281,11 +279,7 @@ class SelfConsistentFieldFull(BaseSelfConsistentField):
                 self._data.ihelp.restore()
                 self._data.cache.restore()
 
-        return (
-            self.potential_to_charges(q_converged)
-            if self.use_potential
-            else q_converged
-        )
+        return self.converged_to_charges(q_converged)
 
 
 class SelfConsistentFieldSingleShot(SelfConsistentFieldFull):
@@ -404,10 +398,10 @@ def solve(
     Tensor
         Orbital-resolved partial charges vector.
     """
-    scf_mode = kwargs["scf_options"].pop("scf_mode", defaults.SCF_MODE)
+    scf_mode = kwargs["scf_options"].get("scf_mode", defaults.SCF_MODE)
     if scf_mode in ("default", "implicit"):
         scf = SelfConsistentField
-    elif scf_mode == "full":
+    elif scf_mode in ("full", "full_tracking"):
         scf = SelfConsistentFieldFull
     elif scf_mode == "experimental":
         scf = SelfConsistentFieldSingleShot
