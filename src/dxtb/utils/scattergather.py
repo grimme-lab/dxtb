@@ -8,10 +8,12 @@ Wrappers and convenience functions for `torch.scatter_reduce` and
 
 from __future__ import annotations
 
+import warnings
 from functools import wraps
 
 import torch
 
+from ..__version__ import __torch_version__
 from .._types import Callable, Gather, ScatterOrGather, Tensor
 from .tensors import t2int
 
@@ -202,11 +204,14 @@ def scatter_reduce(
         still in beta and CPU-only.
 
         Related links:
-        - https://pytorch.org/docs/1.12/generated/torch.Tensor.scatter_reduce_.html#torch.Tensor.scatter_reduce_
+        - https://pytorch.org/docs/1.12/generated/torch.Tensor.scatter_reduce_.\
+          html#torch.Tensor.scatter_reduce_
         - https://pytorch.org/docs/1.11/generated/torch.scatter_reduce.html
-        - https://github.com/pytorch/pytorch/releases/tag/v1.12.0 (section "Sparse")
+        - https://github.com/pytorch/pytorch/releases/tag/v1.12.0
+          (section "Sparse")
 
-    Thin wrapper for pytorch's `scatter_reduce` function for handling API changes.
+    Thin wrapper for pytorch's `scatter_reduce` function for handling API 
+    changes.
 
     Parameters
     ----------
@@ -226,13 +231,17 @@ def scatter_reduce(
         Reduced tensor.
     """
 
-    version = tuple(
-        int(x) for x in torch.__version__.split("+", maxsplit=1)[0].split(".")
-    )
+    if (1, 11, 0) <= __torch_version__ < (1, 12, 0):  # type: ignore
+        actual_device = x.device
 
-    if (1, 11, 0) <= version < (1, 12, 0):
+        # account for CPU-only implementation
+        if "cuda" in str(actual_device):
+            x = x.to(torch.device("cpu"))
+            idx = idx.to(torch.device("cpu"))
+
         output = torch.scatter_reduce(x, dim, idx, *args)  # type: ignore
-    elif version >= (1, 12, 0) or version >= (2, 0, 0):
+        output = output.to(actual_device)
+    elif __torch_version__ >= (1, 12, 0) or __torch_version__ >= (2, 0, 0):  # type: ignore
         out_shape = list(x.shape)
         out_shape[dim] = t2int(idx.max()) + 1
 
@@ -240,13 +249,16 @@ def scatter_reduce(
         # the behavior in 1.11, where indices not scattered to are filled with
         # reduction inits (sum: 0, prod: 1)
         if fill_value is None:
-            out = x.new_empty(out_shape)
+            out = torch.empty(out_shape, device=x.device, dtype=x.dtype)
         else:
-            out = x.new_empty(out_shape).fill_(fill_value)
+            out = torch.full(out_shape, fill_value, device=x.device, dtype=x.dtype)
 
-        output = torch.scatter_reduce(out, dim, idx, x, *args)  # type: ignore
+        # stop warning about beta and possible API changes in 1.12
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            output = torch.scatter_reduce(out, dim, idx, x, *args)  # type: ignore
     else:
-        raise RuntimeError(f"Unsupported PyTorch version ({version}) used.")
+        raise RuntimeError(f"Unsupported PyTorch version ({__torch_version__}) used.")
 
     return output
 
