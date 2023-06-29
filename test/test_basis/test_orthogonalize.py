@@ -1,15 +1,25 @@
+"""
+Test orthogonality of GFN1-xTB's H1s and H2s orbitals.
+"""
 from __future__ import annotations
 
 import pytest
 import torch
 
-from dxtb.basis import orthogonalize, slater
+from dxtb.basis import slater
+from dxtb.basis.ortho import gaussian_integral, orthogonalize
 from dxtb.integral import overlap_gto
+
+# from dxtb._types import DD
+
+device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-def test_ortho_1s_2s(dtype):
-    """Test orthogonality of 1s and 2s orbitals"""
+def test_ortho_1s_2s(dtype: torch.dtype):
+    """Test orthogonality of GFN1-xTB's H1s and H2s orbitals"""
+    tols = {"abs": 1e-6, "rel": 1e-6, "nan_ok": False}
+    dd = {"device": device, "dtype": dtype}
 
     # azimuthal quantum number of s-orbital
     l = torch.tensor(0)
@@ -25,16 +35,18 @@ def test_ortho_1s_2s(dtype):
         torch.tensor(2), torch.tensor(2), l, vec.new_tensor(0.7)
     )
 
-    alphaj, coeffj = orthogonalize((alphai, alphaj), (coeffi, coeffj))
+    alphaj_new, coeffj_new = orthogonalize((alphai, alphaj), (coeffi, coeffj))
 
     # normalised self-overlap
+    ref = torch.tensor(1, **dd)
     s = overlap_gto((l, l), (alphaj, alphaj), (coeffj, coeffj), vec)
-    assert torch.allclose(
-        s, torch.eye(1, dtype=dtype), rtol=1e-05, atol=1e-05, equal_nan=False
-    )
+    assert pytest.approx(ref, **tols) == s.sum()
+    s2 = gaussian_integral(*(alphaj, alphaj), *(coeffj, coeffj))
+    assert pytest.approx(ref, **tols) == s2
 
     # orthogonal overlap
-    s = overlap_gto((l, l), (alphai, alphaj), (coeffi, coeffj), vec)
-    assert torch.allclose(
-        s, torch.zeros(1, dtype=dtype), rtol=1e-05, atol=1e-05, equal_nan=False
-    )
+    ref = torch.tensor(0, **dd)
+    s = overlap_gto((l, l), (alphai, alphaj_new), (coeffi, coeffj_new), vec)
+    s2 = gaussian_integral(*(alphai, alphaj_new), *(coeffi, coeffj_new))
+    assert pytest.approx(ref, **tols) == s.sum()
+    assert pytest.approx(ref, **tols) == s2
