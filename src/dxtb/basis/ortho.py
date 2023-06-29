@@ -8,11 +8,49 @@ import torch
 from .._types import Tensor
 
 
+def gaussian_integral(ai: Tensor, aj: Tensor, ci: Tensor, cj: Tensor) -> Tensor:
+    """
+    Integral over two Gaussians (overlap).
+
+    Parameters
+    ----------
+    ai : Tensor
+        Exponent of GTO i. Can also be a tensor of exponents corresponding to
+        all primitive GTOs of GTO i.
+    aj : Tensor
+        Exponent of GTO j. Can also be a tensor of exponents corresponding to
+        all primitive GTOs of GTO j.
+    ci : Tensor
+        Contraction coefficients for CGTO i.
+    cj : Tensor
+        Contraction coefficients for CGTO j.
+
+    Returns
+    -------
+    Tensor
+        Overlap (summed).
+    """
+    oij = 1.0 / (ai.unsqueeze(-1) + aj.unsqueeze(-2))
+    kab = torch.sqrt(math.pi * oij) ** 3
+    overlap = kab * ci.unsqueeze(-1) * cj.unsqueeze(-2)
+
+    # OLD: loop-based version
+    # overlap = ai.new_tensor(0.0)
+    # for _ai, _ci in zip(ai, ci):
+    #     for _aj, _cj in zip(aj, cj):
+    #         eij = _ai + _aj
+    #         oij = 1.0 / eij
+    #         kab = torch.sqrt(math.pi * oij) ** 3
+    #         overlap += _ci * _cj * kab
+
+    return overlap.sum()
+
+
 def orthogonalize(
     alpha: tuple[Tensor, Tensor], coeff: tuple[Tensor, Tensor]
 ) -> tuple[Tensor, Tensor]:
     """
-    Orthogonalize a contracted Gaussian basis function to an existing basis function.
+    Orthogonalize a contracted Gaussian basis function to an existing basis function using.
     The second basis function is orthonormalized against the first basis function.
 
     Parameters
@@ -36,13 +74,7 @@ def orthogonalize(
     alpha_new = alpha_i.new_zeros(alpha_i.shape[-1] + alpha_j.shape[-1])
 
     # Calculate overlap between basis functions
-    overlap = 0.0
-    for ai, ci in zip(alpha_i, coeff_i):
-        for aj, cj in zip(alpha_j, coeff_j):
-            eab = ai + aj
-            oab = 1.0 / eab
-            kab = torch.sqrt(math.pi * oab) ** 3
-            overlap += ci * cj * kab
+    overlap = gaussian_integral(alpha_i, alpha_j, coeff_i, coeff_j)
 
     # Create new basis function from the pair which is orthogonal to the first
     # basis function
@@ -53,14 +85,7 @@ def orthogonalize(
     )
 
     # Normalization of the new basis function might be off, calculate self overlap
-    overlap = alpha_i.new_tensor(0.0)
-    for ai, ci in zip(alpha_new, coeff_new):
-        for aj, cj in zip(alpha_new, coeff_new):
-            eab = ai + aj
-            oab = 1.0 / eab
-            kab = torch.sqrt(math.pi * oab) ** 3
-            overlap += ci * cj * kab
-
-    coeff_new /= torch.sqrt(overlap)
+    selfoverlap = gaussian_integral(alpha_new, alpha_new, coeff_new, coeff_new)
+    coeff_new /= torch.sqrt(selfoverlap)
 
     return alpha_new, coeff_new
