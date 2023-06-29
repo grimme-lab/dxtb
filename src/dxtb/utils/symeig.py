@@ -7,18 +7,18 @@ mathematical functions.
 Taken from TBMaLT.
 https://github.com/tbmalt/tbmalt/blob/main/tbmalt/common/maths/__init__.py
 """
-from typing import Literal, Optional, Tuple
+from __future__ import annotations
 
 import numpy as np
 import torch
 
-from .._types import Tensor
+from .._types import Literal, Tensor
 from .tensors import symmetrize
 
 __all__ = ["eighb"]
 
 
-def _estimate_minmax(amat: Tensor) -> Tuple[Tensor, Tensor]:
+def _estimate_minmax(amat: Tensor) -> tuple[Tensor, Tensor]:
     """
     Estimate maximum and minimum eigenvalue of a matrix using the Gershgorin
     circle theorem.
@@ -56,7 +56,7 @@ def _estimate_minmax(amat: Tensor) -> Tuple[Tensor, Tensor]:
     )
 
 
-def _eig_sort_out(w: Tensor, v: Tensor, ghost: bool = True) -> Tuple[Tensor, Tensor]:
+def _eig_sort_out(w: Tensor, v: Tensor, ghost: bool = True) -> tuple[Tensor, Tensor]:
     """Move ghost eigen values/vectors to the end of the array.
 
     Discuss the difference between ghosts (w=0) and auxiliaries (w=1)
@@ -195,7 +195,7 @@ class _SymEigB(torch.autograd.Function):
     @staticmethod
     def forward(
         ctx, a: Tensor, method: str = "cond", factor: float = 1e-12
-    ) -> Tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor]:
         """Calculate the eigenvalues and eigenvectors of a symmetric matrix.
 
         Finds the eigenvalues and eigenvectors of a real symmetric
@@ -336,7 +336,7 @@ def eighb(
     aux: bool = True,
     is_posdef: bool = False,
     **kwargs,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     r"""Solves general & standard eigen-problems, with optional broadening.
 
     Solves standard and generalised eigenvalue problems of the from Az = λBz
