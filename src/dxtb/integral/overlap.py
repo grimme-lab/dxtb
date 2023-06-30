@@ -135,9 +135,9 @@ class Overlap(TensorLike):
             Overlap matrix.
         """
         if self.numbers.ndim > 1:
-            s = self._batch(OverlapAG.apply, positions, mask)
+            s = self._batch(OverlapAG.apply, positions, mask)  # type: ignore
         else:
-            s = self._single(OverlapAG.apply, positions)
+            s = self._single(OverlapAG.apply, positions)  # type: ignore
 
         # force symmetry to avoid problems through numerical errors
         if self.uplo == "n":

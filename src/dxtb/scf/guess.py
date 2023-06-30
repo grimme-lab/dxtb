@@ -50,7 +50,9 @@ def get_guess(
     if name == "eeq":
         charges = get_eeq_guess(numbers, positions, chrg)
     elif name == "sad":
-        charges = torch.zeros_like(positions[..., -1])
+        charges = torch.zeros_like(
+            positions[..., -1], requires_grad=positions.requires_grad
+        )
     else:
         raise ValueError(f"Unknown guess method '{name}'.")
 

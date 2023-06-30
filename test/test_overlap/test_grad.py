@@ -7,13 +7,14 @@ from math import sqrt
 
 import pytest
 import torch
+from torch.autograd.functional import jacobian
 
 from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper, slater
 from dxtb.integral import Overlap, mmd
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
-from dxtb.utils import jac, t2int
+from dxtb.utils import t2int
 
 from .samples import samples
 
@@ -89,11 +90,12 @@ def test_overlap_jacobian(dtype: torch.dtype, name: str):
     # autograd jacobian
     positions.requires_grad_(True)
 
-    def func(pos):
+    def func(pos: Tensor) -> Tensor:
         return overlap.build(pos)
 
     # [norb, norb, natm, 3]
-    j = jac(func)(positions)
+    # j = jacobian(func, argnums=0)(positions)
+    j = jacobian(func, positions)
     j = torch.movedim(j, -2, 0)  # type: ignore
 
     # check whether dimensions are swapped

@@ -306,7 +306,11 @@ def ecoeffs_s(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> Tensor:
 
     # ss -> not required since 0
     if lj == 0:
-        return torch.zeros_like(rpi).unsqueeze(0).unsqueeze(0)
+        return (
+            torch.zeros_like(rpi, requires_grad=rpi.requires_grad)
+            .unsqueeze(0)
+            .unsqueeze(0)
+        )
 
     e011 = xij
     e100 = rpi
