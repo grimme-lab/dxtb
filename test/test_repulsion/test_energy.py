@@ -10,7 +10,7 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb._types import Literal
+from dxtb._types import DD, Literal
 from dxtb.basis import IndexHelper
 from dxtb.classical import new_repulsion
 from dxtb.param import GFN1_XTB, get_elem_angular
@@ -21,12 +21,14 @@ from .samples import samples
 
 sample_list = ["H2", "H2O", "SiH4", "ZnOOH-", "MB16_43_01", "MB16_43_02", "LYS_xao"]
 
+device = None
+
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 @pytest.mark.parametrize("par", ["gfn1", "gfn2"])
 def test_single(dtype: torch.dtype, name: str, par: Literal["gfn1", "gfn2"]) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
@@ -59,7 +61,7 @@ def test_single(dtype: torch.dtype, name: str, par: Literal["gfn1", "gfn2"]) -> 
 def test_batch(
     dtype: torch.dtype, name1: str, name2: str, par: Literal["gfn1", "gfn2"]
 ) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample1, sample2 = samples[name1], samples[name2]

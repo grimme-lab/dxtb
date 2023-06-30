@@ -10,22 +10,24 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb._types import Tensor
+from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.classical import new_repulsion
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
-from dxtb.utils import batch, hessian, jacobian, reshape_fortran
+from dxtb.utils import batch, hessian, jac, reshape_fortran
 
 from .samples import samples
 
 sample_list = ["LiH", "SiH4", "MB16_43_01"]
 
+device = None
+
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 100
 
     sample = samples[name]
@@ -54,7 +56,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def skip_test_single_alt(dtype: torch.dtype, name: str) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 100
 
     sample = samples[name]
@@ -76,13 +78,13 @@ def skip_test_single_alt(dtype: torch.dtype, name: str) -> None:
     )
 
     # gradient
-    fjac = jacobian(rep.get_energy, argnums=0)
-    jac: Tensor = fjac(positions, cache).sum(0)  # type: ignore
-    assert pytest.approx(ref_jac, abs=tol, rel=tol) == jac.detach()
+    fjac = jac(rep.get_energy, argnums=0)
+    jacobian: Tensor = fjac(positions, cache).sum(0)  # type: ignore
+    assert pytest.approx(ref_jac, abs=tol, rel=tol) == jacobian.detach()
 
     # hessian
     def _hessian(f, argnums):
-        return jacobian(jacobian(f, argnums=argnums), argnums=argnums)
+        return jac(jac(f, argnums=argnums), argnums=argnums)
 
     fhess = _hessian(rep.get_energy, argnums=0)
     hess: Tensor = fhess(positions, cache).sum(0)  # type: ignore
@@ -95,7 +97,7 @@ def skip_test_single_alt(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", sample_list)
 def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 100
 
     sample1, sample2 = samples[name1], samples[name2]
@@ -138,10 +140,6 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
     positions.requires_grad_(True)
 
     hess = hessian(rep.get_energy, (positions, cache), is_batched=True)
-    # print(hess)
-    # print(ref_hess)
-    # print(hess.shape)
-
     assert pytest.approx(ref_hess, abs=tol, rel=tol) == hess.detach()
 
     positions.detach_()

@@ -9,7 +9,7 @@ import pytest
 import torch
 from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
-from dxtb._types import Callable, Tensor
+from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.classical import Repulsion
 from dxtb.param import GFN1_XTB as par
@@ -22,6 +22,8 @@ sample_list = ["H2O", "SiH4", "MB16_43_01", "MB16_43_02", "LYS_xao"]
 
 tol = 1e-8
 
+device = None
+
 
 def gradchecker(
     dtype: torch.dtype, name: str
@@ -32,7 +34,7 @@ def gradchecker(
     """Prepare gradient check from `torch.autograd`."""
     assert par.repulsion is not None
 
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
     numbers = sample["numbers"]
@@ -99,7 +101,7 @@ def gradchecker_batch(
     """Prepare gradient check from `torch.autograd`."""
     assert par.repulsion is not None
 
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(

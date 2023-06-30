@@ -8,7 +8,7 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb._types import Tensor
+from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper, slater
 from dxtb.integral import Overlap, mmd
 from dxtb.param import GFN1_XTB as par
@@ -17,10 +17,12 @@ from dxtb.utils import jac, t2int
 
 from .samples import samples
 
+device = None
+
 
 @pytest.mark.parametrize("dtype", [torch.double])
 def test_ss(dtype: torch.dtype):
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     ng = torch.tensor(6)
@@ -72,13 +74,14 @@ def test_ss(dtype: torch.dtype):
 @pytest.mark.parametrize("name", ["H", "H2", "LiH", "C", "Rn", "H2O", "CH4", "SiH4"])
 def test_overlap_jacobian(dtype: torch.dtype, name: str):
     """Jacobian calculation with AD and numerical gradient."""
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps)
 
     sample = samples[name]
     numbers = sample["numbers"]
     positions = sample["positions"].type(dtype)
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    overlap = Overlap(numbers, par, ihelp, **{"dtype": dtype})
+    overlap = Overlap(numbers, par, ihelp, **dd)
 
     # numerical gradient
     ngrad = calc_numerical_gradient(overlap, positions)  # [natm, norb, norb, 3]

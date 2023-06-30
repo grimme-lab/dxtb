@@ -6,7 +6,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb._types import Callable, Tensor
+from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.integral import Overlap
 from dxtb.ncoord import get_coordination_number
@@ -15,19 +15,21 @@ from dxtb.param import get_elem_angular
 from dxtb.utils import batch
 from dxtb.xtb import Hamiltonian
 
-from .samples import samples
 from ..utils import dgradcheck, dgradgradcheck
+from .samples import samples
 
 sample_list = ["H2", "HHe", "LiH", "S2", "H2O", "SiH4"]
 
 tol = 1e-7
+
+device = None
 
 
 def gradchecker(
     dtype: torch.dtype, name: str
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
     numbers = sample["numbers"]
@@ -102,7 +104,7 @@ def gradchecker_batch(
     dtype: torch.dtype, name1: str, name2: str
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(

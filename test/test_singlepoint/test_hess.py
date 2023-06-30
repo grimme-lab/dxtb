@@ -49,7 +49,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     # variable to be differentiated
     positions.requires_grad_(True)
 
-    options = dict(opts, **{"exclude": ["es2", "es3", "scf"]})
+    options = dict(opts, **{"exclude": ["scf"]})
     calc = Calculator(numbers, par, opts=options, **dd)
 
     def singlepoint(numbers, positions, charge) -> Tensor:

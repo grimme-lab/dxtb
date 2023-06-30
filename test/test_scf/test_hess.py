@@ -6,7 +6,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb._types import Tensor
+from dxtb._types import DD, Tensor
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import hessian, reshape_fortran
 from dxtb.xtb import Calculator
@@ -23,11 +23,13 @@ opts = {
     "verbosity": 0,
 }
 
+device = None
+
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     atol, rtol = 1e-4, 1e-1  # should be lower!
 
     numbers = samples[name]["numbers"]
