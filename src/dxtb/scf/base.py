@@ -943,7 +943,12 @@ class BaseTSCF(BaseSCF):
         """
 
         o = self.get_overlap()
-        return eighb(a=hamiltonian, b=o, is_posdef=True)
+        return eighb(
+            a=hamiltonian,
+            b=o,
+            is_posdef=True,
+            factor=torch.finfo(self.dtype).eps ** 0.5,
+        )
 
 
 def get_density(coeffs: Tensor, occ: Tensor, emo: Tensor | None = None) -> Tensor:

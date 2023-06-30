@@ -2,10 +2,11 @@
 Run tests for energy contribution from instantaneous electric field.
 """
 from __future__ import annotations
-
+from math import sqrt
 import pytest
 import torch
 
+from dxtb._types import DD
 from dxtb.constants import units
 from dxtb.interaction import new_efield
 from dxtb.param import GFN1_XTB
@@ -19,12 +20,14 @@ sample_list = ["SiH4"]
 
 opts = {"verbosity": 0, "maxiter": 50}
 
+device = None
+
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    tol = 1e-6
-    dd = {"dtype": dtype}
+    tol = sqrt(torch.finfo(dtype).eps)
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
     numbers = sample["numbers"]
@@ -46,8 +49,8 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
-    tol = 1e-6
-    dd = {"dtype": dtype}
+    tol = sqrt(torch.finfo(dtype).eps)
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(

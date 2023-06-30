@@ -60,10 +60,7 @@ def mmd_explicit(
     Tensor
         Overlap integrals for shell pair(s).
     """
-    # angular momenta and number of cartesian gaussian basis functions
     li, lj = angular
-    ncarti = torch.div((li + 1) * (li + 2), 2, rounding_mode="floor")
-    ncartj = torch.div((lj + 1) * (lj + 2), 2, rounding_mode="floor")
 
     try:
         itrafo = TRAFO[li].type(vec.dtype).to(vec.device)
@@ -71,9 +68,7 @@ def mmd_explicit(
     except IndexError as e:
         raise IntegralTransformError() from e
 
-    # cartesian overlap with possible batch dimension
-    s3d = vec.new_zeros(*[*vec.shape[:-1], ncarti, ncartj])
-
+    # expontents and related variables required for integral
     ai, aj = alpha[0].unsqueeze(-1), alpha[1].unsqueeze(-2)
     ci, cj = coeff[0].unsqueeze(-1), coeff[1].unsqueeze(-2)
     eij = ai + aj
@@ -84,7 +79,7 @@ def mmd_explicit(
     r2 = torch.sum(vec.pow(2), -1)
     est = ai * aj * oij * r2.unsqueeze(-1).unsqueeze(-2)
 
-    # K_AB * Gaussian integral (√(pi/(a+b))) in 3D * c_A * c_B
+    # K_AB * [Gaussian integral (√(pi/(a+b))) in 3D] * c_A * c_B
     sij = torch.exp(-est) * sqrtpi3 * torch.pow(oij, 1.5) * ci * cj
 
     # ss does not require E-coefficients (e000 = 1)
@@ -111,30 +106,34 @@ def mmd_explicit(
 
         # Collect E-coefficients for each cartesian direction for first (i)
         # center. Getting the E-coefficients for the three directions from
-        # `NLM_CART` replaces the first dimension with a `3`, which finally
-        # yields the following shape: (3, lj+1, nbatch, 3 ai, aj)
+        # `NLM_CART` replaces the first dimension with the number of
+        # cartesian basis functions of the first orbital (i), which finally
+        # yields the following shape: (ncarti, lj+1, nbatch, 3 ai, aj)
         e0x = e0[nlmi[:, 0]]
         e0y = e0[nlmi[:, 1]]
         e0z = e0[nlmi[:, 2]]
 
         # Collect E-coefficients for each cartesian direction for second (j)
         # center. Getting the E-coefficients for the three directions from
-        # `NLM_CART` replaces the second dimension with a `3`. Selecting the
-        # cartesian directions eliminates the `-3`rd dimension, which
-        # ultimately yields the following shape: (3, 3, nbatch, ai, aj)
+        # `NLM_CART` replaces the second dimension with the number of
+        # cartesian basis functions of the second orbital (j). Additionally,
+        # we selecting the cartesian directions eliminating the `-3`rd
+        # dimension, which ultimately yields the following shape:
+        # (ncarti, ncartj, nbatch, ai, aj)
         sx = e0x[:, nlmj[:, 0], ..., 0, :, :]  # type: ignore
         sy = e0y[:, nlmj[:, 1], ..., 1, :, :]  # type: ignore
         sz = e0z[:, nlmj[:, 2], ..., 2, :, :]  # type: ignore
 
         # First, we multiply sx, sy and sz with sij using the inidces a (ai)
         # and b (aj). Then, we sum over the alphas (a and b), reducing the
-        # tensor to (li, lj, nbatch). Since `nbatch` denotes our batch
-        # dimension, we cycle the indices. The latter part was determined by
-        # inspection to conform with previous code.
+        # tensor to (ncarti, ncartj, nbatch). Since the batch dimension is
+        # conventionally the first dimension, we cycle the indices and obtain
+        # the final shape: (nbatch, ncarti, ncartj)
         s3d = torch.einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", sx, sy, sz, sij)
 
-        # This is the loop-based version of the above indexing atrocities. I
-        # left it here, as it may be better to understand...
+        # OLD: This is the loop-based version of the above indexing atrocities.
+        # I left it here, as it may be better to understand...
+        #
         # for mli in range(ncarti):
         #     mi = nlmi[mli, :]
         #     _e0x = e0[mi[0]]
