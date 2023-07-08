@@ -3,9 +3,13 @@ Basis set class.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+from pathlib import Path
+
 import torch
 
 from .._types import Literal, Tensor, TensorLike
+from ..constants import PSE
 from ..param import Param, get_elem_param, get_elem_pqn, get_elem_valence
 from ..utils import real_pairs
 from . import IndexHelper, orthogonalize, slater
@@ -16,6 +20,34 @@ primes = torch.tensor(
 )
 """The first 300 prime numbers"""
 # fmt: on
+
+angular2label = {
+    0: "s",
+    1: "p",
+    2: "d",
+    3: "f",
+    4: "g",
+}
+
+
+@dataclass
+class CGTOBasis:
+    angmom: int
+    alphas: torch.Tensor  # (nbasis,)
+    coeffs: torch.Tensor  # (nbasis,)
+    normalized: bool = True
+
+    def wfnormalize_(self) -> CGTOBasis:
+        # will always be normalized already in dxtb because we have to also
+        # include the orthonormalization of the H2s against the H1s
+        return self
+
+
+@dataclass
+class AtomCGTOBasis:
+    atomz: int | float | Tensor
+    bases: list[CGTOBasis]
+    pos: Tensor  # (ndim,)
 
 
 class Basis(TensorLike):
@@ -45,7 +77,10 @@ class Basis(TensorLike):
         dtype: torch.dtype | None = None,
     ) -> None:
         super().__init__(device, dtype)
+        self.numbers = numbers
+        self.meta = par.meta
         self.angular = angular
+
         self.ngauss = get_elem_param(
             numbers,
             par.element,
@@ -185,3 +220,234 @@ class Basis(TensorLike):
             raise ValueError("Unknown option for `uplo`.")
 
         return umap, torch.max(umap) + 1
+
+    def to_bse_gaussian94(
+        self,
+        ihelp: IndexHelper,
+        save: bool = False,
+        overwrite: bool = False,
+        verbose: bool = False,
+        with_header: bool = False,
+    ) -> str:
+        if self.numbers.ndim > 1:
+            raise RuntimeError("Basis set printing does not work batched.")
+
+        if len(self.numbers) == 0:
+            raise ValueError("No atoms for basis set printout found.")
+
+        if with_header is True:
+            assert self.meta is not None
+
+            l = 70 * "-"
+            header = (
+                f"!{l}\n"
+                "! Basis Set Exchange\n"
+                "! Version v0.9\n"
+                "! https://www.basissetexchange.org\n"
+                f"!{l}\n"
+                f"!   Basis set: {self.meta.name}\n"
+                f"! Description: Orthonormalized {self.meta.name} Basis\n"
+                "!        Role: orbital\n"
+                f"!     Version: {self.meta.version}\n"
+                f"!{l}\n\n\n"
+            )
+
+        coeffs = []
+        alphas = []
+        s = 0
+        txt = ""
+        for i, number in enumerate(self.numbers.tolist()):
+            if with_header is True:
+                txt += header  # type: ignore
+
+            txt += f"{PSE[number]}\n"
+
+            shells = ihelp.shells_per_atom[i]
+            for _ in range(shells):
+                alpha, coeff = slater.to_gauss(
+                    self.ngauss[s], self.pqn[s], self.angular[s], self.slater[s]
+                )
+                if self.valence[s].item() is False:
+                    alpha, coeff = orthogonalize(
+                        (alphas[s - 1], alpha),
+                        (coeffs[s - 1], coeff),
+                    )
+                alphas.append(alpha)
+                coeffs.append(coeff)
+
+                l = angular2label[self.angular.tolist()[s]]
+                txt += f"{l}    {len(alpha)}    1.00\n"
+                for a, c in zip(alpha, coeff):
+                    txt += f"      {a}      {c}\n"
+
+                s += 1
+
+            txt += "****\n"
+
+            # SAVING
+            if save is True:
+                dpath = "./.database"
+                fpath = f"{number:02d}.gaussian94"
+
+                # Create the directory if it doesn't exist
+                Path(dpath).mkdir(parents=True, exist_ok=True)
+
+                # Create the file path
+                file_path = Path(dpath) / fpath
+
+                # Check if the file already exists
+                if overwrite is False:
+                    if file_path.exists():
+                        print(
+                            f"The file '{fpath}' already exists in the directory '{dpath}'."
+                        )
+                        continue
+
+                # Save the file
+                with open(file_path, "w", encoding="utf8") as file:
+                    file.write(txt)
+
+            if verbose is True:
+                print(txt)
+
+        return txt
+
+    def to_bse_nwchem(
+        self,
+        ihelp: IndexHelper,
+        save: bool = False,
+        overwrite: bool = False,
+        verbose: bool = False,
+        with_header: bool = False,
+    ) -> str:
+        if self.numbers.ndim > 1:
+            raise RuntimeError("Basis set printing does not work batched.")
+
+        if len(self.numbers) == 0:
+            raise ValueError("No atoms for basis set printout found.")
+
+        if with_header is True:
+            assert self.meta is not None
+
+            l = 70 * "-"
+            header = (
+                f"!{l}\n"
+                "! Basis Set Exchange\n"
+                "! Version v0.9\n"
+                "! https://www.basissetexchange.org\n"
+                f"!{l}\n"
+                f"!   Basis set: {self.meta.name}\n"
+                f"! Description: Orthonormalized {self.meta.name} Basis\n"
+                "!        Role: orbital\n"
+                f"!     Version: {self.meta.version}\n"
+                f"!{l}\n\n\n"
+            )
+
+        coeffs = []
+        alphas = []
+        s = 0
+        fulltxt = ""
+        for i, number in enumerate(self.numbers.tolist()):
+            txt = ""
+            if with_header is True:
+                txt += header  # type: ignore
+
+            shells = ihelp.shells_per_atom[i]
+            for _ in range(shells):
+                alpha, coeff = slater.to_gauss(
+                    self.ngauss[s], self.pqn[s], self.angular[s], self.slater[s]
+                )
+                if self.valence[s].item() is False:
+                    alpha, coeff = orthogonalize(
+                        (alphas[s - 1], alpha),
+                        (coeffs[s - 1], coeff),
+                    )
+                alphas.append(alpha)
+                coeffs.append(coeff)
+
+                l = angular2label[self.angular.tolist()[s]]
+                txt += f"{PSE[number]}    {l}\n"
+                for a, c in zip(alpha, coeff):
+                    txt += f"      {a}      {c}\n"
+
+                s += 1
+
+            # SAVING
+            if save is True:
+                dpath = "./.database"
+                fpath = f"{number:02d}.nwchem"
+
+                # Create the directory if it doesn't exist
+                Path(dpath).mkdir(parents=True, exist_ok=True)
+
+                # Create the file path
+                file_path = Path(dpath) / fpath
+
+                # Check if the file already exists
+                if overwrite is False:
+                    if file_path.exists():
+                        print(
+                            f"The file '{fpath}' already exists in the directory '{dpath}'."
+                        )
+                        continue
+
+                # Save the file
+                with open(file_path, "w", encoding="utf8") as file:
+                    file.write(txt)
+
+            if verbose is True:
+                print(txt)
+
+            fulltxt += txt
+
+        return fulltxt
+
+    def create_dqc(self, positions: Tensor, ihelp: IndexHelper) -> list[AtomCGTOBasis]:
+        if self.numbers.ndim > 1:
+            raise NotImplementedError("Batch mode not implemented.")
+
+        # collect final basis for each atom in list (same order as `numbers`)
+        atombasis: list[AtomCGTOBasis] = []
+
+        # tracking only required for orthogonalization
+        coeffs = []
+        alphas = []
+
+        s = 0
+        for i, number in enumerate(self.numbers):
+            bases: list[CGTOBasis] = []
+            shells = ihelp.shells_per_atom[i]
+
+            for _ in range(shells):
+                alpha, coeff = slater.to_gauss(
+                    self.ngauss[s], self.pqn[s], ihelp.angular[s], self.slater[s]
+                )
+
+                # orthogonalize the H2s against the H1s
+                if self.valence[s].item() is False:
+                    alpha, coeff = orthogonalize(
+                        (alphas[s - 1], alpha),
+                        (coeffs[s - 1], coeff),
+                    )
+                alphas.append(alpha)
+                coeffs.append(coeff)
+
+                cgto = CGTOBasis(
+                    angmom=ihelp.angular.tolist()[s],  # int!
+                    alphas=alpha,
+                    coeffs=coeff,
+                    normalized=True,
+                )
+                bases.append(cgto)
+
+                # increment
+                s += 1
+
+            atomcgtobasis = AtomCGTOBasis(
+                atomz=number,
+                bases=bases,
+                pos=positions[i, :],
+            )
+            atombasis.append(atomcgtobasis)
+
+        return atombasis

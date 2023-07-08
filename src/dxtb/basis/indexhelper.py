@@ -202,7 +202,6 @@ class IndexHelper(TensorLike):
 
         device = numbers.device
         batched = numbers.ndim > 1
-        pad_val = PAD
 
         unique, atom_to_unique = torch.unique(numbers, return_inverse=True)
 
@@ -246,7 +245,7 @@ class IndexHelper(TensorLike):
 
         shells_per_atom = ushells_per_unique[atom_to_unique]
         shell_index = torch.cumsum(shells_per_atom, -1) - shells_per_atom
-        shell_index[shells_per_atom == 0] = pad_val
+        shell_index[shells_per_atom == 0] = PAD
 
         if batched:
             shells_to_atom = batch.pack(
@@ -254,7 +253,7 @@ class IndexHelper(TensorLike):
                     _fill(shell_index[_batch, :], shells_per_atom[_batch, :])
                     for _batch in range(numbers.shape[0])
                 ],
-                value=pad_val,
+                value=PAD,
             )
         else:
             shells_to_atom = _fill(shell_index, shells_per_atom)
@@ -262,7 +261,7 @@ class IndexHelper(TensorLike):
         lsh = torch.where(
             shells_to_ushell >= 0,
             unique_angular[shells_to_ushell],
-            pad_val,
+            PAD,
         )
 
         orbitals_per_shell = torch.where(
@@ -270,7 +269,7 @@ class IndexHelper(TensorLike):
         )
 
         orbital_index = torch.cumsum(orbitals_per_shell, -1) - orbitals_per_shell
-        orbital_index[orbitals_per_shell == 0] = pad_val
+        orbital_index[orbitals_per_shell == 0] = PAD
 
         if batched:
             orbitals_to_shell = batch.pack(
@@ -278,7 +277,7 @@ class IndexHelper(TensorLike):
                     _fill(orbital_index[_batch, :], orbitals_per_shell[_batch, :])
                     for _batch in range(numbers.shape[0])
                 ],
-                value=pad_val,
+                value=PAD,
             )
         else:
             orbitals_to_shell = _fill(orbital_index, orbitals_per_shell)
@@ -435,6 +434,27 @@ class IndexHelper(TensorLike):
 
         return wrap_gather(x, dim, self.orbitals_to_shell)
 
+    def spread_shell_to_orbital_cart(
+        self, x: Tensor, dim: int | tuple[int, int] = -1
+    ) -> Tensor:
+        """
+        Spread shell-resolved tensor to orbital-resolved tensor.
+
+        Parameters
+        ----------
+        x : Tensor
+            Shell-resolved tensor.
+        dim : int | (int, int)
+            Dimension to spread over, defaults to -1.
+
+        Returns
+        -------
+        Tensor
+            Orbital-resolved tensor.
+        """
+
+        return wrap_gather(x, dim, self.orbitals_to_shell_cart)
+
     def spread_atom_to_orbital(
         self, x: Tensor, dim: int | tuple[int, int] = -1
     ) -> Tensor:
@@ -455,6 +475,29 @@ class IndexHelper(TensorLike):
         """
 
         return self.spread_shell_to_orbital(
+            self.spread_atom_to_shell(x, dim=dim), dim=dim
+        )
+
+    def spread_atom_to_orbital_cart(
+        self, x: Tensor, dim: int | tuple[int, int] = -1
+    ) -> Tensor:
+        """
+        Spread atom-resolved tensor to orbital-resolved tensor.
+
+        Parameters
+        ----------
+        x : Tensor
+            Atom-resolved tensor.
+        dim : int | (int, int)
+            Dimension to spread over, defaults to -1.
+
+        Returns
+        -------
+        Tensor
+            Orbital-resolved tensor.
+        """
+
+        return self.spread_shell_to_orbital_cart(
             self.spread_atom_to_shell(x, dim=dim), dim=dim
         )
 
@@ -525,6 +568,29 @@ class IndexHelper(TensorLike):
             self.spread_uspecies_to_atom(x, dim=dim), dim=dim
         )
 
+    def spread_uspecies_to_orbital_cart(
+        self, x: Tensor, dim: int | tuple[int, int] = -1
+    ) -> Tensor:
+        """
+        Spread unique species tensor to orbital-resolved tensor.
+
+        Parameters
+        ----------
+        x : Tensor
+            Unique specie tensor.
+        dim : int
+            Dimension to spread over, defaults to -1.
+
+        Returns
+        -------
+        Tensor
+            Orbital-resolved tensor.
+        """
+
+        return self.spread_atom_to_orbital_cart(
+            self.spread_uspecies_to_atom(x, dim=dim), dim=dim
+        )
+
     def spread_ushell_to_shell(
         self, x: Tensor, dim: int | tuple[int, int] = -1
     ) -> Tensor:
@@ -566,6 +632,29 @@ class IndexHelper(TensorLike):
         """
 
         return self.spread_shell_to_orbital(
+            self.spread_ushell_to_shell(x, dim=dim), dim=dim
+        )
+
+    def spread_ushell_to_orbital_cart(
+        self, x: Tensor, dim: int | tuple[int, int] = -1
+    ) -> Tensor:
+        """
+        Spread unique shell tensor to orbital-resolved tensor.
+
+        Parameters
+        ----------
+        x : Tensor
+            Unique shell tensor.
+        dim : int | (int, int)
+            Dimension to spread over, defaults to -1.
+
+        Returns
+        -------
+        Tensor
+            Orbital-resolved tensor.
+        """
+
+        return self.spread_shell_to_orbital_cart(
             self.spread_ushell_to_shell(x, dim=dim), dim=dim
         )
 
@@ -646,6 +735,43 @@ class IndexHelper(TensorLike):
         self.orbitals_per_shell = self.store.orbitals_per_shell
         self.orbital_index = self.store.orbital_index
         self.orbitals_to_shell = self.store.orbitals_to_shell
+
+    @property
+    def orbitals_to_atom(self) -> Tensor:
+        return self.spread_shell_to_orbital(self.shells_to_atom)
+
+    @property
+    def orbitals_per_shell_cart(self) -> Tensor:
+        l = self.angular
+        return torch.where(
+            l >= 0, (l + 1) * (l + 2) // 2, torch.tensor(0, device=self.device)
+        )
+
+    @property
+    def orbital_index_cart(self) -> Tensor:
+        orb_per_shell = self.orbitals_per_shell_cart
+        return torch.cumsum(orb_per_shell, -1) - orb_per_shell
+
+    @property
+    def orbitals_to_shell_cart(self) -> Tensor:
+        orbital_index = self.orbital_index_cart
+        orbitals_per_shell = self.orbitals_per_shell_cart
+        if self.batched:
+            orbitals_to_shell = batch.pack(
+                [
+                    _fill(orbital_index[_batch, :], orbitals_per_shell[_batch, :])
+                    for _batch in range(self.angular.shape[0])
+                ],
+                value=PAD,
+            )
+        else:
+            orbitals_to_shell = _fill(orbital_index, orbitals_per_shell)
+
+        return orbitals_to_shell
+
+    @property
+    def orbitals_to_atom_cart(self) -> Tensor:
+        return self.spread_shell_to_orbital_cart(self.shells_to_atom)
 
     def get_shell_indices(self, atom_idx: int) -> Tensor:
         """

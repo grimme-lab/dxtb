@@ -13,6 +13,7 @@ from ..basis import Basis, IndexHelper
 from ..constants import defaults, units
 from ..param import Param, get_elem_angular
 from ..utils import batch, symmetrize, t2int
+from . import libcint as intor
 from .mmd import overlap_gto, overlap_gto_grad
 from .utils import get_pairs, get_subblock_start
 
@@ -100,6 +101,8 @@ class Overlap(TensorLike):
         ihelp: IndexHelper,
         uplo: Literal["n", "N", "u", "U", "l", "L"] = "l",
         cutoff: Tensor | float | int | None = defaults.INTCUTOFF,
+        driver: Literal["dxtb", "libcint"] = "libcint",
+        spherical: bool = True,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ):
@@ -109,6 +112,8 @@ class Overlap(TensorLike):
         self.par = par
         self.ihelp = ihelp
         self.cutoff = cutoff if cutoff is None else cutoff * units.AA2AU
+        self.driver = driver
+        self.spherical = spherical
 
         if uplo not in ("n", "N", "u", "U", "l", "L"):
             raise ValueError(f"Unknown option for `uplo` chosen: '{uplo}'.")
@@ -172,6 +177,38 @@ class Overlap(TensorLike):
         return grad
 
     def _single(self, func: OverlapFunction, positions: Tensor) -> Tensor:
+        if self.driver == "libcint":
+            import time
+
+            start_time = time.perf_counter()
+
+            bas = Basis(
+                self.numbers,
+                self.par,
+                self.ihelp.angular,
+                dtype=self.dtype,
+                device=self.device,
+            )
+
+            bas_time = time.perf_counter()
+            print(f"basis  {bas_time - start_time:.3f}")
+
+            atombases = bas.create_dqc(positions, self.ihelp)
+            wrapper = intor.LibcintWrapper(atombases, self.ihelp, spherical=self.spherical)  # type: ignore
+
+            wrap_time = time.perf_counter()
+            print(f"wrap   {wrap_time - bas_time:.3f}")
+
+            s = intor.overlap(wrapper)
+            norm = torch.pow(s.diagonal(dim1=-1, dim2=-2), -0.5)
+            s = torch.einsum("...ij,...i,...j->...ij", s, norm, norm)
+
+            ovlp_time = time.perf_counter()
+            print(f"ovlp   {ovlp_time - wrap_time:.3f}")
+            print(f"total  {ovlp_time - start_time:.3f}")
+
+            return s
+
         bas = Basis(
             self.unique,
             self.par,
@@ -179,6 +216,7 @@ class Overlap(TensorLike):
             dtype=self.dtype,
             device=self.device,
         )
+
         return func(positions, bas, self.ihelp, self.uplo, self.cutoff)
 
     def _batch(
@@ -499,4 +537,5 @@ def overlap_gradient(
         ds = torch.triu(ds, diagonal=1) - torch.tril(ds.mT)
 
     # (3, norb, norb) -> (norb, norb, 3)
+    print("ds.shape", ds.shape)
     return torch.einsum("xij->ijx", ds)
