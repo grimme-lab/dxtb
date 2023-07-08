@@ -37,6 +37,7 @@ import torch
 
 from ._types import Tensor, TensorLike
 from .utils import cdist, real_atoms, real_pairs
+from .constants import defaults
 
 
 class ChargeModel(TensorLike):
@@ -89,7 +90,7 @@ class ChargeModel(TensorLike):
     def param2019(
         cls,
         device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
+        dtype: torch.dtype = defaults.TORCH_DTYPE,
     ) -> ChargeModel:
         """
         Electronegativity equilibration charge model published in
@@ -100,10 +101,10 @@ class ChargeModel(TensorLike):
         """
 
         return cls(
-            _chi2019.to(device).type(torch.float if dtype is None else dtype),
-            _kcn2019.to(device).type(torch.float if dtype is None else dtype),
-            _eta2019.to(device).type(torch.float if dtype is None else dtype),
-            _rad2019.to(device).type(torch.float if dtype is None else dtype),
+            _chi2019.to(device).type(dtype),
+            _kcn2019.to(device).type(dtype),
+            _eta2019.to(device).type(dtype),
+            _rad2019.to(device).type(dtype),
             device=device,
             dtype=dtype,
         )
@@ -279,7 +280,7 @@ def solve(
     )
     zero = torch.tensor(0.0, device=positions.device, dtype=positions.dtype)
 
-    # square root of two over pi
+    # Square root of Two Over Pi
     stop = torch.sqrt(
         torch.tensor(
             2.0 / math.pi,
