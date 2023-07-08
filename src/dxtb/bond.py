@@ -53,7 +53,7 @@ import torch
 
 from ._types import Any, CountingFunction, Tensor
 from .ncoord import erf_count
-from .utils import real_pairs
+from .utils import cdist, real_pairs
 
 _en = torch.tensor(
     [
@@ -289,7 +289,7 @@ def guess_bond_order(
     mask = real_pairs(numbers, True)
     distances = torch.where(
         mask,
-        torch.cdist(positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"),
+        cdist(positions, positions, p=2),
         positions.new_tensor(torch.finfo(positions.dtype).eps),
     )
 

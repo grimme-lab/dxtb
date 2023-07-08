@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 import torch
 
+from dxtb._types import DD
 from dxtb.basis import IndexHelper
 from dxtb.integral import Overlap
 from dxtb.param import GFN1_XTB as par
@@ -21,12 +22,14 @@ from .samples import samples
 
 ref_overlap = np.load("test/test_overlap/overlap.npz")
 
+device = None
+
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H", "C", "Rn"])
 def test_single(dtype: torch.dtype, name: str):
     """Overlap matrix for monoatomic molecule should be unity."""
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = 1e-05
 
     sample = samples[name]
@@ -46,7 +49,7 @@ def test_single(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize("name2", ["C", "Rn"])
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Batched version."""
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample1, sample2 = samples[name1], samples[name2]

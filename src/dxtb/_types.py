@@ -79,15 +79,14 @@ else:
     )
 
 
-class Slicers(TypedDict):
-    """Collection of slicers of different resolutions for culling in SCF."""
+class DD(TypedDict):
+    """Collection of torch.device and torch.dtype."""
 
-    orbital: Slicer
-    """Slicer for orbital-resolved variables."""
-    shell: Slicer
-    """Slicer for shell-resolved variables."""
-    atom: Slicer
-    """Slicer for atom-resolved variables."""
+    device: torch.device | None
+    """Device on which a tensor lives."""
+
+    dtype: torch.dtype
+    """Floating point precision of a tensor."""
 
 
 class Molecule(TypedDict):
@@ -100,6 +99,48 @@ class Molecule(TypedDict):
 
     positions: Tensor
     """Tensor of 3D coordinates of shape (n, 3)"""
+
+
+class SCFResult(TypedDict):
+    """Collection of SCF result variables."""
+
+    charges: Tensor
+    """Self-consistent orbital-resolved Mulliken partial charges."""
+
+    coefficients: Tensor
+    """LCAO-MO coefficients (eigenvectors of Fockian)."""
+
+    density: Tensor
+    """Density matrix."""
+
+    emo: Tensor
+    """Energy of molecular orbitals (sorted by increasing energy)."""
+
+    energy: Tensor
+    """Energies of the self-consistent contributions (interactions)."""
+
+    fenergy: Tensor
+    """Atom-resolved electronic free energy from fractional occupation."""
+
+    hamiltonian: Tensor
+    """Full Hamiltonian matrix (H0 + H1)."""
+
+    occupation: Tensor
+    """Orbital occupations."""
+
+    potential: Tensor
+    """Self-consistent orbital-resolved potential."""
+
+
+class Slicers(TypedDict):
+    """Collection of slicers of different resolutions for culling in SCF."""
+
+    orbital: Slicer
+    """Slicer for orbital-resolved variables."""
+    shell: Slicer
+    """Slicer for shell-resolved variables."""
+    atom: Slicer
+    """Slicer for atom-resolved variables."""
 
 
 class TensorLike:

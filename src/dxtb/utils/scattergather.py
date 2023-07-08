@@ -276,13 +276,13 @@ def wrap_scatter_reduce(
     Parameters
     ----------
     x : Tensor
-        Tensor to reduce
+        Tensor to reduce.
     dim : int | (int, int)
-        Dimension to reduce over, defaults to -1
+        Dimension to reduce over, defaults to -1.
     idx : Tensor
-        Index to reduce over
+        Index to reduce over.
     reduce : str
-        Reduction method, defaults to "sum"
+        Reduction method, defaults to "sum".
     extra : bool
         If the tensor to reduce contains a extra dimension of arbitrary size
         that is generally different from the size of the indexing tensor
@@ -294,15 +294,24 @@ def wrap_scatter_reduce(
     Returns
     -------
     Tensor
-        Reduced tensor
+        Reduced tensor.
     """
 
+    # accounting for the extra dimension is very hacky and anything but general
     if extra is True and isinstance(dim, int):
-        idx = (
-            idx.unsqueeze(-1)
-            .unsqueeze(-1)
-            .expand(*[*x.shape[:dim], -1, *x.shape[(dim + 1) :]])
-        )
+        shp = [*x.shape[:dim], -1, *x.shape[(dim + 1) :]]
+
+        # here, we assume that two dimension in `idx` mean batched mode
+        if idx.ndim < 2:
+            if x.ndim == 2:
+                idx = idx.unsqueeze(-1).expand(*shp)
+            elif x.ndim == 3:
+                idx = idx.unsqueeze(-1).unsqueeze(-1).expand(*shp)
+        else:
+            if x.ndim == 3:
+                idx = idx.unsqueeze(-1).expand(*shp)
+            elif x.ndim == 4:
+                idx = idx.unsqueeze(-1).unsqueeze(-1).expand(*shp)
 
     idx = torch.where(idx >= 0, idx, 0)
     return (

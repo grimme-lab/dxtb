@@ -36,7 +36,8 @@ import math
 import torch
 
 from ._types import Tensor, TensorLike
-from .utils import real_atoms, real_pairs
+from .utils import cdist, real_atoms, real_pairs
+from .constants import defaults
 
 
 class ChargeModel(TensorLike):
@@ -89,7 +90,7 @@ class ChargeModel(TensorLike):
     def param2019(
         cls,
         device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
+        dtype: torch.dtype = defaults.TORCH_DTYPE,
     ) -> ChargeModel:
         """
         Electronegativity equilibration charge model published in
@@ -100,10 +101,10 @@ class ChargeModel(TensorLike):
         """
 
         return cls(
-            _chi2019,
-            _kcn2019,
-            _eta2019,
-            _rad2019,
+            _chi2019.to(device).type(dtype),
+            _kcn2019.to(device).type(dtype),
+            _eta2019.to(device).type(dtype),
+            _rad2019.to(device).type(dtype),
             device=device,
             dtype=dtype,
         )
@@ -272,34 +273,46 @@ def solve(
             "to correctly set the dtype."
         )
 
-    eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
+    eps = torch.tensor(
+        torch.finfo(positions.dtype).eps,
+        device=positions.device,
+        dtype=positions.dtype,
+    )
+    zero = torch.tensor(0.0, device=positions.device, dtype=positions.dtype)
+
+    # Square root of Two Over Pi
+    stop = torch.sqrt(
+        torch.tensor(
+            2.0 / math.pi,
+            device=positions.device,
+            dtype=positions.dtype,
+        )
+    )
 
     real = real_atoms(numbers)
     mask = real_pairs(numbers, diagonal=True)
 
-    distances = torch.where(
-        mask,
-        torch.cdist(positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"),
-        eps,
-    )
+    distances = torch.where(mask, cdist(positions, positions, p=2), eps)
     diagonal = mask.new_zeros(mask.shape)
     diagonal.diagonal(dim1=-2, dim2=-1).fill_(True)
 
-    rhs = torch.concat(
-        (
-            -model.chi[numbers] + torch.sqrt(cn) * model.kcn[numbers],
-            total_charge.unsqueeze(-1),
-        ),
-        dim=-1,
+    cc = torch.where(
+        real,
+        -model.chi[numbers] + torch.sqrt(torch.clamp(cn, min=eps)) * model.kcn[numbers],
+        zero,
     )
+    rhs = torch.concat((cc, total_charge.unsqueeze(-1)), dim=-1)
 
     rad = model.rad[numbers]
-    gamma = 1.0 / torch.sqrt(rad.unsqueeze(-1) ** 2 + rad.unsqueeze(-2) ** 2)
+    rads = torch.clamp(rad.unsqueeze(-1) ** 2 + rad.unsqueeze(-2) ** 2, min=eps)
+    gamma = torch.where(mask, 1.0 / torch.sqrt(rads), zero)
+
     eta = torch.where(
         real,
-        model.eta[numbers] + torch.sqrt(torch.tensor(2.0 / math.pi)) / rad,
+        model.eta[numbers] + stop / rad,
         distances.new_tensor(1.0),
     )
+
     coulomb = torch.where(
         diagonal,
         eta.unsqueeze(-1),
@@ -309,17 +322,18 @@ def solve(
             distances.new_tensor(0.0),
         ),
     )
+
     constraint = torch.where(
         real,
         distances.new_ones(numbers.shape),
         distances.new_zeros(numbers.shape),
     )
-    zero = distances.new_zeros(numbers.shape[:-1])
+    zeros = distances.new_zeros(numbers.shape[:-1])
 
     matrix = torch.concat(
         (
             torch.concat((coulomb, constraint.unsqueeze(-1)), dim=-1),
-            torch.concat((constraint, zero.unsqueeze(-1)), dim=-1).unsqueeze(-2),
+            torch.concat((constraint, zeros.unsqueeze(-1)), dim=-1).unsqueeze(-2),
         ),
         dim=-2,
     )

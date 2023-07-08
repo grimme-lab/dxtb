@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Slicers, Tensor
+from .._types import Slicers, Tensor, TensorOrTensors
 from ..basis import IndexHelper
 from .base import Interaction
 
@@ -108,6 +108,36 @@ class InteractionList(Interaction):
             ]
         ).sum(dim=0)
 
+    def get_energy_as_dict(
+        self, charges: Tensor, cache: Cache, ihelp: IndexHelper
+    ) -> dict[str, Tensor]:
+        """
+        Compute the energy for a list of interactions.
+
+        Parameters
+        ----------
+        charges : Tensor
+            Orbital-resolved partial charges.
+        ihelp : IndexHelper
+            Index mapping for the basis set.
+        cache : Cache
+            Restart data for the interaction.
+
+        Returns
+        -------
+        Tensor
+            Energy vector for each orbital partial charge.
+        """
+        if len(self.interactions) <= 0:
+            return {"none": torch.zeros_like(charges)}
+
+        return {
+            interaction.label: interaction.get_energy(
+                charges, cache[interaction.label], ihelp
+            )
+            for interaction in self.interactions
+        }
+
     def get_energy(self, charges: Tensor, cache: Cache, ihelp: IndexHelper) -> Tensor:
         """
         Compute the energy for a list of interactions.
@@ -138,23 +168,23 @@ class InteractionList(Interaction):
 
     def get_gradient(
         self,
-        numbers: Tensor,
-        positions: Tensor,
         charges: Tensor,
+        positions: Tensor,
         cache: InteractionList.Cache,
         ihelp: IndexHelper,
+        grad_outputs: TensorOrTensors | None = None,
+        retain_graph: bool | None = True,
+        create_graph: bool | None = None,
     ) -> Tensor:
         """
         Calculate gradient for a list of interactions.
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers.
-        positions : Tensor
-            Cartesian coordinates.
         charges : Tensor
             Orbital-resolved partial charges.
+        positions : Tensor
+            Cartesian coordinates.
         cache : InteractionList.Cache
             Restart data for the interaction.
         ihelp : IndexHelper
@@ -171,7 +201,13 @@ class InteractionList(Interaction):
         return torch.stack(
             [
                 interaction.get_gradient(
-                    numbers, positions, charges, cache[interaction.label], ihelp
+                    charges,
+                    positions,
+                    cache[interaction.label],
+                    ihelp,
+                    grad_outputs=grad_outputs,
+                    retain_graph=retain_graph,
+                    create_graph=create_graph,
                 )
                 for interaction in self.interactions
             ]

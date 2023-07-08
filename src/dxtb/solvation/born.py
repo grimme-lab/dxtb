@@ -28,7 +28,7 @@ import torch
 
 from .._types import Tensor
 from ..data import vdw_rad_d3
-from ..utils import real_atoms, real_pairs
+from ..utils import cdist, real_atoms, real_pairs
 
 
 def get_born_radii(
@@ -158,7 +158,7 @@ def compute_psi(
 
     distances = torch.where(
         mask,
-        torch.cdist(positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"),
+        cdist(positions, positions, p=2),
         eps,
     )
     r1 = 1.0 / distances

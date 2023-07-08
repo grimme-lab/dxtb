@@ -40,7 +40,7 @@ import torch
 from .._types import Any, Tensor, TensorLike
 from ..data import vdw_rad_d3
 from ..interaction import Interaction
-from ..utils import real_pairs
+from ..utils import cdist, real_pairs
 from .born import get_born_radii
 
 alpha = 0.571412
@@ -230,7 +230,7 @@ class GeneralizedBorn(Interaction):
 
         mask = real_pairs(numbers)
 
-        dist = torch.where(mask, torch.cdist(positions, positions, p=2), eps)
+        dist = torch.where(mask, cdist(positions, positions, p=2), eps)
         ab = torch.where(mask, born.unsqueeze(-1) * born.unsqueeze(-2), eps)
 
         mat = self.keps * born_kernel[self.kernel](dist, ab)

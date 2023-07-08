@@ -79,7 +79,7 @@ def t2int(x: Tensor) -> int:
     return int(x.item())
 
 
-def symmetrize(x: Tensor) -> Tensor:
+def symmetrize(x: Tensor, force: bool = False) -> Tensor:
     """
     Symmetrize a tensor after checking if it is symmetric within a threshold.
 
@@ -87,6 +87,9 @@ def symmetrize(x: Tensor) -> Tensor:
     ----------
     x : Tensor
         Tensor to check and symmetrize.
+    force : bool
+        Whether symmetry should be forced. This allows switching between actual
+        symmetrizing and only cleaning up numerical noise. Defaults to `False`.
 
     Returns
     -------
@@ -106,11 +109,12 @@ def symmetrize(x: Tensor) -> Tensor:
     if x.ndim < 2:
         raise RuntimeError("Only matrices and batches thereof allowed.")
 
-    if not torch.allclose(x, x.mT, atol=atol):
-        raise RuntimeError(
-            f"Matrix appears to be not symmetric (atol={atol:.3e}, "
-            f"dtype={x.dtype})."
-        )
+    if force is False:
+        if not torch.allclose(x, x.mT, atol=atol):
+            raise RuntimeError(
+                f"Matrix appears to be not symmetric (atol={atol:.3e}, "
+                f"dtype={x.dtype})."
+            )
 
     return (x + x.mT) / 2
 

@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 """
 Run tests for gradient from isotropic second-order electrostatic energy (ES2).
 """
@@ -34,21 +35,35 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     charges = sample["q"].type(dtype)
     ref = sample["grad"].type(dtype)
 
-    if GFN1_XTB.charge is None:
-        assert False
-
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
     es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=is_shell_resolved, **dd)
-    if es is None:
-        assert False
+    assert es is not None
 
+    # analytical (old)
     cache = es.get_cache(numbers, positions, ihelp)
-    grad = es.get_atom_gradient(numbers, positions, charges, cache)
-    assert pytest.approx(grad, abs=tol) == ref
+    grad = es._get_atom_gradient(numbers, positions, charges, cache)
+    assert pytest.approx(ref, abs=tol) == grad
 
+    # numerical
     num_grad = calc_numerical_gradient(numbers, positions, ihelp, charges)
-    assert pytest.approx(num_grad, abs=tol) == ref
+    assert pytest.approx(ref, abs=tol) == num_grad
     assert pytest.approx(num_grad, abs=tol) == grad
+
+    # automatic
+    positions.requires_grad_(True)
+    mat = es.get_atom_coulomb_matrix(numbers, positions, ihelp)
+    energy = 0.5 * mat * charges.unsqueeze(-1) * charges.unsqueeze(-2)
+    (agrad,) = torch.autograd.grad(energy.sum(), positions)
+    assert pytest.approx(ref, abs=tol) == agrad
+
+    # analytical (automatic)
+    cache = es.get_cache(numbers, positions, ihelp)  # recalc with gradients
+    egrad = es.get_atom_gradient(charges, positions, cache)
+    egrad.detach_()
+    assert pytest.approx(ref, abs=tol) == egrad
+    assert pytest.approx(egrad, abs=tol) == agrad
+
+    positions.detach_()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -85,17 +100,30 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         ),
     )
 
-    if GFN1_XTB.charge is None:
-        assert False
-
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
     es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=is_shell_resolved, **dd)
-    if es is None:
-        assert False
+    assert es is not None
 
+    # analytical (old)
     cache = es.get_cache(numbers, positions, ihelp)
-    grad = es.get_atom_gradient(numbers, positions, charges, cache)
-    assert pytest.approx(grad, abs=tol) == ref
+    grad = es._get_atom_gradient(numbers, positions, charges, cache)
+    assert pytest.approx(ref, abs=tol) == grad
+
+    # automatic
+    positions.requires_grad_(True)
+    mat = es.get_atom_coulomb_matrix(numbers, positions, ihelp)
+    energy = 0.5 * mat * charges.unsqueeze(-1) * charges.unsqueeze(-2)
+    (agrad,) = torch.autograd.grad(energy.sum(), positions)
+    assert pytest.approx(ref, abs=tol) == agrad
+
+    # analytical (automatic)
+    cache = es.get_cache(numbers, positions, ihelp)  # recalc with gradients
+    egrad = es.get_atom_gradient(charges, positions, cache)
+    egrad.detach_()
+    assert pytest.approx(ref, abs=tol) == egrad
+    assert pytest.approx(egrad, abs=tol) == agrad
+
+    positions.detach_()
 
 
 def calc_numerical_gradient(
@@ -110,8 +138,8 @@ def calc_numerical_gradient(
         dtype=dtype,
         device=positions.device,
     )
-    if es is None:
-        assert False
+    assert es is not None
+
     positions = positions.type(dtype)
     charges = charges.type(dtype)
 

@@ -100,7 +100,7 @@ The absolute tolerance of the norm of the output of the equilibrium function.
 # Fermi smearing
 
 ETEMP = 300.0
-"""Electronic temperature for Fermi smearing."""
+"""Electronic temperature for Fermi smearing in K."""
 
 FERMI_MAXITER = 200
 """Maximum number of iterations for Fermi smearing."""

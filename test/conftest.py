@@ -12,19 +12,36 @@ torch.use_deterministic_algorithms(True)
 torch.set_printoptions(precision=10)
 
 
-def pytest_addoption(parser: pytest.Parser):
+FAST_MODE: bool = True
+"""Flag for fast gradient tests."""
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
     """Set up additional command line options."""
 
     parser.addoption(
         "--detect-anomaly",
+        "--da",
         action="store_true",
-        help="Enable more comprehensive gradient tests.",
+        help="Enable PyTorch's debug mode for gradient tests.",
     )
 
     parser.addoption(
         "--jit",
         action="store_true",
         help="Enable JIT during tests (default = False).",
+    )
+
+    parser.addoption(
+        "--fast",
+        action="store_true",
+        help="Use `fast_mode` for gradient checks (default = True).",
+    )
+
+    parser.addoption(
+        "--slow",
+        action="store_true",
+        help="Do *not* use `fast_mode` for gradient checks (default = False).",
     )
 
     parser.addoption(
@@ -61,16 +78,22 @@ def pytest_addoption(parser: pytest.Parser):
     )
 
 
-def pytest_configure(config: pytest.Config):
+def pytest_configure(config: pytest.Config) -> None:
     """Pytest configuration hook."""
 
     if config.getoption("--detect-anomaly"):
         torch.autograd.anomaly_mode.set_detect_anomaly(True)
 
     if config.getoption("--jit"):
-        torch.jit._state.enable()  # type: ignore
+        torch.jit._state.enable()  # type: ignore # pylint: disable=protected-access
     else:
-        torch.jit._state.disable()  # type: ignore
+        torch.jit._state.disable()  # type: ignore # pylint: disable=protected-access
+
+    global FAST_MODE
+    if config.getoption("--fast"):
+        FAST_MODE = True
+    if config.getoption("--slow"):
+        FAST_MODE = False
 
     if config.getoption("--tpo-linewidth"):
         torch.set_printoptions(linewidth=config.getoption("--tpo-linewidth"))
@@ -85,7 +108,7 @@ def pytest_configure(config: pytest.Config):
     config.addinivalue_line("markers", "cuda: mark test that require CUDA.")
 
 
-def pytest_runtest_setup(item: pytest.Function):
+def pytest_runtest_setup(item: pytest.Function) -> None:
     """Custom marker for tests requiring CUDA."""
 
     for _ in item.iter_markers(name="cuda"):

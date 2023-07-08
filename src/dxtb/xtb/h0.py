@@ -10,7 +10,7 @@ from ..basis import IndexHelper
 from ..constants import EV2AU
 from ..data import atomic_rad
 from ..param import Param, get_elem_param, get_elem_valence, get_pair_param
-from ..utils import real_pairs, symmetrize
+from ..utils import cdist, real_pairs, symmetrize
 
 PAD = -1
 """Value used for padding of tensors."""
@@ -285,6 +285,9 @@ class Hamiltonian(TensorLike):
         )
 
         zero = torch.tensor(0.0, device=self.device, dtype=self.dtype)
+        eps = torch.tensor(
+            torch.finfo(self.dtype).eps, device=self.device, dtype=self.dtype
+        )
 
         # ----------------
         # Eq.29: H_(mu,mu)
@@ -302,17 +305,16 @@ class Hamiltonian(TensorLike):
         # ----------------------
         # Eq.24: PI(R_AB, l, l')
         # ----------------------
-        distances = torch.cdist(
-            positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
-        )
+        distances = cdist(positions, positions, p=2)
         rad = self.ihelp.spread_uspecies_to_atom(self.rad)
-        rr = torch.where(
-            mask_atom_diagonal,
-            distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2)),
-            distances.new_tensor(torch.finfo(distances.dtype).eps),
-        )
+
+        rr = distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2) + eps)
         rr_shell = self.ihelp.spread_atom_to_shell(
-            torch.sqrt(rr),
+            torch.where(
+                mask_atom_diagonal,
+                torch.sqrt(torch.clamp(rr, min=eps)),
+                zero,
+            ),
             (-2, -1),
         )
 
@@ -421,6 +423,9 @@ class Hamiltonian(TensorLike):
         )
 
         zero = torch.tensor(0.0, device=self.device, dtype=self.dtype)
+        eps = torch.tensor(
+            torch.finfo(self.dtype).eps, device=self.device, dtype=self.dtype
+        )
 
         # --------------------
         # Eq.28: X(EN_A, EN_B)
@@ -450,17 +455,16 @@ class Hamiltonian(TensorLike):
         # ----------------------
         # Eq.24: PI(R_AB, l, l')
         # ----------------------
-        distances = torch.cdist(
-            positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"
-        )
+        distances = cdist(positions, positions, p=2)
         rad = self.ihelp.spread_uspecies_to_atom(self.rad)
-        rr = torch.where(
-            mask_atom_diagonal,
-            distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2)),
-            distances.new_tensor(torch.finfo(distances.dtype).eps),
-        )
+
+        rr = distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2) + eps)
         rr_shell = self.ihelp.spread_atom_to_shell(
-            torch.sqrt(rr),
+            torch.where(
+                mask_atom_diagonal,
+                torch.sqrt(torch.clamp(rr, min=eps)),
+                zero,
+            ),
             (-2, -1),
         )
 
@@ -499,8 +503,8 @@ class Hamiltonian(TensorLike):
         # ----------------------------------------------------------------------
         # Derivative of the electronic energy w.r.t. the atomic positions r
         # ----------------------------------------------------------------------
-        # dE/dr = dE_EHT/dr * dE_coulomb/dr * dL_constraint/dr
-        #       = [2*P*H - 2*W - P*(V + V^T)] * dS/dr + 2*P*H*S * dPI/dr / PI
+        # dE/dr = dE_EHT/dr + dE_coulomb/dr + dL_constraint/dr
+        #       = [2*P*H - 2*W - P*(v + v^T)] * dS/dr + 2*P*H*S * dPI/dr / PI
         # ----------------------------------------------------------------------
 
         # ------------------------------------------------------------
@@ -550,6 +554,9 @@ class Hamiltonian(TensorLike):
         # (n_batch, atoms_i, atoms_j, 3) -> (n_batch, atoms_i, 3)
         g1 = torch.sum(dpi.unsqueeze(-1) * rij, dim=-2)
 
+        # We cannot use the autograd of the overlap since the returned shape
+        # will be (n_batch, atoms_i, 3). We need to multiply in an orbital-
+        # resolved fashion before reducing.
         # (n_batch, orbs_i, orbs_j, 3) -> (n_batch, atoms_i, orbs_j, 3)
         ds = self.ihelp.reduce_orbital_to_atom(
             doverlap * sval.unsqueeze(-1), dim=-3, extra=True
@@ -559,9 +566,8 @@ class Hamiltonian(TensorLike):
         # a positive gradient contribution to the ith atom and a negative
         # gradient contribution to the jth atom. Here, we have the full matrix,
         # which is why we get the same numeric value after summing along -2.
-        # However, the sign is wrong. So we just change it...
-        # (n_batch, atoms_i, orbs_j, 3) -> (n_batch, atoms_i, 3)
-        g2 = -torch.sum(ds, dim=-2)
+        # (n_batch, atoms_i, orbs_i, 3) -> (n_batch, atoms_i, 3)
+        g2 = torch.sum(ds, dim=-2)
 
         # we cannot sum after adding both contributions (different shapes!)
         gradient = g1 + g2

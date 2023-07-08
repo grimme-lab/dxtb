@@ -35,5 +35,5 @@ def test_empty() -> None:
     sg = ilist.get_shell_gradient(numbers, numbers)
     assert (sg == torch.zeros(sg.shape)).all()
 
-    g = ilist.get_gradient(numbers, e, e, e, ihelp)  # type: ignore
+    g = ilist.get_gradient(e, e, e, ihelp)  # type: ignore
     assert (g == torch.zeros(g.shape)).all()

@@ -50,7 +50,9 @@ def get_guess(
     if name == "eeq":
         charges = get_eeq_guess(numbers, positions, chrg)
     elif name == "sad":
-        charges = torch.zeros_like(positions[..., -1])
+        charges = torch.zeros_like(
+            positions[..., -1], requires_grad=positions.requires_grad
+        )
     else:
         raise ValueError(f"Unknown guess method '{name}'.")
 
@@ -103,17 +105,26 @@ def spread_charges_atomic_to_orbital(charges: Tensor, ihelp: IndexHelper) -> Ten
     RuntimeError
         Total charge is not conserved.
     """
+    eps = torch.tensor(
+        torch.finfo(charges.dtype).eps,
+        device=charges.device,
+        dtype=charges.dtype,
+    )
+
     shells_per_atom = ihelp.spread_atom_to_shell(ihelp.shells_per_atom)
     orbs_per_shell = ihelp.spread_shell_to_orbital(ihelp.orbitals_per_shell)
 
     shell_charges = torch.where(
         shells_per_atom > 0,
-        ihelp.spread_atom_to_shell(charges) / shells_per_atom,
+        ihelp.spread_atom_to_shell(charges)
+        / torch.clamp(shells_per_atom.type(charges.dtype), min=eps),
         charges.new_tensor(0.0),
     )
+
     orb_charges = torch.where(
         orbs_per_shell > 0,
-        ihelp.spread_shell_to_orbital(shell_charges) / orbs_per_shell,
+        ihelp.spread_shell_to_orbital(shell_charges)
+        / torch.clamp(orbs_per_shell.type(charges.dtype), min=eps),
         charges.new_tensor(0.0),
     )
 

@@ -88,7 +88,7 @@ def test_zeros_atom_resolved() -> None:
     shell_energy = cls.get_shell_energy(n, n)  # type: ignore
     assert (shell_energy == torch.zeros_like(shell_energy)).all()
 
-    shell_gradient = cls.get_shell_gradient(n, n, n, n, n)  # type: ignore
+    shell_gradient = cls.get_shell_gradient(n, n, n)  # type: ignore
     assert (shell_gradient == torch.zeros_like(shell_gradient)).all()
 
 

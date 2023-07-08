@@ -393,17 +393,10 @@ class Calculator(TensorLike):
 
         # SELF-CONSISTENT FIELD PROCEDURE
         if not any(x in ["all", "scf"] for x in self.opts["exclude"]):
-            # overlap
-            if grad is True:
-                self.timer.start("ograd", "Overlap Gradient")
-                result.overlap, result.overlap_grad = self.overlap.get_gradient(
-                    positions
-                )
-                self.timer.stop("ograd")
-            else:
-                self.timer.start("Overlap")
-                result.overlap = self.overlap.build(positions)
-                self.timer.stop("Overlap")
+            # Overlap
+            self.timer.start("Overlap")
+            result.overlap = self.overlap.build(positions)
+            self.timer.stop("Overlap")
 
             # Hamiltonian
             self.timer.start("h0", "Core Hamiltonian")
@@ -464,10 +457,16 @@ class Calculator(TensorLike):
                 if len(self.interactions.interactions) > 0:
                     self.timer.start("igrad", "Interaction Gradient")
                     result.interaction_grad = self.interactions.get_gradient(
-                        numbers, positions, result.charges, icaches, self.ihelp
+                        result.charges.detach(), positions, icaches, self.ihelp
                     )
                     result.total_grad += result.interaction_grad
                     self.timer.stop("igrad")
+                    # print("grad interaction done")
+                    # print(result.interaction_grad)
+
+                self.timer.start("ograd", "Overlap Gradient")
+                result.overlap_grad = self.overlap.get_gradient(positions)
+                self.timer.stop("ograd")
 
                 self.timer.start("hgrad", "Hamiltonian Gradient")
                 wmat = scf.get_density(

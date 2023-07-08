@@ -188,8 +188,6 @@ def batched_unconverged(
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
-    torch.set_printoptions(precision=15)
-    print(result.scf.sum(-1))
     assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
 
 

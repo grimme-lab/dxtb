@@ -1,3 +1,6 @@
+"""
+Gradient tests for SCF.
+"""
 from __future__ import annotations
 
 from math import sqrt
@@ -6,6 +9,7 @@ import numpy as np
 import pytest
 import torch
 
+from dxtb._types import DD
 from dxtb.param import GFN1_XTB as par
 from dxtb.xtb import Calculator
 
@@ -16,6 +20,8 @@ opts = {"verbosity": 0, "maxiter": 50, "exclude": ["rep", "disp", "hal"]}
 
 ref_grad = np.load("test/test_scf/grad.npz")
 ref_grad_param = np.load("test/test_scf/grad_param.npz")
+
+device = None
 
 
 @pytest.mark.grad
@@ -28,7 +34,7 @@ def test_grad_backwards(
     name: str, dtype: torch.dtype, scf_mode: str, scp_mode: str
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     numbers = samples[name]["numbers"]
     positions = samples[name]["positions"].type(dtype)
@@ -70,7 +76,7 @@ def test_grad_backwards(
 @pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
 def test_grad_autograd(name: str, dtype: torch.dtype):
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     numbers = samples[name]["numbers"]
     positions = samples[name]["positions"].type(dtype)
@@ -110,11 +116,10 @@ def test_grad_autograd(name: str, dtype: torch.dtype):
 @pytest.mark.parametrize("name", ["LYS_xao", "C60", "vancoh2"])
 def test_grad_large(name: str, dtype: torch.dtype):
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     numbers = samples[name]["numbers"]
     positions = samples[name]["positions"].type(dtype)
-    positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
     # Values obtain with tblite 0.2.1 disabling repulsion and dispersion
@@ -125,16 +130,16 @@ def test_grad_large(name: str, dtype: torch.dtype):
 
     assert pytest.approx(ref_full, abs=tol, rel=1e-5) == ref
 
+    # variable to be differentiated
+    positions.requires_grad_(True)
+
     options = dict(opts, **{"xitorch_fatol": tol**2, "xitorch_xatol": tol**2})
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
     energy = result.scf.sum(-1)
 
-    gradient = torch.autograd.grad(
-        energy,
-        positions,
-    )[0]
+    (gradient,) = torch.autograd.grad(energy, positions)
 
     assert pytest.approx(gradient, abs=tol, rel=1e-5) == ref
     assert pytest.approx(gradient, abs=tol, rel=1e-5) == ref_full
@@ -150,7 +155,7 @@ def test_param_grad_energy(name: str, dtype: torch.dtype = torch.float):
     tracking. References obtained with full tracking and `torch.float`.
     """
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     numbers = samples[name]["numbers"]
     positions = samples[name]["positions"].type(dtype)
@@ -190,7 +195,7 @@ def skip_test_param_grad_force(name: str, dtype: torch.dtype = torch.float):
     tracking. References obtained with full tracking and `torch.float`.
     """
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     numbers = samples[name]["numbers"]
     positions = samples[name]["positions"].type(dtype)

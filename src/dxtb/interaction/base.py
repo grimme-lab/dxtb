@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Any, Tensor, TensorLike
+from .._types import Any, Tensor, TensorLike, TensorOrTensors
 from ..basis import IndexHelper
 
 __all__ = ["Interaction"]
@@ -237,11 +237,13 @@ class Interaction(TensorLike):
 
     def get_gradient(
         self,
-        numbers: Tensor,
-        positions: Tensor,
         charges: Tensor,
+        positions: Tensor,
         cache: Interaction.Cache,
         ihelp: IndexHelper,
+        grad_outputs: TensorOrTensors | None = None,
+        retain_graph: bool | None = True,
+        create_graph: bool | None = None,
     ) -> Tensor:
         """
         Compute the nuclear gradient using orbital-resolved charges.
@@ -253,12 +255,10 @@ class Interaction(TensorLike):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers.
-        positions : Tensor
-            Cartesian coordinates.
         charges : Tensor
             Orbital-resolved partial charges.
+        positions : Tensor
+            Cartesian coordinates.
         cache : Interaction.Cache
             Restart data for the interaction.
         ihelp : IndexHelper
@@ -270,10 +270,14 @@ class Interaction(TensorLike):
             Nuclear gradient for each atom.
         """
         qsh = ihelp.reduce_orbital_to_shell(charges)
-        gsh = self.get_shell_gradient(numbers, positions, qsh, cache, ihelp)
+        gsh = self.get_shell_gradient(
+            qsh, positions, cache, grad_outputs, retain_graph, create_graph
+        )
 
         qat = ihelp.reduce_shell_to_atom(qsh)
-        gat = self.get_atom_gradient(numbers, positions, qat, cache)
+        gat = self.get_atom_gradient(
+            qat, positions, cache, grad_outputs, retain_graph, create_graph
+        )
 
         return gsh + gat
 

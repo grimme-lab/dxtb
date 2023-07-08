@@ -8,7 +8,7 @@ import torch
 from .._types import Any, CountingFunction, Tensor
 from ..constants import xtb
 from ..data import cov_rad_d3
-from ..utils import real_pairs
+from ..utils import cdist, real_pairs
 from .count import dexp_count, exp_count
 
 
@@ -48,8 +48,10 @@ def get_coordination_number(
     ValueError
         If shape mismatch between `numbers`, `positions` and `rcov` is detected.
     """
+    dd = {"device": positions.device, "dtype": positions.dtype}
+
     if cutoff is None:
-        cutoff = positions.new_tensor(xtb.NCOORD_DEFAULT_CUTOFF)
+        cutoff = torch.tensor(xtb.NCOORD_DEFAULT_CUTOFF, **dd)
     if rcov is None:
         rcov = cov_rad_d3[numbers].type(positions.dtype).to(positions.device)
     if numbers.shape != rcov.shape:
@@ -66,15 +68,15 @@ def get_coordination_number(
     mask = real_pairs(numbers, diagonal=True)
     distances = torch.where(
         mask,
-        torch.cdist(positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"),
-        positions.new_tensor(torch.finfo(positions.dtype).eps),
+        cdist(positions, positions, p=2),
+        torch.tensor(torch.finfo(positions.dtype).eps, **dd),
     )
 
     rc = rcov.unsqueeze(-2) + rcov.unsqueeze(-1)
     cf = torch.where(
         mask * (distances <= cutoff),
         counting_function(distances, rc.type(positions.dtype), **kwargs),
-        positions.new_tensor(0.0),
+        torch.tensor(0.0, **dd),
     )
     return torch.sum(cf, dim=-1)
 
@@ -134,7 +136,7 @@ def get_coordination_number_gradient(
     mask = real_pairs(numbers, diagonal=True)
     distances = torch.where(
         mask,
-        torch.cdist(positions, positions, p=2, compute_mode="use_mm_for_euclid_dist"),
+        cdist(positions, positions, p=2),
         positions.new_tensor(torch.finfo(positions.dtype).eps),
     )
 
