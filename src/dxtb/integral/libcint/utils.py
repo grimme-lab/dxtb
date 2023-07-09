@@ -13,9 +13,7 @@ import functools
 
 import numpy as np
 
-from ..._types import Any, Callable, TypeVar
-
-T = TypeVar("T")
+from ..._types import Any, Callable, T
 
 __all__ = ["NDIM", "np2ctypes", "int2ctypes"]
 

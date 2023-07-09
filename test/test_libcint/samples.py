@@ -1,5 +1,5 @@
 """
-Molecules for testing the overlap. Reference values are stored in npz file.
+Molecules for testing.
 """
 from __future__ import annotations
 

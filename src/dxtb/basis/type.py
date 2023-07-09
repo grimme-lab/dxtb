@@ -221,114 +221,32 @@ class Basis(TensorLike):
 
         return umap, torch.max(umap) + 1
 
-    def to_bse_gaussian94(
+    def to_bse(
         self,
         ihelp: IndexHelper,
+        qcformat: Literal["gaussian94", "nwchem"] = "nwchem",
         save: bool = False,
         overwrite: bool = False,
         verbose: bool = False,
         with_header: bool = False,
     ) -> str:
+        if self.meta is None:
+            raise RuntimeError("No meta data found in the parametrization.")
+
         if self.numbers.ndim > 1:
             raise RuntimeError("Basis set printing does not work batched.")
 
         if len(self.numbers) == 0:
             raise ValueError("No atoms for basis set printout found.")
 
-        if with_header is True:
-            assert self.meta is not None
-
-            l = 70 * "-"
-            header = (
-                f"!{l}\n"
-                "! Basis Set Exchange\n"
-                "! Version v0.9\n"
-                "! https://www.basissetexchange.org\n"
-                f"!{l}\n"
-                f"!   Basis set: {self.meta.name}\n"
-                f"! Description: Orthonormalized {self.meta.name} Basis\n"
-                "!        Role: orbital\n"
-                f"!     Version: {self.meta.version}\n"
-                f"!{l}\n\n\n"
+        allowed_formats = ("gaussian94", "nwchem")
+        if qcformat not in allowed_formats:
+            raise ValueError(
+                f"Basis set format '{qcformat}' not supported. "
+                f"Available options are: {allowed_formats}."
             )
 
-        coeffs = []
-        alphas = []
-        s = 0
-        txt = ""
-        for i, number in enumerate(self.numbers.tolist()):
-            if with_header is True:
-                txt += header  # type: ignore
-
-            txt += f"{PSE[number]}\n"
-
-            shells = ihelp.shells_per_atom[i]
-            for _ in range(shells):
-                alpha, coeff = slater.to_gauss(
-                    self.ngauss[s], self.pqn[s], self.angular[s], self.slater[s]
-                )
-                if self.valence[s].item() is False:
-                    alpha, coeff = orthogonalize(
-                        (alphas[s - 1], alpha),
-                        (coeffs[s - 1], coeff),
-                    )
-                alphas.append(alpha)
-                coeffs.append(coeff)
-
-                l = angular2label[self.angular.tolist()[s]]
-                txt += f"{l}    {len(alpha)}    1.00\n"
-                for a, c in zip(alpha, coeff):
-                    txt += f"      {a}      {c}\n"
-
-                s += 1
-
-            txt += "****\n"
-
-            # SAVING
-            if save is True:
-                dpath = "./.database"
-                fpath = f"{number:02d}.gaussian94"
-
-                # Create the directory if it doesn't exist
-                Path(dpath).mkdir(parents=True, exist_ok=True)
-
-                # Create the file path
-                file_path = Path(dpath) / fpath
-
-                # Check if the file already exists
-                if overwrite is False:
-                    if file_path.exists():
-                        print(
-                            f"The file '{fpath}' already exists in the directory '{dpath}'."
-                        )
-                        continue
-
-                # Save the file
-                with open(file_path, "w", encoding="utf8") as file:
-                    file.write(txt)
-
-            if verbose is True:
-                print(txt)
-
-        return txt
-
-    def to_bse_nwchem(
-        self,
-        ihelp: IndexHelper,
-        save: bool = False,
-        overwrite: bool = False,
-        verbose: bool = False,
-        with_header: bool = False,
-    ) -> str:
-        if self.numbers.ndim > 1:
-            raise RuntimeError("Basis set printing does not work batched.")
-
-        if len(self.numbers) == 0:
-            raise ValueError("No atoms for basis set printout found.")
-
         if with_header is True:
-            assert self.meta is not None
-
             l = 70 * "-"
             header = (
                 f"!{l}\n"
@@ -352,6 +270,9 @@ class Basis(TensorLike):
             if with_header is True:
                 txt += header  # type: ignore
 
+            if qcformat == "gaussian94":
+                txt += f"{PSE[number]}\n"
+
             shells = ihelp.shells_per_atom[i]
             for _ in range(shells):
                 alpha, coeff = slater.to_gauss(
@@ -366,28 +287,41 @@ class Basis(TensorLike):
                 coeffs.append(coeff)
 
                 l = angular2label[self.angular.tolist()[s]]
-                txt += f"{PSE[number]}    {l}\n"
+                if qcformat == "gaussian94":
+                    txt += f"{l}    {len(alpha)}    1.00\n"
+                elif qcformat == "nwchem":
+                    txt += f"{PSE[number]}    {l}\n"
+
+                # write exponents and coefficients
                 for a, c in zip(alpha, coeff):
                     txt += f"      {a}      {c}\n"
 
                 s += 1
 
-            # SAVING
+            # final separator in gaussian94 format
+            if qcformat == "gaussian94":
+                txt += "****\n"
+
+            # always save to src/dxtb/mol/external/basis
             if save is True:
-                dpath = "./.database"
-                fpath = f"{number:02d}.nwchem"
+                if self.meta.name is None:
+                    raise RuntimeError("Meta data incomplete (name missing).")
 
                 # Create the directory if it doesn't exist
+                target = f"mol/external/basis/{self.meta.name.casefold()}"
+                dpath = Path(__file__).parents[1] / target
                 Path(dpath).mkdir(parents=True, exist_ok=True)
 
                 # Create the file path
+                fpath = f"{number:02d}.nwchem"
                 file_path = Path(dpath) / fpath
 
                 # Check if the file already exists
                 if overwrite is False:
                     if file_path.exists():
                         print(
-                            f"The file '{fpath}' already exists in the directory '{dpath}'."
+                            f"The file '{fpath}' already exists in the "
+                            f"directory '{dpath}'. It will not be overwritten."
                         )
                         continue
 

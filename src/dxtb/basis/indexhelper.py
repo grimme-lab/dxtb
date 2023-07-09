@@ -737,22 +737,25 @@ class IndexHelper(TensorLike):
         self.orbitals_to_shell = self.store.orbitals_to_shell
 
     @property
+    @memoize
     def orbitals_to_atom(self) -> Tensor:
         return self.spread_shell_to_orbital(self.shells_to_atom)
 
     @property
+    @memoize
     def orbitals_per_shell_cart(self) -> Tensor:
         l = self.angular
-        return torch.where(
-            l >= 0, (l + 1) * (l + 2) // 2, torch.tensor(0, device=self.device)
-        )
+        ls = torch.div((l + 1) * (l + 2), 2, rounding_mode="floor")
+        return torch.where(l >= 0, ls, torch.tensor(0, device=self.device))
 
     @property
+    @memoize
     def orbital_index_cart(self) -> Tensor:
         orb_per_shell = self.orbitals_per_shell_cart
         return torch.cumsum(orb_per_shell, -1) - orb_per_shell
 
     @property
+    @memoize
     def orbitals_to_shell_cart(self) -> Tensor:
         orbital_index = self.orbital_index_cart
         orbitals_per_shell = self.orbitals_per_shell_cart
@@ -770,6 +773,7 @@ class IndexHelper(TensorLike):
         return orbitals_to_shell
 
     @property
+    @memoize
     def orbitals_to_atom_cart(self) -> Tensor:
         return self.spread_shell_to_orbital_cart(self.shells_to_atom)
 

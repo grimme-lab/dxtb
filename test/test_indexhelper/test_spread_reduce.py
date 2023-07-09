@@ -39,7 +39,7 @@ def test_spread() -> None:
     assert (ihelp.spread_ushell_to_orbital(ushell) == orbital).all()
 
 
-def skip_test_cart() -> None:
+def test_cart() -> None:
     unique = torch.tensor([1, 14])  # include sorting
     atom = torch.tensor([14, 1, 1])
     shell = torch.tensor([14, 14, 14, 1, 1, 1, 1])

@@ -31,3 +31,6 @@ def test_dist(dtype: torch.dtype, name: str) -> None:
 
     assert dist.shape[-1] == numbers.shape[-1]
     assert dist.shape[-2] == numbers.shape[-1]
+
+    assert pytest.approx(numbers) == mol.numbers
+    assert pytest.approx(positions) == mol.positions

@@ -14,10 +14,16 @@ import torch
 from dxtb._types import DD, Tensor
 from dxtb.basis import Basis, IndexHelper
 from dxtb.integral.libcint import LibcintWrapper, intor
-from dxtb.mol.external._pyscf import M
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 from dxtb.utils import numpy_to_tensor
+
+try:
+    from dxtb.mol.external._pyscf import M
+
+    pyscf = True
+except ImportError:
+    pyscf = False
 
 from .samples import samples
 
@@ -30,6 +36,7 @@ def snorm(overlap: Tensor) -> Tensor:
     return torch.pow(overlap.diagonal(dim1=-1, dim2=-2), -0.5)
 
 
+@pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
@@ -66,6 +73,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     assert pytest.approx(pyscf_overlap, abs=tol) == dxtb_overlap
 
 
+@pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_grad(dtype: torch.dtype, name: str) -> None:
