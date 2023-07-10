@@ -84,7 +84,7 @@ def test_change_device_fail() -> None:
         ihelp.device = "cpu"
 
 
-def skip_test_cache() -> None:
+def test_cache() -> None:
     ihelp = IndexHelper.from_numbers(torch.tensor([1]), {1: [0]})
 
     # run a memoized function
