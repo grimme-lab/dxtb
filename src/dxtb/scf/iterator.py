@@ -512,7 +512,7 @@ def solve(
     *args: Any,
     **kwargs: Any,
 ) -> SCFResult:
-    """converged_to_charges
+    """
     Obtain self-consistent solution for a given Hamiltonian.
 
     Parameters
