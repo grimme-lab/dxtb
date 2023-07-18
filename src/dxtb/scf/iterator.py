@@ -115,9 +115,7 @@ def scf_pure(
         mixer = Simple({**cfg.fwd_options, "damp": 1e-4})
         q_new = fcn(q_converged)
         q_converged = mixer.iter(q_new, q_converged)
-    #     # TODO: also causes RAM leak
 
-    # return q_converged # works
     return converged_to_charges(q_converged, data, cfg)
 
 
@@ -180,9 +178,7 @@ def run_scf(
 
     # evaluate final energy
     energy = get_energy(charges, data, interactions)
-    fenergy = get_electronic_free_energy(
-        data, cfg.scf_options, cfg.kt, cfg.device, cfg.dtype
-    )
+    fenergy = get_electronic_free_energy(data, cfg)
 
     # break circular graph references to free `_Data` object and hence memory
     density, hamiltonian, _, evals, evecs = data.clean()
@@ -534,11 +530,10 @@ def solve(
     """
     scf_mode = kwargs["scf_options"].get("scf_mode", defaults.SCF_MODE)
     if scf_mode in ("default", "implicit"):
-        if False:
-            # calculate SCF equilibrium using nested objects
-            scf = SelfConsistentField
+        # A) calculate SCF equilibrium using nested objects
+        # scf = SelfConsistentField
 
-        # calculate SCF equilibrium using semi-pure functions
+        # B) calculate SCF equilibrium using semi-pure functions
 
         # distinct objects containing data and configuration
         forbidden = ["bck_options", "fwd_options", "scf_options"]

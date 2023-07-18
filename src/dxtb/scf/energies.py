@@ -6,10 +6,13 @@ from .._types import Tensor
 from ..constants import defaults
 from ..utils import real_atoms
 from ..wavefunction import mulliken
+from ..interaction import InteractionList
 
-# TODO: add docstring / type annotation
+from .data import _Data
+from .config import SCF_Config
 
-def get_energy(charges: Tensor, data, interactions) -> Tensor:
+
+def get_energy(charges: Tensor, data: _Data, interactions: InteractionList) -> Tensor:
     """
     Get the energy of the system with the given charges.
 
@@ -17,6 +20,10 @@ def get_energy(charges: Tensor, data, interactions) -> Tensor:
     ----------
     charges : Tensor
         Orbital charges vector.
+    data: _Data
+        Storage for tensors which become part of autograd graph within SCF cycles.
+    interactions : InteractionList
+        Collection of `Interation` objects.
 
     Returns
     -------
@@ -27,7 +34,9 @@ def get_energy(charges: Tensor, data, interactions) -> Tensor:
     return energy + interactions.get_energy(charges, data.cache, data.ihelp)
 
 
-def get_energy_as_dict(charges: Tensor, data, interactions) -> dict[str, Tensor]:
+def get_energy_as_dict(
+    charges: Tensor, data: _Data, interactions: InteractionList
+) -> dict[str, Tensor]:
     """
     Get the energy of the system with the given charges.
 
@@ -35,6 +44,10 @@ def get_energy_as_dict(charges: Tensor, data, interactions) -> dict[str, Tensor]
     ----------
     charges : Tensor
         Orbital charges vector.
+    data: _Data
+        Storage for tensors which become part of autograd graph within SCF cycles.
+    interactions : InteractionList
+        Collection of `Interation` objects.
 
     Returns
     -------
@@ -50,7 +63,7 @@ def get_energy_as_dict(charges: Tensor, data, interactions) -> dict[str, Tensor]
     return {**energy_h0, **energy_interactions}
 
 
-def get_electronic_free_energy(data, scf_options, kt, device, dtype) -> Tensor:
+def get_electronic_free_energy(data: _Data, cfg: SCF_Config) -> Tensor:
     r"""
     Calculate electronic free energy from entropy.
 
@@ -80,15 +93,17 @@ def get_electronic_free_energy(data, scf_options, kt, device, dtype) -> Tensor:
     """
     eps = torch.tensor(
         torch.finfo(data.occupation.dtype).eps,
-        device=device,
-        dtype=dtype,
+        device=cfg.device,
+        dtype=cfg.dtype,
     )
 
     occ = torch.clamp(data.occupation, min=eps)
     occ1 = torch.clamp(1 - data.occupation, min=eps)
-    g = torch.log(occ**occ * occ1**occ1).sum(-2) * kt
+    g = torch.log(occ**occ * occ1**occ1).sum(-2) * cfg.kt
 
-    mode = scf_options.get("fermi_fenergy_partition", defaults.FERMI_FENERGY_PARTITION)
+    mode = cfg.scf_options.get(
+        "fermi_fenergy_partition", defaults.FERMI_FENERGY_PARTITION
+    )
 
     # partition to atoms equally
     if mode == "equal":
