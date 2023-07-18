@@ -99,6 +99,12 @@ def scf_pure(
     This method is implemented as a pure function in order to avoid memory remnants
     of pytorch autograd graph to cause RAM issues.
     """
+
+    # The initial guess is an "arbitrary" tensor, and hence not part of AD computational graph.
+    # NOTE: This leads to not entering xitorch._RootFinder.backward() at all during a 
+    #       loss.backward() call. However, then the position tensor does receive gradient.
+    guess = guess.detach() 
+
     q_converged = xto.equilibrium(
         fcn=fcn,
         y0=guess,
@@ -106,6 +112,11 @@ def scf_pure(
         bck_options={**cfg.bck_options},
         **cfg.fwd_options,
     )
+    # NOTE: Entering 
+    #         A) a guess that requires grad or 
+    #         B) a data.tensor into params or 
+    #         C) a tensor into params that requires grad 
+    #       leads to memory remnants and thus a RAM leak.
 
     # To reconnect the H0 energy with the computational graph, we
     # compute one extra SCF cycle with strong damping.
