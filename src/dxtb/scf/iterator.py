@@ -113,7 +113,7 @@ def scf_pure(
     # (see https://github.com/grimme-lab/xtbML/issues/124)
     if cfg.scp_mode in ("charge", "charges"):
         mixer = Simple({**cfg.fwd_options, "damp": 1e-4})
-        q_new = fcn(q_converged)
+        q_new = fcn(q_converged, data, cfg, interactions)
         q_converged = mixer.iter(q_new, q_converged)
 
     return converged_to_charges(q_converged, data, cfg)
@@ -156,12 +156,12 @@ def run_scf(
         guess = charges_to_potential(charges, interactions, data)
     elif cfg.scp_mode == "fock":
         potential = charges_to_potential(charges, interactions, data)
-        guess = potential_to_hamiltonian(potential)
+        guess = potential_to_hamiltonian(potential, data)
     else:
         raise ValueError(f"Unknown convergence target (SCP mode) '{cfg.scp_mode}'.")
 
     # choose physical value to equilibrate (e.g. iterate_potential)
-    fcn = iter_options.get(cfg.scp_mode)
+    fcn = iter_options[cfg.scp_mode]
 
     if cfg.scf_options["verbosity"] > 0:
         print(

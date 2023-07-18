@@ -51,8 +51,8 @@ def converged_to_charges(x: Tensor, data: _Data, cfg: SCF_Config) -> Tensor:
         return potential_to_charges(x, data, cfg)
 
     if cfg.scp_mode == "fock":
-        data.density = hamiltonian_to_density(x)
-        return density_to_charges(data.density)
+        data.density = hamiltonian_to_density(x, data, cfg)
+        return density_to_charges(data.density, data)
 
     raise ValueError(f"Unknown convergence target (SCP mode) '{cfg.scp_mode}'.")
 
