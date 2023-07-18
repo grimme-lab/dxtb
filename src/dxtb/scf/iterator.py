@@ -26,6 +26,16 @@ from .base import BaseTSCF, BaseXSCF
 from .guess import get_guess
 from .mixer import Anderson, Mixer, Simple
 
+from .conversions import (
+    converged_to_charges,
+    charges_to_potential,
+    potential_to_hamiltonian,
+)
+from .iterations import iter_options
+from .data import _Data
+from .energies import get_energy, get_electronic_free_energy
+from .config import SCF_Config
+
 
 class SelfConsistentField(BaseXSCF):
     """
@@ -63,6 +73,131 @@ class SelfConsistentField(BaseXSCF):
             q_converged = mixer.iter(q_new, q_converged)
 
         return self.converged_to_charges(q_converged)
+
+
+def scf_pure(
+    guess: Tensor,
+    data: _Data,
+    interactions: InteractionList,
+    cfg: SCF_Config,
+    fcn: callable,
+) -> Tensor:
+    """
+    Self-consistent field method, which can be used to obtain a
+    self-consistent solution for a given Hamiltonian.
+
+    The method makes use of the implicit function theorem. Hence, the
+    derivatives of the iterative procedure are only calculated from the
+    equilibrium solution, i.e., the gradient must not be tracked through all
+    iterations.
+
+    The implementation is based on `xitorch <https://xitorch.readthedocs.io>`__,
+    which appears to be abandoned and unmaintained at the time of
+    writing, but still provides a reasonably good implementation of the
+    iterative solver required for the self-consistent field iterations.
+
+    This method is implemented as a pure function in order to avoid memory remnants
+    of pytorch autograd graph to cause RAM issues.
+    """
+    q_converged = xto.equilibrium(
+        fcn=fcn,
+        y0=guess,
+        params=[data, cfg, interactions],
+        bck_options={**cfg.bck_options},
+        **cfg.fwd_options,
+    )
+
+    # To reconnect the H0 energy with the computational graph, we
+    # compute one extra SCF cycle with strong damping.
+    # Note that this is not required for SCF with full gradient tracking.
+    # (see https://github.com/grimme-lab/xtbML/issues/124)
+    if cfg.scp_mode in ("charge", "charges"):
+        mixer = Simple({**cfg.fwd_options, "damp": 1e-4})
+        q_new = fcn(q_converged)
+        q_converged = mixer.iter(q_new, q_converged)
+    #     # TODO: also causes RAM leak
+
+    # return q_converged # works
+    return converged_to_charges(q_converged, data, cfg)
+
+
+def run_scf(
+    data: _Data,
+    interactions: InteractionList,
+    cfg: SCF_Config,
+    charges: Tensor | None = None,
+) -> SCFResult:
+    """
+    Run the self-consistent iterations until a stationary solution is
+    reached.
+
+    Parameters
+    ----------
+    data: _Data
+        Storage for tensors which become part of autograd graph within SCF cycles.
+    interactions : InteractionList
+        Collection of `Interation` objects.
+    cfg: SCF_Config
+        Dataclass containing configuration for SCF iterations.
+    charges : Tensor, optional
+        Initial orbital charges vector. If `None` is given (default), a
+        zero vector is used.
+
+    Returns
+    -------
+    Tensor
+        Converged orbital charges vector.
+    """
+
+    if charges is None:
+        charges = torch.zeros_like(data.occupation)
+
+    if cfg.scp_mode in ("charge", "charges"):
+        guess = charges
+    elif cfg.scp_mode == "potential":
+        guess = charges_to_potential(charges, interactions, data)
+    elif cfg.scp_mode == "fock":
+        potential = charges_to_potential(charges, interactions, data)
+        guess = potential_to_hamiltonian(potential)
+    else:
+        raise ValueError(f"Unknown convergence target (SCP mode) '{cfg.scp_mode}'.")
+
+    # choose physical value to equilibrate (e.g. iterate_potential)
+    fcn = iter_options.get(cfg.scp_mode)
+
+    if cfg.scf_options["verbosity"] > 0:
+        print(
+            f"\n{'iter':<5} {'energy':<24} {'energy change':<15}"
+            f"{'P norm change':<15} {'charge change':<15}"
+        )
+        print(77 * "-")
+
+    # main SCF function (mixing)
+    charges = scf_pure(guess, data, interactions, cfg, fcn)
+
+    if cfg.scf_options["verbosity"] > 0:
+        print(77 * "-")
+
+    # evaluate final energy
+    energy = get_energy(charges, data, interactions)
+    fenergy = get_electronic_free_energy(
+        data, cfg.scf_options, cfg.kt, cfg.device, cfg.dtype
+    )
+
+    # break circular graph references to free `_Data` object and hence memory
+    density, hamiltonian, _, evals, evecs = data.clean()
+
+    return {
+        "charges": charges,
+        "coefficients": evecs,
+        "density": density,
+        "emo": evals,
+        "energy": energy,
+        "fenergy": fenergy,
+        "hamiltonian": hamiltonian,
+        "occupation": data.occupation,
+        "potential": charges_to_potential(charges, interactions, data),
+    }
 
 
 class SelfConsistentFieldFull(BaseTSCF):
@@ -370,7 +505,7 @@ def solve(
     *args: Any,
     **kwargs: Any,
 ) -> SCFResult:
-    """
+    """converged_to_charges
     Obtain self-consistent solution for a given Hamiltonian.
 
     Parameters
@@ -399,7 +534,23 @@ def solve(
     """
     scf_mode = kwargs["scf_options"].get("scf_mode", defaults.SCF_MODE)
     if scf_mode in ("default", "implicit"):
-        scf = SelfConsistentField
+        if False:
+            # calculate SCF equilibrium using nested objects
+            scf = SelfConsistentField
+
+        # calculate SCF equilibrium using semi-pure functions
+
+        # distinct objects containing data and configuration
+        forbidden = ["bck_options", "fwd_options", "scf_options"]
+        data_kwargs = {k: v for k, v in kwargs.items() if k not in forbidden}
+        data = _Data(*args, numbers=numbers, ihelp=ihelp, cache=cache, **data_kwargs)
+        cfg = SCF_Config(data, **kwargs)
+
+        charges = get_guess(numbers, positions, chrg, ihelp, guess)
+        result = run_scf(data, interactions, cfg, charges)
+
+        return result
+
     elif scf_mode in ("full", "full_tracking"):
         scf = SelfConsistentFieldFull
     elif scf_mode == "experimental":
