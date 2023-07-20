@@ -44,7 +44,7 @@ class Element(BaseModel):
     """Chemical hardness / Hubbard parameter"""
     lgam: List[float]
     """Relative chemical hardness for each shell"""
-    gam3 = 0.0
+    gam3: float = 0.0
     """Atomic Hubbard derivative"""
 
     dkernel: float = 0.0
