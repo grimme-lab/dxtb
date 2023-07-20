@@ -22,8 +22,8 @@ from dxtb._types import Callable, Tensor
 from dxtb.ncoord import get_coordination_number
 from dxtb.utils import batch
 
-from .samples import samples
 from ..utils import dgradcheck, dgradgradcheck
+from .samples import samples
 
 sample_list = ["NH3", "NH3-dimer", "PbH4-BiH3", "C6H5I-CH3SH"]
 

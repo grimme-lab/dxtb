@@ -12,7 +12,16 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Any, Literal, NoReturn, Protocol, TypedDict, overload
+from typing import (
+    Any,
+    Iterator,
+    Literal,
+    NoReturn,
+    Protocol,
+    TypedDict,
+    TypeVar,
+    overload,
+)
 
 import torch
 from torch import Tensor

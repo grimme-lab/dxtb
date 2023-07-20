@@ -48,7 +48,12 @@ def get_device_from_str(s: str) -> torch.device:
     raise KeyError(f"Unknown device '{s}' given.")
 
 
-def load_from_npz(npzfile: Any, name: str, dtype: torch.dtype) -> Tensor:
+def load_from_npz(
+    npzfile: Any,
+    name: str,
+    dtype: torch.dtype,
+    device: torch.device | None = None,
+) -> Tensor:
     """Get torch tensor from npz file
 
     Parameters
@@ -59,6 +64,8 @@ def load_from_npz(npzfile: Any, name: str, dtype: torch.dtype) -> Tensor:
         Name of the tensor in the npz file.
     dtype : torch.dtype
         Data type of the tensor.
+    device : torch.device | None
+        Device of the tensor. Defaults to `None`.
 
     Returns
     -------
@@ -66,7 +73,7 @@ def load_from_npz(npzfile: Any, name: str, dtype: torch.dtype) -> Tensor:
         Tensor from the npz file.
     """
     name = name.replace("-", "").replace("+", "").lower()
-    return torch.from_numpy(npzfile[name]).type(dtype)
+    return torch.from_numpy(npzfile[name]).to(device=device, dtype=dtype)
 
 
 def nth_derivative(f: Tensor, x: Tensor, n: int = 1) -> Tensor:

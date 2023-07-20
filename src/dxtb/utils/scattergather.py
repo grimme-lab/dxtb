@@ -210,7 +210,7 @@ def scatter_reduce(
         - https://github.com/pytorch/pytorch/releases/tag/v1.12.0
           (section "Sparse")
 
-    Thin wrapper for pytorch's `scatter_reduce` function for handling API 
+    Thin wrapper for pytorch's `scatter_reduce` function for handling API
     changes.
 
     Parameters

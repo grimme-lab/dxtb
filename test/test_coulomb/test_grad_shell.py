@@ -9,7 +9,7 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb._types import Tensor
+from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.coulomb import secondorder as es2
 from dxtb.param import GFN1_XTB, get_elem_angular
@@ -19,11 +19,13 @@ from .samples import samples
 
 sample_list = ["MB16_43_07", "MB16_43_08", "SiH4", "LiH"]
 
+device = None
+
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps)
 
     sample = samples[name]
@@ -67,7 +69,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", ["SiH4"])
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps)
 
     sample1, sample2 = samples[name1], samples[name2]

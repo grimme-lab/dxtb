@@ -35,9 +35,9 @@ class Mixer(ABC):
     _is_batch: bool
     """
     Whether the mixer operates in batch mode.
-    Inferring batch mode from within the mixer is unreliable as the mixer can 
-    converge vector- or matrix-valued quantities. Hence, we must set it from 
-    outside. In the context of dxtb, inference from the `numbers` variable is 
+    Inferring batch mode from within the mixer is unreliable as the mixer can
+    converge vector- or matrix-valued quantities. Hence, we must set it from
+    outside. In the context of dxtb, inference from the `numbers` variable is
     the best/safest option.
     """
 
