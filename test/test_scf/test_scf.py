@@ -9,6 +9,7 @@ from math import sqrt
 import pytest
 import torch
 
+from dxtb._types import DD
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
@@ -17,18 +18,20 @@ from .samples import samples
 
 opts = {"verbosity": 0, "maxiter": 50}
 
+device = None
+
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
 def test_single(dtype: torch.dtype, name: str):
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    ref = sample["escf"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
+    ref = sample["escf"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
@@ -46,12 +49,12 @@ def test_single(dtype: torch.dtype, name: str):
 def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
     """Test a few larger system."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    ref = sample["escf"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
+    ref = sample["escf"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
     options = dict(
@@ -78,12 +81,12 @@ def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
 def test_single_difficult(dtype: torch.dtype, name: str):
     """Test a few larger system (only float32 within tolerance)."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    ref = sample["escf"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
+    ref = sample["escf"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
     options = dict(
@@ -108,11 +111,11 @@ def test_single_difficult(dtype: torch.dtype, name: str):
 def test_single_large(dtype: torch.dtype, name: str):
     """Test a large systems (only float32 as they take some time)."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
     ref = sample["escf"]
     charges = torch.tensor(0.0, **dd)
 
@@ -135,7 +138,7 @@ def test_single_large(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize("name2", ["LiH", "SiH4"])
 def test_batch(dtype: torch.dtype, name1: str, name2: str):
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name1], samples[name2]
     numbers = batch.pack(
@@ -170,7 +173,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
 @pytest.mark.parametrize("name3", ["SiH4"])
 def test_batch2(dtype: torch.dtype, name1: str, name2: str, name3: str):
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name1], samples[name2], samples[name3]
     numbers = batch.pack(
@@ -213,7 +216,7 @@ def test_batch_special(dtype: torch.dtype, mixer: str) -> None:
     additional padding upon spreading is prevented.
     """
     tol = 1e-2  # atoms show larger deviations
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     numbers = torch.tensor([[2, 2], [17, 0]])
     positions = batch.pack(

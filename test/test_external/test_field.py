@@ -32,12 +32,12 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
-    # ref = sample["energy"].type(dtype)
-    ref1 = sample["energy_monopole"].type(dtype)
+    # ref = sample["energy"].to(**dd)
+    ref1 = sample["energy_monopole"].to(**dd)
 
     field_vector = torch.tensor([-2.0, 0.0, 0.0], **dd) * units.VAA2AU
     efield = new_efield(field_vector)
@@ -57,22 +57,22 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         (
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         )
     )
     charges = torch.tensor([0.0, 0.0], **dd)
 
     ref1 = torch.stack(
         [
-            sample1["energy_monopole"].type(dtype),
-            sample2["energy_monopole"].type(dtype),
+            sample1["energy_monopole"].to(**dd),
+            sample2["energy_monopole"].to(**dd),
         ],
     )
 

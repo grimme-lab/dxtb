@@ -36,8 +36,8 @@ import math
 import torch
 
 from ._types import Tensor, TensorLike
-from .utils import cdist, real_atoms, real_pairs
 from .constants import defaults
+from .utils import cdist, real_atoms, real_pairs
 
 
 class ChargeModel(TensorLike):

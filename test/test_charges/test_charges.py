@@ -20,27 +20,32 @@ import pytest
 import torch
 
 from dxtb import charges
+from dxtb._types import DD
 from dxtb.utils import batch
 
 from .samples import samples
 
+device = None
+
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-def test_single(dtype: torch.dtype):
+@pytest.mark.parametrize("name", ["NH3-dimer"])
+def test_single(dtype: torch.dtype, name: str):
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
-    sample = samples["NH3-dimer"]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    total_charge = sample["total_charge"].type(dtype)
-    qref = sample["q"].type(dtype)
-    eref = sample["energy"].type(dtype)
+    sample = samples[name]
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
+    total_charge = sample["total_charge"].to(**dd)
+    qref = sample["q"].to(**dd)
+    eref = sample["energy"].to(**dd)
 
     cn = torch.tensor(
         [3.0, 3.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
         dtype=dtype,
     )
-    eeq = charges.ChargeModel.param2019().type(dtype)
+    eeq = charges.ChargeModel.param2019().to(device).type(dtype)
     energy, qat = charges.solve(numbers, positions, total_charge, eeq, cn)
 
     assert qat.dtype == energy.dtype == dtype
@@ -51,16 +56,17 @@ def test_single(dtype: torch.dtype):
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_ghost(dtype: torch.dtype):
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples["NH3-dimer"]
     numbers = sample["numbers"].clone()
     numbers[[1, 5, 6, 7]] = 0
-    positions = sample["positions"].type(dtype)
-    total_charge = sample["total_charge"].type(dtype)
+    positions = sample["positions"].to(**dd)
+    total_charge = sample["total_charge"].to(**dd)
     cn = torch.tensor(
         [3.0, 3.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-        dtype=dtype,
+        **dd,
     )
     qref = torch.tensor(
         [
@@ -73,7 +79,7 @@ def test_ghost(dtype: torch.dtype):
             +0.0000000000,
             +0.0000000000,
         ],
-        dtype=dtype,
+        **dd,
     )
     eref = torch.tensor(
         [
@@ -86,9 +92,9 @@ def test_ghost(dtype: torch.dtype):
             +0.0000000000,
             +0.0000000000,
         ],
-        dtype=dtype,
+        **dd,
     )
-    eeq = charges.ChargeModel.param2019(dtype=dtype)
+    eeq = charges.ChargeModel.param2019(device=device, dtype=dtype)
     energy, qat = charges.solve(numbers, positions, total_charge, eeq, cn)
 
     assert qat.dtype == energy.dtype == dtype
@@ -99,6 +105,7 @@ def test_ghost(dtype: torch.dtype):
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_batch(dtype: torch.dtype):
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample1, sample2 = (
@@ -107,27 +114,27 @@ def test_batch(dtype: torch.dtype):
     )
     numbers = batch.pack(
         (
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         )
     )
-    total_charge = torch.tensor([0.0, 0.0], dtype=dtype)
+    total_charge = torch.tensor([0.0, 0.0], **dd)
     eref = batch.pack(
         (
-            sample1["energy"].type(dtype),
-            sample2["energy"].type(dtype),
+            sample1["energy"].to(**dd),
+            sample2["energy"].to(**dd),
         )
     )
     qref = batch.pack(
         (
-            sample1["q"].type(dtype),
-            sample2["q"].type(dtype),
+            sample1["q"].to(**dd),
+            sample2["q"].to(**dd),
         )
     )
 
@@ -174,9 +181,9 @@ def test_batch(dtype: torch.dtype):
                 0.9939362885,
             ],
         ],
-        dtype=dtype,
+        **dd,
     )
-    eeq = charges.ChargeModel.param2019().type(dtype)
+    eeq = charges.ChargeModel.param2019(device=device, dtype=dtype)
     energy, qat = charges.solve(numbers, positions, total_charge, eeq, cn)
 
     assert qat.dtype == energy.dtype == dtype

@@ -28,6 +28,8 @@ from torch import Tensor
 
 from .constants import defaults
 
+T = TypeVar("T")
+
 # "Self" (since Python 3.11)
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -263,7 +265,7 @@ class TensorLike:
 
         return self.__class__(**args, dtype=dtype)
 
-    def to(self, device: torch.device) -> Self | NoReturn:
+    def to(self, device: torch.device | None) -> Self | NoReturn:
         """
         Returns a copy of the `TensorLike` instance on the specified device.
 

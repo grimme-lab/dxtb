@@ -25,15 +25,20 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import pyscf
+
+try:
+    import pyscf  # type: ignore
+except ImportError as e:
+    raise ImportError("PySCF is not installed") from e
 
 from ..._types import Tensor
 from ...constants import PSE
 from ...utils import tensor_to_numpy
+from ..molecule import Mol
 
 # Turn off PySCF's normalization since dxtb's normalization is different,
-# requiring a separate normalization anyway. But this way, the result are equal
-# to dxtb's libcint wrapper and we can immediately compare both integrals.
+# requiring a separate normalization anyway. But this way, the results are
+# equal to dxtb's libcint wrapper and we can immediately compare integrals.
 pyscf.gto.mole.NORMALIZE_GTO = False
 
 __all__ = ["PyscfMol", "M"]
@@ -111,3 +116,7 @@ class PyscfMol(pyscf.gto.Mole):
         self.basis = basis
         self.unit = "B"  # unit: Bohr (a.u.)
         self.cart = False
+
+    @classmethod
+    def from_mol(cls, mol: Mol, xtb_version: str = "gfn1", **kwargs) -> PyscfMol:
+        return cls(mol.numbers, mol.positions, xtb_version, **kwargs)

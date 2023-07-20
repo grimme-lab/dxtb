@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 """
 Utility
 =======
@@ -6,9 +7,11 @@ Collection of utility functions.
 """
 from __future__ import annotations
 
+from functools import wraps
+
 import torch
 
-from .._types import Any, Tensor, TypeGuard
+from .._types import Any, Callable, T, Tensor, TypeGuard
 from ..constants import ATOMIC_NUMBER
 
 
@@ -75,3 +78,39 @@ def set_jit_enabled(enabled: bool) -> None:
         torch.jit._state.enable()  # type: ignore
     else:
         torch.jit._state.disable()  # type: ignore
+
+
+def memoize(fcn: Callable[..., T]) -> Callable[..., T]:
+    """
+    Memoization decorator that allows specification of `__slots__`. It works
+    with and without function arguments.
+
+    Note that `lru_cache` can produce memory leak for a method.
+
+    Parameters
+    ----------
+    fcn : Callable[[Any], T]
+        Function to memoize
+
+    Returns
+    -------
+    Callable[[Any], T]
+        Memoized function.
+    """
+    cache = {}
+
+    @wraps(fcn)
+    def wrapper(self, *args, **kwargs):
+        # create unique key for cache dictionary
+        key = (id(self), fcn.__name__, args, frozenset(kwargs.items()))
+
+        # if the result is already in the cache, return it
+        if key in cache:
+            return cache[key]
+
+        # if key is not found, compute the result
+        result = fcn(self, *args, **kwargs)
+        cache[key] = result
+        return result
+
+    return wrapper

@@ -8,9 +8,10 @@ import torch
 
 from dxtb._types import DD, Tensor
 from dxtb.param import GFN1_XTB as par
-from dxtb.utils import hessian, reshape_fortran
+from dxtb.utils import hessian
 from dxtb.xtb import Calculator
 
+from ..utils import reshape_fortran
 from .samples import samples
 
 sample_list = ["LiH", "SiH4"]
@@ -33,10 +34,10 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     atol, rtol = 1e-4, 1e-1  # should be lower!
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype)
+    positions = samples[name]["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
     ref = reshape_fortran(
-        samples[name]["hessian"].type(dtype),
+        samples[name]["hessian"].to(**dd),
         torch.Size(2 * (numbers.shape[-1], 3)),
     )
 
@@ -53,11 +54,11 @@ def test_single(dtype: torch.dtype, name: str) -> None:
         return result.scf
 
     hess = hessian(scf, (numbers, positions, charge), argnums=1)
+    positions.detach_()
+
     assert ref.shape == numref.shape == hess.shape
     assert pytest.approx(ref, abs=1e-6, rel=1e-6) == numref
     assert pytest.approx(ref, abs=atol, rel=rtol) == hess.detach()
-
-    positions.detach_()
 
 
 def _numhess(

@@ -456,7 +456,7 @@ class ES2(Interaction):
         if positions.requires_grad is False:
             raise RuntimeError("Position tensor needs `requires_grad=True`.")
 
-            # avoid autograd call if energy is zero (autograd fails anyway)
+        # avoid autograd call if energy is zero (autograd fails anyway)
         if torch.equal(energy, torch.zeros_like(energy)):
             return torch.zeros_like(positions)
 

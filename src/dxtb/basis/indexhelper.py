@@ -17,7 +17,7 @@ from __future__ import annotations
 import torch
 
 from .._types import Slicers, Tensor, TensorLike
-from ..utils import batch, t2int, wrap_gather, wrap_scatter_reduce
+from ..utils import batch, memoize, t2int, wrap_gather, wrap_scatter_reduce
 
 __all__ = ["IndexHelper"]
 

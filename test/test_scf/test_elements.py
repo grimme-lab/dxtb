@@ -16,11 +16,14 @@ from __future__ import annotations
 import pytest
 import torch
 
+from dxtb._types import DD
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
 
 from .samples import samples
+
+device = None
 
 ref = torch.tensor(
     [
@@ -356,7 +359,7 @@ opts = {
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     numbers = torch.tensor([number])
     positions = torch.zeros((1, 3), **dd)
@@ -376,7 +379,7 @@ def test_element(dtype: torch.dtype, number: int) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_cation(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     # SCF does not converge for gold (in tblite too)
     if number == 79:
@@ -412,7 +415,7 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_anion(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     # Helium doesn't have enough orbitals for negative charge
     if number == 2:
@@ -447,7 +450,7 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:
     tol = 1e-2
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[mol]
     numbers = batch.pack((sample["numbers"], torch.tensor([number])))

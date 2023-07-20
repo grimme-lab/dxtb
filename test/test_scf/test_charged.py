@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 import torch
 
+from dxtb._types import DD
 from dxtb.param import GFN1_XTB as par
 from dxtb.xtb.calculator import Calculator
 
@@ -20,19 +21,21 @@ opts = {"verbosity": 0}
 
 ref_grad = np.load("test/test_scf/grad.npz")
 
+device = None
+
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["Ag2Cl22-", "Al3+Ar6", "AD7en+", "C2H4F+", "ZnOOH-"])
 def test_single(dtype: torch.dtype, name: str):
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
     ref = sample["escf"].item()
-    chrg = sample["charge"].type(dtype)
+    chrg = sample["charge"].to(**dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
     results = calc.singlepoint(numbers, positions, chrg)
@@ -45,14 +48,14 @@ def test_single(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize("dtype", [torch.float])
 @pytest.mark.parametrize("name", ["Ag2Cl22-", "Al3+Ar6", "C2H4F+", "ZnOOH-"])
 def test_grad(dtype: torch.dtype, name: str):
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = samples[name]["positions"].type(dtype).detach()
+    numbers = sample["numbers"].to(device)
+    positions = samples[name]["positions"].to(**dd).detach()
     positions.requires_grad_(True)
-    chrg = sample["charge"].type(dtype)
+    chrg = sample["charge"].to(**dd)
 
     # Values obtain with tblite 0.2.1 disabling repulsion and dispersion
     ref = load_from_npz(ref_grad, name, dtype)

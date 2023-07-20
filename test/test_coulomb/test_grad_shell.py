@@ -29,17 +29,22 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps)
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    charges = sample["q"].type(dtype)
-    ref = sample["grad"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
+    charges = sample["q"].to(**dd)
+    ref = sample["grad"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
     es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=True, **dd)
     assert es is not None
 
-    # analytical (old)
     cache = es.get_cache(numbers, positions, ihelp)
+
+    # atom gradient should be zero
+    grad_atom = es._get_atom_gradient(numbers, positions, charges, cache)
+    assert (torch.zeros_like(positions) == grad_atom).all()
+
+    # analytical (old)
     grad = es._get_shell_gradient(numbers, positions, charges, cache, ihelp)
     assert pytest.approx(grad, abs=tol) == ref
 
@@ -76,26 +81,26 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     numbers = batch.pack(
         (
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         )
     )
     charges = batch.pack(
         (
-            sample1["q"].type(dtype),
-            sample2["q"].type(dtype),
+            sample1["q"].to(**dd),
+            sample2["q"].to(**dd),
         )
     )
     ref = batch.pack(
         (
-            sample1["grad"].type(dtype),
-            sample2["grad"].type(dtype),
+            sample1["grad"].to(**dd),
+            sample2["grad"].to(**dd),
         ),
     )
 

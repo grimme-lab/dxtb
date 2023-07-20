@@ -10,17 +10,19 @@ import pytest
 import tad_dftd3 as d3
 import torch
 
-from dxtb._types import Tensor
+from dxtb._types import DD, Tensor
 from dxtb.dispersion import DispersionD3, new_dispersion
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
 
 from .samples import samples
 
+device = None
+
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_disp_batch(dtype: torch.dtype) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = (
         samples["PbH4-BiH3"],
@@ -28,26 +30,26 @@ def test_disp_batch(dtype: torch.dtype) -> None:
     )
     numbers = batch.pack(
         (
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         )
     )
     c6 = batch.pack(
         (
-            sample1["c6"].type(dtype),
-            sample2["c6"].type(dtype),
+            sample1["c6"].to(**dd),
+            sample2["c6"].to(**dd),
         )
     )
     ref = batch.pack(
         (
-            sample1["edisp"].type(dtype),
-            sample2["edisp"].type(dtype),
+            sample1["edisp"].to(**dd),
+            sample2["edisp"].to(**dd),
         )
     )
 
@@ -89,11 +91,11 @@ def test_disp_batch(dtype: torch.dtype) -> None:
 @pytest.mark.grad
 def test_grad_pos() -> None:
     dtype = torch.double
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples["C4H5NCS"]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach().clone()
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd).detach().clone()
 
     # variable to be differentiated
     positions.requires_grad_(True)
@@ -117,13 +119,13 @@ def test_grad_pos() -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 def test_grad_pos_tblite(dtype: torch.dtype) -> None:
     """Compare with reference values from tblite."""
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples["PbH4-BiH3"]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach().clone()
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd).detach().clone()
     positions.requires_grad_(True)
-    ref = sample["grad"].type(dtype)
+    ref = sample["grad"].to(**dd)
 
     disp = new_dispersion(numbers, par, **dd)
     if disp is None:
@@ -145,11 +147,11 @@ def test_grad_pos_tblite(dtype: torch.dtype) -> None:
 @pytest.mark.grad
 def test_grad_param() -> None:
     dtype = torch.double
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples["C4H5NCS"]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
     param = (
         torch.tensor(1.00000000, requires_grad=True, dtype=dtype),
         torch.tensor(0.78981345, requires_grad=True, dtype=dtype),

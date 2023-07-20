@@ -8,27 +8,30 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb._types import Tensor
+from dxtb._types import DD, Tensor
 from dxtb.dispersion import new_dispersion
 from dxtb.param import GFN1_XTB as par
-from dxtb.utils import batch, hessian, reshape_fortran
+from dxtb.utils import batch, hessian
 
+from ..utils import reshape_fortran
 from .samples import samples
 
 sample_list = ["LiH", "SiH4", "MB16_43_01", "PbH4-BiH3"]
+
+device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps)
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
     ref = reshape_fortran(
-        sample["hessian"].type(dtype),
+        sample["hessian"].to(**dd),
         torch.Size(2 * (numbers.shape[-1], 3)),
     )
     numref = _numhess(numbers, positions)
@@ -52,31 +55,31 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", ["PbH4-BiH3"])
 @pytest.mark.parametrize("name2", sample_list)
 def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 100
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         [
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         ]
     )
     positions = batch.pack(
         [
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         ]
     )
 
     ref = batch.pack(
         [
             reshape_fortran(
-                sample1["hessian"].type(dtype),
-                torch.Size(2 * (sample1["numbers"].shape[-1], 3)),
+                sample1["hessian"].to(**dd),
+                torch.Size(2 * (sample1["numbers"].to(device).shape[-1], 3)),
             ),
             reshape_fortran(
-                sample2["hessian"].type(dtype),
+                sample2["hessian"].to(**dd),
                 torch.Size(2 * (sample2["numbers"].shape[0], 3)),
             ),
         ]

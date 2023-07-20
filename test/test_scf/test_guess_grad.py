@@ -30,8 +30,8 @@ def gradchecker(
     dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
@@ -80,14 +80,14 @@ def gradchecker_batch(
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         [
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         ]
     )
     positions = batch.pack(
         [
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         ]
     )
     charge = torch.tensor([0.0, 0.0], **dd)

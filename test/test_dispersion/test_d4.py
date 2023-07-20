@@ -10,17 +10,19 @@ import pytest
 import tad_dftd4 as d4
 import torch
 
-from dxtb._types import Tensor
+from dxtb._types import DD, Tensor
 from dxtb.dispersion import DispersionD4, new_dispersion
 from dxtb.param.gfn2 import GFN2_XTB as par
 from dxtb.utils import batch
 
 from .samples import samples
 
+device = None
+
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_batch(dtype: torch.dtype) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = (
         samples["PbH4-BiH3"],
@@ -28,14 +30,14 @@ def test_batch(dtype: torch.dtype) -> None:
     )
     numbers = batch.pack(
         (
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         )
     )
     charge = positions.new_zeros(numbers.shape[0])
@@ -74,11 +76,11 @@ def test_batch(dtype: torch.dtype) -> None:
 @pytest.mark.grad
 def test_grad_pos() -> None:
     dtype = torch.double
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples["C4H5NCS"]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach()
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd).detach()
     charge = positions.new_tensor(0.0)
 
     # variable to be differentiated
@@ -102,11 +104,11 @@ def test_grad_pos() -> None:
 @pytest.mark.grad
 def test_grad_param() -> None:
     dtype = torch.double
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples["C4H5NCS"]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
     charge = positions.new_tensor(0.0)
     param = (
         positions.new_tensor(1.00000000, requires_grad=True),

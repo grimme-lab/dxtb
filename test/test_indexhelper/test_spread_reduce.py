@@ -39,6 +39,60 @@ def test_spread() -> None:
     assert (ihelp.spread_ushell_to_orbital(ushell) == orbital).all()
 
 
+def test_cart() -> None:
+    unique = torch.tensor([1, 14])  # include sorting
+    atom = torch.tensor([14, 1, 1])
+    shell = torch.tensor([14, 14, 14, 1, 1, 1, 1])
+    orbital = torch.tensor([14] * 9 + [1, 1, 1, 1])
+    orbital_cart = torch.tensor([14] * 10 + [1, 1, 1, 1])
+
+    angular = {
+        1: [0, 0],  # H
+        14: [0, 1, 2],  # Si
+    }
+    ihelp = IndexHelper.from_numbers(atom, angular)
+
+    assert (ihelp.spread_uspecies_to_atom(unique) == atom).all()
+    assert (ihelp.spread_uspecies_to_shell(unique) == shell).all()
+    assert (ihelp.spread_uspecies_to_orbital(unique) == orbital).all()
+    assert (ihelp.spread_uspecies_to_orbital_cart(unique) == orbital_cart).all()
+    assert (ihelp.spread_atom_to_shell(atom) == shell).all()
+    assert (ihelp.spread_atom_to_orbital(atom) == orbital).all()
+    assert (ihelp.spread_atom_to_orbital_cart(atom) == orbital_cart).all()
+
+    # check property
+    orb_per_at = torch.tensor([0] * 9 + [1, 1, 2, 2])
+    assert (ihelp.orbitals_per_atom == orb_per_at).all()
+
+    # cartesian and spherical basis
+    orb_per_shell = torch.tensor([1, 3, 5, 1, 1, 1, 1])
+    orb_per_shell_cart = torch.tensor([1, 3, 6, 1, 1, 1, 1])
+
+    orb_index = torch.tensor([0, 1, 4, 9, 10, 11, 12])
+    orb_index_cart = torch.tensor([0, 1, 4, 10, 11, 12, 13])
+
+    orb_to_shell = torch.tensor([0, 1, 1, 1, 2, 2, 2, 2, 2, 3, 4, 5, 6])
+    orb_to_shell_cart = torch.tensor([0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 4, 5, 6])
+
+    assert (ihelp.orbital_index == orb_index).all()
+    assert (ihelp.orbital_index_cart == orb_index_cart).all()
+
+    assert (ihelp.orbitals_to_shell == orb_to_shell).all()
+    assert (ihelp.orbitals_to_shell_cart == orb_to_shell_cart).all()
+
+    assert (ihelp.orbitals_per_shell == orb_per_shell).all()
+    assert (ihelp.orbitals_per_shell_cart == orb_per_shell_cart).all()
+
+    import time
+
+    start = time.perf_counter()
+
+    for _ in range(10000):
+        _ = ihelp.orbitals_to_shell_cart
+
+    print(time.perf_counter() - start)
+
+
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_single(dtype: torch.dtype):
     numbers = symbol2number("S H H H Mg N O S N N C H C H O N".split())

@@ -37,7 +37,7 @@ def test_grad_backwards(
     dd: DD = {"device": device, "dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype)
+    positions = samples[name]["positions"].to(**dd)
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
@@ -56,7 +56,6 @@ def test_grad_backwards(
 
     result = calc.singlepoint(numbers, positions, charges)
     energy = result.scf.sum(-1)
-    print("\n\n\n")
 
     energy.backward()
     assert positions.grad is not None
@@ -79,7 +78,7 @@ def test_grad_autograd(name: str, dtype: torch.dtype):
     dd: DD = {"device": device, "dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype)
+    positions = samples[name]["positions"].to(**dd)
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
@@ -119,7 +118,7 @@ def test_grad_large(name: str, dtype: torch.dtype):
     dd: DD = {"device": device, "dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype)
+    positions = samples[name]["positions"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
     # Values obtain with tblite 0.2.1 disabling repulsion and dispersion
@@ -158,7 +157,7 @@ def test_param_grad_energy(name: str, dtype: torch.dtype = torch.float):
     dd: DD = {"device": device, "dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype)
+    positions = samples[name]["positions"].to(**dd)
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
@@ -198,7 +197,7 @@ def skip_test_param_grad_force(name: str, dtype: torch.dtype = torch.float):
     dd: DD = {"device": device, "dtype": dtype}
 
     numbers = samples[name]["numbers"]
-    positions = samples[name]["positions"].type(dtype)
+    positions = samples[name]["positions"].to(**dd)
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 

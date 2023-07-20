@@ -8,6 +8,7 @@ from math import sqrt
 import pytest
 import torch
 
+from dxtb._types import DD
 from dxtb.basis import IndexHelper
 from dxtb.classical import new_halogen
 from dxtb.param import GFN1_XTB as par
@@ -15,6 +16,8 @@ from dxtb.param import get_elem_angular
 from dxtb.utils import batch
 
 from .samples import samples
+
+device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -25,13 +28,13 @@ def test_small(dtype: torch.dtype, name: str) -> None:
     the tblite test suite.
     """
     tol = sqrt(torch.finfo(dtype).eps)
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
 
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    ref = sample["energy"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
+    ref = sample["energy"].to(**dd)
 
     xb = new_halogen(numbers, par, **dd)
     if xb is None:
@@ -53,13 +56,13 @@ def test_large(dtype: torch.dtype, name: str) -> None:
     Br and one O is added in order to obtain different donors and acceptors.
     """
     tol = sqrt(torch.finfo(dtype).eps)
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
 
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    ref = sample["energy"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
+    ref = sample["energy"].to(**dd)
 
     xb = new_halogen(numbers, par, **dd)
     if xb is None:
@@ -75,13 +78,13 @@ def test_large(dtype: torch.dtype, name: str) -> None:
 def test_no_xb(dtype: torch.dtype) -> None:
     """Test system without halogen bonds."""
     tol = sqrt(torch.finfo(dtype).eps)
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples["LYS_xao"]
 
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    ref = sample["energy"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
+    ref = sample["energy"].to(**dd)
 
     xb = new_halogen(numbers, par, **dd)
     if xb is None:
@@ -95,7 +98,7 @@ def test_no_xb(dtype: torch.dtype) -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_beyond_cutoff(dtype: torch.dtype) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     numbers = torch.tensor([7, 35])
     positions = torch.tensor(
@@ -120,26 +123,26 @@ def test_beyond_cutoff(dtype: torch.dtype) -> None:
 @pytest.mark.parametrize("name2", ["finch", "tmpda"])
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps)
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
 
     numbers = batch.pack(
         (
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         )
     )
     ref = torch.stack(
         [
-            sample1["energy"].type(dtype),
-            sample2["energy"].type(dtype),
+            sample1["energy"].to(**dd),
+            sample2["energy"].to(**dd),
         ],
     )
 

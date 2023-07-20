@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 import torch
 
+from dxtb._types import DD
 from dxtb.basis import IndexHelper
 from dxtb.integral import Overlap
 from dxtb.ncoord import exp_count, get_coordination_number
@@ -26,16 +27,18 @@ large = ["PbH4-BiH3", "LYS_xao"]
 
 ref_h0 = np.load("test/test_hamiltonian/h0.npz")
 
+device = None
+
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", small)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
     ref = load_from_npz(ref_h0, name, dtype)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
@@ -58,21 +61,21 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name2", ["C", "Rn", "H2", "LiH", "S2", "SiH4"])
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Batched version."""
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample1, sample2 = samples[name1], samples[name2]
 
     numbers = batch.pack(
         (
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         )
     )
     ref = batch.pack(
@@ -100,12 +103,12 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.parametrize("name", large)
 def test_large(dtype: torch.dtype, name: str) -> None:
     """Compare against reference calculated with tblite."""
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
     ref = load_from_npz(ref_h0, name, dtype)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
@@ -127,21 +130,21 @@ def test_large(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name2", large)
 def test_large_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Batched version."""
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample1, sample2 = samples[name1], samples[name2]
 
     numbers = batch.pack(
         (
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         )
     )
     ref = batch.pack(

@@ -10,16 +10,19 @@ import pytest
 import tad_dftd3 as d3
 import torch
 
+from dxtb._types import DD
 from dxtb.dispersion import new_dispersion
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
 
 from .samples import samples
 
+device = None
+
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_disp_batch(dtype: torch.dtype) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = (
         samples["PbH4-BiH3"],
@@ -27,26 +30,26 @@ def test_disp_batch(dtype: torch.dtype) -> None:
     )
     numbers = batch.pack(
         (
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         )
     )
     c6 = batch.pack(
         (
-            sample1["c6"].type(dtype),
-            sample2["c6"].type(dtype),
+            sample1["c6"].to(**dd),
+            sample2["c6"].to(**dd),
         )
     )
     ref = batch.pack(
         (
-            sample1["edisp"].type(dtype),
-            sample2["edisp"].type(dtype),
+            sample1["edisp"].to(**dd),
+            sample2["edisp"].to(**dd),
         )
     )
 

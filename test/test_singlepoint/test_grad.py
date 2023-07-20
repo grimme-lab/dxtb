@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 import torch
 
-from dxtb._types import Any, Tensor
+from dxtb._types import DD, Tensor
 from dxtb.io import read_chrg, read_coord
 from dxtb.param import GFN1_XTB as par
 from dxtb.xtb import Calculator
@@ -26,6 +26,8 @@ opts = {
     "xitorch_fatol": 1.0e-10,
     "xitorch_xatol": 1.0e-10,
 }
+
+device = None
 
 
 @pytest.mark.grad
@@ -58,7 +60,7 @@ def test_analytical_large2(dtype: torch.dtype, name: str) -> None:
 
 
 def analytical(dtype: torch.dtype, name: str, atol: float, rtol: float) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     # read from file
     base = Path(Path(__file__).parent, "mols", name)
@@ -84,7 +86,7 @@ def analytical(dtype: torch.dtype, name: str, atol: float, rtol: float) -> None:
 @pytest.mark.parametrize("name", ["H2", "H2O", "SiH4"])
 def test_backward(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 50  # slightly larger for H2O!
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     # read from file
     base = Path(Path(__file__).parent, "mols", name)
@@ -106,6 +108,10 @@ def test_backward(dtype: torch.dtype, name: str) -> None:
     assert positions.grad is not None
     autograd = positions.grad.clone()
 
+    # also zero out gradients when using `.backward()`
+    positions.detach_()
+    positions.grad.data.zero_()
+
     # tblite reference grad
     ref = load_from_npz(ref_grad, name, dtype)
     assert pytest.approx(ref, abs=tol, rel=1e-4) == autograd
@@ -116,7 +122,7 @@ def test_backward(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name", ["H2", "H2O", "CH4"])
 def test_num(name: str) -> None:
     dtype = torch.double
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     # read from file
     base = Path(Path(__file__).parent, "mols", name)
@@ -136,7 +142,7 @@ def test_num(name: str) -> None:
 
 
 def calc_numerical_gradient(
-    numbers: Tensor, positions: Tensor, charge: Tensor, dd: dict[str, Any]
+    numbers: Tensor, positions: Tensor, charge: Tensor, dd: DD
 ) -> Tensor:
     """Calculate gradient numerically for reference."""
 

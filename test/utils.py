@@ -8,7 +8,7 @@ from pathlib import Path
 import torch
 from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
-from dxtb._types import Any, Callable, Protocol, Tensor, TensorOrTensors
+from dxtb._types import Any, Callable, Protocol, Size, Tensor, TensorOrTensors
 
 from .conftest import FAST_MODE
 
@@ -109,6 +109,27 @@ def nth_derivative(f: Tensor, x: Tensor, n: int = 1) -> Tensor:
 
     assert grads is not None
     return grads
+
+
+def reshape_fortran(x: Tensor, shape: Size) -> Tensor:
+    """
+    Implements Fortran's `reshape` function (column-major).
+
+    Parameters
+    ----------
+    x : Tensor
+        Input tensor
+    shape : Size
+        Output size to which `x` is reshaped.
+
+    Returns
+    -------
+    Tensor
+        Reshaped tensor of size `shape`.
+    """
+    if len(x.shape) > 0:
+        x = x.permute(*reversed(range(len(x.shape))))
+    return x.reshape(*reversed(shape)).permute(*reversed(range(len(shape))))
 
 
 class _GradcheckFunction(Protocol):

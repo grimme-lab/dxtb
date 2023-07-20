@@ -29,8 +29,8 @@ def gradchecker(
     dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     bas = Basis(torch.unique(numbers), par, ihelp.unique_angular, **dd)

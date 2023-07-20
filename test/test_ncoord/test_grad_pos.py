@@ -17,14 +17,18 @@ sample_list = ["SiH4", "PbH4-BiH3", "MB16_43_01"]
 
 tol = 1e-8
 
+device = None
+
 
 def gradchecker(
     dtype: torch.dtype, name: str, cf: CountingFunction
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
+    dd: DD = {"device": device, "dtype": dtype}
+
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
 
     # variables to be differentiated
     positions.requires_grad_(True)
@@ -65,17 +69,19 @@ def gradchecker_batch(
     dtype: torch.dtype, name1: str, name2: str, cf: CountingFunction
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
+    dd: DD = {"device": device, "dtype": dtype}
+
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         [
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         ]
     )
     positions = batch.pack(
         [
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         ]
     )
 

@@ -30,8 +30,8 @@ def test_single(dtype: torch.dtype, name: str):
     tol = 1e-05
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
     ref = load_from_npz(ref_overlap, name, dtype)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
@@ -51,9 +51,9 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack((sample1["numbers"], sample2["numbers"]))
+    numbers = batch.pack((sample1["numbers"].to(device), sample2["numbers"]))
     positions = batch.pack(
-        (sample1["positions"].type(dtype), sample2["positions"].type(dtype))
+        (sample1["positions"].to(**dd), sample2["positions"].to(**dd))
     )
     ref = batch.pack(
         (
@@ -75,6 +75,8 @@ def test_overlap_higher_orbitals(dtype: torch.dtype):
     # pylint: disable=import-outside-toplevel
     from .test_cgto_ortho_data import ref_data
 
+    dd: DD = {"device": device, "dtype": dtype}
+
     vec = torch.tensor([0.0, 0.0, 1.4], dtype=dtype)
 
     # arbitrary element (Rn)
@@ -92,7 +94,7 @@ def test_overlap_higher_orbitals(dtype: torch.dtype):
     # change momenta artifically for testing purposes
     for i in range(2):
         for j in range(2):
-            ref = ref_data[f"{i}-{j}"].type(dtype).T
+            ref = ref_data[f"{i}-{j}"].to(**dd).T
             overlap = overlap_gto(
                 (torch.tensor(i), torch.tensor(j)),
                 (ai, aj),

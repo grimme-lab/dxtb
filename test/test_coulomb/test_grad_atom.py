@@ -9,7 +9,7 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb._types import Tensor
+from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.coulomb import secondorder as es2
 from dxtb.param import GFN1_XTB, get_elem_angular
@@ -19,28 +19,34 @@ from .samples import samples
 
 sample_list = ["MB16_43_01", "MB16_43_02", "SiH4_atom"]
 
-
 is_shell_resolved = False
+
+device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps)
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    charges = sample["q"].type(dtype)
-    ref = sample["grad"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
+    charges = sample["q"].to(**dd)
+    ref = sample["grad"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
     es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=is_shell_resolved, **dd)
     assert es is not None
 
-    # analytical (old)
     cache = es.get_cache(numbers, positions, ihelp)
+
+    # shell gradient should be zero
+    grad_sh = es._get_shell_gradient(numbers, positions, charges, cache, ihelp)
+    assert (torch.zeros_like(positions) == grad_sh).all()
+
+    # analytical (old)
     grad = es._get_atom_gradient(numbers, positions, charges, cache)
     assert pytest.approx(ref, abs=tol) == grad
 
@@ -70,33 +76,33 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", ["SiH4_atom"])
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps)
 
     sample1, sample2 = samples[name1], samples[name2]
 
     numbers = batch.pack(
         (
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         )
     )
     charges = batch.pack(
         (
-            sample1["q"].type(dtype),
-            sample2["q"].type(dtype),
+            sample1["q"].to(**dd),
+            sample2["q"].to(**dd),
         )
     )
     ref = batch.pack(
         (
-            sample1["grad"].type(dtype),
-            sample2["grad"].type(dtype),
+            sample1["grad"].to(**dd),
+            sample2["grad"].to(**dd),
         ),
     )
 
