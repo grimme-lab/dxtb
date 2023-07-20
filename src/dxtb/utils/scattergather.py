@@ -14,20 +14,37 @@ from functools import wraps
 import torch
 
 from ..__version__ import __torch_version__
-from .._types import Callable, Gather, ScatterOrGather, Tensor
+from .._types import Gather, Protocol, ScatterOrGather, Tensor
 from .tensors import t2int
 
 __all__ = ["scatter_reduce", "wrap_scatter_reduce", "wrap_gather"]
 
 
+class _ScatterOrGatherWrapper(Protocol):
+    """
+    Type annotation for wrapper function of scatter or gather.
+    """
+
+    def __call__(
+        self,
+        func: ScatterOrGather,
+        x: Tensor,
+        dim0: int,
+        dim1: int,
+        idx: Tensor,
+        *args: str,
+    ) -> Tensor:
+        ...
+
+
 def twice_remove_negative_index(
-    func: Callable[[ScatterOrGather, Tensor, int, int, Tensor], Tensor]
-) -> Callable[[ScatterOrGather, Tensor, int, int, Tensor], Tensor]:
+    fcn: _ScatterOrGatherWrapper,
+) -> _ScatterOrGatherWrapper:
     """Wrapper for `gather_twice` function that removes negative indices."""
 
-    @wraps(func)
+    @wraps(fcn)
     def wrapper(
-        f: ScatterOrGather,
+        func: ScatterOrGather,
         x: Tensor,
         dim0: int,
         dim1: int,
@@ -37,12 +54,12 @@ def twice_remove_negative_index(
         mask = idx >= 0
 
         if torch.all(mask):
-            return func(f, x, dim0, dim1, idx, *args)
+            return fcn(func, x, dim0, dim1, idx, *args)
 
         # gathering in two dimensions requires expanding the mask
         return torch.where(
             mask.unsqueeze(-1) * mask.unsqueeze(-2),
-            func(f, x, dim0, dim1, torch.where(mask, idx, 0), *args),
+            fcn(func, x, dim0, dim1, torch.where(mask, idx, 0), *args),
             x.new_tensor(0.0),
         )
 
@@ -210,7 +227,7 @@ def scatter_reduce(
         - https://github.com/pytorch/pytorch/releases/tag/v1.12.0
           (section "Sparse")
 
-    Thin wrapper for pytorch's `scatter_reduce` function for handling API 
+    Thin wrapper for pytorch's `scatter_reduce` function for handling API
     changes.
 
     Parameters
@@ -297,8 +314,41 @@ def wrap_scatter_reduce(
         Reduced tensor.
     """
 
-    # accounting for the extra dimension is very hacky and anything but general
-    if extra is True and isinstance(dim, int):
+    # Accounting for the extra dimension is very hacky and anything but general.
+    # Therefore, I added a ton of checks to prevent the user from accidentally
+    # doing something unintended, which may otherwise not be caught.
+    if extra is True:
+        if not isinstance(dim, int):
+            raise TypeError(
+                "If an extra dimension is specified, only one dimension is "
+                f"allowed. You passed '{dim}'."
+            )
+
+        if dim > -2:
+            raise ValueError(
+                "Only negative values are allowed for indexing. Additionally, "
+                "The last dimension is reserved for the extra dimension, i.e., "
+                "using -1 is also prohibited."
+            )
+
+        # this should not be possible to reach
+        if idx.ndim > 2:  # pragma: no cover
+            raise RuntimeError(
+                "The indexing tensor must be 1d or 2d for batched calculations."
+            )
+
+        if x.ndim < 2:
+            raise RuntimeError(
+                "The source tensor must at least have two dimension: The "
+                "dimension that is reduced/gathered and the extra dimension."
+            )
+
+        if x.ndim > 4:
+            raise NotImplementedError(
+                "Indexing of source tensors with more than 4 dimensions is "
+                "currently not implemented."
+            )
+
         shp = [*x.shape[:dim], -1, *x.shape[(dim + 1) :]]
 
         # here, we assume that two dimension in `idx` mean batched mode
@@ -306,12 +356,19 @@ def wrap_scatter_reduce(
             if x.ndim == 2:
                 idx = idx.unsqueeze(-1).expand(*shp)
             elif x.ndim == 3:
-                idx = idx.unsqueeze(-1).unsqueeze(-1).expand(*shp)
+                # Unsqueeze the indices so that there initial shape is in the
+                # position specified by `dim`. Relies on negative indices and
+                # exclusion of -1. So pretty much works only for -2 and -3.
+                idx = idx.unsqueeze(dim + 2).unsqueeze(-1).expand(*shp)
         else:
             if x.ndim == 3:
                 idx = idx.unsqueeze(-1).expand(*shp)
             elif x.ndim == 4:
-                idx = idx.unsqueeze(-1).unsqueeze(-1).expand(*shp)
+                # again, only -2 and -3 are supported
+                if dim == -2:
+                    idx = idx.unsqueeze(1).unsqueeze(-1).expand(*shp)
+                elif dim == -3:
+                    idx = idx.unsqueeze(-1).unsqueeze(-1).expand(*shp)
 
     idx = torch.where(idx >= 0, idx, 0)
     return (

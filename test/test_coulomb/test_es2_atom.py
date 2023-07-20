@@ -9,16 +9,19 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb._types import Tensor
+from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.coulomb import averaging_function
 from dxtb.coulomb import secondorder as es2
 from dxtb.param import GFN1_XTB, get_elem_angular, get_elem_param
 from dxtb.utils import batch
 
+from ..utils import dgradcheck
 from .samples import samples
 
 sample_list = ["MB16_43_01", "MB16_43_02", "SiH4_atom"]
+
+device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -26,13 +29,13 @@ sample_list = ["MB16_43_01", "MB16_43_02", "SiH4_atom"]
 def test_single(dtype: torch.dtype, name: str) -> None:
     """Test ES2 for some samples from MB16_43."""
     tol = sqrt(torch.finfo(dtype).eps)
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    qat = sample["q"].type(dtype)
-    ref = sample["es2"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
+    qat = sample["q"].to(**dd)
+    ref = sample["es2"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
     es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=False, **dd)
@@ -48,31 +51,31 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps)
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         (
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         )
     )
     qat = batch.pack(
         (
-            sample1["q"].type(dtype),
-            sample2["q"].type(dtype),
+            sample1["q"].to(**dd),
+            sample2["q"].to(**dd),
         )
     )
     ref = torch.stack(
         [
-            sample1["es2"].type(dtype),
-            sample2["es2"].type(dtype),
+            sample1["es2"].to(**dd),
+            sample2["es2"].to(**dd),
         ],
     )
 
@@ -89,12 +92,12 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.parametrize("name", sample_list)
 def test_grad_positions(name: str) -> None:
     dtype = torch.double
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype).detach()
-    qat = sample["q"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd).detach()
+    qat = sample["q"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
 
@@ -108,22 +111,18 @@ def test_grad_positions(name: str) -> None:
         cache = es.get_cache(numbers, positions, ihelp)
         return es.get_atom_energy(qat, cache)
 
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradcheck
-
-    assert gradcheck(func, positions)
+    assert dgradcheck(func, positions)
 
 
 @pytest.mark.grad
 @pytest.mark.parametrize("name", sample_list)
 def test_grad_param(name: str) -> None:
-    dtype = torch.double
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": torch.double}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    qat = sample["q"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
+    qat = sample["q"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
 
@@ -142,7 +141,4 @@ def test_grad_param(name: str) -> None:
         cache = es.get_cache(numbers, positions, ihelp)
         return es.get_atom_energy(qat, cache)
 
-    # pylint: disable=import-outside-toplevel
-    from torch.autograd.gradcheck import gradcheck
-
-    assert gradcheck(func, (gexp, hubbard))
+    assert dgradcheck(func, (gexp, hubbard))

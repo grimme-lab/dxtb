@@ -50,6 +50,22 @@ class Hamiltonian(TensorLike):
     rad: Tensor
     """Van-der-Waals radius of each species."""
 
+    __slots__ = [
+        "numbers",
+        "unique",
+        "par",
+        "ihelp",
+        "hscale",
+        "kcn",
+        "kpair",
+        "refocc",
+        "selfenergy",
+        "shpoly",
+        "valence",
+        "en",
+        "rad",
+    ]
+
     def __init__(
         self,
         numbers: Tensor,
@@ -57,6 +73,7 @@ class Hamiltonian(TensorLike):
         ihelp: IndexHelper,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
+        **_,
     ) -> None:
         super().__init__(device, dtype)
         self.numbers = numbers
@@ -598,66 +615,3 @@ class Hamiltonian(TensorLike):
         dedcn = self.ihelp.reduce_shell_to_atom(dcn, dim=(-2, -1))
 
         return dedcn.sum(-2), gradient
-
-    def to(self, device: torch.device) -> Hamiltonian:
-        """
-        Returns a copy of the `Hamiltonian` instance on the specified device.
-
-        This method creates and returns a new copy of the `Hamiltonian` instance
-        on the specified device "``device``".
-
-        Parameters
-        ----------
-        device : torch.device
-            Device to which all associated tensors should be moved.
-
-        Returns
-        -------
-        Hamiltonian
-            A copy of the `Hamiltonian` instance placed on the specified device.
-
-        Notes
-        -----
-        If the `Hamiltonian` instance is already on the desired device `self`
-        will be returned.
-        """
-        if self.device == device:
-            return self
-
-        return self.__class__(
-            self.numbers.to(device=device),
-            self.par,
-            self.ihelp.to(device=device),
-            device=device,
-        )
-
-    def type(self, dtype: torch.dtype) -> Hamiltonian:
-        """
-        Returns a copy of the `Hamiltonian` instance with specified floating point type.
-        This method creates and returns a new copy of the `Hamiltonian` instance
-        with the specified dtype.
-
-        Parameters
-        ----------
-        dtype : torch.dtype
-            Type of the floating point numbers used by the `Hamiltonian` instance.
-
-        Returns
-        -------
-        Hamiltonian
-            A copy of the `Hamiltonian` instance with the specified dtype.
-
-        Notes
-        -----
-        If the `Hamiltonian` instance has already the desired dtype `self` will
-        be returned.
-        """
-        if self.dtype == dtype:
-            return self
-
-        return self.__class__(
-            self.numbers.type(dtype=torch.long),
-            self.par,
-            self.ihelp,  # floats for ihelp give an error!
-            dtype=dtype,
-        )

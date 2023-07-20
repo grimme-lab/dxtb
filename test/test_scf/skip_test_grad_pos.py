@@ -29,8 +29,8 @@ def gradchecker(
     dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
     options = dict(opts, **{"exclude": ["rep", "disp", "hal", "es2", "es3"]})

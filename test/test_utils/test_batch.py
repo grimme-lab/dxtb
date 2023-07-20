@@ -285,11 +285,11 @@ def test_unpack(device_str: str):
     a = torch.tensor([[0, 1, 2, 0], [3, 4, 5, 0], [0, 0, 1, 0]], device=device)
 
     # Check 1: ensure basic results are correct
-    check_1 = all([(i == deflate(j)).all() for i, j in zip(unpack(a), a)])
+    check_1 = all((i == deflate(j)).all() for i, j in zip(unpack(a), a))
     assert check_1, "Failed to unpack"
 
     # Check 2: ensure axis declaration is obeyed
-    check_2 = all([(i == deflate(j)).all() for i, j in zip(unpack(a, axis=1), a.T)])
+    check_2 = all((i == deflate(j)).all() for i, j in zip(unpack(a, axis=1), a.T))
     assert check_2, 'Failed to respect "axis" declaration'
 
     # Check 3: device persistence check.

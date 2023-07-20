@@ -7,8 +7,9 @@ from __future__ import annotations
 import pytest
 import torch
 
+from dxtb.basis import IndexHelper
 from dxtb.coulomb import thirdorder as es3
-from dxtb.param import GFN1_XTB
+from dxtb.param import GFN1_XTB, get_elem_angular
 
 from ..utils import get_device_from_str
 
@@ -28,12 +29,23 @@ def test_fail() -> None:
     dummy = torch.tensor(0.0)
 
     par = GFN1_XTB.copy(deep=True)
-    if par.thirdorder is None:
-        assert False
+    assert par.thirdorder is not None
 
     with pytest.raises(NotImplementedError):
         par.thirdorder.shell = True
         es3.new_es3(dummy, par)
+
+
+def test_store_fail() -> None:
+    numbers = torch.tensor([3, 1])
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+
+    es = es3.new_es3(numbers, GFN1_XTB)
+    assert es is not None
+
+    cache = es.get_cache(ihelp=ihelp)
+    with pytest.raises(RuntimeError):
+        cache.restore()
 
 
 @pytest.mark.parametrize("dtype", [torch.float16, torch.float32, torch.float64])

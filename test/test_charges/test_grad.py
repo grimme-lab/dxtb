@@ -18,14 +18,16 @@ import pytest
 import torch
 
 from dxtb import charges
-from dxtb._types import Callable, Tensor
+from dxtb._types import DD, Callable, Tensor
 from dxtb.ncoord import get_coordination_number
 from dxtb.utils import batch
 
-from .samples import samples
 from ..utils import dgradcheck, dgradgradcheck
+from .samples import samples
 
 sample_list = ["NH3", "NH3-dimer", "PbH4-BiH3", "C6H5I-CH3SH"]
+
+device = None
 
 tol = 1e-7
 
@@ -34,12 +36,14 @@ def gradchecker(
     dtype: torch.dtype, name: str
 ) -> tuple[Callable[[Tensor, Tensor], Tensor], tuple[Tensor, Tensor]]:
     """Prepare gradient check from `torch.autograd`."""
-    sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    total_charge = sample["total_charge"].type(dtype)
+    dd: DD = {"device": device, "dtype": dtype}
 
-    eeq = charges.ChargeModel.param2019(dtype=dtype)
+    sample = samples[name]
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
+    total_charge = sample["total_charge"].to(**dd)
+
+    eeq = charges.ChargeModel.param2019(**dd)
 
     # variables to be differentiated
     positions.requires_grad_(True)
@@ -80,27 +84,29 @@ def gradchecker_batch(
     dtype: torch.dtype, name1: str, name2: str
 ) -> tuple[Callable[[Tensor, Tensor], Tensor], tuple[Tensor, Tensor]]:
     """Prepare gradient check from `torch.autograd`."""
+    dd: DD = {"device": device, "dtype": dtype}
+
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         [
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         ]
     )
     positions = batch.pack(
         [
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         ]
     )
     total_charge = batch.pack(
         [
-            sample1["total_charge"].type(dtype),
-            sample2["total_charge"].type(dtype),
+            sample1["total_charge"].to(**dd),
+            sample2["total_charge"].to(**dd),
         ]
     )
 
-    eeq = charges.ChargeModel.param2019(dtype=dtype)
+    eeq = charges.ChargeModel.param2019(**dd)
 
     # variables to be differentiated
     positions.requires_grad_(True)

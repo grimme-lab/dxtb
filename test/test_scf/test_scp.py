@@ -9,6 +9,7 @@ from math import sqrt
 import pytest
 import torch
 
+from dxtb._types import DD
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
@@ -16,6 +17,8 @@ from dxtb.xtb import Calculator
 from .samples import samples
 
 opts = {"verbosity": 0, "maxiter": 300, "scf_mode": "full_tracking"}
+
+device = None
 
 
 def single(
@@ -26,12 +29,12 @@ def single(
     scp_mode: str,
     scf_mode: str,
 ) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    ref = sample["escf"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
+    ref = sample["escf"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
     options = dict(
@@ -115,7 +118,7 @@ def batched(
     scf_mode: str,
     tol: float,
 ) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name1], samples[name2]
     numbers = batch.pack(
@@ -126,14 +129,14 @@ def batched(
     )
     positions = batch.pack(
         (
-            sample[0]["positions"].type(dtype),
-            sample[1]["positions"].type(dtype),
+            sample[0]["positions"].to(**dd),
+            sample[1]["positions"].to(**dd),
         )
     )
     ref = batch.pack(
         (
-            sample[0]["escf"].type(dtype),
-            sample[1]["escf"].type(dtype),
+            sample[0]["escf"].to(**dd),
+            sample[1]["escf"].to(**dd),
         )
     )
     charges = torch.tensor([0.0, 0.0], **dd)
@@ -192,7 +195,7 @@ def test_batch_three(
     scf_mode: str,
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name1], samples[name2], samples[name3]
     numbers = batch.pack(

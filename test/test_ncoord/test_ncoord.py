@@ -8,7 +8,7 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb._types import CountingFunction
+from dxtb._types import DD, CountingFunction
 from dxtb.data import cov_rad_d3
 from dxtb.ncoord import (
     derf_count,
@@ -22,6 +22,8 @@ from dxtb.utils import batch
 from .samples import samples
 
 sample_list = ["PbH4-BiH3", "C6H5I-CH3SH", "SiH4"]
+
+device = None
 
 
 def test_fail() -> None:
@@ -42,13 +44,15 @@ def test_fail() -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
+    dd: DD = {"device": device, "dtype": dtype}
+
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
 
     cutoff = positions.new_tensor(30.0)
     rcov = cov_rad_d3[numbers]
-    ref = sample["cn"].type(dtype)
+    ref = sample["cn"].to(**dd)
 
     cn = get_coordination_number(numbers, positions, exp_count, rcov, cutoff)
     assert pytest.approx(cn) == ref
@@ -58,24 +62,26 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    dd: DD = {"device": device, "dtype": dtype}
+
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         (
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         )
     )
 
     ref = batch.pack(
         (
-            sample1["cn"].type(dtype),
-            sample2["cn"].type(dtype),
+            sample1["cn"].to(**dd),
+            sample2["cn"].to(**dd),
         )
     )
 

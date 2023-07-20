@@ -5,17 +5,19 @@ from __future__ import annotations
 
 import pytest
 import torch
-from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
-from dxtb._types import Callable, Tensor
+from dxtb._types import DD, Callable, Tensor
 from dxtb.dispersion import DispersionD3
 from dxtb.utils import batch
 
+from ..utils import dgradcheck, dgradgradcheck
 from .samples import samples
 
 sample_list = ["LiH", "SiH4", "MB16_43_01", "PbH4-BiH3"]
 
 tol = 1e-8
+
+device = None
 
 
 def gradchecker(
@@ -24,11 +26,11 @@ def gradchecker(
     Callable[[Tensor, Tensor, Tensor, Tensor], Tensor],  # autograd function
     tuple[Tensor, Tensor, Tensor, Tensor],  # differentiable variables
 ]:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
 
     # variables to be differentiated
     param = (
@@ -57,7 +59,7 @@ def test_gradcheck(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradchecker(dtype, name)
-    assert gradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol)
 
 
 @pytest.mark.grad
@@ -69,7 +71,7 @@ def test_gradgradcheck(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradchecker(dtype, name)
-    assert gradgradcheck(func, diffvars, atol=tol)
+    assert dgradgradcheck(func, diffvars, atol=tol)
 
 
 def gradchecker_batch(
@@ -78,19 +80,19 @@ def gradchecker_batch(
     Callable[[Tensor, Tensor, Tensor, Tensor], Tensor],  # autograd function
     tuple[Tensor, Tensor, Tensor, Tensor],  # differentiable variables
 ]:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         [
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         ]
     )
     positions = batch.pack(
         [
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         ]
     )
 
@@ -122,7 +124,7 @@ def test_gradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradchecker_batch(dtype, name1, name2)
-    assert gradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol)
 
 
 @pytest.mark.grad
@@ -135,4 +137,4 @@ def test_gradgradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradchecker_batch(dtype, name1, name2)
-    assert gradgradcheck(func, diffvars, atol=tol)
+    assert dgradgradcheck(func, diffvars, atol=tol)

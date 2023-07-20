@@ -39,6 +39,152 @@ def test_spread() -> None:
     assert (ihelp.spread_ushell_to_orbital(ushell) == orbital).all()
 
 
+def test_cart() -> None:
+    unique = torch.tensor([1, 14])  # include sorting
+    atom = torch.tensor([14, 1, 1])
+    shell = torch.tensor([14, 14, 14, 1, 1, 1, 1])
+    orbital = torch.tensor([14] * 9 + [1, 1, 1, 1])
+    orbital_cart = torch.tensor([14] * 10 + [1, 1, 1, 1])
+
+    angular = {
+        1: [0, 0],  # H
+        14: [0, 1, 2],  # Si
+    }
+    ihelp = IndexHelper.from_numbers(atom, angular)
+
+    assert (ihelp.spread_uspecies_to_atom(unique) == atom).all()
+    assert (ihelp.spread_uspecies_to_shell(unique) == shell).all()
+    assert (ihelp.spread_uspecies_to_orbital(unique) == orbital).all()
+    assert (ihelp.spread_uspecies_to_orbital_cart(unique) == orbital_cart).all()
+    assert (ihelp.spread_atom_to_shell(atom) == shell).all()
+    assert (ihelp.spread_atom_to_orbital(atom) == orbital).all()
+    assert (ihelp.spread_atom_to_orbital_cart(atom) == orbital_cart).all()
+
+    # check property
+    orb_per_at = torch.tensor([0] * 9 + [1, 1, 2, 2])
+    assert (ihelp.orbitals_per_atom == orb_per_at).all()
+
+    # cartesian and spherical basis
+    orb_per_shell = torch.tensor([1, 3, 5, 1, 1, 1, 1])
+    orb_per_shell_cart = torch.tensor([1, 3, 6, 1, 1, 1, 1])
+
+    orb_index = torch.tensor([0, 1, 4, 9, 10, 11, 12])
+    orb_index_cart = torch.tensor([0, 1, 4, 10, 11, 12, 13])
+
+    orb_to_shell = torch.tensor([0, 1, 1, 1, 2, 2, 2, 2, 2, 3, 4, 5, 6])
+    orb_to_shell_cart = torch.tensor([0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 4, 5, 6])
+
+    assert (ihelp.orbital_index == orb_index).all()
+    assert (ihelp.orbital_index_cart == orb_index_cart).all()
+
+    assert (ihelp.orbitals_to_shell == orb_to_shell).all()
+    assert (ihelp.orbitals_to_shell_cart == orb_to_shell_cart).all()
+
+    assert (ihelp.orbitals_per_shell == orb_per_shell).all()
+    assert (ihelp.orbitals_per_shell_cart == orb_per_shell_cart).all()
+
+
+def test_extra() -> None:
+    angular = {
+        1: [0, 0],  # H
+        14: [0, 1, 2],  # Si
+    }
+    ihelp = IndexHelper.from_numbers(torch.tensor([14, 1, 1]), angular)
+
+    # 13 orbitals = Si3s + 3*Si3p + 5*Si3d + 2*(H1s + H2s)
+    norb = 13
+    nsh = 7
+    nat = 3
+
+    # orbital to shell
+    x = torch.randn((norb, 3))
+    out = ihelp.reduce_orbital_to_shell(x, dim=-2, extra=True)
+    assert out.shape == torch.Size((nsh, 3))
+
+    x = torch.randn((norb, norb, 3))
+    out = ihelp.reduce_orbital_to_shell(x, dim=-3, extra=True)
+    assert out.shape == torch.Size((nsh, norb, 3))
+
+    x = torch.randn((norb, norb, 3))
+    out = ihelp.reduce_orbital_to_shell(x, dim=-2, extra=True)
+    assert out.shape == torch.Size((norb, nsh, 3))
+
+    # orbital to atom
+    x = torch.randn((norb, norb, 3))
+    out = ihelp.reduce_orbital_to_atom(x, dim=-3, extra=True)
+    assert out.shape == torch.Size((nat, norb, 3))
+
+    x = torch.randn((norb, norb, 3))
+    out = ihelp.reduce_orbital_to_atom(x, dim=-2, extra=True)
+    assert out.shape == torch.Size((norb, nat, 3))
+
+
+def test_extra_batch() -> None:
+    angular = {
+        1: [0, 0],  # H
+        14: [0, 1, 2],  # Si
+    }
+    numbers = torch.tensor([[14, 1, 1], [14, 1, 0]])
+    ihelp = IndexHelper.from_numbers(numbers, angular)
+
+    # 13 orbitals = Si3s + 3*Si3p + 5*Si3d + 2*(H1s + H2s)
+    norb = 13
+    nsh = 7
+    nat = 3
+    nbatch = 2
+
+    # orbital to shell
+    x = torch.randn((nbatch, norb, 3))
+    out = ihelp.reduce_orbital_to_shell(x, dim=-2, extra=True)
+    assert out.shape == torch.Size((nbatch, nsh, 3))
+
+    x = torch.randn((nbatch, norb, norb, 3))
+    out = ihelp.reduce_orbital_to_shell(x, dim=-3, extra=True)
+    assert out.shape == torch.Size((nbatch, nsh, norb, 3))
+
+    x = torch.randn((nbatch, norb, norb, 3))
+    out = ihelp.reduce_orbital_to_shell(x, dim=-2, extra=True)
+    assert out.shape == torch.Size((nbatch, norb, nsh, 3))
+
+    # orbital to atom
+    x = torch.randn((nbatch, norb, norb, 3))
+    out = ihelp.reduce_orbital_to_atom(x, dim=-3, extra=True)
+    assert out.shape == torch.Size((nbatch, nat, norb, 3))
+
+    x = torch.randn((nbatch, norb, norb, 3))
+    out = ihelp.reduce_orbital_to_atom(x, dim=-2, extra=True)
+    assert out.shape == torch.Size((nbatch, norb, nat, 3))
+
+
+def test_extra_fail() -> None:
+    angular = {
+        1: [0, 0],  # H
+        14: [0, 1, 2],  # Si
+    }
+    numbers = torch.tensor([[14, 1, 1], [14, 1, 0]])
+    ihelp = IndexHelper.from_numbers(numbers, angular)
+
+    # last dimension is reserved
+    with pytest.raises(ValueError):
+        x = torch.randn((2, 13, 3))
+        ihelp.reduce_orbital_to_shell(x, dim=-1, extra=True)
+
+    # no tuples allowed
+    with pytest.raises(TypeError):
+        x = torch.randn((2, 13, 3))
+        ihelp.reduce_orbital_to_shell(x, dim=(-1, -2), extra=True)
+
+    # source tensor has too few dimensions
+    with pytest.raises(RuntimeError):
+        x = torch.randn(3)
+        ihelp.reduce_orbital_to_shell(x, dim=-2, extra=True)
+
+    # source tensor has too many dimensions
+    with pytest.raises(NotImplementedError):
+        x = torch.randn((2, 2, 2, 13, 3))
+        ihelp.reduce_orbital_to_shell(x, dim=-2, extra=True)
+
+
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_single(dtype: torch.dtype):
     numbers = symbol2number("S H H H Mg N O S N N C H C H O N".split())

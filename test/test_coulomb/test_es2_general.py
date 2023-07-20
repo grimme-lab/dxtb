@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 """
 Run generic tests for energy contribution from isotropic second-order
 electrostatic energy (ES2).
@@ -9,7 +10,7 @@ import torch
 
 from dxtb.basis import IndexHelper
 from dxtb.coulomb import secondorder as es2
-from dxtb.param import GFN1_XTB
+from dxtb.param import GFN1_XTB, get_elem_angular
 
 from ..utils import get_device_from_str
 
@@ -23,6 +24,40 @@ def test_none() -> None:
 
     del par.charge
     assert es2.new_es2(dummy, par) is None
+
+
+def test_store_fail() -> None:
+    numbers = torch.tensor([3, 1])
+    positions = torch.randn((2, 3))
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+
+    es = es2.new_es2(numbers, GFN1_XTB)
+    assert es is not None
+
+    cache = es.get_cache(numbers, positions, ihelp=ihelp)
+    with pytest.raises(RuntimeError):
+        cache.restore()
+
+
+def test_grad_fail() -> None:
+    numbers = torch.tensor([3, 1])
+    positions = torch.randn((2, 3), requires_grad=True)
+    charges = torch.randn(6)
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+
+    es = es2.new_es2(numbers, GFN1_XTB)
+    assert es is not None
+
+    cache = es.get_cache(numbers, positions, ihelp=ihelp)
+    energy = es.get_energy(charges, cache, ihelp)
+
+    # zeroenergy
+    grad = es._gradient(torch.zeros_like(energy), positions)
+    assert (torch.zeros_like(positions) == grad).all()
+
+    with pytest.raises(RuntimeError):
+        positions.requires_grad_(False)
+        es._gradient(energy, positions)
 
 
 @pytest.mark.parametrize("dtype", [torch.float16, torch.float32, torch.float64])

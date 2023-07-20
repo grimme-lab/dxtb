@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 import torch
 
-from dxtb._types import Tensor
+from dxtb._types import DD, Tensor
 from dxtb.ncoord import (
     dexp_count,
     exp_count,
@@ -36,6 +36,8 @@ large = ["PbH4-BiH3", "MB16_43_01", "LYS_xao"]
 # SCF options
 opts = {"verbosity": 0}
 
+device = None
+
 
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
@@ -55,12 +57,12 @@ def test_no_overlap_single_large(dtype: torch.dtype, name: str) -> None:
 
 
 def no_overlap_single(dtype: torch.dtype, name: str) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
     chrg = torch.tensor(0.0, **dd)
 
     ref_dedr = load_from_npz(ref_grad_no_overlap, name, dtype)
@@ -120,21 +122,21 @@ def test_no_overlap_batch_large(dtype: torch.dtype, name1: str, name2: str) -> N
 
 
 def no_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample1, sample2 = samples[name1], samples[name2]
 
     numbers = batch.pack(
         (
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         )
     )
     chrg = batch.pack(
@@ -208,7 +210,7 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     Optionally, autograd and numerical gradient can also be calculated,
     although they may be numerically unstable.
     """
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     atol = 1e-4
 
     # tblite references
@@ -217,8 +219,8 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
 
     # setup
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
     positions.requires_grad_(True)
     chrg = torch.tensor(0.0, **dd)
 
@@ -291,7 +293,7 @@ def test_single_large(dtype: torch.dtype, name: str) -> None:
 
 
 def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     # tol = sqrt(torch.finfo(dtype).eps) * 10
     atol = 1e-4
 
@@ -299,14 +301,14 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     numbers = batch.pack(
         (
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         )
     )
     chrg = batch.pack(
@@ -401,14 +403,14 @@ def calc_numerical_gradient(
     for i in range(natm):
         for j in range(3):
             positions[i, j] += step
-            sR = calc.singlepoint(numbers, positions, chrg)
-            eR = sR.scf.sum(-1)
+            sr = calc.singlepoint(numbers, positions, chrg)
+            er = sr.scf.sum(-1)
 
             positions[i, j] -= 2 * step
-            sL = calc.singlepoint(numbers, positions, chrg)
-            eL = sL.scf.sum(-1)
+            sl = calc.singlepoint(numbers, positions, chrg)
+            el = sl.scf.sum(-1)
 
             positions[i, j] += step
-            gradient[i, j] = 0.5 * (eR - eL) / step
+            gradient[i, j] = 0.5 * (er - el) / step
 
     return gradient

@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 import torch
 
+from dxtb._types import DD
 from dxtb.io import read_chrg, read_coord
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
@@ -18,13 +19,15 @@ from .samples import samples
 
 opts = {"verbosity": 0}
 
+device = None
+
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "H2O", "CH4", "SiH4", "LYS_xao"])
 def test_single(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     base = Path(Path(__file__).parent, "mols", name)
 
@@ -48,7 +51,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name", ["C60", "vancoh2", "AD7en+"])
 def test_single_large(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     base = Path(Path(__file__).parent, "mols", name)
 
@@ -73,7 +76,7 @@ def test_single_large(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name3", ["H2", "SiH4", "LYS_xao"])
 def test_batch(dtype: torch.dtype, name1: str, name2: str, name3: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     numbers, positions, charge = [], [], []
     for name in [name1, name2, name3]:
@@ -91,9 +94,9 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, name3: str) -> None:
     charge = batch.pack(charge)
     ref = batch.pack(
         [
-            samples[name1]["etot"].type(dtype),
-            samples[name2]["etot"].type(dtype),
-            samples[name3]["etot"].type(dtype),
+            samples[name1]["etot"].to(**dd),
+            samples[name2]["etot"].to(**dd),
+            samples[name3]["etot"].to(**dd),
         ]
     )
 
@@ -107,7 +110,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, name3: str) -> None:
 @pytest.mark.parametrize("name", ["H", "NO2"])
 def test_uhf_single(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     base = Path(Path(__file__).parent, "mols", name)
 

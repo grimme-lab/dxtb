@@ -5,8 +5,9 @@ Taken from DQC.
 """
 from __future__ import annotations
 
-from dxtb._types import Tensor, Callable
 import gc
+
+from dxtb._types import Callable, Tensor
 
 
 def _get_tensor_memory() -> float:
@@ -23,7 +24,7 @@ def _get_tensor_memory() -> float:
     tensor_objs = [obj for obj in gc.get_objects() if isinstance(obj, Tensor)]
 
     # iterate each tensor objects uniquely and calculate the total storage
-    visited_data = set([])
+    visited_data = set()
     total_mem = 0.0
     for tensor in tensor_objs:
         if tensor.is_sparse:

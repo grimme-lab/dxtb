@@ -82,3 +82,25 @@ def test_change_device_fail() -> None:
     # trying to use setter
     with pytest.raises(AttributeError):
         ihelp.device = "cpu"
+
+
+def test_cache() -> None:
+    ihelp = IndexHelper.from_numbers(torch.tensor([1]), {1: [0]})
+
+    # run a memoized function
+    _ = ihelp.orbitals_to_shell_cart
+
+    # get cache
+    fcn = ihelp._orbitals_to_shell_cart  # pylint: disable=protected-access
+    cache = fcn.get_cache()
+
+    # cache should only have one entry
+    assert len(cache) == 1
+
+    # the key is created from the function name, so check if it is really there
+    assert fcn.__name__ in tuple(*cache.keys())
+
+    # clear cache and check if it is really empty
+    ihelp.clear_cache()
+    cache = fcn.get_cache()
+    assert len(cache) == 0

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Size, Tensor
+from .._types import Tensor
 
 
 @torch.jit.script
@@ -117,24 +117,3 @@ def symmetrize(x: Tensor, force: bool = False) -> Tensor:
             )
 
     return (x + x.mT) / 2
-
-
-def reshape_fortran(x: Tensor, shape: Size) -> Tensor:
-    """
-    Implements Fortran's `reshape` function (column-major).
-
-    Parameters
-    ----------
-    x : Tensor
-        Input tensor
-    shape : Size
-        Output size to which `x` is reshaped.
-
-    Returns
-    -------
-    Tensor
-        Reshaped tensor of size `shape`.
-    """
-    if len(x.shape) > 0:
-        x = x.permute(*reversed(range(len(x.shape))))
-    return x.reshape(*reversed(shape)).permute(*reversed(range(len(shape))))

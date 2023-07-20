@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 """
 Utility
 =======
@@ -6,9 +7,11 @@ Collection of utility functions.
 """
 from __future__ import annotations
 
+from functools import wraps
+
 import torch
 
-from .._types import Any, Tensor, TypeGuard
+from .._types import Any, Callable, T, Tensor, TypeGuard
 from ..constants import ATOMIC_NUMBER
 
 
@@ -75,3 +78,92 @@ def set_jit_enabled(enabled: bool) -> None:
         torch.jit._state.enable()  # type: ignore
     else:
         torch.jit._state.disable()  # type: ignore
+
+
+def memoize(fcn: Callable[..., T]) -> Callable[..., T]:
+    """
+    Memoization with shared cache among all instances of the decorated function.
+    This decorator allows specification of `__slots__`. It works with and
+    without function arguments.
+
+    Note that `lru_cache` can produce memory leaks for a method.
+
+    Parameters
+    ----------
+    fcn : Callable[[Any], T]
+        Function to memoize
+
+    Returns
+    -------
+    Callable[[Any], T]
+        Memoized function.
+    """
+
+    # creating the cache outside the wrapper shares it across instances
+    cache = {}
+
+    @wraps(fcn)
+    def wrapper(self, *args, **kwargs):
+        # create unique key for all instances in cache dictionary
+        key = (id(self), fcn.__name__, args, frozenset(kwargs.items()))
+
+        # if the result is already in the cache, return it
+        if key in cache:
+            return cache[key]
+
+        # if key is not found, compute the result
+        result = fcn(self, *args, **kwargs)
+        cache[key] = result
+        return result
+
+    def clear():
+        cache.clear()
+
+    def get():
+        return cache
+
+    setattr(wrapper, "clear", clear)
+    setattr(wrapper, "clear_cache", clear)
+    setattr(wrapper, "get_cache", get)
+
+    return wrapper
+
+
+def memoizer(fcn: Callable[..., T]) -> Callable[..., T]:  # pragma: no cover
+    """
+    Memoization decorator that writes the cache to the object itself, hence not
+    allowing the specification of `__slots__`. It works with and without
+    function arguments.
+
+    Note that `lru_cache` can produce memory leaks for a method.
+
+    Parameters
+    ----------
+    fcn : Callable[[Any], T]
+        Function to memoize
+
+    Returns
+    -------
+    Callable[[Any], T]
+        Memoized function.
+    """
+
+    @wraps(fcn)
+    def wrapper(self, *args, **kwargs):
+        if not hasattr(self, "_cache"):
+            # Create a cache dictionary as an instance attribute
+            self._cache = {}
+
+        # Create a unique key for the cache dictionary
+        key = (id(self), fcn.__name__, args, frozenset(kwargs.items()))
+
+        # If the result is already in the cache, return it
+        if key in self._cache:
+            return self._cache[key]
+
+        # If key is not found, compute the result
+        result = fcn(self, *args, **kwargs)
+        self._cache[key] = result
+        return result
+
+    return wrapper

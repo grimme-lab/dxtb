@@ -5,9 +5,10 @@ Inspired by DQC.
 """
 from __future__ import annotations
 
+import gc
+
 import pytest
 import torch
-import gc
 
 from dxtb._types import DD
 from dxtb.param import GFN1_XTB as par
@@ -35,7 +36,7 @@ def test_xitorch(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
 
         sample = samples["SiH4"]
         numbers = sample["numbers"].to(device)
-        positions = sample["positions"].to(**dd)
+        positions = sample["positions"].clone().to(**dd)
         charges = torch.tensor(0.0, **dd)
 
         options = dict(opts, **{"scf_mode": "implicit"})

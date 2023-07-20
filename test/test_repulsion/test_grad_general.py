@@ -28,8 +28,8 @@ def test_grad_fail(name: str) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
 
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None

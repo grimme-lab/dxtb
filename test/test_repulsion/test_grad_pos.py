@@ -36,9 +36,9 @@ def test_backward_vs_tblite(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    ref = sample["gfn1_grad"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
+    ref = sample["gfn1_grad"].to(**dd)
 
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
@@ -52,8 +52,12 @@ def test_backward_vs_tblite(dtype: torch.dtype, name: str) -> None:
     energy.backward()
 
     assert positions.grad is not None
-    grad_backward = positions.grad.detach()
+    grad_backward = positions.grad.clone()
+
+    # also zero out gradients when using `.backward()`
+    grad_backward.detach_()
     positions.detach_()
+    positions.grad.data.zero_()
 
     assert pytest.approx(ref, abs=tol) == grad_backward
 
@@ -69,20 +73,20 @@ def test_backward_batch_vs_tblite(dtype: torch.dtype, name1: str, name2: str) ->
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         [
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         ]
     )
     positions = batch.pack(
         [
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         ]
     )
     ref = batch.pack(
         [
-            sample1["gfn1_grad"].type(dtype),
-            sample2["gfn1_grad"].type(dtype),
+            sample1["gfn1_grad"].to(**dd),
+            sample2["gfn1_grad"].to(**dd),
         ]
     )
 
@@ -98,8 +102,12 @@ def test_backward_batch_vs_tblite(dtype: torch.dtype, name1: str, name2: str) ->
     energy.backward()
 
     assert positions.grad is not None
-    grad_backward = positions.grad.detach()
+    grad_backward = positions.grad.clone()
+
+    # also zero out gradients when using `.backward()`
+    grad_backward.detach_()
     positions.detach_()
+    positions.grad.data.zero_()
 
     assert pytest.approx(ref, abs=tol) == grad_backward
 
@@ -111,8 +119,8 @@ def test_grad_pos_backward_vs_analytical(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
 
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
@@ -132,8 +140,12 @@ def test_grad_pos_backward_vs_analytical(dtype: torch.dtype, name: str) -> None:
     energy.backward()
 
     assert positions.grad is not None
-    grad_backward = positions.grad.detach()
+    grad_backward = positions.grad.clone()
+
+    # also zero out gradients when using `.backward()`
+    grad_backward.detach_()
     positions.detach_()
+    positions.grad.data.zero_()
 
     assert pytest.approx(grad_analytical, abs=tol) == grad_backward
 
@@ -174,8 +186,8 @@ def test_grad_pos_analytical_vs_numerical(dtype: torch.dtype, name: str) -> None
     atol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
 
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
@@ -203,8 +215,8 @@ def gradchecker(
     dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
 
@@ -254,14 +266,14 @@ def gradchecker_batch(
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         [
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         ]
     )
     positions = batch.pack(
         [
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         ]
     )
 

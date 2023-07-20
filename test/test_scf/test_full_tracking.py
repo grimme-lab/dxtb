@@ -9,6 +9,7 @@ from math import sqrt
 import pytest
 import torch
 
+from dxtb._types import DD
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
@@ -16,6 +17,8 @@ from dxtb.xtb import Calculator
 from .samples import samples
 
 opts = {"verbosity": 0, "maxiter": 300, "scf_mode": "full_tracking"}
+
+device = None
 
 
 def single(
@@ -25,12 +28,12 @@ def single(
     tol: float,
     scp_mode: str = "charge",
 ) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    ref = sample["escf"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
+    ref = sample["escf"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
     options = dict(
@@ -90,7 +93,7 @@ def test_single_large(dtype: torch.dtype, name: str, mixer: str):
 
 
 def batched(dtype: torch.dtype, name1: str, name2: str, mixer: str, tol: float) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name1], samples[name2]
     numbers = batch.pack(
@@ -153,7 +156,7 @@ def batched_unconverged(
     values are different. Hence, the test only includes single precision.
     """
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name1], samples[name2], samples[name3]
     numbers = batch.pack(
@@ -194,7 +197,7 @@ def batched_unconverged(
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_batch_unconverged_partly_anderson(dtype: torch.dtype) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     # only for regression testing (copied unconverged energies)
     ref = torch.tensor(
@@ -207,7 +210,7 @@ def test_batch_unconverged_partly_anderson(dtype: torch.dtype) -> None:
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_batch_unconverged_partly_simple(dtype: torch.dtype) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     # only for regression testing (copied unconverged energies)
     ref = torch.tensor(
@@ -220,7 +223,7 @@ def test_batch_unconverged_partly_simple(dtype: torch.dtype) -> None:
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_batch_unconverged_fully_anderson(dtype: torch.dtype) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     # only for regression testing (copied unconverged energies)
     ref = torch.tensor(
@@ -235,7 +238,7 @@ def test_batch_unconverged_fully_anderson(dtype: torch.dtype) -> None:
 def test_batch_unconverged_fully_simple(
     dtype: torch.dtype,
 ) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     # only for regression testing (copied unconverged energies)
     ref = torch.tensor(
@@ -255,7 +258,7 @@ def test_batch_three(
     dtype: torch.dtype, name1: str, name2: str, name3: str, mixer: str
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name1], samples[name2], samples[name3]
     numbers = batch.pack(
@@ -310,7 +313,7 @@ def test_batch_special(dtype: torch.dtype, mixer: str) -> None:
     additional padding upon spreading is prevented.
     """
     tol = 1e-2  # atoms show larger deviations
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     numbers = torch.tensor([[2, 2], [17, 0]])
     positions = batch.pack(

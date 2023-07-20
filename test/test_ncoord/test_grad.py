@@ -8,7 +8,7 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb._types import Tensor
+from dxtb._types import DD, Tensor
 from dxtb.data import cov_rad_d3
 from dxtb.ncoord import (
     dexp_count,
@@ -22,19 +22,22 @@ from .samples import samples
 
 sample_list = ["MB16_43_01", "SiH4"]
 
+device = None
+
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 50
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
 
     cutoff = positions.new_tensor(30.0)
-    rcov = cov_rad_d3[numbers].type(dtype)
-    ref = sample["dcndr"].type(dtype)
+    rcov = cov_rad_d3[numbers].to(**dd)
+    ref = sample["dcndr"].to(**dd)
     ref = ref.reshape(numbers.shape[0], numbers.shape[0], 3).transpose(0, 1)
 
     dcndr = get_coordination_number_gradient(
@@ -56,30 +59,34 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", ["SiH4"])
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    dd: DD = {"device": device, "dtype": dtype}
     # slightly higher to avoid 10 / 1536 failing
     tol = sqrt(torch.finfo(dtype).eps) * 50
 
     sample1, sample2 = samples[name1], samples[name2]
-    natoms1, natoms2 = sample1["numbers"].shape[0], sample2["numbers"].shape[0]
+    natoms1, natoms2 = (
+        sample1["numbers"].to(device).shape[0],
+        sample2["numbers"].shape[0],
+    )
 
     numbers = batch.pack(
         (
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         )
     )
     rcov = cov_rad_d3[numbers]
 
     positions = batch.pack(
         (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         )
     )
     ref = batch.pack(
         (
-            sample1["dcndr"].type(dtype).reshape(natoms1, natoms1, 3).transpose(0, 1),
-            sample2["dcndr"].type(dtype).reshape(natoms2, natoms2, 3).transpose(0, 1),
+            sample1["dcndr"].to(**dd).reshape(natoms1, natoms1, 3).transpose(0, 1),
+            sample2["dcndr"].to(**dd).reshape(natoms2, natoms2, 3).transpose(0, 1),
         ),
     )
 

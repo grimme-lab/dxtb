@@ -9,15 +9,16 @@ from pathlib import Path
 import pytest
 import torch
 
-from dxtb._types import Tensor
+from dxtb._types import DD, Tensor
 from dxtb.io import read_chrg, read_coord
 from dxtb.param import GFN1_XTB as par
-from dxtb.utils import hessian, reshape_fortran
+from dxtb.utils import hessian
 from dxtb.xtb import Calculator
 
 from ..test_dispersion.samples import samples as samples_disp
 from ..test_halogen.samples import samples as samples_hal
 from ..test_repulsion.samples import samples as samples_rep
+from ..utils import reshape_fortran
 
 opts = {
     "verbosity": 0,
@@ -26,14 +27,15 @@ opts = {
     "xitorch_xatol": 1.0e-10,
 }
 
-
 sample_list = ["LiH", "SiH4", "MB16_43_01"]
+
+device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 100
 
     # read from file
@@ -68,6 +70,5 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     )
 
     hess = hessian(singlepoint, (numbers, positions, charge), argnums=1)
-    assert pytest.approx(ref, abs=tol, rel=tol) == hess.detach()
-
     positions.detach_()
+    assert pytest.approx(ref, abs=tol, rel=tol) == hess.detach()

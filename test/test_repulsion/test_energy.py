@@ -33,9 +33,9 @@ def test_single(dtype: torch.dtype, name: str, par: Literal["gfn1", "gfn2"]) -> 
 
     sample = samples[name]
 
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
-    ref = sample[par].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
+    ref = sample[par].to(**dd)
 
     if par == "gfn1":
         _par = GFN1_XTB
@@ -49,9 +49,9 @@ def test_single(dtype: torch.dtype, name: str, par: Literal["gfn1", "gfn2"]) -> 
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(_par.element))
     cache = rep.get_cache(numbers, ihelp)
-    e = rep.get_energy(positions, cache)
+    e = rep.get_energy(positions, cache, atom_resolved=False)
 
-    assert pytest.approx(ref, abs=tol) == e.sum(-1)
+    assert pytest.approx(ref, abs=tol) == 0.5 * e.sum((-2, -1))
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -68,20 +68,20 @@ def test_batch(
 
     numbers = batch.pack(
         (
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         )
     )
     ref = torch.stack(
         [
-            sample1[par].type(dtype),
-            sample2[par].type(dtype),
+            sample1[par].to(**dd),
+            sample2[par].to(**dd),
         ],
     )
 

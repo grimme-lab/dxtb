@@ -9,6 +9,7 @@ from math import sqrt
 import pytest
 import torch
 
+from dxtb._types import DD
 from dxtb.basis import IndexHelper
 from dxtb.constants import K2AU
 from dxtb.param import GFN1_XTB, get_elem_angular
@@ -20,9 +21,13 @@ from .samples import samples
 
 sample_list = ["H", "H2", "LiH", "SiH4", "S2"]
 
+device = None
+
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_fail(dtype: torch.dtype):
+    dd: DD = {"device": device, "dtype": dtype}
+
     evals = torch.arange(1, 6, dtype=dtype)
     nel = torch.tensor([4.0, 4.0], dtype=dtype)
 
@@ -48,8 +53,8 @@ def test_fail(dtype: torch.dtype):
     # convergence fails
     with pytest.raises(RuntimeError):
         sample = samples["SiH4"]
-        emo = sample["emo"].type(dtype)
-        nel = sample["n_electrons"].type(dtype)
+        emo = sample["emo"].to(**dd)
+        nel = sample["n_electrons"].to(**dd)
         nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
         kt = torch.tensor(10000 * K2AU, dtype=dtype)
         filling.get_fermi_occupation(nab, emo, kt, maxiter=1)
@@ -58,25 +63,29 @@ def test_fail(dtype: torch.dtype):
 @pytest.mark.parametrize("uhf", [[0, 0, 0], [1, 1, 0], [3, 1, 0]])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_fail_uhf(dtype: torch.dtype, uhf: list):
+    dd: DD = {"device": device, "dtype": dtype}
+
     with pytest.raises(ValueError):
-        nel = torch.tensor([2, 1, 2], dtype=dtype)
+        nel = torch.tensor([2, 1, 2], **dd)
         filling.get_alpha_beta_occupation(nel, nel.new_tensor(uhf))
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str):
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
+
     sample = samples[name]
 
-    nel = sample["n_electrons"].type(dtype)
-    uhf = sample["spin"].type(dtype)
+    nel = sample["n_electrons"].to(**dd)
+    uhf = sample["spin"].to(**dd)
     nab = filling.get_alpha_beta_occupation(nel, uhf)
 
-    emo = sample["emo"].type(dtype)
+    emo = sample["emo"].to(**dd)
 
-    ref_focc = sample["focc"].type(dtype)
-    ref_efermi = sample["e_fermi"].type(dtype)
+    ref_focc = sample["focc"].to(**dd)
+    ref_efermi = sample["e_fermi"].to(**dd)
 
     kt = emo.new_tensor(300 * K2AU)
 
@@ -91,48 +100,50 @@ def test_single(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str):
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
+
     sample1, sample2 = samples[name1], samples[name2]
 
     nel = batch.pack(
         [
-            sample1["n_electrons"].type(dtype),
-            sample2["n_electrons"].type(dtype),
-            sample2["n_electrons"].type(dtype),
+            sample1["n_electrons"].to(**dd),
+            sample2["n_electrons"].to(**dd),
+            sample2["n_electrons"].to(**dd),
         ]
     )
     uhf = batch.pack(
         [
-            sample1["spin"].type(dtype),
-            sample2["spin"].type(dtype),
-            sample2["spin"].type(dtype),
+            sample1["spin"].to(**dd),
+            sample2["spin"].to(**dd),
+            sample2["spin"].to(**dd),
         ]
     )
     nab = filling.get_alpha_beta_occupation(nel, uhf)
 
     emo = batch.pack(
         [
-            sample1["emo"].type(dtype),
-            sample2["emo"].type(dtype),
-            sample2["emo"].type(dtype),
+            sample1["emo"].to(**dd),
+            sample2["emo"].to(**dd),
+            sample2["emo"].to(**dd),
         ]
     )
     # emo = emo.unsqueeze(-2).expand([*nab.shape, -1]) # if only one ref channel
 
     ref_efermi = batch.pack(
         [
-            sample1["e_fermi"].type(dtype),
-            sample2["e_fermi"].type(dtype),
-            sample2["e_fermi"].type(dtype),
+            sample1["e_fermi"].to(**dd),
+            sample2["e_fermi"].to(**dd),
+            sample2["e_fermi"].to(**dd),
         ]
     )
     # ref_efermi = ref_efermi.expand([*nab.shape]) # if only one ref channel
 
     ref_focc = batch.pack(
         [
-            sample1["focc"].type(dtype),
-            sample2["focc"].type(dtype),
-            sample2["focc"].type(dtype),
+            sample1["focc"].to(**dd),
+            sample2["focc"].to(**dd),
+            sample2["focc"].to(**dd),
         ]
     )
 
@@ -148,15 +159,16 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("kt", [0.0, 5000.0])
 def test_kt(dtype: torch.dtype, kt: float):
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples["SiH4"]
-    numbers = sample["numbers"]
+    numbers = sample["numbers"].to(device)
 
-    nel = sample["n_electrons"].type(dtype)
+    nel = sample["n_electrons"].to(**dd)
     nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
 
-    emo = sample["emo"].type(dtype)
+    emo = sample["emo"].to(**dd)
 
     ref_fenergy = {
         0.0: emo.new_tensor(0.0),
@@ -227,38 +239,40 @@ def test_kt(dtype: torch.dtype, kt: float):
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_lumo_not_existing(dtype: torch.dtype) -> None:
     """Helium has no LUMO due to the minimal basis."""
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
+
     sample = samples["He"]
 
     nel = batch.pack(
         [
-            sample["n_electrons"].type(dtype),
-            sample["n_electrons"].type(dtype),
-            sample["n_electrons"].type(dtype),
+            sample["n_electrons"].to(**dd),
+            sample["n_electrons"].to(**dd),
+            sample["n_electrons"].to(**dd),
         ]
     )
     nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
 
     emo = batch.pack(
         [
-            sample["emo"].type(dtype),
-            sample["emo"].type(dtype),
-            sample["emo"].type(dtype),
+            sample["emo"].to(**dd),
+            sample["emo"].to(**dd),
+            sample["emo"].to(**dd),
         ]
     )
 
     ref_efermi = batch.pack(
         [
-            sample["e_fermi"].type(dtype),
-            sample["e_fermi"].type(dtype),
-            sample["e_fermi"].type(dtype),
+            sample["e_fermi"].to(**dd),
+            sample["e_fermi"].to(**dd),
+            sample["e_fermi"].to(**dd),
         ]
     )
     ref_focc = batch.pack(
         [
-            sample["focc"].type(dtype),
-            sample["focc"].type(dtype),
-            sample["focc"].type(dtype),
+            sample["focc"].to(**dd),
+            sample["focc"].to(**dd),
+            sample["focc"].to(**dd),
         ]
     )
 
@@ -274,47 +288,49 @@ def test_lumo_not_existing(dtype: torch.dtype) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_lumo_obscured_by_padding(dtype: torch.dtype) -> None:
     """A missing LUMO can be obscured by padding."""
+    dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
+
     sample1, sample2 = samples["H2"], samples["He"]
 
     numbers = batch.pack(
         [
-            sample1["numbers"],
-            sample2["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
+            sample2["numbers"].to(device),
         ]
     )
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
 
     nel = batch.pack(
         [
-            sample1["n_electrons"].type(dtype),
-            sample2["n_electrons"].type(dtype),
-            sample2["n_electrons"].type(dtype),
+            sample1["n_electrons"].to(**dd),
+            sample2["n_electrons"].to(**dd),
+            sample2["n_electrons"].to(**dd),
         ]
     )
     nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
 
     emo = batch.pack(
         [
-            sample1["emo"].type(dtype),
-            sample2["emo"].type(dtype),
-            sample2["emo"].type(dtype),
+            sample1["emo"].to(**dd),
+            sample2["emo"].to(**dd),
+            sample2["emo"].to(**dd),
         ]
     )
 
     ref_efermi = batch.pack(
         [
-            sample1["e_fermi"].type(dtype),
-            sample2["e_fermi"].type(dtype),
-            sample2["e_fermi"].type(dtype),
+            sample1["e_fermi"].to(**dd),
+            sample2["e_fermi"].to(**dd),
+            sample2["e_fermi"].to(**dd),
         ]
     )
     ref_focc = batch.pack(
         [
-            sample1["focc"].type(dtype),
-            sample2["focc"].type(dtype),
-            sample2["focc"].type(dtype),
+            sample1["focc"].to(**dd),
+            sample2["focc"].to(**dd),
+            sample2["focc"].to(**dd),
         ]
     )
 

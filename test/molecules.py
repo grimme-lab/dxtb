@@ -533,7 +533,14 @@ mols: dict[str, Molecule] = {
     },
     "vancoh2": {
         "numbers": symbol2number(
-            "h c c c c c c o c c c c c c o c h c h o c c h h c n h h c h h h c o h h c c h h h h o h c h o h c o h h c c o h h h o h o c c c c c c h h c o h h c n c o c c c c c c c h h o h c c c c c c o h h o h h c n c o h c o o h h h n c o c n c o c n c o c n c o c n c h h h h c h h c c h h h c h h h h h h h c o h h h c c o n h h h h h h h h h h h h h h h h h h".split()
+            (
+                "h c c c c c c o c c c c c c o c h c h o c c h h c n h h c h h "
+                "h c o h h c c h h h h o h c h o h c o h h c c o h h h o h o c "
+                "c c c c c h h c o h h c n c o c c c c c c c h h o h c c c c c "
+                "c o h h o h h c n c o h c o o h h h n c o c n c o c n c o c n "
+                "c o c n c h h h h c h h c c h h h c h h h h h h h c o h h h c "
+                "c o n h h h h h h h h h h h h h h h h h h"
+            ).split()
         ),
         "positions": torch.tensor(
             [
@@ -769,7 +776,11 @@ mols: dict[str, Molecule] = {
     },
     "tmpda": {
         "numbers": symbol2number(
-            "C C C C C C C C C C C C C C C C C C C C C C C C F F F F F F F F F F F F F F F I I I N C C C H H H H H H C H H C H H N H H C C H H H H H H".split()
+            (
+                "C C C C C C C C C C C C C C C C C C C C C C C C F F F F F F F "
+                "F F F F F F F F I I I N C C C H H H H H H C H H C H H N H H C "
+                "C H H H H H H"
+            ).split()
         ),
         "positions": torch.tensor(
             [
@@ -847,7 +858,11 @@ mols: dict[str, Molecule] = {
     },
     "tmpda_mod": {
         "numbers": symbol2number(
-            "c c c c c c c c c c c c c c c c c c c c c c c c f f f f f f f f f f f f f f f i i br n c c c h h h h h h c h h c o h n h h c c h h h h h h h".split()
+            (
+                "c c c c c c c c c c c c c c c c c c c c c c c c f f f f f f f "
+                "f f f f f f f f i i br n c c c h h h h h h c h h c o h n h h c "
+                "c h h h h h h h"
+            ).split()
         ),
         "positions": torch.tensor(
             [
@@ -953,7 +968,10 @@ mols: dict[str, Molecule] = {
     },
     "AD7en+": {
         "numbers": symbol2number(
-            "c c c c c c c h h h h h h h h h h h h h h h h c c c c c c c h h h h h h h h h".split()
+            (
+                "c c c c c c c h h h h h h h h h h h h h h h h c c c c c c c h "
+                "h h h h h h h h"
+            ).split()
         ),
         "positions": torch.tensor(
             [

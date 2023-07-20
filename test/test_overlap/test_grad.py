@@ -79,8 +79,8 @@ def test_overlap_jacobian(dtype: torch.dtype, name: str):
     tol = sqrt(torch.finfo(dtype).eps)
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     overlap = Overlap(numbers, par, ihelp, **dd)
 
@@ -116,13 +116,13 @@ def calc_numerical_gradient(overlap: Overlap, positions: Tensor) -> Tensor:
     for i in range(natm):
         for j in range(3):
             positions[i, j] += step
-            sR = overlap.build(positions)  # [norb, norb]
+            sr = overlap.build(positions)  # [norb, norb]
 
             positions[i, j] -= 2 * step
-            sL = overlap.build(positions)
+            sl = overlap.build(positions)
 
             positions[i, j] += step
-            gradient[i, :, :, j] = 0.5 * (sR - sL) / step
+            gradient[i, :, :, j] = 0.5 * (sr - sl) / step
 
     return gradient
 
@@ -237,7 +237,10 @@ def test_overlap_grad_single_1s2s(dtype: torch.dtype):
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_overlap_grad_single_3s4s(dtype: torch.dtype):
-    """Comparison of single gaussians. Reference values taken from tblite MMD implementation."""
+    """
+    Comparison of single gaussians.
+    Reference values taken from tblite MMD implementation.
+    """
 
     # define CGTOs (by ng, n, l)
     cgtoi = torch.tensor([6, 3, 0])
@@ -254,7 +257,8 @@ def test_overlap_grad_single_3s4s(dtype: torch.dtype):
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_overlap_grad_single_1s2p(dtype: torch.dtype):
     """
-    Comparison of single gaussians. Reference values taken from tblite MMD
+    Comparison of single gaussians.
+    Reference values taken from tblite MMD
     implementation.
     """
 

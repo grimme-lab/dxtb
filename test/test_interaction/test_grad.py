@@ -6,7 +6,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb._types import Callable, Tensor
+from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.coulomb import new_es2, new_es3
 from dxtb.interaction import InteractionList
@@ -22,16 +22,18 @@ sample_list = ["H2", "HHe", "LiH", "H2O", "SiH4"]
 
 tol = 1e-7
 
+device = None
+
 
 def gradchecker(
     dtype: torch.dtype, name: str
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"]
-    positions = sample["positions"].type(dtype)
+    numbers = sample["numbers"].to(device)
+    positions = sample["positions"].to(**dd)
     chrg = torch.tensor(0.0, **dd)
 
     # setup
@@ -77,19 +79,19 @@ def gradchecker_batch(
     dtype: torch.dtype, name1: str, name2: str
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
-    dd = {"dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         [
-            sample1["numbers"],
-            sample2["numbers"],
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
         ]
     )
     positions = batch.pack(
         [
-            sample1["positions"].type(dtype),
-            sample2["positions"].type(dtype),
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
         ]
     )
     chrg = torch.tensor([0.0, 0.0], **dd)
