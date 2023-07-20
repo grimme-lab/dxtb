@@ -106,7 +106,7 @@ def iterate_potential(potential: Tensor, data: _Data, cfg: SCF_Config, interacti
     charges = potential_to_charges(potential, data, cfg)
     if cfg.scf_options["verbosity"] > 0:
         if charges.ndim < 2:  # pragma: no cover
-            energy = get_energy(charges).sum(-1).detach().clone()
+            energy = get_energy(charges, data, interactions).sum(-1).detach().clone()
             ediff = torch.linalg.vector_norm(data.old_energy - energy)
 
             density = data.density.detach().clone()
