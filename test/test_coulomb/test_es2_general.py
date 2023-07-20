@@ -17,7 +17,7 @@ from ..utils import get_device_from_str
 
 def test_none() -> None:
     dummy = torch.tensor(0.0)
-    par = GFN1_XTB.copy(deep=True)
+    par = GFN1_XTB.model_copy(deep=True)
 
     par.charge = None
     assert es2.new_es2(dummy, par) is None

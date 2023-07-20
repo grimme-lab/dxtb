@@ -16,7 +16,7 @@ from ..utils import get_device_from_str
 
 def test_none() -> None:
     dummy = torch.tensor(0.0)
-    par = GFN1_XTB.copy(deep=True)
+    par = GFN1_XTB.model_copy(deep=True)
 
     par.thirdorder = None
     assert es3.new_es3(dummy, par) is None
@@ -28,7 +28,7 @@ def test_none() -> None:
 def test_fail() -> None:
     dummy = torch.tensor(0.0)
 
-    par = GFN1_XTB.copy(deep=True)
+    par = GFN1_XTB.model_copy(deep=True)
     assert par.thirdorder is not None
 
     with pytest.raises(NotImplementedError):

@@ -14,8 +14,8 @@ from dxtb.utils import ParameterWarning
 
 def test_none() -> None:
     dummy = torch.tensor(0.0)
-    _par1 = GFN1_XTB.copy(deep=True)
-    _par2 = GFN2_XTB.copy(deep=True)
+    _par1 = GFN1_XTB.model_copy(deep=True)
+    _par2 = GFN2_XTB.model_copy(deep=True)
 
     with pytest.warns(ParameterWarning):
         _par1.dispersion = None
@@ -37,7 +37,7 @@ def test_fail_charge() -> None:
 
 
 def test_fail_no_dispersion() -> None:
-    _par = GFN1_XTB.copy(deep=True)
+    _par = GFN1_XTB.model_copy(deep=True)
     assert _par.dispersion is not None
 
     # set both to None
@@ -47,8 +47,8 @@ def test_fail_no_dispersion() -> None:
 
 
 def test_fail_too_many_parameters() -> None:
-    _par = GFN1_XTB.copy(deep=True)
-    _par2 = GFN2_XTB.copy(deep=True)
+    _par = GFN1_XTB.model_copy(deep=True)
+    _par2 = GFN2_XTB.model_copy(deep=True)
 
     assert _par.dispersion is not None
     assert _par2.dispersion is not None

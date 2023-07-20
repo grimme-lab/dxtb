@@ -68,7 +68,7 @@ def test_disp_batch(dtype: torch.dtype) -> None:
     assert torch.allclose(energy, ref)
 
     # create copy as `par` lives in global scope
-    _par = par.copy(deep=True)
+    _par = par.model_copy(deep=True)
     if _par.dispersion is None or _par.dispersion.d3 is None:
         assert False
 
