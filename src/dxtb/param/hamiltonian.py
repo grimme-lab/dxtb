@@ -29,7 +29,7 @@ class XTBHamiltonian(BaseModel):
     """Electronegativity scaling factor for off-site valence blocks"""
     wexp: float
     """Exponent of the orbital exponent dependent off-site scaling factor"""
-    cn: Optional[str]
+    cn: Optional[str] = None
     """Local environment descriptor for shifting the atomic self-energies"""
     kpol: float = 2.0
     """Scaling factor for polarization functions"""

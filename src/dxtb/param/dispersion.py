@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from .._types import Tensor
 from ..constants import xtb
@@ -18,8 +18,7 @@ class D3Model(BaseModel):
     Representation of the DFT-D3(BJ) contribution for a parametrization.
     """
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     s6: Union[float, Tensor] = xtb.DEFAULT_DISP_S6
     """Scaling factor for multipolar (dipole-dipole contribution) terms."""
@@ -42,8 +41,7 @@ class D4Model(BaseModel):
     Representation of the DFT-D4 contribution for a parametrization.
     """
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     sc: bool = False
     """Whether the dispersion correctio is used self-consistently or not."""
