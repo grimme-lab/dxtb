@@ -58,17 +58,43 @@ def test_setter() -> None:
         mol.positions = torch.randn(1)
 
 
+def test_getter() -> None:
+    numbers = torch.randn(5)
+    positions = torch.randn((5, 3))
+    mol = Mol(numbers, positions)
+
+    assert pytest.approx(numbers) == mol.numbers
+    assert pytest.approx(positions) == mol.positions
+
+
 def test_charge() -> None:
     numbers = torch.randn(5)
     positions = torch.randn((5, 3))
     mol = Mol(numbers, positions, charge=1)
 
+    # charge as int
     assert isinstance(mol.charge, Tensor)
     assert mol.charge.dtype == torch.int64
 
+    # charge as float
     mol.charge = 1.0
     assert isinstance(mol.charge, Tensor)
     assert mol.charge.dtype == torch.float32
 
+    # charge as Tensor
+    mol.charge = torch.tensor(1.0)
+    assert isinstance(mol.charge, Tensor)
+    assert mol.charge.dtype == torch.float32
+
+    # charge as wrong type (string)
     with pytest.raises(TypeError):
         mol.charge = "1"  # type: ignore
+
+
+@pytest.mark.cuda
+def test_device() -> None:
+    numbers = torch.randn(5, device=torch.device("cuda:0"))
+    positions = torch.randn((5, 3), device=torch.device("cpu"))
+
+    with pytest.raises(RuntimeError):
+        Mol(numbers, positions)

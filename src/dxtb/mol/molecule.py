@@ -85,7 +85,25 @@ class Mol(TensorLike):
 
     @memoize
     def distances(self) -> Tensor:
+        """
+        Calculate the distance matrix from the positions.
+
+        .. warning::
+
+            Memoization for this method creates a cache that stores the
+            distances across all instances.
+
+        Returns
+        -------
+        Tensor
+            Distance matrix.
+        """
         return cdist(self.positions)
+
+    def clear_cache(self):
+        """Clear the cross-instance caches of all memoized method."""
+        if hasattr(self.distances, "clear"):
+            self.distances.clear()
 
     def checks(self) -> None | NoReturn:
         """
@@ -94,7 +112,7 @@ class Mol(TensorLike):
         Raises
         ------
         RuntimeError
-            Wrong device, shape errors.
+            Wrong device or shape errors.
         """
 
         # check tensor type inputs
@@ -105,7 +123,7 @@ class Mol(TensorLike):
         # check if all tensors are on the same device
         for s in self.__slots__:
             attr = getattr(self, s)
-            if isinstance(attr, Tensor) or issubclass(type(attr), TensorLike):
+            if isinstance(attr, Tensor):
                 if attr.device != self.device:
                     raise RuntimeError("All tensors must be on the same device!")
 

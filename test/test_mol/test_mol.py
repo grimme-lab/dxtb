@@ -26,6 +26,8 @@ def test_dist(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].to(**dd)
 
     mol = Mol(numbers, positions)
+    dist = mol.distances()
+    mol.clear_cache()
 
-    assert pytest.approx(numbers) == mol.numbers
-    assert pytest.approx(positions) == mol.positions
+    assert dist.shape[-1] == numbers.shape[-1]
+    assert dist.shape[-2] == numbers.shape[-1]

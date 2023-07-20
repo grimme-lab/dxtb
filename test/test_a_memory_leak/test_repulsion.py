@@ -33,7 +33,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
         sample = samples[name]
         numbers = sample["numbers"].to(device)
-        positions = sample["positions"].to(**dd)
+        positions = sample["positions"].clone().to(**dd)
 
         ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
 
