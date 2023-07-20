@@ -14,9 +14,9 @@ class Meta(BaseModel):
     Representation of the meta data for a parametrization.
     """
 
-    name: Optional[str]
+    name: Optional[str] = None
     """Name of the represented method"""
-    reference: Optional[str]
+    reference: Optional[str] = None
     """References relevant for the parametrization records"""
     version: int = 0
     """Version of the represented method"""

@@ -32,7 +32,7 @@ class Param(BaseModel):
     Complete self-contained representation of an extended tight-binding model.
     """
 
-    meta: Optional[Meta]
+    meta: Optional[Meta] = None
     """Descriptive data on the model."""
     element: Elements
     """Element specific parameter records."""

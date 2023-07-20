@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from .._types import Tensor
 
@@ -16,8 +16,7 @@ class MultipoleDamped(BaseModel):
     for a parametrization.
     """
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     dmp3: Union[float, Tensor]
 
