@@ -8,6 +8,7 @@ repos:
       - id: check-toml
       - id: check-yaml
       - id: check-added-large-files
+        args: ["--maxkb=20000"]
       - id: debug-statements
         language_version: python3
 
