@@ -1,26 +1,30 @@
+"""
+Conversions
+===========
+
+Conversion of charges, potential, hamiltonian, ... implemented as pure
+functions in order to avoid RAM leak due to circular references.
+"""
 from __future__ import annotations
+
 import torch
 
 from .._types import Tensor
 from ..constants import defaults
-from ..wavefunction import filling
 from ..interaction import InteractionList
-
+from ..wavefunction import filling
 from .base import get_density
+from .config import SCFConfig
 from .data import _Data
-from .config import SCF_Config
 from .ovlp_diag import diagonalize
 
-"""
-Conversion of charges, potential, hamiltonian, ... implemented as pure 
-functions in order to avoid RAM leak due to circular references.
-
-NOTE: Conversion methods are designed as semi-pure functions (i.e. contain `data.attr = x`).
-      Therefore, make sure to delete attributes manually at end of scope (i.e. `del data.attr`).
-"""
+# NOTE:
+# Conversion methods are designed as semi-pure functions (i.e. contain
+# `data.attr = x`). Therefore, make sure to delete attributes manually at end
+# of scope (i.e. `del data.attr`).
 
 
-def converged_to_charges(x: Tensor, data: _Data, cfg: SCF_Config) -> Tensor:
+def converged_to_charges(x: Tensor, data: _Data, cfg: SCFConfig) -> Tensor:
     """
     Convert the converged property to charges.
 
@@ -30,7 +34,7 @@ def converged_to_charges(x: Tensor, data: _Data, cfg: SCF_Config) -> Tensor:
         Converged property (scp).
     data: _Data
         Object holding SCF data.
-    cfg: SCF_Config
+    cfg: SCFConfig
         Configuration for SCF settings.
 
     Returns
@@ -80,7 +84,7 @@ def charges_to_potential(
     return interactions.get_potential(charges, data.cache, data.ihelp)
 
 
-def potential_to_charges(potential: Tensor, data: _Data, cfg: SCF_Config) -> Tensor:
+def potential_to_charges(potential: Tensor, data: _Data, cfg: SCFConfig) -> Tensor:
     """
     Compute the orbital charges from the potential.
 
@@ -90,7 +94,7 @@ def potential_to_charges(potential: Tensor, data: _Data, cfg: SCF_Config) -> Ten
         Potential vector for each orbital partial charge.
     data: _Data
         Data cache for intermediary storage during self-consistency.
-    cfg: SCF_Config
+    cfg: SCFConfig
         Configuration for SCF settings.
 
     Returns
@@ -103,7 +107,7 @@ def potential_to_charges(potential: Tensor, data: _Data, cfg: SCF_Config) -> Ten
     return density_to_charges(data.density, data)
 
 
-def potential_to_density(potential: Tensor, data: _Data, cfg: SCF_Config) -> Tensor:
+def potential_to_density(potential: Tensor, data: _Data, cfg: SCFConfig) -> Tensor:
     """
     Obtain the density matrix from the potential.
 
@@ -113,7 +117,7 @@ def potential_to_density(potential: Tensor, data: _Data, cfg: SCF_Config) -> Ten
         Potential vector for each orbital partial charge.
     data: _Data
         Data cache for intermediary storage during self-consistency.
-    cfg: SCF_Config
+    cfg: SCFConfig
         Configuration for SCF settings.
 
     Returns
@@ -179,7 +183,7 @@ def potential_to_hamiltonian(potential: Tensor, data: _Data) -> Tensor:
     )
 
 
-def hamiltonian_to_density(hamiltonian: Tensor, data: _Data, cfg: SCF_Config) -> Tensor:
+def hamiltonian_to_density(hamiltonian: Tensor, data: _Data, cfg: SCFConfig) -> Tensor:
     """
     Compute the density matrix from the Hamiltonian.
 
@@ -189,7 +193,7 @@ def hamiltonian_to_density(hamiltonian: Tensor, data: _Data, cfg: SCF_Config) ->
         Hamiltonian matrix.
     data: _Data
         Data cache for intermediary storage during self-consistency.
-    cfg: SCF_Config
+    cfg: SCFConfig
         Configuration for SCF settings.
 
     Returns

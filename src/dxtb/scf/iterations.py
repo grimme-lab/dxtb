@@ -1,3 +1,10 @@
+"""
+Iterations
+==========
+
+Iterations of physical properties implemented as pure functions
+in order to avoid RAM leak due to circular references.
+"""
 from __future__ import annotations
 
 import torch
@@ -5,18 +12,21 @@ import torch
 from .._types import Tensor
 from ..constants import defaults
 from ..interaction import InteractionList
-
-from .conversions import potential_to_charges, charges_to_potential, potential_to_hamiltonian, hamiltonian_to_density, density_to_charges
-from .energies import get_energy
+from .config import SCFConfig
+from .conversions import (
+    charges_to_potential,
+    density_to_charges,
+    hamiltonian_to_density,
+    potential_to_charges,
+    potential_to_hamiltonian,
+)
 from .data import _Data
-from .config import SCF_Config
+from .energies import get_energy
 
-"""
-Iterations of physical properties implemented as pure functions 
-in order to avoid RAM leak due to circular references.
-"""
 
-def iterate_charges(charges: Tensor, data: _Data, cfg: SCF_Config, interactions: InteractionList) -> Tensor:
+def iterate_charges(
+    charges: Tensor, data: _Data, cfg: SCFConfig, interactions: InteractionList
+) -> Tensor:
     """
     Perform single self-consistent iteration.
 
@@ -26,7 +36,7 @@ def iterate_charges(charges: Tensor, data: _Data, cfg: SCF_Config, interactions:
         Orbital-resolved partial charges vector.
     data: _Data
         Storage for tensors which become part of autograd graph within SCF cycles.
-    cfg: SCF_Config
+    cfg: SCFConfig
         Configuration for SCF settings.
     interactions : InteractionList
         Collection of `Interation` objects.
@@ -38,7 +48,7 @@ def iterate_charges(charges: Tensor, data: _Data, cfg: SCF_Config, interactions:
     """
     if cfg.scf_options.get("verbosity", defaults.VERBOSITY) > 0:
         if charges.ndim < 2:  # pragma: no cover
-            energy = get_energy(charges).sum(-1).detach().clone()
+            energy = get_energy(charges, data, interactions).sum(-1).detach().clone()
             ediff = torch.linalg.vector_norm(data.old_energy - energy)
 
             density = data.density.detach().clone()
@@ -57,7 +67,7 @@ def iterate_charges(charges: Tensor, data: _Data, cfg: SCF_Config, interactions:
             data.old_density = density
             data.iter += 1
         else:
-            energy = get_energy(charges).detach().clone()
+            energy = get_energy(charges, data, interactions).detach().clone()
             ediff = torch.linalg.norm(data.old_energy - energy)
 
             density = data.density.detach().clone()
@@ -67,8 +77,7 @@ def iterate_charges(charges: Tensor, data: _Data, cfg: SCF_Config, interactions:
             qdiff = torch.linalg.norm(data.old_charges - q)
 
             print(
-                f"{data.iter:3}   {energy.sum(): .16E}  {ediff: .6E} "
-                f"{qdiff: .6E}"
+                f"{data.iter:3}   {energy.sum(): .16E}  {ediff: .6E} " f"{qdiff: .6E}"
             )
 
             data.old_energy = energy
@@ -77,11 +86,14 @@ def iterate_charges(charges: Tensor, data: _Data, cfg: SCF_Config, interactions:
             data.iter += 1
 
     if cfg.fwd_options["verbose"] > 1:  # pragma: no cover
-        print(f"energy: {get_energy(charges).sum(-1)}")
+        print(f"energy: {get_energy(charges, data, interactions).sum(-1)}")
     potential = charges_to_potential(charges, interactions, data)
     return potential_to_charges(potential, data, cfg)
 
-def iterate_potential(potential: Tensor, data: _Data, cfg: SCF_Config, interactions: InteractionList) -> Tensor:
+
+def iterate_potential(
+    potential: Tensor, data: _Data, cfg: SCFConfig, interactions: InteractionList
+) -> Tensor:
     """
     Perform single self-consistent iteration.
 
@@ -91,11 +103,11 @@ def iterate_potential(potential: Tensor, data: _Data, cfg: SCF_Config, interacti
         Potential vector for each orbital partial charge.
     data: _Data
         Storage for tensors which become part of autograd graph within SCF cycles.
-    cfg: SCF_Config
+    cfg: SCFConfig
         Configuration for SCF settings.
     interactions : InteractionList
         Collection of `Interation` objects.
-        
+
 
     Returns
     -------
@@ -125,7 +137,7 @@ def iterate_potential(potential: Tensor, data: _Data, cfg: SCF_Config, interacti
             data.old_density = density
             data.iter += 1
         else:
-            energy = get_energy(charges).detach().clone()
+            energy = get_energy(charges, data, interactions).detach().clone()
             ediff = torch.linalg.norm(data.old_energy - energy)
 
             density = data.density.detach().clone()
@@ -135,8 +147,7 @@ def iterate_potential(potential: Tensor, data: _Data, cfg: SCF_Config, interacti
             qdiff = torch.linalg.norm(data.old_charges - q)
 
             print(
-                f"{data.iter:3}   {energy.sum(): .16E}  {ediff: .6E} "
-                f"{qdiff: .6E}"
+                f"{data.iter:3}   {energy.sum(): .16E}  {ediff: .6E} " f"{qdiff: .6E}"
             )
 
             data.old_energy = energy
@@ -146,7 +157,10 @@ def iterate_potential(potential: Tensor, data: _Data, cfg: SCF_Config, interacti
 
     return charges_to_potential(charges, interactions, data)
 
-def iterate_fockian(fockian: Tensor, data: _Data, cfg: SCF_Config, interactions: InteractionList) -> Tensor:
+
+def iterate_fockian(
+    fockian: Tensor, data: _Data, cfg: SCFConfig, interactions: InteractionList
+) -> Tensor:
     """
     Perform single self-consistent iteration using the Fock matrix.
 
@@ -156,11 +170,11 @@ def iterate_fockian(fockian: Tensor, data: _Data, cfg: SCF_Config, interactions:
         Fock matrix.
     data: _Data
         Storage for tensors which become part of autograd graph within SCF cycles.
-    cfg: SCF_Config
+    cfg: SCFConfig
         Configuration for SCF settings.
     interactions : InteractionList
         Collection of `Interation` objects.
-    
+
     Returns
     -------
     Tensor
@@ -173,5 +187,11 @@ def iterate_fockian(fockian: Tensor, data: _Data, cfg: SCF_Config, interactions:
 
     return data.hamiltonian
 
-iter_options = {"charge": iterate_charges, "charges": iterate_charges,"potential": iterate_potential,"fock": iterate_fockian}
+
+iter_options = {
+    "charge": iterate_charges,
+    "charges": iterate_charges,
+    "potential": iterate_potential,
+    "fock": iterate_fockian,
+}
 """Possible physical values to be iterated during SCF procedure."""

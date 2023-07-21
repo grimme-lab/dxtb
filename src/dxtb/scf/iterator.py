@@ -16,25 +16,24 @@ from math import sqrt
 
 import torch
 
-from .._types import Any, SCFResult, Slicers, Tensor
+from .._types import Any, Callable, SCFResult, Slicers, Tensor
 from ..basis import IndexHelper
 from ..constants import defaults
 from ..exlibs.xitorch import optimize as xto
 from ..interaction import InteractionList
 from ..utils import SCFConvergenceError, SCFConvergenceWarning
 from .base import BaseTSCF, BaseXSCF
-from .guess import get_guess
-from .mixer import Anderson, Mixer, Simple
-
+from .config import SCFConfig
 from .conversions import (
-    converged_to_charges,
     charges_to_potential,
+    converged_to_charges,
     potential_to_hamiltonian,
 )
-from .iterations import iter_options
 from .data import _Data
-from .energies import get_energy, get_electronic_free_energy
-from .config import SCF_Config
+from .energies import get_electronic_free_energy, get_energy
+from .guess import get_guess
+from .iterations import iter_options
+from .mixer import Anderson, Mixer, Simple
 
 
 class SelfConsistentField(BaseXSCF):
@@ -79,8 +78,8 @@ def scf_pure(
     guess: Tensor,
     data: _Data,
     interactions: InteractionList,
-    cfg: SCF_Config,
-    fcn: callable,
+    cfg: SCFConfig,
+    fcn: Callable[[Tensor, _Data, SCFConfig, InteractionList], Tensor],
 ) -> Tensor:
     """
     Self-consistent field method, which can be used to obtain a
@@ -101,9 +100,9 @@ def scf_pure(
     """
 
     # The initial guess is an "arbitrary" tensor, and hence not part of AD computational graph.
-    # NOTE: This leads to not entering xitorch._RootFinder.backward() at all during a 
+    # NOTE: This leads to not entering xitorch._RootFinder.backward() at all during a
     #       loss.backward() call. However, then the position tensor does receive gradient.
-    guess = guess.detach() 
+    guess = guess.detach()
 
     q_converged = xto.equilibrium(
         fcn=fcn,
@@ -112,10 +111,10 @@ def scf_pure(
         bck_options={**cfg.bck_options},
         **cfg.fwd_options,
     )
-    # NOTE: Entering 
-    #         A) a guess that requires grad or 
-    #         B) a data.tensor into params or 
-    #         C) a tensor into params that requires grad 
+    # NOTE: Entering
+    #         A) a guess that requires grad or
+    #         B) a data.tensor into params or
+    #         C) a tensor into params that requires grad
     #       leads to memory remnants and thus a RAM leak.
 
     # To reconnect the H0 energy with the computational graph, we
@@ -133,7 +132,7 @@ def scf_pure(
 def run_scf(
     data: _Data,
     interactions: InteractionList,
-    cfg: SCF_Config,
+    cfg: SCFConfig,
     charges: Tensor | None = None,
 ) -> SCFResult:
     """
@@ -146,7 +145,7 @@ def run_scf(
         Storage for tensors which become part of autograd graph within SCF cycles.
     interactions : InteractionList
         Collection of `Interation` objects.
-    cfg: SCF_Config
+    cfg: SCFConfig
         Dataclass containing configuration for SCF iterations.
     charges : Tensor, optional
         Initial orbital charges vector. If `None` is given (default), a
@@ -550,7 +549,7 @@ def solve(
         forbidden = ["bck_options", "fwd_options", "scf_options"]
         data_kwargs = {k: v for k, v in kwargs.items() if k not in forbidden}
         data = _Data(*args, numbers=numbers, ihelp=ihelp, cache=cache, **data_kwargs)
-        cfg = SCF_Config(data, **kwargs)
+        cfg = SCFConfig(data, **kwargs)
 
         charges = get_guess(numbers, positions, chrg, ihelp, guess)
         result = run_scf(data, interactions, cfg, charges)

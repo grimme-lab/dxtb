@@ -1,15 +1,20 @@
+"""
+Energy
+======
+
+Functions for energy calculations within the SCF.
+"""
 from __future__ import annotations
 
 import torch
 
 from .._types import Tensor
 from ..constants import defaults
+from ..interaction import InteractionList
 from ..utils import real_atoms
 from ..wavefunction import mulliken
-from ..interaction import InteractionList
-
+from .config import SCFConfig
 from .data import _Data
-from .config import SCF_Config
 
 
 def get_energy(charges: Tensor, data: _Data, interactions: InteractionList) -> Tensor:
@@ -63,7 +68,7 @@ def get_energy_as_dict(
     return {**energy_h0, **energy_interactions}
 
 
-def get_electronic_free_energy(data: _Data, cfg: SCF_Config) -> Tensor:
+def get_electronic_free_energy(data: _Data, cfg: SCFConfig) -> Tensor:
     r"""
     Calculate electronic free energy from entropy.
 

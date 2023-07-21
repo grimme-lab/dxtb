@@ -1,21 +1,25 @@
+"""
+SCF Configuration
+=================
+
+This module defines a storage class for the SCF options.
+"""
 from __future__ import annotations
 
 import torch
 
 from .._types import Any
 from ..constants import K2AU, defaults
-from ..interaction import InteractionList
-
 from .data import _Data
 
 
-class SCF_Config:
+class SCFConfig:
     """
-    Self-consistent field configuration, as pure base class
-    containing only configuration information.
+    Self-consistent field configuration, as pure base class containing only
+    configuration information.
 
-    This class should _not_ contain any tensors
-    which store AG gradients during SCF iterations.
+    This class should _not_ contain any tensors, which store AG gradients
+    during SCF iterations.
     """
 
     fwd_options: dict[str, Any]
@@ -42,11 +46,7 @@ class SCF_Config:
     batched: bool
     """Whether multiple systems or a single one are handled"""
 
-    def __init__(
-        self,
-        data: _Data = None,
-        **kwargs: Any,
-    ) -> None:
+    def __init__(self, data: _Data, **kwargs: Any) -> None:
         self.bck_options = {"posdef": True, **kwargs.pop("bck_options", {})}
         self.fwd_options = {
             "force_convergence": False,
@@ -68,7 +68,7 @@ class SCF_Config:
         self.scp_mode = self.scf_options.get("scp_mode", defaults.SCP_MODE)
 
         # Only infer shapes and types from _Data (no logic involved),
-        # i.e. keep _Data and SCF_Config instances disjunct objects.
+        # i.e. keep _Data and SCFConfig instances disjunct objects.
         self._shape = data.hcore.shape
         self._dtype = data.hcore.dtype
         self._device = data.hcore.device
