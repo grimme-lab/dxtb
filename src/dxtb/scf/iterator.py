@@ -16,13 +16,14 @@ from math import sqrt
 
 import torch
 
-from .._types import Any, SCFResult, Slicers, Tensor
+from .._types import Any, Slicers, Tensor
 from ..basis import IndexHelper
 from ..constants import defaults
 from ..exlibs.xitorch import optimize as xto
+from ..integral import Integrals
 from ..interaction import InteractionList
 from ..utils import SCFConvergenceError, SCFConvergenceWarning
-from .base import BaseTSCF, BaseXSCF
+from .base import BaseTSCF, BaseXSCF, SCFResult
 from .guess import get_guess
 from .mixer import Anderson, Mixer, Simple
 
@@ -300,7 +301,7 @@ class SelfConsistentFieldSingleShot(SelfConsistentFieldFull):
     input features do not change much.
     """
 
-    def __call__(self, charges: Tensor | None = None) -> dict[str, Tensor]:
+    def __call__(self, charges: Tensor | None = None) -> SCFResult:
         """
         Run the self-consistent iterations until a stationary solution is reached
 
@@ -318,30 +319,52 @@ class SelfConsistentFieldSingleShot(SelfConsistentFieldFull):
         if charges is None:
             charges = torch.zeros_like(self._data.occupation)
 
+        if self.scp_mode in ("charge", "charges"):
+            guess = charges
+        elif self.scp_mode == "potential":
+            potential = self.charges_to_potential(charges)
+            guess = potential.as_tensor()
+        elif self.scp_mode == "fock":
+            potential = self.charges_to_potential(charges)
+            guess = self.potential_to_hamiltonian(potential)
+        else:
+            raise ValueError(
+                f"Unknown convergence target (SCP mode) '{self.scp_mode}'."
+            )
+
         # calculate charges in SCF without gradient tracking
         with torch.no_grad():
-            q_conv = self.scf(charges)
+            scp_conv = self.scf(guess)
+
+        # initialize the correct mixer with tolerances etc.
+        mixer = self.scf_options["mixer"]
+        if isinstance(mixer, str):
+            mixers = {"anderson": Anderson, "simple": Simple}
+            if mixer.casefold() not in mixers:
+                raise ValueError(f"Unknown mixer '{mixer}'.")
+
+            # select and init mixer
+            mixer: Mixer = mixers[mixer.casefold()](
+                self.fwd_options, is_batch=self.batched
+            )
 
         # SCF step with gradient using converged result as "perfect" guess
-        out = (
-            self.iterate_potential(self.charges_to_potential(q_conv))
-            if self.use_potential
-            else self.iterate_charges(q_conv)
-        )
-        charges = self.potential_to_charges(out) if self.use_potential else out
+        scp_new = self._fcn(scp_conv)
+        scp = mixer.iter(scp_new, scp_conv)
+        scp = self.converged_to_charges(scp)
 
         # Check consistency between SCF solution and single step.
         # Especially for elements and their ions, the SCF may oscillate and the
         # single step for the gradient may differ from the converged solution.
         if (
-            torch.linalg.vector_norm(q_conv - charges)
+            torch.linalg.vector_norm(scp_conv - scp)
             > sqrt(torch.finfo(self.dtype).eps) * 10
         ).any():
             warnings.warn(
                 "The single SCF step differs from the converged solution. "
                 "Re-calculating with full gradient tracking!"
             )
-            charges = self.scf(q_conv)
+            charges = self.scf(scp_conv)
 
         energy = self.get_energy(charges)
         fenergy = self.get_electronic_free_energy()
@@ -367,6 +390,7 @@ def solve(
     cache: InteractionList.Cache,
     ihelp: IndexHelper,
     guess: str,
+    integrals: Integrals,
     *args: Any,
     **kwargs: Any,
 ) -> SCFResult:
@@ -387,6 +411,8 @@ def solve(
         Index helper object.
     guess : str
         Name of the method for the initial charge guess.
+    integrals : Integrals
+        Container for all integrals.
     args : Tuple
         Positional arguments to pass to the engine.
     kwargs : dict
@@ -409,5 +435,11 @@ def solve(
 
     charges = get_guess(numbers, positions, chrg, ihelp, guess)
     return scf(
-        interactions, *args, numbers=numbers, ihelp=ihelp, cache=cache, **kwargs
+        interactions,
+        *args,
+        numbers=numbers,
+        ihelp=ihelp,
+        cache=cache,
+        integrals=integrals,
+        **kwargs,
     )(charges)

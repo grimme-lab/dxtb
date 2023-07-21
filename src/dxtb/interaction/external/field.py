@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import torch
 
+from dxtb._types import Tensor
+
 from ..._types import Tensor, TensorLike
 from ..base import Interaction
-
-# from ..potential import Potential
 
 
 class ElectricField(Interaction):
@@ -73,7 +73,7 @@ class ElectricField(Interaction):
 
         Returns
         -------
-        Interaction.Cache
+        ElectricField.Cache
             Restart data for the interaction.
 
         Note
@@ -100,7 +100,7 @@ class ElectricField(Interaction):
         ----------
         charges : Tensor
             Atomic charges of all atoms.
-        cache : Interaction.Cache
+        cache : ElectricField.Cache
             Restart data for the interaction.
 
         Returns
@@ -122,8 +122,8 @@ class ElectricField(Interaction):
         Parameters
         ----------
         charges : Tensor
-            Atomic charges of all atoms.
-        cache : Interaction.Cache
+            Atomic charges of all atoms (not required).
+        cache : ElectricField.Cache
             Restart data for the interaction.
 
         Returns
@@ -133,12 +133,23 @@ class ElectricField(Interaction):
         """
         return -cache.vat
 
-        # return Potential(
-        #     vat=-cache.vat,
-        #     vdipole=-cache.vdp,
-        #     vquadrupole=cache.vat.new_zeros([*cache.vat.shape, 6]),
-        #     label=self.label,
-        # )
+    def get_dipole_potential(self, _: Tensor, cache: Cache) -> Tensor:
+        """
+        Calculate the electric field dipole potential.
+
+        Parameters
+        ----------
+        charges : Tensor
+            Atomic charges of all atoms (not required).
+        cache : ElectricField.Cache
+            Restart data for the interaction.
+
+        Returns
+        -------
+        Tensor
+            Atom-wise electric field dipole potential.
+        """
+        return -cache.vdp
 
 
 def new_efield(

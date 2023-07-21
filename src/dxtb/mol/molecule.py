@@ -35,13 +35,14 @@ class Mol(TensorLike):
     Representation of a molecule.
     """
 
-    __slots__ = ["_numbers", "_positions", "_charge"]
+    __slots__ = ["_numbers", "_positions", "_charge", "_name"]
 
     def __init__(
         self,
         numbers: Tensor,
         positions: Tensor,
         charge: Tensor | float | int = 0,
+        name: str | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ):
@@ -53,6 +54,7 @@ class Mol(TensorLike):
         self._numbers = numbers
         self._positions = positions
         self._charge = charge
+        self._name = name
 
         self.checks()
 
@@ -83,6 +85,14 @@ class Mol(TensorLike):
         self._charge = self._tensor(charge)
         self.checks()
 
+    @property
+    def name(self) -> str | None:
+        return self._name
+
+    @name.setter
+    def name(self, name: str) -> None:
+        self._name = name
+
     @memoize
     def distances(self) -> Tensor:
         """
@@ -100,8 +110,8 @@ class Mol(TensorLike):
         """
         return cdist(self.positions)
 
-    def clear_cache(self):
-        """Clear the cross-instance caches of all memoized method."""
+    def clear_cache(self) -> None:
+        """Clear the cross-instance caches of all memoized methods."""
         if hasattr(self.distances, "clear"):
             self.distances.clear()
 

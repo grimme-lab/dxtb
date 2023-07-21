@@ -50,7 +50,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     bas = Basis(numbers, par, ihelp, **dd)
     atombases = bas.create_dqc(positions)
 
-    # dxtb's libcint overlap
+    # dxtb's libcint integral
     wrapper = LibcintWrapper(atombases, ihelp)
     dxtb_dpint = intor.int1e("j", wrapper)
 
@@ -65,9 +65,6 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     norm = snorm(intor.overlap(wrapper))
     dxtb_dpint = torch.einsum("xij,i,j->xij", dxtb_dpint, norm, norm)
     pyscf_dpint = torch.einsum("xij,i,j->xij", pyscf_dpint, norm, norm)
-
-    print("")
-    print(dxtb_dpint)
 
     assert dxtb_dpint.shape == pyscf_dpint.shape
     assert pytest.approx(pyscf_dpint, abs=tol) == dxtb_dpint

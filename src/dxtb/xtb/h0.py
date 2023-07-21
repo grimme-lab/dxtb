@@ -9,6 +9,7 @@ from .._types import Tensor, TensorLike
 from ..basis import IndexHelper
 from ..constants import EV2AU
 from ..data import atomic_rad
+from ..interaction import Potential
 from ..param import Param, get_elem_param, get_elem_valence, get_pair_param
 from ..utils import cdist, real_pairs, symmetrize
 
@@ -394,7 +395,7 @@ class Hamiltonian(TensorLike):
         doverlap: Tensor,
         pmat: Tensor,
         wmat: Tensor,
-        pot: Tensor,
+        pot: Potential,
         cn: Tensor,
     ) -> tuple[Tensor, Tensor]:
         """
@@ -549,11 +550,11 @@ class Hamiltonian(TensorLike):
         )
 
         # factors for all derivatives of the overlap (2*P*H - 2*W - P*(V + V^T))
-        sval = torch.where(
-            mask_orb_diagonal,
-            2 * (ph - wmat) - pmat * (pot.unsqueeze(-1) + pot.unsqueeze(-2)),
-            zero,
-        )
+        tmp = 2 * (ph - wmat)
+        if pot.vmono is not None:
+            tmp -= pmat * (pot.vmono.unsqueeze(-1) + pot.vmono.unsqueeze(-2))
+
+        sval = torch.where(mask_orb_diagonal, tmp, zero)
 
         # distance vector from dR_AB/dr_A
         # (n_batch, atoms_i, atoms_j, 3)

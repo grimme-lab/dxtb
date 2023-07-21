@@ -72,7 +72,8 @@ def no_overlap_single(dtype: torch.dtype, name: str) -> None:
     result = calc.singlepoint(numbers, positions, chrg)
 
     # set derivative of overlap to zero
-    doverlap = torch.zeros((*result.overlap.shape, 3), **dd)
+    assert result.integrals.overlap is not None
+    doverlap = torch.zeros((*result.integrals.overlap.shape, 3), **dd)
 
     cn = get_coordination_number(numbers, positions, exp_count)
     wmat = get_density(
@@ -83,7 +84,7 @@ def no_overlap_single(dtype: torch.dtype, name: str) -> None:
 
     dedcn, dedr = calc.hamiltonian.get_gradient(
         positions,
-        result.overlap,
+        result.integrals.overlap,
         doverlap,
         result.density,
         wmat,
@@ -163,7 +164,8 @@ def no_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     result = calc.singlepoint(numbers, positions, chrg)
 
     # set derivative of overlap to zero
-    doverlap = torch.zeros((*result.overlap.shape, 3), **dd)
+    assert result.integrals.overlap is not None
+    doverlap = torch.zeros((*result.integrals.overlap.shape, 3), **dd)
 
     cn = get_coordination_number(numbers, positions, exp_count)
     wmat = get_density(
@@ -174,7 +176,7 @@ def no_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     dedcn, dedr = calc.hamiltonian.get_gradient(
         positions,
-        result.overlap,
+        result.integrals.overlap,
         doverlap,
         result.density,
         wmat,
@@ -226,11 +228,13 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
 
     calc = Calculator(numbers, par, opts=opts, **dd)
     result = calc.singlepoint(numbers, positions, chrg)
+    assert result.integrals.overlap is not None
 
     # compare different overlap calculations
     tol = sqrt(torch.finfo(dtype).eps) * 5
     s = calc.overlap.build(positions)
-    assert pytest.approx(s.detach(), abs=tol, rel=tol) == result.overlap.detach()
+    overlap = result.integrals.overlap.detach()
+    assert pytest.approx(s.detach(), abs=tol, rel=tol) == overlap
 
     cn = get_coordination_number(numbers, positions, exp_count)
     wmat = get_density(
@@ -245,7 +249,7 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     # analytical gradient
     dedcn, dedr = calc.hamiltonian.get_gradient(
         positions,
-        result.overlap,
+        result.integrals.overlap,
         doverlap,
         result.density,
         wmat,
@@ -333,6 +337,7 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     calc = Calculator(numbers, par, opts=opts, **dd)
     result = calc.singlepoint(numbers, positions, chrg)
+    assert result.integrals.overlap is not None
 
     doverlap = calc.overlap.get_gradient(positions)
 
@@ -345,7 +350,7 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     dedcn, dedr = calc.hamiltonian.get_gradient(
         positions,
-        result.overlap,
+        result.integrals.overlap,
         doverlap,
         result.density,
         wmat,

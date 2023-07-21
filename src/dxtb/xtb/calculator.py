@@ -23,16 +23,16 @@ from ..constants import defaults
 from ..coulomb import new_es2, new_es3
 from ..data import cov_rad_d3
 from ..dispersion import Dispersion, new_dispersion
-from ..integral import Overlap, OverlapLibcint
-from ..integral.libcint import LibcintWrapper
-from ..interaction import Interaction, InteractionList
+from ..integral import Integrals, Overlap, OverlapLibcint
+from ..integral import libcint as intor
+from ..interaction import Interaction, InteractionList, Potential
 from ..param import Param, get_elem_angular
 from ..utils import Timers, ToleranceWarning
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian
 from .h0 import Hamiltonian
 
-__all__ = ["Calculator"]
+__all__ = ["Calculator", "Result"]
 
 
 def use_intdriver(driver_arg: int = 1) -> Callable:
@@ -85,23 +85,20 @@ class Result(TensorLike):
     hamiltonian_grad: Tensor
     """Nuclear gradient of Hamiltonian matrix."""
 
+    integrals: Integrals
+    """Collection of integrals including overlap and core Hamiltonian (H0)."""
+
     interaction_grad: Tensor
     """Nuclear gradient of interactions"""
-
-    hcore: Tensor
-    """Core Hamiltonian matrix (H0)."""
 
     occupation: Tensor
     """Orbital occupations."""
 
-    overlap: Tensor
-    """Overlap matrix."""
-
     overlap_grad: Tensor
     """Nuclear gradient of overlap matrix."""
 
-    potential: Tensor
-    """Self-consistent orbital-resolved, monopolar potential."""
+    potential: Potential
+    """Self-consistent potentials."""
 
     scf: Tensor
     """Atom-resolved energy from the self-consistent field (SCF) calculation."""
@@ -126,10 +123,9 @@ class Result(TensorLike):
         "gradient",
         "hamiltonian",
         "hamiltonian_grad",
-        "hcore",
+        "integrals",
         "interaction_grad",
         "occupation",
-        "overlap",
         "overlap_grad",
         "potential",
         "scf",
@@ -320,6 +316,7 @@ class Calculator(TensorLike):
 
         self.ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         self.hamiltonian = Hamiltonian(numbers, par, self.ihelp, **dd)
+        self.integrals = Integrals(**dd)
 
         # setup self-consistent contributions
         es2 = (
@@ -397,19 +394,19 @@ class Calculator(TensorLike):
 
         self.opts["fwd_options"][name] = value
 
-    def driver(self, positions: Tensor) -> LibcintWrapper:
+    def driver(self, positions: Tensor) -> intor.LibcintWrapper:
         # save current positions to check
         self._positions = positions.detach().clone()
 
         atombases = self.basis.create_dqc(positions)
-        return LibcintWrapper(atombases, self.ihelp)
+        return intor.LibcintWrapper(atombases, self.ihelp)
 
     def init_intdriver(self, positions: Tensor):
         if self.opts["integral_driver"] != "libcint":
             return
 
         diff = 0
-        # create LibcintWrapper if it does not exist yet
+        # create intor.LibcintWrapper if it does not exist yet
         if self._intdriver is None:
             self._intdriver = self.driver(positions)
         else:
@@ -456,8 +453,16 @@ class Calculator(TensorLike):
         if not any(x in ["all", "scf"] for x in self.opts["exclude"]):
             # Overlap
             self.timer.start("Overlap")
-            result.overlap = self.overlap.build(positions)
+            overlap = self.overlap.build(positions)
+            self.integrals.overlap = overlap
             self.timer.stop("Overlap")
+
+            if self.opts["integral_driver"] == "libcint":
+                # dipole intgral
+                self.timer.start("Dipole Integral")
+                assert self._intdriver is not None
+                self.integrals.dipole = intor.int1e("j", self._intdriver)
+                self.timer.stop("Dipole Integral")
 
             # Hamiltonian
             self.timer.start("h0", "Core Hamiltonian")
@@ -465,8 +470,8 @@ class Calculator(TensorLike):
             cn = ncoord.get_coordination_number(
                 numbers, positions, ncoord.exp_count, rcov
             )
-            hcore = self.hamiltonian.build(positions, result.overlap, cn)
-            result.hcore = hcore
+            hcore = self.hamiltonian.build(positions, overlap, cn)
+            self.integrals.hcore = hcore
             self.timer.stop("h0")
 
             # SCF
@@ -494,8 +499,7 @@ class Calculator(TensorLike):
                 icaches,
                 self.ihelp,
                 self.opts["guess"],
-                hcore,
-                result.overlap,
+                self.integrals,
                 occupation,
                 n0,
                 fwd_options=self.opts["fwd_options"],
@@ -537,7 +541,7 @@ class Calculator(TensorLike):
                 )
                 dedcn, dedr = self.hamiltonian.get_gradient(
                     positions,
-                    result.overlap,
+                    overlap,
                     result.overlap_grad,
                     result.density,
                     wmat,
@@ -569,6 +573,7 @@ class Calculator(TensorLike):
                 result.total_grad += torch.stack(list(cgradients.values())).sum(0)
 
         # TIMERS AND PRINTOUT
+        result.integrals = self.integrals
         result.timer = self.timer
 
         if self.opts["scf_options"]["verbosity"] > 0:

@@ -112,35 +112,20 @@ class Molecule(TypedDict):
     """Tensor of 3D coordinates of shape (n, 3)"""
 
 
-class SCFResult(TypedDict):
-    """Collection of SCF result variables."""
+class PotentialData(TypedDict):
+    """Shape and label information of Potentials."""
 
-    charges: Tensor
-    """Self-consistent orbital-resolved Mulliken partial charges."""
+    mono: torch.Size | None
+    """Shape of the monopolar potential."""
 
-    coefficients: Tensor
-    """LCAO-MO coefficients (eigenvectors of Fockian)."""
+    dipole: torch.Size | None
+    """Shape of the dipolar potential."""
 
-    density: Tensor
-    """Density matrix."""
+    quad: torch.Size | None
+    """Shape of the quadrupolar potential."""
 
-    emo: Tensor
-    """Energy of molecular orbitals (sorted by increasing energy)."""
-
-    energy: Tensor
-    """Energies of the self-consistent contributions (interactions)."""
-
-    fenergy: Tensor
-    """Atom-resolved electronic free energy from fractional occupation."""
-
-    hamiltonian: Tensor
-    """Full Hamiltonian matrix (H0 + H1)."""
-
-    occupation: Tensor
-    """Orbital occupations."""
-
-    potential: Tensor
-    """Self-consistent orbital-resolved potential."""
+    label: list[str] | str | None
+    """Labels for the interactions contributing to the potential."""
 
 
 class Slicers(TypedDict):

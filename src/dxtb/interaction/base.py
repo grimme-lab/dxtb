@@ -1,3 +1,4 @@
+# pylint: disable=assignment-from-none
 """
 Provides base class for interactions in the extended tight-binding Hamiltonian.
 The `Interaction` class is not purely abstract as its methods return zero.
@@ -8,6 +9,7 @@ import torch
 
 from .._types import Any, Tensor, TensorLike, TensorOrTensors
 from ..basis import IndexHelper
+from .potential import Potential
 
 __all__ = ["Interaction"]
 
@@ -98,8 +100,11 @@ class Interaction(TensorLike):
         return self.Cache()
 
     def get_potential(
-        self, charges: Tensor, cache: Interaction.Cache, ihelp: IndexHelper
-    ) -> Tensor:
+        self,
+        charges: Tensor,
+        cache: Interaction.Cache,
+        ihelp: IndexHelper,
+    ) -> Potential:
         """
         Compute the potential from the charges, all quantities are orbital-resolved.
 
@@ -117,14 +122,24 @@ class Interaction(TensorLike):
         Tensor
             Potential vector for each orbital partial charge.
         """
+
+        # monopole potential: shell-resolved
         qsh = ihelp.reduce_orbital_to_shell(charges)
         vsh = self.get_shell_potential(qsh, cache)
 
+        # monopole potential: atom-resolved
         qat = ihelp.reduce_shell_to_atom(qsh)
         vat = self.get_atom_potential(qat, cache)
 
+        # spread to orbital-resolution
         vsh += ihelp.spread_atom_to_shell(vat)
-        return ihelp.spread_shell_to_orbital(vsh)
+        vmono = ihelp.spread_shell_to_orbital(vsh)
+
+        # multipole potentials
+        vdipole = self.get_dipole_potential(qat, cache)
+        vquad = self.get_quadrupole_potential(qat, cache)
+
+        return Potential(vmono, vdipole=vdipole, vquad=vquad, label=self.label)
 
     def get_shell_potential(self, charges: Tensor, *_) -> Tensor:
         """
@@ -163,6 +178,44 @@ class Interaction(TensorLike):
             Atom-resolved potential vector for each atom partial charge.
         """
         return torch.zeros_like(charges)
+
+    def get_dipole_potential(self, *_) -> Tensor | None:
+        """
+        Compute the dipole potential. All quantities are atom-resolved.
+
+        This method should be implemented by the subclass. Here, it serves
+        only to create an empty `Interaction` by returning None.
+
+        Parameters
+        ----------
+        charges : Tensor
+            Atom-resolved partial charges.
+
+        Returns
+        -------
+        Tensor | None
+            Atom-resolved potential vector for each atom or None if not needed.
+        """
+        return None
+
+    def get_quadrupole_potential(self, *_) -> Tensor | None:
+        """
+        Compute the quadrupole potential. All quantities are atom-resolved.
+
+        This method should be implemented by the subclass. Here, it serves
+        only to create an empty `Interaction` by returning None.
+
+        Parameters
+        ----------
+        charges : Tensor
+            Atom-resolved partial charges.
+
+        Returns
+        -------
+        Tensor | Nene
+            Atom-resolved potential vector for each atom or None if not needed.
+        """
+        return None
 
     def get_energy(
         self, charges: Tensor, cache: Interaction.Cache, ihelp: IndexHelper

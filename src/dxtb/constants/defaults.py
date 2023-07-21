@@ -127,3 +127,9 @@ TORCH_DEVICE = "cpu"
 
 TORCH_DEVICE_CHOICES = ["cpu", "cuda"]
 """List of possible choices for `TORCH_DEVICE`."""
+
+PAD = 0
+"""Defaults value to indicate padding."""
+
+PADNZ = -999999
+"""Default non-zero value to indicate padding."""

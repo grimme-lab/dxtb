@@ -12,13 +12,13 @@ repos:
         language_version: python3
 
   - repo: https://github.com/asottile/setup-cfg-fmt
-    rev: v2.2.0
+    rev: v2.4.0
     hooks:
       - id: setup-cfg-fmt
         args: [--include-version-classifiers, --max-py-version, "3.11"]
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.3.1
+    rev: v3.9.0
     hooks:
       - id: pyupgrade
         args: [--py37-plus, --keep-runtime-typing]
@@ -31,6 +31,6 @@ repos:
         args: ["--profile", "black", "--filter-files"]
 
   - repo: https://github.com/psf/black
-    rev: 23.1.0
+    rev: 23.7.0
     hooks:
       - id: black

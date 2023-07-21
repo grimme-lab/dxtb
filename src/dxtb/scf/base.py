@@ -8,14 +8,47 @@ from abc import abstractmethod
 
 import torch
 
-from .._types import Any, SCFResult, Slicers, Tensor
+from .._types import Any, PotentialData, Slicers, Tensor, TypedDict
 from ..basis import IndexHelper
 from ..constants import K2AU, defaults
 from ..exlibs.xitorch import EditableModule, LinearOperator
 from ..exlibs.xitorch import linalg as xtl
+from ..integral import Integrals
 from ..interaction import InteractionList
+from ..interaction.potential import Potential
 from ..utils import eighb, real_atoms
 from ..wavefunction import filling, mulliken
+
+
+class SCFResult(TypedDict):
+    """Collection of SCF result variables."""
+
+    charges: Tensor
+    """Self-consistent orbital-resolved Mulliken partial charges."""
+
+    coefficients: Tensor
+    """LCAO-MO coefficients (eigenvectors of Fockian)."""
+
+    density: Tensor
+    """Density matrix."""
+
+    emo: Tensor
+    """Energy of molecular orbitals (sorted by increasing energy)."""
+
+    energy: Tensor
+    """Energies of the self-consistent contributions (interactions)."""
+
+    fenergy: Tensor
+    """Atom-resolved electronic free energy from fractional occupation."""
+
+    hamiltonian: Tensor
+    """Full Hamiltonian matrix (H0 + H1)."""
+
+    occupation: Tensor
+    """Orbital occupations."""
+
+    potential: Potential
+    """Self-consistent orbital-resolved potential."""
 
 
 class BaseSCF:
@@ -80,22 +113,33 @@ class BaseSCF:
 
         def __init__(
             self,
-            hcore: Tensor,
-            overlap: Tensor,
             occupation: Tensor,
             n0: Tensor,
             numbers: Tensor,
             ihelp: IndexHelper,
             cache: InteractionList.Cache,
+            integrals: Integrals,
         ) -> None:
-            self.hcore = hcore
-            self.overlap = overlap
+            if integrals.hcore is None:
+                raise ValueError("No core Hamiltonian provided.")
+            if integrals.overlap is None:
+                raise ValueError("No Overlap provided.")
+
+            self.hcore = integrals.hcore
+            self.overlap = integrals.overlap
             self.occupation = occupation
             self.n0 = n0
             self.numbers = numbers
             self.ihelp = ihelp
             self.cache = cache
             self.init_zeros()
+
+            self.potential: PotentialData = {
+                "mono": None,
+                "dipole": None,
+                "quad": None,
+                "label": None,
+            }
 
             self.iter = 1
 
@@ -205,6 +249,7 @@ class BaseSCF:
         self.kt = self._data.hcore.new_tensor(
             self.scf_options.get("etemp", defaults.ETEMP) * K2AU
         )
+
         self.interactions = interactions
         self.batched = self._data.numbers.ndim > 1
 
@@ -279,7 +324,8 @@ class BaseSCF:
         if self.scp_mode in ("charge", "charges"):
             guess = charges
         elif self.scp_mode == "potential":
-            guess = self.charges_to_potential(charges)
+            potential = self.charges_to_potential(charges)
+            guess = potential.as_tensor()
         elif self.scp_mode == "fock":
             potential = self.charges_to_potential(charges)
             guess = self.potential_to_hamiltonian(potential)
@@ -340,7 +386,8 @@ class BaseSCF:
             return x
 
         if self.scp_mode == "potential":
-            return self.potential_to_charges(x)
+            pot = Potential.from_tensor(x, self._data.potential, batched=self.batched)
+            return self.potential_to_charges(pot)
 
         if self.scp_mode == "fock":
             self._data.density = self.hamiltonian_to_density(x)
@@ -530,7 +577,11 @@ class BaseSCF:
             New potential vector for each orbital partial charge.
         """
 
-        charges = self.potential_to_charges(potential)
+        pot = Potential.from_tensor(
+            potential, self._data.potential, batched=self.batched
+        )
+        charges = self.potential_to_charges(pot)
+
         if self.scf_options["verbosity"] > 0:
             if charges.ndim < 2:  # pragma: no cover
                 energy = self.get_energy(charges).sum(-1).detach().clone()
@@ -571,7 +622,8 @@ class BaseSCF:
                 self._data.old_density = density
                 self._data.iter += 1
 
-        return self.charges_to_potential(charges)
+        new_potential = self.charges_to_potential(charges)
+        return new_potential.as_tensor()
 
     def iterate_fockian(self, fockian: Tensor) -> Tensor:
         """
@@ -594,7 +646,7 @@ class BaseSCF:
 
         return self._data.hamiltonian
 
-    def charges_to_potential(self, charges: Tensor) -> Tensor:
+    def charges_to_potential(self, charges: Tensor) -> Potential:
         """
         Compute the potential from the orbital charges.
 
@@ -609,11 +661,19 @@ class BaseSCF:
             Potential vector for each orbital partial charge.
         """
 
-        return self.interactions.get_potential(
+        potential = self.interactions.get_potential(
             charges, self._data.cache, self._data.ihelp
         )
+        self._data.potential = {
+            "mono": potential.vmono_shape,
+            "dipole": potential.vdipole_shape,
+            "quad": potential.vquad_shape,
+            "label": potential.label,
+        }
 
-    def potential_to_charges(self, potential: Tensor) -> Tensor:
+        return potential
+
+    def potential_to_charges(self, potential: Potential) -> Tensor:
         """
         Compute the orbital charges from the potential.
 
@@ -631,7 +691,7 @@ class BaseSCF:
         self._data.density = self.potential_to_density(potential)
         return self.density_to_charges(self._data.density)
 
-    def potential_to_density(self, potential: Tensor) -> Tensor:
+    def potential_to_density(self, potential: Potential) -> Tensor:
         """
         Obtain the density matrix from the potential.
 
@@ -677,7 +737,7 @@ class BaseSCF:
         )
         return self._data.n0 - populations
 
-    def potential_to_hamiltonian(self, potential: Tensor) -> Tensor:
+    def potential_to_hamiltonian(self, potential: Potential) -> Tensor:
         """
         Compute the Hamiltonian from the potential.
 
@@ -691,10 +751,13 @@ class BaseSCF:
         Tensor
             Hamiltonian matrix.
         """
+        h1 = self._data.hcore
 
-        return self._data.hcore - 0.5 * self._data.overlap * (
-            potential.unsqueeze(-1) + potential.unsqueeze(-2)
-        )
+        if potential.vmono is not None:
+            v = potential.vmono.unsqueeze(-1) + potential.vmono.unsqueeze(-2)
+            h1 = h1 - (0.5 * self._data.overlap * v)
+
+        return h1
 
     def hamiltonian_to_density(self, hamiltonian: Tensor) -> Tensor:
         """

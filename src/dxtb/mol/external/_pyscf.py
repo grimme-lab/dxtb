@@ -26,9 +26,9 @@ from pathlib import Path
 
 import numpy as np
 
-try:
+try:  # pragma: no cover
     from pyscf import gto  # type: ignore
-except ImportError as e:
+except ImportError as e:  # pragma: no cover
     raise ImportError("PySCF is not installed") from e
 
 from ..._types import Tensor

@@ -12,6 +12,7 @@ import torch
 from dxtb._types import DD
 from dxtb.basis import IndexHelper
 from dxtb.constants import K2AU
+from dxtb.integral import Integrals
 from dxtb.param import GFN1_XTB, get_elem_angular
 from dxtb.scf.iterator import SelfConsistentField
 from dxtb.utils import batch
@@ -226,8 +227,16 @@ def test_kt(dtype: torch.dtype, kt: float):
     # electronic free energy
     d = torch.zeros_like(focc)  # dummy
     scf = SelfConsistentField(
-        d, d, d, focc, d, numbers, d, d, scf_options={"etemp": kt}  # type: ignore
+        d,  # type: ignore
+        focc,
+        d,
+        numbers=numbers,
+        ihelp=d,
+        cache=d,
+        integrals=Integrals(hcore=d, overlap=d, **dd),
+        scf_options={"etemp": kt},
     )
+
     fenergy = scf.get_electronic_free_energy()
     assert pytest.approx(ref_fenergy[kt], abs=tol, rel=tol) == fenergy.sum(-1)
 

@@ -8,6 +8,7 @@ import torch
 from .._types import Slicers, Tensor, TensorOrTensors
 from ..basis import IndexHelper
 from .base import Interaction
+from .potential import Potential
 
 
 class InteractionList(Interaction):
@@ -80,7 +81,7 @@ class InteractionList(Interaction):
 
     def get_potential(
         self, charges: Tensor, cache: InteractionList.Cache, ihelp: IndexHelper
-    ) -> Tensor:
+    ) -> Potential:
         """
         Compute the potential for a list of interactions.
 
@@ -98,15 +99,22 @@ class InteractionList(Interaction):
         Tensor
             Potential vector for each orbital partial charge.
         """
-        if len(self.interactions) <= 0:
-            return torch.zeros_like(charges)
 
-        return torch.stack(
-            [
-                interaction.get_potential(charges, cache[interaction.label], ihelp)
-                for interaction in self.interactions
-            ]
-        ).sum(dim=0)
+        # create empty potential
+        pot = Potential(
+            torch.zeros_like(charges), vdipole=None, vquad=None, batched=ihelp.batched
+        )
+
+        # exit with empty potential if no interactions present
+        if len(self.interactions) <= 0:
+            return pot
+
+        # add up potentials from all interactions
+        for interaction in self.interactions:
+            p = interaction.get_potential(charges, cache[interaction.label], ihelp)
+            pot += p
+
+        return pot
 
     def get_energy_as_dict(
         self, charges: Tensor, cache: Cache, ihelp: IndexHelper
