@@ -12,7 +12,11 @@ from contextlib import contextmanager
 
 import numpy as np
 import torch
-from dxtblibs import CINT
+
+try:
+    from dxtblibs import CINT  # type: ignore
+except ImportError:
+    pass
 
 from ..._types import Iterator, Tensor
 from ...basis import AtomCGTOBasis, CGTOBasis, IndexHelper

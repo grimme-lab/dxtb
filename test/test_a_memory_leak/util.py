@@ -56,10 +56,12 @@ def _show_memsize(fcn, ntries: int = 10, gccollect: bool = False):
             gc.collect()
         size = _get_tensor_memory()
 
-        print(f"{i + 1:3d} iteration: {size - size0:.7f} MiB of tensors")
+        print(f"{i + 1:3d} iteration: {size - size0:.16f} MiB of tensors")
 
 
-def has_memleak_tensor(fcn: Callable, gccollect: bool = False) -> bool:
+def has_memleak_tensor(
+    fcn: Callable, repeats: int = 5, gccollect: bool = False
+) -> bool:
     """
     Assert no tensor memory leak when calling the function.
 
@@ -82,9 +84,7 @@ def has_memleak_tensor(fcn: Callable, gccollect: bool = False) -> bool:
         gc.collect()
     size = _get_tensor_memory()
 
-    print(size, size0)
     if size0 != size:
-        ntries = 10
-        _show_memsize(fcn, ntries, gccollect=gccollect)
+        _show_memsize(fcn, repeats, gccollect=gccollect)
 
     return size0 != size

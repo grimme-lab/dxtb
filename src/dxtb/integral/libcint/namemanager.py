@@ -37,6 +37,9 @@ class IntorNameManager:
             "r_origj": (3,),
             "rr_origj": (9,),
             "rrr_origj": (27,),
+            "j": (3,),
+            "jj": (9,),
+            "jjj": (27,),
         },
     )
     op_comp = defaultdict(

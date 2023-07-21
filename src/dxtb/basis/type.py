@@ -72,14 +72,14 @@ class Basis(TensorLike):
         self,
         numbers: Tensor,
         par: Param,
-        angular: Tensor,
+        ihelp: IndexHelper,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
         super().__init__(device, dtype)
         self.numbers = numbers
         self.meta = par.meta
-        self.angular = angular
+        self.ihelp = ihelp
 
         self.ngauss = get_elem_param(
             numbers,
@@ -112,9 +112,12 @@ class Basis(TensorLike):
 
         # maybe this can be batched too, but this loop is rather small
         # so it is probably not worth it
-        for i in range(self.angular.size(0)):
+        for i in range(self.ihelp.unique_angular.size(0)):
             alpha, coeff = slater.to_gauss(
-                self.ngauss[i], self.pqn[i], self.angular[i], self.slater[i]
+                self.ngauss[i],
+                self.pqn[i],
+                self.ihelp.unique_angular[i],
+                self.slater[i],
             )
 
             # FIXME:
@@ -138,7 +141,6 @@ class Basis(TensorLike):
 
     def unique_shell_pairs(
         self,
-        ihelp: IndexHelper,
         mask: Tensor | None = None,
         uplo: Literal["n", "N", "u", "U", "l", "L"] = "l",
     ) -> tuple[Tensor, Tensor]:
@@ -147,8 +149,6 @@ class Basis(TensorLike):
 
         Parameters
         ----------
-        ihelp : IndexHelper
-            Helper class for indexing.
         mask : Tensor
             Mask for
         uplo : Literal["n", "N", "u", "U", "l", "L"]
@@ -168,20 +168,20 @@ class Basis(TensorLike):
         """
         # NOTE: Zeros correspond to padding only if batched. They have
         # meaning for single runs and cannot be ignored in this case.
-        sh2ush = ihelp.spread_shell_to_orbital(ihelp.shells_to_ushell)
+        sh2ush = self.ihelp.spread_shell_to_orbital(self.ihelp.shells_to_ushell)
 
         # FIXME: Maybe a bitwise operation is easier to understand? For now,
         # we convert unique shell indices to prime numbers to obtain unique
         # products upon multiplication (fundamental theorem of arithmetic).
         orbs = primes.to(self.device)[sh2ush]
         orbs = orbs.unsqueeze(-2) * orbs.unsqueeze(-1)
-        sh2orb = ihelp.spread_shell_to_orbital(ihelp.orbitals_per_shell)
+        sh2orb = self.ihelp.spread_shell_to_orbital(self.ihelp.orbitals_per_shell)
 
         # extra offset along only one dimension to distinguish (n, m) and
         # (m, n) of the same orbital block (e.g. 1x3 sp and 3x1 ps block)
         offset = 10000
 
-        if ihelp.batched:
+        if self.ihelp.batched:
             orbs = torch.where(
                 real_pairs(sh2ush),
                 orbs + sh2orb.unsqueeze(-1) * offset,
@@ -192,7 +192,7 @@ class Basis(TensorLike):
 
         # catch systems with one single orbital (e.g. Helium)
         if orbs.size(-1) == 1:
-            if ihelp.batched:
+            if self.ihelp.batched:
                 raise NotImplementedError()
             return torch.tensor([[0]]), torch.tensor(1)
 
@@ -223,7 +223,6 @@ class Basis(TensorLike):
 
     def to_bse(
         self,
-        ihelp: IndexHelper,
         qcformat: Literal["gaussian94", "nwchem"] = "nwchem",
         save: bool = False,
         overwrite: bool = False,
@@ -273,10 +272,10 @@ class Basis(TensorLike):
             if qcformat == "gaussian94":
                 txt += f"{PSE[number]}\n"
 
-            shells = ihelp.shells_per_atom[i]
+            shells = self.ihelp.shells_per_atom[i]
             for _ in range(shells):
                 alpha, coeff = slater.to_gauss(
-                    self.ngauss[s], self.pqn[s], self.angular[s], self.slater[s]
+                    self.ngauss[s], self.pqn[s], self.ihelp.angular[s], self.slater[s]
                 )
                 if self.valence[s].item() is False:
                     alpha, coeff = orthogonalize(
@@ -286,7 +285,7 @@ class Basis(TensorLike):
                 alphas.append(alpha)
                 coeffs.append(coeff)
 
-                l = angular2label[self.angular.tolist()[s]]
+                l = angular2label[self.ihelp.angular.tolist()[s]]
                 if qcformat == "gaussian94":
                     txt += f"{l}    {len(alpha)}    1.00\n"
                 elif qcformat == "nwchem":
@@ -336,7 +335,7 @@ class Basis(TensorLike):
 
         return fulltxt
 
-    def create_dqc(self, positions: Tensor, ihelp: IndexHelper) -> list[AtomCGTOBasis]:
+    def create_dqc(self, positions: Tensor) -> list[AtomCGTOBasis]:
         if self.numbers.ndim > 1:
             raise NotImplementedError("Batch mode not implemented.")
 
@@ -350,11 +349,11 @@ class Basis(TensorLike):
         s = 0
         for i, number in enumerate(self.numbers):
             bases: list[CGTOBasis] = []
-            shells = ihelp.shells_per_atom[i]
+            shells = self.ihelp.shells_per_atom[i]
 
             for _ in range(shells):
                 alpha, coeff = slater.to_gauss(
-                    self.ngauss[s], self.pqn[s], ihelp.angular[s], self.slater[s]
+                    self.ngauss[s], self.pqn[s], self.ihelp.angular[s], self.slater[s]
                 )
 
                 # orthogonalize the H2s against the H1s
@@ -367,7 +366,7 @@ class Basis(TensorLike):
                 coeffs.append(coeff)
 
                 cgto = CGTOBasis(
-                    angmom=ihelp.angular.tolist()[s],  # int!
+                    angmom=self.ihelp.angular.tolist()[s],  # int!
                     alphas=alpha,
                     coeffs=coeff,
                     normalized=True,

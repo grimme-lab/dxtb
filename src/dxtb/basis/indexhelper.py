@@ -129,6 +129,8 @@ class IndexHelper(TensorLike):
         **_,
     ):
         super().__init__(device, dtype)
+        self.clear_cache()
+
         self.unique_angular = unique_angular
         self.angular = angular
         self.atom_to_unique = atom_to_unique

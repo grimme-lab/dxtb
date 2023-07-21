@@ -83,7 +83,7 @@ def test_overlap_higher_orbitals(dtype: torch.dtype):
     number = torch.tensor([86])
 
     ihelp = IndexHelper.from_numbers(number, get_elem_angular(par.element))
-    bas = Basis(number, par, ihelp.unique_angular)
+    bas = Basis(number, par, ihelp)
     alpha, coeff = bas.create_cgtos()
 
     ai = alpha[0]

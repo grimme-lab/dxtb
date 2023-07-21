@@ -17,6 +17,145 @@ from . import libcint as intor
 from .mmd import overlap_gto, overlap_gto_grad
 from .utils import get_pairs, get_subblock_start
 
+__all__ = ["Overlap", "OverlapLibcint"]
+
+
+def create_libcint_wrapper(
+    bas: Basis,
+    positions: Tensor,
+    ihelp: IndexHelper,
+    spherical: bool = True,
+) -> intor.LibcintWrapper:
+    atombases = bas.create_dqc(positions)
+    return intor.LibcintWrapper(atombases, ihelp, spherical=spherical)
+
+
+class OverlapLibcint(TensorLike):
+    """
+    Overlap integral from atomic orbitals.
+    """
+
+    def __init__(
+        self,
+        numbers: Tensor,
+        par: Param,
+        ihelp: IndexHelper,
+        driver: intor.LibcintWrapper | None = None,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ):
+        super().__init__(device, dtype)
+        self.numbers = numbers
+        self.unique = torch.unique(numbers)
+        self.par = par
+        self.ihelp = ihelp
+        self.driver = driver
+
+    def build(
+        self,
+        positions: Tensor,
+        mask: Tensor | None = None,
+    ) -> Tensor:
+        """
+        Overlap calculation of unique shells pairs, using the
+        McMurchie-Davidson algorithm.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms in the system.
+        mask : Tensor | None
+            Mask for positions to make batched computations easier. The overlap
+            does not work in a batched fashion. Hence, we loop over the batch
+            dimension and must remove the padding. Defaults to `None`, i.e.,
+            `batch.deflate()` is used.
+
+        Returns
+        -------
+        Tensor
+            Overlap matrix.
+        """
+
+        # attempt to build the driver from scratch if none given yet
+        if self.driver is None:
+            bas = Basis(
+                self.numbers,
+                self.par,
+                self.ihelp,
+                dtype=self.dtype,
+                device=self.device,
+            )
+            atombases = bas.create_dqc(positions)
+            self.driver = intor.LibcintWrapper(atombases, self.ihelp)
+
+        if self.numbers.ndim > 1:
+            raise NotImplementedError()
+            # s = self._batch(wrapper, mask)
+            # s = self._single(wrapper)
+        else:
+            s = intor.overlap(self.driver)
+            norm = torch.pow(s.diagonal(dim1=-1, dim2=-2), -0.5)
+            s = torch.einsum("...ij,...i,...j->...ij", s, norm, norm)
+
+        return s
+
+    def get_gradient(self, positions: Tensor, mask: Tensor | None = None):
+        """
+        Overlap gradient calculation of unique shells pairs, using the
+        McMurchie-Davidson algorithm.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms in the system.
+        mask : Tensor | None
+            Mask for positions to make batched computations easier. The overlap
+            does not work in a batched fashion. Hence, we loop over the batch
+            dimension and must remove the padding. Defaults to `None`, i.e.,
+            `batch.deflate()` is used.
+
+        Returns
+        -------
+        Tensor
+            Overlap gradient of shape `(nb, norb, norb, 3)`.
+        """
+        # attempt to build the driver from scratch if none given yet
+        if self.driver is None:
+            bas = Basis(
+                self.numbers,
+                self.par,
+                self.ihelp,
+                dtype=self.dtype,
+                device=self.device,
+            )
+            atombases = bas.create_dqc(positions)
+            self.driver = intor.LibcintWrapper(atombases, self.ihelp)
+
+        if self.numbers.ndim > 1:
+            raise NotImplementedError()
+            # grad = self._batch(wrapper, mask)
+            # grad = self._single(wrapper)
+        else:
+            s = intor.overlap(self.driver)
+            norm = torch.pow(s.diagonal(dim1=-1, dim2=-2), -0.5)
+
+            # (3, norb, norb)
+            grad = intor.int1e("ipovlp", self.driver)
+
+            # normalize and move xyz dimension to last, which is required for
+            # the reduction (only works with extra dimension in last)
+            grad = -torch.einsum("...xij,...i,...j->...ijx", grad, norm, norm)
+
+        return grad
+
+    def _single(self, wrapper: intor.LibcintWrapper) -> Tensor:
+        raise NotImplementedError()
+
+    def _batch(
+        self, wrapper: intor.LibcintWrapper, mask: Tensor | None = None
+    ) -> Tensor:
+        raise NotImplementedError()
+
 
 class OverlapFunction(Protocol):
     """
@@ -101,8 +240,6 @@ class Overlap(TensorLike):
         ihelp: IndexHelper,
         uplo: Literal["n", "N", "u", "U", "l", "L"] = "l",
         cutoff: Tensor | float | int | None = defaults.INTCUTOFF,
-        driver: Literal["dxtb", "libcint"] = "libcint",
-        spherical: bool = True,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ):
@@ -112,14 +249,16 @@ class Overlap(TensorLike):
         self.par = par
         self.ihelp = ihelp
         self.cutoff = cutoff if cutoff is None else cutoff * units.AA2AU
-        self.driver = driver
-        self.spherical = spherical
 
         if uplo not in ("n", "N", "u", "U", "l", "L"):
             raise ValueError(f"Unknown option for `uplo` chosen: '{uplo}'.")
         self.uplo = uplo.casefold()  # type: ignore
 
-    def build(self, positions: Tensor, mask: Tensor | None = None) -> Tensor:
+    def build(
+        self,
+        positions: Tensor,
+        mask: Tensor | None = None,
+    ) -> Tensor:
         """
         Overlap calculation of unique shells pairs, using the
         McMurchie-Davidson algorithm.
@@ -177,42 +316,10 @@ class Overlap(TensorLike):
         return grad
 
     def _single(self, func: OverlapFunction, positions: Tensor) -> Tensor:
-        if self.driver == "libcint":
-            import time
-
-            start_time = time.perf_counter()
-
-            bas = Basis(
-                self.numbers,
-                self.par,
-                self.ihelp.angular,
-                dtype=self.dtype,
-                device=self.device,
-            )
-
-            bas_time = time.perf_counter()
-            print(f"basis  {bas_time - start_time:.3f}")
-
-            atombases = bas.create_dqc(positions, self.ihelp)
-            wrapper = intor.LibcintWrapper(atombases, self.ihelp, spherical=self.spherical)  # type: ignore
-
-            wrap_time = time.perf_counter()
-            print(f"wrap   {wrap_time - bas_time:.3f}")
-
-            s = intor.overlap(wrapper)
-            norm = torch.pow(s.diagonal(dim1=-1, dim2=-2), -0.5)
-            s = torch.einsum("...ij,...i,...j->...ij", s, norm, norm)
-
-            ovlp_time = time.perf_counter()
-            print(f"ovlp   {ovlp_time - wrap_time:.3f}")
-            print(f"total  {ovlp_time - start_time:.3f}")
-
-            return s
-
         bas = Basis(
             self.unique,
             self.par,
-            self.ihelp.unique_angular,
+            self.ihelp,
             dtype=self.dtype,
             device=self.device,
         )
@@ -240,7 +347,7 @@ class Overlap(TensorLike):
             bas = Basis(
                 torch.unique(nums),
                 self.par,
-                ihelp.unique_angular,
+                ihelp,
                 dtype=self.dtype,
                 device=self.device,
             )
@@ -380,7 +487,7 @@ def overlap(
         dist = torch.cdist(pos, pos, compute_mode="donot_use_mm_for_euclid_dist")
         mask = (dist < cutoff) & (dist > 0.1)
 
-    umap, n_unique_pairs = bas.unique_shell_pairs(ihelp, mask=mask, uplo=uplo)
+    umap, n_unique_pairs = bas.unique_shell_pairs(mask=mask, uplo=uplo)
 
     # overlap calculation
     ovlp = torch.zeros(*umap.shape, dtype=positions.dtype, device=positions.device)
@@ -486,7 +593,7 @@ def overlap_gradient(
         dist = torch.cdist(pos, pos, compute_mode="donot_use_mm_for_euclid_dist")
         mask = (dist < cutoff) & (dist > 0.1)
 
-    umap, n_unique_pairs = bas.unique_shell_pairs(ihelp, mask=mask, uplo=uplo)
+    umap, n_unique_pairs = bas.unique_shell_pairs(mask=mask, uplo=uplo)
 
     # overlap calculation
     ds = torch.zeros((3, *umap.shape), dtype=positions.dtype, device=positions.device)
@@ -537,5 +644,4 @@ def overlap_gradient(
         ds = torch.triu(ds, diagonal=1) - torch.tril(ds.mT)
 
     # (3, norb, norb) -> (norb, norb, 3)
-    print("ds.shape", ds.shape)
     return torch.einsum("xij->ijx", ds)

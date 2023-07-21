@@ -4,12 +4,13 @@ Base calculator for the extended tight-binding model.
 from __future__ import annotations
 
 import warnings
+from functools import wraps
 
 import torch
 
 from .. import ncoord, scf
-from .._types import Any, Sequence, Tensor, TensorLike
-from ..basis import IndexHelper
+from .._types import Any, Callable, Sequence, Tensor, TensorLike
+from ..basis import Basis, IndexHelper
 from ..classical import (
     Classical,
     ClassicalList,
@@ -22,13 +23,31 @@ from ..constants import defaults
 from ..coulomb import new_es2, new_es3
 from ..data import cov_rad_d3
 from ..dispersion import Dispersion, new_dispersion
-from ..integral import Overlap
+from ..integral import Overlap, OverlapLibcint
+from ..integral.libcint import LibcintWrapper
 from ..interaction import Interaction, InteractionList
 from ..param import Param, get_elem_angular
 from ..utils import Timers, ToleranceWarning
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian
 from .h0 import Hamiltonian
+
+__all__ = ["Calculator"]
+
+
+def use_intdriver(driver_arg: int = 1) -> Callable:
+    def decorator(fcn: Callable) -> Callable:
+        @wraps(fcn)
+        def wrap(self: Calculator, *args: Any, **kwargs: Any) -> Any:
+            if self.opts["integral_driver"] == "libcint":
+                self.init_intdriver(args[driver_arg])
+
+            result = fcn(self, *args, **kwargs)
+            return result
+
+        return wrap
+
+    return decorator
 
 
 class Result(TensorLike):
@@ -258,6 +277,12 @@ class Calculator(TensorLike):
 
         # setup calculator options
         opts = opts if opts is not None else {}
+
+        # FIXME: Batch mode for libcint
+        drv = opts.get("integral_driver", defaults.INTDRIVER)
+        if numbers.ndim > 1:
+            drv = "dxtb"
+
         self.opts = {
             "fwd_options": {
                 "damp": opts.get("damp", defaults.DAMP),
@@ -286,6 +311,7 @@ class Calculator(TensorLike):
             "exclude": opts.get("exclude", defaults.EXCLUDE),
             "guess": opts.get("guess", defaults.GUESS),
             "spin": opts.get("spin", defaults.SPIN),
+            "integral_driver": drv,
         }
 
         # set tolerances separately to catch unreasonably small values
@@ -294,7 +320,6 @@ class Calculator(TensorLike):
 
         self.ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
         self.hamiltonian = Hamiltonian(numbers, par, self.ihelp, **dd)
-        self.overlap = Overlap(numbers, par, self.ihelp, **dd)
 
         # setup self-consistent contributions
         es2 = (
@@ -309,7 +334,7 @@ class Calculator(TensorLike):
         )
 
         if interaction is None:
-            self.interactions = InteractionList(es2, es3, interaction)
+            self.interactions = InteractionList(es2, es3)
         else:
             self.interactions = InteractionList(es2, es3, *interaction)
 
@@ -341,6 +366,15 @@ class Calculator(TensorLike):
 
         self.timer.stop("setup calculator")
 
+        if self.opts["integral_driver"] == "libcint":
+            self.overlap = OverlapLibcint(numbers, par, self.ihelp, **dd)
+            self.basis = Basis(numbers, par, self.ihelp, **dd)
+        else:
+            self.overlap = Overlap(numbers, par, self.ihelp, **dd)
+
+        self._intdriver = None
+        self._positions = None
+
     def set_option(self, name: str, value: Any) -> None:
         if name not in self.opts:
             raise KeyError(f"Option '{name}' does not exist.")
@@ -363,6 +397,33 @@ class Calculator(TensorLike):
 
         self.opts["fwd_options"][name] = value
 
+    def driver(self, positions: Tensor) -> LibcintWrapper:
+        # save current positions to check
+        self._positions = positions.detach().clone()
+
+        atombases = self.basis.create_dqc(positions)
+        return LibcintWrapper(atombases, self.ihelp)
+
+    def init_intdriver(self, positions: Tensor):
+        if self.opts["integral_driver"] != "libcint":
+            return
+
+        diff = 0
+        # create LibcintWrapper if it does not exist yet
+        if self._intdriver is None:
+            self._intdriver = self.driver(positions)
+        else:
+            assert self._positions is not None
+
+            diff = (self._positions - positions).abs().sum()
+            if diff > 1e-10:
+                self._intdriver = self.driver(positions)
+
+        if isinstance(self.overlap, OverlapLibcint):
+            if self.overlap.driver is None or diff > 1e-10:
+                self.overlap.driver = self._intdriver
+
+    @use_intdriver()
     def singlepoint(
         self,
         numbers: Tensor,

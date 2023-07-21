@@ -32,8 +32,8 @@ def explicit(name: str, dd: DD, tol: float) -> None:
     ref = load_from_npz(ref_overlap, name, **dd)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    bas = Basis(numbers, par, ihelp.angular, **dd)
-    atombases = bas.create_dqc(positions, ihelp)
+    bas = Basis(numbers, par, ihelp, **dd)
+    atombases = bas.create_dqc(positions)
 
     wrapper = intor.LibcintWrapper(atombases, ihelp)
     s = intor.overlap(wrapper)
@@ -42,7 +42,7 @@ def explicit(name: str, dd: DD, tol: float) -> None:
     # (3, norb, norb)
     grad = intor.int1e("ipovlp", wrapper)
 
-    # normalize and switch move xyz dimension to last, which is required for
+    # normalize and move xyz dimension to last, which is required for
     # the reduction (only works with extra dimension in last)
     grad = torch.einsum("...xij,...i,...j->...ijx", grad, norm, norm)
 
@@ -82,8 +82,8 @@ def autograd(name: str, dd: DD, tol: float) -> None:
     positions.requires_grad_(True)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    bas = Basis(numbers, par, ihelp.angular, **dd)
-    atombases = bas.create_dqc(positions, ihelp)
+    bas = Basis(numbers, par, ihelp, **dd)
+    atombases = bas.create_dqc(positions)
 
     wrapper = intor.LibcintWrapper(atombases, ihelp)
     s = intor.overlap(wrapper)

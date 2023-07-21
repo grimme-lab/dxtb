@@ -52,47 +52,22 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     # dxtb's libcint overlap
     wrapper = LibcintWrapper(atombases, ihelp)
-    dxtb_overlap = intor.overlap(wrapper)
+    dxtb_dpint = intor.int1e("j", wrapper)
 
-    # pyscf reference overlap ("sph" needed, implicit in dxtb)
+    # pyscf reference integral
     mol = M(numbers, positions, parse_arg=False)
-    pyscf_overlap = numpy_to_tensor(mol.intor("int1e_ovlp"), **dd)
+    pyscf_dpint = numpy_to_tensor(mol.intor("int1e_r_origj"), **dd)
 
-    assert dxtb_overlap.shape == pyscf_overlap.shape
-    assert pytest.approx(pyscf_overlap, abs=tol) == dxtb_overlap
+    assert dxtb_dpint.shape == pyscf_dpint.shape
+    assert pytest.approx(pyscf_dpint, abs=tol) == dxtb_dpint
 
-    # normalize dxtb's overlap
-    norm = snorm(dxtb_overlap)
-    dxtb_overlap = torch.einsum("ij,i,j->ij", dxtb_overlap, norm, norm)
+    # normalize
+    norm = snorm(intor.overlap(wrapper))
+    dxtb_dpint = torch.einsum("xij,i,j->xij", dxtb_dpint, norm, norm)
+    pyscf_dpint = torch.einsum("xij,i,j->xij", pyscf_dpint, norm, norm)
 
-    # normalize PySCF's reference overlap
-    norm = snorm(pyscf_overlap)
-    pyscf_overlap = torch.einsum("ij,i,j->ij", pyscf_overlap, norm, norm)
+    print("")
+    print(dxtb_dpint)
 
-    assert dxtb_overlap.shape == pyscf_overlap.shape
-    assert pytest.approx(pyscf_overlap, abs=tol) == dxtb_overlap
-
-
-@pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", sample_list)
-def test_grad(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
-    tol = sqrt(torch.finfo(dtype).eps) * 1e-2
-
-    sample = samples[name]
-    numbers = sample["numbers"].to(device)
-    positions = sample["positions"].to(**dd)
-
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    bas = Basis(numbers, par, ihelp, **dd)
-    atombases = bas.create_dqc(positions)
-
-    wrapper = LibcintWrapper(atombases, ihelp)
-    int1 = intor.int1e("ipovlp", wrapper)
-
-    mol = M(numbers, positions, parse_arg=False)
-    int2 = numpy_to_tensor(mol.intor("int1e_ipovlp"), **dd)
-
-    assert int1.shape == int2.shape
-    assert pytest.approx(int2, abs=tol) == int1
+    assert dxtb_dpint.shape == pyscf_dpint.shape
+    assert pytest.approx(pyscf_dpint, abs=tol) == dxtb_dpint

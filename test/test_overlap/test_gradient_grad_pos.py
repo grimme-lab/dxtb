@@ -33,7 +33,7 @@ def gradchecker(
     positions = sample["positions"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    bas = Basis(torch.unique(numbers), par, ihelp.unique_angular, **dd)
+    bas = Basis(torch.unique(numbers), par, ihelp, **dd)
 
     # variables to be differentiated
     positions.requires_grad_(True)

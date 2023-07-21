@@ -30,9 +30,9 @@ def test_export(
         assert False
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    bas = Basis(numbers, par, ihelp.unique_angular, dtype=dtype)
+    bas = Basis(numbers, par, ihelp, dtype=dtype)
 
-    txt = bas.to_bse(ihelp, qcformat=qcformat)
+    txt = bas.to_bse(qcformat=qcformat)
 
     # check with saved basis files
     root = Path(__file__).parents[2]

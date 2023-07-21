@@ -35,13 +35,13 @@ def gradchecker(
     positions = sample["positions"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    bas = Basis(numbers, par, ihelp.angular, **dd)
+    bas = Basis(numbers, par, ihelp, **dd)
 
     # variables to be differentiated
     positions.requires_grad_(True)
 
     def func(pos: Tensor) -> Tensor:
-        atombases = bas.create_dqc(pos, ihelp)
+        atombases = bas.create_dqc(pos)
         wrapper = intor.LibcintWrapper(atombases, ihelp, spherical=False)
         return intor.overlap(wrapper)
 

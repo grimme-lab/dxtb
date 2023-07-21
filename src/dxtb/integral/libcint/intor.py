@@ -13,7 +13,11 @@ from functools import reduce
 
 import numpy as np
 import torch
-from dxtblibs import CGTO, CINT
+
+try:
+    from dxtblibs import CGTO, CINT
+except ImportError:
+    pass
 
 from ..._types import Callable, Tensor
 from .namemanager import IntorNameManager

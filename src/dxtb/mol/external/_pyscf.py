@@ -27,7 +27,7 @@ from pathlib import Path
 import numpy as np
 
 try:
-    import pyscf  # type: ignore
+    from pyscf import gto  # type: ignore
 except ImportError as e:
     raise ImportError("PySCF is not installed") from e
 
@@ -39,7 +39,7 @@ from ..molecule import Mol
 # Turn off PySCF's normalization since dxtb's normalization is different,
 # requiring a separate normalization anyway. But this way, the results are
 # equal to dxtb's libcint wrapper and we can immediately compare integrals.
-pyscf.gto.mole.NORMALIZE_GTO = False
+gto.mole.NORMALIZE_GTO = False
 
 __all__ = ["PyscfMol", "M"]
 
@@ -69,7 +69,7 @@ def M(
     return mol
 
 
-class PyscfMol(pyscf.gto.Mole):
+class PyscfMol(gto.Mole):
     """
     Pyscf's molecule representation that can be created upon passing only
     `numbers` and `positions`. Note that the basis set is created from a
@@ -110,7 +110,7 @@ class PyscfMol(pyscf.gto.Mole):
             p = Path(path, f"{number:02d}.nwchem")
             with open(p, encoding="utf8") as f:
                 content = f.read()
-                basis[f"{PSE[number]}"] = pyscf.gto.parse(content)
+                basis[f"{PSE[number]}"] = gto.parse(content)
 
         self.atom = atom
         self.basis = basis

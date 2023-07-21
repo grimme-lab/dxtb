@@ -5,6 +5,7 @@ Integral Symmetry
 In tight-binding, we do not require anything special here. Only S1 symmetry is
 of intereset.
 """
+from __future__ import annotations
 
 from abc import abstractmethod
 

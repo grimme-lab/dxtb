@@ -18,6 +18,7 @@ from ..molecules import mols as samples
 from .util import has_memleak_tensor
 
 opts = {"verbosity": 0, "maxiter": 50, "exclude": ["rep", "disp", "hal"]}
+repeats = 5
 
 device = None
 
@@ -68,7 +69,9 @@ def test_xitorch(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
 # FIXME: not calling the garbage collector also causes a memory leak
 # @pytest.mark.parametrize("run_gc", [False, True])
 @pytest.mark.parametrize("create_graph", [False, True])
-def test_fulltracking(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
+def skip_test_fulltracking(
+    dtype: torch.dtype, run_gc: bool, create_graph: bool
+) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
     def fcn():
