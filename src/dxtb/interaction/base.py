@@ -9,7 +9,7 @@ import torch
 
 from .._types import Any, Tensor, TensorLike, TensorOrTensors
 from ..basis import IndexHelper
-from .potential import Potential
+from .container import Charges, Potential
 
 __all__ = ["Interaction"]
 
@@ -101,7 +101,7 @@ class Interaction(TensorLike):
 
     def get_potential(
         self,
-        charges: Tensor,
+        charges: Charges,
         cache: Interaction.Cache,
         ihelp: IndexHelper,
     ) -> Potential:
@@ -110,7 +110,7 @@ class Interaction(TensorLike):
 
         Parameters
         ----------
-        charges : Tensor
+        charges : Charges
             Orbital-resolved partial charges.
         cache : Interaction.Cache
             Restart data for the interaction.
@@ -124,7 +124,7 @@ class Interaction(TensorLike):
         """
 
         # monopole potential: shell-resolved
-        qsh = ihelp.reduce_orbital_to_shell(charges)
+        qsh = ihelp.reduce_orbital_to_shell(charges.mono)
         vsh = self.get_shell_potential(qsh, cache)
 
         # monopole potential: atom-resolved
@@ -136,10 +136,10 @@ class Interaction(TensorLike):
         vmono = ihelp.spread_shell_to_orbital(vsh)
 
         # multipole potentials
-        vdipole = self.get_dipole_potential(qat, cache)
-        vquad = self.get_quadrupole_potential(qat, cache)
+        vdipole = self.get_dipole_potential(charges, cache)
+        vquad = self.get_quadrupole_potential(charges, cache)
 
-        return Potential(vmono, vdipole=vdipole, vquad=vquad, label=self.label)
+        return Potential(vmono, dipole=vdipole, quad=vquad, label=self.label)
 
     def get_shell_potential(self, charges: Tensor, *_) -> Tensor:
         """
@@ -218,15 +218,16 @@ class Interaction(TensorLike):
         return None
 
     def get_energy(
-        self, charges: Tensor, cache: Interaction.Cache, ihelp: IndexHelper
+        self, charges: Charges, cache: Interaction.Cache, ihelp: IndexHelper
     ) -> Tensor:
         """
         Compute the energy from the charges, all quantities are orbital-resolved.
 
         Parameters
         ----------
-        charges : Tensor
-            Orbital-resolved partial charges.
+        charges : Charges
+            Collection of charges. Monopolar partial charges are
+            orbital-resolved.
         cache : Interaction.Cache
             Restart data for the interaction.
         ihelp : IndexHelper
@@ -239,16 +240,33 @@ class Interaction(TensorLike):
 
         Note
         ----
-        The subclasses of `Interaction` should implement the `get_atom_energy`
-        and `get_shell_energy` methods.
+        The subclasses of `Interaction` should implement the `get_<type>_energy`
+        methods. If they are not implemented in the subclass, they will
+        evaluate to zero.
         """
-        qsh = ihelp.reduce_orbital_to_shell(charges)
+        if charges.mono is None:
+            raise RuntimeError(
+                "Charge collection is empty. At least monopolar partial "
+                "charges are required."
+            )
+
+        qsh = ihelp.reduce_orbital_to_shell(charges.mono)
         esh = self.get_shell_energy(qsh, cache)
 
         qat = ihelp.reduce_shell_to_atom(qsh)
         eat = self.get_atom_energy(qat, cache)
 
-        return eat + ihelp.reduce_shell_to_atom(esh)
+        e = eat + ihelp.reduce_shell_to_atom(esh)
+
+        if charges.dipole is not None:
+            edp = self.get_dipole_energy(charges.dipole, cache)
+            e += edp
+
+        if charges.quad is not None:
+            eqp = self.get_quadrupole_energy(charges.quad, cache)
+            e += eqp
+
+        return e
 
     def get_shell_energy(self, charges: Tensor, *_: Any) -> Tensor:
         """
@@ -288,9 +306,49 @@ class Interaction(TensorLike):
         """
         return torch.zeros_like(charges)
 
+    def get_dipole_energy(self, charges: Tensor, *_: Any) -> Tensor:
+        """
+        Compute the energy from the atomic dipole moments, all quantities are
+        atom-resolved.
+
+        This method should be implemented by the subclass. Here, it serves
+        only to create an empty `Interaction` by returning zeros.
+
+        Parameters
+        ----------
+        charges : Tensor
+            Atomic dipole moments of all atoms.
+
+        Returns
+        -------
+        Tensor
+            Energy vector for each atomic dipole moment.
+        """
+        return torch.zeros_like(charges).sum(-1)
+
+    def get_quadrupole_energy(self, charges: Tensor, *_: Any) -> Tensor:
+        """
+        Compute the energy from the atomic quadrupole moments, all quantities
+        are atom-resolved.
+
+        This method should be implemented by the subclass. Here, it serves
+        only to create an empty `Interaction` by returning zeros.
+
+        Parameters
+        ----------
+        charges : Tensor
+            Atomic quadrupole moments of all atoms.
+
+        Returns
+        -------
+        Tensor
+            Energy vector for each atomic quadrupole moment.
+        """
+        return torch.zeros_like(charges).sum(-1)
+
     def get_gradient(
         self,
-        charges: Tensor,
+        charges: Charges,
         positions: Tensor,
         cache: Interaction.Cache,
         ihelp: IndexHelper,
@@ -322,7 +380,9 @@ class Interaction(TensorLike):
         Tensor
             Nuclear gradient for each atom.
         """
-        qsh = ihelp.reduce_orbital_to_shell(charges)
+        qao = charges.mono.detach()
+
+        qsh = ihelp.reduce_orbital_to_shell(qao)
         gsh = self.get_shell_gradient(
             qsh, positions, cache, grad_outputs, retain_graph, create_graph
         )

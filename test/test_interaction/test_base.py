@@ -6,7 +6,7 @@ from __future__ import annotations
 import torch
 
 from dxtb.basis import IndexHelper
-from dxtb.interaction import Interaction
+from dxtb.interaction import Charges, Interaction
 
 
 def test_empty() -> None:
@@ -26,7 +26,7 @@ def test_empty() -> None:
     se = i.get_shell_energy(numbers, numbers)
     assert (se == torch.zeros(se.shape)).all()
 
-    e = i.get_energy(orbital, numbers, ihelp)  # type: ignore
+    e = i.get_energy(Charges(mono=orbital), numbers, ihelp)  # type: ignore
     assert (e == torch.zeros(e.shape)).all()
 
     ap = i.get_atom_potential(numbers)

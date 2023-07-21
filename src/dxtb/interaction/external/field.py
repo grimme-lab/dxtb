@@ -12,6 +12,7 @@ from dxtb._types import Tensor
 
 from ..._types import Tensor, TensorLike
 from ..base import Interaction
+from ..container import Charges
 
 
 class ElectricField(Interaction):
@@ -94,7 +95,7 @@ class ElectricField(Interaction):
 
     def get_atom_energy(self, charges: Tensor, cache: Cache) -> Tensor:
         """
-        Calculate the electric field energy.
+        Calculate the monopolar contribution of the electric field energy.
 
         Parameters
         ----------
@@ -108,14 +109,29 @@ class ElectricField(Interaction):
         Tensor
             Atom-wise electric field interaction energies.
         """
+        return -cache.vat * charges
 
-        vat = -cache.vat * charges
+    def get_dipole_energy(self, charges: Tensor, cache: Cache) -> Tensor:
+        """
+        Calculate the dipolar contribution of the electric field energy.
 
-        # TODO: Dipole integral required for dipolar potential
-        # vdp = -cache.vdp * dp
-        return vat
+        Parameters
+        ----------
+        charges : Tensor
+            Atomic dipole moments of all atoms.
+        cache : ElectricField.Cache
+            Restart data for the interaction.
 
-    def get_atom_potential(self, _: Tensor, cache: Cache) -> Tensor:
+        Returns
+        -------
+        Tensor
+            Atom-wise electric field interaction energies.
+        """
+
+        # torch.sum(-cache.vdp * charges, dim=-1)
+        return torch.einsum("...ix,...ix->...i", -cache.vdp, charges)
+
+    def get_atom_potential(self, _: Charges, cache: Cache) -> Tensor:
         """
         Calculate the electric field potential.
 
@@ -133,7 +149,7 @@ class ElectricField(Interaction):
         """
         return -cache.vat
 
-    def get_dipole_potential(self, _: Tensor, cache: Cache) -> Tensor:
+    def get_dipole_potential(self, _: Charges, cache: Cache) -> Tensor:
         """
         Calculate the electric field dipole potential.
 

@@ -18,7 +18,7 @@ from dxtb.xtb import Calculator
 from .samples import samples
 
 sample_list = ["MB16_43_01"]
-sample_list = ["SiH4"]
+sample_list = ["LiH", "SiH4"]
 
 opts = {"verbosity": 0, "maxiter": 50}
 
@@ -36,15 +36,15 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
-    # ref = sample["energy"].to(**dd)
-    ref1 = sample["energy_monopole"].to(**dd)
+    ref = sample["energy"].to(**dd)
+    # ref1 = sample["energy_monopole"].to(**dd)
 
     field_vector = torch.tensor([-2.0, 0.0, 0.0], **dd) * units.VAA2AU
     efield = new_efield(field_vector)
     calc = Calculator(numbers, GFN1_XTB, interaction=[efield], opts=opts, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
-    assert pytest.approx(ref1, abs=tol) == result.total.sum(-1)
+    assert pytest.approx(ref, abs=tol) == result.total.sum(-1)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

@@ -6,7 +6,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb._types import PotentialData
+from dxtb._types import ContainerData
 from dxtb.constants import defaults
 from dxtb.interaction import Potential
 from dxtb.utils import batch
@@ -23,14 +23,14 @@ vdipoleb = torch.randn((nbatch, 2))
 vquad = torch.randn(2)
 vquadb = torch.randn((nbatch, 2))
 
-data: PotentialData = {
+data: ContainerData = {
     "mono": vmono.shape,
     "dipole": vdipole.shape,
     "quad": vquad.shape,
     "label": None,
 }
 
-datab: PotentialData = {
+datab: ContainerData = {
     "mono": vmonob.shape,
     "dipole": vdipoleb.shape,
     "quad": vquadb.shape,
@@ -48,7 +48,7 @@ def test_astensor_empty() -> None:
 
 
 def test_astensor_mono() -> None:
-    pot = Potential(vmono=vmono)
+    pot = Potential(mono=vmono)
     tensor = pot.as_tensor()
 
     ref = batch.pack([vmono], value=defaults.PADNZ)
@@ -56,7 +56,7 @@ def test_astensor_mono() -> None:
 
 
 def test_astensor_mono_dipole() -> None:
-    pot = Potential(vmono=vmono, vdipole=vdipole)
+    pot = Potential(mono=vmono, dipole=vdipole)
     tensor = pot.as_tensor()
 
     ref = batch.pack([vmono, vdipole], value=defaults.PADNZ)
@@ -64,7 +64,7 @@ def test_astensor_mono_dipole() -> None:
 
 
 def test_astensor_all() -> None:
-    pot = Potential(vmono=vmono, vdipole=vdipole, vquad=vquad)
+    pot = Potential(mono=vmono, dipole=vdipole, quad=vquad)
     tensor = pot.as_tensor()
 
     ref = batch.pack([vmono, vdipole, vquad], value=defaults.PADNZ)
@@ -77,36 +77,36 @@ def test_astensor_all() -> None:
 def test_fromtensor_mono() -> None:
     pot = Potential.from_tensor(vmono, data)
 
-    assert (pot.vmono == vmono).all()
-    assert pot.vdipole is None
-    assert pot.vquad is None
+    assert (pot.mono == vmono).all()
+    assert pot.dipole is None
+    assert pot.quad is None
 
 
 def test_fromtensor_mono_withpack() -> None:
     tensor = batch.pack([vmono], value=defaults.PADNZ)
     pot = Potential.from_tensor(tensor, data, batched=True)
 
-    assert (pot.vmono == tensor).all()
-    assert pot.vdipole is None
-    assert pot.vquad is None
+    assert (pot.mono == tensor).all()
+    assert pot.dipole is None
+    assert pot.quad is None
 
 
 def test_fromtensor_mono_dipole() -> None:
     tensor = batch.pack([vmono, vdipole], value=defaults.PADNZ)
     pot = Potential.from_tensor(tensor, data)
 
-    assert (pot.vmono == vmono).all()
-    assert (pot.vdipole == vdipole).all()
-    assert pot.vquad is None
+    assert (pot.mono == vmono).all()
+    assert (pot.dipole == vdipole).all()
+    assert pot.quad is None
 
 
 def test_fromtensor_all() -> None:
     tensor = batch.pack([vmono, vdipole, vquad], value=defaults.PADNZ)
     pot = Potential.from_tensor(tensor, data, pad=defaults.PADNZ)
 
-    assert (pot.vmono == vmono).all()
-    assert (pot.vdipole == vdipole).all()
-    assert (pot.vquad == vquad).all()
+    assert (pot.mono == vmono).all()
+    assert (pot.dipole == vdipole).all()
+    assert (pot.quad == vquad).all()
 
 
 # from tensor: batched
@@ -115,33 +115,33 @@ def test_fromtensor_all() -> None:
 def test_fromtensor_mono_batch() -> None:
     pot = Potential.from_tensor(vmonob, datab, batched=True)
 
-    assert (pot.vmono == vmonob).all()
-    assert pot.vdipole is None
-    assert pot.vquad is None
+    assert (pot.mono == vmonob).all()
+    assert pot.dipole is None
+    assert pot.quad is None
 
 
 def test_fromtensor_mono_batch_withpack() -> None:
     tensor = batch.pack([vmonob], value=defaults.PADNZ)
     pot = Potential.from_tensor(tensor, datab, batched=True)
 
-    assert (pot.vmono == tensor).all()
-    assert pot.vdipole is None
-    assert pot.vquad is None
+    assert (pot.mono == tensor).all()
+    assert pot.dipole is None
+    assert pot.quad is None
 
 
 def test_fromtensor_mono_dipole_batch() -> None:
     tensor = batch.pack([vmonob, vdipoleb], value=PAD)
     pot = Potential.from_tensor(tensor, datab, batched=True, pad=PAD)
 
-    assert (pot.vmono == vmonob).all()
-    assert (pot.vdipole == vdipoleb).all()
-    assert pot.vquad is None
+    assert (pot.mono == vmonob).all()
+    assert (pot.dipole == vdipoleb).all()
+    assert pot.quad is None
 
 
 def test_fromtensor_all_batch() -> None:
     tensor = batch.pack([vmonob, vdipoleb, vquadb], value=PAD)
     pot = Potential.from_tensor(tensor, datab, batched=True, pad=PAD)
 
-    assert (pot.vmono == vmonob).all()
-    assert (pot.vdipole == vdipoleb).all()
-    assert (pot.vquad == vquadb).all()
+    assert (pot.mono == vmonob).all()
+    assert (pot.dipole == vdipoleb).all()
+    assert (pot.quad == vquadb).all()

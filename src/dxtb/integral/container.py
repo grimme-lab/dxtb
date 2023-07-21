@@ -18,7 +18,7 @@ class Integrals(TensorLike):
     Integral container.
     """
 
-    __slots__ = ["_hcore", "_overlap", "_dipole", "_quad"]
+    __slots__ = ["_hcore", "_overlap", "_dipole", "_quad", "_run_checks"]
 
     def __init__(
         self,
@@ -35,9 +35,12 @@ class Integrals(TensorLike):
         self._overlap = overlap
         self._dipole = dipole
         self._quad = quad
+        self._run_checks = True
 
     @property
-    def hcore(self) -> Tensor | None:
+    def hcore(self) -> Tensor:
+        if self._hcore is None:
+            raise ValueError("No Core Hamiltonian provided.")
         return self._hcore
 
     @hcore.setter
@@ -46,7 +49,9 @@ class Integrals(TensorLike):
         self.checks()
 
     @property
-    def overlap(self) -> Tensor | None:
+    def overlap(self) -> Tensor:
+        if self._overlap is None:
+            raise ValueError("No overlap integral provided.")
         return self._overlap
 
     @overlap.setter
@@ -56,6 +61,14 @@ class Integrals(TensorLike):
 
     @property
     def dipole(self) -> Tensor | None:
+        """
+        Dipole integral of shape (3, nao, nao).
+
+        Returns
+        -------
+        Tensor | None
+            Dipole integral if set, else `None`.
+        """
         return self._dipole
 
     @dipole.setter
@@ -72,6 +85,21 @@ class Integrals(TensorLike):
         self._quad = quad
         self.checks()
 
+    # checks
+
+    @property
+    def run_checks(self) -> bool:
+        return self._run_checks
+
+    @run_checks.setter
+    def run_checks(self, run_checks: bool) -> None:
+        current = self.run_checks
+        self._run_checks = run_checks
+
+        # switching from False to True should automatically run checks
+        if current is False and run_checks is True:
+            self.checks()
+
     def checks(self) -> None:
         """
         Checks the shapes of the tensors.
@@ -87,6 +115,9 @@ class Integrals(TensorLike):
             If any of the tensors have incorrect shapes or inconsistent batch
             sizes.
         """
+        if self.run_checks is False:
+            return
+
         nao = None
         batch_size = None
 

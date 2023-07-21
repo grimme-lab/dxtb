@@ -551,8 +551,8 @@ class Hamiltonian(TensorLike):
 
         # factors for all derivatives of the overlap (2*P*H - 2*W - P*(V + V^T))
         tmp = 2 * (ph - wmat)
-        if pot.vmono is not None:
-            tmp -= pmat * (pot.vmono.unsqueeze(-1) + pot.vmono.unsqueeze(-2))
+        if pot.mono is not None:
+            tmp -= pmat * (pot.mono.unsqueeze(-1) + pot.mono.unsqueeze(-2))
 
         sval = torch.where(mask_orb_diagonal, tmp, zero)
 

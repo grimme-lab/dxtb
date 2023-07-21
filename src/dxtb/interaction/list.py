@@ -8,7 +8,7 @@ import torch
 from .._types import Slicers, Tensor, TensorOrTensors
 from ..basis import IndexHelper
 from .base import Interaction
-from .potential import Potential
+from .container import Charges, Potential
 
 
 class InteractionList(Interaction):
@@ -43,6 +43,7 @@ class InteractionList(Interaction):
                 cache.restore()
 
     def __init__(self, *interactions: Interaction | None) -> None:
+        # FIXME: Defaults?
         super().__init__(torch.device("cpu"), torch.float)
         self.interactions = [
             interaction for interaction in interactions if interaction is not None
@@ -80,15 +81,16 @@ class InteractionList(Interaction):
         return cache
 
     def get_potential(
-        self, charges: Tensor, cache: InteractionList.Cache, ihelp: IndexHelper
+        self, charges: Charges, cache: InteractionList.Cache, ihelp: IndexHelper
     ) -> Potential:
         """
         Compute the potential for a list of interactions.
 
         Parameters
         ----------
-        charges : Tensor
-            Orbital-resolved partial charges.
+        charges : Charges
+            Collection of charges. Monopolar partial charges are
+            orbital-resolved.
         ihelp : IndexHelper
             Index mapping for the basis set.
         cache : InteractionList.Cache
@@ -102,7 +104,10 @@ class InteractionList(Interaction):
 
         # create empty potential
         pot = Potential(
-            torch.zeros_like(charges), vdipole=None, vquad=None, batched=ihelp.batched
+            torch.zeros_like(charges.mono),
+            dipole=None,
+            quad=None,
+            batched=ihelp.batched,
         )
 
         # exit with empty potential if no interactions present
@@ -117,15 +122,16 @@ class InteractionList(Interaction):
         return pot
 
     def get_energy_as_dict(
-        self, charges: Tensor, cache: Cache, ihelp: IndexHelper
+        self, charges: Charges, cache: Cache, ihelp: IndexHelper
     ) -> dict[str, Tensor]:
         """
         Compute the energy for a list of interactions.
 
         Parameters
         ----------
-        charges : Tensor
-            Orbital-resolved partial charges.
+        charges : Charges
+            Collection of charges. Monopolar partial charges are
+            orbital-resolved.
         ihelp : IndexHelper
             Index mapping for the basis set.
         cache : Cache
@@ -137,7 +143,7 @@ class InteractionList(Interaction):
             Energy vector for each orbital partial charge.
         """
         if len(self.interactions) <= 0:
-            return {"none": torch.zeros_like(charges)}
+            return {"none": torch.zeros_like(charges.mono)}
 
         return {
             interaction.label: interaction.get_energy(
@@ -146,14 +152,17 @@ class InteractionList(Interaction):
             for interaction in self.interactions
         }
 
-    def get_energy(self, charges: Tensor, cache: Cache, ihelp: IndexHelper) -> Tensor:
+    def get_energy(
+        self, charges: Charges | Tensor, cache: Cache, ihelp: IndexHelper
+    ) -> Tensor:
         """
         Compute the energy for a list of interactions.
 
         Parameters
         ----------
-        charges : Tensor
-            Orbital-resolved partial charges.
+        charges : Charges | Tensor
+            Collection of charges. Monopolar partial charges are
+            orbital-resolved.
         ihelp : IndexHelper
             Index mapping for the basis set.
         cache : Cache
@@ -164,8 +173,11 @@ class InteractionList(Interaction):
         Tensor
             Atom-resolved energy vector for orbital partial charges.
         """
+        if isinstance(charges, Tensor):
+            charges = Charges(mono=charges)
+
         if len(self.interactions) <= 0:
-            return ihelp.reduce_orbital_to_atom(torch.zeros_like(charges))
+            return ihelp.reduce_orbital_to_atom(torch.zeros_like(charges.mono))
 
         return torch.stack(
             [
@@ -176,7 +188,7 @@ class InteractionList(Interaction):
 
     def get_gradient(
         self,
-        charges: Tensor,
+        charges: Charges,
         positions: Tensor,
         cache: InteractionList.Cache,
         ihelp: IndexHelper,
@@ -189,8 +201,9 @@ class InteractionList(Interaction):
 
         Parameters
         ----------
-        charges : Tensor
-            Orbital-resolved partial charges.
+        charges : Charges
+            Collection of charges. Monopolar partial charges are
+            orbital-resolved.
         positions : Tensor
             Cartesian coordinates.
         cache : InteractionList.Cache

@@ -18,6 +18,7 @@ from typing import (
     Literal,
     NoReturn,
     Protocol,
+    Type,
     TypedDict,
     TypeVar,
     overload,
@@ -112,7 +113,7 @@ class Molecule(TypedDict):
     """Tensor of 3D coordinates of shape (n, 3)"""
 
 
-class PotentialData(TypedDict):
+class ContainerData(TypedDict):
     """Shape and label information of Potentials."""
 
     mono: torch.Size | None

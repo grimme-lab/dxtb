@@ -8,14 +8,14 @@ from abc import abstractmethod
 
 import torch
 
-from .._types import Any, PotentialData, Slicers, Tensor, TypedDict
+from .._types import Any, Slicers, Tensor, TypedDict
 from ..basis import IndexHelper
 from ..constants import K2AU, defaults
 from ..exlibs.xitorch import EditableModule, LinearOperator
 from ..exlibs.xitorch import linalg as xtl
 from ..integral import Integrals
 from ..interaction import InteractionList
-from ..interaction.potential import Potential
+from ..interaction.container import Charges, ContainerData, Potential
 from ..utils import eighb, real_atoms
 from ..wavefunction import filling, mulliken
 
@@ -23,7 +23,7 @@ from ..wavefunction import filling, mulliken
 class SCFResult(TypedDict):
     """Collection of SCF result variables."""
 
-    charges: Tensor
+    charges: Charges
     """Self-consistent orbital-resolved Mulliken partial charges."""
 
     coefficients: Tensor
@@ -69,11 +69,10 @@ class BaseSCF:
         numbers: Tensor
         """Atomic numbers"""
 
-        hcore: Tensor
-        """Core Hamiltonian"""
-
-        overlap: Tensor
-        """Overlap matrix"""
+        integrals: Integrals
+        """
+        Collection of integrals. Core Hamiltonian and overlap are always needed.
+        """
 
         occupation: Tensor
         """Occupation numbers (shape: [..., 2, orbs])"""
@@ -125,8 +124,7 @@ class BaseSCF:
             if integrals.overlap is None:
                 raise ValueError("No Overlap provided.")
 
-            self.hcore = integrals.hcore
-            self.overlap = integrals.overlap
+            self.ints = integrals
             self.occupation = occupation
             self.n0 = n0
             self.numbers = numbers
@@ -134,7 +132,13 @@ class BaseSCF:
             self.cache = cache
             self.init_zeros()
 
-            self.potential: PotentialData = {
+            self.potential: ContainerData = {
+                "mono": None,
+                "dipole": None,
+                "quad": None,
+                "label": None,
+            }
+            self.charges: ContainerData = {
                 "mono": None,
                 "dipole": None,
                 "quad": None,
@@ -145,10 +149,10 @@ class BaseSCF:
 
         def init_zeros(self) -> None:
             self.energy = torch.zeros_like(self.n0)
-            self.hamiltonian = torch.zeros_like(self.hcore)
-            self.density = torch.zeros_like(self.hcore)
+            self.hamiltonian = torch.zeros_like(self.ints.hcore)
+            self.density = torch.zeros_like(self.ints.hcore)
             self.evals = torch.zeros_like(self.n0)
-            self.evecs = torch.zeros_like(self.hcore)
+            self.evecs = torch.zeros_like(self.ints.hcore)
 
             self.old_charges = torch.zeros_like(self.energy)
             self.old_energy = torch.zeros_like(self.numbers)
@@ -161,11 +165,20 @@ class BaseSCF:
         def cull(self, conv: Tensor, slicers: Slicers) -> None:
             onedim = [~conv, *slicers["orbital"]]
             twodim = [~conv, *slicers["orbital"], *slicers["orbital"]]
+            threedim = [~conv, (...,), *slicers["orbital"], *slicers["orbital"]]
+
+            # disable shape check temporarily for writing culled versions back
+            self.ints.run_checks = False
+            self.ints.overlap = self.ints.overlap[twodim]
+            self.ints.hcore = self.ints.hcore[twodim]
+            if self.ints.dipole is not None:
+                self.ints.dipole = self.ints.dipole[threedim]
+            if self.ints.quad is not None:
+                self.ints.quad = self.ints.quad[threedim]
+            self.ints.run_checks = True
 
             self.numbers = self.numbers[[~conv, *slicers["atom"]]]
-            self.overlap = self.overlap[twodim]
             self.hamiltonian = self.hamiltonian[twodim]
-            self.hcore = self.hcore[twodim]
             self.occupation = self.occupation[twodim]
             self.evecs = self.evecs[twodim]
             self.evals = self.evals[onedim]
@@ -246,7 +259,7 @@ class BaseSCF:
 
         self._data = self._Data(*args, **kwargs)
 
-        self.kt = self._data.hcore.new_tensor(
+        self.kt = self._data.ints.hcore.new_tensor(
             self.scf_options.get("etemp", defaults.ETEMP) * K2AU
         )
 
@@ -254,7 +267,7 @@ class BaseSCF:
         self.batched = self._data.numbers.ndim > 1
 
     @abstractmethod
-    def scf(self, guess: Tensor) -> Tensor:
+    def scf(self, guess: Tensor) -> Charges:
         """
         Mixing and convergence for self-consistent field iterations.
 
@@ -301,14 +314,14 @@ class BaseSCF:
             Eigenvectors of the Hamiltonian.
         """
 
-    def __call__(self, charges: Tensor | None = None) -> SCFResult:
+    def __call__(self, charges: Tensor | Charges | None = None) -> SCFResult:
         """
         Run the self-consistent iterations until a stationary solution is
         reached.
 
         Parameters
         ----------
-        charges : Tensor, optional
+        charges : Tensor | Charges, optional
             Initial orbital charges vector. If `None` is given (default), a
             zero vector is used.
 
@@ -318,11 +331,27 @@ class BaseSCF:
             Converged orbital charges vector.
         """
 
+        # initialize zero charges (equivalent to SAD guess)
         if charges is None:
             charges = torch.zeros_like(self._data.occupation)
 
+        # initialize Charge container depending on given integrals
+        if isinstance(charges, Tensor):
+            charges = Charges(mono=charges, batched=self.batched)
+            self._data.charges["mono"] = charges.mono_shape
+
+            if self._data.ints.dipole is not None:
+                shp = (*self._data.numbers.shape, 3)
+                zeros = torch.zeros(shp, device=self.device, dtype=self.dtype)
+                charges.dipole = zeros
+                self._data.charges["dipole"] = charges.dipole_shape
+
+            if self._data.ints.quad is not None:
+                raise NotImplementedError
+                # self._data.potential["quad"] = charges.quad_shape
+
         if self.scp_mode in ("charge", "charges"):
-            guess = charges
+            guess = charges.as_tensor()
         elif self.scp_mode == "potential":
             potential = self.charges_to_potential(charges)
             guess = potential.as_tensor()
@@ -363,7 +392,7 @@ class BaseSCF:
             "potential": self.charges_to_potential(charges),
         }
 
-    def converged_to_charges(self, x: Tensor) -> Tensor:
+    def converged_to_charges(self, x: Tensor) -> Charges:
         """
         Convert the converged property to charges.
 
@@ -383,7 +412,7 @@ class BaseSCF:
             Unknown `scp_mode` given.
         """
         if self.scp_mode in ("charge", "charges"):
-            return x
+            return Charges.from_tensor(x, self._data.charges, batched=self.batched)
 
         if self.scp_mode == "potential":
             pot = Potential.from_tensor(x, self._data.potential, batched=self.batched)
@@ -395,7 +424,7 @@ class BaseSCF:
 
         raise ValueError(f"Unknown convergence target (SCP mode) '{self.scp_mode}'.")
 
-    def get_energy(self, charges: Tensor) -> Tensor:
+    def get_energy(self, charges: Charges) -> Tensor:
         """
         Get the energy of the system with the given charges.
 
@@ -414,7 +443,7 @@ class BaseSCF:
             charges, self._data.cache, self._data.ihelp
         )
 
-    def get_energy_as_dict(self, charges: Tensor) -> dict[str, Tensor]:
+    def get_energy_as_dict(self, charges: Charges) -> dict[str, Tensor]:
         """
         Get the energy of the system with the given charges.
 
@@ -498,7 +527,7 @@ class BaseSCF:
             )
 
             return mulliken.get_atomic_populations(
-                self._data.overlap, density, self._data.ihelp
+                self._data.ints.overlap, density, self._data.ihelp
             )
 
         raise ValueError(f"Unknown partitioning mode '{mode}'.")
@@ -517,16 +546,20 @@ class BaseSCF:
         Tensor
             New orbital-resolved partial charges vector.
         """
+
+        q = Charges.from_tensor(charges, self._data.charges, batched=self.batched)
+        potential = self.charges_to_potential(q)
+
         if self.scf_options.get("verbosity", defaults.VERBOSITY) > 0:
             if charges.ndim < 2:  # pragma: no cover
-                energy = self.get_energy(charges).sum(-1).detach().clone()
+                energy = self.get_energy(q).sum(-1).detach().clone()
                 ediff = torch.linalg.vector_norm(self._data.old_energy - energy)
 
                 density = self._data.density.detach().clone()
                 pnorm = torch.linalg.matrix_norm(self._data.old_density - density)
 
-                q = charges.detach().clone()
-                qdiff = torch.linalg.vector_norm(self._data.old_charges - q)
+                _q = charges.detach().clone()
+                qdiff = torch.linalg.vector_norm(self._data.old_charges - _q)
 
                 print(
                     f"{self._data.iter:3}   {energy: .16E}  {ediff: .6E} "
@@ -534,18 +567,18 @@ class BaseSCF:
                 )
 
                 self._data.old_energy = energy
-                self._data.old_charges = q
+                self._data.old_charges = _q
                 self._data.old_density = density
                 self._data.iter += 1
             else:
-                energy = self.get_energy(charges).detach().clone()
+                energy = self.get_energy(q).detach().clone()
                 ediff = torch.linalg.norm(self._data.old_energy - energy)
 
                 density = self._data.density.detach().clone()
                 pnorm = torch.linalg.norm(self._data.old_density - density)
 
-                q = charges.detach().clone()
-                qdiff = torch.linalg.norm(self._data.old_charges - q)
+                _q = charges.detach().clone()
+                qdiff = torch.linalg.norm(self._data.old_charges - _q)
 
                 print(
                     f"{self._data.iter:3}   {energy.sum(): .16E}  {ediff: .6E} "
@@ -553,14 +586,15 @@ class BaseSCF:
                 )
 
                 self._data.old_energy = energy
-                self._data.old_charges = q
+                self._data.old_charges = _q
                 self._data.old_density = density
                 self._data.iter += 1
 
         if self.fwd_options["verbose"] > 1:  # pragma: no cover
-            print(f"energy: {self.get_energy(charges).sum(-1)}")
-        potential = self.charges_to_potential(charges)
-        return self.potential_to_charges(potential)
+            print(f"energy: {self.get_energy(q).sum(-1)}")
+
+        new_charges = self.potential_to_charges(potential)
+        return new_charges.as_tensor()
 
     def iterate_potential(self, potential: Tensor) -> Tensor:
         """
@@ -583,14 +617,14 @@ class BaseSCF:
         charges = self.potential_to_charges(pot)
 
         if self.scf_options["verbosity"] > 0:
-            if charges.ndim < 2:  # pragma: no cover
+            if charges.mono.ndim < 2:  # pragma: no cover
                 energy = self.get_energy(charges).sum(-1).detach().clone()
                 ediff = torch.linalg.vector_norm(self._data.old_energy - energy)
 
                 density = self._data.density.detach().clone()
                 pnorm = torch.linalg.matrix_norm(self._data.old_density - density)
 
-                q = charges.detach().clone()
+                q = charges.mono.detach().clone()
                 qdiff = torch.linalg.vector_norm(self._data.old_charges - q)
 
                 print(
@@ -609,7 +643,7 @@ class BaseSCF:
                 density = self._data.density.detach().clone()
                 pnorm = torch.linalg.norm(self._data.old_density - density)
 
-                q = charges.detach().clone()
+                q = charges.mono.detach().clone()
                 qdiff = torch.linalg.norm(self._data.old_charges - q)
 
                 print(
@@ -646,7 +680,7 @@ class BaseSCF:
 
         return self._data.hamiltonian
 
-    def charges_to_potential(self, charges: Tensor) -> Potential:
+    def charges_to_potential(self, charges: Charges) -> Potential:
         """
         Compute the potential from the orbital charges.
 
@@ -665,15 +699,15 @@ class BaseSCF:
             charges, self._data.cache, self._data.ihelp
         )
         self._data.potential = {
-            "mono": potential.vmono_shape,
-            "dipole": potential.vdipole_shape,
-            "quad": potential.vquad_shape,
+            "mono": potential.mono_shape,
+            "dipole": potential.dipole_shape,
+            "quad": potential.quad_shape,
             "label": potential.label,
         }
 
         return potential
 
-    def potential_to_charges(self, potential: Potential) -> Tensor:
+    def potential_to_charges(self, potential: Potential) -> Charges:
         """
         Compute the orbital charges from the potential.
 
@@ -709,7 +743,7 @@ class BaseSCF:
         self._data.hamiltonian = self.potential_to_hamiltonian(potential)
         return self.hamiltonian_to_density(self._data.hamiltonian)
 
-    def density_to_charges(self, density: Tensor) -> Tensor:
+    def density_to_charges(self, density: Tensor) -> Charges:
         """
         Compute the orbital charges from the density matrix.
 
@@ -724,18 +758,36 @@ class BaseSCF:
             Orbital-resolved partial charges vector.
         """
 
-        self._data.energy = torch.diagonal(
-            torch.einsum("...ik,...kj->...ij", density, self._data.hcore),
-            dim1=-2,
-            dim2=-1,
-        )
+        ints = self._data.ints
 
-        populations = torch.diagonal(
-            torch.einsum("...ik,...kj->...ij", density, self._data.overlap),
-            dim1=-2,
-            dim2=-1,
-        )
-        return self._data.n0 - populations
+        # Calculate diagonal directly by using index "i" twice on left side.
+        # The slower but more readable approach would instead compute the full
+        # matrix with "...ik,...kj->...ij" and only extract the diagonal
+        # afterwards with `torch.diagonal(tensor, dim1=-2, dim2=-1)`.
+        self._data.energy = torch.einsum("...ik,...ki->...i", density, ints.hcore)
+
+        # monopolar charges
+        populations = torch.einsum("...ik,...ki->...i", density, ints.overlap)
+        charges = Charges(mono=self._data.n0 - populations, batched=self.batched)
+
+        # Atomic dipole moments (dipole charges)
+        if ints.dipole is not None:
+            # Again, the diagonal is directly calculated instead of full matrix
+            # ("...ik,...mkj->...ijm") as `torch.diagonal` behaves weirdly for
+            # more than 2D tensors. Additionally, we move the multipole
+            # dimension to the back, which is required for the reduction to
+            # atom-resolution.
+            charges.dipole = self._data.ihelp.reduce_orbital_to_atom(
+                -torch.einsum("...ik,...mki->...im", density, ints.dipole),
+                extra=True,
+                dim=-2,
+            )
+
+        # Atomic quadrupole moments (quadrupole charges)
+        if ints.quad is not None:
+            raise NotImplementedError
+
+        return charges
 
     def potential_to_hamiltonian(self, potential: Potential) -> Tensor:
         """
@@ -751,11 +803,26 @@ class BaseSCF:
         Tensor
             Hamiltonian matrix.
         """
-        h1 = self._data.hcore
+        h1 = self._data.ints.hcore
 
-        if potential.vmono is not None:
-            v = potential.vmono.unsqueeze(-1) + potential.vmono.unsqueeze(-2)
-            h1 = h1 - (0.5 * self._data.overlap * v)
+        if potential.mono is not None:
+            v = potential.mono.unsqueeze(-1) + potential.mono.unsqueeze(-2)
+            h1 = h1 - (0.5 * self._data.ints.overlap * v)
+
+        if potential.dipole is not None:
+            dpint = self._data.ints.dipole
+            if dpint is not None:
+                from dxtb.utils.batch import index
+
+                # spread to orbitals
+                v = index(potential.dipole, self._data.ihelp.orbitals_to_atom)
+
+                # dot product over the the multipolar components
+                tmp = 0.5 * torch.einsum("...kij,...ik->...ij", dpint, v)
+                h1 = h1 - (tmp + tmp.mT)
+
+        if potential.quad is not None:
+            raise NotImplementedError
 
         return h1
 
@@ -812,21 +879,21 @@ class BaseSCF:
         """
         Returns the shape of the density matrix in this engine.
         """
-        return self._data.hcore.shape
+        return self._data.ints.hcore.shape
 
     @property
     def dtype(self) -> torch.dtype:
         """
         Returns the dtype of the tensors in this engine.
         """
-        return self._data.hcore.dtype
+        return self._data.ints.hcore.dtype
 
     @property
     def device(self) -> torch.device:
         """
         Returns the device of the tensors in this engine.
         """
-        return self._data.hcore.device
+        return self._data.ints.hcore.device
 
 
 class BaseXSCF(BaseSCF, EditableModule):
@@ -852,7 +919,7 @@ class BaseXSCF(BaseSCF, EditableModule):
             Overlap matrix.
         """
 
-        smat = self._data.overlap
+        smat = self._data.ints.overlap
 
         zeros = torch.eq(smat, 0)
         mask = torch.all(zeros, dim=-1) & torch.all(zeros, dim=-2)
@@ -930,15 +997,15 @@ class BaseXSCF(BaseSCF, EditableModule):
 
         if methodname == "density_to_charges":
             return [
-                prefix + "_data.hcore",
-                prefix + "_data.overlap",
+                prefix + "_data.ints.hcore",
+                prefix + "_data.ints.overlap",
                 prefix + "_data.n0",
             ]
 
         if methodname == "potential_to_hamiltonian":
             return [
-                prefix + "_data.hcore",
-                prefix + "_data.overlap",
+                prefix + "_data.ints.hcore",
+                prefix + "_data.ints.overlap",
             ]
 
         if methodname == "hamiltonian_to_density":
@@ -948,7 +1015,7 @@ class BaseXSCF(BaseSCF, EditableModule):
             return a + b + c
 
         if methodname == "get_overlap":
-            return [prefix + "_data.overlap"]
+            return [prefix + "_data.ints.overlap"]
 
         if methodname == "diagonalize":
             return []
@@ -978,7 +1045,7 @@ class BaseTSCF(BaseSCF):
             Overlap matrix.
         """
 
-        smat = self._data.overlap
+        smat = self._data.ints.overlap
 
         zeros = torch.eq(smat, 0)
         mask = torch.all(zeros, dim=-1) & torch.all(zeros, dim=-2)

@@ -21,7 +21,7 @@ from ..basis import IndexHelper
 from ..constants import defaults
 from ..exlibs.xitorch import optimize as xto
 from ..integral import Integrals
-from ..interaction import InteractionList
+from ..interaction import Charges, InteractionList
 from ..utils import SCFConvergenceError, SCFConvergenceWarning
 from .base import BaseTSCF, BaseXSCF, SCFResult
 from .guess import get_guess
@@ -44,7 +44,7 @@ class SelfConsistentField(BaseXSCF):
     iterative solver required for the self-consistent field iterations.
     """
 
-    def scf(self, guess: Tensor) -> Tensor:
+    def scf(self, guess: Tensor) -> Charges:
         fcn = self._fcn
 
         q_converged = xto.equilibrium(
@@ -79,7 +79,7 @@ class SelfConsistentFieldFull(BaseTSCF):
     converged systems are removed (culled) from the batch.
     """
 
-    def scf(self, guess: Tensor) -> Tensor:
+    def scf(self, guess: Tensor) -> Charges:
         # "SCF function"
         fcn = self._fcn
 
@@ -133,10 +133,13 @@ class SelfConsistentFieldFull(BaseTSCF):
             cevals = torch.zeros_like(self._data.evals)
             cevecs = torch.zeros_like(self._data.evecs)
             co = torch.zeros_like(self._data.occupation)
-            overlap = self._data.overlap
             n0 = self._data.n0
-            hcore = self._data.hcore
             numbers = self._data.numbers
+
+            overlap = self._data.ints.overlap
+            hcore = self._data.ints.hcore
+            dipole = self._data.ints.dipole
+            quad = self._data.ints.quad
 
             # indices for systems in batch, required for culling
             idxs = torch.arange(guess.size(0))
@@ -271,9 +274,16 @@ class SelfConsistentFieldFull(BaseTSCF):
                 # write culled variables (that did not change throughout the
                 # SCF) back to `self._data` for the final energy evaluation
                 self._data.n0 = n0
-                self._data.hcore = hcore
-                self._data.overlap = overlap
                 self._data.numbers = numbers
+
+                self._data.ints.run_checks = False
+                self._data.ints.overlap = overlap
+                self._data.ints.hcore = hcore
+                if self._data.ints.dipole is not None and dipole is not None:
+                    self._data.ints.dipole = dipole
+                if self._data.ints.quad is not None and quad is not None:
+                    self._data.ints.quad = quad
+                self._data.ints.run_checks = True
 
                 # reset IndexHelper and caches which were culled as well
                 self._data.ihelp.restore()
@@ -301,7 +311,7 @@ class SelfConsistentFieldSingleShot(SelfConsistentFieldFull):
     input features do not change much.
     """
 
-    def __call__(self, charges: Tensor | None = None) -> SCFResult:
+    def __call__(self, charges: Charges | Tensor | None = None) -> SCFResult:
         """
         Run the self-consistent iterations until a stationary solution is reached
 
@@ -317,10 +327,12 @@ class SelfConsistentFieldSingleShot(SelfConsistentFieldFull):
         """
 
         if charges is None:
-            charges = torch.zeros_like(self._data.occupation)
+            charges = Charges(mono=torch.zeros_like(self._data.occupation))
+        if isinstance(charges, Tensor):
+            charges = Charges(mono=charges)
 
         if self.scp_mode in ("charge", "charges"):
-            guess = charges
+            guess = charges.as_tensor()
         elif self.scp_mode == "potential":
             potential = self.charges_to_potential(charges)
             guess = potential.as_tensor()
@@ -334,7 +346,7 @@ class SelfConsistentFieldSingleShot(SelfConsistentFieldFull):
 
         # calculate charges in SCF without gradient tracking
         with torch.no_grad():
-            scp_conv = self.scf(guess)
+            scp_conv = self.scf(guess).as_tensor()
 
         # initialize the correct mixer with tolerances etc.
         mixer = self.scf_options["mixer"]

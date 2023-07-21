@@ -30,6 +30,20 @@ class Record(Molecule, Refs):
 
 
 refs: dict[str, Refs] = {
+    "LiH": {
+        "energy": torch.tensor(
+            -0.89252528137221931,
+            dtype=torch.float64,
+        ),
+        "energy_monopole": torch.tensor(
+            -0.88142483639196112,
+            dtype=torch.float64,
+        ),
+        "energy_no_field": torch.tensor(
+            -0.88142483639196123,
+            dtype=torch.float64,
+        ),
+    },
     "SiH4": {
         "energy": torch.tensor(
             -4.0315642270838108,

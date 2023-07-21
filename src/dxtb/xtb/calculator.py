@@ -25,7 +25,7 @@ from ..data import cov_rad_d3
 from ..dispersion import Dispersion, new_dispersion
 from ..integral import Integrals, Overlap, OverlapLibcint
 from ..integral import libcint as intor
-from ..interaction import Interaction, InteractionList, Potential
+from ..interaction import Charges, Interaction, InteractionList, Potential
 from ..param import Param, get_elem_angular
 from ..utils import Timers, ToleranceWarning
 from ..wavefunction import filling
@@ -55,7 +55,7 @@ class Result(TensorLike):
     Result container for singlepoint calculation.
     """
 
-    charges: Tensor
+    charges: Charges
     """Self-consistent orbital-resolved Mulliken partial charges."""
 
     coefficients: Tensor
@@ -458,10 +458,20 @@ class Calculator(TensorLike):
             self.timer.stop("Overlap")
 
             if self.opts["integral_driver"] == "libcint":
+
+                def snorm(overlap: Tensor) -> Tensor:
+                    return torch.pow(overlap.diagonal(dim1=-1, dim2=-2), -0.5)
+
                 # dipole intgral
                 self.timer.start("Dipole Integral")
                 assert self._intdriver is not None
-                self.integrals.dipole = intor.int1e("j", self._intdriver)
+
+                # FIXME: We should not recalculate here (I was just lazy atm)!
+                n = snorm(intor.overlap(self._intdriver))
+                self.integrals.dipole = torch.einsum(
+                    "xij,i,j->xij", intor.int1e("j", self._intdriver), n, n
+                )
+
                 self.timer.stop("Dipole Integral")
 
             # Hamiltonian
@@ -521,8 +531,10 @@ class Calculator(TensorLike):
             if grad is True:
                 if len(self.interactions.interactions) > 0:
                     self.timer.start("igrad", "Interaction Gradient")
+
+                    # charges should be detached
                     result.interaction_grad = self.interactions.get_gradient(
-                        result.charges.detach(), positions, icaches, self.ihelp
+                        result.charges, positions, icaches, self.ihelp
                     )
                     result.total_grad += result.interaction_grad
                     self.timer.stop("igrad")

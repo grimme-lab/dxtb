@@ -10,6 +10,7 @@ import torch
 
 from dxtb.basis import IndexHelper
 from dxtb.coulomb import secondorder as es2
+from dxtb.interaction import Charges
 from dxtb.param import GFN1_XTB, get_elem_angular
 
 from ..utils import get_device_from_str
@@ -49,7 +50,7 @@ def test_grad_fail() -> None:
     assert es is not None
 
     cache = es.get_cache(numbers, positions, ihelp=ihelp)
-    energy = es.get_energy(charges, cache, ihelp)
+    energy = es.get_energy(Charges(charges), cache, ihelp)
 
     # zeroenergy
     grad = es._gradient(torch.zeros_like(energy), positions)

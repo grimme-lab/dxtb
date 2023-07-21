@@ -86,7 +86,10 @@ def _check_and_set(
 
 ############### pytorch functions ###############
 class _Int2cFunction(torch.autograd.Function):
-    # wrapper class to provide the gradient of the 2-centre integrals
+    """
+    Wrapper class to provide the gradient of the 2-centre integrals.
+    """
+
     @staticmethod
     def forward(
         ctx,  # type: ignore
