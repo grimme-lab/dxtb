@@ -167,3 +167,59 @@ def memoizer(fcn: Callable[..., T]) -> Callable[..., T]:  # pragma: no cover
         return result
 
     return wrapper
+
+
+def dependent_memoize(*dependency_getters: Callable[..., Any]):
+    """
+    Memoization with multiple dependency-based cache invalidation. This
+    decorator allows specification of `__slots__`. It works with and without
+    function arguments.
+    """
+
+    def decorator(fcn: Callable[..., T]) -> Callable[..., T]:
+        # creating the cache outside the wrapper shares it across instances
+        cache = {}
+        dependency_cache = {}
+
+        @wraps(fcn)
+        def wrapper(self, *args, **kwargs):
+            # create unique key for all instances in cache dictionary
+            key = (id(self), fcn.__name__, args, frozenset(kwargs.items()))
+
+            # get current deps
+            current_deps = tuple(getter(self) for getter in dependency_getters)
+            cached_deps = dependency_cache.get(key)
+
+            # Check if the cache has been invalidated
+            cache_invalidated = False
+            if cached_deps is None or len(cached_deps) != len(current_deps):
+                cache_invalidated = True
+            else:
+                for curr, cached in zip(current_deps, cached_deps):
+                    if not torch.equal(curr, cached):
+                        cache_invalidated = True
+                        break
+
+            if not cache_invalidated and key in cache:
+                return cache[key]
+
+            # if the result is not in cache or deps have changed, compute the result
+            result = fcn(self, *args, **kwargs)
+            cache[key] = result
+            dependency_cache[key] = current_deps
+            return result
+
+        def clear():
+            cache.clear()
+            dependency_cache.clear()
+
+        def get():
+            return cache
+
+        setattr(wrapper, "clear", clear)
+        setattr(wrapper, "clear_cache", clear)
+        setattr(wrapper, "get_cache", get)
+
+        return wrapper
+
+    return decorator

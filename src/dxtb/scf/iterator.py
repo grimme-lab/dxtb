@@ -127,14 +127,18 @@ class SelfConsistentFieldFull(BaseTSCF):
             # Initialize variables that change throughout the SCF. Later, we
             # fill these with the converged values and simultaneously cull
             # them from `self._data`
-            q_converged = torch.zeros_like(guess)
-            ce = torch.zeros_like(guess)
             ch = torch.zeros_like(self._data.hamiltonian)
             cevals = torch.zeros_like(self._data.evals)
             cevecs = torch.zeros_like(self._data.evecs)
+            ce = torch.zeros_like(self._data.evals)
             co = torch.zeros_like(self._data.occupation)
             n0 = self._data.n0
             numbers = self._data.numbers
+            charges_data = self._data.charges.copy()
+            potential_data = self._data.potential.copy()
+
+            # shape: (nb, <number of moments>, norb)
+            q_converged = torch.full_like(guess, defaults.PADNZ)
 
             overlap = self._data.ints.overlap
             hcore = self._data.ints.hcore
@@ -155,6 +159,9 @@ class SelfConsistentFieldFull(BaseTSCF):
             for _ in range(maxiter):
                 q_new = fcn(q)
                 q = mixer.iter(q_new, q)
+                print("q.shape", q.shape)
+                print("q_new.shape", q_new.shape)
+                print("q_converged", q_converged.shape)
 
                 conv = mixer.converged
                 if conv.any():
@@ -168,7 +175,7 @@ class SelfConsistentFieldFull(BaseTSCF):
 
                     # save all necessary variables for converged system
                     iconv = idxs[conv]
-                    q_converged[iconv, :norb] = q[conv, :]
+                    q_converged[iconv, ..., :norb] = q[conv, ..., :]
                     ch[iconv, :norb, :norb] = self._data.hamiltonian[conv, :, :]
                     cevecs[iconv, :norb, :norb] = self._data.evecs[conv, :, :]
                     cevals[iconv, :norb] = self._data.evals[conv, :]
@@ -212,10 +219,38 @@ class SelfConsistentFieldFull(BaseTSCF):
                     # cull SCF variables
                     self._data.cull(conv, slicers=slicers)
 
-                    # cull local variables
-                    q = q[~conv, :norb]
-                    idxs = idxs[~conv]
+                    print("before", q.shape)
 
+                    # cull local variables
+                    q = q[~conv, ..., :norb]
+                    idxs = idxs[~conv]
+                    print("after", q.shape)
+                    print("idxs", idxs, norb)
+                    if self._data.charges["mono"] is not None:
+                        self._data.charges["mono"] = torch.Size((len(idxs), int(norb)))
+                    if self._data.charges["dipole"] is not None:
+                        self._data.charges["dipole"] = torch.Size(
+                            (len(idxs), int(nat), 3)
+                        )
+                    if self._data.charges["quad"] is not None:
+                        self._data.charges["quad"] = torch.Size(
+                            (len(idxs), int(nat), 6)
+                        )
+                    if self._data.potential["mono"] is not None:
+                        self._data.potential["mono"] = torch.Size(
+                            (len(idxs), int(norb))
+                        )
+                    if self._data.potential["dipole"] is not None:
+                        self._data.potential["dipole"] = torch.Size(
+                            (len(idxs), int(nat), 3)
+                        )
+                    if self._data.potential["quad"] is not None:
+                        self._data.potential["quad"] = torch.Size(
+                            (len(idxs), int(nat), 6)
+                        )
+
+                    print(self._data.potential)
+                    print(self._data.charges)
                     # cull mixer (only contains orbital resolved properties)
                     mixer.cull(conv, slicers=slicers["orbital"])
 
@@ -233,7 +268,7 @@ class SelfConsistentFieldFull(BaseTSCF):
                 # are already culled, and hence, require no further indexing
                 idxs = torch.arange(guess.size(0))
                 iconv = idxs[~converged]
-                q_converged[iconv, :] = q
+                q_converged[iconv, ..., :] = q
 
                 # if nothing converged, skip culling
                 if (~converged).all():
@@ -270,6 +305,8 @@ class SelfConsistentFieldFull(BaseTSCF):
                 self._data.energy = ce
                 self._data.hamiltonian = ch
                 self._data.occupation = co
+                self._data.charges = charges_data
+                self._data.potential = potential_data
 
                 # write culled variables (that did not change throughout the
                 # SCF) back to `self._data` for the final energy evaluation
@@ -378,6 +415,7 @@ class SelfConsistentFieldSingleShot(SelfConsistentFieldFull):
             )
             charges = self.scf(scp_conv)
 
+        charges.nullify_padding()
         energy = self.get_energy(charges)
         fenergy = self.get_electronic_free_energy()
 

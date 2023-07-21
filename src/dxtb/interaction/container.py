@@ -43,6 +43,7 @@ class Container:
             self.label = []
 
         self.batched = batched
+        self.axis = 1 if self.batched else 0
 
     # monopole
 
@@ -118,7 +119,21 @@ class Container:
         if len(tensors) == 1:
             return tensors[0]
 
-        return pack(tensors, value=pad)
+        # pack along dim=1 to keep the batch dimension in the first positions
+        return pack(tensors, axis=self.axis, value=pad)
+
+    def nullify_padding(self, pad: int = defaults.PADNZ) -> None:
+        if self.mono is not None:
+            zero = torch.tensor(0.0, device=self.mono.device, dtype=self.mono.dtype)
+            self.mono = torch.where(self.mono != pad, self.mono, zero)
+
+        if self.dipole is not None:
+            zero = torch.tensor(0.0, device=self.dipole.device, dtype=self.dipole.dtype)
+            self.dipole = torch.where(self.dipole != pad, self.dipole, zero)
+
+        if self.quad is not None:
+            zero = torch.tensor(0.0, device=self.quad.device, dtype=self.quad.dtype)
+            self.quad = torch.where(self.quad != pad, self.quad, zero)
 
     @classmethod
     def from_tensor(
@@ -151,27 +166,42 @@ class Container:
         Container
             Instance of the `Container` class.
         """
+
         ndim = tensor.ndim
         label = data["label"]
+        axis = 1 if batched else 0
+
+        print("")
+        print(cls.__name__)
+        print(data)
+
+        print("tensor.shape", tensor.shape)
 
         if (ndim == 1 and not batched) or (ndim == 2 and batched):
             return cls(mono=tensor, label=label)
 
         # One dimensions extra for more than monopole ...
         if (ndim == 2 and not batched) or (ndim == 3 and batched):
-            # ... but still account for (1, nb, nao)-shaped monopolar property.
-            if tensor.shape[0] == 1:
+            # ... but still account for (nb, 1, nao)-shaped monopolar property.
+            if tensor.shape[axis] == 1:
                 return cls(mono=tensor.reshape(*data["mono"]), label=label)
 
             # Now, dipolar and quadrupolar properties are checked.
-            vs = torch.split(tensor, 1, dim=0)
-            mono = deflate(vs[0], value=pad).reshape(*data["mono"])
-            dipole = deflate(vs[1], value=pad).reshape(*data["dipole"])
-            if tensor.shape[0] == 2:
+            vs = torch.split(tensor, 1, dim=axis)
+            print("mono.shape before", vs[0].shape, deflate(vs[0], value=pad).shape)
+            mono = deflate(vs[0], axis=0, value=pad).reshape(*data["mono"])
+            print("mono.shape after", mono.shape)
+            print("dipole.shape before", vs[1].shape)
+            print("vs[1]", vs[1])
+            print(deflate(vs[1], axis=0, value=pad))
+            dipole = deflate(vs[1], axis=0, value=pad).reshape(*data["dipole"])
+            print("dipole.shape after", dipole.shape)
+
+            if tensor.shape[axis] == 2:
                 return cls(mono, dipole, label=label)
 
-            quad = deflate(vs[2], value=pad).reshape(*data["quad"])
-            if tensor.shape[0] == 3:
+            quad = deflate(vs[2], axis=0, value=pad).reshape(*data["quad"])
+            if tensor.shape[axis] == 3:
                 return cls(mono, dipole, quad, label=label)
 
             raise RuntimeError(
@@ -263,6 +293,10 @@ class Charges(Container):
         if self._mono is None:
             raise RuntimeError("Monopole charges are always required.")
         return self._mono
+
+    @mono.setter
+    def mono(self, mono: Tensor) -> None:
+        self._mono = mono
 
     def __repr__(self):
         return (

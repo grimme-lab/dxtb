@@ -10,7 +10,7 @@ import torch
 
 from dxtb._types import Tensor
 
-from ..._types import Tensor, TensorLike
+from ..._types import Slicers, Tensor, TensorLike
 from ..base import Interaction
 from ..container import Charges
 
@@ -30,6 +30,9 @@ class ElectricField(Interaction):
         Restart data for the electric field interaction.
         """
 
+        __store: Store | None
+        """Storage for cache (required for culling)."""
+
         vat: Tensor
         """
         Atom-resolved monopolar potental from instantaneous electric field.
@@ -40,7 +43,7 @@ class ElectricField(Interaction):
         Atom-resolved dipolar potential from instantaneous electric field.
         """
 
-        __slots__ = ["vat", "vdp"]
+        __slots__ = ["__store", "vat", "vdp"]
 
         def __init__(
             self,
@@ -55,6 +58,41 @@ class ElectricField(Interaction):
             )
             self.vat = vat
             self.vdp = vdp
+            self.__store = None
+
+        class Store:
+            """
+            Storage container for cache containing `__slots__` before culling.
+            """
+
+            vat: Tensor
+            """
+            Atom-resolved monopolar potental from instantaneous electric field.
+            """
+
+            vdp: Tensor
+            """
+            Atom-resolved dipolar potential from instantaneous electric field.
+            """
+
+            def __init__(self, vat: Tensor, vdp: Tensor) -> None:
+                self.vat = vat
+                self.vdp = vdp
+
+        def cull(self, conv: Tensor, slicers: Slicers) -> None:
+            if self.__store is None:
+                self.__store = self.Store(self.vat, self.vdp)
+
+            slicer = slicers["atom"]
+            self.vat = self.vat[[~conv, *slicer]]
+            self.vdp = self.vdp[[~conv, *slicer, *slicer]]
+
+        def restore(self) -> None:
+            if self.__store is None:
+                raise RuntimeError("Nothing to restore. Store is empty.")
+
+            self.vat = self.__store.vat
+            self.vdp = self.__store.vdp
 
     def __init__(
         self,

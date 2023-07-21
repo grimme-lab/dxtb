@@ -20,14 +20,8 @@ from .utils import get_pairs, get_subblock_start
 __all__ = ["Overlap", "OverlapLibcint"]
 
 
-def create_libcint_wrapper(
-    bas: Basis,
-    positions: Tensor,
-    ihelp: IndexHelper,
-    spherical: bool = True,
-) -> intor.LibcintWrapper:
-    atombases = bas.create_dqc(positions)
-    return intor.LibcintWrapper(atombases, ihelp, spherical=spherical)
+def snorm(ovlp: Tensor) -> Tensor:
+    return torch.pow(ovlp.diagonal(dim1=-1, dim2=-2), -0.5)
 
 
 class OverlapLibcint(TensorLike):
@@ -40,7 +34,7 @@ class OverlapLibcint(TensorLike):
         numbers: Tensor,
         par: Param,
         ihelp: IndexHelper,
-        driver: intor.LibcintWrapper | None = None,
+        driver: intor.LibcintWrapper | list[intor.LibcintWrapper] | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ):
@@ -51,24 +45,43 @@ class OverlapLibcint(TensorLike):
         self.ihelp = ihelp
         self.driver = driver
 
-    def build(
-        self,
-        positions: Tensor,
-        mask: Tensor | None = None,
-    ) -> Tensor:
-        """
-        Overlap calculation of unique shells pairs, using the
-        McMurchie-Davidson algorithm.
+        self._norm = None
+        self._matrix = None
+        self._gradient = None
 
-        Parameters
-        ----------
-        positions : Tensor
-            Cartesian coordinates of all atoms in the system.
-        mask : Tensor | None
-            Mask for positions to make batched computations easier. The overlap
-            does not work in a batched fashion. Hence, we loop over the batch
-            dimension and must remove the padding. Defaults to `None`, i.e.,
-            `batch.deflate()` is used.
+    @property
+    def norm(self) -> Tensor:
+        if self._norm is None:
+            raise RuntimeError("Overlap norm has not been calculated.")
+        return self._norm
+
+    @norm.setter
+    def norm(self, n: Tensor) -> None:
+        self._norm = n
+
+    @property
+    def matrix(self) -> Tensor:
+        if self._matrix is None:
+            raise RuntimeError("Overlap matrix has not been calculated.")
+        return self._matrix
+
+    @matrix.setter
+    def matrix(self, mat: Tensor) -> None:
+        self._matrix = mat
+
+    @property
+    def gradient(self) -> Tensor:
+        if self._gradient is None:
+            raise RuntimeError("Overlap gradient has not been calculated.")
+        return self._gradient
+
+    @gradient.setter
+    def gradient(self, mat: Tensor) -> None:
+        self._gradient = mat
+
+    def build(self, *_: Tensor) -> Tensor:
+        """
+        Overlap calculation using libcint.
 
         Returns
         -------
@@ -76,85 +89,91 @@ class OverlapLibcint(TensorLike):
             Overlap matrix.
         """
 
-        # attempt to build the driver from scratch if none given yet
         if self.driver is None:
-            bas = Basis(
-                self.numbers,
-                self.par,
-                self.ihelp,
-                dtype=self.dtype,
-                device=self.device,
-            )
-            atombases = bas.create_dqc(positions)
-            self.driver = intor.LibcintWrapper(atombases, self.ihelp)
+            raise RuntimeError("Integral driver (libcint interface) missing.")
 
-        if self.numbers.ndim > 1:
-            raise NotImplementedError()
-            # s = self._batch(wrapper, mask)
-            # s = self._single(wrapper)
-        else:
-            s = intor.overlap(self.driver)
-            norm = torch.pow(s.diagonal(dim1=-1, dim2=-2), -0.5)
-            s = torch.einsum("...ij,...i,...j->...ij", s, norm, norm)
+        def fcn(driver) -> tuple[Tensor, Tensor]:
+            s = intor.overlap(driver)
+            norm = snorm(s)
+            mat = torch.einsum("...ij,...i,...j->...ij", s, norm, norm)
+            return mat, norm
 
-        return s
+        # batched mode
+        if self.ihelp.batched:
+            assert isinstance(self.driver, list)
+            assert isinstance(self.driver, list)
 
-    def get_gradient(self, positions: Tensor, mask: Tensor | None = None):
+            slist = []
+            nlist = []
+
+            for driver in self.driver:
+                mat, norm = fcn(driver)
+                slist.append(mat)
+                nlist.append(norm)
+
+            self.norm = batch.pack(nlist)
+            self.matrix = batch.pack(slist)
+            return self.matrix
+
+        # single mode
+        assert isinstance(self.driver, intor.LibcintWrapper)
+
+        mat, norm = fcn(self.driver)
+        self.norm = norm
+        self.matrix = mat
+        return self.matrix
+
+    def get_gradient(self, *_: Tensor):
         """
-        Overlap gradient calculation of unique shells pairs, using the
-        McMurchie-Davidson algorithm.
-
-        Parameters
-        ----------
-        positions : Tensor
-            Cartesian coordinates of all atoms in the system.
-        mask : Tensor | None
-            Mask for positions to make batched computations easier. The overlap
-            does not work in a batched fashion. Hence, we loop over the batch
-            dimension and must remove the padding. Defaults to `None`, i.e.,
-            `batch.deflate()` is used.
+        Overlap gradient calculation using libcint.
 
         Returns
         -------
         Tensor
             Overlap gradient of shape `(nb, norb, norb, 3)`.
         """
-        # attempt to build the driver from scratch if none given yet
+
         if self.driver is None:
-            bas = Basis(
-                self.numbers,
-                self.par,
-                self.ihelp,
-                dtype=self.dtype,
-                device=self.device,
-            )
-            atombases = bas.create_dqc(positions)
-            self.driver = intor.LibcintWrapper(atombases, self.ihelp)
+            raise RuntimeError("Integral driver (libcint interface) missing.")
 
-        if self.numbers.ndim > 1:
-            raise NotImplementedError()
-            # grad = self._batch(wrapper, mask)
-            # grad = self._single(wrapper)
-        else:
-            s = intor.overlap(self.driver)
-            norm = torch.pow(s.diagonal(dim1=-1, dim2=-2), -0.5)
-
+        def fcn(driver: intor.LibcintWrapper, norm: Tensor) -> Tensor:
             # (3, norb, norb)
-            grad = intor.int1e("ipovlp", self.driver)
+            grad = intor.int1e("ipovlp", driver)
 
             # normalize and move xyz dimension to last, which is required for
             # the reduction (only works with extra dimension in last)
             grad = -torch.einsum("...xij,...i,...j->...ijx", grad, norm, norm)
+            return grad
 
-        return grad
+        # build norm if not already available
+        if self.norm is None:
+            if self.ihelp.batched:
+                assert isinstance(self.driver, list)
+                self.norm = batch.pack(
+                    [snorm(intor.overlap(driver)) for driver in self.driver]
+                )
+            else:
+                assert isinstance(self.driver, intor.LibcintWrapper)
+                self.norm = snorm(intor.overlap(self.driver))
 
-    def _single(self, wrapper: intor.LibcintWrapper) -> Tensor:
-        raise NotImplementedError()
+        # batched mode
+        if self.ihelp.batched:
+            assert isinstance(self.driver, list)
 
-    def _batch(
-        self, wrapper: intor.LibcintWrapper, mask: Tensor | None = None
-    ) -> Tensor:
-        raise NotImplementedError()
+            glist = []
+            for i, driver in enumerate(self.driver):
+                norm = batch.deflate(self.norm[i])
+                grad = fcn(driver, norm)
+                glist.append(grad)
+
+            self.grad = batch.pack(glist)
+            return self.grad
+
+        # single mode
+        assert isinstance(self.driver, intor.LibcintWrapper)
+
+        self.grad = fcn(self.driver, self.norm)
+        return self.grad
 
 
 class OverlapFunction(Protocol):

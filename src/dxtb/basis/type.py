@@ -11,7 +11,7 @@ import torch
 from .._types import Literal, Tensor, TensorLike
 from ..constants import PSE
 from ..param import Param, get_elem_param, get_elem_pqn, get_elem_valence
-from ..utils import real_pairs
+from ..utils import batch, real_pairs
 from . import IndexHelper, orthogonalize, slater
 
 # fmt: off
@@ -77,25 +77,25 @@ class Basis(TensorLike):
         dtype: torch.dtype | None = None,
     ) -> None:
         super().__init__(device, dtype)
-        self.numbers = numbers
+        self.numbers: Tensor = torch.unique(numbers)
         self.meta = par.meta
         self.ihelp = ihelp
 
         self.ngauss = get_elem_param(
-            numbers,
+            self.numbers,
             par.element,
             "ngauss",
             device=self.device,
         )
         self.slater = get_elem_param(
-            numbers,
+            self.numbers,
             par.element,
             "slater",
             device=self.device,
             dtype=self.dtype,
         )
-        self.pqn = get_elem_pqn(numbers, par.element, device=self.device)
-        self.valence = get_elem_valence(numbers, par.element, device=self.device)
+        self.pqn = get_elem_pqn(self.numbers, par.element, device=self.device)
+        self.valence = get_elem_valence(self.numbers, par.element, device=self.device)
 
     def create_cgtos(self) -> tuple[list[Tensor], list[Tensor]]:
         """
@@ -120,7 +120,7 @@ class Basis(TensorLike):
                 self.slater[i],
             )
 
-            # FIXME:
+            # NOTE:
             # This only works for GFN1 with H being the only element
             # with a non-valence shell. Otherwise the generation of
             # self.valence is not correct.
@@ -335,25 +335,34 @@ class Basis(TensorLike):
 
         return fulltxt
 
-    def create_dqc(self, positions: Tensor) -> list[AtomCGTOBasis]:
+    def create_dqc(
+        self, positions: Tensor
+    ) -> list[AtomCGTOBasis] | list[list[AtomCGTOBasis]]:
         if self.numbers.ndim > 1:
             raise NotImplementedError("Batch mode not implemented.")
-
-        # collect final basis for each atom in list (same order as `numbers`)
-        atombasis: list[AtomCGTOBasis] = []
 
         # tracking only required for orthogonalization
         coeffs = []
         alphas = []
 
         s = 0
-        for i, number in enumerate(self.numbers):
+        for i in range(self.numbers.size(0)):
             bases: list[CGTOBasis] = []
-            shells = self.ihelp.shells_per_atom[i]
+            shells = self.ihelp.ushells_per_unique[i]
+
+            if shells == 0:
+                s += 1
+                zero = torch.tensor(0.0, device=self.device, dtype=self.dtype)
+                alphas.append(zero)
+                coeffs.append(zero)
+                continue
 
             for _ in range(shells):
                 alpha, coeff = slater.to_gauss(
-                    self.ngauss[s], self.pqn[s], self.ihelp.angular[s], self.slater[s]
+                    self.ngauss[s],
+                    self.pqn[s],
+                    self.ihelp.unique_angular[s],
+                    self.slater[s],
                 )
 
                 # orthogonalize the H2s against the H1s
@@ -365,10 +374,68 @@ class Basis(TensorLike):
                 alphas.append(alpha)
                 coeffs.append(coeff)
 
+                # increment
+                s += 1
+
+        numbers = self.ihelp.spread_uspecies_to_atom(self.numbers)
+        if self.ihelp.batched:
+            # collection for batch
+            b = []
+
+            for _batch in range(numbers.shape[0]):
+                # reset counter
+                s = 0
+
+                # collect final basis for each atom in list
+                atombasis: list[AtomCGTOBasis] = []
+
+                for i, num in enumerate(numbers[_batch]):
+                    if num == 0:
+                        continue
+
+                    bases: list[CGTOBasis] = []
+
+                    for _ in range(self.ihelp.shells_per_atom[_batch, i]):
+                        idx = self.ihelp.shells_to_ushell[_batch, s]
+
+                        cgto = CGTOBasis(
+                            angmom=self.ihelp.angular[_batch].tolist()[s],  # int!
+                            alphas=alphas[idx],
+                            coeffs=coeffs[idx],
+                            normalized=True,
+                        )
+                        bases.append(cgto)
+
+                        # increment
+                        s += 1
+
+                    atomcgtobasis = AtomCGTOBasis(
+                        atomz=num,
+                        bases=bases,
+                        pos=batch.deflate(positions[_batch], value=float("nan"))[i, :],
+                    )
+                    atombasis.append(atomcgtobasis)
+
+                b.append(atombasis)
+
+            return b
+
+        # reset counter
+        s = 0
+
+        # collect final basis for each atom in list (same order as `numbers`)
+        atombasis: list[AtomCGTOBasis] = []
+
+        for i, num in enumerate(numbers):
+            bases: list[CGTOBasis] = []
+
+            for _ in range(self.ihelp.shells_per_atom[i]):
+                idx = self.ihelp.shells_to_ushell[s]
+
                 cgto = CGTOBasis(
                     angmom=self.ihelp.angular.tolist()[s],  # int!
-                    alphas=alpha,
-                    coeffs=coeff,
+                    alphas=alphas[idx],
+                    coeffs=coeffs[idx],
                     normalized=True,
                 )
                 bases.append(cgto)
@@ -377,7 +444,7 @@ class Basis(TensorLike):
                 s += 1
 
             atomcgtobasis = AtomCGTOBasis(
-                atomz=number,
+                atomz=num,
                 bases=bases,
                 pos=positions[i, :],
             )

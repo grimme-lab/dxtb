@@ -17,7 +17,7 @@ from __future__ import annotations
 import torch
 
 from .._types import Slicers, Tensor, TensorLike
-from ..utils import batch, memoize, t2int, wrap_gather, wrap_scatter_reduce
+from ..utils import batch, dependent_memoize, t2int, wrap_gather, wrap_scatter_reduce
 
 __all__ = ["IndexHelper"]
 
@@ -66,8 +66,11 @@ class IndexHelper(TensorLike):
     ushells_to_unique: Tensor
     """Mapping of unique shells to unique species"""
 
+    ushells_per_unique: Tensor
+    """Number of unique shells per unqiue atoms."""
+
     shells_to_ushell: Tensor
-    """Mapping of shells to unique unique"""
+    """Mapping of shells to unique atoms"""
 
     shells_per_atom: Tensor
     """Number of shells for each atom"""
@@ -98,6 +101,7 @@ class IndexHelper(TensorLike):
         "angular",
         "atom_to_unique",
         "ushells_to_unique",
+        "ushells_per_unique",
         "shells_to_ushell",
         "shells_per_atom",
         "shell_index",
@@ -115,6 +119,7 @@ class IndexHelper(TensorLike):
         angular: Tensor,
         atom_to_unique: Tensor,
         ushells_to_unique: Tensor,
+        ushells_per_unique: Tensor,
         shells_to_ushell: Tensor,
         shells_per_atom: Tensor,
         shell_index: Tensor,
@@ -135,6 +140,7 @@ class IndexHelper(TensorLike):
         self.angular = angular
         self.atom_to_unique = atom_to_unique
         self.ushells_to_unique = ushells_to_unique
+        self.ushells_per_unique = ushells_per_unique
         self.shells_to_ushell = shells_to_ushell
         self.shells_per_atom = shells_per_atom
         self.shell_index = shell_index
@@ -153,6 +159,7 @@ class IndexHelper(TensorLike):
                 self.angular,
                 self.atom_to_unique,
                 self.ushells_to_unique,
+                self.ushells_per_unique,
                 self.shells_to_ushell,
                 self.shells_per_atom,
                 self.shell_index,
@@ -171,6 +178,7 @@ class IndexHelper(TensorLike):
                 self.angular,
                 self.atom_to_unique,
                 self.ushells_to_unique,
+                self.ushells_per_unique,
                 self.shells_to_ushell,
                 self.shells_per_atom,
                 self.shell_index,
@@ -289,6 +297,7 @@ class IndexHelper(TensorLike):
             angular=lsh,
             atom_to_unique=atom_to_unique,
             ushells_to_unique=ushells_to_unique,
+            ushells_per_unique=ushells_per_unique,
             shells_to_ushell=shells_to_ushell,
             shells_per_atom=shells_per_atom,
             shell_index=shell_index,
@@ -742,7 +751,7 @@ class IndexHelper(TensorLike):
     def orbitals_to_atom(self) -> Tensor:
         return self._orbitals_to_atom()
 
-    @memoize
+    @dependent_memoize(lambda self: self.shells_to_atom)
     def _orbitals_to_atom(self) -> Tensor:
         return self.spread_shell_to_orbital(self.shells_to_atom)
 
@@ -750,7 +759,7 @@ class IndexHelper(TensorLike):
     def orbitals_per_shell_cart(self) -> Tensor:
         return self._orbitals_per_shell_cart()
 
-    @memoize
+    @dependent_memoize(lambda self: self.angular)
     def _orbitals_per_shell_cart(self) -> Tensor:
         l = self.angular
         ls = torch.div((l + 1) * (l + 2), 2, rounding_mode="floor")
@@ -760,7 +769,7 @@ class IndexHelper(TensorLike):
     def orbital_index_cart(self) -> Tensor:
         return self._orbital_index_cart()
 
-    @memoize
+    @dependent_memoize(lambda self: self.orbitals_per_shell_cart)
     def _orbital_index_cart(self) -> Tensor:
         orb_per_shell = self.orbitals_per_shell_cart
         return torch.cumsum(orb_per_shell, -1) - orb_per_shell
@@ -769,7 +778,10 @@ class IndexHelper(TensorLike):
     def orbitals_to_shell_cart(self) -> Tensor:
         return self._orbitals_to_shell_cart()
 
-    @memoize
+    @dependent_memoize(
+        lambda self: self.orbital_index_cart,
+        lambda self: self.orbitals_per_shell_cart,
+    )
     def _orbitals_to_shell_cart(self) -> Tensor:
         orbital_index = self.orbital_index_cart
         orbitals_per_shell = self.orbitals_per_shell_cart
@@ -790,7 +802,7 @@ class IndexHelper(TensorLike):
     def orbitals_to_atom_cart(self) -> Tensor:
         return self._orbitals_to_atom_cart()
 
-    @memoize
+    @dependent_memoize(lambda self: self.shells_to_atom)
     def _orbitals_to_atom_cart(self) -> Tensor:
         return self.spread_shell_to_orbital_cart(self.shells_to_atom)
 

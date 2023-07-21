@@ -27,6 +27,7 @@ def single(
     mixer: str,
     tol: float,
     scp_mode: str = "charge",
+    intdriver: str = "libcint",
 ) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
@@ -40,6 +41,7 @@ def single(
         opts,
         **{
             "damp": 0.05 if mixer == "simple" else 0.4,
+            "intdriver": intdriver,
             "mixer": mixer,
             "scp_mode": scp_mode,
             "xitorch_fatol": tol,
@@ -56,9 +58,10 @@ def single(
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
-def test_single(dtype: torch.dtype, name: str, mixer: str):
+@pytest.mark.parametrize("intdriver", ["dxtb", "libcint"])
+def test_single(dtype: torch.dtype, name: str, mixer: str, intdriver: str):
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    single(dtype, name, mixer, tol)
+    single(dtype, name, mixer, tol, intdriver=intdriver)
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -92,7 +95,14 @@ def test_single_large(dtype: torch.dtype, name: str, mixer: str):
     single(dtype, name, mixer, tol)
 
 
-def batched(dtype: torch.dtype, name1: str, name2: str, mixer: str, tol: float) -> None:
+def batched(
+    dtype: torch.dtype,
+    name1: str,
+    name2: str,
+    mixer: str,
+    tol: float,
+    intdriver: str = "libcint",
+) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name1], samples[name2]
@@ -122,6 +132,7 @@ def batched(dtype: torch.dtype, name1: str, name2: str, mixer: str, tol: float) 
             "damp": 0.05 if mixer == "simple" else 0.4,
             "mixer": mixer,
             "scp_mode": "charge",
+            "intdriver": intdriver,
             "xitorch_fatol": tol,
             "xitorch_xatol": tol,
         },
@@ -137,9 +148,12 @@ def batched(dtype: torch.dtype, name1: str, name2: str, mixer: str, tol: float) 
 @pytest.mark.parametrize("name1", ["H2", "LiH"])
 @pytest.mark.parametrize("name2", ["LiH", "SiH4"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
-def test_batch(dtype: torch.dtype, name1: str, name2: str, mixer: str) -> None:
+@pytest.mark.parametrize("intdriver", ["dxtb", "libcint"])
+def test_batch(
+    dtype: torch.dtype, name1: str, name2: str, mixer: str, intdriver: str
+) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    batched(dtype, name1, name2, mixer, tol)
+    batched(dtype, name1, name2, mixer, tol, intdriver=intdriver)
 
 
 def batched_unconverged(

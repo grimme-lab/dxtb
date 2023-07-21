@@ -18,7 +18,7 @@ class Integrals(TensorLike):
     Integral container.
     """
 
-    __slots__ = ["_hcore", "_overlap", "_dipole", "_quad", "_run_checks"]
+    __slots__ = ["_hcore", "_overlap", "_snorm", "_dipole", "_quad", "_run_checks"]
 
     def __init__(
         self,
@@ -59,6 +59,8 @@ class Integrals(TensorLike):
         self._overlap = overlap
         self.checks()
 
+    # multipole
+
     @property
     def dipole(self) -> Tensor | None:
         """
@@ -78,6 +80,14 @@ class Integrals(TensorLike):
 
     @property
     def quad(self) -> Tensor | None:
+        """
+        Quadrupole integral of shape (6, nao, nao).
+
+        Returns
+        -------
+        Tensor | None
+            Quadrupole integral if set, else `None`.
+        """
         return self._quad
 
     @quad.setter

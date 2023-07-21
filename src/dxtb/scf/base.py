@@ -165,7 +165,7 @@ class BaseSCF:
         def cull(self, conv: Tensor, slicers: Slicers) -> None:
             onedim = [~conv, *slicers["orbital"]]
             twodim = [~conv, *slicers["orbital"], *slicers["orbital"]]
-            threedim = [~conv, (...,), *slicers["orbital"], *slicers["orbital"]]
+            threedim = [~conv, (...), *slicers["orbital"], *slicers["orbital"]]
 
             # disable shape check temporarily for writing culled versions back
             self.ints.run_checks = False
@@ -372,11 +372,13 @@ class BaseSCF:
 
         # main SCF function (mixing)
         charges = self.scf(guess)
+        print("final charges", charges)
 
         if self.scf_options["verbosity"] > 0:
             print(77 * "-")
 
         # evaluate final energy
+        charges.nullify_padding()
         energy = self.get_energy(charges)
         fenergy = self.get_electronic_free_energy()
 
@@ -411,6 +413,7 @@ class BaseSCF:
         ValueError
             Unknown `scp_mode` given.
         """
+
         if self.scp_mode in ("charge", "charges"):
             return Charges.from_tensor(x, self._data.charges, batched=self.batched)
 
@@ -610,7 +613,6 @@ class BaseSCF:
         Tensor
             New potential vector for each orbital partial charge.
         """
-
         pot = Potential.from_tensor(
             potential, self._data.potential, batched=self.batched
         )
@@ -803,6 +805,7 @@ class BaseSCF:
         Tensor
             Hamiltonian matrix.
         """
+
         h1 = self._data.ints.hcore
 
         if potential.mono is not None:

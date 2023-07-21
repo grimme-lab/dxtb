@@ -34,7 +34,11 @@ def test_culling() -> None:
     for name in ihelp.__slots__:
         attr = getattr(ihelp, name)
         if isinstance(attr, Tensor):
-            if name not in ("unique_angular", "ushells_to_unique"):
+            if name not in (
+                "unique_angular",
+                "ushells_to_unique",
+                "ushells_per_unique",
+            ):
                 # get attribute from normal ihelp and remove padding
                 a = getattr(ref_ihelp, name)[0]
                 ref = batch.deflate(a, value=a[-1])
@@ -64,6 +68,10 @@ def test_no_action() -> None:
     for name in ihelp.__slots__:
         attr = getattr(ihelp, name)
         if isinstance(attr, Tensor):
-            if name not in ("unique_angular", "ushells_to_unique"):
+            if name not in (
+                "unique_angular",
+                "ushells_to_unique",
+                "ushells_per_unique",
+            ):
                 ref = getattr(ref_ihelp, name)[0]
                 assert (ref == attr.squeeze()).all()
