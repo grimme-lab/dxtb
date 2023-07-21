@@ -39,7 +39,7 @@ def test_elem_param() -> None:
     with pytest.raises(KeyError):
         get_elem_param(numbers, par.element, key="wrongkey")
 
-    _par = par.copy(deep=True)
+    _par = par.model_copy(deep=True)
     _par.element["H"].shpoly = "something"  # type: ignore
     with pytest.raises(ValueError):
         get_elem_param(numbers, _par.element, key="shpoly")
@@ -48,7 +48,7 @@ def test_elem_param() -> None:
 def test_elem_valence() -> None:
     numbers = torch.tensor([6, 1])
 
-    _par = par.copy(deep=True)
+    _par = par.model_copy(deep=True)
     _par.element["H"].shells = ["5h"]
     with pytest.raises(ValueError):
         get_elem_valence(numbers, _par.element)

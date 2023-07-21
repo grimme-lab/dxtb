@@ -18,7 +18,7 @@ from ..utils import get_device_from_str
 
 def test_none() -> None:
     dummy = torch.tensor(0.0)
-    _par = par.copy(deep=True)
+    _par = par.model_copy(deep=True)
 
     with pytest.warns(ParameterWarning):
         _par.repulsion = None

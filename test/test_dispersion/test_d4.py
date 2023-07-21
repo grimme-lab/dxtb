@@ -53,7 +53,7 @@ def test_batch(dtype: torch.dtype) -> None:
     assert energy.dtype == dtype
 
     # create copy as `par` lives in global scope
-    _par = par.copy(deep=True)
+    _par = par.model_copy(deep=True)
     if _par.dispersion is None or _par.dispersion.d4 is None:
         assert False
 

@@ -15,7 +15,7 @@ from ..utils import get_device_from_str
 
 def test_no_h0_fail() -> None:
     dummy = torch.tensor([])
-    _par = par.copy(deep=True)
+    _par = par.model_copy(deep=True)
     _par.hamiltonian = None
 
     with pytest.raises(RuntimeError):
@@ -25,7 +25,7 @@ def test_no_h0_fail() -> None:
 def test_no_h0_fail2() -> None:
     numbers = torch.tensor([1])
     ihelp = IndexHelper.from_numbers(numbers, {1: [0]})
-    _par = par.copy(deep=True)
+    _par = par.model_copy(deep=True)
     h0 = Hamiltonian(numbers, _par, ihelp)
 
     _par.hamiltonian = None

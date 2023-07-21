@@ -54,7 +54,12 @@ def test_xitorch(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
         if create_graph is True:
             energy.backward()
 
-    assert not has_memleak_tensor(fcn, gccollect=run_gc), "Memory leak detected"
+    # run garbage collector to avoid leaks across other tests
+    gc.collect()
+    leak = has_memleak_tensor(fcn, gccollect=run_gc)
+    gc.collect()
+
+    assert not leak, "Memory leak detected"
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -87,9 +92,9 @@ def test_fulltracking(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> N
         if create_graph is True:
             energy.backward()
 
-    leak = has_memleak_tensor(fcn, gccollect=run_gc)
-
     # run garbage collector to avoid leaks across other tests
+    gc.collect()
+    leak = has_memleak_tensor(fcn, gccollect=run_gc)
     gc.collect()
 
     assert not leak, "Memory leak detected"
