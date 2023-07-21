@@ -50,8 +50,6 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     bas = Basis(numbers, par, ihelp, **dd)
     atombases = bas.create_dqc(positions)
 
-    print(atombases)
-
     # dxtb's libcint overlap
     wrapper = LibcintWrapper(atombases, ihelp)
     dxtb_overlap = intor.overlap(wrapper)
