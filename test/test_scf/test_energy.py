@@ -27,6 +27,29 @@ opts = {
     "verbosity": 0,
 }
 
+@pytest.mark.large
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("partition", ["equal", "atomic"])
+def test_element_energy_scf_mode(dtype: torch.dtype, partition: str) -> None:
+    """Comparison of object SCF (old) vs. functional SCF."""
+    tol = 1e-8
+    dd: DD = {"device": device, "dtype": dtype}
+
+    def calc(number, scf_mode):
+        numbers = torch.tensor([number])
+        positions = torch.zeros((1, 3), **dd)
+        charges = torch.tensor(0.0, **dd)
+
+        options = dict(opts, **{"xitorch_fatol": 1e-6, "xitorch_xatol": 1e-6, "fermi_fenergy_partition": partition, "scf_mode": scf_mode})
+        calc = Calculator(numbers, par, opts=options, **dd)
+        result = calc.singlepoint(numbers, positions, charges)
+
+        return result.scf.sum(-1).item()
+    
+    energies = [calc(n, "implicit") for n in range(1, 87)]
+    energies_old = [calc(n, "implicit_old") for n in range(1, 87)]
+    assert pytest.approx(energies, abs=tol) == energies_old
 
 @pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
