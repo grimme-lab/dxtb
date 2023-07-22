@@ -214,7 +214,7 @@ def hamiltonian_to_density(hamiltonian: Tensor, data: _Data, cfg: SCFConfig) -> 
 
     # Fermi smearing only for non-zero electronic temperature
     if cfg.kt is not None and not torch.all(cfg.kt < 3e-7):  # 0.1 Kelvin * K2AU
-        data_occupation = filling.get_fermi_occupation(
+        data.occupation = filling.get_fermi_occupation(
             nel,
             emo,
             kt=cfg.kt,
@@ -224,7 +224,7 @@ def hamiltonian_to_density(hamiltonian: Tensor, data: _Data, cfg: SCFConfig) -> 
         )
 
         # check if number of electrons is still correct
-        _nel = data_occupation.sum(-1)
+        _nel = data.occupation.sum(-1)
         if torch.any(torch.abs(nel - _nel.round(decimals=3)) > 1e-4):
             raise RuntimeError(
                 f"Number of electrons changed during Fermi smearing "

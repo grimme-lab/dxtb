@@ -174,9 +174,11 @@ class _Data:
         energy = self.energy
         evals = self.evals
         evecs = self.evecs
+        occupation = self.occupation
         del self.density
         del self.hamiltonian
         del self.energy
         del self.evals
         del self.evecs
-        return density, hamiltonian, energy, evals, evecs
+        del self.occupation
+        return density, hamiltonian, energy, evals, evecs, occupation

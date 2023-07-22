@@ -191,7 +191,7 @@ def run_scf(
     fenergy = get_electronic_free_energy(data, cfg)
 
     # break circular graph references to free `_Data` object and hence memory
-    density, hamiltonian, _, evals, evecs = data.clean()
+    density, hamiltonian, _, evals, evecs, occupation = data.clean()
 
     return {
         "charges": charges,
@@ -201,7 +201,7 @@ def run_scf(
         "energy": energy,
         "fenergy": fenergy,
         "hamiltonian": hamiltonian,
-        "occupation": data.occupation,
+        "occupation": occupation,
         "potential": charges_to_potential(charges, interactions, data),
     }
 
@@ -540,10 +540,7 @@ def solve(
     """
     scf_mode = kwargs["scf_options"].get("scf_mode", defaults.SCF_MODE)
     if scf_mode in ("default", "implicit"):
-        # A) calculate SCF equilibrium using nested objects
-        # scf = SelfConsistentField
-
-        # B) calculate SCF equilibrium using semi-pure functions
+        # calculate SCF equilibrium using semi-pure functions
 
         # distinct objects containing data and configuration
         forbidden = ["bck_options", "fwd_options", "scf_options"]
@@ -556,6 +553,10 @@ def solve(
 
         return result
 
+    elif scf_mode in ("implicit_old"):
+        # calculate SCF equilibrium using nested objects
+        scf = SelfConsistentField
+        # NOTE: kept as reference and for testing purposes
     elif scf_mode in ("full", "full_tracking"):
         scf = SelfConsistentFieldFull
     elif scf_mode == "experimental":
