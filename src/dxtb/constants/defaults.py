@@ -67,7 +67,14 @@ function theorem as provided by `xitorch.optimize.equilibrium`, or use the
 experimental single-shot procedure.
 """
 
-SCF_MODE_CHOICES = ["default", "implicit", "full", "full_tracking", "experimental", "implicit_old"]
+SCF_MODE_CHOICES = [
+    "default",
+    "implicit",
+    "full",
+    "full_tracking",
+    "experimental",
+    "implicit_old",
+]
 """List of possible choices for `SCF_MODE`."""
 
 SCP_MODE = "potential"
