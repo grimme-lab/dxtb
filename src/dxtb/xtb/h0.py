@@ -572,9 +572,6 @@ class Hamiltonian(TensorLike):
         # (n_batch, atoms_i, atoms_j, 3) -> (n_batch, atoms_i, 3)
         g1 = torch.sum(dpi.unsqueeze(-1) * rij, dim=-2)
 
-        print(doverlap.shape)
-        print(sval.shape)
-
         # We cannot use the autograd of the overlap since the returned shape
         # will be (n_batch, atoms_i, 3). We need to multiply in an orbital-
         # resolved fashion before reducing.

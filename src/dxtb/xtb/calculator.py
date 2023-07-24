@@ -28,6 +28,7 @@ from ..integral import libcint as intor
 from ..interaction import Charges, Interaction, InteractionList, Potential
 from ..param import Param, get_elem_angular
 from ..utils import Timers, ToleranceWarning, batch
+from ..utils.misc import is_list_basis
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian
 from .h0 import Hamiltonian
@@ -411,14 +412,13 @@ class Calculator(TensorLike):
         assert isinstance(atombases, list)
 
         if self.batched:
-            assert isinstance(atombases[0], list)
-            # assert all(isinstance(sub_list, list) for sub_list in atombases)
             return [
                 intor.LibcintWrapper(ab, ihelp)
                 for ab, ihelp in zip(atombases, self._ihelp)
+                if is_list_basis(ab)
             ]
 
-        assert not isinstance(atombases[0], list)
+        assert is_list_basis(atombases)
         return intor.LibcintWrapper(atombases, self.ihelp)
 
     def init_intdriver(self, positions: Tensor):

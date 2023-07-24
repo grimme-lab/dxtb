@@ -171,12 +171,6 @@ class Container:
         label = data["label"]
         axis = 1 if batched else 0
 
-        print("")
-        print(cls.__name__)
-        print(data)
-
-        print("tensor.shape", tensor.shape)
-
         if (ndim == 1 and not batched) or (ndim == 2 and batched):
             return cls(mono=tensor, label=label)
 
@@ -188,14 +182,8 @@ class Container:
 
             # Now, dipolar and quadrupolar properties are checked.
             vs = torch.split(tensor, 1, dim=axis)
-            print("mono.shape before", vs[0].shape, deflate(vs[0], value=pad).shape)
             mono = deflate(vs[0], axis=0, value=pad).reshape(*data["mono"])
-            print("mono.shape after", mono.shape)
-            print("dipole.shape before", vs[1].shape)
-            print("vs[1]", vs[1])
-            print(deflate(vs[1], axis=0, value=pad))
             dipole = deflate(vs[1], axis=0, value=pad).reshape(*data["dipole"])
-            print("dipole.shape after", dipole.shape)
 
             if tensor.shape[axis] == 2:
                 return cls(mono, dipole, label=label)

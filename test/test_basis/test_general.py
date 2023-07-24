@@ -26,7 +26,7 @@ def test_fail_number_primitives() -> None:
     n, l = torch.tensor(1), torch.tensor(0)
 
     with pytest.raises(CGTOPrimitivesError):
-        slater.to_gauss(torch.tensor(7), n, l, torch.tensor(1.2))
+        slater_to_gauss(torch.tensor(7), n, l, torch.tensor(1.2))
 
 
 def test_fail_slater_exponent() -> None:
@@ -34,7 +34,7 @@ def test_fail_slater_exponent() -> None:
     n, l = torch.tensor(1), torch.tensor(0)
 
     with pytest.raises(CGTOSlaterExponentsError):
-        slater.to_gauss(torch.tensor(6), n, l, torch.tensor(-1.2))
+        slater_to_gauss(torch.tensor(6), n, l, torch.tensor(-1.2))
 
 
 def test_fail_max_principal() -> None:
@@ -42,7 +42,7 @@ def test_fail_max_principal() -> None:
     n, l = torch.tensor(7), torch.tensor(0)
 
     with pytest.raises(CGTOPrincipalQuantumNumberError):
-        slater.to_gauss(torch.tensor(6), n, l, torch.tensor(1.2))
+        slater_to_gauss(torch.tensor(6), n, l, torch.tensor(1.2))
 
 
 def test_fail_higher_orbital() -> None:
@@ -50,7 +50,7 @@ def test_fail_higher_orbital() -> None:
     n, l = torch.tensor(5), torch.tensor(5)
 
     with pytest.raises(CGTOAzimuthalQuantumNumberError):
-        slater.to_gauss(torch.tensor(6), n, l, torch.tensor(1.2))
+        slater_to_gauss(torch.tensor(6), n, l, torch.tensor(1.2))
 
 
 def test_fail_quantum_number() -> None:
@@ -58,7 +58,7 @@ def test_fail_quantum_number() -> None:
     n, l = torch.tensor(2), torch.tensor(3)
 
     with pytest.raises(CGTOQuantumNumberError):
-        slater.to_gauss(torch.tensor(6), n, l, torch.tensor(1.2))
+        slater_to_gauss(torch.tensor(6), n, l, torch.tensor(1.2))
 
 
 def test_fail_higher_orbital_trafo():

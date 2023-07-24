@@ -30,8 +30,8 @@ def test_ss(dtype: torch.dtype):
     n1, n2 = torch.tensor(2), torch.tensor(1)
     l1, l2 = torch.tensor(0), torch.tensor(0)
 
-    alpha1, coeff1 = slater.to_gauss(ng, n1, l1, torch.tensor(1.0, dtype=dtype))
-    alpha2, coeff2 = slater.to_gauss(ng, n2, l2, torch.tensor(1.0, dtype=dtype))
+    alpha1, coeff1 = slater_to_gauss(ng, n1, l1, torch.tensor(1.0, dtype=dtype))
+    alpha2, coeff2 = slater_to_gauss(ng, n2, l2, torch.tensor(1.0, dtype=dtype))
 
     rndm = torch.tensor(
         [0.13695892585203528, 0.47746994997214642, 0.20729096231197164], **dd
@@ -157,8 +157,8 @@ def compare_mmd(
 
     ngi, ni, li = cgtoi
     ngj, nj, lj = cgtoj
-    alpha_i, coeff_i = slater.to_gauss(ngi, ni, li, torch.tensor(1.0, dtype=dtype))
-    alpha_j, coeff_j = slater.to_gauss(ngj, nj, lj, torch.tensor(1.0, dtype=dtype))
+    alpha_i, coeff_i = slater_to_gauss(ngi, ni, li, torch.tensor(1.0, dtype=dtype))
+    alpha_j, coeff_j = slater_to_gauss(ngj, nj, lj, torch.tensor(1.0, dtype=dtype))
 
     # overlap
     ovlp = mmd.overlap_gto((li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec)

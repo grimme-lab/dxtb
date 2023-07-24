@@ -16,6 +16,19 @@ from ..xtb import Calculator, Result
 FILES = {"spin": ".UHF", "chrg": ".CHRG"}
 
 
+def print_grad(grad, numbers) -> None:
+    from ..constants import PSE
+
+    print("************************Gradient************************")
+    print("")
+
+    # Iterate over the tensor and print
+    for i, row in enumerate(grad):
+        # Get the atomic symbol corresponding to the atomic number
+        symbol = PSE.get(int(numbers[i].item()), "?")
+        print(f"{i+1:>3} {symbol:<2} : {row[0]:>15.9f} {row[1]:>15.9f} {row[2]:>15.9f}")
+
+
 class Driver:
     """
     Driver class for running dxtb.
@@ -132,6 +145,10 @@ class Driver:
 
         # run singlepoint calculation
         result = calc.singlepoint(numbers, positions, chrg, grad=args.grad)
+
+        if args.grad:
+            print_grad(result.total_grad.clone(), numbers)
+            print("")
 
         if args.verbosity > 0:
             timer.print_times()

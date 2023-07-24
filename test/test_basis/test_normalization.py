@@ -6,7 +6,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.basis import slater
+from dxtb.basis import slater_to_gauss
 from dxtb.integral import overlap_gto
 
 
@@ -38,7 +38,7 @@ def test_sto_ng_single(ng, n, l, dtype):
     """
     atol = 1.0e-6 if dtype == torch.float else 2.0e-7
 
-    alpha, coeff = slater.to_gauss(ng, n, l, torch.tensor(1.0, dtype=dtype))
+    alpha, coeff = slater_to_gauss(ng, n, l, torch.tensor(1.0, dtype=dtype))
     angular = torch.tensor(l)
     vec = torch.zeros((3,), dtype=dtype)
 
@@ -57,7 +57,7 @@ def test_sto_ng_batch(ng: int, dtype: torch.dtype):
     n, l = torch.tensor(1), torch.tensor(0)
     ng_ = torch.tensor(ng)
 
-    coeff, alpha = slater.to_gauss(ng_, n, l, torch.tensor(1.0, dtype=dtype))
+    coeff, alpha = slater_to_gauss(ng_, n, l, torch.tensor(1.0, dtype=dtype))
     coeff, alpha = coeff.type(dtype)[:ng_], alpha.type(dtype)[:ng_]
     vec = torch.tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], dtype=dtype)
 
@@ -99,7 +99,7 @@ def test_no_norm(ng, n, l, dtype):
     )
 
     zeta = torch.tensor(1.0, dtype=dtype)
-    alpha, coeff = slater.to_gauss(ng, n, l, zeta, norm=False)
+    alpha, coeff = slater_to_gauss(ng, n, l, zeta, norm=False)
 
     assert pytest.approx(ref_alpha, abs=tol, rel=tol) == alpha
     assert pytest.approx(ref_coeff, abs=tol, rel=tol) == coeff

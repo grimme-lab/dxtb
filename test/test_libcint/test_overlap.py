@@ -16,7 +16,7 @@ from dxtb.basis import Basis, IndexHelper
 from dxtb.integral.libcint import LibcintWrapper, intor
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
-from dxtb.utils import batch, numpy_to_tensor
+from dxtb.utils import is_list_basis, numpy_to_tensor
 
 try:
     from dxtb.mol.external._pyscf import M
@@ -46,9 +46,11 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     sample = samples[name]
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
+
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     bas = Basis(numbers, par, ihelp, **dd)
     atombases = bas.create_dqc(positions)
+    assert is_list_basis(atombases)
 
     # dxtb's libcint overlap
     wrapper = LibcintWrapper(atombases, ihelp)
@@ -68,7 +70,6 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     # normalize PySCF's reference overlap
     norm = snorm(pyscf_overlap)
     pyscf_overlap = torch.einsum("ij,i,j->ij", pyscf_overlap, norm, norm)
-
     assert dxtb_overlap.shape == pyscf_overlap.shape
     assert pytest.approx(pyscf_overlap, abs=tol) == dxtb_overlap
 
@@ -82,19 +83,6 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers1 = batch.pack(
-        (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
-        )
-    )
-    positions = batch.pack(
-        (
-            sample1["positions"].to(**dd),
-            sample2["positions"].to(**dd),
-        )
-    )
-    print(numbers1)
     numbers = torch.cat(
         (
             sample1["numbers"].to(device),
@@ -109,28 +97,14 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         dim=0,
     )
 
-    print(numbers)
-    print(positions)
-    ihelp1 = IndexHelper.from_numbers(numbers1, get_elem_angular(par.element))
-    bas = Basis(numbers1, par, ihelp1, **dd)
-    print(bas.numbers)
-    print(bas.ngauss)
-    print("")
-    print("")
-    print(ihelp1.orbitals_per_shell.sum(-1))
-
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     bas = Basis(numbers, par, ihelp, **dd)
     atombases = bas.create_dqc(positions)
-    print(ihelp.orbitals_per_shell)
-    print(ihelp.orbitals_per_shell.sum(-1))
+    assert is_list_basis(atombases)
 
     # dxtb's libcint overlap
     wrapper = LibcintWrapper(atombases, ihelp)
     dxtb_overlap = intor.overlap(wrapper)
-
-    print(dxtb_overlap.shape)
-    print(dxtb_overlap)
 
     # pyscf reference overlap ("sph" needed, implicit in dxtb)
     mol = M(numbers, positions, parse_arg=False)
@@ -147,6 +121,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     norm = snorm(pyscf_overlap)
     pyscf_overlap = torch.einsum("ij,i,j->ij", pyscf_overlap, norm, norm)
 
+    print(dxtb_overlap)
     assert dxtb_overlap.shape == pyscf_overlap.shape
     assert pytest.approx(pyscf_overlap, abs=tol) == dxtb_overlap
 
@@ -165,6 +140,7 @@ def test_grad(dtype: torch.dtype, name: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     bas = Basis(numbers, par, ihelp, **dd)
     atombases = bas.create_dqc(positions)
+    assert is_list_basis(atombases)
 
     wrapper = LibcintWrapper(atombases, ihelp)
     int1 = intor.int1e("ipovlp", wrapper)

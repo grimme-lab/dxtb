@@ -159,9 +159,6 @@ class SelfConsistentFieldFull(BaseTSCF):
             for _ in range(maxiter):
                 q_new = fcn(q)
                 q = mixer.iter(q_new, q)
-                print("q.shape", q.shape)
-                print("q_new.shape", q_new.shape)
-                print("q_converged", q_converged.shape)
 
                 conv = mixer.converged
                 if conv.any():
@@ -219,13 +216,9 @@ class SelfConsistentFieldFull(BaseTSCF):
                     # cull SCF variables
                     self._data.cull(conv, slicers=slicers)
 
-                    print("before", q.shape)
-
                     # cull local variables
                     q = q[~conv, ..., :norb]
                     idxs = idxs[~conv]
-                    print("after", q.shape)
-                    print("idxs", idxs, norb)
                     if self._data.charges["mono"] is not None:
                         self._data.charges["mono"] = torch.Size((len(idxs), int(norb)))
                     if self._data.charges["dipole"] is not None:
@@ -249,8 +242,6 @@ class SelfConsistentFieldFull(BaseTSCF):
                             (len(idxs), int(nat), 6)
                         )
 
-                    print(self._data.potential)
-                    print(self._data.charges)
                     # cull mixer (only contains orbital resolved properties)
                     mixer.cull(conv, slicers=slicers["orbital"])
 

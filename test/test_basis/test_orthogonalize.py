@@ -6,7 +6,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.basis import slater
+from dxtb.basis import slater_to_gauss
 from dxtb.basis.ortho import gaussian_integral, orthogonalize
 from dxtb.integral import overlap_gto
 
@@ -28,10 +28,10 @@ def test_ortho_1s_2s(dtype: torch.dtype):
     vec = torch.tensor([0.0, 0.0, 0.0], dtype=dtype)
 
     # create gaussians
-    alphai, coeffi = slater.to_gauss(
+    alphai, coeffi = slater_to_gauss(
         torch.tensor(5), torch.tensor(1), l, vec.new_tensor(1.2)
     )
-    alphaj, coeffj = slater.to_gauss(
+    alphaj, coeffj = slater_to_gauss(
         torch.tensor(2), torch.tensor(2), l, vec.new_tensor(0.7)
     )
 

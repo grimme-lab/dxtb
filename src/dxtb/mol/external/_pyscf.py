@@ -1,3 +1,4 @@
+# pylint: disable=protected-access)
 """
 Representation of Molecule in PySCF
 ===================================
@@ -66,6 +67,7 @@ def M(
     """
     mol = PyscfMol(numbers, positions, xtb_version=xtb_version)
     mol.build(**kwargs)
+    mol.undo_norm_prim()
     return mol
 
 
@@ -120,3 +122,30 @@ class PyscfMol(gto.Mole):
     @classmethod
     def from_mol(cls, mol: Mol, xtb_version: str = "gfn1", **kwargs) -> PyscfMol:
         return cls(mol.numbers, mol.positions, xtb_version, **kwargs)
+
+    def undo_norm_prim(self) -> None:
+        """
+        Circumvent normalization of primitive Gaussians, which is automatically
+        done in the build step of the PySCF molecule.
+
+        See: https://github.com/pyscf/pyscf/issues/1800.
+        """
+        bas_id = 0
+        for at in self.atom:
+            sym = at[0]
+            assert isinstance(sym, str)
+            basis_add = self.basis[sym]
+
+            for b in basis_add:
+                b_coeff = np.array(sorted(list(b[1:]), reverse=True))
+                expnts = b_coeff[:, 0]
+                coeffs = b_coeff[:, 1]
+
+                e_adr = self._bas[bas_id, gto.PTR_EXP]
+                c_adr = self._bas[bas_id, gto.PTR_COEFF]
+                nprim = self.bas_nprim(bas_id)
+
+                self._env[e_adr : e_adr + nprim] = expnts
+                self._env[c_adr : c_adr + nprim] = coeffs
+
+                bas_id += 1

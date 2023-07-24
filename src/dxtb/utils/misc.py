@@ -12,6 +12,7 @@ from functools import wraps
 import torch
 
 from .._types import Any, Callable, T, Tensor, TypeGuard
+from ..basis.types import AtomCGTOBasis
 from ..constants import ATOMIC_NUMBER
 
 
@@ -47,6 +48,12 @@ def is_int_list(x: list[Any]) -> TypeGuard[list[int]]:
         `True` if all objects are integers, `False` otherwise.
     """
     return all(isinstance(i, int) for i in x)
+
+
+def is_list_basis(x) -> TypeGuard[list[AtomCGTOBasis]]:
+    if not isinstance(x, list):
+        return False
+    return all(isinstance(i, AtomCGTOBasis) for i in x)
 
 
 def symbol2number(sym_list: list[str]) -> Tensor:

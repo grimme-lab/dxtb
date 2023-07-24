@@ -43,7 +43,7 @@ MAX_AZIMUTHAL = 4
 """Maximum azimuthal quantum number."""
 
 
-def to_gauss(
+def slater_to_gauss(
     ng: Tensor,
     n: Tensor,
     l: Tensor,

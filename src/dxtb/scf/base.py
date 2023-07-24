@@ -372,7 +372,6 @@ class BaseSCF:
 
         # main SCF function (mixing)
         charges = self.scf(guess)
-        print("final charges", charges)
 
         if self.scf_options["verbosity"] > 0:
             print(77 * "-")

@@ -3,7 +3,6 @@ Basis set class.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 
 import torch
@@ -12,7 +11,12 @@ from .._types import Literal, Tensor, TensorLike
 from ..constants import PSE
 from ..param import Param, get_elem_param, get_elem_pqn, get_elem_valence
 from ..utils import batch, real_pairs
-from . import IndexHelper, orthogonalize, slater
+from .indexhelper import IndexHelper
+from .ortho import orthogonalize
+from .slater import slater_to_gauss
+from .types import AtomCGTOBasis, CGTOBasis
+
+__all__ = ["Basis"]
 
 # fmt: off
 primes = torch.tensor(
@@ -28,26 +32,6 @@ angular2label = {
     3: "f",
     4: "g",
 }
-
-
-@dataclass
-class CGTOBasis:
-    angmom: int
-    alphas: torch.Tensor  # (nbasis,)
-    coeffs: torch.Tensor  # (nbasis,)
-    normalized: bool = True
-
-    def wfnormalize_(self) -> CGTOBasis:
-        # will always be normalized already in dxtb because we have to also
-        # include the orthonormalization of the H2s against the H1s
-        return self
-
-
-@dataclass
-class AtomCGTOBasis:
-    atomz: int | float | Tensor
-    bases: list[CGTOBasis]
-    pos: Tensor  # (ndim,)
 
 
 class Basis(TensorLike):
@@ -113,7 +97,7 @@ class Basis(TensorLike):
         # maybe this can be batched too, but this loop is rather small
         # so it is probably not worth it
         for i in range(self.ihelp.unique_angular.size(0)):
-            alpha, coeff = slater.to_gauss(
+            alpha, coeff = slater_to_gauss(
                 self.ngauss[i],
                 self.pqn[i],
                 self.ihelp.unique_angular[i],
@@ -274,7 +258,7 @@ class Basis(TensorLike):
 
             shells = self.ihelp.shells_per_atom[i]
             for _ in range(shells):
-                alpha, coeff = slater.to_gauss(
+                alpha, coeff = slater_to_gauss(
                     self.ngauss[s], self.pqn[s], self.ihelp.angular[s], self.slater[s]
                 )
                 if self.valence[s].item() is False:
@@ -358,7 +342,7 @@ class Basis(TensorLike):
                 continue
 
             for _ in range(shells):
-                alpha, coeff = slater.to_gauss(
+                alpha, coeff = slater_to_gauss(
                     self.ngauss[s],
                     self.pqn[s],
                     self.ihelp.unique_angular[s],
