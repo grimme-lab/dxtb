@@ -358,7 +358,7 @@ opts = {
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element(dtype: torch.dtype, number: int) -> None:
-    tol = 2e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
+    tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": device, "dtype": dtype}
 
     numbers = torch.tensor([number])
@@ -414,7 +414,7 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_anion(dtype: torch.dtype, number: int) -> None:
-    tol = 3e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
+    tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": device, "dtype": dtype}
 
     # Helium doesn't have enough orbitals for negative charge
@@ -449,7 +449,7 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
 @pytest.mark.parametrize("mol", ["SiH4"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:
-    tol = 2e-2
+    tol = 1e-2
     dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[mol]

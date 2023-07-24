@@ -31,7 +31,7 @@ device = None
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"device": device, "dtype": dtype}
-    atol, rtol = 2e-3, 1e-1  # should be lower!
+    atol, rtol = 1e-4, 1e-1  # should be lower!
 
     numbers = samples[name]["numbers"]
     positions = samples[name]["positions"].to(**dd)
