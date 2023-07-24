@@ -16,7 +16,7 @@ from dxtb.basis import Basis, IndexHelper
 from dxtb.integral.libcint import LibcintWrapper, intor
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
-from dxtb.utils import is_list_basis, numpy_to_tensor
+from dxtb.utils import batch, is_basis_list, numpy_to_tensor
 
 try:
     from dxtb.mol.external._pyscf import M
@@ -36,6 +36,31 @@ def snorm(overlap: Tensor) -> Tensor:
     return torch.pow(overlap.diagonal(dim1=-1, dim2=-2), -0.5)
 
 
+def extract_blocks(x: Tensor, block_sizes: list[int] | Tensor) -> list[Tensor]:
+    # Initialize the start index for the first block
+    start_index = 0
+
+    # Initialize an empty list to store the blocks
+    blocks: list[Tensor] = []
+
+    if isinstance(block_sizes, Tensor):
+        assert block_sizes.ndim == 1
+        block_sizes = block_sizes.tolist()
+
+    # Iterate over each block
+    for block_size in block_sizes:
+        # Generate the indices for the elements in the current block
+        indices = start_index + torch.arange(block_size)
+
+        # Extract the block and append it to the list
+        blocks.append(x[indices, :][:, indices])
+
+        # Update the start index for the next block
+        start_index += block_size
+
+    return blocks
+
+
 @pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
@@ -50,7 +75,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     bas = Basis(numbers, par, ihelp, **dd)
     atombases = bas.create_dqc(positions)
-    assert is_list_basis(atombases)
+    assert is_basis_list(atombases)
 
     # dxtb's libcint overlap
     wrapper = LibcintWrapper(atombases, ihelp)
@@ -79,6 +104,10 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    """
+    Batched overlap using non-batched setup, i.e., one huge matrix is
+    calculated that is only populated on the diagonal.
+    """
     tol = sqrt(torch.finfo(dtype).eps) * 1e-2
     dd: DD = {"device": device, "dtype": dtype}
 
@@ -92,7 +121,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     positions = torch.cat(
         (
             sample1["positions"].to(**dd),
-            sample2["positions"].to(**dd) + 1000,
+            sample2["positions"].to(**dd) + 1000,  # move!
         ),
         dim=0,
     )
@@ -100,7 +129,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     bas = Basis(numbers, par, ihelp, **dd)
     atombases = bas.create_dqc(positions)
-    assert is_list_basis(atombases)
+    assert is_basis_list(atombases)
 
     # dxtb's libcint overlap
     wrapper = LibcintWrapper(atombases, ihelp)
@@ -121,9 +150,18 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     norm = snorm(pyscf_overlap)
     pyscf_overlap = torch.einsum("ij,i,j->ij", pyscf_overlap, norm, norm)
 
-    print(dxtb_overlap)
     assert dxtb_overlap.shape == pyscf_overlap.shape
     assert pytest.approx(pyscf_overlap, abs=tol) == dxtb_overlap
+
+    # we could also extract the blocks and pack them as usual
+    n = batch.pack((sample1["numbers"].to(device), sample2["numbers"].to(device)))
+    ihelp2 = IndexHelper.from_numbers(n, get_elem_angular(par.element))
+    sizes = ihelp2.orbitals_per_shell.sum(-1)
+    out = extract_blocks(dxtb_overlap, sizes)
+    s_packed = batch.pack(out)
+
+    max_size = int(ihelp2.orbitals_per_shell.sum(-1).max())
+    assert s_packed.shape == torch.Size((2, max_size, max_size))
 
 
 @pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
@@ -140,7 +178,7 @@ def test_grad(dtype: torch.dtype, name: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     bas = Basis(numbers, par, ihelp, **dd)
     atombases = bas.create_dqc(positions)
-    assert is_list_basis(atombases)
+    assert is_basis_list(atombases)
 
     wrapper = LibcintWrapper(atombases, ihelp)
     int1 = intor.int1e("ipovlp", wrapper)

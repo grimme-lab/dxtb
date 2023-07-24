@@ -41,7 +41,7 @@ def single(
         opts,
         **{
             "damp": 0.05 if mixer == "simple" else 0.4,
-            "intdriver": intdriver,
+            "int_driver": intdriver,
             "mixer": mixer,
             "scp_mode": scp_mode,
             "xitorch_fatol": tol,
@@ -132,7 +132,7 @@ def batched(
             "damp": 0.05 if mixer == "simple" else 0.4,
             "mixer": mixer,
             "scp_mode": "charge",
-            "intdriver": intdriver,
+            "int_driver": intdriver,
             "xitorch_fatol": tol,
             "xitorch_xatol": tol,
         },

@@ -49,6 +49,10 @@ class InteractionList(Interaction):
             interaction for interaction in interactions if interaction is not None
         ]
 
+    @property
+    def labels(self) -> list[str]:
+        return [interaction.label for interaction in self.interactions]
+
     def get_cache(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
     ) -> InteractionList.Cache:
@@ -233,3 +237,6 @@ class InteractionList(Interaction):
                 for interaction in self.interactions
             ]
         ).sum(dim=0)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.labels})"

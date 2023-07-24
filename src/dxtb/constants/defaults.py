@@ -43,6 +43,9 @@ INTCUTOFF = 50.0
 INTDRIVER = "libcint"
 """Integral driver."""
 
+INTLEVEL = 1
+"""Determines types of calculated integrals."""
+
 # SCF settings
 
 GUESS = "eeq"

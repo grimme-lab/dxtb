@@ -7,7 +7,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.basis import Basis, IndexHelper, slater
+from dxtb.basis import Basis, IndexHelper, slater_to_gauss
 from dxtb.integral import overlap_gto
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular

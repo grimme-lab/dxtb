@@ -944,3 +944,25 @@ class IndexHelper(TensorLike):
             Collection of allowed dtypes the TensorLike object can take.
         """
         return (torch.int16, torch.int32, torch.int64, torch.long)
+
+    def __repr__(self) -> str:
+        return (
+            f"IndexHelper(\n"
+            f"  unique_angular={self.unique_angular},\n"
+            f"  angular={self.angular},\n"
+            f"  atom_to_unique={self.atom_to_unique},\n"
+            f"  ushells_to_unique={self.ushells_to_unique},\n"
+            f"  ushells_per_unique={self.ushells_per_unique},\n"
+            f"  shells_to_ushell={self.shells_to_ushell},\n"
+            f"  shells_per_atom={self.shells_per_atom},\n"
+            f"  shell_index={self.shell_index},\n"
+            f"  shells_to_atom={self.shells_to_atom},\n"
+            f"  orbitals_per_shell={self.orbitals_per_shell},\n"
+            f"  orbital_index={self.orbital_index},\n"
+            f"  orbitals_to_shell={self.orbitals_to_shell},\n"
+            f"  batched={self.batched},\n"
+            f"  store={self.store},\n"
+            f"  device={self.device},\n"
+            f"  dtype={self.dtype}\n"
+            ")"
+        )

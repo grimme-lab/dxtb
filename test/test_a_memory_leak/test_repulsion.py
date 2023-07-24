@@ -5,6 +5,8 @@ Inspired by DQC.
 """
 from __future__ import annotations
 
+import gc
+
 import pytest
 import torch
 
@@ -72,4 +74,9 @@ def test_single(dtype: torch.dtype, name: str) -> None:
         # known reference cycle for create_graph=True
         energy.backward()
 
-    assert not has_memleak_tensor(fcn)
+    # run garbage collector to avoid leaks across other tests
+    gc.collect()
+    leak = has_memleak_tensor(fcn)
+    gc.collect()
+
+    assert not leak, "Memory leak detected"

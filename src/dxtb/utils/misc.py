@@ -30,6 +30,8 @@ def is_str_list(x: list[Any]) -> TypeGuard[list[str]]:
     TypeGuard[list[str]]
         `True` if all objects are strings, `False` otherwise.
     """
+    if not isinstance(x, list):
+        return False
     return all(isinstance(i, str) for i in x)
 
 
@@ -47,10 +49,25 @@ def is_int_list(x: list[Any]) -> TypeGuard[list[int]]:
     TypeGuard[list[int]]
         `True` if all objects are integers, `False` otherwise.
     """
+    if not isinstance(x, list):
+        return False
     return all(isinstance(i, int) for i in x)
 
 
-def is_list_basis(x) -> TypeGuard[list[AtomCGTOBasis]]:
+def is_basis_list(x: Any) -> TypeGuard[list[AtomCGTOBasis]]:
+    """
+    Determines whether all objects in the list are `AtomCGTOBasis`.
+
+    Parameters
+    ----------
+    x : list[Any]
+        List to check.
+
+    Returns
+    -------
+    TypeGuard[list[AtomCGTOBasis]]
+        `True` if all objects are `AtomCGTOBasis`, `False` otherwise.
+    """
     if not isinstance(x, list):
         return False
     return all(isinstance(i, AtomCGTOBasis) for i in x)

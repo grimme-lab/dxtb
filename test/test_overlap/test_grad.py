@@ -10,7 +10,7 @@ import torch
 from torch.autograd.functional import jacobian
 
 from dxtb._types import DD, Tensor
-from dxtb.basis import IndexHelper, slater
+from dxtb.basis import IndexHelper, slater_to_gauss
 from dxtb.integral import Overlap, mmd
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular

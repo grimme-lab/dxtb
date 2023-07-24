@@ -28,7 +28,7 @@ from ..integral import libcint as intor
 from ..interaction import Charges, Interaction, InteractionList, Potential
 from ..param import Param, get_elem_angular
 from ..utils import Timers, ToleranceWarning, batch
-from ..utils.misc import is_list_basis
+from ..utils.misc import is_basis_list
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian
 from .h0 import Hamiltonian
@@ -40,7 +40,7 @@ def use_intdriver(driver_arg: int = 1) -> Callable:
     def decorator(fcn: Callable) -> Callable:
         @wraps(fcn)
         def wrap(self: Calculator, *args: Any, **kwargs: Any) -> Any:
-            if self.opts["integral_driver"] == "libcint":
+            if self.opts["int_driver"] == "libcint":
                 self.init_intdriver(args[driver_arg])
 
             result = fcn(self, *args, **kwargs)
@@ -277,8 +277,6 @@ class Calculator(TensorLike):
 
         self.batched = numbers.ndim > 1
 
-        drv = opts.get("intdriver", defaults.INTDRIVER)
-
         self.opts = {
             "fwd_options": {
                 "damp": opts.get("damp", defaults.DAMP),
@@ -307,7 +305,7 @@ class Calculator(TensorLike):
             "exclude": opts.get("exclude", defaults.EXCLUDE),
             "guess": opts.get("guess", defaults.GUESS),
             "spin": opts.get("spin", defaults.SPIN),
-            "integral_driver": drv,
+            "int_driver": opts.get("int_driver", defaults.INTDRIVER),
         }
 
         # set tolerances separately to catch unreasonably small values
@@ -318,6 +316,7 @@ class Calculator(TensorLike):
         self.hamiltonian = Hamiltonian(numbers, par, self.ihelp, **dd)
         self.integrals = Integrals(**dd)
 
+        # integrals do not work with a batched IndexHelper
         if self.batched:
             self._ihelp = [
                 IndexHelper.from_numbers(
@@ -369,16 +368,21 @@ class Calculator(TensorLike):
                 halogen, dispersion, repulsion, *classical, timer=self.timer
             )
 
-        self.timer.stop("setup calculator")
+        # integral-related setup
 
-        if self.opts["integral_driver"] == "libcint":
+        if self.opts["int_driver"] == "libcint":
             self.overlap = OverlapLibcint(numbers, par, self.ihelp, **dd)
             self.basis = Basis(numbers, par, self.ihelp, **dd)
         else:
             self.overlap = Overlap(numbers, par, self.ihelp, **dd)
 
+        # figure out integral level from interactions
+        self.set_intlevel(opts.get("int_level", defaults.INTLEVEL))
+
         self._intdriver = None
         self._positions = None
+
+        self.timer.stop("setup calculator")
 
     def set_option(self, name: str, value: Any) -> None:
         if name not in self.opts:
@@ -402,6 +406,12 @@ class Calculator(TensorLike):
 
         self.opts["fwd_options"][name] = value
 
+    def set_intlevel(self, value: int) -> None:
+        if "ElectricField" in self.interactions.labels:
+            value = max(2, value)
+
+        self.opts["int_level"] = value
+
     def driver(
         self, positions: Tensor
     ) -> intor.LibcintWrapper | list[intor.LibcintWrapper]:
@@ -415,17 +425,18 @@ class Calculator(TensorLike):
             return [
                 intor.LibcintWrapper(ab, ihelp)
                 for ab, ihelp in zip(atombases, self._ihelp)
-                if is_list_basis(ab)
+                if is_basis_list(ab)
             ]
 
-        assert is_list_basis(atombases)
+        assert is_basis_list(atombases)
         return intor.LibcintWrapper(atombases, self.ihelp)
 
     def init_intdriver(self, positions: Tensor):
-        if self.opts["integral_driver"] != "libcint":
+        if self.opts["int_driver"] != "libcint":
             return
 
         diff = 0
+
         # create intor.LibcintWrapper if it does not exist yet
         if self._intdriver is None:
             self._intdriver = self.driver(positions)
@@ -478,54 +489,10 @@ class Calculator(TensorLike):
             self.integrals.overlap = overlap
             self.timer.stop("Overlap")
 
-            # dipole intgral
-            if self.opts["integral_driver"] == "libcint":
+            # dipole integral
+            if self.opts["int_driver"] == "libcint" and self.opts["int_level"] > 1:
                 self.timer.start("Dipole Integral")
-
-                # statisfy type checking...
-                assert isinstance(self.overlap, OverlapLibcint)
-                assert self._intdriver is not None
-
-                def dipole_integral(
-                    driver: intor.LibcintWrapper, norm: Tensor
-                ) -> Tensor:
-                    """
-                    Calculation of dipole integral. The integral is properly
-                    normalized, using the diagonal of the overlap integral.
-
-                    Parameters
-                    ----------
-                    driver : intor.LibcintWrapper
-                        Integral driver (libcint interface).
-                    norm : Tensor
-                        Norm of the overlap integral.
-
-                    Returns
-                    -------
-                    Tensor
-                        Normalized dipole integral.
-                    """
-                    return torch.einsum(
-                        "xij,i,j->xij", intor.int1e("j", driver), norm, norm
-                    )
-
-                if self.batched:
-                    dpint_list = []
-
-                    assert isinstance(self._intdriver, list)
-                    for _batch, driver in enumerate(self._intdriver):
-                        dpint = dipole_integral(
-                            driver, batch.deflate(self.overlap.norm[_batch])
-                        )
-                        dpint_list.append(dpint)
-
-                    self.integrals.dipole = batch.pack(dpint_list)
-                else:
-                    assert isinstance(self._intdriver, intor.LibcintWrapper)
-                    self.integrals.dipole = dipole_integral(
-                        self._intdriver, self.overlap.norm
-                    )
-
+                self.dipole_integral()
                 self.timer.stop("Dipole Integral")
 
             # Hamiltonian
@@ -649,3 +616,40 @@ class Calculator(TensorLike):
             self.timer.print_times()
 
         return result
+
+    def dipole_integral(self) -> None:
+        # statisfy type checking...
+        assert isinstance(self.overlap, OverlapLibcint)
+        assert self._intdriver is not None
+
+        def dpint(driver: intor.LibcintWrapper, norm: Tensor) -> Tensor:
+            """
+            Calculation of dipole integral. The integral is properly
+            normalized, using the diagonal of the overlap integral.
+
+            Parameters
+            ----------
+            driver : intor.LibcintWrapper
+                Integral driver (libcint interface).
+            norm : Tensor
+                Norm of the overlap integral.
+
+            Returns
+            -------
+            Tensor
+                Normalized dipole integral.
+            """
+            return torch.einsum("xij,i,j->xij", intor.int1e("j", driver), norm, norm)
+
+        if self.batched:
+            dpint_list = []
+
+            assert isinstance(self._intdriver, list)
+            for _batch, driver in enumerate(self._intdriver):
+                d = dpint(driver, batch.deflate(self.overlap.norm[_batch]))
+                dpint_list.append(d)
+
+            self.integrals.dipole = batch.pack(dpint_list)
+        else:
+            assert isinstance(self._intdriver, intor.LibcintWrapper)
+            self.integrals.dipole = dpint(self._intdriver, self.overlap.norm)
