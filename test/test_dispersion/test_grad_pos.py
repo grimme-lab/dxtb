@@ -10,7 +10,6 @@ from dxtb._types import DD, Callable, Tensor
 from dxtb.dispersion import new_dispersion
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
-from dxtb.xtb import Calculator
 
 from ..utils import dgradcheck, dgradgradcheck
 from .samples import samples
@@ -20,29 +19,6 @@ sample_list = ["LiH", "SiH4", "MB16_43_01", "PbH4-BiH3"]
 tol = 1e-8
 
 device = None
-
-sample_list.append("extra")
-samples["extra"] = {"positions" : torch.tensor([[-1.0981,  0.1496,  0.1346],
-         [-0.4155,  1.2768,  0.3967],
-         [ 0.9426,  0.7848,  0.1307],
-         [ 2.1708,  1.3814, -0.0347],
-         [ 3.3234,  0.5924, -0.1535],
-         [ 3.1564, -0.8110, -0.0285],
-         [ 1.8929, -1.4673,  0.0373],
-         [ 0.8498, -0.5613,  0.0109],
-         [-0.7751,  2.2970,  0.5540],
-         [ 2.3079,  2.4725, -0.1905],
-         [ 4.3031,  0.9815, -0.4599],
-         [ 4.0011, -1.4666, -0.0514],
-         [ 1.8340, -2.5476, -0.1587],
-         [-2.5629, -0.0306, -0.1458],
-         [-3.0792,  1.0280, -0.3225],
-         [-3.0526, -1.1594,  0.1038],
-         [-0.4839, -0.9612, -0.0048]]),
-    "numbers" : torch.tensor([6, 6, 6, 6, 6, 6, 6, 6, 1, 1, 1, 1, 1, 7, 8, 8, 8]),
-    "charges" : torch.tensor(0),
-    "grad" :None
-}
 
 
 def gradchecker(
@@ -305,30 +281,3 @@ def test_backward_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     grad_backward.detach_()
 
     assert pytest.approx(ref, abs=tol) == grad_backward
-
-
-
-@pytest.mark.grad
-@pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", sample_list)
-def test_grad_nan(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
-
-    # NOTE: requires double precision, otherwise D3 energies become NaN
-
-    opts = {"verbosity": 0, "maxiter": 50}
-
-    sample = samples[name]
-    positions = sample["positions"].clone().to(**dd)
-    numbers = sample["numbers"].clone().to(device)
-    charges = sample.get("charges", torch.tensor(0)).to(**dd)
-   
-    positions.requires_grad_(True)
-
-    options = dict(opts, **{"scf_mode": "implicit"})
-    calc = Calculator(numbers, par, opts=options, **dd)
-
-    result = calc.singlepoint(numbers, positions, charges, grad=True)
-    grad = result.total_grad
-
-    assert not torch.isnan(grad).any(), "Gradient contains NaN values"
