@@ -14,6 +14,12 @@ from ..._types import Slicers, Tensor, TensorLike
 from ..base import Interaction
 from ..container import Charges
 
+__all__ = ["ElectricField", "LABEL_EFIELD", "new_efield"]
+
+
+LABEL_EFIELD = "ElectricField"
+"""Label for the 'ElectricField' interaction, coinciding with the class name."""
+
 
 class ElectricField(Interaction):
     """
@@ -166,7 +172,7 @@ class ElectricField(Interaction):
             Atom-wise electric field interaction energies.
         """
 
-        # torch.sum(-cache.vdp * charges, dim=-1)
+        # equivalent: torch.sum(-cache.vdp * charges, dim=-1)
         return torch.einsum("...ix,...ix->...i", -cache.vdp, charges)
 
     def get_atom_potential(self, _: Charges, cache: Cache) -> Tensor:
@@ -236,7 +242,7 @@ def new_efield(
         Shape of `field` is not a vector of length 3.
     """
     if field.shape != torch.Size([3]):
-        raise RuntimeError("Electric field must be a vector of lenght 3.")
+        raise RuntimeError("Electric field must be a vector of length 3.")
     return ElectricField(
         field,
         device=device if device is None else field.device,

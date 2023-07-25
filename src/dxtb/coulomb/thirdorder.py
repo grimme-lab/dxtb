@@ -42,7 +42,11 @@ from ..basis import IndexHelper
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
 
-__all__ = ["ES3", "new_es3"]
+__all__ = ["ES3", "LABEL_ES3", "new_es3"]
+
+
+LABEL_ES3 = "ES3"
+"""Label for the 'ES3' interaction, coinciding with the class name."""
 
 
 class ES3(Interaction):

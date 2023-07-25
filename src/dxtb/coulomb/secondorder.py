@@ -48,7 +48,11 @@ from ..param import Param, get_elem_param
 from ..utils import batch, cdist, real_pairs
 from .average import AveragingFunction, averaging_function, harmonic_average
 
-__all__ = ["ES2", "new_es2"]
+__all__ = ["ES2", "LABEL_ES2", "new_es2"]
+
+
+LABEL_ES2 = "ES2"
+"""Label for the 'ES2' interaction, coinciding with the class name."""
 
 
 class ES2(Interaction):
@@ -156,10 +160,7 @@ class ES2(Interaction):
         self.shell_resolved = shell_resolved and lhubbard is not None
 
     def get_cache(
-        self,
-        numbers: Tensor,
-        positions: Tensor,
-        ihelp: IndexHelper,
+        self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
     ) -> ES2.Cache:
         """
         Obtain the cache object containing the Coulomb matrix.

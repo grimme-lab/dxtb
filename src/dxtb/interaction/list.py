@@ -5,10 +5,12 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Slicers, Tensor, TensorOrTensors
+from .._types import Literal, Slicers, Tensor, TensorOrTensors, overload
 from ..basis import IndexHelper
+from ..coulomb import secondorder, thirdorder
 from .base import Interaction
 from .container import Charges, Potential
+from .external import field as efield
 
 
 class InteractionList(Interaction):
@@ -52,6 +54,45 @@ class InteractionList(Interaction):
     @property
     def labels(self) -> list[str]:
         return [interaction.label for interaction in self.interactions]
+
+    @overload
+    def get_interaction(
+        self, name: Literal["efield.ElectricField"]
+    ) -> efield.ElectricField:
+        ...
+
+    @overload
+    def get_interaction(self, name: Literal["secondorder.ES2"]) -> secondorder.ES2:
+        ...
+
+    @overload
+    def get_interaction(self, name: Literal["thirdorder.ES3"]) -> thirdorder.ES3:
+        ...
+
+    def get_interaction(self, name: str) -> Interaction:
+        """
+        Obtain an interaction from the list of interactions by its class name.
+
+        Parameters
+        ----------
+        name : str
+            Name of the interaction.
+
+        Returns
+        -------
+        Interaction
+            Instance of the interaction as present in the `InteractionList`.
+
+        Raises
+        ------
+        ValueError
+            Unknown interaction name given or interaction is not in the list.
+        """
+        for i in self.interactions:
+            if name == i.label:
+                return i
+
+        raise ValueError(f"The interaction named '{name}' is not in the list.")
 
     def get_cache(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
