@@ -7,7 +7,7 @@ import warnings
 
 import torch
 
-from .._types import NoReturn, Tensor
+from .._types import Tensor
 from ..param import Param
 from ..utils import ParameterWarning, convert_float_tensor
 from .base import Dispersion
