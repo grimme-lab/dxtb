@@ -75,7 +75,7 @@ def test_eighb(broadening: Literal["cond", "lorn", "none"]) -> None:
 
     def eigen_proxy(m: Tensor):
         m = symmetrize(m, force=True)
-        return eighb(m, broadening_method=broadening)
+        return eighb(a=m, broadening_method=broadening)
 
     assert gradcheck(eigen_proxy, a)
 
@@ -87,7 +87,7 @@ def test_eighb_degen(broadening: Literal["cond", "lorn", "none"]) -> None:
 
     def eigen_proxy(m: Tensor):
         m = symmetrize(m, force=True)
-        return eighb(m, broadening_method=broadening)
+        return eighb(a=m, broadening_method=broadening)
 
     assert gradcheck(eigen_proxy, hamiltonian)
 

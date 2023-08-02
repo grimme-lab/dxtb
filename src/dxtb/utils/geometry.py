@@ -7,6 +7,8 @@ import torch
 
 from .._types import Tensor
 
+__all__ = ["cdist", "is_linear_molecule"]
+
 
 def euclidean_dist_quadratic_expansion(x: Tensor, y: Tensor) -> Tensor:
     """
@@ -129,3 +131,49 @@ def cdist(x: Tensor, y: Tensor | None = None, p: int = 2) -> Tensor:
         return euclidean_dist_quadratic_expansion(x, y)
 
     return cdist_direct_expansion(x, y, p=p)
+
+
+################################################
+
+
+def bond_angle(atom1: Tensor, atom2: Tensor, atom3: Tensor) -> Tensor:
+    # Calculate the bond angle using the coordinates of three atoms
+    vector1 = atom1 - atom2
+    vector2 = atom3 - atom2
+    cos_theta = torch.dot(vector1, vector2) / (
+        torch.norm(vector1) * torch.norm(vector2)
+    )
+    return torch.rad2deg(torch.acos(cos_theta))
+
+
+def is_linear_molecule(
+    positions: Tensor, atol: float = 1e-8, rtol: float = 1e-5
+) -> bool:
+    # Calculate the number of atoms in the molecule
+    num_atoms = positions.shape[-2]
+
+    if num_atoms < 3:
+        return True
+
+    # Iterate over the atoms to calculate the bond angles
+    for i in range(1, num_atoms - 1):
+        atom1 = positions[i - 1]
+        atom2 = positions[i]
+        atom3 = positions[i + 1]
+
+        angle = bond_angle(atom1, atom2, atom3)
+
+        # Check if the bond angle is not close to 180 degrees
+        if not torch.any(
+            torch.isclose(
+                angle,
+                torch.tensor(
+                    [0.0, 180.0], device=positions.device, dtype=positions.dtype
+                ),
+                atol=atol,
+                rtol=rtol,
+            )
+        ):
+            return False
+
+    return True

@@ -110,6 +110,11 @@ def spread_charges_atomic_to_orbital(charges: Tensor, ihelp: IndexHelper) -> Ten
         device=charges.device,
         dtype=charges.dtype,
     )
+    zero = torch.tensor(
+        0.0,
+        device=charges.device,
+        dtype=charges.dtype,
+    )
 
     shells_per_atom = ihelp.spread_atom_to_shell(ihelp.shells_per_atom)
     orbs_per_shell = ihelp.spread_shell_to_orbital(ihelp.orbitals_per_shell)
@@ -118,14 +123,14 @@ def spread_charges_atomic_to_orbital(charges: Tensor, ihelp: IndexHelper) -> Ten
         shells_per_atom > 0,
         ihelp.spread_atom_to_shell(charges)
         / torch.clamp(shells_per_atom.type(charges.dtype), min=eps),
-        charges.new_tensor(0.0),
+        zero,
     )
 
     orb_charges = torch.where(
         orbs_per_shell > 0,
         ihelp.spread_shell_to_orbital(shell_charges)
         / torch.clamp(orbs_per_shell.type(charges.dtype), min=eps),
-        charges.new_tensor(0.0),
+        zero,
     )
 
     tot_chrg_old = charges.sum(-1)

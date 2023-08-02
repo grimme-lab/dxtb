@@ -56,17 +56,15 @@ class InteractionList(Interaction):
         return [interaction.label for interaction in self.interactions]
 
     @overload
-    def get_interaction(
-        self, name: Literal["efield.ElectricField"]
-    ) -> efield.ElectricField:
+    def get_interaction(self, name: Literal["ElectricField"]) -> efield.ElectricField:
         ...
 
     @overload
-    def get_interaction(self, name: Literal["secondorder.ES2"]) -> secondorder.ES2:
+    def get_interaction(self, name: Literal["ES2"]) -> secondorder.ES2:
         ...
 
     @overload
-    def get_interaction(self, name: Literal["thirdorder.ES3"]) -> thirdorder.ES3:
+    def get_interaction(self, name: Literal["ES3"]) -> thirdorder.ES3:
         ...
 
     def get_interaction(self, name: str) -> Interaction:

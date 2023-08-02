@@ -27,7 +27,111 @@ else:  # pragma: no cover
     from torch.func import jacrev  # type: ignore
 
 
+# NOTE: This is a (non-vectorized, slow) workaround from dqc
+def _jac(
+    a: Tensor,
+    b: Tensor,
+    create_graph: bool | None = None,
+    retain_graph: bool = True,
+) -> Tensor:
+    # catch missing gradients (e.g., halogen bond correction evaluates to
+    # zero if no donors/acceptors are present)
+    if a.grad_fn is None:
+        return torch.zeros(
+            (*a.shape, b.numel()),
+            dtype=b.dtype,
+            device=b.device,
+        )
+
+    if create_graph is None:
+        create_graph = torch.is_grad_enabled()
+    assert create_graph is not None
+
+    aflat = a.reshape(-1)
+    anumel, bnumel = a.numel(), b.numel()
+    res = torch.empty(
+        (anumel, bnumel),
+        dtype=a.dtype,
+        device=a.device,
+    )
+
+    for i in range(aflat.numel()):
+        (g,) = torch.autograd.grad(
+            aflat[i],
+            b,
+            create_graph=create_graph,
+            retain_graph=retain_graph,
+        )
+        res[i] = g.reshape(-1)
+
+    return res.reshape((*a.shape, bnumel))
+
+
 def hessian(
+    f: Callable[..., Tensor],
+    inputs: tuple[Any, ...],
+    argnums: int = 0,
+    create_graph: bool | None = None,
+    retain_graph: bool = True,
+    is_batched: bool = False,
+) -> Tensor:
+    """
+    Wrapper for Hessian. The Hessian is the Jacobian of the gradient.
+
+    PyTorch, however, suggests calculating the Jacobian of the Jacobian, which
+    does not yield the correct shape in this case.
+
+    Parameters
+    ----------
+    f : Callable[[Any], Tensor]
+        The function whose result is differentiated.
+    inputs : tuple[Any, ...]
+        The input parameters of `f`.
+    argnums : int, optional
+        The variable w.r.t. which will be differentiated. Defaults to 0.
+
+    Returns
+    -------
+    Tensor
+        The Hessian.
+    """
+    if is_batched:
+        raise NotImplementedError("Batched Hessian not available.")
+
+    if create_graph is None:
+        create_graph = torch.is_grad_enabled()
+    assert create_graph is not None
+
+    def _grad(*inps: tuple[Any, ...]) -> Tensor:
+        e = f(*inps).sum()
+
+        if not isinstance(inps[argnums], Tensor):
+            raise RuntimeError(f"The {argnums}'th input parameter must be a tensor.")
+
+        # catch missing gradients (e.g., halogen bond correction evaluates to
+        # zero if no donors/acceptors are present)
+        if e.grad_fn is None:
+            return torch.zeros_like(inps[argnums])  # type: ignore
+
+        (g,) = torch.autograd.grad(
+            e,
+            inps[argnums],
+            create_graph=create_graph,
+            retain_graph=retain_graph,
+        )
+        return g
+
+    grad = _grad(*inputs)
+    hess = _jac(
+        grad.flatten(),
+        inputs[argnums],
+        create_graph=create_graph,
+        retain_graph=retain_graph,
+    )
+    return hess
+
+
+def _hessian(
     f: Callable[..., Tensor],
     inputs: tuple[Any, ...],
     argnums: int = 0,
@@ -83,7 +187,7 @@ def hessian(
 
     # NOTE: This is a (non-vectorized, slow) workaround that probably only
     # works for the nuclear Hessian! The use of functorch causes issues!
-    def _jac(a: Tensor, b: Tensor) -> Tensor:
+    def _jacobian(a: Tensor, b: Tensor) -> Tensor:
         # catch missing gradients (e.g., halogen bond correction evaluates to
         # zero if no donors/acceptors are present)
         if a.grad_fn is None:
@@ -112,7 +216,7 @@ def hessian(
         return res.reshape((*b.shape, *b.shape))
 
     grad = _grad(*inputs)
-    hess = _jac(grad, inputs[argnums])
+    hess = _jacobian(grad, inputs[argnums])
     return hess
 
 
@@ -223,11 +327,11 @@ def hessian_functorch(
         )
         return g
 
-    _jac = jac(_grad, argnums=argnums)
+    _jacobian = jac(_grad, argnums=argnums)
 
     if is_batched:
         raise NotImplementedError("Batched Hessian not available.")
         # dims = tuple(None if x != argnums else 0 for x in range(len(inputs)))
-        # _jac = torch.func.vmap(_jac, in_dims=dims)
+        # _jacobian = torch.func.vmap(_jacobian, in_dims=dims)
 
-    return _jac(*inputs)  # type: ignore
+    return _jacobian(*inputs)  # type: ignore

@@ -145,6 +145,16 @@ mols: dict[str, Molecule] = {
             ]
         ),
     },
+    "CO2": {
+        "numbers": symbol2number("C O O".split()),
+        "positions": torch.tensor(
+            [
+                [+0.00000000000000, +0.00000000000000, +0.00000000000000],
+                [+0.00000000000000, +0.00000000000000, +2.19745658218139],
+                [+0.00000000000000, +0.00000000000000, -2.19745658218139],
+            ]
+        ),
+    },
     "NO2": {
         "numbers": symbol2number("N O O".split()),
         "positions": torch.tensor(

@@ -22,7 +22,7 @@ from ..constants import defaults
 from ..exlibs.xitorch import optimize as xto
 from ..integral import Integrals
 from ..interaction import Charges, InteractionList
-from ..utils import SCFConvergenceError, SCFConvergenceWarning
+from ..utils import SCFConvergenceError, SCFConvergenceWarning, t2int
 from .base import BaseTSCF, BaseXSCF, SCFResult
 from .guess import get_guess
 from .mixer import Anderson, Mixer, Simple
@@ -195,6 +195,15 @@ class SelfConsistentFieldFull(BaseTSCF):
                     nsh_new = self._data.ihelp.shells_per_atom[~conv, ...].sum(-1).max()
                     nat_new = self._data.numbers[~conv, ...].count_nonzero(dim=-1).max()
 
+                    # Here, we account for cases, in which the number of
+                    # orbitals is smaller than the number of atoms times 3 (6)
+                    # after culling. We specifically avoid culling, as this
+                    # would severly mess up the shapes involved.
+                    if q.shape[1] > 0:
+                        norb_new = max(t2int(norb_new), t2int(nat_new) * 3)
+                    elif q.shape[1] > 1:
+                        norb_new = max(t2int(norb_new), t2int(nat_new) * 6)
+
                     # if the largest system was culled from batch, cut the
                     # properties down to the new size to remove superfluous
                     # padding values
@@ -203,13 +212,13 @@ class SelfConsistentFieldFull(BaseTSCF):
                         "shell": (...,),
                         "atom": (...,),
                     }
-                    if norb != norb_new:
+                    if norb > norb_new:
                         slicers["orbital"] = [slice(0, i) for i in [norb_new]]
                         norb = norb_new
-                    if nsh != nsh_new:
+                    if nsh > nsh_new:
                         slicers["shell"] = [slice(0, i) for i in [nsh_new]]
                         nsh = nsh_new
-                    if nat != nat_new:
+                    if nat > nat_new:
                         slicers["atom"] = [slice(0, i) for i in [nat_new]]
                         nat = nat_new
 
@@ -219,6 +228,7 @@ class SelfConsistentFieldFull(BaseTSCF):
                     # cull local variables
                     q = q[~conv, ..., :norb]
                     idxs = idxs[~conv]
+
                     if self._data.charges["mono"] is not None:
                         self._data.charges["mono"] = torch.Size((len(idxs), int(norb)))
                     if self._data.charges["dipole"] is not None:

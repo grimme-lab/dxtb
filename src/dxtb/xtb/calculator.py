@@ -26,6 +26,7 @@ from ..dispersion import Dispersion, new_dispersion
 from ..integral import Integrals, Overlap, OverlapLibcint
 from ..integral import libcint as intor
 from ..interaction import Charges, Interaction, InteractionList, Potential
+from ..interaction.external import field as efield
 from ..param import Param, get_elem_angular
 from ..utils import Timers, ToleranceWarning, batch
 from ..utils.misc import is_basis_list
@@ -468,7 +469,7 @@ class Calculator(TensorLike):
         numbers : Tensor
             Atomic numbers.
         positions : Tensor
-            Atomic positions.
+            Atomic positions of shape (n, 3).
         chrg : Tensor
             Total charge.
         grad : bool
@@ -653,3 +654,275 @@ class Calculator(TensorLike):
         else:
             assert isinstance(self._intdriver, intor.LibcintWrapper)
             self.integrals.dipole = dpint(self._intdriver, self.overlap.norm)
+
+    def hessian(
+        self, numbers: Tensor, positions: Tensor, chrg: Tensor, shape: str = "matrix"
+    ) -> Tensor:
+        pos = positions.detach().clone()
+
+        def _gradfcn(pos: Tensor) -> Tensor:
+            pos.requires_grad_(True)
+            result = self.singlepoint(numbers, pos, chrg, grad=True)
+            pos.detach_()
+            return result.total_grad.detach()
+
+        hess = torch.zeros(
+            *(*positions.shape, *positions.shape),
+            **{"device": positions.device, "dtype": positions.dtype},
+        )
+
+        step = 1.0e-4
+        for i in range(numbers.shape[0]):
+            for j in range(3):
+                pos[i, j] += step
+                gr = _gradfcn(pos)
+
+                pos[i, j] -= 2 * step
+                gl = _gradfcn(pos)
+
+                pos[i, j] += step
+                hess[:, :, i, j] = 0.5 * (gr - gl) / step
+
+        if shape == "matrix":
+            hess = hess.reshape(2 * (3 * numbers.shape[-1],))
+
+        return hess
+
+    def vibration(
+        self, numbers: Tensor, positions: Tensor, chrg: Tensor
+    ) -> tuple[Tensor, Tensor]:
+        from ..constants import get_atomic_masses
+        from ..utils import eighb
+
+        eps = torch.tensor(
+            torch.finfo(positions.dtype).eps,
+            device=positions.device,
+            dtype=positions.dtype,
+        )
+
+        hess = self.hessian(numbers, positions, chrg, shape="matrix")
+        masses = get_atomic_masses(numbers, atomic_units=True)
+        mass_mat = torch.diag_embed(masses.repeat_interleave(3))
+
+        # instead of calculating and diagonalizing the mass-weighted Hessian,
+        # we solve the equivalent general eigenvalue problem Hv=Mve
+        evals, evecs = eighb(a=hess, b=mass_mat)
+
+        # vibrational frequencies ω = √λ / (2π) with some additional logic for
+        # handling possible negative eigenvalues
+        e = torch.sqrt(torch.clamp(evals, min=eps))
+        freqs = e * torch.sign(evals) / (2 * torch.pi)
+
+        # reverse the sorting to make it sorted from largest to smallest
+        # freqs = torch.flip(freqs, dims=(-1,))
+        # evecs = torch.flip(evecs, dims=(-1,))
+
+        return freqs, evecs
+
+    def dipole(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor,
+    ) -> Tensor:
+        # check if electric field is given in interactions
+        if efield.LABEL_EFIELD not in self.interactions.labels:
+            raise RuntimeError(
+                "Dipole moment requires an electric field. Add the "
+                f"'{efield.LABEL_EFIELD}' interaction to the Calculator."
+            )
+
+        # retrieve the efield interaction and the field
+        ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
+        field = ef.field
+
+        if field.requires_grad is False:
+            raise RuntimeError("Field tensor needs `requires_grad=True`.")
+
+        result = self.singlepoint(numbers, positions, chrg)
+        energy = result.total.sum(-1)
+
+        # Analytical formula:
+        #
+        # Electric dipole contribution from nuclei: sum_i(r_ik * q_i)
+        # qat = self.ihelp.reduce_orbital_to_atom(result.charges)
+        # n_dipole = torch.einsum("...ij,...i->...j", positions, qat)
+        #
+        # Electric dipole contribution from electrons:
+        # e_dipole = -torch.einsum("xij,ij->x", dpint, result.density)
+
+        # calculate electric dipole contribution from xtb energy: -de/dE
+        return -_jac(energy, field)
+
+    def quadrupole(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor,
+    ) -> Tensor:
+        if positions.requires_grad is False:
+            raise RuntimeError("Position tensor needs `requires_grad=True`.")
+
+        # check if electric field is given in interactions and retrieve it
+        efield = ...
+        efield_grad = ...
+
+        energy = self.singlepoint(numbers, positions, chrg).total
+
+        # electric quadrupole contribution from xtb energy: -de/d(dE/dr)
+        e_quad = -2 * _jac(energy, efield_grad)
+        e_quad = e_quad.reshape(3, 3)
+
+        # electric quadrupole contribution form nuclei: sum_i(r_ik * Z_i)
+        n_quad = torch.einsum(
+            "...ij,...ik,...i->...jk",
+            positions,
+            positions,
+            numbers.type(positions.dtype),
+        )
+
+        return e_quad + n_quad
+
+    def ir_spectrum(
+        self, numbers: Tensor, positions: Tensor, chrg: Tensor
+    ) -> tuple[Tensor, Tensor]:
+        if positions.requires_grad is False:
+            raise RuntimeError("Position tensor needs `requires_grad=True`.")
+
+        # calculate dipole moment first because as it includes a check if the
+        # required electric field is given
+        mu = self.dipole(numbers, positions, chrg)
+
+        # calculate vibrational frequencies and normal modes and remove
+        freqs, modes = self.vibration(numbers, positions, chrg)
+
+        from ..constants import units
+        from ..utils.geometry import is_linear_molecule
+
+        is_linear = is_linear_molecule(positions)
+        print("\nfreq pre conv", freqs)
+        print("units.AU2RCM", units.AU2RCM)
+
+        freqs, modes = _project_freqs(freqs, modes, is_linear=is_linear)
+        print("\nfreqs conv 1", units.AU2RCM * freqs)
+        freqs = freqs * 1e-2 / units.CODATA.c / 2.4188843265857e-17
+        print("freq post conv", freqs)
+
+        # derivative of dipole moment w.r.t. positions
+        dmu_dr = _jac(mu, positions)  # (ndim, nat * ndim)
+        dmu_dq = torch.matmul(dmu_dr, modes)  # (ndim, nfreqs)
+        ir_ints = torch.einsum("...df,...df->...f", dmu_dq, dmu_dq)  # (nfreqs,)
+
+        print("\nir_ints", ir_ints)
+        print(units.METER2AU, units.AA2AU)
+        print(ir_ints * units.AU2KMMOL)
+
+        return freqs, ir_ints
+
+    def raman_spectrum(
+        self, numbers: Tensor, positions: Tensor, chrg: Tensor
+    ) -> tuple[Tensor, Tensor]:
+        """
+        Calculate the frequency and static intensities of Raman spectra.
+        Formula taken from `here <https://doi.org/10.1080/00268970701516412>`__.
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers.
+        positions : Tensor
+            Atomic positions of shape (n, 3).
+        chrg : Tensor
+            Total charge.
+        Returns
+        -------
+        tuple[Tensor, Tensor]
+            Raman frequencies and intensities.
+        Raises
+        ------
+        RuntimeError
+            `positions` tensor does not have `requires_grad=True`.
+        """
+        if positions.requires_grad is False:
+            raise RuntimeError("Position tensor needs `requires_grad=True`.")
+
+        # check if electric field is given in interactions and retrieve it
+        efield = ...
+
+        # calculate dipole moment first because as it includes a check if the
+        # required electric field is given
+        mu = self.dipole(numbers, positions, chrg)
+
+        # polarizability: derivative of dipole moment w.r.t. efield and positions
+        dmu_de = _jac(mu, efield)  # (ndim, ndim)
+        alpha = _jac(dmu_de, positions)  # (ndim, ndim, natoms * ndim)
+
+        # get the vibrational frequencies and normal modes
+        # freqs: (nmodes,)
+        # normal_modes: (natoms * ndim, nmodes)
+        freqs, normal_modes = _only_positive_freqs(
+            *self.vibration(numbers, positions, chrg)
+        )
+
+        alphaq = torch.matmul(alpha, normal_modes)  # (ndim, ndim, nmodes)
+
+        # Eq.3 with alpha' = a
+        a = torch.einsum("...iij->...j")
+
+        # Eq.4 with (gamma')^2 = g = 0.5 * (g1 + g2 + g3 + g4)
+        g1 = (alphaq[0, 0] - alphaq[1, 1]) ** 2
+        g2 = (alphaq[0, 0] - alphaq[2, 2]) ** 2
+        g3 = (alphaq[2, 2] - alphaq[1, 1]) ** 2
+        g4 = alphaq[0, 1] ** 2 + alphaq[1, 2] ** 2 + alphaq[2, 0] ** 2
+        g = 0.5 * (g1 + g2 + g3 + g4)
+
+        # Eq.1 (the 1/3 from Eq.3 is squared and reduces the 45)
+        raman_ints = 5 * torch.pow(a, 2.0) + 7 * g
+        return freqs, raman_ints
+
+
+def _project_freqs(
+    freqs: Tensor, modes: Tensor, is_linear: bool = False
+) -> tuple[Tensor, Tensor]:
+    skip = 5 if is_linear is True else 6
+    freqs = freqs[skip:]  # (nfreqs,)
+    modes = modes[:, skip:]  # (natoms * ndim, nfreqs)
+    return freqs, modes
+
+
+def _jac(
+    a: Tensor,
+    b: Tensor,
+    create_graph: bool | None = None,
+    retain_graph: bool = True,
+) -> Tensor:
+    # catch missing gradients (e.g., halogen bond correction evaluates to
+    # zero if no donors/acceptors are present)
+    if a.grad_fn is None:
+        return torch.zeros(
+            (*a.shape, b.numel()),
+            dtype=b.dtype,
+            device=b.device,
+        )
+
+    if create_graph is None:
+        create_graph = torch.is_grad_enabled()
+    assert create_graph is not None
+
+    aflat = a.reshape(-1)
+    anumel, bnumel = a.numel(), b.numel()
+    res = torch.empty(
+        (anumel, bnumel),
+        dtype=a.dtype,
+        device=a.device,
+    )
+
+    for i in range(aflat.numel()):
+        (g,) = torch.autograd.grad(
+            aflat[i],
+            b,
+            create_graph=create_graph,
+            retain_graph=retain_graph,
+        )
+        res[i] = g.reshape(-1)
+
+    return res.reshape((*a.shape, bnumel))

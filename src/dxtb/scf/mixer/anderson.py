@@ -318,6 +318,7 @@ class Anderson(Mixer):
         if slicers == (...,):
             shape = self._shape_out[1:]
         else:
+            # NOTE: Only works with vectors (not with Charge container!)
             tmp = slicers[0].stop
             if not isinstance(tmp, Tensor):
                 raise RuntimeError("Unknown slicer given.")

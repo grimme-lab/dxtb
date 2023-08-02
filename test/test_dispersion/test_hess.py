@@ -44,11 +44,12 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     cache = disp.get_cache(numbers)
     hess = hessian(disp.get_energy, (positions, cache))
+    positions.detach_()
+
+    hess = hess.reshape_as(ref)
     assert ref.shape == numref.shape == hess.shape
     assert pytest.approx(ref, abs=tol, rel=tol) == numref
     assert pytest.approx(ref, abs=tol, rel=tol) == hess.detach()
-
-    positions.detach_()
 
 
 @pytest.mark.parametrize("dtype", [torch.double])

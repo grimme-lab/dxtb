@@ -91,7 +91,7 @@ class ElectricField(Interaction):
 
             slicer = slicers["atom"]
             self.vat = self.vat[[~conv, *slicer]]
-            self.vdp = self.vdp[[~conv, *slicer, *slicer]]
+            self.vdp = self.vdp[[~conv, *slicer, ...]]
 
         def restore(self) -> None:
             if self.__store is None:
