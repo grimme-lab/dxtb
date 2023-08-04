@@ -239,6 +239,7 @@ class Anderson(Mixer):
 
             # Solve for the coefficients. As torch.solve cannot solve for 1D
             # tensors a blank dimension must be added
+
             thetas = torch.squeeze(torch.linalg.solve(a, torch.unsqueeze(b, -1)))
 
             # Construct the 2'nd terms of eq 4.1 & 4.2 (Eyert). These are
@@ -290,7 +291,7 @@ class Anderson(Mixer):
         # Reshape the mixed system back into the expected shape and return it
         return x_mix.reshape(self._shape_out)
 
-    def cull(self, conv: Tensor, slicers: Slicer = (...,)) -> None:
+    def cull(self, conv: Tensor, slicers: Slicer = (...,), mpdim: int = 1) -> None:
         """
         Purge selected systems from the mixer.
 
@@ -318,11 +319,17 @@ class Anderson(Mixer):
         if slicers == (...,):
             shape = self._shape_out[1:]
         else:
-            # NOTE: Only works with vectors (not with Charge container!)
-            tmp = slicers[0].stop
-            if not isinstance(tmp, Tensor):
+            # NOTE: Maybe refactor the whole slicer approach...
+            if isinstance(slicers[0], type(...)):
+                tmp = slicers[0]
+            elif isinstance(slicers[0], slice):
+                tmp = slicers[0].stop
+                if isinstance(tmp, Tensor):
+                    tmp = t2int(tmp)
+            else:
                 raise RuntimeError("Unknown slicer given.")
-            shape = [t2int(tmp)]
+
+            shape = [mpdim, tmp]
 
         # Length of flattened arrays after factoring in the new
         l = t2int(torch.prod(torch.tensor(shape, device=self._x_hist.device)))
@@ -330,9 +337,22 @@ class Anderson(Mixer):
         # Invert the cull_list, gather & reassign self._delta self._x_hist &
         # self._f so only those marked False remain.
         notconv = ~conv
-        self._delta = self._delta[notconv, :l]
-        self._f = self._f[:, notconv, :l]
-        self._x_hist = self._x_hist[:, notconv, :l]
+
+        def _cull(tensor: Tensor) -> Tensor:
+            # Perform culling on flattened tensor
+            culled = tensor[..., notconv, :]
+            shp = culled.shape[:-1]
+
+            # Reshape tensor (unflatten)
+            assert self._shape_out is not None
+            reshaped = culled.view(*shp, *self._shape_out[1:])
+
+            # Select elements and reshape back to flattened view
+            return reshaped[..., :mpdim, : (l // mpdim)].contiguous().view(*shp, -1)
+
+        self._delta = _cull(self._delta)
+        self._f = _cull(self._f)
+        self._x_hist = _cull(self._x_hist)
 
         # Adjust the the shapes accordingly
         self._shape_in[0] -= list(conv).count(

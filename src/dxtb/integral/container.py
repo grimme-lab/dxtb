@@ -7,10 +7,26 @@ A class that acts as a container for integrals.
 from __future__ import annotations
 
 import torch
-
+from abc import abstractmethod, ABC
 from .._types import Tensor, TensorLike
 
 __all__ = ["Integrals"]
+
+
+class BaseIntegral(ABC):
+    """
+    Base class for all integrals.
+    """
+
+    @abstractmethod
+    def build(self, positions: Tensor, **kwargs) -> Tensor:
+        ...
+
+
+class DipoleIntegral(BaseIntegral, TensorLike):
+    """
+    Dipole integral from libcint.
+    """
 
 
 class Integrals(TensorLike):

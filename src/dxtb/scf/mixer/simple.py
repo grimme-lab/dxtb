@@ -49,12 +49,25 @@ class Simple(Mixer):
         # Return the newly mixed system
         return x_mix
 
-    def cull(self, conv: Tensor, slicers: Slicer = (...,)) -> None:
+    def cull(self, conv: Tensor, slicers: Slicer = (...,), mpdim: int = 1) -> None:
         if self.x_old is None or self._delta is None:
             raise RuntimeError("Nothing has been mixed yet.")
+
+        if slicers == (...,):
+            tmp = self.x_old.shape[-1]
+        else:
+            # NOTE: Only works with vectors (not with Charge container!)
+            if isinstance(slicers[0], type(...)):
+                tmp = slicers[0]
+            elif isinstance(slicers[0], slice):
+                tmp = slicers[0].stop
+                if isinstance(tmp, Tensor):
+                    tmp = int(tmp)
+            else:
+                raise RuntimeError("Unknown slicer given.")
 
         # Invert list for culling, gather & reassign `x_old` and `delta` so only
         # those marked False remain.
         notconv = ~conv
-        self.x_old = self.x_old[[notconv, *slicers]]
-        self._delta = self._delta[[notconv, *slicers]]
+        self.x_old = self.x_old[notconv, :mpdim, :tmp]
+        self._delta = self._delta[notconv, :mpdim, :tmp]

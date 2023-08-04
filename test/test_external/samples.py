@@ -14,7 +14,7 @@ class Refs(TypedDict):
     """Format of reference records containing GFN1-xTB and GFN2-xTB reference values."""
 
     energy: Tensor
-    """Single-point energy with electric field."""
+    """Single-point energy with electric field of (-2, 0, 0)."""
 
     energy_monopole: Tensor
     """

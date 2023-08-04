@@ -9,9 +9,10 @@ from pathlib import Path
 import torch
 
 from .. import io
-from ..constants import defaults
+from ..constants import defaults, units
 from ..utils import Timers, batch
 from ..xtb import Calculator, Result
+from ..interaction.external import new_efield
 
 FILES = {"spin": ".UHF", "chrg": ".CHRG"}
 
@@ -139,14 +140,22 @@ class Driver:
         else:
             raise ValueError(f"Unknown guess method '{args.guess}'.")
 
+        # INTERACTIONS
+        interactions = []
+        if args.efield is not None:
+            field = torch.tensor(args.efield, **dd) * units.VAA2AU
+            interactions.append(new_efield(field, **dd))
+
         # setup calculator
         timer.stop("setup")
-        calc = Calculator(numbers, par, opts=opts, timer=timer, **dd)
+        calc = Calculator(
+            numbers, par, opts=opts, interaction=interactions, timer=timer, **dd
+        )
 
         # run singlepoint calculation
         result = calc.singlepoint(numbers, positions, chrg, grad=args.grad)
 
-        if args.grad:
+        if args.grad and args.verbosity > 0:
             print_grad(result.total_grad.clone(), numbers)
             print("")
 

@@ -34,9 +34,9 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     sample = samples[name]
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
-    ref_hess = reshape_fortran(
+    ref = reshape_fortran(
         sample["gfn1_hess"].to(**dd),
-        torch.Size((numbers.shape[0], 3, numbers.shape[0], 3)),
+        torch.Size(2 * (numbers.shape[0], 3)),
     )
 
     # variable to be differentiated
@@ -50,7 +50,10 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     hess = hessian(rep.get_energy, (positions, cache))
     positions.detach_()
-    assert pytest.approx(ref_hess, abs=tol, rel=tol) == hess.detach()
+    hess = hess.detach().reshape_as(ref)
+
+    assert ref.shape == hess.shape
+    assert pytest.approx(ref, abs=tol, rel=tol) == hess
 
 
 @pytest.mark.parametrize("dtype", [torch.double])

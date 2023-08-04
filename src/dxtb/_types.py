@@ -61,7 +61,7 @@ if sys.version_info >= (3, 10):
     # not type aliases, hence "|" is not allowed before Python 3.10
     PathLike = str | Path
     ScatterOrGather = Gather | Scatter
-    Slicer = list[slice] | tuple[slice] | tuple[Ellipsis]
+    Slicer = list[slice] | tuple[slice] | tuple[type(...)]
     Size = list[Tensor] | list[int] | tuple[int] | torch.Size
     TensorOrTensors = list[Tensor] | tuple[Tensor, ...] | Tensor
 elif sys.version_info >= (3, 9):

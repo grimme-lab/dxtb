@@ -249,6 +249,12 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         help="R|Molecular spin.",
     )
     p.add_argument(
+        "--efield",
+        type=float,
+        nargs=3,
+        help="R|Homogeneous electric field in V/Å.",
+    )
+    p.add_argument(
         "--exclude",
         type=str,
         default=defaults.EXCLUDE,

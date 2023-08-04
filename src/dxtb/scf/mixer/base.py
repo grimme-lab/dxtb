@@ -88,7 +88,7 @@ class Mixer(ABC):
         """
 
     @abstractmethod
-    def cull(self, conv: Tensor, slicers: Slicer = (...,)) -> None:
+    def cull(self, conv: Tensor, slicers: Slicer = (...,), mpdim: int = 1) -> None:
         """
         Purge selected systems from the mixer.
 
@@ -103,6 +103,10 @@ class Mixer(ABC):
             New anticipated size of future inputs excluding the batch
             dimension. This is used to allow superfluous padding values to
             be removed form subsequent inputs. Defaults to `(...,)`.
+        mpdim : int, optional
+            Number of dimensions for the multipole moments. Defaults to `1`,
+            i.e., monopole only. `2` additionally includes dipole contributions.
+            `3` includes monopole, dipole and quadrupole contributions.
         """
 
     @property

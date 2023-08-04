@@ -53,8 +53,11 @@ def test_astensor_mono() -> None:
     pot = Potential(mono=vmono)
     tensor = pot.as_tensor()
 
-    assert vmono.shape == tensor.shape
-    assert (vmono == tensor).all()
+    # multipole dimension is always present after `as_tensor`
+    _vmono = vmono.unsqueeze(-2)
+
+    assert _vmono.shape == tensor.shape
+    assert (_vmono == tensor).all()
 
 
 def test_astensor_mono_dipole() -> None:

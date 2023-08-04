@@ -134,5 +134,5 @@ TORCH_DEVICE_CHOICES = ["cpu", "cuda"]
 PAD = 0
 """Defaults value to indicate padding."""
 
-PADNZ = -999999
+PADNZ = -9999999
 """Default non-zero value to indicate padding."""

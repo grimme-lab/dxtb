@@ -71,4 +71,6 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     hess = hessian(singlepoint, (numbers, positions, charge), argnums=1)
     positions.detach_()
-    assert pytest.approx(ref, abs=tol, rel=tol) == hess.detach()
+    hess = hess.detach().reshape_as(ref)
+
+    assert pytest.approx(ref, abs=tol, rel=tol) == hess

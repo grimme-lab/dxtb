@@ -421,6 +421,9 @@ class BaseSCF:
             return self.potential_to_charges(pot)
 
         if self.scp_mode == "fock":
+            zero = torch.tensor(0.0, device=self.device, dtype=self.dtype)
+            x = torch.where(x != defaults.PADNZ, x, zero)
+
             self._data.density = self.hamiltonian_to_density(x)
             return self.density_to_charges(self._data.density)
 

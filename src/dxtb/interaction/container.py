@@ -115,9 +115,10 @@ class Container:
                 "monopolar property to zero."
             )
 
-        # only monopolar potential available
+        # only monopolar potential available (requires no packing but adding
+        # the extra dimension must be done for consistent handling)
         if len(tensors) == 1:
-            return tensors[0]
+            return tensors[0].unsqueeze(-2)
 
         # pack along dim=1 to keep the batch dimension in the first positions
         return pack(tensors, axis=self.axis, value=pad)

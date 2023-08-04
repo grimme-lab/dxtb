@@ -56,10 +56,12 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     hess = hessian(scf, (numbers, positions, charge), argnums=1)
     positions.detach_()
+    hess = hess.detach().reshape_as(ref)
+    numref = numref.reshape_as(ref)
 
     assert ref.shape == numref.shape == hess.shape
     assert pytest.approx(ref, abs=1e-6, rel=1e-6) == numref
-    assert pytest.approx(ref, abs=atol, rel=rtol) == hess.detach()
+    assert pytest.approx(ref, abs=atol, rel=rtol) == hess
 
 
 def _numhess(

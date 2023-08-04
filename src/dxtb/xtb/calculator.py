@@ -314,17 +314,6 @@ class Calculator(TensorLike):
         self.set_tol("x_tol", opts.get("xitorch_xatol", defaults.XITORCH_XATOL))
 
         self.ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-        self.hamiltonian = Hamiltonian(numbers, par, self.ihelp, **dd)
-        self.integrals = Integrals(**dd)
-
-        # integrals do not work with a batched IndexHelper
-        if self.batched:
-            self._ihelp = [
-                IndexHelper.from_numbers(
-                    batch.deflate(number), get_elem_angular(par.element)
-                )
-                for number in numbers
-            ]
 
         # setup self-consistent contributions
         es2 = (
@@ -370,6 +359,18 @@ class Calculator(TensorLike):
             )
 
         # integral-related setup
+
+        self.hamiltonian = Hamiltonian(numbers, par, self.ihelp, **dd)
+        self.integrals = Integrals(**dd)
+
+        # integrals do not work with a batched IndexHelper
+        if self.batched:
+            self._ihelp = [
+                IndexHelper.from_numbers(
+                    batch.deflate(number), get_elem_angular(par.element)
+                )
+                for number in numbers
+            ]
 
         if self.opts["int_driver"] == "libcint":
             self.overlap = OverlapLibcint(numbers, par, self.ihelp, **dd)
@@ -469,7 +470,7 @@ class Calculator(TensorLike):
         numbers : Tensor
             Atomic numbers.
         positions : Tensor
-            Atomic positions of shape (n, 3).
+            Atomic positions.
         chrg : Tensor
             Total charge.
         grad : bool
@@ -745,14 +746,15 @@ class Calculator(TensorLike):
         # Analytical formula:
         #
         # Electric dipole contribution from nuclei: sum_i(r_ik * q_i)
-        # qat = self.ihelp.reduce_orbital_to_atom(result.charges)
+        # qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
         # n_dipole = torch.einsum("...ij,...i->...j", positions, qat)
         #
         # Electric dipole contribution from electrons:
-        # e_dipole = -torch.einsum("xij,ij->x", dpint, result.density)
+        # e_dipole = -torch.einsum("xij,ij->x", self.integrals.dipole, result.density)
 
         # calculate electric dipole contribution from xtb energy: -de/dE
-        return -_jac(energy, field)
+        dip = -_jac(energy, field)
+        return dip
 
     def quadrupole(
         self,
@@ -771,7 +773,7 @@ class Calculator(TensorLike):
 
         # electric quadrupole contribution from xtb energy: -de/d(dE/dr)
         e_quad = -2 * _jac(energy, efield_grad)
-        e_quad = e_quad.reshape(3, 3)
+        e_quad = e_quad.view(3, 3)
 
         # electric quadrupole contribution form nuclei: sum_i(r_ik * Z_i)
         n_quad = torch.einsum(
