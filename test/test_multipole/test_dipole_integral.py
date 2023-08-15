@@ -16,14 +16,13 @@ from dxtb.basis import Basis, IndexHelper
 from dxtb.integral.libcint import LibcintWrapper, intor
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
-from dxtb.utils import numpy_to_tensor
+from dxtb.utils import is_basis_list, numpy_to_tensor
 
 try:
     from dxtb.mol.external._pyscf import M
 
-    pyscf = True
 except ImportError:
-    pyscf = False
+    M = False
 
 from .samples import samples
 
@@ -36,7 +35,7 @@ def snorm(overlap: Tensor) -> Tensor:
     return torch.pow(overlap.diagonal(dim1=-1, dim2=-2), -0.5)
 
 
-@pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
+@pytest.mark.skipif(M is False, reason="PySCF not installed")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
@@ -49,12 +48,14 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     bas = Basis(numbers, par, ihelp, **dd)
     atombases = bas.create_dqc(positions)
+    assert is_basis_list(atombases)
 
     # dxtb's libcint integral
     wrapper = LibcintWrapper(atombases, ihelp)
     dxtb_dpint = intor.int1e("j", wrapper)
 
     # pyscf reference integral
+    assert M is not False
     mol = M(numbers, positions, parse_arg=False)
     pyscf_dpint = numpy_to_tensor(mol.intor("int1e_r_origj"), **dd)
 

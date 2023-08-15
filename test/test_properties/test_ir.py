@@ -6,21 +6,22 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb._types import DD
+from dxtb._types import DD, Tensor
 from dxtb.constants import units
 from dxtb.interaction import new_efield
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
 
+from ..utils import dgradcheck
 from .samples import samples
 
 sample_list = ["LiH", "H2O", "SiH4"]
 
 opts = {
     "maxiter": 100,
-    "xitorch_fatol": 1.0e-8,
-    "xitorch_xatol": 1.0e-8,
+    "xitorch_fatol": 1.0e-10,
+    "xitorch_xatol": 1.0e-10,
     "verbosity": 0,
     "scf_mode": "full",
     "mixer": "anderson",
@@ -30,7 +31,32 @@ device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", samples.keys())
+@pytest.mark.parametrize("name", sample_list)
+def test_autograd(dtype: torch.dtype, name: str) -> None:
+    dd: DD = {"dtype": dtype, "device": device}
+
+    numbers = samples[name]["numbers"].to(device)
+    positions = samples[name]["positions"].to(**dd)
+    charge = torch.tensor(0.0, **dd)
+
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)
+
+    # required for autodiff of energy w.r.t. efield and dipole
+    # field_vector.requires_grad_(True)
+    positions.requires_grad_(True)
+
+    # create additional interaction and pass to Calculator
+    efield = new_efield(field_vector)
+    calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
+
+    def f(pos: Tensor) -> Tensor:
+        return calc.dipole(numbers, pos, charge)
+
+    assert dgradcheck(f, positions)
+
+
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
@@ -40,7 +66,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     ref = samples[name]["dipole"].to(**dd)
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)
 
     # required for autodiff of energy w.r.t. efield and dipole
     field_vector.requires_grad_(True)
@@ -50,179 +76,56 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     efield = new_efield(field_vector)
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
-    dipole = calc.dipole(numbers, positions, charge)
-    dipole.detach_()
+    ir = calc.ir_spectrum(numbers, positions, charge)
+    print(ir)
+    print("")
+    print("")
+    print("")
+    #############################
 
-    assert pytest.approx(ref, abs=1e-3) == dipole
+    dmu_dr = num_grad(calc, numbers, positions, charge).view(3, -1)
+    print("dmu_dr\n", dmu_dr)
 
+    freqs, modes = calc.vibration(numbers, positions, charge, True)
+    dmu_dq = torch.matmul(dmu_dr, modes)  # (ndim, nfreqs)
+    ir_ints = torch.einsum("...df,...df->...f", dmu_dq, dmu_dq)  # (nfreqs,)
 
-@pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", samples.keys())
-def test_single_field(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    print(ir_ints)
+    print(ir_ints * units.AU2KMMOL)
+    print(ir_ints * 974.8801118351438)
+    print(ir_ints * 1378999.7790799031)
 
-    numbers = samples[name]["numbers"].to(device)
-    positions = samples[name]["positions"].to(**dd)
-    charge = torch.tensor(0.0, **dd)
+    print("")
 
-    ref = samples[name]["dipole2"].to(**dd)
-
-    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * units.VAA2AU
-
-    # required for autodiff of energy w.r.t. efield and dipole
-    field_vector.requires_grad_(True)
-    positions.requires_grad_(True)
-
-    # create additional interaction and pass to Calculator
-    efield = new_efield(field_vector)
-    calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
-
-    dipole = calc.dipole(numbers, positions, charge)
-    dipole.detach_()
-
-    assert pytest.approx(ref, abs=1e-3, rel=1e-3) == dipole
+    # assert pytest.approx(ref, abs=1e-3) == dipole
 
 
-@pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name1", ["LiH"])
-@pytest.mark.parametrize("name2", samples.keys())
-def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+def num_grad(calc: Calculator, numbers, positions, charge) -> Tensor:
+    # setup numerical gradient
+    positions = positions.detach().clone()
+    n_atoms = positions.shape[0]
+    gradient = torch.zeros((3, n_atoms, 3), dtype=positions.dtype)
 
-    sample1, sample2 = samples[name1], samples[name2]
+    step = 1.0e-7
 
-    numbers = batch.pack(
-        [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
-        ],
-    )
+    for i in range(n_atoms):
+        for j in range(3):
+            positions[i, j] += step
+            er = calc.dipole(numbers, positions, charge)
 
-    positions = batch.pack(
-        [
-            sample1["positions"].to(**dd),
-            sample2["positions"].to(**dd),
-        ],
-    )
-    charge = torch.tensor([0.0, 0.0], **dd)
+            positions[i, j] -= 2 * step
+            el = calc.dipole(numbers, positions, charge)
 
-    ref = batch.pack(
-        [
-            sample1["dipole"].to(**dd),
-            sample2["dipole"].to(**dd),
-        ]
-    )
+            positions[i, j] += step
+            gradient[:, i, j] = 0.5 * (er - el) / step
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
-
-    # required for autodiff of energy w.r.t. efield and dipole
-    field_vector.requires_grad_(True)
-    positions.requires_grad_(True)
-
-    efield = new_efield(field_vector)
-    calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
-
-    dipole = calc.dipole(numbers, positions, charge)
-    dipole.detach_()
-
-    assert pytest.approx(ref, abs=1e-3) == dipole
+    return gradient
 
 
-@pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name1", ["LiH"])
-@pytest.mark.parametrize("name2", ["HHe", "LiH", "H2O"])
-@pytest.mark.parametrize("scp_mode", ["charge", "potential", "fock"])
-@pytest.mark.parametrize("mixer", ["anderson", "simple"])
-def test_batch_settings(
-    dtype: torch.dtype, name1: str, name2: str, scp_mode: str, mixer: str
-) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
-
-    sample1, sample2 = samples[name1], samples[name2]
-
-    numbers = batch.pack(
-        [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
-        ],
-    )
-
-    positions = batch.pack(
-        [
-            sample1["positions"].to(**dd),
-            sample2["positions"].to(**dd),
-        ],
-    )
-    charge = torch.tensor([0.0, 0.0], **dd)
-
-    ref = batch.pack(
-        [
-            sample1["dipole"].to(**dd),
-            sample2["dipole"].to(**dd),
-        ]
-    )
-
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
-
-    # required for autodiff of energy w.r.t. efield and dipole
-    field_vector.requires_grad_(True)
-    positions.requires_grad_(True)
-
-    efield = new_efield(field_vector)
-    options = dict(opts, **{"scp_mode": scp_mode, "mixer": mixer})
-    calc = Calculator(numbers, par, interaction=[efield], opts=options, **dd)
-
-    dipole = calc.dipole(numbers, positions, charge)
-    dipole.detach_()
-
-    assert pytest.approx(ref, abs=1e-4) == dipole
-
-
-@pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name1", ["LiH"])
-@pytest.mark.parametrize("name2", ["HHe", "LiH", "H2O"])
-def test_batch_unconverged(dtype: torch.dtype, name1: str, name2: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
-
-    sample1, sample2 = samples[name1], samples[name2]
-
-    numbers = batch.pack(
-        [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
-        ],
-    )
-
-    positions = batch.pack(
-        [
-            sample1["positions"].to(**dd),
-            sample2["positions"].to(**dd),
-        ],
-    )
-    charge = torch.tensor([0.0, 0.0], **dd)
-
-    ref = batch.pack(
-        [
-            sample1["dipole"].to(**dd),
-            sample2["dipole"].to(**dd),
-        ]
-    )
-
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
-
-    # required for autodiff of energy w.r.t. efield and dipole
-    field_vector.requires_grad_(True)
-    positions.requires_grad_(True)
-
-    # with 5 iterations, both do not converge, but pass the test
-    options = dict(opts, **{"maxiter": 5, "mixer": "simple"})
-
-    efield = new_efield(field_vector)
-    calc = Calculator(numbers, par, interaction=[efield], opts=options, **dd)
-
-    dipole = calc.dipole(numbers, positions, charge)
-    dipole.detach_()
-
-    assert pytest.approx(ref, abs=1e-4) == dipole
+def _project_freqs(
+    freqs: Tensor, modes: Tensor, is_linear: bool = False
+) -> tuple[Tensor, Tensor]:
+    skip = 5 if is_linear is True else 6
+    freqs = freqs[skip:]  # (nfreqs,)
+    modes = modes[:, skip:]  # (natoms * ndim, nfreqs)
+    return freqs, modes

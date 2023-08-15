@@ -8,7 +8,7 @@ from functools import wraps
 
 import torch
 
-from .. import ncoord, scf
+from .. import ncoord, properties, scf
 from .._types import Any, Callable, Sequence, Tensor, TensorLike
 from ..basis import Basis, IndexHelper
 from ..classical import (
@@ -267,6 +267,11 @@ class Calculator(TensorLike):
             Data type of the tensor. If `None` (default), the data type is
             inferred.
         """
+        if numbers.dtype not in (torch.long, torch.int16, torch.int32, torch.int64):
+            raise ValueError(
+                "Tensor for atomic numbers must be of integer of long type."
+            )
+
         super().__init__(device, dtype)
         dd = {"device": self.device, "dtype": self.dtype}
 
@@ -470,7 +475,7 @@ class Calculator(TensorLike):
         numbers : Tensor
             Atomic numbers.
         positions : Tensor
-            Atomic positions.
+            Cartesian coordinates of all atoms in the system (nat, 3).
         chrg : Tensor
             Total charge.
         grad : bool
@@ -490,12 +495,107 @@ class Calculator(TensorLike):
             overlap = self.overlap.build(positions)
             self.integrals.overlap = overlap
             self.timer.stop("Overlap")
+            torch.set_printoptions(precision=16)
 
-            # dipole integral
-            if self.opts["int_driver"] == "libcint" and self.opts["int_level"] > 1:
-                self.timer.start("Dipole Integral")
-                self.dipole_integral()
-                self.timer.stop("Dipole Integral")
+            if self.opts["int_driver"] == "libcint":
+                # dipole integral
+                if self.opts["int_level"] > 1:
+                    self.timer.start("Dipole Integral")
+                    n = self.mp_integral("n")
+                    m = self.mp_integral("m")
+                    r = self.mp_integral("j")
+                    # print("rj", n.shape)
+                    # print(n)
+                    # print("")
+                    # print("ri", m.shape)
+                    # print(m)
+                    # print("")
+                    # print("r", r.shape)
+                    # print(r)
+                    # print("")
+                    # print(r - m)
+                    # print((r - m).abs().max())
+                    # print((r - n).abs().max())
+                    # print(m - n.mT)
+                    # print("")
+                    # assert False
+
+                    # pos = batch.index(
+                    #     batch.index(positions, self.ihelp.shells_to_atom),
+                    #     self.ihelp.orbitals_to_shell,
+                    # )
+                    # vec = pos.unsqueeze(-2) - pos.unsqueeze(-3)
+                    # print(vec.shape)
+                    # print(dp.shape)
+                    # a = torch.einsum("ijx,ij->xij", vec, overlap)
+                    # print(a.shape)
+                    # print("")
+                    # print(dp + a)
+                    # print(dp)
+                    # print(torch.tril(dp) + torch.triu(dp + a))
+                    # print()
+                    # print("")
+                    # print("")
+                    # print("")
+                    # assert False
+
+                    self.integrals.dipole = self.mp_integral("j")
+                    # print(self.mp_integral("r0"))
+                    self.timer.stop("Dipole Integral")
+
+                # quadrupole integral
+                if self.opts["int_level"] > 2:
+                    self.timer.start("Quadrupole Integral")
+                    qpint = self.mp_integral("nn")
+
+                    def make_traceless(qpint: Tensor) -> Tensor:
+                        """
+                        Make a quadrupole tensor traceless.
+
+                        Parameters
+                        ----------
+                        qpint : Tensor
+                            Quadrupole moment tensor of shape `(..., 9, n, n)`.
+
+                        Returns
+                        -------
+                        Tensor
+                            Traceless Quadrupole moment tensor of shape
+                            `(..., 6, n, n)`.
+
+                        Note
+                        ----
+                        First the quadrupole tensor is reshaped to be symmetric.
+                        Due to symmetry only the lower triangular matrix is used.
+
+                        xx xy xz       0 1 2      0
+                        yx yy yz  <=>  3 4 5  ->  3 4
+                        zx zy zz       6 7 8      6 7 8
+                        """
+
+                        # (..., 9, norb, norb) -> (..., 3, 3, norb, norb)
+                        shp = qpint.shape
+                        qpint = qpint.view(*shp[:-3], 3, 3, *shp[-2:])
+
+                        # trace: (..., 3, 3, norb, norb) -> (..., norb, norb)
+                        tr = 0.5 * torch.einsum("...iijk->...jk", qpint)
+
+                        return torch.stack(
+                            [
+                                1.5 * qpint[..., 0, 0, :, :] - tr,  # xx
+                                1.5 * qpint[..., 1, 0, :, :],  # yx
+                                1.5 * qpint[..., 1, 1, :, :] - tr,  # yy
+                                1.5 * qpint[..., 2, 0, :, :],  # zx
+                                1.5 * qpint[..., 2, 1, :, :],  # zy
+                                1.5 * qpint[..., 2, 2, :, :] - tr,  # zz
+                            ],
+                            dim=-3,
+                        )
+
+                    if defaults.QP_SHAPE == 6:
+                        qpint = make_traceless(qpint)
+                    self.integrals.quad = qpint
+                    self.timer.stop("Quadrupole Integral")
 
             # Hamiltonian
             self.timer.start("h0", "Core Hamiltonian")
@@ -619,14 +719,19 @@ class Calculator(TensorLike):
 
         return result
 
-    def dipole_integral(self) -> None:
+    def mp_integral(self, intstring: str) -> Tensor:
         # statisfy type checking...
         assert isinstance(self.overlap, OverlapLibcint)
         assert self._intdriver is not None
 
-        def dpint(driver: intor.LibcintWrapper, norm: Tensor) -> Tensor:
+        # TODO: Better exception msg ("add to dxtblibs")
+        # allowed_mps = ("j", "jj", "jjj")
+        # if intstring not in allowed_mps:
+        # raise ValueError("Unknown integral string provided.")
+
+        def mpint(driver: intor.LibcintWrapper, norm: Tensor) -> Tensor:
             """
-            Calculation of dipole integral. The integral is properly
+            Calculation of multipole integral. The integral is properly
             normalized, using the diagonal of the overlap integral.
 
             Parameters
@@ -639,27 +744,33 @@ class Calculator(TensorLike):
             Returns
             -------
             Tensor
-                Normalized dipole integral.
+                Normalized multipole integral.
             """
-            return torch.einsum("xij,i,j->xij", intor.int1e("j", driver), norm, norm)
+            return torch.einsum(
+                "...ij,i,j->...ij", intor.int1e(intstring, driver), norm, norm
+            )
 
         if self.batched:
-            dpint_list = []
+            mpint_list = []
 
             assert isinstance(self._intdriver, list)
             for _batch, driver in enumerate(self._intdriver):
-                d = dpint(driver, batch.deflate(self.overlap.norm[_batch]))
-                dpint_list.append(d)
+                q = mpint(driver, batch.deflate(self.overlap.norm[_batch]))
+                mpint_list.append(q)
 
-            self.integrals.dipole = batch.pack(dpint_list)
-        else:
-            assert isinstance(self._intdriver, intor.LibcintWrapper)
-            self.integrals.dipole = dpint(self._intdriver, self.overlap.norm)
+            return batch.pack(mpint_list)
+
+        assert isinstance(self._intdriver, intor.LibcintWrapper)
+        return mpint(self._intdriver, self.overlap.norm)
 
     def hessian(
         self, numbers: Tensor, positions: Tensor, chrg: Tensor, shape: str = "matrix"
     ) -> Tensor:
         pos = positions.detach().clone()
+
+        # turn off printing in numerical hessian
+        tmp = self.opts["scf_options"]["verbosity"]
+        self.opts["scf_options"]["verbosity"] = 0
 
         def _gradfcn(pos: Tensor) -> Tensor:
             pos.requires_grad_(True)
@@ -672,7 +783,7 @@ class Calculator(TensorLike):
             **{"device": positions.device, "dtype": positions.dtype},
         )
 
-        step = 1.0e-4
+        step = 1.0e-6
         for i in range(numbers.shape[0]):
             for j in range(3):
                 pos[i, j] += step
@@ -687,49 +798,208 @@ class Calculator(TensorLike):
         if shape == "matrix":
             hess = hess.reshape(2 * (3 * numbers.shape[-1],))
 
+        self.opts["scf_options"]["verbosity"] = tmp
         return hess
 
     def vibration(
-        self, numbers: Tensor, positions: Tensor, chrg: Tensor
+        self, numbers: Tensor, positions: Tensor, chrg: Tensor, project: bool = True
     ) -> tuple[Tensor, Tensor]:
-        from ..constants import get_atomic_masses
-        from ..utils import eighb
-
-        eps = torch.tensor(
-            torch.finfo(positions.dtype).eps,
-            device=positions.device,
-            dtype=positions.dtype,
-        )
-
         hess = self.hessian(numbers, positions, chrg, shape="matrix")
-        masses = get_atomic_masses(numbers, atomic_units=True)
-        mass_mat = torch.diag_embed(masses.repeat_interleave(3))
-
-        # instead of calculating and diagonalizing the mass-weighted Hessian,
-        # we solve the equivalent general eigenvalue problem Hv=Mve
-        evals, evecs = eighb(a=hess, b=mass_mat)
-
-        # vibrational frequencies ω = √λ / (2π) with some additional logic for
-        # handling possible negative eigenvalues
-        e = torch.sqrt(torch.clamp(evals, min=eps))
-        freqs = e * torch.sign(evals) / (2 * torch.pi)
-
-        # reverse the sorting to make it sorted from largest to smallest
-        # freqs = torch.flip(freqs, dims=(-1,))
-        # evecs = torch.flip(evecs, dims=(-1,))
-
-        return freqs, evecs
+        return properties.frequencies(numbers, positions, hess, project=project)
 
     def dipole(
         self,
         numbers: Tensor,
         positions: Tensor,
         chrg: Tensor,
+        use_autograd: bool = False,
     ) -> Tensor:
         # check if electric field is given in interactions
         if efield.LABEL_EFIELD not in self.interactions.labels:
             raise RuntimeError(
                 "Dipole moment requires an electric field. Add the "
+                f"'{efield.LABEL_EFIELD}' interaction to the Calculator."
+            )
+
+        # run single point and check if integral is populated
+        result = self.singlepoint(numbers, positions, chrg)
+        if self.integrals.dipole is None:
+            raise RuntimeError(
+                "Dipole moment requires a dipole integral. They should "
+                f"be added automatically if the '{efield.LABEL_EFIELD}' "
+                "interaction is added to the Calculator."
+            )
+
+        if use_autograd is False:
+            qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
+            return properties.dipole(
+                qat, positions, result.density, self.integrals.dipole
+            )
+
+        # retrieve the efield interaction and the field
+        ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
+        field = ef.field
+
+        if field.requires_grad is False:
+            raise RuntimeError("Field tensor needs `requires_grad=True`.")
+
+        # calculate electric dipole contribution from xtb energy: -de/dE
+        energy = result.total.sum(-1)
+        dip = -_jac(energy, field)
+        return dip
+
+    def quadrupole(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor,
+        use_autograd: bool = False,
+    ) -> Tensor:
+        if use_autograd is False:
+            result = self.singlepoint(numbers, positions, chrg)
+            assert result.charges.dipole is not None
+            assert result.charges.quad is not None
+
+            qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
+            dpat = result.charges.dipole
+            qpat = result.charges.quad
+
+            return properties.quadrupole(qat, dpat, qpat, positions)
+
+        # check if electric field is given in interactions
+        if efield.LABEL_EFIELD not in self.interactions.labels:
+            raise RuntimeError(
+                "Quadrupole moment requires an electric field. Add the "
+                f"'{efield.LABEL_EFIELD}' interaction to the Calculator."
+            )
+
+        if positions.requires_grad is False:
+            raise RuntimeError("Position tensor needs `requires_grad=True`.")
+
+        # retrieve the efield interaction and the field
+        ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
+        field = ef.field
+        field_grad = ef.field_grad
+
+        if field.requires_grad is False:
+            raise RuntimeError("Field vector needs `requires_grad=True`.")
+        if field_grad is None:
+            raise RuntimeError("Field gradient must be set.")
+        if field_grad.requires_grad is False:
+            raise RuntimeError("Field gradient needs `requires_grad=True`.")
+
+        energy = self.singlepoint(numbers, positions, chrg).total.sum(-1)
+
+        print("")
+        e_quad = -2 * _jac(energy, field_grad)
+
+        e_quad = e_quad.view(3, 3)
+        print("")
+        print("")
+
+        print("quad_moment", e_quad.shape)
+        print("quad_moment\n", e_quad)
+
+        cart = torch.empty((6), device=self.device, dtype=self.dtype)
+
+        tr = 0.5 * torch.einsum("...ii->...", e_quad)
+        cart[..., 0] = 1.5 * e_quad[..., 0, 0] - tr
+        cart[..., 1] = 3.0 * e_quad[..., 1, 0]
+        cart[..., 2] = 1.5 * e_quad[..., 1, 1] - tr
+        cart[..., 3] = 3.0 * e_quad[..., 2, 0]
+        cart[..., 4] = 3.0 * e_quad[..., 2, 1]
+        cart[..., 5] = 1.5 * e_quad[..., 2, 2] - tr
+        print("cart\n", cart.shape)
+        print("cart\n", cart)
+
+        # electric quadrupole contribution form nuclei: sum_i(r_ik * Z_i)
+        n_quad = torch.einsum(
+            "...ij,...ik,...i->...jk",
+            positions,
+            positions,
+            numbers.type(positions.dtype),
+        )
+
+        print("\ne_quad + n_quad")
+        print(n_quad)
+        print(e_quad + n_quad)
+        print("")
+
+        return e_quad + n_quad
+
+    def polarizability(
+        self, numbers: Tensor, positions: Tensor, chrg: Tensor
+    ) -> Tensor:
+        # check if electric field is given in interactions
+        if efield.LABEL_EFIELD not in self.interactions.labels:
+            raise RuntimeError(
+                "Polarizability moment requires an electric field. Add the "
+                f"'{efield.LABEL_EFIELD}' interaction to the Calculator."
+            )
+
+        # retrieve the efield interaction and the field
+        ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
+        field = ef.field
+
+        if field.requires_grad is False:
+            raise RuntimeError("Field vector needs `requires_grad=True`.")
+
+        # above checks are also run in dipole but only if via autograd
+        mu = self.dipole(numbers, positions, chrg)
+
+        # 3x3 polarizability tensor
+        alpha = _jac(mu, field)
+
+        return alpha
+
+    def ir_spectrum(
+        self, numbers: Tensor, positions: Tensor, chrg: Tensor
+    ) -> tuple[Tensor, Tensor]:
+        if positions.requires_grad is False:
+            raise RuntimeError("Position tensor needs `requires_grad=True`.")
+
+        # dipole moment with gradient tracking
+        with torch.enable_grad():
+            mu = self.dipole(numbers, positions, chrg)
+
+        # calculate vibrational frequencies and normal modes
+        freqs, modes = self.vibration(numbers, positions, chrg, project=True)
+
+        return properties.ir(mu, positions, freqs, modes)
+
+    def raman_spectrum(
+        self, numbers: Tensor, positions: Tensor, chrg: Tensor
+    ) -> tuple[Tensor, Tensor]:
+        """
+        Calculate the frequency and static intensities of Raman spectra.
+        Formula taken from `here <https://doi.org/10.1080/00268970701516412>`__.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers.
+        positions : Tensor
+            Atomic positions of shape (n, 3).
+        chrg : Tensor
+            Total charge.
+
+        Returns
+        -------
+        tuple[Tensor, Tensor]
+            Raman frequencies and intensities.
+
+        Raises
+        ------
+        RuntimeError
+            `positions` tensor does not have `requires_grad=True`.
+        """
+        if positions.requires_grad is False:
+            raise RuntimeError("Position tensor needs `requires_grad=True`.")
+
+        # check if electric field is given in interactions
+        if efield.LABEL_EFIELD not in self.interactions.labels:
+            raise RuntimeError(
+                "Raman spectrum requires an electric field. Add the "
                 f"'{efield.LABEL_EFIELD}' interaction to the Calculator."
             )
 
@@ -740,155 +1010,9 @@ class Calculator(TensorLike):
         if field.requires_grad is False:
             raise RuntimeError("Field tensor needs `requires_grad=True`.")
 
-        result = self.singlepoint(numbers, positions, chrg)
-        energy = result.total.sum(-1)
-
-        # Analytical formula:
-        #
-        # Electric dipole contribution from nuclei: sum_i(r_ik * q_i)
-        # qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
-        # n_dipole = torch.einsum("...ij,...i->...j", positions, qat)
-        #
-        # Electric dipole contribution from electrons:
-        # e_dipole = -torch.einsum("xij,ij->x", self.integrals.dipole, result.density)
-
-        # calculate electric dipole contribution from xtb energy: -de/dE
-        dip = -_jac(energy, field)
-        return dip
-
-    def quadrupole(
-        self,
-        numbers: Tensor,
-        positions: Tensor,
-        chrg: Tensor,
-    ) -> Tensor:
-        if positions.requires_grad is False:
-            raise RuntimeError("Position tensor needs `requires_grad=True`.")
-
-        # check if electric field is given in interactions and retrieve it
-        efield = ...
-        efield_grad = ...
-
-        energy = self.singlepoint(numbers, positions, chrg).total
-
-        # electric quadrupole contribution from xtb energy: -de/d(dE/dr)
-        e_quad = -2 * _jac(energy, efield_grad)
-        e_quad = e_quad.view(3, 3)
-
-        # electric quadrupole contribution form nuclei: sum_i(r_ik * Z_i)
-        n_quad = torch.einsum(
-            "...ij,...ik,...i->...jk",
-            positions,
-            positions,
-            numbers.type(positions.dtype),
-        )
-
-        return e_quad + n_quad
-
-    def ir_spectrum(
-        self, numbers: Tensor, positions: Tensor, chrg: Tensor
-    ) -> tuple[Tensor, Tensor]:
-        if positions.requires_grad is False:
-            raise RuntimeError("Position tensor needs `requires_grad=True`.")
-
-        # calculate dipole moment first because as it includes a check if the
-        # required electric field is given
-        mu = self.dipole(numbers, positions, chrg)
-
-        # calculate vibrational frequencies and normal modes and remove
-        freqs, modes = self.vibration(numbers, positions, chrg)
-
-        from ..constants import units
-        from ..utils.geometry import is_linear_molecule
-
-        is_linear = is_linear_molecule(positions)
-        print("\nfreq pre conv", freqs)
-        print("units.AU2RCM", units.AU2RCM)
-
-        freqs, modes = _project_freqs(freqs, modes, is_linear=is_linear)
-        print("\nfreqs conv 1", units.AU2RCM * freqs)
-        freqs = freqs * 1e-2 / units.CODATA.c / 2.4188843265857e-17
-        print("freq post conv", freqs)
-
-        # derivative of dipole moment w.r.t. positions
-        dmu_dr = _jac(mu, positions)  # (ndim, nat * ndim)
-        dmu_dq = torch.matmul(dmu_dr, modes)  # (ndim, nfreqs)
-        ir_ints = torch.einsum("...df,...df->...f", dmu_dq, dmu_dq)  # (nfreqs,)
-
-        print("\nir_ints", ir_ints)
-        print(units.METER2AU, units.AA2AU)
-        print(ir_ints * units.AU2KMMOL)
-
-        return freqs, ir_ints
-
-    def raman_spectrum(
-        self, numbers: Tensor, positions: Tensor, chrg: Tensor
-    ) -> tuple[Tensor, Tensor]:
-        """
-        Calculate the frequency and static intensities of Raman spectra.
-        Formula taken from `here <https://doi.org/10.1080/00268970701516412>`__.
-        Parameters
-        ----------
-        numbers : Tensor
-            Atomic numbers.
-        positions : Tensor
-            Atomic positions of shape (n, 3).
-        chrg : Tensor
-            Total charge.
-        Returns
-        -------
-        tuple[Tensor, Tensor]
-            Raman frequencies and intensities.
-        Raises
-        ------
-        RuntimeError
-            `positions` tensor does not have `requires_grad=True`.
-        """
-        if positions.requires_grad is False:
-            raise RuntimeError("Position tensor needs `requires_grad=True`.")
-
-        # check if electric field is given in interactions and retrieve it
-        efield = ...
-
-        # calculate dipole moment first because as it includes a check if the
-        # required electric field is given
-        mu = self.dipole(numbers, positions, chrg)
-
-        # polarizability: derivative of dipole moment w.r.t. efield and positions
-        dmu_de = _jac(mu, efield)  # (ndim, ndim)
-        alpha = _jac(dmu_de, positions)  # (ndim, ndim, natoms * ndim)
-
-        # get the vibrational frequencies and normal modes
-        # freqs: (nmodes,)
-        # normal_modes: (natoms * ndim, nmodes)
-        freqs, normal_modes = _only_positive_freqs(
-            *self.vibration(numbers, positions, chrg)
-        )
-
-        alphaq = torch.matmul(alpha, normal_modes)  # (ndim, ndim, nmodes)
-
-        # Eq.3 with alpha' = a
-        a = torch.einsum("...iij->...j")
-
-        # Eq.4 with (gamma')^2 = g = 0.5 * (g1 + g2 + g3 + g4)
-        g1 = (alphaq[0, 0] - alphaq[1, 1]) ** 2
-        g2 = (alphaq[0, 0] - alphaq[2, 2]) ** 2
-        g3 = (alphaq[2, 2] - alphaq[1, 1]) ** 2
-        g4 = alphaq[0, 1] ** 2 + alphaq[1, 2] ** 2 + alphaq[2, 0] ** 2
-        g = 0.5 * (g1 + g2 + g3 + g4)
-
-        # Eq.1 (the 1/3 from Eq.3 is squared and reduces the 45)
-        raman_ints = 5 * torch.pow(a, 2.0) + 7 * g
-        return freqs, raman_ints
-
-
-def _project_freqs(
-    freqs: Tensor, modes: Tensor, is_linear: bool = False
-) -> tuple[Tensor, Tensor]:
-    skip = 5 if is_linear is True else 6
-    freqs = freqs[skip:]  # (nfreqs,)
-    modes = modes[:, skip:]  # (natoms * ndim, nfreqs)
-    return freqs, modes
+        alpha = self.polarizability(numbers, positions, chrg)
+        freqs, modes = self.vibration(numbers, positions, chrg, project=True)
+        return properties.raman(alpha, freqs, modes)
 
 
 def _jac(
