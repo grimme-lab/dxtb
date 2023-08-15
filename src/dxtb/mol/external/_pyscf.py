@@ -32,14 +32,15 @@ try:  # pragma: no cover
 except ImportError as e:  # pragma: no cover
     raise ImportError("PySCF is not installed") from e
 
+import warnings
+
 from ..._types import Tensor
 from ...constants import PSE
 from ...utils import tensor_to_numpy
 from ..molecule import Mol
 
 # Turn off PySCF's normalization since dxtb's normalization is different,
-# requiring a separate normalization anyway. But this way, the results are
-# equal to dxtb's libcint wrapper and we can immediately compare integrals.
+# requiring a separate normalization anyway.
 gto.mole.NORMALIZE_GTO = False
 
 __all__ = ["PyscfMol", "M"]
@@ -83,8 +84,22 @@ class PyscfMol(gto.Mole):
     """
 
     def __init__(
-        self, numbers: Tensor, positions: Tensor, xtb_version: str = "gfn1", **kwargs
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        xtb_version: str = "gfn1",
+        unit: str = "B",
+        **kwargs,
     ):
+        # change default unit to Bohr (a.u.)
+        if "unit" in kwargs:
+            warnings.warn(
+                "Unit in kwargs will be overwritten. Please change the unit "
+                "using the argument in the constructor of the class.",
+                UserWarning,
+            )
+        kwargs["unit"] = unit
+
         # init pyscf's molecule type
         super().__init__(**kwargs)
 
@@ -116,7 +131,7 @@ class PyscfMol(gto.Mole):
 
         self.atom = atom
         self.basis = basis
-        self.unit = "B"  # unit: Bohr (a.u.)
+
         self.cart = False
 
     @classmethod
