@@ -12,6 +12,8 @@ from .base import Interaction
 from .container import Charges, Potential
 from .external import field as efield
 
+__all__ = ["InteractionList"]
+
 
 class InteractionList(Interaction):
     """

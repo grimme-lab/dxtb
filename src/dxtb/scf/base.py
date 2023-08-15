@@ -341,14 +341,16 @@ class BaseSCF:
             self._data.charges["mono"] = charges.mono_shape
 
             if self._data.ints.dipole is not None:
-                shp = (*self._data.numbers.shape, 3)
+                shp = (*self._data.numbers.shape, defaults.DP_SHAPE)
                 zeros = torch.zeros(shp, device=self.device, dtype=self.dtype)
                 charges.dipole = zeros
                 self._data.charges["dipole"] = charges.dipole_shape
 
             if self._data.ints.quad is not None:
-                raise NotImplementedError
-                # self._data.potential["quad"] = charges.quad_shape
+                shp = (*self._data.numbers.shape, defaults.QP_SHAPE)
+                zeros = torch.zeros(shp, device=self.device, dtype=self.dtype)
+                charges.quad = zeros
+                self._data.charges["quad"] = charges.quad_shape
 
         if self.scp_mode in ("charge", "charges"):
             guess = charges.as_tensor()
@@ -789,7 +791,11 @@ class BaseSCF:
 
         # Atomic quadrupole moments (quadrupole charges)
         if ints.quad is not None:
-            raise NotImplementedError
+            charges.quad = self._data.ihelp.reduce_orbital_to_atom(
+                -torch.einsum("...ik,...mki->...im", density, ints.quad),
+                extra=True,
+                dim=-2,
+            )
 
         return charges
 
@@ -814,20 +820,30 @@ class BaseSCF:
             v = potential.mono.unsqueeze(-1) + potential.mono.unsqueeze(-2)
             h1 = h1 - (0.5 * self._data.ints.overlap * v)
 
+        def add_vmp_to_h1(h1: Tensor, mpint: Tensor, vmp: Tensor) -> Tensor:
+            # TODO: Place better?
+            from dxtb.utils.batch import index
+
+            # spread potential to orbitals
+            v = index(vmp, self._data.ihelp.orbitals_to_atom)
+
+            # Form dot product over the the multipolar components.
+            #  - shape multipole integral: (..., x, norb, norb)
+            #  - shape multipole potential: (..., norb, x)
+            tmp = 0.5 * torch.einsum("...kij,...ik->...ij", mpint, v)
+            return h1 - (tmp + tmp.mT)
+
         if potential.dipole is not None:
             dpint = self._data.ints.dipole
             if dpint is not None:
-                from dxtb.utils.batch import index
+                h1 = add_vmp_to_h1(h1, dpint, potential.dipole)
 
-                # spread to orbitals
-                v = index(potential.dipole, self._data.ihelp.orbitals_to_atom)
-
-                # dot product over the the multipolar components
-                tmp = 0.5 * torch.einsum("...kij,...ik->...ij", dpint, v)
-                h1 = h1 - (tmp + tmp.mT)
-
+        # print("potential.dipole", potential.dipole)
+        # print("potential.quad", potential.quad)
         if potential.quad is not None:
-            raise NotImplementedError
+            qpint = self._data.ints.quad
+            if qpint is not None:
+                h1 = add_vmp_to_h1(h1, qpint, potential.quad)
 
         return h1
 

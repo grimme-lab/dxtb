@@ -268,25 +268,6 @@ class Interaction(TensorLike):
 
         return e
 
-    def get_shell_energy(self, charges: Tensor, *_: Any) -> Tensor:
-        """
-        Compute the energy from the charges, all quantities are shell-resolved.
-
-        This method should be implemented by the subclass. Here, it serves
-        only to create an empty `Interaction` by returning zeros.
-
-        Parameters
-        ----------
-        charges : Tensor
-            Shell-resolved partial charges.
-
-        Returns
-        -------
-        Tensor
-            Energy vector for each shell partial charge.
-        """
-        return torch.zeros_like(charges)
-
     def get_atom_energy(self, charges: Tensor, *_: Any) -> Tensor:
         """
         Compute the energy from the charges, all quantities are atom-resolved.
@@ -303,6 +284,25 @@ class Interaction(TensorLike):
         -------
         Tensor
             Energy vector for each atom partial charge.
+        """
+        return torch.zeros_like(charges)
+
+    def get_shell_energy(self, charges: Tensor, *_: Any) -> Tensor:
+        """
+        Compute the energy from the charges, all quantities are shell-resolved.
+
+        This method should be implemented by the subclass. Here, it serves
+        only to create an empty `Interaction` by returning zeros.
+
+        Parameters
+        ----------
+        charges : Tensor
+            Shell-resolved partial charges.
+
+        Returns
+        -------
+        Tensor
+            Energy vector for each shell partial charge.
         """
         return torch.zeros_like(charges)
 
@@ -344,6 +344,7 @@ class Interaction(TensorLike):
         Tensor
             Energy vector for each atomic quadrupole moment.
         """
+        print("base quad energy")
         return torch.zeros_like(charges).sum(-1)
 
     def get_gradient(

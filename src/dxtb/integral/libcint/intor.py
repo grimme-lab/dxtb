@@ -135,7 +135,8 @@ class _Int2cFunction(torch.autograd.Function):
             ]
 
             def int_fcn(wrappers: list[LibcintWrapper], namemgr) -> Tensor:
-                return _Int2cFunction.apply(*ctx.saved_tensors, wrappers, namemgr)
+                ints = _Int2cFunction.apply(*ctx.saved_tensors, wrappers, namemgr)
+                return ints
 
             # list of tensors with shape: (ndim, ..., nao0, nao1)
             dout_dposs = _get_integrals(sname_derivs, wrappers, int_fcn, new_axes_pos)
@@ -302,12 +303,6 @@ class Intor:
         if self.int_type in ("int1e", "int2c2e"):
             return self._int2c()
 
-        if self.int_type == "int3c2e":
-            return self._int3c()
-
-        if self.int_type == "int2e":
-            return self._int4c()
-
         raise ValueError("Unknown integral type: %s" % self.int_type)
 
     def _int2c(self) -> Tensor:
@@ -334,61 +329,6 @@ class Intor:
         # TODO: check if we need to do the lines below for 3rd order grad and higher
         # if out.ndim > 2:
         #     out = np.moveaxis(out, -3, 0)
-        return self._to_tensor(out)
-
-    def _int3c(self) -> Tensor:
-        # performing 3-centre integrals with libcint
-        drv = CGTO().GTOnr3c_drv
-        fill = CGTO().GTOnr3c_fill_s1
-        # TODO: create optimizer without the 3rd index like in
-        # https://github.com/pyscf/pyscf/blob/e833b9a4fd5fb24a061721e5807e92c44bb66d06/pyscf/gto/moleintor.py#L538
-        outsh = self.outshape
-        out = np.empty((*outsh[:-3], outsh[-1], outsh[-2], outsh[-3]), dtype=np.float64)
-        drv(
-            self.op,
-            fill,
-            out.ctypes.data_as(ctypes.c_void_p),
-            int2ctypes(self.ncomp),
-            (ctypes.c_int * len(self.shls_slice))(*self.shls_slice),
-            np2ctypes(self.wrapper0.full_shell_to_aoloc),
-            self.optimizer,
-            np2ctypes(self.atm),
-            int2ctypes(self.atm.shape[0]),
-            np2ctypes(self.bas),
-            int2ctypes(self.bas.shape[0]),
-            np2ctypes(self.env),
-        )
-
-        out = np.swapaxes(out, -3, -1)
-        return self._to_tensor(out)
-
-    def _int4c(self) -> Tensor:
-        # performing 4-centre integrals with libcint
-        symm = self.int_nmgr.get_intgl_symmetry(self.wrapper_uniqueness)
-        outshape = symm.get_reduced_shape(self.outshape)
-
-        out = np.empty(outshape, dtype=np.float64)
-
-        drv = CGTO().GTOnr2e_fill_drv
-        fill = getattr(CGTO(), "GTOnr2e_fill_%s" % symm.code)
-        prescreen = ctypes.POINTER(ctypes.c_void_p)()
-        drv(
-            self.op,
-            fill,
-            prescreen,
-            out.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(self.ncomp),
-            (ctypes.c_int * 8)(*self.shls_slice),
-            np2ctypes(self.wrapper0.full_shell_to_aoloc),
-            self.optimizer,
-            np2ctypes(self.atm),
-            int2ctypes(self.atm.shape[0]),
-            np2ctypes(self.bas),
-            int2ctypes(self.bas.shape[0]),
-            np2ctypes(self.env),
-        )
-
-        out = symm.reconstruct_array(out, self.outshape)
         return self._to_tensor(out)
 
     def _to_tensor(self, out: np.ndarray) -> Tensor:

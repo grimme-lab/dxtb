@@ -10,9 +10,9 @@ import torch
 
 from .. import io
 from ..constants import defaults, units
+from ..interaction.external import new_efield
 from ..utils import Timers, batch
 from ..xtb import Calculator, Result
-from ..interaction.external import new_efield
 
 FILES = {"spin": ".UHF", "chrg": ".CHRG"}
 

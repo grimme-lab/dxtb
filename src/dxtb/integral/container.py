@@ -6,9 +6,12 @@ A class that acts as a container for integrals.
 """
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
+
 import torch
-from abc import abstractmethod, ABC
+
 from .._types import Tensor, TensorLike
+from ..constants import defaults
 
 __all__ = ["Integrals"]
 
@@ -87,6 +90,9 @@ class Integrals(TensorLike):
         Tensor | None
             Dipole integral if set, else `None`.
         """
+        # TODO: Decide
+        # if self._dipole is None:
+        # raise ValueError("No dipole integral provided.")
         return self._dipole
 
     @dipole.setter
@@ -97,13 +103,16 @@ class Integrals(TensorLike):
     @property
     def quad(self) -> Tensor | None:
         """
-        Quadrupole integral of shape (6, nao, nao).
+        Quadrupole integral of shape (6/9, nao, nao).
 
         Returns
         -------
         Tensor | None
             Quadrupole integral if set, else `None`.
         """
+        # TODO: Decide
+        # if self._quad is None:
+        # raise ValueError("No quadrupole integral provided.")
         return self._quad
 
     @quad.setter
@@ -133,7 +142,7 @@ class Integrals(TensorLike):
         Expected shapes:
         - hcore and overlap: (batch_size, nao, nao) or (nao, nao)
         - dipole: (batch_size, 3, nao, nao) or (3, nao, nao)
-        - quad: (batch_size, 6, nao, nao) or (6, nao, nao)
+        - quad: (batch_size, 9, nao, nao) or (9, nao, nao)
 
         Raises
         ------
@@ -186,13 +195,24 @@ class Integrals(TensorLike):
                     f"Tensor '{name}' last two dimensions should be "
                     f"(nao, nao). Got {tensor.shape[-2:]}."
                 )
-            if name == "dipole" and tensor.shape[-3] != 3:
+            if name == "dipole" and tensor.shape[-3] != defaults.DP_SHAPE:
                 raise ValueError(
-                    f"Tensor '{name}' third to last dimension should be 3. "
-                    f"Got {tensor.shape[-3]}."
+                    f"Tensor '{name}' third to last dimension should be "
+                    f"{defaults.DP_SHAPE}. Got {tensor.shape[-3]}."
                 )
-            if name == "quad" and tensor.shape[-3] != 6:
+            if name == "quad" and tensor.shape[-3] != defaults.QP_SHAPE:
                 raise ValueError(
-                    f"Tensor '{name}' third to last dimension should be 6. "
-                    f"Got {tensor.shape[-3]}."
+                    f"Tensor '{name}' third to last dimension should be "
+                    f"{defaults.QP_SHAPE}. Got {tensor.shape[-3]}."
                 )
+
+    def __repr__(self) -> str:
+        attributes = ["hcore", "overlap", "dipole", "quad"]
+        details = []
+
+        for attr in attributes:
+            tensor = getattr(self, "_" + attr)
+            shape_str = str(tensor.shape) if tensor is not None else "None"
+            details.append(f"\n  {attr}={shape_str}")
+
+        return f"Integrals({','.join(details)}\n)"

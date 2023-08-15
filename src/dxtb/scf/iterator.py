@@ -133,6 +133,7 @@ class SelfConsistentFieldFull(BaseTSCF):
         cevecs = torch.zeros_like(self._data.evecs)
         ce = torch.zeros_like(self._data.evals)
         co = torch.zeros_like(self._data.occupation)
+        cd = torch.zeros_like(self._data.density)
         n0 = self._data.n0
         numbers = self._data.numbers
         charges_data = self._data.charges.copy()
@@ -162,10 +163,10 @@ class SelfConsistentFieldFull(BaseTSCF):
         # orbitals is smaller than the number of atoms times 3 (6)
         # after culling. We specifically avoid culling, as this
         # would severly mess up the shapes involved.
-        if q.shape[1] > 1:
-            norb = max(norb, nat * 3)
-        elif q.shape[1] > 2:
-            norb = max(norb, nat * 6)
+        if q.shape[1] == 2:
+            norb = max(norb, nat * defaults.DP_SHAPE)
+        elif q.shape[1] == 3:
+            norb = max(norb, nat * defaults.QP_SHAPE)
 
         # We need to specify the number of multipole dimensions for the
         # culling to work properly later. If we are converging the Fock
@@ -203,6 +204,7 @@ class SelfConsistentFieldFull(BaseTSCF):
                 cevals[iconv, :norb] = self._data.evals[conv, :]
                 ce[iconv, :norb] = self._data.energy[conv, :]
                 co[iconv, :norb, :norb] = self._data.occupation[conv, :, :]
+                cd[iconv, :norb, :norb] = self._data.density[conv, :, :]
 
                 # update convergence tracker
                 converged[iconv] = True
@@ -223,10 +225,10 @@ class SelfConsistentFieldFull(BaseTSCF):
                 # orbitals is smaller than the number of atoms times 3 (6)
                 # after culling. We specifically avoid culling, as this
                 # would severly mess up the shapes involved.
-                if q.shape[1] > 1:
-                    norb_new = max(t2int(norb_new), t2int(nat_new) * 3)
-                elif q.shape[1] > 2:
-                    norb_new = max(t2int(norb_new), t2int(nat_new) * 6)
+                if q.shape[1] == 2:
+                    norb_new = max(t2int(norb_new), t2int(nat_new) * defaults.DP_SHAPE)
+                elif q.shape[1] == 3:
+                    norb_new = max(t2int(norb_new), t2int(nat_new) * defaults.QP_SHAPE)
 
                 # If the largest system was culled from batch, cut the
                 # properties down to the new size to remove superfluous
@@ -254,17 +256,23 @@ class SelfConsistentFieldFull(BaseTSCF):
                 if self._data.charges["mono"] is not None:
                     self._data.charges["mono"] = torch.Size((len(idxs), int(_norb)))
                 if self._data.charges["dipole"] is not None:
-                    self._data.charges["dipole"] = torch.Size((len(idxs), int(nat), 3))
+                    self._data.charges["dipole"] = torch.Size(
+                        (len(idxs), int(nat), defaults.DP_SHAPE)
+                    )
                 if self._data.charges["quad"] is not None:
-                    self._data.charges["quad"] = torch.Size((len(idxs), int(nat), 6))
+                    self._data.charges["quad"] = torch.Size(
+                        (len(idxs), int(nat), defaults.QP_SHAPE)
+                    )
                 if self._data.potential["mono"] is not None:
                     self._data.potential["mono"] = torch.Size((len(idxs), int(_norb)))
                 if self._data.potential["dipole"] is not None:
                     self._data.potential["dipole"] = torch.Size(
-                        (len(idxs), int(nat), 3)
+                        (len(idxs), int(nat), defaults.DP_SHAPE)
                     )
                 if self._data.potential["quad"] is not None:
-                    self._data.potential["quad"] = torch.Size((len(idxs), int(nat), 6))
+                    self._data.potential["quad"] = torch.Size(
+                        (len(idxs), int(nat), defaults.QP_SHAPE)
+                    )
 
                 # cull mixer (only contains orbital resolved properties)
                 mixer.cull(conv, slicers=slicers["orbital"], mpdim=int(mpdim))
@@ -314,12 +322,14 @@ class SelfConsistentFieldFull(BaseTSCF):
                 ce[iconv, :norb] = self._data.energy
                 ch[iconv, :norb, :norb] = self._data.hamiltonian
                 co[iconv, :norb, :norb] = self._data.occupation
+                cd[iconv, :norb, :norb] = self._data.density
 
             self._data.evals = cevals
             self._data.evecs = cevecs
             self._data.energy = ce
             self._data.hamiltonian = ch
             self._data.occupation = co
+            self._data.density = cd
             self._data.charges = charges_data
             self._data.potential = potential_data
 
@@ -467,7 +477,7 @@ def solve(
     numbers : Tensor
         Atomic numbers of the system.
     positions : Tensor
-        Positions of the system.
+        Cartesian coordinates of all atoms in the system (nat, 3).
     chrg : Tensor
         Total charge.
     interactions : InteractionList

@@ -46,6 +46,16 @@ INTDRIVER = "libcint"
 INTLEVEL = 1
 """Determines types of calculated integrals."""
 
+DP_SHAPE = 3
+"""Number of dimensions of the dipole integral."""
+
+QP_SHAPE = 9
+"""
+Number of dimension of the quadrupole integral. Libcint returns 9, which can be
+reduced to 6 due to symmetry (tracless representation).
+"""
+
+
 # SCF settings
 
 GUESS = "eeq"

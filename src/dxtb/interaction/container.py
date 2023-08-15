@@ -288,12 +288,14 @@ class Charges(Container):
         self._mono = mono
 
     def __repr__(self):
+        dp_shape = self.dipole.shape if self.dipole is not None else None
+        qp_shape = self.quad.shape if self.quad is not None else None
         return (
-            f"{self.__class__.__name__}("
-            f"mono={self.mono!r}, "
-            f"dipole={self.dipole!r}, "
-            f"quad={self.quad!r}, "
-            f"batched={self.batched!r})"
+            f"{self.__class__.__name__}(\n"
+            f"  mono={self.mono.shape!r},\n"
+            f"  dipole={dp_shape!r},\n"
+            f"  quad={qp_shape!r},\n"
+            f"  batched={self.batched!r}\n)"
         )
 
 

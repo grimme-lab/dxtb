@@ -27,6 +27,9 @@ else:  # pragma: no cover
     from torch.func import jacrev  # type: ignore
 
 
+__all__ = ["_jac", "jac", "_hessian", "hessian"]
+
+
 # NOTE: This is a (non-vectorized, slow) workaround from dqc
 def _jac(
     a: Tensor,
