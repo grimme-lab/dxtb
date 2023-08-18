@@ -539,7 +539,7 @@ class Calculator(TensorLike):
                     # print("")
                     # assert False
 
-                    self.integrals.dipole = self.mp_integral("j")
+                    self.integrals.dipole = self.mp_integral("r0")
                     # print(self.mp_integral("r0"))
                     self.timer.stop("Dipole Integral")
 

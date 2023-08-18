@@ -41,9 +41,23 @@ def dipole(
     """
     # TODO: Shape checks
 
-    n_dipole = torch.einsum("...ij,...i->...j", positions, charge)
+    n_dipole = torch.einsum("...ix,...i->...x", positions, charge)
+
+    rel_positions = positions.unsqueeze(-2) - positions
+    print(rel_positions)
+    n_dipole2 = torch.einsum("...ijx,...i->...x", rel_positions, charge)
+    print("")
+
+    print("n_dipole", n_dipole)
+    print("n_dipole2", n_dipole2)
     e_dipole = -torch.einsum("...xij,...ij->...x", integral, density)
+    print("")
+    print(e_dipole)
+
     dip = n_dipole + e_dipole
+    print("")
+    print(n_dipole + e_dipole)
+    print(e_dipole + n_dipole2)
     return dip
 
 
