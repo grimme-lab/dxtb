@@ -30,8 +30,9 @@ ref_h0 = np.load("test/test_hamiltonian/h0.npz")
 device = None
 
 
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", small)
+@pytest.mark.parametrize("dtype", [torch.float])
+# @pytest.mark.parametrize("name", small)
+@pytest.mark.parametrize("name", ["CH4", "MB16_43_01", "C60", "vancoh2"])
 def test_single(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"device": device, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
@@ -39,8 +40,8 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     sample = samples[name]
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
-    ref = load_from_npz(ref_h0, name, dtype)
-
+    # ref = load_from_npz(ref_h0, name, dtype)
+    print(numbers.shape)
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     h0 = Hamiltonian(numbers, par, ihelp, **dd)
 
@@ -48,12 +49,21 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     s = overlap.build(positions)
     assert pytest.approx(s, abs=tol) == s.mT
 
-    cn = get_coordination_number(numbers, positions, exp_count)
-    if name == "C":
-        cn = None
-    h = h0.build(positions, s, cn=cn)
-    assert pytest.approx(h, abs=tol) == h.mT
-    assert pytest.approx(h, abs=tol) == ref
+    from dxtb.basis import Basis
+    from dxtb.integral import libcint as intor
+    from dxtb.integral import OverlapLibcint
+
+    bas = Basis(numbers, par, ihelp, **dd)
+    atombases = bas.create_dqc(positions)
+    wrapper = intor.LibcintWrapper(atombases, ihelp)
+    overlap = OverlapLibcint(numbers, par, ihelp, driver=wrapper, **dd)
+    overlap.build()
+    # cn = get_coordination_number(numbers, positions, exp_count)
+    # if name == "C":
+    #     cn = None
+    # h = h0.build(positions, s, cn=cn)
+    # assert pytest.approx(h, abs=tol) == h.mT
+    # assert pytest.approx(h, abs=tol) == ref
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

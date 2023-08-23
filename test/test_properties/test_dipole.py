@@ -48,7 +48,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     efield = new_efield(field_vector)
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
-    dipole = calc.dipole(numbers, positions, charge)
+    dipole = calc.dipole(numbers, positions, charge, True)
     dipole.detach_()
 
     assert pytest.approx(ref, abs=1e-3) == dipole

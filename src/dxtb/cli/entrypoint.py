@@ -77,10 +77,6 @@ def entry_point_wrapper(argv: Sequence[str] | None = None) -> int:
 
     args = parser().parse_args(argv)
 
-    if hasattr(args, "version") is True:
-        print(f"dxtb {__version__}")
-        raise SystemExit(0)
-
     if args.file is None or len(args.file) == 0:
         print("No coordinate file given.")
         raise SystemExit(1)

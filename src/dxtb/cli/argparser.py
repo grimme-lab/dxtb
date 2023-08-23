@@ -8,6 +8,7 @@ from pathlib import Path
 
 import torch
 
+from .. import __version__
 from .._types import Any
 from ..constants import defaults
 
@@ -227,8 +228,8 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--version",
-        action="store_true",
-        default=argparse.SUPPRESS,
+        action="version",
+        version=__version__,
         help="Show version and exit.",
     )
     p.add_argument(
@@ -343,6 +344,13 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--int-driver",
+        type=str,
+        default=defaults.INTDRIVER,
+        choices=defaults.INTDRIVER_CHOICES,
+        help=("R|Integral driver."),
+    )
+    p.add_argument(
         "-v",
         "--verbosity",
         type=int,
@@ -392,6 +400,17 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         "--detect-anomaly",
         action="store_true",
         help=("R|Enable PyTorch's anomaly detection mode."),
+    )
+
+    p.add_argument(
+        "--ir",
+        action="store_true",
+        help=("R|Calculate the IR spectrum."),
+    )
+    p.add_argument(
+        "--raman",
+        action="store_true",
+        help=("R|Calculate the Raman spectrum."),
     )
 
     p.add_argument(

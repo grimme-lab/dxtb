@@ -43,6 +43,9 @@ INTCUTOFF = 50.0
 INTDRIVER = "libcint"
 """Integral driver."""
 
+INTDRIVER_CHOICES = ["dxtb", "libcint"]
+"""List of possible choices for `INTDRIVER`."""
+
 INTLEVEL = 1
 """Determines types of calculated integrals."""
 
@@ -129,7 +132,7 @@ FERMI_FENERGY_PARTITION_CHOICES = ["equal", "atomic"]
 
 # PyTorch
 
-TORCH_DTYPE = torch.float32
+TORCH_DTYPE = torch.double
 """Default data type for floating point tensors."""
 
 TORCH_DTYPE_CHOICES = ["float16", "float32", "float64", "double", "sp", "dp"]

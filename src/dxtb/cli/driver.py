@@ -97,13 +97,14 @@ class Driver:
             "damp": args.damp,
             "scf_mode": args.scf_mode,
             "scp_mode": args.scp_mode,
+            "int_driver": args.int_driver,
             "mixer": args.mixer,
             "maxiter": args.maxiter,
             "spin": args.spin,
             "verbosity": args.verbosity,
             "exclude": args.exclude,
-            "xitorch_xatol": defaults.XITORCH_XATOL,
-            "xitorch_fatol": defaults.XITORCH_XATOL,
+            "xitorch_xatol": args.xtol,
+            "xitorch_fatol": args.ftol,
         }
 
         if len(self.args.file) > 1:
@@ -142,8 +143,13 @@ class Driver:
 
         # INTERACTIONS
         interactions = []
-        if args.efield is not None:
-            field = torch.tensor(args.efield, **dd) * units.VAA2AU
+        if args.efield is not None or args.ir is True or args.raman is True:
+            field = (
+                torch.tensor(
+                    args.efield if args.efield is not None else [0, 0, 0], **dd
+                )
+                * units.VAA2AU
+            )
             interactions.append(new_efield(field, **dd))
 
         # setup calculator
@@ -153,11 +159,23 @@ class Driver:
         )
 
         # run singlepoint calculation
-        result = calc.singlepoint(numbers, positions, chrg, grad=args.grad)
+        result = calc.singlepoint(numbers, positions, chrg)
 
-        if args.grad and args.verbosity > 0:
+        ####################################################
+        if args.grad:
+            timer.start("grad")
+            (g,) = torch.autograd.grad(result.total.sum(), positions)
+            timer.stop("grad")
+        #####################################################
+
+        if args.grad and args.verbosity > 2:
             print_grad(result.total_grad.clone(), numbers)
             print("")
+
+        if args.ir is True:
+            timer.start("IR")
+            calc.ir_spectrum_num(numbers, positions, chrg)
+            timer.stop("IR")
 
         if args.verbosity > 0:
             timer.print_times()

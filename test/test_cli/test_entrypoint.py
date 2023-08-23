@@ -17,7 +17,7 @@ def test_version(capsys: pytest.CaptureFixture) -> None:
 
     out, err = capsys.readouterr()
     assert err == ""
-    assert out == f"dxtb {__version__}\n"
+    assert out == f"{__version__}\n"
 
 
 def test_no_file(capsys: pytest.CaptureFixture) -> None:

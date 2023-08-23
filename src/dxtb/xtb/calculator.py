@@ -801,10 +801,59 @@ class Calculator(TensorLike):
         self.opts["scf_options"]["verbosity"] = tmp
         return hess
 
+    def hessian_num(
+        self, numbers: Tensor, positions: Tensor, chrg: Tensor, shape: str = "matrix"
+    ) -> Tensor:
+        pos = positions.detach().clone()
+
+        # turn off printing in numerical hessian
+        tmp = self.opts["scf_options"]["verbosity"]
+        self.opts["scf_options"]["verbosity"] = 0
+
+        def _gradfcn(pos: Tensor) -> Tensor:
+            pos.requires_grad_(True)
+            result = self.singlepoint(numbers, pos, chrg, grad=True)
+            pos.detach_()
+            return result.total_grad.detach()
+
+        hess = torch.zeros(
+            *(*positions.shape, *positions.shape),
+            **{"device": positions.device, "dtype": positions.dtype},
+        )
+
+        print("\nNumerical Hessian:", 3 * numbers.shape[0])
+
+        import gc
+
+        count = 1
+
+        step = 1.0e-6
+        for i in range(numbers.shape[0]):
+            for j in range(3):
+                pos[i, j] += step
+                gr = _gradfcn(pos)
+
+                pos[i, j] -= 2 * step
+                gl = _gradfcn(pos)
+
+                pos[i, j] += step
+                hess[:, :, i, j] = 0.5 * (gr - gl) / step
+
+                print(f"{count}/{3*numbers.shape[0]}")
+                count += 1
+
+            gc.collect()
+        gc.collect()
+        if shape == "matrix":
+            hess = hess.reshape(2 * (3 * numbers.shape[-1],))
+
+        self.opts["scf_options"]["verbosity"] = tmp
+        return hess
+
     def vibration(
         self, numbers: Tensor, positions: Tensor, chrg: Tensor, project: bool = True
     ) -> tuple[Tensor, Tensor]:
-        hess = self.hessian(numbers, positions, chrg, shape="matrix")
+        hess = self.hessian_num(numbers, positions, chrg, shape="matrix")
         return properties.frequencies(numbers, positions, hess, project=project)
 
     def dipole(
@@ -967,6 +1016,54 @@ class Calculator(TensorLike):
 
         return properties.ir(mu, positions, freqs, modes)
 
+    def ir_spectrum_num(self, numbers: Tensor, positions: Tensor, chrg: Tensor):
+        # turn off printing in numerical hessian
+        freqs, modes = self.vibration(numbers, positions, chrg, True)
+
+        tmp = self.opts["scf_options"]["verbosity"]
+        self.opts["scf_options"]["verbosity"] = 0
+        import gc
+
+        def num_grad(positions: Tensor) -> Tensor:
+            # setup numerical gradient
+            positions = positions.detach().clone()
+            n_atoms = positions.shape[0]
+            gradient = torch.zeros((3, n_atoms, 3), dtype=positions.dtype)
+
+            step = 1.0e-7
+
+            print("Numerical IR Ints:", 3 * n_atoms)
+
+            count = 1
+            for i in range(n_atoms):
+                for j in range(3):
+                    positions[i, j] += step
+                    er = self.dipole(numbers, positions, chrg)
+
+                    positions[i, j] -= 2 * step
+                    el = self.dipole(numbers, positions, chrg)
+
+                    positions[i, j] += step
+                    gradient[:, i, j] = 0.5 * (er - el) / step
+
+                    print(f"{count}/{3*n_atoms}")
+                    count += 1
+
+                gc.collect()
+            gc.collect()
+            return gradient
+
+        dmu_dr = num_grad(positions).view(3, -1)
+        self.opts["scf_options"]["verbosity"] = tmp
+
+        dmu_dq = torch.matmul(dmu_dr, modes)  # (ndim, nfreqs)
+        ir_ints = torch.einsum("...df,...df->...f", dmu_dq, dmu_dq)  # (nfreqs,)
+
+        from ..constants import units
+
+        print(freqs * units.AU2RCM)
+        print(ir_ints * 1378999.7790799031)
+
     def raman_spectrum(
         self, numbers: Tensor, positions: Tensor, chrg: Tensor
     ) -> tuple[Tensor, Tensor]:
@@ -1013,6 +1110,43 @@ class Calculator(TensorLike):
         alpha = self.polarizability(numbers, positions, chrg)
         freqs, modes = self.vibration(numbers, positions, chrg, project=True)
         return properties.raman(alpha, freqs, modes)
+
+
+def _get_tensor_memory() -> float:
+    """
+    Obtain the total memory occupied by torch.Tensor in the garbage collector.
+
+    Returns
+    -------
+    float
+        Memory in MiB
+    """
+
+    # obtaining all the tensor objects from the garbage collector
+    tensor_objs = [obj for obj in gc.get_objects() if isinstance(obj, Tensor)]
+
+    # iterate each tensor objects uniquely and calculate the total storage
+    visited_data = set()
+    total_mem = 0.0
+    for tensor in tensor_objs:
+        if tensor.is_sparse:
+            continue
+
+        # check if it has been visited
+        storage = tensor.storage()
+        data_ptr = storage.data_ptr()  # type: ignore
+        if data_ptr in visited_data:
+            continue
+        visited_data.add(data_ptr)
+
+        # calculate the storage occupied
+        numel = storage.size()
+        elmt_size = storage.element_size()
+        mem = numel * elmt_size / (1024 * 1024)  # in MiB
+
+        total_mem += mem
+
+    return total_mem
 
 
 def _jac(
