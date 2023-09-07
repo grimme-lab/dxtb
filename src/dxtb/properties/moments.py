@@ -12,16 +12,66 @@ from __future__ import annotations
 import torch
 
 from .._types import Tensor
+from ..constants import get_zvalence
 
 __all__ = ["dipole", "quadrupole"]
 
 
 def dipole(
+    numbers: Tensor, positions: Tensor, density: Tensor, integral: Tensor
+) -> Tensor:
+    """
+    Analytical calculation of electric dipole moment with electric dipole
+    contribution from nuclei (sum_i(r_ik * q_i)) and electrons.
+
+    Parameters
+    ----------
+    numbers : Tensor
+        Atomic numbers in the system.
+    charge : Tensor
+        Atom-resolved charges.
+    positions : Tensor
+        Cartesian coordinates of all atoms in the system (nat, 3).
+    density : Tensor
+        Density matrix.
+    integral : Tensor
+        Dipole integral.
+
+    Returns
+    -------
+    Tensor
+        Electric dipole moment.
+
+    Note
+    ----
+    This version follows the `xtb` implementation, where the `r0` moment
+    operator is used and the nuclear contribution uses the valence charges.
+    """
+    # TODO: Shape checks
+
+    # electric component from dipole integral and density matrix
+    e_dipole = -torch.einsum("...xij,...ij->...x", integral, density)
+
+    # moment operator "r0" combines with valence charges (xtb implementation)
+    n_dipole = torch.einsum(
+        "...ix,...i->...x",
+        positions,
+        get_zvalence(numbers, device=positions.device, dtype=positions.dtype),
+    )
+
+    dip = n_dipole + e_dipole
+    return dip
+
+
+def dipole_tblite(
     charge: Tensor, positions: Tensor, density: Tensor, integral: Tensor
 ) -> Tensor:
     """
     Analytical calculation of electric dipole moment with electric dipole
     contribution from nuclei (sum_i(r_ik * q_i)) and electrons.
+
+    In the `tblite` implementation, the moment operator is `r-rj` requiring the
+    SCC charges for the nuclear dipole contribution.
 
     Parameters
     ----------
@@ -41,24 +91,9 @@ def dipole(
     """
     # TODO: Shape checks
 
-    n_dipole = torch.einsum("...ix,...i->...x", positions, charge)
-
-    rel_positions = positions.unsqueeze(-2) - positions
-    print(rel_positions)
-    n_dipole2 = torch.einsum("...ijx,...i->...x", rel_positions, charge)
-    print("")
-
-    print("n_dipole", n_dipole)
-    print("n_dipole2", n_dipole2)
     e_dipole = -torch.einsum("...xij,...ij->...x", integral, density)
-    print("")
-    print(e_dipole)
-
-    dip = n_dipole + e_dipole
-    print("")
-    print(n_dipole + e_dipole)
-    print(e_dipole + n_dipole2)
-    return dip
+    n_dipole = torch.einsum("...ix,...i->...x", positions, charge)
+    return n_dipole + e_dipole
 
 
 def quadrupole(qat: Tensor, dpat: Tensor, qpat: Tensor, positions: Tensor) -> Tensor:

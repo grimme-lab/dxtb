@@ -38,7 +38,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     ref = samples[name]["dipole"].to(**dd)
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)  # * units.VAA2AU
 
     # required for autodiff of energy w.r.t. efield and dipole
     field_vector.requires_grad_(True)
@@ -48,7 +48,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     efield = new_efield(field_vector)
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
-    dipole = calc.dipole(numbers, positions, charge, True)
+    dipole = calc.dipole(numbers, positions, charge, False)
     dipole.detach_()
 
     assert pytest.approx(ref, abs=1e-3) == dipole

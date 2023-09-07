@@ -52,7 +52,7 @@ INTLEVEL = 1
 DP_SHAPE = 3
 """Number of dimensions of the dipole integral."""
 
-QP_SHAPE = 9
+QP_SHAPE = 6
 """
 Number of dimension of the quadrupole integral. Libcint returns 9, which can be
 reduced to 6 due to symmetry (tracless representation).

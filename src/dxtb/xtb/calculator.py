@@ -25,6 +25,7 @@ from ..data import cov_rad_d3
 from ..dispersion import Dispersion, new_dispersion
 from ..integral import Integrals, Overlap, OverlapLibcint
 from ..integral import libcint as intor
+from ..integral import multipole as mpint
 from ..interaction import Charges, Interaction, InteractionList, Potential
 from ..interaction.external import field as efield
 from ..param import Param, get_elem_angular
@@ -495,107 +496,44 @@ class Calculator(TensorLike):
             overlap = self.overlap.build(positions)
             self.integrals.overlap = overlap
             self.timer.stop("Overlap")
-            torch.set_printoptions(precision=16)
+            torch.set_printoptions(precision=7)
+            print()
 
             if self.opts["int_driver"] == "libcint":
-                # dipole integral
+                # dipole integral and general setup
                 if self.opts["int_level"] > 1:
+                    assert isinstance(self.overlap, OverlapLibcint)
+                    assert self._intdriver is not None
+                    s = self.integrals.overlap
+
+                    # TODO: ihelp.spread_atom_to_orbital(positions, extra=True)
+                    # spread positions to orbital-resolution for contraction
+                    pos = batch.index(
+                        batch.index(positions, self.ihelp.shells_to_atom),
+                        self.ihelp.orbitals_to_shell,
+                    )
+
                     self.timer.start("Dipole Integral")
-                    n = self.mp_integral("n")
-                    m = self.mp_integral("m")
-                    r = self.mp_integral("j")
-                    # print("rj", n.shape)
-                    # print(n)
-                    # print("")
-                    # print("ri", m.shape)
-                    # print(m)
-                    # print("")
-                    # print("r", r.shape)
-                    # print(r)
-                    # print("")
-                    # print(r - m)
-                    # print((r - m).abs().max())
-                    # print((r - n).abs().max())
-                    # print(m - n.mT)
-                    # print("")
-                    # assert False
 
-                    # pos = batch.index(
-                    #     batch.index(positions, self.ihelp.shells_to_atom),
-                    #     self.ihelp.orbitals_to_shell,
-                    # )
-                    # vec = pos.unsqueeze(-2) - pos.unsqueeze(-3)
-                    # print(vec.shape)
-                    # print(dp.shape)
-                    # a = torch.einsum("ijx,ij->xij", vec, overlap)
-                    # print(a.shape)
-                    # print("")
-                    # print(dp + a)
-                    # print(dp)
-                    # print(torch.tril(dp) + torch.triu(dp + a))
-                    # print()
-                    # print("")
-                    # print("")
-                    # print("")
-                    # assert False
+                    r0 = mpint.dipole(self._intdriver, self.overlap)
+                    rj = mpint.shift_r0_rj(r0, s, pos)
+                    self.integrals.dipole = rj
 
-                    self.integrals.dipole = self.mp_integral("r0")
-                    # print(self.mp_integral("r0"))
                     self.timer.stop("Dipole Integral")
 
-                # quadrupole integral
-                if self.opts["int_level"] > 2:
-                    self.timer.start("Quadrupole Integral")
-                    qpint = self.mp_integral("nn")
+                    # quadrupole integral
+                    if self.opts["int_level"] > 2:
+                        self.timer.start("Quadrupole Integral")
 
-                    def make_traceless(qpint: Tensor) -> Tensor:
-                        """
-                        Make a quadrupole tensor traceless.
+                        qpint = mpint.quadrupole(self._intdriver, self.overlap)
+                        # TODO: Handle 3x3 case (should we even? Enforce traceless?)
 
-                        Parameters
-                        ----------
-                        qpint : Tensor
-                            Quadrupole moment tensor of shape `(..., 9, n, n)`.
+                        if defaults.QP_SHAPE == 6:
+                            r0r0 = mpint.traceless(qpint)
+                            qpint = mpint.shift_r0r0_rjrj(r0r0, r0, s, pos)
+                        self.integrals.quad = qpint
 
-                        Returns
-                        -------
-                        Tensor
-                            Traceless Quadrupole moment tensor of shape
-                            `(..., 6, n, n)`.
-
-                        Note
-                        ----
-                        First the quadrupole tensor is reshaped to be symmetric.
-                        Due to symmetry only the lower triangular matrix is used.
-
-                        xx xy xz       0 1 2      0
-                        yx yy yz  <=>  3 4 5  ->  3 4
-                        zx zy zz       6 7 8      6 7 8
-                        """
-
-                        # (..., 9, norb, norb) -> (..., 3, 3, norb, norb)
-                        shp = qpint.shape
-                        qpint = qpint.view(*shp[:-3], 3, 3, *shp[-2:])
-
-                        # trace: (..., 3, 3, norb, norb) -> (..., norb, norb)
-                        tr = 0.5 * torch.einsum("...iijk->...jk", qpint)
-
-                        return torch.stack(
-                            [
-                                1.5 * qpint[..., 0, 0, :, :] - tr,  # xx
-                                1.5 * qpint[..., 1, 0, :, :],  # yx
-                                1.5 * qpint[..., 1, 1, :, :] - tr,  # yy
-                                1.5 * qpint[..., 2, 0, :, :],  # zx
-                                1.5 * qpint[..., 2, 1, :, :],  # zy
-                                1.5 * qpint[..., 2, 2, :, :] - tr,  # zz
-                            ],
-                            dim=-3,
-                        )
-
-                    if defaults.QP_SHAPE == 6:
-                        qpint = make_traceless(qpint)
-                    self.integrals.quad = qpint
-                    self.timer.stop("Quadrupole Integral")
+                        self.timer.stop("Quadrupole Integral")
 
             # Hamiltonian
             self.timer.start("h0", "Core Hamiltonian")
@@ -719,50 +657,6 @@ class Calculator(TensorLike):
 
         return result
 
-    def mp_integral(self, intstring: str) -> Tensor:
-        # statisfy type checking...
-        assert isinstance(self.overlap, OverlapLibcint)
-        assert self._intdriver is not None
-
-        # TODO: Better exception msg ("add to dxtblibs")
-        # allowed_mps = ("j", "jj", "jjj")
-        # if intstring not in allowed_mps:
-        # raise ValueError("Unknown integral string provided.")
-
-        def mpint(driver: intor.LibcintWrapper, norm: Tensor) -> Tensor:
-            """
-            Calculation of multipole integral. The integral is properly
-            normalized, using the diagonal of the overlap integral.
-
-            Parameters
-            ----------
-            driver : intor.LibcintWrapper
-                Integral driver (libcint interface).
-            norm : Tensor
-                Norm of the overlap integral.
-
-            Returns
-            -------
-            Tensor
-                Normalized multipole integral.
-            """
-            return torch.einsum(
-                "...ij,i,j->...ij", intor.int1e(intstring, driver), norm, norm
-            )
-
-        if self.batched:
-            mpint_list = []
-
-            assert isinstance(self._intdriver, list)
-            for _batch, driver in enumerate(self._intdriver):
-                q = mpint(driver, batch.deflate(self.overlap.norm[_batch]))
-                mpint_list.append(q)
-
-            return batch.pack(mpint_list)
-
-        assert isinstance(self._intdriver, intor.LibcintWrapper)
-        return mpint(self._intdriver, self.overlap.norm)
-
     def hessian(
         self, numbers: Tensor, positions: Tensor, chrg: Tensor, shape: str = "matrix"
     ) -> Tensor:
@@ -880,21 +774,29 @@ class Calculator(TensorLike):
             )
 
         if use_autograd is False:
+            # dip = properties.dipole(
+            # numbers, positions, result.density, self.integrals.dipole
+            # )
             qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
-            return properties.dipole(
+            dip = properties.moments.dipole_tblite(
                 qat, positions, result.density, self.integrals.dipole
             )
+        else:
+            # retrieve the efield interaction and the field
+            ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
+            field = ef.field
 
-        # retrieve the efield interaction and the field
-        ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
-        field = ef.field
+            if field.requires_grad is False:
+                raise RuntimeError("Field tensor needs `requires_grad=True`.")
 
-        if field.requires_grad is False:
-            raise RuntimeError("Field tensor needs `requires_grad=True`.")
+            # calculate electric dipole contribution from xtb energy: -de/dE
+            energy = result.total.sum(-1)
+            dip = -_jac(energy, field)
 
-        # calculate electric dipole contribution from xtb energy: -de/dE
-        energy = result.total.sum(-1)
-        dip = -_jac(energy, field)
+        print(dip.norm())
+        from ..constants import units
+
+        print(dip.norm() * units.AU2DEBYE)
         return dip
 
     def quadrupole(

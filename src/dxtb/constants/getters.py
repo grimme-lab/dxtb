@@ -9,11 +9,11 @@ from __future__ import annotations
 import torch
 
 from .._types import Tensor
-from .chemistry import ATOMIC_MASSES
+from .chemistry import ATOMIC_MASSES, ZVALENCE, NCORE
 from .defaults import TORCH_DTYPE
 from .units import GMOL2AU
 
-__all__ = ["get_atomic_masses"]
+__all__ = ["get_atomic_masses", "get_ncore", "get_zvalence"]
 
 
 def get_atomic_masses(
@@ -24,6 +24,7 @@ def get_atomic_masses(
 ) -> Tensor:
     """
     Get isotope-averaged atomic masses for all `numbers`.
+
     Parameters
     ----------
     numbers : Tensor
@@ -35,6 +36,7 @@ def get_atomic_masses(
         Device to store the tensor. If `None` (default), the default device is used.
     dtype : torch.dtype, optional
         Data type of the tensor. If none is given, it defaults to float32.
+
     Returns
     -------
     Tensor
@@ -42,3 +44,55 @@ def get_atomic_masses(
     """
     m = ATOMIC_MASSES[numbers].to(device).type(dtype)
     return m * GMOL2AU if atomic_units is True else m
+
+
+def get_zvalence(
+    numbers: Tensor,
+    device: torch.device | None = None,
+    dtype: torch.dtype = TORCH_DTYPE,
+) -> Tensor:
+    """
+    Get charge of valence shell for all `numbers`.
+
+    Parameters
+    ----------
+    numbers : Tensor
+        Atomic numbers in the system.
+    device : torch.device | None, optional
+        Device to store the tensor. If `None` (default), the default device is used.
+    dtype : torch.dtype, optional
+        Data type of the tensor. If none is given, it defaults to
+        ``defaults.TORCH_DTYPE``.
+
+    Returns
+    -------
+    Tensor
+        Charges of valence shell of atoms.
+    """
+    return ZVALENCE[numbers].to(device).type(dtype)
+
+
+def get_ncore(
+    numbers: Tensor,
+    device: torch.device | None = None,
+    dtype: torch.dtype = TORCH_DTYPE,
+) -> Tensor:
+    """
+    Get number of core electrons for all `numbers`.
+
+    Parameters
+    ----------
+    numbers : Tensor
+        Atomic numbers in the system.
+    device : torch.device | None, optional
+        Device to store the tensor. If `None` (default), the default device is used.
+    dtype : torch.dtype, optional
+        Data type of the tensor. If none is given, it defaults to
+        ``defaults.TORCH_DTYPE``.
+
+    Returns
+    -------
+    Tensor
+        Number of core electrons.
+    """
+    return NCORE[numbers].to(device).type(dtype)

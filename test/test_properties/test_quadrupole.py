@@ -57,6 +57,7 @@ def single(
 
     quadrupole = calc.quadrupole(numbers, positions, charge, use_autograd=use_autograd)
     quadrupole.detach_()
+    print(quadrupole)
 
     assert pytest.approx(ref, abs=atol, rel=rtol) == quadrupole
 
@@ -69,7 +70,7 @@ def test_single(dtype: torch.dtype, name: str, use_autograd: bool) -> None:
 
     ref = samples[name]["quadrupole"].to(**dd)
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)  # * units.VAA2AU
     atol, rtol = 1e-3, 1e-4
     single(name, ref, field_vector, use_autograd, dd=dd, atol=atol, rtol=rtol)
 
