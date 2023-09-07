@@ -1,5 +1,5 @@
 """
-Run tests for IR spectra.
+Testing automatic energy gradient w.r.t. electric field gradient.
 """
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ import pytest
 import torch
 
 from dxtb._types import DD, Callable, Tensor
-from dxtb.constants import units
 from dxtb.interaction import new_efield
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
@@ -44,19 +43,20 @@ def gradchecker(
     positions = samples[name]["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)  # * units.VAA2AU
+    field_grad = torch.zeros((3, 3), **dd)
 
     # variables to be differentiated
-    field_vector.requires_grad_(True)
+    field_grad.requires_grad_(True)
 
-    def func(field_vector: Tensor) -> Tensor:
-        efield = new_efield(field_vector)
+    def func(fieldgrad: Tensor) -> Tensor:
+        efield = new_efield(field_vector, fieldgrad)
         calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
         result = calc.singlepoint(numbers, positions, charge)
         energy = result.total.sum(-1)
         return energy
 
-    return func, field_vector
+    return func, field_grad
 
 
 @pytest.mark.grad
@@ -106,18 +106,20 @@ def gradchecker_batch(
     )
     charge = torch.tensor([0.0, 0.0], **dd)
 
-    # variables to be differentiated
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
-    field_vector.requires_grad_(True)
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)  # * units.VAA2AU
+    field_grad = torch.zeros((3, 3), **dd)
 
-    def func(field_vector: Tensor) -> Tensor:
-        efield = new_efield(field_vector)
+    # variables to be differentiated
+    field_grad.requires_grad_(True)
+
+    def func(fieldgrad: Tensor) -> Tensor:
+        efield = new_efield(field_vector, fieldgrad)
         calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
         result = calc.singlepoint(numbers, positions, charge)
         energy = result.total.sum(-1)
         return energy
 
-    return func, field_vector
+    return func, field_grad
 
 
 @pytest.mark.grad

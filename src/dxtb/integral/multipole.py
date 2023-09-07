@@ -10,8 +10,8 @@ from __future__ import annotations
 import torch
 
 from .._types import Tensor
-from . import libcint as intor
 from ..utils import batch
+from . import libcint as intor
 from .overlap import OverlapLibcint
 
 
@@ -48,7 +48,11 @@ def multipole(
         )
 
     if isinstance(driver, list):
-        assert driver[0].ihelp.batched
+        # check batched mode again just to be sure
+        if overlap.numbers.ndim != 2:
+            raise RuntimeError(
+                "Integral driver seems to be batched but atomic numbers not."
+            )
 
         return batch.pack(
             [
@@ -163,7 +167,7 @@ def shift_r0_rj(r0: Tensor, overlap: Tensor, pos: Tensor) -> Tensor:
     r"""
     Shift the centering of the dipole integral (moment operator) from the origin
     (`r0 = r - (0, 0, 0)`) to atoms (ket index, `rj = r - r_j`).
-    
+
     .. math::
         D &= D^{r_j}
           &= \langle i | r_j | j \rangle
@@ -179,7 +183,7 @@ def shift_r0_rj(r0: Tensor, overlap: Tensor, pos: Tensor) -> Tensor:
         Overlap integral.
     pos : Tensor
         Orbital-resolved atomic positions.
-        
+
     Raises
     ------
     RuntimeError
@@ -197,7 +201,7 @@ def shift_r0_rj(r0: Tensor, overlap: Tensor, pos: Tensor) -> Tensor:
             "The position tensor must be spread to orbital-resolution."
         )
 
-    shift = torch.einsum("jx,ij->xij", pos, overlap)
+    shift = torch.einsum("...jx,...ij->...xij", pos, overlap)
     return r0 - shift
 
 
@@ -306,7 +310,7 @@ def shift_diagonal(c: Tensor, dpc: Tensor, s: Tensor) -> Tensor:
 
 def shift_offdiag(a: Tensor, b: Tensor, dpa: Tensor, dpb: Tensor, s: Tensor) -> Tensor:
     r"""
-    Create the shift contribution for all off-diagonal elements of the 
+    Create the shift contribution for all off-diagonal elements of the
     quadrupole integral.
 
     .. math::

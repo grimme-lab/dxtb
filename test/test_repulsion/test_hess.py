@@ -1,7 +1,5 @@
 """
-Run tests for repulsion contribution.
-
-(Note that the analytical gradient tests fail for `torch.float`.)
+Run tests repulsion Hessian.
 """
 from __future__ import annotations
 

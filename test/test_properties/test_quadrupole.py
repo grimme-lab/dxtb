@@ -57,6 +57,7 @@ def single(
 
     quadrupole = calc.quadrupole(numbers, positions, charge, use_autograd=use_autograd)
     quadrupole.detach_()
+    print(ref)
     print(quadrupole)
 
     assert pytest.approx(ref, abs=atol, rel=rtol) == quadrupole

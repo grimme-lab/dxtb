@@ -525,9 +525,8 @@ class Calculator(TensorLike):
                     if self.opts["int_level"] > 2:
                         self.timer.start("Quadrupole Integral")
 
-                        qpint = mpint.quadrupole(self._intdriver, self.overlap)
                         # TODO: Handle 3x3 case (should we even? Enforce traceless?)
-
+                        qpint = mpint.quadrupole(self._intdriver, self.overlap)
                         if defaults.QP_SHAPE == 6:
                             r0r0 = mpint.traceless(qpint)
                             qpint = mpint.shift_r0r0_rjrj(r0r0, r0, s, pos)
@@ -778,7 +777,7 @@ class Calculator(TensorLike):
             # numbers, positions, result.density, self.integrals.dipole
             # )
             qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
-            dip = properties.moments.dipole_tblite(
+            dip = properties.moments.dipole(
                 qat, positions, result.density, self.integrals.dipole
             )
         else:
@@ -793,10 +792,6 @@ class Calculator(TensorLike):
             energy = result.total.sum(-1)
             dip = -_jac(energy, field)
 
-        print(dip.norm())
-        from ..constants import units
-
-        print(dip.norm() * units.AU2DEBYE)
         return dip
 
     def quadrupole(
@@ -808,8 +803,16 @@ class Calculator(TensorLike):
     ) -> Tensor:
         if use_autograd is False:
             result = self.singlepoint(numbers, positions, chrg)
-            assert result.charges.dipole is not None
-            assert result.charges.quad is not None
+            if result.charges.dipole is None:
+                raise RuntimeError(
+                    "Dipole charges were not calculated but are required for "
+                    "quadrupole moment."
+                )
+            if result.charges.quad is None:
+                raise RuntimeError(
+                    "Quadrupole charges were not calculated but are required "
+                    "for quadrupole moment."
+                )
 
             qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
             dpat = result.charges.dipole
@@ -842,25 +845,26 @@ class Calculator(TensorLike):
         energy = self.singlepoint(numbers, positions, chrg).total.sum(-1)
 
         print("")
-        e_quad = -2 * _jac(energy, field_grad)
+        e_quad = _jac(energy, field_grad)
+        print("quad_moment\n", e_quad)
 
         e_quad = e_quad.view(3, 3)
         print("")
         print("")
 
         print("quad_moment", e_quad.shape)
-        print("quad_moment\n", e_quad)
 
         cart = torch.empty((6), device=self.device, dtype=self.dtype)
 
         tr = 0.5 * torch.einsum("...ii->...", e_quad)
+        print("tr", tr)
         cart[..., 0] = 1.5 * e_quad[..., 0, 0] - tr
         cart[..., 1] = 3.0 * e_quad[..., 1, 0]
         cart[..., 2] = 1.5 * e_quad[..., 1, 1] - tr
         cart[..., 3] = 3.0 * e_quad[..., 2, 0]
         cart[..., 4] = 3.0 * e_quad[..., 2, 1]
         cart[..., 5] = 1.5 * e_quad[..., 2, 2] - tr
-        print("cart\n", cart.shape)
+
         print("cart\n", cart)
 
         # electric quadrupole contribution form nuclei: sum_i(r_ik * Z_i)
@@ -871,12 +875,14 @@ class Calculator(TensorLike):
             numbers.type(positions.dtype),
         )
 
-        print("\ne_quad + n_quad")
         print(n_quad)
+        print("\ne_quad + n_quad")
         print(e_quad + n_quad)
+        print("\ne_quad")
+        print(e_quad)
         print("")
 
-        return e_quad + n_quad
+        return cart
 
     def polarizability(
         self, numbers: Tensor, positions: Tensor, chrg: Tensor
