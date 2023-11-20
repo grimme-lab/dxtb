@@ -149,10 +149,10 @@ class BaseSCF:
 
         def init_zeros(self) -> None:
             self.energy = torch.zeros_like(self.n0)
-            self.hamiltonian = torch.zeros_like(self.ints.hcore)
-            self.density = torch.zeros_like(self.ints.hcore)
+            self.hamiltonian = torch.zeros_like(self.ints.hcore.matrix)
+            self.density = torch.zeros_like(self.ints.hcore.matrix)
             self.evals = torch.zeros_like(self.n0)
-            self.evecs = torch.zeros_like(self.ints.hcore)
+            self.evecs = torch.zeros_like(self.ints.hcore.matrix)
 
             self.old_charges = torch.zeros_like(self.energy)
             self.old_energy = torch.zeros_like(self.numbers)
@@ -169,12 +169,14 @@ class BaseSCF:
 
             # disable shape check temporarily for writing culled versions back
             self.ints.run_checks = False
-            self.ints.overlap = self.ints.overlap[twodim]
-            self.ints.hcore = self.ints.hcore[twodim]
+            self.ints.overlap.matrix = self.ints.overlap.matrix[twodim]
+            self.ints.hcore.matrix = self.ints.hcore.matrix[twodim]
             if self.ints.dipole is not None:
-                self.ints.dipole = self.ints.dipole[threedim]
-            if self.ints.quad is not None:
-                self.ints.quad = self.ints.quad[threedim]
+                assert self.ints.dipole.matrix
+                self.ints.dipole.matrix = self.ints.dipole.matrix[threedim]
+            if self.ints.quadrupole is not None:
+                assert self.ints.quadrupole.matrix is not None
+                self.ints.quadrupole.matrix = self.ints.quadrupole.matrix[threedim]
             self.ints.run_checks = True
 
             self.numbers = self.numbers[[~conv, *slicers["atom"]]]
@@ -259,7 +261,7 @@ class BaseSCF:
 
         self._data = self._Data(*args, **kwargs)
 
-        self.kt = self._data.ints.hcore.new_tensor(
+        self.kt = self._data.ints.hcore.matrix.new_tensor(
             self.scf_options.get("etemp", defaults.ETEMP) * K2AU
         )
 
@@ -346,7 +348,7 @@ class BaseSCF:
                 charges.dipole = zeros
                 self._data.charges["dipole"] = charges.dipole_shape
 
-            if self._data.ints.quad is not None:
+            if self._data.ints.quadrupole is not None:
                 shp = (*self._data.numbers.shape, defaults.QP_SHAPE)
                 zeros = torch.zeros(shp, device=self.device, dtype=self.dtype)
                 charges.quad = zeros
@@ -534,7 +536,7 @@ class BaseSCF:
             )
 
             return mulliken.get_atomic_populations(
-                self._data.ints.overlap, density, self._data.ihelp
+                self._data.ints.overlap.matrix, density, self._data.ihelp
             )
 
         raise ValueError(f"Unknown partitioning mode '{mode}'.")
@@ -784,15 +786,15 @@ class BaseSCF:
             # dimension to the back, which is required for the reduction to
             # atom-resolution.
             charges.dipole = self._data.ihelp.reduce_orbital_to_atom(
-                -torch.einsum("...ik,...mki->...im", density, ints.dipole),
+                -torch.einsum("...ik,...mki->...im", density, ints.dipole.matrix),
                 extra=True,
                 dim=-2,
             )
 
         # Atomic quadrupole moments (quadrupole charges)
-        if ints.quad is not None:
+        if ints.quadrupole is not None:
             charges.quad = self._data.ihelp.reduce_orbital_to_atom(
-                -torch.einsum("...ik,...mki->...im", density, ints.quad),
+                -torch.einsum("...ik,...mki->...im", density, ints.quadrupole.matrix),
                 extra=True,
                 dim=-2,
             )
@@ -814,11 +816,11 @@ class BaseSCF:
             Hamiltonian matrix.
         """
 
-        h1 = self._data.ints.hcore
+        h1 = self._data.ints.hcore.matrix
 
         if potential.mono is not None:
             v = potential.mono.unsqueeze(-1) + potential.mono.unsqueeze(-2)
-            h1 = h1 - (0.5 * self._data.ints.overlap * v)
+            h1 = h1 - (0.5 * self._data.ints.overlap.matrix * v)
 
         def add_vmp_to_h1(h1: Tensor, mpint: Tensor, vmp: Tensor) -> Tensor:
             # TODO: Place better?
@@ -836,14 +838,16 @@ class BaseSCF:
         if potential.dipole is not None:
             dpint = self._data.ints.dipole
             if dpint is not None:
-                h1 = add_vmp_to_h1(h1, dpint, potential.dipole)
+                if dpint.matrix is not None:
+                    h1 = add_vmp_to_h1(h1, dpint.matrix, potential.dipole)
 
         # print("potential.dipole", potential.dipole)
         # print("potential.quad", potential.quad)
         if potential.quad is not None:
-            qpint = self._data.ints.quad
+            qpint = self._data.ints.dipole
             if qpint is not None:
-                h1 = add_vmp_to_h1(h1, qpint, potential.quad)
+                if qpint.matrix is not None:
+                    h1 = add_vmp_to_h1(h1, qpint.matrix, potential.quad)
 
         return h1
 
@@ -900,7 +904,7 @@ class BaseSCF:
         """
         Returns the shape of the density matrix in this engine.
         """
-        return self._data.ints.hcore.shape
+        return self._data.ints.hcore.matrix.shape
 
     @property
     def dtype(self) -> torch.dtype:
@@ -940,7 +944,7 @@ class BaseXSCF(BaseSCF, EditableModule):
             Overlap matrix.
         """
 
-        smat = self._data.ints.overlap
+        smat = self._data.ints.overlap.matrix
 
         zeros = torch.eq(smat, 0)
         mask = torch.all(zeros, dim=-1) & torch.all(zeros, dim=-2)
@@ -1066,7 +1070,7 @@ class BaseTSCF(BaseSCF):
             Overlap matrix.
         """
 
-        smat = self._data.ints.overlap
+        smat = self._data.ints.overlap.matrix
 
         zeros = torch.eq(smat, 0)
         mask = torch.all(zeros, dim=-1) & torch.all(zeros, dim=-2)

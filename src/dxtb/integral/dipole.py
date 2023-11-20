@@ -1,8 +1,5 @@
 """
-Overlap
-=======
-
-The GFNn-xTB overlap matrix.
+Dipole integral.
 """
 from __future__ import annotations
 
@@ -10,19 +7,16 @@ import torch
 
 from .._types import Any, Literal
 from .base import BaseIntegral
-from .driver.libcint import OverlapLibcint
-from .driver.pytorch import OverlapPytorch
-
-__all__ = ["Overlap"]
+from .driver.libcint import DipoleLibcint
 
 
-class Overlap(BaseIntegral):
+class Dipole(BaseIntegral):
     """
-    Overlap integral from atomic orbitals.
+    Dipole integral from atomic orbitals.
     """
 
-    integral: OverlapLibcint | OverlapPytorch
-    """Instance of actual overlap integral type."""
+    integral: DipoleLibcint
+    """Instance of actual dipole integral type."""
 
     def __init__(
         self,
@@ -35,8 +29,11 @@ class Overlap(BaseIntegral):
 
         # Determine which overlap class to instantiate based on the type
         if driver == "libcint":
-            self.integral = OverlapLibcint(device=device, dtype=dtype, **kwargs)
+            self.integral = DipoleLibcint(device=device, dtype=dtype, **kwargs)
         elif driver == "pytorch":
-            self.integral = OverlapPytorch(device=device, dtype=dtype, **kwargs)
+            raise NotImplementedError(
+                "PyTorch versions of multipole moments are not implemented. "
+                "Use `libcint` as integral driver."
+            )
         else:
             raise ValueError(f"Unknown integral driver '{driver}'.")

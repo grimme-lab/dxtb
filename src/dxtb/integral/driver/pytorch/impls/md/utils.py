@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Literal, Tensor
+from ......_types import Literal, Tensor
 
 
 def get_pairs(x: Tensor, i: int) -> Tensor:

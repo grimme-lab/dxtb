@@ -9,7 +9,7 @@ from __future__ import annotations
 import torch
 
 from .._types import Tensor
-from .chemistry import ATOMIC_MASSES, ZVALENCE, NCORE
+from .chemistry import ATOMIC_MASSES, NCORE, ZVALENCE
 from .defaults import TORCH_DTYPE
 from .units import GMOL2AU
 
@@ -42,7 +42,7 @@ def get_atomic_masses(
     Tensor
         Atomic masses.
     """
-    m = ATOMIC_MASSES[numbers].to(device).type(dtype)
+    m = ATOMIC_MASSES[numbers].to(device=device, dtype=dtype)
     return m * GMOL2AU if atomic_units is True else m
 
 
@@ -69,7 +69,7 @@ def get_zvalence(
     Tensor
         Charges of valence shell of atoms.
     """
-    return ZVALENCE[numbers].to(device).type(dtype)
+    return ZVALENCE[numbers].to(device=device, dtype=dtype)
 
 
 def get_ncore(
@@ -95,4 +95,4 @@ def get_ncore(
     Tensor
         Number of core electrons.
     """
-    return NCORE[numbers].to(device).type(dtype)
+    return NCORE[numbers].to(device=device, dtype=dtype)

@@ -145,7 +145,7 @@ class SelfConsistentFieldFull(BaseTSCF):
         overlap = self._data.ints.overlap
         hcore = self._data.ints.hcore
         dipole = self._data.ints.dipole
-        quad = self._data.ints.quad
+        quad = self._data.ints.quadrupole
 
         # indices for systems in batch, required for culling
         idxs = torch.arange(guess.size(0))
@@ -343,8 +343,8 @@ class SelfConsistentFieldFull(BaseTSCF):
             self._data.ints.hcore = hcore
             if self._data.ints.dipole is not None and dipole is not None:
                 self._data.ints.dipole = dipole
-            if self._data.ints.quad is not None and quad is not None:
-                self._data.ints.quad = quad
+            if self._data.ints.quadrupole is not None and quad is not None:
+                self._data.ints.quadrupole = quad
             self._data.ints.run_checks = True
 
             # reset IndexHelper and caches which were culled as well

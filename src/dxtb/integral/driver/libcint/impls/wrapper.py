@@ -18,8 +18,8 @@ try:
 except ImportError:
     pass
 
-from ..._types import Iterator, Tensor
-from ...basis import AtomCGTOBasis, CGTOBasis, IndexHelper
+from ....._types import Iterator, Tensor
+from .....basis import AtomCGTOBasis, CGTOBasis, IndexHelper
 from .utils import NDIM, int2ctypes, memoize_method, np2ctypes
 
 __all__ = ["LibcintWrapper"]

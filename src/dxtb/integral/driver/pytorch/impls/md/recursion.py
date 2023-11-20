@@ -12,9 +12,9 @@ from math import pi, sqrt
 
 import torch
 
-from ..._types import Any, Callable, Tensor
-from ...utils import IntegralTransformError
-from ..trafo import NLM_CART, TRAFO
+from ......_types import Any, Callable, Tensor
+from ......utils.exceptions import IntegralTransformError
+from .trafo import NLM_CART, TRAFO
 
 sqrtpi3 = sqrt(pi) ** 3
 
@@ -293,9 +293,10 @@ class EFunction(torch.autograd.Function):
         return xij_bar, rpi_bar, rpj_bar, None
 
 
+# TODO-3.11: Fix typing with unpacking
 e_function: Callable[
     [Tensor, Tensor, Tensor, tuple[tuple[int, ...], int, int, Tensor, Tensor]], Tensor
-] = EFunction.apply  # type:ignore
+] = EFunction.apply
 
 
 def mmd_recursion(
@@ -357,7 +358,10 @@ def mmd_recursion(
     rpj = -vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
 
     E = e_function(
-        xij, rpi, rpj, (*vec.shape, ai.shape[-2], aj.shape[-1], li + 1, lj + 1)
+        xij,
+        rpi,
+        rpj,
+        (*vec.shape, ai.shape[-2], aj.shape[-1], li + 1, lj + 1),  # type: ignore
     )
 
     for mli in range(s3d.shape[-2]):
@@ -454,7 +458,10 @@ def mmd_recursion_gradient(
 
     # calc E function for all (ai, aj)-combis for all vecs in batch
     E = e_function(
-        0.5 * oij, rpi, rpj, (*vec.shape, ai.shape[-2], aj.shape[-1], li + 2, lj + 2)
+        0.5 * oij,
+        rpi,
+        rpj,
+        (*vec.shape, ai.shape[-2], aj.shape[-1], li + 2, lj + 2),  # type: ignore
     )
     dE = e_function_derivative(E, alpha[0], li, lj)
 

@@ -86,11 +86,9 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     # dmu_dr = num_grad(calc, numbers, positions, charge).view(3, -1)
     # print("dmu_dr\n", dmu_dr)
-
     # freqs, modes = calc.vibration(numbers, positions, charge, True)
     # dmu_dq = torch.matmul(dmu_dr, modes)  # (ndim, nfreqs)
     # ir_ints = torch.einsum("...df,...df->...f", dmu_dq, dmu_dq)  # (nfreqs,)
-
     # print(ir_ints)
     # print(ir_ints * units.AU2KMMOL)
     # print(ir_ints * 974.8801118351438)

@@ -12,7 +12,7 @@ import functools
 
 import numpy as np
 
-from ..._types import Any, Callable, T
+from ....._types import Any, Callable, T
 
 __all__ = ["NDIM", "np2ctypes", "int2ctypes"]
 

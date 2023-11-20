@@ -7,6 +7,7 @@ A fully differentiable extended tight-binding package.
 
 from __future__ import annotations
 
+from . import io
 from .__version__ import __version__
 from .basis import Basis, IndexHelper
 from .bond import guess_bond_length, guess_bond_order
@@ -20,4 +21,3 @@ from .mol import molecule
 from .param import GFN1_XTB, Param
 from .solvation import GeneralizedBorn
 from .xtb import Calculator, Hamiltonian
-from . import io

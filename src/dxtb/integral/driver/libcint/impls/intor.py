@@ -19,7 +19,7 @@ try:
 except ImportError:
     pass
 
-from ..._types import Callable, Tensor
+from ....._types import Callable, Tensor
 from .namemanager import IntorNameManager
 from .utils import int2ctypes, np2ctypes
 from .wrapper import LibcintWrapper

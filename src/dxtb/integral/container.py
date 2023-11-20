@@ -6,30 +6,17 @@ A class that acts as a container for integrals.
 """
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-
 import torch
 
-from .._types import Tensor, TensorLike
+from .._types import Any, Literal, Tensor, TensorLike
+from ..basis import IndexHelper
 from ..constants import defaults
+from ..integral import Dipole, Overlap, Quadrupole
+from ..param import Param
+from ..xtb.h0 import Hamiltonian
+from .driver import IntDriver, IntDriverLibcint, IntDriverPytorch
 
 __all__ = ["Integrals"]
-
-
-class BaseIntegral(ABC):
-    """
-    Base class for all integrals.
-    """
-
-    @abstractmethod
-    def build(self, positions: Tensor, **kwargs) -> Tensor:
-        ...
-
-
-class DipoleIntegral(BaseIntegral, TensorLike):
-    """
-    Dipole integral from libcint.
-    """
 
 
 class Integrals(TensorLike):
@@ -37,51 +24,131 @@ class Integrals(TensorLike):
     Integral container.
     """
 
-    __slots__ = ["_hcore", "_overlap", "_snorm", "_dipole", "_quad", "_run_checks"]
+    __slots__ = [
+        "numbers",
+        "par",
+        "ihelp",
+        "_hcore",
+        "_overlap",
+        "_dipole",
+        "_quadrupole",
+        "_run_checks",
+        "_driver",
+    ]
 
     def __init__(
         self,
-        hcore: Tensor | None = None,
-        overlap: Tensor | None = None,
-        dipole: Tensor | None = None,
-        quad: Tensor | None = None,
+        numbers: Tensor,
+        par: Param,
+        ihelp: IndexHelper,
+        *,
+        hcore: Hamiltonian | None = None,
+        overlap: Overlap | None = None,
+        dipole: Dipole | None = None,
+        quadrupole: Quadrupole | None = None,
+        driver: Literal["libcint", "pytorch"] = "libcint",
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ):
         super().__init__(device, dtype)
 
+        self.numbers = numbers
+        self.par = par
+        self.ihelp = ihelp
         self._hcore = hcore
         self._overlap = overlap
         self._dipole = dipole
-        self._quad = quad
+        self._quadrupole = quadrupole
         self._run_checks = True
 
+        # Determine which driver class to instantiate
+        if driver == "libcint":
+            self._driver = IntDriverLibcint(
+                numbers, par, ihelp, device=device, dtype=dtype
+            )
+        elif driver == "pytorch":
+            self._driver = IntDriverPytorch(
+                numbers, par, ihelp, device=device, dtype=dtype
+            )
+        else:
+            raise ValueError(f"Unknown integral driver '{driver}'.")
+
+    # Integral driver
+
     @property
-    def hcore(self) -> Tensor:
+    def driver(self) -> IntDriver:
+        if self._driver is None:
+            raise ValueError("No integral driver provided.")
+        return self._driver
+
+    @driver.setter
+    def driver(self, driver: IntDriver) -> None:
+        self._driver = driver
+
+    def setup_driver(self, positions: Tensor, **kwargs: Any) -> None:
+        if self.driver is not None:
+            raise RuntimeError("Integral driver is already setup.")
+
+        self.driver.setup(self.numbers, positions, self.par, self.ihelp, **kwargs)
+
+    # Core Hamiltonian
+
+    @property
+    def hcore(self) -> Hamiltonian:
         if self._hcore is None:
             raise ValueError("No Core Hamiltonian provided.")
         return self._hcore
 
     @hcore.setter
-    def hcore(self, hcore: Tensor) -> None:
+    def hcore(self, hcore: Hamiltonian) -> None:
         self._hcore = hcore
         self.checks()
 
+    def build_hcore(self, positions: Tensor, **kwargs) -> Tensor:
+        # overlap integral required
+        ovlp = self.overlap.integral
+        if ovlp.matrix is None or ovlp.norm is None:
+            self.build_overlap(positions, **kwargs)
+
+        cn = kwargs.pop("cn", None)
+        if cn is None:
+            from ..data import cov_rad_d3
+            from ..ncoord import exp_count, get_coordination_number
+
+            rcov = cov_rad_d3[self.numbers].to(self.device)
+            cn = get_coordination_number(self.numbers, positions, exp_count, rcov)
+
+        return self.hcore.build(positions, ovlp.matrix, cn)
+
+    # overlap
+
     @property
-    def overlap(self) -> Tensor:
+    def overlap(self) -> Overlap:
         if self._overlap is None:
             raise ValueError("No overlap integral provided.")
         return self._overlap
 
     @overlap.setter
-    def overlap(self, overlap: Tensor) -> None:
+    def overlap(self, overlap: Overlap) -> None:
         self._overlap = overlap
         self.checks()
 
-    # multipole
+    def build_overlap(self, positions: Tensor, **kwargs: Any) -> Tensor:
+        if self.driver is None:
+            self.setup_driver(positions, **kwargs)
+
+        return self.overlap.build(self.driver)
+
+    def grad_overlap(self, positions: Tensor, **kwargs) -> Tensor:
+        if self.driver is None:
+            self.setup_driver(positions, **kwargs)
+
+        return self.overlap.integral.get_gradient(self.driver, **kwargs)
+
+    # dipole
 
     @property
-    def dipole(self) -> Tensor | None:
+    def dipole(self) -> Dipole | None:
         """
         Dipole integral of shape (3, nao, nao).
 
@@ -90,18 +157,53 @@ class Integrals(TensorLike):
         Tensor | None
             Dipole integral if set, else `None`.
         """
-        # TODO: Decide
-        # if self._dipole is None:
-        # raise ValueError("No dipole integral provided.")
         return self._dipole
 
     @dipole.setter
-    def dipole(self, dipole: Tensor) -> None:
+    def dipole(self, dipole: Dipole) -> None:
         self._dipole = dipole
         self.checks()
 
+    def build_dipole(self, positions: Tensor, shift: bool = True, **kwargs: Any):
+        if self.driver is None:
+            self.setup_driver(positions, **kwargs)
+
+        if self.dipole is None:
+            raise RuntimeError("Dipole integral not initialized.")
+
+        # shortcut for overlap integral
+        ovlp = self.overlap.integral
+
+        # overlap integral required for norm and shifting
+        if ovlp.matrix is None or ovlp.norm is None:
+            self.build_overlap(positions, **kwargs)
+
+        # build
+        self.dipole.integral.norm = ovlp.norm
+        self.dipole.build(self.driver)
+
+        # shift to rj (requires overlap integral)
+        if shift is True:
+            # TODO: ihelp.spread_atom_to_orbital(positions, extra=True)
+            # spread positions to orbital-resolution for contraction
+            from ..utils.batch import index
+
+            pos = index(
+                index(positions, self.ihelp.shells_to_atom),
+                self.ihelp.orbitals_to_shell,
+            )
+
+            self.dipole.integral.shift_r0_rj(
+                ovlp.matrix,
+                pos,
+            )
+
+        return self.dipole.integral.matrix
+
+    # quadrupole
+
     @property
-    def quad(self) -> Tensor | None:
+    def quadrupole(self) -> Quadrupole | None:
         """
         Quadrupole integral of shape (6/9, nao, nao).
 
@@ -110,15 +212,67 @@ class Integrals(TensorLike):
         Tensor | None
             Quadrupole integral if set, else `None`.
         """
-        # TODO: Decide
-        # if self._quad is None:
-        # raise ValueError("No quadrupole integral provided.")
-        return self._quad
+        return self._quadrupole
 
-    @quad.setter
-    def quad(self, quad: Tensor) -> None:
-        self._quad = quad
+    @quadrupole.setter
+    def quadrupole(self, quadrupole: Quadrupole) -> None:
+        self._quadrupole = quadrupole
         self.checks()
+
+    def build_quadrupole(
+        self,
+        positions: Tensor,
+        shift: bool = True,
+        traceless: bool = True,
+        **kwargs: Any,
+    ):
+        # check all instantiations
+        if self.driver is None:
+            self.setup_driver(positions, **kwargs)
+
+        if self.quadrupole is None:
+            raise RuntimeError("Quadrupole integral not initialized.")
+
+        # shortcut for overlap integral
+        ovlp = self.overlap.integral
+
+        # overlap integral required for norm and shifting
+        if ovlp.matrix is None or ovlp.norm is None:
+            self.build_overlap(positions, **kwargs)
+
+        # build
+        self.quadrupole.integral.norm = ovlp.norm
+        self.quadrupole.build(self.driver)
+
+        # make traceless before shifting
+        if traceless is True:
+            self.quadrupole.integral.traceless()
+
+        # shift to rj (requires overlap and dipole integral)
+        if shift is True:
+            if traceless is not True:
+                raise RuntimeError("Quadrupole moment must be tracelesss for shifting.")
+
+            if self.dipole is None:
+                self.build_dipole(positions, **kwargs)
+            assert self.dipole is not None
+
+            # TODO: ihelp.spread_atom_to_orbital(positions, extra=True)
+            # spread positions to orbital-resolution for contraction
+            from ..utils.batch import index
+
+            pos = index(
+                index(positions, self.ihelp.shells_to_atom),
+                self.ihelp.orbitals_to_shell,
+            )
+
+            self.quadrupole.integral.shift_r0r0_rjrj(
+                self.dipole.integral.matrix,
+                ovlp.matrix,
+                pos,
+            )
+
+        return self.quadrupole.integral.matrix
 
     # checks
 
@@ -156,8 +310,9 @@ class Integrals(TensorLike):
         nao = None
         batch_size = None
 
-        for name in ["hcore", "overlap", "dipole", "quad"]:
-            tensor = getattr(self, "_" + name)
+        for name in ["hcore", "overlap", "dipole", "quadrupole"]:
+            cls = getattr(self, "_" + name)
+            tensor = cls.integral.matrix
             if tensor is None:
                 continue
 
@@ -206,8 +361,8 @@ class Integrals(TensorLike):
                     f"{defaults.QP_SHAPE}. Got {tensor.shape[-3]}."
                 )
 
-    def __repr__(self) -> str:
-        attributes = ["hcore", "overlap", "dipole", "quad"]
+    def __str__(self) -> str:
+        attributes = ["hcore", "overlap", "dipole", "quadrupole"]
         details = []
 
         for attr in attributes:
@@ -216,3 +371,6 @@ class Integrals(TensorLike):
             details.append(f"\n  {attr}={shape_str}")
 
         return f"Integrals({','.join(details)}\n)"
+
+    def __repr__(self) -> str:
+        return str(self)

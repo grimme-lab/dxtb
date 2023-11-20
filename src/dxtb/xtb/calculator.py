@@ -4,13 +4,13 @@ Base calculator for the extended tight-binding model.
 from __future__ import annotations
 
 import warnings
-from functools import wraps
 
 import torch
 
+from .. import integral as ints
 from .. import ncoord, properties, scf
-from .._types import Any, Callable, Sequence, Tensor, TensorLike
-from ..basis import Basis, IndexHelper
+from .._types import Any, Sequence, Tensor, TensorLike
+from ..basis import IndexHelper
 from ..classical import (
     Classical,
     ClassicalList,
@@ -23,34 +23,14 @@ from ..constants import defaults
 from ..coulomb import new_es2, new_es3
 from ..data import cov_rad_d3
 from ..dispersion import Dispersion, new_dispersion
-from ..integral import Integrals, Overlap, OverlapLibcint
-from ..integral import libcint as intor
-from ..integral import multipole as mpint
 from ..interaction import Charges, Interaction, InteractionList, Potential
 from ..interaction.external import field as efield
 from ..param import Param, get_elem_angular
 from ..utils import Timers, ToleranceWarning, batch
-from ..utils.misc import is_basis_list
 from ..wavefunction import filling
 from ..xtb.h0 import Hamiltonian
-from .h0 import Hamiltonian
 
 __all__ = ["Calculator", "Result"]
-
-
-def use_intdriver(driver_arg: int = 1) -> Callable:
-    def decorator(fcn: Callable) -> Callable:
-        @wraps(fcn)
-        def wrap(self: Calculator, *args: Any, **kwargs: Any) -> Any:
-            if self.opts["int_driver"] == "libcint":
-                self.init_intdriver(args[driver_arg])
-
-            result = fcn(self, *args, **kwargs)
-            return result
-
-        return wrap
-
-    return decorator
 
 
 class Result(TensorLike):
@@ -88,7 +68,7 @@ class Result(TensorLike):
     hamiltonian_grad: Tensor
     """Nuclear gradient of Hamiltonian matrix."""
 
-    integrals: Integrals
+    integrals: ints.Integrals
     """Collection of integrals including overlap and core Hamiltonian (H0)."""
 
     interaction_grad: Tensor
@@ -234,8 +214,8 @@ class Calculator(TensorLike):
         numbers: Tensor,
         par: Param,
         *,
-        classical: Sequence[Classical] | None = None,
-        interaction: Sequence[Interaction] | None = None,
+        classical: Sequence[Classical] = [],
+        interaction: Sequence[Interaction] = [],
         opts: dict[str, Any] | None = None,
         timer: Timers | None = None,
         device: torch.device | None = None,
@@ -333,10 +313,7 @@ class Calculator(TensorLike):
             else None
         )
 
-        if interaction is None:
-            self.interactions = InteractionList(es2, es3)
-        else:
-            self.interactions = InteractionList(es2, es3, *interaction)
+        self.interactions = InteractionList(es2, es3, *interaction)
 
         # setup non-self-consistent contributions
         halogen = (
@@ -355,40 +332,31 @@ class Calculator(TensorLike):
             else None
         )
 
-        if classical is None:
-            self.classicals = ClassicalList(
-                halogen, dispersion, repulsion, timer=self.timer
-            )
-        else:
-            self.classicals = ClassicalList(
-                halogen, dispersion, repulsion, *classical, timer=self.timer
-            )
+        self.classicals = ClassicalList(
+            halogen, dispersion, repulsion, *classical, timer=self.timer
+        )
 
-        # integral-related setup
-
-        self.hamiltonian = Hamiltonian(numbers, par, self.ihelp, **dd)
-        self.integrals = Integrals(**dd)
-
-        # integrals do not work with a batched IndexHelper
-        if self.batched:
-            self._ihelp = [
-                IndexHelper.from_numbers(
-                    batch.deflate(number), get_elem_angular(par.element)
-                )
-                for number in numbers
-            ]
-
-        if self.opts["int_driver"] == "libcint":
-            self.overlap = OverlapLibcint(numbers, par, self.ihelp, **dd)
-            self.basis = Basis(numbers, par, self.ihelp, **dd)
-        else:
-            self.overlap = Overlap(numbers, par, self.ihelp, **dd)
+        #############
+        # INTEGRALS #
+        #############
 
         # figure out integral level from interactions
-        self.set_intlevel(opts.get("int_level", defaults.INTLEVEL))
+        self.intlevel = opts.get("int_level", defaults.INTLEVEL)
 
-        self._intdriver = None
-        self._positions = None
+        # setup integral
+        self.integrals = ints.Integrals(numbers, par, self.ihelp, **dd)
+
+        if self.intlevel >= ints.INTLEVEL_OVERLAP:
+            self.integrals.hcore = Hamiltonian(numbers, par, self.ihelp, **dd)
+            self.integrals.overlap = ints.Overlap(**dd)
+
+        # TODO: This should get some extra validation by the config
+        # (avoid PyTorch integral driver)
+        if self.intlevel >= ints.INTLEVEL_DIPOLE:
+            self.integrals.dipole = ints.Dipole(**dd)
+
+        if self.intlevel >= ints.INTLEVEL_QUADRUPOLE:
+            self.integrals.quadrupole = ints.Quadrupole(**dd)
 
         self.timer.stop("setup calculator")
 
@@ -414,53 +382,20 @@ class Calculator(TensorLike):
 
         self.opts["fwd_options"][name] = value
 
-    def set_intlevel(self, value: int) -> None:
+    @property
+    def intlevel(self) -> Tensor:
+        if self.opts["int_level"] is None:
+            raise ValueError("No overlap integral provided.")
+        return self.opts["int_level"]
+
+    @intlevel.setter
+    def intlevel(self, value: int) -> None:
+        # TODO: ElectricField should be variable (label)
         if "ElectricField" in self.interactions.labels:
             value = max(2, value)
 
         self.opts["int_level"] = value
 
-    def driver(
-        self, positions: Tensor
-    ) -> intor.LibcintWrapper | list[intor.LibcintWrapper]:
-        # save current positions to check
-        self._positions = positions.detach().clone()
-
-        atombases = self.basis.create_dqc(positions)
-        assert isinstance(atombases, list)
-
-        if self.batched:
-            return [
-                intor.LibcintWrapper(ab, ihelp)
-                for ab, ihelp in zip(atombases, self._ihelp)
-                if is_basis_list(ab)
-            ]
-
-        assert is_basis_list(atombases)
-        return intor.LibcintWrapper(atombases, self.ihelp)
-
-    def init_intdriver(self, positions: Tensor):
-        if self.opts["int_driver"] != "libcint":
-            return
-
-        diff = 0
-
-        # create intor.LibcintWrapper if it does not exist yet
-        if self._intdriver is None:
-            self._intdriver = self.driver(positions)
-        else:
-            assert self._positions is not None
-
-            # rebuild driver if positions changed
-            diff = (self._positions - positions).abs().sum()
-            if diff > 1e-10:
-                self._intdriver = self.driver(positions)
-
-        if isinstance(self.overlap, OverlapLibcint):
-            if self.overlap.driver is None or diff > 1e-10:
-                self.overlap.driver = self._intdriver
-
-    @use_intdriver()
     def singlepoint(
         self,
         numbers: Tensor,
@@ -491,57 +426,30 @@ class Calculator(TensorLike):
 
         # SELF-CONSISTENT FIELD PROCEDURE
         if not any(x in ["all", "scf"] for x in self.opts["exclude"]):
-            # Overlap
+            # overlap integral
             self.timer.start("Overlap")
-            overlap = self.overlap.build(positions)
-            self.integrals.overlap = overlap
+            self.integrals.build_overlap(positions)
             self.timer.stop("Overlap")
-            torch.set_printoptions(precision=7)
-            print()
 
-            if self.opts["int_driver"] == "libcint":
-                # dipole integral and general setup
-                if self.opts["int_level"] > 1:
-                    assert isinstance(self.overlap, OverlapLibcint)
-                    assert self._intdriver is not None
-                    s = self.integrals.overlap
+            # dipole integral
+            if self.intlevel >= ints.INTLEVEL_DIPOLE:
+                self.timer.start("Dipole Integral")
+                self.integrals.build_dipole(positions)
+                self.timer.stop("Dipole Integral")
 
-                    # TODO: ihelp.spread_atom_to_orbital(positions, extra=True)
-                    # spread positions to orbital-resolution for contraction
-                    pos = batch.index(
-                        batch.index(positions, self.ihelp.shells_to_atom),
-                        self.ihelp.orbitals_to_shell,
-                    )
+            # quadrupole integral
+            if self.intlevel >= ints.INTLEVEL_QUADRUPOLE:
+                self.timer.start("Quadrupole Integral")
+                self.integrals.build_quadrupole(positions)
+                self.timer.stop("Quadrupole Integral")
 
-                    self.timer.start("Dipole Integral")
-
-                    r0 = mpint.dipole(self._intdriver, self.overlap)
-                    rj = mpint.shift_r0_rj(r0, s, pos)
-                    self.integrals.dipole = rj
-
-                    self.timer.stop("Dipole Integral")
-
-                    # quadrupole integral
-                    if self.opts["int_level"] > 2:
-                        self.timer.start("Quadrupole Integral")
-
-                        # TODO: Handle 3x3 case (should we even? Enforce traceless?)
-                        qpint = mpint.quadrupole(self._intdriver, self.overlap)
-                        if defaults.QP_SHAPE == 6:
-                            r0r0 = mpint.traceless(qpint)
-                            qpint = mpint.shift_r0r0_rjrj(r0r0, r0, s, pos)
-                        self.integrals.quad = qpint
-
-                        self.timer.stop("Quadrupole Integral")
-
-            # Hamiltonian
+            # Core Hamiltonian integral (requires overlap internally!)
             self.timer.start("h0", "Core Hamiltonian")
             rcov = cov_rad_d3[numbers].to(self.device)
             cn = ncoord.get_coordination_number(
                 numbers, positions, ncoord.exp_count, rcov
             )
-            hcore = self.hamiltonian.build(positions, overlap, cn)
-            self.integrals.hcore = hcore
+            hcore = self.integrals.build_hcore(positions, cn=cn)
             self.timer.stop("h0")
 
             # SCF
@@ -602,7 +510,7 @@ class Calculator(TensorLike):
                     # print(result.interaction_grad)
 
                 self.timer.start("ograd", "Overlap Gradient")
-                result.overlap_grad = self.overlap.get_gradient(positions)
+                result.overlap_grad = self.integrals.grad_overlap(positions)
                 self.timer.stop("ograd")
 
                 self.timer.start("hgrad", "Hamiltonian Gradient")
@@ -613,7 +521,7 @@ class Calculator(TensorLike):
                 )
                 dedcn, dedr = self.hamiltonian.get_gradient(
                     positions,
-                    overlap,
+                    self.integrals.overlap.matrix,
                     result.overlap_grad,
                     result.density,
                     wmat,
@@ -720,7 +628,7 @@ class Calculator(TensorLike):
 
         count = 1
 
-        step = 1.0e-6
+        step = 1.0e-5
         for i in range(numbers.shape[0]):
             for j in range(3):
                 pos[i, j] += step
@@ -778,7 +686,7 @@ class Calculator(TensorLike):
             # )
             qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
             dip = properties.moments.dipole(
-                qat, positions, result.density, self.integrals.dipole
+                qat, positions, result.density, self.integrals.dipole.matrix
             )
         else:
             # retrieve the efield interaction and the field
@@ -1029,6 +937,7 @@ def _get_tensor_memory() -> float:
     float
         Memory in MiB
     """
+    import gc
 
     # obtaining all the tensor objects from the garbage collector
     tensor_objs = [obj for obj in gc.get_objects() if isinstance(obj, Tensor)]

@@ -50,8 +50,8 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     assert pytest.approx(s, abs=tol) == s.mT
 
     from dxtb.basis import Basis
-    from dxtb.integral import libcint as intor
     from dxtb.integral import OverlapLibcint
+    from dxtb.integral import libcint as intor
 
     bas = Basis(numbers, par, ihelp, **dd)
     atombases = bas.create_dqc(positions)
