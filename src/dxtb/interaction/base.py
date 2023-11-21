@@ -344,7 +344,6 @@ class Interaction(TensorLike):
         Tensor
             Energy vector for each atomic quadrupole moment.
         """
-        print("base quad energy")
         return torch.zeros_like(charges).sum(-1)
 
     def get_gradient(

@@ -8,7 +8,7 @@ import torch
 
 from dxtb._types import DD, Callable, Literal, Tensor
 from dxtb.basis import Basis, IndexHelper
-from dxtb.integral.overlap import overlap_gradient
+from dxtb.integral.driver.pytorch.impls import overlap_gradient
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 

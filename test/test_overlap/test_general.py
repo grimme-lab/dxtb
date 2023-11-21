@@ -4,12 +4,10 @@ General tests for the Overlap class.
 from __future__ import annotations
 
 import pytest
-import torch
 
-from dxtb.integral import Overlap
+from dxtb.integral.driver.pytorch import OverlapPytorch as Overlap
 
 
 def test_fail_uplo() -> None:
-    dummy = torch.tensor([])
     with pytest.raises(ValueError):
-        Overlap(dummy, dummy, dummy, uplo=None)  # type: ignore
+        Overlap(uplo=None)  # type: ignore

@@ -340,3 +340,13 @@ class LibcintWrapper:
             op = CINT().CINTcgto_cart
         bas = self.atm_bas_env[1]
         return op(int2ctypes(sh), np2ctypes(bas))
+
+    def __str__(self) -> str:
+        name = self.__class__.__name__
+        nat = self.natoms
+        nsh = len(self)
+        nao = self.nao()
+        return f"{name}(nat={nat}, nsh={nsh}, nao={nao})"
+
+    def __repr__(self) -> str:
+        return str(self)

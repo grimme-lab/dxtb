@@ -11,14 +11,12 @@ import pytest
 import torch
 
 from dxtb._types import DD
-from dxtb.basis import IndexHelper
-from dxtb.integral import Overlap
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 from dxtb.utils import batch
 
 from ..utils import load_from_npz
 from .samples import samples
+from .utils import calc_overlap
 
 ref_overlap = np.load("test/test_overlap/overlap.npz")
 
@@ -37,9 +35,7 @@ def test_single(dtype: torch.dtype, name: str):
     positions = sample["positions"].to(**dd)
     ref = load_from_npz(ref_overlap, name, dtype)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    overlap = Overlap(numbers, par, ihelp, uplo="n", **dd)
-    s = overlap.build(positions)
+    s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
 
     assert pytest.approx(s, rel=tol, abs=tol) == ref
 
@@ -65,9 +61,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         )
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    overlap = Overlap(numbers, par, ihelp, uplo="n", **dd)
-    s = overlap.build(positions)
+    s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
 
     assert pytest.approx(s, abs=tol) == s.mT
     assert pytest.approx(s, abs=tol) == ref

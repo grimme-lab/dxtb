@@ -296,10 +296,10 @@ class EFunction(torch.autograd.Function):
 # TODO-3.11: Fix typing with unpacking
 e_function: Callable[
     [Tensor, Tensor, Tensor, tuple[tuple[int, ...], int, int, Tensor, Tensor]], Tensor
-] = EFunction.apply
+] = EFunction.apply  # type: ignore
 
 
-def mmd_recursion(
+def md_recursion(
     angular: tuple[Tensor, Tensor],
     alpha: tuple[Tensor, Tensor],
     coeff: tuple[Tensor, Tensor],
@@ -393,7 +393,7 @@ def e_function_derivative(e, ai, li, lj):
     return de
 
 
-def mmd_recursion_gradient(
+def md_recursion_gradient(
     angular: tuple[Tensor, Tensor],
     alpha: tuple[Tensor, Tensor],
     coeff: tuple[Tensor, Tensor],

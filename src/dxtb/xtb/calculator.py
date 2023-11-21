@@ -26,9 +26,8 @@ from ..dispersion import Dispersion, new_dispersion
 from ..interaction import Charges, Interaction, InteractionList, Potential
 from ..interaction.external import field as efield
 from ..param import Param, get_elem_angular
-from ..utils import Timers, ToleranceWarning, batch
+from ..utils import Timers, ToleranceWarning
 from ..wavefunction import filling
-from ..xtb.h0 import Hamiltonian
 
 __all__ = ["Calculator", "Result"]
 
@@ -181,9 +180,6 @@ class Calculator(TensorLike):
     The calculator holds the atomic orbital basis set for defining the Hamiltonian
     and the overlap matrix.
     """
-
-    hamiltonian: Hamiltonian
-    """Core Hamiltonian definition."""
 
     dispersion: Dispersion | None = None
     """Dispersion definition."""
@@ -347,11 +343,11 @@ class Calculator(TensorLike):
         self.integrals = ints.Integrals(numbers, par, self.ihelp, **dd)
 
         if self.intlevel >= ints.INTLEVEL_OVERLAP:
-            self.integrals.hcore = Hamiltonian(numbers, par, self.ihelp, **dd)
+            self.integrals.hcore = ints.Hamiltonian(numbers, par, self.ihelp, **dd)
             self.integrals.overlap = ints.Overlap(**dd)
 
         # TODO: This should get some extra validation by the config
-        # (avoid PyTorch integral driver)
+        # (avoid PyTorch integral driver for multipole integrals)
         if self.intlevel >= ints.INTLEVEL_DIPOLE:
             self.integrals.dipole = ints.Dipole(**dd)
 
@@ -456,7 +452,7 @@ class Calculator(TensorLike):
             self.timer.start("SCF")
 
             # Obtain the reference occupations and total number of electrons
-            n0 = self.hamiltonian.get_occupation()
+            n0 = self.integrals.hcore.integral.get_occupation()
             nel = torch.sum(n0, -1) - torch.sum(chrg, -1)
 
             # get alpha and beta electrons and occupation
@@ -519,7 +515,7 @@ class Calculator(TensorLike):
                     result.occupation.sum(-2),
                     emo=result.emo,
                 )
-                dedcn, dedr = self.hamiltonian.get_gradient(
+                dedcn, dedr = self.integrals.hcore.integral.get_gradient(
                     positions,
                     self.integrals.overlap.matrix,
                     result.overlap_grad,

@@ -12,13 +12,13 @@ from ..data import atomic_rad
 from ..interaction import Potential
 from ..param import Param, get_elem_param, get_elem_valence, get_pair_param
 from ..utils import cdist, real_pairs, symmetrize
-from .h0 import Hamiltonian
+from .base import BaseHamiltonian
 
 PAD = -1
 """Value used for padding of tensors."""
 
 
-class GFN1Hamiltonian(Hamiltonian):
+class GFN1Hamiltonian(BaseHamiltonian):
     """Hamiltonian from parametrization."""
 
     numbers: Tensor
@@ -77,14 +77,10 @@ class GFN1Hamiltonian(Hamiltonian):
         dtype: torch.dtype | None = None,
         **_,
     ) -> None:
-        super().__init__(device, dtype)
-        self.numbers = numbers
-        self.unique = torch.unique(numbers)
-        self.par = par
-        self.ihelp = ihelp
+        super().__init__(numbers, par, ihelp, device, dtype)
 
         if self.par.hamiltonian is None:
-            raise RuntimeError("Parametrization does not specify a Hamiltonian.")
+            raise RuntimeError("Parametrization does not specify Hamiltonian.")
 
         # atom-resolved parameters
         self.rad = atomic_rad[self.unique].type(self.dtype).to(device=self.device)
@@ -139,20 +135,6 @@ class GFN1Hamiltonian(Hamiltonian):
             )
         ):
             raise ValueError("All tensors must be on the same device")
-
-    def get_occupation(self) -> Tensor:
-        """
-        Obtain the reference occupation numbers for each orbital.
-        """
-
-        refocc = self.ihelp.spread_ushell_to_orbital(self.refocc)
-        orb_per_shell = self.ihelp.spread_shell_to_orbital(
-            self.ihelp.orbitals_per_shell
-        )
-
-        return torch.where(
-            orb_per_shell != 0, refocc / orb_per_shell, refocc.new_tensor(0)
-        )
 
     def _get_elem_param(self, key: str) -> Tensor:
         """Obtain element parameters for species.

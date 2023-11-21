@@ -11,7 +11,9 @@ from torch.autograd.functional import jacobian
 
 from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper, slater_to_gauss
-from dxtb.integral import Overlap, mmd
+from dxtb.integral.driver.pytorch import IntDriverPytorch as IntDriver
+from dxtb.integral.driver.pytorch import OverlapPytorch as Overlap
+from dxtb.integral.driver.pytorch.impls import md
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 from dxtb.utils import t2int
@@ -37,7 +39,7 @@ def test_ss(dtype: torch.dtype):
         [0.13695892585203528, 0.47746994997214642, 0.20729096231197164], **dd
     )
     vec = rndm.detach().requires_grad_(True)
-    s = mmd.overlap_gto((l1, l2), (alpha1, alpha2), (coeff1, coeff2), vec)
+    s = md.overlap_gto((l1, l2), (alpha1, alpha2), (coeff1, coeff2), vec)
 
     # autograd
     gradient = torch.autograd.grad(
@@ -59,10 +61,10 @@ def test_ss(dtype: torch.dtype):
     step = 1e-6
     for i in range(3):
         rndm[i] += step
-        sr = mmd.overlap_gto((l1, l2), (alpha1, alpha2), (coeff1, coeff2), rndm)
+        sr = md.overlap_gto((l1, l2), (alpha1, alpha2), (coeff1, coeff2), rndm)
 
         rndm[i] -= 2 * step
-        sl = mmd.overlap_gto((l1, l2), (alpha1, alpha2), (coeff1, coeff2), rndm)
+        sl = md.overlap_gto((l1, l2), (alpha1, alpha2), (coeff1, coeff2), rndm)
 
         rndm[i] += step
         g = 0.5 * (sr - sl) / step
@@ -81,17 +83,20 @@ def test_overlap_jacobian(dtype: torch.dtype, name: str):
     sample = samples[name]
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
+
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    overlap = Overlap(numbers, par, ihelp, **dd)
+    driver = IntDriver(numbers, par, ihelp, **dd)
+    overlap = Overlap(uplo="n", **dd)
 
     # numerical gradient
-    ngrad = calc_numerical_gradient(overlap, positions)  # [natm, norb, norb, 3]
+    ngrad = calc_numerical_gradient(overlap, driver, positions)  # [natm, norb, norb, 3]
 
     # autograd jacobian
     positions.requires_grad_(True)
 
     def func(pos: Tensor) -> Tensor:
-        return overlap.build(pos)
+        driver.setup(pos)
+        return overlap.build(driver)
 
     # [norb, norb, natm, 3]
     # j = jacobian(func, argnums=0)(positions)
@@ -106,20 +111,24 @@ def test_overlap_jacobian(dtype: torch.dtype, name: str):
     positions.detach_()
 
 
-def calc_numerical_gradient(overlap: Overlap, positions: Tensor) -> Tensor:
+def calc_numerical_gradient(
+    overlap: Overlap, driver: IntDriver, positions: Tensor
+) -> Tensor:
     step = 1.0e-4
     natm = positions.shape[0]
-    norb = t2int(overlap.ihelp.orbitals_per_shell.sum())
+    norb = t2int(driver.ihelp.orbitals_per_shell.sum())
     gradient = positions.new_zeros((natm, norb, norb, 3))
 
     # coordinates shift preferred to orbitals shift
     for i in range(natm):
         for j in range(3):
             positions[i, j] += step
-            sr = overlap.build(positions)  # [norb, norb]
+            driver.setup(positions)
+            sr = overlap.build(driver)  # [norb, norb]
 
             positions[i, j] -= 2 * step
-            sl = overlap.build(positions)
+            driver.setup(positions)
+            sl = overlap.build(driver)
 
             positions[i, j] += step
             gradient[i, :, :, j] = 0.5 * (sr - sl) / step
@@ -127,7 +136,7 @@ def calc_numerical_gradient(overlap: Overlap, positions: Tensor) -> Tensor:
     return gradient
 
 
-def compare_mmd(
+def compare_md(
     cgtoi: Tensor,
     cgtoj: Tensor,
     vec: Tensor,
@@ -135,7 +144,7 @@ def compare_mmd(
     ovlp_grad_ref: Tensor,
     dtype: torch.dtype,
 ) -> None:
-    """Helper method to compare MMD overlap and gradient with references.
+    """Helper method to compare MD overlap and gradient with references.
     Parameters
     ----------
     cgtoi : Tensor
@@ -161,16 +170,16 @@ def compare_mmd(
     alpha_j, coeff_j = slater_to_gauss(ngj, nj, lj, torch.tensor(1.0, dtype=dtype))
 
     # overlap
-    ovlp = mmd.overlap_gto((li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec)
+    ovlp = md.overlap_gto((li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec)
     assert pytest.approx(ovlp, abs=atol) == ovlp_ref
 
     # overlap gradient with explicit E-coefficients
-    ovlp_exp, ovlp_grad_exp = mmd.explicit.mmd_explicit_gradient(
+    ovlp_exp, ovlp_grad_exp = md.explicit.md_explicit_gradient(
         (li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec
     )
 
     # overlap gradient with recursion
-    ovlp_rec, ovlp_grad_rec = mmd.recursion.mmd_recursion_gradient(
+    ovlp_rec, ovlp_grad_rec = md.recursion.md_recursion_gradient(
         (li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec
     )
     ovlp_rec = torch.squeeze(ovlp_rec, 0)
@@ -196,7 +205,7 @@ def compare_mmd(
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_overlap_grad_single_1s1s(dtype: torch.dtype):
     """
-    Comparison of single gaussians. Reference values taken from tblite MMD
+    Comparison of single gaussians. Reference values taken from tblite MD
     implementation.
     """
 
@@ -211,13 +220,13 @@ def test_overlap_grad_single_1s1s(dtype: torch.dtype):
         [[0.0000000000000000, 0.0000000000000000, -0.27637559271358614]]
     )
 
-    compare_mmd(cgtoi, cgtoj, vec, ovlp_ref, ovlp_grad_ref, dtype)
+    compare_md(cgtoi, cgtoj, vec, ovlp_ref, ovlp_grad_ref, dtype)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_overlap_grad_single_1s2s(dtype: torch.dtype):
     """
-    Comparison of single gaussians. Reference values taken from tblite MMD
+    Comparison of single gaussians. Reference values taken from tblite MD
     implementation.
     """
 
@@ -232,14 +241,14 @@ def test_overlap_grad_single_1s2s(dtype: torch.dtype):
         [0.0000000000000000, 0.0000000000000000, -0.14526133860726220]
     ).reshape([1, 3])
 
-    compare_mmd(cgtoi, cgtoj, vec, ovlp_ref, ovlp_grad_ref, dtype)
+    compare_md(cgtoi, cgtoj, vec, ovlp_ref, ovlp_grad_ref, dtype)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_overlap_grad_single_3s4s(dtype: torch.dtype):
     """
     Comparison of single gaussians.
-    Reference values taken from tblite MMD implementation.
+    Reference values taken from tblite MD implementation.
     """
 
     # define CGTOs (by ng, n, l)
@@ -251,14 +260,14 @@ def test_overlap_grad_single_3s4s(dtype: torch.dtype):
     ovlp_ref = torch.tensor([[0.893829]])
     ovlp_grad_ref = torch.tensor([0.000000, 0.000000, -0.056111]).reshape([1, 3])
 
-    compare_mmd(cgtoi, cgtoj, vec, ovlp_ref, ovlp_grad_ref, dtype)
+    compare_md(cgtoi, cgtoj, vec, ovlp_ref, ovlp_grad_ref, dtype)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_overlap_grad_single_1s2p(dtype: torch.dtype):
     """
     Comparison of single gaussians.
-    Reference values taken from tblite MMD
+    Reference values taken from tblite MD
     implementation.
     """
 
@@ -277,13 +286,13 @@ def test_overlap_grad_single_1s2p(dtype: torch.dtype):
         ]
     )
 
-    compare_mmd(cgtoi, cgtoj, vec, ovlp_ref, ovlp_grad_ref, dtype)
+    compare_md(cgtoi, cgtoj, vec, ovlp_ref, ovlp_grad_ref, dtype)
 
 
 @pytest.mark.parametrize("dtype", [torch.float])
 def test_overlap_grad_single_2p2p(dtype: torch.dtype):
     """
-    Comparison of single gaussians. Reference values taken from tblite MMD
+    Comparison of single gaussians. Reference values taken from tblite MD
     implementation.
     """
 
@@ -362,13 +371,13 @@ def test_overlap_grad_single_2p2p(dtype: torch.dtype):
         ]
     )
 
-    compare_mmd(cgtoi, cgtoj, vec, ovlp_ref, ovlp_grad_ref, dtype)
+    compare_md(cgtoi, cgtoj, vec, ovlp_ref, ovlp_grad_ref, dtype)
 
 
 @pytest.mark.parametrize("dtype", [torch.float])
 def test_overlap_grad_single_3d3d(dtype: torch.dtype):
     """
-    Comparison of single gaussians. Reference values taken from tblite MMD
+    Comparison of single gaussians. Reference values taken from tblite MD
     implementation.
     """
 
@@ -547,13 +556,13 @@ def test_overlap_grad_single_3d3d(dtype: torch.dtype):
         ]
     )
 
-    compare_mmd(cgtoi, cgtoj, vec, ovlp_ref, ovlp_grad_ref, dtype)
+    compare_md(cgtoi, cgtoj, vec, ovlp_ref, ovlp_grad_ref, dtype)
 
 
 @pytest.mark.parametrize("dtype", [torch.float])
 def test_overlap_grad_single_3d4d(dtype: torch.dtype):
     """
-    Comparison of single gaussians. Reference values taken from tblite MMD
+    Comparison of single gaussians. Reference values taken from tblite MD
     implementation.
     """
 
@@ -732,13 +741,13 @@ def test_overlap_grad_single_3d4d(dtype: torch.dtype):
         ]
     )
 
-    compare_mmd(cgtoi, cgtoj, vec, ovlp_ref, ovlp_grad_ref, dtype)
+    compare_md(cgtoi, cgtoj, vec, ovlp_ref, ovlp_grad_ref, dtype)
 
 
 @pytest.mark.parametrize("dtype", [torch.float])
 def test_overlap_grad_single_4f4f(dtype: torch.dtype):
     """
-    Comparison of single gaussians. Reference values taken from tblite MMD
+    Comparison of single gaussians. Reference values taken from tblite MD
     implementation.
     """
 
@@ -1065,4 +1074,4 @@ def test_overlap_grad_single_4f4f(dtype: torch.dtype):
         ]
     )
 
-    compare_mmd(cgtoi, cgtoj, vec, ovlp_ref, ovlp_grad_ref, dtype)
+    compare_md(cgtoi, cgtoj, vec, ovlp_ref, ovlp_grad_ref, dtype)

@@ -6,8 +6,8 @@ from __future__ import annotations
 import torch
 
 from ...._types import Tensor
+from ...base import IntDriver
 from .base_multipole import MultipoleLibcint
-from .driver import IntDriver
 
 __all__ = ["QuadrupoleLibcint"]
 
@@ -19,7 +19,7 @@ class QuadrupoleLibcint(MultipoleLibcint):
 
     def build(self, driver: IntDriver) -> Tensor:
         """
-        Overlap calculation using libcint.
+        Calculation of quadrupole integral using libcint.
 
         Parameters
         ----------
@@ -29,14 +29,14 @@ class QuadrupoleLibcint(MultipoleLibcint):
         Returns
         -------
         Tensor
-            Dipole integral.
+            Qquadrupole integral.
         """
-        self.matrix = self.multipole(driver, "r0")
+        self.matrix = self.multipole(driver, "r0r0")
         return self.matrix
 
     def traceless(self) -> Tensor:
         """
-        Make a quadrupole tensor traceless.
+        Make a quadrupole (integral) tensor traceless.
 
         Parameters
         ----------
@@ -64,30 +64,31 @@ class QuadrupoleLibcint(MultipoleLibcint):
         zx zy zz       6 7 8      6 7 8
         """
 
-        if self.matrix.shape[-3] == 9:
-            # (..., 9, norb, norb) -> (..., 3, 3, norb, norb)
-            shp = self.matrix.shape
-            qpint = self.matrix.view(*shp[:-3], 3, 3, *shp[-2:])
-
-            # trace: (..., 3, 3, norb, norb) -> (..., norb, norb)
-            tr = 0.5 * torch.einsum("...iijk->...jk", qpint)
-
-            self.matrix = torch.stack(
-                [
-                    1.5 * qpint[..., 0, 0, :, :] - tr,  # xx
-                    1.5 * qpint[..., 1, 0, :, :],  # yx
-                    1.5 * qpint[..., 1, 1, :, :] - tr,  # yy
-                    1.5 * qpint[..., 2, 0, :, :],  # zx
-                    1.5 * qpint[..., 2, 1, :, :],  # zy
-                    1.5 * qpint[..., 2, 2, :, :] - tr,  # zz
-                ],
-                dim=-3,
+        if self.matrix.shape[-3] != 9:
+            raise RuntimeError(
+                "Quadrupole integral must be a tensor tensor of shape "
+                f"'(9, nao, nao)' but is {self.matrix.shape}."
             )
-            return self.matrix
 
-        raise RuntimeError(
-            f"Quadrupole integral must be 3x3 tensor but is {self.matrix.shape}"
+        # (..., 9, norb, norb) -> (..., 3, 3, norb, norb)
+        shp = self.matrix.shape
+        qpint = self.matrix.view(*shp[:-3], 3, 3, *shp[-2:])
+
+        # trace: (..., 3, 3, norb, norb) -> (..., norb, norb)
+        tr = 0.5 * torch.einsum("...iijk->...jk", qpint)
+
+        self.matrix = torch.stack(
+            [
+                1.5 * qpint[..., 0, 0, :, :] - tr,  # xx
+                1.5 * qpint[..., 1, 0, :, :],  # yx
+                1.5 * qpint[..., 1, 1, :, :] - tr,  # yy
+                1.5 * qpint[..., 2, 0, :, :],  # zx
+                1.5 * qpint[..., 2, 1, :, :],  # zy
+                1.5 * qpint[..., 2, 2, :, :] - tr,  # zz
+            ],
+            dim=-3,
         )
+        return self.matrix
 
     def shift_r0r0_rjrj(self, r0: Tensor, overlap: Tensor, pos: Tensor) -> Tensor:
         """

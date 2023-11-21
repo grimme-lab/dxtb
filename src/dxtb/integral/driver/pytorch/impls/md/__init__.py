@@ -12,5 +12,5 @@ written down.
 from . import explicit, recursion
 
 # set default
-from .explicit import mmd_explicit as overlap_gto
-from .explicit import mmd_explicit_gradient as overlap_gto_grad
+from .explicit import md_explicit as overlap_gto
+from .explicit import md_explicit_gradient as overlap_gto_grad

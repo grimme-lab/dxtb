@@ -8,8 +8,7 @@ import torch
 from ...._types import Literal, Tensor
 from ....constants import defaults, units
 from ....utils import batch, symmetrize
-from ...base import BaseIntegralImplementation
-from ..base import IntDriver
+from ...base import BaseIntegralImplementation, IntDriver
 from .driver import IntDriverPytorch
 from .impls import OverlapFunction
 

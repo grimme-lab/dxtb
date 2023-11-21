@@ -6,7 +6,7 @@ from __future__ import annotations
 from ...._types import Tensor
 from ....basis import Basis, IndexHelper
 from ....utils import is_basis_list
-from ..base import IntDriver
+from ...base import IntDriver
 from .impls import LibcintWrapper
 
 
@@ -25,7 +25,7 @@ class IntDriverLibcint(IntDriver):
             Cartesian coordinates of all atoms in the system (nat, 3).
         """
         # setup `Basis` class if not already done
-        if self.basis is None:
+        if self._basis is None:
             self.basis = Basis(
                 self.numbers,
                 self.par,
@@ -36,7 +36,6 @@ class IntDriverLibcint(IntDriver):
 
         # create atomic basis set in libcint format
         atombases = self.basis.create_dqc(positions)
-        assert isinstance(atombases, list)
 
         if self.ihelp.batched:
             from ....param.util import get_elem_angular
@@ -50,6 +49,7 @@ class IntDriverLibcint(IntDriver):
                 for number in self.numbers
             ]
 
+            assert isinstance(atombases, list)
             self.drv = [
                 LibcintWrapper(ab, ihelp)
                 for ab, ihelp in zip(atombases, _ihelp)
@@ -58,3 +58,6 @@ class IntDriverLibcint(IntDriver):
         else:
             assert is_basis_list(atombases)
             self.drv = LibcintWrapper(atombases, self.ihelp)
+
+        # setting positions signals complete setup
+        self._positions = positions

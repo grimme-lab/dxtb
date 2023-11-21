@@ -6,8 +6,8 @@ from __future__ import annotations
 import torch
 
 from ...._types import Tensor
+from ...base import IntDriver
 from .base_multipole import MultipoleLibcint
-from .driver import IntDriver
 
 __all__ = ["DipoleLibcint"]
 
@@ -19,7 +19,7 @@ class DipoleLibcint(MultipoleLibcint):
 
     def build(self, driver: IntDriver) -> Tensor:
         """
-        Overlap calculation using libcint.
+        Calculation of dipole integral using libcint.
 
         Parameters
         ----------

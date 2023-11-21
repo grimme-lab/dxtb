@@ -8,13 +8,13 @@ import torch
 from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
 from dxtb._types import Callable, Tensor
-from dxtb.integral import mmd
+from dxtb.integral.driver.pytorch.impls import md
 
 fcoeff_list = [
-    mmd.explicit.ecoeffs_s,
-    mmd.explicit.ecoeffs_p,
-    mmd.explicit.ecoeffs_d,
-    mmd.explicit.ecoeffs_f,
+    md.explicit.ecoeffs_s,
+    md.explicit.ecoeffs_p,
+    md.explicit.ecoeffs_d,
+    md.explicit.ecoeffs_f,
 ]
 
 tol = 1e-7

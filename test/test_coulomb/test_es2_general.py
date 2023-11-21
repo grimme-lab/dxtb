@@ -8,6 +8,7 @@ from __future__ import annotations
 import pytest
 import torch
 
+from dxtb._types import DD
 from dxtb.basis import IndexHelper
 from dxtb.coulomb import secondorder as es2
 from dxtb.interaction import Charges
@@ -46,7 +47,8 @@ def test_grad_fail() -> None:
     charges = torch.randn(6)
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
 
-    es = es2.new_es2(numbers, GFN1_XTB)
+    dd: DD = {"device": positions.device, "dtype": positions.dtype}
+    es = es2.new_es2(numbers, GFN1_XTB, **dd)
     assert es is not None
 
     cache = es.get_cache(numbers, positions, ihelp=ihelp)

@@ -75,7 +75,7 @@ def skip_test_single_alt(dtype: torch.dtype, name: str) -> None:
     ref_jac = sample["gfn1_grad"].to(**dd)
     ref_hess = reshape_fortran(
         sample["gfn1_hess"].to(**dd),
-        torch.Size((numbers.shape[0], 3, numbers.shape[0], 3)),
+        torch.Size(2 * (numbers.shape[0], 3)),
     )
 
     # gradient

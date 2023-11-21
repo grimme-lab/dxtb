@@ -19,6 +19,7 @@ from dxtb.utils import batch
 
 from ..utils import load_from_npz
 from .samples import samples
+from .utils import calc_overlap
 
 ref_overlap = np.load("test/test_overlap/overlap.npz")
 
@@ -36,16 +37,15 @@ def test_single(dtype: torch.dtype, name: str):
     positions = sample["positions"].to(**dd)
     ref = load_from_npz(ref_overlap, name, dtype)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    overlap = Overlap(numbers, par, ihelp, uplo="n", cutoff=None, **dd)
-    s = overlap.build(positions)
-
-    overlap_uplo = Overlap(numbers, par, ihelp, **dd)
-    s_uplo = overlap_uplo.build(positions)
+    s = calc_overlap(numbers, positions, par, dd, uplo="n")
+    s_lower = calc_overlap(numbers, positions, par, dd, uplo="l")
+    s_upper = calc_overlap(numbers, positions, par, dd, uplo="u")
 
     assert pytest.approx(ref, rel=tol, abs=tol) == s
-    assert pytest.approx(ref, rel=tol, abs=tol) == s_uplo
-    assert pytest.approx(s_uplo, rel=tol, abs=tol) == s
+    assert pytest.approx(ref, rel=tol, abs=tol) == s_lower
+    assert pytest.approx(ref, rel=tol, abs=tol) == s_upper
+    assert pytest.approx(s, rel=tol, abs=tol) == s_lower
+    assert pytest.approx(s, rel=tol, abs=tol) == s_upper
 
 
 @pytest.mark.parametrize("dtype", [torch.float])
@@ -69,13 +69,12 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         )
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    overlap = Overlap(numbers, par, ihelp, uplo="n", **dd)
-    s = overlap.build(positions)
-
-    overlap_uplo = Overlap(numbers, par, ihelp, **dd)
-    s_uplo = overlap_uplo.build(positions)
+    s = calc_overlap(numbers, positions, par, dd, uplo="n")
+    s_lower = calc_overlap(numbers, positions, par, dd, uplo="l")
+    s_upper = calc_overlap(numbers, positions, par, dd, uplo="u")
 
     assert pytest.approx(ref, rel=tol, abs=tol) == s
-    assert pytest.approx(ref, rel=tol, abs=tol) == s_uplo
-    assert pytest.approx(s_uplo, rel=tol, abs=tol) == s
+    assert pytest.approx(ref, rel=tol, abs=tol) == s_lower
+    assert pytest.approx(ref, rel=tol, abs=tol) == s_upper
+    assert pytest.approx(s, rel=tol, abs=tol) == s_lower
+    assert pytest.approx(s, rel=tol, abs=tol) == s_upper

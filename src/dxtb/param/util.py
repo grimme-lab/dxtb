@@ -121,7 +121,12 @@ def get_elem_param(
         for val in vals:
             l.append(val)
 
-    return torch.tensor(l, device=device, dtype=dtype, requires_grad=requires_grad)
+    return torch.tensor(
+        l,
+        device=device,
+        dtype=dtype,
+        requires_grad=requires_grad,
+    )
 
 
 def get_elem_angular(par_element: dict[str, Element]) -> dict[int, list[int]]:

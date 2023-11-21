@@ -10,8 +10,8 @@ import torch
 
 from ...._types import Tensor
 from ....utils import batch
-from ...base import BaseIntegralImplementation
-from .driver import IntDriver, IntDriverLibcint
+from ...base import BaseIntegralImplementation, IntDriver
+from .driver import IntDriverLibcint
 from .impls import LibcintWrapper, int1e
 
 

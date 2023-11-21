@@ -6,11 +6,10 @@ from __future__ import annotations
 import pytest
 import torch
 
+from dxtb._types import DD
 from dxtb.basis import slater_to_gauss
 from dxtb.basis.ortho import gaussian_integral, orthogonalize
-from dxtb.integral import overlap_gto
-
-# from dxtb._types import DD
+from dxtb.integral.driver.pytorch.impls.md import overlap_gto
 
 device = None
 
@@ -19,7 +18,7 @@ device = None
 def test_ortho_1s_2s(dtype: torch.dtype):
     """Test orthogonality of GFN1-xTB's H1s and H2s orbitals"""
     tols = {"abs": 1e-6, "rel": 1e-6, "nan_ok": False}
-    dd = {"device": device, "dtype": dtype}
+    dd: DD = {"device": device, "dtype": dtype}
 
     # azimuthal quantum number of s-orbital
     l = torch.tensor(0)

@@ -5,8 +5,9 @@ from __future__ import annotations
 
 import time
 from functools import wraps
+from typing import cast
 
-from .._types import Any, Callable
+from .._types import Any, Callable, TypeVar
 from .exceptions import TimerError
 
 
@@ -190,7 +191,10 @@ class Timers:
         print("")
 
 
-def timings(f: Callable[..., Any]) -> Any:  # pragma: no cover
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def timings(repeats: int = 1) -> Callable[[F], F]:  # pragma: no cover
     """
     Decorator that prints execution time of a function.
 
@@ -205,12 +209,27 @@ def timings(f: Callable[..., Any]) -> Any:  # pragma: no cover
         Return value of input function.
     """
 
-    @wraps(f)
-    def wrap(*args: Any, **kwargs: Any) -> Any:
-        ts = time.time()
-        result = f(*args, **kwargs)
-        te = time.time()
-        print(f"func '{f.__name__}' took: {te-ts:2.4f} sec")
-        return result
+    def decorator(f: F) -> F:
+        @wraps(f)
+        def wrap(*args: Any, **kwargs: Any) -> Any:
+            if repeats < 1:
+                return f(*args, **kwargs)
 
-    return wrap
+            times = []
+            for _ in range(repeats):
+                ts = time.perf_counter()
+                result = f(*args, **kwargs)
+                te = time.perf_counter()
+                times.append(te - ts)
+                print(f"{te - ts:2.4f}", end=" ")
+
+            print()
+            if repeats > 1:
+                avg_time = sum(times) / len(times)
+                print(f"Average ({repeats}) of {f.__name__}: {avg_time:2.4f} sec")
+
+            return result  # type: ignore
+
+        return cast(F, wrap)
+
+    return decorator

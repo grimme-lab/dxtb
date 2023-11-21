@@ -10,13 +10,14 @@ import torch
 
 from dxtb._types import DD
 from dxtb.basis import Basis, IndexHelper
-from dxtb.integral import Overlap, overlap_gto
+from dxtb.integral.driver.pytorch.impls.md import overlap_gto
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 from dxtb.utils import batch
 
 from ..utils import load_from_npz
 from .samples import samples
+from .utils import calc_overlap
 
 ref_overlap = np.load("test/test_overlap/overlap.npz")
 
@@ -34,11 +35,9 @@ def test_single(dtype: torch.dtype, name: str):
     positions = sample["positions"].to(**dd)
     ref = load_from_npz(ref_overlap, name, dtype)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    overlap = Overlap(numbers, par, ihelp, **dd)
-    s = overlap.build(positions)
+    s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
 
-    assert pytest.approx(s, rel=tol, abs=tol) == ref
+    assert pytest.approx(ref, rel=tol, abs=tol) == s
 
 
 @pytest.mark.parametrize("dtype", [torch.float])
@@ -51,9 +50,17 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack((sample1["numbers"].to(device), sample2["numbers"]))
+    numbers = batch.pack(
+        (
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
+        )
+    )
     positions = batch.pack(
-        (sample1["positions"].to(**dd), sample2["positions"].to(**dd))
+        (
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
+        )
     )
     ref = batch.pack(
         (
@@ -62,12 +69,10 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         )
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    overlap = Overlap(numbers, par, ihelp, **dd)
-    s = overlap.build(positions)
+    s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
 
     assert pytest.approx(s, abs=tol) == s.mT
-    assert pytest.approx(s, abs=tol) == ref
+    assert pytest.approx(ref, abs=tol) == s
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -77,13 +82,13 @@ def test_overlap_higher_orbitals(dtype: torch.dtype):
 
     dd: DD = {"device": device, "dtype": dtype}
 
-    vec = torch.tensor([0.0, 0.0, 1.4], dtype=dtype)
+    vec = torch.tensor([0.0, 0.0, 1.4], **dd)
 
     # arbitrary element (Rn)
     number = torch.tensor([86])
 
     ihelp = IndexHelper.from_numbers(number, get_elem_angular(par.element))
-    bas = Basis(number, par, ihelp)
+    bas = Basis(number, par, ihelp, **dd)
     alpha, coeff = bas.create_cgtos()
 
     ai = alpha[0]

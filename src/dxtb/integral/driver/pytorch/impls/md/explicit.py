@@ -33,12 +33,12 @@ from ......utils.exceptions import (
 )
 from .trafo import NLM_CART, TRAFO
 
-__all__ = ["mmd_explicit", "mmd_explicit_gradient"]
+__all__ = ["md_explicit", "md_explicit_gradient"]
 
 sqrtpi3 = sqrt(pi) ** 3
 
 
-def mmd_explicit(
+def md_explicit(
     angular: tuple[Tensor, Tensor],
     alpha: tuple[Tensor, Tensor],
     coeff: tuple[Tensor, Tensor],
@@ -163,7 +163,7 @@ def mmd_explicit(
     return o
 
 
-def mmd_explicit_gradient(
+def md_explicit_gradient(
     angular: tuple[Tensor, Tensor],
     alpha: tuple[Tensor, Tensor],
     coeff: tuple[Tensor, Tensor],

@@ -198,7 +198,8 @@ class Basis(TensorLike):
             umap = torch.unique(orbs, return_inverse=True)[1]
 
             # subtract 1 to mark masked values and avoid off-by-one-error
-            if mask is not None and not mask.any():
+            # (mask is active if it contains at least one `False` value)
+            if mask is not None and (~mask).any():
                 umap -= 1
         else:
             raise ValueError("Unknown option for `uplo`.")

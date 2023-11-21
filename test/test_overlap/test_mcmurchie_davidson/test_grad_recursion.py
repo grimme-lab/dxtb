@@ -6,7 +6,7 @@ from __future__ import annotations
 import torch
 from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
-from dxtb.integral import mmd
+from dxtb.integral.driver.pytorch.impls import md
 
 
 def test_gradcheck_efunction(dtype: torch.dtype = torch.double) -> None:
@@ -72,16 +72,16 @@ def test_gradcheck_efunction(dtype: torch.dtype = torch.double) -> None:
     shape = (1, 3, 4, 4, torch.tensor(1), torch.tensor(1))
 
     assert gradcheck(
-        mmd.recursion.EFunction.apply,
+        md.recursion.EFunction.apply,  # type: ignore
         (xij.clone().requires_grad_(True), rpi, rpj, shape),  # type: ignore
     )
     assert gradgradcheck(
-        mmd.recursion.EFunction.apply,
+        md.recursion.EFunction.apply,  # type: ignore
         (xij.clone().requires_grad_(True), rpi, rpj, shape),  # type: ignore
     )
 
     assert gradcheck(
-        mmd.recursion.EFunction.apply,
+        md.recursion.EFunction.apply,  # type: ignore
         (
             xij,
             rpi.clone().requires_grad_(True),
@@ -90,7 +90,7 @@ def test_gradcheck_efunction(dtype: torch.dtype = torch.double) -> None:
         ),  # type: ignore
     )
     assert gradgradcheck(
-        mmd.recursion.EFunction.apply,
+        md.recursion.EFunction.apply,  # type: ignore
         (
             xij,
             rpi.clone().requires_grad_(True),

@@ -8,13 +8,13 @@ import torch
 from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
 from dxtb._types import Callable, Tensor
-from dxtb.integral import mmd
+from dxtb.integral.driver.pytorch.impls import md
 
 tol = 1e-7
 
 
 def gradchecker(
-    dtype: torch.dtype, mmd_func, angular: tuple[Tensor, Tensor]
+    dtype: torch.dtype, md_func, angular: tuple[Tensor, Tensor]
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
     alpha = (
@@ -46,7 +46,7 @@ def gradchecker(
     )
 
     def func(v: Tensor) -> Tensor:
-        return mmd_func(angular, alpha, coeff, v)
+        return md_func(angular, alpha, coeff, v)
 
     return func, vec
 
@@ -54,31 +54,31 @@ def gradchecker(
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize(
-    "mmd_func", [mmd.explicit.mmd_explicit, mmd.recursion.mmd_recursion]
+    "md_func", [md.explicit.md_explicit, md.recursion.md_recursion]
 )
 @pytest.mark.parametrize("li", [0, 1, 2, 3])
 @pytest.mark.parametrize("lj", [0, 1, 2, 3])
-def test_grad(dtype: torch.dtype, mmd_func, li: int, lj: int) -> None:
+def test_grad(dtype: torch.dtype, md_func, li: int, lj: int) -> None:
     """
     Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradcheck`.
     """
     angular = (torch.tensor(li), torch.tensor(lj))
-    func, diffvars = gradchecker(dtype, mmd_func, angular)
+    func, diffvars = gradchecker(dtype, md_func, angular)
     assert gradcheck(func, diffvars, atol=tol)
 
 
 # FIXME: Recursive version fails
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("mmd_func", [mmd.explicit.mmd_explicit])
+@pytest.mark.parametrize("md_func", [md.explicit.md_explicit])
 @pytest.mark.parametrize("li", [0, 1, 2, 3])
 @pytest.mark.parametrize("lj", [0, 1, 2, 3])
-def test_gradgrad(dtype: torch.dtype, mmd_func, li: int, lj: int) -> None:
+def test_gradgrad(dtype: torch.dtype, md_func, li: int, lj: int) -> None:
     """
     Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
     angular = (torch.tensor(li), torch.tensor(lj))
-    func, diffvars = gradchecker(dtype, mmd_func, angular)
+    func, diffvars = gradchecker(dtype, md_func, angular)
     assert gradgradcheck(func, diffvars, atol=tol)

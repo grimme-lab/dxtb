@@ -7,7 +7,7 @@ import torch
 
 from ...._types import Any, Tensor
 from ....basis import Basis, IndexHelper
-from ..base import IntDriver
+from ...base import IntDriver
 from .impls import OverlapAG, OverlapFunction, overlap_gradient
 
 
@@ -28,7 +28,7 @@ class IntDriverPytorch(IntDriver):
         """
         if not self.ihelp.batched:
             # setup `Basis` class if not already done
-            if self.basis is None:
+            if self._basis is None:
                 self.basis = Basis(
                     torch.unique(self.numbers),
                     self.par,
@@ -82,5 +82,5 @@ class IntDriverPytorch(IntDriver):
         self.setup_eval_funcs()
 
     def setup_eval_funcs(self) -> None:
-        self.eval_ovlp: OverlapFunction = OverlapAG.apply
+        self.eval_ovlp: OverlapFunction = OverlapAG.apply  # type: ignore
         self.eval_ovlp_grad: OverlapFunction = overlap_gradient
