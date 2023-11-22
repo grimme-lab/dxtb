@@ -13,14 +13,13 @@ import torch
 
 from dxtb._types import DD, Tensor
 from dxtb.basis import Basis, IndexHelper
-from dxtb.integral.libcint import LibcintWrapper, intor
+from dxtb.integral.driver.libcint import impls as intor
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 from dxtb.utils import is_basis_list, numpy_to_tensor
 
 try:
     from dxtb.mol.external._pyscf import M
-
 except ImportError:
     M = False
 
@@ -51,7 +50,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     assert is_basis_list(atombases)
 
     # dxtb's libcint integral
-    wrapper = LibcintWrapper(atombases, ihelp)
+    wrapper = intor.LibcintWrapper(atombases, ihelp)
     dxtb_dpint = intor.int1e("j", wrapper)
 
     # pyscf reference integral

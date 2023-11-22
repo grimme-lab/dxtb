@@ -13,7 +13,7 @@ from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 from dxtb.utils import batch
 from dxtb.wavefunction import mulliken
-from dxtb.xtb import Hamiltonian
+from dxtb.xtb import GFN1Hamiltonian as Hamiltonian
 
 from .samples import samples
 

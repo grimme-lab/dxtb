@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 
 import torch
 
-from .._types import Any, Tensor, TensorLike
+from .._types import Any, Literal, Tensor, TensorLike
 from ..basis import Basis, IndexHelper
 from ..param import Param
 
@@ -30,7 +30,17 @@ class IntDriver(TensorLike):
     label: str
     """Identifier label for integral driver."""
 
-    __slots__ = ["numbers", "par", "ihelp", "label", "_basis", "_positions"]
+    family: Literal["libcint", "pytorch"]
+    """Label for integral implementation family"""
+
+    __slots__ = [
+        "numbers",
+        "par",
+        "ihelp",
+        "label",
+        "_basis",
+        "_positions",
+    ]
 
     def __init__(
         self,
@@ -102,7 +112,7 @@ class IntDriver(TensorLike):
         """
 
     def __str__(self) -> str:
-        return f"{self.label}({self.__dict__})"
+        return f"{self.__class__.__name__}({self.__dict__})"
 
     def __repr__(self) -> str:
         return str(self)
@@ -181,22 +191,15 @@ class BaseIntegral(IntegralABC, TensorLike):
         return self.integral.build(driver)
 
     @property
-    def matrix(self) -> Tensor:
+    def matrix(self) -> Tensor | None:
         """
         Shortcut for matrix representation of the integral.
 
         Returns
         -------
-        Tensor
-            Integral matrix.
-
-        Raises
-        ------
-        RuntimeError
-            Integral has not been calculated yet.
+        Tensor | None
+            Integral matrix or `None` if not calculated yet.
         """
-        if self.integral._matrix is None:
-            raise RuntimeError("Integral matrix has not been calculated.")
         return self.integral.matrix
 
     @matrix.setter

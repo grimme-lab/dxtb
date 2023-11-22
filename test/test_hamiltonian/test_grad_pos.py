@@ -9,11 +9,13 @@ import torch
 from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.integral import Overlap
+from dxtb.integral.driver import DRIVER_PYTORCH
+from dxtb.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb.ncoord import get_coordination_number
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 from dxtb.utils import batch
-from dxtb.xtb import Hamiltonian
+from dxtb.xtb import GFN1Hamiltonian as Hamiltonian
 
 from ..utils import dgradcheck, dgradgradcheck
 from .samples import samples
@@ -37,13 +39,16 @@ def gradchecker(
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     h0 = Hamiltonian(numbers, par, ihelp, **dd)
-    overlap = Overlap(numbers, par, ihelp, **dd)
+    overlap = Overlap(driver=DRIVER_PYTORCH, **dd)
+
+    driver = IntDriver(numbers, par, ihelp, **dd)
 
     # variables to be differentiated
     positions.requires_grad_(True)
 
     def func(pos: Tensor) -> Tensor:
-        s = overlap.build(pos)
+        driver.setup(positions)
+        s = overlap.build(driver)
         cn = get_coordination_number(numbers, pos)
         return h0.build(pos, s, cn=cn)
 
@@ -123,14 +128,18 @@ def gradchecker_batch(
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     h0 = Hamiltonian(numbers, par, ihelp, **dd)
-    overlap = Overlap(numbers, par, ihelp, **dd)
+    overlap = Overlap(driver=DRIVER_PYTORCH, **dd)
+
+    driver = IntDriver(numbers, par, ihelp, **dd)
 
     # variables to be differentiated
     positions.requires_grad_(True)
 
     def func(pos: Tensor) -> Tensor:
-        s = overlap.build(pos, mask)
-        return h0.build(pos, s)
+        driver.setup(positions, mask=mask)
+        s = overlap.build(driver)
+        cn = get_coordination_number(numbers, pos)
+        return h0.build(pos, s, cn=cn)
 
     return func, positions
 

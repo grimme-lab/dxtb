@@ -8,7 +8,7 @@ import torch
 
 from dxtb.basis import IndexHelper
 from dxtb.param import GFN1_XTB as par
-from dxtb.xtb import Hamiltonian
+from dxtb.xtb import GFN1Hamiltonian as Hamiltonian
 
 from ..utils import get_device_from_str
 
@@ -36,7 +36,15 @@ def test_no_h0_fail2() -> None:
         h0.build(numbers, numbers)
 
     with pytest.raises(RuntimeError):
-        h0.get_gradient(numbers, numbers, numbers, numbers, numbers, numbers, numbers)
+        h0.get_gradient(
+            numbers,
+            numbers,
+            numbers,
+            numbers,
+            numbers,
+            numbers,  # type: ignore
+            numbers,
+        )
 
 
 @pytest.mark.parametrize("dtype", [torch.float16, torch.float32, torch.float64])

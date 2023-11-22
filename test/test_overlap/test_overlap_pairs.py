@@ -36,7 +36,6 @@ def test_single(dtype: torch.dtype, name: str):
     ref = load_from_npz(ref_overlap, name, dtype)
 
     s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
-
     assert pytest.approx(ref, rel=tol, abs=tol) == s
 
 
@@ -70,7 +69,6 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
-
     assert pytest.approx(s, abs=tol) == s.mT
     assert pytest.approx(ref, abs=tol) == s
 

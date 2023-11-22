@@ -22,5 +22,4 @@ def calc_overlap(
     overlap = Overlap(uplo=uplo, **dd)
 
     driver.setup(positions)
-    s = overlap.build(driver)
-    return s
+    return overlap.build(driver)

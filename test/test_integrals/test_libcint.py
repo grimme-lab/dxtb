@@ -40,24 +40,27 @@ def test_single(dtype: torch.dtype, name: str):
     i.overlap = ints.Overlap(**dd)
     i.build_overlap(positions)
 
-    assert i.overlap is not None
-    assert i.overlap.matrix is not None
+    o = i.overlap
+    assert o is not None
+    assert o.matrix is not None
 
     ################################################
 
     i.dipole = ints.Dipole(**dd)
     i.build_dipole(positions)
 
-    assert i.dipole is not None
-    assert i.dipole.matrix is not None
+    d = i.dipole
+    assert d is not None
+    assert d.matrix is not None
 
     ################################################
 
     i.quadrupole = ints.Quadrupole(**dd)
     i.build_quadrupole(positions)
 
-    assert i.quadrupole is not None
-    assert i.quadrupole.matrix is not None
+    q = i.quadrupole
+    assert q is not None
+    assert q.matrix is not None
 
 
 @pytest.mark.parametrize("name1", ["H2"])
@@ -98,23 +101,24 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     i.overlap = ints.Overlap(**dd)
     i.build_overlap(positions)
 
-    assert i.overlap is not None
-    assert i.overlap.matrix is not None
-
-    print(i.overlap)
+    o = i.overlap
+    assert o is not None
+    assert o.matrix is not None
 
     ################################################
 
     i.dipole = ints.Dipole(**dd)
     i.build_dipole(positions)
 
-    assert i.dipole is not None
-    assert i.dipole.matrix is not None
+    d = i.dipole
+    assert d is not None
+    assert d.matrix is not None
 
     ################################################
 
     i.quadrupole = ints.Quadrupole(**dd)
     i.build_quadrupole(positions)
 
-    assert i.quadrupole is not None
-    assert i.quadrupole.matrix is not None
+    q = i.quadrupole
+    assert q is not None
+    assert q.matrix is not None

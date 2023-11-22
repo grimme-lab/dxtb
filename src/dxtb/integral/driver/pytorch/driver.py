@@ -8,10 +8,11 @@ import torch
 from ...._types import Any, Tensor
 from ....basis import Basis, IndexHelper
 from ...base import IntDriver
+from .base import PytorchImplementation
 from .impls import OverlapAG, OverlapFunction, overlap_gradient
 
 
-class IntDriverPytorch(IntDriver):
+class IntDriverPytorch(IntDriver, PytorchImplementation):
     """
     PyTorch-based integral driver.
     Currently, only the overlap integral is implemented.

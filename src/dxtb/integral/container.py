@@ -316,7 +316,6 @@ class Integrals(TensorLike):
                 continue
 
             cls: Hamiltonian | Overlap | Dipole | Quadrupole
-            print(cls.integral)
 
             if cls.dtype != self.dtype:
                 raise RuntimeError(
@@ -328,6 +327,20 @@ class Integrals(TensorLike):
                     f"Device of '{cls.label}' integral ({cls.device}) and "
                     f"integral container {self.device} do not match."
                 )
+
+            if name != "hcore":
+                family_integral = cls.integral.family  # type: ignore
+                family_driver = self.driver.family
+                if family_integral != family_driver:
+                    raise RuntimeError(
+                        f"The '{cls.integral.label}' integral implementation "
+                        f"requests the '{family_integral}' family, but "
+                        f"the integral driver '{self.driver.label}' is "
+                        f"configured with the '{family_driver}' family.\n"
+                        "If you want to request the 'pytorch' implementations, "
+                        "specify the driver name in the constructors of both "
+                        "the integral container and the actual integral class."
+                    )
 
     # TODO: Evaluate usefulness of this test
     def check_matrix(self) -> None:

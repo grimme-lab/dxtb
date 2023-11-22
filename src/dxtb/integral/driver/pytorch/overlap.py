@@ -9,11 +9,12 @@ from ...._types import Literal, Tensor
 from ....constants import defaults, units
 from ....utils import batch, symmetrize
 from ...base import BaseIntegralImplementation, IntDriver
+from .base import PytorchImplementation
 from .driver import IntDriverPytorch
 from .impls import OverlapFunction
 
 
-class OverlapPytorch(BaseIntegralImplementation):
+class OverlapPytorch(BaseIntegralImplementation, PytorchImplementation):
     """
     Overlap from atomic orbitals.
 
@@ -79,14 +80,15 @@ class OverlapPytorch(BaseIntegralImplementation):
             raise RuntimeError("Wrong integral driver selected.")
 
         if driver.ihelp.batched:
-            s = self._batch(driver.eval_ovlp, driver)
+            self.matrix = self._batch(driver.eval_ovlp, driver)
         else:
-            s = self._single(driver.eval_ovlp, driver)
+            self.matrix = self._single(driver.eval_ovlp, driver)
 
         # force symmetry to avoid problems through numerical errors
         if self.uplo == "n":
-            return symmetrize(s)
-        return s
+            return symmetrize(self.matrix)
+
+        return self.matrix
 
     def get_gradient(self, driver: IntDriver) -> Tensor:
         """
@@ -107,11 +109,11 @@ class OverlapPytorch(BaseIntegralImplementation):
             raise RuntimeError("Wrong integral driver selected.")
 
         if driver.ihelp.batched:
-            grad = self._batch(driver.eval_ovlp_grad, driver)
+            self.grad = self._batch(driver.eval_ovlp_grad, driver)
         else:
-            grad = self._single(driver.eval_ovlp_grad, driver)
+            self.grad = self._single(driver.eval_ovlp_grad, driver)
 
-        return grad
+        return self.grad
 
     def _single(self, fcn: OverlapFunction, driver: IntDriver) -> Tensor:
         if not isinstance(driver, IntDriverPytorch):

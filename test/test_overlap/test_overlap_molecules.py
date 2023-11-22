@@ -11,11 +11,7 @@ import pytest
 import torch
 
 from dxtb._types import DD
-from dxtb.basis import IndexHelper
-from dxtb.integral.driver.pytorch import IntDriverPytorch as IntDriver
-from dxtb.integral.driver.pytorch import OverlapPytorch as Overlap
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 from dxtb.utils import batch
 
 from ..utils import load_from_npz

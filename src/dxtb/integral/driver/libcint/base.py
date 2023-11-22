@@ -8,14 +8,24 @@ from __future__ import annotations
 
 import torch
 
-from ...._types import Tensor
+from ...._types import Literal, Tensor
 from ....utils import batch
 from ...base import BaseIntegralImplementation, IntDriver
+from ..labels import DRIVER_LIBCINT
 from .driver import IntDriverLibcint
 from .impls import LibcintWrapper, int1e
 
 
-class MultipoleLibcint(BaseIntegralImplementation):
+class LibcintInmplementation:
+    """
+    Simple label for `libcint`-based integral implementations.
+    """
+
+    family: Literal["libcint"] = DRIVER_LIBCINT
+    """Label for integral implementation family"""
+
+
+class MultipoleLibcint(BaseIntegralImplementation, LibcintInmplementation):
     """
     Base class for multipole integrals calculated with `libcint`.
     """

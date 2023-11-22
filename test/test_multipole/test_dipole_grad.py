@@ -8,7 +8,7 @@ import torch
 
 from dxtb._types import DD, Tensor
 from dxtb.basis import Basis, IndexHelper
-from dxtb.integral import libcint as intor
+from dxtb.integral.driver.libcint import impls as intor
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 from dxtb.utils import batch, is_basis_list

@@ -7,7 +7,7 @@ import torch
 
 from ...._types import Tensor
 from ...base import IntDriver
-from .base_multipole import MultipoleLibcint
+from .base import MultipoleLibcint
 
 __all__ = ["QuadrupoleLibcint"]
 

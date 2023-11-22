@@ -9,6 +9,7 @@ import torch
 
 from .._types import Tensor, TensorLike
 from ..basis import IndexHelper
+from ..interaction import Potential
 from ..param import Param
 
 
@@ -37,6 +38,44 @@ class HamiltonianABC(ABC):
         -------
         Tensor
             Hamiltonian (always symmetric).
+        """
+
+    @abstractmethod
+    def get_gradient(
+        self,
+        positions: Tensor,
+        overlap: Tensor,
+        doverlap: Tensor,
+        pmat: Tensor,
+        wmat: Tensor,
+        pot: Potential,
+        cn: Tensor,
+    ) -> tuple[Tensor, Tensor]:
+        """
+        Calculate gradient of the full Hamiltonian with respect ot atomic positions.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Atomic positions of molecular structure.
+        overlap : Tensor
+            Overlap matrix.
+        doverlap : Tensor
+            Derivative of the overlap matrix.
+        pmat : Tensor
+            Density matrix.
+        wmat : Tensor
+            Energy-weighted density.
+        pot : Tensor
+            Self-consistent electrostatic potential.
+        cn : Tensor
+            Coordination number.
+
+        Returns
+        -------
+        tuple[Tensor, Tensor]
+            Derivative of energy with respect to coordination number (first
+            tensor) and atomic positions (second tensor).
         """
 
 
@@ -77,6 +116,8 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
         self.unique = torch.unique(numbers)
         self.par = par
         self.ihelp = ihelp
+
+        self.label = self.__class__.__name__
         self._matrix = None
 
     @property

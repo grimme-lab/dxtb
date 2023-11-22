@@ -8,6 +8,7 @@ import torch
 from ...._types import Tensor
 from ....utils import batch
 from ...base import BaseIntegralImplementation, IntDriver
+from .base import LibcintInmplementation
 from .driver import IntDriverLibcint
 from .impls import LibcintWrapper, int1e, overlap
 
@@ -18,7 +19,7 @@ def snorm(ovlp: Tensor) -> Tensor:
     return torch.pow(ovlp.diagonal(dim1=-1, dim2=-2), -0.5)
 
 
-class OverlapLibcint(BaseIntegralImplementation):
+class OverlapLibcint(BaseIntegralImplementation, LibcintInmplementation):
     """
     Overlap integral from atomic orbitals.
     """

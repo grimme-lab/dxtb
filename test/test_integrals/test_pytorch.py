@@ -7,7 +7,7 @@ import pytest
 import torch
 
 from dxtb import integral as ints
-from dxtb._types import DD
+from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
@@ -15,7 +15,23 @@ from dxtb.utils import batch
 
 from .samples import samples
 
+PYTORCH_DRIVER = "pytorch"
 device = None
+
+
+def run(numbers: Tensor, positions: Tensor, dd: DD) -> None:
+    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    i = ints.Integrals(numbers, par, ihelp, driver=PYTORCH_DRIVER, **dd)
+
+    i.setup_driver(positions)
+    assert isinstance(i.driver, ints.driver.IntDriverPytorch)
+
+    i.overlap = ints.Overlap(driver=PYTORCH_DRIVER, **dd)
+    i.build_overlap(positions)
+
+    o = i.overlap
+    assert o is not None
+    assert o.matrix is not None
 
 
 @pytest.mark.parametrize("name", ["H2"])
@@ -28,35 +44,7 @@ def test_single(dtype: torch.dtype, name: str):
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    i = ints.Integrals(numbers, par, ihelp, driver="pytorch", **dd)
-
-    i.setup_driver(positions)
-    assert isinstance(i.driver, ints.driver.IntDriverPytorch)
-
-    ################################################
-
-    i.overlap = ints.Overlap(**dd)
-    i.build_overlap(positions)
-
-    assert i.overlap is not None
-    assert i.overlap.matrix is not None
-
-    ################################################
-
-    i.dipole = ints.Dipole(**dd)
-    i.build_dipole(positions)
-
-    assert i.dipole is not None
-    assert i.dipole.matrix is not None
-
-    ################################################
-
-    i.quadrupole = ints.Quadrupole(**dd)
-    i.build_quadrupole(positions)
-
-    assert i.quadrupole is not None
-    assert i.quadrupole.matrix is not None
+    run(numbers, positions, dd)
 
 
 @pytest.mark.parametrize("name1", ["H2"])
@@ -83,35 +71,4 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
         )
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    i = ints.Integrals(numbers, par, ihelp, **dd)
-
-    i.setup_driver(positions)
-    assert isinstance(i.driver, ints.driver.IntDriverLibcint)
-    assert isinstance(i.driver.drv, list)
-    assert isinstance(i.driver.drv[0], ints.driver.libcint.LibcintWrapper)
-    assert isinstance(i.driver.drv[1], ints.driver.libcint.LibcintWrapper)
-
-    ################################################
-
-    i.overlap = ints.Overlap(**dd)
-    i.build_overlap(positions)
-
-    assert i.overlap is not None
-    assert i.overlap.matrix is not None
-
-    ################################################
-
-    i.dipole = ints.Dipole(**dd)
-    i.build_dipole(positions)
-
-    assert i.dipole is not None
-    assert i.dipole.matrix is not None
-
-    ################################################
-
-    i.quadrupole = ints.Quadrupole(**dd)
-    i.build_quadrupole(positions)
-
-    assert i.quadrupole is not None
-    assert i.quadrupole.matrix is not None
+    run(numbers, positions, dd)

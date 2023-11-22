@@ -7,6 +7,7 @@ import pytest
 import torch
 
 from dxtb._types import Tensor
+from dxtb.constants import defaults
 from dxtb.mol import Mol
 
 device = None
@@ -79,12 +80,12 @@ def test_charge() -> None:
     # charge as float
     mol.charge = 1.0
     assert isinstance(mol.charge, Tensor)
-    assert mol.charge.dtype == torch.float32
+    assert mol.charge.dtype == defaults.TORCH_DTYPE
 
     # charge as Tensor
     mol.charge = torch.tensor(1.0)
     assert isinstance(mol.charge, Tensor)
-    assert mol.charge.dtype == torch.float32
+    assert mol.charge.dtype == defaults.TORCH_DTYPE
 
     # charge as wrong type (string)
     with pytest.raises(TypeError):

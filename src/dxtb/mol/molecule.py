@@ -145,7 +145,7 @@ class Mol(TensorLike):
 
     def _tensor(self, x: Any) -> Tensor:
         if isinstance(x, Tensor):
-            return x
+            return x.to(device=self.device, dtype=self.dtype)
 
         if isinstance(x, float):
             return torch.tensor(x, device=self.device, dtype=self.dtype)
