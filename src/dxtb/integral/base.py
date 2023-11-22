@@ -70,7 +70,7 @@ class IntDriver(TensorLike):
     def basis(self, bas: Basis) -> None:
         self._basis = bas
 
-    def online(self, positions: Tensor) -> bool:
+    def is_latest(self, positions: Tensor, tol: float | None = None) -> bool:
         """
         Check if the driver is set up and updated.
 
@@ -87,7 +87,8 @@ class IntDriver(TensorLike):
         if self._positions is None:
             return False
 
-        if (self._positions - positions).abs().sum() > 1e-10:
+        tol = torch.finfo(positions.dtype).eps ** 0.75 if tol is None else tol
+        if (self._positions - positions).abs().sum() > tol:
             return False
 
         return True
@@ -218,6 +219,7 @@ class BaseIntegral(IntegralABC, TensorLike):
         mat = self.integral._matrix
         matinfo = mat.shape if mat is not None else None
         d = {**self.__dict__, "matrix": matinfo}
+        d.pop("label")
         return f"{self.label}({d})"
 
     def __repr__(self) -> str:
@@ -303,3 +305,37 @@ class BaseIntegralImplementation(IntegralImplementationABC, TensorLike):
 
     def __repr__(self) -> str:
         return str(self)
+
+
+#########################################################
+
+
+class IntegralContainer(TensorLike):
+    """
+    Base class for integral container.
+    """
+
+    def __init__(
+        self,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ):
+        super().__init__(device, dtype)
+        self._run_checks = True
+
+    @property
+    def run_checks(self) -> bool:
+        return self._run_checks
+
+    @run_checks.setter
+    def run_checks(self, run_checks: bool) -> None:
+        current = self.run_checks
+        self._run_checks = run_checks
+
+        # switching from False to True should automatically run checks
+        if current is False and run_checks is True:
+            self.checks()
+
+    @abstractmethod
+    def checks(self) -> None:
+        """Run checks for integrals."""

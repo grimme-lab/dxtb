@@ -163,16 +163,19 @@ def test_param_grad_energy(name: str, dtype: torch.dtype = torch.float):
 
     options = dict(opts, **{"xitorch_fatol": tol**2, "xitorch_xatol": tol**2})
     calc = Calculator(numbers, par, opts=options, **dd)
-    calc.hamiltonian.selfenergy.requires_grad_(True)
-    calc.hamiltonian.kcn.requires_grad_(True)
-    calc.hamiltonian.shpoly.requires_grad_(True)
+
+    assert calc.integrals.hcore is not None
+    h = calc.integrals.hcore.integral
+    h.selfenergy.requires_grad_(True)
+    h.kcn.requires_grad_(True)
+    h.shpoly.requires_grad_(True)
 
     result = calc.singlepoint(numbers, positions, charges)
     energy = result.scf.sum(-1)
 
     pgrad = torch.autograd.grad(
         energy,
-        (calc.hamiltonian.selfenergy, calc.hamiltonian.kcn, calc.hamiltonian.shpoly),
+        (h.selfenergy, h.kcn, h.shpoly),
     )
 
     ref_se = load_from_npz(ref_grad_param, f"{name}_egrad_selfenergy", dtype)
@@ -203,9 +206,13 @@ def skip_test_param_grad_force(name: str, dtype: torch.dtype = torch.float):
 
     options = dict(opts, **{"xitorch_fatol": tol**2, "xitorch_xatol": tol**2})
     calc = Calculator(numbers, par, opts=options, **dd)
-    calc.hamiltonian.selfenergy.requires_grad_(True)
-    calc.hamiltonian.kcn.requires_grad_(True)
-    calc.hamiltonian.shpoly.requires_grad_(True)
+
+    assert calc.integrals.hcore is not None
+    h = calc.integrals.hcore.integral
+
+    h.selfenergy.requires_grad_(True)
+    h.kcn.requires_grad_(True)
+    h.shpoly.requires_grad_(True)
 
     result = calc.singlepoint(numbers, positions, charges)
     energy = result.scf.sum(-1)
@@ -218,7 +225,7 @@ def skip_test_param_grad_force(name: str, dtype: torch.dtype = torch.float):
 
     pgrad = torch.autograd.grad(
         gradient[0, :].sum(),
-        (calc.hamiltonian.selfenergy, calc.hamiltonian.kcn, calc.hamiltonian.shpoly),
+        (h.selfenergy, h.kcn, h.shpoly),
     )
 
     ref_se = load_from_npz(ref_grad_param, f"{name}_ggrad_selfenergy", dtype)

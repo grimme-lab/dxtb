@@ -1,7 +1,7 @@
 """
 Functions for calculation of overlap with McMurchie-Davidson algorithm.
 """
-from .container import Integrals
+from .container import *
 from .dipole import *
 from .driver import *
 from .h0 import *

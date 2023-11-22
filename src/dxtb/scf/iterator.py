@@ -20,7 +20,7 @@ from .._types import Any, Slicers, Tensor
 from ..basis import IndexHelper
 from ..constants import defaults
 from ..exlibs.xitorch import optimize as xto
-from ..integral import Integrals
+from ..integral import IntegralMatrices
 from ..interaction import Charges, InteractionList
 from ..utils import SCFConvergenceError, SCFConvergenceWarning, t2int
 from .base import BaseTSCF, BaseXSCF, SCFResult
@@ -465,7 +465,7 @@ def solve(
     cache: InteractionList.Cache,
     ihelp: IndexHelper,
     guess: str,
-    integrals: Integrals,
+    integrals: IntegralMatrices,
     *args: Any,
     **kwargs: Any,
 ) -> SCFResult:

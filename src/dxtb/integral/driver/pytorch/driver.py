@@ -12,7 +12,7 @@ from .base import PytorchImplementation
 from .impls import OverlapAG, OverlapFunction, overlap_gradient
 
 
-class IntDriverPytorch(IntDriver, PytorchImplementation):
+class IntDriverPytorch(PytorchImplementation, IntDriver):
     """
     PyTorch-based integral driver.
     Currently, only the overlap integral is implemented.
@@ -38,14 +38,14 @@ class IntDriverPytorch(IntDriver, PytorchImplementation):
                     dtype=self.dtype,
                 )
 
-            self._positions = positions
+            self._positions_single = positions
         else:
             from ....param import get_elem_angular
             from ....utils import batch
 
-            self._positions_list: list[Tensor] = []
-            self._basis_list: list[Basis] = []
-            self._ihelp_list: list[IndexHelper] = []
+            self._positions_batch: list[Tensor] = []
+            self._basis_batch: list[Basis] = []
+            self._ihelp_batch: list[IndexHelper] = []
             for _batch in range(self.numbers.shape[0]):
                 # POSITIONS
                 mask = kwargs.pop("mask", None)
@@ -57,7 +57,7 @@ class IntDriverPytorch(IntDriver, PytorchImplementation):
                 else:
                     pos = batch.deflate(positions[_batch])
 
-                self._positions_list.append(pos)
+                self._positions_batch.append(pos)
 
                 # INDEXHELPER
                 # unfortunately, we need a new IndexHelper for each batch,
@@ -67,7 +67,7 @@ class IntDriverPytorch(IntDriver, PytorchImplementation):
                     nums, get_elem_angular(self.par.element)
                 )
 
-                self._ihelp_list.append(ihelp)
+                self._ihelp_batch.append(ihelp)
 
                 # BASIS
                 bas = Basis(
@@ -78,9 +78,13 @@ class IntDriverPytorch(IntDriver, PytorchImplementation):
                     device=self.device,
                 )
 
-                self._basis_list.append(bas)
+                self._basis_batch.append(bas)
 
         self.setup_eval_funcs()
+
+        # setting positions signals successful setup; save current positions to
+        # catch new positions and run the required re-setup of the driver
+        self._positions = positions.detach().clone()
 
     def setup_eval_funcs(self) -> None:
         self.eval_ovlp: OverlapFunction = OverlapAG.apply  # type: ignore

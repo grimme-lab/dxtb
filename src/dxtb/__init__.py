@@ -7,6 +7,8 @@ A fully differentiable extended tight-binding package.
 
 from __future__ import annotations
 
+import logging
+
 from . import io
 from .__version__ import __version__
 from .basis import Basis, IndexHelper
@@ -20,3 +22,9 @@ from .mol import molecule
 from .param import GFN1_XTB, Param
 from .solvation import GeneralizedBorn
 from .xtb import Calculator
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)s %(name)s->%(funcName)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)

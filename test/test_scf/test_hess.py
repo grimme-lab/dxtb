@@ -8,7 +8,7 @@ import torch
 
 from dxtb._types import DD, Tensor
 from dxtb.param import GFN1_XTB as par
-from dxtb.utils import hessian
+from dxtb.utils import _hessian as hessian
 from dxtb.xtb import Calculator
 
 from ..utils import reshape_fortran
@@ -43,6 +43,8 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     )
 
     calc = Calculator(numbers, par, opts=opts, **dd)
+    print()
+    print()
 
     # numerical hessian
     numref = _numhess(calc, numbers, positions, charge)
@@ -55,6 +57,11 @@ def test_single(dtype: torch.dtype, name: str) -> None:
         return result.scf
 
     hess = hessian(scf, (numbers, positions, charge), argnums=1)
+    print()
+    print()
+    print(hess)
+    print(ref)
+    print(numref)
     positions.detach_()
     hess = hess.detach().reshape_as(ref)
     numref = numref.reshape_as(ref)
@@ -85,9 +92,11 @@ def _numhess(
         for j in range(3):
             positions[i, j] += step
             gr = _gradfcn(numbers, positions, charge)
+            print(gr)
 
             positions[i, j] -= 2 * step
             gl = _gradfcn(numbers, positions, charge)
+            print(gl)
 
             positions[i, j] += step
             hess[:, :, i, j] = 0.5 * (gr - gl) / step

@@ -100,7 +100,41 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
     ihelp: IndexHelper
     """Helper class for indexing."""
 
+    hscale: Tensor
+    """Off-site scaling factor for the Hamiltonian."""
+    kcn: Tensor
+    """Coordination number dependent shift of the self energy."""
+    kpair: Tensor
+    """Element-pair-specific parameters for scaling the Hamiltonian."""
     refocc: Tensor
+    """Reference occupation numbers."""
+    selfenergy: Tensor
+    """Self-energy of each species."""
+    shpoly: Tensor
+    """Polynomial parameters for the distant dependent scaling."""
+    valence: Tensor
+    """Whether the shell belongs to the valence shell."""
+
+    en: Tensor
+    """Pauling electronegativity of each species."""
+    rad: Tensor
+    """Van-der-Waals radius of each species."""
+
+    __slots__ = [
+        "numbers",
+        "unique",
+        "par",
+        "ihelp",
+        "hscale",
+        "kcn",
+        "kpair",
+        "refocc",
+        "selfenergy",
+        "shpoly",
+        "valence",
+        "en",
+        "rad",
+    ]
 
     def __init__(
         self,

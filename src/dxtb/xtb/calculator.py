@@ -439,6 +439,12 @@ class Calculator(TensorLike):
                 self.integrals.build_quadrupole(positions)
                 self.timer.stop("Quadrupole Integral")
 
+            # TODO: Think about handling this case
+            if self.integrals.hcore is None:
+                raise RuntimeError
+            if self.integrals.overlap is None:
+                raise RuntimeError
+
             # Core Hamiltonian integral (requires overlap internally!)
             self.timer.start("h0", "Core Hamiltonian")
             rcov = cov_rad_d3[numbers].to(self.device)
@@ -465,6 +471,22 @@ class Calculator(TensorLike):
             icaches = self.interactions.get_cache(
                 numbers=numbers, positions=positions, ihelp=self.ihelp
             )
+
+            integrals = ints.IntegralMatrices(
+                hcore=self.integrals.hcore.matrix,
+                overlap=self.integrals.overlap.matrix,
+                dipole=(
+                    self.integrals.dipole.matrix
+                    if self.integrals.dipole is not None
+                    else None
+                ),
+                quadrupole=(
+                    self.integrals.quadrupole.matrix
+                    if self.integrals.quadrupole is not None
+                    else None
+                ),
+            )
+
             scf_results = scf.solve(
                 numbers,
                 positions,
@@ -473,7 +495,7 @@ class Calculator(TensorLike):
                 icaches,
                 self.ihelp,
                 self.opts["guess"],
-                self.integrals,
+                integrals,
                 occupation,
                 n0,
                 fwd_options=self.opts["fwd_options"],
@@ -517,7 +539,7 @@ class Calculator(TensorLike):
                 )
                 dedcn, dedr = self.integrals.hcore.integral.get_gradient(
                     positions,
-                    self.integrals.overlap.matrix,
+                    integrals.overlap,
                     result.overlap_grad,
                     result.density,
                     wmat,
@@ -669,7 +691,14 @@ class Calculator(TensorLike):
 
         # run single point and check if integral is populated
         result = self.singlepoint(numbers, positions, chrg)
-        if self.integrals.dipole is None:
+        dipint = self.integrals.dipole
+        if dipint is None:
+            raise RuntimeError(
+                "Dipole moment requires a dipole integral. They should "
+                f"be added automatically if the '{efield.LABEL_EFIELD}' "
+                "interaction is added to the Calculator."
+            )
+        if dipint.matrix is None:
             raise RuntimeError(
                 "Dipole moment requires a dipole integral. They should "
                 f"be added automatically if the '{efield.LABEL_EFIELD}' "
@@ -682,7 +711,7 @@ class Calculator(TensorLike):
             # )
             qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
             dip = properties.moments.dipole(
-                qat, positions, result.density, self.integrals.dipole.matrix
+                qat, positions, result.density, dipint.matrix
             )
         else:
             # retrieve the efield interaction and the field

@@ -13,7 +13,7 @@ from ..basis import IndexHelper
 from ..constants import K2AU, defaults
 from ..exlibs.xitorch import EditableModule, LinearOperator
 from ..exlibs.xitorch import linalg as xtl
-from ..integral import Integrals
+from ..integral.container import IntegralMatrices
 from ..interaction import InteractionList
 from ..interaction.container import Charges, ContainerData, Potential
 from ..utils import eighb, real_atoms
@@ -69,7 +69,7 @@ class BaseSCF:
         numbers: Tensor
         """Atomic numbers"""
 
-        integrals: Integrals
+        integrals: IntegralMatrices
         """
         Collection of integrals. Core Hamiltonian and overlap are always needed.
         """
@@ -117,7 +117,7 @@ class BaseSCF:
             numbers: Tensor,
             ihelp: IndexHelper,
             cache: InteractionList.Cache,
-            integrals: Integrals,
+            integrals: IntegralMatrices,
         ) -> None:
             if integrals.hcore is None:
                 raise ValueError("No core Hamiltonian provided.")
@@ -149,10 +149,10 @@ class BaseSCF:
 
         def init_zeros(self) -> None:
             self.energy = torch.zeros_like(self.n0)
-            self.hamiltonian = torch.zeros_like(self.ints.hcore.matrix)
-            self.density = torch.zeros_like(self.ints.hcore.matrix)
+            self.hamiltonian = torch.zeros_like(self.ints.hcore)
+            self.density = torch.zeros_like(self.ints.hcore)
             self.evals = torch.zeros_like(self.n0)
-            self.evecs = torch.zeros_like(self.ints.hcore.matrix)
+            self.evecs = torch.zeros_like(self.ints.hcore)
 
             self.old_charges = torch.zeros_like(self.energy)
             self.old_energy = torch.zeros_like(self.numbers)
@@ -169,18 +169,17 @@ class BaseSCF:
 
             # disable shape check temporarily for writing culled versions back
             self.ints.run_checks = False
-            self.ints.overlap.matrix = self.ints.overlap.matrix[twodim]
-            self.ints.hcore.matrix = self.ints.hcore.matrix[twodim]
+            self.ints.overlap = self.ints.overlap[twodim]
+            self.ints.hcore = self.ints.hcore[twodim]
             if self.ints.dipole is not None:
-                assert self.ints.dipole.matrix
-                self.ints.dipole.matrix = self.ints.dipole.matrix[threedim]
+                self.ints.dipole = self.ints.dipole[threedim]
             if self.ints.quadrupole is not None:
-                assert self.ints.quadrupole.matrix is not None
-                self.ints.quadrupole.matrix = self.ints.quadrupole.matrix[threedim]
+                self.ints.quadrupole = self.ints.quadrupole[threedim]
             self.ints.run_checks = True
 
             self.numbers = self.numbers[[~conv, *slicers["atom"]]]
             self.hamiltonian = self.hamiltonian[twodim]
+            self.density = self.density[twodim]
             self.occupation = self.occupation[twodim]
             self.evecs = self.evecs[twodim]
             self.evals = self.evals[onedim]
@@ -261,7 +260,7 @@ class BaseSCF:
 
         self._data = self._Data(*args, **kwargs)
 
-        self.kt = self._data.ints.hcore.matrix.new_tensor(
+        self.kt = self._data.ints.hcore.new_tensor(
             self.scf_options.get("etemp", defaults.ETEMP) * K2AU
         )
 
@@ -536,7 +535,7 @@ class BaseSCF:
             )
 
             return mulliken.get_atomic_populations(
-                self._data.ints.overlap.matrix, density, self._data.ihelp
+                self._data.ints.overlap, density, self._data.ihelp
             )
 
         raise ValueError(f"Unknown partitioning mode '{mode}'.")
@@ -786,7 +785,7 @@ class BaseSCF:
             # dimension to the back, which is required for the reduction to
             # atom-resolution.
             charges.dipole = self._data.ihelp.reduce_orbital_to_atom(
-                -torch.einsum("...ik,...mki->...im", density, ints.dipole.matrix),
+                -torch.einsum("...ik,...mki->...im", density, ints.dipole),
                 extra=True,
                 dim=-2,
             )
@@ -794,7 +793,7 @@ class BaseSCF:
         # Atomic quadrupole moments (quadrupole charges)
         if ints.quadrupole is not None:
             charges.quad = self._data.ihelp.reduce_orbital_to_atom(
-                -torch.einsum("...ik,...mki->...im", density, ints.quadrupole.matrix),
+                -torch.einsum("...ik,...mki->...im", density, ints.quadrupole),
                 extra=True,
                 dim=-2,
             )
@@ -816,11 +815,11 @@ class BaseSCF:
             Hamiltonian matrix.
         """
 
-        h1 = self._data.ints.hcore.matrix
+        h1 = self._data.ints.hcore
 
         if potential.mono is not None:
             v = potential.mono.unsqueeze(-1) + potential.mono.unsqueeze(-2)
-            h1 = h1 - (0.5 * self._data.ints.overlap.matrix * v)
+            h1 = h1 - (0.5 * self._data.ints.overlap * v)
 
         def add_vmp_to_h1(h1: Tensor, mpint: Tensor, vmp: Tensor) -> Tensor:
             # TODO: Place better?
@@ -838,16 +837,14 @@ class BaseSCF:
         if potential.dipole is not None:
             dpint = self._data.ints.dipole
             if dpint is not None:
-                if dpint.matrix is not None:
-                    h1 = add_vmp_to_h1(h1, dpint.matrix, potential.dipole)
+                if dpint is not None:
+                    h1 = add_vmp_to_h1(h1, dpint, potential.dipole)
 
-        # print("potential.dipole", potential.dipole)
-        # print("potential.quad", potential.quad)
         if potential.quad is not None:
             qpint = self._data.ints.dipole
             if qpint is not None:
-                if qpint.matrix is not None:
-                    h1 = add_vmp_to_h1(h1, qpint.matrix, potential.quad)
+                if qpint is not None:
+                    h1 = add_vmp_to_h1(h1, qpint, potential.quad)
 
         return h1
 
@@ -904,7 +901,7 @@ class BaseSCF:
         """
         Returns the shape of the density matrix in this engine.
         """
-        return self._data.ints.hcore.matrix.shape
+        return self._data.ints.hcore.shape
 
     @property
     def dtype(self) -> torch.dtype:
@@ -944,7 +941,7 @@ class BaseXSCF(BaseSCF, EditableModule):
             Overlap matrix.
         """
 
-        smat = self._data.ints.overlap.matrix
+        smat = self._data.ints.overlap
 
         zeros = torch.eq(smat, 0)
         mask = torch.all(zeros, dim=-1) & torch.all(zeros, dim=-2)
@@ -1070,7 +1067,7 @@ class BaseTSCF(BaseSCF):
             Overlap matrix.
         """
 
-        smat = self._data.ints.overlap.matrix
+        smat = self._data.ints.overlap
 
         zeros = torch.eq(smat, 0)
         mask = torch.all(zeros, dim=-1) & torch.all(zeros, dim=-2)

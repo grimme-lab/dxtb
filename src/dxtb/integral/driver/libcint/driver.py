@@ -62,5 +62,6 @@ class IntDriverLibcint(IntDriver):
             assert is_basis_list(atombases)
             self.drv = LibcintWrapper(atombases, self.ihelp)
 
-        # setting positions signals complete setup
-        self._positions = positions
+        # setting positions signals successful setup; save current positions to
+        # catch new positions and run the required re-setup of the driver
+        self._positions = positions.detach().clone()

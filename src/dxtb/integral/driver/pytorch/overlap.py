@@ -120,7 +120,7 @@ class OverlapPytorch(BaseIntegralImplementation, PytorchImplementation):
             raise RuntimeError("Wrong integral driver selected.")
 
         return fcn(
-            driver._positions, driver.basis, driver.ihelp, self.uplo, self.cutoff
+            driver._positions_single, driver.basis, driver.ihelp, self.uplo, self.cutoff
         )
 
     def _batch(self, fcn: OverlapFunction, driver: IntDriver) -> Tensor:
@@ -130,9 +130,9 @@ class OverlapPytorch(BaseIntegralImplementation, PytorchImplementation):
         return batch.pack(
             [
                 fcn(
-                    driver._positions_list[_batch],
-                    driver._basis_list[_batch],
-                    driver._ihelp_list[_batch],
+                    driver._positions_batch[_batch],
+                    driver._basis_batch[_batch],
+                    driver._ihelp_batch[_batch],
                     self.uplo,
                     self.cutoff,
                 )

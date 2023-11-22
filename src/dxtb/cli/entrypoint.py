@@ -4,12 +4,15 @@ Entrypoint for command line interface.
 
 from __future__ import annotations
 
+import logging
 import sys
 
 from .. import __version__
 from .._types import Sequence
 from .argparser import parser
 from .driver import Driver
+
+logger = logging.getLogger(__name__)
 
 
 def console_entry_point(
@@ -78,7 +81,7 @@ def entry_point_wrapper(argv: Sequence[str] | None = None) -> int:
     args = parser().parse_args(argv)
 
     if args.file is None or len(args.file) == 0:
-        print("No coordinate file given.")
+        logger.info("No coordinate file given.")
         raise SystemExit(1)
 
     d = Driver(args)
