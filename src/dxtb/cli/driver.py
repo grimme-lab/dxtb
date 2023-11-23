@@ -157,7 +157,6 @@ class Driver:
         calc = Calculator(
             numbers, par, opts=opts, interaction=interactions, timer=timer, **dd
         )
-
         # run singlepoint calculation
         result = calc.singlepoint(numbers, positions, chrg)
 

@@ -25,9 +25,10 @@ def test_no_file(capsys: pytest.CaptureFixture) -> None:
         ret = console_entry_point([])
         assert ret == 1
 
+    # empty because message goes to logs
     out, err = capsys.readouterr()
     assert err == ""
-    assert out == "No coordinate file given.\n"
+    assert out == ""
 
 
 def test_entrypoint(capsys: pytest.CaptureFixture) -> None:

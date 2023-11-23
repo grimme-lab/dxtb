@@ -12,7 +12,7 @@ import torch
 from dxtb._types import DD
 from dxtb.basis import IndexHelper
 from dxtb.constants import K2AU
-from dxtb.integral import Integrals
+from dxtb.integral import IntegralMatrices
 from dxtb.param import GFN1_XTB, get_elem_angular
 from dxtb.scf.iterator import SelfConsistentField
 from dxtb.utils import batch
@@ -233,7 +233,7 @@ def test_kt(dtype: torch.dtype, kt: float):
         numbers=numbers,
         ihelp=d,
         cache=d,
-        integrals=Integrals(hcore=d, overlap=d, **dd),
+        integrals=IntegralMatrices(hcore=d, overlap=d, **dd),
         scf_options={"etemp": kt},
     )
 

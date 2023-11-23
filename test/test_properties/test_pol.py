@@ -51,7 +51,7 @@ def single(
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
     quadrupole = calc.polarizability(numbers, positions, charge)
-    quadrupole.detach_()
+    quadrupole = quadrupole.detach()
 
     # assert pytest.approx(ref, abs=atol, rel=rtol) == quadrupole
 

@@ -828,6 +828,9 @@ class BaseSCF:
             # spread potential to orbitals
             v = index(vmp, self._data.ihelp.orbitals_to_atom)
 
+            print(v.shape)
+            print(mpint.shape)
+
             # Form dot product over the the multipolar components.
             #  - shape multipole integral: (..., x, norb, norb)
             #  - shape multipole potential: (..., norb, x)

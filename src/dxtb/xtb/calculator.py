@@ -340,19 +340,20 @@ class Calculator(TensorLike):
         self.intlevel = opts.get("int_level", defaults.INTLEVEL)
 
         # setup integral
-        self.integrals = ints.Integrals(numbers, par, self.ihelp, **dd)
+        driver = self.opts["int_driver"]
+        self.integrals = ints.Integrals(numbers, par, self.ihelp, driver=driver, **dd)
 
         if self.intlevel >= ints.INTLEVEL_OVERLAP:
             self.integrals.hcore = ints.Hamiltonian(numbers, par, self.ihelp, **dd)
-            self.integrals.overlap = ints.Overlap(**dd)
+            self.integrals.overlap = ints.Overlap(driver=driver, **dd)
 
         # TODO: This should get some extra validation by the config
         # (avoid PyTorch integral driver for multipole integrals)
         if self.intlevel >= ints.INTLEVEL_DIPOLE:
-            self.integrals.dipole = ints.Dipole(**dd)
+            self.integrals.dipole = ints.Dipole(driver=driver, **dd)
 
         if self.intlevel >= ints.INTLEVEL_QUADRUPOLE:
-            self.integrals.quadrupole = ints.Quadrupole(**dd)
+            self.integrals.quadrupole = ints.Quadrupole(driver=driver, **dd)
 
         self.timer.stop("setup calculator")
 
@@ -635,36 +636,44 @@ class Calculator(TensorLike):
             pos.detach_()
             return result.total_grad.detach()
 
+        print(positions.shape)
+        print(positions.shape[-2:])
+
         hess = torch.zeros(
-            *(*positions.shape, *positions.shape),
+            *(*positions.shape, *positions.shape[-2:]),
             **{"device": positions.device, "dtype": positions.dtype},
         )
 
         print("\nNumerical Hessian:", 3 * numbers.shape[0])
+        print("\nNumerical Hessian:", hess.shape)
 
         import gc
 
         count = 1
 
         step = 1.0e-5
-        for i in range(numbers.shape[0]):
+        for i in range(numbers.shape[-1]):
             for j in range(3):
-                pos[i, j] += step
+                pos[..., i, j] += step
                 gr = _gradfcn(pos)
 
-                pos[i, j] -= 2 * step
+                pos[..., i, j] -= 2 * step
                 gl = _gradfcn(pos)
 
-                pos[i, j] += step
-                hess[:, :, i, j] = 0.5 * (gr - gl) / step
+                pos[..., i, j] += step
+                hess[..., :, :, i, j] = 0.5 * (gr - gl) / step
 
-                print(f"{count}/{3*numbers.shape[0]}")
+                print(f"{count}/{3*numbers.shape[-1]}")
                 count += 1
 
             gc.collect()
         gc.collect()
         if shape == "matrix":
-            hess = hess.reshape(2 * (3 * numbers.shape[-1],))
+            s = [3 * numbers.shape[-1], 3 * numbers.shape[-1]]
+            if positions.ndim == 3:
+                s = [numbers.shape[0], 3 * numbers.shape[-1], 3 * numbers.shape[-1]]
+            print(s)
+            hess = hess.reshape(s)
 
         self.opts["scf_options"]["verbosity"] = tmp
         return hess

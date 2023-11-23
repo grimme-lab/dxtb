@@ -58,7 +58,7 @@ def single(
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
-@pytest.mark.parametrize("intdriver", ["dxtb", "libcint"])
+@pytest.mark.parametrize("intdriver", ["pytorch", "libcint"])
 def test_single(dtype: torch.dtype, name: str, mixer: str, intdriver: str):
     tol = sqrt(torch.finfo(dtype).eps) * 10
     single(dtype, name, mixer, tol, intdriver=intdriver)
@@ -148,7 +148,7 @@ def batched(
 @pytest.mark.parametrize("name1", ["H2", "LiH"])
 @pytest.mark.parametrize("name2", ["LiH", "SiH4"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
-@pytest.mark.parametrize("intdriver", ["dxtb", "libcint"])
+@pytest.mark.parametrize("intdriver", ["pytorch", "libcint"])
 def test_batch(
     dtype: torch.dtype, name1: str, name2: str, mixer: str, intdriver: str
 ) -> None:

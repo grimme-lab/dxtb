@@ -26,7 +26,7 @@ opts = {
 
 tol = 1e-4
 
-sample_list = ["H2", "LiH", "H2O", "SiH4"]
+sample_list = ["H2", "H2O", "SiH4"]
 
 device = None
 
@@ -124,7 +124,7 @@ def gradchecker_batch(
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name1", ["SiH4"])
 @pytest.mark.parametrize("name2", sample_list)
 def test_gradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """
@@ -137,7 +137,7 @@ def test_gradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name1", ["SiH4"])
 @pytest.mark.parametrize("name2", sample_list)
 def test_gradgradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """

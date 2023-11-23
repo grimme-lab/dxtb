@@ -88,6 +88,8 @@ def batched(name1: str, name2: str, dd: DD, atol: float, rtol: float) -> None:
 
     freqs, _ = calc.vibration(numbers, positions, charge)
     freqs = freqs * units.AU2RCM
+    print(freqs.shape)
+    print(ref.shape)
 
     assert pytest.approx(ref, abs=atol, rel=rtol) == freqs
 

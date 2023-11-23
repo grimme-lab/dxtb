@@ -56,7 +56,7 @@ def single(
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
     quadrupole = calc.quadrupole(numbers, positions, charge, use_autograd=use_autograd)
-    quadrupole.detach_()
+    quadrupole = quadrupole.detach()
     print(ref)
     print(quadrupole)
 

@@ -12,7 +12,6 @@ import torch
 
 from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.integral.driver import DRIVER_PYTORCH
 from dxtb.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb.integral.driver.pytorch import OverlapPytorch as Overlap
 from dxtb.ncoord import exp_count, get_coordination_number

@@ -7,8 +7,11 @@ import pytest
 import tomli as toml
 import torch
 
+from dxtb._types import DD
 from dxtb.param.meta import Meta
 from dxtb.utils import symbol2number
+
+device = None
 
 
 def test_builtin_gfn1() -> None:
@@ -99,10 +102,13 @@ def test_param_calculator(dtype: torch.dtype) -> None:
     from dxtb.param.gfn1 import GFN1_XTB as par
     from dxtb.xtb.calculator import Calculator
 
+    dd: DD = {"device": device, "dtype": dtype}
     numbers = symbol2number(["H", "C"])
-    calc = Calculator(numbers, par, dtype=dtype)
+    calc = Calculator(numbers, par, **dd)
 
-    assert torch.allclose(
-        calc.hamiltonian.ihelp.reduce_shell_to_atom(calc.hamiltonian.refocc),
-        torch.tensor([1.0, 4.0], dtype=dtype),
-    )
+    ref = torch.tensor([1.0, 4.0], **dd)
+
+    h = calc.integrals.hcore
+    assert h is not None
+
+    assert pytest.approx(ref) == calc.ihelp.reduce_shell_to_atom(h.integral.refocc)

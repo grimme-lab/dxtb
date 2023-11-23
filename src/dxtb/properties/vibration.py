@@ -48,7 +48,7 @@ def frequencies(
     masses = get_atomic_masses(
         numbers, atomic_units=True, device=hessian.device, dtype=hessian.dtype
     )
-    mass_mat = torch.diag_embed(masses.repeat_interleave(3))
+    mass_mat = torch.diag_embed(masses.repeat_interleave(3, dim=-1))
 
     # instead of calculating and diagonalizing the mass-weighted Hessian,
     # we solve the equivalent general eigenvalue problem Hv=Mve
@@ -93,4 +93,4 @@ def project_freqs(
         Projected frequencies and normal modes
     """
     skip = 5 if is_linear is True else 6
-    return freqs[skip:], modes[:, skip:]
+    return freqs[..., skip:], modes[..., :, skip:]

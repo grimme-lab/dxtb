@@ -121,11 +121,12 @@ class Integrals(IntegralContainer):
 
         # overlap integral required
         ovlp = self.overlap.integral
-        if ovlp.matrix is None or ovlp.norm is None:
+        if ovlp.matrix is None or ovlp._norm is None:
             self.build_overlap(positions, **kwargs)
 
         cn = kwargs.pop("cn", None)
         if cn is None:
+            # pylint: disable=import-outside-toplevel
             from ..data import cov_rad_d3
             from ..ncoord import exp_count, get_coordination_number
 
@@ -195,6 +196,7 @@ class Integrals(IntegralContainer):
         if shift is True:
             # TODO: ihelp.spread_atom_to_orbital(positions, extra=True)
             # spread positions to orbital-resolution for contraction
+            # pylint: disable=import-outside-toplevel
             from ..utils.batch import index
 
             pos = index(
@@ -263,6 +265,7 @@ class Integrals(IntegralContainer):
 
             # TODO: ihelp.spread_atom_to_orbital(positions, extra=True)
             # spread positions to orbital-resolution for contraction
+            # pylint: disable=import-outside-toplevel
             from ..utils.batch import index
 
             pos = index(
