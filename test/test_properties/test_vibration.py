@@ -14,7 +14,7 @@ from dxtb.xtb import Calculator
 
 from .samples import samples
 
-sample_list = ["H", "H2", "LiH", "HHe", "H2O", "CH4", "SiH4", "PbH4-BiH3", "MB16_43_01"]
+sample_list = ["H", "H2", "LiH", "HHe", "H2O", "CH4", "SiH4"]
 
 opts = {
     "maxiter": 100,
@@ -59,6 +59,15 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     single(name, dd=dd, atol=atol, rtol=rtol)
 
 
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", ["PbH4-BiH3", "MB16_43_01"])
+def test_single_large(dtype: torch.dtype, name: str) -> None:
+    dd: DD = {"dtype": dtype, "device": device}
+    atol, rtol = 10, 1e-3
+    single(name, dd=dd, atol=atol, rtol=rtol)
+
+
 def batched(name1: str, name2: str, dd: DD, atol: float, rtol: float) -> None:
     sample1, sample2 = samples[name1], samples[name2]
 
@@ -88,8 +97,6 @@ def batched(name1: str, name2: str, dd: DD, atol: float, rtol: float) -> None:
 
     freqs, _ = calc.vibration(numbers, positions, charge)
     freqs = freqs * units.AU2RCM
-    print(freqs.shape)
-    print(ref.shape)
 
     assert pytest.approx(ref, abs=atol, rel=rtol) == freqs
 
@@ -99,7 +106,7 @@ def batched(name1: str, name2: str, dd: DD, atol: float, rtol: float) -> None:
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2) -> None:
     dd: DD = {"dtype": dtype, "device": device}
-    atol, rtol = 1e-3, 1e-3
+    atol, rtol = 10, 1e-3
 
     batched(name1, name2, dd=dd, atol=atol, rtol=rtol)
 

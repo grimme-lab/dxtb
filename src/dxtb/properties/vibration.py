@@ -65,14 +65,14 @@ def frequencies(
     freqs = e * torch.sign(evals)
 
     if project is True:
-        lin = is_linear_molecule(positions)
+        lin = is_linear_molecule(numbers, positions)
         return project_freqs(freqs, modes=evecs, is_linear=lin)
 
     return freqs, evecs
 
 
 def project_freqs(
-    freqs: Tensor, modes: Tensor, is_linear: bool = False
+    freqs: Tensor, modes: Tensor, is_linear: Tensor
 ) -> tuple[Tensor, Tensor]:
     """
     Project out rotational and translational degrees of freedom, i.e., the 5 or
@@ -84,13 +84,44 @@ def project_freqs(
         Vibrational frequencies
     modes : Tensor
         Normal modes (nat * 3, nfreqs)
-    is_linear : bool, optional
-        Whether the molecule is linear. Defaults to `False`.
+    is_linear : Tensor
+        Whether the molecule is linear.
 
     Returns
     -------
     tuple[Tensor, Tensor]
         Projected frequencies and normal modes
     """
-    skip = 5 if is_linear is True else 6
-    return freqs[..., skip:], modes[..., :, skip:]
+    skip = torch.where(is_linear, 5, 6)
+
+    # Non-batched version
+    if freqs.ndim == 1:
+        return freqs[skip:], modes[:, skip:]
+
+    # Batched version
+    from ..utils.batch import deflate, pack
+
+    projected_freqs = []
+    projected_modes = []
+    for i in range(freqs.size(0)):
+        skip = 5 if is_linear[i] else 6
+
+        # deflating removes padding that can mess up the shapes
+        # Example: LiH and H2O
+        # (o: projected out, x: actual value, p: padding)
+        #
+        # Input tensors (batched):
+        # LiH [o, o, o, o, o, x, p, p, p]
+        # H2O [o, o, o, o, o, o, x, x, x]
+        #
+        # After projection we obtain:
+        # LiH [x, p, p, p]  (5->end)
+        # H2O [x, x, x]     (6->end)
+        #
+        # The final packing yields an extra dimension:
+        # LiH [x, p, p, p]
+        # H2O [x, x, x, p] -> increased size by one!
+        projected_freqs.append(deflate(freqs[i, skip:]))
+        projected_modes.append(deflate(modes[i, :, skip:]))
+
+    return pack(projected_freqs), pack(projected_modes)

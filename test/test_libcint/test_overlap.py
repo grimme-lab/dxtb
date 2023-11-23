@@ -13,7 +13,7 @@ import torch
 
 from dxtb._types import DD, Tensor
 from dxtb.basis import Basis, IndexHelper
-from dxtb.integral.libcint import LibcintWrapper, intor
+from dxtb.integral.driver.libcint import impls as intor
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 from dxtb.utils import batch, is_basis_list, numpy_to_tensor
@@ -78,11 +78,11 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     assert is_basis_list(atombases)
 
     # dxtb's libcint overlap
-    wrapper = LibcintWrapper(atombases, ihelp)
+    wrapper = intor.LibcintWrapper(atombases, ihelp)
     dxtb_overlap = intor.overlap(wrapper)
 
     # pyscf reference overlap ("sph" needed, implicit in dxtb)
-    mol = M(numbers, positions, parse_arg=False)
+    mol = M(numbers, positions, parse_arg=False)  # type: ignore
     pyscf_overlap = numpy_to_tensor(mol.intor("int1e_ovlp"), **dd)
 
     assert dxtb_overlap.shape == pyscf_overlap.shape
@@ -132,11 +132,11 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     assert is_basis_list(atombases)
 
     # dxtb's libcint overlap
-    wrapper = LibcintWrapper(atombases, ihelp)
+    wrapper = intor.LibcintWrapper(atombases, ihelp)
     dxtb_overlap = intor.overlap(wrapper)
 
     # pyscf reference overlap ("sph" needed, implicit in dxtb)
-    mol = M(numbers, positions, parse_arg=False)
+    mol = M(numbers, positions, parse_arg=False)  # type: ignore
     pyscf_overlap = numpy_to_tensor(mol.intor("int1e_ovlp"), **dd)
 
     assert dxtb_overlap.shape == pyscf_overlap.shape
@@ -180,10 +180,10 @@ def test_grad(dtype: torch.dtype, name: str) -> None:
     atombases = bas.create_dqc(positions)
     assert is_basis_list(atombases)
 
-    wrapper = LibcintWrapper(atombases, ihelp)
+    wrapper = intor.LibcintWrapper(atombases, ihelp)
     int1 = intor.int1e("ipovlp", wrapper)
 
-    mol = M(numbers, positions, parse_arg=False)
+    mol = M(numbers, positions, parse_arg=False)  # type: ignore
     int2 = numpy_to_tensor(mol.intor("int1e_ipovlp"), **dd)
 
     assert int1.shape == int2.shape

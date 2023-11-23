@@ -40,7 +40,7 @@ def real_pairs(numbers: Tensor, diagonal: bool = False) -> Tensor:
 
 
 @torch.jit.script
-def real_triples(numbers: Tensor, diagonal: bool = False) -> Tensor:
+def real_triples(numbers: Tensor, diagonal: bool = False, self: bool = True) -> Tensor:
     """
     Generates mask that differentiates real atom triples and padding.
     Parameters
@@ -59,6 +59,12 @@ def real_triples(numbers: Tensor, diagonal: bool = False) -> Tensor:
     mask = real.unsqueeze(-3) * real.unsqueeze(-2) * real.unsqueeze(-1)
     if diagonal is True:
         mask *= ~torch.diag_embed(torch.ones_like(real))
+
+    if self is False:
+        mask *= ~torch.diag_embed(torch.ones_like(real), offset=0, dim1=-3, dim2=-2)
+        mask *= ~torch.diag_embed(torch.ones_like(real), offset=0, dim1=-3, dim2=-1)
+        mask *= ~torch.diag_embed(torch.ones_like(real), offset=0, dim1=-2, dim2=-1)
+
     return mask
 
 

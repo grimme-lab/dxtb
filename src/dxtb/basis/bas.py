@@ -321,7 +321,7 @@ class Basis(TensorLike):
         return fulltxt
 
     def create_dqc(
-        self, positions: Tensor
+        self, positions: Tensor, mask: Tensor | None = None
     ) -> list[AtomCGTOBasis] | list[list[AtomCGTOBasis]]:
         if self.numbers.ndim > 1:
             raise NotImplementedError("Batch mode not implemented.")
@@ -378,8 +378,8 @@ class Basis(TensorLike):
                     if num == 0:
                         continue
 
+                    # CGTOs
                     bases: list[CGTOBasis] = []
-
                     for _ in range(self.ihelp.shells_per_atom[_batch, i]):
                         idx = self.ihelp.shells_to_ushell[_batch, s]
 
@@ -394,10 +394,18 @@ class Basis(TensorLike):
                         # increment
                         s += 1
 
+                    # POSITIONS
+                    if mask is not None:
+                        pos = torch.masked_select(
+                            positions[_batch], mask[_batch]
+                        ).reshape((-1, 3))
+                    else:
+                        pos = batch.deflate(positions[_batch], value=float("nan"))
+
                     atomcgtobasis = AtomCGTOBasis(
                         atomz=num,
                         bases=bases,
-                        pos=batch.deflate(positions[_batch], value=float("nan"))[i, :],
+                        pos=pos[i, :],
                     )
                     atombasis.append(atomcgtobasis)
 

@@ -501,3 +501,17 @@ class IntegralMatrices(IntegralContainer):
                     f"Tensor '{name}' third to last dimension should be "
                     f"{defaults.QP_SHAPE}. Got {tensor.shape[-3]}."
                 )
+
+    def __str__(self) -> str:
+        attributes = ["hcore", "overlap", "dipole", "quadrupole"]
+        details = []
+
+        for attr in attributes:
+            tensor = getattr(self, "_" + attr)
+            info = str(tensor.shape) if tensor is not None else "None"
+            details.append(f"\n  {attr}={info}")
+
+        return f"Integrals({', '.join(details)}\n)"
+
+    def __repr__(self) -> str:
+        return str(self)

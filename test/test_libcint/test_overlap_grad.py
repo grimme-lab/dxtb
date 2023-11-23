@@ -11,7 +11,7 @@ import torch
 
 from dxtb._types import DD, Tensor
 from dxtb.basis import Basis, IndexHelper
-from dxtb.integral import libcint as intor
+from dxtb.integral.driver.libcint import impls as intor
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 from dxtb.utils import is_basis_list
@@ -90,6 +90,8 @@ def autograd(name: str, dd: DD, tol: float) -> None:
 
     wrapper = intor.LibcintWrapper(atombases, ihelp)
     s = intor.overlap(wrapper)
+    norm = torch.pow(s.diagonal(dim1=-1, dim2=-2), -0.5)
+    s = torch.einsum("...ij,...i,...j->...ij", s, norm, norm)
 
     (g,) = torch.autograd.grad(s.sum(), positions)
     positions.detach_()

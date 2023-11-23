@@ -3,7 +3,7 @@ Base calculator for the extended tight-binding model.
 """
 from __future__ import annotations
 
-import warnings
+import logging
 
 import torch
 
@@ -30,6 +30,9 @@ from ..utils import Timers, ToleranceWarning
 from ..wavefunction import filling
 
 __all__ = ["Calculator", "Result"]
+
+
+logger = logging.getLogger(__name__)
 
 
 class Result(TensorLike):
@@ -369,11 +372,10 @@ class Calculator(TensorLike):
 
         eps = torch.finfo(self.dtype).eps
         if value < eps:
-            warnings.warn(
+            logger.warn(
                 f"Selected tolerance ({value:.2E}) is smaller than the "
                 f"smallest value for the selected dtype ({self.dtype}, "
-                f"{eps:.2E}). Switching to {eps:.2E} instead.",
-                ToleranceWarning,
+                f"{eps:.2E}). Switching to {eps:.2E} instead."
             )
             value = eps
 
@@ -586,49 +588,32 @@ class Calculator(TensorLike):
     def hessian(
         self, numbers: Tensor, positions: Tensor, chrg: Tensor, shape: str = "matrix"
     ) -> Tensor:
-        pos = positions.detach().clone()
+        return self.hessian_numerical(numbers, positions, chrg, shape)
 
-        # turn off printing in numerical hessian
-        tmp = self.opts["scf_options"]["verbosity"]
-        self.opts["scf_options"]["verbosity"] = 0
-
-        def _gradfcn(pos: Tensor) -> Tensor:
-            pos.requires_grad_(True)
-            result = self.singlepoint(numbers, pos, chrg, grad=True)
-            pos.detach_()
-            return result.total_grad.detach()
-
-        hess = torch.zeros(
-            *(*positions.shape, *positions.shape),
-            **{"device": positions.device, "dtype": positions.dtype},
-        )
-
-        step = 1.0e-6
-        for i in range(numbers.shape[0]):
-            for j in range(3):
-                pos[i, j] += step
-                gr = _gradfcn(pos)
-
-                pos[i, j] -= 2 * step
-                gl = _gradfcn(pos)
-
-                pos[i, j] += step
-                hess[:, :, i, j] = 0.5 * (gr - gl) / step
-
-        if shape == "matrix":
-            hess = hess.reshape(2 * (3 * numbers.shape[-1],))
-
-        self.opts["scf_options"]["verbosity"] = tmp
-        return hess
-
-    def hessian_num(
+    def hessian_numerical(
         self, numbers: Tensor, positions: Tensor, chrg: Tensor, shape: str = "matrix"
     ) -> Tensor:
-        pos = positions.detach().clone()
+        """
+        Numerical Hessian
 
-        # turn off printing in numerical hessian
-        tmp = self.opts["scf_options"]["verbosity"]
-        self.opts["scf_options"]["verbosity"] = 0
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers.
+        positions : Tensor
+            Cartesian coordinates of all atoms in the system (nat, 3).
+        chrg : Tensor
+            Total charge.
+        shape : str, optional
+            Output shape of Hessian. Defaults to "matrix".
+
+        Returns
+        -------
+        Tensor
+            Hessian.
+        """
+        # pylint: disable=import-outside-toplevel
+        import gc
 
         def _gradfcn(pos: Tensor) -> Tensor:
             pos.requires_grad_(True)
@@ -636,21 +621,21 @@ class Calculator(TensorLike):
             pos.detach_()
             return result.total_grad.detach()
 
-        print(positions.shape)
-        print(positions.shape[-2:])
+        pos = positions.detach().clone()
+
+        # turn off printing in numerical hessian
+        tmp = self.opts["scf_options"]["verbosity"]
+        self.opts["scf_options"]["verbosity"] = 0
 
         hess = torch.zeros(
             *(*positions.shape, *positions.shape[-2:]),
             **{"device": positions.device, "dtype": positions.dtype},
         )
 
-        print("\nNumerical Hessian:", 3 * numbers.shape[0])
-        print("\nNumerical Hessian:", hess.shape)
-
-        import gc
+        logger.debug(f"Starting numerical Hessian of size {hess.shape}")
 
         count = 1
-
+        nsteps = 3 * numbers.shape[-1]
         step = 1.0e-5
         for i in range(numbers.shape[-1]):
             for j in range(3):
@@ -663,17 +648,18 @@ class Calculator(TensorLike):
                 pos[..., i, j] += step
                 hess[..., :, :, i, j] = 0.5 * (gr - gl) / step
 
-                print(f"{count}/{3*numbers.shape[-1]}")
+                logger.debug(f"Numerical Hessian (step {count}/{nsteps})")
                 count += 1
 
             gc.collect()
         gc.collect()
+
+        # reshape (nb, nat, 3, nat, 3) to (nb, nat*3, nat*3)
         if shape == "matrix":
-            s = [3 * numbers.shape[-1], 3 * numbers.shape[-1]]
-            if positions.ndim == 3:
-                s = [numbers.shape[0], 3 * numbers.shape[-1], 3 * numbers.shape[-1]]
-            print(s)
-            hess = hess.reshape(s)
+            s = [*numbers.shape[:-1], 2 * [3 * numbers.shape[-1]]]
+            hess = hess.reshape(*s)
+
+        logger.debug("Finished numerical Hessian.")
 
         self.opts["scf_options"]["verbosity"] = tmp
         return hess
@@ -681,7 +667,7 @@ class Calculator(TensorLike):
     def vibration(
         self, numbers: Tensor, positions: Tensor, chrg: Tensor, project: bool = True
     ) -> tuple[Tensor, Tensor]:
-        hess = self.hessian_num(numbers, positions, chrg, shape="matrix")
+        hess = self.hessian_numerical(numbers, positions, chrg, shape="matrix")
         return properties.frequencies(numbers, positions, hess, project=project)
 
     def dipole(
@@ -960,44 +946,6 @@ class Calculator(TensorLike):
         alpha = self.polarizability(numbers, positions, chrg)
         freqs, modes = self.vibration(numbers, positions, chrg, project=True)
         return properties.raman(alpha, freqs, modes)
-
-
-def _get_tensor_memory() -> float:
-    """
-    Obtain the total memory occupied by torch.Tensor in the garbage collector.
-
-    Returns
-    -------
-    float
-        Memory in MiB
-    """
-    import gc
-
-    # obtaining all the tensor objects from the garbage collector
-    tensor_objs = [obj for obj in gc.get_objects() if isinstance(obj, Tensor)]
-
-    # iterate each tensor objects uniquely and calculate the total storage
-    visited_data = set()
-    total_mem = 0.0
-    for tensor in tensor_objs:
-        if tensor.is_sparse:
-            continue
-
-        # check if it has been visited
-        storage = tensor.storage()
-        data_ptr = storage.data_ptr()  # type: ignore
-        if data_ptr in visited_data:
-            continue
-        visited_data.add(data_ptr)
-
-        # calculate the storage occupied
-        numel = storage.size()
-        elmt_size = storage.element_size()
-        mem = numel * elmt_size / (1024 * 1024)  # in MiB
-
-        total_mem += mem
-
-    return total_mem
 
 
 def _jac(

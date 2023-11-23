@@ -8,8 +8,8 @@ import torch
 
 from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import Basis, IndexHelper
-from dxtb.integral import Overlap
-from dxtb.integral import libcint as intor
+from dxtb.integral.driver.libcint import IntDriverLibcint, OverlapLibcint
+from dxtb.integral.driver.libcint import impls as intor
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 from dxtb.utils import batch, is_basis_list
@@ -18,8 +18,7 @@ from ..utils import dgradcheck, dgradgradcheck
 from .samples import samples
 
 sample_list = ["H2", "HHe", "LiH", "Li2", "S2", "H2O", "SiH4"]
-# FIXME: Clean this list up, but for this I have to figure out the correct ints
-int_list = ["ovlp", "r0", "n", "m", "j"]
+int_list = ["ovlp", "r0", "r0r0"]
 
 tol = 1e-8
 
@@ -104,13 +103,15 @@ def gradchecker_batch(
     )
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    overlap = Overlap(numbers, par, ihelp, **dd)
+    driver = IntDriverLibcint(numbers, par, ihelp, **dd)
+    overlap = OverlapLibcint(**dd)
 
     # variables to be differentiated
     positions.requires_grad_(True)
 
     def func(pos: Tensor) -> Tensor:
-        return overlap.build(pos, mask=mask)
+        driver.setup(pos, mask=mask)
+        return overlap.build(driver)
 
     return func, positions
 

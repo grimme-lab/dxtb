@@ -18,7 +18,7 @@ class IntDriverLibcint(IntDriver):
     family: Literal["libcint"] = "libcint"
     """Label for integral implementation family"""
 
-    def setup(self, positions: Tensor) -> None:
+    def setup(self, positions: Tensor, **kwargs) -> None:
         """
         Run the `libcint`-specific driver setup.
 
@@ -38,7 +38,8 @@ class IntDriverLibcint(IntDriver):
             )
 
         # create atomic basis set in libcint format
-        atombases = self.basis.create_dqc(positions)
+        mask = kwargs.pop("mask", None)
+        atombases = self.basis.create_dqc(positions, mask=mask)
 
         if self.ihelp.batched:
             from ....param.util import get_elem_angular

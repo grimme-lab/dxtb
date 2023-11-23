@@ -828,9 +828,6 @@ class BaseSCF:
             # spread potential to orbitals
             v = index(vmp, self._data.ihelp.orbitals_to_atom)
 
-            print(v.shape)
-            print(mpint.shape)
-
             # Form dot product over the the multipolar components.
             #  - shape multipole integral: (..., x, norb, norb)
             #  - shape multipole potential: (..., norb, x)
@@ -840,14 +837,12 @@ class BaseSCF:
         if potential.dipole is not None:
             dpint = self._data.ints.dipole
             if dpint is not None:
-                if dpint is not None:
-                    h1 = add_vmp_to_h1(h1, dpint, potential.dipole)
+                h1 = add_vmp_to_h1(h1, dpint, potential.dipole)
 
         if potential.quad is not None:
-            qpint = self._data.ints.dipole
+            qpint = self._data.ints.quadrupole
             if qpint is not None:
-                if qpint is not None:
-                    h1 = add_vmp_to_h1(h1, qpint, potential.quad)
+                h1 = add_vmp_to_h1(h1, qpint, potential.quad)
 
         return h1
 

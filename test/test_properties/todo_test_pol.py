@@ -1,5 +1,5 @@
 """
-Run tests for IR spectra.
+Run tests for polarizability.
 """
 from __future__ import annotations
 
@@ -37,6 +37,7 @@ def single(
     dd: DD,
     atol: float,
     rtol: float,
+    use_autograd: bool = False,
 ) -> None:
     numbers = samples[name]["numbers"].to(device)
     positions = samples[name]["positions"].to(**dd)
@@ -91,7 +92,7 @@ def test_single_field(dtype: torch.dtype, name: str, use_autograd: bool) -> None
 
     field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * units.VAA2AU
     atol, rtol = 1e-3, 1e-3
-    single(name, ref, field_vector, use_autograd, dd=dd, atol=atol, rtol=rtol)
+    single(name, ref, field_vector, dd, atol, rtol, use_autograd)
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
@@ -104,7 +105,7 @@ def test_single_field_medium(dtype: torch.dtype, name: str, use_autograd: bool) 
 
     field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * units.VAA2AU
     atol, rtol = 1e-2, 1e-2
-    single(name, ref, field_vector, use_autograd, dd=dd, atol=atol, rtol=rtol)
+    single(name, ref, field_vector, dd, atol, rtol, use_autograd)
 
 
 def batched(
