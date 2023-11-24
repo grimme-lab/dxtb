@@ -26,7 +26,7 @@ from ..dispersion import Dispersion, new_dispersion
 from ..interaction import Charges, Interaction, InteractionList, Potential
 from ..interaction.external import field as efield
 from ..param import Param, get_elem_angular
-from ..utils import Timers, ToleranceWarning
+from ..utils import Timers, _jac
 from ..wavefunction import filling
 
 __all__ = ["Calculator", "Result"]
@@ -226,9 +226,10 @@ class Calculator(TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system
+            Atomic numbers for all atoms in the system.
         par : Param
-            Full xtb parametrization. Decides energy contributions.
+            Representation of an extended tight-binding model (full xtb
+            parametrization). Decides energy contributions.
         classical : Sequence[Classical] | None, optional
             Additional classical contributions. Defaults to `None`.
         interaction : Sequence[Interaction] | None, optional
@@ -407,7 +408,7 @@ class Calculator(TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers.
+            Atomic numbers for all atoms in the system.
         positions : Tensor
             Cartesian coordinates of all atoms in the system (nat, 3).
         chrg : Tensor
@@ -583,7 +584,7 @@ class Calculator(TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers.
+            Atomic numbers for all atoms in the system.
         positions : Tensor
             Cartesian coordinates of all atoms in the system (nat, 3).
         chrg : Tensor
@@ -605,6 +606,7 @@ class Calculator(TensorLike):
             pos.detach_()
             return result.total_grad.detach()
 
+        # imortant: detach for gradient
         pos = positions.detach().clone()
 
         # turn off printing in numerical hessian
@@ -616,7 +618,7 @@ class Calculator(TensorLike):
             **{"device": positions.device, "dtype": positions.dtype},
         )
 
-        logger.debug(f"Starting numerical Hessian of size {hess.shape}")
+        logger.debug(f"Numerical Hessian: Starting build (size {hess.shape})")
 
         count = 1
         nsteps = 3 * numbers.shape[-1]
@@ -632,7 +634,7 @@ class Calculator(TensorLike):
                 pos[..., i, j] += step
                 hess[..., :, :, i, j] = 0.5 * (gr - gl) / step
 
-                logger.debug(f"Numerical Hessian (step {count}/{nsteps})")
+                logger.debug(f"Numerical Hessian: step {count}/{nsteps}")
                 count += 1
 
             gc.collect()
@@ -643,7 +645,7 @@ class Calculator(TensorLike):
             s = [*numbers.shape[:-1], *2 * [3 * numbers.shape[-1]]]
             hess = hess.reshape(*s)
 
-        logger.debug("Finished numerical Hessian.")
+        logger.debug("Numerical Hessian: All finished.")
 
         self.opts["scf_options"]["verbosity"] = tmp
         return hess
@@ -837,52 +839,70 @@ class Calculator(TensorLike):
         return properties.ir(mu, positions, freqs, modes)
 
     def ir_spectrum_num(self, numbers: Tensor, positions: Tensor, chrg: Tensor):
-        # turn off printing in numerical hessian
-        freqs, modes = self.vibration(numbers, positions, chrg, True)
+        logger.debug("IR spectrum: Start.")
 
-        tmp = self.opts["scf_options"]["verbosity"]
-        self.opts["scf_options"]["verbosity"] = 0
+        # run vibrational analysis first
+        hess = self.hessian_numerical(numbers, positions, chrg, shape="matrix")
+        freqs, modes = properties.frequencies(numbers, positions, hess)
+
+        # pylint: disable=import-outside-toplevel
         import gc
 
-        def num_grad(positions: Tensor) -> Tensor:
-            # setup numerical gradient
-            positions = positions.detach().clone()
-            n_atoms = positions.shape[0]
-            gradient = torch.zeros((3, n_atoms, 3), dtype=positions.dtype)
+        # important: use new/separate position tensor
+        pos = positions.detach().clone()
 
-            step = 1.0e-7
+        # turn off printing in numerical hessian
+        tmp = self.opts["scf_options"]["verbosity"]
+        self.opts["scf_options"]["verbosity"] = 0
 
-            print("Numerical IR Ints:", 3 * n_atoms)
+        dmu_dr = torch.zeros(
+            (3, *positions.shape[-2:]),
+            **{"device": positions.device, "dtype": positions.dtype},
+        )
 
-            count = 1
-            for i in range(n_atoms):
-                for j in range(3):
-                    positions[i, j] += step
-                    er = self.dipole(numbers, positions, chrg)
+        logger.debug(
+            "IR spectrum: Start building numerical dipole derivative: "
+            f"(size {dmu_dr.shape})."
+        )
 
-                    positions[i, j] -= 2 * step
-                    el = self.dipole(numbers, positions, chrg)
+        count = 1
+        nsteps = 3 * numbers.shape[-1]
+        step = 1.0e-5
+        for i in range(positions.shape[-2]):
+            for j in range(3):
+                pos[i, j] += step
+                er = self.dipole(numbers, pos, chrg)
 
-                    positions[i, j] += step
-                    gradient[:, i, j] = 0.5 * (er - el) / step
+                pos[i, j] -= 2 * step
+                el = self.dipole(numbers, pos, chrg)
 
-                    print(f"{count}/{3*n_atoms}")
-                    count += 1
+                pos[i, j] += step
+                dmu_dr[:, i, j] = 0.5 * (er - el) / step
 
-                gc.collect()
+                logger.debug(
+                    "IR spectrum: Numerical dipole derivative step " f"{count}/{nsteps}"
+                )
+                count += 1
+
             gc.collect()
-            return gradient
+        gc.collect()
 
-        dmu_dr = num_grad(positions).view(3, -1)
-        self.opts["scf_options"]["verbosity"] = tmp
+        logger.debug("IR spectrum: Numerical dipole derivative finished")
 
+        dmu_dr = dmu_dr.view(3, -1)
         dmu_dq = torch.matmul(dmu_dr, modes)  # (ndim, nfreqs)
         ir_ints = torch.einsum("...df,...df->...f", dmu_dq, dmu_dq)  # (nfreqs,)
 
+        # TODO: Figure out unit
         from ..constants import units
 
-        print(freqs * units.AU2RCM)
+        print()
         print(ir_ints * 1378999.7790799031)
+
+        logger.debug("IR spectrum: All finished.")
+
+        self.opts["scf_options"]["verbosity"] = tmp
+        return freqs * units.AU2RCM, ir_ints
 
     def raman_spectrum(
         self, numbers: Tensor, positions: Tensor, chrg: Tensor
@@ -894,7 +914,7 @@ class Calculator(TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers.
+            Atomic numbers for all atoms in the system.
         positions : Tensor
             Atomic positions of shape (n, 3).
         chrg : Tensor
@@ -930,42 +950,3 @@ class Calculator(TensorLike):
         alpha = self.polarizability(numbers, positions, chrg)
         freqs, modes = self.vibration(numbers, positions, chrg, project=True)
         return properties.raman(alpha, freqs, modes)
-
-
-def _jac(
-    a: Tensor,
-    b: Tensor,
-    create_graph: bool | None = None,
-    retain_graph: bool = True,
-) -> Tensor:
-    # catch missing gradients (e.g., halogen bond correction evaluates to
-    # zero if no donors/acceptors are present)
-    if a.grad_fn is None:
-        return torch.zeros(
-            (*a.shape, b.numel()),
-            dtype=b.dtype,
-            device=b.device,
-        )
-
-    if create_graph is None:
-        create_graph = torch.is_grad_enabled()
-    assert create_graph is not None
-
-    aflat = a.reshape(-1)
-    anumel, bnumel = a.numel(), b.numel()
-    res = torch.empty(
-        (anumel, bnumel),
-        dtype=a.dtype,
-        device=a.device,
-    )
-
-    for i in range(aflat.numel()):
-        (g,) = torch.autograd.grad(
-            aflat[i],
-            b,
-            create_graph=create_graph,
-            retain_graph=retain_graph,
-        )
-        res[i] = g.reshape(-1)
-
-    return res.reshape((*a.shape, bnumel))

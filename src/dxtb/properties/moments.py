@@ -63,7 +63,7 @@ def dipole_xtb(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers in the system.
+        Atomic numbers for all atoms in the system.
     charge : Tensor
         Atom-resolved charges.
     positions : Tensor

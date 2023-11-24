@@ -29,7 +29,7 @@ def get_guess(
     numbers : Tensor
         Atomic numbers of all atoms in the system.
     positions : Tensor
-        Cartesian coordinates of all atoms in the system.
+        Cartesian coordinates of all atoms in the system (nat, 3).
     chrg : Tensor
         Total charge of system.
     ihelp : IndexHelper
@@ -68,7 +68,7 @@ def get_eeq_guess(numbers: Tensor, positions: Tensor, chrg: Tensor) -> Tensor:
     numbers : Tensor
         Atomic numbers of all atoms in the system.
     positions : Tensor
-        Cartesian coordinates of all atoms in the system.
+        Cartesian coordinates of all atoms in the system (nat, 3).
     chrg : Tensor
         Total charge of system.
 

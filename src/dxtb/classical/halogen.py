@@ -116,7 +116,7 @@ class Halogen(Classical):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers of all atoms.
+            Atomic numbers for all atoms in the system.
         ihelp : IndexHelper
             Helper class for indexing.
 
@@ -142,7 +142,7 @@ class Halogen(Classical):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms.
+            Cartesian coordinates of all atoms in the system (nat, 3).
         cache : Halogen.Cache
             Cache for the halogen bond parameters.
 
@@ -177,9 +177,9 @@ class Halogen(Classical):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers of all atoms.
+            Atomic numbers for all atoms in the system.
         positions : Tensor
-            Cartesian coordinates of all atoms.
+            Cartesian coordinates of all atoms in the system (nat, 3).
 
         Returns
         -------
@@ -248,9 +248,9 @@ class Halogen(Classical):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers of all atoms.
+            Atomic numbers for all atoms in the system.
         positions : Tensor
-            Cartesian coordinates of all atoms.
+            Cartesian coordinates of all atoms in the system (nat, 3).
         bond_strength : Tensor
             Halogen bond strengths.
 
@@ -343,7 +343,7 @@ def new_halogen(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers of all atoms.
+        Atomic numbers for all atoms in the system.
     par : Param
         Representation of an extended tight-binding model.
     cutoff : Tensor

@@ -86,9 +86,9 @@ class Interaction(TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers.
+            Atomic numbers for all atoms in the system.
         positions : Tensor
-            Cartesian coordinates.
+            Cartesian coordinates of all atoms in the system (nat, 3).
         ihelp: IndexHelper
             Index mapping for the basis set.
 
@@ -369,7 +369,7 @@ class Interaction(TensorLike):
         charges : Tensor
             Orbital-resolved partial charges.
         positions : Tensor
-            Cartesian coordinates.
+            Cartesian coordinates of all atoms in the system (nat, 3).
         cache : Interaction.Cache
             Restart data for the interaction.
         ihelp : IndexHelper

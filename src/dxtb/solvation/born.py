@@ -132,7 +132,7 @@ def compute_psi(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers of the atoms.
+        Atomic numbers for all atoms in the system.
     positions : Tensor
         Cartesian coordinates of the atoms.
     rvdw : Tensor

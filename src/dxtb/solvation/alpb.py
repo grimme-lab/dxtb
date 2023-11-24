@@ -105,7 +105,7 @@ def get_adet(positions: Tensor, rad: Tensor) -> Tensor:
     Parameters
     ----------
     positions : Tensor
-        Cartesian coordinates of all atoms.
+        Cartesian coordinates of all atoms in the system (nat, 3).
     rad : Tensor
         Radii of all atoms.
 
@@ -212,7 +212,7 @@ class GeneralizedBorn(Interaction):
         numbers : Tensor
             Atomic numbers of all atoms in the system.
         positions : Tensor
-            Cartesian coordinates of all atoms in the system.
+            Cartesian coordinates of all atoms in the system (nat, 3).
 
         Returns
         -------

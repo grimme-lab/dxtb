@@ -26,7 +26,7 @@ def get_coordination_number(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers of molecular structure.
+        Atomic numbers for all atoms in the system.
     positions : Tensor
         Atomic positions of molecular structure.
     counting_function : CountingFunction
@@ -96,7 +96,7 @@ def get_coordination_number_gradient(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers of molecular structure.
+        Atomic numbers for all atoms in the system.
     positions : Tensor
         Atomic positions of molecular structure.
     dcounting_function : CountingFunction

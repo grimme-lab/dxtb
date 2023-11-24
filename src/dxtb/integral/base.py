@@ -100,11 +100,11 @@ class IntDriver(TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers.
+            Atomic numbers for all atoms in the system.
         positions : Tensor
             Cartesian coordinates of all atoms in the system (nat, 3).
         par : Param
-            Full `xtb` parametrization.
+            Representation of an extended tight-binding model.
         ihelp : IndexHelper
             Helper for indexing.
         """

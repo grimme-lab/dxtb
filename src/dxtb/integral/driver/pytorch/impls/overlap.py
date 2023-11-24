@@ -98,7 +98,7 @@ def overlap(
     Parameters
     ----------
     positions : Tensor
-        Cartesian coordinates of all atoms in the system.
+        Cartesian coordinates of all atoms in the system (nat, 3).
     bas : Basis
         Basis set information.
     ihelp : IndexHelper
@@ -195,7 +195,7 @@ def overlap_gradient(
     Parameters
     ----------
     positions : Tensor
-        Cartesian coordinates of all atoms in the system.
+        Cartesian coordinates of all atoms in the system (nat, 3).
     bas : Basis
         Basis set information.
     ihelp : IndexHelper
@@ -304,7 +304,7 @@ class OverlapFunction(Protocol):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms in the system.
+            Cartesian coordinates of all atoms in the system (nat, 3).
         bas : Basis
             Basis set information.
         ihelp : IndexHelper

@@ -10,6 +10,19 @@ from .._types import Tensor
 
 @torch.jit.script
 def real_atoms(numbers: Tensor) -> Tensor:
+    """
+    Generates mask that differentiates real atoms and padding.
+
+    Parameters
+    ----------
+    numbers : Tensor
+        Atomic numbers for all atoms in the system.
+
+    Returns
+    -------
+    Tensor
+        Mask for real atoms.
+    """
     return numbers != 0
 
 
@@ -21,7 +34,7 @@ def real_pairs(numbers: Tensor, diagonal: bool = False) -> Tensor:
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers
+        Atomic numbers for all atoms in the system.
     diagonal : bool, optional
         Whether the diagonal should be masked, i.e. filled with `False`.
         Defaults to `False`, i.e., `True` remains on the diagonal for real atoms.
@@ -43,6 +56,7 @@ def real_pairs(numbers: Tensor, diagonal: bool = False) -> Tensor:
 def real_triples(numbers: Tensor, diagonal: bool = False, self: bool = True) -> Tensor:
     """
     Generates mask that differentiates real atom triples and padding.
+
     Parameters
     ----------
     numbers : Tensor
@@ -50,6 +64,7 @@ def real_triples(numbers: Tensor, diagonal: bool = False, self: bool = True) -> 
     diagonal : bool, optional
         Whether the diagonal should be masked, i.e. filled with `False`.
         Defaults to `False`, i.e., `True` remains on the diagonal for real atoms.
+
     Returns
     -------
     Tensor

@@ -8,7 +8,7 @@ atomic partial charges as well as atom-resolved electrostatic energies.
 Example
 -------
 >>> import torch
->>> import xtbml.charges as charges
+>>> import dxtb.charges as charges
 >>> numbers = torch.tensor([7, 7, 1, 1, 1, 1, 1, 1])
 >>> positions = torch.tensor([
 ...     [-2.98334550857544, -0.08808205276728, +0.00000000000000],
@@ -223,7 +223,7 @@ def solve(
     numbers : Tensor
         Atomic numbers of all atoms in the system.
     positions : Tensor
-        Cartesian coordinates of all atoms in the system.
+        Cartesian coordinates of all atoms in the system (nat, 3).
     total_charge : Tensor
         Total charge of the system.
     model : ChargeModel
@@ -239,7 +239,7 @@ def solve(
     Example
     -------
     >>> import torch
-    >>> import xtbml.charges as charges
+    >>> import dxtb.charges as charges
     >>> numbers = torch.tensor([7, 1, 1, 1])
     >>> positions=torch.tensor([
     ...     [+0.00000000000000, +0.00000000000000, -0.54524837997150],

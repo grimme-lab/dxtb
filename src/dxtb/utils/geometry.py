@@ -144,7 +144,7 @@ def bond_angle(numbers: Tensor, positions: Tensor) -> Tensor:
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers.
+        Atomic numbers for all atoms in the system.
     positions : Tensor
         Cartesian coordinates of all atoms in the system (nat, 3).
 

@@ -55,9 +55,9 @@ def M(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers of all atoms in the system.
+        Atomic numbers for all atoms in the system.
     positions : Tensor
-        Cartesian coordinates of all atoms in the system.
+        Cartesian coordinates of all atoms in the system (nat, 3).
     xtb_version : str, optional
         Version of xtb to use for basis set. Defaults to "gfn1".
 

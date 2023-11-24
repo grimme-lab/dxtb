@@ -170,7 +170,7 @@ class ES2(Interaction):
         numbers : Tensor
             Atomic numbers of all atoms in the system.
         positions : Tensor
-            Cartesian coordinates of all atoms in the system.
+            Cartesian coordinates of all atoms in the system (nat, 3).
         ihelp : IndexHelper
             Index mapping for the basis set.
 
@@ -199,10 +199,10 @@ class ES2(Interaction):
 
         Parameters
         ----------
-        numbers : Tensor
+
             Atomic numbers of all atoms in the system.
         positions : Tensor
-            Cartesian coordinates of all atoms in the system.
+            Cartesian coordinates of all atoms in the system (nat, 3).
         ihelp : IndexHelper
             Index mapping for the basis set.
 
@@ -239,7 +239,7 @@ class ES2(Interaction):
         numbers : Tensor
             Atomic numbers of all atoms in the system.
         positions : Tensor
-            Cartesian coordinates of all atoms in the system.
+            Cartesian coordinates of all atoms in the system (nat, 3).
         ihelp : IndexHelper
             Index mapping for the basis set.
 
@@ -585,7 +585,7 @@ def coulomb_matrix_atom(
     mask : Tensor
         Mask from atomic numbers of all atoms in the system.
     positions : Tensor
-        Cartesian coordinates of all atoms in the system.
+        Cartesian coordinates of all atoms in the system (nat, 3).
     ihelp : IndexHelper
         Index mapping for the basis set.
     hubbard : Tensor
@@ -638,7 +638,7 @@ def coulomb_matrix_atom_gradient(
     mask : Tensor
         Mask from atomic numbers of all atoms in the system.
     positions : Tensor
-        Cartesian coordinates of all atoms in the system.
+        Cartesian coordinates of all atoms in the system (nat, 3).
     mat : Tensor
         Atom-resolved Coulomb matrix.
     gexp: Tensor
@@ -687,7 +687,7 @@ def coulomb_matrix_shell(
     mask : Tensor
         Mask from atomic numbers of all atoms in the system.
     positions : Tensor
-        Cartesian coordinates of all atoms in the system.
+        Cartesian coordinates of all atoms in the system (nat, 3).
     ihelp : IndexHelper
         Index mapping for the basis set.
     hubbard : Tensor
@@ -750,7 +750,7 @@ def coulomb_matrix_shell_gradient(
     mask : Tensor
         Mask from atomic numbers of all atoms in the system.
     positions : Tensor
-        Cartesian coordinates of all atoms in the system.
+        Cartesian coordinates of all atoms in the system (nat, 3).
     mat : Tensor
         Shell-resolved Coulomb matrix.
     ihelp : IndexHelper
@@ -927,7 +927,7 @@ def new_es2(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers of all atoms.
+        Atomic numbers for all atoms in the system.
     par : Param
         Representation of an extended tight-binding model.
     shell_resolved: bool

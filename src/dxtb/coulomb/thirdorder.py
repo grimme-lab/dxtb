@@ -198,7 +198,7 @@ def new_es3(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers of all atoms.
+        Atomic numbers for all atoms in the system.
     par : Param
         Representation of an extended tight-binding model.
 

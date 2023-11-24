@@ -172,9 +172,9 @@ def guess_bond_length(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers for all atoms in the system
+        Atomic numbers for all atoms in the system.
     cn : Tensor
-        Coordination numbers for all atoms in the system
+        Coordination numbers for all atoms in the system.
 
     Returns
     -------
@@ -229,19 +229,19 @@ def guess_bond_order(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers for all atoms in the system
+        Atomic numbers for all atoms in the system.
     positions : Tensor
-        Cartesian coordinates for all atoms in the system
+        Cartesian coordinates of all atoms in the system (nat, 3).
     cn : Tensor
-        Coordination numbers for all atoms in the system
+        Coordination numbers for all atoms in the system.
     counting_function : callable
         Function to determine whether two atoms are bonded,
-        additional arguments are passed to the counting function
+        additional arguments are passed to the counting function.
 
     Returns
     -------
     Tensor
-        Bond order for all atom pairs
+        Bond order for all atom pairs.
 
     Example
     -------

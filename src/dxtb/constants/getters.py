@@ -28,7 +28,7 @@ def get_atomic_masses(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers in the system.
+        Atomic numbers for all atoms in the system.
     atomic_units : bool, optional
         Flag for unit conversion. If `True` (default), the atomic masses will
         be returned in atomic units. If `False`, the unit remains g/mol.
@@ -57,7 +57,7 @@ def get_zvalence(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers in the system.
+        Atomic numbers for all atoms in the system.
     device : torch.device | None, optional
         Device to store the tensor. If `None` (default), the default device is used.
     dtype : torch.dtype, optional
@@ -83,7 +83,7 @@ def get_ncore(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers in the system.
+        Atomic numbers for all atoms in the system.
     device : torch.device | None, optional
         Device to store the tensor. If `None` (default), the default device is used.
     dtype : torch.dtype, optional

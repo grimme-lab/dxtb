@@ -103,9 +103,9 @@ class InteractionList(Interaction):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers.
+            Atomic numbers for all atoms in the system.
         positions : Tensor
-            Cartesian coordinates.
+            Cartesian coordinates of all atoms in the system (nat, 3).
         ihelp: IndexHelper
             Index mapping for the basis set.
 
@@ -250,7 +250,7 @@ class InteractionList(Interaction):
             Collection of charges. Monopolar partial charges are
             orbital-resolved.
         positions : Tensor
-            Cartesian coordinates.
+            Cartesian coordinates of all atoms in the system (nat, 3).
         cache : InteractionList.Cache
             Restart data for the interaction.
         ihelp : IndexHelper

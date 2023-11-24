@@ -475,7 +475,7 @@ def solve(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers of the system.
+        Atomic numbers for all atoms in the system.
     positions : Tensor
         Cartesian coordinates of all atoms in the system (nat, 3).
     chrg : Tensor

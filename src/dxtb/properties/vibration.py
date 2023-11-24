@@ -24,7 +24,7 @@ def frequencies(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers for all atoms in the system
+        Atomic numbers for all atoms in the system.
     hessian : Tensor
         Hessian matrix.
     project : bool, optional

@@ -71,7 +71,7 @@ def get_elem_param(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers.
+        Atomic numbers for all atoms in the system.
     par : dict[str, Element]
         Parametrization of elements.
     key : str

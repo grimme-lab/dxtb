@@ -37,7 +37,7 @@ class ClassicalABC(ABC):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers of all atoms.
+            Atomic numbers for all atoms in the system.
         ihelp : IndexHelper
             Helper class for indexing.
 
@@ -61,7 +61,7 @@ class ClassicalABC(ABC):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms.
+            Cartesian coordinates of all atoms in the system (nat, 3).
         cache : Cache
             Cache for the parameters.
 

@@ -17,7 +17,7 @@ class Dispersion(Classical, TensorLike):
     """
 
     numbers: Tensor
-    """Atomic numbers of all atoms."""
+    """Atomic numbers for all atoms in the system."""
 
     param: dict[str, Tensor]
     """Dispersion parameters."""
@@ -48,7 +48,7 @@ class Dispersion(Classical, TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers of all atoms.
+            Atomic numbers for all atoms in the system.
 
         Returns
         -------

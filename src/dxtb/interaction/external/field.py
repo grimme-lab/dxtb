@@ -285,6 +285,12 @@ class ElectricField(Interaction):
         """
         return -cache.vqp if cache.vqp is not None else None
 
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}(field={self.field}, field_grad={self.field_grad})"
+
+    def __repr__(self) -> str:
+        return str(self)
+
 
 def new_efield(
     field: Tensor,

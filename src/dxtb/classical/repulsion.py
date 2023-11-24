@@ -144,7 +144,7 @@ class Repulsion(Classical, TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers of all atoms.
+            Atomic numbers for all atoms in the system.
         ihelp : IndexHelper
             Helper class for indexing.
 
@@ -202,7 +202,7 @@ class Repulsion(Classical, TensorLike):
         cache : Repulsion.Cache
             Cache for repulsion.
         positions : Tensor
-            Cartesian coordinates of all atoms.
+            Cartesian coordinates of all atoms in the system (nat, 3).
         atom_resolved : bool
             Whether to return atom-resolved energy (True) or full matrix (False).
 
@@ -240,7 +240,7 @@ def repulsion_energy(
     Parameters
     ----------
     positions : Tensor
-        Cartesian coordinates of all atoms.
+        Cartesian coordinates of all atoms in the system (nat, 3).
     mask : Tensor
         Mask for padding.
     arep : Tensor
@@ -312,7 +312,7 @@ def repulsion_gradient(
     erep : Tensor
         Atom-resolved repulsion energy (from `repulsion_energy`).
     positions : Tensor
-        Cartesian coordinates of all atoms.
+        Cartesian coordinates of all atoms in the system (nat, 3).
     mask : Tensor
         Mask for padding.
     arep : Tensor
@@ -491,7 +491,7 @@ def new_repulsion(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers of all atoms.
+        Atomic numbers for all atoms in the system.
     par : Param
         Representation of an extended tight-binding model.
     cutoff : float

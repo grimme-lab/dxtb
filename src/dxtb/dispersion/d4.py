@@ -64,7 +64,7 @@ class DispersionD4(Dispersion):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers of all atoms.
+            Atomic numbers for all atoms in the system.
         charge : Tensor
             Total charge of the system.
 
@@ -122,7 +122,7 @@ class DispersionD4(Dispersion):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms.
+            Cartesian coordinates of all atoms in the system (nat, 3).
         cache : DispersionD4.Cache
             Dispersion cache containing settings.
         q : Tensor | None, optional

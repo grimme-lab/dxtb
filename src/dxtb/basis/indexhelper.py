@@ -200,14 +200,14 @@ class IndexHelper(TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for the system
+            Atomic numbers for all atoms in the system.
         angular : dict[int, Tensor]
-            Map between atomic numbers and angular momenta of all shells
+            Map between atomic numbers and angular momenta of all shells.
 
         Returns
         -------
         IndexHelper
-            Instance of index helper for given basis set
+            Instance of index helper for given basis set.
         """
 
         device = numbers.device

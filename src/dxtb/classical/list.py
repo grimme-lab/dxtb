@@ -55,7 +55,7 @@ class ClassicalList(Classical):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers.
+            Atomic numbers for all atoms in the system.
         ihelp: IndexHelper
             Index mapping for the basis set.
 
@@ -82,7 +82,7 @@ class ClassicalList(Classical):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms.
+            Cartesian coordinates of all atoms in the system (nat, 3).
         cache : Cache
             Restart data for the classical contribution.
 
@@ -115,7 +115,7 @@ class ClassicalList(Classical):
         energy : dict[str, Tensor]
             Energies of all classical contributions that will be differentiated.
         positions : Tensor
-            Cartesian coordinates.
+            Cartesian coordinates of all atoms in the system (nat, 3).
 
         Returns
         -------

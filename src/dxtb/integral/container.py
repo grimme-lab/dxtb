@@ -316,7 +316,7 @@ class Integrals(IntegralContainer):
         if ovlp.matrix is None or ovlp.norm is None:
             self.build_overlap(positions, **kwargs)
 
-        return self.overlap.integral.norm
+        return ovlp.norm
 
     # checks
 

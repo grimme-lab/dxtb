@@ -68,7 +68,7 @@ class DispersionD3(Dispersion):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers of all atoms.
+            Atomic numbers for all atoms in the system.
 
         Returns
         -------
@@ -121,7 +121,7 @@ class DispersionD3(Dispersion):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms.
+            Cartesian coordinates of all atoms in the system (nat, 3).
         cache : DispersionD3.Cache
             Dispersion cache containing settings.
 
