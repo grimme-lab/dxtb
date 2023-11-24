@@ -542,7 +542,7 @@ class ES2(Interaction):
         )
 
         # (n_batch, shells_i, shells_j, 3)
-        positions = batch.index(positions, ihelp.shells_to_atom)
+        positions = ihelp.spread_atom_to_shell(positions, dim=-2, extra=True)
         mask = ihelp.spread_atom_to_shell(mask, (-2, -1))
         rij = torch.where(
             mask.unsqueeze(-1),
@@ -775,7 +775,7 @@ def coulomb_matrix_shell_gradient(
     )
 
     # (n_batch, shells_i, shells_j, 3)
-    positions = batch.index(positions, ihelp.shells_to_atom)
+    positions = ihelp.spread_atom_to_shell(positions, dim=-2, extra=True)
     mask = ihelp.spread_atom_to_shell(mask, (-2, -1))
     rij = torch.where(
         mask.unsqueeze(-1),

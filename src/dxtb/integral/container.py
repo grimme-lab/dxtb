@@ -39,6 +39,7 @@ class Integrals(IntegralContainer):
         "_overlap",
         "_dipole",
         "_quadrupole",
+        "_matrices",
         "_run_checks",
         "_driver",
     ]
@@ -66,6 +67,7 @@ class Integrals(IntegralContainer):
         self._overlap = overlap
         self._dipole = dipole
         self._quadrupole = quadrupole
+        self._matrices = IntegralMatrices(device=device, dtype=dtype)
 
         # Determine which driver class to instantiate
         if driver == "libcint":
@@ -78,6 +80,14 @@ class Integrals(IntegralContainer):
             )
         else:
             raise ValueError(f"Unknown integral driver '{driver}'.")
+
+    @property
+    def matrices(self) -> IntegralMatrices:
+        return self._matrices
+
+    @matrices.setter
+    def matrices(self, matrices: IntegralMatrices) -> None:
+        self._matrices = matrices
 
     # Integral driver
 
@@ -92,13 +102,13 @@ class Integrals(IntegralContainer):
         self._driver = driver
 
     def setup_driver(self, positions: Tensor, **kwargs: Any) -> None:
-        logger.debug("Starting: Integral driver setup.")
+        logger.debug("Integral Driver: Start setup.")
         if self.driver.is_latest(positions) is True:
-            logger.debug("Finished: Integral driver already setup")
+            logger.debug("Integral Driver: Skip setup. Already done.")
             return
 
         self.driver.setup(positions, **kwargs)
-        logger.debug("Finished: Integral driver setup.")
+        logger.debug("Integral Driver: Finished setup.")
 
     # Core Hamiltonian
 
@@ -113,6 +123,8 @@ class Integrals(IntegralContainer):
 
     # TODO: Allow Hamiltonian build without overlap
     def build_hcore(self, positions: Tensor, **kwargs) -> Tensor:
+        logger.debug("Core Hamiltonian: Start building matrix.")
+
         if self.hcore is None:
             raise RuntimeError("Core Hamiltonian integral not initialized.")
 
@@ -133,7 +145,10 @@ class Integrals(IntegralContainer):
             rcov = cov_rad_d3[self.numbers].to(self.device)
             cn = get_coordination_number(self.numbers, positions, exp_count, rcov)
 
-        return self.hcore.integral.build(positions, ovlp.matrix, cn=cn)
+        hcore = self.hcore.integral.build(positions, ovlp.matrix, cn=cn)
+        self._matrices.hcore = hcore
+        logger.debug("Core Hamiltonian: All finished.")
+        return hcore
 
     # overlap
 
@@ -148,10 +163,15 @@ class Integrals(IntegralContainer):
 
     def build_overlap(self, positions: Tensor, **kwargs: Any) -> Tensor:
         self.setup_driver(positions, **kwargs)
+        logger.debug("Overlap integral: Start building matrix.")
 
         if self.overlap is None:
             raise RuntimeError("No overlap integral provided.")
-        return self.overlap.build(self.driver)
+
+        overlap = self.overlap.build(self.driver)
+        self._matrices.overlap = overlap
+        logger.debug("Overlap integral: All finished.")
+        return overlap
 
     def grad_overlap(self, positions: Tensor, **kwargs) -> Tensor:
         self.setup_driver(positions, **kwargs)
@@ -181,6 +201,7 @@ class Integrals(IntegralContainer):
 
     def build_dipole(self, positions: Tensor, shift: bool = True, **kwargs: Any):
         self.setup_driver(positions, **kwargs)
+        logger.debug("Dipole integral: Start building matrix.")
 
         if self.overlap is None:
             raise RuntimeError("Overlap integral not initialized.")
@@ -191,24 +212,23 @@ class Integrals(IntegralContainer):
         # build (with overlap norm)
         self.dipole.integral.norm = self._norm(positions)
         self.dipole.build(self.driver)
+        logger.debug("Dipole integral: Finished building matrix.")
 
         # shift to rj (requires overlap integral)
         if shift is True:
-            # TODO: ihelp.spread_atom_to_orbital(positions, extra=True)
-            # spread positions to orbital-resolution for contraction
-            # pylint: disable=import-outside-toplevel
-            from ..utils.batch import index
-
-            pos = index(
-                index(positions, self.ihelp.shells_to_atom),
-                self.ihelp.orbitals_to_shell,
-            )
-
+            logger.debug("Dipole integral: Start shifting operator (r0->rj).")
             self.dipole.integral.shift_r0_rj(
                 self.overlap.integral.matrix,
-                pos,
+                self.ihelp.spread_atom_to_orbital(
+                    positions,
+                    dim=-2,
+                    extra=True,
+                ),
             )
+            logger.debug("Dipole integral: Finished shifting operator.")
 
+        self._matrices.dipole = self.dipole.integral.matrix
+        logger.debug("Dipole integral: All finished.")
         return self.dipole.integral.matrix
 
     # quadrupole
@@ -239,6 +259,7 @@ class Integrals(IntegralContainer):
     ):
         # check all instantiations
         self.setup_driver(positions, **kwargs)
+        logger.debug("Quad integral: Start building matrix.")
 
         if self.overlap is None:
             raise RuntimeError("Overlap integral not initialized.")
@@ -249,13 +270,17 @@ class Integrals(IntegralContainer):
         # build
         self.quadrupole.integral.norm = self._norm(positions, **kwargs)
         self.quadrupole.build(self.driver)
+        logger.debug("Quad integral: Finished building matrix.")
 
         # make traceless before shifting
         if traceless is True:
+            logger.debug("Quad integral: Start creating traceless rep.")
             self.quadrupole.integral.traceless()
+            logger.debug("Quad integral: Finished creating traceless rep.")
 
         # shift to rj (requires overlap and dipole integral)
         if shift is True:
+            logger.debug("Quad integral: Start shifting operator (r0r0->rjrj).")
             if traceless is not True:
                 raise RuntimeError("Quadrupole moment must be tracelesss for shifting.")
 
@@ -263,23 +288,19 @@ class Integrals(IntegralContainer):
                 self.build_dipole(positions, **kwargs)
             assert self.dipole is not None
 
-            # TODO: ihelp.spread_atom_to_orbital(positions, extra=True)
-            # spread positions to orbital-resolution for contraction
-            # pylint: disable=import-outside-toplevel
-            from ..utils.batch import index
-
-            pos = index(
-                index(positions, self.ihelp.shells_to_atom),
-                self.ihelp.orbitals_to_shell,
-            )
-
             self.quadrupole.integral.shift_r0r0_rjrj(
                 self.dipole.integral.matrix,
                 self.overlap.integral.matrix,
-                pos,
-                # self.ihelp.spread_atom_to_orbital(positions, extra=True)
+                self.ihelp.spread_atom_to_orbital(
+                    positions,
+                    dim=-2,
+                    extra=True,
+                ),
             )
+            logger.debug("Quad integral: Finished shifting operator.")
 
+        self._matrices.quadrupole = self.quadrupole.integral.matrix
+        logger.debug("Quad integral: All finished.")
         return self.quadrupole.integral.matrix
 
     # helper

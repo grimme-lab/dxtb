@@ -119,18 +119,9 @@ def overlap(
     alphas, coeffs = bas.create_cgtos()
 
     # spread stuff to orbitals for indexing
-    alpha = batch.index(
-        batch.index(batch.pack(alphas), ihelp.shells_to_ushell),
-        ihelp.orbitals_to_shell,
-    )
-    coeff = batch.index(
-        batch.index(batch.pack(coeffs), ihelp.shells_to_ushell),
-        ihelp.orbitals_to_shell,
-    )
-    pos = batch.index(
-        batch.index(positions, ihelp.shells_to_atom),
-        ihelp.orbitals_to_shell,
-    )
+    alpha = ihelp.spread_ushell_to_orbital(batch.pack(alphas), dim=-2, extra=True)
+    coeff = ihelp.spread_ushell_to_orbital(batch.pack(coeffs), dim=-2, extra=True)
+    pos = ihelp.spread_atom_to_orbital(positions, dim=-2, extra=True)
     ang = ihelp.spread_shell_to_orbital(ihelp.angular)
 
     # real-space integral cutoff; assumes orthogonalization of basis
@@ -225,18 +216,9 @@ def overlap_gradient(
     alphas, coeffs = bas.create_cgtos()
 
     # spread stuff to orbitals for indexing
-    alpha = batch.index(
-        batch.index(batch.pack(alphas), ihelp.shells_to_ushell),
-        ihelp.orbitals_to_shell,
-    )
-    coeff = batch.index(
-        batch.index(batch.pack(coeffs), ihelp.shells_to_ushell),
-        ihelp.orbitals_to_shell,
-    )
-    pos = batch.index(
-        batch.index(positions, ihelp.shells_to_atom),
-        ihelp.orbitals_to_shell,
-    )
+    alpha = ihelp.spread_ushell_to_orbital(batch.pack(alphas), dim=-2, extra=True)
+    coeff = ihelp.spread_ushell_to_orbital(batch.pack(coeffs), dim=-2, extra=True)
+    pos = ihelp.spread_atom_to_orbital(positions, dim=-2, extra=True)
     ang = ihelp.spread_shell_to_orbital(ihelp.angular)
 
     # real-space integral cutoff; assumes orthogonalization of basis

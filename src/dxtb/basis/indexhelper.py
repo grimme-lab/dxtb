@@ -357,8 +357,8 @@ class IndexHelper(TensorLike):
         reduce : str
             Reduction method, defaults to "sum".
         extra : bool
-             Tensor to reduce contains a extra dimension of arbitrary size.
-             Defaults to `False`.
+            Tensor to reduce contains a extra dimension of arbitrary size.
+            Defaults to `False`.
 
         Returns
         -------
@@ -404,7 +404,10 @@ class IndexHelper(TensorLike):
         )
 
     def spread_atom_to_shell(
-        self, x: Tensor, dim: int | tuple[int, int] = -1
+        self,
+        x: Tensor,
+        dim: int | tuple[int, int] = -1,
+        extra: bool = False,
     ) -> Tensor:
         """
         Spread atom-resolved tensor to shell-resolved tensor.
@@ -415,6 +418,9 @@ class IndexHelper(TensorLike):
             Atom-resolved tensor.
         dim : int | (int, int)
             Dimension to spread over, defaults to -1.
+        extra : bool
+            Tensor to reduce contains a extra dimension of arbitrary size.
+            Defaults to `False`.
 
         Returns
         -------
@@ -422,10 +428,13 @@ class IndexHelper(TensorLike):
             Shell-resolved tensor.
         """
 
-        return wrap_gather(x, dim, self.shells_to_atom)
+        return wrap_gather(x, dim, self.shells_to_atom, extra=extra)
 
     def spread_shell_to_orbital(
-        self, x: Tensor, dim: int | tuple[int, int] = -1
+        self,
+        x: Tensor,
+        dim: int | tuple[int, int] = -1,
+        extra: bool = False,
     ) -> Tensor:
         """
         Spread shell-resolved tensor to orbital-resolved tensor.
@@ -436,6 +445,9 @@ class IndexHelper(TensorLike):
             Shell-resolved tensor.
         dim : int | (int, int)
             Dimension to spread over, defaults to -1.
+        extra : bool
+            Tensor to reduce contains a extra dimension of arbitrary size.
+            Defaults to `False`.
 
         Returns
         -------
@@ -443,10 +455,13 @@ class IndexHelper(TensorLike):
             Orbital-resolved tensor.
         """
 
-        return wrap_gather(x, dim, self.orbitals_to_shell)
+        return wrap_gather(x, dim, self.orbitals_to_shell, extra=extra)
 
     def spread_shell_to_orbital_cart(
-        self, x: Tensor, dim: int | tuple[int, int] = -1
+        self,
+        x: Tensor,
+        dim: int | tuple[int, int] = -1,
+        extra: bool = False,
     ) -> Tensor:
         """
         Spread shell-resolved tensor to orbital-resolved tensor.
@@ -457,6 +472,9 @@ class IndexHelper(TensorLike):
             Shell-resolved tensor.
         dim : int | (int, int)
             Dimension to spread over, defaults to -1.
+        extra : bool
+            Tensor to reduce contains a extra dimension of arbitrary size.
+            Defaults to `False`.
 
         Returns
         -------
@@ -464,10 +482,13 @@ class IndexHelper(TensorLike):
             Orbital-resolved tensor.
         """
 
-        return wrap_gather(x, dim, self.orbitals_to_shell_cart)
+        return wrap_gather(x, dim, self.orbitals_to_shell_cart, extra=extra)
 
     def spread_atom_to_orbital(
-        self, x: Tensor, dim: int | tuple[int, int] = -1
+        self,
+        x: Tensor,
+        dim: int | tuple[int, int] = -1,
+        extra: bool = False,
     ) -> Tensor:
         """
         Spread atom-resolved tensor to orbital-resolved tensor.
@@ -478,6 +499,9 @@ class IndexHelper(TensorLike):
             Atom-resolved tensor.
         dim : int | (int, int)
             Dimension to spread over, defaults to -1.
+        extra : bool
+            Tensor to reduce contains a extra dimension of arbitrary size.
+            Defaults to `False`.
 
         Returns
         -------
@@ -486,11 +510,13 @@ class IndexHelper(TensorLike):
         """
 
         return self.spread_shell_to_orbital(
-            self.spread_atom_to_shell(x, dim=dim), dim=dim
+            self.spread_atom_to_shell(x, dim=dim, extra=extra),
+            dim=dim,
+            extra=extra,
         )
 
     def spread_atom_to_orbital_cart(
-        self, x: Tensor, dim: int | tuple[int, int] = -1
+        self, x: Tensor, dim: int | tuple[int, int] = -1, extra: bool = False
     ) -> Tensor:
         """
         Spread atom-resolved tensor to orbital-resolved tensor.
@@ -501,6 +527,9 @@ class IndexHelper(TensorLike):
             Atom-resolved tensor.
         dim : int | (int, int)
             Dimension to spread over, defaults to -1.
+        extra : bool
+            Tensor to reduce contains a extra dimension of arbitrary size.
+            Defaults to `False`.
 
         Returns
         -------
@@ -509,11 +538,13 @@ class IndexHelper(TensorLike):
         """
 
         return self.spread_shell_to_orbital_cart(
-            self.spread_atom_to_shell(x, dim=dim), dim=dim
+            self.spread_atom_to_shell(x, dim=dim, extra=extra),
+            dim=dim,
+            extra=extra,
         )
 
     def spread_uspecies_to_atom(
-        self, x: Tensor, dim: int | tuple[int, int] = -1
+        self, x: Tensor, dim: int | tuple[int, int] = -1, extra: bool = False
     ) -> Tensor:
         """
         Spread unique species tensor to atom-resolved tensor.
@@ -524,6 +555,9 @@ class IndexHelper(TensorLike):
             Unique specie tensor.
         dim : int | (int, int)
             Dimension to spread over, defaults to -1.
+        extra : bool
+            Tensor to reduce contains a extra dimension of arbitrary size.
+            Defaults to `False`.
 
         Returns
         -------
@@ -531,10 +565,10 @@ class IndexHelper(TensorLike):
             Atom-resolved tensor.
         """
 
-        return wrap_gather(x, dim, self.atom_to_unique)
+        return wrap_gather(x, dim, self.atom_to_unique, extra=extra)
 
     def spread_uspecies_to_shell(
-        self, x: Tensor, dim: int | tuple[int, int] = -1
+        self, x: Tensor, dim: int | tuple[int, int] = -1, extra: bool = False
     ) -> Tensor:
         """
         Spread unique species tensor to shell-resolved tensor.
@@ -545,6 +579,9 @@ class IndexHelper(TensorLike):
             Unique specie tensor.
         dim : int | (int, int)
             Dimension to spread over, defaults to -1.
+        extra : bool
+            Tensor to reduce contains a extra dimension of arbitrary size.
+            Defaults to `False`.
 
         Returns
         -------
@@ -553,11 +590,13 @@ class IndexHelper(TensorLike):
         """
 
         return self.spread_atom_to_shell(
-            self.spread_uspecies_to_atom(x, dim=dim), dim=dim
+            self.spread_uspecies_to_atom(x, dim=dim, extra=extra),
+            dim=dim,
+            extra=extra,
         )
 
     def spread_uspecies_to_orbital(
-        self, x: Tensor, dim: int | tuple[int, int] = -1
+        self, x: Tensor, dim: int | tuple[int, int] = -1, extra: bool = False
     ) -> Tensor:
         """
         Spread unique species tensor to orbital-resolved tensor.
@@ -568,6 +607,9 @@ class IndexHelper(TensorLike):
             Unique specie tensor.
         dim : int
             Dimension to spread over, defaults to -1.
+        extra : bool
+            Tensor to reduce contains a extra dimension of arbitrary size.
+            Defaults to `False`.
 
         Returns
         -------
@@ -576,11 +618,13 @@ class IndexHelper(TensorLike):
         """
 
         return self.spread_atom_to_orbital(
-            self.spread_uspecies_to_atom(x, dim=dim), dim=dim
+            self.spread_uspecies_to_atom(x, dim=dim, extra=extra),
+            dim=dim,
+            extra=extra,
         )
 
     def spread_uspecies_to_orbital_cart(
-        self, x: Tensor, dim: int | tuple[int, int] = -1
+        self, x: Tensor, dim: int | tuple[int, int] = -1, extra: bool = False
     ) -> Tensor:
         """
         Spread unique species tensor to orbital-resolved tensor.
@@ -591,6 +635,9 @@ class IndexHelper(TensorLike):
             Unique specie tensor.
         dim : int
             Dimension to spread over, defaults to -1.
+        extra : bool
+            Tensor to reduce contains a extra dimension of arbitrary size.
+            Defaults to `False`.
 
         Returns
         -------
@@ -599,11 +646,13 @@ class IndexHelper(TensorLike):
         """
 
         return self.spread_atom_to_orbital_cart(
-            self.spread_uspecies_to_atom(x, dim=dim), dim=dim
+            self.spread_uspecies_to_atom(x, dim=dim, extra=extra),
+            dim=dim,
+            extra=extra,
         )
 
     def spread_ushell_to_shell(
-        self, x: Tensor, dim: int | tuple[int, int] = -1
+        self, x: Tensor, dim: int | tuple[int, int] = -1, extra: bool = False
     ) -> Tensor:
         """
         Spread unique shell tensor to shell-resolved tensor.
@@ -614,6 +663,9 @@ class IndexHelper(TensorLike):
             Unique shell tensor.
         dim : int | (int, int)
             Dimension to spread over, defaults to -1.
+        extra : bool
+            Tensor to reduce contains a extra dimension of arbitrary size.
+            Defaults to `False`.
 
         Returns
         -------
@@ -621,10 +673,10 @@ class IndexHelper(TensorLike):
             Shell-resolved tensor.
         """
 
-        return wrap_gather(x, dim, self.shells_to_ushell)
+        return wrap_gather(x, dim, self.shells_to_ushell, extra=extra)
 
     def spread_ushell_to_orbital(
-        self, x: Tensor, dim: int | tuple[int, int] = -1
+        self, x: Tensor, dim: int | tuple[int, int] = -1, extra: bool = False
     ) -> Tensor:
         """
         Spread unique shell tensor to orbital-resolved tensor.
@@ -635,6 +687,9 @@ class IndexHelper(TensorLike):
             Unique shell tensor.
         dim : int | (int, int)
             Dimension to spread over, defaults to -1.
+        extra : bool
+             Tensor to reduce contains a extra dimension of arbitrary size.
+             Defaults to `False`.
 
         Returns
         -------
@@ -643,11 +698,13 @@ class IndexHelper(TensorLike):
         """
 
         return self.spread_shell_to_orbital(
-            self.spread_ushell_to_shell(x, dim=dim), dim=dim
+            self.spread_ushell_to_shell(x, dim=dim, extra=extra),
+            dim=dim,
+            extra=extra,
         )
 
     def spread_ushell_to_orbital_cart(
-        self, x: Tensor, dim: int | tuple[int, int] = -1
+        self, x: Tensor, dim: int | tuple[int, int] = -1, extra: bool = False
     ) -> Tensor:
         """
         Spread unique shell tensor to orbital-resolved tensor.
@@ -658,6 +715,9 @@ class IndexHelper(TensorLike):
             Unique shell tensor.
         dim : int | (int, int)
             Dimension to spread over, defaults to -1.
+        extra : bool
+             Tensor to reduce contains a extra dimension of arbitrary size.
+             Defaults to `False`.
 
         Returns
         -------
@@ -666,7 +726,9 @@ class IndexHelper(TensorLike):
         """
 
         return self.spread_shell_to_orbital_cart(
-            self.spread_ushell_to_shell(x, dim=dim), dim=dim
+            self.spread_ushell_to_shell(x, dim=dim, extra=extra),
+            dim=dim,
+            extra=extra,
         )
 
     class Store:

@@ -11,9 +11,6 @@ from .._types import Any, Literal, Tensor, TensorLike
 from ..basis import Basis, IndexHelper
 from ..param import Param
 
-# TODO: Handle Update , i.e. when new positions are given
-# TODO: Handle mask via kwargs
-
 
 class IntDriver(TensorLike):
     """Base class for the integral driver."""

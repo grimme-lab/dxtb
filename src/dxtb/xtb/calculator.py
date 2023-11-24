@@ -389,8 +389,7 @@ class Calculator(TensorLike):
 
     @intlevel.setter
     def intlevel(self, value: int) -> None:
-        # TODO: ElectricField should be variable (label)
-        if "ElectricField" in self.interactions.labels:
+        if efield.LABEL_EFIELD in self.interactions.labels:
             value = max(2, value)
 
         self.opts["int_level"] = value
@@ -475,21 +474,6 @@ class Calculator(TensorLike):
                 numbers=numbers, positions=positions, ihelp=self.ihelp
             )
 
-            integrals = ints.IntegralMatrices(
-                hcore=self.integrals.hcore.matrix,
-                overlap=self.integrals.overlap.matrix,
-                dipole=(
-                    self.integrals.dipole.matrix
-                    if self.integrals.dipole is not None
-                    else None
-                ),
-                quadrupole=(
-                    self.integrals.quadrupole.matrix
-                    if self.integrals.quadrupole is not None
-                    else None
-                ),
-            )
-
             scf_results = scf.solve(
                 numbers,
                 positions,
@@ -498,7 +482,7 @@ class Calculator(TensorLike):
                 icaches,
                 self.ihelp,
                 self.opts["guess"],
-                integrals,
+                self.integrals.matrices,
                 occupation,
                 n0,
                 fwd_options=self.opts["fwd_options"],
@@ -542,7 +526,7 @@ class Calculator(TensorLike):
                 )
                 dedcn, dedr = self.integrals.hcore.integral.get_gradient(
                     positions,
-                    integrals.overlap,
+                    self.integrals.matrices.overlap,
                     result.overlap_grad,
                     result.density,
                     wmat,
@@ -656,7 +640,7 @@ class Calculator(TensorLike):
 
         # reshape (nb, nat, 3, nat, 3) to (nb, nat*3, nat*3)
         if shape == "matrix":
-            s = [*numbers.shape[:-1], 2 * [3 * numbers.shape[-1]]]
+            s = [*numbers.shape[:-1], *2 * [3 * numbers.shape[-1]]]
             hess = hess.reshape(*s)
 
         logger.debug("Finished numerical Hessian.")

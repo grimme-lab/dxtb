@@ -822,11 +822,8 @@ class BaseSCF:
             h1 = h1 - (0.5 * self._data.ints.overlap * v)
 
         def add_vmp_to_h1(h1: Tensor, mpint: Tensor, vmp: Tensor) -> Tensor:
-            # TODO: Place better?
-            from dxtb.utils.batch import index
-
             # spread potential to orbitals
-            v = index(vmp, self._data.ihelp.orbitals_to_atom)
+            v = self._data.ihelp.spread_atom_to_orbital(vmp, dim=-2, extra=True)
 
             # Form dot product over the the multipolar components.
             #  - shape multipole integral: (..., x, norb, norb)
