@@ -90,7 +90,7 @@ def overlap(
     bas: Basis,
     ihelp: IndexHelper,
     uplo: Literal["n", "u", "l"] = "l",
-    cutoff: Tensor | float | int | None = None,
+    cutoff: Tensor | float | int | None = defaults.INTCUTOFF,
 ) -> Tensor:
     """
     Calculate the full overlap matrix.
@@ -108,8 +108,8 @@ def overlap(
         triangular matrix (`l`: lower, `u`: upper) or full matrix (`n`).
         Defaults to `l` (lower triangular matrix).
     cutoff : Tensor | float | int | None, optional
-        Real-space cutoff for integral calculation in Angstrom. Defaults to
-        `constants.defaults.INTCUTOFF` (50.0).
+        Real-space cutoff for integral calculation in Bohr. Defaults to
+        `constants.defaults.INTCUTOFF`.
 
     Returns
     -------
@@ -261,11 +261,11 @@ def overlap_gradient(
 
         vec = pos[upairs][:, 0, :] - pos[upairs][:, 1, :]
 
-        # NOTE: We could also use the overlap (first return value) here, but
+        # NOTE: We could also use the overlap (from the grad func) here, but
         # the program is structured differently at the moment. Hence, we do not
         # need the overlap here and save us the writing step to the full
         # matrix, which is actually the bottleneck of the overlap routines.
-        _, dstmp = overlap_gto_grad(ang_tuple, alpha_tuple, coeff_tuple, -vec)
+        dstmp = overlap_gto_grad(ang_tuple, alpha_tuple, coeff_tuple, -vec)
 
         # write overlap of unique pair to correct position in full matrix
         for r, pair in enumerate(upairs):

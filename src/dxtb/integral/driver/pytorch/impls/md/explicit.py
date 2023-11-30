@@ -168,9 +168,9 @@ def md_explicit_gradient(
     alpha: tuple[Tensor, Tensor],
     coeff: tuple[Tensor, Tensor],
     vec: Tensor,
-) -> tuple[Tensor, Tensor]:
+) -> Tensor:
     r"""
-    Overlap and gradient of two orbitals.
+    Overlap gradient of two orbitals.
 
     .. math::
 
@@ -190,28 +190,21 @@ def md_explicit_gradient(
 
     Returns
     -------
-    tuple[Tensor, Tensor]
-        Overlap and gradient of overlap.
+    Tensor
+        Overlap gradient of shape `(nbatch, 3, ncarti, ncartj)`.
 
     Raises
     ------
     IntegralTransformError, CGTOAzimuthalQuantumNumberError
         Unsupported angular momentum.
     """
-    # angular momenta and number of cartesian gaussian basis functions
     li, lj = angular
-    ncarti = torch.div((li + 1) * (li + 2), 2, rounding_mode="floor")
-    ncartj = torch.div((lj + 1) * (lj + 2), 2, rounding_mode="floor")
 
     try:
         itrafo = TRAFO[li].type(vec.dtype).to(vec.device)
         jtrafo = TRAFO[lj].type(vec.dtype).to(vec.device)
     except IndexError as e:
         raise IntegralTransformError() from e
-
-    # cartesian overlap and overlap gradient with possible batch dimension
-    s3d = vec.new_zeros(*[*vec.shape[:-1], ncarti, ncartj])
-    ds3d = vec.new_zeros(*[*vec.shape[:-1], 3, ncarti, ncartj])
 
     ai, aj = alpha[0].unsqueeze(-1), alpha[1].unsqueeze(-2)
     ci, cj = coeff[0].unsqueeze(-1), coeff[1].unsqueeze(-2)
@@ -229,6 +222,9 @@ def md_explicit_gradient(
     rpi = +vec.unsqueeze(-1).unsqueeze(-1) * aj * oij
     rpj = -vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
 
+    nlmi = NLM_CART[li]
+    nlmj = NLM_CART[lj]
+
     # calc E function for all (ai, aj)-combis for all vecs in batch
     if li == 0:
         e0, d0 = de_s(lj, xij, rpi, rpj, ai, aj)
@@ -241,39 +237,88 @@ def md_explicit_gradient(
     else:
         raise CGTOAzimuthalQuantumNumberError(li)
 
-    for mli in range(ncarti):
-        mi = NLM_CART[li][mli, :]
-        for mlj in range(ncartj):
-            mj = NLM_CART[lj][mlj, :]
+    # Collect E-coefficients for each cartesian direction for first (i)
+    # center. Getting the E-coefficients for the three directions from
+    # `NLM_CART` replaces the first dimension with the number of
+    # cartesian basis functions of the first orbital (i), which finally
+    # yields the following shape: (ncarti, lj+1, nbatch, 3 ai, aj)
+    e0x = e0[nlmi[:, 0]]
+    e0y = e0[nlmi[:, 1]]
+    e0z = e0[nlmi[:, 2]]
 
-            sx = e0[mi[0]][mj[0]][..., 0, :, :]
-            sy = e0[mi[1]][mj[1]][..., 1, :, :]
-            sz = e0[mi[2]][mj[2]][..., 2, :, :]
+    d0x = d0[nlmi[:, 0]]
+    d0y = d0[nlmi[:, 1]]
+    d0z = d0[nlmi[:, 2]]
 
-            dx = d0[mi[0]][mj[0]][..., 0, :, :]
-            dy = d0[mi[1]][mj[1]][..., 1, :, :]
-            dz = d0[mi[2]][mj[2]][..., 2, :, :]
+    # Collect E-coefficients for each cartesian direction for second (j)
+    # center. Getting the E-coefficients for the three directions from
+    # `NLM_CART` replaces the second dimension with the number of
+    # cartesian basis functions of the second orbital (j). Additionally,
+    # we selecting the cartesian directions eliminating the `-3`rd
+    # dimension, which ultimately yields the following shape:
+    # (ncarti, ncartj, nbatch, ai, aj)
+    sx = e0x[:, nlmj[:, 0], ..., 0, :, :]  # type: ignore
+    sy = e0y[:, nlmj[:, 1], ..., 1, :, :]  # type: ignore
+    sz = e0z[:, nlmj[:, 2], ..., 2, :, :]  # type: ignore
 
-            # NOTE: calculating overlap for free
-            s3d[..., mli, mlj] += (sij * sx * sy * sz).sum((-2, -1))
+    dx = d0x[:, nlmj[:, 0], ..., 0, :, :]  # type: ignore
+    dy = d0y[:, nlmj[:, 1], ..., 1, :, :]  # type: ignore
+    dz = d0z[:, nlmj[:, 2], ..., 2, :, :]  # type: ignore
 
-            ds3d[..., :, mli, mlj] += torch.stack(
-                [
-                    (sij * dx * sy * sz).sum((-2, -1)),
-                    (sij * sx * dy * sz).sum((-2, -1)),
-                    (sij * sx * sy * dz).sum((-2, -1)),
-                ],
-                dim=-1,
-            )  # [bs, 3]
+    # First, we multiply sx, sy and sz with sij using the indices a (ai)
+    # and b (aj). Then, we sum over the alphas (a and b), reducing the
+    # tensor to (ncarti, ncartj, nbatch). Since the batch dimension is
+    # conventionally the first dimension, we cycle the indices and obtain
+    # the final shape: (nbatch, ncarti, ncartj)
+    dx = torch.einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", dx, sy, sz, sij)
+    dy = torch.einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", sx, dy, sz, sij)
+    dz = torch.einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", sx, sy, dz, sij)
 
-    # transform to spherical basis functions (itrafo * S * jtrafo^T)
-    ovlp = torch.einsum("...ij,...jk,...lk->...il", itrafo, s3d, jtrafo)
+    # For the full cartesian gradient, we stack cartesian the contributions in
+    # the first dimension, i.e., before the batch: (nbatch, 3, ncarti, ncartj).
+    # Although the cartesian dimension always goes last, we apply `torch.tril`
+    # or `torch.triu` later, which only works on the eading 2D sub-matrices of
+    # higher-dimensional tensors. Hence, we reshape later.
+    ds3d = torch.stack([dx, dy, dz], dim=-3)
 
-    rt = torch.arange(ds3d.shape[-3], device=ds3d.device)
-    # [bs, upairs, 3, norbi, norbj] == [vec[0], vec[1], 3, norbi, norbj]
-    grad = torch.einsum("...ij,...jk,...lk->...il", itrafo, ds3d[..., rt, :, :], jtrafo)
+    # transform to spherical basis functions (itrafo * dS * jtrafo^T)
+    return torch.einsum("...ij,...xjk,...lk->...xil", itrafo, ds3d, jtrafo)
 
-    return ovlp, grad
+    # OLD: This is the loop-based version of the above indexing atrocities.
+    # I left it here, as it may be better to understand...
+    #
+    # ncarti = torch.div((li + 1) * (li + 2), 2, rounding_mode="floor")
+    # ncartj = torch.div((lj + 1) * (lj + 2), 2, rounding_mode="floor")
+    #
+    # # cartesian overlap and overlap gradient with possible batch dimension
+    # s3d = vec.new_zeros(*[*vec.shape[:-1], ncarti, ncartj])
+    # ds3d = vec.new_zeros(*[*vec.shape[:-1], 3, ncarti, ncartj])
+    #
+    # for mli in range(ncarti):
+    #     mi = NLM_CART[li][mli, :]
+    #     for mlj in range(ncartj):
+    #         mj = NLM_CART[lj][mlj, :]
+    #
+    #         sx = e0[mi[0]][mj[0]][..., 0, :, :]
+    #         sy = e0[mi[1]][mj[1]][..., 1, :, :]
+    #         sz = e0[mi[2]][mj[2]][..., 2, :, :]
+    #
+    #         dx = d0[mi[0]][mj[0]][..., 0, :, :]
+    #         dy = d0[mi[1]][mj[1]][..., 1, :, :]
+    #         dz = d0[mi[2]][mj[2]][..., 2, :, :]
+    #
+    #         # calculating overlap for free
+    #         s3d[..., mli, mlj] += (sij * sx * sy * sz).sum((-2, -1))
+    #
+    #         # [bs, 3, nacrti, nacrtj]
+    #         ds3d[..., :, mli, mlj] += torch.stack(
+    #             [
+    #                 (sij * dx * sy * sz).sum((-2, -1)),
+    #                 (sij * sx * dy * sz).sum((-2, -1)),
+    #                 (sij * sx * sy * dz).sum((-2, -1)),
+    #             ],
+    #             dim=-1,
+    #         )
 
 
 def ecoeffs_s(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> Tensor:
@@ -348,7 +393,7 @@ def de_s(
     rpj: Tensor,
     ai: Tensor,
     aj: Tensor,
-) -> tuple[list[list[Tensor]], list[list[Tensor]]]:
+) -> tuple[Tensor, Tensor]:
     """
     Explicitly calculate E-coefficients and their derivatives for s-orbitals
     with s/p/d/f-orbitals.
@@ -372,7 +417,7 @@ def de_s(
 
     Returns
     -------
-    tuple[list[list[Tensor]], list[list[Tensor]]]
+    tuple[Tensor, Tensor]
         "Matrix" of E-coefficients and their gradients. The shape depends on
         the angular momenta involved.
 
@@ -392,7 +437,10 @@ def de_s(
 
     # ss
     if lj == 0:
-        return [[e000]], [[f000]]
+        return (
+            e000.unsqueeze(0).unsqueeze(0),
+            f000.unsqueeze(0).unsqueeze(0),
+        )
 
     # sp
     if lj == 1:
@@ -400,12 +448,8 @@ def de_s(
         f010 = e000 - b * e020
 
         return (
-            [
-                [e000, e010],
-            ],
-            [
-                [f000, f010],
-            ],
+            torch.stack([e000, e010]).unsqueeze(0),
+            torch.stack([f000, f010]).unsqueeze(0),
         )
 
     # sd
@@ -421,12 +465,8 @@ def de_s(
         f020 = 2 * e010 - b * e030
 
         return (
-            [
-                [e000, e010, e020],
-            ],
-            [
-                [f000, f010, f020],
-            ],
+            torch.stack([e000, e010, e020]).unsqueeze(0),
+            torch.stack([f000, f010, f020]).unsqueeze(0),
         )
 
     # sf
@@ -449,12 +489,8 @@ def de_s(
         f030 = 3 * e020 - b * e040
 
         return (
-            [
-                [e000, e010, e020, e030],
-            ],
-            [
-                [f000, f010, f020, f030],
-            ],
+            torch.stack([e000, e010, e020, e030]).unsqueeze(0),
+            torch.stack([f000, f010, f020, f030]).unsqueeze(0),
         )
 
     raise CGTOAzimuthalQuantumNumberError(lj)
@@ -559,7 +595,7 @@ def de_p(
     rpj: Tensor,
     ai: Tensor,
     aj: Tensor,
-) -> tuple[list[list[Tensor]], list[list[Tensor]]]:
+) -> tuple[Tensor, Tensor]:
     """
     Explicitly calculate E-coefficients and their derivatives for p-orbitals
     with s/p/d/f-orbitals.
@@ -583,7 +619,7 @@ def de_p(
 
     Returns
     -------
-    tuple[list[list[Tensor]], list[list[Tensor]]]
+    tuple[Tensor, Tensor]
         "Matrix" of E-coefficients and their gradients. The shape depends on
         the angular momenta involved.
 
@@ -608,14 +644,18 @@ def de_p(
         f100 = a * e200 - e000
 
         return (
-            [
-                [e000],
-                [e100],
-            ],
-            [
-                [f000],
-                [f100],
-            ],
+            torch.stack(
+                [
+                    e000.unsqueeze(0),
+                    e100.unsqueeze(0),
+                ]
+            ),
+            torch.stack(
+                [
+                    f000.unsqueeze(0),
+                    f100.unsqueeze(0),
+                ]
+            ),
         )
 
     # pp
@@ -634,14 +674,18 @@ def de_p(
         f110 = a * e210 - e010
 
         return (
-            [
-                [e000, e010],
-                [e100, e110],
-            ],
-            [
-                [f000, f010],
-                [f100, f110],
-            ],
+            torch.stack(
+                [
+                    torch.stack([e000, e010]),
+                    torch.stack([e100, e110]),
+                ]
+            ),
+            torch.stack(
+                [
+                    torch.stack([f000, f010]),
+                    torch.stack([f100, f110]),
+                ]
+            ),
         )
 
     # pd
@@ -670,14 +714,18 @@ def de_p(
         f120 = a * e220 - e020
 
         return (
-            [
-                [e000, e010, e020],
-                [e100, e110, e120],
-            ],
-            [
-                [f000, f010, f020],
-                [f100, f110, f120],
-            ],
+            torch.stack(
+                [
+                    torch.stack([e000, e010, e020]),
+                    torch.stack([e100, e110, e120]),
+                ]
+            ),
+            torch.stack(
+                [
+                    torch.stack([f000, f010, f020]),
+                    torch.stack([f100, f110, f120]),
+                ]
+            ),
         )
 
     # pf
@@ -728,14 +776,18 @@ def de_p(
         f130 = a * e230 - e030
 
         return (
-            [
-                [e000, e010, e020, e030],
-                [e100, e110, e120, e130],
-            ],
-            [
-                [f000, f010, f020, f030],
-                [f100, f110, f120, f130],
-            ],
+            torch.stack(
+                [
+                    torch.stack([e000, e010, e020, e030]),
+                    torch.stack([e100, e110, e120, e130]),
+                ]
+            ),
+            torch.stack(
+                [
+                    torch.stack([f000, f010, f020, f030]),
+                    torch.stack([f100, f110, f120, f130]),
+                ]
+            ),
         )
 
     raise CGTOAzimuthalQuantumNumberError(lj)
@@ -858,7 +910,7 @@ def de_d(
     rpj: Tensor,
     ai: Tensor,
     aj: Tensor,
-) -> tuple[list[list[Tensor]], list[list[Tensor]]]:
+) -> tuple[Tensor, Tensor]:
     """
     Explicitly calculate E-coefficients and their derivatives for d-orbitals
     with s/p/d/f-orbitals.
@@ -882,7 +934,7 @@ def de_d(
 
     Returns
     -------
-    tuple[list[list[Tensor]], list[list[Tensor]]]
+    tuple[Tensor, Tensor]
         "Matrix" of E-coefficients and their gradients. The shape depends on
         the angular momenta involved.
 
@@ -911,16 +963,20 @@ def de_d(
         f200 = a * e300 - 2 * e100
 
         return (
-            [
-                [e000],
-                [e100],
-                [e200],
-            ],
-            [
-                [f000],
-                [f100],
-                [f200],
-            ],
+            torch.stack(
+                [
+                    e000.unsqueeze(0),
+                    e100.unsqueeze(0),
+                    e200.unsqueeze(0),
+                ]
+            ),
+            torch.stack(
+                [
+                    f000.unsqueeze(0),
+                    f100.unsqueeze(0),
+                    f200.unsqueeze(0),
+                ]
+            ),
         )
 
     # dp
@@ -947,16 +1003,20 @@ def de_d(
         f210 = a * e310 - 2 * e110
 
         return (
-            [
-                [e000, e010],
-                [e100, e110],
-                [e200, e210],
-            ],
-            [
-                [f000, f010],
-                [f100, f110],
-                [f200, f210],
-            ],
+            torch.stack(
+                [
+                    torch.stack([e000, e010]),
+                    torch.stack([e100, e110]),
+                    torch.stack([e200, e210]),
+                ]
+            ),
+            torch.stack(
+                [
+                    torch.stack([f000, f010]),
+                    torch.stack([f100, f110]),
+                    torch.stack([f200, f210]),
+                ]
+            ),
         )
 
     # dd
@@ -999,16 +1059,20 @@ def de_d(
         f220 = a * e320 - 2 * e120
 
         return (
-            [
-                [e000, e010, e020],
-                [e100, e110, e120],
-                [e200, e210, e220],
-            ],
-            [
-                [f000, f010, f020],
-                [f100, f110, f120],
-                [f200, f210, f220],
-            ],
+            torch.stack(
+                [
+                    torch.stack([e000, e010, e020]),
+                    torch.stack([e100, e110, e120]),
+                    torch.stack([e200, e210, e220]),
+                ]
+            ),
+            torch.stack(
+                [
+                    torch.stack([f000, f010, f020]),
+                    torch.stack([f100, f110, f120]),
+                    torch.stack([f200, f210, f220]),
+                ]
+            ),
         )
 
     # df
@@ -1072,16 +1136,20 @@ def de_d(
         f230 = a * e330 - 2 * e130
 
         return (
-            [
-                [e000, e010, e020, e030],
-                [e100, e110, e120, e130],
-                [e200, e210, e220, e230],
-            ],
-            [
-                [f000, f010, f020, f030],
-                [f100, f110, f120, f130],
-                [f200, f210, f220, f230],
-            ],
+            torch.stack(
+                [
+                    torch.stack([e000, e010, e020, e030]),
+                    torch.stack([e100, e110, e120, e130]),
+                    torch.stack([e200, e210, e220, e230]),
+                ]
+            ),
+            torch.stack(
+                [
+                    torch.stack([f000, f010, f020, f030]),
+                    torch.stack([f100, f110, f120, f130]),
+                    torch.stack([f200, f210, f220, f230]),
+                ]
+            ),
         )
 
     raise CGTOAzimuthalQuantumNumberError(lj)
