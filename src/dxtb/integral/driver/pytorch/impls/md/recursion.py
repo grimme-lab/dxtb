@@ -13,7 +13,7 @@ from math import pi, sqrt
 import torch
 
 from ......_types import Any, Callable, Tensor
-from ......utils.exceptions import IntegralTransformError
+from ......utils import IntegralTransformError, t2int
 from .trafo import NLM_CART, TRAFO
 
 sqrtpi3 = sqrt(pi) ** 3
@@ -381,9 +381,11 @@ def md_recursion(
     return o
 
 
-def e_function_derivative(e, ai, li, lj):
+def e_function_derivative(e: Tensor, ai: Tensor, li: Tensor, lj: Tensor) -> Tensor:
     """Calculate derivative of E coefficients."""
-    de = torch.zeros((e.shape[0], 3, e.shape[-5], e.shape[-4], li + 1, lj + 1, 1))
+    _li, _lj = t2int(li), t2int(lj)
+
+    de = torch.zeros((e.shape[0], 3, e.shape[-5], e.shape[-4], _li + 1, _lj + 1, 1))
     for k in range(e.shape[-4]):  # aj
         for i in range(li + 1):  # li
             for j in range(lj + 1):  # lj
@@ -398,7 +400,7 @@ def md_recursion_gradient(
     alpha: tuple[Tensor, Tensor],
     coeff: tuple[Tensor, Tensor],
     vec: Tensor,
-) -> tuple[Tensor, Tensor]:
+) -> Tensor:
     """
     Calculate overlap gradients using (recursive) McMurchie-Davidson algorithm.
 
@@ -415,8 +417,8 @@ def md_recursion_gradient(
 
     Returns
     -------
-    (Tensor, Tensor)
-        Overlap and overlap gradient for shell pair(s).
+    Tensor
+        Overlap gradient for shell pair(s).
     """
 
     # angular momenta and number of cartesian gaussian basis functions
@@ -446,9 +448,9 @@ def md_recursion_gradient(
     # K_AB * Gaussian integral (√(pi/(a+b))) in 3D * c_A * c_B
     sij = torch.exp(-est) * sqrtpi3 * torch.pow(oij, 1.5) * ci * cj
 
+    # NOTE: watch out for correct +/- vec (definition + argument)
     rpi = +vec.unsqueeze(-1).unsqueeze(-1) * aj * oij
     rpj = -vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
-    # NOTE: watch out for correct +/- vec (definition + argument)
 
     # for single gaussians (e.g. in tests)
     if len(vec.shape) == 1:
@@ -478,9 +480,6 @@ def md_recursion_gradient(
             d1 = dE[..., 1, :, :, mi[1], mj[1], 0]
             d2 = dE[..., 2, :, :, mi[2], mj[2], 0]
 
-            # NOTE: calculating overlap for free
-            s3d[..., mli, mlj] += (sij * e0 * e1 * e2).sum((-2, -1))
-
             ds3d[..., :, mli, mlj] += torch.stack(
                 [
                     (sij * d0 * e1 * e2).sum((-2, -1)),
@@ -491,15 +490,4 @@ def md_recursion_gradient(
             )  # [bs, 3]
 
     # transform to spherical basis functions (itrafo * S * jtrafo^T)
-    ovlp = torch.einsum("...ij,...jk,...lk->...il", itrafo, s3d, jtrafo)
-
-    rt = torch.arange(ds3d.shape[-3], device=ds3d.device)
-    # [bs, upairs, 3, norbi, norbj] == [vec[0], vec[1], 3, norbi, norbj]
-    grad = torch.einsum("...ij,...jk,...lk->...il", itrafo, ds3d[..., rt, :, :], jtrafo)
-
-    # remove small values
-    eps = vec.new_tensor(torch.finfo(vec.dtype).eps)
-    ovlp = torch.where(torch.abs(ovlp) < eps, vec.new_tensor(0.0), ovlp)
-    grad = torch.where(torch.abs(grad) < eps, vec.new_tensor(0.0), grad)
-
-    return ovlp, grad
+    return torch.einsum("...ij,...xjk,...lk->...xil", itrafo, ds3d, jtrafo)

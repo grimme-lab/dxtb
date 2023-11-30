@@ -270,19 +270,24 @@ def md_explicit_gradient(
     # tensor to (ncarti, ncartj, nbatch). Since the batch dimension is
     # conventionally the first dimension, we cycle the indices and obtain
     # the final shape: (nbatch, ncarti, ncartj)
-    dx = torch.einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", dx, sy, sz, sij)
-    dy = torch.einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", sx, dy, sz, sij)
-    dz = torch.einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", sx, sy, dz, sij)
+    x = torch.einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", dx, sy, sz, sij)
+    y = torch.einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", sx, dy, sz, sij)
+    z = torch.einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", sx, sy, dz, sij)
 
     # For the full cartesian gradient, we stack cartesian the contributions in
     # the first dimension, i.e., before the batch: (nbatch, 3, ncarti, ncartj).
     # Although the cartesian dimension always goes last, we apply `torch.tril`
     # or `torch.triu` later, which only works on the eading 2D sub-matrices of
     # higher-dimensional tensors. Hence, we reshape later.
-    ds3d = torch.stack([dx, dy, dz], dim=-3)
+    ds3d = torch.stack([x, y, z], dim=-3)
 
     # transform to spherical basis functions (itrafo * dS * jtrafo^T)
-    return torch.einsum("...ij,...xjk,...lk->...xil", itrafo, ds3d, jtrafo)
+    grad = torch.einsum("...ij,...xjk,...lk->...xil", itrafo, ds3d, jtrafo)
+
+    # sometimes grad is not contiguous anymore (important for performance?)
+    if not grad.is_contiguous():
+        return grad.contiguous()
+    return grad
 
     # OLD: This is the loop-based version of the above indexing atrocities.
     # I left it here, as it may be better to understand...
@@ -1305,7 +1310,7 @@ def de_f(
     rpj: Tensor,
     ai: Tensor,
     aj: Tensor,
-) -> tuple[list[list[Tensor]], list[list[Tensor]]]:
+) -> tuple[Tensor, Tensor]:
     """
     Explicitly calculate E-coefficients and their derivatives for f-orbitals
     with s/p/d/f-orbitals.
@@ -1329,7 +1334,7 @@ def de_f(
 
     Returns
     -------
-    tuple[list[list[Tensor]], list[list[Tensor]]]
+    tuple[Tensor, Tensor]
         "Matrix" of E-coefficients and their gradients. The shape depends on
         the angular momenta involved.
 
@@ -1364,18 +1369,22 @@ def de_f(
         f300 = a * e400 - 3 * e200
 
         return (
-            [
-                [e000],
-                [e100],
-                [e200],
-                [e300],
-            ],
-            [
-                [f000],
-                [f100],
-                [f200],
-                [f300],
-            ],
+            torch.stack(
+                [
+                    e000.unsqueeze(0),
+                    e100.unsqueeze(0),
+                    e200.unsqueeze(0),
+                    e300.unsqueeze(0),
+                ]
+            ),
+            torch.stack(
+                [
+                    f000.unsqueeze(0),
+                    f100.unsqueeze(0),
+                    f200.unsqueeze(0),
+                    f300.unsqueeze(0),
+                ]
+            ),
         )
 
     # fp
@@ -1415,18 +1424,22 @@ def de_f(
         f310 = a * e410 - 3 * e210
 
         return (
-            [
-                [e000, e010],
-                [e100, e110],
-                [e200, e210],
-                [e300, e310],
-            ],
-            [
-                [f000, f010],
-                [f100, f110],
-                [f200, f210],
-                [f300, f310],
-            ],
+            torch.stack(
+                [
+                    torch.stack([e000, e010]),
+                    torch.stack([e100, e110]),
+                    torch.stack([e200, e210]),
+                    torch.stack([e300, e310]),
+                ]
+            ),
+            torch.stack(
+                [
+                    torch.stack([f000, f010]),
+                    torch.stack([f100, f110]),
+                    torch.stack([f200, f210]),
+                    torch.stack([f300, f310]),
+                ]
+            ),
         )
 
     # fd
@@ -1493,18 +1506,22 @@ def de_f(
         f320 = a * e420 - 3 * e220
 
         return (
-            [
-                [e000, e010, e020],
-                [e100, e110, e120],
-                [e200, e210, e220],
-                [e300, e310, e320],
-            ],
-            [
-                [f000, f010, f020],
-                [f100, f110, f120],
-                [f200, f210, f220],
-                [f300, f310, f320],
-            ],
+            torch.stack(
+                [
+                    torch.stack([e000, e010, e020]),
+                    torch.stack([e100, e110, e120]),
+                    torch.stack([e200, e210, e220]),
+                    torch.stack([e300, e310, e320]),
+                ]
+            ),
+            torch.stack(
+                [
+                    torch.stack([f000, f010, f020]),
+                    torch.stack([f100, f110, f120]),
+                    torch.stack([f200, f210, f220]),
+                    torch.stack([f300, f310, f320]),
+                ]
+            ),
         )
 
     # ff
@@ -1599,18 +1616,22 @@ def de_f(
         f330 = a * e430 - 3 * e230
 
         return (
-            [
-                [e000, e010, e020, e030],
-                [e100, e110, e120, e130],
-                [e200, e210, e220, e230],
-                [e300, e310, e320, e330],
-            ],
-            [
-                [f000, f010, f020, f030],
-                [f100, f110, f120, f130],
-                [f200, f210, f220, f230],
-                [f300, f310, f320, f330],
-            ],
+            torch.stack(
+                [
+                    torch.stack([e000, e010, e020, e030]),
+                    torch.stack([e100, e110, e120, e130]),
+                    torch.stack([e200, e210, e220, e230]),
+                    torch.stack([e300, e310, e320, e330]),
+                ]
+            ),
+            torch.stack(
+                [
+                    torch.stack([f000, f010, f020, f030]),
+                    torch.stack([f100, f110, f120, f130]),
+                    torch.stack([f200, f210, f220, f230]),
+                    torch.stack([f300, f310, f320, f330]),
+                ]
+            ),
         )
 
     raise CGTOAzimuthalQuantumNumberError(lj)

@@ -174,20 +174,15 @@ def compare_md(
     assert pytest.approx(ovlp, abs=atol) == ovlp_ref
 
     # overlap gradient with explicit E-coefficients
-    ovlp_exp, ovlp_grad_exp = md.explicit.md_explicit_gradient(
+    ovlp_grad_exp = md.explicit.md_explicit_gradient(
         (li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec
     )
 
     # overlap gradient with recursion
-    ovlp_rec, ovlp_grad_rec = md.recursion.md_recursion_gradient(
+    ovlp_grad_rec = md.recursion.md_recursion_gradient(
         (li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec
     )
-    ovlp_rec = torch.squeeze(ovlp_rec, 0)
     ovlp_grad_rec = torch.squeeze(ovlp_grad_rec, 0)
-
-    # check overlap from gradient calculation
-    assert pytest.approx(ovlp, abs=atol) == ovlp_exp
-    assert pytest.approx(ovlp, abs=atol) == ovlp_rec
 
     # obtain Fortran ordering (row wise)
     ovlp_grad_rec = torch.stack(
