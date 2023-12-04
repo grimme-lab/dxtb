@@ -90,6 +90,9 @@ class IntDriver(TensorLike):
 
         return True
 
+    def is_setup(self) -> bool:
+        return self._positions is not None
+
     @abstractmethod
     def setup(
         self, numbers: Tensor, positions: Tensor, par: Param, ihelp: IndexHelper
@@ -188,6 +191,24 @@ class BaseIntegral(IntegralABC, TensorLike):
         """
         return self.integral.build(driver)
 
+    def get_gradient(self, driver: IntDriver) -> Tensor:
+        """
+        Calculation of the nuclear integral derivative (matrix). This method
+        only calls the `get_gradient` method of the underlying
+        `BaseIntegralType`.
+
+        Parameters
+        ----------
+        driver : IntDriver
+            The integral driver for the calculation.
+
+        Returns
+        -------
+        Tensor
+            Nuclear integral derivative matrix.
+        """
+        return self.integral.get_gradient(driver)
+
     @property
     def matrix(self) -> Tensor | None:
         """
@@ -249,6 +270,22 @@ class IntegralImplementationABC(ABC):
             Integral matrix.
         """
 
+    @abstractmethod
+    def get_gradient(self, driver: IntDriver) -> Tensor:
+        """
+        Create the nuclear integral derivative matrix.
+
+        Parameters
+        ----------
+        driver : IntDriver
+            Integral driver for the calculation.
+
+        Returns
+        -------
+        Tensor
+            Nuclear integral derivative matrix.
+        """
+
 
 class BaseIntegralImplementation(IntegralImplementationABC, TensorLike):
     """
@@ -268,6 +305,21 @@ class BaseIntegralImplementation(IntegralImplementationABC, TensorLike):
         self._matrix = None
         self._norm = None
         self._gradient = None
+
+    def checks(self, driver: IntDriver) -> None:
+        """
+        Check if the driver is setup.
+
+        Parameters
+        ----------
+        driver : IntDriver
+            Integral driver for the calculation.
+        """
+        if not driver.is_setup():
+            raise RuntimeWarning(
+                "Integral driver not setup. Run `driver.setup(positions)` "
+                "before passing the driver to the integral build."
+            )
 
     @property
     def matrix(self) -> Tensor:

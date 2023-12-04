@@ -16,7 +16,7 @@ from ..constants import defaults
 from ..param import Param
 from .base import IntDriver, IntegralContainer
 from .dipole import Dipole
-from .driver import IntDriverLibcint, IntDriverPytorch
+from .driver import IntDriverLibcint, IntDriverPytorch, IntDriverPytorchNoAnalytical
 from .h0 import Hamiltonian
 from .overlap import Overlap
 from .quadrupole import Quadrupole
@@ -54,7 +54,7 @@ class Integrals(IntegralContainer):
         overlap: Overlap | None = None,
         dipole: Dipole | None = None,
         quadrupole: Quadrupole | None = None,
-        driver: Literal["libcint", "pytorch"] = "libcint",
+        driver: Literal["libcint", "pytorch", "pytorch2"] = "libcint",
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ):
@@ -76,6 +76,10 @@ class Integrals(IntegralContainer):
             )
         elif driver == "pytorch":
             self._driver = IntDriverPytorch(
+                numbers, par, ihelp, device=device, dtype=dtype
+            )
+        elif driver == "pytorch2":
+            self._driver = IntDriverPytorchNoAnalytical(
                 numbers, par, ihelp, device=device, dtype=dtype
             )
         else:
@@ -133,7 +137,7 @@ class Integrals(IntegralContainer):
 
         # overlap integral required
         ovlp = self.overlap.integral
-        if ovlp.matrix is None or ovlp._norm is None:
+        if ovlp.matrix is None:
             self.build_overlap(positions, **kwargs)
 
         cn = kwargs.pop("cn", None)
@@ -178,7 +182,7 @@ class Integrals(IntegralContainer):
 
         if self.overlap is None:
             raise RuntimeError("No overlap integral provided.")
-        return self.overlap.integral.get_gradient(self.driver, **kwargs)
+        return self.overlap.get_gradient(self.driver, **kwargs)
 
     # dipole
 

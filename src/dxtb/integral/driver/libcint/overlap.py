@@ -8,7 +8,7 @@ import torch
 from ...._types import Tensor
 from ....utils import batch
 from ...base import BaseIntegralImplementation, IntDriver
-from .base import LibcintInmplementation
+from .base import LibcintImplementation
 from .driver import IntDriverLibcint
 from .impls import LibcintWrapper, int1e, overlap
 
@@ -19,7 +19,7 @@ def snorm(ovlp: Tensor) -> Tensor:
     return torch.pow(ovlp.diagonal(dim1=-1, dim2=-2), -0.5)
 
 
-class OverlapLibcint(BaseIntegralImplementation, LibcintInmplementation):
+class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
     """
     Overlap integral from atomic orbitals.
     """
@@ -42,17 +42,16 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintInmplementation):
     def gradient(self, mat: Tensor) -> None:
         self._gradient = mat
 
-    def build(self, driver: IntDriver) -> Tensor:
+    def build(self, driver: IntDriverLibcint) -> Tensor:
         """
         Calculation of overlap integral using libcint.
 
         Returns
         -------
-        driver : IntDriver
+        driver : IntDriverLibcint
             The integral driver for the calculation.
         """
-        if not isinstance(driver, IntDriverLibcint):
-            raise RuntimeError("Wrong integral driver selected.")
+        super().checks(driver)
 
         def fcn(driver: LibcintWrapper) -> tuple[Tensor, Tensor]:
             s = overlap(driver)
@@ -84,18 +83,21 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintInmplementation):
         self.matrix = mat
         return self.matrix
 
-    def get_gradient(self, driver: IntDriver):
+    def get_gradient(self, driver: IntDriverLibcint) -> Tensor:
         """
         Overlap gradient calculation using libcint.
+
+        Parameters
+        ----------
+        driver : IntDriverLibcint
+            The integral driver for the calculation.
 
         Returns
         -------
         Tensor
             Overlap gradient of shape `(nb, norb, norb, 3)`.
         """
-
-        if not isinstance(driver, IntDriverLibcint):
-            raise RuntimeError("Wrong integral driver selected.")
+        super().checks(driver)
 
         def fcn(driver: LibcintWrapper, norm: Tensor) -> Tensor:
             # (3, norb, norb)

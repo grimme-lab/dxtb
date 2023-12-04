@@ -267,7 +267,8 @@ def overlap_gradient(
         # matrix, which is actually the bottleneck of the overlap routines.
         dstmp = overlap_gto_grad(ang_tuple, alpha_tuple, coeff_tuple, -vec)
 
-        # write overlap of unique pair to correct position in full matrix
+        # Write overlap of unique pair to correct position in full matrix
+        # This loop is the bottleneck of the whole integral evaluation.
         for r, pair in enumerate(upairs):
             ds[
                 :,

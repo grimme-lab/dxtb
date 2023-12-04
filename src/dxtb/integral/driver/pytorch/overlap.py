@@ -6,15 +6,14 @@ from __future__ import annotations
 import torch
 
 from ...._types import Literal, Tensor
-from ....constants import defaults, units
+from ....constants import defaults
 from ....utils import batch, symmetrize
-from ...base import BaseIntegralImplementation, IntDriver
-from .base import PytorchImplementation
-from .driver import IntDriverPytorch
+from .base import IntegralImplementationPytorch
+from .driver import BaseIntDriverPytorch
 from .impls import OverlapFunction
 
 
-class OverlapPytorch(BaseIntegralImplementation, PytorchImplementation):
+class OverlapPytorch(IntegralImplementationPytorch):
     """
     Overlap from atomic orbitals.
 
@@ -34,8 +33,8 @@ class OverlapPytorch(BaseIntegralImplementation, PytorchImplementation):
 
     cutoff: Tensor | float | int | None = defaults.INTCUTOFF
     """
-    Real-space cutoff for integral calculation in Angstrom. Defaults to
-    `constants.defaults.INTCUTOFF` (50.0).
+    Real-space cutoff for integral calculation in Bohr. Defaults to
+    `constants.defaults.INTCUTOFF`.
     """
 
     def __init__(
@@ -46,38 +45,28 @@ class OverlapPytorch(BaseIntegralImplementation, PytorchImplementation):
         dtype: torch.dtype | None = None,
     ):
         super().__init__(device=device, dtype=dtype)
-        self.cutoff = cutoff if cutoff is None else cutoff * units.AA2AU
+        self.cutoff = cutoff
 
         if uplo not in ("n", "N", "u", "U", "l", "L"):
             raise ValueError(f"Unknown option for `uplo` chosen: '{uplo}'.")
         self.uplo = uplo.casefold()  # type: ignore
 
-    def build(
-        self,
-        driver: IntDriver,
-        mask: Tensor | None = None,
-    ) -> Tensor:
+    def build(self, driver: BaseIntDriverPytorch) -> Tensor:
         """
         Overlap calculation of unique shells pairs, using the
         McMurchie-Davidson algorithm.
 
         Parameters
         ----------
-        driver : IntDriver
+        driver : BaseIntDriverPytorch
             Integral driver for the calculation.
-        mask : Tensor | None
-            Mask for positions to make batched computations easier. The overlap
-            does not work in a batched fashion. Hence, we loop over the batch
-            dimension and must remove the padding. Defaults to `None`, i.e.,
-            `batch.deflate()` is used.
 
         Returns
         -------
         Tensor
             Overlap matrix.
         """
-        if not isinstance(driver, IntDriverPytorch):
-            raise RuntimeError("Wrong integral driver selected.")
+        super().checks(driver)
 
         if driver.ihelp.batched:
             self.matrix = self._batch(driver.eval_ovlp, driver)
@@ -90,14 +79,14 @@ class OverlapPytorch(BaseIntegralImplementation, PytorchImplementation):
 
         return self.matrix
 
-    def get_gradient(self, driver: IntDriver) -> Tensor:
+    def get_gradient(self, driver: BaseIntDriverPytorch) -> Tensor:
         """
         Overlap gradient calculation of unique shells pairs, using the
         McMurchie-Davidson algorithm.
 
         Parameters
         ----------
-        driver : IntDriver
+        driver : BaseIntDriverPytorch
             Integral driver for the calculation.
 
         Returns
@@ -105,8 +94,7 @@ class OverlapPytorch(BaseIntegralImplementation, PytorchImplementation):
         Tensor
             Overlap gradient of shape `(nb, norb, norb, 3)`.
         """
-        if not isinstance(driver, IntDriverPytorch):
-            raise RuntimeError("Wrong integral driver selected.")
+        super().checks(driver)
 
         if driver.ihelp.batched:
             self.grad = self._batch(driver.eval_ovlp_grad, driver)
@@ -115,16 +103,16 @@ class OverlapPytorch(BaseIntegralImplementation, PytorchImplementation):
 
         return self.grad
 
-    def _single(self, fcn: OverlapFunction, driver: IntDriver) -> Tensor:
-        if not isinstance(driver, IntDriverPytorch):
+    def _single(self, fcn: OverlapFunction, driver: BaseIntDriverPytorch) -> Tensor:
+        if not isinstance(driver, BaseIntDriverPytorch):
             raise RuntimeError("Wrong integral driver selected.")
 
         return fcn(
             driver._positions_single, driver.basis, driver.ihelp, self.uplo, self.cutoff
         )
 
-    def _batch(self, fcn: OverlapFunction, driver: IntDriver) -> Tensor:
-        if not isinstance(driver, IntDriverPytorch):
+    def _batch(self, fcn: OverlapFunction, driver: BaseIntDriverPytorch) -> Tensor:
+        if not isinstance(driver, BaseIntDriverPytorch):
             raise RuntimeError("Wrong integral driver selected.")
 
         return batch.pack(

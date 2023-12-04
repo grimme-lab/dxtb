@@ -6,8 +6,8 @@ from __future__ import annotations
 import torch
 
 from ...._types import Tensor
-from ...base import IntDriver
 from .base import MultipoleLibcint
+from .driver import IntDriverLibcint
 
 __all__ = ["DipoleLibcint"]
 
@@ -17,13 +17,13 @@ class DipoleLibcint(MultipoleLibcint):
     Dipole integral from atomic orbitals.
     """
 
-    def build(self, driver: IntDriver) -> Tensor:
+    def build(self, driver: IntDriverLibcint) -> Tensor:
         """
         Calculation of dipole integral using libcint.
 
         Parameters
         ----------
-        driver : IntDriver
+        driver : IntDriverLibcint
             The integral driver for the calculation.
 
         Returns
@@ -31,8 +31,7 @@ class DipoleLibcint(MultipoleLibcint):
         Tensor
             Dipole integral.
         """
-        self.matrix = self.multipole(driver, "r0")
-        return self.matrix
+        return self.multipole(driver, "r0")
 
     def shift_r0_rj(self, overlap: Tensor, pos: Tensor) -> Tensor:
         r"""

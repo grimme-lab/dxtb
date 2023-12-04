@@ -6,8 +6,8 @@ from __future__ import annotations
 import torch
 
 from ...._types import Tensor
-from ...base import IntDriver
 from .base import MultipoleLibcint
+from .driver import IntDriverLibcint
 
 __all__ = ["QuadrupoleLibcint"]
 
@@ -17,22 +17,21 @@ class QuadrupoleLibcint(MultipoleLibcint):
     Quadrupole integral from atomic orbitals.
     """
 
-    def build(self, driver: IntDriver) -> Tensor:
+    def build(self, driver: IntDriverLibcint) -> Tensor:
         """
         Calculation of quadrupole integral using libcint.
 
         Parameters
         ----------
-        driver : IntDriver
+        driver : IntDriverLibcint
             The integral driver for the calculation.
 
         Returns
         -------
         Tensor
-            Qquadrupole integral.
+            Quadrupole integral.
         """
-        self.matrix = self.multipole(driver, "r0r0")
-        return self.matrix
+        return self.multipole(driver, "r0r0")
 
     def traceless(self) -> Tensor:
         """

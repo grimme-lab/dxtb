@@ -290,7 +290,8 @@ def md_explicit_gradient(
     return grad
 
     # OLD: This is the loop-based version of the above indexing atrocities.
-    # I left it here, as it may be better to understand...
+    #      I left it here, as it may be better to understand...
+    #      The loop-free version yielded speed-ups of ~10% for autograd.
     #
     # ncarti = torch.div((li + 1) * (li + 2), 2, rounding_mode="floor")
     # ncartj = torch.div((lj + 1) * (lj + 2), 2, rounding_mode="floor")

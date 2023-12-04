@@ -10,13 +10,13 @@ import torch
 
 from ...._types import Literal, Tensor
 from ....utils import batch
-from ...base import BaseIntegralImplementation, IntDriver
+from ...base import BaseIntegralImplementation
 from ..labels import DRIVER_LIBCINT
 from .driver import IntDriverLibcint
 from .impls import LibcintWrapper, int1e
 
 
-class LibcintInmplementation:
+class LibcintImplementation:
     """
     Simple label for `libcint`-based integral implementations.
     """
@@ -24,13 +24,65 @@ class LibcintInmplementation:
     family: Literal["libcint"] = DRIVER_LIBCINT
     """Label for integral implementation family"""
 
+    def checks(self, driver: IntDriverLibcint) -> None:
+        """
+        Check if the type of integral driver is correct.
 
-class MultipoleLibcint(BaseIntegralImplementation, LibcintInmplementation):
+        Parameters
+        ----------
+        driver : IntDriverLibcint
+            Integral driver for the calculation.
+        """
+        if not isinstance(driver, IntDriverLibcint):
+            raise RuntimeError("Wrong integral driver selected.")
+
+
+class IntegralImplementationLibcint(
+    LibcintImplementation,
+    BaseIntegralImplementation,
+):
+    """PyTorch-based integral implementation"""
+
+    def checks(self, driver: IntDriverLibcint) -> None:
+        """
+        Check if the type of integral driver is correct.
+
+        Parameters
+        ----------
+        driver : BaseIntDriverPytorch
+            Integral driver for the calculation.
+        """
+        super().checks(driver)
+
+        if not isinstance(driver, IntDriverLibcint):
+            raise RuntimeError("Wrong integral driver selected.")
+
+    def get_gradient(self, driver: IntDriverLibcint) -> Tensor:
+        """
+        Create the nuclear integral derivative matrix.
+
+        Parameters
+        ----------
+        driver : IntDriver
+            Integral driver for the calculation.
+
+        Returns
+        -------
+        Tensor
+            Nuclear integral derivative matrix.
+        """
+        raise NotImplementedError(
+            "The `get_gradient` method is not implemented for libcint "
+            "integrals as it is not explicitly required."
+        )
+
+
+class MultipoleLibcint(IntegralImplementationLibcint):
     """
     Base class for multipole integrals calculated with `libcint`.
     """
 
-    def multipole(self, driver: IntDriver, intstring: str) -> Tensor:
+    def multipole(self, driver: IntDriverLibcint, intstring: str) -> Tensor:
         """
         Calculation of multipole integral. The integral is normalized, using
         the diagonal of the overlap integral.
@@ -47,6 +99,7 @@ class MultipoleLibcint(BaseIntegralImplementation, LibcintInmplementation):
         Tensor
             Normalized multipole integral.
         """
+        super().checks(driver)
 
         allowed_mps = ("r0", "r0r0", "r0r0r0")
         if intstring not in allowed_mps:
@@ -55,9 +108,6 @@ class MultipoleLibcint(BaseIntegralImplementation, LibcintInmplementation):
                 f"Only '{', '.join(allowed_mps)} are allowed.\n'"
                 "Other integrals can be added to dxtblibs."
             )
-
-        if not isinstance(driver, IntDriverLibcint):
-            raise RuntimeError("Wrong integral driver selected.")
 
         if self.norm is None:
             raise RuntimeError("Norm must be set before building.")
