@@ -323,6 +323,29 @@ class Basis(TensorLike):
     def create_dqc(
         self, positions: Tensor, mask: Tensor | None = None
     ) -> list[AtomCGTOBasis] | list[list[AtomCGTOBasis]]:
+        """
+        Create the basis set required for `libcint`.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms in the system (nat, 3).
+        mask : Tensor | None, optional
+            Mask for positions to make batched computations easier. The overlap
+            does not work in a batched fashion. Hence, we loop over the batch
+            dimension and must remove the padding. Defaults to `None`, i.e.,
+            `batch.deflate()` is used.
+
+        Returns
+        -------
+        list[AtomCGTOBasis] | list[list[AtomCGTOBasis]]
+            List of CGTOs.
+
+        Raises
+        ------
+        NotImplementedError
+            If batch mode is requested (checked through dimensions of numbers).
+        """
         if self.numbers.ndim > 1:
             raise NotImplementedError("Batch mode not implemented.")
 

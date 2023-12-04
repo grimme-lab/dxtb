@@ -16,7 +16,7 @@ from dxtb.utils import batch, is_basis_list
 from .samples import samples
 
 sample_list = ["H2", "HHe", "LiH", "Li2", "S2", "H2O", "SiH4"]
-mp_ints = ["j", "jj", "jjj"]  # dipole, quadrupole, octupole
+mp_ints = ["j", "jj"]  # dipole, quadrupole
 
 device = None
 

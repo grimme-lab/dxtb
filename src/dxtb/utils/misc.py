@@ -198,6 +198,10 @@ def dependent_memoize(*dependency_getters: Callable[..., Any]):
     Memoization with multiple dependency-based cache invalidation. This
     decorator allows specification of `__slots__`. It works with and without
     function arguments.
+
+    Warning
+    -------
+    This is an experimental feature, which can cause memory leaks!
     """
 
     def decorator(fcn: Callable[..., T]) -> Callable[..., T]:
@@ -240,9 +244,13 @@ def dependent_memoize(*dependency_getters: Callable[..., Any]):
         def get():
             return cache
 
+        def get_dep():
+            return dependency_cache
+
         setattr(wrapper, "clear", clear)
         setattr(wrapper, "clear_cache", clear)
         setattr(wrapper, "get_cache", get)
+        setattr(wrapper, "get_dep_cache", get_dep)
 
         return wrapper
 

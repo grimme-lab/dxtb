@@ -37,13 +37,13 @@ EXCLUDE_CHOICES = ["disp", "rep", "hal", "es2", "es3", "scf", "all"]
 
 # Integral settings
 
-INTCUTOFF = 50.0
-"""Real-space cutoff (in Angstrom) for integral evaluation. (50.0)"""
+INTCUTOFF = 70.0
+"""Real-space cutoff (in Bohr) for integral evaluation. (50.0)"""
 
 INTDRIVER = "libcint"
 """Integral driver."""
 
-INTDRIVER_CHOICES = ["dxtb", "libcint"]
+INTDRIVER_CHOICES = ["pytorch", "pytorch2", "libcint"]
 """List of possible choices for `INTDRIVER`."""
 
 INTLEVEL = 1

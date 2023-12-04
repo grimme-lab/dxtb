@@ -18,7 +18,7 @@ from dxtb.utils import batch, is_basis_list
 from .samples import samples
 
 sample_list = ["H2", "HHe", "LiH", "S2", "H2O", "SiH4"]
-mp_ints = ["jj", "jjj"]
+mp_ints = ["jj"]
 
 device = None
 

@@ -87,7 +87,7 @@ def read_structure_from_file(
 
     if ftype in ("xyz", "log"):
         numbers, positions = read_xyz(f)
-    elif ftype in ("tmol", "tm", "turbomole") or fname in ("coord"):
+    elif ftype in ("tmol", "tm", "turbomole", "coord") or fname in ("coord"):
         numbers, positions = read_coord(f)
     elif ftype in ("mol", "sdf", "gen", "pdb"):
         raise NotImplementedError(

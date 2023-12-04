@@ -49,6 +49,13 @@ def _expand(index: Tensor, repeat: Tensor) -> Tensor:
     )
 
 
+import gc
+
+
+def _tensors_from_gc() -> list:
+    return [obj for obj in gc.get_objects() if isinstance(obj, torch.Tensor)]
+
+
 class IndexHelper(TensorLike):
     """
     Index helper for basis set
@@ -134,7 +141,20 @@ class IndexHelper(TensorLike):
         **_,
     ):
         super().__init__(device, dtype)
-        self.clear_cache()
+
+        # Dependent memoization causes memory leaks. The tensors will remain in
+        # the cache object and cannot be garbage collected. Only if the clearing
+        # function below is called, the tensors are removed. Note that this
+        # works across different instances of the IndexHelper, as the cache for
+        # memoization is designed in a cross instance fashion.
+        # This might lead to unexpected behavior, which was detected by the
+        # memory leak tests: The cache was still populated from another test
+        # and only after instantiation of the IndexHelper in the memory leak
+        # test, `self.clear_cache()` was called and the tensors where removed.
+        # Hence, before instantiation more tensors are in memory than after,
+        # which is actually the opposite of what the memory leak tests were
+        # designed for.
+        # self.clear_cache()
 
         self.unique_angular = unique_angular
         self.angular = angular
@@ -813,7 +833,7 @@ class IndexHelper(TensorLike):
     def orbitals_to_atom(self) -> Tensor:
         return self._orbitals_to_atom()
 
-    @dependent_memoize(lambda self: self.shells_to_atom)
+    # @dependent_memoize(lambda self: self.shells_to_atom)
     def _orbitals_to_atom(self) -> Tensor:
         return self.spread_shell_to_orbital(self.shells_to_atom)
 
@@ -821,7 +841,7 @@ class IndexHelper(TensorLike):
     def orbitals_per_shell_cart(self) -> Tensor:
         return self._orbitals_per_shell_cart()
 
-    @dependent_memoize(lambda self: self.angular)
+    # @dependent_memoize(lambda self: self.angular)
     def _orbitals_per_shell_cart(self) -> Tensor:
         l = self.angular
         ls = torch.div((l + 1) * (l + 2), 2, rounding_mode="floor")
@@ -831,7 +851,7 @@ class IndexHelper(TensorLike):
     def orbital_index_cart(self) -> Tensor:
         return self._orbital_index_cart()
 
-    @dependent_memoize(lambda self: self.orbitals_per_shell_cart)
+    # @dependent_memoize(lambda self: self.orbitals_per_shell_cart)
     def _orbital_index_cart(self) -> Tensor:
         orb_per_shell = self.orbitals_per_shell_cart
         return torch.cumsum(orb_per_shell, -1) - orb_per_shell
@@ -840,10 +860,10 @@ class IndexHelper(TensorLike):
     def orbitals_to_shell_cart(self) -> Tensor:
         return self._orbitals_to_shell_cart()
 
-    @dependent_memoize(
-        lambda self: self.orbital_index_cart,
-        lambda self: self.orbitals_per_shell_cart,
-    )
+    # @dependent_memoize(
+    #     lambda self: self.orbital_index_cart,
+    #     lambda self: self.orbitals_per_shell_cart,
+    # )
     def _orbitals_to_shell_cart(self) -> Tensor:
         orbital_index = self.orbital_index_cart
         orbitals_per_shell = self.orbitals_per_shell_cart
@@ -864,22 +884,22 @@ class IndexHelper(TensorLike):
     def orbitals_to_atom_cart(self) -> Tensor:
         return self._orbitals_to_atom_cart()
 
-    @dependent_memoize(lambda self: self.shells_to_atom)
+    # @dependent_memoize(lambda self: self.shells_to_atom)
     def _orbitals_to_atom_cart(self) -> Tensor:
         return self.spread_shell_to_orbital_cart(self.shells_to_atom)
 
-    def clear_cache(self) -> None:
-        """Clear the cross-instance caches of all memoized methods."""
-        if hasattr(self._orbitals_per_shell_cart, "clear_cache"):
-            self._orbitals_per_shell_cart.clear_cache()
-        if hasattr(self._orbital_index_cart, "clear_cache"):
-            self._orbital_index_cart.clear_cache()
-        if hasattr(self._orbitals_to_shell_cart, "clear_cache"):
-            self._orbitals_to_shell_cart.clear_cache()
-        if hasattr(self._orbitals_to_atom_cart, "clear_cache"):
-            self._orbitals_to_atom_cart.clear_cache()
-        if hasattr(self._orbitals_to_atom, "clear_cache"):
-            self._orbitals_to_atom.clear_cache()
+    # def clear_cache(self) -> None:
+    #     """Clear the cross-instance caches of all memoized methods."""
+    #     if hasattr(self._orbitals_per_shell_cart, "clear_cache"):
+    #         self._orbitals_per_shell_cart.clear_cache()
+    #     if hasattr(self._orbital_index_cart, "clear_cache"):
+    #         self._orbital_index_cart.clear_cache()
+    #     if hasattr(self._orbitals_to_shell_cart, "clear_cache"):
+    #         self._orbitals_to_shell_cart.clear_cache()
+    #     if hasattr(self._orbitals_to_atom_cart, "clear_cache"):
+    #         self._orbitals_to_atom_cart.clear_cache()
+    #     if hasattr(self._orbitals_to_atom, "clear_cache"):
+    #         self._orbitals_to_atom.clear_cache()
 
     def get_shell_indices(self, atom_idx: int) -> Tensor:
         """
@@ -1007,7 +1027,7 @@ class IndexHelper(TensorLike):
         """
         return (torch.int16, torch.int32, torch.int64, torch.long)
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         return (
             f"IndexHelper(\n"
             f"  unique_angular={self.unique_angular},\n"
@@ -1028,3 +1048,6 @@ class IndexHelper(TensorLike):
             f"  dtype={self.dtype}\n"
             ")"
         )
+
+    def __repr__(self) -> str:
+        return str(self)

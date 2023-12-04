@@ -102,9 +102,11 @@ def nth_derivative(f: Tensor, x: Tensor, n: int = 1) -> Tensor:
     if n < 1 or not isinstance(n, int):
         raise ValueError("Order of derivative must be an integer and larger 1.")
 
+    create_graph = False if n == 1 else True
+
     grads = None
     for _ in range(n):
-        grads = torch.autograd.grad(f, x, create_graph=True)[0]
+        (grads,) = torch.autograd.grad(f, x, create_graph=create_graph)
         f = grads.sum()
 
     assert grads is not None

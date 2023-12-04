@@ -12,7 +12,6 @@ from functools import partial, reduce
 import torch
 
 from .._types import Any, Literal, Size, Tensor, TensorOrTensors, overload
-from . import wrap_gather
 
 __sort = namedtuple("sort", ("values", "indices"))
 
