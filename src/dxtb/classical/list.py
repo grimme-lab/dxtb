@@ -7,7 +7,7 @@ import torch
 
 from .._types import Tensor
 from ..basis import IndexHelper
-from ..utils import Timers
+from ..timing import timer
 from .base import Classical
 
 
@@ -23,9 +23,7 @@ class ClassicalList(Classical):
 
         __slots__ = ()
 
-    def __init__(
-        self, *classicals: Classical | None, timer: Timers | None = None
-    ) -> None:
+    def __init__(self, *classicals: Classical | None) -> None:
         """
         Instantiate the collection of classical contributions.
 
@@ -33,9 +31,6 @@ class ClassicalList(Classical):
         ----------
         classicals : tuple[Classical | None, ...] | list[Classical | None]
             List or tuple of classical contribution classes.
-        timer : Timers | None, optional
-            Instance of a timer collection. Defaults to `None`, which
-            creates a new timer instance.
 
         Note
         ----
@@ -45,8 +40,6 @@ class ClassicalList(Classical):
         self.classicals = list(
             {classical for classical in classicals if classical is not None}
         )
-
-        self.timer = Timers("classicals") if timer is None else timer
 
     def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> ClassicalList.Cache:
         """
@@ -68,9 +61,9 @@ class ClassicalList(Classical):
 
         d = {}
         for classical in self.classicals:
-            self.timer.start(classical.label)
+            timer.start(classical.label)
             d[classical.label] = classical.get_cache(numbers=numbers, ihelp=ihelp)
-            self.timer.stop(classical.label)
+            timer.stop(classical.label)
 
         cache.update(**d)
         return cache
@@ -96,11 +89,11 @@ class ClassicalList(Classical):
 
         energies = {}
         for classical in self.classicals:
-            self.timer.start(classical.label)
+            timer.start(classical.label)
             energies[classical.label] = classical.get_energy(
                 positions, cache[classical.label]
             )
-            self.timer.stop(classical.label)
+            timer.stop(classical.label)
 
         return energies
 
@@ -127,10 +120,10 @@ class ClassicalList(Classical):
 
         gradients = {}
         for classical in self.classicals:
-            self.timer.start(f"{classical.label} Gradient")
+            timer.start(f"{classical.label} Gradient")
             gradients[classical.label] = classical.get_gradient(
                 energy[classical.label], positions
             )
-            self.timer.stop(f"{classical.label} Gradient")
+            timer.stop(f"{classical.label} Gradient")
 
         return gradients

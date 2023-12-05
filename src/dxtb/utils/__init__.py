@@ -10,4 +10,4 @@ from .misc import *
 from .scattergather import *
 from .symeig import *
 from .tensors import *
-from .timing import Timers, timings
+from .timing import *
