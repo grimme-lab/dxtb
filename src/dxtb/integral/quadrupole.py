@@ -5,7 +5,8 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Any, Literal
+from .._types import Any
+from ..constants import labels
 from .base import BaseIntegral
 from .driver.libcint import QuadrupoleLibcint
 
@@ -20,7 +21,7 @@ class Quadrupole(BaseIntegral):
 
     def __init__(
         self,
-        driver: Literal["libcint", "pytorch"] = "libcint",
+        driver: int = labels.INTDRIVER_LIBCINT,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
         **kwargs: Any,
@@ -28,9 +29,9 @@ class Quadrupole(BaseIntegral):
         super().__init__(device=device, dtype=dtype)
 
         # Determine which overlap class to instantiate based on the type
-        if driver == "libcint":
+        if driver == labels.INTDRIVER_LIBCINT:
             self.integral = QuadrupoleLibcint(device=device, dtype=dtype, **kwargs)
-        elif driver == "pytorch":
+        elif driver in (labels.INTDRIVER_PYTORCH, labels.INTDRIVER_PYTORCH2):
             raise NotImplementedError(
                 "PyTorch versions of multipole moments are not implemented. "
                 "Use `libcint` as integral driver."

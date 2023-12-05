@@ -10,9 +10,9 @@ import logging
 
 import torch
 
-from .._types import Any, Literal, Tensor
+from .._types import Any, Tensor
 from ..basis import IndexHelper
-from ..constants import defaults
+from ..constants import defaults, labels
 from ..param import Param
 from .base import IntDriver, IntegralContainer
 from .dipole import Dipole
@@ -54,7 +54,7 @@ class Integrals(IntegralContainer):
         overlap: Overlap | None = None,
         dipole: Dipole | None = None,
         quadrupole: Quadrupole | None = None,
-        driver: Literal["libcint", "pytorch", "pytorch2"] = "libcint",
+        driver: int = labels.INTDRIVER_LIBCINT,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ):
@@ -70,15 +70,15 @@ class Integrals(IntegralContainer):
         self._matrices = IntegralMatrices(device=device, dtype=dtype)
 
         # Determine which driver class to instantiate
-        if driver == "libcint":
+        if driver == labels.INTDRIVER_LIBCINT:
             self._driver = IntDriverLibcint(
                 numbers, par, ihelp, device=device, dtype=dtype
             )
-        elif driver == "pytorch":
+        elif driver == labels.INTDRIVER_PYTORCH:
             self._driver = IntDriverPytorch(
                 numbers, par, ihelp, device=device, dtype=dtype
             )
-        elif driver == "pytorch2":
+        elif driver == labels.INTDRIVER_PYTORCH2:
             self._driver = IntDriverPytorchNoAnalytical(
                 numbers, par, ihelp, device=device, dtype=dtype
             )
