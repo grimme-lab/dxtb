@@ -22,13 +22,6 @@ SPIN = None
 CHRG = None
 """Total charge of the system."""
 
-THRESH = {
-    torch.float16: torch.tensor(1e-2, dtype=torch.float16),
-    torch.float32: torch.tensor(1e-5, dtype=torch.float32),
-    torch.float64: torch.tensor(1e-10, dtype=torch.float64),
-}
-"""Convergence thresholds for different float data types."""
-
 EXCLUDE: list[str] = []
 """List of xTB components to exclude during the calculation."""
 
@@ -39,6 +32,12 @@ EXCLUDE_CHOICES = ["disp", "rep", "hal", "es2", "es3", "scf", "all"]
 
 INTCUTOFF = 70.0
 """Real-space cutoff (in Bohr) for integral evaluation. (50.0)"""
+
+INTUPLO = "l"
+"""Integral mode for PyTorch integral calculation."""
+
+INTUPLO_CHOICES = ["n", "N", "l", "L", "u", "U"]
+"""List of possible choices for `INTUPLO`."""
 
 INTDRIVER = "libcint"
 """Integral driver."""
@@ -100,8 +99,17 @@ SCP_MODE_CHOICES = ["charge", "charges", "potential", "fock"]
 List of possible choices for `SCP_MODE`. 'charge' and 'charges' are identical.
 """
 
-VERBOSITY = 1
+SCF_FORCE_CONVERGENCE = False
+"""Whether to continue with un-converged results."""
+
+VERBOSITY = 5
 """Verbosity of printout."""
+
+LOG_LEVEL = "info"
+"""Default logging level."""
+
+LOG_LEVEL_CHOICES = ["critical", "error", "warn", "warning", "info", "debug"]
+"""List of possible choices for `LOG_LEVEL`."""
 
 XITORCH_VERBOSITY = False
 """Verbosity of printout."""
@@ -118,17 +126,24 @@ The absolute tolerance of the norm of the output of the equilibrium function.
 
 # Fermi smearing
 
-ETEMP = 300.0
+FERMI_ETEMP = 300.0
 """Electronic temperature for Fermi smearing in K."""
 
 FERMI_MAXITER = 200
 """Maximum number of iterations for Fermi smearing."""
 
-FERMI_FENERGY_PARTITION = "equal"
+FERMI_THRESH = {
+    torch.float16: torch.tensor(1e-2, dtype=torch.float16),
+    torch.float32: torch.tensor(1e-5, dtype=torch.float32),
+    torch.float64: torch.tensor(1e-10, dtype=torch.float64),
+}
+"""Convergence thresholds for different float data types."""
+
+FERMI_PARTITION = "equal"
 """Partitioning scheme for electronic free energy."""
 
-FERMI_FENERGY_PARTITION_CHOICES = ["equal", "atomic"]
-"""List of possible choices for `FERMI_FENERGY_PARTITION`."""
+FERMI_PARTITION_CHOICES = ["equal", "atomic"]
+"""List of possible choices for `FERMI_PARTITION`."""
 
 # PyTorch
 
@@ -149,3 +164,13 @@ PAD = 0
 
 PADNZ = -9999999
 """Default non-zero value to indicate padding."""
+
+
+def get_default_device() -> torch.device:
+    """Default device for tensors."""
+    return torch.tensor(1.0).device
+
+
+def get_default_dtype() -> torch.dtype:
+    """Default data type for floating point tensors."""
+    return torch.tensor(1.0).dtype
