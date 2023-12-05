@@ -267,7 +267,7 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         "--etemp",
         action=action_not_less_than(0.0),
         type=float,
-        default=defaults.ETEMP,
+        default=defaults.FERMI_ETEMP,
         help="R|Electronic Temperature in K.",
     )
     p.add_argument(
@@ -294,8 +294,8 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
     p.add_argument(
         "--fermi_energy_partition",
         type=str,
-        default=defaults.FERMI_FENERGY_PARTITION,
-        choices=defaults.FERMI_FENERGY_PARTITION_CHOICES,
+        default=defaults.FERMI_PARTITION,
+        choices=defaults.FERMI_PARTITION_CHOICES,
         help="R|Partitioning scheme for electronic free energy.",
     )
     p.add_argument(
@@ -345,18 +345,40 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--int-driver",
+        "--int_driver",
         type=str,
         default=defaults.INTDRIVER,
         choices=defaults.INTDRIVER_CHOICES,
         help=("R|Integral driver."),
     )
+
     p.add_argument(
-        "-v",
         "--verbosity",
         type=int,
         default=defaults.VERBOSITY,
         help="R|Verbosity level of printout.",
     )
+    p.add_argument(
+        "-v",
+        action="count",
+        default=0,
+        help="R|Increase verbosity level of printout by one.",
+    )
+    p.add_argument(
+        "-s",
+        action="count",
+        default=0,
+        help="R|Reduce verbosity level of printout by one.",
+    )
+    p.add_argument(
+        "--loglevel",
+        "--log-level",
+        type=str,
+        default=defaults.LOG_LEVEL,
+        choices=defaults.LOG_LEVEL_CHOICES,
+        help="R|Logging level.",
+    )
+
     p.add_argument(
         "--method",
         type=str,
@@ -414,6 +436,11 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
     )
 
     p.add_argument(
+        "--json",
+        action="store_true",
+    )
+
+    p.add_argument(
         "--dir",
         nargs="*",
         type=is_dir,  # manual validation
@@ -422,7 +449,7 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
     p.add_argument(
         "--filetype",
         type=str,
-        choices=["xyz", "tm", "tmol", "turbomole", "json", "qcschema"],
+        choices=["xyz", "tm", "tmol", "turbomole", "json", "qcschema", "qm9"],
         help="R|Explicitly set file type of input.",
     )
     p.add_argument(

@@ -87,7 +87,9 @@ def read_structure_from_file(
 
     if ftype in ("xyz", "log"):
         numbers, positions = read_xyz(f)
-    elif ftype in ("tmol", "tm", "turbomole", "coord") or fname in ("coord"):
+    elif ftype == "qm9":
+        numbers, positions = read_xyz_qm9(f)
+    elif ftype in ("tmol", "tm", "turbomole") or fname == "coord":
         numbers, positions = read_coord(f)
     elif ftype in ("mol", "sdf", "gen", "pdb"):
         raise NotImplementedError(
@@ -146,6 +148,43 @@ def read_xyz(fp: PathLike) -> tuple[list[int], list[list[float]]]:
                 atom, x, y, z = l
                 xyz.append([i * units.AA2AU for i in [float(x), float(y), float(z)]])
                 atoms.append(ATOMIC_NUMBER[atom.title()])
+
+    if len(xyz) != num_atoms:
+        raise ValueError(f"Number of atoms in {fp} does not match.")
+
+    xyz = check_xyz(fp, xyz)
+    return atoms, xyz
+
+
+def read_xyz_qm9(fp: PathLike) -> tuple[list[int], list[list[float]]]:
+    """
+    Read the xyz files of the QM9 data set. The xyz files here do not conform
+    with the standard format.
+
+    Parameters
+    ----------
+    fp : PathLike
+        Path to coordinate file.
+
+    Returns
+    -------
+    tuple[list[int], list[list[float]]]
+        Lists containing the atomic numbers and coordinates.
+    """
+    atoms = []
+    xyz = []
+    num_atoms = 0
+
+    with open(fp, encoding="utf-8") as file:
+        lines = file.readlines()
+
+    num_atoms = int(lines[0].strip())
+
+    for i in range(2, 2 + num_atoms):
+        l = lines[i].strip().split()
+
+        atoms.append(ATOMIC_NUMBER[l[0].title()])
+        xyz.append([float(x.replace("*^", "e")) * units.AA2AU for x in l[1:4]])
 
     if len(xyz) != num_atoms:
         raise ValueError(f"Number of atoms in {fp} does not match.")

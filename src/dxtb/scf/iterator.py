@@ -18,7 +18,8 @@ import torch
 
 from .._types import Any, Slicers, Tensor
 from ..basis import IndexHelper
-from ..constants import defaults
+from ..config import ConfigSCF
+from ..constants import defaults, labels
 from ..exlibs.xitorch import optimize as xto
 from ..integral import IntegralMatrices
 from ..interaction import Charges, InteractionList
@@ -58,7 +59,7 @@ class SelfConsistentField(BaseXSCF):
         # compute one extra SCF cycle with strong damping.
         # Note that this is not required for SCF with full gradient tracking.
         # (see https://github.com/grimme-lab/xtbML/issues/124)
-        if self.scp_mode in ("charge", "charges"):
+        if self.config.scp_mode == labels.SCP_MODE_CHARGE:
             mixer = Simple({**self.fwd_options, "damp": 1e-4})
             q_new = fcn(q_converged)
             q_converged = mixer.iter(q_new, q_converged)
@@ -83,8 +84,8 @@ class SelfConsistentFieldFull(BaseTSCF):
         # "SCF function"
         fcn = self._fcn
 
-        mixer = self.scf_options["mixer"]
-        maxiter = self.fwd_options["maxiter"]
+        mixer = self.config.mixer  # type: ignore
+        maxiter = self.config.maxiter
 
         # initialize the correct mixer with tolerances etc.
         if isinstance(mixer, str):
@@ -113,7 +114,7 @@ class SelfConsistentFieldFull(BaseTSCF):
                     f"{mixer.label} mixing with a damping factor of "
                     f"{mixer.options['damp']}."
                 )
-                if self.fwd_options["force_convergence"]:
+                if self.config.force_convergence is True:
                     raise SCFConvergenceError(msg)
 
                 # only issue warning, return anyway
@@ -237,7 +238,7 @@ class SelfConsistentFieldFull(BaseTSCF):
                     slicers["orbital"] = [slice(0, i) for i in [norb_new]]
                     norb = norb_new
                     _norb = _norb_new
-                    if self.scp_mode in ("fock", "fockian"):
+                    if self.config.scp_mode == labels.SCP_MODE_FOCK:
                         mpdim = norb
                 if nsh > nsh_new:
                     slicers["shell"] = [slice(0, i) for i in [nsh_new]]
@@ -284,7 +285,7 @@ class SelfConsistentFieldFull(BaseTSCF):
                 f"'{mixer.label}' mixing with a damping factor of "
                 f"'{mixer.options['damp']}'."
             )
-            if self.fwd_options["force_convergence"]:
+            if self.config.force_convergence:
                 raise SCFConvergenceError(msg)
 
             # collect unconverged indices with convergence tracker; charges
@@ -393,17 +394,18 @@ class SelfConsistentFieldSingleShot(SelfConsistentFieldFull):
         if isinstance(charges, Tensor):
             charges = Charges(mono=charges)
 
-        if self.scp_mode in ("charge", "charges"):
+        # TODO: This piece of code is used like twenty times (refactor?)
+        if self.config.scp_mode == labels.SCP_MODE_CHARGE:
             guess = charges.as_tensor()
-        elif self.scp_mode == "potential":
+        elif self.config.scp_mode == labels.SCP_MODE_POTENTIAL:
             potential = self.charges_to_potential(charges)
             guess = potential.as_tensor()
-        elif self.scp_mode == "fock":
+        elif self.config.scp_mode == labels.SCP_MODE_FOCK:
             potential = self.charges_to_potential(charges)
             guess = self.potential_to_hamiltonian(potential)
         else:
             raise ValueError(
-                f"Unknown convergence target (SCP mode) '{self.scp_mode}'."
+                f"Unknown convergence target (SCP mode) '{self.config.scp_mode}'."
             )
 
         # calculate charges in SCF without gradient tracking
@@ -464,7 +466,7 @@ def solve(
     interactions: InteractionList,
     cache: InteractionList.Cache,
     ihelp: IndexHelper,
-    guess: str,
+    config: ConfigSCF,
     integrals: IntegralMatrices,
     *args: Any,
     **kwargs: Any,
@@ -484,8 +486,8 @@ def solve(
         Collection of `Interation` objects.
     ihelp : IndexHelper
         Index helper object.
-    guess : str
-        Name of the method for the initial charge guess.
+    config : ConfigSCF
+        Configuration for the SCF calculation.
     integrals : Integrals
         Container for all integrals.
     args : Tuple
@@ -498,17 +500,16 @@ def solve(
     Tensor
         Orbital-resolved partial charges vector.
     """
-    scf_mode = kwargs["scf_options"].get("scf_mode", defaults.SCF_MODE)
-    if scf_mode in ("default", "implicit"):
+    if config.scf_mode == labels.SCF_MODE_IMPLICIT:
         scf = SelfConsistentField
-    elif scf_mode in ("full", "full_tracking"):
+    elif config.scf_mode == labels.SCF_MODE_FULL:
         scf = SelfConsistentFieldFull
-    elif scf_mode == "experimental":
+    elif config.scf_mode == labels.SCF_MODE_EXPERIMENTAL:
         scf = SelfConsistentFieldSingleShot
     else:
-        raise ValueError(f"Unknown SCF mode '{scf_mode}'.")
+        raise ValueError(f"Unknown SCF mode '{config.scf_mode}'.")
 
-    charges = get_guess(numbers, positions, chrg, ihelp, guess)
+    charges = get_guess(numbers, positions, chrg, ihelp, config.guess)
     return scf(
         interactions,
         *args,
@@ -516,5 +517,6 @@ def solve(
         ihelp=ihelp,
         cache=cache,
         integrals=integrals,
+        config=config,
         **kwargs,
     )(charges)

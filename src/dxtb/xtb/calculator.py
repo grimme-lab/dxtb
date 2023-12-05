@@ -19,14 +19,17 @@ from ..classical import (
     new_halogen,
     new_repulsion,
 )
+from ..config import Config
 from ..constants import defaults
 from ..coulomb import new_es2, new_es3
 from ..data import cov_rad_d3
 from ..dispersion import Dispersion, new_dispersion
 from ..interaction import Charges, Interaction, InteractionList, Potential
 from ..interaction.external import field as efield
+from ..io import OutputHandler
 from ..param import Param, get_elem_angular
-from ..utils import Timers, _jac
+from ..timing import timer
+from ..utils import _jac
 from ..wavefunction import filling
 
 __all__ = ["Calculator", "Result"]
@@ -88,9 +91,6 @@ class Result(TensorLike):
     scf: Tensor
     """Atom-resolved energy from the self-consistent field (SCF) calculation."""
 
-    timer: Timers | None
-    """Collection of timers for all steps."""
-
     total: Tensor
     """Total energy."""
 
@@ -114,7 +114,6 @@ class Result(TensorLike):
         "overlap_grad",
         "potential",
         "scf",
-        "timer",
         "total",
         "total_grad",
     ]
@@ -129,7 +128,7 @@ class Result(TensorLike):
         shape = positions.shape[:-1]
 
         self.gradient = None
-        self.timer = None
+        timer = None
         self.scf = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.fenergy = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.hamiltonian_grad = torch.zeros_like(positions)
@@ -202,11 +201,8 @@ class Calculator(TensorLike):
     ihelp: IndexHelper
     """Helper class for indexing."""
 
-    opts: dict[str, Any]
-    """Calculator options."""
-
-    timer: Timers
-    """Collection of timers."""
+    opts: Config
+    """Calculator configuration."""
 
     def __init__(
         self,
@@ -215,8 +211,7 @@ class Calculator(TensorLike):
         *,
         classical: Sequence[Classical] = [],
         interaction: Sequence[Interaction] = [],
-        opts: dict[str, Any] | None = None,
-        timer: Timers | None = None,
+        opts: dict[str, Any] | Config | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
@@ -238,9 +233,6 @@ class Calculator(TensorLike):
         opts : dict[str, Any] | None, optional
             Calculator options. If `None` (default) is given, default options
             are used automatically.
-        timer : Timers | None
-            Pass an existing `Timers` instance. Defaults to `None`, which
-            creates a new timer instance.
         device : torch.device | None, optional
             Device to store the tensor on. If `None` (default), the default
             device is used.
@@ -248,68 +240,38 @@ class Calculator(TensorLike):
             Data type of the tensor. If `None` (default), the data type is
             inferred.
         """
-        if numbers.dtype not in (torch.long, torch.int16, torch.int32, torch.int64):
+        timer.start("setup calculator")
+
+        allowed_dtypes = (torch.long, torch.int16, torch.int32, torch.int64)
+        if numbers.dtype not in allowed_dtypes:
             raise ValueError(
-                "Tensor for atomic numbers must be of integer of long type."
+                "Dtype of atomic numbers must be one of the following to allow "
+                f" indexing: '{', '.join([str(x) for x in allowed_dtypes])}', "
+                f"but is '{numbers.dtype}'"
             )
 
         super().__init__(device, dtype)
         dd = {"device": self.device, "dtype": self.dtype}
 
-        self.timer = Timers("calculator") if timer is None else timer
-        self.timer.start("setup calculator")
-
         # setup calculator options
         opts = opts if opts is not None else {}
+        if isinstance(opts, dict):
+            opts = Config(**opts, **dd)
+        self.opts = opts
 
         self.batched = numbers.ndim > 1
-
-        self.opts = {
-            "fwd_options": {
-                "damp": opts.get("damp", defaults.DAMP),
-                "maxiter": opts.get("maxiter", defaults.MAXITER),
-                "verbose": opts.get("verbose", defaults.XITORCH_VERBOSITY),
-            },
-            "scf_options": {
-                "etemp": opts.get("etemp", defaults.ETEMP),
-                "fermi_maxiter": opts.get(
-                    "fermi_maxiter",
-                    defaults.FERMI_MAXITER,
-                ),
-                "fermi_thresh": opts.get(
-                    "fermi_thresh",
-                    defaults.THRESH,
-                ),
-                "fermi_fenergy_partition": opts.get(
-                    "fermi_fenergy_partition",
-                    defaults.FERMI_FENERGY_PARTITION,
-                ),
-                "scf_mode": opts.get("scf_mode", defaults.SCF_MODE),
-                "scp_mode": opts.get("scp_mode", defaults.SCP_MODE),
-                "mixer": opts.get("mixer", defaults.MIXER),
-                "verbosity": opts.get("verbosity", defaults.VERBOSITY),
-            },
-            "exclude": opts.get("exclude", defaults.EXCLUDE),
-            "guess": opts.get("guess", defaults.GUESS),
-            "spin": opts.get("spin", defaults.SPIN),
-            "int_driver": opts.get("int_driver", defaults.INTDRIVER),
-        }
-
-        # set tolerances separately to catch unreasonably small values
-        self.set_tol("f_tol", opts.get("xitorch_fatol", defaults.XITORCH_FATOL))
-        self.set_tol("x_tol", opts.get("xitorch_xatol", defaults.XITORCH_XATOL))
 
         self.ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
 
         # setup self-consistent contributions
         es2 = (
             new_es2(numbers, par, **dd)
-            if not any(x in ["all", "es2"] for x in self.opts["exclude"])
+            if not any(x in ["all", "es2"] for x in self.opts.exclude)
             else None
         )
         es3 = (
             new_es3(numbers, par, **dd)
-            if not any(x in ["all", "es3"] for x in self.opts["exclude"])
+            if not any(x in ["all", "es3"] for x in self.opts.exclude)
             else None
         )
 
@@ -318,88 +280,53 @@ class Calculator(TensorLike):
         # setup non-self-consistent contributions
         halogen = (
             new_halogen(numbers, par, **dd)
-            if not any(x in ["all", "hal"] for x in self.opts["exclude"])
+            if not any(x in ["all", "hal"] for x in self.opts.exclude)
             else None
         )
         dispersion = (
             new_dispersion(numbers, par, **dd)
-            if not any(x in ["all", "disp"] for x in self.opts["exclude"])
+            if not any(x in ["all", "disp"] for x in self.opts.exclude)
             else None
         )
         repulsion = (
             new_repulsion(numbers, par, **dd)
-            if not any(x in ["all", "rep"] for x in self.opts["exclude"])
+            if not any(x in ["all", "rep"] for x in self.opts.exclude)
             else None
         )
 
-        self.classicals = ClassicalList(
-            halogen, dispersion, repulsion, *classical, timer=self.timer
-        )
+        self.classicals = ClassicalList(halogen, dispersion, repulsion, *classical)
 
         #############
         # INTEGRALS #
         #############
 
         # figure out integral level from interactions
-        self.intlevel = opts.get("int_level", defaults.INTLEVEL)
+        self.intlevel = defaults.INTLEVEL
+        if efield.LABEL_EFIELD in self.interactions.labels:
+            self.intlevel = max(2, self.intlevel)
 
         # setup integral
-        driver = self.opts["int_driver"]
+        driver = self.opts.ints.driver
         self.integrals = ints.Integrals(numbers, par, self.ihelp, driver=driver, **dd)
 
         if self.intlevel >= ints.INTLEVEL_OVERLAP:
             self.integrals.hcore = ints.Hamiltonian(numbers, par, self.ihelp, **dd)
             self.integrals.overlap = ints.Overlap(driver=driver, **dd)
 
-        # TODO: This should get some extra validation by the config
-        # (avoid PyTorch integral driver for multipole integrals)
         if self.intlevel >= ints.INTLEVEL_DIPOLE:
             self.integrals.dipole = ints.Dipole(driver=driver, **dd)
 
         if self.intlevel >= ints.INTLEVEL_QUADRUPOLE:
             self.integrals.quadrupole = ints.Quadrupole(driver=driver, **dd)
 
-        self.timer.stop("setup calculator")
-
-    def set_option(self, name: str, value: Any) -> None:
-        if name not in self.opts:
-            raise KeyError(f"Option '{name}' does not exist.")
-
-        self.opts[name] = value
-
-    def set_tol(self, name: str, value: float) -> None:
-        if name not in ("f_tol", "x_tol"):
-            raise KeyError(f"Tolerance option '{name}' does not exist.")
-
-        eps = torch.finfo(self.dtype).eps
-        if value < eps:
-            logger.warn(
-                f"Selected tolerance ({value:.2E}) is smaller than the "
-                f"smallest value for the selected dtype ({self.dtype}, "
-                f"{eps:.2E}). Switching to {eps:.2E} instead."
-            )
-            value = eps
-
-        self.opts["fwd_options"][name] = value
-
-    @property
-    def intlevel(self) -> Tensor:
-        if self.opts["int_level"] is None:
-            raise ValueError("No overlap integral provided.")
-        return self.opts["int_level"]
-
-    @intlevel.setter
-    def intlevel(self, value: int) -> None:
-        if efield.LABEL_EFIELD in self.interactions.labels:
-            value = max(2, value)
-
-        self.opts["int_level"] = value
+        timer.stop("setup calculator")
 
     def singlepoint(
         self,
         numbers: Tensor,
         positions: Tensor,
         chrg: Tensor,
+        spin: int | None = defaults.SPIN,
         grad: bool = False,
     ) -> Result:
         """
@@ -424,23 +351,23 @@ class Calculator(TensorLike):
         result = Result(positions, device=self.device, dtype=self.dtype)
 
         # SELF-CONSISTENT FIELD PROCEDURE
-        if not any(x in ["all", "scf"] for x in self.opts["exclude"]):
+        if not any(x in ["all", "scf"] for x in self.opts.exclude):
             # overlap integral
-            self.timer.start("Overlap")
+            timer.start("Overlap")
             self.integrals.build_overlap(positions)
-            self.timer.stop("Overlap")
+            timer.stop("Overlap")
 
             # dipole integral
             if self.intlevel >= ints.INTLEVEL_DIPOLE:
-                self.timer.start("Dipole Integral")
+                timer.start("Dipole Integral")
                 self.integrals.build_dipole(positions)
-                self.timer.stop("Dipole Integral")
+                timer.stop("Dipole Integral")
 
             # quadrupole integral
             if self.intlevel >= ints.INTLEVEL_QUADRUPOLE:
-                self.timer.start("Quadrupole Integral")
+                timer.start("Quadrupole Integral")
                 self.integrals.build_quadrupole(positions)
-                self.timer.stop("Quadrupole Integral")
+                timer.stop("Quadrupole Integral")
 
             # TODO: Think about handling this case
             if self.integrals.hcore is None:
@@ -449,23 +376,23 @@ class Calculator(TensorLike):
                 raise RuntimeError
 
             # Core Hamiltonian integral (requires overlap internally!)
-            self.timer.start("h0", "Core Hamiltonian")
+            timer.start("h0", "Core Hamiltonian")
             rcov = cov_rad_d3[numbers].to(self.device)
             cn = ncoord.get_coordination_number(
                 numbers, positions, ncoord.exp_count, rcov
             )
             hcore = self.integrals.build_hcore(positions, cn=cn)
-            self.timer.stop("h0")
+            timer.stop("h0")
 
             # SCF
-            self.timer.start("SCF")
+            timer.start("SCF")
 
             # Obtain the reference occupations and total number of electrons
             n0 = self.integrals.hcore.integral.get_occupation()
             nel = torch.sum(n0, -1) - torch.sum(chrg, -1)
 
             # get alpha and beta electrons and occupation
-            nab = filling.get_alpha_beta_occupation(nel, self.opts["spin"])
+            nab = filling.get_alpha_beta_occupation(nel, spin)
             occupation = filling.get_aufbau_occupation(
                 hcore.new_tensor(hcore.shape[-1], dtype=torch.int64), nab
             )
@@ -482,14 +409,12 @@ class Calculator(TensorLike):
                 self.interactions,
                 icaches,
                 self.ihelp,
-                self.opts["guess"],
+                self.opts.scf,
                 self.integrals.matrices,
                 occupation,
                 n0,
-                fwd_options=self.opts["fwd_options"],
-                scf_options=self.opts["scf_options"],
             )
-            self.timer.stop("SCF")
+            timer.stop("SCF")
 
             result.charges = scf_results["charges"]
             result.coefficients = scf_results["coefficients"]
@@ -504,22 +429,20 @@ class Calculator(TensorLike):
 
             if grad is True:
                 if len(self.interactions.interactions) > 0:
-                    self.timer.start("igrad", "Interaction Gradient")
+                    timer.start("igrad", "Interaction Gradient")
 
                     # charges should be detached
                     result.interaction_grad = self.interactions.get_gradient(
                         result.charges, positions, icaches, self.ihelp
                     )
                     result.total_grad += result.interaction_grad
-                    self.timer.stop("igrad")
-                    # print("grad interaction done")
-                    # print(result.interaction_grad)
+                    timer.stop("igrad")
 
-                self.timer.start("ograd", "Overlap Gradient")
+                timer.start("ograd", "Overlap Gradient")
                 result.overlap_grad = self.integrals.grad_overlap(positions)
-                self.timer.stop("ograd")
+                timer.stop("ograd")
 
-                self.timer.start("hgrad", "Hamiltonian Gradient")
+                timer.start("hgrad", "Hamiltonian Gradient")
                 wmat = scf.get_density(
                     result.coefficients,
                     result.occupation.sum(-2),
@@ -544,7 +467,7 @@ class Calculator(TensorLike):
                 # sum up hamiltonian gradient and CN gradient
                 result.hamiltonian_grad += dedr + dcn
                 result.total_grad += result.hamiltonian_grad
-                self.timer.stop("hgrad")
+                timer.stop("hgrad")
 
         # CLASSICAL CONTRIBUTIONS
         if len(self.classicals.classicals) > 0:
@@ -560,13 +483,6 @@ class Calculator(TensorLike):
 
         # TIMERS AND PRINTOUT
         result.integrals = self.integrals
-        result.timer = self.timer
-
-        if self.opts["scf_options"]["verbosity"] > 0:
-            result.print_energies()
-        if self.opts["scf_options"]["verbosity"] > 1:
-            print("")
-            self.timer.print_times()
 
         return result
 
@@ -610,8 +526,8 @@ class Calculator(TensorLike):
         pos = positions.detach().clone()
 
         # turn off printing in numerical hessian
-        tmp = self.opts["scf_options"]["verbosity"]
-        self.opts["scf_options"]["verbosity"] = 0
+        tmp = OutputHandler.verbosity
+        OutputHandler.verbosity = 0
 
         hess = torch.zeros(
             *(*positions.shape, *positions.shape[-2:]),
@@ -647,7 +563,7 @@ class Calculator(TensorLike):
 
         logger.debug("Numerical Hessian: All finished.")
 
-        self.opts["scf_options"]["verbosity"] = tmp
+        OutputHandler.verbosity = tmp
         return hess
 
     def vibration(
@@ -852,8 +768,8 @@ class Calculator(TensorLike):
         pos = positions.detach().clone()
 
         # turn off printing in numerical hessian
-        tmp = self.opts["scf_options"]["verbosity"]
-        self.opts["scf_options"]["verbosity"] = 0
+        tmp = OutputHandler.verbosity
+        OutputHandler.verbosity = 0
 
         dmu_dr = torch.zeros(
             (3, *positions.shape[-2:]),
@@ -901,7 +817,7 @@ class Calculator(TensorLike):
 
         logger.debug("IR spectrum: All finished.")
 
-        self.opts["scf_options"]["verbosity"] = tmp
+        OutputHandler.verbosity = tmp
         return freqs * units.AU2RCM, ir_ints
 
     def raman_spectrum(

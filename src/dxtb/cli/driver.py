@@ -3,16 +3,21 @@ Driver class for running dxtb.
 """
 from __future__ import annotations
 
+import logging
 from argparse import Namespace
 from pathlib import Path
 
 import torch
 
 from .. import io
-from ..constants import defaults, units
+from ..config import Config
+from ..constants import labels, units
 from ..interaction.external import new_efield
-from ..utils import Timers, batch
+from ..timing import timer
+from ..utils import batch
 from ..xtb import Calculator, Result
+
+logger = logging.getLogger(__name__)
 
 FILES = {"spin": ".UHF", "chrg": ".CHRG"}
 
@@ -79,7 +84,27 @@ class Driver:
         return vals
 
     def singlepoint(self) -> Result:
+        timer.start("setup")
+
         args = self.args
+
+        # logging.basicConfig(
+        # level=args.loglevel.upper(),
+        # format="%(asctime)s %(levelname)s %(name)s::%(funcName)s -> %(message)s",
+        # datefmt="%Y-%m-%d %H:%M:%S",
+        # )
+        # config = io.logutils.get_logging_config(level=args.loglevel.upper())
+        # logging.basicConfig(**config)
+
+        # args.verbosity contains default if not set, v/s are zero
+        io.OutputHandler.verbosity = args.verbosity + args.v - args.s
+
+        # setup output: streams, verbosity
+        if args.json:
+            io.OutputHandler.setup_json_logger()
+
+        io.OutputHandler.header()
+        io.OutputHandler.sysinfo()
 
         if args.detect_anomaly:
             # pylint: disable=import-outside-toplevel
@@ -87,37 +112,25 @@ class Driver:
 
             set_detect_anomaly(True)
 
-        timer = Timers()
-        timer.start("setup")
-
         dd = {"device": args.device, "dtype": args.dtype}
 
         opts = {
-            "etemp": args.etemp,
-            "damp": args.damp,
-            "scf_mode": args.scf_mode,
-            "scp_mode": args.scp_mode,
-            "int_driver": args.int_driver,
-            "mixer": args.mixer,
-            "maxiter": args.maxiter,
             "spin": args.spin,
-            "verbosity": args.verbosity,
-            "exclude": args.exclude,
-            "xitorch_xatol": args.xtol,
-            "xitorch_fatol": args.ftol,
         }
 
-        if len(self.args.file) > 1:
+        config = Config.from_args(args)
+
+        if len(args.file) > 1:
             _n = []
             _p = []
-            for f in self.args.file:
-                n, p = io.read_structure_from_file(f)
+            for f in args.file:
+                n, p = io.read_structure_from_file(f, args.filetype)
                 _n.append(torch.tensor(n, dtype=torch.long, device=dd["device"]))
                 _p.append(torch.tensor(p, **dd))
             numbers = batch.pack(_n)
             positions = batch.pack(_p)
         else:
-            _n, _p = io.read_structure_from_file(args.file[0])
+            _n, _p = io.read_structure_from_file(args.file[0], args.filetype)
             numbers = torch.tensor(_n, dtype=torch.long, device=dd["device"])
             positions = torch.tensor(_p, **dd)
 
@@ -126,7 +139,6 @@ class Driver:
         if args.grad is True:
             positions.requires_grad = True
 
-        # METHOD
         if args.method.lower() == "gfn1" or args.method.lower() == "gfn1-xtb":
             # pylint: disable=import-outside-toplevel
             from ..param import GFN1_XTB as par
@@ -134,12 +146,6 @@ class Driver:
             raise NotImplementedError("GFN2-xTB is not implemented yet.")
         else:
             raise ValueError(f"Unknown method '{args.method}'.")
-
-        # GUESS
-        if args.guess.lower() == "eeq" or args.guess.lower() == "sad":
-            opts["guess"] = args.guess.lower()
-        else:
-            raise ValueError(f"Unknown guess method '{args.guess}'.")
 
         # INTERACTIONS
         interactions = []
@@ -154,9 +160,7 @@ class Driver:
 
         # setup calculator
         timer.stop("setup")
-        calc = Calculator(
-            numbers, par, opts=opts, interaction=interactions, timer=timer, **dd
-        )
+        calc = Calculator(numbers, par, opts=config, interaction=interactions, **dd)
         # run singlepoint calculation
         result = calc.singlepoint(numbers, positions, chrg)
 
