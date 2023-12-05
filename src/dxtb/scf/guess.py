@@ -8,6 +8,7 @@ import torch
 from .._types import Tensor
 from ..basis import IndexHelper
 from ..charges import ChargeModel, solve
+from ..constants import labels
 from ..ncoord import exp_count, get_coordination_number
 
 
@@ -16,7 +17,7 @@ def get_guess(
     positions: Tensor,
     chrg: Tensor,
     ihelp: IndexHelper,
-    name: str = "eeq",
+    name: int = labels.GUESS_EEQ,
 ) -> Tensor:
     """
     Obtain initial guess for charges.
@@ -34,8 +35,8 @@ def get_guess(
         Total charge of system.
     ihelp : IndexHelper
         Helper class for indexing.
-    name : str, optional
-        Name of guess method, by default "eeq".
+    name : int, optional
+        Name of guess method, by default EEQ (`labels.GUESS_EEQ`).
 
     Returns
     -------
@@ -47,9 +48,9 @@ def get_guess(
     ValueError
         Name of guess method is unknown.
     """
-    if name == "eeq":
+    if name == labels.GUESS_EEQ:
         charges = get_eeq_guess(numbers, positions, chrg)
-    elif name == "sad":
+    elif name == labels.GUESS_SAD:
         charges = torch.zeros_like(
             positions[..., -1], requires_grad=positions.requires_grad
         )

@@ -33,3 +33,7 @@ omit = [
 
 [tool.coverage.report]
 fail_under = 70
+
+
+[tool.isort]
+skip = ["./src/dxtb/__init__.py",]

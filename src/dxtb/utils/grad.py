@@ -13,10 +13,9 @@ from __future__ import annotations
 
 import torch
 
-from ..__version__ import __torch_version__
 from .._types import Any, Callable, Tensor
 
-if __torch_version__ < (2, 0, 0):  # type: ignore # pragma: no cover
+if torch.__version__ < (2, 0, 0):  # type: ignore # pragma: no cover
     try:
         from functorch import jacrev  # type: ignore
     except ModuleNotFoundError:
