@@ -166,6 +166,7 @@ class BaseSCF:
 
         def cull(self, conv: Tensor, slicers: Slicers) -> None:
             onedim = [~conv, *slicers["orbital"]]
+            onedim_atom = [~conv, *slicers["atom"]]
             twodim = [~conv, *slicers["orbital"], *slicers["orbital"]]
             threedim = [~conv, (...), *slicers["orbital"], *slicers["orbital"]]
 
@@ -191,7 +192,7 @@ class BaseSCF:
             self.cache.cull(conv, slicers=slicers)
 
             self.old_charges = self.old_charges[onedim]
-            self.old_energy = self.old_energy[onedim]
+            self.old_energy = self.old_energy[onedim_atom]
             self.old_density = self.old_density[twodim]
 
     _data: _Data
@@ -209,18 +210,6 @@ class BaseSCF:
     eigen_options: dict[str, Any]
     """Options for eigensolver"""
 
-    scf_options: dict[str, Any]
-    """
-    Options for SCF:
-    - "etemp": Electronic temperature (in a.u.) for Fermi smearing.
-    - "fermi_maxiter": Maximum number of iterations for Fermi smearing.
-    - "fermi_thresh": Float data type dependent threshold for Fermi iterations.
-    - "fermi_fenergy_partition": Partitioning scheme for electronic free energy.
-    """
-
-    use_potential: bool
-    """Whether to use the potential or the charges"""
-
     batched: bool
     """Whether multiple systems or a single one are handled"""
 
@@ -230,7 +219,7 @@ class BaseSCF:
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        self.config: ConfigSCF = kwargs.pop("config")
+        self.config: ConfigSCF = kwargs.pop("config", ConfigSCF())
 
         # TODO: Move these settings to config
         self.bck_options = {"posdef": True, **kwargs.pop("bck_options", {})}
@@ -238,8 +227,8 @@ class BaseSCF:
             "force_convergence": False,
             "method": "broyden1",
             "alpha": -0.5,
-            "f_tol": self.config.fatol,
-            "x_tol": self.config.xatol,
+            "f_tol": self.config.xitorch_fatol,
+            "x_tol": self.config.xitorch_xatol,
             "f_rtol": float("inf"),
             "x_rtol": float("inf"),
             "maxiter": self.config.maxiter,
@@ -498,8 +487,8 @@ class BaseSCF:
 
         Note
         ----
-        Partitioning scheme is set through SCF options
-        (`scf_options["fermi_fenergy_partition"]`).
+        Partitioning scheme is set through SCF config
+        (`config.fermi.partition`).
         Defaults to an equal partitioning to all atoms (`"equal"`).
         """
         eps = torch.tensor(
@@ -557,44 +546,49 @@ class BaseSCF:
         q = Charges.from_tensor(charges, self._data.charges, batched=self.batched)
         potential = self.charges_to_potential(q)
 
-        if charges.ndim < 2:  # pragma: no cover
-            energy = self.get_energy(q).sum(-1).detach().clone()
-            ediff = torch.linalg.vector_norm(self._data.old_energy - energy)
+        # FIXME: Batch print not working!
+        # explicitly check to avoid some superfluos calculations
+        if OutputHandler.verbosity > 5:
+            if charges.ndim < 2:  # pragma: no cover
+                energy = self.get_energy(q).sum(-1).detach().clone()
+                ediff = torch.linalg.vector_norm(self._data.old_energy - energy)
 
-            density = self._data.density.detach().clone()
-            pnorm = torch.linalg.matrix_norm(self._data.old_density - density)
+                density = self._data.density.detach().clone()
+                pnorm = torch.linalg.matrix_norm(self._data.old_density - density)
 
-            _q = charges.detach().clone()
-            qdiff = torch.linalg.vector_norm(self._data.old_charges - _q)
+                _q = charges.detach().clone()
+                qdiff = torch.linalg.vector_norm(self._data.old_charges - _q)
 
-            OutputHandler.write_stdout(
-                f"{self._data.iter:3}   {energy: .16E}  {ediff: .6E} "
-                f"{pnorm: .6E}   {qdiff: .6E}"
-            )
+                OutputHandler.write_stdout(
+                    f"{self._data.iter:3}   {energy: .16E}  {ediff: .6E} "
+                    f"{pnorm: .6E}   {qdiff: .6E}"
+                )
 
-            self._data.old_energy = energy
-            self._data.old_charges = _q
-            self._data.old_density = density
-            self._data.iter += 1
-        else:
-            energy = self.get_energy(q).detach().clone()
-            ediff = torch.linalg.norm(self._data.old_energy - energy)
+                self._data.old_energy = energy
+                self._data.old_charges = _q
+                self._data.old_density = density
+                self._data.iter += 1
+            else:
+                energy = self.get_energy(q).detach().clone()
+                ediff = torch.linalg.norm(self._data.old_energy - energy)
 
-            density = self._data.density.detach().clone()
-            pnorm = torch.linalg.norm(self._data.old_density - density)
+                density = self._data.density.detach().clone()
+                pnorm = torch.linalg.norm(self._data.old_density - density)
 
-            _q = charges.detach().clone()
-            qdiff = torch.linalg.norm(self._data.old_charges - _q)
+                _q = charges.detach().clone()
+                print(_q.shape)
+                print(self._data.old_charges.shape)
+                qdiff = torch.linalg.norm(self._data.old_charges - _q)
 
-            OutputHandler.write_stdout(
-                f"{self._data.iter:3}   {energy.sum(): .16E}  {ediff: .6E} "
-                f"{qdiff: .6E}"
-            )
+                OutputHandler.write_stdout(
+                    f"{self._data.iter:3}   {energy.sum(): .16E}  {ediff: .6E} "
+                    f"{qdiff: .6E}"
+                )
 
-            self._data.old_energy = energy
-            self._data.old_charges = _q
-            self._data.old_density = density
-            self._data.iter += 1
+                self._data.old_energy = energy
+                self._data.old_charges = _q
+                self._data.old_density = density
+                self._data.iter += 1
 
         OutputHandler.write_stdout(f"energy: {self.get_energy(q).sum(-1)}", 6)
 
@@ -620,44 +614,47 @@ class BaseSCF:
         )
         charges = self.potential_to_charges(pot)
 
-        if charges.mono.ndim < 2:  # pragma: no cover
-            energy = self.get_energy(charges).sum(-1).detach().clone()
-            ediff = torch.linalg.vector_norm(self._data.old_energy - energy)
+        # FIXME: Batch print not working!
+        # explicitly check to avoid some superfluos calculations
+        if OutputHandler.verbosity > 5:
+            if charges.mono.ndim < 2:  # pragma: no cover
+                energy = self.get_energy(charges).sum(-1).detach().clone()
+                ediff = torch.linalg.vector_norm(self._data.old_energy - energy)
 
-            density = self._data.density.detach().clone()
-            pnorm = torch.linalg.matrix_norm(self._data.old_density - density)
+                density = self._data.density.detach().clone()
+                pnorm = torch.linalg.matrix_norm(self._data.old_density - density)
 
-            q = charges.mono.detach().clone()
-            qdiff = torch.linalg.vector_norm(self._data.old_charges - q)
+                q = charges.mono.detach().clone()
+                qdiff = torch.linalg.vector_norm(self._data.old_charges - q)
 
-            OutputHandler.write_stdout(
-                f"{self._data.iter:3}   {energy: .16E}  {ediff: .6E} "
-                f"{pnorm: .6E}   {qdiff: .6E}"
-            )
+                OutputHandler.write_stdout(
+                    f"{self._data.iter:3}   {energy: .16E}  {ediff: .6E} "
+                    f"{pnorm: .6E}   {qdiff: .6E}"
+                )
 
-            self._data.old_energy = energy
-            self._data.old_charges = q
-            self._data.old_density = density
-            self._data.iter += 1
-        else:
-            energy = self.get_energy(charges).detach().clone()
-            ediff = torch.linalg.norm(self._data.old_energy - energy)
+                self._data.old_energy = energy
+                self._data.old_charges = q
+                self._data.old_density = density
+                self._data.iter += 1
+            else:
+                energy = self.get_energy(charges).detach().clone()
+                ediff = torch.linalg.norm(self._data.old_energy - energy)
 
-            density = self._data.density.detach().clone()
-            pnorm = torch.linalg.norm(self._data.old_density - density)
+                density = self._data.density.detach().clone()
+                pnorm = torch.linalg.norm(self._data.old_density - density)
 
-            q = charges.mono.detach().clone()
-            qdiff = torch.linalg.norm(self._data.old_charges - q)
+                q = charges.mono.detach().clone()
+                qdiff = torch.linalg.norm(self._data.old_charges - q)
 
-            OutputHandler.write_stdout(
-                f"{self._data.iter:3}   {energy.sum(): .16E}  {ediff: .6E} "
-                f"{qdiff: .6E}"
-            )
+                OutputHandler.write_stdout(
+                    f"{self._data.iter:3}   {energy.sum(): .16E}  {ediff: .6E} "
+                    f"{qdiff: .6E}"
+                )
 
-            self._data.old_energy = energy
-            self._data.old_charges = q
-            self._data.old_density = density
-            self._data.iter += 1
+                self._data.old_energy = energy
+                self._data.old_charges = q
+                self._data.old_density = density
+                self._data.iter += 1
 
         new_potential = self.charges_to_potential(charges)
         return new_potential.as_tensor()

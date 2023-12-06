@@ -42,7 +42,16 @@ INTUPLO_CHOICES = ["n", "N", "l", "L", "u", "U"]
 INTDRIVER = "libcint"
 """Integral driver."""
 
-INTDRIVER_CHOICES = ["pytorch", "pytorch2", "libcint"]
+INTDRIVER_CHOICES = [
+    "dxtb",
+    "dxtb2",
+    "torch",
+    "torch2",
+    "pytorch",
+    "pytorch2",
+    "libcint",
+    "c",
+]
 """List of possible choices for `INTDRIVER`."""
 
 INTLEVEL = 1

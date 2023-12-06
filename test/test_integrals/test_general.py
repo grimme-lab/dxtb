@@ -9,10 +9,9 @@ import torch
 from dxtb import integral as ints
 from dxtb._types import DD
 from dxtb.basis import IndexHelper
+from dxtb.constants.labels import INTDRIVER_LIBCINT, INTDRIVER_PYTORCH
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
-
-from .utils import LIBCINT_DRIVER, PYTORCH_DRIVER
 
 device = None
 
@@ -42,17 +41,17 @@ def test_fail_family(dtype: torch.dtype):
     numbers = torch.tensor([1, 3], device=device)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    i = ints.Integrals(numbers, par, ihelp, driver=LIBCINT_DRIVER, **dd)
+    i = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_PYTORCH, **dd)
 
     # make sure the checks are turned on
     assert i.run_checks is True
 
     with pytest.raises(RuntimeError):
-        i.overlap = ints.Overlap(PYTORCH_DRIVER, **dd)
+        i.overlap = ints.Overlap(INTDRIVER_LIBCINT, **dd)
     with pytest.raises(RuntimeError):
-        i.dipole = ints.Dipole(PYTORCH_DRIVER, **dd)
+        i.dipole = ints.Dipole(INTDRIVER_LIBCINT, **dd)
     with pytest.raises(RuntimeError):
-        i.quadrupole = ints.Quadrupole(PYTORCH_DRIVER, **dd)
+        i.quadrupole = ints.Quadrupole(INTDRIVER_LIBCINT, **dd)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -61,20 +60,20 @@ def test_fail_pytorch_multipole(dtype: torch.dtype):
     numbers = torch.tensor([1, 3], device=device)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    i = ints.Integrals(numbers, par, ihelp, driver=PYTORCH_DRIVER, **dd)
+    i = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_PYTORCH, **dd)
 
     # make sure the checks are turned on
     assert i.run_checks is True
 
     # incompatible driver
     with pytest.raises(RuntimeError):
-        i.overlap = ints.Overlap(LIBCINT_DRIVER, **dd)
+        i.overlap = ints.Overlap(INTDRIVER_LIBCINT, **dd)
 
     # multipole moments not implemented with PyTorch
     with pytest.raises(NotImplementedError):
-        i.dipole = ints.Dipole(PYTORCH_DRIVER, **dd)
+        i.dipole = ints.Dipole(INTDRIVER_PYTORCH, **dd)
     with pytest.raises(NotImplementedError):
-        i.quadrupole = ints.Quadrupole(PYTORCH_DRIVER, **dd)
+        i.quadrupole = ints.Quadrupole(INTDRIVER_PYTORCH, **dd)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

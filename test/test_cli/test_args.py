@@ -31,17 +31,17 @@ def test_defaults() -> None:
     assert isinstance(args.maxiter, int)
     assert args.maxiter == defaults.MAXITER
 
-    assert isinstance(args.etemp, float)
-    assert args.etemp == defaults.ETEMP
-
     assert isinstance(args.guess, str)
     assert args.guess == defaults.GUESS
+
+    assert isinstance(args.etemp, float)
+    assert args.etemp == defaults.FERMI_ETEMP
 
     assert isinstance(args.fermi_maxiter, int)
     assert args.fermi_maxiter == defaults.FERMI_MAXITER
 
     assert isinstance(args.fermi_energy_partition, str)
-    assert args.fermi_energy_partition == defaults.FERMI_FENERGY_PARTITION
+    assert args.fermi_energy_partition == defaults.FERMI_PARTITION
 
 
 @pytest.mark.parametrize(

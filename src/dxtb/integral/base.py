@@ -27,7 +27,7 @@ class IntDriver(TensorLike):
     label: str
     """Identifier label for integral driver."""
 
-    family: Literal["libcint", "pytorch"]
+    family: int
     """Label for integral implementation family"""
 
     __slots__ = [

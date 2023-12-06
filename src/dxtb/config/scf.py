@@ -25,48 +25,81 @@ class ConfigSCF:
     def __init__(
         self,
         *,
-        guess=defaults.GUESS,
-        maxiter=defaults.MAXITER,
-        mixer=defaults.MIXER,
-        damp=defaults.DAMP,
-        scf_mode=defaults.SCF_MODE,
-        scp_mode=defaults.SCP_MODE,
-        xatol=defaults.XITORCH_XATOL,
-        fatol=defaults.XITORCH_FATOL,
+        guess: str | int = defaults.GUESS,
+        maxiter: int = defaults.MAXITER,
+        mixer: str = defaults.MIXER,
+        damp: float = defaults.DAMP,
+        scf_mode: str | int = defaults.SCF_MODE,
+        scp_mode: str | int = defaults.SCP_MODE,
+        xitorch_xatol: float = defaults.XITORCH_XATOL,
+        xitorch_fatol: float = defaults.XITORCH_FATOL,
         force_convergence=defaults.SCF_FORCE_CONVERGENCE,
         # Fermi
-        fermi_etemp=defaults.FERMI_ETEMP,
-        fermi_maxiter=defaults.FERMI_MAXITER,
-        fermi_thresh=defaults.FERMI_THRESH,
-        fermi_partition=defaults.FERMI_PARTITION,
+        fermi_etemp: float = defaults.FERMI_ETEMP,
+        fermi_maxiter: int = defaults.FERMI_MAXITER,
+        fermi_thresh: dict = defaults.FERMI_THRESH,
+        fermi_partition: str | int = defaults.FERMI_PARTITION,
         # PyTorch
-        device=defaults.get_default_device(),
-        dtype=defaults.get_default_dtype(),
+        device: torch.device = defaults.get_default_device(),
+        dtype: torch.dtype = defaults.get_default_dtype(),
     ) -> None:
-        if guess.casefold() in ("eeq", "equilibration"):
-            self.guess = labels.GUESS_EEQ
-        elif guess.casefold() in ("sad", "zero"):
-            self.guess = labels.GUESS_SAD
-        else:
-            raise ValueError(f"Unknown guess method '{guess}'.")
+        if isinstance(guess, str):
+            if guess.casefold() in labels.GUESS_EEQ_STRS:
+                self.guess = labels.GUESS_EEQ
+            elif guess.casefold() in labels.GUESS_SAD_STRS:
+                self.guess = labels.GUESS_SAD
+            else:
+                raise ValueError(f"Unknown guess method '{guess}'.")
+        elif isinstance(guess, int):
+            if guess not in (labels.GUESS_EEQ, labels.GUESS_SAD):
+                raise ValueError(f"Unknown guess method '{guess}'.")
 
-        if scf_mode.casefold() in ("default", "implicit"):
-            self.scf_mode = labels.SCF_MODE_IMPLICIT
-        elif scf_mode.casefold() in ("full", "full_tracking"):
-            self.scf_mode = labels.SCF_MODE_FULL
-        elif scf_mode.casefold() == ("experimental", "perfect"):
-            self.scf_mode = labels.SCF_MODE_EXPERIMENTAL
+            self.guess = guess
         else:
-            raise ValueError(f"Unknown SCF mode '{scf_mode}'.")
+            raise TypeError(
+                "The guess must be of type 'int' or 'str', but "
+                f"'{type(guess)}' was given."
+            )
 
-        if scp_mode.casefold() in ("charge", "charges"):
-            self.scp_mode = labels.SCP_MODE_CHARGE
-        elif scp_mode.casefold() in ("potential", "pot"):
-            self.scp_mode = labels.SCP_MODE_POTENTIAL
-        elif scp_mode.casefold() in ("fock", "fockian"):
-            self.scp_mode = labels.SCP_MODE_FOCK
+        if isinstance(scf_mode, str):
+            if scf_mode.casefold() in labels.SCF_MODE_IMPLICIT_STRS:
+                self.scf_mode = labels.SCF_MODE_IMPLICIT
+            elif scf_mode.casefold() in labels.SCF_MODE_FULL_STRS:
+                self.scf_mode = labels.SCF_MODE_FULL
+            elif scf_mode.casefold() == labels.SCF_MODE_EXPERIMENTAL_STRS:
+                self.scf_mode = labels.SCF_MODE_EXPERIMENTAL
+            else:
+                raise ValueError(f"Unknown SCF mode '{scf_mode}'.")
+        elif isinstance(scf_mode, int):
+            if scf_mode not in (labels.GUESS_EEQ, labels.GUESS_SAD):
+                raise ValueError(f"Unknown SCF mode '{scf_mode}'.")
+
+            self.scf_mode = scf_mode
         else:
-            raise ValueError(f"Unknown convergence target (SCP mode) '{scp_mode}'.")
+            raise TypeError(
+                "The scf_mode must be of type 'int' or 'str', but "
+                f"'{type(scf_mode)}' was given."
+            )
+
+        if isinstance(scp_mode, str):
+            if scp_mode.casefold() in labels.SCP_MODE_CHARGE_STRS:
+                self.scp_mode = labels.SCP_MODE_CHARGE
+            elif scp_mode.casefold() in labels.SCP_MODE_POTENTIAL_STRS:
+                self.scp_mode = labels.SCP_MODE_POTENTIAL
+            elif scp_mode.casefold() in labels.SCP_MODE_FOCK_STRS:
+                self.scp_mode = labels.SCP_MODE_FOCK
+            else:
+                raise ValueError(f"Unknown convergence target (SCP mode) '{scp_mode}'.")
+        elif isinstance(scp_mode, int):
+            if scp_mode not in (labels.GUESS_EEQ, labels.GUESS_SAD):
+                raise ValueError(f"Unknown convergence target (SCP mode) '{scp_mode}'.")
+
+            self.scp_mode = scp_mode
+        else:
+            raise TypeError(
+                "The scp_mode must be of type 'int' or 'str', but "
+                f"'{type(scp_mode)}' was given."
+            )
 
         self.maxiter = maxiter
         self.mixer = mixer
@@ -76,8 +109,8 @@ class ConfigSCF:
         self.device = device
         self.dtype = dtype
 
-        self.xatol = check_tols(xatol, dtype)
-        self.fatol = check_tols(fatol, dtype)
+        self.xitorch_xatol = check_tols(xitorch_xatol, dtype)
+        self.xitorch_fatol = check_tols(xitorch_fatol, dtype)
 
         self.fermi = ConfigFermi(
             etemp=fermi_etemp,
@@ -121,24 +154,50 @@ class ConfigFermi:
     Configuration for fermi smearing.
     """
 
+    etemp: float | int
+    """Electronic temperature (in a.u.) for Fermi smearing."""
+
+    maxiter: int
+    """Maximum number of iterations for Fermi smearing."""
+
+    thresh: dict
+    """Float data type dependent threshold for Fermi iterations."""
+
+    partition: int
+    """Partitioning scheme for electronic free energy."""
+
     def __init__(
         self,
         *,
-        etemp=defaults.FERMI_ETEMP,
-        maxiter=defaults.FERMI_MAXITER,
-        thresh=defaults.FERMI_THRESH,
-        partition=defaults.FERMI_PARTITION,
+        etemp: float | int = defaults.FERMI_ETEMP,
+        maxiter: int = defaults.FERMI_MAXITER,
+        thresh: dict = defaults.FERMI_THRESH,
+        partition: str | int = defaults.FERMI_PARTITION,
     ) -> None:
         self.etemp = etemp
         self.maxiter = maxiter
         self.thresh = thresh
 
-        if partition.casefold() in ("equal", "same"):
-            self.partition = labels.FERMI_PARTITION_EQUAL
-        elif partition.casefold() in ("atom", "atomic"):
-            self.partition = labels.FERMI_PARTITION_ATOMIC
+        if isinstance(partition, str):
+            if partition.casefold() in labels.FERMI_PARTITION_EQUAL_STRS:
+                self.partition = labels.FERMI_PARTITION_EQUAL
+            elif partition.casefold() in labels.FERMI_PARTITION_ATOMIC_STRS:
+                self.partition = labels.FERMI_PARTITION_ATOMIC
+            else:
+                raise ValueError(
+                    "Unknown partitioning scheme for the free energy in Fermi "
+                    f"smearing '{partition}'."
+                )
+        elif isinstance(partition, int):
+            if partition not in (labels.GUESS_EEQ, labels.GUESS_SAD):
+                raise ValueError(
+                    "Unknown partitioning scheme for the free energy in Fermi "
+                    f"smearing '{partition}'."
+                )
+
+            self.partition = partition
         else:
-            raise ValueError(
-                "Unknown partitioning scheme for the free energy in Fermi "
-                f"smearing '{partition}'."
+            raise TypeError(
+                "The partition must be of type 'int' or 'str', but "
+                f"'{type(partition)}' was given."
             )

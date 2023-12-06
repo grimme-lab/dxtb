@@ -78,9 +78,7 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
         # single mode
         assert isinstance(driver.drv, LibcintWrapper)
 
-        mat, norm = fcn(driver.drv)
-        self.norm = norm
-        self.matrix = mat
+        self.matrix, self.norm = fcn(driver.drv)
         return self.matrix
 
     def get_gradient(self, driver: IntDriverLibcint) -> Tensor:
@@ -105,8 +103,7 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
 
             # normalize and move xyz dimension to last, which is required for
             # the reduction (only works with extra dimension in last)
-            grad = -torch.einsum("...xij,...i,...j->...ijx", grad, norm, norm)
-            return grad
+            return -torch.einsum("...xij,...i,...j->...ijx", grad, norm, norm)
 
         # build norm if not already available
         if self.norm is None:

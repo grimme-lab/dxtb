@@ -6,6 +6,18 @@ from __future__ import annotations
 from .._types import Tensor
 
 
+class DtypeError(ValueError):
+    """
+    Error for wrong data type of tensor.
+    """
+
+
+class DeviceError(RuntimeError):
+    """
+    Error for wrong device of tensor.
+    """
+
+
 class ParameterWarning(UserWarning):
     """
     Warning for when a parameter is not set.

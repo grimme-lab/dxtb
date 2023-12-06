@@ -257,7 +257,7 @@ def get_fermi_occupation(
         raise ValueError("Number of valence electrons cannot be zero.")
 
     if thr is None:
-        thr = defaults.THRESH
+        thr = defaults.FERMI_THRESH
     thresh = thr.get(emo.dtype, torch.tensor(1e-5, dtype=torch.float)).to(emo.device)
 
     e_fermi, homo = get_fermi_energy(nel, emo, mask=mask)

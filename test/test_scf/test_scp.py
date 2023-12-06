@@ -46,6 +46,7 @@ def single(
             "scp_mode": scp_mode,
             "xitorch_fatol": tol,
             "xitorch_xatol": tol,
+            "int_driver": "pytorch",
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
@@ -123,8 +124,8 @@ def batched(
     sample = samples[name1], samples[name2]
     numbers = batch.pack(
         (
-            sample[0]["numbers"],
-            sample[1]["numbers"],
+            sample[0]["numbers"].to(device),
+            sample[1]["numbers"].to(device),
         )
     )
     positions = batch.pack(

@@ -5,6 +5,8 @@ Setup for pytest.
 import pytest
 import torch
 
+from dxtb.timing import timer
+
 # avoid randomness and non-deterministic algorithms
 torch.manual_seed(0)
 torch.use_deterministic_algorithms(True)
@@ -77,6 +79,14 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         ),
     )
 
+    parser.addoption(
+        "--with-timer",
+        action="store_true",
+        help=(
+            "Run test with timer enabled. Due to missing teardowns, test pollution occurs for failing tests."
+        ),
+    )
+
 
 def pytest_configure(config: pytest.Config) -> None:
     """Pytest configuration hook."""
@@ -103,6 +113,11 @@ def pytest_configure(config: pytest.Config) -> None:
 
     if config.getoption("--tpo-threshold"):
         torch.set_printoptions(threshold=config.getoption("--tpo-threshold"))
+
+    if config.getoption("--with-timer"):
+        timer.enable()
+    else:
+        timer.disable()
 
     # register an additional marker
     config.addinivalue_line("markers", "cuda: mark test that require CUDA.")

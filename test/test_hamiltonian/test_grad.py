@@ -10,7 +10,7 @@ import pytest
 import torch
 
 from dxtb._types import DD, Tensor
-from dxtb.integral.driver.labels import DRIVER_PYTORCH
+from dxtb.constants import labels
 from dxtb.integral.driver.pytorch import IntDriverPytorch
 from dxtb.ncoord import (
     dexp_count,
@@ -36,7 +36,7 @@ small = ["H2", "LiH", "S2", "H2O", "CH4", "SiH4"]
 large = ["PbH4-BiH3", "MB16_43_01", "LYS_xao"]
 
 # SCF options
-opts = {"verbosity": 0, "int_driver": DRIVER_PYTORCH}
+opts = {"verbosity": 0, "int_driver": labels.INTDRIVER_PYTORCH}
 
 device = None
 
@@ -276,7 +276,7 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     )
 
     # analytical overlap gradient
-    doverlap = s.integral.get_gradient(driver)
+    doverlap = s.integral.get_gradient(driver)  # type: ignore
 
     # analytical gradient
     dedcn, dedr = h.integral.get_gradient(
@@ -385,7 +385,7 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     # analytical overlap gradient
     driver = IntDriverPytorch(numbers, par, calc.ihelp, **dd)
     driver.setup(positions)
-    doverlap = s.integral.get_gradient(driver)
+    doverlap = s.integral.get_gradient(driver)  # type: ignore
 
     cn = get_coordination_number(numbers, positions, exp_count)
     wmat = get_density(

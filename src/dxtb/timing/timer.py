@@ -1,5 +1,12 @@
 """
 Definition of a timer class that can contain multiple timers.
+
+For developers
+--------------
+Remember to manually reset the timer in tests that are supposed to fail.
+Otherwise, `timer.stop()` may not be called and the next test tries to start
+the same timer again, which will throw a (confusing) `TimerError`.
+For an example, see `test/test_calculator/test_general.py::test_fail`.
 """
 from __future__ import annotations
 
@@ -28,7 +35,8 @@ class _Timers:
 
         _start_time: float | None
 
-        def __init__(self, label: str | None = None) -> None:
+        def __init__(self, parent: _Timers, label: str | None = None) -> None:
+            self.parent = parent
             self.label = label
             self._start_time = None
             self.elapsed_time = 0.0
@@ -42,6 +50,9 @@ class _Timers:
             TimerError
                 If timer is already running.
             """
+            if not self.parent._enabled:
+                return
+
             if self._start_time is not None:
                 raise TimerError(
                     f"Timer '{self.label}' is running. Use `.stop()` to stop it."
@@ -63,6 +74,9 @@ class _Timers:
             TimerError
                 If timer is not running.
             """
+            if not self.parent._enabled:
+                return 0.0
+
             if self._start_time is None:
                 raise TimerError(
                     f"Timer '{self.label}' is not running. Use .start() to " "start it."
@@ -95,8 +109,21 @@ class _Timers:
     def __init__(self, label: str | None = None) -> None:
         self.label = label
         self.timers = {}
+        self._enabled = True
+
         self.start("total")
-        print("Starting timer.")
+
+    def enable(self) -> None:
+        """
+        Enable all timers in the collection.
+        """
+        self._enabled = True
+
+    def disable(self) -> None:
+        """
+        Disable all timers in the collection.
+        """
+        self._enabled = False
 
     def start(self, uid: str, label: str | None = None) -> None:
         """
@@ -110,12 +137,15 @@ class _Timers:
             Name of the timer (used for printing). Defaults to `None`.
             If no `label` is given, the `uid` is used.
         """
+        if not self._enabled:
+            return
+
         if uid in self.timers:
             t = self.timers[uid]
             t.start()
             return
 
-        t = self._Timer(uid if label is None else label)
+        t = self._Timer(self, uid if label is None else label)
         t.start()
 
         self.timers[uid] = t
@@ -139,6 +169,9 @@ class _Timers:
         TimerError
             If timer dubbed `uid` does not exist.
         """
+        if not self._enabled:
+            return 0.0
+
         if uid not in self.timers:
             raise TimerError(f"Timer '{uid}' does not exist.")
 
@@ -152,6 +185,16 @@ class _Timers:
         for t in self.timers.values():
             if t.is_running():
                 t.stop()
+
+    def reset(self) -> None:
+        """
+        Reset all timers in the collection.
+
+        This method reinitializes the timers dictionary and restarts the
+        'total' timer.
+        """
+        self.timers = {}
+        self.start("total")
 
     def get_times(self) -> dict[str, float]:
         """
@@ -171,6 +214,9 @@ class _Timers:
         self, name: str = "Timings", width: int = 55
     ) -> None:  # pragma: no cover
         """Print the elapsed times of all timers in a table."""
+        if not self._enabled:
+            return
+
         if self.timers["total"].is_running():
             self.timers["total"].stop()
 

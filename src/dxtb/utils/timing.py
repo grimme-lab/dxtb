@@ -1,5 +1,5 @@
 """
-Definition of a timer class that can contain multiple timers.
+Decorator for timing.
 """
 from __future__ import annotations
 

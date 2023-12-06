@@ -20,7 +20,13 @@ def test_version(capsys: pytest.CaptureFixture) -> None:
     assert out == f"{__version__}\n"
 
 
-def test_no_file(capsys: pytest.CaptureFixture) -> None:
+def test_no_file(
+    caplog: pytest.LogCaptureFixture, capsys: pytest.CaptureFixture
+) -> None:
+    import logging
+
+    caplog.set_level(logging.INFO)
+
     with pytest.raises(SystemExit):
         ret = console_entry_point([])
         assert ret == 1
@@ -29,12 +35,16 @@ def test_no_file(capsys: pytest.CaptureFixture) -> None:
     out, err = capsys.readouterr()
     assert err == ""
     assert out == ""
+    assert "No coordinate file given." in caplog.text
 
 
-def test_entrypoint(capsys: pytest.CaptureFixture) -> None:
+def test_entrypoint(
+    caplog: pytest.LogCaptureFixture, capsys: pytest.CaptureFixture
+) -> None:
     ret = console_entry_point([str(coordfile)])
     assert ret == 0
 
     out, err = capsys.readouterr()
     assert err == ""
-    assert len(out) != 0
+    assert out == ""
+    assert len(caplog.text) != 0

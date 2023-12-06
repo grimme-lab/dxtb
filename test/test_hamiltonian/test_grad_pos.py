@@ -8,8 +8,8 @@ import torch
 
 from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
+from dxtb.constants import labels
 from dxtb.integral import Overlap
-from dxtb.integral.driver import DRIVER_PYTORCH
 from dxtb.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb.ncoord import get_coordination_number
 from dxtb.param import GFN1_XTB as par
@@ -39,7 +39,7 @@ def gradchecker(
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     h0 = Hamiltonian(numbers, par, ihelp, **dd)
-    overlap = Overlap(driver=DRIVER_PYTORCH, **dd)
+    overlap = Overlap(driver=labels.INTDRIVER_PYTORCH, **dd)
 
     driver = IntDriver(numbers, par, ihelp, **dd)
 
@@ -128,7 +128,7 @@ def gradchecker_batch(
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     h0 = Hamiltonian(numbers, par, ihelp, **dd)
-    overlap = Overlap(driver=DRIVER_PYTORCH, **dd)
+    overlap = Overlap(driver=labels.INTDRIVER_PYTORCH, **dd)
 
     driver = IntDriver(numbers, par, ihelp, **dd)
 

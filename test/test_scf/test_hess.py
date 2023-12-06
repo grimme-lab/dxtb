@@ -22,7 +22,7 @@ opts = {
     "xitorch_fatol": 1.0e-8,
     "xitorch_xatol": 1.0e-8,
     "verbosity": 0,
-    "integral_driver": "dxtb",
+    "int_driver": "dxtb",
 }
 
 device = None

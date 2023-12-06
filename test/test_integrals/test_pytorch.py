@@ -9,7 +9,7 @@ import torch
 from dxtb import integral as ints
 from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.integral.driver.labels import DRIVER_PYTORCH
+from dxtb.constants.labels import INTDRIVER_PYTORCH
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 from dxtb.utils import batch
@@ -21,12 +21,12 @@ device = None
 
 def run(numbers: Tensor, positions: Tensor, dd: DD) -> None:
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    i = ints.Integrals(numbers, par, ihelp, driver=DRIVER_PYTORCH, **dd)
+    i = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_PYTORCH, **dd)
 
     i.setup_driver(positions)
     assert isinstance(i.driver, ints.driver.IntDriverPytorch)
 
-    i.overlap = ints.Overlap(driver=DRIVER_PYTORCH, **dd)
+    i.overlap = ints.Overlap(driver=INTDRIVER_PYTORCH, **dd)
     i.build_overlap(positions)
 
     o = i.overlap

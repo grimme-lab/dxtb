@@ -45,11 +45,11 @@ from dxtb.param import Param, get_elem_angular
 
 from .._types import DD, Any, Literal, Tensor
 from ..basis import IndexHelper
+from ..constants import labels
 from ..xtb.h0_gfn1 import GFN1Hamiltonian
 from ..xtb.h0_gfn2 import GFN2Hamiltonian
 from .dipole import Dipole
-from .driver import IntDriverLibcint, IntDriverPytorch
-from .driver.labels import DRIVER_LIBCINT
+from .driver import IntDriverLibcint, IntDriverPytorch, IntDriverPytorchNoAnalytical
 from .overlap import Overlap
 from .quadrupole import Quadrupole
 
@@ -168,11 +168,13 @@ def _integral(
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
 
     # Determine which driver class to instantiate
-    driver_name = kwargs.pop("driver", DRIVER_LIBCINT)
-    if driver_name == "libcint":
+    driver_name = kwargs.pop("driver", labels.INTDRIVER_LIBCINT)
+    if driver_name == labels.INTDRIVER_LIBCINT:
         driver = IntDriverLibcint(numbers, par, ihelp, **dd)
-    elif driver_name == "pytorch":
+    elif driver_name == labels.INTDRIVER_PYTORCH:
         driver = IntDriverPytorch(numbers, par, ihelp, **dd)
+    elif driver_name == labels.INTDRIVER_PYTORCH2:
+        driver = IntDriverPytorchNoAnalytical(numbers, par, ihelp, **dd)
     else:
         raise ValueError(f"Unknown integral driver '{driver_name}'.")
 

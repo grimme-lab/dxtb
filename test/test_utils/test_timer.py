@@ -5,11 +5,11 @@ from __future__ import annotations
 
 import pytest
 
-from dxtb.utils import TimerError, Timers
+from dxtb.timing.timer import TimerError, _Timers
 
 
 def test_fail() -> None:
-    timer = Timers()
+    timer = _Timers()
 
     # try to stop a timer that was never started
     with pytest.raises(TimerError):
@@ -27,7 +27,7 @@ def test_fail() -> None:
 
 
 def test_running() -> None:
-    timer = Timers()
+    timer = _Timers()
     timer.start("test")
     assert timer.timers["test"].is_running()
 
@@ -36,7 +36,7 @@ def test_running() -> None:
 
 
 def test_stopall() -> None:
-    timer = Timers()
+    timer = _Timers()
     timer.start("test")
     timer.start("test2")
     timer.start("test3")

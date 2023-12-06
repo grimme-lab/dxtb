@@ -29,7 +29,7 @@ from ..interaction.external import field as efield
 from ..io import OutputHandler
 from ..param import Param, get_elem_angular
 from ..timing import timer
-from ..utils import _jac
+from ..utils import DtypeError, _jac
 from ..wavefunction import filling
 
 __all__ = ["Calculator", "Result"]
@@ -128,7 +128,6 @@ class Result(TensorLike):
         shape = positions.shape[:-1]
 
         self.gradient = None
-        timer = None
         self.scf = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.fenergy = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.hamiltonian_grad = torch.zeros_like(positions)
@@ -244,7 +243,7 @@ class Calculator(TensorLike):
 
         allowed_dtypes = (torch.long, torch.int16, torch.int32, torch.int64)
         if numbers.dtype not in allowed_dtypes:
-            raise ValueError(
+            raise DtypeError(
                 "Dtype of atomic numbers must be one of the following to allow "
                 f" indexing: '{', '.join([str(x) for x in allowed_dtypes])}', "
                 f"but is '{numbers.dtype}'"
@@ -255,8 +254,11 @@ class Calculator(TensorLike):
 
         # setup calculator options
         opts = opts if opts is not None else {}
+
         if isinstance(opts, dict):
+            OutputHandler.verbosity = opts.pop("verbosity", None)
             opts = Config(**opts, **dd)
+
         self.opts = opts
 
         self.batched = numbers.ndim > 1
@@ -326,7 +328,7 @@ class Calculator(TensorLike):
         numbers: Tensor,
         positions: Tensor,
         chrg: Tensor,
-        spin: int | None = defaults.SPIN,
+        spin: int | Tensor | None = defaults.SPIN,
         grad: bool = False,
     ) -> Result:
         """

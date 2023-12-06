@@ -32,7 +32,10 @@ class _OutputHandler:
         return self._verbosity
 
     @verbosity.setter
-    def verbosity(self, level: int) -> None:
+    def verbosity(self, level: int | None) -> None:
+        if level is None:
+            return
+
         if not isinstance(level, int):
             raise TypeError("Verbosty level must be an integer.")
         self._verbosity = level

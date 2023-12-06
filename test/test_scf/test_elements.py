@@ -7,7 +7,7 @@ the corresponding function figure out the alpha/beta occupation automatically.
 
 Atoms generally converged rather badly. Hence, the threshold for comparison is
 significantly lower in this test suite. Additionally, I found that converging
-the potential works better than converging the charges (`use_potential=True`).
+the potential works better than converging the charges (`scp_mode="potential"`).
 If the charges are converged, the orbtial-resolved charges usually stray quite
 far away from zero. Nevertheless, the energy often oscillates anyway.
 """
@@ -342,13 +342,13 @@ uhf_anion = torch.tensor(
 # fmt: on
 
 opts = {
-    "etemp": 300,
+    "fermi_etemp": 300,
     "fermi_maxiter": 500,
     "fermi_thresh": {
         torch.float32: torch.tensor(1e-4, dtype=torch.float32),  # instead of 1e-5
         torch.float64: torch.tensor(1e-10, dtype=torch.float64),
     },
-    "use_potential": True,  # important for atoms (better convergence)
+    "scp_mode": "potential",  # important for atoms (better convergence)
     "verbosity": 0,
 }
 
@@ -389,13 +389,13 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
     positions = torch.zeros((1, 3), **dd)
     r = ref_cation[number - 1].item()
     charges = torch.tensor(1.0, **dd)
+    spin = uhf_cation[number - 1]
 
     options = dict(
         opts,
         **{
             "xitorch_fatol": 1e-5,  # avoids Jacobian inversion error
             "xitorch_xatol": 1e-5,  # avoids Jacobian inversion error
-            "spin": uhf_cation[number - 1],
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
@@ -403,9 +403,9 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
     # no (valence) electrons
     if number in [1, 3, 11, 19, 37, 55]:
         with pytest.raises(ValueError):
-            calc.singlepoint(numbers, positions, charges)
+            calc.singlepoint(numbers, positions, charges, spin=spin)
     else:
-        results = calc.singlepoint(numbers, positions, charges)
+        results = calc.singlepoint(numbers, positions, charges, spin=spin)
         assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
 
 
@@ -429,17 +429,17 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
     positions = torch.zeros((1, 3), **dd)
     r = ref_anion[number - 1].item()
     charges = torch.tensor(-1.0, **dd)
+    spin = uhf_anion[number - 1]
 
     options = dict(
         opts,
         **{
             "xitorch_fatol": 1e-5,  # avoid Jacobian inversion error
             "xitorch_xatol": 1e-5,  # avoid Jacobian inversion error
-            "spin": uhf_anion[number - 1],
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
-    results = calc.singlepoint(numbers, positions, charges)
+    results = calc.singlepoint(numbers, positions, charges, spin=spin)
 
     assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
 
@@ -457,9 +457,9 @@ def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:
     positions = batch.pack((sample["positions"], torch.zeros((1, 3)))).type(dtype)
     refs = batch.pack((sample["escf"], ref[number - 1])).type(dtype)
     charges = torch.tensor([0.0, 0.0], **dd)
+    spin = torch.tensor([0, uhf[number - 1]])
 
-    options = dict(opts, **{"spin": [0, uhf[number - 1]]})
-    calc = Calculator(numbers, par, opts=options, **dd)
-    results = calc.singlepoint(numbers, positions, charges)
+    calc = Calculator(numbers, par, opts=opts, **dd)
+    results = calc.singlepoint(numbers, positions, charges, spin=spin)
 
     assert pytest.approx(refs, abs=tol) == results.scf.sum(-1)

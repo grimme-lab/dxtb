@@ -1,6 +1,5 @@
 """
 Integral drivers.
 """
-from .labels import *
-from .libcint.driver import IntDriverLibcint
+from .libcint.driver import *
 from .pytorch.driver import *

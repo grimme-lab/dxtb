@@ -1,4 +1,8 @@
+from __future__ import annotations
+
 from argparse import Namespace
+
+import torch
 
 from .._types import Self
 from ..constants import defaults, labels
@@ -15,30 +19,31 @@ class Config:
         self,
         *,
         file=None,
-        exclude=defaults.EXCLUDE,
-        method=defaults.METHOD,
-        grad=False,
+        exclude: str | list[str] = defaults.EXCLUDE,
+        method: str | int = defaults.METHOD,
+        grad: bool = False,
         # integrals
-        int_cutoff=defaults.INTCUTOFF,
-        int_driver=defaults.INTDRIVER,
-        int_uplo=defaults.INTUPLO,
+        int_cutoff: float = defaults.INTCUTOFF,
+        int_driver: str | int = defaults.INTDRIVER,
+        int_uplo: str = defaults.INTUPLO,
         # PyTorch
-        device=defaults.TORCH_DEVICE,
-        dtype=defaults.TORCH_DTYPE,
-        anomaly=False,
+        device: torch.device = defaults.get_default_device(),
+        dtype: torch.dtype = defaults.get_default_dtype(),
+        anomaly: bool = False,
         # SCF
-        guess=defaults.GUESS,
-        maxiter=defaults.MAXITER,
-        mixer=defaults.MIXER,
-        damp=defaults.DAMP,
-        scf_mode=defaults.SCF_MODE,
-        scp_mode=defaults.SCP_MODE,
-        xatol=defaults.XITORCH_XATOL,
-        fatol=defaults.XITORCH_FATOL,
-        fermi_etemp=defaults.FERMI_ETEMP,
-        fermi_maxiter=defaults.FERMI_MAXITER,
-        fermi_thresh=defaults.FERMI_THRESH,
-        fermi_partition=defaults.FERMI_PARTITION,
+        guess: str | int = defaults.GUESS,
+        maxiter: int = defaults.MAXITER,
+        mixer: str = defaults.MIXER,
+        damp: float = defaults.DAMP,
+        scf_mode: str | int = defaults.SCF_MODE,
+        scp_mode: str | int = defaults.SCP_MODE,
+        xitorch_xatol: float = defaults.XITORCH_XATOL,
+        xitorch_fatol: float = defaults.XITORCH_FATOL,
+        force_convergence: bool = False,
+        fermi_etemp: float = defaults.FERMI_ETEMP,
+        fermi_maxiter: int = defaults.FERMI_MAXITER,
+        fermi_thresh: dict = defaults.FERMI_THRESH,
+        fermi_partition: str | int = defaults.FERMI_PARTITION,
     ) -> None:
         self.file = file
         self.exclude = exclude
@@ -48,12 +53,23 @@ class Config:
         self.dtype = dtype
         self.anomaly = anomaly
 
-        if method.casefold() in ("gfn1", "gfn1-xtb", "gfn1_xtb", "gfn1xtb"):
-            self.method = labels.GFN1_XTB
-        elif method.casefold() in ("gfn2", "gfn2-xtb", "gfn2_xtb", "gfn2xtb"):
-            self.method = labels.GFN2_XTB
+        if isinstance(method, str):
+            if method.casefold() in labels.GFN1_XTB_STRS:
+                self.method = labels.GFN1_XTB
+            elif method.casefold() in labels.GFN2_XTB_STRS:
+                self.method = labels.GFN2_XTB
+            else:
+                raise ValueError(f"Unknown xtb method '{method}'.")
+        elif isinstance(method, int):
+            if method not in (labels.GFN1_XTB, labels.GFN2_XTB):
+                raise ValueError(f"Unknown xtb method '{method}'.")
+
+            self.method = method
         else:
-            raise ValueError(f"Unknown xtb method '{method}'.")
+            raise TypeError(
+                "The method must be of type 'int' or 'str', but "
+                f"'{type(method)}' was given."
+            )
 
         self.ints = ConfigIntegrals(
             cutoff=int_cutoff,
@@ -68,8 +84,9 @@ class Config:
             damp=damp,
             scf_mode=scf_mode,
             scp_mode=scp_mode,
-            xatol=xatol,
-            fatol=fatol,
+            xitorch_xatol=xitorch_xatol,
+            xitorch_fatol=xitorch_fatol,
+            force_convergence=force_convergence,
             fermi_etemp=fermi_etemp,
             fermi_maxiter=fermi_maxiter,
             fermi_thresh=fermi_thresh,
@@ -106,7 +123,7 @@ class Config:
             damp=args.damp,
             scf_mode=args.scf_mode,
             scp_mode=args.scp_mode,
-            xatol=args.xtol,
-            fatol=args.ftol,
+            xitorch_xatol=args.xtol,
+            xitorch_fatol=args.ftol,
             fermi_etemp=args.etemp,
         )

@@ -33,8 +33,6 @@ def test_xitorch(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
     def fcn():
-        assert par.repulsion is not None
-
         sample = samples["SiH4"]
         numbers = sample["numbers"].to(device)
         positions = sample["positions"].clone().to(**dd)

@@ -10,6 +10,7 @@ import torch
 
 from dxtb.io import read_chrg, read_coord
 from dxtb.param import GFN1_XTB as par
+from dxtb.timing import timer
 from dxtb.xtb import Calculator
 
 opts = {"verbosity": 0}
@@ -21,6 +22,12 @@ def test_fail() -> None:
 
 
 def test_uhf_fail() -> None:
+    # singlepoint starts SCF timer, but exception is thrown before the SCF
+    # timer is stopped, so we must disable it here
+    status = timer._enabled
+    if status is True:
+        timer.disable()
+
     base = Path(Path(__file__).parent, "mols", "H")
 
     numbers, positions = read_coord(Path(base, "coord"))
@@ -33,13 +40,10 @@ def test_uhf_fail() -> None:
     calc = Calculator(numbers, par, opts=opts)
 
     with pytest.raises(ValueError):
-        calc.set_option("spin", 0)
-        calc.singlepoint(numbers, positions, charge)
-
-    # singlepoint starts SCF timer, but exception is thrown before the SCF
-    # timer is stopped, so we must stop it manually here
-    calc.timer.stop("SCF")
+        calc.singlepoint(numbers, positions, charge, spin=0)
 
     with pytest.raises(ValueError):
-        calc.set_option("spin", 2)
-        calc.singlepoint(numbers, positions, charge)
+        calc.singlepoint(numbers, positions, charge, spin=2)
+
+    if status is True:
+        timer.enable()

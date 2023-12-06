@@ -61,10 +61,10 @@ def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
         opts,
         **{
             "damp": 0.05 if mixer == "simple" else 0.4,
-            "fermi_fenergy_partition": "atomic",
+            "fermi_partition": "atomic",
             "maxiter": 300,
             "mixer": mixer,
-            "use_potential": False,
+            "scp_mode": "potential",
             "xitorch_fatol": tol,
             "xitorch_xatol": tol,
         },

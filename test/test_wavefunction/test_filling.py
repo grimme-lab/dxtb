@@ -11,6 +11,7 @@ import torch
 
 from dxtb._types import DD
 from dxtb.basis import IndexHelper
+from dxtb.config import ConfigSCF
 from dxtb.constants import K2AU
 from dxtb.integral import IntegralMatrices
 from dxtb.param import GFN1_XTB, get_elem_angular
@@ -234,13 +235,13 @@ def test_kt(dtype: torch.dtype, kt: float):
         ihelp=d,
         cache=d,
         integrals=IntegralMatrices(hcore=d, overlap=d, **dd),
-        scf_options={"etemp": kt},
+        config=ConfigSCF(fermi_etemp=kt),
     )
 
     fenergy = scf.get_electronic_free_energy()
     assert pytest.approx(ref_fenergy[kt], abs=tol, rel=tol) == fenergy.sum(-1)
 
-    scf.scf_options["fermi_fenergy_partition"] = "wrong"
+    scf.config.fermi.partition = -3
     with pytest.raises(ValueError):
         scf.get_electronic_free_energy()
 

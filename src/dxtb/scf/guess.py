@@ -17,7 +17,7 @@ def get_guess(
     positions: Tensor,
     chrg: Tensor,
     ihelp: IndexHelper,
-    name: int = labels.GUESS_EEQ,
+    name: int | str = labels.GUESS_EEQ,
 ) -> Tensor:
     """
     Obtain initial guess for charges.
@@ -35,7 +35,7 @@ def get_guess(
         Total charge of system.
     ihelp : IndexHelper
         Helper class for indexing.
-    name : int, optional
+    name : str | int, optional
         Name of guess method, by default EEQ (`labels.GUESS_EEQ`).
 
     Returns
@@ -48,6 +48,14 @@ def get_guess(
     ValueError
         Name of guess method is unknown.
     """
+    if isinstance(name, str):
+        if name.casefold() in labels.GUESS_EEQ_STRS:
+            name = labels.GUESS_EEQ
+        elif name.casefold() in labels.GUESS_SAD_STRS:
+            name = labels.GUESS_SAD
+        else:
+            raise ValueError(f"Unknown guess method '{name}'.")
+
     if name == labels.GUESS_EEQ:
         charges = get_eeq_guess(numbers, positions, chrg)
     elif name == labels.GUESS_SAD:

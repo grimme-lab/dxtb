@@ -26,9 +26,9 @@ class ConfigIntegrals:
     def __init__(
         self,
         *,
-        cutoff=defaults.INTCUTOFF,
-        driver=defaults.INTDRIVER,
-        uplo=defaults.INTUPLO,
+        cutoff: float = defaults.INTCUTOFF,
+        driver: str | int = defaults.INTDRIVER,
+        uplo: str = defaults.INTUPLO,
     ) -> None:
         self.cutoff = cutoff
 
@@ -36,11 +36,26 @@ class ConfigIntegrals:
             raise ValueError(f"Unknown option for `uplo` chosen: '{uplo}'.")
         self.uplo = uplo.casefold()  # type: ignore
 
-        if driver.casefold() in ("libcint", "c"):
-            self.driver = labels.INTDRIVER_LIBCINT
-        elif driver.casefold() in ("pytorch", "torch", "dxtb"):
-            self.driver = labels.INTDRIVER_PYTORCH
-        elif driver.casefold() in ("pytorch2", "torch2", "dxtb2"):
-            self.driver = labels.INTDRIVER_PYTORCH2
+        if isinstance(driver, str):
+            if driver.casefold() in labels.INTDRIVER_LIBCINT_STRS:
+                self.driver = labels.INTDRIVER_LIBCINT
+            elif driver.casefold() in labels.INTDRIVER_PYTORCH_STRS:
+                self.driver = labels.INTDRIVER_PYTORCH
+            elif driver.casefold() in labels.INTDRIVER_PYTORCH2_STRS:
+                self.driver = labels.INTDRIVER_PYTORCH2
+            else:
+                raise ValueError(f"Unknown integral driver '{driver}'.")
+        elif isinstance(driver, int):
+            if driver not in (
+                labels.INTDRIVER_LIBCINT,
+                labels.INTDRIVER_PYTORCH,
+                labels.INTDRIVER_PYTORCH2,
+            ):
+                raise ValueError(f"Unknown integral driver '{driver}'.")
+
+            self.driver = driver
         else:
-            raise ValueError(f"Unknown guess method '{driver}'.")
+            raise TypeError(
+                "The driver must be of type 'int' or 'str', but "
+                f"'{type(driver)}' was given."
+            )

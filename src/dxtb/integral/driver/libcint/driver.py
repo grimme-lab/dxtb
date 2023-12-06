@@ -3,11 +3,14 @@ Integral driver for `libcint`.
 """
 from __future__ import annotations
 
-from ...._types import Literal, Tensor
+from ...._types import Tensor
 from ....basis import Basis, IndexHelper
+from ....constants import labels
 from ....utils import is_basis_list
 from ...base import IntDriver
 from .impls import LibcintWrapper
+
+__all__ = ["IntDriverLibcint"]
 
 
 class IntDriverLibcint(IntDriver):
@@ -15,7 +18,7 @@ class IntDriverLibcint(IntDriver):
     Implementation of `libcint`-based integral driver.
     """
 
-    family: Literal["libcint"] = "libcint"
+    family: int = labels.INTDRIVER_LIBCINT
     """Label for integral implementation family"""
 
     def setup(self, positions: Tensor, **kwargs) -> None:

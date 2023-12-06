@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import torch
 
-from ...._types import Literal, Tensor
+from ...._types import Tensor
+from ....constants import labels
 from ....utils import batch
 from ...base import BaseIntegralImplementation
-from ..labels import DRIVER_LIBCINT
 from .driver import IntDriverLibcint
 from .impls import LibcintWrapper, int1e
 
@@ -21,7 +21,7 @@ class LibcintImplementation:
     Simple label for `libcint`-based integral implementations.
     """
 
-    family: Literal["libcint"] = DRIVER_LIBCINT
+    family: int = labels.INTDRIVER_LIBCINT
     """Label for integral implementation family"""
 
     def checks(self, driver: IntDriverLibcint) -> None:

@@ -10,15 +10,22 @@ import pytest
 import torch
 
 from dxtb._types import DD
+from dxtb.constants import labels
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
 
 from .samples import samples
 
+device = None
+
 opts = {"verbosity": 0, "maxiter": 300, "scf_mode": "full_tracking"}
 
-device = None
+drivers = [
+    labels.INTDRIVER_LIBCINT,
+    labels.INTDRIVER_PYTORCH,
+    labels.INTDRIVER_PYTORCH2,
+]
 
 
 def single(
@@ -27,7 +34,7 @@ def single(
     mixer: str,
     tol: float,
     scp_mode: str = "charge",
-    intdriver: str = "libcint",
+    intdriver: int = labels.INTDRIVER_LIBCINT,
 ) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
@@ -58,8 +65,8 @@ def single(
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
-@pytest.mark.parametrize("intdriver", ["pytorch", "libcint"])
-def test_single(dtype: torch.dtype, name: str, mixer: str, intdriver: str):
+@pytest.mark.parametrize("intdriver", drivers)
+def test_single(dtype: torch.dtype, name: str, mixer: str, intdriver: int):
     tol = sqrt(torch.finfo(dtype).eps) * 10
     single(dtype, name, mixer, tol, intdriver=intdriver)
 
@@ -101,7 +108,7 @@ def batched(
     name2: str,
     mixer: str,
     tol: float,
-    intdriver: str = "libcint",
+    intdriver: int = labels.INTDRIVER_LIBCINT,
 ) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
@@ -148,9 +155,9 @@ def batched(
 @pytest.mark.parametrize("name1", ["H2", "LiH"])
 @pytest.mark.parametrize("name2", ["LiH", "SiH4"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
-@pytest.mark.parametrize("intdriver", ["pytorch", "libcint"])
+@pytest.mark.parametrize("intdriver", drivers)
 def test_batch(
-    dtype: torch.dtype, name1: str, name2: str, mixer: str, intdriver: str
+    dtype: torch.dtype, name1: str, name2: str, mixer: str, intdriver: int
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     batched(dtype, name1, name2, mixer, tol, intdriver=intdriver)

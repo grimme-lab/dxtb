@@ -7,10 +7,10 @@ from abc import abstractmethod
 
 import torch
 
-from ...._types import Any, Literal, Tensor
+from ...._types import Any, Tensor
 from ....basis import Basis, IndexHelper
+from ....constants import labels
 from ...base import BaseIntegralImplementation, IntDriver
-from ..labels import DRIVER_PYTORCH
 from .impls import OverlapFunction
 
 
@@ -19,7 +19,7 @@ class PytorchImplementation:
     Simple label for `PyTorch`-based integral implementations.
     """
 
-    family: Literal["pytorch"] = DRIVER_PYTORCH
+    family: int = labels.INTDRIVER_PYTORCH
     """Label for integral implementation family"""
 
 

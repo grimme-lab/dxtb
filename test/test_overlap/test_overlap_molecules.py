@@ -11,6 +11,7 @@ import pytest
 import torch
 
 from dxtb._types import DD
+from dxtb.constants.labels import INTDRIVER_PYTORCH
 from dxtb.integral.wrappers import overlap
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
@@ -41,7 +42,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
 
     # convenience wrapper with defaults (but pytorch driver)
-    s2 = overlap(numbers, positions, par, driver="pytorch")
+    s2 = overlap(numbers, positions, par, driver=INTDRIVER_PYTORCH)
 
     assert pytest.approx(ref, abs=tol) == s
     assert pytest.approx(ref, abs=tol) == s2
@@ -59,9 +60,17 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack((sample1["numbers"].to(device), sample2["numbers"]))
+    numbers = batch.pack(
+        (
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
+        )
+    )
     positions = batch.pack(
-        (sample1["positions"].to(**dd), sample2["positions"].to(**dd))
+        (
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
+        )
     )
     ref = batch.pack(
         (

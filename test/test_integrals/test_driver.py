@@ -9,7 +9,7 @@ import torch
 from dxtb import integral as ints
 from dxtb._types import DD
 from dxtb.basis import IndexHelper
-from dxtb.integral.driver.labels import DRIVER_LIBCINT, DRIVER_PYTORCH
+from dxtb.constants.labels import INTDRIVER_LIBCINT, INTDRIVER_PYTORCH
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 from dxtb.utils import batch
@@ -26,8 +26,8 @@ def test_single(dtype: torch.dtype):
     positions = torch.zeros((2, 3), **dd)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    ipy = ints.Integrals(numbers, par, ihelp, driver=DRIVER_PYTORCH, **dd)
-    ilc = ints.Integrals(numbers, par, ihelp, driver=DRIVER_LIBCINT, **dd)
+    ipy = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_PYTORCH, **dd)
+    ilc = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_LIBCINT, **dd)
 
     ipy.setup_driver(positions)
     assert isinstance(ipy.driver, ints.driver.IntDriverPytorch)
@@ -52,8 +52,8 @@ def test_batch(dtype: torch.dtype):
     positions = torch.zeros((2, 2, 3), **dd)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    ipy = ints.Integrals(numbers, par, ihelp, driver=DRIVER_PYTORCH, **dd)
-    ilc = ints.Integrals(numbers, par, ihelp, driver=DRIVER_LIBCINT, **dd)
+    ipy = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_PYTORCH, **dd)
+    ilc = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_LIBCINT, **dd)
 
     ipy.setup_driver(positions)
     assert isinstance(ipy.driver, ints.driver.IntDriverPytorch)
