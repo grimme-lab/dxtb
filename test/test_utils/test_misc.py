@@ -7,7 +7,8 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.utils import batch, exceptions, is_int_list, is_str_list, set_jit_enabled
+from dxtb.exceptions import SCFConvergenceError
+from dxtb.utils import batch, is_int_list, is_str_list, set_jit_enabled
 
 
 def test_lists() -> None:
@@ -39,5 +40,5 @@ def test_jit_settings() -> None:
 
 def test_exceptions() -> None:
     msg = "The error message."
-    with pytest.raises(exceptions.SCFConvergenceError, match=msg):
-        raise exceptions.SCFConvergenceError(msg)
+    with pytest.raises(SCFConvergenceError, match=msg):
+        raise SCFConvergenceError(msg)

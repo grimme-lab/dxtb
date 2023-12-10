@@ -24,12 +24,13 @@ from ..constants import defaults
 from ..coulomb import new_es2, new_es3
 from ..data import cov_rad_d3
 from ..dispersion import Dispersion, new_dispersion
+from ..exceptions import DtypeError
 from ..interaction import Charges, Interaction, InteractionList, Potential
 from ..interaction.external import field as efield
 from ..io import OutputHandler
 from ..param import Param, get_elem_angular
 from ..timing import timer
-from ..utils import DtypeError, _jac
+from ..utils import _jac
 from ..wavefunction import filling
 
 __all__ = ["Calculator", "Result"]

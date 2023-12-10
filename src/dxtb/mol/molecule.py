@@ -25,6 +25,7 @@ from __future__ import annotations
 import torch
 
 from .._types import Any, NoReturn, Tensor, TensorLike
+from ..exceptions import DeviceError, DtypeError
 from ..utils import cdist, memoize
 
 __all__ = ["Mol"]
@@ -41,7 +42,7 @@ class Mol(TensorLike):
         self,
         numbers: Tensor,
         positions: Tensor,
-        charge: Tensor | float | int = 0,
+        charge: Tensor | float | int | str = 0,
         name: str | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
@@ -81,7 +82,7 @@ class Mol(TensorLike):
         return self._charge
 
     @charge.setter
-    def charge(self, charge: Tensor | float | int) -> None:
+    def charge(self, charge: Tensor | float | int | str) -> None:
         self._charge = self._tensor(charge)
         self.checks()
 
@@ -130,12 +131,20 @@ class Mol(TensorLike):
         _check_tensor(self.positions, min_ndim=2, max_ndim=3)
         _check_tensor(self.charge, min_ndim=0, max_ndim=1)
 
+        allowed_dtypes = (torch.long, torch.int16, torch.int32, torch.int64)
+        if self.numbers.dtype not in allowed_dtypes:
+            raise DtypeError(
+                "Dtype of atomic numbers must be one of the following to allow "
+                f" indexing: '{', '.join([str(x) for x in allowed_dtypes])}', "
+                f"but is '{self.numbers.dtype}'"
+            )
+
         # check if all tensors are on the same device
         for s in self.__slots__:
             attr = getattr(self, s)
             if isinstance(attr, Tensor):
                 if attr.device != self.device:
-                    raise RuntimeError("All tensors must be on the same device!")
+                    raise DeviceError("All tensors must be on the same device!")
 
         if self.numbers.shape != self.positions.shape[:-1]:
             raise RuntimeError(
@@ -153,7 +162,19 @@ class Mol(TensorLike):
         if isinstance(x, int):
             return torch.tensor(x, device=self.device)
 
+        if isinstance(x, str):
+            try:
+                return torch.tensor(float(x), **self.dd)
+            except ValueError:
+                raise ValueError(f"Cannot convert string '{x}' to float")
+
         raise TypeError(f"Tensor-incompatible type '{type(x)}'.")
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}({self.numbers.tolist()})"
+
+    def __repr__(self) -> str:
+        return str(self)
 
 
 def _check_tensor(

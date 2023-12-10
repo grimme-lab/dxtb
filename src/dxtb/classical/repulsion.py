@@ -41,8 +41,9 @@ import torch
 from .._types import Tensor, TensorLike
 from ..basis import IndexHelper
 from ..constants import xtb
+from ..exceptions import ParameterWarning
 from ..param import Param, get_elem_param
-from ..utils import ParameterWarning, cdist, real_pairs
+from ..utils import cdist, real_pairs
 from .base import Classical
 
 __all__ = ["Repulsion", "new_repulsion"]

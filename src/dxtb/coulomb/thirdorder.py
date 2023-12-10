@@ -37,8 +37,10 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Slicers, Tensor, TensorLike
+from .._types import DD, Slicers, Tensor, TensorLike
 from ..basis import IndexHelper
+from ..constants import defaults
+from ..exceptions import DeviceError
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
 
@@ -217,8 +219,18 @@ def new_es3(
             "Set `thirdorder.shell` parameter to `False`."
         )
 
-    hubbard_derivs = get_elem_param(
-        torch.unique(numbers), par.element, "gam3", device=device, dtype=dtype
-    )
+    if device is not None:
+        if device != numbers.device:
+            raise DeviceError(
+                f"Passed device ({device}) and device of electric field "
+                f"({numbers.device}) do not match."
+            )
 
-    return ES3(hubbard_derivs, device=device, dtype=dtype)
+    dd: DD = {
+        "device": device,
+        "dtype": dtype if dtype is not None else defaults.get_default_dtype(),
+    }
+
+    hubbard_derivs = get_elem_param(torch.unique(numbers), par.element, "gam3", **dd)
+
+    return ES3(hubbard_derivs, **dd)

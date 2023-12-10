@@ -27,10 +27,7 @@ from math import pi, sqrt
 import torch
 
 from ......_types import Tensor
-from ......utils.exceptions import (
-    CGTOAzimuthalQuantumNumberError,
-    IntegralTransformError,
-)
+from ......exceptions import CGTOAzimuthalQuantumNumberError, IntegralTransformError
 from .trafo import NLM_CART, TRAFO
 
 __all__ = ["md_explicit", "md_explicit_gradient"]

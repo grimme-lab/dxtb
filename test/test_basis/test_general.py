@@ -8,10 +8,7 @@ import pytest
 import torch
 
 from dxtb.basis import Basis, IndexHelper, slater_to_gauss
-from dxtb.integral.driver.pytorch.impls.md import overlap_gto
-from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
-from dxtb.utils import (
+from dxtb.exceptions import (
     CGTOAzimuthalQuantumNumberError,
     CGTOPrimitivesError,
     CGTOPrincipalQuantumNumberError,
@@ -19,6 +16,9 @@ from dxtb.utils import (
     CGTOSlaterExponentsError,
     IntegralTransformError,
 )
+from dxtb.integral.driver.pytorch.impls.md import overlap_gto
+from dxtb.param import GFN1_XTB as par
+from dxtb.param import get_elem_angular
 
 
 def test_fail_number_primitives() -> None:

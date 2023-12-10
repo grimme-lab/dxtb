@@ -10,8 +10,8 @@ import pytest
 import torch
 
 from dxtb.classical import new_repulsion
+from dxtb.exceptions import ParameterWarning
 from dxtb.param import GFN1_XTB as par
-from dxtb.utils.exceptions import ParameterWarning
 
 from ..utils import get_device_from_str
 

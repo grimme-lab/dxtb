@@ -90,7 +90,7 @@ class ChargeModel(TensorLike):
     def param2019(
         cls,
         device: torch.device | None = None,
-        dtype: torch.dtype = defaults.TORCH_DTYPE,
+        dtype: torch.dtype | None = None,
     ) -> ChargeModel:
         """
         Electronegativity equilibration charge model published in
@@ -99,6 +99,8 @@ class ChargeModel(TensorLike):
           and S. Grimme, *J. Chem. Phys.*, **2019**, 150, 154122.
           DOI: `10.1063/1.5090222 <https://dx.doi.org/10.1063/1.5090222>`__
         """
+        if dtype is None:
+            dtype = defaults.get_default_dtype()
 
         return cls(
             _chi2019.to(device).type(dtype),

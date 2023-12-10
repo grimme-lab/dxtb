@@ -16,8 +16,12 @@ import torch
 
 try:
     from dxtblibs import CGTO, CINT
-except ImportError:
-    pass
+except ImportError as e:
+    raise ImportError(
+        f"Failed to import required modules. {e}. {e.name} provides a Python "
+        "interface to the 'libcint' library for fast integral evaluation."
+        "It can be installed via 'pip install dxtblibs'."
+    )
 
 from ....._types import Callable, Tensor
 from .namemanager import IntorNameManager

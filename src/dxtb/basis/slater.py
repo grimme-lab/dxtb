@@ -10,7 +10,7 @@ import numpy as np
 import torch
 
 from .._types import Tensor
-from ..utils import (
+from ..exceptions import (
     CGTOAzimuthalQuantumNumberError,
     CGTOPrimitivesError,
     CGTOPrincipalQuantumNumberError,

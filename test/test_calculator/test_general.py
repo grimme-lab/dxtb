@@ -6,9 +6,9 @@ from __future__ import annotations
 import pytest
 import torch
 
+from dxtb.exceptions import DtypeError
 from dxtb.param import GFN1_XTB as par
 from dxtb.timing import timer
-from dxtb.utils import DtypeError
 from dxtb.xtb import Calculator
 
 

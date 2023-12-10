@@ -10,9 +10,17 @@ from __future__ import annotations
 import torch
 
 from .._types import Tensor
-from ..constants import ATOMIC_NUMBER, PSE
+from ..constants import ATOMIC_NUMBER, PSE, defaults
 from ..param import Element
 from ..utils import is_int_list
+
+__all__ = [
+    "get_pair_param",
+    "get_elem_param",
+    "get_elem_angular",
+    "get_elem_valence",
+    "get_elem_pqn",
+]
 
 
 def get_pair_param(
@@ -44,8 +52,11 @@ def get_pair_param(
     if is_int_list(symbols):
         symbols = [PSE.get(i, "X") for i in symbols]
 
+    if dtype is None:
+        dtype = defaults.get_default_dtype()
+
     ndim = len(symbols)
-    pair_mat = torch.ones(*[ndim, ndim], dtype=dtype, device=device)
+    pair_mat = torch.ones(*(ndim, ndim), dtype=dtype, device=device)
     for i, isp in enumerate(symbols):
         for j, jsp in enumerate(symbols):
             # Watch format! ("element1-element2")

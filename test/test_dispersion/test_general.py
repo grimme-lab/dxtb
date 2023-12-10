@@ -7,9 +7,9 @@ import pytest
 import torch
 
 from dxtb.dispersion import new_dispersion
+from dxtb.exceptions import ParameterWarning
 from dxtb.param import GFN1_XTB
 from dxtb.param.gfn2 import GFN2_XTB
-from dxtb.utils import ParameterWarning
 
 
 def test_none() -> None:

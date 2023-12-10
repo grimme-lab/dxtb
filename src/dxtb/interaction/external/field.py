@@ -12,6 +12,7 @@ from dxtb._types import Tensor
 
 from ..._types import Slicers, Tensor, TensorLike
 from ...constants import defaults
+from ...exceptions import DeviceError, DtypeError
 from ..base import Interaction
 from ..container import Charges
 
@@ -327,6 +328,32 @@ def new_efield(
     if field_grad is not None:
         if field_grad.shape != torch.Size((3, 3)):
             raise RuntimeError("Electric field gradient must be a 3 by 3 tensor.")
+
+    if device is not None:
+        if device != field.device:
+            raise DeviceError(
+                f"Passed device ({device}) and device of electric field "
+                f"({field.device}) do not match."
+            )
+        if field_grad is not None:
+            if device != field.device:
+                raise DeviceError(
+                    f"Passed device ({device}) and device of electric field "
+                    f"gradient ({field_grad.device}) do not match."
+                )
+
+    if dtype is not None:
+        if dtype != field.dtype:
+            raise DtypeError(
+                f"Passed dtype ({dtype}) and dtype of electric field "
+                f"({field.dtype}) do not match."
+            )
+        if field_grad is not None:
+            if dtype != field.dtype:
+                raise DtypeError(
+                    f"Passed dtype ({dtype}) and dtype of electric field "
+                    f"gradient ({field_grad.dtype}) do not match."
+                )
 
     return ElectricField(
         field,

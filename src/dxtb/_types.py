@@ -28,6 +28,7 @@ import torch
 from torch import Tensor
 
 from .constants import defaults
+from .exceptions import DtypeError
 
 T = TypeVar("T")
 
@@ -150,15 +151,24 @@ class TensorLike:
     functionality the subclass of `TensorLike` must specify `__slots__`.
     """
 
-    __slots__ = ["__device", "__dtype"]
+    __device: torch.device
+    """The device on which the class object resides."""
+
+    __dtype: torch.dtype
+    """Floating point dtype used by class object."""
+
+    __dd: DD
+    """Shortcut for device and dtype."""
+
+    __slots__ = ["__device", "__dtype", "__dd"]
 
     def __init__(
         self, device: torch.device | None = None, dtype: torch.dtype | None = None
     ):
-        self.__device = (
-            device if device is not None else torch.device(defaults.TORCH_DEVICE)
-        )
-        self.__dtype = dtype if dtype is not None else defaults.TORCH_DTYPE
+        self.__device = device if device is not None else defaults.get_default_device()
+        self.__dtype = dtype if dtype is not None else defaults.get_default_dtype()
+
+        self.__dd = {"device": self.device, "dtype": self.dtype}
 
     @property
     def device(self) -> torch.device:
@@ -204,6 +214,31 @@ class TensorLike:
         """
         raise AttributeError("Change object to dtype using the `.type` method")
 
+    @property
+    def dd(self) -> DD:
+        """Shortcut for device and dtype."""
+        return self.__dd
+
+    @dd.setter
+    def dd(self, *_: Any) -> NoReturn:
+        """
+        Instruct users to use the `.type` and `.to` methods to change.
+
+        Returns
+        -------
+        NoReturn
+            Always raises an `AttributeError`.
+
+        Raises
+        ------
+        AttributeError
+            Setter is called.
+        """
+        raise AttributeError(
+            "Change object to dtype and device using the `.type` and `.to` "
+            "methods, respectively."
+        )
+
     def type(self, dtype: torch.dtype) -> Self | NoReturn:
         """
         Returns a copy of the `TensorLike` instance with specified floating
@@ -236,7 +271,7 @@ class TensorLike:
             )
 
         if dtype not in self.allowed_dtypes:
-            raise ValueError(
+            raise DtypeError(
                 f"Only '{self.allowed_dtypes}' allowed (received '{dtype}')."
             )
 

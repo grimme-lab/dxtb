@@ -53,11 +53,12 @@ class Mixer(ABC):
         # explicitly set this information
         self._is_batch = is_batch
 
+    def __str__(self) -> str:
+        """Returns representative string."""
+        return f"{self.__class__.__name__}({self.iter_step}, {self.options})"
+
     def __repr__(self) -> str:
-        """
-        Returns representative string.
-        """
-        return f"{self.__class__.__name__}({self.iter_step})"
+        return str(self)
 
     @abstractmethod
     def iter(self, x_new: Tensor, x_old: Tensor | None = None) -> Tensor:

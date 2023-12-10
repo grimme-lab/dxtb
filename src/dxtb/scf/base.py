@@ -227,6 +227,7 @@ class BaseSCF:
             "force_convergence": False,
             "method": "broyden1",
             "alpha": -0.5,
+            "damp": self.config.damp,
             "f_tol": self.config.xitorch_fatol,
             "x_tol": self.config.xitorch_xatol,
             "f_rtol": float("inf"),

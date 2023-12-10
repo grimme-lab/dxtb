@@ -12,6 +12,14 @@ included in the method.
 
 .. _tblite: https://tblite.readthedocs.io
 """
+from pydantic import __version__ as pydantic_version
+
+if tuple(map(int, pydantic_version.split("."))) < (2, 0, 0):
+    raise RuntimeError(
+        "pydantic version outdated: dxtb requires pydantic >=2.0.0 "
+        f"(version {pydantic_version} installed)."
+    )
+
 
 from .base import Param
 from .charge import Charge
@@ -23,10 +31,4 @@ from .hamiltonian import Hamiltonian
 from .meta import Meta
 from .repulsion import EffectiveRepulsion, Repulsion
 from .thirdorder import ThirdOrder
-from .util import (
-    get_elem_angular,
-    get_elem_param,
-    get_elem_pqn,
-    get_elem_valence,
-    get_pair_param,
-)
+from .util import *

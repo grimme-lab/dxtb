@@ -20,10 +20,11 @@ from .._types import Any, Slicers, Tensor
 from ..basis import IndexHelper
 from ..config import ConfigSCF
 from ..constants import defaults, labels
+from ..exceptions import SCFConvergenceError, SCFConvergenceWarning
 from ..exlibs.xitorch import optimize as xto
 from ..integral import IntegralMatrices
 from ..interaction import Charges, InteractionList
-from ..utils import SCFConvergenceError, SCFConvergenceWarning, t2int
+from ..utils import t2int
 from .base import BaseTSCF, BaseXSCF, SCFResult
 from .guess import get_guess
 from .mixer import Anderson, Mixer, Simple
@@ -413,7 +414,7 @@ class SelfConsistentFieldSingleShot(SelfConsistentFieldFull):
             scp_conv = self.scf(guess).as_tensor()
 
         # initialize the correct mixer with tolerances etc.
-        mixer = self.scf_options["mixer"]
+        mixer = self.config.mixer  # type: ignore
         if isinstance(mixer, str):
             mixers = {"anderson": Anderson, "simple": Simple}
             if mixer.casefold() not in mixers:

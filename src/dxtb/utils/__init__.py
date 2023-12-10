@@ -3,7 +3,6 @@ Collection of utility functions.
 """
 
 from .convert import *
-from .exceptions import *
 from .geometry import *
 from .grad import *
 from .misc import *

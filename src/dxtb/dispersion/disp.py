@@ -8,8 +8,9 @@ import warnings
 import torch
 
 from .._types import Tensor
+from ..exceptions import ParameterWarning
 from ..param import Param
-from ..utils import ParameterWarning, convert_float_tensor
+from ..utils import convert_float_tensor
 from .base import Dispersion
 from .d3 import DispersionD3
 from .d4 import DispersionD4

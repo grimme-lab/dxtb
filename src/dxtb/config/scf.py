@@ -33,7 +33,7 @@ class ConfigSCF:
         scp_mode: str | int = defaults.SCP_MODE,
         xitorch_xatol: float = defaults.XITORCH_XATOL,
         xitorch_fatol: float = defaults.XITORCH_FATOL,
-        force_convergence=defaults.SCF_FORCE_CONVERGENCE,
+        force_convergence: bool = defaults.SCF_FORCE_CONVERGENCE,
         # Fermi
         fermi_etemp: float = defaults.FERMI_ETEMP,
         fermi_maxiter: int = defaults.FERMI_MAXITER,
@@ -118,6 +118,27 @@ class ConfigSCF:
             thresh=fermi_thresh,
             partition=fermi_partition,
         )
+
+    def __str__(self):
+        config_str = [
+            f"Configuration for SCF:",
+            f"  Guess Method: {self.guess}",
+            f"  SCF Mode: {self.scf_mode} (Convergence approach)",
+            f"  SCP Mode: {self.scp_mode} (Convergence target)",
+            f"  Maximum Iterations: {self.maxiter}",
+            f"  Mixer: {self.mixer}",
+            f"  Damping Factor: {self.damp}",
+            f"  Force Convergence: {self.force_convergence}",
+            f"  Device: {self.device}",
+            f"  Data Type: {self.dtype}",
+            f"  xitorch Absolute Tolerance: {self.xitorch_xatol}",
+            f"  xitorch Functional Tolerance: {self.xitorch_fatol}",
+            f"  Fermi Configuration: {self.fermi}",
+        ]
+        return "\n".join(config_str)
+
+    def __repr__(self) -> str:
+        return str(self)
 
 
 def check_tols(value: float, dtype: torch.dtype) -> float:

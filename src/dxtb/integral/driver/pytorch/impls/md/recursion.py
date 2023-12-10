@@ -13,7 +13,8 @@ from math import pi, sqrt
 import torch
 
 from ......_types import Any, Callable, Tensor
-from ......utils import IntegralTransformError, t2int
+from ......exceptions import IntegralTransformError
+from ......utils import t2int
 from .trafo import NLM_CART, TRAFO
 
 sqrtpi3 = sqrt(pi) ** 3

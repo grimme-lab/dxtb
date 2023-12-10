@@ -40,12 +40,13 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Slicers, Tensor, TensorLike, TensorOrTensors
+from .._types import DD, Slicers, Tensor, TensorLike, TensorOrTensors
 from ..basis import IndexHelper
-from ..constants import xtb
+from ..constants import defaults, xtb
+from ..exceptions import DeviceError
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
-from ..utils import batch, cdist, real_pairs
+from ..utils import cdist, real_pairs
 from .average import AveragingFunction, averaging_function, harmonic_average
 
 __all__ = ["ES2", "LABEL_ES2", "new_es2"]
@@ -150,11 +151,9 @@ class ES2(Interaction):
     ) -> None:
         super().__init__(device, dtype)
 
-        self.hubbard = hubbard.to(self.device).type(self.dtype)
-        self.lhubbard = (
-            lhubbard if lhubbard is None else lhubbard.to(self.device).type(self.dtype)
-        )
-        self.gexp = gexp.to(self.device).type(self.dtype)
+        self.hubbard = hubbard.to(**self.dd)
+        self.lhubbard = lhubbard if lhubbard is None else lhubbard.to(**self.dd)
+        self.gexp = gexp.to(**self.dd)
         self.average = average
 
         self.shell_resolved = shell_resolved and lhubbard is not None
@@ -650,17 +649,20 @@ def coulomb_matrix_atom_gradient(
         Derivative of atom-resolved Coulomb matrix. The derivative has the
         following shape: `(n_batch, atoms_i, atoms_j, 3)`.
     """
+    dd: DD = {"device": positions.device, "dtype": positions.dtype}
+    zero = torch.tensor(0.0, **dd)
+
     distances = torch.where(
         mask,
         cdist(positions, positions, p=2),
-        positions.new_tensor(0.0),
+        zero,
     )
 
     # (n_batch, atoms_i, atoms_j, 3)
     rij = torch.where(
         mask.unsqueeze(-1),
         positions.unsqueeze(-2) - positions.unsqueeze(-3),
-        positions.new_tensor(0.0),
+        zero,
     )
 
     # (n_batch, atoms_i, atoms_j)
@@ -706,8 +708,9 @@ def coulomb_matrix_shell(
     Tensor
         Coulomb matrix.
     """
-    zero = positions.new_tensor(0.0)
-    eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
+    dd: DD = {"device": positions.device, "dtype": positions.dtype}
+    zero = torch.tensor(0.0, **dd)
+    eps = torch.tensor(torch.finfo(positions.dtype).eps, **dd)
 
     lh = ihelp.spread_ushell_to_shell(lhubbard)
     h = lh * ihelp.spread_uspecies_to_shell(hubbard)
@@ -938,16 +941,29 @@ def new_es2(
     ES2 | None
         Instance of the ES2 class or `None` if no ES2 is used.
     """
-
     if hasattr(par, "charge") is False or par.charge is None:
         return None
 
+    if device is not None:
+        if device != numbers.device:
+            raise DeviceError(
+                f"Passed device ({device}) and device of electric field "
+                f"({numbers.device}) do not match."
+            )
+
+    dd: DD = {
+        "device": device,
+        "dtype": dtype if dtype is not None else defaults.get_default_dtype(),
+    }
+
     unique = torch.unique(numbers)
-    hubbard = get_elem_param(unique, par.element, "gam")
+    hubbard = get_elem_param(unique, par.element, "gam", **dd)
     lhubbard = (
-        get_elem_param(unique, par.element, "lgam") if shell_resolved is True else None
+        get_elem_param(unique, par.element, "lgam", **dd)
+        if shell_resolved is True
+        else None
     )
     average = averaging_function[par.charge.effective.average]
-    gexp = torch.tensor(par.charge.effective.gexp)
+    gexp = torch.tensor(par.charge.effective.gexp, **dd)
 
-    return ES2(hubbard, lhubbard, average, gexp, device=device, dtype=dtype)
+    return ES2(hubbard, lhubbard, average, gexp, **dd)

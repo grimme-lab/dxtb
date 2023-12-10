@@ -10,7 +10,6 @@ import torch
 
 from .._types import Tensor
 from .chemistry import ATOMIC_MASSES, NCORE, ZVALENCE
-from .defaults import TORCH_DTYPE
 from .units import GMOL2AU
 
 __all__ = ["get_atomic_masses", "get_ncore", "get_zvalence"]
@@ -20,7 +19,7 @@ def get_atomic_masses(
     numbers: Tensor,
     atomic_units: bool = True,
     device: torch.device | None = None,
-    dtype: torch.dtype = TORCH_DTYPE,
+    dtype: torch.dtype | None = None,
 ) -> Tensor:
     """
     Get isotope-averaged atomic masses for all `numbers`.
@@ -35,7 +34,7 @@ def get_atomic_masses(
     device : torch.device | None, optional
         Device to store the tensor. If `None` (default), the default device is used.
     dtype : torch.dtype, optional
-        Data type of the tensor. If none is given, it defaults to float32.
+        Data type of the tensor. If `None` (default), the default dtype is used.
 
     Returns
     -------
@@ -49,7 +48,7 @@ def get_atomic_masses(
 def get_zvalence(
     numbers: Tensor,
     device: torch.device | None = None,
-    dtype: torch.dtype = TORCH_DTYPE,
+    dtype: torch.dtype | None = None,
 ) -> Tensor:
     """
     Get charge of valence shell for all `numbers`.
@@ -61,8 +60,7 @@ def get_zvalence(
     device : torch.device | None, optional
         Device to store the tensor. If `None` (default), the default device is used.
     dtype : torch.dtype, optional
-        Data type of the tensor. If none is given, it defaults to
-        ``defaults.TORCH_DTYPE``.
+        Data type of the tensor. If `None` (default), the default dtype is used.
 
     Returns
     -------
@@ -75,7 +73,7 @@ def get_zvalence(
 def get_ncore(
     numbers: Tensor,
     device: torch.device | None = None,
-    dtype: torch.dtype = TORCH_DTYPE,
+    dtype: torch.dtype | None = None,
 ) -> Tensor:
     """
     Get number of core electrons for all `numbers`.
@@ -87,8 +85,7 @@ def get_ncore(
     device : torch.device | None, optional
         Device to store the tensor. If `None` (default), the default device is used.
     dtype : torch.dtype, optional
-        Data type of the tensor. If none is given, it defaults to
-        ``defaults.TORCH_DTYPE``.
+        Data type of the tensor. If `None` (default), the default dtype is used.
 
     Returns
     -------

@@ -7,6 +7,7 @@ import pytest
 import torch
 
 from dxtb._types import DD
+from dxtb.exceptions import DeviceError
 from dxtb.mol import Mol
 
 from ..utils import get_device_from_str
@@ -68,5 +69,5 @@ def test_wrong_device() -> None:
     numbers = sample["numbers"].to(get_device_from_str("cpu"))
     positions = sample["positions"].to(get_device_from_str("cuda"))
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(DeviceError):
         Mol(numbers, positions)
