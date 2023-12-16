@@ -9,6 +9,7 @@ from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
 from dxtb._types import Callable, Tensor
 from dxtb.integral.driver.pytorch.impls import md
+from dxtb.integral.driver.pytorch.impls.md import recursion
 
 tol = 1e-7
 
@@ -53,9 +54,7 @@ def gradchecker(
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize(
-    "md_func", [md.explicit.md_explicit, md.recursion.md_recursion]
-)
+@pytest.mark.parametrize("md_func", [md.explicit.md_explicit, recursion.md_recursion])
 @pytest.mark.parametrize("li", [0, 1, 2, 3])
 @pytest.mark.parametrize("lj", [0, 1, 2, 3])
 def test_grad(dtype: torch.dtype, md_func, li: int, lj: int) -> None:

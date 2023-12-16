@@ -4,12 +4,15 @@ dxtb
 
 A fully differentiable extended tight-binding package.
 """
-
 from __future__ import annotations
 
 # import timer first to get correct total time
 from .timing import timer
+
+timer.start("Import PyTorch")
 import torch
+
+timer.stop("Import PyTorch")
 
 from . import io
 from .__version__ import __version__

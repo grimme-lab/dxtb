@@ -1,5 +1,9 @@
 """
-Functions for calculation of overlap with McMurchie-Davidson algorithm.
+Integrals
+=========
+
+This module stores the integral container, drivers and underlying
+implementations.
 """
 from .container import *
 from .dipole import *

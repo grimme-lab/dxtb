@@ -5,12 +5,14 @@ from __future__ import annotations
 
 import torch
 
-from ....._types import Any, Literal, Protocol, Tensor
+from ....._types import Any, Literal, Tensor
 from .....basis import Basis, IndexHelper
 from .....constants import defaults
 from .....utils import batch, t2int
 from .md import overlap_gto, overlap_gto_grad
 from .md.utils import get_pairs, get_subblock_start
+
+__all__ = ["OverlapAG", "overlap", "overlap_gradient"]
 
 
 class OverlapAG(torch.autograd.Function):
@@ -284,43 +286,3 @@ def overlap_gradient(
 
     # (3, norb, norb) -> (norb, norb, 3)
     return torch.einsum("xij->ijx", ds)
-
-
-class OverlapFunction(Protocol):
-    """
-    Type annotation for overlap and gradient function.
-    """
-
-    def __call__(
-        self,
-        positions: Tensor,
-        bas: Basis,
-        ihelp: IndexHelper,
-        uplo: Literal["n", "u", "l"] = "l",
-        cutoff: Tensor | float | int | None = defaults.INTCUTOFF,
-    ) -> Tensor:
-        """
-        Evaluation of the overlap integral or its gradient.
-
-        Parameters
-        ----------
-        positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
-        bas : Basis
-            Basis set information.
-        ihelp : IndexHelper
-            Helper class for indexing.
-        uplo : Literal['n';, 'u', 'l'], optional
-            Whether the matrix of unique shell pairs should be create as a
-            triangular matrix (`l`: lower, `u`: upper) or full matrix (`n`).
-            Defaults to `l` (lower triangular matrix).
-        cutoff : Tensor | float | int | None, optional
-            Real-space cutoff for integral calculation in Angstrom. Defaults to
-            `constants.defaults.INTCUTOFF` (50.0).
-
-        Returns
-        -------
-        Tensor
-            Overlap matrix or overlap gradient.
-        """
-        ...  # pylint: disable=unnecessary-ellipsis

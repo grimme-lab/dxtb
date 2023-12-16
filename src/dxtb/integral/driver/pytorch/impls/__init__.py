@@ -1,4 +1,5 @@
 """
 Integral implementations.
 """
-from .overlap import OverlapAG, OverlapFunction, overlap, overlap_gradient
+from .overlap import *
+from .type import *
