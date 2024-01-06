@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import torch
 
+from .._types import Any
 from ..constants import defaults, labels
 from ..io import OutputHandler
 
@@ -117,7 +118,25 @@ class ConfigSCF:
             maxiter=fermi_maxiter,
             thresh=fermi_thresh,
             partition=fermi_partition,
+            device=device,
+            dtype=dtype,
         )
+
+    def info(self) -> dict[str, Any]:
+        return {
+            "SCF Options": {
+                "Guess Method": labels.GUESS_MAP[self.guess],
+                "SCF Mode": labels.SCF_MODE_MAP[self.scf_mode],
+                "SCP Mode": labels.SCP_MODE_MAP[self.scp_mode],
+                "Maxiter": self.maxiter,
+                "Mixer": self.mixer,
+                "Damping Factor": self.damp,
+                "Force Convergence": self.force_convergence,
+                "x tolerance": self.xitorch_xatol,
+                "f(x) tolerance": self.xitorch_fatol,
+                **self.fermi.info(),
+            }
+        }
 
     def __str__(self):
         config_str = [
@@ -131,7 +150,7 @@ class ConfigSCF:
             f"  Force Convergence: {self.force_convergence}",
             f"  Device: {self.device}",
             f"  Data Type: {self.dtype}",
-            f"  xitorch Absolute Tolerance: {self.xitorch_xatol}",
+            f"  xitorch absolute Tolerance: {self.xitorch_xatol}",
             f"  xitorch Functional Tolerance: {self.xitorch_fatol}",
             f"  Fermi Configuration: {self.fermi}",
         ]
@@ -194,7 +213,12 @@ class ConfigFermi:
         maxiter: int = defaults.FERMI_MAXITER,
         thresh: dict = defaults.FERMI_THRESH,
         partition: str | int = defaults.FERMI_PARTITION,
+        # PyTorch
+        device: torch.device = defaults.get_default_device(),
+        dtype: torch.dtype = defaults.get_default_dtype(),
     ) -> None:
+        self.device = device
+        self.dtype = dtype
         self.etemp = etemp
         self.maxiter = maxiter
         self.thresh = thresh
@@ -222,3 +246,13 @@ class ConfigFermi:
                 "The partition must be of type 'int' or 'str', but "
                 f"'{type(partition)}' was given."
             )
+
+    def info(self) -> dict[str, Any]:
+        return {
+            "Fermi Smearing": {
+                "Temperature": self.etemp,
+                "Maxiter": self.maxiter,
+                "Threshold": str(self.thresh[self.dtype]),
+                "Partioning": labels.FERMI_PARTITION_MAP[self.partition],
+            }
+        }

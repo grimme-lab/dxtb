@@ -42,7 +42,11 @@ def timings(repeats: int = 1) -> Callable[[F], F]:  # pragma: no cover
                 result = f(*args, **kwargs)
                 te = time.perf_counter()
                 times.append(te - ts)
-                print(f"{te - ts:2.4f}", end=" ")
+
+                if repeats == 1:
+                    print(f"{f.__name__}: {te - ts:2.4f}", end=" ")
+                else:
+                    print(f"{te - ts:2.4f}", end=" ")
 
             print()
             if repeats > 1:

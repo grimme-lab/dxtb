@@ -53,7 +53,7 @@ def get_coordination_number(
     if cutoff is None:
         cutoff = torch.tensor(xtb.NCOORD_DEFAULT_CUTOFF, **dd)
     if rcov is None:
-        rcov = cov_rad_d3[numbers].type(positions.dtype).to(positions.device)
+        rcov = cov_rad_d3.to(**dd)[numbers]
     if numbers.shape != rcov.shape:
         raise ValueError(
             f"Shape of covalent radii {rcov.shape} is not consistent with "
@@ -65,14 +65,12 @@ def get_coordination_number(
             f"with atomic numbers ({numbers.shape})."
         )
 
-    mask = real_pairs(numbers, diagonal=True)
-    distances = torch.where(
-        mask,
-        cdist(positions, positions, p=2),
-        torch.tensor(torch.finfo(positions.dtype).eps, **dd),
-    )
+    eps = torch.tensor(torch.finfo(positions.dtype).eps, **dd)
 
-    rc = rcov.unsqueeze(-2) + rcov.unsqueeze(-1)
+    mask = real_pairs(numbers, diagonal=True)
+    distances = torch.where(mask, cdist(positions, positions, p=2), eps)
+
+    rc = rcov.unsqueeze(-2) + rcov.unsqueeze(-1) + eps
     cf = torch.where(
         mask * (distances <= cutoff),
         counting_function(distances, rc.type(positions.dtype), **kwargs),
@@ -118,10 +116,12 @@ def get_coordination_number_gradient(
     ValueError
         If shape mismatch between `numbers`, `positions` and `rcov` is detected.
     """
+    dd = {"device": positions.device, "dtype": positions.dtype}
+
     if cutoff is None:
-        cutoff = positions.new_tensor(xtb.NCOORD_DEFAULT_CUTOFF)
+        cutoff = torch.tensor(xtb.NCOORD_DEFAULT_CUTOFF, **dd)
     if rcov is None:
-        rcov = cov_rad_d3[numbers].type(positions.dtype).to(positions.device)
+        rcov = cov_rad_d3.to(**dd)[numbers]
     if numbers.shape != rcov.shape:
         raise ValueError(
             f"Shape of covalent radii {rcov.shape} is not consistent with "
@@ -133,18 +133,16 @@ def get_coordination_number_gradient(
             f"with atomic numbers ({numbers.shape})."
         )
 
-    mask = real_pairs(numbers, diagonal=True)
-    distances = torch.where(
-        mask,
-        cdist(positions, positions, p=2),
-        positions.new_tensor(torch.finfo(positions.dtype).eps),
-    )
+    eps = torch.tensor(torch.finfo(positions.dtype).eps, **dd)
 
-    rc = rcov.unsqueeze(-2) + rcov.unsqueeze(-1)
+    mask = real_pairs(numbers, diagonal=True)
+    distances = torch.where(mask, cdist(positions, positions, p=2), eps)
+
+    rc = rcov.unsqueeze(-2) + rcov.unsqueeze(-1) + eps
     dcf = torch.where(
         mask * (distances <= cutoff),
-        dcounting_function(distances, rc.type(positions.dtype), **kwargs),
-        positions.new_tensor(0.0),
+        dcounting_function(distances, rc, **kwargs),
+        torch.tensor(0.0, **dd),
     )
 
     # (n_batch, n_atoms, n_atoms, 3)

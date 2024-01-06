@@ -460,9 +460,10 @@ def eighb(
         .. [Lapack] www.netlib.org/lapack/lug/node54.html (Accessed 10/08/2020)
 
     """
+    mask = None
 
     # Initial setup to make function calls easier to deal with
-    # If smearing use _SymEigB otherwise use torch.linalg.eigh
+    # If smearing, use _SymEigB otherwise use torch.linalg.eigh
     func = _SymEigB.apply if broadening_method else torch.linalg.eigh
     # Set up for the arguments
     args = (broadening_method, factor) if broadening_method else ()
@@ -472,7 +473,7 @@ def eighb(
         mask = torch.all(is_zero, dim=-1) & torch.all(is_zero, dim=-2)
 
     if b is None:  # For standard eigenvalue problem
-        if aux:
+        if aux and mask:
             # Convert from zero-padding to padding with largest eigenvalue estimate
             shift = _estimate_minmax(a)[-1].unsqueeze(-1)
             a = a + torch.diag_embed(shift * mask)
@@ -557,7 +558,7 @@ def eighb(
 
     # If sort_out is enabled, nullify the "ghost" eigen-values
     if sort_out:
-        if aux:
+        if aux and mask:
             w = torch.where(~mask, w, w.new_tensor(0))
         else:
             w, v = _eig_sort_out(w, v, not aux)

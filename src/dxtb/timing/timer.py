@@ -121,7 +121,7 @@ class _Timers:
 
     def disable(self) -> None:
         """
-        Disable all timers in the collection.
+        Disable and reset all timers in the collection.
         """
         self._enabled = False
 
@@ -196,6 +196,14 @@ class _Timers:
         self.timers = {}
         self.start("total")
 
+    def kill(self) -> None:
+        """
+        Disable, reset and stop all timers.
+        """
+        self.disable()
+        self.reset()
+        self.stop_all()
+
     def get_times(self) -> dict[str, float]:
         """
         Get the elapsed times of all timers,
@@ -205,6 +213,9 @@ class _Timers:
         dict[str, float]
             Dictionary of timer IDs and elapsed times.
         """
+        if self.timers["total"].is_running():
+            self.timers["total"].stop()
+
         return {
             (uid if t.label is None else t.label): t.elapsed_time
             for uid, t in self.timers.items()

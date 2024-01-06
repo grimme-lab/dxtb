@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from argparse import Namespace
 
 import torch
@@ -127,3 +128,21 @@ class Config:
             xitorch_fatol=args.ftol,
             fermi_etemp=args.etemp,
         )
+
+    def info(self) -> dict:
+        return {
+            "Calculation Configuration": {
+                "Program Call": " ".join(sys.argv),
+                "Input File": self.file,
+                "Method": labels.GFN_XTB_MAP[self.method],
+                "Excluded": None if len(self.exclude) == 0 else self.exclude,
+                "Gradient": self.grad,
+                "Integral driver": labels.INTDRIVER_MAP[self.ints.driver],
+                "FP accuracy": str(self.dtype),
+                "Device": str(self.device),
+            },
+            **self.scf.info(),
+        }
+
+    def __str__(self) -> str:
+        return f"{self.device}"

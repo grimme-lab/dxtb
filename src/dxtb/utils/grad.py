@@ -2,7 +2,7 @@
 Autograd utility
 ================
 
-This module contains utility functions for automaic differentiation.
+This module contains utility functions for automatic differentiation.
 
 Important! Before PyTorch 2.0.0, `functorch` does not work together with custom
 autograd functions, which we definitely require. Additionally, `functorch`

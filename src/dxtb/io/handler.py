@@ -2,6 +2,7 @@ import json
 import logging
 from pathlib import Path
 
+from .._types import Any
 from .output import get_header, get_pytorch_info, get_short_version, get_system_info
 
 __all__ = ["OutputHandler"]
@@ -62,10 +63,11 @@ class _OutputHandler:
 
     def json_output(self, data):
         self.json_data.update(data)
+        print(self.json_data)
         with open(self.json_file, "w") as file:
             json.dump(self.json_data, file, indent=4)
 
-    def write(self, data):
+    def write(self, data: dict[str, Any]):
         for handler in self.handlers.values():
             handler(data)
 
@@ -73,13 +75,39 @@ class _OutputHandler:
         if self.verbosity >= verbosity:
             self.console_logger.info(msg)
 
+    #######################################
+
+    def write_row(self, table_name: str, key: str, row: list[Any]) -> None:
+        """
+        Write a single row of data to a specified table in both console and JSON output.
+
+        Parameters
+        ----------
+        table_name : str
+            The name of the table to which the row belongs.
+        row : List[Any]
+            A single row of data to be written.
+        iter_number : int
+            The iteration number or row identifier.
+        """
+        self.console_logger.info("  ".join([key] + row))
+
+        if table_name not in self.json_data:
+            self.json_data[table_name] = {}
+        self.json_data[table_name][key.strip()] = row
+
+        # Update JSON file with the new row
+        self.json_output({})
+
+    #######################################
+
     def warn(self, msg: str) -> None:
         self.warnings.append(msg)
 
     def format_for_console(self, title, info):
         formatted_str = f"{title}\n" + "-" * len(title) + "\n\n"
         for key, value in info.items():
-            formatted_str += f"{key.ljust(17)}: {value}\n"
+            formatted_str += f"{key.ljust(20)}: {value}\n"
         return formatted_str
 
     def header(self) -> None:

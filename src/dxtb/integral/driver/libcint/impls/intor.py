@@ -19,7 +19,7 @@ try:
 except ImportError as e:
     raise ImportError(
         f"Failed to import required modules. {e}. {e.name} provides a Python "
-        "interface to the 'libcint' library for fast integral evaluation."
+        "interface to the 'libcint' library for fast integral evaluation. "
         "It can be installed via 'pip install dxtblibs'."
     )
 

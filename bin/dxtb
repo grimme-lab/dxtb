@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+
+from dxtb.cli import console_entry_point
+
+if __name__ == "__main__":
+    raise SystemExit(console_entry_point())

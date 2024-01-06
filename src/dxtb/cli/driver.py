@@ -120,6 +120,8 @@ class Driver:
 
         config = Config.from_args(args)
 
+        io.OutputHandler.write(config.info())
+
         if len(args.file) > 1:
             _n = []
             _p = []

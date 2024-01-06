@@ -1,4 +1,4 @@
-# pylint: disable=protected-access)
+# pylint: disable=protected-access
 """
 Representation of Molecule in PySCF
 ===================================
