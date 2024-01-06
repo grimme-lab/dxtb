@@ -549,7 +549,7 @@ class BaseSCF:
 
         # FIXME: Batch print not working!
         # explicitly check to avoid some superfluos calculations
-        if OutputHandler.verbosity > 5:
+        if OutputHandler.verbosity >= 5:
             if charges.ndim < 2:  # pragma: no cover
                 energy = self.get_energy(q).sum(-1).detach().clone()
                 ediff = torch.linalg.vector_norm(self._data.old_energy - energy)
@@ -560,9 +560,16 @@ class BaseSCF:
                 _q = charges.detach().clone()
                 qdiff = torch.linalg.vector_norm(self._data.old_charges - _q)
 
-                OutputHandler.write_stdout(
-                    f"{self._data.iter:3}   {energy: .16E}  {ediff: .6E} "
-                    f"{pnorm: .6E}   {qdiff: .6E}"
+                OutputHandler.write_row(
+                    "SCF Iterations",
+                    self._data.iter,
+                    [
+                        f"{self._data.iter:3}",
+                        f"{energy: .16E}",
+                        f"{ediff: .6E}",
+                        f"{pnorm: .6E}",
+                        f"{qdiff: .6E}",
+                    ],
                 )
 
                 self._data.old_energy = energy
@@ -628,9 +635,15 @@ class BaseSCF:
                 q = charges.mono.detach().clone()
                 qdiff = torch.linalg.vector_norm(self._data.old_charges - q)
 
-                OutputHandler.write_stdout(
-                    f"{self._data.iter:3}   {energy: .16E}  {ediff: .6E} "
-                    f"{pnorm: .6E}   {qdiff: .6E}"
+                OutputHandler.write_row(
+                    "SCF Iterations",
+                    f"{self._data.iter:3}",
+                    [
+                        f"{energy: .16E}",
+                        f"{ediff: .6E}",
+                        f"{pnorm: .6E}",
+                        f"{qdiff: .6E}",
+                    ],
                 )
 
                 self._data.old_energy = energy

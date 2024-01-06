@@ -285,24 +285,6 @@ def read_chrg(fp: PathLike) -> int:
         return int(file.read())
 
 
-def read_tm_energy(fp: PathLike) -> float:
-    """Read energy file in TM format (energy is three times on second line)."""
-    with open(fp, encoding="utf-8") as file:
-        for i, line in enumerate(file):
-            if i == 0:
-                if line.strip().split()[0] != "$energy":
-                    raise ValueError(f"File '{fp}' is not in Turbomole format.")
-            elif i == 1:  # pragma: no branch
-                # tests exist but somehow not covered?
-                l = line.strip().split()
-                if len(l) != 4:
-                    raise ValueError(f"File '{fp}' is not in Turbomole format.")
-
-                return float(l[1])
-
-        raise ValueError(f"File '{fp}' is not in Turbomole format.")
-
-
 def read_tblite_gfn(fp: Path | str) -> dict[str, Any]:
     """Read energy file from tblite json output."""
     with open(fp, encoding="utf-8") as file:

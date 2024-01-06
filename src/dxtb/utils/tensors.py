@@ -8,7 +8,7 @@ import torch
 from .._types import Tensor
 
 
-@torch.jit.script
+# @torch.jit.script
 def real_atoms(numbers: Tensor) -> Tensor:
     """
     Generates mask that differentiates real atoms and padding.
@@ -26,7 +26,7 @@ def real_atoms(numbers: Tensor) -> Tensor:
     return numbers != 0
 
 
-@torch.jit.script
+# @torch.jit.script
 def real_pairs(numbers: Tensor, diagonal: bool = False) -> Tensor:
     """
     Generates mask that differentiates real atom pairs and padding.
@@ -52,7 +52,7 @@ def real_pairs(numbers: Tensor, diagonal: bool = False) -> Tensor:
     return mask
 
 
-@torch.jit.script
+# @torch.jit.script
 def real_triples(numbers: Tensor, diagonal: bool = False, self: bool = True) -> Tensor:
     """
     Generates mask that differentiates real atom triples and padding.

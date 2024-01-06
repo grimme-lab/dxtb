@@ -473,7 +473,7 @@ def eighb(
         mask = torch.all(is_zero, dim=-1) & torch.all(is_zero, dim=-2)
 
     if b is None:  # For standard eigenvalue problem
-        if aux and mask:
+        if aux and mask is not None:
             # Convert from zero-padding to padding with largest eigenvalue estimate
             shift = _estimate_minmax(a)[-1].unsqueeze(-1)
             a = a + torch.diag_embed(shift * mask)
@@ -558,7 +558,7 @@ def eighb(
 
     # If sort_out is enabled, nullify the "ghost" eigen-values
     if sort_out:
-        if aux and mask:
+        if aux and mask is not None:
             w = torch.where(~mask, w, w.new_tensor(0))
         else:
             w, v = _eig_sort_out(w, v, not aux)

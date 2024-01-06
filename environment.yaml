@@ -1,4 +1,4 @@
-name: dxtb
+name: torch
 channels:
   - pytorch
   - defaults
@@ -11,5 +11,7 @@ dependencies:
   - scipy # for xitorch
   - pytest
   - pip:
-      - tad-dftd3==0.1.0
+      - tad-mctc
+      - tad-multicharge
+      - tad-dftd3
       - tad-dftd4
