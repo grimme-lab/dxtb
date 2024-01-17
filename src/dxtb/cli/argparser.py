@@ -233,10 +233,11 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         help="Show version and exit.",
     )
     p.add_argument(
+        "-c",
         "--chrg",
         action=action_not_less_than(-10.0),
         type=int,
-        default=defaults.CHRG,
+        default=None,
         nargs="+",
         help="R|Molecular charge.",
     )
@@ -245,7 +246,7 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         "--uhf",
         action=action_not_less_than(0.0),
         type=int,
-        default=defaults.SPIN,
+        default=None,
         nargs="+",
         help="R|Molecular spin.",
     )

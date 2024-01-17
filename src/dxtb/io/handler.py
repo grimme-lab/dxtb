@@ -63,7 +63,6 @@ class _OutputHandler:
 
     def json_output(self, data):
         self.json_data.update(data)
-        print(self.json_data)
         with open(self.json_file, "w") as file:
             json.dump(self.json_data, file, indent=4)
 

@@ -56,8 +56,7 @@ def ir(
     # print("dmu_dr\n", dmu_dr)
     # print("")
 
-    print("\nir_ints", ir_ints)
-    print(units.AU2KMMOL)
+    # print("\nir_ints", ir_ints)
     # print("")
     # print(ir_ints * units.AU2KMMOL)
     # print(ir_ints * 974.8801118351438)

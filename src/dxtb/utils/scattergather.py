@@ -59,7 +59,7 @@ def twice_remove_negative_index(
         return torch.where(
             mask.unsqueeze(-1) * mask.unsqueeze(-2),
             fcn(func, x, dim0, dim1, torch.where(mask, idx, 0), *args),
-            x.new_tensor(0.0),
+            torch.tensor(0.0, device=x.device, dtype=x.dtype),
         )
 
     return wrapper

@@ -19,10 +19,10 @@ from ..utils import coordfile as dummy
 def test_defaults() -> None:
     args = parser().parse_args([str(dummy)])
 
-    assert args.chrg is None
+    assert isinstance(args.chrg, int)
     assert args.chrg == defaults.CHRG
 
-    assert args.spin is None
+    assert isinstance(args.spin, int)
     assert args.spin == defaults.SPIN
 
     assert isinstance(args.verbosity, int)

@@ -35,7 +35,7 @@ import math
 
 import torch
 
-from ._types import Tensor, TensorLike
+from ._types import DD, Tensor, TensorLike
 from .constants import defaults
 from .utils import cdist, real_atoms, real_pairs
 
@@ -275,6 +275,8 @@ def solve(
             "to correctly set the dtype."
         )
 
+    dd: DD = {"device": positions.device, "dtype": positions.dtype}
+
     eps = torch.tensor(
         torch.finfo(positions.dtype).eps,
         device=positions.device,
@@ -312,7 +314,7 @@ def solve(
     eta = torch.where(
         real,
         model.eta[numbers] + stop / rad,
-        distances.new_tensor(1.0),
+        torch.tensor(1.0, **dd),
     )
 
     coulomb = torch.where(
@@ -321,14 +323,14 @@ def solve(
         torch.where(
             mask,
             torch.erf(distances * gamma) / distances,
-            distances.new_tensor(0.0),
+            zero,
         ),
     )
 
     constraint = torch.where(
         real,
-        distances.new_ones(numbers.shape),
-        distances.new_zeros(numbers.shape),
+        torch.ones(numbers.shape, **dd),
+        torch.zeros(numbers.shape, **dd),
     )
     zeros = distances.new_zeros(numbers.shape[:-1])
 

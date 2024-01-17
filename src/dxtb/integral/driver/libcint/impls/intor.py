@@ -94,9 +94,10 @@ class _Int2cFunction(torch.autograd.Function):
     Wrapper class to provide the gradient of the 2-centre integrals.
     """
 
+    generate_vmap_rule = True
+
     @staticmethod
     def forward(
-        ctx,  # type: ignore
         allcoeffs: Tensor,
         allalphas: Tensor,
         allposs: Tensor,
@@ -114,22 +115,28 @@ class _Int2cFunction(torch.autograd.Function):
         assert len(wrappers) == 2
 
         out_tensor = Intor(int_nmgr, wrappers).calc()
-        ctx.save_for_backward(allcoeffs, allalphas, allposs)
-        ctx.other_info = (wrappers, int_nmgr)
+
         return out_tensor  # (..., nao0, nao1)
+
+    @staticmethod
+    def setup_context(ctx, inputs: tuple, output):
+        allcoeffs, allalphas, allposs, wrappers, int_nmgr = inputs
+        ctx.save_for_backward(allcoeffs, allalphas, allposs)
+        ctx.wrappers = wrappers
+        ctx.int_nmgr = int_nmgr
 
     @staticmethod
     def backward(ctx, grad_out: Tensor) -> tuple[Tensor | None, ...]:  # type: ignore
         # grad_out: (..., nao0, nao1)
         allcoeffs, allalphas, allposs = ctx.saved_tensors
-        wrappers: list[LibcintWrapper] = ctx.other_info[0]
-        int_nmgr: IntorNameManager = ctx.other_info[1]
+        wrappers: list[LibcintWrapper] = ctx.wrappers
+        int_nmgr: IntorNameManager = ctx.int_nmgr
 
         # gradient for all atomic positions
         grad_allposs: Tensor | None = None
         if allposs.requires_grad:
             grad_allposs = torch.zeros_like(allposs)  # (natom, ndim)
-            grad_allpossT = grad_allposs.transpose(-2, -1)  # (ndim, natom)
+            grad_allpossT = torch.zeros_like(allposs).transpose(-2, -1)  # (ndim, natom)
 
             # get the integrals required for the derivatives
             sname_derivs = [int_nmgr.get_intgl_deriv_namemgr("ip", ib) for ib in (0, 1)]
@@ -169,8 +176,15 @@ class _Int2cFunction(torch.autograd.Function):
             # h = wrappers[0].ihelp.reduce_orbital_to_atom(grad_dpos_i)
             # print("h", h)
 
-            grad_allpossT.scatter_add_(dim=-1, index=ao_to_atom0, src=grad_dpos_i)
-            grad_allpossT.scatter_add_(dim=-1, index=ao_to_atom1, src=grad_dpos_j)
+            updated_grad_allpossT = torch.scatter_add(
+                grad_allpossT, dim=-1, index=ao_to_atom0, src=grad_dpos_i
+            )
+            updated_grad_allpossT = torch.scatter_add(
+                updated_grad_allpossT, dim=-1, index=ao_to_atom1, src=grad_dpos_j
+            )
+
+            # Transpose back to match the shape of grad_allposs
+            grad_allposs = updated_grad_allpossT.transpose(-2, -1)
 
         # gradient for the basis coefficients
         grad_allcoeffs: Tensor | None = None

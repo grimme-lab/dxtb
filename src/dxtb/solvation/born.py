@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Tensor
+from .._types import DD, Tensor
 from ..data import vdw_rad_d3
 from ..utils import cdist, real_atoms, real_pairs
 
@@ -97,9 +97,11 @@ def get_born_radii(
                 f"consistent with atomic numbers ({numbers.shape})."
             )
 
+    dd: DD = {"device": positions.device, "dtype": positions.dtype}
+    zero = torch.tensor(0.0, **dd)
+
     # mask for padding
     mask = real_atoms(numbers)
-    zero = positions.new_tensor(0.0)
 
     # get dielectric descreening integral I for Eq.6 (psi = I * scaled_rho)
     # NOTE: compute_psi actually only computes I not psi
@@ -147,14 +149,14 @@ def compute_psi(
     Tensor
         Dielectric descreening integral I.
     """
-
-    rho = rvdw * descreening
+    dd: DD = {"device": positions.device, "dtype": positions.dtype}
+    eps = torch.tensor(torch.finfo(positions.dtype).eps, **dd)
+    zero = torch.tensor(0.0, **dd)
 
     # mask for padding
     mask = real_pairs(numbers, True)
 
-    eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
-    zero = positions.new_tensor(0.0)
+    rho = rvdw * descreening
 
     distances = torch.where(
         mask,

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Tensor
+from .._types import DD, Tensor
 from ..constants import defaults
 
 
@@ -40,7 +40,7 @@ def get_alpha_beta_occupation(
     """
     if uhf is not None:
         if isinstance(uhf, (list, int)):
-            uhf = nel.new_tensor(uhf)
+            uhf = torch.tensor(uhf, device=nel.device)
         else:
             uhf = uhf.type(nel.dtype).to(nel.device)
 
@@ -155,6 +155,8 @@ def get_fermi_energy(
     tuple[Tensor, Tensor]
         Fermi energy and index of HOMO.
     """
+    zero = torch.tensor(0.0, device=emo.device, dtype=emo.dtype)
+
     occ = torch.ones_like(emo)
     occ_cs = occ.cumsum(-1) - nel.unsqueeze(-1)
 
@@ -178,7 +180,7 @@ def get_fermi_energy(
     e_fermi = torch.where(
         nel != 0,  # detect empty beta channel
         torch.gather(emo, -1, gap).mean(-1),
-        emo.new_tensor(0.0),  # no electrons yield Fermi energy of 0.0
+        zero,  # no electrons yield Fermi energy of 0.0
     )
 
     # NOTE:
@@ -249,11 +251,13 @@ def get_fermi_occupation(
     if kt is not None and torch.any(kt < 0.0):
         raise ValueError(f"Electronic Temperature must be positive or None ({kt}).")
 
-    eps = emo.new_tensor(torch.finfo(emo.dtype).eps)
-    zero = emo.new_tensor(0.0)
+    dd: DD = {"device": emo.device, "dtype": emo.dtype}
+    eps = torch.tensor(torch.finfo(emo.dtype).eps, **dd)
+    zero = torch.tensor(0.0, **dd)
 
     # no valence electrons
     if (torch.abs(nel.sum(-1)) < eps).any():
+        return torch.zeros_like(emo)
         raise ValueError("Number of valence electrons cannot be zero.")
 
     if thr is None:

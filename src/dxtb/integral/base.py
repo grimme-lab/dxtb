@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 
 import torch
 
-from .._types import Any, Literal, Tensor, TensorLike
+from .._types import Any, Tensor, TensorLike
 from ..basis import Basis, IndexHelper
 from ..param import Param
 
@@ -55,7 +55,7 @@ class IntDriver(TensorLike):
         self.ihelp = ihelp
         self.label = self.__class__.__name__
         self._basis = basis
-        self._positions = None
+        self._positions: Tensor | None = None
 
     @property
     def basis(self) -> Basis:
@@ -89,6 +89,12 @@ class IntDriver(TensorLike):
             return False
 
         return True
+
+    def invalidate(self) -> None:
+        """
+        Invalidate the integral driver to require new setup.
+        """
+        self._positions = None
 
     def is_setup(self) -> bool:
         return self._positions is not None

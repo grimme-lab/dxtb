@@ -17,9 +17,9 @@ METHOD_CHOICES = ["gfn1", "gfn1-xtb", "gfn2", "gfn2-xtb"]
 """List of possible choices for `METHOD`."""
 
 SPIN = None
-"""Total spin of the system."""
+"""Number of unpaired electrons of the system."""
 
-CHRG = None
+CHRG = 0
 """Total charge of the system."""
 
 EXCLUDE: list[str] = []

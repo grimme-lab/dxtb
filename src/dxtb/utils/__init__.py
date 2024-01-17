@@ -1,8 +1,6 @@
 """
 Collection of utility functions.
 """
-
-from .convert import *
 from .geometry import *
 from .grad import *
 from .misc import *

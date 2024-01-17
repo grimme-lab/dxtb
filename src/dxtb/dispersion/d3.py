@@ -40,8 +40,8 @@ class DispersionD3(Dispersion):
             rvdw: Tensor,
             r4r2: Tensor,
             counting_function: CountingFunction,
-            weighting_function: d3.WeightingFunction,
-            damping_function: d3.DampingFunction,
+            weighting_function: d3.typing.WeightingFunction,
+            damping_function: d3.typing.DampingFunction,
             device: torch.device | None = None,
             dtype: torch.dtype | None = None,
         ) -> None:
@@ -87,7 +87,7 @@ class DispersionD3(Dispersion):
         rcov = (
             kwargs.pop(
                 "rcov",
-                d3.data.covalent_rad_d3[numbers],
+                d3.data.COV_D3[numbers],
             )
             .type(self.dtype)
             .to(self.device)
@@ -95,7 +95,7 @@ class DispersionD3(Dispersion):
         rvdw = (
             kwargs.pop(
                 "rvdw",
-                d3.data.vdw_rad_d3[numbers.unsqueeze(-1), numbers.unsqueeze(-2)],
+                d3.data.VDW_D3[numbers.unsqueeze(-1), numbers.unsqueeze(-2)],
             )
             .type(self.dtype)
             .to(self.device)
@@ -103,7 +103,7 @@ class DispersionD3(Dispersion):
         r4r2 = (
             kwargs.pop(
                 "r4r2",
-                d3.data.sqrt_z_r4_over_r2[numbers],
+                d3.data.R4R2[numbers],
             )
             .type(self.dtype)
             .to(self.device)

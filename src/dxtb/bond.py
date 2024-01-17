@@ -51,7 +51,7 @@ from __future__ import annotations
 
 import torch
 
-from ._types import Any, CountingFunction, Tensor
+from ._types import DD, Any, CountingFunction, Tensor
 from .ncoord import erf_count
 from .utils import cdist, real_pairs
 
@@ -285,17 +285,18 @@ def guess_bond_order(
             [0.3262, 0.0000, 0.0000, 0.0000, 0.0000],
             [0.0000, 0.3347, 0.0000, 0.0000, 0.0000]])
     """
+    dd: DD = {"device": positions.device, "dtype": positions.dtype}
 
     mask = real_pairs(numbers, True)
     distances = torch.where(
         mask,
         cdist(positions, positions, p=2),
-        positions.new_tensor(torch.finfo(positions.dtype).eps),
+        torch.tensor(torch.finfo(positions.dtype).eps, **dd),
     )
 
     bond_length = guess_bond_length(numbers, cn)
     return torch.where(
         mask,
         counting_function(distances, bond_length, **kwargs),
-        positions.new_tensor(0.0),
+        torch.tensor(0.0, **dd),
     )

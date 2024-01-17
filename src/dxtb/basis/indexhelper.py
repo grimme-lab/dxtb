@@ -29,7 +29,10 @@ def _fill(index: Tensor, repeat: Tensor) -> Tensor:
     """
     Fill an index map using index offsets and number of repeats
     """
-    index_map = index.new_zeros(int(torch.sum(repeat).item()))
+    index_map = torch.zeros(
+        int(torch.sum(repeat).item()), device=index.device, dtype=index.dtype
+    )
+
     for idx, offset, count in zip(torch.arange(index.shape[-1]), index, repeat):
         index_map[offset : offset + count] = idx
     return index_map
@@ -40,20 +43,15 @@ def _expand(index: Tensor, repeat: Tensor) -> Tensor:
     Expand an index map using index offsets and number of repeats
     """
 
-    return index.new_tensor(
+    return torch.tensor(
         [
             idx
             for offset, count in zip(index, repeat)
             for idx in torch.arange(offset.item(), (offset + count).item(), 1)
-        ]
+        ],
+        device=index.device,
+        dtype=index.dtype,
     )
-
-
-import gc
-
-
-def _tensors_from_gc() -> list:
-    return [obj for obj in gc.get_objects() if isinstance(obj, torch.Tensor)]
 
 
 class IndexHelper(TensorLike):

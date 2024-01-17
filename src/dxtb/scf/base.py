@@ -8,7 +8,7 @@ from abc import abstractmethod
 
 import torch
 
-from .._types import Any, Slicers, Tensor, TypedDict
+from .._types import DD, Any, Slicers, Tensor, TypedDict
 from ..basis import IndexHelper
 from ..config import ConfigSCF
 from ..constants import K2AU, defaults, labels
@@ -253,7 +253,7 @@ class BaseSCF:
 
         self._data = self._Data(*args, **kwargs)
 
-        self.kt = self._data.ints.hcore.new_tensor(self.config.fermi.etemp * K2AU)
+        self.kt = torch.tensor(self.config.fermi.etemp * K2AU, **self.dd)
 
         self.interactions = interactions
         self.batched = self._data.numbers.ndim > 1
@@ -511,7 +511,9 @@ class BaseSCF:
             count = real.count_nonzero(dim=-1).unsqueeze(-1)
             g_atomic = torch.sum(g, dim=-1, keepdim=True) / count
 
-            return torch.where(real, g_atomic.expand(*real.shape), g.new_tensor(0.0))
+            return torch.where(
+                real, g_atomic.expand(*real.shape), torch.tensor(0.0, **self.dd)
+            )
 
         # partition to atoms via Mulliken population analysis
         if mode == labels.FERMI_PARTITION_ATOMIC:
@@ -562,9 +564,8 @@ class BaseSCF:
 
                 OutputHandler.write_row(
                     "SCF Iterations",
-                    self._data.iter,
+                    f"{self._data.iter:3}",
                     [
-                        f"{self._data.iter:3}",
                         f"{energy: .16E}",
                         f"{ediff: .6E}",
                         f"{pnorm: .6E}",
@@ -918,6 +919,13 @@ class BaseSCF:
         Returns the device of the tensors in this engine.
         """
         return self._data.ints.hcore.device
+
+    @property
+    def dd(self) -> DD:
+        """
+        Returns the device of the tensors in this engine.
+        """
+        return {"device": self.device, "dtype": self.dtype}
 
 
 class BaseXSCF(BaseSCF, EditableModule):

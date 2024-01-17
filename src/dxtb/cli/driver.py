@@ -171,11 +171,11 @@ class Driver:
             timer.start("grad")
             (g,) = torch.autograd.grad(result.total.sum(), positions)
             timer.stop("grad")
-        #####################################################
 
-        if args.grad and args.verbosity > 2:
-            print_grad(result.total_grad.clone(), numbers)
-            print("")
+            if args.verbosity >= 7:
+                print_grad(g.clone(), numbers)
+                print("")
+        #####################################################
 
         if args.ir is True:
             timer.start("IR")

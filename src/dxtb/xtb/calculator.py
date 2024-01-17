@@ -6,6 +6,7 @@ from __future__ import annotations
 import logging
 
 import torch
+from tad_mctc.convert import any_to_tensor
 
 from .. import integral as ints
 from .. import ncoord, properties, scf
@@ -204,6 +205,94 @@ class Calculator(TensorLike):
     opts: Config
     """Calculator configuration."""
 
+    class Cache(TensorLike):
+        """
+        Cache for Calculator that extends TensorLike.
+
+        This class provides caching functionality for storing multiple calculation results.
+        """
+
+        __slots__ = ["energy", "forces"]
+
+        def __init__(
+            self,
+            device: torch.device | None = None,
+            dtype: torch.dtype | None = None,
+        ) -> None:
+            """
+            Initialize the Cache class with optional device and dtype settings.
+
+            Parameters
+            ----------
+            device : torch.device, optional
+                The device on which the tensors are stored.
+            dtype : torch.dtype, optional
+                The data type of the tensors.
+            """
+            super().__init__(device=device, dtype=dtype)
+            self.energy = None
+            self.forces = None
+
+        def __getitem__(self, key: str) -> Tensor:
+            """
+            Get an item from the cache.
+
+            Parameters
+            ----------
+            key : str
+                The key of the item to retrieve.
+
+            Returns
+            -------
+            Tensor or None
+                The value associated with the key, if it exists.
+            """
+            if key in self.__slots__:
+                return getattr(self, key)
+            raise KeyError(f"Key '{key}' not found in Cache.")
+
+        def __setitem__(self, key: str, value: Tensor) -> None:
+            """
+            Set an item in the cache.
+
+            Parameters
+            ----------
+            key : str
+                The key of the item to set.
+            value : Tensor
+                The value to be associated with the key.
+            """
+            if key in self.__slots__:
+                setattr(self, key, value)
+            else:
+                raise KeyError(f"Key '{key}' cannot be set in Cache.")
+
+        def __contains__(self, key: str) -> bool:
+            """
+            Check if a key is in the cache.
+
+            Parameters
+            ----------
+            key : str
+                The key to check in the cache.
+
+            Returns
+            -------
+            bool
+                True if the key is in the cache, False otherwise
+            """
+            return key in self.__slots__ and getattr(self, key) is not None
+
+        def clear(self, key: str | None = None) -> None:
+            """
+            Clear the cached values.
+            """
+            if key is not None:
+                setattr(self, key, None)
+            else:
+                for key in self.__slots__:
+                    setattr(self, key, None)
+
     def __init__(
         self,
         numbers: Tensor,
@@ -252,6 +341,7 @@ class Calculator(TensorLike):
 
         super().__init__(device, dtype)
         dd = {"device": self.device, "dtype": self.dtype}
+        self.cache = self.Cache(**dd)
 
         # setup calculator options
         opts = opts if opts is not None else {}
@@ -328,8 +418,8 @@ class Calculator(TensorLike):
         self,
         numbers: Tensor,
         positions: Tensor,
-        chrg: Tensor,
-        spin: int | Tensor | None = defaults.SPIN,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
         grad: bool = False,
     ) -> Result:
         """
@@ -341,9 +431,11 @@ class Calculator(TensorLike):
             Atomic numbers for all atoms in the system.
         positions : Tensor
             Cartesian coordinates of all atoms in the system (nat, 3).
-        chrg : Tensor
-            Total charge.
-        grad : bool
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to 0.
+        grad : bool, optional
             Flag for computing nuclear gradient w.r.t. the energy.
 
         Returns
@@ -351,7 +443,23 @@ class Calculator(TensorLike):
         Result
             Results container.
         """
+        chrg = any_to_tensor(chrg, **self.dd)
+        if spin is not None:
+            spin = any_to_tensor(spin, **self.dd)
+
         result = Result(positions, device=self.device, dtype=self.dtype)
+
+        # CLASSICAL CONTRIBUTIONS
+        if len(self.classicals.classicals) > 0:
+            ccaches = self.classicals.get_cache(numbers, self.ihelp)
+            cenergies = self.classicals.get_energy(positions, ccaches)
+            result.cenergies = cenergies
+            result.total += torch.stack(list(cenergies.values())).sum(0)
+
+            if grad is True:
+                cgradients = self.classicals.get_gradient(cenergies, positions)
+                result.cgradients = cgradients
+                result.total_grad += torch.stack(list(cgradients.values())).sum(0)
 
         # SELF-CONSISTENT FIELD PROCEDURE
         if not any(x in ["all", "scf"] for x in self.opts.exclude):
@@ -380,7 +488,7 @@ class Calculator(TensorLike):
 
             # Core Hamiltonian integral (requires overlap internally!)
             timer.start("h0", "Core Hamiltonian")
-            rcov = cov_rad_d3[numbers].to(self.device)
+            rcov = cov_rad_d3.to(self.device)[numbers]
             cn = ncoord.get_coordination_number(
                 numbers, positions, ncoord.exp_count, rcov
             )
@@ -397,7 +505,8 @@ class Calculator(TensorLike):
             # get alpha and beta electrons and occupation
             nab = filling.get_alpha_beta_occupation(nel, spin)
             occupation = filling.get_aufbau_occupation(
-                hcore.new_tensor(hcore.shape[-1], dtype=torch.int64), nab
+                torch.tensor(hcore.shape[-1], device=self.device, dtype=torch.int64),
+                nab,
             )
 
             # get caches of all interactions
@@ -472,33 +581,106 @@ class Calculator(TensorLike):
                 result.total_grad += result.hamiltonian_grad
                 timer.stop("hgrad")
 
-        # CLASSICAL CONTRIBUTIONS
-        if len(self.classicals.classicals) > 0:
-            ccaches = self.classicals.get_cache(numbers, self.ihelp)
-            cenergies = self.classicals.get_energy(positions, ccaches)
-            result.cenergies = cenergies
-            result.total += torch.stack(list(cenergies.values())).sum(0)
-
-            if grad is True:
-                cgradients = self.classicals.get_gradient(cenergies, positions)
-                result.cgradients = cgradients
-                result.total_grad += torch.stack(list(cgradients.values())).sum(0)
-
         # TIMERS AND PRINTOUT
         result.integrals = self.integrals
 
         return result
 
-    def hessian(
-        self, numbers: Tensor, positions: Tensor, chrg: Tensor, shape: str = "matrix"
+    def energy(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        use_cache: bool = False,
     ) -> Tensor:
-        return self.hessian_numerical(numbers, positions, chrg, shape)
+        if use_cache:
+            if "energy" in self.cache:
+                return self.cache["energy"].sum(-1)
 
-    def hessian_numerical(
-        self, numbers: Tensor, positions: Tensor, chrg: Tensor, shape: str = "matrix"
+        result = self.singlepoint(numbers, positions, chrg, spin).total
+        self.cache["energy"] = result
+        return result.sum(-1)
+
+    def forces_numerical(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+    ) -> Tensor:
+        # important: detach for gradient
+        pos = positions.detach().clone()
+
+        # turn off printing in numerical calc
+        tmp = OutputHandler.verbosity
+        OutputHandler.verbosity = 0
+
+        jac = torch.zeros(pos.shape, **self.dd)
+
+        logger.debug(f"Numerical Forces: Starting build ({jac.shape})")
+
+        count = 1
+        nsteps = 3 * numbers.shape[-1]
+        step = 1.0e-5
+        for i in range(numbers.shape[-1]):
+            for j in range(3):
+                pos[..., i, j] += step
+                gr = self.energy(numbers, pos, chrg, spin)
+
+                pos[..., i, j] -= 2 * step
+                gl = self.energy(numbers, pos, chrg, spin)
+
+                pos[..., i, j] += step
+                jac[..., i, j] = 0.5 * (gr - gl) / step
+
+                logger.debug(f"Numerical Forces: step {count}/{nsteps}")
+                count += 1
+
+        logger.debug("Numerical Forces: All finished.")
+
+        OutputHandler.verbosity = tmp
+        return -jac
+
+    def forces(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int | None = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+    ) -> Tensor:
+        if positions.requires_grad is False:
+            raise RuntimeError("Position tensor needs `requires_grad=True`.")
+
+        logger.debug(f"Autodiff Forces: Starting Calculation.")
+
+        # pylint: disable=import-outside-toplevel
+        from tad_mctc.autograd import jacrev
+
+        # jacrev requires a scalar from `self.energy`!
+        jac_func = jacrev(self.energy, argnums=1)
+        jac = jac_func(numbers, positions, chrg, spin)
+        assert isinstance(jac, Tensor)
+
+        logger.debug("Autodiff Forces: All finished.")
+        return -jac
+
+    def hessian(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int | None = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        shape: str = "matrix",
     ) -> Tensor:
         """
-        Numerical Hessian
+        Calculation of the nuclear (autodiff) Hessian with functorch.
+
+        Note
+        ----
+        The `jacrev` function of `functorch` requires scalars for the expected
+        behavior, i.e., the nuclear Hessian only acquires the expected shape of
+        `(nat, 3, nat, 3)` if the energy is provided as a scalar value.
 
         Parameters
         ----------
@@ -506,8 +688,86 @@ class Calculator(TensorLike):
             Atomic numbers for all atoms in the system.
         positions : Tensor
             Cartesian coordinates of all atoms in the system (nat, 3).
-        chrg : Tensor
-            Total charge.
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to 0.
+        shape : str, optional
+            Output shape of Hessian. Defaults to "matrix".
+
+        Returns
+        -------
+        Tensor
+            Hessian matrix.
+
+        Raises
+        ------
+        RuntimeError
+            Positions tensor does not have `requires_grad=True`.
+        """
+        if positions.requires_grad is False:
+            raise RuntimeError("Position tensor needs `requires_grad=True`.")
+
+        logger.debug(f"Autodiff Hessian: Starting Calculation.")
+
+        # pylint: disable=import-outside-toplevel
+        from tad_mctc.autograd import jacrev
+
+        # jacrev requires a scalar from `self.energy`!
+        hess_func = jacrev(jacrev(self.energy, argnums=1), argnums=1)
+        hess = hess_func(numbers, positions, chrg, spin)
+        assert isinstance(hess, Tensor)
+
+        # reshape (nb, nat, 3, nat, 3) to (nb, nat*3, nat*3)
+        if shape == "matrix":
+            s = [*numbers.shape[:-1], *2 * [3 * numbers.shape[-1]]]
+            hess = hess.reshape(*s)
+
+        logger.debug("Autodiff Hessian: All finished.")
+        return hess
+
+    def hessian2(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int | None = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        shape: str = "matrix",
+    ) -> Tensor:
+        if positions.requires_grad is False:
+            raise RuntimeError("Position tensor needs `requires_grad=True`.")
+
+        logger.debug(f"Autodiff Hessian: Starting Calculation.")
+
+        # pylint: disable=import-outside-toplevel
+        from tad_mctc.autograd import hessian
+
+        # jacrev requires a scalar from `self.energy`!
+        hess = hessian(self.energy, (numbers, positions, chrg, spin), argnums=1)
+        assert isinstance(hess, Tensor)
+
+        # reshape (nb, nat, 3, nat, 3) to (nb, nat*3, nat*3)
+        if shape == "matrix":
+            s = [*numbers.shape[:-1], *2 * [3 * numbers.shape[-1]]]
+            hess = hess.reshape(*s)
+
+        logger.debug("Autodiff Hessian: All finished.")
+        return hess
+
+    def hessian_numerical(
+        self, numbers: Tensor, positions: Tensor, chrg: Tensor, shape: str = "matrix"
+    ) -> Tensor:
+        """
+        Numerical Hessian.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system.
+        positions : Tensor
+            Cartesian coordinates of all atoms in the system (nat, 3).
+        chrg : Tensor | float | int | str | None
+            Total charge. Defaults to `None`
         shape : str, optional
             Output shape of Hessian. Defaults to "matrix".
 
@@ -815,13 +1075,13 @@ class Calculator(TensorLike):
         # TODO: Figure out unit
         from ..constants import units
 
-        print()
-        print(ir_ints * 1378999.7790799031)
+        # print()
+        # print(ir_ints * 1378999.7790799031)
 
         logger.debug("IR spectrum: All finished.")
 
         OutputHandler.verbosity = tmp
-        return freqs * units.AU2RCM, ir_ints
+        return freqs * units.AU2RCM, ir_ints * 1378999.7790799031
 
     def raman_spectrum(
         self, numbers: Tensor, positions: Tensor, chrg: Tensor

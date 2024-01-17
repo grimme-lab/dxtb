@@ -169,7 +169,7 @@ class Basis(TensorLike):
             orbs = torch.where(
                 real_pairs(sh2ush),
                 orbs + sh2orb.unsqueeze(-1) * offset,
-                orbs.new_tensor(0),
+                torch.tensor(0, device=self.ihelp.device),
             )
         else:
             orbs += sh2orb.unsqueeze(-1) * offset
@@ -186,7 +186,7 @@ class Basis(TensorLike):
                     f"Shape of mask ({mask.shape}) and orbitals ({orbs.shape}) "
                     "does not match."
                 )
-            orbs = torch.where(mask, orbs, orbs.new_tensor(0))
+            orbs = torch.where(mask, orbs, torch.tensor(0, device=orbs.device))
 
         # fill remaining triangular matrix with dummy values
         # (must be negative to not interfere with the unique values)
@@ -449,7 +449,7 @@ class Basis(TensorLike):
                 idx = self.ihelp.shells_to_ushell[s]
 
                 cgto = CGTOBasis(
-                    angmom=self.ihelp.angular.tolist()[s],  # int!
+                    angmom=int(self.ihelp.angular[s]),  # int!
                     alphas=alphas[idx],
                     coeffs=coeffs[idx],
                     normalized=True,

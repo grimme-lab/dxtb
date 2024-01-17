@@ -253,7 +253,7 @@ class ES2(Interaction):
         # only calculate mask once and save it for backward
         mask = real_pairs(numbers, diagonal=True)
 
-        mat = CoulombMatrixAG.apply(
+        mat = coulomb_matrix_shell(
             mask,
             positions,
             ihelp,
@@ -261,8 +261,17 @@ class ES2(Interaction):
             self.lhubbard,
             self.gexp,
             self.average,
-            self.shell_resolved,
         )
+        # mat = CoulombMatrixAG(
+        #     mask,
+        #     positions,
+        #     ihelp,
+        #     self.hubbard,
+        #     self.lhubbard,
+        #     self.gexp,
+        #     self.average,
+        #     self.shell_resolved,
+        # )
         assert mat is not None
 
         return mat
@@ -486,19 +495,20 @@ class ES2(Interaction):
         if self.shell_resolved:
             return torch.zeros_like(positions)
 
+        zero = torch.tensor(0.0, device=positions.device, dtype=positions.dtype)
         mask = real_pairs(numbers, diagonal=True)
 
         distances = torch.where(
             mask,
             cdist(positions, positions, p=2),
-            positions.new_tensor(0.0),
+            zero,
         )
 
         # (n_batch, atoms_i, atoms_j, 3)
         rij = torch.where(
             mask.unsqueeze(-1),
             positions.unsqueeze(-2) - positions.unsqueeze(-3),
-            positions.new_tensor(0.0),
+            zero,
         )
 
         # (n_batch, atoms_i) -> (n_batch, atoms_i, 1)
@@ -528,6 +538,10 @@ class ES2(Interaction):
         if not self.shell_resolved:
             return torch.zeros_like(positions)
 
+        dd: DD = {"device": positions.device, "dtype": positions.dtype}
+        zero = torch.tensor(0.0, **dd)
+        eps = torch.tensor(torch.finfo(positions.dtype).eps, **dd)
+
         mask = real_pairs(numbers, diagonal=True)
 
         # all distances to the power of "gexp" (R^2_AB from Eq.26)
@@ -535,7 +549,7 @@ class ES2(Interaction):
             torch.where(
                 mask,
                 cdist(positions, positions, p=2),
-                positions.new_tensor(torch.finfo(positions.dtype).eps),
+                eps,
             ),
             (-1, -2),
         )
@@ -546,7 +560,7 @@ class ES2(Interaction):
         rij = torch.where(
             mask.unsqueeze(-1),
             positions.unsqueeze(-2) - positions.unsqueeze(-3),
-            positions.new_tensor(0.0),
+            zero,
         )
 
         # (n_batch, shells_i) -> (n_batch, shells_i, 1)
@@ -600,8 +614,10 @@ def coulomb_matrix_atom(
     Tensor
         Coulomb matrix.
     """
-    eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
-    zero = positions.new_tensor(0.0)
+    dd: DD = {"device": positions.device, "dtype": positions.dtype}
+
+    eps = torch.tensor(torch.finfo(positions.dtype).eps, **dd)
+    zero = torch.tensor(0.0, **dd)
 
     h = ihelp.spread_uspecies_to_atom(hubbard)
 
@@ -767,13 +783,13 @@ def coulomb_matrix_shell_gradient(
         Derivative of shell-resolved Coulomb matrix. The derivative has the
         following shape: `(n_batch, shell_i, shell_j, 3)`.
     """
+    dd: DD = {"device": positions.device, "dtype": positions.dtype}
+    zero = torch.tensor(0.0, **dd)
+    eps = torch.tensor(torch.finfo(positions.dtype).eps, **dd)
+
     # all distances to the power of "gexp" (R^2_AB from Eq.26)
     distances = ihelp.spread_atom_to_shell(
-        torch.where(
-            mask,
-            cdist(positions, positions, p=2),
-            positions.new_tensor(torch.finfo(positions.dtype).eps),
-        ),
+        torch.where(mask, cdist(positions, positions, p=2), eps),
         (-1, -2),
     )
 
@@ -783,7 +799,7 @@ def coulomb_matrix_shell_gradient(
     rij = torch.where(
         mask.unsqueeze(-1),
         positions.unsqueeze(-2) - positions.unsqueeze(-3),
-        positions.new_tensor(0.0),
+        zero,
     )
 
     # (n_batch, shells_i, shells_j) * (n_batch, shells_i, 1)

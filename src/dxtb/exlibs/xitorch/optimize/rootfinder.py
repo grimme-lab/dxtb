@@ -321,7 +321,7 @@ def minimize(
 class _RootFinder(torch.autograd.Function):
     @staticmethod
     def forward(
-        ctx, fcn, y0, fwd_fcn, is_opt_method, options, bck_options, nparams, *allparams
+        fcn, y0, fwd_fcn, is_opt_method, options, bck_options, nparams, *allparams
     ):
         # fcn: a function that returns what has to be 0 (will be used in the
         #      backward, not used in the forward). For minimization, it is
@@ -333,7 +333,6 @@ class _RootFinder(torch.autograd.Function):
 
         # set default options
         config = options
-        ctx.bck_options = bck_options
 
         params = allparams[:nparams]
         objparams = allparams[nparams:]
@@ -345,6 +344,14 @@ class _RootFinder(torch.autograd.Function):
             method_fcn = get_method(name, methods, method)
             y = method_fcn(fwd_fcn, y0, params, **config)
 
+        return y
+
+    @staticmethod
+    def setup_context(ctx, inputs: tuple, output: torch.Tensor):
+        fcn, _, _, is_opt_method, _, bck_options, nparams, *allparams = inputs
+        y = output
+
+        ctx.bck_options = bck_options
         ctx.fcn = fcn
         ctx.is_opt_method = is_opt_method
 
@@ -353,8 +360,6 @@ class _RootFinder(torch.autograd.Function):
         ctx.param_sep = TensorNonTensorSeparator(allparams)
         tensor_params = ctx.param_sep.get_tensor_params()
         ctx.save_for_backward(y, *tensor_params)
-
-        return y
 
     @staticmethod
     def backward(ctx, grad_yout):

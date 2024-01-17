@@ -212,7 +212,7 @@ class Repulsion(Classical, TensorLike):
         Tensor
             (Atom-resolved) repulsion energy.
         """
-        e = RepulsionAG.apply(
+        e = repulsion_energy(
             positions,
             cache.mask,
             cache.arep,

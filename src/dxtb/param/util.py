@@ -194,6 +194,7 @@ def get_elem_valence(
         Valence of all elements.
     """
     l = []
+    _l = []
     key = "shells"
     label2angular = {
         "s": 0,
@@ -218,10 +219,11 @@ def get_elem_valence(
             shells = [pad_val]
 
         # https://stackoverflow.com/questions/62300404/how-can-i-zero-out-duplicate-values-in-each-row-of-a-pytorch-tensor
-        r = torch.tensor(shells, dtype=torch.long)
-        tmp = torch.ones(r.shape, dtype=torch.bool)
+        r = torch.tensor(shells, dtype=torch.long, device=device)
+        tmp = torch.ones(r.shape, dtype=torch.bool, device=device)
+
         if r.size(0) < 2:
-            vals = tmp.tolist()
+            vals = tmp
         else:
             # sorting the rows so that duplicate values appear together
             # e.g. [1, 2, 3, 3, 3, 4, 4]
@@ -236,12 +238,12 @@ def get_elem_valence(
 
             # re-organizing the rows following original order
             # e.g. [1, 2, 3, 4, 0, 0, 0]
-            vals = torch.gather(tmp, 0, idxs).tolist()
+            vals = torch.gather(tmp, 0, idxs)
 
         for val in vals:
             l.append(val)
 
-    return torch.tensor(l, device=device, dtype=dtype)
+    return torch.stack(l)
 
 
 def get_elem_pqn(

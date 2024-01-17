@@ -116,7 +116,7 @@ def pack(
 
     # Identify the maximum size, if one was not specified.
     if size is None:
-        size = torch.tensor([i.shape for i in tensors]).max(0).values.tolist()
+        size = [x for x in torch.tensor([i.shape for i in tensors]).max(0).values]
 
     # Tensor to pack into, filled with padding value.
     padded = torch.full((count, *size), value, dtype=dtype, device=device)

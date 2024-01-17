@@ -95,7 +95,9 @@ def get_subblock_start(
     # the unique map, and hence, introduces some redundancy for blocks that
     # are not on the diagonal.
     if uplo != "n":
-        if (torch.where(umap == i, umap, umap.new_tensor(0))).trace() > 0.0:
+        if (
+            torch.where(umap == i, umap, torch.tensor(0, device=umap.device))
+        ).trace() > 0.0:
             umap = torch.where(umap == -1, umap.mT, umap)
 
     pairs = get_pairs(umap, i)

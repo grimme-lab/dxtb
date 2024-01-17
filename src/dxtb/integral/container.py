@@ -114,6 +114,10 @@ class Integrals(IntegralContainer):
         self.driver.setup(positions, **kwargs)
         logger.debug("Integral Driver: Finished setup.")
 
+    def invalidate_driver(self) -> None:
+        """Invalidate the integral driver to require new setup."""
+        self.driver.invalidate()
+
     # Core Hamiltonian
 
     @property

@@ -34,9 +34,10 @@ except ImportError as e:  # pragma: no cover
 
 import warnings
 
+from tad_mctc.convert import tensor_to_numpy
+
 from ..._types import Tensor
 from ...constants import PSE
-from ...utils import tensor_to_numpy
 from ..molecule import Mol
 
 # Turn off PySCF's normalization since dxtb's normalization is different,

@@ -499,7 +499,7 @@ class GFN1Hamiltonian(BaseHamiltonian):
         rij = torch.where(
             mask_atom.unsqueeze(-1),
             positions.unsqueeze(-2) - positions.unsqueeze(-3),
-            positions.new_tensor(0.0),
+            zero,
         )
 
         # (n_batch, shells_i, shells_j) -> (n_batch, atoms_i, atoms_j)

@@ -51,7 +51,7 @@ def _get_tensor_memory(
             continue
 
         # check if it has been visited
-        storage = tensor.storage()
+        storage = tensor.untyped_storage()
         data_ptr = storage.data_ptr()  # type: ignore
         if data_ptr in visited_data:
             continue

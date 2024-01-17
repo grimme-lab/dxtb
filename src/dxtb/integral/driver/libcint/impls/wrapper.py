@@ -18,6 +18,8 @@ try:
 except ImportError:
     pass
 
+from tad_mctc.convert import tensor_to_numpy
+
 from ....._types import Iterator, Tensor
 from .....basis import AtomCGTOBasis, CGTOBasis, IndexHelper
 from .utils import NDIM, int2ctypes, memoize_method, np2ctypes
@@ -77,7 +79,7 @@ class LibcintWrapper:
             atomz = atombasis.atomz
             #                charge    ptr_coord, nucl model (unused for standard nucl model)
             atm_list.append([int(atomz), ptr_env, 1, ptr_env + NDIM, 0, 0])
-            env_list.extend(atombasis.pos.detach().tolist())
+            env_list.extend([float(x) for x in atombasis.pos.detach()])
             env_list.append(0.0)
             ptr_env += NDIM + 1
 
@@ -117,8 +119,8 @@ class LibcintWrapper:
                         0,
                     ]
                 )
-                env_list.extend(shell.alphas.detach().tolist())
-                env_list.extend(shell.coeffs.detach().tolist())
+                env_list.extend([float(x) for x in shell.alphas.detach()])
+                env_list.extend([float(x) for x in shell.coeffs.detach()])
                 ptr_env += 2 * ngauss
 
                 # add the alphas and coeffs to the parameters list
@@ -149,16 +151,16 @@ class LibcintWrapper:
         self._ngauss_at_shell_list = ngauss_at_shell
 
         if spherical is True:
-            shell_to_aoloc = ihelp.orbital_index.tolist()
-            shell_to_aoloc.append(torch.cumsum(ihelp.orbitals_per_shell, -1)[-1])
-            self._shell_to_aoloc = np.array(shell_to_aoloc, dtype=np.int32)
+            cs = torch.cumsum(ihelp.orbitals_per_shell, -1)[-1].unsqueeze(-1)
+            shell_to_aoloc = torch.cat([ihelp.orbital_index, cs])
+            self._shell_to_aoloc = tensor_to_numpy(shell_to_aoloc, dtype=np.int32)
 
             self._ao_to_shell = ihelp.orbitals_to_shell
             self._ao_to_atom = ihelp.orbitals_to_atom
         else:
-            shell_to_aoloc = ihelp.orbital_index_cart.tolist()
-            shell_to_aoloc.append(torch.cumsum(ihelp.orbitals_per_shell_cart, -1)[-1])
-            self._shell_to_aoloc = np.array(shell_to_aoloc, dtype=np.int32)
+            cs = torch.cumsum(ihelp.orbitals_per_shell_cart, -1)[-1].unsqueeze(-1)
+            shell_to_aoloc = torch.cat([ihelp.orbital_index_cart, cs])
+            self._shell_to_aoloc = tensor_to_numpy(shell_to_aoloc, dtype=np.int32)
 
             self._ao_to_shell = ihelp.orbitals_to_shell_cart
             self._ao_to_atom = ihelp.orbitals_to_atom_cart

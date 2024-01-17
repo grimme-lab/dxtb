@@ -52,11 +52,17 @@ def exacteig(
 
 # temporary solution to https://github.com/pytorch/pytorch/issues/47599
 class degen_symeig(torch.autograd.Function):
+    generate_vmap_rule = True
+
     @staticmethod
-    def forward(ctx, A):
+    def forward(A):
         eival, eivec = torch.linalg.eigh(A)
-        ctx.save_for_backward(eival, eivec)
         return eival, eivec
+
+    @staticmethod
+    def setup_context(ctx, inputs: tuple, outputs: tuple[torch.Tensor, torch.Tensor]):
+        eival, eivec = outputs
+        ctx.save_for_backward(eival, eivec)
 
     @staticmethod
     def backward(ctx, grad_eival, grad_eivec):

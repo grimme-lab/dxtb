@@ -170,13 +170,15 @@ class GeneralizedBorn(Interaction):
         super().__init__(device, dtype)
 
         self.alpbet = (
-            alpha / dielectric_constant if alpb else dielectric_constant.new_tensor(0.0)
+            alpha / dielectric_constant
+            if alpb
+            else torch.tensor(0.0, device=device, dtype=dtype)
         )
         self.keps = (1 / dielectric_constant - 1) / (1 + self.alpbet)
         self.kernel = kernel
 
         if "rvdw" not in kwargs:
-            kwargs["rvdw"] = vdw_rad_d3[numbers].type(self.dtype)
+            kwargs["rvdw"] = vdw_rad_d3.to(device)[numbers].type(self.dtype)
         self.born_kwargs = kwargs
 
     class Cache(Interaction.Cache, TensorLike):
@@ -226,7 +228,11 @@ class GeneralizedBorn(Interaction):
         Hence, the `**_` in the argument list is necessary to absorb it.
         """
         born = get_born_radii(numbers, positions, **self.born_kwargs)
-        eps = positions.new_tensor(torch.finfo(positions.dtype).eps)
+        eps = torch.tensor(
+            torch.finfo(positions.dtype).eps,
+            device=positions.device,
+            dtype=positions.dtype,
+        )
 
         mask = real_pairs(numbers)
 
