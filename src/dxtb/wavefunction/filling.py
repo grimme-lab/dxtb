@@ -11,7 +11,7 @@ from ..constants import defaults
 
 
 def get_alpha_beta_occupation(
-    nel: Tensor, uhf: Tensor | int | list[int] | None = None
+    nel: Tensor, uhf: Tensor | float | int | list[int] | None = None
 ) -> Tensor:
     """
     Generate alpha and beta electrons from total number of electrons.
@@ -39,7 +39,7 @@ def get_alpha_beta_occupation(
     numerical stability, i.e., non-integer electrons are not supported.
     """
     if uhf is not None:
-        if isinstance(uhf, (list, int)):
+        if isinstance(uhf, (list, int, float)):
             uhf = torch.tensor(uhf, device=nel.device)
         else:
             uhf = uhf.type(nel.dtype).to(nel.device)

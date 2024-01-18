@@ -30,32 +30,37 @@ opts = {
 
 print(dxtb.io.get_short_version())
 
-calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, opts=opts, **dd)
-dxtb.timer.start("Hessian")
+# dipole moment requires electric field
+field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)
+ef = dxtb.external.new_efield(field_vector)
+
+calc = dxtb.Calculator(
+    numbers,
+    dxtb.GFN1_XTB,
+    opts=opts,
+    interaction=[ef],
+    **dd,
+)
+
+
+dxtb.timer.start("IR")
 pos = positions.clone().requires_grad_(True)
-hess = calc.hessian(numbers, pos, charge)
-dxtb.timer.stop("Hessian")
+freqs, ints = calc.ir(numbers, pos, charge)
+dxtb.timer.stop("IR")
+
+print(freqs.shape, ints.shape)
 
 dxtb.timer.print_times()
 dxtb.timer.reset()
 
-
-# calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, opts=opts, **dd)
-# dxtb.timer.start("Hessian2")
-# pos = positions.clone().requires_grad_(True)
-# hess2 = calc.hessian2(numbers, pos, charge)
-# dxtb.timer.stop("Hessian2")
-
-# dxtb.timer.print_times()
-# dxtb.timer.reset()
+print(freqs)
 
 
-# dxtb.timer.start("Num Hessian")
-# numhess = calc.hessian_numerical(numbers, positions, charge)
-# dxtb.timer.stop("Num Hessian")
+dxtb.timer.start("Num IR")
+num_freqs, num_ints = calc.ir_numerical(numbers, positions, charge)
+dxtb.timer.stop("Num IR")
 
-# s = [*numbers.shape[:-1], *2 * [3 * numbers.shape[-1]]]
-# numhess = numhess.reshape(*s)
-# print(numhess - hess)
+print(num_freqs.shape, num_ints.shape)
+print(num_freqs - freqs)
 # print(numhess - hess2)
 # print(hess - hess2)

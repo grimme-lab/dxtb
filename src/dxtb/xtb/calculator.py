@@ -669,7 +669,7 @@ class Calculator(TensorLike):
         self,
         numbers: Tensor,
         positions: Tensor,
-        chrg: Tensor | float | int | None = defaults.CHRG,
+        chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         shape: str = "matrix",
     ) -> Tensor:
@@ -691,7 +691,7 @@ class Calculator(TensorLike):
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to 0.
+            Number of unpaired electrons. Defaults to `None`.
         shape : str, optional
             Output shape of Hessian. Defaults to "matrix".
 
@@ -730,7 +730,7 @@ class Calculator(TensorLike):
         self,
         numbers: Tensor,
         positions: Tensor,
-        chrg: Tensor | float | int | None = defaults.CHRG,
+        chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         shape: str = "matrix",
     ) -> Tensor:
@@ -755,7 +755,12 @@ class Calculator(TensorLike):
         return hess
 
     def hessian_numerical(
-        self, numbers: Tensor, positions: Tensor, chrg: Tensor, shape: str = "matrix"
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        shape: str = "matrix",
     ) -> Tensor:
         """
         Numerical Hessian.
@@ -781,7 +786,7 @@ class Calculator(TensorLike):
 
         def _gradfcn(pos: Tensor) -> Tensor:
             pos.requires_grad_(True)
-            result = self.singlepoint(numbers, pos, chrg, grad=True)
+            result = self.singlepoint(numbers, pos, chrg, spin, grad=True)
             pos.detach_()
             return result.total_grad.detach()
 
@@ -830,16 +835,28 @@ class Calculator(TensorLike):
         return hess
 
     def vibration(
-        self, numbers: Tensor, positions: Tensor, chrg: Tensor, project: bool = True
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        project: bool = True,
     ) -> tuple[Tensor, Tensor]:
-        hess = self.hessian_numerical(numbers, positions, chrg, shape="matrix")
+        hess = self.hessian_numerical(
+            numbers,
+            positions,
+            chrg,
+            spin,
+            shape="matrix",
+        )
         return properties.frequencies(numbers, positions, hess, project=project)
 
     def dipole(
         self,
         numbers: Tensor,
         positions: Tensor,
-        chrg: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
         use_autograd: bool = False,
     ) -> Tensor:
         # check if electric field is given in interactions
@@ -850,7 +867,7 @@ class Calculator(TensorLike):
             )
 
         # run single point and check if integral is populated
-        result = self.singlepoint(numbers, positions, chrg)
+        result = self.singlepoint(numbers, positions, chrg, spin)
         dipint = self.integrals.dipole
         if dipint is None:
             raise RuntimeError(
@@ -1003,26 +1020,55 @@ class Calculator(TensorLike):
         return alpha
 
     def ir_spectrum(
-        self, numbers: Tensor, positions: Tensor, chrg: Tensor
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
     ) -> tuple[Tensor, Tensor]:
         if positions.requires_grad is False:
             raise RuntimeError("Position tensor needs `requires_grad=True`.")
 
         # dipole moment with gradient tracking
-        with torch.enable_grad():
-            mu = self.dipole(numbers, positions, chrg)
+        mu = self.dipole(numbers, positions, chrg, spin)
 
         # calculate vibrational frequencies and normal modes
         freqs, modes = self.vibration(numbers, positions, chrg, project=True)
 
         return properties.ir(mu, positions, freqs, modes)
 
-    def ir_spectrum_num(self, numbers: Tensor, positions: Tensor, chrg: Tensor):
-        logger.debug("IR spectrum: Start.")
+    def dipole_deriv(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+    ) -> Tensor:
+        if positions.requires_grad is False:
+            raise RuntimeError("Position tensor needs `requires_grad=True`.")
 
-        # run vibrational analysis first
-        hess = self.hessian_numerical(numbers, positions, chrg, shape="matrix")
-        freqs, modes = properties.frequencies(numbers, positions, hess)
+        # pylint: disable=import-outside-toplevel
+        from tad_mctc.autograd import jacrev
+
+        # derivative of dipole moment w.r.t. positions (3, nat, 3)
+        # dmu_dr = jacrev(self.dipole, argnums=1)(numbers, positions, chrg, spin)
+        mu = self.dipole(numbers, positions, chrg, spin)
+        dmu_dr = _jac(mu, positions).reshape((3, *positions.shape[-2:]))
+        assert isinstance(dmu_dr, Tensor)
+
+        return dmu_dr
+
+    def dipole_deriv_numerical(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        step_size: int | float = 1.0e-5,
+    ) -> Tensor:
+        # turn off printing in numerical calcs
+        OutputHandler.temporary_disable_on()
+        logger.debug("Dipole derivative: Start.")
 
         # pylint: disable=import-outside-toplevel
         import gc
@@ -1030,57 +1076,98 @@ class Calculator(TensorLike):
         # important: use new/separate position tensor
         pos = positions.detach().clone()
 
-        # turn off printing in numerical hessian
-        tmp = OutputHandler.verbosity
-        OutputHandler.verbosity = 0
-
-        dmu_dr = torch.zeros(
-            (3, *positions.shape[-2:]),
-            **{"device": positions.device, "dtype": positions.dtype},
-        )
+        dmu_dr = torch.zeros((3, *positions.shape[-2:]), **self.dd)  # (3, n, 3)
 
         logger.debug(
-            "IR spectrum: Start building numerical dipole derivative: "
-            f"(size {dmu_dr.shape})."
+            "Dipole derivative: Start building numerical dipole derivative "
+            f"({dmu_dr.shape})."
         )
 
         count = 1
         nsteps = 3 * numbers.shape[-1]
-        step = 1.0e-5
-        for i in range(positions.shape[-2]):
+        for i in range(numbers.shape[-1]):
             for j in range(3):
-                pos[i, j] += step
-                er = self.dipole(numbers, pos, chrg)
+                pos[i, j] += step_size
+                r = self.dipole(numbers, pos, chrg, spin)
 
-                pos[i, j] -= 2 * step
-                el = self.dipole(numbers, pos, chrg)
+                pos[i, j] -= 2 * step_size
+                l = self.dipole(numbers, pos, chrg, spin)
 
-                pos[i, j] += step
-                dmu_dr[:, i, j] = 0.5 * (er - el) / step
+                pos[i, j] += step_size
+                dmu_dr[:, i, j] = 0.5 * (r - l) / step_size
 
-                logger.debug(
-                    "IR spectrum: Numerical dipole derivative step " f"{count}/{nsteps}"
-                )
+                logger.debug("Dipole derivative: Step " f"{count}/{nsteps}")
                 count += 1
 
             gc.collect()
         gc.collect()
 
-        logger.debug("IR spectrum: Numerical dipole derivative finished")
+        # dmu_dr = dmu_dr.view(3, -1)
 
-        dmu_dr = dmu_dr.view(3, -1)
-        dmu_dq = torch.matmul(dmu_dr, modes)  # (ndim, nfreqs)
+        logger.debug("Dipole derivative: All finished.")
+        OutputHandler.temporary_disable_off()
+
+        return dmu_dr
+
+    def ir(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+    ) -> tuple[Tensor, Tensor]:
+        logger.debug("IR spectrum: Start.")
+
+        # run vibrational analysis first
+        hess = self.hessian(numbers, positions, chrg, spin, shape="matrix")
+        freqs, modes = properties.frequencies(numbers, positions, hess)
+
+        self.integrals.invalidate_driver()
+
+        dmu_dr = self.dipole_deriv(numbers, positions, chrg, spin)  # (3, nat, 3)
+        dmu_dr = dmu_dr.view(3, -1)  # (3, nat*3)
+
+        dmu_dq = torch.matmul(dmu_dr, modes)  # (3, nfreqs)
         ir_ints = torch.einsum("...df,...df->...f", dmu_dq, dmu_dq)  # (nfreqs,)
 
         # TODO: Figure out unit
         from ..constants import units
 
-        # print()
-        # print(ir_ints * 1378999.7790799031)
+        logger.debug("IR spectrum numerical: All finished.")
 
-        logger.debug("IR spectrum: All finished.")
+        return freqs * units.AU2RCM, ir_ints * 1378999.7790799031
 
-        OutputHandler.verbosity = tmp
+    def ir_numerical(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        step_size: int | float = 1.0e-5,
+    ) -> tuple[Tensor, Tensor]:
+        # turn off printing in numerical calcs
+        OutputHandler.temporary_disable_on()
+        logger.debug("IR spectrum numerical: Start.")
+
+        # run vibrational analysis first
+        hess = self.hessian_numerical(numbers, positions, chrg, shape="matrix")
+        freqs, modes = properties.frequencies(numbers, positions, hess)
+
+        # calculate nulcear dipole derivative dmu/dR (3, nat, 3)
+        dmu_dr = self.dipole_deriv_numerical(
+            numbers, positions, chrg, spin, step_size=step_size
+        )
+        dmu_dr = dmu_dr.view(3, -1)  # (3, nat*3)
+
+        dmu_dq = torch.matmul(dmu_dr, modes)  # (3, nfreqs)
+        ir_ints = torch.einsum("...df,...df->...f", dmu_dq, dmu_dq)  # (nfreqs,)
+
+        # TODO: Figure out unit
+        from ..constants import units
+
+        logger.debug("IR spectrum numerical: All finished.")
+        OutputHandler.temporary_disable_off()
+
         return freqs * units.AU2RCM, ir_ints * 1378999.7790799031
 
     def raman_spectrum(

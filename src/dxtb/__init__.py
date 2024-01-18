@@ -26,3 +26,4 @@ from .interaction import external
 from .mol import molecule
 from .param import GFN1_XTB, Param
 from .xtb import Calculator
+from . import _types

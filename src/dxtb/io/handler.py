@@ -41,6 +41,13 @@ class _OutputHandler:
             raise TypeError("Verbosty level must be an integer.")
         self._verbosity = level
 
+    def temporary_disable_on(self) -> None:
+        self._saved_verbosity = self.verbosity
+        self.verbosity = 0
+
+    def temporary_disable_off(self) -> None:
+        self.verbosity = self._saved_verbosity
+
     def setup_console_logger(self, level=logging.INFO):
         ch = logging.StreamHandler()
         ch.setLevel(level)

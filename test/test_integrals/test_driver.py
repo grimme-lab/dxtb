@@ -12,7 +12,6 @@ from dxtb.basis import IndexHelper
 from dxtb.constants.labels import INTDRIVER_LIBCINT, INTDRIVER_PYTORCH
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
-from dxtb.utils import batch
 
 device = None
 
