@@ -73,6 +73,43 @@ class Interaction(TensorLike):
         super().__init__(device, dtype)
         self.label = self.__class__.__name__
 
+    def update(self, **kwargs: Any) -> None:
+        """
+        Update the attributes of the `Interaction` instance.
+
+        This method updates the attributes of the `Interaction` instance based
+        on the provided keyword arguments. Only the attributes defined in
+        `__slots__` can be updated.
+
+        Parameters
+        ----------
+        **kwargs : dict[str, Any]
+            Keyword arguments where keys are attribute names and values are the
+            new values for those attributes.
+            Valid keys are those defined in `__slots__` of this class.
+
+        Raises
+        ------
+        AttributeError
+            If any key in kwargs is not an attribute defined in `__slots__`.
+
+        Examples
+        --------
+        >>> electric_field = ElectricField(field=some_tensor, field_grad=some_tensor)
+        >>> electric_field.update(field=new_field_value)
+        """
+        for key, value in kwargs.items():
+            if key is None:
+                continue
+
+            if key in self.__slots__:
+                setattr(self, key, value)
+            else:
+                raise AttributeError(
+                    f"Cannot update '{key}' of the '{self.__class__.__name__}' "
+                    "interaction. Invalid attribute."
+                )
+
     # pylint: disable=unused-argument
     def get_cache(
         self, *, numbers: Tensor, positions: Tensor, ihelp: IndexHelper

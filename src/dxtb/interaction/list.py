@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Literal, Slicers, Tensor, TensorOrTensors, overload
+from .._types import Any, Literal, Slicers, Tensor, TensorOrTensors, overload
 from ..basis import IndexHelper
 from ..coulomb import secondorder, thirdorder
 from .base import Interaction
@@ -88,11 +88,65 @@ class InteractionList(Interaction):
         ValueError
             Unknown interaction name given or interaction is not in the list.
         """
-        for i in self.interactions:
-            if name == i.label:
-                return i
+        for interaction in self.interactions:
+            if name == interaction.label:
+                return interaction
 
         raise ValueError(f"The interaction named '{name}' is not in the list.")
+
+    def update(self, name: str, **kwargs: Any) -> None:
+        """
+        Update the attributes of an interaction object within the list.
+
+        This method iterates through the interactions in the list, finds the
+        one with the matching label, and updates its attributes based on the
+        provided arguments.
+
+        Parameters
+        ----------
+        name : str
+            The label of the interaction object to be updated.
+        **kwargs : dict
+            Keyword arguments containing the attributes and their new values to
+            be updated in the interaction object.
+
+        Raises
+        ------
+        ValueError
+            If no interaction with the given label is found in the list.
+
+        Examples
+        --------
+        >>> from dxtb.interaction import InteractionList
+        >>> from dxtb.interaction.external import field as efield
+        >>>
+        >>> field_vector = torch.tensor([0.0, 0.0, 0.0])
+        >>> new_field_vector = torch.tensor([1.0, 0.0, 0.0])
+        >>> ef = efield.new_efield(field_vector)
+        >>> ilist = InteractionList(ef)
+        >>> ilist.update(efield.LABEL_EFIELD, field=new_field_vector)
+        """
+        for interaction in self.interactions:
+            if name == interaction.label:
+                interaction.update(**kwargs)
+                return
+
+        raise ValueError(f"The interaction named '{name}' is not in the list.")
+
+    def update_efield(
+        self, *, field: Tensor | None = None, field_grad: Tensor | None = None
+    ) -> None:
+        return self.update(
+            efield.LABEL_EFIELD,
+            field=field,
+            field_grad=field_grad,
+        )
+
+    def update_es2(self, **kwargs: Any) -> None:
+        return self.update(secondorder.LABEL_ES2, **kwargs)
+
+    def update_es3(self, **kwargs: Any) -> None:
+        return self.update(thirdorder.LABEL_ES3, **kwargs)
 
     def get_cache(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper

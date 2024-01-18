@@ -10,7 +10,7 @@ from tad_mctc.convert import any_to_tensor
 
 from .. import integral as ints
 from .. import ncoord, properties, scf
-from .._types import Any, Sequence, Tensor, TensorLike
+from .._types import Any, Callable, Protocol, Sequence, Tensor, TensorLike
 from ..basis import IndexHelper
 from ..classical import (
     Classical,
@@ -38,6 +38,70 @@ __all__ = ["Calculator", "Result"]
 
 
 logger = logging.getLogger(__name__)
+
+
+# class CalculatorFunction(Protocol):
+#     def __call__(
+#         self: "Calculator",
+#         numbers: Tensor,
+#         positions: Tensor,
+#         chrg: Tensor | float | int = defaults.CHRG,
+#         spin: Tensor | float | int | None = defaults.SPIN,
+#         **kwargs: Any
+#     ) -> tuple[torch.Tensor, Tensor]:
+#         ...
+
+
+def requires_positions_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
+    def wrapper(
+        self: Calculator,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any,
+    ) -> Tensor:
+        if not positions.requires_grad:
+            raise RuntimeError("Position tensor needs `requires_grad=True`.")
+        return func(self, numbers, positions, chrg, spin, **kwargs)
+
+    return wrapper
+
+
+def requires_efield(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
+    def wrapper(
+        self: Calculator,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any,
+    ) -> Tensor:
+        if efield.LABEL_EFIELD not in self.interactions.labels:
+            raise RuntimeError(
+                "Raman spectrum requires an electric field. Add the "
+                f"'{efield.LABEL_EFIELD}' interaction to the Calculator."
+            )
+        return func(self, numbers, positions, chrg, spin, **kwargs)
+
+    return wrapper
+
+
+def requires_efield_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
+    def wrapper(
+        self: Calculator,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any,
+    ) -> Tensor:
+        ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
+        if not ef.field.requires_grad:
+            raise RuntimeError("Field tensor needs `requires_grad=True`.")
+        return func(self, numbers, positions, chrg, spin, **kwargs)
+
+    return wrapper
 
 
 class Result(TensorLike):
@@ -602,12 +666,34 @@ class Calculator(TensorLike):
         self.cache["energy"] = result
         return result.sum(-1)
 
+    @requires_positions_grad
+    def forces(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int | None = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+    ) -> Tensor:
+        logger.debug(f"Autodiff Forces: Starting Calculation.")
+
+        # pylint: disable=import-outside-toplevel
+        from tad_mctc.autograd import jacrev
+
+        # jacrev requires a scalar from `self.energy`!
+        jac_func = jacrev(self.energy, argnums=1)
+        jac = jac_func(numbers, positions, chrg, spin)
+        assert isinstance(jac, Tensor)
+
+        logger.debug("Autodiff Forces: All finished.")
+        return -jac
+
     def forces_numerical(
         self,
         numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
+        step_size: int | float = 1.0e-5,
     ) -> Tensor:
         # important: detach for gradient
         pos = positions.detach().clone()
@@ -622,17 +708,16 @@ class Calculator(TensorLike):
 
         count = 1
         nsteps = 3 * numbers.shape[-1]
-        step = 1.0e-5
         for i in range(numbers.shape[-1]):
             for j in range(3):
-                pos[..., i, j] += step
+                pos[..., i, j] += step_size
                 gr = self.energy(numbers, pos, chrg, spin)
 
-                pos[..., i, j] -= 2 * step
+                pos[..., i, j] -= 2 * step_size
                 gl = self.energy(numbers, pos, chrg, spin)
 
-                pos[..., i, j] += step
-                jac[..., i, j] = 0.5 * (gr - gl) / step
+                pos[..., i, j] += step_size
+                jac[..., i, j] = 0.5 * (gr - gl) / step_size
 
                 logger.debug(f"Numerical Forces: step {count}/{nsteps}")
                 count += 1
@@ -642,29 +727,7 @@ class Calculator(TensorLike):
         OutputHandler.verbosity = tmp
         return -jac
 
-    def forces(
-        self,
-        numbers: Tensor,
-        positions: Tensor,
-        chrg: Tensor | float | int | None = defaults.CHRG,
-        spin: Tensor | float | int | None = defaults.SPIN,
-    ) -> Tensor:
-        if positions.requires_grad is False:
-            raise RuntimeError("Position tensor needs `requires_grad=True`.")
-
-        logger.debug(f"Autodiff Forces: Starting Calculation.")
-
-        # pylint: disable=import-outside-toplevel
-        from tad_mctc.autograd import jacrev
-
-        # jacrev requires a scalar from `self.energy`!
-        jac_func = jacrev(self.energy, argnums=1)
-        jac = jac_func(numbers, positions, chrg, spin)
-        assert isinstance(jac, Tensor)
-
-        logger.debug("Autodiff Forces: All finished.")
-        return -jac
-
+    @requires_positions_grad
     def hessian(
         self,
         numbers: Tensor,
@@ -705,9 +768,6 @@ class Calculator(TensorLike):
         RuntimeError
             Positions tensor does not have `requires_grad=True`.
         """
-        if positions.requires_grad is False:
-            raise RuntimeError("Position tensor needs `requires_grad=True`.")
-
         logger.debug(f"Autodiff Hessian: Starting Calculation.")
 
         # pylint: disable=import-outside-toplevel
@@ -760,6 +820,7 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
+        step_size: int | float = 1.0e-5,
         shape: str = "matrix",
     ) -> Tensor:
         """
@@ -772,7 +833,9 @@ class Calculator(TensorLike):
         positions : Tensor
             Cartesian coordinates of all atoms in the system (nat, 3).
         chrg : Tensor | float | int | str | None
-            Total charge. Defaults to `None`
+            Total charge. Defaults to `None`.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
         shape : str, optional
             Output shape of Hessian. Defaults to "matrix".
 
@@ -793,30 +856,27 @@ class Calculator(TensorLike):
         # imortant: detach for gradient
         pos = positions.detach().clone()
 
-        # turn off printing in numerical hessian
-        tmp = OutputHandler.verbosity
-        OutputHandler.verbosity = 0
-
         hess = torch.zeros(
             *(*positions.shape, *positions.shape[-2:]),
             **{"device": positions.device, "dtype": positions.dtype},
         )
 
+        # turn off printing in numerical hessian
+        OutputHandler.temporary_disable_on()
         logger.debug(f"Numerical Hessian: Starting build (size {hess.shape})")
 
         count = 1
         nsteps = 3 * numbers.shape[-1]
-        step = 1.0e-5
         for i in range(numbers.shape[-1]):
             for j in range(3):
-                pos[..., i, j] += step
+                pos[..., i, j] += step_size
                 gr = _gradfcn(pos)
 
-                pos[..., i, j] -= 2 * step
+                pos[..., i, j] -= 2 * step_size
                 gl = _gradfcn(pos)
 
-                pos[..., i, j] += step
-                hess[..., :, :, i, j] = 0.5 * (gr - gl) / step
+                pos[..., i, j] += step_size
+                hess[..., :, :, i, j] = 0.5 * (gr - gl) / step_size
 
                 logger.debug(f"Numerical Hessian: step {count}/{nsteps}")
                 count += 1
@@ -830,11 +890,28 @@ class Calculator(TensorLike):
             hess = hess.reshape(*s)
 
         logger.debug("Numerical Hessian: All finished.")
+        OutputHandler.temporary_disable_off()
 
-        OutputHandler.verbosity = tmp
         return hess
 
     def vibration(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        project: bool = True,
+    ) -> tuple[Tensor, Tensor]:
+        hess = self.hessian(
+            numbers,
+            positions,
+            chrg,
+            spin,
+            shape="matrix",
+        )
+        return properties.frequencies(numbers, positions, hess, project=project)
+
+    def vibration_numerical(
         self,
         numbers: Tensor,
         positions: Tensor,
@@ -851,6 +928,7 @@ class Calculator(TensorLike):
         )
         return properties.frequencies(numbers, positions, hess, project=project)
 
+    @requires_efield
     def dipole(
         self,
         numbers: Tensor,
@@ -859,13 +937,6 @@ class Calculator(TensorLike):
         spin: Tensor | float | int | None = defaults.SPIN,
         use_autograd: bool = False,
     ) -> Tensor:
-        # check if electric field is given in interactions
-        if efield.LABEL_EFIELD not in self.interactions.labels:
-            raise RuntimeError(
-                "Dipole moment requires an electric field. Add the "
-                f"'{efield.LABEL_EFIELD}' interaction to the Calculator."
-            )
-
         # run single point and check if integral is populated
         result = self.singlepoint(numbers, positions, chrg, spin)
         dipint = self.integrals.dipole
@@ -903,6 +974,118 @@ class Calculator(TensorLike):
             dip = -_jac(energy, field)
 
         return dip
+
+    @requires_positions_grad
+    def dipole_deriv(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        use_functorch: bool = False,
+    ) -> Tensor:
+        r"""
+        Calculate cartesian dipole derivative :math:`\mu'`.
+
+        .. math::
+
+            \mu' = \dfrac{\partial \mu}{\partial R} = \dfrac{\partial^2 E}{\partial F \partial R}
+
+        One can calculate the Jacobian either row-by-row using the standard
+        `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
+        using `torch.func`'s function transforms (e.g., `jacrev`).
+
+        .. _here: https://pytorch.org/functorch/stable/notebooks/jacobians_hessians.html#computing-the-jacobian
+
+        Note
+        ----
+        Using `torch.func`'s function transforms can apparently be only used
+        once. Hence, for example, the Hessian and the dipole derivatives cannot
+        be both calculated with functorch.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system.
+        positions : Tensor
+            Cartesian coordinates of all atoms in the system (nat, 3).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+        use_functorch: bool, optional
+            Whether to use functorch or the standard (slower) autograd.
+
+        Returns
+        -------
+        Tensor
+            Cartesian dipole derivative of shape `(3, nat, 3)`.
+        """
+        if use_functorch is True:
+            # pylint: disable=import-outside-toplevel
+            from tad_mctc.autograd import jacrev
+
+            # d(3) / d(nat, 3) = (3, nat, 3)
+            dmu_dr = jacrev(self.dipole, argnums=1)(numbers, positions, chrg, spin)
+            assert isinstance(dmu_dr, Tensor)
+        else:
+            mu = self.dipole(numbers, positions, chrg, spin)
+
+            # (3, 3*nat) -> (3, nat, 3)
+            dmu_dr = _jac(mu, positions).reshape((3, *positions.shape[-2:]))
+
+        return dmu_dr
+
+    def dipole_deriv_numerical(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        step_size: int | float = 1.0e-5,
+    ) -> Tensor:
+        # turn off printing in numerical calcs
+        OutputHandler.temporary_disable_on()
+        logger.debug("Dipole derivative: Start.")
+
+        # pylint: disable=import-outside-toplevel
+        import gc
+
+        # important: use new/separate position tensor
+        pos = positions.detach().clone()
+
+        dmu_dr = torch.zeros((3, *positions.shape[-2:]), **self.dd)  # (3, n, 3)
+
+        logger.debug(
+            "Dipole derivative: Start building numerical dipole derivative "
+            f"({dmu_dr.shape})."
+        )
+
+        count = 1
+        nsteps = 3 * numbers.shape[-1]
+        for i in range(numbers.shape[-1]):
+            for j in range(3):
+                pos[i, j] += step_size
+                r = self.dipole(numbers, pos, chrg, spin)
+
+                pos[i, j] -= 2 * step_size
+                l = self.dipole(numbers, pos, chrg, spin)
+
+                pos[i, j] += step_size
+                dmu_dr[:, i, j] = 0.5 * (r - l) / step_size
+
+                logger.debug("Dipole derivative: Step " f"{count}/{nsteps}")
+                count += 1
+
+            gc.collect()
+        gc.collect()
+
+        # dmu_dr = dmu_dr.view(3, -1)
+
+        logger.debug("Dipole derivative: All finished.")
+        OutputHandler.temporary_disable_off()
+
+        return dmu_dr
 
     def quadrupole(
         self,
@@ -994,71 +1177,77 @@ class Calculator(TensorLike):
 
         return cart
 
+    @requires_efield
+    @requires_efield_grad
     def polarizability(
-        self, numbers: Tensor, positions: Tensor, chrg: Tensor
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        use_functorch: bool = False,
     ) -> Tensor:
-        # check if electric field is given in interactions
-        if efield.LABEL_EFIELD not in self.interactions.labels:
-            raise RuntimeError(
-                "Polarizability moment requires an electric field. Add the "
-                f"'{efield.LABEL_EFIELD}' interaction to the Calculator."
-            )
+        r"""
+        Calculate the polarizability tensor :math:`\alpha`.
 
+        .. math::
+
+            \alpha = \dfrac{\partial \mu}{\partial F} = \dfrac{\partial^2 E}{\partial^2 F}
+
+        One can calculate the Jacobian either row-by-row using the standard
+        `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
+        using `torch.func`'s function transforms (e.g., `jacrev`).
+
+        .. _here: https://pytorch.org/functorch/stable/notebooks/jacobians_hessians.html#computing-the-jacobian
+
+        Note
+        ----
+        Using `torch.func`'s function transforms can apparently be only used
+        once. Hence, for example, the Hessian and the polarizability cannot
+        be both calculated with functorch.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system.
+        positions : Tensor
+            Cartesian coordinates of all atoms in the system (nat, 3).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+        use_functorch: bool, optional
+            Whether to use functorch or the standard (slower) autograd.
+
+        Returns
+        -------
+        Tensor
+            Polarizability tensor of shape `(3, 3)`.
+        """
         # retrieve the efield interaction and the field
-        ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
-        field = ef.field
+        field = self.interactions.get_interaction(efield.LABEL_EFIELD).field
 
-        if field.requires_grad is False:
-            raise RuntimeError("Field vector needs `requires_grad=True`.")
+        if use_functorch is True:
+            # pylint: disable=import-outside-toplevel
+            from tad_mctc.autograd import jacrev
 
-        # above checks are also run in dipole but only if via autograd
-        mu = self.dipole(numbers, positions, chrg)
+            def wrapped_dipole(f: Tensor) -> Tensor:
+                self.interactions.update_efield(field=f)
+                return self.dipole(numbers, positions, chrg, spin)
 
-        # 3x3 polarizability tensor
-        alpha = _jac(mu, field)
+            # 3x3 polarizability tensor
+            alpha = jacrev(wrapped_dipole)(field)
+            assert isinstance(alpha, Tensor)
+        else:
+            mu = self.dipole(numbers, positions, chrg, spin)
+
+            # 3x3 polarizability tensor
+            alpha = _jac(mu, field)
 
         return alpha
 
-    def ir_spectrum(
-        self,
-        numbers: Tensor,
-        positions: Tensor,
-        chrg: Tensor | float | int = defaults.CHRG,
-        spin: Tensor | float | int | None = defaults.SPIN,
-    ) -> tuple[Tensor, Tensor]:
-        if positions.requires_grad is False:
-            raise RuntimeError("Position tensor needs `requires_grad=True`.")
-
-        # dipole moment with gradient tracking
-        mu = self.dipole(numbers, positions, chrg, spin)
-
-        # calculate vibrational frequencies and normal modes
-        freqs, modes = self.vibration(numbers, positions, chrg, project=True)
-
-        return properties.ir(mu, positions, freqs, modes)
-
-    def dipole_deriv(
-        self,
-        numbers: Tensor,
-        positions: Tensor,
-        chrg: Tensor | float | int = defaults.CHRG,
-        spin: Tensor | float | int | None = defaults.SPIN,
-    ) -> Tensor:
-        if positions.requires_grad is False:
-            raise RuntimeError("Position tensor needs `requires_grad=True`.")
-
-        # pylint: disable=import-outside-toplevel
-        from tad_mctc.autograd import jacrev
-
-        # derivative of dipole moment w.r.t. positions (3, nat, 3)
-        # dmu_dr = jacrev(self.dipole, argnums=1)(numbers, positions, chrg, spin)
-        mu = self.dipole(numbers, positions, chrg, spin)
-        dmu_dr = _jac(mu, positions).reshape((3, *positions.shape[-2:]))
-        assert isinstance(dmu_dr, Tensor)
-
-        return dmu_dr
-
-    def dipole_deriv_numerical(
+    @requires_efield
+    def polarizability_numerical(
         self,
         numbers: Tensor,
         positions: Tensor,
@@ -1066,48 +1255,64 @@ class Calculator(TensorLike):
         spin: Tensor | float | int | None = defaults.SPIN,
         step_size: int | float = 1.0e-5,
     ) -> Tensor:
-        # turn off printing in numerical calcs
-        OutputHandler.temporary_disable_on()
-        logger.debug("Dipole derivative: Start.")
+        """
+        Numerical polarizability.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system.
+        positions : Tensor
+            Cartesian coordinates of all atoms in the system (nat, 3).
+        chrg : Tensor | float | int | str | None
+            Total charge. Defaults to `None`.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+        step_size : float | int, optional
+            Step size for the numerical derivative.
+
+        Returns
+        -------
+        Tensor
+            Polarizability tensor.
+        """
+        # retrieve the efield interaction and the field and detach for gradient
+        ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
+        field = ef.field.detach().clone()
+        self.interactions.update_efield(field=field)
 
         # pylint: disable=import-outside-toplevel
         import gc
 
-        # important: use new/separate position tensor
-        pos = positions.detach().clone()
+        deriv = torch.zeros(*(*numbers.shape[:-1], 3, 3), **self.dd)
 
-        dmu_dr = torch.zeros((3, *positions.shape[-2:]), **self.dd)  # (3, n, 3)
-
-        logger.debug(
-            "Dipole derivative: Start building numerical dipole derivative "
-            f"({dmu_dr.shape})."
-        )
+        # turn off printing in numerical hessian
+        OutputHandler.temporary_disable_on()
+        logger.debug(f"Numerical Polarizability: Starting build ({deriv.shape})")
 
         count = 1
-        nsteps = 3 * numbers.shape[-1]
-        for i in range(numbers.shape[-1]):
-            for j in range(3):
-                pos[i, j] += step_size
-                r = self.dipole(numbers, pos, chrg, spin)
+        for i in range(3):
+            field[..., i] += step_size
+            self.interactions.update_efield(field=field)
+            gr = self.dipole(numbers, positions, chrg, spin)
 
-                pos[i, j] -= 2 * step_size
-                l = self.dipole(numbers, pos, chrg, spin)
+            field[..., i] -= 2 * step_size
+            self.interactions.update_efield(field=field)
+            gl = self.dipole(numbers, positions, chrg, spin)
 
-                pos[i, j] += step_size
-                dmu_dr[:, i, j] = 0.5 * (r - l) / step_size
+            field[..., i] += step_size
+            self.interactions.update_efield(field=field)
+            deriv[..., :, i] = 0.5 * (gr - gl) / step_size
 
-                logger.debug("Dipole derivative: Step " f"{count}/{nsteps}")
-                count += 1
+            logger.debug(f"Numerical Polarizability: step {count}/{3}")
+            count += 1
 
             gc.collect()
-        gc.collect()
 
-        # dmu_dr = dmu_dr.view(3, -1)
-
-        logger.debug("Dipole derivative: All finished.")
+        logger.debug("Numerical Polarizability: All finished.")
         OutputHandler.temporary_disable_off()
 
-        return dmu_dr
+        return deriv
 
     def ir(
         self,
@@ -1170,8 +1375,125 @@ class Calculator(TensorLike):
 
         return freqs * units.AU2RCM, ir_ints * 1378999.7790799031
 
-    def raman_spectrum(
-        self, numbers: Tensor, positions: Tensor, chrg: Tensor
+    @requires_efield
+    @requires_positions_grad
+    def pol_deriv(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        use_functorch: bool = False,
+    ) -> Tensor:
+        r"""
+        Calculate the cartesian polarizability derivative :math:`\chi`.
+
+        .. math::
+
+            \chi = \alpha' = \dfrac{\partial \alpha}{\partial R} = \dfrac{\partial^2 \mu}{\partial F \partial R} = \dfrac{\partial^3 E}{\partial^2 F \partial R}
+
+        One can calculate the Jacobian either row-by-row using the standard
+        `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
+        using `torch.func`'s function transforms (e.g., `jacrev`).
+
+        .. _here: https://pytorch.org/functorch/stable/notebooks/jacobians_hessians.html#computing-the-jacobian
+
+        Note
+        ----
+        Using `torch.func`'s function transforms can apparently be only used
+        once. Hence, for example, the Hessian and the polarizability cannot
+        be both calculated with functorch.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system.
+        positions : Tensor
+            Cartesian coordinates of all atoms in the system (nat, 3).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+        use_functorch: bool, optional
+            Whether to use functorch or the standard (slower) autograd.
+
+        Returns
+        -------
+        Tensor
+            Polarizability derivative shape `(3, 3, nat, 3)`.
+        """
+        if use_functorch is True:
+            # pylint: disable=import-outside-toplevel
+            from tad_mctc.autograd import jacrev
+
+            chi = ...
+            assert isinstance(chi, Tensor)
+        else:
+            a = self.polarizability(numbers, positions, chrg, spin)  # (3, 3)
+
+            # d(3, 3) / d(nat, 3) -> (3, 3, nat*3) -> (3, 3, nat, 3)
+            chi = _jac(a, positions).reshape((3, 3, *positions.shape[-2:]))
+
+        return chi
+
+    def pol_deriv_numerical(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        step_size: int | float = 1.0e-5,
+    ) -> Tensor:
+        # turn off printing in numerical calcs
+        OutputHandler.temporary_disable_on()
+        logger.debug("Polarizability numerical derivative: Start.")
+
+        # pylint: disable=import-outside-toplevel
+        import gc
+
+        # important: use new/separate position tensor
+        pos = positions.detach().clone()
+
+        # (3, 3, nat, 3)
+        deriv = torch.zeros((3, 3, *positions.shape[-2:]), **self.dd)
+
+        logger.debug(
+            "Polarizability numerical derivative: Start building numerical "
+            f"dipole derivative {deriv.shape})."
+        )
+
+        count = 1
+        nsteps = 3 * numbers.shape[-1]
+        for i in range(numbers.shape[-1]):
+            for j in range(3):
+                pos[i, j] += step_size
+                r = self.polarizability(numbers, pos, chrg, spin)
+
+                pos[i, j] -= 2 * step_size
+                l = self.polarizability(numbers, pos, chrg, spin)
+
+                pos[i, j] += step_size
+                deriv[:, :, i, j] = 0.5 * (r - l) / step_size
+
+                logger.debug(
+                    "Polarizability numerical derivative: Step " f"{count}/{nsteps}"
+                )
+                count += 1
+
+            gc.collect()
+        gc.collect()
+
+        logger.debug("Polarizability numerical derivative: All finished.")
+        OutputHandler.temporary_disable_off()
+
+        return deriv
+
+    def raman(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
     ) -> tuple[Tensor, Tensor]:
         """
         Calculate the frequency and static intensities of Raman spectra.
@@ -1183,8 +1505,14 @@ class Calculator(TensorLike):
             Atomic numbers for all atoms in the system.
         positions : Tensor
             Atomic positions of shape (n, 3).
-        chrg : Tensor
-            Total charge.
+        numbers : Tensor
+            Atomic numbers for all atoms in the system.
+        positions : Tensor
+            Cartesian coordinates of all atoms in the system (nat, 3).
+        chrg : Tensor | float | int | str | None
+            Total charge. Defaults to `None`.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
 
         Returns
         -------
@@ -1196,23 +1524,57 @@ class Calculator(TensorLike):
         RuntimeError
             `positions` tensor does not have `requires_grad=True`.
         """
-        if positions.requires_grad is False:
-            raise RuntimeError("Position tensor needs `requires_grad=True`.")
+        freqs, modes = self.vibration(numbers, positions, chrg, spin)
 
-        # check if electric field is given in interactions
-        if efield.LABEL_EFIELD not in self.interactions.labels:
-            raise RuntimeError(
-                "Raman spectrum requires an electric field. Add the "
-                f"'{efield.LABEL_EFIELD}' interaction to the Calculator."
-            )
+        # d(3, 3) / d(nat, 3) -> (3, 3, nat, 3) -> (3, 3, nat*3)
+        da_dr = self.pol_deriv(numbers, positions, chrg, spin)
+        da_dr = da_dr.reshape((3, 3, -1))
 
-        # retrieve the efield interaction and the field
-        ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
-        field = ef.field
+        # (3, 3, nat*3) * (nat*3, nmodes) = # (3, 3, nmodes)
+        da_dq = torch.matmul(da_dr, modes)
 
-        if field.requires_grad is False:
-            raise RuntimeError("Field tensor needs `requires_grad=True`.")
+        # Eq.3 with alpha' = a
+        a = torch.einsum("...iij->...j", da_dq)
 
-        alpha = self.polarizability(numbers, positions, chrg)
-        freqs, modes = self.vibration(numbers, positions, chrg, project=True)
-        return properties.raman(alpha, freqs, modes)
+        # Eq.4 with (gamma')^2 = g = 0.5 * (g1 + g2 + g3 + g4)
+        g1 = (da_dq[0, 0] - da_dq[1, 1]) ** 2
+        g2 = (da_dq[0, 0] - da_dq[2, 2]) ** 2
+        g3 = (da_dq[2, 2] - da_dq[1, 1]) ** 2
+        g4 = da_dq[0, 1] ** 2 + da_dq[1, 2] ** 2 + da_dq[2, 0] ** 2
+        g = 0.5 * (g1 + g2 + g3 + g4)
+
+        # Eq.1 (the 1/3 from Eq.3 is squared and reduces the 45)
+        raman_ints = 5 * torch.pow(a, 2.0) + 7 * g
+
+        return freqs, raman_ints
+
+    def raman_numerical(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+    ) -> tuple[Tensor, Tensor]:
+        freqs, modes = self.vibration_numerical(numbers, positions, chrg, spin)
+
+        # d(3, 3) / d(nat, 3) -> (3, 3, nat, 3) -> (3, 3, nat*3)
+        da_dr = self.pol_deriv_numerical(numbers, positions, chrg, spin)
+        da_dr = da_dr.reshape((3, 3, -1))
+
+        # (3, 3, nat*3) * (nat*3, nmodes) = # (3, 3, nmodes)
+        da_dq = torch.matmul(da_dr, modes)
+
+        # Eq.3 with alpha' = a
+        a = torch.einsum("...iij->...j", da_dq)
+
+        # Eq.4 with (gamma')^2 = g = 0.5 * (g1 + g2 + g3 + g4)
+        g1 = (da_dq[0, 0] - da_dq[1, 1]) ** 2
+        g2 = (da_dq[0, 0] - da_dq[2, 2]) ** 2
+        g3 = (da_dq[2, 2] - da_dq[1, 1]) ** 2
+        g4 = da_dq[0, 1] ** 2 + da_dq[1, 2] ** 2 + da_dq[2, 0] ** 2
+        g = 0.5 * (g1 + g2 + g3 + g4)
+
+        # Eq.1 (the 1/3 from Eq.3 is squared and reduces the 45)
+        raman_ints = 5 * torch.pow(a, 2.0) + 7 * g
+
+        return freqs, raman_ints

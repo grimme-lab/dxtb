@@ -93,7 +93,7 @@ def raman(alpha: Tensor, freqs: Tensor, modes: Tensor) -> tuple[Tensor, Tensor]:
     alphaq = torch.matmul(alpha, modes)  # (ndim, ndim, nmodes)
 
     # Eq.3 with alpha' = a
-    a = torch.einsum("...iij->...j")
+    a = torch.einsum("...iij->...j", alphaq)
 
     # Eq.4 with (gamma')^2 = g = 0.5 * (g1 + g2 + g3 + g4)
     g1 = (alphaq[0, 0] - alphaq[1, 1]) ** 2
