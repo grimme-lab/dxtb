@@ -43,9 +43,10 @@ calc = dxtb.Calculator(
 )
 
 
-dxtb.timer.start("Pol")
-agrad = calc.polarizability(numbers, positions, charge)
-dxtb.timer.stop("Pol")
+dxtb.timer.start("HyperPol")
+agrad = calc.hyperpol(numbers, positions, charge)
+calc.interactions.update_efield(field=field_vector)
+dxtb.timer.stop("HyperPol")
 
 print(agrad.shape)
 
@@ -53,25 +54,35 @@ dxtb.timer.print_times()
 dxtb.timer.reset()
 
 
-dxtb.timer.start("Pol2")
-agrad2 = calc.polarizability(numbers, positions, charge, use_functorch=True)
-dxtb.timer.stop("Pol2")
+dxtb.timer.start("HyperPol2")
+agrad2 = calc.hyperpol(numbers, positions, charge, use_functorch=True)
+calc.interactions.update_efield(field=field_vector)
+dxtb.timer.stop("HyperPol2")
 
 print(agrad2.shape)
 
 
-dxtb.timer.start("Pol3")
-agrad3 = calc.polarizability(
-    numbers, positions, charge, use_functorch=True, use_dipole=False
+dxtb.timer.start("HyperPol3")
+agrad3 = calc.hyperpol(
+    numbers, positions, charge, use_functorch=True, derived_quantity="dipole"
 )
-dxtb.timer.stop("Pol3")
+calc.interactions.update_efield(field=field_vector)
+dxtb.timer.stop("HyperPol3")
 
 print(agrad3.shape)
 
+dxtb.timer.start("HyperPol4")
+agrad4 = calc.hyperpol(
+    numbers, positions, charge, use_functorch=True, derived_quantity="energy"
+)
+dxtb.timer.stop("HyperPol4")
 
-dxtb.timer.start("Num Pol")
-num = calc.polarizability_numerical(numbers, positions, charge)
-dxtb.timer.stop("Num Pol")
+print(agrad4.shape)
+
+
+dxtb.timer.start("Num HyperPol")
+num = calc.hyperpol_numerical(numbers, positions, charge)
+dxtb.timer.stop("Num HyperPol")
 
 dxtb.timer.print_times()
 dxtb.timer.reset()
@@ -79,10 +90,10 @@ dxtb.timer.reset()
 print("agrad\n", agrad)
 print("agrad2\n", agrad2)
 print("agrad3\n", agrad3)
+print("agrad4\n", agrad4)
 print("num\n", num)
 print()
 print(num - agrad)
 print(num - agrad2)
 print(num - agrad3)
-# print(numhess - hess2)
-# print(hess - hess2)
+print(num - agrad4)

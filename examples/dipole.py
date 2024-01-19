@@ -43,9 +43,9 @@ calc = dxtb.Calculator(
 )
 
 
-dxtb.timer.start("Pol")
-agrad = calc.polarizability(numbers, positions, charge)
-dxtb.timer.stop("Pol")
+dxtb.timer.start("Dipole")
+agrad = calc.dipole(numbers, positions, charge, use_autograd=True)
+dxtb.timer.stop("Dipole")
 
 print(agrad.shape)
 
@@ -53,36 +53,25 @@ dxtb.timer.print_times()
 dxtb.timer.reset()
 
 
-dxtb.timer.start("Pol2")
-agrad2 = calc.polarizability(numbers, positions, charge, use_functorch=True)
-dxtb.timer.stop("Pol2")
+dxtb.timer.start("Dipole2")
+agrad2 = calc.dipole(numbers, positions, charge, use_autograd=True, use_functorch=True)
+dxtb.timer.stop("Dipole2")
 
-print(agrad2.shape)
-
-
-dxtb.timer.start("Pol3")
-agrad3 = calc.polarizability(
-    numbers, positions, charge, use_functorch=True, use_dipole=False
-)
-dxtb.timer.stop("Pol3")
-
-print(agrad3.shape)
+print(agrad2)
 
 
-dxtb.timer.start("Num Pol")
-num = calc.polarizability_numerical(numbers, positions, charge)
-dxtb.timer.stop("Num Pol")
+dxtb.timer.start("Num Dipole")
+num = calc.dipole_numerical(numbers, positions, charge)
+dxtb.timer.stop("Num Dipole")
 
 dxtb.timer.print_times()
 dxtb.timer.reset()
 
+print(num.shape)
 print("agrad\n", agrad)
 print("agrad2\n", agrad2)
-print("agrad3\n", agrad3)
 print("num\n", num)
-print()
 print(num - agrad)
 print(num - agrad2)
-print(num - agrad3)
 # print(numhess - hess2)
 # print(hess - hess2)

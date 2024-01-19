@@ -10,7 +10,7 @@ from tad_mctc.convert import any_to_tensor
 
 from .. import integral as ints
 from .. import ncoord, properties, scf
-from .._types import Any, Callable, Protocol, Sequence, Tensor, TensorLike
+from .._types import Any, Callable, Literal, Sequence, Tensor, TensorLike
 from ..basis import IndexHelper
 from ..classical import (
     Classical,
@@ -936,24 +936,26 @@ class Calculator(TensorLike):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         use_autograd: bool = False,
+        use_functorch: bool = False,
     ) -> Tensor:
-        # run single point and check if integral is populated
-        result = self.singlepoint(numbers, positions, chrg, spin)
-        dipint = self.integrals.dipole
-        if dipint is None:
-            raise RuntimeError(
-                "Dipole moment requires a dipole integral. They should "
-                f"be added automatically if the '{efield.LABEL_EFIELD}' "
-                "interaction is added to the Calculator."
-            )
-        if dipint.matrix is None:
-            raise RuntimeError(
-                "Dipole moment requires a dipole integral. They should "
-                f"be added automatically if the '{efield.LABEL_EFIELD}' "
-                "interaction is added to the Calculator."
-            )
-
+        # analytical dipole moment
         if use_autograd is False:
+            # run single point and check if integral is populated
+            result = self.singlepoint(numbers, positions, chrg, spin)
+            dipint = self.integrals.dipole
+            if dipint is None:
+                raise RuntimeError(
+                    "Dipole moment requires a dipole integral. They should "
+                    f"be added automatically if the '{efield.LABEL_EFIELD}' "
+                    "interaction is added to the Calculator."
+                )
+            if dipint.matrix is None:
+                raise RuntimeError(
+                    "Dipole moment requires a dipole integral. They should "
+                    f"be added automatically if the '{efield.LABEL_EFIELD}' "
+                    "interaction is added to the Calculator."
+                )
+
             # dip = properties.dipole(
             # numbers, positions, result.density, self.integrals.dipole
             # )
@@ -961,19 +963,74 @@ class Calculator(TensorLike):
             dip = properties.moments.dipole(
                 qat, positions, result.density, dipint.matrix
             )
+            return -dip
+
+        # AUTOGRAD
+
+        # retrieve the field from the efield interaction and check gradient
+        field = self.interactions.get_interaction(efield.LABEL_EFIELD).field
+
+        if field.requires_grad is False:
+            raise RuntimeError("Field tensor needs `requires_grad=True`.")
+
+        if use_functorch is True:
+            # pylint: disable=import-outside-toplevel
+            from tad_mctc.autograd import jacrev
+
+            def wrapped_energy(f: Tensor) -> Tensor:
+                self.interactions.update_efield(field=f)
+                return self.energy(numbers, positions, chrg, spin, use_cache=False)
+
+            dip = jacrev(wrapped_energy)(field)
+            assert isinstance(dip, Tensor)
         else:
-            # retrieve the efield interaction and the field
-            ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
-            field = ef.field
-
-            if field.requires_grad is False:
-                raise RuntimeError("Field tensor needs `requires_grad=True`.")
-
             # calculate electric dipole contribution from xtb energy: -de/dE
-            energy = result.total.sum(-1)
-            dip = -_jac(energy, field)
+            energy = self.energy(numbers, positions, chrg, spin)
+            dip = _jac(energy, field)
 
-        return dip
+        return -dip
+
+    @requires_efield
+    def dipole_numerical(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        step_size: int | float = 1.0e-5,
+    ) -> Tensor:
+        # retrieve the efield interaction and the field and detach for gradient
+        ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
+        field = ef.field.detach().clone()
+        self.interactions.update_efield(field=field)
+
+        deriv = torch.zeros(*(*numbers.shape[:-1], 3), **self.dd)
+
+        # turn off printing in numerical hessian
+        OutputHandler.temporary_disable_on()
+        logger.debug(f"Numerical Dipole: Starting build ({deriv.shape}).")
+
+        count = 1
+        for i in range(3):
+            field[..., i] += step_size
+            self.interactions.update_efield(field=field)
+            gr = self.energy(numbers, positions, chrg, spin)
+
+            field[..., i] -= 2 * step_size
+            self.interactions.update_efield(field=field)
+            gl = self.energy(numbers, positions, chrg, spin)
+
+            field[..., i] += step_size
+            self.interactions.update_efield(field=field)
+            deriv[..., i] = 0.5 * (gr - gl) / step_size
+
+            logger.debug(f"Numerical Dipole: step {count}/{3}")
+            count += 1
+
+        logger.debug("Numerical Dipole: All finished.")
+        OutputHandler.temporary_disable_off()
+
+        return -deriv
 
     @requires_positions_grad
     def dipole_deriv(
@@ -1186,6 +1243,7 @@ class Calculator(TensorLike):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         use_functorch: bool = False,
+        derived_quantity: Literal["energy", "dipole"] = "dipole",
     ) -> Tensor:
         r"""
         Calculate the polarizability tensor :math:`\alpha`.
@@ -1218,6 +1276,9 @@ class Calculator(TensorLike):
             Number of unpaired electrons. Defaults to `None`.
         use_functorch: bool, optional
             Whether to use functorch or the standard (slower) autograd.
+        derived_quantity: Literal['energy', 'dipole'], optional
+            Which derivative to calculate for the polarizability, i.e.,
+            derivative of dipole moment or energy w.r.t field.
 
         Returns
         -------
@@ -1227,23 +1288,36 @@ class Calculator(TensorLike):
         # retrieve the efield interaction and the field
         field = self.interactions.get_interaction(efield.LABEL_EFIELD).field
 
-        if use_functorch is True:
-            # pylint: disable=import-outside-toplevel
-            from tad_mctc.autograd import jacrev
+        if use_functorch is False:
+            mu = self.dipole(numbers, positions, chrg, spin)
+            return _jac(mu, field)
+
+        # pylint: disable=import-outside-toplevel
+        from tad_mctc.autograd import jacrev
+
+        if derived_quantity == "dipole":
 
             def wrapped_dipole(f: Tensor) -> Tensor:
                 self.interactions.update_efield(field=f)
                 return self.dipole(numbers, positions, chrg, spin)
 
-            # 3x3 polarizability tensor
             alpha = jacrev(wrapped_dipole)(field)
-            assert isinstance(alpha, Tensor)
+        elif derived_quantity == "dipole":
+
+            def wrapped_energy(f: Tensor) -> Tensor:
+                self.interactions.update_efield(field=f)
+                return self.energy(numbers, positions, chrg, spin)
+
+            alpha = jacrev(jacrev(wrapped_energy))(field)
         else:
-            mu = self.dipole(numbers, positions, chrg, spin)
+            raise ValueError(
+                f"Unknown `derived_quantity` '{derived_quantity}'. The "
+                "polarizability can be calculated as the derivative of the "
+                "'dipole' moment or the 'energy'."
+            )
 
-            # 3x3 polarizability tensor
-            alpha = _jac(mu, field)
-
+        # 3x3 polarizability tensor
+        assert isinstance(alpha, Tensor)
         return alpha
 
     @requires_efield
@@ -1313,67 +1387,6 @@ class Calculator(TensorLike):
         OutputHandler.temporary_disable_off()
 
         return deriv
-
-    def ir(
-        self,
-        numbers: Tensor,
-        positions: Tensor,
-        chrg: Tensor | float | int = defaults.CHRG,
-        spin: Tensor | float | int | None = defaults.SPIN,
-    ) -> tuple[Tensor, Tensor]:
-        logger.debug("IR spectrum: Start.")
-
-        # run vibrational analysis first
-        hess = self.hessian(numbers, positions, chrg, spin, shape="matrix")
-        freqs, modes = properties.frequencies(numbers, positions, hess)
-
-        self.integrals.invalidate_driver()
-
-        dmu_dr = self.dipole_deriv(numbers, positions, chrg, spin)  # (3, nat, 3)
-        dmu_dr = dmu_dr.view(3, -1)  # (3, nat*3)
-
-        dmu_dq = torch.matmul(dmu_dr, modes)  # (3, nfreqs)
-        ir_ints = torch.einsum("...df,...df->...f", dmu_dq, dmu_dq)  # (nfreqs,)
-
-        # TODO: Figure out unit
-        from ..constants import units
-
-        logger.debug("IR spectrum numerical: All finished.")
-
-        return freqs * units.AU2RCM, ir_ints * 1378999.7790799031
-
-    def ir_numerical(
-        self,
-        numbers: Tensor,
-        positions: Tensor,
-        chrg: Tensor | float | int = defaults.CHRG,
-        spin: Tensor | float | int | None = defaults.SPIN,
-        step_size: int | float = 1.0e-5,
-    ) -> tuple[Tensor, Tensor]:
-        # turn off printing in numerical calcs
-        OutputHandler.temporary_disable_on()
-        logger.debug("IR spectrum numerical: Start.")
-
-        # run vibrational analysis first
-        hess = self.hessian_numerical(numbers, positions, chrg, shape="matrix")
-        freqs, modes = properties.frequencies(numbers, positions, hess)
-
-        # calculate nulcear dipole derivative dmu/dR (3, nat, 3)
-        dmu_dr = self.dipole_deriv_numerical(
-            numbers, positions, chrg, spin, step_size=step_size
-        )
-        dmu_dr = dmu_dr.view(3, -1)  # (3, nat*3)
-
-        dmu_dq = torch.matmul(dmu_dr, modes)  # (3, nfreqs)
-        ir_ints = torch.einsum("...df,...df->...f", dmu_dq, dmu_dq)  # (nfreqs,)
-
-        # TODO: Figure out unit
-        from ..constants import units
-
-        logger.debug("IR spectrum numerical: All finished.")
-        OutputHandler.temporary_disable_off()
-
-        return freqs * units.AU2RCM, ir_ints * 1378999.7790799031
 
     @requires_efield
     @requires_positions_grad
@@ -1487,6 +1500,235 @@ class Calculator(TensorLike):
         OutputHandler.temporary_disable_off()
 
         return deriv
+
+    @requires_efield
+    @requires_efield_grad
+    def hyperpol(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        use_functorch: bool = False,
+        derived_quantity: Literal["energy", "dipole", "pol"] = "pol",
+    ) -> Tensor:
+        r"""
+        Calculate the hyper polarizability tensor :math:`\beta`.
+
+        .. math::
+
+            \beta = \dfrac{\partial \alpha}{\partial F} = \dfrac{\partial^2 \mu}{\partial F^2} = \dfrac{\partial^3 E}{\partial^2 3}
+
+        One can calculate the Jacobian either row-by-row using the standard
+        `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
+        using `torch.func`'s function transforms (e.g., `jacrev`).
+
+        .. _here: https://pytorch.org/functorch/stable/notebooks/jacobians_hessians.html#computing-the-jacobian
+
+        Note
+        ----
+        Using `torch.func`'s function transforms can apparently be only used
+        once. Hence, for example, the Hessian and the polarizability cannot
+        be both calculated with functorch.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system.
+        positions : Tensor
+            Cartesian coordinates of all atoms in the system (nat, 3).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+        use_functorch: bool, optional
+            Whether to use functorch or the standard (slower) autograd.
+        derived_quantity: Literal['energy', 'dipole'], optional
+            Which derivative to calculate for the polarizability, i.e.,
+            derivative of dipole moment or energy w.r.t field.
+
+        Returns
+        -------
+        Tensor
+            Hyper polarizability tensor of shape `(3, 3, 3)`.
+        """
+        # retrieve the efield interaction and the field
+        field = self.interactions.get_interaction(efield.LABEL_EFIELD).field
+
+        if use_functorch is False:
+            alpha = self.polarizability(
+                numbers, positions, chrg, spin, use_functorch=use_functorch
+            )
+            return _jac(alpha, field)
+
+        # pylint: disable=import-outside-toplevel
+        from tad_mctc.autograd import jacrev
+
+        if derived_quantity == "pol":
+
+            def wrapped_polarizability(f: Tensor) -> Tensor:
+                self.interactions.update_efield(field=f)
+                return self.polarizability(numbers, positions, chrg, spin)
+
+            beta = jacrev(wrapped_polarizability)(field)
+
+        elif derived_quantity == "dipole":
+
+            def wrapped_dipole(f: Tensor) -> Tensor:
+                self.interactions.update_efield(field=f)
+                return self.dipole(numbers, positions, chrg, spin)
+
+            beta = jacrev(jacrev(wrapped_dipole))(field)
+
+        elif derived_quantity == "energy":
+
+            def wrapped_energy(f: Tensor) -> Tensor:
+                self.interactions.update_efield(field=f)
+                return self.energy(numbers, positions, chrg, spin)
+
+            beta = jacrev(jacrev(jacrev(wrapped_energy)))(field)
+
+        else:
+            raise ValueError(
+                f"Unknown `derived_quantity` '{derived_quantity}'. The "
+                "polarizability can be calculated as the derivative of the "
+                "'dipole' moment or the 'energy'."
+            )
+
+        # 3x3x3 hyper polarizability tensor
+        assert isinstance(beta, Tensor)
+        return beta
+
+    @requires_efield
+    def hyperpol_numerical(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        step_size: int | float = 1.0e-5,
+    ) -> Tensor:
+        """
+        Numerical polarizability.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system.
+        positions : Tensor
+            Cartesian coordinates of all atoms in the system (nat, 3).
+        chrg : Tensor | float | int | str | None
+            Total charge. Defaults to `None`.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+        step_size : float | int, optional
+            Step size for the numerical derivative.
+
+        Returns
+        -------
+        Tensor
+            Polarizability tensor.
+        """
+        # retrieve the efield interaction and the field and detach for gradient
+        ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
+        field = ef.field.detach().clone()
+        self.interactions.update_efield(field=field)
+
+        # pylint: disable=import-outside-toplevel
+        import gc
+
+        deriv = torch.zeros(*(*numbers.shape[:-1], 3, 3, 3), **self.dd)
+
+        # turn off printing in numerical hessian
+        OutputHandler.temporary_disable_on()
+        logger.debug(f"Numerical Hyper Polarizability: Starting build ({deriv.shape})")
+
+        count = 1
+        for i in range(3):
+            field[..., i] += step_size
+            self.interactions.update_efield(field=field)
+            gr = self.polarizability_numerical(numbers, positions, chrg, spin)
+
+            field[..., i] -= 2 * step_size
+            self.interactions.update_efield(field=field)
+            gl = self.polarizability_numerical(numbers, positions, chrg, spin)
+
+            field[..., i] += step_size
+            self.interactions.update_efield(field=field)
+            deriv[..., :, :, i] = 0.5 * (gr - gl) / step_size
+
+            logger.debug(f"Numerical Hyper Polarizability: step {count}/{3}")
+            count += 1
+
+            gc.collect()
+
+        logger.debug("Numerical Hyper Polarizability: All finished.")
+        OutputHandler.temporary_disable_off()
+
+        return deriv
+
+    # SPECTRA
+
+    def ir(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+    ) -> tuple[Tensor, Tensor]:
+        logger.debug("IR spectrum: Start.")
+
+        # run vibrational analysis first
+        hess = self.hessian(numbers, positions, chrg, spin, shape="matrix")
+        freqs, modes = properties.frequencies(numbers, positions, hess)
+
+        self.integrals.invalidate_driver()
+
+        dmu_dr = self.dipole_deriv(numbers, positions, chrg, spin)  # (3, nat, 3)
+        dmu_dr = dmu_dr.view(3, -1)  # (3, nat*3)
+
+        dmu_dq = torch.matmul(dmu_dr, modes)  # (3, nfreqs)
+        ir_ints = torch.einsum("...df,...df->...f", dmu_dq, dmu_dq)  # (nfreqs,)
+
+        # TODO: Figure out unit
+        from ..constants import units
+
+        logger.debug("IR spectrum numerical: All finished.")
+
+        return freqs * units.AU2RCM, ir_ints * 1378999.7790799031
+
+    def ir_numerical(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        step_size: int | float = 1.0e-5,
+    ) -> tuple[Tensor, Tensor]:
+        # turn off printing in numerical calcs
+        OutputHandler.temporary_disable_on()
+        logger.debug("IR spectrum numerical: Start.")
+
+        # run vibrational analysis first
+        hess = self.hessian_numerical(numbers, positions, chrg, shape="matrix")
+        freqs, modes = properties.frequencies(numbers, positions, hess)
+
+        # calculate nulcear dipole derivative dmu/dR (3, nat, 3)
+        dmu_dr = self.dipole_deriv_numerical(
+            numbers, positions, chrg, spin, step_size=step_size
+        )
+        dmu_dr = dmu_dr.view(3, -1)  # (3, nat*3)
+
+        dmu_dq = torch.matmul(dmu_dr, modes)  # (3, nfreqs)
+        ir_ints = torch.einsum("...df,...df->...f", dmu_dq, dmu_dq)  # (nfreqs,)
+
+        # TODO: Figure out unit
+        from ..constants import units
+
+        logger.debug("IR spectrum numerical: All finished.")
+        OutputHandler.temporary_disable_off()
+
+        return freqs * units.AU2RCM, ir_ints * 1378999.7790799031
 
     def raman(
         self,
