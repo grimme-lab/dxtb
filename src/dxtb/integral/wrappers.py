@@ -41,15 +41,14 @@ torch.Size([9, 17, 17])
 """
 from __future__ import annotations
 
-from dxtb.param import Param, get_elem_angular
-
 from .._types import DD, Any, Literal, Tensor
 from ..basis import IndexHelper
 from ..constants import labels
+from ..param import Param, get_elem_angular
 from ..xtb.h0_gfn1 import GFN1Hamiltonian
 from ..xtb.h0_gfn2 import GFN2Hamiltonian
 from .dipole import Dipole
-from .driver import IntDriverLibcint, IntDriverPytorch, IntDriverPytorchNoAnalytical
+from .factory import new_driver
 from .overlap import Overlap
 from .quadrupole import Quadrupole
 
@@ -169,14 +168,7 @@ def _integral(
 
     # Determine which driver class to instantiate
     driver_name = kwargs.pop("driver", labels.INTDRIVER_LIBCINT)
-    if driver_name == labels.INTDRIVER_LIBCINT:
-        driver = IntDriverLibcint(numbers, par, ihelp, **dd)
-    elif driver_name == labels.INTDRIVER_PYTORCH:
-        driver = IntDriverPytorch(numbers, par, ihelp, **dd)
-    elif driver_name == labels.INTDRIVER_PYTORCH2:
-        driver = IntDriverPytorchNoAnalytical(numbers, par, ihelp, **dd)
-    else:
-        raise ValueError(f"Unknown integral driver '{driver_name}'.")
+    driver = new_driver(driver_name, numbers, par, ihelp, **dd)
 
     driver.setup(positions)
     if integral_type == "_overlap":

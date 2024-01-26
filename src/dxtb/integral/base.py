@@ -100,26 +100,26 @@ class IntDriver(TensorLike):
         return self._positions is not None
 
     @abstractmethod
-    def setup(
-        self, numbers: Tensor, positions: Tensor, par: Param, ihelp: IndexHelper
-    ) -> None:
+    def setup(self, positions: Tensor, **kwargs) -> None:
         """
-        Initialize the driver.
+        Run the `libcint`-specific driver setup.
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system.
         positions : Tensor
             Cartesian coordinates of all atoms in the system (nat, 3).
-        par : Param
-            Representation of an extended tight-binding model.
-        ihelp : IndexHelper
-            Helper for indexing.
         """
 
     def __str__(self) -> str:
-        return f"{self.__class__.__name__}({self.__dict__})"
+        dict_repr = []
+        for key, value in self.__dict__.items():
+            if isinstance(value, Tensor):
+                value_repr = f"{value.shape}"
+            else:
+                value_repr = repr(value)
+            dict_repr.append(f"    {key}: {value_repr}")
+        dict_str = "{\n" + ",\n".join(dict_repr) + "\n}"
+        return f"{self.__class__.__name__}({dict_str})"
 
     def __repr__(self) -> str:
         return str(self)

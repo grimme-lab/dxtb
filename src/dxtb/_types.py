@@ -32,6 +32,12 @@ from .exceptions import DtypeError
 
 T = TypeVar("T")
 
+# "override" (since Python 3.12)
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
+
 # "Self" (since Python 3.11)
 if sys.version_info >= (3, 11):
     from typing import Self

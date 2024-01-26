@@ -13,6 +13,7 @@ from ..constants import labels
 from .base import BaseIntegral
 from .driver.libcint import OverlapLibcint
 from .driver.pytorch import OverlapPytorch
+from .factory import new_overlap
 
 __all__ = ["Overlap"]
 
@@ -34,10 +35,4 @@ class Overlap(BaseIntegral):
     ):
         super().__init__(device=device, dtype=dtype)
 
-        # Determine which overlap class to instantiate based on the type
-        if driver == labels.INTDRIVER_LIBCINT:
-            self.integral = OverlapLibcint(device=device, dtype=dtype, **kwargs)
-        elif driver in (labels.INTDRIVER_PYTORCH, labels.INTDRIVER_PYTORCH2):
-            self.integral = OverlapPytorch(device=device, dtype=dtype, **kwargs)
-        else:
-            raise ValueError(f"Unknown integral driver '{driver}'.")
+        self.integral = new_overlap(driver, device=device, dtype=dtype, **kwargs)

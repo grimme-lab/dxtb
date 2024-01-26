@@ -57,7 +57,7 @@ class IntegralImplementationLibcint(
         if not isinstance(driver, IntDriverLibcint):
             raise RuntimeError("Wrong integral driver selected.")
 
-    def get_gradient(self, driver: IntDriverLibcint) -> Tensor:
+    def get_gradient(self, _: IntDriverLibcint) -> Tensor:
         """
         Create the nuclear integral derivative matrix.
 

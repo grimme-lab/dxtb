@@ -25,7 +25,9 @@ INTDRIVER_PYTORCH = 1
 INTDRIVER_PYTORCH_STRS = ("pytorch", "torch", "dxtb")
 INTDRIVER_PYTORCH2 = 2
 INTDRIVER_PYTORCH2_STRS = ("pytorch2", "torch2", "dxtb2")
-INTDRIVER_MAP = ["libcint", "PyTorch", "PyTorch (pure)"]
+INTDRIVER_LEGACY = 3
+INTDRIVER_LEGACY_STRS = ("legacy", "old", "loop")
+INTDRIVER_MAP = ["libcint", "PyTorch", "PyTorch (pure)", "Legacy (loops)"]
 
 # SCF
 SCF_MODE_FULL = 0

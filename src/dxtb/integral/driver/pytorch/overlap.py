@@ -75,7 +75,7 @@ class OverlapPytorch(IntegralImplementationPytorch):
 
         # force symmetry to avoid problems through numerical errors
         if self.uplo == "n":
-            return symmetrize(self.matrix)
+            return symmetrize(self.matrix, force=False)
 
         return self.matrix
 
