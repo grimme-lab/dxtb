@@ -19,8 +19,8 @@ sample_list = ["LiH", "SiH4"]
 opts = {
     "exclude": ["disp", "hal", "rep"],
     "maxiter": 50,
-    "xitorch_fatol": 1.0e-8,
-    "xitorch_xatol": 1.0e-8,
+    "f_atol": 1.0e-8,
+    "x_atol": 1.0e-8,
     "verbosity": 0,
     "int_driver": "dxtb",
 }

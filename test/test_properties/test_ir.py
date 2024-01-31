@@ -20,8 +20,8 @@ sample_list = ["LiH", "H2O", "SiH4"]
 
 opts = {
     "maxiter": 100,
-    "xitorch_fatol": 1.0e-10,
-    "xitorch_xatol": 1.0e-10,
+    "f_atol": 1.0e-10,
+    "x_atol": 1.0e-10,
     "verbosity": 0,
     "scf_mode": "full",
     "mixer": "anderson",

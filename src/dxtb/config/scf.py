@@ -32,8 +32,8 @@ class ConfigSCF:
         damp: float = defaults.DAMP,
         scf_mode: str | int = defaults.SCF_MODE,
         scp_mode: str | int = defaults.SCP_MODE,
-        xitorch_xatol: float = defaults.XITORCH_XATOL,
-        xitorch_fatol: float = defaults.XITORCH_FATOL,
+        x_atol: float = defaults.X_ATOL,
+        f_atol: float = defaults.F_ATOL,
         force_convergence: bool = defaults.SCF_FORCE_CONVERGENCE,
         # Fermi
         fermi_etemp: float = defaults.FERMI_ETEMP,
@@ -110,8 +110,8 @@ class ConfigSCF:
         self.device = device
         self.dtype = dtype
 
-        self.xitorch_xatol = check_tols(xitorch_xatol, dtype)
-        self.xitorch_fatol = check_tols(xitorch_fatol, dtype)
+        self.x_atol = check_tols(x_atol, dtype)
+        self.f_atol = check_tols(f_atol, dtype)
 
         self.fermi = ConfigFermi(
             etemp=fermi_etemp,
@@ -132,8 +132,8 @@ class ConfigSCF:
                 "Mixer": self.mixer,
                 "Damping Factor": self.damp,
                 "Force Convergence": self.force_convergence,
-                "x tolerance": self.xitorch_xatol,
-                "f(x) tolerance": self.xitorch_fatol,
+                "x tolerance": self.x_atol,
+                "f(x) tolerance": self.f_atol,
                 **self.fermi.info(),
             }
         }
@@ -150,8 +150,8 @@ class ConfigSCF:
             f"  Force Convergence: {self.force_convergence}",
             f"  Device: {self.device}",
             f"  Data Type: {self.dtype}",
-            f"  xitorch absolute Tolerance: {self.xitorch_xatol}",
-            f"  xitorch Functional Tolerance: {self.xitorch_fatol}",
+            f"  xitorch absolute Tolerance: {self.x_atol}",
+            f"  xitorch Functional Tolerance: {self.f_atol}",
             f"  Fermi Configuration: {self.fermi}",
         ]
         return "\n".join(config_str)

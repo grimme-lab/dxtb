@@ -65,8 +65,8 @@ def test_grad(dtype: torch.dtype, name: str):
         **{
             "exclude": ["rep", "disp", "hal"],
             "maxiter": 50,
-            "xitorch_fatol": 1.0e-6,
-            "xitorch_xatol": 1.0e-6,
+            "f_atol": 1.0e-6,
+            "x_atol": 1.0e-6,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)

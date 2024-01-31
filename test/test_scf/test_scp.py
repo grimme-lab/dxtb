@@ -44,8 +44,8 @@ def single(
             "mixer": mixer,
             "scf_mode": scf_mode,
             "scp_mode": scp_mode,
-            "xitorch_fatol": tol,
-            "xitorch_xatol": tol,
+            "f_atol": tol,
+            "x_atol": tol,
             "int_driver": "pytorch",
         },
     )
@@ -149,8 +149,8 @@ def batched(
             "mixer": mixer,
             "scf_mode": scf_mode,
             "scp_mode": scp_mode,
-            "xitorch_fatol": tol,
-            "xitorch_xatol": tol,
+            "f_atol": tol,
+            "x_atol": tol,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
@@ -229,8 +229,8 @@ def test_batch_three(
             "mixer": mixer,
             "scf_mode": scf_mode,
             "scp_mode": scp_mode,
-            "xitorch_fatol": tol,
-            "xitorch_xatol": tol,
+            "f_atol": tol,
+            "x_atol": tol,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)

@@ -123,12 +123,12 @@ LOG_LEVEL_CHOICES = ["critical", "error", "warn", "warning", "info", "debug"]
 XITORCH_VERBOSITY = False
 """Verbosity of printout."""
 
-XITORCH_XATOL = 1.0e-5
+X_ATOL = 1.0e-5
 """
 The absolute tolerance of the norm of the input of the equilibrium function.
 """
 
-XITORCH_FATOL = 1.0e-5
+F_ATOL = 1.0e-5
 """
 The absolute tolerance of the norm of the output of the equilibrium function.
 """

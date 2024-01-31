@@ -410,13 +410,13 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
     p.add_argument(
         "--xtol",
         type=float,
-        default=defaults.XITORCH_XATOL,
+        default=defaults.X_ATOL,
         help="R|Set absolute tolerance for SCF (input).",
     )
     p.add_argument(
         "--ftol",
         type=float,
-        default=defaults.XITORCH_FATOL,
+        default=defaults.F_ATOL,
         help="R|Set absolute tolerance for SCF (output).",
     )
     p.add_argument(

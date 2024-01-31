@@ -23,8 +23,8 @@ ref_grad = np.load("test/test_singlepoint/grad.npz")
 opts = {
     "verbosity": 0,
     "maxiter": 50,
-    "xitorch_fatol": 1.0e-10,
-    "xitorch_xatol": 1.0e-10,
+    "f_atol": 1.0e-10,
+    "x_atol": 1.0e-10,
 }
 
 device = None

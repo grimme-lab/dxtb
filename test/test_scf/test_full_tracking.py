@@ -51,8 +51,8 @@ def single(
             "int_driver": intdriver,
             "mixer": mixer,
             "scp_mode": scp_mode,
-            "xitorch_fatol": tol,
-            "xitorch_xatol": tol,
+            "f_atol": tol,
+            "x_atol": tol,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
@@ -140,8 +140,8 @@ def batched(
             "mixer": mixer,
             "scp_mode": "charge",
             "int_driver": intdriver,
-            "xitorch_fatol": tol,
-            "xitorch_xatol": tol,
+            "f_atol": tol,
+            "x_atol": tol,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
@@ -205,8 +205,8 @@ def batched_unconverged(
             "mixer": mixer,
             "scf_mode": "full",
             "scp_mode": "potential",
-            "xitorch_fatol": tol,
-            "xitorch_xatol": tol,
+            "f_atol": tol,
+            "x_atol": tol,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
@@ -312,8 +312,8 @@ def test_batch_three(
             "mixer": mixer,
             "scf_mode": "full",
             "scp_mode": "charge",
-            "xitorch_fatol": tol,
-            "xitorch_xatol": tol,
+            "f_atol": tol,
+            "x_atol": tol,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)

@@ -65,8 +65,8 @@ def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
             "maxiter": 300,
             "mixer": mixer,
             "scp_mode": "potential",
-            "xitorch_fatol": tol,
-            "xitorch_xatol": tol,
+            "f_atol": tol,
+            "x_atol": tol,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
@@ -92,8 +92,8 @@ def test_single_difficult(dtype: torch.dtype, name: str):
     options = dict(
         opts,
         **{
-            "xitorch_fatol": 1e-6,
-            "xitorch_xatol": 1e-6,
+            "f_atol": 1e-6,
+            "x_atol": 1e-6,
             "damp": 0.5,  # simple mixing
             "maxiter": 300,  #  simple mixing
         },

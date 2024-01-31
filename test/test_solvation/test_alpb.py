@@ -16,7 +16,7 @@ from dxtb.xtb import Calculator
 
 from .samples import samples
 
-opts = {"verbosity": 0, "xitorch_fatol": 1e-10, "xitorch_xatol": 1e-10}
+opts = {"verbosity": 0, "f_atol": 1e-10, "x_atol": 1e-10}
 
 device = None
 

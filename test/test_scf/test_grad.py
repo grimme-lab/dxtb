@@ -90,7 +90,7 @@ def test_grad_autograd(name: str, dtype: torch.dtype):
 
     assert pytest.approx(ref_full, abs=tol) == ref
 
-    options = dict(opts, **{"xitorch_fatol": tol**2, "xitorch_xatol": tol**2})
+    options = dict(opts, **{"f_atol": tol**2, "x_atol": tol**2})
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
@@ -132,7 +132,7 @@ def test_grad_large(name: str, dtype: torch.dtype):
     # variable to be differentiated
     positions.requires_grad_(True)
 
-    options = dict(opts, **{"xitorch_fatol": tol**2, "xitorch_xatol": tol**2})
+    options = dict(opts, **{"f_atol": tol**2, "x_atol": tol**2})
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
@@ -161,7 +161,7 @@ def test_param_grad_energy(name: str, dtype: torch.dtype = torch.float):
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
-    options = dict(opts, **{"xitorch_fatol": tol**2, "xitorch_xatol": tol**2})
+    options = dict(opts, **{"f_atol": tol**2, "x_atol": tol**2})
     calc = Calculator(numbers, par, opts=options, **dd)
 
     assert calc.integrals.hcore is not None
@@ -204,7 +204,7 @@ def skip_test_param_grad_force(name: str, dtype: torch.dtype = torch.float):
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
-    options = dict(opts, **{"xitorch_fatol": tol**2, "xitorch_xatol": tol**2})
+    options = dict(opts, **{"f_atol": tol**2, "x_atol": tol**2})
     calc = Calculator(numbers, par, opts=options, **dd)
 
     assert calc.integrals.hcore is not None

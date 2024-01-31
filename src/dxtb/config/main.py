@@ -38,8 +38,8 @@ class Config:
         damp: float = defaults.DAMP,
         scf_mode: str | int = defaults.SCF_MODE,
         scp_mode: str | int = defaults.SCP_MODE,
-        xitorch_xatol: float = defaults.XITORCH_XATOL,
-        xitorch_fatol: float = defaults.XITORCH_FATOL,
+        x_atol: float = defaults.X_ATOL,
+        f_atol: float = defaults.F_ATOL,
         force_convergence: bool = False,
         fermi_etemp: float = defaults.FERMI_ETEMP,
         fermi_maxiter: int = defaults.FERMI_MAXITER,
@@ -85,13 +85,16 @@ class Config:
             damp=damp,
             scf_mode=scf_mode,
             scp_mode=scp_mode,
-            xitorch_xatol=xitorch_xatol,
-            xitorch_fatol=xitorch_fatol,
+            x_atol=x_atol,
+            f_atol=f_atol,
             force_convergence=force_convergence,
             fermi_etemp=fermi_etemp,
             fermi_maxiter=fermi_maxiter,
             fermi_thresh=fermi_thresh,
             fermi_partition=fermi_partition,
+            #
+            device=device,
+            dtype=dtype,
         )
 
         # compatibility checks
@@ -124,8 +127,8 @@ class Config:
             damp=args.damp,
             scf_mode=args.scf_mode,
             scp_mode=args.scp_mode,
-            xitorch_xatol=args.xtol,
-            xitorch_fatol=args.ftol,
+            x_atol=args.xtol,
+            f_atol=args.ftol,
             fermi_etemp=args.etemp,
         )
 

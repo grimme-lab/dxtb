@@ -9,7 +9,7 @@ from tad_mctc.storch import cdist
 from .._types import Tensor
 from .tensors import real_triples
 
-__all__ = ["cdist", "is_linear_molecule", "bond_angle"]
+__all__ = ["cdist", "is_linear_molecule", "bond_angle", "mass_center"]
 
 
 def bond_angle(numbers: Tensor, positions: Tensor) -> Tensor:
@@ -78,3 +78,23 @@ def is_linear_molecule(
     # use summation instead of torch.any() to handle batch dimension
     # only if all the whole mask is False, the molecule is linear
     return not_linear_mask.sum((-1, -2, -3)) == 0
+
+
+def mass_center(masses: Tensor, positions: Tensor) -> Tensor:
+    """
+    Calculate the center of mass from the atomic coordinates and masses.
+
+    Parameters
+    ----------
+    masses : Tensor
+        Atomic masses (nat, ).
+    positions : Tensor
+        Cartesian coordinates of all atoms in the system (nat, 3).
+
+    Returns
+    -------
+    Tensor
+        Cartesian coordinates of center of mass.
+    """
+    s = torch.sum(masses, dim=-1)
+    return torch.einsum("...z,...zx->...x", masses, positions) / s

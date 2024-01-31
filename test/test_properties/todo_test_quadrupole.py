@@ -23,8 +23,8 @@ opts = {
     "mixer": "anderson",
     "scf_mode": "full",
     "verbosity": 0,
-    "xitorch_fatol": 1.0e-9,
-    "xitorch_xatol": 1.0e-9,
+    "f_atol": 1.0e-9,
+    "x_atol": 1.0e-9,
 }
 
 device = None

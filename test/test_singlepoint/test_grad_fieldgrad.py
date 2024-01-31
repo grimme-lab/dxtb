@@ -17,8 +17,8 @@ from .samples import samples
 
 opts = {
     "maxiter": 100,
-    "xitorch_fatol": 1.0e-8,
-    "xitorch_xatol": 1.0e-8,
+    "f_atol": 1.0e-8,
+    "x_atol": 1.0e-8,
     "verbosity": 0,
     "scf_mode": "full",
     "mixer": "anderson",

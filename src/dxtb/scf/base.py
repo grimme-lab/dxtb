@@ -219,7 +219,10 @@ class BaseSCF:
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        self.config: ConfigSCF = kwargs.pop("config", ConfigSCF())
+        if "config" in kwargs:
+            self.config = kwargs.pop("config")
+        else:
+            self.config = ConfigSCF()
 
         # TODO: Move these settings to config
         self.bck_options = {"posdef": True, **kwargs.pop("bck_options", {})}
@@ -228,8 +231,8 @@ class BaseSCF:
             "method": "broyden1",
             "alpha": -0.5,
             "damp": self.config.damp,
-            "f_tol": self.config.xitorch_fatol,
-            "x_tol": self.config.xitorch_xatol,
+            "f_tol": self.config.f_atol,
+            "x_tol": self.config.x_atol,
             "f_rtol": float("inf"),
             "x_rtol": float("inf"),
             "maxiter": self.config.maxiter,

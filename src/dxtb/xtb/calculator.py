@@ -734,7 +734,7 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        shape: str = "matrix",
+        matrix: bool = False,
     ) -> Tensor:
         """
         Calculation of the nuclear (autodiff) Hessian with functorch.
@@ -755,8 +755,9 @@ class Calculator(TensorLike):
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to `None`.
-        shape : str, optional
-            Output shape of Hessian. Defaults to "matrix".
+        matrix : bool, optional
+            Whether to reshape the Hessian to a matrix, i.e., (nat*3, nat*3).
+            Defaults to `False`.
 
         Returns
         -------
@@ -779,7 +780,7 @@ class Calculator(TensorLike):
         assert isinstance(hess, Tensor)
 
         # reshape (nb, nat, 3, nat, 3) to (nb, nat*3, nat*3)
-        if shape == "matrix":
+        if matrix is True:
             s = [*numbers.shape[:-1], *2 * [3 * numbers.shape[-1]]]
             hess = hess.reshape(*s)
 
@@ -792,7 +793,7 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        shape: str = "matrix",
+        matrix: bool = False,
     ) -> Tensor:
         if positions.requires_grad is False:
             raise RuntimeError("Position tensor needs `requires_grad=True`.")
@@ -807,7 +808,7 @@ class Calculator(TensorLike):
         assert isinstance(hess, Tensor)
 
         # reshape (nb, nat, 3, nat, 3) to (nb, nat*3, nat*3)
-        if shape == "matrix":
+        if matrix is True:
             s = [*numbers.shape[:-1], *2 * [3 * numbers.shape[-1]]]
             hess = hess.reshape(*s)
 
@@ -821,7 +822,7 @@ class Calculator(TensorLike):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         step_size: int | float = 1.0e-5,
-        shape: str = "matrix",
+        matrix: bool = False,
     ) -> Tensor:
         """
         Numerical Hessian.
@@ -836,8 +837,9 @@ class Calculator(TensorLike):
             Total charge. Defaults to `None`.
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to `None`.
-        shape : str, optional
-            Output shape of Hessian. Defaults to "matrix".
+        matrix : bool, optional
+            Whether to reshape the Hessian to a matrix, i.e., (nat*3, nat*3).
+            Defaults to `False`.
 
         Returns
         -------
@@ -885,7 +887,7 @@ class Calculator(TensorLike):
         gc.collect()
 
         # reshape (nb, nat, 3, nat, 3) to (nb, nat*3, nat*3)
-        if shape == "matrix":
+        if matrix is True:
             s = [*numbers.shape[:-1], *2 * [3 * numbers.shape[-1]]]
             hess = hess.reshape(*s)
 
@@ -900,16 +902,17 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        project: bool = True,
+        project_translational: bool = True,
+        project_rotational: bool = True,
     ) -> tuple[Tensor, Tensor]:
-        hess = self.hessian(
+        hess = self.hessian(numbers, positions, chrg, spin)
+        return properties.frequencies(
             numbers,
             positions,
-            chrg,
-            spin,
-            shape="matrix",
+            hess,
+            project_translational=project_translational,
+            project_rotational=project_rotational,
         )
-        return properties.frequencies(numbers, positions, hess, project=project)
 
     def vibration_numerical(
         self,
@@ -917,16 +920,17 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        project: bool = True,
+        project_translational: bool = True,
+        project_rotational: bool = True,
     ) -> tuple[Tensor, Tensor]:
-        hess = self.hessian_numerical(
+        hess = self.hessian_numerical(numbers, positions, chrg, spin)
+        return properties.frequencies(
             numbers,
             positions,
-            chrg,
-            spin,
-            shape="matrix",
+            hess,
+            project_translational=project_translational,
+            project_rotational=project_rotational,
         )
-        return properties.frequencies(numbers, positions, hess, project=project)
 
     @requires_efield
     def dipole(
@@ -1710,7 +1714,7 @@ class Calculator(TensorLike):
         logger.debug("IR spectrum numerical: Start.")
 
         # run vibrational analysis first
-        hess = self.hessian_numerical(numbers, positions, chrg, shape="matrix")
+        hess = self.hessian_numerical(numbers, positions, chrg)
         freqs, modes = properties.frequencies(numbers, positions, hess)
 
         # calculate nulcear dipole derivative dmu/dR (3, nat, 3)

@@ -8,14 +8,155 @@ corresponding normal modes from the mass-weighted Hessian.
 from __future__ import annotations
 
 import torch
+from tad_mctc import storch
+from tad_mctc.data.mass import ATOMIC as ATOMIC_MASSES
 
 from .._types import Tensor
 from ..constants import get_atomic_masses
-from ..utils.geometry import is_linear_molecule
+from ..utils.geometry import is_linear_molecule, mass_center
 from ..utils.symeig import eighb
+
+LINDEP_THRESHOLD = 1e-7
+
+
+def _get_translational_modes(mass: Tensor):
+    """Translational modes"""
+    massp = storch.sqrt(mass)
+    Tx = torch.einsum("...m,x->...mx", massp, torch.tensor([1, 0, 0]))
+    Ty = torch.einsum("...m,y->...my", massp, torch.tensor([0, 1, 0]))
+    Tz = torch.einsum("...m,z->...mz", massp, torch.tensor([0, 0, 1]))
+    return Tx.ravel(), Ty.ravel(), Tz.ravel()
+
+
+def _get_rotational_modes(mass: Tensor, mpos: Tensor):
+    # Computation of inertia tensor and transformation to its traceless
+    # form (convenient for calculating the principal axes of rotation).
+    im = torch.einsum("...m,...mx,...my->...xy", mass, mpos, mpos)
+    im = torch.eye(3) * im.trace() - im
+
+    # Eigendecomposition yields the principal moments of inertia (w)
+    # and the principal axes of rotation (paxes) of a molecule.
+    w, paxes = torch.linalg.eigh(im)
+
+    # make z-axis rotation vector with smallest moment of inertia
+    w = torch.flip(w, [0])
+    paxes = torch.flip(paxes, [1])
+    ex, ey, ez = paxes.mT
+
+    # rotational mode
+    coords_rot_frame = torch.einsum("...ij,...jk->...ik", mpos, paxes)
+    cx, cy, cz = coords_rot_frame.mT
+
+    massp = storch.sqrt(mass)
+    _massp = massp[..., :, None]
+    _cx = cx[..., :, None]
+    _cy = cy[..., :, None]
+    _cz = cz[..., :, None]
+
+    Rx = _massp * (_cy * ez - _cz * ey)
+    Ry = _massp * (_cz * ex - _cx * ez)
+    Rz = _massp * (_cx * ey - _cy * ex)
+    return Rx.ravel(), Ry.ravel(), Rz.ravel()
 
 
 def frequencies(
+    numbers: Tensor,
+    positions: Tensor,
+    hessian: Tensor,
+    project_translational: bool = True,
+    project_rotational: bool = True,
+) -> tuple[Tensor, Tensor]:
+    """
+    Vibrational frequencies and normal modes from mass-weighted Hessian.
+
+    http://gaussian.com/vib/
+    https://github.com/psi4/psi4/blob/master/psi4/driver/qcdb/vib.py
+    https://github.com/pyscf/pyscf/blob/master/pyscf/hessian/thermo.py
+
+    Parameters
+    ----------
+    numbers : Tensor
+        Atomic numbers for all atoms in the system.
+    hessian : Tensor
+        Hessian matrix.
+    project : bool, optional
+        Whether the 6 (5) lowest frequencies should be removed (project out
+        rotational and translational degrees of freedom).
+
+    Returns
+    -------
+    tuple[Tensor, Tensor]
+        Frequencies and normal modes.
+    """
+    # TODO: Shape checks
+
+    mass = ATOMIC_MASSES.to(device=hessian.device, dtype=hessian.dtype)[numbers]
+    invsqrtmass = storch.reciprocal(storch.sqrt(mass))
+
+    # (nb, nat, 3, nat, 3) * (nb, nat) * (nb, nat) -> (nb, nat, 3, nat, 3)
+    mhess = torch.einsum(
+        "...pxqy,...p,...q->...pxqy", hessian, invsqrtmass, invsqrtmass
+    )
+
+    # reshape (nb, nat, 3, nat, 3) to (nb, nat*3, nat*3)
+    hess = mhess.reshape(*[*numbers.shape[:-1], *2 * [3 * numbers.shape[-1]]])
+
+    # symmetrize
+    h = (hess + hess.transpose(-2, -1)) * 0.5
+
+    TRspace = []
+    if project_translational is True:
+        TRspace.extend(_get_translational_modes(mass))
+
+    if project_rotational is True:
+        mpos = positions - mass_center(mass, positions)
+
+        # TODO: Add single atom case
+        if is_linear_molecule(numbers, positions) is True:
+            TRspace.extend(_get_rotational_modes(mass, mpos)[:-1])
+        else:
+            TRspace.extend(_get_rotational_modes(mass, mpos))
+
+    TRspace = torch.vstack(TRspace)
+
+    # create orthogonal basis (q) for the modes
+    q, _ = torch.linalg.qr(TRspace.T)
+
+    # The special projection matrix P=I-QQ^T is crucial for isolating
+    # specific subspaces of interest in a high-dimensional space by
+    # projecting vectors onto the subspace orthogonal to the column space
+    # of QQ. In the context of vibrational analysis, the projection matrix
+    # P is used to remove translational and rotational modes from
+    # consideration, focusing the analysis on the true vibrational modes of
+    # a molecular system.
+    qqT = torch.einsum("...ij,...kj->...ik", q, q)
+    P = torch.eye(*[3 * numbers.shape[-1]]) - qqT
+    w, v = torch.linalg.eigh(P)
+    bvec = v[..., :, w > LINDEP_THRESHOLD]
+
+    # transform Hessian in mass-weighted cartesian coordinates (MWC) to new
+    # Hessian in internal coordinates (INT): h_INT = bvec.T @ h_MVC @ bvec
+    h = torch.einsum("...ji,...jk,...kl->...il", bvec, h, bvec)
+
+    # eigendecomposition of Hessian yields force constants (not
+    # frequencies!) and normal modes of vibration
+    force_const_au, mode = torch.linalg.eigh(h)
+    mode = torch.einsum("...ij,...jk->...ik", bvec, mode)
+
+    # Vibrational frequencies ω = √λ with some additional logic for
+    # handling possible negative eigenvalues. Note that we are not dividing
+    # by 2π (ω = √λ / 2π) in order to immediately get frequencies in
+    # Hartree: E = hbar * ω with hbar = 1 in atomic units. Dividing by 2π
+    # effectively converts from angular frequency (ω) to the frequency in
+    # cycles per second (ν, Hz), which would requires the following
+    # conversion to cm^-1: 1e-2 / units.CODATA.c / units.AU2SECOND.
+    sgn = torch.sign(force_const_au)
+    freqs_au = torch.sqrt(torch.abs(force_const_au)) * sgn
+
+    return freqs_au, mode
+
+
+def frequencies_old(
     numbers: Tensor, positions: Tensor, hessian: Tensor, project: bool = True
 ) -> tuple[Tensor, Tensor]:
     """

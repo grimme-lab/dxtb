@@ -367,7 +367,7 @@ def test_element(dtype: torch.dtype, number: int) -> None:
     charges = torch.tensor(0.0, **dd)
 
     # opts["spin"] = uhf[number - 1]
-    options = dict(opts, **{"xitorch_fatol": 1e-6, "xitorch_xatol": 1e-6})
+    options = dict(opts, **{"f_atol": 1e-6, "x_atol": 1e-6})
     calc = Calculator(numbers, par, opts=options, **dd)
     results = calc.singlepoint(numbers, positions, charges)
     assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
@@ -394,8 +394,8 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
     options = dict(
         opts,
         **{
-            "xitorch_fatol": 1e-5,  # avoids Jacobian inversion error
-            "xitorch_xatol": 1e-5,  # avoids Jacobian inversion error
+            "f_atol": 1e-5,  # avoids Jacobian inversion error
+            "x_atol": 1e-5,  # avoids Jacobian inversion error
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
@@ -434,8 +434,8 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
     options = dict(
         opts,
         **{
-            "xitorch_fatol": 1e-5,  # avoid Jacobian inversion error
-            "xitorch_xatol": 1e-5,  # avoid Jacobian inversion error
+            "f_atol": 1e-5,  # avoid Jacobian inversion error
+            "x_atol": 1e-5,  # avoid Jacobian inversion error
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
