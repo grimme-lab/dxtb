@@ -1,6 +1,7 @@
 """
 Base calculator for the extended tight-binding model.
 """
+
 from __future__ import annotations
 
 import logging
@@ -1683,7 +1684,7 @@ class Calculator(TensorLike):
         logger.debug("IR spectrum: Start.")
 
         # run vibrational analysis first
-        hess = self.hessian(numbers, positions, chrg, spin, shape="matrix")
+        hess = self.hessian(numbers, positions, chrg, spin)
         freqs, modes = properties.frequencies(numbers, positions, hess)
 
         self.integrals.invalidate_driver()
