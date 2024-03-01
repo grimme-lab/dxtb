@@ -9,6 +9,7 @@ Every contribution contains a `Cache` that holds position-independent
 variables. Therefore, the positions must always be supplied to the `get_energy`
 (or `get_grad`) method.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -90,9 +91,11 @@ class Classical(ClassicalABC, TensorLike):
         super().__init__(device, dtype)
         self.label = self.__class__.__name__
 
-    def get_gradient(self, energy: Tensor, positions: Tensor) -> Tensor:
+    def get_gradient(
+        self, energy: Tensor, positions: Tensor, grad_outputs: Tensor | None = None
+    ) -> Tensor:
         """
-        Calculates nuclear gradient of an classical energy contribution via
+        Calculates nuclear gradient of a classical energy contribution via
         PyTorch's autograd engine.
 
         Parameters
@@ -101,6 +104,9 @@ class Classical(ClassicalABC, TensorLike):
             Energy that will be differentiated.
         positions : Tensor
             Nuclear positions. Needs `requires_grad=True`.
+        grad_outputs : Tensor | None, optional
+            Vector in the vector-Jacobian product. If `None`, the vector is
+            initialized to ones.
 
         Returns
         -------
@@ -119,7 +125,6 @@ class Classical(ClassicalABC, TensorLike):
         if torch.equal(energy, torch.zeros_like(energy)):
             return torch.zeros_like(positions)
 
-        (gradient,) = torch.autograd.grad(
-            energy, positions, grad_outputs=torch.ones_like(energy)
-        )
+        g = torch.ones_like(energy) if grad_outputs is None else grad_outputs
+        (gradient,) = torch.autograd.grad(energy, positions, grad_outputs=g)
         return gradient

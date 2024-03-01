@@ -45,6 +45,10 @@ dxtb.timer.stop("Hessian")
 
 print(freqs * AU2RCM)
 print(modes)
+
+print("Shape of numbers", numbers.shape)
+print("Shape of modes", modes.shape)
+print("Shape of freqs", freqs.shape)
 print("")
 print("")
 print("")

@@ -4,19 +4,21 @@ Test overlap from libcint.
 We cannot compare with our internal integrals or the reference integrals from
 tblite, because the sorting of the p-orbitals are different.
 """
+
 from __future__ import annotations
 
 from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.convert import numpy_to_tensor
 
 from dxtb._types import DD, Tensor
 from dxtb.basis import Basis, IndexHelper
 from dxtb.integral.driver.libcint import impls as intor
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
-from dxtb.utils import is_basis_list, numpy_to_tensor
+from dxtb.utils import is_basis_list
 
 try:
     from dxtb.mol.external._pyscf import M

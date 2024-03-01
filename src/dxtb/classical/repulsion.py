@@ -32,18 +32,21 @@ Example
 >>> print(energy.sum(-1))
 tensor(0.0303)
 """
+
 from __future__ import annotations
 
 import warnings
 
 import torch
+from tad_mctc import storch
+from tad_mctc.batch import real_pairs
+from tad_mctc.typing import DD, get_default_dtype
 
-from .._types import Tensor, TensorLike
+from .._types import Tensor, TensorLike, override
 from ..basis import IndexHelper
 from ..constants import xtb
 from ..exceptions import ParameterWarning
 from ..param import Param, get_elem_param
-from ..utils import cdist, real_pairs
 from .base import Classical
 
 __all__ = ["Repulsion", "new_repulsion"]
@@ -169,7 +172,7 @@ class Repulsion(Classical, TensorLike):
         )
 
         # mask for padding
-        mask = real_pairs(numbers, diagonal=True)
+        mask = real_pairs(numbers, mask_diagonal=True)
 
         # Without the eps, the first backward returns nan's as described in
         # https://github.com/pytorch/pytorch/issues/2421. The second backward
@@ -213,6 +216,50 @@ class Repulsion(Classical, TensorLike):
             (Atom-resolved) repulsion energy.
         """
         e = repulsion_energy(
+            positions,
+            cache.mask,
+            cache.arep,
+            cache.kexp,
+            cache.zeff,
+            self.cutoff,
+        )
+
+        if atom_resolved is True:
+            return 0.5 * torch.sum(e, dim=-1)
+        return e
+
+
+class RepulsionAnalytical(Repulsion):
+    """
+    Representation of the classical repulsion.
+    """
+
+    @override
+    def get_energy(
+        self,
+        positions: Tensor,
+        cache: Repulsion.Cache,
+        atom_resolved: bool = True,
+    ) -> Tensor:
+        """
+        Get repulsion energy. This function employs the custom autograd class
+        to provide an analytical first derivative.
+
+        Parameters
+        ----------
+        cache : Repulsion.Cache
+            Cache for repulsion.
+        positions : Tensor
+            Cartesian coordinates of all atoms in the system (nat, 3).
+        atom_resolved : bool
+            Whether to return atom-resolved energy (True) or full matrix (False).
+
+        Returns
+        -------
+        Tensor
+            (Atom-resolved) repulsion energy.
+        """
+        e = RepulsionAG.apply(
             positions,
             cache.mask,
             cache.arep,
@@ -277,7 +324,7 @@ def repulsion_energy(
 
     distances = torch.where(
         mask,
-        cdist(positions, positions, p=2),
+        storch.cdist(positions, positions, p=2),
         eps,
     )
 
@@ -341,7 +388,7 @@ def repulsion_gradient(
 
     distances = torch.where(
         mask,
-        cdist(positions, positions, p=2),
+        storch.cdist(positions, positions, p=2),
         eps,
     )
 
@@ -483,6 +530,7 @@ def new_repulsion(
     numbers: Tensor,
     par: Param,
     cutoff: float = xtb.DEFAULT_REPULSION_CUTOFF,
+    with_analytical_gradient: bool = False,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> Repulsion | None:
@@ -497,6 +545,11 @@ def new_repulsion(
         Representation of an extended tight-binding model.
     cutoff : float
         Real space cutoff for repulsion interactions (default: 25.0).
+    with_analytical_gradient : bool, optional
+        Whether to instantiate a repulsion class that implements a custom
+        backward function with an analytical nuclear gradient, i.e., the first
+        derivative w.r.t. positions is computed with an analytical formula
+        instead of the AD engine. Defaults to `False`.
 
     Returns
     -------
@@ -514,16 +567,23 @@ def new_repulsion(
         warnings.warn("No repulsion scheme found.", ParameterWarning)
         return None
 
-    kexp = torch.tensor(par.repulsion.effective.kexp)
+    dd: DD = {
+        "device": device,
+        "dtype": dtype if dtype is not None else get_default_dtype(),
+    }
+
+    kexp = torch.tensor(par.repulsion.effective.kexp, **dd)
     klight = (
-        torch.tensor(par.repulsion.effective.klight)
+        torch.tensor(par.repulsion.effective.klight, **dd)
         if par.repulsion.effective.klight
         else None
     )
 
     # get parameters for unique species
     unique = torch.unique(numbers)
-    arep = get_elem_param(unique, par.element, "arep", pad_val=0)
-    zeff = get_elem_param(unique, par.element, "zeff", pad_val=0)
+    arep = get_elem_param(unique, par.element, "arep", pad_val=0, **dd)
+    zeff = get_elem_param(unique, par.element, "zeff", pad_val=0, **dd)
 
-    return Repulsion(arep, zeff, kexp, klight, cutoff, device=device, dtype=dtype)
+    if with_analytical_gradient is True:
+        return RepulsionAnalytical(arep, zeff, kexp, klight, cutoff, **dd)
+    return Repulsion(arep, zeff, kexp, klight, cutoff, **dd)

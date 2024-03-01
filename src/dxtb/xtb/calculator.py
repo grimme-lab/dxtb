@@ -1792,7 +1792,9 @@ class Calculator(TensorLike):
         dmu_dr = self.dipole_deriv(numbers, positions, chrg, spin)  # (3, nat, 3)
         dmu_dr = dmu_dr.view(3, -1)  # (3, nat*3)
 
-        dmu_dq = torch.matmul(dmu_dr, modes)  # (3, nfreqs)
+        # (3, nat*3) @ (nat*3, nfreqs) = (3, nfreqs)
+        dmu_dq = torch.matmul(dmu_dr, modes)
+
         ir_ints = torch.einsum("...df,...df->...f", dmu_dq, dmu_dq)  # (nfreqs,)
 
         # TODO: Figure out unit
@@ -1877,21 +1879,22 @@ class Calculator(TensorLike):
         da_dr = self.pol_deriv(numbers, positions, chrg, spin)
         da_dr = da_dr.reshape((3, 3, -1))
 
-        # (3, 3, nat*3) * (nat*3, nmodes) = # (3, 3, nmodes)
+        # (3, 3, nat*3) * (nat*3, nmodes) = (3, 3, nmodes)
         da_dq = torch.matmul(da_dr, modes)
 
         # Eq.3 with alpha' = a
         a = torch.einsum("...iij->...j", da_dq)
 
-        # Eq.4 with (gamma')^2 = g = 0.5 * (g1 + g2 + g3 + g4)
+        # Eq.4 with (gamma')^2 = g = 0.5 * (g1 + g2 + g3 + 6.0*g4)
         g1 = (da_dq[0, 0] - da_dq[1, 1]) ** 2
         g2 = (da_dq[0, 0] - da_dq[2, 2]) ** 2
         g3 = (da_dq[2, 2] - da_dq[1, 1]) ** 2
         g4 = da_dq[0, 1] ** 2 + da_dq[1, 2] ** 2 + da_dq[2, 0] ** 2
-        g = 0.5 * (g1 + g2 + g3 + g4)
+        g = g1 + g2 + g3 + 6.0 * g4
 
-        # Eq.1 (the 1/3 from Eq.3 is squared and reduces the 45)
-        raman_ints = 5 * torch.pow(a, 2.0) + 7 * g
+        # Eq.1 (the 1/3 from Eq.3 is squared, yielding 45 * 1/9 = 5; the 7 is
+        # halfed by the 0.5 from Eq.4)
+        raman_ints = 5 * torch.pow(a, 2.0) + 3.5 * g
 
         return freqs, raman_ints
 

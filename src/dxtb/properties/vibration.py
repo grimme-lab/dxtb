@@ -5,6 +5,7 @@ Vibrational Analysis
 This module contains the calculation of vibrational frequencies and the
 corresponding normal modes from the mass-weighted Hessian.
 """
+
 from __future__ import annotations
 
 import torch
@@ -86,7 +87,7 @@ def frequencies(
     Returns
     -------
     tuple[Tensor, Tensor]
-        Frequencies and normal modes.
+        Frequencies (n_modes) and normal modes (3*n_at, n_modes).
     """
     # TODO: Shape checks
 

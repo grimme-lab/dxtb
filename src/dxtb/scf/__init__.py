@@ -10,3 +10,4 @@ from .guess import get_guess
 from .iterator import SelfConsistentField, solve
 from .scf_full import BaseTSCF
 from .scf_implicit import BaseXSCF
+from .utils import get_density as get_density
