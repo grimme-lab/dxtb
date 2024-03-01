@@ -36,6 +36,7 @@ Example
 >>> print(torch.sum(e, dim=-1))
 tensor(0.0005078)
 """
+
 from __future__ import annotations
 
 import torch
@@ -46,7 +47,7 @@ from ..constants import defaults, xtb
 from ..exceptions import DeviceError
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
-from ..utils import cdist, real_pairs
+from ..utils import cdist, einsum, real_pairs
 from .average import AveragingFunction, averaging_function, harmonic_average
 
 __all__ = ["ES2", "LABEL_ES2", "new_es2"]
@@ -184,9 +185,11 @@ class ES2(Interaction):
         during the self-consistent charge iterations.
         """
         return self.Cache(
-            self.get_shell_coulomb_matrix(numbers, positions, ihelp)
-            if self.shell_resolved
-            else self.get_atom_coulomb_matrix(numbers, positions, ihelp),
+            (
+                self.get_shell_coulomb_matrix(numbers, positions, ihelp)
+                if self.shell_resolved
+                else self.get_atom_coulomb_matrix(numbers, positions, ihelp)
+            ),
             shell_resolved=self.shell_resolved,
         )
 
@@ -310,7 +313,7 @@ class ES2(Interaction):
         return (
             torch.zeros_like(charges)
             if self.shell_resolved
-            else torch.einsum("...ik,...k->...i", cache.mat, charges)
+            else einsum("...ik,...k->...i", cache.mat, charges)
         )
 
     def get_shell_potential(self, charges: Tensor, cache: ES2.Cache) -> Tensor:
@@ -331,7 +334,7 @@ class ES2(Interaction):
             Shell-resolved potential.
         """
         return (
-            torch.einsum("...ik,...k->...i", cache.mat, charges)
+            einsum("...ik,...k->...i", cache.mat, charges)
             if self.shell_resolved
             else torch.zeros_like(charges)
         )
@@ -524,7 +527,7 @@ class ES2(Interaction):
         dmat = dmat.unsqueeze(-1) * rij
 
         # (n_batch, atoms_i, atoms_j, 3) -> (n_batch, atoms_i, 3)
-        return torch.einsum("...ijx,...jx->...ix", dmat, charges)
+        return einsum("...ijx,...jx->...ix", dmat, charges)
 
     # DEPRECATED
     def _get_shell_gradient(
@@ -579,7 +582,7 @@ class ES2(Interaction):
         dmat = ihelp.reduce_shell_to_atom(dmat, dim=-3, extra=True)
 
         # (n_batch, atoms, shells_j, 3) -> (n_batch, atoms, 3)
-        return torch.einsum("...ijx,...jx->...ix", dmat, charges)
+        return einsum("...ijx,...jx->...ix", dmat, charges)
 
 
 def coulomb_matrix_atom(
@@ -886,8 +889,8 @@ class CoulombMatrixAG(torch.autograd.Function):
                 g = coulomb_matrix_atom_gradient(mask, positions, mat, gexp)
 
             # vjp: (nb, n, n) * (nb, n, n, 3) -> (nb, n, 3)
-            _gi = torch.einsum("...ij,...ijd->...id", grad_out, g)
-            _gj = torch.einsum("...ij,...ijd->...jd", grad_out, g)
+            _gi = einsum("...ij,...ijd->...id", grad_out, g)
+            _gj = einsum("...ij,...ijd->...jd", grad_out, g)
 
             if shell_resolved:
                 positions_bar = ihelp.reduce_shell_to_atom(

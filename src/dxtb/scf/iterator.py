@@ -9,6 +9,7 @@ matrix, i.e. the Hamiltonian, but the Mulliken populations (or partial charges)
 of the respective orbitals as well as the derivative of the energy w.r.t. to
 those populations, i.e. the potential vector.
 """
+
 from __future__ import annotations
 
 import warnings
@@ -25,9 +26,11 @@ from ..exlibs.xitorch import optimize as xto
 from ..integral import IntegralMatrices
 from ..interaction import Charges, InteractionList
 from ..utils import t2int
-from .base import BaseTSCF, BaseXSCF, SCFResult
+from .base import SCFResult
 from .guess import get_guess
 from .mixer import Anderson, Mixer, Simple
+from .scf_full import BaseTSCF
+from .scf_implicit import BaseXSCF
 
 
 class SelfConsistentField(BaseXSCF):

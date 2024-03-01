@@ -1,6 +1,7 @@
 """
 Run tests for IR spectra.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -8,7 +9,7 @@ import torch
 
 from dxtb._types import DD, Tensor
 from dxtb.constants import units
-from dxtb.interaction import new_efield
+from dxtb.interaction import new_efield_grad
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
@@ -18,7 +19,6 @@ from .samples import samples
 sample_list = ["H", "H2", "LiH", "HHe", "H2O", "CH4", "SiH4", "PbH4-BiH3", "MB16_43_01"]
 
 opts = {
-    "int_level": 3,  #
     "maxiter": 100,
     "mixer": "anderson",
     "scf_mode": "full",
@@ -33,8 +33,8 @@ device = None
 def single(
     name: str,
     ref: Tensor,
-    field_vector: Tensor,
-    use_autograd: bool,
+    field_grad: Tensor,
+    use_functorch: bool,
     dd: DD,
     atol: float,
     rtol: float,
@@ -43,21 +43,27 @@ def single(
     positions = samples[name]["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
 
-    # required for autodiff of energy w.r.t. efield and quadrupole
-    if use_autograd is True:
-        field_vector.requires_grad_(True)
-        positions.requires_grad_(True)
-        field_grad = torch.zeros((3, 3), **dd, requires_grad=True)
-    else:
-        field_grad = None
+    # required for autodiff of energy w.r.t. efield
+    # field_grad.requires_grad_(True)
 
     # create additional interaction and pass to Calculator
-    efield = new_efield(field_vector, field_grad)
-    calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
+    efg = new_efield_grad(field_grad)
+    calc = Calculator(numbers, par, interaction=[efg], opts=opts, **dd)
 
-    quadrupole = calc.quadrupole(numbers, positions, charge, use_autograd=use_autograd)
+    qana = calc.quadrupole_analytical(
+        numbers,
+        positions,
+        charge,
+    )
+
+    quadrupole = calc.quadrupole_numerical(
+        numbers,
+        positions,
+        charge,
+    )
     quadrupole = quadrupole.detach()
     print(ref)
+    print(qana)
     print(quadrupole)
 
     assert pytest.approx(ref, abs=atol, rel=rtol) == quadrupole
@@ -65,54 +71,56 @@ def single(
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
-@pytest.mark.parametrize("use_autograd", [False, True])
-def test_single(dtype: torch.dtype, name: str, use_autograd: bool) -> None:
+@pytest.mark.parametrize("use_functorch", [False, True])
+def test_single(dtype: torch.dtype, name: str, use_functorch: bool) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
     ref = samples[name]["quadrupole"].to(**dd)
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)  # * units.VAA2AU
+    field_grad = torch.zeros((3, 3), **dd)  # * units.VAA2AU
     atol, rtol = 1e-3, 1e-4
-    single(name, ref, field_vector, use_autograd, dd=dd, atol=atol, rtol=rtol)
+    single(name, ref, field_grad, use_functorch, dd=dd, atol=atol, rtol=rtol)
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", ["LYS_xao", "C60"])
-@pytest.mark.parametrize("use_autograd", [False])
-def test_single_medium(dtype: torch.dtype, name: str, use_autograd: bool) -> None:
+@pytest.mark.parametrize("use_functorch", [False])
+def test_single_medium(dtype: torch.dtype, name: str, use_functorch: bool) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
     ref = samples[name]["quadrupole"].to(**dd)
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_grad = torch.zeros((3, 3), **dd)  # * units.VAA2AU
     atol, rtol = 1e-2, 1e-2
-    single(name, ref, field_vector, use_autograd, dd=dd, atol=atol, rtol=rtol)
+    single(name, ref, field_grad, use_functorch, dd=dd, atol=atol, rtol=rtol)
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
-@pytest.mark.parametrize("use_autograd", [False])
-def test_single_field(dtype: torch.dtype, name: str, use_autograd: bool) -> None:
+@pytest.mark.parametrize("use_functorch", [False])
+def test_single_field(dtype: torch.dtype, name: str, use_functorch: bool) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
     ref = samples[name]["quadrupole2"].to(**dd)
 
     field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * units.VAA2AU
     atol, rtol = 1e-3, 1e-3
-    single(name, ref, field_vector, use_autograd, dd=dd, atol=atol, rtol=rtol)
+    single(name, ref, field_vector, use_functorch, dd=dd, atol=atol, rtol=rtol)
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", ["LYS_xao", "C60"])
-@pytest.mark.parametrize("use_autograd", [False])
-def test_single_field_medium(dtype: torch.dtype, name: str, use_autograd: bool) -> None:
+@pytest.mark.parametrize("use_functorch", [False])
+def test_single_field_medium(
+    dtype: torch.dtype, name: str, use_functorch: bool
+) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
     ref = samples[name]["quadrupole2"].to(**dd)
 
     field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * units.VAA2AU
     atol, rtol = 1e-2, 1e-2
-    single(name, ref, field_vector, use_autograd, dd=dd, atol=atol, rtol=rtol)
+    single(name, ref, field_vector, use_functorch, dd=dd, atol=atol, rtol=rtol)
 
 
 def batched(
@@ -120,7 +128,7 @@ def batched(
     name2: str,
     refname: str,
     field_vector: Tensor,
-    use_autograd: bool,
+    use_functorch: bool,
     dd: DD,
     atol: float,
     rtol: float,
@@ -150,7 +158,7 @@ def batched(
     )
 
     # required for autodiff of energy w.r.t. efield and quadrupole
-    if use_autograd is True:
+    if use_functorch is True:
         field_vector.requires_grad_(True)
         positions.requires_grad_(True)
         field_grad = torch.zeros((3, 3), **dd, requires_grad=True)
@@ -161,7 +169,9 @@ def batched(
     efield = new_efield(field_vector, field_grad)
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
-    quadrupole = calc.quadrupole(numbers, positions, charge, use_autograd=use_autograd)
+    quadrupole = calc.quadrupole(
+        numbers, positions, charge, use_functorch=use_functorch
+    )
     quadrupole.detach_()
 
     assert pytest.approx(ref, abs=atol, rel=rtol) == quadrupole
@@ -170,8 +180,8 @@ def batched(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", sample_list)
-@pytest.mark.parametrize("use_autograd", [False])
-def test_batch(dtype: torch.dtype, name1: str, name2, use_autograd: bool) -> None:
+@pytest.mark.parametrize("use_functorch", [False])
+def test_batch(dtype: torch.dtype, name1: str, name2, use_functorch: bool) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
     field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
@@ -181,7 +191,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2, use_autograd: bool) -> Non
         name2,
         "quadrupole",
         field_vector,
-        use_autograd,
+        use_functorch,
         dd=dd,
         atol=atol,
         rtol=rtol,
@@ -191,9 +201,9 @@ def test_batch(dtype: torch.dtype, name1: str, name2, use_autograd: bool) -> Non
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", ["C60"])
-@pytest.mark.parametrize("use_autograd", [False])
+@pytest.mark.parametrize("use_functorch", [False])
 def test_batch_medium(
-    dtype: torch.dtype, name1: str, name2, use_autograd: bool
+    dtype: torch.dtype, name1: str, name2, use_functorch: bool
 ) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
@@ -204,7 +214,7 @@ def test_batch_medium(
         name2,
         "quadrupole",
         field_vector,
-        use_autograd,
+        use_functorch,
         dd=dd,
         atol=atol,
         rtol=rtol,
@@ -214,8 +224,10 @@ def test_batch_medium(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", sample_list)
-@pytest.mark.parametrize("use_autograd", [False])
-def test_batch_field(dtype: torch.dtype, name1: str, name2, use_autograd: bool) -> None:
+@pytest.mark.parametrize("use_functorch", [False])
+def test_batch_field(
+    dtype: torch.dtype, name1: str, name2, use_functorch: bool
+) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
     field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * units.VAA2AU
@@ -225,7 +237,7 @@ def test_batch_field(dtype: torch.dtype, name1: str, name2, use_autograd: bool) 
         name2,
         "quadrupole2",
         field_vector,
-        use_autograd,
+        use_functorch,
         dd=dd,
         atol=atol,
         rtol=rtol,
@@ -235,9 +247,9 @@ def test_batch_field(dtype: torch.dtype, name1: str, name2, use_autograd: bool) 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", ["C60"])
-@pytest.mark.parametrize("use_autograd", [False])
+@pytest.mark.parametrize("use_functorch", [False])
 def test_batch_field_medium(
-    dtype: torch.dtype, name1: str, name2, use_autograd: bool
+    dtype: torch.dtype, name1: str, name2, use_functorch: bool
 ) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
@@ -248,7 +260,7 @@ def test_batch_field_medium(
         name2,
         "quadrupole2",
         field_vector,
-        use_autograd,
+        use_functorch,
         dd=dd,
         atol=atol,
         rtol=rtol,

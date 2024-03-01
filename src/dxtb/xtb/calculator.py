@@ -29,6 +29,7 @@ from ..dispersion import Dispersion, new_dispersion
 from ..exceptions import DtypeError
 from ..interaction import Charges, Interaction, InteractionList, Potential
 from ..interaction.external import field as efield
+from ..interaction.external import fieldgrad as efield_grad
 from ..io import OutputHandler
 from ..param import Param, get_elem_angular
 from ..timing import timer
@@ -63,7 +64,10 @@ def requires_positions_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor
         **kwargs: Any,
     ) -> Tensor:
         if not positions.requires_grad:
-            raise RuntimeError("Position tensor needs `requires_grad=True`.")
+            raise RuntimeError(
+                f"Position tensor needs `requires_grad=True` in '{func.__name__}'."
+            )
+
         return func(self, numbers, positions, chrg, spin, **kwargs)
 
     return wrapper
@@ -80,7 +84,7 @@ def requires_efield(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     ) -> Tensor:
         if efield.LABEL_EFIELD not in self.interactions.labels:
             raise RuntimeError(
-                "Raman spectrum requires an electric field. Add the "
+                f"{func.__name__} requires an electric field. Add the "
                 f"'{efield.LABEL_EFIELD}' interaction to the Calculator."
             )
         return func(self, numbers, positions, chrg, spin, **kwargs)
@@ -99,7 +103,46 @@ def requires_efield_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     ) -> Tensor:
         ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
         if not ef.field.requires_grad:
-            raise RuntimeError("Field tensor needs `requires_grad=True`.")
+            raise RuntimeError(
+                f"Field tensor needs `requires_grad=True` in '{func.__name__}'."
+            )
+        return func(self, numbers, positions, chrg, spin, **kwargs)
+
+    return wrapper
+
+
+def requires_efg(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
+    def wrapper(
+        self: Calculator,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any,
+    ) -> Tensor:
+        if efield_grad.LABEL_EFIELD_GRAD not in self.interactions.labels:
+            raise RuntimeError(
+                f"{func.__name__} requires an electric field. Add the "
+                f"'{efield_grad.LABEL_EFIELD_GRAD}' interaction to the "
+                "Calculator."
+            )
+        return func(self, numbers, positions, chrg, spin, **kwargs)
+
+    return wrapper
+
+
+def requires_efg_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
+    def wrapper(
+        self: Calculator,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any,
+    ) -> Tensor:
+        efg = self.interactions.get_interaction(efield_grad.LABEL_EFIELD_GRAD)
+        if not efg.field_grad.requires_grad:
+            raise RuntimeError("Field gradient tensor needs `requires_grad=True`.")
         return func(self, numbers, positions, chrg, spin, **kwargs)
 
     return wrapper
@@ -400,7 +443,7 @@ class Calculator(TensorLike):
         if numbers.dtype not in allowed_dtypes:
             raise DtypeError(
                 "Dtype of atomic numbers must be one of the following to allow "
-                f" indexing: '{', '.join([str(x) for x in allowed_dtypes])}', "
+                f"indexing: '{', '.join([str(x) for x in allowed_dtypes])}', "
                 f"but is '{numbers.dtype}'"
             )
 
@@ -461,7 +504,9 @@ class Calculator(TensorLike):
         # figure out integral level from interactions
         self.intlevel = defaults.INTLEVEL
         if efield.LABEL_EFIELD in self.interactions.labels:
-            self.intlevel = max(2, self.intlevel)
+            self.intlevel = max(ints.INTLEVEL_DIPOLE, self.intlevel)
+        if efield_grad.LABEL_EFIELD_GRAD in self.interactions.labels:
+            self.intlevel = max(ints.INTLEVEL_QUADRUPOLE, self.intlevel)
 
         # setup integral
         driver = self.opts.ints.driver
@@ -934,49 +979,16 @@ class Calculator(TensorLike):
         )
 
     @requires_efield
+    @requires_efield_grad
     def dipole(
         self,
         numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        use_autograd: bool = False,
         use_functorch: bool = False,
     ) -> Tensor:
-        # analytical dipole moment
-        if use_autograd is False:
-            # run single point and check if integral is populated
-            result = self.singlepoint(numbers, positions, chrg, spin)
-            dipint = self.integrals.dipole
-            if dipint is None:
-                raise RuntimeError(
-                    "Dipole moment requires a dipole integral. They should "
-                    f"be added automatically if the '{efield.LABEL_EFIELD}' "
-                    "interaction is added to the Calculator."
-                )
-            if dipint.matrix is None:
-                raise RuntimeError(
-                    "Dipole moment requires a dipole integral. They should "
-                    f"be added automatically if the '{efield.LABEL_EFIELD}' "
-                    "interaction is added to the Calculator."
-                )
-
-            # dip = properties.dipole(
-            # numbers, positions, result.density, self.integrals.dipole
-            # )
-            qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
-            dip = properties.moments.dipole(
-                qat, positions, result.density, dipint.matrix
-            )
-            return -dip
-
-        # AUTOGRAD
-
-        # retrieve the field from the efield interaction and check gradient
         field = self.interactions.get_interaction(efield.LABEL_EFIELD).field
-
-        if field.requires_grad is False:
-            raise RuntimeError("Field tensor needs `requires_grad=True`.")
 
         if use_functorch is True:
             # pylint: disable=import-outside-toplevel
@@ -993,6 +1005,37 @@ class Calculator(TensorLike):
             energy = self.energy(numbers, positions, chrg, spin)
             dip = _jac(energy, field)
 
+        return -dip
+
+    @requires_efield
+    def dipole_analytical(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+    ) -> Tensor:
+        # run single point and check if integral is populated
+        result = self.singlepoint(numbers, positions, chrg, spin)
+        dipint = self.integrals.dipole
+        if dipint is None:
+            raise RuntimeError(
+                "Dipole moment requires a dipole integral. They should "
+                f"be added automatically if the '{efield.LABEL_EFIELD}' "
+                "interaction is added to the Calculator."
+            )
+        if dipint.matrix is None:
+            raise RuntimeError(
+                "Dipole moment requires a dipole integral. They should "
+                f"be added automatically if the '{efield.LABEL_EFIELD}' "
+                "interaction is added to the Calculator."
+            )
+
+        # dip = properties.dipole(
+        # numbers, positions, result.density, self.integrals.dipole
+        # )
+        qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
+        dip = properties.moments.dipole(qat, positions, result.density, dipint.matrix)
         return -dip
 
     @requires_efield
@@ -1149,58 +1192,47 @@ class Calculator(TensorLike):
 
         return dmu_dr
 
+    @requires_efg
+    @requires_efg_grad
     def quadrupole(
         self,
         numbers: Tensor,
         positions: Tensor,
-        chrg: Tensor,
-        use_autograd: bool = False,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        use_functorch: bool = False,
     ) -> Tensor:
-        if use_autograd is False:
-            result = self.singlepoint(numbers, positions, chrg)
-            if result.charges.dipole is None:
-                raise RuntimeError(
-                    "Dipole charges were not calculated but are required for "
-                    "quadrupole moment."
-                )
-            if result.charges.quad is None:
-                raise RuntimeError(
-                    "Quadrupole charges were not calculated but are required "
-                    "for quadrupole moment."
-                )
-
-            qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
-            dpat = result.charges.dipole
-            qpat = result.charges.quad
-
-            return properties.quadrupole(qat, dpat, qpat, positions)
-
-        # check if electric field is given in interactions
-        if efield.LABEL_EFIELD not in self.interactions.labels:
-            raise RuntimeError(
-                "Quadrupole moment requires an electric field. Add the "
-                f"'{efield.LABEL_EFIELD}' interaction to the Calculator."
-            )
-
-        if positions.requires_grad is False:
-            raise RuntimeError("Position tensor needs `requires_grad=True`.")
-
         # retrieve the efield interaction and the field
-        ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
-        field = ef.field
-        field_grad = ef.field_grad
+        efg = self.interactions.get_interaction(efield_grad.LABEL_EFIELD_GRAD)
+        field_grad = efg.field_grad
 
-        if field.requires_grad is False:
-            raise RuntimeError("Field vector needs `requires_grad=True`.")
-        if field_grad is None:
-            raise RuntimeError("Field gradient must be set.")
-        if field_grad.requires_grad is False:
-            raise RuntimeError("Field gradient needs `requires_grad=True`.")
+        if use_functorch is True:
+            # pylint: disable=import-outside-toplevel
+            from tad_mctc.autograd import jacrev
 
-        energy = self.singlepoint(numbers, positions, chrg).total.sum(-1)
+            def wrapped_energy(f: Tensor) -> Tensor:
+                self.interactions.update_efield_grad(field_grad=f)
+                return self.energy(numbers, positions, chrg, spin, use_cache=False)
+
+            e_quad = jacrev(wrapped_energy)(field_grad)
+            assert isinstance(e_quad, Tensor)
+        else:
+            energy = self.energy(numbers, positions, chrg, spin)
+            e_quad = _jac(energy, field_grad)
+
+        e_quad = e_quad.view(3, 3)
+        print("quad_moment\n", e_quad)
+        cart = torch.empty((6), **self.dd)
+        cart[..., 0] = e_quad[..., 0, 0]
+        cart[..., 1] = e_quad[..., 1, 0]
+        cart[..., 2] = e_quad[..., 1, 1]
+        cart[..., 3] = e_quad[..., 2, 0]
+        cart[..., 4] = e_quad[..., 2, 1]
+        cart[..., 5] = e_quad[..., 2, 2]
+
+        return cart
 
         print("")
-        e_quad = _jac(energy, field_grad)
         print("quad_moment\n", e_quad)
 
         e_quad = e_quad.view(3, 3)
@@ -1209,7 +1241,7 @@ class Calculator(TensorLike):
 
         print("quad_moment", e_quad.shape)
 
-        cart = torch.empty((6), device=self.device, dtype=self.dtype)
+        cart = torch.empty((6), **self.dd)
 
         tr = 0.5 * torch.einsum("...ii->...", e_quad)
         print("tr", tr)
@@ -1238,6 +1270,74 @@ class Calculator(TensorLike):
         print("")
 
         return cart
+
+    @requires_efg
+    def quadrupole_analytical(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor,
+    ) -> Tensor:
+        result = self.singlepoint(numbers, positions, chrg)
+        if result.charges.dipole is None:
+            raise RuntimeError(
+                "Dipole charges were not calculated but are required for "
+                "quadrupole moment."
+            )
+        if result.charges.quad is None:
+            raise RuntimeError(
+                "Quadrupole charges were not calculated but are required "
+                "for quadrupole moment."
+            )
+
+        qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
+        dpat = result.charges.dipole
+        qpat = result.charges.quad
+
+        return properties.quadrupole(qat, dpat, qpat, positions)
+
+    @requires_efg
+    def quadrupole_numerical(
+        self,
+        numbers: Tensor,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        step_size: int | float = 1.0e-5,
+    ) -> Tensor:
+        # retrieve the efg interaction and the field gradient and detach
+        efg = self.interactions.get_interaction(efield_grad.LABEL_EFIELD_GRAD)
+        field_grad = efg.field_grad.detach().clone()
+        self.interactions.update_efield_grad(field_grad=field_grad)
+
+        deriv = torch.zeros(*(*numbers.shape[:-1], 3, 3), **self.dd)
+
+        # turn off printing in numerical derivatives
+        OutputHandler.temporary_disable_on()
+        logger.debug(f"Numerical Quadrupole: Starting build ({deriv.shape}).")
+
+        count = 1
+        for i in range(3):
+            for j in range(3):
+                field_grad[..., i, j] += step_size
+                self.interactions.update_efield_grad(field_grad=field_grad)
+                gr = self.energy(numbers, positions, chrg, spin)
+
+                field_grad[..., i, j] -= 2 * step_size
+                self.interactions.update_efield_grad(field_grad=field_grad)
+                gl = self.energy(numbers, positions, chrg, spin)
+
+                field_grad[..., i, j] += step_size
+                self.interactions.update_efield_grad(field_grad=field_grad)
+                deriv[..., i, j] = 0.5 * (gr - gl) / step_size
+
+                logger.debug(f"Numerical Quadrupole: step {count}/{3}")
+                count += 1
+
+        logger.debug("Numerical Quadrupole: All finished.")
+        OutputHandler.temporary_disable_off()
+
+        return deriv
 
     @requires_efield
     @requires_efield_grad

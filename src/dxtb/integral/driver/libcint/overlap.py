@@ -1,12 +1,13 @@
 """
 Overlap implementation based on `libcint`.
 """
+
 from __future__ import annotations
 
 import torch
 
 from ...._types import Tensor
-from ....utils import batch
+from ....utils import batch, einsum
 from ...base import BaseIntegralImplementation
 from .base import LibcintImplementation
 from .driver import IntDriverLibcint
@@ -56,7 +57,7 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
         def fcn(driver: LibcintWrapper) -> tuple[Tensor, Tensor]:
             s = overlap(driver)
             norm = snorm(s)
-            mat = torch.einsum("...ij,...i,...j->...ij", s, norm, norm)
+            mat = einsum("...ij,...i,...j->...ij", s, norm, norm)
             return mat, norm
 
         # batched mode
@@ -103,7 +104,7 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
 
             # normalize and move xyz dimension to last, which is required for
             # the reduction (only works with extra dimension in last)
-            return -torch.einsum("...xij,...i,...j->...ijx", grad, norm, norm)
+            return -einsum("...xij,...i,...j->...ijx", grad, norm, norm)
 
         # build norm if not already available
         if self.norm is None:

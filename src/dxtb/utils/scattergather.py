@@ -13,6 +13,7 @@ from functools import wraps
 
 import torch
 
+from ..__version__ import __tversion__
 from .._types import Gather, Protocol, ScatterOrGather, Tensor
 from .tensors import t2int
 
@@ -354,7 +355,7 @@ def scatter_reduce(
         Reduced tensor.
     """
 
-    if (1, 11, 0) <= torch.__version__ < (1, 12, 0):  # type: ignore
+    if (1, 11, 0) <= __tversion__ < (1, 12, 0):  # type: ignore
         actual_device = x.device
 
         # account for CPU-only implementation
@@ -364,7 +365,7 @@ def scatter_reduce(
 
         output = torch.scatter_reduce(x, dim, idx, *args)  # type: ignore
         output = output.to(actual_device)
-    elif torch.__version__ >= (1, 12, 0) or torch.__version__ >= (2, 0, 0):  # type: ignore
+    elif __tversion__ >= (1, 12, 0) or __tversion__ >= (2, 0, 0):  # type: ignore
         out_shape = list(x.shape)
         out_shape[dim] = t2int(idx.max()) + 1
 
@@ -381,7 +382,7 @@ def scatter_reduce(
             warnings.simplefilter("ignore")
             output = torch.scatter_reduce(out, dim, idx, x, *args)  # type: ignore
     else:
-        raise RuntimeError(f"Unsupported PyTorch version ({torch.__version__}) used.")
+        raise RuntimeError(f"Unsupported PyTorch version ({__tversion__}) used.")
 
     return output
 

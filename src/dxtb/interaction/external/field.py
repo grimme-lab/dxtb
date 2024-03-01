@@ -4,13 +4,14 @@ External Fields
 
 Interaction of the charge density with external fields.
 """
+
 from __future__ import annotations
 
 import torch
 
 from dxtb._types import Tensor
 
-from ..._types import Slicers, Tensor, TensorLike
+from ..._types import Any, Slicers, Tensor, TensorLike
 from ...constants import defaults
 from ...exceptions import DeviceError, DtypeError
 from ..base import Interaction
@@ -31,10 +32,7 @@ class ElectricField(Interaction):
     field: Tensor
     """Instantaneous electric field vector."""
 
-    field_grad: Tensor | None
-    """Electric field gradient."""
-
-    __slots__ = ["field", "field_grad"]
+    __slots__ = ["field"]
 
     class Cache(Interaction.Cache, TensorLike):
         """
@@ -54,18 +52,12 @@ class ElectricField(Interaction):
         Atom-resolved dipolar potential from instantaneous electric field.
         """
 
-        vqp: Tensor | None
-        """
-        Atom-resolved quadrupolar potential from electric field gradient.
-        """
-
-        __slots__ = ["__store", "vat", "vdp", "vqp"]
+        __slots__ = ["__store", "vat", "vdp"]
 
         def __init__(
             self,
             vat: Tensor,
             vdp: Tensor,
-            vqp: Tensor | None = None,
             device: torch.device | None = None,
             dtype: torch.dtype | None = None,
         ):
@@ -75,7 +67,6 @@ class ElectricField(Interaction):
             )
             self.vat = vat
             self.vdp = vdp
-            self.vqp = vqp
             self.__store = None
 
         class Store:
@@ -93,26 +84,17 @@ class ElectricField(Interaction):
             Atom-resolved dipolar potential from instantaneous electric field.
             """
 
-            vqp: Tensor | None
-            """
-            Atom-resolved quadrupolar potential from electric field gradient.
-            """
-
-            def __init__(self, vat: Tensor, vdp: Tensor, vqp: Tensor | None) -> None:
+            def __init__(self, vat: Tensor, vdp: Tensor) -> None:
                 self.vat = vat
                 self.vdp = vdp
-                self.vqp = vqp
 
         def cull(self, conv: Tensor, slicers: Slicers) -> None:
             if self.__store is None:
-                self.__store = self.Store(self.vat, self.vdp, self.vqp)
+                self.__store = self.Store(self.vat, self.vdp)
 
             slicer = slicers["atom"]
             self.vat = self.vat[[~conv, *slicer]]
             self.vdp = self.vdp[[~conv, *slicer, ...]]
-
-            if self.vqp is not None:
-                self.vqp = self.vqp[[~conv, *slicer, ...]]
 
         def restore(self) -> None:
             if self.__store is None:
@@ -124,7 +106,6 @@ class ElectricField(Interaction):
     def __init__(
         self,
         field: Tensor,
-        field_grad: Tensor | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ):
@@ -133,9 +114,8 @@ class ElectricField(Interaction):
             dtype=dtype if dtype is None else field.dtype,
         )
         self.field = field
-        self.field_grad = field_grad
 
-    def get_cache(self, positions: Tensor, **_) -> Cache:
+    def get_cache(self, positions: Tensor, **_: Any) -> Cache:
         """
         Create restart data for individual interactions.
 
@@ -158,19 +138,7 @@ class ElectricField(Interaction):
         # (nbatch, natoms, 3)
         vdp = self.field.expand_as(positions)
 
-        # (nbatch, natoms, 9)
-        if self.field_grad is not None:
-            if defaults.QP_SHAPE == 6:
-                tmp = self.field_grad[torch.tril_indices(3, 3).unbind()]
-            elif defaults.QP_SHAPE == 9:
-                tmp = self.field_grad.flatten()
-            else:
-                raise ValueError
-            vqp = tmp.expand((*positions.shape[:-1], tmp.shape[-1]))
-        else:
-            vqp = None
-
-        return self.Cache(vat, vdp, vqp)
+        return self.Cache(vat, vdp)
 
     def get_atom_energy(self, charges: Tensor, cache: Cache) -> Tensor:
         """
@@ -210,28 +178,6 @@ class ElectricField(Interaction):
         # equivalent: torch.sum(-cache.vdp * charges, dim=-1)
         return torch.einsum("...ix,...ix->...i", -cache.vdp, charges)
 
-    def get_quadrupole_energy(self, charges: Tensor, cache: Cache) -> Tensor:
-        """
-        Calculate the quadrupolar contribution of the electric field energy.
-
-        Parameters
-        ----------
-        charges : Tensor
-            Atomic dipole moments of all atoms.
-        cache : ElectricField.Cache
-            Restart data for the interaction.
-
-        Returns
-        -------
-        Tensor
-            Atom-wise electric field interaction energies.
-        """
-        if cache.vqp is None:
-            return super().get_quadrupole_energy(charges, cache)
-
-        # equivalent: torch.sum(-cache.vqp * charges, dim=-1)
-        return torch.einsum("...ix,...ix->...i", -cache.vqp, charges)
-
     def get_atom_potential(self, _: Charges, cache: Cache) -> Tensor:
         """
         Calculate the electric field potential.
@@ -268,26 +214,8 @@ class ElectricField(Interaction):
         """
         return -cache.vdp
 
-    def get_quadrupole_potential(self, _: Charges, cache: Cache) -> Tensor | None:
-        """
-        Calculate the electric field quadrupole potential.
-
-        Parameters
-        ----------
-        charges : Tensor
-            Atomic charges of all atoms (not required).
-        cache : ElectricField.Cache
-            Restart data for the interaction.
-
-        Returns
-        -------
-        Tensor
-            Atom-wise electric field quadrupole potential.
-        """
-        return -cache.vqp if cache.vqp is not None else None
-
     def __str__(self) -> str:
-        return f"{self.__class__.__name__}(field={self.field}, field_grad={self.field_grad})"
+        return f"{self.__class__.__name__}(field={self.field})"
 
     def __repr__(self) -> str:
         return str(self)
@@ -295,7 +223,6 @@ class ElectricField(Interaction):
 
 def new_efield(
     field: Tensor,
-    field_grad: Tensor | None = None,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> ElectricField:
@@ -325,9 +252,6 @@ def new_efield(
     """
     if field.shape != torch.Size([3]):
         raise RuntimeError("Electric field must be a vector of length 3.")
-    if field_grad is not None:
-        if field_grad.shape != torch.Size((3, 3)):
-            raise RuntimeError("Electric field gradient must be a 3 by 3 tensor.")
 
     if device is not None:
         if device != field.device:
@@ -335,12 +259,6 @@ def new_efield(
                 f"Passed device ({device}) and device of electric field "
                 f"({field.device}) do not match."
             )
-        if field_grad is not None:
-            if device != field.device:
-                raise DeviceError(
-                    f"Passed device ({device}) and device of electric field "
-                    f"gradient ({field_grad.device}) do not match."
-                )
 
     if dtype is not None:
         if dtype != field.dtype:
@@ -348,16 +266,9 @@ def new_efield(
                 f"Passed dtype ({dtype}) and dtype of electric field "
                 f"({field.dtype}) do not match."
             )
-        if field_grad is not None:
-            if dtype != field.dtype:
-                raise DtypeError(
-                    f"Passed dtype ({dtype}) and dtype of electric field "
-                    f"gradient ({field_grad.dtype}) do not match."
-                )
 
     return ElectricField(
         field,
-        field_grad=field_grad,
         device=device if device is None else field.device,
         dtype=dtype if dtype is None else field.dtype,
     )

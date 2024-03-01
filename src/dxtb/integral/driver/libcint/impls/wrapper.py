@@ -6,6 +6,7 @@ This module provides the wrapper for interfacing with libcint.
 The main class handles the conversion of from dxtb's basis format to libcint's
 internal format.
 """
+
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -48,9 +49,11 @@ class LibcintWrapper:
         atombases: list[AtomCGTOBasis],
         ihelp: IndexHelper,
         spherical: bool = True,
+        hermitian: bool = False,
     ) -> None:
         self._atombases = atombases
         self._spherical = spherical
+        self._hermitian = hermitian
         self._fracz = False
         self._natoms = len(atombases)
         self.ihelp = ihelp
@@ -192,6 +195,11 @@ class LibcintWrapper:
         # returns whether the basis is in spherical coordinate (otherwise, it
         # is in cartesian coordinate)
         return self._spherical
+
+    @property
+    def hermitian(self) -> bool:
+        # returns whether the integral is hermitian
+        return self._hermitian
 
     @property
     def atombases(self) -> list[AtomCGTOBasis]:

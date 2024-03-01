@@ -2,6 +2,7 @@
 Self-consistent field
 =====================
 """
+
 from __future__ import annotations
 
 from abc import abstractmethod
@@ -12,14 +13,16 @@ from .._types import DD, Any, Slicers, Tensor, TypedDict
 from ..basis import IndexHelper
 from ..config import ConfigSCF
 from ..constants import K2AU, defaults, labels
-from ..exlibs.xitorch import EditableModule, LinearOperator
-from ..exlibs.xitorch import linalg as xtl
+from ..exlibs.xitorch import LinearOperator
 from ..integral.container import IntegralMatrices
 from ..interaction import InteractionList
 from ..interaction.container import Charges, ContainerData, Potential
 from ..io import OutputHandler
-from ..utils import eighb, real_atoms
+from ..utils import einsum, real_atoms
 from ..wavefunction import filling, mulliken
+from .utils import get_density
+
+__all__ = ["BaseSCF", "SCFResult"]
 
 
 class SCFResult(TypedDict):
@@ -739,7 +742,6 @@ class BaseSCF:
         Tensor
             Orbital-resolved partial charges vector.
         """
-
         self._data.density = self.potential_to_density(potential)
         return self.density_to_charges(self._data.density)
 
@@ -782,10 +784,10 @@ class BaseSCF:
         # The slower but more readable approach would instead compute the full
         # matrix with "...ik,...kj->...ij" and only extract the diagonal
         # afterwards with `torch.diagonal(tensor, dim1=-2, dim2=-1)`.
-        self._data.energy = torch.einsum("...ik,...ki->...i", density, ints.hcore)
+        self._data.energy = einsum("...ik,...ki->...i", density, ints.hcore)
 
         # monopolar charges
-        populations = torch.einsum("...ik,...ki->...i", density, ints.overlap)
+        populations = einsum("...ik,...ki->...i", density, ints.overlap)
         charges = Charges(mono=self._data.n0 - populations, batched=self.batched)
 
         # Atomic dipole moments (dipole charges)
@@ -796,7 +798,7 @@ class BaseSCF:
             # dimension to the back, which is required for the reduction to
             # atom-resolution.
             charges.dipole = self._data.ihelp.reduce_orbital_to_atom(
-                -torch.einsum("...ik,...mki->...im", density, ints.dipole),
+                -einsum("...ik,...mki->...im", density, ints.dipole),
                 extra=True,
                 dim=-2,
             )
@@ -804,7 +806,7 @@ class BaseSCF:
         # Atomic quadrupole moments (quadrupole charges)
         if ints.quadrupole is not None:
             charges.quad = self._data.ihelp.reduce_orbital_to_atom(
-                -torch.einsum("...ik,...mki->...im", density, ints.quadrupole),
+                -einsum("...ik,...mki->...im", density, ints.quadrupole),
                 extra=True,
                 dim=-2,
             )
@@ -839,7 +841,7 @@ class BaseSCF:
             # Form dot product over the the multipolar components.
             #  - shape multipole integral: (..., x, norb, norb)
             #  - shape multipole potential: (..., norb, x)
-            tmp = 0.5 * torch.einsum("...kij,...ik->...ij", mpint, v)
+            tmp = 0.5 * einsum("...kij,...ik->...ij", mpint, v)
             return h1 - (tmp + tmp.mT)
 
         if potential.dipole is not None:
@@ -929,214 +931,3 @@ class BaseSCF:
         Returns the device of the tensors in this engine.
         """
         return {"device": self.device, "dtype": self.dtype}
-
-
-class BaseXSCF(BaseSCF, EditableModule):
-    """
-    Base class for the `xitorch`-based self-consistent field iterator.
-
-    This base class implements the `get_overlap` and the `diagonalize` methods
-    that use `LinearOperator`s. Additionally, `getparamnames` is implemented,
-    which is mandatory for all descendents of `xitorch`s base class called
-    `EditableModule`.
-
-    This class only lacks the `scf` method, which implements mixing and
-    convergence.
-    """
-
-    def get_overlap(self) -> LinearOperator:
-        """
-        Get the overlap matrix.
-
-        Returns
-        -------
-        LinearOperator
-            Overlap matrix.
-        """
-
-        smat = self._data.ints.overlap
-
-        zeros = torch.eq(smat, 0)
-        mask = torch.all(zeros, dim=-1) & torch.all(zeros, dim=-2)
-
-        return LinearOperator.m(
-            smat + torch.diag_embed(smat.new_ones(*smat.shape[:-2], 1) * mask)
-        )
-
-    def diagonalize(self, hamiltonian: Tensor) -> tuple[Tensor, Tensor]:
-        """
-        Diagonalize the Hamiltonian.
-
-        The overlap matrix is retrieved within this method using the
-        `get_overlap` method.
-
-        Parameters
-        ----------
-        hamiltonian : Tensor
-            Current Hamiltonian matrix.
-
-        Returns
-        -------
-        evals : Tensor
-            Eigenvalues of the Hamiltonian.
-        evecs : Tensor
-            Eigenvectors of the Hamiltonian.
-        """
-
-        h_op = LinearOperator.m(hamiltonian)
-        o_op = self.get_overlap()
-
-        return xtl.lsymeig(A=h_op, M=o_op, **self.eigen_options)
-
-    def getparamnames(
-        self, methodname: str, prefix: str = ""
-    ) -> list[str]:  # pragma: no cover
-        if methodname == "scf":
-            a = self.getparamnames("iterate_potential")
-            b = self.getparamnames("charges_to_potential")
-            c = self.getparamnames("potential_to_charges")
-            return a + b + c
-
-        if methodname == "get_energy":
-            return [prefix + "_data.energy"]
-
-        if methodname == "iterate_charges":
-            a = self.getparamnames("charges_to_potential", prefix=prefix)
-            b = self.getparamnames("potential_to_charges", prefix=prefix)
-            return a + b
-
-        if methodname == "iterate_potential":
-            a = self.getparamnames("potential_to_charges", prefix=prefix)
-            b = self.getparamnames("charges_to_potential", prefix=prefix)
-            return a + b
-
-        if methodname == "iterate_fockian":
-            a = self.getparamnames("hamiltonian_to_density", prefix=prefix)
-            b = self.getparamnames("density_to_charges", prefix=prefix)
-            c = self.getparamnames("charges_to_potential", prefix=prefix)
-            d = self.getparamnames("potential_to_hamiltonian", prefix=prefix)
-            return a + b + c + d
-
-        if methodname == "charges_to_potential":
-            return []
-
-        if methodname == "potential_to_charges":
-            a = self.getparamnames("potential_to_density", prefix=prefix)
-            b = self.getparamnames("density_to_charges", prefix=prefix)
-            return a + b
-
-        if methodname == "potential_to_density":
-            a = self.getparamnames("potential_to_hamiltonian", prefix=prefix)
-            b = self.getparamnames("hamiltonian_to_density", prefix=prefix)
-            return a + b
-
-        if methodname == "density_to_charges":
-            return [
-                prefix + "_data.ints.hcore",
-                prefix + "_data.ints.overlap",
-                prefix + "_data.n0",
-            ]
-
-        if methodname == "potential_to_hamiltonian":
-            return [
-                prefix + "_data.ints.hcore",
-                prefix + "_data.ints.overlap",
-            ]
-
-        if methodname == "hamiltonian_to_density":
-            a = [prefix + "_data.occupation"]
-            b = self.getparamnames("diagonalize", prefix=prefix)
-            c = self.getparamnames("get_overlap", prefix=prefix)
-            return a + b + c
-
-        if methodname == "get_overlap":
-            return [prefix + "_data.ints.overlap"]
-
-        if methodname == "diagonalize":
-            return []
-
-        raise KeyError(f"Method '{methodname}' has no paramnames set")
-
-
-class BaseTSCF(BaseSCF):
-    """
-    Base class for a standard self-consistent field iterator.
-
-    This base class implements the `get_overlap` and the `diagonalize` methods
-    using plain tensors. The diagonalization routine is taken from TBMaLT
-    (hence the T in the class name).
-
-    This base class only lacks the `scf` method, which implements mixing and
-    convergence.
-    """
-
-    def get_overlap(self) -> Tensor:
-        """
-        Get the overlap matrix.
-
-        Returns
-        -------
-        Tensor
-            Overlap matrix.
-        """
-
-        smat = self._data.ints.overlap
-
-        zeros = torch.eq(smat, 0)
-        mask = torch.all(zeros, dim=-1) & torch.all(zeros, dim=-2)
-
-        return smat + torch.diag_embed(smat.new_ones(*smat.shape[:-2], 1) * mask)
-
-    def diagonalize(self, hamiltonian: Tensor) -> tuple[Tensor, Tensor]:
-        """
-        Diagonalize the Hamiltonian.
-
-        The overlap matrix is retrieved within this method using the
-        `get_overlap` method.
-
-        Parameters
-        ----------
-        hamiltonian : Tensor
-            Current Hamiltonian matrix.
-
-        Returns
-        -------
-        evals : Tensor
-            Eigenvalues of the Hamiltonian.
-        evecs : Tensor
-            Eigenvectors of the Hamiltonian.
-        """
-
-        o = self.get_overlap()
-        return eighb(
-            a=hamiltonian,
-            b=o,
-            is_posdef=True,
-            factor=torch.finfo(self.dtype).eps ** 0.5,
-        )
-
-
-def get_density(coeffs: Tensor, occ: Tensor, emo: Tensor | None = None) -> Tensor:
-    """
-    Calculate the density matrix from the coefficient vector and the occupation.
-
-    Parameters
-    ----------
-    evecs : Tensor
-        _description_
-    occ : Tensor
-        Occupation numbers (diagonal matrix).
-    emo : Tensor | None, optional
-        Orbital energies for energy weighted density matrix. Defaults to `None`.
-
-    Returns
-    -------
-    Tensor
-        (Energy-weighted) Density matrix.
-    """
-    return torch.einsum(
-        "...ik,...k,...jk->...ij",
-        coeffs,
-        occ if emo is None else occ * emo,
-        coeffs,  # transposed
-    )

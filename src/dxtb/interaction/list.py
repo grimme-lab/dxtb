@@ -1,6 +1,7 @@
 """
 Container for interactions.
 """
+
 from __future__ import annotations
 
 import torch
@@ -8,9 +9,11 @@ import torch
 from .._types import Any, Literal, Slicers, Tensor, TensorOrTensors, overload
 from ..basis import IndexHelper
 from ..coulomb import secondorder, thirdorder
+from ..timing.decorator import timer_decorator
 from .base import Interaction
 from .container import Charges, Potential
 from .external import field as efield
+from .external import fieldgrad as efield_grad
 
 __all__ = ["InteractionList"]
 
@@ -59,6 +62,12 @@ class InteractionList(Interaction):
 
     @overload
     def get_interaction(self, name: Literal["ElectricField"]) -> efield.ElectricField:
+        ...
+
+    @overload
+    def get_interaction(
+        self, name: Literal["ElectricFieldGrad"]
+    ) -> efield_grad.ElectricFieldGrad:
         ...
 
     @overload
@@ -133,14 +142,11 @@ class InteractionList(Interaction):
 
         raise ValueError(f"The interaction named '{name}' is not in the list.")
 
-    def update_efield(
-        self, *, field: Tensor | None = None, field_grad: Tensor | None = None
-    ) -> None:
-        return self.update(
-            efield.LABEL_EFIELD,
-            field=field,
-            field_grad=field_grad,
-        )
+    def update_efield(self, *, field: Tensor | None = None) -> None:
+        return self.update(efield.LABEL_EFIELD, field=field)
+
+    def update_efield_grad(self, *, field_grad: Tensor | None = None) -> None:
+        return self.update(efield_grad.LABEL_EFIELD_GRAD, field_grad=field_grad)
 
     def update_es2(self, **kwargs: Any) -> None:
         return self.update(secondorder.LABEL_ES2, **kwargs)
@@ -148,6 +154,7 @@ class InteractionList(Interaction):
     def update_es3(self, **kwargs: Any) -> None:
         return self.update(thirdorder.LABEL_ES3, **kwargs)
 
+    @timer_decorator("SCF Cache")
     def get_cache(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
     ) -> InteractionList.Cache:

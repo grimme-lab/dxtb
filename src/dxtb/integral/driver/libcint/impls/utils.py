@@ -4,6 +4,7 @@ Utility functions
 
 This module contains helpers required for calculating integrals with libcint.
 """
+
 from __future__ import annotations
 
 import ctypes
@@ -51,7 +52,7 @@ def int2ctypes(a: int) -> ctypes.c_int:
     ctypes.c_int
         Ctypes' integer.
     """
-    return ctypes.c_int(a)
+    return ctypes.c_int(int(a))
 
 
 def memoize_method(fcn: Callable[[Any], T]) -> Callable[[Any], T]:

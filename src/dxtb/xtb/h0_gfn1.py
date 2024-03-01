@@ -1,9 +1,11 @@
 """
 The GFN1-xTB Hamiltonian.
 """
+
 from __future__ import annotations
 
 import torch
+from tad_mctc import storch
 
 from .._types import Tensor
 from ..basis import IndexHelper
@@ -11,11 +13,13 @@ from ..constants import EV2AU
 from ..data import atomic_rad
 from ..interaction import Potential
 from ..param import Param, get_elem_param, get_elem_valence, get_pair_param
-from ..utils import cdist, real_pairs, symmetrize
+from ..utils import real_pairs, symmetrize
 from .base import BaseHamiltonian
 
 PAD = -1
 """Value used for padding of tensors."""
+
+__all__ = ["GFN1Hamiltonian"]
 
 
 class GFN1Hamiltonian(BaseHamiltonian):
@@ -36,7 +40,7 @@ class GFN1Hamiltonian(BaseHamiltonian):
             raise RuntimeError("Parametrization does not specify Hamiltonian.")
 
         # atom-resolved parameters
-        self.rad = atomic_rad[self.unique].type(self.dtype).to(device=self.device)
+        self.rad = atomic_rad.to(**self.dd)[self.unique]
         self.en = self._get_elem_param("en")
 
         # shell-resolved element parameters
@@ -90,7 +94,8 @@ class GFN1Hamiltonian(BaseHamiltonian):
             raise ValueError("All tensors must be on the same device")
 
     def _get_elem_param(self, key: str) -> Tensor:
-        """Obtain element parameters for species.
+        """
+        Obtain element parameters for species.
 
         Parameters
         ----------
@@ -104,16 +109,12 @@ class GFN1Hamiltonian(BaseHamiltonian):
         """
 
         return get_elem_param(
-            self.unique,
-            self.par.element,
-            key,
-            pad_val=PAD,
-            device=self.device,
-            dtype=self.dtype,
+            self.unique, self.par.element, key, pad_val=PAD, **self.dd
         )
 
     def _get_elem_valence(self) -> Tensor:
-        """Obtain "valence" parameters for shells of species.
+        """
+        Obtain "valence" parameters for shells of species.
 
         Returns
         -------
@@ -130,7 +131,8 @@ class GFN1Hamiltonian(BaseHamiltonian):
         )
 
     def _get_pair_param(self, pair: dict[str, float]) -> Tensor:
-        """Obtain element-pair-specific parameters for all species.
+        """
+        Obtain element-pair-specific parameters for all species.
 
         Parameters
         ----------
@@ -143,18 +145,25 @@ class GFN1Hamiltonian(BaseHamiltonian):
             Pair parameters for each species.
         """
 
-        return get_pair_param(
-            self.unique.tolist(), pair, device=self.device, dtype=self.dtype
-        )
+        return get_pair_param(self.unique.tolist(), pair, **self.dd)
 
     def _get_hscale(self) -> Tensor:
-        """Obtain the off-site scaling factor for the Hamiltonian.
+        """
+        Obtain the off-site scaling factor for the Hamiltonian.
 
         Returns
         -------
         Tensor
             Off-site scaling factor for the Hamiltonian.
         """
+        if self.par.hamiltonian is None:
+            raise RuntimeError("No Hamiltonian specified.")
+
+        # extract some vars for convenience
+        kpol = self.par.hamiltonian.xtb.kpol
+        shell = self.par.hamiltonian.xtb.shell
+        ushells = self.ihelp.unique_angular
+
         angular2label = {
             0: "s",
             1: "p",
@@ -162,51 +171,67 @@ class GFN1Hamiltonian(BaseHamiltonian):
             3: "f",
             4: "g",
         }
+        angular_labels = [angular2label.get(int(ang), PAD) for ang in ushells]
 
-        def get_ksh(ushells: Tensor) -> Tensor:
-            if self.par.hamiltonian is None:
-                raise RuntimeError("No Hamiltonian specified.")
+        # precompute kii values outside loop with slightly faster listcomp
+        kii_values = [
+            kpol if self.valence[i] == 0 else shell.get(f"{ang}{ang}", 1.0)
+            for i, ang in enumerate(angular_labels)
+        ]
 
-            ksh = torch.ones(
-                (len(ushells), len(ushells)), dtype=self.dtype, device=self.device
-            )
-            shell = self.par.hamiltonian.xtb.shell
-            kpol = self.par.hamiltonian.xtb.kpol
+        ksh = torch.ones((len(ushells), len(ushells)), **self.dd)
+        for i in range(len(angular_labels)):
+            ang_i = angular_labels[i]
+            kii = kii_values[i]
 
-            for i, ang_i in enumerate(ushells):
-                ang_i = angular2label.get(int(ang_i.item()), PAD)
+            # Iterate only over upper triangle and diagonal
+            for j in range(i + 1):
+                ang_j = angular_labels[j]
+                kjj = kii_values[j]
 
-                if self.valence[i] == 0:
-                    kii = kpol
+                # only if both belong to the valence shell,
+                # we will read from the parametrization
+                if self.valence[i] == 1 and self.valence[j] == 1:
+                    ksh_value = shell.get(
+                        f"{ang_i}{ang_j}",
+                        shell.get(f"{ang_j}{ang_i}", (kii + kjj) / 2.0),
+                    )
                 else:
-                    kii = shell.get(f"{ang_i}{ang_i}", 1.0)
+                    ksh_value = (kii + kjj) / 2.0
 
-                for j, ang_j in enumerate(ushells):
-                    ang_j = angular2label.get(int(ang_j.item()), PAD)
+                ksh[i, j] = ksh[j, i] = ksh_value
 
-                    if self.valence[j] == 0:
-                        kjj = kpol
-                    else:
-                        kjj = shell.get(f"{ang_j}{ang_j}", 1.0)
+        # for i, ang_i in enumerate(ushells):
+        #     ang_i = angular2label.get(int(ang_i.item()), PAD)
 
-                    # only if both belong to the valence shell,
-                    # we will read from the parametrization
-                    if self.valence[i] == 1 and self.valence[j] == 1:
-                        # check both "sp" and "ps"
-                        ksh[i, j] = shell.get(
-                            f"{ang_i}{ang_j}",
-                            shell.get(
-                                f"{ang_j}{ang_i}",
-                                (kii + kjj) / 2.0,
-                            ),
-                        )
-                    else:
-                        ksh[i, j] = (kii + kjj) / 2.0
+        #     if self.valence[i] == 0:
+        #         kii = kpol
+        #     else:
+        #         kii = shell.get(f"{ang_i}{ang_i}", 1.0)
 
-            return ksh
+        #     for j, ang_j in enumerate(ushells):
+        #         ang_j = angular2label.get(int(ang_j.item()), PAD)
 
-        ushells = self.ihelp.unique_angular
-        return get_ksh(ushells)
+        #         if self.valence[j] == 0:
+        #             kjj = kpol
+        #         else:
+        #             kjj = shell.get(f"{ang_j}{ang_j}", 1.0)
+
+        #         # only if both belong to the valence shell,
+        #         # we will read from the parametrization
+        #         if self.valence[i] == 1 and self.valence[j] == 1:
+        #             # check both "sp" and "ps"
+        #             ksh[i, j] = shell.get(
+        #                 f"{ang_i}{ang_j}",
+        #                 shell.get(
+        #                     f"{ang_j}{ang_i}",
+        #                     (kii + kjj) / 2.0,
+        #                 ),
+        #             )
+        #         else:
+        #             ksh[i, j] = (kii + kjj) / 2.0
+
+        return ksh
 
     def build(
         self, positions: Tensor, overlap: Tensor, cn: Tensor | None = None
@@ -238,16 +263,14 @@ class GFN1Hamiltonian(BaseHamiltonian):
             mask_atom_diagonal, dim=(-2, -1)
         )
 
-        zero = torch.tensor(0.0, device=self.device, dtype=self.dtype)
-        eps = torch.tensor(
-            torch.finfo(self.dtype).eps, device=self.device, dtype=self.dtype
-        )
+        zero = torch.tensor(0.0, **self.dd)
+        eps = torch.tensor(torch.finfo(self.dtype).eps, **self.dd)
 
         # ----------------
         # Eq.29: H_(mu,mu)
         # ----------------
         if cn is None:
-            cn = torch.zeros_like(self.numbers).type(self.dtype)
+            cn = torch.zeros_like(self.numbers, **self.dd)
 
         kcn = self.ihelp.spread_ushell_to_shell(self.kcn)
 
@@ -259,16 +282,12 @@ class GFN1Hamiltonian(BaseHamiltonian):
         # ----------------------
         # Eq.24: PI(R_AB, l, l')
         # ----------------------
-        distances = cdist(positions, positions, p=2)
+        distances = storch.cdist(positions, positions, p=2)
         rad = self.ihelp.spread_uspecies_to_atom(self.rad)
 
-        rr = distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2) + eps)
+        rr = storch.divide(distances, rad.unsqueeze(-1) + rad.unsqueeze(-2))
         rr_shell = self.ihelp.spread_atom_to_shell(
-            torch.where(
-                mask_atom_diagonal,
-                torch.sqrt(torch.clamp(rr, min=eps)),
-                zero,
-            ),
+            torch.where(mask_atom_diagonal, storch.sqrt(rr), zero),
             (-2, -1),
         )
 
@@ -378,10 +397,8 @@ class GFN1Hamiltonian(BaseHamiltonian):
             mask_atom_diagonal, dim=(-2, -1)
         )
 
-        zero = torch.tensor(0.0, device=self.device, dtype=self.dtype)
-        eps = torch.tensor(
-            torch.finfo(self.dtype).eps, device=self.device, dtype=self.dtype
-        )
+        zero = torch.tensor(0.0, **self.dd)
+        eps = torch.tensor(torch.finfo(self.dtype).eps, **self.dd)
 
         # --------------------
         # Eq.28: X(EN_A, EN_B)
@@ -411,16 +428,12 @@ class GFN1Hamiltonian(BaseHamiltonian):
         # ----------------------
         # Eq.24: PI(R_AB, l, l')
         # ----------------------
-        distances = cdist(positions, positions, p=2)
+        distances = storch.cdist(positions, positions, p=2)
         rad = self.ihelp.spread_uspecies_to_atom(self.rad)
 
-        rr = distances / (rad.unsqueeze(-1) + rad.unsqueeze(-2) + eps)
+        rr = storch.divide(distances, rad.unsqueeze(-1) + rad.unsqueeze(-2))
         rr_shell = self.ihelp.spread_atom_to_shell(
-            torch.where(
-                mask_atom_diagonal,
-                torch.sqrt(torch.clamp(rr, min=eps)),
-                zero,
-            ),
+            torch.where(mask_atom_diagonal, storch.sqrt(rr), zero),
             (-2, -1),
         )
 

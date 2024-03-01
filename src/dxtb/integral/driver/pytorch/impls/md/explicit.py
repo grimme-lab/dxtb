@@ -20,6 +20,7 @@ For the gradients, check out the following papers.
   for periodic systems, *Int. J. Quantum Chem.*, **2001** *82*, 1-13.
   (`DOI <https://doi.org/10.1002/1097-461X(2001)82:1%3C1::AID-QUA1017%3E3.0.CO;2-W>`__)
 """
+
 from __future__ import annotations
 
 from math import pi, sqrt
@@ -28,6 +29,7 @@ import torch
 
 from ......_types import Tensor
 from ......exceptions import CGTOAzimuthalQuantumNumberError, IntegralTransformError
+from ......utils.math import einsum
 from .trafo import NLM_CART, TRAFO
 
 __all__ = ["md_explicit", "md_explicit_gradient"]
@@ -53,7 +55,7 @@ def md_explicit(
     coeff : (Tensor, Tensor)
         Contraction coefficients of the shell pair(s).
     vec : Tensor
-        Displacement vector between shell pair(s).
+        Displacement vector between shell pair(s) of shape (nvec, 3).
 
     Returns
     -------
@@ -76,7 +78,7 @@ def md_explicit(
     xij = 0.5 * oij
 
     # p * (R_A - R_B)² with p = a*b/(a+b)
-    r2 = torch.sum(vec.pow(2), -1)
+    r2 = einsum("...i,...i->...", vec, vec)  # vec.pow(2).sum(-1)
     est = ai * aj * oij * r2.unsqueeze(-1).unsqueeze(-2)
 
     # K_AB * [Gaussian integral (√(pi/(a+b))) in 3D] * c_A * c_B
@@ -129,7 +131,7 @@ def md_explicit(
         # tensor to (ncarti, ncartj, nbatch). Since the batch dimension is
         # conventionally the first dimension, we cycle the indices and obtain
         # the final shape: (nbatch, ncarti, ncartj)
-        s3d = torch.einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", sx, sy, sz, sij)
+        s3d = einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", sx, sy, sz, sij)
 
         # OLD: This is the loop-based version of the above indexing atrocities.
         # I left it here, as it may be better to understand...
@@ -149,7 +151,7 @@ def md_explicit(
         #         s3d[..., mli, mlj] += (sij * x * y * z).sum((-2, -1))
 
     # transform to cartesian basis functions (itrafo * S * jtrafo^T)
-    o = torch.einsum("...ij,...jk,...lk->...il", itrafo, s3d, jtrafo)
+    o = einsum("...ij,...jk,...lk->...il", itrafo, s3d, jtrafo)
 
     # Previously, I removed small values for numerical stability of the SCF
     # (and some portions are also faster) by using the following expression
@@ -210,7 +212,7 @@ def md_explicit_gradient(
     xij = 0.5 * oij
 
     # p * (R_A - R_B)² with p = a*b/(a+b)
-    r2 = torch.sum(vec.pow(2), -1)
+    r2 = einsum("...i,...i->...", vec, vec)  # vec.pow(2).sum(-1)
     est = ai * aj * oij * r2.unsqueeze(-1).unsqueeze(-2)
 
     # K_AB * Gaussian integral (√(pi/(a+b))) in 3D * c_A * c_B
@@ -251,7 +253,7 @@ def md_explicit_gradient(
     # center. Getting the E-coefficients for the three directions from
     # `NLM_CART` replaces the second dimension with the number of
     # cartesian basis functions of the second orbital (j). Additionally,
-    # we selecting the cartesian directions eliminating the `-3`rd
+    # we are selecting the cartesian directions eliminating the `-3`rd
     # dimension, which ultimately yields the following shape:
     # (ncarti, ncartj, nbatch, ai, aj)
     sx = e0x[:, nlmj[:, 0], ..., 0, :, :]  # type: ignore
@@ -267,19 +269,19 @@ def md_explicit_gradient(
     # tensor to (ncarti, ncartj, nbatch). Since the batch dimension is
     # conventionally the first dimension, we cycle the indices and obtain
     # the final shape: (nbatch, ncarti, ncartj)
-    x = torch.einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", dx, sy, sz, sij)
-    y = torch.einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", sx, dy, sz, sij)
-    z = torch.einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", sx, sy, dz, sij)
+    x = einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", dx, sy, sz, sij)
+    y = einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", sx, dy, sz, sij)
+    z = einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", sx, sy, dz, sij)
 
     # For the full cartesian gradient, we stack cartesian the contributions in
     # the first dimension, i.e., before the batch: (nbatch, 3, ncarti, ncartj).
     # Although the cartesian dimension always goes last, we apply `torch.tril`
-    # or `torch.triu` later, which only works on the eading 2D sub-matrices of
+    # or `torch.triu` later, which only works on the leading 2D sub-matrices of
     # higher-dimensional tensors. Hence, we reshape later.
     ds3d = torch.stack([x, y, z], dim=-3)
 
     # transform to spherical basis functions (itrafo * dS * jtrafo^T)
-    grad = torch.einsum("...ij,...xjk,...lk->...xil", itrafo, ds3d, jtrafo)
+    grad = einsum("...ij,...xjk,...lk->...xil", itrafo, ds3d, jtrafo)
 
     # sometimes grad is not contiguous anymore (important for performance?)
     if not grad.is_contiguous():
@@ -289,6 +291,7 @@ def md_explicit_gradient(
     # OLD: This is the loop-based version of the above indexing atrocities.
     #      I left it here, as it may be better to understand...
     #      The loop-free version yielded speed-ups of ~10% for autograd.
+    #      Maybe, one could check the efficiency of einsum vs matmul...
     #
     # ncarti = torch.div((li + 1) * (li + 2), 2, rounding_mode="floor")
     # ncartj = torch.div((lj + 1) * (lj + 2), 2, rounding_mode="floor")

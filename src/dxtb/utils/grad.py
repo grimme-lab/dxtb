@@ -9,13 +9,15 @@ autograd functions, which we definitely require. Additionally, `functorch`
 imposes the implementation of a `forward` **and** `setup_context` method, i.e.,
 the traditional way of using `forward` with the `ctx` argument does not work
 """
+
 from __future__ import annotations
 
 import torch
 
+from ..__version__ import __tversion__
 from .._types import Any, Callable, Tensor
 
-if torch.__version__ < (2, 0, 0):  # type: ignore # pragma: no cover
+if __tversion__ < (2, 0, 0):  # type: ignore # pragma: no cover
     try:
         from functorch import jacrev  # type: ignore
     except ModuleNotFoundError:

@@ -8,6 +8,7 @@ Otherwise, `timer.stop()` may not be called and the next test tries to start
 the same timer again, which will throw a (confusing) `TimerError`.
 For an example, see `test/test_calculator/test_general.py::test_fail`.
 """
+
 from __future__ import annotations
 
 import time

@@ -1,6 +1,7 @@
 """
 Parser for command line options.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -423,6 +424,26 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         "--detect-anomaly",
         action="store_true",
         help=("R|Enable PyTorch's anomaly detection mode."),
+    )
+
+    p.add_argument(
+        "--dipole",
+        "--dip",
+        action="store_true",
+        help=("R|Calculate the electric dipole moment."),
+    )
+    p.add_argument(
+        "--polarizability",
+        "--pol",
+        action="store_true",
+        help=("R|Calculate the electric dipole polarizability."),
+    )
+    p.add_argument(
+        "--hyperpolarizability",
+        "--hyperpol",
+        "--hpol",
+        action="store_true",
+        help=("R|Calculate the electric hyperpolarizability."),
     )
 
     p.add_argument(

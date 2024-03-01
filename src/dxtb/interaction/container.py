@@ -9,6 +9,7 @@ However, they are required in that very order, i.e., in increasing order of
 multipole moment. That means a dipolar potential can not be used without a
 monopolar potential.
 """
+
 from __future__ import annotations
 
 import torch
@@ -207,7 +208,7 @@ class Container:
         self, tensor1: Tensor | None, tensor2: Tensor | None
     ) -> Tensor | None:
         """
-        Add to tensors together, while handling `None`s.
+        Add two tensors together, while handling `None`s.
 
         Parameters
         ----------

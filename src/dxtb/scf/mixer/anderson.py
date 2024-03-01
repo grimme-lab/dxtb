@@ -6,12 +6,13 @@ This module contains the Andersion mixing algorithm.
 
 The implementation is taken from TBMaLT (with minor modifications).
 """
+
 from __future__ import annotations
 
 import torch
 
 from ..._types import Any, Slicer, Tensor
-from ...utils import t2int
+from ...utils import einsum, t2int
 from .base import Mixer
 
 default_opts = {
@@ -226,8 +227,8 @@ class Anderson(Mixer):
             #   b(i)   =  <F(l) - F(l-i)|F(l)>
             # here dF = <F(l) - F(l-i)|
             df = self._f[0] - self._f[1:]
-            a = torch.einsum("i...v,j...v->...ij", df, df)
-            b = torch.einsum("h...v,...v->...h", df, self._f[0])
+            a = einsum("i...v,j...v->...ij", df, df)
+            b = einsum("h...v,...v->...h", df, self._f[0])
 
             # Rescale diagonals to prevent linear dependence on the residual
             # vectors by adding 1 + offset^2 to the diagonals of "a", see
@@ -248,10 +249,10 @@ class Anderson(Mixer):
             #   f_bar = sum(j=1 -> m) ϑ_j(l) * (|F(l-j)> - |F(l)>)
             # These are not the x_bar & F_var values of eq. 4.1 & 4.2 (Eyert)
             # yet as they are still missing the 1st terms.
-            x_bar = torch.einsum(
+            x_bar = einsum(
                 "...h,h...v->...v", thetas, (self._x_hist[1:] - self._x_hist[0])
             )
-            f_bar = torch.einsum("...h,h...v->...v", thetas, -df)
+            f_bar = einsum("...h,h...v->...v", thetas, -df)
 
             # The first terms of equations 4.1 & 4.2 (Eyert):
             #   4.1: |x(l)> and & 4.2: |F(l)>

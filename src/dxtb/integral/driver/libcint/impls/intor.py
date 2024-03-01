@@ -4,6 +4,7 @@ Integral Interface
 
 
 """
+
 from __future__ import annotations
 
 import copy
@@ -23,7 +24,8 @@ except ImportError as e:
         "It can be installed via 'pip install dxtblibs'."
     )
 
-from ....._types import Callable, Tensor
+from ....._types import Any, Callable, Tensor
+from .....utils import einsum
 from .namemanager import IntorNameManager
 from .utils import int2ctypes, np2ctypes
 from .wrapper import LibcintWrapper
@@ -35,6 +37,7 @@ def int1e(
     shortname: str,
     wrapper: LibcintWrapper,
     other: LibcintWrapper | None = None,
+    hermitian: bool = False,
 ) -> Tensor:
     # 2-centre 1-electron integral
 
@@ -45,6 +48,7 @@ def int1e(
         *wrapper.params,
         [wrapper, other1],
         IntorNameManager("int1e", shortname),
+        hermitian,
     )  # type: ignore
 
 
@@ -64,7 +68,7 @@ def overlap(wrapper: LibcintWrapper, other: LibcintWrapper | None = None) -> Ten
     Tensor
         Overlap integral.
     """
-    return int1e("ovlp", wrapper, other=other)
+    return int1e("ovlp", wrapper, other=other, hermitian=True)
 
 
 # misc functions
@@ -103,6 +107,7 @@ class _Int2cFunction(torch.autograd.Function):
         allposs: Tensor,
         wrappers: list[LibcintWrapper],
         int_nmgr: IntorNameManager,
+        hermitian: bool,
     ) -> Tensor:
         # allcoeffs: (ngauss_tot,)
         # allalphas: (ngauss_tot,)
@@ -114,23 +119,27 @@ class _Int2cFunction(torch.autograd.Function):
         #   required for backward propagation
         assert len(wrappers) == 2
 
-        out_tensor = Intor(int_nmgr, wrappers).calc()
+        out_tensor = Intor(int_nmgr, wrappers, hermitian=hermitian).calc()
 
         return out_tensor  # (..., nao0, nao1)
 
     @staticmethod
-    def setup_context(ctx, inputs: tuple, output):
-        allcoeffs, allalphas, allposs, wrappers, int_nmgr = inputs
+    def setup_context(ctx: Any, inputs: tuple[Any, ...], output: Tensor) -> None:
+        allcoeffs, allalphas, allposs, wrappers, int_nmgr, hermitian = inputs
         ctx.save_for_backward(allcoeffs, allalphas, allposs)
         ctx.wrappers = wrappers
         ctx.int_nmgr = int_nmgr
+        ctx.hermitian = hermitian
 
     @staticmethod
-    def backward(ctx, grad_out: Tensor) -> tuple[Tensor | None, ...]:  # type: ignore
+    def backward(ctx: Any, grad_out: Tensor) -> tuple[Tensor | None, ...]:  # type: ignore
         # grad_out: (..., nao0, nao1)
-        allcoeffs, allalphas, allposs = ctx.saved_tensors
+        allcoeffs: Tensor = ctx.saved_tensors[0]
+        allalphas: Tensor = ctx.saved_tensors[1]
+        allposs: Tensor = ctx.saved_tensors[2]
         wrappers: list[LibcintWrapper] = ctx.wrappers
         int_nmgr: IntorNameManager = ctx.int_nmgr
+        hermitian: bool = ctx.hermitian
 
         # gradient for all atomic positions
         grad_allposs: Tensor | None = None
@@ -146,7 +155,9 @@ class _Int2cFunction(torch.autograd.Function):
             ]
 
             def int_fcn(wrappers: list[LibcintWrapper], namemgr) -> Tensor:
-                ints = _Int2cFunction.apply(*ctx.saved_tensors, wrappers, namemgr)
+                ints = _Int2cFunction.apply(
+                    *ctx.saved_tensors, wrappers, namemgr, hermitian
+                )
                 return ints
 
             # list of tensors with shape: (ndim, ..., nao0, nao1)
@@ -157,10 +168,10 @@ class _Int2cFunction(torch.autograd.Function):
             grad_out2 = grad_out.reshape(shape[1:])
             # negative because the integral calculates the nabla w.r.t. the
             # spatial coordinate, not the basis central position
-            grad_dpos_i = -torch.einsum(
+            grad_dpos_i = -einsum(
                 "sij,dsij->di", grad_out2, dout_dposs[0].reshape(shape)
             )
-            grad_dpos_j = -torch.einsum(
+            grad_dpos_j = -einsum(
                 "sij,dsij->dj", grad_out2, dout_dposs[1].reshape(shape)
             )
 
@@ -226,12 +237,8 @@ class _Int2cFunction(torch.autograd.Function):
                 dout_dcoeff_j = dout_dcoeff / coeffs_ao1
 
                 # (nu_ao)
-                grad_dcoeff_i = torch.einsum(
-                    "...ij,...ij->i", u_grad_out, dout_dcoeff_i
-                )
-                grad_dcoeff_j = torch.einsum(
-                    "...ij,...ij->j", u_grad_out, dout_dcoeff_j
-                )
+                grad_dcoeff_i = einsum("...ij,...ij->i", u_grad_out, dout_dcoeff_i)
+                grad_dcoeff_j = einsum("...ij,...ij->j", u_grad_out, dout_dcoeff_j)
                 # grad_dcoeff = grad_dcoeff_i + grad_dcoeff_j
 
                 # scatter the grad
@@ -258,12 +265,8 @@ class _Int2cFunction(torch.autograd.Function):
 
                 # (nu_ao)
                 # negative because the exponent is negative alpha * (r-ra)^2
-                grad_dalpha_i = -torch.einsum(
-                    "...ij,...ij->i", u_grad_out, dout_dalphas[0]
-                )
-                grad_dalpha_j = -torch.einsum(
-                    "...ij,...ij->j", u_grad_out, dout_dalphas[1]
-                )
+                grad_dalpha_i = -einsum("...ij,...ij->i", u_grad_out, dout_dalphas[0])
+                grad_dalpha_j = -einsum("...ij,...ij->j", u_grad_out, dout_dalphas[1])
                 # grad_dalpha = (grad_dalpha_i + grad_dalpha_j)  # (nu_ao)
 
                 # scatter the grad
@@ -293,13 +296,19 @@ class _cintoptHandler(ctypes.c_void_p):
 
 
 class Intor:
-    def __init__(self, int_nmgr: IntorNameManager, wrappers: list[LibcintWrapper]):
+    def __init__(
+        self,
+        int_nmgr: IntorNameManager,
+        wrappers: list[LibcintWrapper],
+        hermitian: bool = False,
+    ) -> None:
         assert len(wrappers) > 0
         wrapper0 = wrappers[0]
         self.int_type = int_nmgr.int_type
         self.atm, self.bas, self.env = wrapper0.atm_bas_env
         self.wrapper0 = wrapper0
         self.int_nmgr = int_nmgr
+        self.hermitian = hermitian
         self.wrapper_uniqueness = _get_uniqueness([id(w) for w in wrappers])
 
         # get the operator
@@ -331,8 +340,8 @@ class Intor:
         drv(
             self.op,
             out.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(self.ncomp),
-            ctypes.c_int(0),  # do not assume hermitian
+            int2ctypes(self.ncomp),
+            int2ctypes(self.hermitian),
             (ctypes.c_int * len(self.shls_slice))(*self.shls_slice),
             np2ctypes(self.wrapper0.full_shell_to_aoloc),
             self.optimizer,

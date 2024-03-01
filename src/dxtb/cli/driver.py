@@ -1,6 +1,7 @@
 """
 Driver class for running dxtb.
 """
+
 from __future__ import annotations
 
 import logging
@@ -151,10 +152,23 @@ class Driver:
 
         # INTERACTIONS
         interactions = []
-        if args.efield is not None or args.ir is True or args.raman is True:
+
+        needs_field = any(
+            [
+                args.ir,
+                args.raman,
+                args.dipole,
+                args.polarizability,
+                args.hyperpolarizability,
+            ]
+        )
+
+        if args.efield is not None or needs_field is True:
             field = (
                 torch.tensor(
-                    args.efield if args.efield is not None else [0, 0, 0], **dd
+                    args.efield if args.efield is not None else [0, 0, 0],
+                    **dd,
+                    requires_grad=needs_field,
                 )
                 * units.VAA2AU
             )
@@ -163,11 +177,12 @@ class Driver:
         # setup calculator
         timer.stop("setup")
         calc = Calculator(numbers, par, opts=config, interaction=interactions, **dd)
-        # run singlepoint calculation
-        result = calc.singlepoint(numbers, positions, chrg)
 
         ####################################################
         if args.grad:
+            # run singlepoint calculation
+            result = calc.singlepoint(numbers, positions, chrg)
+
             timer.start("grad")
             (g,) = torch.autograd.grad(result.total.sum(), positions)
             timer.stop("grad")
@@ -179,13 +194,28 @@ class Driver:
 
         if args.ir is True:
             timer.start("IR")
-            calc.ir_spectrum_num(numbers, positions, chrg)
+            freqs, modes = calc.ir(numbers, positions, chrg)
             timer.stop("IR")
+
+        if args.dipole is True:
+            timer.start("Dipole")
+            mu = calc.dipole(numbers, positions, chrg)
+            timer.stop("Dipole")
+            print("Dipole Moment\n", mu)
+
+        if args.polarizability is True:
+            timer.start("Polarizability")
+            alpha = calc.polarizability(numbers, positions, chrg)
+            timer.stop("Polarizability")
+            print("Polarizability\n", mu)
 
         if args.verbosity > 0:
             timer.print_times()
 
-        return result
+        if "energy" not in calc.cache:
+            result = calc.singlepoint(numbers, positions, chrg)
+            timer.print_times()
+            return result
 
     def __repr__(self) -> str:  # pragma: no cover
         """Custom print representation of class."""

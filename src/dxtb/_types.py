@@ -7,6 +7,7 @@ This module contains all type annotations for this project.
 Since typing still significantly changes across different Python versions,
 all the special cases are handled here as well.
 """
+
 # pylint: disable=unused-import
 from __future__ import annotations
 
@@ -96,6 +97,31 @@ else:
         f"'dxtb' requires at least Python 3.8 (Python {sys.version_info.major}."
         f"{sys.version_info.minor}.{sys.version_info.micro} found)."
     )
+
+
+def wraps(
+    wrapped: Callable,
+    namestr: str | None = None,
+    docstr: str | None = None,
+    **kwargs: Any,
+) -> Callable[[T], T]:
+    def wrapper(fun: T) -> T:
+        try:
+            name = getattr(wrapped, "__name__", "<unnamed function>")
+            doc = getattr(wrapped, "__doc__", "") or ""
+            fun.__dict__.update(getattr(wrapped, "__dict__", {}))
+            fun.__annotations__ = getattr(wrapped, "__annotations__", {})
+            fun.__name__ = name if namestr is None else namestr.format(fun=name)
+            fun.__module__ = getattr(wrapped, "__module__", "<unknown module>")
+            fun.__doc__ = (
+                doc if docstr is None else docstr.format(fun=name, doc=doc, **kwargs)
+            )
+            fun.__qualname__ = getattr(wrapped, "__qualname__", fun.__name__)
+            fun.__wrapped__ = wrapped
+        finally:
+            return fun
+
+    return wrapper
 
 
 class DD(TypedDict):
