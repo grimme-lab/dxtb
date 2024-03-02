@@ -26,6 +26,7 @@ from .charge import Charge
 from .dispersion import Dispersion
 from .element import Element
 from .gfn1 import GFN1_XTB
+from .gfn2 import GFN2_XTB
 from .halogen import Halogen
 from .hamiltonian import Hamiltonian
 from .meta import Meta

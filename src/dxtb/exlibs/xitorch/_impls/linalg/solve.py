@@ -4,8 +4,8 @@ from typing import Callable, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch
-from scipy.sparse.linalg import gmres as scipy_gmres
 
+from dxtb.exlibs.scipy.sparse.linalg import gmres as scipy_gmres
 from dxtb.exlibs.xitorch import LinearOperator
 from dxtb.exlibs.xitorch._impls.optimize.root.rootsolver import broyden1
 from dxtb.exlibs.xitorch._utils.bcast import get_bcasted_dims, normalize_bcast_dims

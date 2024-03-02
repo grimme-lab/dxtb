@@ -12,12 +12,14 @@ Example
 >>> torch.sum(ihelp.angular >= 0)
 torch.tensor(6)
 """
+
 from __future__ import annotations
 
 import torch
 
-from .._types import Slicers, Tensor, TensorLike
-from ..utils import batch, dependent_memoize, t2int, wrap_gather, wrap_scatter_reduce
+from .._types import Slicers, Tensor, TensorLike, override
+from ..param import Param, get_elem_angular
+from ..utils import batch, t2int, wrap_gather, wrap_scatter_reduce
 
 __all__ = ["IndexHelper"]
 
@@ -56,7 +58,7 @@ def _expand(index: Tensor, repeat: Tensor) -> Tensor:
 
 class IndexHelper(TensorLike):
     """
-    Index helper for basis set
+    Index helper for basis set.
     """
 
     unique_angular: Tensor
@@ -1049,3 +1051,82 @@ class IndexHelper(TensorLike):
 
     def __repr__(self) -> str:
         return str(self)
+
+
+class IndexHelperParam(IndexHelper):
+    """
+    Index helper initialized by a parametrization.
+    """
+
+    @override
+    @classmethod
+    def from_numbers(cls, numbers: Tensor, par: Param) -> IndexHelper:
+        """
+        Construct an index helper instance from atomic numbers and their
+        angular momenta. The latter are collected from the GFN1 parametrization.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system.
+
+        Returns
+        -------
+        IndexHelper
+            Instance of index helper for given basis set.
+        """
+        return super().from_numbers(numbers, get_elem_angular(par.element))
+
+
+class IndexHelperGFN1(IndexHelperParam):
+    """
+    Index helper for GFN1 basis set.
+    """
+
+    @override
+    @classmethod
+    def from_numbers(cls, numbers: Tensor) -> IndexHelper:
+        """
+        Construct an index helper instance from atomic numbers and their
+        angular momenta. The latter are collected from the GFN1 parametrization.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system.
+
+        Returns
+        -------
+        IndexHelper
+            Instance of index helper for given basis set.
+        """
+        from ..param import GFN1_XTB
+
+        return super().from_numbers(numbers, GFN1_XTB)
+
+
+class IndexHelperGFN2(IndexHelperParam):
+    """
+    Index helper for GFN1 basis set.
+    """
+
+    @override
+    @classmethod
+    def from_numbers(cls, numbers: Tensor) -> IndexHelper:
+        """
+        Construct an index helper instance from atomic numbers and their
+        angular momenta. The latter are collected from the GFN1 parametrization.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system.
+
+        Returns
+        -------
+        IndexHelper
+            Instance of index helper for given basis set.
+        """
+        from ..param.gfn2 import GFN2_XTB
+
+        return super().from_numbers(numbers, GFN2_XTB)

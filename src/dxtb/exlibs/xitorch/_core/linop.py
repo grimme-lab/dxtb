@@ -4,11 +4,11 @@ import traceback
 import warnings
 from abc import abstractmethod
 from contextlib import contextmanager
-from typing import List, Optional, Sequence, Union
+from typing import Sequence
 
 import torch
-from scipy.sparse.linalg import LinearOperator as spLinearOperator
 
+from dxtb.exlibs.scipy.sparse.linalg import LinearOperator as spLinearOperator
 from dxtb.exlibs.xitorch._core.editable_module import EditableModule
 from dxtb.exlibs.xitorch._utils.bcast import get_bcasted_dims
 from dxtb.exlibs.xitorch.debug.modes import is_debug_enabled

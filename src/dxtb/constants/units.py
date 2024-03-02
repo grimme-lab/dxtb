@@ -2,13 +2,14 @@
 Unit conversion factors.
 """
 
-from scipy.constants import physical_constants
+from dxtb.exlibs import scipy
 
 
 def get_constant(constant_name: str) -> float:
-    if constant_name not in physical_constants:
+    spc = scipy.constants.physical_constants
+    if constant_name not in spc.physical_constants:
         raise KeyError(f"Constant '{constant_name}' not found.")
-    return physical_constants[constant_name][0]
+    return spc.physical_constants[constant_name][0]
 
 
 class CODATA:
