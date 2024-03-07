@@ -6,34 +6,19 @@ from tad_mctc.typing import DD
 
 import dxtb
 
-# import logging
+dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
 
-# logging.basicConfig(
-#     level=logging.CRITICAL,
-#     format="[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s",
-# )
-
-device = torch.device("cpu")
-dd: DD = {"device": device, "dtype": torch.double}
-
-f = Path(__file__).parent / "molecules" / "lysxao.coord"
+# init a molecule
 f = Path(__file__).parent / "molecules" / "h2o-dimer.coord"
 numbers, positions = read.read_from_path(f, ftype="tm", **dd)
 charge = torch.tensor(0.0, **dd)
 
-opts = {
-    "scf_mode": "full",
-    "mixer": "anderson",
-    "verbosity": 6,
-}
-
-
-print(dxtb.io.get_short_version())
-
-# dipole moment requires electric field
+# setup electric field interaction for field derivatives
 field_vector = torch.tensor([0.0, 0.0, 0.0], **dd, requires_grad=True)
 ef = dxtb.external.new_efield(field_vector)
 
+# setup calculator
+opts = {"scf_mode": "full", "mixer": "anderson", "verbosity": 6}
 calc = dxtb.Calculator(
     numbers,
     dxtb.GFN1_XTB,
@@ -42,47 +27,5 @@ calc = dxtb.Calculator(
     **dd,
 )
 
-
-dxtb.timer.start("Pol")
-agrad = calc.polarizability(numbers, positions, charge)
-dxtb.timer.stop("Pol")
-
-print(agrad.shape)
-
-dxtb.timer.print_times()
-dxtb.timer.reset()
-
-
-dxtb.timer.start("Pol2")
-agrad2 = calc.polarizability(numbers, positions, charge, use_functorch=True)
-dxtb.timer.stop("Pol2")
-
-print(agrad2.shape)
-
-
-dxtb.timer.start("Pol3")
-agrad3 = calc.polarizability(
-    numbers, positions, charge, use_functorch=True, use_dipole=False
-)
-dxtb.timer.stop("Pol3")
-
-print(agrad3.shape)
-
-
-dxtb.timer.start("Num Pol")
-num = calc.polarizability_numerical(numbers, positions, charge)
-dxtb.timer.stop("Num Pol")
-
-dxtb.timer.print_times()
-dxtb.timer.reset()
-
-print("agrad\n", agrad)
-print("agrad2\n", agrad2)
-print("agrad3\n", agrad3)
-print("num\n", num)
-print()
-print(num - agrad)
-print(num - agrad2)
-print(num - agrad3)
-# print(numhess - hess2)
-# print(hess - hess2)
+pol = calc.polarizability(numbers, positions, charge)
+print(pol)

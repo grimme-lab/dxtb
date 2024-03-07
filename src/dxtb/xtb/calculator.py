@@ -524,6 +524,10 @@ class Calculator(TensorLike):
 
         timer.stop("setup calculator")
 
+    def reset(self) -> None:
+        self.interactions.reset_all()
+        self.classicals.reset_all()
+
     def singlepoint(
         self,
         numbers: Tensor,
@@ -560,7 +564,7 @@ class Calculator(TensorLike):
         result = Result(positions, device=self.device, dtype=self.dtype)
 
         # CLASSICAL CONTRIBUTIONS
-        if len(self.classicals.classicals) > 0:
+        if len(self.classicals.components) > 0:
             ccaches = self.classicals.get_cache(numbers, self.ihelp)
             cenergies = self.classicals.get_energy(positions, ccaches)
             result.cenergies = cenergies
@@ -650,7 +654,7 @@ class Calculator(TensorLike):
             result.total += scf_results["energy"] + scf_results["fenergy"]
 
             if grad is True:
-                if len(self.interactions.interactions) > 0:
+                if len(self.interactions.components) > 0:
                     timer.start("igrad", "Interaction Gradient")
 
                     # charges should be detached
@@ -1307,6 +1311,7 @@ class Calculator(TensorLike):
     ) -> Tensor:
         # retrieve the efg interaction and the field gradient and detach
         efg = self.interactions.get_interaction(efield_grad.LABEL_EFIELD_GRAD)
+        _field_grad = efg.field_grad.clone()
         field_grad = efg.field_grad.detach().clone()
         self.interactions.update_efield_grad(field_grad=field_grad)
 
@@ -1333,6 +1338,9 @@ class Calculator(TensorLike):
 
                 logger.debug(f"Numerical Quadrupole: step {count}/{3}")
                 count += 1
+
+        # reset
+        self.interactions.update_efield_grad(field_grad=_field_grad)
 
         logger.debug("Numerical Quadrupole: All finished.")
         OutputHandler.temporary_disable_off()
@@ -1407,13 +1415,18 @@ class Calculator(TensorLike):
                 return self.dipole(numbers, positions, chrg, spin)
 
             alpha = jacrev(wrapped_dipole)(field)
-        elif derived_quantity == "dipole":
+            assert isinstance(alpha, Tensor)
+        elif derived_quantity == "energy":
 
             def wrapped_energy(f: Tensor) -> Tensor:
                 self.interactions.update_efield(field=f)
                 return self.energy(numbers, positions, chrg, spin)
 
             alpha = jacrev(jacrev(wrapped_energy))(field)
+            assert isinstance(alpha, Tensor)
+
+            #
+            alpha = -alpha
         else:
             raise ValueError(
                 f"Unknown `derived_quantity` '{derived_quantity}'. The "
@@ -1422,7 +1435,6 @@ class Calculator(TensorLike):
             )
 
         # 3x3 polarizability tensor
-        assert isinstance(alpha, Tensor)
         return alpha
 
     @requires_efield
@@ -1457,6 +1469,7 @@ class Calculator(TensorLike):
         """
         # retrieve the efield interaction and the field and detach for gradient
         ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
+        _field = ef.field.clone()
         field = ef.field.detach().clone()
         self.interactions.update_efield(field=field)
 
@@ -1465,7 +1478,7 @@ class Calculator(TensorLike):
 
         deriv = torch.zeros(*(*numbers.shape[:-1], 3, 3), **self.dd)
 
-        # turn off printing in numerical hessian
+        # turn off printing in numerical derivative
         OutputHandler.temporary_disable_on()
         logger.debug(f"Numerical Polarizability: Starting build ({deriv.shape})")
 
@@ -1473,11 +1486,11 @@ class Calculator(TensorLike):
         for i in range(3):
             field[..., i] += step_size
             self.interactions.update_efield(field=field)
-            gr = self.dipole(numbers, positions, chrg, spin)
+            gr = self.dipole_analytical(numbers, positions, chrg, spin)
 
             field[..., i] -= 2 * step_size
             self.interactions.update_efield(field=field)
-            gl = self.dipole(numbers, positions, chrg, spin)
+            gl = self.dipole_analytical(numbers, positions, chrg, spin)
 
             field[..., i] += step_size
             self.interactions.update_efield(field=field)
@@ -1491,7 +1504,11 @@ class Calculator(TensorLike):
         logger.debug("Numerical Polarizability: All finished.")
         OutputHandler.temporary_disable_off()
 
-        return deriv
+        # explicitly update field (otherwise gradient is missing)
+        self.interactions.reset_efield()
+        self.interactions.update_efield(field=_field)
+
+        return -deriv
 
     @requires_efield
     @requires_positions_grad

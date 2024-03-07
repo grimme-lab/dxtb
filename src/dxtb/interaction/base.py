@@ -7,14 +7,16 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Any, Tensor, TensorLike, TensorOrTensors
+from dxtb.components import Component
+
+from .._types import Any, Tensor, TensorOrTensors
 from ..basis import IndexHelper
 from .container import Charges, Potential
 
 __all__ = ["Interaction"]
 
 
-class Interaction(TensorLike):
+class Interaction(Component):
     """
     Base class for defining interactions with the charge density.
 
@@ -55,8 +57,6 @@ class Interaction(TensorLike):
     label: str
     """Label for the interaction."""
 
-    __slots__ = ["label"]
-
     class Cache:
         """
         Restart data for individual interactions, extended by subclasses as
@@ -64,51 +64,6 @@ class Interaction(TensorLike):
         """
 
         __slots__ = []
-
-    def __init__(
-        self,
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
-    ):
-        super().__init__(device, dtype)
-        self.label = self.__class__.__name__
-
-    def update(self, **kwargs: Any) -> None:
-        """
-        Update the attributes of the `Interaction` instance.
-
-        This method updates the attributes of the `Interaction` instance based
-        on the provided keyword arguments. Only the attributes defined in
-        `__slots__` can be updated.
-
-        Parameters
-        ----------
-        **kwargs : dict[str, Any]
-            Keyword arguments where keys are attribute names and values are the
-            new values for those attributes.
-            Valid keys are those defined in `__slots__` of this class.
-
-        Raises
-        ------
-        AttributeError
-            If any key in kwargs is not an attribute defined in `__slots__`.
-
-        Examples
-        --------
-        >>> electric_field = ElectricField(field=some_tensor, field_grad=some_tensor)
-        >>> electric_field.update(field=new_field_value)
-        """
-        for key, value in kwargs.items():
-            if key is None:
-                continue
-
-            if key in self.__slots__:
-                setattr(self, key, value)
-            else:
-                raise AttributeError(
-                    f"Cannot update '{key}' of the '{self.__class__.__name__}' "
-                    "interaction. Invalid attribute."
-                )
 
     # pylint: disable=unused-argument
     def get_cache(

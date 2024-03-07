@@ -1,6 +1,7 @@
 """
 Integral configuration.
 """
+
 from __future__ import annotations
 
 from .._types import Literal
@@ -12,6 +13,15 @@ __all__ = ["ConfigIntegrals"]
 class ConfigIntegrals:
     """
     Configuration for the integrals.
+    """
+
+    level: int
+    """
+    Indicator for integrals to compute.
+    - 0: None
+    - 1: overlap
+    - 2: +dipole
+    - 3: +quadrupole
     """
 
     cutoff: float
@@ -26,11 +36,19 @@ class ConfigIntegrals:
     def __init__(
         self,
         *,
+        level: int = defaults.INTLEVEL,
         cutoff: float = defaults.INTCUTOFF,
         driver: str | int = defaults.INTDRIVER,
         uplo: str = defaults.INTUPLO,
     ) -> None:
         self.cutoff = cutoff
+
+        if not isinstance(level, int):
+            raise TypeError(
+                f"The received integral level (`{level}`) is not an integer, "
+                f"but {type(level)}."
+            )
+        self.level = level
 
         if uplo not in ("n", "N", "u", "U", "l", "L"):
             raise ValueError(f"Unknown option for `uplo` chosen: '{uplo}'.")

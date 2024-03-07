@@ -7,6 +7,7 @@ The classical contribution currently comprise:
  - repulsion (GFN1-xTB, GFN2-xTB)
  - halogen bonding correction (GFN1-xTB).
 """
+
 from .base import Classical
 from .halogen import Halogen, new_halogen
 from .list import ClassicalList

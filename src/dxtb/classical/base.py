@@ -16,8 +16,9 @@ from abc import ABC, abstractmethod
 
 import torch
 
-from .._types import Tensor, TensorLike
+from .._types import Tensor
 from ..basis import IndexHelper
+from ..components import Component
 
 
 class ClassicalABC(ABC):
@@ -25,13 +26,8 @@ class ClassicalABC(ABC):
     Abstract base class for calculation of classical contributions.
     """
 
-    class Cache(ABC):
-        """
-        Abstract base class for the Cache of the contribution.
-        """
-
     @abstractmethod
-    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> Cache:
+    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> Component.Cache:
         """
         Store variables for energy calculation.
 
@@ -55,7 +51,9 @@ class ClassicalABC(ABC):
         """
 
     @abstractmethod
-    def get_energy(self, positions: Tensor, cache: Cache, **kwargs: str) -> Tensor:
+    def get_energy(
+        self, positions: Tensor, cache: Component.Cache, **kwargs: str
+    ) -> Tensor:
         """
         Obtain energy of the contribution.
 
@@ -73,23 +71,13 @@ class ClassicalABC(ABC):
         """
 
 
-class Classical(ClassicalABC, TensorLike):
+class Classical(ClassicalABC, Component):
     """
     Base class for calculation of classical contributions.
     """
 
     label: str
     """Label for the classical contribution."""
-
-    __slots__ = ["label"]
-
-    def __init__(
-        self,
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
-    ):
-        super().__init__(device, dtype)
-        self.label = self.__class__.__name__
 
     def get_gradient(
         self, energy: Tensor, positions: Tensor, grad_outputs: Tensor | None = None

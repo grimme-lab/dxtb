@@ -24,6 +24,7 @@ class Config:
         method: str | int = defaults.METHOD,
         grad: bool = False,
         # integrals
+        int_level: int = defaults.INTLEVEL,
         int_cutoff: float = defaults.INTCUTOFF,
         int_driver: str | int = defaults.INTDRIVER,
         int_uplo: str = defaults.INTUPLO,
@@ -73,6 +74,7 @@ class Config:
             )
 
         self.ints = ConfigIntegrals(
+            level=int_level,
             cutoff=int_cutoff,
             driver=int_driver,
             uplo=int_uplo,

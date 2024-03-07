@@ -49,10 +49,14 @@ from ..exceptions import ParameterWarning
 from ..param import Param, get_elem_param
 from .base import Classical
 
-__all__ = ["Repulsion", "new_repulsion"]
+__all__ = ["Repulsion", "LABEL_REPULSION", "new_repulsion"]
 
 
-class Repulsion(Classical, TensorLike):
+LABEL_REPULSION = "Repulsion"
+"""Label for the 'Repulsion' component, coinciding with the class name."""
+
+
+class Repulsion(Classical):
     """
     Representation of the classical repulsion.
     """

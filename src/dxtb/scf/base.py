@@ -537,6 +537,63 @@ class BaseSCF:
 
         raise ValueError(f"Unknown partitioning mode '{mode}'.")
 
+    def _print(self, charges: Charges) -> None:
+        # explicitly check to avoid some superfluos calculations
+        if OutputHandler.verbosity >= 5:
+            if charges.mono.ndim < 2:  # pragma: no cover
+                energy = self.get_energy(charges).sum(-1).detach().clone()
+                ediff = torch.linalg.vector_norm(self._data.old_energy - energy)
+
+                density = self._data.density.detach().clone()
+                pnorm = torch.linalg.matrix_norm(self._data.old_density - density)
+
+                _q = charges.mono.detach().clone()
+                qdiff = torch.linalg.vector_norm(self._data.old_charges - _q)
+
+                OutputHandler.write_row(
+                    "SCF Iterations",
+                    f"{self._data.iter:3}",
+                    [
+                        f"{energy: .16E}",
+                        f"{ediff: .6E}",
+                        f"{pnorm: .6E}",
+                        f"{qdiff: .6E}",
+                    ],
+                )
+
+                self._data.old_energy = energy
+                self._data.old_charges = _q
+                self._data.old_density = density
+                self._data.iter += 1
+            else:
+                energy = self.get_energy(charges).detach().clone()
+                ediff = torch.linalg.norm(self._data.old_energy - energy)
+
+                density = self._data.density.detach().clone()
+                pnorm = torch.linalg.norm(self._data.old_density - density)
+
+                _q = charges.mono.detach().clone()
+                # print(_q.shape)
+                # print(self._data.old_charges.shape)
+                # qdiff = torch.linalg.norm(self._data.old_charges - _q)
+
+                qdiff = 0
+                OutputHandler.write_row(
+                    "SCF Iterations",
+                    f"{self._data.iter:3}",
+                    [
+                        f"{energy.norm(): .16E}",
+                        f"{ediff: .6E}",
+                        f"{pnorm: .6E}",
+                        f"{qdiff: .6E}",
+                    ],
+                )
+
+                self._data.old_energy = energy
+                self._data.old_charges = _q
+                self._data.old_density = density
+                self._data.iter += 1
+
     def iterate_charges(self, charges: Tensor) -> Tensor:
         """
         Perform single self-consistent iteration.
@@ -556,56 +613,9 @@ class BaseSCF:
         potential = self.charges_to_potential(q)
 
         # FIXME: Batch print not working!
-        # explicitly check to avoid some superfluos calculations
-        if OutputHandler.verbosity >= 5:
-            if charges.ndim < 2:  # pragma: no cover
-                energy = self.get_energy(q).sum(-1).detach().clone()
-                ediff = torch.linalg.vector_norm(self._data.old_energy - energy)
+        self._print(q)
 
-                density = self._data.density.detach().clone()
-                pnorm = torch.linalg.matrix_norm(self._data.old_density - density)
-
-                _q = charges.detach().clone()
-                qdiff = torch.linalg.vector_norm(self._data.old_charges - _q)
-
-                OutputHandler.write_row(
-                    "SCF Iterations",
-                    f"{self._data.iter:3}",
-                    [
-                        f"{energy: .16E}",
-                        f"{ediff: .6E}",
-                        f"{pnorm: .6E}",
-                        f"{qdiff: .6E}",
-                    ],
-                )
-
-                self._data.old_energy = energy
-                self._data.old_charges = _q
-                self._data.old_density = density
-                self._data.iter += 1
-            else:
-                energy = self.get_energy(q).detach().clone()
-                ediff = torch.linalg.norm(self._data.old_energy - energy)
-
-                density = self._data.density.detach().clone()
-                pnorm = torch.linalg.norm(self._data.old_density - density)
-
-                _q = charges.detach().clone()
-                print(_q.shape)
-                print(self._data.old_charges.shape)
-                qdiff = torch.linalg.norm(self._data.old_charges - _q)
-
-                OutputHandler.write_stdout(
-                    f"{self._data.iter:3}   {energy.sum(): .16E}  {ediff: .6E} "
-                    f"{qdiff: .6E}"
-                )
-
-                self._data.old_energy = energy
-                self._data.old_charges = _q
-                self._data.old_density = density
-                self._data.iter += 1
-
-        OutputHandler.write_stdout(f"energy: {self.get_energy(q).sum(-1)}", 6)
+        # OutputHandler.write_stdout(f"energy: {self.get_energy(q).sum(-1)}", 6)
 
         new_charges = self.potential_to_charges(potential)
         return new_charges.as_tensor()
@@ -630,52 +640,7 @@ class BaseSCF:
         charges = self.potential_to_charges(pot)
 
         # FIXME: Batch print not working!
-        # explicitly check to avoid some superfluos calculations
-        if OutputHandler.verbosity > 5:
-            if charges.mono.ndim < 2:  # pragma: no cover
-                energy = self.get_energy(charges).sum(-1).detach().clone()
-                ediff = torch.linalg.vector_norm(self._data.old_energy - energy)
-
-                density = self._data.density.detach().clone()
-                pnorm = torch.linalg.matrix_norm(self._data.old_density - density)
-
-                q = charges.mono.detach().clone()
-                qdiff = torch.linalg.vector_norm(self._data.old_charges - q)
-
-                OutputHandler.write_row(
-                    "SCF Iterations",
-                    f"{self._data.iter:3}",
-                    [
-                        f"{energy: .16E}",
-                        f"{ediff: .6E}",
-                        f"{pnorm: .6E}",
-                        f"{qdiff: .6E}",
-                    ],
-                )
-
-                self._data.old_energy = energy
-                self._data.old_charges = q
-                self._data.old_density = density
-                self._data.iter += 1
-            else:
-                energy = self.get_energy(charges).detach().clone()
-                ediff = torch.linalg.norm(self._data.old_energy - energy)
-
-                density = self._data.density.detach().clone()
-                pnorm = torch.linalg.norm(self._data.old_density - density)
-
-                q = charges.mono.detach().clone()
-                qdiff = torch.linalg.norm(self._data.old_charges - q)
-
-                OutputHandler.write_stdout(
-                    f"{self._data.iter:3}   {energy.sum(): .16E}  {ediff: .6E} "
-                    f"{qdiff: .6E}"
-                )
-
-                self._data.old_energy = energy
-                self._data.old_charges = q
-                self._data.old_density = density
-                self._data.iter += 1
+        self._print(charges)
 
         new_potential = self.charges_to_potential(charges)
         return new_potential.as_tensor()
@@ -698,6 +663,9 @@ class BaseSCF:
         charges = self.density_to_charges(self._data.density)
         potential = self.charges_to_potential(charges)
         self._data.hamiltonian = self.potential_to_hamiltonian(potential)
+
+        # FIXME: Batch print not working!
+        self._print(charges)
 
         return self._data.hamiltonian
 

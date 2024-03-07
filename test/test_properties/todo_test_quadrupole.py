@@ -365,3 +365,52 @@ def test_batch_unconverged(dtype: torch.dtype, name1: str, name2: str) -> None:
     quadrupole.detach_()
 
     assert pytest.approx(ref, abs=1e-2, rel=1e-3) == quadrupole
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", ["HHe", "LiH", "H2O"])
+def test_batch_unconverged(dtype: torch.dtype, name1: str, name2: str) -> None:
+    dd: DD = {"dtype": dtype, "device": device}
+
+    sample1, sample2 = samples[name1], samples[name2]
+
+    numbers = batch.pack(
+        [
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
+        ],
+    )
+
+    positions = batch.pack(
+        [
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
+        ],
+    )
+    charge = torch.tensor([0.0, 0.0], **dd)
+
+    ref = batch.pack(
+        [
+            sample1["quadrupole"].to(**dd),
+            sample2["quadrupole"].to(**dd),
+        ]
+    )
+
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
+
+    # required for autodiff of energy w.r.t. efield and quadrupole
+    field_vector.requires_grad_(True)
+    positions.requires_grad_(True)
+
+    # with 5 iterations, both do not converge, but pass the test
+    options = dict(opts, **{"maxiter": 5, "mixer": "simple"})
+
+    efield = new_efield(field_vector)
+    calc = Calculator(numbers, par, interaction=[efield], opts=options, **dd)
+
+    quadrupole = calc.quadrupole(numbers, positions, charge)
+    quadrupole.detach_()
+
+    assert pytest.approx(ref, abs=1e-2, rel=1e-3) == quadrupole

@@ -4,12 +4,13 @@ Factories
 
 Factory functions for integral drivers.
 """
+
 from __future__ import annotations
 
 import torch
 from tad_mctc.typing import Any, Tensor
 
-from ..basis import IndexHelper
+from ..basis.indexhelper import IndexHelperParam
 from ..constants import labels
 from ..param import Param
 from .base import IntDriver
@@ -29,21 +30,20 @@ def new_driver(
     name: str,
     numbers: Tensor,
     par: Param,
-    ihelp: IndexHelper,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> IntDriver:
     if name == labels.INTDRIVER_LIBCINT:
-        return new_driver_libcint(numbers, par, ihelp, device=device, dtype=dtype)
+        return new_driver_libcint(numbers, par, device=device, dtype=dtype)
 
     if name == labels.INTDRIVER_PYTORCH:
-        return new_driver_pytorch(numbers, par, ihelp, device=device, dtype=dtype)
+        return new_driver_pytorch(numbers, par, device=device, dtype=dtype)
 
     if name == labels.INTDRIVER_PYTORCH2:
-        return new_driver_pytorch2(numbers, par, ihelp, device=device, dtype=dtype)
+        return new_driver_pytorch2(numbers, par, device=device, dtype=dtype)
 
     if name == labels.INTDRIVER_LEGACY:
-        return new_driver_legacy(numbers, par, ihelp, device=device, dtype=dtype)
+        return new_driver_legacy(numbers, par, device=device, dtype=dtype)
 
     raise ValueError(f"Unknown integral driver '{name}'.")
 
@@ -51,40 +51,40 @@ def new_driver(
 def new_driver_libcint(
     numbers: Tensor,
     par: Param,
-    ihelp: IndexHelper,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> IntDriverLibcint:
+    ihelp = IndexHelperParam.from_numbers(numbers, par)
     return IntDriverLibcint(numbers, par, ihelp, device=device, dtype=dtype)
 
 
 def new_driver_pytorch(
     numbers: Tensor,
     par: Param,
-    ihelp: IndexHelper,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> IntDriverPytorch:
+    ihelp = IndexHelperParam.from_numbers(numbers, par)
     return IntDriverPytorch(numbers, par, ihelp, device=device, dtype=dtype)
 
 
 def new_driver_pytorch2(
     numbers: Tensor,
     par: Param,
-    ihelp: IndexHelper,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> IntDriverPytorchNoAnalytical:
+    ihelp = IndexHelperParam.from_numbers(numbers, par)
     return IntDriverPytorchNoAnalytical(numbers, par, ihelp, device=device, dtype=dtype)
 
 
 def new_driver_legacy(
     numbers: Tensor,
     par: Param,
-    ihelp: IndexHelper,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> IntDriverPytorchLegacy:
+    ihelp = IndexHelperParam.from_numbers(numbers, par)
     return IntDriverPytorchLegacy(numbers, par, ihelp, device=device, dtype=dtype)
 
 

@@ -20,6 +20,10 @@ from dxtb.exlibs import scipy as scipy
 from . import _types
 from . import io
 
+# import interaction before Coulomb to avoid circular import
+from dxtb.interaction import Interaction, InteractionList
+from dxtb.coulomb import secondorder, thirdorder
+
 # from . import integral as ints
 from .__version__ import __version__
 

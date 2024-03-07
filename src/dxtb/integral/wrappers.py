@@ -16,7 +16,6 @@ Note that there are several peculiarities for the multipole integrals:
 
 Example
 -------
->>> import torch
 >>> from dxtb.integral.wrappers import overlap, dipole, quadrupole
 >>> from dxtb.param import GFN1_XTB as par
 >>>
@@ -39,6 +38,7 @@ torch.Size([3, 17, 17])
 >>> print(q.shape)
 torch.Size([9, 17, 17])
 """
+
 from __future__ import annotations
 
 from .._types import DD, Any, Literal, Tensor
@@ -164,17 +164,20 @@ def _integral(
 ) -> Tensor:
     dd: DD = {"device": positions.device, "dtype": positions.dtype}
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-
-    # Determine which driver class to instantiate
+    # Determine which driver class to instantiate (defaults to libcint)
     driver_name = kwargs.pop("driver", labels.INTDRIVER_LIBCINT)
-    driver = new_driver(driver_name, numbers, par, ihelp, **dd)
+    driver = new_driver(driver_name, numbers, par, **dd)
 
+    # setup driver for integral calculation
     driver.setup(positions)
+
+    # inject driver into requested integral
     if integral_type == "_overlap":
         integral = Overlap(driver=driver_name, **dd, **kwargs)
     elif integral_type in ("_dipole", "_quadrupole"):
         ovlp = Overlap(driver=driver_name, **dd, **kwargs)
+
+        # multipole integrals require the overlap for normalization
         if ovlp.integral._matrix is None or ovlp.integral._norm is None:
             ovlp.build(driver)
 
@@ -187,4 +190,5 @@ def _integral(
     else:
         raise ValueError(f"Unknown integral type '{integral_type}'.")
 
+    # actual integral calculation
     return integral.build(driver)

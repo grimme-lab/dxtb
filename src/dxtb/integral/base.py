@@ -1,6 +1,7 @@
 """
 Base class for Integrals.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -102,7 +103,10 @@ class IntDriver(TensorLike):
     @abstractmethod
     def setup(self, positions: Tensor, **kwargs) -> None:
         """
-        Run the `libcint`-specific driver setup.
+        Run the specific driver setup.
+
+        Example: For the `libcint` driver, the setup builds the basis in the
+        format the `libcint` wrapper expects.
 
         Parameters
         ----------

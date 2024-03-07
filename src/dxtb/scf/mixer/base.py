@@ -4,6 +4,7 @@ ABC: SCF Mixer
 
 This module contains the abstract base class for all mixers.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

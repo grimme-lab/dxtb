@@ -27,6 +27,7 @@ Example
 >>> print(energy.sum(-1))
 tensor(0.0025)
 """
+
 from __future__ import annotations
 
 import torch
@@ -39,7 +40,11 @@ from ..param import Param, get_elem_param
 from ..utils import batch
 from .base import Classical
 
-__all__ = ["Halogen", "new_halogen"]
+__all__ = ["Halogen", "LABEL_HALOGEN", "new_halogen"]
+
+
+LABEL_HALOGEN = "Halogen"
+"""Label for the 'Halogen' component, coinciding with the class name."""
 
 
 class Halogen(Classical):

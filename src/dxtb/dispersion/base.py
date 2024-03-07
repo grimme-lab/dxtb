@@ -1,17 +1,18 @@
 """
 Abstract base class for dispersion models.
 """
+
 from __future__ import annotations
 
 from abc import abstractmethod
 
 import torch
 
-from .._types import Tensor, TensorLike
+from .._types import Tensor
 from ..classical import Classical
 
 
-class Dispersion(Classical, TensorLike):
+class Dispersion(Classical):
     """
     Base class for dispersion correction.
     """
