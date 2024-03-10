@@ -5,13 +5,23 @@ Base calculator for the extended tight-binding model.
 from __future__ import annotations
 
 import logging
+from functools import wraps
+from typing import cast
 
 import torch
 from tad_mctc.convert import any_to_tensor
+from tad_mctc.typing import (
+    Any,
+    Callable,
+    Literal,
+    Sequence,
+    Tensor,
+    TensorLike,
+    TypeVar,
+)
 
 from .. import integral as ints
 from .. import ncoord, properties, scf
-from .._types import Any, Callable, Literal, Sequence, Tensor, TensorLike
 from ..basis import IndexHelper
 from ..classical import (
     Classical,
@@ -33,7 +43,7 @@ from ..interaction.external import fieldgrad as efield_grad
 from ..io import OutputHandler
 from ..param import Param, get_elem_angular
 from ..timing import timer
-from ..utils import _jac
+from ..utils import _jac, einsum
 from ..wavefunction import filling
 
 __all__ = ["Calculator", "Result"]
@@ -53,6 +63,8 @@ logger = logging.getLogger(__name__)
 #     ) -> tuple[torch.Tensor, Tensor]:
 #         ...
 
+F = TypeVar("F", bound=Callable[..., Any])
+
 
 def requires_positions_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     def wrapper(
@@ -61,6 +73,7 @@ def requires_positions_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
+        *args: Any,
         **kwargs: Any,
     ) -> Tensor:
         if not positions.requires_grad:
@@ -68,7 +81,7 @@ def requires_positions_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor
                 f"Position tensor needs `requires_grad=True` in '{func.__name__}'."
             )
 
-        return func(self, numbers, positions, chrg, spin, **kwargs)
+        return func(self, numbers, positions, chrg, spin, *args, **kwargs)
 
     return wrapper
 
@@ -80,6 +93,7 @@ def requires_efield(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
+        *args: Any,
         **kwargs: Any,
     ) -> Tensor:
         if efield.LABEL_EFIELD not in self.interactions.labels:
@@ -87,7 +101,7 @@ def requires_efield(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
                 f"{func.__name__} requires an electric field. Add the "
                 f"'{efield.LABEL_EFIELD}' interaction to the Calculator."
             )
-        return func(self, numbers, positions, chrg, spin, **kwargs)
+        return func(self, numbers, positions, chrg, spin, *args, **kwargs)
 
     return wrapper
 
@@ -99,6 +113,7 @@ def requires_efield_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
+        *args: Any,
         **kwargs: Any,
     ) -> Tensor:
         ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
@@ -106,7 +121,7 @@ def requires_efield_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
             raise RuntimeError(
                 f"Field tensor needs `requires_grad=True` in '{func.__name__}'."
             )
-        return func(self, numbers, positions, chrg, spin, **kwargs)
+        return func(self, numbers, positions, chrg, spin, *args, **kwargs)
 
     return wrapper
 
@@ -118,6 +133,7 @@ def requires_efg(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
+        *args: Any,
         **kwargs: Any,
     ) -> Tensor:
         if efield_grad.LABEL_EFIELD_GRAD not in self.interactions.labels:
@@ -126,7 +142,7 @@ def requires_efg(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
                 f"'{efield_grad.LABEL_EFIELD_GRAD}' interaction to the "
                 "Calculator."
             )
-        return func(self, numbers, positions, chrg, spin, **kwargs)
+        return func(self, numbers, positions, chrg, spin, *args, **kwargs)
 
     return wrapper
 
@@ -146,6 +162,19 @@ def requires_efg_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
         return func(self, numbers, positions, chrg, spin, **kwargs)
 
     return wrapper
+
+
+def numerical(func: F) -> F:
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        OutputHandler.temporary_disable_on()
+        try:
+            result = func(*args, **kwargs)
+        finally:
+            OutputHandler.temporary_disable_off()
+        return result
+
+    return cast(F, wrapper)
 
 
 class Result(TensorLike):
@@ -602,7 +631,7 @@ class Calculator(TensorLike):
 
             # Core Hamiltonian integral (requires overlap internally!)
             timer.start("h0", "Core Hamiltonian")
-            rcov = cov_rad_d3.to(self.device)[numbers]
+            rcov = cov_rad_d3.to(**self.dd)[numbers]
             cn = ncoord.get_coordination_number(
                 numbers, positions, ncoord.exp_count, rcov
             )
@@ -723,38 +752,47 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int | None = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
+        use_functorch: bool = False,
     ) -> Tensor:
         logger.debug(f"Autodiff Forces: Starting Calculation.")
 
         # pylint: disable=import-outside-toplevel
         from tad_mctc.autograd import jacrev
 
+        # TODO: non functorch implementation
         # jacrev requires a scalar from `self.energy`!
         jac_func = jacrev(self.energy, argnums=1)
         jac = jac_func(numbers, positions, chrg, spin)
         assert isinstance(jac, Tensor)
 
+        if jac.is_contiguous() is False:
+            logger.debug(
+                "Hessian: Re-enforcing contiguous memory layout after "
+                f"autodiff (use_functorch={use_functorch})."
+            )
+            jac = jac.contiguous()
+
         logger.debug("Autodiff Forces: All finished.")
         return -jac
 
+    @numerical
     def forces_numerical(
         self,
         numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        step_size: int | float = 1.0e-5,
+        step_size: int | float = defaults.STEP_SIZE,
     ) -> Tensor:
+        # pylint: disable=import-outside-toplevel
+        import gc
+
         # important: detach for gradient
         pos = positions.detach().clone()
 
-        # turn off printing in numerical calc
-        tmp = OutputHandler.verbosity
-        OutputHandler.verbosity = 0
-
-        jac = torch.zeros(pos.shape, **self.dd)
-
-        logger.debug(f"Numerical Forces: Starting build ({jac.shape})")
+        # (..., nat, 3)
+        deriv = torch.zeros(pos.shape, **self.dd)
+        logger.debug(f"Forces (numerical): Starting build ({deriv.shape}).")
 
         count = 1
         nsteps = 3 * numbers.shape[-1]
@@ -767,15 +805,17 @@ class Calculator(TensorLike):
                 gl = self.energy(numbers, pos, chrg, spin)
 
                 pos[..., i, j] += step_size
-                jac[..., i, j] = 0.5 * (gr - gl) / step_size
+                deriv[..., i, j] = 0.5 * (gr - gl) / step_size
 
-                logger.debug(f"Numerical Forces: step {count}/{nsteps}")
+                logger.debug(f"Forces (numerical): step {count}/{nsteps}")
                 count += 1
 
-        logger.debug("Numerical Forces: All finished.")
+                gc.collect()
+            gc.collect()
 
-        OutputHandler.verbosity = tmp
-        return -jac
+        logger.debug("Forces (numerical): All finished.")
+
+        return -deriv
 
     @requires_positions_grad
     def hessian(
@@ -785,6 +825,7 @@ class Calculator(TensorLike):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         matrix: bool = False,
+        use_functorch: bool = False,
     ) -> Tensor:
         """
         Calculation of the nuclear (autodiff) Hessian with functorch.
@@ -821,61 +862,48 @@ class Calculator(TensorLike):
         """
         logger.debug(f"Autodiff Hessian: Starting Calculation.")
 
-        # pylint: disable=import-outside-toplevel
-        from tad_mctc.autograd import jacrev
+        if use_functorch is True:
+            # pylint: disable=import-outside-toplevel
+            from tad_mctc.autograd import jacrev
 
-        # jacrev requires a scalar from `self.energy`!
-        hess_func = jacrev(jacrev(self.energy, argnums=1), argnums=1)
-        hess = hess_func(numbers, positions, chrg, spin)
-        assert isinstance(hess, Tensor)
+            # jacrev requires a scalar from `self.energy`!
+            hess_func = jacrev(jacrev(self.energy, argnums=1), argnums=1)
+            hess = hess_func(numbers, positions, chrg, spin)
+            assert isinstance(hess, Tensor)
+        else:
+            # pylint: disable=import-outside-toplevel
+            from tad_mctc.autograd import hessian
 
-        # reshape (nb, nat, 3, nat, 3) to (nb, nat*3, nat*3)
-        if matrix is True:
-            s = [*numbers.shape[:-1], *2 * [3 * numbers.shape[-1]]]
-            hess = hess.reshape(*s)
+            # jacrev requires a scalar from `self.energy`!
+            hess = hessian(self.energy, (numbers, positions, chrg, spin), argnums=1)
 
-        logger.debug("Autodiff Hessian: All finished.")
-        return hess
-
-    def hessian2(
-        self,
-        numbers: Tensor,
-        positions: Tensor,
-        chrg: Tensor | float | int = defaults.CHRG,
-        spin: Tensor | float | int | None = defaults.SPIN,
-        matrix: bool = False,
-    ) -> Tensor:
-        if positions.requires_grad is False:
-            raise RuntimeError("Position tensor needs `requires_grad=True`.")
-
-        logger.debug(f"Autodiff Hessian: Starting Calculation.")
-
-        # pylint: disable=import-outside-toplevel
-        from tad_mctc.autograd import hessian
-
-        # jacrev requires a scalar from `self.energy`!
-        hess = hessian(self.energy, (numbers, positions, chrg, spin), argnums=1)
-        assert isinstance(hess, Tensor)
+        if hess.is_contiguous() is False:
+            logger.debug(
+                "Hessian: Re-enforcing contiguous memory layout after "
+                f"autodiff (use_functorch={use_functorch})."
+            )
+            hess = hess.contiguous()
 
         # reshape (nb, nat, 3, nat, 3) to (nb, nat*3, nat*3)
         if matrix is True:
             s = [*numbers.shape[:-1], *2 * [3 * numbers.shape[-1]]]
-            hess = hess.reshape(*s)
+            hess = hess.view(*s)
 
         logger.debug("Autodiff Hessian: All finished.")
         return hess
 
+    @numerical
     def hessian_numerical(
         self,
         numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        step_size: int | float = 1.0e-5,
+        step_size: int | float = defaults.STEP_SIZE,
         matrix: bool = False,
     ) -> Tensor:
         """
-        Numerical Hessian.
+        Hessian (numerical).
 
         Parameters
         ----------
@@ -908,14 +936,9 @@ class Calculator(TensorLike):
         # imortant: detach for gradient
         pos = positions.detach().clone()
 
-        hess = torch.zeros(
-            *(*positions.shape, *positions.shape[-2:]),
-            **{"device": positions.device, "dtype": positions.dtype},
-        )
-
-        # turn off printing in numerical hessian
-        OutputHandler.temporary_disable_on()
-        logger.debug(f"Numerical Hessian: Starting build (size {hess.shape})")
+        # (..., nat, 3, nat, 3)
+        deriv = torch.zeros((*pos.shape, *pos.shape[-2:]), **self.dd)
+        logger.debug(f"Hessian (numerical): Starting build ({deriv.shape}).")
 
         count = 1
         nsteps = 3 * numbers.shape[-1]
@@ -928,23 +951,22 @@ class Calculator(TensorLike):
                 gl = _gradfcn(pos)
 
                 pos[..., i, j] += step_size
-                hess[..., :, :, i, j] = 0.5 * (gr - gl) / step_size
+                deriv[..., :, :, i, j] = 0.5 * (gr - gl) / step_size
 
-                logger.debug(f"Numerical Hessian: step {count}/{nsteps}")
+                logger.debug(f"Hessian (numerical): step {count}/{nsteps}")
                 count += 1
 
+                gc.collect()
             gc.collect()
-        gc.collect()
 
-        # reshape (nb, nat, 3, nat, 3) to (nb, nat*3, nat*3)
+        # reshape (..., nat, 3, nat, 3) to (..., nat*3, nat*3)
         if matrix is True:
             s = [*numbers.shape[:-1], *2 * [3 * numbers.shape[-1]]]
-            hess = hess.reshape(*s)
+            deriv = deriv.reshape(*s)
 
-        logger.debug("Numerical Hessian: All finished.")
-        OutputHandler.temporary_disable_off()
+        logger.debug("Hessian (numerical): All finished.")
 
-        return hess
+        return deriv
 
     def vibration(
         self,
@@ -964,6 +986,7 @@ class Calculator(TensorLike):
             project_rotational=project_rotational,
         )
 
+    @numerical
     def vibration_numerical(
         self,
         numbers: Tensor,
@@ -1009,6 +1032,13 @@ class Calculator(TensorLike):
             energy = self.energy(numbers, positions, chrg, spin)
             dip = _jac(energy, field)
 
+        if dip.is_contiguous() is False:
+            logger.debug(
+                "Dipole moment: Re-enforcing contiguous memory layout "
+                f"after autodiff (use_functorch={use_functorch})."
+            )
+            dip = dip.contiguous()
+
         return -dip
 
     @requires_efield
@@ -1021,6 +1051,7 @@ class Calculator(TensorLike):
     ) -> Tensor:
         # run single point and check if integral is populated
         result = self.singlepoint(numbers, positions, chrg, spin)
+
         dipint = self.integrals.dipole
         if dipint is None:
             raise RuntimeError(
@@ -1042,6 +1073,7 @@ class Calculator(TensorLike):
         dip = properties.moments.dipole(qat, positions, result.density, dipint.matrix)
         return -dip
 
+    @numerical
     @requires_efield
     def dipole_numerical(
         self,
@@ -1049,18 +1081,20 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        step_size: int | float = 1.0e-5,
+        step_size: int | float = defaults.STEP_SIZE,
     ) -> Tensor:
+        # pylint: disable=import-outside-toplevel
+        import gc
+
         # retrieve the efield interaction and the field and detach for gradient
         ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
+        _field = ef.field.clone()
         field = ef.field.detach().clone()
         self.interactions.update_efield(field=field)
 
-        deriv = torch.zeros(*(*numbers.shape[:-1], 3), **self.dd)
-
-        # turn off printing in numerical hessian
-        OutputHandler.temporary_disable_on()
-        logger.debug(f"Numerical Dipole: Starting build ({deriv.shape}).")
+        # (..., 3)
+        deriv = torch.zeros((*numbers.shape[:-1], 3), **self.dd)
+        logger.debug(f"Dipole (numerical): Starting build ({deriv.shape}).")
 
         count = 1
         for i in range(3):
@@ -1076,11 +1110,16 @@ class Calculator(TensorLike):
             self.interactions.update_efield(field=field)
             deriv[..., i] = 0.5 * (gr - gl) / step_size
 
-            logger.debug(f"Numerical Dipole: step {count}/{3}")
+            logger.debug(f"Dipole (numerical): step {count}/{3}")
             count += 1
 
-        logger.debug("Numerical Dipole: All finished.")
-        OutputHandler.temporary_disable_off()
+            gc.collect()
+
+        # explicitly update field (otherwise gradient is missing)
+        self.interactions.reset_efield()
+        self.interactions.update_efield(field=_field)
+
+        logger.debug("Dipole (numerical): All finished.")
 
         return -deriv
 
@@ -1135,66 +1174,70 @@ class Calculator(TensorLike):
             from tad_mctc.autograd import jacrev
 
             # d(3) / d(nat, 3) = (3, nat, 3)
-            dmu_dr = jacrev(self.dipole, argnums=1)(numbers, positions, chrg, spin)
+            dmu_dr = jacrev(self.dipole, argnums=1)(
+                numbers, positions, chrg, spin, use_functorch
+            )
             assert isinstance(dmu_dr, Tensor)
+
         else:
-            mu = self.dipole(numbers, positions, chrg, spin)
+            mu = self.dipole(numbers, positions, chrg, spin, use_functorch)
 
             # (3, 3*nat) -> (3, nat, 3)
             dmu_dr = _jac(mu, positions).reshape((3, *positions.shape[-2:]))
 
+        if dmu_dr.is_contiguous() is False:
+            logger.debug(
+                "Dipole derivative: Re-enforcing contiguous memory layout "
+                f"after autodiff (use_functorch={use_functorch})."
+            )
+            dmu_dr = dmu_dr.contiguous()
+
         return dmu_dr
 
+    @numerical
     def dipole_deriv_numerical(
         self,
         numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        step_size: int | float = 1.0e-5,
+        step_size: int | float = defaults.STEP_SIZE,
     ) -> Tensor:
-        # turn off printing in numerical calcs
-        OutputHandler.temporary_disable_on()
-        logger.debug("Dipole derivative: Start.")
-
         # pylint: disable=import-outside-toplevel
         import gc
 
         # important: use new/separate position tensor
         pos = positions.detach().clone()
 
-        dmu_dr = torch.zeros((3, *positions.shape[-2:]), **self.dd)  # (3, n, 3)
-
-        logger.debug(
-            "Dipole derivative: Start building numerical dipole derivative "
-            f"({dmu_dr.shape})."
+        # (..., 3, n, 3)
+        deriv = torch.zeros(
+            (*numbers.shape[:-1], 3, *positions.shape[-2:]),
+            **self.dd,
         )
+        logger.debug(f"Dipole derivative (numerical): Starting build ({deriv.shape}).")
 
         count = 1
         nsteps = 3 * numbers.shape[-1]
         for i in range(numbers.shape[-1]):
             for j in range(3):
-                pos[i, j] += step_size
-                r = self.dipole(numbers, pos, chrg, spin)
+                pos[..., i, j] += step_size
+                r = self.dipole_analytical(numbers, pos, chrg, spin)
 
-                pos[i, j] -= 2 * step_size
-                l = self.dipole(numbers, pos, chrg, spin)
+                pos[..., i, j] -= 2 * step_size
+                l = self.dipole_analytical(numbers, pos, chrg, spin)
 
-                pos[i, j] += step_size
-                dmu_dr[:, i, j] = 0.5 * (r - l) / step_size
+                pos[..., i, j] += step_size
+                deriv[..., :, i, j] = 0.5 * (r - l) / step_size
 
-                logger.debug("Dipole derivative: Step " f"{count}/{nsteps}")
+                logger.debug("Dipole derivative (numerical): Step " f"{count}/{nsteps}")
                 count += 1
 
+                gc.collect()
             gc.collect()
-        gc.collect()
 
-        # dmu_dr = dmu_dr.view(3, -1)
+        logger.debug("Dipole derivative (numerical): All finished.")
 
-        logger.debug("Dipole derivative: All finished.")
-        OutputHandler.temporary_disable_off()
-
-        return dmu_dr
+        return deriv
 
     @requires_efg
     @requires_efg_grad
@@ -1247,7 +1290,7 @@ class Calculator(TensorLike):
 
         cart = torch.empty((6), **self.dd)
 
-        tr = 0.5 * torch.einsum("...ii->...", e_quad)
+        tr = 0.5 * einsum("...ii->...", e_quad)
         print("tr", tr)
         cart[..., 0] = 1.5 * e_quad[..., 0, 0] - tr
         cart[..., 1] = 3.0 * e_quad[..., 1, 0]
@@ -1259,7 +1302,7 @@ class Calculator(TensorLike):
         print("cart\n", cart)
 
         # electric quadrupole contribution form nuclei: sum_i(r_ik * Z_i)
-        n_quad = torch.einsum(
+        n_quad = einsum(
             "...ij,...ik,...i->...jk",
             positions,
             positions,
@@ -1300,6 +1343,7 @@ class Calculator(TensorLike):
 
         return properties.quadrupole(qat, dpat, qpat, positions)
 
+    @numerical
     @requires_efg
     def quadrupole_numerical(
         self,
@@ -1307,7 +1351,7 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        step_size: int | float = 1.0e-5,
+        step_size: int | float = defaults.STEP_SIZE,
     ) -> Tensor:
         # retrieve the efg interaction and the field gradient and detach
         efg = self.interactions.get_interaction(efield_grad.LABEL_EFIELD_GRAD)
@@ -1315,11 +1359,9 @@ class Calculator(TensorLike):
         field_grad = efg.field_grad.detach().clone()
         self.interactions.update_efield_grad(field_grad=field_grad)
 
-        deriv = torch.zeros(*(*numbers.shape[:-1], 3, 3), **self.dd)
-
-        # turn off printing in numerical derivatives
-        OutputHandler.temporary_disable_on()
-        logger.debug(f"Numerical Quadrupole: Starting build ({deriv.shape}).")
+        # (..., 3, 3)
+        deriv = torch.zeros((*numbers.shape[:-1], 3, 3), **self.dd)
+        logger.debug(f"Quadrupole (numerical): Starting build ({deriv.shape}).")
 
         count = 1
         for i in range(3):
@@ -1336,14 +1378,13 @@ class Calculator(TensorLike):
                 self.interactions.update_efield_grad(field_grad=field_grad)
                 deriv[..., i, j] = 0.5 * (gr - gl) / step_size
 
-                logger.debug(f"Numerical Quadrupole: step {count}/{3}")
+                logger.debug(f"Quadrupole (numerical): step {count}/{3}")
                 count += 1
 
         # reset
         self.interactions.update_efield_grad(field_grad=_field_grad)
 
-        logger.debug("Numerical Quadrupole: All finished.")
-        OutputHandler.temporary_disable_off()
+        logger.debug("Quadrupole (numerical): All finished.")
 
         return deriv
 
@@ -1425,7 +1466,7 @@ class Calculator(TensorLike):
             alpha = jacrev(jacrev(wrapped_energy))(field)
             assert isinstance(alpha, Tensor)
 
-            #
+            # negative sign already in dipole but not in energy derivative!
             alpha = -alpha
         else:
             raise ValueError(
@@ -1434,9 +1475,17 @@ class Calculator(TensorLike):
                 "'dipole' moment or the 'energy'."
             )
 
+        if alpha.is_contiguous() is False:
+            logger.debug(
+                "Polarizability: Re-enforcing contiguous memory layout "
+                f"after autodiff (use_functorch={use_functorch})."
+            )
+            alpha = alpha.contiguous()
+
         # 3x3 polarizability tensor
         return alpha
 
+    @numerical
     @requires_efield
     def polarizability_numerical(
         self,
@@ -1444,7 +1493,7 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        step_size: int | float = 1.0e-5,
+        step_size: int | float = defaults.STEP_SIZE,
     ) -> Tensor:
         """
         Numerical polarizability.
@@ -1465,22 +1514,20 @@ class Calculator(TensorLike):
         Returns
         -------
         Tensor
-            Polarizability tensor.
+            Polarizability tensor of shape `(3, 3)`.
         """
+        # pylint: disable=import-outside-toplevel
+        import gc
+
         # retrieve the efield interaction and the field and detach for gradient
         ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
         _field = ef.field.clone()
         field = ef.field.detach().clone()
         self.interactions.update_efield(field=field)
 
-        # pylint: disable=import-outside-toplevel
-        import gc
-
+        # (..., 3, 3)
         deriv = torch.zeros(*(*numbers.shape[:-1], 3, 3), **self.dd)
-
-        # turn off printing in numerical derivative
-        OutputHandler.temporary_disable_on()
-        logger.debug(f"Numerical Polarizability: Starting build ({deriv.shape})")
+        logger.debug(f"Polarizability (numerical): Starting build ({deriv.shape})")
 
         count = 1
         for i in range(3):
@@ -1496,15 +1543,14 @@ class Calculator(TensorLike):
             self.interactions.update_efield(field=field)
             deriv[..., :, i] = 0.5 * (gr - gl) / step_size
 
-            logger.debug(f"Numerical Polarizability: step {count}/{3}")
+            logger.debug(f"Polarizability (numerical): step {count}/{3}")
             count += 1
 
             gc.collect()
 
-        logger.debug("Numerical Polarizability: All finished.")
-        OutputHandler.temporary_disable_off()
+        logger.debug("Polarizability (numerical): All finished.")
 
-        # explicitly update field (otherwise gradient is missing)
+        # explicitly update field (to restore original field with possible grad)
         self.interactions.reset_efield()
         self.interactions.update_efield(field=_field)
 
@@ -1561,6 +1607,7 @@ class Calculator(TensorLike):
             # pylint: disable=import-outside-toplevel
             from tad_mctc.autograd import jacrev
 
+            # TODO: Implement!
             chi = ...
             assert isinstance(chi, Tensor)
         else:
@@ -1569,57 +1616,61 @@ class Calculator(TensorLike):
             # d(3, 3) / d(nat, 3) -> (3, 3, nat*3) -> (3, 3, nat, 3)
             chi = _jac(a, positions).reshape((3, 3, *positions.shape[-2:]))
 
+        if chi.is_contiguous() is False:
+            logger.debug(
+                "Polarizability derivative: Re-enforcing contiguous memory "
+                f"layout after autodiff (use_functorch={use_functorch})."
+            )
+            chi = chi.contiguous()
+
         return chi
 
+    @numerical
+    @requires_efield
     def pol_deriv_numerical(
         self,
         numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        step_size: int | float = 1.0e-5,
+        step_size: int | float = defaults.STEP_SIZE,
     ) -> Tensor:
-        # turn off printing in numerical calcs
-        OutputHandler.temporary_disable_on()
-        logger.debug("Polarizability numerical derivative: Start.")
-
         # pylint: disable=import-outside-toplevel
         import gc
 
         # important: use new/separate position tensor
         pos = positions.detach().clone()
 
-        # (3, 3, nat, 3)
-        deriv = torch.zeros((3, 3, *positions.shape[-2:]), **self.dd)
-
+        # (..., 3, 3, nat, 3)
+        deriv = torch.zeros(
+            (*numbers.shape[:-1], 3, 3, *positions.shape[-2:]), **self.dd
+        )
         logger.debug(
-            "Polarizability numerical derivative: Start building numerical "
-            f"dipole derivative {deriv.shape})."
+            "Polarizability derivative (numerical): Starting build " f"({deriv.shape})."
         )
 
         count = 1
         nsteps = 3 * numbers.shape[-1]
         for i in range(numbers.shape[-1]):
             for j in range(3):
-                pos[i, j] += step_size
+                pos[..., i, j] += step_size
                 r = self.polarizability(numbers, pos, chrg, spin)
 
-                pos[i, j] -= 2 * step_size
+                pos[..., i, j] -= 2 * step_size
                 l = self.polarizability(numbers, pos, chrg, spin)
 
-                pos[i, j] += step_size
-                deriv[:, :, i, j] = 0.5 * (r - l) / step_size
+                pos[..., i, j] += step_size
+                deriv[..., :, :, i, j] = 0.5 * (r - l) / step_size
 
                 logger.debug(
                     "Polarizability numerical derivative: Step " f"{count}/{nsteps}"
                 )
                 count += 1
 
+                gc.collect()
             gc.collect()
-        gc.collect()
 
         logger.debug("Polarizability numerical derivative: All finished.")
-        OutputHandler.temporary_disable_off()
 
         return deriv
 
@@ -1719,6 +1770,15 @@ class Calculator(TensorLike):
 
         # 3x3x3 hyper polarizability tensor
         assert isinstance(beta, Tensor)
+
+        # usually only after jacrev not contiguous
+        if beta.is_contiguous() is False:
+            logger.debug(
+                "Hyperpolarizability: Re-enforcing contiguous memory "
+                f"layout after autodiff (use_functorch={use_functorch})."
+            )
+            beta = beta.contiguous()
+
         return beta
 
     @requires_efield
@@ -1728,7 +1788,7 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        step_size: int | float = 1.0e-5,
+        step_size: int | float = defaults.STEP_SIZE,
     ) -> Tensor:
         """
         Numerical polarizability.
@@ -1751,19 +1811,20 @@ class Calculator(TensorLike):
         Tensor
             Polarizability tensor.
         """
-        # retrieve the efield interaction and the field and detach for gradient
-        ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
-        field = ef.field.detach().clone()
-        self.interactions.update_efield(field=field)
-
         # pylint: disable=import-outside-toplevel
         import gc
 
-        deriv = torch.zeros(*(*numbers.shape[:-1], 3, 3, 3), **self.dd)
+        # retrieve the efield interaction and the field and detach for gradient
+        ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
+        _field = ef.field.clone()
+        field = ef.field.detach().clone()
+        self.interactions.update_efield(field=field)
 
-        # turn off printing in numerical hessian
-        OutputHandler.temporary_disable_on()
-        logger.debug(f"Numerical Hyper Polarizability: Starting build ({deriv.shape})")
+        # (..., 3, 3, 3)
+        deriv = torch.zeros(*(*numbers.shape[:-1], 3, 3, 3), **self.dd)
+        logger.debug(
+            f"Hyper Polarizability (numerical): Starting build ({deriv.shape})"
+        )
 
         count = 1
         for i in range(3):
@@ -1779,13 +1840,16 @@ class Calculator(TensorLike):
             self.interactions.update_efield(field=field)
             deriv[..., :, :, i] = 0.5 * (gr - gl) / step_size
 
-            logger.debug(f"Numerical Hyper Polarizability: step {count}/{3}")
+            logger.debug(f"Hyper Polarizability (numerical): step {count}/{3}")
             count += 1
 
             gc.collect()
 
-        logger.debug("Numerical Hyper Polarizability: All finished.")
-        OutputHandler.temporary_disable_off()
+        # explicitly update field (to restore original field with possible grad)
+        self.interactions.reset_efield()
+        self.interactions.update_efield(field=_field)
+
+        logger.debug("Hyper Polarizability (numerical): All finished.")
 
         return deriv
 
@@ -1797,60 +1861,56 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
+        use_functorch: bool = False,
     ) -> tuple[Tensor, Tensor]:
         logger.debug("IR spectrum: Start.")
 
         # run vibrational analysis first
-        hess = self.hessian(numbers, positions, chrg, spin)
-        freqs, modes = properties.frequencies(numbers, positions, hess)
+        freqs, modes = self.vibration(numbers, positions, chrg, spin)
 
         self.integrals.invalidate_driver()
 
-        dmu_dr = self.dipole_deriv(numbers, positions, chrg, spin)  # (3, nat, 3)
-        dmu_dr = dmu_dr.view(3, -1)  # (3, nat*3)
+        # calculate nuclear dipole derivative dmu/dR: (..., 3, nat, 3)
+        dmu_dr = self.dipole_deriv(
+            numbers, positions, chrg, spin, use_functorch=use_functorch
+        )
 
-        # (3, nat*3) @ (nat*3, nfreqs) = (3, nfreqs)
-        dmu_dq = torch.matmul(dmu_dr, modes)
-
-        ir_ints = torch.einsum("...df,...df->...f", dmu_dq, dmu_dq)  # (nfreqs,)
+        ir_ints = _ir_intensities(dmu_dr, modes)
 
         # TODO: Figure out unit
         from ..constants import units
 
-        logger.debug("IR spectrum numerical: All finished.")
+        logger.debug("IR spectrum: All finished.")
 
         return freqs * units.AU2RCM, ir_ints * 1378999.7790799031
 
+    @numerical
     def ir_numerical(
         self,
         numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        step_size: int | float = 1.0e-5,
+        step_size: int | float = defaults.STEP_SIZE,
     ) -> tuple[Tensor, Tensor]:
-        # turn off printing in numerical calcs
-        OutputHandler.temporary_disable_on()
-        logger.debug("IR spectrum numerical: Start.")
+        logger.debug("IR spectrum (numerical): Start.")
+
+        # important: always use new/separate position tensor
+        pos = positions.detach().clone()
 
         # run vibrational analysis first
-        hess = self.hessian_numerical(numbers, positions, chrg)
-        freqs, modes = properties.frequencies(numbers, positions, hess)
+        freqs, modes = self.vibration_numerical(numbers, pos, chrg, spin)
 
-        # calculate nulcear dipole derivative dmu/dR (3, nat, 3)
+        # calculate nuclear dipole derivative dmu/dR: (..., 3, nat, 3)
         dmu_dr = self.dipole_deriv_numerical(
-            numbers, positions, chrg, spin, step_size=step_size
+            numbers, pos, chrg, spin, step_size=step_size
         )
-        dmu_dr = dmu_dr.view(3, -1)  # (3, nat*3)
-
-        dmu_dq = torch.matmul(dmu_dr, modes)  # (3, nfreqs)
-        ir_ints = torch.einsum("...df,...df->...f", dmu_dq, dmu_dq)  # (nfreqs,)
+        ir_ints = _ir_intensities(dmu_dr, modes)
 
         # TODO: Figure out unit
         from ..constants import units
 
-        logger.debug("IR spectrum numerical: All finished.")
-        OutputHandler.temporary_disable_off()
+        logger.debug("IR spectrum (numerical): All finished.")
 
         return freqs * units.AU2RCM, ir_ints * 1378999.7790799031
 
@@ -1862,7 +1922,7 @@ class Calculator(TensorLike):
         spin: Tensor | float | int | None = defaults.SPIN,
     ) -> tuple[Tensor, Tensor]:
         """
-        Calculate the frequency and static intensities of Raman spectra.
+        Calculate the frequencies and static intensities of Raman spectra.
         Formula taken from `here <https://doi.org/10.1080/00268970701516412>`__.
 
         Parameters
@@ -1892,29 +1952,14 @@ class Calculator(TensorLike):
         """
         freqs, modes = self.vibration(numbers, positions, chrg, spin)
 
-        # d(3, 3) / d(nat, 3) -> (3, 3, nat, 3) -> (3, 3, nat*3)
+        # d(..., 3, 3) / d(..., nat, 3) -> (..., 3, 3, nat, 3)
         da_dr = self.pol_deriv(numbers, positions, chrg, spin)
-        da_dr = da_dr.reshape((3, 3, -1))
 
-        # (3, 3, nat*3) * (nat*3, nmodes) = (3, 3, nmodes)
-        da_dq = torch.matmul(da_dr, modes)
-
-        # Eq.3 with alpha' = a
-        a = torch.einsum("...iij->...j", da_dq)
-
-        # Eq.4 with (gamma')^2 = g = 0.5 * (g1 + g2 + g3 + 6.0*g4)
-        g1 = (da_dq[0, 0] - da_dq[1, 1]) ** 2
-        g2 = (da_dq[0, 0] - da_dq[2, 2]) ** 2
-        g3 = (da_dq[2, 2] - da_dq[1, 1]) ** 2
-        g4 = da_dq[0, 1] ** 2 + da_dq[1, 2] ** 2 + da_dq[2, 0] ** 2
-        g = g1 + g2 + g3 + 6.0 * g4
-
-        # Eq.1 (the 1/3 from Eq.3 is squared, yielding 45 * 1/9 = 5; the 7 is
-        # halfed by the 0.5 from Eq.4)
-        raman_ints = 5 * torch.pow(a, 2.0) + 3.5 * g
+        raman_ints = _raman_intensities(da_dr, modes)
 
         return freqs, raman_ints
 
+    @numerical
     def raman_numerical(
         self,
         numbers: Tensor,
@@ -1926,22 +1971,77 @@ class Calculator(TensorLike):
 
         # d(3, 3) / d(nat, 3) -> (3, 3, nat, 3) -> (3, 3, nat*3)
         da_dr = self.pol_deriv_numerical(numbers, positions, chrg, spin)
-        da_dr = da_dr.reshape((3, 3, -1))
 
-        # (3, 3, nat*3) * (nat*3, nmodes) = # (3, 3, nmodes)
-        da_dq = torch.matmul(da_dr, modes)
-
-        # Eq.3 with alpha' = a
-        a = torch.einsum("...iij->...j", da_dq)
-
-        # Eq.4 with (gamma')^2 = g = 0.5 * (g1 + g2 + g3 + g4)
-        g1 = (da_dq[0, 0] - da_dq[1, 1]) ** 2
-        g2 = (da_dq[0, 0] - da_dq[2, 2]) ** 2
-        g3 = (da_dq[2, 2] - da_dq[1, 1]) ** 2
-        g4 = da_dq[0, 1] ** 2 + da_dq[1, 2] ** 2 + da_dq[2, 0] ** 2
-        g = 0.5 * (g1 + g2 + g3 + g4)
-
-        # Eq.1 (the 1/3 from Eq.3 is squared and reduces the 45)
-        raman_ints = 5 * torch.pow(a, 2.0) + 7 * g
+        raman_ints = _raman_intensities(da_dr, modes)
 
         return freqs, raman_ints
+
+
+def _ir_intensities(dmu_dr: Tensor, modes: Tensor) -> Tensor:
+    """
+    Calculate IR intensities from the geometric dipole derivative.
+
+    Parameters
+    ----------
+    dmu_dr : Tensor
+        Dipole derivative tensor of shape `(..., 3, nat, 3)`.
+    modes : Tensor
+        Normal modes of shape `(..., nat*3, nmodes)`.
+
+    Returns
+    -------
+    Tensor
+        IR intensities of shape `(..., nfreqs)`.
+    """
+    # reshape for matmul: (..., 3, nat, 3) -> (..., 3, nat*3)
+    print((*modes.shape[:-2], 3, -1), dmu_dr.is_contiguous())
+    dmu_dr = dmu_dr.view(*(*modes.shape[:-2], 3, -1))
+
+    # convert cartesian to internal coordinate derivatives
+    # (..., 3, nat*3) @ (..., nat*3, nfreqs) = (..., 3, nfreqs)
+    dmu_dq = torch.matmul(dmu_dr, modes)
+
+    # square deriv and sum along cartesian components for intensity
+    # (..., 3, nfreqs) * (..., 3, nfreqs) -> (..., nfreqs)
+    return einsum("...xf,...xf->...f", dmu_dq, dmu_dq)
+
+
+def _raman_intensities(da_dr: Tensor, modes: Tensor) -> Tensor:
+    r"""
+    Calculate static Raman intensities from the geometric polarizability
+    derivative (Raman susceptibility tensor :math:`\chi`).
+
+    Formula taken from `here <https://doi.org/10.1080/00268970701516412>`__.
+
+    Parameters
+    ----------
+    da_dr : Tensor
+        Geometric polarizability derivative tensor of shape `(..., 3, 3, nat, 3)`.
+    modes : Tensor
+        Normal modes of shape `(..., nat*3, nmodes)`.
+
+    Returns
+    -------
+    Tensor
+        Static Raman intensities of shape `(..., nfreqs)`.
+    """
+    # reshape for matmul: (..., 3, 3, nat, 3) -> (..., 3, 3, nat*3)
+    da_dr = da_dr.view(*(*modes.shape[:-2], 3, 3, -1))
+
+    # convert cartesian to internal coordinate derivatives
+    # (..., 3, 3, nat*3) * (..., nat*3, nmodes) = (..., 3, 3, nmodes)
+    da_dq = torch.matmul(da_dr, modes)
+
+    # Eq.3 with alpha' = a (trace of the polarizability derivative)
+    a = einsum("...iij->...j", da_dq)
+
+    # Eq.4 with (gamma')^2 = g = 0.5 * (g1 + g2 + g3 + 6.0*g4)
+    g1 = (da_dq[0, 0] - da_dq[1, 1]) ** 2
+    g2 = (da_dq[0, 0] - da_dq[2, 2]) ** 2
+    g3 = (da_dq[2, 2] - da_dq[1, 1]) ** 2
+    g4 = da_dq[0, 1] ** 2 + da_dq[1, 2] ** 2 + da_dq[2, 0] ** 2
+    g = g1 + g2 + g3 + 6.0 * g4
+
+    # Eq.1 (the 1/3 from Eq.3 is squared, yielding 45 * 1/9 = 5; the 7 is
+    # halfed by the 0.5 from Eq.4)
+    return 5 * torch.pow(a, 2.0) + 3.5 * g

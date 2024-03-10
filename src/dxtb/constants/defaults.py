@@ -4,11 +4,15 @@ Default Settings
 
 This module contains the defaults for all `dxtb` calculations.
 """
+
 from __future__ import annotations
 
 import torch
 
 # General
+
+STEP_SIZE = 1e-5
+"""Step size for numerical differentiation."""
 
 METHOD = "gfn1"
 """General method for calculation from the xtb family."""
