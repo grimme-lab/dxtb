@@ -23,6 +23,7 @@ For the gradients, check out the following papers.
 
 from __future__ import annotations
 
+from functools import partial
 from math import pi, sqrt
 
 import torch
@@ -131,7 +132,11 @@ def md_explicit(
         # tensor to (ncarti, ncartj, nbatch). Since the batch dimension is
         # conventionally the first dimension, we cycle the indices and obtain
         # the final shape: (nbatch, ncarti, ncartj)
-        s3d = einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", sx, sy, sz, sij)
+        s3d = einsum(
+            "ij...ab,ij...ab,ij...ab,...ab->...ij",
+            *(sx, sy, sz, sij),
+            optimize=[(0, 1), (2, 0), (0, 1)],  # fastest contraction path
+        )
 
         # OLD: This is the loop-based version of the above indexing atrocities.
         # I left it here, as it may be better to understand...
@@ -151,7 +156,7 @@ def md_explicit(
         #         s3d[..., mli, mlj] += (sij * x * y * z).sum((-2, -1))
 
     # transform to cartesian basis functions (itrafo * S * jtrafo^T)
-    o = einsum("...ij,...jk,...lk->...il", itrafo, s3d, jtrafo)
+    o = itrafo @ s3d @ jtrafo.mT  # einsum("...ij,...jk,...lk->...il", i, s, j)
 
     # Previously, I removed small values for numerical stability of the SCF
     # (and some portions are also faster) by using the following expression
@@ -240,7 +245,7 @@ def md_explicit_gradient(
     # center. Getting the E-coefficients for the three directions from
     # `NLM_CART` replaces the first dimension with the number of
     # cartesian basis functions of the first orbital (i), which finally
-    # yields the following shape: (ncarti, lj+1, nbatch, 3 ai, aj)
+    # yields the following shape: (ncarti, lj+1, nbatch, 3, ai, aj)
     e0x = e0[nlmi[:, 0]]
     e0y = e0[nlmi[:, 1]]
     e0z = e0[nlmi[:, 2]]
@@ -269,9 +274,14 @@ def md_explicit_gradient(
     # tensor to (ncarti, ncartj, nbatch). Since the batch dimension is
     # conventionally the first dimension, we cycle the indices and obtain
     # the final shape: (nbatch, ncarti, ncartj)
-    x = einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", dx, sy, sz, sij)
-    y = einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", sx, dy, sz, sij)
-    z = einsum("ij...ab,ij...ab,ij...ab,...ab->...ij", sx, sy, dz, sij)
+    _einsum = partial(
+        einsum,
+        "ij...ab,ij...ab,ij...ab,...ab->...ij",
+        optimize=[(0, 1), (2, 0), (0, 1)],  # fastest contraction path
+    )
+    x = _einsum(dx, sy, sz, sij)
+    y = _einsum(sx, dy, sz, sij)
+    z = _einsum(sx, sy, dz, sij)
 
     # For the full cartesian gradient, we stack cartesian the contributions in
     # the first dimension, i.e., before the batch: (nbatch, 3, ncarti, ncartj).

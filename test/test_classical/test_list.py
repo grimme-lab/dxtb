@@ -1,6 +1,7 @@
 """
 Test collection of classical contributions `ClassicalList`.
 """
+
 from __future__ import annotations
 
 import torch
@@ -11,7 +12,7 @@ from dxtb.classical import ClassicalList
 
 def test_empty() -> None:
     clist = ClassicalList()
-    assert len(clist.classicals) == 0
+    assert len(clist.components) == 0
 
     numbers = torch.tensor([6, 1])
     positions = torch.tensor([[0, 0, 0], [0, 0, 1]])

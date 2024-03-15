@@ -92,6 +92,21 @@ def _check_and_set(
     return other
 
 
+def _int2c(
+    allcoeffs: Tensor,
+    allalphas: Tensor,
+    allposs: Tensor,
+    wrappers: list[LibcintWrapper],
+    namemgr: IntorNameManager,
+    hermitian: bool,
+) -> Tensor:
+    integral = _Int2cFunction.apply(
+        allcoeffs, allalphas, allposs, wrappers, namemgr, hermitian
+    )
+    assert integral is not None
+    return integral
+
+
 ############### pytorch functions ###############
 class _Int2cFunction(torch.autograd.Function):
     """
@@ -106,7 +121,7 @@ class _Int2cFunction(torch.autograd.Function):
         allalphas: Tensor,
         allposs: Tensor,
         wrappers: list[LibcintWrapper],
-        int_nmgr: IntorNameManager,
+        manager: IntorNameManager,
         hermitian: bool,
     ) -> Tensor:
         # allcoeffs: (ngauss_tot,)
@@ -119,7 +134,7 @@ class _Int2cFunction(torch.autograd.Function):
         #   required for backward propagation
         assert len(wrappers) == 2
 
-        out_tensor = Intor(int_nmgr, wrappers, hermitian=hermitian).calc()
+        out_tensor = Intor(manager, wrappers, hermitian=hermitian).calc()
 
         return out_tensor  # (..., nao0, nao1)
 
@@ -154,11 +169,12 @@ class _Int2cFunction(torch.autograd.Function):
                 int_nmgr.get_intgl_deriv_newaxispos("ip", ib) for ib in (0, 1)
             ]
 
-            def int_fcn(wrappers: list[LibcintWrapper], namemgr) -> Tensor:
-                ints = _Int2cFunction.apply(
-                    *ctx.saved_tensors, wrappers, namemgr, hermitian
+            def int_fcn(
+                wrappers: list[LibcintWrapper], namemgr: IntorNameManager
+            ) -> Tensor:
+                return _int2c(
+                    allcoeffs, allalphas, allposs, wrappers, namemgr, hermitian
                 )
-                return ints
 
             # list of tensors with shape: (ndim, ..., nao0, nao1)
             dout_dposs = _get_integrals(sname_derivs, wrappers, int_fcn, new_axes_pos)
@@ -308,8 +324,10 @@ class Intor:
         self.atm, self.bas, self.env = wrapper0.atm_bas_env
         self.wrapper0 = wrapper0
         self.int_nmgr = int_nmgr
-        self.hermitian = hermitian
         self.wrapper_uniqueness = _get_uniqueness([id(w) for w in wrappers])
+
+        # only use hermitian argument if it is not a derivative
+        self.hermitian = hermitian if int_nmgr.order == 0 else False
 
         # get the operator
         opname = int_nmgr.get_intgl_name(wrapper0.spherical)

@@ -21,13 +21,13 @@ GUESS_MAP = ["EEQ", "SAD"]
 # integral driver
 INTDRIVER_LIBCINT = 0
 INTDRIVER_LIBCINT_STRS = ("libcint", "c")
-INTDRIVER_PYTORCH = 1
-INTDRIVER_PYTORCH_STRS = ("pytorch", "torch", "dxtb")
-INTDRIVER_PYTORCH2 = 2
-INTDRIVER_PYTORCH2_STRS = ("pytorch2", "torch2", "dxtb2")
+INTDRIVER_AUTOGRAD = 1
+INTDRIVER_AUTOGRAD_STRS = ("autograd", "pytorch", "torch", "dxtb")
+INTDRIVER_ANALYTICAL = 2
+INTDRIVER_ANALYTICAL_STRS = ("analytical", "pytorch2", "torch2", "dxtb2")
 INTDRIVER_LEGACY = 3
 INTDRIVER_LEGACY_STRS = ("legacy", "old", "loop")
-INTDRIVER_MAP = ["libcint", "PyTorch", "PyTorch (pure)", "Legacy (loops)"]
+INTDRIVER_MAP = ["libcint", "Autograd", "Analytical", "Legacy (loops)"]
 
 # SCF
 SCF_MODE_FULL = 0

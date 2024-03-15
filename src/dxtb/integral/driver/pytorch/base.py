@@ -1,6 +1,7 @@
 """
 Base class for PyTorch-based integrals.
 """
+
 from __future__ import annotations
 
 from abc import abstractmethod
@@ -19,7 +20,7 @@ class PytorchImplementation:
     Simple label for `PyTorch`-based integral implementations.
     """
 
-    family: int = labels.INTDRIVER_PYTORCH
+    family: int = labels.INTDRIVER_ANALYTICAL
     """Label for integral implementation family"""
 
 

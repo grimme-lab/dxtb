@@ -1,6 +1,7 @@
 """
 Test overlap build from integral container.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -9,7 +10,7 @@ import torch
 from dxtb import integral as ints
 from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.constants.labels import INTDRIVER_PYTORCH
+from dxtb.constants.labels import INTDRIVER_ANALYTICAL
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 from dxtb.utils import batch
@@ -21,12 +22,12 @@ device = None
 
 def run(numbers: Tensor, positions: Tensor, dd: DD) -> None:
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    i = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_PYTORCH, **dd)
+    i = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_ANALYTICAL, **dd)
 
     i.setup_driver(positions)
     assert isinstance(i.driver, ints.driver.IntDriverPytorch)
 
-    i.overlap = ints.Overlap(driver=INTDRIVER_PYTORCH, **dd)
+    i.overlap = ints.Overlap(driver=INTDRIVER_ANALYTICAL, **dd)
     i.build_overlap(positions)
 
     o = i.overlap

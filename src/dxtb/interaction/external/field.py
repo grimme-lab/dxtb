@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import torch
 
-from dxtb._types import Tensor
+from dxtb._types import Tensor, override
 
 from ..._types import Any, Slicers, Tensor, TensorLike
-from ...constants import defaults
 from ...exceptions import DeviceError, DtypeError
+from ...utils import einsum
 from ..base import Interaction
 from ..container import Charges
 
@@ -60,7 +60,7 @@ class ElectricField(Interaction):
             vdp: Tensor,
             device: torch.device | None = None,
             dtype: torch.dtype | None = None,
-        ):
+        ) -> None:
             super().__init__(
                 device=device if device is None else vat.device,
                 dtype=dtype if dtype is None else vat.dtype,
@@ -115,6 +115,7 @@ class ElectricField(Interaction):
         )
         self.field = field
 
+    @override
     def get_cache(self, positions: Tensor, **_: Any) -> Cache:
         """
         Create restart data for individual interactions.
@@ -133,13 +134,14 @@ class ElectricField(Interaction):
         """
 
         # (nbatch, natoms, 3) * (3) -> (nbatch, natoms)
-        vat = torch.einsum("...ik,k->...i", positions, self.field)
+        vat = einsum("...ik,k->...i", positions, self.field)
 
         # (nbatch, natoms, 3)
         vdp = self.field.expand_as(positions)
 
         return self.Cache(vat, vdp)
 
+    @override
     def get_atom_energy(self, charges: Tensor, cache: Cache) -> Tensor:
         """
         Calculate the monopolar contribution of the electric field energy.
@@ -158,6 +160,7 @@ class ElectricField(Interaction):
         """
         return -cache.vat * charges
 
+    @override
     def get_dipole_energy(self, charges: Tensor, cache: Cache) -> Tensor:
         """
         Calculate the dipolar contribution of the electric field energy.
@@ -176,8 +179,9 @@ class ElectricField(Interaction):
         """
 
         # equivalent: torch.sum(-cache.vdp * charges, dim=-1)
-        return torch.einsum("...ix,...ix->...i", -cache.vdp, charges)
+        return einsum("...ix,...ix->...i", -cache.vdp, charges)
 
+    @override
     def get_atom_potential(self, _: Charges, cache: Cache) -> Tensor:
         """
         Calculate the electric field potential.
@@ -196,6 +200,7 @@ class ElectricField(Interaction):
         """
         return -cache.vat
 
+    @override
     def get_dipole_potential(self, _: Charges, cache: Cache) -> Tensor:
         """
         Calculate the electric field dipole potential.

@@ -4,6 +4,7 @@ Integral container
 
 A class that acts as a container for integrals.
 """
+
 from __future__ import annotations
 
 import logging
@@ -74,11 +75,11 @@ class Integrals(IntegralContainer):
             self._driver = IntDriverLibcint(
                 numbers, par, ihelp, device=device, dtype=dtype
             )
-        elif driver == labels.INTDRIVER_PYTORCH:
+        elif driver == labels.INTDRIVER_ANALYTICAL:
             self._driver = IntDriverPytorch(
                 numbers, par, ihelp, device=device, dtype=dtype
             )
-        elif driver == labels.INTDRIVER_PYTORCH2:
+        elif driver == labels.INTDRIVER_AUTOGRAD:
             self._driver = IntDriverPytorchNoAnalytical(
                 numbers, par, ihelp, device=device, dtype=dtype
             )

@@ -1,6 +1,7 @@
 """
 Test overlap from libcint.
 """
+
 from __future__ import annotations
 
 from math import sqrt
@@ -70,8 +71,7 @@ def test_explicit(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name", ["MB16_43_01"])
 def test_explicit_medium(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"device": device, "dtype": dtype}
-    tol = 1e-5
-    explicit(name, dd, tol)
+    explicit(name, dd, 1e-5)
 
 
 def autograd(name: str, dd: DD, tol: float) -> None:
@@ -80,11 +80,11 @@ def autograd(name: str, dd: DD, tol: float) -> None:
     positions = sample["positions"].to(**dd)
     ref = load_from_npz(ref_overlap, name, **dd)
 
-    # variable to be differentiated
-    positions.requires_grad_(True)
-
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     bas = Basis(numbers, par, ihelp, **dd)
+
+    # variable to be differentiated
+    positions.requires_grad_(True)
     atombases = bas.create_dqc(positions)
     assert is_basis_list(atombases)
 
@@ -114,12 +114,13 @@ def test_autograd_medium(dtype: torch.dtype, name: str) -> None:
     autograd(name, dd, 1e-5)
 
 
+# Not tested, old stuff
 def num_grad(bas: Basis, ihelp: IndexHelper, positions: Tensor) -> torch.Tensor:
     norb = int(ihelp.orbitals_per_shell.sum())
 
     # Initialize an empty tensor to store the gradients
     numerical_grad = torch.zeros(
-        (3, norb, norb), dtype=positions.dtype, device=positions.device
+        (norb, norb, 3), dtype=positions.dtype, device=positions.device
     )
 
     positions = positions.clone().detach()
@@ -139,17 +140,18 @@ def num_grad(bas: Basis, ihelp: IndexHelper, positions: Tensor) -> torch.Tensor:
     # Loop over all atoms and their x, y, z coordinates
     for atom in range(positions.shape[0]):
         for direction in range(3):
-            # Perturb the position
-            positions_perturbed = positions.clone()
-            positions_perturbed[atom, direction] += delta
+            positions[..., atom, direction] += delta
+            sr = compute_overlap(positions)
 
-            # Compute the overlap integral for the perturbed position
-            s_perturbed = compute_overlap(positions_perturbed)
+            positions[..., atom, direction] -= 2 * delta
+            sl = compute_overlap(positions)
 
-            # Use the finite difference formula to compute the gradient
-            numerical_grad[direction] += (s_perturbed - s_original) / delta
+            positions[..., atom, direction] += delta
+            numerical_grad[..., atom, direction] += (sr - sl) / delta
 
+    # normalize and move xyz dimension to last, which is required for
+    # the reduction (only works with extra dimension in last)
     norm = torch.pow(s_original.diagonal(dim1=-1, dim2=-2), -0.5)
-    numerical_grad = torch.einsum("xij,i,j->xij", numerical_grad, norm, norm)
+    grad = torch.einsum("...xij,...i,...j->...ijx", numerical_grad, norm, norm)
 
-    return numerical_grad
+    return grad

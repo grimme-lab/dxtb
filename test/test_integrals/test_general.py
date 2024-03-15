@@ -1,6 +1,7 @@
 """
 Test overlap build from integral container.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -9,7 +10,7 @@ import torch
 from dxtb import integral as ints
 from dxtb._types import DD
 from dxtb.basis import IndexHelper
-from dxtb.constants.labels import INTDRIVER_LIBCINT, INTDRIVER_PYTORCH
+from dxtb.constants.labels import INTDRIVER_ANALYTICAL, INTDRIVER_LIBCINT
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 
@@ -41,7 +42,7 @@ def test_fail_family(dtype: torch.dtype):
     numbers = torch.tensor([1, 3], device=device)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    i = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_PYTORCH, **dd)
+    i = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_ANALYTICAL, **dd)
 
     # make sure the checks are turned on
     assert i.run_checks is True
@@ -60,7 +61,7 @@ def test_fail_pytorch_multipole(dtype: torch.dtype):
     numbers = torch.tensor([1, 3], device=device)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    i = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_PYTORCH, **dd)
+    i = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_ANALYTICAL, **dd)
 
     # make sure the checks are turned on
     assert i.run_checks is True
@@ -71,9 +72,9 @@ def test_fail_pytorch_multipole(dtype: torch.dtype):
 
     # multipole moments not implemented with PyTorch
     with pytest.raises(NotImplementedError):
-        i.dipole = ints.Dipole(INTDRIVER_PYTORCH, **dd)
+        i.dipole = ints.Dipole(INTDRIVER_ANALYTICAL, **dd)
     with pytest.raises(NotImplementedError):
-        i.quadrupole = ints.Quadrupole(INTDRIVER_PYTORCH, **dd)
+        i.quadrupole = ints.Quadrupole(INTDRIVER_ANALYTICAL, **dd)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

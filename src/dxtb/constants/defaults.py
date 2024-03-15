@@ -14,6 +14,9 @@ import torch
 STEP_SIZE = 1e-5
 """Step size for numerical differentiation."""
 
+EINSUM_OPTIMIZE = "greedy"
+"""Optimization algorithm for `einsum`."""
+
 METHOD = "gfn1"
 """General method for calculation from the xtb family."""
 

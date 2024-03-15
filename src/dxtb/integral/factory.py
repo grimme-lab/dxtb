@@ -36,10 +36,10 @@ def new_driver(
     if name == labels.INTDRIVER_LIBCINT:
         return new_driver_libcint(numbers, par, device=device, dtype=dtype)
 
-    if name == labels.INTDRIVER_PYTORCH:
+    if name == labels.INTDRIVER_ANALYTICAL:
         return new_driver_pytorch(numbers, par, device=device, dtype=dtype)
 
-    if name == labels.INTDRIVER_PYTORCH2:
+    if name == labels.INTDRIVER_AUTOGRAD:
         return new_driver_pytorch2(numbers, par, device=device, dtype=dtype)
 
     if name == labels.INTDRIVER_LEGACY:
@@ -102,8 +102,8 @@ def new_overlap(
         return new_overlap_libcint(device=device, dtype=dtype, **kwargs)
 
     if driver in (
-        labels.INTDRIVER_PYTORCH,
-        labels.INTDRIVER_PYTORCH2,
+        labels.INTDRIVER_ANALYTICAL,
+        labels.INTDRIVER_AUTOGRAD,
         labels.INTDRIVER_LEGACY,
     ):
         return new_overlap_pytorch(device=device, dtype=dtype, **kwargs)

@@ -2,6 +2,7 @@
 Run tests for overlap of molecules.
 References calculated with tblite 0.3.0.
 """
+
 from __future__ import annotations
 
 from math import sqrt
@@ -11,7 +12,7 @@ import pytest
 import torch
 
 from dxtb._types import DD
-from dxtb.constants.labels import INTDRIVER_PYTORCH
+from dxtb.constants.labels import INTDRIVER_ANALYTICAL
 from dxtb.integral.wrappers import overlap
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
@@ -42,7 +43,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
 
     # convenience wrapper with defaults (but pytorch driver)
-    s2 = overlap(numbers, positions, par, driver=INTDRIVER_PYTORCH)
+    s2 = overlap(numbers, positions, par, driver=INTDRIVER_ANALYTICAL)
 
     assert pytest.approx(ref, abs=tol) == s
     assert pytest.approx(ref, abs=tol) == s2

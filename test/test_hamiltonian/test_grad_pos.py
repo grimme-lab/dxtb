@@ -1,6 +1,7 @@
 """
 Testing overlap gradient (autodiff).
 """
+
 from __future__ import annotations
 
 import pytest
@@ -39,7 +40,7 @@ def gradchecker(
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     h0 = Hamiltonian(numbers, par, ihelp, **dd)
-    overlap = Overlap(driver=labels.INTDRIVER_PYTORCH, **dd)
+    overlap = Overlap(driver=labels.INTDRIVER_ANALYTICAL, **dd)
 
     driver = IntDriver(numbers, par, ihelp, **dd)
 
@@ -128,7 +129,7 @@ def gradchecker_batch(
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
     h0 = Hamiltonian(numbers, par, ihelp, **dd)
-    overlap = Overlap(driver=labels.INTDRIVER_PYTORCH, **dd)
+    overlap = Overlap(driver=labels.INTDRIVER_ANALYTICAL, **dd)
 
     driver = IntDriver(numbers, par, ihelp, **dd)
 

@@ -1,6 +1,7 @@
 """
 Test overlap build from integral container.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -9,7 +10,7 @@ import torch
 from dxtb import integral as ints
 from dxtb._types import DD
 from dxtb.basis import IndexHelper
-from dxtb.constants.labels import INTDRIVER_LIBCINT, INTDRIVER_PYTORCH
+from dxtb.constants.labels import INTDRIVER_ANALYTICAL, INTDRIVER_LIBCINT
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 
@@ -25,7 +26,7 @@ def test_single(dtype: torch.dtype):
     positions = torch.zeros((2, 3), **dd)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    ipy = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_PYTORCH, **dd)
+    ipy = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_ANALYTICAL, **dd)
     ilc = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_LIBCINT, **dd)
 
     ipy.setup_driver(positions)
@@ -51,7 +52,7 @@ def test_batch(dtype: torch.dtype):
     positions = torch.zeros((2, 2, 3), **dd)
 
     ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    ipy = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_PYTORCH, **dd)
+    ipy = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_ANALYTICAL, **dd)
     ilc = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_LIBCINT, **dd)
 
     ipy.setup_driver(positions)

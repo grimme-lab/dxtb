@@ -5,6 +5,7 @@ Integral Namemanager
 The libcint interface is accessed via strings. This module provides the
 corresponding name handling and manipulation.
 """
+
 from __future__ import annotations
 
 import copy
@@ -80,6 +81,28 @@ class IntorNameManager:
     @property
     def shortname(self):
         return self._shortname
+
+    @property
+    def order(self) -> int:
+        """
+        Get the order of the derivative of the integral.
+
+        Returns
+        -------
+        int
+            Order of derivative.
+        """
+        derivative_order = 0
+        for ops in self._ops:
+            for op in ops:
+                if op == "ip":
+                    derivative_order += 1
+                elif op == "ipip":
+                    derivative_order += 2
+                elif op == "ipip":
+                    derivative_order += 3
+
+        return derivative_order
 
     def get_intgl_name(self, spherical: bool) -> str:
         # returns the full name of the integral in libcint library
@@ -303,3 +326,12 @@ class IntorNameManager:
     @classmethod
     def _nbasis_error(cls, nbasis: int):
         return RuntimeError(f"Unknown integral with {nbasis} basis")
+
+    def __str__(self):
+        return (
+            f"{self.__class__.__name__}"
+            f"(int_type={self._int_type!r}, shortname={self._shortname!r})"
+        )
+
+    def __repr__(self) -> str:
+        return str(self)

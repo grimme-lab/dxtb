@@ -36,7 +36,7 @@ small = ["H2", "LiH", "S2", "H2O", "CH4", "SiH4"]
 large = ["PbH4-BiH3", "MB16_43_01", "LYS_xao"]
 
 # SCF options
-opts = {"verbosity": 0, "int_driver": labels.INTDRIVER_PYTORCH}
+opts = {"verbosity": 0, "int_driver": labels.INTDRIVER_ANALYTICAL}
 
 device = None
 

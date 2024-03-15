@@ -7,8 +7,8 @@ from __future__ import annotations
 import pytest
 import torch
 from tad_mctc.convert import tensor_to_numpy
+from tad_mctc.typing import DD, Tensor
 
-from dxtb._types import DD, Tensor
 from dxtb.constants import units
 from dxtb.interaction import new_efield
 from dxtb.param import GFN1_XTB as par
@@ -17,14 +17,15 @@ from dxtb.xtb import Calculator
 
 from .samples import samples
 
-sample_list = ["H", "LiH", "HHe", "H2O", "CH4", "SiH4", "PbH4-BiH3"]
+slist = ["H", "LiH", "HHe", "H2O", "CH4", "SiH4", "PbH4-BiH3"]
+slist_large = ["LYS_xao", "MB16_43_01"]
 
 opts = {
     "int_level": 3,
     "maxiter": 100,
     "mixer": "anderson",
     "scf_mode": "full",
-    "verbosity": 7,
+    "verbosity": 0,
     "f_atol": 1e-10,
     "x_atol": 1e-10,
 }
@@ -62,7 +63,6 @@ def batched(
             sample2["numbers"].to(device),
         ],
     )
-
     positions = batch.pack(
         [
             sample1["positions"].to(**dd),
@@ -136,7 +136,7 @@ def execute(
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", sample_list)
+@pytest.mark.parametrize("name", slist)
 def test_single(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
@@ -146,7 +146,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
 @pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", ["LYS_xao", "MB16_43_01"])
+@pytest.mark.parametrize("name", slist_large)
 def test_single_large(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
@@ -155,7 +155,7 @@ def test_single_large(dtype: torch.dtype, name: str) -> None:
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", sample_list)
+@pytest.mark.parametrize("name", slist)
 def test_single_field(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
@@ -165,7 +165,7 @@ def test_single_field(dtype: torch.dtype, name: str) -> None:
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name2", slist)
 def test_batch(dtype: torch.dtype, name1: str, name2) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
@@ -176,7 +176,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2) -> None:
 @pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
-@pytest.mark.parametrize("name2", ["LYS_xao"])
+@pytest.mark.parametrize("name2", slist_large)
 def test_batch_large(dtype: torch.dtype, name1: str, name2) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
@@ -186,7 +186,7 @@ def test_batch_large(dtype: torch.dtype, name1: str, name2) -> None:
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name2", slist)
 def test_batch_field(dtype: torch.dtype, name1: str, name2) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 

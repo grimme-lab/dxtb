@@ -57,17 +57,17 @@ class ConfigIntegrals:
         if isinstance(driver, str):
             if driver.casefold() in labels.INTDRIVER_LIBCINT_STRS:
                 self.driver = labels.INTDRIVER_LIBCINT
-            elif driver.casefold() in labels.INTDRIVER_PYTORCH_STRS:
-                self.driver = labels.INTDRIVER_PYTORCH
-            elif driver.casefold() in labels.INTDRIVER_PYTORCH2_STRS:
-                self.driver = labels.INTDRIVER_PYTORCH2
+            elif driver.casefold() in labels.INTDRIVER_ANALYTICAL_STRS:
+                self.driver = labels.INTDRIVER_ANALYTICAL
+            elif driver.casefold() in labels.INTDRIVER_AUTOGRAD_STRS:
+                self.driver = labels.INTDRIVER_AUTOGRAD
             else:
                 raise ValueError(f"Unknown integral driver '{driver}'.")
         elif isinstance(driver, int):
             if driver not in (
                 labels.INTDRIVER_LIBCINT,
-                labels.INTDRIVER_PYTORCH,
-                labels.INTDRIVER_PYTORCH2,
+                labels.INTDRIVER_ANALYTICAL,
+                labels.INTDRIVER_AUTOGRAD,
             ):
                 raise ValueError(f"Unknown integral driver '{driver}'.")
 

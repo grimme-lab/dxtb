@@ -71,15 +71,12 @@ class GFN1Hamiltonian(BaseHamiltonian):
                 self.en,
                 self.rad,
             )
-        ):  # pragma: no cover
+        ):
             raise ValueError("All tensors must have same dtype")
 
         if any(
             tensor.device != self.device
             for tensor in (
-                self.numbers,
-                self.unique,
-                self.ihelp,
                 self.hscale,
                 self.kcn,
                 self.kpair,

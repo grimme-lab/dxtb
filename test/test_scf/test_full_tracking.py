@@ -2,6 +2,7 @@
 Test for SCF.
 Reference values obtained with tblite 0.2.1 disabling repulsion and dispersion.
 """
+
 from __future__ import annotations
 
 from math import sqrt
@@ -23,8 +24,8 @@ opts = {"verbosity": 0, "maxiter": 300, "scf_mode": "full_tracking"}
 
 drivers = [
     labels.INTDRIVER_LIBCINT,
-    labels.INTDRIVER_PYTORCH,
-    labels.INTDRIVER_PYTORCH2,
+    labels.INTDRIVER_ANALYTICAL,
+    labels.INTDRIVER_AUTOGRAD,
 ]
 
 

@@ -1,6 +1,7 @@
 """
 Dipole integral.
 """
+
 from __future__ import annotations
 
 import torch
@@ -31,7 +32,7 @@ class Dipole(BaseIntegral):
         # Determine which overlap class to instantiate based on the type
         if driver == labels.INTDRIVER_LIBCINT:
             self.integral = DipoleLibcint(device=device, dtype=dtype, **kwargs)
-        elif driver in (labels.INTDRIVER_PYTORCH, labels.INTDRIVER_PYTORCH2):
+        elif driver in (labels.INTDRIVER_ANALYTICAL, labels.INTDRIVER_AUTOGRAD):
             raise NotImplementedError(
                 "PyTorch versions of multipole moments are not implemented. "
                 "Use `libcint` as integral driver."

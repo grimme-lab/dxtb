@@ -1,6 +1,7 @@
 """
 The GFN1-xTB Hamiltonian.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -146,6 +147,11 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
         **_,
     ) -> None:
         super().__init__(device, dtype)
+
+        # check device of input tensors
+        if any(tensor.device != self.device for tensor in (numbers, ihelp)):
+            raise ValueError("All input tensors must be on the same device")
+
         self.numbers = numbers
         self.unique = torch.unique(numbers)
         self.par = par
