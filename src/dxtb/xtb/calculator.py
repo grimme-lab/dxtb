@@ -554,8 +554,9 @@ class Calculator(TensorLike):
         timer.stop("setup calculator")
 
     def reset(self) -> None:
-        self.interactions.reset_all()
         self.classicals.reset_all()
+        self.interactions.reset_all()
+        self.integrals.reset_all()
 
     def singlepoint(
         self,
@@ -1048,6 +1049,7 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
+        *_,
     ) -> Tensor:
         # run single point and check if integral is populated
         result = self.singlepoint(numbers, positions, chrg, spin)
@@ -1130,6 +1132,7 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
+        use_analytical: bool = True,
         use_functorch: bool = False,
     ) -> Tensor:
         r"""
@@ -1161,6 +1164,9 @@ class Calculator(TensorLike):
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to `None`.
+        use_analytical: bool, optional
+            Whether to use the analytically calculated dipole moment for AD or
+            the automatically differentiated dipole moment.
         use_functorch: bool, optional
             Whether to use functorch or the standard (slower) autograd.
 
@@ -1169,18 +1175,24 @@ class Calculator(TensorLike):
         Tensor
             Cartesian dipole derivative of shape `(3, nat, 3)`.
         """
+
+        if use_analytical is True:
+            dip_fcn = self.dipole_analytical
+        else:
+            dip_fcn = self.dipole
+
         if use_functorch is True:
             # pylint: disable=import-outside-toplevel
             from tad_mctc.autograd import jacrev
 
             # d(3) / d(nat, 3) = (3, nat, 3)
-            dmu_dr = jacrev(self.dipole, argnums=1)(
+            dmu_dr = jacrev(dip_fcn, argnums=1)(
                 numbers, positions, chrg, spin, use_functorch
             )
             assert isinstance(dmu_dr, Tensor)
 
         else:
-            mu = self.dipole(numbers, positions, chrg, spin, use_functorch)
+            mu = dip_fcn(numbers, positions, chrg, spin, use_functorch)
 
             # (3, 3*nat) -> (3, nat, 3)
             dmu_dr = _jac(mu, positions).reshape((3, *positions.shape[-2:]))
@@ -1723,7 +1735,7 @@ class Calculator(TensorLike):
         Returns
         -------
         Tensor
-            Hyper polarizability tensor of shape `(3, 3, 3)`.
+            Hyper polarizability tensor of shape `(..., 3, 3, 3)`.
         """
         # retrieve the efield interaction and the field
         field = self.interactions.get_interaction(efield.LABEL_EFIELD).field
@@ -1791,7 +1803,7 @@ class Calculator(TensorLike):
         step_size: int | float = defaults.STEP_SIZE,
     ) -> Tensor:
         """
-        Numerical polarizability.
+        Numerical hyperpolarizability.
 
         Parameters
         ----------
@@ -1809,7 +1821,7 @@ class Calculator(TensorLike):
         Returns
         -------
         Tensor
-            Polarizability tensor.
+            Hyperpolarizability tensor of shape `(..., 3, 3, 3)`.
         """
         # pylint: disable=import-outside-toplevel
         import gc
@@ -1863,7 +1875,7 @@ class Calculator(TensorLike):
         spin: Tensor | float | int | None = defaults.SPIN,
         use_functorch: bool = False,
     ) -> tuple[Tensor, Tensor]:
-        logger.debug("IR spectrum: Start.")
+        logger.debug("\n\nIR spectrum: Start.")
 
         # run vibrational analysis first
         freqs, modes = self.vibration(numbers, positions, chrg, spin)
@@ -1943,7 +1955,7 @@ class Calculator(TensorLike):
         Returns
         -------
         tuple[Tensor, Tensor]
-            Raman frequencies and intensities.
+            Raman frequencies and intensities of shapes `(..., nfreqs)`.
 
         Raises
         ------
@@ -1994,12 +2006,11 @@ def _ir_intensities(dmu_dr: Tensor, modes: Tensor) -> Tensor:
         IR intensities of shape `(..., nfreqs)`.
     """
     # reshape for matmul: (..., 3, nat, 3) -> (..., 3, nat*3)
-    print((*modes.shape[:-2], 3, -1), dmu_dr.is_contiguous())
     dmu_dr = dmu_dr.view(*(*modes.shape[:-2], 3, -1))
 
     # convert cartesian to internal coordinate derivatives
     # (..., 3, nat*3) @ (..., nat*3, nfreqs) = (..., 3, nfreqs)
-    dmu_dq = torch.matmul(dmu_dr, modes)
+    dmu_dq = dmu_dr @ modes
 
     # square deriv and sum along cartesian components for intensity
     # (..., 3, nfreqs) * (..., 3, nfreqs) -> (..., nfreqs)
@@ -2029,8 +2040,8 @@ def _raman_intensities(da_dr: Tensor, modes: Tensor) -> Tensor:
     da_dr = da_dr.view(*(*modes.shape[:-2], 3, 3, -1))
 
     # convert cartesian to internal coordinate derivatives
-    # (..., 3, 3, nat*3) * (..., nat*3, nmodes) = (..., 3, 3, nmodes)
-    da_dq = torch.matmul(da_dr, modes)
+    # (..., 3, 3, nat*3) @ (..., nat*3, nmodes) = (..., 3, 3, nmodes)
+    da_dq = da_dr @ modes
 
     # Eq.3 with alpha' = a (trace of the polarizability derivative)
     a = einsum("...iij->...j", da_dq)

@@ -1,37 +1,41 @@
 """
 Run tests for IR spectra.
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck
+from tad_mctc.convert import tensor_to_numpy
+from tad_mctc.typing import DD, Tensor
 
-from dxtb._types import DD, Tensor
 from dxtb.constants import units
 from dxtb.interaction import new_efield
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
 
-from ..utils import dgradcheck
 from .samples import samples
 
-sample_list = ["LiH", "H2O", "SiH4"]
+slist = ["H", "LiH", "HHe", "H2O", "CH4", "SiH4", "PbH4-BiH3"]
+slist_large = ["LYS_xao", "MB16_43_01"]
 
 opts = {
+    "int_level": 3,
     "maxiter": 100,
-    "f_atol": 1.0e-10,
-    "x_atol": 1.0e-10,
-    "verbosity": 0,
-    "scf_mode": "full",
     "mixer": "anderson",
+    "scf_mode": "full",
+    "verbosity": 0,
+    "f_atol": 1e-10,
+    "x_atol": 1e-10,
 }
 
 device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", sample_list)
+@pytest.mark.parametrize("name", slist)
 def test_autograd(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
@@ -50,82 +54,158 @@ def test_autograd(dtype: torch.dtype, name: str) -> None:
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
     def f(pos: Tensor) -> Tensor:
-        return calc.dipole(numbers, pos, charge)
+        return calc.dipole_analytical(numbers, pos, charge)
 
     assert dgradcheck(f, positions)
 
 
-@pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", sample_list)
-def test_single(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
-
+def single(
+    name: str,
+    field_vector: Tensor,
+    dd: DD,
+    atol: float = 1e-5,
+    rtol: float = 1e-5,
+    atol2: float = 20,
+    rtol2: float = 1e-5,
+) -> None:
     numbers = samples[name]["numbers"].to(device)
     positions = samples[name]["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
 
-    ref = samples[name]["dipole"].to(**dd)
+    execute(numbers, positions, charge, field_vector, dd, atol, rtol, atol2, rtol2)
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)
 
-    # required for autodiff of energy w.r.t. efield and dipole
-    field_vector.requires_grad_(True)
-    positions.requires_grad_(True)
+def batched(
+    name1: str,
+    name2: str,
+    field_vector: Tensor,
+    dd: DD,
+    atol: float = 1e-5,
+    rtol: float = 1e-5,
+    atol2: float = 20,
+    rtol2: float = 1e-5,
+) -> None:
+    sample1, sample2 = samples[name1], samples[name2]
 
+    numbers = batch.pack(
+        [
+            sample1["numbers"].to(device),
+            sample2["numbers"].to(device),
+        ],
+    )
+    positions = batch.pack(
+        [
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
+        ],
+    )
+    charge = torch.tensor([0.0, 0.0], **dd)
+
+    execute(numbers, positions, charge, field_vector, dd, atol, rtol, atol2, rtol2)
+
+
+def execute(
+    numbers: Tensor,
+    positions: Tensor,
+    charge: Tensor,
+    field_vector: Tensor,
+    dd: DD,
+    atol: float,
+    rtol: float,
+    atol2: float,
+    rtol2: float,
+) -> None:
     # create additional interaction and pass to Calculator
     efield = new_efield(field_vector)
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
-    ir = calc.ir_spectrum(numbers, positions, charge)
-    print(*ir)
-    print("")
-    print("")
-    print("")
-    #############################
-    from dxtb.constants import units
+    # field is cloned and detached and updated inside
+    numfreqs, numints = calc.ir_numerical(numbers, positions, charge)
+    assert numfreqs.grad_fn is None
+    assert numints.grad_fn is None
 
-    # dmu_dr = num_grad(calc, numbers, positions, charge).view(3, -1)
-    # print("dmu_dr\n", dmu_dr)
-    # freqs, modes = calc.vibration(numbers, positions, charge, True)
-    # dmu_dq = torch.matmul(dmu_dr, modes)  # (ndim, nfreqs)
-    # ir_ints = torch.einsum("...df,...df->...f", dmu_dq, dmu_dq)  # (nfreqs,)
-    # print(ir_ints)
-    # print(ir_ints * units.AU2KMMOL)
-    # print(ir_ints * 974.8801118351438)
-    # print(ir_ints * 1378999.7790799031)
-    # print(freqs * units.AU2RCM)
+    # only add gradient to field_vector after numerical calculation
+    field_vector.requires_grad_(True)
+    calc.interactions.update_efield(field=field_vector)
 
-    print("")
+    # required for autodiff of energy w.r.t. positions (Hessian)
+    pos = positions.clone().detach().requires_grad_(True)
 
-    # assert pytest.approx(ref, abs=1e-3) == dipole
+    # manual jacobian
+    freqs1, ints1 = calc.ir(numbers, pos, charge, use_functorch=False)
+    freqs1, ints1 = tensor_to_numpy(freqs1), tensor_to_numpy(ints1)
 
+    assert pytest.approx(numfreqs, abs=atol, rel=rtol) == freqs1
+    assert pytest.approx(numints, abs=atol2, rel=rtol2) == ints1
 
-def num_grad(calc: Calculator, numbers, positions, charge) -> Tensor:
-    # setup numerical gradient
-    positions = positions.detach().clone()
-    n_atoms = positions.shape[0]
-    gradient = torch.zeros((3, n_atoms, 3), dtype=positions.dtype)
+    # reset (for vibration) before another AD run
+    calc.reset()
+    pos = positions.clone().detach().requires_grad_(True)
 
-    step = 1.0e-7
+    # jacrev of energy
+    freqs2, ints2 = calc.ir(numbers, pos, charge, use_functorch=True)
+    freqs2, ints2 = tensor_to_numpy(freqs2), tensor_to_numpy(ints2)
 
-    for i in range(n_atoms):
-        for j in range(3):
-            positions[i, j] += step
-            er = calc.dipole(numbers, positions, charge)
-
-            positions[i, j] -= 2 * step
-            el = calc.dipole(numbers, positions, charge)
-
-            positions[i, j] += step
-            gradient[:, i, j] = 0.5 * (er - el) / step
-
-    return gradient
+    assert pytest.approx(numfreqs, abs=atol, rel=rtol) == freqs2
+    assert pytest.approx(freqs1, abs=atol, rel=rtol) == freqs2
+    assert pytest.approx(numints, abs=atol2, rel=rtol2) == ints2
+    assert pytest.approx(ints1, abs=atol2, rel=rtol2) == ints2
 
 
-def _project_freqs(
-    freqs: Tensor, modes: Tensor, is_linear: bool = False
-) -> tuple[Tensor, Tensor]:
-    skip = 5 if is_linear is True else 6
-    freqs = freqs[skip:]  # (nfreqs,)
-    modes = modes[:, skip:]  # (natoms * ndim, nfreqs)
-    return freqs, modes
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", slist)
+def test_single(dtype: torch.dtype, name: str) -> None:
+    dd: DD = {"dtype": dtype, "device": device}
+
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)
+    single(name, field_vector, dd=dd)
+
+
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", slist_large)
+def test_single_large(dtype: torch.dtype, name: str) -> None:
+    dd: DD = {"dtype": dtype, "device": device}
+
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)
+    single(name, field_vector, dd=dd)
+
+
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", slist)
+def test_single_field(dtype: torch.dtype, name: str) -> None:
+    dd: DD = {"dtype": dtype, "device": device}
+
+    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * units.VAA2AU
+    single(name, field_vector, dd=dd)
+
+
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", slist)
+def test_batch(dtype: torch.dtype, name1: str, name2) -> None:
+    dd: DD = {"dtype": dtype, "device": device}
+
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
+    batched(name1, name2, field_vector, dd=dd)
+
+
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", slist_large)
+def test_batch_large(dtype: torch.dtype, name1: str, name2) -> None:
+    dd: DD = {"dtype": dtype, "device": device}
+
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
+    batched(name1, name2, field_vector, dd=dd)
+
+
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", slist)
+def test_batch_field(dtype: torch.dtype, name1: str, name2) -> None:
+    dd: DD = {"dtype": dtype, "device": device}
+
+    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * units.VAA2AU
+    batched(name1, name2, field_vector, dd=dd)

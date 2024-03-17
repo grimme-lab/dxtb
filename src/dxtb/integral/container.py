@@ -365,6 +365,13 @@ class Integrals(IntegralContainer):
                         "the integral container and the actual integral class."
                     )
 
+    def reset_all(self) -> None:
+        self.invalidate_driver()
+        # TODO: Do we need to reset the specific integrals and the
+        # IntegralMatrices?
+
+    # pretty print
+
     def __str__(self) -> str:
         attributes = ["hcore", "overlap", "dipole", "quadrupole"]
         details = []

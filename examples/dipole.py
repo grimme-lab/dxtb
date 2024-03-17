@@ -44,7 +44,7 @@ calc = dxtb.Calculator(
 
 
 dxtb.timer.start("Dipole")
-agrad = calc.dipole(numbers, positions, charge, use_autograd=True)
+agrad = calc.dipole(numbers, positions, charge, use_functorch=False)
 dxtb.timer.stop("Dipole")
 
 print(agrad.shape)
@@ -54,7 +54,7 @@ dxtb.timer.reset()
 
 
 dxtb.timer.start("Dipole2")
-agrad2 = calc.dipole(numbers, positions, charge, use_autograd=True, use_functorch=True)
+agrad2 = calc.dipole(numbers, positions, charge, use_functorch=True)
 dxtb.timer.stop("Dipole2")
 
 print(agrad2)
