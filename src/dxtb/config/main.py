@@ -135,10 +135,18 @@ class Config:
         )
 
     def info(self) -> dict:
+        """
+        Return a dictionary with the configuration information.
+
+        Returns
+        -------
+        dict
+            The configuration information.
+        """
         return {
             "Calculation Configuration": {
                 "Program Call": " ".join(sys.argv),
-                "Input File": self.file,
+                "Input File(s)": self.file,
                 "Method": labels.GFN_XTB_MAP[self.method],
                 "Excluded": None if len(self.exclude) == 0 else self.exclude,
                 "Gradient": self.grad,
@@ -150,4 +158,11 @@ class Config:
         }
 
     def __str__(self) -> str:
-        return f"{self.device}"
+        return (
+            f"{self.__class__.__name__}("
+            f"method={labels.GFN_XTB_MAP[self.method]}, "
+            f"device={self.device}, dtype={self.dtype}, ...)"
+        )
+
+    def __repr__(self) -> str:
+        return str(self)

@@ -8,6 +8,21 @@ from .output import get_header, get_pytorch_info, get_short_version, get_system_
 __all__ = ["OutputHandler"]
 
 
+class CustomStreamHandler(logging.StreamHandler):
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+
+            # Check if a new line should be added or not
+            if getattr(record, "newline", True):
+                msg += "\n"
+
+            self.stream.write(msg)
+            self.stream.flush()
+        except Exception:
+            self.handleError(record)
+
+
 class _OutputHandler:
     def __init__(self):
         self.handlers = {}
@@ -49,7 +64,7 @@ class _OutputHandler:
         self.verbosity = self._saved_verbosity
 
     def setup_console_logger(self, level=logging.INFO):
-        ch = logging.StreamHandler()
+        ch = CustomStreamHandler()
         ch.setLevel(level)
         ch.setFormatter(logging.Formatter("%(message)s"))
         self.console_logger.addHandler(ch)
@@ -77,9 +92,22 @@ class _OutputHandler:
         for handler in self.handlers.values():
             handler(data)
 
-    def write_stdout(self, msg: str, verbosity: int = 5) -> None:
+    def write_stdout(
+        self,
+        msg: str,
+        verbosity: int = 5,
+        newline: bool = True,
+    ) -> None:
         if self.verbosity >= verbosity:
-            self.console_logger.info(msg)
+            extra = {"newline": newline}
+            self.console_logger.info(msg, extra=extra)
+
+    def write_stdout_nf(
+        self,
+        msg: str,
+        verbosity: int = 5,
+    ) -> None:
+        self.write_stdout(msg, verbosity, newline=False)
 
     #######################################
 

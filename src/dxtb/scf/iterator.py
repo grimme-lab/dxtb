@@ -460,6 +460,7 @@ class SelfConsistentFieldSingleShot(SelfConsistentFieldFull):
             "hamiltonian": self._data.hamiltonian,
             "occupation": self._data.occupation,
             "potential": self.charges_to_potential(charges),
+            "iterations": self._data.iter,
         }
 
 

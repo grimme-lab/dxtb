@@ -55,6 +55,9 @@ class SCFResult(TypedDict):
     potential: Potential
     """Self-consistent orbital-resolved potential."""
 
+    iterations: int
+    """Number of SCF iterations."""
+
 
 class BaseSCF:
     """
@@ -389,6 +392,7 @@ class BaseSCF:
             "hamiltonian": self._data.hamiltonian,
             "occupation": self._data.occupation,
             "potential": self.charges_to_potential(charges),
+            "iterations": self._data.iter,
         }
 
     def converged_to_charges(self, x: Tensor) -> Charges:

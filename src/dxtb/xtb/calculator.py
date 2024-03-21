@@ -467,6 +467,7 @@ class Calculator(TensorLike):
             inferred.
         """
         timer.start("setup calculator")
+        OutputHandler.write_stdout("Setup Calculator")
 
         allowed_dtypes = (torch.long, torch.int16, torch.int32, torch.int64)
         if numbers.dtype not in allowed_dtypes:
@@ -493,7 +494,13 @@ class Calculator(TensorLike):
 
         self.ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
 
+        ################
+        # INTERACTIONS #
+        ################
+
         # setup self-consistent contributions
+        OutputHandler.write_stdout_nf(" - Interactions      ... ")
+
         es2 = (
             new_es2(numbers, par, **dd)
             if not any(x in ["all", "es2"] for x in self.opts.exclude)
@@ -507,7 +514,15 @@ class Calculator(TensorLike):
 
         self.interactions = InteractionList(es2, es3, *interaction)
 
+        OutputHandler.write_stdout("done")
+
+        ##############
+        # CLASSICALS #
+        ##############
+
         # setup non-self-consistent contributions
+        OutputHandler.write_stdout_nf(" - Classicals        ... ")
+
         halogen = (
             new_halogen(numbers, par, **dd)
             if not any(x in ["all", "hal"] for x in self.opts.exclude)
@@ -526,9 +541,13 @@ class Calculator(TensorLike):
 
         self.classicals = ClassicalList(halogen, dispersion, repulsion, *classical)
 
+        OutputHandler.write_stdout("done")
+
         #############
         # INTEGRALS #
         #############
+
+        OutputHandler.write_stdout_nf(" - Integrals         ... ")
 
         # figure out integral level from interactions
         self.intlevel = defaults.INTLEVEL
@@ -550,6 +569,8 @@ class Calculator(TensorLike):
 
         if self.intlevel >= ints.INTLEVEL_QUADRUPOLE:
             self.integrals.quadrupole = ints.Quadrupole(driver=driver, **dd)
+
+        OutputHandler.write_stdout("done")
 
         timer.stop("setup calculator")
 
@@ -587,6 +608,8 @@ class Calculator(TensorLike):
         Result
             Results container.
         """
+        OutputHandler.write_stdout("\nSinglepoint ")
+
         chrg = any_to_tensor(chrg, **self.dd)
         if spin is not None:
             spin = any_to_tensor(spin, **self.dd)
@@ -594,6 +617,7 @@ class Calculator(TensorLike):
         result = Result(positions, device=self.device, dtype=self.dtype)
 
         # CLASSICAL CONTRIBUTIONS
+        OutputHandler.write_stdout_nf(" - Classicals        ... ")
         if len(self.classicals.components) > 0:
             ccaches = self.classicals.get_cache(numbers, self.ihelp)
             cenergies = self.classicals.get_energy(positions, ccaches)
@@ -605,24 +629,32 @@ class Calculator(TensorLike):
                 result.cgradients = cgradients
                 result.total_grad += torch.stack(list(cgradients.values())).sum(0)
 
+        OutputHandler.write_stdout("done")
+
         # SELF-CONSISTENT FIELD PROCEDURE
         if not any(x in ["all", "scf"] for x in self.opts.exclude):
             # overlap integral
+            OutputHandler.write_stdout_nf(" - Overlap           ... ")
             timer.start("Overlap")
             self.integrals.build_overlap(positions)
             timer.stop("Overlap")
+            OutputHandler.write_stdout("done")
 
             # dipole integral
             if self.intlevel >= ints.INTLEVEL_DIPOLE:
+                OutputHandler.write_stdout_nf(" - Dipole            ... ")
                 timer.start("Dipole Integral")
                 self.integrals.build_dipole(positions)
                 timer.stop("Dipole Integral")
+                OutputHandler.write_stdout("done")
 
             # quadrupole integral
             if self.intlevel >= ints.INTLEVEL_QUADRUPOLE:
+                OutputHandler.write_stdout_nf(" - Quadrupole        ... ")
                 timer.start("Quadrupole Integral")
                 self.integrals.build_quadrupole(positions)
                 timer.stop("Quadrupole Integral")
+                OutputHandler.write_stdout("done")
 
             # TODO: Think about handling this case
             if self.integrals.hcore is None:
@@ -631,15 +663,20 @@ class Calculator(TensorLike):
                 raise RuntimeError
 
             # Core Hamiltonian integral (requires overlap internally!)
+            OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ")
             timer.start("h0", "Core Hamiltonian")
+
             rcov = cov_rad_d3.to(**self.dd)[numbers]
             cn = ncoord.get_coordination_number(
                 numbers, positions, ncoord.exp_count, rcov
             )
             hcore = self.integrals.build_hcore(positions, cn=cn)
+
             timer.stop("h0")
+            OutputHandler.write_stdout("done")
 
             # SCF
+            OutputHandler.write_stdout_nf(" - Interaction Cache ... ")
             timer.start("SCF")
 
             # Obtain the reference occupations and total number of electrons
@@ -657,6 +694,9 @@ class Calculator(TensorLike):
             icaches = self.interactions.get_cache(
                 numbers=numbers, positions=positions, ihelp=self.ihelp
             )
+            OutputHandler.write_stdout("done")
+
+            OutputHandler.write_stdout("\nStarting SCF Iterations...")
 
             scf_results = scf.solve(
                 numbers,
@@ -671,6 +711,10 @@ class Calculator(TensorLike):
                 n0,
             )
             timer.stop("SCF")
+
+            OutputHandler.write_stdout(
+                f"\nSCF converged in {scf_results['iterations']} iterations."
+            )
 
             result.charges = scf_results["charges"]
             result.coefficients = scf_results["coefficients"]

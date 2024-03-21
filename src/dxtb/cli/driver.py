@@ -176,6 +176,11 @@ class Driver:
 
         # setup calculator
         timer.stop("setup")
+        io.OutputHandler.write_stdout("")
+        io.OutputHandler.write_stdout("")
+        io.OutputHandler.write_stdout("CALCULATION")
+        io.OutputHandler.write_stdout("===========")
+        io.OutputHandler.write_stdout("")
         calc = Calculator(numbers, par, opts=config, interaction=interactions, **dd)
 
         ####################################################
@@ -209,8 +214,8 @@ class Driver:
             timer.stop("Polarizability")
             print("Polarizability\n", mu)
 
-        if args.verbosity > 0:
-            timer.print_times()
+        # if args.verbosity > 0:
+        #     timer.print_times()
 
         if "energy" not in calc.cache:
             result = calc.singlepoint(numbers, positions, chrg)
