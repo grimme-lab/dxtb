@@ -10,6 +10,7 @@ from typing import cast
 
 import torch
 from tad_mctc.convert import any_to_tensor
+from tad_mctc.data.radii import COV_D3
 from tad_mctc.typing import (
     Any,
     Callable,
@@ -34,7 +35,6 @@ from ..classical import (
 from ..config import Config
 from ..constants import defaults
 from ..coulomb import new_es2, new_es3
-from ..data import cov_rad_d3
 from ..dispersion import Dispersion, new_dispersion
 from ..exceptions import DtypeError
 from ..interaction import Charges, Interaction, InteractionList, Potential
@@ -666,7 +666,7 @@ class Calculator(TensorLike):
             OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ")
             timer.start("h0", "Core Hamiltonian")
 
-            rcov = cov_rad_d3.to(**self.dd)[numbers]
+            rcov = COV_D3.to(**self.dd)[numbers]
             cn = ncoord.get_coordination_number(
                 numbers, positions, ncoord.exp_count, rcov
             )
@@ -795,20 +795,23 @@ class Calculator(TensorLike):
         self,
         numbers: Tensor,
         positions: Tensor,
-        chrg: Tensor | float | int | None = defaults.CHRG,
+        chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         use_functorch: bool = False,
     ) -> Tensor:
         logger.debug(f"Autodiff Forces: Starting Calculation.")
 
-        # pylint: disable=import-outside-toplevel
-        from tad_mctc.autograd import jacrev
+        if use_functorch is True:
+            # pylint: disable=import-outside-toplevel
+            from tad_mctc.autograd import jacrev
 
-        # TODO: non functorch implementation
-        # jacrev requires a scalar from `self.energy`!
-        jac_func = jacrev(self.energy, argnums=1)
-        jac = jac_func(numbers, positions, chrg, spin)
-        assert isinstance(jac, Tensor)
+            # jacrev requires a scalar from `self.energy`!
+            jac_func = jacrev(self.energy, argnums=1)
+            jac = jac_func(numbers, positions, chrg, spin)
+            assert isinstance(jac, Tensor)
+        else:
+            energy = self.energy(numbers, positions, chrg, spin)
+            jac = _jac(energy, positions)
 
         if jac.is_contiguous() is False:
             logger.debug(
@@ -1093,7 +1096,7 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        *_,
+        *_,  # absorb stuff
     ) -> Tensor:
         # run single point and check if integral is populated
         result = self.singlepoint(numbers, positions, chrg, spin)

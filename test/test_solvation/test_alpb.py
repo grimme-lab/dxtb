@@ -1,15 +1,16 @@
 """
 Test the Analytical linearized Poisson-Boltzmann model.
 """
+
 from __future__ import annotations
 
 from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.data import VDW_D3
 
 from dxtb._types import DD
-from dxtb.data.radii import vdw_rad_d3
 from dxtb.param import GFN1_XTB as par
 from dxtb.solvation import alpb
 from dxtb.xtb import Calculator
@@ -54,7 +55,7 @@ def test_gb_still_single(dtype: torch.dtype, name: str, dielectric_constant=78.9
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
     charges = sample["charges"].to(**dd)
-    rvdw = vdw_rad_d3[numbers].to(**dd)
+    rvdw = VDW_D3.to(**dd)[numbers]
     ref = sample["energies_still"].to(**dd)
 
     gb = alpb.GeneralizedBorn(numbers, dc, kernel="still", rvdw=rvdw, alpb=False, **dd)

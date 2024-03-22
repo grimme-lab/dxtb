@@ -1,6 +1,7 @@
 """
 DFT-D4 dispersion model.
 """
+
 from __future__ import annotations
 
 import tad_dftd4 as d4
@@ -42,8 +43,8 @@ class DispersionD4(Dispersion):
             rcov: Tensor,
             r4r2: Tensor,
             cutoff: d4.cutoff.Cutoff,
-            counting_function: d4.CountingFunction,
-            damping_function: d4.DampingFunction,
+            counting_function: d4.typing.CountingFunction,
+            damping_function: d4.typing.DampingFunction,
         ) -> None:
             self.q = q
             self.model = model
@@ -85,7 +86,7 @@ class DispersionD4(Dispersion):
         rcov: Tensor = (
             kwargs.pop(
                 "rcov",
-                d4.data.cov_rad_d3[numbers],
+                d4.data.COV_D3[numbers],
             )
             .type(self.dtype)
             .to(self.device)
@@ -94,7 +95,7 @@ class DispersionD4(Dispersion):
         r4r2: Tensor = (
             kwargs.pop(
                 "r4r2",
-                d4.data.r4r2[numbers],
+                d4.data.R4R2[numbers],
             )
             .type(self.dtype)
             .to(self.device)
@@ -117,7 +118,7 @@ class DispersionD4(Dispersion):
         self, positions: Tensor, cache: DispersionD4.Cache, q: Tensor | None = None
     ) -> Tensor:
         """
-        Get D4 dispersion energy.
+        Get D4 dispersion energy.ci
 
         Parameters
         ----------

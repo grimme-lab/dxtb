@@ -33,12 +33,13 @@ Example
 >>> energy.sum(-1)
 tensor(-5.0762e-05)
 """
+
 from __future__ import annotations
 
 import torch
+from tad_mctc.data import VDW_D3
 
 from .._types import Any, Tensor, TensorLike
-from ..data import vdw_rad_d3
 from ..interaction import Interaction
 from ..utils import cdist, real_pairs
 from .born import get_born_radii
@@ -170,15 +171,13 @@ class GeneralizedBorn(Interaction):
         super().__init__(device, dtype)
 
         self.alpbet = (
-            alpha / dielectric_constant
-            if alpb
-            else torch.tensor(0.0, device=device, dtype=dtype)
+            alpha / dielectric_constant if alpb else torch.tensor(0.0, **self.dd)
         )
         self.keps = (1 / dielectric_constant - 1) / (1 + self.alpbet)
         self.kernel = kernel
 
         if "rvdw" not in kwargs:
-            kwargs["rvdw"] = vdw_rad_d3.to(device)[numbers].type(self.dtype)
+            kwargs["rvdw"] = VDW_D3.to(**self.dd)[numbers]
         self.born_kwargs = kwargs
 
     class Cache(Interaction.Cache, TensorLike):
@@ -189,11 +188,11 @@ class GeneralizedBorn(Interaction):
         __slots__ = ["mat"]
 
         mat: Tensor
-        """Coulomb matrix"""
+        """Coulomb matrix."""
 
         def __init__(
             self,
-            mat,
+            mat: Tensor,
             device: torch.device | None = None,
             dtype: torch.dtype | None = None,
         ):
@@ -228,11 +227,7 @@ class GeneralizedBorn(Interaction):
         Hence, the `**_` in the argument list is necessary to absorb it.
         """
         born = get_born_radii(numbers, positions, **self.born_kwargs)
-        eps = torch.tensor(
-            torch.finfo(positions.dtype).eps,
-            device=positions.device,
-            dtype=positions.dtype,
-        )
+        eps = torch.tensor(torch.finfo(positions.dtype).eps, **self.dd)
 
         mask = real_pairs(numbers)
 

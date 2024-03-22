@@ -1,15 +1,16 @@
 """
 Test calculation of (D3) coordination number.
 """
+
 from __future__ import annotations
 
 from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.data.radii import COV_D3
 
 from dxtb._types import DD, CountingFunction
-from dxtb.data import cov_rad_d3
 from dxtb.ncoord import (
     derf_count,
     dexp_count,
@@ -51,7 +52,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].to(**dd)
 
     cutoff = positions.new_tensor(30.0)
-    rcov = cov_rad_d3[numbers]
+    rcov = COV_D3.to(**dd)[numbers]
     ref = sample["cn"].to(**dd)
 
     cn = get_coordination_number(numbers, positions, exp_count, rcov, cutoff)

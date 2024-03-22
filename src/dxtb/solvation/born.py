@@ -22,12 +22,13 @@ Example
 >>> print(rads)
 tensor([3.6647, 2.4621, 2.4621, 2.4621, 2.4621])
 """
+
 from __future__ import annotations
 
 import torch
+from tad_mctc.data.radii import VDW_D3
 
 from .._types import DD, Tensor
-from ..data import vdw_rad_d3
 from ..utils import cdist, real_atoms, real_pairs
 
 
@@ -78,8 +79,10 @@ def get_born_radii(
         The number of atoms is not equal to the number of positions or the
         number of radii.
     """
+    dd: DD = {"device": positions.device, "dtype": positions.dtype}
+
     if rvdw is None:
-        rvdw = vdw_rad_d3[numbers].type(positions.dtype)
+        rvdw = VDW_D3.to(**dd)[numbers]
     if numbers.shape != rvdw.shape:
         raise ValueError(
             f"Shape of covalent radii ({rvdw.shape}) is not consistent with "
@@ -97,7 +100,6 @@ def get_born_radii(
                 f"consistent with atomic numbers ({numbers.shape})."
             )
 
-    dd: DD = {"device": positions.device, "dtype": positions.dtype}
     zero = torch.tensor(0.0, **dd)
 
     # mask for padding

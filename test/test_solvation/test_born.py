@@ -2,13 +2,14 @@
 Run tests for calculation of Born radii according to the Onufriev-Bashford-Case
 model. Reference values are obtained from the tblite version.
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.data.radii import VDW_D3
 
 from dxtb._types import DD, Tensor
-from dxtb.data import vdw_rad_d3
 from dxtb.solvation import born
 from dxtb.utils import batch
 
@@ -29,7 +30,7 @@ def test_psi(name: str, dtype: torch.dtype):
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
     ref = sample["psi"].to(**dd)
-    rvdw = vdw_rad_d3[numbers].to(**dd)
+    rvdw = VDW_D3.to(**dd)[numbers]
 
     psi = born.compute_psi(numbers, positions, rvdw)
     assert pytest.approx(ref, rel=1e-6, abs=tol) == psi
@@ -92,7 +93,7 @@ def test_psi_batch(name1: str, name2: str, dtype: torch.dtype):
             sample2["positions"].to(**dd),
         )
     )
-    rvdw = vdw_rad_d3[numbers].to(**dd)
+    rvdw = VDW_D3.to(**dd)[numbers]
 
     ref = batch.pack(
         (
@@ -155,7 +156,7 @@ def test_psi_grad(name: str):
 
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
-    rvdw = vdw_rad_d3[numbers].to(**dd)
+    rvdw = VDW_D3.to(**dd)[numbers]
 
     # variable to be differentiated
     positions.requires_grad_(True)

@@ -1,13 +1,14 @@
 """
 Calculation of coordination number with various counting functions.
 """
+
 from __future__ import annotations
 
 import torch
+from tad_mctc.data.radii import COV_D3
 
 from .._types import Any, CountingFunction, Tensor
 from ..constants import xtb
-from ..data import cov_rad_d3
 from ..utils import cdist, real_pairs
 from .count import dexp_count, exp_count
 
@@ -53,7 +54,7 @@ def get_coordination_number(
     if cutoff is None:
         cutoff = torch.tensor(xtb.NCOORD_DEFAULT_CUTOFF, **dd)
     if rcov is None:
-        rcov = cov_rad_d3.to(**dd)[numbers]
+        rcov = COV_D3.to(**dd)[numbers]
     if numbers.shape != rcov.shape:
         raise ValueError(
             f"Shape of covalent radii {rcov.shape} is not consistent with "
@@ -121,7 +122,7 @@ def get_coordination_number_gradient(
     if cutoff is None:
         cutoff = torch.tensor(xtb.NCOORD_DEFAULT_CUTOFF, **dd)
     if rcov is None:
-        rcov = cov_rad_d3.to(**dd)[numbers]
+        rcov = COV_D3.to(**dd)[numbers]
     if numbers.shape != rcov.shape:
         raise ValueError(
             f"Shape of covalent radii {rcov.shape} is not consistent with "

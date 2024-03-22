@@ -79,18 +79,29 @@ def frequencies(
     ----------
     numbers : Tensor
         Atomic numbers for all atoms in the system.
+    positions : Tensor
+        Cartesian coordinates of all atoms in the system `(..., nat, 3)`.
     hessian : Tensor
-        Hessian matrix.
-    project : bool, optional
-        Whether the 6 (5) lowest frequencies should be removed (project out
-        rotational and translational degrees of freedom).
+        Hessian matrix of shape `(..., nat, 3, nat, 3)`.
+    project_rotational : bool, optional
+        Whether to project out rotational degrees of freedom.
+    project_translational : bool, optional
+        Whether to project out translational degrees of freedom.
 
     Returns
     -------
     tuple[Tensor, Tensor]
-        Frequencies (n_modes) and normal modes (3*n_at, n_modes).
+        Frequencies of shape `(..., nfreqs)` and normal modes of shape
+        `(..., 3*nat, nfreqs)`.
     """
-    # TODO: Shape checks
+    nat = numbers.shape[-1]
+    if hessian.shape != (*numbers.shape[:-1], nat, 3, nat, 3):
+        raise ValueError(
+            f"The Hessian matrix must have the shape (..., nat, 3, nat, 3), "
+            "where `nat` is the number of atoms in the system. The shape of "
+            f"the Hessian matrix is {hessian.shape}, while the shape of the "
+            f"atomic numbers is {numbers.shape}."
+        )
 
     mass = ATOMIC_MASSES.to(device=hessian.device, dtype=hessian.dtype)[numbers]
     invsqrtmass = storch.reciprocal(storch.sqrt(mass))
@@ -155,6 +166,11 @@ def frequencies(
     else:
         force_const_au, mode = eigh(h)
 
+        # Instead of calculating and diagonalizing the mass-weighted Hessian,
+        # one could also solve the equivalent general eigenvalue problem Hv=Mve
+        # mass_mat = torch.diag_embed(masses.repeat_interleave(3, dim=-1))
+        # evals, evecs = eighb(a=h, b=mass_mat)
+
     # Vibrational frequencies ω = √λ with some additional logic for
     # handling possible negative eigenvalues. Note that we are not dividing
     # by 2π (ω = √λ / 2π) in order to immediately get frequencies in
@@ -168,62 +184,7 @@ def frequencies(
     return freqs_au, mode
 
 
-def frequencies_old(
-    numbers: Tensor, positions: Tensor, hessian: Tensor, project: bool = True
-) -> tuple[Tensor, Tensor]:
-    """
-    Vibrational frequencies and normal modes from mass-weighted Hessian.
-
-    Parameters
-    ----------
-    numbers : Tensor
-        Atomic numbers for all atoms in the system.
-    hessian : Tensor
-        Hessian matrix.
-    project : bool, optional
-        Whether the 6 (5) lowest frequencies should be removed (project out
-        rotational and translational degrees of freedom).
-
-    Returns
-    -------
-    tuple[Tensor, Tensor]
-        Frequencies and normal modes.
-    """
-    # TODO: Shape checks
-
-    eps = torch.tensor(
-        torch.finfo(hessian.dtype).eps,
-        device=hessian.device,
-        dtype=hessian.dtype,
-    )
-
-    hess = (hessian + hessian.transpose(-2, -1).conj()) * 0.5
-    masses = get_atomic_masses(
-        numbers, atomic_units=True, device=hessian.device, dtype=hessian.dtype
-    )
-    mass_mat = torch.diag_embed(masses.repeat_interleave(3, dim=-1))
-
-    # instead of calculating and diagonalizing the mass-weighted Hessian,
-    # we solve the equivalent general eigenvalue problem Hv=Mve
-    evals, evecs = eighb(a=hess, b=mass_mat)
-
-    # Vibrational frequencies ω = √λ with some additional logic for
-    # handling possible negative eigenvalues. Note that we are not dividing
-    # by 2π (ω = √λ / 2π) in order to immediately get frequencies in
-    # Hartree: E = hbar * ω with hbar = 1 in atomic units. Dividing by 2π
-    # effectively converts from angular frequency (ω) to the frequency in
-    # cycles per second (ν, Hz), which would requires the following
-    # conversion to cm^-1: 1e-2 / units.CODATA.c / units.AU2SECOND.
-    e = torch.sqrt(torch.clamp(evals, min=eps))
-    freqs = e * torch.sign(evals)
-
-    if project is True:
-        lin = is_linear_molecule(numbers, positions)
-        return project_freqs(freqs, modes=evecs, is_linear=lin)
-
-    return freqs, evecs
-
-
+# TODO: Remove this function after checking batched version
 def project_freqs(
     freqs: Tensor, modes: Tensor, is_linear: Tensor
 ) -> tuple[Tensor, Tensor]:

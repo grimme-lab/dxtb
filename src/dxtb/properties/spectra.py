@@ -4,6 +4,7 @@ Spectra
 
 This module contains the calculation of spectra (IR, Raman).
 """
+
 from __future__ import annotations
 
 import torch
@@ -51,10 +52,6 @@ def ir(
     dmu_dr = _jac(dipole, positions)  # (ndim, nat * ndim)
     dmu_dq = torch.matmul(dmu_dr, modes)  # (ndim, nfreqs)
     ir_ints = torch.einsum("...df,...df->...f", dmu_dq, dmu_dq)  # (nfreqs,)
-
-    # print("modes\n", modes)
-    # print("dmu_dr\n", dmu_dr)
-    # print("")
 
     # print("\nir_ints", ir_ints)
     # print("")

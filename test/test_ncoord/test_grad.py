@@ -1,15 +1,16 @@
 """
 Test derivative of (D3) coordination number w.r.t. positions.
 """
+
 from __future__ import annotations
 
 from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.data.radii import COV_D3
 
 from dxtb._types import DD, Tensor
-from dxtb.data import cov_rad_d3
 from dxtb.ncoord import (
     dexp_count,
     exp_count,
@@ -36,7 +37,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].to(**dd)
 
     cutoff = positions.new_tensor(30.0)
-    rcov = cov_rad_d3[numbers].to(**dd)
+    rcov = COV_D3.to(**dd)[numbers]
     ref = sample["dcndr"].to(**dd)
     ref = ref.reshape(numbers.shape[0], numbers.shape[0], 3).transpose(0, 1)
 
@@ -75,7 +76,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
             sample2["numbers"].to(device),
         )
     )
-    rcov = cov_rad_d3[numbers]
+    rcov = COV_D3.to(**dd)[numbers]
 
     positions = batch.pack(
         (
