@@ -47,6 +47,7 @@ tensor([[False, False,  True,  True,  True, False, False, False],
         [False,  True, False, False, False, False, False, False]])
 
 """
+
 from __future__ import annotations
 
 import torch

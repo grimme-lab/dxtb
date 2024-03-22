@@ -1,6 +1,7 @@
 """
 Test the SCF guess.
 """
+
 from __future__ import annotations
 
 import pytest

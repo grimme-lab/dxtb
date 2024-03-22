@@ -1,6 +1,7 @@
 """
 Test setup of the basis set.
 """
+
 from __future__ import annotations
 
 import pytest

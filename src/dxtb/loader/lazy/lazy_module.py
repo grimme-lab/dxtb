@@ -7,9 +7,11 @@ import importlib
 from tad_mctc.typing import Any, Callable, Sequence
 
 
-def attach_module(
-    package_name: str, submodules: Sequence[str]
-) -> tuple[Callable[[str], Any], Callable[[], list[str]], list[str],]:
+def attach_module(package_name: str, submodules: Sequence[str]) -> tuple[
+    Callable[[str], Any],
+    Callable[[], list[str]],
+    list[str],
+]:
     """
     Lazily loads submodules of a given package, providing a way to access them
     on demand.

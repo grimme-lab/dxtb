@@ -7,9 +7,11 @@ import importlib
 from tad_mctc.typing import Any, Callable, Sequence
 
 
-def attach_var(
-    package_name: str, varnames: Sequence[str]
-) -> tuple[Callable[[str], Any], Callable[[], list[str]], list[str],]:
+def attach_var(package_name: str, varnames: Sequence[str]) -> tuple[
+    Callable[[str], Any],
+    Callable[[], list[str]],
+    list[str],
+]:
     __all__: list[str] = list(varnames)
 
     def __getattr__(name: str) -> Any:

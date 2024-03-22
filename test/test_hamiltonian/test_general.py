@@ -1,6 +1,7 @@
 """
 General test for Core Hamiltonian.
 """
+
 from __future__ import annotations
 
 import pytest

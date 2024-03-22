@@ -3,6 +3,7 @@ Utility functions for checking memory leaks.
 
 Taken from DQC.
 """
+
 from __future__ import annotations
 
 import gc
@@ -17,15 +18,13 @@ def _tensors_from_gc() -> list:
 @overload
 def _get_tensor_memory(
     return_number_tensors: Literal[False] = False,
-) -> float:
-    ...
+) -> float: ...
 
 
 @overload
 def _get_tensor_memory(
     return_number_tensors: Literal[True] = True,
-) -> tuple[float, int]:
-    ...
+) -> tuple[float, int]: ...
 
 
 def _get_tensor_memory(

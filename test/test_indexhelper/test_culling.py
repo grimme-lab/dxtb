@@ -1,6 +1,7 @@
 """
 Test culling (removing of systems) from IndexHelper.
 """
+
 from __future__ import annotations
 
 import torch

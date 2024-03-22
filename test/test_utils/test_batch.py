@@ -3,6 +3,7 @@ Performs tests on functions for batch handling.
 
 Taken from TBMaLT.
 """
+
 from __future__ import annotations
 
 import numpy as np

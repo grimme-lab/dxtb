@@ -1,6 +1,7 @@
 """
 Test the `Timer` and Timer collections (`Timers`).
 """
+
 from __future__ import annotations
 
 import pytest

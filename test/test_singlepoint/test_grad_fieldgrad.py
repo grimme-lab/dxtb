@@ -32,9 +32,7 @@ sample_list = ["H2", "H2O", "SiH4"]
 device = None
 
 
-def gradchecker(
-    dtype: torch.dtype, name: str
-) -> tuple[
+def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
     Tensor,  # differentiable variables
 ]:
@@ -87,9 +85,7 @@ def test_gradgradcheck(dtype: torch.dtype, name: str) -> None:
     assert dgradgradcheck(func, diffvars, atol=tol, eps=1e-9)
 
 
-def gradchecker_batch(
-    dtype: torch.dtype, name1: str, name2: str
-) -> tuple[
+def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
     Tensor,  # differentiable variables
 ]:

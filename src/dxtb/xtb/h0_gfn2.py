@@ -1,6 +1,7 @@
 """
 The GFN2-xTB Hamiltonian.
 """
+
 from __future__ import annotations
 
 from .._types import Tensor

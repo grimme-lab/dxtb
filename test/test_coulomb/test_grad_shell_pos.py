@@ -1,6 +1,7 @@
 """
 Run autograd tests for atom-resolved coulomb matrix contribution.
 """
+
 from __future__ import annotations
 
 import pytest

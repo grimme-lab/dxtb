@@ -1,6 +1,7 @@
 """
 Test orthogonality of GFN1-xTB's H1s and H2s orbitals.
 """
+
 from __future__ import annotations
 
 import pytest

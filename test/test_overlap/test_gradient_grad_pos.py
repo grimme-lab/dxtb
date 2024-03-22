@@ -1,6 +1,7 @@
 """
 Testing autodiff for analytical overlap gradient.
 """
+
 from __future__ import annotations
 
 import pytest

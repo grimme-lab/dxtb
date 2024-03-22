@@ -5,6 +5,7 @@
 This module contains `xtb` parameters of the model that are not contained
 in the parametrization file. Furthermore, `xtb`'s default values are stored here.
 """
+
 # Coordination number
 
 KCN_EEQ = 7.5

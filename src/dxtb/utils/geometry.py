@@ -1,6 +1,7 @@
 """
 Collection of utility functions for distances calculations.
 """
+
 from __future__ import annotations
 
 import torch

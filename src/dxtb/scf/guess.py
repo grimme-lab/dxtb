@@ -1,6 +1,7 @@
 """
 Models for the initial charge guess for the SCF.
 """
+
 from __future__ import annotations
 
 import torch

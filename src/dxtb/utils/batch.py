@@ -23,8 +23,7 @@ def pack(
     value: Any = 0,
     size: Size | None = None,
     return_mask: Literal[False] = False,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 @overload
@@ -34,8 +33,7 @@ def pack(
     value: Any = 0,
     size: Size | None = None,
     return_mask: Literal[True] = True,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 def pack(

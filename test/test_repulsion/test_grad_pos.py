@@ -1,6 +1,7 @@
 """
 Run tests for nuclear repulsion gradient.
 """
+
 from __future__ import annotations
 
 from math import sqrt

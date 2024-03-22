@@ -1,6 +1,7 @@
 """
 Testing symmetry of (higher) multipole integrals.
 """
+
 from __future__ import annotations
 
 from itertools import permutations

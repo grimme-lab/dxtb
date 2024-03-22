@@ -1,6 +1,7 @@
 """
 Run tests for energy contribution from instantaneous electric field.
 """
+
 from __future__ import annotations
 
 from math import sqrt

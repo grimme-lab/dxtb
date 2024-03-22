@@ -1,6 +1,7 @@
 """
 PyTorch-based overlap implementations.
 """
+
 from __future__ import annotations
 
 import torch
@@ -41,9 +42,7 @@ class OverlapAG(torch.autograd.Function):
         return overlap(positions, bas, ihelp, uplo, cutoff)
 
     @staticmethod
-    def backward(
-        ctx, grad_out: Tensor
-    ) -> tuple[
+    def backward(ctx, grad_out: Tensor) -> tuple[
         None | Tensor,  # positions
         None,  # bas
         None,  # ihelp

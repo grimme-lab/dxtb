@@ -1,6 +1,7 @@
 """
 Quadrupole integral implementation based on `libcint`.
 """
+
 from __future__ import annotations
 
 import torch

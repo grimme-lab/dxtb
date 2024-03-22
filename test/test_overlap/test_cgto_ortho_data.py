@@ -1,4 +1,5 @@
 """ Reference data for CGTO orthogonalization test. """
+
 from __future__ import annotations
 
 import torch

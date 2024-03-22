@@ -4,6 +4,7 @@ Getter functions for constants
 
 This module only contains some convenience functions for collecting constants.
 """
+
 from __future__ import annotations
 
 import torch

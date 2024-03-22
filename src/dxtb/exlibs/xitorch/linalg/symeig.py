@@ -307,9 +307,9 @@ class symeig_torchfcn(torch.autograd.Function):
         ctx.bck_alg_config = get_and_pop_keys(ctx.bck_config, alg_keys)
 
         method = config.pop("method")
-        with A.uselinopparams(*params), M.uselinopparams(
-            *mparams
-        ) if M is not None else dummy_context_manager():
+        with A.uselinopparams(*params), (
+            M.uselinopparams(*mparams) if M is not None else dummy_context_manager()
+        ):
             methods = {
                 "davidson": davidson,
                 "custom_exacteig": custom_exacteig,

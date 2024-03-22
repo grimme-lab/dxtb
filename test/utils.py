@@ -1,6 +1,7 @@
 """
 Collection of utility functions for testing.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -157,8 +158,7 @@ class _GradcheckFunction(Protocol):
         check_forward_ad: bool = False,
         check_backward_ad: bool = True,
         fast_mode: bool = False,
-    ) -> bool:
-        ...
+    ) -> bool: ...
 
 
 class _GradgradcheckFunction(Protocol):
@@ -184,8 +184,7 @@ class _GradgradcheckFunction(Protocol):
         check_fwd_over_rev: bool = False,
         check_rev_over_rev: bool = True,
         fast_mode: bool = False,
-    ) -> bool:
-        ...
+    ) -> bool: ...
 
 
 def _wrap_gradcheck(

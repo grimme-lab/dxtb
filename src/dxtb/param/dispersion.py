@@ -13,7 +13,6 @@ from ..constants import xtb
 
 
 class D3Model(BaseModel):
-
     """
     Representation of the DFT-D3(BJ) contribution for a parametrization.
     """

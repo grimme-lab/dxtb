@@ -4,6 +4,7 @@ Base class for Multipole Integrals
 
 Calculation and modification of multipole integrals.
 """
+
 from __future__ import annotations
 
 import torch

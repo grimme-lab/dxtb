@@ -1,6 +1,7 @@
 """
 Test autodiff of SCF w.r.t. positions.
 """
+
 from __future__ import annotations
 
 import pytest

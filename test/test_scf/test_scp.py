@@ -2,6 +2,7 @@
 Test for SCF.
 Reference values obtained with tblite 0.2.1 disabling repulsion and dispersion.
 """
+
 from __future__ import annotations
 
 from math import sqrt

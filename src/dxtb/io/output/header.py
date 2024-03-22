@@ -1,6 +1,7 @@
 """
 Print a fancy header.
 """
+
 from __future__ import annotations
 
 width = 70

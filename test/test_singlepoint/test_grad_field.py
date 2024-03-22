@@ -1,6 +1,7 @@
 """
 Testing automatic energy gradient w.r.t. electric field vector.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -37,9 +38,7 @@ xfields = [0.0, 1.0, -2.0]
 device = None
 
 
-def gradchecker(
-    dtype: torch.dtype, name: str, xfield: float
-) -> tuple[
+def gradchecker(dtype: torch.dtype, name: str, xfield: float) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
     Tensor,  # differentiable variables
 ]:

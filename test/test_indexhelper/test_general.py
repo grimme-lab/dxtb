@@ -2,6 +2,7 @@
 General tests for IndexHelper covering instantiation, changing dtypes, and
 moving to devices.
 """
+
 from __future__ import annotations
 
 import pytest

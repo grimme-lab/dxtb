@@ -1,6 +1,7 @@
 """
 Test error handling in coordination number calculation.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -30,8 +31,7 @@ class CNFunction(Protocol):
         rcov: Tensor | None = None,
         cutoff: Tensor | None = None,
         **kwargs: Any,
-    ) -> Tensor:
-        ...
+    ) -> Tensor: ...
 
 
 class CNGradFunction(Protocol):
@@ -47,8 +47,7 @@ class CNGradFunction(Protocol):
         rcov: Tensor | None = None,
         cutoff: Tensor | None = None,
         **kwargs: Any,
-    ) -> Tensor:
-        ...
+    ) -> Tensor: ...
 
 
 @pytest.mark.parametrize("function", [get_coordination_number])

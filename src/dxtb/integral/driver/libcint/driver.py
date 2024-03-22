@@ -1,6 +1,7 @@
 """
 Integral driver for `libcint`.
 """
+
 from __future__ import annotations
 
 from ...._types import Tensor

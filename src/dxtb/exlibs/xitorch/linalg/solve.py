@@ -171,9 +171,9 @@ class solve_torchfcn(torch.autograd.Function):
             dims = (*_get_batchdims(A, B, E, M), *B.shape[-2:])
             x = torch.zeros(dims, dtype=B.dtype, device=B.device)
         else:
-            with A.uselinopparams(*params), M.uselinopparams(
-                *mparams
-            ) if M is not None else dummy_context_manager():
+            with A.uselinopparams(*params), (
+                M.uselinopparams(*mparams) if M is not None else dummy_context_manager()
+            ):
                 methods = {
                     "custom_exactsolve": custom_exactsolve,
                     "scipy_gmres": wrap_gmres,
@@ -208,9 +208,11 @@ class solve_torchfcn(torch.autograd.Function):
 
         # solve (A-biases*M)^T v = grad_x
         # this is the grad of B
-        with ctx.A.uselinopparams(*params), ctx.M.uselinopparams(
-            *mparams
-        ) if ctx.M is not None else dummy_context_manager():
+        with ctx.A.uselinopparams(*params), (
+            ctx.M.uselinopparams(*mparams)
+            if ctx.M is not None
+            else dummy_context_manager()
+        ):
             AT = ctx.A.H  # (*BA, nr, nr)
             MT = ctx.M.H if ctx.M is not None else None  # (*BM, nr, nr)
             Econj = E.conj() if E is not None else None

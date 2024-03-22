@@ -4,6 +4,7 @@ Testing dispersion energy and autodiff.
 These tests are taken from https://github.com/dftd4/tad-dftd4/tree/main/test
 and are only included for the sake of completeness.
 """
+
 from __future__ import annotations
 
 import pytest

@@ -849,9 +849,7 @@ class CoulombMatrixAG(torch.autograd.Function):
         return mat.clone()
 
     @staticmethod
-    def backward(
-        ctx, grad_out: Tensor
-    ) -> tuple[
+    def backward(ctx, grad_out: Tensor) -> tuple[
         None,  # mask
         None | Tensor,  # positions
         None,  # ihelp

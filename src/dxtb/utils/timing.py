@@ -1,6 +1,7 @@
 """
 Decorator for timing.
 """
+
 from __future__ import annotations
 
 import time

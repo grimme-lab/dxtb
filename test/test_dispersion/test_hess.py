@@ -1,6 +1,7 @@
 """
 Testing dispersion Hessian (autodiff).
 """
+
 from __future__ import annotations
 
 from math import sqrt

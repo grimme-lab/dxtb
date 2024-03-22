@@ -1,6 +1,7 @@
 """
 Typing for the overlap functions.
 """
+
 from __future__ import annotations
 
 from ....._types import Literal, Protocol, Tensor

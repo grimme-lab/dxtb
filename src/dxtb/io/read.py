@@ -4,6 +4,7 @@ IO: Reading Files
 
 IO utility for reading files.
 """
+
 from __future__ import annotations
 
 from json import loads as json_load

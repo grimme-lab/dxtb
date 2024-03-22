@@ -1,6 +1,7 @@
 """
 Test gradient of the Analytical linearized Poisson-Boltzmann model.
 """
+
 from __future__ import annotations
 
 import pytest

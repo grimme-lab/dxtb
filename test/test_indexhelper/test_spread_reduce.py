@@ -1,6 +1,7 @@
 """
 Test spread and reduce capabilities of IndexHelper.
 """
+
 from __future__ import annotations
 
 import pytest

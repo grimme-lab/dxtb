@@ -1,6 +1,7 @@
 """
 Run autograd tests for atom-resolved coulomb matrix contribution.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -23,9 +24,7 @@ tol = 1e-7
 device = None
 
 
-def gradcheck_param(
-    dtype: torch.dtype, name: str
-) -> tuple[
+def gradcheck_param(dtype: torch.dtype, name: str) -> tuple[
     Callable[[Tensor, Tensor], Tensor],  # autograd function
     tuple[Tensor, Tensor],  # differentiable variables
 ]:
@@ -81,9 +80,7 @@ def test_gradgrad_param(dtype: torch.dtype, name: str) -> None:
     assert dgradgradcheck(func, diffvars, atol=tol)
 
 
-def gradcheck_param_batch(
-    dtype: torch.dtype, name1: str, name2: str
-) -> tuple[
+def gradcheck_param_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     Callable[[Tensor, Tensor], Tensor],  # autograd function
     tuple[Tensor, Tensor],  # differentiable variables
 ]:

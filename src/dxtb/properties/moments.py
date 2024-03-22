@@ -7,6 +7,7 @@ traceless quadrupole moment are implemented. However, this module is serves
 more as a short-cut for the calculation in ``Calculator`` as it should hide
 some implementation details.
 """
+
 from __future__ import annotations
 
 import torch

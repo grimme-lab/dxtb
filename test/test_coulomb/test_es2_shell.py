@@ -2,6 +2,7 @@
 Run tests for the shell-resolved energy contribution from the
 isotropic second-order electrostatic energy (ES2).
 """
+
 from __future__ import annotations
 
 from math import sqrt

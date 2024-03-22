@@ -1,6 +1,7 @@
 """
 Definition of the anisotropic second-order multipolar interactions.
 """
+
 from __future__ import annotations
 
 from typing import Union

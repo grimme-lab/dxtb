@@ -4,6 +4,7 @@ Helper functions for Overlap
 
 Helper functions related to calculation and sorting of unique shells pairs.
 """
+
 from __future__ import annotations
 
 import torch

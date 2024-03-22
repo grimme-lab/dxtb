@@ -1,6 +1,7 @@
 """
 Test the parametrization of the Hamiltonian.
 """
+
 from __future__ import annotations
 
 import pytest

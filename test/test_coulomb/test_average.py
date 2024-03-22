@@ -1,6 +1,7 @@
 """
 Run tests for different averages in Coulomb kernel.
 """
+
 from __future__ import annotations
 
 import pytest

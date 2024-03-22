@@ -1,6 +1,7 @@
 """
 Run general tests for instantaneous electric field.
 """
+
 from __future__ import annotations
 
 import pytest

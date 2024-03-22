@@ -2,6 +2,7 @@
 Run tests for overlap of diatomic systems.
 References calculated with tblite 0.3.0.
 """
+
 from __future__ import annotations
 
 import numpy as np

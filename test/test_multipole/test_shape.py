@@ -1,6 +1,7 @@
 """
 Testing shape of multipole integrals.
 """
+
 from __future__ import annotations
 
 import pytest

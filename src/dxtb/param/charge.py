@@ -1,6 +1,7 @@
 """
 Definition of the isotropic second-order charge interactions.
 """
+
 from __future__ import annotations
 
 from pydantic import BaseModel

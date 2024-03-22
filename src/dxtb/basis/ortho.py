@@ -1,4 +1,5 @@
 """Gram-Schmidt orthonormalization routines for contracted Gaussian basis functions."""
+
 from __future__ import annotations
 
 import math

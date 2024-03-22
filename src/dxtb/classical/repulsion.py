@@ -469,9 +469,7 @@ class RepulsionAG(torch.autograd.Function):
     #     ctx.save_for_backward(erep, positions, mask, arep, kexp, zeff)
 
     @staticmethod
-    def backward(
-        ctx, grad_out: Tensor
-    ) -> tuple[
+    def backward(ctx, grad_out: Tensor) -> tuple[
         None | Tensor,  # positions
         None,  # mask
         None | Tensor,  # arep

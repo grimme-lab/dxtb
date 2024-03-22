@@ -3,6 +3,7 @@ Run tests for memory leak in custom autograd.
 
 Inspired by DQC.
 """
+
 from __future__ import annotations
 
 import gc

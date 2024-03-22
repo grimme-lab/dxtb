@@ -6,6 +6,7 @@ Run general tests for halogen bond correction including:
  - invalid parameters
  - change of `dtype` and `device`
 """
+
 import pytest
 import torch
 
