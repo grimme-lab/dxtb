@@ -11,6 +11,7 @@ the potential works better than converging the charges (`scp_mode="potential"`).
 If the charges are converged, the orbtial-resolved charges usually stray quite
 far away from zero. Nevertheless, the energy often oscillates anyway.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -400,13 +401,9 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
     )
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    # no (valence) electrons
-    if number in [1, 3, 11, 19, 37, 55]:
-        with pytest.raises(ValueError):
-            calc.singlepoint(numbers, positions, charges, spin=spin)
-    else:
-        results = calc.singlepoint(numbers, positions, charges, spin=spin)
-        assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
+    # no (valence) electrons: [1, 3, 11, 19, 37, 55]
+    results = calc.singlepoint(numbers, positions, charges, spin=spin)
+    assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
 
 
 @pytest.mark.large

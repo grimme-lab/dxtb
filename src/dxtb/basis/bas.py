@@ -1,14 +1,16 @@
 """
 Basis set class.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import torch
+from tad_mctc.convert import tensor_to_numpy
+from tad_mctc.data import pse
+from tad_mctc.typing import Literal, Tensor, TensorLike
 
-from .._types import Literal, Tensor, TensorLike
-from ..constants import PSE
 from ..param import Param, get_elem_param, get_elem_pqn, get_elem_valence
 from ..utils import batch, real_pairs
 from .indexhelper import IndexHelper
@@ -255,7 +257,7 @@ class Basis(TensorLike):
                 txt += header  # type: ignore
 
             if qcformat == "gaussian94":
-                txt += f"{PSE[number]}\n"
+                txt += f"{pse.Z2S[number]}\n"
 
             shells = self.ihelp.shells_per_atom[i]
             for _ in range(shells):
@@ -274,7 +276,7 @@ class Basis(TensorLike):
                 if qcformat == "gaussian94":
                     txt += f"{l}    {len(alpha)}    1.00\n"
                 elif qcformat == "nwchem":
-                    txt += f"{PSE[number]}    {l}\n"
+                    txt += f"{pse.Z2S[number]}    {l}\n"
 
                 # write exponents and coefficients
                 for a, c in zip(alpha, coeff):
@@ -406,8 +408,12 @@ class Basis(TensorLike):
                     for _ in range(self.ihelp.shells_per_atom[_batch, i]):
                         idx = self.ihelp.shells_to_ushell[_batch, s]
 
+                        # FIXME: There should probably be some kind of mask to
+                        # get rid of padding?
+                        print(f"Warning in {__file__}: Batched mode not working for AD")
+                        f = self.ihelp.angular[_batch]
                         cgto = CGTOBasis(
-                            angmom=self.ihelp.angular[_batch].tolist()[s],  # int!
+                            angmom=tensor_to_numpy(f)[s],  # int!
                             alphas=alphas[idx],
                             coeffs=coeffs[idx],
                             normalized=True,

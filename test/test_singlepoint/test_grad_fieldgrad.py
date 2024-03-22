@@ -1,13 +1,14 @@
 """
 Testing automatic energy gradient w.r.t. electric field gradient.
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
 
 from dxtb._types import DD, Callable, Tensor
-from dxtb.interaction import new_efield
+from dxtb.interaction import new_efield, new_efield_grad
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
@@ -50,8 +51,11 @@ def gradchecker(
     field_grad.requires_grad_(True)
 
     def func(fieldgrad: Tensor) -> Tensor:
-        efield = new_efield(field_vector, fieldgrad)
-        calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
+        efield = new_efield(field_vector)
+        efield_grad = new_efield_grad(fieldgrad)
+        calc = Calculator(
+            numbers, par, interaction=[efield, efield_grad], opts=opts, **dd
+        )
         result = calc.singlepoint(numbers, positions, charge)
         energy = result.total.sum(-1)
         return energy
@@ -113,8 +117,11 @@ def gradchecker_batch(
     field_grad.requires_grad_(True)
 
     def func(fieldgrad: Tensor) -> Tensor:
-        efield = new_efield(field_vector, fieldgrad)
-        calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
+        efield = new_efield(field_vector)
+        efield_grad = new_efield_grad(fieldgrad)
+        calc = Calculator(
+            numbers, par, interaction=[efield, efield_grad], opts=opts, **dd
+        )
         result = calc.singlepoint(numbers, positions, charge)
         energy = result.total.sum(-1)
         return energy

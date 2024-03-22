@@ -1,5 +1,5 @@
 """
-Test vibrational frequencies.
+Test Hessian.
 """
 
 from __future__ import annotations
@@ -16,9 +16,8 @@ from dxtb.xtb import Calculator
 
 from .samples import samples
 
-slist = ["H", "LiH", "HHe", "H2O"]
-# FIXME: Larger systems fail for modes
-# slist = ["H", "LiH", "HHe", "H2O", "CH4", "SiH4", "PbH4-BiH3"]
+slist = ["H", "LiH", "HHe", "H2O", "CH4", "SiH4", "PbH4-BiH3"]
+slist_large = ["MB16_43_01"]  # "LYS_xao"
 
 opts = {
     "int_level": 1,
@@ -33,10 +32,9 @@ opts = {
 device = None
 
 
-# FIXME: Autograd should also work on those
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist)
-def skip_test_autograd(dtype: torch.dtype, name: str) -> None:
+def test_autograd(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
     numbers = samples[name]["numbers"].to(device)
@@ -48,8 +46,8 @@ def skip_test_autograd(dtype: torch.dtype, name: str) -> None:
 
     calc = Calculator(numbers, par, opts=opts, **dd)
 
-    def f(pos: Tensor) -> tuple[Tensor, Tensor]:
-        return calc.vibration(numbers, pos, charge)
+    def f(pos: Tensor) -> Tensor:
+        return calc.hessian(numbers, pos, charge)
 
     assert dgradcheck(f, positions)
 
@@ -104,32 +102,26 @@ def execute(
     calc = Calculator(numbers, par, opts=opts, **dd)
 
     # field is cloned and detached and updated inside
-    numfreqs, nummodes = calc.vibration_numerical(numbers, positions, charge)
-    assert numfreqs.grad_fn is None
-    assert nummodes.grad_fn is None
+    numhess = calc.hessian_numerical(numbers, positions, charge)
+    assert numhess.grad_fn is None
 
     # required for autodiff of energy w.r.t. positions (Hessian)
     pos = positions.clone().detach().requires_grad_(True)
 
     # manual jacobian
-    freqs1, modes1 = calc.vibration(numbers, pos, charge, use_functorch=False)
-    freqs1, modes1 = tensor_to_numpy(freqs1), tensor_to_numpy(modes1)
+    hess1 = tensor_to_numpy(calc.hessian(numbers, pos, charge, use_functorch=False))
 
-    assert pytest.approx(numfreqs, abs=atol, rel=rtol) == freqs1
-    assert pytest.approx(nummodes, abs=atol, rel=rtol) == modes1
+    assert pytest.approx(numhess, abs=atol, rel=rtol) == hess1
 
     # reset before another AD run
     calc.reset()
     pos = positions.clone().detach().requires_grad_(True)
 
     # jacrev of energy
-    freqs2, modes2 = calc.vibration(numbers, pos, charge, use_functorch=True)
-    freqs2, modes2 = tensor_to_numpy(freqs2), tensor_to_numpy(modes2)
+    hess2 = tensor_to_numpy(calc.hessian(numbers, pos, charge, use_functorch=True))
 
-    assert pytest.approx(numfreqs, abs=atol, rel=rtol) == freqs2
-    assert pytest.approx(freqs1, abs=atol, rel=rtol) == freqs2
-    assert pytest.approx(nummodes, abs=atol, rel=rtol) == modes2
-    assert pytest.approx(modes1, abs=atol, rel=rtol) == modes2
+    assert pytest.approx(numhess, abs=atol, rel=rtol) == hess2
+    assert pytest.approx(hess1, abs=atol, rel=rtol) == hess2
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
@@ -139,10 +131,28 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     single(name, dd=dd)
 
 
-# FIXME: Batched Hessians are not supported yet
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", slist_large)
+def test_single_large(dtype: torch.dtype, name: str) -> None:
+    dd: DD = {"dtype": dtype, "device": device}
+    single(name, dd=dd)
+
+
+# TODO: Batched Hessians are not supported yet
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", slist)
 def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
+    dd: DD = {"dtype": dtype, "device": device}
+    batched(name1, name2, dd=dd)
+
+
+# TODO: Batched Hessians are not supported yet
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", slist_large)
+def skip_test_batch_large(dtype: torch.dtype, name1: str, name2) -> None:
     dd: DD = {"dtype": dtype, "device": device}
     batched(name1, name2, dd=dd)

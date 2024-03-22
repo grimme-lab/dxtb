@@ -35,15 +35,16 @@ class ElectricFieldGrad(Interaction):
     class Cache(Interaction.Cache, TensorLike):
         """
         Restart data for the electric field interaction.
+
+        Note
+        ----
+        This cache is not culled, and hence, does not contain a `Store`.
         """
 
-        __store: Store | None
-        """Storage for cache (required for culling)."""
-
         efg: Tensor
-        """Reshaped electric ield gradient."""
+        """Reshaped electric field gradient."""
 
-        __slots__ = ["__store", "efg"]
+        __slots__ = ["efg"]
 
         def __init__(
             self,
@@ -56,31 +57,6 @@ class ElectricFieldGrad(Interaction):
                 dtype=dtype if dtype is None else efg.dtype,
             )
             self.efg = efg
-            self.__store = None
-
-        class Store:
-            """
-            Storage container for cache containing `__slots__` before culling.
-            """
-
-            efg: Tensor
-            """Reshaped electric field gradient."""
-
-            def __init__(self, efg: Tensor) -> None:
-                self.efg = efg
-
-        def cull(self, conv: Tensor, slicers: Slicers) -> None:
-            if self.__store is None:
-                self.__store = self.Store(self.efg)
-
-            slicer = slicers["atom"]
-            self.efg = self.efg[[~conv, *slicer]]
-
-        def restore(self) -> None:
-            if self.__store is None:
-                raise RuntimeError("Nothing to restore. Store is empty.")
-
-            self.efg = self.__store.efg
 
     def __init__(
         self,
@@ -110,7 +86,7 @@ class ElectricFieldGrad(Interaction):
 
         return self.Cache(self.field_grad[torch.tril_indices(3, 3).unbind()])
 
-    # TODO: This is probably not correct?
+    # TODO: This is probably not correct...
     def get_quadrupole_energy(self, charges: Tensor, cache: Cache) -> Tensor:
         """
         Calculate the quadrupolar contribution of the electric field energy.

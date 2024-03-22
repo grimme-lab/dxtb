@@ -156,10 +156,15 @@ class Driver:
         needs_field = any(
             [
                 args.ir,
+                args.ir_numerical,
                 args.raman,
+                args.raman_numerical,
                 args.dipole,
+                args.dipole_numerical,
                 args.polarizability,
+                args.polarizability_numerical,
                 args.hyperpolarizability,
+                args.hyperpolarizability_numerical,
             ]
         )
 
@@ -198,8 +203,21 @@ class Driver:
         #####################################################
 
         if args.ir is True:
+            # TODO: Better handling here
+            positions.requires_grad_(True)
+            calc.opts.scf.scf_mode = labels.SCF_MODE_FULL
+            calc.opts.scf.mixer = labels.MIXER_ANDERSON
             timer.start("IR")
             freqs, modes = calc.ir(numbers, positions, chrg)
+            print("IR Frequencies\n", freqs)
+            print("IR Modes\n", modes)
+            timer.stop("IR")
+
+        if args.ir_numerical is True:
+            timer.start("IR")
+            freqs, modes = calc.ir_numerical(numbers, positions, chrg)
+            print("IR Frequencies\n", freqs)
+            print("IR Modes\n", modes)
             timer.stop("IR")
 
         if args.dipole is True:

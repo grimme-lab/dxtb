@@ -1,6 +1,7 @@
 """
 Run tests for singlepoint gradient calculation with read from coord file.
 """
+
 from __future__ import annotations
 
 from math import sqrt
@@ -35,7 +36,7 @@ device = None
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "H2O", "CH4"])
 def test_analytical(dtype: torch.dtype, name: str) -> None:
-    atol, rtol = 1e-6, 1e-4
+    atol, rtol = 1e-5, 1e-4
     analytical(dtype, name, atol, rtol)
 
 

@@ -51,3 +51,11 @@ FERMI_PARTITION_EQUAL_STRS = ("equal", "same")
 FERMI_PARTITION_ATOMIC = 1
 FERMI_PARTITION_ATOMIC_STRS = ("atom", "atomic")
 FERMI_PARTITION_MAP = ["equal", "atom"]
+
+MIXER_LINEAR = 0
+MIXER_LINEAR_STRS = ("linear", "l", "simple", "s")
+MIXER_ANDERSON = 1
+MIXER_ANDERSON_STRS = ("anderson", "a")
+MIXER_BROYDEN = 2
+MIXER_BROYDEN_STRS = ("broyden", "b")
+MIXER_MAP = ["Linear", "Anderson", "Broyden"]

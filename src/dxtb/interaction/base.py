@@ -9,7 +9,7 @@ import torch
 
 from dxtb.components import Component
 
-from .._types import Any, Tensor, TensorOrTensors
+from .._types import Any, Slicers, Tensor, TensorOrTensors
 from ..basis import IndexHelper
 from .container import Charges, Potential
 
@@ -64,6 +64,12 @@ class Interaction(Component):
         """
 
         __slots__ = []
+
+        def cull(self, conv: Tensor, slicers: Slicers) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
 
     # pylint: disable=unused-argument
     def get_cache(

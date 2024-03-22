@@ -1,6 +1,7 @@
 """
 SCF configuration.
 """
+
 from __future__ import annotations
 
 import torch
@@ -16,12 +17,20 @@ class ConfigSCF:
     """
 
     # TODO: list all
+    guess: int
+    """Initial guess for the SCF."""
+
+    maxiter: int
+    """Maximum number of SCF iterations."""
+
+    mixer: int
+    """Mixing scheme for SCF iterations."""
 
     scf_mode: int
-    """SCF Convergence approach (denoted by backward strategy)."""
+    """SCF convergence approach (denoted by backward strategy)."""
 
     scp_mode: int
-    """Convergence target (self-consistent property)."""
+    """SCF convergence target (self-consistent property)."""
 
     def __init__(
         self,
@@ -102,8 +111,37 @@ class ConfigSCF:
                 f"'{type(scp_mode)}' was given."
             )
 
+        if isinstance(mixer, str):
+            if mixer.casefold() in labels.MIXER_LINEAR_STRS:
+                self.mixer = labels.MIXER_LINEAR
+            elif mixer.casefold() in labels.MIXER_ANDERSON_STRS:
+                self.mixer = labels.MIXER_ANDERSON
+            elif mixer.casefold() in labels.MIXER_BROYDEN_STRS:
+                self.mixer = labels.MIXER_BROYDEN
+            else:
+                raise ValueError(
+                    f"Unknown mixer '{mixer}'. Choose from "
+                    f"'{', '.join(labels.MIXER_MAP)}'."
+                )
+        elif isinstance(mixer, int):
+            if mixer not in (
+                labels.MIXER_LINEAR,
+                labels.MIXER_ANDERSON,
+                labels.MIXER_BROYDEN,
+            ):
+                raise ValueError(
+                    f"Unknown mixer '{mixer}'. Choose from "
+                    f"'{', '.join(labels.MIXER_MAP)}'."
+                )
+
+            self.mixer = mixer
+        else:
+            raise TypeError(
+                "The mixer must be of type 'int' or 'str', but "
+                f"'{type(mixer)}' was given."
+            )
+
         self.maxiter = maxiter
-        self.mixer = mixer
         self.damp = damp
         self.force_convergence = force_convergence
 

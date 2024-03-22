@@ -1,6 +1,7 @@
 """
 Reference data for property calculations.
 """
+
 from __future__ import annotations
 
 import torch
@@ -42,8 +43,8 @@ refs: dict[str, Refs] = {
         "dipole2": torch.tensor([0.0, 0.0, 0.0]),
         "quadrupole": torch.tensor([0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]),
         "quadrupole2": torch.tensor([0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]),
-        "freqs": torch.tensor([]),
-        "ints": torch.tensor([]),
+        "freqs": torch.tensor([0.0, 0.0, 0.0]),
+        "ints": torch.tensor([0.0, 0.0, 0.0]),
     },
     "H2": {
         "dipole": torch.tensor([0.0, 0.0, 0.0]),

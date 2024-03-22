@@ -6,13 +6,13 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.batch import pack
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.typing import DD, Tensor
 
 from dxtb.constants import units
 from dxtb.interaction import new_efield
 from dxtb.param import GFN1_XTB as par
-from dxtb.utils import batch
 from dxtb.xtb import Calculator
 
 from .samples import samples
@@ -26,8 +26,8 @@ opts = {
     "mixer": "anderson",
     "scf_mode": "full",
     "verbosity": 0,
-    "f_atol": 1.0e-8,
-    "x_atol": 1.0e-8,
+    "f_atol": 1.0e-9,
+    "x_atol": 1.0e-9,
 }
 
 device = None
@@ -60,19 +60,19 @@ def batched(
 ) -> None:
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
         ],
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         ],
     )
-    ref = batch.pack(
+    ref = pack(
         [
             sample1[refdipole].to(**dd),
             sample2[refdipole].to(**dd),
@@ -201,14 +201,14 @@ def test_batch_settings(
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
         ],
     )
 
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
@@ -216,7 +216,7 @@ def test_batch_settings(
     )
     charge = torch.tensor([0.0, 0.0], **dd)
 
-    ref = batch.pack(
+    ref = pack(
         [
             sample1["dipole"].to(**dd),
             sample2["dipole"].to(**dd),
@@ -245,14 +245,14 @@ def test_batch_unconverged(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
         ],
     )
 
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
@@ -260,7 +260,7 @@ def test_batch_unconverged(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
     charge = torch.tensor([0.0, 0.0], **dd)
 
-    ref = batch.pack(
+    ref = pack(
         [
             sample1["dipole"].to(**dd),
             sample2["dipole"].to(**dd),

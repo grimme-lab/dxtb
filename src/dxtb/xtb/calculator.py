@@ -467,6 +467,12 @@ class Calculator(TensorLike):
             inferred.
         """
         timer.start("setup calculator")
+
+        # setup verbosity first
+        opts = opts if opts is not None else {}
+        if isinstance(opts, dict):
+            OutputHandler.verbosity = opts.pop("verbosity", None)
+
         OutputHandler.write_stdout("Setup Calculator")
 
         allowed_dtypes = (torch.long, torch.int16, torch.int32, torch.int64)
@@ -479,15 +485,12 @@ class Calculator(TensorLike):
 
         super().__init__(device, dtype)
         dd = {"device": self.device, "dtype": self.dtype}
+
         self.cache = self.Cache(**dd)
 
         # setup calculator options
-        opts = opts if opts is not None else {}
-
         if isinstance(opts, dict):
-            OutputHandler.verbosity = opts.pop("verbosity", None)
             opts = Config(**opts, **dd)
-
         self.opts = opts
 
         self.batched = numbers.ndim > 1
@@ -872,8 +875,8 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        matrix: bool = False,
         use_functorch: bool = False,
+        matrix: bool = False,
     ) -> Tensor:
         """
         Calculation of the nuclear (autodiff) Hessian with functorch.
@@ -894,6 +897,8 @@ class Calculator(TensorLike):
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to `None`.
+        use_functorch : bool, optional
+            Whether to use `functorch` for autodiff. Defaults to `False`.
         matrix : bool, optional
             Whether to reshape the Hessian to a matrix, i.e., (nat*3, nat*3).
             Defaults to `False`.
@@ -1022,10 +1027,18 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
+        use_functorch: bool = False,
         project_translational: bool = True,
         project_rotational: bool = True,
     ) -> tuple[Tensor, Tensor]:
-        hess = self.hessian(numbers, positions, chrg, spin)
+        hess = self.hessian(
+            numbers,
+            positions,
+            chrg,
+            spin,
+            use_functorch=use_functorch,
+            matrix=False,
+        )
         return properties.frequencies(
             numbers,
             positions,
@@ -1120,7 +1133,7 @@ class Calculator(TensorLike):
         # )
         qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
         dip = properties.moments.dipole(qat, positions, result.density, dipint.matrix)
-        return -dip
+        return dip
 
     @numerical
     @requires_efield
@@ -1613,7 +1626,7 @@ class Calculator(TensorLike):
         self.interactions.reset_efield()
         self.interactions.update_efield(field=_field)
 
-        return -deriv
+        return deriv
 
     @requires_efield
     @requires_positions_grad

@@ -433,10 +433,22 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         help=("R|Calculate the electric dipole moment."),
     )
     p.add_argument(
+        "--dipole-numerical",
+        "--dip-num",
+        action="store_true",
+        help=("R|Calculate the electric dipole moment numerically."),
+    )
+    p.add_argument(
         "--polarizability",
         "--pol",
         action="store_true",
         help=("R|Calculate the electric dipole polarizability."),
+    )
+    p.add_argument(
+        "--polarizability-numerical",
+        "--pol-num",
+        action="store_true",
+        help=("R|Calculate the electric dipole polarizability numerically."),
     )
     p.add_argument(
         "--hyperpolarizability",
@@ -445,6 +457,13 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         action="store_true",
         help=("R|Calculate the electric hyperpolarizability."),
     )
+    p.add_argument(
+        "--hyperpolarizability-numerical",
+        "--hyperpol-num",
+        "--hpol-num",
+        action="store_true",
+        help=("R|Calculate the electric hyperpolarizability numerically."),
+    )
 
     p.add_argument(
         "--ir",
@@ -452,9 +471,21 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         help=("R|Calculate the IR spectrum."),
     )
     p.add_argument(
+        "--ir-numerical",
+        "--ir-num",
+        action="store_true",
+        help=("R|Calculate the IR spectrum numerically."),
+    )
+    p.add_argument(
         "--raman",
         action="store_true",
         help=("R|Calculate the Raman spectrum."),
+    )
+    p.add_argument(
+        "--raman-numerical",
+        "--raman-num",
+        action="store_true",
+        help=("R|Calculate the Raman spectrum numerically."),
     )
 
     p.add_argument(

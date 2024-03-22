@@ -88,17 +88,24 @@ class SelfConsistentFieldFull(BaseTSCF):
         # "SCF function"
         fcn = self._fcn
 
-        mixer = self.config.mixer  # type: ignore
         maxiter = self.config.maxiter
 
         # initialize the correct mixer with tolerances etc.
-        if isinstance(mixer, str):
-            mixers = {"anderson": Anderson, "simple": Simple}
-            if mixer.casefold() not in mixers:
-                raise ValueError(f"Unknown mixer '{mixer}'.")
-            mixer: Mixer = mixers[mixer.casefold()](
-                self.fwd_options, is_batch=self.batched
-            )
+        if isinstance(self.config.mixer, Mixer):
+            # TODO: We wont ever land here, int is enforced in the config
+            mixer = self.config.mixer
+        else:
+            if self.config.mixer == labels.MIXER_LINEAR:
+                mixer = Simple(self.fwd_options, is_batch=self.batched)
+            elif self.config.mixer == labels.MIXER_ANDERSON:
+                mixer = Anderson(self.fwd_options, is_batch=self.batched)
+            elif self.config.mixer == labels.MIXER_BROYDEN:
+                raise NotImplementedError(
+                    "Broyden mixer is not implemented for SCF with full "
+                    "gradient tracking."
+                )
+            else:
+                raise ValueError(f"Unknown mixer '{self.config.mixer}'.")
 
         q = guess
 

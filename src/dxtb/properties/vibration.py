@@ -13,10 +13,8 @@ from tad_mctc import storch
 from tad_mctc.data.mass import ATOMIC as ATOMIC_MASSES
 
 from .._types import Tensor
-from ..constants import get_atomic_masses
 from ..utils.geometry import is_linear_molecule, mass_center
-from ..utils.math import eigh, einsum, qr
-from ..utils.symeig import eighb
+from ..utils.math import einsum, qr
 
 LINDEP_THRESHOLD = 1e-7
 
@@ -38,7 +36,7 @@ def _get_rotational_modes(mass: Tensor, mpos: Tensor):
 
     # Eigendecomposition yields the principal moments of inertia (w)
     # and the principal axes of rotation (paxes) of a molecule.
-    w, paxes = torch.linalg.eigh(im)
+    w, paxes = storch.eighb(im)
 
     # make z-axis rotation vector with smallest moment of inertia
     w = torch.flip(w, [0])
@@ -144,7 +142,7 @@ def frequencies(
         # a molecular system.
         qqT = q @ q.mT  # einsum("...ij,...kj->...ik", q, q)
         P = torch.eye(*[3 * numbers.shape[-1]]) - qqT
-        w, v = eigh(P)
+        w, v = storch.eighb(P)
         bvec = v[..., :, w > LINDEP_THRESHOLD]
 
         if bvec.shape[-1] == 0:
@@ -161,10 +159,10 @@ def frequencies(
 
         # eigendecomposition of Hessian yields force constants (not
         # frequencies!) and normal modes of vibration
-        force_const_au, _mode = eigh(h)
+        force_const_au, _mode = storch.eighb(h)
         mode = bvec @ _mode
     else:
-        force_const_au, mode = eigh(h)
+        force_const_au, mode = storch.eighb(h)
 
         # Instead of calculating and diagonalizing the mass-weighted Hessian,
         # one could also solve the equivalent general eigenvalue problem Hv=Mve

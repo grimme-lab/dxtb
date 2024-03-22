@@ -18,7 +18,7 @@ from dxtb.xtb import Calculator
 from .samples import samples
 
 slist = ["H", "LiH", "HHe", "H2O", "CH4", "SiH4", "PbH4-BiH3"]
-slist_large = ["LYS_xao", "MB16_43_01"]
+slist_large = ["MB16_43_01", "LYS_xao"]
 
 opts = {
     "int_level": 3,

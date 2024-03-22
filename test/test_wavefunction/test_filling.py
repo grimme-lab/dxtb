@@ -2,6 +2,7 @@
 Test for fractional occupation (Fermi smearing).
 Reference values obtained with tbmalt.
 """
+
 from __future__ import annotations
 
 from math import sqrt
@@ -47,11 +48,6 @@ def test_fail(dtype: torch.dtype):
         kt = torch.tensor(-1.0, dtype=dtype)
         filling.get_fermi_occupation(nel, evals, kt)
 
-    # no electrons
-    with pytest.raises(ValueError):
-        _nel = torch.tensor(0.0, dtype=dtype)
-        filling.get_fermi_occupation(_nel, evals, None)
-
     # convergence fails
     with pytest.raises(RuntimeError):
         sample = samples["SiH4"]
@@ -70,6 +66,15 @@ def test_fail_uhf(dtype: torch.dtype, uhf: list):
     with pytest.raises(ValueError):
         nel = torch.tensor([2, 1, 2], **dd)
         filling.get_alpha_beta_occupation(nel, nel.new_tensor(uhf))
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_no_electrons(dtype: torch.dtype):
+    evals = torch.arange(1, 6, dtype=dtype)
+    nel = torch.tensor(0.0, dtype=dtype)
+    occ = filling.get_fermi_occupation(nel, evals, None)
+
+    assert pytest.approx(torch.zeros_like(occ)) == occ
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

@@ -204,6 +204,9 @@ class BaseSCF:
     _data: _Data
     """Persistent data"""
 
+    config: ConfigSCF
+    """Configuration object for the SCF procedure."""
+
     interactions: InteractionList
     """Interactions to minimize in self-consistent iterations"""
 
@@ -227,6 +230,8 @@ class BaseSCF:
     ) -> None:
         if "config" in kwargs:
             self.config = kwargs.pop("config")
+            if not isinstance(self.config, ConfigSCF):
+                raise ValueError("Invalid configuration object.")
         else:
             self.config = ConfigSCF()
 
