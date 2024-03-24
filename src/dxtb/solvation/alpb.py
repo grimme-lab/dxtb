@@ -37,11 +37,12 @@ tensor(-5.0762e-05)
 from __future__ import annotations
 
 import torch
+from tad_mctc import storch
 from tad_mctc.data import VDW_D3
 
 from .._types import Any, Tensor, TensorLike
 from ..interaction import Interaction
-from ..utils import cdist, real_pairs
+from ..utils import real_pairs
 from .born import get_born_radii
 
 alpha = 0.571412
@@ -231,7 +232,7 @@ class GeneralizedBorn(Interaction):
 
         mask = real_pairs(numbers)
 
-        dist = torch.where(mask, cdist(positions, positions, p=2), eps)
+        dist = torch.where(mask, storch.cdist(positions, p=2), eps)
         ab = torch.where(mask, born.unsqueeze(-1) * born.unsqueeze(-2), eps)
 
         mat = self.keps * born_kernel[self.kernel](dist, ab)

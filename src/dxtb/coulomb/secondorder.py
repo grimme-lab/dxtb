@@ -40,6 +40,7 @@ tensor(0.0005078)
 from __future__ import annotations
 
 import torch
+from tad_mctc import storch
 
 from .._types import DD, Slicers, Tensor, TensorLike, TensorOrTensors
 from ..basis import IndexHelper
@@ -47,7 +48,7 @@ from ..constants import defaults, xtb
 from ..exceptions import DeviceError
 from ..interaction import Interaction
 from ..param import Param, get_elem_param
-from ..utils import cdist, einsum, real_pairs
+from ..utils import einsum, real_pairs
 from .average import AveragingFunction, averaging_function, harmonic_average
 
 __all__ = ["ES2", "LABEL_ES2", "new_es2"]
@@ -503,7 +504,7 @@ class ES2(Interaction):
 
         distances = torch.where(
             mask,
-            cdist(positions, positions, p=2),
+            storch.cdist(positions, positions, p=2),
             zero,
         )
 
@@ -551,7 +552,7 @@ class ES2(Interaction):
         distances = ihelp.spread_atom_to_shell(
             torch.where(
                 mask,
-                cdist(positions, positions, p=2),
+                storch.cdist(positions, positions, p=2),
                 eps,
             ),
             (-1, -2),
@@ -624,7 +625,7 @@ def coulomb_matrix_atom(
 
     h = ihelp.spread_uspecies_to_atom(hubbard)
 
-    dist = cdist(positions, positions, p=2)
+    dist = storch.cdist(positions, positions, p=2)
 
     # all distances to the power of "gexp" (R^2_AB from Eq.26)
     dist_gexp = torch.where(
@@ -673,7 +674,7 @@ def coulomb_matrix_atom_gradient(
 
     distances = torch.where(
         mask,
-        cdist(positions, positions, p=2),
+        storch.cdist(positions, positions, p=2),
         zero,
     )
 
@@ -734,7 +735,7 @@ def coulomb_matrix_shell(
     lh = ihelp.spread_ushell_to_shell(lhubbard)
     h = lh * ihelp.spread_uspecies_to_shell(hubbard)
 
-    dist = cdist(positions, positions, p=2)
+    dist = storch.cdist(positions, positions, p=2)
 
     # all distances to the power of "gexp" (R^2_AB from Eq.26)
     dist_gexp = ihelp.spread_atom_to_shell(
@@ -792,7 +793,7 @@ def coulomb_matrix_shell_gradient(
 
     # all distances to the power of "gexp" (R^2_AB from Eq.26)
     distances = ihelp.spread_atom_to_shell(
-        torch.where(mask, cdist(positions, positions, p=2), eps),
+        torch.where(mask, storch.cdist(positions, positions, p=2), eps),
         (-1, -2),
     )
 

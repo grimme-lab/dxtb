@@ -51,10 +51,11 @@ tensor([[False, False,  True,  True,  True, False, False, False],
 from __future__ import annotations
 
 import torch
+from tad_mctc import storch
 
 from ._types import DD, Any, CountingFunction, Tensor
 from .ncoord import erf_count
-from .utils import cdist, real_pairs
+from .utils import real_pairs
 
 _en = torch.tensor(
     [
@@ -291,7 +292,7 @@ def guess_bond_order(
     mask = real_pairs(numbers, True)
     distances = torch.where(
         mask,
-        cdist(positions, positions, p=2),
+        storch.cdist(positions, positions, p=2),
         torch.tensor(torch.finfo(positions.dtype).eps, **dd),
     )
 

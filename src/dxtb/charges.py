@@ -35,10 +35,11 @@ from __future__ import annotations
 import math
 
 import torch
+from tad_mctc import storch
 
 from ._types import DD, Tensor, TensorLike
 from .constants import defaults
-from .utils import cdist, real_atoms, real_pairs
+from .utils import real_atoms, real_pairs
 
 
 class ChargeModel(TensorLike):
@@ -297,7 +298,7 @@ def solve(
     real = real_atoms(numbers)
     mask = real_pairs(numbers, diagonal=True)
 
-    distances = torch.where(mask, cdist(positions, positions, p=2), eps)
+    distances = torch.where(mask, storch.cdist(positions, positions, p=2), eps)
     diagonal = mask.new_zeros(mask.shape)
     diagonal.diagonal(dim1=-2, dim2=-1).fill_(True)
 

@@ -26,10 +26,11 @@ tensor([3.6647, 2.4621, 2.4621, 2.4621, 2.4621])
 from __future__ import annotations
 
 import torch
+from tad_mctc import storch
 from tad_mctc.data.radii import VDW_D3
 
 from .._types import DD, Tensor
-from ..utils import cdist, real_atoms, real_pairs
+from ..utils import real_atoms, real_pairs
 
 
 def get_born_radii(
@@ -160,11 +161,7 @@ def compute_psi(
 
     rho = rvdw * descreening
 
-    distances = torch.where(
-        mask,
-        cdist(positions, positions, p=2),
-        eps,
-    )
+    distances = torch.where(mask, storch.cdist(positions, p=2), eps)
     r1 = 1.0 / distances
 
     # mask determining overlapping atoms

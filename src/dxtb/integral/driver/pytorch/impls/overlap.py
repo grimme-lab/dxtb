@@ -5,6 +5,7 @@ PyTorch-based overlap implementations.
 from __future__ import annotations
 
 import torch
+from tad_mctc import storch
 
 from ....._types import Any, Literal, Tensor
 from .....basis import Basis, IndexHelper
@@ -132,7 +133,7 @@ def overlap(
     else:
         # cdist does not return zero for distance between same vectors
         # https://github.com/pytorch/pytorch/issues/57690
-        dist = torch.cdist(pos, pos, compute_mode="donot_use_mm_for_euclid_dist")
+        dist = storch.cdist(pos, pos)
         mask = (dist < cutoff) & (dist > 0.1)
 
     umap, n_unique_pairs = bas.unique_shell_pairs(mask=mask, uplo=uplo)
@@ -229,7 +230,7 @@ def overlap_gradient(
     else:
         # cdist does not return zero for distance between same vectors
         # https://github.com/pytorch/pytorch/issues/57690
-        dist = torch.cdist(pos, pos, compute_mode="donot_use_mm_for_euclid_dist")
+        dist = storch.cdist(pos, pos)
         mask = (dist < cutoff) & (dist > 0.1)
 
     umap, n_unique_pairs = bas.unique_shell_pairs(mask=mask, uplo=uplo)

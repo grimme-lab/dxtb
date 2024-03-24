@@ -1868,9 +1868,9 @@ class Calculator(TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: `(..., nat)`).
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int | str | None
             Total charge. Defaults to `None`.
         spin : Tensor | float | int, optional
@@ -1935,7 +1935,31 @@ class Calculator(TensorLike):
         spin: Tensor | float | int | None = defaults.SPIN,
         use_functorch: bool = False,
     ) -> tuple[Tensor, Tensor]:
-        logger.debug("\n\nIR spectrum: Start.")
+        """
+        Calculate the frequencies and intensities of IR spectra.
+        Frequencies are given in cm^-1 and intensities in km/mol.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system (shape: `(..., nat)`).
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+        chrg : Tensor | float | int | str | None
+            Total charge. Defaults to `None`.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+        use_functorch : bool, optional
+            Whether to use functorch or the standard (slower) autograd.
+            Defaults to `False`.
+
+        Returns
+        -------
+        tuple[Tensor, Tensor]
+            Frequencies (shape: `(..., nfreqs)`) and intensities (shape:
+            `(..., nfreqs)`) of IR spectra.
+        """
+        logger.debug("IR spectrum: Start.")
 
         # run vibrational analysis first
         freqs, modes = self.vibration(numbers, positions, chrg, spin)
@@ -1949,12 +1973,12 @@ class Calculator(TensorLike):
 
         ir_ints = _ir_intensities(dmu_dr, modes)
 
-        # TODO: Figure out unit
-        from ..constants import units
+        # pylint: disable=import-outside-toplevel
+        from tad_mctc.units import AU2KMMOL, AU2RCM
 
         logger.debug("IR spectrum: All finished.")
 
-        return freqs * units.AU2RCM, ir_ints * 1378999.7790799031
+        return freqs * AU2RCM, ir_ints * AU2KMMOL
 
     @numerical
     def ir_numerical(
@@ -1965,6 +1989,29 @@ class Calculator(TensorLike):
         spin: Tensor | float | int | None = defaults.SPIN,
         step_size: int | float = defaults.STEP_SIZE,
     ) -> tuple[Tensor, Tensor]:
+        """
+        Calculate the frequencies and intensities of IR spectra.
+        Frequencies are given in cm^-1 and intensities in km/mol.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system (shape: `(..., nat)`).
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+        chrg : Tensor | float | int | str | None
+            Total charge. Defaults to `None`.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+        step_size : float | int, optional
+            Step size for the numerical derivative.
+
+        Returns
+        -------
+        tuple[Tensor, Tensor]
+            Frequencies (shape: `(..., nfreqs)`) and intensities (shape:
+            `(..., nfreqs)`) of IR spectra.
+        """
         logger.debug("IR spectrum (numerical): Start.")
 
         # important: always use new/separate position tensor
@@ -1979,12 +2026,12 @@ class Calculator(TensorLike):
         )
         ir_ints = _ir_intensities(dmu_dr, modes)
 
-        # TODO: Figure out unit
-        from ..constants import units
+        # pylint: disable=import-outside-toplevel
+        from tad_mctc.units import AU2KMMOL, AU2RCM
 
         logger.debug("IR spectrum (numerical): All finished.")
 
-        return freqs * units.AU2RCM, ir_ints * 1378999.7790799031
+        return freqs * AU2RCM, ir_ints * AU2KMMOL
 
     def raman(
         self,

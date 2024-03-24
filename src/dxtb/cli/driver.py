@@ -208,16 +208,16 @@ class Driver:
             calc.opts.scf.scf_mode = labels.SCF_MODE_FULL
             calc.opts.scf.mixer = labels.MIXER_ANDERSON
             timer.start("IR")
-            freqs, modes = calc.ir(numbers, positions, chrg)
+            freqs, ints = calc.ir(numbers, positions, chrg)
             print("IR Frequencies\n", freqs)
-            print("IR Modes\n", modes)
+            print("IR Intensities\n", ints)
             timer.stop("IR")
 
         if args.ir_numerical is True:
             timer.start("IR")
-            freqs, modes = calc.ir_numerical(numbers, positions, chrg)
+            freqs, ints = calc.ir_numerical(numbers, positions, chrg)
             print("IR Frequencies\n", freqs)
-            print("IR Modes\n", modes)
+            print("IR Intensities\n", ints)
             timer.stop("IR")
 
         if args.dipole is True:

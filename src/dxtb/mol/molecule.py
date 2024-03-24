@@ -24,10 +24,11 @@ Example
 from __future__ import annotations
 
 import torch
+from tad_mctc import storch
 
 from .._types import Any, NoReturn, Tensor, TensorLike
 from ..exceptions import DeviceError, DtypeError
-from ..utils import cdist, memoize
+from ..utils import memoize
 
 __all__ = ["Mol"]
 
@@ -110,7 +111,7 @@ class Mol(TensorLike):
         Tensor
             Distance matrix.
         """
-        return cdist(self.positions)
+        return storch.cdist(self.positions)
 
     def clear_cache(self) -> None:
         """Clear the cross-instance caches of all memoized methods."""

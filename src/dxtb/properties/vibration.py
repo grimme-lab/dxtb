@@ -11,10 +11,12 @@ from __future__ import annotations
 import torch
 from tad_mctc import storch
 from tad_mctc.data.mass import ATOMIC as ATOMIC_MASSES
+from tad_mctc.math import einsum
+from tad_mctc.molecule.geometry import is_linear
+from tad_mctc.molecule.property import inertia_moment, mass_center
+from tad_mctc.typing import Tensor
 
-from .._types import Tensor
-from ..utils.geometry import is_linear_molecule, mass_center
-from ..utils.math import einsum, qr
+from ..utils.math import qr
 
 LINDEP_THRESHOLD = 1e-7
 
@@ -28,19 +30,19 @@ def _get_translational_modes(mass: Tensor):
     return Tx.ravel(), Ty.ravel(), Tz.ravel()
 
 
-def _get_rotational_modes(mass: Tensor, mpos: Tensor):
-    # Computation of inertia tensor and transformation to its traceless
-    # form (convenient for calculating the principal axes of rotation).
-    im = einsum("...m,...mx,...my->...xy", mass, mpos, mpos)
-    im = torch.eye(3) * im.trace() - im
+def _get_rotational_modes(mass: Tensor, positions: Tensor):
+    com = mass_center(mass, positions)
+    mpos = positions - com
+
+    im = inertia_moment(mass, mpos, pos_already_com=True)
 
     # Eigendecomposition yields the principal moments of inertia (w)
     # and the principal axes of rotation (paxes) of a molecule.
     w, paxes = storch.eighb(im)
 
     # make z-axis rotation vector with smallest moment of inertia
-    w = torch.flip(w, [0])
-    paxes = torch.flip(paxes, [1])
+    w = torch.flip(w, [-1])
+    paxes = torch.flip(paxes, [-1])
     ex, ey, ez = paxes.mT
 
     # rotational mode
@@ -93,25 +95,34 @@ def frequencies(
         `(..., 3*nat, nfreqs)`.
     """
     nat = numbers.shape[-1]
-    if hessian.shape != (*numbers.shape[:-1], nat, 3, nat, 3):
+    if hessian.shape == (*numbers.shape[:-1], nat, 3, nat, 3):
+        # reshape (nb, nat, 3, nat, 3) to (nb, nat*3, nat*3)
+        hessian = hessian.reshape(*[*numbers.shape[:-1], *2 * [3 * nat]])
+
+        # Mass-weighting without reshaping:
+        # (nb, nat, 3, nat, 3) * (nb, nat) * (nb, nat) -> (nb, nat, 3, nat, 3)
+        # mhess = einsum("...pxqy,...p,...q->...pxqy", hessian, ism, ism)
+
+    elif hessian.shape == (*numbers.shape[:-1], nat * 3, nat * 3):
         raise ValueError(
-            f"The Hessian matrix must have the shape (..., nat, 3, nat, 3), "
-            "where `nat` is the number of atoms in the system. The shape of "
-            f"the Hessian matrix is {hessian.shape}, while the shape of the "
+            f"The Hessian matrix must have either shape (..., nat, 3, nat, 3) "
+            "or (..., nat*3, nat*3) for a system with `nat` atoms. The shape "
+            f"of the Hessian matrix is {hessian.shape}, while the shape of the "
             f"atomic numbers is {numbers.shape}."
         )
 
     mass = ATOMIC_MASSES.to(device=hessian.device, dtype=hessian.dtype)[numbers]
-    invsqrtmass = storch.reciprocal(storch.sqrt(mass))
 
-    # (nb, nat, 3, nat, 3) * (nb, nat) * (nb, nat) -> (nb, nat, 3, nat, 3)
-    mhess = einsum("...pxqy,...p,...q->...pxqy", hessian, invsqrtmass, invsqrtmass)
+    # 1/sqrt(m) of shape (..., nat) -> (..., nat*3)
+    invsqrtmass = torch.repeat_interleave(
+        storch.reciprocal(storch.sqrt(mass)), 3, dim=-1
+    )
 
-    # reshape (nb, nat, 3, nat, 3) to (nb, nat*3, nat*3)
-    hess = mhess.reshape(*[*numbers.shape[:-1], *2 * [3 * numbers.shape[-1]]])
+    # mass-weighted Hessian
+    mhess = einsum("...p,...pq,...q->...pq", invsqrtmass, hessian, invsqrtmass)
 
     # symmetrize
-    h = (hess + hess.transpose(-2, -1)) * 0.5
+    h = (mhess + mhess.transpose(-2, -1)) * 0.5
 
     # TODO: More sophisticated checks for atom
     # TODO: Test batch
@@ -120,12 +131,10 @@ def frequencies(
         TRspace.extend(_get_translational_modes(mass))
 
     if project_rotational is True and numbers.shape[-1] > 1:
-        mpos = positions - mass_center(mass, positions)
-
-        if (is_linear_molecule(numbers, positions) == True).all():
-            TRspace.extend(_get_rotational_modes(mass, mpos)[:-1])
+        if (is_linear(numbers, positions) == True).all():
+            TRspace.extend(_get_rotational_modes(mass, positions)[:-1])
         else:
-            TRspace.extend(_get_rotational_modes(mass, mpos))
+            TRspace.extend(_get_rotational_modes(mass, positions))
 
     if len(TRspace) > 0:
         TRspace = torch.vstack(TRspace)
@@ -166,6 +175,8 @@ def frequencies(
 
         # Instead of calculating and diagonalizing the mass-weighted Hessian,
         # one could also solve the equivalent general eigenvalue problem Hv=Mve
+        # This also directly un-mass-weights the normal modes.
+        #
         # mass_mat = torch.diag_embed(masses.repeat_interleave(3, dim=-1))
         # evals, evecs = eighb(a=h, b=mass_mat)
 
@@ -179,7 +190,10 @@ def frequencies(
     sgn = torch.sign(force_const_au)
     freqs_au = torch.sqrt(torch.abs(force_const_au)) * sgn
 
-    return freqs_au, mode
+    # un-mass-weight the normal modes
+    mode_au = einsum("...i,...ij->...ij", invsqrtmass, mode)
+
+    return freqs_au, mode_au
 
 
 # TODO: Remove this function after checking batched version

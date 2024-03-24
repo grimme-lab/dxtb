@@ -5,11 +5,12 @@ Calculation of coordination number with various counting functions.
 from __future__ import annotations
 
 import torch
+from tad_mctc import storch
 from tad_mctc.data.radii import COV_D3
 
 from .._types import Any, CountingFunction, Tensor
 from ..constants import xtb
-from ..utils import cdist, real_pairs
+from ..utils import real_pairs
 from .count import dexp_count, exp_count
 
 
@@ -69,7 +70,7 @@ def get_coordination_number(
     eps = torch.tensor(torch.finfo(positions.dtype).eps, **dd)
 
     mask = real_pairs(numbers, diagonal=True)
-    distances = torch.where(mask, cdist(positions, positions, p=2), eps)
+    distances = torch.where(mask, storch.cdist(positions, positions, p=2), eps)
 
     rc = rcov.unsqueeze(-2) + rcov.unsqueeze(-1) + eps
     cf = torch.where(
@@ -137,7 +138,7 @@ def get_coordination_number_gradient(
     eps = torch.tensor(torch.finfo(positions.dtype).eps, **dd)
 
     mask = real_pairs(numbers, diagonal=True)
-    distances = torch.where(mask, cdist(positions, positions, p=2), eps)
+    distances = torch.where(mask, storch.cdist(positions, positions, p=2), eps)
 
     rc = rcov.unsqueeze(-2) + rcov.unsqueeze(-1) + eps
     dcf = torch.where(
