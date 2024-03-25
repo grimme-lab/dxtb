@@ -13,5 +13,4 @@ Supported are the following:
 """
 
 from .moments import *
-from .spectra import *
 from .vibration import *

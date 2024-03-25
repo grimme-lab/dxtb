@@ -22,7 +22,7 @@ from tad_mctc.typing import (
 )
 
 from .. import integral as ints
-from .. import ncoord, properties, scf
+from .. import ncoord, scf
 from ..basis import IndexHelper
 from ..classical import (
     Classical,
@@ -42,6 +42,8 @@ from ..interaction.external import field as efield
 from ..interaction.external import fieldgrad as efield_grad
 from ..io import OutputHandler
 from ..param import Param, get_elem_angular
+from ..properties import moments
+from ..properties import vibration as vib
 from ..timing import timer
 from ..utils import _jac, einsum
 from ..wavefunction import filling
@@ -165,11 +167,17 @@ def requires_efg_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
 
 
 def numerical(func: F) -> F:
+    """
+    Decorator for numerical differentiation.
+    Turns off gradient tracking for the function.
+    """
+
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         OutputHandler.temporary_disable_on()
         try:
-            result = func(*args, **kwargs)
+            with torch.no_grad():
+                result = func(*args, **kwargs)
         finally:
             OutputHandler.temporary_disable_off()
         return result
@@ -349,7 +357,7 @@ class Calculator(TensorLike):
         This class provides caching functionality for storing multiple calculation results.
         """
 
-        __slots__ = ["energy", "forces"]
+        __slots__ = ["energy", "forces", "hessian"]
 
         def __init__(
             self,
@@ -369,6 +377,7 @@ class Calculator(TensorLike):
             super().__init__(device=device, dtype=dtype)
             self.energy = None
             self.forces = None
+            self.hessian = None
 
         def __getitem__(self, key: str) -> Tensor:
             """
@@ -473,6 +482,11 @@ class Calculator(TensorLike):
         if isinstance(opts, dict):
             OutputHandler.verbosity = opts.pop("verbosity", None)
 
+        OutputHandler.write_stdout("")
+        OutputHandler.write_stdout("")
+        OutputHandler.write_stdout("CALCULATION")
+        OutputHandler.write_stdout("===========")
+        OutputHandler.write_stdout("")
         OutputHandler.write_stdout("Setup Calculator")
 
         allowed_dtypes = (torch.long, torch.int16, torch.int32, torch.int64)
@@ -802,7 +816,44 @@ class Calculator(TensorLike):
         spin: Tensor | float | int | None = defaults.SPIN,
         use_functorch: bool = False,
     ) -> Tensor:
-        logger.debug(f"Autodiff Forces: Starting Calculation.")
+        r"""
+        Calculate the electric dipole moment :math:`f` via AD.
+
+        .. math::
+
+            f = -\dfrac{\partial E}{\partial R}
+
+        One can calculate the Jacobian either row-by-row using the standard
+        `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
+        using `torch.func`'s function transforms (e.g., `jacrev`).
+
+        .. _here: https://pytorch.org/functorch/stable/notebooks/jacobians_hessians.html#computing-the-jacobian
+
+        Note
+        ----
+        Using `torch.func`'s function transforms can apparently be only used
+        once. Hence, for example, the Hessian and the dipole derivatives cannot
+        be both calculated with functorch.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system of shape `(..., nat)`.
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+        use_functorch: bool, optional
+            Whether to use functorch or the standard (slower) autograd.
+
+        Returns
+        -------
+        Tensor
+            Atomic forces of shape `(..., nat, 3)`.
+        """
+        logger.debug("Forces: Starting.")
 
         if use_functorch is True:
             # pylint: disable=import-outside-toplevel
@@ -823,7 +874,7 @@ class Calculator(TensorLike):
             )
             jac = jac.contiguous()
 
-        logger.debug("Autodiff Forces: All finished.")
+        logger.debug("Forces: All finished.")
         return -jac
 
     @numerical
@@ -835,6 +886,31 @@ class Calculator(TensorLike):
         spin: Tensor | float | int | None = defaults.SPIN,
         step_size: int | float = defaults.STEP_SIZE,
     ) -> Tensor:
+        r"""
+        Numerically calculate the atomic forces :math:`f`.
+
+        .. math::
+
+            f = -\dfrac{\partial E}{\partial R}
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system of shape `(..., nat)`.
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+        step_size : int | float, optional
+            Step size for numerical differentiation.
+
+        Returns
+        -------
+        Tensor
+            Atomic forces of shape `(..., nat, 3)`.
+        """
         # pylint: disable=import-outside-toplevel
         import gc
 
@@ -879,7 +955,7 @@ class Calculator(TensorLike):
         matrix: bool = False,
     ) -> Tensor:
         """
-        Calculation of the nuclear (autodiff) Hessian with functorch.
+        Calculation of the nuclear Hessian with AD.
 
         Note
         ----
@@ -890,9 +966,9 @@ class Calculator(TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
@@ -900,13 +976,13 @@ class Calculator(TensorLike):
         use_functorch : bool, optional
             Whether to use `functorch` for autodiff. Defaults to `False`.
         matrix : bool, optional
-            Whether to reshape the Hessian to a matrix, i.e., (nat*3, nat*3).
+            Whether to reshape the Hessian to a matrix, i.e., `(nat*3, nat*3)`.
             Defaults to `False`.
 
         Returns
         -------
         Tensor
-            Hessian matrix.
+            Hessian of shape `(..., nat, 3, nat, 3)` or `(..., nat*3, nat*3)`.
 
         Raises
         ------
@@ -914,6 +990,12 @@ class Calculator(TensorLike):
             Positions tensor does not have `requires_grad=True`.
         """
         logger.debug(f"Autodiff Hessian: Starting Calculation.")
+
+        if "hessian" in self.cache:
+            # TODO: Better printout
+            print("Using cached Hessian.")
+            logger.debug("Autodiff Hessian: Using cached result.")
+            return self.cache["hessian"]
 
         if use_functorch is True:
             # pylint: disable=import-outside-toplevel
@@ -942,7 +1024,10 @@ class Calculator(TensorLike):
             s = [*numbers.shape[:-1], *2 * [3 * numbers.shape[-1]]]
             hess = hess.view(*s)
 
+        self.cache["hessian"] = hess
+
         logger.debug("Autodiff Hessian: All finished.")
+
         return hess
 
     @numerical
@@ -956,18 +1041,20 @@ class Calculator(TensorLike):
         matrix: bool = False,
     ) -> Tensor:
         """
-        Hessian (numerical).
+        Numerically calculate the Hessian.
 
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int | str | None
             Total charge. Defaults to `None`.
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to `None`.
+        step_size : int | float, optional
+            Step size for numerical differentiation.
         matrix : bool, optional
             Whether to reshape the Hessian to a matrix, i.e., (nat*3, nat*3).
             Defaults to `False`.
@@ -975,7 +1062,7 @@ class Calculator(TensorLike):
         Returns
         -------
         Tensor
-            Hessian.
+            Hessian of shape `(..., nat, 3, nat, 3) or `(..., nat*3, nat*3)`.
         """
         # pylint: disable=import-outside-toplevel
         import gc
@@ -1030,7 +1117,46 @@ class Calculator(TensorLike):
         use_functorch: bool = False,
         project_translational: bool = True,
         project_rotational: bool = True,
-    ) -> tuple[Tensor, Tensor]:
+    ) -> vib.VibResult:
+        r"""
+        Perform vibrational analysis. This calculates the Hessian matrix and
+        diagonalizes it to obtain the vibrational frequencies and normal modes.
+
+        One can calculate the Jacobian either row-by-row using the standard
+        `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
+        using `torch.func`'s function transforms (e.g., `jacrev`).
+
+        .. _here: https://pytorch.org/functorch/stable/notebooks/jacobians_hessians.html#computing-the-jacobian
+
+        Note
+        ----
+        Using `torch.func`'s function transforms can apparently be only used
+        once. Hence, for example, the Hessian and the dipole derivatives cannot
+        be both calculated with functorch.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system of shape `(..., nat)`.
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+        use_functorch: bool, optional
+            Whether to use functorch or the standard (slower) autograd.
+        project_translational : bool, optional
+            Project out translational modes. Defaults to `True`.
+        project_rotational : bool, optional
+            Project out rotational modes. Defaults to `True`.
+
+        Returns
+        -------
+        vib.VibResult
+            Result container with vibrational frequencies (shape:
+            `(..., nfreqs)`) and normal modes (shape: `(..., nfreqs)`).
+        """
         hess = self.hessian(
             numbers,
             positions,
@@ -1039,7 +1165,7 @@ class Calculator(TensorLike):
             use_functorch=use_functorch,
             matrix=False,
         )
-        return properties.frequencies(
+        return vib.vib_analysis(
             numbers,
             positions,
             hess,
@@ -1054,11 +1180,42 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
+        step_size: int | float = defaults.STEP_SIZE,
         project_translational: bool = True,
         project_rotational: bool = True,
-    ) -> tuple[Tensor, Tensor]:
-        hess = self.hessian_numerical(numbers, positions, chrg, spin)
-        return properties.frequencies(
+    ) -> vib.VibResult:
+        r"""
+        Perform vibrational analysis via numerical Hessian.
+        The Hessian matrix is diagonalized to obtain the vibrational
+        frequencies and normal modes.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system of shape `(..., nat)`.
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+        step_size : int | float, optional
+            Step size for numerical differentiation.
+        project_translational : bool, optional
+            Project out translational modes. Defaults to `True`.
+        project_rotational : bool, optional
+            Project out rotational modes. Defaults to `True`.
+
+        Returns
+        -------
+        vib.VibResult
+            Result container with vibrational frequencies (shape:
+            `(..., nfreqs)`) and normal modes (shape: `(..., nfreqs)`).
+        """
+        hess = self.hessian_numerical(
+            numbers, positions, chrg, spin, step_size=step_size
+        )
+        return vib.vib_analysis(
             numbers,
             positions,
             hess,
@@ -1076,6 +1233,43 @@ class Calculator(TensorLike):
         spin: Tensor | float | int | None = defaults.SPIN,
         use_functorch: bool = False,
     ) -> Tensor:
+        r"""
+        Calculate the electric dipole moment :math:`\mu` via AD.
+
+        .. math::
+
+            \mu = \dfrac{\partial E}{\partial F}
+
+        One can calculate the Jacobian either row-by-row using the standard
+        `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
+        using `torch.func`'s function transforms (e.g., `jacrev`).
+
+        .. _here: https://pytorch.org/functorch/stable/notebooks/jacobians_hessians.html#computing-the-jacobian
+
+        Note
+        ----
+        Using `torch.func`'s function transforms can apparently be only used
+        once. Hence, for example, the Hessian and the dipole derivatives cannot
+        be both calculated with functorch.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system of shape `(..., nat)`.
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+        use_functorch: bool, optional
+            Whether to use functorch or the standard (slower) autograd.
+
+        Returns
+        -------
+        Tensor
+            Electric dipole moment of shape `(..., 3)`.
+        """
         field = self.interactions.get_interaction(efield.LABEL_EFIELD).field
 
         if use_functorch is True:
@@ -1111,6 +1305,29 @@ class Calculator(TensorLike):
         spin: Tensor | float | int | None = defaults.SPIN,
         *_,  # absorb stuff
     ) -> Tensor:
+        r"""
+        Analytically calculate the electric dipole moment :math:`\mu`.
+
+        .. math::
+
+            \mu = \dfrac{\partial E}{\partial F}
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system of shape `(..., nat)`.
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+
+        Returns
+        -------
+        Tensor
+            Electric dipole moment of shape `(..., 3)`.
+        """
         # run single point and check if integral is populated
         result = self.singlepoint(numbers, positions, chrg, spin)
 
@@ -1132,7 +1349,7 @@ class Calculator(TensorLike):
         # numbers, positions, result.density, self.integrals.dipole
         # )
         qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
-        dip = properties.moments.dipole(qat, positions, result.density, dipint.matrix)
+        dip = moments.dipole(qat, positions, result.density, dipint.matrix)
         return dip
 
     @numerical
@@ -1145,6 +1362,31 @@ class Calculator(TensorLike):
         spin: Tensor | float | int | None = defaults.SPIN,
         step_size: int | float = defaults.STEP_SIZE,
     ) -> Tensor:
+        r"""
+        Numerically calculate the electric dipole moment :math:`\mu`.
+
+        .. math::
+
+            \mu = \dfrac{\partial E}{\partial F}
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system of shape `(..., nat)`.
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+        step_size : int | float, optional
+            Step size for numerical differentiation.
+
+        Returns
+        -------
+        Tensor
+            Electric dipole moment of shape `(..., 3)`.
+        """
         # pylint: disable=import-outside-toplevel
         import gc
 
@@ -1217,9 +1459,9 @@ class Calculator(TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
@@ -1233,7 +1475,7 @@ class Calculator(TensorLike):
         Returns
         -------
         Tensor
-            Cartesian dipole derivative of shape `(3, nat, 3)`.
+            Cartesian dipole derivative of shape `(..., 3, nat, 3)`.
         """
 
         if use_analytical is True:
@@ -1275,9 +1517,38 @@ class Calculator(TensorLike):
         spin: Tensor | float | int | None = defaults.SPIN,
         step_size: int | float = defaults.STEP_SIZE,
     ) -> Tensor:
+        r"""
+        Numerically calculate cartesian dipole derivative :math:`\mu'`.
+
+        .. math::
+
+            \mu' = \dfrac{\partial \mu}{\partial R} = \dfrac{\partial^2 E}{\partial F \partial R}
+
+        Here, the analytical dipole moment is used for the numerical
+        differentiation.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system of shape `(..., nat)`.
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+        step_size: int | float, optional
+            Step size for numerical differentiation.
+
+        Returns
+        -------
+        Tensor
+            Cartesian dipole derivative of shape `(..., 3, nat, 3)`.
+        """
         # pylint: disable=import-outside-toplevel
         import gc
 
+        # FIXME: Probably not necessary because of the `numerical` decorator
         # important: use new/separate position tensor
         pos = positions.detach().clone()
 
@@ -1290,6 +1561,7 @@ class Calculator(TensorLike):
 
         count = 1
         nsteps = 3 * numbers.shape[-1]
+
         for i in range(numbers.shape[-1]):
             for j in range(3):
                 pos[..., i, j] += step_size
@@ -1413,7 +1685,7 @@ class Calculator(TensorLike):
         dpat = result.charges.dipole
         qpat = result.charges.quad
 
-        return properties.quadrupole(qat, dpat, qpat, positions)
+        return moments.quadrupole(qat, dpat, qpat, positions)
 
     @numerical
     @requires_efg
@@ -1493,9 +1765,9 @@ class Calculator(TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
@@ -1509,7 +1781,7 @@ class Calculator(TensorLike):
         Returns
         -------
         Tensor
-            Polarizability tensor of shape `(3, 3)`.
+            Polarizability tensor of shape `(..., 3, 3)`.
         """
         # retrieve the efield interaction and the field
         field = self.interactions.get_interaction(efield.LABEL_EFIELD).field
@@ -1567,15 +1839,21 @@ class Calculator(TensorLike):
         spin: Tensor | float | int | None = defaults.SPIN,
         step_size: int | float = defaults.STEP_SIZE,
     ) -> Tensor:
-        """
-        Numerical polarizability.
+        r"""
+        Numerically calculate the polarizability tensor :math:`\alpha`.
+
+        .. math::
+
+            \alpha = \dfrac{\partial \mu}{\partial F} = \dfrac{\partial^2 E}{\partial^2 F}
+
+        Here, the analytical dipole moment is used for the numerical derivative.
 
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int | str | None
             Total charge. Defaults to `None`.
         spin : Tensor | float | int, optional
@@ -1586,7 +1864,7 @@ class Calculator(TensorLike):
         Returns
         -------
         Tensor
-            Polarizability tensor of shape `(3, 3)`.
+            Polarizability tensor of shape `(..., 3, 3)`.
         """
         # pylint: disable=import-outside-toplevel
         import gc
@@ -1660,9 +1938,9 @@ class Calculator(TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
@@ -1673,7 +1951,7 @@ class Calculator(TensorLike):
         Returns
         -------
         Tensor
-            Polarizability derivative shape `(3, 3, nat, 3)`.
+            Polarizability derivative shape `(..., 3, 3, nat, 3)`.
         """
         if use_functorch is True:
             # pylint: disable=import-outside-toplevel
@@ -1707,6 +1985,32 @@ class Calculator(TensorLike):
         spin: Tensor | float | int | None = defaults.SPIN,
         step_size: int | float = defaults.STEP_SIZE,
     ) -> Tensor:
+        r"""
+        Numerically calculate the cartesian polarizability derivative
+        :math:`\chi`.
+
+        .. math::
+
+            \chi = \alpha' = \dfrac{\partial \alpha}{\partial R} = \dfrac{\partial^2 \mu}{\partial F \partial R} = \dfrac{\partial^3 E}{\partial^2 F \partial R}
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system of shape `(..., nat)`.
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+        step_size : float | int, optional
+            Step size for the numerical derivative.
+
+        Returns
+        -------
+        Tensor
+            Polarizability derivative shape `(..., 3, 3, nat, 3)`.
+        """
         # pylint: disable=import-outside-toplevel
         import gc
 
@@ -1779,9 +2083,9 @@ class Calculator(TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: `(..., nat)`).
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
@@ -1862,8 +2166,12 @@ class Calculator(TensorLike):
         spin: Tensor | float | int | None = defaults.SPIN,
         step_size: int | float = defaults.STEP_SIZE,
     ) -> Tensor:
-        """
-        Numerical hyperpolarizability.
+        r"""
+        Numerically calculate the hyper polarizability tensor :math:`\beta`.
+
+        .. math::
+
+            \beta = \dfrac{\partial \alpha}{\partial F} = \dfrac{\partial^2 \mu}{\partial F^2} = \dfrac{\partial^3 E}{\partial^2 3}
 
         Parameters
         ----------
@@ -1871,8 +2179,8 @@ class Calculator(TensorLike):
             Atomic numbers for all atoms in the system (shape: `(..., nat)`).
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
-        chrg : Tensor | float | int | str | None
-            Total charge. Defaults to `None`.
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to `None`.
         step_size : float | int, optional
@@ -1881,7 +2189,7 @@ class Calculator(TensorLike):
         Returns
         -------
         Tensor
-            Hyperpolarizability tensor of shape `(..., 3, 3, 3)`.
+            Hyper polarizability tensor of shape `(..., 3, 3, 3)`.
         """
         # pylint: disable=import-outside-toplevel
         import gc
@@ -1934,10 +2242,9 @@ class Calculator(TensorLike):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         use_functorch: bool = False,
-    ) -> tuple[Tensor, Tensor]:
+    ) -> vib.IRResult:
         """
         Calculate the frequencies and intensities of IR spectra.
-        Frequencies are given in cm^-1 and intensities in km/mol.
 
         Parameters
         ----------
@@ -1955,15 +2262,18 @@ class Calculator(TensorLike):
 
         Returns
         -------
-        tuple[Tensor, Tensor]
-            Frequencies (shape: `(..., nfreqs)`) and intensities (shape:
-            `(..., nfreqs)`) of IR spectra.
+        vib.IRResult
+            Result container with frequencies (shape: `(..., nfreqs)`) and intensities (shape: `(..., nfreqs)`) of IR spectra.
         """
+        OutputHandler.write_stdout("\nIR Spectrum")
+        OutputHandler.write_stdout("-----------")
         logger.debug("IR spectrum: Start.")
 
         # run vibrational analysis first
-        freqs, modes = self.vibration(numbers, positions, chrg, spin)
+        vib_res = self.vibration(numbers, positions, chrg, spin)
 
+        # TODO: Figure out how to run func transforms 2x properly
+        # (improve: Hessian does not need dipole integral but dipder does)
         self.integrals.invalidate_driver()
 
         # calculate nuclear dipole derivative dmu/dR: (..., 3, nat, 3)
@@ -1971,14 +2281,11 @@ class Calculator(TensorLike):
             numbers, positions, chrg, spin, use_functorch=use_functorch
         )
 
-        ir_ints = _ir_intensities(dmu_dr, modes)
-
-        # pylint: disable=import-outside-toplevel
-        from tad_mctc.units import AU2KMMOL, AU2RCM
+        intensities = vib.ir_ints(dmu_dr, vib_res.modes)
 
         logger.debug("IR spectrum: All finished.")
 
-        return freqs * AU2RCM, ir_ints * AU2KMMOL
+        return vib.IRResult(vib_res.freqs, intensities)
 
     @numerical
     def ir_numerical(
@@ -1988,10 +2295,9 @@ class Calculator(TensorLike):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         step_size: int | float = defaults.STEP_SIZE,
-    ) -> tuple[Tensor, Tensor]:
+    ) -> vib.IRResult:
         """
-        Calculate the frequencies and intensities of IR spectra.
-        Frequencies are given in cm^-1 and intensities in km/mol.
+        Numerically calculate the frequencies and intensities of IR spectra.
 
         Parameters
         ----------
@@ -2008,30 +2314,31 @@ class Calculator(TensorLike):
 
         Returns
         -------
-        tuple[Tensor, Tensor]
-            Frequencies (shape: `(..., nfreqs)`) and intensities (shape:
-            `(..., nfreqs)`) of IR spectra.
+        vib.IRResult
+            Result container with frequencies (shape: `(..., nfreqs)`) and intensities (shape: `(..., nfreqs)`) of IR spectra.
         """
+        OutputHandler.write_stdout("\nIR Spectrum")
+        OutputHandler.write_stdout("-----------")
         logger.debug("IR spectrum (numerical): Start.")
 
         # important: always use new/separate position tensor
         pos = positions.detach().clone()
 
         # run vibrational analysis first
-        freqs, modes = self.vibration_numerical(numbers, pos, chrg, spin)
+        vib_res = self.vibration_numerical(
+            numbers, pos, chrg, spin, step_size=step_size
+        )
 
         # calculate nuclear dipole derivative dmu/dR: (..., 3, nat, 3)
         dmu_dr = self.dipole_deriv_numerical(
             numbers, pos, chrg, spin, step_size=step_size
         )
-        ir_ints = _ir_intensities(dmu_dr, modes)
 
-        # pylint: disable=import-outside-toplevel
-        from tad_mctc.units import AU2KMMOL, AU2RCM
+        intensities = vib.ir_ints(dmu_dr, vib_res.modes)
 
         logger.debug("IR spectrum (numerical): All finished.")
 
-        return freqs * AU2RCM, ir_ints * AU2KMMOL
+        return vib.IRResult(vib_res.freqs, intensities)
 
     def raman(
         self,
@@ -2039,44 +2346,52 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-    ) -> tuple[Tensor, Tensor]:
+        use_functorch: bool = False,
+    ) -> vib.RamanResult:
         """
-        Calculate the frequencies and static intensities of Raman spectra.
+        Calculate the frequencies, static intensities and depolarization ratio
+        of Raman spectra.
         Formula taken from `here <https://doi.org/10.1080/00268970701516412>`__.
 
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: `(..., nat)`).
         positions : Tensor
-            Atomic positions of shape (n, 3).
-        numbers : Tensor
-            Atomic numbers for all atoms in the system.
-        positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int | str | None
             Total charge. Defaults to `None`.
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to `None`.
+        use_functorch : bool, optional
+            Whether to use functorch or the standard (slower) autograd.
+            Defaults to `False`.
 
         Returns
         -------
-        tuple[Tensor, Tensor]
-            Raman frequencies and intensities of shapes `(..., nfreqs)`.
-
-        Raises
-        ------
-        RuntimeError
-            `positions` tensor does not have `requires_grad=True`.
+        vib.RamanResult
+            Result container with frequencies (shape: `(..., nfreqs)`),
+            intensities (shape: `(..., nfreqs)`) and the depolarization ratio
+            (shape: `(..., nfreqs)`) of Raman spectra.
         """
-        freqs, modes = self.vibration(numbers, positions, chrg, spin)
+        OutputHandler.write_stdout("\nRaman Spectrum")
+        OutputHandler.write_stdout("--------------")
+        logger.debug("Raman spectrum: Start.")
+
+        vib_res = self.vibration(
+            numbers, positions, chrg, spin, use_functorch=use_functorch
+        )
 
         # d(..., 3, 3) / d(..., nat, 3) -> (..., 3, 3, nat, 3)
-        da_dr = self.pol_deriv(numbers, positions, chrg, spin)
+        da_dr = self.pol_deriv(
+            numbers, positions, chrg, spin, use_functorch=use_functorch
+        )
 
-        raman_ints = _raman_intensities(da_dr, modes)
+        intensities, depol = vib.raman_ints_depol(da_dr, vib_res.modes)
 
-        return freqs, raman_ints
+        logger.debug("Raman spectrum: All finished.")
+
+        return vib.RamanResult(vib_res.freqs, intensities, depol)
 
     @numerical
     def raman_numerical(
@@ -2085,81 +2400,48 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-    ) -> tuple[Tensor, Tensor]:
-        freqs, modes = self.vibration_numerical(numbers, positions, chrg, spin)
+        step_size: int | float = defaults.STEP_SIZE,
+    ) -> vib.RamanResult:
+        """
+        Numerically calculate the frequencies, static intensities and
+        depolarization ratio of Raman spectra.
+        Formula taken from `here <https://doi.org/10.1080/00268970701516412>`__.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system (shape: `(..., nat)`).
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+        chrg : Tensor | float | int | str | None
+            Total charge. Defaults to `None`.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+        step_size : float | int, optional
+            Step size for the numerical derivative.
+
+        Returns
+        -------
+        vib.RamanResult
+            Result container with frequencies (shape: `(..., nfreqs)`),
+            intensities (shape: `(..., nfreqs)`) and the depolarization ratio
+            (shape: `(..., nfreqs)`) of Raman spectra.
+        """
+        OutputHandler.write_stdout("\nRaman Spectrum")
+        OutputHandler.write_stdout("--------------")
+        logger.debug("Raman spectrum (numerical): All finished.")
+
+        vib_res = self.vibration_numerical(
+            numbers, positions, chrg, spin, step_size=step_size
+        )
 
         # d(3, 3) / d(nat, 3) -> (3, 3, nat, 3) -> (3, 3, nat*3)
-        da_dr = self.pol_deriv_numerical(numbers, positions, chrg, spin)
+        da_dr = self.pol_deriv_numerical(
+            numbers, positions, chrg, spin, step_size=step_size
+        )
 
-        raman_ints = _raman_intensities(da_dr, modes)
+        intensities, depol = vib.raman_ints_depol(da_dr, vib_res.modes)
 
-        return freqs, raman_ints
+        logger.debug("Raman spectrum: All finished.")
 
-
-def _ir_intensities(dmu_dr: Tensor, modes: Tensor) -> Tensor:
-    """
-    Calculate IR intensities from the geometric dipole derivative.
-
-    Parameters
-    ----------
-    dmu_dr : Tensor
-        Dipole derivative tensor of shape `(..., 3, nat, 3)`.
-    modes : Tensor
-        Normal modes of shape `(..., nat*3, nmodes)`.
-
-    Returns
-    -------
-    Tensor
-        IR intensities of shape `(..., nfreqs)`.
-    """
-    # reshape for matmul: (..., 3, nat, 3) -> (..., 3, nat*3)
-    dmu_dr = dmu_dr.view(*(*modes.shape[:-2], 3, -1))
-
-    # convert cartesian to internal coordinate derivatives
-    # (..., 3, nat*3) @ (..., nat*3, nfreqs) = (..., 3, nfreqs)
-    dmu_dq = dmu_dr @ modes
-
-    # square deriv and sum along cartesian components for intensity
-    # (..., 3, nfreqs) * (..., 3, nfreqs) -> (..., nfreqs)
-    return einsum("...xf,...xf->...f", dmu_dq, dmu_dq)
-
-
-def _raman_intensities(da_dr: Tensor, modes: Tensor) -> Tensor:
-    r"""
-    Calculate static Raman intensities from the geometric polarizability
-    derivative (Raman susceptibility tensor :math:`\chi`).
-
-    Formula taken from `here <https://doi.org/10.1080/00268970701516412>`__.
-
-    Parameters
-    ----------
-    da_dr : Tensor
-        Geometric polarizability derivative tensor of shape `(..., 3, 3, nat, 3)`.
-    modes : Tensor
-        Normal modes of shape `(..., nat*3, nmodes)`.
-
-    Returns
-    -------
-    Tensor
-        Static Raman intensities of shape `(..., nfreqs)`.
-    """
-    # reshape for matmul: (..., 3, 3, nat, 3) -> (..., 3, 3, nat*3)
-    da_dr = da_dr.view(*(*modes.shape[:-2], 3, 3, -1))
-
-    # convert cartesian to internal coordinate derivatives
-    # (..., 3, 3, nat*3) @ (..., nat*3, nmodes) = (..., 3, 3, nmodes)
-    da_dq = da_dr @ modes
-
-    # Eq.3 with alpha' = a (trace of the polarizability derivative)
-    a = einsum("...iij->...j", da_dq)
-
-    # Eq.4 with (gamma')^2 = g = 0.5 * (g1 + g2 + g3 + 6.0*g4)
-    g1 = (da_dq[0, 0] - da_dq[1, 1]) ** 2
-    g2 = (da_dq[0, 0] - da_dq[2, 2]) ** 2
-    g3 = (da_dq[2, 2] - da_dq[1, 1]) ** 2
-    g4 = da_dq[0, 1] ** 2 + da_dq[1, 2] ** 2 + da_dq[2, 0] ** 2
-    g = g1 + g2 + g3 + 6.0 * g4
-
-    # Eq.1 (the 1/3 from Eq.3 is squared, yielding 45 * 1/9 = 5; the 7 is
-    # halfed by the 0.5 from Eq.4)
-    return 5 * torch.pow(a, 2.0) + 3.5 * g
+        return vib.RamanResult(vib_res.freqs, intensities, depol)

@@ -181,11 +181,6 @@ class Driver:
 
         # setup calculator
         timer.stop("setup")
-        io.OutputHandler.write_stdout("")
-        io.OutputHandler.write_stdout("")
-        io.OutputHandler.write_stdout("CALCULATION")
-        io.OutputHandler.write_stdout("===========")
-        io.OutputHandler.write_stdout("")
         calc = Calculator(numbers, par, opts=config, interaction=interactions, **dd)
 
         ####################################################
@@ -207,18 +202,44 @@ class Driver:
             positions.requires_grad_(True)
             calc.opts.scf.scf_mode = labels.SCF_MODE_FULL
             calc.opts.scf.mixer = labels.MIXER_ANDERSON
+
             timer.start("IR")
-            freqs, ints = calc.ir(numbers, positions, chrg)
-            print("IR Frequencies\n", freqs)
-            print("IR Intensities\n", ints)
+            ir_result = calc.ir(numbers, positions, chrg)
+            ir_result.use_common_units()
+            print("IR Frequencies\n", ir_result.freqs)
+            print("IR Intensities\n", ir_result.ints)
             timer.stop("IR")
+            calc.reset()
 
         if args.ir_numerical is True:
             timer.start("IR")
-            freqs, ints = calc.ir_numerical(numbers, positions, chrg)
-            print("IR Frequencies\n", freqs)
-            print("IR Intensities\n", ints)
+            ir_result = calc.ir_numerical(numbers, positions, chrg)
+            ir_result.use_common_units()
+            print("IR Frequencies\n", ir_result.freqs)
+            print("IR Intensities\n", ir_result.ints)
             timer.stop("IR")
+
+        if args.raman is True:
+            # TODO: Better handling here
+            positions.requires_grad_(True)
+            calc.opts.scf.scf_mode = labels.SCF_MODE_FULL
+            calc.opts.scf.mixer = labels.MIXER_ANDERSON
+
+            # TODO: Better print handling
+            timer.start("Raman")
+            raman_result = calc.raman(numbers, positions, chrg)
+            raman_result.use_common_units()
+            print("Raman Frequencies\n", raman_result.freqs)
+            print("Raman Intensities\n", raman_result.ints)
+            timer.stop("Raman")
+
+        if args.raman_numerical is True:
+            timer.start("Raman Num")
+            raman_result = calc.raman(numbers, positions, chrg)
+            raman_result.use_common_units()
+            print("Raman Frequencies\n", raman_result.freqs)
+            print("Raman Intensities\n", raman_result.ints)
+            timer.stop("Raman Num")
 
         if args.dipole is True:
             timer.start("Dipole")
@@ -236,6 +257,7 @@ class Driver:
         #     timer.print_times()
 
         if "energy" not in calc.cache:
+            print("Energy not calculated.")
             result = calc.singlepoint(numbers, positions, chrg)
             timer.print_times()
             return result

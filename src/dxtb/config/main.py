@@ -23,6 +23,7 @@ class Config:
         exclude: str | list[str] = defaults.EXCLUDE,
         method: str | int = defaults.METHOD,
         grad: bool = False,
+        au: bool = False,
         # integrals
         int_level: int = defaults.INTLEVEL,
         int_cutoff: float = defaults.INTCUTOFF,
@@ -50,6 +51,7 @@ class Config:
         self.file = file
         self.exclude = exclude
         self.grad = grad
+        self.au = au
 
         self.device = device
         self.dtype = dtype

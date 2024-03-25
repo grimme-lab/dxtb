@@ -1,6 +1,6 @@
 """
-Vibrational Analysis
-====================
+Vibrational Analysis: Frequencies
+=================================
 
 This module contains the calculation of vibrational frequencies and the
 corresponding normal modes from the mass-weighted Hessian.
@@ -13,12 +13,94 @@ from tad_mctc import storch
 from tad_mctc.data.mass import ATOMIC as ATOMIC_MASSES
 from tad_mctc.math import einsum
 from tad_mctc.molecule.geometry import is_linear
-from tad_mctc.molecule.property import inertia_moment, mass_center
-from tad_mctc.typing import Tensor
+from tad_mctc.molecule.property import inertia_moment, positions_rel_com
+from tad_mctc.typing import Any, Literal, NoReturn, Tensor
 
-from ..utils.math import qr
+from ...utils.math import qr
+from .result import BaseResult
 
 LINDEP_THRESHOLD = 1e-7
+
+
+class VibResult(BaseResult):
+    """
+    Data from the vibrational analysis.
+    - Vibrational frequencies.
+    - Normal modes.
+    """
+
+    __slots__ = ["_modes", "_modes_unit"]
+
+    def __init__(
+        self,
+        freqs: Tensor,
+        modes: Tensor,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> None:
+        """
+        Initialize the vibrational analysis result.
+
+        Parameters
+        ----------
+        freqs : Tensor
+            Vibrational frequencies in atomic units.
+        modes : Tensor
+            Normal modes (unitless).
+        device : torch.device | None, optional
+            Device of the tensors. If `None`, the device of `freqs` is used.
+            Defaults to `None`.
+        dtype : torch.dtype | None, optional
+            Data type of the tensors. If `None`, the data type of `freqs` is
+            used. Defaults to `None`.
+        """
+        super().__init__(
+            freqs=freqs,
+            device=device if device is not None else freqs.device,
+            dtype=dtype if dtype is not None else freqs.dtype,
+        )
+
+        self._modes = modes
+        self._modes_unit = None
+
+    # intensities
+
+    @property
+    def modes(self) -> Tensor:
+        return self._modes
+
+    @modes.setter
+    def modes(self, *_: Any) -> NoReturn:
+        raise RuntimeError("Setting normal modes is not supported.")
+
+    @property
+    def modes_unit(self) -> None:
+        return self._modes_unit
+
+    @modes_unit.setter
+    def modes_unit(self, *_: Any) -> None:
+        raise RuntimeError("Normal modes are unitless.")
+
+    # conversion
+
+    def to_unit(self, value: Literal["freqs", "modes"], unit: str) -> Tensor:
+        """
+        Convert a value from one unit to another based on the converter dictionary.
+        """
+        if value == "freqs":
+            return self._convert(self.freqs, unit, self.converter_freqs)
+
+        # if value == "modes":
+        #   return self._convert(self.modes, unit, self.converter_modes)
+
+        raise ValueError(f"Unsupported value for conversion: {value}")
+
+    def use_common_units(self) -> None:
+        """
+        Convert the frequencies and intensities to common units, that is,
+        `cm^-1` for frequencies.
+        """
+        self.freqs_unit = "cm^-1"
 
 
 def _get_translational_modes(mass: Tensor):
@@ -31,9 +113,7 @@ def _get_translational_modes(mass: Tensor):
 
 
 def _get_rotational_modes(mass: Tensor, positions: Tensor):
-    com = mass_center(mass, positions)
-    mpos = positions - com
-
+    mpos = positions_rel_com(mass, positions)
     im = inertia_moment(mass, mpos, pos_already_com=True)
 
     # Eigendecomposition yields the principal moments of inertia (w)
@@ -61,15 +141,16 @@ def _get_rotational_modes(mass: Tensor, positions: Tensor):
     return Rx.ravel(), Ry.ravel(), Rz.ravel()
 
 
-def frequencies(
+def vib_analysis(
     numbers: Tensor,
     positions: Tensor,
     hessian: Tensor,
     project_translational: bool = True,
     project_rotational: bool = True,
-) -> tuple[Tensor, Tensor]:
+) -> VibResult:
     """
-    Vibrational frequencies and normal modes from mass-weighted Hessian.
+    Vibrational analysis yielding frequencies and normal modes from
+    mass-weighted Hessian.
 
     http://gaussian.com/vib/
     https://github.com/psi4/psi4/blob/master/psi4/driver/qcdb/vib.py
@@ -193,7 +274,7 @@ def frequencies(
     # un-mass-weight the normal modes
     mode_au = einsum("...i,...ij->...ij", invsqrtmass, mode)
 
-    return freqs_au, mode_au
+    return VibResult(freqs_au, mode_au)
 
 
 # TODO: Remove this function after checking batched version
@@ -225,7 +306,7 @@ def project_freqs(
         return freqs[skip:], modes[:, skip:]
 
     # Batched version
-    from ..utils.batch import deflate, pack
+    from ...utils.batch import deflate, pack
 
     projected_freqs = []
     projected_modes = []
