@@ -1,4 +1,7 @@
 """
+SCF: Guess
+==========
+
 Models for the initial charge guess for the SCF.
 """
 
@@ -8,9 +11,7 @@ import torch
 
 from .._types import Tensor
 from ..basis import IndexHelper
-from ..charges import ChargeModel, solve
 from ..constants import labels
-from ..ncoord import exp_count, get_coordination_number
 
 
 def get_guess(
@@ -69,7 +70,9 @@ def get_guess(
     return spread_charges_atomic_to_orbital(charges, ihelp)
 
 
-def get_eeq_guess(numbers: Tensor, positions: Tensor, chrg: Tensor) -> Tensor:
+def get_eeq_guess(
+    numbers: Tensor, positions: Tensor, chrg: Tensor, cutoff: Tensor | None = None
+) -> Tensor:
     """
     Calculate atomic EEQ charges.
 
@@ -81,17 +84,18 @@ def get_eeq_guess(numbers: Tensor, positions: Tensor, chrg: Tensor) -> Tensor:
         Cartesian coordinates of all atoms in the system (nat, 3).
     chrg : Tensor
         Total charge of system.
+    cutoff : Tensor, optional
+        Cutoff radius for the EEQ model. Defaults to `None`.
 
     Returns
     -------
     Tensor
         Atomic charges.
     """
-    eeq = ChargeModel.param2019().to(positions.device).type(positions.dtype)
-    cn = get_coordination_number(numbers, positions, exp_count)
-    _, qat = solve(numbers, positions, chrg, eeq, cn)
+    # pylint: disable=import-outside-toplevel
+    from tad_multicharge import get_eeq_charges
 
-    return qat
+    return get_eeq_charges(numbers, positions, chrg, cutoff=cutoff)
 
 
 def spread_charges_atomic_to_orbital(charges: Tensor, ihelp: IndexHelper) -> Tensor:

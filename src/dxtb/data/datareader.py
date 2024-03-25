@@ -8,7 +8,6 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
-from ..charges import ChargeModel, solve
 from ..constants import units
 from ..io import read
 from ..ncoord import exp_count, get_coordination_number
@@ -301,9 +300,10 @@ class Datareader:
             result = calc.singlepoint(numbers, positions, charge, {"verbosity": 0})
 
             # partial charges
+            from tad_multicharge import get_eeq_charges
+
             cn = get_coordination_number(numbers, positions, exp_count)
-            eeq = ChargeModel.param2019()
-            _, qat = solve(numbers, positions, charge, eeq, cn)
+            qat = get_eeq_charges(numbers, positions, charge)
 
             return (
                 result.hcore,

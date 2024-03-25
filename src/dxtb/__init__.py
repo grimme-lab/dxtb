@@ -28,8 +28,6 @@ from dxtb.coulomb import secondorder, thirdorder
 from .__version__ import __version__
 
 from .basis import Basis, IndexHelper
-from .bond import guess_bond_length, guess_bond_order
-from .charges import ChargeModel, solve
 from .classical import Halogen, Repulsion, new_halogen, new_repulsion
 from .coulomb import ES2, ES3, new_es2, new_es3
 from .dispersion import DispersionD3, new_dispersion
@@ -44,8 +42,6 @@ __all__ = [
     "Param",
     "Basis",
     "IndexHelper",
-    "ChargeModel",
-    "solve",
     "DispersionD3",
     "new_dispersion",
     "ES2",
@@ -60,8 +56,6 @@ __all__ = [
     "InteractionList",
     "external",
     "molecule",
-    "guess_bond_length",
-    "guess_bond_order",
     "scipy",
     "torch",
     "timer",
