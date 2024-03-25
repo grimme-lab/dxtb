@@ -43,9 +43,6 @@ pos = positions.clone().requires_grad_(True)
 freqs, modes = calc.vibration(numbers, pos, charge)
 dxtb.timer.stop("Hessian")
 
-print(freqs * AU2RCM)
-print(modes)
-
 print("Shape of numbers", numbers.shape)
 print("Shape of modes", modes.shape)
 print("Shape of freqs", freqs.shape)
@@ -61,8 +58,6 @@ dxtb.timer.stop("Hessian")
 dxtb.timer.print_times()
 dxtb.timer.reset()
 
-print(freqs * AU2RCM)
-print(modes)
 
 # calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, opts=opts, **dd)
 # dxtb.timer.start("Hessian")

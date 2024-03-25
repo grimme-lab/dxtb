@@ -235,7 +235,7 @@ class Driver:
 
         if args.raman_numerical is True:
             timer.start("Raman Num")
-            raman_result = calc.raman(numbers, positions, chrg)
+            raman_result = calc.raman_numerical(numbers, positions, chrg)
             raman_result.use_common_units()
             print("Raman Frequencies\n", raman_result.freqs)
             print("Raman Intensities\n", raman_result.ints)
@@ -257,7 +257,6 @@ class Driver:
         #     timer.print_times()
 
         if "energy" not in calc.cache:
-            print("Energy not calculated.")
             result = calc.singlepoint(numbers, positions, chrg)
             timer.print_times()
             return result

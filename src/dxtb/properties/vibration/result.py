@@ -8,7 +8,7 @@ Base class for vibrational analysis results.
 from __future__ import annotations
 
 import torch
-from tad_mctc.typing import NoReturn, Tensor, TensorLike
+from tad_mctc.typing import Generator, NoReturn, Tensor, TensorLike
 from tad_mctc.units import AU2RCM
 
 
@@ -93,6 +93,9 @@ class BaseResult(TensorLike):
 
         return value * converter[unit]
 
+    def __iter__(self) -> Generator[Tensor, None, None]:
+        return iter(getattr(self, s) for s in get_all_slots(self) if "unit" not in s)
+
     def __getitem__(self, key: str) -> Tensor:
         if key not in self.__slots__:
             key = f"_{key}"
@@ -104,10 +107,16 @@ class BaseResult(TensorLike):
 
     def __str__(self) -> str:
         text = ""
-        for s in self.__slots__:
-            if "unit" in s:
-                text += s.replace("_unit", "").replace("_", "")
-                text += f": {getattr(self, s)}, "
+        for s in get_all_slots(self):
+            attr = getattr(self, s)
+
+            if "unit" not in s:
+                attr = attr.shape
+
+            if s.startswith("_"):
+                s = s[1:]
+
+            text += f"{s}: {attr}, "
 
         # remove last comma and space
         text = text[:-2]
@@ -115,3 +124,23 @@ class BaseResult(TensorLike):
 
     def __repr__(self) -> str:
         return str(self)
+
+
+def get_all_slots(cls):
+    # cls.__class__.__mro__ = (<class 'object'>, <class 'TensorLike'>,
+    # <class 'BaseResult'>, <class 'VibResult'>)
+
+    # skip the "object" parent and the current class itself
+    parents = [
+        p
+        for p in cls.__class__.__mro__
+        if p.__name__ not in ("object", cls.__class__.__name__)
+    ]
+
+    #  and the hidden slots "__" and the "unit" slots
+    parents_slots: list[str] = [
+        s for p in parents for s in p.__slots__ if "__" not in s
+    ]
+
+    # add the slots of the current class (after parents for ordering)
+    return parents_slots + cls.__slots__

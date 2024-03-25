@@ -2,6 +2,8 @@
 A LazyLoader class for loading.
 """
 
+from __future__ import annotations
+
 import importlib
 
 from tad_mctc.typing import Any, Callable, Sequence

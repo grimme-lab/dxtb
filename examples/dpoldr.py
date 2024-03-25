@@ -17,7 +17,7 @@ device = torch.device("cpu")
 dd: DD = {"device": device, "dtype": torch.double}
 
 f = Path(__file__).parent / "molecules" / "lysxao.coord"
-f = Path(__file__).parent / "molecules" / "h2o-dimer.coord"
+f = Path(__file__).parent / "molecules" / "h2o.coord"
 numbers, positions = read.read_from_path(f, ftype="tm", **dd)
 charge = torch.tensor(0.0, **dd)
 

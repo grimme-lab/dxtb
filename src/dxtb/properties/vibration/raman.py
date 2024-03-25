@@ -22,8 +22,8 @@ class RamanResult(BaseResult):
     """
     Data from the calculation of a Raman spectrum.
     - Vibrational frequencies
-    - IR intensities
-    - Depolarization ratio
+    - Raman activities (intensities)
+    - Depolarization ratios
     """
 
     converter_ints: dict[str, float] = {
@@ -49,7 +49,7 @@ class RamanResult(BaseResult):
         freqs : Tensor
             Vibrational frequencies in atomic units.
         ints : Tensor
-            IR intensities in atomic units.
+            IR intensities (activities) in atomic units.
         depol : Tensor
             Depolarization ratio (unitless).
         device : torch.device | None, optional
@@ -80,10 +80,10 @@ class RamanResult(BaseResult):
     @ints.setter
     def ints(self, *_: Any) -> NoReturn:
         raise RuntimeError(
-            "Setting IR intensities is not supported. Iternally, the "
-            "intensities should always be stored in atomic units. Use "
-            "the `to_unit` method to convert to a different unit or set the "
-            "`ints_unit` attribute."
+            "Setting Raman intensities (activities) is not supported. "
+            "Iternally, the intensities should always be stored in atomic "
+            "units. Use the `to_unit` method to convert to a different unit "
+            "or set the `ints_unit` attribute."
         )
 
     @property
@@ -112,13 +112,34 @@ class RamanResult(BaseResult):
 
     @depol_unit.setter
     def depol_unit(self, *_: Any) -> NoReturn:
-        raise RuntimeError("The depolarization ratio are unitless.")
+        raise RuntimeError("The depolarization ratios are unitless.")
 
     # conversion
 
     def to_unit(self, value: Literal["freqs", "ints", "depol"], unit: str) -> Tensor:
         """
-        Convert a value from one unit to another based on the converter dictionary.
+        Convert a value from one unit to another based on the converter
+        dictionary.
+
+        Parameters
+        ----------
+        value : Literal['freqs', 'ints', 'depol']
+            The value (stored property) to convert.
+        unit : str
+            The unit to convert to.
+
+        Returns
+        -------
+        Tensor
+            The converted value.
+
+        Raises
+        ------
+        NotImplementedError
+            If the value is "depol", because the depolarization ratio is
+            unitless.
+        ValueError
+            If the value (name of the stored property) does not exist.
         """
         if value == "freqs":
             return self._convert(self.freqs, unit, self.converter_freqs)
@@ -142,9 +163,9 @@ class RamanResult(BaseResult):
 
 def raman_ints_depol(da_dr: Tensor, modes: Tensor) -> tuple[Tensor, Tensor]:
     r"""
-    Calculate static Raman intensities and the depolarization ration from
-    the geometric polarizability derivative (Raman susceptibility tensor
-    :math:`\chi`).
+    Calculate static Raman activities (intensities) and the depolarization
+    ratios from the geometric polarizability derivative (Raman susceptibility
+    tensor :math:`\chi`).
 
     Formula taken from `here <https://doi.org/10.1080/00268970701516412>`__.
 
@@ -158,8 +179,8 @@ def raman_ints_depol(da_dr: Tensor, modes: Tensor) -> tuple[Tensor, Tensor]:
     Returns
     -------
     tuple[Tensor, Tensor]
-        Static Raman intensities of shape `(..., nfreqs)` and depolarization
-        ratios of shape `(..., nfreqs)`.
+        Static Raman activities (intensities) of shape `(..., nfreqs)` and
+        depolarization ratios of shape `(..., nfreqs)`.
     """
     # reshape for matmul: (..., 3, 3, nat, 3) -> (..., 3, 3, nat*3)
     da_dr = da_dr.view(*(*modes.shape[:-2], 3, 3, -1))

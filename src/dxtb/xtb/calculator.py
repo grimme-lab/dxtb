@@ -5,21 +5,11 @@ Base calculator for the extended tight-binding model.
 from __future__ import annotations
 
 import logging
-from functools import wraps
-from typing import cast
 
 import torch
 from tad_mctc.convert import any_to_tensor
 from tad_mctc.data.radii import COV_D3
-from tad_mctc.typing import (
-    Any,
-    Callable,
-    Literal,
-    Sequence,
-    Tensor,
-    TensorLike,
-    TypeVar,
-)
+from tad_mctc.typing import Any, Literal, Sequence, Tensor, TensorLike
 
 from .. import integral as ints
 from .. import ncoord, scf
@@ -47,142 +37,12 @@ from ..properties import vibration as vib
 from ..timing import timer
 from ..utils import _jac, einsum
 from ..wavefunction import filling
+from . import decorators as cdec
 
 __all__ = ["Calculator", "Result"]
 
 
 logger = logging.getLogger(__name__)
-
-
-# class CalculatorFunction(Protocol):
-#     def __call__(
-#         self: "Calculator",
-#         numbers: Tensor,
-#         positions: Tensor,
-#         chrg: Tensor | float | int = defaults.CHRG,
-#         spin: Tensor | float | int | None = defaults.SPIN,
-#         **kwargs: Any
-#     ) -> tuple[torch.Tensor, Tensor]:
-#         ...
-
-F = TypeVar("F", bound=Callable[..., Any])
-
-
-def requires_positions_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
-    def wrapper(
-        self: Calculator,
-        numbers: Tensor,
-        positions: Tensor,
-        chrg: Tensor | float | int = defaults.CHRG,
-        spin: Tensor | float | int | None = defaults.SPIN,
-        *args: Any,
-        **kwargs: Any,
-    ) -> Tensor:
-        if not positions.requires_grad:
-            raise RuntimeError(
-                f"Position tensor needs `requires_grad=True` in '{func.__name__}'."
-            )
-
-        return func(self, numbers, positions, chrg, spin, *args, **kwargs)
-
-    return wrapper
-
-
-def requires_efield(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
-    def wrapper(
-        self: Calculator,
-        numbers: Tensor,
-        positions: Tensor,
-        chrg: Tensor | float | int = defaults.CHRG,
-        spin: Tensor | float | int | None = defaults.SPIN,
-        *args: Any,
-        **kwargs: Any,
-    ) -> Tensor:
-        if efield.LABEL_EFIELD not in self.interactions.labels:
-            raise RuntimeError(
-                f"{func.__name__} requires an electric field. Add the "
-                f"'{efield.LABEL_EFIELD}' interaction to the Calculator."
-            )
-        return func(self, numbers, positions, chrg, spin, *args, **kwargs)
-
-    return wrapper
-
-
-def requires_efield_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
-    def wrapper(
-        self: Calculator,
-        numbers: Tensor,
-        positions: Tensor,
-        chrg: Tensor | float | int = defaults.CHRG,
-        spin: Tensor | float | int | None = defaults.SPIN,
-        *args: Any,
-        **kwargs: Any,
-    ) -> Tensor:
-        ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
-        if not ef.field.requires_grad:
-            raise RuntimeError(
-                f"Field tensor needs `requires_grad=True` in '{func.__name__}'."
-            )
-        return func(self, numbers, positions, chrg, spin, *args, **kwargs)
-
-    return wrapper
-
-
-def requires_efg(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
-    def wrapper(
-        self: Calculator,
-        numbers: Tensor,
-        positions: Tensor,
-        chrg: Tensor | float | int = defaults.CHRG,
-        spin: Tensor | float | int | None = defaults.SPIN,
-        *args: Any,
-        **kwargs: Any,
-    ) -> Tensor:
-        if efield_grad.LABEL_EFIELD_GRAD not in self.interactions.labels:
-            raise RuntimeError(
-                f"{func.__name__} requires an electric field. Add the "
-                f"'{efield_grad.LABEL_EFIELD_GRAD}' interaction to the "
-                "Calculator."
-            )
-        return func(self, numbers, positions, chrg, spin, *args, **kwargs)
-
-    return wrapper
-
-
-def requires_efg_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
-    def wrapper(
-        self: Calculator,
-        numbers: Tensor,
-        positions: Tensor,
-        chrg: Tensor | float | int = defaults.CHRG,
-        spin: Tensor | float | int | None = defaults.SPIN,
-        **kwargs: Any,
-    ) -> Tensor:
-        efg = self.interactions.get_interaction(efield_grad.LABEL_EFIELD_GRAD)
-        if not efg.field_grad.requires_grad:
-            raise RuntimeError("Field gradient tensor needs `requires_grad=True`.")
-        return func(self, numbers, positions, chrg, spin, **kwargs)
-
-    return wrapper
-
-
-def numerical(func: F) -> F:
-    """
-    Decorator for numerical differentiation.
-    Turns off gradient tracking for the function.
-    """
-
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        OutputHandler.temporary_disable_on()
-        try:
-            with torch.no_grad():
-                result = func(*args, **kwargs)
-        finally:
-            OutputHandler.temporary_disable_off()
-        return result
-
-    return cast(F, wrapper)
 
 
 class Result(TensorLike):
@@ -516,7 +376,7 @@ class Calculator(TensorLike):
         ################
 
         # setup self-consistent contributions
-        OutputHandler.write_stdout_nf(" - Interactions      ... ")
+        # OutputHandler.write_stdout_nf(" - Interactions      ... ")
 
         es2 = (
             new_es2(numbers, par, **dd)
@@ -531,14 +391,14 @@ class Calculator(TensorLike):
 
         self.interactions = InteractionList(es2, es3, *interaction)
 
-        OutputHandler.write_stdout("done")
+        # OutputHandler.write_stdout("done")
 
         ##############
         # CLASSICALS #
         ##############
 
         # setup non-self-consistent contributions
-        OutputHandler.write_stdout_nf(" - Classicals        ... ")
+        # OutputHandler.write_stdout_nf(" - Classicals        ... ")
 
         halogen = (
             new_halogen(numbers, par, **dd)
@@ -558,13 +418,13 @@ class Calculator(TensorLike):
 
         self.classicals = ClassicalList(halogen, dispersion, repulsion, *classical)
 
-        OutputHandler.write_stdout("done")
+        # OutputHandler.write_stdout("done")
 
         #############
         # INTEGRALS #
         #############
 
-        OutputHandler.write_stdout_nf(" - Integrals         ... ")
+        # OutputHandler.write_stdout_nf(" - Integrals         ... ")
 
         # figure out integral level from interactions
         self.intlevel = defaults.INTLEVEL
@@ -587,7 +447,7 @@ class Calculator(TensorLike):
         if self.intlevel >= ints.INTLEVEL_QUADRUPOLE:
             self.integrals.quadrupole = ints.Quadrupole(driver=driver, **dd)
 
-        OutputHandler.write_stdout("done")
+        # OutputHandler.write_stdout("done")
 
         timer.stop("setup calculator")
 
@@ -625,7 +485,8 @@ class Calculator(TensorLike):
         Result
             Results container.
         """
-        OutputHandler.write_stdout("\nSinglepoint ")
+
+        # OutputHandler.write_stdout("\nSinglepoint ")
 
         chrg = any_to_tensor(chrg, **self.dd)
         if spin is not None:
@@ -634,7 +495,7 @@ class Calculator(TensorLike):
         result = Result(positions, device=self.device, dtype=self.dtype)
 
         # CLASSICAL CONTRIBUTIONS
-        OutputHandler.write_stdout_nf(" - Classicals        ... ")
+        # OutputHandler.write_stdout_nf(" - Classicals        ... ")
         if len(self.classicals.components) > 0:
             ccaches = self.classicals.get_cache(numbers, self.ihelp)
             cenergies = self.classicals.get_energy(positions, ccaches)
@@ -651,27 +512,27 @@ class Calculator(TensorLike):
         # SELF-CONSISTENT FIELD PROCEDURE
         if not any(x in ["all", "scf"] for x in self.opts.exclude):
             # overlap integral
-            OutputHandler.write_stdout_nf(" - Overlap           ... ")
+            # OutputHandler.write_stdout_nf(" - Overlap           ... ")
             timer.start("Overlap")
             self.integrals.build_overlap(positions)
             timer.stop("Overlap")
-            OutputHandler.write_stdout("done")
+            # OutputHandler.write_stdout("done")
 
             # dipole integral
             if self.intlevel >= ints.INTLEVEL_DIPOLE:
-                OutputHandler.write_stdout_nf(" - Dipole            ... ")
+                # OutputHandler.write_stdout_nf(" - Dipole            ... ")
                 timer.start("Dipole Integral")
                 self.integrals.build_dipole(positions)
                 timer.stop("Dipole Integral")
-                OutputHandler.write_stdout("done")
+                # OutputHandler.write_stdout("done")
 
             # quadrupole integral
             if self.intlevel >= ints.INTLEVEL_QUADRUPOLE:
-                OutputHandler.write_stdout_nf(" - Quadrupole        ... ")
+                # OutputHandler.write_stdout_nf(" - Quadrupole        ... ")
                 timer.start("Quadrupole Integral")
                 self.integrals.build_quadrupole(positions)
                 timer.stop("Quadrupole Integral")
-                OutputHandler.write_stdout("done")
+                # OutputHandler.write_stdout("done")
 
             # TODO: Think about handling this case
             if self.integrals.hcore is None:
@@ -680,7 +541,7 @@ class Calculator(TensorLike):
                 raise RuntimeError
 
             # Core Hamiltonian integral (requires overlap internally!)
-            OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ")
+            # OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ")
             timer.start("h0", "Core Hamiltonian")
 
             rcov = COV_D3.to(**self.dd)[numbers]
@@ -690,10 +551,10 @@ class Calculator(TensorLike):
             hcore = self.integrals.build_hcore(positions, cn=cn)
 
             timer.stop("h0")
-            OutputHandler.write_stdout("done")
+            # OutputHandler.write_stdout("done")
 
             # SCF
-            OutputHandler.write_stdout_nf(" - Interaction Cache ... ")
+            # OutputHandler.write_stdout_nf(" - Interaction Cache ... ")
             timer.start("SCF")
 
             # Obtain the reference occupations and total number of electrons
@@ -711,9 +572,9 @@ class Calculator(TensorLike):
             icaches = self.interactions.get_cache(
                 numbers=numbers, positions=positions, ihelp=self.ihelp
             )
-            OutputHandler.write_stdout("done")
+            # OutputHandler.write_stdout("done")
 
-            OutputHandler.write_stdout("\nStarting SCF Iterations...")
+            # OutputHandler.write_stdout("\nStarting SCF Iterations...")
 
             scf_results = scf.solve(
                 numbers,
@@ -729,9 +590,9 @@ class Calculator(TensorLike):
             )
             timer.stop("SCF")
 
-            OutputHandler.write_stdout(
-                f"\nSCF converged in {scf_results['iterations']} iterations."
-            )
+            # OutputHandler.write_stdout(
+            #     f"\nSCF converged in {scf_results['iterations']} iterations."
+            # )
 
             result.charges = scf_results["charges"]
             result.coefficients = scf_results["coefficients"]
@@ -788,7 +649,6 @@ class Calculator(TensorLike):
 
         # TIMERS AND PRINTOUT
         result.integrals = self.integrals
-
         return result
 
     def energy(
@@ -807,7 +667,7 @@ class Calculator(TensorLike):
         self.cache["energy"] = result
         return result.sum(-1)
 
-    @requires_positions_grad
+    @cdec.requires_positions_grad
     def forces(
         self,
         numbers: Tensor,
@@ -877,7 +737,7 @@ class Calculator(TensorLike):
         logger.debug("Forces: All finished.")
         return -jac
 
-    @numerical
+    @cdec.numerical(True)
     def forces_numerical(
         self,
         numbers: Tensor,
@@ -914,24 +774,21 @@ class Calculator(TensorLike):
         # pylint: disable=import-outside-toplevel
         import gc
 
-        # important: detach for gradient
-        pos = positions.detach().clone()
-
         # (..., nat, 3)
-        deriv = torch.zeros(pos.shape, **self.dd)
+        deriv = torch.zeros(positions.shape, **self.dd)
         logger.debug(f"Forces (numerical): Starting build ({deriv.shape}).")
 
         count = 1
         nsteps = 3 * numbers.shape[-1]
         for i in range(numbers.shape[-1]):
             for j in range(3):
-                pos[..., i, j] += step_size
-                gr = self.energy(numbers, pos, chrg, spin)
+                positions[..., i, j] += step_size
+                gr = self.energy(numbers, positions, chrg, spin)
 
-                pos[..., i, j] -= 2 * step_size
-                gl = self.energy(numbers, pos, chrg, spin)
+                positions[..., i, j] -= 2 * step_size
+                gl = self.energy(numbers, positions, chrg, spin)
 
-                pos[..., i, j] += step_size
+                positions[..., i, j] += step_size
                 deriv[..., i, j] = 0.5 * (gr - gl) / step_size
 
                 logger.debug(f"Forces (numerical): step {count}/{nsteps}")
@@ -944,7 +801,7 @@ class Calculator(TensorLike):
 
         return -deriv
 
-    @requires_positions_grad
+    @cdec.requires_positions_grad
     def hessian(
         self,
         numbers: Tensor,
@@ -1030,7 +887,7 @@ class Calculator(TensorLike):
 
         return hess
 
-    @numerical
+    @cdec.numerical(True)
     def hessian_numerical(
         self,
         numbers: Tensor,
@@ -1068,29 +925,27 @@ class Calculator(TensorLike):
         import gc
 
         def _gradfcn(pos: Tensor) -> Tensor:
-            pos.requires_grad_(True)
-            result = self.singlepoint(numbers, pos, chrg, spin, grad=True)
-            pos.detach_()
+            with torch.enable_grad():
+                pos.requires_grad_(True)
+                result = self.singlepoint(numbers, pos, chrg, spin, grad=True)
+                pos.detach_()
             return result.total_grad.detach()
 
-        # imortant: detach for gradient
-        pos = positions.detach().clone()
-
         # (..., nat, 3, nat, 3)
-        deriv = torch.zeros((*pos.shape, *pos.shape[-2:]), **self.dd)
+        deriv = torch.zeros((*positions.shape, *positions.shape[-2:]), **self.dd)
         logger.debug(f"Hessian (numerical): Starting build ({deriv.shape}).")
 
         count = 1
         nsteps = 3 * numbers.shape[-1]
         for i in range(numbers.shape[-1]):
             for j in range(3):
-                pos[..., i, j] += step_size
-                gr = _gradfcn(pos)
+                positions[..., i, j] += step_size
+                gr = _gradfcn(positions)
 
-                pos[..., i, j] -= 2 * step_size
-                gl = _gradfcn(pos)
+                positions[..., i, j] -= 2 * step_size
+                gl = _gradfcn(positions)
 
-                pos[..., i, j] += step_size
+                positions[..., i, j] += step_size
                 deriv[..., :, :, i, j] = 0.5 * (gr - gl) / step_size
 
                 logger.debug(f"Hessian (numerical): step {count}/{nsteps}")
@@ -1173,7 +1028,7 @@ class Calculator(TensorLike):
             project_rotational=project_rotational,
         )
 
-    @numerical
+    @cdec.numerical(True)
     def vibration_numerical(
         self,
         numbers: Tensor,
@@ -1223,8 +1078,8 @@ class Calculator(TensorLike):
             project_rotational=project_rotational,
         )
 
-    @requires_efield
-    @requires_efield_grad
+    @cdec.requires_efield
+    @cdec.requires_efield_grad
     def dipole(
         self,
         numbers: Tensor,
@@ -1296,7 +1151,7 @@ class Calculator(TensorLike):
 
         return -dip
 
-    @requires_efield
+    @cdec.requires_efield
     def dipole_analytical(
         self,
         numbers: Tensor,
@@ -1352,8 +1207,8 @@ class Calculator(TensorLike):
         dip = moments.dipole(qat, positions, result.density, dipint.matrix)
         return dip
 
-    @numerical
-    @requires_efield
+    @cdec.numerical()
+    @cdec.requires_efield
     def dipole_numerical(
         self,
         numbers: Tensor,
@@ -1427,7 +1282,7 @@ class Calculator(TensorLike):
 
         return -deriv
 
-    @requires_positions_grad
+    @cdec.requires_positions_grad
     def dipole_deriv(
         self,
         numbers: Tensor,
@@ -1508,7 +1363,7 @@ class Calculator(TensorLike):
 
         return dmu_dr
 
-    @numerical
+    @cdec.numerical(True)
     def dipole_deriv_numerical(
         self,
         numbers: Tensor,
@@ -1548,10 +1403,6 @@ class Calculator(TensorLike):
         # pylint: disable=import-outside-toplevel
         import gc
 
-        # FIXME: Probably not necessary because of the `numerical` decorator
-        # important: use new/separate position tensor
-        pos = positions.detach().clone()
-
         # (..., 3, n, 3)
         deriv = torch.zeros(
             (*numbers.shape[:-1], 3, *positions.shape[-2:]),
@@ -1564,13 +1415,13 @@ class Calculator(TensorLike):
 
         for i in range(numbers.shape[-1]):
             for j in range(3):
-                pos[..., i, j] += step_size
-                r = self.dipole_analytical(numbers, pos, chrg, spin)
+                positions[..., i, j] += step_size
+                r = self.dipole_analytical(numbers, positions, chrg, spin)
 
-                pos[..., i, j] -= 2 * step_size
-                l = self.dipole_analytical(numbers, pos, chrg, spin)
+                positions[..., i, j] -= 2 * step_size
+                l = self.dipole_analytical(numbers, positions, chrg, spin)
 
-                pos[..., i, j] += step_size
+                positions[..., i, j] += step_size
                 deriv[..., :, i, j] = 0.5 * (r - l) / step_size
 
                 logger.debug("Dipole derivative (numerical): Step " f"{count}/{nsteps}")
@@ -1583,8 +1434,8 @@ class Calculator(TensorLike):
 
         return deriv
 
-    @requires_efg
-    @requires_efg_grad
+    @cdec.requires_efg
+    @cdec.requires_efg_grad
     def quadrupole(
         self,
         numbers: Tensor,
@@ -1623,12 +1474,9 @@ class Calculator(TensorLike):
 
         return cart
 
-        print("")
-        print("quad_moment\n", e_quad)
+        print("\nquad_moment\n", e_quad)
 
         e_quad = e_quad.view(3, 3)
-        print("")
-        print("")
 
         print("quad_moment", e_quad.shape)
 
@@ -1662,7 +1510,7 @@ class Calculator(TensorLike):
 
         return cart
 
-    @requires_efg
+    @cdec.requires_efg
     def quadrupole_analytical(
         self,
         numbers: Tensor,
@@ -1687,8 +1535,8 @@ class Calculator(TensorLike):
 
         return moments.quadrupole(qat, dpat, qpat, positions)
 
-    @numerical
-    @requires_efg
+    @cdec.numerical()
+    @cdec.requires_efg
     def quadrupole_numerical(
         self,
         numbers: Tensor,
@@ -1732,8 +1580,8 @@ class Calculator(TensorLike):
 
         return deriv
 
-    @requires_efield
-    @requires_efield_grad
+    @cdec.requires_efield
+    @cdec.requires_efield_grad
     def polarizability(
         self,
         numbers: Tensor,
@@ -1829,8 +1677,8 @@ class Calculator(TensorLike):
         # 3x3 polarizability tensor
         return alpha
 
-    @numerical
-    @requires_efield
+    @cdec.numerical()
+    @cdec.requires_efield
     def polarizability_numerical(
         self,
         numbers: Tensor,
@@ -1906,8 +1754,8 @@ class Calculator(TensorLike):
 
         return deriv
 
-    @requires_efield
-    @requires_positions_grad
+    @cdec.requires_efield
+    @cdec.requires_positions_grad
     def pol_deriv(
         self,
         numbers: Tensor,
@@ -1915,6 +1763,7 @@ class Calculator(TensorLike):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         use_functorch: bool = False,
+        derived_quantity: Literal["energy", "dipole", "pol"] = "pol",
     ) -> Tensor:
         r"""
         Calculate the cartesian polarizability derivative :math:`\chi`.
@@ -1947,24 +1796,31 @@ class Calculator(TensorLike):
             Number of unpaired electrons. Defaults to `None`.
         use_functorch: bool, optional
             Whether to use functorch or the standard (slower) autograd.
+        derived_quantity: Literal['energy', 'dipole'], optional
+            Which derivative to calculate for the polarizability, i.e.,
+            derivative of dipole moment or energy w.r.t field.
 
         Returns
         -------
         Tensor
             Polarizability derivative shape `(..., 3, 3, nat, 3)`.
         """
-        if use_functorch is True:
-            # pylint: disable=import-outside-toplevel
-            from tad_mctc.autograd import jacrev
-
-            # TODO: Implement!
-            chi = ...
-            assert isinstance(chi, Tensor)
-        else:
-            a = self.polarizability(numbers, positions, chrg, spin)  # (3, 3)
+        if use_functorch is False:
+            a = self.polarizability(
+                numbers, positions, chrg, spin, use_functorch=use_functorch
+            )
 
             # d(3, 3) / d(nat, 3) -> (3, 3, nat*3) -> (3, 3, nat, 3)
             chi = _jac(a, positions).reshape((3, 3, *positions.shape[-2:]))
+
+        else:
+            # pylint: disable=import-outside-toplevel
+            from tad_mctc.autograd import jacrev
+
+            chi = jacrev(self.polarizability, argnums=1)(
+                numbers, positions, chrg, spin, use_functorch, derived_quantity
+            )
+            assert isinstance(chi, Tensor)
 
         if chi.is_contiguous() is False:
             logger.debug(
@@ -1975,8 +1831,8 @@ class Calculator(TensorLike):
 
         return chi
 
-    @numerical
-    @requires_efield
+    @cdec.numerical(True)
+    @cdec.requires_efield
     def pol_deriv_numerical(
         self,
         numbers: Tensor,
@@ -2014,9 +1870,6 @@ class Calculator(TensorLike):
         # pylint: disable=import-outside-toplevel
         import gc
 
-        # important: use new/separate position tensor
-        pos = positions.detach().clone()
-
         # (..., 3, 3, nat, 3)
         deriv = torch.zeros(
             (*numbers.shape[:-1], 3, 3, *positions.shape[-2:]), **self.dd
@@ -2029,13 +1882,13 @@ class Calculator(TensorLike):
         nsteps = 3 * numbers.shape[-1]
         for i in range(numbers.shape[-1]):
             for j in range(3):
-                pos[..., i, j] += step_size
-                r = self.polarizability(numbers, pos, chrg, spin)
+                positions[..., i, j] += step_size
+                r = self.polarizability_numerical(numbers, positions, chrg, spin)
 
-                pos[..., i, j] -= 2 * step_size
-                l = self.polarizability(numbers, pos, chrg, spin)
+                positions[..., i, j] -= 2 * step_size
+                l = self.polarizability_numerical(numbers, positions, chrg, spin)
 
-                pos[..., i, j] += step_size
+                positions[..., i, j] += step_size
                 deriv[..., :, :, i, j] = 0.5 * (r - l) / step_size
 
                 logger.debug(
@@ -2050,8 +1903,8 @@ class Calculator(TensorLike):
 
         return deriv
 
-    @requires_efield
-    @requires_efield_grad
+    @cdec.requires_efield
+    @cdec.requires_efield_grad
     def hyperpol(
         self,
         numbers: Tensor,
@@ -2157,7 +2010,8 @@ class Calculator(TensorLike):
 
         return beta
 
-    @requires_efield
+    @cdec.numerical()
+    @cdec.requires_efield
     def hyperpol_numerical(
         self,
         numbers: Tensor,
@@ -2287,7 +2141,7 @@ class Calculator(TensorLike):
 
         return vib.IRResult(vib_res.freqs, intensities)
 
-    @numerical
+    @cdec.numerical()
     def ir_numerical(
         self,
         numbers: Tensor,
@@ -2325,7 +2179,7 @@ class Calculator(TensorLike):
         pos = positions.detach().clone()
 
         # run vibrational analysis first
-        vib_res = self.vibration_numerical(
+        freqs, modes = self.vibration_numerical(
             numbers, pos, chrg, spin, step_size=step_size
         )
 
@@ -2334,11 +2188,11 @@ class Calculator(TensorLike):
             numbers, pos, chrg, spin, step_size=step_size
         )
 
-        intensities = vib.ir_ints(dmu_dr, vib_res.modes)
+        intensities = vib.ir_ints(dmu_dr, modes)
 
         logger.debug("IR spectrum (numerical): All finished.")
 
-        return vib.IRResult(vib_res.freqs, intensities)
+        return vib.IRResult(freqs, intensities)
 
     def raman(
         self,
@@ -2393,7 +2247,7 @@ class Calculator(TensorLike):
 
         return vib.RamanResult(vib_res.freqs, intensities, depol)
 
-    @numerical
+    @cdec.numerical()
     def raman_numerical(
         self,
         numbers: Tensor,

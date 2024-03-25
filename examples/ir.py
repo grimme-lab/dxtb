@@ -28,8 +28,6 @@ opts = {
 }
 
 
-print(dxtb.io.get_short_version())
-
 # dipole moment requires electric field
 field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)
 ef = dxtb.external.new_efield(field_vector)
@@ -45,22 +43,22 @@ calc = dxtb.Calculator(
 
 dxtb.timer.start("IR")
 pos = positions.clone().requires_grad_(True)
-freqs, ints = calc.ir(numbers, pos, charge)
+result = calc.ir(numbers, pos, charge)
 dxtb.timer.stop("IR")
 
-print(freqs.shape, ints.shape)
+print(result.freqs.shape, result.ints.shape)
 
 dxtb.timer.print_times()
 dxtb.timer.reset()
 
-print(freqs)
+print(result.freqs)
 
 
 dxtb.timer.start("Num IR")
-num_freqs, num_ints = calc.ir_numerical(numbers, positions, charge)
+rnum = calc.ir_numerical(numbers, positions, charge)
 dxtb.timer.stop("Num IR")
 
-print(num_freqs.shape, num_ints.shape)
-print(num_freqs - freqs)
+print(rnum.freqs.shape, rnum.ints.shape)
+print(rnum.freqs - rnum.freqs)
 # print(numhess - hess2)
 # print(hess - hess2)

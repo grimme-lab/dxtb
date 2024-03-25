@@ -135,7 +135,7 @@ class _OutputHandler:
         self.handlers["json"] = self.json_output
 
         if Path(self.json_file).is_file():
-            with open(self.json_file) as file:
+            with open(self.json_file, encoding="utf8") as file:
                 self.json_data = json.load(file)
 
     def console_output(self, data: dict[str, Any]):
@@ -161,7 +161,7 @@ class _OutputHandler:
             The data to write to the JSON file.
         """
         self.json_data.update(data)
-        with open(self.json_file, "w") as file:
+        with open(self.json_file, "w", encoding="utf8") as file:
             json.dump(self.json_data, file, indent=4)
 
     def write(self, data: dict[str, Any]):
