@@ -9,8 +9,8 @@ import torch
 from tad_mctc.batch import pack
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.typing import DD
+from tad_mctc.units.spectroscopy import AU2RCM
 
-from dxtb.constants import units
 from dxtb.param import GFN1_XTB as par
 from dxtb.xtb import Calculator
 
@@ -44,7 +44,7 @@ def single(name: str, dd: DD, atol: float, rtol: float) -> None:
 
     calc = Calculator(numbers, par, opts=opts, **dd)
     freqs, _ = calc.vibration(numbers, pos, charge)
-    freqs = tensor_to_numpy(freqs * units.AU2RCM)
+    freqs = tensor_to_numpy(freqs * AU2RCM)
 
     # low frequencies mismatch
     if name == "PbH4-BiH3":
@@ -105,7 +105,7 @@ def batched(name1: str, name2: str, dd: DD, atol: float, rtol: float) -> None:
 
     calc = Calculator(numbers, par, opts=opts, **dd)
     freqs, _ = calc.vibration(numbers, pos, charge)
-    freqs = freqs * units.AU2RCM
+    freqs = freqs * AU2RCM
 
     if name1 == "LYS_xao" or name2 == "LYS_xao":
         freqs, ref = freqs[..., 4:], ref[..., 4:]

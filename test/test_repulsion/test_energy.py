@@ -14,7 +14,7 @@ import torch
 from dxtb._types import DD, Literal
 from dxtb.basis import IndexHelper
 from dxtb.components.classicals import new_repulsion
-from dxtb.param import GFN1_XTB, get_elem_angular
+from dxtb.param.gfn1 import GFN1_XTB
 from dxtb.param.gfn2 import GFN2_XTB
 from dxtb.utils import batch
 
@@ -48,7 +48,7 @@ def test_single(dtype: torch.dtype, name: str, par: Literal["gfn1", "gfn2"]) -> 
     rep = new_repulsion(numbers, _par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(_par.element))
+    ihelp = IndexHelper.from_numbers(numbers, _par)
     cache = rep.get_cache(numbers, ihelp)
     e = rep.get_energy(positions, cache, atom_resolved=False)
 
@@ -96,7 +96,7 @@ def test_batch(
     rep = new_repulsion(numbers, _par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(_par.element))
+    ihelp = IndexHelper.from_numbers(numbers, _par)
     cache = rep.get_cache(numbers, ihelp)
     e = rep.get_energy(positions, cache)
 

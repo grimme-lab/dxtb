@@ -17,7 +17,6 @@ from dxtb.components.classicals.repulsion.rep import (
     repulsion_gradient,
 )
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 from dxtb.utils import batch
 
 from ..utils import dgradcheck, dgradgradcheck
@@ -45,7 +44,7 @@ def test_backward_vs_tblite(dtype: torch.dtype, name: str) -> None:
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = rep.get_cache(numbers, ihelp)
 
     # automatic gradient
@@ -95,7 +94,7 @@ def test_backward_batch_vs_tblite(dtype: torch.dtype, name1: str, name2: str) ->
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = rep.get_cache(numbers, ihelp)
 
     # automatic gradient
@@ -127,7 +126,7 @@ def test_grad_pos_backward_vs_analytical(dtype: torch.dtype, name: str) -> None:
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = rep.get_cache(numbers, ihelp)
 
     # analytical gradient
@@ -194,7 +193,7 @@ def test_grad_pos_analytical_vs_numerical(dtype: torch.dtype, name: str) -> None
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = rep.get_cache(numbers, ihelp)
 
     # analytical gradient
@@ -220,7 +219,7 @@ def gradchecker(
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
 
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
@@ -279,7 +278,7 @@ def gradchecker_batch(
         ]
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
 
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None

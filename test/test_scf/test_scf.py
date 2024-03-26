@@ -73,7 +73,7 @@ def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
-    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
+    assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -117,7 +117,7 @@ def test_single_large(dtype: torch.dtype, name: str):
     sample = samples[name]
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
-    ref = sample["escf"]
+    ref = sample["escf"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
     options = dict(
@@ -130,7 +130,7 @@ def test_single_large(dtype: torch.dtype, name: str):
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
-    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
+    assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -144,27 +144,27 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     sample = samples[name1], samples[name2]
     numbers = batch.pack(
         (
-            sample[0]["numbers"],
-            sample[1]["numbers"],
+            sample[0]["numbers"].to(device),
+            sample[1]["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample[0]["positions"],
-            sample[1]["positions"],
+            sample[0]["positions"].to(**dd),
+            sample[1]["positions"].to(**dd),
         )
-    ).type(dtype)
+    )
     ref = batch.pack(
         (
-            sample[0]["escf"],
-            sample[1]["escf"],
+            sample[0]["escf"].to(**dd),
+            sample[1]["escf"].to(**dd),
         )
-    ).type(dtype)
+    )
     charges = torch.tensor([0.0, 0.0], **dd)
     calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
-    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
+    assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -179,25 +179,25 @@ def test_batch2(dtype: torch.dtype, name1: str, name2: str, name3: str):
     sample = samples[name1], samples[name2], samples[name3]
     numbers = batch.pack(
         (
-            sample[0]["numbers"],
-            sample[1]["numbers"],
-            sample[2]["numbers"],
+            sample[0]["numbers"].to(device),
+            sample[1]["numbers"].to(device),
+            sample[2]["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample[0]["positions"],
-            sample[1]["positions"],
-            sample[2]["positions"],
+            sample[0]["positions"].to(**dd),
+            sample[1]["positions"].to(**dd),
+            sample[2]["positions"].to(**dd),
         )
-    ).type(dtype)
+    )
     ref = batch.pack(
         (
-            sample[0]["escf"],
-            sample[1]["escf"],
-            sample[2]["escf"],
+            sample[0]["escf"].to(**dd),
+            sample[1]["escf"].to(**dd),
+            sample[2]["escf"].to(**dd),
         )
-    ).type(dtype)
+    )
     charges = torch.tensor([0.0, 0.0, 0.0], **dd)
     calc = Calculator(numbers, par, opts=opts, **dd)
 

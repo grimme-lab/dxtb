@@ -13,7 +13,6 @@ from dxtb._types import DD
 from dxtb.basis import IndexHelper
 from dxtb.components.classicals import new_halogen
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 from dxtb.utils import batch, hessian
 
 from ..utils import reshape_fortran
@@ -44,7 +43,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
     # hessian
@@ -96,7 +95,7 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
     hess = hessian(xb.get_energy, (positions, cache), is_batched=True)

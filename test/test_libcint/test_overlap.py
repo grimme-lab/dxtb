@@ -11,14 +11,14 @@ from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.batch import pack
 from tad_mctc.convert import numpy_to_tensor
+from tad_mctc.typing import DD, Tensor
 
-from dxtb._types import DD, Tensor
 from dxtb.basis import Basis, IndexHelper
 from dxtb.integral.driver.libcint import impls as intor
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
-from dxtb.utils import batch, is_basis_list
+from dxtb.utils import is_basis_list
 
 try:
     from dxtb.mol.external._pyscf import M
@@ -74,7 +74,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
     atombases = bas.create_dqc(positions)
     assert is_basis_list(atombases)
@@ -128,7 +128,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         dim=0,
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
     atombases = bas.create_dqc(positions)
     assert is_basis_list(atombases)
@@ -156,11 +156,11 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     assert pytest.approx(pyscf_overlap, abs=tol) == dxtb_overlap
 
     # we could also extract the blocks and pack them as usual
-    n = batch.pack((sample1["numbers"].to(device), sample2["numbers"].to(device)))
-    ihelp2 = IndexHelper.from_numbers(n, get_elem_angular(par.element))
+    n = pack((sample1["numbers"].to(device), sample2["numbers"].to(device)))
+    ihelp2 = IndexHelper.from_numbers(n, par)
     sizes = ihelp2.orbitals_per_shell.sum(-1)
     out = extract_blocks(dxtb_overlap, sizes)
-    s_packed = batch.pack(out)
+    s_packed = pack(out)
 
     max_size = int(ihelp2.orbitals_per_shell.sum(-1).max())
     assert s_packed.shape == torch.Size((2, max_size, max_size))
@@ -177,7 +177,7 @@ def test_grad(dtype: torch.dtype, name: str) -> None:
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
     atombases = bas.create_dqc(positions)
     assert is_basis_list(atombases)

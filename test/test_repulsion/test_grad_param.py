@@ -12,7 +12,7 @@ from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.components.classicals import Repulsion
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular, get_elem_param
+from dxtb.param import get_elem_param
 from dxtb.utils import batch
 
 from .samples import samples
@@ -36,7 +36,7 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     sample = samples[name]
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
 
     # variables to be differentiated
     _arep = get_elem_param(
@@ -111,7 +111,7 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
             sample2["positions"].to(**dd),
         ]
     )
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
 
     # variables to be differentiated
     _arep = get_elem_param(

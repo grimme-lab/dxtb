@@ -9,7 +9,6 @@ import torch
 from dxtb._types import Slicers, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 from dxtb.utils import batch
 
 
@@ -20,8 +19,8 @@ def test_culling() -> None:
             torch.tensor([14, 1, 1, 1, 1]),  # SiH4
         ]
     )
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    ref_ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    ref_ihelp = IndexHelper.from_numbers(numbers, par)
 
     conv = torch.tensor([False, True])
     slicers: Slicers = {
@@ -54,8 +53,8 @@ def test_no_action() -> None:
             torch.tensor([14, 1, 1, 1, 1]),  # SiH4
         ]
     )
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    ref_ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    ref_ihelp = IndexHelper.from_numbers(numbers, par)
 
     conv = torch.tensor([False, True])
     slicers: Slicers = {

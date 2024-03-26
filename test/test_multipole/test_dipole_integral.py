@@ -17,7 +17,6 @@ from dxtb._types import DD, Tensor
 from dxtb.basis import Basis, IndexHelper
 from dxtb.integral.driver.libcint import impls as intor
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 from dxtb.utils import is_basis_list
 
 try:
@@ -46,7 +45,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     sample = samples[name]
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
     atombases = bas.create_dqc(positions)
     assert is_basis_list(atombases)

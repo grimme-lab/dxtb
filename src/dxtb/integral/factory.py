@@ -10,7 +10,8 @@ from __future__ import annotations
 import torch
 from tad_mctc.typing import Any, Tensor
 
-from ..basis.indexhelper import IndexHelperParam
+from dxtb.basis import IndexHelper
+
 from ..constants import labels
 from ..param import Param
 from .base import IntDriver
@@ -54,7 +55,7 @@ def new_driver_libcint(
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> IntDriverLibcint:
-    ihelp = IndexHelperParam.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, par)
     return IntDriverLibcint(numbers, par, ihelp, device=device, dtype=dtype)
 
 
@@ -64,7 +65,7 @@ def new_driver_pytorch(
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> IntDriverPytorch:
-    ihelp = IndexHelperParam.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, par)
     return IntDriverPytorch(numbers, par, ihelp, device=device, dtype=dtype)
 
 
@@ -74,7 +75,7 @@ def new_driver_pytorch2(
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> IntDriverPytorchNoAnalytical:
-    ihelp = IndexHelperParam.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, par)
     return IntDriverPytorchNoAnalytical(numbers, par, ihelp, device=device, dtype=dtype)
 
 
@@ -84,7 +85,7 @@ def new_driver_legacy(
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> IntDriverPytorchLegacy:
-    ihelp = IndexHelperParam.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, par)
     return IntDriverPytorchLegacy(numbers, par, ihelp, device=device, dtype=dtype)
 
 

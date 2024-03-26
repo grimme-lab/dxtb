@@ -11,7 +11,7 @@ import torch
 
 from dxtb._types import Literal
 from dxtb.basis import Basis, IndexHelper
-from dxtb.param import GFN1_XTB, get_elem_angular
+from dxtb.param import GFN1_XTB
 
 
 @pytest.mark.parametrize("number", range(1, 87))
@@ -30,7 +30,7 @@ def test_export(
     else:
         assert False
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, dtype=dtype)
 
     txt = bas.to_bse(qcformat=qcformat)

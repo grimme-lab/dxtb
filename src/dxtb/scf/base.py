@@ -8,17 +8,21 @@ from __future__ import annotations
 from abc import abstractmethod
 
 import torch
+from tad_mctc.batch import real_atoms
+from tad_mctc.math import einsum
+from tad_mctc.typing import DD, Any, Tensor, TypedDict
+from tad_mctc.units import KELVIN2AU
 
-from .._types import DD, Any, Slicers, Tensor, TypedDict
-from ..basis import IndexHelper
+from dxtb._types import Slicers
+from dxtb.basis import IndexHelper
+
 from ..components.interactions import InteractionList
 from ..components.interactions.container import Charges, ContainerData, Potential
 from ..config import ConfigSCF
-from ..constants import K2AU, defaults, labels
+from ..constants import defaults, labels
 from ..exlibs.xitorch import LinearOperator
 from ..integral.container import IntegralMatrices
 from ..io import OutputHandler
-from ..utils import einsum, real_atoms
 from ..wavefunction import filling, mulliken
 from .utils import get_density
 
@@ -267,7 +271,7 @@ class BaseSCF:
 
         self._data = self._Data(*args, **kwargs)
 
-        self.kt = torch.tensor(self.config.fermi.etemp * K2AU, **self.dd)
+        self.kt = torch.tensor(self.config.fermi.etemp * KELVIN2AU, **self.dd)
 
         self.interactions = interactions
         self.batched = self._data.numbers.ndim > 1

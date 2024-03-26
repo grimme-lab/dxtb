@@ -6,14 +6,12 @@ from tad_mctc.typing import DD
 from dxtb.basis import IndexHelper
 from dxtb.integral import Hamiltonian
 from dxtb.param import GFN1_XTB as par
-from dxtb.param.util import get_elem_angular
 
 device = torch.device("cpu")
 dd: DD = {"device": device, "dtype": torch.double}
 
 numbers = torch.randint(1, 86, (50,))
-print(numbers)
-ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+ihelp = IndexHelper.from_numbers(numbers, par)
 hcore = Hamiltonian(numbers, par, ihelp, **dd)
 
 

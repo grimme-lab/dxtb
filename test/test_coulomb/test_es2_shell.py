@@ -14,7 +14,7 @@ from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.components.interactions.coulomb import averaging_function
 from dxtb.components.interactions.coulomb import secondorder as es2
-from dxtb.param import GFN1_XTB, get_elem_angular, get_elem_param
+from dxtb.param import GFN1_XTB, get_elem_param
 from dxtb.utils import batch
 
 from ..utils import dgradcheck
@@ -38,7 +38,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     qsh = sample["q"].to(**dd)
     ref = sample["es2"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     es = es2.new_es2(numbers, GFN1_XTB, **dd)
     assert es is not None
 
@@ -81,7 +81,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         ],
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     es = es2.new_es2(numbers, GFN1_XTB, **dd)
     assert es is not None
 
@@ -101,7 +101,7 @@ def test_grad_positions(name: str) -> None:
     positions = sample["positions"].to(**dd).detach()
     qsh = sample["q"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     # variable to be differentiated
     positions.requires_grad_(True)
@@ -127,7 +127,7 @@ def test_grad_param(name: str) -> None:
     positions = sample["positions"].to(**dd)
     qsh = sample["q"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     assert GFN1_XTB.charge is not None
 

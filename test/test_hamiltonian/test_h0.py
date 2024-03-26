@@ -16,7 +16,7 @@ from dxtb.basis import IndexHelper
 from dxtb.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb.integral.driver.pytorch import OverlapPytorch as Overlap
 from dxtb.ncoord import exp_count, get_coordination_number
-from dxtb.param import GFN1_XTB, Param, get_elem_angular
+from dxtb.param import GFN1_XTB, Param
 from dxtb.utils import batch
 from dxtb.xtb import GFN1Hamiltonian as Hamiltonian
 
@@ -34,7 +34,7 @@ device = None
 def run(numbers: Tensor, positions: Tensor, par: Param, ref: Tensor, dd: DD) -> None:
     tol = sqrt(torch.finfo(dd["dtype"]).eps) * 10
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     driver = IntDriver(numbers, par, ihelp, **dd)
     overlap = Overlap(**dd)
     h0 = Hamiltonian(numbers, par, ihelp, **dd)

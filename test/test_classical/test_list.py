@@ -16,7 +16,7 @@ def test_empty() -> None:
 
     numbers = torch.tensor([6, 1])
     positions = torch.tensor([[0, 0, 0], [0, 0, 1]])
-    ihelp = IndexHelper.from_numbers(numbers, {1: [0, 0], 6: [0, 1]})
+    ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0, 0], 6: [0, 1]})
 
     c = clist.get_cache(numbers, ihelp)
     assert isinstance(c, ClassicalList.Cache)

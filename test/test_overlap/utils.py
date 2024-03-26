@@ -1,5 +1,5 @@
 """
-Utility function for iverlap calculation.
+Utility function for overlap calculation.
 """
 
 from __future__ import annotations
@@ -8,7 +8,7 @@ from dxtb._types import DD, Literal, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb.integral.driver.pytorch import OverlapPytorch as Overlap
-from dxtb.param import Param, get_elem_angular
+from dxtb.param import Param
 
 
 def calc_overlap(
@@ -18,7 +18,7 @@ def calc_overlap(
     dd: DD,
     uplo: Literal["n", "N", "u", "U", "l", "L"] = "l",
 ) -> Tensor:
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     driver = IntDriver(numbers, par, ihelp, **dd)
     overlap = Overlap(uplo=uplo, **dd)
 

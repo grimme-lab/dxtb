@@ -19,7 +19,6 @@ from dxtb.exceptions import (
 )
 from dxtb.integral.driver.pytorch.impls.md import overlap_gto
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 
 
 def test_fail_number_primitives() -> None:
@@ -69,7 +68,7 @@ def test_fail_higher_orbital_trafo():
     # arbitrary element (Rn)
     number = torch.tensor([86])
 
-    ihelp = IndexHelper.from_numbers(number, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(number, par)
     bas = Basis(number, par, ihelp)
     alpha, coeff = bas.create_cgtos()
 

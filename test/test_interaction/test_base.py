@@ -15,7 +15,7 @@ def test_empty() -> None:
     assert i.label == "Interaction"
 
     numbers = torch.tensor([6, 1])
-    ihelp = IndexHelper.from_numbers(numbers, {1: [0, 0], 6: [0, 1]})
+    ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0, 0], 6: [0, 1]})
     orbital = ihelp.spread_atom_to_orbital(numbers)
 
     c = i.get_cache(numbers=numbers, positions=numbers, ihelp=ihelp)

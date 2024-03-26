@@ -8,7 +8,7 @@ import pytest
 import torch
 
 from dxtb.exceptions import SCFConvergenceError
-from dxtb.utils import batch, is_int_list, is_str_list, set_jit_enabled
+from dxtb.utils import is_int_list, is_str_list, set_jit_enabled
 
 
 def test_lists() -> None:

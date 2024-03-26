@@ -11,7 +11,6 @@ from dxtb import integral as ints
 from dxtb._types import DD
 from dxtb.basis import IndexHelper
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 from dxtb.utils import batch
 
 from .samples import samples
@@ -29,7 +28,7 @@ def test_single(dtype: torch.dtype, name: str):
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     i = ints.Integrals(numbers, par, ihelp, **dd)
 
     i.setup_driver(positions)
@@ -88,7 +87,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
         )
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     i = ints.Integrals(numbers, par, ihelp, **dd)
 
     i.setup_driver(positions)

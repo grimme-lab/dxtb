@@ -6,12 +6,12 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.batch import pack
+from tad_mctc.typing import DD, Tensor
+from tad_mctc.units import VAA2AU
 
-from dxtb._types import DD, Tensor
-from dxtb.components.interactions import new_efield_grad
-from dxtb.constants import units
+from dxtb.components.interactions import new_efield, new_efield_grad
 from dxtb.param import GFN1_XTB as par
-from dxtb.utils import batch
 from dxtb.xtb import Calculator
 
 from .samples import samples
@@ -77,7 +77,7 @@ def test_single(dtype: torch.dtype, name: str, use_functorch: bool) -> None:
 
     ref = samples[name]["quadrupole"].to(**dd)
 
-    field_grad = torch.zeros((3, 3), **dd)  # * units.VAA2AU
+    field_grad = torch.zeros((3, 3), **dd)  # * VAA2AU
     atol, rtol = 1e-3, 1e-4
     single(name, ref, field_grad, use_functorch, dd=dd, atol=atol, rtol=rtol)
 
@@ -90,7 +90,7 @@ def test_single_medium(dtype: torch.dtype, name: str, use_functorch: bool) -> No
 
     ref = samples[name]["quadrupole"].to(**dd)
 
-    field_grad = torch.zeros((3, 3), **dd)  # * units.VAA2AU
+    field_grad = torch.zeros((3, 3), **dd)  # * VAA2AU
     atol, rtol = 1e-2, 1e-2
     single(name, ref, field_grad, use_functorch, dd=dd, atol=atol, rtol=rtol)
 
@@ -103,7 +103,7 @@ def test_single_field(dtype: torch.dtype, name: str, use_functorch: bool) -> Non
 
     ref = samples[name]["quadrupole2"].to(**dd)
 
-    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * units.VAA2AU
+    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * VAA2AU
     atol, rtol = 1e-3, 1e-3
     single(name, ref, field_vector, use_functorch, dd=dd, atol=atol, rtol=rtol)
 
@@ -118,7 +118,7 @@ def test_single_field_medium(
 
     ref = samples[name]["quadrupole2"].to(**dd)
 
-    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * units.VAA2AU
+    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * VAA2AU
     atol, rtol = 1e-2, 1e-2
     single(name, ref, field_vector, use_functorch, dd=dd, atol=atol, rtol=rtol)
 
@@ -135,14 +135,14 @@ def batched(
 ) -> None:
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
         ],
     )
 
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
@@ -150,7 +150,7 @@ def batched(
     )
     charge = torch.tensor([0.0, 0.0], **dd)
 
-    ref = batch.pack(
+    ref = pack(
         [
             sample1[refname].to(**dd),
             sample2[refname].to(**dd),
@@ -166,7 +166,8 @@ def batched(
         field_grad = None
 
     # create additional interaction and pass to Calculator
-    efield = new_efield(field_vector, field_grad)
+    efield = new_efield(field_vector)
+    efield_grad = new_efield_grad(field_grad)
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
     quadrupole = calc.quadrupole(
@@ -184,7 +185,7 @@ def batched(
 def test_batch(dtype: torch.dtype, name1: str, name2, use_functorch: bool) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * VAA2AU
     atol, rtol = 1e-3, 1e-3
     batched(
         name1,
@@ -207,7 +208,7 @@ def test_batch_medium(
 ) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * VAA2AU
     atol, rtol = 1e-2, 1e-2
     batched(
         name1,
@@ -230,7 +231,7 @@ def test_batch_field(
 ) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
-    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * units.VAA2AU
+    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * VAA2AU
     atol, rtol = 1e-3, 1e-4
     batched(
         name1,
@@ -253,7 +254,7 @@ def test_batch_field_medium(
 ) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
-    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * units.VAA2AU
+    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * VAA2AU
     atol, rtol = 1e-2, 1e-2
     batched(
         name1,
@@ -280,14 +281,14 @@ def test_batch_settings(
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
         ],
     )
 
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
@@ -295,14 +296,14 @@ def test_batch_settings(
     )
     charge = torch.tensor([0.0, 0.0], **dd)
 
-    ref = batch.pack(
+    ref = pack(
         [
             sample1["quadrupole"].to(**dd),
             sample2["quadrupole"].to(**dd),
         ]
     )
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * VAA2AU
 
     # required for autodiff of energy w.r.t. efield and quadrupole
     field_vector.requires_grad_(True)
@@ -327,14 +328,14 @@ def test_batch_unconverged(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
         ],
     )
 
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
@@ -342,14 +343,14 @@ def test_batch_unconverged(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
     charge = torch.tensor([0.0, 0.0], **dd)
 
-    ref = batch.pack(
+    ref = pack(
         [
             sample1["quadrupole"].to(**dd),
             sample2["quadrupole"].to(**dd),
         ]
     )
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * VAA2AU
 
     # required for autodiff of energy w.r.t. efield and quadrupole
     field_vector.requires_grad_(True)
@@ -376,14 +377,14 @@ def test_batch_unconverged(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
         ],
     )
 
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
@@ -391,14 +392,14 @@ def test_batch_unconverged(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
     charge = torch.tensor([0.0, 0.0], **dd)
 
-    ref = batch.pack(
+    ref = pack(
         [
             sample1["quadrupole"].to(**dd),
             sample2["quadrupole"].to(**dd),
         ]
     )
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * VAA2AU
 
     # required for autodiff of energy w.r.t. efield and quadrupole
     field_vector.requires_grad_(True)

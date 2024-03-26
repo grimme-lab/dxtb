@@ -61,8 +61,7 @@ class BaseIntDriverPytorch(PytorchImplementation, IntDriver):
 
             self._positions_single = positions
         else:
-            from ....param import get_elem_angular
-            from ....utils import batch
+            from tad_mctc.batch import deflate
 
             self._positions_batch: list[Tensor] = []
             self._basis_batch: list[Basis] = []
@@ -76,17 +75,15 @@ class BaseIntDriverPytorch(PytorchImplementation, IntDriver):
                         mask[_batch],
                     ).reshape((-1, 3))
                 else:
-                    pos = batch.deflate(positions[_batch])
+                    pos = deflate(positions[_batch])
 
                 self._positions_batch.append(pos)
 
                 # INDEXHELPER
                 # unfortunately, we need a new IndexHelper for each batch,
                 # but this is much faster than `calc_overlap`
-                nums = batch.deflate(self.numbers[_batch])
-                ihelp = IndexHelper.from_numbers(
-                    nums, get_elem_angular(self.par.element)
-                )
+                nums = deflate(self.numbers[_batch])
+                ihelp = IndexHelper.from_numbers(nums, self.par)
 
                 self._ihelp_batch.append(ihelp)
 

@@ -16,7 +16,7 @@ Example
 >>> import torch
 >>> from dxtb.basis import IndexHelper
 >>> from dxtb.classical import new_repulsion
->>> from dxtb.param import GFN1_XTB, get_elem_param
+>>> from dxtb.param import GFN1_XTB
 >>> numbers = torch.tensor([14, 1, 1, 1, 1])
 >>> positions = torch.tensor([
 ...     [+0.00000000000000, +0.00000000000000, +0.00000000000000],
@@ -26,7 +26,7 @@ Example
 ...     [-1.61768389755830, +1.61768389755830, +1.61768389755830],
 ... ])
 >>> rep = new_repulsion(numbers, positions, GFN1_XTB)
->>> ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+>>> ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 >>> cache = rep.get_cache(numbers, ihelp)
 >>> energy = rep.get_energy(positions, cache)
 >>> print(energy.sum(-1))

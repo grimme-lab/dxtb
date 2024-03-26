@@ -41,10 +41,11 @@ torch.Size([9, 17, 17])
 
 from __future__ import annotations
 
+from dxtb.basis import IndexHelper
+from dxtb.constants import labels
+from dxtb.param import Param
+
 from .._types import DD, Any, Literal, Tensor
-from ..basis import IndexHelper
-from ..constants import labels
-from ..param import Param, get_elem_angular
 from ..xtb.h0_gfn1 import GFN1Hamiltonian
 from ..xtb.h0_gfn2 import GFN2Hamiltonian
 from .dipole import Dipole
@@ -70,7 +71,7 @@ def hcore(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tens
         )
 
     dd: DD = {"device": positions.device, "dtype": positions.dtype}
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
 
     name = par.meta.name.casefold()
     if name == "gfn1-xtb":

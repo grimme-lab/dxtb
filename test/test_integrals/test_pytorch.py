@@ -12,7 +12,6 @@ from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.constants.labels import INTDRIVER_ANALYTICAL
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 from dxtb.utils import batch
 
 from .samples import samples
@@ -21,7 +20,7 @@ device = None
 
 
 def run(numbers: Tensor, positions: Tensor, dd: DD) -> None:
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     i = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_ANALYTICAL, **dd)
 
     i.setup_driver(positions)

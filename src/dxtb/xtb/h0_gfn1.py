@@ -56,8 +56,8 @@ class GFN1Hamiltonian(BaseHamiltonian):
         self.kpair = self._get_pair_param(self.par.hamiltonian.xtb.kpair)
 
         # unit conversion
-        self.selfenergy = self.selfenergy * EV2AU
-        self.kcn = self.kcn * EV2AU
+        self.selfenergy = self.selfenergy * 0.03674932379085202
+        self.kcn = self.kcn * 0.03674932379085202
 
         # dtype should always be correct as it always uses self.dtype
         if any(

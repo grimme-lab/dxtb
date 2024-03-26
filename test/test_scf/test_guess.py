@@ -17,7 +17,7 @@ positions = torch.tensor(
         [0.0, 0.0, 1.0],
     ]
 )
-ihelp = IndexHelper.from_numbers(numbers, {1: [0, 0], 6: [0, 1]})
+ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0, 0], 6: [0, 1]})
 charge = torch.tensor(0.0)
 
 
@@ -27,7 +27,7 @@ def test_fail() -> None:
 
     # charges change because IndexHelper is broken
     with pytest.raises(RuntimeError):
-        ih = IndexHelper.from_numbers(numbers, {1: [0, 0], 6: [0, 1]})
+        ih = IndexHelper.from_numbers_angular(numbers, {1: [0, 0], 6: [0, 1]})
         ih.orbitals_to_shell = torch.tensor([1, 2, 3])
         guess.get_guess(numbers, positions, charge, ih)
 

@@ -14,7 +14,7 @@ from ..utils import get_device_from_str
 
 
 def test_fail_init_dtype() -> None:
-    ihelp = IndexHelper.from_numbers(torch.tensor([1]), {1: [0]})
+    ihelp = IndexHelper.from_numbers_angular(torch.tensor([1]), {1: [0]})
     with pytest.raises(ValueError):
         IndexHelper(
             ihelp.unique_angular.type(torch.float),
@@ -34,7 +34,7 @@ def test_fail_init_dtype() -> None:
 
 @pytest.mark.cuda
 def test_fail_init_device() -> None:
-    ihelp = IndexHelper.from_numbers(torch.tensor([1]), {1: [0]})
+    ihelp = IndexHelper.from_numbers_angular(torch.tensor([1]), {1: [0]})
     with pytest.raises(ValueError):
         IndexHelper(
             ihelp.unique_angular.to(get_device_from_str("cuda")),
@@ -54,13 +54,13 @@ def test_fail_init_device() -> None:
 
 @pytest.mark.parametrize("dtype", [torch.int16, torch.int32, torch.int64])
 def test_change_type(dtype: torch.dtype) -> None:
-    ihelp = IndexHelper.from_numbers(torch.tensor([1]), {1: [0]})
+    ihelp = IndexHelper.from_numbers_angular(torch.tensor([1]), {1: [0]})
     ihelp = ihelp.type(dtype)
     assert ihelp.dtype == dtype
 
 
 def test_change_type_fail() -> None:
-    ihelp = IndexHelper.from_numbers(torch.tensor([1]), {1: [0]})
+    ihelp = IndexHelper.from_numbers_angular(torch.tensor([1]), {1: [0]})
 
     # trying to use setter
     with pytest.raises(AttributeError):
@@ -75,12 +75,12 @@ def test_change_type_fail() -> None:
 @pytest.mark.parametrize("device_str", ["cpu", "cuda"])
 def test_change_device(device_str: str) -> None:
     device = get_device_from_str(device_str)
-    ihelp = IndexHelper.from_numbers(torch.tensor([1]), {1: [0]}).to(device)
+    ihelp = IndexHelper.from_numbers_angular(torch.tensor([1]), {1: [0]}).to(device)
     assert ihelp.device == device
 
 
 def test_change_device_fail() -> None:
-    ihelp = IndexHelper.from_numbers(torch.tensor([1]), {1: [0]})
+    ihelp = IndexHelper.from_numbers_angular(torch.tensor([1]), {1: [0]})
 
     # trying to use setter
     with pytest.raises(AttributeError):

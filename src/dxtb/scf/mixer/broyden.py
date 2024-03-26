@@ -6,7 +6,6 @@ Broyden mixing
 from __future__ import annotations
 
 from ..._types import Any
-from ...exlibs.xitorch import optimize as xto
 from .base import Mixer
 
 default_opts = {

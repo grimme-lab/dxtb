@@ -11,7 +11,6 @@ from dxtb._types import DD, Callable, Literal, Tensor
 from dxtb.basis import Basis, IndexHelper
 from dxtb.integral.driver.pytorch.impls import overlap_gradient
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 
 from ..utils import dgradcheck, dgradgradcheck
 from .samples import samples
@@ -33,7 +32,7 @@ def gradchecker(
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(torch.unique(numbers), par, ihelp, **dd)
 
     # variables to be differentiated

@@ -16,7 +16,7 @@ from tad_mctc.typing import DD
 from dxtb.basis import IndexHelper
 from dxtb.components.classicals import Repulsion
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular, get_elem_param
+from dxtb.param import get_elem_param
 
 from .util import has_memleak_tensor
 
@@ -38,7 +38,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
         numbers = sample["numbers"].to(device)
         positions = sample["positions"].clone().to(**dd)
 
-        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+        ihelp = IndexHelper.from_numbers(numbers, par)
 
         # variables to be differentiated
         arep = get_elem_param(

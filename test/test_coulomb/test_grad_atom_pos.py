@@ -11,7 +11,7 @@ from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.components.interactions.coulomb import ES2
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular, get_elem_param
+from dxtb.param import get_elem_param
 from dxtb.utils import batch
 
 from ..utils import dgradcheck, dgradgradcheck
@@ -36,7 +36,7 @@ def gradcheck_pos(
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
 
     hubbard = get_elem_param(
         torch.unique(numbers),
@@ -106,7 +106,7 @@ def gradcheck_pos_batch(
         ]
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
 
     hubbard = get_elem_param(
         torch.unique(numbers),

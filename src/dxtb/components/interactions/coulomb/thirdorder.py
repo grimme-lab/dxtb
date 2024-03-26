@@ -7,8 +7,8 @@ This module implements the third-order electrostatic energy for GFN1-xTB.
 Example
 -------
 >>> import torch
->>> import xtbml.coulomb.thirdorder as es3
->>> from xtbml.param import GFN1_XTB, get_element_param, get_elem_angular
+>>> import dxtb.coulomb.thirdorder as es3
+>>> from dxtb.param import GFN1_XTB, get_element_param
 >>> numbers = torch.tensor([14, 1, 1, 1, 1])
 >>> positions = torch.tensor([
 ...     [0.00000000000000, -0.00000000000000, 0.00000000000000],
@@ -25,7 +25,7 @@ Example
 ...     2.10320626451179e-2,
 ... ])
 >>> hubbard_derivs = get_element_param(GFN1_XTB.element, "gam3")
->>> ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+>>> ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 >>> es = es3.ES3(positions, hubbard_derivs)
 >>> cache = es.get_cache(ihelp)
 >>> e = es.get_atom_energy(qat, cache)

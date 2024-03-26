@@ -10,7 +10,7 @@ import torch
 
 from dxtb.basis import IndexHelper
 from dxtb.components.interactions.coulomb import thirdorder as es3
-from dxtb.param import GFN1_XTB, get_elem_angular
+from dxtb.param import GFN1_XTB
 
 from ..utils import get_device_from_str
 
@@ -39,7 +39,7 @@ def test_fail() -> None:
 
 def test_store_fail() -> None:
     numbers = torch.tensor([3, 1])
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     es = es3.new_es3(numbers, GFN1_XTB)
     assert es is not None

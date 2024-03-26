@@ -9,13 +9,13 @@ from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.units import KELVIN2AU
 
 from dxtb._types import DD
 from dxtb.basis import IndexHelper
 from dxtb.config import ConfigSCF
-from dxtb.constants import K2AU
 from dxtb.integral import IntegralMatrices
-from dxtb.param import GFN1_XTB, get_elem_angular
+from dxtb.param import GFN1_XTB
 from dxtb.scf.iterator import SelfConsistentField
 from dxtb.utils import batch
 from dxtb.wavefunction import filling
@@ -54,7 +54,7 @@ def test_fail(dtype: torch.dtype):
         emo = sample["emo"].to(**dd)
         nel = sample["n_electrons"].to(**dd)
         nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
-        kt = torch.tensor(10000 * K2AU, dtype=dtype)
+        kt = torch.tensor(10000 * KELVIN2AU, dtype=dtype)
         filling.get_fermi_occupation(nab, emo, kt, maxiter=1)
 
 
@@ -94,7 +94,7 @@ def test_single(dtype: torch.dtype, name: str):
     ref_focc = sample["focc"].to(**dd)
     ref_efermi = sample["e_fermi"].to(**dd)
 
-    kt = emo.new_tensor(300 * K2AU)
+    kt = emo.new_tensor(300 * KELVIN2AU)
 
     efermi, _ = filling.get_fermi_energy(nab, emo)
     assert pytest.approx(ref_efermi, abs=tol) == efermi
@@ -154,7 +154,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
         ]
     )
 
-    kt = emo.new_tensor(300 * K2AU)
+    kt = emo.new_tensor(300 * KELVIN2AU)
 
     efermi, _ = filling.get_fermi_energy(nab, emo)
     assert pytest.approx(ref_efermi, abs=tol) == efermi
@@ -227,7 +227,7 @@ def test_kt(dtype: torch.dtype, kt: float):
     }
 
     # occupation
-    focc = filling.get_fermi_occupation(nab, emo, emo.new_tensor(kt * K2AU))
+    focc = filling.get_fermi_occupation(nab, emo, emo.new_tensor(kt * KELVIN2AU))
     assert torch.allclose(ref_focc[kt], focc.sum(-2), atol=tol)
 
     # electronic free energy
@@ -291,7 +291,7 @@ def test_lumo_not_existing(dtype: torch.dtype) -> None:
         ]
     )
 
-    kt = emo.new_tensor(300 * K2AU)
+    kt = emo.new_tensor(300 * KELVIN2AU)
 
     efermi, _ = filling.get_fermi_energy(nab, emo)
     assert pytest.approx(ref_efermi, abs=tol) == efermi
@@ -315,7 +315,7 @@ def test_lumo_obscured_by_padding(dtype: torch.dtype) -> None:
             sample2["numbers"].to(device),
         ]
     )
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     nel = batch.pack(
         [
@@ -349,7 +349,7 @@ def test_lumo_obscured_by_padding(dtype: torch.dtype) -> None:
         ]
     )
 
-    kt = emo.new_tensor(300 * K2AU)
+    kt = emo.new_tensor(300 * KELVIN2AU)
 
     mask = ihelp.orbitals_per_shell
     mask = mask.unsqueeze(-2).expand([*nab.shape, -1])

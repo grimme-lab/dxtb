@@ -9,9 +9,9 @@ import torch
 from tad_mctc.batch import pack
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.typing import DD, Tensor
+from tad_mctc.units import VAA2AU
 
 from dxtb.components.interactions import new_efield
-from dxtb.constants import units
 from dxtb.param import GFN1_XTB as par
 from dxtb.xtb import Calculator
 
@@ -142,7 +142,7 @@ def execute(
 def test_single(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)  # * units.VAA2AU
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)  # * VAA2AU
     single(name, "dipole", field_vector, dd=dd, atol=1e-3)
 
 
@@ -152,7 +152,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 def test_single_large(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)  # * units.VAA2AU
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)  # * VAA2AU
     single(name, "dipole", field_vector, dd=dd, atol=1e-3)
 
 
@@ -161,7 +161,7 @@ def test_single_large(dtype: torch.dtype, name: str) -> None:
 def test_single_field(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
-    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * units.VAA2AU
+    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * VAA2AU
     single(name, "dipole2", field_vector, dd=dd, atol=1e-3, rtol=1e-3)
 
 
@@ -171,7 +171,7 @@ def test_single_field(dtype: torch.dtype, name: str) -> None:
 def test_single_field_large(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
-    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * units.VAA2AU
+    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * VAA2AU
     single(name, "dipole2", field_vector, dd=dd, atol=1e-3, rtol=1e-3)
 
 
@@ -181,7 +181,7 @@ def test_single_field_large(dtype: torch.dtype, name: str) -> None:
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)  # * units.VAA2AU
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)  # * VAA2AU
     batched(name1, name2, "dipole", field_vector, dd=dd, atol=1e-3)
 
 
@@ -223,7 +223,7 @@ def test_batch_settings(
         ]
     )
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * VAA2AU
 
     # required for autodiff of energy w.r.t. efield
     field_vector.requires_grad_(True)
@@ -267,7 +267,7 @@ def test_batch_unconverged(dtype: torch.dtype, name1: str, name2: str) -> None:
         ]
     )
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * VAA2AU
 
     # required for autodiff of energy w.r.t. efield
     field_vector.requires_grad_(True)

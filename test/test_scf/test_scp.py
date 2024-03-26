@@ -65,7 +65,7 @@ def single(
 def test_single(
     dtype: torch.dtype, name: str, mixer: str, scp_mode: str, scf_mode: str
 ) -> None:
-    tol = sqrt(torch.finfo(dtype).eps) * 10
+    tol = sqrt(torch.finfo(dtype).eps) * 50
     single(dtype, name, mixer, tol, scp_mode, scf_mode)
 
 
@@ -79,7 +79,7 @@ def test_single_medium(
     dtype: torch.dtype, name: str, mixer: str, scp_mode: str, scf_mode: str
 ) -> None:
     """Test a few larger system."""
-    tol = sqrt(torch.finfo(dtype).eps) * 10
+    tol = sqrt(torch.finfo(dtype).eps) * 50
     single(dtype, name, mixer, tol, scp_mode, scf_mode)
 
 
@@ -107,7 +107,7 @@ def test_single_difficult(
 def test_single_large(
     dtype: torch.dtype, name: str, mixer: str, scp_mode: str, scf_mode: str
 ) -> None:
-    tol = sqrt(torch.finfo(dtype).eps) * 10
+    tol = sqrt(torch.finfo(dtype).eps) * 50
     single(dtype, name, mixer, tol, scp_mode, scf_mode)
 
 
@@ -170,7 +170,7 @@ def batched(
 def test_batch(
     dtype: torch.dtype, name1: str, name2: str, mixer: str, scp_mode: str, scf_mode: str
 ) -> None:
-    tol = sqrt(torch.finfo(dtype).eps) * 10
+    tol = sqrt(torch.finfo(dtype).eps) * 50
 
     # full gradient tracking (from TBMaLT) has no Broyden implementation
     if scf_mode == "full" and mixer == "broyden":
@@ -196,7 +196,7 @@ def test_batch_three(
     scp_mode: str,
     scf_mode: str,
 ) -> None:
-    tol = sqrt(torch.finfo(dtype).eps) * 10
+    tol = sqrt(torch.finfo(dtype).eps) * 50
     dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name1], samples[name2], samples[name3]

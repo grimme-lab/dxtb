@@ -22,7 +22,7 @@ def test_spread() -> None:
         1: [0, 0],  # H
         6: [0, 1],  # C
     }
-    ihelp = IndexHelper.from_numbers(atom, angular)
+    ihelp = IndexHelper.from_numbers_angular(atom, angular)
 
     assert (ihelp.spread_uspecies_to_atom(unique) == atom).all()
     assert (ihelp.spread_uspecies_to_shell(unique) == shell).all()
@@ -52,7 +52,7 @@ def test_cart() -> None:
         1: [0, 0],  # H
         14: [0, 1, 2],  # Si
     }
-    ihelp = IndexHelper.from_numbers(atom, angular)
+    ihelp = IndexHelper.from_numbers_angular(atom, angular)
 
     assert (ihelp.spread_uspecies_to_atom(unique) == atom).all()
     assert (ihelp.spread_uspecies_to_shell(unique) == shell).all()
@@ -98,7 +98,7 @@ def test_single(dtype: torch.dtype):
         16: [0, 1, 2],  # S
     }
 
-    ihelp = IndexHelper.from_numbers(numbers, angular)
+    ihelp = IndexHelper.from_numbers_angular(numbers, angular)
 
     assert torch.sum(ihelp.angular >= 0) == torch.tensor(30)
 
@@ -153,7 +153,7 @@ def test_batch(dtype: torch.dtype):
         17: [0, 1, 2],  # Cl
     }
 
-    ihelp = IndexHelper.from_numbers(numbers, angular)
+    ihelp = IndexHelper.from_numbers_angular(numbers, angular)
 
     assert torch.sum(ihelp.angular >= 0) == torch.tensor(58)
 
@@ -246,7 +246,7 @@ def test_batch2(dtype: torch.dtype):
         17: [0, 1, 2],  # Cl
     }
 
-    ihelp = IndexHelper.from_numbers(numbers, angular)
+    ihelp = IndexHelper.from_numbers_angular(numbers, angular)
 
     assert torch.sum(ihelp.angular >= 0) == torch.tensor(35)
 
@@ -320,7 +320,7 @@ def test_batch_2dim(dtype: torch.dtype) -> None:
         3: [0, 1],  # Li
     }
 
-    ihelp = IndexHelper.from_numbers(numbers, angular)
+    ihelp = IndexHelper.from_numbers_angular(numbers, angular)
 
     ref = torch.tensor(
         [

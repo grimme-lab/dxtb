@@ -6,15 +6,14 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck, dgradgradcheck
+from tad_mctc.batch import pack
+from tad_mctc.typing import DD, Callable, Tensor
 
-from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.components.classicals import new_halogen
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
-from dxtb.utils import batch
 
-from ..utils import dgradcheck, dgradgradcheck
 from .samples import samples
 
 # "LYS_xao" must be the last one as we have to manually exclude it for the
@@ -42,7 +41,7 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
     def func(pos: Tensor) -> Tensor:
@@ -82,13 +81,13 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
@@ -101,7 +100,7 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
     def func(pos: Tensor) -> Tensor:
@@ -153,7 +152,7 @@ def test_autograd(dtype: torch.dtype, name: str) -> None:
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
     energy = xb.get_energy(positions, cache)
@@ -173,19 +172,19 @@ def test_autograd_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         ]
     )
-    ref = batch.pack(
+    ref = pack(
         [
             sample1["gradient"].to(**dd),
             sample2["gradient"].to(**dd),
@@ -198,7 +197,7 @@ def test_autograd_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
     energy = xb.get_energy(positions, cache)
@@ -228,7 +227,7 @@ def test_backward(dtype: torch.dtype, name: str) -> None:
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
     energy = xb.get_energy(positions, cache)
@@ -253,19 +252,19 @@ def test_backward_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         ]
     )
-    ref = batch.pack(
+    ref = pack(
         [
             sample1["gradient"].to(**dd),
             sample2["gradient"].to(**dd),
@@ -278,7 +277,7 @@ def test_backward_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
     energy = xb.get_energy(positions, cache)

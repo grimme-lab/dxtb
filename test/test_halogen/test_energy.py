@@ -13,7 +13,6 @@ from dxtb._types import DD
 from dxtb.basis import IndexHelper
 from dxtb.components.classicals import new_halogen
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 from dxtb.utils import batch
 
 from .samples import samples
@@ -41,7 +40,7 @@ def test_small(dtype: torch.dtype, name: str) -> None:
     if xb is None:
         assert False
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
     energy = xb.get_energy(positions, cache)
     assert pytest.approx(ref, rel=tol, abs=tol) == torch.sum(energy)
@@ -69,7 +68,7 @@ def test_large(dtype: torch.dtype, name: str) -> None:
     if xb is None:
         assert False
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
     energy = xb.get_energy(positions, cache)
     assert pytest.approx(ref, abs=tol, rel=tol) == torch.sum(energy)
@@ -91,7 +90,7 @@ def test_no_xb(dtype: torch.dtype) -> None:
     if xb is None:
         assert False
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
     energy = xb.get_energy(positions, cache)
     assert pytest.approx(ref, abs=tol, rel=tol) == torch.sum(energy)
@@ -113,7 +112,7 @@ def test_beyond_cutoff(dtype: torch.dtype) -> None:
     if xb is None:
         assert False
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
     energy = xb.get_energy(positions, cache)
     assert pytest.approx(0.0) == torch.sum(energy)
@@ -151,7 +150,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     if xb is None:
         assert False
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
     energy = xb.get_energy(positions, cache)
     assert pytest.approx(ref, abs=tol, rel=tol) == torch.sum(energy, dim=-1)

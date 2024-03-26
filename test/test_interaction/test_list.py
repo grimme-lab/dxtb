@@ -15,7 +15,7 @@ def test_empty() -> None:
     assert len(ilist.components) == 0
 
     numbers = torch.tensor([6, 1])
-    ihelp = IndexHelper.from_numbers(numbers, {1: [0, 0], 6: [0, 1]})
+    ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0, 0], 6: [0, 1]})
     orbital = ihelp.spread_atom_to_orbital(numbers)
 
     c = ilist.get_cache(numbers, numbers, ihelp)

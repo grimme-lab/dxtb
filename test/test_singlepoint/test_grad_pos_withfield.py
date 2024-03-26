@@ -6,12 +6,12 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.batch import pack
+from tad_mctc.typing import DD, Callable, Tensor
+from tad_mctc.units import VAA2AU
 
-from dxtb._types import DD, Callable, Tensor
 from dxtb.components.interactions import new_efield
-from dxtb.constants import units
 from dxtb.param import GFN1_XTB as par
-from dxtb.utils import batch
 from dxtb.xtb import Calculator
 
 from ..utils import dgradcheck, dgradgradcheck
@@ -43,7 +43,7 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     positions = samples[name]["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
 
-    field_vector = torch.tensor([-2.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([-2.0, 0.0, 0.0], **dd) * VAA2AU
 
     # create additional interaction and pass to Calculator
     efield = new_efield(field_vector)
@@ -91,13 +91,13 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
@@ -105,7 +105,7 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     )
     charge = torch.tensor([0.0, 0.0], **dd)
 
-    field_vector = torch.tensor([-2.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([-2.0, 0.0, 0.0], **dd) * VAA2AU
 
     # create additional interaction and pass to Calculator
     efield = new_efield(field_vector)

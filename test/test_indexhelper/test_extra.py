@@ -15,7 +15,7 @@ def test_spread() -> None:
         1: [0, 0],  # H
         14: [0, 1, 2],  # Si
     }
-    ihelp = IndexHelper.from_numbers(torch.tensor([14, 1, 1]), angular)
+    ihelp = IndexHelper.from_numbers_angular(torch.tensor([14, 1, 1]), angular)
 
     # 13 orbitals = Si3s + 3*Si3p + 5*Si3d + 2*(H1s + H2s)
     nao = 13
@@ -51,7 +51,7 @@ def test_spread_batch() -> None:
         14: [0, 1, 2],  # Si
     }
     numbers = torch.tensor([[14, 1, 1], [14, 1, 0]])
-    ihelp = IndexHelper.from_numbers(numbers, angular)
+    ihelp = IndexHelper.from_numbers_angular(numbers, angular)
 
     # 13 orbitals = Si3s + 3*Si3p + 5*Si3d + 2*(H1s + H2s)
     nao = 13
@@ -87,7 +87,7 @@ def test_spread_unique() -> None:
         1: [0, 0],  # H
         14: [0, 1, 2],  # Si
     }
-    ihelp = IndexHelper.from_numbers(torch.tensor([14, 1, 1]), angular)
+    ihelp = IndexHelper.from_numbers_angular(torch.tensor([14, 1, 1]), angular)
 
     # 13 orbitals = Si3s + 3*Si3p + 5*Si3d + 2*(H1s + H2s)
     nao = 13
@@ -133,7 +133,7 @@ def test_spread_unique_batch() -> None:
         14: [0, 1, 2],  # Si
     }
     numbers = torch.tensor([[14, 1, 1], [14, 1, 0]])
-    ihelp = IndexHelper.from_numbers(numbers, angular)
+    ihelp = IndexHelper.from_numbers_angular(numbers, angular)
 
     # 13 orbitals = Si3s + 3*Si3p + 5*Si3d + 2*(H1s + H2s)
     nao = 13
@@ -184,7 +184,7 @@ def test_reduce() -> None:
         1: [0, 0],  # H
         14: [0, 1, 2],  # Si
     }
-    ihelp = IndexHelper.from_numbers(torch.tensor([14, 1, 1]), angular)
+    ihelp = IndexHelper.from_numbers_angular(torch.tensor([14, 1, 1]), angular)
 
     # 13 orbitals = Si3s + 3*Si3p + 5*Si3d + 2*(H1s + H2s)
     nao = 13
@@ -220,7 +220,7 @@ def test_reduce_batch() -> None:
         14: [0, 1, 2],  # Si
     }
     numbers = torch.tensor([[14, 1, 1], [14, 1, 0]])
-    ihelp = IndexHelper.from_numbers(numbers, angular)
+    ihelp = IndexHelper.from_numbers_angular(numbers, angular)
 
     # 13 orbitals = Si3s + 3*Si3p + 5*Si3d + 2*(H1s + H2s)
     nao = 13
@@ -260,7 +260,7 @@ def test_fail() -> None:
         14: [0, 1, 2],  # Si
     }
     numbers = torch.tensor([[14, 1, 1], [14, 1, 0]])
-    ihelp = IndexHelper.from_numbers(numbers, angular)
+    ihelp = IndexHelper.from_numbers_angular(numbers, angular)
 
     # last dimension is reserved
     with pytest.raises(ValueError):

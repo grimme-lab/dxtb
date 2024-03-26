@@ -32,7 +32,7 @@ from ..components.interactions.external import fieldgrad as efield_grad
 from ..config import Config
 from ..constants import defaults
 from ..io import OutputHandler
-from ..param import Param, get_elem_angular
+from ..param import Param
 from ..properties import moments
 from ..properties import vibration as vib
 from ..timing import timer
@@ -218,12 +218,13 @@ class Calculator(TensorLike):
         This class provides caching functionality for storing multiple calculation results.
         """
 
-        __slots__ = ["energy", "forces", "hessian"]
+        __slots__ = ["_disabled", "energy", "forces", "hessian"]
 
         def __init__(
             self,
             device: torch.device | None = None,
             dtype: torch.dtype | None = None,
+            **kwargs: Any,
         ) -> None:
             """
             Initialize the Cache class with optional device and dtype settings.
@@ -239,6 +240,23 @@ class Calculator(TensorLike):
             self.energy = None
             self.forces = None
             self.hessian = None
+            self._disabled = not kwargs.pop("use_cache", False)
+
+        @property
+        def disabled(self) -> bool:
+            """
+            Check if the cache is disabled.
+
+            Returns
+            -------
+            bool
+                True if the cache is disabled, False otherwise.
+            """
+            return self._disabled
+
+        @disabled.setter
+        def disabled(self, value: bool) -> None:
+            self._disabled = value
 
         def __getitem__(self, key: str) -> Tensor:
             """
@@ -288,6 +306,9 @@ class Calculator(TensorLike):
             bool
                 True if the key is in the cache, False otherwise
             """
+            if self.disabled is True:
+                return False
+
             return key in self.__slots__ and getattr(self, key) is not None
 
         def clear(self, key: str | None = None) -> None:
@@ -361,16 +382,17 @@ class Calculator(TensorLike):
         super().__init__(device, dtype)
         dd = {"device": self.device, "dtype": self.dtype}
 
-        self.cache = self.Cache(**dd)
-
-        # setup calculator options
+        # setup calculator options (before cache!)
         if isinstance(opts, dict):
             opts = Config(**opts, **dd)
         self.opts = opts
 
+        # create cache and potentially disable it (default)
+        self.cache = self.Cache(**dd, use_cache=opts.use_cache)
+
         self.batched = numbers.ndim > 1
 
-        self.ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+        self.ihelp = IndexHelper.from_numbers(numbers, par)
 
         ################
         # INTERACTIONS #
@@ -1011,7 +1033,7 @@ class Calculator(TensorLike):
         -------
         vib.VibResult
             Result container with vibrational frequencies (shape:
-            `(..., nfreqs)`) and normal modes (shape: `(..., nfreqs)`).
+            `(..., nfreqs)`) and normal modes (shape: `(..., nat*3, nfreqs)`).
         """
         hess = self.hessian(
             numbers,
@@ -1066,7 +1088,7 @@ class Calculator(TensorLike):
         -------
         vib.VibResult
             Result container with vibrational frequencies (shape:
-            `(..., nfreqs)`) and normal modes (shape: `(..., nfreqs)`).
+            `(..., nfreqs)`) and normal modes (shape: `(..., nat*3, nfreqs)`).
         """
         hess = self.hessian_numerical(
             numbers, positions, chrg, spin, step_size=step_size

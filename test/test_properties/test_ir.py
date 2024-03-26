@@ -10,9 +10,9 @@ from tad_mctc.autograd import dgradcheck
 from tad_mctc.batch import pack
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.typing import DD, Tensor
+from tad_mctc.units import VAA2AU
 
 from dxtb.components.interactions import new_efield
-from dxtb.constants import units
 from dxtb.param import GFN1_XTB as par
 from dxtb.xtb import Calculator
 
@@ -177,7 +177,7 @@ def test_single_large(dtype: torch.dtype, name: str) -> None:
 def skip_test_single_field(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
-    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * units.VAA2AU
+    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * VAA2AU
     single(name, field_vector, dd=dd)
 
 
@@ -188,7 +188,7 @@ def skip_test_single_field(dtype: torch.dtype, name: str) -> None:
 def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * VAA2AU
     batched(name1, name2, field_vector, dd=dd)
 
 
@@ -200,7 +200,7 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
 def skip_test_batch_large(dtype: torch.dtype, name1: str, name2) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
-    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * VAA2AU
     batched(name1, name2, field_vector, dd=dd)
 
 
@@ -211,5 +211,5 @@ def skip_test_batch_large(dtype: torch.dtype, name1: str, name2) -> None:
 def skip_test_batch_field(dtype: torch.dtype, name1: str, name2) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
-    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * units.VAA2AU
+    field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * VAA2AU
     batched(name1, name2, field_vector, dd=dd)

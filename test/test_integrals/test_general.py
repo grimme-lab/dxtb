@@ -12,7 +12,6 @@ from dxtb._types import DD
 from dxtb.basis import IndexHelper
 from dxtb.constants.labels import INTDRIVER_ANALYTICAL, INTDRIVER_LIBCINT
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 
 device = None
 
@@ -22,7 +21,7 @@ def test_empty(dtype: torch.dtype):
     dd: DD = {"device": device, "dtype": dtype}
     numbers = torch.tensor([1, 3], device=device)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     i = ints.Integrals(numbers, par, ihelp, **dd)
 
     assert i._hcore is None
@@ -41,7 +40,7 @@ def test_fail_family(dtype: torch.dtype):
     dd: DD = {"device": device, "dtype": dtype}
     numbers = torch.tensor([1, 3], device=device)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     i = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_ANALYTICAL, **dd)
 
     # make sure the checks are turned on
@@ -60,7 +59,7 @@ def test_fail_pytorch_multipole(dtype: torch.dtype):
     dd: DD = {"device": device, "dtype": dtype}
     numbers = torch.tensor([1, 3], device=device)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     i = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_ANALYTICAL, **dd)
 
     # make sure the checks are turned on
@@ -82,7 +81,7 @@ def test_hcore(dtype: torch.dtype):
     dd: DD = {"device": device, "dtype": dtype}
     numbers = torch.tensor([1, 3], device=device)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     i = ints.Integrals(numbers, par, ihelp, **dd)
     i.hcore = ints.Hamiltonian(numbers, par, ihelp, **dd)
 

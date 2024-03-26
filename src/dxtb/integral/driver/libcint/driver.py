@@ -46,14 +46,11 @@ class IntDriverLibcint(IntDriver):
         atombases = self.basis.create_dqc(positions, mask=mask)
 
         if self.ihelp.batched:
-            from ....param.util import get_elem_angular
-            from ....utils import batch
+            from tad_mctc.batch import deflate
 
             # integrals do not work with a batched IndexHelper
             _ihelp = [
-                IndexHelper.from_numbers(
-                    batch.deflate(number), get_elem_angular(self.par.element)
-                )
+                IndexHelper.from_numbers(deflate(number), self.par)
                 for number in self.numbers
             ]
 

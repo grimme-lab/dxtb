@@ -12,7 +12,6 @@ from dxtb.basis import IndexHelper
 from dxtb.components.interactions import InteractionList
 from dxtb.components.interactions.coulomb import new_es2, new_es3
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 from dxtb.scf import get_guess
 from dxtb.utils import batch
 
@@ -38,7 +37,7 @@ def gradchecker(
     chrg = torch.tensor(0.0, **dd)
 
     # setup
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     ilist = InteractionList(new_es2(numbers, par, **dd), new_es3(numbers, par, **dd))
 
     # variables to be differentiated
@@ -98,7 +97,7 @@ def gradchecker_batch(
     chrg = torch.tensor([0.0, 0.0], **dd)
 
     # setup
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     ilist = InteractionList(new_es2(numbers, par, **dd), new_es3(numbers, par, **dd))
 
     # variables to be differentiated

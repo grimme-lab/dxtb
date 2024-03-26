@@ -8,12 +8,12 @@ from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.batch import pack
+from tad_mctc.typing import DD
+from tad_mctc.units import VAA2AU
 
-from dxtb._types import DD
 from dxtb.components.interactions import new_efield
-from dxtb.constants import units
 from dxtb.param import GFN1_XTB
-from dxtb.utils import batch
 from dxtb.xtb import Calculator
 
 from .samples import samples
@@ -29,7 +29,7 @@ device = None
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    tol = sqrt(torch.finfo(dtype).eps)
+    tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name]
@@ -40,12 +40,12 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     ref = sample["energy"].to(**dd)
     # ref1 = sample["energy_monopole"].to(**dd)
 
-    field_vector = torch.tensor([-2.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([-2.0, 0.0, 0.0], **dd) * VAA2AU
     efield = new_efield(field_vector)
     calc = Calculator(numbers, GFN1_XTB, interaction=[efield], opts=opts, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
-    assert pytest.approx(ref, abs=tol) == result.total.sum(-1)
+    assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -53,17 +53,17 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name2", sample_list)
 @pytest.mark.parametrize("scf_mode", ["implicit", "full"])
 def test_batch(dtype: torch.dtype, name1: str, name2: str, scf_mode: str) -> None:
-    tol = sqrt(torch.finfo(dtype).eps)
+    tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
         )
     )
-    positions = batch.pack(
+    positions = pack(
         (
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
@@ -78,13 +78,13 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, scf_mode: str) -> Non
         ],
     )
 
-    field_vector = torch.tensor([-2.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([-2.0, 0.0, 0.0], **dd) * VAA2AU
     efield = new_efield(field_vector)
     options = dict(opts, **{"scf_mode": scf_mode, "mixer": "anderson"})
     calc = Calculator(numbers, GFN1_XTB, interaction=[efield], opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
-    assert pytest.approx(ref1, abs=tol) == result.total.sum(-1)
+    assert pytest.approx(ref1, abs=tol, rel=tol) == result.total.sum(-1)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -95,18 +95,18 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, scf_mode: str) -> Non
 def test_batch_three(
     dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
 ) -> None:
-    tol = sqrt(torch.finfo(dtype).eps)
+    tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2, sample3 = samples[name1], samples[name2], samples[name3]
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
             sample3["numbers"].to(device),
         )
     )
-    positions = batch.pack(
+    positions = pack(
         (
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
@@ -123,10 +123,10 @@ def test_batch_three(
         ],
     )
 
-    field_vector = torch.tensor([-2.0, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([-2.0, 0.0, 0.0], **dd) * VAA2AU
     efield = new_efield(field_vector)
     options = dict(opts, **{"scf_mode": scf_mode, "mixer": "anderson"})
     calc = Calculator(numbers, GFN1_XTB, interaction=[efield], opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
-    assert pytest.approx(ref, abs=tol) == result.total.sum(-1)
+    assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1)

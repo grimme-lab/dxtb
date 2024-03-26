@@ -12,7 +12,6 @@ from dxtb.basis import Basis, IndexHelper
 from dxtb.integral.driver.libcint import IntDriverLibcint, OverlapLibcint
 from dxtb.integral.driver.libcint import impls as intor
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 from dxtb.utils import batch, is_basis_list
 
 from ..utils import dgradcheck, dgradgradcheck
@@ -36,7 +35,7 @@ def gradchecker(
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
 
     # variables to be differentiated
@@ -103,7 +102,7 @@ def gradchecker_batch(
         return_mask=True,
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     driver = IntDriverLibcint(numbers, par, ihelp, **dd)
     overlap = OverlapLibcint(**dd)
 

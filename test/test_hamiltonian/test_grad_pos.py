@@ -14,7 +14,6 @@ from dxtb.integral import Overlap
 from dxtb.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb.ncoord import get_coordination_number
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 from dxtb.utils import batch
 from dxtb.xtb import GFN1Hamiltonian as Hamiltonian
 
@@ -38,7 +37,7 @@ def gradchecker(
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     h0 = Hamiltonian(numbers, par, ihelp, **dd)
     overlap = Overlap(driver=labels.INTDRIVER_ANALYTICAL, **dd)
 
@@ -127,7 +126,7 @@ def gradchecker_batch(
         return_mask=True,
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     h0 = Hamiltonian(numbers, par, ihelp, **dd)
     overlap = Overlap(driver=labels.INTDRIVER_ANALYTICAL, **dd)
 

@@ -25,7 +25,7 @@ def test_no_h0_fail() -> None:
 
 def test_no_h0_fail2() -> None:
     numbers = torch.tensor([1])
-    ihelp = IndexHelper.from_numbers(numbers, {1: [0]})
+    ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
     _par = par.model_copy(deep=True)
     h0 = Hamiltonian(numbers, _par, ihelp)
 
@@ -51,14 +51,14 @@ def test_no_h0_fail2() -> None:
 @pytest.mark.parametrize("dtype", [torch.float16, torch.float32, torch.float64])
 def test_change_type(dtype: torch.dtype) -> None:
     numbers = torch.tensor([1])
-    ihelp = IndexHelper.from_numbers(numbers, {1: [0]})
+    ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
     h0 = Hamiltonian(numbers, par, ihelp)
     assert h0.type(dtype).dtype == dtype
 
 
 def test_change_type_fail() -> None:
     numbers = torch.tensor([1])
-    ihelp = IndexHelper.from_numbers(numbers, {1: [0]})
+    ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
     h0 = Hamiltonian(numbers, par, ihelp)
 
     # trying to use setter
@@ -74,7 +74,7 @@ def test_change_type_fail() -> None:
 @pytest.mark.parametrize("device_str", ["cpu", "cuda"])
 def test_change_device(device_str: str) -> None:
     numbers = torch.tensor([1])
-    ihelp = IndexHelper.from_numbers(numbers, {1: [0]})
+    ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
     h0 = Hamiltonian(numbers, par, ihelp)
 
     device = get_device_from_str(device_str)
@@ -84,7 +84,7 @@ def test_change_device(device_str: str) -> None:
 
 def test_change_device_fail() -> None:
     numbers = torch.tensor([1])
-    ihelp = IndexHelper.from_numbers(numbers, {1: [0]})
+    ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
     h0 = Hamiltonian(numbers, par, ihelp)
 
     # trying to use setter
@@ -95,7 +95,7 @@ def test_change_device_fail() -> None:
 @pytest.mark.cuda
 def test_wrong_device_fail() -> None:
     numbers = torch.tensor([1], device=get_device_from_str("cuda"))
-    ihelp = IndexHelper.from_numbers(numbers, {1: [0]})
+    ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
 
     # numbers is on a different device
     with pytest.raises(ValueError):

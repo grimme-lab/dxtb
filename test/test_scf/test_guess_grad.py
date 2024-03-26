@@ -11,7 +11,6 @@ from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.constants import labels
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 from dxtb.scf import guess
 from dxtb.utils import batch
 
@@ -36,7 +35,7 @@ def gradchecker(
     positions = sample["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
 
     # variables to be differentiated
     positions.requires_grad_(True)
@@ -94,7 +93,7 @@ def gradchecker_batch(
     )
     charge = torch.tensor([0.0, 0.0], **dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
 
     # variables to be differentiated
     positions.requires_grad_(True)

@@ -11,7 +11,6 @@ from dxtb._types import DD
 from dxtb.basis import IndexHelper
 from dxtb.components.classicals import new_repulsion
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 
 from .samples import samples
 
@@ -33,7 +32,7 @@ def test_grad_fail(name: str) -> None:
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = rep.get_cache(numbers, ihelp)
     energy = rep.get_energy(positions, cache)
 

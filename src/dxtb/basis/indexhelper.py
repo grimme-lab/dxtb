@@ -1,14 +1,17 @@
 """
+Basis: IndexHelper
+==================
+
 Index helper utility to create index maps between atomic, shell-resolved, and
 orbital resolved representations of quantities.
 
 Example
 -------
 >>> import torch
->>> from xtbml.basis import IndexHelper
+>>> from dxtb.basis import IndexHelper
 >>> numbers = torch.tensor([6, 1, 1, 1, 1])
 >>> angular = {1: [0], 6: [0, 1]}
->>> ihelp = IndexHelper.from_numbers(numbers, angular)
+>>> ihelp = IndexHelper.from_numbers_angular(numbers, angular)
 >>> torch.sum(ihelp.angular >= 0)
 torch.tensor(6)
 """
@@ -16,10 +19,13 @@ torch.tensor(6)
 from __future__ import annotations
 
 import torch
+from tad_mctc.batch import pack
+from tad_mctc.typing import Tensor, TensorLike, override
 
-from .._types import Slicers, Tensor, TensorLike, override
+from dxtb._types import Slicers
+
 from ..param import Param, get_elem_angular
-from ..utils import batch, t2int, wrap_gather, wrap_scatter_reduce
+from ..utils import t2int, wrap_gather, wrap_scatter_reduce
 
 __all__ = ["IndexHelper"]
 
@@ -211,9 +217,7 @@ class IndexHelper(TensorLike):
             raise ValueError("All tensors must be on the same device")
 
     @classmethod
-    def from_numbers(
-        cls, numbers: Tensor, angular: dict[int, list[int]]
-    ) -> IndexHelper:
+    def from_numbers(cls, numbers: Tensor, par: Param) -> IndexHelper:
         """
         Construct an index helper instance from atomic numbers and their angular momenta.
 
@@ -230,6 +234,13 @@ class IndexHelper(TensorLike):
             Instance of index helper for given basis set.
         """
 
+        angular = get_elem_angular(par.element)
+        return cls.from_numbers_angular(numbers, angular)
+
+    @classmethod
+    def from_numbers_angular(
+        cls, numbers: Tensor, angular: dict[int, list[int]]
+    ) -> IndexHelper:
         device = numbers.device
         batched = numbers.ndim > 1
 
@@ -257,7 +268,7 @@ class IndexHelper(TensorLike):
             if (unique == 0.0).any():
                 ushells_per_unique[0] = 0
 
-            shells_to_ushell = batch.pack(
+            shells_to_ushell = pack(
                 [
                     _expand(
                         ushell_index[atom_to_unique[_batch, :]],
@@ -278,7 +289,7 @@ class IndexHelper(TensorLike):
         shell_index[shells_per_atom == 0] = PAD
 
         if batched:
-            shells_to_atom = batch.pack(
+            shells_to_atom = pack(
                 [
                     _fill(shell_index[_batch, :], shells_per_atom[_batch, :])
                     for _batch in range(numbers.shape[0])
@@ -302,7 +313,7 @@ class IndexHelper(TensorLike):
         orbital_index[orbitals_per_shell == 0] = PAD
 
         if batched:
-            orbitals_to_shell = batch.pack(
+            orbitals_to_shell = pack(
                 [
                     _fill(orbital_index[_batch, :], orbitals_per_shell[_batch, :])
                     for _batch in range(numbers.shape[0])
@@ -868,7 +879,7 @@ class IndexHelper(TensorLike):
         orbital_index = self.orbital_index_cart
         orbitals_per_shell = self.orbitals_per_shell_cart
         if self.batched:
-            orbitals_to_shell = batch.pack(
+            orbitals_to_shell = pack(
                 [
                     _fill(orbital_index[_batch, :], orbitals_per_shell[_batch, :])
                     for _batch in range(self.angular.shape[0])
@@ -988,7 +999,7 @@ class IndexHelper(TensorLike):
 
         if len(pad.shape) > 2:
             # gathering over subentries to avoid padded value (PAD) in index tensor
-            return batch.pack(
+            return pack(
                 [torch.gather(a[b != PAD], 0, b[b != PAD]) for a, b in pad],
                 value=PAD,
             )
@@ -1053,32 +1064,7 @@ class IndexHelper(TensorLike):
         return str(self)
 
 
-class IndexHelperParam(IndexHelper):
-    """
-    Index helper initialized by a parametrization.
-    """
-
-    @override
-    @classmethod
-    def from_numbers(cls, numbers: Tensor, par: Param) -> IndexHelper:
-        """
-        Construct an index helper instance from atomic numbers and their
-        angular momenta. The latter are collected from the GFN1 parametrization.
-
-        Parameters
-        ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system.
-
-        Returns
-        -------
-        IndexHelper
-            Instance of index helper for given basis set.
-        """
-        return super().from_numbers(numbers, get_elem_angular(par.element))
-
-
-class IndexHelperGFN1(IndexHelperParam):
+class IndexHelperGFN1(IndexHelper):
     """
     Index helper for GFN1 basis set.
     """
@@ -1100,12 +1086,12 @@ class IndexHelperGFN1(IndexHelperParam):
         IndexHelper
             Instance of index helper for given basis set.
         """
-        from ..param import GFN1_XTB
+        from dxtb.param.gfn1 import GFN1_XTB
 
         return super().from_numbers(numbers, GFN1_XTB)
 
 
-class IndexHelperGFN2(IndexHelperParam):
+class IndexHelperGFN2(IndexHelper):
     """
     Index helper for GFN1 basis set.
     """
@@ -1127,6 +1113,6 @@ class IndexHelperGFN2(IndexHelperParam):
         IndexHelper
             Instance of index helper for given basis set.
         """
-        from ..param.gfn2 import GFN2_XTB
+        from dxtb.param.gfn2 import GFN2_XTB
 
         return super().from_numbers(numbers, GFN2_XTB)

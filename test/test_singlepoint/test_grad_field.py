@@ -6,12 +6,12 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.batch import pack
+from tad_mctc.typing import DD, Callable, Tensor
+from tad_mctc.units import VAA2AU
 
-from dxtb._types import DD, Callable, Tensor
 from dxtb.components.interactions import new_efield
-from dxtb.constants import units
 from dxtb.param import GFN1_XTB as par
-from dxtb.utils import batch
 from dxtb.xtb import Calculator
 
 from ..utils import dgradcheck, dgradgradcheck
@@ -48,7 +48,7 @@ def gradchecker(dtype: torch.dtype, name: str, xfield: float) -> tuple[
     positions = samples[name]["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
 
-    field_vector = torch.tensor([xfield, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([xfield, 0.0, 0.0], **dd) * VAA2AU
 
     # variables to be differentiated
     field_vector.requires_grad_(True)
@@ -98,13 +98,13 @@ def gradchecker_batch(
     dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
@@ -113,7 +113,7 @@ def gradchecker_batch(
     charge = torch.tensor([0.0, 0.0], **dd)
 
     # variables to be differentiated
-    field_vector = torch.tensor([xfield, 0.0, 0.0], **dd) * units.VAA2AU
+    field_vector = torch.tensor([xfield, 0.0, 0.0], **dd) * VAA2AU
     field_vector.requires_grad_(True)
 
     def func(field_vector: Tensor) -> Tensor:

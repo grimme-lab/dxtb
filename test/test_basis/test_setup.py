@@ -10,7 +10,6 @@ import torch
 from dxtb._types import DD
 from dxtb.basis import Basis, IndexHelper
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 from dxtb.utils import batch
 
 from .samples import samples
@@ -29,7 +28,7 @@ def test_single(dtype: torch.dtype, name: str):
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
 
     atombasis = bas.create_dqc(positions)
@@ -66,7 +65,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     }
     positions = batch.pack((pos_dict[0], pos_dict[1]), value=float("nan"))
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
 
     atombasis_batch = bas.create_dqc(positions)

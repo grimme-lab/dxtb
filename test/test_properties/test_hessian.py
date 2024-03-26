@@ -41,7 +41,7 @@ def test_autograd(dtype: torch.dtype, name: str) -> None:
     positions = samples[name]["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
 
-    # required for autodiff of energy w.r.t. efield and dipole
+    # required for autodiff of energy w.r.t. positions
     positions.requires_grad_(True)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
@@ -101,7 +101,6 @@ def execute(
 ) -> None:
     calc = Calculator(numbers, par, opts=opts, **dd)
 
-    # field is cloned and detached and updated inside
     numhess = calc.hessian_numerical(numbers, positions, charge)
     assert numhess.grad_fn is None
 
@@ -109,7 +108,14 @@ def execute(
     pos = positions.clone().detach().requires_grad_(True)
 
     # manual jacobian
-    hess1 = tensor_to_numpy(calc.hessian(numbers, pos, charge, use_functorch=False))
+    hess1 = tensor_to_numpy(
+        calc.hessian(
+            numbers,
+            pos,
+            charge,
+            use_functorch=False,
+        )
+    )
 
     assert pytest.approx(numhess, abs=atol, rel=rtol) == hess1
 
@@ -118,7 +124,14 @@ def execute(
     pos = positions.clone().detach().requires_grad_(True)
 
     # jacrev of energy
-    hess2 = tensor_to_numpy(calc.hessian(numbers, pos, charge, use_functorch=True))
+    hess2 = tensor_to_numpy(
+        calc.hessian(
+            numbers,
+            pos,
+            charge,
+            use_functorch=True,
+        )
+    )
 
     assert pytest.approx(numhess, abs=atol, rel=rtol) == hess2
     assert pytest.approx(hess1, abs=atol, rel=rtol) == hess2

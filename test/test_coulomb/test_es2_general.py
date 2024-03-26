@@ -12,7 +12,7 @@ from dxtb._types import DD
 from dxtb.basis import IndexHelper
 from dxtb.components.interactions import Charges
 from dxtb.components.interactions.coulomb import secondorder as es2
-from dxtb.param import GFN1_XTB, get_elem_angular
+from dxtb.param import GFN1_XTB
 
 from ..utils import get_device_from_str
 
@@ -31,7 +31,7 @@ def test_none() -> None:
 def test_store_fail() -> None:
     numbers = torch.tensor([3, 1])
     positions = torch.randn((2, 3))
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     es = es2.new_es2(numbers, GFN1_XTB)
     assert es is not None
@@ -45,7 +45,7 @@ def test_grad_fail() -> None:
     numbers = torch.tensor([3, 1])
     positions = torch.randn((2, 3), requires_grad=True)
     charges = torch.randn(6)
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     dd: DD = {"device": positions.device, "dtype": positions.dtype}
     es = es2.new_es2(numbers, GFN1_XTB, **dd)
@@ -110,7 +110,7 @@ def test_fail_shell_resolved() -> None:
     assert cls is not None
 
     numbers = torch.tensor([6, 1])
-    ihelp = IndexHelper.from_numbers(numbers, {1: [0, 0], 6: [0, 1]})
+    ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0, 0], 6: [0, 1]})
 
     # shell-resolved function fails if initialzed with `shell_resolved=False`
     with pytest.raises(ValueError):

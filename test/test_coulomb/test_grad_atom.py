@@ -12,7 +12,7 @@ import torch
 from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.components.interactions.coulomb import secondorder as es2
-from dxtb.param import GFN1_XTB, get_elem_angular
+from dxtb.param import GFN1_XTB
 from dxtb.utils import batch
 
 from .samples import samples
@@ -36,7 +36,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     charges = sample["q"].to(**dd)
     ref = sample["grad"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=is_shell_resolved, **dd)
     assert es is not None
 
@@ -106,7 +106,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         ),
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=is_shell_resolved, **dd)
     assert es is not None
 

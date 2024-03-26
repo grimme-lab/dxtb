@@ -8,13 +8,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 import torch
+from tad_mctc.batch import pack
+from tad_mctc.typing import DD
 
-from dxtb._types import DD
 from dxtb.basis import Basis, IndexHelper
 from dxtb.integral.driver.pytorch.impls.md import overlap_gto
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
-from dxtb.utils import batch
 
 from ..utils import load_from_npz
 from .samples import samples
@@ -50,19 +49,19 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
         )
     )
-    positions = batch.pack(
+    positions = pack(
         (
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         )
     )
-    ref = batch.pack(
+    ref = pack(
         (
             load_from_npz(ref_overlap, name1, dtype),
             load_from_npz(ref_overlap, name2, dtype),
@@ -86,7 +85,7 @@ def test_overlap_higher_orbitals(dtype: torch.dtype):
     # arbitrary element (Rn)
     number = torch.tensor([86])
 
-    ihelp = IndexHelper.from_numbers(number, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(number, par)
     bas = Basis(number, par, ihelp, **dd)
     alpha, coeff = bas.create_cgtos()
 

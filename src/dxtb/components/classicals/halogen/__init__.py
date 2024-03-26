@@ -10,7 +10,7 @@ Example
 >>> import torch
 >>> from dxtb.basis import IndexHelper
 >>> from dxtb.classical import new_halogen
->>> from dxtb.param import GFN1_XTB, get_elem_param
+>>> from dxtb.param import GFN1_XTB
 >>> numbers = torch.tensor([35, 35, 7, 1, 1, 1])
 >>> positions = torch.tensor([
 ...     [+0.00000000000000, +0.00000000000000, +3.11495251300000],
@@ -21,7 +21,7 @@ Example
 ...     [+1.54769692500000, -0.89356260400000, -6.97470840000000],
 ... ])
 >>> xb = new_halogen(numbers, positions, GFN1_XTB)
->>> ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+>>> ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 >>> cache = xb.get_cache(numbers, ihelp)
 >>> energy = xb.get_energy(positions, cache)
 >>> print(energy.sum(-1))

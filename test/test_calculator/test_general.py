@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.exceptions import DtypeError
 
-from dxtb.exceptions import DtypeError
 from dxtb.param import GFN1_XTB as par
 from dxtb.timing import timer
 from dxtb.xtb import Calculator

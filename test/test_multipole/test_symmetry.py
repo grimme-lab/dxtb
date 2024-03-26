@@ -8,13 +8,13 @@ from itertools import permutations
 
 import pytest
 import torch
+from tad_mctc.batch import deflate, pack
+from tad_mctc.typing import DD, Tensor
 
-from dxtb._types import DD, Tensor
 from dxtb.basis import Basis, IndexHelper
 from dxtb.integral.driver.libcint import impls as intor
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
-from dxtb.utils import batch, is_basis_list
+from dxtb.utils import is_basis_list
 
 from .samples import samples
 
@@ -63,7 +63,7 @@ def test_single(dtype: torch.dtype, intstr: str, name: str) -> None:
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
 
     atombases = bas.create_dqc(positions)
@@ -89,28 +89,25 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, intstr: str) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         ]
     )
 
-    _ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    _ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, _ihelp, **dd)
     atombases = bas.create_dqc(positions)
 
     # batched IndexHelper does not yet work with LibcintWrapper
-    ihelp = [
-        IndexHelper.from_numbers(batch.deflate(number), get_elem_angular(par.element))
-        for number in numbers
-    ]
+    ihelp = [IndexHelper.from_numbers(deflate(number), par) for number in numbers]
 
     wrappers = [
         intor.LibcintWrapper(ab, ihelp)
@@ -129,6 +126,6 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, intstr: str) -> None:
 
         int_list.append(i)
 
-    i = batch.pack(int_list)
+    i = pack(int_list)
 
     assert i.shape == torch.Size((2, *mpdims, _ihelp.nao, _ihelp.nao))

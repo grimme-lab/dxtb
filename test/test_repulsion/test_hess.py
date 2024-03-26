@@ -13,7 +13,6 @@ from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.components.classicals import new_repulsion
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 from dxtb.utils import batch, hessian, jac
 
 from ..utils import reshape_fortran
@@ -44,7 +43,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = rep.get_cache(numbers, ihelp)
 
     hess = hessian(rep.get_energy, (positions, cache))
@@ -68,7 +67,7 @@ def skip_test_single_alt(dtype: torch.dtype, name: str) -> None:
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = rep.get_cache(numbers, ihelp)
 
     positions.requires_grad_(True)
@@ -140,7 +139,7 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = rep.get_cache(numbers, ihelp)
 
     positions.requires_grad_(True)
