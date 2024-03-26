@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .._types import Tensor
+from tad_mctc.typing import Tensor
 
 __all__ = ["AtomCGTOBasis", "CGTOBasis"]
 

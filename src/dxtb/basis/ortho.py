@@ -5,8 +5,7 @@ from __future__ import annotations
 import math
 
 import torch
-
-from .._types import Tensor
+from tad_mctc.typing import Tensor
 
 
 def gaussian_integral(ai: Tensor, aj: Tensor, ci: Tensor, cj: Tensor) -> Tensor:

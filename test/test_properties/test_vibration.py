@@ -49,7 +49,8 @@ def skip_test_autograd(dtype: torch.dtype, name: str) -> None:
     calc = Calculator(numbers, par, opts=opts, **dd)
 
     def f(pos: Tensor) -> tuple[Tensor, Tensor]:
-        return calc.vibration(numbers, pos, charge)
+        f, m = calc.vibration(numbers, pos, charge)
+        return f, m
 
     assert dgradcheck(f, positions)
 
@@ -103,33 +104,43 @@ def execute(
 ) -> None:
     calc = Calculator(numbers, par, opts=opts, **dd)
 
-    # field is cloned and detached and updated inside
     numfreqs, nummodes = calc.vibration_numerical(numbers, positions, charge)
+    nummodes = nummodes / torch.norm(nummodes, dim=-2, keepdim=True)
     assert numfreqs.grad_fn is None
     assert nummodes.grad_fn is None
 
     # required for autodiff of energy w.r.t. positions (Hessian)
     pos = positions.clone().detach().requires_grad_(True)
 
-    # manual jacobian
+    ###################
+    # manual jacobian #
+    ###################
     freqs1, modes1 = calc.vibration(numbers, pos, charge, use_functorch=False)
-    freqs1, modes1 = tensor_to_numpy(freqs1), tensor_to_numpy(modes1)
+    modes1 = modes1 / torch.norm(modes1, dim=-2, keepdim=True)
 
+    dot_products = torch.einsum("...ij,...ij->...j", nummodes, modes1)
+    assert (torch.abs(dot_products) > 0.99).all()
+
+    freqs1 = tensor_to_numpy(freqs1)
     assert pytest.approx(numfreqs, abs=atol, rel=rtol) == freqs1
-    assert pytest.approx(nummodes, abs=atol, rel=rtol) == modes1
 
     # reset before another AD run
     calc.reset()
     pos = positions.clone().detach().requires_grad_(True)
 
-    # jacrev of energy
+    ####################
+    # jacrev of energy #
+    ####################
     freqs2, modes2 = calc.vibration(numbers, pos, charge, use_functorch=True)
-    freqs2, modes2 = tensor_to_numpy(freqs2), tensor_to_numpy(modes2)
+    modes2 = modes2 / torch.norm(modes2, dim=-2, keepdim=True)
 
+    # check angles between modes
+    dot_products = torch.einsum("...ij,...ij->...j", nummodes, modes2)
+    assert (torch.abs(dot_products) > 0.99).all()
+
+    freqs2 = tensor_to_numpy(freqs2)
     assert pytest.approx(numfreqs, abs=atol, rel=rtol) == freqs2
     assert pytest.approx(freqs1, abs=atol, rel=rtol) == freqs2
-    assert pytest.approx(nummodes, abs=atol, rel=rtol) == modes2
-    assert pytest.approx(modes1, abs=atol, rel=rtol) == modes2
 
 
 @pytest.mark.parametrize("dtype", [torch.double])

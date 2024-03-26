@@ -5,12 +5,12 @@ Expansion coefficients for Slater functions into primitive Gaussian functions
 from __future__ import annotations
 
 import math
-import os.path as op
+from pathlib import Path
 
 import numpy as np
 import torch
+from tad_mctc.typing import Tensor
 
-from .._types import Tensor
 from ..exceptions import (
     CGTOAzimuthalQuantumNumberError,
     CGTOPrimitivesError,
@@ -19,10 +19,9 @@ from ..exceptions import (
     CGTOSlaterExponentsError,
 )
 
+base = Path(__file__).parent / "sto-ng"
 sto_ng = [
-    torch.from_numpy(np.load(op.join(op.dirname(__file__), f"sto-{n}g.npy"))).type(
-        torch.float64
-    )
+    torch.from_numpy(np.load(base / f"sto-{n}g.npy")).type(torch.double)
     for n in range(1, 7)
 ]
 
