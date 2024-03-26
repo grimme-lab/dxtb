@@ -35,9 +35,9 @@ except ImportError as e:  # pragma: no cover
 import warnings
 
 from tad_mctc.convert import tensor_to_numpy
+from tad_mctc.data import pse
+from tad_mctc.typing import Tensor
 
-from ..._types import Tensor
-from ...constants import PSE
 from ..molecule import Mol
 
 # Turn off PySCF's normalization since dxtb's normalization is different,
@@ -117,10 +117,10 @@ class PyscfMol(gto.Mole):
 
         basis: dict[str, list] = {}
         for i, number in enumerate(numbers.tolist()):
-            if number not in PSE:
+            if number not in pse.Z2S:
                 raise ValueError(f"Atom '{number}' not found.")
 
-            symbol = PSE[number]
+            symbol = pse.Z2S[number]
             pos = tensor_to_numpy(positions[i, :])
             atom.append([symbol, pos])
 
@@ -128,7 +128,7 @@ class PyscfMol(gto.Mole):
             p = Path(path, f"{number:02d}.nwchem")
             with open(p, encoding="utf8") as f:
                 content = f.read()
-                basis[f"{PSE[number]}"] = gto.parse(content)
+                basis[f"{pse.Z2S[number]}"] = gto.parse(content)
 
         self.atom = atom
         self.basis = basis

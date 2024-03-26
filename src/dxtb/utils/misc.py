@@ -11,9 +11,8 @@ from functools import wraps
 
 import torch
 
-from .._types import Any, Callable, Sequence, T, Tensor, TypeGuard
+from .._types import Any, Callable, T, Tensor, TypeGuard
 from ..basis.types import AtomCGTOBasis
-from ..constants import ATOMIC_NUMBER
 
 
 def is_str_list(x: list[Any]) -> TypeGuard[list[str]]:
@@ -71,10 +70,6 @@ def is_basis_list(x: Any) -> TypeGuard[list[AtomCGTOBasis]]:
     if not isinstance(x, list):
         return False
     return all(isinstance(i, AtomCGTOBasis) for i in x)
-
-
-def symbol2number(sym_list: Sequence[str]) -> Tensor:
-    return torch.flatten(torch.tensor([ATOMIC_NUMBER[s.title()] for s in sym_list]))
 
 
 def convert_float_tensor(

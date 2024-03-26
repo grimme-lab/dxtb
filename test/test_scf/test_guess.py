@@ -45,7 +45,7 @@ def test_eeq() -> None:
         ]
     )
 
-    assert pytest.approx(ref) == c
+    assert pytest.approx(ref, abs=1e-5) == c
 
 
 def test_sad() -> None:

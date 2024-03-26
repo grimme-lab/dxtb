@@ -6,9 +6,10 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.batch import pack
+from tad_mctc.convert import symbol_to_number
 
 from dxtb.basis import IndexHelper
-from dxtb.utils import batch, symbol2number
 
 
 def test_spread() -> None:
@@ -87,7 +88,7 @@ def test_cart() -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_single(dtype: torch.dtype):
-    numbers = symbol2number("S H H H Mg N O S N N C H C H O N".split())
+    numbers = symbol_to_number("S H H H Mg N O S N N C H C H O N".split())
     angular = {
         1: [0],  # H (GFN2!)
         6: [0, 1],  # C
@@ -133,10 +134,10 @@ def test_single(dtype: torch.dtype):
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_batch(dtype: torch.dtype):
-    numbers = batch.pack(
+    numbers = pack(
         (
-            symbol2number("O Al Si H Li H Cl Al H H B H H B H H".split()),
-            symbol2number("H H Si H Na S H H Al H C Si Cl B B H".split()),
+            symbol_to_number("O Al Si H Li H Cl Al H H B H H B H H".split()),
+            symbol_to_number("H H Si H Na S H H Al H C Si Cl B B H".split()),
         )
     )
     angular = {
@@ -156,7 +157,7 @@ def test_batch(dtype: torch.dtype):
 
     assert torch.sum(ihelp.angular >= 0) == torch.tensor(58)
 
-    qat = batch.pack(
+    qat = pack(
         (
             torch.tensor(
                 [
@@ -182,7 +183,7 @@ def test_batch(dtype: torch.dtype):
             ),
         )
     )
-    qsh = batch.pack(
+    qsh = pack(
         (
             torch.tensor(
                 [
@@ -226,10 +227,10 @@ def test_batch(dtype: torch.dtype):
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_batch2(dtype: torch.dtype):
-    numbers = batch.pack(
+    numbers = pack(
         (
-            symbol2number("O Al Si H Li H Cl Al H H B H H B H H".split()),
-            symbol2number("Si H H H H".split()),
+            symbol_to_number("O Al Si H Li H Cl Al H H B H H B H H".split()),
+            symbol_to_number("Si H H H H".split()),
         )
     )
     angular = {
@@ -249,7 +250,7 @@ def test_batch2(dtype: torch.dtype):
 
     assert torch.sum(ihelp.angular >= 0) == torch.tensor(35)
 
-    qat = batch.pack(
+    qat = pack(
         (
             torch.tensor(
                 [
@@ -271,7 +272,7 @@ def test_batch2(dtype: torch.dtype):
             ),
         )
     )
-    qsh = batch.pack(
+    qsh = pack(
         (
             torch.tensor(
                 [
@@ -308,10 +309,10 @@ def test_batch2(dtype: torch.dtype):
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_batch_2dim(dtype: torch.dtype) -> None:
-    numbers = batch.pack(
+    numbers = pack(
         (
-            symbol2number("H H".split()),
-            symbol2number("Li H".split()),
+            symbol_to_number("H H".split()),
+            symbol_to_number("Li H".split()),
         )
     )
     angular = {
@@ -419,7 +420,7 @@ def test_batch_2dim(dtype: torch.dtype) -> None:
         dtype=dtype,
     )
 
-    s = batch.pack([s_h2, s_lih])
+    s = pack([s_h2, s_lih])
 
     s_atom = ihelp.reduce_orbital_to_atom(s, dim=(-2, -1))
     assert pytest.approx(ref) == s_atom

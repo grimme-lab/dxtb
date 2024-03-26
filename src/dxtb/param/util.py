@@ -1,6 +1,6 @@
 """
-Parametrization Utility
-=======================
+Parametrization: Utility
+========================
 
 Contains functions to obtain the parametrization of elements and pairs.
 Most functions convert the parametrization dictionary to a tensor.
@@ -9,9 +9,10 @@ Most functions convert the parametrization dictionary to a tensor.
 from __future__ import annotations
 
 import torch
+from tad_mctc.data import pse
+from tad_mctc.typing import Tensor
 
-from .._types import Tensor
-from ..constants import ATOMIC_NUMBER, PSE, defaults
+from ..constants import defaults
 from ..param import Element
 from ..utils import is_int_list
 
@@ -51,7 +52,7 @@ def get_pair_param(
     """
     # convert atomic numbers to symbols
     if is_int_list(symbols):
-        symbols = [PSE.get(i, "X") for i in symbols]
+        symbols = [pse.Z2S.get(i, "X") for i in symbols]
 
     if dtype is None:
         dtype = defaults.get_default_dtype()
@@ -108,7 +109,7 @@ def get_elem_param(
     l = []
 
     for number in numbers:
-        el = PSE.get(int(number.item()), "X")
+        el = pse.Z2S.get(int(number.item()), "X")
         if el in par_element:
             p = par_element[el]
             if key not in p.model_fields:
@@ -164,7 +165,7 @@ def get_elem_angular(par_element: dict[str, Element]) -> dict[int, list[int]]:
     }
 
     return {
-        ATOMIC_NUMBER[sym]: [label2angular[label[-1]] for label in par.shells]
+        pse.S2Z[sym]: [label2angular[label[-1]] for label in par.shells]
         for sym, par in par_element.items()
     }
 
@@ -206,7 +207,7 @@ def get_elem_valence(
     }
 
     for number in numbers:
-        el = PSE.get(int(number.item()), "X")
+        el = pse.Z2S.get(int(number.item()), "X")
         shells = []
         if el in par_element:
             for shell in getattr(par_element[el], key):
@@ -258,7 +259,7 @@ def get_elem_pqn(
 
     shells = []
     for number in numbers:
-        el = PSE.get(int(number.item()), "X")
+        el = pse.Z2S.get(int(number.item()), "X")
         if el in par_element:
             for shell in getattr(par_element[el], key):
                 shells.append(int(shell[0]))

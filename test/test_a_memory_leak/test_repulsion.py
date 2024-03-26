@@ -10,14 +10,14 @@ import gc
 
 import pytest
 import torch
+from tad_mctc.data.molecules import mols as samples
+from tad_mctc.typing import DD
 
-from dxtb._types import DD
 from dxtb.basis import IndexHelper
 from dxtb.classical import Repulsion
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular, get_elem_param
 
-from ..molecules import mols as samples
 from .util import has_memleak_tensor
 
 sample_list = ["H2O", "SiH4", "MB16_43_01"]

@@ -9,13 +9,14 @@ from argparse import Namespace
 from pathlib import Path
 
 import torch
+from tad_mctc.batch import pack
+from tad_mctc.io import read
 
 from .. import io
 from ..config import Config
 from ..constants import labels, units
 from ..interaction.external import new_efield
 from ..timing import timer
-from ..utils import batch
 from ..xtb import Calculator, Result
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ FILES = {"spin": ".UHF", "chrg": ".CHRG"}
 
 
 def print_grad(grad, numbers) -> None:
-    from ..constants import PSE
+    from tad_mctc.data import pse
 
     print("************************Gradient************************")
     print("")
@@ -32,7 +33,7 @@ def print_grad(grad, numbers) -> None:
     # Iterate over the tensor and print
     for i, row in enumerate(grad):
         # Get the atomic symbol corresponding to the atomic number
-        symbol = PSE.get(int(numbers[i].item()), "?")
+        symbol = pse.Z2S.get(int(numbers[i].item()), "?")
         print(f"{i+1:>3} {symbol:<2} : {row[0]:>15.9f} {row[1]:>15.9f} {row[2]:>15.9f}")
 
 
@@ -124,14 +125,11 @@ class Driver:
         io.OutputHandler.write(config.info())
 
         if len(args.file) > 1:
-            _n = []
-            _p = []
-            for f in args.file:
-                n, p = io.read_structure_from_file(f, args.filetype)
-                _n.append(torch.tensor(n, dtype=torch.long, device=dd["device"]))
-                _p.append(torch.tensor(p, **dd))
-            numbers = batch.pack(_n)
-            positions = batch.pack(_p)
+            _n, _p = zip(
+                *[read.read_from_path(f, args.filetype, **dd) for f in args.file]
+            )
+            numbers = pack(_n)
+            positions = pack(_p)
         else:
             _n, _p = io.read_structure_from_file(args.file[0], args.filetype)
             numbers = torch.tensor(_n, dtype=torch.long, device=dd["device"])

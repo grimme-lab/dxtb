@@ -10,12 +10,12 @@ import gc
 
 import pytest
 import torch
+from tad_mctc.data.molecules import mols as samples
+from tad_mctc.typing import DD
 
-from dxtb._types import DD
 from dxtb.param import GFN1_XTB as par
 from dxtb.xtb import Calculator
 
-from ..molecules import mols as samples
 from .util import has_memleak_tensor
 
 opts = {"verbosity": 0, "maxiter": 50, "exclude": ["rep", "disp", "hal"]}

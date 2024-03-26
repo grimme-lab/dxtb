@@ -1,9 +1,9 @@
 """
-Multipole Moments
-=================
+Properties: Multipole Moments
+=============================
 
 Analytical calculation of multipole moments. Currently, dipole moment and
-traceless quadrupole moment are implemented. However, this module is serves
+traceless quadrupole moment are implemented. However, this module serves
 more as a short-cut for the calculation in ``Calculator`` as it should hide
 some implementation details.
 """
@@ -11,9 +11,8 @@ some implementation details.
 from __future__ import annotations
 
 import torch
-
-from .._types import Tensor
-from ..constants import get_zvalence
+from tad_mctc.data.getters import get_zvalence
+from tad_mctc.typing import Tensor
 
 __all__ = ["dipole", "quadrupole"]
 

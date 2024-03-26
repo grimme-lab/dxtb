@@ -139,7 +139,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     single(name, dd=dd)
 
 
-# FIXME: Batched Hessians are not supported yet
+# TODO: Batched derivatives are not supported yet
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", slist)

@@ -11,9 +11,10 @@ from json import loads as json_load
 from pathlib import Path
 
 import torch
+from tad_mctc import units
+from tad_mctc.data import pse
 
 from .._types import Any, PathLike
-from ..constants import ATOMIC_NUMBER, units
 
 
 def check_xyz(fp: PathLike, xyz: list[list[float]]) -> list[list[float]]:
@@ -148,7 +149,7 @@ def read_xyz(fp: PathLike) -> tuple[list[int], list[list[float]]]:
                 l = line.strip().split()
                 atom, x, y, z = l
                 xyz.append([i * units.AA2AU for i in [float(x), float(y), float(z)]])
-                atoms.append(ATOMIC_NUMBER[atom.title()])
+                atoms.append(pse.S2Z[atom.title()])
 
     if len(xyz) != num_atoms:
         raise ValueError(f"Number of atoms in {fp} does not match.")
@@ -184,7 +185,7 @@ def read_xyz_qm9(fp: PathLike) -> tuple[list[int], list[list[float]]]:
     for i in range(2, 2 + num_atoms):
         l = lines[i].strip().split()
 
-        atoms.append(ATOMIC_NUMBER[l[0].title()])
+        atoms.append(pse.S2Z[l[0].title()])
         xyz.append([float(x.replace("*^", "e")) * units.AA2AU for x in l[1:4]])
 
     if len(xyz) != num_atoms:
@@ -223,7 +224,7 @@ def read_qcschema(fp: PathLike) -> tuple[list[int], list[list[float]]]:
 
     atoms = []
     for atom in mol["symbols"]:
-        atoms.append(ATOMIC_NUMBER[atom.title()])
+        atoms.append(pse.S2Z[atom.title()])
 
     xyz = []
     geo = mol["geometry"]
@@ -270,7 +271,7 @@ def read_coord(fp: PathLike) -> tuple[list[int], list[list[float]]]:
 
             x, y, z, atom = l
             xyz.append([float(x), float(y), float(z)])
-            atoms.append(ATOMIC_NUMBER[atom.title()])
+            atoms.append(pse.S2Z[atom.title()])
 
     xyz = check_xyz(fp, xyz)
     return atoms, xyz

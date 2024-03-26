@@ -31,11 +31,11 @@ tensor(0.0025)
 from __future__ import annotations
 
 import torch
+from tad_mctc.data.radii import ATOMIC as ATOMIC_RADII
 
 from .._types import Tensor, TensorLike
 from ..basis import IndexHelper
 from ..constants import xtb
-from ..data import atomic_rad
 from ..param import Param, get_elem_param
 from ..utils import batch
 from .base import Classical
@@ -297,7 +297,7 @@ class Halogen(Classical):
             )
 
         # parameters
-        rads = atomic_rad[numbers].to(self.device).type(self.dtype) * self.rscale
+        rads = ATOMIC_RADII.to(**self.dd)[numbers] * self.rscale
 
         # init tensor for atomwise energies
         energies = positions.new_zeros(numbers.size(-1))

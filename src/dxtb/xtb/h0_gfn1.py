@@ -6,11 +6,11 @@ from __future__ import annotations
 
 import torch
 from tad_mctc import storch
+from tad_mctc.data.radii import ATOMIC as ATOMIC_RADII
+from tad_mctc.typing import Tensor
+from tad_mctc.units import EV2AU
 
-from .._types import Tensor
 from ..basis import IndexHelper
-from ..constants import EV2AU
-from ..data import atomic_rad
 from ..interaction import Potential
 from ..param import Param, get_elem_param, get_elem_valence, get_pair_param
 from ..utils import real_pairs, symmetrize
@@ -40,7 +40,7 @@ class GFN1Hamiltonian(BaseHamiltonian):
             raise RuntimeError("Parametrization does not specify Hamiltonian.")
 
         # atom-resolved parameters
-        self.rad = atomic_rad.to(**self.dd)[self.unique]
+        self.rad = ATOMIC_RADII.to(**self.dd)[self.unique]
         self.en = self._get_elem_param("en")
 
         # shell-resolved element parameters

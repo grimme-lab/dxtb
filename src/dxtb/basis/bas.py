@@ -410,7 +410,7 @@ class Basis(TensorLike):
 
                         # FIXME: There should probably be some kind of mask to
                         # get rid of padding?
-                        print(f"Warning in {__file__}: Batched mode not working for AD")
+                        # print(f"Warning in {__file__}: Batched mode not working for functorch AD")
                         f = self.ihelp.angular[_batch]
                         cgto = CGTOBasis(
                             angmom=tensor_to_numpy(f)[s],  # int!

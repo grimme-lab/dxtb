@@ -1344,8 +1344,10 @@ class Calculator(TensorLike):
         else:
             mu = dip_fcn(numbers, positions, chrg, spin, use_functorch)
 
-            # (3, 3*nat) -> (3, nat, 3)
-            dmu_dr = _jac(mu, positions).reshape((3, *positions.shape[-2:]))
+            # (..., 3, 3*nat) -> (..., 3, nat, 3)
+            dmu_dr = _jac(mu, positions).reshape(
+                (*numbers.shape[:-1], 3, *positions.shape[-2:])
+            )
 
         if dmu_dr.is_contiguous() is False:
             logger.debug(
