@@ -8,8 +8,8 @@ import pytest
 import torch
 
 from dxtb._types import ContainerData
+from dxtb.components.interactions import Potential
 from dxtb.constants import defaults
-from dxtb.interaction import Potential
 from dxtb.utils import batch
 
 nbatch = 10

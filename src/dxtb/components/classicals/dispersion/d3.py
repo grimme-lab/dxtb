@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import tad_dftd3 as d3
 import torch
+from tad_mctc.ncoord import cn_d3, exp_count
+from tad_mctc.typing import Any, CountingFunction, Tensor, TensorLike
 
-from .._types import Any, CountingFunction, Tensor, TensorLike
-from ..ncoord import exp_count, get_coordination_number
 from .base import Dispersion
 
 
@@ -132,8 +132,11 @@ class DispersionD3(Dispersion):
             Atom-resolved D3 dispersion energy.
         """
 
-        cn = get_coordination_number(
-            self.numbers, positions, cache.counting_function, cache.rcov
+        cn = cn_d3(
+            self.numbers,
+            positions,
+            counting_function=cache.counting_function,
+            rcov=cache.rcov,
         )
         weights = d3.model.weight_references(
             self.numbers, cn, cache.ref, cache.weighting_function

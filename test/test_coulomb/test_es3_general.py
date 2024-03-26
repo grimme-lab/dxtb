@@ -9,7 +9,7 @@ import pytest
 import torch
 
 from dxtb.basis import IndexHelper
-from dxtb.coulomb import thirdorder as es3
+from dxtb.components.interactions.coulomb import thirdorder as es3
 from dxtb.param import GFN1_XTB, get_elem_angular
 
 from ..utils import get_device_from_str

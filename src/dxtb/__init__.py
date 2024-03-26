@@ -21,44 +21,26 @@ from . import _types
 from . import io
 
 # import interaction before Coulomb to avoid circular import
-from dxtb.interaction import Interaction, InteractionList
-from dxtb.coulomb import secondorder, thirdorder
+from dxtb.components.interactions import Interaction, InteractionList
+from dxtb.components.interactions.coulomb import (
+    secondorder,
+    thirdorder,
+    ES2,
+    ES3,
+    new_es2,
+    new_es3,
+)
+
+from dxtb.components import interactions
 
 # from . import integral as ints
 from .__version__ import __version__
 
 from .basis import Basis, IndexHelper
-from .classical import Halogen, Repulsion, new_halogen, new_repulsion
-from .coulomb import ES2, ES3, new_es2, new_es3
-from .dispersion import DispersionD3, new_dispersion
-from .interaction import external
+from .components.classicals import Halogen, Repulsion, new_halogen, new_repulsion
+from .components.classicals import DispersionD3, new_dispersion
+from .components.interactions import external
 from .mol import molecule
 from .param import GFN1_XTB, Param
 from .xtb import Calculator
-
-__all__ = [
-    "Calculator",
-    "GFN1_XTB",
-    "Param",
-    "Basis",
-    "IndexHelper",
-    "DispersionD3",
-    "new_dispersion",
-    "ES2",
-    "ES3",
-    "new_es2",
-    "new_es3",
-    "Halogen",
-    "Repulsion",
-    "new_halogen",
-    "new_repulsion",
-    "Interaction",
-    "InteractionList",
-    "external",
-    "molecule",
-    "scipy",
-    "torch",
-    "timer",
-    "_types",
-    "io",
-]
+from dxtb.components.interactions import solvation as solvation

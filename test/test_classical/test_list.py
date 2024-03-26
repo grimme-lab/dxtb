@@ -7,7 +7,7 @@ from __future__ import annotations
 import torch
 
 from dxtb.basis import IndexHelper
-from dxtb.classical import ClassicalList
+from dxtb.components.classicals import ClassicalList
 
 
 def test_empty() -> None:

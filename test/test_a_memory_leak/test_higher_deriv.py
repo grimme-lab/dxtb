@@ -14,7 +14,7 @@ from tad_mctc.data.molecules import mols as samples
 from tad_mctc.typing import DD
 
 from dxtb.basis import IndexHelper
-from dxtb.classical import new_repulsion
+from dxtb.components.classicals import new_repulsion
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 

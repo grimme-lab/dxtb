@@ -40,14 +40,14 @@ import warnings
 import torch
 from tad_mctc import storch
 from tad_mctc.batch import real_pairs
-from tad_mctc.typing import DD, get_default_dtype
+from tad_mctc.typing import DD, Tensor, TensorLike, get_default_dtype, override
 
-from .._types import Tensor, TensorLike, override
-from ..basis import IndexHelper
-from ..constants import xtb
-from ..exceptions import ParameterWarning
-from ..param import Param, get_elem_param
-from .base import Classical
+from dxtb.basis import IndexHelper
+from dxtb.constants import xtb
+from dxtb.exceptions import ParameterWarning
+from dxtb.param import Param, get_elem_param
+
+from ..base import Classical
 
 __all__ = ["Repulsion", "LABEL_REPULSION", "new_repulsion"]
 

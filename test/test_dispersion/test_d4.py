@@ -12,7 +12,7 @@ import tad_dftd4 as d4
 import torch
 
 from dxtb._types import DD, Tensor
-from dxtb.dispersion import DispersionD4, new_dispersion
+from dxtb.components.classicals.dispersion import DispersionD4, new_dispersion
 from dxtb.param.gfn2 import GFN2_XTB as par
 from dxtb.utils import batch
 

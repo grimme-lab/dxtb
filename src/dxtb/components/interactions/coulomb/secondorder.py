@@ -41,14 +41,17 @@ from __future__ import annotations
 
 import torch
 from tad_mctc import storch
+from tad_mctc.batch import real_pairs
+from tad_mctc.exceptions import DeviceError
+from tad_mctc.math import einsum
+from tad_mctc.typing import DD, Tensor, TensorLike, TensorOrTensors
 
-from .._types import DD, Slicers, Tensor, TensorLike, TensorOrTensors
-from ..basis import IndexHelper
-from ..constants import defaults, xtb
-from ..exceptions import DeviceError
-from ..interaction import Interaction
-from ..param import Param, get_elem_param
-from ..utils import einsum, real_pairs
+from dxtb._types import Slicers
+from dxtb.basis import IndexHelper
+from dxtb.constants import defaults, xtb
+from dxtb.param import Param, get_elem_param
+
+from .. import Interaction
 from .average import AveragingFunction, averaging_function, harmonic_average
 
 __all__ = ["ES2", "LABEL_ES2", "new_es2"]
@@ -75,7 +78,7 @@ class ES2(Interaction):
     average: AveragingFunction
     """
     Function to use for averaging the Hubbard parameters (default:
-    `~dxtb.coulomb.average.harmonic_average`).
+    `~dxtb.components.interactions.coulomb.average.harmonic_average`).
     """
 
     gexp: Tensor
@@ -215,7 +218,7 @@ class ES2(Interaction):
             Coulomb matrix.
         """
         # only calculate mask once and save it for backward
-        mask = real_pairs(numbers, diagonal=True)
+        mask = real_pairs(numbers, mask_diagonal=True)
 
         mat = CoulombMatrixAG.apply(
             mask,
@@ -255,7 +258,7 @@ class ES2(Interaction):
             raise ValueError("No 'lhubbard' parameters set.")
 
         # only calculate mask once and save it for backward
-        mask = real_pairs(numbers, diagonal=True)
+        mask = real_pairs(numbers, mask_diagonal=True)
 
         mat = coulomb_matrix_shell(
             mask,
@@ -500,7 +503,7 @@ class ES2(Interaction):
             return torch.zeros_like(positions)
 
         zero = torch.tensor(0.0, device=positions.device, dtype=positions.dtype)
-        mask = real_pairs(numbers, diagonal=True)
+        mask = real_pairs(numbers, mask_diagonal=True)
 
         distances = torch.where(
             mask,
@@ -546,7 +549,7 @@ class ES2(Interaction):
         zero = torch.tensor(0.0, **dd)
         eps = torch.tensor(torch.finfo(positions.dtype).eps, **dd)
 
-        mask = real_pairs(numbers, diagonal=True)
+        mask = real_pairs(numbers, mask_diagonal=True)
 
         # all distances to the power of "gexp" (R^2_AB from Eq.26)
         distances = ihelp.spread_atom_to_shell(
@@ -611,7 +614,7 @@ def coulomb_matrix_atom(
         Exponent of the second-order Coulomb interaction (default: 2.0).
     average: AveragingFunction
         Function to use for averaging the Hubbard parameters (default:
-        `~dxtb.coulomb.average.harmonic_average`).
+        `~dxtb.components.interactions.coulomb.average.harmonic_average`).
 
     Returns
     -------
@@ -721,7 +724,7 @@ def coulomb_matrix_shell(
         Exponent of the second-order Coulomb interaction (default: 2.0).
     average: AveragingFunction
         Function to use for averaging the Hubbard parameters (default:
-        `~dxtb.coulomb.average.harmonic_average`).
+        `~dxtb.components.interactions.coulomb.average.harmonic_average`).
 
     Returns
     -------

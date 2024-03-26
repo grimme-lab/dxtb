@@ -27,10 +27,9 @@ from __future__ import annotations
 
 import torch
 from tad_mctc import storch
+from tad_mctc.batch import real_atoms, real_pairs
 from tad_mctc.data.radii import VDW_D3
-
-from .._types import DD, Tensor
-from ..utils import real_atoms, real_pairs
+from tad_mctc.typing import DD, Tensor
 
 
 def get_born_radii(
@@ -157,7 +156,7 @@ def compute_psi(
     zero = torch.tensor(0.0, **dd)
 
     # mask for padding
-    mask = real_pairs(numbers, True)
+    mask = real_pairs(numbers, mask_diagonal=True)
 
     rho = rvdw * descreening
 

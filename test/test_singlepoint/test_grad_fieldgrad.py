@@ -8,7 +8,7 @@ import pytest
 import torch
 
 from dxtb._types import DD, Callable, Tensor
-from dxtb.interaction import new_efield, new_efield_grad
+from dxtb.components.interactions import new_efield, new_efield_grad
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
 from dxtb.xtb import Calculator

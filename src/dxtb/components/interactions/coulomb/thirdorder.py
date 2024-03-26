@@ -37,13 +37,15 @@ tensor(0.0155669)
 from __future__ import annotations
 
 import torch
+from tad_mctc.exceptions import DeviceError
+from tad_mctc.typing import DD, Tensor, TensorLike
 
-from .._types import DD, Slicers, Tensor, TensorLike
-from ..basis import IndexHelper
-from ..constants import defaults
-from ..exceptions import DeviceError
-from ..interaction import Interaction
-from ..param import Param, get_elem_param
+from dxtb._types import Slicers
+from dxtb.basis import IndexHelper
+from dxtb.constants import defaults
+from dxtb.param import Param, get_elem_param
+
+from .. import Interaction
 
 __all__ = ["ES3", "LABEL_ES3", "new_es3"]
 

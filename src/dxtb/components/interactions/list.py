@@ -5,15 +5,16 @@ Container for interactions.
 from __future__ import annotations
 
 import torch
+from tad_mctc.typing import Any, Literal, Tensor, TensorOrTensors, overload, override
 
-from .._types import Any, Literal, Tensor, TensorOrTensors, overload, override
-from ..basis import IndexHelper
-from ..components.list import ComponentList, _docstring_reset, _docstring_update
-from ..coulomb.secondorder import ES2, LABEL_ES2
-from ..coulomb.thirdorder import ES3, LABEL_ES3
-from ..timing.decorator import timer_decorator
+from dxtb.basis import IndexHelper
+from dxtb.timing.decorator import timer_decorator
+
+from ...components.list import ComponentList, _docstring_reset, _docstring_update
 from .base import Interaction
 from .container import Charges, Potential
+from .coulomb.secondorder import ES2, LABEL_ES2
+from .coulomb.thirdorder import ES3, LABEL_ES3
 from .external.field import LABEL_EFIELD, ElectricField
 from .external.fieldgrad import LABEL_EFIELD_GRAD, ElectricFieldGrad
 

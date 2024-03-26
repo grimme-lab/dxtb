@@ -9,7 +9,7 @@ import torch
 
 from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.coulomb import ES2
+from dxtb.components.interactions.coulomb import ES2
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular, get_elem_param
 from dxtb.utils import batch

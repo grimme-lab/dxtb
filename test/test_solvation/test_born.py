@@ -7,13 +7,13 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck
 from tad_mctc.data.radii import VDW_D3
+from tad_mctc.typing import DD, Tensor
 
-from dxtb._types import DD, Tensor
-from dxtb.solvation import born
+from dxtb.components.interactions.solvation import born
 from dxtb.utils import batch
 
-from ..utils import dgradcheck
 from .samples import samples
 
 device = None

@@ -10,8 +10,8 @@ import torch
 
 from dxtb._types import DD
 from dxtb.basis import IndexHelper
-from dxtb.coulomb import secondorder as es2
-from dxtb.interaction import Charges
+from dxtb.components.interactions import Charges
+from dxtb.components.interactions.coulomb import secondorder as es2
 from dxtb.param import GFN1_XTB, get_elem_angular
 
 from ..utils import get_device_from_str

@@ -13,7 +13,7 @@ import torch
 
 from dxtb._types import DD, Literal
 from dxtb.basis import IndexHelper
-from dxtb.classical import new_repulsion
+from dxtb.components.classicals import new_repulsion
 from dxtb.param import GFN1_XTB, get_elem_angular
 from dxtb.param.gfn2 import GFN2_XTB
 from dxtb.utils import batch

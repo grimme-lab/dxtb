@@ -1,18 +1,16 @@
 """
-External Fields
-===============
+External: Field Gradient
+========================
 
-Interaction of the charge density with external fields.
+Interaction of the charge density with external electric field gradient.
 """
 
 from __future__ import annotations
 
 import torch
+from tad_mctc.exceptions import DeviceError, DtypeError
+from tad_mctc.typing import Any, Tensor, TensorLike
 
-from dxtb._types import Tensor
-
-from ..._types import Any, Slicers, Tensor, TensorLike
-from ...exceptions import DeviceError, DtypeError
 from ..base import Interaction
 
 __all__ = ["ElectricFieldGrad", "LABEL_EFIELD_GRAD", "new_efield_grad"]

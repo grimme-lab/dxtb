@@ -7,7 +7,7 @@ from __future__ import annotations
 import torch
 
 from dxtb.basis import IndexHelper
-from dxtb.interaction import InteractionList
+from dxtb.components.interactions import InteractionList
 
 
 def test_empty() -> None:

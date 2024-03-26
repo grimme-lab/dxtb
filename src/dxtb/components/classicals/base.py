@@ -15,10 +15,11 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import torch
+from tad_mctc.typing import Tensor
 
-from .._types import Tensor
-from ..basis import IndexHelper
-from ..components import Component
+from dxtb.basis import IndexHelper
+
+from .. import Component
 
 
 class ClassicalABC(ABC):

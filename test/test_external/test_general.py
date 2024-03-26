@@ -7,7 +7,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.interaction import new_efield
+from dxtb.components.interactions import new_efield
 
 from ..utils import get_device_from_str
 

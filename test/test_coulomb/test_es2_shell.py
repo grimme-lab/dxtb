@@ -12,8 +12,8 @@ import torch
 
 from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.coulomb import averaging_function
-from dxtb.coulomb import secondorder as es2
+from dxtb.components.interactions.coulomb import averaging_function
+from dxtb.components.interactions.coulomb import secondorder as es2
 from dxtb.param import GFN1_XTB, get_elem_angular, get_elem_param
 from dxtb.utils import batch
 

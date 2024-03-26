@@ -9,8 +9,8 @@ import torch
 
 from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.coulomb import new_es2, new_es3
-from dxtb.interaction import InteractionList
+from dxtb.components.interactions import InteractionList
+from dxtb.components.interactions.coulomb import new_es2, new_es3
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_angular
 from dxtb.scf import get_guess

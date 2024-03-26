@@ -10,7 +10,7 @@ import torch
 
 from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.coulomb import thirdorder as es3
+from dxtb.components.interactions.coulomb import thirdorder as es3
 from dxtb.param import GFN1_XTB, get_elem_angular, get_elem_param
 from dxtb.utils import batch
 

@@ -13,7 +13,8 @@ from typing import Generic
 import torch
 from tad_mctc.typing import Any, Tensor, TensorLike, TypeVar
 
-from .._types import Slicers
+from dxtb._types import Slicers
+
 from .base import Component
 
 C = TypeVar("C", bound=Component)
@@ -131,8 +132,8 @@ class ComponentList(ComponentListABC, Generic[C], TensorLike):
 
         Examples
         --------
-        >>> from dxtb.interaction import InteractionList
-        >>> from dxtb.interaction.external import field as efield
+        >>> from dxtb.components.interactions import InteractionList
+        >>> from dxtb.components.interactions.external import field as efield
         >>>
         >>> field_vector = torch.tensor([0.0, 0.0, 0.0])
         >>> new_field_vector = torch.tensor([1.0, 0.0, 0.0])
@@ -174,8 +175,8 @@ class ComponentList(ComponentListABC, Generic[C], TensorLike):
         Examples
         --------
         >>> import torch
-        >>> from dxtb.interaction import InteractionList
-        >>> from dxtb.interaction.external import field as efield
+        >>> from dxtb.components.interactions import InteractionList
+        >>> from dxtb.components.interactions.external import field as efield
         >>>
         >>> ef = efield.new_efield(torch.tensor([0.0, 0.0, 0.0]))
         >>> ilist = InteractionList(ef)

@@ -10,7 +10,7 @@ Run general tests for halogen bond correction including:
 import pytest
 import torch
 
-from dxtb.classical import new_halogen
+from dxtb.components.classicals import new_halogen
 from dxtb.param import GFN1_XTB as par
 
 from ..utils import get_device_from_str

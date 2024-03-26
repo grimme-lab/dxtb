@@ -13,9 +13,9 @@ from tad_mctc.batch import pack
 from tad_mctc.io import read
 
 from .. import io
+from ..components.interactions.external import new_efield
 from ..config import Config
 from ..constants import labels, units
-from ..interaction.external import new_efield
 from ..timing import timer
 from ..xtb import Calculator, Result
 

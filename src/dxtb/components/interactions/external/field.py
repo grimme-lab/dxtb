@@ -1,19 +1,19 @@
 """
-External Fields
-===============
+External: Electric Field
+========================
 
-Interaction of the charge density with external fields.
+Interaction of the charge density with an external electric field.
 """
 
 from __future__ import annotations
 
 import torch
+from tad_mctc.exceptions import DeviceError, DtypeError
+from tad_mctc.math import einsum
+from tad_mctc.typing import Any, Tensor, TensorLike, override
 
-from dxtb._types import Tensor, override
+from dxtb._types import Slicers
 
-from ..._types import Any, Slicers, Tensor, TensorLike
-from ...exceptions import DeviceError, DtypeError
-from ...utils import einsum
 from ..base import Interaction
 from ..container import Charges
 

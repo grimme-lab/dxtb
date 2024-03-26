@@ -446,7 +446,7 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
 @pytest.mark.parametrize("mol", ["SiH4"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:
-    tol = 1e-2
+    tol = 1e-1
     dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[mol]

@@ -5,8 +5,8 @@ DFT-D4 dispersion model.
 from __future__ import annotations
 
 import tad_dftd4 as d4
+from tad_mctc.typing import Any, Tensor
 
-from .._types import Any, Tensor
 from .base import Dispersion
 
 

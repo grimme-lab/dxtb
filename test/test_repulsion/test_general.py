@@ -10,7 +10,7 @@ Run general tests for repulsion contribution including:
 import pytest
 import torch
 
-from dxtb.classical import new_repulsion
+from dxtb.components.classicals import new_repulsion
 from dxtb.exceptions import ParameterWarning
 from dxtb.param import GFN1_XTB as par
 

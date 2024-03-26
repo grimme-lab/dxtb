@@ -7,9 +7,9 @@ from __future__ import annotations
 from abc import abstractmethod
 
 import torch
+from tad_mctc.typing import Tensor
 
-from .._types import Tensor
-from ..classical import Classical
+from ...classicals import Classical
 
 
 class Dispersion(Classical):

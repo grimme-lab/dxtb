@@ -5,11 +5,12 @@ Container for classical contributions.
 from __future__ import annotations
 
 import torch
+from tad_mctc.typing import Any, Literal, Tensor, overload, override
 
-from .._types import Any, Literal, Tensor, overload, override
-from ..basis import IndexHelper
-from ..components.list import ComponentList, _docstring_reset, _docstring_update
-from ..timing import timer
+from dxtb.basis import IndexHelper
+from dxtb.timing import timer
+
+from ..list import ComponentList, _docstring_reset, _docstring_update
 from .base import Classical
 from .halogen import LABEL_HALOGEN, Halogen
 from .repulsion import LABEL_REPULSION, Repulsion

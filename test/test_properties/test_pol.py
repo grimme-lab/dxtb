@@ -9,8 +9,8 @@ import torch
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.typing import DD, Tensor
 
+from dxtb.components.interactions import new_efield
 from dxtb.constants import units
-from dxtb.interaction import new_efield
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
 from dxtb.xtb import Calculator

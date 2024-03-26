@@ -9,27 +9,28 @@ import logging
 import torch
 from tad_mctc.convert import any_to_tensor
 from tad_mctc.data.radii import COV_D3
+from tad_mctc.exceptions import DtypeError
 from tad_mctc.typing import Any, Literal, Sequence, Tensor, TensorLike
 
 from .. import integral as ints
 from .. import ncoord, scf
 from ..basis import IndexHelper
-from ..classical import (
+from ..components.classicals import (
     Classical,
     ClassicalList,
+    Dispersion,
     Halogen,
     Repulsion,
+    new_dispersion,
     new_halogen,
     new_repulsion,
 )
+from ..components.interactions import Charges, Interaction, InteractionList, Potential
+from ..components.interactions.coulomb import new_es2, new_es3
+from ..components.interactions.external import field as efield
+from ..components.interactions.external import fieldgrad as efield_grad
 from ..config import Config
 from ..constants import defaults
-from ..coulomb import new_es2, new_es3
-from ..dispersion import Dispersion, new_dispersion
-from ..exceptions import DtypeError
-from ..interaction import Charges, Interaction, InteractionList, Potential
-from ..interaction.external import field as efield
-from ..interaction.external import fieldgrad as efield_grad
 from ..io import OutputHandler
 from ..param import Param, get_elem_angular
 from ..properties import moments

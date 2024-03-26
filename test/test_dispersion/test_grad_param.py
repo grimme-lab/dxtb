@@ -8,7 +8,7 @@ import pytest
 import torch
 
 from dxtb._types import DD, Callable, Tensor
-from dxtb.dispersion import DispersionD3
+from dxtb.components.classicals.dispersion import DispersionD3
 from dxtb.utils import batch
 
 from ..utils import dgradcheck, dgradgradcheck

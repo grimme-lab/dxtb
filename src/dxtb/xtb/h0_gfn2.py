@@ -5,7 +5,7 @@ The GFN2-xTB Hamiltonian.
 from __future__ import annotations
 
 from .._types import Tensor
-from ..interaction import Potential
+from ..components.interactions import Potential
 from .base import BaseHamiltonian
 
 

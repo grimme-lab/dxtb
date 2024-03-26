@@ -7,11 +7,12 @@ from __future__ import annotations
 import warnings
 
 import torch
+from tad_mctc.typing import Tensor
 
-from .._types import Tensor
-from ..exceptions import ParameterWarning
-from ..param import Param
-from ..utils import convert_float_tensor
+from dxtb.exceptions import ParameterWarning
+from dxtb.param import Param
+from dxtb.utils import convert_float_tensor
+
 from .base import Dispersion
 from .d3 import DispersionD3
 from .d4 import DispersionD4

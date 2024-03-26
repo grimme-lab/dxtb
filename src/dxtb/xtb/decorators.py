@@ -13,9 +13,9 @@ from typing import cast
 import torch
 from tad_mctc.typing import Any, Callable, Tensor, TypeVar
 
+from ..components.interactions.external import field as efield
+from ..components.interactions.external import fieldgrad as efield_grad
 from ..constants import defaults
-from ..interaction.external import field as efield
-from ..interaction.external import fieldgrad as efield_grad
 from ..io import OutputHandler
 
 # class CalculatorFunction(Protocol):

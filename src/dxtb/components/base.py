@@ -62,7 +62,7 @@ class Component(TensorLike):
         Examples
         --------
         >>> import torch
-        >>> import dxtb.interaction.external.field import ElectricField
+        >>> import dxtb.components.interactions.external.field import ElectricField
         >>> ef = ElectricField(field=torch.tensor([0.0, 0.0, 0.0]))
         >>> ef.update(field=torch.tensor([1.0, 0.0, 0.0]))
         """
@@ -90,7 +90,7 @@ class Component(TensorLike):
         Examples
         --------
         >>> import torch
-        >>> import dxtb.interaction.external.field import ElectricField
+        >>> import dxtb.components.interactions.external.field import ElectricField
         >>> ef = ElectricField(field=torch.tensor([0.0, 0.0, 0.0]))
         >>> ef.reset()
 

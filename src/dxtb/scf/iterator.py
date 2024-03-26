@@ -19,12 +19,12 @@ import torch
 
 from .._types import Any, Slicers, Tensor
 from ..basis import IndexHelper
+from ..components.interactions import Charges, InteractionList
 from ..config import ConfigSCF
 from ..constants import defaults, labels
 from ..exceptions import SCFConvergenceError, SCFConvergenceWarning
 from ..exlibs.xitorch import optimize as xto
 from ..integral import IntegralMatrices
-from ..interaction import Charges, InteractionList
 from ..utils import t2int
 from .base import SCFResult
 from .guess import get_guess

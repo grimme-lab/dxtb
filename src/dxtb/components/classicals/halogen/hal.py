@@ -31,14 +31,15 @@ tensor(0.0025)
 from __future__ import annotations
 
 import torch
+from tad_mctc.batch import pack
 from tad_mctc.data.radii import ATOMIC as ATOMIC_RADII
+from tad_mctc.typing import Tensor, TensorLike
 
-from .._types import Tensor, TensorLike
-from ..basis import IndexHelper
-from ..constants import xtb
-from ..param import Param, get_elem_param
-from ..utils import batch
-from .base import Classical
+from dxtb.basis import IndexHelper
+from dxtb.constants import xtb
+from dxtb.param import Param, get_elem_param
+
+from ..base import Classical
 
 __all__ = ["Halogen", "LABEL_HALOGEN", "new_halogen"]
 
@@ -158,7 +159,7 @@ class Halogen(Classical):
         """
 
         if cache.numbers.ndim > 1:
-            return batch.pack(
+            return pack(
                 [
                     self._xbond_energy(
                         cache.numbers[_batch],

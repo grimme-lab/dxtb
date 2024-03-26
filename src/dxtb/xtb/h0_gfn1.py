@@ -6,14 +6,15 @@ from __future__ import annotations
 
 import torch
 from tad_mctc import storch
+from tad_mctc.batch import real_pairs
 from tad_mctc.data.radii import ATOMIC as ATOMIC_RADII
 from tad_mctc.typing import Tensor
 from tad_mctc.units import EV2AU
 
 from ..basis import IndexHelper
-from ..interaction import Potential
+from ..components.interactions import Potential
 from ..param import Param, get_elem_param, get_elem_valence, get_pair_param
-from ..utils import real_pairs, symmetrize
+from ..utils import symmetrize
 from .base import BaseHamiltonian
 
 PAD = -1
@@ -254,14 +255,15 @@ class GFN1Hamiltonian(BaseHamiltonian):
             raise RuntimeError("No Hamiltonian specified.")
 
         # masks
-        mask_atom_diagonal = real_pairs(self.numbers, diagonal=True)
-        mask_shell = real_pairs(self.ihelp.spread_atom_to_shell(self.numbers))
+        mask_atom_diagonal = real_pairs(self.numbers, mask_diagonal=True)
+        mask_shell = real_pairs(
+            self.ihelp.spread_atom_to_shell(self.numbers), mask_diagonal=False
+        )
         mask_shell_diagonal = self.ihelp.spread_atom_to_shell(
             mask_atom_diagonal, dim=(-2, -1)
         )
 
         zero = torch.tensor(0.0, **self.dd)
-        eps = torch.tensor(torch.finfo(self.dtype).eps, **self.dd)
 
         # ----------------
         # Eq.29: H_(mu,mu)
@@ -382,10 +384,12 @@ class GFN1Hamiltonian(BaseHamiltonian):
             raise RuntimeError("No Hamiltonian specified.")
 
         # masks
-        mask_atom = real_pairs(self.numbers)
-        mask_atom_diagonal = real_pairs(self.numbers, diagonal=True)
+        mask_atom = real_pairs(self.numbers, mask_diagonal=False)
+        mask_atom_diagonal = real_pairs(self.numbers, mask_diagonal=True)
 
-        mask_shell = real_pairs(self.ihelp.spread_atom_to_shell(self.numbers))
+        mask_shell = real_pairs(
+            self.ihelp.spread_atom_to_shell(self.numbers), mask_diagonal=False
+        )
         mask_shell_diagonal = self.ihelp.spread_atom_to_shell(
             mask_atom_diagonal, dim=(-2, -1)
         )

@@ -11,12 +11,12 @@ import torch
 
 from .._types import DD, Any, Slicers, Tensor, TypedDict
 from ..basis import IndexHelper
+from ..components.interactions import InteractionList
+from ..components.interactions.container import Charges, ContainerData, Potential
 from ..config import ConfigSCF
 from ..constants import K2AU, defaults, labels
 from ..exlibs.xitorch import LinearOperator
 from ..integral.container import IntegralMatrices
-from ..interaction import InteractionList
-from ..interaction.container import Charges, ContainerData, Potential
 from ..io import OutputHandler
 from ..utils import einsum, real_atoms
 from ..wavefunction import filling, mulliken

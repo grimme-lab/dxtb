@@ -13,10 +13,11 @@ monopolar potential.
 from __future__ import annotations
 
 import torch
+from tad_mctc.batch import deflate, pack
+from tad_mctc.typing import Self, Tensor, TypeVar
 
-from .._types import ContainerData, Self, Tensor, Type, TypeVar
-from ..constants import defaults
-from ..utils.batch import deflate, pack
+from dxtb._types import ContainerData, Type
+from dxtb.constants import defaults
 
 T = TypeVar("T", bound="Container")
 
@@ -179,10 +180,12 @@ class Container:
         # One dimensions extra for more than monopole ...
         if (ndim == 2 and not batched) or (ndim == 3 and batched):
             # ... but still account for (nb, 1, nao)-shaped monopolar property.
+            assert data["mono"] is not None
             if tensor.shape[axis] == 1:
                 return cls(mono=tensor.reshape(*data["mono"]), label=label)
 
             # Now, dipolar and quadrupolar properties are checked.
+            assert data["dipole"] is not None
             vs = torch.split(tensor, 1, dim=axis)
             mono = deflate(vs[0], axis=0, value=pad).reshape(*data["mono"])
             dipole = deflate(vs[1], axis=0, value=pad).reshape(*data["dipole"])
@@ -190,6 +193,7 @@ class Container:
             if tensor.shape[axis] == 2:
                 return cls(mono, dipole, label=label)
 
+            assert data["quad"] is not None
             quad = deflate(vs[2], axis=0, value=pad).reshape(*data["quad"])
             if tensor.shape[axis] == 3:
                 return cls(mono, dipole, quad, label=label)

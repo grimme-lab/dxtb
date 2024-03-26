@@ -10,7 +10,7 @@ import pytest
 import torch
 
 from dxtb._types import DD, Tensor
-from dxtb.dispersion import new_dispersion
+from dxtb.components.classicals.dispersion import new_dispersion
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch, hessian
 

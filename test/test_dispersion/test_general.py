@@ -7,7 +7,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.dispersion import new_dispersion
+from dxtb.components.classicals.dispersion import new_dispersion
 from dxtb.exceptions import ParameterWarning
 from dxtb.param import GFN1_XTB
 from dxtb.param.gfn2 import GFN2_XTB

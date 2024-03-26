@@ -10,7 +10,7 @@ import torch
 
 from .._types import Tensor, TensorLike
 from ..basis import IndexHelper
-from ..interaction import Potential
+from ..components.interactions import Potential
 from ..param import Param
 
 

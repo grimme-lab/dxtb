@@ -5,8 +5,7 @@ Averaging functions for hardnesses in GFN1-xTB.
 from __future__ import annotations
 
 import torch
-
-from .._types import Callable, Tensor
+from tad_mctc.typing import Callable, Tensor
 
 AveragingFunction = Callable[[Tensor], Tensor]
 

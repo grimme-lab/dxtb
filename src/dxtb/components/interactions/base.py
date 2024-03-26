@@ -6,11 +6,12 @@ The `Interaction` class is not purely abstract as its methods return zero.
 from __future__ import annotations
 
 import torch
+from tad_mctc.typing import Any, Tensor, TensorOrTensors
 
-from dxtb.components import Component
+from dxtb._types import Slicers
+from dxtb.basis import IndexHelper
 
-from .._types import Any, Slicers, Tensor, TensorOrTensors
-from ..basis import IndexHelper
+from ...components import Component
 from .container import Charges, Potential
 
 __all__ = ["Interaction"]

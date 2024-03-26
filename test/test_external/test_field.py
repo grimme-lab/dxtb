@@ -10,8 +10,8 @@ import pytest
 import torch
 
 from dxtb._types import DD
+from dxtb.components.interactions import new_efield
 from dxtb.constants import units
-from dxtb.interaction import new_efield
 from dxtb.param import GFN1_XTB
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
