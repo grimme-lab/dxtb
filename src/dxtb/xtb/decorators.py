@@ -130,7 +130,7 @@ def requires_efg_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     return wrapper
 
 
-def numerical(nograd: bool = False) -> Callable[[F], F]:
+def _numerical(nograd: bool = False) -> Callable[[F], F]:
     """
     Decorator for numerical differentiation.
     Pass `True` to turns off gradient tracking for the function.
@@ -153,3 +153,22 @@ def numerical(nograd: bool = False) -> Callable[[F], F]:
         return cast(F, wrapper)
 
     return decorator
+
+
+def numerical(func: F) -> F:
+    """
+    Decorator for numerical differentiation. Turns off gradient tracking.
+
+    .. warning::
+
+        Since this decorator turns off gradient tracking for the function, a
+        possible `requires_grad=True` will be lost because the corresponding
+        tensor is updated within the numerical differentiation.
+        This happens in any electric field related derivatives. If you want to carry out a subsequent calculation with `requires_grad=True`, you have to update the electric field tensor manually with:
+
+        .. code-block:: python
+
+            field_tensor.requires_grad_(True)
+            calc.interactions.update_efield(field=field_tensor)
+    """
+    return _numerical(nograd=True)(func)

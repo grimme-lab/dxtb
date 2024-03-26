@@ -737,7 +737,7 @@ class Calculator(TensorLike):
         logger.debug("Forces: All finished.")
         return -jac
 
-    @cdec.numerical(True)
+    @cdec.numerical
     def forces_numerical(
         self,
         numbers: Tensor,
@@ -887,7 +887,7 @@ class Calculator(TensorLike):
 
         return hess
 
-    @cdec.numerical(True)
+    @cdec.numerical
     def hessian_numerical(
         self,
         numbers: Tensor,
@@ -1028,7 +1028,7 @@ class Calculator(TensorLike):
             project_rotational=project_rotational,
         )
 
-    @cdec.numerical(True)
+    @cdec.numerical
     def vibration_numerical(
         self,
         numbers: Tensor,
@@ -1207,7 +1207,7 @@ class Calculator(TensorLike):
         dip = moments.dipole(qat, positions, result.density, dipint.matrix)
         return dip
 
-    @cdec.numerical()
+    @cdec.numerical
     @cdec.requires_efield
     def dipole_numerical(
         self,
@@ -1245,11 +1245,8 @@ class Calculator(TensorLike):
         # pylint: disable=import-outside-toplevel
         import gc
 
-        # retrieve the efield interaction and the field and detach for gradient
-        ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
-        _field = ef.field.clone()
-        field = ef.field.detach().clone()
-        self.interactions.update_efield(field=field)
+        # retrieve electric field, no copy needed because of no_grad context
+        field = self.interactions.get_interaction(efield.LABEL_EFIELD).field
 
         # (..., 3)
         deriv = torch.zeros((*numbers.shape[:-1], 3), **self.dd)
@@ -1273,10 +1270,6 @@ class Calculator(TensorLike):
             count += 1
 
             gc.collect()
-
-        # explicitly update field (otherwise gradient is missing)
-        self.interactions.reset_efield()
-        self.interactions.update_efield(field=_field)
 
         logger.debug("Dipole (numerical): All finished.")
 
@@ -1363,7 +1356,7 @@ class Calculator(TensorLike):
 
         return dmu_dr
 
-    @cdec.numerical(True)
+    @cdec.numerical
     def dipole_deriv_numerical(
         self,
         numbers: Tensor,
@@ -1535,7 +1528,7 @@ class Calculator(TensorLike):
 
         return moments.quadrupole(qat, dpat, qpat, positions)
 
-    @cdec.numerical()
+    @cdec.numerical
     @cdec.requires_efg
     def quadrupole_numerical(
         self,
@@ -1677,7 +1670,7 @@ class Calculator(TensorLike):
         # 3x3 polarizability tensor
         return alpha
 
-    @cdec.numerical()
+    @cdec.numerical
     @cdec.requires_efield
     def polarizability_numerical(
         self,
@@ -1831,7 +1824,7 @@ class Calculator(TensorLike):
 
         return chi
 
-    @cdec.numerical(True)
+    @cdec.numerical
     @cdec.requires_efield
     def pol_deriv_numerical(
         self,
@@ -2010,7 +2003,7 @@ class Calculator(TensorLike):
 
         return beta
 
-    @cdec.numerical()
+    @cdec.numerical
     @cdec.requires_efield
     def hyperpol_numerical(
         self,
@@ -2128,7 +2121,7 @@ class Calculator(TensorLike):
 
         # TODO: Figure out how to run func transforms 2x properly
         # (improve: Hessian does not need dipole integral but dipder does)
-        self.integrals.invalidate_driver()
+        self.integrals.reset_all()
 
         # calculate nuclear dipole derivative dmu/dR: (..., 3, nat, 3)
         dmu_dr = self.dipole_deriv(
@@ -2141,7 +2134,7 @@ class Calculator(TensorLike):
 
         return vib.IRResult(vib_res.freqs, intensities)
 
-    @cdec.numerical()
+    @cdec.numerical
     def ir_numerical(
         self,
         numbers: Tensor,
@@ -2175,17 +2168,14 @@ class Calculator(TensorLike):
         OutputHandler.write_stdout("-----------")
         logger.debug("IR spectrum (numerical): Start.")
 
-        # important: always use new/separate position tensor
-        pos = positions.detach().clone()
-
         # run vibrational analysis first
         freqs, modes = self.vibration_numerical(
-            numbers, pos, chrg, spin, step_size=step_size
+            numbers, positions, chrg, spin, step_size=step_size
         )
 
         # calculate nuclear dipole derivative dmu/dR: (..., 3, nat, 3)
         dmu_dr = self.dipole_deriv_numerical(
-            numbers, pos, chrg, spin, step_size=step_size
+            numbers, positions, chrg, spin, step_size=step_size
         )
 
         intensities = vib.ir_ints(dmu_dr, modes)
@@ -2236,6 +2226,10 @@ class Calculator(TensorLike):
             numbers, positions, chrg, spin, use_functorch=use_functorch
         )
 
+        # TODO: Figure out how to run func transforms 2x properly
+        # (improve: Hessian does not need dipole integral but dipder does)
+        self.integrals.reset_all()
+
         # d(..., 3, 3) / d(..., nat, 3) -> (..., 3, 3, nat, 3)
         da_dr = self.pol_deriv(
             numbers, positions, chrg, spin, use_functorch=use_functorch
@@ -2247,7 +2241,7 @@ class Calculator(TensorLike):
 
         return vib.RamanResult(vib_res.freqs, intensities, depol)
 
-    @cdec.numerical()
+    @cdec.numerical
     def raman_numerical(
         self,
         numbers: Tensor,
