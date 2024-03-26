@@ -1,31 +1,9 @@
 """
-Halogen bond correction
-=======================
+Halogen Bond Correction: Class
+==============================
 
-This module implements the halogen bond correction. The Halogen class is
-constructed similar to the Repulsion class.
-
-Example
--------
->>> import torch
->>> from xtbml.basis import IndexHelper
->>> from xtbml.classical import new_halogen
->>> from xtbml.param import GFN1_XTB, get_elem_param
->>> numbers = torch.tensor([35, 35, 7, 1, 1, 1])
->>> positions = torch.tensor([
-...     [+0.00000000000000, +0.00000000000000, +3.11495251300000],
-...     [+0.00000000000000, +0.00000000000000, -1.25671880600000],
-...     [+0.00000000000000, +0.00000000000000, -6.30201130100000],
-...     [+0.00000000000000, +1.78712709700000, -6.97470840000000],
-...     [-1.54769692500000, -0.89356260400000, -6.97470840000000],
-...     [+1.54769692500000, -0.89356260400000, -6.97470840000000],
-... ])
->>> xb = new_halogen(numbers, positions, GFN1_XTB)
->>> ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
->>> cache = xb.get_cache(numbers, ihelp)
->>> energy = xb.get_energy(positions, cache)
->>> print(energy.sum(-1))
-tensor(0.0025)
+This module implements the halogen bond correction class. The `Halogen` class is
+constructed similar to the `Repulsion` class.
 """
 
 from __future__ import annotations
@@ -37,11 +15,10 @@ from tad_mctc.typing import Tensor, TensorLike
 
 from dxtb.basis import IndexHelper
 from dxtb.constants import xtb
-from dxtb.param import Param, get_elem_param
 
 from ..base import Classical
 
-__all__ = ["Halogen", "LABEL_HALOGEN", "new_halogen"]
+__all__ = ["Halogen", "LABEL_HALOGEN"]
 
 
 LABEL_HALOGEN = "Halogen"
@@ -334,47 +311,3 @@ class Halogen(Classical):
             energies[xat] += lj * fdamp * xbond[xat]
 
         return energies
-
-
-def new_halogen(
-    numbers: Tensor,
-    par: Param,
-    cutoff: Tensor = torch.tensor(xtb.DEFAULT_XB_CUTOFF),
-    device: torch.device | None = None,
-    dtype: torch.dtype | None = None,
-) -> Halogen | None:
-    """
-    Create new instance of Halogen class.
-
-    Parameters
-    ----------
-    numbers : Tensor
-        Atomic numbers for all atoms in the system.
-    par : Param
-        Representation of an extended tight-binding model.
-    cutoff : Tensor
-        Real space cutoff for halogen bonding interactions (default: 20.0).
-
-    Returns
-    -------
-    Halogen | None
-        Instance of the Halogen class or `None` if no halogen bond correction is used.
-
-    Raises
-    ------
-    ValueError
-        If parametrization does not contain a halogen bond correction.
-    """
-
-    if hasattr(par, "halogen") is False or par.halogen is None:
-        return None
-
-    damp = torch.tensor(par.halogen.classical.damping)
-    rscale = torch.tensor(par.halogen.classical.rscale)
-
-    unique = torch.unique(numbers)
-    bond_strength = get_elem_param(unique, par.element, "xbond", pad_val=0)
-
-    return Halogen(
-        damp, rscale, bond_strength, cutoff=cutoff, device=device, dtype=dtype
-    )

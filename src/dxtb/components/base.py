@@ -109,3 +109,9 @@ class Component(TensorLike):
                 reset.requires_grad = attr.requires_grad
 
                 setattr(self, slot, reset)
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}({self.label})"
+
+    def __repr__(self) -> str:
+        return str(self)

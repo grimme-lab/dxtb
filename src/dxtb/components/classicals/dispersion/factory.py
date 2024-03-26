@@ -7,7 +7,7 @@ from __future__ import annotations
 import warnings
 
 import torch
-from tad_mctc.typing import Tensor
+from tad_mctc.typing import DD, Tensor, get_default_dtype
 
 from dxtb.exceptions import ParameterWarning
 from dxtb.param import Param
@@ -51,6 +51,11 @@ def new_dispersion(
         warnings.warn("No dispersion scheme found.", ParameterWarning)
         return None
 
+    dd: DD = {
+        "device": device,
+        "dtype": dtype if dtype is not None else get_default_dtype(),
+    }
+
     if par.dispersion.d3 is not None and par.dispersion.d4 is None:
         param = convert_float_tensor(
             {
@@ -60,14 +65,14 @@ def new_dispersion(
                 "s8": par.dispersion.d3.s8,
                 "s9": par.dispersion.d3.s9,
             },
-            device=device,
-            dtype=dtype,
+            **dd,
         )
         return DispersionD3(numbers, param, device=device, dtype=dtype)
 
     if par.dispersion.d4 is not None and par.dispersion.d3 is None:
         if charge is None:
             raise ValueError("The total charge is required for DFT-D4.")
+
         param = convert_float_tensor(
             {
                 "a1": par.dispersion.d4.a1,
@@ -77,8 +82,7 @@ def new_dispersion(
                 "s9": par.dispersion.d4.s9,
                 "s10": par.dispersion.d4.s10,
             },
-            device=device,
-            dtype=dtype,
+            **dd,
         )
         return DispersionD4(numbers, param, charge, device=device, dtype=dtype)
 
