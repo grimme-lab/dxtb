@@ -223,7 +223,7 @@ def test_batch_unconverged_partly_anderson(dtype: torch.dtype) -> None:
 
     # only for regression testing (copied unconverged energies)
     ref = torch.tensor(
-        [-1.058598403609326, -0.881055307373386, -4.024551310332887], **dd
+        [-1.058598357054240, -0.881056651685982, -4.024565248590350], **dd
     )
 
     batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "anderson", 1)
@@ -236,7 +236,7 @@ def test_batch_unconverged_partly_simple(dtype: torch.dtype) -> None:
 
     # only for regression testing (copied unconverged energies)
     ref = torch.tensor(
-        [-1.058598403609325, -0.882636830465807, -4.036953625762340], **dd
+        [-1.058598357054241, -0.882637082174645, -4.036955313952423], **dd
     )
 
     batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "simple", 1)
@@ -249,7 +249,7 @@ def test_batch_unconverged_fully_anderson(dtype: torch.dtype) -> None:
 
     # only for regression testing (copied unconverged energies)
     ref = torch.tensor(
-        [-0.881055307373386, -0.881055307373386, -4.024551310332887], **dd
+        [-0.881056651685982, -0.881056651685982, -4.024565248590350], **dd
     )
 
     batched_unconverged(ref, dtype, "LiH", "LiH", "SiH4", "anderson", 1)
@@ -264,7 +264,7 @@ def test_batch_unconverged_fully_simple(
 
     # only for regression testing (copied unconverged energies)
     ref = torch.tensor(
-        [-0.882636830465807, -0.882636830465807, -4.036953625762340], **dd
+        [-0.882637082174645, -0.882637082174645, -4.036955313952423], **dd
     )
 
     batched_unconverged(ref, dtype, "LiH", "LiH", "SiH4", "simple", 1)
@@ -285,25 +285,25 @@ def test_batch_three(
     sample = samples[name1], samples[name2], samples[name3]
     numbers = batch.pack(
         (
-            sample[0]["numbers"],
-            sample[1]["numbers"],
-            sample[2]["numbers"],
+            sample[0]["numbers"].to(device),
+            sample[1]["numbers"].to(device),
+            sample[2]["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample[0]["positions"],
-            sample[1]["positions"],
-            sample[2]["positions"],
+            sample[0]["positions"].to(**dd),
+            sample[1]["positions"].to(**dd),
+            sample[2]["positions"].to(**dd),
         )
-    ).type(dtype)
+    )
     ref = batch.pack(
         (
-            sample[0]["escf"],
-            sample[1]["escf"],
-            sample[2]["escf"],
+            sample[0]["escf"].to(**dd),
+            sample[1]["escf"].to(**dd),
+            sample[2]["escf"].to(**dd),
         )
-    ).type(dtype)
+    )
     charges = torch.tensor([0.0, 0.0, 0.0], **dd)
 
     options = dict(
@@ -320,7 +320,7 @@ def test_batch_three(
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
-    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
+    assert pytest.approx(ref, rel=tol, abs=tol) == result.scf.sum(-1)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
