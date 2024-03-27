@@ -23,6 +23,7 @@ from ..constants import defaults, labels
 from ..exlibs.xitorch import LinearOperator
 from ..integral.container import IntegralMatrices
 from ..io import OutputHandler
+from ..timing.decorator import timer_decorator
 from ..wavefunction import filling, mulliken
 from .utils import get_density
 
@@ -376,8 +377,8 @@ class BaseSCF:
             )
 
         OutputHandler.write_stdout(
-            f"\n{'iter':<5} {'energy':<24} {'energy change':<15}"
-            f"{'P norm change':<15} {'charge change':<15}"
+            f"\n{'iter':<5} {'Energy':<24} {'Delta E':<16}"
+            f"{'Delta Pnorm':<15} {'Delta q':<15}"
         )
         OutputHandler.write_stdout(77 * "-")
 
@@ -567,7 +568,7 @@ class BaseSCF:
                     "SCF Iterations",
                     f"{self._data.iter:3}",
                     [
-                        f"{energy: .16E}",
+                        f"{energy: .14E}",
                         f"{ediff: .6E}",
                         f"{pnorm: .6E}",
                         f"{qdiff: .6E}",
@@ -682,6 +683,7 @@ class BaseSCF:
 
         return self._data.hamiltonian
 
+    @timer_decorator("Potential", "SCF")
     def charges_to_potential(self, charges: Charges) -> Potential:
         """
         Compute the potential from the orbital charges.
@@ -744,6 +746,7 @@ class BaseSCF:
         self._data.hamiltonian = self.potential_to_hamiltonian(potential)
         return self.hamiltonian_to_density(self._data.hamiltonian)
 
+    @timer_decorator("Charges", "SCF")
     def density_to_charges(self, density: Tensor) -> Charges:
         """
         Compute the orbital charges from the density matrix.
@@ -794,6 +797,7 @@ class BaseSCF:
 
         return charges
 
+    @timer_decorator("Fock build", "SCF")
     def potential_to_hamiltonian(self, potential: Potential) -> Tensor:
         """
         Compute the Hamiltonian from the potential.

@@ -111,6 +111,7 @@ class _Timers:
         self.label = label
         self.timers = {}
         self._enabled = True
+        self._subtimer_parent_map = {}
 
         self.start("total")
 
@@ -126,7 +127,9 @@ class _Timers:
         """
         self._enabled = False
 
-    def start(self, uid: str, label: str | None = None) -> None:
+    def start(
+        self, uid: str, label: str | None = None, parent_uid: str | None = None
+    ) -> None:
         """
         Create a new timer or start an existing timer with `uid`.
 
@@ -142,14 +145,16 @@ class _Timers:
             return
 
         if uid in self.timers:
-            t = self.timers[uid]
-            t.start()
+            self.timers[uid].start()
             return
 
         t = self._Timer(self, uid if label is None else label)
         t.start()
 
         self.timers[uid] = t
+
+        if parent_uid:
+            self._subtimer_parent_map[uid] = parent_uid
 
     def stop(self, uid: str) -> float:
         """
@@ -205,7 +210,7 @@ class _Timers:
         self.reset()
         self.stop_all()
 
-    def get_times(self) -> dict[str, float]:
+    def get_times(self) -> dict[str, dict[str, float]]:
         """
         Get the elapsed times of all timers,
 
@@ -217,10 +222,41 @@ class _Timers:
         if self.timers["total"].is_running():
             self.timers["total"].stop()
 
-        return {
-            (uid if t.label is None else t.label): t.elapsed_time
-            for uid, t in self.timers.items()
-        }
+        times = {}
+
+        # Initialize all parent timers in the times dictionary
+        for k in self.timers.keys():
+            if k not in self._subtimer_parent_map:
+                times[k] = {"time": None, "subtimers": {}}
+
+        # Add times for all timers, categorizing based on the parent map
+        for uid, t in self.timers.items():
+            if uid in self._subtimer_parent_map:
+                parent = self._subtimer_parent_map[uid]
+                times[parent]["subtimers"][uid] = t.elapsed_time
+            else:
+                times[uid]["time"] = t.elapsed_time
+
+        total_time = times["total"]["time"]
+        for main_timer, details in times.items():
+            if main_timer == "total":
+                continue
+
+            # Calculate the percentage of the total time for main timers
+            main_time = details["time"]
+            percentage_of_total = (main_time / total_time) * 100
+            times[main_timer]["percentage"] = f"{percentage_of_total:.2f}"
+
+            # Calculate the percentage relative to the parent timer for subtimers
+            if details["subtimers"]:
+                for subtimer, sub_time in details["subtimers"].items():
+                    percentage_of_parent = (sub_time / main_time) * 100
+                    times[main_timer]["subtimers"][subtimer] = {
+                        "time": sub_time,
+                        "percentage": f"{percentage_of_parent:.2f}",
+                    }
+
+        return times
 
     def print_times(
         self, name: str = "Timings", width: int = 55
@@ -229,28 +265,12 @@ class _Timers:
         if not self._enabled:
             return
 
+        from ..io import OutputHandler
+
         if self.timers["total"].is_running():
             self.timers["total"].stop()
 
-        d = self.get_times()
-        total = d.pop("total")
-        s = sum(d.values())
-
-        w1, w2, w3 = 25, 18, 12
-
-        print(f"{name:*^55}\n")
-        print(f"{'Objective':<{w1}} {'Time in s':<{w2}} {'Time in %':<{w3}}")
-        print(width * "-")
-
-        for uid, t in d.items():
-            perc = t / total * 100
-            print(f"{uid:<25} {t:<{w2}.3f} {perc:^10.2f}")
-
-        print(width * "-")
-        print(f"{'sum':<{w1}} {s:<{w2}.3f} {s / total * 100:^9.2f}")
-        print(f"{'total':<{w1}} {total:<{w2}.3f} {total / total * 100:^9.2f}")
-
-        print("")
+        OutputHandler.print_timings(self.get_times(), precision=3)
 
 
 timer = _Timers()

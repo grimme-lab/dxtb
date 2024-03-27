@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import json
 import logging
+from contextlib import contextmanager
 from pathlib import Path
 
-from tad_mctc.typing import Any, override
+from tad_mctc.typing import Any, Generator, override
 
 from .output import get_header, get_pytorch_info, get_short_version, get_system_info
 
@@ -105,14 +106,14 @@ class _OutputHandler:
             raise TypeError("Verbosty level must be an integer.")
         self._verbosity = level
 
-    def temporary_disable_on(self) -> None:
-        """Temporarily disable output."""
-        self._saved_verbosity = self.verbosity
-        self.verbosity = 0
-
-    def temporary_disable_off(self) -> None:
-        """Re-enable output."""
-        self.verbosity = self._saved_verbosity
+    @contextmanager
+    def with_verbosity(self, level: int) -> Generator[None, Any, None]:
+        original_verbosity = self.verbosity
+        self.verbosity = level
+        try:
+            yield
+        finally:
+            self.verbosity = original_verbosity
 
     def setup_console_logger(self, level=logging.INFO):
         """
@@ -228,7 +229,7 @@ class _OutputHandler:
         iter_number : int
             The iteration number or row identifier.
         """
-        self.console_logger.info("  ".join([key] + row))
+        self.console_logger.info("   ".join([key] + row))
 
         if table_name not in self.json_data:
             self.json_data[table_name] = {}
@@ -250,7 +251,14 @@ class _OutputHandler:
         """
         self.warnings.append(msg)
 
-    def format_for_console(self, title: str, info: dict[str, Any]) -> str:
+    def format_for_console(
+        self,
+        title: str,
+        info: dict[str, Any],
+        separator: str = ":",
+        indent: int = 0,
+        precision: int = 3,
+    ) -> str:
         """
         Format the data for the console.
 
@@ -268,7 +276,11 @@ class _OutputHandler:
         """
         formatted_str = f"{title}\n" + "-" * len(title) + "\n\n"
         for key, value in info.items():
-            formatted_str += f"{key.ljust(20)}: {value}\n"
+            if isinstance(value, float):
+                value = f"{value:.{precision}e}"
+            if isinstance(value, list):
+                value = " ".join(value)
+            formatted_str += f"{indent*' '}{key.ljust(20)}{separator} {value}\n"
         return formatted_str
 
     def header(self) -> None:
@@ -282,6 +294,76 @@ class _OutputHandler:
         if self.verbosity >= 6:
             self.write(get_system_info())
             self.write(get_pytorch_info())
+
+    def print_timings(
+        self, timings: dict[str, dict[str, Any]], precision: int = 3
+    ) -> None:
+        """
+        Print the timings to the console.
+
+        Parameters
+        ----------
+        timings : dict[str, Any]
+            The timings to print.
+        precision : int, optional
+            The precision of the timings. Defaults to 3.
+        """
+        if self.verbosity < 5:
+            return
+
+        precision = 3
+        main_format = "\033[1m{:<22} {:>10} {:>14}\033[0m"
+        sub_format = " {:<21} \033[37m{:>10} {:>14}\033[0m"
+        sub_format_no_indent = "{:<22} \033[37m{:>10} {:>14}\033[0m"
+
+        # Print the header
+        title = "Timings"
+        self.write_stdout(f"\n{title}\n" + "-" * len(title) + "\n")
+        self.write_stdout(main_format.format("Objective", "Time (s)", "% Total"))
+        self.write_stdout("-" * 48)
+
+        # time accounted for by timers and actual total timing
+        true_tot = timings["total"]["time"]
+        count_tot = 0.0
+
+        for name, details in timings.items():
+            if name == "total":
+                continue
+
+            # Print the main timer's details
+            self.write_stdout(
+                main_format.format(
+                    name,
+                    f"{details['time']:.{precision}f}",
+                    details.get("percentage", ""),
+                )
+            )
+            count_tot += details["time"]
+
+            # Print subtimers, if any
+            if details.get("subtimers"):
+                for subname, subdetails in details["subtimers"].items():
+                    self.write_stdout(
+                        sub_format.format(
+                            f"- {subname}",
+                            f"{subdetails['time']:.{precision}f}",
+                            f"{subdetails.get('percentage', '')}",
+                        )
+                    )
+
+        self.write_stdout("-" * 48)
+        self.write_stdout(
+            sub_format_no_indent.format(
+                "Sum",
+                f"{count_tot:.{precision}f}",
+                f"{count_tot/true_tot*100:.2f}",
+            )
+        )
+        self.write_stdout(
+            main_format.format(
+                "Total", f"{timings['total']['time']:.{precision}f}", "100.00"
+            )
+        )
 
 
 OutputHandler = _OutputHandler()

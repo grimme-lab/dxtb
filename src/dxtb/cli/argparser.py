@@ -266,13 +266,6 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         help="R|Turn off energy contributions.",
     )
     p.add_argument(
-        "--etemp",
-        action=action_not_less_than(0.0),
-        type=float,
-        default=defaults.FERMI_ETEMP,
-        help="R|Electronic Temperature in K.",
-    )
-    p.add_argument(
         "--dtype",
         action=ConvertToTorchDtype,
         type=str,
@@ -287,18 +280,46 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         default=torch.device(defaults.TORCH_DEVICE),
         help="R|Device for PyTorch tensors.",
     )
+
+    # Fermi
+    p.add_argument(
+        "--fermi-etemp",
+        "--fermi_etemp",
+        "--etemp",
+        action=action_not_less_than(0.0),
+        type=float,
+        default=defaults.FERMI_ETEMP,
+        help="R|Electronic Temperature in K.",
+    )
     p.add_argument(
         "--fermi_maxiter",
+        "--fermi-maxiter",
         type=int,
         default=defaults.FERMI_MAXITER,
         help="R|Maximum number of iterations for Fermi smearing.",
     )
     p.add_argument(
-        "--fermi_energy_partition",
+        "--fermi_partition",
+        "--fermi-partition",
         type=str,
         default=defaults.FERMI_PARTITION,
         choices=defaults.FERMI_PARTITION_CHOICES,
         help="R|Partitioning scheme for electronic free energy.",
+    )
+    p.add_argument(
+        "--fermi_thresh",
+        "--fermi-thresh",
+        type=float,
+        default=defaults.FERMI_THRESH,
+        help="R|Threshold for Fermi iterations.",
+    )
+
+    # SCF
+    p.add_argument(
+        "--force-convergence",
+        "--force_convergence",
+        action="store_true",
+        help="R|Continue running on convergence failure.",
     )
     p.add_argument(
         "--maxiter",
@@ -345,6 +366,15 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
             "in the SCF. Note that 'charge' and 'charges' is identical."
         ),
     )
+
+    # Integrals
+    p.add_argument(
+        "--int-cutoff",
+        "--int_cutoff",
+        type=int,
+        default=defaults.INTCUTOFF,
+        help=("R|Integral cutoff."),
+    )
     p.add_argument(
         "--int-driver",
         "--int_driver",
@@ -353,7 +383,24 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         choices=defaults.INTDRIVER_CHOICES,
         help=("R|Integral driver."),
     )
+    p.add_argument(
+        "--int-level",
+        "--int_level",
+        type=int,
+        default=defaults.INTLEVEL,
+        choices=defaults.INTLEVEL_CHOICES,
+        help=("R|Integral level."),
+    )
+    p.add_argument(
+        "--int-uplo",
+        "--int_uplo",
+        type=str,
+        default=defaults.INTUPLO,
+        choices=defaults.INTUPLO_CHOICES,
+        help=("R|Shape of the calculated integral (full/triangular matrix)."),
+    )
 
+    # printing
     p.add_argument(
         "--verbosity",
         type=int,
@@ -399,6 +446,12 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         "--grad",
         action="store_true",
         help="R|Whether to compute gradients for positions w.r.t. energy.",
+    )
+    p.add_argument(
+        "--use-cache",
+        "--use_cache",
+        action="store_true",
+        help="R|Whether to use the cache for results from the Calculator.",
     )
     p.add_argument(
         "--profile",

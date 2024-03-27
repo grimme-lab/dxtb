@@ -87,7 +87,7 @@ class Driver:
         return vals
 
     def singlepoint(self) -> Result:
-        timer.start("setup")
+        timer.start("Setup")
 
         args = self.args
 
@@ -143,7 +143,7 @@ class Driver:
 
         if args.method.lower() == "gfn1" or args.method.lower() == "gfn1-xtb":
             # pylint: disable=import-outside-toplevel
-            from ..param import GFN1_XTB as par
+            from dxtb.param import GFN1_XTB as par
         elif args.method.lower() == "gfn2" or args.method.lower() == "gfn2-xtb":
             raise NotImplementedError("GFN2-xTB is not implemented yet.")
         else:
@@ -179,8 +179,8 @@ class Driver:
             interactions.append(new_efield(field, **dd))
 
         # setup calculator
-        timer.stop("setup")
         calc = Calculator(numbers, par, opts=config, interaction=interactions, **dd)
+        timer.stop("Setup")
 
         ####################################################
         if args.grad:

@@ -10,9 +10,8 @@ from __future__ import annotations
 
 import torch
 from tad_mctc.data import pse
-from tad_mctc.typing import Tensor
+from tad_mctc.typing import Tensor, get_default_dtype
 
-from ..constants import defaults
 from ..param import Element
 from ..utils import is_int_list
 
@@ -55,7 +54,7 @@ def get_pair_param(
         symbols = [pse.Z2S.get(i, "X") for i in symbols]
 
     if dtype is None:
-        dtype = defaults.get_default_dtype()
+        dtype = get_default_dtype()
 
     ndim = len(symbols)
     pair_mat = torch.ones(*(ndim, ndim), dtype=dtype, device=device)

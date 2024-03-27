@@ -27,10 +27,8 @@ from typing import (
 )
 
 import torch
-from torch import Tensor
-
-from .constants import defaults
-from .exceptions import DtypeError
+from tad_mctc.exceptions import DtypeError
+from tad_mctc.typing import Self, Tensor, get_default_device, get_default_dtype
 
 T = TypeVar("T")
 
@@ -40,11 +38,6 @@ if sys.version_info >= (3, 12):
 else:
     from typing_extensions import override
 
-# "Self" (since Python 3.11)
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing_extensions import Self
 
 # "TypeGuard" (since Python 3.10)
 if sys.version_info >= (3, 10):
@@ -198,8 +191,8 @@ class TensorLike:
     def __init__(
         self, device: torch.device | None = None, dtype: torch.dtype | None = None
     ):
-        self.__device = device if device is not None else defaults.get_default_device()
-        self.__dtype = dtype if dtype is not None else defaults.get_default_dtype()
+        self.__device = device if device is not None else get_default_device()
+        self.__dtype = dtype if dtype is not None else get_default_dtype()
 
         self.__dd = {"device": self.device, "dtype": self.dtype}
 

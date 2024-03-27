@@ -6,10 +6,9 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.exceptions import DeviceError
+from tad_mctc.typing import Tensor, get_default_dtype
 
-from dxtb._types import Tensor
-from dxtb.constants import defaults
-from dxtb.exceptions import DeviceError
 from dxtb.mol import Mol
 
 device = None
@@ -82,16 +81,16 @@ def test_charge() -> None:
     # charge as float
     mol.charge = 1.0
     assert isinstance(mol.charge, Tensor)
-    assert mol.charge.dtype == defaults.get_default_dtype()
+    assert mol.charge.dtype == get_default_dtype()
 
     # charge as Tensor
     mol.charge = torch.tensor(1.0)
     assert isinstance(mol.charge, Tensor)
-    assert mol.charge.dtype == defaults.get_default_dtype()
+    assert mol.charge.dtype == get_default_dtype()
 
     mol.charge = "1"
     assert isinstance(mol.charge, Tensor)
-    assert mol.charge.dtype == defaults.get_default_dtype()
+    assert mol.charge.dtype == get_default_dtype()
 
     # charge as wrong type (list)
     with pytest.raises(TypeError):

@@ -4,8 +4,8 @@ import sys
 from argparse import Namespace
 
 import torch
+from tad_mctc.typing import Self, get_default_device, get_default_dtype
 
-from .._types import Self
 from ..constants import defaults, labels
 from .integral import ConfigIntegrals
 from .scf import ConfigSCF
@@ -25,19 +25,19 @@ class Config:
         grad: bool = False,
         use_cache: bool = False,
         # integrals
-        int_level: int = defaults.INTLEVEL,
         int_cutoff: float = defaults.INTCUTOFF,
         int_driver: str | int = defaults.INTDRIVER,
+        int_level: int = defaults.INTLEVEL,
         int_uplo: str = defaults.INTUPLO,
         # PyTorch
-        device: torch.device = defaults.get_default_device(),
-        dtype: torch.dtype = defaults.get_default_dtype(),
         anomaly: bool = False,
+        device: torch.device = get_default_device(),
+        dtype: torch.dtype = get_default_dtype(),
         # SCF
-        guess: str | int = defaults.GUESS,
         maxiter: int = defaults.MAXITER,
         mixer: str = defaults.MIXER,
         damp: float = defaults.DAMP,
+        guess: str | int = defaults.GUESS,
         scf_mode: str | int = defaults.SCF_MODE,
         scp_mode: str | int = defaults.SCP_MODE,
         x_atol: float = defaults.X_ATOL,
@@ -117,23 +117,33 @@ class Config:
             # general
             file=args.file,
             exclude=args.exclude,
-            int_driver=args.int_driver,
             method=args.method,
             grad=args.grad,
+            use_cache=args.use_cache,
+            # integrals
+            int_cutoff=args.int_cutoff,
+            int_driver=args.int_driver,
+            int_level=args.int_level,
+            int_uplo=args.int_uplo,
             # PyTorch
+            anomaly=args.detect_anomaly,
             device=args.device,
             dtype=args.dtype,
-            anomaly=args.detect_anomaly,
             # SCF
-            guess=args.guess,
             maxiter=args.maxiter,
             mixer=args.mixer,
             damp=args.damp,
+            guess=args.guess,
             scf_mode=args.scf_mode,
             scp_mode=args.scp_mode,
             x_atol=args.xtol,
             f_atol=args.ftol,
-            fermi_etemp=args.etemp,
+            force_convergence=args.force_convergence,
+            # SCF: Fermi
+            fermi_etemp=args.fermi_etemp,
+            fermi_maxiter=args.fermi_maxiter,
+            fermi_thresh=args.fermi_thresh,
+            fermi_partition=args.fermi_partition,
         )
 
     def info(self) -> dict:
@@ -150,7 +160,7 @@ class Config:
                 "Program Call": " ".join(sys.argv),
                 "Input File(s)": self.file,
                 "Method": labels.GFN_XTB_MAP[self.method],
-                "Excluded": None if len(self.exclude) == 0 else self.exclude,
+                "Excluded": False if len(self.exclude) == 0 else self.exclude,
                 "Gradient": self.grad,
                 "Integral driver": labels.INTDRIVER_MAP[self.ints.driver],
                 "FP accuracy": str(self.dtype),

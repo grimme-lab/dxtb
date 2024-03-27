@@ -38,11 +38,10 @@ from __future__ import annotations
 
 import torch
 from tad_mctc.exceptions import DeviceError
-from tad_mctc.typing import DD, Tensor, TensorLike
+from tad_mctc.typing import DD, Tensor, TensorLike, get_default_dtype
 
 from dxtb._types import Slicers
 from dxtb.basis import IndexHelper
-from dxtb.constants import defaults
 from dxtb.param import Param, get_elem_param
 
 from .. import Interaction
@@ -231,7 +230,7 @@ def new_es3(
 
     dd: DD = {
         "device": device,
-        "dtype": dtype if dtype is not None else defaults.get_default_dtype(),
+        "dtype": dtype if dtype is not None else get_default_dtype(),
     }
 
     hubbard_derivs = get_elem_param(torch.unique(numbers), par.element, "gam3", **dd)

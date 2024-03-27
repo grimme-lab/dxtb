@@ -17,8 +17,9 @@ from math import sqrt
 
 import torch
 
+from dxtb.basis import IndexHelper
+
 from .._types import Any, Slicers, Tensor
-from ..basis import IndexHelper
 from ..components.interactions import Charges, InteractionList
 from ..config import ConfigSCF
 from ..constants import defaults, labels
@@ -26,6 +27,7 @@ from ..exceptions import SCFConvergenceError, SCFConvergenceWarning
 from ..exlibs.xitorch import optimize as xto
 from ..integral import IntegralMatrices
 from ..utils import t2int
+from ..wavefunction import filling
 from .base import SCFResult
 from .guess import get_guess
 from .mixer import Anderson, Mixer, Simple
@@ -475,11 +477,13 @@ def solve(
     numbers: Tensor,
     positions: Tensor,
     chrg: Tensor,
+    spin: Tensor | None,
     interactions: InteractionList,
     cache: InteractionList.Cache,
     ihelp: IndexHelper,
     config: ConfigSCF,
     integrals: IntegralMatrices,
+    refocc: Tensor,
     *args: Any,
     **kwargs: Any,
 ) -> SCFResult:
@@ -521,9 +525,13 @@ def solve(
     else:
         raise ValueError(f"Unknown SCF mode '{config.scf_mode}'.")
 
+    n0, occupation = get_refocc(refocc, chrg, spin, ihelp)
     charges = get_guess(numbers, positions, chrg, ihelp, config.guess)
+
     return scf(
         interactions,
+        occupation,
+        n0,
         *args,
         numbers=numbers,
         ihelp=ihelp,
@@ -532,3 +540,48 @@ def solve(
         config=config,
         **kwargs,
     )(charges)
+
+
+def get_refocc(
+    refs: Tensor, chrg: Tensor, spin: Tensor | None, ihelp: IndexHelper
+) -> tuple[Tensor, Tensor]:
+    """
+    Obtain reference occupations and total number of electrons.
+
+    Parameters
+    ----------
+    refs : Tensor
+        Occupation from parametrization.
+    chrg : Tensor
+        Total charge.
+    spin : Tensor | None
+        Number of unpaired electrons.
+    ihelp : IndexHelper
+        Helper for indexing.
+
+    Returns
+    -------
+    tuple[Tensor, Tensor]
+        Reference occupations and occupation.
+    """
+
+    refocc = ihelp.spread_ushell_to_orbital(refs)
+    orb_per_shell = ihelp.spread_shell_to_orbital(ihelp.orbitals_per_shell)
+
+    n0 = torch.where(
+        orb_per_shell != 0,
+        refocc / orb_per_shell,
+        torch.tensor(0, device=refs.device),
+    )
+
+    # Obtain the reference occupations and total number of electrons
+    nel = torch.sum(n0, -1) - torch.sum(chrg, -1)
+
+    # get alpha and beta electrons and occupation
+    nab = filling.get_alpha_beta_occupation(nel, spin)
+    occupation = filling.get_aufbau_occupation(
+        torch.tensor(ihelp.nao, device=refs.device, dtype=torch.int64),
+        nab,
+    )
+
+    return n0, occupation

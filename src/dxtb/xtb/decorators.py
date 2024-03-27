@@ -7,6 +7,7 @@ Decorators for the Calculator class.
 
 from __future__ import annotations
 
+import logging
 from functools import wraps
 from typing import cast
 
@@ -17,6 +18,8 @@ from ..components.interactions.external import field as efield
 from ..components.interactions.external import fieldgrad as efield_grad
 from ..constants import defaults
 from ..io import OutputHandler
+
+logger = logging.getLogger(__name__)
 
 # class CalculatorFunction(Protocol):
 #     def __call__(
@@ -139,15 +142,12 @@ def _numerical(nograd: bool = False) -> Callable[[F], F]:
     def decorator(func: F) -> F:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            OutputHandler.temporary_disable_on()
-            try:
+            with OutputHandler.with_verbosity(0):
                 if nograd is True:
                     with torch.no_grad():
                         result = func(*args, **kwargs)
                 else:
                     result = func(*args, **kwargs)
-            finally:
-                OutputHandler.temporary_disable_off()
             return result
 
         return cast(F, wrapper)
@@ -172,3 +172,31 @@ def numerical(func: F) -> F:
             calc.interactions.update_efield(field=field_tensor)
     """
     return _numerical(nograd=True)(func)
+
+
+def cache(func: F) -> F:
+    """
+    Decorator to cache the results of a function.
+
+    .. warning::
+
+        This decorator must always be the innermost decorator.
+    """
+
+    @wraps(func)
+    def wrapper(self: Calculator, *args, **kwargs):  # type: ignore
+        cache_key: str = func.__name__
+        key = cache_key.replace("_numerical", "")
+
+        # Check if the result is already in the cache
+        if self.opts.use_cache is True:
+            if key in self.cache:
+                logger.debug(f"{cache_key.title()}: Using cached result.")
+                return self.cache[key]
+
+        # Execute the function and store the result in the cache
+        result = func(self, *args, **kwargs)
+        self.cache[key] = result
+        return result
+
+    return cast(F, wrapper)

@@ -25,9 +25,9 @@ from __future__ import annotations
 
 import torch
 from tad_mctc import storch
+from tad_mctc.exceptions import DeviceError, DtypeError
+from tad_mctc.typing import Any, NoReturn, Tensor, TensorLike
 
-from .._types import Any, NoReturn, Tensor, TensorLike
-from ..exceptions import DeviceError, DtypeError
 from ..utils import memoize
 
 __all__ = ["Mol"]

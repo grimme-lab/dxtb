@@ -46,7 +46,7 @@ class BaseXSCF(BaseSCF, EditableModule):
             smat + torch.diag_embed(smat.new_ones(*smat.shape[:-2], 1) * mask)
         )
 
-    @timer_decorator("Eigen")
+    @timer_decorator("Eigen", "SCF")
     def diagonalize(self, hamiltonian: Tensor) -> tuple[Tensor, Tensor]:
         """
         Diagonalize the Hamiltonian.

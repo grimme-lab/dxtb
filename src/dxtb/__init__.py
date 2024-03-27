@@ -10,12 +10,15 @@ from __future__ import annotations
 # import timer first to get correct total time
 from .timing import timer
 
-timer.start("Import PyTorch")
+timer.start("Import")
+timer.start("PyTorch", parent_uid="Import")
 import torch
 
-timer.stop("Import PyTorch")
+timer.stop("PyTorch")
+timer.start("dxtb", parent_uid="Import")
 
 from dxtb.exlibs import scipy as scipy
+
 
 from . import _types
 from . import io
@@ -36,7 +39,7 @@ from dxtb.components import interactions
 # from . import integral as ints
 from .__version__ import __version__
 
-from .basis import Basis, IndexHelper
+from dxtb.basis import Basis, IndexHelper
 from .components.classicals import Halogen, Repulsion, new_halogen, new_repulsion
 from .components.classicals import DispersionD3, new_dispersion
 from .components.interactions import external
@@ -44,3 +47,6 @@ from .mol import molecule
 from .param import GFN1_XTB, Param
 from .xtb import Calculator
 from dxtb.components.interactions import solvation as solvation
+
+timer.stop("dxtb")
+timer.stop("Import")

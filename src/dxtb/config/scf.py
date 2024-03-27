@@ -5,8 +5,8 @@ SCF configuration.
 from __future__ import annotations
 
 import torch
+from tad_mctc.typing import Any, get_default_device, get_default_dtype
 
-from .._types import Any
 from ..constants import defaults, labels
 from ..io import OutputHandler
 
@@ -50,8 +50,8 @@ class ConfigSCF:
         fermi_thresh: dict = defaults.FERMI_THRESH,
         fermi_partition: str | int = defaults.FERMI_PARTITION,
         # PyTorch
-        device: torch.device = defaults.get_default_device(),
-        dtype: torch.dtype = defaults.get_default_dtype(),
+        device: torch.device = get_default_device(),
+        dtype: torch.dtype = get_default_dtype(),
     ) -> None:
         if isinstance(guess, str):
             if guess.casefold() in labels.GUESS_EEQ_STRS:
@@ -167,7 +167,7 @@ class ConfigSCF:
                 "SCF Mode": labels.SCF_MODE_MAP[self.scf_mode],
                 "SCP Mode": labels.SCP_MODE_MAP[self.scp_mode],
                 "Maxiter": self.maxiter,
-                "Mixer": self.mixer,
+                "Mixer": labels.MIXER_MAP[self.mixer],
                 "Damping Factor": self.damp,
                 "Force Convergence": self.force_convergence,
                 "x tolerance": self.x_atol,
@@ -252,8 +252,8 @@ class ConfigFermi:
         thresh: dict = defaults.FERMI_THRESH,
         partition: str | int = defaults.FERMI_PARTITION,
         # PyTorch
-        device: torch.device = defaults.get_default_device(),
-        dtype: torch.dtype = defaults.get_default_dtype(),
+        device: torch.device = get_default_device(),
+        dtype: torch.dtype = get_default_dtype(),
     ) -> None:
         self.device = device
         self.dtype = dtype
@@ -290,7 +290,7 @@ class ConfigFermi:
             "Fermi Smearing": {
                 "Temperature": self.etemp,
                 "Maxiter": self.maxiter,
-                "Threshold": str(self.thresh[self.dtype]),
+                "Threshold": self.thresh[self.dtype].item(),
                 "Partioning": labels.FERMI_PARTITION_MAP[self.partition],
             }
         }

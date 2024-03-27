@@ -7,14 +7,15 @@ from __future__ import annotations
 import torch
 from tad_mctc import storch
 from tad_mctc.batch import real_pairs
+from tad_mctc.convert import symmetrize
 from tad_mctc.data.radii import ATOMIC as ATOMIC_RADII
 from tad_mctc.typing import Tensor
 from tad_mctc.units import EV2AU
 
-from ..basis import IndexHelper
-from ..components.interactions import Potential
-from ..param import Param, get_elem_param, get_elem_valence, get_pair_param
-from ..utils import symmetrize
+from dxtb.basis import IndexHelper
+from dxtb.components.interactions import Potential
+from dxtb.param import Param
+
 from .base import BaseHamiltonian
 
 PAD = -1
@@ -24,7 +25,7 @@ __all__ = ["GFN1Hamiltonian"]
 
 
 class GFN1Hamiltonian(BaseHamiltonian):
-    """Hamiltonian from parametrization."""
+    """Hamiltonian from GFN1-xTB parametrization."""
 
     def __init__(
         self,
@@ -56,8 +57,8 @@ class GFN1Hamiltonian(BaseHamiltonian):
         self.kpair = self._get_pair_param(self.par.hamiltonian.xtb.kpair)
 
         # unit conversion
-        self.selfenergy = self.selfenergy * 0.03674932379085202
-        self.kcn = self.kcn * 0.03674932379085202
+        self.selfenergy = self.selfenergy * EV2AU
+        self.kcn = self.kcn * EV2AU
 
         # dtype should always be correct as it always uses self.dtype
         if any(
@@ -105,6 +106,8 @@ class GFN1Hamiltonian(BaseHamiltonian):
         Tensor
             Parameters for each species.
         """
+        # pylint: disable=import-outside-toplevel
+        from dxtb.param import get_elem_param
 
         return get_elem_param(
             self.unique, self.par.element, key, pad_val=PAD, **self.dd
@@ -119,6 +122,8 @@ class GFN1Hamiltonian(BaseHamiltonian):
         Tensor
             Valence parameters for each species.
         """
+        # pylint: disable=import-outside-toplevel
+        from dxtb.param import get_elem_valence
 
         return get_elem_valence(
             self.unique,
@@ -142,6 +147,8 @@ class GFN1Hamiltonian(BaseHamiltonian):
         Tensor
             Pair parameters for each species.
         """
+        # pylint: disable=import-outside-toplevel
+        from dxtb.param import get_pair_param
 
         return get_pair_param(self.unique.tolist(), pair, **self.dd)
 

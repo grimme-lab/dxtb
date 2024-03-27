@@ -64,6 +64,9 @@ INTDRIVER_CHOICES = [
 INTLEVEL = 1
 """Determines types of calculated integrals."""
 
+INTLEVEL_CHOICES = [0, 1, 2, 3, 4, 5]
+"""List of possible choices for `INTLEVEL`."""
+
 DP_SHAPE = 3
 """Number of dimensions of the dipole integral."""
 
@@ -85,7 +88,7 @@ GUESS_CHOICES = ["eeq", "sad"]
 DAMP = 0.3
 """Damping factor for mixing in SCF iterations."""
 
-MAXITER = 20
+MAXITER = 100
 """Maximum number of SCF iterations."""
 
 MIXER = "broyden"
@@ -130,12 +133,12 @@ LOG_LEVEL_CHOICES = ["critical", "error", "warn", "warning", "info", "debug"]
 XITORCH_VERBOSITY = False
 """Verbosity of printout."""
 
-X_ATOL = 1.0e-5
+X_ATOL = 1.0e-4
 """
 The absolute tolerance of the norm of the input of the equilibrium function.
 """
 
-F_ATOL = 1.0e-5
+F_ATOL = 1.0e-4
 """
 The absolute tolerance of the norm of the output of the equilibrium function.
 """
@@ -180,13 +183,3 @@ PAD = 0
 
 PADNZ = -9999999
 """Default non-zero value to indicate padding."""
-
-
-def get_default_device() -> torch.device:
-    """Default device for tensors."""
-    return torch.tensor(1.0).device
-
-
-def get_default_dtype() -> torch.dtype:
-    """Default data type for floating point tensors."""
-    return torch.tensor(1.0).dtype

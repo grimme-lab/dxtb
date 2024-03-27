@@ -42,7 +42,7 @@ class ClassicalList(ComponentList[Classical]):
 
         d = {}
         for classical in self.components:
-            timer.start(classical.label)
+            timer.start(classical.label, parent_uid="Classicals")
             d[classical.label] = classical.get_cache(numbers=numbers, ihelp=ihelp)
             timer.stop(classical.label)
 

@@ -8,12 +8,11 @@ import logging
 
 import torch
 from tad_mctc.convert import any_to_tensor
-from tad_mctc.data.radii import COV_D3
 from tad_mctc.exceptions import DtypeError
 from tad_mctc.typing import Any, Literal, Sequence, Tensor, TensorLike
 
 from .. import integral as ints
-from .. import ncoord, scf
+from .. import scf
 from ..basis import IndexHelper
 from ..components.classicals import (
     Classical,
@@ -224,7 +223,6 @@ class Calculator(TensorLike):
             self,
             device: torch.device | None = None,
             dtype: torch.dtype | None = None,
-            **kwargs: Any,
         ) -> None:
             """
             Initialize the Cache class with optional device and dtype settings.
@@ -240,23 +238,6 @@ class Calculator(TensorLike):
             self.energy = None
             self.forces = None
             self.hessian = None
-            self._disabled = not kwargs.pop("use_cache", False)
-
-        @property
-        def disabled(self) -> bool:
-            """
-            Check if the cache is disabled.
-
-            Returns
-            -------
-            bool
-                True if the cache is disabled, False otherwise.
-            """
-            return self._disabled
-
-        @disabled.setter
-        def disabled(self, value: bool) -> None:
-            self._disabled = value
 
         def __getitem__(self, key: str) -> Tensor:
             """
@@ -287,6 +268,16 @@ class Calculator(TensorLike):
             value : Tensor
                 The value to be associated with the key.
             """
+            if key == "wrapper":
+                raise RuntimeError(
+                    "Key 'wrapper' detected. This happens if the cache "
+                    "decorator is not the innermost decorator of the "
+                    "Calculator method that you are trying to cache. Please "
+                    "move the cache decorator to the innermost position. "
+                    "Otherwise, the name of the method cannot be inferred "
+                    "correctly."
+                )
+
             if key in self.__slots__:
                 setattr(self, key, value)
             else:
@@ -306,9 +297,6 @@ class Calculator(TensorLike):
             bool
                 True if the key is in the cache, False otherwise
             """
-            if self.disabled is True:
-                return False
-
             return key in self.__slots__ and getattr(self, key) is not None
 
         def clear(self, key: str | None = None) -> None:
@@ -357,7 +345,7 @@ class Calculator(TensorLike):
             Data type of the tensor. If `None` (default), the data type is
             inferred.
         """
-        timer.start("setup calculator")
+        timer.start("Calculator", parent_uid="Setup")
 
         # setup verbosity first
         opts = opts if opts is not None else {}
@@ -366,6 +354,7 @@ class Calculator(TensorLike):
 
         OutputHandler.write_stdout("")
         OutputHandler.write_stdout("")
+        OutputHandler.write_stdout("===========")
         OutputHandler.write_stdout("CALCULATION")
         OutputHandler.write_stdout("===========")
         OutputHandler.write_stdout("")
@@ -382,13 +371,13 @@ class Calculator(TensorLike):
         super().__init__(device, dtype)
         dd = {"device": self.device, "dtype": self.dtype}
 
-        # setup calculator options (before cache!)
+        # setup calculator options
         if isinstance(opts, dict):
             opts = Config(**opts, **dd)
         self.opts = opts
 
-        # create cache and potentially disable it (default)
-        self.cache = self.Cache(**dd, use_cache=opts.use_cache)
+        # create cache
+        self.cache = self.Cache(**dd)
 
         self.batched = numbers.ndim > 1
 
@@ -399,7 +388,7 @@ class Calculator(TensorLike):
         ################
 
         # setup self-consistent contributions
-        # OutputHandler.write_stdout_nf(" - Interactions      ... ")
+        OutputHandler.write_stdout_nf(" - Interactions      ... ")
 
         es2 = (
             new_es2(numbers, par, **dd)
@@ -414,14 +403,14 @@ class Calculator(TensorLike):
 
         self.interactions = InteractionList(es2, es3, *interaction)
 
-        # OutputHandler.write_stdout("done")
+        OutputHandler.write_stdout("done")
 
         ##############
         # CLASSICALS #
         ##############
 
         # setup non-self-consistent contributions
-        # OutputHandler.write_stdout_nf(" - Classicals        ... ")
+        OutputHandler.write_stdout_nf(" - Classicals        ... ")
 
         halogen = (
             new_halogen(numbers, par, **dd)
@@ -441,38 +430,49 @@ class Calculator(TensorLike):
 
         self.classicals = ClassicalList(halogen, dispersion, repulsion, *classical)
 
-        # OutputHandler.write_stdout("done")
+        OutputHandler.write_stdout("done")
 
         #############
         # INTEGRALS #
         #############
 
-        # OutputHandler.write_stdout_nf(" - Integrals         ... ")
+        OutputHandler.write_stdout_nf(" - Integrals         ... ")
 
         # figure out integral level from interactions
-        self.intlevel = defaults.INTLEVEL
         if efield.LABEL_EFIELD in self.interactions.labels:
-            self.intlevel = max(ints.INTLEVEL_DIPOLE, self.intlevel)
+            if self.opts.ints.level < ints.INTLEVEL_DIPOLE:
+                OutputHandler.warn(
+                    "Setting integral level to DIPOLE "
+                    f"({ints.INTLEVEL_DIPOLE}) due to electric field "
+                    "interaction."
+                )
+            self.opts.ints.level = max(ints.INTLEVEL_DIPOLE, self.opts.ints.level)
         if efield_grad.LABEL_EFIELD_GRAD in self.interactions.labels:
-            self.intlevel = max(ints.INTLEVEL_QUADRUPOLE, self.intlevel)
+            if self.opts.ints.level < ints.INTLEVEL_DIPOLE:
+                OutputHandler.warn(
+                    "Setting integral level to QUADRUPOLE "
+                    f"{ints.INTLEVEL_DIPOLE} due to electric field gradient "
+                    "interaction."
+                )
+            self.opts.ints.level = max(ints.INTLEVEL_QUADRUPOLE, self.opts.ints.level)
 
         # setup integral
         driver = self.opts.ints.driver
         self.integrals = ints.Integrals(numbers, par, self.ihelp, driver=driver, **dd)
 
-        if self.intlevel >= ints.INTLEVEL_OVERLAP:
+        if self.opts.ints.level >= ints.INTLEVEL_OVERLAP:
             self.integrals.hcore = ints.Hamiltonian(numbers, par, self.ihelp, **dd)
             self.integrals.overlap = ints.Overlap(driver=driver, **dd)
 
-        if self.intlevel >= ints.INTLEVEL_DIPOLE:
+        if self.opts.ints.level >= ints.INTLEVEL_DIPOLE:
             self.integrals.dipole = ints.Dipole(driver=driver, **dd)
 
-        if self.intlevel >= ints.INTLEVEL_QUADRUPOLE:
+        if self.opts.ints.level >= ints.INTLEVEL_QUADRUPOLE:
             self.integrals.quadrupole = ints.Quadrupole(driver=driver, **dd)
 
-        # OutputHandler.write_stdout("done")
+        OutputHandler.write_stdout("done")
 
-        timer.stop("setup calculator")
+        timer.stop("Calculator")
 
     def reset(self) -> None:
         self.classicals.reset_all()
@@ -508,8 +508,7 @@ class Calculator(TensorLike):
         Result
             Results container.
         """
-
-        # OutputHandler.write_stdout("\nSinglepoint ")
+        OutputHandler.write_stdout("\nSinglepoint ")
 
         chrg = any_to_tensor(chrg, **self.dd)
         if spin is not None:
@@ -518,11 +517,14 @@ class Calculator(TensorLike):
         result = Result(positions, device=self.device, dtype=self.dtype)
 
         # CLASSICAL CONTRIBUTIONS
-        # OutputHandler.write_stdout_nf(" - Classicals        ... ")
+        OutputHandler.write_stdout_nf(" - Classicals        ... ")
+        timer.start("Classicals")
         if len(self.classicals.components) > 0:
             ccaches = self.classicals.get_cache(numbers, self.ihelp)
             cenergies = self.classicals.get_energy(positions, ccaches)
             result.cenergies = cenergies
+            torch.set_printoptions(precision=10)
+            print(cenergies["DispersionD3"].sum())
             result.total += torch.stack(list(cenergies.values())).sum(0)
 
             if grad is True:
@@ -530,32 +532,43 @@ class Calculator(TensorLike):
                 result.cgradients = cgradients
                 result.total_grad += torch.stack(list(cgradients.values())).sum(0)
 
+        timer.stop("Classicals")
         OutputHandler.write_stdout("done")
 
         # SELF-CONSISTENT FIELD PROCEDURE
         if not any(x in ["all", "scf"] for x in self.opts.exclude):
+            timer.start("Integrals")
             # overlap integral
-            # OutputHandler.write_stdout_nf(" - Overlap           ... ")
-            timer.start("Overlap")
+            OutputHandler.write_stdout_nf(" - Overlap           ... ")
+            timer.start("Overlap", parent_uid="Integrals")
             self.integrals.build_overlap(positions)
             timer.stop("Overlap")
-            # OutputHandler.write_stdout("done")
+            OutputHandler.write_stdout("done")
+
+            # Core Hamiltonian integral (requires overlap internally!)
+            OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ")
+            timer.start("Core Hamiltonian", parent_uid="Integrals")
+            self.integrals.build_hcore(positions)
+            timer.stop("Core Hamiltonian")
+            OutputHandler.write_stdout("done")
 
             # dipole integral
-            if self.intlevel >= ints.INTLEVEL_DIPOLE:
-                # OutputHandler.write_stdout_nf(" - Dipole            ... ")
-                timer.start("Dipole Integral")
+            if self.opts.ints.level >= ints.INTLEVEL_DIPOLE:
+                OutputHandler.write_stdout_nf(" - Dipole            ... ")
+                timer.start("Dipole Integral", parent_uid="Integrals")
                 self.integrals.build_dipole(positions)
                 timer.stop("Dipole Integral")
-                # OutputHandler.write_stdout("done")
+                OutputHandler.write_stdout("done")
 
             # quadrupole integral
-            if self.intlevel >= ints.INTLEVEL_QUADRUPOLE:
-                # OutputHandler.write_stdout_nf(" - Quadrupole        ... ")
-                timer.start("Quadrupole Integral")
+            if self.opts.ints.level >= ints.INTLEVEL_QUADRUPOLE:
+                OutputHandler.write_stdout_nf(" - Quadrupole        ... ")
+                timer.start("Quadrupole Integral", parent_uid="Integrals")
                 self.integrals.build_quadrupole(positions)
                 timer.stop("Quadrupole Integral")
-                # OutputHandler.write_stdout("done")
+                OutputHandler.write_stdout("done")
+
+            timer.stop("Integrals")
 
             # TODO: Think about handling this case
             if self.integrals.hcore is None:
@@ -563,60 +576,39 @@ class Calculator(TensorLike):
             if self.integrals.overlap is None:
                 raise RuntimeError
 
-            # Core Hamiltonian integral (requires overlap internally!)
-            # OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ")
-            timer.start("h0", "Core Hamiltonian")
-
-            rcov = COV_D3.to(**self.dd)[numbers]
-            cn = ncoord.get_coordination_number(
-                numbers, positions, ncoord.exp_count, rcov
-            )
-            hcore = self.integrals.build_hcore(positions, cn=cn)
-
-            timer.stop("h0")
-            # OutputHandler.write_stdout("done")
-
-            # SCF
-            # OutputHandler.write_stdout_nf(" - Interaction Cache ... ")
-            timer.start("SCF")
-
-            # Obtain the reference occupations and total number of electrons
-            n0 = self.integrals.hcore.integral.get_occupation()
-            nel = torch.sum(n0, -1) - torch.sum(chrg, -1)
-
-            # get alpha and beta electrons and occupation
-            nab = filling.get_alpha_beta_occupation(nel, spin)
-            occupation = filling.get_aufbau_occupation(
-                torch.tensor(hcore.shape[-1], device=self.device, dtype=torch.int64),
-                nab,
-            )
+            timer.start("SCF", "Self-Consistent Field")
 
             # get caches of all interactions
+            timer.start("Interaction Cache", parent_uid="SCF")
+            OutputHandler.write_stdout_nf(" - Interaction Cache ... ")
             icaches = self.interactions.get_cache(
                 numbers=numbers, positions=positions, ihelp=self.ihelp
             )
-            # OutputHandler.write_stdout("done")
+            timer.stop("Interaction Cache")
+            OutputHandler.write_stdout("done")
 
-            # OutputHandler.write_stdout("\nStarting SCF Iterations...")
+            # SCF
+            OutputHandler.write_stdout("\nStarting SCF Iterations...")
 
             scf_results = scf.solve(
                 numbers,
                 positions,
                 chrg,
+                spin,
                 self.interactions,
                 icaches,
                 self.ihelp,
                 self.opts.scf,
                 self.integrals.matrices,
-                occupation,
-                n0,
+                self.integrals.hcore.integral.refocc,
             )
+
             timer.stop("SCF")
+            OutputHandler.write_stdout(
+                f"\nSCF converged in {scf_results['iterations']} iterations."
+            )
 
-            # OutputHandler.write_stdout(
-            #     f"\nSCF converged in {scf_results['iterations']} iterations."
-            # )
-
+            # store SCF results
             result.charges = scf_results["charges"]
             result.coefficients = scf_results["coefficients"]
             result.density = scf_results["density"]
@@ -627,6 +619,13 @@ class Calculator(TensorLike):
             result.potential = scf_results["potential"]
             result.scf += scf_results["energy"]
             result.total += scf_results["energy"] + scf_results["fenergy"]
+
+            OutputHandler.write_stdout(
+                f"SCF Energy  : {result.scf.sum(-1):.14f} Hartree."
+            )
+            OutputHandler.write_stdout(
+                f"Total Energy: {result.total.sum(-1):.14f} Hartree.\n"
+            )
 
             if grad is True:
                 if len(self.interactions.components) > 0:
@@ -649,6 +648,10 @@ class Calculator(TensorLike):
                     result.occupation.sum(-2),
                     emo=result.emo,
                 )
+
+                from .. import ncoord
+
+                cn = ncoord.get_coordination_number(numbers, positions)
                 dedcn, dedr = self.integrals.hcore.integral.get_gradient(
                     positions,
                     self.integrals.matrices.overlap,
@@ -674,23 +677,18 @@ class Calculator(TensorLike):
         result.integrals = self.integrals
         return result
 
+    @cdec.cache
     def energy(
         self,
         numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        use_cache: bool = False,
     ) -> Tensor:
-        if use_cache:
-            if "energy" in self.cache:
-                return self.cache["energy"].sum(-1)
-
-        result = self.singlepoint(numbers, positions, chrg, spin).total
-        self.cache["energy"] = result
-        return result.sum(-1)
+        return self.singlepoint(numbers, positions, chrg, spin).total.sum(-1)
 
     @cdec.requires_positions_grad
+    @cdec.cache
     def forces(
         self,
         numbers: Tensor,
@@ -761,6 +759,7 @@ class Calculator(TensorLike):
         return -jac
 
     @cdec.numerical
+    @cdec.cache
     def forces_numerical(
         self,
         numbers: Tensor,
@@ -825,6 +824,7 @@ class Calculator(TensorLike):
         return -deriv
 
     @cdec.requires_positions_grad
+    @cdec.cache
     def hessian(
         self,
         numbers: Tensor,
@@ -869,13 +869,7 @@ class Calculator(TensorLike):
         RuntimeError
             Positions tensor does not have `requires_grad=True`.
         """
-        logger.debug(f"Autodiff Hessian: Starting Calculation.")
-
-        if "hessian" in self.cache:
-            # TODO: Better printout
-            print("Using cached Hessian.")
-            logger.debug("Autodiff Hessian: Using cached result.")
-            return self.cache["hessian"]
+        logger.debug("Autodiff Hessian: Starting Calculation.")
 
         if use_functorch is True:
             # pylint: disable=import-outside-toplevel
@@ -899,7 +893,7 @@ class Calculator(TensorLike):
             )
             hess = hess.contiguous()
 
-        # reshape (nb, nat, 3, nat, 3) to (nb, nat*3, nat*3)
+        # reshape (..., nat, 3, nat, 3) to (..., nat*3, nat*3)
         if matrix is True:
             s = [*numbers.shape[:-1], *2 * [3 * numbers.shape[-1]]]
             hess = hess.view(*s)
@@ -911,6 +905,7 @@ class Calculator(TensorLike):
         return hess
 
     @cdec.numerical
+    @cdec.cache
     def hessian_numerical(
         self,
         numbers: Tensor,
@@ -1156,7 +1151,7 @@ class Calculator(TensorLike):
 
             def wrapped_energy(f: Tensor) -> Tensor:
                 self.interactions.update_efield(field=f)
-                return self.energy(numbers, positions, chrg, spin, use_cache=False)
+                return self.energy(numbers, positions, chrg, spin)
 
             dip = jacrev(wrapped_energy)(field)
             assert isinstance(dip, Tensor)
@@ -1472,7 +1467,7 @@ class Calculator(TensorLike):
 
             def wrapped_energy(f: Tensor) -> Tensor:
                 self.interactions.update_efield_grad(field_grad=f)
-                return self.energy(numbers, positions, chrg, spin, use_cache=False)
+                return self.energy(numbers, positions, chrg, spin)
 
             e_quad = jacrev(wrapped_energy)(field_grad)
             assert isinstance(e_quad, Tensor)

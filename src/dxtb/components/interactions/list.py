@@ -8,7 +8,6 @@ import torch
 from tad_mctc.typing import Any, Literal, Tensor, TensorOrTensors, overload, override
 
 from dxtb.basis import IndexHelper
-from dxtb.timing.decorator import timer_decorator
 
 from ...components.list import ComponentList, _docstring_reset, _docstring_update
 from .base import Interaction
@@ -144,7 +143,6 @@ class InteractionList(ComponentList[Interaction]):
             ]
         ).sum(dim=0)
 
-    @timer_decorator("SCF Cache")
     @override
     def get_cache(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper

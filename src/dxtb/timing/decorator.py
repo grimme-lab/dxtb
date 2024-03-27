@@ -15,7 +15,9 @@ __all__ = ["timer_decorator"]
 F = TypeVar("F", bound=Callable[..., Any])
 
 
-def timer_decorator(label: str | None = None) -> Callable[[F], F]:
+def timer_decorator(
+    label: str | None = None, parent_uid: str | None = None
+) -> Callable[[F], F]:
     """
     Decorator for measuring execution time of a function using the global timer.
 
@@ -33,8 +35,8 @@ def timer_decorator(label: str | None = None) -> Callable[[F], F]:
     def decorator(func: F) -> F:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            uid = func.__name__
-            timer.start(uid, label if label is not None else uid)
+            uid = label if label is not None else func.__name__
+            timer.start(uid, parent_uid=parent_uid)
             result = func(*args, **kwargs)
             timer.stop(uid)
 

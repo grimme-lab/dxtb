@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from .._types import Tensor
+from ..timing.decorator import timer_decorator
 from ..utils import einsum
 
 __all__ = ["get_density"]
 
 
+@timer_decorator("Density", "SCF")
 def get_density(coeffs: Tensor, occ: Tensor, emo: Tensor | None = None) -> Tensor:
     """
     Calculate the density matrix from the coefficient vector and the occupation.
