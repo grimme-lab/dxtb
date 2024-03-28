@@ -51,7 +51,7 @@ dxtb.timer.stop("Raman")
 
 print(value.shape)
 
-dxtb.timer.print_times()
+dxtb.timer.print()
 dxtb.timer.reset()
 
 
@@ -59,7 +59,7 @@ dxtb.timer.start("Num Raman")
 num = calc.pol_deriv_numerical(numbers, positions, charge)
 dxtb.timer.stop("Num Raman")
 
-dxtb.timer.print_times()
+dxtb.timer.print()
 dxtb.timer.reset()
 
 print(value.shape)

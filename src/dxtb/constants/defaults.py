@@ -37,14 +37,8 @@ EXCLUDE_CHOICES = ["disp", "rep", "hal", "es2", "es3", "scf", "all"]
 
 # Integral settings
 
-INTCUTOFF = 70.0
+INTCUTOFF = 50.0
 """Real-space cutoff (in Bohr) for integral evaluation. (50.0)"""
-
-INTUPLO = "l"
-"""Integral mode for PyTorch integral calculation."""
-
-INTUPLO_CHOICES = ["n", "N", "l", "L", "u", "U"]
-"""List of possible choices for `INTUPLO`."""
 
 INTDRIVER = "libcint"
 """Integral driver."""
@@ -66,6 +60,13 @@ INTLEVEL = 1
 
 INTLEVEL_CHOICES = [0, 1, 2, 3, 4, 5]
 """List of possible choices for `INTLEVEL`."""
+
+INTUPLO = "l"
+"""Integral mode for PyTorch integral calculation."""
+
+INTUPLO_CHOICES = ["n", "N", "l", "L", "u", "U"]
+"""List of possible choices for `INTUPLO`."""
+
 
 DP_SHAPE = 3
 """Number of dimensions of the dipole integral."""

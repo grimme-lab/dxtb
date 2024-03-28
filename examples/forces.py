@@ -38,14 +38,14 @@ dxtb.timer.start("Forces")
 force = calc.forces(numbers, positions, charge)
 dxtb.timer.stop("Forces")
 
-dxtb.timer.print_times()
+dxtb.timer.print()
 dxtb.timer.reset()
 
 dxtb.timer.start("Num Forces")
 numforce = calc.forces_numerical(numbers, positions, charge, step_size=1e-6)
 dxtb.timer.stop("Num Forces")
 
-dxtb.timer.print_times()
+dxtb.timer.print()
 
 print(-force)
 print(-numforce)

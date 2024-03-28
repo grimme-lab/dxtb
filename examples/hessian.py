@@ -40,7 +40,7 @@ dxtb.timer.start("Hessian")
 pos = positions.clone().requires_grad_(True)
 hess = calc.hessian_numerical(numbers, pos, charge)
 dxtb.timer.stop("Hessian")
-dxtb.timer.print_times()
+dxtb.timer.print()
 dxtb.timer.reset()
 
 # torch.save(hess, "hess_num.pt")
@@ -51,7 +51,7 @@ dxtb.timer.reset()
 # hess2 = calc.hessian2(numbers, pos, charge)
 # dxtb.timer.stop("Hessian2")
 
-# dxtb.timer.print_times()
+# dxtb.timer.print()
 # dxtb.timer.reset()
 
 

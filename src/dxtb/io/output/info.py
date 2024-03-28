@@ -92,7 +92,7 @@ def get_pytorch_info():
 
     return {
         "PyTorch Information": {
-            "PyTorch Version": __tversion__,
+            "PyTorch Version": torch.__version__,
             "CUDA": cuda_version,
             "CUDA Devices": cuda_devices,
             "Default Device": str(torch.tensor(0.0).device),

@@ -250,14 +250,13 @@ class Driver:
             timer.start("Polarizability")
             alpha = calc.polarizability(numbers, positions, chrg)
             timer.stop("Polarizability")
-            print("Polarizability\n", mu)
-
-        # if args.verbosity > 0:
-        #     timer.print_times()
+            print("Polarizability\n", alpha)
 
         if "energy" not in calc.cache:
             result = calc.singlepoint(numbers, positions, chrg)
-            timer.print_times()
+
+            timer.print()
+            result.print_energies()
             return result
 
     def __repr__(self) -> str:  # pragma: no cover

@@ -49,7 +49,7 @@ dxtb.timer.stop("Dipole")
 
 print(agrad.shape)
 
-dxtb.timer.print_times()
+dxtb.timer.print()
 dxtb.timer.reset()
 
 
@@ -64,7 +64,7 @@ dxtb.timer.start("Num Dipole")
 num = calc.dipole_numerical(numbers, positions, charge)
 dxtb.timer.stop("Num Dipole")
 
-dxtb.timer.print_times()
+dxtb.timer.print()
 dxtb.timer.reset()
 
 print(num.shape)

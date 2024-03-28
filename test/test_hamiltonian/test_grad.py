@@ -36,7 +36,12 @@ small = ["H2", "LiH", "S2", "H2O", "CH4", "SiH4"]
 large = ["PbH4-BiH3", "MB16_43_01", "LYS_xao"]
 
 # SCF options
-opts = {"verbosity": 0, "int_driver": labels.INTDRIVER_ANALYTICAL}
+opts = {
+    "verbosity": 0,
+    "int_driver": labels.INTDRIVER_ANALYTICAL,
+    "f_atol": 1e-6,
+    "x_atol": 1e-6,
+}
 
 device = None
 

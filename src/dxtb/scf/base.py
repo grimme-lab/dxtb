@@ -378,14 +378,16 @@ class BaseSCF:
 
         OutputHandler.write_stdout(
             f"\n{'iter':<5} {'Energy':<24} {'Delta E':<16}"
-            f"{'Delta Pnorm':<15} {'Delta q':<15}"
+            f"{'Delta Pnorm':<15} {'Delta q':<15}",
+            v=3,
         )
-        OutputHandler.write_stdout(77 * "-")
+        OutputHandler.write_stdout(77 * "-", v=3)
 
         # main SCF function (mixing)
         charges = self.scf(guess)
 
-        OutputHandler.write_stdout(77 * "-")
+        OutputHandler.write_stdout(77 * "-", v=3)
+        OutputHandler.write_stdout("", v=3)
 
         # evaluate final energy
         charges.nullify_padding()
@@ -553,7 +555,7 @@ class BaseSCF:
 
     def _print(self, charges: Charges) -> None:
         # explicitly check to avoid some superfluos calculations
-        if OutputHandler.verbosity >= 5:
+        if OutputHandler.verbosity >= 3:
             if charges.mono.ndim < 2:  # pragma: no cover
                 energy = self.get_energy(charges).sum(-1).detach().clone()
                 ediff = torch.linalg.vector_norm(self._data.old_energy - energy)

@@ -222,55 +222,61 @@ class _Timers:
         if self.timers["total"].is_running():
             self.timers["total"].stop()
 
+        KEY = "value"
         times = {}
 
         # Initialize all parent timers in the times dictionary
         for k in self.timers.keys():
             if k not in self._subtimer_parent_map:
-                times[k] = {"time": None, "subtimers": {}}
+                times[k] = {KEY: None, "sub": {}}
 
         # Add times for all timers, categorizing based on the parent map
         for uid, t in self.timers.items():
             if uid in self._subtimer_parent_map:
                 parent = self._subtimer_parent_map[uid]
-                times[parent]["subtimers"][uid] = t.elapsed_time
+                times[parent]["sub"][uid] = t.elapsed_time
             else:
-                times[uid]["time"] = t.elapsed_time
+                times[uid][KEY] = t.elapsed_time
 
-        total_time = times["total"]["time"]
+        total_time = times["total"][KEY]
         for main_timer, details in times.items():
             if main_timer == "total":
                 continue
 
             # Calculate the percentage of the total time for main timers
-            main_time = details["time"]
+            main_time = details[KEY]
             percentage_of_total = (main_time / total_time) * 100
             times[main_timer]["percentage"] = f"{percentage_of_total:.2f}"
 
-            # Calculate the percentage relative to the parent timer for subtimers
-            if details["subtimers"]:
-                for subtimer, sub_time in details["subtimers"].items():
+            # Calculate the percentage relative to the parent timer for sub
+            if details["sub"]:
+                for subtimer, sub_time in details["sub"].items():
                     percentage_of_parent = (sub_time / main_time) * 100
-                    times[main_timer]["subtimers"][subtimer] = {
-                        "time": sub_time,
+                    times[main_timer]["sub"][subtimer] = {
+                        KEY: sub_time,
                         "percentage": f"{percentage_of_parent:.2f}",
                     }
 
         return times
 
-    def print_times(
-        self, name: str = "Timings", width: int = 55
-    ) -> None:  # pragma: no cover
+    def print(self, v: int = 5, precision: int = 3) -> None:  # pragma: no cover
         """Print the elapsed times of all timers in a table."""
         if not self._enabled:
             return
 
-        from ..io import OutputHandler
-
         if self.timers["total"].is_running():
             self.timers["total"].stop()
 
-        OutputHandler.print_timings(self.get_times(), precision=3)
+        # pylint: disable=import-outside-toplevel
+        from ..io import OutputHandler
+
+        OutputHandler.write_table(
+            self.get_times(),
+            title="Timings",
+            columns=["Objective", "Time (s)", "% Total"],
+            v=v,
+            precision=precision,
+        )
 
 
 timer = _Timers()

@@ -39,7 +39,7 @@ dxtb.timer.start("Quad")
 quad = calc.quadrupole_analytical(numbers, positions, charge)
 dxtb.timer.stop("Quad")
 
-dxtb.timer.print_times()
+dxtb.timer.print()
 dxtb.timer.reset()
 
 ####################################################
@@ -48,7 +48,7 @@ dxtb.timer.start("Quad")
 q2 = calc.quadrupole(numbers, positions, charge, use_functorch=True)
 dxtb.timer.stop("Quad")
 
-dxtb.timer.print_times()
+dxtb.timer.print()
 dxtb.timer.reset()
 
 

@@ -48,7 +48,7 @@ dxtb.timer.stop("IR")
 
 print(result.freqs.shape, result.ints.shape)
 
-dxtb.timer.print_times()
+dxtb.timer.print()
 dxtb.timer.reset()
 
 print(result.freqs)

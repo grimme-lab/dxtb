@@ -51,7 +51,7 @@ dxtb.timer.stop("Raman")
 
 print(ints.shape)
 
-dxtb.timer.print_times()
+dxtb.timer.print()
 dxtb.timer.reset()
 
 
@@ -59,7 +59,7 @@ dxtb.timer.start("Num Raman")
 num_freqs, num_ints = calc.raman_numerical(numbers, positions, charge)
 dxtb.timer.stop("Num Raman")
 
-dxtb.timer.print_times()
+dxtb.timer.print()
 dxtb.timer.reset()
 
 print(num_freqs.shape)

@@ -50,7 +50,7 @@ dxtb.timer.stop("DipDer")
 
 print(agrad.shape)
 
-dxtb.timer.print_times()
+dxtb.timer.print()
 dxtb.timer.reset()
 
 
@@ -60,7 +60,7 @@ dxtb.timer.reset()
 # hess2 = calc.hessian2(numbers, pos, charge)
 # dxtb.timer.stop("DipDer2")
 
-# dxtb.timer.print_times()
+# dxtb.timer.print()
 # dxtb.timer.reset()
 
 

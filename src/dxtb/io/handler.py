@@ -165,7 +165,7 @@ class _OutputHandler:
         with open(self.json_file, "w", encoding="utf8") as file:
             json.dump(self.json_data, file, indent=4)
 
-    def write(self, data: dict[str, Any]):
+    def write(self, data: dict[str, Any], v: int = 5):
         """
         Write data to all output streams.
 
@@ -173,14 +173,17 @@ class _OutputHandler:
         ----------
         data : dict[str, Any]
             The data to write to the output streams.
+        v : int, optional
+            The verbosity level at which to write the data. Defaults to 5.
         """
-        for handler in self.handlers.values():
-            handler(data)
+        if self.verbosity >= v:
+            for handler in self.handlers.values():
+                handler(data)
 
     def write_stdout(
         self,
         msg: str,
-        verbosity: int = 5,
+        v: int = 5,
         newline: bool = True,
     ) -> None:
         """
@@ -197,11 +200,11 @@ class _OutputHandler:
             Whether to add a newline at the end of the message.
             Defaults to `True`.
         """
-        if self.verbosity >= verbosity:
+        if self.verbosity >= v:
             extra = {"newline": newline}
             self.console_logger.info(msg, extra=extra)
 
-    def write_stdout_nf(self, msg: str, verbosity: int = 5) -> None:
+    def write_stdout_nf(self, msg: str, v: int = 5) -> None:
         """
         Write a message to the console without a newline.
 
@@ -212,7 +215,7 @@ class _OutputHandler:
         verbosity : int, optional
             The verbosity level at which to write the message. The default is 5.
         """
-        self.write_stdout(msg, verbosity, newline=False)
+        self.write_stdout(msg, v=v, newline=False)
 
     #######################################
 
@@ -287,6 +290,7 @@ class _OutputHandler:
         """Print the header to the console."""
         if self.verbosity >= 5:
             self.console_logger.info(get_header())
+        if self.verbosity >= 3:
             self.console_logger.info(get_short_version())
 
     def sysinfo(self) -> None:
@@ -295,74 +299,109 @@ class _OutputHandler:
             self.write(get_system_info())
             self.write(get_pytorch_info())
 
-    def print_timings(
-        self, timings: dict[str, dict[str, Any]], precision: int = 3
+    def write_table(
+        self,
+        data: dict[str, dict[str, Any]],
+        title: str,
+        columns: list[str],
+        v: int = 5,
+        precision: int = 3,
     ) -> None:
         """
-        Print the timings to the console.
+        Print the data to the console.
 
         Parameters
         ----------
-        timings : dict[str, Any]
+        data : dict[str, Any]
             The timings to print.
+        propkey : str
+            Key for dictionaries to get the actual value of interest.
+        v : int, optional
+            The verbosity level at which to print the data. Defaults to 5.
         precision : int, optional
             The precision of the timings. Defaults to 3.
         """
-        if self.verbosity < 5:
+        if self.verbosity < v:
             return
 
-        precision = 3
-        main_format = "\033[1m{:<22} {:>10} {:>14}\033[0m"
-        sub_format = " {:<21} \033[37m{:>10} {:>14}\033[0m"
-        sub_format_no_indent = "{:<22} \033[37m{:>10} {:>14}\033[0m"
+        # also write to JSON file
+        self.json_output({title: data})
+
+        # key for actual value and  total value
+        key = "value"
+        TOTAL = "total"
+
+        main_format = ""
+
+        # Add bold formatting for high verbosity (sub entries printed)
+        if self.verbosity >= (v + 1):
+            main_format += "\033[1m"
+
+        if len(columns) == 3:
+            main_format += "{:<22} {:>10} {:>14}"
+            sub_format = " {:<21} \033[37m{:>10} {:>14}\033[0m"
+            sub_format_no_indent = "{:<22} \033[37m{:>10} {:>14}\033[0m"
+        elif len(columns) == 2:
+            main_format += "{:<27} {:>20}"
+            sub_format = " {:<26} \033[37m{:>20}\033[0m"
+            sub_format_no_indent = "{:<27} \033[37m{:>20}\033[0m"
+
+        if self.verbosity >= (v + 1):
+            main_format += "\033[0m"
 
         # Print the header
-        title = "Timings"
-        self.write_stdout(f"\n{title}\n" + "-" * len(title) + "\n")
-        self.write_stdout(main_format.format("Objective", "Time (s)", "% Total"))
-        self.write_stdout("-" * 48)
+        self.write_stdout(f"\n\n{title}\n" + "-" * len(title) + "\n", v=v)
+        self.write_stdout(main_format.format(*columns), v=v)
+        self.write_stdout("-" * 48, v=v)
 
         # time accounted for by timers and actual total timing
-        true_tot = timings["total"]["time"]
+        true_tot = data[TOTAL][key]
         count_tot = 0.0
 
-        for name, details in timings.items():
-            if name == "total":
+        for name, details in data.items():
+            if name == TOTAL:
                 continue
 
-            # Print the main timer's details
+            # Print the results in the main entry
             self.write_stdout(
                 main_format.format(
                     name,
-                    f"{details['time']:.{precision}f}",
+                    f"{details[key]:.{precision}f}",
                     details.get("percentage", ""),
-                )
+                ),
+                v=v,
             )
-            count_tot += details["time"]
+            count_tot += details[key]
 
-            # Print subtimers, if any
-            if details.get("subtimers"):
-                for subname, subdetails in details["subtimers"].items():
+            # Print subentries, if any, but only if verbosity is high enough
+            if self.verbosity < (v + 1):
+                continue
+
+            if details.get("sub"):
+                for subname, subdetails in details["sub"].items():
                     self.write_stdout(
                         sub_format.format(
                             f"- {subname}",
-                            f"{subdetails['time']:.{precision}f}",
+                            f"{subdetails[key]:.{precision}f}",
                             f"{subdetails.get('percentage', '')}",
-                        )
+                        ),
+                        v=v,
                     )
 
-        self.write_stdout("-" * 48)
+        self.write_stdout("-" * 48, v=v)
         self.write_stdout(
             sub_format_no_indent.format(
                 "Sum",
                 f"{count_tot:.{precision}f}",
                 f"{count_tot/true_tot*100:.2f}",
-            )
+            ),
+            v=v,
         )
         self.write_stdout(
             main_format.format(
-                "Total", f"{timings['total']['time']:.{precision}f}", "100.00"
-            )
+                TOTAL.title(), f"{data[TOTAL][key]:.{precision}f}", "100.00"
+            ),
+            v=v,
         )
 
 

@@ -142,43 +142,57 @@ class Result(TensorLike):
         self.overlap_grad = torch.zeros_like(positions)
         self.total = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.total_grad = torch.zeros_like(positions)
+        self.cenergies = {}
 
-    def __repr__(self) -> str:  # pragma: no cover
+    def __str__(self) -> str:
         """Custom print representation showing all available slots."""
         return f"{self.__class__.__name__}({self.__slots__})"
 
-    def print_energies(self, name: str = "Energy", width: int = 50) -> None:
-        """Print energies in a table."""
+    def __repr__(self) -> str:
+        """Custom print representation showing all available slots."""
+        return str(self)
 
-        labels = {
-            "cenergies": "Classical contribution energies",
-            "fenergy": "Electronic free energy",
-            "scf": "Electronic Energy (SCF)",
+    def get_energies(self) -> dict[str, dict[str, Any]]:
+        """
+        Get energies in a dictionary.
+
+        Returns
+        -------
+        dict[str, dict[str, float]]
+            Energies in a dictionary.
+        """
+        KEY = "value"
+
+        c = {k: {KEY: v.sum().item()} for k, v in self.cenergies.items()}
+        ctotal = sum(d[KEY] for d in c.values())
+
+        e = {
+            "SCF": {KEY: self.scf.sum().item()},
+            "Free Energy (Fermi)": {KEY: self.fenergy.sum().item()},
+        }
+        etotal = sum(d[KEY] for d in e.values())
+
+        return {
+            "total": {KEY: self.total.sum().item()},
+            "Classical": {KEY: ctotal, "sub": c},
+            "Electronic": {KEY: etotal, "sub": e},
         }
 
-        print(f"{name:*^50}\n")
-        print("{:<27}  {:<18}".format("Contribution", "Energy in a.u."))
-        print(width * "-")
+    def print_energies(
+        self, v: int = 4, precision: int = 14
+    ) -> None:  # pragma: no cover
+        """Print energies in a table."""
 
-        tot = "Total Energy"
-        total = torch.sum(self.total, dim=-1)
+        # pylint: disable=import-outside-toplevel
+        from ..io import OutputHandler
 
-        for label, n in labels.items():
-            if not hasattr(self, label):
-                continue
-            energy = getattr(self, label)
-            if isinstance(energy, dict):
-                for key, value in energy.items():
-                    e = torch.sum(value, dim=-1)
-                    print(f"{key:<27} {e: .16f}")
-                continue
-
-            e = torch.sum(getattr(self, label), dim=-1)
-            print(f"{n:<27} {e: .16f}")
-
-        print(width * "-")
-        print(f"{tot:<27} {total: .16f}")
-        print("")
+        OutputHandler.write_table(
+            self.get_energies(),
+            title="Energies",
+            columns=["Contribution", "Energy (Eh)"],
+            v=v,
+            precision=precision,
+        )
 
 
 class Calculator(TensorLike):
@@ -352,13 +366,13 @@ class Calculator(TensorLike):
         if isinstance(opts, dict):
             OutputHandler.verbosity = opts.pop("verbosity", None)
 
-        OutputHandler.write_stdout("")
-        OutputHandler.write_stdout("")
-        OutputHandler.write_stdout("===========")
-        OutputHandler.write_stdout("CALCULATION")
-        OutputHandler.write_stdout("===========")
-        OutputHandler.write_stdout("")
-        OutputHandler.write_stdout("Setup Calculator")
+        OutputHandler.write_stdout("", v=5)
+        OutputHandler.write_stdout("", v=5)
+        OutputHandler.write_stdout("===========", v=4)
+        OutputHandler.write_stdout("CALCULATION", v=4)
+        OutputHandler.write_stdout("===========", v=4)
+        OutputHandler.write_stdout("", v=4)
+        OutputHandler.write_stdout("Setup Calculator", v=4)
 
         allowed_dtypes = (torch.long, torch.int16, torch.int32, torch.int64)
         if numbers.dtype not in allowed_dtypes:
@@ -388,7 +402,7 @@ class Calculator(TensorLike):
         ################
 
         # setup self-consistent contributions
-        OutputHandler.write_stdout_nf(" - Interactions      ... ")
+        OutputHandler.write_stdout_nf(" - Interactions      ... ", v=4)
 
         es2 = (
             new_es2(numbers, par, **dd)
@@ -403,14 +417,14 @@ class Calculator(TensorLike):
 
         self.interactions = InteractionList(es2, es3, *interaction)
 
-        OutputHandler.write_stdout("done")
+        OutputHandler.write_stdout("done", v=4)
 
         ##############
         # CLASSICALS #
         ##############
 
         # setup non-self-consistent contributions
-        OutputHandler.write_stdout_nf(" - Classicals        ... ")
+        OutputHandler.write_stdout_nf(" - Classicals        ... ", v=4)
 
         halogen = (
             new_halogen(numbers, par, **dd)
@@ -430,13 +444,13 @@ class Calculator(TensorLike):
 
         self.classicals = ClassicalList(halogen, dispersion, repulsion, *classical)
 
-        OutputHandler.write_stdout("done")
+        OutputHandler.write_stdout("done", v=4)
 
         #############
         # INTEGRALS #
         #############
 
-        OutputHandler.write_stdout_nf(" - Integrals         ... ")
+        OutputHandler.write_stdout_nf(" - Integrals         ... ", v=4)
 
         # figure out integral level from interactions
         if efield.LABEL_EFIELD in self.interactions.labels:
@@ -470,7 +484,7 @@ class Calculator(TensorLike):
         if self.opts.ints.level >= ints.INTLEVEL_QUADRUPOLE:
             self.integrals.quadrupole = ints.Quadrupole(driver=driver, **dd)
 
-        OutputHandler.write_stdout("done")
+        OutputHandler.write_stdout("done\n", v=4)
 
         timer.stop("Calculator")
 
@@ -508,7 +522,7 @@ class Calculator(TensorLike):
         Result
             Results container.
         """
-        OutputHandler.write_stdout("\nSinglepoint ")
+        OutputHandler.write_stdout("Singlepoint ", v=3)
 
         chrg = any_to_tensor(chrg, **self.dd)
         if spin is not None:
@@ -517,56 +531,56 @@ class Calculator(TensorLike):
         result = Result(positions, device=self.device, dtype=self.dtype)
 
         # CLASSICAL CONTRIBUTIONS
-        OutputHandler.write_stdout_nf(" - Classicals        ... ")
-        timer.start("Classicals")
+
         if len(self.classicals.components) > 0:
+            OutputHandler.write_stdout_nf(" - Classicals        ... ", v=3)
+            timer.start("Classicals")
+
             ccaches = self.classicals.get_cache(numbers, self.ihelp)
             cenergies = self.classicals.get_energy(positions, ccaches)
             result.cenergies = cenergies
-            torch.set_printoptions(precision=10)
-            print(cenergies["DispersionD3"].sum())
             result.total += torch.stack(list(cenergies.values())).sum(0)
+
+            timer.stop("Classicals")
+            OutputHandler.write_stdout("done", v=3)
 
             if grad is True:
                 cgradients = self.classicals.get_gradient(cenergies, positions)
                 result.cgradients = cgradients
                 result.total_grad += torch.stack(list(cgradients.values())).sum(0)
 
-        timer.stop("Classicals")
-        OutputHandler.write_stdout("done")
-
         # SELF-CONSISTENT FIELD PROCEDURE
         if not any(x in ["all", "scf"] for x in self.opts.exclude):
             timer.start("Integrals")
             # overlap integral
-            OutputHandler.write_stdout_nf(" - Overlap           ... ")
+            OutputHandler.write_stdout_nf(" - Overlap           ... ", v=3)
             timer.start("Overlap", parent_uid="Integrals")
             self.integrals.build_overlap(positions)
             timer.stop("Overlap")
-            OutputHandler.write_stdout("done")
+            OutputHandler.write_stdout("done", v=3)
 
             # Core Hamiltonian integral (requires overlap internally!)
-            OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ")
+            OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ", v=3)
             timer.start("Core Hamiltonian", parent_uid="Integrals")
             self.integrals.build_hcore(positions)
             timer.stop("Core Hamiltonian")
-            OutputHandler.write_stdout("done")
+            OutputHandler.write_stdout("done", v=3)
 
             # dipole integral
             if self.opts.ints.level >= ints.INTLEVEL_DIPOLE:
-                OutputHandler.write_stdout_nf(" - Dipole            ... ")
+                OutputHandler.write_stdout_nf(" - Dipole            ... ", v=3)
                 timer.start("Dipole Integral", parent_uid="Integrals")
                 self.integrals.build_dipole(positions)
                 timer.stop("Dipole Integral")
-                OutputHandler.write_stdout("done")
+                OutputHandler.write_stdout("done", v=3)
 
             # quadrupole integral
             if self.opts.ints.level >= ints.INTLEVEL_QUADRUPOLE:
-                OutputHandler.write_stdout_nf(" - Quadrupole        ... ")
+                OutputHandler.write_stdout_nf(" - Quadrupole        ... ", v=3)
                 timer.start("Quadrupole Integral", parent_uid="Integrals")
                 self.integrals.build_quadrupole(positions)
                 timer.stop("Quadrupole Integral")
-                OutputHandler.write_stdout("done")
+                OutputHandler.write_stdout("done", v=3)
 
             timer.stop("Integrals")
 
@@ -580,15 +594,15 @@ class Calculator(TensorLike):
 
             # get caches of all interactions
             timer.start("Interaction Cache", parent_uid="SCF")
-            OutputHandler.write_stdout_nf(" - Interaction Cache ... ")
+            OutputHandler.write_stdout_nf(" - Interaction Cache ... ", v=3)
             icaches = self.interactions.get_cache(
                 numbers=numbers, positions=positions, ihelp=self.ihelp
             )
             timer.stop("Interaction Cache")
-            OutputHandler.write_stdout("done")
+            OutputHandler.write_stdout("done", v=3)
 
             # SCF
-            OutputHandler.write_stdout("\nStarting SCF Iterations...")
+            OutputHandler.write_stdout("\nStarting SCF Iterations...", v=3)
 
             scf_results = scf.solve(
                 numbers,
@@ -605,7 +619,7 @@ class Calculator(TensorLike):
 
             timer.stop("SCF")
             OutputHandler.write_stdout(
-                f"\nSCF converged in {scf_results['iterations']} iterations."
+                f"SCF converged in {scf_results['iterations']} iterations.", v=3
             )
 
             # store SCF results
@@ -620,12 +634,14 @@ class Calculator(TensorLike):
             result.scf += scf_results["energy"]
             result.total += scf_results["energy"] + scf_results["fenergy"]
 
-            OutputHandler.write_stdout(
-                f"SCF Energy  : {result.scf.sum(-1):.14f} Hartree."
-            )
-            OutputHandler.write_stdout(
-                f"Total Energy: {result.total.sum(-1):.14f} Hartree.\n"
-            )
+            if not self.batched:
+                OutputHandler.write_stdout(
+                    f"SCF Energy  : {result.scf.sum(-1):.14f} Hartree.",
+                    v=2,
+                )
+                OutputHandler.write_stdout(
+                    f"Total Energy: {result.total.sum(-1):.14f} Hartree.", v=1
+                )
 
             if grad is True:
                 if len(self.interactions.components) > 0:

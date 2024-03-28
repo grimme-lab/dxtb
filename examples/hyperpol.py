@@ -50,7 +50,7 @@ dxtb.timer.stop("HyperPol")
 
 print(agrad.shape)
 
-dxtb.timer.print_times()
+dxtb.timer.print()
 dxtb.timer.reset()
 
 
@@ -84,7 +84,7 @@ dxtb.timer.start("Num HyperPol")
 num = calc.hyperpol_numerical(numbers, positions, charge)
 dxtb.timer.stop("Num HyperPol")
 
-dxtb.timer.print_times()
+dxtb.timer.print()
 dxtb.timer.reset()
 
 print("agrad\n", agrad)

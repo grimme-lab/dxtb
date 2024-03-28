@@ -47,5 +47,5 @@ print("Shape of modes", vibres.modes.shape)
 print("Shape of freqs", vibres.freqs.shape)
 
 
-dxtb.timer.print_times()
+dxtb.timer.print()
 dxtb.timer.reset()

@@ -35,14 +35,27 @@ def test_defaults() -> None:
     assert isinstance(args.guess, str)
     assert args.guess == defaults.GUESS
 
-    assert isinstance(args.etemp, float)
-    assert args.etemp == defaults.FERMI_ETEMP
+    assert isinstance(args.fermi_etemp, float)
+    assert args.fermi_etemp == defaults.FERMI_ETEMP
 
     assert isinstance(args.fermi_maxiter, int)
     assert args.fermi_maxiter == defaults.FERMI_MAXITER
 
-    assert isinstance(args.fermi_energy_partition, str)
-    assert args.fermi_energy_partition == defaults.FERMI_PARTITION
+    assert isinstance(args.fermi_partition, str)
+    assert args.fermi_partition == defaults.FERMI_PARTITION
+
+    # integral settings
+    assert isinstance(args.int_cutoff, (float, int))
+    assert args.int_cutoff == defaults.INTCUTOFF
+
+    assert isinstance(args.int_driver, str)
+    assert args.int_driver == defaults.INTDRIVER
+
+    assert isinstance(args.int_level, int)
+    assert args.int_level == defaults.INTLEVEL
+
+    assert isinstance(args.int_uplo, str)
+    assert args.int_uplo == defaults.INTUPLO
 
 
 @pytest.mark.parametrize(
@@ -64,7 +77,7 @@ def test_int_multiple(option: str) -> None:
     assert getattr(args, option) == [1, 1]
 
 
-@pytest.mark.parametrize("option", ["etemp"])
+@pytest.mark.parametrize("option", ["fermi_etemp"])
 def test_float(option: str) -> None:
     value = 200.0
     args = parser().parse_args(f"--{option} {value}".split())
