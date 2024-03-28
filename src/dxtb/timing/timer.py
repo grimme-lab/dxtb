@@ -153,8 +153,9 @@ class _Timers:
 
         self.timers[uid] = t
 
-        if parent_uid:
-            self._subtimer_parent_map[uid] = parent_uid
+        if parent_uid is not None:
+            if parent_uid in self.timers:
+                self._subtimer_parent_map[uid] = parent_uid
 
     def stop(self, uid: str) -> float:
         """
