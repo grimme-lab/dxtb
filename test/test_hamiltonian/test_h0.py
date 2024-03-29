@@ -31,7 +31,7 @@ from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb.integral.driver.pytorch import OverlapPytorch as Overlap
-from dxtb.ncoord import exp_count, get_coordination_number
+from dxtb.ncoord import cn_d3
 from dxtb.param import GFN1_XTB, Param
 from dxtb.utils import batch
 from dxtb.xtb import GFN1Hamiltonian as Hamiltonian
@@ -58,7 +58,7 @@ def run(numbers: Tensor, positions: Tensor, par: Param, ref: Tensor, dd: DD) -> 
     driver.setup(positions)
     s = overlap.build(driver)
 
-    cn = get_coordination_number(numbers, positions, exp_count)
+    cn = cn_d3(numbers, positions)
     h = h0.build(positions, s, cn=cn)
     assert pytest.approx(h, abs=tol) == h.mT
     assert pytest.approx(h, abs=tol) == ref

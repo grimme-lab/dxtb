@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import pytest
 import torch
-from torch.autograd.gradcheck import gradcheck, gradgradcheck
+from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
 from dxtb._types import Callable, Tensor
 from dxtb.integral.driver.pytorch.impls import md
@@ -86,7 +86,7 @@ def test_grad(dtype: torch.dtype, fcoeff, l: int) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradchecker(dtype, fcoeff, l)
-    assert gradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol)
 
 
 @pytest.mark.grad
@@ -99,4 +99,4 @@ def test_gradgrad(dtype: torch.dtype, fcoeff, l: int) -> None:
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradchecker(dtype, fcoeff, l)
-    assert gradgradcheck(func, diffvars, atol=tol)
+    assert dgradgradcheck(func, diffvars, atol=tol)

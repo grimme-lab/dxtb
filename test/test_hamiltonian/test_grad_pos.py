@@ -28,7 +28,7 @@ from dxtb.basis import IndexHelper
 from dxtb.constants import labels
 from dxtb.integral import Overlap
 from dxtb.integral.driver.pytorch import IntDriverPytorch as IntDriver
-from dxtb.ncoord import get_coordination_number
+from dxtb.ncoord import cn_d3
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import batch
 from dxtb.xtb import GFN1Hamiltonian as Hamiltonian
@@ -65,7 +65,7 @@ def gradchecker(
     def func(pos: Tensor) -> Tensor:
         driver.setup(positions)
         s = overlap.build(driver)
-        cn = get_coordination_number(numbers, pos)
+        cn = cn_d3(numbers, pos)
         return h0.build(pos, s, cn=cn)
 
     return func, positions
@@ -154,7 +154,7 @@ def gradchecker_batch(
     def func(pos: Tensor) -> Tensor:
         driver.setup(positions, mask=mask)
         s = overlap.build(driver)
-        cn = get_coordination_number(numbers, pos)
+        cn = cn_d3(numbers, pos)
         return h0.build(pos, s, cn=cn)
 
     return func, positions

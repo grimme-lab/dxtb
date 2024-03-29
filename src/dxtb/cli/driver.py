@@ -132,14 +132,20 @@ class Driver:
             set_detect_anomaly(True)
 
         dd = {"device": args.device, "dtype": args.dtype}
+        opts = {"spin": args.spin}
 
-        opts = {
-            "spin": args.spin,
-        }
-
+        # setup config and write to output
         config = Config.from_args(args)
-
         io.OutputHandler.write(config.info())
+
+        # first tensor when using CUDA takes a long time to initialize...
+        if "cuda" in str(dd["device"]):
+            timer.start("Init GPU", parent_uid="Setup")
+            _ = torch.tensor([0], **dd)
+            timer.stop("Init GPU")
+            del _
+
+        timer.start("Read Files", parent_uid="Setup")
 
         if len(args.file) > 1:
             _n, _p = zip(
@@ -151,6 +157,8 @@ class Driver:
             _n, _p = io.read_structure_from_file(args.file[0], args.filetype)
             numbers = torch.tensor(_n, dtype=torch.long, device=dd["device"])
             positions = torch.tensor(_p, **dd)
+
+        timer.stop("Read Files")
 
         chrg = torch.tensor(self.chrg, **dd)
 

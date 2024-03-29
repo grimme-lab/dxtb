@@ -15,8 +15,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Coordination Number
+===================
+
 Functions for calculating the coordination numbers.
 """
 
-from .count import derf_count, dexp_count, erf_count, exp_count
-from .ncoord import get_coordination_number, get_coordination_number_gradient, get_dcn
+from tad_mctc.ncoord.count import (
+    derf_count,
+    dexp_count,
+    dgfn2_count,
+    erf_count,
+    exp_count,
+    gfn2_count,
+)
+from tad_mctc.ncoord.d3 import cn_d3, cn_d3_gradient
+from tad_mctc.ncoord.d4 import cn_d4
+
+from .utils import get_dcn
+
+__all__ = [
+    "cn_d3",
+    "cn_d3_gradient",
+    "cn_d4",
+    "erf_count",
+    "derf_count",
+    "exp_count",
+    "dexp_count",
+    "gfn2_count",
+    "dgfn2_count",
+    "get_dcn",
+]

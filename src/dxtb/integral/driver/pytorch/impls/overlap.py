@@ -30,33 +30,14 @@ from .....utils import batch, t2int
 from .md import overlap_gto, overlap_gto_grad
 from .md.utils import get_pairs, get_subblock_start
 
-__all__ = ["OverlapAG", "overlap", "overlap_gradient"]
+__all__ = ["OverlapAG_V1", "OverlapAG_V2", "overlap", "overlap_gradient"]
 
 
-class OverlapAG(torch.autograd.Function):
+class OverlapAGBase(torch.autograd.Function):
     """
-    Autograd function for overlap integral evaluation.
+    Base class for the version-specific autograd function for the Overlap.
+    Different PyTorch versions only require different `forward()` signatures.
     """
-
-    # TODO: For a more efficient gradient computation, we could also calculate
-    # the gradient in the forward pass according to
-    # https://pytorch.org/tutorials/intermediate/custom_function_double_backward_tutorial.html#saving-intermediate-results
-    @staticmethod
-    def forward(
-        ctx: Any,
-        positions: Tensor,
-        bas: Basis,
-        ihelp: IndexHelper,
-        uplo: Literal["n", "u", "l"] = "l",
-        cutoff: Tensor | float | int | None = defaults.INTCUTOFF,
-    ) -> Tensor:
-        ctx.save_for_backward(positions)
-        ctx.bas = bas
-        ctx.ihelp = ihelp
-        ctx.uplo = uplo
-        ctx.cutoff = cutoff
-
-        return overlap(positions, bas, ihelp, uplo, cutoff)
 
     @staticmethod
     def backward(ctx, grad_out: Tensor) -> tuple[
@@ -101,6 +82,62 @@ class OverlapAG(torch.autograd.Function):
             )
 
         return positions_bar, None, None, None, None
+
+
+class OverlapAG_V1(OverlapAGBase):
+    """
+    Autograd function for overlap integral evaluation.
+    """
+
+    # TODO: For a more efficient gradient computation, we could also calculate
+    # the gradient in the forward pass according to
+    # https://pytorch.org/tutorials/intermediate/custom_function_double_backward_tutorial.html#saving-intermediate-results
+    @staticmethod
+    def forward(
+        ctx: Any,
+        positions: Tensor,
+        bas: Basis,
+        ihelp: IndexHelper,
+        uplo: Literal["n", "u", "l"] = "l",
+        cutoff: Tensor | float | int | None = defaults.INTCUTOFF,
+    ) -> Tensor:
+        ctx.save_for_backward(positions)
+        ctx.bas = bas
+        ctx.ihelp = ihelp
+        ctx.uplo = uplo
+        ctx.cutoff = cutoff
+
+        return overlap(positions, bas, ihelp, uplo, cutoff)
+
+
+class OverlapAG_V2(OverlapAGBase):
+    """
+    Autograd function for overlap integral evaluation.
+    """
+
+    generate_vmap_rule = True
+    # https://pytorch.org/docs/master/notes/extending.func.html#automatically-generate-a-vmap-rule
+    # should work since we only use PyTorch operations
+
+    @staticmethod
+    def forward(
+        positions: Tensor,
+        bas: Basis,
+        ihelp: IndexHelper,
+        uplo: Literal["n", "u", "l"] = "l",
+        cutoff: Tensor | float | int | None = defaults.INTCUTOFF,
+    ) -> Tensor:
+        return overlap(positions, bas, ihelp, uplo, cutoff)
+
+    @staticmethod
+    def setup_context(ctx, inputs: tuple[Tensor, ...], output: Tensor) -> None:
+        positions, bas, ihelp, uplo, cutoff = inputs
+
+        ctx.save_for_backward(positions)
+        ctx.bas = bas
+        ctx.ihelp = ihelp
+        ctx.uplo = uplo
+        ctx.cutoff = cutoff
 
 
 def overlap(

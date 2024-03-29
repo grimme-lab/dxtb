@@ -242,9 +242,10 @@ def get_elem_valence(
         if r.size(0) < 2:
             vals = tmp
         else:
-            # sorting the rows so that duplicate values appear together
+            # Sorting the rows so that duplicate values appear together
             # e.g. [1, 2, 3, 3, 3, 4, 4]
-            y, idxs = torch.sort(r)
+            # `stable=False` gives different results on CPU and GPU
+            y, idxs = torch.sort(r, stable=True)
 
             # subtracting, so duplicate values will become 0
             # e.g. [1, 2, 3, 0, 0, 4, 0]

@@ -93,38 +93,26 @@ class DispersionD3(Dispersion):
             Cache for the D3 dispersion.
         """
 
-        ref = (
-            kwargs.pop(
-                "ref",
-                d3.reference.Reference(),
-            )
-            .type(self.dtype)
-            .to(self.device)
-        )
-        rcov = (
-            kwargs.pop(
-                "rcov",
-                d3.data.COV_D3[numbers],
-            )
-            .type(self.dtype)
-            .to(self.device)
-        )
-        rvdw = (
-            kwargs.pop(
-                "rvdw",
-                d3.data.VDW_D3[numbers.unsqueeze(-1), numbers.unsqueeze(-2)],
-            )
-            .type(self.dtype)
-            .to(self.device)
-        )
-        r4r2 = (
-            kwargs.pop(
-                "r4r2",
-                d3.data.R4R2[numbers],
-            )
-            .type(self.dtype)
-            .to(self.device)
-        )
+        ref = kwargs.pop(
+            "ref",
+            d3.reference.Reference(),
+        ).to(**self.dd)
+
+        rcov = kwargs.pop(
+            "rcov",
+            d3.data.COV_D3.to(**self.dd)[numbers],
+        ).to(**self.dd)
+
+        rvdw = kwargs.pop(
+            "rvdw",
+            d3.data.VDW_D3.to(**self.dd)[numbers.unsqueeze(-1), numbers.unsqueeze(-2)],
+        ).to(**self.dd)
+
+        r4r2 = kwargs.pop(
+            "r4r2",
+            d3.data.R4R2.to(**self.dd)[numbers],
+        ).to(**self.dd)
+
         cf = kwargs.pop("counting_function", exp_count)
         wf = kwargs.pop("weighting_function", d3.model.gaussian_weight)
         df = kwargs.pop("damping_function", d3.disp.rational_damping)

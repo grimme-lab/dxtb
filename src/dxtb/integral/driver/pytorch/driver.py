@@ -21,7 +21,7 @@ Collection of PyTorch-based integral drivers.
 from __future__ import annotations
 
 from .base import BaseIntDriverPytorch
-from .impls import OverlapAG, overlap, overlap_gradient
+from .impls import OverlapAG_V1, OverlapAG_V2, overlap, overlap_gradient
 
 __all__ = [
     "IntDriverPytorch",
@@ -43,6 +43,10 @@ class IntDriverPytorch(BaseIntDriverPytorch):
     """
 
     def setup_eval_funcs(self) -> None:
+        # pylint: disable=import-outside-toplevel
+        from tad_mctc._version import __tversion__
+
+        OverlapAG = OverlapAG_V1 if __tversion__ < (2, 0, 0) else OverlapAG_V2
         self.eval_ovlp = OverlapAG.apply  # type: ignore
         self.eval_ovlp_grad = overlap_gradient
 

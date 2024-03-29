@@ -683,7 +683,7 @@ class Calculator(TensorLike):
 
                 from .. import ncoord
 
-                cn = ncoord.get_coordination_number(numbers, positions)
+                cn = ncoord.cn_d3(numbers, positions)
                 dedcn, dedr = self.integrals.hcore.integral.get_gradient(
                     positions,
                     self.integrals.matrices.overlap,
@@ -695,9 +695,7 @@ class Calculator(TensorLike):
                 )
 
                 # CN gradient
-                dcndr = ncoord.get_coordination_number_gradient(
-                    numbers, positions, ncoord.dexp_count
-                )
+                dcndr = ncoord.cn_d3_gradient(numbers, positions)
                 dcn = ncoord.get_dcn(dcndr, dedcn)
 
                 # sum up hamiltonian gradient and CN gradient

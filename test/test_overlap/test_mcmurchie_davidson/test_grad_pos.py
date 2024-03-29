@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import pytest
 import torch
-from torch.autograd.gradcheck import gradcheck, gradgradcheck
+from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
 from dxtb._types import Callable, Tensor
 from dxtb.integral.driver.pytorch.impls import md
@@ -81,10 +81,10 @@ def test_grad(dtype: torch.dtype, md_func, li: int, lj: int) -> None:
     """
     angular = (torch.tensor(li), torch.tensor(lj))
     func, diffvars = gradchecker(dtype, md_func, angular)
-    assert gradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol)
 
 
-# FIXME: Recursive version fails
+# NOTE: Recursive version fails because of inplace operations
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("md_func", [md.explicit.md_explicit])
@@ -97,4 +97,4 @@ def test_gradgrad(dtype: torch.dtype, md_func, li: int, lj: int) -> None:
     """
     angular = (torch.tensor(li), torch.tensor(lj))
     func, diffvars = gradchecker(dtype, md_func, angular)
-    assert gradgradcheck(func, diffvars, atol=tol)
+    assert dgradgradcheck(func, diffvars, atol=tol)

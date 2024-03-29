@@ -21,7 +21,7 @@ Run tests for overlap gradient.
 from __future__ import annotations
 
 import torch
-from torch.autograd.gradcheck import gradcheck, gradgradcheck
+from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
 from dxtb.integral.driver.pytorch.impls.md import recursion
 
@@ -88,16 +88,16 @@ def test_gradcheck_efunction(dtype: torch.dtype = torch.double) -> None:
     )
     shape = (1, 3, 4, 4, torch.tensor(1), torch.tensor(1))
 
-    assert gradcheck(
+    assert dgradcheck(
         recursion.EFunction.apply,  # type: ignore
         (xij.clone().requires_grad_(True), rpi, rpj, shape),  # type: ignore
     )
-    assert gradgradcheck(
+    assert dgradgradcheck(
         recursion.EFunction.apply,  # type: ignore
         (xij.clone().requires_grad_(True), rpi, rpj, shape),  # type: ignore
     )
 
-    assert gradcheck(
+    assert dgradcheck(
         recursion.EFunction.apply,  # type: ignore
         (
             xij,
@@ -106,7 +106,7 @@ def test_gradcheck_efunction(dtype: torch.dtype = torch.double) -> None:
             shape,
         ),  # type: ignore
     )
-    assert gradgradcheck(
+    assert dgradgradcheck(
         recursion.EFunction.apply,  # type: ignore
         (
             xij,

@@ -113,7 +113,7 @@ class RepulsionAnalytical(Repulsion):
             (Atom-resolved) repulsion energy.
         """
         _RepulsionAG = (
-            _RepulsionAG_V1 if __tversion__ < (2, 0, 0) else _RepulsionAG_V2
+            RepulsionAG_V1 if __tversion__ < (2, 0, 0) else RepulsionAG_V2
         )  # pragma: no cover
 
         e = _RepulsionAG.apply(
@@ -197,7 +197,7 @@ class RepulsionAGBase(torch.autograd.Function):
         return positions_bar, None, arep_bar, kexp_bar, zeff_bar, None
 
 
-class _RepulsionAG_V1(RepulsionAGBase):
+class RepulsionAG_V1(RepulsionAGBase):
     """
     Autograd function for repulsion energy.
     """
@@ -225,7 +225,7 @@ class _RepulsionAG_V1(RepulsionAGBase):
         return erep.clone()
 
 
-class _RepulsionAG_V2(RepulsionAGBase):
+class RepulsionAG_V2(RepulsionAGBase):
     """
     Autograd function for repulsion energy.
     """

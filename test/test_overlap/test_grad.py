@@ -24,13 +24,15 @@ from math import sqrt
 
 import pytest
 import torch
-from torch.autograd.functional import jacobian
+from tad_mctc.autograd import jacrev
+from tad_mctc.convert import tensor_to_numpy
 
 from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper, slater_to_gauss
 from dxtb.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb.integral.driver.pytorch import OverlapPytorch as Overlap
 from dxtb.integral.driver.pytorch.impls import md
+from dxtb.integral.driver.pytorch.impls.md import recursion
 from dxtb.param import GFN1_XTB as par
 from dxtb.utils import t2int
 
@@ -104,27 +106,29 @@ def test_overlap_jacobian(dtype: torch.dtype, name: str):
     driver = IntDriver(numbers, par, ihelp, **dd)
     overlap = Overlap(uplo="n", **dd)
 
-    # numerical gradient
-    ngrad = calc_numerical_gradient(overlap, driver, positions)  # [natm, norb, norb, 3]
+    # numerical gradient: [natm, norb, norb, 3]
+    ngrad = calc_numerical_gradient(overlap, driver, positions)
 
     # autograd jacobian
-    positions.requires_grad_(True)
+    pos = positions.detach().clone().requires_grad_(True)
 
     def func(pos: Tensor) -> Tensor:
         driver.setup(pos)
         return overlap.build(driver)
 
     # [norb, norb, natm, 3]
-    # j = jacobian(func, argnums=0)(positions)
-    j = jacobian(func, positions)
-    j = torch.movedim(j, -2, 0)  # type: ignore
+    j: Tensor = jacrev(func, argnums=0)(pos)  # type: ignore
+
+    # [norb, norb, natm, 3] -> [natm, norb, norb, 3]
+    j = torch.movedim(j, -2, 0)
+
+    # [natm, norb1, norb2, 3] -> [natm, norb2, norb1, 3]
+    j2 = torch.movedim(j, 1, 2)
 
     # check whether dimensions are swapped
-    assert torch.equal(ngrad - j, ngrad - torch.movedim(j, 1, 2))
+    assert torch.equal(ngrad - j, ngrad - j2)
 
-    assert pytest.approx(ngrad, rel=tol, abs=tol) == j
-
-    positions.detach_()
+    assert pytest.approx(ngrad, rel=tol, abs=tol) == tensor_to_numpy(j)
 
 
 def calc_numerical_gradient(
@@ -195,7 +199,7 @@ def compare_md(
     )
 
     # overlap gradient with recursion
-    ovlp_grad_rec = md.recursion.md_recursion_gradient(
+    ovlp_grad_rec = recursion.md_recursion_gradient(
         (li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec
     )
     ovlp_grad_rec = torch.squeeze(ovlp_grad_rec, 0)

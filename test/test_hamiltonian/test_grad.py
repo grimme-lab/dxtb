@@ -28,13 +28,7 @@ import torch
 from dxtb._types import DD, Tensor
 from dxtb.constants import labels
 from dxtb.integral.driver.pytorch import IntDriverPytorch
-from dxtb.ncoord import (
-    dexp_count,
-    exp_count,
-    get_coordination_number,
-    get_coordination_number_gradient,
-    get_dcn,
-)
+from dxtb.ncoord import cn_d3, cn_d3_gradient, get_dcn
 from dxtb.param import GFN1_XTB as par
 from dxtb.scf import get_density
 from dxtb.utils import batch
@@ -106,7 +100,7 @@ def no_overlap_single(dtype: torch.dtype, name: str) -> None:
     # set derivative of overlap to zero
     doverlap = torch.zeros((*o.matrix.shape, 3), **dd)
 
-    cn = get_coordination_number(numbers, positions, exp_count)
+    cn = cn_d3(numbers, positions)
     wmat = get_density(
         result.coefficients,
         result.occupation.sum(-2),
@@ -127,7 +121,7 @@ def no_overlap_single(dtype: torch.dtype, name: str) -> None:
     assert pytest.approx(dedr, abs=tol) == ref_dedr
 
     # full CN gradient
-    dcndr = get_coordination_number_gradient(numbers, positions, dexp_count)
+    dcndr = cn_d3_gradient(numbers, positions)
     dcn = get_dcn(dcndr, dedcn)
 
     ref_dcn = load_from_npz(ref_grad_no_overlap, f"{name}_dcn", dtype)
@@ -206,7 +200,7 @@ def no_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     # set derivative of overlap to zero
     doverlap = torch.zeros((*o.matrix.shape, 3), **dd)
 
-    cn = get_coordination_number(numbers, positions, exp_count)
+    cn = cn_d3(numbers, positions)
     wmat = get_density(
         result.coefficients,
         result.occupation.sum(-2),
@@ -227,7 +221,7 @@ def no_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     assert pytest.approx(dedr, abs=tol) == ref_dedr
 
     # full CN
-    dcndr = get_coordination_number_gradient(numbers, positions, dexp_count)
+    dcndr = cn_d3_gradient(numbers, positions)
     dcn = get_dcn(dcndr, dedcn)
 
     ref_dcn = batch.pack(
@@ -289,7 +283,7 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 5
     assert pytest.approx(overlap2, abs=tol, rel=tol) == overlap
 
-    cn = get_coordination_number(numbers, positions, exp_count)
+    cn = cn_d3(numbers, positions)
     wmat = get_density(
         result.coefficients,
         result.occupation.sum(-2),
@@ -408,7 +402,7 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     driver.setup(positions)
     doverlap = s.integral.get_gradient(driver)  # type: ignore
 
-    cn = get_coordination_number(numbers, positions, exp_count)
+    cn = cn_d3(numbers, positions)
     wmat = get_density(
         result.coefficients,
         result.occupation.sum(-2),
@@ -429,7 +423,7 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     assert pytest.approx(ref_dedr, abs=atol) == dedr.detach()
 
     # full CN
-    dcndr = get_coordination_number_gradient(numbers, positions, dexp_count)
+    dcndr = cn_d3_gradient(numbers, positions)
     dcn = get_dcn(dcndr, dedcn)
 
     ref_dcn = batch.pack(

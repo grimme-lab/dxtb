@@ -164,12 +164,9 @@ class Integrals(IntegralContainer):
         cn = kwargs.pop("cn", None)
         if cn is None:
             # pylint: disable=import-outside-toplevel
-            from tad_mctc.data.radii import COV_D3
+            from ..ncoord import cn_d3
 
-            from ..ncoord import exp_count, get_coordination_number
-
-            rcov = COV_D3.to(**self.dd)[self.numbers]
-            cn = get_coordination_number(self.numbers, positions, exp_count, rcov)
+            cn = cn_d3(self.numbers, positions)
 
         hcore = self.hcore.integral.build(positions, ovlp.matrix, cn=cn)
         self._matrices.hcore = hcore

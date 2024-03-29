@@ -101,9 +101,9 @@ def hcore(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tens
     cn = kwargs.pop("cn", None)
     if cn is None:
         # pylint: disable=import-outside-toplevel
-        from ..ncoord import exp_count, get_coordination_number
+        from ..ncoord import cn_d3
 
-        cn = get_coordination_number(numbers, positions, exp_count)
+        cn = cn_d3(numbers, positions)
 
     ovlp = overlap(numbers, positions, par)
     return h0.build(positions, ovlp, cn=cn)
