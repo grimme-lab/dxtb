@@ -1,7 +1,7 @@
-# This file is part of xtbml.
 """
 Element parametrization record containing the adjustable parameters for each species.
 """
+
 from __future__ import annotations
 
 from typing import Dict, List

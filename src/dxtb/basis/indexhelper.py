@@ -264,7 +264,7 @@ class IndexHelper(TensorLike):
             # remove the single shell assigned to the padding value in order to
             # avoid an additional count in the expansion as this will cause
             # errors in certain situations
-            # (see https://github.com/grimme-lab/xtbML/issues/67)
+            # (see https://github.com/grimme-lab/dxtb/issues/67)
             if (unique == 0.0).any():
                 ushells_per_unique[0] = 0
 

@@ -14,8 +14,8 @@ must be supplied to the `get_energy` (or `get_grad`) method.
 Example
 -------
 >>> import torch
->>> from xtbml.basis import IndexHelper
->>> from xtbml.classical import new_repulsion
+>>> from dxtb.basis import IndexHelper
+>>> from dxtb.classical import new_repulsion
 >>> from dxtb.param import GFN1_XTB
 >>> numbers = torch.tensor([14, 1, 1, 1, 1])
 >>> positions = torch.tensor([

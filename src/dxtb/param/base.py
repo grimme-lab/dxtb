@@ -1,4 +1,3 @@
-# This file is part of xtbml.
 """
 Definition of the full parametrization data for the extended tight-binding methods.
 
@@ -10,6 +9,7 @@ transformations, like extracting the principal quantum numbers from the shells.
 The respective checks are therefore deferred to the instantiation of the calculator,
 while a deserialized model in `tblite`_ is already verified at this stage.
 """
+
 from __future__ import annotations
 
 from typing import Optional

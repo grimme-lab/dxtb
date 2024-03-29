@@ -1,5 +1,3 @@
-# This file is part of xtbml.
-
 """
 Extended tight-binding parametrization
 ======================================
@@ -12,6 +10,7 @@ included in the method.
 
 .. _tblite: https://tblite.readthedocs.io
 """
+
 from pydantic import __version__ as pydantic_version
 
 if tuple(map(int, pydantic_version.split("."))) < (2, 0, 0):

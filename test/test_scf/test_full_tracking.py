@@ -327,7 +327,7 @@ def test_batch_three(
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
 def test_batch_special(dtype: torch.dtype, mixer: str) -> None:
     """
-    Test case for https://github.com/grimme-lab/xtbML/issues/67.
+    Test case for https://github.com/grimme-lab/dxtb/issues/67.
 
     Note that the tolerance for the energy is quite high because atoms always
     show larger deviations w.r.t. the tblite reference. Secondly, this test

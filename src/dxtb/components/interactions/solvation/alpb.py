@@ -7,7 +7,7 @@ This module implements implicit solvation models of the generalized Born type.
 Example
 -------
 >>> import torch
->>> from xtbml.solvation.alpb import GeneralizedBorn
+>>> from dxtb.solvation.alpb import GeneralizedBorn
 >>> numbers = torch.tensor([14, 1, 1, 1, 1])
 >>> positions = torch.tensor(
 ...     [

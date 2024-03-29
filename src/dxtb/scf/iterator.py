@@ -64,7 +64,7 @@ class SelfConsistentField(BaseXSCF):
         # To reconnect the H0 energy with the computational graph, we
         # compute one extra SCF cycle with strong damping.
         # Note that this is not required for SCF with full gradient tracking.
-        # (see https://github.com/grimme-lab/xtbML/issues/124)
+        # (see https://github.com/grimme-lab/dxtb/issues/124)
         if self.config.scp_mode == labels.SCP_MODE_CHARGE:
             mixer = Simple({**self.fwd_options, "damp": 1e-4})
             q_new = fcn(q_converged)
