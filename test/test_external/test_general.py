@@ -22,10 +22,9 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.convert import str_to_device
 
 from dxtb.components.interactions import new_efield
-
-from ..utils import get_device_from_str
 
 efield = torch.tensor([0.0, 0.0, 0.0])
 
@@ -55,7 +54,7 @@ def test_change_type_fail() -> None:
 @pytest.mark.cuda
 @pytest.mark.parametrize("device_str", ["cpu", "cuda"])
 def test_change_device(device_str: str) -> None:
-    device = get_device_from_str(device_str)
+    device = str_to_device(device_str)
     cls = new_efield(efield)
     assert cls is not None
 

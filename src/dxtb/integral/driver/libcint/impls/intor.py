@@ -40,8 +40,10 @@ except ImportError as e:
         "It can be installed via 'pip install dxtblibs'."
     )
 
-from ....._types import Any, Callable, Tensor
-from .....utils import einsum
+from tad_mctc.math import einsum
+
+from dxtb._types import Any, Callable, Tensor
+
 from .namemanager import IntorNameManager
 from .utils import int2ctypes, np2ctypes
 from .wrapper import LibcintWrapper

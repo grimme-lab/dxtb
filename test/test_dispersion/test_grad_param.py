@@ -22,12 +22,12 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
 from dxtb._types import DD, Callable, Tensor
 from dxtb.components.classicals.dispersion import DispersionD3
 from dxtb.utils import batch
 
-from ..utils import dgradcheck, dgradgradcheck
 from .samples import samples
 
 sample_list = ["LiH", "SiH4", "MB16_43_01", "PbH4-BiH3"]

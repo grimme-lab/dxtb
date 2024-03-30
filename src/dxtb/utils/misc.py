@@ -16,10 +16,13 @@
 # limitations under the License.
 # pylint: disable=protected-access
 """
-Utility
-=======
+Utility: Miscellaneous
+======================
 
-Collection of utility functions.
+Collection of miscellaneous utility functions containing:
+- Type guards
+- JIT enabler
+- Memoization decorators
 """
 from __future__ import annotations
 

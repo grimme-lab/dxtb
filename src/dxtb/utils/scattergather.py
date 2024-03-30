@@ -15,11 +15,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Torch's `scatter_reduce` and `gather`
-=====================================
+Utility: Scatter and Gather
+===========================
 
 Wrappers and convenience functions for `torch.scatter_reduce` and
-`torch.gather`.
+`torch.gather` that allow for negative indices, multiple dimensions, and
+batched calculations.
 """
 
 from __future__ import annotations

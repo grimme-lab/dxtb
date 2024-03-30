@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck, dgradgradcheck
 from tad_mctc.batch import pack
 from tad_mctc.typing import DD, Callable, Tensor
 from tad_mctc.units import VAA2AU
@@ -30,7 +31,6 @@ from dxtb.components.interactions import new_efield
 from dxtb.param import GFN1_XTB as par
 from dxtb.xtb import Calculator
 
-from ..utils import dgradcheck, dgradgradcheck
 from .samples import samples
 
 opts = {

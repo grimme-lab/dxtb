@@ -43,10 +43,11 @@ from functools import partial
 from math import pi, sqrt
 
 import torch
+from tad_mctc.math import einsum
 
-from ......_types import Tensor
-from ......exceptions import CGTOAzimuthalQuantumNumberError, IntegralTransformError
-from ......utils.math import einsum
+from dxtb._types import Tensor
+from dxtb.exceptions import CGTOAzimuthalQuantumNumberError, IntegralTransformError
+
 from .trafo import NLM_CART, TRAFO
 
 __all__ = ["md_explicit", "md_explicit_gradient"]

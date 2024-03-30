@@ -26,9 +26,11 @@ The implementation is taken from TBMaLT (with minor modifications).
 from __future__ import annotations
 
 import torch
+from tad_mctc.math import einsum
 
-from ..._types import Any, Slicer, Tensor
-from ...utils import einsum, t2int
+from dxtb._types import Any, Slicer, Tensor
+from dxtb.utils import t2int
+
 from .base import Mixer
 
 default_opts = {

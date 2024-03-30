@@ -25,11 +25,10 @@ from __future__ import annotations
 import numpy as np
 import pytest
 import torch
+from tad_mctc.convert import str_to_device
 from torch.autograd.gradcheck import gradcheck
 
 from dxtb.utils.batch import deflate, merge, pack, pargsort, psort, unpack
-
-from ..utils import get_device_from_str
 
 devices = ["cpu"]
 
@@ -37,7 +36,7 @@ devices = ["cpu"]
 @pytest.mark.parametrize("device_str", devices)
 def test_pack(device_str: str):
     """Sanity test of batch packing operation."""
-    device = get_device_from_str(device_str)
+    device = str_to_device(device_str)
 
     # Generate matrix list
     sizes = torch.randint(2, 8, (10,))
@@ -80,7 +79,7 @@ def test_pack(device_str: str):
 @pytest.mark.parametrize("device_str", devices)
 def test_pack_grad(device_str: str):
     """Gradient stability test of batch packing operation."""
-    device = get_device_from_str(device_str)
+    device = str_to_device(device_str)
 
     sizes = torch.randint(2, 6, (3,))
     tensors = [
@@ -107,7 +106,7 @@ def test_sort(device_str: str):
         A separate check is not needed for the ``pargsort`` method as ``psort``
         just wraps around it.
     """
-    device = get_device_from_str(device_str)
+    device = str_to_device(device_str)
 
     # Test on with multiple different dimensions
     for d in range(1, 4):
@@ -139,7 +138,7 @@ def test_sort(device_str: str):
 @pytest.mark.parametrize("device_str", devices)
 def test_deflate(device_str: str):
     """General operational test of the `deflate` method."""
-    device = get_device_from_str(device_str)
+    device = str_to_device(device_str)
 
     a = torch.tensor(
         [
@@ -187,7 +186,7 @@ def test_deflate(device_str: str):
 @pytest.mark.parametrize("device_str", devices)
 def test_deflate_grad(device_str: str):
     """Check the gradient stability of the deflate function."""
-    device = get_device_from_str(device_str)
+    device = str_to_device(device_str)
 
     def proxy(tensor):
         # Clean the padding values to prevent unjust failures
@@ -222,7 +221,7 @@ def test_merge(device_str: str):
         This test is depended upon the `pack` function. Thus it will fail if
         the `pack` function is in error.
     """
-    device = get_device_from_str(device_str)
+    device = str_to_device(device_str)
 
     # Check 1: ensure the expected result is returned
     a = [
@@ -252,7 +251,7 @@ def test_merge(device_str: str):
 @pytest.mark.parametrize("device_str", devices)
 def test_merge_grad(device_str: str):
     """Checks gradient stability of the merge function."""
-    device = get_device_from_str(device_str)
+    device = str_to_device(device_str)
 
     def proxy(a_in, b_in):
         # Clean padding values
@@ -296,7 +295,7 @@ def test_unpack(device_str: str):
         This test and the method that is being tested are both dependent on
         the `deflate` method.
     """
-    device = get_device_from_str(device_str)
+    device = str_to_device(device_str)
 
     # Check 1: Unpacking without padding
     a = torch.tensor([[0, 1, 2, 0], [3, 4, 5, 0], [0, 0, 1, 0]], device=device)
@@ -317,7 +316,7 @@ def test_unpack(device_str: str):
 @pytest.mark.parametrize("device_str", devices)
 def test_pargsort(device_str: str):
     """Normal `torch.argsort`."""
-    device = get_device_from_str(device_str)
+    device = str_to_device(device_str)
 
     t = torch.tensor([[1.0, 4.0, 2.0, 3.0], [1.0, 4.0, 2.0, 0.0]], device=device)
     pred = pargsort(t)

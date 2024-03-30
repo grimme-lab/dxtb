@@ -22,12 +22,12 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.convert import str_to_device
+from tad_mctc.exceptions import DeviceError
 
 from dxtb._types import DD
-from dxtb.exceptions import DeviceError
 from dxtb.mol import Mol
 
-from ..utils import get_device_from_str
 from .samples import samples
 
 sample_list = ["H2", "LiH", "H2O", "SiH4", "MB16_43_01", "vancoh2"]
@@ -83,8 +83,8 @@ def test_cache() -> None:
 @pytest.mark.cuda
 def test_wrong_device() -> None:
     sample = samples["SiH4"]
-    numbers = sample["numbers"].to(get_device_from_str("cpu"))
-    positions = sample["positions"].to(get_device_from_str("cuda"))
+    numbers = sample["numbers"].to(str_to_device("cpu"))
+    positions = sample["positions"].to(str_to_device("cuda"))
 
     with pytest.raises(DeviceError):
         Mol(numbers, positions)

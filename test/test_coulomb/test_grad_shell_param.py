@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
 from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
@@ -30,7 +31,6 @@ from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_param
 from dxtb.utils import batch
 
-from ..utils import dgradcheck, dgradgradcheck
 from .samples import samples
 
 sample_list = ["LiH", "SiH4"]  # "MB16_43_01" requires a lot of RAM

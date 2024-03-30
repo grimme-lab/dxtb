@@ -15,7 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Basis set class.
+Basis: Main Class
+=================
+
+Main basis set class for creating the contracted Gaussian type orbitals (CGTOs)
+from the parametrization. The basis set can also be printed in various formats.
 """
 
 from __future__ import annotations
@@ -23,12 +27,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import torch
+from tad_mctc.batch import real_pairs
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.data import pse
 from tad_mctc.typing import Literal, Tensor, TensorLike
 
 from ..param import Param, get_elem_param, get_elem_pqn, get_elem_valence
-from ..utils import batch, real_pairs
+from ..utils import batch
 from .indexhelper import IndexHelper
 from .ortho import orthogonalize
 from .slater import slater_to_gauss
@@ -185,7 +190,7 @@ class Basis(TensorLike):
 
         if self.ihelp.batched:
             orbs = torch.where(
-                real_pairs(sh2ush),
+                real_pairs(sh2ush, mask_diagonal=False),
                 orbs + sh2orb.unsqueeze(-1) * offset,
                 torch.tensor(0, device=self.ihelp.device),
             )

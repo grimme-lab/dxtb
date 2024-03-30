@@ -23,14 +23,13 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.convert import str_to_device
 
 from dxtb._types import DD
 from dxtb.basis import IndexHelper
 from dxtb.components.interactions import Charges
 from dxtb.components.interactions.coulomb import secondorder as es2
 from dxtb.param import GFN1_XTB
-
-from ..utils import get_device_from_str
 
 
 def test_none() -> None:
@@ -104,7 +103,7 @@ def test_change_type_fail() -> None:
 @pytest.mark.cuda
 @pytest.mark.parametrize("device_str", ["cpu", "cuda"])
 def test_change_device(device_str: str) -> None:
-    device = get_device_from_str(device_str)
+    device = str_to_device(device_str)
     cls = es2.new_es2(torch.tensor(0.0), GFN1_XTB)
     assert cls is not None
 

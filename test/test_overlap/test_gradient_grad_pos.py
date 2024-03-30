@@ -22,13 +22,13 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
 from dxtb._types import DD, Callable, Literal, Tensor
 from dxtb.basis import Basis, IndexHelper
 from dxtb.integral.driver.pytorch.impls import overlap_gradient
 from dxtb.param import GFN1_XTB as par
 
-from ..utils import dgradcheck, dgradgradcheck
 from .samples import samples
 
 sample_list = ["H2", "HHe", "LiH", "SiH4"]

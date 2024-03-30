@@ -25,6 +25,7 @@ polarizability derivative.
 from __future__ import annotations
 
 import torch
+from tad_mctc import storch
 from tad_mctc.math import einsum
 from tad_mctc.typing import Any, Literal, NoReturn, Tensor
 from tad_mctc.units import AU2AA4AMU
@@ -221,6 +222,10 @@ def raman_ints_depol(da_dr: Tensor, modes: Tensor) -> tuple[Tensor, Tensor]:
     ints = 5 * a2 + 3.5 * g
 
     # original formula: 3 * gamma^2 / (45 * alpha^2 + 4 * gamma^2)
-    depol = 1.5 * g / (5 * a2 + 2.0 * g)
+    depol = torch.where(
+        a2 > 1e-8,  # avoid division by tiny values...verify correctness?
+        storch.divide(1.5 * g, 5 * a2 + 2.0 * g),
+        torch.tensor(0.0, device=a.device, dtype=a.dtype),
+    )
 
     return ints, depol

@@ -23,10 +23,9 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.convert import str_to_device
 
 from dxtb.basis import IndexHelper
-
-from ..utils import get_device_from_str
 
 
 def test_fail_init_dtype() -> None:
@@ -53,7 +52,7 @@ def test_fail_init_device() -> None:
     ihelp = IndexHelper.from_numbers_angular(torch.tensor([1]), {1: [0]})
     with pytest.raises(ValueError):
         IndexHelper(
-            ihelp.unique_angular.to(get_device_from_str("cuda")),
+            ihelp.unique_angular.to(str_to_device("cuda")),
             ihelp.angular,
             ihelp.atom_to_unique,
             ihelp.ushells_to_unique,
@@ -90,7 +89,7 @@ def test_change_type_fail() -> None:
 @pytest.mark.cuda
 @pytest.mark.parametrize("device_str", ["cpu", "cuda"])
 def test_change_device(device_str: str) -> None:
-    device = get_device_from_str(device_str)
+    device = str_to_device(device_str)
     ihelp = IndexHelper.from_numbers_angular(torch.tensor([1]), {1: [0]}).to(device)
     assert ihelp.device == device
 

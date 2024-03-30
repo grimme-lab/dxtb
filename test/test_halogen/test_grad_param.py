@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck, dgradgradcheck
 from tad_mctc.typing import DD, Callable, Tensor
 
 from dxtb.basis import IndexHelper
@@ -30,7 +31,6 @@ from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_param
 from dxtb.utils import batch
 
-from ..utils import dgradcheck, dgradgradcheck
 from .samples import samples
 
 sample_list = ["br2nh3", "br2och2", "tmpda"]

@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Autograd utility
-================
+Utility: Autograd
+=================
 
 This module contains utility functions for automatic differentiation.
 

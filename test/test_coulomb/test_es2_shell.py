@@ -25,6 +25,7 @@ from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck
 
 from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
@@ -33,7 +34,6 @@ from dxtb.components.interactions.coulomb import secondorder as es2
 from dxtb.param import GFN1_XTB, get_elem_param
 from dxtb.utils import batch
 
-from ..utils import dgradcheck
 from .samples import samples
 
 sample_list = ["MB16_43_07", "MB16_43_08", "SiH4"]

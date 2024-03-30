@@ -25,12 +25,11 @@ Run general tests for repulsion contribution including:
 
 import pytest
 import torch
+from tad_mctc.convert import str_to_device
 
 from dxtb.components.classicals import new_repulsion
 from dxtb.exceptions import ParameterWarning
 from dxtb.param import GFN1_XTB as par
-
-from ..utils import get_device_from_str
 
 
 def test_none() -> None:
@@ -70,7 +69,7 @@ def test_change_type_fail() -> None:
 @pytest.mark.cuda
 @pytest.mark.parametrize("device_str", ["cpu", "cuda"])
 def test_change_device(device_str: str) -> None:
-    device = get_device_from_str(device_str)
+    device = str_to_device(device_str)
     cls = new_repulsion(torch.tensor(0.0), par)
     assert cls is not None
 

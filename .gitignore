@@ -206,7 +206,6 @@ data/*/processed*
 data/misc
 
 # exclude some sample and reaction files for tests
-!data/PTB/samples_HE.json
 !data/GMTKN55/samples_ACONF.json
 !data/GMTKN55/reactions_ACONF.json
 
@@ -219,17 +218,16 @@ data/misc
 # models
 models/
 
-# ML model bookkeeping
-src/lightning_logs/
-src/wandb/
-
 # other
 devel*
 
 # plots
 plots/
 figs/
+examples/*.pdf
+examples/*.svg
 
+dxtb.profile
 
 # pytorch lightning
 src/lightning_logs/*

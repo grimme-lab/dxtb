@@ -25,6 +25,7 @@ import logging
 import torch
 from tad_mctc.convert import any_to_tensor
 from tad_mctc.exceptions import DtypeError
+from tad_mctc.math import einsum
 from tad_mctc.typing import Any, Literal, Sequence, Tensor, TensorLike
 
 from .. import integral as ints
@@ -51,7 +52,7 @@ from ..param import Param
 from ..properties import moments
 from ..properties import vibration as vib
 from ..timing import timer
-from ..utils import _jac, einsum
+from ..utils import _jac
 from ..wavefunction import filling
 from . import decorators as cdec
 
@@ -1679,8 +1680,7 @@ class Calculator(TensorLike):
         field = self.interactions.get_interaction(efield.LABEL_EFIELD).field
 
         if use_analytical is True:
-            # FIXME: Not working apparently?
-            raise RuntimeError
+            # FIXME: Not working for Raman
             dip_fcn = self.dipole_analytical
         else:
             dip_fcn = self.dipole

@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Basis set
-=========
+Basis
+=====
 
 This module contains everything related to the basis set. This includes the
 frequently used `Indexhelper`, which expedites transformations between atom-,

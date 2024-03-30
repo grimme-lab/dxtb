@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Utility
+=======
+
 Collection of utility functions.
 """
 
@@ -22,6 +25,4 @@ from .grad import *
 from .math import *
 from .misc import *
 from .scattergather import *
-from .symeig import *
 from .tensors import *
-from .timing import *

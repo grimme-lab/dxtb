@@ -39,6 +39,7 @@ from typing import (
     Type,
     TypedDict,
     TypeVar,
+    cast,
     overload,
 )
 

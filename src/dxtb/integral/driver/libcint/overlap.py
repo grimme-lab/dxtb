@@ -21,9 +21,11 @@ Overlap implementation based on `libcint`.
 from __future__ import annotations
 
 import torch
+from tad_mctc.batch import deflate, pack
+from tad_mctc.math import einsum
 
-from ...._types import Tensor
-from ....utils import batch, einsum
+from dxtb._types import Tensor
+
 from ...base import BaseIntegralImplementation
 from .base import LibcintImplementation
 from .driver import IntDriverLibcint
@@ -88,8 +90,8 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
                 slist.append(mat)
                 nlist.append(norm)
 
-            self.norm = batch.pack(nlist)
-            self.matrix = batch.pack(slist)
+            self.norm = pack(nlist)
+            self.matrix = pack(slist)
             return self.matrix
 
         # single mode
@@ -126,7 +128,7 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
         if self.norm is None:
             if driver.ihelp.batched:
                 assert isinstance(driver.drv, list)
-                self.norm = batch.pack([snorm(overlap(d)) for d in driver.drv])
+                self.norm = pack([snorm(overlap(d)) for d in driver.drv])
             else:
                 assert isinstance(driver.drv, LibcintWrapper)
                 self.norm = snorm(overlap(driver.drv))
@@ -137,11 +139,11 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
 
             glist = []
             for i, d in enumerate(driver.drv):
-                norm = batch.deflate(self.norm[i])
+                norm = deflate(self.norm[i])
                 grad = fcn(d, norm)
                 glist.append(grad)
 
-            self.grad = batch.pack(glist)
+            self.grad = pack(glist)
             return self.grad
 
         # single mode
