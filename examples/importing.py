@@ -16,15 +16,34 @@
 # limitations under the License.
 import time
 
+t0 = time.perf_counter()
+
+############################
+
+import torch
+
+t1 = time.perf_counter()
+
+############################
+
 from dxtb.param import GFN1_XTB
 
-print(GFN1_XTB.meta)
-# print(GFN1_XTB.meta)
+t2 = time.perf_counter()
 
-print("before import")
-start = time.perf_counter()
+############################
+
+_ = GFN1_XTB.model_copy()
+t3 = time.perf_counter()
+
+############################
+
 import scipy
 
-end = time.perf_counter()
-print("after import")
-print(end - start)
+t4 = time.perf_counter()
+
+############################
+
+print("Torch", t1 - t0)
+print("dxtb", t2 - t1)
+print("Param", t3 - t2)
+print("scipy", t4 - t3)

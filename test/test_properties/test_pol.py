@@ -148,8 +148,25 @@ def execute(
     )
     assert pytest.approx(num, abs=atol, rel=rtol) == pol3
 
+    # applying jacrev twice requires detaching
+    calc.interactions.reset_efield()
+
+    # jacrev of analytical dipole moment calculation
+    pol4 = tensor_to_numpy(
+        calc.polarizability(
+            numbers,
+            positions,
+            charge,
+            use_functorch=True,
+            use_analytical=True,
+            derived_quantity="dipole",
+        )
+    )
+    assert pytest.approx(num, abs=1e-2, rel=1e-2) == pol4
+
     assert pytest.approx(pol, abs=1e-8) == pol2
     assert pytest.approx(pol, abs=1e-8) == pol3
+    assert pytest.approx(pol, abs=1e-2) == pol4
 
 
 @pytest.mark.parametrize("dtype", [torch.double])

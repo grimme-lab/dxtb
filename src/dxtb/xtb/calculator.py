@@ -776,7 +776,7 @@ class Calculator(TensorLike):
             assert isinstance(jac, Tensor)
         else:
             energy = self.energy(numbers, positions, chrg, spin)
-            jac = _jac(energy, positions)
+            jac = _jac(energy, positions).reshape(*positions.shape)
 
         if jac.is_contiguous() is False:
             logger.debug(
@@ -1632,6 +1632,7 @@ class Calculator(TensorLike):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         use_functorch: bool = False,
+        use_analytical: bool = False,
         derived_quantity: Literal["energy", "dipole"] = "dipole",
     ) -> Tensor:
         r"""
@@ -1677,8 +1678,15 @@ class Calculator(TensorLike):
         # retrieve the efield interaction and the field
         field = self.interactions.get_interaction(efield.LABEL_EFIELD).field
 
+        if use_analytical is True:
+            # FIXME: Not working apparently?
+            raise RuntimeError
+            dip_fcn = self.dipole_analytical
+        else:
+            dip_fcn = self.dipole
+
         if use_functorch is False:
-            mu = self.dipole(numbers, positions, chrg, spin)
+            mu = dip_fcn(numbers, positions, chrg, spin)
             return _jac(mu, field)
 
         # pylint: disable=import-outside-toplevel
@@ -1688,7 +1696,7 @@ class Calculator(TensorLike):
 
             def wrapped_dipole(f: Tensor) -> Tensor:
                 self.interactions.update_efield(field=f)
-                return self.dipole(numbers, positions, chrg, spin)
+                return dip_fcn(numbers, positions, chrg, spin)
 
             alpha = jacrev(wrapped_dipole)(field)
             assert isinstance(alpha, Tensor)
@@ -1806,7 +1814,7 @@ class Calculator(TensorLike):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         use_functorch: bool = False,
-        derived_quantity: Literal["energy", "dipole", "pol"] = "pol",
+        derived_quantity: Literal["energy", "dipole"] = "dipole",
     ) -> Tensor:
         r"""
         Calculate the cartesian polarizability derivative :math:`\chi`.
@@ -1955,7 +1963,7 @@ class Calculator(TensorLike):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         use_functorch: bool = False,
-        derived_quantity: Literal["energy", "dipole", "pol"] = "pol",
+        derived_quantity: Literal["energy", "dipole", "polarizability", "pol"] = "pol",
     ) -> Tensor:
         r"""
         Calculate the hyper polarizability tensor :math:`\beta`.
@@ -2051,6 +2059,8 @@ class Calculator(TensorLike):
             )
             beta = beta.contiguous()
 
+        if derived_quantity == "energy":
+            beta = -beta
         return beta
 
     @cdec.numerical

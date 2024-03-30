@@ -33,11 +33,11 @@ from dxtb.xtb import Calculator
 
 from .samples import samples
 
-slist = ["H", "LiH", "HHe", "H2O", "CH4", "SiH4", "PbH4-BiH3"]
-slist_large = ["MB16_43_01"]  # LYS_xao too large for testing
+slist = ["H", "LiH", "H2O", "SiH4"]
+slist_large = ["PbH4-BiH3"]  # MB16_43_01 and LYS_xao too large for testing
 
 opts = {
-    "int_level": 3,
+    "int_level": 2,
     "maxiter": 100,
     "mixer": "anderson",
     "scf_mode": "full",
@@ -55,8 +55,8 @@ def single(
     dd: DD,
     atol: float = 1e-5,
     rtol: float = 1e-5,
-    atol2: float = 70,  # higher tolerance for CH4
-    rtol2: float = 1e-5,
+    atol2: float = 1e-4,
+    rtol2: float = 1e-4,
 ) -> None:
     numbers = samples[name]["numbers"].to(device)
     positions = samples[name]["positions"].to(**dd)
@@ -110,9 +110,11 @@ def execute(
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
     # field is cloned and detached and updated inside
-    numfreqs, numints = calc.ir_numerical(numbers, positions, charge)
+    numres = calc.raman_numerical(numbers, positions, charge)
+    numfreqs, numints, numdepol = numres.freqs, numres.ints, numres.depol
     assert numfreqs.grad_fn is None
     assert numints.grad_fn is None
+    assert numdepol.grad_fn is None
 
     # only add gradient to field_vector after numerical calculation
     field_vector.requires_grad_(True)
@@ -122,24 +124,33 @@ def execute(
     pos = positions.clone().detach().requires_grad_(True)
 
     # manual jacobian
-    freqs1, ints1 = calc.ir(numbers, pos, charge, use_functorch=False)
-    freqs1, ints1 = tensor_to_numpy(freqs1), tensor_to_numpy(ints1)
+    res1 = calc.raman(numbers, pos, charge, use_functorch=False)
+    freqs1, ints1, depol1 = res1.freqs, res1.ints, res1.depol
+    freqs1 = tensor_to_numpy(freqs1)
+    ints1 = tensor_to_numpy(ints1)
+    depol1 = tensor_to_numpy(depol1)
 
     assert pytest.approx(numfreqs, abs=atol, rel=rtol) == freqs1
     assert pytest.approx(numints, abs=atol2, rel=rtol2) == ints1
+    assert pytest.approx(numdepol, abs=atol2, rel=rtol2) == depol1
 
     # reset (for vibration) before another AD run
     calc.reset()
     pos = positions.clone().detach().requires_grad_(True)
 
     # jacrev of energy
-    freqs2, ints2 = calc.ir(numbers, pos, charge, use_functorch=True)
-    freqs2, ints2 = tensor_to_numpy(freqs2), tensor_to_numpy(ints2)
+    res2 = calc.raman(numbers, pos, charge, use_functorch=True)
+    freqs2, ints2, depol2 = res2.freqs, res2.ints, res2.depol
+    freqs2 = tensor_to_numpy(freqs2)
+    ints2 = tensor_to_numpy(ints2)
+    depol2 = tensor_to_numpy(depol2)
 
     assert pytest.approx(numfreqs, abs=atol, rel=rtol) == freqs2
     assert pytest.approx(freqs1, abs=atol, rel=rtol) == freqs2
     assert pytest.approx(numints, abs=atol2, rel=rtol2) == ints2
     assert pytest.approx(ints1, abs=atol2, rel=rtol2) == ints2
+    assert pytest.approx(numdepol, abs=atol2, rel=rtol2) == depol2
+    assert pytest.approx(depol1, abs=atol2, rel=rtol2) == depol2
 
 
 @pytest.mark.parametrize("dtype", [torch.double])

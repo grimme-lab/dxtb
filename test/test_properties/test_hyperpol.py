@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Run tests for IR spectra.
+Run tests for hyperpolarizability.
 """
 
 from __future__ import annotations
@@ -33,11 +33,11 @@ from dxtb.xtb import Calculator
 
 from .samples import samples
 
-slist = ["H", "LiH", "HHe", "H2O", "CH4", "SiH4", "PbH4-BiH3"]
-slist_large = ["MB16_43_01"]  # LYS_xao too large for testing
+slist = ["H", "LiH", "H2O", "CH4", "PbH4-BiH3"]
+slist_large = ["MB16_43_01"]
 
 opts = {
-    "int_level": 3,
+    "int_level": 2,
     "maxiter": 100,
     "mixer": "anderson",
     "scf_mode": "full",
@@ -53,16 +53,14 @@ def single(
     name: str,
     field_vector: Tensor,
     dd: DD,
-    atol: float = 1e-5,
-    rtol: float = 1e-5,
-    atol2: float = 70,  # higher tolerance for CH4
-    rtol2: float = 1e-5,
+    atol: float = 1e-2,
+    rtol: float = 1e-2,
 ) -> None:
     numbers = samples[name]["numbers"].to(device)
     positions = samples[name]["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
 
-    execute(numbers, positions, charge, field_vector, dd, atol, rtol, atol2, rtol2)
+    execute(numbers, positions, charge, field_vector, dd, atol, rtol)
 
 
 def batched(
@@ -70,10 +68,8 @@ def batched(
     name2: str,
     field_vector: Tensor,
     dd: DD,
-    atol: float = 1e-5,
-    rtol: float = 1e-5,
-    atol2: float = 20,
-    rtol2: float = 1e-5,
+    atol: float = 1e-2,
+    rtol: float = 1e-2,
 ) -> None:
     sample1, sample2 = samples[name1], samples[name2]
 
@@ -91,7 +87,7 @@ def batched(
     )
     charge = torch.tensor([0.0, 0.0], **dd)
 
-    execute(numbers, positions, charge, field_vector, dd, atol, rtol, atol2, rtol2)
+    execute(numbers, positions, charge, field_vector, dd, atol, rtol)
 
 
 def execute(
@@ -102,44 +98,74 @@ def execute(
     dd: DD,
     atol: float,
     rtol: float,
-    atol2: float,
-    rtol2: float,
 ) -> None:
     # create additional interaction and pass to Calculator
     efield = new_efield(field_vector)
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
     # field is cloned and detached and updated inside
-    numfreqs, numints = calc.ir_numerical(numbers, positions, charge)
-    assert numfreqs.grad_fn is None
-    assert numints.grad_fn is None
+    num = calc.hyperpol_numerical(numbers, positions, charge)
 
-    # only add gradient to field_vector after numerical calculation
-    field_vector.requires_grad_(True)
-    calc.interactions.update_efield(field=field_vector)
-
-    # required for autodiff of energy w.r.t. positions (Hessian)
-    pos = positions.clone().detach().requires_grad_(True)
+    # required for autodiff of energy w.r.t. efield; update after numerical
+    # derivative as `requires_grad_(True)` gets lost
+    calc.interactions.update_efield(field=field_vector.requires_grad_(True))
 
     # manual jacobian
-    freqs1, ints1 = calc.ir(numbers, pos, charge, use_functorch=False)
-    freqs1, ints1 = tensor_to_numpy(freqs1), tensor_to_numpy(ints1)
+    pol = tensor_to_numpy(
+        calc.hyperpol(
+            numbers,
+            positions,
+            charge,
+            use_functorch=False,
+        )
+    )
+    assert pytest.approx(num, abs=atol, rel=rtol) == pol
 
-    assert pytest.approx(numfreqs, abs=atol, rel=rtol) == freqs1
-    assert pytest.approx(numints, abs=atol2, rel=rtol2) == ints1
+    # 3x jacrev of energy
+    pol2 = tensor_to_numpy(
+        calc.hyperpol(
+            numbers,
+            positions,
+            charge,
+            use_functorch=True,
+            derived_quantity="energy",
+        )
+    )
+    assert pytest.approx(num, abs=atol, rel=rtol) == pol2
 
-    # reset (for vibration) before another AD run
-    calc.reset()
-    pos = positions.clone().detach().requires_grad_(True)
+    # applying jacrev twice requires detaching
+    calc.interactions.reset_efield()
 
-    # jacrev of energy
-    freqs2, ints2 = calc.ir(numbers, pos, charge, use_functorch=True)
-    freqs2, ints2 = tensor_to_numpy(freqs2), tensor_to_numpy(ints2)
+    # 2x jacrev of dipole
+    pol3 = tensor_to_numpy(
+        calc.hyperpol(
+            numbers,
+            positions,
+            charge,
+            use_functorch=True,
+            derived_quantity="dipole",
+        )
+    )
+    assert pytest.approx(num, abs=atol, rel=rtol) == pol3
 
-    assert pytest.approx(numfreqs, abs=atol, rel=rtol) == freqs2
-    assert pytest.approx(freqs1, abs=atol, rel=rtol) == freqs2
-    assert pytest.approx(numints, abs=atol2, rel=rtol2) == ints2
-    assert pytest.approx(ints1, abs=atol2, rel=rtol2) == ints2
+    # applying jacrev twice requires detaching
+    calc.interactions.reset_efield()
+
+    # jacrev of polarizability
+    pol4 = tensor_to_numpy(
+        calc.hyperpol(
+            numbers,
+            positions,
+            charge,
+            use_functorch=True,
+            derived_quantity="pol",
+        )
+    )
+    assert pytest.approx(num, abs=atol, rel=rtol) == pol4
+
+    assert pytest.approx(pol, abs=1e-4) == pol2
+    assert pytest.approx(pol, abs=1e-4) == pol3
+    assert pytest.approx(pol, abs=1e-4) == pol4
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
@@ -161,10 +187,9 @@ def test_single_large(dtype: torch.dtype, name: str) -> None:
     single(name, field_vector, dd=dd)
 
 
-# FIXME: Large deviation for all
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist)
-def skip_test_single_field(dtype: torch.dtype, name: str) -> None:
+def test_single_field(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
     field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * VAA2AU
