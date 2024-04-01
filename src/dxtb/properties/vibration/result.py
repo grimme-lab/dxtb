@@ -24,7 +24,7 @@ Base class for vibrational analysis results.
 from __future__ import annotations
 
 import torch
-from tad_mctc.typing import Generator, NoReturn, Tensor, TensorLike
+from tad_mctc.typing import Generator, NoReturn, PathLike, Tensor, TensorLike
 from tad_mctc.units import AU2RCM
 
 
@@ -109,17 +109,60 @@ class BaseResult(TensorLike):
 
         return value * converter[unit]
 
+    def save_prop_to_pt(self, property: str, filepath: PathLike | None = None) -> None:
+        """
+        Save the results to a PyTorch file.
+
+        Parameters
+        ----------
+        property : str
+            The property to save.
+        filepath : PathLike
+            Path to save the results to.
+        """
+        s = get_all_slots(self)
+        if property not in s:
+            # remove underscore
+            s = [i[1:] for i in s]
+            if property not in s:
+                raise ValueError(f"Invalid property: {property}")
+
+        tensor = self[property]
+
+        if filepath is None:
+            name = self.__class__.__name__.casefold().replace("result", "")
+            filepath = f"{name}-{property.replace('_', '')}.pt"
+
+        torch.save(tensor, filepath)
+
+    def save_all_to_pt(self, filepaths: list[PathLike] | None = None) -> None:
+        """
+        Save all results to a PyTorch file.
+
+        Parameters
+        ----------
+        filepath : PathLike
+            Path to save the results to.
+        """
+        s = get_all_slots(self)
+        paths = [None] * len(s) if filepaths is None else filepaths
+
+        for prop, path in zip(s, paths):
+            if "unit" not in prop:
+                self.save_prop_to_pt(prop, path)
+
     def __iter__(self) -> Generator[Tensor, None, None]:
         return iter(getattr(self, s) for s in get_all_slots(self) if "unit" not in s)
 
     def __getitem__(self, key: str) -> Tensor:
-        if key not in self.__slots__:
+        s = get_all_slots(self)
+        if key not in s:
             key = f"_{key}"
 
-        if key in self.__slots__:
+        if key in s:
             return getattr(self, key)
 
-        raise KeyError(f"Invalid key: {key}")
+        raise KeyError(f"Invalid key: '{key}'. Possible keys are '{', '.join(s)}'.")
 
     def __str__(self) -> str:
         text = ""

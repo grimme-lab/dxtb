@@ -85,7 +85,7 @@ class OverlapPytorch(IntegralImplementationPytorch):
         """
         super().checks(driver)
 
-        if driver.ihelp.batched:
+        if driver.ihelp.batch_mode > 0:
             self.matrix = self._batch(driver.eval_ovlp, driver)
         else:
             self.matrix = self._single(driver.eval_ovlp, driver)
@@ -113,7 +113,7 @@ class OverlapPytorch(IntegralImplementationPytorch):
         """
         super().checks(driver)
 
-        if driver.ihelp.batched:
+        if driver.ihelp.batch_mode > 0:
             self.grad = self._batch(driver.eval_ovlp_grad, driver)
         else:
             self.grad = self._single(driver.eval_ovlp_grad, driver)

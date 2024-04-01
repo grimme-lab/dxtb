@@ -50,7 +50,16 @@ from dxtb.components.interactions.coulomb import (
     new_es3,
 )
 
-from dxtb.components import interactions
+from dxtb.components import interactions as interactions
+from dxtb.components import classicals as classicals
+
+from dxtb.components.interactions import solvation as solvation
+from dxtb.components.interactions import coulomb as coulomb
+from dxtb.components.interactions import external as external
+
+from dxtb.components.classicals import dispersion as dispersion
+from dxtb.components.classicals import repulsion as repulsion
+from dxtb.components.classicals import halogen as halogen
 
 # from . import integral as ints
 from .__version__ import __version__
@@ -58,11 +67,10 @@ from .__version__ import __version__
 from dxtb.basis import Basis, IndexHelper
 from .components.classicals import Halogen, Repulsion, new_halogen, new_repulsion
 from .components.classicals import DispersionD3, new_dispersion
-from .components.interactions import external
 from .mol import molecule
 from .param import GFN1_XTB, Param
 from .xtb import Calculator
-from dxtb.components.interactions import solvation as solvation
+from dxtb.utils import batch
 
 timer.stop("dxtb")
 timer.stop("Import")

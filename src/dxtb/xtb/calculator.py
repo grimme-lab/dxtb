@@ -410,9 +410,11 @@ class Calculator(TensorLike):
         # create cache
         self.cache = self.Cache(**dd)
 
-        self.batched = numbers.ndim > 1
+        if self.opts.batch_mode == 0:
+            if numbers.ndim > 1:
+                self.opts.batch_mode = 1
 
-        self.ihelp = IndexHelper.from_numbers(numbers, par)
+        self.ihelp = IndexHelper.from_numbers(numbers, par, self.opts.batch_mode)
 
         ################
         # INTERACTIONS #
@@ -651,7 +653,7 @@ class Calculator(TensorLike):
             result.scf += scf_results["energy"]
             result.total += scf_results["energy"] + scf_results["fenergy"]
 
-            if not self.batched:
+            if self.opts.batch_mode == 0:
                 OutputHandler.write_stdout(
                     f"SCF Energy  : {result.scf.sum(-1):.14f} Hartree.",
                     v=2,

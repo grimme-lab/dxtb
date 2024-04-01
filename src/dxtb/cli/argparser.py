@@ -534,6 +534,7 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         help=("R|Calculate the electric hyperpolarizability numerically."),
     )
 
+    # spectra
     p.add_argument(
         "--ir",
         action="store_true",
@@ -560,6 +561,14 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
     p.add_argument(
         "--json",
         action="store_true",
+    )
+    p.add_argument(
+        "--batch",
+        "--batch-mode",
+        "--batch_mode",
+        type=int,
+        default=defaults.BATCH_MODE,
+        help="R|Batch mode for calculation.",
     )
 
     p.add_argument(

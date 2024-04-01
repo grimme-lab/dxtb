@@ -40,6 +40,7 @@ class Config:
         method: str | int = defaults.METHOD,
         grad: bool = False,
         use_cache: bool = False,
+        batch_mode: int = defaults.BATCH_MODE,
         # integrals
         int_cutoff: float = defaults.INTCUTOFF,
         int_driver: str | int = defaults.INTDRIVER,
@@ -72,6 +73,7 @@ class Config:
         self.device = device
         self.dtype = dtype
         self.anomaly = anomaly
+        self.batch_mode = batch_mode
 
         if isinstance(method, str):
             if method.casefold() in labels.GFN1_XTB_STRS:

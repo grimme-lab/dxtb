@@ -134,7 +134,7 @@ class MultipoleLibcint(IntegralImplementationLibcint):
                 "...ij,i,j->...ij", int1e(intstring, driver), norm, norm
             )
 
-        if driver.ihelp.batched:
+        if driver.ihelp.batch_mode > 0:
             if not isinstance(driver.drv, list):
                 raise RuntimeError(
                     "IndexHelper on integral driver is batched, but the driver "

@@ -75,6 +75,17 @@ class Basis(TensorLike):
     valence: Tensor
     """Whether the shell is part of the valence shell."""
 
+    __slots__ = [
+        "numbers",
+        "unique",
+        "meta",
+        "ihelp",
+        "ngauss",
+        "slater",
+        "pqn",
+        "valence",
+    ]
+
     def __init__(
         self,
         numbers: Tensor,
@@ -84,25 +95,20 @@ class Basis(TensorLike):
         dtype: torch.dtype | None = None,
     ) -> None:
         super().__init__(device, dtype)
-        self.numbers: Tensor = torch.unique(numbers)
+        self.numbers = numbers
+        self.unique: Tensor = torch.unique(numbers)
         self.meta = par.meta
         self.ihelp = ihelp
 
         self.ngauss = get_elem_param(
-            self.numbers,
+            self.unique,
             par.element,
             "ngauss",
             device=self.device,
         )
-        self.slater = get_elem_param(
-            self.numbers,
-            par.element,
-            "slater",
-            device=self.device,
-            dtype=self.dtype,
-        )
-        self.pqn = get_elem_pqn(self.numbers, par.element, device=self.device)
-        self.valence = get_elem_valence(self.numbers, par.element, device=self.device)
+        self.slater = get_elem_param(self.unique, par.element, "slater", **self.dd)
+        self.pqn = get_elem_pqn(self.unique, par.element, device=self.device)
+        self.valence = get_elem_valence(self.unique, par.element, **self.dd)
 
     def create_cgtos(self) -> tuple[list[Tensor], list[Tensor]]:
         """
@@ -135,11 +141,15 @@ class Basis(TensorLike):
             # to be orthogonalized w.r.t. another one.
             # Example: Si with 3s, 3p, 3d, 4p
             # angular = [0, 1, 2, 1]; ortho = [None, None, None, 1]
-            if self.valence[i].item() is False:
-                alpha, coeff = orthogonalize(
-                    (alphas[i - 1], alpha),
-                    (coeffs[i - 1], coeff),
-                )
+            # However, it is probably only ever needed in GFN1. Other methods
+            # do not specifically orthogonalize certain basis functions.
+            if self.meta is not None and self.meta.name is not None:
+                if "gfn1" in self.meta.name.casefold():
+                    if self.valence[i].item() is False:
+                        alpha, coeff = orthogonalize(
+                            (alphas[i - 1], alpha),
+                            (coeffs[i - 1], coeff),
+                        )
 
             alphas.append(alpha)
             coeffs.append(coeff)
@@ -177,7 +187,7 @@ class Basis(TensorLike):
         # meaning for single runs and cannot be ignored in this case.
         sh2ush = self.ihelp.spread_shell_to_orbital(self.ihelp.shells_to_ushell)
 
-        # FIXME: Maybe a bitwise operation is easier to understand? For now,
+        # NOTE: Maybe a bitwise operation is easier to understand? For now,
         # we convert unique shell indices to prime numbers to obtain unique
         # products upon multiplication (fundamental theorem of arithmetic).
         orbs = primes.to(self.device)[sh2ush]
@@ -188,7 +198,7 @@ class Basis(TensorLike):
         # (m, n) of the same orbital block (e.g. 1x3 sp and 3x1 ps block)
         offset = 10000
 
-        if self.ihelp.batched:
+        if self.ihelp.batch_mode > 0:
             orbs = torch.where(
                 real_pairs(sh2ush, mask_diagonal=False),
                 orbs + sh2orb.unsqueeze(-1) * offset,
@@ -199,7 +209,7 @@ class Basis(TensorLike):
 
         # catch systems with one single orbital (e.g. Helium)
         if orbs.size(-1) == 1:
-            if self.ihelp.batched:
+            if self.ihelp.batch_mode > 0:
                 raise NotImplementedError()
             return torch.tensor([[0]]), torch.tensor(1)
 
@@ -240,10 +250,10 @@ class Basis(TensorLike):
         if self.meta is None:
             raise RuntimeError("No meta data found in the parametrization.")
 
-        if self.numbers.ndim > 1:
+        if self.unique.ndim > 1:
             raise RuntimeError("Basis set printing does not work batched.")
 
-        if len(self.numbers) == 0:
+        if len(self.unique) == 0:
             raise ValueError("No atoms for basis set printout found.")
 
         allowed_formats = ("gaussian94", "nwchem")
@@ -272,7 +282,7 @@ class Basis(TensorLike):
         alphas = []
         s = 0
         fulltxt = ""
-        for i, number in enumerate(self.numbers.tolist()):
+        for i, number in enumerate(self.unique.tolist()):
             txt = ""
             if with_header is True:
                 txt += header  # type: ignore
@@ -369,7 +379,7 @@ class Basis(TensorLike):
         NotImplementedError
             If batch mode is requested (checked through dimensions of numbers).
         """
-        if self.numbers.ndim > 1:
+        if self.unique.ndim > 1:
             raise NotImplementedError("Batch mode not implemented.")
 
         # tracking only required for orthogonalization
@@ -377,7 +387,7 @@ class Basis(TensorLike):
         alphas = []
 
         s = 0
-        for i in range(self.numbers.size(0)):
+        for i in range(self.unique.size(0)):
             bases: list[CGTOBasis] = []
             shells = self.ihelp.ushells_per_unique[i]
 
@@ -408,89 +418,103 @@ class Basis(TensorLike):
                 # increment
                 s += 1
 
-        numbers = self.ihelp.spread_uspecies_to_atom(self.numbers)
-        if self.ihelp.batched:
-            # collection for batch
-            b = []
+        ##########
+        # SINGLE #
+        ##########
 
-            for _batch in range(numbers.shape[0]):
-                # reset counter
-                s = 0
+        if self.ihelp.batch_mode == 0:
+            # reset counter
+            s = 0
 
-                # collect final basis for each atom in list
-                atombasis: list[AtomCGTOBasis] = []
+            # collect final basis for each atom in list (same order as `numbers`)
+            atombasis: list[AtomCGTOBasis] = []
 
-                for i, num in enumerate(numbers[_batch]):
-                    if num == 0:
-                        continue
+            for i, num in enumerate(self.numbers):
+                bases: list[CGTOBasis] = []
 
-                    # CGTOs
-                    bases: list[CGTOBasis] = []
-                    for _ in range(self.ihelp.shells_per_atom[_batch, i]):
-                        idx = self.ihelp.shells_to_ushell[_batch, s]
+                for _ in range(self.ihelp.shells_per_atom[i]):
+                    idx = self.ihelp.shells_to_ushell[s]
 
-                        # FIXME: There should probably be some kind of mask to
-                        # get rid of padding?
-                        # print(f"Warning in {__file__}: Batched mode not working for functorch AD")
-                        f = self.ihelp.angular[_batch]
-                        cgto = CGTOBasis(
-                            angmom=tensor_to_numpy(f)[s],  # int!
-                            alphas=alphas[idx],
-                            coeffs=coeffs[idx],
-                            normalized=True,
-                        )
-                        bases.append(cgto)
-
-                        # increment
-                        s += 1
-
-                    # POSITIONS
-                    if mask is not None:
-                        pos = torch.masked_select(
-                            positions[_batch], mask[_batch]
-                        ).reshape((-1, 3))
-                    else:
-                        pos = batch.deflate(positions[_batch], value=float("nan"))
-
-                    atomcgtobasis = AtomCGTOBasis(
-                        atomz=num,
-                        bases=bases,
-                        pos=pos[i, :],
+                    cgto = CGTOBasis(
+                        angmom=int(self.ihelp.angular[s]),  # int!
+                        alphas=alphas[idx],
+                        coeffs=coeffs[idx],
+                        normalized=True,
                     )
-                    atombasis.append(atomcgtobasis)
+                    bases.append(cgto)
 
-                b.append(atombasis)
+                    # increment
+                    s += 1
 
-            return b
-
-        # reset counter
-        s = 0
-
-        # collect final basis for each atom in list (same order as `numbers`)
-        atombasis: list[AtomCGTOBasis] = []
-
-        for i, num in enumerate(numbers):
-            bases: list[CGTOBasis] = []
-
-            for _ in range(self.ihelp.shells_per_atom[i]):
-                idx = self.ihelp.shells_to_ushell[s]
-
-                cgto = CGTOBasis(
-                    angmom=int(self.ihelp.angular[s]),  # int!
-                    alphas=alphas[idx],
-                    coeffs=coeffs[idx],
-                    normalized=True,
+                atomcgtobasis = AtomCGTOBasis(
+                    atomz=num,
+                    bases=bases,
+                    pos=positions[i, :],
                 )
-                bases.append(cgto)
+                atombasis.append(atomcgtobasis)
 
-                # increment
-                s += 1
+            return atombasis
 
-            atomcgtobasis = AtomCGTOBasis(
-                atomz=num,
-                bases=bases,
-                pos=positions[i, :],
-            )
-            atombasis.append(atomcgtobasis)
+        ###########
+        # BATCHED #
+        ###########
 
-        return atombasis
+        # collection for batch
+        b: list[list[AtomCGTOBasis]] = []
+
+        for _batch in range(self.numbers.shape[0]):
+            # reset counter
+            s = 0
+
+            # collect final basis for each atom in list
+            atombasis: list[AtomCGTOBasis] = []
+
+            shell_idxs = self.ihelp.shells_to_ushell[_batch]
+            shells_per_atom = self.ihelp.shells_per_atom[_batch]
+            angular = tensor_to_numpy(self.ihelp.angular[_batch])
+            pos = positions[_batch]
+
+            for i, num in enumerate(self.numbers[_batch]):
+                if num == 0:
+                    continue
+
+                # CGTOs
+                bases: list[CGTOBasis] = []
+                for _ in range(shells_per_atom[i]):
+                    idx = shell_idxs[s]
+
+                    # FIXME: Should probably be some kind of mask to get rid of
+                    # padding? But "s" only runs over the actual shells, so it
+                    # should be fine.
+                    # However, batched mode not working for functorch AD.
+                    cgto = CGTOBasis(
+                        angmom=angular[s],  # int!
+                        alphas=alphas[idx],
+                        coeffs=coeffs[idx],
+                        normalized=True,
+                    )
+                    bases.append(cgto)
+
+                    # increment
+                    s += 1
+
+                # POSITIONS
+                if self.ihelp.batch_mode == 1:
+                    if mask is not None:
+                        m = mask[_batch]
+                        _pos = torch.masked_select(pos, m).reshape((-1, 3))
+                    else:
+                        _pos = batch.deflate(pos, value=float("nan"))
+                elif self.ihelp.batch_mode == 2:
+                    _pos = pos
+
+                atomcgtobasis = AtomCGTOBasis(
+                    atomz=num,
+                    bases=bases,
+                    pos=_pos[i, :],
+                )
+                atombasis.append(atomcgtobasis)
+
+            b.append(atombasis)
+
+        return b

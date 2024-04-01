@@ -22,4 +22,6 @@ Tight-binding components.
 """
 
 from .base import *
+from .classicals import dispersion, halogen, repulsion
+from .interactions import coulomb, external, solvation
 from .list import *

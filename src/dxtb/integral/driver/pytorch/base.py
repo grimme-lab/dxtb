@@ -64,7 +64,7 @@ class BaseIntDriverPytorch(PytorchImplementation, IntDriver):
         positions : Tensor
             Cartesian coordinates of all atoms in the system (nat, 3).
         """
-        if not self.ihelp.batched:
+        if self.ihelp.batch_mode == 0:
             # setup `Basis` class if not already done
             if self._basis is None:
                 self.basis = Basis(
@@ -77,28 +77,39 @@ class BaseIntDriverPytorch(PytorchImplementation, IntDriver):
 
             self._positions_single = positions
         else:
-            from tad_mctc.batch import deflate
 
             self._positions_batch: list[Tensor] = []
             self._basis_batch: list[Basis] = []
             self._ihelp_batch: list[IndexHelper] = []
             for _batch in range(self.numbers.shape[0]):
                 # POSITIONS
-                mask = kwargs.pop("mask", None)
-                if mask is not None:
-                    pos = torch.masked_select(
-                        positions[_batch],
-                        mask[_batch],
-                    ).reshape((-1, 3))
+                if self.ihelp.batch_mode == 1:
+                    # pylint: disable=import-outside-toplevel
+                    from tad_mctc.batch import deflate
+
+                    mask = kwargs.pop("mask", None)
+                    if mask is not None:
+                        pos = torch.masked_select(
+                            positions[_batch],
+                            mask[_batch],
+                        ).reshape((-1, 3))
+                    else:
+                        pos = deflate(positions[_batch])
+
+                    nums = deflate(self.numbers[_batch])
+
+                elif self.ihelp.batch_mode == 2:
+                    pos = positions[_batch]
+                    nums = self.numbers[_batch]
+
                 else:
-                    pos = deflate(positions[_batch])
+                    raise ValueError(f"Unknown batch mode '{self.ihelp.batch_mode}'.")
 
                 self._positions_batch.append(pos)
 
                 # INDEXHELPER
                 # unfortunately, we need a new IndexHelper for each batch,
                 # but this is much faster than `calc_overlap`
-                nums = deflate(self.numbers[_batch])
                 ihelp = IndexHelper.from_numbers(nums, self.par)
 
                 self._ihelp_batch.append(ihelp)

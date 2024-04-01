@@ -218,7 +218,7 @@ class InteractionList(ComponentList[Interaction]):
             torch.zeros_like(charges.mono),
             dipole=None,
             quad=None,
-            batched=ihelp.batched,
+            batched=ihelp.batch_mode > 0,
         )
 
         # exit with empty potential if no interactions present

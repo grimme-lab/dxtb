@@ -203,6 +203,8 @@ class Container:
             # Now, dipolar and quadrupolar properties are checked.
             assert data["dipole"] is not None
             vs = torch.split(tensor, 1, dim=axis)
+
+            # TODO: Conformer batched mode (deflate not required)
             mono = deflate(vs[0], axis=0, value=pad).reshape(*data["mono"])
             dipole = deflate(vs[1], axis=0, value=pad).reshape(*data["dipole"])
 

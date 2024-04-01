@@ -79,7 +79,7 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
             return mat, norm
 
         # batched mode
-        if driver.ihelp.batched:
+        if driver.ihelp.batch_mode > 0:
             assert isinstance(driver.drv, list)
 
             slist = []
@@ -126,7 +126,7 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
 
         # build norm if not already available
         if self.norm is None:
-            if driver.ihelp.batched:
+            if driver.ihelp.batch_mode > 0:
                 assert isinstance(driver.drv, list)
                 self.norm = pack([snorm(overlap(d)) for d in driver.drv])
             else:
@@ -134,17 +134,29 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
                 self.norm = snorm(overlap(driver.drv))
 
         # batched mode
-        if driver.ihelp.batched:
+        if driver.ihelp.batch_mode > 0:
             assert isinstance(driver.drv, list)
 
-            glist = []
-            for i, d in enumerate(driver.drv):
-                norm = deflate(self.norm[i])
-                grad = fcn(d, norm)
-                glist.append(grad)
+            if driver.ihelp.batch_mode == 1:
+                from tad_mctc.batch import deflate
 
-            self.grad = pack(glist)
-            return self.grad
+                self.grad = pack(
+                    [
+                        fcn(driver, deflate(norm))
+                        for driver, norm in zip(driver.drv, self.norm)
+                    ]
+                )
+                return self.grad
+            elif driver.ihelp.batch_mode == 2:
+                self.grad = pack(
+                    [
+                        fcn(driver, norm)  # no deflating here
+                        for driver, norm in zip(driver.drv, self.norm)
+                    ]
+                )
+                return self.grad
+
+            raise ValueError(f"Unknown batch mode '{driver.ihelp.batch_mode}'.")
 
         # single mode
         assert isinstance(driver.drv, LibcintWrapper)

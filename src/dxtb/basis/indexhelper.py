@@ -119,8 +119,13 @@ class IndexHelper(TensorLike):
     orbitals_to_shell: Tensor
     """Mapping of orbitals to shells"""
 
-    batched: bool
-    """Whether multiple systems or a single one are handled"""
+    batch_mode: int
+    """
+    Whether multiple systems or a single one are handled:
+    - 0: Single system
+    - 1: Multiple systems with padding
+    - 2: Multiple systems with no padding (conformer ensemble)
+    """
 
     store: Store | None
     """Storage to restore from after culling."""
@@ -138,7 +143,7 @@ class IndexHelper(TensorLike):
         "orbitals_per_shell",
         "orbital_index",
         "orbitals_to_shell",
-        "batched",
+        "batch_mode",
         "store",
     ]
 
@@ -156,6 +161,7 @@ class IndexHelper(TensorLike):
         orbitals_per_shell: Tensor,
         orbital_index: Tensor,
         orbitals_to_shell: Tensor,
+        batch_mode: int,
         device: torch.device | None = None,
         dtype: torch.dtype = torch.int64,
         *,
@@ -191,7 +197,7 @@ class IndexHelper(TensorLike):
         self.orbital_index = orbital_index
         self.orbitals_to_shell = orbitals_to_shell
 
-        self.batched = angular.ndim > 1
+        self.batch_mode = batch_mode
         self.store = store
 
         if any(
@@ -233,7 +239,9 @@ class IndexHelper(TensorLike):
             raise ValueError("All tensors must be on the same device")
 
     @classmethod
-    def from_numbers(cls, numbers: Tensor, par: Param) -> IndexHelper:
+    def from_numbers(
+        cls, numbers: Tensor, par: Param, batch_mode: int | None = None
+    ) -> IndexHelper:
         """
         Construct an index helper instance from atomic numbers and their angular momenta.
 
@@ -251,14 +259,18 @@ class IndexHelper(TensorLike):
         """
 
         angular = get_elem_angular(par.element)
-        return cls.from_numbers_angular(numbers, angular)
+        return cls.from_numbers_angular(numbers, angular, batch_mode)
 
     @classmethod
     def from_numbers_angular(
-        cls, numbers: Tensor, angular: dict[int, list[int]]
+        cls,
+        numbers: Tensor,
+        angular: dict[int, list[int]],
+        batch_mode: int | None = None,
     ) -> IndexHelper:
         device = numbers.device
-        batched = numbers.ndim > 1
+        if batch_mode is None:
+            batch_mode = numbers.ndim > 1
 
         unique, atom_to_unique = torch.unique(numbers, return_inverse=True)
 
@@ -276,7 +288,7 @@ class IndexHelper(TensorLike):
         ushell_index = torch.cumsum(ushells_per_unique, dim=-1) - ushells_per_unique
         ushells_to_unique = _fill(ushell_index, ushells_per_unique)
 
-        if batched:
+        if batch_mode > 0:
             # remove the single shell assigned to the padding value in order to
             # avoid an additional count in the expansion as this will cause
             # errors in certain situations
@@ -304,7 +316,7 @@ class IndexHelper(TensorLike):
         shell_index = torch.cumsum(shells_per_atom, -1) - shells_per_atom
         shell_index[shells_per_atom == 0] = PAD
 
-        if batched:
+        if batch_mode > 0:
             shells_to_atom = pack(
                 [
                     _fill(shell_index[_batch, :], shells_per_atom[_batch, :])
@@ -328,7 +340,7 @@ class IndexHelper(TensorLike):
         orbital_index = torch.cumsum(orbitals_per_shell, -1) - orbitals_per_shell
         orbital_index[orbitals_per_shell == 0] = PAD
 
-        if batched:
+        if batch_mode > 0:
             orbitals_to_shell = pack(
                 [
                     _fill(orbital_index[_batch, :], orbitals_per_shell[_batch, :])
@@ -352,6 +364,7 @@ class IndexHelper(TensorLike):
             orbitals_per_shell=orbitals_per_shell,
             orbital_index=orbital_index,
             orbitals_to_shell=orbitals_to_shell,
+            batch_mode=batch_mode,
             device=device,
         )
 
@@ -810,7 +823,7 @@ class IndexHelper(TensorLike):
             self.orbitals_to_shell = orbitals_to_shell
 
     def cull(self, conv: Tensor, slicers: Slicers) -> None:
-        if self.batched is False:
+        if self.batch_mode == 0:
             raise RuntimeError("Culling only possible in batch mode.")
 
         if self.store is None:
@@ -894,7 +907,7 @@ class IndexHelper(TensorLike):
     def _orbitals_to_shell_cart(self) -> Tensor:
         orbital_index = self.orbital_index_cart
         orbitals_per_shell = self.orbitals_per_shell_cart
-        if self.batched:
+        if self.batch_mode > 0:
             orbitals_to_shell = pack(
                 [
                     _fill(orbital_index[_batch, :], orbitals_per_shell[_batch, :])
@@ -977,7 +990,7 @@ class IndexHelper(TensorLike):
             1d-Tensor containing the indices of the orbitals.
         """
         # FIXME: batched mode
-        if self.batched:
+        if self.batch_mode > 0:
             raise NotImplementedError(
                 "Currently, `orbital_atom_mapping` only supports a single sample."
             )
@@ -1040,7 +1053,7 @@ class IndexHelper(TensorLike):
 
     @property
     def nbatch(self) -> int | None:
-        return self.atom_to_unique.ndim if self.batched else None
+        return self.atom_to_unique.ndim if self.batch_mode > 0 else None
 
     @property
     def allowed_dtypes(self) -> tuple[torch.dtype, ...]:
@@ -1069,7 +1082,7 @@ class IndexHelper(TensorLike):
             f"  orbitals_per_shell={self.orbitals_per_shell},\n"
             f"  orbital_index={self.orbital_index},\n"
             f"  orbitals_to_shell={self.orbitals_to_shell},\n"
-            f"  batched={self.batched},\n"
+            f"  batch_mode={self.batch_mode},\n"
             f"  store={self.store},\n"
             f"  device={self.device},\n"
             f"  dtype={self.dtype}\n"
