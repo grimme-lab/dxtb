@@ -64,7 +64,7 @@ class BaseResult(TensorLike):
     @freqs.setter
     def freqs(self, *_) -> NoReturn:
         raise RuntimeError(
-            "Setting IR frequencies is not supported. Iternally, the "
+            "Setting IR frequencies is not supported. Internally, the "
             "frequencies should always be stored in atomic units. Use "
             "the `to_unit` method to convert to a different unit or set the "
             "`freqs_unit` attribute."
@@ -109,35 +109,36 @@ class BaseResult(TensorLike):
 
         return value * converter[unit]
 
-    def save_prop_to_pt(self, property: str, filepath: PathLike | None = None) -> None:
+    def save_prop_to_pt(self, prop: str, filepath: PathLike | None = None) -> None:
         """
         Save the results to a PyTorch file.
 
         Parameters
         ----------
-        property : str
+        prop : str
             The property to save.
         filepath : PathLike
             Path to save the results to.
         """
         s = get_all_slots(self)
-        if property not in s:
+        if prop not in s:
             # remove underscore
             s = [i[1:] for i in s]
-            if property not in s:
-                raise ValueError(f"Invalid property: {property}")
+            if prop not in s:
+                raise ValueError(f"Invalid property: {prop}")
 
-        tensor = self[property]
+        # use custom __getitem__ method
+        tensor = self[prop]
 
         if filepath is None:
             name = self.__class__.__name__.casefold().replace("result", "")
-            filepath = f"{name}-{property.replace('_', '')}.pt"
+            filepath = f"{name}-{prop.replace('_', '')}.pt"
 
-        torch.save(tensor, filepath)
+        torch.save(tensor.detach(), filepath)
 
     def save_all_to_pt(self, filepaths: list[PathLike] | None = None) -> None:
         """
-        Save all results to a PyTorch file.
+        Save all results to a PyTorch file (".pt").
 
         Parameters
         ----------
@@ -156,6 +157,12 @@ class BaseResult(TensorLike):
 
     def __getitem__(self, key: str) -> Tensor:
         s = get_all_slots(self)
+
+        # Check if key is a property first (properties won't be in __slots__)
+        if hasattr(self.__class__, key):
+            if isinstance(getattr(self.__class__, key), property):
+                return getattr(self, key)
+
         if key not in s:
             key = f"_{key}"
 

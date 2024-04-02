@@ -88,7 +88,7 @@ class IRResult(BaseResult):
     @ints.setter
     def ints(self, *_: Any) -> NoReturn:
         raise RuntimeError(
-            "Setting IR intensities is not supported. Iternally, the "
+            "Setting IR intensities is not supported. Internally, the "
             "intensities should always be stored in atomic units. Use "
             "the `to_unit` method to convert to a different unit or set the "
             "`ints_unit` attribute."
