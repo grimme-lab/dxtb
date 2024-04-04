@@ -1,30 +1,79 @@
-name: Test
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+name: Tests
 
 on:
   push:
     branches:
+      - main
       - master
     paths-ignore:
-      - "docs/**"
-      - "*.md"
-      - "*.rst"
+      - "doc*/**"
+      - "./*.ya?ml"
+      - "**/*.md"
+      - "**/*.rst"
 
   pull_request:
     paths-ignore:
-      - "docs/**"
-      - "*.md"
-      - "*.rst"
+      - "doc*/**"
+      - "./*.ya?ml"
+      - "**/*.md"
+      - "**/*.rst"
 
   workflow_dispatch:
 
 jobs:
   main:
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest]
-        python-version: ["3.10"]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        torch-version: ["1.11.0", "1.12.1", "1.13.1", "2.0.1", "2.1.2", "2.2.2"]
+        exclude:
+          # PyTorch now fully supports Python=<3.11
+          # see: https://github.com/pytorch/pytorch/issues/86566
+          #
+          # PyTorch does not support Python 3.12 (all platforms)
+          # see: https://github.com/pytorch/pytorch/issues/110436
+          - os: ubuntu-latest
+            python-version: "3.12"
+          - os: macos-latest
+            python-version: "3.12"
+          - os: windows-latest
+            python-version: "3.12"
+          # PyTorch<1.13.0 does only support Python=<3.10
+          - python-version: "3.11"
+            torch-version: "1.11.0"
+          - python-version: "3.11"
+            torch-version: "1.12.1"
+          # On macOS and Windows, 1.13.x is also not supported for Python>=3.10
+          - os: macos-latest
+            python-version: "3.11"
+            torch-version: "1.13.1"
+          - os: windows-latest
+            python-version: "3.11"
+            torch-version: "1.13.1"
 
     runs-on: ${{ matrix.os }}
+
+    defaults:
+      run:
+        shell: bash {0}
 
     steps:
       - name: Checkout code
@@ -37,14 +86,23 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install torch==1.11.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
-          pip install pydantic tomli xitorch tad-dftd3 pytest pytest-cov codecov
+          python3 -m pip install --upgrade pip
+          python3 -m pip install tox
 
-      - name: Unittests with pytest
-        run: pytest -svv -m "not large" --cov=dxtb --cov-report=term-missing
+      - name: Determine TOXENV
+        run: echo "TOXENV=py$(echo ${{ matrix.python-version }} | tr -d '.')-torch$(echo ${{ matrix.torch-version }} | tr -d '.')" >> $GITHUB_ENV
+
+      - name: Print TOXENV
+        run: echo "TOXENV is set to '${{ env.TOXENV }}'."
+
+      - name: Unittests with tox
+        run: tox -e ${{ env.TOXENV }}
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
+        if: >
+          matrix.python-version == '3.11' &&
+          matrix.torch-version == '2.2.2' &&
+          matrix.os == 'ubuntu-latest'
         with:
-          token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+          files: ./coverage.xml # optional
