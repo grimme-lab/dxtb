@@ -27,8 +27,9 @@ from __future__ import annotations
 import torch
 from tad_mctc import storch
 from tad_mctc.math import einsum
-from tad_mctc.typing import Any, Literal, NoReturn, Tensor
 from tad_mctc.units import AU2AA4AMU
+
+from dxtb.typing import Any, Literal, NoReturn, Tensor
 
 from .result import BaseResult
 

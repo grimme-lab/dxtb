@@ -24,11 +24,11 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 from tad_mctc.batch import pack
-from tad_mctc.typing import DD, Callable, Tensor
 
 from dxtb.basis import IndexHelper
 from dxtb.components.classicals import new_halogen
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD, Callable, Tensor
 
 from .samples import samples
 

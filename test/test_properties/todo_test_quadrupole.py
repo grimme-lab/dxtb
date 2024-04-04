@@ -23,11 +23,11 @@ from __future__ import annotations
 import pytest
 import torch
 from tad_mctc.batch import pack
-from tad_mctc.typing import DD, Tensor
 from tad_mctc.units import VAA2AU
 
 from dxtb.components.interactions import new_efield, new_efield_grad
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD, Tensor
 from dxtb.xtb import Calculator
 
 from .samples import samples

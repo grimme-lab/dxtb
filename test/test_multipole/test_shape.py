@@ -23,11 +23,11 @@ from __future__ import annotations
 import pytest
 import torch
 from tad_mctc.batch import deflate, pack
-from tad_mctc.typing import DD
 
 from dxtb.basis import Basis, IndexHelper
 from dxtb.integral.driver.libcint import impls as intor
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD
 from dxtb.utils import is_basis_list
 
 from .samples import samples

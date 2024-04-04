@@ -20,5 +20,7 @@ Definition of interactions in the extended tight-binding model.
 
 from .base import Interaction
 from .container import *
+from .coulomb import *
 from .external import *
 from .list import InteractionList
+from .solvation import *

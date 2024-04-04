@@ -21,7 +21,8 @@ SCF configuration.
 from __future__ import annotations
 
 import torch
-from tad_mctc.typing import Any, get_default_device, get_default_dtype
+
+from dxtb.typing import Any, get_default_device, get_default_dtype
 
 from ..constants import defaults, labels
 from ..io import OutputHandler

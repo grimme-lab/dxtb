@@ -15,10 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Custom exceptions and warnings for dxtb.
-"""
+Exceptions: PyTorch
+===================
 
-from .integral import *
-from .misc import *
-from .pytorch import *
-from .scf import *
+Exceptions related to PyTorch.
+"""
+from tad_mctc.exceptions import DeviceError, DtypeError
+
+__all__ = ["DeviceError", "DtypeError"]

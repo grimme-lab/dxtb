@@ -24,7 +24,8 @@ from abc import ABC, abstractmethod
 
 import torch
 
-from .._types import Any, Tensor, TensorLike
+from dxtb.typing import Any, Tensor, TensorLike
+
 from ..basis import Basis, IndexHelper
 from ..param import Param
 

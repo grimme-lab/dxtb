@@ -25,10 +25,10 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck
 
-from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.components.interactions.coulomb import thirdorder as es3
 from dxtb.param import GFN1_XTB, get_elem_param
+from dxtb.typing import DD, Tensor
 from dxtb.utils import batch
 
 from .samples import samples

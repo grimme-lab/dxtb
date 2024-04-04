@@ -25,7 +25,8 @@ from __future__ import annotations
 
 import torch
 
-from ...._types import Tensor
+from dxtb.typing import Tensor
+
 from ....constants import labels
 from ....utils import batch
 from ...base import BaseIntegralImplementation

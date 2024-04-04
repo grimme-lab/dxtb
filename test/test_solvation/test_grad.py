@@ -23,9 +23,9 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb._types import DD
 from dxtb.components.interactions.solvation import alpb
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD
 from dxtb.xtb import Calculator
 
 from .samples import samples

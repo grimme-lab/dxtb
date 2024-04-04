@@ -30,7 +30,7 @@ import torch
 from tad_mctc import units
 from tad_mctc.data import pse
 
-from .._types import Any, PathLike
+from dxtb.typing import Any, PathLike
 
 
 def check_xyz(fp: PathLike, xyz: list[list[float]]) -> list[list[float]]:

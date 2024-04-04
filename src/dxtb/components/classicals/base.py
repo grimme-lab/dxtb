@@ -31,9 +31,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import torch
-from tad_mctc.typing import Tensor
 
 from dxtb.basis import IndexHelper
+from dxtb.typing import Tensor
 
 from .. import Component
 

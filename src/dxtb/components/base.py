@@ -24,7 +24,8 @@ Base class for all tight-binding components.
 from __future__ import annotations
 
 import torch
-from tad_mctc.typing import Any, Tensor, TensorLike
+
+from dxtb.typing import Any, Tensor, TensorLike
 
 
 class Component(TensorLike):

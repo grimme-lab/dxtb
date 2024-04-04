@@ -29,10 +29,10 @@ import pytest
 import torch
 from tad_mctc.convert import numpy_to_tensor
 
-from dxtb._types import DD, Tensor
 from dxtb.basis import Basis, IndexHelper
 from dxtb.integral.driver.libcint import impls as intor
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD, Tensor
 from dxtb.utils import is_basis_list
 
 try:

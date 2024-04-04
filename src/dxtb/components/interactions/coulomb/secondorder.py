@@ -60,12 +60,18 @@ from tad_mctc import storch
 from tad_mctc.batch import real_pairs
 from tad_mctc.exceptions import DeviceError
 from tad_mctc.math import einsum
-from tad_mctc.typing import DD, Tensor, TensorLike, TensorOrTensors, get_default_dtype
 
-from dxtb._types import Slicers
 from dxtb.basis import IndexHelper
 from dxtb.constants import xtb
 from dxtb.param import Param, get_elem_param
+from dxtb.typing import (
+    DD,
+    Slicers,
+    Tensor,
+    TensorLike,
+    TensorOrTensors,
+    get_default_dtype,
+)
 
 from .. import Interaction
 from .average import AveragingFunction, averaging_function, harmonic_average

@@ -24,9 +24,9 @@ import pytest
 import torch
 from torch.autograd.gradcheck import gradcheck
 
-from dxtb._types import Literal, Tensor
 from dxtb.exlibs.xitorch import LinearOperator
 from dxtb.exlibs.xitorch.linalg import symeig
+from dxtb.typing import Literal, Tensor
 from dxtb.utils import eighb, symmetrize
 
 # Hamiltonian of LiH from last step

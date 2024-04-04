@@ -26,11 +26,12 @@ import torch
 from tad_mctc.convert import any_to_tensor
 from tad_mctc.exceptions import DtypeError
 from tad_mctc.math import einsum
-from tad_mctc.typing import Any, Literal, Sequence, Tensor, TensorLike
+
+from dxtb.basis import IndexHelper
+from dxtb.typing import Any, Literal, Sequence, Tensor, TensorLike
 
 from .. import integral as ints
 from .. import scf
-from ..basis import IndexHelper
 from ..components.classicals import (
     Classical,
     ClassicalList,

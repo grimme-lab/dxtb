@@ -25,7 +25,8 @@ from __future__ import annotations
 
 import torch
 from tad_mctc.exceptions import DeviceError, DtypeError
-from tad_mctc.typing import Any, Tensor, TensorLike
+
+from dxtb.typing import Any, Tensor, TensorLike
 
 from ..base import Interaction
 

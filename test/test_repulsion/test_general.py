@@ -28,8 +28,8 @@ import torch
 from tad_mctc.convert import str_to_device
 
 from dxtb.components.classicals import new_repulsion
-from dxtb.exceptions import ParameterWarning
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing.exceptions import ParameterWarning
 
 
 def test_none() -> None:

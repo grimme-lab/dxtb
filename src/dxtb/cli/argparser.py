@@ -25,8 +25,9 @@ from pathlib import Path
 
 import torch
 
+from dxtb.typing import Any
+
 from .. import __version__
-from .._types import Any
 from ..constants import defaults
 
 

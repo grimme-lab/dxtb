@@ -15,23 +15,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Custom warnings.
+Typing: Builtins
+================
+
+This module contains all used built-in type annotations.
 """
+from typing import (
+    IO,
+    TYPE_CHECKING,
+    Any,
+    Iterable,
+    Iterator,
+    Literal,
+    NoReturn,
+    Protocol,
+    Type,
+    TypedDict,
+    TypeVar,
+    cast,
+    overload,
+    runtime_checkable,
+)
 
-__all__ = ["ParameterWarning", "ToleranceWarning"]
-
-
-class ParameterWarning(UserWarning):
-    """
-    Warning for when a parameter is not set.
-    """
-
-
-class ToleranceWarning(UserWarning):
-    """
-    Warning for unreasonable tolerances.
-
-    If tolerances are too small, the previous step in xitorch's Broyden method
-    may become equal to the current step. This leads to a difference of zero,
-    which in turn causes `NaN`s due to division by the difference.
-    """
+__all__ = [
+    "IO",
+    "TYPE_CHECKING",
+    "Any",
+    "Iterable",
+    "Iterator",
+    "Literal",
+    "NoReturn",
+    "Protocol",
+    "Type",
+    "TypedDict",
+    "TypeVar",
+    "cast",
+    "overload",
+    "runtime_checkable",
+]

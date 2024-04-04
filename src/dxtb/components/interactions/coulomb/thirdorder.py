@@ -54,11 +54,10 @@ from __future__ import annotations
 
 import torch
 from tad_mctc.exceptions import DeviceError
-from tad_mctc.typing import DD, Tensor, TensorLike, get_default_dtype
 
-from dxtb._types import Slicers
 from dxtb.basis import IndexHelper
 from dxtb.param import Param, get_elem_param
+from dxtb.typing import DD, Slicers, Tensor, TensorLike, get_default_dtype
 
 from .. import Interaction
 

@@ -23,7 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.exceptions import SCFConvergenceError
+from dxtb.typing.exceptions import SCFConvergenceError
 from dxtb.utils import is_int_list, is_str_list, set_jit_enabled
 
 

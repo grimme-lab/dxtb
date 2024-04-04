@@ -24,9 +24,9 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb._types import DD, Callable, Tensor
 from dxtb.components.classicals.dispersion import new_dispersion
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD, Callable, Tensor
 from dxtb.utils import batch
 
 from .samples import samples

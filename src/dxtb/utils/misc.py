@@ -30,8 +30,11 @@ from functools import wraps
 
 import torch
 
-from .._types import Any, Callable, T, Tensor, TypeGuard
+from dxtb.typing import Any, Callable, Tensor, TypeGuard, TypeVar
+
 from ..basis.types import AtomCGTOBasis
+
+T = TypeVar("T")
 
 
 def is_str_list(x: list[Any]) -> TypeGuard[list[str]]:

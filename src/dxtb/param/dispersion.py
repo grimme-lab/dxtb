@@ -24,7 +24,8 @@ from typing import Optional, Union
 
 from pydantic import BaseModel, ConfigDict
 
-from .._types import Tensor
+from dxtb.typing import Tensor
+
 from ..constants import xtb
 
 

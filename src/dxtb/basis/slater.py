@@ -25,9 +25,9 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from tad_mctc.typing import Tensor
 
-from ..exceptions import (
+from dxtb.typing import Tensor
+from dxtb.typing.exceptions import (
     CGTOAzimuthalQuantumNumberError,
     CGTOPrimitivesError,
     CGTOPrincipalQuantumNumberError,

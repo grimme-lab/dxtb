@@ -23,8 +23,9 @@ from __future__ import annotations
 import logging
 import sys
 
+from dxtb.typing import Sequence
+
 from .. import __version__
-from .._types import Sequence
 from .argparser import parser
 from .driver import Driver
 

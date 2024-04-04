@@ -23,9 +23,9 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb._types import DD
 from dxtb.basis import Basis, IndexHelper
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD
 from dxtb.utils import batch
 
 from .samples import samples

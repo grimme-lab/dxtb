@@ -23,9 +23,9 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb._types import ContainerData
 from dxtb.components.interactions import Potential
 from dxtb.constants import defaults
+from dxtb.typing import ContainerData
 from dxtb.utils import batch
 
 nbatch = 10

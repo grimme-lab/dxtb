@@ -37,7 +37,8 @@ except ImportError:
 
 from tad_mctc.convert import tensor_to_numpy
 
-from ....._types import Iterator, Tensor
+from dxtb.typing import Iterator, Tensor
+
 from .....basis import AtomCGTOBasis, CGTOBasis, IndexHelper
 from .utils import NDIM, int2ctypes, memoize_method, np2ctypes
 

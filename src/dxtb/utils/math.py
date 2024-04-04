@@ -25,7 +25,8 @@ from __future__ import annotations
 
 import torch
 from tad_mctc.storch.linalg import eighb
-from tad_mctc.typing import Any, Tensor
+
+from dxtb.typing import Any, Tensor
 
 __all__ = ["eigh", "eighb", "qr"]
 

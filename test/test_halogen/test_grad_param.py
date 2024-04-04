@@ -23,12 +23,12 @@ from __future__ import annotations
 import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
-from tad_mctc.typing import DD, Callable, Tensor
 
 from dxtb.basis import IndexHelper
 from dxtb.components.classicals import Halogen
 from dxtb.param import GFN1_XTB as par
 from dxtb.param import get_elem_param
+from dxtb.typing import DD, Callable, Tensor
 from dxtb.utils import batch
 
 from .samples import samples

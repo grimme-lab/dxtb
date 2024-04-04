@@ -23,8 +23,8 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb._types import DD
 from dxtb.mol import Mol
+from dxtb.typing import DD
 
 try:
     from dxtb.mol.external._pyscf import M, PyscfMol

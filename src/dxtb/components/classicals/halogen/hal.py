@@ -27,10 +27,10 @@ from __future__ import annotations
 import torch
 from tad_mctc.batch import pack
 from tad_mctc.data.radii import ATOMIC as ATOMIC_RADII
-from tad_mctc.typing import Tensor, TensorLike
 
 from dxtb.basis import IndexHelper
 from dxtb.constants import xtb
+from dxtb.typing import Tensor, TensorLike
 
 from ..base import Classical
 

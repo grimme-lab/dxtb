@@ -23,10 +23,10 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb._types import DD
 from dxtb.basis import slater_to_gauss
 from dxtb.basis.ortho import gaussian_integral, orthogonalize
 from dxtb.integral.driver.pytorch.impls.md import overlap_gto
+from dxtb.typing import DD
 
 device = None
 

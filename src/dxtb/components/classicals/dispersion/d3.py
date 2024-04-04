@@ -23,7 +23,8 @@ from __future__ import annotations
 import tad_dftd3 as d3
 import torch
 from tad_mctc.ncoord import cn_d3, exp_count
-from tad_mctc.typing import Any, CountingFunction, Tensor, TensorLike
+
+from dxtb.typing import Any, CountingFunction, Tensor, TensorLike
 
 from .base import Dispersion
 

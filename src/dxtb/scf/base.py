@@ -26,11 +26,10 @@ from abc import abstractmethod
 import torch
 from tad_mctc.batch import real_atoms
 from tad_mctc.math import einsum
-from tad_mctc.typing import DD, Any, Tensor, TypedDict
 from tad_mctc.units import KELVIN2AU
 
-from dxtb._types import Slicers
 from dxtb.basis import IndexHelper
+from dxtb.typing import DD, Any, Slicers, Tensor, TypedDict
 
 from ..components.interactions import InteractionList
 from ..components.interactions.container import Charges, ContainerData, Potential

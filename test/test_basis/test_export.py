@@ -25,9 +25,9 @@ from pathlib import Path
 import pytest
 import torch
 
-from dxtb._types import Literal
 from dxtb.basis import Basis, IndexHelper
 from dxtb.param import GFN1_XTB
+from dxtb.typing import Literal
 
 
 @pytest.mark.parametrize("number", range(1, 87))

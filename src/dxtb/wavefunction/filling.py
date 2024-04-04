@@ -23,7 +23,8 @@ from __future__ import annotations
 
 import torch
 
-from .._types import DD, Tensor
+from dxtb.typing import DD, Tensor
+
 from ..constants import defaults
 
 

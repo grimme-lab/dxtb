@@ -27,9 +27,9 @@ import pytest
 import tad_dftd3 as d3
 import torch
 
-from dxtb._types import DD, Tensor
 from dxtb.components.classicals.dispersion import DispersionD3, new_dispersion
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD, Tensor
 from dxtb.utils import batch
 
 from .samples import samples

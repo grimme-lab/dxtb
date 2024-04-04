@@ -27,8 +27,9 @@ import logging
 
 import torch
 
-from .._types import Any, Tensor
-from ..basis import IndexHelper
+from dxtb.basis import IndexHelper
+from dxtb.typing import Any, Tensor
+
 from ..constants import defaults, labels
 from ..param import Param
 from .base import IntDriver, IntegralContainer

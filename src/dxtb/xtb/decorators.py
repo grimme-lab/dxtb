@@ -28,7 +28,8 @@ from functools import wraps
 from typing import cast
 
 import torch
-from tad_mctc.typing import Any, Callable, Tensor, TypeVar
+
+from dxtb.typing import Any, Callable, Tensor, TypeVar
 
 from ..components.interactions.external import field as efield
 from ..components.interactions.external import fieldgrad as efield_grad

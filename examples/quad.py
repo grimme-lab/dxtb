@@ -18,9 +18,9 @@ from pathlib import Path
 
 import torch
 from tad_mctc.io import read
-from tad_mctc.typing import DD
 
 import dxtb
+from dxtb.typing import DD
 
 # import logging
 # logging.basicConfig(

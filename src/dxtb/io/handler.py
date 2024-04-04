@@ -29,7 +29,7 @@ import logging
 from contextlib import contextmanager
 from pathlib import Path
 
-from tad_mctc.typing import Any, Generator, override
+from dxtb.typing import Any, Generator, override
 
 from .output import get_header, get_pytorch_info, get_short_version, get_system_info
 

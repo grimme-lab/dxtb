@@ -25,10 +25,10 @@ from math import sqrt
 import pytest
 import torch
 from tad_mctc.data import VDW_D3
-from tad_mctc.typing import DD
 
 from dxtb.components.interactions.solvation import alpb
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD
 from dxtb.xtb import Calculator
 
 from .samples import samples

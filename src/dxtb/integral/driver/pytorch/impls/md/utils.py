@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import torch
 
-from ......_types import Literal, Tensor
+from dxtb.typing import Literal, Tensor
 
 
 def get_pairs(x: Tensor, i: int) -> Tensor:

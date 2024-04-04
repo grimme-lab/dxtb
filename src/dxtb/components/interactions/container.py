@@ -30,10 +30,9 @@ from __future__ import annotations
 
 import torch
 from tad_mctc.batch import deflate, pack
-from tad_mctc.typing import Self, Tensor, TypeVar
 
-from dxtb._types import ContainerData, Type
 from dxtb.constants import defaults
+from dxtb.typing import ContainerData, Self, Tensor, Type, TypeVar
 
 T = TypeVar("T", bound="Container")
 

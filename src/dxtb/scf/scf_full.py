@@ -23,7 +23,8 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Tensor
+from dxtb.typing import Tensor
+
 from ..timing.decorator import timer_decorator
 from ..utils import eighb
 from .base import BaseSCF

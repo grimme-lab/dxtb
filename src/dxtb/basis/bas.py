@@ -30,7 +30,8 @@ import torch
 from tad_mctc.batch import real_pairs
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.data import pse
-from tad_mctc.typing import Literal, Tensor, TensorLike
+
+from dxtb.typing import Literal, Tensor, TensorLike
 
 from ..param import Param, get_elem_param, get_elem_pqn, get_elem_valence
 from ..utils import batch

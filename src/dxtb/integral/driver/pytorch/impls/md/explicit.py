@@ -45,8 +45,11 @@ from math import pi, sqrt
 import torch
 from tad_mctc.math import einsum
 
-from dxtb._types import Tensor
-from dxtb.exceptions import CGTOAzimuthalQuantumNumberError, IntegralTransformError
+from dxtb.typing import Tensor
+from dxtb.typing.exceptions import (
+    CGTOAzimuthalQuantumNumberError,
+    IntegralTransformError,
+)
 
 from .trafo import NLM_CART, TRAFO
 

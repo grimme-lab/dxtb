@@ -20,7 +20,8 @@ import sys
 from argparse import Namespace
 
 import torch
-from tad_mctc.typing import Self, get_default_device, get_default_dtype
+
+from dxtb.typing import Self, get_default_device, get_default_dtype
 
 from ..constants import defaults, labels
 from .integral import ConfigIntegrals

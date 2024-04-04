@@ -28,7 +28,8 @@ from __future__ import annotations
 
 import torch
 from tad_mctc.data.getters import get_zvalence
-from tad_mctc.typing import Tensor
+
+from dxtb.typing import Tensor
 
 __all__ = ["dipole", "quadrupole"]
 

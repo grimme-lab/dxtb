@@ -52,7 +52,8 @@ import warnings
 
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.data import pse
-from tad_mctc.typing import Tensor
+
+from dxtb.typing import Tensor
 
 from ..molecule import Mol
 

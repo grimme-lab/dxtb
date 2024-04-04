@@ -56,10 +56,10 @@ from abc import abstractmethod
 import torch
 from tad_mctc import storch
 from tad_mctc.batch import real_pairs
-from tad_mctc.typing import Tensor, TensorLike
 
 from dxtb.basis import IndexHelper
 from dxtb.constants import xtb
+from dxtb.typing import Tensor, TensorLike
 
 from ..base import Classical
 

@@ -30,8 +30,9 @@ from functools import wraps
 
 import torch
 
+from dxtb.typing import Gather, Protocol, ScatterOrGather, Tensor
+
 from ..__version__ import __tversion__
-from .._types import Gather, Protocol, ScatterOrGather, Tensor
 from .tensors import t2int
 
 __all__ = ["scatter_reduce", "wrap_scatter_reduce", "wrap_gather"]

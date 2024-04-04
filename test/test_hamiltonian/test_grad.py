@@ -25,12 +25,12 @@ import numpy as np
 import pytest
 import torch
 
-from dxtb._types import DD, Tensor
 from dxtb.constants import labels
 from dxtb.integral.driver.pytorch import IntDriverPytorch
 from dxtb.ncoord import cn_d3, cn_d3_gradient, get_dcn
 from dxtb.param import GFN1_XTB as par
 from dxtb.scf import get_density
+from dxtb.typing import DD, Tensor
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
 

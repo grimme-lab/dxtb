@@ -25,8 +25,9 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Tensor
-from ..basis import IndexHelper
+from dxtb.basis import IndexHelper
+from dxtb.typing import Tensor
+
 from ..constants import labels
 
 

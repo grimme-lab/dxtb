@@ -26,8 +26,8 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb._types import DD
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
 

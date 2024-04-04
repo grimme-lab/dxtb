@@ -34,12 +34,11 @@ from math import sqrt
 import torch
 
 from dxtb.basis import IndexHelper
+from dxtb.typing import Any, Slicers, Tensor, exceptions
 
-from .._types import Any, Slicers, Tensor
 from ..components.interactions import Charges, InteractionList
 from ..config import ConfigSCF
 from ..constants import defaults, labels
-from ..exceptions import SCFConvergenceError, SCFConvergenceWarning
 from ..exlibs.xitorch import optimize as xto
 from ..integral import IntegralMatrices
 from ..utils import t2int
@@ -144,10 +143,10 @@ class SelfConsistentFieldFull(BaseTSCF):
                     f"{mixer.options['damp']}."
                 )
                 if self.config.force_convergence is True:
-                    raise SCFConvergenceError(msg)
+                    raise exceptions.SCFConvergenceError(msg)
 
                 # only issue warning, return anyway
-                warnings.warn(msg, SCFConvergenceWarning)
+                warnings.warn(msg, exceptions.SCFConvergenceWarning)
                 q_converged = q
 
             return self.converged_to_charges(q_converged)
@@ -315,7 +314,7 @@ class SelfConsistentFieldFull(BaseTSCF):
                 f"'{mixer.options['damp']}'."
             )
             if self.config.force_convergence:
-                raise SCFConvergenceError(msg)
+                raise exceptions.SCFConvergenceError(msg)
 
             # collect unconverged indices with convergence tracker; charges
             # are already culled, and hence, require no further indexing
@@ -335,7 +334,7 @@ class SelfConsistentFieldFull(BaseTSCF):
                 f"({iconv.tolist()}), and {len(idxs[converged])} converged "
                 f"({idxs[converged].tolist()})."
             )
-            warnings.warn(msg + msg_converged, SCFConvergenceWarning)
+            warnings.warn(msg + msg_converged, exceptions.SCFConvergenceWarning)
 
         if culled:
             # write converged variables back to `self._data` for final

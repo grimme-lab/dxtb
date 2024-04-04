@@ -28,8 +28,9 @@ from math import pi, sqrt
 
 import torch
 
-from ......_types import Any, Callable, Tensor
-from ......exceptions import IntegralTransformError
+from dxtb.typing import Any, Callable, Tensor
+from dxtb.typing.exceptions import IntegralTransformError
+
 from ......utils import t2int
 from .trafo import NLM_CART, TRAFO
 

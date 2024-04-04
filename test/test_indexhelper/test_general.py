@@ -44,6 +44,7 @@ def test_fail_init_dtype() -> None:
             ihelp.orbitals_per_shell,
             ihelp.orbital_index,
             ihelp.orbitals_to_shell,
+            batch_mode=0,
         )
 
 
@@ -64,6 +65,7 @@ def test_fail_init_device() -> None:
             ihelp.orbitals_per_shell,
             ihelp.orbital_index,
             ihelp.orbitals_to_shell,
+            batch_mode=0,
         )
 
 

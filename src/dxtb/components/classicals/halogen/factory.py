@@ -22,10 +22,10 @@ A factory function to create instances of the HBC class.
 """
 
 import torch
-from tad_mctc.typing import DD, Tensor, get_default_dtype
 
 from dxtb.constants import xtb
 from dxtb.param import Param, get_elem_param
+from dxtb.typing import DD, Tensor, get_default_dtype
 
 from .hal import Halogen
 

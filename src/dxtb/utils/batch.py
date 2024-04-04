@@ -31,7 +31,7 @@ from collections import namedtuple
 import torch
 from tad_mctc.batch import deflate, pack, unpack
 
-from dxtb._types import Any, Tensor, TensorOrTensors
+from dxtb.typing import Any, Tensor, TensorOrTensors
 
 __sort = namedtuple("sort", ("values", "indices"))
 

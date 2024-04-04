@@ -24,7 +24,8 @@ from abc import abstractmethod
 
 import torch
 
-from ...._types import Any, Tensor
+from dxtb.typing import Any, Tensor
+
 from ....basis import Basis, IndexHelper
 from ....constants import labels
 from ...base import BaseIntegralImplementation, IntDriver

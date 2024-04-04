@@ -36,9 +36,8 @@ from __future__ import annotations
 
 import torch
 from tad_mctc.batch import pack
-from tad_mctc.typing import Tensor, TensorLike, override
 
-from dxtb._types import Slicers
+from dxtb.typing import Slicers, Tensor, TensorLike, override
 
 from ..param import Param, get_elem_angular
 from ..utils import t2int, wrap_gather, wrap_scatter_reduce

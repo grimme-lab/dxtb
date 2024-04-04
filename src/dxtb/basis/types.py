@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from tad_mctc.typing import Tensor
+from dxtb.typing import Tensor
 
 __all__ = ["AtomCGTOBasis", "CGTOBasis"]
 

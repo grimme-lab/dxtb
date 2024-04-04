@@ -21,9 +21,9 @@ Container for interactions.
 from __future__ import annotations
 
 import torch
-from tad_mctc.typing import Any, Literal, Tensor, TensorOrTensors, overload, override
 
 from dxtb.basis import IndexHelper
+from dxtb.typing import Any, Literal, Tensor, TensorOrTensors, overload, override
 
 from ...components.list import ComponentList, _docstring_reset, _docstring_update
 from .base import Interaction

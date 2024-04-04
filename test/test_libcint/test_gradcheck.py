@@ -24,11 +24,11 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import Basis, IndexHelper
 from dxtb.integral.driver.libcint import IntDriverLibcint, OverlapLibcint
 from dxtb.integral.driver.libcint import impls as intor
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD, Callable, Tensor
 from dxtb.utils import batch, is_basis_list
 
 from .samples import samples

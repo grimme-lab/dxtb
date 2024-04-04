@@ -23,9 +23,9 @@ from __future__ import annotations
 import pytest
 import torch
 from tad_mctc.exceptions import DeviceError
-from tad_mctc.typing import Tensor, get_default_dtype
 
 from dxtb.mol import Mol
+from dxtb.typing import Tensor, get_default_dtype
 
 device = None
 

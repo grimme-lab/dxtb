@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Tensor
+from dxtb.typing import Tensor
 
 
 def get_dcn(dcndr: Tensor, dedcn: Tensor) -> Tensor:

@@ -22,9 +22,9 @@ from __future__ import annotations
 
 import torch
 
-from dxtb._types import Slicers, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import Slicers, Tensor
 from dxtb.utils import batch
 
 

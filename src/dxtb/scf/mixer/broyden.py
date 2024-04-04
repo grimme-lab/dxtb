@@ -21,7 +21,8 @@ Broyden mixing
 
 from __future__ import annotations
 
-from ..._types import Any
+from dxtb.typing import Any
+
 from .base import Mixer
 
 default_opts = {

@@ -27,9 +27,8 @@ from abc import ABC, abstractmethod
 from typing import Generic
 
 import torch
-from tad_mctc.typing import Any, Tensor, TensorLike, TypeVar
 
-from dxtb._types import Slicers
+from dxtb.typing import Any, Slicers, Tensor, TensorLike, TypeVar
 
 from .base import Component
 

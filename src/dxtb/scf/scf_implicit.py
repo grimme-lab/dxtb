@@ -23,7 +23,8 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Tensor
+from dxtb.typing import Tensor
+
 from ..exlibs.xitorch import EditableModule, LinearOperator
 from ..exlibs.xitorch import linalg as xtl
 from ..timing.decorator import timer_decorator

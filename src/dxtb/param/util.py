@@ -26,7 +26,8 @@ from __future__ import annotations
 
 import torch
 from tad_mctc.data import pse
-from tad_mctc.typing import Tensor, get_default_dtype
+
+from dxtb.typing import Tensor, get_default_dtype
 
 from ..param import Element
 from ..utils import is_int_list

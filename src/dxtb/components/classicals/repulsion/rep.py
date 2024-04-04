@@ -35,7 +35,8 @@ from __future__ import annotations
 
 import torch
 from tad_mctc._version import __tversion__
-from tad_mctc.typing import Tensor, override
+
+from dxtb.typing import Tensor, override
 
 from .base import BaseRepulsion, repulsion_energy, repulsion_gradient
 

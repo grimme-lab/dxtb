@@ -23,7 +23,8 @@ from __future__ import annotations
 from abc import abstractmethod
 
 import torch
-from tad_mctc.typing import Tensor
+
+from dxtb.typing import Tensor
 
 from ...classicals import Classical
 

@@ -26,9 +26,9 @@ from pathlib import Path
 import pytest
 import torch
 
-from dxtb._types import DD, Tensor
 from dxtb.io import read_chrg, read_coord
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD, Tensor
 from dxtb.utils import hessian
 from dxtb.xtb import Calculator
 

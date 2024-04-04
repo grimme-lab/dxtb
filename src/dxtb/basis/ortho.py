@@ -21,7 +21,8 @@ from __future__ import annotations
 import math
 
 import torch
-from tad_mctc.typing import Tensor
+
+from dxtb.typing import Tensor
 
 
 def gaussian_integral(ai: Tensor, aj: Tensor, ci: Tensor, cj: Tensor) -> Tensor:

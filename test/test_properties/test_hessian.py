@@ -25,9 +25,9 @@ import torch
 from tad_mctc.autograd import dgradcheck
 from tad_mctc.batch import pack
 from tad_mctc.convert import tensor_to_numpy
-from tad_mctc.typing import DD, Tensor
 
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD, Tensor
 from dxtb.xtb import Calculator
 
 from .samples import samples

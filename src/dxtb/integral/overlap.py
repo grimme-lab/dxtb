@@ -25,7 +25,8 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Any
+from dxtb.typing import Any
+
 from ..constants import labels
 from .base import BaseIntegral
 from .driver.libcint import OverlapLibcint

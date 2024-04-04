@@ -24,9 +24,9 @@ import pytest
 import tomli as toml
 import torch
 from tad_mctc.convert import symbol_to_number
-from tad_mctc.typing import DD
 
 from dxtb.param.meta import Meta
+from dxtb.typing import DD
 
 device = None
 

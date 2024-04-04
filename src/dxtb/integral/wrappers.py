@@ -60,8 +60,8 @@ from __future__ import annotations
 from dxtb.basis import IndexHelper
 from dxtb.constants import labels
 from dxtb.param import Param
+from dxtb.typing import DD, Any, Literal, Tensor
 
-from .._types import DD, Any, Literal, Tensor
 from ..xtb.h0_gfn1 import GFN1Hamiltonian
 from ..xtb.h0_gfn2 import GFN2Hamiltonian
 from .dipole import Dipole

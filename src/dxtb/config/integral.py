@@ -20,7 +20,8 @@ Integral configuration.
 
 from __future__ import annotations
 
-from .._types import Literal
+from dxtb.typing import Literal
+
 from ..constants import defaults, labels
 
 __all__ = ["ConfigIntegrals"]

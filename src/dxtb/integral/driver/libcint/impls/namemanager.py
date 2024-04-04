@@ -28,7 +28,8 @@ import copy
 import re
 from collections import defaultdict
 
-from ....._types import Sequence
+from dxtb.typing import Sequence
+
 from .symmetry import BaseSymmetry, S1Symmetry
 
 

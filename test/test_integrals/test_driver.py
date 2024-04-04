@@ -24,10 +24,10 @@ import pytest
 import torch
 
 from dxtb import integral as ints
-from dxtb._types import DD
 from dxtb.basis import IndexHelper
 from dxtb.constants.labels import INTDRIVER_ANALYTICAL, INTDRIVER_LIBCINT
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD
 
 device = None
 

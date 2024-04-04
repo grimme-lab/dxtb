@@ -24,8 +24,8 @@ elements of the matrix product of the density and the overlap matrix.
 
 from __future__ import annotations
 
-from .._types import Tensor
-from ..basis import IndexHelper
+from dxtb.basis import IndexHelper
+from dxtb.typing import Tensor
 
 
 def get_bond_order(overlap: Tensor, density: Tensor, ihelp: IndexHelper) -> Tensor:

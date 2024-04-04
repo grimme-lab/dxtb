@@ -26,10 +26,10 @@ import numpy as np
 import pytest
 import torch
 
-from dxtb._types import DD, Tensor
 from dxtb.basis import Basis, IndexHelper
 from dxtb.integral.driver.libcint import impls as intor
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD, Tensor
 from dxtb.utils import is_basis_list
 
 from ..utils import load_from_npz

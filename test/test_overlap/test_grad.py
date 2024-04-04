@@ -27,13 +27,13 @@ import torch
 from tad_mctc.autograd import jacrev
 from tad_mctc.convert import tensor_to_numpy
 
-from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper, slater_to_gauss
 from dxtb.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb.integral.driver.pytorch import OverlapPytorch as Overlap
 from dxtb.integral.driver.pytorch.impls import md
 from dxtb.integral.driver.pytorch.impls.md import recursion
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD, Tensor
 from dxtb.utils import t2int
 
 from .samples import samples

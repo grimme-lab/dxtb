@@ -23,7 +23,7 @@ from __future__ import annotations
 import time
 from functools import wraps
 
-from dxtb._types import Any, Callable, TypeVar, cast
+from dxtb.typing import Any, Callable, TypeVar, cast
 
 from .timer import timer
 

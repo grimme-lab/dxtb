@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import importlib
 
-from tad_mctc.typing import Any, Callable, Sequence
+from dxtb.typing import Any, Callable, Sequence
 
 
 def attach_module(package_name: str, submodules: Sequence[str]) -> tuple[

@@ -21,10 +21,10 @@ Container for classical contributions.
 from __future__ import annotations
 
 import torch
-from tad_mctc.typing import Any, Literal, Tensor, overload, override
 
 from dxtb.basis import IndexHelper
 from dxtb.timing import timer
+from dxtb.typing import Any, Literal, Tensor, overload, override
 
 from ..list import ComponentList, _docstring_reset, _docstring_update
 from .base import Classical

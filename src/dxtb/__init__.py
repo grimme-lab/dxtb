@@ -33,40 +33,58 @@ import torch
 timer.stop("PyTorch")
 timer.start("dxtb", parent_uid="Import")
 
+
+from dxtb.typing import exceptions
+from dxtb import io
+
 from dxtb.exlibs import scipy as scipy
 
-
-from . import _types
-from . import io
-
-# import interaction before Coulomb to avoid circular import
-from dxtb.components.interactions import Interaction, InteractionList
-from dxtb.components.interactions.coulomb import (
-    secondorder,
-    thirdorder,
-    ES2,
-    ES3,
-    new_es2,
-    new_es3,
+# import interaction bases before any implementation to avoid circular import
+from dxtb.components.interactions import (
+    Interaction as Interaction,
+    InteractionList as InteractionList,
 )
 
-from dxtb.components import interactions as interactions
 from dxtb.components import classicals as classicals
+from dxtb.components import interactions as interactions
 
-from dxtb.components.interactions import solvation as solvation
 from dxtb.components.interactions import coulomb as coulomb
 from dxtb.components.interactions import external as external
+from dxtb.components.interactions import solvation as solvation
 
 from dxtb.components.classicals import dispersion as dispersion
-from dxtb.components.classicals import repulsion as repulsion
 from dxtb.components.classicals import halogen as halogen
+from dxtb.components.classicals import repulsion as repulsion
+
+# import all classical components and their factories
+from dxtb.components.classicals import (
+    DispersionD3 as DispersionD3,
+    DispersionD4 as DispersionD4,
+    Halogen as Halogen,
+    Repulsion as Repulsion,
+    new_dispersion as new_dispersion,
+    new_halogen as new_halogen,
+    new_repulsion as new_repulsion,
+)
+
+# import all interaction components and their factories
+from dxtb.components.interactions import (
+    ElectricField as ElectricField,
+    ElectricFieldGrad as ElectricFieldGrad,
+    ES2 as ES2,
+    ES3 as ES3,
+    GeneralizedBorn as GeneralizedBorn,
+    new_efield as new_efield,
+    new_efield_grad as new_efield_grad,
+    new_es2 as new_es2,
+    new_es3 as new_es3,
+    new_solvation as new_solvation,
+)
 
 # from . import integral as ints
 from .__version__ import __version__
 
 from dxtb.basis import Basis, IndexHelper
-from .components.classicals import Halogen, Repulsion, new_halogen, new_repulsion
-from .components.classicals import DispersionD3, new_dispersion
 from .mol import molecule
 from .param import GFN1_XTB, Param
 from .xtb import Calculator
@@ -74,3 +92,37 @@ from dxtb.utils import batch
 
 timer.stop("dxtb")
 timer.stop("Import")
+
+__all__ = [
+    "Basis",
+    "Calculator",
+    "DispersionD3",
+    "ES2",
+    "ES3",
+    "exceptions",
+    "GFN1_XTB",
+    "Halogen",
+    "IndexHelper",
+    "Interaction",
+    "InteractionList",
+    "Param",
+    "Repulsion",
+    "batch",
+    "classicals",
+    "coulomb",
+    "dispersion",
+    "external",
+    "interactions",
+    "io",
+    "molecule",
+    "new_dispersion",
+    "new_es2",
+    "new_es3",
+    "new_halogen",
+    "new_repulsion",
+    "solvation",
+    "scipy",
+    "torch",
+    "timer",
+    "__version__",
+]

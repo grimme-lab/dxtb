@@ -56,12 +56,20 @@ import torch
 from tad_mctc import storch
 from tad_mctc.batch import real_pairs
 from tad_mctc.data import VDW_D3
-from tad_mctc.typing import Any, Tensor, TensorLike
+
+from dxtb.param import Param
+from dxtb.typing import DD, Any, Tensor, TensorLike, get_default_dtype
+from dxtb.typing.exceptions import DeviceError
 
 from .. import Interaction
 from .born import get_born_radii
 
 alpha = 0.571412
+
+DEFAULT_KERNEL = "p16"
+DEFAULT_ALPB = True
+
+__all__ = ["GeneralizedBorn", "new_solvation"]
 
 
 @torch.jit.script
@@ -179,8 +187,8 @@ class GeneralizedBorn(Interaction):
         self,
         numbers: Tensor,
         dielectric_constant: Tensor,
-        alpb: bool = True,
-        kernel: str = "p16",
+        alpb: bool = DEFAULT_ALPB,
+        kernel: str = DEFAULT_KERNEL,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
         **kwargs: Any,
@@ -276,3 +284,50 @@ class GeneralizedBorn(Interaction):
         cache: Cache,
     ) -> Tensor:
         raise NotImplementedError("Solvation gradient not implemented")
+
+
+def new_solvation(
+    numbers: Tensor,
+    par: Param,
+    device: torch.device | None = None,
+    dtype: torch.dtype | None = None,
+) -> GeneralizedBorn | None:
+    """
+    Create new instance of the generalized Born solvation model.
+
+    Parameters
+    ----------
+    numbers : Tensor
+        Atomic numbers for all atoms in the system.
+    par : Param
+        Representation of an extended tight-binding model.
+
+    Returns
+    -------
+    GeneralizedBorn | None
+        Instance of the `GeneralizedBorn` class or `None` if no solvation model
+        is used.
+    """
+    if hasattr(par, "solvation") is False or par.solvation is None:
+        return None
+
+    if device is not None:
+        if device != numbers.device:
+            raise DeviceError(
+                f"Passed device ({device}) and device of electric field "
+                f"({numbers.device}) do not match."
+            )
+
+    dd: DD = {
+        "device": device,
+        "dtype": dtype if dtype is not None else get_default_dtype(),
+    }
+
+    s = par.solvation  # type: ignore
+    epsilon = torch.tensor(s.epsilon.gexp, **dd)
+    alpb = s.alpb if hasattr(s, "alpb") else DEFAULT_ALPB
+    kernel = s.kernel if hasattr(s, "kernel") else DEFAULT_KERNEL
+
+    return GeneralizedBorn(
+        numbers, dielectric_constant=epsilon, alpb=alpb, kernel=kernel, **dd
+    )

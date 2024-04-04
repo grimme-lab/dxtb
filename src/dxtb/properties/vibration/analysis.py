@@ -30,7 +30,8 @@ from tad_mctc.data.mass import ATOMIC as ATOMIC_MASSES
 from tad_mctc.math import einsum
 from tad_mctc.molecule.geometry import is_linear
 from tad_mctc.molecule.property import inertia_moment, positions_rel_com
-from tad_mctc.typing import Any, Literal, NoReturn, Tensor
+
+from dxtb.typing import Any, Literal, NoReturn, Tensor
 
 from ...utils.math import qr
 from .result import BaseResult

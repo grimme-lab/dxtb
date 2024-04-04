@@ -27,12 +27,12 @@ import numpy as np
 import pytest
 import torch
 
-from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb.integral.driver.pytorch import OverlapPytorch as Overlap
 from dxtb.ncoord import cn_d3
 from dxtb.param import GFN1_XTB, Param
+from dxtb.typing import DD, Tensor
 from dxtb.utils import batch
 from dxtb.xtb import GFN1Hamiltonian as Hamiltonian
 

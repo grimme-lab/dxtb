@@ -20,7 +20,8 @@ The GFN2-xTB Hamiltonian.
 
 from __future__ import annotations
 
-from .._types import Tensor
+from dxtb.typing import Tensor
+
 from ..components.interactions import Potential
 from .base import BaseHamiltonian
 

@@ -27,10 +27,10 @@ import numpy as np
 import pytest
 import torch
 
-from dxtb._types import DD
 from dxtb.constants.labels import INTDRIVER_ANALYTICAL
 from dxtb.integral.wrappers import overlap
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD
 from dxtb.utils import batch
 
 from ..utils import load_from_npz

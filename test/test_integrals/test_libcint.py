@@ -24,9 +24,9 @@ import pytest
 import torch
 
 from dxtb import integral as ints
-from dxtb._types import DD
 from dxtb.basis import IndexHelper
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD
 from dxtb.utils import batch
 
 from .samples import samples

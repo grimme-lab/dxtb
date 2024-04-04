@@ -25,9 +25,9 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb._types import DD, Tensor
 from dxtb.components.classicals.dispersion import new_dispersion
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD, Tensor
 from dxtb.utils import batch, hessian
 
 from ..utils import reshape_fortran

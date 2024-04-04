@@ -23,10 +23,10 @@ from __future__ import annotations
 import warnings
 
 import torch
-from tad_mctc.typing import DD, Tensor, get_default_dtype
 
-from dxtb.exceptions import ParameterWarning
 from dxtb.param import Param
+from dxtb.typing import DD, Tensor, get_default_dtype
+from dxtb.typing.exceptions import ParameterWarning
 from dxtb.utils import convert_float_tensor
 
 from .base import Dispersion

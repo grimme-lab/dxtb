@@ -15,12 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Exceptions: Integral
+====================
+
 Exceptions for the integral calculation.
 """
 
 from __future__ import annotations
 
-from .._types import Tensor
+from ..pytorch import Tensor
 
 __all__ = [
     "CGTOAzimuthalQuantumNumberError",

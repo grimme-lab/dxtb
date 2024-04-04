@@ -42,7 +42,8 @@ from __future__ import annotations
 import torch
 from tad_mctc import storch
 from tad_mctc.exceptions import DeviceError, DtypeError
-from tad_mctc.typing import Any, NoReturn, Tensor, TensorLike
+
+from dxtb.typing import Any, NoReturn, Tensor, TensorLike
 
 from ..utils import memoize
 

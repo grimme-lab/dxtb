@@ -15,19 +15,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Exceptions for the SCF procedure.
+Typing: PyTorch
+===============
+
+This module contains PyTorch-related type annotations.
+
+Most importantly, the `TensorLike` base class is defined, which brings
+tensor-like behavior (`.to` and `.type` methods) to classes.
 """
+from tad_mctc.typing.pytorch import (
+    DD,
+    MockTensor,
+    Molecule,
+    Tensor,
+    TensorLike,
+    get_default_device,
+    get_default_dtype,
+)
 
-__all__ = ["SCFConvergenceError", "SCFConvergenceWarning"]
-
-
-class SCFConvergenceError(RuntimeError):
-    def __init__(self, msg) -> None:
-        self.message = msg
-        super().__init__(self.message)
-
-
-class SCFConvergenceWarning(RuntimeWarning):
-    """
-    Warning for failed SCF convergence.
-    """
+__all__ = [
+    "DD",
+    "MockTensor",
+    "Molecule",
+    "Tensor",
+    "TensorLike",
+    "get_default_device",
+    "get_default_dtype",
+]

@@ -44,7 +44,7 @@ plugins = ["covdefaults"]
 source = ["./src"]
 omit = [
   "./src/dxtb/exlibs/*",
-  "./src/dxtb/_types.py"
+  "./src/dxtb/typing.py"
 ]
 
 [tool.coverage.report]

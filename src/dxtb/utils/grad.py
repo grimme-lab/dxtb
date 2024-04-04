@@ -30,8 +30,9 @@ from __future__ import annotations
 
 import torch
 
+from dxtb.typing import Any, Callable, Tensor
+
 from ..__version__ import __tversion__
-from .._types import Any, Callable, Tensor
 
 if __tversion__ < (2, 0, 0):  # type: ignore # pragma: no cover
     try:

@@ -24,11 +24,10 @@ Interaction of the charge density with an external electric field.
 from __future__ import annotations
 
 import torch
-from tad_mctc.exceptions import DeviceError, DtypeError
 from tad_mctc.math import einsum
-from tad_mctc.typing import Any, Tensor, TensorLike, override
 
-from dxtb._types import Slicers
+from dxtb.typing import Any, Slicers, Tensor, TensorLike, override
+from dxtb.typing.exceptions import DeviceError, DtypeError
 
 from ..base import Interaction
 from ..container import Charges

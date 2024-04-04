@@ -24,7 +24,7 @@ import torch
 from tad_mctc.batch import deflate, pack
 from tad_mctc.math import einsum
 
-from dxtb._types import Tensor
+from dxtb.typing import Tensor
 
 from ...base import BaseIntegralImplementation
 from .base import LibcintImplementation

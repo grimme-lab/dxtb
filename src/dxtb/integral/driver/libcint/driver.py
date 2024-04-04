@@ -21,8 +21,8 @@ Integral driver for `libcint`.
 from __future__ import annotations
 
 from dxtb.timing import timer
+from dxtb.typing import Tensor
 
-from ...._types import Tensor
 from ....basis import Basis, IndexHelper
 from ....constants import labels
 from ....utils import is_basis_list
@@ -54,11 +54,10 @@ class IntDriverLibcint(IntDriver):
         if self._basis is None:
             self.basis = Basis(self.numbers, self.par, self.ihelp, **self.dd)
 
-        timer.start("OverlapDQC", parent_uid="Setup Overlap")
-        # create atomic basis set in libcint format
+        timer.start("Basis", parent_uid="Setup Overlap")
         mask = kwargs.pop("mask", None)
         atombases = self.basis.create_dqc(positions, mask=mask)
-        timer.stop("OverlapDQC")
+        timer.stop("Basis")
 
         if self.ihelp.batch_mode > 0:
 

@@ -25,8 +25,8 @@ import torch
 from tad_mctc.convert import str_to_device
 from tad_mctc.exceptions import DeviceError
 
-from dxtb._types import DD
 from dxtb.mol import Mol
+from dxtb.typing import DD
 
 from .samples import samples
 

@@ -18,7 +18,8 @@ from __future__ import annotations
 
 from tad_mctc.math import einsum
 
-from .._types import Tensor
+from dxtb.typing import Tensor
+
 from ..timing.decorator import timer_decorator
 
 __all__ = ["get_density"]

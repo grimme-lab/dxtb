@@ -24,9 +24,9 @@ Factory functions for integral drivers.
 from __future__ import annotations
 
 import torch
-from tad_mctc.typing import Any, Tensor
 
 from dxtb.basis import IndexHelper
+from dxtb.typing import Any, Tensor
 
 from ..constants import labels
 from ..param import Param

@@ -22,8 +22,9 @@ from __future__ import annotations
 
 import torch
 
-from .._types import Tensor
-from ..basis import IndexHelper
+from dxtb.basis import IndexHelper
+from dxtb.typing import Tensor
+
 from ..param import Param
 from ..xtb.h0_gfn1 import GFN1Hamiltonian
 from ..xtb.h0_gfn2 import GFN2Hamiltonian

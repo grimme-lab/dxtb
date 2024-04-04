@@ -24,9 +24,9 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb._types import Callable, Tensor
 from dxtb.integral.driver.pytorch.impls import md
 from dxtb.integral.driver.pytorch.impls.md import recursion
+from dxtb.typing import Callable, Tensor
 
 tol = 1e-7
 

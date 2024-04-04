@@ -24,12 +24,12 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.components.interactions import InteractionList
 from dxtb.components.interactions.coulomb import new_es2, new_es3
 from dxtb.param import GFN1_XTB as par
 from dxtb.scf import get_guess
+from dxtb.typing import DD, Callable, Tensor
 from dxtb.utils import batch
 
 from .samples import samples

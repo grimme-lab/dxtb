@@ -16,7 +16,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from ..._types import Any, PathLike
+from dxtb.typing import Any, PathLike
 
 
 class LazyLoaderParam:

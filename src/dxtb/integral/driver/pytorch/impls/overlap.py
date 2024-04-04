@@ -23,7 +23,8 @@ from __future__ import annotations
 import torch
 from tad_mctc import storch
 
-from ....._types import Any, Literal, Tensor
+from dxtb.typing import Any, Literal, Tensor
+
 from .....basis import Basis, IndexHelper
 from .....constants import defaults
 from .....utils import batch, t2int

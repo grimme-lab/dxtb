@@ -21,7 +21,8 @@ Simple Mixing
 
 from __future__ import annotations
 
-from ..._types import Any, Slicer, Tensor
+from dxtb.typing import Any, Slicer, Tensor
+
 from .base import Mixer
 
 default_opts = {"maxiter": 100, "damp": 0.3}

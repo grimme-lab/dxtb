@@ -25,12 +25,12 @@ from tad_mctc import storch
 from tad_mctc.batch import real_pairs
 from tad_mctc.convert import symmetrize
 from tad_mctc.data.radii import ATOMIC as ATOMIC_RADII
-from tad_mctc.typing import Tensor
 from tad_mctc.units import EV2AU
 
 from dxtb.basis import IndexHelper
 from dxtb.components.interactions import Potential
 from dxtb.param import Param
+from dxtb.typing import Tensor
 
 from .base import BaseHamiltonian
 

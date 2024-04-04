@@ -28,7 +28,7 @@ from __future__ import annotations
 import torch
 from tad_mctc.math import einsum
 
-from dxtb._types import Any, Slicer, Tensor
+from dxtb.typing import Any, Slicer, Tensor
 from dxtb.utils import t2int
 
 from .base import Mixer

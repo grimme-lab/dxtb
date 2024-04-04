@@ -24,8 +24,9 @@ Base class for vibrational analysis results.
 from __future__ import annotations
 
 import torch
-from tad_mctc.typing import Generator, NoReturn, PathLike, Tensor, TensorLike
 from tad_mctc.units import AU2RCM
+
+from dxtb.typing import Generator, NoReturn, PathLike, Tensor, TensorLike
 
 
 class BaseResult(TensorLike):

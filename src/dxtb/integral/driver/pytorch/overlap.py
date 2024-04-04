@@ -22,7 +22,8 @@ from __future__ import annotations
 
 import torch
 
-from ...._types import Literal, Tensor
+from dxtb.typing import Literal, Tensor
+
 from ....constants import defaults
 from ....utils import batch, symmetrize
 from .base import IntegralImplementationPytorch

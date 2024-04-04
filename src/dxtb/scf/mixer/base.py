@@ -27,7 +27,7 @@ from abc import ABC, abstractmethod
 
 import torch
 
-from ..._types import Any, Slicer, Tensor
+from dxtb.typing import Any, Slicer, Tensor
 
 default_opts = {"maxiter": 20, "damp": 0.3, "f_tol": 1e-5, "x_tol": 1e-5}
 

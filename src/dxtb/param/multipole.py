@@ -24,7 +24,7 @@ from typing import Union
 
 from pydantic import BaseModel, ConfigDict
 
-from .._types import Tensor
+from dxtb.typing import Tensor
 
 
 class MultipoleDamped(BaseModel):

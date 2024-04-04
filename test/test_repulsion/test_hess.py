@@ -25,10 +25,10 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
 from dxtb.components.classicals import new_repulsion
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD, Tensor
 from dxtb.utils import batch, hessian, jac
 
 from ..utils import reshape_fortran

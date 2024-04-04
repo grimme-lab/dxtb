@@ -29,12 +29,14 @@ import functools
 
 import numpy as np
 
-from ....._types import Any, Callable, T
+from dxtb.typing import Any, Callable, TypeVar
 
 __all__ = ["NDIM", "np2ctypes", "int2ctypes"]
 
 NDIM = 3
 """Number of cartesian dimensions."""
+
+T = TypeVar("T")
 
 
 def np2ctypes(a: np.ndarray) -> ctypes.c_void_p:
