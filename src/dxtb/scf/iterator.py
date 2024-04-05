@@ -539,7 +539,8 @@ def solve(
     elif config.scf_mode == labels.SCF_MODE_EXPERIMENTAL:
         scf = SelfConsistentFieldSingleShot
     else:
-        raise ValueError(f"Unknown SCF mode '{config.scf_mode}'.")
+        name = labels.SCF_MODE_MAP[config.scf_mode]
+        raise ValueError(f"Unknown SCF mode '{name}' (input name can vary).")
 
     n0, occupation = get_refocc(refocc, chrg, spin, ihelp)
     charges = get_guess(numbers, positions, chrg, ihelp, config.guess)

@@ -23,6 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 
+from dxtb.constants import labels
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD, Tensor
 from dxtb.utils import _hessian as hessian
@@ -35,11 +36,13 @@ sample_list = ["LiH", "SiH4"]
 
 opts = {
     "exclude": ["disp", "hal", "rep"],
+    "int_driver": "dxtb",
     "maxiter": 50,
+    "scf_mode": labels.SCF_MODE_IMPLICIT,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
     "f_atol": 1.0e-8,
     "x_atol": 1.0e-8,
     "verbosity": 0,
-    "int_driver": "dxtb",
 }
 
 device = None

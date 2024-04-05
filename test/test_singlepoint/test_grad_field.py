@@ -27,6 +27,7 @@ from tad_mctc.batch import pack
 from tad_mctc.units import VAA2AU
 
 from dxtb.components.interactions import new_efield
+from dxtb.constants import labels
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD, Callable, Tensor
 from dxtb.xtb import Calculator
@@ -34,12 +35,13 @@ from dxtb.xtb import Calculator
 from .samples import samples
 
 opts = {
-    "maxiter": 100,
     "f_atol": 1.0e-8,
     "x_atol": 1.0e-8,
+    "maxiter": 100,
+    "mixer": labels.MIXER_ANDERSON,
+    "scf_mode": labels.SCF_MODE_FULL,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
     "verbosity": 0,
-    "scf_mode": "full",
-    "mixer": "anderson",
 }
 
 tol = 1e-4

@@ -27,6 +27,7 @@ import numpy as np
 import pytest
 import torch
 
+from dxtb.constants import labels
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD
 from dxtb.xtb.calculator import Calculator
@@ -34,7 +35,11 @@ from dxtb.xtb.calculator import Calculator
 from ..utils import load_from_npz
 from .samples_charged import samples
 
-opts = {"verbosity": 0}
+opts = {
+    "verbosity": 0,
+    "scf_mode": labels.SCF_MODE_IMPLICIT,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
+}
 
 ref_grad = np.load("test/test_scf/grad.npz")
 

@@ -27,13 +27,20 @@ import torch
 from tad_mctc.data import VDW_D3
 
 from dxtb.components.interactions.solvation import alpb
+from dxtb.constants import labels
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD
 from dxtb.xtb import Calculator
 
 from .samples import samples
 
-opts = {"verbosity": 0, "f_atol": 1e-10, "x_atol": 1e-10}
+opts = {
+    "f_atol": 1e-10,
+    "x_atol": 1e-10,
+    "scf_mode": labels.SCF_MODE_IMPLICIT,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
+    "verbosity": 0,
+}
 
 device = None
 

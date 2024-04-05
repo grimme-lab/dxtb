@@ -29,7 +29,7 @@ from tad_mctc.math import einsum
 from tad_mctc.units import KELVIN2AU
 
 from dxtb.basis import IndexHelper
-from dxtb.typing import DD, Any, Slicers, Tensor, TypedDict
+from dxtb.typing import DD, Any, Slicers, Tensor
 
 from ..components.interactions import InteractionList
 from ..components.interactions.container import Charges, ContainerData, Potential
@@ -40,43 +40,10 @@ from ..integral.container import IntegralMatrices
 from ..io import OutputHandler
 from ..timing.decorator import timer_decorator
 from ..wavefunction import filling, mulliken
+from .result import SCFResult
 from .utils import get_density
 
-__all__ = ["BaseSCF", "SCFResult"]
-
-
-class SCFResult(TypedDict):
-    """Collection of SCF result variables."""
-
-    charges: Charges
-    """Self-consistent orbital-resolved Mulliken partial charges."""
-
-    coefficients: Tensor
-    """LCAO-MO coefficients (eigenvectors of Fockian)."""
-
-    density: Tensor
-    """Density matrix."""
-
-    emo: Tensor
-    """Energy of molecular orbitals (sorted by increasing energy)."""
-
-    energy: Tensor
-    """Energies of the self-consistent contributions (interactions)."""
-
-    fenergy: Tensor
-    """Atom-resolved electronic free energy from fractional occupation."""
-
-    hamiltonian: Tensor
-    """Full Hamiltonian matrix (H0 + H1)."""
-
-    occupation: Tensor
-    """Orbital occupations."""
-
-    potential: Potential
-    """Self-consistent orbital-resolved potential."""
-
-    iterations: int
-    """Number of SCF iterations."""
+__all__ = ["BaseSCF"]
 
 
 class BaseSCF:
@@ -700,7 +667,7 @@ class BaseSCF:
 
         return self._data.hamiltonian
 
-    @timer_decorator("Potential", "SCF")
+    # @timer_decorator("Potential", "SCF")
     def charges_to_potential(self, charges: Charges) -> Potential:
         """
         Compute the potential from the orbital charges.
@@ -763,7 +730,7 @@ class BaseSCF:
         self._data.hamiltonian = self.potential_to_hamiltonian(potential)
         return self.hamiltonian_to_density(self._data.hamiltonian)
 
-    @timer_decorator("Charges", "SCF")
+    # @timer_decorator("Charges", "SCF")
     def density_to_charges(self, density: Tensor) -> Charges:
         """
         Compute the orbital charges from the density matrix.
@@ -814,7 +781,7 @@ class BaseSCF:
 
         return charges
 
-    @timer_decorator("Fock build", "SCF")
+    # @timer_decorator("Fock build", "SCF")
     def potential_to_hamiltonian(self, potential: Potential) -> Tensor:
         """
         Compute the Hamiltonian from the potential.

@@ -36,7 +36,12 @@ from .samples import samples
 
 device = None
 
-opts = {"verbosity": 0, "maxiter": 300, "scf_mode": "full_tracking"}
+opts = {
+    "verbosity": 0,
+    "maxiter": 300,
+    "scf_mode": labels.SCF_MODE_FULL,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
+}
 
 drivers = [
     labels.INTDRIVER_LIBCINT,

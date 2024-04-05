@@ -26,6 +26,7 @@ from math import sqrt
 import pytest
 import torch
 
+from dxtb.constants import labels
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD
 from dxtb.utils import batch
@@ -33,7 +34,12 @@ from dxtb.xtb import Calculator
 
 from .samples import samples
 
-opts = {"verbosity": 0, "maxiter": 300, "scf_mode": "full_tracking"}
+opts = {
+    "verbosity": 0,
+    "maxiter": 300,
+    "scf_mode": labels.SCF_MODE_FULL,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
+}
 
 device = None
 

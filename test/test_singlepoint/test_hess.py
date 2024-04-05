@@ -25,7 +25,9 @@ from pathlib import Path
 
 import pytest
 import torch
+from tad_mctc.convert import reshape_fortran
 
+from dxtb.constants import labels
 from dxtb.io import read_chrg, read_coord
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD, Tensor
@@ -35,13 +37,14 @@ from dxtb.xtb import Calculator
 from ..test_dispersion.samples import samples as samples_disp
 from ..test_halogen.samples import samples as samples_hal
 from ..test_repulsion.samples import samples as samples_rep
-from ..utils import reshape_fortran
 
 opts = {
-    "verbosity": 0,
-    "maxiter": 50,
     "f_atol": 1.0e-10,
     "x_atol": 1.0e-10,
+    "maxiter": 50,
+    "scf_mode": labels.SCF_MODE_IMPLICIT,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
+    "verbosity": 0,
 }
 
 sample_list = ["LiH", "SiH4", "MB16_43_01"]

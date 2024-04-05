@@ -27,6 +27,7 @@ import numpy as np
 import pytest
 import torch
 
+from dxtb.constants import labels
 from dxtb.io import read_chrg, read_coord
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD, Tensor
@@ -38,10 +39,12 @@ ref_grad = np.load("test/test_singlepoint/grad.npz")
 """['H2', 'H2O', 'CH4', 'SiH4', 'LYS_xao', 'AD7en+', 'C60', 'vancoh2']"""
 
 opts = {
-    "verbosity": 0,
-    "maxiter": 50,
     "f_atol": 1.0e-10,
     "x_atol": 1.0e-10,
+    "maxiter": 50,
+    "scf_mode": labels.SCF_MODE_IMPLICIT,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
+    "verbosity": 0,
 }
 
 device = None

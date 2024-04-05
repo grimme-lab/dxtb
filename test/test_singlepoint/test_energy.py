@@ -26,6 +26,7 @@ from pathlib import Path
 import pytest
 import torch
 
+from dxtb.constants import labels
 from dxtb.io import read_chrg, read_coord
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD
@@ -34,7 +35,11 @@ from dxtb.xtb import Calculator
 
 from .samples import samples
 
-opts = {"verbosity": 0}
+opts = {
+    "verbosity": 0,
+    "scf_mode": labels.SCF_MODE_IMPLICIT,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
+}
 
 device = None
 

@@ -33,12 +33,14 @@ from __future__ import annotations
 import pytest
 import torch
 
+from dxtb.constants import labels
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
 
 from .samples import samples
+from .uhf_table import uhf, uhf_anion, uhf_cation
 
 device = None
 
@@ -133,20 +135,6 @@ ref = torch.tensor(
     ]
 )
 
-# fmt: off
-uhf = torch.tensor(
-    [
-        1,                                                 0,
-        1, 0,                               1, 0, 1, 0, 1, 0,
-        1, 0,                               1, 0, 1, 0, 1, 0,
-        1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
-        1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
-        1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-        1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0
-    ]
-)
-# fmt: on
-
 
 ref_cation = torch.tensor(
     [
@@ -239,19 +227,6 @@ ref_cation = torch.tensor(
     ]
 )
 
-# fmt: off
-uhf_cation = torch.tensor(
-    [
-        0,                                                 1,
-        0, 1,                               0, 1, 0, 1, 0, 1,
-        0, 1,                               0, 1, 0, 1, 0, 1,
-        0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
-        0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
-        0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-        0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1
-    ]
-)
-# fmt: on
 
 ref_anion = torch.tensor(
     [
@@ -344,19 +319,6 @@ ref_anion = torch.tensor(
     ]
 )
 
-# fmt: off
-uhf_anion = torch.tensor(
-    [
-        0,                                                 1,
-        0, 1,                               0, 1, 0, 1, 0, 1,
-        0, 1,                               0, 1, 0, 1, 0, 1,
-        0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
-        0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
-        0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-        0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1
-    ]
-)
-# fmt: on
 
 opts = {
     "fermi_etemp": 300,
@@ -365,7 +327,8 @@ opts = {
         torch.float32: torch.tensor(1e-4, dtype=torch.float32),  # instead of 1e-5
         torch.float64: torch.tensor(1e-10, dtype=torch.float64),
     },
-    "scp_mode": "potential",  # important for atoms (better convergence)
+    "scf_mode": labels.SCF_MODE_IMPLICIT,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,  # important for atoms (better convergence)
     "verbosity": 0,
 }
 

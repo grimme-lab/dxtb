@@ -91,6 +91,8 @@ class ConfigSCF:
         if isinstance(scf_mode, str):
             if scf_mode.casefold() in labels.SCF_MODE_IMPLICIT_STRS:
                 self.scf_mode = labels.SCF_MODE_IMPLICIT
+            elif scf_mode.casefold() in labels.SCF_MODE_IMPLICIT_NON_PURE_STRS:
+                self.scf_mode = labels.SCF_MODE_IMPLICIT_NON_PURE
             elif scf_mode.casefold() in labels.SCF_MODE_FULL_STRS:
                 self.scf_mode = labels.SCF_MODE_FULL
             elif scf_mode.casefold() == labels.SCF_MODE_EXPERIMENTAL_STRS:
@@ -98,7 +100,12 @@ class ConfigSCF:
             else:
                 raise ValueError(f"Unknown SCF mode '{scf_mode}'.")
         elif isinstance(scf_mode, int):
-            if scf_mode not in (labels.GUESS_EEQ, labels.GUESS_SAD):
+            if scf_mode not in (
+                labels.SCF_MODE_IMPLICIT,
+                labels.SCF_MODE_IMPLICIT_NON_PURE,
+                labels.SCF_MODE_FULL,
+                labels.SCF_MODE_EXPERIMENTAL,
+            ):
                 raise ValueError(f"Unknown SCF mode '{scf_mode}'.")
 
             self.scf_mode = scf_mode
@@ -118,7 +125,11 @@ class ConfigSCF:
             else:
                 raise ValueError(f"Unknown convergence target (SCP mode) '{scp_mode}'.")
         elif isinstance(scp_mode, int):
-            if scp_mode not in (labels.GUESS_EEQ, labels.GUESS_SAD):
+            if scp_mode not in (
+                labels.SCP_MODE_CHARGE,
+                labels.SCP_MODE_POTENTIAL,
+                labels.SCP_MODE_FOCK,
+            ):
                 raise ValueError(f"Unknown convergence target (SCP mode) '{scp_mode}'.")
 
             self.scp_mode = scp_mode

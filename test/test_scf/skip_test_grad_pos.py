@@ -24,6 +24,7 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
+from dxtb.constants import labels
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD, Callable, Tensor
 from dxtb.xtb import Calculator
@@ -34,7 +35,13 @@ sample_list = ["H2", "LiH", "H2O", "CH4", "SiH4"]
 
 tol = 1e-5
 
-opts = {"verbosity": 0, "maxiter": 50, "exclude": ["rep", "disp", "hal"]}
+opts = {
+    "exclude": ["rep", "disp", "hal"],
+    "maxiter": 50,
+    "scf_mode": labels.SCF_MODE_IMPLICIT,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
+    "verbosity": 0,
+}
 
 device = None
 
