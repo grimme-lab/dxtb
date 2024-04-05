@@ -24,12 +24,13 @@ from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.autograd import jacrev
 
 from dxtb.basis import IndexHelper
 from dxtb.components.classicals import new_repulsion
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD, Tensor
-from dxtb.utils import batch, hessian, jac
+from dxtb.utils import batch, hessian
 
 from ..utils import reshape_fortran
 from .samples import samples
@@ -95,13 +96,13 @@ def skip_test_single_alt(dtype: torch.dtype, name: str) -> None:
     )
 
     # gradient
-    fjac = jac(rep.get_energy, argnums=0)
+    fjac = jacrev(rep.get_energy, argnums=0)
     jacobian: Tensor = fjac(positions, cache).sum(0)  # type: ignore
     assert pytest.approx(ref_jac, abs=tol, rel=tol) == jacobian.detach()
 
     # hessian
     def _hessian(f, argnums):
-        return jac(jac(f, argnums=argnums), argnums=argnums)
+        return jacrev(jacrev(f, argnums=argnums), argnums=argnums)
 
     fhess = _hessian(rep.get_energy, argnums=0)
     hess: Tensor = fhess(positions, cache).sum(0)  # type: ignore

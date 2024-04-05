@@ -121,14 +121,14 @@ def execute(
     )
     assert pytest.approx(num, abs=atol, rel=rtol) == pol
 
-    # 2x jacrev of energy
+    # jacrev of dipole
     pol2 = tensor_to_numpy(
         calc.polarizability(
             numbers,
             positions,
             charge,
             use_functorch=True,
-            derived_quantity="energy",
+            derived_quantity="dipole",
         )
     )
     assert pytest.approx(num, abs=atol, rel=rtol) == pol2
@@ -136,14 +136,14 @@ def execute(
     # applying jacrev twice requires detaching
     calc.interactions.reset_efield()
 
-    # jacrev of dipole
+    # 2x jacrev of energy
     pol3 = tensor_to_numpy(
         calc.polarizability(
             numbers,
             positions,
             charge,
             use_functorch=True,
-            derived_quantity="dipole",
+            derived_quantity="energy",
         )
     )
     assert pytest.approx(num, abs=atol, rel=rtol) == pol3

@@ -53,8 +53,6 @@ from ..param import Param
 from ..properties import moments
 from ..properties import vibration as vib
 from ..timing import timer
-from ..utils import _jac
-from ..wavefunction import filling
 from . import decorators as cdec
 
 __all__ = ["Calculator", "Result"]
@@ -776,21 +774,24 @@ class Calculator(TensorLike):
 
             # jacrev requires a scalar from `self.energy`!
             jac_func = jacrev(self.energy, argnums=1)
-            jac = jac_func(numbers, positions, chrg, spin)
-            assert isinstance(jac, Tensor)
+            deriv = jac_func(numbers, positions, chrg, spin)
+            assert isinstance(deriv, Tensor)
         else:
-            energy = self.energy(numbers, positions, chrg, spin)
-            jac = _jac(energy, positions).reshape(*positions.shape)
+            # pylint: disable=import-outside-toplevel
+            from tad_mctc.autograd import jac
 
-        if jac.is_contiguous() is False:
+            energy = self.energy(numbers, positions, chrg, spin)
+            deriv = jac(energy, positions).reshape(*positions.shape)
+
+        if deriv.is_contiguous() is False:
             logger.debug(
                 "Hessian: Re-enforcing contiguous memory layout after "
                 f"autodiff (use_functorch={use_functorch})."
             )
-            jac = jac.contiguous()
+            deriv = deriv.contiguous()
 
         logger.debug("Forces: All finished.")
-        return -jac
+        return -deriv
 
     @cdec.numerical
     @cdec.cache
@@ -1190,9 +1191,12 @@ class Calculator(TensorLike):
             dip = jacrev(wrapped_energy)(field)
             assert isinstance(dip, Tensor)
         else:
+            # pylint: disable=import-outside-toplevel
+            from tad_mctc.autograd import jac
+
             # calculate electric dipole contribution from xtb energy: -de/dE
             energy = self.energy(numbers, positions, chrg, spin)
-            dip = _jac(energy, field)
+            dip = jac(energy, field)
 
         if dip.is_contiguous() is False:
             logger.debug(
@@ -1394,10 +1398,13 @@ class Calculator(TensorLike):
             assert isinstance(dmu_dr, Tensor)
 
         else:
+            # pylint: disable=import-outside-toplevel
+            from tad_mctc.autograd import jac
+
             mu = dip_fcn(numbers, positions, chrg, spin, use_functorch)
 
             # (..., 3, 3*nat) -> (..., 3, nat, 3)
-            dmu_dr = _jac(mu, positions).reshape(
+            dmu_dr = jac(mu, positions).reshape(
                 (*numbers.shape[:-1], 3, *positions.shape[-2:])
             )
 
@@ -1506,8 +1513,11 @@ class Calculator(TensorLike):
             e_quad = jacrev(wrapped_energy)(field_grad)
             assert isinstance(e_quad, Tensor)
         else:
+            # pylint: disable=import-outside-toplevel
+            from tad_mctc.autograd import jac
+
             energy = self.energy(numbers, positions, chrg, spin)
-            e_quad = _jac(energy, field_grad)
+            e_quad = jac(energy, field_grad)
 
         e_quad = e_quad.view(3, 3)
         print("quad_moment\n", e_quad)
@@ -1689,8 +1699,11 @@ class Calculator(TensorLike):
             dip_fcn = self.dipole
 
         if use_functorch is False:
+            # pylint: disable=import-outside-toplevel
+            from tad_mctc.autograd import jac
+
             mu = dip_fcn(numbers, positions, chrg, spin)
-            return _jac(mu, field)
+            return jac(mu, field)
 
         # pylint: disable=import-outside-toplevel
         from tad_mctc.autograd import jacrev
@@ -1860,12 +1873,15 @@ class Calculator(TensorLike):
             Polarizability derivative shape `(..., 3, 3, nat, 3)`.
         """
         if use_functorch is False:
+            # pylint: disable=import-outside-toplevel
+            from tad_mctc.autograd import jac
+
             a = self.polarizability(
                 numbers, positions, chrg, spin, use_functorch=use_functorch
             )
 
             # d(3, 3) / d(nat, 3) -> (3, 3, nat*3) -> (3, 3, nat, 3)
-            chi = _jac(a, positions).reshape((3, 3, *positions.shape[-2:]))
+            chi = jac(a, positions).reshape((3, 3, *positions.shape[-2:]))
 
         else:
             # pylint: disable=import-outside-toplevel
@@ -2012,10 +2028,13 @@ class Calculator(TensorLike):
         field = self.interactions.get_interaction(efield.LABEL_EFIELD).field
 
         if use_functorch is False:
+            # pylint: disable=import-outside-toplevel
+            from tad_mctc.autograd import jac
+
             alpha = self.polarizability(
                 numbers, positions, chrg, spin, use_functorch=use_functorch
             )
-            return _jac(alpha, field)
+            return jac(alpha, field)
 
         # pylint: disable=import-outside-toplevel
         from tad_mctc.autograd import jacrev

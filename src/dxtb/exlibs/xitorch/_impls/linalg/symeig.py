@@ -14,22 +14,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import functools
 import warnings
-from typing import Optional, Sequence, Tuple, Union
 
 import torch
 
+from dxtb.__version__ import __tversion__
 from dxtb.exlibs.xitorch import LinearOperator
 from dxtb.exlibs.xitorch._utils.bcast import get_bcasted_dims
 from dxtb.exlibs.xitorch._utils.exceptions import MathWarning
 from dxtb.exlibs.xitorch._utils.tensor import tallqr, to_fortran_order
 from dxtb.exlibs.xitorch.debug.modes import is_debug_enabled
+from dxtb.typing import Any, Sequence, Tensor
 
 
 def exacteig(
-    A: LinearOperator, neig: int, mode: str, M: Optional[LinearOperator]
-) -> Tuple[torch.Tensor, torch.Tensor]:
+    A: LinearOperator, neig: int, mode: str, M: LinearOperator | None = None
+) -> tuple[Tensor, Tensor]:
     """
     Eigendecomposition using explicit matrix construction.
     No additional option for this method.
@@ -42,7 +45,7 @@ def exacteig(
     Amatrix = A.fullmatrix()  # (*BA, q, q)
     if M is None:
         # evals, evecs = torch.linalg.eigh(Amatrix, eigenvectors=True)  # (*BA, q), (*BA, q, q)
-        evals, evecs = degen_symeig.apply(Amatrix)  # (*BA, q, q)
+        evals, evecs = _degen_symeig(Amatrix)  # (*BA, q, q)
         return _take_eigpairs(evals, evecs, neig, mode)
     else:
         Mmatrix = M.fullmatrix()  # (*BM, q, q)
@@ -58,7 +61,7 @@ def exacteig(
         # calculate the eigenvalues and eigenvectors
         # (the eigvecs are normalized in M-space)
         # evals, evecs = torch.linalg.eigh(A2, eigenvectors=True)  # (*BAM, q, q)
-        evals, evecs = degen_symeig.apply(A2)  # (*BAM, q, q)
+        evals, evecs = _degen_symeig(A2)  # (*BAM, q, q)
         evals, evecs = _take_eigpairs(
             evals, evecs, neig, mode
         )  # (*BAM, neig) and (*BAM, q, neig)
@@ -67,18 +70,13 @@ def exacteig(
 
 
 # temporary solution to https://github.com/pytorch/pytorch/issues/47599
-class degen_symeig(torch.autograd.Function):
-    generate_vmap_rule = True
-
-    @staticmethod
-    def forward(A):
-        eival, eivec = torch.linalg.eigh(A)
-        return eival, eivec
-
-    @staticmethod
-    def setup_context(ctx, inputs: tuple, outputs: tuple[torch.Tensor, torch.Tensor]):
-        eival, eivec = outputs
-        ctx.save_for_backward(eival, eivec)
+# TODO: Replace with tad_mctc.storch.eighb?
+class DegenSymeigBase(torch.autograd.Function):
+    """
+    Base class for the version-specific autograd function for solving a
+    eigenvalue problem with degenerate eigenvalues.
+    Different PyTorch versions only require different `forward()` signatures.
+    """
 
     @staticmethod
     def backward(ctx, grad_eival, grad_eivec):
@@ -129,19 +127,49 @@ class degen_symeig(torch.autograd.Function):
         return result
 
 
+class DegenSymeig_V1(DegenSymeigBase):
+    @staticmethod
+    def forward(ctx: Any, A: Tensor) -> tuple[Tensor, Tensor]:
+        eival, eivec = torch.linalg.eigh(A)
+        ctx.save_for_backward(eival, eivec)
+
+        return eival, eivec
+
+
+class DegenSymeig_V2(DegenSymeigBase):
+    generate_vmap_rule = True
+
+    @staticmethod
+    def forward(A: Tensor) -> tuple[Tensor, Tensor]:
+        eival, eivec = torch.linalg.eigh(A)
+        return eival, eivec
+
+    @staticmethod
+    def setup_context(ctx, inputs: tuple, outputs: tuple[Tensor, Tensor]):
+        eival, eivec = outputs
+        ctx.save_for_backward(eival, eivec)
+
+
+def _degen_symeig(A) -> tuple[Tensor, Tensor]:
+    DegenSymeig = DegenSymeig_V1 if __tversion__ < (2, 0, 0) else DegenSymeig_V2
+    res = DegenSymeig.apply(A)
+    assert res is not None
+    return res[0], res[1]
+
+
 def davidson(
     A: LinearOperator,
     neig: int,
     mode: str,
-    M: Optional[LinearOperator] = None,
+    M: LinearOperator | None = None,
     max_niter: int = 1000,
-    nguess: Optional[int] = None,
+    nguess: int | None = None,
     v_init: str = "randn",
-    max_addition: Optional[int] = None,
+    max_addition: int | None = None,
     min_eps: float = 1e-6,
     verbose: bool = False,
-    **unused
-) -> Tuple[torch.Tensor, torch.Tensor]:
+    **unused,
+) -> tuple[Tensor, Tensor]:
     """
     Using Davidson method for large sparse matrix eigendecomposition [2]_.
 
@@ -194,7 +222,7 @@ def davidson(
         v_init.lower(), dtype, device, bcast_dims, na, nguess, M=M
     )  # (*BAM, na, nguess)
 
-    best_resid: Union[float, torch.Tensor] = float("inf")
+    best_resid: float | Tensor = float("inf")
     AV = A.mm(V)
     for i in range(max_niter):
         VT = V.transpose(-2, -1)  # (*BAM,nguess,na)
@@ -273,8 +301,8 @@ def _set_initial_v(
     batch_dims: Sequence,
     na: int,
     nguess: int,
-    M: Optional[LinearOperator] = None,
-) -> torch.Tensor:
+    M: LinearOperator | None = None,
+) -> Tensor:
     torch.manual_seed(12421)
     if vinit_type == "eye":
         nbatch = functools.reduce(lambda x, y: x * y, batch_dims, 1)

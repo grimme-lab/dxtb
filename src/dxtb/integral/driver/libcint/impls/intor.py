@@ -18,7 +18,7 @@
 Integral Interface
 ==================
 
-
+Interface for libcint to calculate the integrals.
 """
 
 from __future__ import annotations
@@ -30,25 +30,64 @@ from functools import reduce
 
 import numpy as np
 import torch
-
-try:
-    from dxtblibs import CGTO, CINT
-except ImportError as e:
-    raise ImportError(
-        f"Failed to import required modules. {e}. {e.name} provides a Python "
-        "interface to the 'libcint' library for fast integral evaluation. "
-        "It can be installed via 'pip install dxtblibs'."
-    )
-
 from tad_mctc.math import einsum
 
+from dxtb.__version__ import __tversion__
 from dxtb.typing import Any, Callable, Tensor
 
 from .namemanager import IntorNameManager
 from .utils import int2ctypes, np2ctypes
 from .wrapper import LibcintWrapper
 
+# try:
+#     from dxtblibs import CGTO, CINT
+# except ImportError as e:
+#     raise ImportError(
+#         f"Failed to import required modules. {e}. {e.name} provides a Python "
+#         "interface to the 'libcint' library for fast integral evaluation. "
+#         "It can be installed via 'pip install dxtblibs'."
+#     ) from e
+
 __all__ = ["int1e", "overlap"]
+
+
+class LazyDXtblibs:
+    def __init__(self):
+        self._cgto = None
+        self._cint = None
+
+    @property
+    def CGTO(self):
+        if self._cgto is None:
+            try:
+                from dxtblibs import CGTO
+
+                self._cgto = CGTO
+            except ImportError as e:
+                raise ImportError(
+                    f"Failed to import CGTO. {e}. {e.name} provides a Python "
+                    "interface to the 'libcint' library for fast integral evaluation. "
+                    "It can be installed via 'pip install dxtblibs'."
+                ) from e
+        return self._cgto
+
+    @property
+    def CINT(self):
+        if self._cint is None:
+            try:
+                from dxtblibs import CINT
+
+                self._cint = CINT
+            except ImportError as e:
+                raise ImportError(
+                    f"Failed to import CINT. {e}. {e.name} provides a Python "
+                    "interface to the 'libcint' library for fast integral evaluation. "
+                    "It can be installed via 'pip install dxtblibs'."
+                ) from e
+        return self._cint
+
+
+dxtblibs = LazyDXtblibs()
 
 
 def int1e(
@@ -62,12 +101,12 @@ def int1e(
     # check and set the other parameters
     other1 = _check_and_set(wrapper, other)
 
-    return _Int2cFunction.apply(
+    return _int2c(
         *wrapper.params,
-        [wrapper, other1],
-        IntorNameManager("int1e", shortname),
-        hermitian,
-    )  # type: ignore
+        wrappers=[wrapper, other1],
+        namemgr=IntorNameManager("int1e", shortname),
+        hermitian=hermitian,
+    )
 
 
 def overlap(wrapper: LibcintWrapper, other: LibcintWrapper | None = None) -> Tensor:
@@ -118,11 +157,197 @@ def _int2c(
     namemgr: IntorNameManager,
     hermitian: bool,
 ) -> Tensor:
-    integral = _Int2cFunction.apply(
-        allcoeffs, allalphas, allposs, wrappers, namemgr, hermitian
-    )
+    _Int2c = _Int2cFunction_V1 if __tversion__ < (2, 0, 0) else _Int2cFunction
+    integral = _Int2c.apply(allcoeffs, allalphas, allposs, wrappers, namemgr, hermitian)
     assert integral is not None
     return integral
+
+
+class _Int2cFunction_V1(torch.autograd.Function):
+    """
+    Wrapper class to provide the gradient of the 2-centre integrals.
+    """
+
+    @staticmethod
+    def forward(
+        ctx: Any,
+        allcoeffs: Tensor,
+        allalphas: Tensor,
+        allposs: Tensor,
+        wrappers: list[LibcintWrapper],
+        manager: IntorNameManager,
+        hermitian: bool,
+    ) -> Tensor:
+        # allcoeffs: (ngauss_tot,)
+        # allalphas: (ngauss_tot,)
+        # allposs: (natom, ndim)
+        #
+        # Wrapper0 and wrapper1 must have the same _atm, _bas, and _env.
+        # The check should be done before calling this function.
+        # Those tensors are not used directly in the forward calculation, but
+        #   required for backward propagation
+        assert len(wrappers) == 2
+
+        out_tensor = Intor(manager, wrappers, hermitian=hermitian).calc()
+
+        ctx.save_for_backward(allcoeffs, allalphas, allposs)
+        ctx.wrappers = wrappers
+        ctx.int_nmgr = manager
+        ctx.hermitian = hermitian
+
+        return out_tensor  # (..., nao0, nao1)
+
+    @staticmethod
+    def backward(ctx: Any, grad_out: Tensor) -> tuple[Tensor | None, ...]:  # type: ignore
+        # grad_out: (..., nao0, nao1)
+        allcoeffs: Tensor = ctx.saved_tensors[0]
+        allalphas: Tensor = ctx.saved_tensors[1]
+        allposs: Tensor = ctx.saved_tensors[2]
+        wrappers: list[LibcintWrapper] = ctx.wrappers
+        int_nmgr: IntorNameManager = ctx.int_nmgr
+        hermitian: bool = ctx.hermitian
+
+        # gradient for all atomic positions
+        grad_allposs: Tensor | None = None
+        if allposs.requires_grad:
+            grad_allposs = torch.zeros_like(allposs)  # (natom, ndim)
+            grad_allpossT = torch.zeros_like(allposs).transpose(-2, -1)  # (ndim, natom)
+
+            # get the integrals required for the derivatives
+            sname_derivs = [int_nmgr.get_intgl_deriv_namemgr("ip", ib) for ib in (0, 1)]
+            # new axes added to the dimension
+            new_axes_pos = [
+                int_nmgr.get_intgl_deriv_newaxispos("ip", ib) for ib in (0, 1)
+            ]
+
+            def int_fcn(
+                wrappers: list[LibcintWrapper], namemgr: IntorNameManager
+            ) -> Tensor:
+                return _int2c(
+                    allcoeffs, allalphas, allposs, wrappers, namemgr, hermitian
+                )
+
+            # list of tensors with shape: (ndim, ..., nao0, nao1)
+            dout_dposs = _get_integrals(sname_derivs, wrappers, int_fcn, new_axes_pos)
+
+            ndim = dout_dposs[0].shape[0]
+            shape = (ndim, -1, *dout_dposs[0].shape[-2:])
+            grad_out2 = grad_out.reshape(shape[1:])
+            # negative because the integral calculates the nabla w.r.t. the
+            # spatial coordinate, not the basis central position
+            grad_dpos_i = -einsum(
+                "sij,dsij->di", grad_out2, dout_dposs[0].reshape(shape)
+            )
+            grad_dpos_j = -einsum(
+                "sij,dsij->dj", grad_out2, dout_dposs[1].reshape(shape)
+            )
+
+            # print("\ngrad_dpos_i\n", grad_dpos_i)
+            # grad_allpossT is only a view of grad_allposs, so the operation below
+            # also changes grad_allposs
+            ao_to_atom0 = wrappers[0].ao_to_atom().expand(ndim, -1)
+            ao_to_atom1 = wrappers[1].ao_to_atom().expand(ndim, -1)
+            # print("ao_to_atom0", ao_to_atom0)
+            # print("ao_to_atom1", ao_to_atom1)
+            # print("\ngrad_allpossT\n", grad_allpossT)
+            # DIMS WRONG
+            # h = wrappers[0].ihelp.reduce_orbital_to_atom(grad_dpos_i)
+            # print("h", h)
+
+            updated_grad_allpossT = torch.scatter_add(
+                grad_allpossT, dim=-1, index=ao_to_atom0, src=grad_dpos_i
+            )
+            updated_grad_allpossT = torch.scatter_add(
+                updated_grad_allpossT, dim=-1, index=ao_to_atom1, src=grad_dpos_j
+            )
+
+            # Transpose back to match the shape of grad_allposs
+            grad_allposs = updated_grad_allpossT.transpose(-2, -1)
+
+        # gradient for the basis coefficients
+        grad_allcoeffs: Tensor | None = None
+        grad_allalphas: Tensor | None = None
+        if allcoeffs.requires_grad or allalphas.requires_grad:
+            # obtain the uncontracted wrapper and mapping
+            # uao2aos: list of (nu_ao0,), (nu_ao1,)
+            u_wrappers_tup, uao2aos_tup = zip(
+                *[w.get_uncontracted_wrapper() for w in wrappers]
+            )
+            u_wrappers = list(u_wrappers_tup)
+            uao2aos = list(uao2aos_tup)
+            u_params = u_wrappers[0].params
+
+            # get the uncontracted (gathered) grad_out
+            u_grad_out = _gather_at_dims(grad_out, mapidxs=uao2aos, dims=[-2, -1])
+
+            # get the scatter indices
+            ao2shl0 = u_wrappers[0].ao_to_shell()
+            ao2shl1 = u_wrappers[1].ao_to_shell()
+
+            # calculate the gradient w.r.t. coeffs
+            if allcoeffs.requires_grad:
+                grad_allcoeffs = torch.zeros_like(allcoeffs)  # (ngauss)
+
+                # get the uncontracted version of the integral
+                dout_dcoeff = _Int2cFunction.apply(
+                    *u_params, u_wrappers, int_nmgr
+                )  # (..., nu_ao0, nu_ao1)
+
+                # get the coefficients and spread it on the u_ao-length tensor
+                coeffs_ao0 = torch.gather(allcoeffs, dim=-1, index=ao2shl0)  # (nu_ao0)
+                coeffs_ao1 = torch.gather(allcoeffs, dim=-1, index=ao2shl1)  # (nu_ao1)
+                # divide done here instead of after scatter to make the 2nd gradient
+                # calculation correct.
+                # division can also be done after scatter for more efficient 1st grad
+                # calculation, but it gives the wrong result for 2nd grad
+                dout_dcoeff_i = dout_dcoeff / coeffs_ao0[:, None]
+                dout_dcoeff_j = dout_dcoeff / coeffs_ao1
+
+                # (nu_ao)
+                grad_dcoeff_i = einsum("...ij,...ij->i", u_grad_out, dout_dcoeff_i)
+                grad_dcoeff_j = einsum("...ij,...ij->j", u_grad_out, dout_dcoeff_j)
+                # grad_dcoeff = grad_dcoeff_i + grad_dcoeff_j
+
+                # scatter the grad
+                grad_allcoeffs.scatter_add_(dim=-1, index=ao2shl0, src=grad_dcoeff_i)
+                grad_allcoeffs.scatter_add_(dim=-1, index=ao2shl1, src=grad_dcoeff_j)
+
+            # calculate the gradient w.r.t. alphas
+            if allalphas.requires_grad:
+                grad_allalphas = torch.zeros_like(allalphas)  # (ngauss)
+
+                def u_int_fcn(u_wrappers, int_nmgr) -> Tensor:
+                    return _Int2cFunction.apply(*u_params, u_wrappers, int_nmgr)
+
+                # get the uncontracted integrals
+                sname_derivs = [
+                    int_nmgr.get_intgl_deriv_namemgr("rr", ib) for ib in (0, 1)
+                ]
+                new_axes_pos = [
+                    int_nmgr.get_intgl_deriv_newaxispos("rr", ib) for ib in (0, 1)
+                ]
+                dout_dalphas = _get_integrals(
+                    sname_derivs, u_wrappers, u_int_fcn, new_axes_pos
+                )
+
+                # (nu_ao)
+                # negative because the exponent is negative alpha * (r-ra)^2
+                grad_dalpha_i = -einsum("...ij,...ij->i", u_grad_out, dout_dalphas[0])
+                grad_dalpha_j = -einsum("...ij,...ij->j", u_grad_out, dout_dalphas[1])
+                # grad_dalpha = (grad_dalpha_i + grad_dalpha_j)  # (nu_ao)
+
+                # scatter the grad
+                grad_allalphas.scatter_add_(dim=-1, index=ao2shl0, src=grad_dalpha_i)
+                grad_allalphas.scatter_add_(dim=-1, index=ao2shl1, src=grad_dalpha_j)
+
+        return (
+            grad_allcoeffs,
+            grad_allalphas,
+            grad_allposs,
+            None,
+            None,
+            None,
+        )
 
 
 ############### pytorch functions ###############
@@ -324,7 +549,7 @@ class _Int2cFunction(torch.autograd.Function):
 class _cintoptHandler(ctypes.c_void_p):
     def __del__(self):
         try:
-            CGTO().CINTdel_optimizer(ctypes.byref(self))
+            dxtblibs.CGTO().CINTdel_optimizer(ctypes.byref(self))
         except AttributeError:
             pass
 
@@ -349,7 +574,7 @@ class Intor:
 
         # get the operator
         opname = int_nmgr.get_intgl_name(wrapper0.spherical)
-        self.op = getattr(CINT(), opname)
+        self.op = getattr(dxtblibs.CINT(), opname)
         self.optimizer = _get_intgl_optimizer(opname, self.atm, self.bas, self.env)
 
         # prepare the output
@@ -370,7 +595,7 @@ class Intor:
 
     def _int2c(self) -> Tensor:
         # performing 2-centre integrals with libcint
-        drv = CGTO().GTOint2c
+        drv = dxtblibs.CGTO().GTOint2c
         outshape = self.outshape
         out = np.empty((*outshape[:-2], outshape[-1], outshape[-2]), dtype=np.float64)
         drv(
@@ -408,7 +633,7 @@ def _get_intgl_optimizer(
     # setup the optimizer
     cintopt = ctypes.POINTER(ctypes.c_void_p)()
     optname = opname.replace("_cart", "").replace("_sph", "") + "_optimizer"
-    copt = getattr(CINT(), optname)
+    copt = getattr(dxtblibs.CINT(), optname)
     copt(
         ctypes.byref(cintopt),
         np2ctypes(atm),

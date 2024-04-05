@@ -14,11 +14,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import warnings
-from typing import Any, Callable, Mapping, Optional, Tuple, Union
+from typing import Mapping, Optional, Tuple, Union
 
 import torch
 
+from dxtb.__version__ import __tversion__
 from dxtb.exlibs.xitorch import LinearOperator
 from dxtb.exlibs.xitorch._core.linop import MatrixLinearOperator
 from dxtb.exlibs.xitorch._impls.linalg.symeig import davidson, exacteig
@@ -32,6 +35,7 @@ from dxtb.exlibs.xitorch._utils.misc import (
 )
 from dxtb.exlibs.xitorch.debug.modes import is_debug_enabled
 from dxtb.exlibs.xitorch.linalg.solve import solve
+from dxtb.typing import Any, Callable, Tensor
 
 __all__ = ["lsymeig", "usymeig", "symeig", "svd"]
 
@@ -299,48 +303,7 @@ def svd(
     return u, s, vh
 
 
-class symeig_torchfcn(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, A, neig, mode, M, fwd_options, bck_options, na, *amparams):
-        # A: LinearOperator (*BA, q, q)
-        # M: LinearOperator (*BM, q, q) or None
-
-        # separate the sets of parameters
-        params = amparams[:na]
-        mparams = amparams[na:]
-
-        config = set_default_option({}, fwd_options)
-        ctx.bck_config = set_default_option(
-            {
-                "degen_atol": None,
-                "degen_rtol": None,
-            },
-            bck_options,
-        )
-
-        # options for calculating the backward (not for `solve`)
-        alg_keys = ["degen_atol", "degen_rtol"]
-        ctx.bck_alg_config = get_and_pop_keys(ctx.bck_config, alg_keys)
-
-        method = config.pop("method")
-        with A.uselinopparams(*params), (
-            M.uselinopparams(*mparams) if M is not None else dummy_context_manager()
-        ):
-            methods = {
-                "davidson": davidson,
-                "custom_exacteig": custom_exacteig,
-            }
-            method_fcn = get_method("symeig", methods, method)
-            evals, evecs = method_fcn(A, neig, mode, M, **config)
-
-        # save for the backward
-        # evals: (*BAM, neig)
-        # evecs: (*BAM, na, neig)
-        ctx.save_for_backward(evals, evecs, *amparams)
-        ctx.na = na
-        ctx.A = A
-        ctx.M = M
-        return evals, evecs
+class SymeigMethodBase(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_evals, grad_evecs):
@@ -356,8 +319,8 @@ class symeig_torchfcn(torch.autograd.Function):
 
         M = ctx.M
         A = ctx.A
-        degen_atol: Optional[float] = ctx.bck_alg_config["degen_atol"]
-        degen_rtol: Optional[float] = ctx.bck_alg_config["degen_rtol"]
+        degen_atol: float = ctx.bck_alg_config["degen_atol"]
+        degen_rtol: float = ctx.bck_alg_config["degen_rtol"]
 
         # set the default values of degen_*tol
         dtype = evals.dtype
@@ -464,6 +427,113 @@ class symeig_torchfcn(torch.autograd.Function):
             )
 
         return (None, None, None, None, None, None, None, *grad_params, *grad_mparams)
+
+
+class SymeigMethod_V1(SymeigMethodBase):
+
+    @staticmethod
+    def forward(ctx, A, neig, mode, M, fwd_options, bck_options, na, *amparams):
+        # A: LinearOperator (*BA, q, q)
+        # M: LinearOperator (*BM, q, q) or None
+
+        # separate the sets of parameters
+        params = amparams[:na]
+        mparams = amparams[na:]
+
+        config = set_default_option({}, fwd_options)
+        ctx.bck_config = set_default_option(
+            {
+                "degen_atol": None,
+                "degen_rtol": None,
+            },
+            bck_options,
+        )
+
+        # options for calculating the backward (not for `solve`)
+        alg_keys = ["degen_atol", "degen_rtol"]
+        ctx.bck_alg_config = get_and_pop_keys(ctx.bck_config, alg_keys)
+
+        method = config.pop("method")
+        with A.uselinopparams(*params), (
+            M.uselinopparams(*mparams) if M is not None else dummy_context_manager()
+        ):
+            methods = {
+                "davidson": davidson,
+                "custom_exacteig": custom_exacteig,
+            }
+            method_fcn = get_method("symeig", methods, method)
+            evals, evecs = method_fcn(A, neig, mode, M, **config)
+
+        # save for the backward
+        # evals: (*BAM, neig)
+        # evecs: (*BAM, na, neig)
+        ctx.save_for_backward(evals, evecs, *amparams)
+        ctx.na = na
+        ctx.A = A
+        ctx.M = M
+        return evals, evecs
+
+
+class SymeigMethod_V2(SymeigMethodBase):
+
+    @staticmethod
+    def forward(A, neig, mode, M, fwd_options, bck_options, na, *amparams):
+        # A: LinearOperator (*BA, q, q)
+        # M: LinearOperator (*BM, q, q) or None
+
+        # separate the sets of parameters
+        params = amparams[:na]
+        mparams = amparams[na:]
+
+        config = set_default_option({}, fwd_options)
+
+        method = config.pop("method")
+        with A.uselinopparams(*params), (
+            M.uselinopparams(*mparams) if M is not None else dummy_context_manager()
+        ):
+            methods = {
+                "davidson": davidson,
+                "custom_exacteig": custom_exacteig,
+            }
+            method_fcn = get_method("symeig", methods, method)
+            evals, evecs = method_fcn(A, neig, mode, M, **config)
+
+        return evals, evecs
+
+    @staticmethod
+    def setup_context(ctx, inputs: tuple, output: tuple[Tensor, Tensor]):
+        A, neig, mode, M, fwd_options, bck_options, na, amparams = inputs
+        evals, evecs = output
+
+        ctx.bck_config = set_default_option(
+            {
+                "degen_atol": None,
+                "degen_rtol": None,
+            },
+            bck_options,
+        )
+
+        # options for calculating the backward (not for `solve`)
+        alg_keys = ["degen_atol", "degen_rtol"]
+        ctx.bck_alg_config = get_and_pop_keys(ctx.bck_config, alg_keys)
+
+        # save for the backward
+        # evals: (*BAM, neig)
+        # evecs: (*BAM, na, neig)
+        ctx.save_for_backward(evals, evecs, *amparams)
+        ctx.na = na
+        ctx.A = A
+        ctx.M = M
+
+
+def symeig_torchfcn(
+    A, neig, mode, M, fwd_options, bck_options, na, *amparams
+) -> tuple[Tensor, Tensor]:
+
+    SymeigMethod = SymeigMethod_V1 if __tversion__ < (2, 0, 0) else SymeigMethod_V2
+    res = SymeigMethod.apply(A, neig, mode, M, fwd_options, bck_options, na, *amparams)
+    assert res is not None
+    return res[0], res[1]
 
 
 def _check_degen(

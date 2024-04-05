@@ -20,12 +20,11 @@ Integral driver for `libcint`.
 
 from __future__ import annotations
 
-from dxtb.timing import timer
+from dxtb.basis import Basis, IndexHelper
+from dxtb.constants import labels
 from dxtb.typing import Tensor
+from dxtb.utils import is_basis_list
 
-from ....basis import Basis, IndexHelper
-from ....constants import labels
-from ....utils import is_basis_list
 from ...base import IntDriver
 from .impls import LibcintWrapper
 
@@ -49,19 +48,16 @@ class IntDriverLibcint(IntDriver):
         positions : Tensor
             Cartesian coordinates of all atoms in the system (nat, 3).
         """
-        timer.start("Setup Overlap")
         # setup `Basis` class if not already done
         if self._basis is None:
             self.basis = Basis(self.numbers, self.par, self.ihelp, **self.dd)
 
-        timer.start("Basis", parent_uid="Setup Overlap")
+        # create atomic basis set in libcint format
         mask = kwargs.pop("mask", None)
         atombases = self.basis.create_dqc(positions, mask=mask)
-        timer.stop("Basis")
 
         if self.ihelp.batch_mode > 0:
 
-            timer.start("IndexHelper", parent_uid="Setup Overlap")
             # integrals do not work with a batched IndexHelper
             if self.ihelp.batch_mode == 1:
                 # pylint: disable=import-outside-toplevel
@@ -76,23 +72,17 @@ class IntDriverLibcint(IntDriver):
                     IndexHelper.from_numbers(number, self.par)
                     for number in self.numbers
                 ]
-            timer.stop("IndexHelper")
 
-            timer.start("LibcintWrapper", parent_uid="Setup Overlap")
             assert isinstance(atombases, list)
             self.drv = [
                 LibcintWrapper(ab, ihelp)
                 for ab, ihelp in zip(atombases, _ihelp)
                 if is_basis_list(ab)
             ]
-            timer.stop("LibcintWrapper")
         else:
-            timer.start("LibcintWrapper", parent_uid="Setup Overlap")
             assert is_basis_list(atombases)
             self.drv = LibcintWrapper(atombases, self.ihelp)
-            timer.stop("LibcintWrapper")
 
         # setting positions signals successful setup; save current positions to
         # catch new positions and run the required re-setup of the driver
         self._positions = positions.detach().clone()
-        timer.stop("Setup Overlap")

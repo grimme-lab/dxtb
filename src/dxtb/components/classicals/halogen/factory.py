@@ -20,6 +20,7 @@ Halogen Bond Correction: Factory
 
 A factory function to create instances of the HBC class.
 """
+from __future__ import annotations
 
 import torch
 

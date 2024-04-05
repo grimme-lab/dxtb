@@ -14,8 +14,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import warnings
-from typing import Any, Callable, List, Sequence, Union
 
 import torch
 
@@ -27,15 +28,16 @@ from dxtb.exlibs.xitorch._core.pure_function import (
 )
 from dxtb.exlibs.xitorch._utils.assertfuncs import assert_type
 from dxtb.exlibs.xitorch._utils.misc import TensorNonTensorSeparator
+from dxtb.typing import Any, Callable, Sequence, Tensor
 
 __all__ = ["jac", "hess"]
 
 
 def jac(
-    fcn: Callable[..., torch.Tensor],
+    fcn: Callable[..., Tensor],
     params: Sequence[Any],
-    idxs: Union[None, int, Sequence[int]] = None,
-) -> Union[LinearOperator, List]:
+    idxs: int | Sequence[int] | None = None,
+) -> LinearOperator | list:
     """
     Returns the LinearOperator that acts as the jacobian of the params.
     The shape of LinearOperator is (nout, nin) where `nout` and `nin` are the
@@ -43,7 +45,7 @@ def jac(
 
     Arguments
     ---------
-    * fcn: Callable[...,torch.Tensor]
+    * fcn: Callable[...,Tensor]
         Callable with tensor output and arbitrary numbers of input parameters.
     * params: Sequence[Any]
         List of input parameters of the function.
@@ -70,10 +72,10 @@ def jac(
 
 
 def hess(
-    fcn: Callable[..., torch.Tensor],
+    fcn: Callable[..., Tensor],
     params: Sequence[Any],
-    idxs: Union[None, int, Sequence[int]] = None,
-) -> Union[LinearOperator, List]:
+    idxs: int | Sequence[int] | None = None,
+) -> LinearOperator | list:
     """
     Returns the LinearOperator that acts as the Hessian of the params.
     The shape of LinearOperator is (nin, nin) where `nin` is the
@@ -81,7 +83,7 @@ def hess(
 
     Arguments
     ---------
-    * fcn: Callable[...,torch.Tensor]
+    * fcn: Callable[...,Tensor]
         Callable with tensor output and arbitrary numbers of input parameters.
         The numel of the output must be 1.
     * params: Sequence[Any]
@@ -177,7 +179,7 @@ class _Jac(LinearOperator):
         self.id_params_tensor = [id(param) for param in self.params_tensor]
         self.id_objparams_tensor = [id(param) for param in self.objparams]
 
-    def _getparamnames(self, prefix: str = "") -> List[str]:
+    def _getparamnames(self, prefix: str = "") -> list[str]:
         return (
             [prefix + "yparam"]
             + [
@@ -187,7 +189,7 @@ class _Jac(LinearOperator):
             + [prefix + ("objparams[%d]" % i) for i in range(len(self.objparams))]
         )
 
-    def _mv(self, gy: torch.Tensor) -> torch.Tensor:
+    def _mv(self, gy: Tensor) -> Tensor:
         # gy: (..., nin)
         # returns: (..., nout)
 
@@ -200,6 +202,8 @@ class _Jac(LinearOperator):
             with torch.enable_grad(), self.fcn.useobjparams(self.objparams):
                 self.__update_params()
                 yparam = self.params[self.idx]
+                assert yparam is not None
+
                 yout = self.fcn(*self.params)  # (*nout)
                 v = torch.ones_like(yout).to(yout.device).requires_grad_()  # (*nout)
                 (dfdy,) = torch.autograd.grad(
@@ -225,7 +229,7 @@ class _Jac(LinearOperator):
         res = connect_graph(res, self.objparams)
         return res
 
-    def _rmv(self, gout: torch.Tensor) -> torch.Tensor:
+    def _rmv(self, gout: Tensor) -> Tensor:
         # gout: (..., nout)
         # self.yfcn: (*nin)
         if self.__param_tensors_unchanged():
@@ -236,6 +240,8 @@ class _Jac(LinearOperator):
                 self.__update_params()
                 yparam = self.params[self.idx]
                 yout = self.fcn(*self.params)  # (*nout)
+
+        assert yparam is not None
 
         gout1 = gout.reshape(-1, self.nout)  # (nbatch, nout)
         nbatch = gout1.shape[0]
@@ -276,16 +282,14 @@ def connect_graph(out, params):
 def _setup_idxs(idxs, params):
     if idxs is None:
         idxs = [
-            i
-            for i, t in enumerate(params)
-            if isinstance(t, torch.Tensor) and t.requires_grad
+            i for i, t in enumerate(params) if isinstance(t, Tensor) and t.requires_grad
         ]
     elif isinstance(idxs, int):
         idxs = [idxs]
 
     for p in idxs:
         assert_type(
-            isinstance(params[p], torch.Tensor) and params[p].requires_grad,
+            isinstance(params[p], Tensor) and params[p].requires_grad,
             "The %d-th element (0-based) must be a tensor which requires grad" % p,
         )
     return idxs

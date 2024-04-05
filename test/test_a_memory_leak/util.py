@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import gc
 
+from dxtb.__version__ import __tversion__
 from dxtb.typing import Callable, Literal, Tensor, overload
 
 
@@ -65,8 +66,12 @@ def _get_tensor_memory(
         if tensor.is_sparse:
             continue
 
+        if __tversion__ < (2, 0, 0):
+            storage = tensor.storage()
+        else:
+            storage = tensor.untyped_storage()
+
         # check if it has been visited
-        storage = tensor.untyped_storage()
         data_ptr = storage.data_ptr()  # type: ignore
         if data_ptr in visited_data:
             continue

@@ -215,9 +215,14 @@ class Driver:
             (g,) = torch.autograd.grad(result.total.sum(), positions)
             timer.stop("grad")
 
+            timer.print()
+            result.print_energies()
+
             if args.verbosity >= 7:
                 print_grad(g.clone(), numbers)
                 print("")
+
+            return result
         #####################################################
 
         if args.ir is True:

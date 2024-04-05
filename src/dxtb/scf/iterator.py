@@ -32,6 +32,7 @@ import warnings
 from math import sqrt
 
 import torch
+from tad_mctc import storch
 
 from dxtb.basis import IndexHelper
 from dxtb.typing import Any, Slicers, Tensor, exceptions
@@ -585,8 +586,8 @@ def get_refocc(
 
     n0 = torch.where(
         orb_per_shell != 0,
-        refocc / orb_per_shell,
-        torch.tensor(0, device=refs.device),
+        storch.divide(refocc, orb_per_shell),
+        torch.tensor(0, device=refs.device, dtype=refs.dtype),
     )
 
     # Obtain the reference occupations and total number of electrons

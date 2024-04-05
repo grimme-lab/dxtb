@@ -198,5 +198,5 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
         return torch.where(
             orb_per_shell != 0,
             refocc / orb_per_shell,
-            torch.tensor(0, device=self.device),
+            torch.tensor(0, **self.dd),
         )
