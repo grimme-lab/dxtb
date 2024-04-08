@@ -61,6 +61,7 @@ class ConfigSCF:
         x_atol: float = defaults.X_ATOL,
         f_atol: float = defaults.F_ATOL,
         force_convergence: bool = defaults.SCF_FORCE_CONVERGENCE,
+        batch_mode: int = defaults.BATCH_MODE,
         # Fermi
         fermi_etemp: float = defaults.FERMI_ETEMP,
         fermi_maxiter: int = defaults.FERMI_MAXITER,
@@ -172,6 +173,7 @@ class ConfigSCF:
         self.maxiter = maxiter
         self.damp = damp
         self.force_convergence = force_convergence
+        self.batch_mode = batch_mode
 
         self.device = device
         self.dtype = dtype
@@ -313,7 +315,7 @@ class ConfigFermi:
                 f"'{type(partition)}' was given."
             )
 
-    def info(self) -> dict[str, Any]:
+    def info(self) -> dict[str, dict[str, float | int | str]]:
         return {
             "Fermi Smearing": {
                 "Temperature": self.etemp,
@@ -322,3 +324,11 @@ class ConfigFermi:
                 "Partioning": labels.FERMI_PARTITION_MAP[self.partition],
             }
         }
+
+    def __str__(self) -> str:
+        info = self.info()["Fermi Smearing"]
+        info_str = ", ".join(f"{key}={value}" for key, value in info.items())
+        return f"{self.__class__.__name__}({info_str})"
+
+    def __repr__(self) -> str:
+        return str(self)

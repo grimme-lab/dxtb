@@ -1099,7 +1099,9 @@ class IndexHelperGFN1(IndexHelper):
 
     @override
     @classmethod
-    def from_numbers(cls, numbers: Tensor) -> IndexHelper:
+    def from_numbers(
+        cls, numbers: Tensor, batch_mode: int | None = None
+    ) -> IndexHelper:
         """
         Construct an index helper instance from atomic numbers and their
         angular momenta. The latter are collected from the GFN1 parametrization.
@@ -1114,9 +1116,10 @@ class IndexHelperGFN1(IndexHelper):
         IndexHelper
             Instance of index helper for given basis set.
         """
+        # pylint: disable=import-outside-toplevel
         from dxtb.param.gfn1 import GFN1_XTB
 
-        return super().from_numbers(numbers, GFN1_XTB)
+        return super().from_numbers(numbers, GFN1_XTB, batch_mode=batch_mode)
 
 
 class IndexHelperGFN2(IndexHelper):
@@ -1126,7 +1129,9 @@ class IndexHelperGFN2(IndexHelper):
 
     @override
     @classmethod
-    def from_numbers(cls, numbers: Tensor) -> IndexHelper:
+    def from_numbers(
+        cls, numbers: Tensor, batch_mode: int | None = None
+    ) -> IndexHelper:
         """
         Construct an index helper instance from atomic numbers and their
         angular momenta. The latter are collected from the GFN1 parametrization.
@@ -1141,6 +1146,7 @@ class IndexHelperGFN2(IndexHelper):
         IndexHelper
             Instance of index helper for given basis set.
         """
+        # pylint: disable=import-outside-toplevel
         from dxtb.param.gfn2 import GFN2_XTB
 
-        return super().from_numbers(numbers, GFN2_XTB)
+        return super().from_numbers(numbers, GFN2_XTB, batch_mode=batch_mode)

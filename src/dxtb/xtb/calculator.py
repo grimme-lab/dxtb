@@ -406,12 +406,16 @@ class Calculator(TensorLike):
             opts = Config(**opts, **dd)
         self.opts = opts
 
+        print(opts)
+
         # create cache
         self.cache = self.Cache(**dd)
 
-        if self.opts.batch_mode == 0:
-            if numbers.ndim > 1:
-                self.opts.batch_mode = 1
+        print(self.opts.batch_mode)
+        if self.opts.batch_mode == 0 and numbers.ndim > 1:
+            self.opts.batch_mode = 1
+        print(self.opts.batch_mode)
+        print()
 
         self.ihelp = IndexHelper.from_numbers(numbers, par, self.opts.batch_mode)
 

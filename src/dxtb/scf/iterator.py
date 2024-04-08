@@ -532,7 +532,28 @@ def solve(
     Tensor
         Orbital-resolved partial charges vector.
     """
+    n0, occupation = get_refocc(refocc, chrg, spin, ihelp)
+    charges = get_guess(numbers, positions, chrg, ihelp, config.guess)
+
     if config.scf_mode == labels.SCF_MODE_IMPLICIT:
+        # pylint: disable=import-outside-toplevel
+        from .pure import scf_wrapper
+
+        return scf_wrapper(
+            interactions,
+            occupation,
+            n0,
+            charges,
+            numbers=numbers,
+            ihelp=ihelp,
+            cache=cache,
+            integrals=integrals,
+            config=config,
+            *args,
+            **kwargs,
+        )
+
+    if config.scf_mode == labels.SCF_MODE_IMPLICIT_NON_PURE:
         scf = SelfConsistentField
     elif config.scf_mode == labels.SCF_MODE_FULL:
         scf = SelfConsistentFieldFull
@@ -541,9 +562,6 @@ def solve(
     else:
         name = labels.SCF_MODE_MAP[config.scf_mode]
         raise ValueError(f"Unknown SCF mode '{name}' (input name can vary).")
-
-    n0, occupation = get_refocc(refocc, chrg, spin, ihelp)
-    charges = get_guess(numbers, positions, chrg, ihelp, config.guess)
 
     return scf(
         interactions,

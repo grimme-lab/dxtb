@@ -330,7 +330,7 @@ class BaseSCF:
 
         # initialize Charge container depending on given integrals
         if isinstance(charges, Tensor):
-            charges = Charges(mono=charges, batched=self.batched)
+            charges = Charges(mono=charges, batch_mode=self.batched)
             self._data.charges["mono"] = charges.mono_shape
 
             if self._data.ints.dipole is not None:
@@ -410,10 +410,12 @@ class BaseSCF:
         """
 
         if self.config.scp_mode == labels.SCP_MODE_CHARGE:
-            return Charges.from_tensor(x, self._data.charges, batched=self.batched)
+            return Charges.from_tensor(x, self._data.charges, batch_mode=self.batched)
 
         if self.config.scp_mode == labels.SCP_MODE_POTENTIAL:
-            pot = Potential.from_tensor(x, self._data.potential, batched=self.batched)
+            pot = Potential.from_tensor(
+                x, self._data.potential, batch_mode=self.batched
+            )
             return self.potential_to_charges(pot)
 
         if self.config.scp_mode == labels.SCP_MODE_FOCK:
@@ -607,7 +609,7 @@ class BaseSCF:
             New orbital-resolved partial charges vector.
         """
 
-        q = Charges.from_tensor(charges, self._data.charges, batched=self.batched)
+        q = Charges.from_tensor(charges, self._data.charges, batch_mode=self.batched)
         potential = self.charges_to_potential(q)
 
         # FIXME: Batch print not working!
@@ -632,8 +634,9 @@ class BaseSCF:
         Tensor
             New potential vector for each orbital partial charge.
         """
+        print("cfg.batch_mode", self.config.batch_mode)
         pot = Potential.from_tensor(
-            potential, self._data.potential, batched=self.batched
+            potential, self._data.potential, batch_mode=self.batched
         )
         charges = self.potential_to_charges(pot)
 
@@ -756,7 +759,7 @@ class BaseSCF:
 
         # monopolar charges
         populations = einsum("...ik,...ki->...i", density, ints.overlap)
-        charges = Charges(mono=self._data.n0 - populations, batched=self.batched)
+        charges = Charges(mono=self._data.n0 - populations, batch_mode=self.batched)
 
         # Atomic dipole moments (dipole charges)
         if ints.dipole is not None:

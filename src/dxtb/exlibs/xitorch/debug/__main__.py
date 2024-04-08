@@ -17,7 +17,7 @@
 import argparse
 import sys
 
-from dxtb.exlibs.xitorch.debug.modes import enable_debug
+from .modes import enable_debug
 
 
 def parse_args():

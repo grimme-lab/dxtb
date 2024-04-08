@@ -79,13 +79,20 @@ class Interaction(Component):
         needed.
         """
 
-        __slots__ = []
+        __slots__: list[str] = []
 
         def cull(self, conv: Tensor, slicers: Slicers) -> None:
             pass
 
         def restore(self) -> None:
             pass
+
+        def __str__(self) -> str:
+            s = ", ".join(s for s in self.__slots__ if not s.startswith("_"))
+            return f"{self.__class__.__name__}({s})"
+
+        def __repr__(self) -> str:
+            return str(self)
 
     # pylint: disable=unused-argument
     def get_cache(

@@ -21,7 +21,7 @@ from argparse import Namespace
 
 import torch
 
-from dxtb.typing import Self, get_default_device, get_default_dtype
+from dxtb.typing import Any, Self, get_default_device, get_default_dtype
 
 from ..constants import defaults, labels
 from .integral import ConfigIntegrals
@@ -74,7 +74,9 @@ class Config:
         self.device = device
         self.dtype = dtype
         self.anomaly = anomaly
-        self.batch_mode = batch_mode
+
+        # use property to also set the batch mode in SCF config
+        self._batch_mode = batch_mode
 
         if isinstance(method, str):
             if method.casefold() in labels.GFN1_XTB_STRS:
@@ -111,11 +113,13 @@ class Config:
             x_atol=x_atol,
             f_atol=f_atol,
             force_convergence=force_convergence,
+            batch_mode=batch_mode,
+            # SCF: Fermi
             fermi_etemp=fermi_etemp,
             fermi_maxiter=fermi_maxiter,
             fermi_thresh=fermi_thresh,
             fermi_partition=fermi_partition,
-            #
+            # SCF: PyTorch
             device=device,
             dtype=dtype,
         )
@@ -165,7 +169,16 @@ class Config:
             fermi_partition=args.fermi_partition,
         )
 
-    def info(self) -> dict:
+    @property
+    def batch_mode(self) -> int:
+        return self._batch_mode
+
+    @batch_mode.setter
+    def batch_mode(self, value: int) -> None:
+        self._batch_mode = value
+        self.scf.batch_mode = value
+
+    def info(self) -> dict[str, dict[str, Any]]:
         """
         Return a dictionary with the configuration information.
 
@@ -189,11 +202,9 @@ class Config:
         }
 
     def __str__(self) -> str:
-        return (
-            f"{self.__class__.__name__}("
-            f"method={labels.GFN_XTB_MAP[self.method]}, "
-            f"device={self.device}, dtype={self.dtype}, ...)"
-        )
+        info = self.info()["SCF Options"]
+        info_str = ", ".join(f"{key}={value}" for key, value in info.items())
+        return f"{self.__class__.__name__}({info_str})"
 
     def __repr__(self) -> str:
         return str(self)

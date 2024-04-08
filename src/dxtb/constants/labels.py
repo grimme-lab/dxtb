@@ -50,7 +50,7 @@ SCF_MODE_FULL = 0
 SCF_MODE_FULL_STRS = ("full", "full_tracking", "unrolling")
 SCF_MODE_IMPLICIT = 1
 SCF_MODE_IMPLICIT_STRS = ("default", "implicit")
-SCF_MODE_IMPLICIT_NON_PURE = 1
+SCF_MODE_IMPLICIT_NON_PURE = 2
 SCF_MODE_IMPLICIT_NON_PURE_STRS = (
     "implicit_old",
     "implicit_nonpure",

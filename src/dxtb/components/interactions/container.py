@@ -48,7 +48,7 @@ class Container:
         dipole: Tensor | None = None,
         quad: Tensor | None = None,
         label: str | list[str] | None = None,
-        batched: bool = False,
+        batch_mode: int = 0,
     ) -> None:
         self._mono = mono
         self._dipole = dipole
@@ -59,8 +59,8 @@ class Container:
         else:
             self.label = []
 
-        self.batched = batched
-        self.axis = 1 if self.batched else 0
+        self.batch_mode = batch_mode
+        self.axis = 1 if self.batch_mode else 0
 
     # monopole
 
@@ -120,7 +120,7 @@ class Container:
         """
 
         tensors = [self.mono, self.dipole, self.quad]
-        if not self.batched:
+        if not self.batch_mode:
             tensors = [t.flatten() for t in tensors if t is not None]
         else:
             tensors = [t.flatten(start_dim=1) for t in tensors if t is not None]
@@ -158,7 +158,7 @@ class Container:
         cls: Type[T],
         tensor: Tensor,
         data: ContainerData,
-        batched: bool = False,
+        batch_mode: int = 0,
         pad: int = defaults.PADNZ,
     ) -> T:
         """
@@ -174,8 +174,8 @@ class Container:
         data : ContainerData
             Collection of shapes and labels of the container. This information
             is required for correctly restoring the the Container class.
-        batched : bool, optional
-            Whether the calculation runs in batched mode. Defaults to `False`.
+        batch_mode : bool, optional
+            Whether the calculation runs in batch_mode mode. Defaults to `False`.
         pad : int, optional
             Value used to indicate padding. Defaults to ``defaults.PADNZ``.
 
@@ -187,13 +187,13 @@ class Container:
 
         ndim = tensor.ndim
         label = data["label"]
-        axis = 1 if batched else 0
+        axis = 1 if batch_mode else 0
 
-        if (ndim == 1 and not batched) or (ndim == 2 and batched):
+        if (ndim == 1 and not batch_mode) or (ndim == 2 and batch_mode):
             return cls(mono=tensor, label=label)
 
         # One dimensions extra for more than monopole ...
-        if (ndim == 2 and not batched) or (ndim == 3 and batched):
+        if (ndim == 2 and not batch_mode) or (ndim == 3 and batch_mode):
             # ... but still account for (nb, 1, nao)-shaped monopolar property.
             assert data["mono"] is not None
             if tensor.shape[axis] == 1:
@@ -203,7 +203,7 @@ class Container:
             assert data["dipole"] is not None
             vs = torch.split(tensor, 1, dim=axis)
 
-            # TODO: Conformer batched mode (deflate not required)
+            # TODO: Conformer batch_mode mode (deflate not required)
             mono = deflate(vs[0], axis=0, value=pad).reshape(*data["mono"])
             dipole = deflate(vs[1], axis=0, value=pad).reshape(*data["dipole"])
 
@@ -222,7 +222,7 @@ class Container:
 
         raise RuntimeError(
             f"The tensor representation has {tensor.ndim} dimension but "
-            "should have 2 (non-batched) or 3 (batched)."
+            "should have 2 (non-batch_mode) or 3 (batch_mode)."
         )
 
     def add_tensors(
@@ -290,7 +290,7 @@ class Container:
             f"mono={self.mono!r}, "
             f"dipole={self.dipole!r}, "
             f"quad={self.quad!r}, "
-            f"batched={self.batched!r})"
+            f"batch_mode={self.batch_mode!r})"
         )
 
 
@@ -317,7 +317,7 @@ class Charges(Container):
             f"  mono={self.mono.shape!r},\n"
             f"  dipole={dp_shape!r},\n"
             f"  quad={qp_shape!r},\n"
-            f"  batched={self.batched!r}\n)"
+            f"  batch_mode={self.batch_mode!r}\n)"
         )
 
 

@@ -14,5 +14,5 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from dxtb.exlibs.xitorch.linalg.solve import *
-from dxtb.exlibs.xitorch.linalg.symeig import *
+from .solve import *
+from .symeig import *
