@@ -64,7 +64,7 @@ class LibcintWrapper:
     def __init__(
         self,
         atombases: list[AtomCGTOBasis],
-        ihelp: IndexHelper,
+        ihelp: IndexHelper | None = None,
         spherical: bool = True,
         hermitian: bool = False,
     ) -> None:
@@ -78,6 +78,7 @@ class LibcintWrapper:
         # get dtype and device for torch's tensors
         self.dtype = atombases[0].bases[0].alphas.dtype
         self.device = atombases[0].bases[0].alphas.device
+        self.dd = {"device": self.device, "dtype": self.dtype}
 
         # construct _atm, _bas, and _env as well as the parameters
         ptr_env = 20  # initial padding from libcint
@@ -90,14 +91,22 @@ class LibcintWrapper:
         allangmoms: list[int] = []
         shell_to_atom: list[int] = []
         ngauss_at_shell: list[int] = []
+        gauss_to_shell: list[int] = []
 
         # constructing the triplet lists and also collecting the parameters
+        nshells = 0
         ishell = 0
+
         for iatom, atombasis in enumerate(atombases):
+            if atombasis.pos.numel() != NDIM:
+                raise ValueError(
+                    "The position tensor is expected to have three cartesian "
+                    f"components, but {atombasis.pos.numel()} were found."
+                )
+
             # construct the atom environment
-            assert atombasis.pos.numel() == NDIM, "Please report this bug in Github"
             atomz = atombasis.atomz
-            #                charge    ptr_coord, nucl model (unused for standard nucl model)
+            # charge, ptr_coord, nucl model (unused for standard nucl model)
             atm_list.append([int(atomz), ptr_env, 1, ptr_env + NDIM, 0, 0])
             env_list.extend([float(x) for x in atombasis.pos.detach()])
             env_list.append(0.0)
@@ -113,28 +122,37 @@ class LibcintWrapper:
             # TODO: consider moving allpos into shell
             allpos.append(atombasis.pos.unsqueeze(0))
 
+            nshells += len(atombasis.bases)
             shell_to_atom.extend([iatom] * len(atombasis.bases))
 
             # then construct the basis
             for shell in atombasis.bases:
-                assert (
-                    shell.alphas.shape == shell.coeffs.shape and shell.alphas.ndim == 1
-                ), "Please report this bug in Github"
+                if shell.alphas.shape != shell.coeffs.shape:
+                    raise ValueError(
+                        f"The shapes of 'shell.alphas' ({shell.alphas.shape}) "
+                        f"and 'shell.coeffs' ({shell.coeffs.shape}) must be "
+                        "the same."
+                    )
+                if shell.alphas.ndim != 1:
+                    raise ValueError(
+                        "'shell.alphas' must be 1-dimensional, but is "
+                        f"{shell.alphas.ndim}-dimensional."
+                    )
 
                 # WE DONT NORMALIZE!!!
                 # shell.wfnormalize_()
 
                 ngauss = len(shell.alphas)
-                #                iatom, angmom,       ngauss, ncontr, kappa, ptr_exp
+
                 bas_list.append(
                     [
                         iatom,
                         shell.angmom,
                         ngauss,
-                        1,
-                        0,
-                        ptr_env,
-                        # ptr_coeffs,           unused
+                        1,  # ncontr
+                        0,  # kappa
+                        ptr_env,  # ptr_exp
+                        # ptr_coeffs,  # unused
                         ptr_env + ngauss,
                         0,
                     ]
@@ -148,6 +166,7 @@ class LibcintWrapper:
                 allcoeffs.append(shell.coeffs)
                 allangmoms.extend([shell.angmom] * ngauss)
                 ngauss_at_shell.append(ngauss)
+                gauss_to_shell.extend([ishell] * ngauss)
                 ishell += 1
 
         # compile the parameters of this object
@@ -158,33 +177,53 @@ class LibcintWrapper:
             allangmoms, dtype=torch.int32, device=self.device
         )  # (ntot_gauss)
 
-        # convert the lists to numpy to make it contiguous (Python lists are not contiguous)
+        # convert the lists to numpy to make it contiguous
+        # (Python lists are not contiguous)
         self._atm = np.array(atm_list, dtype=np.int32, order="C")
         self._bas = np.array(bas_list, dtype=np.int32, order="C")
         self._env = np.array(env_list, dtype=np.float64, order="C")
 
+        self._ngauss_at_shell_list = ngauss_at_shell
+        self._shell_idxs = (0, nshells if ihelp is None else ihelp.nsh)
+
+        if ihelp is None:
+            # construct the full shell mapping
+            shell_to_aoloc = [0]
+            ao_to_shell: list[int] = []
+            ao_to_atom: list[int] = []
+            for i in range(nshells):
+                nao_at_shell_i = self._nao_at_shell(i)
+                shell_to_aoloc_i = shell_to_aoloc[-1] + nao_at_shell_i
+                shell_to_aoloc.append(shell_to_aoloc_i)
+                ao_to_shell.extend([i] * nao_at_shell_i)
+                ao_to_atom.extend([shell_to_atom[i]] * nao_at_shell_i)
+
+            self._shell_to_aoloc = np.array(shell_to_aoloc, dtype=np.int32)
+            self._ao_to_shell = torch.tensor(
+                ao_to_shell, dtype=torch.long, device=self.device
+            )
+            self._ao_to_atom = torch.tensor(
+                ao_to_atom, dtype=torch.long, device=self.device
+            )
+        else:
+            if spherical is True:
+                cs = torch.cumsum(ihelp.orbitals_per_shell, -1)[-1].unsqueeze(-1)
+                shell_to_aoloc = torch.cat([ihelp.orbital_index, cs])
+                self._shell_to_aoloc = tensor_to_numpy(shell_to_aoloc, dtype=np.int32)
+
+                self._ao_to_shell = ihelp.orbitals_to_shell
+                self._ao_to_atom = ihelp.orbitals_to_atom
+            else:
+                cs = torch.cumsum(ihelp.orbitals_per_shell_cart, -1)[-1].unsqueeze(-1)
+                shell_to_aoloc = torch.cat([ihelp.orbital_index_cart, cs])
+                self._shell_to_aoloc = tensor_to_numpy(shell_to_aoloc, dtype=np.int32)
+
+                self._ao_to_shell = ihelp.orbitals_to_shell_cart
+                self._ao_to_atom = ihelp.orbitals_to_atom_cart
+
         # print("\nself._atm\n", self._atm)
         # print("\nself._bas\n", self._bas)
         # print("\nself._env\n", self._env)
-
-        self._shell_idxs = (0, ihelp.nsh)  # nshells
-        self._ngauss_at_shell_list = ngauss_at_shell
-
-        if spherical is True:
-            cs = torch.cumsum(ihelp.orbitals_per_shell, -1)[-1].unsqueeze(-1)
-            shell_to_aoloc = torch.cat([ihelp.orbital_index, cs])
-            self._shell_to_aoloc = tensor_to_numpy(shell_to_aoloc, dtype=np.int32)
-
-            self._ao_to_shell = ihelp.orbitals_to_shell
-            self._ao_to_atom = ihelp.orbitals_to_atom
-        else:
-            cs = torch.cumsum(ihelp.orbitals_per_shell_cart, -1)[-1].unsqueeze(-1)
-            shell_to_aoloc = torch.cat([ihelp.orbital_index_cart, cs])
-            self._shell_to_aoloc = tensor_to_numpy(shell_to_aoloc, dtype=np.int32)
-
-            self._ao_to_shell = ihelp.orbitals_to_shell_cart
-            self._ao_to_atom = ihelp.orbitals_to_atom_cart
-
         # print("")
         # print("self._shell_to_aoloc", self._shell_to_aoloc)
         # print("self._ao_to_atom", self._ao_to_atom)
@@ -285,8 +324,15 @@ class LibcintWrapper:
 
     @memoize_method
     def ao_idxs(self) -> tuple[int, int]:
-        # returns the lower and upper indices of the atomic orbitals of this object
-        # in the full ao map (i.e. absolute indices)
+        """
+        Return the lower and upper indices of the atomic orbitals of this object
+        in the full AO map (i.e. absolute indices)
+
+        Returns
+        -------
+        tuple[int, int]
+            The lower and upper indices of the atomic orbitals.
+        """
         shell_idxs = self.shell_idxs
         return (
             self.full_shell_to_aoloc[shell_idxs[0]],
@@ -295,16 +341,32 @@ class LibcintWrapper:
 
     @memoize_method
     def ao_to_atom(self) -> Tensor:
-        # get the relative mapping from atomic orbital relative index to the
-        # absolute atom position
-        # this is usually used in scatter in backward calculation
+        """
+        Get the relative mapping from atomic orbital relative index to the
+        absolute atom position. This is usually used in scatter in the backward
+        calculation.
+
+        Returns
+        -------
+        Tensor
+            The mapping from atomic orbital relative index to the absolute atom
+            position.
+        """
         return self.full_ao_to_atom[slice(*self.ao_idxs())]
 
     @memoize_method
     def ao_to_shell(self) -> Tensor:
-        # get the relative mapping from atomic orbital relative index to the
-        # absolute shell position
-        # this is usually used in scatter in backward calculation
+        """
+        Get the relative mapping from atomic orbital relative index to the
+        absolute shell position. This is usually used in scatter in the backward
+        calculation.
+
+        Returns
+        -------
+        Tensor
+            The mapping from atomic orbital relative index to the absolute shell
+            position.
+        """
         return self.full_ao_to_shell[slice(*self.ao_idxs())]
 
     @memoize_method
@@ -332,7 +394,7 @@ class LibcintWrapper:
                 )
             new_atombases.append(AtomCGTOBasis(atomz=atomz, bases=new_bases, pos=pos))
         uncontr_wrapper = LibcintWrapper(
-            new_atombases, self.ihelp, spherical=self.spherical
+            new_atombases, ihelp=self.ihelp, spherical=self.spherical
         )
 
         # get the mapping uncontracted ao to the contracted ao
@@ -349,22 +411,47 @@ class LibcintWrapper:
     ############### misc functions ###############
     @contextmanager
     def centre_on_r(self, r: Tensor) -> Iterator:
-        # set the centre of coordinate to r (usually used in rinv integral)
-        # r: (ndim,)
+        """
+        Set the centre of coordinate to r. This is usually used in rinv
+        integral.
+
+        Parameters
+        ----------
+        r : Tensor
+            The centre of coordinate of shape `(ndim,)`.
+
+        Yields
+        ------
+        Iterator
+            The context manager.
+        """
         env = self.atm_bas_env[-1]
         prev_centre = env[PTR_RINV_ORIG : PTR_RINV_ORIG + NDIM]
         try:
-            env[PTR_RINV_ORIG : PTR_RINV_ORIG + NDIM] = r.detach().numpy()
+            env[PTR_RINV_ORIG : PTR_RINV_ORIG + NDIM] = tensor_to_numpy(r)
             yield
         finally:
             env[PTR_RINV_ORIG : PTR_RINV_ORIG + NDIM] = prev_centre
 
     def _nao_at_shell(self, sh: int) -> int:
-        # returns the number of atomic orbital at the given shell index
-        if self.spherical:
+        """
+        Returns the number of atomic orbital at the given shell index.
+
+        Parameters
+        ----------
+        sh : int
+            The shell index.
+
+        Returns
+        -------
+        int
+            The number of atomic orbitals at the given shell index.
+        """
+        if self.spherical is True:
             op = CINT().CINTcgto_spheric
         else:
             op = CINT().CINTcgto_cart
+
         bas = self.atm_bas_env[1]
         return op(int2ctypes(sh), np2ctypes(bas))
 

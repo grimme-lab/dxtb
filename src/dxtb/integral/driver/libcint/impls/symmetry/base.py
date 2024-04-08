@@ -1,7 +1,10 @@
-# This file is part of dxtb.
+# This file is part of dxtb, modified from diffqc/dqc.
 #
-# SPDX-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2024 Grimme Group
+#
+# Original file licensed under the Apache License, Version 2.0 by diffqc/dqc.
+# Modifications made by Grimme Group.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,18 +18,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Integral Symmetry
-=================
+Symmetry: Base Class
+====================
 
-In tight-binding, we do not require anything special here. Only S1 symmetry is
-of intereset.
+Base class for all symmetry classes.
 """
-
 from __future__ import annotations
 
 from abc import abstractmethod
 
 import numpy as np
+
+__all__ = ["BaseSymmetry"]
 
 
 class BaseSymmetry:
@@ -55,19 +58,3 @@ class BaseSymmetry:
         """
         Reconstruct the full array from the reduced symmetrized array.
         """
-
-
-class S1Symmetry(BaseSymmetry):
-    """
-    S1 Symmetry (no symmetry).
-    """
-
-    def get_reduced_shape(self, orig_shape: tuple[int, ...]) -> tuple[int, ...]:
-        return orig_shape
-
-    @property
-    def code(self) -> str:
-        return "s1"
-
-    def reconstruct_array(self, arr: np.ndarray, _: tuple[int, ...]) -> np.ndarray:
-        return arr

@@ -30,7 +30,7 @@ from collections import defaultdict
 
 from dxtb.typing import Sequence
 
-from .symmetry import BaseSymmetry, S1Symmetry
+from .symmetry import s1
 
 
 class IntorNameManager:
@@ -79,9 +79,9 @@ class IntorNameManager:
         self._shortname = shortname
         self._rawop, self._ops = self.split_name(int_type, shortname)
         self._nbasis = len(self._ops)
-        self._imid = (
-            self._nbasis + 1
-        ) // 2  # middle index (where the rawops should be)
+
+        # middle index (where the rawops should be)
+        self._imid = (self._nbasis + 1) // 2
 
     @property
     def fullname(self):
@@ -116,32 +116,72 @@ class IntorNameManager:
                     derivative_order += 1
                 elif op == "ipip":
                     derivative_order += 2
-                elif op == "ipip":
+                elif op == "ipipip":
                     derivative_order += 3
 
         return derivative_order
 
     def get_intgl_name(self, spherical: bool) -> str:
-        # returns the full name of the integral in libcint library
+        """
+        Get the full name of the integral in libcint library.
+
+        Parameters
+        ----------
+        spherical : bool
+            Whether the integral is in spherical or cartesian coordinates.
+
+        Returns
+        -------
+        str
+            Full name of the integral in libcint library.
+        """
         cartsph = "sph" if spherical else "cart"
         return f"{self.fullname}_{cartsph}"
 
     def get_ft_intgl_name(self, spherical: bool) -> str:
-        # returns the full name of the fourier transform integral in libcint library
-        cartsph = "sph" if spherical else "cart"
+        """
+        Get the full name of the Fourier transform integral in libcint library.
+
+        Parameters
+        ----------
+        spherical : bool
+            Whether the integral is in spherical or cartesian coordinates.
+
+        Returns
+        -------
+        str
+            Full name of the Fourier transform integral in libcint library.
+
+        Raises
+        ------
+        NotImplementedError
+            If the Fourier transform integral is not implemented for the given
+            integral type.
+        """
+        cartsph = "sph" if spherical is True else "cart"
         int_type = self._int_type
         if int_type == "int1e":
             return f"GTO_ft_{self._shortname}_{cartsph}"
 
-        raise NotImplementedError(f"Unimplemented FT integral for {int_type}")
+        raise NotImplementedError(f"FT integral for {int_type} not implemented.")
 
     def get_intgl_deriv_namemgr(self, derivop: str, ibasis: int) -> IntorNameManager:
-        # get the name manager of a new integral when derivop is applied to
-        # ibasis-th basis
-        # derivop: string of the derivative operation
-        # ibasis: which basis the derivative operation should be performed (0-based)
-        # returns the shortname of the integral
+        """
+        Get the name manager of a new integral when derivop is applied to
+        ibasis-th basis.
 
+        Parameters
+        ----------
+        derivop : str
+            String of the derivative operation.
+        ibasis : int
+            Which basis the derivative operation should be performed (0-based).
+
+        Returns
+        -------
+        IntorNameManager
+            Name manager of the new integral.
+        """
         assert derivop in self.ops_name
         assert ibasis < self._nbasis
 
@@ -151,11 +191,21 @@ class IntorNameManager:
         return IntorNameManager(self._int_type, sname)
 
     def get_intgl_deriv_newaxispos(self, derivop: str, ibasis: int) -> None | int:
-        # get the new axis position in the new integral name
-        # derivop and basis like get_intgl_deriv_shortname
-        # returns an int of the new axis position (if any) or
-        # None if no new axis is inserted
+        """
+        Get the new axis position in the new integral name when derivop is applied
 
+        Parameters
+        ----------
+        derivop : str
+            String of the derivative operation.
+        ibasis : int
+            Which basis the derivative operation should be performed (0-based).
+
+        Returns
+        -------
+        None | int
+            New axis position or None if no new axis is inserted.
+        """
         # get how many new axes the operator is going to add
         op_ndim = self.op_ndim[derivop]
         if op_ndim == 0:
@@ -182,17 +232,32 @@ class IntorNameManager:
         )
         return comp_shape  # type: ignore
 
-    def get_intgl_symmetry(self, _: Sequence[int]) -> BaseSymmetry:
-        return S1Symmetry()
+    def get_intgl_symmetry(self, _: Sequence[int]) -> s1.S1Symmetry:
+        return s1.S1Symmetry()
 
     def get_transpose_path_to(
         self, other: IntorNameManager
     ) -> list[tuple[int, int]] | None:
-        # check if the integration `other` can be achieved by transposing `self`
-        # returns None if it cannot.
-        # returns the list of two dims if it can for the transpose-path of `self`
-        # to get the same result as `other`
+        """
+        Get the transpose path to the other integral. Check if the other
+        integral can be achieved by transposing the current integral.
 
+        Parameters
+        ----------
+        other : IntorNameManager
+            The other integral name manager.
+
+        Returns
+        -------
+        list[tuple[int, int]] | None
+            Transpose path of `self` to get the same result as the `other`
+            integral or `None` if it cannot be achieved.
+
+        Raises
+        ------
+        RuntimeError
+            If the number of basis is not supported.
+        """
         nbasis = self._nbasis
         # get the basis transpose paths
         if nbasis == 2:
@@ -201,8 +266,8 @@ class IntorNameManager:
                 [(-1, -2)],
             ]
         elif nbasis == 3:
-            # note: the third basis is usually an auxiliary basis which typically
-            # different from the first two
+            # NOTE: the third basis is usually an auxiliary basis which
+            # typically different from the first two
             transpose_paths = [
                 [],
                 [(-2, -3)],
@@ -234,7 +299,19 @@ class IntorNameManager:
         return None
 
     def get_comp_permute_path(self, transpose_path: list[tuple[int, int]]) -> list[int]:
-        # get the component permute path given the basis transpose path
+        """
+        Get the component permute path given the basis transpose path.
+
+        Parameters
+        ----------
+        transpose_path : list[tuple[int, int]]
+            Transpose path of the basis.
+
+        Returns
+        -------
+        list[int]
+            Component permute path.
+        """
         # flat_ops: list[str] = sum(self._ops, [])
         # n_ip = flat_ops.count("ip")
 
@@ -269,10 +346,26 @@ class IntorNameManager:
 
     @classmethod
     def split_name(cls, int_type: str, shortname: str) -> tuple[str, list[list[str]]]:
-        # split the shortname into operator per basis and return the raw shortname as well
-        # the first returned element is the raw shortname (i.e. the middle operator)
-        # while the second returned element is the list of basis-operator shortname
+        """
+        Split the shortname into operator per basis.
 
+        Parameters
+        ----------
+        int_type : str
+            Type of the integral.
+        shortname : str
+            Shortname of the integral.
+
+        Returns
+        -------
+        tuple[str, list[list[str]]]
+            Raw shortname (i.e., the middle operator) and list of basis-operator shortname.
+
+        Raises
+        ------
+        RuntimeError
+            If the number of basis is not supported.
+        """
         deriv_ops = cls.ops_name
         deriv_pattern = re.compile("(" + ("|".join(deriv_ops)) + ")")
 
@@ -306,7 +399,28 @@ class IntorNameManager:
 
     @classmethod
     def join_name(cls, int_type: str, rawsname: str, ops: list[list[str]]) -> str:
-        # get the shortname given rawsname and list of basis ops
+        """
+        Join the raw shortname and list of basis operators into a shortname.
+
+        Parameters
+        ----------
+        int_type : str
+            Type of the integral.
+        rawsname : str
+            Raw shortname (i.e., the middle operator).
+        ops : list[list[str]]
+            List of basis-operator shortname.
+
+        Returns
+        -------
+        str
+            Shortname of the integral.
+
+        Raises
+        ------
+        RuntimeError
+            If the number of basis is not supported.
+        """
         nbasis = cls.get_nbasis(int_type)
         ops_str = ["".join(op) for op in ops]
         assert len(ops_str) == nbasis
@@ -330,15 +444,32 @@ class IntorNameManager:
 
     @classmethod
     def get_nbasis(cls, int_type: str) -> int:
-        # get the number of basis according to the integral type
-        if int_type == "int1e" or int_type == "int2c2e":
+        """
+        Get the number of basis for the given integral type.
+
+        Parameters
+        ----------
+        int_type : str
+            Type of the integral.
+
+        Returns
+        -------
+        int
+            Number of basis.
+
+        Raises
+        ------
+        RuntimeError
+            If the integral type is unknown.
+        """
+        if int_type in ("int1e", "int2c2e"):
             return 2
-        elif int_type == "int3c2e":
+        if int_type == "int3c2e":
             return 3
-        elif int_type == "int2e":
+        if int_type == "int2e":
             return 4
-        else:
-            raise RuntimeError(f"Unknown integral type: {int_type}")
+
+        raise RuntimeError(f"Unknown integral type: {int_type}")
 
     @classmethod
     def _nbasis_error(cls, nbasis: int):
