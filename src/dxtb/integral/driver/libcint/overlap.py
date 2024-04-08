@@ -21,7 +21,7 @@ Overlap implementation based on `libcint`.
 from __future__ import annotations
 
 import torch
-from tad_mctc.batch import deflate, pack
+from tad_mctc.batch import pack
 from tad_mctc.math import einsum
 
 from dxtb.typing import Tensor
@@ -135,9 +135,14 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
 
         # batched mode
         if driver.ihelp.batch_mode > 0:
-            assert isinstance(driver.drv, list)
+            if not isinstance(driver.drv, list):
+                raise RuntimeError(
+                    "IndexHelper on integral driver is batched, but the driver "
+                    "instance itself not."
+                )
 
             if driver.ihelp.batch_mode == 1:
+                # pylint: disable=import-outside-toplevel
                 from tad_mctc.batch import deflate
 
                 self.grad = pack(
@@ -159,7 +164,11 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
             raise ValueError(f"Unknown batch mode '{driver.ihelp.batch_mode}'.")
 
         # single mode
-        assert isinstance(driver.drv, LibcintWrapper)
+        if not isinstance(driver.drv, LibcintWrapper):
+            raise RuntimeError(
+                "IndexHelper on integral driver is not batched, but the "
+                "driver instance itself seems to be batched."
+            )
 
         self.grad = fcn(driver.drv, self.norm)
         return self.grad

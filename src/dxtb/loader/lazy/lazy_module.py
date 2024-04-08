@@ -1,7 +1,10 @@
-# This file is part of dxtb.
+# This file is part of dxtb, modified from google/jax.
 #
 # SPDX-Identifier: Apache-2.0
 # Copyright (C) 2024 Grimme Group
+#
+# Original file licensed under the Apache License, Version 2.0 by google/jax.
+# Modifications made by Grimme Group.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

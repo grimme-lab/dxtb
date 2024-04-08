@@ -580,7 +580,7 @@ class BaseSCF:
                     "SCF Iterations",
                     f"{self._data.iter:3}",
                     [
-                        f"{energy.norm(): .16E}",
+                        f"{energy.norm(): .14E}",
                         f"{ediff: .6E}",
                         f"{pnorm: .6E}",
                         f"{qdiff: .6E}",

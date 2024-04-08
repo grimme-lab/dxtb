@@ -25,10 +25,10 @@ from __future__ import annotations
 
 import torch
 
+from dxtb.constants import labels
 from dxtb.typing import Tensor
+from dxtb.utils.batch import pack
 
-from ....constants import labels
-from ....utils import batch
 from ...base import BaseIntegralImplementation
 from .driver import IntDriverLibcint
 from .impls import LibcintWrapper, int1e
@@ -135,26 +135,41 @@ class MultipoleLibcint(IntegralImplementationLibcint):
                 "...ij,i,j->...ij", int1e(intstring, driver), norm, norm
             )
 
+        # batched mode
         if driver.ihelp.batch_mode > 0:
             if not isinstance(driver.drv, list):
                 raise RuntimeError(
                     "IndexHelper on integral driver is batched, but the driver "
                     "instance itself not."
                 )
+            if driver.ihelp.batch_mode == 1:
+                # pylint: disable=import-outside-toplevel
+                from tad_mctc.batch import deflate
 
-            self.matrix = batch.pack(
-                [
-                    _mpint(d, batch.deflate(self.norm[_batch]))
-                    for _batch, d in enumerate(driver.drv)
-                ]
-            )
-        else:
-            if not isinstance(driver.drv, LibcintWrapper):
-                raise RuntimeError(
-                    "IndexHelper on integral driver is not batched, but the "
-                    "driver instance itself seems to be batched."
+                self.matrix = pack(
+                    [
+                        _mpint(driver, deflate(norm))
+                        for driver, norm in zip(driver.drv, self.norm)
+                    ]
                 )
+                return self.matrix
+            elif driver.ihelp.batch_mode == 2:
+                self.matrix = pack(
+                    [
+                        _mpint(driver, norm)  # no deflating here
+                        for driver, norm in zip(driver.drv, self.norm)
+                    ]
+                )
+                return self.matrix
 
-            self.matrix = _mpint(driver.drv, self.norm)
+            raise ValueError(f"Unknown batch mode '{driver.ihelp.batch_mode}'.")
 
+        # single mode
+        if not isinstance(driver.drv, LibcintWrapper):
+            raise RuntimeError(
+                "IndexHelper on integral driver is not batched, but the "
+                "driver instance itself seems to be batched."
+            )
+
+        self.matrix = _mpint(driver.drv, self.norm)
         return self.matrix
