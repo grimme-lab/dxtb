@@ -26,7 +26,6 @@ from dxtb.typing import Tensor
 from dxtb.utils import is_basis_list
 
 from ...base import IntDriver
-from .impls import LibcintWrapper
 
 __all__ = ["IntDriverLibcint"]
 
@@ -48,6 +47,9 @@ class IntDriverLibcint(IntDriver):
         positions : Tensor
             Cartesian coordinates of all atoms in the system (nat, 3).
         """
+        # pylint: disable=import-outside-toplevel
+        from dxtb.exlibs import libcint
+
         # setup `Basis` class if not already done
         if self._basis is None:
             self.basis = Basis(self.numbers, self.par, self.ihelp, **self.dd)
@@ -75,13 +77,13 @@ class IntDriverLibcint(IntDriver):
 
             assert isinstance(atombases, list)
             self.drv = [
-                LibcintWrapper(ab, ihelp)
+                libcint.LibcintWrapper(ab, ihelp)
                 for ab, ihelp in zip(atombases, _ihelp)
                 if is_basis_list(ab)
             ]
         else:
             assert is_basis_list(atombases)
-            self.drv = LibcintWrapper(atombases, self.ihelp)
+            self.drv = libcint.LibcintWrapper(atombases, self.ihelp)
 
         # setting positions signals successful setup; save current positions to
         # catch new positions and run the required re-setup of the driver

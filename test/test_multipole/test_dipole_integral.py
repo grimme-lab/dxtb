@@ -30,7 +30,7 @@ import torch
 from tad_mctc.convert import numpy_to_tensor
 
 from dxtb.basis import Basis, IndexHelper
-from dxtb.integral.driver.libcint import impls as intor
+from dxtb.exlibs import libcint
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD, Tensor
 from dxtb.utils import is_basis_list
@@ -67,8 +67,8 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     assert is_basis_list(atombases)
 
     # dxtb's libcint integral
-    wrapper = intor.LibcintWrapper(atombases, ihelp)
-    dxtb_dpint = intor.int1e("j", wrapper)
+    wrapper = libcint.LibcintWrapper(atombases, ihelp)
+    dxtb_dpint = libcint.int1e("j", wrapper)
 
     # pyscf reference integral
     assert M is not False
@@ -79,7 +79,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     assert pytest.approx(pyscf_dpint, abs=tol) == dxtb_dpint
 
     # normalize
-    norm = snorm(intor.overlap(wrapper))
+    norm = snorm(libcint.overlap(wrapper))
     dxtb_dpint = torch.einsum("xij,i,j->xij", dxtb_dpint, norm, norm)
     pyscf_dpint = torch.einsum("xij,i,j->xij", pyscf_dpint, norm, norm)
 

@@ -15,11 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Integral Driver: Libcint
+========================
+
 `libcint`-based integral implementations.
 """
 
 from .dipole import DipoleLibcint
 from .driver import IntDriverLibcint
-from .impls import LibcintWrapper
 from .overlap import OverlapLibcint
 from .quadrupole import QuadrupoleLibcint

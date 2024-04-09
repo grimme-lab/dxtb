@@ -24,7 +24,6 @@ implementations.
 
 from .container import *
 from .dipole import *
-from .driver import *
 from .factory import *
 from .h0 import *
 from .levels import *

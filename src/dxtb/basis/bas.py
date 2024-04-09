@@ -31,14 +31,15 @@ from tad_mctc.batch import real_pairs
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.data import pse
 
-from dxtb.typing import Literal, Tensor, TensorLike
+from dxtb.param import Param, get_elem_param, get_elem_pqn, get_elem_valence
+from dxtb.typing import TYPE_CHECKING, Literal, Tensor, TensorLike
 
-from ..param import Param, get_elem_param, get_elem_pqn, get_elem_valence
-from ..utils import batch
 from .indexhelper import IndexHelper
 from .ortho import orthogonalize
 from .slater import slater_to_gauss
-from .types import AtomCGTOBasis, CGTOBasis
+
+if TYPE_CHECKING:
+    from dxtb.exlibs import libcint
 
 __all__ = ["Basis"]
 
@@ -356,7 +357,7 @@ class Basis(TensorLike):
 
     def create_dqc(
         self, positions: Tensor, mask: Tensor | None = None
-    ) -> list[AtomCGTOBasis] | list[list[AtomCGTOBasis]]:
+    ) -> list[libcint.AtomCGTOBasis] | list[list[libcint.AtomCGTOBasis]]:
         """
         Create the basis set required for `libcint`.
 
@@ -372,7 +373,7 @@ class Basis(TensorLike):
 
         Returns
         -------
-        list[AtomCGTOBasis] | list[list[AtomCGTOBasis]]
+        list[libcint.AtomCGTOBasis] | list[list[libcint.AtomCGTOBasis]]
             List of CGTOs.
 
         Raises
@@ -383,13 +384,16 @@ class Basis(TensorLike):
         if self.unique.ndim > 1:
             raise NotImplementedError("Batch mode not implemented.")
 
+        # pylint: disable=import-outside-toplevel
+        from dxtb.exlibs import libcint
+
         # tracking only required for orthogonalization
         coeffs = []
         alphas = []
 
         s = 0
         for i in range(self.unique.size(0)):
-            bases: list[CGTOBasis] = []
+            bases: list[libcint.CGTOBasis] = []
             shells = self.ihelp.ushells_per_unique[i]
 
             if shells == 0:
@@ -428,15 +432,15 @@ class Basis(TensorLike):
             s = 0
 
             # collect final basis for each atom in list (same order as `numbers`)
-            atombasis: list[AtomCGTOBasis] = []
+            atombasis: list[libcint.AtomCGTOBasis] = []
 
             for i, num in enumerate(self.numbers):
-                bases: list[CGTOBasis] = []
+                bases: list[libcint.CGTOBasis] = []
 
                 for _ in range(self.ihelp.shells_per_atom[i]):
                     idx = self.ihelp.shells_to_ushell[s]
 
-                    cgto = CGTOBasis(
+                    cgto = libcint.CGTOBasis(
                         angmom=int(self.ihelp.angular[s]),  # int!
                         alphas=alphas[idx],
                         coeffs=coeffs[idx],
@@ -447,7 +451,7 @@ class Basis(TensorLike):
                     # increment
                     s += 1
 
-                atomcgtobasis = AtomCGTOBasis(
+                atomcgtobasis = libcint.AtomCGTOBasis(
                     atomz=num,
                     bases=bases,
                     pos=positions[i, :],
@@ -461,14 +465,14 @@ class Basis(TensorLike):
         ###########
 
         # collection for batch
-        b: list[list[AtomCGTOBasis]] = []
+        b: list[list[libcint.AtomCGTOBasis]] = []
 
         for _batch in range(self.numbers.shape[0]):
             # reset counter
             s = 0
 
             # collect final basis for each atom in list
-            atombasis: list[AtomCGTOBasis] = []
+            atombasis: list[libcint.AtomCGTOBasis] = []
 
             shell_idxs = self.ihelp.shells_to_ushell[_batch]
             shells_per_atom = self.ihelp.shells_per_atom[_batch]
@@ -480,7 +484,7 @@ class Basis(TensorLike):
                     continue
 
                 # CGTOs
-                bases: list[CGTOBasis] = []
+                bases: list[libcint.CGTOBasis] = []
                 for _ in range(shells_per_atom[i]):
                     idx = shell_idxs[s]
 
@@ -488,7 +492,7 @@ class Basis(TensorLike):
                     # padding? But "s" only runs over the actual shells, so it
                     # should be fine.
                     # However, batched mode not working for functorch AD.
-                    cgto = CGTOBasis(
+                    cgto = libcint.CGTOBasis(
                         angmom=angular[s],  # int!
                         alphas=alphas[idx],
                         coeffs=coeffs[idx],
@@ -505,11 +509,14 @@ class Basis(TensorLike):
                         m = mask[_batch]
                         _pos = torch.masked_select(pos, m).reshape((-1, 3))
                     else:
-                        _pos = batch.deflate(pos, value=float("nan"))
+                        # pylint: disable=import-outside-toplevel
+                        from tad_mctc.batch import deflate
+
+                        _pos = deflate(pos, value=float("nan"))
                 elif self.ihelp.batch_mode == 2:
                     _pos = pos
 
-                atomcgtobasis = AtomCGTOBasis(
+                atomcgtobasis = libcint.AtomCGTOBasis(
                     atomz=num,
                     bases=bases,
                     pos=_pos[i, :],

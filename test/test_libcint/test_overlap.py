@@ -31,7 +31,7 @@ from tad_mctc.batch import pack
 from tad_mctc.convert import numpy_to_tensor
 
 from dxtb.basis import Basis, IndexHelper
-from dxtb.integral.driver.libcint import impls as intor
+from dxtb.exlibs import libcint
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD, Tensor
 from dxtb.utils import is_basis_list
@@ -96,8 +96,8 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     assert is_basis_list(atombases)
 
     # dxtb's libcint overlap
-    wrapper = intor.LibcintWrapper(atombases, ihelp)
-    dxtb_overlap = intor.overlap(wrapper)
+    wrapper = libcint.LibcintWrapper(atombases, ihelp)
+    dxtb_overlap = libcint.overlap(wrapper)
 
     # pyscf reference overlap ("sph" needed, implicit in dxtb)
     mol = M(numbers, positions, parse_arg=False)  # type: ignore
@@ -150,8 +150,8 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     assert is_basis_list(atombases)
 
     # dxtb's libcint overlap
-    wrapper = intor.LibcintWrapper(atombases, ihelp)
-    dxtb_overlap = intor.overlap(wrapper)
+    wrapper = libcint.LibcintWrapper(atombases, ihelp)
+    dxtb_overlap = libcint.overlap(wrapper)
 
     # pyscf reference overlap ("sph" needed, implicit in dxtb)
     mol = M(numbers, positions, parse_arg=False)  # type: ignore
@@ -198,8 +198,8 @@ def test_grad(dtype: torch.dtype, name: str) -> None:
     atombases = bas.create_dqc(positions)
     assert is_basis_list(atombases)
 
-    wrapper = intor.LibcintWrapper(atombases, ihelp)
-    int1 = intor.int1e("ipovlp", wrapper)
+    wrapper = libcint.LibcintWrapper(atombases, ihelp)
+    int1 = libcint.int1e("ipovlp", wrapper)
 
     mol = M(numbers, positions, parse_arg=False)  # type: ignore
     int2 = numpy_to_tensor(mol.intor("int1e_ipovlp"), **dd)

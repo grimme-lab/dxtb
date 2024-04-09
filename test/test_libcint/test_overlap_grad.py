@@ -27,7 +27,7 @@ import pytest
 import torch
 
 from dxtb.basis import Basis, IndexHelper
-from dxtb.integral.driver.libcint import impls as intor
+from dxtb.exlibs import libcint
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD, Tensor
 from dxtb.utils import is_basis_list
@@ -53,12 +53,12 @@ def explicit(name: str, dd: DD, tol: float) -> None:
     atombases = bas.create_dqc(positions)
     assert is_basis_list(atombases)
 
-    wrapper = intor.LibcintWrapper(atombases, ihelp)
-    s = intor.overlap(wrapper)
+    wrapper = libcint.LibcintWrapper(atombases, ihelp)
+    s = libcint.overlap(wrapper)
     norm = torch.pow(s.diagonal(dim1=-1, dim2=-2), -0.5)
 
     # (3, norb, norb)
-    grad = intor.int1e("ipovlp", wrapper)
+    grad = libcint.int1e("ipovlp", wrapper)
 
     # normalize and move xyz dimension to last, which is required for
     # the reduction (only works with extra dimension in last)
@@ -103,8 +103,8 @@ def autograd(name: str, dd: DD, tol: float) -> None:
     atombases = bas.create_dqc(positions)
     assert is_basis_list(atombases)
 
-    wrapper = intor.LibcintWrapper(atombases, ihelp)
-    s = intor.overlap(wrapper)
+    wrapper = libcint.LibcintWrapper(atombases, ihelp)
+    s = libcint.overlap(wrapper)
     norm = torch.pow(s.diagonal(dim1=-1, dim2=-2), -0.5)
     s = torch.einsum("...ij,...i,...j->...ij", s, norm, norm)
 
@@ -144,8 +144,8 @@ def num_grad(bas: Basis, ihelp: IndexHelper, positions: Tensor) -> torch.Tensor:
         atombases = bas.create_dqc(positions)
         assert is_basis_list(atombases)
 
-        wrapper = intor.LibcintWrapper(atombases, ihelp)
-        return intor.overlap(wrapper)
+        wrapper = libcint.LibcintWrapper(atombases, ihelp)
+        return libcint.overlap(wrapper)
 
     delta = 1e-6
 

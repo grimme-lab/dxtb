@@ -22,11 +22,13 @@ from __future__ import annotations
 
 import torch
 
-from dxtb.typing import Any
+from dxtb.constants import labels
+from dxtb.typing import TYPE_CHECKING, Any
 
-from ..constants import labels
 from .base import BaseIntegral
-from .driver.libcint import QuadrupoleLibcint
+
+if TYPE_CHECKING:
+    from .driver.libcint import QuadrupoleLibcint
 
 
 class Quadrupole(BaseIntegral):
@@ -43,11 +45,14 @@ class Quadrupole(BaseIntegral):
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         super().__init__(device=device, dtype=dtype)
 
         # Determine which overlap class to instantiate based on the type
         if driver == labels.INTDRIVER_LIBCINT:
+            # pylint: disable=import-outside-toplevel
+            from .driver.libcint import QuadrupoleLibcint
+
             self.integral = QuadrupoleLibcint(device=device, dtype=dtype, **kwargs)
         elif driver in (labels.INTDRIVER_ANALYTICAL, labels.INTDRIVER_AUTOGRAD):
             raise NotImplementedError(

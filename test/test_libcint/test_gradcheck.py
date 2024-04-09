@@ -25,8 +25,8 @@ import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
 from dxtb.basis import Basis, IndexHelper
+from dxtb.exlibs import libcint
 from dxtb.integral.driver.libcint import IntDriverLibcint, OverlapLibcint
-from dxtb.integral.driver.libcint import impls as intor
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD, Callable, Tensor
 from dxtb.utils import batch, is_basis_list
@@ -61,8 +61,8 @@ def gradchecker(
         atombases = bas.create_dqc(pos)
         assert is_basis_list(atombases)
 
-        wrapper = intor.LibcintWrapper(atombases, ihelp, spherical=False)
-        return intor.int1e(intstr, wrapper)
+        wrapper = libcint.LibcintWrapper(atombases, ihelp, spherical=False)
+        return libcint.int1e(intstr, wrapper)
 
     return func, positions
 

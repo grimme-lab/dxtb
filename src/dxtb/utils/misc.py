@@ -30,9 +30,11 @@ from functools import wraps
 
 import torch
 
-from dxtb.typing import Any, Callable, Tensor, TypeGuard, TypeVar
+from dxtb.typing import TYPE_CHECKING, Any, Callable, Tensor, TypeGuard, TypeVar
 
-from ..basis.types import AtomCGTOBasis
+if TYPE_CHECKING:
+    from dxtb.exlibs import libcint
+
 
 T = TypeVar("T")
 
@@ -75,7 +77,7 @@ def is_int_list(x: list[Any]) -> TypeGuard[list[int]]:
     return all(isinstance(i, int) for i in x)
 
 
-def is_basis_list(x: Any) -> TypeGuard[list[AtomCGTOBasis]]:
+def is_basis_list(x: Any) -> TypeGuard[list[libcint.AtomCGTOBasis]]:
     """
     Determines whether all objects in the list are `AtomCGTOBasis`.
 
@@ -91,7 +93,11 @@ def is_basis_list(x: Any) -> TypeGuard[list[AtomCGTOBasis]]:
     """
     if not isinstance(x, list):
         return False
-    return all(isinstance(i, AtomCGTOBasis) for i in x)
+
+    # pylint: disable=import-outside-toplevel
+    from dxtb.exlibs import libcint
+
+    return all(isinstance(i, libcint.AtomCGTOBasis) for i in x)
 
 
 def convert_float_tensor(

@@ -26,12 +26,17 @@ from __future__ import annotations
 import torch
 
 from dxtb.constants import labels
-from dxtb.typing import Tensor
+from dxtb.exlibs import libcint
+from dxtb.typing import TYPE_CHECKING, Tensor
 from dxtb.utils.batch import pack
 
 from ...base import BaseIntegralImplementation
-from .driver import IntDriverLibcint
-from .impls import LibcintWrapper, int1e
+
+if TYPE_CHECKING:
+    from .driver import IntDriverLibcint
+
+
+__all__ = ["MultipoleLibcint"]
 
 
 class LibcintImplementation:
@@ -51,6 +56,9 @@ class LibcintImplementation:
         driver : IntDriverLibcint
             Integral driver for the calculation.
         """
+        # pylint: disable=import-outside-toplevel
+        from .driver import IntDriverLibcint
+
         if not isinstance(driver, IntDriverLibcint):
             raise RuntimeError("Wrong integral driver selected.")
 
@@ -71,6 +79,9 @@ class IntegralImplementationLibcint(
             Integral driver for the calculation.
         """
         super().checks(driver)
+
+        # pylint: disable=import-outside-toplevel
+        from .driver import IntDriverLibcint
 
         if not isinstance(driver, IntDriverLibcint):
             raise RuntimeError("Wrong integral driver selected.")
@@ -130,9 +141,9 @@ class MultipoleLibcint(IntegralImplementationLibcint):
         if self.norm is None:
             raise RuntimeError("Norm must be set before building.")
 
-        def _mpint(driver: LibcintWrapper, norm: Tensor) -> Tensor:
+        def _mpint(driver: libcint.LibcintWrapper, norm: Tensor) -> Tensor:
             return torch.einsum(
-                "...ij,i,j->...ij", int1e(intstring, driver), norm, norm
+                "...ij,i,j->...ij", libcint.int1e(intstring, driver), norm, norm
             )
 
         # batched mode
@@ -165,7 +176,7 @@ class MultipoleLibcint(IntegralImplementationLibcint):
             raise ValueError(f"Unknown batch mode '{driver.ihelp.batch_mode}'.")
 
         # single mode
-        if not isinstance(driver.drv, LibcintWrapper):
+        if not isinstance(driver.drv, libcint.LibcintWrapper):
             raise RuntimeError(
                 "IndexHelper on integral driver is not batched, but the "
                 "driver instance itself seems to be batched."

@@ -25,7 +25,7 @@ import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
 from dxtb.basis import Basis, IndexHelper
-from dxtb.integral.driver.libcint import impls as intor
+from dxtb.exlibs import libcint
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD, Tensor
 from dxtb.utils import batch, is_basis_list
@@ -57,8 +57,8 @@ def num_grad(
         atombases = bas.create_dqc(pos)
         assert is_basis_list(atombases)
 
-        wrapper = intor.LibcintWrapper(atombases, ihelp)
-        return intor.int1e(intstr, wrapper)
+        wrapper = libcint.LibcintWrapper(atombases, ihelp)
+        return libcint.int1e(intstr, wrapper)
 
     # Loop over all atoms and their x, y, z coordinates
     for atom in range(positions.shape[0] - 1):
@@ -101,10 +101,10 @@ def test_grad(dtype: torch.dtype, name: str):
 
     INTSTR = "r0"
 
-    wrapper = intor.LibcintWrapper(atombases, ihelp)
-    i = intor.int1e(INTSTR, wrapper)
+    wrapper = libcint.LibcintWrapper(atombases, ihelp)
+    i = libcint.int1e(INTSTR, wrapper)
     print()
-    igrad = intor.int1e(f"ip{INTSTR}", wrapper)
+    igrad = libcint.int1e(f"ip{INTSTR}", wrapper)
     igrad = igrad + igrad.mT
     print("igrad\n", igrad)
     # assert False

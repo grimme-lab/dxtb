@@ -26,19 +26,20 @@ from __future__ import annotations
 import torch
 
 from dxtb.basis import IndexHelper
-from dxtb.typing import Any, Tensor
+from dxtb.constants import labels
+from dxtb.param import Param
+from dxtb.typing import TYPE_CHECKING, Any, Tensor
 
-from ..constants import labels
-from ..param import Param
 from .base import IntDriver
-from .driver import (
-    IntDriverLibcint,
-    IntDriverPytorch,
-    IntDriverPytorchLegacy,
-    IntDriverPytorchNoAnalytical,
-)
-from .driver.libcint import OverlapLibcint
-from .driver.pytorch import OverlapPytorch
+
+if TYPE_CHECKING:
+    from .driver.libcint import IntDriverLibcint, OverlapLibcint
+    from .driver.pytorch import (
+        IntDriverPytorch,
+        IntDriverPytorchLegacy,
+        IntDriverPytorchNoAnalytical,
+        OverlapPytorch,
+    )
 
 __all__ = ["new_driver", "new_overlap"]
 
@@ -71,8 +72,11 @@ def new_driver_libcint(
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> IntDriverLibcint:
+    # pylint: disable=import-outside-toplevel
+    from .driver.libcint import IntDriverLibcint as IntDriver
+
     ihelp = IndexHelper.from_numbers(numbers, par)
-    return IntDriverLibcint(numbers, par, ihelp, device=device, dtype=dtype)
+    return IntDriver(numbers, par, ihelp, device=device, dtype=dtype)
 
 
 def new_driver_pytorch(
@@ -81,8 +85,11 @@ def new_driver_pytorch(
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> IntDriverPytorch:
+    # pylint: disable=import-outside-toplevel
+    from .driver.pytorch import IntDriverPytorch as IntDriver
+
     ihelp = IndexHelper.from_numbers(numbers, par)
-    return IntDriverPytorch(numbers, par, ihelp, device=device, dtype=dtype)
+    return IntDriver(numbers, par, ihelp, device=device, dtype=dtype)
 
 
 def new_driver_pytorch2(
@@ -91,8 +98,11 @@ def new_driver_pytorch2(
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> IntDriverPytorchNoAnalytical:
+    # pylint: disable=import-outside-toplevel
+    from .driver.pytorch import IntDriverPytorchNoAnalytical as IntDriver
+
     ihelp = IndexHelper.from_numbers(numbers, par)
-    return IntDriverPytorchNoAnalytical(numbers, par, ihelp, device=device, dtype=dtype)
+    return IntDriver(numbers, par, ihelp, device=device, dtype=dtype)
 
 
 def new_driver_legacy(
@@ -101,8 +111,11 @@ def new_driver_legacy(
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> IntDriverPytorchLegacy:
+    # pylint: disable=import-outside-toplevel
+    from .driver.pytorch import IntDriverPytorchLegacy as IntDriver
+
     ihelp = IndexHelper.from_numbers(numbers, par)
-    return IntDriverPytorchLegacy(numbers, par, ihelp, device=device, dtype=dtype)
+    return IntDriver(numbers, par, ihelp, device=device, dtype=dtype)
 
 
 ################################################################################
@@ -133,6 +146,9 @@ def new_overlap_libcint(
     dtype: torch.dtype | None = None,
     **kwargs: Any,
 ) -> OverlapLibcint:
+    # pylint: disable=import-outside-toplevel
+    from .driver.libcint import OverlapLibcint
+
     return OverlapLibcint(device=device, dtype=dtype, **kwargs)
 
 
@@ -141,4 +157,7 @@ def new_overlap_pytorch(
     dtype: torch.dtype | None = None,
     **kwargs: Any,
 ) -> OverlapPytorch:
+    # pylint: disable=import-outside-toplevel
+    from .driver.pytorch import OverlapPytorch
+
     return OverlapPytorch(device=device, dtype=dtype, **kwargs)

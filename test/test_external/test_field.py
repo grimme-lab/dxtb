@@ -28,6 +28,7 @@ from tad_mctc.batch import pack
 from tad_mctc.units import VAA2AU
 
 from dxtb.components.interactions import new_efield
+from dxtb.constants import labels
 from dxtb.param import GFN1_XTB
 from dxtb.typing import DD
 from dxtb.xtb import Calculator
@@ -37,7 +38,12 @@ from .samples import samples
 sample_list = ["MB16_43_01"]
 sample_list = ["LiH", "SiH4"]
 
-opts = {"verbosity": 0, "maxiter": 50}
+opts = {
+    "verbosity": 0,
+    "maxiter": 50,
+    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
+}
 
 device = None
 
@@ -67,7 +73,9 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
-@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
+@pytest.mark.parametrize(
+    "scf_mode", [labels.SCF_MODE_IMPLICIT_NON_PURE, labels.SCF_MODE_FULL]
+)
 def test_batch(dtype: torch.dtype, name1: str, name2: str, scf_mode: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": device, "dtype": dtype}
@@ -107,7 +115,9 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, scf_mode: str) -> Non
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
 @pytest.mark.parametrize("name3", sample_list)
-@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
+@pytest.mark.parametrize(
+    "scf_mode", [labels.SCF_MODE_IMPLICIT_NON_PURE, labels.SCF_MODE_FULL]
+)
 def test_batch_three(
     dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
 ) -> None:

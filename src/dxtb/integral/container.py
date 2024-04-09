@@ -28,13 +28,12 @@ import logging
 import torch
 
 from dxtb.basis import IndexHelper
+from dxtb.constants import defaults, labels
+from dxtb.param import Param
 from dxtb.typing import Any, Tensor
 
-from ..constants import defaults, labels
-from ..param import Param
 from .base import IntDriver, IntegralContainer
 from .dipole import Dipole
-from .driver import IntDriverLibcint, IntDriverPytorch, IntDriverPytorchNoAnalytical
 from .h0 import Hamiltonian
 from .overlap import Overlap
 from .quadrupole import Quadrupole
@@ -89,14 +88,23 @@ class Integrals(IntegralContainer):
 
         # Determine which driver class to instantiate
         if driver == labels.INTDRIVER_LIBCINT:
+            # pylint: disable=import-outside-toplevel
+            from .driver.libcint import IntDriverLibcint
+
             self._driver = IntDriverLibcint(
                 numbers, par, ihelp, device=device, dtype=dtype
             )
         elif driver == labels.INTDRIVER_ANALYTICAL:
+            # pylint: disable=import-outside-toplevel
+            from .driver.pytorch import IntDriverPytorch
+
             self._driver = IntDriverPytorch(
                 numbers, par, ihelp, device=device, dtype=dtype
             )
         elif driver == labels.INTDRIVER_AUTOGRAD:
+            # pylint: disable=import-outside-toplevel
+            from .driver.pytorch import IntDriverPytorchNoAnalytical
+
             self._driver = IntDriverPytorchNoAnalytical(
                 numbers, par, ihelp, device=device, dtype=dtype
             )

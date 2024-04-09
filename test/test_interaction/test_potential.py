@@ -108,7 +108,7 @@ def test_fromtensor_mono() -> None:
 
 def test_fromtensor_mono_withpack() -> None:
     tensor = batch.pack([vmono], value=defaults.PADNZ, axis=AXIS)
-    pot = Potential.from_tensor(tensor, data, batched=True)
+    pot = Potential.from_tensor(tensor, data, batch_mode=2)
 
     assert (pot.mono == tensor).all()
     assert pot.dipole is None
@@ -137,7 +137,7 @@ def test_fromtensor_all() -> None:
 
 
 def test_fromtensor_mono_batch() -> None:
-    pot = Potential.from_tensor(vmonob, datab, batched=True)
+    pot = Potential.from_tensor(vmonob, datab, batch_mode=1)
 
     assert (pot.mono == vmonob).all()
     assert pot.dipole is None
@@ -151,7 +151,7 @@ def test_fromtensor_mono_batch_withpack() -> None:
     localdata = datab.copy()
     localdata["mono"] = tensor.shape
 
-    pot = Potential.from_tensor(tensor, localdata, batched=True)
+    pot = Potential.from_tensor(tensor, localdata, batch_mode=1)
 
     assert (pot.mono == tensor).all()
     assert pot.dipole is None
@@ -160,7 +160,7 @@ def test_fromtensor_mono_batch_withpack() -> None:
 
 def test_fromtensor_mono_dipole_batch() -> None:
     tensor = batch.pack([vmonob, vdipoleb], value=PAD, axis=AXISB)
-    pot = Potential.from_tensor(tensor, datab, batched=True, pad=PAD)
+    pot = Potential.from_tensor(tensor, datab, batch_mode=1, pad=PAD)
 
     assert (pot.mono == vmonob).all()
     assert (pot.dipole == vdipoleb).all()
@@ -169,7 +169,7 @@ def test_fromtensor_mono_dipole_batch() -> None:
 
 def test_fromtensor_all_batch() -> None:
     tensor = batch.pack([vmonob, vdipoleb, vquadb], value=PAD, axis=AXISB)
-    pot = Potential.from_tensor(tensor, datab, batched=True, pad=PAD)
+    pot = Potential.from_tensor(tensor, datab, batch_mode=1, pad=PAD)
 
     assert (pot.mono == vmonob).all()
     assert (pot.dipole == vdipoleb).all()

@@ -27,4 +27,3 @@ from .bas import *
 from .indexhelper import IndexHelper
 from .ortho import orthogonalize
 from .slater import slater_to_gauss
-from .types import *

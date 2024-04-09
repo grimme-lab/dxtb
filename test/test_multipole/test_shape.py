@@ -25,7 +25,7 @@ import torch
 from tad_mctc.batch import deflate, pack
 
 from dxtb.basis import Basis, IndexHelper
-from dxtb.integral.driver.libcint import impls as intor
+from dxtb.exlibs import libcint
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD
 from dxtb.utils import is_basis_list
@@ -55,8 +55,8 @@ def test_single(dtype: torch.dtype, intstr: str, name: str) -> None:
     atombases = bas.create_dqc(positions)
     assert is_basis_list(atombases)
 
-    wrapper = intor.LibcintWrapper(atombases, ihelp, spherical=True)
-    i = intor.int1e(intstr, wrapper)
+    wrapper = libcint.LibcintWrapper(atombases, ihelp, spherical=True)
+    i = libcint.int1e(intstr, wrapper)
 
     mpdim = 3 ** len(intstr)
     assert i.shape == torch.Size((mpdim, ihelp.nao, ihelp.nao))
@@ -92,11 +92,11 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, intstr: str) -> None:
     ihelp = [IndexHelper.from_numbers(deflate(number), par) for number in numbers]
 
     wrappers = [
-        intor.LibcintWrapper(ab, ihelp)
+        libcint.LibcintWrapper(ab, ihelp)
         for ab, ihelp in zip(atombases, ihelp)
         if is_basis_list(ab)
     ]
-    i = pack([intor.int1e(intstr, wrapper) for wrapper in wrappers])
+    i = pack([libcint.int1e(intstr, wrapper) for wrapper in wrappers])
 
     mpdim = 3 ** len(intstr)
     assert i.shape == torch.Size((2, mpdim, _ihelp.nao, _ihelp.nao))

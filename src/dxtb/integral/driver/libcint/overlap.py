@@ -24,12 +24,12 @@ import torch
 from tad_mctc.batch import pack
 from tad_mctc.math import einsum
 
+from dxtb.exlibs import libcint
 from dxtb.typing import Tensor
 
 from ...base import BaseIntegralImplementation
 from .base import LibcintImplementation
 from .driver import IntDriverLibcint
-from .impls import LibcintWrapper, int1e, overlap
 
 __all__ = ["OverlapLibcint"]
 
@@ -72,8 +72,8 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
         """
         super().checks(driver)
 
-        def fcn(driver: LibcintWrapper) -> tuple[Tensor, Tensor]:
-            s = overlap(driver)
+        def fcn(driver: libcint.LibcintWrapper) -> tuple[Tensor, Tensor]:
+            s = libcint.overlap(driver)
             norm = snorm(s)
             mat = einsum("...ij,...i,...j->...ij", s, norm, norm)
             return mat, norm
@@ -95,7 +95,7 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
             return self.matrix
 
         # single mode
-        assert isinstance(driver.drv, LibcintWrapper)
+        assert isinstance(driver.drv, libcint.LibcintWrapper)
 
         self.matrix, self.norm = fcn(driver.drv)
         return self.matrix
@@ -116,9 +116,9 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
         """
         super().checks(driver)
 
-        def fcn(driver: LibcintWrapper, norm: Tensor) -> Tensor:
+        def fcn(driver: libcint.LibcintWrapper, norm: Tensor) -> Tensor:
             # (3, norb, norb)
-            grad = int1e("ipovlp", driver)
+            grad = libcint.int1e("ipovlp", driver)
 
             # normalize and move xyz dimension to last, which is required for
             # the reduction (only works with extra dimension in last)
@@ -128,10 +128,10 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
         if self.norm is None:
             if driver.ihelp.batch_mode > 0:
                 assert isinstance(driver.drv, list)
-                self.norm = pack([snorm(overlap(d)) for d in driver.drv])
+                self.norm = pack([snorm(libcint.overlap(d)) for d in driver.drv])
             else:
-                assert isinstance(driver.drv, LibcintWrapper)
-                self.norm = snorm(overlap(driver.drv))
+                assert isinstance(driver.drv, libcint.LibcintWrapper)
+                self.norm = snorm(libcint.overlap(driver.drv))
 
         # batched mode
         if driver.ihelp.batch_mode > 0:
@@ -164,7 +164,7 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
             raise ValueError(f"Unknown batch mode '{driver.ihelp.batch_mode}'.")
 
         # single mode
-        if not isinstance(driver.drv, LibcintWrapper):
+        if not isinstance(driver.drv, libcint.LibcintWrapper):
             raise RuntimeError(
                 "IndexHelper on integral driver is not batched, but the "
                 "driver instance itself seems to be batched."

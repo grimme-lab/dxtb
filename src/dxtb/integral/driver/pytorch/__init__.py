@@ -15,8 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Integral Driver: PyTorch
+========================
+
 Pytorch-based integral implementations.
 """
 
-from .driver import IntDriverPytorch, IntDriverPytorchNoAnalytical
+from .driver import (
+    IntDriverPytorch,
+    IntDriverPytorchLegacy,
+    IntDriverPytorchNoAnalytical,
+)
 from .overlap import OverlapPytorch

@@ -25,13 +25,15 @@ from __future__ import annotations
 
 import torch
 
-from dxtb.typing import Any
+from dxtb.constants import labels
+from dxtb.typing import TYPE_CHECKING, Any
 
-from ..constants import labels
 from .base import BaseIntegral
-from .driver.libcint import OverlapLibcint
-from .driver.pytorch import OverlapPytorch
 from .factory import new_overlap
+
+if TYPE_CHECKING:
+    from .driver.libcint import OverlapLibcint
+    from .driver.pytorch import OverlapPytorch
 
 __all__ = ["Overlap"]
 
@@ -50,7 +52,7 @@ class Overlap(BaseIntegral):
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         super().__init__(device=device, dtype=dtype)
 
         self.integral = new_overlap(driver, device=device, dtype=dtype, **kwargs)
