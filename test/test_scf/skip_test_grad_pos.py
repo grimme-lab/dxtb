@@ -38,7 +38,7 @@ tol = 1e-5
 opts = {
     "exclude": ["rep", "disp", "hal"],
     "maxiter": 50,
-    "scf_mode": labels.SCF_MODE_IMPLICIT,
+    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
     "scp_mode": labels.SCP_MODE_POTENTIAL,
     "verbosity": 0,
 }

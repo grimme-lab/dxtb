@@ -26,6 +26,8 @@ import torch
 from dxtb import integral as ints
 from dxtb.basis import IndexHelper
 from dxtb.constants.labels import INTDRIVER_ANALYTICAL, INTDRIVER_LIBCINT
+from dxtb.integral.driver.libcint import IntDriverLibcint
+from dxtb.integral.driver.pytorch import IntDriverPytorch
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD
 
@@ -45,9 +47,9 @@ def test_single(dtype: torch.dtype):
     ilc = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_LIBCINT, **dd)
 
     ipy.setup_driver(positions)
-    assert isinstance(ipy.driver, ints.driver.IntDriverPytorch)
+    assert isinstance(ipy.driver, IntDriverPytorch)
     ilc.setup_driver(positions)
-    assert isinstance(ilc.driver, ints.driver.IntDriverLibcint)
+    assert isinstance(ilc.driver, IntDriverLibcint)
 
     assert ipy.driver.is_latest(positions) is True
     assert ilc.driver.is_latest(positions) is True
@@ -71,9 +73,9 @@ def test_batch(dtype: torch.dtype):
     ilc = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_LIBCINT, **dd)
 
     ipy.setup_driver(positions)
-    assert isinstance(ipy.driver, ints.driver.IntDriverPytorch)
+    assert isinstance(ipy.driver, IntDriverPytorch)
     ilc.setup_driver(positions)
-    assert isinstance(ilc.driver, ints.driver.IntDriverLibcint)
+    assert isinstance(ilc.driver, IntDriverLibcint)
 
     assert ipy.driver.is_latest(positions) is True
     assert ilc.driver.is_latest(positions) is True

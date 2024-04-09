@@ -25,6 +25,8 @@ import torch
 
 from dxtb import integral as ints
 from dxtb.basis import IndexHelper
+from dxtb.exlibs import libcint
+from dxtb.integral.driver.libcint import IntDriverLibcint
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD
 from dxtb.utils import batch
@@ -48,8 +50,8 @@ def test_single(dtype: torch.dtype, name: str):
     i = ints.Integrals(numbers, par, ihelp, **dd)
 
     i.setup_driver(positions)
-    assert isinstance(i.driver, ints.driver.IntDriverLibcint)
-    assert isinstance(i.driver.drv, ints.driver.libcint.LibcintWrapper)
+    assert isinstance(i.driver, IntDriverLibcint)
+    assert isinstance(i.driver.drv, libcint.LibcintWrapper)
 
     ################################################
 
@@ -107,10 +109,10 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     i = ints.Integrals(numbers, par, ihelp, **dd)
 
     i.setup_driver(positions)
-    assert isinstance(i.driver, ints.driver.IntDriverLibcint)
+    assert isinstance(i.driver, IntDriverLibcint)
     assert isinstance(i.driver.drv, list)
-    assert isinstance(i.driver.drv[0], ints.driver.libcint.LibcintWrapper)
-    assert isinstance(i.driver.drv[1], ints.driver.libcint.LibcintWrapper)
+    assert isinstance(i.driver.drv[0], libcint.LibcintWrapper)
+    assert isinstance(i.driver.drv[1], libcint.LibcintWrapper)
 
     ################################################
 

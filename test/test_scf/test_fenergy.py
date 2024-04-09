@@ -39,7 +39,7 @@ opts = {
         torch.float32: torch.tensor(1e-4, dtype=torch.float32),  # instead of 1e-5
         torch.float64: torch.tensor(1e-10, dtype=torch.float64),
     },
-    "scf_mode": labels.SCF_MODE_IMPLICIT,
+    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
     "scp_mode": "potential",  # important for atoms (better convergence)
     "verbosity": 0,
 }

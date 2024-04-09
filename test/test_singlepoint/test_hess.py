@@ -42,7 +42,7 @@ opts = {
     "f_atol": 1.0e-10,
     "x_atol": 1.0e-10,
     "maxiter": 50,
-    "scf_mode": labels.SCF_MODE_IMPLICIT,
+    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
     "scp_mode": labels.SCP_MODE_POTENTIAL,
     "verbosity": 0,
 }

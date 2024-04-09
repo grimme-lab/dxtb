@@ -26,6 +26,7 @@ import torch
 from dxtb import integral as ints
 from dxtb.basis import IndexHelper
 from dxtb.constants.labels import INTDRIVER_ANALYTICAL
+from dxtb.integral.driver.pytorch import IntDriverPytorch
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD, Tensor
 from dxtb.utils import batch
@@ -40,7 +41,7 @@ def run(numbers: Tensor, positions: Tensor, dd: DD) -> None:
     i = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_ANALYTICAL, **dd)
 
     i.setup_driver(positions)
-    assert isinstance(i.driver, ints.driver.IntDriverPytorch)
+    assert isinstance(i.driver, IntDriverPytorch)
 
     i.overlap = ints.Overlap(driver=INTDRIVER_ANALYTICAL, **dd)
     i.build_overlap(positions)

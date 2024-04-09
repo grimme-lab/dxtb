@@ -162,7 +162,7 @@ def solve(
         params = A.getlinopparams()
         mparams = M.getlinopparams() if M is not None else []
         na = len(params)
-        return solve_torchfcn.apply(
+        return solve_torchfcn(
             A, B, E, M, method, fwd_options, bck_options, na, *params, *mparams
         )
 
