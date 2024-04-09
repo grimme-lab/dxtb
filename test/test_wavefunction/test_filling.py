@@ -31,7 +31,7 @@ from dxtb.basis import IndexHelper
 from dxtb.config import ConfigSCF
 from dxtb.integral import IntegralMatrices
 from dxtb.param import GFN1_XTB
-from dxtb.scf.iterator import SelfConsistentField
+from dxtb.scf.implicit import SelfConsistentFieldImplicit as SCF
 from dxtb.typing import DD
 from dxtb.utils import batch
 from dxtb.wavefunction import filling
@@ -248,7 +248,7 @@ def test_kt(dtype: torch.dtype, kt: float):
 
     # electronic free energy
     d = torch.zeros_like(focc)  # dummy
-    scf = SelfConsistentField(
+    scf = SCF(
         d,  # type: ignore
         focc,
         d,

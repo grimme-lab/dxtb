@@ -15,23 +15,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Self-consistent field
-=====================
+SCF Implicit: Base
+==================
+
+Base class for all SCF implementations that make use of the implicit function
+theorem in the backward pass.
 """
 
 from __future__ import annotations
 
 import torch
 
+from dxtb.exlibs import xitorch as xt
+from dxtb.timing.decorator import timer_decorator
 from dxtb.typing import Tensor
 
-from ..exlibs.xitorch import EditableModule, LinearOperator
-from ..exlibs.xitorch import linalg as xtl
-from ..timing.decorator import timer_decorator
-from .base import BaseSCF
+from ..base import BaseSCF
 
 
-class BaseXSCF(BaseSCF, EditableModule):
+class BaseXSCF(BaseSCF, xt.EditableModule):
     """
     Base class for the `xitorch`-based self-consistent field iterator.
 
@@ -44,7 +46,7 @@ class BaseXSCF(BaseSCF, EditableModule):
     convergence.
     """
 
-    def get_overlap(self) -> LinearOperator:
+    def get_overlap(self) -> xt.LinearOperator:
         """
         Get the overlap matrix.
 
@@ -59,7 +61,7 @@ class BaseXSCF(BaseSCF, EditableModule):
         zeros = torch.eq(smat, 0)
         mask = torch.all(zeros, dim=-1) & torch.all(zeros, dim=-2)
 
-        return LinearOperator.m(
+        return xt.LinearOperator.m(
             smat + torch.diag_embed(smat.new_ones(*smat.shape[:-2], 1) * mask)
         )
 
@@ -83,10 +85,10 @@ class BaseXSCF(BaseSCF, EditableModule):
         evecs : Tensor
             Eigenvectors of the Hamiltonian.
         """
-        h_op = LinearOperator.m(hamiltonian)
+        h_op = xt.LinearOperator.m(hamiltonian)
         o_op = self.get_overlap()
 
-        return xtl.lsymeig(A=h_op, M=o_op, **self.eigen_options)
+        return xt.linalg.lsymeig(A=h_op, M=o_op, **self.eigen_options)
 
     def getparamnames(
         self, methodname: str, prefix: str = ""

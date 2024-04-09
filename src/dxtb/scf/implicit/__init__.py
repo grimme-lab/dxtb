@@ -15,13 +15,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Self-consistent field (SCF)
-===========================
+SCF: Implicit
+=============
 
-Definition of the self-consistent iterations.
+SCF implementations that utilize the implicit function theorem in the backward
+pass, i.e., using a closed form expression for the gradient instead of
+unrolling all iterations. This is inherently more memory efficient (constant
+memory), but holds some caveats for the AD engine.
+
+Note
+----
+Currently, the implicit SCF implementations are not fully compatible with
+PyTorch's composable function transforms.
 """
-
-from .base import *
-from .guess import get_guess
-from .iterator import solve
-from .utils import get_density as get_density
+from .default import SelfConsistentFieldImplicit

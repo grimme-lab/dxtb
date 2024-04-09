@@ -38,12 +38,12 @@ class Simple(Mixer):
     """
 
     def __init__(
-        self, options: dict[str, Any] | None = None, is_batch: bool = False
+        self, options: dict[str, Any] | None = None, batch_mode: int = 0
     ) -> None:
         opts = dict(default_opts)
         if options is not None:
             opts.update(options)
-        super().__init__(opts, is_batch=is_batch)
+        super().__init__(opts, batch_mode=batch_mode)
 
         # Holds the system from the previous iteration.
         self.x_old: Tensor | None = None

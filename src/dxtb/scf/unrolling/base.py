@@ -15,19 +15,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Self-consistent field
-=====================
+SCF Unrolling: Base
+===================
+
+Base class for all SCF implementations that unroll the SCF iterations in the
+backward pass, i.e., the implicit function theorem is not used.
 """
 
 from __future__ import annotations
 
 import torch
+from tad_mctc import storch
 
+from dxtb.timing.decorator import timer_decorator
 from dxtb.typing import Tensor
 
-from ..timing.decorator import timer_decorator
-from ..utils import eighb
-from .base import BaseSCF
+from ..base import BaseSCF
 
 
 class BaseTSCF(BaseSCF):
@@ -87,7 +90,7 @@ class BaseTSCF(BaseSCF):
         else:
             broadening_method = "lorn"
 
-        return eighb(
+        return storch.eighb(
             a=hamiltonian,
             b=o,
             is_posdef=True,

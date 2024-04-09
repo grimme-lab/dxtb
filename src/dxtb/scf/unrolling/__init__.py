@@ -15,13 +15,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Self-consistent field (SCF)
-===========================
+SCF: Unrolling
+==============
 
-Definition of the self-consistent iterations.
+SCF implementations that unroll the SCF iterations in the backward pass, i.e.,
+the implicit function theorem is not used. This is inherently more memory
+intensive than using the implicit function theorem.
 """
-
-from .base import *
-from .guess import get_guess
-from .iterator import solve
-from .utils import get_density as get_density
+from .default import SelfConsistentFieldFull
+from .singleshot import SelfConsistentFieldSingleShot

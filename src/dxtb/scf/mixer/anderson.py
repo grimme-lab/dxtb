@@ -108,12 +108,12 @@ class Anderson(Mixer):
     """
 
     def __init__(
-        self, options: dict[str, Any] | None = None, is_batch: bool = False
+        self, options: dict[str, Any] | None = None, batch_mode: int = 0
     ) -> None:
         opts = dict(default_opts)
         if options is not None:
             opts.update(options)
-        super().__init__(opts, is_batch=is_batch)
+        super().__init__(opts, batch_mode=batch_mode)
 
         self.mix_param = self.options["damp"]
         self.generations = self.options["generations"]
@@ -144,10 +144,10 @@ class Anderson(Mixer):
         # original shape _shape_out when returned to the user.
         self._shape_out = list(x_new.shape)
 
-        if self._is_batch:
-            self._shape_in = list(x_new.reshape(x_new.shape[0], -1).shape)
-        else:
+        if self._batch_mode == 0:
             self._shape_in = list(torch.flatten(x_new).shape)
+        else:
+            self._shape_in = list(x_new.reshape(x_new.shape[0], -1).shape)
 
         # Instantiate the x history (x_hist) and the delta history 'd_hist'
         size = (self.generations + 1, *self._shape_in)

@@ -29,19 +29,21 @@ from tad_mctc.math import einsum
 from tad_mctc.units import KELVIN2AU
 
 from dxtb.basis import IndexHelper
-from dxtb.typing import DD, Any, Slicers, Tensor
+from dxtb.typing import DD, TYPE_CHECKING, Any, Slicers, Tensor
 
 from ..components.interactions import InteractionList
 from ..components.interactions.container import Charges, ContainerData, Potential
 from ..config import ConfigSCF
 from ..constants import defaults, labels
-from ..exlibs.xitorch import LinearOperator
 from ..integral.container import IntegralMatrices
 from ..io import OutputHandler
 from ..timing.decorator import timer_decorator
 from ..wavefunction import filling, mulliken
 from .result import SCFResult
 from .utils import get_density
+
+if TYPE_CHECKING:
+    from dxtb.exlibs import xitorch as xt
 
 __all__ = ["BaseSCF"]
 
@@ -206,7 +208,7 @@ class BaseSCF:
     eigen_options: dict[str, Any]
     """Options for eigensolver"""
 
-    batched: bool
+    batch_mode: int
     """Whether multiple systems or a single one are handled"""
 
     def __init__(
@@ -257,7 +259,6 @@ class BaseSCF:
         self.kt = torch.tensor(self.config.fermi.etemp * KELVIN2AU, **self.dd)
 
         self.interactions = interactions
-        self.batched = self._data.numbers.ndim > 1
 
     @abstractmethod
     def scf(self, guess: Tensor) -> Charges:
@@ -276,7 +277,7 @@ class BaseSCF:
         """
 
     @abstractmethod
-    def get_overlap(self) -> LinearOperator | Tensor:
+    def get_overlap(self) -> xt.LinearOperator | Tensor:
         """
         Get the overlap matrix.
 
@@ -330,7 +331,7 @@ class BaseSCF:
 
         # initialize Charge container depending on given integrals
         if isinstance(charges, Tensor):
-            charges = Charges(mono=charges, batch_mode=self.batched)
+            charges = Charges(mono=charges, batch_mode=self.config.batch_mode)
             self._data.charges["mono"] = charges.mono_shape
 
             if self._data.ints.dipole is not None:
@@ -410,11 +411,13 @@ class BaseSCF:
         """
 
         if self.config.scp_mode == labels.SCP_MODE_CHARGE:
-            return Charges.from_tensor(x, self._data.charges, batch_mode=self.batched)
+            return Charges.from_tensor(
+                x, self._data.charges, batch_mode=self.config.batch_mode
+            )
 
         if self.config.scp_mode == labels.SCP_MODE_POTENTIAL:
             pot = Potential.from_tensor(
-                x, self._data.potential, batch_mode=self.batched
+                x, self._data.potential, batch_mode=self.config.batch_mode
             )
             return self.potential_to_charges(pot)
 
@@ -609,7 +612,9 @@ class BaseSCF:
             New orbital-resolved partial charges vector.
         """
 
-        q = Charges.from_tensor(charges, self._data.charges, batch_mode=self.batched)
+        q = Charges.from_tensor(
+            charges, self._data.charges, batch_mode=self.config.batch_mode
+        )
         potential = self.charges_to_potential(q)
 
         # FIXME: Batch print not working!
@@ -634,9 +639,8 @@ class BaseSCF:
         Tensor
             New potential vector for each orbital partial charge.
         """
-        print("cfg.batch_mode", self.config.batch_mode)
         pot = Potential.from_tensor(
-            potential, self._data.potential, batch_mode=self.batched
+            potential, self._data.potential, batch_mode=self.config.batch_mode
         )
         charges = self.potential_to_charges(pot)
 
@@ -759,7 +763,9 @@ class BaseSCF:
 
         # monopolar charges
         populations = einsum("...ik,...ki->...i", density, ints.overlap)
-        charges = Charges(mono=self._data.n0 - populations, batch_mode=self.batched)
+        charges = Charges(
+            mono=self._data.n0 - populations, batch_mode=self.config.batch_mode
+        )
 
         # Atomic dipole moments (dipole charges)
         if ints.dipole is not None:

@@ -328,7 +328,7 @@ opts = {
         torch.float64: torch.tensor(1e-10, dtype=torch.float64),
     },
     "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
-    "scp_mode": labels.SCP_MODE_POTENTIAL,  # important for atoms (better convergence)
+    "scp_mode": labels.SCP_MODE_POTENTIAL,  # better convergence for atoms
     "verbosity": 0,
 }
 

@@ -83,7 +83,6 @@ def iterate_potential(
     Tensor
         New potential vector for each orbital partial charge.
     """
-    print("cfg.batch_mode", cfg.batch_mode)
     pot = Potential.from_tensor(potential, data.potential, batch_mode=cfg.batch_mode)
     charges = potential_to_charges(pot, data, cfg)
 

@@ -49,7 +49,7 @@ class Mixer(ABC):
     _delta: Tensor | None
     """Difference between the current and previous systems."""
 
-    _is_batch: bool
+    _batch_mode: int
     """
     Whether the mixer operates in batch mode.
     Inferring batch mode from within the mixer is unreliable as the mixer can
@@ -59,7 +59,7 @@ class Mixer(ABC):
     """
 
     def __init__(
-        self, options: dict[str, Any] | None = None, is_batch: bool = False
+        self, options: dict[str, Any] | None = None, batch_mode: int = 0
     ) -> None:
         self.label = self.__class__.__name__
         self.options = options if options is not None else default_opts
@@ -68,7 +68,7 @@ class Mixer(ABC):
 
         # inferring batch mode from shapes of tensor is unreliable, so we
         # explicitly set this information
-        self._is_batch = is_batch
+        self._batch_mode = batch_mode
 
     def __str__(self) -> str:
         """Returns representative string."""
@@ -152,12 +152,12 @@ class Mixer(ABC):
         if self.delta is None:
             raise RuntimeError("Nothing has been mixed")
 
-        if self._is_batch is True:
+        if self._batch_mode == 0:
+            delta_norm = torch.norm(self.delta)
+        else:
             # norm goes over all dims except first (batch dimension)
             dims = tuple(range(-(self.delta.ndim - 1), 0))
             delta_norm = torch.norm(self.delta, dim=dims)
-        else:
-            delta_norm = torch.norm(self.delta)
 
         return delta_norm < self.options["x_tol"]
 
