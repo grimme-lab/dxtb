@@ -47,19 +47,11 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
         self,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
+        _matrix: Tensor | None = None,
+        _norm: Tensor | None = None,
+        _gradient: Tensor | None = None,
     ):
-        super().__init__(device, dtype)
-        self._gradient = None
-
-    @property
-    def gradient(self) -> Tensor:
-        if self._gradient is None:
-            raise RuntimeError("Overlap gradient has not been calculated.")
-        return self._gradient
-
-    @gradient.setter
-    def gradient(self, mat: Tensor) -> None:
-        self._gradient = mat
+        super().__init__(device, dtype, _matrix, _norm, _gradient)
 
     def build(self, driver: IntDriverLibcint) -> Tensor:
         """

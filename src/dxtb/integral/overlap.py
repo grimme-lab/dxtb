@@ -46,6 +46,8 @@ class Overlap(BaseIntegral):
     integral: OverlapLibcint | OverlapPytorch
     """Instance of actual overlap integral type."""
 
+    __slots__ = ["integral"]
+
     def __init__(
         self,
         driver: int = labels.INTDRIVER_LIBCINT,

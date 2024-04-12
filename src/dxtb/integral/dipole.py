@@ -53,6 +53,9 @@ class Dipole(BaseIntegral):
             # pylint: disable=import-outside-toplevel
             from .driver.libcint import DipoleLibcint
 
+            if kwargs.pop("force_cpu_for_libcint", True):
+                device = torch.device("cpu")
+
             self.integral = DipoleLibcint(device=device, dtype=dtype, **kwargs)
         elif driver in (labels.INTDRIVER_ANALYTICAL, labels.INTDRIVER_AUTOGRAD):
             raise NotImplementedError(

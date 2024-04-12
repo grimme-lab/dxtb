@@ -321,17 +321,22 @@ class BaseIntegralImplementation(IntegralImplementationABC, TensorLike):
     All integral calculations are executed by this class.
     """
 
+    __slots__ = ["_matrix", "_norm", "_gradient"]
+
     def __init__(
         self,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
+        _matrix: Tensor | None = None,
+        _norm: Tensor | None = None,
+        _gradient: Tensor | None = None,
     ) -> None:
         super().__init__(device=device, dtype=dtype)
         self.label = self.__class__.__name__
 
-        self._matrix = None
-        self._norm = None
-        self._gradient = None
+        self._matrix = _matrix
+        self._norm = _norm
+        self._gradient = _gradient
 
     def checks(self, driver: IntDriver) -> None:
         """
@@ -368,6 +373,16 @@ class BaseIntegralImplementation(IntegralImplementationABC, TensorLike):
     def norm(self, n: Tensor) -> None:
         self._norm = n
 
+    @property
+    def gradient(self) -> Tensor:
+        if self._gradient is None:
+            raise RuntimeError("Integral gradient has not been calculated.")
+        return self._gradient
+
+    @gradient.setter
+    def gradient(self, mat: Tensor) -> None:
+        self._gradient = mat
+
     def __str__(self) -> str:
         d = self.__dict__.copy()
         if self._matrix is not None:
@@ -395,9 +410,10 @@ class IntegralContainer(TensorLike):
         self,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
+        _run_checks: bool = True,
     ):
         super().__init__(device, dtype)
-        self._run_checks = True
+        self._run_checks = _run_checks
 
     @property
     def run_checks(self) -> bool:

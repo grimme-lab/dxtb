@@ -125,14 +125,21 @@ MIXER = "broyden"
 MIXER_CHOICES = ["anderson", "broyden", "simple"]
 """List of possible choices for `MIXER`."""
 
-SCF_MODE = "default"
+SCF_MODE = "nonpure"
 """
 Whether to use full gradient tracking in SCF, make use of the implicit
 function theorem as provided by `xitorch.optimize.equilibrium`, or use the
 experimental single-shot procedure.
 """
 
-SCF_MODE_CHOICES = ["default", "implicit", "full", "full_tracking", "experimental"]
+SCF_MODE_CHOICES = [
+    "default",
+    "implicit",
+    "nonpure",
+    "full",
+    "full_tracking",
+    "experimental",
+]
 """List of possible choices for `SCF_MODE`."""
 
 SCP_MODE = "potential"

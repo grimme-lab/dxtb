@@ -489,7 +489,9 @@ class Calculator(TensorLike):
 
         # setup integral
         driver = self.opts.ints.driver
-        self.integrals = ints.Integrals(numbers, par, self.ihelp, driver=driver, **dd)
+        self.integrals = ints.Integrals(
+            numbers, par, self.ihelp, driver=driver, intlevel=self.opts.ints.level, **dd
+        )
 
         if self.opts.ints.level >= ints.INTLEVEL_OVERLAP:
             self.integrals.hcore = ints.Hamiltonian(numbers, par, self.ihelp, **dd)
@@ -576,13 +578,6 @@ class Calculator(TensorLike):
             timer.stop("Overlap")
             OutputHandler.write_stdout("done", v=3)
 
-            # Core Hamiltonian integral (requires overlap internally!)
-            OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ", v=3)
-            timer.start("Core Hamiltonian", parent_uid="Integrals")
-            self.integrals.build_hcore(positions)
-            timer.stop("Core Hamiltonian")
-            OutputHandler.write_stdout("done", v=3)
-
             # dipole integral
             if self.opts.ints.level >= ints.INTLEVEL_DIPOLE:
                 OutputHandler.write_stdout_nf(" - Dipole            ... ", v=3)
@@ -598,6 +593,19 @@ class Calculator(TensorLike):
                 self.integrals.build_quadrupole(positions)
                 timer.stop("Quadrupole Integral")
                 OutputHandler.write_stdout("done", v=3)
+
+            # Core Hamiltonian integral (requires overlap internally!)
+            #
+            # This should be the final integral, because the others are
+            # potentially calculated on CPU (libcint) even in GPU runs.
+            # To avoid unnecessary data transfer, the core Hamiltonian should
+            # be last. Internally, the overlap integral is only transfered back
+            # to GPU when all multipole integrals are calculated.
+            OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ", v=3)
+            timer.start("Core Hamiltonian", parent_uid="Integrals")
+            self.integrals.build_hcore(positions)
+            timer.stop("Core Hamiltonian")
+            OutputHandler.write_stdout("done", v=3)
 
             timer.stop("Integrals")
 

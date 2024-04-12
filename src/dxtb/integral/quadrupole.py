@@ -53,6 +53,9 @@ class Quadrupole(BaseIntegral):
             # pylint: disable=import-outside-toplevel
             from .driver.libcint import QuadrupoleLibcint
 
+            if kwargs.pop("force_cpu_for_libcint", True):
+                device = torch.device("cpu")
+
             self.integral = QuadrupoleLibcint(device=device, dtype=dtype, **kwargs)
         elif driver in (labels.INTDRIVER_ANALYTICAL, labels.INTDRIVER_AUTOGRAD):
             raise NotImplementedError(

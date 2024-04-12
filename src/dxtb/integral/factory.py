@@ -129,6 +129,8 @@ def new_overlap(
 ) -> OverlapLibcint | OverlapPytorch:
     # Determine which overlap class to instantiate based on the type
     if driver == labels.INTDRIVER_LIBCINT:
+        if kwargs.pop("force_cpu_for_libcint", True):
+            device = torch.device("cpu")
         return new_overlap_libcint(device=device, dtype=dtype, **kwargs)
 
     if driver in (

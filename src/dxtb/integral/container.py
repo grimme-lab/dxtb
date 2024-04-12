@@ -32,6 +32,7 @@ from dxtb.constants import defaults, labels
 from dxtb.param import Param
 from dxtb.typing import Any, Tensor
 
+from . import levels
 from .base import IntDriver, IntegralContainer
 from .dipole import Dipole
 from .h0 import Hamiltonian
@@ -74,22 +75,29 @@ class Integrals(IntegralContainer):
         driver: int = labels.INTDRIVER_LIBCINT,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
-    ):
+        intlevel: int = defaults.INTLEVEL,
+        force_cpu_for_libcint: bool = True,
+    ) -> None:
         super().__init__(device, dtype)
 
         self.numbers = numbers
         self.par = par
-        self.ihelp = ihelp
         self._hcore = hcore
         self._overlap = overlap
         self._dipole = dipole
         self._quadrupole = quadrupole
-        self._matrices = IntegralMatrices(device=device, dtype=dtype)
+        self._intlevel = intlevel
+        self.force_cpu_for_libcint = force_cpu_for_libcint
 
         # Determine which driver class to instantiate
         if driver == labels.INTDRIVER_LIBCINT:
             # pylint: disable=import-outside-toplevel
             from .driver.libcint import IntDriverLibcint
+
+            if self.force_cpu_for_libcint:
+                device = torch.device("cpu")
+                numbers = numbers.to(device=device)
+                ihelp = ihelp.to(device=device)
 
             self._driver = IntDriverLibcint(
                 numbers, par, ihelp, device=device, dtype=dtype
@@ -110,6 +118,10 @@ class Integrals(IntegralContainer):
             )
         else:
             raise ValueError(f"Unknown integral driver '{driver}'.")
+
+        # potentially moved to CPU
+        self.ihelp = ihelp
+        self._matrices = IntegralMatrices(device=device, dtype=dtype)
 
     @property
     def matrices(self) -> IntegralMatrices:
@@ -194,16 +206,27 @@ class Integrals(IntegralContainer):
         self.checks()
 
     def build_overlap(self, positions: Tensor, **kwargs: Any) -> Tensor:
+        # in case CPU is forced for libcint, move positions to CPU
+        if self.force_cpu_for_libcint:
+            positions = positions.to(device=torch.device("cpu"))
+
         self.setup_driver(positions, **kwargs)
         logger.debug("Overlap integral: Start building matrix.")
 
         if self.overlap is None:
             raise RuntimeError("No overlap integral provided.")
 
-        overlap = self.overlap.build(self.driver)
-        self._matrices.overlap = overlap
+        self.overlap.build(self.driver)
+        assert self.overlap.matrix is not None
+
+        # move integral to the correct device
+        if self.force_cpu_for_libcint is True:
+            if self._intlevel <= levels.INTLEVEL_OVERLAP:
+                self.overlap.integral = self.overlap.integral.to(device=self.device)
+
+        self._matrices.overlap = self.overlap.matrix
         logger.debug("Overlap integral: All finished.")
-        return overlap
+        return self.overlap.matrix
 
     def grad_overlap(self, positions: Tensor, **kwargs) -> Tensor:
         self.setup_driver(positions, **kwargs)
@@ -232,6 +255,10 @@ class Integrals(IntegralContainer):
         self.checks()
 
     def build_dipole(self, positions: Tensor, shift: bool = True, **kwargs: Any):
+        # in case CPU is forced for libcint, move positions to CPU
+        if self.force_cpu_for_libcint:
+            positions = positions.to(device=torch.device("cpu"))
+
         self.setup_driver(positions, **kwargs)
         logger.debug("Dipole integral: Start building matrix.")
 
@@ -260,6 +287,16 @@ class Integrals(IntegralContainer):
             logger.debug("Dipole integral: Finished shifting operator.")
 
         self._matrices.dipole = self.dipole.integral.matrix
+
+        # move integral to the correct device, but only if no other multipole
+        # integrals are required
+        if self.force_cpu_for_libcint and self._intlevel <= levels.INTLEVEL_DIPOLE:
+            self.dipole.integral = self.dipole.integral.to(device=self.device)
+            self.overlap.integral = self.overlap.integral.to(device=self.device)
+
+            # explicitly move matrices to the correct device
+            self._matrices = self._matrices.to(self.device)
+
         logger.debug("Dipole integral: All finished.")
         return self.dipole.integral.matrix
 
@@ -289,6 +326,10 @@ class Integrals(IntegralContainer):
         traceless: bool = True,
         **kwargs: Any,
     ):
+        # in case CPU is forced for libcint, move positions to CPU
+        if self.force_cpu_for_libcint:
+            positions = positions.to(device=torch.device("cpu"))
+
         # check all instantiations
         self.setup_driver(positions, **kwargs)
         logger.debug("Quad integral: Start building matrix.")
@@ -330,6 +371,17 @@ class Integrals(IntegralContainer):
                 ),
             )
             logger.debug("Quad integral: Finished shifting operator.")
+
+        # move integral to the correct device, but only if no other multipole
+        # integrals are required
+        if self.force_cpu_for_libcint and self._intlevel <= levels.INTLEVEL_QUADRUPOLE:
+            self.overlap.integral = self.overlap.integral.to(self.device)
+            self.quadrupole.integral = self.quadrupole.integral.to(self.device)
+            if self.dipole is not None:
+                self.dipole.integral = self.dipole.integral.to(self.device)
+
+            # explicitly move matrices to the correct device
+            self._matrices = self._matrices.to(self.device)
 
         self._matrices.quadrupole = self.quadrupole.integral.matrix
         logger.debug("Quad integral: All finished.")
@@ -415,23 +467,24 @@ class IntegralMatrices(IntegralContainer):
     Storage container for the integral matrices.
     """
 
-    __slots__ = ["_hcore", "_overlap", "_dipole", "_quadrupole", "_run_checks"]
+    __slots__ = ["_hcore", "_overlap", "_dipole", "_quadrupole"]
 
     def __init__(
         self,
-        hcore: Tensor | None = None,
-        overlap: Tensor | None = None,
-        dipole: Tensor | None = None,
-        quadrupole: Tensor | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
+        _hcore: Tensor | None = None,
+        _overlap: Tensor | None = None,
+        _dipole: Tensor | None = None,
+        _quadrupole: Tensor | None = None,
+        _run_checks: bool = True,
     ):
-        super().__init__(device, dtype)
+        super().__init__(device, dtype, _run_checks)
 
-        self._hcore = hcore
-        self._overlap = overlap
-        self._dipole = dipole
-        self._quadrupole = quadrupole
+        self._hcore = _hcore
+        self._overlap = _overlap
+        self._dipole = _dipole
+        self._quadrupole = _quadrupole
 
     # Core Hamiltonian
 
