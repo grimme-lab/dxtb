@@ -135,7 +135,7 @@ class MultipoleLibcint(IntegralImplementationLibcint):
             raise ValueError(
                 f"Unknown integral string '{intstring}' provided.\n"
                 f"Only '{', '.join(allowed_mps)} are allowed.\n'"
-                "Other integrals can be added to dxtblibs."
+                "Other integrals can be added to `tad-libcint`."
             )
 
         if self.norm is None:

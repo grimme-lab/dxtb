@@ -23,7 +23,7 @@ All the functions and classes required to interface with the `libcint` library.
 
 try:
     from tad_libcint.basis import AtomCGTOBasis, CGTOBasis
-    from tad_libcint.interface.intor import int1e, overlap
+    from tad_libcint.interface.integrals import int1e, overlap
     from tad_libcint.interface.wrapper import LibcintWrapper
 except ImportError as e:
     raise ImportError(
