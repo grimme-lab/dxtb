@@ -20,10 +20,9 @@ Typing for the overlap functions.
 
 from __future__ import annotations
 
+from dxtb.basis import Basis, IndexHelper
+from dxtb.constants import defaults
 from dxtb.typing import Literal, Protocol, Tensor
-
-from .....basis import Basis, IndexHelper
-from .....constants import defaults
 
 __all__ = ["OverlapFunction"]
 

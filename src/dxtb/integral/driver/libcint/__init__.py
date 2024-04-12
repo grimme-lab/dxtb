@@ -25,3 +25,10 @@ from .dipole import DipoleLibcint
 from .driver import IntDriverLibcint
 from .overlap import OverlapLibcint
 from .quadrupole import QuadrupoleLibcint
+
+__all__ = [
+    "DipoleLibcint",
+    "IntDriverLibcint",
+    "OverlapLibcint",
+    "QuadrupoleLibcint",
+]

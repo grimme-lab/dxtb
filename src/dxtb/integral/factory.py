@@ -45,7 +45,7 @@ __all__ = ["new_driver", "new_overlap"]
 
 
 def new_driver(
-    name: str,
+    name: int,
     numbers: Tensor,
     par: Param,
     device: torch.device | None = None,
@@ -63,7 +63,7 @@ def new_driver(
     if name == labels.INTDRIVER_LEGACY:
         return new_driver_legacy(numbers, par, device=device, dtype=dtype)
 
-    raise ValueError(f"Unknown integral driver '{name}'.")
+    raise ValueError(f"Unknown integral driver '{ labels.INTDRIVER_MAP[name]}'.")
 
 
 def new_driver_libcint(

@@ -255,7 +255,7 @@ def test_kt(dtype: torch.dtype, kt: float):
         numbers=numbers,
         ihelp=d,
         cache=d,
-        integrals=IntegralMatrices(hcore=d, overlap=d, **dd),
+        integrals=IntegralMatrices(_hcore=d, _overlap=d, **dd),
         config=ConfigSCF(fermi_etemp=kt),
     )
 

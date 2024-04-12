@@ -85,7 +85,6 @@ from dxtb.components.interactions import (
 from .__version__ import __version__
 
 from dxtb.basis import Basis, IndexHelper
-from .mol import molecule
 from .param import GFN1_XTB, Param
 from .xtb import Calculator
 from dxtb.utils import batch
@@ -114,7 +113,6 @@ __all__ = [
     "external",
     "interactions",
     "io",
-    "molecule",
     "new_dispersion",
     "new_es2",
     "new_es3",
