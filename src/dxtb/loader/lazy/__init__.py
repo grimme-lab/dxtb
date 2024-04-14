@@ -14,6 +14,52 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Loaders: Lazy
+=============
+
+Loaders and functions for lazy loading of modules and variables.
+
+Example
+-------
+The following example demonstrates how to use the `attach_module` function to
+lazily load submodules of a package.
+
+>>> from dxtb.loader.lazy import attach_module
+>>> __getattr__, __dir__, __all__ = attach_module(__name__, ["sub1", "sub2"])
+
+An improved version would also handle type checking.
+
+>>> from typing import TYPE_CHECKING
+>>>
+>>> if TYPE_CHECKING:
+...     from . import sub1 as sub1
+...     from . import sub2 as sub2
+... else:
+...     import dxtb.loader.lazy as _lazy
+...
+...     __getattr__, __dir__, __all__ = _lazy.attach_module(
+...         __name__,
+...         ["sub1", "sub2"],
+...     )
+...
+...     del _lazy
+
+Similarly, `:func:attach_var` can be used to lazily load variables.
+
+>>> from typing import TYPE_CHECKING
+>>>
+>>> if TYPE_CHECKING:
+...     from dxtb.mol.molecule import Mol
+... else:
+...     import dxtb.loader.lazy as _lazy
+...
+...     __getattr__, __dir__, __all__ = _lazy.attach_var(
+...         dxtb.mol.molecule, ["Mol"]
+...     )
+...
+...     del _lazy
+"""
 from .lazy_module import attach_module
 from .lazy_param import LazyLoaderParam
 from .lazy_var import attach_var

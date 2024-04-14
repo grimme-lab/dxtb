@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Parametrization: Second-Order Electrostatics
+============================================
+
 Definition of the isotropic second-order charge interactions.
 """
 
@@ -22,7 +25,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
-from ..constants import xtb
+from dxtb.constants import DEFAULT_ES2_GEXP
 
 
 class ChargeEffective(BaseModel):
@@ -31,7 +34,7 @@ class ChargeEffective(BaseModel):
     parametrization.
     """
 
-    gexp: float = xtb.DEFAULT_ES2_GEXP
+    gexp: float = DEFAULT_ES2_GEXP
     """Exponent of Coulomb kernel. """
 
     average: str = "harmonic"

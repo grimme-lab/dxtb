@@ -15,7 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Parametrization: Multipole Electrostatics
+=========================================
+
 Definition of the anisotropic second-order multipolar interactions.
+Currently, only GFN2-xTB's damped multipole version is supported.
 """
 
 from __future__ import annotations

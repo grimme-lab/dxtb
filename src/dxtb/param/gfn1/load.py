@@ -15,10 +15,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-GFN1-xTB
-========
+Parametrization: GFN1-xTB Loader
+================================
 
 This module loads the standard GFN1-xTB parametrization (lazily).
+Hence, the TOML file is only read when a member is accessed.
+
+Example
+-------
+>>> from dxtb.param.gfn1 import GFN1_XTB
+>>> print(GFN1_XTB._loaded is None)
+True
+>>> m = GFN1_XTB.meta
+>>> print(GFN1_XTB._loaded is None)
+False
 """
 
 from __future__ import annotations

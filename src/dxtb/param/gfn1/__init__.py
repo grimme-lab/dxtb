@@ -14,4 +14,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Parametrization: GFN1-xTB
+=========================
+
+This module provides the GFN1-xTB parametrization.
+The parametrization is stored in a TOML file and loaded lazily.
+
+Example
+-------
+>>> from dxtb.param.gfn1 import GFN1_XTB
+>>> print(GFN1_XTB._loaded is None)
+True
+>>> m = GFN1_XTB.meta
+>>> print(GFN1_XTB._loaded is None)
+False
+"""
 from .load import GFN1_XTB as GFN1_XTB

@@ -15,14 +15,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Extended tight-binding parametrization
-======================================
+Parametrizations
+================
 
-This module defines the parametrization of the extended tight-binding Hamiltonian.
+This module defines the parametrization of the extended tight-binding
+Hamiltonians in the form of a hierarichical structure of Pydantic models.
 
 The structure of the parametrization is adapted from the `tblite`_ library and
 separates the species-specific parameter records from the general interactions
 included in the method.
+
+The standard parametrizations of GFN1 and GFN2 are predefined
 
 .. _tblite: https://tblite.readthedocs.io
 """
@@ -37,29 +40,8 @@ if tuple(map(int, pydantic_version.split("."))) < (2, 0, 0):
 
 
 from .base import Param
-from .charge import Charge
-from .dispersion import Dispersion
-from .element import Element
 from .gfn1 import GFN1_XTB
 from .gfn2 import GFN2_XTB
-from .halogen import Halogen
-from .hamiltonian import Hamiltonian
-from .meta import Meta
-from .repulsion import EffectiveRepulsion, Repulsion
-from .thirdorder import ThirdOrder
-from .util import *
+from .utils import *
 
-__all__ = [
-    "Param",
-    "Charge",
-    "Dispersion",
-    "Element",
-    "GFN1_XTB",
-    "GFN2_XTB",
-    "Halogen",
-    "Hamiltonian",
-    "Meta",
-    "EffectiveRepulsion",
-    "Repulsion",
-    "ThirdOrder",
-]
+__all__ = ["Param", "GFN1_XTB", "GFN2_XTB"]

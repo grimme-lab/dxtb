@@ -15,7 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Definition of the repulsion contribution.
+Parametrization: Repulsion
+==========================
+
+Definition of the repulsion contribution. The :class:`EffectiveRepulsion` is
+used in GFN1-xTB and GFN2-xTB.
 """
 
 from __future__ import annotations

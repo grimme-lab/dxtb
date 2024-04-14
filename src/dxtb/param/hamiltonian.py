@@ -15,11 +15,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Parametrization: Hamiltonian
+============================
+
 Definition of the global core Hamiltonian parameters.
 
-The core Hamiltonian is rescaling the shell-blocks of the overlap integrals formed
-over the basis set by the average of the atomic self-energies and an additional
-distance dependent function formed from the element parametrization.
+The core Hamiltonian is rescaling the shell-blocks of the overlap integrals
+formed over the basis set by the average of the atomic self-energies and an
+additional distance dependent function formed from the element parametrization.
 """
 
 from __future__ import annotations
@@ -39,14 +42,19 @@ class XTBHamiltonian(BaseModel):
 
     shell: Dict[str, float]
     """Shell-pair dependent scaling factor for off-site blocks"""
+
     kpair: Dict[str, float] = {}
     """Atom-pair dependent scaling factor for off-site valence blocks"""
+
     enscale: float
     """Electronegativity scaling factor for off-site valence blocks"""
+
     wexp: float
     """Exponent of the orbital exponent dependent off-site scaling factor"""
+
     cn: Optional[str] = None
     """Local environment descriptor for shifting the atomic self-energies"""
+
     kpol: float = 2.0
     """Scaling factor for polarization functions"""
 

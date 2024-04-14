@@ -123,13 +123,19 @@ class _Timers:
     label: str | None
     """Name for the Timer collection."""
 
-    def __init__(self, label: str | None = None) -> None:
+    def __init__(
+        self,
+        label: str | None = None,
+        autostart: bool = False,
+    ) -> None:
         self.label = label
         self.timers = {}
         self._enabled = True
         self._subtimer_parent_map = {}
+        self._autostart = autostart
 
-        self.start("total")
+        if self._autostart is True:
+            self.reset()
 
     def enable(self) -> None:
         """
@@ -296,5 +302,5 @@ class _Timers:
         )
 
 
-timer = _Timers()
+timer = _Timers(autostart=True)
 """Global instance of the timer class."""

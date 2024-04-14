@@ -28,9 +28,9 @@ import torch
 from tad_mctc.data import pse
 
 from dxtb.typing import Tensor, get_default_dtype
+from dxtb.utils import is_int_list
 
-from ..param import Element
-from ..utils import is_int_list
+from .element import Element
 
 __all__ = [
     "get_pair_param",

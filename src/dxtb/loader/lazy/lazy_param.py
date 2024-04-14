@@ -14,6 +14,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Loaders: Lazy Parameter Loader
+==============================
+
+A lazy loader class for loading TOML parametrization upon member access.
+This is used for loading the GFN1-xTB and GFN2-xTB parametrizations.
+
+Example
+-------
+>>> from dxtb.loader.lazy import LazyLoaderParam
+>>> param = LazyLoaderParam("../../param/gfn1/gfn1-xtb.toml")
+"""
+
 from __future__ import annotations
 
 from dxtb.typing import Any, PathLike
@@ -86,3 +99,25 @@ class LazyLoaderParam:
             del toml
 
         return getattr(self._loaded, item)
+
+    def __str__(self) -> str:
+        """
+        Custom string representation of the `LazyLoaderParam` object.
+
+        Returns
+        -------
+        str
+            The string representation of the `LazyLoaderParam` object.
+        """
+        return f"LazyLoaderParam({str(self.filepath)})"
+
+    def __repr__(self) -> str:
+        """
+        Custom representation of the `LazyLoaderParam` object.
+
+        Returns
+        -------
+        str
+            The string representation of the `LazyLoaderParam` object.
+        """
+        return str(self)

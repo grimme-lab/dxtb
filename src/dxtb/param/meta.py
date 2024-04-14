@@ -15,7 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Meta data associated with a parametrization. Mainly used for identification of data format.
+Parametrizations: Meta
+======================
+
+Meta data associated with a parametrization.
+Mainly used for identification of data format.
 """
 
 from __future__ import annotations
@@ -32,7 +36,9 @@ class Meta(BaseModel):
 
     name: Optional[str] = None
     """Name of the represented method"""
+
     reference: Optional[str] = None
     """References relevant for the parametrization records"""
+
     version: int = 0
     """Version of the represented method"""

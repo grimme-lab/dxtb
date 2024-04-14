@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Parametrization: 3rd-order Electrostatics
+=========================================
+
 Definition of the isotropic third-order onsite correction.
 """
 
@@ -44,4 +47,6 @@ class ThirdOrder(BaseModel):
     """
 
     shell: Union[bool, ThirdOrderShell] = False
-    """Whether the third order contribution is shell-dependent or only atomwise."""
+    """
+    Whether the third order contribution is shell-dependent or only atomwise.
+    """

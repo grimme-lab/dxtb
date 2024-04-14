@@ -15,7 +15,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Definition of the dispersion contribution.
+Parametrization: Dispersion
+===========================
+
+Definitions of dispersion contributions. Contains the :class:`D3Model` and
+:class:`D4Model` representing the DFT-D3(BJ) and DFT-D4 dispersion corrections,
+respectively.
+For details on there implementation, see the `tad-dftd3`_ and `tad-dftd4`_
+libraries.
+
+.. _tad-dftd3: https://github.com/dftd3/tad-dftd3
+
+.. _tad-dftd4: https://github.com/dftd4/tad-dftd4
 """
 
 from __future__ import annotations

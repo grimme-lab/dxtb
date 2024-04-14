@@ -18,7 +18,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-A LazyLoader class for loading.
+Loader: Lazy Modules
+====================
+
+Contains the `:func:attach_module` function that can be used to lazily load
+submodules of a package.
+
+Example
+-------
+>>> from dxtb.loader.lazy import attach_module
+>>> __getattr__, __dir__, __all__ = attach_module(__name__, ["sub1", "sub2"])
 """
 
 from __future__ import annotations

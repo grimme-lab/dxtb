@@ -15,7 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Definition of the halogen binding contribution.
+Parametrization: Halogen
+========================
+
+Definitions for halogen binding corrections.
+Currently, only GFN1-xTB's classical halogen bond correction is defined.
 """
 
 from __future__ import annotations
@@ -30,16 +34,18 @@ class ClassicalHalogen(BaseModel):
     """
 
     damping: float
-    """Damping factor of attractive contribution in Lennard-Jones-like potential"""
+    """
+    Damping factor of attractive contribution in Lennard-Jones-like potential.
+    """
 
     rscale: float
-    """Global scaling factor for covalent radii of AX bond"""
+    """Global scaling factor for covalent radii of AX bond."""
 
 
 class Halogen(BaseModel):
     """
-    Possible halogen parametrizations.
+    Possible halogen correction parametrizations.
     """
 
     classical: ClassicalHalogen
-    """Classical halogen-bond correction used in GFN1-xTB"""
+    """Classical halogen-bond correction used in GFN1-xTB."""

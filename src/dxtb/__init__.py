@@ -85,7 +85,7 @@ from dxtb.components.interactions import (
 from .__version__ import __version__
 
 from dxtb.basis import Basis, IndexHelper
-from .param import GFN1_XTB, Param
+from .param import GFN1_XTB, GFN2_XTB, Param
 from .xtb import Calculator
 from dxtb.utils import batch
 
