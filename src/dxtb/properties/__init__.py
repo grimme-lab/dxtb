@@ -23,10 +23,23 @@ Subpackage for calculation of molecular properties and related spectra.
 Supported are the following:
  - analytical electrical dipole moment
  - analytical traceless quadrupole moment
- - vibration frequencies and normal modes
+ - vibrational frequencies and normal modes
  - IR intensities
  - static Raman intensities
 """
+from dxtb.typing import TYPE_CHECKING
 
-from .moments import *
-from .vibration import *
+if TYPE_CHECKING:
+    from dxtb.properties import moments as moments
+    from dxtb.properties import vibration as vibration
+else:
+    import dxtb.loader.lazy as _lazy
+
+    __getattr__, __dir__, __all__ = _lazy.attach_module(
+        __name__,
+        ["moments", "vibration"],
+    )
+
+    del _lazy
+
+del TYPE_CHECKING

@@ -15,23 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Loaders
-=======
+Properties: Multipole Moments
+=============================
 
-Collection of various loaders for different purposes.
+Analytical calculation of multipole moments. Currently, dipole moment and
+traceless quadrupole moment are implemented.
+However, this module serves more as a short-cut for the calculation in
+:class:`~dxtb.calculator.Calculator` as it should hide some implementation
+details.
 """
-from dxtb.typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from dxtb.loader import lazy as lazy
-else:
-    import dxtb.loader.lazy.lazy_module as _lazy
-
-    __getattr__, __dir__, __all__ = _lazy.attach_module(
-        __name__,
-        ["lazy"],
-    )
-
-    del _lazy
-
-del TYPE_CHECKING
+from .dip import dipole
+from .quad import quadrupole

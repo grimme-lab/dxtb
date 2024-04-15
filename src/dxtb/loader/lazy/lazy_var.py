@@ -28,6 +28,16 @@ Example
 -------
 >>> from dxtb.loader.lazy import attach_var
 >>> __getattr__, __dir__, __all__ = attach_var("dxtb.mol.molecule", ["Mol"])
+
+Multiple variables can be lazily loaded using `:func:attach_vars`.
+
+>>> from dxtb.loader.lazy import attach_vars
+>>> __getattr__, __dir__, __all__ = attach_vars(
+...     {
+...         "dxtb.properties.moments.dipole": ["dipole"],
+...         "dxtb.properties.moments.quadrupole": ["quadrupole"],
+...     }
+... )
 """
 
 from __future__ import annotations
@@ -35,6 +45,8 @@ from __future__ import annotations
 import importlib
 
 from dxtb.typing import Any, Callable, Sequence
+
+__all__ = ["attach_var", "attach_vars"]
 
 
 def attach_var(package_name: str, varnames: Sequence[str]) -> tuple[
@@ -89,6 +101,60 @@ def attach_var(package_name: str, varnames: Sequence[str]) -> tuple[
         module = importlib.import_module(f"{package_name}")
 
         return getattr(module, name)
+
+    def __dir__() -> list[str]:
+        return __all__
+
+    return __getattr__, __dir__, __all__
+
+
+def attach_vars(module_vars: dict[str, Sequence[str]]) -> tuple[
+    Callable[[str], Any],
+    Callable[[], list[str]],
+    list[str],
+]:
+    """
+    Lazily loads variables from multiple submodules of a given package,
+    providing a way to access them on demand.
+
+    Parameters
+    ----------
+    module_vars : dict[str, Sequence[str]]
+        A dictionary mapping package names to sequences of variable names to be
+        lazily loaded.
+
+    Returns
+    -------
+    tuple[Callable[[str], Any], Callable[[], list[str]], list[str]]
+        A tuple containing:
+        - A `__getattr__` function loading a variable when it's accessed.
+        - A `__dir__` function returning a list of all lazily loaded variable.
+        - A list of strings (`__all__`) containing the names of the variable.
+
+    Raises
+    ------
+    AttributeError
+        If the package does not have the requested variable.
+
+    Example
+    -------
+    >>> from dxtb.loader.lazy import attach_vars
+    >>> __getattr__, __dir__, __all__ = attach_vars(
+    ...     {
+    ...         "dxtb.properties.moments.dipole": ["dipole"],
+    ...         "dxtb.properties.moments.quadrupole": ["quadrupole"],
+    ...     }
+    ... )
+    """
+    # Aggregate all variable names into __all__
+    __all__: list[str] = [var for vars in module_vars.values() for var in vars]
+
+    def __getattr__(name: str) -> Any:
+        for package_name, varnames in module_vars.items():
+            if name in varnames:
+                module = importlib.import_module(package_name)
+                return getattr(module, name)
+        raise AttributeError(f"No module contains the variable '{name}'.")
 
     def __dir__() -> list[str]:
         return __all__

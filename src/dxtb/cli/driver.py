@@ -270,8 +270,11 @@ class Driver:
             timer.stop("Raman Num")
 
         if args.dipole is True:
+            calc.opts.scf.scf_mode = labels.SCF_MODE_FULL
+            calc.opts.scf.mixer = labels.MIXER_ANDERSON
+
             timer.start("Dipole")
-            mu = calc.dipole(numbers, positions, chrg)
+            mu = calc.dipole_analytical(numbers, positions, chrg)
             timer.stop("Dipole")
             print("Dipole Moment\n", mu)
 

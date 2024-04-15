@@ -35,7 +35,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from dxtb.loader import LazyLoaderParam as Lazy
+from dxtb.loader.lazy import LazyLoaderParam as Lazy
 
 from ..base import Param
 

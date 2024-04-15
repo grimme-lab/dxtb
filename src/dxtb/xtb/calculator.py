@@ -50,7 +50,6 @@ from ..config import Config
 from ..constants import defaults
 from ..io import OutputHandler
 from ..param import Param
-from ..properties import moments
 from ..properties import vibration as vib
 from ..timing import timer
 from . import decorators as cdec
@@ -1263,11 +1262,14 @@ class Calculator(TensorLike):
                 "interaction is added to the Calculator."
             )
 
+        # pylint: disable=import-outside-toplevel
+        from dxtb.properties.moments.dip import dipole
+
         # dip = properties.dipole(
         # numbers, positions, result.density, self.integrals.dipole
         # )
         qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
-        dip = moments.dipole(qat, positions, result.density, dipint.matrix)
+        dip = dipole(qat, positions, result.density, dipint.matrix)
         return dip
 
     @cdec.numerical
@@ -1597,7 +1599,10 @@ class Calculator(TensorLike):
         dpat = result.charges.dipole
         qpat = result.charges.quad
 
-        return moments.quadrupole(qat, dpat, qpat, positions)
+        # pylint: disable=import-outside-toplevel
+        from dxtb.properties.moments.quad import quadrupole
+
+        return quadrupole(qat, dpat, qpat, positions)
 
     @cdec.numerical
     @cdec.requires_efg

@@ -60,6 +60,6 @@ Similarly, `:func:attach_var` can be used to lazily load variables.
 ...
 ...     del _lazy
 """
-from .lazy_module import attach_module
-from .lazy_param import LazyLoaderParam
-from .lazy_var import attach_var
+from .lazy_module import *
+from .lazy_param import *
+from .lazy_var import *

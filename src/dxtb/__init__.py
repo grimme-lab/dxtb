@@ -100,6 +100,7 @@ __all__ = [
     "ES3",
     "exceptions",
     "GFN1_XTB",
+    "GFN2_XTB",
     "Halogen",
     "IndexHelper",
     "Interaction",

@@ -15,105 +15,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Properties: Multipole Moments
+Properties: Quadrupole Moment
 =============================
 
-Analytical calculation of multipole moments. Currently, dipole moment and
-traceless quadrupole moment are implemented. However, this module serves
-more as a short-cut for the calculation in ``Calculator`` as it should hide
-some implementation details.
+Analytical calculation of the traceless quadrupole moment.
+
+This module serves more as a short-cut for the calculation in
+:class:`~dxtb.calculator.Calculator`, hiding some implementation details.
 """
 
 from __future__ import annotations
 
 import torch
-from tad_mctc.data.getters import get_zvalence
+from tad_mctc.math import einsum
 
 from dxtb.typing import Tensor
 
-__all__ = ["dipole", "quadrupole"]
-
-
-def dipole(
-    charge: Tensor, positions: Tensor, density: Tensor, integral: Tensor
-) -> Tensor:
-    """
-    Analytical calculation of electric dipole moment with electric dipole
-    contribution from nuclei (sum_i(r_ik * q_i)) and electrons.
-
-    Parameters
-    ----------
-    charge : Tensor
-        Atom-resolved charges.
-    positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
-    density : Tensor
-        Density matrix.
-    integral : Tensor
-        Dipole integral.
-
-    Returns
-    -------
-    Tensor
-        Electric dipole moment.
-
-    Note
-    ----
-    This version follows the `tblite` implementation, which employs `r-rj` as
-    moment operator and requires the SCC charges for the nuclear dipole
-    contribution.
-    """
-    # TODO: Shape checks
-
-    e_dipole = -torch.einsum("...xij,...ij->...x", integral, density)
-    n_dipole = torch.einsum("...ix,...i->...x", positions, charge)
-    return n_dipole + e_dipole
-
-
-def dipole_xtb(
-    numbers: Tensor, positions: Tensor, density: Tensor, integral: Tensor
-) -> Tensor:
-    """
-    Analytical calculation of electric dipole moment with electric dipole
-    contribution from nuclei (sum_i(r_ik * q_i)) and electrons.
-
-    Parameters
-    ----------
-    numbers : Tensor
-        Atomic numbers for all atoms in the system.
-    charge : Tensor
-        Atom-resolved charges.
-    positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
-    density : Tensor
-        Density matrix.
-    integral : Tensor
-        Dipole integral.
-
-    Returns
-    -------
-    Tensor
-        Electric dipole moment.
-
-    Note
-    ----
-    This version follows the `xtb` implementation, where the `r0` moment
-    operator is used and the nuclear contribution uses the valence charges.
-    """
-    # TODO: Shape checks
-
-    # electric component from dipole integral and density matrix
-    e_dipole = -torch.einsum("...xij,...ij->...x", integral, density)
-
-    # moment operator "r0" combines with valence charges (xtb implementation)
-    n_dipole = torch.einsum(
-        "...ix,...i->...x",
-        positions,
-        get_zvalence(numbers, device=positions.device, dtype=positions.dtype),
-    )
-
-    dip = n_dipole + e_dipole
-    return dip
+__all__ = ["quadrupole"]
 
 
 def quadrupole(qat: Tensor, dpat: Tensor, qpat: Tensor, positions: Tensor) -> Tensor:
@@ -159,7 +77,7 @@ def quadrupole(qat: Tensor, dpat: Tensor, qpat: Tensor, positions: Tensor) -> Te
 
     # This incorporates the electric quadrupole contribution from the
     # nuclei: Q_ij = ∑_k Z_k r_ki r_kj
-    vec = torch.einsum("...ij,...i->...ij", positions, qat)
+    vec = einsum("...ij,...i->...ij", positions, qat)
 
     # temporary
     pv2d = positions * (vec + 2 * dpat)
