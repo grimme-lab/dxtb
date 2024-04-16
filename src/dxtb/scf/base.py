@@ -542,60 +542,62 @@ class BaseSCF:
 
     def _print(self, charges: Charges) -> None:
         # explicitly check to avoid some superfluos calculations
-        if OutputHandler.verbosity >= 3:
-            if charges.mono.ndim < 2:  # pragma: no cover
-                energy = self.get_energy(charges).sum(-1).detach().clone()
-                ediff = torch.linalg.vector_norm(self._data.old_energy - energy)
+        if OutputHandler.verbosity < 3:
+            return
 
-                density = self._data.density.detach().clone()
-                pnorm = torch.linalg.matrix_norm(self._data.old_density - density)
+        if charges.mono.ndim < 2:  # pragma: no cover
+            energy = self.get_energy(charges).sum(-1).detach().clone()
+            ediff = torch.linalg.vector_norm(self._data.old_energy - energy)
 
-                _q = charges.mono.detach().clone()
-                qdiff = torch.linalg.vector_norm(self._data.old_charges - _q)
+            density = self._data.density.detach().clone()
+            pnorm = torch.linalg.matrix_norm(self._data.old_density - density)
 
-                OutputHandler.write_row(
-                    "SCF Iterations",
-                    f"{self._data.iter:3}",
-                    [
-                        f"{energy: .14E}",
-                        f"{ediff: .6E}",
-                        f"{pnorm: .6E}",
-                        f"{qdiff: .6E}",
-                    ],
-                )
+            _q = charges.mono.detach().clone()
+            qdiff = torch.linalg.vector_norm(self._data.old_charges - _q)
 
-                self._data.old_energy = energy
-                self._data.old_charges = _q
-                self._data.old_density = density
-                self._data.iter += 1
-            else:
-                energy = self.get_energy(charges).detach().clone()
-                ediff = torch.linalg.norm(self._data.old_energy - energy)
+            OutputHandler.write_row(
+                "SCF Iterations",
+                f"{self._data.iter:3}",
+                [
+                    f"{energy: .14E}",
+                    f"{ediff: .6E}",
+                    f"{pnorm: .6E}",
+                    f"{qdiff: .6E}",
+                ],
+            )
 
-                density = self._data.density.detach().clone()
-                pnorm = torch.linalg.norm(self._data.old_density - density)
+            self._data.old_energy = energy
+            self._data.old_charges = _q
+            self._data.old_density = density
+            self._data.iter += 1
+        else:
+            energy = self.get_energy(charges).detach().clone()
+            ediff = torch.linalg.norm(self._data.old_energy - energy)
 
-                _q = charges.mono.detach().clone()
-                # print(_q.shape)
-                # print(self._data.old_charges.shape)
-                # qdiff = torch.linalg.norm(self._data.old_charges - _q)
+            density = self._data.density.detach().clone()
+            pnorm = torch.linalg.norm(self._data.old_density - density)
 
-                qdiff = 0
-                OutputHandler.write_row(
-                    "SCF Iterations",
-                    f"{self._data.iter:3}",
-                    [
-                        f"{energy.norm(): .14E}",
-                        f"{ediff: .6E}",
-                        f"{pnorm: .6E}",
-                        f"{qdiff: .6E}",
-                    ],
-                )
+            _q = charges.mono.detach().clone()
+            # print(_q.shape)
+            # print(self._data.old_charges.shape)
+            # qdiff = torch.linalg.norm(self._data.old_charges - _q)
 
-                self._data.old_energy = energy
-                self._data.old_charges = _q
-                self._data.old_density = density
-                self._data.iter += 1
+            qdiff = 0
+            OutputHandler.write_row(
+                "SCF Iterations",
+                f"{self._data.iter:3}",
+                [
+                    f"{energy.norm(): .14E}",
+                    f"{ediff: .6E}",
+                    f"{pnorm: .6E}",
+                    f"{qdiff: .6E}",
+                ],
+            )
+
+            self._data.old_energy = energy
+            self._data.old_charges = _q
+            self._data.old_density = density
+            self._data.iter += 1
 
     def iterate_charges(self, charges: Tensor) -> Tensor:
         """

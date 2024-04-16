@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import torch
 
+from dxtb.__version__ import __tversion__
 from dxtb.typing import Any, Tensor, TensorLike
 from dxtb.utils.misc import get_all_slots
 
@@ -196,6 +197,13 @@ class Component(TensorLike):
             return False
 
         for v1, v2 in zip(vars, self._cachevars):
+            # functorch makes problems here, just disable cache for now
+            if __tversion__ >= (1, 13, 0):
+                if torch._C._functorch.is_gradtrackingtensor(v1):
+                    return False
+                if torch._C._functorch.is_gradtrackingtensor(v2):
+                    return False
+
             if v1.dtype != v2.dtype:
                 return False
 

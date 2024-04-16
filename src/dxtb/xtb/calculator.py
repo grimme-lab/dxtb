@@ -132,6 +132,7 @@ class Result(TensorLike):
         "hamiltonian_grad",
         "integrals",
         "interaction_grad",
+        "iter",
         "occupation",
         "overlap_grad",
         "potential",
@@ -158,6 +159,7 @@ class Result(TensorLike):
         self.total = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.total_grad = torch.zeros_like(positions)
         self.cenergies = {}
+        self.iter = 0
 
     def __str__(self) -> str:
         """Custom print representation showing all available slots."""
@@ -657,6 +659,7 @@ class Calculator(TensorLike):
             result.potential = scf_results["potential"]
             result.scf += scf_results["energy"]
             result.total += scf_results["energy"] + scf_results["fenergy"]
+            result.iter = scf_results["iterations"]
 
             if self.opts.batch_mode == 0:
                 OutputHandler.write_stdout(

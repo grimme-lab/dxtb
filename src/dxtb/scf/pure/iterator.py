@@ -85,7 +85,7 @@ def scf_pure(
     # compute one extra SCF cycle with strong damping.
     # Note that this is not required for SCF with full gradient tracking.
     # (see https://github.com/grimme-lab/xtbML/issues/124)
-    if cfg.scp_mode in ("charge", "charges"):
+    if cfg.scp_mode == labels.SCP_MODE_CHARGE:
         mixer = Simple({**cfg.fwd_options, "damp": 1e-4})
         q_new = fcn(q_converged, data, cfg, interactions)
         q_converged = mixer.iter(q_new, q_converged)
@@ -126,11 +126,12 @@ def scf_wrapper(
         "force_convergence": False,
         "method": "broyden1",
         "alpha": -0.5,
-        "f_tol": defaults.F_ATOL,
-        "x_tol": defaults.X_ATOL,
+        "damp": config.damp,
+        "f_tol": config.f_atol,
+        "x_tol": config.x_atol,
         "f_rtol": float("inf"),
         "x_rtol": float("inf"),
-        "maxiter": defaults.MAXITER,
+        "maxiter": config.maxiter,
         "verbose": False,
         "line_search": False,
         **kwargs.pop("fwd_options", {}),

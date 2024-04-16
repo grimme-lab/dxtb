@@ -121,7 +121,7 @@ def test_param_calculator(dtype: torch.dtype) -> None:
 
     dd: DD = {"device": device, "dtype": dtype}
     numbers = symbol_to_number(["H", "C"])
-    calc = Calculator(numbers, par, **dd)
+    calc = Calculator(numbers, par, opts={"verbosity": 0}, **dd)
 
     ref = torch.tensor([1.0, 4.0], **dd)
 

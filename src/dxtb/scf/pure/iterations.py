@@ -13,6 +13,7 @@ import torch
 from dxtb.components.interactions import Charges, InteractionList, Potential
 from dxtb.config import ConfigSCF
 from dxtb.constants import labels
+from dxtb.io import OutputHandler
 from dxtb.typing import Tensor
 
 from .conversions import (
@@ -23,6 +24,35 @@ from .conversions import (
     potential_to_hamiltonian,
 )
 from .data import _Data
+from .energies import get_energy
+
+
+def _print(q: Charges, data: _Data, interactions: InteractionList) -> None:
+    if q.mono.ndim < 2:  # pragma: no cover
+        energy = get_energy(q, data, interactions).sum(-1).detach().clone()
+        ediff = torch.linalg.vector_norm(data.old_energy - energy)
+
+        density = data.density.detach().clone()
+        pnorm = torch.linalg.matrix_norm(data.old_density - density)
+
+        _q = q.mono.detach().clone()
+        qdiff = torch.linalg.vector_norm(data.old_charges - _q)
+
+        OutputHandler.write_row(
+            "SCF Iterations",
+            f"{data.iter:3}",
+            [
+                f"{energy: .14E}",
+                f"{ediff: .6E}",
+                f"{pnorm: .6E}",
+                f"{qdiff: .6E}",
+            ],
+        )
+
+        data.old_energy = energy
+        data.old_charges = _q
+        data.old_density = density
+        data.iter += 1
 
 
 def iterate_charges(
@@ -52,9 +82,7 @@ def iterate_charges(
     potential = charges_to_potential(q, interactions, data)
 
     # FIXME: Batch print not working!
-    # _print(q)
-
-    # OutputHandler.write_stdout(f"energy: {get_energy(q).sum(-1)}", 6)
+    _print(q, data, interactions)
 
     new_charges = potential_to_charges(potential, data, cfg)
     return new_charges.as_tensor()
@@ -87,7 +115,7 @@ def iterate_potential(
     charges = potential_to_charges(pot, data, cfg)
 
     # FIXME: Batch print not working!
-    # _print(charges)
+    _print(charges, data, interactions)
 
     new_potential = charges_to_potential(charges, interactions, data)
     return new_potential.as_tensor()
@@ -119,6 +147,9 @@ def iterate_fockian(
     charges = density_to_charges(data.density, data)
     potential = charges_to_potential(charges, interactions, data)
     data.hamiltonian = potential_to_hamiltonian(potential, data)
+
+    # FIXME: Batch print not working!
+    _print(charges, data, interactions)
 
     return data.hamiltonian
 

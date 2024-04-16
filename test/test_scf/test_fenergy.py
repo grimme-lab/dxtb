@@ -49,70 +49,51 @@ opts = {
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("partition", ["equal", "atomic"])
-def test_element_energy_scf_mode(dtype: torch.dtype, partition: str) -> None:
+@pytest.mark.parametrize("number", [n for n in range(1, 87)])
+def test_element(dtype: torch.dtype, partition: str, number: int) -> None:
     """Comparison of object SCF (old) vs. functional SCF."""
     dd: DD = {"device": device, "dtype": dtype}
     tol = 1e-8
 
-    def fcn(number, scf_mode):
-        numbers = torch.tensor([number])
-        positions = torch.zeros((1, 3), **dd)
-        charges = torch.tensor(0.0, **dd)
+    numbers = torch.tensor([number])
+    positions = torch.zeros((1, 3), **dd)
+    charges = torch.tensor(0.0, **dd)
 
-        options = dict(
-            opts,
-            **{
-                "f_atol": 1e-6,
-                "x_atol": 1e-6,
-                "fermi_partition": partition,
-                "scf_mode": scf_mode,
-            },
-        )
-        calc = Calculator(numbers, par, opts=options, **dd)
-        result = calc.singlepoint(numbers, positions, charges)
-        return result.scf.sum(-1)
+    options = dict(
+        opts,
+        **{
+            "f_atol": 1e-6,
+            "x_atol": 1e-6,
+            "fermi_partition": partition,
+            "maxiter": 100,
+            "verbosity": 6,
+        },
+    )
 
-    energies = [fcn(n, "implicit").cpu() for n in range(1, 87)]
-    energies_old = [fcn(n, "implicit_nonpure").cpu() for n in range(1, 87)]
-    assert pytest.approx(energies, abs=tol) == energies_old
+    o = dict(options, **{"scf_mode": "implicit"})
+    calc1 = Calculator(numbers, par, opts=o, **dd)
+    result1 = calc1.singlepoint(numbers, positions, charges)
+
+    o = dict(options, **{"scf_mode": "implicit_nonpure"})
+    calc2 = Calculator(numbers, par, opts=o, **dd)
+    result2 = calc2.singlepoint(numbers, positions, charges)
+    torch.set_printoptions(precision=10)
+
+    assert pytest.approx(result1.iter) == result2.iter
+
+    f1 = result1.fenergy.cpu()
+    f2 = result2.fenergy.cpu()
+    assert pytest.approx(f1, abs=tol) == f2
+
+    e1 = result1.total.sum(-1).cpu()
+    e2 = result2.total.sum(-1).cpu()
+    assert pytest.approx(e1, abs=tol) == e2
 
 
 @pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("partition", ["equal", "atomic"])
-def test_element_scf_mode(dtype: torch.dtype, partition: str) -> None:
-    """Comparison of object SCF (old) vs. functional SCF."""
-    dd: DD = {"device": device, "dtype": dtype}
-    tol = 1e-8
-
-    def fcn(number, scf_mode):
-        numbers = torch.tensor([number])
-        positions = torch.zeros((1, 3), **dd)
-        charges = torch.tensor(0.0, **dd)
-
-        options = dict(
-            opts,
-            **{
-                "f_atol": 1e-6,
-                "x_atol": 1e-6,
-                "fermi_partition": partition,
-                "scf_mode": scf_mode,
-            },
-        )
-        calc = Calculator(numbers, par, opts=options, **dd)
-        result = calc.singlepoint(numbers, positions, charges)
-        return result.fenergy
-
-    fenergies = [fcn(n, "implicit").item() for n in range(1, 87)]
-    fenergies_old = [fcn(n, "implicit_nonpure").item() for n in range(1, 87)]
-    assert pytest.approx(fenergies, abs=tol) == fenergies_old
-
-
-@pytest.mark.large
-@pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-def test_element(dtype: torch.dtype) -> None:
+def test_element_unique(dtype: torch.dtype) -> None:
     """Different free energies for different atoms."""
     dd: DD = {"device": device, "dtype": dtype}
 
