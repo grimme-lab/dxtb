@@ -251,6 +251,20 @@ class GeneralizedBorn(Interaction):
         `InteractionList`, the `IndexHelper` will be passed as argument.
         Hence, the `**_` in the argument list is necessary to absorb it.
         """
+        cachvars = (numbers.detach().clone(), positions.detach().clone())
+
+        if self.cache_is_latest(cachvars) is True:
+            if not isinstance(self.cache, self.Cache):
+                raise TypeError(
+                    f"Cache in {self.label} is not of type '{self.label}."
+                    "Cache'. This can only happen if you manually manipulate "
+                    "the cache."
+                )
+            return self.cache
+
+        # if the cache is built, store the positions for validation
+        self._cachevars = cachvars
+
         born = get_born_radii(numbers, positions, **self.born_kwargs)
         eps = torch.tensor(torch.finfo(positions.dtype).eps, **self.dd)
 
@@ -265,7 +279,8 @@ class GeneralizedBorn(Interaction):
             adet = get_adet(positions, self.born_kwargs["rvdw"])
             mat += self.keps * self.alpbet * adet.unsqueeze(-1).unsqueeze(-2)
 
-        return self.Cache(mat)
+        self.cache = self.Cache(mat)
+        return self.cache
 
     def get_atom_energy(self, charges: Tensor, cache: GeneralizedBorn.Cache) -> Tensor:
         return 0.5 * charges * self.get_atom_potential(charges, cache)

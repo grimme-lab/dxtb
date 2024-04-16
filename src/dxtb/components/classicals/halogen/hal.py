@@ -86,13 +86,13 @@ class Halogen(Classical):
         self.halogens = [17, 35, 53, 85]
         self.base = [7, 8, 15, 16]
 
-    class Cache(TensorLike):
+    class Cache(Classical.Cache):
         """Cache for the halogen bond parameters."""
 
         xbond: Tensor
         """Halogen bond strengths."""
 
-        __slots__ = ("numbers", "xbond")
+        __slots__ = ["numbers", "xbond"]
 
         def __init__(
             self,
@@ -130,9 +130,22 @@ class Halogen(Classical):
         it only becomes useful if `numbers` remain unchanged and `positions`
         vary, i.e., during geometry optimization.
         """
+        cachvars = (numbers.detach().clone(),)
+
+        if self.cache_is_latest(cachvars) is True:
+            if not isinstance(self.cache, self.Cache):
+                raise TypeError(
+                    f"Cache in {self.label} is not of type '{self.label}."
+                    "Cache'. This can only happen if you manually manipulate "
+                    "the cache."
+                )
+            return self.cache
+
+        self._cachevars = cachvars
 
         xbond = ihelp.spread_uspecies_to_atom(self.bond_strength)
-        return self.Cache(numbers, xbond)
+        self.cache = self.Cache(numbers, xbond)
+        return self.cache
 
     def get_energy(self, positions: Tensor, cache: Halogen.Cache) -> Tensor:
         """

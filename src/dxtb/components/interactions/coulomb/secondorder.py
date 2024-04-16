@@ -109,7 +109,13 @@ class ES2(Interaction):
     shell_resolved: bool
     """Electrostatics is shell-resolved (default: `True`)."""
 
-    __slots__ = ["hubbard", "lhubbard", "average", "gexp", "shell_resolved"]
+    __slots__ = [
+        "hubbard",
+        "lhubbard",
+        "average",
+        "gexp",
+        "shell_resolved",
+    ]
 
     class Cache(Interaction.Cache, TensorLike):
         """
@@ -210,7 +216,21 @@ class ES2(Interaction):
         The cache of an interaction requires `positions` as they do not change
         during the self-consistent charge iterations.
         """
-        return self.Cache(
+        cachvars = (numbers.detach().clone(), positions.detach().clone())
+
+        if self.cache_is_latest(cachvars) is True:
+            if not isinstance(self.cache, self.Cache):
+                raise TypeError(
+                    f"Cache in {self.label} is not of type '{self.label}."
+                    "Cache'. This can only happen if you manually manipulate "
+                    "the cache."
+                )
+            return self.cache
+
+        # if the cache is built, store the cachvar for validation
+        self._cachevars = cachvars
+
+        self.cache = self.Cache(
             (
                 self.get_shell_coulomb_matrix(numbers, positions, ihelp)
                 if self.shell_resolved
@@ -218,6 +238,8 @@ class ES2(Interaction):
             ),
             shell_resolved=self.shell_resolved,
         )
+
+        return self.cache
 
     def get_atom_coulomb_matrix(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper

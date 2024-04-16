@@ -69,6 +69,7 @@ def gradcheck_pos(
     positions.requires_grad_(True)
 
     es2 = ES2(hubbard, None, gexp=gexp, shell_resolved=False, **dd)
+    es2.cache_disable()
 
     def func(positions: Tensor) -> Tensor:
         return es2.get_atom_coulomb_matrix(numbers, positions, ihelp)

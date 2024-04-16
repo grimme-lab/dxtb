@@ -96,6 +96,21 @@ class Classical(ClassicalABC, Component):
     label: str
     """Label for the classical contribution."""
 
+    def __init__(
+        self,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ):
+        """Initialize the classical contribution."""
+        super().__init__(device, dtype)
+
+    class Cache(Component.Cache):
+        """
+        Restart data for individual classical contributions.
+        """
+
+        __slots__: list[str] = []
+
     def get_gradient(
         self, energy: Tensor, positions: Tensor, grad_outputs: Tensor | None = None
     ) -> Tensor:

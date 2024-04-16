@@ -59,7 +59,7 @@ def test_store_fail() -> None:
     es = es3.new_es3(numbers, GFN1_XTB)
     assert es is not None
 
-    cache = es.get_cache(ihelp=ihelp)
+    cache = es.get_cache(numbers=numbers, ihelp=ihelp)
     with pytest.raises(RuntimeError):
         cache.restore()
 

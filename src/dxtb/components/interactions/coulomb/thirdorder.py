@@ -57,7 +57,7 @@ from tad_mctc.exceptions import DeviceError
 
 from dxtb.basis import IndexHelper
 from dxtb.param import Param, get_elem_param
-from dxtb.typing import DD, Slicers, Tensor, TensorLike, get_default_dtype
+from dxtb.typing import DD, Slicers, Tensor, TensorLike, cast, get_default_dtype
 
 from .. import Interaction
 
@@ -137,7 +137,7 @@ class ES3(Interaction):
         super().__init__(device, dtype)
         self.hubbard_derivs = hubbard_derivs
 
-    def get_cache(self, ihelp: IndexHelper, **_) -> Cache:
+    def get_cache(self, numbers: Tensor, ihelp: IndexHelper, **_) -> Cache:
         """
         Create restart data for individual interactions.
 
@@ -154,12 +154,28 @@ class ES3(Interaction):
         Note
         ----
         If this `ES3` interaction is evaluated within the `InteractionList`,
-        `numbers` and `positions` will be passed as argument, too. The `**_` in
-        the argument list will absorb those unnecessary arguments which are
-        given as keyword-only arguments (see `Interaction.get_cache()`).
+        `numbers` will be passed as argument, too. The `**_` in the argument
+        list will absorb those unnecessary arguments which are given as
+        keyword-only arguments (see `Interaction.get_cache()`).
         """
+        cachvars = (numbers.detach().clone(),)
 
-        return self.Cache(ihelp.spread_uspecies_to_atom(self.hubbard_derivs))
+        if self.cache_is_latest(cachvars) is True:
+            if not isinstance(self.cache, self.Cache):
+                raise TypeError(
+                    f"Cache in {self.label} is not of type '{self.label}."
+                    "Cache'. This can only happen if you manually manipulate "
+                    "the cache."
+                )
+            return self.cache
+
+        # if the cache is built, store the cachevar for validation
+        self._cachevars = cachvars
+
+        hd = ihelp.spread_uspecies_to_atom(self.hubbard_derivs)
+        self.cache = self.Cache(hd)
+
+        return self.cache
 
     def get_atom_energy(self, charges: Tensor, cache: Cache) -> Tensor:
         """

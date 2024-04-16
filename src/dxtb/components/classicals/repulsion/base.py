@@ -124,7 +124,7 @@ class BaseRepulsion(Classical):
             klight = klight.to(self.device).type(self.dtype)
         self.klight = klight
 
-    class Cache(TensorLike):
+    class Cache(Classical.Cache):
         """
         Cache for the repulsion parameters.
         """
@@ -186,6 +186,18 @@ class BaseRepulsion(Classical):
         it only becomes useful if `numbers` remain unchanged and `positions`
         vary, i.e., during geometry optimization.
         """
+        cachvars = (numbers.detach().clone(),)
+
+        if self.cache_is_latest(cachvars) is True:
+            if not isinstance(self.cache, self.Cache):
+                raise TypeError(
+                    f"Cache in {self.label} is not of type '{self.label}."
+                    "Cache'. This can only happen if you manually manipulate "
+                    "the cache."
+                )
+            return self.cache
+
+        self._cachevars = cachvars
 
         # spread
         arep = ihelp.spread_uspecies_to_atom(self.arep)
@@ -216,7 +228,8 @@ class BaseRepulsion(Classical):
             kmask = ~real_pairs(numbers <= 2)
             k = torch.where(kmask, k, self.klight) * mask
 
-        return self.Cache(mask, a, z, k)
+        self.cache = self.Cache(mask, a, z, k)
+        return self.cache
 
     @abstractmethod
     def get_energy(

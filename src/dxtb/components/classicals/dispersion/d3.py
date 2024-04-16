@@ -32,7 +32,7 @@ from .base import Dispersion
 class DispersionD3(Dispersion):
     """Representation of the DFT-D3(BJ) dispersion correction."""
 
-    class Cache(TensorLike):
+    class Cache(Dispersion.Cache):
         """
         Cache for the dispersion settings.
 
@@ -93,6 +93,18 @@ class DispersionD3(Dispersion):
         DispersionD3.Cache
             Cache for the D3 dispersion.
         """
+        cachvars = (numbers.detach().clone(),)
+
+        if self.cache_is_latest(cachvars) is True:
+            if not isinstance(self.cache, self.Cache):
+                raise TypeError(
+                    f"Cache in {self.label} is not of type '{self.label}."
+                    "Cache'. This can only happen if you manually manipulate "
+                    "the cache."
+                )
+            return self.cache
+
+        self._cachevars = cachvars
 
         ref = kwargs.pop(
             "ref",
@@ -118,7 +130,8 @@ class DispersionD3(Dispersion):
         wf = kwargs.pop("weighting_function", d3.model.gaussian_weight)
         df = kwargs.pop("damping_function", d3.disp.rational_damping)
 
-        return self.Cache(ref, rcov, rvdw, r4r2, cf, wf, df)
+        self.cache = self.Cache(ref, rcov, rvdw, r4r2, cf, wf, df)
+        return self.cache
 
     def get_energy(self, positions: Tensor, cache: DispersionD3.Cache) -> Tensor:
         """

@@ -147,6 +147,18 @@ class ElectricField(Interaction):
         argument list will absorb those unnecessary arguments which are given
         as keyword-only arguments (see `Interaction.get_cache()`).
         """
+        cachvars = (positions.detach().clone(), self.field.detach().clone())
+
+        if self.cache_is_latest(cachvars) is True:
+            if not isinstance(self.cache, self.Cache):
+                raise TypeError(
+                    f"Cache in {self.label} is not of type '{self.label}."
+                    "Cache'. This can only happen if you manually manipulate "
+                    "the cache."
+                )
+            return self.cache
+
+        self._cachevars = cachvars
 
         # (nbatch, natoms, 3) * (3) -> (nbatch, natoms)
         vat = einsum("...ik,k->...i", positions, self.field)
@@ -154,7 +166,8 @@ class ElectricField(Interaction):
         # (nbatch, natoms, 3)
         vdp = self.field.expand_as(positions)
 
-        return self.Cache(vat, vdp)
+        self.cache = self.Cache(vat, vdp)
+        return self.cache
 
     @override
     def get_atom_energy(self, charges: Tensor, cache: Cache) -> Tensor:

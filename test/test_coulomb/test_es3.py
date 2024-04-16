@@ -53,7 +53,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     es = es3.new_es3(numbers, GFN1_XTB, **dd)
     assert es is not None
 
-    cache = es.get_cache(ihelp=ihelp)
+    cache = es.get_cache(numbers=numbers, ihelp=ihelp)
     e = es.get_atom_energy(qat, cache)
     assert pytest.approx(torch.sum(e, dim=-1)) == ref
 
@@ -89,7 +89,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     es = es3.new_es3(numbers, GFN1_XTB, **dd)
     assert es is not None
 
-    cache = es.get_cache(ihelp=ihelp)
+    cache = es.get_cache(numbers=numbers, ihelp=ihelp)
     e = es.get_atom_energy(qat, cache)
     assert torch.allclose(torch.sum(e, dim=-1), ref)
 
@@ -118,7 +118,7 @@ def test_grad_param(name: str) -> None:
 
     def func(hubbard_derivs: Tensor):
         es = es3.ES3(hubbard_derivs, **dd)
-        cache = es.get_cache(ihelp=ihelp)
+        cache = es.get_cache(numbers=numbers, ihelp=ihelp)
         return es.get_atom_energy(qat, cache)
 
     assert dgradcheck(func, hd)

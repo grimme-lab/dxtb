@@ -79,6 +79,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     assert pytest.approx(ref, abs=tol) == agrad
 
     # analytical (automatic)
+    es.cache_invalidate()
     cache = es.get_cache(numbers, positions, ihelp)  # recalc with gradients
     egrad = es.get_atom_gradient(charges, positions, cache)
     egrad.detach_()
@@ -125,6 +126,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=is_shell_resolved, **dd)
     assert es is not None
+    es.cache_disable()
 
     # analytical (old)
     cache = es.get_cache(numbers, positions, ihelp)

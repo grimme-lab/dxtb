@@ -39,6 +39,26 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
+def get_all_slots(cls):
+    # cls.__class__.__mro__ = (<class 'object'>, <class 'TensorLike'>,
+    # <class 'BaseResult'>, <class 'VibResult'>)
+
+    # skip the "object" parent and the current class itself
+    parents = [
+        p
+        for p in cls.__class__.__mro__
+        if p.__name__ not in ("object", cls.__class__.__name__)
+    ]
+
+    #  and the hidden slots "__" and the "unit" slots
+    parents_slots: list[str] = [
+        s for p in parents for s in p.__slots__ if "__" not in s
+    ]
+
+    # add the slots of the current class (after parents for ordering)
+    return parents_slots + cls.__slots__
+
+
 def is_str_list(x: list[Any]) -> TypeGuard[list[str]]:
     """
     Determines whether all objects in the list are strings.

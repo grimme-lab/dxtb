@@ -73,7 +73,17 @@ class Interaction(Component):
     label: str
     """Label for the interaction."""
 
-    class Cache:
+    __slots__ = ["label"]
+
+    def __init__(
+        self,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ):
+        """Initialize the interaction."""
+        super().__init__(device, dtype)
+
+    class Cache(Component.Cache):
         """
         Restart data for individual interactions, extended by subclasses as
         needed.
@@ -86,13 +96,6 @@ class Interaction(Component):
 
         def restore(self) -> None:
             pass
-
-        def __str__(self) -> str:
-            s = ", ".join(s for s in self.__slots__ if not s.startswith("_"))
-            return f"{self.__class__.__name__}({s})"
-
-        def __repr__(self) -> str:
-            return str(self)
 
     # pylint: disable=unused-argument
     def get_cache(

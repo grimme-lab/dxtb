@@ -27,6 +27,7 @@ import torch
 from tad_mctc.units import AU2RCM
 
 from dxtb.typing import Generator, NoReturn, PathLike, Tensor, TensorLike
+from dxtb.utils.misc import get_all_slots
 
 
 class BaseResult(TensorLike):
@@ -191,23 +192,3 @@ class BaseResult(TensorLike):
 
     def __repr__(self) -> str:
         return str(self)
-
-
-def get_all_slots(cls):
-    # cls.__class__.__mro__ = (<class 'object'>, <class 'TensorLike'>,
-    # <class 'BaseResult'>, <class 'VibResult'>)
-
-    # skip the "object" parent and the current class itself
-    parents = [
-        p
-        for p in cls.__class__.__mro__
-        if p.__name__ not in ("object", cls.__class__.__name__)
-    ]
-
-    #  and the hidden slots "__" and the "unit" slots
-    parents_slots: list[str] = [
-        s for p in parents for s in p.__slots__ if "__" not in s
-    ]
-
-    # add the slots of the current class (after parents for ordering)
-    return parents_slots + cls.__slots__

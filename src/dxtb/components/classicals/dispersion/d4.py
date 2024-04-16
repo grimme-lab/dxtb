@@ -33,7 +33,7 @@ class DispersionD4(Dispersion):
     charge: Tensor
     """Total charge of the system."""
 
-    class Cache:
+    class Cache(Dispersion.Cache):
         """
         Cache for the dispersion settings.
 
@@ -91,6 +91,18 @@ class DispersionD4(Dispersion):
         DispersionD4.Cache
             Cache for the D4 dispersion.
         """
+        cachvars = (numbers.detach().clone(),)
+
+        if self.cache_is_latest(cachvars) is True:
+            if not isinstance(self.cache, self.Cache):
+                raise TypeError(
+                    f"Cache in {self.label} is not of type '{self.label}."
+                    "Cache'. This can only happen if you manually manipulate "
+                    "the cache."
+                )
+            return self.cache
+
+        self._cachevars = cachvars
 
         model: d4.model.D4Model = (
             kwargs.pop(
@@ -129,7 +141,8 @@ class DispersionD4(Dispersion):
         cf = kwargs.pop("counting_function", d4.ncoord.erf_count)
         df = kwargs.pop("damping_function", d4.damping.rational_damping)
 
-        return self.Cache(q, model, rcov, r4r2, cutoff, cf, df)
+        self.cache = self.Cache(q, model, rcov, r4r2, cutoff, cf, df)
+        return self.cache
 
     def get_energy(
         self, positions: Tensor, cache: DispersionD4.Cache, q: Tensor | None = None

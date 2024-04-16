@@ -98,8 +98,23 @@ class ElectricFieldGrad(Interaction):
         ----
         Here, this is only a dummy.
         """
+        cachvars = (self.field_grad.detach().clone(),)
 
-        return self.Cache(self.field_grad[torch.tril_indices(3, 3).unbind()])
+        if self.cache_is_latest(cachvars) is True:
+            if not isinstance(self.cache, self.Cache):
+                raise TypeError(
+                    f"Cache in {self.label} is not of type '{self.label}."
+                    "Cache'. This can only happen if you manually manipulate "
+                    "the cache."
+                )
+            return self.cache
+
+        self._cachevars = cachvars
+
+        efg = self.field_grad[torch.tril_indices(3, 3).unbind()]
+        self.cache = self.Cache(efg)
+
+        return self.cache
 
     # TODO: This is probably not correct...
     def get_quadrupole_energy(self, charges: Tensor, cache: Cache) -> Tensor:

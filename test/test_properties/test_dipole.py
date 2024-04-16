@@ -109,9 +109,6 @@ def execute(
     atol: float,
     rtol: float,
 ) -> None:
-    # required for autodiff of energy w.r.t. efield
-    field_vector.requires_grad_(True)
-
     # create additional interaction and pass to Calculator
     efield = new_efield(field_vector)
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
@@ -124,6 +121,9 @@ def execute(
     dip0 = tensor_to_numpy(calc.dipole_analytical(numbers, positions, charge))
     assert pytest.approx(ref, abs=atol, rel=rtol) == dip0
     assert pytest.approx(num, abs=atol, rel=rtol) == dip0
+
+    # required for autodiff of energy w.r.t. efield
+    calc.interactions.update_efield(field=field_vector.requires_grad_(True))
 
     # manual jacobian
     dip1 = tensor_to_numpy(

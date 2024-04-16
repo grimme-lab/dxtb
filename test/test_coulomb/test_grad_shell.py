@@ -26,7 +26,7 @@ import pytest
 import torch
 
 from dxtb.basis import IndexHelper
-from dxtb.components.interactions.coulomb import secondorder as es2
+from dxtb.components.interactions import secondorder as es2
 from dxtb.param import GFN1_XTB
 from dxtb.typing import DD, Tensor
 from dxtb.utils import batch
@@ -54,6 +54,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=True, **dd)
     assert es is not None
 
+    es.cache_disable()
     cache = es.get_cache(numbers, positions, ihelp)
 
     # atom gradient should be zero
@@ -66,7 +67,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     # numerical
     num_grad = calc_numerical_gradient(numbers, positions, ihelp, charges)
-    assert pytest.approx(num_grad, abs=tol) == ref
+    assert pytest.approx(ref, abs=tol) == num_grad
     assert pytest.approx(num_grad, abs=tol) == grad
 
     # automatic
@@ -124,8 +125,10 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=True, **dd)
     assert es is not None
 
-    # analytical (old)
+    es.cache_disable()
     cache = es.get_cache(numbers, positions, ihelp)
+
+    # analytical (old)
     grad = es._get_shell_gradient(numbers, positions, charges, cache, ihelp)
     assert pytest.approx(grad, abs=tol) == ref
 

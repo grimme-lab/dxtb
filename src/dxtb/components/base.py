@@ -26,6 +26,7 @@ from __future__ import annotations
 import torch
 
 from dxtb.typing import Any, Tensor, TensorLike
+from dxtb.utils.misc import get_all_slots
 
 
 class Component(TensorLike):
@@ -36,7 +37,41 @@ class Component(TensorLike):
     label: str
     """Label for the tight-binding component."""
 
-    __slots__ = ["label"]
+    _cache: Cache | None
+    """Cache for the component."""
+
+    _cachevars: tuple[Tensor, ...] | None
+    """
+    Cache variable for the component.
+    If this variable changes, the cache has to be rebuild.
+    """
+
+    _cache_enabled: bool
+    """Flag to enable or disable the cache."""
+
+    __slots__ = ["label", "_cache", "_cachevars", "_cache_enabled"]
+
+    def __init__(
+        self,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ):
+        super().__init__(device, dtype)
+        self.label = self.__class__.__name__
+        self._cache = None
+        self._cachevars = None
+        self._cache_enabled = True
+
+    ############################################################################
+
+    @property
+    def cache(self) -> Cache | None:
+        """Cache for the interaction."""
+        return self._cache
+
+    @cache.setter
+    def cache(self, value: Cache | None) -> None:
+        self._cache = value
 
     class Cache(TensorLike):
         """Cache of a component."""
@@ -48,13 +83,15 @@ class Component(TensorLike):
         ):
             super().__init__(device, dtype)
 
-    def __init__(
-        self,
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
-    ):
-        super().__init__(device, dtype)
-        self.label = self.__class__.__name__
+        def __str__(self) -> str:
+            slots = get_all_slots(self)
+            s = ", ".join(s for s in slots if not s.startswith("_"))
+            return f"{self.__class__.__name__}({s})"
+
+        def __repr__(self) -> str:
+            return str(self)
+
+    ############################################################################
 
     def update(self, **kwargs: Any) -> None:
         """
@@ -95,6 +132,8 @@ class Component(TensorLike):
                     "interaction. Invalid attribute."
                 )
 
+            self.cache_invalidate()
+
     def reset(self) -> None:
         """
         Reset the tensor attributes of the `Component` instance to their
@@ -126,6 +165,72 @@ class Component(TensorLike):
                 reset.requires_grad = attr.requires_grad
 
                 setattr(self, slot, reset)
+
+        self.cache_invalidate()
+
+    ############################################################################
+
+    def cache_is_latest(
+        self, vars: tuple[Tensor, ...], tol: float | None = None
+    ) -> bool:
+        """
+        Check if the driver is set up and updated.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms in the system (nat, 3).
+
+        Returns
+        -------
+        bool
+            Flag for set up status.
+        """
+        if self._cache_enabled is False:
+            return False
+
+        if self.cache is None:
+            return False
+
+        if self._cachevars is None:
+            return False
+
+        for v1, v2 in zip(vars, self._cachevars):
+            if v1.dtype != v2.dtype:
+                return False
+
+            if v1.device != v2.device:
+                return False
+
+            if v1.dtype in (torch.int64, torch.int32, torch.long):
+                if torch.equal(v1, v2) is False:
+                    return False
+            else:
+                tol = torch.finfo(v1.dtype).eps ** 0.75 if tol is None else tol
+                if (v2 - v1).abs().sum() > tol:
+                    return False
+
+        return True
+
+    def cache_invalidate(self) -> None:
+        """Invalidate the cache to require renewed setup."""
+        self._cache = None
+        self._cachevars = None
+
+    @property
+    def cache_is_setup(self) -> bool:
+        """Whether the cache has been set up."""
+        return self._cache is not None and self._cachevars is not None
+
+    def cache_enable(self) -> None:
+        """Enable the cache."""
+        self._cache_enabled = True
+
+    def cache_disable(self) -> None:
+        """Disable the cache."""
+        self._cache_enabled = False
+
+    ############################################################################
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__}({self.label})"
