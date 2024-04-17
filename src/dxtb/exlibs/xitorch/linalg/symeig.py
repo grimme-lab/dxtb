@@ -187,7 +187,7 @@ def symeig(
         params = A.getlinopparams()
         mparams = M.getlinopparams() if M is not None else []
         na = len(params)
-        return symeig_torchfcn.apply(
+        return symeig_torchfcn(
             A, neig, mode, M, fwd_options, bck_options, na, *params, *mparams
         )
 
