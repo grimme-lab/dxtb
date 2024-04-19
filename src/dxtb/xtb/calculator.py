@@ -212,12 +212,13 @@ class Result(TensorLike):
         )
 
 
-class Calculator(TensorLike):
+class BaseCalculator(TensorLike):
     """
     Parametrized calculator defining the extended tight-binding model.
 
-    The calculator holds the atomic orbital basis set for defining the Hamiltonian
-    and the overlap matrix.
+    This class provides the basic functionality for the extended tight-binding
+    model. It provides methods for single point calculations, nuclear
+    gradients, Hessians, molecular properties, and spectra.
     """
 
     dispersion: Dispersion | None = None
@@ -736,10 +737,11 @@ class Calculator(TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        use_functorch: bool = False,
+        grad_mode: Literal["autograd", "backward", "functorch", "row"] = "autograd",
+        **kwargs: Any,
     ) -> Tensor:
         r"""
-        Calculate the electric dipole moment :math:`f` via AD.
+        Calculate the nuclear forces :math:`f` via AD.
 
         .. math::
 
@@ -767,8 +769,12 @@ class Calculator(TensorLike):
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to `None`.
-        use_functorch: bool, optional
-            Whether to use functorch or the standard (slower) autograd.
+        grad_mode: Literal, optional
+            Specify the mode for gradient calculation. Possible options are:
+            - "autograd" (default): Use PyTorch's `torch.autograd.grad`.
+            - "backward": Use PyTorch's backward function.
+            - "functorch": Use functorch's `jacrev`.
+            - "row": Use PyTorch's autograd row-by-row (unnecessary here).
 
         Returns
         -------
@@ -777,7 +783,23 @@ class Calculator(TensorLike):
         """
         logger.debug("Forces: Starting.")
 
-        if use_functorch is True:
+        if grad_mode == "autograd":
+            e = self.energy(numbers, positions, chrg, spin)
+            (deriv,) = torch.autograd.grad(
+                e,
+                positions,
+                create_graph=kwargs.get("create_graph", False),
+                retain_graph=kwargs.get("retain_graph", False),
+            )
+        elif grad_mode == "backward":
+            e = self.energy(numbers, positions, chrg, spin)
+            e.backward(
+                create_graph=kwargs.get("create_graph", False),
+                retain_graph=kwargs.get("retain_graph", False),
+            )
+            assert positions.grad is not None
+            deriv = positions.grad
+        elif grad_mode == "functorch":
             # pylint: disable=import-outside-toplevel
             from tad_mctc.autograd import jacrev
 
@@ -785,17 +807,24 @@ class Calculator(TensorLike):
             jac_func = jacrev(self.energy, argnums=1)
             deriv = jac_func(numbers, positions, chrg, spin)
             assert isinstance(deriv, Tensor)
-        else:
+        elif grad_mode == "row":
             # pylint: disable=import-outside-toplevel
             from tad_mctc.autograd import jac
 
             energy = self.energy(numbers, positions, chrg, spin)
-            deriv = jac(energy, positions).reshape(*positions.shape)
+            deriv = jac(
+                energy,
+                positions,
+                create_graph=kwargs.get("create_graph", False),
+                retain_graph=kwargs.get("retain_graph", False),
+            ).reshape(*positions.shape)
+        else:
+            raise ValueError(f"Unknown grad_mode: {grad_mode}")
 
         if deriv.is_contiguous() is False:
             logger.debug(
-                "Hessian: Re-enforcing contiguous memory layout after "
-                f"autodiff (use_functorch={use_functorch})."
+                "Forces: Re-enforcing contiguous memory layout after "
+                f"autodiff (grad_mode={grad_mode})."
             )
             deriv = deriv.contiguous()
 
@@ -2390,3 +2419,69 @@ class Calculator(TensorLike):
         logger.debug("Raman spectrum: All finished.")
 
         return vib.RamanResult(vib_res.freqs, intensities, depol)
+
+
+class Calculator(BaseCalculator):
+    """
+    Calculator class for the calculation of molecular properties.
+    """
+
+
+class GFN1Calculator(BaseCalculator):
+    """
+    Calculator for the GFN1-xTB method.
+    """
+
+    def __init__(
+        self,
+        numbers: Tensor,
+        *,
+        classical: Sequence[Classical] = [],
+        interaction: Sequence[Interaction] = [],
+        opts: dict[str, Any] | Config | None = None,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> None:
+        # pylint: disable=import-outside-toplevel
+        from dxtb.param import GFN1_XTB
+
+        super().__init__(
+            numbers,
+            GFN1_XTB,
+            classical=classical,
+            interaction=interaction,
+            opts=opts,
+            device=device,
+            dtype=dtype,
+        )
+
+
+class GFN2Calculator(BaseCalculator):
+    """
+    Calculator for the GFN2-xTB method.
+    """
+
+    def __init__(
+        self,
+        numbers: Tensor,
+        *,
+        classical: Sequence[Classical] = [],
+        interaction: Sequence[Interaction] = [],
+        opts: dict[str, Any] | Config | None = None,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> None:
+        raise NotImplementedError("GFN2-xTB is not yet implemented.")
+
+        # pylint: disable=import-outside-toplevel
+        from dxtb.param import GFN2_XTB
+
+        super().__init__(
+            numbers,
+            GFN2_XTB,
+            classical=classical,
+            interaction=interaction,
+            opts=opts,
+            device=device,
+            dtype=dtype,
+        )

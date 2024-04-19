@@ -24,7 +24,7 @@ from dxtb.typing import DD
 
 dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
 
-f = Path(__file__).parent / "molecules" / "taxol.coord"
+f = Path(__file__).parent / "molecules" / "vancoh2.coord"
 n, p = read.read_from_path(f, ftype="tm", **dd)
 c = read.read_chrg_from_path(f, **dd)
 

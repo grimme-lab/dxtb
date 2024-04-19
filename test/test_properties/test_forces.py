@@ -130,10 +130,9 @@ def execute(
             numbers,
             pos,
             charge,
-            use_functorch=False,
+            grad_mode="row",
         )
     )
-
     assert pytest.approx(numforces, abs=atol, rel=rtol) == forces1
 
     # reset before another AD run
@@ -146,12 +145,44 @@ def execute(
             numbers,
             pos,
             charge,
-            use_functorch=True,
+            grad_mode="functorch",
         )
     )
-
     assert pytest.approx(numforces, abs=atol, rel=rtol) == forces2
     assert pytest.approx(forces1, abs=atol, rel=rtol) == forces2
+
+    calc.reset()
+    pos = positions.clone().detach().requires_grad_(True)
+
+    # backward of energy
+    forces3 = tensor_to_numpy(
+        calc.forces(
+            numbers,
+            pos,
+            charge,
+            grad_mode="backward",
+        )
+    )
+    assert pytest.approx(numforces, abs=atol, rel=rtol) == forces3
+    assert pytest.approx(forces1, abs=atol, rel=rtol) == forces3
+    assert pytest.approx(forces2, abs=atol, rel=rtol) == forces3
+
+    calc.reset()
+    pos = positions.clone().detach().requires_grad_(True)
+
+    # standard torch.autograd.grad
+    forces4 = tensor_to_numpy(
+        calc.forces(
+            numbers,
+            pos,
+            charge,
+            grad_mode="autograd",
+        )
+    )
+    assert pytest.approx(numforces, abs=atol, rel=rtol) == forces4
+    assert pytest.approx(forces1, abs=atol, rel=rtol) == forces4
+    assert pytest.approx(forces2, abs=atol, rel=rtol) == forces4
+    assert pytest.approx(forces3, abs=atol, rel=rtol) == forces4
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
