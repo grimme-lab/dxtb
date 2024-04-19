@@ -24,7 +24,7 @@ import tad_dftd3 as d3
 import torch
 from tad_mctc.ncoord import cn_d3, exp_count
 
-from dxtb.typing import Any, CountingFunction, Tensor, TensorLike
+from dxtb.typing import Any, CountingFunction, Tensor
 
 from .base import Dispersion
 
@@ -133,7 +133,9 @@ class DispersionD3(Dispersion):
         self.cache = self.Cache(ref, rcov, rvdw, r4r2, cf, wf, df)
         return self.cache
 
-    def get_energy(self, positions: Tensor, cache: DispersionD3.Cache) -> Tensor:
+    def get_energy(
+        self, positions: Tensor, cache: DispersionD3.Cache, **kwargs: Any
+    ) -> Tensor:
         """
         Get D3 dispersion energy.
 
@@ -159,7 +161,9 @@ class DispersionD3(Dispersion):
         weights = d3.model.weight_references(
             self.numbers, cn, cache.ref, cache.weighting_function
         )
-        c6 = d3.model.atomic_c6(self.numbers, weights, cache.ref)
+
+        chunk_size = kwargs.pop("chunk_size", None)
+        c6 = d3.model.atomic_c6(self.numbers, weights, cache.ref, chunk_size=chunk_size)
 
         return d3.disp.dispersion(
             self.numbers,

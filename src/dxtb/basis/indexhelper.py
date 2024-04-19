@@ -242,21 +242,33 @@ class IndexHelper(TensorLike):
         cls, numbers: Tensor, par: Param, batch_mode: int | None = None
     ) -> IndexHelper:
         """
-        Construct an index helper instance from atomic numbers and their angular momenta.
+        Construct an index helper instance from atomic numbers and a
+        parametrization.
+
+        Note that this always runs on CPU to avoid inefficient communication
+        between devices. Only the resulting tensors are transfered to the GPU.
+        This is necessary because of complex data look up that is not
+        vectorizable and requires native for-loops. Furthermore, the method
+        frequently uses the `.item()` method, which forces CPU-GPU
+        synchronization because it converts a GPU tensor to a Python scalar.
 
         Parameters
         ----------
         numbers : Tensor
             Atomic numbers for all atoms in the system.
-        angular : dict[int, Tensor]
-            Map between atomic numbers and angular momenta of all shells.
+        par : Param
+            Representation of an extended tight-binding model.
+        batch_mode : int
+            Whether multiple systems or a single one are handled:
+            - 0: Single system
+            - 1: Multiple systems with padding
+            - 2: Multiple systems with no padding (conformer ensemble)
 
         Returns
         -------
         IndexHelper
             Instance of index helper for given basis set.
         """
-
         angular = get_elem_angular(par.element)
         return cls.from_numbers_angular(numbers, angular, batch_mode)
 
@@ -267,7 +279,42 @@ class IndexHelper(TensorLike):
         angular: dict[int, list[int]],
         batch_mode: int | None = None,
     ) -> IndexHelper:
+        """
+        Construct an index helper instance from atomic numbers and their
+        angular momenta. If you are not sure about the angular momenta, use
+        `from_numbers` instead, which simply takes a parametrization.
+
+        Note that this always runs on CPU to avoid inefficient communication
+        between devices. Only the resulting tensors are transfered to the GPU.
+        This is necessary because of complex data look up that is not
+        vectorizable and requires native for-loops. Furthermore, the method
+        frequently uses the `.item()` method, which forces CPU-GPU
+        synchronization because it converts a GPU tensor to a Python scalar.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system.
+        angular : dict[int, Tensor]
+            Map between atomic numbers and angular momenta of all shells.
+        batch_mode : int
+            Whether multiple systems or a single one are handled:
+            - 0: Single system
+            - 1: Multiple systems with padding
+            - 2: Multiple systems with no padding (conformer ensemble)
+
+        Returns
+        -------
+        IndexHelper
+            Instance of index helper for given basis set.
+        """
         device = numbers.device
+        cpu = torch.device("cpu")
+
+        # Ensure that all tensors are moved to CPU to avoid inefficient
+        # memory transfers between devices (.item() and native for-loops).
+        numbers = numbers.to(cpu)
+
         if batch_mode is None:
             batch_mode = numbers.ndim > 1
 
@@ -275,13 +322,13 @@ class IndexHelper(TensorLike):
 
         unique_angular = torch.tensor(
             [l for number in unique for l in angular.get(number.item(), [-1])],
-            device=device,
+            device=cpu,
         )
 
         # note that padding (i.e., when number = 0) is assigned one shell
         ushells_per_unique = torch.tensor(
             [len(angular.get(number.item(), [-1])) for number in unique],
-            device=device,
+            device=cpu,
         )
 
         ushell_index = torch.cumsum(ushells_per_unique, dim=-1) - ushells_per_unique
@@ -333,7 +380,7 @@ class IndexHelper(TensorLike):
         )
 
         orbitals_per_shell = torch.where(
-            lsh >= 0, 2 * lsh + 1, torch.tensor(0, device=device)
+            lsh >= 0, 2 * lsh + 1, torch.tensor(0, device=cpu)
         )
 
         orbital_index = torch.cumsum(orbitals_per_shell, -1) - orbitals_per_shell
@@ -351,18 +398,18 @@ class IndexHelper(TensorLike):
             orbitals_to_shell = _fill(orbital_index, orbitals_per_shell)
 
         return cls(
-            unique_angular=unique_angular,
-            angular=lsh,
-            atom_to_unique=atom_to_unique,
-            ushells_to_unique=ushells_to_unique,
-            ushells_per_unique=ushells_per_unique,
-            shells_to_ushell=shells_to_ushell,
-            shells_per_atom=shells_per_atom,
-            shell_index=shell_index,
-            shells_to_atom=shells_to_atom,
-            orbitals_per_shell=orbitals_per_shell,
-            orbital_index=orbital_index,
-            orbitals_to_shell=orbitals_to_shell,
+            unique_angular=unique_angular.to(device),
+            angular=lsh.to(device),
+            atom_to_unique=atom_to_unique.to(device),
+            ushells_to_unique=ushells_to_unique.to(device),
+            ushells_per_unique=ushells_per_unique.to(device),
+            shells_to_ushell=shells_to_ushell.to(device),
+            shells_per_atom=shells_per_atom.to(device),
+            shell_index=shell_index.to(device),
+            shells_to_atom=shells_to_atom.to(device),
+            orbitals_per_shell=orbitals_per_shell.to(device),
+            orbital_index=orbital_index.to(device),
+            orbitals_to_shell=orbitals_to_shell.to(device),
             batch_mode=batch_mode,
             device=device,
         )

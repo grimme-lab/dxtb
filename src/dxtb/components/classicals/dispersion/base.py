@@ -24,7 +24,7 @@ from abc import abstractmethod
 
 import torch
 
-from dxtb.typing import Tensor
+from dxtb.typing import Any, Tensor
 
 from ...classicals import Classical
 
@@ -59,7 +59,7 @@ class Dispersion(Classical):
         self.charge = charge
 
     @abstractmethod
-    def get_cache(self, numbers: Tensor) -> Classical.Cache:
+    def get_cache(self, numbers: Tensor, **kwargs: Any) -> Classical.Cache:
         """
         Store variables for energy calculation.
 
