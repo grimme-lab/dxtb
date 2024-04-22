@@ -33,7 +33,7 @@ from abc import ABC, abstractmethod
 import torch
 
 from dxtb.basis import IndexHelper
-from dxtb.typing import Tensor
+from dxtb.typing import Any, Tensor
 
 from .. import Component
 
@@ -69,7 +69,7 @@ class ClassicalABC(ABC):
 
     @abstractmethod
     def get_energy(
-        self, positions: Tensor, cache: Component.Cache, **kwargs: str
+        self, positions: Tensor, cache: Component.Cache, **kwargs: Any
     ) -> Tensor:
         """
         Obtain energy of the contribution.

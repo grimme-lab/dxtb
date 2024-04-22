@@ -52,10 +52,9 @@ import warnings
 
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.data import pse
+from tad_mctc.molecule.container import Mol
 
 from dxtb.typing import Tensor
-
-from ..molecule import Mol
 
 # Turn off PySCF's normalization since dxtb's normalization is different,
 # requiring a separate normalization anyway.

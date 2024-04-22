@@ -59,7 +59,7 @@ from tad_mctc.batch import real_pairs
 
 from dxtb.basis import IndexHelper
 from dxtb.constants import xtb
-from dxtb.typing import Tensor, TensorLike
+from dxtb.typing import Any, Tensor
 
 from ..base import Classical
 
@@ -233,7 +233,7 @@ class BaseRepulsion(Classical):
 
     @abstractmethod
     def get_energy(
-        self, positions: Tensor, cache: BaseRepulsion.Cache, atom_resolved: bool = True
+        self, positions: Tensor, cache: BaseRepulsion.Cache, **kwargs: Any
     ) -> Tensor:
         """
         Get repulsion energy.
@@ -245,7 +245,8 @@ class BaseRepulsion(Classical):
         positions : Tensor
             Cartesian coordinates of all atoms in the system (nat, 3).
         atom_resolved : bool
-            Whether to return atom-resolved energy (True) or full matrix (False).
+            Whether to return atom-resolved energy (True) or full matrix
+            (False).
 
         Returns
         -------
@@ -315,12 +316,11 @@ def repulsion_energy(
     exp_term = torch.exp(-arep * r1k)
 
     # Eq.13: repulsion energy
-    erep = torch.where(
+    return torch.where(
         mask * (distances <= _cutoff),
-        zeff * exp_term / (distances + eps),
+        storch.divide(zeff * exp_term, distances),
         zero,
     )
-    return erep
 
 
 def repulsion_gradient(
@@ -388,7 +388,7 @@ def repulsion_gradient(
     r2 = torch.pow(distances, 2)
 
     # (n_batch, n_atoms, n_atoms, 3)
-    grad = torch.where(mask, grad / (r2 + eps), eps)
+    grad = torch.where(mask, storch.divide(grad, r2), eps)
     grad = grad.unsqueeze(-1) * rij
 
     # reduction gives (n_batch, n_atoms, 3)

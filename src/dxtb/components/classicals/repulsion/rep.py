@@ -25,10 +25,12 @@ analytical derivative.
 
 Note
 ----
-The Repulsion class is constructed for geometry optimization, i.e., the atomic
-numbers are set upon instantiation (`numbers` is a property), and the parameters
-in the cache are created for only those atomic numbers. The positions, however,
-must be supplied to the `get_energy` method.
+The Repulsion class has a cache scope that goes beyond single-point
+calculations (geometry optimization, numerical gradients). The atomic numbers
+are set upon instantiation (`numbers` is a property), and the parameters in
+the cache are created for only those atomic numbers. The positions, however,
+must be supplied to the `get_energy` method. Hence, the cache does not become
+invalid for different geometries, but only for different atomic numbers.
 """
 
 from __future__ import annotations
@@ -36,7 +38,7 @@ from __future__ import annotations
 import torch
 from tad_mctc._version import __tversion__
 
-from dxtb.typing import Tensor, override
+from dxtb.typing import Any, Tensor, override
 
 from .base import BaseRepulsion, repulsion_energy, repulsion_gradient
 
@@ -50,7 +52,7 @@ class Repulsion(BaseRepulsion):
 
     @override
     def get_energy(
-        self, positions: Tensor, cache: Repulsion.Cache, atom_resolved: bool = True
+        self, positions: Tensor, cache: Repulsion.Cache, **kwargs: Any
     ) -> Tensor:
         """
         Get repulsion energy.
@@ -62,7 +64,8 @@ class Repulsion(BaseRepulsion):
         positions : Tensor
             Cartesian coordinates of all atoms in the system (nat, 3).
         atom_resolved : bool
-            Whether to return atom-resolved energy (True) or full matrix (False).
+            Whether to return atom-resolved energy (True) or full matrix
+            (False).
 
         Returns
         -------
@@ -78,7 +81,7 @@ class Repulsion(BaseRepulsion):
             self.cutoff,
         )
 
-        if atom_resolved is True:
+        if kwargs.get("atom_resolved", True) is True:
             return 0.5 * torch.sum(e, dim=-1)
         return e
 
@@ -202,10 +205,6 @@ class RepulsionAG_V1(RepulsionAGBase):
     """
     Autograd function for repulsion energy.
     """
-
-    # generate_vmap_rule = True
-    # https://pytorch.org/docs/master/notes/extending.func.html#automatically-generate-a-vmap-rule
-    # should work since we only use PyTorch operations
 
     @staticmethod
     def forward(

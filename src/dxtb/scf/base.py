@@ -145,6 +145,7 @@ class BaseSCF:
             self.iter = 1
 
         def init_zeros(self) -> None:
+            """Initialize all tensors with zeros."""
             self.energy = torch.zeros_like(self.n0)
             self.hamiltonian = torch.zeros_like(self.ints.hcore)
             self.density = torch.zeros_like(self.ints.hcore)
@@ -156,10 +157,21 @@ class BaseSCF:
             self.old_density = torch.zeros_like(self.density)
 
         def reset(self) -> None:
+            """Reset all tensors and iteration count to zero."""
             self.iter = 0
             self.init_zeros()
 
         def cull(self, conv: Tensor, slicers: Slicers) -> None:
+            """
+            Cull all tensors according to the given slicers.
+
+            Parameters
+            ----------
+            conv : Tensor
+                Convergence mask.
+            slicers : Slicers
+                Slicers for the tensors.
+            """
             onedim = [~conv, *slicers["orbital"]]
             onedim_atom = [~conv, *slicers["atom"]]
             twodim = [~conv, *slicers["orbital"], *slicers["orbital"]]

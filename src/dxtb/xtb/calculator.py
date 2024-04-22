@@ -200,9 +200,6 @@ class Result(TensorLike):
     ) -> None:  # pragma: no cover
         """Print energies in a table."""
 
-        # pylint: disable=import-outside-toplevel
-        from ..io import OutputHandler
-
         OutputHandler.write_table(
             self.get_energies(),
             title="Energies",
@@ -346,8 +343,8 @@ class BaseCalculator(TensorLike):
         numbers: Tensor,
         par: Param,
         *,
-        classical: Sequence[Classical] = [],
-        interaction: Sequence[Interaction] = [],
+        classical: Sequence[Classical] | None = None,
+        interaction: Sequence[Interaction] | None = None,
         opts: dict[str, Any] | Config | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
@@ -434,7 +431,11 @@ class BaseCalculator(TensorLike):
             else None
         )
 
-        self.interactions = InteractionList(es2, es3, *interaction)
+        self.interactions = InteractionList(
+            es2,
+            es3,
+            *(interaction or ()),
+        )
 
         OutputHandler.write_stdout("done", v=4)
 
@@ -461,7 +462,12 @@ class BaseCalculator(TensorLike):
             else None
         )
 
-        self.classicals = ClassicalList(halogen, dispersion, repulsion, *classical)
+        self.classicals = ClassicalList(
+            halogen,
+            dispersion,
+            repulsion,
+            *(classical or ()),
+        )
 
         OutputHandler.write_stdout("done", v=4)
 
@@ -510,6 +516,7 @@ class BaseCalculator(TensorLike):
         timer.stop("Calculator")
 
     def reset(self) -> None:
+        """Reset the calculator to its initial state."""
         self.classicals.reset_all()
         self.interactions.reset_all()
         self.integrals.reset_all()
@@ -693,6 +700,7 @@ class BaseCalculator(TensorLike):
                     emo=result.emo,
                 )
 
+                # pylint: disable=import-outside-toplevel
                 from .. import ncoord
 
                 cn = ncoord.cn_d3(numbers, positions)
@@ -727,6 +735,26 @@ class BaseCalculator(TensorLike):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
     ) -> Tensor:
+        """
+        Calculate the total energy :math:`E` of the system.
+
+        Parameters
+        ----------
+        numbers : Tensor
+        numbers : Tensor
+            Atomic numbers for all atoms in the system of shape `(..., nat)`.
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to `None`.
+
+        Returns
+        -------
+        Tensor
+            Total energy of the system (scalar value).
+        """
         return self.singlepoint(numbers, positions, chrg, spin).total.sum(-1)
 
     @cdec.requires_positions_grad
@@ -751,7 +779,8 @@ class BaseCalculator(TensorLike):
         `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
         using `torch.func`'s function transforms (e.g., `jacrev`).
 
-        .. _here: https://pytorch.org/functorch/stable/notebooks/jacobians_hessians.html#computing-the-jacobian
+        .. _here: https://pytorch.org/functorch/stable/notebooks/\
+                  jacobians_hessians.html#computing-the-jacobian
 
         Note
         ----
@@ -821,12 +850,11 @@ class BaseCalculator(TensorLike):
         else:
             raise ValueError(f"Unknown grad_mode: {grad_mode}")
 
-        if deriv.is_contiguous() is False:
-            logger.debug(
-                "Forces: Re-enforcing contiguous memory layout after "
-                f"autodiff (grad_mode={grad_mode})."
-            )
-            deriv = deriv.contiguous()
+        logger.debug(
+            "Forces: Re-enforcing contiguous memory layout after "
+            "autodiff (grad_mode=%s).",
+            grad_mode,
+        )
 
         logger.debug("Forces: All finished.")
         return -deriv
@@ -871,7 +899,7 @@ class BaseCalculator(TensorLike):
 
         # (..., nat, 3)
         deriv = torch.zeros(positions.shape, **self.dd)
-        logger.debug(f"Forces (numerical): Starting build ({deriv.shape}).")
+        logger.debug("Forces (numerical): Starting build (%s).", deriv.shape)
 
         count = 1
         nsteps = 3 * numbers.shape[-1]
@@ -886,7 +914,7 @@ class BaseCalculator(TensorLike):
                 positions[..., i, j] += step_size
                 deriv[..., i, j] = 0.5 * (gr - gl) / step_size
 
-                logger.debug(f"Forces (numerical): step {count}/{nsteps}")
+                logger.debug("Forces (numerical): step %s/%s", count, nsteps)
                 count += 1
 
                 gc.collect()
@@ -962,7 +990,8 @@ class BaseCalculator(TensorLike):
         if hess.is_contiguous() is False:
             logger.debug(
                 "Hessian: Re-enforcing contiguous memory layout after "
-                f"autodiff (use_functorch={use_functorch})."
+                "autodiff (use_functorch=%s).",
+                use_functorch,
             )
             hess = hess.contiguous()
 
@@ -1024,7 +1053,7 @@ class BaseCalculator(TensorLike):
 
         # (..., nat, 3, nat, 3)
         deriv = torch.zeros((*positions.shape, *positions.shape[-2:]), **self.dd)
-        logger.debug(f"Hessian (numerical): Starting build ({deriv.shape}).")
+        logger.debug("Hessian (numerical): Starting build (%s).", deriv.shape)
 
         count = 1
         nsteps = 3 * numbers.shape[-1]
@@ -1039,7 +1068,7 @@ class BaseCalculator(TensorLike):
                 positions[..., i, j] += step_size
                 deriv[..., :, :, i, j] = 0.5 * (gr - gl) / step_size
 
-                logger.debug(f"Hessian (numerical): step {count}/{nsteps}")
+                logger.debug("Hessian (numerical): step %s/%s", count, nsteps)
                 count += 1
 
                 gc.collect()
@@ -1072,7 +1101,8 @@ class BaseCalculator(TensorLike):
         `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
         using `torch.func`'s function transforms (e.g., `jacrev`).
 
-        .. _here: https://pytorch.org/functorch/stable/notebooks/jacobians_hessians.html#computing-the-jacobian
+        .. _here: https://pytorch.org/functorch/stable/notebooks/\
+                  jacobians_hessians.html#computing-the-jacobian
 
         Note
         ----
@@ -1190,7 +1220,8 @@ class BaseCalculator(TensorLike):
         `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
         using `torch.func`'s function transforms (e.g., `jacrev`).
 
-        .. _here: https://pytorch.org/functorch/stable/notebooks/jacobians_hessians.html#computing-the-jacobian
+        .. _here: https://pytorch.org/functorch/stable/notebooks/\
+                  jacobians_hessians.html#computing-the-jacobian
 
         Note
         ----
@@ -1239,7 +1270,8 @@ class BaseCalculator(TensorLike):
         if dip.is_contiguous() is False:
             logger.debug(
                 "Dipole moment: Re-enforcing contiguous memory layout "
-                f"after autodiff (use_functorch={use_functorch})."
+                "after autodiff (use_functorch=%s).",
+                use_functorch,
             )
             dip = dip.contiguous()
 
@@ -1347,7 +1379,7 @@ class BaseCalculator(TensorLike):
 
         # (..., 3)
         deriv = torch.zeros((*numbers.shape[:-1], 3), **self.dd)
-        logger.debug(f"Dipole (numerical): Starting build ({deriv.shape}).")
+        logger.debug("Dipole (numerical): Starting build (%s).", deriv.shape)
 
         count = 1
         for i in range(3):
@@ -1363,7 +1395,7 @@ class BaseCalculator(TensorLike):
             self.interactions.update_efield(field=field)
             deriv[..., i] = 0.5 * (gr - gl) / step_size
 
-            logger.debug(f"Dipole (numerical): step {count}/{3}")
+            logger.debug("Dipole (numerical): step %s/3.", count)
             count += 1
 
             gc.collect()
@@ -1393,7 +1425,8 @@ class BaseCalculator(TensorLike):
         `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
         using `torch.func`'s function transforms (e.g., `jacrev`).
 
-        .. _here: https://pytorch.org/functorch/stable/notebooks/jacobians_hessians.html#computing-the-jacobian
+        .. _here: https://pytorch.org/functorch/stable/notebooks/\
+                  jacobians_hessians.html#computing-the-jacobian
 
         Note
         ----
@@ -1452,7 +1485,8 @@ class BaseCalculator(TensorLike):
         if dmu_dr.is_contiguous() is False:
             logger.debug(
                 "Dipole derivative: Re-enforcing contiguous memory layout "
-                f"after autodiff (use_functorch={use_functorch})."
+                "after autodiff (use_functorch=%s).",
+                use_functorch,
             )
             dmu_dr = dmu_dr.contiguous()
 
@@ -1503,7 +1537,7 @@ class BaseCalculator(TensorLike):
             (*numbers.shape[:-1], 3, *positions.shape[-2:]),
             **self.dd,
         )
-        logger.debug(f"Dipole derivative (numerical): Starting build ({deriv.shape}).")
+        logger.debug("Dipole derivative (numerical): Starting build (%s).", deriv.shape)
 
         count = 1
         nsteps = 3 * numbers.shape[-1]
@@ -1519,7 +1553,7 @@ class BaseCalculator(TensorLike):
                 positions[..., i, j] += step_size
                 deriv[..., :, i, j] = 0.5 * (r - l) / step_size
 
-                logger.debug("Dipole derivative (numerical): Step " f"{count}/{nsteps}")
+                logger.debug("Dipole derivative (numerical): Step %s/%s", count, nsteps)
                 count += 1
 
                 gc.collect()
@@ -1654,7 +1688,7 @@ class BaseCalculator(TensorLike):
 
         # (..., 3, 3)
         deriv = torch.zeros((*numbers.shape[:-1], 3, 3), **self.dd)
-        logger.debug(f"Quadrupole (numerical): Starting build ({deriv.shape}).")
+        logger.debug("Quadrupole (numerical): Starting build (%s).", deriv.shape)
 
         count = 1
         for i in range(3):
@@ -1671,7 +1705,7 @@ class BaseCalculator(TensorLike):
                 self.interactions.update_efield_grad(field_grad=field_grad)
                 deriv[..., i, j] = 0.5 * (gr - gl) / step_size
 
-                logger.debug(f"Quadrupole (numerical): step {count}/{3}")
+                logger.debug("Quadrupole (numerical): step %s/3", count)
                 count += 1
 
         # reset
@@ -1704,7 +1738,8 @@ class BaseCalculator(TensorLike):
         `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
         using `torch.func`'s function transforms (e.g., `jacrev`).
 
-        .. _here: https://pytorch.org/functorch/stable/notebooks/jacobians_hessians.html#computing-the-jacobian
+        .. _here: https://pytorch.org/functorch/stable/notebooks/\
+                  jacobians_hessians.html#computing-the-jacobian
 
         Note
         ----
@@ -1781,7 +1816,8 @@ class BaseCalculator(TensorLike):
         if alpha.is_contiguous() is False:
             logger.debug(
                 "Polarizability: Re-enforcing contiguous memory layout "
-                f"after autodiff (use_functorch={use_functorch})."
+                "after autodiff (use_functorch=%s).",
+                use_functorch,
             )
             alpha = alpha.contiguous()
 
@@ -1836,7 +1872,7 @@ class BaseCalculator(TensorLike):
 
         # (..., 3, 3)
         deriv = torch.zeros(*(*numbers.shape[:-1], 3, 3), **self.dd)
-        logger.debug(f"Polarizability (numerical): Starting build ({deriv.shape})")
+        logger.debug("Polarizability (numerical): Starting build %s", deriv.shape)
 
         count = 1
         for i in range(3):
@@ -1852,7 +1888,7 @@ class BaseCalculator(TensorLike):
             self.interactions.update_efield(field=field)
             deriv[..., :, i] = 0.5 * (gr - gl) / step_size
 
-            logger.debug(f"Polarizability (numerical): step {count}/{3}")
+            logger.debug("Polarizability (numerical): step %s/3", count)
             count += 1
 
             gc.collect()
@@ -1881,13 +1917,19 @@ class BaseCalculator(TensorLike):
 
         .. math::
 
-            \chi = \alpha' = \dfrac{\partial \alpha}{\partial R} = \dfrac{\partial^2 \mu}{\partial F \partial R} = \dfrac{\partial^3 E}{\partial^2 F \partial R}
+            \begin{align*}
+                \chi &= \alpha' \\
+                    &= \dfrac{\partial \alpha}{\partial R} \\
+                    &= \dfrac{\partial^2 \mu}{\partial F \partial R} \\
+                    &= \dfrac{\partial^3 E}{\partial^2 F \partial R}
+            \end{align*}
 
         One can calculate the Jacobian either row-by-row using the standard
         `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
         using `torch.func`'s function transforms (e.g., `jacrev`).
 
-        .. _here: https://pytorch.org/functorch/stable/notebooks/jacobians_hessians.html#computing-the-jacobian
+        .. _here: https://pytorch.org/functorch/stable/notebooks/\
+                  jacobians_hessians.html#computing-the-jacobian
 
         Note
         ----
@@ -1939,7 +1981,8 @@ class BaseCalculator(TensorLike):
         if chi.is_contiguous() is False:
             logger.debug(
                 "Polarizability derivative: Re-enforcing contiguous memory "
-                f"layout after autodiff (use_functorch={use_functorch})."
+                "layout after autodiff (use_functorch=%s).",
+                use_functorch,
             )
             chi = chi.contiguous()
 
@@ -1961,7 +2004,12 @@ class BaseCalculator(TensorLike):
 
         .. math::
 
-            \chi = \alpha' = \dfrac{\partial \alpha}{\partial R} = \dfrac{\partial^2 \mu}{\partial F \partial R} = \dfrac{\partial^3 E}{\partial^2 F \partial R}
+            \begin{align*}
+                \chi &= \alpha' \\
+                    &= \dfrac{\partial \alpha}{\partial R} \\
+                    &= \dfrac{\partial^2 \mu}{\partial F \partial R} \\
+                    &= \dfrac{\partial^3 E}{\partial^2 F \partial R}
+            \end{align*}
 
         Parameters
         ----------
@@ -1989,7 +2037,8 @@ class BaseCalculator(TensorLike):
             (*numbers.shape[:-1], 3, 3, *positions.shape[-2:]), **self.dd
         )
         logger.debug(
-            "Polarizability derivative (numerical): Starting build " f"({deriv.shape})."
+            "Polarizability derivative (numerical): Starting build (%s).",
+            deriv.shape,
         )
 
         count = 1
@@ -2006,7 +2055,9 @@ class BaseCalculator(TensorLike):
                 deriv[..., :, :, i, j] = 0.5 * (r - l) / step_size
 
                 logger.debug(
-                    "Polarizability numerical derivative: Step " f"{count}/{nsteps}"
+                    "Polarizability numerical derivative: Step %s/%s",
+                    count,
+                    nsteps,
                 )
                 count += 1
 
@@ -2033,13 +2084,18 @@ class BaseCalculator(TensorLike):
 
         .. math::
 
-            \beta = \dfrac{\partial \alpha}{\partial F} = \dfrac{\partial^2 \mu}{\partial F^2} = \dfrac{\partial^3 E}{\partial^2 3}
+            \begin{align*}
+                \beta &= \dfrac{\partial \alpha}{\partial F} \\
+                    &= \dfrac{\partial^2 \mu}{\partial F^2}
+                    &= \dfrac{\partial^3 E}{\partial^2 3} \\
+            \end{align*}
 
         One can calculate the Jacobian either row-by-row using the standard
         `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
         using `torch.func`'s function transforms (e.g., `jacrev`).
 
-        .. _here: https://pytorch.org/functorch/stable/notebooks/jacobians_hessians.html#computing-the-jacobian
+        .. _here: https://pytorch.org/functorch/stable/notebooks/\
+                  jacobians_hessians.html#computing-the-jacobian
 
         Note
         ----
@@ -2121,7 +2177,8 @@ class BaseCalculator(TensorLike):
         if beta.is_contiguous() is False:
             logger.debug(
                 "Hyperpolarizability: Re-enforcing contiguous memory "
-                f"layout after autodiff (use_functorch={use_functorch})."
+                "layout after autodiff (use_functorch=%s).",
+                use_functorch,
             )
             beta = beta.contiguous()
 
@@ -2144,7 +2201,11 @@ class BaseCalculator(TensorLike):
 
         .. math::
 
-            \beta = \dfrac{\partial \alpha}{\partial F} = \dfrac{\partial^2 \mu}{\partial F^2} = \dfrac{\partial^3 E}{\partial^2 3}
+            \begin{align*}
+                \beta &= \dfrac{\partial \alpha}{\partial F} \\
+                    &= \dfrac{\partial^2 \mu}{\partial F^2} \\
+                    &= \dfrac{\partial^3 E}{\partial^2 3}
+            \end{align*}
 
         Parameters
         ----------
@@ -2176,7 +2237,7 @@ class BaseCalculator(TensorLike):
         # (..., 3, 3, 3)
         deriv = torch.zeros(*(*numbers.shape[:-1], 3, 3, 3), **self.dd)
         logger.debug(
-            f"Hyper Polarizability (numerical): Starting build ({deriv.shape})"
+            "Hyper Polarizability (numerical): Starting build (%s)", deriv.shape
         )
 
         count = 1
@@ -2193,7 +2254,7 @@ class BaseCalculator(TensorLike):
             self.interactions.update_efield(field=field)
             deriv[..., :, :, i] = 0.5 * (gr - gl) / step_size
 
-            logger.debug(f"Hyper Polarizability (numerical): step {count}/{3}")
+            logger.debug("Hyper Polarizability (numerical): step %s/3", count)
             count += 1
 
             gc.collect()
@@ -2236,7 +2297,8 @@ class BaseCalculator(TensorLike):
         Returns
         -------
         vib.IRResult
-            Result container with frequencies (shape: `(..., nfreqs)`) and intensities (shape: `(..., nfreqs)`) of IR spectra.
+            Result container with frequencies (shape: `(..., nfreqs)`) and
+            intensities (shape: `(..., nfreqs)`) of IR spectra.
         """
         OutputHandler.write_stdout("\nIR Spectrum")
         OutputHandler.write_stdout("-----------")
@@ -2288,7 +2350,8 @@ class BaseCalculator(TensorLike):
         Returns
         -------
         vib.IRResult
-            Result container with frequencies (shape: `(..., nfreqs)`) and intensities (shape: `(..., nfreqs)`) of IR spectra.
+            Result container with frequencies (shape: `(..., nfreqs)`) and
+            intensities (shape: `(..., nfreqs)`) of IR spectra.
         """
         OutputHandler.write_stdout("\nIR Spectrum")
         OutputHandler.write_stdout("-----------")
@@ -2436,8 +2499,8 @@ class GFN1Calculator(BaseCalculator):
         self,
         numbers: Tensor,
         *,
-        classical: Sequence[Classical] = [],
-        interaction: Sequence[Interaction] = [],
+        classical: Sequence[Classical] | None = None,
+        interaction: Sequence[Interaction] | None = None,
         opts: dict[str, Any] | Config | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
@@ -2465,8 +2528,8 @@ class GFN2Calculator(BaseCalculator):
         self,
         numbers: Tensor,
         *,
-        classical: Sequence[Classical] = [],
-        interaction: Sequence[Interaction] = [],
+        classical: Sequence[Classical] | None = None,
+        interaction: Sequence[Interaction] | None = None,
         opts: dict[str, Any] | Config | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
@@ -2474,14 +2537,14 @@ class GFN2Calculator(BaseCalculator):
         raise NotImplementedError("GFN2-xTB is not yet implemented.")
 
         # pylint: disable=import-outside-toplevel
-        from dxtb.param import GFN2_XTB
+        # from dxtb.param import GFN2_XTB
 
-        super().__init__(
-            numbers,
-            GFN2_XTB,
-            classical=classical,
-            interaction=interaction,
-            opts=opts,
-            device=device,
-            dtype=dtype,
-        )
+        # super().__init__(
+        #     numbers,
+        #     GFN2_XTB,
+        #     classical=classical,
+        #     interaction=interaction,
+        #     opts=opts,
+        #     device=device,
+        #     dtype=dtype,
+        # )

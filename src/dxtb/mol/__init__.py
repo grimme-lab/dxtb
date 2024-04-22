@@ -21,13 +21,13 @@ Molecular Representation
 This subpackage contains various molecular representations that hold collect
 the most important information of a molecule.
 """
-from typing import TYPE_CHECKING
+# from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from dxtb.mol.molecule import Mol
-else:
-    import dxtb.loader.lazy as _lazy
+# if TYPE_CHECKING:
+#     from dxtb.mol.molecule import Mol
+# else:
+#     import dxtb.loader.lazy as _lazy
 
-    __getattr__, __dir__, __all__ = _lazy.attach_var("dxtb.mol.molecule", ["Mol"])
+#     __getattr__, __dir__, __all__ = _lazy.attach_var("dxtb.mol.molecule", ["Mol"])
 
-    del _lazy
+#     del _lazy

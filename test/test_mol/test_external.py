@@ -22,8 +22,8 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.molecule.container import Mol
 
-from dxtb.mol import Mol
 from dxtb.typing import DD
 
 try:

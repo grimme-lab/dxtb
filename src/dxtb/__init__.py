@@ -56,7 +56,7 @@ from dxtb.components.classicals import dispersion as dispersion
 from dxtb.components.classicals import halogen as halogen
 from dxtb.components.classicals import repulsion as repulsion
 
-# import all classical components and their factories
+# classical components and their factories
 from dxtb.components.classicals import (
     DispersionD3 as DispersionD3,
     DispersionD4 as DispersionD4,
@@ -67,7 +67,7 @@ from dxtb.components.classicals import (
     new_repulsion as new_repulsion,
 )
 
-# import all interaction components and their factories
+# interaction components and their factories
 from dxtb.components.interactions import (
     ElectricField as ElectricField,
     ElectricFieldGrad as ElectricFieldGrad,

@@ -26,6 +26,7 @@ dd: DD = {"device": torch.device("cuda:0"), "dtype": torch.double}
 
 NREPEATS = 100
 n = 6000
+chunk_size = 200
 batch_mode = 0
 b = 5
 
@@ -63,7 +64,7 @@ dxtb.timer.stop("Cache")
 torch.cuda.synchronize()
 dxtb.timer.start("Energy")
 
-e = rep.get_energy(positions, cache)
+e = rep.get_energy(positions, cache, chunk_size=chunk_size)
 torch.cuda.synchronize()
 dxtb.timer.stop("Energy")
 
@@ -97,7 +98,7 @@ cache = rep.get_cache(numbers, ihelp=ihelp)
 dxtb.timer.stop("Cache")
 dxtb.timer.start("Energy")
 
-e2 = rep.get_energy(positions, cache)
+e2 = rep.get_energy(positions, cache, chunk_size=chunk_size)
 
 dxtb.timer.stop("Energy")
 

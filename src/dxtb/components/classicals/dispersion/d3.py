@@ -128,7 +128,7 @@ class DispersionD3(Dispersion):
 
         cf = kwargs.pop("counting_function", exp_count)
         wf = kwargs.pop("weighting_function", d3.model.gaussian_weight)
-        df = kwargs.pop("damping_function", d3.disp.rational_damping)
+        df = kwargs.pop("damping_function", d3.damping.rational_damping)
 
         self.cache = self.Cache(ref, rcov, rvdw, r4r2, cf, wf, df)
         return self.cache
