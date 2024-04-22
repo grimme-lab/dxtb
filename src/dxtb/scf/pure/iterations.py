@@ -28,6 +28,9 @@ from .energies import get_energy
 
 
 def _print(q: Charges, data: _Data, interactions: InteractionList) -> None:
+    if OutputHandler.verbosity < 3:
+        return
+
     if q.mono.ndim < 2:  # pragma: no cover
         energy = get_energy(q, data, interactions).sum(-1).detach().clone()
         ediff = torch.linalg.vector_norm(data.old_energy - energy)
