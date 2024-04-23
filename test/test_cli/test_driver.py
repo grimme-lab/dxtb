@@ -38,6 +38,7 @@ def test_driver(dtype: torch.dtype) -> None:
     args = parser().parse_args(opts.split())
     d = Driver(args)
     result = d.singlepoint()
+    assert result is not None
 
     energy = result.total.sum(-1).detach()
     assert pytest.approx(energy) == ref
@@ -50,6 +51,7 @@ def test_empty(dtype: torch.dtype) -> None:
     args = parser().parse_args(opts.split())
     d = Driver(args)
     result = d.singlepoint()
+    assert result is not None
 
     energy = result.total.sum(-1).detach()
     assert pytest.approx(0.0) == energy
@@ -66,6 +68,7 @@ def test_empty_grad(dtype: torch.dtype) -> None:
     args = parser().parse_args(opts.split())
     d = Driver(args)
     result = d.singlepoint()
+    assert result is not None
 
     energy = result.total.sum(-1).detach()
 
@@ -80,6 +83,7 @@ def test_empty_interactions(dtype: torch.dtype) -> None:
     args = parser().parse_args(opts.split())
     d = Driver(args)
     result = d.singlepoint()
+    assert result is not None
 
     energy = result.total.sum(-1).detach()
     assert pytest.approx(-1.036271443341644) == energy

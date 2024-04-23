@@ -269,13 +269,13 @@ class _Timers:
             # Calculate the percentage of the total time for main timers
             main_time = details[KEY]
             percentage_of_total = (main_time / total_time) * 100
-            times[main_timer]["percentage"] = f"{percentage_of_total:.2f}"
+            details["percentage"] = f"{percentage_of_total:.2f}"
 
             # Calculate the percentage relative to the parent timer for sub
             if details["sub"]:
                 for subtimer, sub_time in details["sub"].items():
                     percentage_of_parent = (sub_time / main_time) * 100
-                    times[main_timer]["sub"][subtimer] = {
+                    details["sub"][subtimer] = {
                         KEY: sub_time,
                         "percentage": f"{percentage_of_parent:.2f}",
                     }

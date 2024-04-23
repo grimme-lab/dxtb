@@ -53,7 +53,7 @@ device = None
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["LiH", "SiH4"])
 @pytest.mark.parametrize("scp_mode", ["potential", "fock"])
-@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
 def test_grad_backwards(
     name: str, dtype: torch.dtype, scf_mode: str, scp_mode: str
 ) -> None:

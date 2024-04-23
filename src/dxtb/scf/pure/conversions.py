@@ -65,7 +65,7 @@ def converged_to_charges(x: Tensor, data: _Data, config: ConfigSCF) -> Charges:
         x = torch.where(x != defaults.PADNZ, x, zero)
 
         data.density = hamiltonian_to_density(x, data, config)
-        return density_to_charges(data.density, data)
+        return density_to_charges(data.density, data, cfg)
 
     raise ValueError(f"Unknown convergence target (SCP mode) '{config.scp_mode}'.")
 
@@ -122,7 +122,7 @@ def potential_to_charges(potential: Potential, data: _Data, cfg: ConfigSCF) -> C
     """
 
     data.density = potential_to_density(potential, data, cfg)
-    return density_to_charges(data.density, data)
+    return density_to_charges(data.density, data, cfg)
 
 
 def potential_to_density(potential: Potential, data: _Data, cfg: ConfigSCF) -> Tensor:
@@ -148,7 +148,7 @@ def potential_to_density(potential: Potential, data: _Data, cfg: ConfigSCF) -> T
     return hamiltonian_to_density(data.hamiltonian, data, cfg)
 
 
-def density_to_charges(density: Tensor, data: _Data) -> Charges:
+def density_to_charges(density: Tensor, data: _Data, cfg: ConfigSCF) -> Charges:
     """
     Compute the orbital charges from the density matrix.
 
@@ -165,19 +165,37 @@ def density_to_charges(density: Tensor, data: _Data) -> Charges:
         Orbital-resolved partial charges vector.
     """
 
-    data.energy = torch.diagonal(
-        torch.einsum("...ik,...kj->...ij", density, data.ints.hcore),
-        dim1=-2,
-        dim2=-1,
-    )
+    # Calculate diagonal directly by using index "i" twice on left side.
+    # The slower but more readable approach would instead compute the full
+    # matrix with "...ik,...kj->...ij" and only extract the diagonal
+    # afterwards with `torch.diagonal(tensor, dim1=-2, dim2=-1)`.
+    data.energy = einsum("...ik,...ki->...i", density, data.ints.hcore)
 
-    populations = torch.diagonal(
-        torch.einsum("...ik,...kj->...ij", density, data.ints.overlap),
-        dim1=-2,
-        dim2=-1,
-    )
+    # monopolar charges
+    populations = einsum("...ik,...ki->...i", density, data.ints.overlap)
+    charges = Charges(mono=data.n0 - populations, batch_mode=cfg.batch_mode)
 
-    charges = Charges(mono=data.n0 - populations, batch_mode=data.ihelp.batch_mode)
+    # Atomic dipole moments (dipole charges)
+    if data.ints.dipole is not None:
+        # Again, the diagonal is directly calculated instead of full matrix
+        # ("...ik,...mkj->...ijm") as `torch.diagonal` behaves weirdly for
+        # more than 2D tensors. Additionally, we move the multipole
+        # dimension to the back, which is required for the reduction to
+        # atom-resolution.
+        charges.dipole = data.ihelp.reduce_orbital_to_atom(
+            -einsum("...ik,...mki->...im", density, data.ints.dipole),
+            extra=True,
+            dim=-2,
+        )
+
+    # Atomic quadrupole moments (quadrupole charges)
+    if data.ints.quadrupole is not None:
+        charges.quad = data.ihelp.reduce_orbital_to_atom(
+            -einsum("...ik,...mki->...im", density, data.ints.quadrupole),
+            extra=True,
+            dim=-2,
+        )
+
     return charges
 
 

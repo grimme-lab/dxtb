@@ -177,6 +177,9 @@ class _OutputHandler:
         data : dict[str, Any]
             The data to write to the JSON file.
         """
+        if "json" not in self.handlers:
+            return
+
         self.json_data.update(data)
         with open(self.json_file, "w", encoding="utf8") as file:
             json.dump(self.json_data, file, indent=4)

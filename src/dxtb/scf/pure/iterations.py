@@ -147,7 +147,7 @@ def iterate_fockian(
         New Fock matrix.
     """
     data.density = hamiltonian_to_density(fockian, data, cfg)
-    charges = density_to_charges(data.density, data)
+    charges = density_to_charges(data.density, data, cfg)
     potential = charges_to_potential(charges, interactions, data)
     data.hamiltonian = potential_to_hamiltonian(potential, data)
 

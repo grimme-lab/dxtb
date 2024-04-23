@@ -102,7 +102,7 @@ class Driver:
 
         return vals
 
-    def singlepoint(self) -> Result:
+    def singlepoint(self) -> Result | None:
         timer.start("Setup")
 
         args = self.args
@@ -119,7 +119,7 @@ class Driver:
         io.OutputHandler.verbosity = args.verbosity + args.v - args.s
 
         # setup output: streams, verbosity
-        if args.json:
+        if args.json is True:
             io.OutputHandler.setup_json_logger()
 
         io.OutputHandler.header()
@@ -132,11 +132,17 @@ class Driver:
             set_detect_anomaly(True)
 
         dd = {"device": args.device, "dtype": args.dtype}
-        opts = {"spin": args.spin}
 
         # setup config and write to output
         config = Config.from_args(args)
         io.OutputHandler.write(config.info())
+
+        # Broyden is not supported in full SCF mode
+        if (
+            config.scf.scf_mode == labels.SCF_MODE_FULL
+            and config.scf.mixer == labels.MIXER_BROYDEN
+        ):
+            config.scf.mixer = labels.MIXER_ANDERSON
 
         # first tensor when using CUDA takes a long time to initialize...
         if "cuda" in str(dd["device"]):
@@ -149,7 +155,7 @@ class Driver:
 
         if len(args.file) > 1:
             _n, _p = zip(
-                *[read.read_from_path(f, args.filetype, **dd) for f in args.file]
+                *[read.read_from_path(f, ftype=args.filetype, **dd) for f in args.file]
             )
             numbers = pack(_n)
             positions = pack(_p)

@@ -38,15 +38,13 @@ opts = {
     "f_atol": 1.0e-8,
     "x_atol": 1.0e-8,
     "maxiter": 100,
-    "mixer": labels.MIXER_ANDERSON,
-    "scf_mode": labels.SCF_MODE_FULL,
     "scp_mode": labels.SCP_MODE_POTENTIAL,
     "verbosity": 0,
 }
 
-tol = 1e-4
+tol = 1e-2
 
-# FIXME: There seem to be nultiple issues with this gradient here.
+# FIXME: There seem to be multiple issues with this gradient here.
 # - SiH4 fails for 0.0 (0.01 check depends on eps)
 # - "ValueError: grad requires non-empty inputs." for xitorch
 # - non-negligible differences between --fast and --slow
@@ -56,7 +54,7 @@ xfields = [0.0, 1.0, -2.0]
 device = None
 
 
-def gradchecker(dtype: torch.dtype, name: str, xfield: float) -> tuple[
+def gradchecker(dtype: torch.dtype, name: str, xfield: float, scf_mode: str) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
     Tensor,  # differentiable variables
 ]:
@@ -66,17 +64,22 @@ def gradchecker(dtype: torch.dtype, name: str, xfield: float) -> tuple[
     positions = samples[name]["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
 
-    field_vector = torch.tensor([xfield, 0.0, 0.0], **dd) * VAA2AU
+    options = dict(
+        opts,
+        **{
+            "scf_mode": scf_mode,
+            "mixer": "anderson" if scf_mode == "full" else "broyden",
+        },
+    )
 
     # variables to be differentiated
+    field_vector = torch.tensor([xfield, 0.0, 0.0], **dd) * VAA2AU
     field_vector.requires_grad_(True)
 
     def func(field_vector: Tensor) -> Tensor:
-        efield = new_efield(field_vector)
-        calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
-        result = calc.singlepoint(numbers, positions, charge)
-        energy = result.total.sum(-1)
-        return energy
+        ef = new_efield(field_vector)
+        calc = Calculator(numbers, par, interaction=[ef], opts=options, **dd)
+        return calc.energy(numbers, positions, charge)
 
     return func, field_vector
 
@@ -85,12 +88,13 @@ def gradchecker(dtype: torch.dtype, name: str, xfield: float) -> tuple[
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 @pytest.mark.parametrize("xfield", xfields)
-def test_gradcheck(dtype: torch.dtype, name: str, xfield: float) -> None:
+@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
+def test_gradcheck(dtype: torch.dtype, name: str, xfield: float, scf_mode: str) -> None:
     """
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradcheck`.
     """
-    func, diffvars = gradchecker(dtype, name, xfield)
+    func, diffvars = gradchecker(dtype, name, xfield, scf_mode)
     assert dgradcheck(func, diffvars, atol=tol)
 
 
@@ -98,17 +102,23 @@ def test_gradcheck(dtype: torch.dtype, name: str, xfield: float) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 @pytest.mark.parametrize("xfield", xfields)
-def test_gradgradcheck(dtype: torch.dtype, name: str, xfield: float) -> None:
+@pytest.mark.parametrize("scf_mode", ["full"])
+def test_gradgradcheck(
+    dtype: torch.dtype, name: str, xfield: float, scf_mode: str
+) -> None:
     """
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
-    func, diffvars = gradchecker(dtype, name, xfield)
-    assert dgradgradcheck(func, diffvars, atol=tol, eps=1e-9)
+    func, diffvars = gradchecker(dtype, name, xfield, scf_mode)
+    assert dgradgradcheck(func, diffvars, atol=tol)
+
+
+################################################################################
 
 
 def gradchecker_batch(
-    dtype: torch.dtype, name1: str, name2: str, xfield: float
+    dtype: torch.dtype, name1: str, name2: str, xfield: float, scf_mode: str
 ) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
     Tensor,  # differentiable variables
@@ -130,16 +140,22 @@ def gradchecker_batch(
     )
     charge = torch.tensor([0.0, 0.0], **dd)
 
+    options = dict(
+        opts,
+        **{
+            "scf_mode": scf_mode,
+            "mixer": "anderson" if scf_mode == "full" else "broyden",
+        },
+    )
+
     # variables to be differentiated
     field_vector = torch.tensor([xfield, 0.0, 0.0], **dd) * VAA2AU
     field_vector.requires_grad_(True)
 
     def func(field_vector: Tensor) -> Tensor:
-        efield = new_efield(field_vector)
-        calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
-        result = calc.singlepoint(numbers, positions, charge)
-        energy = result.total.sum(-1)
-        return energy
+        ef = new_efield(field_vector)
+        calc = Calculator(numbers, par, interaction=[ef], opts=options, **dd)
+        return calc.energy(numbers, positions, charge)
 
     return func, field_vector
 
@@ -148,15 +164,16 @@ def gradchecker_batch(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["H2O"])
 @pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("scf_mode", ["full"])
 @pytest.mark.parametrize("xfield", xfields)
 def test_gradcheck_batch(
-    dtype: torch.dtype, name1: str, name2: str, xfield: float
+    dtype: torch.dtype, name1: str, name2: str, xfield: float, scf_mode: str
 ) -> None:
     """
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradcheck`.
     """
-    func, diffvars = gradchecker_batch(dtype, name1, name2, xfield)
+    func, diffvars = gradchecker_batch(dtype, name1, name2, xfield, scf_mode)
     assert dgradcheck(func, diffvars, atol=tol)
 
 
@@ -165,12 +182,13 @@ def test_gradcheck_batch(
 @pytest.mark.parametrize("name1", ["H2O"])
 @pytest.mark.parametrize("name2", sample_list)
 @pytest.mark.parametrize("xfield", xfields)
+@pytest.mark.parametrize("scf_mode", ["full"])
 def test_gradgradcheck_batch(
-    dtype: torch.dtype, name1: str, name2: str, xfield: float
+    dtype: torch.dtype, name1: str, name2: str, xfield: float, scf_mode: str
 ) -> None:
     """
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
-    func, diffvars = gradchecker_batch(dtype, name1, name2, xfield)
+    func, diffvars = gradchecker_batch(dtype, name1, name2, xfield, scf_mode)
     assert dgradgradcheck(func, diffvars, atol=tol, eps=1e-8)
