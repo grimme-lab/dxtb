@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+xTB Hamiltonians: GFN1-xTB
+==========================
+
 The GFN1-xTB Hamiltonian.
 """
 

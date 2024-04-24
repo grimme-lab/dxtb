@@ -15,14 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Components
-==========
+Calculators: Types
+==================
 
-Tight-binding components.
+All calculator types for the extended tight-binding models (xTB). Different
+types utilize different methods for differentiation.
 """
-
-from .base import *
-from .classicals import dispersion, halogen, repulsion
-from .interactions import coulomb, solvation
-from .interactions.field import efield
-from .list import *
+from .analytical import *
+from .autograd import *
+from .energy import *
+from .numerical import *

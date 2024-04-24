@@ -15,7 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-The GFN1-xTB Hamiltonian.
+xTB Hamiltonians: Base
+======================
+
+Base class for xTB Hamiltonians.
 """
 
 from __future__ import annotations
@@ -25,10 +28,9 @@ from abc import ABC, abstractmethod
 import torch
 
 from dxtb.basis import IndexHelper
+from dxtb.components.interactions import Potential
+from dxtb.param import Param
 from dxtb.typing import Tensor, TensorLike
-
-from ..components.interactions import Potential
-from ..param import Param
 
 
 class HamiltonianABC(ABC):

@@ -26,8 +26,8 @@ from dxtb.basis import IndexHelper
 from dxtb.typing import Tensor
 
 from ..param import Param
-from ..xtb.h0_gfn1 import GFN1Hamiltonian
-from ..xtb.h0_gfn2 import GFN2Hamiltonian
+from ..xtb.hamiltonians.gfn1 import GFN1Hamiltonian
+from ..xtb.hamiltonians.gfn2 import GFN2Hamiltonian
 from .base import BaseIntegral
 
 __all__ = ["Hamiltonian"]

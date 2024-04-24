@@ -117,7 +117,7 @@ def test_param_minimal() -> None:
 def test_param_calculator(dtype: torch.dtype) -> None:
     # pylint: disable=import-outside-toplevel
     from dxtb.param.gfn1 import GFN1_XTB as par
-    from dxtb.xtb.calculator import Calculator
+    from dxtb.xtb.calculators import Calculator
 
     dd: DD = {"device": device, "dtype": dtype}
     numbers = symbol_to_number(["H", "C"])

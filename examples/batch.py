@@ -69,7 +69,7 @@ opts = {"verbosity": 0, "batch_mode": 2}
 
 dxtb.timer.reset()
 dxtb.timer.start("Batch")
-ef = dxtb.external.new_efield(torch.tensor([0.0, 0.0, 0.0], **dd))
+ef = dxtb.efield.new_efield(torch.tensor([0.0, 0.0, 0.0], **dd))
 calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, opts=opts, interaction=[ef], **dd)
 result = calc.energy(numbers, positions, chrg=charge)
 dxtb.timer.stop("Batch")

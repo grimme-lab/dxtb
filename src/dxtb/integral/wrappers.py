@@ -62,8 +62,8 @@ from dxtb.constants import labels
 from dxtb.param import Param
 from dxtb.typing import DD, Any, Literal, Tensor
 
-from ..xtb.h0_gfn1 import GFN1Hamiltonian
-from ..xtb.h0_gfn2 import GFN2Hamiltonian
+from ..xtb.hamiltonians.gfn1 import GFN1Hamiltonian
+from ..xtb.hamiltonians.gfn2 import GFN2Hamiltonian
 from .dipole import Dipole
 from .factory import new_driver
 from .overlap import Overlap

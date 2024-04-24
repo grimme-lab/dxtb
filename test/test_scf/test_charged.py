@@ -30,7 +30,7 @@ import torch
 from dxtb.constants import labels
 from dxtb.param import GFN1_XTB as par
 from dxtb.typing import DD
-from dxtb.xtb.calculator import Calculator
+from dxtb.xtb.calculators import Calculator
 
 from ..utils import load_from_npz
 from .samples_charged import samples

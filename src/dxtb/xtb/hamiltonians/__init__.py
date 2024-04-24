@@ -15,14 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Components
-==========
+xTB: Hamiltonians
+=================
 
-Tight-binding components.
+Hamiltonians for extended tight-binding models.
 """
 
-from .base import *
-from .classicals import dispersion, halogen, repulsion
-from .interactions import coulomb, solvation
-from .interactions.field import efield
-from .list import *
+from .gfn1 import *
+from .gfn2 import *

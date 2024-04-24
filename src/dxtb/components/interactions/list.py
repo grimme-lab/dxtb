@@ -30,8 +30,8 @@ from .base import Interaction
 from .container import Charges, Potential
 from .coulomb.secondorder import ES2, LABEL_ES2
 from .coulomb.thirdorder import ES3, LABEL_ES3
-from .external.field import LABEL_EFIELD, ElectricField
-from .external.fieldgrad import LABEL_EFIELD_GRAD, ElectricFieldGrad
+from .field.efield import LABEL_EFIELD, ElectricField
+from .field.efieldgrad import LABEL_EFIELD_GRAD, ElectricFieldGrad
 
 __all__ = ["InteractionList"]
 

@@ -15,8 +15,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Hamiltonian and Calculator class for extended tight-binding model.
+xTB
+===
+
+Hamiltonian and Calculator classes for extended tight-binding models.
 """
 
-from .calculator import *
-from .h0_gfn1 import GFN1Hamiltonian
+from .calculators import Calculator, GFN1Calculator, GFN2Calculator
+from .calculators.result import Result
+from .hamiltonians import GFN1Hamiltonian, GFN2Hamiltonian
+
+__all__ = [
+    "Calculator",
+    "GFN1Calculator",
+    "GFN2Calculator",
+    "Result",
+    "GFN1Hamiltonian",
+    "GFN2Hamiltonian",
+]

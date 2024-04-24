@@ -15,14 +15,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+xTB Hamiltonians: GFN2-xTB
+==========================
+
 The GFN2-xTB Hamiltonian.
 """
 
 from __future__ import annotations
 
+from dxtb.components.interactions import Potential
 from dxtb.typing import Tensor
 
-from ..components.interactions import Potential
 from .base import BaseHamiltonian
 
 

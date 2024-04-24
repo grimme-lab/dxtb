@@ -49,7 +49,7 @@ from dxtb.components import classicals as classicals
 from dxtb.components import interactions as interactions
 
 from dxtb.components.interactions import coulomb as coulomb
-from dxtb.components.interactions import external as external
+from dxtb.components.interactions.field import efield as efield
 from dxtb.components.interactions import solvation as solvation
 
 from dxtb.components.classicals import dispersion as dispersion
@@ -111,7 +111,7 @@ __all__ = [
     "classicals",
     "coulomb",
     "dispersion",
-    "external",
+    "efield",
     "interactions",
     "io",
     "new_dispersion",

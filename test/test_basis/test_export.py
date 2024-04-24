@@ -53,7 +53,7 @@ def test_export(
 
     # check with saved basis files
     root = Path(__file__).parents[2]
-    p = root / f"src/dxtb/mol/external/basis/{xtb_version}/{number:02d}.{qcformat}"
+    p = root / f"src/dxtb/exlibs/pyscf/mol/basis/{xtb_version}/{number:02d}.{qcformat}"
     assert p.exists()
 
     with open(p, encoding="utf8") as f:

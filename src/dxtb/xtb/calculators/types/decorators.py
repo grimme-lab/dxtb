@@ -18,7 +18,11 @@
 xTB: Calculator Decorators
 ==========================
 
-Decorators for the Calculator class.
+Decorators for the Calculator class. These decorators can mark:
+- functions that require `requires_grad=True` for certain tensors
+- functions that require specific interactions to be present
+- functions that are computed numerically
+- results for caching
 """
 
 from __future__ import annotations
@@ -31,10 +35,10 @@ import torch
 
 from dxtb.typing import Any, Callable, Tensor, TypeVar
 
-from ..components.interactions.external import field as efield
-from ..components.interactions.external import fieldgrad as efield_grad
-from ..constants import defaults
-from ..io import OutputHandler
+from ....components.interactions.field import efield as efield
+from ....components.interactions.field import efieldgrad as efield_grad
+from ....constants import defaults
+from ....io import OutputHandler
 
 logger = logging.getLogger(__name__)
 
@@ -214,7 +218,7 @@ def cache(func: F) -> F:
     @wraps(func)
     def wrapper(self: Calculator, *args, **kwargs):  # type: ignore
         cache_key: str = func.__name__
-        key = cache_key.replace("_numerical", "")
+        key = cache_key.replace("_numerical", "").replace("_analytical", "")
 
         # Check if the result is already in the cache
         if self.opts.use_cache is True:
