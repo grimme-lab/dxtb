@@ -34,7 +34,7 @@ stage.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Dict, Optional
 
 from pydantic import BaseModel
 
@@ -57,7 +57,7 @@ class Param(BaseModel):
     meta: Optional[Meta] = None
     """Descriptive data on the model."""
 
-    element: dict[str, Element]
+    element: Dict[str, Element]
     """Element specific parameter records."""
 
     hamiltonian: Optional[Hamiltonian] = None

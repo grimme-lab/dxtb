@@ -20,6 +20,7 @@ Calculators: GFN1
 
 Calculator for the first generation extended tight-binding model (GFN1-xTB).
 """
+from __future__ import annotations
 
 import torch
 
