@@ -65,7 +65,7 @@ def converged_to_charges(x: Tensor, data: _Data, config: ConfigSCF) -> Charges:
         x = torch.where(x != defaults.PADNZ, x, zero)
 
         data.density = hamiltonian_to_density(x, data, config)
-        return density_to_charges(data.density, data, cfg)
+        return density_to_charges(data.density, data, config)
 
     raise ValueError(f"Unknown convergence target (SCP mode) '{config.scp_mode}'.")
 

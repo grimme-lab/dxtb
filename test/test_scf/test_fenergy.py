@@ -66,7 +66,6 @@ def test_element(dtype: torch.dtype, partition: str, number: int) -> None:
             "x_atol": 1e-6,
             "fermi_partition": partition,
             "maxiter": 100,
-            "verbosity": 6,
         },
     )
 

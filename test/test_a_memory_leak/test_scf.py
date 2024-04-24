@@ -55,7 +55,7 @@ def test_xitorch(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
         positions = sample["positions"].clone().to(**dd)
         charges = torch.tensor(0.0, **dd)
 
-        options = dict(opts, **{"scf_mode": "implicit"})
+        options = dict(opts, **{"scf_mode": "nonpure"})
         calc = Calculator(numbers, par, opts=options, **dd)
 
         # variables to be differentiated
@@ -63,6 +63,41 @@ def test_xitorch(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
 
         result = calc.singlepoint(numbers, positions, charges)
         energy = result.scf.sum(-1)
+
+        _ = torch.autograd.grad(energy, (positions), create_graph=create_graph)
+
+        # known reference cycle for create_graph=True
+        if create_graph is True:
+            energy.backward()
+
+    # run garbage collector to avoid leaks across other tests
+    gc.collect()
+    leak = has_memleak_tensor(fcn, gccollect=run_gc)
+    gc.collect()
+
+    assert not leak, "Memory leak detected"
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("run_gc", [False, True])
+@pytest.mark.parametrize("create_graph", [False, True])
+def test_xitorch_pure(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
+    dd: DD = {"device": device, "dtype": dtype}
+
+    def fcn():
+        sample = samples["SiH4"]
+        numbers = sample["numbers"].to(device)
+        positions = sample["positions"].clone().to(**dd)
+        charges = torch.tensor(0.0, **dd)
+
+        options = dict(opts, **{"scf_mode": "implicit"})
+        calc = Calculator(numbers, par, opts=options, **dd)
+
+        # variables to be differentiated
+        positions.requires_grad_(True)
+
+        energy = calc.energy(numbers, positions, charges)
 
         _ = torch.autograd.grad(energy, (positions), create_graph=create_graph)
 
