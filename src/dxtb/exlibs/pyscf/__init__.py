@@ -15,26 +15,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-External Representations
-========================
+External: PySCF
+===============
 
-Conversion between external molecule representations.
+All the functions and classes required to interface with the `pyscf` library.
 """
 
-try:
-    from ._pyscf import *
+try:  # pragma: no cover
+    from dxtb.exlibs.pyscf import mol as mol
+except ImportError as e:  # pragma: no cover
+    raise ImportError(
+        f"Failed to import required modules. {e}. {e.name} provides an "
+        "open-source collection of electronic structure modules in Python."
+        "It can be installed via 'pip install pyscf'."
+    ) from e
 
-    _has_pyscf = True
-except ImportError as e:
-    if "pyscf" in str(e).casefold():
-        # If the error is specifically about the missing pyscf dependency,
-        # we'll set `_has_pyscf` as False and leave an informative comment.
-        _has_pyscf = False
-    else:
-        # If the error is about something else, we propagate it up.
-        raise e
-
-
-def is_pyscf_available() -> bool:
-    """Check if PySCF is available."""
-    return _has_pyscf
+__all__ = ["mol"]

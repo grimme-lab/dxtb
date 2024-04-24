@@ -27,7 +27,7 @@ from tad_mctc.molecule.container import Mol
 from dxtb.typing import DD
 
 try:
-    from dxtb.mol.external._pyscf import M, PyscfMol
+    from dxtb.exlibs import pyscf as _pyscf
 
     pyscf = True
 except ImportError:
@@ -51,11 +51,11 @@ def test_construction(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].to(**dd)
 
     # pyscf molecule
-    mol1 = M(numbers, positions, parse_arg=False)
+    mol1 = _pyscf.mol.M(numbers, positions, parse_arg=False)
 
     # pyscf molecule from dxtb's molecule
     mol_dxtb = Mol(numbers, positions)
-    mol2 = PyscfMol.from_mol(mol_dxtb)
+    mol2 = _pyscf.mol.PyscfMol.from_mol(mol_dxtb)
 
     for a1, a2 in zip(mol1.atom, mol2.atom):
         num1, pos1 = a1
@@ -75,4 +75,4 @@ def test_error(dtype: torch.dtype) -> None:
     positions = torch.randn((2, 3), **dd)
 
     with pytest.raises(ValueError):
-        M(numbers, positions, parse_arg=False)
+        _pyscf.mol.M(numbers, positions, parse_arg=False)

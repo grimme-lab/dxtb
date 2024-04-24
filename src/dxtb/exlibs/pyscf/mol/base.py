@@ -16,8 +16,8 @@
 # limitations under the License.
 # pylint: disable=protected-access
 """
-Representation of Molecule in PySCF
-===================================
+PySCF: Moleclue
+===============
 
 This module contains a class for a molecular representation in PySCF's format.
 It also contains the short-cut version as in PySCF (``M``).
@@ -39,28 +39,23 @@ Example
 """
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 
 import numpy as np
-
-try:  # pragma: no cover
-    from pyscf import gto  # type: ignore
-except ImportError as e:  # pragma: no cover
-    raise ImportError("PySCF is not installed") from e
-
-import warnings
-
+from pyscf import gto  # type: ignore
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.data import pse
 from tad_mctc.molecule.container import Mol
 
 from dxtb.typing import Tensor
 
+__all__ = ["PyscfMol", "M"]
+
+
 # Turn off PySCF's normalization since dxtb's normalization is different,
 # requiring a separate normalization anyway.
 gto.mole.NORMALIZE_GTO = False
-
-__all__ = ["PyscfMol", "M"]
 
 
 def M(

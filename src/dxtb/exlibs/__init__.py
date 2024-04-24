@@ -26,6 +26,7 @@ from dxtb.typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from dxtb.exlibs import libcint as libcint
+    from dxtb.exlibs import pyscf as pyscf
     from dxtb.exlibs import scipy as scipy
     from dxtb.exlibs import xitorch as xitorch
 else:
@@ -33,7 +34,7 @@ else:
 
     __getattr__, __dir__, __all__ = _lazy.attach_module(
         __name__,
-        ["libcint", "scipy", "xitorch"],
+        ["libcint", "pyscf", "scipy", "xitorch"],
     )
 
     del _lazy
