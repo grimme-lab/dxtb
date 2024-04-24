@@ -497,6 +497,20 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
     )
 
     p.add_argument(
+        "--forces",
+        "--force",
+        action="store_true",
+        help=("R|Calculate the forces."),
+    )
+    p.add_argument(
+        "--forces-numerical",
+        "--forces-num",
+        "--force-num",
+        action="store_true",
+        help=("R|Calculate the forces numerically."),
+    )
+
+    p.add_argument(
         "--dipole",
         "--dip",
         action="store_true",

@@ -44,14 +44,26 @@ FILES = {"spin": ".UHF", "chrg": ".CHRG"}
 def print_grad(grad, numbers) -> None:
     from tad_mctc.data import pse
 
-    print("************************Gradient************************")
-    print("")
+    io.OutputHandler.write_stdout("\n\nForces")
+    io.OutputHandler.write_stdout("------\n")
 
     # Iterate over the tensor and print
+    io.OutputHandler.write_stdout(
+        "  #  Z            dX              dY              dZ"
+    )
+    io.OutputHandler.write_stdout(
+        "--------------------------------------------------------"
+    )
     for i, row in enumerate(grad):
         # Get the atomic symbol corresponding to the atomic number
         symbol = pse.Z2S.get(int(numbers[i].item()), "?")
-        print(f"{i+1:>3} {symbol:<2} : {row[0]:>15.9f} {row[1]:>15.9f} {row[2]:>15.9f}")
+        io.OutputHandler.write_stdout(
+            f"{i+1:>3}  {symbol:<2}  {row[0]:>15.9f} {row[1]:>15.9f} {row[2]:>15.9f}"
+        )
+
+    io.OutputHandler.write_stdout(
+        "--------------------------------------------------------"
+    )
 
 
 class Driver:
@@ -230,6 +242,24 @@ class Driver:
 
             return result
         #####################################################
+
+        if args.forces is True:
+            positions.requires_grad_(True)
+
+            timer.start("Forces")
+            forces = calc.forces(numbers, positions, chrg)
+            timer.stop("Forces")
+            print_grad(forces.clone(), numbers)
+            calc.reset()
+            return
+
+        if args.forces_numerical is True:
+            timer.start("Forces")
+            forces = calc.forces_numerical(numbers, positions, chrg)
+            print_grad(forces.clone(), numbers)
+            timer.stop("Forces")
+            calc.reset()
+            return
 
         if args.ir is True:
             # TODO: Better handling here

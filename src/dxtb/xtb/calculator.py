@@ -741,7 +741,6 @@ class BaseCalculator(TensorLike):
         Parameters
         ----------
         numbers : Tensor
-        numbers : Tensor
             Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
@@ -810,24 +809,25 @@ class BaseCalculator(TensorLike):
         Tensor
             Atomic forces of shape `(..., nat, 3)`.
         """
+        OutputHandler.write_stdout("\nForces", v=5)
+        OutputHandler.write_stdout("------\n", v=5)
         logger.debug("Forces: Starting.")
+
+        kw = {
+            "create_graph": kwargs.pop("create_graph", False),
+            "retain_graph": kwargs.pop("retain_graph", False),
+        }
 
         if grad_mode == "autograd":
             e = self.energy(numbers, positions, chrg, spin)
-            (deriv,) = torch.autograd.grad(
-                e,
-                positions,
-                create_graph=kwargs.get("create_graph", False),
-                retain_graph=kwargs.get("retain_graph", False),
-            )
+            (deriv,) = torch.autograd.grad(e, positions, **kw)
+
         elif grad_mode == "backward":
             e = self.energy(numbers, positions, chrg, spin)
-            e.backward(
-                create_graph=kwargs.get("create_graph", False),
-                retain_graph=kwargs.get("retain_graph", False),
-            )
+            e.backward(**kw)
             assert positions.grad is not None
             deriv = positions.grad
+
         elif grad_mode == "functorch":
             # pylint: disable=import-outside-toplevel
             from tad_mctc.autograd import jacrev
@@ -836,17 +836,14 @@ class BaseCalculator(TensorLike):
             jac_func = jacrev(self.energy, argnums=1)
             deriv = jac_func(numbers, positions, chrg, spin)
             assert isinstance(deriv, Tensor)
+
         elif grad_mode == "row":
             # pylint: disable=import-outside-toplevel
             from tad_mctc.autograd import jac
 
             energy = self.energy(numbers, positions, chrg, spin)
-            deriv = jac(
-                energy,
-                positions,
-                create_graph=kwargs.get("create_graph", False),
-                retain_graph=kwargs.get("retain_graph", False),
-            ).reshape(*positions.shape)
+            deriv = jac(energy, positions, **kw).reshape(*positions.shape)
+
         else:
             raise ValueError(f"Unknown grad_mode: {grad_mode}")
 
@@ -901,18 +898,34 @@ class BaseCalculator(TensorLike):
         deriv = torch.zeros(positions.shape, **self.dd)
         logger.debug("Forces (numerical): Starting build (%s).", deriv.shape)
 
-        count = 1
+        OutputHandler.write_stdout("Forces (numerical)\n", v=4)
+
+        LINEBREAK_NUMERICAL = 20
         nsteps = 3 * numbers.shape[-1]
+        count = 1
+
+        OutputHandler.write_stdout(
+            f"Starting build of force matrix: {deriv.shape[-2]} x "
+            f"{deriv.shape[-1]} ({nsteps} steps, {nsteps*2} evaluations)",
+            v=4,
+        )
+
         for i in range(numbers.shape[-1]):
             for j in range(3):
-                positions[..., i, j] += step_size
-                gr = self.energy(numbers, positions, chrg, spin)
+                with OutputHandler.with_verbosity(0):
+                    positions[..., i, j] += step_size
+                    gr = self.energy(numbers, positions, chrg, spin)
 
-                positions[..., i, j] -= 2 * step_size
-                gl = self.energy(numbers, positions, chrg, spin)
+                    positions[..., i, j] -= 2 * step_size
+                    gl = self.energy(numbers, positions, chrg, spin)
 
-                positions[..., i, j] += step_size
-                deriv[..., i, j] = 0.5 * (gr - gl) / step_size
+                    positions[..., i, j] += step_size
+                    deriv[..., i, j] = 0.5 * (gr - gl) / step_size
+
+                if count % LINEBREAK_NUMERICAL == 0:
+                    OutputHandler.write_stdout(f". {count}/{nsteps}", v=4)
+                else:
+                    OutputHandler.write_stdout_nf(".", v=4)
 
                 logger.debug("Forces (numerical): step %s/%s", count, nsteps)
                 count += 1
@@ -920,7 +933,12 @@ class BaseCalculator(TensorLike):
                 gc.collect()
             gc.collect()
 
+        # set counter to correct value
+        count -= 1
+
         logger.debug("Forces (numerical): All finished.")
+        space = (LINEBREAK_NUMERICAL - count % LINEBREAK_NUMERICAL) * " "
+        OutputHandler.write_stdout(f"{space} {count}/{nsteps}", v=4)
 
         return -deriv
 
@@ -1059,14 +1077,15 @@ class BaseCalculator(TensorLike):
         nsteps = 3 * numbers.shape[-1]
         for i in range(numbers.shape[-1]):
             for j in range(3):
-                positions[..., i, j] += step_size
-                gr = _gradfcn(positions)
+                with OutputHandler.with_verbosity(0):
+                    positions[..., i, j] += step_size
+                    gr = _gradfcn(positions)
 
-                positions[..., i, j] -= 2 * step_size
-                gl = _gradfcn(positions)
+                    positions[..., i, j] -= 2 * step_size
+                    gl = _gradfcn(positions)
 
-                positions[..., i, j] += step_size
-                deriv[..., :, :, i, j] = 0.5 * (gr - gl) / step_size
+                    positions[..., i, j] += step_size
+                    deriv[..., :, :, i, j] = 0.5 * (gr - gl) / step_size
 
                 logger.debug("Hessian (numerical): step %s/%s", count, nsteps)
                 count += 1
@@ -1383,17 +1402,18 @@ class BaseCalculator(TensorLike):
 
         count = 1
         for i in range(3):
-            field[..., i] += step_size
-            self.interactions.update_efield(field=field)
-            gr = self.energy(numbers, positions, chrg, spin)
+            with OutputHandler.with_verbosity(0):
+                field[..., i] += step_size
+                self.interactions.update_efield(field=field)
+                gr = self.energy(numbers, positions, chrg, spin)
 
-            field[..., i] -= 2 * step_size
-            self.interactions.update_efield(field=field)
-            gl = self.energy(numbers, positions, chrg, spin)
+                field[..., i] -= 2 * step_size
+                self.interactions.update_efield(field=field)
+                gl = self.energy(numbers, positions, chrg, spin)
 
-            field[..., i] += step_size
-            self.interactions.update_efield(field=field)
-            deriv[..., i] = 0.5 * (gr - gl) / step_size
+                field[..., i] += step_size
+                self.interactions.update_efield(field=field)
+                deriv[..., i] = 0.5 * (gr - gl) / step_size
 
             logger.debug("Dipole (numerical): step %s/3.", count)
             count += 1
@@ -1544,14 +1564,15 @@ class BaseCalculator(TensorLike):
 
         for i in range(numbers.shape[-1]):
             for j in range(3):
-                positions[..., i, j] += step_size
-                r = self.dipole_analytical(numbers, positions, chrg, spin)
+                with OutputHandler.with_verbosity(0):
+                    positions[..., i, j] += step_size
+                    r = self.dipole_analytical(numbers, positions, chrg, spin)
 
-                positions[..., i, j] -= 2 * step_size
-                l = self.dipole_analytical(numbers, positions, chrg, spin)
+                    positions[..., i, j] -= 2 * step_size
+                    l = self.dipole_analytical(numbers, positions, chrg, spin)
 
-                positions[..., i, j] += step_size
-                deriv[..., :, i, j] = 0.5 * (r - l) / step_size
+                    positions[..., i, j] += step_size
+                    deriv[..., :, i, j] = 0.5 * (r - l) / step_size
 
                 logger.debug("Dipole derivative (numerical): Step %s/%s", count, nsteps)
                 count += 1
@@ -1693,17 +1714,18 @@ class BaseCalculator(TensorLike):
         count = 1
         for i in range(3):
             for j in range(3):
-                field_grad[..., i, j] += step_size
-                self.interactions.update_efield_grad(field_grad=field_grad)
-                gr = self.energy(numbers, positions, chrg, spin)
+                with OutputHandler.with_verbosity(0):
+                    field_grad[..., i, j] += step_size
+                    self.interactions.update_efield_grad(field_grad=field_grad)
+                    gr = self.energy(numbers, positions, chrg, spin)
 
-                field_grad[..., i, j] -= 2 * step_size
-                self.interactions.update_efield_grad(field_grad=field_grad)
-                gl = self.energy(numbers, positions, chrg, spin)
+                    field_grad[..., i, j] -= 2 * step_size
+                    self.interactions.update_efield_grad(field_grad=field_grad)
+                    gl = self.energy(numbers, positions, chrg, spin)
 
-                field_grad[..., i, j] += step_size
-                self.interactions.update_efield_grad(field_grad=field_grad)
-                deriv[..., i, j] = 0.5 * (gr - gl) / step_size
+                    field_grad[..., i, j] += step_size
+                    self.interactions.update_efield_grad(field_grad=field_grad)
+                    deriv[..., i, j] = 0.5 * (gr - gl) / step_size
 
                 logger.debug("Quadrupole (numerical): step %s/3", count)
                 count += 1
@@ -1876,17 +1898,18 @@ class BaseCalculator(TensorLike):
 
         count = 1
         for i in range(3):
-            field[..., i] += step_size
-            self.interactions.update_efield(field=field)
-            gr = self.dipole_analytical(numbers, positions, chrg, spin)
+            with OutputHandler.with_verbosity(0):
+                field[..., i] += step_size
+                self.interactions.update_efield(field=field)
+                gr = self.dipole_analytical(numbers, positions, chrg, spin)
 
-            field[..., i] -= 2 * step_size
-            self.interactions.update_efield(field=field)
-            gl = self.dipole_analytical(numbers, positions, chrg, spin)
+                field[..., i] -= 2 * step_size
+                self.interactions.update_efield(field=field)
+                gl = self.dipole_analytical(numbers, positions, chrg, spin)
 
-            field[..., i] += step_size
-            self.interactions.update_efield(field=field)
-            deriv[..., :, i] = 0.5 * (gr - gl) / step_size
+                field[..., i] += step_size
+                self.interactions.update_efield(field=field)
+                deriv[..., :, i] = 0.5 * (gr - gl) / step_size
 
             logger.debug("Polarizability (numerical): step %s/3", count)
             count += 1
@@ -2045,14 +2068,15 @@ class BaseCalculator(TensorLike):
         nsteps = 3 * numbers.shape[-1]
         for i in range(numbers.shape[-1]):
             for j in range(3):
-                positions[..., i, j] += step_size
-                r = self.polarizability_numerical(numbers, positions, chrg, spin)
+                with OutputHandler.with_verbosity(0):
+                    positions[..., i, j] += step_size
+                    r = self.polarizability_numerical(numbers, positions, chrg, spin)
 
-                positions[..., i, j] -= 2 * step_size
-                l = self.polarizability_numerical(numbers, positions, chrg, spin)
+                    positions[..., i, j] -= 2 * step_size
+                    l = self.polarizability_numerical(numbers, positions, chrg, spin)
 
-                positions[..., i, j] += step_size
-                deriv[..., :, :, i, j] = 0.5 * (r - l) / step_size
+                    positions[..., i, j] += step_size
+                    deriv[..., :, :, i, j] = 0.5 * (r - l) / step_size
 
                 logger.debug(
                     "Polarizability numerical derivative: Step %s/%s",
@@ -2242,17 +2266,18 @@ class BaseCalculator(TensorLike):
 
         count = 1
         for i in range(3):
-            field[..., i] += step_size
-            self.interactions.update_efield(field=field)
-            gr = self.polarizability_numerical(numbers, positions, chrg, spin)
+            with OutputHandler.with_verbosity(0):
+                field[..., i] += step_size
+                self.interactions.update_efield(field=field)
+                gr = self.polarizability_numerical(numbers, positions, chrg, spin)
 
-            field[..., i] -= 2 * step_size
-            self.interactions.update_efield(field=field)
-            gl = self.polarizability_numerical(numbers, positions, chrg, spin)
+                field[..., i] -= 2 * step_size
+                self.interactions.update_efield(field=field)
+                gl = self.polarizability_numerical(numbers, positions, chrg, spin)
 
-            field[..., i] += step_size
-            self.interactions.update_efield(field=field)
-            deriv[..., :, :, i] = 0.5 * (gr - gl) / step_size
+                field[..., i] += step_size
+                self.interactions.update_efield(field=field)
+                deriv[..., :, :, i] = 0.5 * (gr - gl) / step_size
 
             logger.debug("Hyper Polarizability (numerical): step %s/3", count)
             count += 1

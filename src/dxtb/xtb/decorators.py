@@ -150,21 +150,30 @@ def requires_efg_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     return wrapper
 
 
-def _numerical(nograd: bool = False) -> Callable[[F], F]:
+def _numerical(nograd: bool = False, noprint: bool = False) -> Callable[[F], F]:
     """
     Decorator for numerical differentiation.
     Pass `True` to turns off gradient tracking for the function.
     """
 
+    class NoOpContext:
+        def __enter__(self):
+            pass
+
+        def __exit__(self, *_, **__):
+            pass
+
     def decorator(func: F) -> F:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            with OutputHandler.with_verbosity(0):
-                if nograd is True:
-                    with torch.no_grad():
-                        result = func(*args, **kwargs)
-                else:
-                    result = func(*args, **kwargs)
+            print_context = (
+                OutputHandler.with_verbosity(0) if noprint is True else NoOpContext()
+            )
+            grad_context = torch.no_grad() if nograd is True else NoOpContext()
+
+            with print_context, grad_context:
+                result = func(*args, **kwargs)
+
             return result
 
         return cast(F, wrapper)
@@ -181,7 +190,9 @@ def numerical(func: F) -> F:
         Since this decorator turns off gradient tracking for the function, a
         possible `requires_grad=True` will be lost because the corresponding
         tensor is updated within the numerical differentiation.
-        This happens in any electric field related derivatives. If you want to carry out a subsequent calculation with `requires_grad=True`, you have to update the electric field tensor manually with:
+        This happens in any electric field related derivatives. If you want to
+        carry out a subsequent calculation with `requires_grad=True`, you have
+        to update the electric field tensor manually with:
 
         .. code-block:: python
 

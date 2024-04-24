@@ -25,7 +25,6 @@ from dxtb.typing import Any, Callable, Tensor
 
 from ..mixer import Simple
 from ..result import SCFResult
-from .config import SCFConfig
 from .conversions import (
     charges_to_potential,
     converged_to_charges,
@@ -57,8 +56,8 @@ def scf_pure(
     writing, but still provides a reasonably good implementation of the
     iterative solver required for the self-consistent field iterations.
 
-    This method is implemented as a pure function in order to avoid memory remnants
-    of pytorch autograd graph to cause RAM issues.
+    This method is implemented as a pure function in order to avoid memory
+    remnants of the pytorch autograd graph that cause RAM issues.
     """
 
     # The initial guess is an "arbitrary" tensor, and hence not part of AD
