@@ -98,8 +98,8 @@ def analytical(
     charge = torch.tensor(charge, **dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
-    result = calc.singlepoint(numbers, positions, charge, grad=True)
-    gradient = result.total_grad.detach()
+    result = -calc.forces_analytical(numbers, positions, charge)
+    gradient = result.detach()
 
     ref = load_from_npz(ref_grad, name, dtype)
     assert pytest.approx(ref, abs=atol, rel=rtol) == gradient

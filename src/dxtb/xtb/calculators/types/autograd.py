@@ -878,7 +878,7 @@ class AutogradCalculator(EnergyCalculator):
 
         # TODO: Figure out how to run func transforms 2x properly
         # (improve: Hessian does not need dipole integral but dipder does)
-        self.integrals.reset_all()
+        self.reset()
 
         # calculate nuclear dipole derivative dmu/dR: (..., 3, nat, 3)
         dmu_dr = self.dipole_deriv(
@@ -935,7 +935,7 @@ class AutogradCalculator(EnergyCalculator):
 
         # TODO: Figure out how to run func transforms 2x properly
         # (improve: Hessian does not need dipole integral but dipder does)
-        self.integrals.reset_all()
+        self.reset()
 
         # d(..., 3, 3) / d(..., nat, 3) -> (..., 3, 3, nat, 3)
         da_dr = self.pol_deriv(

@@ -96,9 +96,9 @@ def _numhess(
 
     def _gradfcn(numbers: Tensor, positions: Tensor, charge: Tensor) -> Tensor:
         positions.requires_grad_(True)
-        result = calc.singlepoint(numbers, positions, charge, grad=True)
+        result = -calc.forces_analytical(numbers, positions, charge)
         positions.detach_()
-        return result.total_grad.detach()
+        return result.detach()
 
     step = 1.0e-4
     for i in range(numbers.shape[0]):
