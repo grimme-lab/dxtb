@@ -18,10 +18,11 @@ from __future__ import annotations
 
 import sys
 from argparse import Namespace
+from pathlib import Path
 
 import torch
 
-from dxtb.typing import Any, Self, get_default_device, get_default_dtype
+from dxtb.typing import Any, PathLike, Self, get_default_device, get_default_dtype
 
 from ..constants import defaults, labels
 from .integral import ConfigIntegrals
@@ -169,6 +170,56 @@ class Config:
             fermi_partition=args.fermi_partition,
         )
 
+    @classmethod
+    def from_json(cls, path: PathLike) -> Self:
+        """
+        Create a configuration from a JSON file.
+
+        Parameters
+        ----------
+        path : PathLike
+            The path to the JSON file.
+
+        Returns
+        -------
+        Self
+            The configuration object.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the file does not exist.
+        """
+        path = Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f"File '{path}' does not exist.")
+
+        # pylint: disable=import-outside-toplevel
+        import json
+
+        with open(path, encoding="utf-8") as json_file:
+            cfg = json.loads(json_file.read())
+
+        return cls.from_dict(cfg)
+
+    @classmethod
+    def from_dict(cls, cfg: dict[str, Any]) -> Self:
+        """
+        Create a configuration from a dictionary.
+
+        Parameters
+        ----------
+        cfg : dict[str, Any]
+            The configuration dictionary.
+
+        Returns
+        -------
+        Self
+            The configuration object.
+        """
+        # TODO: More sophisticated validation
+        return cls(**cfg)
+
     @property
     def batch_mode(self) -> int:
         return self._batch_mode
@@ -200,6 +251,46 @@ class Config:
             },
             **self.scf.info(),
         }
+
+    def to_json(self, path: PathLike | None = None) -> str:
+        """
+        Serialize the configuration to a JSON-formatted string.
+
+        Returns:
+            str: A JSON-formatted string representing the configuration.
+        """
+        # pylint: disable=import-outside-toplevel
+        import json
+
+        config_info = self.info()
+
+        def serialize(value):
+            if isinstance(value, torch.device) or isinstance(value, torch.dtype):
+                return str(value)
+            elif isinstance(value, list):
+                # Recursively serialize lists
+                return [serialize(v) for v in value]
+            elif isinstance(value, dict):
+                # Recursively serialize dicts
+                return {k: serialize(v) for k, v in value.items()}
+            else:
+                return value
+
+        # Serialize the entire configuration info to JSON
+        serialized_info = {k: serialize(v) for k, v in config_info.items()}
+
+        # Convert the dictionary to a JSON string
+        json_string = json.dumps(serialized_info, indent=4)
+
+        if path is not None:
+            path = Path(path)
+            if path.exists():
+                path.unlink()
+
+            with open(path, "w", encoding="utf-8") as json_file:
+                json_file.write(json_string)
+
+        return json_string
 
     def __str__(self) -> str:
         info = self.info()["SCF Options"]
