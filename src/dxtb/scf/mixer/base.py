@@ -1,16 +1,33 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 ABC: SCF Mixer
 ==============
 
 This module contains the abstract base class for all mixers.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
 import torch
 
-from ..._types import Any, Slicer, Tensor
+from dxtb.typing import Any, Slicer, Tensor
 
 default_opts = {"maxiter": 20, "damp": 0.3, "f_tol": 1e-5, "x_tol": 1e-5}
 
@@ -32,7 +49,7 @@ class Mixer(ABC):
     _delta: Tensor | None
     """Difference between the current and previous systems."""
 
-    _is_batch: bool
+    _batch_mode: int
     """
     Whether the mixer operates in batch mode.
     Inferring batch mode from within the mixer is unreliable as the mixer can
@@ -42,7 +59,7 @@ class Mixer(ABC):
     """
 
     def __init__(
-        self, options: dict[str, Any] | None = None, is_batch: bool = False
+        self, options: dict[str, Any] | None = None, batch_mode: int = 0
     ) -> None:
         self.label = self.__class__.__name__
         self.options = options if options is not None else default_opts
@@ -51,13 +68,14 @@ class Mixer(ABC):
 
         # inferring batch mode from shapes of tensor is unreliable, so we
         # explicitly set this information
-        self._is_batch = is_batch
+        self._batch_mode = batch_mode
+
+    def __str__(self) -> str:
+        """Returns representative string."""
+        return f"{self.__class__.__name__}({self.iter_step}, {self.options})"
 
     def __repr__(self) -> str:
-        """
-        Returns representative string.
-        """
-        return f"{self.__class__.__name__}({self.iter_step})"
+        return str(self)
 
     @abstractmethod
     def iter(self, x_new: Tensor, x_old: Tensor | None = None) -> Tensor:
@@ -88,7 +106,7 @@ class Mixer(ABC):
         """
 
     @abstractmethod
-    def cull(self, conv: Tensor, slicers: Slicer = (...,)) -> None:
+    def cull(self, conv: Tensor, slicers: Slicer = (...,), mpdim: int = 1) -> None:
         """
         Purge selected systems from the mixer.
 
@@ -103,6 +121,10 @@ class Mixer(ABC):
             New anticipated size of future inputs excluding the batch
             dimension. This is used to allow superfluous padding values to
             be removed form subsequent inputs. Defaults to `(...,)`.
+        mpdim : int, optional
+            Number of dimensions for the multipole moments. Defaults to `1`,
+            i.e., monopole only. `2` additionally includes dipole contributions.
+            `3` includes monopole, dipole and quadrupole contributions.
         """
 
     @property
@@ -130,12 +152,12 @@ class Mixer(ABC):
         if self.delta is None:
             raise RuntimeError("Nothing has been mixed")
 
-        if self._is_batch is True:
+        if self._batch_mode == 0:
+            delta_norm = torch.norm(self.delta)
+        else:
             # norm goes over all dims except first (batch dimension)
             dims = tuple(range(-(self.delta.ndim - 1), 0))
             delta_norm = torch.norm(self.delta, dim=dims)
-        else:
-            delta_norm = torch.norm(self.delta)
 
         return delta_norm < self.options["x_tol"]
 

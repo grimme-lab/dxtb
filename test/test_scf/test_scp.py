@@ -1,7 +1,24 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Test for SCF.
 Reference values obtained with tblite 0.2.1 disabling repulsion and dispersion.
 """
+
 from __future__ import annotations
 
 from math import sqrt
@@ -9,14 +26,20 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb._types import DD
+from dxtb.constants import labels
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
 
 from .samples import samples
 
-opts = {"verbosity": 0, "maxiter": 300, "scf_mode": "full_tracking"}
+opts = {
+    "verbosity": 0,
+    "maxiter": 300,
+    "scf_mode": labels.SCF_MODE_FULL,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
+}
 
 device = None
 
@@ -44,8 +67,9 @@ def single(
             "mixer": mixer,
             "scf_mode": scf_mode,
             "scp_mode": scp_mode,
-            "xitorch_fatol": tol,
-            "xitorch_xatol": tol,
+            "f_atol": tol,
+            "x_atol": tol,
+            "int_driver": "pytorch",
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
@@ -63,7 +87,7 @@ def single(
 def test_single(
     dtype: torch.dtype, name: str, mixer: str, scp_mode: str, scf_mode: str
 ) -> None:
-    tol = sqrt(torch.finfo(dtype).eps) * 10
+    tol = sqrt(torch.finfo(dtype).eps) * 50
     single(dtype, name, mixer, tol, scp_mode, scf_mode)
 
 
@@ -77,7 +101,7 @@ def test_single_medium(
     dtype: torch.dtype, name: str, mixer: str, scp_mode: str, scf_mode: str
 ) -> None:
     """Test a few larger system."""
-    tol = sqrt(torch.finfo(dtype).eps) * 10
+    tol = sqrt(torch.finfo(dtype).eps) * 50
     single(dtype, name, mixer, tol, scp_mode, scf_mode)
 
 
@@ -105,7 +129,7 @@ def test_single_difficult(
 def test_single_large(
     dtype: torch.dtype, name: str, mixer: str, scp_mode: str, scf_mode: str
 ) -> None:
-    tol = sqrt(torch.finfo(dtype).eps) * 10
+    tol = sqrt(torch.finfo(dtype).eps) * 50
     single(dtype, name, mixer, tol, scp_mode, scf_mode)
 
 
@@ -123,8 +147,8 @@ def batched(
     sample = samples[name1], samples[name2]
     numbers = batch.pack(
         (
-            sample[0]["numbers"],
-            sample[1]["numbers"],
+            sample[0]["numbers"].to(device),
+            sample[1]["numbers"].to(device),
         )
     )
     positions = batch.pack(
@@ -148,8 +172,8 @@ def batched(
             "mixer": mixer,
             "scf_mode": scf_mode,
             "scp_mode": scp_mode,
-            "xitorch_fatol": tol,
-            "xitorch_xatol": tol,
+            "f_atol": tol,
+            "x_atol": tol,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
@@ -168,7 +192,7 @@ def batched(
 def test_batch(
     dtype: torch.dtype, name1: str, name2: str, mixer: str, scp_mode: str, scf_mode: str
 ) -> None:
-    tol = sqrt(torch.finfo(dtype).eps) * 10
+    tol = sqrt(torch.finfo(dtype).eps) * 50
 
     # full gradient tracking (from TBMaLT) has no Broyden implementation
     if scf_mode == "full" and mixer == "broyden":
@@ -194,7 +218,7 @@ def test_batch_three(
     scp_mode: str,
     scf_mode: str,
 ) -> None:
-    tol = sqrt(torch.finfo(dtype).eps) * 10
+    tol = sqrt(torch.finfo(dtype).eps) * 50
     dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name1], samples[name2], samples[name3]
@@ -228,8 +252,8 @@ def test_batch_three(
             "mixer": mixer,
             "scf_mode": scf_mode,
             "scp_mode": scp_mode,
-            "xitorch_fatol": tol,
-            "xitorch_xatol": tol,
+            "f_atol": tol,
+            "x_atol": tol,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)

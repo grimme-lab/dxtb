@@ -1,18 +1,35 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Testing dispersion energy.
 
 These tests are taken from https://github.com/dftd3/tad-dftd3/tree/main/tests
 and are only included for the sake of completeness.
 """
+
 from __future__ import annotations
 
 import pytest
 import tad_dftd3 as d3
 import torch
 
-from dxtb._types import DD
-from dxtb.dispersion import new_dispersion
+from dxtb.components.classicals.dispersion import new_dispersion
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD
 from dxtb.utils import batch
 
 from .samples import samples
@@ -53,8 +70,8 @@ def test_disp_batch(dtype: torch.dtype) -> None:
         )
     )
 
-    rvdw = d3.data.vdw_rad_d3[numbers.unsqueeze(-1), numbers.unsqueeze(-2)]
-    r4r2 = d3.data.sqrt_z_r4_over_r2[numbers]
+    rvdw = d3.data.VDW_D3[numbers.unsqueeze(-1), numbers.unsqueeze(-2)]
+    r4r2 = d3.data.R4R2[numbers]
     param = {
         "a1": torch.tensor(0.49484001, **dd),
         "s8": torch.tensor(0.78981345, **dd),

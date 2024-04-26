@@ -1,5 +1,7 @@
-# This file is part of tad-dftd3.
+# This file is part of dxtb.
+#
 # SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,11 +17,12 @@
 """
 Reference values for dispersion tests.
 """
+
 from __future__ import annotations
 
 import torch
 
-from dxtb._types import Molecule, Tensor, TypedDict
+from dxtb.typing import Molecule, Tensor, TypedDict
 
 from ..molecules import merge_nested_dicts, mols
 

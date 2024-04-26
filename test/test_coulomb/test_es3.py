@@ -1,19 +1,36 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Run tests for energy contribution from on-site third-order
 electrostatic energy (ES3).
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck
 
-from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.coulomb import thirdorder as es3
-from dxtb.param import GFN1_XTB, get_elem_angular, get_elem_param
+from dxtb.components.interactions.coulomb import thirdorder as es3
+from dxtb.param import GFN1_XTB, get_elem_param
+from dxtb.typing import DD, Tensor
 from dxtb.utils import batch
 
-from ..utils import dgradcheck
 from .samples import samples
 
 sample_list = ["MB16_43_01", "MB16_43_02", "SiH4_atom"]
@@ -32,11 +49,11 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     qat = sample["q"].to(**dd)
     ref = sample["es3"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     es = es3.new_es3(numbers, GFN1_XTB, **dd)
     assert es is not None
 
-    cache = es.get_cache(ihelp=ihelp)
+    cache = es.get_cache(numbers=numbers, ihelp=ihelp)
     e = es.get_atom_energy(qat, cache)
     assert pytest.approx(torch.sum(e, dim=-1)) == ref
 
@@ -68,11 +85,11 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         ],
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     es = es3.new_es3(numbers, GFN1_XTB, **dd)
     assert es is not None
 
-    cache = es.get_cache(ihelp=ihelp)
+    cache = es.get_cache(numbers=numbers, ihelp=ihelp)
     e = es.get_atom_energy(qat, cache)
     assert torch.allclose(torch.sum(e, dim=-1), ref)
 
@@ -87,7 +104,7 @@ def test_grad_param(name: str) -> None:
     numbers = sample["numbers"].to(device)
     qat = sample["q"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     hd = get_elem_param(
         torch.unique(numbers),
@@ -101,7 +118,7 @@ def test_grad_param(name: str) -> None:
 
     def func(hubbard_derivs: Tensor):
         es = es3.ES3(hubbard_derivs, **dd)
-        cache = es.get_cache(ihelp=ihelp)
+        cache = es.get_cache(numbers=numbers, ihelp=ihelp)
         return es.get_atom_energy(qat, cache)
 
     assert dgradcheck(func, hd)

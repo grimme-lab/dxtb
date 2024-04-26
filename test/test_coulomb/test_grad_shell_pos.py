@@ -1,19 +1,36 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Run autograd tests for atom-resolved coulomb matrix contribution.
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.coulomb import ES2
+from dxtb.components.interactions.coulomb import ES2
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular, get_elem_param
+from dxtb.param import get_elem_param
+from dxtb.typing import DD, Callable, Tensor
 from dxtb.utils import batch
 
-from ..utils import dgradcheck, dgradgradcheck
 from .samples import samples
 
 sample_list = ["LiH", "SiH4"]
@@ -35,7 +52,7 @@ def gradchecker(
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
 
     hubbard = get_elem_param(
         torch.unique(numbers),
@@ -59,6 +76,7 @@ def gradchecker(
     positions.requires_grad_(True)
 
     es2 = ES2(hubbard, lhubbard, gexp=gexp, shell_resolved=True, **dd)
+    es2.cache_disable()
 
     def func(positions: Tensor) -> Tensor:
         return es2.get_shell_coulomb_matrix(numbers, positions, ihelp)
@@ -138,7 +156,7 @@ def gradchecker_batch(
         ]
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
 
     hubbard = get_elem_param(
         torch.unique(numbers),

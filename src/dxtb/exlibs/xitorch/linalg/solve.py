@@ -1,8 +1,25 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import warnings
 from typing import Any, Callable, Mapping, Optional, Union
 
 import torch
 
+from dxtb.__version__ import __tversion__
 from dxtb.exlibs.xitorch import LinearOperator
 from dxtb.exlibs.xitorch._core.linop import MatrixLinearOperator
 from dxtb.exlibs.xitorch._impls.linalg.solve import (
@@ -145,55 +162,21 @@ def solve(
         params = A.getlinopparams()
         mparams = M.getlinopparams() if M is not None else []
         na = len(params)
-        return solve_torchfcn.apply(
+        return solve_torchfcn(
             A, B, E, M, method, fwd_options, bck_options, na, *params, *mparams
         )
 
 
-class solve_torchfcn(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, A, B, E, M, method, fwd_options, bck_options, na, *all_params):
-        # A: (*BA, nr, nr)
-        # B: (*BB, nr, ncols)
-        # E: (*BE, ncols) or None
-        # M: (*BM, nr, nr) or None
-        # all_params: list of tensor of any shape
-        # returns: (*BABEM, nr, ncols)
+def solve_torchfcn(
+    A, B, E, M, method, fwd_options, bck_options, na, *allparams
+) -> torch.Tensor:
+    Solver = Solver_V1 if __tversion__ < (2, 0, 0) else Solver_V2
+    res = Solver.apply(A, B, E, M, method, fwd_options, bck_options, na, *allparams)
+    assert res is not None
+    return res
 
-        # separate the parameters for A and for M
-        params = all_params[:na]
-        mparams = all_params[na:]
 
-        config = set_default_option({}, fwd_options)
-        ctx.bck_config = set_default_option({}, bck_options)
-
-        if torch.all(B == 0):  # special case
-            dims = (*_get_batchdims(A, B, E, M), *B.shape[-2:])
-            x = torch.zeros(dims, dtype=B.dtype, device=B.device)
-        else:
-            with A.uselinopparams(*params), M.uselinopparams(
-                *mparams
-            ) if M is not None else dummy_context_manager():
-                methods = {
-                    "custom_exactsolve": custom_exactsolve,
-                    "scipy_gmres": wrap_gmres,
-                    "broyden1": broyden1_solve,
-                    "cg": cg,
-                    "bicgstab": bicgstab,
-                    "gmres": gmres,
-                }
-                method_fcn = get_method("solve", methods, method)
-                x = method_fcn(A, B, E, M, **config)
-
-        ctx.e_is_none = E is None
-        ctx.A = A
-        ctx.M = M
-        if ctx.e_is_none:
-            ctx.save_for_backward(x, *all_params)
-        else:
-            ctx.save_for_backward(x, E, *all_params)
-        ctx.na = na
-        return x
+class SolverBase(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_x):
@@ -208,9 +191,11 @@ class solve_torchfcn(torch.autograd.Function):
 
         # solve (A-biases*M)^T v = grad_x
         # this is the grad of B
-        with ctx.A.uselinopparams(*params), ctx.M.uselinopparams(
-            *mparams
-        ) if ctx.M is not None else dummy_context_manager():
+        with ctx.A.uselinopparams(*params), (
+            ctx.M.uselinopparams(*mparams)
+            if ctx.M is not None
+            else dummy_context_manager()
+        ):
             AT = ctx.A.H  # (*BA, nr, nr)
             MT = ctx.M.H if ctx.M is not None else None  # (*BM, nr, nr)
             Econj = E.conj() if E is not None else None
@@ -272,6 +257,115 @@ class solve_torchfcn(torch.autograd.Function):
             *grad_params,
             *grad_mparams,
         )
+
+
+class Solver_V1(SolverBase):
+    @staticmethod
+    def forward(ctx, A, B, E, M, method, fwd_options, bck_options, na, *all_params):
+        # A: (*BA, nr, nr)
+        # B: (*BB, nr, ncols)
+        # E: (*BE, ncols) or None
+        # M: (*BM, nr, nr) or None
+        # all_params: list of tensor of any shape
+        # returns: (*BABEM, nr, ncols)
+
+        # separate the parameters for A and for M
+        params = all_params[:na]
+        mparams = all_params[na:]
+
+        config = set_default_option({}, fwd_options)
+        ctx.bck_config = set_default_option({}, bck_options)
+
+        if torch.all(B == 0):  # special case
+            dims = (*_get_batchdims(A, B, E, M), *B.shape[-2:])
+            x = torch.zeros(dims, dtype=B.dtype, device=B.device)
+        else:
+            with A.uselinopparams(*params), (
+                M.uselinopparams(*mparams) if M is not None else dummy_context_manager()
+            ):
+                methods = {
+                    "custom_exactsolve": custom_exactsolve,
+                    "scipy_gmres": wrap_gmres,
+                    "broyden1": broyden1_solve,
+                    "cg": cg,
+                    "bicgstab": bicgstab,
+                    "gmres": gmres,
+                }
+                method_fcn = get_method("solve", methods, method)
+                x = method_fcn(A, B, E, M, **config)
+
+        ctx.e_is_none = E is None
+        ctx.A = A
+        ctx.M = M
+        if ctx.e_is_none:
+            ctx.save_for_backward(x, *all_params)
+        else:
+            ctx.save_for_backward(x, E, *all_params)
+        ctx.na = na
+        return x
+
+
+class Solver_V2(SolverBase):
+
+    generate_vmap_rule = True
+
+    @staticmethod
+    def setup_context(ctx, inputs: tuple, outputs: torch.Tensor):
+        A = inputs[0]
+        # B = inputs[1]
+        E = inputs[2]
+        M = inputs[3]
+        # method = inputs[4]
+        # fwd_options = inputs[5]
+        bck_options = inputs[6]
+        na = inputs[7]
+        all_params = inputs[8:]
+
+        ctx.bck_config = set_default_option({}, bck_options)
+        ctx.e_is_none = E is None
+        ctx.na = na
+        ctx.A = A
+        ctx.M = M
+
+        if ctx.e_is_none:
+            ctx.save_for_backward(outputs, *all_params)
+        else:
+            ctx.save_for_backward(outputs, E, *all_params)
+
+    @staticmethod
+    def forward(A, B, E, M, method, fwd_options, bck_options, na, *all_params):
+        # A: (*BA, nr, nr)
+        # B: (*BB, nr, ncols)
+        # E: (*BE, ncols) or None
+        # M: (*BM, nr, nr) or None
+        # all_params: list of tensor of any shape
+        # returns: (*BABEM, nr, ncols)
+
+        # separate the parameters for A and for M
+        params = all_params[:na]
+        mparams = all_params[na:]
+
+        config = set_default_option({}, fwd_options)
+
+        if torch.all(B == 0):  # special case
+            dims = (*_get_batchdims(A, B, E, M), *B.shape[-2:])
+            x = torch.zeros(dims, dtype=B.dtype, device=B.device)
+        else:
+            with A.uselinopparams(*params), (
+                M.uselinopparams(*mparams) if M is not None else dummy_context_manager()
+            ):
+                methods = {
+                    "custom_exactsolve": custom_exactsolve,
+                    "scipy_gmres": wrap_gmres,
+                    "broyden1": broyden1_solve,
+                    "cg": cg,
+                    "bicgstab": bicgstab,
+                    "gmres": gmres,
+                }
+                method_fcn = get_method("solve", methods, method)
+                x = method_fcn(A, B, E, M, **config)
+
+        return x
 
 
 def custom_exactsolve(A, B, E=None, M=None, **options):

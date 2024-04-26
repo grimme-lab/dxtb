@@ -1,14 +1,32 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Run tests for SCF Hessian.
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
 
-from dxtb._types import DD, Tensor
+from dxtb.constants import labels
 from dxtb.param import GFN1_XTB as par
-from dxtb.utils import hessian
+from dxtb.typing import DD, Tensor
+from dxtb.utils import _hessian as hessian
 from dxtb.xtb import Calculator
 
 from ..utils import reshape_fortran
@@ -18,9 +36,12 @@ sample_list = ["LiH", "SiH4"]
 
 opts = {
     "exclude": ["disp", "hal", "rep"],
+    "int_driver": "dxtb",
     "maxiter": 50,
-    "xitorch_fatol": 1.0e-8,
-    "xitorch_xatol": 1.0e-8,
+    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
+    "f_atol": 1.0e-8,
+    "x_atol": 1.0e-8,
     "verbosity": 0,
 }
 
@@ -55,10 +76,12 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     hess = hessian(scf, (numbers, positions, charge), argnums=1)
     positions.detach_()
+    hess = hess.detach().reshape_as(ref)
+    numref = numref.reshape_as(ref)
 
     assert ref.shape == numref.shape == hess.shape
     assert pytest.approx(ref, abs=1e-6, rel=1e-6) == numref
-    assert pytest.approx(ref, abs=atol, rel=rtol) == hess.detach()
+    assert pytest.approx(ref, abs=atol, rel=rtol) == hess
 
 
 def _numhess(
@@ -73,9 +96,9 @@ def _numhess(
 
     def _gradfcn(numbers: Tensor, positions: Tensor, charge: Tensor) -> Tensor:
         positions.requires_grad_(True)
-        result = calc.singlepoint(numbers, positions, charge, grad=True)
+        result = -calc.forces_analytical(numbers, positions, charge)
         positions.detach_()
-        return result.total_grad.detach()
+        return result.detach()
 
     step = 1.0e-4
     for i in range(numbers.shape[0]):

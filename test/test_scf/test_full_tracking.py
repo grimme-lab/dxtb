@@ -1,7 +1,24 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Test for SCF.
 Reference values obtained with tblite 0.2.1 disabling repulsion and dispersion.
 """
+
 from __future__ import annotations
 
 from math import sqrt
@@ -9,16 +26,28 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb._types import DD
+from dxtb.constants import labels
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
 
 from .samples import samples
 
-opts = {"verbosity": 0, "maxiter": 300, "scf_mode": "full_tracking"}
-
 device = None
+
+opts = {
+    "verbosity": 0,
+    "maxiter": 300,
+    "scf_mode": labels.SCF_MODE_FULL,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
+}
+
+drivers = [
+    labels.INTDRIVER_LIBCINT,
+    labels.INTDRIVER_ANALYTICAL,
+    labels.INTDRIVER_AUTOGRAD,
+]
 
 
 def single(
@@ -27,6 +56,7 @@ def single(
     mixer: str,
     tol: float,
     scp_mode: str = "charge",
+    intdriver: int = labels.INTDRIVER_LIBCINT,
 ) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
@@ -40,10 +70,11 @@ def single(
         opts,
         **{
             "damp": 0.05 if mixer == "simple" else 0.4,
+            "int_driver": intdriver,
             "mixer": mixer,
             "scp_mode": scp_mode,
-            "xitorch_fatol": tol,
-            "xitorch_xatol": tol,
+            "f_atol": tol,
+            "x_atol": tol,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
@@ -56,9 +87,10 @@ def single(
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
-def test_single(dtype: torch.dtype, name: str, mixer: str):
+@pytest.mark.parametrize("intdriver", drivers)
+def test_single(dtype: torch.dtype, name: str, mixer: str, intdriver: int):
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    single(dtype, name, mixer, tol)
+    single(dtype, name, mixer, tol, intdriver=intdriver)
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -92,7 +124,14 @@ def test_single_large(dtype: torch.dtype, name: str, mixer: str):
     single(dtype, name, mixer, tol)
 
 
-def batched(dtype: torch.dtype, name1: str, name2: str, mixer: str, tol: float) -> None:
+def batched(
+    dtype: torch.dtype,
+    name1: str,
+    name2: str,
+    mixer: str,
+    tol: float,
+    intdriver: int = labels.INTDRIVER_LIBCINT,
+) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
     sample = samples[name1], samples[name2]
@@ -122,8 +161,9 @@ def batched(dtype: torch.dtype, name1: str, name2: str, mixer: str, tol: float) 
             "damp": 0.05 if mixer == "simple" else 0.4,
             "mixer": mixer,
             "scp_mode": "charge",
-            "xitorch_fatol": tol,
-            "xitorch_xatol": tol,
+            "int_driver": intdriver,
+            "f_atol": tol,
+            "x_atol": tol,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
@@ -137,9 +177,12 @@ def batched(dtype: torch.dtype, name1: str, name2: str, mixer: str, tol: float) 
 @pytest.mark.parametrize("name1", ["H2", "LiH"])
 @pytest.mark.parametrize("name2", ["LiH", "SiH4"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
-def test_batch(dtype: torch.dtype, name1: str, name2: str, mixer: str) -> None:
+@pytest.mark.parametrize("intdriver", drivers)
+def test_batch(
+    dtype: torch.dtype, name1: str, name2: str, mixer: str, intdriver: int
+) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    batched(dtype, name1, name2, mixer, tol)
+    batched(dtype, name1, name2, mixer, tol, intdriver=intdriver)
 
 
 def batched_unconverged(
@@ -184,8 +227,8 @@ def batched_unconverged(
             "mixer": mixer,
             "scf_mode": "full",
             "scp_mode": "potential",
-            "xitorch_fatol": tol,
-            "xitorch_xatol": tol,
+            "f_atol": tol,
+            "x_atol": tol,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
@@ -201,7 +244,7 @@ def test_batch_unconverged_partly_anderson(dtype: torch.dtype) -> None:
 
     # only for regression testing (copied unconverged energies)
     ref = torch.tensor(
-        [-1.058598403609326, -0.881055307373386, -4.024551310332887], **dd
+        [-1.058598357054240, -0.881056651685982, -4.024565248590350], **dd
     )
 
     batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "anderson", 1)
@@ -214,7 +257,7 @@ def test_batch_unconverged_partly_simple(dtype: torch.dtype) -> None:
 
     # only for regression testing (copied unconverged energies)
     ref = torch.tensor(
-        [-1.058598403609325, -0.882636830465807, -4.036953625762340], **dd
+        [-1.058598357054241, -0.882637082174645, -4.036955313952423], **dd
     )
 
     batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "simple", 1)
@@ -227,7 +270,7 @@ def test_batch_unconverged_fully_anderson(dtype: torch.dtype) -> None:
 
     # only for regression testing (copied unconverged energies)
     ref = torch.tensor(
-        [-0.881055307373386, -0.881055307373386, -4.024551310332887], **dd
+        [-0.881056651685982, -0.881056651685982, -4.024565248590350], **dd
     )
 
     batched_unconverged(ref, dtype, "LiH", "LiH", "SiH4", "anderson", 1)
@@ -242,7 +285,7 @@ def test_batch_unconverged_fully_simple(
 
     # only for regression testing (copied unconverged energies)
     ref = torch.tensor(
-        [-0.882636830465807, -0.882636830465807, -4.036953625762340], **dd
+        [-0.882637082174645, -0.882637082174645, -4.036955313952423], **dd
     )
 
     batched_unconverged(ref, dtype, "LiH", "LiH", "SiH4", "simple", 1)
@@ -263,25 +306,25 @@ def test_batch_three(
     sample = samples[name1], samples[name2], samples[name3]
     numbers = batch.pack(
         (
-            sample[0]["numbers"],
-            sample[1]["numbers"],
-            sample[2]["numbers"],
+            sample[0]["numbers"].to(device),
+            sample[1]["numbers"].to(device),
+            sample[2]["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample[0]["positions"],
-            sample[1]["positions"],
-            sample[2]["positions"],
+            sample[0]["positions"].to(**dd),
+            sample[1]["positions"].to(**dd),
+            sample[2]["positions"].to(**dd),
         )
-    ).type(dtype)
+    )
     ref = batch.pack(
         (
-            sample[0]["escf"],
-            sample[1]["escf"],
-            sample[2]["escf"],
+            sample[0]["escf"].to(**dd),
+            sample[1]["escf"].to(**dd),
+            sample[2]["escf"].to(**dd),
         )
-    ).type(dtype)
+    )
     charges = torch.tensor([0.0, 0.0, 0.0], **dd)
 
     options = dict(
@@ -291,21 +334,21 @@ def test_batch_three(
             "mixer": mixer,
             "scf_mode": "full",
             "scp_mode": "charge",
-            "xitorch_fatol": tol,
-            "xitorch_xatol": tol,
+            "f_atol": tol,
+            "x_atol": tol,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
-    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
+    assert pytest.approx(ref, rel=tol, abs=tol) == result.scf.sum(-1)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
 def test_batch_special(dtype: torch.dtype, mixer: str) -> None:
     """
-    Test case for https://github.com/grimme-lab/xtbML/issues/67.
+    Test case for https://github.com/grimme-lab/dxtb/issues/67.
 
     Note that the tolerance for the energy is quite high because atoms always
     show larger deviations w.r.t. the tblite reference. Secondly, this test

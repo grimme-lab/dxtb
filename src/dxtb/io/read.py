@@ -1,18 +1,36 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 IO: Reading Files
 =================
 
 IO utility for reading files.
 """
+
 from __future__ import annotations
 
 from json import loads as json_load
 from pathlib import Path
 
 import torch
+from tad_mctc import units
+from tad_mctc.data import pse
 
-from .._types import Any, PathLike
-from ..constants import ATOMIC_NUMBER, units
+from dxtb.typing import Any, PathLike
 
 
 def check_xyz(fp: PathLike, xyz: list[list[float]]) -> list[list[float]]:
@@ -87,7 +105,9 @@ def read_structure_from_file(
 
     if ftype in ("xyz", "log"):
         numbers, positions = read_xyz(f)
-    elif ftype in ("tmol", "tm", "turbomole") or fname in ("coord"):
+    elif ftype == "qm9":
+        numbers, positions = read_xyz_qm9(f)
+    elif ftype in ("tmol", "tm", "turbomole") or fname == "coord":
         numbers, positions = read_coord(f)
     elif ftype in ("mol", "sdf", "gen", "pdb"):
         raise NotImplementedError(
@@ -145,7 +165,44 @@ def read_xyz(fp: PathLike) -> tuple[list[int], list[list[float]]]:
                 l = line.strip().split()
                 atom, x, y, z = l
                 xyz.append([i * units.AA2AU for i in [float(x), float(y), float(z)]])
-                atoms.append(ATOMIC_NUMBER[atom.title()])
+                atoms.append(pse.S2Z[atom.title()])
+
+    if len(xyz) != num_atoms:
+        raise ValueError(f"Number of atoms in {fp} does not match.")
+
+    xyz = check_xyz(fp, xyz)
+    return atoms, xyz
+
+
+def read_xyz_qm9(fp: PathLike) -> tuple[list[int], list[list[float]]]:
+    """
+    Read the xyz files of the QM9 data set. The xyz files here do not conform
+    with the standard format.
+
+    Parameters
+    ----------
+    fp : PathLike
+        Path to coordinate file.
+
+    Returns
+    -------
+    tuple[list[int], list[list[float]]]
+        Lists containing the atomic numbers and coordinates.
+    """
+    atoms = []
+    xyz = []
+    num_atoms = 0
+
+    with open(fp, encoding="utf-8") as file:
+        lines = file.readlines()
+
+    num_atoms = int(lines[0].strip())
+
+    for i in range(2, 2 + num_atoms):
+        l = lines[i].strip().split()
+
+        atoms.append(pse.S2Z[l[0].title()])
+        xyz.append([float(x.replace("*^", "e")) * units.AA2AU for x in l[1:4]])
 
     if len(xyz) != num_atoms:
         raise ValueError(f"Number of atoms in {fp} does not match.")
@@ -183,7 +240,7 @@ def read_qcschema(fp: PathLike) -> tuple[list[int], list[list[float]]]:
 
     atoms = []
     for atom in mol["symbols"]:
-        atoms.append(ATOMIC_NUMBER[atom.title()])
+        atoms.append(pse.S2Z[atom.title()])
 
     xyz = []
     geo = mol["geometry"]
@@ -230,7 +287,7 @@ def read_coord(fp: PathLike) -> tuple[list[int], list[list[float]]]:
 
             x, y, z, atom = l
             xyz.append([float(x), float(y), float(z)])
-            atoms.append(ATOMIC_NUMBER[atom.title()])
+            atoms.append(pse.S2Z[atom.title()])
 
     xyz = check_xyz(fp, xyz)
     return atoms, xyz
@@ -244,24 +301,6 @@ def read_chrg(fp: PathLike) -> int:
 
     with open(fp, encoding="utf-8") as file:
         return int(file.read())
-
-
-def read_tm_energy(fp: PathLike) -> float:
-    """Read energy file in TM format (energy is three times on second line)."""
-    with open(fp, encoding="utf-8") as file:
-        for i, line in enumerate(file):
-            if i == 0:
-                if line.strip().split()[0] != "$energy":
-                    raise ValueError(f"File '{fp}' is not in Turbomole format.")
-            elif i == 1:  # pragma: no branch
-                # tests exist but somehow not covered?
-                l = line.strip().split()
-                if len(l) != 4:
-                    raise ValueError(f"File '{fp}' is not in Turbomole format.")
-
-                return float(l[1])
-
-        raise ValueError(f"File '{fp}' is not in Turbomole format.")
 
 
 def read_tblite_gfn(fp: Path | str) -> dict[str, Any]:

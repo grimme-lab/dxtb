@@ -1,7 +1,24 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Run tests for building the Hamiltonian matrix.
 References calculated with tblite 0.3.0.
 """
+
 from __future__ import annotations
 
 from math import sqrt
@@ -10,14 +27,14 @@ import numpy as np
 import pytest
 import torch
 
-from dxtb._types import DD
 from dxtb.basis import IndexHelper
-from dxtb.integral import Overlap
-from dxtb.ncoord import exp_count, get_coordination_number
-from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
+from dxtb.integral.driver.pytorch import IntDriverPytorch as IntDriver
+from dxtb.integral.driver.pytorch import OverlapPytorch as Overlap
+from dxtb.ncoord import cn_d3
+from dxtb.param import GFN1_XTB, Param
+from dxtb.typing import DD, Tensor
 from dxtb.utils import batch
-from dxtb.xtb import Hamiltonian
+from dxtb.xtb import GFN1Hamiltonian as Hamiltonian
 
 from ..utils import load_from_npz
 from .samples import samples
@@ -30,30 +47,34 @@ ref_h0 = np.load("test/test_hamiltonian/h0.npz")
 device = None
 
 
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def run(numbers: Tensor, positions: Tensor, par: Param, ref: Tensor, dd: DD) -> None:
+    tol = sqrt(torch.finfo(dd["dtype"]).eps) * 10
+
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    driver = IntDriver(numbers, par, ihelp, **dd)
+    overlap = Overlap(**dd)
+    h0 = Hamiltonian(numbers, par, ihelp, **dd)
+
+    driver.setup(positions)
+    s = overlap.build(driver)
+
+    cn = cn_d3(numbers, positions)
+    h = h0.build(positions, s, cn=cn)
+    assert pytest.approx(h, abs=tol) == h.mT
+    assert pytest.approx(h, abs=tol) == ref
+
+
+@pytest.mark.parametrize("dtype", [torch.float])
 @pytest.mark.parametrize("name", small)
 def test_single(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"device": device, "dtype": dtype}
-    tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
     ref = load_from_npz(ref_h0, name, dtype)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    h0 = Hamiltonian(numbers, par, ihelp, **dd)
-
-    overlap = Overlap(numbers, par, ihelp, **dd)
-    s = overlap.build(positions)
-    assert pytest.approx(s, abs=tol) == s.mT
-
-    cn = get_coordination_number(numbers, positions, exp_count)
-    if name == "C":
-        cn = None
-    h = h0.build(positions, s, cn=cn)
-    assert pytest.approx(h, abs=tol) == h.mT
-    assert pytest.approx(h, abs=tol) == ref
+    run(numbers, positions, GFN1_XTB, ref, dd)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -85,17 +106,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         ),
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    h0 = Hamiltonian(numbers, par, ihelp, **dd)
-
-    overlap = Overlap(numbers, par, ihelp, **dd)
-    s = overlap.build(positions)
-    assert pytest.approx(s, abs=tol) == s.mT
-
-    cn = get_coordination_number(numbers, positions, exp_count)
-    h = h0.build(positions, s, cn=cn)
-    assert pytest.approx(h, abs=tol) == h.mT
-    assert pytest.approx(h, abs=tol) == ref
+    run(numbers, positions, GFN1_XTB, ref, dd)
 
 
 @pytest.mark.large
@@ -104,24 +115,13 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 def test_large(dtype: torch.dtype, name: str) -> None:
     """Compare against reference calculated with tblite."""
     dd: DD = {"device": device, "dtype": dtype}
-    tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
     ref = load_from_npz(ref_h0, name, dtype)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    h0 = Hamiltonian(numbers, par, ihelp, **dd)
-
-    overlap = Overlap(numbers, par, ihelp, **dd)
-    s = overlap.build(positions)
-    assert pytest.approx(s, abs=tol) == s.mT
-
-    cn = get_coordination_number(numbers, positions, exp_count)
-    h = h0.build(positions, s, cn=cn)
-    assert pytest.approx(h, abs=tol) == h.mT
-    assert pytest.approx(h, abs=tol) == ref
+    run(numbers, positions, GFN1_XTB, ref, dd)
 
 
 @pytest.mark.large
@@ -131,7 +131,6 @@ def test_large(dtype: torch.dtype, name: str) -> None:
 def test_large_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Batched version."""
     dd: DD = {"device": device, "dtype": dtype}
-    tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample1, sample2 = samples[name1], samples[name2]
 
@@ -154,14 +153,4 @@ def test_large_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         )
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    h0 = Hamiltonian(numbers, par, ihelp, **dd)
-
-    overlap = Overlap(numbers, par, ihelp, **dd)
-    s = overlap.build(positions)
-    assert pytest.approx(s, abs=tol) == s.mT
-
-    cn = get_coordination_number(numbers, positions, exp_count)
-    h = h0.build(positions, s, cn=cn)
-    assert pytest.approx(h, abs=tol) == h.mT
-    assert pytest.approx(h, abs=tol) == ref
+    run(numbers, positions, GFN1_XTB, ref, dd)

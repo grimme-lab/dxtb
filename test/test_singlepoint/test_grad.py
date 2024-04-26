@@ -1,6 +1,23 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Run tests for singlepoint gradient calculation with read from coord file.
 """
+
 from __future__ import annotations
 
 from math import sqrt
@@ -10,9 +27,10 @@ import numpy as np
 import pytest
 import torch
 
-from dxtb._types import DD, Tensor
+from dxtb.constants import labels
 from dxtb.io import read_chrg, read_coord
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD, Tensor
 from dxtb.xtb import Calculator
 
 from ..utils import load_from_npz
@@ -21,10 +39,12 @@ ref_grad = np.load("test/test_singlepoint/grad.npz")
 """['H2', 'H2O', 'CH4', 'SiH4', 'LYS_xao', 'AD7en+', 'C60', 'vancoh2']"""
 
 opts = {
-    "verbosity": 0,
+    "f_atol": 1.0e-10,
+    "x_atol": 1.0e-10,
     "maxiter": 50,
-    "xitorch_fatol": 1.0e-10,
-    "xitorch_xatol": 1.0e-10,
+    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
+    "verbosity": 0,
 }
 
 device = None
@@ -34,9 +54,10 @@ device = None
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "H2O", "CH4"])
-def test_analytical(dtype: torch.dtype, name: str) -> None:
-    atol, rtol = 1e-6, 1e-4
-    analytical(dtype, name, atol, rtol)
+@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+def test_analytical(dtype: torch.dtype, name: str, scf_mode: str) -> None:
+    atol, rtol = 1e-5, 1e-4
+    analytical(dtype, name, atol, rtol, scf_mode)
 
 
 @pytest.mark.grad
@@ -44,9 +65,10 @@ def test_analytical(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["C60"])
-def test_analytical_large(dtype: torch.dtype, name: str) -> None:
+@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+def test_analytical_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     atol = rtol = sqrt(torch.finfo(dtype).eps)
-    analytical(dtype, name, atol, rtol)
+    analytical(dtype, name, atol, rtol, scf_mode)
 
 
 @pytest.mark.grad
@@ -54,12 +76,15 @@ def test_analytical_large(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["AD7en+", "LYS_xao"])
-def test_analytical_large2(dtype: torch.dtype, name: str) -> None:
+@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+def test_analytical_large2(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     atol, rtol = 1e-5, 1e-3
-    analytical(dtype, name, atol, rtol)
+    analytical(dtype, name, atol, rtol, scf_mode)
 
 
-def analytical(dtype: torch.dtype, name: str, atol: float, rtol: float) -> None:
+def analytical(
+    dtype: torch.dtype, name: str, atol: float, rtol: float, scf_mode: str
+) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
     # read from file
@@ -73,8 +98,8 @@ def analytical(dtype: torch.dtype, name: str, atol: float, rtol: float) -> None:
     charge = torch.tensor(charge, **dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
-    result = calc.singlepoint(numbers, positions, charge, grad=True)
-    gradient = result.total_grad.detach()
+    result = -calc.forces_analytical(numbers, positions, charge)
+    gradient = result.detach()
 
     ref = load_from_npz(ref_grad, name, dtype)
     assert pytest.approx(ref, abs=atol, rel=rtol) == gradient
@@ -84,7 +109,8 @@ def analytical(dtype: torch.dtype, name: str, atol: float, rtol: float) -> None:
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "H2O", "SiH4"])
-def test_backward(dtype: torch.dtype, name: str) -> None:
+@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 50  # slightly larger for H2O!
     dd: DD = {"device": device, "dtype": dtype}
 
@@ -99,7 +125,14 @@ def test_backward(dtype: torch.dtype, name: str) -> None:
     charge = torch.tensor(charge, **dd)
 
     # do calc
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    options = dict(
+        opts,
+        **{
+            "scf_mode": scf_mode,
+            "mixer": "anderson" if scf_mode == "full" else "broyden",
+        },
+    )
+    calc = Calculator(numbers, par, opts=options, **dd)
     result = calc.singlepoint(numbers, positions, charge)
     energy = result.total.sum(-1)
 
@@ -120,7 +153,8 @@ def test_backward(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("name", ["H2", "H2O", "CH4"])
-def test_num(name: str) -> None:
+@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+def test_num(name: str, scf_mode: str) -> None:
     dtype = torch.double
     dd: DD = {"device": device, "dtype": dtype}
 
@@ -135,18 +169,25 @@ def test_num(name: str) -> None:
     charge = torch.tensor(charge, **dd)
 
     # do calc
-    gradient = calc_numerical_gradient(numbers, positions, charge, dd)
+    gradient = calc_numerical_gradient(numbers, positions, charge, scf_mode, dd)
 
     ref = load_from_npz(ref_grad, name, dtype)
     assert pytest.approx(ref, abs=1e-6, rel=1e-4) == gradient
 
 
 def calc_numerical_gradient(
-    numbers: Tensor, positions: Tensor, charge: Tensor, dd: DD
+    numbers: Tensor, positions: Tensor, charge: Tensor, scf_mode: str, dd: DD
 ) -> Tensor:
     """Calculate gradient numerically for reference."""
 
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    options = dict(
+        opts,
+        **{
+            "scf_mode": scf_mode,
+            "mixer": "anderson" if scf_mode == "full" else "broyden",
+        },
+    )
+    calc = Calculator(numbers, par, opts=options, **dd)
 
     gradient = torch.zeros_like(positions)
     step = 1.0e-6

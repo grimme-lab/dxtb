@@ -1,6 +1,23 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Run tests for singlepoint gradient calculation with read from coord file.
 """
+
 from __future__ import annotations
 
 from math import sqrt
@@ -8,23 +25,26 @@ from pathlib import Path
 
 import pytest
 import torch
+from tad_mctc.convert import reshape_fortran
 
-from dxtb._types import DD, Tensor
+from dxtb.constants import labels
 from dxtb.io import read_chrg, read_coord
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD, Tensor
 from dxtb.utils import hessian
 from dxtb.xtb import Calculator
 
 from ..test_dispersion.samples import samples as samples_disp
 from ..test_halogen.samples import samples as samples_hal
 from ..test_repulsion.samples import samples as samples_rep
-from ..utils import reshape_fortran
 
 opts = {
-    "verbosity": 0,
+    "f_atol": 1.0e-10,
+    "x_atol": 1.0e-10,
     "maxiter": 50,
-    "xitorch_fatol": 1.0e-10,
-    "xitorch_xatol": 1.0e-10,
+    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
+    "verbosity": 0,
 }
 
 sample_list = ["LiH", "SiH4", "MB16_43_01"]
@@ -71,4 +91,6 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     hess = hessian(singlepoint, (numbers, positions, charge), argnums=1)
     positions.detach_()
-    assert pytest.approx(ref, abs=tol, rel=tol) == hess.detach()
+    hess = hess.detach().reshape_as(ref)
+
+    assert pytest.approx(ref, abs=tol, rel=tol) == hess

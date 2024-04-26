@@ -1,20 +1,39 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Run tests for memory leak in custom autograd.
 
 Inspired by DQC.
 """
+
 from __future__ import annotations
+
+import gc
 
 import pytest
 import torch
+from tad_mctc.data.molecules import mols as samples
 
-from dxtb._types import DD
 from dxtb.basis import IndexHelper
-from dxtb.classical import Repulsion
+from dxtb.components.classicals import Repulsion
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular, get_elem_param
+from dxtb.param import get_elem_param
+from dxtb.typing import DD
 
-from ..molecules import mols as samples
 from .util import has_memleak_tensor
 
 sample_list = ["H2O", "SiH4", "MB16_43_01"]
@@ -35,7 +54,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
         numbers = sample["numbers"].to(device)
         positions = sample["positions"].clone().to(**dd)
 
-        ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+        ihelp = IndexHelper.from_numbers(numbers, par)
 
         # variables to be differentiated
         arep = get_elem_param(
@@ -72,4 +91,9 @@ def test_single(dtype: torch.dtype, name: str) -> None:
         # known reference cycle for create_graph=True
         energy.backward()
 
-    assert not has_memleak_tensor(fcn)
+    # run garbage collector to avoid leaks across other tests
+    gc.collect()
+    leak = has_memleak_tensor(fcn)
+    gc.collect()
+
+    assert not leak, "Memory leak detected"

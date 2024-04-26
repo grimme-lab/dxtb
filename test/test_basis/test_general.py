@@ -1,17 +1,33 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Run tests for overlap of diatomic systems.
 References calculated with tblite 0.3.0.
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
 
-from dxtb.basis import Basis, IndexHelper, slater
-from dxtb.integral import overlap_gto
+from dxtb.basis import Basis, IndexHelper, slater_to_gauss
+from dxtb.integral.driver.pytorch.impls.md import overlap_gto
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
-from dxtb.utils import (
+from dxtb.typing.exceptions import (
     CGTOAzimuthalQuantumNumberError,
     CGTOPrimitivesError,
     CGTOPrincipalQuantumNumberError,
@@ -26,7 +42,7 @@ def test_fail_number_primitives() -> None:
     n, l = torch.tensor(1), torch.tensor(0)
 
     with pytest.raises(CGTOPrimitivesError):
-        slater.to_gauss(torch.tensor(7), n, l, torch.tensor(1.2))
+        slater_to_gauss(torch.tensor(7), n, l, torch.tensor(1.2))
 
 
 def test_fail_slater_exponent() -> None:
@@ -34,7 +50,7 @@ def test_fail_slater_exponent() -> None:
     n, l = torch.tensor(1), torch.tensor(0)
 
     with pytest.raises(CGTOSlaterExponentsError):
-        slater.to_gauss(torch.tensor(6), n, l, torch.tensor(-1.2))
+        slater_to_gauss(torch.tensor(6), n, l, torch.tensor(-1.2))
 
 
 def test_fail_max_principal() -> None:
@@ -42,7 +58,7 @@ def test_fail_max_principal() -> None:
     n, l = torch.tensor(7), torch.tensor(0)
 
     with pytest.raises(CGTOPrincipalQuantumNumberError):
-        slater.to_gauss(torch.tensor(6), n, l, torch.tensor(1.2))
+        slater_to_gauss(torch.tensor(6), n, l, torch.tensor(1.2))
 
 
 def test_fail_higher_orbital() -> None:
@@ -50,7 +66,7 @@ def test_fail_higher_orbital() -> None:
     n, l = torch.tensor(5), torch.tensor(5)
 
     with pytest.raises(CGTOAzimuthalQuantumNumberError):
-        slater.to_gauss(torch.tensor(6), n, l, torch.tensor(1.2))
+        slater_to_gauss(torch.tensor(6), n, l, torch.tensor(1.2))
 
 
 def test_fail_quantum_number() -> None:
@@ -58,7 +74,7 @@ def test_fail_quantum_number() -> None:
     n, l = torch.tensor(2), torch.tensor(3)
 
     with pytest.raises(CGTOQuantumNumberError):
-        slater.to_gauss(torch.tensor(6), n, l, torch.tensor(1.2))
+        slater_to_gauss(torch.tensor(6), n, l, torch.tensor(1.2))
 
 
 def test_fail_higher_orbital_trafo():
@@ -68,8 +84,8 @@ def test_fail_higher_orbital_trafo():
     # arbitrary element (Rn)
     number = torch.tensor([86])
 
-    ihelp = IndexHelper.from_numbers(number, get_elem_angular(par.element))
-    bas = Basis(number, par, ihelp.unique_angular)
+    ihelp = IndexHelper.from_numbers(number, par)
+    bas = Basis(number, par, ihelp)
     alpha, coeff = bas.create_cgtos()
 
     j = torch.tensor(5)

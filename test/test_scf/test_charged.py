@@ -1,7 +1,24 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Test for SCF with charged samples.
 Reference values obtained with tblite 0.2.1 disabling repulsion and dispersion.
 """
+
 from __future__ import annotations
 
 from math import sqrt
@@ -10,14 +27,19 @@ import numpy as np
 import pytest
 import torch
 
-from dxtb._types import DD
+from dxtb.constants import labels
 from dxtb.param import GFN1_XTB as par
-from dxtb.xtb.calculator import Calculator
+from dxtb.typing import DD
+from dxtb.xtb.calculators import Calculator
 
 from ..utils import load_from_npz
 from .samples_charged import samples
 
-opts = {"verbosity": 0}
+opts = {
+    "verbosity": 0,
+    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
+}
 
 ref_grad = np.load("test/test_scf/grad.npz")
 
@@ -65,8 +87,8 @@ def test_grad(dtype: torch.dtype, name: str):
         **{
             "exclude": ["rep", "disp", "hal"],
             "maxiter": 50,
-            "xitorch_fatol": 1.0e-6,
-            "xitorch_xatol": 1.0e-6,
+            "f_atol": 1.0e-6,
+            "x_atol": 1.0e-6,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)

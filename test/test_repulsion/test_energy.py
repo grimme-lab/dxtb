@@ -1,8 +1,25 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Run tests for repulsion contribution.
 
 (Note that the analytical gradient tests fail for `torch.float`.)
 """
+
 from __future__ import annotations
 
 from math import sqrt
@@ -10,11 +27,11 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb._types import DD, Literal
 from dxtb.basis import IndexHelper
-from dxtb.classical import new_repulsion
-from dxtb.param import GFN1_XTB, get_elem_angular
+from dxtb.components.classicals import new_repulsion
+from dxtb.param.gfn1 import GFN1_XTB
 from dxtb.param.gfn2 import GFN2_XTB
+from dxtb.typing import DD, Literal
 from dxtb.utils import batch
 
 from .samples import samples
@@ -47,7 +64,7 @@ def test_single(dtype: torch.dtype, name: str, par: Literal["gfn1", "gfn2"]) -> 
     rep = new_repulsion(numbers, _par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(_par.element))
+    ihelp = IndexHelper.from_numbers(numbers, _par)
     cache = rep.get_cache(numbers, ihelp)
     e = rep.get_energy(positions, cache, atom_resolved=False)
 
@@ -95,7 +112,7 @@ def test_batch(
     rep = new_repulsion(numbers, _par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(_par.element))
+    ihelp = IndexHelper.from_numbers(numbers, _par)
     cache = rep.get_cache(numbers, ihelp)
     e = rep.get_energy(positions, cache)
 

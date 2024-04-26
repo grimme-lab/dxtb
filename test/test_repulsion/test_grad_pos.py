@@ -1,24 +1,41 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
-Run tests for repulsion contribution.
+Run tests for nuclear repulsion gradient.
+"""
 
-(Note that the analytical gradient tests fail for `torch.float`.)
-"""
 from __future__ import annotations
 
 from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.classical import Repulsion, new_repulsion
-from dxtb.classical.repulsion import repulsion_energy, repulsion_gradient
+from dxtb.components.classicals import Repulsion, new_repulsion
+from dxtb.components.classicals.repulsion.rep import (
+    repulsion_energy,
+    repulsion_gradient,
+)
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
+from dxtb.typing import DD, Callable, Tensor
 from dxtb.utils import batch
 
-from ..utils import dgradcheck, dgradgradcheck
 from .samples import samples
 
 sample_list = ["H2O", "SiH4", "MB16_43_01", "MB16_43_02", "LYS_xao"]
@@ -43,7 +60,7 @@ def test_backward_vs_tblite(dtype: torch.dtype, name: str) -> None:
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = rep.get_cache(numbers, ihelp)
 
     # automatic gradient
@@ -93,7 +110,7 @@ def test_backward_batch_vs_tblite(dtype: torch.dtype, name1: str, name2: str) ->
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = rep.get_cache(numbers, ihelp)
 
     # automatic gradient
@@ -125,7 +142,7 @@ def test_grad_pos_backward_vs_analytical(dtype: torch.dtype, name: str) -> None:
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = rep.get_cache(numbers, ihelp)
 
     # analytical gradient
@@ -192,7 +209,7 @@ def test_grad_pos_analytical_vs_numerical(dtype: torch.dtype, name: str) -> None
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = rep.get_cache(numbers, ihelp)
 
     # analytical gradient
@@ -218,7 +235,7 @@ def gradchecker(
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
 
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
@@ -277,7 +294,7 @@ def gradchecker_batch(
         ]
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
 
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None

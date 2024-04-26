@@ -1,21 +1,37 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Testing `InteractionList` gradient (autodiff).
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.coulomb import new_es2, new_es3
-from dxtb.interaction import InteractionList
+from dxtb.components.interactions import InteractionList
+from dxtb.components.interactions.coulomb import new_es2, new_es3
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 from dxtb.scf import get_guess
+from dxtb.typing import DD, Callable, Tensor
 from dxtb.utils import batch
 
-from ..utils import dgradcheck, dgradgradcheck
 from .samples import samples
 
 sample_list = ["H2", "HHe", "LiH", "H2O", "SiH4"]
@@ -37,7 +53,7 @@ def gradchecker(
     chrg = torch.tensor(0.0, **dd)
 
     # setup
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     ilist = InteractionList(new_es2(numbers, par, **dd), new_es3(numbers, par, **dd))
 
     # variables to be differentiated
@@ -97,7 +113,7 @@ def gradchecker_batch(
     chrg = torch.tensor([0.0, 0.0], **dd)
 
     # setup
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     ilist = InteractionList(new_es2(numbers, par, **dd), new_es3(numbers, par, **dd))
 
     # variables to be differentiated

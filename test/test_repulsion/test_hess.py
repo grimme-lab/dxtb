@@ -1,21 +1,36 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
-Run tests for repulsion contribution.
+Run tests repulsion Hessian.
+"""
 
-(Note that the analytical gradient tests fail for `torch.float`.)
-"""
 from __future__ import annotations
 
 from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.autograd import jacrev
 
-from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.classical import new_repulsion
+from dxtb.components.classicals import new_repulsion
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
-from dxtb.utils import batch, hessian, jac
+from dxtb.typing import DD, Tensor
+from dxtb.utils import batch, hessian
 
 from ..utils import reshape_fortran
 from .samples import samples
@@ -34,9 +49,9 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     sample = samples[name]
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
-    ref_hess = reshape_fortran(
+    ref = reshape_fortran(
         sample["gfn1_hess"].to(**dd),
-        torch.Size((numbers.shape[0], 3, numbers.shape[0], 3)),
+        torch.Size(2 * (numbers.shape[0], 3)),
     )
 
     # variable to be differentiated
@@ -45,12 +60,15 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = rep.get_cache(numbers, ihelp)
 
     hess = hessian(rep.get_energy, (positions, cache))
     positions.detach_()
-    assert pytest.approx(ref_hess, abs=tol, rel=tol) == hess.detach()
+    hess = hess.detach().reshape_as(ref)
+
+    assert ref.shape == hess.shape
+    assert pytest.approx(ref, abs=tol, rel=tol) == hess
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
@@ -66,7 +84,7 @@ def skip_test_single_alt(dtype: torch.dtype, name: str) -> None:
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = rep.get_cache(numbers, ihelp)
 
     positions.requires_grad_(True)
@@ -74,17 +92,17 @@ def skip_test_single_alt(dtype: torch.dtype, name: str) -> None:
     ref_jac = sample["gfn1_grad"].to(**dd)
     ref_hess = reshape_fortran(
         sample["gfn1_hess"].to(**dd),
-        torch.Size((numbers.shape[0], 3, numbers.shape[0], 3)),
+        torch.Size(2 * (numbers.shape[0], 3)),
     )
 
     # gradient
-    fjac = jac(rep.get_energy, argnums=0)
+    fjac = jacrev(rep.get_energy, argnums=0)
     jacobian: Tensor = fjac(positions, cache).sum(0)  # type: ignore
     assert pytest.approx(ref_jac, abs=tol, rel=tol) == jacobian.detach()
 
     # hessian
     def _hessian(f, argnums):
-        return jac(jac(f, argnums=argnums), argnums=argnums)
+        return jacrev(jacrev(f, argnums=argnums), argnums=argnums)
 
     fhess = _hessian(rep.get_energy, argnums=0)
     hess: Tensor = fhess(positions, cache).sum(0)  # type: ignore
@@ -138,7 +156,7 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = rep.get_cache(numbers, ihelp)
 
     positions.requires_grad_(True)

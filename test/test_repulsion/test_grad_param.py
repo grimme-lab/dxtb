@@ -1,19 +1,34 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
-Run tests for repulsion contribution.
+Run tests for repulsion parameter gradient.
+"""
 
-(Note that the analytical gradient tests fail for `torch.float`.)
-"""
 from __future__ import annotations
 
 import pytest
 import torch
 from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
-from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.classical import Repulsion
+from dxtb.components.classicals import Repulsion
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular, get_elem_param
+from dxtb.param import get_elem_param
+from dxtb.typing import DD, Callable, Tensor
 from dxtb.utils import batch
 
 from .samples import samples
@@ -25,9 +40,7 @@ tol = 1e-8
 device = None
 
 
-def gradchecker(
-    dtype: torch.dtype, name: str
-) -> tuple[
+def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     Callable[[Tensor, Tensor, Tensor], Tensor],  # autograd function
     tuple[Tensor, Tensor, Tensor],  # differentiable variables
 ]:
@@ -39,7 +52,7 @@ def gradchecker(
     sample = samples[name]
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
 
     # variables to be differentiated
     _arep = get_elem_param(
@@ -92,9 +105,7 @@ def test_gradgrad(dtype: torch.dtype, name: str) -> None:
     assert gradgradcheck(func, diffvars, atol=tol)
 
 
-def gradchecker_batch(
-    dtype: torch.dtype, name1: str, name2: str
-) -> tuple[
+def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     Callable[[Tensor, Tensor, Tensor], Tensor],  # autograd function
     tuple[Tensor, Tensor, Tensor],  # differentiable variables
 ]:
@@ -116,7 +127,7 @@ def gradchecker_batch(
             sample2["positions"].to(**dd),
         ]
     )
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
 
     # variables to be differentiated
     _arep = get_elem_param(

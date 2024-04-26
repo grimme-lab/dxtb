@@ -1,13 +1,30 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Test CGTO normalization.
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
 
-from dxtb.basis import slater
-from dxtb.integral import overlap_gto
+from dxtb.basis import slater_to_gauss
+from dxtb.integral.driver.pytorch.impls.md import overlap_gto
 
 
 @pytest.mark.parametrize("ng", [1, 2, 3, 4, 5, 6])
@@ -38,7 +55,7 @@ def test_sto_ng_single(ng, n, l, dtype):
     """
     atol = 1.0e-6 if dtype == torch.float else 2.0e-7
 
-    alpha, coeff = slater.to_gauss(ng, n, l, torch.tensor(1.0, dtype=dtype))
+    alpha, coeff = slater_to_gauss(ng, n, l, torch.tensor(1.0, dtype=dtype))
     angular = torch.tensor(l)
     vec = torch.zeros((3,), dtype=dtype)
 
@@ -57,7 +74,7 @@ def test_sto_ng_batch(ng: int, dtype: torch.dtype):
     n, l = torch.tensor(1), torch.tensor(0)
     ng_ = torch.tensor(ng)
 
-    coeff, alpha = slater.to_gauss(ng_, n, l, torch.tensor(1.0, dtype=dtype))
+    coeff, alpha = slater_to_gauss(ng_, n, l, torch.tensor(1.0, dtype=dtype))
     coeff, alpha = coeff.type(dtype)[:ng_], alpha.type(dtype)[:ng_]
     vec = torch.tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], dtype=dtype)
 
@@ -99,7 +116,7 @@ def test_no_norm(ng, n, l, dtype):
     )
 
     zeta = torch.tensor(1.0, dtype=dtype)
-    alpha, coeff = slater.to_gauss(ng, n, l, zeta, norm=False)
+    alpha, coeff = slater_to_gauss(ng, n, l, zeta, norm=False)
 
     assert pytest.approx(ref_alpha, abs=tol, rel=tol) == alpha
     assert pytest.approx(ref_coeff, abs=tol, rel=tol) == coeff

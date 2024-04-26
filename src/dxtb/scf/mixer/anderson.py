@@ -1,3 +1,19 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Anderson Mixing
 ===============
@@ -6,12 +22,15 @@ This module contains the Andersion mixing algorithm.
 
 The implementation is taken from TBMaLT (with minor modifications).
 """
+
 from __future__ import annotations
 
 import torch
+from tad_mctc.math import einsum
 
-from ..._types import Any, Slicer, Tensor
-from ...utils import t2int
+from dxtb.typing import Any, Slicer, Tensor
+from dxtb.utils import t2int
+
 from .base import Mixer
 
 default_opts = {
@@ -89,12 +108,12 @@ class Anderson(Mixer):
     """
 
     def __init__(
-        self, options: dict[str, Any] | None = None, is_batch: bool = False
+        self, options: dict[str, Any] | None = None, batch_mode: int = 0
     ) -> None:
         opts = dict(default_opts)
         if options is not None:
             opts.update(options)
-        super().__init__(opts, is_batch=is_batch)
+        super().__init__(opts, batch_mode=batch_mode)
 
         self.mix_param = self.options["damp"]
         self.generations = self.options["generations"]
@@ -125,10 +144,10 @@ class Anderson(Mixer):
         # original shape _shape_out when returned to the user.
         self._shape_out = list(x_new.shape)
 
-        if self._is_batch:
-            self._shape_in = list(x_new.reshape(x_new.shape[0], -1).shape)
-        else:
+        if self._batch_mode == 0:
             self._shape_in = list(torch.flatten(x_new).shape)
+        else:
+            self._shape_in = list(x_new.reshape(x_new.shape[0], -1).shape)
 
         # Instantiate the x history (x_hist) and the delta history 'd_hist'
         size = (self.generations + 1, *self._shape_in)
@@ -226,8 +245,8 @@ class Anderson(Mixer):
             #   b(i)   =  <F(l) - F(l-i)|F(l)>
             # here dF = <F(l) - F(l-i)|
             df = self._f[0] - self._f[1:]
-            a = torch.einsum("i...v,j...v->...ij", df, df)
-            b = torch.einsum("h...v,...v->...h", df, self._f[0])
+            a = einsum("i...v,j...v->...ij", df, df)
+            b = einsum("h...v,...v->...h", df, self._f[0])
 
             # Rescale diagonals to prevent linear dependence on the residual
             # vectors by adding 1 + offset^2 to the diagonals of "a", see
@@ -239,6 +258,7 @@ class Anderson(Mixer):
 
             # Solve for the coefficients. As torch.solve cannot solve for 1D
             # tensors a blank dimension must be added
+
             thetas = torch.squeeze(torch.linalg.solve(a, torch.unsqueeze(b, -1)))
 
             # Construct the 2'nd terms of eq 4.1 & 4.2 (Eyert). These are
@@ -247,10 +267,10 @@ class Anderson(Mixer):
             #   f_bar = sum(j=1 -> m) ϑ_j(l) * (|F(l-j)> - |F(l)>)
             # These are not the x_bar & F_var values of eq. 4.1 & 4.2 (Eyert)
             # yet as they are still missing the 1st terms.
-            x_bar = torch.einsum(
+            x_bar = einsum(
                 "...h,h...v->...v", thetas, (self._x_hist[1:] - self._x_hist[0])
             )
-            f_bar = torch.einsum("...h,h...v->...v", thetas, -df)
+            f_bar = einsum("...h,h...v->...v", thetas, -df)
 
             # The first terms of equations 4.1 & 4.2 (Eyert):
             #   4.1: |x(l)> and & 4.2: |F(l)>
@@ -290,7 +310,7 @@ class Anderson(Mixer):
         # Reshape the mixed system back into the expected shape and return it
         return x_mix.reshape(self._shape_out)
 
-    def cull(self, conv: Tensor, slicers: Slicer = (...,)) -> None:
+    def cull(self, conv: Tensor, slicers: Slicer = (...,), mpdim: int = 1) -> None:
         """
         Purge selected systems from the mixer.
 
@@ -318,10 +338,17 @@ class Anderson(Mixer):
         if slicers == (...,):
             shape = self._shape_out[1:]
         else:
-            tmp = slicers[0].stop
-            if not isinstance(tmp, Tensor):
+            # NOTE: Maybe refactor the whole slicer approach...
+            if isinstance(slicers[0], type(...)):
+                tmp = slicers[0]
+            elif isinstance(slicers[0], slice):
+                tmp = slicers[0].stop
+                if isinstance(tmp, Tensor):
+                    tmp = t2int(tmp)
+            else:
                 raise RuntimeError("Unknown slicer given.")
-            shape = [t2int(tmp)]
+
+            shape = [mpdim, tmp]
 
         # Length of flattened arrays after factoring in the new
         l = t2int(torch.prod(torch.tensor(shape, device=self._x_hist.device)))
@@ -329,9 +356,22 @@ class Anderson(Mixer):
         # Invert the cull_list, gather & reassign self._delta self._x_hist &
         # self._f so only those marked False remain.
         notconv = ~conv
-        self._delta = self._delta[notconv, :l]
-        self._f = self._f[:, notconv, :l]
-        self._x_hist = self._x_hist[:, notconv, :l]
+
+        def _cull(tensor: Tensor) -> Tensor:
+            # Perform culling on flattened tensor
+            culled = tensor[..., notconv, :]
+            shp = culled.shape[:-1]
+
+            # Reshape tensor (unflatten)
+            assert self._shape_out is not None
+            reshaped = culled.view(*shp, *self._shape_out[1:])
+
+            # Select elements and reshape back to flattened view
+            return reshaped[..., :mpdim, : (l // mpdim)].contiguous().view(*shp, -1)
+
+        self._delta = _cull(self._delta)
+        self._f = _cull(self._f)
+        self._x_hist = _cull(self._x_hist)
 
         # Adjust the the shapes accordingly
         self._shape_in[0] -= list(conv).count(

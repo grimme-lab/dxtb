@@ -1,18 +1,35 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Run tests for calculation of Born radii according to the Onufriev-Bashford-Case
 model. Reference values are obtained from the tblite version.
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck
+from tad_mctc.data.radii import VDW_D3
 
-from dxtb._types import DD, Tensor
-from dxtb.data import vdw_rad_d3
-from dxtb.solvation import born
+from dxtb.components.interactions.solvation import born
+from dxtb.typing import DD, Tensor
 from dxtb.utils import batch
 
-from ..utils import dgradcheck
 from .samples import samples
 
 device = None
@@ -29,7 +46,7 @@ def test_psi(name: str, dtype: torch.dtype):
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
     ref = sample["psi"].to(**dd)
-    rvdw = vdw_rad_d3[numbers].to(**dd)
+    rvdw = VDW_D3.to(**dd)[numbers]
 
     psi = born.compute_psi(numbers, positions, rvdw)
     assert pytest.approx(ref, rel=1e-6, abs=tol) == psi
@@ -92,7 +109,7 @@ def test_psi_batch(name1: str, name2: str, dtype: torch.dtype):
             sample2["positions"].to(**dd),
         )
     )
-    rvdw = vdw_rad_d3[numbers].to(**dd)
+    rvdw = VDW_D3.to(**dd)[numbers]
 
     ref = batch.pack(
         (
@@ -155,7 +172,7 @@ def test_psi_grad(name: str):
 
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
-    rvdw = vdw_rad_d3[numbers].to(**dd)
+    rvdw = VDW_D3.to(**dd)[numbers]
 
     # variable to be differentiated
     positions.requires_grad_(True)

@@ -1,3 +1,19 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 # pylint: disable=protected-access
 """
 Test additional utility functions.
@@ -7,7 +23,8 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.utils import batch, exceptions, is_int_list, is_str_list, set_jit_enabled
+from dxtb.typing.exceptions import SCFConvergenceError
+from dxtb.utils import is_int_list, is_str_list, set_jit_enabled
 
 
 def test_lists() -> None:
@@ -37,82 +54,7 @@ def test_jit_settings() -> None:
     set_jit_enabled(state)
 
 
-def test_batch_index() -> None:
-    inp = torch.tensor(
-        [[0.4800, 0.4701, 0.3405, 0.4701], [0.4701, 0.5833, 0.7882, 0.3542]]
-    )
-    idx = torch.tensor([[0, 0, 1, 1, 2, 2, 3, 3], [0, 1, 1, 1, 2, 2, 3, 3]])
-    out = batch.index(inp, idx)
-    ref = torch.tensor(
-        [
-            [0.4800, 0.4800, 0.4701, 0.4701, 0.3405, 0.3405, 0.4701, 0.4701],
-            [0.4701, 0.5833, 0.5833, 0.5833, 0.7882, 0.7882, 0.3542, 0.3542],
-        ]
-    )
-
-    assert pytest.approx(ref) == out
-
-    # different dimensions ( inp.ndim == (idx.ndim + 1) )
-    inp = torch.tensor(
-        [
-            [
-                [-3.7510, -5.8131, -1.2251],
-                [-1.4523, -3.0188, 2.3872],
-                [-1.9942, -3.5295, -1.3030],
-                [-4.3375, -6.6594, 0.5598],
-            ],
-            [
-                [3.3579, 2.5251, -3.4608],
-                [2.7920, 1.0176, -2.5924],
-                [3.0536, 7.1525, 1.8216],
-                [1.2930, 0.7893, 0.9190],
-            ],
-        ]
-    )
-    idx = torch.tensor([[0, 0, 1, 1, 2, 2, 3, 3], [0, 1, 1, 1, 2, 2, 3, 3]])
-    out = batch.index(inp, idx)
-    ref = torch.tensor(
-        [
-            [
-                [-3.7510, -5.8131, -1.2251],
-                [-3.7510, -5.8131, -1.2251],
-                [-1.4523, -3.0188, 2.3872],
-                [-1.4523, -3.0188, 2.3872],
-                [-1.9942, -3.5295, -1.3030],
-                [-1.9942, -3.5295, -1.3030],
-                [-4.3375, -6.6594, 0.5598],
-                [-4.3375, -6.6594, 0.5598],
-            ],
-            [
-                [3.3579, 2.5251, -3.4608],
-                [2.7920, 1.0176, -2.5924],
-                [2.7920, 1.0176, -2.5924],
-                [2.7920, 1.0176, -2.5924],
-                [3.0536, 7.1525, 1.8216],
-                [3.0536, 7.1525, 1.8216],
-                [1.2930, 0.7893, 0.9190],
-                [1.2930, 0.7893, 0.9190],
-            ],
-        ]
-    )
-
-    assert pytest.approx(ref) == out
-
-    # different dimensions again ( inp.ndim == (idx.ndim - 1) )
-    inp = torch.tensor([0.4800, 0.4701, 0.3405, 0.4701])
-    idx = torch.tensor([[0, 0, 1, 1, 2, 2, 3, 3], [0, 1, 1, 1, 2, 2, 3, 3]])
-    out = batch.index(inp, idx)
-    ref = torch.tensor(
-        [
-            [0.4800, 0.4800, 0.4701, 0.4701, 0.3405, 0.3405, 0.4701, 0.4701],
-            [0.4800, 0.4701, 0.4701, 0.4701, 0.3405, 0.3405, 0.4701, 0.4701],
-        ]
-    )
-
-    assert pytest.approx(ref) == out
-
-
 def test_exceptions() -> None:
     msg = "The error message."
-    with pytest.raises(exceptions.SCFConvergenceError, match=msg):
-        raise exceptions.SCFConvergenceError(msg)
+    with pytest.raises(SCFConvergenceError, match=msg):
+        raise SCFConvergenceError(msg)

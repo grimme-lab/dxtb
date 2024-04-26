@@ -1,17 +1,35 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Handle the occupation of the orbitals with electrons.
 """
+
 # NOTE: Parts of the Fermi smearing are taken from https://github.com/tbmalt/tbmalt
 from __future__ import annotations
 
 import torch
 
-from .._types import Tensor
+from dxtb.typing import DD, Tensor
+
 from ..constants import defaults
 
 
 def get_alpha_beta_occupation(
-    nel: Tensor, uhf: Tensor | int | list[int] | None = None
+    nel: Tensor, uhf: Tensor | float | int | list[int] | None = None
 ) -> Tensor:
     """
     Generate alpha and beta electrons from total number of electrons.
@@ -39,8 +57,8 @@ def get_alpha_beta_occupation(
     numerical stability, i.e., non-integer electrons are not supported.
     """
     if uhf is not None:
-        if isinstance(uhf, (list, int)):
-            uhf = nel.new_tensor(uhf)
+        if isinstance(uhf, (list, int, float)):
+            uhf = torch.tensor(uhf, device=nel.device)
         else:
             uhf = uhf.type(nel.dtype).to(nel.device)
 
@@ -155,6 +173,8 @@ def get_fermi_energy(
     tuple[Tensor, Tensor]
         Fermi energy and index of HOMO.
     """
+    zero = torch.tensor(0.0, device=emo.device, dtype=emo.dtype)
+
     occ = torch.ones_like(emo)
     occ_cs = occ.cumsum(-1) - nel.unsqueeze(-1)
 
@@ -178,7 +198,7 @@ def get_fermi_energy(
     e_fermi = torch.where(
         nel != 0,  # detect empty beta channel
         torch.gather(emo, -1, gap).mean(-1),
-        emo.new_tensor(0.0),  # no electrons yield Fermi energy of 0.0
+        zero,  # no electrons yield Fermi energy of 0.0
     )
 
     # NOTE:
@@ -249,15 +269,17 @@ def get_fermi_occupation(
     if kt is not None and torch.any(kt < 0.0):
         raise ValueError(f"Electronic Temperature must be positive or None ({kt}).")
 
-    eps = emo.new_tensor(torch.finfo(emo.dtype).eps)
-    zero = emo.new_tensor(0.0)
+    dd: DD = {"device": emo.device, "dtype": emo.dtype}
+    eps = torch.tensor(torch.finfo(emo.dtype).eps, **dd)
+    zero = torch.tensor(0.0, **dd)
 
     # no valence electrons
     if (torch.abs(nel.sum(-1)) < eps).any():
+        return torch.zeros_like(emo)
         raise ValueError("Number of valence electrons cannot be zero.")
 
     if thr is None:
-        thr = defaults.THRESH
+        thr = defaults.FERMI_THRESH
     thresh = thr.get(emo.dtype, torch.tensor(1e-5, dtype=torch.float)).to(emo.device)
 
     e_fermi, homo = get_fermi_energy(nel, emo, mask=mask)

@@ -1,19 +1,35 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Testing halogen bond correction gradient (autodiff).
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck, dgradgradcheck
+from tad_mctc.batch import pack
 
-from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.classical import new_halogen
+from dxtb.components.classicals import new_halogen
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
-from dxtb.utils import batch
+from dxtb.typing import DD, Callable, Tensor
 
-from ..utils import dgradcheck, dgradgradcheck
 from .samples import samples
 
 # "LYS_xao" must be the last one as we have to manually exclude it for the
@@ -25,9 +41,7 @@ tol = 1e-8
 device = None
 
 
-def gradchecker(
-    dtype: torch.dtype, name: str
-) -> tuple[
+def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
     Tensor,  # differentiable variables
 ]:
@@ -43,7 +57,7 @@ def gradchecker(
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
     def func(pos: Tensor) -> Tensor:
@@ -76,22 +90,20 @@ def test_gradgradcheck(dtype: torch.dtype, name: str) -> None:
     assert dgradgradcheck(func, diffvars, atol=tol)
 
 
-def gradchecker_batch(
-    dtype: torch.dtype, name1: str, name2: str
-) -> tuple[
+def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
     Tensor,  # differentiable variables
 ]:
     dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
@@ -104,7 +116,7 @@ def gradchecker_batch(
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
     def func(pos: Tensor) -> Tensor:
@@ -156,7 +168,7 @@ def test_autograd(dtype: torch.dtype, name: str) -> None:
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
     energy = xb.get_energy(positions, cache)
@@ -176,19 +188,19 @@ def test_autograd_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         ]
     )
-    ref = batch.pack(
+    ref = pack(
         [
             sample1["gradient"].to(**dd),
             sample2["gradient"].to(**dd),
@@ -201,7 +213,7 @@ def test_autograd_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
     energy = xb.get_energy(positions, cache)
@@ -231,7 +243,7 @@ def test_backward(dtype: torch.dtype, name: str) -> None:
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
     energy = xb.get_energy(positions, cache)
@@ -256,19 +268,19 @@ def test_backward_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     dd: DD = {"device": device, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(device),
             sample2["numbers"].to(device),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         ]
     )
-    ref = batch.pack(
+    ref = pack(
         [
             sample1["gradient"].to(**dd),
             sample2["gradient"].to(**dd),
@@ -281,7 +293,7 @@ def test_backward_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
     energy = xb.get_energy(positions, cache)

@@ -1,22 +1,39 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Run tests for the shell-resolved energy contribution from the
 isotropic second-order electrostatic energy (ES2).
 """
+
 from __future__ import annotations
 
 from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck
 
-from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.coulomb import averaging_function
-from dxtb.coulomb import secondorder as es2
-from dxtb.param import GFN1_XTB, get_elem_angular, get_elem_param
+from dxtb.components.interactions.coulomb import averaging_function
+from dxtb.components.interactions.coulomb import secondorder as es2
+from dxtb.param import GFN1_XTB, get_elem_param
+from dxtb.typing import DD, Tensor
 from dxtb.utils import batch
 
-from ..utils import dgradcheck
 from .samples import samples
 
 sample_list = ["MB16_43_07", "MB16_43_08", "SiH4"]
@@ -37,7 +54,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     qsh = sample["q"].to(**dd)
     ref = sample["es2"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     es = es2.new_es2(numbers, GFN1_XTB, **dd)
     assert es is not None
 
@@ -80,7 +97,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         ],
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     es = es2.new_es2(numbers, GFN1_XTB, **dd)
     assert es is not None
 
@@ -100,7 +117,7 @@ def test_grad_positions(name: str) -> None:
     positions = sample["positions"].to(**dd).detach()
     qsh = sample["q"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     # variable to be differentiated
     positions.requires_grad_(True)
@@ -126,7 +143,7 @@ def test_grad_param(name: str) -> None:
     positions = sample["positions"].to(**dd)
     qsh = sample["q"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     assert GFN1_XTB.charge is not None
 

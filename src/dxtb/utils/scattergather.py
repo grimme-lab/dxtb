@@ -1,9 +1,26 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
-Torch's `scatter_reduce` and `gather`
-=====================================
+Utility: Scatter and Gather
+===========================
 
 Wrappers and convenience functions for `torch.scatter_reduce` and
-`torch.gather`.
+`torch.gather` that allow for negative indices, multiple dimensions, and
+batched calculations.
 """
 
 from __future__ import annotations
@@ -13,8 +30,9 @@ from functools import wraps
 
 import torch
 
-from ..__version__ import __torch_version__
-from .._types import Gather, Protocol, ScatterOrGather, Tensor
+from dxtb.typing import Gather, Protocol, ScatterOrGather, Tensor
+
+from ..__version__ import __tversion__
 from .tensors import t2int
 
 __all__ = ["scatter_reduce", "wrap_scatter_reduce", "wrap_gather"]
@@ -33,8 +51,7 @@ class _ScatterOrGatherWrapper(Protocol):
         dim1: int,
         idx: Tensor,
         *args: str,
-    ) -> Tensor:
-        ...
+    ) -> Tensor: ...
 
 
 def twice_remove_negative_index(
@@ -60,7 +77,7 @@ def twice_remove_negative_index(
         return torch.where(
             mask.unsqueeze(-1) * mask.unsqueeze(-2),
             fcn(func, x, dim0, dim1, torch.where(mask, idx, 0), *args),
-            x.new_tensor(0.0),
+            torch.tensor(0.0, device=x.device, dtype=x.dtype),
         )
 
     return wrapper
@@ -115,6 +132,99 @@ def twice(
         *args,
     )
     return z
+
+
+def adapt_indexer_extra(
+    x: Tensor,
+    dim: int | tuple[int, int],
+    idx: Tensor,
+) -> Tensor:
+    """
+    Modify the indexing tensor for the extra dimension.
+
+    Parameters
+    ----------
+    x : Tensor
+        Tensor to gather.
+    dim : int | tuple[int, int]
+        Dimension to gather over.
+    idx : Tensor
+        Index to gather over.
+
+    Returns
+    -------
+    Tensor
+        Modified indexer for gathering or spreading.
+
+    Raises
+    ------
+    TypeError
+        Tuple instead of integer is passed. Tuples cannot be handled.
+    ValueError
+        Dimension index is outside the allowed range.
+    RuntimeError
+        Indexing tensor has two many dimensions (max. 2 possible).
+    RuntimeError
+        Source tensor is two small (min. 2 dimensions).
+    NotImplementedError
+        Source tensor is too large (max. 4 dimension possible).
+    """
+    # Accounting for the extra dimension is very hacky and anything but general.
+    # Therefore, I added a ton of checks to prevent the user from accidentally
+    # doing something unintended, which may otherwise not be caught.
+    if not isinstance(dim, int):
+        raise TypeError(
+            "If an extra dimension is specified, only one dimension is "
+            f"allowed. You passed '{dim}'."
+        )
+
+    if dim > -2:
+        raise ValueError(
+            "Only negative values are allowed for indexing. Additionally, "
+            "The last dimension is reserved for the extra dimension, i.e., "
+            "using -1 is also prohibited."
+        )
+
+    # this should not be possible to reach
+    if idx.ndim > 2:  # pragma: no cover
+        raise RuntimeError(
+            "The indexing tensor must be 1d or 2d for batched calculations."
+        )
+
+    if x.ndim < 2:
+        raise RuntimeError(
+            "The source tensor must at least have two dimension: The "
+            "dimension that is reduced/gathered and the extra dimension."
+        )
+
+    if x.ndim > 4:
+        raise NotImplementedError(
+            "Indexing of source tensors with more than 4 dimensions is "
+            "currently not implemented."
+        )
+
+    shp = [*x.shape[:dim], -1, *x.shape[(dim + 1) :]]
+
+    # here, we assume that two dimension in `idx` mean batched mode
+    if idx.ndim < 2:
+        if x.ndim == 2:
+            idx = idx.unsqueeze(-1).expand(*shp)
+        elif x.ndim == 3:
+            # Unsqueeze the indices so that there initial shape is in the
+            # position specified by `dim`. Relies on negative indices and
+            # exclusion of -1. So pretty much works only for -2 and -3.
+            idx = idx.unsqueeze(dim + 2).unsqueeze(-1).expand(*shp)
+    else:
+        if x.ndim == 3:
+            idx = idx.unsqueeze(-1).expand(*shp)
+        elif x.ndim == 4:
+            # again, only -2 and -3 are supported
+            if dim == -2:
+                idx = idx.unsqueeze(1).unsqueeze(-1).expand(*shp)
+            elif dim == -3:
+                idx = idx.unsqueeze(-1).unsqueeze(-1).expand(*shp)
+
+    return idx
 
 
 # gather
@@ -172,24 +282,38 @@ def gather(x: Tensor, dim: int, idx: Tensor) -> Tensor:
     return torch.gather(x, dim, idx)
 
 
-def wrap_gather(x: Tensor, dim: int | tuple[int, int], idx: Tensor) -> Tensor:
+def wrap_gather(
+    x: Tensor,
+    dim: int | tuple[int, int],
+    idx: Tensor,
+    extra: bool = False,
+) -> Tensor:
     """
     Wrapper for gather function. Also handles multiple dimensions.
 
     Parameters
     ----------
     x : Tensor
-        Tensor to gather
+        Tensor to gather.
     dim : int | tuple[int, int]
-        Dimension to gather over
+        Dimension to gather over.
     idx : Tensor
-        Index to gather over
+        Index to gather over.
+    extra : bool
+        If the tensor to reduce contains a extra dimension of arbitrary size
+        that is generally different from the size of the indexing tensor
+        (e.g. gradient tensors with extra xyz dimension), the indexing tensor
+        has to be modified. This feature is only tested for the aforementioned
+        gradient tensors and does only work for one dimension.
+        Defaults to `False`.
 
     Returns
     -------
     Tensor
-        Gathered tensor
+        Gathered tensor.
     """
+    if extra is True:
+        idx = adapt_indexer_extra(x, dim, idx)
 
     if idx.ndim > 1:
         if isinstance(dim, int):
@@ -248,7 +372,7 @@ def scatter_reduce(
         Reduced tensor.
     """
 
-    if (1, 11, 0) <= __torch_version__ < (1, 12, 0):  # type: ignore
+    if (1, 11, 0) <= __tversion__ < (1, 12, 0):  # type: ignore
         actual_device = x.device
 
         # account for CPU-only implementation
@@ -258,7 +382,7 @@ def scatter_reduce(
 
         output = torch.scatter_reduce(x, dim, idx, *args)  # type: ignore
         output = output.to(actual_device)
-    elif __torch_version__ >= (1, 12, 0) or __torch_version__ >= (2, 0, 0):  # type: ignore
+    elif __tversion__ >= (1, 12, 0) or __tversion__ >= (2, 0, 0):  # type: ignore
         out_shape = list(x.shape)
         out_shape[dim] = t2int(idx.max()) + 1
 
@@ -275,7 +399,7 @@ def scatter_reduce(
             warnings.simplefilter("ignore")
             output = torch.scatter_reduce(out, dim, idx, x, *args)  # type: ignore
     else:
-        raise RuntimeError(f"Unsupported PyTorch version ({__torch_version__}) used.")
+        raise RuntimeError(f"Unsupported PyTorch version ({__tversion__}) used.")
 
     return output
 
@@ -313,62 +437,8 @@ def wrap_scatter_reduce(
     Tensor
         Reduced tensor.
     """
-
-    # Accounting for the extra dimension is very hacky and anything but general.
-    # Therefore, I added a ton of checks to prevent the user from accidentally
-    # doing something unintended, which may otherwise not be caught.
     if extra is True:
-        if not isinstance(dim, int):
-            raise TypeError(
-                "If an extra dimension is specified, only one dimension is "
-                f"allowed. You passed '{dim}'."
-            )
-
-        if dim > -2:
-            raise ValueError(
-                "Only negative values are allowed for indexing. Additionally, "
-                "The last dimension is reserved for the extra dimension, i.e., "
-                "using -1 is also prohibited."
-            )
-
-        # this should not be possible to reach
-        if idx.ndim > 2:  # pragma: no cover
-            raise RuntimeError(
-                "The indexing tensor must be 1d or 2d for batched calculations."
-            )
-
-        if x.ndim < 2:
-            raise RuntimeError(
-                "The source tensor must at least have two dimension: The "
-                "dimension that is reduced/gathered and the extra dimension."
-            )
-
-        if x.ndim > 4:
-            raise NotImplementedError(
-                "Indexing of source tensors with more than 4 dimensions is "
-                "currently not implemented."
-            )
-
-        shp = [*x.shape[:dim], -1, *x.shape[(dim + 1) :]]
-
-        # here, we assume that two dimension in `idx` mean batched mode
-        if idx.ndim < 2:
-            if x.ndim == 2:
-                idx = idx.unsqueeze(-1).expand(*shp)
-            elif x.ndim == 3:
-                # Unsqueeze the indices so that there initial shape is in the
-                # position specified by `dim`. Relies on negative indices and
-                # exclusion of -1. So pretty much works only for -2 and -3.
-                idx = idx.unsqueeze(dim + 2).unsqueeze(-1).expand(*shp)
-        else:
-            if x.ndim == 3:
-                idx = idx.unsqueeze(-1).expand(*shp)
-            elif x.ndim == 4:
-                # again, only -2 and -3 are supported
-                if dim == -2:
-                    idx = idx.unsqueeze(1).unsqueeze(-1).expand(*shp)
-                elif dim == -3:
-                    idx = idx.unsqueeze(-1).unsqueeze(-1).expand(*shp)
+        idx = adapt_indexer_extra(x, dim, idx)
 
     idx = torch.where(idx >= 0, idx, 0)
     return (

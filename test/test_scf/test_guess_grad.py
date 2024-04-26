@@ -1,19 +1,36 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Testing SCF guess gradient (autodiff).
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
+from dxtb.constants import labels
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
 from dxtb.scf import guess
+from dxtb.typing import DD, Callable, Tensor
 from dxtb.utils import batch
 
-from ..utils import dgradcheck, dgradgradcheck
 from .samples import samples
 
 sample_list = ["H2", "HHe", "LiH", "H2O", "SiH4"]
@@ -24,7 +41,7 @@ device = None
 
 
 def gradchecker(
-    dtype: torch.dtype, name: str, guess_name: str
+    dtype: torch.dtype, name: str, guess_name: int
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
     dd: DD = {"device": device, "dtype": dtype}
@@ -34,7 +51,7 @@ def gradchecker(
     positions = sample["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
 
     # variables to be differentiated
     positions.requires_grad_(True)
@@ -48,8 +65,8 @@ def gradchecker(
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
-@pytest.mark.parametrize("guess_name", ["eeq", "sad"])
-def test_grad(dtype: torch.dtype, name: str, guess_name: str) -> None:
+@pytest.mark.parametrize("guess_name", [labels.GUESS_EEQ, labels.GUESS_SAD])
+def test_grad(dtype: torch.dtype, name: str, guess_name: int) -> None:
     """
     Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradcheck`.
@@ -61,8 +78,8 @@ def test_grad(dtype: torch.dtype, name: str, guess_name: str) -> None:
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
-@pytest.mark.parametrize("guess_name", ["eeq", "sad"])
-def test_gradgrad(dtype: torch.dtype, name: str, guess_name: str) -> None:
+@pytest.mark.parametrize("guess_name", [labels.GUESS_EEQ, labels.GUESS_SAD])
+def test_gradgrad(dtype: torch.dtype, name: str, guess_name: int) -> None:
     """
     Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradgradcheck`.
@@ -72,7 +89,7 @@ def test_gradgrad(dtype: torch.dtype, name: str, guess_name: str) -> None:
 
 
 def gradchecker_batch(
-    dtype: torch.dtype, name1: str, name2: str, guess_name: str
+    dtype: torch.dtype, name1: str, name2: str, guess_name: int
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
     dd: DD = {"device": device, "dtype": dtype}
@@ -92,7 +109,7 @@ def gradchecker_batch(
     )
     charge = torch.tensor([0.0, 0.0], **dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
+    ihelp = IndexHelper.from_numbers(numbers, par)
 
     # variables to be differentiated
     positions.requires_grad_(True)
@@ -107,9 +124,9 @@ def gradchecker_batch(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["H2"])
 @pytest.mark.parametrize("name2", sample_list)
-@pytest.mark.parametrize("guess_name", ["eeq", "sad"])
+@pytest.mark.parametrize("guess_name", [labels.GUESS_EEQ, labels.GUESS_SAD])
 def test_grad_batch(
-    dtype: torch.dtype, name1: str, name2: str, guess_name: str
+    dtype: torch.dtype, name1: str, name2: str, guess_name: int
 ) -> None:
     """
     Check a single analytical gradient of positions against numerical
@@ -123,9 +140,9 @@ def test_grad_batch(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["H2"])
 @pytest.mark.parametrize("name2", sample_list)
-@pytest.mark.parametrize("guess_name", ["eeq", "sad"])
+@pytest.mark.parametrize("guess_name", [labels.GUESS_EEQ, labels.GUESS_SAD])
 def test_gradgrad_batch(
-    dtype: torch.dtype, name1: str, name2: str, guess_name: str
+    dtype: torch.dtype, name1: str, name2: str, guess_name: int
 ) -> None:
     """
     Check a single analytical gradient of positions against numerical

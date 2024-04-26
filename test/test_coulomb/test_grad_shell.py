@@ -1,3 +1,19 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 # pylint: disable=protected-access
 """
 Run tests for gradient from isotropic second-order electrostatic energy (ES2).
@@ -9,10 +25,10 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb._types import DD, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.coulomb import secondorder as es2
-from dxtb.param import GFN1_XTB, get_elem_angular
+from dxtb.components.interactions import secondorder as es2
+from dxtb.param import GFN1_XTB
+from dxtb.typing import DD, Tensor
 from dxtb.utils import batch
 
 from .samples import samples
@@ -34,10 +50,11 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     charges = sample["q"].to(**dd)
     ref = sample["grad"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=True, **dd)
     assert es is not None
 
+    es.cache_disable()
     cache = es.get_cache(numbers, positions, ihelp)
 
     # atom gradient should be zero
@@ -50,7 +67,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     # numerical
     num_grad = calc_numerical_gradient(numbers, positions, ihelp, charges)
-    assert pytest.approx(num_grad, abs=tol) == ref
+    assert pytest.approx(ref, abs=tol) == num_grad
     assert pytest.approx(num_grad, abs=tol) == grad
 
     # automatic
@@ -104,12 +121,14 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         ),
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=True, **dd)
     assert es is not None
 
-    # analytical (old)
+    es.cache_disable()
     cache = es.get_cache(numbers, positions, ihelp)
+
+    # analytical (old)
     grad = es._get_shell_gradient(numbers, positions, charges, cache, ihelp)
     assert pytest.approx(grad, abs=tol) == ref
 

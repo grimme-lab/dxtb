@@ -1,15 +1,32 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Test diagonalization.
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
 from torch.autograd.gradcheck import gradcheck
 
-from dxtb._types import Literal, Tensor
 from dxtb.exlibs.xitorch import LinearOperator
 from dxtb.exlibs.xitorch.linalg import symeig
+from dxtb.typing import Literal, Tensor
 from dxtb.utils import eighb, symmetrize
 
 # Hamiltonian of LiH from last step
@@ -75,7 +92,7 @@ def test_eighb(broadening: Literal["cond", "lorn", "none"]) -> None:
 
     def eigen_proxy(m: Tensor):
         m = symmetrize(m, force=True)
-        return eighb(m, broadening_method=broadening)
+        return eighb(a=m, broadening_method=broadening)
 
     assert gradcheck(eigen_proxy, a)
 
@@ -87,7 +104,7 @@ def test_eighb_degen(broadening: Literal["cond", "lorn", "none"]) -> None:
 
     def eigen_proxy(m: Tensor):
         m = symmetrize(m, force=True)
-        return eighb(m, broadening_method=broadening)
+        return eighb(a=m, broadening_method=broadening)
 
     assert gradcheck(eigen_proxy, hamiltonian)
 

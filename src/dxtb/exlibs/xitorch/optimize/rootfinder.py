@@ -1,7 +1,26 @@
-from typing import Any, Callable, Mapping, Sequence, Union
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+from __future__ import annotations
+
+from typing import Mapping
 
 import torch
 
+from dxtb.__version__ import __tversion__
 from dxtb.exlibs.xitorch._core.pure_function import get_pure_function, make_sibling
 from dxtb.exlibs.xitorch._impls.optimize.minimizer import adam, gd
 from dxtb.exlibs.xitorch._impls.optimize.root.rootsolver import (
@@ -15,6 +34,7 @@ from dxtb.exlibs.xitorch._utils.misc import TensorNonTensorSeparator, get_method
 from dxtb.exlibs.xitorch.debug.modes import is_debug_enabled
 from dxtb.exlibs.xitorch.grad.jachess import jac
 from dxtb.exlibs.xitorch.linalg.solve import solve
+from dxtb.typing import Any, Callable, Sequence, Tensor
 
 __all__ = ["equilibrium", "rootfinder", "minimize"]
 
@@ -33,13 +53,13 @@ _OPT_METHODS = {
 
 
 def rootfinder(
-    fcn: Callable[..., torch.Tensor],
-    y0: torch.Tensor,
+    fcn: Callable[..., Tensor],
+    y0: Tensor,
     params: Sequence[Any] = [],
     bck_options: Mapping[str, Any] = {},
-    method: Union[str, Callable, None] = None,
-    **fwd_options
-) -> torch.Tensor:
+    method: str | Callable | None = None,
+    **fwd_options,
+) -> Tensor:
     r"""
     Solving the rootfinder equation of a given function,
 
@@ -99,7 +119,7 @@ def rootfinder(
 
     pfunc = get_pure_function(fcn)
     fwd_options["method"] = _get_rootfinder_default_method(method)
-    return _RootFinder.apply(
+    return _rootfinder(
         pfunc,
         y0,
         pfunc,
@@ -108,18 +128,18 @@ def rootfinder(
         bck_options,
         len(params),
         *params,
-        *pfunc.objparams()
+        *pfunc.objparams(),
     )
 
 
 def equilibrium(
-    fcn: Callable[..., torch.Tensor],
-    y0: torch.Tensor,
+    fcn: Callable[..., Tensor],
+    y0: Tensor,
     params: Sequence[Any] = [],
     bck_options: Mapping[str, Any] = {},
-    method: Union[str, Callable, None] = None,
-    **fwd_options
-) -> torch.Tensor:
+    method: str | Callable | None = None,
+    **fwd_options,
+) -> Tensor:
     r"""
     Solving the equilibrium equation of a given function,
 
@@ -189,7 +209,7 @@ def equilibrium(
         return y - pfunc(y, *params)
 
     fwd_options["method"] = _get_rootfinder_default_method(method)
-    return _RootFinder.apply(
+    return _rootfinder(
         new_fcn,
         y0,
         new_fcn,
@@ -198,18 +218,18 @@ def equilibrium(
         bck_options,
         len(params),
         *params,
-        *pfunc.objparams()
+        *pfunc.objparams(),
     )
 
 
 def minimize(
-    fcn: Callable[..., torch.Tensor],
-    y0: torch.Tensor,
+    fcn: Callable[..., Tensor],
+    y0: Tensor,
     params: Sequence[Any] = [],
     bck_options: Mapping[str, Any] = {},
-    method: Union[str, Callable] = None,
-    **fwd_options
-) -> torch.Tensor:
+    method: str | Callable | None = None,
+    **fwd_options,
+) -> Tensor:
     r"""
     Solve the unbounded minimization problem:
 
@@ -305,7 +325,7 @@ def minimize(
     else:
         _fwd_fcn = _rf_fcn
 
-    return _RootFinder.apply(
+    return _rootfinder(
         _rf_fcn,
         y0,
         _fwd_fcn,
@@ -314,11 +334,78 @@ def minimize(
         bck_options,
         len(params),
         *params,
-        *pfunc.objparams()
+        *pfunc.objparams(),
     )
 
 
-class _RootFinder(torch.autograd.Function):
+def _rootfinder(
+    fcn, y0, fwd_fcn, is_opt_method, options, bck_options, nparams, *allparams
+) -> Tensor:
+    _RootFinder = RootFinder_V1 if __tversion__ < (2, 0, 0) else RootFinder_V2
+    r = _RootFinder.apply(
+        fcn, y0, fwd_fcn, is_opt_method, options, bck_options, nparams, *allparams
+    )
+    assert r is not None
+    return r
+
+
+class RootFinderBase(torch.autograd.Function):
+    """
+    Base class for the version-specific autograd function for the RootFinder.
+    Different PyTorch versions only require different `forward()` signatures.
+    """
+
+    @staticmethod
+    def backward(ctx, grad_yout):
+        param_sep = ctx.param_sep
+        yout = ctx.saved_tensors[0]
+        nparams = ctx.nparams
+        fcn = ctx.fcn
+
+        # merge the tensor and nontensor parameters
+        tensor_params = ctx.saved_tensors[1:]
+        allparams = param_sep.reconstruct_params(tensor_params)
+        params = allparams[:nparams]
+        objparams = allparams[nparams:]
+
+        # dL/df
+        with ctx.fcn.useobjparams(objparams):
+            j = jac(fcn, params=(yout, *params), idxs=[0])
+            assert isinstance(j, list)
+            jac_dfdy = j[0]
+            gyfcn = solve(
+                A=jac_dfdy.H,
+                B=-grad_yout.reshape(-1, 1),
+                bck_options=ctx.bck_options,
+                **ctx.bck_options,
+            )
+            gyfcn = gyfcn.reshape(grad_yout.shape)
+
+            # get the grad for the params
+            with torch.enable_grad():
+                tensor_params_copy = [p.clone().requires_grad_() for p in tensor_params]
+                allparams_copy = param_sep.reconstruct_params(tensor_params_copy)
+                params_copy = allparams_copy[:nparams]
+                objparams_copy = allparams_copy[nparams:]
+                with ctx.fcn.useobjparams(objparams_copy):
+                    yfcn = fcn(yout, *params_copy)
+
+            grad_tensor_params = torch.autograd.grad(
+                yfcn,
+                tensor_params_copy,
+                grad_outputs=gyfcn,
+                create_graph=torch.is_grad_enabled(),
+                allow_unused=True,
+            )
+            grad_nontensor_params = [None for _ in range(param_sep.nnontensors())]
+            grad_params = param_sep.reconstruct_params(
+                grad_tensor_params, grad_nontensor_params
+            )
+
+        return (None, None, None, None, None, None, None, *grad_params)
+
+
+class RootFinder_V1(RootFinderBase):
     @staticmethod
     def forward(
         ctx, fcn, y0, fwd_fcn, is_opt_method, options, bck_options, nparams, *allparams
@@ -356,52 +443,49 @@ class _RootFinder(torch.autograd.Function):
 
         return y
 
-    @staticmethod
-    def backward(ctx, grad_yout):
-        param_sep = ctx.param_sep
-        yout = ctx.saved_tensors[0]
-        nparams = ctx.nparams
-        fcn = ctx.fcn
 
-        # merge the tensor and nontensor parameters
-        tensor_params = ctx.saved_tensors[1:]
-        allparams = param_sep.reconstruct_params(tensor_params)
+class RootFinder_V2(RootFinderBase):
+    @staticmethod
+    def forward(
+        fcn, y0, fwd_fcn, is_opt_method, options, bck_options, nparams, *allparams
+    ):
+        # fcn: a function that returns what has to be 0 (will be used in the
+        #      backward, not used in the forward). For minimization, it is
+        #      the gradient
+        # fwd_fcn: a function that will be executed in the forward method
+        #          (unused in the backward)
+        # This class is also used for minimization, where fcn and fwd_fcn might
+        # be slightly different
+
+        # set default options
+        config = options
+
         params = allparams[:nparams]
         objparams = allparams[nparams:]
 
-        # dL/df
-        with ctx.fcn.useobjparams(objparams):
-            jac_dfdy = jac(fcn, params=(yout, *params), idxs=[0])[0]
-            gyfcn = solve(
-                A=jac_dfdy.H,
-                B=-grad_yout.reshape(-1, 1),
-                bck_options=ctx.bck_options,
-                **ctx.bck_options
-            )
-            gyfcn = gyfcn.reshape(grad_yout.shape)
+        with fwd_fcn.useobjparams(objparams):
+            method = config.pop("method")
+            methods = _RF_METHODS if not is_opt_method else _OPT_METHODS
+            name = "rootfinder" if not is_opt_method else "minimizer"
+            method_fcn = get_method(name, methods, method)
+            y = method_fcn(fwd_fcn, y0, params, **config)
 
-            # get the grad for the params
-            with torch.enable_grad():
-                tensor_params_copy = [p.clone().requires_grad_() for p in tensor_params]
-                allparams_copy = param_sep.reconstruct_params(tensor_params_copy)
-                params_copy = allparams_copy[:nparams]
-                objparams_copy = allparams_copy[nparams:]
-                with ctx.fcn.useobjparams(objparams_copy):
-                    yfcn = fcn(yout, *params_copy)
+        return y
 
-            grad_tensor_params = torch.autograd.grad(
-                yfcn,
-                tensor_params_copy,
-                grad_outputs=gyfcn,
-                create_graph=torch.is_grad_enabled(),
-                allow_unused=True,
-            )
-            grad_nontensor_params = [None for _ in range(param_sep.nnontensors())]
-            grad_params = param_sep.reconstruct_params(
-                grad_tensor_params, grad_nontensor_params
-            )
+    @staticmethod
+    def setup_context(ctx, inputs: tuple, output: Tensor):
+        fcn, _, _, is_opt_method, _, bck_options, nparams, *allparams = inputs
+        y = output
 
-        return (None, None, None, None, None, None, None, *grad_params)
+        ctx.bck_options = bck_options
+        ctx.fcn = fcn
+        ctx.is_opt_method = is_opt_method
+
+        # split tensors and non-tensors params
+        ctx.nparams = nparams
+        ctx.param_sep = TensorNonTensorSeparator(allparams)
+        tensor_params = ctx.param_sep.get_tensor_params()
+        ctx.save_for_backward(y, *tensor_params)
 
 
 def _get_rootfinder_default_method(method):

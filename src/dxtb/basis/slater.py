@@ -1,16 +1,33 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Expansion coefficients for Slater functions into primitive Gaussian functions
 """
+
 from __future__ import annotations
 
 import math
-import os.path as op
+from pathlib import Path
 
 import numpy as np
 import torch
 
-from .._types import Tensor
-from ..utils import (
+from dxtb.typing import Tensor
+from dxtb.typing.exceptions import (
     CGTOAzimuthalQuantumNumberError,
     CGTOPrimitivesError,
     CGTOPrincipalQuantumNumberError,
@@ -18,10 +35,9 @@ from ..utils import (
     CGTOSlaterExponentsError,
 )
 
+base = Path(__file__).parent / "sto-ng"
 sto_ng = [
-    torch.from_numpy(np.load(op.join(op.dirname(__file__), f"sto-{n}g.npy"))).type(
-        torch.float64
-    )
+    torch.from_numpy(np.load(base / f"sto-{n}g.npy")).type(torch.double)
     for n in range(1, 7)
 ]
 
@@ -43,7 +59,7 @@ MAX_AZIMUTHAL = 4
 """Maximum azimuthal quantum number."""
 
 
-def to_gauss(
+def slater_to_gauss(
     ng: Tensor,
     n: Tensor,
     l: Tensor,

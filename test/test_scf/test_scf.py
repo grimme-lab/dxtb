@@ -1,7 +1,24 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Test for SCF.
 Reference values obtained with tblite 0.2.1 disabling repulsion and dispersion.
 """
+
 from __future__ import annotations
 
 from math import sqrt
@@ -9,14 +26,20 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb._types import DD
+from dxtb.constants import labels
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD
 from dxtb.utils import batch
 from dxtb.xtb import Calculator
 
 from .samples import samples
 
-opts = {"verbosity": 0, "maxiter": 50}
+opts = {
+    "verbosity": 0,
+    "maxiter": 50,
+    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
+}
 
 device = None
 
@@ -61,18 +84,18 @@ def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
         opts,
         **{
             "damp": 0.05 if mixer == "simple" else 0.4,
-            "fermi_fenergy_partition": "atomic",
+            "fermi_partition": "atomic",
             "maxiter": 300,
             "mixer": mixer,
-            "use_potential": False,
-            "xitorch_fatol": tol,
-            "xitorch_xatol": tol,
+            "scp_mode": "potential",
+            "f_atol": tol,
+            "x_atol": tol,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
-    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
+    assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -92,8 +115,8 @@ def test_single_difficult(dtype: torch.dtype, name: str):
     options = dict(
         opts,
         **{
-            "xitorch_fatol": 1e-6,
-            "xitorch_xatol": 1e-6,
+            "f_atol": 1e-6,
+            "x_atol": 1e-6,
             "damp": 0.5,  # simple mixing
             "maxiter": 300,  #  simple mixing
         },
@@ -116,7 +139,7 @@ def test_single_large(dtype: torch.dtype, name: str):
     sample = samples[name]
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
-    ref = sample["escf"]
+    ref = sample["escf"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
     options = dict(
@@ -129,7 +152,7 @@ def test_single_large(dtype: torch.dtype, name: str):
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
-    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
+    assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -143,27 +166,27 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     sample = samples[name1], samples[name2]
     numbers = batch.pack(
         (
-            sample[0]["numbers"],
-            sample[1]["numbers"],
+            sample[0]["numbers"].to(device),
+            sample[1]["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample[0]["positions"],
-            sample[1]["positions"],
+            sample[0]["positions"].to(**dd),
+            sample[1]["positions"].to(**dd),
         )
-    ).type(dtype)
+    )
     ref = batch.pack(
         (
-            sample[0]["escf"],
-            sample[1]["escf"],
+            sample[0]["escf"].to(**dd),
+            sample[1]["escf"].to(**dd),
         )
-    ).type(dtype)
+    )
     charges = torch.tensor([0.0, 0.0], **dd)
     calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
-    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
+    assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -178,25 +201,25 @@ def test_batch2(dtype: torch.dtype, name1: str, name2: str, name3: str):
     sample = samples[name1], samples[name2], samples[name3]
     numbers = batch.pack(
         (
-            sample[0]["numbers"],
-            sample[1]["numbers"],
-            sample[2]["numbers"],
+            sample[0]["numbers"].to(device),
+            sample[1]["numbers"].to(device),
+            sample[2]["numbers"].to(device),
         )
     )
     positions = batch.pack(
         (
-            sample[0]["positions"],
-            sample[1]["positions"],
-            sample[2]["positions"],
+            sample[0]["positions"].to(**dd),
+            sample[1]["positions"].to(**dd),
+            sample[2]["positions"].to(**dd),
         )
-    ).type(dtype)
+    )
     ref = batch.pack(
         (
-            sample[0]["escf"],
-            sample[1]["escf"],
-            sample[2]["escf"],
+            sample[0]["escf"].to(**dd),
+            sample[1]["escf"].to(**dd),
+            sample[2]["escf"].to(**dd),
         )
-    ).type(dtype)
+    )
     charges = torch.tensor([0.0, 0.0, 0.0], **dd)
     calc = Calculator(numbers, par, opts=opts, **dd)
 
@@ -208,7 +231,7 @@ def test_batch2(dtype: torch.dtype, name1: str, name2: str, name3: str):
 @pytest.mark.parametrize("mixer", ["anderson", "broyden", "simple"])
 def test_batch_special(dtype: torch.dtype, mixer: str) -> None:
     """
-    Test case for https://github.com/grimme-lab/xtbML/issues/67.
+    Test case for https://github.com/grimme-lab/dxtb/issues/67.
 
     Note that the tolerance for the energy is quite high because atoms always
     show larger deviations w.r.t. the tblite reference. Secondly, this test

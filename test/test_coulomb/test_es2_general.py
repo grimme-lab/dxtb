@@ -1,3 +1,19 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 # pylint: disable=protected-access
 """
 Run generic tests for energy contribution from isotropic second-order
@@ -7,12 +23,13 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.convert import str_to_device
 
 from dxtb.basis import IndexHelper
-from dxtb.coulomb import secondorder as es2
-from dxtb.param import GFN1_XTB, get_elem_angular
-
-from ..utils import get_device_from_str
+from dxtb.components.interactions import Charges
+from dxtb.components.interactions.coulomb import secondorder as es2
+from dxtb.param import GFN1_XTB
+from dxtb.typing import DD
 
 
 def test_none() -> None:
@@ -29,7 +46,7 @@ def test_none() -> None:
 def test_store_fail() -> None:
     numbers = torch.tensor([3, 1])
     positions = torch.randn((2, 3))
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     es = es2.new_es2(numbers, GFN1_XTB)
     assert es is not None
@@ -43,13 +60,14 @@ def test_grad_fail() -> None:
     numbers = torch.tensor([3, 1])
     positions = torch.randn((2, 3), requires_grad=True)
     charges = torch.randn(6)
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
-    es = es2.new_es2(numbers, GFN1_XTB)
+    dd: DD = {"device": positions.device, "dtype": positions.dtype}
+    es = es2.new_es2(numbers, GFN1_XTB, **dd)
     assert es is not None
 
     cache = es.get_cache(numbers, positions, ihelp=ihelp)
-    energy = es.get_energy(charges, cache, ihelp)
+    energy = es.get_energy(Charges(charges), cache, ihelp)
 
     # zeroenergy
     grad = es._gradient(torch.zeros_like(energy), positions)
@@ -85,7 +103,7 @@ def test_change_type_fail() -> None:
 @pytest.mark.cuda
 @pytest.mark.parametrize("device_str", ["cpu", "cuda"])
 def test_change_device(device_str: str) -> None:
-    device = get_device_from_str(device_str)
+    device = str_to_device(device_str)
     cls = es2.new_es2(torch.tensor(0.0), GFN1_XTB)
     assert cls is not None
 
@@ -107,7 +125,7 @@ def test_fail_shell_resolved() -> None:
     assert cls is not None
 
     numbers = torch.tensor([6, 1])
-    ihelp = IndexHelper.from_numbers(numbers, {1: [0, 0], 6: [0, 1]})
+    ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0, 0], 6: [0, 1]})
 
     # shell-resolved function fails if initialzed with `shell_resolved=False`
     with pytest.raises(ValueError):

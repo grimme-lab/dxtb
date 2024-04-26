@@ -1,14 +1,30 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Run general tests for instantaneous electric field.
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.convert import str_to_device
 
-from dxtb.interaction import new_efield
-
-from ..utils import get_device_from_str
+from dxtb.components.interactions import new_efield
 
 efield = torch.tensor([0.0, 0.0, 0.0])
 
@@ -38,7 +54,7 @@ def test_change_type_fail() -> None:
 @pytest.mark.cuda
 @pytest.mark.parametrize("device_str", ["cpu", "cuda"])
 def test_change_device(device_str: str) -> None:
-    device = get_device_from_str(device_str)
+    device = str_to_device(device_str)
     cls = new_efield(efield)
     assert cls is not None
 

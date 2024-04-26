@@ -1,23 +1,47 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Test autodiff of SCF w.r.t. positions.
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb._types import DD, Callable, Tensor
+from dxtb.constants import labels
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD, Callable, Tensor
 from dxtb.xtb import Calculator
 
-from ..utils import dgradcheck, dgradgradcheck
 from .samples import samples
 
 sample_list = ["H2", "LiH", "H2O", "CH4", "SiH4"]
 
 tol = 1e-5
 
-opts = {"verbosity": 0, "maxiter": 50, "exclude": ["rep", "disp", "hal"]}
+opts = {
+    "exclude": ["rep", "disp", "hal"],
+    "maxiter": 50,
+    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
+    "verbosity": 0,
+}
 
 device = None
 

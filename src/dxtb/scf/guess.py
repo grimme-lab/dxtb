@@ -1,14 +1,34 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
+SCF: Guess
+==========
+
 Models for the initial charge guess for the SCF.
 """
+
 from __future__ import annotations
 
 import torch
 
-from .._types import Tensor
-from ..basis import IndexHelper
-from ..charges import ChargeModel, solve
-from ..ncoord import exp_count, get_coordination_number
+from dxtb.basis import IndexHelper
+from dxtb.typing import Tensor
+
+from ..constants import labels
 
 
 def get_guess(
@@ -16,7 +36,7 @@ def get_guess(
     positions: Tensor,
     chrg: Tensor,
     ihelp: IndexHelper,
-    name: str = "eeq",
+    name: int | str = labels.GUESS_EEQ,
 ) -> Tensor:
     """
     Obtain initial guess for charges.
@@ -29,13 +49,13 @@ def get_guess(
     numbers : Tensor
         Atomic numbers of all atoms in the system.
     positions : Tensor
-        Cartesian coordinates of all atoms in the system.
+        Cartesian coordinates of all atoms in the system (nat, 3).
     chrg : Tensor
         Total charge of system.
     ihelp : IndexHelper
         Helper class for indexing.
-    name : str, optional
-        Name of guess method, by default "eeq".
+    name : str | int, optional
+        Name of guess method, by default EEQ (`labels.GUESS_EEQ`).
 
     Returns
     -------
@@ -47,9 +67,17 @@ def get_guess(
     ValueError
         Name of guess method is unknown.
     """
-    if name == "eeq":
+    if isinstance(name, str):
+        if name.casefold() in labels.GUESS_EEQ_STRS:
+            name = labels.GUESS_EEQ
+        elif name.casefold() in labels.GUESS_SAD_STRS:
+            name = labels.GUESS_SAD
+        else:
+            raise ValueError(f"Unknown guess method '{name}'.")
+
+    if name == labels.GUESS_EEQ:
         charges = get_eeq_guess(numbers, positions, chrg)
-    elif name == "sad":
+    elif name == labels.GUESS_SAD:
         charges = torch.zeros_like(
             positions[..., -1], requires_grad=positions.requires_grad
         )
@@ -59,7 +87,9 @@ def get_guess(
     return spread_charges_atomic_to_orbital(charges, ihelp)
 
 
-def get_eeq_guess(numbers: Tensor, positions: Tensor, chrg: Tensor) -> Tensor:
+def get_eeq_guess(
+    numbers: Tensor, positions: Tensor, chrg: Tensor, cutoff: Tensor | None = None
+) -> Tensor:
     """
     Calculate atomic EEQ charges.
 
@@ -68,20 +98,21 @@ def get_eeq_guess(numbers: Tensor, positions: Tensor, chrg: Tensor) -> Tensor:
     numbers : Tensor
         Atomic numbers of all atoms in the system.
     positions : Tensor
-        Cartesian coordinates of all atoms in the system.
+        Cartesian coordinates of all atoms in the system (nat, 3).
     chrg : Tensor
         Total charge of system.
+    cutoff : Tensor, optional
+        Cutoff radius for the EEQ model. Defaults to `None`.
 
     Returns
     -------
     Tensor
         Atomic charges.
     """
-    eeq = ChargeModel.param2019().to(positions.device).type(positions.dtype)
-    cn = get_coordination_number(numbers, positions, exp_count)
-    _, qat = solve(numbers, positions, chrg, eeq, cn)
+    # pylint: disable=import-outside-toplevel
+    from tad_multicharge import get_eeq_charges
 
-    return qat
+    return get_eeq_charges(numbers, positions, chrg, cutoff=cutoff)
 
 
 def spread_charges_atomic_to_orbital(charges: Tensor, ihelp: IndexHelper) -> Tensor:
@@ -110,6 +141,11 @@ def spread_charges_atomic_to_orbital(charges: Tensor, ihelp: IndexHelper) -> Ten
         device=charges.device,
         dtype=charges.dtype,
     )
+    zero = torch.tensor(
+        0.0,
+        device=charges.device,
+        dtype=charges.dtype,
+    )
 
     shells_per_atom = ihelp.spread_atom_to_shell(ihelp.shells_per_atom)
     orbs_per_shell = ihelp.spread_shell_to_orbital(ihelp.orbitals_per_shell)
@@ -118,22 +154,19 @@ def spread_charges_atomic_to_orbital(charges: Tensor, ihelp: IndexHelper) -> Ten
         shells_per_atom > 0,
         ihelp.spread_atom_to_shell(charges)
         / torch.clamp(shells_per_atom.type(charges.dtype), min=eps),
-        charges.new_tensor(0.0),
+        zero,
     )
 
     orb_charges = torch.where(
         orbs_per_shell > 0,
         ihelp.spread_shell_to_orbital(shell_charges)
         / torch.clamp(orbs_per_shell.type(charges.dtype), min=eps),
-        charges.new_tensor(0.0),
+        zero,
     )
 
     tot_chrg_old = charges.sum(-1)
     tot_chrg_new = orb_charges.sum(-1)
-    if torch.any(
-        torch.abs(tot_chrg_new - tot_chrg_old)
-        > torch.sqrt(charges.new_tensor(torch.finfo(charges.dtype).eps))
-    ):
+    if torch.any(torch.abs(tot_chrg_new - tot_chrg_old) > torch.sqrt(eps)):
         raise RuntimeError(
             "Total charge changed during spreading from atomic to orbital "
             f"charges ({tot_chrg_old:.6f} -> {tot_chrg_new:.6f})."

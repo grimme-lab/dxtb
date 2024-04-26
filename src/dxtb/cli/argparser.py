@@ -1,6 +1,23 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Parser for command line options.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -8,7 +25,9 @@ from pathlib import Path
 
 import torch
 
-from .._types import Any
+from dxtb.typing import Any
+
+from .. import __version__
 from ..constants import defaults
 
 
@@ -227,11 +246,12 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--version",
-        action="store_true",
-        default=argparse.SUPPRESS,
+        action="version",
+        version=__version__,
         help="Show version and exit.",
     )
     p.add_argument(
+        "-c",
         "--chrg",
         action=action_not_less_than(-10.0),
         type=int,
@@ -249,19 +269,18 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         help="R|Molecular spin.",
     )
     p.add_argument(
+        "--efield",
+        type=float,
+        nargs=3,
+        help="R|Homogeneous electric field in V/Å.",
+    )
+    p.add_argument(
         "--exclude",
         type=str,
         default=defaults.EXCLUDE,
         choices=defaults.EXCLUDE_CHOICES,
         nargs="+",
         help="R|Turn off energy contributions.",
-    )
-    p.add_argument(
-        "--etemp",
-        action=action_not_less_than(0.0),
-        type=float,
-        default=defaults.ETEMP,
-        help="R|Electronic Temperature in K.",
     )
     p.add_argument(
         "--dtype",
@@ -278,18 +297,46 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         default=torch.device(defaults.TORCH_DEVICE),
         help="R|Device for PyTorch tensors.",
     )
+
+    # Fermi
+    p.add_argument(
+        "--fermi-etemp",
+        "--fermi_etemp",
+        "--etemp",
+        action=action_not_less_than(0.0),
+        type=float,
+        default=defaults.FERMI_ETEMP,
+        help="R|Electronic Temperature in K.",
+    )
     p.add_argument(
         "--fermi_maxiter",
+        "--fermi-maxiter",
         type=int,
         default=defaults.FERMI_MAXITER,
         help="R|Maximum number of iterations for Fermi smearing.",
     )
     p.add_argument(
-        "--fermi_energy_partition",
+        "--fermi_partition",
+        "--fermi-partition",
         type=str,
-        default=defaults.FERMI_FENERGY_PARTITION,
-        choices=defaults.FERMI_FENERGY_PARTITION_CHOICES,
+        default=defaults.FERMI_PARTITION,
+        choices=defaults.FERMI_PARTITION_CHOICES,
         help="R|Partitioning scheme for electronic free energy.",
+    )
+    p.add_argument(
+        "--fermi_thresh",
+        "--fermi-thresh",
+        type=float,
+        default=defaults.FERMI_THRESH,
+        help="R|Threshold for Fermi iterations.",
+    )
+
+    # SCF
+    p.add_argument(
+        "--force-convergence",
+        "--force_convergence",
+        action="store_true",
+        help="R|Continue running on convergence failure.",
     )
     p.add_argument(
         "--maxiter",
@@ -336,13 +383,68 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
             "in the SCF. Note that 'charge' and 'charges' is identical."
         ),
     )
+
+    # Integrals
     p.add_argument(
-        "-v",
+        "--int-cutoff",
+        "--int_cutoff",
+        type=int,
+        default=defaults.INTCUTOFF,
+        help=("R|Integral cutoff."),
+    )
+    p.add_argument(
+        "--int-driver",
+        "--int_driver",
+        type=str,
+        default=defaults.INTDRIVER,
+        choices=defaults.INTDRIVER_CHOICES,
+        help=("R|Integral driver."),
+    )
+    p.add_argument(
+        "--int-level",
+        "--int_level",
+        type=int,
+        default=defaults.INTLEVEL,
+        choices=defaults.INTLEVEL_CHOICES,
+        help=("R|Integral level."),
+    )
+    p.add_argument(
+        "--int-uplo",
+        "--int_uplo",
+        type=str,
+        default=defaults.INTUPLO,
+        choices=defaults.INTUPLO_CHOICES,
+        help=("R|Shape of the calculated integral (full/triangular matrix)."),
+    )
+
+    # printing
+    p.add_argument(
         "--verbosity",
         type=int,
         default=defaults.VERBOSITY,
         help="R|Verbosity level of printout.",
     )
+    p.add_argument(
+        "-v",
+        action="count",
+        default=0,
+        help="R|Increase verbosity level of printout by one.",
+    )
+    p.add_argument(
+        "-s",
+        action="count",
+        default=0,
+        help="R|Reduce verbosity level of printout by one.",
+    )
+    p.add_argument(
+        "--loglevel",
+        "--log-level",
+        type=str,
+        default=defaults.LOG_LEVEL,
+        choices=defaults.LOG_LEVEL_CHOICES,
+        help="R|Logging level.",
+    )
+
     p.add_argument(
         "--method",
         type=str,
@@ -363,6 +465,12 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         help="R|Whether to compute gradients for positions w.r.t. energy.",
     )
     p.add_argument(
+        "--use-cache",
+        "--use_cache",
+        action="store_true",
+        help="R|Whether to use the cache for results from the Calculator.",
+    )
+    p.add_argument(
         "--profile",
         action="store_true",
         help=(
@@ -373,19 +481,109 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
     p.add_argument(
         "--xtol",
         type=float,
-        default=defaults.XITORCH_XATOL,
+        default=defaults.X_ATOL,
         help="R|Set absolute tolerance for SCF (input).",
     )
     p.add_argument(
         "--ftol",
         type=float,
-        default=defaults.XITORCH_FATOL,
+        default=defaults.F_ATOL,
         help="R|Set absolute tolerance for SCF (output).",
     )
     p.add_argument(
         "--detect-anomaly",
         action="store_true",
         help=("R|Enable PyTorch's anomaly detection mode."),
+    )
+
+    p.add_argument(
+        "--forces",
+        "--force",
+        action="store_true",
+        help=("R|Calculate the forces."),
+    )
+    p.add_argument(
+        "--forces-numerical",
+        "--forces-num",
+        "--force-num",
+        action="store_true",
+        help=("R|Calculate the forces numerically."),
+    )
+
+    p.add_argument(
+        "--dipole",
+        "--dip",
+        action="store_true",
+        help=("R|Calculate the electric dipole moment."),
+    )
+    p.add_argument(
+        "--dipole-numerical",
+        "--dip-num",
+        action="store_true",
+        help=("R|Calculate the electric dipole moment numerically."),
+    )
+    p.add_argument(
+        "--polarizability",
+        "--pol",
+        action="store_true",
+        help=("R|Calculate the electric dipole polarizability."),
+    )
+    p.add_argument(
+        "--polarizability-numerical",
+        "--pol-num",
+        action="store_true",
+        help=("R|Calculate the electric dipole polarizability numerically."),
+    )
+    p.add_argument(
+        "--hyperpolarizability",
+        "--hyperpol",
+        "--hpol",
+        action="store_true",
+        help=("R|Calculate the electric hyperpolarizability."),
+    )
+    p.add_argument(
+        "--hyperpolarizability-numerical",
+        "--hyperpol-num",
+        "--hpol-num",
+        action="store_true",
+        help=("R|Calculate the electric hyperpolarizability numerically."),
+    )
+
+    # spectra
+    p.add_argument(
+        "--ir",
+        action="store_true",
+        help=("R|Calculate the IR spectrum."),
+    )
+    p.add_argument(
+        "--ir-numerical",
+        "--ir-num",
+        action="store_true",
+        help=("R|Calculate the IR spectrum numerically."),
+    )
+    p.add_argument(
+        "--raman",
+        action="store_true",
+        help=("R|Calculate the Raman spectrum."),
+    )
+    p.add_argument(
+        "--raman-numerical",
+        "--raman-num",
+        action="store_true",
+        help=("R|Calculate the Raman spectrum numerically."),
+    )
+
+    p.add_argument(
+        "--json",
+        action="store_true",
+    )
+    p.add_argument(
+        "--batch",
+        "--batch-mode",
+        "--batch_mode",
+        type=int,
+        default=defaults.BATCH_MODE,
+        help="R|Batch mode for calculation.",
     )
 
     p.add_argument(
@@ -397,7 +595,7 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
     p.add_argument(
         "--filetype",
         type=str,
-        choices=["xyz", "tm", "tmol", "turbomole", "json", "qcschema"],
+        choices=["xyz", "tm", "tmol", "turbomole", "json", "qcschema", "qm9"],
         help="R|Explicitly set file type of input.",
     )
     p.add_argument(

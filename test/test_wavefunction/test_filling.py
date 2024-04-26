@@ -1,19 +1,38 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Test for fractional occupation (Fermi smearing).
 Reference values obtained with tbmalt.
 """
+
 from __future__ import annotations
 
 from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.units import KELVIN2AU
 
-from dxtb._types import DD
 from dxtb.basis import IndexHelper
-from dxtb.constants import K2AU
-from dxtb.param import GFN1_XTB, get_elem_angular
-from dxtb.scf.iterator import SelfConsistentField
+from dxtb.config import ConfigSCF
+from dxtb.integral import IntegralMatrices
+from dxtb.param import GFN1_XTB
+from dxtb.scf.implicit import SelfConsistentFieldImplicit as SCF
+from dxtb.typing import DD
 from dxtb.utils import batch
 from dxtb.wavefunction import filling
 
@@ -45,18 +64,13 @@ def test_fail(dtype: torch.dtype):
         kt = torch.tensor(-1.0, dtype=dtype)
         filling.get_fermi_occupation(nel, evals, kt)
 
-    # no electrons
-    with pytest.raises(ValueError):
-        _nel = torch.tensor(0.0, dtype=dtype)
-        filling.get_fermi_occupation(_nel, evals, None)
-
     # convergence fails
     with pytest.raises(RuntimeError):
         sample = samples["SiH4"]
         emo = sample["emo"].to(**dd)
         nel = sample["n_electrons"].to(**dd)
         nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
-        kt = torch.tensor(10000 * K2AU, dtype=dtype)
+        kt = torch.tensor(10000 * KELVIN2AU, dtype=dtype)
         filling.get_fermi_occupation(nab, emo, kt, maxiter=1)
 
 
@@ -68,6 +82,15 @@ def test_fail_uhf(dtype: torch.dtype, uhf: list):
     with pytest.raises(ValueError):
         nel = torch.tensor([2, 1, 2], **dd)
         filling.get_alpha_beta_occupation(nel, nel.new_tensor(uhf))
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_no_electrons(dtype: torch.dtype):
+    evals = torch.arange(1, 6, dtype=dtype)
+    nel = torch.tensor(0.0, dtype=dtype)
+    occ = filling.get_fermi_occupation(nel, evals, None)
+
+    assert pytest.approx(torch.zeros_like(occ)) == occ
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -87,7 +110,7 @@ def test_single(dtype: torch.dtype, name: str):
     ref_focc = sample["focc"].to(**dd)
     ref_efermi = sample["e_fermi"].to(**dd)
 
-    kt = emo.new_tensor(300 * K2AU)
+    kt = emo.new_tensor(300 * KELVIN2AU)
 
     efermi, _ = filling.get_fermi_energy(nab, emo)
     assert pytest.approx(ref_efermi, abs=tol) == efermi
@@ -147,7 +170,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
         ]
     )
 
-    kt = emo.new_tensor(300 * K2AU)
+    kt = emo.new_tensor(300 * KELVIN2AU)
 
     efermi, _ = filling.get_fermi_energy(nab, emo)
     assert pytest.approx(ref_efermi, abs=tol) == efermi
@@ -220,18 +243,26 @@ def test_kt(dtype: torch.dtype, kt: float):
     }
 
     # occupation
-    focc = filling.get_fermi_occupation(nab, emo, emo.new_tensor(kt * K2AU))
+    focc = filling.get_fermi_occupation(nab, emo, emo.new_tensor(kt * KELVIN2AU))
     assert torch.allclose(ref_focc[kt], focc.sum(-2), atol=tol)
 
     # electronic free energy
     d = torch.zeros_like(focc)  # dummy
-    scf = SelfConsistentField(
-        d, d, d, focc, d, numbers, d, d, scf_options={"etemp": kt}  # type: ignore
+    scf = SCF(
+        d,  # type: ignore
+        focc,
+        d,
+        numbers=numbers,
+        ihelp=d,
+        cache=d,
+        integrals=IntegralMatrices(_hcore=d, _overlap=d, **dd),
+        config=ConfigSCF(fermi_etemp=kt),
     )
+
     fenergy = scf.get_electronic_free_energy()
     assert pytest.approx(ref_fenergy[kt], abs=tol, rel=tol) == fenergy.sum(-1)
 
-    scf.scf_options["fermi_fenergy_partition"] = "wrong"
+    scf.config.fermi.partition = -3
     with pytest.raises(ValueError):
         scf.get_electronic_free_energy()
 
@@ -276,7 +307,7 @@ def test_lumo_not_existing(dtype: torch.dtype) -> None:
         ]
     )
 
-    kt = emo.new_tensor(300 * K2AU)
+    kt = emo.new_tensor(300 * KELVIN2AU)
 
     efermi, _ = filling.get_fermi_energy(nab, emo)
     assert pytest.approx(ref_efermi, abs=tol) == efermi
@@ -300,7 +331,7 @@ def test_lumo_obscured_by_padding(dtype: torch.dtype) -> None:
             sample2["numbers"].to(device),
         ]
     )
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(GFN1_XTB.element))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     nel = batch.pack(
         [
@@ -334,7 +365,7 @@ def test_lumo_obscured_by_padding(dtype: torch.dtype) -> None:
         ]
     )
 
-    kt = emo.new_tensor(300 * K2AU)
+    kt = emo.new_tensor(300 * KELVIN2AU)
 
     mask = ihelp.orbitals_per_shell
     mask = mask.unsqueeze(-2).expand([*nab.shape, -1])

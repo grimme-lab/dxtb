@@ -1,19 +1,36 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Testing overlap gradient (autodiff).
 """
+
 from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb._types import DD, Callable, Tensor
 from dxtb.basis import IndexHelper
-from dxtb.integral import Overlap
+from dxtb.integral.driver.pytorch import IntDriverPytorch as IntDriver
+from dxtb.integral.driver.pytorch import OverlapPytorch as Overlap
 from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_angular
+from dxtb.typing import DD, Callable, Tensor
 from dxtb.utils import batch
 
-from ..utils import dgradcheck, dgradgradcheck
 from .samples import samples
 
 sample_list = ["H2", "HHe", "LiH", "Li2", "S2", "H2O", "SiH4"]
@@ -33,14 +50,16 @@ def gradchecker(
     numbers = sample["numbers"].to(device)
     positions = sample["positions"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    overlap = Overlap(numbers, par, ihelp, **dd, uplo="n")
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    driver = IntDriver(numbers, par, ihelp, **dd)
+    overlap = Overlap(uplo="n", **dd)
 
     # variables to be differentiated
     positions.requires_grad_(True)
 
     def func(pos: Tensor) -> Tensor:
-        return overlap.build(pos)
+        driver.setup(pos)
+        return overlap.build(driver)
 
     return func, positions
 
@@ -93,14 +112,16 @@ def gradchecker_batch(
         return_mask=True,
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, get_elem_angular(par.element))
-    overlap = Overlap(numbers, par, ihelp, **dd)
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    driver = IntDriver(numbers, par, ihelp, **dd)
+    overlap = Overlap(uplo="n", **dd)
 
     # variables to be differentiated
     positions.requires_grad_(True)
 
     def func(pos: Tensor) -> Tensor:
-        return overlap.build(pos, mask=mask)
+        driver.setup(pos, mask=mask)
+        return overlap.build(driver)
 
     return func, positions
 

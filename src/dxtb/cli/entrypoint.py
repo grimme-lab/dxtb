@@ -1,15 +1,35 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Entrypoint for command line interface.
 """
 
 from __future__ import annotations
 
+import logging
 import sys
 
+from dxtb.typing import Sequence
+
 from .. import __version__
-from .._types import Sequence
 from .argparser import parser
 from .driver import Driver
+
+logger = logging.getLogger(__name__)
 
 
 def console_entry_point(
@@ -77,12 +97,8 @@ def entry_point_wrapper(argv: Sequence[str] | None = None) -> int:
 
     args = parser().parse_args(argv)
 
-    if hasattr(args, "version") is True:
-        print(f"dxtb {__version__}")
-        raise SystemExit(0)
-
     if args.file is None or len(args.file) == 0:
-        print("No coordinate file given.")
+        logger.info("No coordinate file given.")
         raise SystemExit(1)
 
     d = Driver(args)

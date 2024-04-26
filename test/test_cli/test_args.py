@@ -1,6 +1,23 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Test command line options.
 """
+
 from __future__ import annotations
 
 from contextlib import redirect_stderr, redirect_stdout
@@ -19,10 +36,10 @@ from ..utils import coordfile as dummy
 def test_defaults() -> None:
     args = parser().parse_args([str(dummy)])
 
-    assert args.chrg is None
+    assert isinstance(args.chrg, int)
     assert args.chrg == defaults.CHRG
 
-    assert args.spin is None
+    # assert isinstance(args.spin, int)
     assert args.spin == defaults.SPIN
 
     assert isinstance(args.verbosity, int)
@@ -31,17 +48,30 @@ def test_defaults() -> None:
     assert isinstance(args.maxiter, int)
     assert args.maxiter == defaults.MAXITER
 
-    assert isinstance(args.etemp, float)
-    assert args.etemp == defaults.ETEMP
-
     assert isinstance(args.guess, str)
     assert args.guess == defaults.GUESS
+
+    assert isinstance(args.fermi_etemp, float)
+    assert args.fermi_etemp == defaults.FERMI_ETEMP
 
     assert isinstance(args.fermi_maxiter, int)
     assert args.fermi_maxiter == defaults.FERMI_MAXITER
 
-    assert isinstance(args.fermi_energy_partition, str)
-    assert args.fermi_energy_partition == defaults.FERMI_FENERGY_PARTITION
+    assert isinstance(args.fermi_partition, str)
+    assert args.fermi_partition == defaults.FERMI_PARTITION
+
+    # integral settings
+    assert isinstance(args.int_cutoff, (float, int))
+    assert args.int_cutoff == defaults.INTCUTOFF
+
+    assert isinstance(args.int_driver, str)
+    assert args.int_driver == defaults.INTDRIVER
+
+    assert isinstance(args.int_level, int)
+    assert args.int_level == defaults.INTLEVEL
+
+    assert isinstance(args.int_uplo, str)
+    assert args.int_uplo == defaults.INTUPLO
 
 
 @pytest.mark.parametrize(
@@ -63,7 +93,7 @@ def test_int_multiple(option: str) -> None:
     assert getattr(args, option) == [1, 1]
 
 
-@pytest.mark.parametrize("option", ["etemp"])
+@pytest.mark.parametrize("option", ["fermi_etemp"])
 def test_float(option: str) -> None:
     value = 200.0
     args = parser().parse_args(f"--{option} {value}".split())

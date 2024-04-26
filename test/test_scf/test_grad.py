@@ -1,6 +1,23 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Gradient tests for SCF.
 """
+
 from __future__ import annotations
 
 from math import sqrt
@@ -9,14 +26,21 @@ import numpy as np
 import pytest
 import torch
 
-from dxtb._types import DD
+from dxtb.constants import labels
 from dxtb.param import GFN1_XTB as par
+from dxtb.typing import DD
 from dxtb.xtb import Calculator
 
 from ..utils import load_from_npz
 from .samples import samples
 
-opts = {"verbosity": 0, "maxiter": 50, "exclude": ["rep", "disp", "hal"]}
+opts = {
+    "verbosity": 0,
+    "maxiter": 50,
+    "exclude": ["rep", "disp", "hal"],
+    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
+    "scp_mode": labels.SCP_MODE_POTENTIAL,
+}
 
 ref_grad = np.load("test/test_scf/grad.npz")
 ref_grad_param = np.load("test/test_scf/grad_param.npz")
@@ -29,7 +53,7 @@ device = None
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["LiH", "SiH4"])
 @pytest.mark.parametrize("scp_mode", ["potential", "fock"])
-@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
 def test_grad_backwards(
     name: str, dtype: torch.dtype, scf_mode: str, scp_mode: str
 ) -> None:
@@ -90,7 +114,7 @@ def test_grad_autograd(name: str, dtype: torch.dtype):
 
     assert pytest.approx(ref_full, abs=tol) == ref
 
-    options = dict(opts, **{"xitorch_fatol": tol**2, "xitorch_xatol": tol**2})
+    options = dict(opts, **{"f_atol": tol**2, "x_atol": tol**2})
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
@@ -132,7 +156,7 @@ def test_grad_large(name: str, dtype: torch.dtype):
     # variable to be differentiated
     positions.requires_grad_(True)
 
-    options = dict(opts, **{"xitorch_fatol": tol**2, "xitorch_xatol": tol**2})
+    options = dict(opts, **{"f_atol": tol**2, "x_atol": tol**2})
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(numbers, positions, charges)
@@ -161,18 +185,21 @@ def test_param_grad_energy(name: str, dtype: torch.dtype = torch.float):
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
-    options = dict(opts, **{"xitorch_fatol": tol**2, "xitorch_xatol": tol**2})
+    options = dict(opts, **{"f_atol": tol**2, "x_atol": tol**2})
     calc = Calculator(numbers, par, opts=options, **dd)
-    calc.hamiltonian.selfenergy.requires_grad_(True)
-    calc.hamiltonian.kcn.requires_grad_(True)
-    calc.hamiltonian.shpoly.requires_grad_(True)
+
+    assert calc.integrals.hcore is not None
+    h = calc.integrals.hcore.integral
+    h.selfenergy.requires_grad_(True)
+    h.kcn.requires_grad_(True)
+    h.shpoly.requires_grad_(True)
 
     result = calc.singlepoint(numbers, positions, charges)
     energy = result.scf.sum(-1)
 
     pgrad = torch.autograd.grad(
         energy,
-        (calc.hamiltonian.selfenergy, calc.hamiltonian.kcn, calc.hamiltonian.shpoly),
+        (h.selfenergy, h.kcn, h.shpoly),
     )
 
     ref_se = load_from_npz(ref_grad_param, f"{name}_egrad_selfenergy", dtype)
@@ -201,11 +228,15 @@ def skip_test_param_grad_force(name: str, dtype: torch.dtype = torch.float):
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
-    options = dict(opts, **{"xitorch_fatol": tol**2, "xitorch_xatol": tol**2})
+    options = dict(opts, **{"f_atol": tol**2, "x_atol": tol**2})
     calc = Calculator(numbers, par, opts=options, **dd)
-    calc.hamiltonian.selfenergy.requires_grad_(True)
-    calc.hamiltonian.kcn.requires_grad_(True)
-    calc.hamiltonian.shpoly.requires_grad_(True)
+
+    assert calc.integrals.hcore is not None
+    h = calc.integrals.hcore.integral
+
+    h.selfenergy.requires_grad_(True)
+    h.kcn.requires_grad_(True)
+    h.shpoly.requires_grad_(True)
 
     result = calc.singlepoint(numbers, positions, charges)
     energy = result.scf.sum(-1)
@@ -218,7 +249,7 @@ def skip_test_param_grad_force(name: str, dtype: torch.dtype = torch.float):
 
     pgrad = torch.autograd.grad(
         gradient[0, :].sum(),
-        (calc.hamiltonian.selfenergy, calc.hamiltonian.kcn, calc.hamiltonian.shpoly),
+        (h.selfenergy, h.kcn, h.shpoly),
     )
 
     ref_se = load_from_npz(ref_grad_param, f"{name}_ggrad_selfenergy", dtype)

@@ -1,19 +1,69 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Driver class for running dxtb.
 """
+
 from __future__ import annotations
 
+import logging
 from argparse import Namespace
 from pathlib import Path
 
 import torch
+from tad_mctc import units
+from tad_mctc.batch import pack
+from tad_mctc.io import read
 
 from .. import io
-from ..constants import defaults
-from ..utils import Timers, batch
+from ..components.interactions.field import new_efield
+from ..config import Config
+from ..constants import labels
+from ..timing import timer
 from ..xtb import Calculator, Result
 
+logger = logging.getLogger(__name__)
+
 FILES = {"spin": ".UHF", "chrg": ".CHRG"}
+
+
+def print_grad(grad, numbers) -> None:
+    from tad_mctc.data import pse
+
+    io.OutputHandler.write_stdout("\n\nForces")
+    io.OutputHandler.write_stdout("------\n")
+
+    # Iterate over the tensor and print
+    io.OutputHandler.write_stdout(
+        "  #  Z            dX              dY              dZ"
+    )
+    io.OutputHandler.write_stdout(
+        "--------------------------------------------------------"
+    )
+    for i, row in enumerate(grad):
+        # Get the atomic symbol corresponding to the atomic number
+        symbol = pse.Z2S.get(int(numbers[i].item()), "?")
+        io.OutputHandler.write_stdout(
+            f"{i+1:>3}  {symbol:<2}  {row[0]:>15.9f} {row[1]:>15.9f} {row[2]:>15.9f}"
+        )
+
+    io.OutputHandler.write_stdout(
+        "--------------------------------------------------------"
+    )
 
 
 class Driver:
@@ -64,8 +114,28 @@ class Driver:
 
         return vals
 
-    def singlepoint(self) -> Result:
+    def singlepoint(self) -> Result | None:
+        timer.start("Setup")
+
         args = self.args
+
+        # logging.basicConfig(
+        # level=args.loglevel.upper(),
+        # format="%(asctime)s %(levelname)s %(name)s::%(funcName)s -> %(message)s",
+        # datefmt="%Y-%m-%d %H:%M:%S",
+        # )
+        # config = io.logutils.get_logging_config(level=args.loglevel.upper())
+        # logging.basicConfig(**config)
+
+        # args.verbosity contains default if not set, v/s are zero
+        io.OutputHandler.verbosity = args.verbosity + args.v - args.s
+
+        # setup output: streams, verbosity
+        if args.json is True:
+            io.OutputHandler.setup_json_logger()
+
+        io.OutputHandler.header()
+        io.OutputHandler.sysinfo()
 
         if args.detect_anomaly:
             # pylint: disable=import-outside-toplevel
@@ -73,70 +143,189 @@ class Driver:
 
             set_detect_anomaly(True)
 
-        timer = Timers()
-        timer.start("setup")
-
         dd = {"device": args.device, "dtype": args.dtype}
 
-        opts = {
-            "etemp": args.etemp,
-            "damp": args.damp,
-            "scf_mode": args.scf_mode,
-            "scp_mode": args.scp_mode,
-            "mixer": args.mixer,
-            "maxiter": args.maxiter,
-            "spin": args.spin,
-            "verbosity": args.verbosity,
-            "exclude": args.exclude,
-            "xitorch_xatol": defaults.XITORCH_XATOL,
-            "xitorch_fatol": defaults.XITORCH_XATOL,
-        }
+        # setup config and write to output
+        config = Config.from_args(args)
+        io.OutputHandler.write(config.info())
 
-        if len(self.args.file) > 1:
-            _n = []
-            _p = []
-            for f in self.args.file:
-                n, p = io.read_structure_from_file(f)
-                _n.append(torch.tensor(n, dtype=torch.long, device=dd["device"]))
-                _p.append(torch.tensor(p, **dd))
-            numbers = batch.pack(_n)
-            positions = batch.pack(_p)
+        # Broyden is not supported in full SCF mode
+        if (
+            config.scf.scf_mode == labels.SCF_MODE_FULL
+            and config.scf.mixer == labels.MIXER_BROYDEN
+        ):
+            config.scf.mixer = labels.MIXER_ANDERSON
+
+        # first tensor when using CUDA takes a long time to initialize...
+        if "cuda" in str(dd["device"]):
+            timer.start("Init GPU", parent_uid="Setup")
+            _ = torch.tensor([0], **dd)
+            timer.stop("Init GPU")
+            del _
+
+        timer.start("Read Files", parent_uid="Setup")
+
+        if len(args.file) > 1:
+            _n, _p = zip(
+                *[read.read_from_path(f, ftype=args.filetype, **dd) for f in args.file]
+            )
+            numbers = pack(_n)
+            positions = pack(_p)
         else:
-            _n, _p = io.read_structure_from_file(args.file[0])
+            _n, _p = io.read_structure_from_file(args.file[0], args.filetype)
             numbers = torch.tensor(_n, dtype=torch.long, device=dd["device"])
             positions = torch.tensor(_p, **dd)
+
+        timer.stop("Read Files")
 
         chrg = torch.tensor(self.chrg, **dd)
 
         if args.grad is True:
             positions.requires_grad = True
 
-        # METHOD
         if args.method.lower() == "gfn1" or args.method.lower() == "gfn1-xtb":
             # pylint: disable=import-outside-toplevel
-            from ..param import GFN1_XTB as par
+            from dxtb.param import GFN1_XTB as par
         elif args.method.lower() == "gfn2" or args.method.lower() == "gfn2-xtb":
             raise NotImplementedError("GFN2-xTB is not implemented yet.")
         else:
             raise ValueError(f"Unknown method '{args.method}'.")
 
-        # GUESS
-        if args.guess.lower() == "eeq" or args.guess.lower() == "sad":
-            opts["guess"] = args.guess.lower()
-        else:
-            raise ValueError(f"Unknown guess method '{args.guess}'.")
+        # INTERACTIONS
+        interactions = []
+
+        needs_field = any(
+            [
+                args.ir,
+                args.ir_numerical,
+                args.raman,
+                args.raman_numerical,
+                args.dipole,
+                args.dipole_numerical,
+                args.polarizability,
+                args.polarizability_numerical,
+                args.hyperpolarizability,
+                args.hyperpolarizability_numerical,
+            ]
+        )
+
+        if args.efield is not None or needs_field is True:
+            field = (
+                torch.tensor(
+                    args.efield if args.efield is not None else [0, 0, 0],
+                    **dd,
+                    requires_grad=needs_field,
+                )
+                * units.VAA2AU
+            )
+            interactions.append(new_efield(field, **dd))
 
         # setup calculator
-        timer.stop("setup")
-        calc = Calculator(numbers, par, opts=opts, timer=timer, **dd)
+        calc = Calculator(numbers, par, opts=config, interaction=interactions, **dd)
+        timer.stop("Setup")
 
-        # run singlepoint calculation
-        result = calc.singlepoint(numbers, positions, chrg, grad=args.grad)
+        ####################################################
+        if args.grad:
+            # run singlepoint calculation
+            result = calc.singlepoint(numbers, positions, chrg)
 
-        if args.verbosity > 0:
-            timer.print_times()
+            timer.start("grad")
+            (g,) = torch.autograd.grad(result.total.sum(), positions)
+            timer.stop("grad")
 
-        return result
+            timer.print()
+            result.print_energies()
+
+            if args.verbosity >= 7:
+                print_grad(g.clone(), numbers)
+                print("")
+
+            return result
+        #####################################################
+
+        if args.forces is True:
+            positions.requires_grad_(True)
+
+            timer.start("Forces")
+            forces = calc.forces(numbers, positions, chrg)
+            timer.stop("Forces")
+            print_grad(forces.clone(), numbers)
+            calc.reset()
+            return
+
+        if args.forces_numerical is True:
+            timer.start("Forces")
+            forces = calc.forces_numerical(numbers, positions, chrg)
+            print_grad(forces.clone(), numbers)
+            timer.stop("Forces")
+            calc.reset()
+            return
+
+        if args.ir is True:
+            # TODO: Better handling here
+            positions.requires_grad_(True)
+            calc.opts.scf.scf_mode = labels.SCF_MODE_FULL
+            calc.opts.scf.mixer = labels.MIXER_ANDERSON
+
+            timer.start("IR")
+            ir_result = calc.ir(numbers, positions, chrg)
+            ir_result.use_common_units()
+            print("IR Frequencies\n", ir_result.freqs)
+            print("IR Intensities\n", ir_result.ints)
+            timer.stop("IR")
+            calc.reset()
+
+        if args.ir_numerical is True:
+            timer.start("IR")
+            ir_result = calc.ir_numerical(numbers, positions, chrg)
+            ir_result.use_common_units()
+            print("IR Frequencies\n", ir_result.freqs)
+            print("IR Intensities\n", ir_result.ints)
+            timer.stop("IR")
+
+        if args.raman is True:
+            # TODO: Better handling here
+            positions.requires_grad_(True)
+            calc.opts.scf.scf_mode = labels.SCF_MODE_FULL
+            calc.opts.scf.mixer = labels.MIXER_ANDERSON
+
+            # TODO: Better print handling
+            timer.start("Raman")
+            raman_result = calc.raman(numbers, positions, chrg)
+            raman_result.use_common_units()
+            print("Raman Frequencies\n", raman_result.freqs)
+            print("Raman Intensities\n", raman_result.ints)
+            timer.stop("Raman")
+
+        if args.raman_numerical is True:
+            timer.start("Raman Num")
+            raman_result = calc.raman_numerical(numbers, positions, chrg)
+            raman_result.use_common_units()
+            print("Raman Frequencies\n", raman_result.freqs)
+            print("Raman Intensities\n", raman_result.ints)
+            timer.stop("Raman Num")
+
+        if args.dipole is True:
+            calc.opts.scf.scf_mode = labels.SCF_MODE_FULL
+            calc.opts.scf.mixer = labels.MIXER_ANDERSON
+
+            timer.start("Dipole")
+            mu = calc.dipole_analytical(numbers, positions, chrg)
+            timer.stop("Dipole")
+            print("Dipole Moment\n", mu)
+
+        if args.polarizability is True:
+            timer.start("Polarizability")
+            alpha = calc.polarizability(numbers, positions, chrg)
+            timer.stop("Polarizability")
+            print("Polarizability\n", alpha)
+
+        if "energy" not in calc.cache:
+            result = calc.singlepoint(numbers, positions, chrg)
+
+            timer.print()
+            result.print_energies()
+            return result
 
     def __repr__(self) -> str:  # pragma: no cover
         """Custom print representation of class."""
