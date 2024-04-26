@@ -27,19 +27,21 @@ from .data import _Data
 from .energies import get_energy
 
 
-def _print(q: Charges, data: _Data, interactions: InteractionList) -> None:
+def _print(charges: Charges, data: _Data, interactions: InteractionList) -> None:
+    data.iter += 1
+
     if OutputHandler.verbosity < 3:
         return
 
-    if q.mono.ndim < 2:  # pragma: no cover
-        energy = get_energy(q, data, interactions).sum(-1).detach().clone()
+    if charges.mono.ndim < 2:  # pragma: no cover
+        energy = get_energy(charges, data, interactions).sum(-1).detach().clone()
         ediff = torch.linalg.vector_norm(data.old_energy - energy)
 
         density = data.density.detach().clone()
         pnorm = torch.linalg.matrix_norm(data.old_density - density)
 
-        _q = q.mono.detach().clone()
-        qdiff = torch.linalg.vector_norm(data.old_charges - _q)
+        _charges = charges.mono.detach().clone()
+        qdiff = torch.linalg.vector_norm(data.old_charges - _charges)
 
         OutputHandler.write_row(
             "SCF Iterations",
@@ -53,9 +55,32 @@ def _print(q: Charges, data: _Data, interactions: InteractionList) -> None:
         )
 
         data.old_energy = energy
+        data.old_charges = _charges
+        data.old_density = density
+    else:
+        energy = get_energy(charges, data, interactions).detach().clone()
+        ediff = torch.linalg.norm(data.old_energy - energy)
+
+        density = data.density.detach().clone()
+        pnorm = torch.linalg.norm(data.old_density - density)
+
+        _q = charges.mono.detach().clone()
+        qdiff = torch.linalg.norm(data.old_charges - _q)
+
+        OutputHandler.write_row(
+            "SCF Iterations",
+            f"{data.iter:3}",
+            [
+                f"{energy.norm(): .14E}",
+                f"{ediff: .6E}",
+                f"{pnorm: .6E}",
+                f"{qdiff: .6E}",
+            ],
+        )
+
+        data.old_energy = energy
         data.old_charges = _q
         data.old_density = density
-        data.iter += 1
 
 
 def iterate_charges(

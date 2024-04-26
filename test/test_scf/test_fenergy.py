@@ -76,7 +76,6 @@ def test_element(dtype: torch.dtype, partition: str, number: int) -> None:
     o = dict(options, **{"scf_mode": "implicit_nonpure"})
     calc2 = Calculator(numbers, par, opts=o, **dd)
     result2 = calc2.singlepoint(numbers, positions, charges)
-    torch.set_printoptions(precision=10)
 
     assert pytest.approx(result1.iter) == result2.iter
 

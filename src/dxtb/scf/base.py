@@ -553,6 +553,8 @@ class BaseSCF:
         raise ValueError(f"Unknown partitioning mode '{mode}'.")
 
     def _print(self, charges: Charges) -> None:
+        self._data.iter += 1
+
         # explicitly check to avoid some superfluos calculations
         if OutputHandler.verbosity < 3:
             return
@@ -581,7 +583,6 @@ class BaseSCF:
             self._data.old_energy = energy
             self._data.old_charges = _q
             self._data.old_density = density
-            self._data.iter += 1
         else:
             energy = self.get_energy(charges).detach().clone()
             ediff = torch.linalg.norm(self._data.old_energy - energy)
@@ -590,11 +591,8 @@ class BaseSCF:
             pnorm = torch.linalg.norm(self._data.old_density - density)
 
             _q = charges.mono.detach().clone()
-            # print(_q.shape)
-            # print(self._data.old_charges.shape)
-            # qdiff = torch.linalg.norm(self._data.old_charges - _q)
+            qdiff = torch.linalg.norm(self._data.old_charges - _q)
 
-            qdiff = 0
             OutputHandler.write_row(
                 "SCF Iterations",
                 f"{self._data.iter:3}",
@@ -609,7 +607,6 @@ class BaseSCF:
             self._data.old_energy = energy
             self._data.old_charges = _q
             self._data.old_density = density
-            self._data.iter += 1
 
     def iterate_charges(self, charges: Tensor) -> Tensor:
         """
