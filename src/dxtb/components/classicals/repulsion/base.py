@@ -217,7 +217,7 @@ class BaseRepulsion(Classical):
         a = torch.where(
             mask,
             torch.sqrt(arep.unsqueeze(-1) * arep.unsqueeze(-2) + eps),
-            torch.tensor(0.0, device=self.device, dtype=self.dtype),
+            torch.tensor(0.0, **self.dd),
         )
 
         z = zeff.unsqueeze(-1) * zeff.unsqueeze(-2) * mask

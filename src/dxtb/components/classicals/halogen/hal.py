@@ -276,32 +276,34 @@ class Halogen(Classical):
         We cannot use `self.numbers` here, because it is not batched.
         """
 
-        halogen_mask = torch.zeros_like(numbers).type(torch.bool)
+        halogen_mask = torch.zeros(
+            numbers.shape,
+            device=self.device,
+            dtype=torch.bool,
+        )
         for halogen in self.halogens:
             halogen_mask += numbers == halogen
 
         # return if no halogens are present
         if halogen_mask.nonzero().size(-2) == 0:
-            return torch.zeros(
-                numbers.shape, dtype=positions.dtype, device=positions.device
-            )
+            return torch.zeros(numbers.shape, **self.dd)
 
-        base_mask = torch.zeros_like(numbers).type(torch.bool)
+        base_mask = torch.zeros(
+            numbers.shape,
+            device=self.device,
+            dtype=torch.bool,
+        )
         for base in self.base:
             base_mask += numbers == base
 
         # return if no bases are present
         if base_mask.nonzero().size(-2) == 0:
-            return torch.zeros(
-                numbers.shape, dtype=positions.dtype, device=positions.device
-            )
+            return torch.zeros(numbers.shape, **self.dd)
 
         # triples for halogen bonding interactions
         adj = self._xbond_list(numbers, positions)
         if adj is None:
-            return torch.zeros(
-                numbers.shape, dtype=positions.dtype, device=positions.device
-            )
+            return torch.zeros(numbers.shape, **self.dd)
 
         # parameters
         rads = ATOMIC_RADII.to(**self.dd)[numbers] * self.rscale

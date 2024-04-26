@@ -421,7 +421,7 @@ class EnergyCalculator(TensorLike):
         if spin is not None:
             spin = any_to_tensor(spin, **self.dd)
 
-        result = Result(positions, device=self.device, dtype=self.dtype)
+        result = Result(positions, **self.dd)
 
         # CLASSICAL CONTRIBUTIONS
 

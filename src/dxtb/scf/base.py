@@ -348,13 +348,13 @@ class BaseSCF:
 
             if self._data.ints.dipole is not None:
                 shp = (*self._data.numbers.shape, defaults.DP_SHAPE)
-                zeros = torch.zeros(shp, device=self.device, dtype=self.dtype)
+                zeros = torch.zeros(shp, **self.dd)
                 charges.dipole = zeros
                 self._data.charges["dipole"] = charges.dipole_shape
 
             if self._data.ints.quadrupole is not None:
                 shp = (*self._data.numbers.shape, defaults.QP_SHAPE)
-                zeros = torch.zeros(shp, device=self.device, dtype=self.dtype)
+                zeros = torch.zeros(shp, **self.dd)
                 charges.quad = zeros
                 self._data.charges["quad"] = charges.quad_shape
 
@@ -434,7 +434,7 @@ class BaseSCF:
             return self.potential_to_charges(pot)
 
         if self.config.scp_mode == labels.SCP_MODE_FOCK:
-            zero = torch.tensor(0.0, device=self.device, dtype=self.dtype)
+            zero = torch.tensor(0.0, **self.dd)
             x = torch.where(x != defaults.PADNZ, x, zero)
 
             self._data.density = self.hamiltonian_to_density(x)

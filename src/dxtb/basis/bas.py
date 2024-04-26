@@ -398,7 +398,7 @@ class Basis(TensorLike):
 
             if shells == 0:
                 s += 1
-                zero = torch.tensor(0.0, device=self.device, dtype=self.dtype)
+                zero = torch.tensor(0.0, **self.dd)
                 alphas.append(zero)
                 coeffs.append(zero)
                 continue
