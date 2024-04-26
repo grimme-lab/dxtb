@@ -14,10 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from pathlib import Path
-
 import torch
-from tad_mctc.io import read
 
 import dxtb
 from dxtb.typing import DD
@@ -28,16 +25,18 @@ NREPEATS = 100
 n = 6000
 chunk_size = 200
 batch_mode = 0
-b = 5
+
+print(f"Running on {dd['device']} with {n} atoms.")
+
 
 numbers = torch.randint(1, 86, (n,), device=dd["device"])
 positions = torch.rand((n, 3), **dd) * 10
 
-print(numbers.shape, positions.shape)
-
-# warmup
-_ = torch.rand(100, 100, **dd)
-del _
+# warmup for CUDA
+if dd["device"] is not None:
+    if dd["device"].type == "cuda":
+        _ = torch.rand(100, 100, **dd)
+        del _
 
 ######################################################################
 
@@ -49,22 +48,22 @@ ihelp = dxtb.IndexHelper.from_numbers(numbers, dxtb.GFN1_XTB, batch_mode=batch_m
 dxtb.timer.stop("Ihelp")
 
 dxtb.timer.start("Class", parent_uid="Setup")
-rep = dxtb.new_dispersion(numbers, dxtb.GFN1_XTB, **dd)
-assert rep is not None
+obj = dxtb.new_dispersion(numbers, dxtb.GFN1_XTB, **dd)
+assert obj is not None
 dxtb.timer.stop("Class")
 
 dxtb.timer.stop("Setup")
 dxtb.timer.start("Cache")
 
 torch.cuda.synchronize()
-cache = rep.get_cache(numbers, ihelp=ihelp)
+cache = obj.get_cache(numbers, ihelp=ihelp)
 
 torch.cuda.synchronize()
 dxtb.timer.stop("Cache")
 torch.cuda.synchronize()
 dxtb.timer.start("Energy")
 
-e = rep.get_energy(positions, cache, chunk_size=chunk_size)
+e = obj.get_energy(positions, cache, chunk_size=chunk_size)
 torch.cuda.synchronize()
 dxtb.timer.stop("Energy")
 
@@ -86,19 +85,19 @@ ihelp = dxtb.IndexHelper.from_numbers(numbers, dxtb.GFN1_XTB, batch_mode=batch_m
 dxtb.timer.stop("Ihelp")
 
 dxtb.timer.start("Class", parent_uid="Setup")
-rep = dxtb.new_dispersion(numbers, dxtb.GFN1_XTB, **dd)
-assert rep is not None
+obj = dxtb.new_dispersion(numbers, dxtb.GFN1_XTB, **dd)
+assert obj is not None
 dxtb.timer.stop("Class")
 
 dxtb.timer.stop("Setup")
 dxtb.timer.start("Cache")
 
-cache = rep.get_cache(numbers, ihelp=ihelp)
+cache = obj.get_cache(numbers, ihelp=ihelp)
 
 dxtb.timer.stop("Cache")
 dxtb.timer.start("Energy")
 
-e2 = rep.get_energy(positions, cache, chunk_size=chunk_size)
+e2 = obj.get_energy(positions, cache, chunk_size=chunk_size)
 
 dxtb.timer.stop("Energy")
 

@@ -14,6 +14,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Calculating forces for vancomycin via AD.
+"""
 from pathlib import Path
 
 import torch
@@ -25,30 +28,37 @@ from dxtb.typing import DD
 dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
 
 f = Path(__file__).parent / "molecules" / "vancoh2.coord"
-n, p = read.read_from_path(f, ftype="tm", **dd)
-c = read.read_chrg_from_path(f, **dd)
+numbers, positions = read.read_from_path(f, ftype="tm", **dd)
+charge = read.read_chrg_from_path(f, **dd)
 
-nbatch = 60
+opts = {"verbosity": 3}
 
-numbers = dxtb.batch.pack([n for _ in range(nbatch)])
-positions = dxtb.batch.pack([p for _ in range(nbatch)])
-charge = dxtb.batch.pack([c for _ in range(nbatch)])
+######################################################################
 
-print(numbers.shape, positions.shape, charge.shape)
-
-# conformer batched mode
-opts = {"verbosity": 6, "batch_mode": 2}
+print("Calculating forces manually with `torch.autograd.grad`.\n")
 
 dxtb.timer.reset()
-dxtb.timer.start("Batch")
+
 calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, opts=opts, **dd)
 pos = positions.clone().requires_grad_(True)
-result = calc.energy(numbers, pos, chrg=charge)
+energy = calc.energy(numbers, pos, chrg=charge)
 
+(g,) = torch.autograd.grad(energy, pos, grad_outputs=torch.ones_like(energy))
+forces1 = -g
 
-print(result)
-
-(g,) = torch.autograd.grad(result, pos, grad_outputs=torch.ones_like(result))
-print(g.shape)
-dxtb.timer.stop("Batch")
 dxtb.timer.print()
+
+######################################################################
+
+print("\n\n\nCalculating forces with Calculator method.\n")
+
+dxtb.timer.reset()
+
+calc.reset()
+pos = positions.clone().requires_grad_(True)
+forces2 = calc.forces(numbers, pos, chrg=charge)
+
+dxtb.timer.print()
+
+equal = torch.allclose(forces1, forces2, atol=1e-6, rtol=1e-6)
+print("\n\nForces are equal:", equal)
