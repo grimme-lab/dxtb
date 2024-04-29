@@ -21,7 +21,7 @@ Config file for docs.
 import os.path as op
 import sys
 
-sys.path.insert(0, op.join(op.dirname(__file__), "..", "src"))
+sys.path.insert(0, op.join(op.dirname(__file__), "../../", "src"))
 
 import dxtb
 
@@ -51,21 +51,19 @@ html_theme_options = {
     "use_repository_button": True,
     "use_edit_page_button": True,
     "use_download_button": False,
-    "path_to_docs": "doc",
+    "path_to_docs": "docs/source",
     "show_navbar_depth": 3,
-    "logo_only": False,
 }
 
 html_sidebars = {}  # type: ignore[var-annotated]
 
-html_css_files = [
-    "css/custom.css",
-]
 html_static_path = ["_static"]
 templates_path = ["_templates"]
+html_css_files = ["custom.css"]
 
 autodoc_typehints = "none"
 autosummary_generate = True
+autosummary_imported_members = True
 napoleon_google_docstring = False
 napoleon_use_param = False
 napoleon_use_ivar = True

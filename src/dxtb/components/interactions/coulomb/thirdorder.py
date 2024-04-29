@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-On-site third-order electrostatic energy (ES3)
-==============================================
+Coulomb: On-site third-order electrostatic energy (ES3)
+=======================================================
 
 This module implements the third-order electrostatic energy for GFN1-xTB.
 

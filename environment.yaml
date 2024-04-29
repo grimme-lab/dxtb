@@ -26,8 +26,9 @@ dependencies:
   - pytorch>=1.11.0
   - scipy # for xitorch
   - pytest
+  - tad-mctc
+  - tad-multicharge
+  - tad-dftd3
+  - tad-dftd4
   - pip:
-      - tad-mctc
-      - tad-multicharge
-      - tad-dftd3
-      - tad-dftd4
+      - tad-libcint

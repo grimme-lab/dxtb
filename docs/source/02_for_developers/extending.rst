@@ -1,11 +1,13 @@
-Extending
-=========
+.. _dev_components:
+
+New Components
+==============
 
 In the following, we will explain the process of creating a new tight-binding
-component that can be added to the `Calculator`. For an correct evaluation
-within the `Calculator`, the corresponding methods of the base `Component`
-class must be implemented. We will show this step by step for the electric
-field (which itself is already implemented).
+component that can be added to the `Calculator`. For a correct evaluation
+within the :class:`dxtb.xtb.Calculator`, the corresponding methods of the base
+`Component` class must be implemented. We will show this step by step for the
+electric field (which itself is already implemented).
 
 Step 1: Create class.
 ~~~~~~~~~~~~~~~~~~~~~
@@ -341,3 +343,29 @@ provide a human-readable representation of the component.
 
     def __repr__(self) -> str:
         return str(self)
+
+Step 9: Add to the Calculator.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To use the electric field in a calculation, it must be added to the
+`Calculator`. This is done by passing an instance of the electric field to the
+constructor of the `Calculator`.
+
+.. code-block:: python
+
+    import torch
+    from dxtb.typing import DD
+    from dxtb.param import GFN1_XTB
+    from dxtb.xtb import Calculator
+
+    dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
+
+    field = torch.tensor([0.0, 0.0, 0.0], **dd)
+    ef = ElectricField(field=field, **dd)
+
+    numbers = torch.tensor([3, 1], **dd)
+    calc = Calculator(
+        numbers,
+        GFN1_XTB,
+        interactions=[ef]
+    )

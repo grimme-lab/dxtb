@@ -15,12 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Coulomb: Averaging
+==================
+
 Averaging functions for hardnesses in GFN1-xTB.
 """
 
 from __future__ import annotations
 
-import torch
+from tad_mctc import storch
 
 from dxtb.typing import Callable, Tensor
 
@@ -41,7 +44,7 @@ def harmonic_average(hubbard: Tensor) -> Tensor:
     Tensor
         Harmonic average of the Hubbard parameters.
     """
-    hubbard1 = 1.0 / hubbard
+    hubbard1 = storch.reciprocal(hubbard)
     return 2.0 / (hubbard1.unsqueeze(-1) + hubbard1.unsqueeze(-2))
 
 
@@ -76,8 +79,7 @@ def geometric_average(hubbard: Tensor) -> Tensor:
     Tensor
         Geometric average of the Hubbard parameters.
     """
-    h = hubbard.unsqueeze(-1) * hubbard.unsqueeze(-2)
-    return torch.sqrt(h + torch.finfo(hubbard.dtype).eps)
+    return storch.sqrt(hubbard.unsqueeze(-1) * hubbard.unsqueeze(-2))
 
 
 averaging_function: dict[str, AveragingFunction] = {

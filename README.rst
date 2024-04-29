@@ -1,4 +1,4 @@
-Fully Differentiable Extended Tight Binding
+Fully Differentiable Extended Tight-Binding
 ===========================================
 
 .. image:: https://img.shields.io/badge/python-%3E=3.8-blue.svg

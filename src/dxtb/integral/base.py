@@ -327,6 +327,7 @@ class BaseIntegralImplementation(IntegralImplementationABC, TensorLike):
         self,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
+        normalize: bool = True,
         _matrix: Tensor | None = None,
         _norm: Tensor | None = None,
         _gradient: Tensor | None = None,
@@ -334,6 +335,7 @@ class BaseIntegralImplementation(IntegralImplementationABC, TensorLike):
         super().__init__(device=device, dtype=dtype)
         self.label = self.__class__.__name__
 
+        self.normalize = normalize
         self._matrix = _matrix
         self._norm = _norm
         self._gradient = _gradient

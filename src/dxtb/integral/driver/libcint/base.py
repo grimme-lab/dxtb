@@ -142,9 +142,10 @@ class MultipoleLibcint(IntegralImplementationLibcint):
             raise RuntimeError("Norm must be set before building.")
 
         def _mpint(driver: libcint.LibcintWrapper, norm: Tensor) -> Tensor:
-            return torch.einsum(
-                "...ij,i,j->...ij", libcint.int1e(intstring, driver), norm, norm
-            )
+            integral = libcint.int1e(intstring, driver)
+            if self.normalize is False:
+                return integral
+            return torch.einsum("...ij,i,j->...ij", integral, norm, norm)
 
         # batched mode
         if driver.ihelp.batch_mode > 0:
