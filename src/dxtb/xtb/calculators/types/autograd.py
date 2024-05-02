@@ -53,7 +53,6 @@ class AutogradCalculator(EnergyCalculator):
     @cdec.cache
     def forces(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -82,8 +81,6 @@ class AutogradCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
@@ -112,11 +109,11 @@ class AutogradCalculator(EnergyCalculator):
         }
 
         if grad_mode == "autograd":
-            e = self.energy(numbers, positions, chrg, spin)
+            e = self.energy(positions, chrg, spin)
             (deriv,) = torch.autograd.grad(e, positions, **kw)
 
         elif grad_mode == "backward":
-            e = self.energy(numbers, positions, chrg, spin)
+            e = self.energy(positions, chrg, spin)
             e.backward(**kw)
             assert positions.grad is not None
             deriv = positions.grad
@@ -126,15 +123,14 @@ class AutogradCalculator(EnergyCalculator):
             from tad_mctc.autograd import jacrev
 
             # jacrev requires a scalar from `self.energy`!
-            jac_func = jacrev(self.energy, argnums=1)
-            deriv = jac_func(numbers, positions, chrg, spin)
+            deriv = jacrev(self.energy, argnums=0)(positions, chrg, spin)
             assert isinstance(deriv, Tensor)
 
         elif grad_mode == "row":
             # pylint: disable=import-outside-toplevel
             from tad_mctc.autograd import jac
 
-            energy = self.energy(numbers, positions, chrg, spin)
+            energy = self.energy(positions, chrg, spin)
             deriv = jac(energy, positions, **kw).reshape(*positions.shape)
 
         else:
@@ -153,7 +149,6 @@ class AutogradCalculator(EnergyCalculator):
     @cdec.cache
     def hessian(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -171,8 +166,6 @@ class AutogradCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
@@ -202,15 +195,15 @@ class AutogradCalculator(EnergyCalculator):
             from tad_mctc.autograd import jacrev
 
             # jacrev requires a scalar from `self.energy`!
-            hess_func = jacrev(jacrev(self.energy, argnums=1), argnums=1)
-            hess = hess_func(numbers, positions, chrg, spin)
+            hess_func = jacrev(jacrev(self.energy, argnums=0), argnums=0)
+            hess = hess_func(positions, chrg, spin)
             assert isinstance(hess, Tensor)
         else:
             # pylint: disable=import-outside-toplevel
             from tad_mctc.autograd import hessian
 
             # jacrev requires a scalar from `self.energy`!
-            hess = hessian(self.energy, (numbers, positions, chrg, spin), argnums=1)
+            hess = hessian(self.energy, (positions, chrg, spin), argnums=0)
 
         if hess.is_contiguous() is False:
             logger.debug(
@@ -222,7 +215,7 @@ class AutogradCalculator(EnergyCalculator):
 
         # reshape (..., nat, 3, nat, 3) to (..., nat*3, nat*3)
         if matrix is True:
-            s = [*numbers.shape[:-1], *2 * [3 * numbers.shape[-1]]]
+            s = [*self.numbers.shape[:-1], *2 * [3 * self.numbers.shape[-1]]]
             hess = hess.view(*s)
 
         self.cache["hessian"] = hess
@@ -233,7 +226,6 @@ class AutogradCalculator(EnergyCalculator):
 
     def vibration(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -260,8 +252,6 @@ class AutogradCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
@@ -282,7 +272,6 @@ class AutogradCalculator(EnergyCalculator):
             `(..., nfreqs)`) and normal modes (shape: `(..., nat*3, nfreqs)`).
         """
         hess = self.hessian(
-            numbers,
             positions,
             chrg,
             spin,
@@ -290,7 +279,7 @@ class AutogradCalculator(EnergyCalculator):
             matrix=False,
         )
         return vib.vib_analysis(
-            numbers,
+            self.numbers,
             positions,
             hess,
             project_translational=project_translational,
@@ -301,7 +290,6 @@ class AutogradCalculator(EnergyCalculator):
     @cdec.requires_efield_grad
     def dipole(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -329,8 +317,6 @@ class AutogradCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
@@ -353,7 +339,7 @@ class AutogradCalculator(EnergyCalculator):
 
             def wrapped_energy(f: Tensor) -> Tensor:
                 self.interactions.update_efield(field=f)
-                return self.energy(numbers, positions, chrg, spin)
+                return self.energy(positions, chrg, spin)
 
             dip = jacrev(wrapped_energy)(field)
             assert isinstance(dip, Tensor)
@@ -362,7 +348,7 @@ class AutogradCalculator(EnergyCalculator):
             from tad_mctc.autograd import jac
 
             # calculate electric dipole contribution from xtb energy: -de/dE
-            energy = self.energy(numbers, positions, chrg, spin)
+            energy = self.energy(positions, chrg, spin)
             dip = jac(energy, field)
 
         if dip.is_contiguous() is False:
@@ -375,69 +361,9 @@ class AutogradCalculator(EnergyCalculator):
 
         return -dip
 
-    @cdec.requires_efield
-    def dipole_analytical(
-        self,
-        numbers: Tensor,
-        positions: Tensor,
-        chrg: Tensor | float | int = defaults.CHRG,
-        spin: Tensor | float | int | None = defaults.SPIN,
-        *_,  # absorb stuff
-    ) -> Tensor:
-        r"""
-        Analytically calculate the electric dipole moment :math:`\mu`.
-
-        .. math::
-
-            \mu = \dfrac{\partial E}{\partial F}
-
-        Parameters
-        ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system of shape `(..., nat)`.
-        positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
-        chrg : Tensor | float | int, optional
-            Total charge. Defaults to 0.
-        spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
-
-        Returns
-        -------
-        Tensor
-            Electric dipole moment of shape `(..., 3)`.
-        """
-        # run single point and check if integral is populated
-        result = self.singlepoint(numbers, positions, chrg, spin)
-
-        dipint = self.integrals.dipole
-        if dipint is None:
-            raise RuntimeError(
-                "Dipole moment requires a dipole integral. They should "
-                f"be added automatically if the '{efield.LABEL_EFIELD}' "
-                "interaction is added to the Calculator."
-            )
-        if dipint.matrix is None:
-            raise RuntimeError(
-                "Dipole moment requires a dipole integral. They should "
-                f"be added automatically if the '{efield.LABEL_EFIELD}' "
-                "interaction is added to the Calculator."
-            )
-
-        # pylint: disable=import-outside-toplevel
-        from dxtb.properties.moments.dip import dipole
-
-        # dip = properties.dipole(
-        # numbers, positions, result.density, self.integrals.dipole
-        # )
-        qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
-        dip = dipole(qat, positions, result.density, dipint.matrix)
-        return dip
-
     @cdec.requires_positions_grad
     def dipole_deriv(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -466,8 +392,6 @@ class AutogradCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
@@ -487,7 +411,15 @@ class AutogradCalculator(EnergyCalculator):
         """
 
         if use_analytical is True:
-            dip_fcn = self.dipole_analytical
+            if not hasattr(self, "dipole_analytical") or not callable(
+                getattr(self, "dipole_analytical")
+            ):
+                raise ValueError(
+                    "Analytical dipole moment not available. "
+                    "Please use a calculator, which subclasses "
+                    "the `AnalyticalCalculator`."
+                )
+            dip_fcn = self.dipole_analytical  # type: ignore
         else:
             dip_fcn = self.dipole
 
@@ -496,20 +428,18 @@ class AutogradCalculator(EnergyCalculator):
             from tad_mctc.autograd import jacrev
 
             # d(3) / d(nat, 3) = (3, nat, 3)
-            dmu_dr = jacrev(dip_fcn, argnums=1)(
-                numbers, positions, chrg, spin, use_functorch
-            )
+            dmu_dr = jacrev(dip_fcn, argnums=0)(positions, chrg, spin, use_functorch)
             assert isinstance(dmu_dr, Tensor)
 
         else:
             # pylint: disable=import-outside-toplevel
             from tad_mctc.autograd import jac
 
-            mu = dip_fcn(numbers, positions, chrg, spin, use_functorch)
+            mu = dip_fcn(positions, chrg, spin, use_functorch)
 
             # (..., 3, 3*nat) -> (..., 3, nat, 3)
             dmu_dr = jac(mu, positions).reshape(
-                (*numbers.shape[:-1], 3, *positions.shape[-2:])
+                (*self.numbers.shape[:-1], 3, *positions.shape[-2:])
             )
 
         if dmu_dr.is_contiguous() is False:
@@ -526,7 +456,6 @@ class AutogradCalculator(EnergyCalculator):
     @cdec.requires_efield_grad
     def polarizability(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -556,8 +485,6 @@ class AutogradCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
@@ -579,8 +506,17 @@ class AutogradCalculator(EnergyCalculator):
         field = self.interactions.get_interaction(efield.LABEL_EFIELD).field
 
         if use_analytical is True:
+            if not hasattr(self, "dipole_analytical") or not callable(
+                getattr(self, "dipole_analytical")
+            ):
+                raise ValueError(
+                    "Analytical dipole moment not available. "
+                    "Please use a calculator, which subclasses "
+                    "the `AnalyticalCalculator`."
+                )
+
             # FIXME: Not working for Raman
-            dip_fcn = self.dipole_analytical
+            dip_fcn = self.dipole_analytical  # type: ignore
         else:
             dip_fcn = self.dipole
 
@@ -588,7 +524,7 @@ class AutogradCalculator(EnergyCalculator):
             # pylint: disable=import-outside-toplevel
             from tad_mctc.autograd import jac
 
-            mu = dip_fcn(numbers, positions, chrg, spin)
+            mu = dip_fcn(positions, chrg, spin)
             return jac(mu, field)
 
         # pylint: disable=import-outside-toplevel
@@ -598,7 +534,7 @@ class AutogradCalculator(EnergyCalculator):
 
             def wrapped_dipole(f: Tensor) -> Tensor:
                 self.interactions.update_efield(field=f)
-                return dip_fcn(numbers, positions, chrg, spin)
+                return dip_fcn(positions, chrg, spin)
 
             alpha = jacrev(wrapped_dipole)(field)
             assert isinstance(alpha, Tensor)
@@ -606,7 +542,7 @@ class AutogradCalculator(EnergyCalculator):
 
             def wrapped_energy(f: Tensor) -> Tensor:
                 self.interactions.update_efield(field=f)
-                return self.energy(numbers, positions, chrg, spin)
+                return self.energy(positions, chrg, spin)
 
             alpha = jacrev(jacrev(wrapped_energy))(field)
             assert isinstance(alpha, Tensor)
@@ -635,7 +571,6 @@ class AutogradCalculator(EnergyCalculator):
     @cdec.requires_positions_grad
     def pol_deriv(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -669,8 +604,6 @@ class AutogradCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
@@ -692,9 +625,7 @@ class AutogradCalculator(EnergyCalculator):
             # pylint: disable=import-outside-toplevel
             from tad_mctc.autograd import jac
 
-            a = self.polarizability(
-                numbers, positions, chrg, spin, use_functorch=use_functorch
-            )
+            a = self.polarizability(positions, chrg, spin, use_functorch=use_functorch)
 
             # d(3, 3) / d(nat, 3) -> (3, 3, nat*3) -> (3, 3, nat, 3)
             chi = jac(a, positions).reshape((3, 3, *positions.shape[-2:]))
@@ -703,8 +634,8 @@ class AutogradCalculator(EnergyCalculator):
             # pylint: disable=import-outside-toplevel
             from tad_mctc.autograd import jacrev
 
-            chi = jacrev(self.polarizability, argnums=1)(
-                numbers, positions, chrg, spin, use_functorch, derived_quantity
+            chi = jacrev(self.polarizability, argnums=0)(
+                positions, chrg, spin, use_functorch, derived_quantity
             )
             assert isinstance(chi, Tensor)
 
@@ -722,7 +653,6 @@ class AutogradCalculator(EnergyCalculator):
     @cdec.requires_efield_grad
     def hyperpol(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -755,8 +685,6 @@ class AutogradCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system (shape: `(..., nat)`).
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
@@ -782,7 +710,7 @@ class AutogradCalculator(EnergyCalculator):
             from tad_mctc.autograd import jac
 
             alpha = self.polarizability(
-                numbers, positions, chrg, spin, use_functorch=use_functorch
+                positions, chrg, spin, use_functorch=use_functorch
             )
             return jac(alpha, field)
 
@@ -793,7 +721,7 @@ class AutogradCalculator(EnergyCalculator):
 
             def wrapped_polarizability(f: Tensor) -> Tensor:
                 self.interactions.update_efield(field=f)
-                return self.polarizability(numbers, positions, chrg, spin)
+                return self.polarizability(positions, chrg, spin)
 
             beta = jacrev(wrapped_polarizability)(field)
 
@@ -801,7 +729,7 @@ class AutogradCalculator(EnergyCalculator):
 
             def wrapped_dipole(f: Tensor) -> Tensor:
                 self.interactions.update_efield(field=f)
-                return self.dipole(numbers, positions, chrg, spin)
+                return self.dipole(positions, chrg, spin)
 
             beta = jacrev(jacrev(wrapped_dipole))(field)
 
@@ -809,7 +737,7 @@ class AutogradCalculator(EnergyCalculator):
 
             def wrapped_energy(f: Tensor) -> Tensor:
                 self.interactions.update_efield(field=f)
-                return self.energy(numbers, positions, chrg, spin)
+                return self.energy(positions, chrg, spin)
 
             beta = jacrev(jacrev(jacrev(wrapped_energy)))(field)
 
@@ -840,7 +768,6 @@ class AutogradCalculator(EnergyCalculator):
 
     def ir(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -851,8 +778,6 @@ class AutogradCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system (shape: `(..., nat)`).
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int | str | None
@@ -874,16 +799,14 @@ class AutogradCalculator(EnergyCalculator):
         logger.debug("IR spectrum: Start.")
 
         # run vibrational analysis first
-        vib_res = self.vibration(numbers, positions, chrg, spin)
+        vib_res = self.vibration(positions, chrg, spin)
 
         # TODO: Figure out how to run func transforms 2x properly
         # (improve: Hessian does not need dipole integral but dipder does)
         self.reset()
 
         # calculate nuclear dipole derivative dmu/dR: (..., 3, nat, 3)
-        dmu_dr = self.dipole_deriv(
-            numbers, positions, chrg, spin, use_functorch=use_functorch
-        )
+        dmu_dr = self.dipole_deriv(positions, chrg, spin, use_functorch=use_functorch)
 
         intensities = vib.ir_ints(dmu_dr, vib_res.modes)
 
@@ -893,7 +816,6 @@ class AutogradCalculator(EnergyCalculator):
 
     def raman(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -906,8 +828,6 @@ class AutogradCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system (shape: `(..., nat)`).
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int | str | None
@@ -929,18 +849,14 @@ class AutogradCalculator(EnergyCalculator):
         OutputHandler.write_stdout("--------------")
         logger.debug("Raman spectrum: Start.")
 
-        vib_res = self.vibration(
-            numbers, positions, chrg, spin, use_functorch=use_functorch
-        )
+        vib_res = self.vibration(positions, chrg, spin, use_functorch=use_functorch)
 
         # TODO: Figure out how to run func transforms 2x properly
         # (improve: Hessian does not need dipole integral but dipder does)
         self.reset()
 
         # d(..., 3, 3) / d(..., nat, 3) -> (..., 3, 3, nat, 3)
-        da_dr = self.pol_deriv(
-            numbers, positions, chrg, spin, use_functorch=use_functorch
-        )
+        da_dr = self.pol_deriv(positions, chrg, spin, use_functorch=use_functorch)
 
         intensities, depol = vib.raman_ints_depol(da_dr, vib_res.modes)
 

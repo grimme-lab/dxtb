@@ -74,7 +74,7 @@ def single(
     )
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    result = calc.singlepoint(numbers, positions, charges)
+    result = calc.singlepoint(positions, charges)
     assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
 
 
@@ -178,7 +178,7 @@ def batched(
     )
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    result = calc.singlepoint(numbers, positions, charges)
+    result = calc.singlepoint(positions, charges)
     assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
 
 
@@ -258,5 +258,5 @@ def test_batch_three(
     )
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    result = calc.singlepoint(numbers, positions, charges)
+    result = calc.singlepoint(positions, charges)
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)

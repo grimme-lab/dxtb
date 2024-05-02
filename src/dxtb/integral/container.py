@@ -58,7 +58,6 @@ class Integrals(IntegralContainer):
         "_dipole",
         "_quadrupole",
         "_matrices",
-        "_run_checks",
         "_driver",
     ]
 
@@ -68,24 +67,26 @@ class Integrals(IntegralContainer):
         par: Param,
         ihelp: IndexHelper,
         *,
-        hcore: Hamiltonian | None = None,
-        overlap: Overlap | None = None,
-        dipole: Dipole | None = None,
-        quadrupole: Quadrupole | None = None,
         driver: int = labels.INTDRIVER_LIBCINT,
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
         intlevel: int = defaults.INTLEVEL,
         force_cpu_for_libcint: bool = True,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+        _hcore: Hamiltonian | None = None,
+        _overlap: Overlap | None = None,
+        _dipole: Dipole | None = None,
+        _quadrupole: Quadrupole | None = None,
+        _matrices: IntegralMatrices | None = None,
+        **kwargs: Any,
     ) -> None:
         super().__init__(device, dtype)
 
         self.numbers = numbers
         self.par = par
-        self._hcore = hcore
-        self._overlap = overlap
-        self._dipole = dipole
-        self._quadrupole = quadrupole
+        self._hcore = _hcore
+        self._overlap = _overlap
+        self._dipole = _dipole
+        self._quadrupole = _quadrupole
         self._intlevel = intlevel
         self.force_cpu_for_libcint = force_cpu_for_libcint
 
@@ -94,7 +95,7 @@ class Integrals(IntegralContainer):
             # pylint: disable=import-outside-toplevel
             from .driver.libcint import IntDriverLibcint
 
-            if self.force_cpu_for_libcint:
+            if self.force_cpu_for_libcint is True:
                 device = torch.device("cpu")
                 numbers = numbers.to(device=device)
                 ihelp = ihelp.to(device=device)
@@ -121,7 +122,11 @@ class Integrals(IntegralContainer):
 
         # potentially moved to CPU
         self.ihelp = ihelp
-        self._matrices = IntegralMatrices(device=device, dtype=dtype)
+        self._matrices = (
+            IntegralMatrices(device=device, dtype=dtype)
+            if _matrices is None
+            else _matrices
+        )
 
     @property
     def matrices(self) -> IntegralMatrices:

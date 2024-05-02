@@ -56,11 +56,14 @@ class Component(TensorLike):
         self,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
+        *,
+        _cache: Cache | None = None,
+        _cachevars: tuple[Tensor, ...] | None = None,
     ):
         super().__init__(device, dtype)
         self.label = self.__class__.__name__
-        self._cache = None
-        self._cachevars = None
+        self._cache = _cache
+        self._cachevars = _cachevars
         self._cache_enabled = True
 
     ############################################################################

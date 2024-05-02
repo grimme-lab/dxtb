@@ -107,8 +107,8 @@ def test_gb_scf(dtype: torch.dtype, name: str, dielectric_constant=78.9):
     calc_vac = Calculator(numbers, par, opts=opts, **dd)
     calc_sol = Calculator(numbers, par, interaction=[gb], opts=opts, **dd)
 
-    results_vac = calc_vac.singlepoint(numbers, positions, charges)
-    results_sol = calc_sol.singlepoint(numbers, positions, charges)
+    results_vac = calc_vac.singlepoint(positions, charges)
+    results_sol = calc_sol.singlepoint(positions, charges)
 
     gsolv = results_sol.scf - results_vac.scf
 

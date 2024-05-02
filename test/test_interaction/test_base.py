@@ -40,7 +40,7 @@ def test_empty() -> None:
     ae = i.get_atom_energy(numbers)
     assert (ae == torch.zeros(ae.shape)).all()
 
-    se = i.get_shell_energy(numbers, numbers)
+    se = i.get_shell_energy(numbers)
     assert (se == torch.zeros(se.shape)).all()
 
     e = i.get_energy(Charges(mono=orbital), numbers, ihelp)  # type: ignore

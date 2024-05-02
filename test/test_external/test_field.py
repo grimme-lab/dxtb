@@ -66,7 +66,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     efield = new_efield(field_vector)
     calc = Calculator(numbers, GFN1_XTB, interaction=[efield], opts=opts, **dd)
 
-    result = calc.singlepoint(numbers, positions, charges)
+    result = calc.singlepoint(positions, charges)
     assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1)
 
 
@@ -107,7 +107,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, scf_mode: str) -> Non
     options = dict(opts, **{"scf_mode": scf_mode, "mixer": "anderson"})
     calc = Calculator(numbers, GFN1_XTB, interaction=[efield], opts=options, **dd)
 
-    result = calc.singlepoint(numbers, positions, charges)
+    result = calc.singlepoint(positions, charges)
     assert pytest.approx(ref1, abs=tol, rel=tol) == result.total.sum(-1)
 
 
@@ -154,5 +154,5 @@ def test_batch_three(
     options = dict(opts, **{"scf_mode": scf_mode, "mixer": "anderson"})
     calc = Calculator(numbers, GFN1_XTB, interaction=[efield], opts=options, **dd)
 
-    result = calc.singlepoint(numbers, positions, charges)
+    result = calc.singlepoint(positions, charges)
     assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1)

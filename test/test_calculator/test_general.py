@@ -37,3 +37,60 @@ def test_fail() -> None:
 
     # because of the exception, the timer for the setup is never stopped
     timer.reset()
+
+
+def run_asserts(c: Calculator, dtype: torch.dtype) -> None:
+    assert c.dtype == dtype
+    assert c.classicals.dtype == dtype
+    assert c.interactions.dtype == dtype
+    assert c.opts.dtype == dtype
+
+    assert c.integrals.dtype == dtype
+    assert c.integrals.hcore is not None
+    assert c.integrals.hcore.dtype == dtype
+    assert c.integrals.overlap is not None
+    assert c.integrals.overlap.dtype == dtype
+
+    assert c.integrals.matrices.dtype == dtype
+
+    assert c.integrals.driver.dtype == dtype
+
+
+def test_change_type() -> None:
+    numbers = torch.tensor([6, 1, 1, 1, 1])
+    calc = Calculator(numbers, par, dtype=torch.double)
+
+    calc = calc.type(torch.float32)
+    run_asserts(calc, torch.float32)
+
+    timer.reset()
+
+
+def test_change_type_after_energy() -> None:
+    dtype = torch.float64
+
+    numbers = torch.tensor([1, 1])
+    pos = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], dtype=dtype)
+
+    calc_64 = Calculator(numbers, par, dtype=dtype, opts={"verbosity": 0})
+    calc_64.energy(pos)
+
+    run_asserts(calc_64, dtype)
+
+    # extra asserts on initialized vars
+    assert calc_64.integrals.driver.basis.dtype == dtype
+    assert calc_64.integrals.driver.basis.ngauss.dtype == torch.uint8
+    assert calc_64.integrals.driver.basis.pqn.dtype == torch.uint8
+    assert calc_64.integrals.driver.basis.slater.dtype == dtype
+
+    assert calc_64.integrals.matrices.hcore is not None
+    assert calc_64.integrals.matrices.hcore.dtype == dtype
+    assert calc_64.integrals.matrices.overlap is not None
+    assert calc_64.integrals.matrices.overlap.dtype == dtype
+
+    ############################################################################
+
+    calc_32 = calc_64.type(torch.float32)
+    run_asserts(calc_32, torch.float32)
+
+    timer.reset()

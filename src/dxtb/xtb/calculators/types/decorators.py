@@ -59,7 +59,6 @@ F = TypeVar("F", bound=Callable[..., Any])
 def requires_positions_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     def wrapper(
         self: Calculator,  # type: ignore
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -71,7 +70,7 @@ def requires_positions_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor
                 f"Position tensor needs `requires_grad=True` in '{func.__name__}'."
             )
 
-        return func(self, numbers, positions, chrg, spin, *args, **kwargs)
+        return func(self, positions, chrg, spin, *args, **kwargs)
 
     return wrapper
 
@@ -79,7 +78,6 @@ def requires_positions_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor
 def requires_efield(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     def wrapper(
         self: Calculator,  # type: ignore
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -91,7 +89,7 @@ def requires_efield(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
                 f"{func.__name__} requires an electric field. Add the "
                 f"'{efield.LABEL_EFIELD}' interaction to the Calculator."
             )
-        return func(self, numbers, positions, chrg, spin, *args, **kwargs)
+        return func(self, positions, chrg, spin, *args, **kwargs)
 
     return wrapper
 
@@ -99,7 +97,6 @@ def requires_efield(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
 def requires_efield_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     def wrapper(
         self: Calculator,  # type: ignore
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -111,7 +108,7 @@ def requires_efield_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
             raise RuntimeError(
                 f"Field tensor needs `requires_grad=True` in '{func.__name__}'."
             )
-        return func(self, numbers, positions, chrg, spin, *args, **kwargs)
+        return func(self, positions, chrg, spin, *args, **kwargs)
 
     return wrapper
 
@@ -119,7 +116,6 @@ def requires_efield_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
 def requires_efg(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     def wrapper(
         self: Calculator,  # type: ignore
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -132,7 +128,7 @@ def requires_efg(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
                 f"'{efield_grad.LABEL_EFIELD_GRAD}' interaction to the "
                 "Calculator."
             )
-        return func(self, numbers, positions, chrg, spin, *args, **kwargs)
+        return func(self, positions, chrg, spin, *args, **kwargs)
 
     return wrapper
 
@@ -140,7 +136,6 @@ def requires_efg(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
 def requires_efg_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     def wrapper(
         self: Calculator,  # type: ignore
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -149,7 +144,7 @@ def requires_efg_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
         efg = self.interactions.get_interaction(efield_grad.LABEL_EFIELD_GRAD)
         if not efg.field_grad.requires_grad:
             raise RuntimeError("Field gradient tensor needs `requires_grad=True`.")
-        return func(self, numbers, positions, chrg, spin, **kwargs)
+        return func(self, positions, chrg, spin, **kwargs)
 
     return wrapper
 

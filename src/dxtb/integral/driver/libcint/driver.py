@@ -56,7 +56,7 @@ class IntDriverLibcint(IntDriver):
 
         # create atomic basis set in libcint format
         mask = kwargs.pop("mask", None)
-        atombases = self.basis.create_dqc(positions, mask=mask)
+        atombases = self.basis.create_libcint(positions, mask=mask)
 
         if self.ihelp.batch_mode > 0:
 

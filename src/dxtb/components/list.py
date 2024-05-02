@@ -28,7 +28,7 @@ from typing import Generic
 
 import torch
 
-from dxtb.typing import Any, Slicers, Tensor, TensorLike, TypeVar
+from dxtb.typing import Any, Self, Slicers, Tensor, TensorLike, TypeVar, override
 
 from .base import Component
 
@@ -71,6 +71,8 @@ class ComponentList(ComponentListABC, Generic[C], TensorLike):
 
     components: list[C]
     """List of tight-binding components instances."""
+
+    __slots__ = ("components",)
 
     class Cache(ComponentListABC.Cache):
         """
@@ -243,6 +245,12 @@ class ComponentList(ComponentListABC, Generic[C], TensorLike):
 
     def __repr__(self) -> str:
         return str(self)
+
+    @override
+    def type(self, dtype: torch.dtype) -> Self:
+        self.components = list({c.type(dtype) for c in self.components})
+        self.override_dtype(dtype)
+        return self
 
 
 def _docstring_update(func):

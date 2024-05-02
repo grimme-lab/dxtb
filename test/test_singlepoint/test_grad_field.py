@@ -79,7 +79,7 @@ def gradchecker(dtype: torch.dtype, name: str, xfield: float, scf_mode: str) -> 
     def func(field_vector: Tensor) -> Tensor:
         ef = new_efield(field_vector)
         calc = Calculator(numbers, par, interaction=[ef], opts=options, **dd)
-        return calc.energy(numbers, positions, charge)
+        return calc.energy(positions, charge)
 
     return func, field_vector
 
@@ -155,7 +155,7 @@ def gradchecker_batch(
     def func(field_vector: Tensor) -> Tensor:
         ef = new_efield(field_vector)
         calc = Calculator(numbers, par, interaction=[ef], opts=options, **dd)
-        return calc.energy(numbers, positions, charge)
+        return calc.energy(positions, charge)
 
     return func, field_vector
 

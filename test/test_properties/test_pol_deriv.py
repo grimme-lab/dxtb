@@ -103,7 +103,7 @@ def execute(
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
     # field is cloned and detached and updated inside
-    num = calc.pol_deriv_numerical(numbers, positions, charge)
+    num = calc.pol_deriv_numerical(positions, charge)
 
     # required for autodiff of energy w.r.t. efield
     calc.interactions.update_efield(field=field_vector.requires_grad_(True))
@@ -111,7 +111,6 @@ def execute(
     # manual jacobian
     pol = tensor_to_numpy(
         calc.pol_deriv(
-            numbers,
             positions.detach().clone().requires_grad_(True),
             charge,
             use_functorch=False,
@@ -127,7 +126,6 @@ def execute(
     # # 2x jacrev of energy
     # pol2 = tensor_to_numpy(
     #     calc.pol_deriv(
-    #         numbers,
     #         positions.detach().clone().requires_grad_(True),
     #         charge,
     #         use_functorch=True,
@@ -147,7 +145,6 @@ def execute(
     # # jacrev of dipole
     # pol3 = tensor_to_numpy(
     #     calc.pol_deriv(
-    #         numbers,
     #         positions.detach().clone().requires_grad_(True),
     #         charge,
     #         use_functorch=True,

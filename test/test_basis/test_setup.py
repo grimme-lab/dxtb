@@ -47,7 +47,7 @@ def test_single(dtype: torch.dtype, name: str):
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
 
-    atombasis = bas.create_dqc(positions)
+    atombasis = bas.create_libcint(positions)
     assert isinstance(atombasis, list)
     assert not isinstance(atombasis[0], list)
 
@@ -84,7 +84,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
 
-    atombasis_batch = bas.create_dqc(positions)
+    atombasis_batch = bas.create_libcint(positions)
     assert isinstance(atombasis_batch, list)
     assert isinstance(atombasis_batch[0], list)
 

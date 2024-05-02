@@ -61,7 +61,7 @@ def test_xitorch(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
         # variables to be differentiated
         positions.requires_grad_(True)
 
-        result = calc.singlepoint(numbers, positions, charges)
+        result = calc.singlepoint(positions, charges)
         energy = result.scf.sum(-1)
 
         _ = torch.autograd.grad(energy, (positions), create_graph=create_graph)
@@ -97,7 +97,7 @@ def test_xitorch_pure(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> N
         # variables to be differentiated
         positions.requires_grad_(True)
 
-        energy = calc.energy(numbers, positions, charges)
+        energy = calc.energy(positions, charges)
 
         _ = torch.autograd.grad(energy, (positions), create_graph=create_graph)
 
@@ -136,7 +136,7 @@ def skip_test_fulltracking(
         # variables to be differentiated
         positions.requires_grad_(True)
 
-        result = calc.singlepoint(numbers, positions, charges)
+        result = calc.singlepoint(positions, charges)
         energy = result.scf.sum(-1)
 
         _ = torch.autograd.grad(energy, (positions), create_graph=create_graph)

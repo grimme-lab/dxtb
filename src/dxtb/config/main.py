@@ -66,6 +66,8 @@ class Config:
         fermi_maxiter: int = defaults.FERMI_MAXITER,
         fermi_thresh: dict = defaults.FERMI_THRESH,
         fermi_partition: str | int = defaults.FERMI_PARTITION,
+        # misc
+        max_element: int = defaults.MAX_ELEMENT,
     ) -> None:
         self.file = file
         self.exclude = exclude
@@ -78,6 +80,8 @@ class Config:
 
         # use property to also set the batch mode in SCF config
         self._batch_mode = batch_mode
+
+        self.max_element = max_element
 
         if isinstance(method, str):
             if method.casefold() in labels.GFN1_XTB_STRS:

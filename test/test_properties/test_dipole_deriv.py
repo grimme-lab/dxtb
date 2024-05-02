@@ -104,7 +104,7 @@ def execute(
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
     # field is cloned and detached and updated inside
-    num = calc.dipole_deriv_numerical(numbers, positions, charge)
+    num = calc.dipole_deriv_numerical(positions, charge)
 
     # required for autodiff of energy w.r.t. efield
     calc.interactions.update_efield(field=field_vector.requires_grad_(True))
@@ -112,7 +112,6 @@ def execute(
     # manual jacobian with analytical dipole derivative
     dipder1 = tensor_to_numpy(
         calc.dipole_deriv(
-            numbers,
             positions.detach().clone().requires_grad_(True),
             charge,
             use_analytical=True,
@@ -127,7 +126,6 @@ def execute(
     # manual jacobian with AD dipole moment
     dipder2 = tensor_to_numpy(
         calc.dipole_deriv(
-            numbers,
             positions.detach().clone().requires_grad_(True),
             charge,
             use_analytical=False,
@@ -142,7 +140,6 @@ def execute(
     # jacrev of analytical dipole moment
     dipder3 = tensor_to_numpy(
         calc.dipole_deriv(
-            numbers,
             positions.detach().clone().requires_grad_(True),
             charge,
             use_analytical=True,
@@ -157,7 +154,6 @@ def execute(
     # jacrev of AD dipole moment
     dipder4 = tensor_to_numpy(
         calc.dipole_deriv(
-            numbers,
             positions.detach().clone().requires_grad_(True),
             charge,
             use_analytical=False,

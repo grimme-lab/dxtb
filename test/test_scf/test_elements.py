@@ -349,7 +349,7 @@ def test_element(dtype: torch.dtype, number: int) -> None:
     # opts["spin"] = uhf[number - 1]
     options = dict(opts, **{"f_atol": 1e-6, "x_atol": 1e-6})
     calc = Calculator(numbers, par, opts=options, **dd)
-    results = calc.singlepoint(numbers, positions, charges)
+    results = calc.singlepoint(positions, charges)
     assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
 
 
@@ -381,7 +381,7 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
     calc = Calculator(numbers, par, opts=options, **dd)
 
     # no (valence) electrons: [1, 3, 11, 19, 37, 55]
-    results = calc.singlepoint(numbers, positions, charges, spin=spin)
+    results = calc.singlepoint(positions, charges, spin=spin)
     assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
 
 
@@ -415,7 +415,7 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
-    results = calc.singlepoint(numbers, positions, charges, spin=spin)
+    results = calc.singlepoint(positions, charges, spin=spin)
 
     assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
 
@@ -436,6 +436,6 @@ def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:
     spin = torch.tensor([0, uhf[number - 1]])
 
     calc = Calculator(numbers, par, opts=opts, **dd)
-    results = calc.singlepoint(numbers, positions, charges, spin=spin)
+    results = calc.singlepoint(positions, charges, spin=spin)
 
     assert pytest.approx(refs, abs=tol) == results.scf.sum(-1)

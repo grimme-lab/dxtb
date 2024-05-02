@@ -53,7 +53,6 @@ class AnalyticalCalculator(EnergyCalculator):
     @cdec.cache
     def forces_analytical(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -80,8 +79,6 @@ class AnalyticalCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
@@ -108,7 +105,7 @@ class AnalyticalCalculator(EnergyCalculator):
             OutputHandler.write_stdout_nf(" - Classicals        ... ", v=3)
             timer.start("Classicals")
 
-            ccaches = self.classicals.get_cache(numbers, self.ihelp)
+            ccaches = self.classicals.get_cache(self.numbers, self.ihelp)
             cenergies = self.classicals.get_energy(positions, ccaches)
             result.cenergies = cenergies
             result.total += torch.stack(list(cenergies.values())).sum(0)
@@ -180,7 +177,7 @@ class AnalyticalCalculator(EnergyCalculator):
         timer.start("Interaction Cache", parent_uid="SCF")
         OutputHandler.write_stdout_nf(" - Interaction Cache ... ", v=3)
         icaches = self.interactions.get_cache(
-            numbers=numbers, positions=positions, ihelp=self.ihelp
+            numbers=self.numbers, positions=positions, ihelp=self.ihelp
         )
         timer.stop("Interaction Cache")
         OutputHandler.write_stdout("done", v=3)
@@ -189,7 +186,7 @@ class AnalyticalCalculator(EnergyCalculator):
         OutputHandler.write_stdout("\nStarting SCF Iterations...", v=3)
 
         scf_results = scf.solve(
-            numbers,
+            self.numbers,
             positions,
             chrg,
             spin,
@@ -249,7 +246,7 @@ class AnalyticalCalculator(EnergyCalculator):
             emo=result.emo,
         )
 
-        cn = ncoord.cn_d3(numbers, positions)
+        cn = ncoord.cn_d3(self.numbers, positions)
         dedcn, dedr = self.integrals.hcore.integral.get_gradient(
             positions,
             self.integrals.matrices.overlap,
@@ -261,7 +258,7 @@ class AnalyticalCalculator(EnergyCalculator):
         )
 
         # CN gradient
-        dcndr = ncoord.cn_d3_gradient(numbers, positions)
+        dcndr = ncoord.cn_d3_gradient(self.numbers, positions)
         dcn = ncoord.get_dcn(dcndr, dedcn)
 
         # sum up hamiltonian gradient and CN gradient
@@ -275,7 +272,6 @@ class AnalyticalCalculator(EnergyCalculator):
     @cdec.cache
     def dipole_analytical(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -290,8 +286,6 @@ class AnalyticalCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
@@ -305,7 +299,7 @@ class AnalyticalCalculator(EnergyCalculator):
             Electric dipole moment of shape `(..., 3)`.
         """
         # run single point and check if integral is populated
-        result = self.singlepoint(numbers, positions, chrg, spin)
+        result = self.singlepoint(positions, chrg, spin)
 
         dipint = self.integrals.dipole
         if dipint is None:

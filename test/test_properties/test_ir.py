@@ -110,7 +110,7 @@ def execute(
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
     # field is cloned and detached and updated inside
-    numfreqs, numints = calc.ir_numerical(numbers, positions, charge)
+    numfreqs, numints = calc.ir_numerical(positions, charge)
     assert numfreqs.grad_fn is None
     assert numints.grad_fn is None
 
@@ -122,7 +122,7 @@ def execute(
     pos = positions.clone().detach().requires_grad_(True)
 
     # manual jacobian
-    freqs1, ints1 = calc.ir(numbers, pos, charge, use_functorch=False)
+    freqs1, ints1 = calc.ir(pos, charge, use_functorch=False)
     freqs1, ints1 = tensor_to_numpy(freqs1), tensor_to_numpy(ints1)
 
     assert pytest.approx(numfreqs, abs=atol, rel=rtol) == freqs1
@@ -133,7 +133,7 @@ def execute(
     pos = positions.clone().detach().requires_grad_(True)
 
     # jacrev of energy
-    freqs2, ints2 = calc.ir(numbers, pos, charge, use_functorch=True)
+    freqs2, ints2 = calc.ir(pos, charge, use_functorch=True)
     freqs2, ints2 = tensor_to_numpy(freqs2), tensor_to_numpy(ints2)
 
     assert pytest.approx(numfreqs, abs=atol, rel=rtol) == freqs2

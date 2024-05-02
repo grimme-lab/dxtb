@@ -71,11 +71,11 @@ def test_element(dtype: torch.dtype, partition: str, number: int) -> None:
 
     o = dict(options, **{"scf_mode": "implicit"})
     calc1 = Calculator(numbers, par, opts=o, **dd)
-    result1 = calc1.singlepoint(numbers, positions, charges)
+    result1 = calc1.singlepoint(positions, charges)
 
     o = dict(options, **{"scf_mode": "implicit_nonpure"})
     calc2 = Calculator(numbers, par, opts=o, **dd)
-    result2 = calc2.singlepoint(numbers, positions, charges)
+    result2 = calc2.singlepoint(positions, charges)
 
     assert pytest.approx(result1.iter) == result2.iter
 
@@ -102,7 +102,7 @@ def test_element_unique(dtype: torch.dtype) -> None:
 
         options = dict(opts, **{"f_atol": 1e-6, "x_atol": 1e-6})
         calc = Calculator(numbers, par, opts=options, **dd)
-        result = calc.singlepoint(numbers, positions, charges)
+        result = calc.singlepoint(positions, charges)
         return result.fenergy
 
     fenergies = [fcn(n).item() for n in range(1, 87)]
@@ -130,7 +130,7 @@ def test_element_cation(dtype: torch.dtype) -> None:
             },
         )
         calc = Calculator(numbers, par, opts=options, **dd)
-        result = calc.singlepoint(numbers, positions, charges, spin)
+        result = calc.singlepoint(positions, charges, spin)
         return result.fenergy
 
     # no (valence) electrons OR gold
@@ -162,7 +162,7 @@ def test_element_anion(dtype: torch.dtype) -> None:
             },
         )
         calc = Calculator(numbers, par, opts=options, **dd)
-        result = calc.singlepoint(numbers, positions, charges, spin)
+        result = calc.singlepoint(positions, charges, spin)
         return result.fenergy
 
     # Helium doesn't have enough orbitals for negative charge,

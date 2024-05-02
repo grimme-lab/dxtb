@@ -72,7 +72,7 @@ def test_single(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     )
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    result = calc.singlepoint(numbers, positions, charge)
+    result = calc.singlepoint(positions, charge)
     assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1).item()
 
 
@@ -105,7 +105,7 @@ def test_single_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     )
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    result = calc.singlepoint(numbers, positions, charge)
+    result = calc.singlepoint(positions, charge)
     assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1)
 
 
@@ -152,7 +152,7 @@ def test_batch(
     )
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    result = calc.singlepoint(numbers, positions, charge)
+    result = calc.singlepoint(positions, charge)
     assert torch.allclose(ref, result.total.sum(-1), atol=tol, rtol=tol)
 
 
@@ -175,5 +175,5 @@ def test_uhf_single(dtype: torch.dtype, name: str) -> None:
     calc = Calculator(numbers, par, opts=opts, **dd)
 
     ref = samples[name]["etot"].item()
-    result = calc.singlepoint(numbers, positions, charge)
-    assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1).item()
+    result = calc.energy(positions, charge)
+    assert pytest.approx(ref, abs=tol, rel=tol) == result

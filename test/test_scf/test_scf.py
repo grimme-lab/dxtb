@@ -59,7 +59,7 @@ def test_single(dtype: torch.dtype, name: str):
 
     calc = Calculator(numbers, par, opts=opts, **dd)
 
-    result = calc.singlepoint(numbers, positions, charges)
+    result = calc.singlepoint(positions, charges)
     assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
 
 
@@ -94,7 +94,7 @@ def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
     )
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    result = calc.singlepoint(numbers, positions, charges)
+    result = calc.singlepoint(positions, charges)
     assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
 
 
@@ -123,7 +123,7 @@ def test_single_difficult(dtype: torch.dtype, name: str):
     )
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    result = calc.singlepoint(numbers, positions, charges)
+    result = calc.singlepoint(positions, charges)
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
 
 
@@ -151,7 +151,7 @@ def test_single_large(dtype: torch.dtype, name: str):
     )
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    result = calc.singlepoint(numbers, positions, charges)
+    result = calc.singlepoint(positions, charges)
     assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
 
 
@@ -185,7 +185,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     charges = torch.tensor([0.0, 0.0], **dd)
     calc = Calculator(numbers, par, opts=opts, **dd)
 
-    result = calc.singlepoint(numbers, positions, charges)
+    result = calc.singlepoint(positions, charges)
     assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
 
 
@@ -223,7 +223,7 @@ def test_batch2(dtype: torch.dtype, name1: str, name2: str, name3: str):
     charges = torch.tensor([0.0, 0.0, 0.0], **dd)
     calc = Calculator(numbers, par, opts=opts, **dd)
 
-    result = calc.singlepoint(numbers, positions, charges)
+    result = calc.singlepoint(positions, charges)
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
 
 
@@ -254,5 +254,5 @@ def test_batch_special(dtype: torch.dtype, mixer: str) -> None:
     options = dict(opts, **{"mixer": mixer})
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    result = calc.singlepoint(numbers, positions, chrg)
+    result = calc.singlepoint(positions, chrg)
     assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)

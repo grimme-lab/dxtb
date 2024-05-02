@@ -65,7 +65,7 @@ def skip_test_autograd(dtype: torch.dtype, name: str) -> None:
     calc = Calculator(numbers, par, opts=opts, **dd)
 
     def f(pos: Tensor) -> tuple[Tensor, Tensor]:
-        f, m = calc.vibration(numbers, pos, charge)
+        f, m = calc.vibration(pos, charge)
         return f, m
 
     assert dgradcheck(f, positions)
@@ -120,7 +120,7 @@ def execute(
 ) -> None:
     calc = Calculator(numbers, par, opts=opts, **dd)
 
-    numfreqs, nummodes = calc.vibration_numerical(numbers, positions, charge)
+    numfreqs, nummodes = calc.vibration_numerical(positions, charge)
     nummodes = nummodes / torch.norm(nummodes, dim=-2, keepdim=True)
     assert numfreqs.grad_fn is None
     assert nummodes.grad_fn is None
@@ -131,7 +131,7 @@ def execute(
     ###################
     # manual jacobian #
     ###################
-    freqs1, modes1 = calc.vibration(numbers, pos, charge, use_functorch=False)
+    freqs1, modes1 = calc.vibration(pos, charge, use_functorch=False)
     modes1 = modes1 / torch.norm(modes1, dim=-2, keepdim=True)
 
     dot_products = torch.einsum("...ij,...ij->...j", nummodes, modes1)
@@ -147,7 +147,7 @@ def execute(
     ####################
     # jacrev of energy #
     ####################
-    freqs2, modes2 = calc.vibration(numbers, pos, charge, use_functorch=True)
+    freqs2, modes2 = calc.vibration(pos, charge, use_functorch=True)
     modes2 = modes2 / torch.norm(modes2, dim=-2, keepdim=True)
 
     # check angles between modes

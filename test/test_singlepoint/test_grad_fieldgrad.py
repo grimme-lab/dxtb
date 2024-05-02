@@ -72,7 +72,7 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
         calc = Calculator(
             numbers, par, interaction=[efield, efield_grad], opts=opts, **dd
         )
-        result = calc.singlepoint(numbers, positions, charge)
+        result = calc.singlepoint(positions, charge)
         energy = result.total.sum(-1)
         return energy
 
@@ -136,7 +136,7 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
         calc = Calculator(
             numbers, par, interaction=[efield, efield_grad], opts=opts, **dd
         )
-        result = calc.singlepoint(numbers, positions, charge)
+        result = calc.singlepoint(positions, charge)
         energy = result.total.sum(-1)
         return energy
 

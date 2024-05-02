@@ -64,7 +64,7 @@ def skip_test_autograd(dtype: torch.dtype, name: str) -> None:
     calc = Calculator(numbers, par, opts=opts, **dd)
 
     def f(pos: Tensor) -> Tensor:
-        return calc.forces(numbers, pos, charge)
+        return calc.forces(pos, charge)
 
     assert dgradcheck(f, positions)
 
@@ -118,21 +118,14 @@ def execute(
 ) -> None:
     calc = Calculator(numbers, par, opts=opts, **dd)
 
-    numforces = calc.forces_numerical(numbers, positions, charge)
+    numforces = calc.forces_numerical(positions, charge)
     assert numforces.grad_fn is None
 
     # required for autodiff of energy w.r.t. positions (Hessian)
     pos = positions.clone().detach().requires_grad_(True)
 
     # manual jacobian
-    forces1 = tensor_to_numpy(
-        calc.forces(
-            numbers,
-            pos,
-            charge,
-            grad_mode="row",
-        )
-    )
+    forces1 = tensor_to_numpy(calc.forces(pos, charge, grad_mode="row"))
     assert pytest.approx(numforces, abs=atol, rel=rtol) == forces1
 
     # reset before another AD run
@@ -140,14 +133,7 @@ def execute(
     pos = positions.clone().detach().requires_grad_(True)
 
     # jacrev of energy
-    forces2 = tensor_to_numpy(
-        calc.forces(
-            numbers,
-            pos,
-            charge,
-            grad_mode="functorch",
-        )
-    )
+    forces2 = tensor_to_numpy(calc.forces(pos, charge, grad_mode="functorch"))
     assert pytest.approx(numforces, abs=atol, rel=rtol) == forces2
     assert pytest.approx(forces1, abs=atol, rel=rtol) == forces2
 
@@ -155,14 +141,7 @@ def execute(
     pos = positions.clone().detach().requires_grad_(True)
 
     # backward of energy
-    forces3 = tensor_to_numpy(
-        calc.forces(
-            numbers,
-            pos,
-            charge,
-            grad_mode="backward",
-        )
-    )
+    forces3 = tensor_to_numpy(calc.forces(pos, charge, grad_mode="backward"))
     assert pytest.approx(numforces, abs=atol, rel=rtol) == forces3
     assert pytest.approx(forces1, abs=atol, rel=rtol) == forces3
     assert pytest.approx(forces2, abs=atol, rel=rtol) == forces3
@@ -171,14 +150,7 @@ def execute(
     pos = positions.clone().detach().requires_grad_(True)
 
     # standard torch.autograd.grad
-    forces4 = tensor_to_numpy(
-        calc.forces(
-            numbers,
-            pos,
-            charge,
-            grad_mode="autograd",
-        )
-    )
+    forces4 = tensor_to_numpy(calc.forces(pos, charge, grad_mode="autograd"))
     assert pytest.approx(numforces, abs=atol, rel=rtol) == forces4
     assert pytest.approx(forces1, abs=atol, rel=rtol) == forces4
     assert pytest.approx(forces2, abs=atol, rel=rtol) == forces4

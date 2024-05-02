@@ -227,7 +227,7 @@ class Driver:
         ####################################################
         if args.grad:
             # run singlepoint calculation
-            result = calc.singlepoint(numbers, positions, chrg)
+            result = calc.singlepoint(positions, chrg)
 
             timer.start("grad")
             (g,) = torch.autograd.grad(result.total.sum(), positions)
@@ -247,7 +247,7 @@ class Driver:
             positions.requires_grad_(True)
 
             timer.start("Forces")
-            forces = calc.forces(numbers, positions, chrg)
+            forces = calc.forces(positions, chrg)
             timer.stop("Forces")
             print_grad(forces.clone(), numbers)
             calc.reset()
@@ -255,7 +255,7 @@ class Driver:
 
         if args.forces_numerical is True:
             timer.start("Forces")
-            forces = calc.forces_numerical(numbers, positions, chrg)
+            forces = calc.forces_numerical(positions, chrg)
             print_grad(forces.clone(), numbers)
             timer.stop("Forces")
             calc.reset()
@@ -268,7 +268,7 @@ class Driver:
             calc.opts.scf.mixer = labels.MIXER_ANDERSON
 
             timer.start("IR")
-            ir_result = calc.ir(numbers, positions, chrg)
+            ir_result = calc.ir(positions, chrg)
             ir_result.use_common_units()
             print("IR Frequencies\n", ir_result.freqs)
             print("IR Intensities\n", ir_result.ints)
@@ -277,7 +277,7 @@ class Driver:
 
         if args.ir_numerical is True:
             timer.start("IR")
-            ir_result = calc.ir_numerical(numbers, positions, chrg)
+            ir_result = calc.ir_numerical(positions, chrg)
             ir_result.use_common_units()
             print("IR Frequencies\n", ir_result.freqs)
             print("IR Intensities\n", ir_result.ints)
@@ -291,7 +291,7 @@ class Driver:
 
             # TODO: Better print handling
             timer.start("Raman")
-            raman_result = calc.raman(numbers, positions, chrg)
+            raman_result = calc.raman(positions, chrg)
             raman_result.use_common_units()
             print("Raman Frequencies\n", raman_result.freqs)
             print("Raman Intensities\n", raman_result.ints)
@@ -299,7 +299,7 @@ class Driver:
 
         if args.raman_numerical is True:
             timer.start("Raman Num")
-            raman_result = calc.raman_numerical(numbers, positions, chrg)
+            raman_result = calc.raman_numerical(positions, chrg)
             raman_result.use_common_units()
             print("Raman Frequencies\n", raman_result.freqs)
             print("Raman Intensities\n", raman_result.ints)
@@ -310,18 +310,18 @@ class Driver:
             calc.opts.scf.mixer = labels.MIXER_ANDERSON
 
             timer.start("Dipole")
-            mu = calc.dipole_analytical(numbers, positions, chrg)
+            mu = calc.dipole_analytical(positions, chrg)
             timer.stop("Dipole")
             print("Dipole Moment\n", mu)
 
         if args.polarizability is True:
             timer.start("Polarizability")
-            alpha = calc.polarizability(numbers, positions, chrg)
+            alpha = calc.polarizability(positions, chrg)
             timer.stop("Polarizability")
             print("Polarizability\n", alpha)
 
         if "energy" not in calc.cache:
-            result = calc.singlepoint(numbers, positions, chrg)
+            result = calc.singlepoint(positions, chrg)
 
             timer.print()
             result.print_energies()

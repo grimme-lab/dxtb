@@ -30,9 +30,10 @@ import torch
 from tad_mctc.batch import real_pairs
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.data import pse
+from tad_mctc.exceptions import DtypeError
 
 from dxtb.param import Param, get_elem_param, get_elem_pqn, get_elem_valence
-from dxtb.typing import TYPE_CHECKING, Literal, Tensor, TensorLike
+from dxtb.typing import TYPE_CHECKING, Literal, Self, Tensor, TensorLike, override
 
 from .indexhelper import IndexHelper
 from .ortho import orthogonalize
@@ -103,14 +104,15 @@ class Basis(TensorLike):
         self.ihelp = ihelp
 
         self.ngauss = get_elem_param(
-            self.unique,
-            par.element,
-            "ngauss",
-            device=self.device,
+            self.unique, par.element, "ngauss", device=self.device, dtype=torch.uint8
         )
         self.slater = get_elem_param(self.unique, par.element, "slater", **self.dd)
-        self.pqn = get_elem_pqn(self.unique, par.element, device=self.device)
-        self.valence = get_elem_valence(self.unique, par.element, **self.dd)
+        self.pqn = get_elem_pqn(
+            self.unique, par.element, device=self.device, dtype=torch.uint8
+        )
+        self.valence = get_elem_valence(
+            self.unique, par.element, device=self.device, dtype=torch.bool
+        )
 
     def create_cgtos(self) -> tuple[list[Tensor], list[Tensor]]:
         """
@@ -355,7 +357,7 @@ class Basis(TensorLike):
 
         return fulltxt
 
-    def create_dqc(
+    def create_libcint(
         self, positions: Tensor, mask: Tensor | None = None
     ) -> list[libcint.AtomCGTOBasis] | list[list[libcint.AtomCGTOBasis]]:
         """
@@ -526,3 +528,99 @@ class Basis(TensorLike):
             b.append(atombasis)
 
         return b
+
+    @override
+    def type(self, dtype: torch.dtype) -> Self:
+        """
+        Returns a copy of the class instance with specified floating point type.
+
+        This method overrides the usual approach because the `Calculator`s
+        arguments and slots differ significantly. Hence, it is not practical to
+        instantiate a new copy.
+
+        Parameters
+        ----------
+        dtype : torch.dtype
+            Floating point type.
+
+        Returns
+        -------
+        Self
+            A copy of the class instance with the specified dtype.
+
+        Raises
+        ------
+        RuntimeError
+            If the `__slots__` attribute is not set in the class.
+        DtypeError
+            If the specified dtype is not allowed.
+        """
+
+        if self.dtype == dtype:
+            return self
+
+        if len(self.__slots__) == 0:
+            raise RuntimeError(
+                f"The `type` method requires setting `__slots__` in the "
+                f"'{self.__class__.__name__}' class."
+            )
+
+        if dtype not in self.allowed_dtypes:
+            raise DtypeError(
+                f"Only '{self.allowed_dtypes}' allowed (received '{dtype}')."
+            )
+
+        self.numbers = self.numbers.type(dtype)
+        self.unique = self.unique.type(dtype)
+        self.slater = self.slater.type(dtype)
+
+        # hard override of the dtype in TensorLike
+        self.override_dtype(dtype)
+
+        return self
+
+    @override
+    def to(self, device: torch.device) -> Self:
+        """
+        Returns a copy of the class instance on the specified device.
+
+        This method overrides the usual approach because the `Calculator`s
+        arguments and slots differ significantly. Hence, it is not practical to
+        instantiate a new copy.
+
+        Parameters
+        ----------
+        device : torch.device
+            Device to store the tensor on.
+
+        Returns
+        -------
+        Self
+            A copy of the class instance on the specified device.
+
+        Raises
+        ------
+        RuntimeError
+            If the `__slots__` attribute is not set in the class.
+        """
+        if self.device == device:
+            return self
+
+        if len(self.__slots__) == 0:
+            raise RuntimeError(
+                f"The `to` method requires setting `__slots__` in the "
+                f"'{self.__class__.__name__}' class."
+            )
+
+        self.numbers = self.numbers.to(device)
+        self.unique = self.unique.to(device)
+        self.ihelp = self.ihelp.to(device)
+        self.slater = self.slater.to(device)
+        self.valence = self.valence.to(device)
+        self.ngauss = self.ngauss.to(device)
+        self.pqn = self.pqn.to(device)
+
+        # hard override of the dtype in TensorLike
+        self.override_device(device)
+
+        return self

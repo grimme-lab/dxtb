@@ -86,7 +86,7 @@ from .__version__ import __version__
 
 from dxtb.basis import Basis, IndexHelper
 from .param import GFN1_XTB, GFN2_XTB, Param
-from .xtb import Calculator
+from .xtb import Calculator, GFN1Calculator
 from dxtb.utils import batch
 
 timer.stop("dxtb")

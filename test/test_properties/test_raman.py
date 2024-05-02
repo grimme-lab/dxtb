@@ -110,7 +110,7 @@ def execute(
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
     # field is cloned and detached and updated inside
-    numres = calc.raman_numerical(numbers, positions, charge)
+    numres = calc.raman_numerical(positions, charge)
     numfreqs, numints, numdepol = numres.freqs, numres.ints, numres.depol
     assert numfreqs.grad_fn is None
     assert numints.grad_fn is None
@@ -124,7 +124,7 @@ def execute(
     pos = positions.clone().detach().requires_grad_(True)
 
     # manual jacobian
-    res1 = calc.raman(numbers, pos, charge, use_functorch=False)
+    res1 = calc.raman(pos, charge, use_functorch=False)
     freqs1, ints1, depol1 = res1.freqs, res1.ints, res1.depol
     freqs1 = tensor_to_numpy(freqs1)
     ints1 = tensor_to_numpy(ints1)
@@ -139,7 +139,7 @@ def execute(
     pos = positions.clone().detach().requires_grad_(True)
 
     # jacrev of energy
-    res2 = calc.raman(numbers, pos, charge, use_functorch=True)
+    res2 = calc.raman(pos, charge, use_functorch=True)
     freqs2, ints2, depol2 = res2.freqs, res2.ints, res2.depol
     freqs2 = tensor_to_numpy(freqs2)
     ints2 = tensor_to_numpy(ints2)

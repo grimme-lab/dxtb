@@ -60,7 +60,7 @@ def test_single(dtype: torch.dtype, name: str):
     chrg = sample["charge"].to(**dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
-    results = calc.singlepoint(numbers, positions, chrg)
+    results = calc.singlepoint(positions, chrg)
 
     assert pytest.approx(ref, abs=tol, rel=tol) == results.scf.sum(-1).item()
 
@@ -92,7 +92,7 @@ def test_grad(dtype: torch.dtype, name: str):
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
-    result = calc.singlepoint(numbers, positions, chrg)
+    result = calc.singlepoint(positions, chrg)
     energy = result.scf.sum(-1)
 
     gradient = torch.autograd.grad(

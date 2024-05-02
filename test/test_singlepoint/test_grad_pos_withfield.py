@@ -71,7 +71,7 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     positions.requires_grad_(True)
 
     def func(pos: Tensor) -> Tensor:
-        result = calc.singlepoint(numbers, pos, charge)
+        result = calc.singlepoint(pos, charge)
         energy = result.total.sum(-1)
         return energy
 
@@ -133,7 +133,7 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     positions.requires_grad_(True)
 
     def func(pos: Tensor) -> Tensor:
-        result = calc.singlepoint(numbers, pos, charge)
+        result = calc.singlepoint(pos, charge)
         energy = result.total.sum(-1)
         return energy
 

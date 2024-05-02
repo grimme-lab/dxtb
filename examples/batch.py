@@ -56,6 +56,6 @@ opts = {"verbosity": 6, "batch_mode": 1}
 dxtb.timer.reset()
 
 calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, opts=opts, **dd)
-result = calc.energy(numbers, positions, chrg=charge)
+result = calc.energy(positions, chrg=charge)
 
 dxtb.timer.print(v=-999)

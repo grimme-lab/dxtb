@@ -64,7 +64,7 @@ def gradchecker(
     positions.requires_grad_(True)
 
     def func(pos: Tensor) -> Tensor:
-        result = calc.singlepoint(numbers, pos, charges)
+        result = calc.singlepoint(pos, charges)
         return result.total
 
     return func, positions

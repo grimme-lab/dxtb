@@ -92,7 +92,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
-    atombases = bas.create_dqc(positions)
+    atombases = bas.create_libcint(positions)
     assert is_basis_list(atombases)
 
     # dxtb's libcint overlap
@@ -146,7 +146,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
-    atombases = bas.create_dqc(positions)
+    atombases = bas.create_libcint(positions)
     assert is_basis_list(atombases)
 
     # dxtb's libcint overlap
@@ -195,7 +195,7 @@ def test_grad(dtype: torch.dtype, name: str) -> None:
 
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
-    atombases = bas.create_dqc(positions)
+    atombases = bas.create_libcint(positions)
     assert is_basis_list(atombases)
 
     wrapper = libcint.LibcintWrapper(atombases, ihelp)
