@@ -75,5 +75,5 @@ The following dependencies are required
 
 For tests, we also require
 
-- `pytest <https://docs.pytest.org/>`__ (tests only)
-- `tox <https://docs.pytest.org/>`__ (tests only)
+- `pytest <https://docs.pytest.org/>`__
+- `tox <https://docs.pytest.org/>`__

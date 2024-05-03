@@ -33,8 +33,11 @@ extensions = [
     "sphinx_design",
     "sphinx_copybutton",
     "sphinx_design",
-    "sphinx.ext.autosummary",
+    "sphinx_togglebutton",
     "sphinx.ext.autodoc",
+    "sphinx_autodoc_typehints",  # after autodoc
+    "sphinx.ext.viewcode",
+    "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
@@ -64,6 +67,11 @@ html_css_files = ["custom.css"]
 autodoc_typehints = "none"
 autosummary_generate = True
 autosummary_imported_members = True
+
+# Configuration for sphinx-copybutton
+copybutton_prompt_text = ">>> |... "
+copybutton_prompt_is_regexp = True
+
 napoleon_google_docstring = False
 napoleon_use_param = False
 napoleon_use_ivar = True

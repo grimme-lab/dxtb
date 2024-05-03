@@ -29,13 +29,14 @@ The calculator is instantiated with the atomic numbers and a parametrization.
 >>> import torch
 >>> from dxtb.xtb import Calculator
 >>> from dxtb.param import GFN1_XTB
-...
+>>>
 >>> numbers = torch.tensor([1, 1])
 >>> calc = Calculator(numbers, GFN1_XTB)
 
 It is recommended to always pass the `dtype` and `device` to the calculator.
 
 >>> from dxtb.typing import DD
+>>>
 >>> dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
 >>> calc = Calculator(numbers, GFN1_XTB, **dd)
 >>> print(calc.device)

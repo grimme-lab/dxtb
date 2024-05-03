@@ -9,40 +9,72 @@
    :maxdepth: 2
 
    Installation <01_quickstart/installation>
-   Examples <01_quickstart/examples>
+   Getting Started <01_quickstart/getting_started>
+
+.. toctree::
+   :hidden:
+   :caption: In Depth
+   :maxdepth: 2
+
+   Calculators <02_indepth/calculators>
+   SCF <02_indepth/scf>
 
 .. toctree::
    :hidden:
    :caption: For Developers
    :maxdepth: 2
 
-   Installation <02_for_developers/installation>
-   Testing <02_for_developers/testing>
-   Style <02_for_developers/style>
-   New Components <02_for_developers/extending>
+   Installation <03_for_developers/installation>
+   Testing <03_for_developers/testing>
+   Style <03_for_developers/style>
+   New Components <03_for_developers/extending>
 
+.. toctree::
+    :hidden:
+    :caption: About
+    :maxdepth: 2
+
+    Literature <about/literature>
+    Related Works <about/related>
+    License <about/license>
 
 
 dxtb - Fully Differentiable Extended Tight-Binding
 ==================================================
 
-This project provides a fully differentiable implementation of the extended tight binding (xTB) Hamiltonian.
+This project provides a PyTorch-based fully differentiable implementation of the semi-empirical extended tight-binding (xTB) methods.
 
-To obtain *dxtb*, check out the :ref:`quickstart_installation` instructions.
+Introduction
+------------
 
-For details on the xTB methods see
+The xTB methods (GFNn-xTB) are a series of semi-empirical quantum chemical methods that provide a good balance between accuracy and computational cost.
+For more details and the original Fortran implementation, check out the `GitHub repository <https://github.com/grimme-lab/xtb>`__ and the `documentation <https://xtb-docs.readthedocs.io/>`__.
 
-- C. Bannwarth, E. Caldeweyher, S. Ehlert, A. Hansen, P. Pracht, J. Seibert, S. Spicher, S. Grimme,
-  *WIREs Comput. Mol. Sci.*, **2020**, 11, e01493.
-  (`DOI <https://doi.org/10.1002/wcms.1493>`__)
-- C. Bannwarth, S. Ehlert, S. Grimme,
-  *J. Chem. Theory Comput.*, **2019**, 15, 1652-1671.
-  (`DOI <https://dx.doi.org/10.1021/acs.jctc.8b01176>`__)
-- S. Grimme, C. Bannwarth, P. Shushkov,
-  *J. Chem. Theory Comput.*, **2017**, 13, 1989-2009.
-  (`DOI <https://dx.doi.org/10.1021/acs.jctc.7b00118>`__)
+With *dxtb*, we provide a re-implementation of the xTB methods in PyTorch, which allows for automatic differentiation and seamless integration into machine learning frameworks.
 
-For alternative implementations also check out
+If you use *dxtb* in your research, please cite the following paper:
 
-`tblite <https://tblite.readthedocs.io>`__:
-  Light-weight tight-binding framework implemented in Fortran with Python bindings
+- dxtb: M. Friede, C. Hölzer, S. Ehlert, S. Grimme, *dxtb -- An Efficient and Fully Differentiable Framework for Extended Tight-Binding*, *J. Chem. Phys.*, **2024**
+
+.. admonition:: BibTeX
+   :class: toggle
+
+   .. code-block:: bibtex
+
+       @article{dxtb,
+         title = {dxtb -- An Efficient and Fully Differentiable Framework for Extended Tight-Binding},
+         author = {Friede, Marvin and Hölzer, Christian and Ehlert, Sebastian and Grimme, Stefan},
+         journal = {Journal of Chemical Physics},
+         volume = {},
+         number = {},
+         pages = {},
+         year = {2024},
+       }
+
+
+Quicklinks
+----------
+
+- :ref:`quickstart_installation`
+- :ref:`quickstart_getting_started`
+- :ref:`about_literature`
