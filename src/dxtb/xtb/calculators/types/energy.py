@@ -36,9 +36,6 @@ from dxtb.basis import IndexHelper
 from dxtb.components.classicals import (
     Classical,
     ClassicalList,
-    Dispersion,
-    Halogen,
-    Repulsion,
     new_dispersion,
     new_halogen,
     new_repulsion,
@@ -417,8 +414,6 @@ class EnergyCalculator(TensorLike):
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to 0.
-        grad : bool, optional
-            Flag for computing nuclear gradient w.r.t. the energy.
 
         Returns
         -------

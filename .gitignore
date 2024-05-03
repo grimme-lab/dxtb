@@ -117,6 +117,7 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+docs/build/
 
 # PyBuilder
 .pybuilder/
@@ -188,9 +189,9 @@ cython_debug/
 *.pt.trace.json
 
 # data
-*.json
-*.csv
-*.txt
+./*.json
+./*.csv
+./*.txt
 coord
 struc.xyz
 .CHRG
