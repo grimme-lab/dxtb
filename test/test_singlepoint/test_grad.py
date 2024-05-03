@@ -98,7 +98,7 @@ def analytical(
     charge = torch.tensor(charge, **dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
-    result = -calc.forces_analytical(numbers, positions, charge)
+    result = -calc.forces_analytical(positions, charge)
     gradient = result.detach()
 
     ref = load_from_npz(ref_grad, name, dtype)
@@ -133,7 +133,7 @@ def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
-    result = calc.singlepoint(numbers, positions, charge)
+    result = calc.singlepoint(positions, charge)
     energy = result.total.sum(-1)
 
     # autograd
@@ -195,11 +195,11 @@ def calc_numerical_gradient(
     for i in range(numbers.shape[0]):
         for j in range(3):
             positions[i, j] += step
-            result = calc.singlepoint(numbers, positions, charge)
+            result = calc.singlepoint(positions, charge)
             er = result.total.sum(-1)
 
             positions[i, j] -= 2 * step
-            result = calc.singlepoint(numbers, positions, charge)
+            result = calc.singlepoint(positions, charge)
             el = result.total.sum(-1)
 
             positions[i, j] += step

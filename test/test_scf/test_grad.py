@@ -78,7 +78,7 @@ def test_grad_backwards(
     )
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    result = calc.singlepoint(numbers, positions, charges)
+    result = calc.singlepoint(positions, charges)
     energy = result.scf.sum(-1)
 
     energy.backward()
@@ -117,7 +117,7 @@ def test_grad_autograd(name: str, dtype: torch.dtype):
     options = dict(opts, **{"f_atol": tol**2, "x_atol": tol**2})
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    result = calc.singlepoint(numbers, positions, charges)
+    result = calc.singlepoint(positions, charges)
     energy = result.scf.sum(-1)
 
     gradient = torch.autograd.grad(
@@ -159,7 +159,7 @@ def test_grad_large(name: str, dtype: torch.dtype):
     options = dict(opts, **{"f_atol": tol**2, "x_atol": tol**2})
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    result = calc.singlepoint(numbers, positions, charges)
+    result = calc.singlepoint(positions, charges)
     energy = result.scf.sum(-1)
 
     (gradient,) = torch.autograd.grad(energy, positions)
@@ -194,7 +194,7 @@ def test_param_grad_energy(name: str, dtype: torch.dtype = torch.float):
     h.kcn.requires_grad_(True)
     h.shpoly.requires_grad_(True)
 
-    result = calc.singlepoint(numbers, positions, charges)
+    result = calc.singlepoint(positions, charges)
     energy = result.scf.sum(-1)
 
     pgrad = torch.autograd.grad(
@@ -238,7 +238,7 @@ def skip_test_param_grad_force(name: str, dtype: torch.dtype = torch.float):
     h.kcn.requires_grad_(True)
     h.shpoly.requires_grad_(True)
 
-    result = calc.singlepoint(numbers, positions, charges)
+    result = calc.singlepoint(positions, charges)
     energy = result.scf.sum(-1)
 
     (gradient,) = torch.autograd.grad(

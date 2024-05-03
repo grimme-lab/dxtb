@@ -1,0 +1,7 @@
+sphinx
+sphinx-book-theme
+sphinx-copybutton
+sphinx-design
+sphinx-togglebutton
+sphinx_autodoc_typehints
+jinja2

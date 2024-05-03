@@ -41,7 +41,7 @@ dxtb.timer.reset()
 
 calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, opts=opts, **dd)
 pos = positions.clone().requires_grad_(True)
-energy = calc.energy(numbers, pos, chrg=charge)
+energy = calc.energy(pos, chrg=charge)
 
 (g,) = torch.autograd.grad(energy, pos, grad_outputs=torch.ones_like(energy))
 forces1 = -g
@@ -56,7 +56,7 @@ dxtb.timer.reset()
 
 calc.reset()
 pos = positions.clone().requires_grad_(True)
-forces2 = calc.forces(numbers, pos, chrg=charge)
+forces2 = calc.forces(pos, chrg=charge)
 
 dxtb.timer.print()
 

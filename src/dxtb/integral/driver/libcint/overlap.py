@@ -43,16 +43,6 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
     Overlap integral from atomic orbitals.
     """
 
-    def __init__(
-        self,
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
-        _matrix: Tensor | None = None,
-        _norm: Tensor | None = None,
-        _gradient: Tensor | None = None,
-    ):
-        super().__init__(device, dtype, _matrix, _norm, _gradient)
-
     def build(self, driver: IntDriverLibcint) -> Tensor:
         """
         Calculation of overlap integral using libcint.
@@ -67,8 +57,11 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
         def fcn(driver: libcint.LibcintWrapper) -> tuple[Tensor, Tensor]:
             s = libcint.overlap(driver)
             norm = snorm(s)
-            mat = einsum("...ij,...i,...j->...ij", s, norm, norm)
-            return mat, norm
+
+            if self.normalize is True:
+                s = einsum("...ij,...i,...j->...ij", s, norm, norm)
+
+            return s, norm
 
         # batched mode
         if driver.ihelp.batch_mode > 0:
@@ -111,6 +104,9 @@ class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
         def fcn(driver: libcint.LibcintWrapper, norm: Tensor) -> Tensor:
             # (3, norb, norb)
             grad = libcint.int1e("ipovlp", driver)
+
+            if self.normalize is False:
+                return -einsum("...xij->...ijx", grad)
 
             # normalize and move xyz dimension to last, which is required for
             # the reduction (only works with extra dimension in last)

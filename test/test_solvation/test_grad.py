@@ -61,7 +61,7 @@ def test_gb_scf_grad(dtype: torch.dtype, name: str, dielectric_constant=78.9):
 
     calc = Calculator(numbers, par, interaction=[gb], opts=opts, **dd)
 
-    results = calc.singlepoint(numbers, positions, charges)
+    results = calc.singlepoint(positions, charges)
     energy = results.scf.sum(-1)
 
     # autograd

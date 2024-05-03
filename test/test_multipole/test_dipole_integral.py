@@ -63,7 +63,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].to(**dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
-    atombases = bas.create_dqc(positions)
+    atombases = bas.create_libcint(positions)
     assert is_basis_list(atombases)
 
     # dxtb's libcint integral

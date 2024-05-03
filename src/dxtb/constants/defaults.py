@@ -62,6 +62,9 @@ EXCLUDE: list[str] = []
 EXCLUDE_CHOICES = ["disp", "rep", "hal", "es2", "es3", "scf", "all"]
 """List of possible choices for `EXCLUDE`."""
 
+MAX_ELEMENT = 86
+"""Maximum atomic number for the calculation."""
+
 # Integral settings
 
 INTCUTOFF = 50.0

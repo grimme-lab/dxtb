@@ -58,7 +58,7 @@ def gradchecker(
     positions.requires_grad_(True)
 
     def func(pos: Tensor) -> Tensor:
-        atombases = bas.create_dqc(pos)
+        atombases = bas.create_libcint(pos)
         assert is_basis_list(atombases)
 
         wrapper = libcint.LibcintWrapper(atombases, ihelp, spherical=False)

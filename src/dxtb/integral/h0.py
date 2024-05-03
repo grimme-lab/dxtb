@@ -21,9 +21,10 @@ Core Hamiltonian.
 from __future__ import annotations
 
 import torch
+from tad_mctc.exceptions import DtypeError
 
 from dxtb.basis import IndexHelper
-from dxtb.typing import Tensor
+from dxtb.typing import Tensor, override
 
 from ..param import Param
 from ..xtb.hamiltonians.gfn1 import GFN1Hamiltonian
@@ -40,6 +41,8 @@ class Hamiltonian(BaseIntegral):
 
     integral: GFN1Hamiltonian | GFN2Hamiltonian
     """Instance of actual GFN Hamiltonian integral."""
+
+    __slots__ = ["integral"]
 
     def __init__(
         self,

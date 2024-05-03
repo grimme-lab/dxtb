@@ -28,6 +28,7 @@ import logging
 import torch
 from tad_mctc.convert import any_to_tensor
 from tad_mctc.exceptions import DtypeError
+from tad_mctc.io.checks import content_checks, shape_checks
 
 from dxtb import integral as ints
 from dxtb import scf
@@ -35,9 +36,6 @@ from dxtb.basis import IndexHelper
 from dxtb.components.classicals import (
     Classical,
     ClassicalList,
-    Dispersion,
-    Halogen,
-    Repulsion,
     new_dispersion,
     new_halogen,
     new_repulsion,
@@ -51,7 +49,7 @@ from dxtb.constants import defaults
 from dxtb.io import OutputHandler
 from dxtb.param import Param
 from dxtb.timing import timer
-from dxtb.typing import Any, Sequence, Tensor, TensorLike
+from dxtb.typing import Any, Self, Sequence, Tensor, TensorLike, override
 
 from ..result import Result
 from . import decorators as cdec
@@ -71,14 +69,11 @@ class EnergyCalculator(TensorLike):
     gradients, Hessians, molecular properties, and spectra.
     """
 
-    dispersion: Dispersion | None = None
-    """Dispersion definition."""
+    numbers: Tensor
+    """Atomic numbers for all atoms in the system (shape: `(..., nat)`)."""
 
-    repulsion: Repulsion | None = None
-    """Repulsion definition."""
-
-    halogen: Halogen | None = None
-    """Halogen bond definition."""
+    cache: Cache
+    """Cache for storing multiple calculation results."""
 
     interactions: InteractionList
     """Interactions to minimize in self-consistent iterations."""
@@ -86,11 +81,23 @@ class EnergyCalculator(TensorLike):
     classicals: ClassicalList
     """Classical contributions."""
 
+    integrals: ints.Integrals
+    """Integrals for the extended tight-binding model."""
+
     ihelp: IndexHelper
     """Helper class for indexing."""
 
     opts: Config
     """Calculator configuration."""
+
+    __slots__ = [
+        "numbers",
+        "cache",
+        "opts",
+        "classicals",
+        "interactions",
+        "integrals",
+    ]
 
     class Cache(TensorLike):
         """
@@ -100,7 +107,6 @@ class EnergyCalculator(TensorLike):
         """
 
         __slots__ = [
-            "_disabled",
             "energy",
             "forces",
             "hessian",
@@ -114,6 +120,13 @@ class EnergyCalculator(TensorLike):
             self,
             device: torch.device | None = None,
             dtype: torch.dtype | None = None,
+            energy: Tensor | None = None,
+            forces: Tensor | None = None,
+            hessian: Tensor | None = None,
+            dipole: Tensor | None = None,
+            quadrupole: Tensor | None = None,
+            polarizability: Tensor | None = None,
+            hyperpolarizability: Tensor | None = None,
         ) -> None:
             """
             Initialize the Cache class with optional device and dtype settings.
@@ -126,13 +139,13 @@ class EnergyCalculator(TensorLike):
                 The data type of the tensors.
             """
             super().__init__(device=device, dtype=dtype)
-            self.energy = None
-            self.forces = None
-            self.hessian = None
-            self.dipole = None
-            self.quadrupole = None
-            self.polarizability = None
-            self.hyperpolarizability = None
+            self.energy = energy
+            self.forces = forces
+            self.hessian = hessian
+            self.dipole = dipole
+            self.quadrupole = quadrupole
+            self.polarizability = polarizability
+            self.hyperpolarizability = hyperpolarizability
 
         def __getitem__(self, key: str) -> Tensor:
             """
@@ -212,8 +225,10 @@ class EnergyCalculator(TensorLike):
         classical: Sequence[Classical] | None = None,
         interaction: Sequence[Interaction] | None = None,
         opts: dict[str, Any] | Config | None = None,
+        cache: Cache | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
+        **kwargs: Any,
     ) -> None:
         """
         Instantiation of the Calculator object.
@@ -245,7 +260,8 @@ class EnergyCalculator(TensorLike):
         # setup verbosity first
         opts = opts if opts is not None else {}
         if isinstance(opts, dict):
-            OutputHandler.verbosity = opts.pop("verbosity", None)
+            opts = dict(opts)
+            OutputHandler.verbosity = opts.pop("verbosity", 1)
 
         OutputHandler.write_stdout("", v=5)
         OutputHandler.write_stdout("", v=5)
@@ -262,6 +278,7 @@ class EnergyCalculator(TensorLike):
                 f"indexing: '{', '.join([str(x) for x in allowed_dtypes])}', "
                 f"but is '{numbers.dtype}'"
             )
+        self.numbers = numbers
 
         super().__init__(device, dtype)
         dd = {"device": self.device, "dtype": self.dtype}
@@ -272,7 +289,7 @@ class EnergyCalculator(TensorLike):
         self.opts = opts
 
         # create cache
-        self.cache = self.Cache(**dd)
+        self.cache = self.Cache(**dd) if cache is None else cache
 
         if self.opts.batch_mode == 0 and numbers.ndim > 1:
             self.opts.batch_mode = 1
@@ -297,11 +314,7 @@ class EnergyCalculator(TensorLike):
             else None
         )
 
-        self.interactions = InteractionList(
-            es2,
-            es3,
-            *(interaction or ()),
-        )
+        self.interactions = InteractionList(es2, es3, *(interaction or ()), **dd)
 
         OutputHandler.write_stdout("done", v=4)
 
@@ -329,10 +342,7 @@ class EnergyCalculator(TensorLike):
         )
 
         self.classicals = ClassicalList(
-            halogen,
-            dispersion,
-            repulsion,
-            *(classical or ()),
+            halogen, dispersion, repulsion, *(classical or ()), **dd
         )
 
         OutputHandler.write_stdout("done", v=4)
@@ -389,7 +399,6 @@ class EnergyCalculator(TensorLike):
 
     def singlepoint(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -399,29 +408,31 @@ class EnergyCalculator(TensorLike):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system.
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to 0.
-        grad : bool, optional
-            Flag for computing nuclear gradient w.r.t. the energy.
 
         Returns
         -------
         Result
             Results container.
         """
+        # shape checks
+        assert shape_checks(self.numbers, positions, allow_batched=True)
+        assert content_checks(
+            self.numbers, positions, self.opts.max_element, allow_batched=True
+        )
+
         OutputHandler.write_stdout("Singlepoint ", v=3)
 
         chrg = any_to_tensor(chrg, **self.dd)
         if spin is not None:
             spin = any_to_tensor(spin, **self.dd)
 
-        result = Result(positions, device=self.device, dtype=self.dtype)
+        result = Result(positions, **self.dd)
 
         # CLASSICAL CONTRIBUTIONS
 
@@ -429,7 +440,7 @@ class EnergyCalculator(TensorLike):
             OutputHandler.write_stdout_nf(" - Classicals        ... ", v=3)
             timer.start("Classicals")
 
-            ccaches = self.classicals.get_cache(numbers, self.ihelp)
+            ccaches = self.classicals.get_cache(self.numbers, self.ihelp)
             cenergies = self.classicals.get_energy(positions, ccaches)
             result.cenergies = cenergies
             result.total += torch.stack(list(cenergies.values())).sum(0)
@@ -494,7 +505,7 @@ class EnergyCalculator(TensorLike):
         timer.start("Interaction Cache", parent_uid="SCF")
         OutputHandler.write_stdout_nf(" - Interaction Cache ... ", v=3)
         icaches = self.interactions.get_cache(
-            numbers=numbers, positions=positions, ihelp=self.ihelp
+            numbers=self.numbers, positions=positions, ihelp=self.ihelp
         )
         timer.stop("Interaction Cache")
         OutputHandler.write_stdout("done", v=3)
@@ -503,7 +514,7 @@ class EnergyCalculator(TensorLike):
         OutputHandler.write_stdout("\nStarting SCF Iterations...", v=3)
 
         scf_results = scf.solve(
-            numbers,
+            self.numbers,
             positions,
             chrg,
             spin,
@@ -548,7 +559,6 @@ class EnergyCalculator(TensorLike):
     @cdec.cache
     def energy(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -558,8 +568,6 @@ class EnergyCalculator(TensorLike):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
@@ -572,4 +580,104 @@ class EnergyCalculator(TensorLike):
         Tensor
             Total energy of the system (scalar value).
         """
-        return self.singlepoint(numbers, positions, chrg, spin).total.sum(-1)
+        return self.singlepoint(positions, chrg, spin).total.sum(-1)
+
+    @override
+    def type(self, dtype: torch.dtype) -> Self:
+        """
+        Returns a copy of the class instance with specified floating point type.
+
+        This method overrides the usual approach because the `Calculator`s
+        arguments and slots differ significantly. Hence, it is not practical to
+        instantiate a new copy.
+
+        Parameters
+        ----------
+        dtype : torch.dtype
+            Floating point type.
+
+        Returns
+        -------
+        Self
+            A copy of the class instance with the specified dtype.
+
+        Raises
+        ------
+        RuntimeError
+            If the `__slots__` attribute is not set in the class.
+        DtypeError
+            If the specified dtype is not allowed.
+        """
+
+        if self.dtype == dtype:
+            return self
+
+        if len(self.__slots__) == 0:
+            raise RuntimeError(
+                f"The `type` method requires setting `__slots__` in the "
+                f"'{self.__class__.__name__}' class."
+            )
+
+        if dtype not in self.allowed_dtypes:
+            raise DtypeError(
+                f"Only '{self.allowed_dtypes}' allowed (received '{dtype}')."
+            )
+
+        self.classicals = self.classicals.type(dtype)
+        self.interactions = self.interactions.type(dtype)
+        self.integrals = self.integrals.type(dtype)
+        self.cache = self.cache.type(dtype)
+
+        # simple override in config
+        self.opts.dtype = dtype
+
+        # hard override of the dtype in TensorLike
+        self.override_dtype(dtype)
+
+        return self
+
+    @override
+    def to(self, device: torch.device) -> Self:
+        """
+        Returns a copy of the class instance on the specified device.
+
+        This method overrides the usual approach because the `Calculator`s
+        arguments and slots differ significantly. Hence, it is not practical to
+        instantiate a new copy.
+
+        Parameters
+        ----------
+        device : torch.device
+            Device to store the tensor on.
+
+        Returns
+        -------
+        Self
+            A copy of the class instance on the specified device.
+
+        Raises
+        ------
+        RuntimeError
+            If the `__slots__` attribute is not set in the class.
+        """
+        if self.device == device:
+            return self
+
+        if len(self.__slots__) == 0:
+            raise RuntimeError(
+                f"The `to` method requires setting `__slots__` in the "
+                f"'{self.__class__.__name__}' class."
+            )
+
+        self.classicals = self.classicals.to(device)
+        self.interactions = self.interactions.to(device)
+        self.integrals = self.integrals.to(device)
+        self.cache = self.cache.to(device)
+
+        # simple override in config
+        self.opts.device = device
+
+        # hard override of the dtype in TensorLike
+        self.override_device(device)
+
+        return self

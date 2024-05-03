@@ -57,10 +57,10 @@ def test_uhf_fail() -> None:
     calc = Calculator(numbers, par, opts=opts)
 
     with pytest.raises(ValueError):
-        calc.singlepoint(numbers, positions, charge, spin=0)
+        calc.singlepoint(positions, charge, spin=0)
 
     with pytest.raises(ValueError):
-        calc.singlepoint(numbers, positions, charge, spin=2)
+        calc.singlepoint(positions, charge, spin=2)
 
     if status is True:
         timer.enable()

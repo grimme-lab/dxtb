@@ -49,7 +49,7 @@ dxtb.timer.reset()
 dxtb.timer.start("Batch")
 
 calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, opts=opts, **dd)
-result = calc.energy(numbers, positions, chrg=charge)
+result = calc.energy(positions, chrg=charge)
 
 dxtb.timer.stop("Batch")
 dxtb.timer.print(v=-999)

@@ -71,7 +71,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     positions.requires_grad_(True)
 
     def scf(numbers, positions, charge) -> Tensor:
-        result = calc.singlepoint(numbers, positions, charge)
+        result = calc.singlepoint(positions, charge)
         return result.scf
 
     hess = hessian(scf, (numbers, positions, charge), argnums=1)
@@ -96,7 +96,7 @@ def _numhess(
 
     def _gradfcn(numbers: Tensor, positions: Tensor, charge: Tensor) -> Tensor:
         positions.requires_grad_(True)
-        result = -calc.forces_analytical(numbers, positions, charge)
+        result = -calc.forces_analytical(positions, charge)
         positions.detach_()
         return result.detach()
 

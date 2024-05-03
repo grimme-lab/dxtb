@@ -64,7 +64,7 @@ def skip_test_autograd(dtype: torch.dtype, name: str) -> None:
     calc = Calculator(numbers, par, opts=opts, **dd)
 
     def f(pos: Tensor) -> Tensor:
-        return calc.hessian(numbers, pos, charge)
+        return calc.hessian(pos, charge)
 
     assert dgradcheck(f, positions)
 
@@ -118,21 +118,14 @@ def execute(
 ) -> None:
     calc = Calculator(numbers, par, opts=opts, **dd)
 
-    numhess = calc.hessian_numerical(numbers, positions, charge)
+    numhess = calc.hessian_numerical(positions, charge)
     assert numhess.grad_fn is None
 
     # required for autodiff of energy w.r.t. positions (Hessian)
     pos = positions.clone().detach().requires_grad_(True)
 
     # manual jacobian
-    hess1 = tensor_to_numpy(
-        calc.hessian(
-            numbers,
-            pos,
-            charge,
-            use_functorch=False,
-        )
-    )
+    hess1 = tensor_to_numpy(calc.hessian(pos, charge, use_functorch=False))
 
     assert pytest.approx(numhess, abs=atol, rel=rtol) == hess1
 
@@ -141,14 +134,7 @@ def execute(
     pos = positions.clone().detach().requires_grad_(True)
 
     # jacrev of energy
-    hess2 = tensor_to_numpy(
-        calc.hessian(
-            numbers,
-            pos,
-            charge,
-            use_functorch=True,
-        )
-    )
+    hess2 = tensor_to_numpy(calc.hessian(pos, charge, use_functorch=True))
 
     assert pytest.approx(numhess, abs=atol, rel=rtol) == hess2
     assert pytest.approx(hess1, abs=atol, rel=rtol) == hess2

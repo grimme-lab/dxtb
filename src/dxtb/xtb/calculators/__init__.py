@@ -25,14 +25,18 @@ energies, forces and other properties of molecules.
 Examples
 --------
 The calculator is instantiated with the atomic numbers and a parametrization.
+
 >>> import torch
 >>> from dxtb.xtb import Calculator
 >>> from dxtb.param import GFN1_XTB
+>>>
 >>> numbers = torch.tensor([1, 1])
 >>> calc = Calculator(numbers, GFN1_XTB)
 
 It is recommended to always pass the `dtype` and `device` to the calculator.
+
 >>> from dxtb.typing import DD
+>>>
 >>> dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
 >>> calc = Calculator(numbers, GFN1_XTB, **dd)
 >>> print(calc.device)
@@ -42,16 +46,19 @@ torch.float64
 
 The `dtype` and `device` can be conveniently changed after instantiation in the
 same way as for any other PyTorch tensor.
+
 >>> calc = Calculator(numbers, GFN1_XTB, **dd)
 >>> calc = calc.type(torch.float32)
 >>> print(calc.dtype)
 torch.float32
 
 To configure settings, a dictionary of settings can be passed to the calculator.
+
 >>> settings = {"maxiter": 100}
 >>> calc = Calculator(numbers, GFN1_XTB, opts=settings)
 
 Additional tight binding components can also be added.
+
 >>> dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
 >>> ef = dxtb.field.new_efield(torch.tensor([0.0, 0.0, 0.0], **dd))
 >>> calc = Calculator(numbers, GFN1_XTB, interactions=[ef], **dd)

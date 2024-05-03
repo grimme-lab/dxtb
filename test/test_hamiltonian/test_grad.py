@@ -86,7 +86,7 @@ def no_overlap_single(dtype: torch.dtype, name: str) -> None:
     ref_dedcn = load_from_npz(ref_grad_no_overlap, f"{name}_dedcn", dtype)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
-    result = calc.singlepoint(numbers, positions, chrg)
+    result = calc.singlepoint(positions, chrg)
 
     # check setup
     o = result.integrals.overlap
@@ -186,7 +186,7 @@ def no_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     calc = Calculator(numbers, par, opts=opts, **dd)
-    result = calc.singlepoint(numbers, positions, chrg)
+    result = calc.singlepoint(positions, chrg)
 
     # check setup
     o = result.integrals.overlap
@@ -260,7 +260,7 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     chrg = torch.tensor(0.0, **dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
-    result = calc.singlepoint(numbers, positions, chrg)
+    result = calc.singlepoint(positions, chrg)
 
     # check setup
     o = result.integrals.overlap
@@ -383,7 +383,7 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     calc = Calculator(numbers, par, opts=opts, **dd)
-    result = calc.singlepoint(numbers, positions, chrg)
+    result = calc.singlepoint(positions, chrg)
 
     # check setup
     o = result.integrals.overlap
@@ -469,11 +469,11 @@ def calc_numerical_gradient(
     for i in range(natm):
         for j in range(3):
             positions[i, j] += step
-            sr = calc.singlepoint(numbers, positions, chrg)
+            sr = calc.singlepoint(positions, chrg)
             er = sr.scf.sum(-1)
 
             positions[i, j] -= 2 * step
-            sl = calc.singlepoint(numbers, positions, chrg)
+            sl = calc.singlepoint(positions, chrg)
             el = sl.scf.sum(-1)
 
             positions[i, j] += step

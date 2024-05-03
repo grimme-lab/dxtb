@@ -107,7 +107,7 @@ class DispersionD4(Dispersion):
         model: d4.model.D4Model = (
             kwargs.pop(
                 "model",
-                d4.model.D4Model(numbers, device=self.device, dtype=self.dtype),
+                d4.model.D4Model(numbers, **self.dd),
             )
             .type(self.dtype)
             .to(self.device)
@@ -130,11 +130,7 @@ class DispersionD4(Dispersion):
             .to(self.device)
         )
         cutoff: d4.cutoff.Cutoff = (
-            (
-                kwargs.pop(
-                    "cutoff", d4.cutoff.Cutoff(device=self.device, dtype=self.dtype)
-                )
-            )
+            (kwargs.pop("cutoff", d4.cutoff.Cutoff(**self.dd)))
             .type(self.dtype)
             .to(self.device)
         )

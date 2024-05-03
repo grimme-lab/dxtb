@@ -50,35 +50,20 @@ class Result(TensorLike):
     cenergies: dict[str, Tensor]
     """Energies of classical contributions."""
 
-    cgradients: dict[str, Tensor]
-    """Gradients of classical contributions."""
-
     emo: Tensor
     """Energy of molecular orbitals (sorted by increasing energy)."""
 
     fenergy: Tensor
     """Atom-resolved electronic free energy from fractional occupation."""
 
-    gradient: Tensor | None
-    """Gradient of total energy w.r.t. positions"""
-
     hamiltonian: Tensor
     """Full Hamiltonian matrix (H0 + H1)."""
-
-    hamiltonian_grad: Tensor
-    """Nuclear gradient of Hamiltonian matrix."""
 
     integrals: ints.Integrals
     """Collection of integrals including overlap and core Hamiltonian (H0)."""
 
-    interaction_grad: Tensor
-    """Nuclear gradient of interactions"""
-
     occupation: Tensor
     """Orbital occupations."""
-
-    overlap_grad: Tensor
-    """Nuclear gradient of overlap matrix."""
 
     potential: Potential
     """Self-consistent potentials."""
@@ -89,29 +74,20 @@ class Result(TensorLike):
     total: Tensor
     """Total energy."""
 
-    total_grad: Tensor
-    """Total nuclear gradient."""
-
     __slots__ = [
         "charges",
         "coefficients",
         "cenergies",
-        "cgradients",
         "density",
         "emo",
         "fenergy",
-        "gradient",
         "hamiltonian",
-        "hamiltonian_grad",
         "integrals",
-        "interaction_grad",
         "iter",
         "occupation",
-        "overlap_grad",
         "potential",
         "scf",
         "total",
-        "total_grad",
     ]
 
     def __init__(
@@ -123,14 +99,9 @@ class Result(TensorLike):
         super().__init__(device, dtype)
         shape = positions.shape[:-1]
 
-        self.gradient = None
         self.scf = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.fenergy = torch.zeros(shape, dtype=self.dtype, device=self.device)
-        self.hamiltonian_grad = torch.zeros_like(positions)
-        self.interaction_grad = torch.zeros_like(positions)
-        self.overlap_grad = torch.zeros_like(positions)
         self.total = torch.zeros(shape, dtype=self.dtype, device=self.device)
-        self.total_grad = torch.zeros_like(positions)
         self.cenergies = {}
         self.iter = 0
 

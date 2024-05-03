@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Isotropic second-order electrostatic energy (ES2)
-=================================================
+Coulomb: Isotropic second-order electrostatic energy (ES2)
+==========================================================
 
 This module implements the second-order electrostatic energy for GFN1-xTB.
 

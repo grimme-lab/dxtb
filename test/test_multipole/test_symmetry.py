@@ -82,7 +82,7 @@ def test_single(dtype: torch.dtype, intstr: str, name: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
 
-    atombases = bas.create_dqc(positions)
+    atombases = bas.create_libcint(positions)
     assert is_basis_list(atombases)
 
     wrapper = libcint.LibcintWrapper(atombases, ihelp, spherical=True)
@@ -120,7 +120,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, intstr: str) -> None:
 
     _ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, _ihelp, **dd)
-    atombases = bas.create_dqc(positions)
+    atombases = bas.create_libcint(positions)
 
     # batched IndexHelper does not yet work with LibcintWrapper
     ihelp = [IndexHelper.from_numbers(deflate(number), par) for number in numbers]

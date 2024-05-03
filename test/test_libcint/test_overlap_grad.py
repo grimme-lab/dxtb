@@ -50,7 +50,7 @@ def explicit(name: str, dd: DD, tol: float) -> None:
 
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
-    atombases = bas.create_dqc(positions)
+    atombases = bas.create_libcint(positions)
     assert is_basis_list(atombases)
 
     wrapper = libcint.LibcintWrapper(atombases, ihelp)
@@ -100,7 +100,7 @@ def autograd(name: str, dd: DD, tol: float) -> None:
 
     # variable to be differentiated
     positions.requires_grad_(True)
-    atombases = bas.create_dqc(positions)
+    atombases = bas.create_libcint(positions)
     assert is_basis_list(atombases)
 
     wrapper = libcint.LibcintWrapper(atombases, ihelp)
@@ -141,7 +141,7 @@ def num_grad(bas: Basis, ihelp: IndexHelper, positions: Tensor) -> torch.Tensor:
     positions = positions.clone().detach()
 
     def compute_overlap(positions: torch.Tensor) -> torch.Tensor:
-        atombases = bas.create_dqc(positions)
+        atombases = bas.create_libcint(positions)
         assert is_basis_list(atombases)
 
         wrapper = libcint.LibcintWrapper(atombases, ihelp)

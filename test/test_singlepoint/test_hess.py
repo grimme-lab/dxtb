@@ -74,8 +74,8 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     options = dict(opts, **{"exclude": ["scf"]})
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    def singlepoint(numbers, positions, charge) -> Tensor:
-        result = calc.singlepoint(numbers, positions, charge)
+    def singlepoint(positions, charge) -> Tensor:
+        result = calc.singlepoint(positions, charge)
         return result.total
 
     positions.requires_grad_(True)
@@ -89,7 +89,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
         torch.Size(2 * (numbers.shape[-1], 3)),
     )
 
-    hess = hessian(singlepoint, (numbers, positions, charge), argnums=1)
+    hess = hessian(singlepoint, (positions, charge), argnums=0)
     positions.detach_()
     hess = hess.detach().reshape_as(ref)
 

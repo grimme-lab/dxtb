@@ -114,11 +114,11 @@ def execute(
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
     # field is cloned and detached and updated inside
-    num = calc.dipole_numerical(numbers, positions, charge)
+    num = calc.dipole_numerical(positions, charge)
     assert pytest.approx(ref, abs=atol, rel=rtol) == num
 
     # analytical
-    dip0 = tensor_to_numpy(calc.dipole_analytical(numbers, positions, charge))
+    dip0 = tensor_to_numpy(calc.dipole_analytical(positions, charge))
     assert pytest.approx(ref, abs=atol, rel=rtol) == dip0
     assert pytest.approx(num, abs=atol, rel=rtol) == dip0
 
@@ -126,27 +126,13 @@ def execute(
     calc.interactions.update_efield(field=field_vector.requires_grad_(True))
 
     # manual jacobian
-    dip1 = tensor_to_numpy(
-        calc.dipole(
-            numbers,
-            positions,
-            charge,
-            use_functorch=False,
-        )
-    )
+    dip1 = tensor_to_numpy(calc.dipole(positions, charge, use_functorch=False))
     assert pytest.approx(ref, abs=atol, rel=rtol) == dip1
     assert pytest.approx(num, abs=atol, rel=rtol) == dip1
     assert pytest.approx(dip0, abs=atol, rel=rtol) == dip1
 
     # jacrev of energy
-    dip2 = tensor_to_numpy(
-        calc.dipole(
-            numbers,
-            positions,
-            charge,
-            use_functorch=True,
-        )
-    )
+    dip2 = tensor_to_numpy(calc.dipole(positions, charge, use_functorch=True))
     assert pytest.approx(ref, abs=atol, rel=rtol) == dip2
     assert pytest.approx(num, abs=atol, rel=rtol) == dip2
     assert pytest.approx(dip0, abs=atol, rel=rtol) == dip2
@@ -248,7 +234,7 @@ def test_batch_settings(
     options = dict(opts, **{"scp_mode": scp_mode, "mixer": mixer})
     calc = Calculator(numbers, par, interaction=[efield], opts=options, **dd)
 
-    dipole = tensor_to_numpy(calc.dipole(numbers, positions, charge))
+    dipole = tensor_to_numpy(calc.dipole(positions, charge))
     assert pytest.approx(ref, abs=1e-4) == dipole
 
 
@@ -294,5 +280,5 @@ def test_batch_unconverged(dtype: torch.dtype, name1: str, name2: str) -> None:
     efield = new_efield(field_vector)
     calc = Calculator(numbers, par, interaction=[efield], opts=options, **dd)
 
-    dipole = tensor_to_numpy(calc.dipole(numbers, positions, charge))
+    dipole = tensor_to_numpy(calc.dipole(positions, charge))
     assert pytest.approx(ref, abs=1e-2, rel=1e-3) == dipole

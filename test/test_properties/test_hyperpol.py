@@ -104,27 +104,19 @@ def execute(
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
     # field is cloned and detached and updated inside
-    num = calc.hyperpol_numerical(numbers, positions, charge)
+    num = calc.hyperpol_numerical(positions, charge)
 
     # required for autodiff of energy w.r.t. efield; update after numerical
     # derivative as `requires_grad_(True)` gets lost
     calc.interactions.update_efield(field=field_vector.requires_grad_(True))
 
     # manual jacobian
-    pol = tensor_to_numpy(
-        calc.hyperpol(
-            numbers,
-            positions,
-            charge,
-            use_functorch=False,
-        )
-    )
+    pol = tensor_to_numpy(calc.hyperpol(positions, charge, use_functorch=False))
     assert pytest.approx(num, abs=atol, rel=rtol) == pol
 
     # 3x jacrev of energy
     pol2 = tensor_to_numpy(
         calc.hyperpol(
-            numbers,
             positions,
             charge,
             use_functorch=True,
@@ -139,7 +131,6 @@ def execute(
     # 2x jacrev of dipole
     pol3 = tensor_to_numpy(
         calc.hyperpol(
-            numbers,
             positions,
             charge,
             use_functorch=True,
@@ -154,7 +145,6 @@ def execute(
     # jacrev of polarizability
     pol4 = tensor_to_numpy(
         calc.hyperpol(
-            numbers,
             positions,
             charge,
             use_functorch=True,

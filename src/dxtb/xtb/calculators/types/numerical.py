@@ -55,7 +55,6 @@ class NumericalCalculator(EnergyCalculator):
     @cdec.cache
     def forces_numerical(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -70,8 +69,6 @@ class NumericalCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
@@ -96,7 +93,7 @@ class NumericalCalculator(EnergyCalculator):
         OutputHandler.write_stdout("Forces (numerical)\n", v=4)
 
         LINEBREAK_NUMERICAL = 20
-        nsteps = 3 * numbers.shape[-1]
+        nsteps = 3 * self.numbers.shape[-1]
         count = 1
 
         OutputHandler.write_stdout(
@@ -105,14 +102,14 @@ class NumericalCalculator(EnergyCalculator):
             v=4,
         )
 
-        for i in range(numbers.shape[-1]):
+        for i in range(self.numbers.shape[-1]):
             for j in range(3):
                 with OutputHandler.with_verbosity(0):
                     positions[..., i, j] += step_size
-                    gr = self.energy(numbers, positions, chrg, spin)
+                    gr = self.energy(positions, chrg, spin)
 
                     positions[..., i, j] -= 2 * step_size
-                    gl = self.energy(numbers, positions, chrg, spin)
+                    gl = self.energy(positions, chrg, spin)
 
                     positions[..., i, j] += step_size
                     deriv[..., i, j] = 0.5 * (gr - gl) / step_size
@@ -141,7 +138,6 @@ class NumericalCalculator(EnergyCalculator):
     @cdec.cache
     def hessian_numerical(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -153,8 +149,6 @@ class NumericalCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int | str | None
@@ -183,24 +177,22 @@ class NumericalCalculator(EnergyCalculator):
             def _gradfcn(pos: Tensor) -> Tensor:
                 with torch.enable_grad():
                     pos.requires_grad_(True)
-                    result = -self.forces_analytical(  # type: ignore
-                        numbers, pos, chrg, spin
-                    )
+                    result = -self.forces_analytical(pos, chrg, spin)  # type: ignore
                     pos.detach_()
                 return result.detach()
 
         else:
 
             def _gradfcn(pos: Tensor) -> Tensor:
-                return -self.forces_numerical(numbers, pos, chrg, spin)
+                return -self.forces_numerical(pos, chrg, spin)
 
         # (..., nat, 3, nat, 3)
         deriv = torch.zeros((*positions.shape, *positions.shape[-2:]), **self.dd)
         logger.debug("Hessian (numerical): Starting build (%s).", deriv.shape)
 
         count = 1
-        nsteps = 3 * numbers.shape[-1]
-        for i in range(numbers.shape[-1]):
+        nsteps = 3 * self.numbers.shape[-1]
+        for i in range(self.numbers.shape[-1]):
             for j in range(3):
                 with OutputHandler.with_verbosity(0):
                     positions[..., i, j] += step_size
@@ -220,7 +212,7 @@ class NumericalCalculator(EnergyCalculator):
 
         # reshape (..., nat, 3, nat, 3) to (..., nat*3, nat*3)
         if matrix is True:
-            s = [*numbers.shape[:-1], *2 * [3 * numbers.shape[-1]]]
+            s = [*self.numbers.shape[:-1], *2 * [3 * self.numbers.shape[-1]]]
             deriv = deriv.reshape(*s)
 
         logger.debug("Hessian (numerical): All finished.")
@@ -230,7 +222,6 @@ class NumericalCalculator(EnergyCalculator):
     @cdec.numerical
     def vibration_numerical(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -245,8 +236,6 @@ class NumericalCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
@@ -266,11 +255,9 @@ class NumericalCalculator(EnergyCalculator):
             Result container with vibrational frequencies (shape:
             `(..., nfreqs)`) and normal modes (shape: `(..., nat*3, nfreqs)`).
         """
-        hess = self.hessian_numerical(
-            numbers, positions, chrg, spin, step_size=step_size
-        )
+        hess = self.hessian_numerical(positions, chrg, spin, step_size=step_size)
         return vib.vib_analysis(
-            numbers,
+            self.numbers,
             positions,
             hess,
             project_translational=project_translational,
@@ -283,7 +270,6 @@ class NumericalCalculator(EnergyCalculator):
     @cdec.requires_efield
     def dipole_numerical(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -298,8 +284,6 @@ class NumericalCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
@@ -321,7 +305,7 @@ class NumericalCalculator(EnergyCalculator):
         field = self.interactions.get_interaction(efield.LABEL_EFIELD).field
 
         # (..., 3)
-        deriv = torch.zeros((*numbers.shape[:-1], 3), **self.dd)
+        deriv = torch.zeros((*self.numbers.shape[:-1], 3), **self.dd)
         logger.debug("Dipole (numerical): Starting build (%s).", deriv.shape)
 
         count = 1
@@ -329,11 +313,11 @@ class NumericalCalculator(EnergyCalculator):
             with OutputHandler.with_verbosity(0):
                 field[..., i] += step_size
                 self.interactions.update_efield(field=field)
-                gr = self.energy(numbers, positions, chrg, spin)
+                gr = self.energy(positions, chrg, spin)
 
                 field[..., i] -= 2 * step_size
                 self.interactions.update_efield(field=field)
-                gl = self.energy(numbers, positions, chrg, spin)
+                gl = self.energy(positions, chrg, spin)
 
                 field[..., i] += step_size
                 self.interactions.update_efield(field=field)
@@ -351,7 +335,6 @@ class NumericalCalculator(EnergyCalculator):
     @cdec.numerical
     def dipole_deriv_numerical(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -369,8 +352,6 @@ class NumericalCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
@@ -397,22 +378,22 @@ class NumericalCalculator(EnergyCalculator):
 
         # (..., 3, n, 3)
         deriv = torch.zeros(
-            (*numbers.shape[:-1], 3, *positions.shape[-2:]),
+            (*self.numbers.shape[:-1], 3, *positions.shape[-2:]),
             **self.dd,
         )
         logger.debug("Dipole derivative (numerical): Starting build (%s).", deriv.shape)
 
         count = 1
-        nsteps = 3 * numbers.shape[-1]
+        nsteps = 3 * self.numbers.shape[-1]
 
-        for i in range(numbers.shape[-1]):
+        for i in range(self.numbers.shape[-1]):
             for j in range(3):
                 with OutputHandler.with_verbosity(0):
                     positions[..., i, j] += step_size
-                    r = _dipfcn(numbers, positions, chrg, spin)
+                    r = _dipfcn(positions, chrg, spin)
 
                     positions[..., i, j] -= 2 * step_size
-                    l = _dipfcn(numbers, positions, chrg, spin)
+                    l = _dipfcn(positions, chrg, spin)
 
                     positions[..., i, j] += step_size
                     deriv[..., :, i, j] = 0.5 * (r - l) / step_size
@@ -431,7 +412,6 @@ class NumericalCalculator(EnergyCalculator):
     @cdec.requires_efield
     def polarizability_numerical(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -448,8 +428,6 @@ class NumericalCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int | str | None
@@ -481,7 +459,7 @@ class NumericalCalculator(EnergyCalculator):
         self.interactions.update_efield(field=field)
 
         # (..., 3, 3)
-        deriv = torch.zeros(*(*numbers.shape[:-1], 3, 3), **self.dd)
+        deriv = torch.zeros(*(*self.numbers.shape[:-1], 3, 3), **self.dd)
         logger.debug("Polarizability (numerical): Starting build %s", deriv.shape)
 
         count = 1
@@ -489,11 +467,11 @@ class NumericalCalculator(EnergyCalculator):
             with OutputHandler.with_verbosity(0):
                 field[..., i] += step_size
                 self.interactions.update_efield(field=field)
-                gr = _dipfcn(numbers, positions, chrg, spin)
+                gr = _dipfcn(positions, chrg, spin)
 
                 field[..., i] -= 2 * step_size
                 self.interactions.update_efield(field=field)
-                gl = _dipfcn(numbers, positions, chrg, spin)
+                gl = _dipfcn(positions, chrg, spin)
 
                 field[..., i] += step_size
                 self.interactions.update_efield(field=field)
@@ -516,7 +494,6 @@ class NumericalCalculator(EnergyCalculator):
     @cdec.requires_efield
     def pol_deriv_numerical(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -537,8 +514,6 @@ class NumericalCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system of shape `(..., nat)`.
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
@@ -558,7 +533,7 @@ class NumericalCalculator(EnergyCalculator):
 
         # (..., 3, 3, nat, 3)
         deriv = torch.zeros(
-            (*numbers.shape[:-1], 3, 3, *positions.shape[-2:]), **self.dd
+            (*self.numbers.shape[:-1], 3, 3, *positions.shape[-2:]), **self.dd
         )
         logger.debug(
             "Polarizability derivative (numerical): Starting build (%s).",
@@ -566,15 +541,15 @@ class NumericalCalculator(EnergyCalculator):
         )
 
         count = 1
-        nsteps = 3 * numbers.shape[-1]
-        for i in range(numbers.shape[-1]):
+        nsteps = 3 * self.numbers.shape[-1]
+        for i in range(self.numbers.shape[-1]):
             for j in range(3):
                 with OutputHandler.with_verbosity(0):
                     positions[..., i, j] += step_size
-                    r = self.polarizability_numerical(numbers, positions, chrg, spin)
+                    r = self.polarizability_numerical(positions, chrg, spin)
 
                     positions[..., i, j] -= 2 * step_size
-                    l = self.polarizability_numerical(numbers, positions, chrg, spin)
+                    l = self.polarizability_numerical(positions, chrg, spin)
 
                     positions[..., i, j] += step_size
                     deriv[..., :, :, i, j] = 0.5 * (r - l) / step_size
@@ -597,7 +572,6 @@ class NumericalCalculator(EnergyCalculator):
     @cdec.requires_efield
     def hyperpol_numerical(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -616,8 +590,6 @@ class NumericalCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system (shape: `(..., nat)`).
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int, optional
@@ -642,7 +614,7 @@ class NumericalCalculator(EnergyCalculator):
         self.interactions.update_efield(field=field)
 
         # (..., 3, 3, 3)
-        deriv = torch.zeros(*(*numbers.shape[:-1], 3, 3, 3), **self.dd)
+        deriv = torch.zeros(*(*self.numbers.shape[:-1], 3, 3, 3), **self.dd)
         logger.debug(
             "Hyper Polarizability (numerical): Starting build (%s)", deriv.shape
         )
@@ -652,11 +624,11 @@ class NumericalCalculator(EnergyCalculator):
             with OutputHandler.with_verbosity(0):
                 field[..., i] += step_size
                 self.interactions.update_efield(field=field)
-                gr = self.polarizability_numerical(numbers, positions, chrg, spin)
+                gr = self.polarizability_numerical(positions, chrg, spin)
 
                 field[..., i] -= 2 * step_size
                 self.interactions.update_efield(field=field)
-                gl = self.polarizability_numerical(numbers, positions, chrg, spin)
+                gl = self.polarizability_numerical(positions, chrg, spin)
 
                 field[..., i] += step_size
                 self.interactions.update_efield(field=field)
@@ -680,7 +652,6 @@ class NumericalCalculator(EnergyCalculator):
     @cdec.numerical
     def ir_numerical(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -691,8 +662,6 @@ class NumericalCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system (shape: `(..., nat)`).
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int | str | None
@@ -714,13 +683,11 @@ class NumericalCalculator(EnergyCalculator):
 
         # run vibrational analysis first
         freqs, modes = self.vibration_numerical(
-            numbers, positions, chrg, spin, step_size=step_size
+            positions, chrg, spin, step_size=step_size
         )
 
         # calculate nuclear dipole derivative dmu/dR: (..., 3, nat, 3)
-        dmu_dr = self.dipole_deriv_numerical(
-            numbers, positions, chrg, spin, step_size=step_size
-        )
+        dmu_dr = self.dipole_deriv_numerical(positions, chrg, spin, step_size=step_size)
 
         intensities = vib.ir_ints(dmu_dr, modes)
 
@@ -731,7 +698,6 @@ class NumericalCalculator(EnergyCalculator):
     @cdec.numerical
     def raman_numerical(
         self,
-        numbers: Tensor,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -744,8 +710,6 @@ class NumericalCalculator(EnergyCalculator):
 
         Parameters
         ----------
-        numbers : Tensor
-            Atomic numbers for all atoms in the system (shape: `(..., nat)`).
         positions : Tensor
             Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
         chrg : Tensor | float | int | str | None
@@ -766,14 +730,10 @@ class NumericalCalculator(EnergyCalculator):
         OutputHandler.write_stdout("--------------")
         logger.debug("Raman spectrum (numerical): All finished.")
 
-        vib_res = self.vibration_numerical(
-            numbers, positions, chrg, spin, step_size=step_size
-        )
+        vib_res = self.vibration_numerical(positions, chrg, spin, step_size=step_size)
 
         # d(3, 3) / d(nat, 3) -> (3, 3, nat, 3) -> (3, 3, nat*3)
-        da_dr = self.pol_deriv_numerical(
-            numbers, positions, chrg, spin, step_size=step_size
-        )
+        da_dr = self.pol_deriv_numerical(positions, chrg, spin, step_size=step_size)
 
         intensities, depol = vib.raman_ints_depol(da_dr, vib_res.modes)
 

@@ -104,7 +104,7 @@ def execute(
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
     # field is cloned and detached and updated inside
-    num = calc.polarizability_numerical(numbers, positions, charge)
+    num = calc.polarizability_numerical(positions, charge)
 
     # required for autodiff of energy w.r.t. efield; update after numerical
     # derivative as `requires_grad_(True)` gets lost
@@ -113,7 +113,6 @@ def execute(
     # manual jacobian
     pol = tensor_to_numpy(
         calc.polarizability(
-            numbers,
             positions,
             charge,
             use_functorch=False,
@@ -124,7 +123,6 @@ def execute(
     # jacrev of dipole
     pol2 = tensor_to_numpy(
         calc.polarizability(
-            numbers,
             positions,
             charge,
             use_functorch=True,
@@ -139,7 +137,6 @@ def execute(
     # 2x jacrev of energy
     pol3 = tensor_to_numpy(
         calc.polarizability(
-            numbers,
             positions,
             charge,
             use_functorch=True,
@@ -154,7 +151,6 @@ def execute(
     # jacrev of analytical dipole moment calculation
     pol4 = tensor_to_numpy(
         calc.polarizability(
-            numbers,
             positions,
             charge,
             use_functorch=True,
