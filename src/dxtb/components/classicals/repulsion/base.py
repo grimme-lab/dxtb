@@ -65,14 +65,9 @@ from ..base import Classical
 
 __all__ = [
     "BaseRepulsion",
-    "LABEL_REPULSION",
     "repulsion_energy",
     "repulsion_gradient",
 ]
-
-
-LABEL_REPULSION = "Repulsion"
-"""Label for the 'Repulsion' component, coinciding with the class name."""
 
 
 class BaseRepulsion(Classical):

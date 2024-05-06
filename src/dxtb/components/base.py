@@ -29,6 +29,8 @@ from dxtb.__version__ import __tversion__
 from dxtb.typing import Any, Tensor, TensorLike
 from dxtb.utils.misc import get_all_slots
 
+__all__ = ["Component"]
+
 
 class Component(TensorLike):
     """

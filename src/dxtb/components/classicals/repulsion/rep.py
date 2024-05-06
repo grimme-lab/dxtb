@@ -42,7 +42,11 @@ from dxtb.typing import Any, Tensor, override
 
 from .base import BaseRepulsion, repulsion_energy, repulsion_gradient
 
-__all__ = ["Repulsion", "RepulsionAnalytical"]
+__all__ = ["LABEL_REPULSION", "Repulsion", "RepulsionAnalytical"]
+
+
+LABEL_REPULSION = "Repulsion"
+"""Label for the 'Repulsion' component, coinciding with the class name."""
 
 
 class Repulsion(BaseRepulsion):

@@ -24,7 +24,7 @@ The classical contribution currently comprise:
  - halogen bonding correction (GFN1-xTB).
 """
 
-from .base import *
+from .base import Classical
 from .dispersion import *
 from .halogen import *
 from .list import *

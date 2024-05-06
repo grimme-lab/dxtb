@@ -30,7 +30,7 @@ from tad_mctc.data.radii import ATOMIC as ATOMIC_RADII
 
 from dxtb.basis import IndexHelper
 from dxtb.constants import xtb
-from dxtb.typing import Tensor, TensorLike
+from dxtb.typing import Tensor
 
 from ..base import Classical
 

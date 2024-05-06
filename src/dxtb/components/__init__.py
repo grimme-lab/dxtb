@@ -21,8 +21,8 @@ Components
 Tight-binding components.
 """
 
-from .base import *
+from .base import Component
 from .classicals import dispersion, halogen, repulsion
 from .interactions import coulomb, solvation
 from .interactions.field import efield
-from .list import *
+from .list import ComponentList

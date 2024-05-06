@@ -32,6 +32,9 @@ from dxtb.typing import Any, Self, Slicers, Tensor, TensorLike, TypeVar, overrid
 
 from .base import Component
 
+__all__ = ["ComponentList"]
+
+
 C = TypeVar("C", bound=Component)
 
 

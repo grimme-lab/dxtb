@@ -19,7 +19,7 @@ Classical contributions (ABC)
 =============================
 
 This module contains the abstract base class for all classical (i.e., non-
-selfconsistent or density-dependent) energy terms.
+selfconsistent or non-density-dependent) energy terms.
 
 Every contribution contains a `Cache` that holds position-independent
 variables. Therefore, the positions must always be supplied to the `get_energy`
@@ -36,6 +36,8 @@ from dxtb.basis import IndexHelper
 from dxtb.typing import Any, Tensor
 
 from .. import Component
+
+__all__ = ["ClassicalABC", "Classical"]
 
 
 class ClassicalABC(ABC):

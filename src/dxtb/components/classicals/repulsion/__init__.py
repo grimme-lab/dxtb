@@ -49,6 +49,12 @@ Example
 tensor(0.0303)
 """
 
-from .base import *
-from .factory import *
-from .rep import *
+from .factory import new_repulsion
+from .rep import LABEL_REPULSION, Repulsion, RepulsionAnalytical
+
+__all__ = [
+    "LABEL_REPULSION",
+    "new_repulsion",
+    "Repulsion",
+    "RepulsionAnalytical",
+]
