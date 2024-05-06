@@ -80,16 +80,16 @@ class AnalyticalCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
 
         Returns
         -------
         Tensor
-            Atomic forces of shape `(..., nat, 3)`.
+            Atomic forces of shape ``(..., nat, 3)``.
         """
         OutputHandler.write_stdout("Singlepoint ", v=3)
 
@@ -97,6 +97,7 @@ class AnalyticalCalculator(EnergyCalculator):
         if spin is not None:
             spin = any_to_tensor(spin, **self.dd)
 
+        total_grad = torch.zeros(positions.shape, **self.dd)
         result = Result(positions, **self.dd)
 
         # CLASSICAL CONTRIBUTIONS
@@ -116,13 +117,12 @@ class AnalyticalCalculator(EnergyCalculator):
             timer.start("Classicals Gradient")
 
             cgradients = self.classicals.get_gradient(cenergies, positions)
-            result.cgradients = cgradients
-            result.total_grad += torch.stack(list(cgradients.values())).sum(0)
+            total_grad += torch.stack(list(cgradients.values())).sum(0)
 
             timer.stop("Classicals Gradient")
 
         if any(x in ["all", "scf"] for x in self.opts.exclude):
-            return -result.total_grad
+            return -total_grad
 
         # SELF-CONSISTENT FIELD PROCEDURE
 
@@ -229,14 +229,14 @@ class AnalyticalCalculator(EnergyCalculator):
             timer.start("igrad", "Interaction Gradient")
 
             # charges should be detached
-            result.interaction_grad = self.interactions.get_gradient(
+            interaction_grad = self.interactions.get_gradient(
                 result.charges, positions, icaches, self.ihelp
             )
-            result.total_grad += result.interaction_grad
+            total_grad += interaction_grad
             timer.stop("igrad")
 
         timer.start("ograd", "Overlap Gradient")
-        result.overlap_grad = self.integrals.grad_overlap(positions)
+        overlap_grad = self.integrals.grad_overlap(positions)
         timer.stop("ograd")
 
         timer.start("hgrad", "Hamiltonian Gradient")
@@ -250,7 +250,7 @@ class AnalyticalCalculator(EnergyCalculator):
         dedcn, dedr = self.integrals.hcore.integral.get_gradient(
             positions,
             self.integrals.matrices.overlap,
-            result.overlap_grad,
+            overlap_grad,
             result.density,
             wmat,
             result.potential,
@@ -262,11 +262,11 @@ class AnalyticalCalculator(EnergyCalculator):
         dcn = ncoord.get_dcn(dcndr, dedcn)
 
         # sum up hamiltonian gradient and CN gradient
-        result.hamiltonian_grad += dedr + dcn
-        result.total_grad += result.hamiltonian_grad
+        hamiltonian_grad = dedr + dcn
+        total_grad += hamiltonian_grad
         timer.stop("hgrad")
 
-        return -result.total_grad
+        return -total_grad
 
     @cdec.requires_efield
     @cdec.cache
@@ -287,11 +287,11 @@ class AnalyticalCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
 
         Returns
         -------

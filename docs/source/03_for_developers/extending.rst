@@ -64,9 +64,9 @@ tensors in the class with PyTorch's well known `to` and `type` method. The
 `TensorLike` class also registers the `self.dtype`, `self.device` and `self.dd`
 properties.
 
-Do not forget to add the `__slots__` attribute to the class.
+Do not forget to add the ``__slots__`` attribute to the class.
 Otherwise, the `to` and `type` methods will not work.
-All `__slots__` should be arguments of the constructor.
+All ``__slots__`` should be arguments of the constructor.
 
 Step 3: Create cache.
 ~~~~~~~~~~~~~~~~~~~~~
@@ -74,7 +74,7 @@ Step 3: Create cache.
 The internal `Cache` should inherit from the cache of the base class
 (`Interaction.Cache`) and the `TensorLike` class again. Correspondingly, the
 constructor is similar to the one of the electric field itself. The attributes
-and `__slots__` are also initialized in the same way.
+and ``__slots__`` are also initialized in the same way.
 For the electric field, the cache contains the atom-resolved monopolar and
 dipolar potentials.
 
@@ -119,7 +119,7 @@ a system is removed from the batch dimension upon convergence within the SCF
 ("culling"). Simultanously, all cache variables must be stored to allow
 restoring them after the SCF for the final energy evaluation.
 Correspondingly, we add a simple `Store` class and a corresponding attribute
-(`__store`) to the `Cache`. The `__store` attribute is initialized to `None`
+(`__store`) to the `Cache`. The `__store` attribute is initialized to ``None``
 and will only be filled when the `cull` method is called.
 The `cull` method takes the indices of systems that are removed from the batch
 (`conv` tensor) and a collection of `slicers`, which are used for potentially
@@ -169,7 +169,7 @@ Restoring the cache is done by the `restore` method, which simply copies the
 
       class Store:
           """
-          Storage container for cache containing `__slots__` before culling.
+          Storage container for cache containing ``__slots__`` before culling.
           """
 
           vat: Tensor
@@ -210,7 +210,7 @@ Note that if the interaction is evaluated within the `InteractionList`,
 `numbers` and `IndexHelper` will be passed as argument, too. This is done to
 fulfill the different requirements of the caches, while retaining a (somewhat)
 consistent API. The electric field cache only needs the position tensor. The
-`**_` in the argument list will absorb those unnecessary arguments which are
+``**_`` in the argument list will absorb those unnecessary arguments which are
 given as keyword-only arguments (see `Interaction.get_cache`).
 
 .. code-block:: python

@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Dispersion: ABC
+===============
+
 Abstract base class for dispersion models.
 """
 
@@ -26,7 +29,9 @@ import torch
 
 from dxtb.typing import Any, Tensor
 
-from ...classicals import Classical
+from ...classicals import Classical, ClassicalCache
+
+__all__ = ["Dispersion"]
 
 
 class Dispersion(Classical):
@@ -35,7 +40,7 @@ class Dispersion(Classical):
     """
 
     numbers: Tensor
-    """Atomic numbers for all atoms in the system."""
+    """Atomic numbers for all atoms in the system (shape: ``(..., nat)``)."""
 
     param: dict[str, Tensor]
     """Dispersion parameters."""
@@ -59,14 +64,14 @@ class Dispersion(Classical):
         self.charge = charge
 
     @abstractmethod
-    def get_cache(self, numbers: Tensor, **kwargs: Any) -> Classical.Cache:
+    def get_cache(self, numbers: Tensor, **kwargs: Any) -> ClassicalCache:
         """
         Store variables for energy calculation.
 
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
 
         Returns
         -------

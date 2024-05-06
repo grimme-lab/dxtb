@@ -34,6 +34,9 @@ from tad_mctc.batch import deflate, pack
 from dxtb.constants import defaults
 from dxtb.typing import ContainerData, Self, Tensor, Type, TypeVar
 
+__all__ = ["Container", "Charges", "Potential"]
+
+
 T = TypeVar("T", bound="Container")
 
 
@@ -175,7 +178,7 @@ class Container:
             Collection of shapes and labels of the container. This information
             is required for correctly restoring the the Container class.
         batch_mode : bool, optional
-            Whether the calculation runs in batch_mode mode. Defaults to `False`.
+            Whether the calculation runs in batch_mode mode. Defaults to ``False``.
         pad : int, optional
             Value used to indicate padding. Defaults to ``defaults.PADNZ``.
 
@@ -229,7 +232,7 @@ class Container:
         self, tensor1: Tensor | None, tensor2: Tensor | None
     ) -> Tensor | None:
         """
-        Add two tensors together, while handling `None`s.
+        Add two tensors together, while handling ``None``.
 
         Parameters
         ----------
@@ -241,7 +244,7 @@ class Container:
         Returns
         -------
         Tensor | None
-            Added tensors or `None` if both tensor are `None`.
+            Added tensors or ``None`` if both tensor are ``None``.
         """
         if tensor1 is None:
             return tensor2

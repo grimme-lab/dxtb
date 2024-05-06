@@ -305,7 +305,7 @@ def wrap_gather(
         (e.g. gradient tensors with extra xyz dimension), the indexing tensor
         has to be modified. This feature is only tested for the aforementioned
         gradient tensors and does only work for one dimension.
-        Defaults to `False`.
+        Defaults to ``False``.
 
     Returns
     -------
@@ -345,6 +345,7 @@ def scatter_reduce(
         still in beta and CPU-only.
 
         Related links:
+
         - https://pytorch.org/docs/1.12/generated/torch.Tensor.scatter_reduce_.\
           html#torch.Tensor.scatter_reduce_
         - https://pytorch.org/docs/1.11/generated/torch.scatter_reduce.html
@@ -430,7 +431,7 @@ def wrap_scatter_reduce(
         (e.g. gradient tensors with extra xyz dimension), the indexing tensor
         has to be modified. This feature is only tested for the aforementioned
         gradient tensors and does only work for one dimension.
-        Defaults to `False`.
+        Defaults to ``False``.
 
     Returns
     -------

@@ -29,6 +29,14 @@ from dxtb.typing import Callable, Tensor
 
 AveragingFunction = Callable[[Tensor], Tensor]
 
+__all__ = [
+    "AveragingFunction",
+    "averaging_function",
+    "arithmetic_average",
+    "geometric_average",
+    "harmonic_average",
+]
+
 
 def harmonic_average(hubbard: Tensor) -> Tensor:
     """

@@ -28,6 +28,8 @@ from ..constants import defaults, labels
 from .integral import ConfigIntegrals
 from .scf import ConfigSCF
 
+__all__ = ["Config"]
+
 
 class Config:
     """

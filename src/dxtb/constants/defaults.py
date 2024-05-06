@@ -33,6 +33,7 @@ BATCH_MODE = 0
 BATCH_MODE_CHOICES = [0, 1, 2]
 """
 List of possible choices for `BATCH_MODE`:
+
 - 0: No batching
 - 1: Regular batching with padding
 - 2: Batched calculation without padding

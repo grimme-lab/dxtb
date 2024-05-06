@@ -46,7 +46,7 @@ def dipole(
     charge : Tensor
         Atom-resolved charges.
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     density : Tensor
         Density matrix.
     integral : Tensor
@@ -80,11 +80,11 @@ def dipole_xtb(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers for all atoms in the system.
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     charge : Tensor
         Atom-resolved charges.
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     density : Tensor
         Density matrix.
     integral : Tensor

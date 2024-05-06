@@ -18,6 +18,8 @@ import functools
 import inspect
 import warnings
 
+__all__ = ["deprecated"]
+
 
 def deprecated(date_str):
     return lambda obj: _deprecated(obj, date_str)

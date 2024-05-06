@@ -4,7 +4,7 @@ Tight-Binding Components
 ========================
 
 .. toctree::
-    :maxdepth: 1
+   :maxdepth: 1
 
-    Classical <_autosummary/dxtb.components.classicals>
-    Interactions <_autosummary/dxtb.components.interactions>
+   Classical <_autosummary/dxtb.components.classicals>
+   Interactions <_autosummary/dxtb.components.interactions>

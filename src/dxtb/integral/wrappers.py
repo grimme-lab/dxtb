@@ -24,6 +24,7 @@ through keyword arguments, it is recommended to follow the interal integral
 builds as used in the :class:`.Integrals` class for more direct control.
 
 Note that there are several peculiarities for the multipole integrals:
+
 - The multipole operators are centered on `(0, 0, 0)` (r0) and not on ket (rj),
   the latter being the default in `dxtb`.
 - An overlap calculation is executed for the normalization of the multipole
@@ -116,9 +117,9 @@ def overlap(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Te
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers for all atoms in the system.
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     par : Param
         Representation of an extended tight-binding model.
 
@@ -137,9 +138,9 @@ def dipole(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Ten
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers for all atoms in the system.
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     par : Param
         Representation of an extended tight-binding model.
 
@@ -158,9 +159,9 @@ def quadrupole(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) ->
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers for all atoms in the system.
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     par : Param
         Representation of an extended tight-binding model.
 

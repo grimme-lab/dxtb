@@ -39,6 +39,12 @@
     Related Works <about/related>
     License <about/license>
 
+.. toctree::
+    :hidden:
+    :caption: Module Reference
+    :maxdepth: 0
+
+    modules
 
 dxtb - Fully Differentiable Extended Tight-Binding
 ==================================================
@@ -76,6 +82,6 @@ If you use *dxtb* in your research, please cite the following paper:
 Quicklinks
 ----------
 
-- :ref:`quickstart_installation`
-- :ref:`quickstart_getting_started`
-- :ref:`about_literature`
+- :ref:`quickstart-installation`
+- :ref:`quickstart-getting-started`
+- :ref:`about-literature`

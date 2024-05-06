@@ -18,6 +18,8 @@ from typing import Dict, List, Optional
 
 from dxtb.exlibs.xitorch._utils.assertfuncs import assert_runtime
 
+__all__ = ["Uniquifier"]
+
 
 class Uniquifier:
     def __init__(self, allobjs: List):

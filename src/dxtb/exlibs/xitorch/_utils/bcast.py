@@ -18,6 +18,8 @@ from typing import Tuple
 
 import torch
 
+__all__ = ["normalize_bcast_dims", "get_bcasted_dims", "match_dim"]
+
 
 def normalize_bcast_dims(*shapes):
     """

@@ -30,6 +30,8 @@ from pydantic import BaseModel, ConfigDict
 
 from dxtb.typing import Tensor
 
+__all__ = ["MultipoleDamped", "Multipole"]
+
 
 class MultipoleDamped(BaseModel):
     """

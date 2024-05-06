@@ -27,6 +27,8 @@ from typing import Union
 
 from pydantic import BaseModel
 
+__all__ = ["ThirdOrderShell", "ThirdOrder"]
+
 
 class ThirdOrderShell(BaseModel):
     """Representation of shell-resolved third-order electrostatics."""

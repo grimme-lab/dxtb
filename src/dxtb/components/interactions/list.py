@@ -23,9 +23,22 @@ from __future__ import annotations
 import torch
 
 from dxtb.basis import IndexHelper
-from dxtb.typing import Any, Literal, Tensor, TensorOrTensors, overload, override
+from dxtb.typing import (
+    Any,
+    Literal,
+    Slicers,
+    Tensor,
+    TensorOrTensors,
+    overload,
+    override,
+)
 
-from ...components.list import ComponentList, _docstring_reset, _docstring_update
+from ...components.list import (
+    ComponentList,
+    ComponentListCache,
+    _docstring_reset,
+    _docstring_update,
+)
 from .base import Interaction
 from .container import Charges, Potential
 from .coulomb.secondorder import ES2, LABEL_ES2
@@ -33,7 +46,22 @@ from .coulomb.thirdorder import ES3, LABEL_ES3
 from .field.efield import LABEL_EFIELD, ElectricField
 from .field.efieldgrad import LABEL_EFIELD_GRAD, ElectricFieldGrad
 
-__all__ = ["InteractionList"]
+__all__ = ["InteractionList", "InteractionListCache"]
+
+
+class InteractionListCache(ComponentListCache):
+    """
+    Restart data for individual interactions, extended by subclasses as
+    needed.
+    """
+
+    __slots__: list[str] = []
+
+    def cull(self, conv: Tensor, slicers: Slicers) -> None:
+        pass
+
+    def restore(self) -> None:
+        pass
 
 
 class InteractionList(ComponentList[Interaction]):
@@ -45,7 +73,7 @@ class InteractionList(ComponentList[Interaction]):
     def get_energy(
         self,
         charges: Charges | Tensor,
-        cache: ComponentList.Cache,
+        cache: InteractionListCache,
         ihelp: IndexHelper,
     ) -> Tensor:
         """
@@ -58,7 +86,7 @@ class InteractionList(ComponentList[Interaction]):
             orbital-resolved.
         ihelp : IndexHelper
             Index mapping for the basis set.
-        cache : ComponentList.Cache
+        cache : InteractionListCache
             Restart data for the interaction.
 
         Returns
@@ -80,7 +108,7 @@ class InteractionList(ComponentList[Interaction]):
         ).sum(dim=0)
 
     def get_energy_as_dict(
-        self, charges: Charges, cache: ComponentList.Cache, ihelp: IndexHelper
+        self, charges: Charges, cache: InteractionListCache, ihelp: IndexHelper
     ) -> dict[str, Tensor]:
         """
         Compute the energy for a list of interactions.
@@ -92,7 +120,7 @@ class InteractionList(ComponentList[Interaction]):
             orbital-resolved.
         ihelp : IndexHelper
             Index mapping for the basis set.
-        cache : ComponentList.Cache
+        cache : InteractionListCache
             Restart data for the interaction.
 
         Returns
@@ -115,7 +143,7 @@ class InteractionList(ComponentList[Interaction]):
         self,
         charges: Charges,
         positions: Tensor,
-        cache: InteractionList.Cache,
+        cache: InteractionListCache,
         ihelp: IndexHelper,
         grad_outputs: TensorOrTensors | None = None,
         retain_graph: bool | None = True,
@@ -130,8 +158,8 @@ class InteractionList(ComponentList[Interaction]):
             Collection of charges. Monopolar partial charges are
             orbital-resolved.
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
-        cache : InteractionList.Cache
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        cache : InteractionListCache
             Restart data for the interaction.
         ihelp : IndexHelper
             Index mapping for the basis set.
@@ -162,25 +190,25 @@ class InteractionList(ComponentList[Interaction]):
     @override
     def get_cache(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
-    ) -> InteractionList.Cache:
+    ) -> InteractionListCache:
         """
         Create restart data for individual interactions.
 
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         ihelp: IndexHelper
             Index mapping for the basis set.
 
         Returns
         -------
-        InteractionList.Cache
+        InteractionListCache
             Restart data for the interactions.
         """
-        cache = self.Cache()
+        cache = InteractionListCache()
         cache.update(
             **{
                 interaction.label: interaction.get_cache(
@@ -192,7 +220,7 @@ class InteractionList(ComponentList[Interaction]):
         return cache
 
     def get_potential(
-        self, charges: Charges, cache: InteractionList.Cache, ihelp: IndexHelper
+        self, charges: Charges, cache: InteractionListCache, ihelp: IndexHelper
     ) -> Potential:
         """
         Compute the potential for a list of interactions.
@@ -204,7 +232,7 @@ class InteractionList(ComponentList[Interaction]):
             orbital-resolved.
         ihelp : IndexHelper
             Index mapping for the basis set.
-        cache : InteractionList.Cache
+        cache : InteractionListCache
             Restart data for the interactions.
 
         Returns

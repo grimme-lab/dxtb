@@ -31,6 +31,8 @@ from ....constants import labels
 from ...base import BaseIntegralImplementation, IntDriver
 from .impls import OverlapFunction
 
+__all__ = ["BaseIntDriverPytorch", "IntegralImplementationPytorch"]
+
 
 class PytorchImplementation:
     """
@@ -63,7 +65,7 @@ class BaseIntDriverPytorch(PytorchImplementation, IntDriver):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         """
         if self.ihelp.batch_mode == 0:
             # setup `Basis` class if not already done

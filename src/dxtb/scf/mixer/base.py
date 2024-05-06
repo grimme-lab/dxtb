@@ -29,6 +29,8 @@ import torch
 
 from dxtb.typing import Any, Slicer, Tensor
 
+__all__ = ["Mixer"]
+
 default_opts = {"maxiter": 20, "damp": 0.3, "f_tol": 1e-5, "x_tol": 1e-5}
 
 
@@ -90,7 +92,7 @@ class Mixer(ABC):
         x_new : Tensor
             New system.
         x_old : Tensor | None, optional
-            Old system. Default to `None`.
+            Old system. Default to ``None``.
 
         Returns
         -------

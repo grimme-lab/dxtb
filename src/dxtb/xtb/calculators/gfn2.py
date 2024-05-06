@@ -31,6 +31,8 @@ from dxtb.typing import Any, Sequence, Tensor
 
 from .base import BaseCalculator
 
+__all__ = ["GFN2Calculator"]
+
 
 class GFN2Calculator(BaseCalculator):
     """

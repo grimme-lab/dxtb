@@ -19,7 +19,8 @@ xTB: Calculator Decorators
 ==========================
 
 Decorators for the Calculator class. These decorators can mark:
-- functions that require `requires_grad=True` for certain tensors
+
+- functions that require ``requires_grad=True`` for certain tensors
 - functions that require specific interactions to be present
 - functions that are computed numerically
 - results for caching
@@ -39,6 +40,16 @@ from ....components.interactions.field import efield as efield
 from ....components.interactions.field import efieldgrad as efield_grad
 from ....constants import defaults
 from ....io import OutputHandler
+
+__all__ = [
+    "requires_positions_grad",
+    "requires_efield",
+    "requires_efield_grad",
+    "requires_efg",
+    "requires_efg_grad",
+    "numerical",
+    "cache",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +78,7 @@ def requires_positions_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor
     ) -> Tensor:
         if not positions.requires_grad:
             raise RuntimeError(
-                f"Position tensor needs `requires_grad=True` in '{func.__name__}'."
+                f"Position tensor needs ``requires_grad=True`` in '{func.__name__}'."
             )
 
         return func(self, positions, chrg, spin, *args, **kwargs)
@@ -106,7 +117,7 @@ def requires_efield_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
         ef = self.interactions.get_interaction(efield.LABEL_EFIELD)
         if not ef.field.requires_grad:
             raise RuntimeError(
-                f"Field tensor needs `requires_grad=True` in '{func.__name__}'."
+                f"Field tensor needs ``requires_grad=True`` in '{func.__name__}'."
             )
         return func(self, positions, chrg, spin, *args, **kwargs)
 
@@ -143,7 +154,7 @@ def requires_efg_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     ) -> Tensor:
         efg = self.interactions.get_interaction(efield_grad.LABEL_EFIELD_GRAD)
         if not efg.field_grad.requires_grad:
-            raise RuntimeError("Field gradient tensor needs `requires_grad=True`.")
+            raise RuntimeError("Field gradient tensor needs ``requires_grad=True``.")
         return func(self, positions, chrg, spin, **kwargs)
 
     return wrapper
@@ -152,7 +163,7 @@ def requires_efg_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
 def _numerical(nograd: bool = False, noprint: bool = False) -> Callable[[F], F]:
     """
     Decorator for numerical differentiation.
-    Pass `True` to turns off gradient tracking for the function.
+    Pass ``True`` to turns off gradient tracking for the function.
     """
 
     class NoOpContext:
@@ -187,10 +198,10 @@ def numerical(func: F) -> F:
     .. warning::
 
         Since this decorator turns off gradient tracking for the function, a
-        possible `requires_grad=True` will be lost because the corresponding
+        possible ``requires_grad=True`` will be lost because the corresponding
         tensor is updated within the numerical differentiation.
         This happens in any electric field related derivatives. If you want to
-        carry out a subsequent calculation with `requires_grad=True`, you have
+        carry out a subsequent calculation with ``requires_grad=True``, you have
         to update the electric field tensor manually with:
 
         .. code-block:: python

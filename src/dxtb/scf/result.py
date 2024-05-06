@@ -25,6 +25,8 @@ from __future__ import annotations
 from dxtb.components.interactions.container import Charges, Potential
 from dxtb.typing import Tensor, TypedDict
 
+__all__ = ["SCFResult"]
+
 
 class SCFResult(TypedDict):
     """Collection of SCF result variables."""

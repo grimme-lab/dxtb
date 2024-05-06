@@ -31,6 +31,8 @@ from __future__ import annotations
 
 from dxtb.typing import Any, PathLike
 
+__all__ = ["LazyLoaderParam"]
+
 
 class LazyLoaderParam:
     """

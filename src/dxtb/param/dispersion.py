@@ -39,6 +39,8 @@ from dxtb.typing import Tensor
 
 from ..constants import xtb
 
+__all__ = ["D3Model", "D4Model", "Dispersion"]
+
 
 class D3Model(BaseModel):
     """

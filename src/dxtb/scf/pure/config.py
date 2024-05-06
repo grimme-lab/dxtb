@@ -15,6 +15,8 @@ from dxtb.typing import Any
 
 from .data import _Data
 
+__all__ = ["SCFConfig"]
+
 
 class SCFConfig:
     """
@@ -37,6 +39,7 @@ class SCFConfig:
     scf_options: dict[str, Any]
     """
     Options for SCF:
+
     - "etemp": Electronic temperature (in a.u.) for Fermi smearing.
     - "fermi_maxiter": Maximum number of iterations for Fermi smearing.
     - "fermi_thresh": Float data type dependent threshold for Fermi iterations.

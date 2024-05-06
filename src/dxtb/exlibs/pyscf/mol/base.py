@@ -67,9 +67,9 @@ def M(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers for all atoms in the system.
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     xtb_version : str, optional
         Version of xtb to use for basis set. Defaults to "gfn1".
 
@@ -87,7 +87,7 @@ def M(
 class PyscfMol(gto.Mole):
     """
     Pyscf's molecule representation that can be created upon passing only
-    `numbers` and `positions`. Note that the basis set is created from a
+    `numbers` and ``positions``. Note that the basis set is created from a
     database and only the xtb version must be provided during instantiation.
 
     .. warning::

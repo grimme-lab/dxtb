@@ -124,7 +124,7 @@ class QuadrupoleLibcint(MultipoleLibcint):
         Raises
         ------
         RuntimeError
-            Shape mismatch between `positions` and `overlap`.
+            Shape mismatch between ``positions`` and `overlap`.
             The positions must be orbital-resolved.
 
         Returns

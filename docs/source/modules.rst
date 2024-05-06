@@ -2,8 +2,7 @@ Modules
 =======
 
 .. autosummary::
-  :toctree: _autosummary
-  :template: module.rst
-  :recursive:
+   :toctree: _autosummary
+   :template: module.rst
 
-   dxtb
+   dxtb.components.classicals

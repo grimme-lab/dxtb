@@ -30,6 +30,8 @@ from .base import BaseIntegral
 if TYPE_CHECKING:
     from .driver.libcint import DipoleLibcint
 
+__all__ = ["Dipole"]
+
 
 class Dipole(BaseIntegral):
     """

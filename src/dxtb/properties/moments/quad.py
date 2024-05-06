@@ -47,7 +47,7 @@ def quadrupole(qat: Tensor, dpat: Tensor, qpat: Tensor, positions: Tensor) -> Te
     qpat : Tensor
         Atom-resolved quadrupolar charges.
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
 
     Returns
     -------

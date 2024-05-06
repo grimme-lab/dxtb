@@ -16,3 +16,5 @@
 # limitations under the License.
 from scipy.sparse.linalg import LinearOperator as LinearOperator
 from scipy.sparse.linalg import gmres as gmres
+
+__all__ = ["LinearOperator", "gmres"]

@@ -23,9 +23,9 @@ Collection of utility functions for matrices/tensors.
 
 from __future__ import annotations
 
-import torch
-
 from dxtb.typing import Tensor
+
+__all__ = ["t2int"]
 
 
 def t2int(x: Tensor) -> int:
@@ -43,43 +43,3 @@ def t2int(x: Tensor) -> int:
         Integer value of the tensor.
     """
     return int(x.item())
-
-
-def symmetrize(x: Tensor, force: bool = False) -> Tensor:
-    """
-    Symmetrize a tensor after checking if it is symmetric within a threshold.
-
-    Parameters
-    ----------
-    x : Tensor
-        Tensor to check and symmetrize.
-    force : bool
-        Whether symmetry should be forced. This allows switching between actual
-        symmetrizing and only cleaning up numerical noise. Defaults to `False`.
-
-    Returns
-    -------
-    Tensor
-        Symmetrized tensor.
-
-    Raises
-    ------
-    RuntimeError
-        If the tensor is not symmetric within the threshold.
-    """
-    try:
-        atol = torch.finfo(x.dtype).eps * 10
-    except TypeError:
-        atol = 1e-5
-
-    if x.ndim < 2:
-        raise RuntimeError("Only matrices and batches thereof allowed.")
-
-    if force is False:
-        if not torch.allclose(x, x.mT, atol=atol):
-            raise RuntimeError(
-                f"Matrix appears to be not symmetric (atol={atol:.3e}, "
-                f"dtype={x.dtype})."
-            )
-
-    return (x + x.mT) / 2

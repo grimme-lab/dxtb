@@ -25,6 +25,9 @@ from dxtb.typing import Any
 
 from .base import Mixer
 
+__all__ = ["Broyden"]
+
+
 default_opts = {
     "method": "broyden1",
     "alpha": -0.5,

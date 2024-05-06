@@ -28,13 +28,40 @@ from tad_mctc.exceptions import DeviceError, DtypeError
 
 from dxtb.typing import Any, Tensor, TensorLike
 
-from ..base import Interaction
+from ..base import Interaction, InteractionCache
 
 __all__ = ["ElectricFieldGrad", "LABEL_EFIELD_GRAD", "new_efield_grad"]
 
 
 LABEL_EFIELD_GRAD = "ElectricFieldGrad"
 """Label for the 'ElectricField' interaction, coinciding with the class name."""
+
+
+class ElectricFieldCache(InteractionCache, TensorLike):
+    """
+    Restart data for the electric field interaction.
+
+    Note
+    ----
+    This cache is not culled, and hence, does not contain a `Store`.
+    """
+
+    efg: Tensor
+    """Reshaped electric field gradient."""
+
+    __slots__ = ["efg"]
+
+    def __init__(
+        self,
+        efg: Tensor,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ):
+        super().__init__(
+            device=device if device is None else efg.device,
+            dtype=dtype if dtype is None else efg.dtype,
+        )
+        self.efg = efg
 
 
 class ElectricFieldGrad(Interaction):
@@ -46,32 +73,6 @@ class ElectricFieldGrad(Interaction):
     """Electric field gradient."""
 
     __slots__ = ["field_grad"]
-
-    class Cache(Interaction.Cache, TensorLike):
-        """
-        Restart data for the electric field interaction.
-
-        Note
-        ----
-        This cache is not culled, and hence, does not contain a `Store`.
-        """
-
-        efg: Tensor
-        """Reshaped electric field gradient."""
-
-        __slots__ = ["efg"]
-
-        def __init__(
-            self,
-            efg: Tensor,
-            device: torch.device | None = None,
-            dtype: torch.dtype | None = None,
-        ):
-            super().__init__(
-                device=device if device is None else efg.device,
-                dtype=dtype if dtype is None else efg.dtype,
-            )
-            self.efg = efg
 
     def __init__(
         self,
@@ -85,13 +86,13 @@ class ElectricFieldGrad(Interaction):
         )
         self.field_grad = field_grad
 
-    def get_cache(self, **_: Any) -> Cache:
+    def get_cache(self, **_: Any) -> ElectricFieldCache:
         """
         Create restart data for individual interactions.
 
         Returns
         -------
-        ElectricField.Cache
+        ElectricFieldCache
             Restart data for the interaction.
 
         Note
@@ -101,7 +102,7 @@ class ElectricFieldGrad(Interaction):
         cachvars = (self.field_grad.detach().clone(),)
 
         if self.cache_is_latest(cachvars) is True:
-            if not isinstance(self.cache, self.Cache):
+            if not isinstance(self.cache, ElectricFieldCache):
                 raise TypeError(
                     f"Cache in {self.label} is not of type '{self.label}."
                     "Cache'. This can only happen if you manually manipulate "
@@ -112,12 +113,14 @@ class ElectricFieldGrad(Interaction):
         self._cachevars = cachvars
 
         efg = self.field_grad[torch.tril_indices(3, 3).unbind()]
-        self.cache = self.Cache(efg)
+        self.cache = ElectricFieldCache(efg)
 
         return self.cache
 
     # TODO: This is probably not correct...
-    def get_quadrupole_energy(self, charges: Tensor, cache: Cache) -> Tensor:
+    def get_quadrupole_energy(
+        self, charges: Tensor, cache: ElectricFieldCache
+    ) -> Tensor:
         """
         Calculate the quadrupolar contribution of the electric field energy.
 
@@ -125,7 +128,7 @@ class ElectricFieldGrad(Interaction):
         ----------
         charges : Tensor
             Atomic dipole moments of all atoms.
-        cache : ElectricField.Cache
+        cache : ElectricFieldCache
             Restart data for the interaction.
 
         Returns
@@ -157,10 +160,10 @@ def new_efield_grad(
     field_grad : Tensor
         Electric field gradient consisting of the 3x3 cartesian components.
     device : torch.device | None, optional
-        Device to store the tensor on. If `None` (default), the device is
+        Device to store the tensor on. If ``None`` (default), the device is
         inferred from the `field` argument.
     dtype : torch.dtype | None, optional
-        Data type of the tensor. If `None` (default), the data type is inferred
+        Data type of the tensor. If ``None`` (default), the data type is inferred
         from the `field` argument.
 
     Returns

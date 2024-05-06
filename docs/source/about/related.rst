@@ -1,4 +1,4 @@
-.. _about_related:
+.. _about-related:
 
 Related Works
 =============

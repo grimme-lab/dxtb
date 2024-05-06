@@ -21,14 +21,16 @@ PyTorch-based overlap implementations.
 from __future__ import annotations
 
 import torch
+from tad_mctc.convert import symmetrize
 
+from dxtb.constants import defaults
 from dxtb.typing import Literal, Tensor
 
-from ....constants import defaults
-from ....utils import batch, symmetrize
 from .base import IntegralImplementationPytorch
 from .driver import BaseIntDriverPytorch
 from .impls import OverlapFunction
+
+__all__ = ["OverlapPytorch"]
 
 
 class OverlapPytorch(IntegralImplementationPytorch):
@@ -133,7 +135,10 @@ class OverlapPytorch(IntegralImplementationPytorch):
         if not isinstance(driver, BaseIntDriverPytorch):
             raise RuntimeError("Wrong integral driver selected.")
 
-        return batch.pack(
+        # pylint: disable=import-outside-toplevel
+        from tad_mctc.batch import pack
+
+        return pack(
             [
                 fcn(
                     driver._positions_batch[_batch],

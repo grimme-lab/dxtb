@@ -27,6 +27,8 @@ from dxtb.typing import Any, get_default_device, get_default_dtype
 from ..constants import defaults, labels
 from ..io import OutputHandler
 
+__all__ = ["ConfigSCF", "ConfigFermi"]
+
 
 class ConfigSCF:
     """

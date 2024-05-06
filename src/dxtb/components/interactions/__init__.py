@@ -22,5 +22,5 @@ from .base import Interaction
 from .container import *
 from .coulomb import *
 from .field import *
-from .list import InteractionList
+from .list import InteractionList, InteractionListCache
 from .solvation import *

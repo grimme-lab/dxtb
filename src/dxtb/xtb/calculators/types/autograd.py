@@ -82,13 +82,14 @@ class AutogradCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         grad_mode: Literal, optional
             Specify the mode for gradient calculation. Possible options are:
+
             - "autograd" (default): Use PyTorch's `torch.autograd.grad`.
             - "backward": Use PyTorch's backward function.
             - "functorch": Use functorch's `jacrev`.
@@ -97,7 +98,7 @@ class AutogradCalculator(EnergyCalculator):
         Returns
         -------
         Tensor
-            Atomic forces of shape `(..., nat, 3)`.
+            Atomic forces of shape ``(..., nat, 3)``.
         """
         OutputHandler.write_stdout("\nForces", v=5)
         OutputHandler.write_stdout("------\n", v=5)
@@ -167,16 +168,16 @@ class AutogradCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         use_functorch : bool, optional
-            Whether to use `functorch` for autodiff. Defaults to `False`.
+            Whether to use `functorch` for autodiff. Defaults to ``False``.
         matrix : bool, optional
             Whether to reshape the Hessian to a matrix, i.e., `(nat*3, nat*3)`.
-            Defaults to `False`.
+            Defaults to ``False``.
 
         Returns
         -------
@@ -186,7 +187,7 @@ class AutogradCalculator(EnergyCalculator):
         Raises
         ------
         RuntimeError
-            Positions tensor does not have `requires_grad=True`.
+            Positions tensor does not have ``requires_grad=True``.
         """
         logger.debug("Autodiff Hessian: Starting Calculation.")
 
@@ -253,17 +254,17 @@ class AutogradCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         use_functorch: bool, optional
             Whether to use functorch or the standard (slower) autograd.
         project_translational : bool, optional
-            Project out translational modes. Defaults to `True`.
+            Project out translational modes. Defaults to ``True``.
         project_rotational : bool, optional
-            Project out rotational modes. Defaults to `True`.
+            Project out rotational modes. Defaults to ``True``.
 
         Returns
         -------
@@ -318,11 +319,11 @@ class AutogradCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         use_functorch: bool, optional
             Whether to use functorch or the standard (slower) autograd.
 
@@ -393,11 +394,11 @@ class AutogradCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         use_analytical: bool, optional
             Whether to use the analytically calculated dipole moment for AD or
             the automatically differentiated dipole moment.
@@ -486,11 +487,11 @@ class AutogradCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         use_functorch: bool, optional
             Whether to use functorch or the standard (slower) autograd.
         derived_quantity: Literal['energy', 'dipole'], optional
@@ -605,11 +606,11 @@ class AutogradCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         use_functorch: bool, optional
             Whether to use functorch or the standard (slower) autograd.
         derived_quantity: Literal['energy', 'dipole'], optional
@@ -686,11 +687,11 @@ class AutogradCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         use_functorch: bool, optional
             Whether to use functorch or the standard (slower) autograd.
         derived_quantity: Literal['energy', 'dipole'], optional
@@ -779,14 +780,14 @@ class AutogradCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int | str | None
-            Total charge. Defaults to `None`.
+            Total charge. Defaults to ``None``.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         use_functorch : bool, optional
             Whether to use functorch or the standard (slower) autograd.
-            Defaults to `False`.
+            Defaults to ``False``.
 
         Returns
         -------
@@ -829,14 +830,14 @@ class AutogradCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int | str | None
-            Total charge. Defaults to `None`.
+            Total charge. Defaults to ``None``.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         use_functorch : bool, optional
             Whether to use functorch or the standard (slower) autograd.
-            Defaults to `False`.
+            Defaults to ``False``.
 
         Returns
         -------

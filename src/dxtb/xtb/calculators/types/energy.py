@@ -70,7 +70,7 @@ class EnergyCalculator(TensorLike):
     """
 
     numbers: Tensor
-    """Atomic numbers for all atoms in the system (shape: `(..., nat)`)."""
+    """Atomic numbers for all atoms in the system (shape: ``(..., nat)``)."""
 
     cache: Cache
     """Cache for storing multiple calculation results."""
@@ -236,23 +236,23 @@ class EnergyCalculator(TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
         par : Param
             Representation of an extended tight-binding model (full xtb
             parametrization). Decides energy contributions.
         classical : Sequence[Classical] | None, optional
-            Additional classical contributions. Defaults to `None`.
+            Additional classical contributions. Defaults to ``None``.
         interaction : Sequence[Interaction] | None, optional
             Additional self-consistent contributions (interactions).
-            Defaults to `None`.
+            Defaults to ``None``.
         opts : dict[str, Any] | None, optional
-            Calculator options. If `None` (default) is given, default options
+            Calculator options. If ``None`` (default) is given, default options
             are used automatically.
         device : torch.device | None, optional
-            Device to store the tensor on. If `None` (default), the default
+            Device to store the tensor on. If ``None`` (default), the default
             device is used.
         dtype : torch.dtype | None, optional
-            Data type of the tensor. If `None` (default), the data type is
+            Data type of the tensor. If ``None`` (default), the data type is
             inferred.
         """
         timer.start("Calculator", parent_uid="Setup")
@@ -409,7 +409,7 @@ class EnergyCalculator(TensorLike):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
@@ -569,11 +569,11 @@ class EnergyCalculator(TensorLike):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
 
         Returns
         -------
@@ -604,7 +604,7 @@ class EnergyCalculator(TensorLike):
         Raises
         ------
         RuntimeError
-            If the `__slots__` attribute is not set in the class.
+            If the ``__slots__`` attribute is not set in the class.
         DtypeError
             If the specified dtype is not allowed.
         """
@@ -614,7 +614,7 @@ class EnergyCalculator(TensorLike):
 
         if len(self.__slots__) == 0:
             raise RuntimeError(
-                f"The `type` method requires setting `__slots__` in the "
+                f"The `type` method requires setting ``__slots__`` in the "
                 f"'{self.__class__.__name__}' class."
             )
 
@@ -658,14 +658,14 @@ class EnergyCalculator(TensorLike):
         Raises
         ------
         RuntimeError
-            If the `__slots__` attribute is not set in the class.
+            If the ``__slots__`` attribute is not set in the class.
         """
         if self.device == device:
             return self
 
         if len(self.__slots__) == 0:
             raise RuntimeError(
-                f"The `to` method requires setting `__slots__` in the "
+                f"The `to` method requires setting ``__slots__`` in the "
                 f"'{self.__class__.__name__}' class."
             )
 

@@ -36,6 +36,9 @@ from ..constants import labels
 from ..timing import timer
 from ..xtb import Calculator, Result
 
+__all__ = ["Driver"]
+
+
 logger = logging.getLogger(__name__)
 
 FILES = {"spin": ".UHF", "chrg": ".CHRG"}

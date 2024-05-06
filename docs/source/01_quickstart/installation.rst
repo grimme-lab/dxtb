@@ -1,4 +1,4 @@
-.. _quickstart_installation:
+.. _quickstart-installation:
 
 Installation
 ============
@@ -12,7 +12,7 @@ pip
 
 *dxtb* can easily be installed with ``pip``.
 
-.. code::
+.. code-block:: shell
 
     pip install dxtb
 
@@ -21,12 +21,12 @@ conda
 -----
 
 .. image:: https://img.shields.io/conda/vn/conda-forge/dxtb.svg
-    :target: https://anaconda.org/conda-forge/dxtb
-    :alt: Conda Version
+   :target: https://anaconda.org/conda-forge/dxtb
+   :alt: Conda Version
 
 *dxtb* is also available on `conda <https://conda.io/>`__.
 
-.. code::
+.. code-block:: shell
 
     mamba install dxtb
 
@@ -37,7 +37,7 @@ From source
 This project is hosted on GitHub at `grimme-lab/dxtb <https://github.com/grimme-lab/dxtb>`__.
 Obtain the source by cloning the repository with
 
-.. code::
+.. code-block:: shell
 
     git clone https://github.com/grimme-lab/dxtb
     cd dxtb
@@ -46,14 +46,14 @@ We recommend using a `conda <https://conda.io/>`__ environment to install the pa
 You can setup the environment manager using a `mambaforge <https://github.com/conda-forge/miniforge>`__ installer.
 Install the required dependencies from the conda-forge channel.
 
-.. code::
+.. code-block:: shell
 
     mamba env create -n torch -f environment.yaml
     mamba activate torch
 
 Install this project with ``pip`` in the environment
 
-.. code::
+.. code-block:: shell
 
     pip install .
 

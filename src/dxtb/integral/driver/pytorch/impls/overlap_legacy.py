@@ -21,12 +21,12 @@ PyTorch-based overlap implementations.
 from __future__ import annotations
 
 import torch
+from tad_mctc.batch import deflate, pack
 
+from dxtb.basis import Basis, IndexHelper
+from dxtb.constants import defaults
 from dxtb.typing import Literal, Tensor
 
-from .....basis import Basis, IndexHelper
-from .....constants import defaults
-from .....utils import batch
 from .md import overlap_gto
 
 __all__ = ["overlap_legacy", "overlap_gradient_legacy"]
@@ -48,7 +48,7 @@ def overlap_legacy(
     Parameters
     ----------
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     bas : Basis
         Basis set information.
     ihelp : IndexHelper
@@ -71,8 +71,8 @@ def overlap_legacy(
 
     # Create alphas and sort for indexing
     alphas, coeffs = bas.create_cgtos()
-    alpha = ihelp.spread_ushell_to_shell(batch.pack(alphas), dim=-2, extra=True)
-    coeff = ihelp.spread_ushell_to_shell(batch.pack(coeffs), dim=-2, extra=True)
+    alpha = ihelp.spread_ushell_to_shell(pack(alphas), dim=-2, extra=True)
+    coeff = ihelp.spread_ushell_to_shell(pack(coeffs), dim=-2, extra=True)
 
     for iat in range(positions.shape[-2]):
         for jat in range(iat):
@@ -93,8 +93,8 @@ def overlap_legacy(
                     jj = ihelp.orbital_index[sij]
                     j_nao = 2 * angj + 1
 
-                    a = (batch.deflate(alpha[sii]), batch.deflate(alpha[sij]))
-                    c = (batch.deflate(coeff[sii]), batch.deflate(coeff[sij]))
+                    a = (deflate(alpha[sii]), deflate(alpha[sij]))
+                    c = (deflate(coeff[sii]), deflate(coeff[sij]))
                     l = (angi, angj)
 
                     stmp = overlap_gto(l, a, c, -vec)
@@ -125,7 +125,7 @@ def overlap_gradient_legacy(
     Parameters
     ----------
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     bas : Basis
         Basis set information.
     ihelp : IndexHelper

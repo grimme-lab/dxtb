@@ -18,7 +18,8 @@
 Halogen Bond Correction: Factory
 ================================
 
-A factory function to create instances of the HBC class.
+A factory function to create instances of the :class:`dxtb.components.Halogen`
+class.
 """
 from __future__ import annotations
 
@@ -46,7 +47,7 @@ def new_halogen(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers for all atoms in the system.
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     par : Param
         Representation of an extended tight-binding model.
     cutoff : Tensor
@@ -55,7 +56,8 @@ def new_halogen(
     Returns
     -------
     Halogen | None
-        Instance of the Halogen class or `None` if no halogen bond correction is used.
+        Instance of the Halogen class or ``None`` if no halogen bond
+        correction is used.
 
     Raises
     ------

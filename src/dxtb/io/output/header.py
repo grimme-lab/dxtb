@@ -20,7 +20,10 @@ Print a fancy header.
 
 from __future__ import annotations
 
-width = 70
+__all__ = ["get_header"]
+
+
+WIDTH = 70
 
 
 def get_header() -> str:
@@ -35,8 +38,8 @@ def get_header() -> str:
     ]
 
     # Center each line within the given width
-    centered_lines = [line.center(width) for line in logo]
+    centered_lines = [line.center(WIDTH) for line in logo]
     # Join the lines with newlines and add the top border
-    header = f"{width * '='}\n" + "\n".join(centered_lines) + f"\n{width * '='}\n"
+    header = f"{WIDTH * '='}\n" + "\n".join(centered_lines) + f"\n{WIDTH * '='}\n"
 
     return header

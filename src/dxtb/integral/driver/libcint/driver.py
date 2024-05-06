@@ -45,7 +45,7 @@ class IntDriverLibcint(IntDriver):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         """
         # pylint: disable=import-outside-toplevel
         from dxtb.exlibs import libcint

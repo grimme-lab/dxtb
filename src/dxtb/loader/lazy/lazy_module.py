@@ -65,6 +65,7 @@ def attach_module(package_name: str, submodules: Sequence[str]) -> tuple[
     -------
     tuple[Callable[[str], Any], Callable[[], list[str]], list[str]]
         A tuple containing:
+
         - A `__getattr__` function loading a submodule when it's accessed.
         - A `__dir__` function returning a list of all lazily loaded submodules.
         - A list of strings (`__all__`) containing the names of the submodules.

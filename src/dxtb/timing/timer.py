@@ -111,7 +111,7 @@ class _Timers:
             Returns
             -------
             bool
-                Whether the timer currently runs (`True`) or not (`False`).
+                Whether the timer currently runs (``True``) or not (``False``).
             """
             if self._start_time is not None and self.elapsed_time == 0.0:
                 return True
@@ -160,7 +160,7 @@ class _Timers:
         uid : str
             ID of the timer.
         label : str | None
-            Name of the timer (used for printing). Defaults to `None`.
+            Name of the timer (used for printing). Defaults to ``None``.
             If no `label` is given, the `uid` is used.
         """
         if not self._enabled:

@@ -47,7 +47,7 @@ def load_from_npz(
     dtype : torch.dtype
         Data type of the tensor.
     device : torch.device | None
-        Device of the tensor. Defaults to `None`.
+        Device of the tensor. Defaults to ``None``.
 
     Returns
     -------

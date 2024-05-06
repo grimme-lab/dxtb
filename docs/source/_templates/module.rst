@@ -22,7 +22,9 @@
       :toctree:
       :nosignatures:
    {% for item in functions %}
-      {{ item }}
+      {% if item not in ["override", "overload"] %}
+        {{ item }}
+      {% endif %}
    {%- endfor %}
    {% endif %}
    {% endblock %}
@@ -36,7 +38,9 @@
       :template: class.rst
       :nosignatures:
    {% for item in classes %}
-      {{ item }}
+      {% if item not in ["Tensor", "BaseModel"] %}
+        {{ item }}
+      {% endif %}
    {%- endfor %}
    {% endif %}
    {% endblock %}

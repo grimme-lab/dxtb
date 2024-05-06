@@ -25,7 +25,7 @@ Note
 The Repulsion class is constructed for geometry optimization, i.e., the atomic
 numbers are set upon instantiation (`numbers` is a property), and the parameters
 in the cache are created for only those atomic numbers. The positions, however,
-must be supplied to the `get_energy` (or `get_grad`) method.
+must be supplied to the ``get_energy`` (or ``get_grad``) method.
 
 Example
 -------
@@ -61,13 +61,54 @@ from dxtb.basis import IndexHelper
 from dxtb.constants import xtb
 from dxtb.typing import Any, Tensor
 
-from ..base import Classical
+from ..base import Classical, ClassicalCache
 
 __all__ = [
     "BaseRepulsion",
     "repulsion_energy",
     "repulsion_gradient",
 ]
+
+
+class BaseRepulsionCache(ClassicalCache):
+    """
+    Cache for the repulsion parameters.
+    """
+
+    arep: Tensor
+    """Atom-specific screening parameters."""
+
+    zeff: Tensor
+    """Effective nuclear charges."""
+
+    kexp: Tensor
+    """
+    Scaling of the interatomic distance in the exponential damping function
+    of the repulsion energy.
+    """
+
+    mask: Tensor
+    """Mask for padding from numbers."""
+
+    __slots__ = ["mask", "arep", "zeff", "kexp"]
+
+    def __init__(
+        self,
+        mask: Tensor,
+        arep: Tensor,
+        zeff: Tensor,
+        kexp: Tensor,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ):
+        super().__init__(
+            device=device if device is None else arep.device,
+            dtype=dtype if dtype is None else arep.dtype,
+        )
+        self.mask = mask
+        self.arep = arep
+        self.zeff = zeff
+        self.kexp = kexp
 
 
 class BaseRepulsion(Classical):
@@ -119,54 +160,14 @@ class BaseRepulsion(Classical):
             klight = klight.to(self.device).type(self.dtype)
         self.klight = klight
 
-    class Cache(Classical.Cache):
-        """
-        Cache for the repulsion parameters.
-        """
-
-        arep: Tensor
-        """Atom-specific screening parameters."""
-
-        zeff: Tensor
-        """Effective nuclear charges."""
-
-        kexp: Tensor
-        """
-        Scaling of the interatomic distance in the exponential damping function
-        of the repulsion energy.
-        """
-
-        mask: Tensor
-        """Mask for padding from numbers."""
-
-        __slots__ = ["mask", "arep", "zeff", "kexp"]
-
-        def __init__(
-            self,
-            mask: Tensor,
-            arep: Tensor,
-            zeff: Tensor,
-            kexp: Tensor,
-            device: torch.device | None = None,
-            dtype: torch.dtype | None = None,
-        ):
-            super().__init__(
-                device=device if device is None else arep.device,
-                dtype=dtype if dtype is None else arep.dtype,
-            )
-            self.mask = mask
-            self.arep = arep
-            self.zeff = zeff
-            self.kexp = kexp
-
-    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> BaseRepulsion.Cache:
+    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> BaseRepulsionCache:
         """
         Store variables for energy and gradient calculation.
 
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
         ihelp : IndexHelper
             Helper class for indexing.
 
@@ -177,14 +178,14 @@ class BaseRepulsion(Classical):
 
         Note
         ----
-        The cache of a classical contribution does not require `positions` as
-        it only becomes useful if `numbers` remain unchanged and `positions`
+        The cache of a classical contribution does not require ``positions`` as
+        it only becomes useful if `numbers` remain unchanged and ``positions``
         vary, i.e., during geometry optimization.
         """
         cachvars = (numbers.detach().clone(),)
 
         if self.cache_is_latest(cachvars) is True:
-            if not isinstance(self.cache, self.Cache):
+            if not isinstance(self.cache, BaseRepulsionCache):
                 raise TypeError(
                     f"Cache in {self.label} is not of type '{self.label}."
                     "Cache'. This can only happen if you manually manipulate "
@@ -223,12 +224,12 @@ class BaseRepulsion(Classical):
             kmask = ~real_pairs(numbers <= 2)
             k = torch.where(kmask, k, self.klight) * mask
 
-        self.cache = self.Cache(mask, a, z, k)
+        self.cache = BaseRepulsionCache(mask, a, z, k)
         return self.cache
 
     @abstractmethod
     def get_energy(
-        self, positions: Tensor, cache: BaseRepulsion.Cache, **kwargs: Any
+        self, positions: Tensor, cache: BaseRepulsionCache, **kwargs: Any
     ) -> Tensor:
         """
         Get repulsion energy.
@@ -238,7 +239,7 @@ class BaseRepulsion(Classical):
         cache : Repulsion.Cache
             Cache for repulsion.
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         atom_resolved : bool
             Whether to return atom-resolved energy (True) or full matrix
             (False).
@@ -264,7 +265,7 @@ def repulsion_energy(
     Parameters
     ----------
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     mask : Tensor
         Mask for padding.
     arep : Tensor
@@ -335,7 +336,7 @@ def repulsion_gradient(
     erep : Tensor
         Atom-resolved repulsion energy (from `repulsion_energy`).
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     mask : Tensor
         Mask for padding.
     arep : Tensor
@@ -344,7 +345,7 @@ def repulsion_gradient(
         Scaling of the interatomic distance in the exponential damping function
         of the repulsion energy.
     reduced : bool, optional
-        Shape of the output gradient. Defaults to `False`, which returns a
+        Shape of the output gradient. Defaults to ``False``, which returns a
         gradient of shape `(natoms, natoms, 3)`. This is required for the custom
         backward function. If `reduced=True`, the output gradient has the
         typical shape `(natoms, 3)`.

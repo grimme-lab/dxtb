@@ -126,7 +126,7 @@ def has_memleak_tensor(
     Returns
     -------
     bool
-        Whether there is a memory leak (`True`) or not (`False`).
+        Whether there is a memory leak (``True``) or not (``False``).
     """
     size0, num0 = _get_tensor_memory(return_number_tensors=True)
 

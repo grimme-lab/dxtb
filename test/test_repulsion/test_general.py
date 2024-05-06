@@ -19,8 +19,9 @@ General repulsion tests
 =======================
 
 Run general tests for repulsion contribution including:
- - invalid parameters
- - change of `dtype` and `device`
+
+- invalid parameters
+- change of `dtype` and `device`
 """
 
 import pytest

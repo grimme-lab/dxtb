@@ -30,6 +30,8 @@ from .base import BaseIntegral
 if TYPE_CHECKING:
     from .driver.libcint import QuadrupoleLibcint
 
+__all__ = ["Quadrupole"]
+
 
 class Quadrupole(BaseIntegral):
     """

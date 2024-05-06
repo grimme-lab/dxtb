@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Dispersion: Factory
+===================
+
 Function for creating a new instance of a Dispersion.
 """
 
@@ -33,6 +36,8 @@ from .base import Dispersion
 from .d3 import DispersionD3
 from .d4 import DispersionD4
 
+__all__ = ["new_dispersion"]
+
 
 def new_dispersion(
     numbers: Tensor,
@@ -47,14 +52,14 @@ def new_dispersion(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers for all atoms in the system.
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     par : Param
         Representation of an extended tight-binding model.
 
     Returns
     -------
     Dispersion | None
-        Instance of the Dispersion class or `None` if no dispersion is used.
+        Instance of the Dispersion class or ``None`` if no dispersion is used.
 
     Raises
     ------

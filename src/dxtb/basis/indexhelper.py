@@ -121,6 +121,7 @@ class IndexHelper(TensorLike):
     batch_mode: int
     """
     Whether multiple systems or a single one are handled:
+
     - 0: Single system
     - 1: Multiple systems with padding
     - 2: Multiple systems with no padding (conformer ensemble)
@@ -255,11 +256,12 @@ class IndexHelper(TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
         par : Param
             Representation of an extended tight-binding model.
         batch_mode : int
             Whether multiple systems or a single one are handled:
+
             - 0: Single system
             - 1: Multiple systems with padding
             - 2: Multiple systems with no padding (conformer ensemble)
@@ -294,11 +296,12 @@ class IndexHelper(TensorLike):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
         angular : dict[int, Tensor]
             Map between atomic numbers and angular momenta of all shells.
         batch_mode : int
             Whether multiple systems or a single one are handled:
+
             - 0: Single system
             - 1: Multiple systems with padding
             - 2: Multiple systems with no padding (conformer ensemble)
@@ -434,7 +437,7 @@ class IndexHelper(TensorLike):
             Reduction method, defaults to "sum".
         extra : bool
             Tensor to reduce contains a extra dimension of arbitrary size.
-            Defaults to `False`.
+            Defaults to ``False``.
 
         Returns
         -------
@@ -464,7 +467,7 @@ class IndexHelper(TensorLike):
             Reduction method, defaults to "sum".
         extra : bool
             Tensor to reduce contains a extra dimension of arbitrary size.
-            Defaults to `False`.
+            Defaults to ``False``.
 
         Returns
         -------
@@ -494,7 +497,7 @@ class IndexHelper(TensorLike):
             Reduction method, defaults to "sum".
         extra : bool
             Tensor to reduce contains a extra dimension of arbitrary size.
-            Defaults to `False`.
+            Defaults to ``False``.
 
         Returns
         -------
@@ -526,7 +529,7 @@ class IndexHelper(TensorLike):
             Dimension to spread over, defaults to -1.
         extra : bool
             Tensor to reduce contains a extra dimension of arbitrary size.
-            Defaults to `False`.
+            Defaults to ``False``.
 
         Returns
         -------
@@ -553,7 +556,7 @@ class IndexHelper(TensorLike):
             Dimension to spread over, defaults to -1.
         extra : bool
             Tensor to reduce contains a extra dimension of arbitrary size.
-            Defaults to `False`.
+            Defaults to ``False``.
 
         Returns
         -------
@@ -580,7 +583,7 @@ class IndexHelper(TensorLike):
             Dimension to spread over, defaults to -1.
         extra : bool
             Tensor to reduce contains a extra dimension of arbitrary size.
-            Defaults to `False`.
+            Defaults to ``False``.
 
         Returns
         -------
@@ -607,7 +610,7 @@ class IndexHelper(TensorLike):
             Dimension to spread over, defaults to -1.
         extra : bool
             Tensor to reduce contains a extra dimension of arbitrary size.
-            Defaults to `False`.
+            Defaults to ``False``.
 
         Returns
         -------
@@ -635,7 +638,7 @@ class IndexHelper(TensorLike):
             Dimension to spread over, defaults to -1.
         extra : bool
             Tensor to reduce contains a extra dimension of arbitrary size.
-            Defaults to `False`.
+            Defaults to ``False``.
 
         Returns
         -------
@@ -663,7 +666,7 @@ class IndexHelper(TensorLike):
             Dimension to spread over, defaults to -1.
         extra : bool
             Tensor to reduce contains a extra dimension of arbitrary size.
-            Defaults to `False`.
+            Defaults to ``False``.
 
         Returns
         -------
@@ -687,7 +690,7 @@ class IndexHelper(TensorLike):
             Dimension to spread over, defaults to -1.
         extra : bool
             Tensor to reduce contains a extra dimension of arbitrary size.
-            Defaults to `False`.
+            Defaults to ``False``.
 
         Returns
         -------
@@ -715,7 +718,7 @@ class IndexHelper(TensorLike):
             Dimension to spread over, defaults to -1.
         extra : bool
             Tensor to reduce contains a extra dimension of arbitrary size.
-            Defaults to `False`.
+            Defaults to ``False``.
 
         Returns
         -------
@@ -743,7 +746,7 @@ class IndexHelper(TensorLike):
             Dimension to spread over, defaults to -1.
         extra : bool
             Tensor to reduce contains a extra dimension of arbitrary size.
-            Defaults to `False`.
+            Defaults to ``False``.
 
         Returns
         -------
@@ -771,7 +774,7 @@ class IndexHelper(TensorLike):
             Dimension to spread over, defaults to -1.
         extra : bool
             Tensor to reduce contains a extra dimension of arbitrary size.
-            Defaults to `False`.
+            Defaults to ``False``.
 
         Returns
         -------
@@ -795,7 +798,7 @@ class IndexHelper(TensorLike):
             Dimension to spread over, defaults to -1.
         extra : bool
              Tensor to reduce contains a extra dimension of arbitrary size.
-             Defaults to `False`.
+             Defaults to ``False``.
 
         Returns
         -------
@@ -823,7 +826,7 @@ class IndexHelper(TensorLike):
             Dimension to spread over, defaults to -1.
         extra : bool
              Tensor to reduce contains a extra dimension of arbitrary size.
-             Defaults to `False`.
+             Defaults to ``False``.
 
         Returns
         -------
@@ -839,7 +842,7 @@ class IndexHelper(TensorLike):
 
     class Store:
         """
-        Storage container for IndexHelper containing `__slots__` before culling.
+        Storage container for IndexHelper containing ``__slots__`` before culling.
         """
 
         def __init__(
@@ -1156,7 +1159,7 @@ class IndexHelperGFN1(IndexHelper):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
 
         Returns
         -------
@@ -1186,7 +1189,7 @@ class IndexHelperGFN2(IndexHelper):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
 
         Returns
         -------

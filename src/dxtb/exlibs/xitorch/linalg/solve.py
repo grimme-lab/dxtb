@@ -39,6 +39,8 @@ from dxtb.exlibs.xitorch._utils.misc import (
 )
 from dxtb.exlibs.xitorch.debug.modes import is_debug_enabled
 
+__all__ = ["solve"]
+
 
 def solve(
     A: LinearOperator,

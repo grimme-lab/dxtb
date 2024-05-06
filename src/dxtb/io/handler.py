@@ -217,7 +217,7 @@ class _OutputHandler:
             which is the standard verbosity level between 0 and 10.
         newline : bool, optional
             Whether to add a newline at the end of the message.
-            Defaults to `True`.
+            Defaults to ``True``.
         """
         if self.verbosity >= v:
             extra = {"newline": newline}

@@ -270,7 +270,7 @@ class GFN1Hamiltonian(BaseHamiltonian):
         overlap : Tensor
             Overlap matrix.
         cn : Tensor | None, optional
-            Coordination number. Defaults to `None`.
+            Coordination number. Defaults to ``None``.
 
         Returns
         -------

@@ -76,6 +76,7 @@ def attach_var(package_name: str, varnames: Sequence[str]) -> tuple[
     -------
     tuple[Callable[[str], Any], Callable[[], list[str]], list[str]]
         A tuple containing:
+
         - A `__getattr__` function loading a variable when it's accessed.
         - A `__dir__` function returning a list of all lazily loaded variable.
         - A list of strings (`__all__`) containing the names of the variable.
@@ -127,6 +128,7 @@ def attach_vars(module_vars: dict[str, Sequence[str]]) -> tuple[
     -------
     tuple[Callable[[str], Any], Callable[[], list[str]], list[str]]
         A tuple containing:
+
         - A `__getattr__` function loading a variable when it's accessed.
         - A `__dir__` function returning a list of all lazily loaded variable.
         - A list of strings (`__all__`) containing the names of the variable.

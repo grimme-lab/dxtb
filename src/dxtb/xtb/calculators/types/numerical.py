@@ -70,18 +70,18 @@ class NumericalCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         step_size : int | float, optional
             Step size for numerical differentiation.
 
         Returns
         -------
         Tensor
-            Atomic forces of shape `(..., nat, 3)`.
+            Atomic forces of shape ``(..., nat, 3)``.
         """
         # pylint: disable=import-outside-toplevel
         import gc
@@ -150,16 +150,16 @@ class NumericalCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int | str | None
-            Total charge. Defaults to `None`.
+            Total charge. Defaults to ``None``.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         step_size : int | float, optional
             Step size for numerical differentiation.
         matrix : bool, optional
             Whether to reshape the Hessian to a matrix, i.e., (nat*3, nat*3).
-            Defaults to `False`.
+            Defaults to ``False``.
 
         Returns
         -------
@@ -237,17 +237,17 @@ class NumericalCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         step_size : int | float, optional
             Step size for numerical differentiation.
         project_translational : bool, optional
-            Project out translational modes. Defaults to `True`.
+            Project out translational modes. Defaults to ``True``.
         project_rotational : bool, optional
-            Project out rotational modes. Defaults to `True`.
+            Project out rotational modes. Defaults to ``True``.
 
         Returns
         -------
@@ -285,11 +285,11 @@ class NumericalCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         step_size : int | float, optional
             Step size for numerical differentiation.
 
@@ -353,11 +353,11 @@ class NumericalCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         step_size: int | float, optional
             Step size for numerical differentiation.
 
@@ -429,11 +429,11 @@ class NumericalCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int | str | None
-            Total charge. Defaults to `None`.
+            Total charge. Defaults to ``None``.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         step_size : float | int, optional
             Step size for the numerical derivative.
 
@@ -515,11 +515,11 @@ class NumericalCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         step_size : float | int, optional
             Step size for the numerical derivative.
 
@@ -591,11 +591,11 @@ class NumericalCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         step_size : float | int, optional
             Step size for the numerical derivative.
 
@@ -663,11 +663,11 @@ class NumericalCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int | str | None
-            Total charge. Defaults to `None`.
+            Total charge. Defaults to ``None``.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         step_size : float | int, optional
             Step size for the numerical derivative.
 
@@ -711,11 +711,11 @@ class NumericalCalculator(EnergyCalculator):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms (shape: `(..., nat, 3)`).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int | str | None
-            Total charge. Defaults to `None`.
+            Total charge. Defaults to ``None``.
         spin : Tensor | float | int, optional
-            Number of unpaired electrons. Defaults to `None`.
+            Number of unpaired electrons. Defaults to ``None``.
         step_size : float | int, optional
             Step size for the numerical derivative.
 

@@ -30,6 +30,8 @@ from dxtb.typing import Any
 from .. import __version__
 from ..constants import defaults
 
+__all__ = ["parser"]
+
 
 def is_file(path: str | Path) -> str | Path:
     p = Path(path)

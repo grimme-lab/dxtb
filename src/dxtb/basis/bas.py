@@ -235,7 +235,7 @@ class Basis(TensorLike):
             umap = torch.unique(orbs, return_inverse=True)[1]
 
             # subtract 1 to mark masked values and avoid off-by-one-error
-            # (mask is active if it contains at least one `False` value)
+            # (mask is active if it contains at least one ``False`` value)
             if mask is not None and (~mask).any():
                 umap -= 1
         else:
@@ -366,11 +366,11 @@ class Basis(TensorLike):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         mask : Tensor | None, optional
             Mask for positions to make batched computations easier. The overlap
             does not work in a batched fashion. Hence, we loop over the batch
-            dimension and must remove the padding. Defaults to `None`, i.e.,
+            dimension and must remove the padding. Defaults to ``None``, i.e.,
             `batch.deflate()` is used.
 
         Returns
@@ -551,7 +551,7 @@ class Basis(TensorLike):
         Raises
         ------
         RuntimeError
-            If the `__slots__` attribute is not set in the class.
+            If the ``__slots__`` attribute is not set in the class.
         DtypeError
             If the specified dtype is not allowed.
         """
@@ -561,7 +561,7 @@ class Basis(TensorLike):
 
         if len(self.__slots__) == 0:
             raise RuntimeError(
-                f"The `type` method requires setting `__slots__` in the "
+                f"The `type` method requires setting ``__slots__`` in the "
                 f"'{self.__class__.__name__}' class."
             )
 
@@ -601,14 +601,14 @@ class Basis(TensorLike):
         Raises
         ------
         RuntimeError
-            If the `__slots__` attribute is not set in the class.
+            If the ``__slots__`` attribute is not set in the class.
         """
         if self.device == device:
             return self
 
         if len(self.__slots__) == 0:
             raise RuntimeError(
-                f"The `to` method requires setting `__slots__` in the "
+                f"The `to` method requires setting ``__slots__`` in the "
                 f"'{self.__class__.__name__}' class."
             )
 

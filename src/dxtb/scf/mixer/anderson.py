@@ -33,6 +33,9 @@ from dxtb.utils import t2int
 
 from .base import Mixer
 
+__all__ = ["Anderson"]
+
+
 default_opts = {
     "maxiter": 100,
     "damp": 0.5,
@@ -97,7 +100,7 @@ class Anderson(Mixer):
     diagonal_offset: float
     """
     Offset added to the equation system's diagonal's to prevent a linear
-    dependence during the mixing process. If set to `None` then rescaling will
+    dependence during the mixing process. If set to ``None`` then rescaling will
     be disabled. [DEFAULT=0.01]
     """
 
@@ -180,7 +183,7 @@ class Anderson(Mixer):
         x_new : Tensor
             New system.
         x_old : Tensor | None, optional
-            Old system. Default to `None`.
+            Old system. Default to ``None``.
 
         Returns
         -------
@@ -202,7 +205,7 @@ class Anderson(Mixer):
             if x_old is None:
                 raise RuntimeError(
                     "In the first iteration, the `x_old` argument cannot be "
-                    "`None` as it is the starting guess."
+                    "``None`` as it is the starting guess."
                 )
 
             self._setup_hook(x_new)

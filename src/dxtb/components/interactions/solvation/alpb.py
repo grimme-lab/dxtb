@@ -61,7 +61,7 @@ from dxtb.param import Param
 from dxtb.typing import DD, Any, Tensor, TensorLike, get_default_dtype
 from dxtb.typing.exceptions import DeviceError
 
-from .. import Interaction
+from ..base import Interaction, InteractionCache
 from .born import get_born_radii
 
 alpha = 0.571412
@@ -131,7 +131,7 @@ def get_adet(positions: Tensor, rad: Tensor) -> Tensor:
     Parameters
     ----------
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     rad : Tensor
         Radii of all atoms.
 
@@ -164,6 +164,29 @@ def get_adet(positions: Tensor, rad: Tensor) -> Tensor:
     )
 
     return torch.sqrt(5 * torch.pow(adet, 1 / 3) / (2 * vol.sum(-1)))
+
+
+class GeneralizedBornCache(InteractionCache, TensorLike):
+    """
+    Restart data for the generalized Born solvation model.
+    """
+
+    __slots__ = ["mat"]
+
+    mat: Tensor
+    """Coulomb matrix."""
+
+    def __init__(
+        self,
+        mat: Tensor,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ):
+        super().__init__(
+            device=device if device is None else mat.device,
+            dtype=dtype if dtype is None else mat.dtype,
+        )
+        self.mat = mat
 
 
 class GeneralizedBorn(Interaction):
@@ -205,44 +228,22 @@ class GeneralizedBorn(Interaction):
             kwargs["rvdw"] = VDW_D3.to(**self.dd)[numbers]
         self.born_kwargs = kwargs
 
-    class Cache(Interaction.Cache, TensorLike):
-        """
-        Restart data for the generalized Born solvation model.
-        """
-
-        __slots__ = ["mat"]
-
-        mat: Tensor
-        """Coulomb matrix."""
-
-        def __init__(
-            self,
-            mat: Tensor,
-            device: torch.device | None = None,
-            dtype: torch.dtype | None = None,
-        ):
-            super().__init__(
-                device=device if device is None else mat.device,
-                dtype=dtype if dtype is None else mat.dtype,
-            )
-            self.mat = mat
-
     def get_cache(
         self, numbers: Tensor, positions: Tensor, **_
-    ) -> GeneralizedBorn.Cache:
+    ) -> GeneralizedBornCache:
         """
         Create restart data for individual interactions.
 
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers of all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
 
         Returns
         -------
-        GeneralizedBorn.Cache
+        GeneralizedBornCache
             Cache object for second order electrostatics.
 
         Note
@@ -254,7 +255,7 @@ class GeneralizedBorn(Interaction):
         cachvars = (numbers.detach().clone(), positions.detach().clone())
 
         if self.cache_is_latest(cachvars) is True:
-            if not isinstance(self.cache, self.Cache):
+            if not isinstance(self.cache, GeneralizedBornCache):
                 raise TypeError(
                     f"Cache in {self.label} is not of type '{self.label}."
                     "Cache'. This can only happen if you manually manipulate "
@@ -279,14 +280,14 @@ class GeneralizedBorn(Interaction):
             adet = get_adet(positions, self.born_kwargs["rvdw"])
             mat += self.keps * self.alpbet * adet.unsqueeze(-1).unsqueeze(-2)
 
-        self.cache = self.Cache(mat)
+        self.cache = GeneralizedBornCache(mat)
         return self.cache
 
-    def get_atom_energy(self, charges: Tensor, cache: GeneralizedBorn.Cache) -> Tensor:
+    def get_atom_energy(self, charges: Tensor, cache: GeneralizedBornCache) -> Tensor:
         return 0.5 * charges * self.get_atom_potential(charges, cache)
 
     def get_atom_potential(
-        self, charges: Tensor, cache: GeneralizedBorn.Cache
+        self, charges: Tensor, cache: GeneralizedBornCache
     ) -> Tensor:
         return torch.einsum("...ik,...k->...i", cache.mat, charges)
 
@@ -296,7 +297,7 @@ class GeneralizedBorn(Interaction):
         numbers: Tensor,
         positions: Tensor,
         charges: Tensor,
-        cache: Cache,
+        cache: GeneralizedBornCache,
     ) -> Tensor:
         raise NotImplementedError("Solvation gradient not implemented")
 
@@ -313,14 +314,14 @@ def new_solvation(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers for all atoms in the system.
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     par : Param
         Representation of an extended tight-binding model.
 
     Returns
     -------
     GeneralizedBorn | None
-        Instance of the `GeneralizedBorn` class or `None` if no solvation model
+        Instance of the `GeneralizedBorn` class or ``None`` if no solvation model
         is used.
     """
     if hasattr(par, "solvation") is False or par.solvation is None:

@@ -27,6 +27,8 @@ from __future__ import annotations
 from dxtb.basis import IndexHelper
 from dxtb.typing import Tensor
 
+__all__ = ["get_bond_order"]
+
 
 def get_bond_order(overlap: Tensor, density: Tensor, ihelp: IndexHelper) -> Tensor:
     """Calculate Wiberg bond orders.

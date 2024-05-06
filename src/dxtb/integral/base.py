@@ -30,6 +30,13 @@ from dxtb.typing import Any, Tensor, TensorLike, override
 from ..basis import Basis, IndexHelper
 from ..param import Param
 
+__all__ = [
+    "BaseIntegral",
+    "BaseIntegralImplementation",
+    "IntDriver",
+    "IntegralContainer",
+]
+
 
 class IntDriver(TensorLike):
     """Base class for the integral driver."""
@@ -98,7 +105,7 @@ class IntDriver(TensorLike):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
 
         Returns
         -------
@@ -134,7 +141,7 @@ class IntDriver(TensorLike):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         """
 
     def __str__(self) -> str:
@@ -172,7 +179,7 @@ class IntegralABC(ABC):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
 
         Returns
         -------
@@ -252,7 +259,7 @@ class BaseIntegral(IntegralABC, TensorLike):
         Returns
         -------
         Tensor | None
-            Integral matrix or `None` if not calculated yet.
+            Integral matrix or ``None`` if not calculated yet.
         """
         return self.integral.matrix
 
@@ -289,7 +296,7 @@ class BaseIntegral(IntegralABC, TensorLike):
         Raises
         ------
         RuntimeError
-            If the `__slots__` attribute is not set in the class.
+            If the ``__slots__`` attribute is not set in the class.
         DtypeError
             If the specified dtype is not allowed.
         """
@@ -298,7 +305,7 @@ class BaseIntegral(IntegralABC, TensorLike):
 
         if len(self.__slots__) == 0:
             raise RuntimeError(
-                f"The `type` method requires setting `__slots__` in the "
+                f"The `type` method requires setting ``__slots__`` in the "
                 f"'{self.__class__.__name__}' class."
             )
 
@@ -333,14 +340,14 @@ class BaseIntegral(IntegralABC, TensorLike):
         Raises
         ------
         RuntimeError
-            If the `__slots__` attribute is not set in the class.
+            If the ``__slots__`` attribute is not set in the class.
         """
         if self.device == device:
             return self
 
         if len(self.__slots__) == 0:
             raise RuntimeError(
-                f"The `to` method requires setting `__slots__` in the "
+                f"The `to` method requires setting ``__slots__`` in the "
                 f"'{self.__class__.__name__}' class."
             )
 

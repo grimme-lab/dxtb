@@ -29,7 +29,26 @@ from dxtb.__version__ import __tversion__
 from dxtb.typing import Any, Tensor, TensorLike
 from dxtb.utils.misc import get_all_slots
 
-__all__ = ["Component"]
+__all__ = ["Component", "ComponentCache"]
+
+
+class ComponentCache(TensorLike):
+    """Cache of a component."""
+
+    def __init__(
+        self,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ):
+        super().__init__(device, dtype)
+
+    def __str__(self) -> str:
+        slots = get_all_slots(self)
+        s = ", ".join(s for s in slots if not s.startswith("_"))
+        return f"{self.__class__.__name__}({s})"
+
+    def __repr__(self) -> str:
+        return str(self)
 
 
 class Component(TensorLike):
@@ -40,7 +59,7 @@ class Component(TensorLike):
     label: str
     """Label for the tight-binding component."""
 
-    _cache: Cache | None
+    _cache: ComponentCache | None
     """Cache for the component."""
 
     _cachevars: tuple[Tensor, ...] | None
@@ -59,7 +78,7 @@ class Component(TensorLike):
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
         *,
-        _cache: Cache | None = None,
+        _cache: ComponentCache | None = None,
         _cachevars: tuple[Tensor, ...] | None = None,
     ):
         super().__init__(device, dtype)
@@ -71,53 +90,35 @@ class Component(TensorLike):
     ############################################################################
 
     @property
-    def cache(self) -> Cache | None:
+    def cache(self) -> ComponentCache | None:
         """Cache for the interaction."""
         return self._cache
 
     @cache.setter
-    def cache(self, value: Cache | None) -> None:
+    def cache(self, value: ComponentCache | None) -> None:
         self._cache = value
-
-    class Cache(TensorLike):
-        """Cache of a component."""
-
-        def __init__(
-            self,
-            device: torch.device | None = None,
-            dtype: torch.dtype | None = None,
-        ):
-            super().__init__(device, dtype)
-
-        def __str__(self) -> str:
-            slots = get_all_slots(self)
-            s = ", ".join(s for s in slots if not s.startswith("_"))
-            return f"{self.__class__.__name__}({s})"
-
-        def __repr__(self) -> str:
-            return str(self)
 
     ############################################################################
 
     def update(self, **kwargs: Any) -> None:
         """
-        Update the attributes of the `Component` instance.
+        Update the attributes of the :class:`.Component` instance.
 
-        This method updates the attributes of the `Component` instance based
-        on the provided keyword arguments. Only the attributes defined in
-        `__slots__` can be updated.
+        This method updates the attributes of the :class:`.Component`
+        instance based on the provided keyword arguments. Only the attributes
+        defined in ``__slots__`` can be updated.
 
         Parameters
         ----------
-        **kwargs : dict[str, Any]
+        kwargs : dict[str, Any]
             Keyword arguments where keys are attribute names and values are the
             new values for those attributes.
-            Valid keys are those defined in `__slots__` of this class.
+            Valid keys are those defined in ``__slots__`` of this class.
 
         Raises
         ------
         AttributeError
-            If any key in kwargs is not an attribute defined in `__slots__`.
+            If any key in kwargs is not an attribute defined in ``__slots__``.
 
         Examples
         --------
@@ -145,22 +146,26 @@ class Component(TensorLike):
         Reset the tensor attributes of the `Component` instance to their
         original states or to specified values.
 
-        This method iterates through the attributes defined in `__slots__` and
+        This method iterates through the attributes defined in ``__slots__`` and
         resets any tensor attributes to a detached clone of their original
         state. The `requires_grad` status of each tensor is preserved.
 
         Examples
         --------
-        >>> import torch
-        >>> import dxtb.components.interactions.external.field import ElectricField
-        >>> ef = ElectricField(field=torch.tensor([0.0, 0.0, 0.0]))
-        >>> ef.reset()
+
+        .. code-block:: python
+
+            import torch
+            from dxtb.components.interactions.external.field import ElectricField
+
+            ef = ElectricField(field=torch.tensor([0.0, 0.0, 0.0]))
+            ef.reset()
 
         Notes
         -----
-        Only tensor attributes defined in `__slots__` are reset. Non-tensor
+        Only tensor attributes defined in ``__slots__`` are reset. Non-tensor
         attributes are ignored. Attempting to reset an attribute not defined in
-        `__slots__` or providing a non-tensor value in `kwargs` will not raise
+        ``__slots__`` or providing a non-tensor value in `kwargs` will not raise
         an error; the method will simply ignore these cases and proceed with
         the reset operation for valid tensor attributes.
         """
@@ -185,7 +190,7 @@ class Component(TensorLike):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
 
         Returns
         -------

@@ -23,6 +23,16 @@ from ..utils import get_density
 from .data import _Data
 from .ovlp_diag import diagonalize
 
+__all__ = [
+    "converged_to_charges",
+    "charges_to_potential",
+    "potential_to_charges",
+    "potential_to_density",
+    "density_to_charges",
+    "potential_to_hamiltonian",
+    "hamiltonian_to_density",
+]
+
 # NOTE:
 # Conversion methods are designed as semi-pure functions (i.e. contain
 # `data.attr = x`). Therefore, make sure to delete attributes manually at end

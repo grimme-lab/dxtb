@@ -27,6 +27,8 @@ import torch
 
 from dxtb.typing import Literal, Tensor
 
+__all__ = ["get_pairs", "get_subblock_start"]
+
 
 def get_pairs(x: Tensor, i: int) -> Tensor:
     """

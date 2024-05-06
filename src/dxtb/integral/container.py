@@ -250,7 +250,7 @@ class Integrals(IntegralContainer):
         Returns
         -------
         Tensor | None
-            Dipole integral if set, else `None`.
+            Dipole integral if set, else ``None``.
         """
         return self._dipole
 
@@ -315,7 +315,7 @@ class Integrals(IntegralContainer):
         Returns
         -------
         Tensor | None
-            Quadrupole integral if set, else `None`.
+            Quadrupole integral if set, else ``None``.
         """
         return self._quadrupole
 
@@ -538,7 +538,7 @@ class IntegralMatrices(IntegralContainer):
         Returns
         -------
         Tensor | None
-            Quadrupole integral if set, else `None`.
+            Quadrupole integral if set, else ``None``.
         """
         return self._quadrupole
 
@@ -554,6 +554,7 @@ class IntegralMatrices(IntegralContainer):
         Checks the shapes of the tensors.
 
         Expected shapes:
+
         - hcore and overlap: (batch_size, nao, nao) or (nao, nao)
         - dipole: (batch_size, 3, nao, nao) or (3, nao, nao)
         - quad: (batch_size, 9, nao, nao) or (9, nao, nao)

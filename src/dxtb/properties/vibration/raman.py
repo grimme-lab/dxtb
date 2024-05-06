@@ -39,6 +39,7 @@ __all__ = ["raman_ints_depol", "RamanResult"]
 class RamanResult(BaseResult):
     """
     Data from the calculation of a Raman spectrum.
+
     - Vibrational frequencies
     - Raman activities (intensities)
     - Depolarization ratios
@@ -71,11 +72,11 @@ class RamanResult(BaseResult):
         depol : Tensor
             Depolarization ratio (unitless).
         device : torch.device | None, optional
-            Device of the tensors. If `None`, the device of `freqs` is used.
-            Defaults to `None`.
+            Device of the tensors. If ``None``, the device of `freqs` is used.
+            Defaults to ``None``.
         dtype : torch.dtype | None, optional
-            Data type of the tensors. If `None`, the data type of `freqs` is
-            used. Defaults to `None`.
+            Data type of the tensors. If ``None``, the data type of `freqs` is
+            used. Defaults to ``None``.
         """
         super().__init__(
             freqs=freqs,

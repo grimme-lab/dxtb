@@ -5,6 +5,8 @@ import torch
 from dxtb.exlibs import xitorch as xt
 from dxtb.typing import Tensor
 
+__all__ = ["get_overlap", "diagonalize"]
+
 
 def get_overlap(smat: Tensor) -> xt.LinearOperator:
     """

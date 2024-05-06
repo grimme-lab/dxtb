@@ -32,7 +32,7 @@ import torch
 from tad_mctc import storch
 
 from dxtb.basis import IndexHelper
-from dxtb.components.interactions import InteractionList
+from dxtb.components.interactions import InteractionList, InteractionListCache
 from dxtb.config import ConfigSCF
 from dxtb.constants import labels
 from dxtb.integral import IntegralMatrices
@@ -42,6 +42,8 @@ from dxtb.wavefunction import filling
 from .base import SCFResult
 from .guess import get_guess
 
+__all__ = ["solve"]
+
 
 def solve(
     numbers: Tensor,
@@ -49,7 +51,7 @@ def solve(
     chrg: Tensor,
     spin: Tensor | None,
     interactions: InteractionList,
-    cache: InteractionList.Cache,
+    cache: InteractionListCache,
     ihelp: IndexHelper,
     config: ConfigSCF,
     integrals: IntegralMatrices,
@@ -63,9 +65,9 @@ def solve(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers for all atoms in the system.
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     chrg : Tensor
         Total charge.
     interactions : InteractionList

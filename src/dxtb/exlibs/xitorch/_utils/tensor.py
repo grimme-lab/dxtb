@@ -14,12 +14,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import torch
-
 """
 This file contains functions for some linear algebra and basic operations of
 torch.tensor.
 """
+
+import torch
+
+__all__ = [
+    "tallqr",
+    "to_fortran_order",
+    "convert_none_grads_to_zeros",
+    "create_random_square_matrix",
+    "create_random_ortho_matrix",
+]
 
 
 def tallqr(V, MV=None):

@@ -29,6 +29,8 @@ from tad_mctc.units import AU2RCM
 from dxtb.typing import Generator, NoReturn, PathLike, Tensor, TensorLike
 from dxtb.utils.misc import get_all_slots
 
+__all__ = ["BaseResult"]
+
 
 class BaseResult(TensorLike):
     """

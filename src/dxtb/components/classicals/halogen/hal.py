@@ -18,8 +18,9 @@
 Halogen Bond Correction: Class
 ==============================
 
-This module implements the halogen bond correction class. The `Halogen` class is
-constructed similar to the `Repulsion` class.
+This module implements the halogen bond correction class. The
+:class:`dxtb.components.Halogen` class is constructed similar to the
+:class:`dxtb.components.Repulsion` class.
 """
 
 from __future__ import annotations
@@ -32,13 +33,38 @@ from dxtb.basis import IndexHelper
 from dxtb.constants import xtb
 from dxtb.typing import Tensor
 
-from ..base import Classical
+from ..base import Classical, ClassicalCache
 
 __all__ = ["Halogen", "LABEL_HALOGEN"]
 
 
 LABEL_HALOGEN = "Halogen"
-"""Label for the 'Halogen' component, coinciding with the class name."""
+"""
+Label for the :class:`.Halogen` component, coinciding with the class name.
+"""
+
+
+class HalogenCache(ClassicalCache):
+    """Cache for the halogen bond parameters."""
+
+    xbond: Tensor
+    """Halogen bond strengths."""
+
+    __slots__ = ["numbers", "xbond"]
+
+    def __init__(
+        self,
+        numbers: Tensor,
+        xbond: Tensor,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ):
+        super().__init__(
+            device=device if device is None else xbond.device,
+            dtype=dtype if dtype is None else xbond.dtype,
+        )
+        self.numbers = numbers
+        self.xbond = xbond
 
 
 class Halogen(Classical):
@@ -86,36 +112,14 @@ class Halogen(Classical):
         self.halogens = [17, 35, 53, 85]
         self.base = [7, 8, 15, 16]
 
-    class Cache(Classical.Cache):
-        """Cache for the halogen bond parameters."""
-
-        xbond: Tensor
-        """Halogen bond strengths."""
-
-        __slots__ = ["numbers", "xbond"]
-
-        def __init__(
-            self,
-            numbers: Tensor,
-            xbond: Tensor,
-            device: torch.device | None = None,
-            dtype: torch.dtype | None = None,
-        ):
-            super().__init__(
-                device=device if device is None else xbond.device,
-                dtype=dtype if dtype is None else xbond.dtype,
-            )
-            self.numbers = numbers
-            self.xbond = xbond
-
-    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> Halogen.Cache:
+    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> HalogenCache:
         """
         Store variables for energy calculation.
 
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
         ihelp : IndexHelper
             Helper class for indexing.
 
@@ -126,14 +130,14 @@ class Halogen(Classical):
 
         Note
         ----
-        The cache of a classical contribution does not require `positions` as
-        it only becomes useful if `numbers` remain unchanged and `positions`
+        The cache of a classical contribution does not require ``positions`` as
+        it only becomes useful if ``numbers`` remain unchanged and ``positions``
         vary, i.e., during geometry optimization.
         """
         cachvars = (numbers.detach().clone(),)
 
         if self.cache_is_latest(cachvars) is True:
-            if not isinstance(self.cache, self.Cache):
+            if not isinstance(self.cache, HalogenCache):
                 raise TypeError(
                     f"Cache in {self.label} is not of type '{self.label}."
                     "Cache'. This can only happen if you manually manipulate "
@@ -144,18 +148,18 @@ class Halogen(Classical):
         self._cachevars = cachvars
 
         xbond = ihelp.spread_uspecies_to_atom(self.bond_strength)
-        self.cache = self.Cache(numbers, xbond)
+        self.cache = HalogenCache(numbers, xbond)
         return self.cache
 
-    def get_energy(self, positions: Tensor, cache: Halogen.Cache) -> Tensor:
+    def get_energy(self, positions: Tensor, cache: HalogenCache) -> Tensor:
         """
         Handle batchwise and single calculation of halogen bonding energy.
 
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
-        cache : Halogen.Cache
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        cache : HalogenCache
             Cache for the halogen bond parameters.
 
         Returns
@@ -189,19 +193,19 @@ class Halogen(Classical):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
 
         Returns
         -------
         Tensor | None
-            Triples for halogen bonding interactions or `None` if no triples
+            Triples for halogen bonding interactions or ``None`` if no triples
             where found.
 
         Note
         ----
-        We cannot use `self.numbers` here, because it is not batched.
+        We cannot use ``self.numbers`` here, because it is not batched.
         """
 
         adjlist = []
@@ -260,9 +264,9 @@ class Halogen(Classical):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         bond_strength : Tensor
             Halogen bond strengths.
 
@@ -273,7 +277,7 @@ class Halogen(Classical):
 
         Note
         ----
-        We cannot use `self.numbers` here, because it is not batched.
+        We cannot use ``self.numbers`` here, because it is not batched.
         """
 
         halogen_mask = torch.zeros(

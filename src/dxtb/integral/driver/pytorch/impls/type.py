@@ -46,7 +46,7 @@ class OverlapFunction(Protocol):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         bas : Basis
             Basis set information.
         ihelp : IndexHelper

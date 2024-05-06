@@ -1,4 +1,4 @@
-.. _about_license:
+.. _about-license:
 
 License
 =======

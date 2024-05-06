@@ -1,4 +1,4 @@
-.. _quickstart_getting_started:
+.. _quickstart-getting-started:
 
 Getting Started
 ===============

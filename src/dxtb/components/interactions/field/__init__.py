@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-External Fields
-===============
+Interactions: External Fields
+=============================
 
 This module contains implementations of external fields that interact with the
 charge density. The fields object are interactions that can straightfowradly be

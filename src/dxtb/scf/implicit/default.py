@@ -32,6 +32,8 @@ from dxtb.typing import Tensor
 from ..mixer import Simple
 from .base import BaseXSCF
 
+__all__ = ["SelfConsistentFieldImplicit"]
+
 
 class SelfConsistentFieldImplicit(BaseXSCF):
     """

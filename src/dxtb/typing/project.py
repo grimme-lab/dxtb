@@ -27,6 +27,8 @@ import torch
 from .builtin import TypedDict
 from .compat import Slicer
 
+__all__ = ["ContainerData", "Slicers"]
+
 
 class Slicers(TypedDict):
     """Collection of slicers of different resolutions for culling in SCF."""

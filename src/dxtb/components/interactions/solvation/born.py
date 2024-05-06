@@ -48,6 +48,8 @@ from tad_mctc.data.radii import VDW_D3
 
 from dxtb.typing import DD, Tensor
 
+__all__ = ["get_born_radii"]
+
 
 def get_born_radii(
     numbers: Tensor,
@@ -62,6 +64,7 @@ def get_born_radii(
     """
     Calculate Born radii for a set of atoms using the Onufriev-Bashford-Case
     model published in
+
     - A. Onufriev, D. Bashford and D. A. Case, *Proteins: Struct., Funct.,
     Bioinf.*, **2004**, 55, 383–394. DOI: `10.1002/prot.20033
     <https://doi.org/10.1002/prot.20033>`__
@@ -153,7 +156,7 @@ def compute_psi(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers for all atoms in the system.
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     positions : Tensor
         Cartesian coordinates of the atoms.
     rvdw : Tensor

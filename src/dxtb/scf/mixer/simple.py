@@ -25,6 +25,9 @@ from dxtb.typing import Any, Slicer, Tensor
 
 from .base import Mixer
 
+__all__ = ["Simple"]
+
+
 default_opts = {"maxiter": 100, "damp": 0.3}
 
 

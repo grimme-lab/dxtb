@@ -31,6 +31,8 @@ from typing import Dict, Optional
 
 from pydantic import BaseModel
 
+__all__ = ["Hamiltonian", "XTBHamiltonian"]
+
 
 class XTBHamiltonian(BaseModel):
     """

@@ -51,7 +51,7 @@ def new_repulsion(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers for all atoms in the system.
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     par : Param
         Representation of an extended tight-binding model.
     cutoff : float
@@ -60,12 +60,12 @@ def new_repulsion(
         Whether to instantiate a repulsion class that implements a custom
         backward function with an analytical nuclear gradient, i.e., the first
         derivative w.r.t. positions is computed with an analytical formula
-        instead of the AD engine. Defaults to `False`.
+        instead of the AD engine. Defaults to ``False``.
 
     Returns
     -------
     Repulsion | None
-        Instance of the Repulsion class or `None` if no repulsion is used.
+        Instance of the Repulsion class or ``None`` if no repulsion is used.
 
     Raises
     ------

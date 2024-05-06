@@ -15,7 +15,7 @@ from __future__ import annotations
 import torch
 
 from dxtb.basis import IndexHelper
-from dxtb.components.interactions import Charges, InteractionList, Potential
+from dxtb.components.interactions import Charges, InteractionList, InteractionListCache
 from dxtb.config import ConfigSCF
 from dxtb.constants import defaults, labels
 from dxtb.exlibs.xitorch import optimize as xto
@@ -33,6 +33,8 @@ from .conversions import (
 from .data import _Data
 from .energies import get_electronic_free_energy, get_energy
 from .iterations import iter_options
+
+__all__ = ["scf_pure", "scf_wrapper", "run_scf"]
 
 
 def scf_pure(
@@ -100,7 +102,7 @@ def scf_wrapper(
     numbers: Tensor,
     *,
     ihelp: IndexHelper,
-    cache: InteractionList.Cache,
+    cache: InteractionListCache,
     integrals: IntegralMatrices,
     config: ConfigSCF,
     **kwargs: Any,
@@ -166,7 +168,7 @@ def run_scf(
     cfg: SCFConfig
         Dataclass containing configuration for SCF iterations.
     charges : Tensor, optional
-        Initial orbital charges vector. If `None` is given (default), a
+        Initial orbital charges vector. If ``None`` is given (default), a
         zero vector is used.
 
     Returns

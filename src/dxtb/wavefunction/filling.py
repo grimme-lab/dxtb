@@ -27,6 +27,13 @@ from dxtb.typing import DD, Tensor
 
 from ..constants import defaults
 
+__all__ = [
+    "get_alpha_beta_occupation",
+    "get_aufbau_occupation",
+    "get_fermi_energy",
+    "get_fermi_occupation",
+]
+
 
 def get_alpha_beta_occupation(
     nel: Tensor, uhf: Tensor | float | int | list[int] | None = None
@@ -39,7 +46,7 @@ def get_alpha_beta_occupation(
     nel : Tensor
         Total number of electrons.
     uhf : Tensor | int | list[int] | None
-        Number of unpaired electrons. If `None`, spin is figured out automatically.
+        Number of unpaired electrons. If ``None``, spin is figured out automatically.
 
     Returns
     -------
@@ -263,7 +270,7 @@ def get_fermi_occupation(
 
     # wrong type of kt
     if not isinstance(kt, Tensor) and kt is not None:
-        raise TypeError("Electronic temperature must be `Tensor` or `None`.")
+        raise TypeError("Electronic temperature must be `Tensor` or ``None``.")
 
     # negative etemp
     if kt is not None and torch.any(kt < 0.0):

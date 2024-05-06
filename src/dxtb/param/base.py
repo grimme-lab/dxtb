@@ -48,6 +48,8 @@ from .multipole import Multipole
 from .repulsion import Repulsion
 from .thirdorder import ThirdOrder
 
+__all__ = ["Param"]
+
 
 class Param(BaseModel):
     """

@@ -37,7 +37,7 @@ def get_density(coeffs: Tensor, occ: Tensor, emo: Tensor | None = None) -> Tenso
     occ : Tensor
         Occupation numbers (diagonal matrix).
     emo : Tensor | None, optional
-        Orbital energies for energy weighted density matrix. Defaults to `None`.
+        Orbital energies for energy weighted density matrix. Defaults to ``None``.
 
     Returns
     -------

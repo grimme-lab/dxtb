@@ -17,6 +17,8 @@
 import os
 import subprocess as sp
 
+__all__ = ["get_version"]
+
 MAJOR = 0
 MINOR = 4
 MICRO = 0

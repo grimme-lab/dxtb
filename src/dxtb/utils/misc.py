@@ -20,20 +20,28 @@ Utility: Miscellaneous
 ======================
 
 Collection of miscellaneous utility functions containing:
+
 - Type guards
 - JIT enabler
 - Memoization decorators
 """
 from __future__ import annotations
 
-from functools import wraps
-
 import torch
 
-from dxtb.typing import TYPE_CHECKING, Any, Callable, Tensor, TypeGuard, TypeVar
+from dxtb.typing import TYPE_CHECKING, Any, Tensor, TypeGuard, TypeVar
 
 if TYPE_CHECKING:
     from dxtb.exlibs import libcint
+
+__all__ = [
+    "get_all_slots",
+    "is_str_list",
+    "is_int_list",
+    "is_basis_list",
+    "convert_float_tensor",
+    "set_jit_enabled",
+]
 
 
 T = TypeVar("T")
@@ -71,7 +79,7 @@ def is_str_list(x: list[Any]) -> TypeGuard[list[str]]:
     Returns
     -------
     TypeGuard[list[str]]
-        `True` if all objects are strings, `False` otherwise.
+        ``True`` if all objects are strings, ``False`` otherwise.
     """
     if not isinstance(x, list):
         return False
@@ -90,7 +98,7 @@ def is_int_list(x: list[Any]) -> TypeGuard[list[int]]:
     Returns
     -------
     TypeGuard[list[int]]
-        `True` if all objects are integers, `False` otherwise.
+        ``True`` if all objects are integers, ``False`` otherwise.
     """
     if not isinstance(x, list):
         return False
@@ -109,7 +117,7 @@ def is_basis_list(x: Any) -> TypeGuard[list[libcint.AtomCGTOBasis]]:
     Returns
     -------
     TypeGuard[list[AtomCGTOBasis]]
-        `True` if all objects are `AtomCGTOBasis`, `False` otherwise.
+        ``True`` if all objects are `AtomCGTOBasis`, ``False`` otherwise.
     """
     if not isinstance(x, list):
         return False

@@ -35,6 +35,7 @@ class ConfigIntegrals:
     level: int
     """
     Indicator for integrals to compute.
+
     - 0: None
     - 1: overlap
     - 2: +dipole

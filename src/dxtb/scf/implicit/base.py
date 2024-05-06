@@ -32,6 +32,8 @@ from dxtb.typing import Tensor
 
 from ..base import BaseSCF
 
+__all__ = ["BaseXSCF"]
+
 
 class BaseXSCF(BaseSCF, xt.EditableModule):
     """

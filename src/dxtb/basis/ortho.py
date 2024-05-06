@@ -24,6 +24,8 @@ import torch
 
 from dxtb.typing import Tensor
 
+__all__ = ["orthogonalize", "gaussian_integral"]
+
 
 def gaussian_integral(ai: Tensor, aj: Tensor, ci: Tensor, cj: Tensor) -> Tensor:
     """

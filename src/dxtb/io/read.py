@@ -32,6 +32,18 @@ from tad_mctc.data import pse
 
 from dxtb.typing import Any, PathLike
 
+__all__ = [
+    "check_xyz",
+    "read_structure_from_file",
+    "read_xyz",
+    "read_xyz_qm9",
+    "read_qcschema",
+    "read_coord",
+    "read_chrg",
+    "read_tblite_gfn",
+    "read_orca_engrad",
+]
+
 
 def check_xyz(fp: PathLike, xyz: list[list[float]]) -> list[list[float]]:
     """
@@ -79,7 +91,7 @@ def read_structure_from_file(
     file : PathLike
         Path of file containing the structure.
     ftype : str | None, optional
-        File type. Defaults to `None`, i.e., infered from the extension.
+        File type. Defaults to ``None``, i.e., infered from the extension.
 
     Returns
     -------

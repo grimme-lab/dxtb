@@ -36,12 +36,16 @@ from dxtb.typing import Any, Literal, NoReturn, Tensor
 from ...utils.math import qr
 from .result import BaseResult
 
+__all__ = ["VibResult", "vib_analysis"]
+
+
 LINDEP_THRESHOLD = 1e-7
 
 
 class VibResult(BaseResult):
     """
     Data from the vibrational analysis.
+
     - Vibrational frequencies.
     - Normal modes.
     """
@@ -65,11 +69,11 @@ class VibResult(BaseResult):
         modes : Tensor
             Normal modes (unitless).
         device : torch.device | None, optional
-            Device of the tensors. If `None`, the device of `freqs` is used.
-            Defaults to `None`.
+            Device of the tensors. If ``None``, the device of `freqs` is used.
+            Defaults to ``None``.
         dtype : torch.dtype | None, optional
-            Data type of the tensors. If `None`, the data type of `freqs` is
-            used. Defaults to `None`.
+            Data type of the tensors. If ``None``, the data type of `freqs` is
+            used. Defaults to ``None``.
         """
         super().__init__(
             freqs=freqs,
@@ -176,9 +180,9 @@ def vib_analysis(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers for all atoms in the system.
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     positions : Tensor
-        Cartesian coordinates of all atoms in the system `(..., nat, 3)`.
+        Cartesian coordinates of all atoms in the system ``(..., nat, 3)``.
     hessian : Tensor
         Hessian matrix of shape `(..., nat, 3, nat, 3)`.
     project_rotational : bool, optional

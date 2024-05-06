@@ -28,6 +28,8 @@ from dxtb.typing import Tensor
 
 from .base import BaseHamiltonian
 
+__all__ = ["GFN2Hamiltonian"]
+
 
 class GFN2Hamiltonian(BaseHamiltonian):
     """

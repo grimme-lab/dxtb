@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Components: List
+================
+
 Container for classical contributions.
 """
 
@@ -26,10 +29,23 @@ from dxtb.basis import IndexHelper
 from dxtb.timing import timer
 from dxtb.typing import Any, Literal, Tensor, overload, override
 
-from ..list import ComponentList, _docstring_reset, _docstring_update
+from ..list import (
+    ComponentList,
+    ComponentListCache,
+    _docstring_reset,
+    _docstring_update,
+)
 from .base import Classical
 from .halogen import LABEL_HALOGEN, Halogen
 from .repulsion import LABEL_REPULSION, Repulsion
+
+__all__ = ["ClassicalList", "ClassicalListCache"]
+
+
+class ClassicalListCache(ComponentListCache):
+    """
+    Cache for classical contributions.
+    """
 
 
 class ClassicalList(ComponentList[Classical]):
@@ -38,23 +54,23 @@ class ClassicalList(ComponentList[Classical]):
     """
 
     @override
-    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> ClassicalList.Cache:
+    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> ClassicalListCache:
         """
         Create restart data for individual classical contributions.
 
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
         ihelp: IndexHelper
             Index mapping for the basis set.
 
         Returns
         -------
-        ClassicalList.Cache
+        ClassicalListCache
             Restart data for the classicals.
         """
-        cache = self.Cache()
+        cache = ClassicalListCache()
 
         d = {}
         for classical in self.components:
@@ -67,7 +83,7 @@ class ClassicalList(ComponentList[Classical]):
 
     @override
     def get_energy(
-        self, positions: Tensor, cache: ComponentList.Cache
+        self, positions: Tensor, cache: ClassicalListCache
     ) -> dict[str, Tensor]:
         """
         Compute the energy for a list of classicals.
@@ -75,8 +91,8 @@ class ClassicalList(ComponentList[Classical]):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
-        cache : Cache
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        cache : ClassicalListCache
             Restart data for the classical contribution.
 
         Returns
@@ -109,7 +125,7 @@ class ClassicalList(ComponentList[Classical]):
         energy : dict[str, Tensor]
             Energies of all classical contributions that will be differentiated.
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
 
         Returns
         -------

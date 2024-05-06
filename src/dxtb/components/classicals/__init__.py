@@ -15,16 +15,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Classical contributions
-=======================
+Components: Classical contributions
+===================================
 
-This module contains the classical energy contribution of xtb.
+This module contains the classical energy contribution of xTB.
 The classical contribution currently comprise:
- - repulsion (GFN1-xTB, GFN2-xTB)
- - halogen bonding correction (GFN1-xTB).
+
+- repulsion (GFN1-xTB, GFN2-xTB)
+- halogen bonding correction (GFN1-xTB).
+- dispersion correction (GFN1-xTB, GFN2-xTB).
 """
 
-from .base import Classical
+from .base import Classical, ClassicalCache
 from .dispersion import *
 from .halogen import *
 from .list import *

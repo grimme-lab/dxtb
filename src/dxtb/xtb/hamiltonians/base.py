@@ -32,6 +32,8 @@ from dxtb.components.interactions import Potential
 from dxtb.param import Param
 from dxtb.typing import Tensor, TensorLike
 
+__all__ = ["HamiltonianABC", "BaseHamiltonian"]
+
 
 class HamiltonianABC(ABC):
     """
@@ -52,7 +54,7 @@ class HamiltonianABC(ABC):
         overlap : Tensor
             Overlap matrix.
         cn : Tensor | None, optional
-            Coordination number. Defaults to `None`.
+            Coordination number. Defaults to ``None``.
 
         Returns
         -------

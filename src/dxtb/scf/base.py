@@ -328,7 +328,7 @@ class BaseSCF:
         Parameters
         ----------
         charges : Tensor | Charges, optional
-            Initial orbital charges vector. If `None` is given (default), a
+            Initial orbital charges vector. If ``None`` is given (default), a
             zero vector is used.
 
         Returns

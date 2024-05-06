@@ -23,12 +23,19 @@ Hence, the TOML file is only read when a member is accessed.
 
 Example
 -------
->>> from dxtb.param.gfn2 import GFN2_XTB
->>> print(GFN2_XTB._loaded is None)
-True
->>> m = GFN2_XTB.meta
->>> print(GFN2_XTB._loaded is None)
-False
+
+.. code-block:: python
+
+    from dxtb.param.gfn2 import GFN2_XTB
+
+    # Check if the parameters are initially loaded
+    print(GFN2_XTB._loaded is None)  # Expected output: True
+
+    # Access the metadata to trigger loading
+    m = GFN2_XTB.meta
+
+    # Verify that the parameters are now loaded
+    print(GFN2_XTB._loaded is None)  # Expected output: False
 """
 
 from __future__ import annotations
@@ -38,5 +45,8 @@ from pathlib import Path
 from dxtb.loader.lazy import LazyLoaderParam as Lazy
 
 from ..base import Param
+
+__all__ = ["GFN2_XTB"]
+
 
 GFN2_XTB: Param = Lazy(Path(__file__).parent / "gfn2-xtb.toml")  # type: ignore

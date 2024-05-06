@@ -50,7 +50,7 @@ class OverlapAGBase(torch.autograd.Function):
         None,  # uplo
         None,  # cutoff
     ]:
-        # initialize gradients with `None`
+        # initialize gradients with ``None``
         positions_bar = None
 
         # check which of the input variables of `forward()` requires gradients
@@ -243,7 +243,7 @@ def overlap(
     Parameters
     ----------
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     bas : Basis
         Basis set information.
     ihelp : IndexHelper
@@ -340,7 +340,7 @@ def overlap_gradient(
     Parameters
     ----------
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     bas : Basis
         Basis set information.
     ihelp : IndexHelper

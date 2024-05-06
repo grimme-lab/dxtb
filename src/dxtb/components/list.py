@@ -32,21 +32,27 @@ from dxtb.typing import Any, Self, Slicers, Tensor, TensorLike, TypeVar, overrid
 
 from .base import Component
 
-__all__ = ["ComponentList"]
+__all__ = [
+    "ComponentList",
+    "ComponentListABC",
+    "ComponentListCache",
+    "ComponentListCacheABC",
+]
 
 
 C = TypeVar("C", bound=Component)
+
+
+class ComponentListCacheABC(ABC, dict):
+    """
+    List of component caches.
+    """
 
 
 class ComponentListABC(ABC):
     """
     Abstract base class for component lists.
     """
-
-    class Cache(dict):
-        """
-        List of component caches.
-        """
 
     @abstractmethod
     def get_energy(self, *args: Any, **kwargs: Any) -> Tensor:
@@ -61,10 +67,41 @@ class ComponentListABC(ABC):
         """
 
     @abstractmethod
-    def get_cache(self, *args: Any, **kwargs: Any) -> Cache:
+    def get_cache(self, *args: Any, **kwargs: Any) -> ComponentListCacheABC:
         """
         Create restart data for all components.
         """
+
+
+class ComponentListCache(ComponentListCacheABC):
+    """
+    List of component caches.
+
+    Note
+    ----
+    The cache class inherits from `dict`.
+    """
+
+    __slots__ = ()
+
+    def cull(self, conv: Tensor, slicers: Slicers) -> None:
+        """
+        Cull all interaction caches.
+
+        Parameters
+        ----------
+        conv : Tensor
+            Mask of converged systems.
+        """
+        for cache in self.values():
+            cache.cull(conv, slicers)
+
+    def restore(self) -> None:
+        """
+        Restore all interaction caches.
+        """
+        for cache in self.values():
+            cache.restore()
 
 
 class ComponentList(ComponentListABC, Generic[C], TensorLike):
@@ -76,36 +113,6 @@ class ComponentList(ComponentListABC, Generic[C], TensorLike):
     """List of tight-binding components instances."""
 
     __slots__ = ("components",)
-
-    class Cache(ComponentListABC.Cache):
-        """
-        List of component caches.
-
-        Note
-        ----
-        The cache class inherits from `dict`.
-        """
-
-        __slots__ = ()
-
-        def cull(self, conv: Tensor, slicers: Slicers) -> None:
-            """
-            Cull all interaction caches.
-
-            Parameters
-            ----------
-            conv : Tensor
-                Mask of converged systems.
-            """
-            for cache in self.values():
-                cache.cull(conv, slicers)
-
-        def restore(self) -> None:
-            """
-            Restore all interaction caches.
-            """
-            for cache in self.values():
-                cache.restore()
 
     def __init__(
         self,
@@ -141,7 +148,7 @@ class ComponentList(ComponentListABC, Generic[C], TensorLike):
         ----------
         name : str
             The label of the interaction object to be updated.
-        **kwargs : dict
+        kwargs : dict
             Keyword arguments containing the attributes and their new values to
             be updated in the interaction object.
 
@@ -194,13 +201,15 @@ class ComponentList(ComponentListABC, Generic[C], TensorLike):
 
         Examples
         --------
-        >>> import torch
-        >>> from dxtb.components.interactions import InteractionList
-        >>> from dxtb.components.interactions.external import field as efield
-        >>>
-        >>> ef = efield.new_efield(torch.tensor([0.0, 0.0, 0.0]))
-        >>> ilist = InteractionList(ef)
-        >>> ilist.reset(efield.LABEL_EFIELD)
+        .. code-block:: python
+
+            import torch
+            from dxtb.components.interactions import InteractionList
+            from dxtb.components.interactions.external import field as efield
+
+            ef = efield.new_efield(torch.tensor([0.0, 0.0, 0.0]))
+            ilist = InteractionList(ef)
+            ilist.reset(efield.LABEL_EFIELD)
         """
         for component in self.components:
             if name == component.label:
@@ -269,7 +278,7 @@ def _docstring_update(func):
 
     Parameters
     ----------
-    **kwargs : dict
+    kwargs : dict
         Keyword arguments containing the attributes and their new values to
         be updated in the component object.
 

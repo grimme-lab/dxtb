@@ -19,17 +19,17 @@ Repulsion: Classes
 ==================
 
 This module implements the classical repulsion energy term in two flavors. The
-first class, `Repulsion`, provides the gradient using PyTorch's autograd. The
-second class, `RepulsionAnalytical`, provides an custom backward with an
-analytical derivative.
+first class, class:`.Repulsion`, provides the gradient using PyTorch's
+autograd. The second class, class:`.RepulsionAnalytical`, provides an custom
+backward with an analytical derivative.
 
 Note
 ----
 The Repulsion class has a cache scope that goes beyond single-point
 calculations (geometry optimization, numerical gradients). The atomic numbers
-are set upon instantiation (`numbers` is a property), and the parameters in
+are set upon instantiation (``numbers`` is a property), and the parameters in
 the cache are created for only those atomic numbers. The positions, however,
-must be supplied to the `get_energy` method. Hence, the cache does not become
+must be supplied to the ``get_energy`` method. Hence, the cache does not become
 invalid for different geometries, but only for different atomic numbers.
 """
 
@@ -40,7 +40,12 @@ from tad_mctc._version import __tversion__
 
 from dxtb.typing import Any, Tensor, override
 
-from .base import BaseRepulsion, repulsion_energy, repulsion_gradient
+from .base import (
+    BaseRepulsion,
+    BaseRepulsionCache,
+    repulsion_energy,
+    repulsion_gradient,
+)
 
 __all__ = ["LABEL_REPULSION", "Repulsion", "RepulsionAnalytical"]
 
@@ -56,7 +61,7 @@ class Repulsion(BaseRepulsion):
 
     @override
     def get_energy(
-        self, positions: Tensor, cache: Repulsion.Cache, **kwargs: Any
+        self, positions: Tensor, cache: BaseRepulsionCache, **kwargs: Any
     ) -> Tensor:
         """
         Get repulsion energy.
@@ -66,7 +71,7 @@ class Repulsion(BaseRepulsion):
         cache : Repulsion.Cache
             Cache for repulsion.
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         atom_resolved : bool
             Whether to return atom-resolved energy (True) or full matrix
             (False).
@@ -99,7 +104,7 @@ class RepulsionAnalytical(Repulsion):
     def get_energy(
         self,
         positions: Tensor,
-        cache: Repulsion.Cache,
+        cache: BaseRepulsionCache,
         atom_resolved: bool = True,
     ) -> Tensor:
         """
@@ -111,7 +116,7 @@ class RepulsionAnalytical(Repulsion):
         cache : Repulsion.Cache
             Cache for repulsion.
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         atom_resolved : bool
             Whether to return atom-resolved energy (True) or full matrix (False).
 
@@ -154,7 +159,7 @@ class RepulsionAGBase(torch.autograd.Function):
         None | Tensor,  # zeff
         None,  # cutoff
     ]:
-        # initialize gradients with `None`
+        # initialize gradients with ``None``
         positions_bar = arep_bar = kexp_bar = zeff_bar = None
 
         # check which of the input variables of `forward()` requires gradients

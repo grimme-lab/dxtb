@@ -21,11 +21,12 @@ Properties
 Subpackage for calculation of molecular properties and related spectra.
 
 Supported are the following:
- - analytical electrical dipole moment
- - analytical traceless quadrupole moment
- - vibrational frequencies and normal modes
- - IR intensities
- - static Raman intensities
+
+- analytical electrical dipole moment
+- analytical traceless quadrupole moment
+- vibrational frequencies and normal modes
+- IR intensities
+- static Raman intensities
 """
 from dxtb.typing import TYPE_CHECKING
 

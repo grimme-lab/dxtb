@@ -30,6 +30,8 @@ from dxtb.typing import Tensor
 
 from ..constants import labels
 
+__all__ = ["get_guess"]
+
 
 def get_guess(
     numbers: Tensor,
@@ -41,15 +43,16 @@ def get_guess(
     """
     Obtain initial guess for charges.
     Currently the following methods are supported:
-     - electronegativity equilibration charge model ("eeq")
-     - superposition of atomic densities ("sad"), i.e. zero charges
+
+    - electronegativity equilibration charge model ("eeq")
+    - superposition of atomic densities ("sad"), i.e. zero charges
 
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers of all atoms in the system.
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     chrg : Tensor
         Total charge of system.
     ihelp : IndexHelper
@@ -96,13 +99,13 @@ def get_eeq_guess(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers of all atoms in the system.
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     chrg : Tensor
         Total charge of system.
     cutoff : Tensor, optional
-        Cutoff radius for the EEQ model. Defaults to `None`.
+        Cutoff radius for the EEQ model. Defaults to ``None``.
 
     Returns
     -------

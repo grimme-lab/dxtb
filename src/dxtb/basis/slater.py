@@ -35,6 +35,8 @@ from dxtb.typing.exceptions import (
     CGTOSlaterExponentsError,
 )
 
+__all__ = ["slater_to_gauss"]
+
 base = Path(__file__).parent / "sto-ng"
 sto_ng = [
     torch.from_numpy(np.load(base / f"sto-{n}g.npy")).type(torch.double)

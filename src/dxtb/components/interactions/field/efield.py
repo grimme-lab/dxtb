@@ -26,10 +26,10 @@ from __future__ import annotations
 import torch
 from tad_mctc.math import einsum
 
-from dxtb.typing import Any, Slicers, Tensor, TensorLike, override
+from dxtb.typing import Any, Slicers, Tensor, override
 from dxtb.typing.exceptions import DeviceError, DtypeError
 
-from ..base import Interaction
+from ..base import Interaction, InteractionCache
 from ..container import Charges
 
 __all__ = ["ElectricField", "LABEL_EFIELD", "new_efield"]
@@ -39,23 +39,45 @@ LABEL_EFIELD = "ElectricField"
 """Label for the 'ElectricField' interaction, coinciding with the class name."""
 
 
-class ElectricField(Interaction):
+class ElectricFieldCache(InteractionCache):
     """
-    Instantaneous electric field.
+    Restart data for the electric field interaction.
     """
 
-    field: Tensor
-    """Instantaneous electric field vector."""
+    __store: Store | None
+    """Storage for cache (required for culling)."""
 
-    __slots__ = ["field"]
+    vat: Tensor
+    """
+    Atom-resolved monopolar potental from instantaneous electric field.
+    """
 
-    class Cache(Interaction.Cache, TensorLike):
+    vdp: Tensor
+    """
+    Atom-resolved dipolar potential from instantaneous electric field.
+    """
+
+    __slots__ = ["__store", "vat", "vdp"]
+
+    def __init__(
+        self,
+        vat: Tensor,
+        vdp: Tensor,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> None:
+        super().__init__(
+            device=device if device is None else vat.device,
+            dtype=dtype if dtype is None else vat.dtype,
+        )
+        self.vat = vat
+        self.vdp = vdp
+        self.__store = None
+
+    class Store:
         """
-        Restart data for the electric field interaction.
+        Storage container for cache containing ``__slots__`` before culling.
         """
-
-        __store: Store | None
-        """Storage for cache (required for culling)."""
 
         vat: Tensor
         """
@@ -67,56 +89,35 @@ class ElectricField(Interaction):
         Atom-resolved dipolar potential from instantaneous electric field.
         """
 
-        __slots__ = ["__store", "vat", "vdp"]
-
-        def __init__(
-            self,
-            vat: Tensor,
-            vdp: Tensor,
-            device: torch.device | None = None,
-            dtype: torch.dtype | None = None,
-        ) -> None:
-            super().__init__(
-                device=device if device is None else vat.device,
-                dtype=dtype if dtype is None else vat.dtype,
-            )
+        def __init__(self, vat: Tensor, vdp: Tensor) -> None:
             self.vat = vat
             self.vdp = vdp
-            self.__store = None
 
-        class Store:
-            """
-            Storage container for cache containing `__slots__` before culling.
-            """
+    def cull(self, conv: Tensor, slicers: Slicers) -> None:
+        if self.__store is None:
+            self.__store = self.Store(self.vat, self.vdp)
 
-            vat: Tensor
-            """
-            Atom-resolved monopolar potental from instantaneous electric field.
-            """
+        slicer = slicers["atom"]
+        self.vat = self.vat[[~conv, *slicer]]
+        self.vdp = self.vdp[[~conv, *slicer, ...]]
 
-            vdp: Tensor
-            """
-            Atom-resolved dipolar potential from instantaneous electric field.
-            """
+    def restore(self) -> None:
+        if self.__store is None:
+            raise RuntimeError("Nothing to restore. Store is empty.")
 
-            def __init__(self, vat: Tensor, vdp: Tensor) -> None:
-                self.vat = vat
-                self.vdp = vdp
+        self.vat = self.__store.vat
+        self.vdp = self.__store.vdp
 
-        def cull(self, conv: Tensor, slicers: Slicers) -> None:
-            if self.__store is None:
-                self.__store = self.Store(self.vat, self.vdp)
 
-            slicer = slicers["atom"]
-            self.vat = self.vat[[~conv, *slicer]]
-            self.vdp = self.vdp[[~conv, *slicer, ...]]
+class ElectricField(Interaction):
+    """
+    Instantaneous electric field.
+    """
 
-        def restore(self) -> None:
-            if self.__store is None:
-                raise RuntimeError("Nothing to restore. Store is empty.")
+    field: Tensor
+    """Instantaneous electric field vector."""
 
-            self.vat = self.__store.vat
-            self.vdp = self.__store.vdp
+    __slots__ = ["field"]
 
     def __init__(
         self,
@@ -131,13 +132,13 @@ class ElectricField(Interaction):
         self.field = field
 
     @override
-    def get_cache(self, positions: Tensor, **_: Any) -> Cache:
+    def get_cache(self, positions: Tensor, **_: Any) -> ElectricFieldCache:
         """
         Create restart data for individual interactions.
 
         Returns
         -------
-        ElectricField.Cache
+        ElectricFieldCache
             Restart data for the interaction.
 
         Note
@@ -150,7 +151,7 @@ class ElectricField(Interaction):
         cachvars = (positions.detach().clone(), self.field.detach().clone())
 
         if self.cache_is_latest(cachvars) is True:
-            if not isinstance(self.cache, self.Cache):
+            if not isinstance(self.cache, ElectricFieldCache):
                 raise TypeError(
                     f"Cache in {self.label} is not of type '{self.label}."
                     "Cache'. This can only happen if you manually manipulate "
@@ -166,11 +167,11 @@ class ElectricField(Interaction):
         # (nbatch, natoms, 3)
         vdp = self.field.expand_as(positions)
 
-        self.cache = self.Cache(vat, vdp)
+        self.cache = ElectricFieldCache(vat, vdp)
         return self.cache
 
     @override
-    def get_atom_energy(self, charges: Tensor, cache: Cache) -> Tensor:
+    def get_atom_energy(self, charges: Tensor, cache: ElectricFieldCache) -> Tensor:
         """
         Calculate the monopolar contribution of the electric field energy.
 
@@ -178,7 +179,7 @@ class ElectricField(Interaction):
         ----------
         charges : Tensor
             Atomic charges of all atoms.
-        cache : ElectricField.Cache
+        cache : ElectricFieldCache
             Restart data for the interaction.
 
         Returns
@@ -189,7 +190,7 @@ class ElectricField(Interaction):
         return -cache.vat * charges
 
     @override
-    def get_dipole_energy(self, charges: Tensor, cache: Cache) -> Tensor:
+    def get_dipole_energy(self, charges: Tensor, cache: ElectricFieldCache) -> Tensor:
         """
         Calculate the dipolar contribution of the electric field energy.
 
@@ -197,7 +198,7 @@ class ElectricField(Interaction):
         ----------
         charges : Tensor
             Atomic dipole moments of all atoms.
-        cache : ElectricField.Cache
+        cache : ElectricFieldCache
             Restart data for the interaction.
 
         Returns
@@ -210,7 +211,7 @@ class ElectricField(Interaction):
         return einsum("...ix,...ix->...i", -cache.vdp, charges)
 
     @override
-    def get_atom_potential(self, _: Charges, cache: Cache) -> Tensor:
+    def get_atom_potential(self, _: Charges, cache: ElectricFieldCache) -> Tensor:
         """
         Calculate the electric field potential.
 
@@ -218,7 +219,7 @@ class ElectricField(Interaction):
         ----------
         charges : Tensor
             Atomic charges of all atoms (not required).
-        cache : ElectricField.Cache
+        cache : ElectricFieldCache
             Restart data for the interaction.
 
         Returns
@@ -229,7 +230,7 @@ class ElectricField(Interaction):
         return -cache.vat
 
     @override
-    def get_dipole_potential(self, _: Charges, cache: Cache) -> Tensor:
+    def get_dipole_potential(self, _: Charges, cache: ElectricFieldCache) -> Tensor:
         """
         Calculate the electric field dipole potential.
 
@@ -237,7 +238,7 @@ class ElectricField(Interaction):
         ----------
         charges : Tensor
             Atomic charges of all atoms (not required).
-        cache : ElectricField.Cache
+        cache : ElectricFieldCache
             Restart data for the interaction.
 
         Returns
@@ -267,10 +268,10 @@ def new_efield(
     field : Tensor
         Electric field vector consisting of the three cartesian components.
     device : torch.device | None, optional
-        Device to store the tensor on. If `None` (default), the device is
+        Device to store the tensor on. If ``None`` (default), the device is
         inferred from the `field` argument.
     dtype : torch.dtype | None, optional
-        Data type of the tensor. If `None` (default), the data type is inferred
+        Data type of the tensor. If ``None`` (default), the data type is inferred
         from the `field` argument.
 
     Returns

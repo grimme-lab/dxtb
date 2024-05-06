@@ -73,7 +73,7 @@ from dxtb.typing import (
     get_default_dtype,
 )
 
-from .. import Interaction
+from ..base import Interaction, InteractionCache
 from .average import AveragingFunction, averaging_function, harmonic_average
 
 __all__ = ["ES2", "LABEL_ES2", "new_es2"]
@@ -81,6 +81,62 @@ __all__ = ["ES2", "LABEL_ES2", "new_es2"]
 
 LABEL_ES2 = "ES2"
 """Label for the 'ES2' interaction, coinciding with the class name."""
+
+
+class ES2Cache(InteractionCache, TensorLike):
+    """
+    Cache for Coulomb matrix in ES2.
+    """
+
+    __store: Store | None
+    """Storage for cache (required for culling)."""
+
+    mat: Tensor
+    """Coulomb matrix."""
+
+    shell_resolved: bool
+    """Electrostatics is shell-resolved (default: ``True``)."""
+
+    __slots__ = ["__store", "mat", "shell_resolved"]
+
+    def __init__(
+        self,
+        mat: Tensor,
+        shell_resolved: bool = True,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> None:
+        super().__init__(
+            device=device if device is None else mat.device,
+            dtype=dtype if dtype is None else mat.dtype,
+        )
+        self.mat = mat
+        self.shell_resolved = shell_resolved
+        self.__store = None
+
+    class Store:
+        """
+        Storage container for cache containing ``__slots__`` before culling.
+        """
+
+        mat: Tensor
+        """Coulomb matrix"""
+
+        def __init__(self, mat: Tensor) -> None:
+            self.mat = mat
+
+    def cull(self, conv: Tensor, slicers: Slicers) -> None:
+        if self.__store is None:
+            self.__store = self.Store(self.mat)
+
+        slicer = slicers["shell"] if self.shell_resolved else slicers["atom"]
+        self.mat = self.mat[[~conv, *slicer, *slicer]]
+
+    def restore(self) -> None:
+        if self.__store is None:
+            raise RuntimeError("Nothing to restore. Store is empty.")
+
+        self.mat = self.__store.mat
 
 
 class ES2(Interaction):
@@ -93,21 +149,21 @@ class ES2(Interaction):
 
     lhubbard: Tensor | None
     """
-    Shell-resolved scaling factors for Hubbard parameters (default: `None`,
+    Shell-resolved scaling factors for Hubbard parameters (default: ``None``,
     i.e., no shell resolution).
     """
 
     average: AveragingFunction
     """
     Function to use for averaging the Hubbard parameters (default:
-    `~dxtb.components.interactions.coulomb.average.harmonic_average`).
+    :func:`dxtb.components.interactions.coulomb.average.harmonic_average`).
     """
 
     gexp: Tensor
     """Exponent of the second-order Coulomb interaction (default: 2.0)."""
 
     shell_resolved: bool
-    """Electrostatics is shell-resolved (default: `True`)."""
+    """Electrostatics is shell-resolved (default: ``True``)."""
 
     __slots__ = [
         "hubbard",
@@ -116,61 +172,6 @@ class ES2(Interaction):
         "gexp",
         "shell_resolved",
     ]
-
-    class Cache(Interaction.Cache, TensorLike):
-        """
-        Cache for Coulomb matrix in ES2.
-        """
-
-        __store: Store | None
-        """Storage for cache (required for culling)."""
-
-        mat: Tensor
-        """Coulomb matrix."""
-
-        shell_resolved: bool
-        """Electrostatics is shell-resolved (default: `True`)."""
-
-        __slots__ = ["__store", "mat", "shell_resolved"]
-
-        def __init__(
-            self,
-            mat: Tensor,
-            shell_resolved: bool = True,
-            device: torch.device | None = None,
-            dtype: torch.dtype | None = None,
-        ) -> None:
-            super().__init__(
-                device=device if device is None else mat.device,
-                dtype=dtype if dtype is None else mat.dtype,
-            )
-            self.mat = mat
-            self.shell_resolved = shell_resolved
-            self.__store = None
-
-        class Store:
-            """
-            Storage container for cache containing `__slots__` before culling.
-            """
-
-            mat: Tensor
-            """Coulomb matrix"""
-
-            def __init__(self, mat: Tensor) -> None:
-                self.mat = mat
-
-        def cull(self, conv: Tensor, slicers: Slicers) -> None:
-            if self.__store is None:
-                self.__store = self.Store(self.mat)
-
-            slicer = slicers["shell"] if self.shell_resolved else slicers["atom"]
-            self.mat = self.mat[[~conv, *slicer, *slicer]]
-
-        def restore(self) -> None:
-            if self.__store is None:
-                raise RuntimeError("Nothing to restore. Store is empty.")
-
-            self.mat = self.__store.mat
 
     def __init__(
         self,
@@ -193,33 +194,33 @@ class ES2(Interaction):
 
     def get_cache(
         self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
-    ) -> ES2.Cache:
+    ) -> ES2Cache:
         """
         Obtain the cache object containing the Coulomb matrix.
 
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers of all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         ihelp : IndexHelper
             Index mapping for the basis set.
 
         Returns
         -------
-        ES2.Cache
+        ES2Cache
             Cache object for second order electrostatics.
 
         Note
         ----
-        The cache of an interaction requires `positions` as they do not change
+        The cache of an interaction requires ``positions`` as they do not change
         during the self-consistent charge iterations.
         """
         cachvars = (numbers.detach().clone(), positions.detach().clone())
 
         if self.cache_is_latest(cachvars) is True:
-            if not isinstance(self.cache, self.Cache):
+            if not isinstance(self.cache, ES2Cache):
                 raise TypeError(
                     f"Cache in {self.label} is not of type '{self.label}."
                     "Cache'. This can only happen if you manually manipulate "
@@ -230,7 +231,7 @@ class ES2(Interaction):
         # if the cache is built, store the cachvar for validation
         self._cachevars = cachvars
 
-        self.cache = self.Cache(
+        self.cache = ES2Cache(
             (
                 self.get_shell_coulomb_matrix(numbers, positions, ihelp)
                 if self.shell_resolved
@@ -249,10 +250,10 @@ class ES2(Interaction):
 
         Parameters
         ----------
-
-            Atomic numbers of all atoms in the system.
+        numbers : Tensor
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         ihelp : IndexHelper
             Index mapping for the basis set.
 
@@ -287,9 +288,9 @@ class ES2(Interaction):
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers of all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         ihelp : IndexHelper
             Index mapping for the basis set.
 
@@ -327,21 +328,21 @@ class ES2(Interaction):
 
         return mat
 
-    def get_atom_energy(self, charges: Tensor, cache: Cache) -> Tensor:
+    def get_atom_energy(self, charges: Tensor, cache: ES2Cache) -> Tensor:
         return (
             torch.zeros_like(charges)
             if self.shell_resolved
             else 0.5 * charges * self.get_atom_potential(charges, cache)
         )
 
-    def get_shell_energy(self, charges: Tensor, cache: Cache) -> Tensor:
+    def get_shell_energy(self, charges: Tensor, cache: ES2Cache) -> Tensor:
         return (
             0.5 * charges * self.get_shell_potential(charges, cache)
             if self.shell_resolved
             else torch.zeros_like(charges)
         )
 
-    def get_atom_potential(self, charges: Tensor, cache: Cache) -> Tensor:
+    def get_atom_potential(self, charges: Tensor, cache: ES2Cache) -> Tensor:
         """
         Calculate atom-resolved potential. Zero if this interaction is
         shell-resolved.
@@ -350,7 +351,7 @@ class ES2(Interaction):
         ----------
         charges : Tensor
             Atom-resolved partial charges.
-        cache : ES2.Cache
+        cache : ES2Cache
             Cache object for second order electrostatics.
 
         Returns
@@ -364,7 +365,7 @@ class ES2(Interaction):
             else einsum("...ik,...k->...i", cache.mat, charges)
         )
 
-    def get_shell_potential(self, charges: Tensor, cache: ES2.Cache) -> Tensor:
+    def get_shell_potential(self, charges: Tensor, cache: ES2Cache) -> Tensor:
         """
         Calculate shell-resolved potential. Zero if this interaction is only
         atom-resolved.
@@ -373,7 +374,7 @@ class ES2(Interaction):
         ----------
         charges : Tensor
             Shell-resolved partial charges.
-        cache : ES2.Cache
+        cache : ES2Cache
             Cache object for second order electrostatics.
 
         Returns
@@ -391,7 +392,7 @@ class ES2(Interaction):
         self,
         charges: Tensor,
         positions: Tensor,
-        cache: ES2.Cache,
+        cache: ES2Cache,
         grad_outputs: TensorOrTensors | None = None,
         retain_graph: bool | None = True,
         create_graph: bool | None = None,
@@ -405,12 +406,12 @@ class ES2(Interaction):
         charges : Tensor
             Atom-resolved partial charges.
         positions : Tensor
-            Nuclear positions. Needs `requires_grad=True`.
-        cache : ES2.Cache
+            Nuclear positions. Needs ``requires_grad=True``.
+        cache : ES2Cache
             Cache object for second order electrostatics.
         grad_out : Tensor | None
             Gradient of previous computation, i.e., "vector" in VJP of this
-            gradient computation. Defaults to `None`.
+            gradient computation. Defaults to ``None``.
 
         Returns
         -------
@@ -420,7 +421,7 @@ class ES2(Interaction):
         Raises
         ------
         RuntimeError
-            `positions` tensor does not have `requires_grad=True`.
+            ``positions`` tensor does not have ``requires_grad=True``.
         """
         if self.shell_resolved:
             return torch.zeros_like(positions)
@@ -438,7 +439,7 @@ class ES2(Interaction):
         self,
         charges: Tensor,
         positions: Tensor,
-        cache: ES2.Cache,
+        cache: ES2Cache,
         grad_outputs: TensorOrTensors | None = None,
         retain_graph: bool | None = True,
         create_graph: bool | None = None,
@@ -452,8 +453,8 @@ class ES2(Interaction):
         charges : Tensor
             Shell-resolved partial charges.
         positions : Tensor
-            Nuclear positions. Needs `requires_grad=True`.
-        cache : ES2.Cache
+            Nuclear positions. Needs ``requires_grad=True``.
+        cache : ES2Cache
             Cache object for second order electrostatics.
         grad_out : Tensor | None
             Gradient of previous computation, i.e., "vector" in VJP of this
@@ -467,7 +468,7 @@ class ES2(Interaction):
         Raises
         ------
         RuntimeError
-            `positions` tensor does not have `requires_grad=True`.
+            ``positions`` tensor does not have ``requires_grad=True``.
         """
         if not self.shell_resolved:
             return torch.zeros_like(positions)
@@ -498,7 +499,7 @@ class ES2(Interaction):
         energy : Tensor
             Shell-resolved energy.
         positions : Tensor
-            Nuclear positions. Needs `requires_grad=True`.
+            Nuclear positions. Needs ``requires_grad=True``.
         grad_out : Tensor | None
             Gradient of previous computation, i.e., "vector" in VJP of this
             gradient computation.
@@ -511,10 +512,10 @@ class ES2(Interaction):
         Raises
         ------
         RuntimeError
-            `positions` tensor does not have `requires_grad=True`.
+            ``positions`` tensor does not have ``requires_grad=True``.
         """
         if positions.requires_grad is False:
-            raise RuntimeError("Position tensor needs `requires_grad=True`.")
+            raise RuntimeError("Position tensor needs ``requires_grad=True``.")
 
         # avoid autograd call if energy is zero (autograd fails anyway)
         if torch.equal(energy, torch.zeros_like(energy)):
@@ -541,7 +542,7 @@ class ES2(Interaction):
         numbers: Tensor,
         positions: Tensor,
         charges: Tensor,
-        cache: ES2.Cache,
+        cache: ES2Cache,
     ) -> Tensor:
         if self.shell_resolved:
             return torch.zeros_like(positions)
@@ -583,7 +584,7 @@ class ES2(Interaction):
         numbers: Tensor,
         positions: Tensor,
         charges: Tensor,
-        cache: ES2.Cache,
+        cache: ES2Cache,
         ihelp: IndexHelper,
     ) -> Tensor:
         if not self.shell_resolved:
@@ -647,9 +648,9 @@ def coulomb_matrix_atom(
     Parameters
     ----------
     mask : Tensor
-        Mask from atomic numbers of all atoms in the system.
+        Mask from Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     ihelp : IndexHelper
         Index mapping for the basis set.
     hubbard : Tensor
@@ -658,7 +659,7 @@ def coulomb_matrix_atom(
         Exponent of the second-order Coulomb interaction (default: 2.0).
     average: AveragingFunction
         Function to use for averaging the Hubbard parameters (default:
-        `~dxtb.components.interactions.coulomb.average.harmonic_average`).
+        :func:`dxtb.components.interactions.coulomb.average.harmonic_average`).
 
     Returns
     -------
@@ -702,9 +703,10 @@ def coulomb_matrix_atom_gradient(
     Parameters
     ----------
     mask : Tensor
-        Mask from atomic numbers of all atoms in the system.
+        Mask from Atomic numbers for all atoms in the system (shape:
+        ``(..., nat)``).
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     mat : Tensor
         Atom-resolved Coulomb matrix.
     gexp: Tensor
@@ -714,7 +716,7 @@ def coulomb_matrix_atom_gradient(
     -------
     Tensor
         Derivative of atom-resolved Coulomb matrix. The derivative has the
-        following shape: `(n_batch, atoms_i, atoms_j, 3)`.
+        following shape: ``(n_batch, atoms_i, atoms_j, 3)``.
     """
     dd: DD = {"device": positions.device, "dtype": positions.dtype}
     zero = torch.tensor(0.0, **dd)
@@ -754,21 +756,22 @@ def coulomb_matrix_shell(
     Parameters
     ----------
     mask : Tensor
-        Mask from atomic numbers of all atoms in the system.
+        Mask from Atomic numbers for all atoms in the system (shape:
+        ``(..., nat)``).
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     ihelp : IndexHelper
         Index mapping for the basis set.
     hubbard : Tensor
         Hubbard parameters of all elements.
     lhubbard: Tensor
-        Shell-resolved scaling factors for Hubbard parameters (default: `None`,
-        i.e., no shell resolution).
+        Shell-resolved scaling factors for Hubbard parameters (default:
+        ``None``, i.e., no shell resolution).
     gexp: Tensor
         Exponent of the second-order Coulomb interaction (default: 2.0).
     average: AveragingFunction
         Function to use for averaging the Hubbard parameters (default:
-        `~dxtb.components.interactions.coulomb.average.harmonic_average`).
+        :func:`dxtb.components.interactions.coulomb.average.harmonic_average`).
 
     Returns
     -------
@@ -818,9 +821,10 @@ def coulomb_matrix_shell_gradient(
     Parameters
     ----------
     mask : Tensor
-        Mask from atomic numbers of all atoms in the system.
+        Mask from Atomic numbers for all atoms in the system (shape:
+        ``(..., nat)``).
     positions : Tensor
-        Cartesian coordinates of all atoms in the system (nat, 3).
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     mat : Tensor
         Shell-resolved Coulomb matrix.
     ihelp : IndexHelper
@@ -832,7 +836,7 @@ def coulomb_matrix_shell_gradient(
     -------
     Tensor
         Derivative of shell-resolved Coulomb matrix. The derivative has the
-        following shape: `(n_batch, shell_i, shell_j, 3)`.
+        following shape: ``(n_batch, shell_i, shell_j, 3)``.
     """
     dd: DD = {"device": positions.device, "dtype": positions.dtype}
     zero = torch.tensor(0.0, **dd)
@@ -907,7 +911,7 @@ class CoulombMatrixAG(torch.autograd.Function):
         None,  # average
         None,  # shell_resolved
     ]:
-        # initialize gradients with `None`
+        # initialize gradients with ``None``
         positions_bar = hubbard_bar = lhubbard_bar = gexp_bar = None
 
         # check which of the input variables of `forward()` requires gradients
@@ -990,12 +994,12 @@ def new_es2(
     dtype: torch.dtype | None = None,
 ) -> ES2 | None:
     """
-    Create new instance of ES2.
+    Create new instance of :class:`.ES2`.
 
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers for all atoms in the system.
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     par : Param
         Representation of an extended tight-binding model.
     shell_resolved: bool
@@ -1004,7 +1008,7 @@ def new_es2(
     Returns
     -------
     ES2 | None
-        Instance of the ES2 class or `None` if no ES2 is used.
+        Instance of the ES2 class or ``None`` if no ES2 is used.
     """
     if hasattr(par, "charge") is False or par.charge is None:
         return None

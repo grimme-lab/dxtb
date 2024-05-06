@@ -34,6 +34,9 @@ from dxtb.typing.exceptions import IntegralTransformError
 from ......utils import t2int
 from .trafo import NLM_CART, TRAFO
 
+__all__ = ["md_recursion", "md_recursion_gradient"]
+
+
 sqrtpi3 = sqrt(pi) ** 3
 
 

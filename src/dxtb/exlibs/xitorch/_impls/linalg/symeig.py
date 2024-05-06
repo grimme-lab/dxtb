@@ -29,6 +29,8 @@ from dxtb.exlibs.xitorch._utils.tensor import tallqr, to_fortran_order
 from dxtb.exlibs.xitorch.debug.modes import is_debug_enabled
 from dxtb.typing import Any, Sequence, Tensor
 
+__all__ = ["exacteig", "davidson"]
+
 
 def exacteig(
     A: LinearOperator, neig: int, mode: str, M: LinearOperator | None = None

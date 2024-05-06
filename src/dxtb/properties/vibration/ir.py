@@ -37,6 +37,7 @@ __all__ = ["ir_ints", "IRResult"]
 class IRResult(BaseResult):
     """
     Data from the calculation of an IR spectrum.
+
     - Vibrational frequencies
     - IR intensities
     """
@@ -65,11 +66,11 @@ class IRResult(BaseResult):
         ints : Tensor
             IR intensities in atomic units.
         device : torch.device | None, optional
-            Device of the tensors. If `None`, the device of `freqs` is used.
-            Defaults to `None`.
+            Device of the tensors. If ``None``, the device of `freqs` is used.
+            Defaults to ``None``.
         dtype : torch.dtype | None, optional
-            Data type of the tensors. If `None`, the data type of `freqs` is
-            used. Defaults to `None`.
+            Data type of the tensors. If ``None``, the data type of `freqs` is
+            used. Defaults to ``None``.
         """
         super().__init__(
             freqs=freqs,

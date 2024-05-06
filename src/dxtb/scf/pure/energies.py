@@ -19,6 +19,12 @@ from dxtb.wavefunction import mulliken
 
 from .data import _Data
 
+__all__ = [
+    "get_energy",
+    "get_energy_as_dict",
+    "get_electronic_free_energy",
+]
+
 
 def get_energy(charges: Charges, data: _Data, interactions: InteractionList) -> Tensor:
     """

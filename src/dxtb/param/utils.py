@@ -57,9 +57,9 @@ def get_pair_param(
     par_pair : dict[str, float]
         Parametrization of pairs.
     device : torch.device | None, optional
-        Device to store the tensor. If `None` (default), the default device is used.
+        Device to store the tensor. If ``None`` (default), the default device is used.
     dtype : torch.dtype | None, optional
-        Data type of the tensor. If `None` (default), the data type is inferred.
+        Data type of the tensor. If ``None`` (default), the data type is inferred.
 
     Returns
     -------
@@ -100,7 +100,7 @@ def get_elem_param(
     Parameters
     ----------
     numbers : Tensor
-        Atomic numbers for all atoms in the system.
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     par : dict[str, Element]
         Parametrization of elements.
     key : str
@@ -108,9 +108,9 @@ def get_elem_param(
     pad_val : int, optional
         Value to pad the tensor with. Default is `-1`.
     device : torch.device | None
-        Device to store the tensor. If `None` (default), the default device is used.
+        Device to store the tensor. If ``None`` (default), the default device is used.
     dtype : torch.dtype | None
-        Data type of the tensor. If `None` (default), the data type is inferred.
+        Data type of the tensor. If ``None`` (default), the data type is inferred.
 
     Returns
     -------

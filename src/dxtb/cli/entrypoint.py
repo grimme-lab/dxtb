@@ -29,6 +29,9 @@ from .. import __version__
 from .argparser import parser
 from .driver import Driver
 
+__all__ = ["console_entry_point", "entry_point_wrapper"]
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -41,7 +44,7 @@ def console_entry_point(
     Parameters
     ----------
     argv : Sequence[str] | None, optional
-        Command line arguments. Defaults to `None`.
+        Command line arguments. Defaults to ``None``.
         Only passed in tests.
 
     Returns
@@ -81,7 +84,7 @@ def entry_point_wrapper(argv: Sequence[str] | None = None) -> int:
     Parameters
     ----------
     argv : Sequence[str] | None, optional
-        Command line arguments. Defaults to `None`.
+        Command line arguments. Defaults to ``None``.
         Only passed in tests.
 
     Returns

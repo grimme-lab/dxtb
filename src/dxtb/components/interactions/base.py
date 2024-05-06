@@ -26,10 +26,25 @@ import torch
 from dxtb.basis import IndexHelper
 from dxtb.typing import Any, Slicers, Tensor, TensorOrTensors
 
-from ...components import Component
+from ...components.base import Component, ComponentCache
 from .container import Charges, Potential
 
-__all__ = ["Interaction"]
+__all__ = ["Interaction", "InteractionCache"]
+
+
+class InteractionCache(ComponentCache):
+    """
+    Restart data for individual interactions, extended by subclasses as
+    needed.
+    """
+
+    __slots__: list[str] = []
+
+    def cull(self, conv: Tensor, slicers: Slicers) -> None:
+        pass
+
+    def restore(self) -> None:
+        pass
 
 
 class Interaction(Component):
@@ -39,18 +54,18 @@ class Interaction(Component):
     Every charge-dependent energy contribution should inherit from this class
     as it conveniently handles the different resolutions (atom, shell, orbital)
     required for all subclasses. Depending on the contribution the user must
-    implement a `get_<atom/shell>_<potential/energy/gradient>` method. The
+    implement a ``get_<atom/shell>_<potential/energy/gradient>`` method. The
     methods that are not implemented automatically evaluate to zero. As they
     are always called in the process of collecting the different resolutions,
     you must NOT implement them.
 
     .. warning::
 
-        Never overwrite the `get_potential`, `get_energy` and `get_gradient`
-        methods in the subclass. These methods collect the respective variable
-        for their (internally-handled) evaluation.
+        Never overwrite the ``get_potential``, ``get_energy`` and
+        ``get_gradient`` methods in the subclass. These methods collect the
+        respective variable for their (internally-handled) evaluation.
 
-    Additionally, a `get_cache` method is required that should precalculate
+    Additionally, a ``get_cache`` method is required that should precalculate
     and store all charge-independent variables to avoid repeated calculations
     during the SCF.
 
@@ -58,13 +73,14 @@ class Interaction(Component):
     ----
     The nuclear gradient of the Mulliken charges essentially yields a
     derivative of the overlap integral. This is handled elsewhere and must
-    not be implemented by the `get_<atom/shell>_gradient` methods.
+    not be implemented by the ``get_<atom/shell>_gradient`` methods.
 
     Example
     -------
-    The third-order electrostatics `ES3` of GFN1-xTB contain only atom-resolved
-    parameters. Hence, it only implements `get_atom_energy` and
-    `get_atom_potential` (besides the required `get_cache` method).
+    The third-order electrostatics class:`dxtb.components.ES3` of GFN1-xTB
+    contain only atom-resolved parameters. Hence, it only implements
+    ``get_atom_energy`` and ``get_atom_potential`` (besides the required
+    ``get_cache`` method).
     Since there is not positional dependence (except for the charges, which is
     handled elsewhere) in the third-order electrostatics, no gradient method
     must be implemented.
@@ -83,50 +99,37 @@ class Interaction(Component):
         """Initialize the interaction."""
         super().__init__(device, dtype)
 
-    class Cache(Component.Cache):
-        """
-        Restart data for individual interactions, extended by subclasses as
-        needed.
-        """
-
-        __slots__: list[str] = []
-
-        def cull(self, conv: Tensor, slicers: Slicers) -> None:
-            pass
-
-        def restore(self) -> None:
-            pass
-
     # pylint: disable=unused-argument
     def get_cache(
         self, *, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
-    ) -> Cache:
+    ) -> InteractionCache:
         """
         Create restart data for individual interactions.
 
         This method should be implemented by the subclass. Here, it serves
-        only to create an empty `Interaction` by returning an empty `Cache`.
+        only to create an empty :class:`.Interaction` by returning an empty
+        class:`.InteractionCache`.
 
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         ihelp: IndexHelper
             Index mapping for the basis set.
 
         Returns
         -------
-        Interaction.Cache
+        InteractionCache
             Restart data for the interaction.
         """
-        return self.Cache()
+        return InteractionCache()
 
     def get_potential(
         self,
         charges: Charges,
-        cache: Interaction.Cache,
+        cache: InteractionCache,
         ihelp: IndexHelper,
     ) -> Potential:
         """
@@ -136,7 +139,7 @@ class Interaction(Component):
         ----------
         charges : Charges
             Orbital-resolved partial charges.
-        cache : Interaction.Cache
+        cache : InteractionCache
             Restart data for the interaction.
         ihelp : IndexHelper
             Index mapping for the basis set.
@@ -242,7 +245,7 @@ class Interaction(Component):
         return None
 
     def get_energy(
-        self, charges: Charges, cache: Interaction.Cache, ihelp: IndexHelper
+        self, charges: Charges, cache: InteractionCache, ihelp: IndexHelper
     ) -> Tensor:
         """
         Compute the energy from the charges, all quantities are orbital-resolved.
@@ -252,7 +255,7 @@ class Interaction(Component):
         charges : Charges
             Collection of charges. Monopolar partial charges are
             orbital-resolved.
-        cache : Interaction.Cache
+        cache : InteractionCache
             Restart data for the interaction.
         ihelp : IndexHelper
             Index mapping for the basis set.
@@ -374,7 +377,7 @@ class Interaction(Component):
         self,
         charges: Charges,
         positions: Tensor,
-        cache: Interaction.Cache,
+        cache: InteractionCache,
         ihelp: IndexHelper,
         grad_outputs: TensorOrTensors | None = None,
         retain_graph: bool | None = True,
@@ -385,16 +388,17 @@ class Interaction(Component):
 
         Note
         ----
-        This method calls both `get_atom_gradient` and `get_shell_gradient` and
-        adds up both gradients. Hence, one of the contributions must be zero.
+        This method calls both :meth:`.get_atom_gradient` and
+        :meth:`.get_shell_gradient` and adds up both gradients. Hence, one of
+        the contributions must be zero.
 
         Parameters
         ----------
         charges : Tensor
             Orbital-resolved partial charges.
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
-        cache : Interaction.Cache
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        cache : InteractionCache
             Restart data for the interaction.
         ihelp : IndexHelper
             Index mapping for the basis set.
@@ -424,12 +428,13 @@ class Interaction(Component):
 
         This method should be implemented by the subclass.
         However, returning zeros here serves three purposes:
-         - the interaction can (theoretically) be empty
-         - the gradient of the interaction is indeed zero and thus requires no
-           gradient implementation (one can, however, implement a method that
-           returns zeros to make this more obvious)
-         - the interaction always uses atom-resolved charges and shell-resolved
-           charges are never required
+
+        - the interaction can (theoretically) be empty
+        - the gradient of the interaction is indeed zero and thus requires no
+          gradient implementation (one can, however, implement a method that
+          returns zeros to make this more obvious)
+        - the interaction always uses atom-resolved charges and shell-resolved
+          charges are never required
 
         Parameters
         ----------
@@ -449,12 +454,13 @@ class Interaction(Component):
 
         This method should be implemented by the subclass.
         However, returning zeros here serves three purposes:
-         - the interaction can (theoretically) be empty
-         - the gradient of the interaction is indeed zero and thus requires no
-           gradient implementation (one can, however, implement a method that
-           returns zeros to make this more obvious)
-         - the interaction always uses shell-resolved charges and atom-resolved
-           charges are never required
+
+        - the interaction can (theoretically) be empty
+        - the gradient of the interaction is indeed zero and thus requires no
+          gradient implementation (one can, however, implement a method that
+          returns zeros to make this more obvious)
+        - the interaction always uses shell-resolved charges and atom-resolved
+          charges are never required
 
         Parameters
         ----------

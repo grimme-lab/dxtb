@@ -21,9 +21,9 @@ Classical contributions (ABC)
 This module contains the abstract base class for all classical (i.e., non-
 selfconsistent or non-density-dependent) energy terms.
 
-Every contribution contains a `Cache` that holds position-independent
-variables. Therefore, the positions must always be supplied to the `get_energy`
-(or `get_grad`) method.
+Every contribution contains a class:`dxtb.components.ComponentCache` that holds
+position-independent variables. Therefore, the positions must always be
+supplied to the ``get_energy`` (or ``get_grad``) method.
 """
 
 from __future__ import annotations
@@ -35,9 +35,9 @@ import torch
 from dxtb.basis import IndexHelper
 from dxtb.typing import Any, Tensor
 
-from .. import Component
+from ..base import Component, ComponentCache
 
-__all__ = ["ClassicalABC", "Classical"]
+__all__ = ["ClassicalABC", "Classical", "ClassicalCache"]
 
 
 class ClassicalABC(ABC):
@@ -46,14 +46,14 @@ class ClassicalABC(ABC):
     """
 
     @abstractmethod
-    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> Component.Cache:
+    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> ComponentCache:
         """
         Store variables for energy calculation.
 
         Parameters
         ----------
         numbers : Tensor
-            Atomic numbers for all atoms in the system.
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
         ihelp : IndexHelper
             Helper class for indexing.
 
@@ -64,14 +64,14 @@ class ClassicalABC(ABC):
 
         Note
         ----
-        The cache of a classical contribution does not require `positions` as
-        it only becomes useful if `numbers` remain unchanged and `positions`
+        The cache of a classical contribution does not require ``positions`` as
+        it only becomes useful if ``numbers`` remain unchanged and ``positions``
         vary, i.e., during geometry optimization.
         """
 
     @abstractmethod
     def get_energy(
-        self, positions: Tensor, cache: Component.Cache, **kwargs: Any
+        self, positions: Tensor, cache: ComponentCache, **kwargs: Any
     ) -> Tensor:
         """
         Obtain energy of the contribution.
@@ -79,7 +79,7 @@ class ClassicalABC(ABC):
         Parameters
         ----------
         positions : Tensor
-            Cartesian coordinates of all atoms in the system (nat, 3).
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         cache : Cache
             Cache for the parameters.
 
@@ -88,6 +88,14 @@ class ClassicalABC(ABC):
         Tensor
             Atomwise energy contributions.
         """
+
+
+class ClassicalCache(ComponentCache):
+    """
+    Restart data for individual classical contributions.
+    """
+
+    __slots__: list[str] = []
 
 
 class Classical(ClassicalABC, Component):
@@ -106,13 +114,6 @@ class Classical(ClassicalABC, Component):
         """Initialize the classical contribution."""
         super().__init__(device, dtype)
 
-    class Cache(Component.Cache):
-        """
-        Restart data for individual classical contributions.
-        """
-
-        __slots__: list[str] = []
-
     def get_gradient(
         self, energy: Tensor, positions: Tensor, grad_outputs: Tensor | None = None
     ) -> Tensor:
@@ -125,23 +126,23 @@ class Classical(ClassicalABC, Component):
         energy : Tensor
             Energy that will be differentiated.
         positions : Tensor
-            Nuclear positions. Needs `requires_grad=True`.
+            Nuclear positions. Needs ``requires_grad=True``.
         grad_outputs : Tensor | None, optional
-            Vector in the vector-Jacobian product. If `None`, the vector is
+            Vector in the vector-Jacobian product. If ``None``, the vector is
             initialized to ones.
 
         Returns
         -------
         Tensor
-            Nuclear gradient of `energy`.
+            Nuclear gradient of ``energy``.
 
         Raises
         ------
         RuntimeError
-            `positions` tensor does not have `requires_grad=True`.
+            ``positions`` tensor does not have ``requires_grad=True``.
         """
         if positions.requires_grad is False:
-            raise RuntimeError("Position tensor needs `requires_grad=True`.")
+            raise RuntimeError("Position tensor needs ``requires_grad=True``.")
 
         # avoid autograd call if energy is zero (autograd fails anyway)
         if torch.equal(energy, torch.zeros_like(energy)):
