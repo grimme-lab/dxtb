@@ -64,9 +64,21 @@ html_static_path = ["_static"]
 templates_path = ["_templates"]
 html_css_files = ["custom.css"]
 
-autodoc_typehints = "none"
-autosummary_generate = True
+# autosummary_generate = True
 autosummary_imported_members = True
+
+autodoc_typehints = "description"
+autodoc_member_order = "groupwise"
+autoclass_content = "both"
+
+intersphinx_mapping = {
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
+    "pydantic": ("https://docs.pydantic.dev/latest/", None),
+    "python": ("https://docs.python.org/3", None),
+    "torch": ("https://pytorch.org/docs/stable/", None),
+}
+
 
 # Configuration for sphinx-copybutton
 copybutton_prompt_text = ">>> |... "

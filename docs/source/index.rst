@@ -18,6 +18,7 @@
 
    Calculators <02_indepth/calculators>
    SCF <02_indepth/scf>
+   Components <02_indepth/components>
 
 .. toctree::
    :hidden:
