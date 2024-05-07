@@ -22,8 +22,8 @@ from pathlib import Path
 import torch
 from tad_mctc.io import read
 
-from dxtb.integral.wrappers import overlap
-from dxtb.param import GFN1_XTB
+from dxtb import GFN1_XTB
+from dxtb._src.integral.wrappers import overlap
 
 # SiH4
 numbers = torch.tensor([14, 1, 1, 1, 1])

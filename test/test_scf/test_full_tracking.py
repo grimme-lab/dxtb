@@ -26,11 +26,11 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb.constants import labels
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD
-from dxtb.utils import batch
-from dxtb.xtb import Calculator
+from dxtb import GFN1_XTB as par
+from dxtb import Calculator
+from dxtb._src.constants import labels
+from dxtb._src.typing import DD
+from dxtb._src.utils import batch
 
 from .samples import samples
 

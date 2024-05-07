@@ -24,9 +24,9 @@ import pytest
 import torch
 from tad_mctc.convert import str_to_device
 
-from dxtb.basis import IndexHelper
-from dxtb.param import GFN1_XTB as par
-from dxtb.xtb import GFN1Hamiltonian as Hamiltonian
+from dxtb import GFN1_XTB as par
+from dxtb import IndexHelper
+from dxtb._src.xtb.gfn1 import GFN1Hamiltonian as Hamiltonian
 
 
 def test_no_h0_fail() -> None:

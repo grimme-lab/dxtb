@@ -27,10 +27,10 @@ import pytest
 import tad_dftd3 as d3
 import torch
 
-from dxtb.components.classicals.dispersion import new_dispersion
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD
-from dxtb.utils import batch
+from dxtb import GFN1_XTB as par
+from dxtb._src.components.classicals.dispersion import new_dispersion
+from dxtb._src.typing import DD
+from dxtb._src.utils import batch
 
 from .samples import samples
 

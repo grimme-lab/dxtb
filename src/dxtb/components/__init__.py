@@ -20,9 +20,32 @@ Components
 
 Tight-binding components.
 """
+from typing import TYPE_CHECKING
 
-from .base import Component
-from .classicals import dispersion, halogen, repulsion
-from .interactions import coulomb, solvation
-from .interactions.field import efield
-from .list import ComponentList
+if TYPE_CHECKING:
+    from dxtb.components import base as base
+    from dxtb.components import coulomb as coulomb
+    from dxtb.components import dispersion as dispersion
+    from dxtb.components import field as field
+    from dxtb.components import halogen as halogen
+    from dxtb.components import repulsion as repulsion
+    from dxtb.components import solvation as solvation
+else:
+    import dxtb._src.loader.lazy as _lazy
+
+    __getattr__, __dir__, __all__ = _lazy.attach_module(
+        __name__,
+        [
+            "base",
+            "coulomb",
+            "field",
+            "solvation",
+            #
+            "dispersion",
+            "halogen",
+            "repulsion",
+        ],
+    )
+    del _lazy
+
+del TYPE_CHECKING

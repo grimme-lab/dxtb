@@ -28,7 +28,6 @@
    Installation <03_for_developers/installation>
    Testing <03_for_developers/testing>
    Style <03_for_developers/style>
-   New Components <03_for_developers/extending>
 
 .. toctree::
     :hidden:

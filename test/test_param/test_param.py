@@ -25,15 +25,15 @@ import tomli as toml
 import torch
 from tad_mctc.convert import symbol_to_number
 
-from dxtb.param.meta import Meta
-from dxtb.typing import DD
+from dxtb._src.param.meta import Meta
+from dxtb._src.typing import DD
 
 device = None
 
 
 def test_builtin_gfn1() -> None:
     # pylint: disable=import-outside-toplevel
-    from dxtb.param.gfn1 import GFN1_XTB as par
+    from dxtb._src.param.gfn1 import GFN1_XTB as par
 
     assert isinstance(par.meta, Meta)
     assert par.meta.name == "GFN1-xTB"
@@ -58,7 +58,7 @@ def test_builtin_gfn1() -> None:
 
 def test_param_minimal() -> None:
     # pylint: disable=import-outside-toplevel
-    from dxtb.param import Param
+    from dxtb._src.param import Param
 
     data = """
     [hamiltonian.xtb]
@@ -116,8 +116,8 @@ def test_param_minimal() -> None:
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_param_calculator(dtype: torch.dtype) -> None:
     # pylint: disable=import-outside-toplevel
-    from dxtb.param.gfn1 import GFN1_XTB as par
-    from dxtb.xtb.calculators import Calculator
+    from dxtb._src.param.gfn1 import GFN1_XTB as par
+    from dxtb.calculators import Calculator
 
     dd: DD = {"device": device, "dtype": dtype}
     numbers = symbol_to_number(["H", "C"])

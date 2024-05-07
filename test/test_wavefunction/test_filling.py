@@ -27,14 +27,13 @@ import pytest
 import torch
 from tad_mctc.units import KELVIN2AU
 
-from dxtb.basis import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
+from dxtb._src.integral import IntegralMatrices
+from dxtb._src.scf.implicit import SelfConsistentFieldImplicit as SCF
+from dxtb._src.typing import DD
+from dxtb._src.utils import batch
+from dxtb._src.wavefunction import filling
 from dxtb.config import ConfigSCF
-from dxtb.integral import IntegralMatrices
-from dxtb.param import GFN1_XTB
-from dxtb.scf.implicit import SelfConsistentFieldImplicit as SCF
-from dxtb.typing import DD
-from dxtb.utils import batch
-from dxtb.wavefunction import filling
 
 from .samples import samples
 

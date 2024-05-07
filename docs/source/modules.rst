@@ -6,5 +6,4 @@ Modules
    :template: module.rst
    :recursive:
 
-   dxtb.components.classicals
-   dxtb.components.interactions
+   dxtb

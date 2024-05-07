@@ -28,9 +28,9 @@ import pytest
 import torch
 from tad_mctc.convert import str_to_device
 
-from dxtb.components.classicals import new_repulsion
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing.exceptions import ParameterWarning
+from dxtb import GFN1_XTB as par
+from dxtb._src.components.classicals import new_repulsion
+from dxtb._src.typing.exceptions import ParameterWarning
 
 
 def test_none() -> None:

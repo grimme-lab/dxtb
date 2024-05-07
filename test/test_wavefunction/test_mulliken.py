@@ -24,12 +24,12 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.basis.indexhelper import IndexHelper
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD
-from dxtb.utils import batch
-from dxtb.wavefunction import mulliken
-from dxtb.xtb import GFN1Hamiltonian as Hamiltonian
+from dxtb import GFN1_XTB as par
+from dxtb._src.basis.indexhelper import IndexHelper
+from dxtb._src.typing import DD
+from dxtb._src.utils import batch
+from dxtb._src.wavefunction import mulliken
+from dxtb._src.xtb.gfn1 import GFN1Hamiltonian as Hamiltonian
 
 from .samples import samples
 

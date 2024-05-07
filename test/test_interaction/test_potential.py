@@ -23,10 +23,10 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.components.interactions import Potential
-from dxtb.constants import defaults
-from dxtb.typing import ContainerData
-from dxtb.utils import batch
+from dxtb._src.components.interactions import Potential
+from dxtb._src.constants import defaults
+from dxtb._src.typing import ContainerData
+from dxtb._src.utils import batch
 
 nbatch = 10
 

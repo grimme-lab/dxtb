@@ -24,11 +24,11 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb.basis import Basis, IndexHelper
-from dxtb.exlibs import libcint
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD, Tensor
-from dxtb.utils import batch, is_basis_list
+from dxtb import GFN1_XTB as par
+from dxtb._src.basis import Basis, IndexHelper
+from dxtb._src.exlibs import libcint
+from dxtb._src.typing import DD, Tensor
+from dxtb._src.utils import batch, is_basis_list
 
 from .samples import samples
 

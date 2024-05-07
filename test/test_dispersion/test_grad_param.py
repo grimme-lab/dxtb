@@ -24,9 +24,9 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb.components.classicals.dispersion import DispersionD3
-from dxtb.typing import DD, Callable, Tensor
-from dxtb.utils import batch
+from dxtb._src.components.classicals.dispersion import DispersionD3
+from dxtb._src.typing import DD, Callable, Tensor
+from dxtb._src.utils import batch
 
 from .samples import samples
 

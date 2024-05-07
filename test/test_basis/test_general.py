@@ -24,10 +24,10 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.basis import Basis, IndexHelper, slater_to_gauss
-from dxtb.integral.driver.pytorch.impls.md import overlap_gto
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing.exceptions import (
+from dxtb import GFN1_XTB as par
+from dxtb._src.basis import Basis, IndexHelper, slater_to_gauss
+from dxtb._src.integral.driver.pytorch.impls.md import overlap_gto
+from dxtb._src.typing.exceptions import (
     CGTOAzimuthalQuantumNumberError,
     CGTOPrimitivesError,
     CGTOPrincipalQuantumNumberError,

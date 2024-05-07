@@ -17,7 +17,7 @@
 import torch
 
 import dxtb
-from dxtb.typing import DD
+from dxtb._src.typing import DD
 
 dd: DD = {"device": torch.device("cuda:0"), "dtype": torch.double}
 

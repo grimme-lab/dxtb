@@ -20,7 +20,7 @@ import torch
 from tad_mctc.io import read
 
 import dxtb
-from dxtb.typing import DD
+from dxtb._src.typing import DD
 
 print("ACONF20 subset of ACONFL benchmark set")
 

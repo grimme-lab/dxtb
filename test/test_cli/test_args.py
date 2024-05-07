@@ -27,8 +27,8 @@ from pathlib import Path
 import pytest
 import torch
 
-from dxtb.cli import parser
-from dxtb.constants import defaults
+from dxtb._src.cli import parser
+from dxtb._src.constants import defaults
 
 from ..utils import coordfile as dummy
 

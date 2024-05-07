@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import pytest
 
-from dxtb.timing.timer import TimerError, _Timers
+from dxtb._src.timing.timer import TimerError, _Timers
 
 
 def test_fail() -> None:

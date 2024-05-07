@@ -23,13 +23,13 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb import integral as ints
-from dxtb.basis import IndexHelper
-from dxtb.constants.labels import INTDRIVER_ANALYTICAL
-from dxtb.integral.driver.pytorch import IntDriverPytorch
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD, Tensor
-from dxtb.utils import batch
+from dxtb import GFN1_XTB as par
+from dxtb import IndexHelper
+from dxtb._src import integral as ints
+from dxtb._src.constants.labels import INTDRIVER_ANALYTICAL
+from dxtb._src.integral.driver.pytorch import IntDriverPytorch
+from dxtb._src.typing import DD, Tensor
+from dxtb._src.utils import batch
 
 from .samples import samples
 

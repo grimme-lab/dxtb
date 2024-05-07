@@ -25,7 +25,7 @@ from __future__ import annotations
 import gc
 
 from dxtb.__version__ import __tversion__
-from dxtb.typing import Callable, Literal, Tensor, overload
+from dxtb._src.typing import Callable, Literal, Tensor, overload
 
 
 def _tensors_from_gc() -> list:

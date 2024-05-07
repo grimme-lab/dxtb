@@ -22,8 +22,8 @@ from __future__ import annotations
 
 import torch
 
-from dxtb.basis import IndexHelper
-from dxtb.components.classicals import ClassicalList
+from dxtb import IndexHelper
+from dxtb._src.components.classicals import ClassicalList, ClassicalListCache
 
 
 def test_empty() -> None:
@@ -35,7 +35,7 @@ def test_empty() -> None:
     ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0, 0], 6: [0, 1]})
 
     c = clist.get_cache(numbers, ihelp)
-    assert isinstance(c, ClassicalList.Cache)
+    assert isinstance(c, ClassicalListCache)
 
     e = clist.get_energy(positions, c)
     assert "none" in e

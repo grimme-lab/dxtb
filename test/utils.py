@@ -24,7 +24,7 @@ from pathlib import Path
 
 import torch
 
-from dxtb.typing import Any, Callable, Protocol, Size, Tensor, TensorOrTensors
+from dxtb._src.typing import Any, Callable, Protocol, Size, Tensor, TensorOrTensors
 
 coordfile = Path(Path(__file__).parent, "test_singlepoint/mols/H2/coord").resolve()
 """Path to coord file of H2."""

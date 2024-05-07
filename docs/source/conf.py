@@ -37,6 +37,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx_autodoc_typehints",  # after autodoc
     "sphinx.ext.viewcode",
+    "sphinx.ext.mathjax",
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",

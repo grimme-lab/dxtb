@@ -27,9 +27,9 @@ import numpy as np
 import pytest
 import torch
 
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD
-from dxtb.utils import batch
+from dxtb import GFN1_XTB as par
+from dxtb._src.typing import DD
+from dxtb._src.utils import batch
 
 from ..utils import load_from_npz
 from .samples import samples

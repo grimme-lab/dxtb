@@ -23,7 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.components.interactions.coulomb import averaging_function
+from dxtb._src.components.interactions.coulomb import averaging_function
 
 a = torch.tensor([1.0, 2.0, 3.0, 4.0])
 

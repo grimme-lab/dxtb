@@ -28,10 +28,10 @@ import pytest
 import torch
 from tad_mctc.data.molecules import mols as samples
 
-from dxtb.basis import IndexHelper
-from dxtb.components.classicals import new_repulsion
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD
+from dxtb import GFN1_XTB as par
+from dxtb import IndexHelper
+from dxtb._src.components.classicals import new_repulsion
+from dxtb._src.typing import DD
 
 from ..utils import nth_derivative
 from .util import has_memleak_tensor

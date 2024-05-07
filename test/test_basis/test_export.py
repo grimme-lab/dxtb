@@ -25,9 +25,9 @@ from pathlib import Path
 import pytest
 import torch
 
-from dxtb.basis import Basis, IndexHelper
-from dxtb.param import GFN1_XTB
-from dxtb.typing import Literal
+from dxtb import GFN1_XTB
+from dxtb._src.basis import Basis, IndexHelper
+from dxtb._src.typing import Literal
 
 
 @pytest.mark.parametrize("number", range(1, 87))
@@ -53,7 +53,8 @@ def test_export(
 
     # check with saved basis files
     root = Path(__file__).parents[2]
-    p = root / f"src/dxtb/exlibs/pyscf/mol/basis/{xtb_version}/{number:02d}.{qcformat}"
+    s = f"src/dxtb/_src/exlibs/pyscf/mol/basis/{xtb_version}/{number:02d}"
+    p = root / f"{s}.{qcformat}"
     assert p.exists()
 
     with open(p, encoding="utf8") as f:

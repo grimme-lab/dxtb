@@ -28,7 +28,7 @@ import torch
 from tad_mctc.convert import str_to_device
 from torch.autograd.gradcheck import gradcheck
 
-from dxtb.utils.batch import deflate, merge, pack, pargsort, psort, unpack
+from dxtb._src.utils.batch import deflate, merge, pack, pargsort, psort, unpack
 
 devices = ["cpu"]
 

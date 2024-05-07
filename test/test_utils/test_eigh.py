@@ -26,9 +26,9 @@ from tad_mctc.convert import symmetrize
 from tad_mctc.storch.linalg import eighb
 from torch.autograd.gradcheck import gradcheck
 
-from dxtb.exlibs.xitorch import LinearOperator
-from dxtb.exlibs.xitorch.linalg import symeig
-from dxtb.typing import Literal, Tensor
+from dxtb._src.exlibs.xitorch import LinearOperator
+from dxtb._src.exlibs.xitorch.linalg import symeig
+from dxtb._src.typing import Literal, Tensor
 
 # Hamiltonian of LiH from last step
 hamiltonian = torch.tensor(

@@ -23,7 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.basis import IndexHelper
+from dxtb import IndexHelper
 
 
 def test_spread() -> None:

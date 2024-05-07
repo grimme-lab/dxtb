@@ -24,9 +24,9 @@ import pytest
 import torch
 from tad_mctc.exceptions import DtypeError
 
-from dxtb.param import GFN1_XTB as par
-from dxtb.timing import timer
-from dxtb.xtb import Calculator
+from dxtb import GFN1_XTB as par
+from dxtb import Calculator
+from dxtb._src.timing import timer
 
 
 def test_fail() -> None:

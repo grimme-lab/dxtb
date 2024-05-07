@@ -23,8 +23,8 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.basis import IndexHelper
-from dxtb.scf import guess
+from dxtb import IndexHelper
+from dxtb._src.scf import guess
 
 numbers = torch.tensor([6, 1])
 positions = torch.tensor(

@@ -26,10 +26,10 @@ from tad_mctc.batch import pack
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.units import VAA2AU
 
-from dxtb.components.interactions import new_efield
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD, Tensor
-from dxtb.xtb import Calculator
+from dxtb import GFN1_XTB as par
+from dxtb import Calculator
+from dxtb._src.components.interactions import new_efield
+from dxtb._src.typing import DD, Tensor
 
 from .samples import samples
 

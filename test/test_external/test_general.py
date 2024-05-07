@@ -24,7 +24,7 @@ import pytest
 import torch
 from tad_mctc.convert import str_to_device
 
-from dxtb.components.interactions import new_efield
+from dxtb._src.components.interactions import new_efield
 
 efield = torch.tensor([0.0, 0.0, 0.0])
 

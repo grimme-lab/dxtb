@@ -26,10 +26,10 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb.basis import Basis, IndexHelper
-from dxtb.integral.driver.pytorch.impls.md import overlap_gto
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD
+from dxtb import GFN1_XTB as par
+from dxtb._src.basis import Basis, IndexHelper
+from dxtb._src.integral.driver.pytorch.impls.md import overlap_gto
+from dxtb._src.typing import DD
 
 from ..utils import load_from_npz
 from .samples import samples

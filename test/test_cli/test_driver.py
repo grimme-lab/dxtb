@@ -23,8 +23,8 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.cli import Driver, parser
-from dxtb.timing import timer
+from dxtb._src.cli import Driver, parser
+from dxtb._src.timing import timer
 
 from ..utils import coordfile
 

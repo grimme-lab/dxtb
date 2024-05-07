@@ -23,8 +23,8 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.typing.exceptions import SCFConvergenceError
-from dxtb.utils import is_int_list, is_str_list, set_jit_enabled
+from dxtb._src.typing.exceptions import SCFConvergenceError
+from dxtb._src.utils import is_int_list, is_str_list, set_jit_enabled
 
 
 def test_lists() -> None:

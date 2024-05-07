@@ -25,11 +25,10 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb.basis import IndexHelper
-from dxtb.components.interactions.coulomb import secondorder as es2
-from dxtb.param import GFN1_XTB
-from dxtb.typing import DD, Tensor
-from dxtb.utils import batch
+from dxtb import GFN1_XTB, IndexHelper
+from dxtb._src.components.interactions.coulomb import secondorder as es2
+from dxtb._src.typing import DD, Tensor
+from dxtb._src.utils import batch
 
 from .samples import samples
 

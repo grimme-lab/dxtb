@@ -25,7 +25,7 @@ import pytest
 import torch
 from tad_mctc.convert import str_to_device
 
-from dxtb.basis import IndexHelper
+from dxtb import IndexHelper
 
 
 def test_fail_init_dtype() -> None:

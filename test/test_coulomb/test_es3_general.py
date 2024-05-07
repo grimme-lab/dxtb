@@ -25,9 +25,8 @@ import pytest
 import torch
 from tad_mctc.convert import str_to_device
 
-from dxtb.basis import IndexHelper
-from dxtb.components.interactions.coulomb import thirdorder as es3
-from dxtb.param import GFN1_XTB
+from dxtb import GFN1_XTB, IndexHelper
+from dxtb._src.components.interactions.coulomb import thirdorder as es3
 
 
 def test_none() -> None:

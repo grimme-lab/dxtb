@@ -26,15 +26,15 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb.basis import IndexHelper
-from dxtb.components.classicals import Repulsion, new_repulsion
-from dxtb.components.classicals.repulsion.rep import (
+from dxtb import GFN1_XTB as par
+from dxtb import IndexHelper
+from dxtb._src.components.classicals import Repulsion, new_repulsion
+from dxtb._src.components.classicals.repulsion.rep import (
     repulsion_energy,
     repulsion_gradient,
 )
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD, Callable, Tensor
-from dxtb.utils import batch
+from dxtb._src.typing import DD, Callable, Tensor
+from dxtb._src.utils import batch
 
 from .samples import samples
 

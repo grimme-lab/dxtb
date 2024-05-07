@@ -27,12 +27,12 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck
 
-from dxtb.basis import IndexHelper
-from dxtb.components.interactions.coulomb import averaging_function
-from dxtb.components.interactions.coulomb import secondorder as es2
-from dxtb.param import GFN1_XTB, get_elem_param
-from dxtb.typing import DD, Tensor
-from dxtb.utils import batch
+from dxtb import GFN1_XTB, IndexHelper
+from dxtb._src.components.interactions.coulomb import averaging_function
+from dxtb._src.components.interactions.coulomb import secondorder as es2
+from dxtb._src.param.utils import get_elem_param
+from dxtb._src.typing import DD, Tensor
+from dxtb._src.utils import batch
 
 from .samples import samples
 
