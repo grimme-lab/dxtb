@@ -22,43 +22,52 @@ Loaders and functions for lazy loading of modules and variables.
 
 Example
 -------
-The following example demonstrates how to use the `attach_module` function to
-lazily load submodules of a package.
+The following example demonstrates how to use the func:`.attach_module`
+function to lazily load submodules of a package.
 
->>> from dxtb.loader.lazy import attach_module
->>> __getattr__, __dir__, __all__ = attach_module(__name__, ["sub1", "sub2"])
+.. code-block:: python
 
-An improved version would also handle type checking.
+    from dxtb.loader.lazy import attach_module
+    __getattr__, __dir__, __all__ = attach_module(__name__, ["sub1", "sub2"])
 
->>> from typing import TYPE_CHECKING
->>>
->>> if TYPE_CHECKING:
-...     from . import sub1 as sub1
-...     from . import sub2 as sub2
-... else:
-...     import dxtb.loader.lazy as _lazy
-...
-...     __getattr__, __dir__, __all__ = _lazy.attach_module(
-...         __name__,
-...         ["sub1", "sub2"],
-...     )
-...
-...     del _lazy
+To improve this setup with type checking to assist with tools like mypy, use
+the following pattern:
 
-Similarly, `:func:attach_var` can be used to lazily load variables.
+.. code-block:: python
 
->>> from typing import TYPE_CHECKING
->>>
->>> if TYPE_CHECKING:
-...     from dxtb.mol.molecule import Mol
-... else:
-...     import dxtb.loader.lazy as _lazy
-...
-...     __getattr__, __dir__, __all__ = _lazy.attach_var(
-...         dxtb.mol.molecule, ["Mol"]
-...     )
-...
-...     del _lazy
+    from typing import TYPE_CHECKING
+
+    if TYPE_CHECKING:
+        from . import sub1 as sub1
+        from . import sub2 as sub2
+    else:
+        import dxtb.loader.lazy as _lazy
+
+        __getattr__, __dir__, __all__ = _lazy.attach_module(
+            __name__,
+            ["sub1", "sub2"],
+        )
+
+        del _lazy
+
+In a similar manner, the :func:`.attach_var` function can be used to lazily
+load individual variables. Below is an example of how to lazily load a
+variable, such as a class:
+
+.. code-block:: python
+
+    from typing import TYPE_CHECKING
+
+    if TYPE_CHECKING:
+        from dxtb.mol.molecule import Mol
+    else:
+        import dxtb.loader.lazy as _lazy
+
+        __getattr__, __dir__, __all__ = _lazy.attach_var(
+            dxtb.mol.molecule, ["Mol"]
+        )
+
+        del _lazy
 """
 from .lazy_module import *
 from .lazy_param import *

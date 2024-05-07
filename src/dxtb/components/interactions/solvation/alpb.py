@@ -22,32 +22,37 @@ This module implements implicit solvation models of the generalized Born type.
 
 Example
 -------
->>> import torch
->>> from dxtb.solvation.alpb import GeneralizedBorn
->>> numbers = torch.tensor([14, 1, 1, 1, 1])
->>> positions = torch.tensor(
-...     [
-...         [+0.00000000000000, -0.00000000000000, +0.00000000000000],
-...         [+1.61768389755830, +1.61768389755830, -1.61768389755830],
-...         [-1.61768389755830, -1.61768389755830, -1.61768389755830],
-...         [+1.61768389755830, -1.61768389755830, +1.61768389755830],
-...         [-1.61768389755830, +1.61768389755830, +1.61768389755830],
-...     ],
-... )
->>> charges = torch.tensor(
-...     [
-...         -8.41282505804719e-2,
-...         +2.10320626451180e-2,
-...         +2.10320626451178e-2,
-...         +2.10320626451179e-2,
-...         +2.10320626451179e-2,
-...     ]
-... )
->>> gb = GeneralizedBorn(numbers, torch.tensor(78.9), kernel="still")
->>> cache = gb.get_cache(numbers, positions)
->>> energy = gb.get_atom_energy(charges, cache)
->>> energy.sum(-1)
-tensor(-5.0762e-05)
+.. code-block:: python
+
+    import torch
+    from dxtb.solvation.alpb import GeneralizedBorn
+
+    numbers = torch.tensor([14, 1, 1, 1, 1])
+    positions = torch.tensor([
+        [0.00000000000000, -0.00000000000000, 0.00000000000000],
+        [1.61768389755830, 1.61768389755830, -1.61768389755830],
+        [-1.61768389755830, -1.61768389755830, -1.61768389755830],
+        [1.61768389755830, -1.61768389755830, 1.61768389755830],
+        [-1.61768389755830, 1.61768389755830, 1.61768389755830],
+    ])
+    charges = torch.tensor([
+        -8.41282505804719e-2,
+        2.10320626451180e-2,
+        2.10320626451178e-2,
+        2.10320626451179e-2,
+        2.10320626451179e-2,
+    ])
+
+    # Initialize the GeneralizedBorn model with a solvent dielectric constant
+    gb = GeneralizedBorn(numbers, torch.tensor(78.9), kernel="still")
+
+    # Build cache and use it for energy calculation
+    cache = gb.get_cache(numbers, positions)
+    energy = gb.get_atom_energy(charges, cache)
+
+    total_energy = energy.sum(-1)
+    print(total_energy)  # Output: tensor(-5.0762e-05)
+
 """
 
 from __future__ import annotations

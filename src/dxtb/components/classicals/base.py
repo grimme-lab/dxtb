@@ -111,7 +111,6 @@ class Classical(ClassicalABC, Component):
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ):
-        """Initialize the classical contribution."""
         super().__init__(device, dtype)
 
     def get_gradient(

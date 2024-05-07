@@ -23,13 +23,22 @@ orbital resolved representations of quantities.
 
 Example
 -------
->>> import torch
->>> from dxtb.basis import IndexHelper
->>> numbers = torch.tensor([6, 1, 1, 1, 1])
->>> angular = {1: [0], 6: [0, 1]}
->>> ihelp = IndexHelper.from_numbers_angular(numbers, angular)
->>> torch.sum(ihelp.angular >= 0)
-torch.tensor(6)
+
+.. code-block:: python
+
+    import torch
+    from dxtb.basis import IndexHelper
+
+    # Define atomic numbers and angular momentum for each element
+    numbers = torch.tensor([6, 1, 1, 1, 1])
+    angular = {1: [0], 6: [0, 1]}
+
+    # Create an IndexHelper instance with angular momentum specifications
+    ihelp = IndexHelper.from_numbers_angular(numbers, angular)
+
+    # Count the number of entries in the angular momentum tensor
+    result = torch.sum(ihelp.angular >= 0)
+    print(result)  # torch.tensor(6)
 """
 
 from __future__ import annotations

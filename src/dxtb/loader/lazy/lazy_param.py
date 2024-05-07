@@ -23,8 +23,10 @@ This is used for loading the GFN1-xTB and GFN2-xTB parametrizations.
 
 Example
 -------
->>> from dxtb.loader.lazy import LazyLoaderParam
->>> param = LazyLoaderParam("../../param/gfn1/gfn1-xtb.toml")
+.. code-block:: python
+
+    from dxtb.loader.lazy import LazyLoaderParam
+    param = LazyLoaderParam("../../param/gfn1/gfn1-xtb.toml")
 """
 
 from __future__ import annotations

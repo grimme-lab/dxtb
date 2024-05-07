@@ -26,18 +26,23 @@ variables from submodules of a package.
 
 Example
 -------
->>> from dxtb.loader.lazy import attach_var
->>> __getattr__, __dir__, __all__ = attach_var("dxtb.mol.molecule", ["Mol"])
+
+.. code-block:: python
+
+    from dxtb.loader.lazy import attach_var
+    __getattr__, __dir__, __all__ = attach_var("dxtb.mol.molecule", ["Mol"])
 
 Multiple variables can be lazily loaded using `:func:attach_vars`.
 
->>> from dxtb.loader.lazy import attach_vars
->>> __getattr__, __dir__, __all__ = attach_vars(
-...     {
-...         "dxtb.properties.moments.dipole": ["dipole"],
-...         "dxtb.properties.moments.quadrupole": ["quadrupole"],
-...     }
-... )
+.. code-block:: python
+
+    from dxtb.loader.lazy import attach_vars
+    __getattr__, __dir__, __all__ = attach_vars(
+        {
+            "dxtb.properties.moments.dipole": ["dipole"],
+            "dxtb.properties.moments.quadrupole": ["quadrupole"],
+        }
+    )
 """
 
 from __future__ import annotations
@@ -88,8 +93,11 @@ def attach_var(package_name: str, varnames: Sequence[str]) -> tuple[
 
     Example
     -------
-    >>> from dxtb.loader.lazy import attach_var
-    >>> __getattr__, __dir__, __all__ = attach_var("dxtb.mol.molecule", ["Mol"])
+
+    .. code-block:: python
+
+        from dxtb.loader.lazy import attach_var
+        __getattr__, __dir__, __all__ = attach_var("dxtb.mol.molecule", ["Mol"])
     """
     __all__: list[str] = list(varnames)
 
@@ -140,13 +148,16 @@ def attach_vars(module_vars: dict[str, Sequence[str]]) -> tuple[
 
     Example
     -------
-    >>> from dxtb.loader.lazy import attach_vars
-    >>> __getattr__, __dir__, __all__ = attach_vars(
-    ...     {
-    ...         "dxtb.properties.moments.dipole": ["dipole"],
-    ...         "dxtb.properties.moments.quadrupole": ["quadrupole"],
-    ...     }
-    ... )
+
+    .. code-block:: python
+
+        from dxtb.loader.lazy import attach_vars
+        __getattr__, __dir__, __all__ = attach_vars(
+            {
+                "dxtb.properties.moments.dipole": ["dipole"],
+                "dxtb.properties.moments.quadrupole": ["quadrupole"],
+            }
+        )
     """
     # Aggregate all variable names into __all__
     __all__: list[str] = [var for vars in module_vars.values() for var in vars]

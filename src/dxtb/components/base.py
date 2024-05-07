@@ -122,10 +122,14 @@ class Component(TensorLike):
 
         Examples
         --------
-        >>> import torch
-        >>> import dxtb.components.interactions.external.field import ElectricField
-        >>> ef = ElectricField(field=torch.tensor([0.0, 0.0, 0.0]))
-        >>> ef.update(field=torch.tensor([1.0, 0.0, 0.0]))
+
+        .. code-block:: python
+
+            import torch
+            from dxtb.components.interactions.field import ElectricField
+
+            ef = ElectricField(field=torch.tensor([0.0, 0.0, 0.0]))
+            ef.update(field=torch.tensor([1.0, 0.0, 0.0]))
         """
         for key, value in kwargs.items():
             if key is None:

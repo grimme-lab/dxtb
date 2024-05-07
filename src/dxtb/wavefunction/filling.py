@@ -123,7 +123,7 @@ def get_aufbau_occupation(norb: Tensor, nel: Tensor) -> Tensor:
 
     Examples
     --------
-    >>> get_aufbau_occupation(torch.tensor(5), torch.tensor(1.))  # 1 el. in 5 orb.
+    >>> get_aufbau_occupation(torch.tensor(5), torch.tensor(1.))
     tensor([1., 0., 0., 0., 0.])
     >>> get_aufbau_occupation(torch.tensor([8, 8, 5]), torch.tensor([2., 3., 1.]))
     tensor([[1., 1., 0., 0., 0., 0., 0., 0.],
@@ -137,6 +137,40 @@ def get_aufbau_occupation(norb: Tensor, nel: Tensor) -> Tensor:
             [1.0000, 0.5000, 0.0000, 0.0000]])
     >>> all(nel == occ.sum(-1))
     True
+
+    .. code-block:: python
+
+        import torch
+        from dxtb.wavefunction import get_aufbau_occupation
+
+        # 1 electron in 5 orbitals
+        r1 = get_aufbau_occupation(torch.tensor(5), torch.tensor(1.))
+
+        print(r1)
+        # Output: tensor([1., 0., 0., 0., 0.])
+
+
+        # Multiple orbitals and different electron counts
+        r2 = get_aufbau_occupation(
+            torch.tensor([8, 8, 5]), torch.tensor([2., 3., 1.])
+        )
+
+        print(r2)
+        # Output: tensor([[1., 1., 0., 0., 0., 0., 0., 0.],
+        #                 [1., 1., 1., 0., 0., 0., 0., 0.],
+        #                 [1., 0., 0., 0., 0., 0., 0., 0.]])
+
+        # Fractional electron numbers in multiple orbitals
+        nel, norb = torch.tensor([2.0, 3.5, 1.5]), torch.tensor([4, 4, 2])
+        occ = get_aufbau_occupation(norb, nel)
+
+        print(occ)
+        # Output: tensor([[1.0000, 1.0000, 0.0000, 0.0000],
+        #                 [1.0000, 1.0000, 1.0000, 0.5000],
+        #                 [1.0000, 0.5000, 0.0000, 0.0000]])
+
+        # Check if the total number of electrons matches the sum of occupations
+        print(all(nel == occ.sum(-1)))  # True
     """
 
     # We represent the aufbau filling with a heaviside function, using the following steps

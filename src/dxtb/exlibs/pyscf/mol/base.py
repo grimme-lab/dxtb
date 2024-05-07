@@ -21,21 +21,6 @@ PySCF: Moleclue
 
 This module contains a class for a molecular representation in PySCF's format.
 It also contains the short-cut version as in PySCF (``M``).
-
-Example
--------
->>> import torch
->>> from dxtb.mol.external._pyscf import M
->>>
->>> numbers = torch.tensor([14, 1, 1, 1, 1])
->>> positions = torch.tensor([
-...     [+0.00000000000000, +0.00000000000000, +0.00000000000000],
-...     [+1.61768389755830, +1.61768389755830, -1.61768389755830],
-...     [-1.61768389755830, -1.61768389755830, -1.61768389755830],
-...     [+1.61768389755830, -1.61768389755830, +1.61768389755830],
-...     [-1.61768389755830, +1.61768389755830, +1.61768389755830],
-... ])
->>> mol = M(numbers, positions)
 """
 from __future__ import annotations
 

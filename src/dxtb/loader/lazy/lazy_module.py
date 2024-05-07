@@ -21,13 +21,16 @@
 Loader: Lazy Modules
 ====================
 
-Contains the `:func:attach_module` function that can be used to lazily load
+Contains the :func:`.attach_module` function that can be used to lazily load
 submodules of a package.
 
 Example
 -------
->>> from dxtb.loader.lazy import attach_module
->>> __getattr__, __dir__, __all__ = attach_module(__name__, ["sub1", "sub2"])
+
+.. code-block:: python
+
+    from dxtb.loader.lazy import attach_module
+    __getattr__, __dir__, __all__ = attach_module(__name__, ["sub1", "sub2"])
 """
 
 from __future__ import annotations
@@ -78,7 +81,11 @@ def attach_module(package_name: str, submodules: Sequence[str]) -> tuple[
 
     Example
     -------
-    >>> __getattr__, __dir__, __all__ = attach_module(__name__, ["sub1", "sub2"])
+
+    .. code-block:: python
+
+        from dxtb.loader.lazy import attach_module
+        __getattr__, __dir__, __all__ = attach_module(__name__, ["sub1", "sub2"])
     """
 
     __all__: list[str] = list(submodules)

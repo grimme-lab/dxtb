@@ -23,11 +23,18 @@ The parametrization is stored in a TOML file and loaded lazily.
 
 Example
 -------
->>> from dxtb.param.gfn2 import GFN2_XTB
->>> print(GFN2_XTB._loaded is None)
-True
->>> m = GFN2_XTB.meta
->>> print(GFN2_XTB._loaded is None)
-False
+
+.. code-block:: python
+
+    from dxtb.param.gfn2 import GFN2_XTB
+
+    # Initially, the parameters are not loaded
+    print(GFN2_XTB._loaded is None)  # Expected output: True
+
+    # Access the metadata to trigger loading
+    m = GFN2_XTB.meta
+
+    # Now, the parameters should be loaded
+    print(GFN2_XTB._loaded is None)  # Expected output: False
 """
 from .load import GFN2_XTB as GFN2_XTB

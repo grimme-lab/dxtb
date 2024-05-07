@@ -26,42 +26,54 @@ Examples
 --------
 The calculator is instantiated with the atomic numbers and a parametrization.
 
->>> import torch
->>> from dxtb.xtb import Calculator
->>> from dxtb.param import GFN1_XTB
->>>
->>> numbers = torch.tensor([1, 1])
->>> calc = Calculator(numbers, GFN1_XTB)
+.. code-block:: python
+    import torch
+    from dxtb.xtb import Calculator
+    from dxtb.param import GFN1_XTB
+
+    numbers = torch.tensor([1, 1])
+    calc = Calculator(numbers, GFN1_XTB)
 
 It is recommended to always pass the `dtype` and `device` to the calculator.
 
->>> from dxtb.typing import DD
->>>
->>> dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
->>> calc = Calculator(numbers, GFN1_XTB, **dd)
->>> print(calc.device)
-cpu
->>> print(calc.dtype)
-torch.float64
+    import torch
+    import dxtb
+    from dxtb.typing import DD
 
-The `dtype` and `device` can be conveniently changed after instantiation in the
-same way as for any other PyTorch tensor.
+    dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
+    calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, **dd)
+    print(calc.device)  # Expected output: cpu
+    print(calc.dtype)  # Expected output: torch.float64
 
->>> calc = Calculator(numbers, GFN1_XTB, **dd)
->>> calc = calc.type(torch.float32)
->>> print(calc.dtype)
-torch.float32
+The ``dtype`` and ``device`` can be conveniently changed after instantiation in
+the same way as for any other PyTorch tensor.
+
+.. code-block:: python
+
+    import dxtb
+
+    calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, **dd)
+    calc = calc.type(torch.float32)
+    print(calc.dtype)  # Expected output: torch.float32
 
 To configure settings, a dictionary of settings can be passed to the calculator.
 
->>> settings = {"maxiter": 100}
->>> calc = Calculator(numbers, GFN1_XTB, opts=settings)
+.. code-block:: python
+    import torch
+    import dxtb
+
+    settings = {"maxiter": 100}
+    calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, opts=settings)
 
 Additional tight binding components can also be added.
 
->>> dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
->>> ef = dxtb.field.new_efield(torch.tensor([0.0, 0.0, 0.0], **dd))
->>> calc = Calculator(numbers, GFN1_XTB, interactions=[ef], **dd)
+.. code-block:: python
+    import torch
+    import dxtb
+
+    dd = {"device": torch.device("cpu"), "dtype": torch.double}
+    ef = dxtb.field.new_efield(torch.tensor([0.0, 0.0, 0.0], **dd))
+    calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, interactions=[ef], **dd)
 """
 from .base import *
 from .gfn1 import *

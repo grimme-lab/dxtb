@@ -22,21 +22,27 @@ Integrator for Born radii based on the Onufriev-Bashford-Case model.
 
 Example
 -------
->>> import torch
->>> from dxtb.solvation import born
->>> numbers = torch.tensor([14, 1, 1, 1, 1])
->>> positions = torch.tensor(
-...     [
-...         [+0.00000000000000, -0.00000000000000, +0.00000000000000],
-...         [+1.61768389755830, +1.61768389755830, -1.61768389755830],
-...         [-1.61768389755830, -1.61768389755830, -1.61768389755830],
-...         [+1.61768389755830, -1.61768389755830, +1.61768389755830],
-...         [-1.61768389755830, +1.61768389755830, +1.61768389755830],
-...     ],
-... )
->>> rads = born.get_born_radii(numbers, positions)
->>> print(rads)
-tensor([3.6647, 2.4621, 2.4621, 2.4621, 2.4621])
+
+.. code-block:: python
+
+    import torch
+    from dxtb.solvation import born
+
+    # Define atomic numbers and positions of the atoms
+    numbers = torch.tensor([14, 1, 1, 1, 1])
+    positions = torch.tensor([
+        [0.00000000000000, -0.00000000000000, 0.00000000000000],
+        [1.61768389755830, 1.61768389755830, -1.61768389755830],
+        [-1.61768389755830, -1.61768389755830, -1.61768389755830],
+        [1.61768389755830, -1.61768389755830, 1.61768389755830],
+        [-1.61768389755830, 1.61768389755830, 1.61768389755830],
+    ])
+
+    # Calculate the Born radii for the given atomic configuration
+    rads = born.get_born_radii(numbers, positions)
+
+    # Print the calculated Born radii
+    print(rads)  # Output: tensor([3.6647, 2.4621, 2.4621, 2.4621, 2.4621])
 """
 
 from __future__ import annotations
@@ -66,8 +72,8 @@ def get_born_radii(
     model published in
 
     - A. Onufriev, D. Bashford and D. A. Case, *Proteins: Struct., Funct.,
-    Bioinf.*, **2004**, 55, 383–394. DOI: `10.1002/prot.20033
-    <https://doi.org/10.1002/prot.20033>`__
+      Bioinf.*, **2004**, 55, 383–394. DOI: `10.1002/prot.20033
+      <https://doi.org/10.1002/prot.20033>`__
 
     Parameters:
     -----------

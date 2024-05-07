@@ -22,35 +22,42 @@ This module implements the second-order electrostatic energy for GFN1-xTB.
 
 Example
 -------
->>> import torch
->>> import dxtb.coulomb.secondorder as es2
->>> from dxtb.coulomb.average import harmonic_average as average
->>> from dxtb.param import GFN1_XTB, get_element_param
->>> numbers = torch.tensor([14, 1, 1, 1, 1])
->>> positions = torch.tensor([
-...     [0.00000000000000, -0.00000000000000, 0.00000000000000],
-...     [1.61768389755830, 1.61768389755830, -1.61768389755830],
-...     [-1.61768389755830, -1.61768389755830, -1.61768389755830],
-...     [1.61768389755830, -1.61768389755830, 1.61768389755830],
-...     [-1.61768389755830, 1.61768389755830, 1.61768389755830],
-... ])
->>> q = torch.tensor([
-...     -8.41282505804719e-2,
-...     2.10320626451180e-2,
-...     2.10320626451178e-2,
-...     2.10320626451179e-2,
-...     2.10320626451179e-2,
-... ])
->>> # get parametrization
->>> gexp = torch.tensor(GFN1_XTB.charge.effective.gexp)
->>> hubbard = get_element_param(GFN1_XTB.element, "gam")
->>> # calculate energy
->>> es = es2.ES2(hubbard=hubbard, average=average, gexp=gexp)
->>> cache = es.get_cache(numbers, positions)
->>> e = es.get_energy(qat, cache)
->>> torch.set_printoptions(precision=7)
->>> print(torch.sum(e, dim=-1))
-tensor(0.0005078)
+.. code-block:: python
+
+    import torch
+    import dxtb.coulomb.secondorder as es2
+    from dxtb.coulomb.average import harmonic_average as average
+    from dxtb.param import GFN1_XTB, get_element_param
+
+    # Define atomic numbers, positions, and charges
+    numbers = torch.tensor([14, 1, 1, 1, 1])
+    positions = torch.tensor([
+        [0.00000000000000, -0.00000000000000, 0.00000000000000],
+        [1.61768389755830, 1.61768389755830, -1.61768389755830],
+        [-1.61768389755830, -1.61768389755830, -1.61768389755830],
+        [1.61768389755830, -1.61768389755830, 1.61768389755830],
+        [-1.61768389755830, 1.61768389755830, 1.61768389755830],
+    ])
+
+    q = torch.tensor([
+        -8.41282505804719e-2,
+        2.10320626451180e-2,
+        2.10320626451178e-2,
+        2.10320626451179e-2,
+        2.10320626451179e-2,
+    ])
+
+    # Initialize the ES2 energy calculator with parameters
+    gexp = torch.tensor(GFN1_XTB.charge.effective.gexp)
+    hubbard = get_element_param(GFN1_XTB.element, "gam")
+    es = es2.ES2(hubbard=hubbard, average=average, gexp=gexp)
+
+    # Calculate energy using the provided atomic charges and positions
+    cache = es.get_cache(numbers, positions)
+    e = es.get_energy(q, cache)
+
+    torch.set_printoptions(precision=7)
+    print(torch.sum(e, dim=-1))  # Output: tensor(0.0005078)
 """
 
 from __future__ import annotations

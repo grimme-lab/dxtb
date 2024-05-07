@@ -159,14 +159,19 @@ class ComponentList(ComponentListABC, Generic[C], TensorLike):
 
         Examples
         --------
-        >>> from dxtb.components.interactions import InteractionList
-        >>> from dxtb.components.interactions.external import field as efield
-        >>>
-        >>> field_vector = torch.tensor([0.0, 0.0, 0.0])
-        >>> new_field_vector = torch.tensor([1.0, 0.0, 0.0])
-        >>> ef = efield.new_efield(field_vector)
-        >>> ilist = InteractionList(ef)
-        >>> ilist.update(efield.LABEL_EFIELD, field=new_field_vector)
+
+        .. code-block:: python
+
+            import torch
+            from dxtb.components.interactions import InteractionList
+            from dxtb.components.interactions.field import efield
+
+            field_vector = torch.tensor([0.0, 0.0, 0.0])
+            ef = efield.new_efield(field_vector)
+            ilist = InteractionList(ef)
+
+            new_field_vector = torch.tensor([1.0, 0.0, 0.0])
+            ilist.update(efield.LABEL_EFIELD, field=new_field_vector)
         """
         for interaction in self.components:
             if name == interaction.label:

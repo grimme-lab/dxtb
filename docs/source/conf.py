@@ -52,7 +52,7 @@ html_theme_options = {
     "path_to_docs": "docs/source",
     "repository_url": "https://github.com/grimme-lab/dxtb",
     "repository_branch": "main",
-    "show_navbar_depth": 3,
+    "show_navbar_depth": 1,
     "use_repository_button": True,
     "use_edit_page_button": False,
     "use_download_button": False,
