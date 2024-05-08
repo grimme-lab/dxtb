@@ -31,7 +31,7 @@ from tad_mctc.exceptions import DtypeError
 from tad_mctc.io.checks import content_checks, shape_checks
 
 from dxtb import IndexHelper, OutputHandler
-from dxtb._src import integral as ints
+from dxtb import integrals as ints
 from dxtb._src import scf
 from dxtb._src.components.classicals import (
     Classical,
@@ -59,6 +59,125 @@ __all__ = ["EnergyCalculator"]
 logger = logging.getLogger(__name__)
 
 
+class CalculatorCache(TensorLike):
+    """
+    Cache for Calculator that extends TensorLike.
+
+    This class provides caching functionality for storing multiple calculation results.
+    """
+
+    __slots__ = [
+        "energy",
+        "forces",
+        "hessian",
+        "dipole",
+        "quadrupole",
+        "polarizability",
+        "hyperpolarizability",
+    ]
+
+    def __init__(
+        self,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+        energy: Tensor | None = None,
+        forces: Tensor | None = None,
+        hessian: Tensor | None = None,
+        dipole: Tensor | None = None,
+        quadrupole: Tensor | None = None,
+        polarizability: Tensor | None = None,
+        hyperpolarizability: Tensor | None = None,
+    ) -> None:
+        """
+        Initialize the Cache class with optional device and dtype settings.
+
+        Parameters
+        ----------
+        device : torch.device, optional
+            The device on which the tensors are stored.
+        dtype : torch.dtype, optional
+            The data type of the tensors.
+        """
+        super().__init__(device=device, dtype=dtype)
+        self.energy = energy
+        self.forces = forces
+        self.hessian = hessian
+        self.dipole = dipole
+        self.quadrupole = quadrupole
+        self.polarizability = polarizability
+        self.hyperpolarizability = hyperpolarizability
+
+    def __getitem__(self, key: str) -> Tensor:
+        """
+        Get an item from the cache.
+
+        Parameters
+        ----------
+        key : str
+            The key of the item to retrieve.
+
+        Returns
+        -------
+        Tensor or None
+            The value associated with the key, if it exists.
+        """
+        if key in self.__slots__:
+            return getattr(self, key)
+        raise KeyError(f"Key '{key}' not found in Cache.")
+
+    def __setitem__(self, key: str, value: Tensor) -> None:
+        """
+        Set an item in the cache.
+
+        Parameters
+        ----------
+        key : str
+            The key of the item to set.
+        value : Tensor
+            The value to be associated with the key.
+        """
+        if key == "wrapper":
+            raise RuntimeError(
+                "Key 'wrapper' detected. This happens if the cache "
+                "decorator is not the innermost decorator of the "
+                "Calculator method that you are trying to cache. Please "
+                "move the cache decorator to the innermost position. "
+                "Otherwise, the name of the method cannot be inferred "
+                "correctly."
+            )
+
+        if key in self.__slots__:
+            setattr(self, key, value)
+        else:
+            raise KeyError(f"Key '{key}' cannot be set in Cache.")
+
+    def __contains__(self, key: str) -> bool:
+        """
+        Check if a key is in the cache.
+
+        Parameters
+        ----------
+        key : str
+            The key to check in the cache.
+
+        Returns
+        -------
+        bool
+            True if the key is in the cache, False otherwise
+        """
+        return key in self.__slots__ and getattr(self, key) is not None
+
+    def clear(self, key: str | None = None) -> None:
+        """
+        Clear the cached values.
+        """
+        if key is not None:
+            setattr(self, key, None)
+        else:
+            for key in self.__slots__:
+                setattr(self, key, None)
+
+
 class EnergyCalculator(TensorLike):
     """
     Parametrized calculator defining the extended tight-binding model.
@@ -71,14 +190,14 @@ class EnergyCalculator(TensorLike):
     numbers: Tensor
     """Atomic numbers for all atoms in the system (shape: ``(..., nat)``)."""
 
-    cache: Cache
+    cache: CalculatorCache
     """Cache for storing multiple calculation results."""
-
-    interactions: InteractionList
-    """Interactions to minimize in self-consistent iterations."""
 
     classicals: ClassicalList
     """Classical contributions."""
+
+    interactions: InteractionList
+    """Interactions to minimize in self-consistent iterations."""
 
     integrals: ints.Integrals
     """Integrals for the extended tight-binding model."""
@@ -99,125 +218,8 @@ class EnergyCalculator(TensorLike):
         "classicals",
         "interactions",
         "integrals",
+        "ihelp",
     ]
-
-    class Cache(TensorLike):
-        """
-        Cache for Calculator that extends TensorLike.
-
-        This class provides caching functionality for storing multiple calculation results.
-        """
-
-        __slots__ = [
-            "energy",
-            "forces",
-            "hessian",
-            "dipole",
-            "quadrupole",
-            "polarizability",
-            "hyperpolarizability",
-        ]
-
-        def __init__(
-            self,
-            device: torch.device | None = None,
-            dtype: torch.dtype | None = None,
-            energy: Tensor | None = None,
-            forces: Tensor | None = None,
-            hessian: Tensor | None = None,
-            dipole: Tensor | None = None,
-            quadrupole: Tensor | None = None,
-            polarizability: Tensor | None = None,
-            hyperpolarizability: Tensor | None = None,
-        ) -> None:
-            """
-            Initialize the Cache class with optional device and dtype settings.
-
-            Parameters
-            ----------
-            device : torch.device, optional
-                The device on which the tensors are stored.
-            dtype : torch.dtype, optional
-                The data type of the tensors.
-            """
-            super().__init__(device=device, dtype=dtype)
-            self.energy = energy
-            self.forces = forces
-            self.hessian = hessian
-            self.dipole = dipole
-            self.quadrupole = quadrupole
-            self.polarizability = polarizability
-            self.hyperpolarizability = hyperpolarizability
-
-        def __getitem__(self, key: str) -> Tensor:
-            """
-            Get an item from the cache.
-
-            Parameters
-            ----------
-            key : str
-                The key of the item to retrieve.
-
-            Returns
-            -------
-            Tensor or None
-                The value associated with the key, if it exists.
-            """
-            if key in self.__slots__:
-                return getattr(self, key)
-            raise KeyError(f"Key '{key}' not found in Cache.")
-
-        def __setitem__(self, key: str, value: Tensor) -> None:
-            """
-            Set an item in the cache.
-
-            Parameters
-            ----------
-            key : str
-                The key of the item to set.
-            value : Tensor
-                The value to be associated with the key.
-            """
-            if key == "wrapper":
-                raise RuntimeError(
-                    "Key 'wrapper' detected. This happens if the cache "
-                    "decorator is not the innermost decorator of the "
-                    "Calculator method that you are trying to cache. Please "
-                    "move the cache decorator to the innermost position. "
-                    "Otherwise, the name of the method cannot be inferred "
-                    "correctly."
-                )
-
-            if key in self.__slots__:
-                setattr(self, key, value)
-            else:
-                raise KeyError(f"Key '{key}' cannot be set in Cache.")
-
-        def __contains__(self, key: str) -> bool:
-            """
-            Check if a key is in the cache.
-
-            Parameters
-            ----------
-            key : str
-                The key to check in the cache.
-
-            Returns
-            -------
-            bool
-                True if the key is in the cache, False otherwise
-            """
-            return key in self.__slots__ and getattr(self, key) is not None
-
-        def clear(self, key: str | None = None) -> None:
-            """
-            Clear the cached values.
-            """
-            if key is not None:
-                setattr(self, key, None)
-            else:
-                for key in self.__slots__:
-                    setattr(self, key, None)
 
     def __init__(
         self,
@@ -227,7 +229,7 @@ class EnergyCalculator(TensorLike):
         classical: Sequence[Classical] | None = None,
         interaction: Sequence[Interaction] | None = None,
         opts: dict[str, Any] | Config | None = None,
-        cache: Cache | None = None,
+        cache: CalculatorCache | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
         **kwargs: Any,
@@ -291,7 +293,7 @@ class EnergyCalculator(TensorLike):
         self.opts = opts
 
         # create cache
-        self.cache = self.Cache(**dd) if cache is None else cache
+        self.cache = CalculatorCache(**dd) if cache is None else cache
 
         if self.opts.batch_mode == 0 and numbers.ndim > 1:
             self.opts.batch_mode = 1
@@ -357,21 +359,25 @@ class EnergyCalculator(TensorLike):
 
         # figure out integral level from interactions
         if efield.LABEL_EFIELD in self.interactions.labels:
-            if self.opts.ints.level < ints.INTLEVEL_DIPOLE:
+            if self.opts.ints.level < ints.levels.INTLEVEL_DIPOLE:
                 OutputHandler.warn(
                     "Setting integral level to DIPOLE "
-                    f"({ints.INTLEVEL_DIPOLE}) due to electric field "
+                    f"({ints.levels.INTLEVEL_DIPOLE}) due to electric field "
                     "interaction."
                 )
-            self.opts.ints.level = max(ints.INTLEVEL_DIPOLE, self.opts.ints.level)
+            self.opts.ints.level = max(
+                ints.levels.INTLEVEL_DIPOLE, self.opts.ints.level
+            )
         if efield_grad.LABEL_EFIELD_GRAD in self.interactions.labels:
-            if self.opts.ints.level < ints.INTLEVEL_DIPOLE:
+            if self.opts.ints.level < ints.levels.INTLEVEL_DIPOLE:
                 OutputHandler.warn(
                     "Setting integral level to QUADRUPOLE "
-                    f"{ints.INTLEVEL_DIPOLE} due to electric field gradient "
-                    "interaction."
+                    f"{ints.levels.INTLEVEL_DIPOLE} due to electric field "
+                    "gradient interaction."
                 )
-            self.opts.ints.level = max(ints.INTLEVEL_QUADRUPOLE, self.opts.ints.level)
+            self.opts.ints.level = max(
+                ints.levels.INTLEVEL_QUADRUPOLE, self.opts.ints.level
+            )
 
         # setup integral
         driver = self.opts.ints.driver
@@ -379,15 +385,17 @@ class EnergyCalculator(TensorLike):
             numbers, par, self.ihelp, driver=driver, intlevel=self.opts.ints.level, **dd
         )
 
-        if self.opts.ints.level >= ints.INTLEVEL_OVERLAP:
-            self.integrals.hcore = ints.Hamiltonian(numbers, par, self.ihelp, **dd)
-            self.integrals.overlap = ints.Overlap(driver=driver, **dd)
+        if self.opts.ints.level >= ints.levels.INTLEVEL_OVERLAP:
+            self.integrals.hcore = ints.types.Hamiltonian(
+                numbers, par, self.ihelp, **dd
+            )
+            self.integrals.overlap = ints.types.Overlap(driver=driver, **dd)
 
-        if self.opts.ints.level >= ints.INTLEVEL_DIPOLE:
-            self.integrals.dipole = ints.Dipole(driver=driver, **dd)
+        if self.opts.ints.level >= ints.levels.INTLEVEL_DIPOLE:
+            self.integrals.dipole = ints.types.Dipole(driver=driver, **dd)
 
-        if self.opts.ints.level >= ints.INTLEVEL_QUADRUPOLE:
-            self.integrals.quadrupole = ints.Quadrupole(driver=driver, **dd)
+        if self.opts.ints.level >= ints.levels.INTLEVEL_QUADRUPOLE:
+            self.integrals.quadrupole = ints.types.Quadrupole(driver=driver, **dd)
 
         OutputHandler.write_stdout("done\n", v=4)
 
@@ -464,7 +472,7 @@ class EnergyCalculator(TensorLike):
         OutputHandler.write_stdout("done", v=3)
 
         # dipole integral
-        if self.opts.ints.level >= ints.INTLEVEL_DIPOLE:
+        if self.opts.ints.level >= ints.levels.INTLEVEL_DIPOLE:
             OutputHandler.write_stdout_nf(" - Dipole            ... ", v=3)
             timer.start("Dipole Integral", parent_uid="Integrals")
             self.integrals.build_dipole(positions)
@@ -472,7 +480,7 @@ class EnergyCalculator(TensorLike):
             OutputHandler.write_stdout("done", v=3)
 
         # quadrupole integral
-        if self.opts.ints.level >= ints.INTLEVEL_QUADRUPOLE:
+        if self.opts.ints.level >= ints.levels.INTLEVEL_QUADRUPOLE:
             OutputHandler.write_stdout_nf(" - Quadrupole        ... ", v=3)
             timer.start("Quadrupole Integral", parent_uid="Integrals")
             self.integrals.build_quadrupole(positions)

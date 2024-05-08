@@ -28,7 +28,7 @@ import torch
 from tad_mctc.units import KELVIN2AU
 
 from dxtb import GFN1_XTB, IndexHelper
-from dxtb._src.integral import IntegralMatrices
+from dxtb._src.integral.container import IntegralMatrices
 from dxtb._src.scf.implicit import SelfConsistentFieldImplicit as SCF
 from dxtb._src.typing import DD
 from dxtb._src.utils import batch

@@ -29,6 +29,9 @@ __all__ = ["ConfigIntegrals"]
 class ConfigIntegrals:
     """
     Configuration for the integrals.
+
+    All configuration options are represented as integers. String options are
+    converted to integers in the constructor.
     """
 
     level: int
@@ -42,7 +45,10 @@ class ConfigIntegrals:
     """
 
     cutoff: float
-    """Real-space cutoff (in Bohr) for integral evaluation for PyTorch."""
+    """
+    Real-space cutoff (in Bohr) for integral evaluation for PyTorch.
+    The ``libint`` driver ignores this option.
+    """
 
     driver: int
     """Type of integral driver."""

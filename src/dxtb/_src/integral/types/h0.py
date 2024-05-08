@@ -23,11 +23,11 @@ from __future__ import annotations
 import torch
 
 from dxtb import IndexHelper
+from dxtb._src.param import Param
 from dxtb._src.typing import Tensor
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 from dxtb._src.xtb.gfn2 import GFN2Hamiltonian
 
-from ..param import Param
 from .base import BaseIntegral
 
 __all__ = ["Hamiltonian"]

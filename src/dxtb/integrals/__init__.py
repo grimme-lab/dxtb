@@ -14,5 +14,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Integrals
+=========
 
-# no docstring required here
+This module stores the container, drivers and underlying
+implementations of the integrals.
+"""
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from dxtb.integrals import levels as levels
+    from dxtb.integrals import types as types
+    from dxtb.integrals import wrappers as wrappers
+else:
+    import dxtb._src.loader.lazy as _lazy
+
+    __getattr__, __dir__, __all__ = _lazy.attach_module(
+        __name__,
+        ["levels", "types", "wrappers"],
+    )
+    del _lazy
+
+del TYPE_CHECKING
+
+from dxtb._src.integral.container import Integrals as Integrals

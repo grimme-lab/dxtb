@@ -22,7 +22,7 @@ from dxtb._src.components.interactions import (
 )
 from dxtb._src.constants import defaults, labels
 from dxtb._src.exlibs.xitorch import optimize as xto
-from dxtb._src.integral import IntegralMatrices
+from dxtb._src.integral.container import IntegralMatrices
 from dxtb._src.typing import Any, Callable, Tensor
 from dxtb.config import ConfigSCF
 

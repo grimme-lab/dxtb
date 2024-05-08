@@ -21,6 +21,7 @@ Config file for docs.
 import os.path as op
 import sys
 
+# adapt path to include the source code
 sys.path.insert(0, op.join(op.dirname(__file__), "../../", "src"))
 
 import dxtb
@@ -41,6 +42,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
+    "sphinx.ext.napoleon",
 ]
 
 html_theme = "sphinx_book_theme"
@@ -92,6 +94,7 @@ copybutton_prompt_is_regexp = True
 napoleon_google_docstring = False
 napoleon_use_param = False
 napoleon_use_ivar = True
+napoleon_use_rtype = True
 
 # The main toctree document.
 main_doc = "index"

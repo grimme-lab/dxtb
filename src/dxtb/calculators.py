@@ -21,9 +21,12 @@ Calculators
 Entrypoints for ``dxtb`` calculations.
 """
 
-from dxtb._src.calculators.base import Calculator as Calculator
 from dxtb._src.calculators.gfn1 import GFN1Calculator as GFN1Calculator
 from dxtb._src.calculators.gfn2 import GFN2Calculator as GFN2Calculator
+from dxtb._src.calculators.properties.vibration import IRResult as IRResult
+from dxtb._src.calculators.properties.vibration import RamanResult as RamanResult
+from dxtb._src.calculators.properties.vibration import VibResult as VibResult
 from dxtb._src.calculators.types import AnalyticalCalculator as AnalyticalCalculator
+from dxtb._src.calculators.types import AutogradCalculator as AutogradCalculator
 from dxtb._src.calculators.types import EnergyCalculator as EnergyCalculator
 from dxtb._src.calculators.types import NumericalCalculator as NumericalCalculator

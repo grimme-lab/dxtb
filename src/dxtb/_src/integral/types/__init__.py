@@ -14,5 +14,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Integrals: Types
+================
 
-# no docstring required here
+Integral objects for the calculation of various molecular integrals.
+
+Currently, the following integral types are supported:
+
+- :class:`.Hamiltonian` (core Hamiltonian)
+- :class:`.Overlap`
+- :class:`.Dipole`
+- :class:`.Quadrupole`
+"""
+from .dipole import *
+from .h0 import *
+from .overlap import *
+from .quadrupole import *

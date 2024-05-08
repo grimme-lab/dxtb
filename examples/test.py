@@ -5,7 +5,7 @@ import dxtb
 dd = {"dtype": torch.double, "device": torch.device("cpu")}
 
 numbers = torch.tensor([3, 1], device=dd["device"])
-calc = dxtb.GFN1Calculator(numbers, **dd)
+calc = dxtb.calculators.GFN1Calculator(numbers, **dd)
 
 positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
 positions.requires_grad_(True)

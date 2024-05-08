@@ -36,6 +36,29 @@ class Config:
     Configuration of the calculation.
     """
 
+    file: PathLike | None
+    """The input file or directory."""
+
+    exclude: str | list[str]
+    """The tight-binding components to exclude from the calculation."""
+
+    method: int
+    """The xTB method to use."""
+
+    grad: bool
+    """Whether to compute the gradient."""
+
+    use_cache: bool
+    """Whether to use the cache."""
+
+    # configs
+
+    ints: ConfigIntegrals
+    """The integral configuration."""
+
+    scf: ConfigSCF
+    """The SCF configuration."""
+
     def __init__(
         self,
         *,
@@ -143,6 +166,19 @@ class Config:
 
     @classmethod
     def from_args(cls, args: Namespace) -> Self:
+        """
+        Create a configuration from command-line arguments.
+
+        Parameters
+        ----------
+        args : Namespace
+            The parsed command-line arguments.
+
+        Returns
+        -------
+        Self
+            The configuration object.
+        """
         return cls(
             # general
             file=args.file,
@@ -228,10 +264,40 @@ class Config:
 
     @property
     def batch_mode(self) -> int:
+        """
+        Whether multiple systems or a single one are handled.
+
+        The following batch modes are available:
+
+        - 0: Single system
+        - 1: Multiple systems with padding
+        - 2: Multiple systems with no padding (conformer ensemble)
+
+        Returns
+        -------
+        int
+            The batch mode.
+        """
         return self._batch_mode
 
     @batch_mode.setter
     def batch_mode(self, value: int) -> None:
+        """
+        Set the batch mode.
+
+        Parameters
+        ----------
+        value : int
+            The batch mode.
+
+        Raises
+        ------
+        ValueError
+            If the batch mode is invalid.
+        """
+        if value not in (0, 1, 2):
+            raise ValueError(f"Invalid batch mode '{value}'. Must be one of [0, 1, 2].")
+
         self._batch_mode = value
         self.scf.batch_mode = value
 
@@ -241,7 +307,7 @@ class Config:
 
         Returns
         -------
-        dict
+        dict[str, dict[str, Any]]
             The configuration information.
         """
         return {

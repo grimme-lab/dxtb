@@ -25,7 +25,7 @@ import torch
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
-from dxtb._src import integral as ints
+from dxtb import integrals as ints
 from dxtb._src.constants.labels import INTDRIVER_ANALYTICAL, INTDRIVER_LIBCINT
 from dxtb._src.typing import DD
 
@@ -63,11 +63,11 @@ def test_fail_family(dtype: torch.dtype):
     assert i.run_checks is True
 
     with pytest.raises(RuntimeError):
-        i.overlap = ints.Overlap(INTDRIVER_LIBCINT, **dd)
+        i.overlap = ints.types.Overlap(INTDRIVER_LIBCINT, **dd)
     with pytest.raises(RuntimeError):
-        i.dipole = ints.Dipole(INTDRIVER_LIBCINT, **dd)
+        i.dipole = ints.types.Dipole(INTDRIVER_LIBCINT, **dd)
     with pytest.raises(RuntimeError):
-        i.quadrupole = ints.Quadrupole(INTDRIVER_LIBCINT, **dd)
+        i.quadrupole = ints.types.Quadrupole(INTDRIVER_LIBCINT, **dd)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -83,13 +83,13 @@ def test_fail_pytorch_multipole(dtype: torch.dtype):
 
     # incompatible driver
     with pytest.raises(RuntimeError):
-        i.overlap = ints.Overlap(INTDRIVER_LIBCINT, **dd)
+        i.overlap = ints.types.Overlap(INTDRIVER_LIBCINT, **dd)
 
     # multipole moments not implemented with PyTorch
     with pytest.raises(NotImplementedError):
-        i.dipole = ints.Dipole(INTDRIVER_ANALYTICAL, **dd)
+        i.dipole = ints.types.Dipole(INTDRIVER_ANALYTICAL, **dd)
     with pytest.raises(NotImplementedError):
-        i.quadrupole = ints.Quadrupole(INTDRIVER_ANALYTICAL, **dd)
+        i.quadrupole = ints.types.Quadrupole(INTDRIVER_ANALYTICAL, **dd)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -99,7 +99,7 @@ def test_hcore(dtype: torch.dtype):
 
     ihelp = IndexHelper.from_numbers(numbers, par)
     i = ints.Integrals(numbers, par, ihelp, **dd)
-    i.hcore = ints.Hamiltonian(numbers, par, ihelp, **dd)
+    i.hcore = ints.types.Hamiltonian(numbers, par, ihelp, **dd)
 
     h = i.hcore
     assert h is not None

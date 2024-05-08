@@ -34,10 +34,7 @@ from dxtb._src.typing import Any, Tensor
 
 from . import levels
 from .base import IntDriver, IntegralContainer
-from .dipole import Dipole
-from .h0 import Hamiltonian
-from .overlap import Overlap
-from .quadrupole import Quadrupole
+from .types import Dipole, Hamiltonian, Overlap, Quadrupole
 
 __all__ = ["Integrals", "IntegralMatrices"]
 

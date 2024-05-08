@@ -14,5 +14,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Integrals: Types
+================
 
-# no docstring required here
+Integral types for the calculation of molecular integrals.
+"""
+
+from dxtb._src.integral.types import Dipole as Dipole
+from dxtb._src.integral.types import Hamiltonian as Hamiltonian
+from dxtb._src.integral.types import Overlap as Overlap
+from dxtb._src.integral.types import Quadrupole as Quadrupole

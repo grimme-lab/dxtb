@@ -18,22 +18,19 @@
 Calculators: Base
 =================
 
-Base calculator for the extended tight-binding models (xTB).
+Base calculator for the extended tight-binding (xTB) models.
 This calculator provides analytical, autograd, and numerical versions of all
 properties.
 """
+
 from .types.analytical import AnalyticalCalculator
 from .types.autograd import AutogradCalculator
 from .types.numerical import NumericalCalculator
 
-__all__ = ["BaseCalculator", "Calculator"]
+__all__ = ["Calculator"]
 
 
-class BaseCalculator(
-    AnalyticalCalculator,
-    AutogradCalculator,
-    NumericalCalculator,
-):
+class Calculator(AnalyticalCalculator, AutogradCalculator, NumericalCalculator):
     """
     Calculator for the extended tight-binding models (xTB).
     """
@@ -46,10 +43,3 @@ class BaseCalculator(
         )
     )
     """Names of implemented methods of the Calculator."""
-
-
-# alias
-class Calculator(BaseCalculator):
-    """
-    Calculator for the extended tight-binding models (xTB).
-    """

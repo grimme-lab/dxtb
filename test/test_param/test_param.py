@@ -116,8 +116,8 @@ def test_param_minimal() -> None:
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_param_calculator(dtype: torch.dtype) -> None:
     # pylint: disable=import-outside-toplevel
+    from dxtb import Calculator
     from dxtb._src.param.gfn1 import GFN1_XTB as par
-    from dxtb.calculators import Calculator
 
     dd: DD = {"device": device, "dtype": dtype}
     numbers = symbol_to_number(["H", "C"])

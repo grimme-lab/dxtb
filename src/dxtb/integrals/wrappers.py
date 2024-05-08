@@ -14,5 +14,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Integrals: Wrappers
+===================
 
-# no docstring required here
+Shortcuts for integral calculations.
+"""
+
+from dxtb._src.integral.wrappers import dipole as dipole
+from dxtb._src.integral.wrappers import hcore as hcore
+from dxtb._src.integral.wrappers import overlap as overlap
+from dxtb._src.integral.wrappers import quadrupole as quadrupole

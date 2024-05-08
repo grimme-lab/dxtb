@@ -35,7 +35,7 @@ opts = {"verbosity": 3}
 
 ######################################################################
 
-print("Calculating forces manually with `torch.autograd.grad`.\n")
+print("Calculating forces manually with :func:`torch.autograd.grad`.\n")
 
 dxtb.timer.reset()
 

@@ -30,9 +30,16 @@ import torch
 from dxtb import OutputHandler
 from dxtb._src.components.interactions.field import efield as efield
 from dxtb._src.constants import defaults
-from dxtb._src.properties import vibration as vib
 from dxtb._src.typing import Any, Literal, Tensor
 
+from ..properties.vibration import (
+    IRResult,
+    RamanResult,
+    VibResult,
+    ir_ints,
+    raman_ints_depol,
+    vib_analysis,
+)
 from . import decorators as cdec
 from .energy import EnergyCalculator
 
@@ -80,15 +87,15 @@ class AutogradCalculator(EnergyCalculator):
             f = -\dfrac{\partial E}{\partial R}
 
         One can calculate the Jacobian either row-by-row using the standard
-        `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
-        using `torch.func`'s function transforms (e.g., `jacrev`).
+        :func:`torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
+        using :func:`torch.func`'s function transforms (e.g., `jacrev`).
 
         .. _here: https://pytorch.org/functorch/stable/notebooks/\
                   jacobians_hessians.html#computing-the-jacobian
 
         Note
         ----
-        Using `torch.func`'s function transforms can apparently be only used
+        Using :func:`torch.func`'s function transforms can apparently be only used
         once. Hence, for example, the Hessian and the dipole derivatives cannot
         be both calculated with functorch.
 
@@ -103,7 +110,7 @@ class AutogradCalculator(EnergyCalculator):
         grad_mode: Literal, optional
             Specify the mode for gradient calculation. Possible options are:
 
-            - "autograd" (default): Use PyTorch's `torch.autograd.grad`.
+            - "autograd" (default): Use PyTorch's :func:`torch.autograd.grad`.
             - "backward": Use PyTorch's backward function.
             - "functorch": Use functorch's `jacrev`.
             - "row": Use PyTorch's autograd row-by-row (unnecessary here).
@@ -246,21 +253,21 @@ class AutogradCalculator(EnergyCalculator):
         use_functorch: bool = False,
         project_translational: bool = True,
         project_rotational: bool = True,
-    ) -> vib.VibResult:
+    ) -> VibResult:
         r"""
         Perform vibrational analysis. This calculates the Hessian matrix and
         diagonalizes it to obtain the vibrational frequencies and normal modes.
 
         One can calculate the Jacobian either row-by-row using the standard
-        `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
-        using `torch.func`'s function transforms (e.g., `jacrev`).
+        :func:`torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
+        using :func:`torch.func`'s function transforms (e.g., `jacrev`).
 
         .. _here: https://pytorch.org/functorch/stable/notebooks/\
                   jacobians_hessians.html#computing-the-jacobian
 
         Note
         ----
-        Using `torch.func`'s function transforms can apparently be only used
+        Using :func:`torch.func`'s function transforms can apparently be only used
         once. Hence, for example, the Hessian and the dipole derivatives cannot
         be both calculated with functorch.
 
@@ -281,7 +288,7 @@ class AutogradCalculator(EnergyCalculator):
 
         Returns
         -------
-        vib.VibResult
+        VibResult
             Result container with vibrational frequencies (shape:
             `(..., nfreqs)`) and normal modes (shape: `(..., nat*3, nfreqs)`).
         """
@@ -292,7 +299,7 @@ class AutogradCalculator(EnergyCalculator):
             use_functorch=use_functorch,
             matrix=False,
         )
-        return vib.vib_analysis(
+        return vib_analysis(
             self.numbers,
             positions,
             hess,
@@ -317,15 +324,15 @@ class AutogradCalculator(EnergyCalculator):
             \mu = \dfrac{\partial E}{\partial F}
 
         One can calculate the Jacobian either row-by-row using the standard
-        `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
-        using `torch.func`'s function transforms (e.g., `jacrev`).
+        :func:`torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
+        using :func:`torch.func`'s function transforms (e.g., `jacrev`).
 
         .. _here: https://pytorch.org/functorch/stable/notebooks/\
                   jacobians_hessians.html#computing-the-jacobian
 
         Note
         ----
-        Using `torch.func`'s function transforms can apparently be only used
+        Using :func:`torch.func`'s function transforms can apparently be only used
         once. Hence, for example, the Hessian and the dipole derivatives cannot
         be both calculated with functorch.
 
@@ -392,15 +399,15 @@ class AutogradCalculator(EnergyCalculator):
             \mu' = \dfrac{\partial \mu}{\partial R} = \dfrac{\partial^2 E}{\partial F \partial R}
 
         One can calculate the Jacobian either row-by-row using the standard
-        `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
-        using `torch.func`'s function transforms (e.g., `jacrev`).
+        :func:`torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
+        using :func:`torch.func`'s function transforms (e.g., `jacrev`).
 
         .. _here: https://pytorch.org/functorch/stable/notebooks/\
                   jacobians_hessians.html#computing-the-jacobian
 
         Note
         ----
-        Using `torch.func`'s function transforms can apparently be only used
+        Using :func:`torch.func`'s function transforms can apparently be only used
         once. Hence, for example, the Hessian and the dipole derivatives cannot
         be both calculated with functorch.
 
@@ -485,15 +492,15 @@ class AutogradCalculator(EnergyCalculator):
             \alpha = \dfrac{\partial \mu}{\partial F} = \dfrac{\partial^2 E}{\partial^2 F}
 
         One can calculate the Jacobian either row-by-row using the standard
-        `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
-        using `torch.func`'s function transforms (e.g., `jacrev`).
+        :func:`torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
+        using :func:`torch.func`'s function transforms (e.g., `jacrev`).
 
         .. _here: https://pytorch.org/functorch/stable/notebooks/\
                   jacobians_hessians.html#computing-the-jacobian
 
         Note
         ----
-        Using `torch.func`'s function transforms can apparently be only used
+        Using :func:`torch.func`'s function transforms can apparently be only used
         once. Hence, for example, the Hessian and the polarizability cannot
         be both calculated with functorch.
 
@@ -604,15 +611,15 @@ class AutogradCalculator(EnergyCalculator):
             \end{align*}
 
         One can calculate the Jacobian either row-by-row using the standard
-        `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
-        using `torch.func`'s function transforms (e.g., `jacrev`).
+        :func:`torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
+        using :func:`torch.func`'s function transforms (e.g., `jacrev`).
 
         .. _here: https://pytorch.org/functorch/stable/notebooks/\
                   jacobians_hessians.html#computing-the-jacobian
 
         Note
         ----
-        Using `torch.func`'s function transforms can apparently be only used
+        Using :func:`torch.func`'s function transforms can apparently be only used
         once. Hence, for example, the Hessian and the polarizability cannot
         be both calculated with functorch.
 
@@ -685,15 +692,15 @@ class AutogradCalculator(EnergyCalculator):
             \end{align*}
 
         One can calculate the Jacobian either row-by-row using the standard
-        `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
-        using `torch.func`'s function transforms (e.g., `jacrev`).
+        :func:`torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
+        using :func:`torch.func`'s function transforms (e.g., `jacrev`).
 
         .. _here: https://pytorch.org/functorch/stable/notebooks/\
                   jacobians_hessians.html#computing-the-jacobian
 
         Note
         ----
-        Using `torch.func`'s function transforms can apparently be only used
+        Using :func:`torch.func`'s function transforms can apparently be only used
         once. Hence, for example, the Hessian and the polarizability cannot
         be both calculated with functorch.
 
@@ -786,7 +793,7 @@ class AutogradCalculator(EnergyCalculator):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         use_functorch: bool = False,
-    ) -> vib.IRResult:
+    ) -> IRResult:
         """
         Calculate the frequencies and intensities of IR spectra.
 
@@ -804,7 +811,7 @@ class AutogradCalculator(EnergyCalculator):
 
         Returns
         -------
-        vib.IRResult
+        IRResult
             Result container with frequencies (shape: `(..., nfreqs)`) and
             intensities (shape: `(..., nfreqs)`) of IR spectra.
         """
@@ -822,11 +829,11 @@ class AutogradCalculator(EnergyCalculator):
         # calculate nuclear dipole derivative dmu/dR: (..., 3, nat, 3)
         dmu_dr = self.dipole_deriv(positions, chrg, spin, use_functorch=use_functorch)
 
-        intensities = vib.ir_ints(dmu_dr, vib_res.modes)
+        intensities = ir_ints(dmu_dr, vib_res.modes)
 
         logger.debug("IR spectrum: All finished.")
 
-        return vib.IRResult(vib_res.freqs, intensities)
+        return IRResult(vib_res.freqs, intensities)
 
     def raman(
         self,
@@ -834,7 +841,7 @@ class AutogradCalculator(EnergyCalculator):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         use_functorch: bool = False,
-    ) -> vib.RamanResult:
+    ) -> RamanResult:
         """
         Calculate the frequencies, static intensities and depolarization ratio
         of Raman spectra.
@@ -854,7 +861,7 @@ class AutogradCalculator(EnergyCalculator):
 
         Returns
         -------
-        vib.RamanResult
+        RamanResult
             Result container with frequencies (shape: `(..., nfreqs)`),
             intensities (shape: `(..., nfreqs)`) and the depolarization ratio
             (shape: `(..., nfreqs)`) of Raman spectra.
@@ -872,8 +879,8 @@ class AutogradCalculator(EnergyCalculator):
         # d(..., 3, 3) / d(..., nat, 3) -> (..., 3, 3, nat, 3)
         da_dr = self.pol_deriv(positions, chrg, spin, use_functorch=use_functorch)
 
-        intensities, depol = vib.raman_ints_depol(da_dr, vib_res.modes)
+        intensities, depol = raman_ints_depol(da_dr, vib_res.modes)
 
         logger.debug("Raman spectrum: All finished.")
 
-        return vib.RamanResult(vib_res.freqs, intensities, depol)
+        return RamanResult(vib_res.freqs, intensities, depol)

@@ -15,10 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Overlap
-=======
-
-The GFNn-xTB overlap matrix.
+Quadrupole integral.
 """
 
 from __future__ import annotations
@@ -29,24 +26,20 @@ from dxtb._src.constants import labels
 from dxtb._src.typing import TYPE_CHECKING, Any
 
 from .base import BaseIntegral
-from .factory import new_overlap
 
 if TYPE_CHECKING:
-    from .driver.libcint import OverlapLibcint
-    from .driver.pytorch import OverlapPytorch
+    from ..driver.libcint import QuadrupoleLibcint
 
-__all__ = ["Overlap"]
+__all__ = ["Quadrupole"]
 
 
-class Overlap(BaseIntegral):
+class Quadrupole(BaseIntegral):
     """
-    Overlap integral from atomic orbitals.
+    Quadrupole integral from atomic orbitals.
     """
 
-    integral: OverlapLibcint | OverlapPytorch
-    """Instance of actual overlap integral type."""
-
-    __slots__ = ["integral"]
+    integral: QuadrupoleLibcint
+    """Instance of actual quadrupole integral type."""
 
     def __init__(
         self,
@@ -57,4 +50,19 @@ class Overlap(BaseIntegral):
     ) -> None:
         super().__init__(device=device, dtype=dtype)
 
-        self.integral = new_overlap(driver, device=device, dtype=dtype, **kwargs)
+        # Determine which overlap class to instantiate based on the type
+        if driver == labels.INTDRIVER_LIBCINT:
+            # pylint: disable=import-outside-toplevel
+            from ..driver.libcint import QuadrupoleLibcint
+
+            if kwargs.pop("force_cpu_for_libcint", True):
+                device = torch.device("cpu")
+
+            self.integral = QuadrupoleLibcint(device=device, dtype=dtype, **kwargs)
+        elif driver in (labels.INTDRIVER_ANALYTICAL, labels.INTDRIVER_AUTOGRAD):
+            raise NotImplementedError(
+                "PyTorch versions of multipole moments are not implemented. "
+                "Use `libcint` as integral driver."
+            )
+        else:
+            raise ValueError(f"Unknown integral driver '{driver}'.")

@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Quadrupole integral.
+Dipole integral.
 """
 
 from __future__ import annotations
@@ -28,18 +28,18 @@ from dxtb._src.typing import TYPE_CHECKING, Any
 from .base import BaseIntegral
 
 if TYPE_CHECKING:
-    from .driver.libcint import QuadrupoleLibcint
+    from ..driver.libcint import DipoleLibcint
 
-__all__ = ["Quadrupole"]
+__all__ = ["Dipole"]
 
 
-class Quadrupole(BaseIntegral):
+class Dipole(BaseIntegral):
     """
-    Quadrupole integral from atomic orbitals.
+    Dipole integral from atomic orbitals.
     """
 
-    integral: QuadrupoleLibcint
-    """Instance of actual quadrupole integral type."""
+    integral: DipoleLibcint
+    """Instance of actual dipole integral type."""
 
     def __init__(
         self,
@@ -53,12 +53,12 @@ class Quadrupole(BaseIntegral):
         # Determine which overlap class to instantiate based on the type
         if driver == labels.INTDRIVER_LIBCINT:
             # pylint: disable=import-outside-toplevel
-            from .driver.libcint import QuadrupoleLibcint
+            from ..driver.libcint import DipoleLibcint
 
             if kwargs.pop("force_cpu_for_libcint", True):
                 device = torch.device("cpu")
 
-            self.integral = QuadrupoleLibcint(device=device, dtype=dtype, **kwargs)
+            self.integral = DipoleLibcint(device=device, dtype=dtype, **kwargs)
         elif driver in (labels.INTDRIVER_ANALYTICAL, labels.INTDRIVER_AUTOGRAD):
             raise NotImplementedError(
                 "PyTorch versions of multipole moments are not implemented. "

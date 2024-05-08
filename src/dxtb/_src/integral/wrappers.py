@@ -21,7 +21,7 @@ Integrals: Wrappers/Shortcuts
 A simple collection for convenience functions of all integrals. In these
 functions, defaults will be applied. Although (some) settings can be accessed
 through keyword arguments, it is recommended to follow the interal integral
-builds as used in the :class:`dxtb._src.integral.Integrals` class for more direct
+builds as used in the :class:`~dxtb.integrals.Integrals` class for more direct
 control.
 
 Note that there are several peculiarities for the multipole integrals:
@@ -30,7 +30,7 @@ Note that there are several peculiarities for the multipole integrals:
   (rj), the latter being the default in ``dxtb``.
 - An overlap calculation is executed for the normalization of the multipole
   integral every time :func:`.dipole` or :func:`.quadrupole` are called.
-- The quadrupole integral is not in its traceless representation.
+- The quadrupole integral is **not** in its traceless representation.
 
 Example
 -------
@@ -72,15 +72,38 @@ from dxtb._src.typing import DD, Any, Literal, Tensor
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 from dxtb._src.xtb.gfn2 import GFN2Hamiltonian
 
-from .dipole import Dipole
 from .factory import new_driver
-from .overlap import Overlap
-from .quadrupole import Quadrupole
+from .types import Dipole, Overlap, Quadrupole
 
 __all__ = ["hcore", "overlap", "dipole", "quadrupole"]
 
 
 def hcore(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tensor:
+    """
+    Shortcut for the core Hamiltonian matrix calculation.
+
+    Parameters
+    ----------
+    numbers : Tensor
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
+    positions : Tensor
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+    par : Param
+        Representation of an extended tight-binding model.
+
+    Returns
+    -------
+    Tensor
+        Core Hamiltonian matrix of shape ``(nb, nao, nao)``.
+
+    Raises
+    ------
+    TypeError
+        If the Hamiltonian parametrization does not contain meta data or if the
+        meta data does not contain a name to select the correct Hamiltonian.
+    ValueError
+        If the Hamiltonian name is unknown.
+    """
     if par.meta is None:
         raise TypeError(
             "Meta data of Hamiltonian parametrization must contain a name. "
@@ -133,7 +156,7 @@ def overlap(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Te
     Returns
     -------
     Tensor
-        Overlap integral (matrix) of shape `(nb, nao, nao)`.
+        Overlap integral (matrix) of shape ``(nb, nao, nao)``.
     """
     return _integral("_overlap", numbers, positions, par, **kwargs)
 
@@ -154,14 +177,13 @@ def dipole(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Ten
     Returns
     -------
     Tensor
-        Dipole integral (matrix) of shape `(nb, 3, nao, nao)`.
+        Dipole integral (matrix) of shape ``(nb, 3, nao, nao)``.
     """
     return _integral("_dipole", numbers, positions, par, **kwargs)
 
 
 def quadrupole(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tensor:
-    """
-    Shortcut for dipole integral calculations.
+    """Shortcut for dipole integral calculations.
 
     Parameters
     ----------
@@ -175,7 +197,7 @@ def quadrupole(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) ->
     Returns
     -------
     Tensor
-        Dipole integral (matrix) of shape `(nb, 3, nao, nao)`.
+        Dipole integral (matrix) of shape ``(nb, 3, nao, nao)``.
     """
     return _integral("_quadrupole", numbers, positions, par, **kwargs)
 
@@ -187,6 +209,30 @@ def _integral(
     par: Param,
     **kwargs: Any,
 ) -> Tensor:
+    """Shortcut for integral calculations.
+
+    Parameters
+    ----------
+    integral_type : Literal['overlap', 'dipole', 'quadrupole']
+        Type of integral to calculate.
+    numbers : Tensor
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
+    positions : Tensor
+        Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+    par : Param
+        Representation of an extended tight-binding model.
+
+    Returns
+    -------
+    Tensor
+        Integral matrix of shape ``(nb, nao, nao)`` for overlap and
+        ``(nb, 3, nao, nao)`` for dipole and quadrupole.
+
+    Raises
+    ------
+    ValueError
+        If the integral type is unknown.
+    """
     dd: DD = {"device": positions.device, "dtype": positions.dtype}
 
     # Determine which driver class to instantiate (defaults to libcint)

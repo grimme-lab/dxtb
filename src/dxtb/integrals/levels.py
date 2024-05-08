@@ -14,5 +14,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Integrals: Levels
+=================
 
-# no docstring required here
+Specifies the levels of integrals that should be computed.
+"""
+
+from dxtb._src.integral.levels import INTLEVEL_DIPOLE as INTLEVEL_DIPOLE
+from dxtb._src.integral.levels import INTLEVEL_NONE as INTLEVEL_NONE
+from dxtb._src.integral.levels import INTLEVEL_OVERLAP as INTLEVEL_OVERLAP
+from dxtb._src.integral.levels import INTLEVEL_QUADRUPOLE as INTLEVEL_QUADRUPOLE

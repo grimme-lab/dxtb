@@ -24,10 +24,10 @@ from abc import abstractmethod
 
 import torch
 
+from dxtb._src.basis import Basis, IndexHelper
+from dxtb._src.constants import labels
 from dxtb._src.typing import Any, Tensor
 
-from ....basis import Basis, IndexHelper
-from ....constants import labels
 from ...base import BaseIntegralImplementation, IntDriver
 from .impls import OverlapFunction
 

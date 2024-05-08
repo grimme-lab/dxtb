@@ -34,7 +34,6 @@ class ConfigSCF:
     Configuration for the SCF.
     """
 
-    # TODO: list all
     guess: int
     """Initial guess for the SCF."""
 
@@ -49,6 +48,40 @@ class ConfigSCF:
 
     scp_mode: int
     """SCF convergence target (self-consistent property)."""
+
+    x_atol: float
+    """Absolute tolerance for argument (x) in SCF solver."""
+
+    f_atol: float
+    """Absolute tolerance for function value (f(x)) the SCF solver."""
+
+    force_convergence: bool
+    """Force convergence of the SCF iterations."""
+
+    batch_mode: int
+    """Batch mode for the SCF iterations."""
+
+    # Fermi
+
+    fermi_etemp: float
+    """Electronic temperature for Fermi smearing."""
+
+    fermi_maxiter: int
+    """Maximum number of iterations for Fermi smearing."""
+
+    fermi_thresh: dict
+    """Threshold for Fermi iterations."""
+
+    fermi_partition: int
+    """Partitioning scheme for electronic free energy."""
+
+    # PyTorch
+
+    device: torch.device
+    """Device for calculations."""
+
+    dtype: torch.dtype
+    """Data type for calculations."""
 
     def __init__(
         self,
@@ -192,6 +225,14 @@ class ConfigSCF:
         )
 
     def info(self) -> dict[str, Any]:
+        """
+        Return a dictionary with the SCF configuration.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary with the SCF configuration.
+        """
         return {
             "SCF Options": {
                 "Guess Method": labels.GUESS_MAP[self.guess],
@@ -275,6 +316,14 @@ class ConfigFermi:
     partition: int
     """Partitioning scheme for electronic free energy."""
 
+    # PyTorch
+
+    device: torch.device
+    """Device for calculations."""
+
+    dtype: torch.dtype
+    """Data type for calculations."""
+
     def __init__(
         self,
         *,
@@ -317,6 +366,14 @@ class ConfigFermi:
             )
 
     def info(self) -> dict[str, dict[str, float | int | str]]:
+        """
+        Return a dictionary with the Fermi smearing configuration.
+
+        Returns
+        -------
+        dict[str, dict[str, float | int | str]]
+            Dictionary with the Fermi smearing configuration.
+        """
         return {
             "Fermi Smearing": {
                 "Temperature": self.etemp,

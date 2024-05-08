@@ -15,7 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Integral levels.
+Integrals: Levels
+=================
+
+Specifies the levels of integrals that should be computed.
 """
 
 __all__ = [
@@ -26,6 +29,13 @@ __all__ = [
 ]
 
 INTLEVEL_NONE = 0
+"""No integrals."""
+
 INTLEVEL_OVERLAP = 1
+"""Overlap integrals."""
+
 INTLEVEL_DIPOLE = 2
+"""Dipole integrals."""
+
 INTLEVEL_QUADRUPOLE = 3
+"""Quadrupole integrals."""

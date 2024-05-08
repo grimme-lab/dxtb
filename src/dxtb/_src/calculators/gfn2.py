@@ -29,18 +29,16 @@ from dxtb._src.components.interactions import Interaction
 from dxtb._src.typing import Any, Sequence, Tensor
 from dxtb.config import Config
 
-from .base import BaseCalculator
+from .base import Calculator
 
 __all__ = ["GFN2Calculator"]
 
 
-class GFN2Calculator(BaseCalculator):
-    """
-    Calculator for the GFN2-xTB method.
+class GFN2Calculator(Calculator):
+    """Calculator for the GFN2-xTB method.
 
-    This is a simple wrapper around the
-    :class:`dxtb._src.calculators.base.BaseCalculator` class with the GFN2-xTB
-    parameters passed in as defaults.
+    This is a simple wrapper around the :class:`dxtb.Calculator` class with the
+    :data:`GFN2-xTB <dxtb.GFN2_XTB>` parameters passed in as defaults.
     """
 
     def __init__(

@@ -12,8 +12,8 @@ Creating a Calculator
 The constructor always requires the atomic numbers of the system(s) and a
 tight-binding parametrization.
 Currently, we provide the :data:`~dxtb.GFN1_XTB` parametrization out of the box.
-If you directly use the corresponding :class:`~dxtb.GFN1Calculator`, only the
-atomic numbers are required.
+If you directly use the corresponding
+:class:`~dxtb.calculators.GFN1Calculator`, only the atomic numbers are required.
 
 .. code-block:: python
 
@@ -21,10 +21,10 @@ atomic numbers are required.
     import dxtb
 
     numbers = torch.tensor([3, 1])  # LiH
-    calc = dxtb.GFN1Calculator(numbers)
+    calc = dxtb.calculators.GFN1Calculator(numbers)
 
-We recommend to always pass the (floating point) ``dtype`` and the
-``device`` arguments to the constructor to ensure consistency.
+We recommend to always pass the (floating point) :class:`~torch.dtype` and
+:class:`~torch.device` arguments to the constructor to ensure consistency.
 
 .. code-block:: python
 
@@ -34,7 +34,7 @@ We recommend to always pass the (floating point) ``dtype`` and the
     dd = {"dtype": torch.double, "device": torch.device("cpu")}
 
     numbers = torch.tensor([3, 1], device=dd["device"])
-    calc = dxtb.GFN1Calculator(numbers, **dd)
+    calc = dxtb.calculators.GFN1Calculator(numbers, **dd)
 
 Using the Calculator
 --------------------
@@ -50,7 +50,7 @@ the total energy.
     dd = {"dtype": torch.double, "device": torch.device("cpu")}
 
     numbers = torch.tensor([3, 1], device=dd["device"])
-    calc = dxtb.GFN1Calculator(numbers, **dd)
+    calc = dxtb.calculators.GFN1Calculator(numbers, **dd)
 
     positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
     energy = calc.energy(positions)
@@ -58,7 +58,7 @@ the total energy.
     print(energy)
 
 If your system is charged or has unpaired electrons, you need to supply both
-quantities as optional keyword arguments to :meth:`energy`.
+quantities as optional keyword arguments to :meth:`~dxtb.Calculator.energy`.
 
 .. code-block:: python
 
@@ -81,7 +81,7 @@ to ``True``.
     dd = {"dtype": torch.double, "device": torch.device("cpu")}
 
     numbers = torch.tensor([3, 1], device=dd["device"])
-    calc = dxtb.GFN1Calculator(numbers, **dd)
+    calc = dxtb.calculators.GFN1Calculator(numbers, **dd)
 
     positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
     positions.requires_grad_(True)
@@ -91,7 +91,8 @@ to ``True``.
 
     print(g)
 
-For convenience, you can use the :meth:`forces` method directly.
+For convenience, you can use the :meth:`~dxtb.Calculator.forces` method
+directly.
 
 .. code-block:: python
 

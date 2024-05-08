@@ -15,7 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Dipole integral.
+Overlap
+=======
+
+The GFNn-xTB overlap matrix.
 """
 
 from __future__ import annotations
@@ -25,21 +28,25 @@ import torch
 from dxtb._src.constants import labels
 from dxtb._src.typing import TYPE_CHECKING, Any
 
+from ..factory import new_overlap
 from .base import BaseIntegral
 
 if TYPE_CHECKING:
-    from .driver.libcint import DipoleLibcint
+    from ..driver.libcint import OverlapLibcint
+    from ..driver.pytorch import OverlapPytorch
 
-__all__ = ["Dipole"]
+__all__ = ["Overlap"]
 
 
-class Dipole(BaseIntegral):
+class Overlap(BaseIntegral):
     """
-    Dipole integral from atomic orbitals.
+    Overlap integral from atomic orbitals.
     """
 
-    integral: DipoleLibcint
-    """Instance of actual dipole integral type."""
+    integral: OverlapLibcint | OverlapPytorch
+    """Instance of actual overlap integral type."""
+
+    __slots__ = ["integral"]
 
     def __init__(
         self,
@@ -50,19 +57,4 @@ class Dipole(BaseIntegral):
     ) -> None:
         super().__init__(device=device, dtype=dtype)
 
-        # Determine which overlap class to instantiate based on the type
-        if driver == labels.INTDRIVER_LIBCINT:
-            # pylint: disable=import-outside-toplevel
-            from .driver.libcint import DipoleLibcint
-
-            if kwargs.pop("force_cpu_for_libcint", True):
-                device = torch.device("cpu")
-
-            self.integral = DipoleLibcint(device=device, dtype=dtype, **kwargs)
-        elif driver in (labels.INTDRIVER_ANALYTICAL, labels.INTDRIVER_AUTOGRAD):
-            raise NotImplementedError(
-                "PyTorch versions of multipole moments are not implemented. "
-                "Use `libcint` as integral driver."
-            )
-        else:
-            raise ValueError(f"Unknown integral driver '{driver}'.")
+        self.integral = new_overlap(driver, device=device, dtype=dtype, **kwargs)

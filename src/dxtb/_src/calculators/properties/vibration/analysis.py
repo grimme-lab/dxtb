@@ -106,7 +106,8 @@ class VibResult(BaseResult):
 
     def to_unit(self, value: Literal["freqs", "modes"], unit: str) -> Tensor:
         """
-        Convert a value from one unit to another based on the converter dictionary.
+        Convert a value from one unit to another based on the converter
+        dictionary.
         """
         if value == "freqs":
             return self._convert(self.freqs, unit, self.converter_freqs)
@@ -327,7 +328,7 @@ def project_freqs(
         return freqs[skip:], modes[:, skip:]
 
     # Batched version
-    from ...utils.batch import deflate, pack
+    from tad_mctc.batch import deflate, pack
 
     projected_freqs = []
     projected_modes = []

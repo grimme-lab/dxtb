@@ -17,8 +17,9 @@
    :maxdepth: 2
 
    Calculators <02_indepth/calculators>
-   SCF <02_indepth/scf>
    Components <02_indepth/components>
+   SCF <02_indepth/scf>
+   Integrals <02_indepth/integrals>
 
 .. toctree::
    :hidden:

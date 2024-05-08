@@ -31,9 +31,9 @@ from dxtb import OutputHandler
 from dxtb._src.components.interactions.field import efield as efield
 from dxtb._src.components.interactions.field import efieldgrad as efield_grad
 from dxtb._src.constants import defaults
-from dxtb._src.properties import vibration as vib
 from dxtb._src.typing import Tensor
 
+from ..properties import vibration as vib
 from . import decorators as cdec
 from .energy import EnergyCalculator
 

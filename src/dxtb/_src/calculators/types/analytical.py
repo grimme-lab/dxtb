@@ -27,12 +27,12 @@ import torch
 from tad_mctc.convert import any_to_tensor
 
 from dxtb import OutputHandler
-from dxtb._src import integral as ints
 from dxtb._src import ncoord, scf
 from dxtb._src.components.interactions.field import efield as efield
 from dxtb._src.constants import defaults
 from dxtb._src.timing import timer
 from dxtb._src.typing import Tensor
+from dxtb.integrals import levels as intlvl
 
 from ..result import Result
 from . import decorators as cdec
@@ -71,17 +71,18 @@ class AnalyticalCalculator(EnergyCalculator):
             f = -\dfrac{\partial E}{\partial R}
 
         One can calculate the Jacobian either row-by-row using the standard
-        `torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
-        using `torch.func`'s function transforms (e.g., `jacrev`).
+        :func:`torch.autograd.grad` with unit vectors in the VJP (see `here`_)
+        or using :func:`torch.func`'s function transforms (e.g.,
+        :func:`torch.func.jacrev`).
 
         .. _here: https://pytorch.org/functorch/stable/notebooks/\
                   jacobians_hessians.html#computing-the-jacobian
 
         Note
         ----
-        Using `torch.func`'s function transforms can apparently be only used
-        once. Hence, for example, the Hessian and the dipole derivatives cannot
-        be both calculated with functorch.
+        Using :func:`torch.func`'s function transforms can apparently be only
+        used once. Hence, for example, the Hessian and the dipole derivatives
+        cannot be both calculated with functorch.
 
         Parameters
         ----------
@@ -141,7 +142,7 @@ class AnalyticalCalculator(EnergyCalculator):
         OutputHandler.write_stdout("done", v=3)
 
         # dipole integral
-        if self.opts.ints.level >= ints.INTLEVEL_DIPOLE:
+        if self.opts.ints.level >= intlvl.INTLEVEL_DIPOLE:
             OutputHandler.write_stdout_nf(" - Dipole            ... ", v=3)
             timer.start("Dipole Integral", parent_uid="Integrals")
             self.integrals.build_dipole(positions)
@@ -149,7 +150,7 @@ class AnalyticalCalculator(EnergyCalculator):
             OutputHandler.write_stdout("done", v=3)
 
         # quadrupole integral
-        if self.opts.ints.level >= ints.INTLEVEL_QUADRUPOLE:
+        if self.opts.ints.level >= intlvl.INTLEVEL_QUADRUPOLE:
             OutputHandler.write_stdout_nf(" - Quadrupole        ... ", v=3)
             timer.start("Quadrupole Integral", parent_uid="Integrals")
             self.integrals.build_quadrupole(positions)
@@ -322,7 +323,7 @@ class AnalyticalCalculator(EnergyCalculator):
             )
 
         # pylint: disable=import-outside-toplevel
-        from dxtb._src.properties.moments.dip import dipole
+        from ..properties.moments.dip import dipole
 
         # dip = properties.dipole(
         # numbers, positions, result.density, self.integrals.dipole

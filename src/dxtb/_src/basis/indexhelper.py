@@ -86,6 +86,38 @@ def _expand(index: Tensor, repeat: Tensor) -> Tensor:
     )
 
 
+class IndexHelperStore:
+    """
+    Storage container for IndexHelper containing ``__slots__`` before culling.
+    """
+
+    def __init__(
+        self,
+        unique_angular: Tensor,
+        angular: Tensor,
+        atom_to_unique: Tensor,
+        ushells_to_unique: Tensor,
+        shells_to_ushell: Tensor,
+        shells_per_atom: Tensor,
+        shell_index: Tensor,
+        shells_to_atom: Tensor,
+        orbitals_per_shell: Tensor,
+        orbital_index: Tensor,
+        orbitals_to_shell: Tensor,
+    ):
+        self.unique_angular = unique_angular
+        self.angular = angular
+        self.atom_to_unique = atom_to_unique
+        self.ushells_to_unique = ushells_to_unique
+        self.shells_to_ushell = shells_to_ushell
+        self.shells_per_atom = shells_per_atom
+        self.shell_index = shell_index
+        self.shells_to_atom = shells_to_atom
+        self.orbitals_per_shell = orbitals_per_shell
+        self.orbital_index = orbital_index
+        self.orbitals_to_shell = orbitals_to_shell
+
+
 class IndexHelper(TensorLike):
     """
     Index helper for basis set.
@@ -136,7 +168,7 @@ class IndexHelper(TensorLike):
     - 2: Multiple systems with no padding (conformer ensemble)
     """
 
-    store: Store | None
+    store: IndexHelperStore | None
     """Storage to restore from after culling."""
 
     __slots__ = [
@@ -174,7 +206,7 @@ class IndexHelper(TensorLike):
         device: torch.device | None = None,
         dtype: torch.dtype = torch.int64,
         *,
-        store: Store | None = None,
+        store: IndexHelperStore | None = None,
         **_,
     ):
         super().__init__(device, dtype)
@@ -259,8 +291,9 @@ class IndexHelper(TensorLike):
         between devices. Only the resulting tensors are transfered to the GPU.
         This is necessary because of complex data look up that is not
         vectorizable and requires native for-loops. Furthermore, the method
-        frequently uses the `.item()` method, which forces CPU-GPU
-        synchronization because it converts a GPU tensor to a Python scalar.
+        frequently uses the :meth:`torch.Tensor.item` method, which forces
+        CPU-GPU synchronization because it converts a GPU tensor to a Python
+        scalar.
 
         Parameters
         ----------
@@ -293,14 +326,16 @@ class IndexHelper(TensorLike):
         """
         Construct an index helper instance from atomic numbers and their
         angular momenta. If you are not sure about the angular momenta, use
-        `from_numbers` instead, which simply takes a parametrization.
+        :meth:`.IndexHelper.from_numbers` instead, which simply takes a
+        parametrization.
 
         Note that this always runs on CPU to avoid inefficient communication
         between devices. Only the resulting tensors are transfered to the GPU.
         This is necessary because of complex data look up that is not
         vectorizable and requires native for-loops. Furthermore, the method
-        frequently uses the `.item()` method, which forces CPU-GPU
-        synchronization because it converts a GPU tensor to a Python scalar.
+        frequently uses the :meth:`torch.Tensor.item` method, which forces
+        CPU-GPU synchronization because it converts a GPU tensor to a Python
+        scalar.
 
         Parameters
         ----------
@@ -849,43 +884,12 @@ class IndexHelper(TensorLike):
             extra=extra,
         )
 
-    class Store:
-        """
-        Storage container for IndexHelper containing ``__slots__`` before culling.
-        """
-
-        def __init__(
-            self,
-            unique_angular: Tensor,
-            angular: Tensor,
-            atom_to_unique: Tensor,
-            ushells_to_unique: Tensor,
-            shells_to_ushell: Tensor,
-            shells_per_atom: Tensor,
-            shell_index: Tensor,
-            shells_to_atom: Tensor,
-            orbitals_per_shell: Tensor,
-            orbital_index: Tensor,
-            orbitals_to_shell: Tensor,
-        ):
-            self.unique_angular = unique_angular
-            self.angular = angular
-            self.atom_to_unique = atom_to_unique
-            self.ushells_to_unique = ushells_to_unique
-            self.shells_to_ushell = shells_to_ushell
-            self.shells_per_atom = shells_per_atom
-            self.shell_index = shell_index
-            self.shells_to_atom = shells_to_atom
-            self.orbitals_per_shell = orbitals_per_shell
-            self.orbital_index = orbital_index
-            self.orbitals_to_shell = orbitals_to_shell
-
     def cull(self, conv: Tensor, slicers: Slicers) -> None:
         if self.batch_mode == 0:
             raise RuntimeError("Culling only possible in batch mode.")
 
         if self.store is None:
-            self.store = self.Store(
+            self.store = IndexHelperStore(
                 unique_angular=self.unique_angular,
                 angular=self.angular,
                 atom_to_unique=self.atom_to_unique,
@@ -1035,7 +1039,7 @@ class IndexHelper(TensorLike):
         """
         Mapping of atom index to orbital index, i.e., return indices of orbitals
         belonging to given atom. The orbital order is given by
-        `IndexHelper.orbitals_to_shell`.
+        :meth:`.IndexHelper.orbitals_to_shell`.
 
         Parameters
         ----------
@@ -1176,14 +1180,14 @@ class IndexHelperGFN1(IndexHelper):
             Instance of index helper for given basis set.
         """
         # pylint: disable=import-outside-toplevel
-        from dxtb._src.param.gfn1 import GFN1_XTB
+        from dxtb import GFN1_XTB
 
         return super().from_numbers(numbers, GFN1_XTB, batch_mode=batch_mode)
 
 
 class IndexHelperGFN2(IndexHelper):
     """
-    Index helper for GFN1 basis set.
+    Index helper for GFN2 basis set.
     """
 
     @override
@@ -1206,6 +1210,6 @@ class IndexHelperGFN2(IndexHelper):
             Instance of index helper for given basis set.
         """
         # pylint: disable=import-outside-toplevel
-        from dxtb._src.param.gfn2 import GFN2_XTB
+        from dxtb import GFN2_XTB
 
         return super().from_numbers(numbers, GFN2_XTB, batch_mode=batch_mode)

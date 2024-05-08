@@ -23,7 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb._src.integral import IntegralMatrices
+from dxtb._src.integral.container import IntegralMatrices
 from dxtb._src.scf.implicit import SelfConsistentFieldImplicit as SCF
 
 

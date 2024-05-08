@@ -18,7 +18,7 @@ import torch
 from dxtb import IndexHelper
 from dxtb._src.components.interactions import InteractionListCache
 from dxtb._src.components.interactions.container import ContainerData
-from dxtb._src.integral import IntegralMatrices
+from dxtb._src.integral.container import IntegralMatrices
 from dxtb._src.typing import Slicers, Tensor
 
 __all__ = ["_Data"]

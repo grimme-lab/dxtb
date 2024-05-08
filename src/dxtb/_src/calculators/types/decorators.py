@@ -67,6 +67,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 def requires_positions_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
+    @wraps(func)
     def wrapper(
         self: Calculator,  # type: ignore
         positions: Tensor,
@@ -86,6 +87,7 @@ def requires_positions_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor
 
 
 def requires_efield(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
+    @wraps(func)
     def wrapper(
         self: Calculator,  # type: ignore
         positions: Tensor,
@@ -105,6 +107,7 @@ def requires_efield(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
 
 
 def requires_efield_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
+    @wraps(func)
     def wrapper(
         self: Calculator,  # type: ignore
         positions: Tensor,
@@ -124,6 +127,7 @@ def requires_efield_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
 
 
 def requires_efg(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
+    @wraps(func)
     def wrapper(
         self: Calculator,  # type: ignore
         positions: Tensor,
@@ -144,6 +148,7 @@ def requires_efg(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
 
 
 def requires_efg_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
+    @wraps(func)
     def wrapper(
         self: Calculator,  # type: ignore
         positions: Tensor,

@@ -18,13 +18,12 @@
 Calculators
 ===========
 
-Calculators for the extended tight-binding models (xTB). The `Calculator`
-object is the center-piece of ``dxtb``, providing a simple interface to compute
-energies, forces and other properties of molecules.
+The :class:`dxtb.Calculator` object is the center-piece of ``dxtb``, providing a simple interface to compute energies, forces and other properties of molecules.
 
 Examples
 --------
-The calculator is instantiated with the atomic numbers and a parametrization.
+The calculator is instantiated with the atomic ``numbers`` and a
+parametrization.
 
 .. code-block:: python
 
@@ -35,7 +34,8 @@ The calculator is instantiated with the atomic numbers and a parametrization.
     numbers = torch.tensor([1, 1])
     calc = Calculator(numbers, GFN1_XTB)
 
-It is recommended to always pass the `dtype` and `device` to the calculator.
+It is recommended to always pass the :class:`~torch.dtype` and
+:class:`~torch.device` to the calculator.
 
 .. code-block:: python
 
@@ -48,8 +48,8 @@ It is recommended to always pass the `dtype` and `device` to the calculator.
     print(calc.device)  # Expected output: cpu
     print(calc.dtype)  # Expected output: torch.float64
 
-The ``dtype`` and ``device`` can be conveniently changed after instantiation in
-the same way as for any other PyTorch tensor.
+The :class:`~torch.dtype` and :class:`~torch.device` can be conveniently
+changed after instantiation in the same way as for any other PyTorch tensor.
 
 .. code-block:: python
 
