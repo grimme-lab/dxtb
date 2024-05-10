@@ -50,8 +50,8 @@ class AnalyticalCalculator(EnergyCalculator):
     """
 
     implemented_properties = EnergyCalculator.implemented_properties + [
-        "forces_analytical",
-        "dipole_analytical",
+        "forces",
+        "dipole",
     ]
     """Names of implemented methods of the Calculator."""
 
@@ -273,6 +273,16 @@ class AnalyticalCalculator(EnergyCalculator):
         total_grad += hamiltonian_grad
         timer.stop("hgrad")
 
+        # DEVNOTE: The cache decorator only writes the quantity specified by
+        # the function name in the cache. For this, the quantity must be
+        # returned from the function. All other quantities must be entered
+        # explicitly into the cache.
+        self.cache["energy"] = result.total
+        self.cache["charges"] = result.charges
+        self.cache["iterations"] = result.iter
+
+        self.ncalcs += 1
+
         return -total_grad
 
     @cdec.requires_efield
@@ -331,3 +341,37 @@ class AnalyticalCalculator(EnergyCalculator):
         qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
         dip = dipole(qat, positions, result.density, dipint.matrix)
         return dip
+
+    def calculate(
+        self,
+        properties: list[str],
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs,
+    ):
+        """
+        Calculate the requested properties. This is more of a dispatcher method
+        that calls the appropriate methods of the Calculator.
+
+        Parameters
+        ----------
+        properties : list[str]
+            List of properties to calculate.
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to ``None``.
+
+        Returns
+        -------
+        dict
+            Dictionary of calculated properties.
+        """
+        if "forces" in properties:
+            self.forces_analytical(positions, chrg, spin, **kwargs)
+
+        if "dipole" in properties:
+            self.dipole_analytical(positions, chrg, spin, **kwargs)

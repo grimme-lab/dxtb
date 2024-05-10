@@ -23,11 +23,10 @@ duplication) in calculators.
 """
 from abc import ABC, abstractmethod
 
-from tad_mctc.molecule import Mol
-
+from dxtb._src.constants import defaults
 from dxtb._src.typing import Tensor
 
-__all__ = ["BaseCalculator"]
+__all__ = ["GetPropertiesMixin", "PropertyNotImplementedError"]
 
 
 class PropertyNotImplementedError(NotImplementedError):
@@ -48,7 +47,13 @@ class GetPropertiesMixin(ABC):
         return self.implemented_properties
 
     @abstractmethod
-    def get_property(self, name: str, mol: Mol | None = None) -> Tensor:
+    def get_property(
+        self,
+        name: str,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+    ) -> Tensor:
         """
         Get the named property.
 
@@ -56,104 +61,55 @@ class GetPropertiesMixin(ABC):
         ----------
         name : str
             Name of the property to get.
-        mol : Mol, optional
-            Molecule to get the property of.
-        """
-
-    def get_energy(self, mol: Mol | None = None) -> Tensor:
-        return self.get_property("energy", mol)
-
-    def get_potential_energy(self, mol: Mol | None = None) -> Tensor:
-        return self.get_property("energy", mol)
-
-    def get_forces(self, mol: Mol | None = None) -> Tensor:
-        return self.get_property("forces", mol)
-
-    def get_dipole_moment(self, mol: Mol | None = None) -> Tensor:
-        return self.get_property("dipole", mol)
-
-    def get_charges(self, mol: Mol | None = None) -> Tensor:
-        return self.get_property("charges", mol)
-
-
-class BaseCalculator(GetPropertiesMixin, ABC):
-    """
-    Base calculator for the extended tight-binding (xTB) models.
-
-    This calculator provides analytical, autograd, and numerical versions of all
-    properties.
-    """
-
-    def __init__(self, mol: Mol) -> None:
-        """
-        Initialize the calculator.
-
-        Parameters
-        ----------
-        mol : Mol
-            Molecule to calculate properties for.
-        """
-        self.results = {}
-
-    @abstractmethod
-    def calculate(self, mol: Mol, properties: list[str]) -> dict:
-        """
-        Calculate the requested properties of a molecule.
-
-        Parameters
-        ----------
-        mol : Mol
-            Molecule to calculate properties for.
-        properties : list[str]
-            List of properties to calculate.
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to 0.
 
         Returns
         -------
-        dict
-            Dictionary of calculated properties.
+        Tensor
+            The requested property.
         """
 
-    def get_property(
-        self, name: str, mol: Mol | None = None, allow_calculation=True
-    ) -> Tensor | None:
-        """
-        Get the named property.
+    def get_energy(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+    ) -> Tensor:
+        return self.get_property("energy", positions, chrg=chrg, spin=spin)
 
-        Parameters
-        ----------
-        name : str
-            Name of the property to get.
-        mol : Mol, optional
-            Molecule to get the property of.
-        allow_calculation : bool, optional
-            If the property is not present, allow its calculation.
-        """
+    def get_potential_energy(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+    ) -> Tensor:
+        return self.get_property("energy", positions, chrg=chrg, spin=spin)
 
-        if name not in self.implemented_properties:
-            raise PropertyNotImplementedError(
-                f"{name} property not implemented. Use one of: "
-                f"{self.implemented_properties}."
-            )
+    def get_forces(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+    ) -> Tensor:
+        return self.get_property("forces", positions, chrg=chrg, spin=spin)
 
-        if mol is None:
-            mol = self.mol
+    def get_dipole_moment(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+    ) -> Tensor:
+        return self.get_property("dipole", positions, chrg=chrg, spin=spin)
 
-        if name not in self.results:
-            if not allow_calculation:
-                return None
-
-            if self.use_cache:
-                self.mol = mol.copy()
-
-            self.calculate(mol, [name])
-
-        # For some reason the calculator was not able to do what we want...
-        if name not in self.results:
-            raise PropertyNotImplementedError(
-                f"{name} not present in this calculation."
-            )
-
-        result = self.results[name]
-        if isinstance(result, Tensor):
-            result = result.clone()
-        return result
+    def get_charges(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+    ) -> Tensor:
+        return self.get_property("charges", positions, chrg=chrg, spin=spin)

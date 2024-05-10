@@ -52,16 +52,16 @@ class NumericalCalculator(EnergyCalculator):
     """
 
     implemented_properties = EnergyCalculator.implemented_properties + [
-        "forces_numerical",
-        "hessian_numerical",
-        "vibration_numerical",
-        "dipole_numerical",
-        "dipole_deriv_numerical",
-        "polarizability_numerical",
-        "pol_deriv_numerical",
-        "hyperpol_numerical",
-        "ir_numerical",
-        "raman_numerical",
+        "forces",
+        "hessian",
+        "vibration",
+        "dipole",
+        "dipole_deriv",
+        "polarizability",
+        "pol_deriv",
+        "hyperpolarizability",
+        "ir",
+        "raman",
     ]
     """Names of implemented methods of the Calculator."""
 

@@ -202,6 +202,7 @@ class _OutputHandler:
     def write_stdout(
         self,
         msg: str,
+        *args,
         v: int = 5,
         newline: bool = True,
     ) -> None:
@@ -220,8 +221,21 @@ class _OutputHandler:
             Defaults to ``True``.
         """
         if self.verbosity >= v:
+            # Determine the message type and process accordingly
+            if callable(msg):
+                # evaluate it to get the message
+                # Example: f(lambda: f"SCF Energy  : {e.sum(-1):.14f} Hartree.")
+                message = msg()
+            elif args:
+                # assume msg is a format string and format it
+                # Example: f("SCF Energy  : %.14f .", e.sum(-1))
+                message = msg % args
+            else:
+                # handle as a normal message
+                message = msg
+
             extra = {"newline": newline}
-            self.console_logger.info(msg, extra=extra)
+            self.console_logger.info(message, extra=extra)
 
     def write_stdout_nf(self, msg: str, v: int = 5) -> None:
         """

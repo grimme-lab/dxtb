@@ -884,3 +884,43 @@ class AutogradCalculator(EnergyCalculator):
         logger.debug("Raman spectrum: All finished.")
 
         return RamanResult(vib_res.freqs, intensities, depol)
+
+    def calculate(
+        self,
+        properties: list[str],
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any,
+    ):
+        """
+        Calculate the requested properties. This is more of a dispatcher method
+        that calls the appropriate methods of the Calculator.
+
+        Parameters
+        ----------
+        properties : list[str]
+            List of properties to calculate.
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to ``None``.
+
+        Returns
+        -------
+        dict
+            Dictionary of calculated properties.
+        """
+        if "forces" in properties:
+            self.forces(positions, chrg, spin, **kwargs)
+
+        if "hessian" in properties:
+            self.hessian(positions, chrg, spin, **kwargs)
+
+        if "vibration" in properties:
+            self.vibration(positions, chrg, spin, **kwargs)
+
+        if "dipole" in properties:
+            self.dipole(positions, chrg, spin, **kwargs)
