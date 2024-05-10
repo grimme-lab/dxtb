@@ -18,15 +18,15 @@
 Integrals: Wrappers/Shortcuts
 =============================
 
-A simple collection for convenience functions of all integrals. In these
-functions, defaults will be applied. Although (some) settings can be accessed
-through keyword arguments, it is recommended to follow the interal integral
-builds as used in the :class:`~dxtb.integrals.Integrals` class for more direct
-control.
+A simple collection of convenience functions to obtain all integral matrices.
+This is intended for testing and developing. In these functions, defaults will
+be applied. Although (some) settings can be accessed through keyword arguments,
+it is recommended to follow the interal integral builds as used in the
+:class:`~dxtb.integrals.Integrals` class for more direct control.
 
 Note that there are several peculiarities for the multipole integrals:
 
-- The multipole operators are centered on ``(0, 0, 0)`` (r0) and not on ket
+- The multipole operators are centered on ``(0, 0, 0)`` (r0) and not on the ket
   (rj), the latter being the default in ``dxtb``.
 - An overlap calculation is executed for the normalization of the multipole
   integral every time :func:`.dipole` or :func:`.quadrupole` are called.
@@ -37,7 +37,7 @@ Example
 
 .. code-block:: python
 
-    from dxtb._src.integral.wrappers import overlap, dipole, quadrupole
+    from dxtb.integrals.wrappers import overlap, dipole, quadrupole
     from dxtb import GFN1_XTB as par
     import torch
 

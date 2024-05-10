@@ -28,10 +28,10 @@ import pytest
 import torch
 
 from dxtb import GFN1_XTB as par
-from dxtb._src.constants.labels import INTDRIVER_ANALYTICAL
-from dxtb._src.integral.wrappers import overlap
 from dxtb._src.typing import DD
 from dxtb._src.utils import batch
+from dxtb.integrals.wrappers import overlap
+from dxtb.labels import INTDRIVER_ANALYTICAL
 
 from ..utils import load_from_npz
 from .samples import samples

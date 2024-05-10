@@ -15,17 +15,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Integrals: Drivers
-==================
-
-Integral drivers are the main interface to the integral implementations. They
-provide a unified interface to the integral implementations, and are responsible
-for the calculation of the integrals.
-
-There are two main types of integral drivers: `PyTorch` and `Libcint`. Note that
-the `Libcint` drivers are only available if the
-`tad-libcint <https://github.com/tad-mctc/tad-libcint>`__ library is installed.
-The `PyTorch` drivers are implemented in pure Python, but are currently only
-available for overlap integrals.
+Labels: Methods
+===============
 """
-# no imports here to allow lazy loading of drivers
+
+# xtb
+GFN0_XTB = 0
+"""Integer code for GFN0-xTB."""
+
+GFN0_XTB_STRS = ("gfn0", "gfn0-xtb", "gfn0_xtb", "gfn0xtb")
+"""String codes for GFN0-xTB."""
+
+GFN1_XTB = 1
+"""Integer code for GFN1-xTB."""
+
+GFN1_XTB_STRS = ("gfn1", "gfn1-xtb", "gfn1_xtb", "gfn1xtb")
+"""String codes for GFN1-xTB."""
+
+GFN2_XTB = 2
+"""Integer code for GFN2-xTB."""
+
+GFN2_XTB_STRS = ("gfn2", "gfn2-xtb", "gfn2_xtb", "gfn2xtb")
+"""String codes for GFN2-xTB."""
+
+GFN_XTB_MAP = ["GFN0-xTB", "GFN1-xTB", "GFN2-xTB"]
+"""Map of GFN-xTB methods."""

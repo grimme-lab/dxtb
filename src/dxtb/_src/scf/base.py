@@ -688,7 +688,7 @@ class BaseSCF:
 
         return self._data.hamiltonian
 
-    # @timer_decorator("Potential", "SCF")
+    @timer_decorator("Potential", "SCF")
     def charges_to_potential(self, charges: Charges) -> Potential:
         """
         Compute the potential from the orbital charges.
@@ -751,7 +751,7 @@ class BaseSCF:
         self._data.hamiltonian = self.potential_to_hamiltonian(potential)
         return self.hamiltonian_to_density(self._data.hamiltonian)
 
-    # @timer_decorator("Charges", "SCF")
+    @timer_decorator("Charges", "SCF")
     def density_to_charges(self, density: Tensor) -> Charges:
         """
         Compute the orbital charges from the density matrix.
@@ -804,7 +804,7 @@ class BaseSCF:
 
         return charges
 
-    # @timer_decorator("Fock build", "SCF")
+    @timer_decorator("Fock build", "SCF")
     def potential_to_hamiltonian(self, potential: Potential) -> Tensor:
         """
         Compute the Hamiltonian from the potential.

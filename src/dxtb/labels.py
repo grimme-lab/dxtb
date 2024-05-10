@@ -15,17 +15,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Integrals: Drivers
-==================
+Labels
+======
 
-Integral drivers are the main interface to the integral implementations. They
-provide a unified interface to the integral implementations, and are responsible
-for the calculation of the integrals.
-
-There are two main types of integral drivers: `PyTorch` and `Libcint`. Note that
-the `Libcint` drivers are only available if the
-`tad-libcint <https://github.com/tad-mctc/tad-libcint>`__ library is installed.
-The `PyTorch` drivers are implemented in pure Python, but are currently only
-available for overlap integrals.
+Labels for calculation options.
 """
-# no imports here to allow lazy loading of drivers
+
+from dxtb._src.constants.labels.integrals import *
+from dxtb._src.constants.labels.method import *
+from dxtb._src.constants.labels.scf import *

@@ -48,7 +48,7 @@ ihelp = dxtb.IndexHelper.from_numbers(numbers, dxtb.GFN1_XTB, batch_mode=batch_m
 dxtb.timer.stop("Ihelp")
 
 dxtb.timer.start("Class", parent_uid="Setup")
-obj = dxtb.new_dispersion(numbers, dxtb.GFN1_XTB, **dd)
+obj = dxtb.components.dispersion.new_dispersion(numbers, dxtb.GFN1_XTB, **dd)
 assert obj is not None
 dxtb.timer.stop("Class")
 
@@ -85,7 +85,7 @@ ihelp = dxtb.IndexHelper.from_numbers(numbers, dxtb.GFN1_XTB, batch_mode=batch_m
 dxtb.timer.stop("Ihelp")
 
 dxtb.timer.start("Class", parent_uid="Setup")
-obj = dxtb.new_dispersion(numbers, dxtb.GFN1_XTB, **dd)
+obj = dxtb.components.dispersion.new_dispersion(numbers, dxtb.GFN1_XTB, **dd)
 assert obj is not None
 dxtb.timer.stop("Class")
 

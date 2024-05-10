@@ -9,7 +9,5 @@ Calculators
    Configuration <calculators_config>
    Types <calculators_types>
 
-.. automodule:: dxtb._src.calculators
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. automodule:: dxtb.calculators
+   :no-index:

@@ -76,7 +76,8 @@ class BaseIntegral(IntegralABC, TensorLike):
     def build(self, driver: IntDriver) -> Tensor:
         """
         Calculation of the integral (matrix). This method only calls the
-        `build` method of the underlying `BaseIntegralType`.
+        :meth:`build` method of the underlying
+        :class:`BaseIntegralImplementation`.
 
         Parameters
         ----------
@@ -93,8 +94,8 @@ class BaseIntegral(IntegralABC, TensorLike):
     def get_gradient(self, driver: IntDriver) -> Tensor:
         """
         Calculation of the nuclear integral derivative (matrix). This method
-        only calls the `get_gradient` method of the underlying
-        `BaseIntegralType`.
+        only calls the :meth:`get_gradient` method of the underlying
+        `BaseIntegralImplementation`.
 
         Parameters
         ----------
@@ -134,11 +135,12 @@ class BaseIntegral(IntegralABC, TensorLike):
 
     def type(self, dtype: torch.dtype) -> BaseIntegral:
         """
-        Returns a copy of the `BaseIntegral` instance with specified floating
-        point type.
+        Returns a copy of the :class:`BaseIntegral` instance with specified
+        floating point type.
 
-        This method overwrites the usual approach because the `BaseIntegral`
-        class only contains the integral, which has to be moved.
+        This method overwrites the usual approach because the
+        :class:`BaseIntegral` class only contains the integral, which has to be
+        moved.
 
         Parameters
         ----------
@@ -148,7 +150,8 @@ class BaseIntegral(IntegralABC, TensorLike):
         Returns
         -------
         BaseIntegral
-            A copy of the `BaseIntegral` instance with the specified dtype.
+            A copy of the :class:`BaseIntegral` instance with the specified
+            dtype.
 
         Raises
         ------
@@ -178,10 +181,12 @@ class BaseIntegral(IntegralABC, TensorLike):
     @override
     def to(self, device: torch.device) -> BaseIntegral:
         """
-        Returns a copy of the `BaseIntegral` instance on the specified device.
+        Returns a copy of the :class:`BaseIntegral` instance on the specified
+        device.
 
-        This method overwrites the usual approach because the `BaseIntegral`
-        class only contains the integral, which has to be moved.
+        This method overwrites the usual approach because the
+        :class:`BaseIntegral` class only contains the integral, which has to be
+        moved.
 
         Parameters
         ----------
@@ -191,7 +196,7 @@ class BaseIntegral(IntegralABC, TensorLike):
         Returns
         -------
         BaseIntegral
-            A copy of the `BaseIntegral` instance placed on the specified
+            A copy of the :class:`BaseIntegral` instance placed on the specified
             device.
 
         Raises

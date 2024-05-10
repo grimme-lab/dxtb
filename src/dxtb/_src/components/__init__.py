@@ -14,19 +14,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Components
-==========
-
-The tight-binding components are the central building blocks of the each model.
-
-The components are split into :class:`~dxtb.components.base.Interaction` and
-:class:`~dxtb.components.base.Classical` components. The
-:class:`~dxtb.components.base.Interaction` components define the Hamiltonian
-and, correspondingly, are density- or charge-dependent and required for the
-SCF. The :class:`~dxtb.components.base.Classical` components are classical
-corrections that do not dependent on the density or charges.
-
-The components are usually initialized with a parametrization and the atomic
-numbers of the system, i.e., they do not require user intervention.
-"""

@@ -15,7 +15,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Module for command line driver.
+Command Line Interface
+======================
+
+``dxtb`` also provides a command line interface (CLI) to run some basic
+calculations.
+
+The only required argument is the path to the input file.
+
+.. code-block:: bash
+
+    dxtb mol.xyz
+
+Some important options are listed below:
+
+- ``--forces``: Calculate forces.
+- ``--dipole``: Calculate dipole moment.
+- ``--verbosity <int>``: Set verbosity level. Also use ``-v`` to increase and
+  ``-s`` to decrease; can be used multiple times (e.g., ``-vv``, ``-sss``).
+- ``--device <device>``: Device for calculations.
+
+For all available options, run:
+
+.. code-block:: bash
+
+    dxtb --help
 """
 
 from .argparser import parser

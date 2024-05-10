@@ -10,6 +10,7 @@
 
    Installation <01_quickstart/installation>
    Getting Started <01_quickstart/getting_started>
+   CLI <01_quickstart/cli>
 
 .. toctree::
    :hidden:
@@ -18,7 +19,6 @@
 
    Calculators <02_indepth/calculators>
    Components <02_indepth/components>
-   SCF <02_indepth/scf>
    Integrals <02_indepth/integrals>
 
 .. toctree::

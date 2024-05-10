@@ -47,6 +47,8 @@ from dxtb._src.param.gfn2 import GFN2_XTB as GFN2_XTB
 from dxtb import calculators as calculators
 from dxtb import components as components
 from dxtb import config as config
+from dxtb import integrals as integrals
+from dxtb import labels as labels
 from dxtb import typing as typing
 
 ###############################################################################

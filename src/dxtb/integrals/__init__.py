@@ -15,11 +15,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Integrals
-=========
+Integrals: Overview
+===================
 
 This module stores the container, drivers and underlying
 implementations of the integrals.
+
+For the GFNn-xTB family of methods, only two-center one-electron integrals
+are required.
+
+- GFN1-xTB: Overlap Integral
+- GFN2-xTB: Overlap, Dipole, and Quadrupole Integral
+
+Fundametally, there are two drivers (backends) for the integral computation:
+
+- *PyTorch*: pure PyTorch implementation, only overlap integral
+- *libcint*: Python interface with custom backward functions for derivatives;
+  arbitrary integrals and derivatives
+
+We generally recommend the *libcint* driver as it is much faster, especially
+for derivatives.
+The driver can be selected with the ``int_driver`` keyword in the calculator
+options:
+
+.. code-block:: python
+
+    import torch
+    from dxtb.calculators import GFN1Calculator as Calculator
+
+    numbers = torch.tensor([3, 1])
+    opts = {"int_driver": "libcint"}
+    calc = Calculator(numbers, opts=opts)
+
+    print(calc.opts.ints.driver)  # 0
 """
 from typing import TYPE_CHECKING
 

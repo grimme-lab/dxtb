@@ -23,7 +23,7 @@ import torch
 from tad_mctc.io import read
 
 import dxtb
-from dxtb._src.typing import DD
+from dxtb.typing import DD
 
 dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
 

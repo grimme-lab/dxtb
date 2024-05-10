@@ -15,8 +15,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Constants and default values.
+Constants
+=========
+
+Constants, labels, and default values.
 """
 
 from . import defaults, xtb
+from .labels import *
 from .xtb import *

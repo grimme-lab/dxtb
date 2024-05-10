@@ -26,9 +26,8 @@ from __future__ import annotations
 import torch
 
 from dxtb import IndexHelper
+from dxtb._src.constants import labels
 from dxtb._src.typing import Tensor
-
-from ..constants import labels
 
 __all__ = ["get_guess"]
 
@@ -58,7 +57,7 @@ def get_guess(
     ihelp : IndexHelper
         Helper class for indexing.
     name : str | int, optional
-        Name of guess method, by default EEQ (`labels.GUESS_EEQ`).
+        Name of guess method, by default EEQ (:attr:`dxtb.labels.GUESS_EEQ`).
 
     Returns
     -------

@@ -20,10 +20,11 @@ Calculators: Types
 
 All calculator types for the extended tight-binding models (xTB).
 
-Different types utilize different methods for differentiation, i.e., analytical,
-numerical, or automatic differentiation (autograd). The central
-:class:`~dxtb.Calculator` class **inherits from all types**, i.e., it provides
-automatic, analytical, and numerical differentiation.
+Besides the basic energy calculator, different calculator types utilize
+different methods for differentiation, i.e., analytical, numerical, or
+automatic differentiation (autograd). The central :class:`~dxtb.Calculator`
+class **inherits from all types**, i.e., it provides the energy and automatic,
+analytical, and numerical differentiation.
 
 The available methods of the specific types can be checked with:
 
