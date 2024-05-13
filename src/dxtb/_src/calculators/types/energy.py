@@ -29,21 +29,18 @@ import torch
 from tad_mctc.convert import any_to_tensor
 from tad_mctc.io.checks import content_checks, shape_checks
 
-from dxtb import IndexHelper, OutputHandler
+from dxtb import OutputHandler
 from dxtb import integrals as ints
 from dxtb._src import scf
-from dxtb._src.components.classicals import ClassicalList
 from dxtb._src.components.interactions.field import efield as efield
 from dxtb._src.components.interactions.field import efieldgrad as efield_grad
-from dxtb._src.components.interactions.list import InteractionList
 from dxtb._src.constants import defaults
 from dxtb._src.timing import timer
-from dxtb._src.typing import Tensor
-from dxtb.config import Config
+from dxtb._src.typing import Any, Tensor
 
 from ..result import Result
 from . import decorators as cdec
-from .base import BaseCalculator, CalculatorCache
+from .base import BaseCalculator
 
 __all__ = ["EnergyCalculator"]
 
@@ -234,7 +231,7 @@ class EnergyCalculator(BaseCalculator):
         self.cache["charges"] = scf_results["charges"]
         self.cache["iterations"] = scf_results["iterations"]
 
-        self.ncalcs += 1
+        self._ncalcs += 1
         return result
 
     @cdec.cache
@@ -270,6 +267,7 @@ class EnergyCalculator(BaseCalculator):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any,
     ):
         """
         Calculate the requested properties. This is more of a dispatcher method
@@ -292,4 +290,4 @@ class EnergyCalculator(BaseCalculator):
             Dictionary of calculated properties.
         """
         if "energy" in properties:
-            self.energy(positions, chrg, spin)
+            self.energy(positions, chrg, spin, **kwargs)

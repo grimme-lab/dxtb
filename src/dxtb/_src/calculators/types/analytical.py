@@ -31,7 +31,7 @@ from dxtb._src import ncoord, scf
 from dxtb._src.components.interactions.field import efield as efield
 from dxtb._src.constants import defaults
 from dxtb._src.timing import timer
-from dxtb._src.typing import Tensor
+from dxtb._src.typing import Any, Tensor
 from dxtb.integrals import levels as intlvl
 
 from ..result import Result
@@ -62,6 +62,7 @@ class AnalyticalCalculator(EnergyCalculator):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any,
     ) -> Tensor:
         r"""
         Calculate the nuclear forces :math:`f` via AD.
@@ -71,16 +72,13 @@ class AnalyticalCalculator(EnergyCalculator):
             f = -\dfrac{\partial E}{\partial R}
 
         One can calculate the Jacobian either row-by-row using the standard
-        :func:`torch.autograd.grad` with unit vectors in the VJP (see `here`_)
-        or using :func:`torch.func`'s function transforms (e.g.,
+        :func:`torch.autograd.grad` with unit vectors in the VJP or using
+        :mod:`torch.func`'s function transforms (e.g.,
         :func:`torch.func.jacrev`).
-
-        .. _here: https://pytorch.org/functorch/stable/notebooks/\
-                  jacobians_hessians.html#computing-the-jacobian
 
         Note
         ----
-        Using :func:`torch.func`'s function transforms can apparently be only
+        Using :mod:`torch.func`'s function transforms can apparently be only
         used once. Hence, for example, the Hessian and the dipole derivatives
         cannot be both calculated with functorch.
 
@@ -281,7 +279,7 @@ class AnalyticalCalculator(EnergyCalculator):
         self.cache["charges"] = result.charges
         self.cache["iterations"] = result.iter
 
-        self.ncalcs += 1
+        self._ncalcs += 1
 
         return -total_grad
 
@@ -293,6 +291,7 @@ class AnalyticalCalculator(EnergyCalculator):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         *_,  # absorb stuff
+        **kwargs: Any,
     ) -> Tensor:
         r"""
         Analytically calculate the electric dipole moment :math:`\mu`.
@@ -364,13 +363,9 @@ class AnalyticalCalculator(EnergyCalculator):
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to ``None``.
-
-        Returns
-        -------
-        dict
-            Dictionary of calculated properties.
         """
         if "forces" in properties:
+            kwargs.pop("grad_mode")
             self.forces_analytical(positions, chrg, spin, **kwargs)
 
         if "dipole" in properties:

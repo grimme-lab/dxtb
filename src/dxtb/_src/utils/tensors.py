@@ -23,9 +23,12 @@ Collection of utility functions for matrices/tensors.
 
 from __future__ import annotations
 
+import torch
+
+from dxtb.__version__ import __tversion__
 from dxtb._src.typing import Tensor
 
-__all__ = ["t2int"]
+__all__ = ["t2int", "tensor_id"]
 
 
 def t2int(x: Tensor) -> int:
@@ -43,3 +46,21 @@ def t2int(x: Tensor) -> int:
         Integer value of the tensor.
     """
     return int(x.item())
+
+
+def tensor_id(x: Tensor) -> str:
+    """
+    Generate an identifier for a tensor based on its data pointer and version.
+    """
+    grad = int(x.requires_grad)
+    v = x._version
+
+    if __tversion__ >= (1, 13, 0) and torch._C._functorch.is_gradtrackingtensor(x):
+        value = x
+        while torch._C._functorch.is_gradtrackingtensor(value):
+            value = torch._C._functorch.get_unwrapped(value)
+        data = value.data_ptr()
+    else:
+        data = x.data_ptr()
+
+    return f"tensor({data},v={v},grad={grad},dtype={x.dtype})"

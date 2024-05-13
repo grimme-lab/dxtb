@@ -54,7 +54,8 @@ class NumericalCalculator(EnergyCalculator):
     implemented_properties = EnergyCalculator.implemented_properties + [
         "forces",
         "hessian",
-        "vibration",
+        "normal_modes",
+        "frequencies",
         "dipole",
         "dipole_deriv",
         "polarizability",
@@ -521,12 +522,10 @@ class NumericalCalculator(EnergyCalculator):
 
         .. math::
 
-            \begin{align*}
-                \chi &= \alpha' \\
-                    &= \dfrac{\partial \alpha}{\partial R} \\
-                    &= \dfrac{\partial^2 \mu}{\partial F \partial R} \\
-                    &= \dfrac{\partial^3 E}{\partial^2 F \partial R}
-            \end{align*}
+            \chi = \alpha'
+            = \dfrac{\partial \alpha}{\partial R}
+            = \dfrac{\partial^2 \mu}{\partial F \partial R}
+            = \dfrac{\partial^3 E}{\partial^2 F \partial R}
 
         Parameters
         ----------

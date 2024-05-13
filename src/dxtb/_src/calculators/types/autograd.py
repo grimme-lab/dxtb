@@ -60,6 +60,9 @@ class AutogradCalculator(EnergyCalculator):
         "forces",
         "hessian",
         "vibration",
+        "normal_modes",
+        "frequencies",
+        #
         "dipole",
         "dipole_deriv",
         "polarizability",
@@ -87,17 +90,15 @@ class AutogradCalculator(EnergyCalculator):
             f = -\dfrac{\partial E}{\partial R}
 
         One can calculate the Jacobian either row-by-row using the standard
-        :func:`torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
-        using :func:`torch.func`'s function transforms (e.g., `jacrev`).
-
-        .. _here: https://pytorch.org/functorch/stable/notebooks/\
-                  jacobians_hessians.html#computing-the-jacobian
+        :func:`torch.autograd.grad` with unit vectors in the VJP or using
+        :mod:`torch.func`'s function transforms (e.g.,
+        :func:`torch.func.jacrev`).
 
         Note
         ----
-        Using :func:`torch.func`'s function transforms can apparently be only used
-        once. Hence, for example, the Hessian and the dipole derivatives cannot
-        be both calculated with functorch.
+        Using :mod:`torch.func`'s function transforms can apparently be only
+        used once. Hence, for example, the Hessian and the dipole derivatives
+        cannot be both calculated with functorch.
 
         Parameters
         ----------
@@ -174,16 +175,19 @@ class AutogradCalculator(EnergyCalculator):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         use_functorch: bool = False,
+        derived_quantity: Literal["energy", "forces"] = "forces",
         matrix: bool = False,
+        **kwargs: Any,
     ) -> Tensor:
         """
         Calculation of the nuclear Hessian with AD.
 
         Note
         ----
-        The `jacrev` function of `functorch` requires scalars for the expected
-        behavior, i.e., the nuclear Hessian only acquires the expected shape of
-        `(nat, 3, nat, 3)` if the energy is provided as a scalar value.
+        The :func:`torch.func.jacrev` function of ``functorch`` requires
+        scalars for the expected behavior, i.e., the nuclear Hessian only
+        acquires the expected shape of ``(..., nat, 3, nat, 3)`` if the energy
+        is provided as a scalar value.
 
         Parameters
         ----------
@@ -216,15 +220,45 @@ class AutogradCalculator(EnergyCalculator):
             from tad_mctc.autograd import jacrev
 
             # jacrev requires a scalar from `self.energy`!
-            hess_func = jacrev(jacrev(self.energy, argnums=0), argnums=0)
-            hess = hess_func(positions, chrg, spin)
+            if derived_quantity == "forces":
+                hess_func = jacrev(self.forces, argnums=0)
+                # specifiy grad_mode here!
+                hess = hess_func(positions, chrg, spin, "functorch")
+            elif derived_quantity == "energy":
+                hess_func = jacrev(jacrev(self.energy, argnums=0), argnums=0)
+                hess = hess_func(positions, chrg, spin)
+            else:
+                raise ValueError(
+                    f"Unknown `derived_quantity` '{derived_quantity}'. The "
+                    "hessian can be calculated as the derivative of the "
+                    "'energy' and the 'forces'."
+                )
             assert isinstance(hess, Tensor)
         else:
-            # pylint: disable=import-outside-toplevel
-            from tad_mctc.autograd import hessian
-
             # jacrev requires a scalar from `self.energy`!
-            hess = hessian(self.energy, (positions, chrg, spin), argnums=0)
+            if derived_quantity == "forces":
+                # pylint: disable=import-outside-toplevel
+                from tad_mctc.autograd import jac
+
+                grad_mode = kwargs.pop("grad_mode", "autograd")
+                forces = self.forces(positions, chrg, spin, grad_mode=grad_mode)
+
+                # reshape (..., nat, 3, nat*3) to (..., nat, 3, nat, 3)
+                hess = jac(forces, positions).reshape(
+                    [*self.numbers.shape[:-1], *2 * [self.numbers.shape[-1], 3]]
+                )
+
+            elif derived_quantity == "energy":
+                # pylint: disable=import-outside-toplevel
+                from tad_mctc.autograd import hessian
+
+                hess = hessian(self.energy, (positions, chrg, spin), argnums=0)
+            else:
+                raise ValueError(
+                    f"Unknown `derived_quantity` '{derived_quantity}'. The "
+                    "hessian can be calculated as the derivative of the "
+                    "'energy' and the 'forces'."
+                )
 
         if hess.is_contiguous() is False:
             logger.debug(
@@ -239,12 +273,11 @@ class AutogradCalculator(EnergyCalculator):
             s = [*self.numbers.shape[:-1], *2 * [3 * self.numbers.shape[-1]]]
             hess = hess.view(*s)
 
-        self.cache["hessian"] = hess
-
         logger.debug("Autodiff Hessian: All finished.")
 
         return hess
 
+    @cdec.cache
     def vibration(
         self,
         positions: Tensor,
@@ -253,23 +286,22 @@ class AutogradCalculator(EnergyCalculator):
         use_functorch: bool = False,
         project_translational: bool = True,
         project_rotational: bool = True,
+        **kwargs: Any,
     ) -> VibResult:
         r"""
         Perform vibrational analysis. This calculates the Hessian matrix and
         diagonalizes it to obtain the vibrational frequencies and normal modes.
 
         One can calculate the Jacobian either row-by-row using the standard
-        :func:`torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
-        using :func:`torch.func`'s function transforms (e.g., `jacrev`).
-
-        .. _here: https://pytorch.org/functorch/stable/notebooks/\
-                  jacobians_hessians.html#computing-the-jacobian
+        :func:`torch.autograd.grad` with unit vectors in the VJP or using
+        :mod:`torch.func`'s function transforms (e.g.,
+        :func:`torch.func.jacrev`).
 
         Note
         ----
-        Using :func:`torch.func`'s function transforms can apparently be only used
-        once. Hence, for example, the Hessian and the dipole derivatives cannot
-        be both calculated with functorch.
+        Using :mod:`torch.func`'s function transforms can apparently be only
+        used once. Hence, for example, the Hessian and the dipole derivatives
+        cannot be both calculated with functorch.
 
         Parameters
         ----------
@@ -298,6 +330,7 @@ class AutogradCalculator(EnergyCalculator):
             spin,
             use_functorch=use_functorch,
             matrix=False,
+            **kwargs,
         )
         return vib_analysis(
             self.numbers,
@@ -305,6 +338,7 @@ class AutogradCalculator(EnergyCalculator):
             hess,
             project_translational=project_translational,
             project_rotational=project_rotational,
+            **kwargs,
         )
 
     @cdec.requires_efield
@@ -324,17 +358,15 @@ class AutogradCalculator(EnergyCalculator):
             \mu = \dfrac{\partial E}{\partial F}
 
         One can calculate the Jacobian either row-by-row using the standard
-        :func:`torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
-        using :func:`torch.func`'s function transforms (e.g., `jacrev`).
-
-        .. _here: https://pytorch.org/functorch/stable/notebooks/\
-                  jacobians_hessians.html#computing-the-jacobian
+        :func:`torch.autograd.grad` with unit vectors in the VJP or using
+        :mod:`torch.func`'s function transforms (e.g.,
+        :func:`torch.func.jacrev`).
 
         Note
         ----
-        Using :func:`torch.func`'s function transforms can apparently be only used
-        once. Hence, for example, the Hessian and the dipole derivatives cannot
-        be both calculated with functorch.
+        Using :mod:`torch.func`'s function transforms can apparently be only
+        used once. Hence, for example, the Hessian and the dipole derivatives
+        cannot be both calculated with functorch.
 
         Parameters
         ----------
@@ -399,17 +431,15 @@ class AutogradCalculator(EnergyCalculator):
             \mu' = \dfrac{\partial \mu}{\partial R} = \dfrac{\partial^2 E}{\partial F \partial R}
 
         One can calculate the Jacobian either row-by-row using the standard
-        :func:`torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
-        using :func:`torch.func`'s function transforms (e.g., `jacrev`).
-
-        .. _here: https://pytorch.org/functorch/stable/notebooks/\
-                  jacobians_hessians.html#computing-the-jacobian
+        :func:`torch.autograd.grad` with unit vectors in the VJP or using
+        :mod:`torch.func`'s function transforms (e.g.,
+        :func:`torch.func.jacrev`).
 
         Note
         ----
-        Using :func:`torch.func`'s function transforms can apparently be only used
-        once. Hence, for example, the Hessian and the dipole derivatives cannot
-        be both calculated with functorch.
+        Using :mod:`torch.func`'s function transforms can apparently be only
+        used once. Hence, for example, the Hessian and the dipole derivatives
+        cannot be both calculated with functorch.
 
         Parameters
         ----------
@@ -492,17 +522,15 @@ class AutogradCalculator(EnergyCalculator):
             \alpha = \dfrac{\partial \mu}{\partial F} = \dfrac{\partial^2 E}{\partial^2 F}
 
         One can calculate the Jacobian either row-by-row using the standard
-        :func:`torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
-        using :func:`torch.func`'s function transforms (e.g., `jacrev`).
-
-        .. _here: https://pytorch.org/functorch/stable/notebooks/\
-                  jacobians_hessians.html#computing-the-jacobian
+        :func:`torch.autograd.grad` with unit vectors in the VJP or using
+        :mod:`torch.func`'s function transforms (e.g.,
+        :func:`torch.func.jacrev`).
 
         Note
         ----
-        Using :func:`torch.func`'s function transforms can apparently be only used
-        once. Hence, for example, the Hessian and the polarizability cannot
-        be both calculated with functorch.
+        Using :mod:`torch.func`'s function transforms can apparently be only
+        used once. Hence, for example, the Hessian and the dipole derivatives
+        cannot be both calculated with functorch.
 
         Parameters
         ----------
@@ -603,25 +631,20 @@ class AutogradCalculator(EnergyCalculator):
 
         .. math::
 
-            \begin{align*}
-                \chi &= \alpha' \\
-                    &= \dfrac{\partial \alpha}{\partial R} \\
-                    &= \dfrac{\partial^2 \mu}{\partial F \partial R} \\
-                    &= \dfrac{\partial^3 E}{\partial^2 F \partial R}
-            \end{align*}
+            \chi = \alpha'
+            = \dfrac{\partial \alpha}{\partial R}
+            = \dfrac{\partial^3 E}{\partial^2 F \partial R}
 
         One can calculate the Jacobian either row-by-row using the standard
-        :func:`torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
-        using :func:`torch.func`'s function transforms (e.g., `jacrev`).
-
-        .. _here: https://pytorch.org/functorch/stable/notebooks/\
-                  jacobians_hessians.html#computing-the-jacobian
+        :func:`torch.autograd.grad` with unit vectors in the VJP or using
+        :mod:`torch.func`'s function transforms (e.g.,
+        :func:`torch.func.jacrev`).
 
         Note
         ----
-        Using :func:`torch.func`'s function transforms can apparently be only used
-        once. Hence, for example, the Hessian and the polarizability cannot
-        be both calculated with functorch.
+        Using :mod:`torch.func`'s function transforms can apparently be only
+        used once. Hence, for example, the Hessian and the dipole derivatives
+        cannot be both calculated with functorch.
 
         Parameters
         ----------
@@ -685,24 +708,20 @@ class AutogradCalculator(EnergyCalculator):
 
         .. math::
 
-            \begin{align*}
-                \beta &= \dfrac{\partial \alpha}{\partial F} \\
-                    &= \dfrac{\partial^2 \mu}{\partial F^2}
-                    &= \dfrac{\partial^3 E}{\partial^2 3} \\
-            \end{align*}
+            \beta = \dfrac{\partial \alpha}{\partial F}
+            = \dfrac{\partial^2 \mu}{\partial F^2}
+            = \dfrac{\partial^3 E}{\partial^2 3}
 
         One can calculate the Jacobian either row-by-row using the standard
-        :func:`torch.autograd.grad` with unit vectors in the VJP (see `here`_) or
-        using :func:`torch.func`'s function transforms (e.g., `jacrev`).
-
-        .. _here: https://pytorch.org/functorch/stable/notebooks/\
-                  jacobians_hessians.html#computing-the-jacobian
+        :func:`torch.autograd.grad` with unit vectors in the VJP or using
+        :mod:`torch.func`'s function transforms (e.g.,
+        :func:`torch.func.jacrev`).
 
         Note
         ----
-        Using :func:`torch.func`'s function transforms can apparently be only used
-        once. Hence, for example, the Hessian and the polarizability cannot
-        be both calculated with functorch.
+        Using :mod:`torch.func`'s function transforms can apparently be only
+        used once. Hence, for example, the Hessian and the dipole derivatives
+        cannot be both calculated with functorch.
 
         Parameters
         ----------
@@ -913,13 +932,16 @@ class AutogradCalculator(EnergyCalculator):
         dict
             Dictionary of calculated properties.
         """
+        if "energy" in properties:
+            self.energy(positions, chrg, spin, **kwargs)
+
         if "forces" in properties:
             self.forces(positions, chrg, spin, **kwargs)
 
         if "hessian" in properties:
             self.hessian(positions, chrg, spin, **kwargs)
 
-        if "vibration" in properties:
+        if "normal_modes" in properties or "frequencies" in properties:
             self.vibration(positions, chrg, spin, **kwargs)
 
         if "dipole" in properties:

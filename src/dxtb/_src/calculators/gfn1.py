@@ -26,7 +26,7 @@ import torch
 
 from dxtb._src.components.classicals import Classical
 from dxtb._src.components.interactions import Interaction
-from dxtb._src.typing import Any, Sequence, Tensor
+from dxtb._src.typing import Any, Tensor
 from dxtb.config import Config
 
 from .base import Calculator
@@ -46,8 +46,8 @@ class GFN1Calculator(Calculator):
         self,
         numbers: Tensor,
         *,
-        classical: Sequence[Classical] | None = None,
-        interaction: Sequence[Interaction] | None = None,
+        classical: list[Classical] | tuple[Classical] | Classical | None = None,
+        interaction: list[Interaction] | tuple[Interaction] | Interaction | None = None,
         opts: dict[str, Any] | Config | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,

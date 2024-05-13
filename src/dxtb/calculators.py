@@ -15,13 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Calculators
-===========
+Calculators: Overview
+=====================
 
-The :class:`dxtb.Calculator` object is the center-piece of ``dxtb``, providing a simple interface to compute energies, forces and other properties of molecules.
+The :class:`dxtb.Calculator` object is the center-piece of ``dxtb``, providing
+a simple interface to compute energies, forces and other properties of
+molecules.
 
-Examples
---------
 The calculator is instantiated with the atomic ``numbers`` and a
 parametrization.
 
@@ -41,9 +41,11 @@ It is recommended to always pass the :class:`~torch.dtype` and
 
     import torch
     import dxtb
-    from dxtb._src.typing import DD
+    from dxtb.typing import DD
 
     dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
+    numbers = torch.tensor([1, 1])
+
     calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, **dd)
     print(calc.device)  # Expected output: cpu
     print(calc.dtype)  # Expected output: torch.float64
@@ -53,8 +55,10 @@ changed after instantiation in the same way as for any other PyTorch tensor.
 
 .. code-block:: python
 
+    import torch
     import dxtb
 
+    numbers = torch.tensor([1, 1])
     calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, **dd)
     calc = calc.type(torch.float32)
     print(calc.dtype)  # Expected output: torch.float32
@@ -66,6 +70,7 @@ To configure settings, a dictionary of settings can be passed to the calculator.
     import torch
     import dxtb
 
+    numbers = torch.tensor([1, 1])
     settings = {"maxiter": 100}
     calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, opts=settings)
 
@@ -77,8 +82,22 @@ Additional tight binding components can also be added.
     import dxtb
 
     dd = {"device": torch.device("cpu"), "dtype": torch.double}
-    ef = dxtb.field.new_efield(torch.tensor([0.0, 0.0, 0.0], **dd))
-    calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, interactions=[ef], **dd)
+    numbers = torch.tensor([1, 1])
+
+    ef = dxtb.components.field.new_efield(torch.tensor([0.0, 0.0, 0.0], **dd))
+    calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, interaction=[ef], **dd)
+
+
+Calculators: Get Properties
+===========================
+
+The calculator can be used to compute energies, forces, dipole moments and
+other properties. The properties are computed by calling the respective
+:meth:`get_<property>` method, just as in ASE.
+
+Depending on which calculator you choose, the properties are calculated using
+analytical, autograd, or numerical derivatives. The default uses automatic
+differentation. For details, see the calculator types.
 """
 
 from dxtb._src.calculators.gfn1 import GFN1Calculator as GFN1Calculator

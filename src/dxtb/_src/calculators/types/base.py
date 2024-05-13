@@ -45,7 +45,7 @@ from dxtb._src.components.interactions.field import efieldgrad as efield_grad
 from dxtb._src.constants import defaults
 from dxtb._src.param import Param
 from dxtb._src.timing import timer
-from dxtb._src.typing import Any, Self, Sequence, Tensor, override
+from dxtb._src.typing import Any, Self, Tensor, override
 from dxtb.config import Config
 from dxtb.integrals import Integrals
 from dxtb.typing import Tensor, TensorLike
@@ -60,11 +60,18 @@ class CalculatorCache(TensorLike):
     This class provides caching functionality for storing multiple calculation results.
     """
 
+    _cache_keys: dict[str, str | None]
+    """Dictionary of cache keys and their corresponding hash values."""
+
     __slots__ = [
         "energy",
+        #
         "forces",
         "hessian",
         "vibration",
+        "normal_modes",
+        "frequencies",
+        #
         "dipole",
         "quadrupole",
         "polarizability",
@@ -72,16 +79,22 @@ class CalculatorCache(TensorLike):
         #
         "charges",
         "iterations",
+        #
+        "_cache_keys",
     ]
 
     def __init__(
         self,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
+        #
         energy: Tensor | None = None,
         forces: Tensor | None = None,
         hessian: Tensor | None = None,
         vibration: VibResult | None = None,
+        normal_modes: Tensor | None = None,
+        frequencies: Tensor | None = None,
+        #
         dipole: Tensor | None = None,
         quadrupole: Tensor | None = None,
         polarizability: Tensor | None = None,
@@ -89,6 +102,8 @@ class CalculatorCache(TensorLike):
         #
         charges: Charges | None = None,
         iterations: int | None = None,
+        #
+        _cache_keys: dict[str, str | None] | None = None,
     ) -> None:
         """
         Initialize the Cache class with optional device and dtype settings.
@@ -105,6 +120,9 @@ class CalculatorCache(TensorLike):
         self.forces = forces
         self.hessian = hessian
         self.vibration = vibration
+        self.normal_modes = normal_modes
+        self.frequencies = frequencies
+
         self.dipole = dipole
         self.quadrupole = quadrupole
         self.polarizability = polarizability
@@ -113,7 +131,13 @@ class CalculatorCache(TensorLike):
         self.charges = charges
         self.iterations = iterations
 
-    def __getitem__(self, key: str) -> Tensor:
+        self._cache_keys = (
+            {prop: None for prop in self.__slots__ if prop != "_cache_keys"}
+            if _cache_keys is None
+            else _cache_keys
+        )
+
+    def __getitem__(self, key: str) -> Tensor | None:
         """
         Get an item from the cache.
 
@@ -124,7 +148,7 @@ class CalculatorCache(TensorLike):
 
         Returns
         -------
-        Tensor or None
+        Tensor | None
             The value associated with the key, if it exists.
         """
         if key in self.__slots__:
@@ -152,6 +176,12 @@ class CalculatorCache(TensorLike):
                 "correctly."
             )
 
+        # also set the content of the vibration result
+        if key == "vibration":
+            assert isinstance(value, VibResult)
+            setattr(self, "normal_modes", value.modes)
+            setattr(self, "frequencies", value.freqs)
+
         if key in self.__slots__:
             setattr(self, key, value)
         else:
@@ -173,15 +203,86 @@ class CalculatorCache(TensorLike):
         """
         return key in self.__slots__ and getattr(self, key) is not None
 
-    def clear(self, key: str | None = None) -> None:
+    def reset(self, key: str) -> None:
         """
-        Clear the cached values.
+        Clearing specific cached value by key.
+
+        Parameters
+        ----------
+        key : str | None, optional
+            The key to reset. If ``None``, all keys are reset. Defaults to
+            ``None``.
         """
-        if key is not None:
+        setattr(self, key, None)
+
+    def reset_all(self) -> None:
+        """
+        Reset the cache by clearing all cached values.
+
+        Parameters
+        ----------
+        key : str | None, optional
+            The key to reset. If ``None``, all keys are reset. Defaults to
+            ``None``.
+        """
+        for key in self.__slots__:
             setattr(self, key, None)
-        else:
-            for key in self.__slots__:
-                setattr(self, key, None)
+
+    def list_cached_properties(self) -> list[str]:
+        """
+        List all cached properties.
+
+        Returns
+        -------
+        list[str]
+            List of cached properties.
+        """
+        return [key for key in self.__slots__ if getattr(self, key) is not None]
+
+    # cache validation
+
+    def set_cache_key(self, key: str, hash: str) -> None:
+        """
+        Set the cache key for a specific property.
+
+        Parameters
+        ----------
+        key : str
+            The key of the item to set.
+        hash : str
+            The hash value to be associated with the key.
+        """
+        if self._cache_keys is None:
+            raise RuntimeError("Cache keys have not been initialized.")
+
+        if key not in self._cache_keys:
+            raise KeyError(f"Key '{key}' cannot be set in Cache.")
+
+        self._cache_keys[key] = hash
+
+    def get_cache_key(self, key: str) -> str | None:
+        """
+        Get the cache key for a specific property.
+
+        Parameters
+        ----------
+        key : str
+            The key of the item to get.
+
+        Returns
+        -------
+        str | None
+            The hash value associated with the key.
+        """
+        if self._cache_keys is None:
+            raise RuntimeError("Cache keys have not been initialized.")
+
+        if key not in self._cache_keys:
+            raise KeyError(f"Key '{key}' not found in '_cache_keys'.")
+
+        return self._cache_keys[key]
+
+    # printing
 
     def __str__(self) -> str:
         """Return a string representation of the Cache object."""
@@ -226,8 +327,8 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         numbers: Tensor,
         par: Param,
         *,
-        classical: Sequence[Classical] | None = None,
-        interaction: Sequence[Interaction] | None = None,
+        classical: list[Classical] | tuple[Classical] | Classical | None = None,
+        interaction: list[Interaction] | tuple[Interaction] | Interaction | None = None,
         opts: dict[str, Any] | Config | None = None,
         cache: CalculatorCache | None = None,
         device: torch.device | None = None,
@@ -318,7 +419,18 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
             else None
         )
 
-        self.interactions = InteractionList(es2, es3, *(interaction or ()), **dd)
+        if interaction is None:
+            self.interactions = InteractionList(es2, es3, **dd)
+        elif isinstance(interaction, Interaction):
+            self.interactions = InteractionList(es2, es3, interaction, **dd)
+        elif isinstance(interaction, (list, tuple)):
+            self.interactions = InteractionList(es2, es3, *interaction, **dd)
+        else:
+            raise TypeError(
+                "Expected 'interaction' to be 'None' or of type 'Interaction', "
+                "'list[Interaction]' or 'tuple[Interaction]', but got "
+                f"'{type(interaction).__name__}'."
+            )
 
         OutputHandler.write_stdout("done", v=4)
 
@@ -345,9 +457,22 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
             else None
         )
 
-        self.classicals = ClassicalList(
-            halogen, dispersion, repulsion, *(classical or ()), **dd
-        )
+        if classical is None:
+            self.classicals = ClassicalList(halogen, dispersion, repulsion, **dd)
+        elif isinstance(classical, Classical):
+            self.classicals = ClassicalList(
+                halogen, dispersion, repulsion, classical, **dd
+            )
+        elif isinstance(classical, (list, tuple)):
+            self.classicals = ClassicalList(
+                halogen, dispersion, repulsion, *classical, **dd
+            )
+        else:
+            raise TypeError(
+                "Expected 'classical' to be 'None' or of type 'Classical', "
+                "'list[Classical]' or 'tuple[Classical]', but got "
+                f"'{type(classical).__name__}'."
+            )
 
         OutputHandler.write_stdout("done", v=4)
 
@@ -399,7 +524,7 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
 
         OutputHandler.write_stdout("done\n", v=4)
 
-        self.ncalcs = 0
+        self._ncalcs = 0
         timer.stop("Calculator")
 
     def reset(self) -> None:
@@ -407,6 +532,7 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         self.classicals.reset_all()
         self.interactions.reset_all()
         self.integrals.reset_all()
+        self.cache.reset_all()
 
     @abstractmethod
     def calculate(
@@ -415,6 +541,7 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any,
     ):
         """
         Calculate the requested properties. This is more of a dispatcher method
@@ -438,7 +565,9 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        allow_calculation=True,
+        allow_calculation: bool = True,
+        return_clone: bool = False,
+        **kwargs: Any,
     ) -> Tensor | None:
         """
         Get the named property.
@@ -454,26 +583,37 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to ``None``.
         allow_calculation : bool, optional
-            If the property is not present, allow its calculation.
+            If the property is not present, allow its calculation. This does
+            not check if we even allow caching or if the inputs are the same.
+            Use with caution. Defaults to ``True``.
+        return_clone : bool, optional
+            If True, return a clone of the property. Defaults to ``False``.
         """
         if name not in self.implemented_properties:
             raise PropertyNotImplementedError(
-                f"{name} property not implemented. Use one of: "
+                f"Property '{name}' not implemented. Use one of: "
                 f"{self.implemented_properties}."
             )
 
-        # Either property is not present or we explicitly forbid using the cache
-        if name not in self.cache or self.opts.use_cache is False:
-            if not allow_calculation:
-                return None
+        # If we do not allow calculation and do not have the property in the
+        # cache, there's nothing we can do. Note that this does not check if we
+        # even allow caching or if the inputs are the same.
+        if allow_calculation is False and name not in self.cache:
+            return None
 
-            self.calculate([name], positions, chrg=chrg, spin=spin)
+        # All the cache checks are handled deep within `calculate`. No need to
+        # do it here as well.
+        self.calculate([name], positions, chrg=chrg, spin=spin, **kwargs)
 
         # For some reason the calculator was not able to do what we want...
         if name not in self.cache:
             raise PropertyNotImplementedError(
-                f"{name} not present in this calculation."
+                f"Property '{name}' not present after calculation. "
+                "This seems like an internal error."
             )
+
+        if return_clone is False:
+            return self.cache[name]
 
         result = self.cache[name]
         if isinstance(result, Tensor):

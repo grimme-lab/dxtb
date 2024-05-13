@@ -23,6 +23,9 @@ This calculator provides analytical, autograd, and numerical versions of all
 properties.
 """
 
+from dxtb._src.constants import defaults
+from dxtb._src.typing import Any, Tensor
+
 from .types.analytical import AnalyticalCalculator
 from .types.autograd import AutogradCalculator
 from .types.numerical import NumericalCalculator
@@ -43,3 +46,13 @@ class Calculator(AnalyticalCalculator, AutogradCalculator, NumericalCalculator):
         )
     )
     """Names of implemented methods of the Calculator."""
+
+    def calculate(
+        self,
+        properties: list[str],
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any,
+    ):
+        AutogradCalculator.calculate(self, properties, positions, chrg, spin, **kwargs)
