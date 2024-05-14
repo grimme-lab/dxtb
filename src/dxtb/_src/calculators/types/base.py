@@ -29,7 +29,7 @@ from tad_mctc.exceptions import DtypeError
 
 from dxtb import IndexHelper, OutputHandler
 from dxtb import integrals as ints
-from dxtb._src.calculators.properties.vibration import VibResult
+from dxtb._src.calculators.properties.vibration import IRResult, RamanResult, VibResult
 from dxtb._src.components.classicals import (
     Classical,
     ClassicalList,
@@ -77,6 +77,14 @@ class CalculatorCache(TensorLike):
         "polarizability",
         "hyperpolarizability",
         #
+        "dipole_deriv",
+        "pol_deriv",
+        "ir",
+        "ir_intensities",
+        "raman",
+        "raman_intensities",
+        "raman_depol",
+        #
         "charges",
         "iterations",
         #
@@ -99,6 +107,14 @@ class CalculatorCache(TensorLike):
         quadrupole: Tensor | None = None,
         polarizability: Tensor | None = None,
         hyperpolarizability: Tensor | None = None,
+        #
+        dipole_deriv: Tensor | None = None,
+        pol_deriv: Tensor | None = None,
+        ir: IRResult | None = None,
+        ir_intensities: Tensor | None = None,
+        raman: RamanResult | None = None,
+        raman_intensities: Tensor | None = None,
+        raman_depol: Tensor | None = None,
         #
         charges: Charges | None = None,
         iterations: int | None = None,
@@ -127,6 +143,14 @@ class CalculatorCache(TensorLike):
         self.quadrupole = quadrupole
         self.polarizability = polarizability
         self.hyperpolarizability = hyperpolarizability
+
+        self.dipole_deriv = dipole_deriv
+        self.pol_deriv = pol_deriv
+        self.ir = ir
+        self.ir_intensities = ir_intensities
+        self.raman = raman
+        self.raman_intensities = raman_intensities
+        self.raman_depol = raman_depol
 
         self.charges = charges
         self.iterations = iterations
@@ -176,11 +200,20 @@ class CalculatorCache(TensorLike):
                 "correctly."
             )
 
-        # also set the content of the vibration result
+        # also set the content of the spectroscopic results
         if key == "vibration":
             assert isinstance(value, VibResult)
-            setattr(self, "normal_modes", value.modes)
             setattr(self, "frequencies", value.freqs)
+            setattr(self, "normal_modes", value.modes)
+        if key == "ir":
+            assert isinstance(value, IRResult)
+            setattr(self, "frequencies", value.freqs)
+            setattr(self, "ir_intensities", value.ints)
+        if key == "raman":
+            assert isinstance(value, RamanResult)
+            setattr(self, "frequencies", value.freqs)
+            setattr(self, "raman_intensities", value.ints)
+            setattr(self, "raman_depol", value.depol)
 
         if key in self.__slots__:
             setattr(self, key, value)
@@ -226,7 +259,12 @@ class CalculatorCache(TensorLike):
             ``None``.
         """
         for key in self.__slots__:
-            setattr(self, key, None)
+            if key != "_cache_keys":
+                setattr(self, key, None)
+
+        self._cache_keys = {
+            prop: None for prop in self.__slots__ if prop != "_cache_keys"
+        }
 
     def list_cached_properties(self) -> list[str]:
         """
@@ -237,7 +275,11 @@ class CalculatorCache(TensorLike):
         list[str]
             List of cached properties.
         """
-        return [key for key in self.__slots__ if getattr(self, key) is not None]
+        return [
+            key
+            for key in self.__slots__
+            if getattr(self, key) is not None and key != "_cache_keys"
+        ]
 
     # cache validation
 

@@ -104,7 +104,7 @@ def execute(
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
     # field is cloned and detached and updated inside
-    num = calc.hyperpol_numerical(positions, charge)
+    num = calc.hyperpolarizability_numerical(positions, charge)
 
     # required for autodiff of energy w.r.t. efield; update after numerical
     # derivative as `requires_grad_(True)` gets lost

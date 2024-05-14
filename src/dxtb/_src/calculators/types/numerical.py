@@ -28,10 +28,9 @@ import logging
 import torch
 
 from dxtb import OutputHandler
-from dxtb._src.components.interactions.field import efield as efield
-from dxtb._src.components.interactions.field import efieldgrad as efield_grad
+from dxtb._src.components.interactions.field import efield
 from dxtb._src.constants import defaults
-from dxtb._src.typing import Tensor
+from dxtb._src.typing import Any, Tensor
 
 from ..properties import vibration as vib
 from . import decorators as cdec
@@ -236,6 +235,7 @@ class NumericalCalculator(EnergyCalculator):
         return deriv
 
     @cdec.numerical
+    @cdec.cache
     def vibration_numerical(
         self,
         positions: Tensor,
@@ -284,6 +284,7 @@ class NumericalCalculator(EnergyCalculator):
 
     @cdec.numerical
     @cdec.requires_efield
+    @cdec.cache
     def dipole_numerical(
         self,
         positions: Tensor,
@@ -349,6 +350,7 @@ class NumericalCalculator(EnergyCalculator):
         return -deriv
 
     @cdec.numerical
+    @cdec.cache
     def dipole_deriv_numerical(
         self,
         positions: Tensor,
@@ -427,6 +429,7 @@ class NumericalCalculator(EnergyCalculator):
 
     @cdec.numerical
     @cdec.requires_efield
+    @cdec.cache
     def polarizability_numerical(
         self,
         positions: Tensor,
@@ -509,6 +512,7 @@ class NumericalCalculator(EnergyCalculator):
 
     @cdec.numerical
     @cdec.requires_efield
+    @cdec.cache
     def pol_deriv_numerical(
         self,
         positions: Tensor,
@@ -585,7 +589,8 @@ class NumericalCalculator(EnergyCalculator):
 
     @cdec.numerical
     @cdec.requires_efield
-    def hyperpol_numerical(
+    @cdec.cache
+    def hyperpolarizability_numerical(
         self,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
@@ -665,6 +670,7 @@ class NumericalCalculator(EnergyCalculator):
     # SPECTRA
 
     @cdec.numerical
+    @cdec.cache
     def ir_numerical(
         self,
         positions: Tensor,
@@ -711,6 +717,7 @@ class NumericalCalculator(EnergyCalculator):
         return vib.IRResult(freqs, intensities)
 
     @cdec.numerical
+    @cdec.cache
     def raman_numerical(
         self,
         positions: Tensor,
@@ -755,3 +762,63 @@ class NumericalCalculator(EnergyCalculator):
         logger.debug("Raman spectrum: All finished.")
 
         return vib.RamanResult(vib_res.freqs, intensities, depol)
+
+    def calculate(
+        self,
+        properties: list[str],
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any,
+    ):
+        """
+        Calculate the requested properties. This is more of a dispatcher method
+        that calls the appropriate methods of the Calculator.
+
+        Parameters
+        ----------
+        properties : list[str]
+            List of properties to calculate.
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to ``None``.
+
+        Returns
+        -------
+        dict
+            Dictionary of calculated properties.
+        """
+        super().calculate(properties, positions, chrg, spin, **kwargs)
+
+        if "forces" in properties:
+            self.forces_numerical(positions, chrg, spin, **kwargs)
+
+        if "hessian" in properties:
+            self.hessian_numerical(positions, chrg, spin, **kwargs)
+
+        if {"vibration", "frequencies", "normal_modes"} & set(properties):
+            self.vibration_numerical(positions, chrg, spin, **kwargs)
+
+        if "dipole" in properties:
+            self.dipole_numerical(positions, chrg, spin, **kwargs)
+
+        if {"dipole_derivatives", "dipole_deriv"} & set(properties):
+            self.dipole_deriv_numerical(positions, chrg, spin, **kwargs)
+
+        if "polarizability" in properties:
+            self.polarizability_numerical(positions, chrg, spin, **kwargs)
+
+        if {"polarizability_derivatives", "pol_deriv"} & set(properties):
+            self.pol_deriv_numerical(positions, chrg, spin, **kwargs)
+
+        if "hyperpolarizability" in properties:
+            self.hyperpolarizability_numerical(positions, chrg, spin, **kwargs)
+
+        if {"ir", "ir_intensities"} in set(properties):
+            self.ir_numerical(positions, chrg, spin, **kwargs)
+
+        if {"raman", "raman_intensities", "raman_depol"} & set(properties):
+            self.raman_numerical(positions, chrg, spin, **kwargs)

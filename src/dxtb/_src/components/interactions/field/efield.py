@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-External: Electric Field
-========================
+External Fields: Electric Field
+===============================
 
 Interaction of the charge density with an external electric field.
 """

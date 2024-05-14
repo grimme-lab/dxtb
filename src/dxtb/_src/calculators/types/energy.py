@@ -110,10 +110,8 @@ class EnergyCalculator(BaseCalculator):
 
             ccaches = self.classicals.get_cache(self.numbers, self.ihelp)
             cenergies = self.classicals.get_energy(positions, ccaches)
-            cenergy = torch.stack(list(cenergies.values())).sum(0)
-
             result.cenergies = cenergies
-            result.total += cenergy
+            result.total += torch.stack(list(cenergies.values())).sum(0)
 
             timer.stop("Classicals")
             OutputHandler.write_stdout("done", v=3)
@@ -211,9 +209,11 @@ class EnergyCalculator(BaseCalculator):
         result.hamiltonian = scf_results["hamiltonian"]
         result.occupation = scf_results["occupation"]
         result.potential = scf_results["potential"]
+        result.scf = scf_results["energy"]
+        result.fenergy = scf_results["fenergy"]
 
         scf_energy = scf_results["energy"] + scf_results["fenergy"]
-        total_energy = scf_energy + cenergy
+        result.total += scf_energy
 
         if self.opts.batch_mode == 0:
             OutputHandler.write_stdout(
@@ -223,11 +223,11 @@ class EnergyCalculator(BaseCalculator):
             )
             OutputHandler.write_stdout(
                 f"Total Energy: %.14f Hartree.",
-                total_energy.sum(-1),
+                result.total.sum(-1),
                 v=1,
             )
 
-        self.cache["energy"] = total_energy
+        self.cache["energy"] = result.total
         self.cache["charges"] = scf_results["charges"]
         self.cache["iterations"] = scf_results["iterations"]
 
@@ -259,7 +259,9 @@ class EnergyCalculator(BaseCalculator):
             Total energy of the system (scalar value).
         """
         self.singlepoint(positions, chrg, spin)
-        return self.cache["energy"].sum(-1)
+        e = self.cache["energy"]
+        assert e is not None
+        return e.sum(-1)
 
     def calculate(
         self,
@@ -289,5 +291,8 @@ class EnergyCalculator(BaseCalculator):
         dict
             Dictionary of calculated properties.
         """
+        if self.opts.use_cache is False:
+            self.cache.reset_all()
+
         if "energy" in properties:
             self.energy(positions, chrg, spin, **kwargs)

@@ -364,6 +364,8 @@ class AnalyticalCalculator(EnergyCalculator):
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to ``None``.
         """
+        super().calculate(properties, positions, chrg, spin, **kwargs)
+
         if "forces" in properties:
             kwargs.pop("grad_mode")
             self.forces_analytical(positions, chrg, spin, **kwargs)

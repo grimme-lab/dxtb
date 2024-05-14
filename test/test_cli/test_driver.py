@@ -41,7 +41,7 @@ def test_driver(dtype: torch.dtype) -> None:
     assert result is not None
 
     energy = result.total.sum(-1).detach()
-    assert pytest.approx(energy) == ref
+    assert pytest.approx(ref) == energy
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

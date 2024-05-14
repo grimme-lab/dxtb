@@ -169,6 +169,103 @@ class GetPropertiesMixin(ABC):
     ) -> Tensor:
         return self.get_property("dipole", positions, chrg=chrg, spin=spin, **kwargs)
 
+    def get_dipole_derivatives(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property(
+            "dipole_derivatives", positions, chrg=chrg, spin=spin, **kwargs
+        )
+
+    def get_polarizability(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property(
+            "polarizability", positions, chrg=chrg, spin=spin, **kwargs
+        )
+
+    def get_polarizability_derivatives(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property(
+            "polarizability_derivatives", positions, chrg=chrg, spin=spin, **kwargs
+        )
+
+    def get_hyperpolarizability(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property(
+            "hyperpolarizability", positions, chrg=chrg, spin=spin, **kwargs
+        )
+
+    # spectra
+
+    def get_ir(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property("ir", positions, chrg=chrg, spin=spin, **kwargs)
+
+    def get_ir_intensity(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property(
+            "ir_intensity", positions, chrg=chrg, spin=spin, **kwargs
+        )
+
+    def get_raman(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property("raman", positions, chrg=chrg, spin=spin, **kwargs)
+
+    def get_raman_intensity(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property(
+            "raman_intensity", positions, chrg=chrg, spin=spin, **kwargs
+        )
+
+    def get_raman_depol(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property(
+            "raman_depol", positions, chrg=chrg, spin=spin, **kwargs
+        )
+
     # SCF properties
 
     def get_charges(

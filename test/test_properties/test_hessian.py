@@ -121,23 +121,69 @@ def execute(
     numhess = calc.hessian_numerical(positions, charge)
     assert numhess.grad_fn is None
 
-    # required for autodiff of energy w.r.t. positions (Hessian)
+    # jacrev of energy
     pos = positions.clone().detach().requires_grad_(True)
-
-    # manual jacobian
-    hess1 = tensor_to_numpy(calc.hessian(pos, charge, use_functorch=False))
-
-    assert pytest.approx(numhess, abs=atol, rel=rtol) == hess1
+    hess1 = tensor_to_numpy(
+        calc.hessian(
+            pos,
+            charge,
+            use_functorch=True,
+            derived_quantity="energy",
+        )
+    )
 
     # reset before another AD run
     calc.reset()
-    pos = positions.clone().detach().requires_grad_(True)
 
-    # jacrev of energy
-    hess2 = tensor_to_numpy(calc.hessian(pos, charge, use_functorch=True))
+    # manual jacobian of energy
+    pos = positions.clone().detach().requires_grad_(True)
+    hess2 = tensor_to_numpy(
+        calc.hessian(
+            pos,
+            charge,
+            use_functorch=False,
+            derived_quantity="energy",
+        )
+    )
 
     assert pytest.approx(numhess, abs=atol, rel=rtol) == hess2
     assert pytest.approx(hess1, abs=atol, rel=rtol) == hess2
+
+    # reset before another AD run
+    calc.reset()
+
+    # jacrev of forces
+    pos = positions.clone().detach().requires_grad_(True)
+    hess3 = tensor_to_numpy(
+        calc.hessian(
+            pos,
+            charge,
+            use_functorch=True,
+            derived_quantity="forces",
+        )
+    )
+
+    assert pytest.approx(numhess, abs=atol, rel=rtol) == hess3
+    assert pytest.approx(hess1, abs=atol, rel=rtol) == hess3
+    assert pytest.approx(hess2, abs=atol, rel=rtol) == hess3
+
+    # reset before another AD run
+    calc.reset()
+
+    # manual jacobian of forces
+    hess4 = tensor_to_numpy(
+        calc.hessian(
+            pos,
+            charge,
+            use_functorch=False,
+            derived_quantity="forces",
+        )
+    )
+
+    assert pytest.approx(numhess, abs=atol, rel=rtol) == hess4
+    assert pytest.approx(hess1, abs=atol, rel=rtol) == hess4
+    assert pytest.approx(hess2, abs=atol, rel=rtol) == hess4
+    assert pytest.approx(hess3, abs=atol, rel=rtol) == hess4
 
 
 @pytest.mark.parametrize("dtype", [torch.double])

@@ -199,6 +199,9 @@ class AutogradCalculator(EnergyCalculator):
             Number of unpaired electrons. Defaults to ``None``.
         use_functorch : bool, optional
             Whether to use `functorch` for autodiff. Defaults to ``False``.
+        derived_quantity : Literal['energy', 'forces'], optional
+            Which derivative to calculate for the Hessian, i.e., derivative of
+            forces or energy w.r.t. positions. Defaults to ``forces``.
         matrix : bool, optional
             Whether to reshape the Hessian to a matrix, i.e., `(nat*3, nat*3)`.
             Defaults to ``False``.
@@ -224,9 +227,11 @@ class AutogradCalculator(EnergyCalculator):
                 hess_func = jacrev(self.forces, argnums=0)
                 # specifiy grad_mode here!
                 hess = hess_func(positions, chrg, spin, "functorch")
+
             elif derived_quantity == "energy":
                 hess_func = jacrev(jacrev(self.energy, argnums=0), argnums=0)
                 hess = hess_func(positions, chrg, spin)
+
             else:
                 raise ValueError(
                     f"Unknown `derived_quantity` '{derived_quantity}'. The "
@@ -241,7 +246,14 @@ class AutogradCalculator(EnergyCalculator):
                 from tad_mctc.autograd import jac
 
                 grad_mode = kwargs.pop("grad_mode", "autograd")
-                forces = self.forces(positions, chrg, spin, grad_mode=grad_mode)
+                forces = self.forces(
+                    positions,
+                    chrg,
+                    spin,
+                    grad_mode=grad_mode,
+                    create_graph=True,
+                    retain_graph=True,
+                )
 
                 # reshape (..., nat, 3, nat*3) to (..., nat, 3, nat, 3)
                 hess = jac(forces, positions).reshape(
@@ -253,6 +265,7 @@ class AutogradCalculator(EnergyCalculator):
                 from tad_mctc.autograd import hessian
 
                 hess = hessian(self.energy, (positions, chrg, spin), argnums=0)
+
             else:
                 raise ValueError(
                     f"Unknown `derived_quantity` '{derived_quantity}'. The "
@@ -267,6 +280,10 @@ class AutogradCalculator(EnergyCalculator):
                 use_functorch,
             )
             hess = hess.contiguous()
+
+        # forces are negative gradient -> revert sign again
+        if derived_quantity == "forces":
+            hess = -hess
 
         # reshape (..., nat, 3, nat, 3) to (..., nat*3, nat*3)
         if matrix is True:
@@ -332,7 +349,9 @@ class AutogradCalculator(EnergyCalculator):
             matrix=False,
             **kwargs,
         )
-        return vib_analysis(
+        print(self.cache.list_cached_properties())
+        print(hess)
+        a = vib_analysis(
             self.numbers,
             positions,
             hess,
@@ -340,9 +359,13 @@ class AutogradCalculator(EnergyCalculator):
             project_rotational=project_rotational,
             **kwargs,
         )
+        print(a.freqs)
+
+        return a
 
     @cdec.requires_efield
     @cdec.requires_efield_grad
+    @cdec.cache
     def dipole(
         self,
         positions: Tensor,
@@ -415,6 +438,7 @@ class AutogradCalculator(EnergyCalculator):
         return -dip
 
     @cdec.requires_positions_grad
+    @cdec.cache
     def dipole_deriv(
         self,
         positions: Tensor,
@@ -505,6 +529,7 @@ class AutogradCalculator(EnergyCalculator):
 
     @cdec.requires_efield
     @cdec.requires_efield_grad
+    @cdec.cache
     def polarizability(
         self,
         positions: Tensor,
@@ -618,6 +643,7 @@ class AutogradCalculator(EnergyCalculator):
 
     @cdec.requires_efield
     @cdec.requires_positions_grad
+    @cdec.cache
     def pol_deriv(
         self,
         positions: Tensor,
@@ -695,6 +721,7 @@ class AutogradCalculator(EnergyCalculator):
 
     @cdec.requires_efield
     @cdec.requires_efield_grad
+    @cdec.cache
     def hyperpolarizability(
         self,
         positions: Tensor,
@@ -806,6 +833,7 @@ class AutogradCalculator(EnergyCalculator):
 
     # SPECTRA
 
+    @cdec.cache
     def ir(
         self,
         positions: Tensor,
@@ -838,12 +866,18 @@ class AutogradCalculator(EnergyCalculator):
         OutputHandler.write_stdout("-----------")
         logger.debug("IR spectrum: Start.")
 
+        print(self.cache.list_cached_properties())
         # run vibrational analysis first
         vib_res = self.vibration(positions, chrg, spin)
+        print(vib_res.freqs)
+        print(self.cache.list_cached_properties())
+        print()
 
         # TODO: Figure out how to run func transforms 2x properly
         # (improve: Hessian does not need dipole integral but dipder does)
-        self.reset()
+        self.classicals.reset_all()
+        self.interactions.reset_all()
+        self.integrals.reset_all()
 
         # calculate nuclear dipole derivative dmu/dR: (..., 3, nat, 3)
         dmu_dr = self.dipole_deriv(positions, chrg, spin, use_functorch=use_functorch)
@@ -851,9 +885,11 @@ class AutogradCalculator(EnergyCalculator):
         intensities = ir_ints(dmu_dr, vib_res.modes)
 
         logger.debug("IR spectrum: All finished.")
+        print(vib_res.freqs)
 
         return IRResult(vib_res.freqs, intensities)
 
+    @cdec.cache
     def raman(
         self,
         positions: Tensor,
@@ -932,8 +968,7 @@ class AutogradCalculator(EnergyCalculator):
         dict
             Dictionary of calculated properties.
         """
-        if "energy" in properties:
-            self.energy(positions, chrg, spin, **kwargs)
+        super().calculate(properties, positions, chrg, spin, **kwargs)
 
         if "forces" in properties:
             self.forces(positions, chrg, spin, **kwargs)
@@ -941,8 +976,26 @@ class AutogradCalculator(EnergyCalculator):
         if "hessian" in properties:
             self.hessian(positions, chrg, spin, **kwargs)
 
-        if "normal_modes" in properties or "frequencies" in properties:
+        if {"vibration", "frequencies", "normal_modes"} & set(properties):
             self.vibration(positions, chrg, spin, **kwargs)
 
         if "dipole" in properties:
             self.dipole(positions, chrg, spin, **kwargs)
+
+        if {"dipole_derivatives", "dipole_deriv"} & set(properties):
+            self.dipole_deriv(positions, chrg, spin, **kwargs)
+
+        if "polarizability" in properties:
+            self.polarizability(positions, chrg, spin, **kwargs)
+
+        if {"polarizability_derivatives", "pol_deriv"} & set(properties):
+            self.pol_deriv(positions, chrg, spin, **kwargs)
+
+        if "hyperpolarizability" in properties:
+            self.hyperpolarizability(positions, chrg, spin, **kwargs)
+
+        if {"ir", "ir_intensities"} in set(properties):
+            self.ir(positions, chrg, spin, **kwargs)
+
+        if {"raman", "raman_intensities", "raman_depol"} & set(properties):
+            self.raman(positions, chrg, spin, **kwargs)
