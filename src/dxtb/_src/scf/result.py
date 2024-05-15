@@ -53,7 +53,7 @@ class SCFResult(TypedDict):
     """Full Hamiltonian matrix (H0 + H1)."""
 
     occupation: Tensor
-    """Orbital occupations."""
+    """Orbital occupation."""
 
     potential: Potential
     """Self-consistent orbital-resolved potential."""

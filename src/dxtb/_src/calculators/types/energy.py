@@ -57,7 +57,18 @@ class EnergyCalculator(BaseCalculator):
     gradients, Hessians, molecular properties, and spectra.
     """
 
-    implemented_properties: list[str] = ["energy"]
+    # all from an SCF
+    implemented_properties: list[str] = [
+        "bond_orders",
+        "energy",
+        "coefficients",
+        "charges",
+        "density",
+        "iterations",
+        "mo_energies",
+        "occupation",
+        "potential",
+    ]
     """Names of implemented methods of the Calculator."""
 
     __slots__ = [
@@ -75,6 +86,7 @@ class EnergyCalculator(BaseCalculator):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any,
     ):
         """
         Entry point for performing single point calculations.
@@ -95,6 +107,18 @@ class EnergyCalculator(BaseCalculator):
         )
 
         OutputHandler.write_stdout("Singlepoint ", v=3)
+
+        #
+        from dxtb._src.utils.tensors import tensor_id
+
+        hashed_key = ""
+        all_args = (positions, chrg, spin) + tuple(kwargs.values())
+        for i, arg in enumerate(all_args):
+            sep = "_" if i > 0 else ""
+            if isinstance(arg, Tensor):
+                hashed_key += f"{sep}{tensor_id(arg)}"
+            else:
+                hashed_key += f"{sep}{arg}"
 
         chrg = any_to_tensor(chrg, **self.dd)
         if spin is not None:
@@ -227,9 +251,43 @@ class EnergyCalculator(BaseCalculator):
                 v=1,
             )
 
+        # Store results. Energy always stored.
         self.cache["energy"] = result.total
-        self.cache["charges"] = scf_results["charges"]
-        self.cache["iterations"] = scf_results["iterations"]
+
+        copts = self.opts.cache.store
+
+        if kwargs.get("store_charges", copts.charges):
+            self.cache["charges"] = scf_results["charges"]
+            self.cache.set_cache_key("charges", "charges:" + hashed_key)
+        if kwargs.get("store_coefficients", copts.coefficients):
+            self.cache["coefficients"] = scf_results["coefficients"]
+            self.cache.set_cache_key("coefficients", "coefficients:" + hashed_key)
+        if kwargs.get("store_density", copts.density):
+            self.cache["density"] = scf_results["density"]
+            self.cache.set_cache_key("density", "density:" + hashed_key)
+        if kwargs.get("store_iterations", copts.iterations):
+            self.cache["iterations"] = scf_results["iterations"]
+            self.cache.set_cache_key("iterations", "iterations:" + hashed_key)
+        if kwargs.get("store_mo_energies", copts.mo_energies):
+            self.cache["mo_energies"] = scf_results["emo"]
+            self.cache.set_cache_key("mo_energies", "mo_energies:" + hashed_key)
+        if kwargs.get("store_occupation", copts.occupation):
+            self.cache["occupation"] = scf_results["occupation"]
+            self.cache.set_cache_key("occupation", "occupation:" + hashed_key)
+        if kwargs.get("store_potential", copts.potential):
+            self.cache["potential"] = scf_results["potential"]
+            self.cache.set_cache_key("potential", "potential:" + hashed_key)
+
+        if kwargs.get("store_fock", copts.fock):
+            self.cache["fock"] = scf_results["hamiltonian"]
+        if kwargs.get("store_hcore", copts.hcore):
+            self.cache["hcore"] = self.integrals.hcore
+        if kwargs.get("store_overlap", copts.overlap):
+            self.cache["overlap"] = self.integrals.overlap
+        if kwargs.get("store_dipole", copts.dipole):
+            self.cache["dipint"] = self.integrals.dipole
+        if kwargs.get("store_quadrupole", copts.quadrupole):
+            self.cache["quadint"] = self.integrals.quadrupole
 
         self._ncalcs += 1
         return result
@@ -240,6 +298,7 @@ class EnergyCalculator(BaseCalculator):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any,
     ) -> Tensor:
         """
         Calculate the total energy :math:`E` of the system.
@@ -258,10 +317,65 @@ class EnergyCalculator(BaseCalculator):
         Tensor
             Total energy of the system (scalar value).
         """
-        self.singlepoint(positions, chrg, spin)
+        self.singlepoint(positions, chrg, spin, **kwargs)
         e = self.cache["energy"]
         assert e is not None
         return e.sum(-1)
+
+    @cdec.cache
+    def bond_orders(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any,
+    ) -> Tensor:
+        """
+        Calculate the (Wiberg) bond order matrix.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to ``None``.
+
+        Returns
+        -------
+        Tensor
+            Bond order matrix.
+        """
+        self.singlepoint(positions, chrg, spin, **kwargs)
+
+        overlap = self.cache["overlap"]
+        if overlap is None:
+            raise RuntimeError(
+                "Overlap matrix not found in cache. The overlap is not saved "
+                "per default. Enable saving either via the calculator options "
+                "(`calc.opts.cache.store.overlap = True`) or by passing the "
+                "`store_overlap=True` keyword argument to called method, e.g., "
+                "`calc.energy(positions, store_overlap=True)"
+            )
+
+        assert isinstance(overlap, ints.types.Overlap)
+        assert overlap.matrix is not None
+
+        density = self.cache["density"]
+        if density is None:
+            raise RuntimeError(
+                "Density matrix not found in cache. The density is not saved "
+                "per default. Enable saving either via the calculator options "
+                "(`calc.opts.cache.store.density = True`) or by passing the "
+                "`store_density=True` keyword argument to called method, e.g., "
+                "`calc.energy(positions, store_density=True)"
+            )
+
+        # pylint: disable=import-outside-toplevel
+        from dxtb._src.wavefunction.wiberg import get_bond_order
+
+        return get_bond_order(overlap.matrix, density, self.ihelp)
 
     def calculate(
         self,
@@ -291,8 +405,14 @@ class EnergyCalculator(BaseCalculator):
         dict
             Dictionary of calculated properties.
         """
-        if self.opts.use_cache is False:
+        if self.opts.cache.enabled is False:
             self.cache.reset_all()
 
-        if "energy" in properties:
+        # treat bond orders separately for better error message
+        if "bond_orders" in properties:
+            self.bond_orders(positions, chrg, spin, **kwargs)
+
+        props = self.get_implemented_properties()
+        props.remove("bond_orders")
+        if set(props) & set(properties):
             self.energy(positions, chrg, spin, **kwargs)

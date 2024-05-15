@@ -203,6 +203,47 @@ FERMI_PARTITION = "equal"
 FERMI_PARTITION_CHOICES = ["equal", "atomic"]
 """List of possible choices for `FERMI_PARTITION`."""
 
+# cache
+
+CACHE_ENABLED = False
+"""Whether caching is enabled."""
+
+CACHE_STORE_HCORE = False
+"""Whether to store the core Hamiltonian."""
+
+CACHE_STORE_OVERLAP = False
+"""Whether to store the overlap integral matrix."""
+
+CACHE_STORE_DIPOLE = False
+"""Whether to store the dipole integral matrix."""
+
+CACHE_STORE_QUADRUPOLE = False
+"""Whether to store the quadrupole integral matrix."""
+
+CACHE_STORE_CHARGES = True
+"""Whether to store the atomic charges."""
+
+CACHE_STORE_COEFFICIENTS = False
+"""Whether to store the MO coefficients."""
+
+CACHE_STORE_DENSITY = False
+"""Whether to store the density matrix."""
+
+CACHE_STORE_FOCK = False
+"""Whether to store the Fock matrix."""
+
+CACHE_STORE_ITERATIONS = True
+"""Whether to store the number of SCF iterations."""
+
+CACHE_STORE_MO_ENERGIES = False
+"""Whether to store the MO energies."""
+
+CACHE_STORE_OCCUPATIONS = False
+"""Whether to store the orbital occupation."""
+
+CACHE_STORE_POTENTIAL = False
+"""Whether to store the potential."""
+
 # PyTorch
 
 TORCH_DTYPE = torch.double

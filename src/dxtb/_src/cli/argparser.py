@@ -465,20 +465,91 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         action="store_true",
         help="R|Whether to compute gradients for positions w.r.t. energy.",
     )
+
+    # Cache
+
     p.add_argument(
-        "--use-cache",
-        "--use_cache",
+        "--cache-enabled",
+        "--cache_enabled",
         action="store_true",
         help="R|Whether to use the cache for results from the Calculator.",
     )
     p.add_argument(
-        "--profile",
+        "--cache-hcore",
+        "--cache_hcore",
         action="store_true",
-        help=(
-            "R|Profile the program.\n"
-            "Creates 'dxtb.profile' that can be analyzed with 'snakeviz'."
-        ),
+        help="R|Cache the core Hamiltonian integral.",
     )
+    p.add_argument(
+        "--cache-overlap",
+        "--cache_overlap",
+        action="store_true",
+        help="R|Cache the overlap integral.",
+    )
+    p.add_argument(
+        "--cache-dipole",
+        "--cache_dipole",
+        action="store_true",
+        help="R|Cache the dipole integral.",
+    )
+    p.add_argument(
+        "--cache-quadrupole",
+        "--cache_quadrupole",
+        action="store_true",
+        help="R|Cache the quadrupole integral.",
+    )
+
+    p.add_argument(
+        "--cache-charges",
+        "--cache_charges",
+        action="store_true",
+        help="R|Cache the atomic (Mulliken) charges.",
+    )
+    p.add_argument(
+        "--cache-coefficients",
+        "--cache_coefficients",
+        action="store_true",
+        help="R|Cache the MO coefficients.",
+    )
+    p.add_argument(
+        "--cache-density",
+        "--cache_density",
+        action="store_true",
+        help="R|Cache the density matrix.",
+    )
+    p.add_argument(
+        "--cache-fock",
+        "--cache_fock",
+        action="store_true",
+        help="R|Cache the Fock matrix.",
+    )
+    p.add_argument(
+        "--cache-iterations",
+        "--cache_iterations",
+        action="store_true",
+        help="R|Cache the number of SCF iterations.",
+    )
+    p.add_argument(
+        "--cache-mo-energies",
+        "--cache_mo_energies",
+        action="store_true",
+        help="R|Cache the Fock matrix.",
+    )
+    p.add_argument(
+        "--cache-occupation",
+        "--cache_occupation",
+        action="store_true",
+        help="R|Cache the orbital occupation.",
+    )
+    p.add_argument(
+        "--cache-potential",
+        "--cache_potential",
+        action="store_true",
+        help="R|Cache the SCF potential.",
+    )
+
+    # tolerances
+
     p.add_argument(
         "--xtol",
         type=float,
@@ -586,6 +657,19 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         default=defaults.BATCH_MODE,
         help="R|Batch mode for calculation.",
     )
+
+    # misc
+
+    p.add_argument(
+        "--profile",
+        action="store_true",
+        help=(
+            "R|Profile the program.\n"
+            "Creates 'dxtb.profile' that can be analyzed with 'snakeviz'."
+        ),
+    )
+
+    # input files
 
     p.add_argument(
         "--dir",

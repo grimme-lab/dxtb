@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import logging
 from functools import wraps
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import torch
 
@@ -40,6 +40,10 @@ from dxtb._src.components.interactions.field import efieldgrad as efieldgrad
 from dxtb._src.constants import defaults
 from dxtb._src.typing import Any, Callable, Tensor, TypeVar
 from dxtb._src.utils.tensors import tensor_id
+
+if TYPE_CHECKING:
+    from ..base import Calculator
+del TYPE_CHECKING
 
 __all__ = [
     "requires_positions_grad",
@@ -53,16 +57,6 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-# class CalculatorFunction(Protocol):
-#     def __call__(
-#         self: "Calculator",
-#         numbers: Tensor,
-#         positions: Tensor,
-#         chrg: Tensor | float | int = defaults.CHRG,
-#         spin: Tensor | float | int | None = defaults.SPIN,
-#         **kwargs: Any
-#     ) -> tuple[torch.Tensor, Tensor]:
-#         ...
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -70,7 +64,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 def requires_positions_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     @wraps(func)
     def wrapper(
-        self: Calculator,  # type: ignore
+        self: Calculator,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -90,7 +84,7 @@ def requires_positions_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor
 def requires_efield(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     @wraps(func)
     def wrapper(
-        self: Calculator,  # type: ignore
+        self: Calculator,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -110,7 +104,7 @@ def requires_efield(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
 def requires_efield_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     @wraps(func)
     def wrapper(
-        self: Calculator,  # type: ignore
+        self: Calculator,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -130,7 +124,7 @@ def requires_efield_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
 def requires_efg(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     @wraps(func)
     def wrapper(
-        self: Calculator,  # type: ignore
+        self: Calculator,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -151,7 +145,7 @@ def requires_efg(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
 def requires_efg_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     @wraps(func)
     def wrapper(
-        self: Calculator,  # type: ignore
+        self: Calculator,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
@@ -227,11 +221,11 @@ def cache(func: F) -> F:
     """
 
     @wraps(func)
-    def wrapper(self: Calculator, *args, **kwargs):  # type: ignore
+    def wrapper(self: Calculator, *args, **kwargs):
         cache_key: str = func.__name__
         key = cache_key.replace("_numerical", "").replace("_analytical", "")
 
-        hashed_key = key + ":"
+        hashed_key = ""
 
         all_args = args + tuple(kwargs.values())
         for i, arg in enumerate(all_args):
@@ -241,14 +235,20 @@ def cache(func: F) -> F:
             else:
                 hashed_key += f"{sep}{arg}"
 
+        full_key = key + ":" + hashed_key
+
+        # print(cache_key, full_key)
+        # print(self.opts.cache.enabled)
+        # print(self.cache._cache_keys)
+
         # Check if the result is already in the cache in three steps:
         # 1. Are we allowed to use the cache?
         # 2. Is the key even in the cache?
         # 3. Is the cache result calculated with the same inputs?
-        if self.opts.use_cache is True:
+        if self.opts.cache.enabled is True:
             if key in self.cache:
                 if self.cache.get_cache_key(key) is not None:
-                    if self.cache.get_cache_key(key) == hashed_key:
+                    if self.cache.get_cache_key(key) == full_key:
                         logger.debug(f"{cache_key.title()}: Using cached result.")
                         return self.cache[key]
 
@@ -257,7 +257,7 @@ def cache(func: F) -> F:
         self.cache[key] = result
 
         # Also store the "hashkey"
-        self.cache.set_cache_key(key, hashed_key)
+        self.cache.set_cache_key(key, full_key)
         return result
 
     return cast(F, wrapper)

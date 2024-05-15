@@ -25,6 +25,7 @@ import torch
 from dxtb._src.constants import defaults, labels
 from dxtb._src.typing import Any, PathLike, Self, get_default_device, get_default_dtype
 
+from .cache import ConfigCache
 from .integral import ConfigIntegrals
 from .scf import ConfigSCF
 
@@ -48,10 +49,24 @@ class Config:
     grad: bool
     """Whether to compute the gradient."""
 
-    use_cache: bool
-    """Whether to use the cache."""
+    max_element: int
+    """The maximum element number in the system."""
+
+    # PyTorch
+
+    anomaly: bool
+    """Whether to run PyTorch in anomaly detection mode."""
+
+    device: torch.device
+    """The device to use for the calculation."""
+
+    dtype: torch.dtype
+    """The data type to use for the calculation."""
 
     # configs
+
+    cache: ConfigCache
+    """The cache configuration."""
 
     ints: ConfigIntegrals
     """The integral configuration."""
@@ -66,7 +81,6 @@ class Config:
         exclude: str | list[str] = defaults.EXCLUDE,
         method: str | int = defaults.METHOD,
         grad: bool = False,
-        use_cache: bool = False,
         batch_mode: int = defaults.BATCH_MODE,
         # integrals
         int_cutoff: float = defaults.INTCUTOFF,
@@ -91,17 +105,30 @@ class Config:
         fermi_maxiter: int = defaults.FERMI_MAXITER,
         fermi_thresh: dict = defaults.FERMI_THRESH,
         fermi_partition: str | int = defaults.FERMI_PARTITION,
+        # cache
+        cache_enabled: bool = defaults.CACHE_ENABLED,
+        cache_hcore: bool = defaults.CACHE_STORE_HCORE,
+        cache_overlap: bool = defaults.CACHE_STORE_OVERLAP,
+        cache_dipole: bool = defaults.CACHE_STORE_DIPOLE,
+        cache_quadrupole: bool = defaults.CACHE_STORE_QUADRUPOLE,
+        cache_charges: bool = defaults.CACHE_STORE_CHARGES,
+        cache_coefficients: bool = defaults.CACHE_STORE_COEFFICIENTS,
+        cache_density: bool = defaults.CACHE_STORE_DENSITY,
+        cache_fock: bool = defaults.CACHE_STORE_FOCK,
+        cache_iterations: bool = defaults.CACHE_STORE_ITERATIONS,
+        cache_mo_energies: bool = defaults.CACHE_STORE_MO_ENERGIES,
+        cache_occupation: bool = defaults.CACHE_STORE_OCCUPATIONS,
+        cache_potential: bool = defaults.CACHE_STORE_POTENTIAL,
         # misc
         max_element: int = defaults.MAX_ELEMENT,
     ) -> None:
         self.file = file
         self.exclude = exclude
         self.grad = grad
-        self.use_cache = use_cache
 
+        self.anomaly = anomaly
         self.device = device
         self.dtype = dtype
-        self.anomaly = anomaly
 
         # use property to also set the batch mode in SCF config
         self._batch_mode = batch_mode
@@ -125,6 +152,24 @@ class Config:
                 "The method must be of type 'int' or 'str', but "
                 f"'{type(method)}' was given."
             )
+
+        self.cache = ConfigCache(
+            enabled=cache_enabled,
+            #
+            hcore=cache_hcore,
+            overlap=cache_overlap,
+            dipole=cache_dipole,
+            quadrupole=cache_quadrupole,
+            #
+            charges=cache_charges,
+            coefficients=cache_coefficients,
+            density=cache_density,
+            fock=cache_fock,
+            iterations=cache_iterations,
+            mo_energies=cache_mo_energies,
+            occupation=cache_occupation,
+            potential=cache_potential,
+        )
 
         self.ints = ConfigIntegrals(
             level=int_level,
@@ -185,7 +230,6 @@ class Config:
             exclude=args.exclude,
             method=args.method,
             grad=args.grad,
-            use_cache=args.use_cache,
             # integrals
             int_cutoff=args.int_cutoff,
             int_driver=args.int_driver,
@@ -210,6 +254,18 @@ class Config:
             fermi_maxiter=args.fermi_maxiter,
             fermi_thresh=args.fermi_thresh,
             fermi_partition=args.fermi_partition,
+            # Cache
+            cache_enabled=args.cache_enabled,
+            cache_hcore=args.cache_hcore,
+            cache_overlap=args.cache_overlap,
+            cache_dipole=args.cache_dipole,
+            cache_quadrupole=args.cache_quadrupole,
+            cache_coefficients=args.cache_coefficients,
+            cache_density=args.cache_density,
+            cache_fock=args.cache_fock,
+            cache_mo_energies=args.cache_mo_energies,
+            cache_occupation=args.cache_occupation,
+            cache_potential=args.cache_potential,
         )
 
     @classmethod

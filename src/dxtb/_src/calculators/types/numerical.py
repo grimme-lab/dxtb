@@ -770,7 +770,7 @@ class NumericalCalculator(EnergyCalculator):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
-    ):
+    ) -> None:
         """
         Calculate the requested properties. This is more of a dispatcher method
         that calls the appropriate methods of the Calculator.
@@ -785,11 +785,6 @@ class NumericalCalculator(EnergyCalculator):
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to ``None``.
-
-        Returns
-        -------
-        dict
-            Dictionary of calculated properties.
         """
         super().calculate(properties, positions, chrg, spin, **kwargs)
 

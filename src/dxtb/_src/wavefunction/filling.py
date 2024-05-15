@@ -15,10 +15,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Wavefunction: Filling
+=====================
+
 Handle the occupation of the orbitals with electrons.
+
+Parts of the Fermi smearing are taken from https://github.com/tbmalt/tbmalt
 """
 
-# NOTE: Parts of the Fermi smearing are taken from https://github.com/tbmalt/tbmalt
 from __future__ import annotations
 
 import torch
@@ -169,7 +173,7 @@ def get_aufbau_occupation(norb: Tensor, nel: Tensor) -> Tensor:
         #                 [1.0000, 1.0000, 1.0000, 0.5000],
         #                 [1.0000, 0.5000, 0.0000, 0.0000]])
 
-        # Check if the total number of electrons matches the sum of occupations
+        # Check if the total number of electrons matches the sum of occupation
         print(all(nel == occ.sum(-1)))  # True
     """
 
@@ -179,7 +183,7 @@ def get_aufbau_occupation(norb: Tensor, nel: Tensor) -> Tensor:
     occupation = torch.heaviside(
         # 2. remove the orbital index from the total number of electrons
         #    (negative numbers are filled with ones, positive numbers with zeros)
-        # 3. fractional occupations will be in the range [-1, 0], therefore we round up
+        # 3. fractional occupation will be in the range [-1, 0], therefore we round up
         torch.ceil(nel.unsqueeze(-1) - idxs.unsqueeze(-2)),
         # 4. heaviside uses the actual values at 0, therefore we provide the remainder
         # 5. to not lose whole electrons we take the negative and add one

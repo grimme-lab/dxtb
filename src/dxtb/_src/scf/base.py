@@ -78,7 +78,7 @@ class BaseSCF:
         """Occupation numbers (shape: [..., 2, orbs])"""
 
         n0: Tensor
-        """Reference occupations for each orbital (shape: [..., orbs])"""
+        """Reference occupation for each orbital (shape: [..., orbs])"""
 
         ihelp: IndexHelper
         """Index mapping for the basis set"""

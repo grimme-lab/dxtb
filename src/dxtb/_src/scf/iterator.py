@@ -140,7 +140,7 @@ def get_refocc(
     refs: Tensor, chrg: Tensor, spin: Tensor | None, ihelp: IndexHelper
 ) -> tuple[Tensor, Tensor]:
     """
-    Obtain reference occupations and total number of electrons.
+    Obtain reference occupation and total number of electrons.
 
     Parameters
     ----------
@@ -156,7 +156,7 @@ def get_refocc(
     Returns
     -------
     tuple[Tensor, Tensor]
-        Reference occupations and occupation.
+        Reference occupation and occupation.
     """
 
     refocc = ihelp.spread_ushell_to_orbital(refs)
@@ -168,7 +168,7 @@ def get_refocc(
         torch.tensor(0, device=refs.device, dtype=refs.dtype),
     )
 
-    # Obtain the reference occupations and total number of electrons
+    # Obtain the reference occupation and total number of electrons
     nel = torch.sum(n0, -1) - torch.sum(chrg, -1)
 
     # get alpha and beta electrons and occupation

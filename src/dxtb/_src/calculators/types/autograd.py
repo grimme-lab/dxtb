@@ -866,12 +866,8 @@ class AutogradCalculator(EnergyCalculator):
         OutputHandler.write_stdout("-----------")
         logger.debug("IR spectrum: Start.")
 
-        print(self.cache.list_cached_properties())
         # run vibrational analysis first
         vib_res = self.vibration(positions, chrg, spin)
-        print(vib_res.freqs)
-        print(self.cache.list_cached_properties())
-        print()
 
         # TODO: Figure out how to run func transforms 2x properly
         # (improve: Hessian does not need dipole integral but dipder does)
@@ -885,7 +881,6 @@ class AutogradCalculator(EnergyCalculator):
         intensities = ir_ints(dmu_dr, vib_res.modes)
 
         logger.debug("IR spectrum: All finished.")
-        print(vib_res.freqs)
 
         return IRResult(vib_res.freqs, intensities)
 
@@ -947,7 +942,7 @@ class AutogradCalculator(EnergyCalculator):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
-    ):
+    ) -> None:
         """
         Calculate the requested properties. This is more of a dispatcher method
         that calls the appropriate methods of the Calculator.
@@ -962,11 +957,6 @@ class AutogradCalculator(EnergyCalculator):
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to ``None``.
-
-        Returns
-        -------
-        dict
-            Dictionary of calculated properties.
         """
         super().calculate(properties, positions, chrg, spin, **kwargs)
 

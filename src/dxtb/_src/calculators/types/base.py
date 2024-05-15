@@ -38,7 +38,7 @@ from dxtb._src.components.classicals import (
     new_repulsion,
 )
 from dxtb._src.components.interactions import Interaction, InteractionList
-from dxtb._src.components.interactions.container import Charges
+from dxtb._src.components.interactions.container import Charges, Potential
 from dxtb._src.components.interactions.coulomb import new_es2, new_es3
 from dxtb._src.components.interactions.field import efield as efield
 from dxtb._src.components.interactions.field import efieldgrad as efield_grad
@@ -85,8 +85,20 @@ class CalculatorCache(TensorLike):
         "raman_intensities",
         "raman_depol",
         #
+        "hcore",
+        "overlap",
+        "dipint",
+        "quadint",
+        #
+        "bond_orders",
         "charges",
+        "coefficients",
+        "density",
+        "fock",
         "iterations",
+        "mo_energies",
+        "occupation",
+        "potential",
         #
         "_cache_keys",
     ]
@@ -116,7 +128,19 @@ class CalculatorCache(TensorLike):
         raman_intensities: Tensor | None = None,
         raman_depol: Tensor | None = None,
         #
+        hcore: Tensor | None = None,
+        overlap: ints.types.Overlap | None = None,
+        dipint: ints.types.Dipole | None = None,
+        quadint: ints.types.Quadrupole | None = None,
+        #
+        bond_orders: Tensor | None = None,
+        coefficients: Tensor | None = None,
         charges: Charges | None = None,
+        density: Tensor | None = None,
+        fock: Tensor | None = None,
+        mo_energies: Tensor | None = None,
+        occupation: Tensor | None = None,
+        potential: Potential | None = None,
         iterations: int | None = None,
         #
         _cache_keys: dict[str, str | None] | None = None,
@@ -152,8 +176,20 @@ class CalculatorCache(TensorLike):
         self.raman_intensities = raman_intensities
         self.raman_depol = raman_depol
 
+        self.hcore = hcore
+        self.overlap = overlap
+        self.dipint = dipint
+        self.quadint = quadint
+
+        self.bond_orders = bond_orders
+        self.coefficients = coefficients
         self.charges = charges
+        self.density = density
+        self.fock = fock
         self.iterations = iterations
+        self.mo_energies = mo_energies
+        self.occupation = occupation
+        self.potential = potential
 
         self._cache_keys = (
             {prop: None for prop in self.__slots__ if prop != "_cache_keys"}
@@ -161,7 +197,7 @@ class CalculatorCache(TensorLike):
             else _cache_keys
         )
 
-    def __getitem__(self, key: str) -> Tensor | None:
+    def __getitem__(self, key: str) -> Any:
         """
         Get an item from the cache.
 
@@ -651,7 +687,8 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         if name not in self.cache:
             raise PropertyNotImplementedError(
                 f"Property '{name}' not present after calculation. "
-                "This seems like an internal error."
+                "This seems like an internal error. (Maybe the method you "
+                "are calling has no cache decorator?)"
             )
 
         if return_clone is False:

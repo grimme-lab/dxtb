@@ -30,7 +30,7 @@ from dxtb.calculators import AutogradCalculator
 DEVICE = None
 
 
-opts = {"use_cache": True, "verbosity": 0}
+opts = {"cache_enabled": True, "verbosity": 0}
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

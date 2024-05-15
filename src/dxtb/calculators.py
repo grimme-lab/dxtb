@@ -93,11 +93,24 @@ Calculators: Get Properties
 
 The calculator can be used to compute energies, forces, dipole moments and
 other properties. The properties are computed by calling the respective
-:meth:`get_<property>` method, just as in ASE.
+:meth:`get_` method, just as in ASE.
 
 Depending on which calculator you choose, the properties are calculated using
 analytical, autograd, or numerical derivatives. The default uses automatic
 differentation. For details, see the calculator types.
+
+Calculators: Caching
+====================
+
+All properties can be cached. However, caching is not enabled by default. To
+enable caching, pass ``{"cache_enabled": True}`` to the calculator options.
+
+.. warning::
+
+    Caching may lead to side effects if automatic differentiation is used
+    multiple times. If you encounter any issues, try running
+    :meth:`~dxtb.Calculator.reset_all`. If this does not help, disable caching
+    or report the issue.
 """
 
 from dxtb._src.calculators.gfn1 import GFN1Calculator as GFN1Calculator

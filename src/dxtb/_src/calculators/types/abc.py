@@ -44,7 +44,7 @@ class GetPropertiesMixin(ABC):
     """Names of implemented methods of the Calculator."""
 
     def get_implemented_properties(self) -> list[str]:
-        return self.implemented_properties
+        return sorted(self.implemented_properties)
 
     @abstractmethod
     def get_property(
@@ -169,6 +169,17 @@ class GetPropertiesMixin(ABC):
     ) -> Tensor:
         return self.get_property("dipole", positions, chrg=chrg, spin=spin, **kwargs)
 
+    def get_dipole_deriv(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property(
+            "dipole_derivatives", positions, chrg=chrg, spin=spin, **kwargs
+        )
+
     def get_dipole_derivatives(
         self,
         positions: Tensor,
@@ -189,6 +200,17 @@ class GetPropertiesMixin(ABC):
     ) -> Tensor:
         return self.get_property(
             "polarizability", positions, chrg=chrg, spin=spin, **kwargs
+        )
+
+    def get_pol_deriv(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property(
+            "polarizability_derivatives", positions, chrg=chrg, spin=spin, **kwargs
         )
 
     def get_polarizability_derivatives(
@@ -224,7 +246,7 @@ class GetPropertiesMixin(ABC):
     ) -> Tensor:
         return self.get_property("ir", positions, chrg=chrg, spin=spin, **kwargs)
 
-    def get_ir_intensity(
+    def get_ir_intensities(
         self,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
@@ -244,7 +266,7 @@ class GetPropertiesMixin(ABC):
     ) -> Tensor:
         return self.get_property("raman", positions, chrg=chrg, spin=spin, **kwargs)
 
-    def get_raman_intensity(
+    def get_raman_intensities(
         self,
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
@@ -268,6 +290,37 @@ class GetPropertiesMixin(ABC):
 
     # SCF properties
 
+    def get_bond_orders(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property(
+            "bond_orders", positions, chrg=chrg, spin=spin, **kwargs
+        )
+
+    def get_coefficients(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property(
+            "coefficients", positions, chrg=chrg, spin=spin, **kwargs
+        )
+
+    def get_density(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property("density", positions, chrg=chrg, spin=spin, **kwargs)
+
     def get_charges(
         self,
         positions: Tensor,
@@ -276,3 +329,54 @@ class GetPropertiesMixin(ABC):
         **kwargs: Any
     ) -> Tensor:
         return self.get_property("charges", positions, chrg=chrg, spin=spin, **kwargs)
+
+    def get_mulliken_charges(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property("charges", positions, chrg=chrg, spin=spin, **kwargs)
+
+    def get_iterations(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property(
+            "iterations", positions, chrg=chrg, spin=spin, **kwargs
+        )
+
+    def get_mo_energies(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property(
+            "mo_energies", positions, chrg=chrg, spin=spin, **kwargs
+        )
+
+    def get_occupation(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property(
+            "occupation", positions, chrg=chrg, spin=spin, **kwargs
+        )
+
+    def get_potential(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any
+    ) -> Tensor:
+        return self.get_property("potential", positions, chrg=chrg, spin=spin, **kwargs)

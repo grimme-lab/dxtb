@@ -35,7 +35,7 @@ class _Data:
     occupation : Tensor
         Occupation numbers (shape: [..., 2, orbs]).
     n0 : Tensor
-        Reference occupations for each orbital (shape: [..., orbs]).
+        Reference occupation for each orbital (shape: [..., orbs]).
     ihelp : IndexHelper
         Index mapping for the basis set.
     cache : InteractionListCache
@@ -76,7 +76,7 @@ class _Data:
         occupation : Tensor
             Occupation numbers.
         n0 : Tensor
-            Reference occupations for each orbital.
+            Reference occupation for each orbital.
         numbers : Tensor
             Atomic numbers.
         ihelp : IndexHelper
