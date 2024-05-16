@@ -125,17 +125,21 @@ class AutogradCalculator(EnergyCalculator):
         OutputHandler.write_stdout("------\n", v=5)
         logger.debug("Forces: Starting.")
 
+        # DEVNOTE: We need to pop the `create_graph` and `retain_graph` kwargs
+        # to avoid passing them to the energy function, which would add them to
+        # the cache key. This would require to pass them to the energy function
+        # as well for a cache hit, which is obviously non-sensical.
         kw = {
             "create_graph": kwargs.pop("create_graph", False),
             "retain_graph": kwargs.pop("retain_graph", False),
         }
 
         if grad_mode == "autograd":
-            e = self.energy(positions, chrg, spin)
+            e = self.energy(positions, chrg, spin, **kwargs)
             (deriv,) = torch.autograd.grad(e, positions, **kw)
 
         elif grad_mode == "backward":
-            e = self.energy(positions, chrg, spin)
+            e = self.energy(positions, chrg, spin, **kwargs)
             e.backward(**kw)
             assert positions.grad is not None
             deriv = positions.grad
@@ -145,14 +149,14 @@ class AutogradCalculator(EnergyCalculator):
             from tad_mctc.autograd import jacrev
 
             # jacrev requires a scalar from `self.energy`!
-            deriv = jacrev(self.energy, argnums=0)(positions, chrg, spin)
+            deriv = jacrev(self.energy, argnums=0)(positions, chrg, spin, **kwargs)
             assert isinstance(deriv, Tensor)
 
         elif grad_mode == "row":
             # pylint: disable=import-outside-toplevel
             from tad_mctc.autograd import jac
 
-            energy = self.energy(positions, chrg, spin)
+            energy = self.energy(positions, chrg, spin, **kwargs)
             deriv = jac(energy, positions, **kw).reshape(*positions.shape)
 
         else:
@@ -958,7 +962,24 @@ class AutogradCalculator(EnergyCalculator):
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to ``None``.
         """
-        super().calculate(properties, positions, chrg, spin, **kwargs)
+        # DEVNOTE: `super()` does not quite work, because the default kwargs of
+        # other functions may be missing. Example: Running `forces` will always
+        # use the `grad_mode` argument, which is not known within `super()`.
+        # Hence, the cache key will be different and the energy calculation
+        # after `forces` would not use the cached energy.
+        # super().calculate(properties, positions, chrg, spin, **kwargs)
+
+        if self.opts.cache.enabled is False:
+            self.cache.reset_all()
+
+        # treat bond orders separately for better error message
+        if "bond_orders" in properties:
+            self.bond_orders(positions, chrg, spin, **kwargs)
+
+        props = list(EnergyCalculator.implemented_properties)
+        props.remove("bond_orders")
+        if set(props) & set(properties):
+            self.energy(positions, chrg, spin, **kwargs)
 
         if "forces" in properties:
             self.forces(positions, chrg, spin, **kwargs)

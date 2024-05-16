@@ -98,14 +98,25 @@ class AnalyticalCalculator(EnergyCalculator):
         Tensor
             Atomic forces of shape ``(..., nat, 3)``.
         """
-        OutputHandler.write_stdout("Singlepoint ", v=3)
+        # DEVNOTE: We need to save certain properties from the energy
+        # calculation for the analytical derivative. So, we check in the
+        # options if those quantities were cached. If not, we correct the
+        # setup. We also need to reset the cache. Otherwise, the energy
+        # calculation will use the cached value and the properties of
+        # interest are not calculated.
+        if self.opts.cache.is_setup_for_analytical_gradient() is False:
+            self.opts.cache.setup_for_analytical_gradient()
+            self.cache.reset_all()
+
+        self.energy(positions, chrg, spin, **kwargs)
+
+        # Setup
 
         chrg = any_to_tensor(chrg, **self.dd)
         if spin is not None:
             spin = any_to_tensor(spin, **self.dd)
 
         total_grad = torch.zeros(positions.shape, **self.dd)
-        result = Result(positions, **self.dd)
 
         # CLASSICAL CONTRIBUTIONS
 
@@ -115,8 +126,6 @@ class AnalyticalCalculator(EnergyCalculator):
 
             ccaches = self.classicals.get_cache(self.numbers, self.ihelp)
             cenergies = self.classicals.get_energy(positions, ccaches)
-            result.cenergies = cenergies
-            result.total += torch.stack(list(cenergies.values())).sum(0)
 
             timer.stop("Classicals")
             OutputHandler.write_stdout("done", v=3)
@@ -127,6 +136,7 @@ class AnalyticalCalculator(EnergyCalculator):
             total_grad += torch.stack(list(cgradients.values())).sum(0)
 
             timer.stop("Classicals Gradient")
+            OutputHandler.write_stdout("done", v=3)
 
         if any(x in ["all", "scf"] for x in self.opts.exclude):
             return -total_grad
@@ -156,6 +166,8 @@ class AnalyticalCalculator(EnergyCalculator):
             total_grad += interaction_grad
             timer.stop("igrad")
 
+        # overlap gradient
+
         timer.start("ograd", "Overlap Gradient")
         overlap_grad = self.integrals.grad_overlap(positions)
         timer.stop("ograd")
@@ -164,19 +176,31 @@ class AnalyticalCalculator(EnergyCalculator):
         assert isinstance(overlap, Overlap)
         assert overlap.matrix is not None
 
+        # density matrix
+
         coefficients = self.cache["coefficients"]
         assert isinstance(coefficients, Tensor)
-        density = self.cache["density"]
-        assert isinstance(density, Tensor)
+
         mo_energies = self.cache["mo_energies"]
         assert isinstance(mo_energies, Tensor)
+
         occupation = self.cache["occupation"]
         assert isinstance(occupation, Tensor)
+
+        timer.start("hgrad", "Hamiltonian Gradient")
+        wmat = scf.get_density(
+            coefficients,
+            occupation.sum(-2),
+            emo=mo_energies,
+        )
+
+        # SCF gradient
+
         potential = self.cache["potential"]
         assert isinstance(potential, Potential)
 
-        timer.start("hgrad", "Hamiltonian Gradient")
-        wmat = scf.get_density(coefficients, occupation.sum(-2), emo=mo_energies)
+        density = self.cache["density"]
+        assert isinstance(density, Tensor)
 
         assert self.integrals.hcore is not None
 
@@ -522,20 +546,10 @@ class AnalyticalCalculator(EnergyCalculator):
             self.cache.reset_all()
 
         if {"energy", "iterations"} & set(properties):
-            self.energy(positions, chrg, spin)
+            self.energy(positions, chrg, spin, **kwargs)
 
         if "forces" in properties:
             kwargs.pop("grad_mode")
-
-            self.opts.cache.store.coefficients = True
-            self.opts.cache.store.density = True
-            self.opts.cache.store.mo_energies = True
-            self.opts.cache.store.occupation = True
-            self.opts.cache.store.overlap = True
-            self.opts.cache.store.potential = True
-
-            self.energy(positions, chrg, spin)
-
             self.forces_analytical(positions, chrg, spin, **kwargs)
 
         if "dipole" in properties:

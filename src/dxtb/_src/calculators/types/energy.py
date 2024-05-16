@@ -37,6 +37,7 @@ from dxtb._src.components.interactions.field import efieldgrad as efield_grad
 from dxtb._src.constants import defaults
 from dxtb._src.timing import timer
 from dxtb._src.typing import Any, Tensor
+from dxtb._src.utils.tensors import tensor_id
 
 from ..result import Result
 from . import decorators as cdec
@@ -108,9 +109,7 @@ class EnergyCalculator(BaseCalculator):
 
         OutputHandler.write_stdout("Singlepoint ", v=3)
 
-        #
-        from dxtb._src.utils.tensors import tensor_id
-
+        # get the hashed key for the cache from all arguments
         hashed_key = ""
         all_args = (positions, chrg, spin) + tuple(kwargs.values())
         for i, arg in enumerate(all_args):

@@ -237,9 +237,10 @@ def cache(func: F) -> F:
 
         full_key = key + ":" + hashed_key
 
-        # print(cache_key, full_key)
-        # print(self.opts.cache.enabled)
-        # print(self.cache._cache_keys)
+        print()
+        print(cache_key, full_key)
+        print(self.opts.cache.enabled)
+        print(self.cache._cache_keys)
 
         # Check if the result is already in the cache in three steps:
         # 1. Are we allowed to use the cache?

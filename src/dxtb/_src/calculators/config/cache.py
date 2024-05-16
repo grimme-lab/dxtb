@@ -15,7 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Integral configuration.
+Config: Cache
+=============
+
+Configuration for the cache.
 """
 
 from __future__ import annotations
@@ -105,4 +108,37 @@ class ConfigCache:
             mo_energies=mo_energies,
             occupation=occupation,
             potential=potential,
+        )
+
+    def setup_for_analytical_gradient(self) -> None:
+        """
+        Enable all quantities required for an analytical gradient calculation.
+        """
+        self.store.charges = True
+        self.store.coefficients = True
+        self.store.density = True
+        self.store.mo_energies = True
+        self.store.occupation = True
+        self.store.overlap = True
+        self.store.potential = True
+
+    def is_setup_for_analytical_gradient(self) -> bool:
+        """
+        Check if all quantities required for an analytical gradient calculation
+
+        Returns
+        -------
+        bool
+            ``True`` if all required quantities are enabled.
+        """
+        return all(
+            [
+                self.store.charges,
+                self.store.coefficients,
+                self.store.density,
+                self.store.mo_energies,
+                self.store.occupation,
+                self.store.overlap,
+                self.store.potential,
+            ]
         )
