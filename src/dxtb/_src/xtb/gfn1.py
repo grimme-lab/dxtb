@@ -92,9 +92,10 @@ class GFN1Hamiltonian(BaseHamiltonian):
                 self.en,
                 self.rad,
             )
-        ):
+        ):  # pragma: no cover
             raise ValueError("All tensors must have same dtype")
 
+        # device should always be correct as it always uses self.device
         if any(
             tensor.device != self.device
             for tensor in (
@@ -108,7 +109,7 @@ class GFN1Hamiltonian(BaseHamiltonian):
                 self.en,
                 self.rad,
             )
-        ):
+        ):  # pragma: no cover
             raise ValueError("All tensors must be on the same device")
 
     def _get_elem_param(self, key: str) -> Tensor:

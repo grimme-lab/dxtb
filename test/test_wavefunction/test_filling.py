@@ -101,7 +101,7 @@ def test_single(dtype: torch.dtype, name: str):
     sample = samples[name]
 
     nel = sample["n_electrons"].to(**dd)
-    uhf = sample["spin"].to(**dd)
+    uhf = sample["spin"].tolist()
     nab = filling.get_alpha_beta_occupation(nel, uhf)
 
     emo = sample["emo"].to(**dd)

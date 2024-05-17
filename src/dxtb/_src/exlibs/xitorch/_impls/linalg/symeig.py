@@ -31,6 +31,7 @@ from dxtb._src.exlibs.xitorch._utils.exceptions import MathWarning
 from dxtb._src.exlibs.xitorch._utils.tensor import tallqr, to_fortran_order
 from dxtb._src.exlibs.xitorch.debug.modes import is_debug_enabled
 from dxtb._src.typing import Any, Sequence, Tensor
+from dxtb._src.utils.math import eigh
 
 __all__ = ["exacteig", "davidson"]
 
@@ -135,7 +136,7 @@ class DegenSymeigBase(torch.autograd.Function):
 class DegenSymeig_V1(DegenSymeigBase):
     @staticmethod
     def forward(ctx: Any, A: Tensor) -> tuple[Tensor, Tensor]:
-        eival, eivec = torch.linalg.eigh(A)
+        eival, eivec = eigh(A)
         ctx.save_for_backward(eival, eivec)
 
         return eival, eivec
@@ -146,7 +147,7 @@ class DegenSymeig_V2(DegenSymeigBase):
 
     @staticmethod
     def forward(A: Tensor) -> tuple[Tensor, Tensor]:
-        eival, eivec = torch.linalg.eigh(A)
+        eival, eivec = eigh(A)
         return eival, eivec
 
     @staticmethod
@@ -239,7 +240,7 @@ def davidson(
 
         # eigvals are sorted from the lowest
         # eval: (*BAM, nguess), evec: (*BAM, nguess, nguess)
-        eigvalT, eigvecT = torch.linalg.eigh(T)
+        eigvalT, eigvecT = eigh(T)
         eigvalT, eigvecT = _take_eigpairs(
             eigvalT, eigvecT, neig, mode
         )  # (*BAM, neig) and (*BAM, nguess, neig)

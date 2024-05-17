@@ -24,20 +24,42 @@ import pytest
 import torch
 
 from dxtb._src.typing.exceptions import SCFConvergenceError
-from dxtb._src.utils import is_int_list, is_str_list, set_jit_enabled
+from dxtb._src.utils import is_basis_list, is_int_list, is_str_list, set_jit_enabled
 
 
 def test_lists() -> None:
-    strlist = ["a", "b"]
-    assert is_str_list(strlist)
+    assert is_str_list(["a", "b", "c"]) == True
+    assert is_str_list(["a", 1, "c"]) == False
+    assert is_str_list([]) == True
+    assert is_str_list(["a", ""]) == True
+    assert is_str_list(123) == False  # type: ignore
+    assert is_str_list(None) == False  # type: ignore
 
-    intlist = [1, 2]
-    assert is_int_list(intlist)
 
-    assert not is_str_list(intlist)
-    assert not is_str_list(strlist + intlist)
-    assert not is_int_list(strlist)
-    assert not is_int_list(strlist + intlist)
+def test_is_int_list():
+    assert is_int_list([1, 2, 3]) == True
+    assert is_int_list([1, "a", 3]) == False
+    assert is_int_list([]) == True
+    assert is_int_list([1, -1, 0]) == True
+    assert is_int_list("123") == False  # type: ignore
+    assert is_int_list(None) == False  # type: ignore
+
+
+def test_is_basis_list(monkeypatch):
+    # Mocking the import inside the function
+    from dxtb._src.exlibs.libcint import AtomCGTOBasis, CGTOBasis
+
+    basis = AtomCGTOBasis(
+        1,
+        [CGTOBasis(1, torch.tensor([1.0]), torch.tensor([1.0]))],
+        torch.tensor([0.0, 0.0, 0.0]),
+    )
+
+    assert is_basis_list([basis, basis]) == True
+    assert is_basis_list([basis, "a"]) == False
+    assert is_basis_list([]) == True
+    assert is_basis_list("basis") == False
+    assert is_basis_list(None) == False
 
 
 def test_jit_settings() -> None:

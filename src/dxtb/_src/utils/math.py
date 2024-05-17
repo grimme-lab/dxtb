@@ -33,12 +33,12 @@ __all__ = ["eigh", "eighb", "qr"]
 
 def eigh(matrix: Tensor, *args: Any, **kwargs: Any) -> tuple[Tensor, Tensor]:
     """
-    Typed wrapper for PyTorch's `torch.linalg.eigh` function.
+    Typed wrapper for PyTorch's :meth:`~torch.linalg.eigh` function.
 
     Parameters
     ----------
-    matrix : torch.Tensor
-        Input matrix
+    matrix : Tensor
+        Input matrix,
 
     Returns
     -------
@@ -50,12 +50,12 @@ def eigh(matrix: Tensor, *args: Any, **kwargs: Any) -> tuple[Tensor, Tensor]:
 
 def qr(matrix: Tensor, *args: Any, **kwargs: Any) -> tuple[Tensor, Tensor]:
     """
-    Typed wrapper for PyTorch's `torch.linalg.qs` function.
+    Typed wrapper for PyTorch's :meth:`~torch.linalg.qr` function.
 
     Parameters
     ----------
-    matrix : torch.Tensor
-        Input matrix
+    matrix : Tensor
+        Input matrix.
 
     Returns
     -------

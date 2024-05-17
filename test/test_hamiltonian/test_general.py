@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-General test for Core Hamiltonian.
+General test for Core GFN1Hamiltonian.
 """
 
 from __future__ import annotations
@@ -23,10 +23,12 @@ from __future__ import annotations
 import pytest
 import torch
 from tad_mctc.convert import str_to_device
+from tad_mctc.typing import MockTensor
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
-from dxtb._src.xtb.gfn1 import GFN1Hamiltonian as Hamiltonian
+from dxtb._src.xtb.base import BaseHamiltonian
+from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 
 
 def test_no_h0_fail() -> None:
@@ -35,14 +37,14 @@ def test_no_h0_fail() -> None:
     _par.hamiltonian = None
 
     with pytest.raises(RuntimeError):
-        Hamiltonian(dummy, _par, dummy)  # type: ignore
+        GFN1Hamiltonian(dummy, _par, dummy)  # type: ignore
 
 
 def test_no_h0_fail2() -> None:
     numbers = torch.tensor([1])
     ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
     _par = par.model_copy(deep=True)
-    h0 = Hamiltonian(numbers, _par, ihelp)
+    h0 = GFN1Hamiltonian(numbers, _par, ihelp)
 
     _par.hamiltonian = None
     with pytest.raises(RuntimeError):
@@ -67,14 +69,14 @@ def test_no_h0_fail2() -> None:
 def test_change_type(dtype: torch.dtype) -> None:
     numbers = torch.tensor([1])
     ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
-    h0 = Hamiltonian(numbers, par, ihelp)
+    h0 = GFN1Hamiltonian(numbers, par, ihelp)
     assert h0.type(dtype).dtype == dtype
 
 
 def test_change_type_fail() -> None:
     numbers = torch.tensor([1])
     ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
-    h0 = Hamiltonian(numbers, par, ihelp)
+    h0 = GFN1Hamiltonian(numbers, par, ihelp)
 
     # trying to use setter
     with pytest.raises(AttributeError):
@@ -92,7 +94,7 @@ def test_change_device(device_str: str) -> None:
 
     numbers = torch.tensor([1], device=device)
     ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
-    h0 = Hamiltonian(numbers, par, ihelp, device=device)
+    h0 = GFN1Hamiltonian(numbers, par, ihelp, device=device)
 
     if device_str == "cpu":
         dev = torch.device("cpu")
@@ -106,18 +108,20 @@ def test_change_device(device_str: str) -> None:
 def test_change_device_fail() -> None:
     numbers = torch.tensor([1])
     ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
-    h0 = Hamiltonian(numbers, par, ihelp)
+    h0 = GFN1Hamiltonian(numbers, par, ihelp)
 
     # trying to use setter
     with pytest.raises(AttributeError):
         h0.device = "cpu"
 
 
-@pytest.mark.cuda
 def test_wrong_device_fail() -> None:
-    numbers = torch.tensor([1], device=str_to_device("cuda"))
-    ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
+    numbers_cpu = torch.tensor([1], device=torch.device("cpu"))
+    ihelp = IndexHelper.from_numbers_angular(numbers_cpu, {1: [0]})
+
+    numbers = MockTensor(torch.tensor([1]))
+    numbers.device = torch.device("cuda")
 
     # numbers is on a different device
     with pytest.raises(ValueError):
-        Hamiltonian(numbers, par, ihelp)
+        GFN1Hamiltonian(numbers, par, ihelp, device=torch.device("cpu"))
