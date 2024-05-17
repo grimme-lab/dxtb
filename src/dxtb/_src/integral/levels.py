@@ -24,6 +24,7 @@ Specifies the levels of integrals that should be computed.
 __all__ = [
     "INTLEVEL_NONE",
     "INTLEVEL_OVERLAP",
+    "INTLEVEL_HCORE",
     "INTLEVEL_DIPOLE",
     "INTLEVEL_QUADRUPOLE",
 ]
@@ -34,8 +35,11 @@ INTLEVEL_NONE = 0
 INTLEVEL_OVERLAP = 1
 """Overlap integrals."""
 
-INTLEVEL_DIPOLE = 2
+INTLEVEL_HCORE = 2
+"""Core Hamiltonian integrals."""
+
+INTLEVEL_DIPOLE = 3
 """Dipole integrals."""
 
-INTLEVEL_QUADRUPOLE = 3
+INTLEVEL_QUADRUPOLE = 4
 """Quadrupole integrals."""

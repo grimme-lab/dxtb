@@ -40,8 +40,9 @@ class ConfigIntegrals:
 
     - 0: None
     - 1: overlap
-    - 2: +dipole
-    - 3: +quadrupole
+    - 2: +core Hamiltonian
+    - 3: +dipole
+    - 4: +quadrupole
     """
 
     cutoff: float

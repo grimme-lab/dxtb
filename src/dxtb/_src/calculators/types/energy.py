@@ -125,7 +125,9 @@ class EnergyCalculator(BaseCalculator):
 
         result = Result(positions, **self.dd)
 
-        # CLASSICAL CONTRIBUTIONS
+        ###########################
+        # CLASSICAL CONTRIBUTIONS #
+        ###########################
 
         if len(self.classicals.components) > 0:
             OutputHandler.write_stdout_nf(" - Classicals        ... ", v=3)
@@ -139,18 +141,31 @@ class EnergyCalculator(BaseCalculator):
             timer.stop("Classicals")
             OutputHandler.write_stdout("done", v=3)
 
-        if any(x in ["all", "scf"] for x in self.opts.exclude):
+        if {"all", "scf"} & set(self.opts.exclude):
             return result
 
-        # SELF-CONSISTENT FIELD PROCEDURE
+        #############
+        # INTEGRALS #
+        #############
 
         timer.start("Integrals")
-        # overlap integral
+
+        # overlap integral (always required, even without Hückel Hamiltonian)
         OutputHandler.write_stdout_nf(" - Overlap           ... ", v=3)
         timer.start("Overlap", parent_uid="Integrals")
         self.integrals.build_overlap(positions)
         timer.stop("Overlap")
         OutputHandler.write_stdout("done", v=3)
+
+        if self.integrals.overlap is None:
+            raise RuntimeError(
+                "Overlap setup or  calculation failed. SCF cannot be performed."
+            )
+
+        write_overlap = kwargs.get("write_overlap", False)
+        if write_overlap is not False:
+            assert self.integrals.overlap is not None
+            self.integrals.overlap.to_pt(write_overlap)
 
         # dipole integral
         if self.opts.ints.level >= ints.levels.INTLEVEL_DIPOLE:
@@ -160,6 +175,11 @@ class EnergyCalculator(BaseCalculator):
             timer.stop("Dipole Integral")
             OutputHandler.write_stdout("done", v=3)
 
+            write_dipole = kwargs.get("write_dipole", False)
+            if write_dipole is not False:
+                assert self.integrals.dipole is not None
+                self.integrals.dipole.to_pt(write_dipole)
+
         # quadrupole integral
         if self.opts.ints.level >= ints.levels.INTLEVEL_QUADRUPOLE:
             OutputHandler.write_stdout_nf(" - Quadrupole        ... ", v=3)
@@ -168,6 +188,11 @@ class EnergyCalculator(BaseCalculator):
             timer.stop("Quadrupole Integral")
             OutputHandler.write_stdout("done", v=3)
 
+            write_quad = kwargs.get("write_quadrupole", False)
+            if write_quad is not False:
+                assert self.integrals.quadrupole is not None
+                self.integrals.quadrupole.to_pt(write_quad)
+
         # Core Hamiltonian integral (requires overlap internally!)
         #
         # This should be the final integral, because the others are
@@ -175,21 +200,34 @@ class EnergyCalculator(BaseCalculator):
         # To avoid unnecessary data transfer, the core Hamiltonian should
         # be last. Internally, the overlap integral is only transfered back
         # to GPU when all multipole integrals are calculated.
-        OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ", v=3)
-        timer.start("Core Hamiltonian", parent_uid="Integrals")
-        self.integrals.build_hcore(positions)
-        timer.stop("Core Hamiltonian")
-        OutputHandler.write_stdout("done", v=3)
+        if self.opts.ints.level >= ints.levels.INTLEVEL_HCORE:
+            OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ", v=3)
+            timer.start("Core Hamiltonian", parent_uid="Integrals")
+            self.integrals.build_hcore(positions)
+            timer.stop("Core Hamiltonian")
+            OutputHandler.write_stdout("done", v=3)
 
+            write_hcore = kwargs.get("write_hcore", False)
+            if write_hcore is not False:
+                assert self.integrals.hcore is not None
+                self.integrals.hcore.to_pt(write_hcore)
+
+        # While one can theoretically skip the core Hamiltonian, the
+        # current implementation does not account for this case because the
+        # reference occupation is necessary for the SCF procedure.
+        if self.integrals.hcore is None:
+            raise NotImplementedError(
+                "Core Hamiltonian missing. Skipping the Core Hamiltonian in "
+                "the SCF is currently not supported ."
+            )
+
+        # finalize integrals
         timer.stop("Integrals")
         result.integrals = self.integrals
-        # TODO: Flag for writing integrals to pt file or only return in results?
 
-        # TODO: Think about handling this case
-        if self.integrals.hcore is None:
-            raise RuntimeError
-        if self.integrals.overlap is None:
-            raise RuntimeError
+        ###################################
+        # SELF-CONSISTENT FIELD PROCEDURE #
+        ###################################
 
         timer.start("SCF", "Self-Consistent Field")
 
@@ -220,7 +258,7 @@ class EnergyCalculator(BaseCalculator):
 
         timer.stop("SCF")
         OutputHandler.write_stdout(
-            f"SCF converged in {scf_results['iterations']} iterations.", v=3
+            f"SCF finished in {scf_results['iterations']} iterations.", v=3
         )
 
         # store SCF results

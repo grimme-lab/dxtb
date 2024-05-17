@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import torch
 from tad_mctc.exceptions import DtypeError
 
-from dxtb._src.typing import Any, Tensor, TensorLike, override
+from dxtb._src.typing import Any, PathLike, Tensor, TensorLike, override
 
 if TYPE_CHECKING:
     from ..base import BaseIntegralImplementation, IntDriver
@@ -132,6 +132,18 @@ class BaseIntegral(IntegralABC, TensorLike):
             Integral matrix.
         """
         self.integral.matrix = mat
+
+    def to_pt(self, path: PathLike | None = None) -> None:
+        """
+        Save the integral matrix to a file.
+
+        Parameters
+        ----------
+        path : PathLike | None
+            Path to the file where the integral matrix should be saved. If
+            ``None``, the matrix is saved to the default location.
+        """
+        self.integral.to_pt(path)
 
     def type(self, dtype: torch.dtype) -> BaseIntegral:
         """

@@ -110,7 +110,7 @@ class _Data:
             "label": None,
         }
 
-        self.iter = 1
+        self.iter = -1  # bumped before printing, guess energy also printed
 
     def init_zeros(self) -> None:
         """

@@ -488,12 +488,12 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
 
         es2 = (
             new_es2(numbers, par, **dd)
-            if not any(x in ["all", "es2"] for x in self.opts.exclude)
+            if not {"all", "es2"} & set(self.opts.exclude)
             else None
         )
         es3 = (
             new_es3(numbers, par, **dd)
-            if not any(x in ["all", "es3"] for x in self.opts.exclude)
+            if not {"all", "es3"} & set(self.opts.exclude)
             else None
         )
 
@@ -521,17 +521,17 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
 
         halogen = (
             new_halogen(numbers, par, **dd)
-            if not any(x in ["all", "hal"] for x in self.opts.exclude)
+            if not {"all", "hal"} & set(self.opts.exclude)
             else None
         )
         dispersion = (
             new_dispersion(numbers, par, **dd)
-            if not any(x in ["all", "disp"] for x in self.opts.exclude)
+            if not {"all", "disp"} & set(self.opts.exclude)
             else None
         )
         repulsion = (
             new_repulsion(numbers, par, **dd)
-            if not any(x in ["all", "rep"] for x in self.opts.exclude)
+            if not {"all", "rep"} & set(self.opts.exclude)
             else None
         )
 

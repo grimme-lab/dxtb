@@ -76,7 +76,7 @@ class _OutputHandler:
 
     def __init__(self):
         self.handlers = {}
-        self.warnings = []
+        self.warnings: list[tuple[str, type[Warning]]] = []
 
         self.console_logger = logging.getLogger("console_logger")
         self.setup_console_logger()
@@ -276,7 +276,7 @@ class _OutputHandler:
 
     #######################################
 
-    def warn(self, msg: str) -> None:
+    def warn(self, msg: str, warning_type: type[Warning] = UserWarning) -> None:
         """
         Add a warning message to the list of warnings.
 
@@ -284,8 +284,19 @@ class _OutputHandler:
         ----------
         msg : str
             The warning message.
+        type : str, optional
+            The type of warning (default is "General").
         """
-        self.warnings.append(msg)
+        self.warnings.append((msg, warning_type))
+
+    def dump_warnings(self) -> None:
+        """Dump all warnings to the console."""
+        if len(self.warnings) == 0:
+            return
+
+        self.console_logger.warning("\nWARNINGS")
+        for msg, warning_type in self.warnings:
+            self.console_logger.warning(f"[{warning_type.__name__}] {msg}")
 
     def format_for_console(
         self,

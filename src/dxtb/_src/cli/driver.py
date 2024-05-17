@@ -244,6 +244,7 @@ class Driver:
                 print_grad(g.clone(), numbers)
                 print("")
 
+            io.OutputHandler.dump_warnings()
             return result
         #####################################################
 
@@ -324,11 +325,14 @@ class Driver:
             timer.stop("Polarizability")
             print("Polarizability\n", alpha)
 
+        io.OutputHandler.dump_warnings()
+
         if "energy" not in calc.cache:
             result = calc.singlepoint(positions, chrg)
 
             timer.print()
             result.print_energies()
+            io.OutputHandler.dump_warnings()
             return result
 
     def __repr__(self) -> str:  # pragma: no cover

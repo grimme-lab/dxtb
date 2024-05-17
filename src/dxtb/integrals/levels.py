@@ -22,6 +22,7 @@ Specifies the levels of integrals that should be computed.
 """
 
 from dxtb._src.integral.levels import INTLEVEL_DIPOLE as INTLEVEL_DIPOLE
+from dxtb._src.integral.levels import INTLEVEL_HCORE as INTLEVEL_HCORE
 from dxtb._src.integral.levels import INTLEVEL_NONE as INTLEVEL_NONE
 from dxtb._src.integral.levels import INTLEVEL_OVERLAP as INTLEVEL_OVERLAP
 from dxtb._src.integral.levels import INTLEVEL_QUADRUPOLE as INTLEVEL_QUADRUPOLE

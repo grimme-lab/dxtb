@@ -145,7 +145,7 @@ class BaseSCF:
                 "label": None,
             }
 
-            self.iter = 1
+            self.iter = -1  # bumped before printing, guess energy also printed
 
         def init_zeros(self) -> None:
             """Initialize all tensors with zeros."""
@@ -564,13 +564,23 @@ class BaseSCF:
 
         if charges.mono.ndim < 2:  # pragma: no cover
             energy = self.get_energy(charges).sum(-1).detach().clone()
-            ediff = torch.linalg.vector_norm(self._data.old_energy - energy)
+            ediff = (
+                (self._data.old_energy.sum(-1) - energy) if self._data.iter > 0 else 0.0
+            )
 
             density = self._data.density.detach().clone()
-            pnorm = torch.linalg.matrix_norm(self._data.old_density - density)
+            pnorm = (
+                torch.linalg.matrix_norm(self._data.old_density - density)
+                if self._data.iter > 0
+                else 0.0
+            )
 
             _q = charges.mono.detach().clone()
-            qdiff = torch.linalg.vector_norm(self._data.old_charges - _q)
+            qdiff = (
+                torch.linalg.vector_norm(self._data.old_charges - _q)
+                if self._data.iter > 0
+                else 0.0
+            )
 
             OutputHandler.write_row(
                 "SCF Iterations",
@@ -588,13 +598,25 @@ class BaseSCF:
             self._data.old_density = density
         else:
             energy = self.get_energy(charges).detach().clone()
-            ediff = torch.linalg.norm(self._data.old_energy - energy)
+            ediff = (
+                torch.linalg.norm(self._data.old_energy - energy)
+                if self._data.iter > 0
+                else 0.0
+            )
 
             density = self._data.density.detach().clone()
-            pnorm = torch.linalg.norm(self._data.old_density - density)
+            pnorm = (
+                torch.linalg.norm(self._data.old_density - density)
+                if self._data.iter > 0
+                else 0.0
+            )
 
             _q = charges.mono.detach().clone()
-            qdiff = torch.linalg.norm(self._data.old_charges - _q)
+            qdiff = (
+                torch.linalg.norm(self._data.old_charges - _q)
+                if self._data.iter > 0
+                else 0.0
+            )
 
             OutputHandler.write_row(
                 "SCF Iterations",

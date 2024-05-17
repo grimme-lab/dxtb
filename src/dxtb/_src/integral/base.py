@@ -27,7 +27,7 @@ from abc import ABC, abstractmethod
 
 import torch
 
-from dxtb._src.typing import Tensor, TensorLike
+from dxtb._src.typing import PathLike, Tensor, TensorLike
 
 from ..basis import Basis, IndexHelper
 from ..param import Param
@@ -255,6 +255,21 @@ class BaseIntegralImplementation(IntegralImplementationABC, TensorLike):
                 "Integral driver not setup. Run `driver.setup(positions)` "
                 "before passing the driver to the integral build."
             )
+
+    def to_pt(self, path: PathLike | None = None) -> None:
+        """
+        Save the integral matrix to a file.
+
+        Parameters
+        ----------
+        path : PathLike | None
+            Path to the file where the integral matrix should be saved. If
+            ``None``, the matrix is saved to the default location.
+        """
+        if path is None:
+            path = f"{self.label.casefold()}.pt"
+
+        torch.save(self.matrix, path)
 
     @property
     def matrix(self) -> Tensor:

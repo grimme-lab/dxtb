@@ -59,7 +59,9 @@ class Hamiltonian(BaseIntegral):
                     self.integral = GFN1Hamiltonian(
                         numbers, par, ihelp, device=device, dtype=dtype
                     )
-                if par.meta.name.casefold() == "gfn2-xtb":
+                elif par.meta.name.casefold() == "gfn2-xtb":
                     self.integral = GFN2Hamiltonian(
                         numbers, par, ihelp, device=device, dtype=dtype
                     )
+                else:
+                    raise ValueError(f"Unsupported Hamiltonian type: {par.meta.name}")

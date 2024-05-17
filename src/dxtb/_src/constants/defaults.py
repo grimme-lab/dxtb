@@ -86,7 +86,7 @@ INTDRIVER_CHOICES = [
 ]
 """List of possible choices for `INTDRIVER`."""
 
-INTLEVEL = 1
+INTLEVEL = 2
 """Determines types of calculated integrals."""
 
 INTLEVEL_CHOICES = [0, 1, 2, 3, 4, 5]

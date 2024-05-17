@@ -42,13 +42,21 @@ def _print(charges: Charges, data: _Data, interactions: InteractionList) -> None
 
     if charges.mono.ndim < 2:  # pragma: no cover
         energy = get_energy(charges, data, interactions).sum(-1).detach().clone()
-        ediff = torch.linalg.vector_norm(data.old_energy - energy)
+        ediff = (data.old_energy.sum(-1) - energy) if data.iter > 0 else 0.0
 
         density = data.density.detach().clone()
-        pnorm = torch.linalg.matrix_norm(data.old_density - density)
+        pnorm = (
+            torch.linalg.matrix_norm(data.old_density - density)
+            if data.iter > 0
+            else 0.0
+        )
 
         _charges = charges.mono.detach().clone()
-        qdiff = torch.linalg.vector_norm(data.old_charges - _charges)
+        qdiff = (
+            torch.linalg.vector_norm(data.old_charges - _charges)
+            if data.iter > 0
+            else 0.0
+        )
 
         OutputHandler.write_row(
             "SCF Iterations",
@@ -66,13 +74,13 @@ def _print(charges: Charges, data: _Data, interactions: InteractionList) -> None
         data.old_density = density
     else:
         energy = get_energy(charges, data, interactions).detach().clone()
-        ediff = torch.linalg.norm(data.old_energy - energy)
+        ediff = torch.linalg.norm(data.old_energy - energy) if data.iter > 0 else 0.0
 
         density = data.density.detach().clone()
-        pnorm = torch.linalg.norm(data.old_density - density)
+        pnorm = torch.linalg.norm(data.old_density - density) if data.iter > 0 else 0.0
 
         _q = charges.mono.detach().clone()
-        qdiff = torch.linalg.norm(data.old_charges - _q)
+        qdiff = torch.linalg.norm(data.old_charges - _q) if data.iter > 0 else 0.0
 
         OutputHandler.write_row(
             "SCF Iterations",

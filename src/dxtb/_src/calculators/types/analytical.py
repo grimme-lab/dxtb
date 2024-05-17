@@ -376,7 +376,7 @@ class AnalyticalCalculator(EnergyCalculator):
 
         timer.stop("SCF")
         OutputHandler.write_stdout(
-            f"SCF converged in {scf_results['iterations']} iterations.", v=3
+            f"SCF finished in {scf_results['iterations']} iterations.", v=3
         )
 
         # store SCF results

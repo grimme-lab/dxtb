@@ -21,7 +21,13 @@ Exceptions: Miscellaneous
 Custom warnings.
 """
 
-__all__ = ["ParameterWarning", "ToleranceWarning"]
+__all__ = ["GeneralWarning", "ParameterWarning", "ToleranceWarning"]
+
+
+class GeneralWarning(Warning):
+    """
+    General warning for non-specific issues.
+    """
 
 
 class ParameterWarning(UserWarning):
