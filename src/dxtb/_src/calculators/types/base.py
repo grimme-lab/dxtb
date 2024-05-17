@@ -454,7 +454,7 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         OutputHandler.write_stdout("", v=4)
         OutputHandler.write_stdout("Setup Calculator", v=4)
 
-        allowed_dtypes = (torch.long, torch.int16, torch.int32, torch.int64)
+        allowed_dtypes = (torch.int16, torch.int32, torch.int64)
         if numbers.dtype not in allowed_dtypes:
             raise DtypeError(
                 "Dtype of atomic numbers must be one of the following to allow "

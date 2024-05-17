@@ -37,7 +37,6 @@ slist = ["H", "LiH", "HHe", "H2O"]
 # slist = ["H", "LiH", "HHe", "H2O", "CH4", "SiH4", "PbH4-BiH3"]
 
 opts = {
-    "int_level": 1,
     "maxiter": 100,
     "mixer": "anderson",
     "scf_mode": "full",

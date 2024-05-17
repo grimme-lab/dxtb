@@ -26,7 +26,6 @@ from __future__ import annotations
 
 from dxtb._src.components.interactions import Charges
 from dxtb._src.constants import labels
-from dxtb._src.timing.decorator import timer_decorator
 from dxtb._src.typing import Tensor
 
 from ..mixer import Simple

@@ -30,6 +30,7 @@ from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.components.interactions import new_efield
 from dxtb._src.typing import DD, Tensor
+from dxtb.labels import INTLEVEL_DIPOLE
 
 from .samples import samples
 
@@ -37,7 +38,7 @@ slist = ["H", "LiH", "HHe", "H2O", "CH4", "PbH4-BiH3"]
 slist_large = ["MB16_43_01"]
 
 opts = {
-    "int_level": 3,
+    "int_level": INTLEVEL_DIPOLE,
     "maxiter": 100,
     "mixer": "anderson",
     "scf_mode": "full",

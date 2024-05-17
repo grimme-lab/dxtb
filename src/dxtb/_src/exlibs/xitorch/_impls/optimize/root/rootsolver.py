@@ -1,7 +1,10 @@
-# This file is part of dxtb.
+# This file is part of dxtb, modified from xitorch/xitorch.
 #
 # SPDX-Identifier: Apache-2.0
 # Copyright (C) 2024 Grimme Group
+#
+# Original file licensed under the MIT License by xitorch/xitorch.
+# Modifications made by Grimme Group.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,12 +17,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 # file mostly from SciPy:
 # https://github.com/scipy/scipy/blob/914523af3bc03fe7bf61f621363fca27e97ca1d6/scipy/optimize/nonlin.py#L221
 # and converted to PyTorch for GPU efficiency
 
 import functools
-import warnings
 
 import torch
 

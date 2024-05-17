@@ -22,7 +22,7 @@ All external libraries used by `dxtb` are imported here. They are lazily loaded
 to reduce import times and to avoid unnecessary imports if the library is not
 used.
 """
-from dxtb._src.typing import TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from . import libcint as libcint

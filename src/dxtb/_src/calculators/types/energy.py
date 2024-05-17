@@ -158,9 +158,9 @@ class EnergyCalculator(BaseCalculator):
         OutputHandler.write_stdout("done", v=3)
 
         if self.integrals.overlap is None:
-            raise RuntimeError(
-                "Overlap setup or  calculation failed. SCF cannot be performed."
-            )
+            raise RuntimeError("Overlap setup failed. SCF cannot be run.")
+        if self.integrals.overlap.matrix is None:
+            raise RuntimeError("Overlap calculation failed. SCF cannot be run.")
 
         write_overlap = kwargs.get("write_overlap", False)
         if write_overlap is not False:
@@ -215,10 +215,12 @@ class EnergyCalculator(BaseCalculator):
         # While one can theoretically skip the core Hamiltonian, the
         # current implementation does not account for this case because the
         # reference occupation is necessary for the SCF procedure.
-        if self.integrals.hcore is None:
+        if self.integrals.hcore is None or self.integrals.hcore.matrix is None:
             raise NotImplementedError(
                 "Core Hamiltonian missing. Skipping the Core Hamiltonian in "
-                "the SCF is currently not supported ."
+                "the SCF is currently not supported. Please increase the "
+                "integral level to at least '2'. Currently, the level is set "
+                f"to '{self.opts.ints.level}'."
             )
 
         # finalize integrals

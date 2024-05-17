@@ -30,13 +30,17 @@ from tad_mctc.math import einsum
 from tad_mctc.units import KELVIN2AU
 
 from dxtb import IndexHelper, OutputHandler
+from dxtb._src.components.interactions.container import (
+    Charges,
+    ContainerData,
+    Potential,
+)
 from dxtb._src.constants import defaults, labels
 from dxtb._src.timing.decorator import timer_decorator
 from dxtb._src.typing import DD, Any, Slicers, Tensor
 from dxtb._src.wavefunction import filling, mulliken
 from dxtb.config import ConfigSCF
 
-from ..components.interactions.container import Charges, ContainerData, Potential
 from .result import SCFResult
 from .utils import get_density
 

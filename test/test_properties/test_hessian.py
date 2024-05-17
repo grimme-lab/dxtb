@@ -36,7 +36,6 @@ slist = ["H", "LiH", "HHe", "H2O", "CH4", "SiH4"]
 slist_large = ["PbH4-BiH3"]  # "MB16_43_01", "LYS_xao"
 
 opts = {
-    "int_level": 1,
     "maxiter": 100,
     "mixer": "anderson",
     "scf_mode": "full",

@@ -37,7 +37,6 @@ slist = ["H", "H2", "LiH", "H2O", "CH4", "SiH4"]
 slist_large = ["LYS_xao"]
 
 opts = {
-    "int_level": 1,
     "maxiter": 100,
     "mixer": "anderson",
     "scf_mode": "full",

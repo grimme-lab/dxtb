@@ -1,7 +1,10 @@
-# This file is part of dxtb.
+# This file is part of dxtb, modified from xitorch/xitorch.
 #
 # SPDX-Identifier: Apache-2.0
 # Copyright (C) 2024 Grimme Group
+#
+# Original file licensed under the MIT License by xitorch/xitorch.
+# Modifications made by Grimme Group.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +19,12 @@
 # limitations under the License.
 from contextlib import contextmanager
 
-__all__ = ["is_debug_enabled", "set_debug_mode", "enable_debug", "disable_debug"]
+__all__ = [
+    "is_debug_enabled",
+    "set_debug_mode",
+    "enable_debug",
+    "disable_debug",
+]
 
 
 class DebugSingleton:

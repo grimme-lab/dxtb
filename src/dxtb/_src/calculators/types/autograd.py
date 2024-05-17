@@ -353,8 +353,6 @@ class AutogradCalculator(EnergyCalculator):
             matrix=False,
             **kwargs,
         )
-        print(self.cache.list_cached_properties())
-        print(hess)
         a = vib_analysis(
             self.numbers,
             positions,
@@ -363,7 +361,6 @@ class AutogradCalculator(EnergyCalculator):
             project_rotational=project_rotational,
             **kwargs,
         )
-        print(a.freqs)
 
         return a
 
