@@ -23,7 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb._src.basis import slater_to_gauss
+from dxtb._src.basis.slater import slater_to_gauss
 from dxtb._src.integral.driver.pytorch.impls.md import overlap_gto
 
 

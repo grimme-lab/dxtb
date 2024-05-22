@@ -99,7 +99,7 @@ def test_hcore(dtype: torch.dtype):
 
     ihelp = IndexHelper.from_numbers(numbers, par)
     i = ints.Integrals(numbers, par, ihelp, **dd)
-    i.hcore = ints.types.Hamiltonian(numbers, par, ihelp, **dd)
+    i.hcore = ints.types.HCore(numbers, par, ihelp, **dd)
 
     h = i.hcore
     assert h is not None

@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Wavefunction
+============
+
 Provides methods to create and analyze wavefunctions.
 """
 

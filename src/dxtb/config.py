@@ -21,6 +21,9 @@ Config
 Configuration for ``dxtb`` calculations.
 """
 
-from dxtb._src.calculators.config import Config as Config
-from dxtb._src.calculators.config import ConfigIntegrals as ConfigIntegrals
-from dxtb._src.calculators.config import ConfigSCF as ConfigSCF
+from dxtb._src.calculators.config.cache import ConfigCache as ConfigCache
+from dxtb._src.calculators.config.cache import ConfigCacheStore as ConfigCacheStore
+from dxtb._src.calculators.config.integral import ConfigIntegrals as ConfigIntegrals
+from dxtb._src.calculators.config.main import Config as Config
+from dxtb._src.calculators.config.scf import ConfigFermi as ConfigFermi
+from dxtb._src.calculators.config.scf import ConfigSCF as ConfigSCF

@@ -150,7 +150,6 @@ class GFN1Hamiltonian(BaseHamiltonian):
             self.par.element,
             pad_val=PAD,
             device=self.device,
-            dtype=torch.bool,
         )
 
     def _get_pair_param(self, pair: dict[str, float]) -> Tensor:

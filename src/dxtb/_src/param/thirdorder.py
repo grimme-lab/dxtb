@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Parametrization: 3rd-order Electrostatics
-=========================================
+Parametrization: Electrostatics (3rd order)
+===========================================
 
 Definition of the isotropic third-order onsite correction.
 """

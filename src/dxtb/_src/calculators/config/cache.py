@@ -32,6 +32,10 @@ __all__ = ["ConfigCache"]
 
 @dataclass
 class ConfigCacheStore:
+    """
+    Configuration for the cache store.
+    """
+
     hcore: bool
     """Whether to store the core Hamiltonian matrix."""
     overlap: bool
@@ -61,10 +65,10 @@ class ConfigCacheStore:
 
 class ConfigCache:
     """
-    Configuration for the calculator cache.
+    Configuration for the cache of the calculator.
 
-    All configuration options are represented as integers. String options are
-    converted to integers in the constructor.
+    This configuration only stores a flag whether caching is enabled and a
+    storage class that flags all properties which should be cached.
     """
 
     enabled: bool

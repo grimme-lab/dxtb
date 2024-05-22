@@ -31,13 +31,14 @@ from tad_mctc.batch import pack
 from tad_mctc.convert import numpy_to_tensor
 
 from dxtb import GFN1_XTB as par
-from dxtb._src.basis import Basis, IndexHelper
+from dxtb import IndexHelper
+from dxtb._src.basis.bas import Basis
 from dxtb._src.exlibs import libcint
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import is_basis_list
 
 try:
-    from dxtb.mol.external._pyscf import M
+    from dxtb._src.exlibs.pyscf.mol import M
 
     pyscf = True
 except ImportError:

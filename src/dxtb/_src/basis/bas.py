@@ -25,6 +25,7 @@ from the parametrization. The basis set can also be printed in various formats.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import torch
 from tad_mctc.batch import real_pairs
@@ -33,7 +34,7 @@ from tad_mctc.data import pse
 from tad_mctc.exceptions import DtypeError
 
 from dxtb._src.param import Param, get_elem_param, get_elem_pqn, get_elem_valence
-from dxtb._src.typing import TYPE_CHECKING, Literal, Self, Tensor, TensorLike, override
+from dxtb._src.typing import Literal, Self, Tensor, TensorLike, override
 
 from .indexhelper import IndexHelper
 from .ortho import orthogonalize
@@ -41,14 +42,16 @@ from .slater import slater_to_gauss
 
 if TYPE_CHECKING:
     from dxtb._src.exlibs import libcint
+del TYPE_CHECKING
 
 __all__ = ["Basis"]
+
 
 # fmt: off
 primes = torch.tensor(
     [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499,503,509,521,523,541,547,557,563,569,571,577,587,593,599,601,607,613,617,619,631,641,643,647,653,659,661,673,677,683,691,701,709,719,727,733,739,743,751,757,761,769,773,787,797,809,811,821,823,827,829,839,853,857,859,863,877,881,883,887,907,911,919,929,937,941,947,953,967,971,977,983,991,997,1009,1013,1019,1021,1031,1033,1039,1049,1051,1061,1063,1069,1087,1091,1093,1097,1103,1109,1117,1123,1129,1151,1153,1163,1171,1181,1187,1193,1201,1213,1217,1223,1229,1231,1237,1249,1259,1277,1279,1283,1289,1291,1297,1301,1303,1307,1319,1321,1327,1361,1367,1373,1381,1399,1409,1423,1427,1429,1433,1439,1447,1451,1453,1459,1471,1481,1483,1487,1489,1493,1499,1511,1523,1531,1543,1549,1553,1559,1567,1571,1579,1583,1597,1601,1607,1609,1613,1619,1621,1627,1637,1657,1663,1667,1669,1693,1697,1699,1709,1721,1723,1733,1741,1747,1753,1759,1777,1783,1787,1789,1801,1811,1823,1831,1847,1861,1867,1871,1873,1877,1879,1889,1901,1907,1913,1931,1933,1949,1951,1973,1979,1987]
 )
-"""The first 300 prime numbers"""
+"""The first 300 prime numbers."""
 # fmt: on
 
 angular2label = {
@@ -62,9 +65,6 @@ angular2label = {
 
 class Basis(TensorLike):
     """Atomic orbital basis set."""
-
-    angular: Tensor
-    """Angular momenta of all shells (from `IndexHelper`)"""
 
     ngauss: Tensor
     """Number of Gaussians used in expansion from Slater orbital."""
@@ -110,9 +110,7 @@ class Basis(TensorLike):
         self.pqn = get_elem_pqn(
             self.unique, par.element, device=self.device, dtype=torch.uint8
         )
-        self.valence = get_elem_valence(
-            self.unique, par.element, device=self.device, dtype=torch.bool
-        )
+        self.valence = get_elem_valence(self.unique, par.element, device=self.device)
 
     def create_cgtos(self) -> tuple[list[Tensor], list[Tensor]]:
         """
@@ -174,8 +172,8 @@ class Basis(TensorLike):
             Mask for
         uplo : Literal["n", "N", "u", "U", "l", "L"]
             Whether the matrix of unique shell pairs should be create as a
-            triangular matrix (`l`: lower, `u`: upper) or full matrix (`n`).
-            Defaults to `l` (lower triangular matrix).
+            triangular matrix (``l``: lower, ``u``: upper) or full matrix
+            (``n``). Defaults to ``l`` (lower triangular matrix).
 
         Returns
         -------
@@ -251,6 +249,38 @@ class Basis(TensorLike):
         verbose: bool = False,
         with_header: bool = False,
     ) -> str:
+        """
+        Convert the basis set to a format suitable for basis set exchange.
+
+        Parameters
+        ----------
+        qcformat : Literal["gaussian94", "nwchem"], optional
+            Format of the basis set. Defaults to ``"nwchem"``.
+        save : bool, optional
+            Whether to save the basis set to a file. Defaults to ``False``.
+        overwrite : bool, optional
+            Whether to overwrite existing files. Defaults to ``False``.
+        verbose : bool, optional
+            Whether to print the basis set to the console.
+            Defaults to ``False``.
+        with_header : bool, optional
+            Whether to include the header in the basis set.
+            Defaults to ``False``.
+
+        Returns
+        -------
+        str
+            Basis set in the specified format.
+
+        Raises
+        ------
+        RuntimeError
+            If no meta data is found in the parametrization, or if the meta
+            data is incomplete (name missing), or if the basis set is batched.
+        ValueError
+            If no atoms for basis set printout are found, or if the basis set
+            format is not supported.
+        """
         if self.meta is None:
             raise RuntimeError("No meta data found in the parametrization.")
 
@@ -371,7 +401,7 @@ class Basis(TensorLike):
             Mask for positions to make batched computations easier. The overlap
             does not work in a batched fashion. Hence, we loop over the batch
             dimension and must remove the padding. Defaults to ``None``, i.e.,
-            `batch.deflate()` is used.
+            :func:`tad_mctc.batch.deflate` is used.
 
         Returns
         -------
@@ -534,9 +564,9 @@ class Basis(TensorLike):
         """
         Returns a copy of the class instance with specified floating point type.
 
-        This method overrides the usual approach because the `Calculator`s
-        arguments and slots differ significantly. Hence, it is not practical to
-        instantiate a new copy.
+        This method overrides the usual approach because the
+        :class:`~dxtb.Calculator`'s arguments and slots differ significantly.
+        Hence, it is not practical to instantiate a new copy.
 
         Parameters
         ----------
@@ -584,9 +614,9 @@ class Basis(TensorLike):
         """
         Returns a copy of the class instance on the specified device.
 
-        This method overrides the usual approach because the `Calculator`s
-        arguments and slots differ significantly. Hence, it is not practical to
-        instantiate a new copy.
+        This method overrides the usual approach because the
+        :class:`~dxtb.Calculator`'s arguments and slots differ significantly.
+        Hence, it is not practical to instantiate a new copy.
 
         Parameters
         ----------

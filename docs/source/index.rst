@@ -20,6 +20,8 @@
    Calculators <02_indepth/calculators>
    Components <02_indepth/components>
    Integrals <02_indepth/integrals>
+   Parametrizations <02_indepth/parametrizations>
+   Wavefunction/Basis <02_indepth/wavefunction>
 
 .. toctree::
    :hidden:

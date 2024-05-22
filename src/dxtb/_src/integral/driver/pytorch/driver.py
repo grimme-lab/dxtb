@@ -15,12 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Driver: PyTorch
+===============
+
 Collection of PyTorch-based integral drivers.
 """
 
 from __future__ import annotations
 
-from .base import BaseIntDriverPytorch
+from .base_driver import BaseIntDriverPytorch
 from .impls import OverlapAG_V1, OverlapAG_V2, overlap, overlap_gradient
 
 __all__ = [

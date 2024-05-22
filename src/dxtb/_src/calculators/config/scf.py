@@ -32,6 +32,13 @@ __all__ = ["ConfigSCF", "ConfigFermi"]
 class ConfigSCF:
     """
     Configuration for the SCF.
+
+    All configuration options are represented as integers. String options are
+    converted to integers in the constructor.
+
+    The settings for Fermi smearing are stored separately in the
+    :class:`ConfigFermi` class, which can be accessed via the :attr:`fermi`
+    attribute.
     """
 
     guess: int

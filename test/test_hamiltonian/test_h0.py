@@ -34,7 +34,7 @@ from dxtb._src.ncoord import cn_d3
 from dxtb._src.param import Param
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import batch
-from dxtb._src.xtb.gfn1 import GFN1Hamiltonian as Hamiltonian
+from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 
 from ..utils import load_from_npz
 from .samples import samples
@@ -53,7 +53,7 @@ def run(numbers: Tensor, positions: Tensor, par: Param, ref: Tensor, dd: DD) -> 
     ihelp = IndexHelper.from_numbers(numbers, par)
     driver = IntDriver(numbers, par, ihelp, **dd)
     overlap = Overlap(**dd)
-    h0 = Hamiltonian(numbers, par, ihelp, **dd)
+    h0 = GFN1Hamiltonian(numbers, par, ihelp, **dd)
 
     driver.setup(positions)
     s = overlap.build(driver)

@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Implementation: Overlap
+=======================
+
 PyTorch-based overlap implementations.
 """
 
@@ -26,7 +29,7 @@ from tad_mctc.convert import symmetrize
 from dxtb._src.constants import defaults
 from dxtb._src.typing import Literal, Tensor
 
-from .base import IntegralImplementationPytorch
+from .base_implementation import IntegralImplementationPytorch
 from .driver import BaseIntDriverPytorch
 from .impls import OverlapFunction
 

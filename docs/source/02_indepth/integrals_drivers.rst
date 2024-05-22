@@ -3,10 +3,12 @@
 Integral Drivers
 ================
 
-.. automodule:: dxtb._src.integral.driver.pytorch
-   :members:
-   :show-inheritance:
+.. toctree::
+   :maxdepth: 1
 
-.. automodule:: dxtb._src.integral.driver.libcint
+   Libcint <integrals_drivers_libcint>
+   PyTorch <integrals_drivers_pytorch>
+
+.. automodule:: dxtb._src.integral.base
    :members:
    :show-inheritance:

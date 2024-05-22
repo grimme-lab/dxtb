@@ -38,7 +38,7 @@ from dxtb.__version__ import __version__
 
 # order is important here
 from dxtb._src.io import OutputHandler as OutputHandler
-from dxtb._src.basis import IndexHelper as IndexHelper
+from dxtb._src.basis.indexhelper import IndexHelper as IndexHelper
 from dxtb._src.calculators.base import Calculator
 from dxtb._src.param.gfn1 import GFN1_XTB as GFN1_XTB
 from dxtb._src.param.gfn2 import GFN2_XTB as GFN2_XTB

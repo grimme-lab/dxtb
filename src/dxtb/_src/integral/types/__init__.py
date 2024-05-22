@@ -22,7 +22,7 @@ Integral objects for the calculation of various molecular integrals.
 
 Currently, the following integral types are supported:
 
-- :class:`.Hamiltonian` (core Hamiltonian)
+- :class:`.HCore` (core Hamiltonian)
 - :class:`.Overlap`
 - :class:`.Dipole`
 - :class:`.Quadrupole`

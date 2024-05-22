@@ -27,10 +27,10 @@ from abc import ABC, abstractmethod
 
 import torch
 
+from dxtb import IndexHelper
+from dxtb._src.basis.bas import Basis
+from dxtb._src.param import Param
 from dxtb._src.typing import PathLike, Tensor, TensorLike
-
-from ..basis import Basis, IndexHelper
-from ..param import Param
 
 __all__ = [
     "BaseIntegralImplementation",
@@ -91,6 +91,19 @@ class IntDriver(TensorLike):
 
     @property
     def basis(self) -> Basis:
+        """
+        Get the basis class
+
+        Returns
+        -------
+        Basis
+            Basis class.
+
+        Raises
+        ------
+        RuntimeError
+            If the basis has not been set up.
+        """
         if self._basis is None:
             raise RuntimeError("Basis has not been setup.")
         return self._basis

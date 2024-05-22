@@ -15,95 +15,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Base class for Multipole Integrals
-==================================
+Implementation: Multipole Base
+==============================
 
-Calculation and modification of multipole integrals.
+Template for calculation and modification of multipole integrals.
 """
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import torch
 
-from dxtb._src.constants import labels
 from dxtb._src.exlibs import libcint
-from dxtb._src.typing import TYPE_CHECKING, Tensor
+from dxtb._src.typing import Tensor
 from dxtb._src.utils.batch import pack
 
-from ...base import BaseIntegralImplementation
+from .base_implementation import IntegralImplementationLibcint
 
 if TYPE_CHECKING:
     from .driver import IntDriverLibcint
-
+del TYPE_CHECKING
 
 __all__ = ["MultipoleLibcint"]
-
-
-class LibcintImplementation:
-    """
-    Simple label for `libcint`-based integral implementations.
-    """
-
-    family: int = labels.INTDRIVER_LIBCINT
-    """Label for integral implementation family"""
-
-    def checks(self, driver: IntDriverLibcint) -> None:
-        """
-        Check if the type of integral driver is correct.
-
-        Parameters
-        ----------
-        driver : IntDriverLibcint
-            Integral driver for the calculation.
-        """
-        # pylint: disable=import-outside-toplevel
-        from .driver import IntDriverLibcint
-
-        if not isinstance(driver, IntDriverLibcint):
-            raise RuntimeError("Wrong integral driver selected.")
-
-
-class IntegralImplementationLibcint(
-    LibcintImplementation,
-    BaseIntegralImplementation,
-):
-    """PyTorch-based integral implementation"""
-
-    def checks(self, driver: IntDriverLibcint) -> None:
-        """
-        Check if the type of integral driver is correct.
-
-        Parameters
-        ----------
-        driver : BaseIntDriverPytorch
-            Integral driver for the calculation.
-        """
-        super().checks(driver)
-
-        # pylint: disable=import-outside-toplevel
-        from .driver import IntDriverLibcint
-
-        if not isinstance(driver, IntDriverLibcint):
-            raise RuntimeError("Wrong integral driver selected.")
-
-    def get_gradient(self, _: IntDriverLibcint) -> Tensor:
-        """
-        Create the nuclear integral derivative matrix.
-
-        Parameters
-        ----------
-        driver : IntDriver
-            Integral driver for the calculation.
-
-        Returns
-        -------
-        Tensor
-            Nuclear integral derivative matrix.
-        """
-        raise NotImplementedError(
-            "The `get_gradient` method is not implemented for libcint "
-            "integrals as it is not explicitly required."
-        )
 
 
 class MultipoleLibcint(IntegralImplementationLibcint):

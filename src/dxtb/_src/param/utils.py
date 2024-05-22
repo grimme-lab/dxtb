@@ -64,7 +64,7 @@ def get_pair_param(
     Returns
     -------
     Tensor
-        Parametrization of all pairs of `symbols`.
+        Parametrization of all pairs of ``symbols``.
     """
     # convert atomic numbers to symbols
     if is_int_list(symbols):
@@ -191,20 +191,28 @@ def get_elem_valence(
     par_element: dict[str, Element],
     pad_val: int = -1,
     device: torch.device | None = None,
-    dtype: torch.dtype | None = None,
 ) -> Tensor:
     """
+    Obtain valence of the shells of all atoms.
+
     .. warning::
 
        Only works if shells of same angular momentum are consecutive,
-       like the GFN1-xTB hydrogen basis set.
+       as in the GFN1-xTB hydrogen basis set.
 
     Obtain valence of the shells of all atoms.
 
     Parameters
     ----------
+    numbers : Tensor
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     par_element : dict[str, Element]
         Parametrization of elements.
+    pad_val : int, optional
+        Value to pad the tensor with. Default is `-1`.
+    device : torch.device | None
+        Device to store the tensor. If ``None`` (default), the default device
+        is used.
 
     Returns
     -------
@@ -212,7 +220,6 @@ def get_elem_valence(
         Valence of all elements.
     """
     l = []
-    _l = []
     key = "shells"
     label2angular = {
         "s": 0,
@@ -272,6 +279,29 @@ def get_elem_pqn(
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> Tensor:
+    """
+    Obtain principal quantum numbers of the shells of all atoms.
+
+    Parameters
+    ----------
+    numbers : Tensor
+        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
+    par_element : dict[str, Element]
+        Parametrization of elements.
+    pad_val : int, optional
+        Value to pad the tensor with. Default is `-1`.
+    device : torch.device | None, optional
+        Device to store the tensor. If ``None`` (default), the default device
+        is used.
+    dtype : torch.dtype | None, optional
+        Data type of the tensor. If ``None`` (default), the data type is
+        inferred.
+
+    Returns
+    -------
+    Tensor
+        Principal quantum numbers of the shells of all atoms.
+    """
     key = "shells"
 
     shells = []

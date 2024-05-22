@@ -21,7 +21,7 @@ Integrals: Wrappers
 Shortcuts for integral calculations.
 """
 
-from dxtb._src.integral.wrappers import dipole as dipole
+from dxtb._src.integral.wrappers import dipint as dipint
 from dxtb._src.integral.wrappers import hcore as hcore
 from dxtb._src.integral.wrappers import overlap as overlap
-from dxtb._src.integral.wrappers import quadrupole as quadrupole
+from dxtb._src.integral.wrappers import quadint as quadint

@@ -25,8 +25,8 @@ from pathlib import Path
 import pytest
 import torch
 
-from dxtb import GFN1_XTB
-from dxtb._src.basis import Basis, IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
+from dxtb._src.basis.bas import Basis
 from dxtb._src.typing import Literal
 
 

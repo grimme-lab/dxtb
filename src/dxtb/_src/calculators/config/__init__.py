@@ -58,6 +58,7 @@ level. This option is passed directly to the :class:`~dxtb.OutputHandler`.
 The default verbosity level is set to 5. The minimum verbosity level is 0,
 which corresponds to no output. The maximum verbosity level is 10.
 """
+from .cache import *
 from .integral import *
 from .main import *
 from .scf import *

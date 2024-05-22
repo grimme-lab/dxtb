@@ -30,10 +30,10 @@ from dxtb._src.xtb.gfn2 import GFN2Hamiltonian
 
 from .base import BaseIntegral
 
-__all__ = ["Hamiltonian"]
+__all__ = ["HCore"]
 
 
-class Hamiltonian(BaseIntegral):
+class HCore(BaseIntegral):
     """
     Hamiltonian integral.
     """

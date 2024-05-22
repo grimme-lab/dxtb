@@ -18,7 +18,10 @@
 Calculators: Base Class
 =======================
 
-
+A base class for all calculators. All calculators should inherit from this
+class and implement the :meth:`calculate` method and the corresponding methods
+to calculate the properties specified within this :meth:`calculate`, as well as
+the :attr:`implemented_properties` attribute.
 """
 from __future__ import annotations
 
@@ -589,9 +592,7 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         )
 
         if self.opts.ints.level >= ints.levels.INTLEVEL_OVERLAP:
-            self.integrals.hcore = ints.types.Hamiltonian(
-                numbers, par, self.ihelp, **dd
-            )
+            self.integrals.hcore = ints.types.HCore(numbers, par, self.ihelp, **dd)
             self.integrals.overlap = ints.types.Overlap(driver=driver, **dd)
 
         if self.opts.ints.level >= ints.levels.INTLEVEL_DIPOLE:
@@ -704,9 +705,9 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         """
         Returns a copy of the class instance with specified floating point type.
 
-        This method overrides the usual approach because the `Calculator`s
-        arguments and slots differ significantly. Hence, it is not practical to
-        instantiate a new copy.
+        This method overrides the usual approach because the
+        :class:`dxtb.Calculator`'s arguments and slots differ significantly.
+        Hence, it is not practical to instantiate a new copy.
 
         Parameters
         ----------
@@ -758,9 +759,9 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         """
         Returns a copy of the class instance on the specified device.
 
-        This method overrides the usual approach because the `Calculator`s
-        arguments and slots differ significantly. Hence, it is not practical to
-        instantiate a new copy.
+        This method overrides the usual approach because the
+        :class:`dxtb.Calculator`'s arguments and slots differ significantly.
+        Hence, it is not practical to instantiate a new copy.
 
         Parameters
         ----------

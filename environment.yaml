@@ -22,8 +22,8 @@ channels:
 dependencies:
   - numpy
   - pydantic
-  - python>=3.8
-  - pytorch>=1.11.0
+  - python>=3.8,<3.12
+  - pytorch>=1.11.0,<=2.2.2
   - scipy # for xitorch
   - pytest
   - tad-mctc

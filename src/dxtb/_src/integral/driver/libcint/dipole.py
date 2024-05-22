@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Implementation: Dipole
+======================
+
 Dipole integral implementation based on `libcint`.
 """
 
@@ -24,8 +27,8 @@ import torch
 
 from dxtb._src.typing import Tensor
 
-from .base import MultipoleLibcint
 from .driver import IntDriverLibcint
+from .multipole import MultipoleLibcint
 
 __all__ = ["DipoleLibcint"]
 
@@ -53,15 +56,19 @@ class DipoleLibcint(MultipoleLibcint):
 
     def shift_r0_rj(self, overlap: Tensor, pos: Tensor) -> Tensor:
         r"""
-        Shift the centering of the dipole integral (moment operator) from the origin
-        (`r0 = r - (0, 0, 0)`) to atoms (ket index, `rj = r - r_j`).
+        Shift the centering of the dipole integral (moment operator) from the
+        origin (:math:`r0 = r - (0, 0, 0)`) to atoms (ket index,
+        :math:`rj = r - r_j`).
 
         .. math::
-            D &= D^{r_j}
-            &= \langle i | r_j | j \rangle
+
+            \begin{align}
+            D &= D^{r_j}  \\
+            &= \langle i | r_j | j \rangle  \\
             &= \langle i | r | j \rangle - r_j \langle i | j \rangle \\
-            &= \langle i | r_0 | j \rangle - r_j S_{ij}
+            &= \langle i | r_0 | j \rangle - r_j S_{ij}  \\
             &= D^{r_0} - r_j S_{ij}
+            \end{align}
 
         Parameters
         ----------

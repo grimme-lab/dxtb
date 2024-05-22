@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Parametrization: Second-Order Electrostatics
-============================================
+Parametrization: Electrostatics (2nd order)
+===========================================
 
 Definition of the isotropic second-order charge interactions.
 """
@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
-from dxtb._src.constants import DEFAULT_ES2_GEXP
+from dxtb._src.constants.xtb import DEFAULT_ES2_GEXP
 
 __all__ = ["ChargeEffective", "Charge"]
 

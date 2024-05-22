@@ -7,8 +7,9 @@ Configuration
    :maxdepth: 1
 
    General <../_autosummary/dxtb.config.Config>
-   SCF <../_autosummary/dxtb.config.ConfigSCF>
+   Cache <../_autosummary/dxtb.config.ConfigCache>
    Integrals <../_autosummary/dxtb.config.ConfigIntegrals>
+   SCF <../_autosummary/dxtb.config.ConfigSCF>
    Labels <calculators_config_labels>
 
 

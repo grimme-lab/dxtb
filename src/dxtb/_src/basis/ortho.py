@@ -14,7 +14,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Gram-Schmidt orthonormalization routines for contracted Gaussian basis functions."""
+"""
+Basis: Orthonormalization
+=========================
+
+Gram-Schmidt orthonormalization routines for contracted Gaussian basis
+functions.
+"""
 
 from __future__ import annotations
 
@@ -69,8 +75,9 @@ def orthogonalize(
     alpha: tuple[Tensor, Tensor], coeff: tuple[Tensor, Tensor]
 ) -> tuple[Tensor, Tensor]:
     """
-    Orthogonalize a contracted Gaussian basis function to an existing basis function using.
-    The second basis function is orthonormalized against the first basis function.
+    Orthogonalize a contracted Gaussian basis function to an existing basis
+    function using. The second basis function is orthonormalized against the
+    first basis function.
 
     Parameters
     ----------

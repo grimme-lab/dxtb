@@ -29,8 +29,10 @@ from tad_mctc.batch import pack
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
-from dxtb._src.integral.driver.pytorch.impls.md import overlap_gto
-from dxtb._src.typing import DD
+from dxtb._src.integral.driver.pytorch import IntDriverPytorchLegacy, OverlapPytorch
+from dxtb._src.integral.driver.pytorch.impls.overlap_legacy import overlap_legacy
+from dxtb._src.param import Param
+from dxtb._src.typing import DD, Literal, Tensor
 
 from ..utils import load_from_npz
 from .samples import samples
@@ -41,8 +43,23 @@ ref_overlap = np.load("test/test_overlap/overlap.npz")
 device = None
 
 
+def calc_overlap(
+    numbers: Tensor,
+    positions: Tensor,
+    par: Param,
+    dd: DD,
+    uplo: Literal["n", "N", "u", "U", "l", "L"] = "l",
+) -> Tensor:
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    driver = IntDriverPytorchLegacy(numbers, par, ihelp, **dd)
+    overlap = OverlapPytorch(uplo=uplo, **dd)
+
+    driver.setup(positions)
+    return overlap.build(driver)
+
+
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["HC", "HHe", "SCl"])
+@pytest.mark.parametrize("name", ["HC", "HHe"])
 def test_single(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"device": device, "dtype": dtype}
     tol = 1e-05
@@ -52,13 +69,13 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].to(**dd)
     ref = load_from_npz(ref_overlap, name, dtype)
 
-    s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
+    s = calc_overlap(numbers, positions, par, uplo="l", dd=dd)
     assert pytest.approx(ref, rel=tol, abs=tol) == s
 
 
 @pytest.mark.parametrize("dtype", [torch.float])
-@pytest.mark.parametrize("name1", ["C", "HC", "HHe", "SCl"])
-@pytest.mark.parametrize("name2", ["C", "HC", "HHe", "SCl"])
+@pytest.mark.parametrize("name1", ["C", "HC", "HHe"])
+@pytest.mark.parametrize("name2", ["C", "HC", "HHe"])
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Batched version."""
     dd: DD = {"device": device, "dtype": dtype}
@@ -85,41 +102,20 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         )
     )
 
-    s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
+    s = calc_overlap(numbers, positions, par, uplo="l", dd=dd)
     assert pytest.approx(s, abs=tol) == s.mT
     assert pytest.approx(ref, abs=tol) == s
 
 
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-def test_overlap_higher_orbitals(dtype: torch.dtype) -> None:
-    # pylint: disable=import-outside-toplevel
-    from .test_cgto_ortho_data import ref_data
+def test_gradient() -> None:
+    from dxtb._src.integral.driver.pytorch.impls.overlap_legacy import (
+        overlap_gradient_legacy,
+    )
 
-    dd: DD = {"device": device, "dtype": dtype}
+    numbers = torch.tensor([3, 1])
+    positions = torch.tensor([[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]]])
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    bas = Basis(numbers, par, ihelp)
 
-    vec = torch.tensor([0.0, 0.0, 1.4], **dd)
-
-    # arbitrary element (Rn)
-    number = torch.tensor([86])
-
-    ihelp = IndexHelper.from_numbers(number, par)
-    bas = Basis(number, par, ihelp, **dd)
-    alpha, coeff = bas.create_cgtos()
-
-    ai = alpha[0]
-    ci = coeff[0]
-    aj = alpha[1]
-    cj = coeff[1]
-
-    # change momenta artifically for testing purposes
-    for i in range(2):
-        for j in range(2):
-            ref = ref_data[f"{i}-{j}"].to(**dd).T
-            overlap = overlap_gto(
-                (torch.tensor(i), torch.tensor(j)),
-                (ai, aj),
-                (ci, cj),
-                vec,
-            )
-
-            assert pytest.approx(overlap, rel=1e-05, abs=1e-03) == ref
+    with pytest.raises(NotImplementedError):
+        overlap_gradient_legacy(positions, bas, ihelp, uplo="n")

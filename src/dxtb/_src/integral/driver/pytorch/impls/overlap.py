@@ -25,7 +25,8 @@ from tad_mctc import storch
 from tad_mctc.batch import deflate, pack
 from tad_mctc.math import einsum
 
-from dxtb._src.basis import Basis, IndexHelper
+from dxtb import IndexHelper
+from dxtb._src.basis.bas import Basis
 from dxtb._src.constants import defaults
 from dxtb._src.typing import Any, Literal, Tensor
 from dxtb._src.utils import t2int

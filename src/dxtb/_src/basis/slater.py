@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Basis: Slater Expansion
+=======================
+
 Expansion coefficients for Slater functions into primitive Gaussian functions
 """
 
@@ -72,7 +75,7 @@ def slater_to_gauss(
     Expand Slater function in primitive gaussian functions.
 
     Parameters
-    ----
+    ----------
     ng : int
         Number of Gaussian functions for the expansion.
     n : int
@@ -83,7 +86,7 @@ def slater_to_gauss(
         Exponent of Slater function to expand.
     norm : bool, optional
         Include normalization in contraction coefficients.
-        Defaults to True.
+        Defaults to ``True``.
 
     Returns
     -------

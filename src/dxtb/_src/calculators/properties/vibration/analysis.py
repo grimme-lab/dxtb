@@ -174,9 +174,9 @@ def vib_analysis(
     Vibrational analysis yielding frequencies and normal modes from
     mass-weighted Hessian.
 
-    http://gaussian.com/vib/
-    https://github.com/psi4/psi4/blob/master/psi4/driver/qcdb/vib.py
-    https://github.com/pyscf/pyscf/blob/master/pyscf/hessian/thermo.py
+    - http://gaussian.com/vib/
+    - https://github.com/psi4/psi4/blob/master/psi4/driver/qcdb/vib.py
+    - https://github.com/pyscf/pyscf/blob/master/pyscf/hessian/thermo.py
 
     Parameters
     ----------
@@ -185,7 +185,7 @@ def vib_analysis(
     positions : Tensor
         Cartesian coordinates of all atoms in the system ``(..., nat, 3)``.
     hessian : Tensor
-        Hessian matrix of shape `(..., nat, 3, nat, 3)`.
+        Hessian matrix of shape ``(..., nat, 3, nat, 3)``.
     project_rotational : bool, optional
         Whether to project out rotational degrees of freedom.
     project_translational : bool, optional
@@ -194,8 +194,8 @@ def vib_analysis(
     Returns
     -------
     tuple[Tensor, Tensor]
-        Frequencies of shape `(..., nfreqs)` and normal modes of shape
-        `(..., 3*nat, nfreqs)`.
+        Frequencies of shape ``(..., nfreqs)`` and normal modes of shape
+        ``(..., 3*nat, nfreqs)``.
     """
     nat = numbers.shape[-1]
     if hessian.shape == (*numbers.shape[:-1], nat, 3, nat, 3):

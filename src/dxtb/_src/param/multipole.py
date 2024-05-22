@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Parametrization: Multipole Electrostatics
-=========================================
+Parametrization: Electrostatics (multipole)
+===========================================
 
 Definition of the anisotropic second-order multipolar interactions.
 Currently, only GFN2-xTB's damped multipole version is supported.
@@ -50,6 +50,7 @@ class MultipoleDamped(BaseModel):
     shift: Union[float, Tensor]
 
     rmax: Union[float, Tensor]
+    """Maximum radius in damping function (Eq. 29)."""
 
 
 class Multipole(BaseModel):
@@ -58,4 +59,4 @@ class Multipole(BaseModel):
     """
 
     damped: MultipoleDamped
-    """Second-order multipolar electrostatics (GFN2)."""
+    """Damped second-order multipolar electrostatics (GFN2)."""

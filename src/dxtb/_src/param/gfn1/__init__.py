@@ -27,6 +27,7 @@ Example
 .. code-block:: python
 
     from dxtb._src.param.gfn1 import GFN1_XTB
+    #from dxtb import GFN1_XTB  # also available from the top-level package
 
     # Check if the parameters are initially loaded
     print(GFN1_XTB._loaded is None)  # Expected output: True

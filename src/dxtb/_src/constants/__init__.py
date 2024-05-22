@@ -20,7 +20,3 @@ Constants
 
 Constants, labels, and default values.
 """
-
-from . import defaults, xtb
-from .labels import *
-from .xtb import *

@@ -81,7 +81,6 @@ class NumericalCalculator(EnergyCalculator):
 
             f = -\dfrac{\partial E}{\partial R}
 
-
         Parameters
         ----------
         positions : Tensor
@@ -173,13 +172,14 @@ class NumericalCalculator(EnergyCalculator):
         step_size : int | float, optional
             Step size for numerical differentiation.
         matrix : bool, optional
-            Whether to reshape the Hessian to a matrix, i.e., (nat*3, nat*3).
-            Defaults to ``False``.
+            Whether to reshape the Hessian to a matrix, i.e.,
+            ``(nat*3, nat*3)``. Defaults to ``False``.
 
         Returns
         -------
         Tensor
-            Hessian of shape `(..., nat, 3, nat, 3) or `(..., nat*3, nat*3)`.
+            Hessian of shape ``(..., nat, 3, nat, 3)`` or
+            ``(..., nat*3, nat*3)``.
         """
         # pylint: disable=import-outside-toplevel
         import gc
@@ -269,7 +269,8 @@ class NumericalCalculator(EnergyCalculator):
         -------
         vib.VibResult
             Result container with vibrational frequencies (shape:
-            `(..., nfreqs)`) and normal modes (shape: `(..., nat*3, nfreqs)`).
+            ``(..., nfreqs)``) and normal modes (shape:
+            ``(..., nat*3, nfreqs)``).
         """
         hess = self.hessian_numerical(positions, chrg, spin, step_size=step_size)
         return vib.vib_analysis(
@@ -313,7 +314,7 @@ class NumericalCalculator(EnergyCalculator):
         Returns
         -------
         Tensor
-            Electric dipole moment of shape `(..., 3)`.
+            Electric dipole moment of shape ``(..., 3)``.
         """
         # pylint: disable=import-outside-toplevel
         import gc
@@ -383,7 +384,7 @@ class NumericalCalculator(EnergyCalculator):
         Returns
         -------
         Tensor
-            Cartesian dipole derivative of shape `(..., 3, nat, 3)`.
+            Cartesian dipole derivative of shape ``(..., 3, nat, 3)``.
         """
         # pylint: disable=import-outside-toplevel
         import gc
@@ -460,7 +461,7 @@ class NumericalCalculator(EnergyCalculator):
         Returns
         -------
         Tensor
-            Polarizability tensor of shape `(..., 3, 3)`.
+            Polarizability tensor of shape ``(..., 3, 3)``.
         """
         # pylint: disable=import-outside-toplevel
         import gc
@@ -545,7 +546,7 @@ class NumericalCalculator(EnergyCalculator):
         Returns
         -------
         Tensor
-            Polarizability derivative shape `(..., 3, 3, nat, 3)`.
+            Polarizability derivative shape ``(..., 3, 3, nat, 3)``.
         """
         # pylint: disable=import-outside-toplevel
         import gc
@@ -602,11 +603,9 @@ class NumericalCalculator(EnergyCalculator):
 
         .. math::
 
-            \begin{align*}
-                \beta &= \dfrac{\partial \alpha}{\partial F} \\
-                    &= \dfrac{\partial^2 \mu}{\partial F^2} \\
-                    &= \dfrac{\partial^3 E}{\partial^2 3}
-            \end{align*}
+            \beta = \dfrac{\partial \alpha}{\partial F}
+            = \dfrac{\partial^2 \mu}{\partial F^2}
+            = \dfrac{\partial^3 E}{\partial^2 3}
 
         Parameters
         ----------
@@ -622,7 +621,7 @@ class NumericalCalculator(EnergyCalculator):
         Returns
         -------
         Tensor
-            Hyper polarizability tensor of shape `(..., 3, 3, 3)`.
+            Hyper polarizability tensor of shape ``(..., 3, 3, 3)``.
         """
         # pylint: disable=import-outside-toplevel
         import gc
@@ -695,8 +694,8 @@ class NumericalCalculator(EnergyCalculator):
         Returns
         -------
         vib.IRResult
-            Result container with frequencies (shape: `(..., nfreqs)`) and
-            intensities (shape: `(..., nfreqs)`) of IR spectra.
+            Result container with frequencies (shape: ``(..., nfreqs)``) and
+            intensities (shape: ``(..., nfreqs)``) of IR spectra.
         """
         OutputHandler.write_stdout("\nIR Spectrum")
         OutputHandler.write_stdout("-----------")
@@ -744,9 +743,9 @@ class NumericalCalculator(EnergyCalculator):
         Returns
         -------
         vib.RamanResult
-            Result container with frequencies (shape: `(..., nfreqs)`),
-            intensities (shape: `(..., nfreqs)`) and the depolarization ratio
-            (shape: `(..., nfreqs)`) of Raman spectra.
+            Result container with frequencies (shape: ``(..., nfreqs)``),
+            intensities (shape: ``(..., nfreqs)``) and the depolarization ratio
+            (shape: ``(..., nfreqs)``) of Raman spectra.
         """
         OutputHandler.write_stdout("\nRaman Spectrum")
         OutputHandler.write_stdout("--------------")

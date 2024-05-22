@@ -69,7 +69,7 @@ def get_alpha_beta_occupation(
     """
     if uhf is not None:
         if isinstance(uhf, (list, int, float)):
-            uhf = torch.tensor(uhf, device=nel.device)
+            uhf = torch.tensor(uhf, device=nel.device, dtype=nel.dtype)
         else:
             uhf = uhf.type(nel.dtype).to(nel.device)
 
@@ -95,6 +95,7 @@ def get_alpha_beta_occupation(
         # set to zero and figure out via remainder
         uhf = torch.zeros_like(nel)
 
+    print(torch.remainder(nel.round(), 2))
     nuhf = torch.where(
         torch.remainder(uhf, 2) == torch.remainder(nel.round(), 2),
         uhf,

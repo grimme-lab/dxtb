@@ -34,7 +34,7 @@ from dxtb._src.typing import Any, Tensor
 
 from . import levels
 from .base import IntDriver, IntegralContainer
-from .types import Dipole, Hamiltonian, Overlap, Quadrupole
+from .types import Dipole, HCore, Overlap, Quadrupole
 
 __all__ = ["Integrals", "IntegralMatrices"]
 
@@ -69,7 +69,7 @@ class Integrals(IntegralContainer):
         force_cpu_for_libcint: bool = True,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
-        _hcore: Hamiltonian | None = None,
+        _hcore: HCore | None = None,
         _overlap: Overlap | None = None,
         _dipole: Dipole | None = None,
         _quadrupole: Quadrupole | None = None,
@@ -161,11 +161,11 @@ class Integrals(IntegralContainer):
     # Core Hamiltonian
 
     @property
-    def hcore(self) -> Hamiltonian | None:
+    def hcore(self) -> HCore | None:
         return self._hcore
 
     @hcore.setter
-    def hcore(self, hcore: Hamiltonian) -> None:
+    def hcore(self, hcore: HCore) -> None:
         self._hcore = hcore
         self.checks()
 
@@ -415,7 +415,7 @@ class Integrals(IntegralContainer):
             if cls is None:
                 continue
 
-            cls: Hamiltonian | Overlap | Dipole | Quadrupole
+            cls: HCore | Overlap | Dipole | Quadrupole
 
             if cls.dtype != self.dtype:
                 raise RuntimeError(

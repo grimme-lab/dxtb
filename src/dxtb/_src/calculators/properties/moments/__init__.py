@@ -21,7 +21,7 @@ Properties: Multipole Moments
 Analytical calculation of multipole moments. Currently, dipole moment and
 traceless quadrupole moment are implemented.
 However, this module serves more as a short-cut for the calculation in
-:class:`~dxtb.calculator.Calculator` as it should hide some implementation
+:class:`~dxtb.Calculator` as it should hide some implementation
 details.
 """
 

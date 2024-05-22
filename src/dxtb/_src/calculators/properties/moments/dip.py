@@ -21,7 +21,7 @@ Properties: Dipole Moment
 Analytical calculation of dipole moment.
 
 This module serves more as a short-cut for the calculation in
-:class:`~dxtb.calculator.Calculator`, hiding some implementation details.
+:class:`~dxtb.Calculator`, hiding some implementation details.
 """
 
 from __future__ import annotations
@@ -31,15 +31,15 @@ from tad_mctc.math import einsum
 
 from dxtb._src.typing import Tensor
 
-__all__ = ["dipole"]
+__all__ = ["dipole", "dipole_xtb"]
 
 
 def dipole(
     charge: Tensor, positions: Tensor, density: Tensor, integral: Tensor
 ) -> Tensor:
-    """
+    r"""
     Analytical calculation of electric dipole moment with electric dipole
-    contribution from nuclei (sum_i(r_ik * q_i)) and electrons.
+    contribution from nuclei (:math:`\sum_i(r_{ik}  q_i)`) and electrons.
 
     Parameters
     ----------
@@ -59,7 +59,7 @@ def dipole(
 
     Note
     ----
-    This version follows the `tblite` implementation, which employs `r-rj` as
+    This version follows the `tblite` implementation, which employs ``r-rj`` as
     moment operator and requires the SCC charges for the nuclear dipole
     contribution.
     """
@@ -73,9 +73,9 @@ def dipole(
 def dipole_xtb(
     numbers: Tensor, positions: Tensor, density: Tensor, integral: Tensor
 ) -> Tensor:
-    """
+    r"""
     Analytical calculation of electric dipole moment with electric dipole
-    contribution from nuclei (sum_i(r_ik * q_i)) and electrons.
+    contribution from nuclei (:math:`\sum_i(r_{ik}  q_i)`) and electrons.
 
     Parameters
     ----------
@@ -97,7 +97,7 @@ def dipole_xtb(
 
     Note
     ----
-    This version follows the `xtb` implementation, where the `r0` moment
+    This version follows the `xtb` implementation, where the ``r0`` moment
     operator is used and the nuclear contribution uses the valence charges.
     """
     # TODO: Shape checks

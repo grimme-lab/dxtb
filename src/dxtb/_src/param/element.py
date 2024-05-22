@@ -93,10 +93,12 @@ class Element(BaseModel):
     """Quadrupolar exchange-correlation kernel."""
 
     mprad: float = 0.0
-    """Multipole radius."""
+    """Offset radius for the damping in the AES energy."""
 
     mpvcn: float = 0.0
-    """Multipole valence CN."""
+    """Shift value in the damping in the AES energy. Only used if mprad != 0."""
+
+    ############################################################################
 
     xbond: float = 0.0
     """Halogen bonding strength."""

@@ -119,7 +119,7 @@ def test_wrong_device_fail() -> None:
     numbers_cpu = torch.tensor([1], device=torch.device("cpu"))
     ihelp = IndexHelper.from_numbers_angular(numbers_cpu, {1: [0]})
 
-    numbers = MockTensor(torch.tensor([1]))
+    numbers = MockTensor(torch.tensor([1], dtype=torch.float32))
     numbers.device = torch.device("cuda")
 
     # numbers is on a different device

@@ -28,7 +28,20 @@ SCF. The :class:`~dxtb.components.base.Classical` components are classical
 corrections that do not dependent on the density or charges.
 
 The components are usually initialized with a parametrization and the atomic
-numbers of the system, i.e., they do not require user intervention.
+numbers of the system within the :class:`~dxtb.Calculator`, i.e., they do not
+require user intervention. For explicit instantiation, we provide factory
+functions.
+
+.. code-block:: python
+
+    import torch
+    from dxtb import GFN1_XTB
+    from dxtb.components.dispersion import new_dispersion
+
+    numbers = torch.tensor([3, 1])
+    disp = new_dispersion(numbers, GFN1_XTB)
+
+    print(disp.label)  # DispersionD3
 """
 from typing import TYPE_CHECKING
 

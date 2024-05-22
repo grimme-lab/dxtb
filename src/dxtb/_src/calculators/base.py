@@ -22,6 +22,7 @@ Base calculator for the extended tight-binding (xTB) models.
 This calculator provides analytical, autograd, and numerical versions of all
 properties.
 """
+from __future__ import annotations
 
 from dxtb._src.constants import defaults
 from dxtb._src.typing import Any, Tensor

@@ -22,6 +22,6 @@ Integral types for the calculation of molecular integrals.
 """
 
 from dxtb._src.integral.types import Dipole as Dipole
-from dxtb._src.integral.types import Hamiltonian as Hamiltonian
+from dxtb._src.integral.types import HCore as HCore
 from dxtb._src.integral.types import Overlap as Overlap
 from dxtb._src.integral.types import Quadrupole as Quadrupole

@@ -27,6 +27,7 @@ Example
 .. code-block:: python
 
     from dxtb._src.param.gfn2 import GFN2_XTB
+    #from dxtb import GFN2_XTB  # also available from the top-level package
 
     # Initially, the parameters are not loaded
     print(GFN2_XTB._loaded is None)  # Expected output: True

@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Wavefunction: Mulliken
+======================
+
 Wavefunction analysis via Mulliken populations.
 """
 
@@ -120,7 +123,8 @@ def get_mulliken_shell_charges(
     n0: Tensor,
 ) -> Tensor:
     """
-    Compute shell-resolved Mulliken partial charges using Mulliken population analysis.
+    Compute shell-resolved Mulliken partial charges using Mulliken population
+    analysis.
 
     Parameters
     ----------

@@ -23,7 +23,8 @@ from __future__ import annotations
 import torch
 from tad_mctc.batch import deflate, pack
 
-from dxtb._src.basis import Basis, IndexHelper
+from dxtb import IndexHelper
+from dxtb._src.basis.bas import Basis
 from dxtb._src.constants import defaults
 from dxtb._src.typing import Literal, Tensor
 
@@ -66,6 +67,13 @@ def overlap_legacy(
     Tensor
         Orbital-resolved overlap matrix of shape `(nb, norb, norb)`.
     """
+    if uplo == "n":
+        raise NotImplementedError(
+            "Explicit calculation of the full overlap matrix not implemented. "
+            "The legacy/looped version always runs over a triangle to be more "
+            "efficient. Use 'l' or 'u'."
+        )
+
     # create empty overlap matrix
     overlap = torch.zeros(ihelp.nao, ihelp.nao)
 
@@ -101,14 +109,19 @@ def overlap_legacy(
 
                     for iao in range(i_nao):
                         for jao in range(j_nao):
-                            overlap[jj + jao, ii + iao] = stmp[iao, jao]
+                            if uplo == "u":
+                                overlap[jj + jao, ii + iao] = stmp[iao, jao]
+                            elif uplo == "l":
+                                overlap[ii + iao, jj + jao] = stmp[iao, jao]
 
     # fill empty triangular matrix
-    overlap = torch.triu(overlap, diagonal=1) + torch.tril(overlap.mT)
+    if uplo == "l":
+        overlap = torch.tril(overlap, diagonal=-1) + torch.triu(overlap.mT)
+    elif uplo == "u":
+        overlap = torch.triu(overlap, diagonal=1) + torch.tril(overlap.mT)
 
-    # fix diagonal as "self-overlap" was removed via loops
+    # fix diagonal as "self-overlap" was removed via mask earlier
     overlap.fill_diagonal_(1.0)
-
     return overlap
 
 

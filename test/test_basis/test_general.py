@@ -25,7 +25,9 @@ import pytest
 import torch
 
 from dxtb import GFN1_XTB as par
-from dxtb._src.basis import Basis, IndexHelper, slater_to_gauss
+from dxtb import IndexHelper
+from dxtb._src.basis.bas import Basis
+from dxtb._src.basis.slater import slater_to_gauss
 from dxtb._src.integral.driver.pytorch.impls.md import overlap_gto
 from dxtb._src.typing.exceptions import (
     CGTOAzimuthalQuantumNumberError,

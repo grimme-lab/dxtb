@@ -37,7 +37,7 @@ Example
 
 .. code-block:: python
 
-    from dxtb.integrals.wrappers import overlap, dipole, quadrupole
+    from dxtb.integrals.wrappers import overlap, dipint, quadint
     from dxtb import GFN1_XTB as par
     import torch
 
@@ -55,11 +55,11 @@ Example
     print(s.shape)  # Output: torch.Size([17, 17])
 
     # Calculate the dipole integrals
-    d = dipole(numbers, positions, par)
+    d = dipint(numbers, positions, par)
     print(d.shape)  # Output: torch.Size([3, 17, 17])
 
     # Calculate the quadrupole integrals
-    q = quadrupole(numbers, positions, par)
+    q = quadint(numbers, positions, par)
     print(q.shape)  # Output: torch.Size([9, 17, 17])
 """
 
@@ -75,7 +75,7 @@ from dxtb._src.xtb.gfn2 import GFN2Hamiltonian
 from .factory import new_driver
 from .types import Dipole, Overlap, Quadrupole
 
-__all__ = ["hcore", "overlap", "dipole", "quadrupole"]
+__all__ = ["hcore", "overlap", "dipint", "quadint"]
 
 
 def hcore(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tensor:
@@ -161,7 +161,7 @@ def overlap(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Te
     return _integral("_overlap", numbers, positions, par, **kwargs)
 
 
-def dipole(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tensor:
+def dipint(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tensor:
     """
     Shortcut for dipole integral calculations.
 
@@ -182,7 +182,7 @@ def dipole(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Ten
     return _integral("_dipole", numbers, positions, par, **kwargs)
 
 
-def quadrupole(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tensor:
+def quadint(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tensor:
     """Shortcut for dipole integral calculations.
 
     Parameters

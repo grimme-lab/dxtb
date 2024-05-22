@@ -27,7 +27,7 @@ written down.
 Note
 ----
 The `recursion` module makes use of jit (tracing), which increases the start up
-times of the program. Since the module is essentially never used (), we do not
+times of the program. Since the module is essentially never used, we do not
 explicitly import it here to avoid the jit start up.
 """
 

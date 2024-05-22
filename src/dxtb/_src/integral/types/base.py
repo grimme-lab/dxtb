@@ -1,4 +1,7 @@
 """
+Integral Types: Base
+====================
+
 Base class for Integrals.
 """
 
@@ -95,7 +98,7 @@ class BaseIntegral(IntegralABC, TensorLike):
         """
         Calculation of the nuclear integral derivative (matrix). This method
         only calls the :meth:`get_gradient` method of the underlying
-        `BaseIntegralImplementation`.
+        :class:`BaseIntegralImplementation`.
 
         Parameters
         ----------
@@ -193,11 +196,11 @@ class BaseIntegral(IntegralABC, TensorLike):
     @override
     def to(self, device: torch.device) -> BaseIntegral:
         """
-        Returns a copy of the :class:`BaseIntegral` instance on the specified
+        Returns a copy of the :class:`.BaseIntegral` instance on the specified
         device.
 
         This method overwrites the usual approach because the
-        :class:`BaseIntegral` class only contains the integral, which has to be
+        :class:`.BaseIntegral` class only contains the integral, which has to be
         moved.
 
         Parameters
@@ -208,8 +211,8 @@ class BaseIntegral(IntegralABC, TensorLike):
         Returns
         -------
         BaseIntegral
-            A copy of the :class:`BaseIntegral` instance placed on the specified
-            device.
+            A copy of the :class:`.BaseIntegral` instance placed on the
+            specified device.
 
         Raises
         ------

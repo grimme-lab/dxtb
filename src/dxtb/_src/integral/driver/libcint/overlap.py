@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Implementation: Overlap
+=======================
+
 Overlap implementation based on `libcint`.
 """
 
@@ -27,8 +30,7 @@ from tad_mctc.math import einsum
 from dxtb._src.exlibs import libcint
 from dxtb._src.typing import Tensor
 
-from ...base import BaseIntegralImplementation
-from .base import LibcintImplementation
+from .base_implementation import IntegralImplementationLibcint
 from .driver import IntDriverLibcint
 
 __all__ = ["OverlapLibcint"]
@@ -38,7 +40,7 @@ def snorm(ovlp: Tensor) -> Tensor:
     return torch.pow(ovlp.diagonal(dim1=-1, dim2=-2), -0.5)
 
 
-class OverlapLibcint(BaseIntegralImplementation, LibcintImplementation):
+class OverlapLibcint(IntegralImplementationLibcint):
     """
     Overlap integral from atomic orbitals.
     """

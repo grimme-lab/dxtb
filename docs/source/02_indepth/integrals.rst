@@ -6,8 +6,8 @@ Integrals
 .. toctree::
    :maxdepth: 1
 
-   Shortcuts <../_autosummary/dxtb.integrals.wrappers>
    Drivers <integrals_drivers>
+   Shortcuts <../_autosummary/dxtb.integrals.wrappers>
    Types <integrals_types>
 
 

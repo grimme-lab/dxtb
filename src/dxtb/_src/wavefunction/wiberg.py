@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Wiberg/Mayer bond orders
-========================
+Wavefunction: Wiberg/Mayer Bond Orders
+======================================
 
 Wiberg (or better Mayer) bond orders are calculated from the off-diagonal
 elements of the matrix product of the density and the overlap matrix.
@@ -31,7 +31,8 @@ __all__ = ["get_bond_order"]
 
 
 def get_bond_order(overlap: Tensor, density: Tensor, ihelp: IndexHelper) -> Tensor:
-    """Calculate Wiberg bond orders.
+    """
+    Calculate Wiberg bond orders.
 
     Parameters
     ----------

@@ -20,7 +20,8 @@ Typing for the overlap functions.
 
 from __future__ import annotations
 
-from dxtb._src.basis import Basis, IndexHelper
+from dxtb import IndexHelper
+from dxtb._src.basis.bas import Basis
 from dxtb._src.constants import defaults
 from dxtb._src.typing import Literal, Protocol, Tensor
 

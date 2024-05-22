@@ -205,15 +205,16 @@ class AutogradCalculator(EnergyCalculator):
             Whether to use `functorch` for autodiff. Defaults to ``False``.
         derived_quantity : Literal['energy', 'forces'], optional
             Which derivative to calculate for the Hessian, i.e., derivative of
-            forces or energy w.r.t. positions. Defaults to ``forces``.
+            forces or energy w.r.t. positions. Defaults to ``'forces'``.
         matrix : bool, optional
-            Whether to reshape the Hessian to a matrix, i.e., `(nat*3, nat*3)`.
-            Defaults to ``False``.
+            Whether to reshape the Hessian to a matrix, i.e.,
+            ``(nat*3, nat*3)``. Defaults to ``False``.
 
         Returns
         -------
         Tensor
-            Hessian of shape `(..., nat, 3, nat, 3)` or `(..., nat*3, nat*3)`.
+            Hessian of shape ``(..., nat, 3, nat, 3)`` or
+            ``(..., nat*3, nat*3)``.
 
         Raises
         ------
@@ -343,7 +344,8 @@ class AutogradCalculator(EnergyCalculator):
         -------
         VibResult
             Result container with vibrational frequencies (shape:
-            `(..., nfreqs)`) and normal modes (shape: `(..., nat*3, nfreqs)`).
+            ``(..., nfreqs)``) and normal modes (shape:
+            ``(..., nat*3, nfreqs)``).
         """
         hess = self.hessian(
             positions,
@@ -406,7 +408,7 @@ class AutogradCalculator(EnergyCalculator):
         Returns
         -------
         Tensor
-            Electric dipole moment of shape `(..., 3)`.
+            Electric dipole moment of shape ``(..., 3)``.
         """
         field = self.interactions.get_interaction(efield.LABEL_EFIELD).field
 
@@ -483,7 +485,7 @@ class AutogradCalculator(EnergyCalculator):
         Returns
         -------
         Tensor
-            Cartesian dipole derivative of shape `(..., 3, nat, 3)`.
+            Cartesian dipole derivative of shape ``(..., 3, nat, 3)``.
         """
 
         if use_analytical is True:
@@ -575,7 +577,7 @@ class AutogradCalculator(EnergyCalculator):
         Returns
         -------
         Tensor
-            Polarizability tensor of shape `(..., 3, 3)`.
+            Polarizability tensor of shape ``(..., 3, 3)``.
         """
         # retrieve the efield interaction and the field
         field = self.interactions.get_interaction(efield.LABEL_EFIELD).field
@@ -690,7 +692,7 @@ class AutogradCalculator(EnergyCalculator):
         Returns
         -------
         Tensor
-            Polarizability derivative shape `(..., 3, 3, nat, 3)`.
+            Polarizability derivative shape ``(..., 3, 3, nat, 3)``.
         """
         if use_functorch is False:
             # pylint: disable=import-outside-toplevel
@@ -768,7 +770,7 @@ class AutogradCalculator(EnergyCalculator):
         Returns
         -------
         Tensor
-            Hyper polarizability tensor of shape `(..., 3, 3, 3)`.
+            Hyper polarizability tensor of shape ``(..., 3, 3, 3)``.
         """
         # retrieve the efield interaction and the field
         field = self.interactions.get_interaction(efield.LABEL_EFIELD).field
@@ -860,8 +862,8 @@ class AutogradCalculator(EnergyCalculator):
         Returns
         -------
         IRResult
-            Result container with frequencies (shape: `(..., nfreqs)`) and
-            intensities (shape: `(..., nfreqs)`) of IR spectra.
+            Result container with frequencies (shape: ``(..., nfreqs)``) and
+            intensities (shape: ``(..., nfreqs)``) of IR spectra.
         """
         OutputHandler.write_stdout("\nIR Spectrum")
         OutputHandler.write_stdout("-----------")
@@ -913,9 +915,9 @@ class AutogradCalculator(EnergyCalculator):
         Returns
         -------
         RamanResult
-            Result container with frequencies (shape: `(..., nfreqs)`),
-            intensities (shape: `(..., nfreqs)`) and the depolarization ratio
-            (shape: `(..., nfreqs)`) of Raman spectra.
+            Result container with frequencies (shape: ``(..., nfreqs)``),
+            intensities (shape: ``(..., nfreqs)``) and the depolarization ratio
+            (shape: ``(..., nfreqs)``) of Raman spectra.
         """
         OutputHandler.write_stdout("\nRaman Spectrum")
         OutputHandler.write_stdout("--------------")

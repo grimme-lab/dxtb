@@ -24,13 +24,9 @@ import pytest
 import torch
 
 from dxtb import GFN1_XTB
+from dxtb._src.calculators.properties.vibration import VibResult
 from dxtb._src.typing import DD, Literal, Tensor
-from dxtb.calculators import (
-    AnalyticalCalculator,
-    AutogradCalculator,
-    GFN1Calculator,
-    VibResult,
-)
+from dxtb.calculators import AnalyticalCalculator, AutogradCalculator, GFN1Calculator
 
 DEVICE = None
 

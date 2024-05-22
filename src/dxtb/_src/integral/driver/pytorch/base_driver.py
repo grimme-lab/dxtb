@@ -15,7 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Base class for PyTorch-based integrals.
+Driver: Base Class
+==================
+
+Base class for PyTorch-based drivers.
 """
 
 from __future__ import annotations
@@ -24,14 +27,15 @@ from abc import abstractmethod
 
 import torch
 
-from dxtb._src.basis import Basis, IndexHelper
+from dxtb import IndexHelper
+from dxtb._src.basis.bas import Basis
 from dxtb._src.constants import labels
 from dxtb._src.typing import Any, Tensor
 
-from ...base import BaseIntegralImplementation, IntDriver
+from ...base import IntDriver
 from .impls import OverlapFunction
 
-__all__ = ["BaseIntDriverPytorch", "IntegralImplementationPytorch"]
+__all__ = ["BaseIntDriverPytorch"]
 
 
 class PytorchImplementation:
@@ -140,24 +144,3 @@ class BaseIntDriverPytorch(PytorchImplementation, IntDriver):
         Specification of the overlap (gradient) evaluation functions
         (`eval_ovlp` and `eval_ovlp_grad`).
         """
-
-
-class IntegralImplementationPytorch(
-    PytorchImplementation,
-    BaseIntegralImplementation,
-):
-    """PyTorch-based integral implementation"""
-
-    def checks(self, driver: BaseIntDriverPytorch) -> None:
-        """
-        Check if the type of integral driver is correct.
-
-        Parameters
-        ----------
-        driver : BaseIntDriverPytorch
-            Integral driver for the calculation.
-        """
-        super().checks(driver)
-
-        if not isinstance(driver, BaseIntDriverPytorch):
-            raise RuntimeError("Wrong integral driver selected.")

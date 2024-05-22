@@ -25,11 +25,11 @@ import pytest
 import torch
 
 from dxtb import GFN1_XTB as par
-from dxtb._src.basis.indexhelper import IndexHelper
+from dxtb import IndexHelper
 from dxtb._src.typing import DD
 from dxtb._src.utils import batch
 from dxtb._src.wavefunction import mulliken
-from dxtb._src.xtb.gfn1 import GFN1Hamiltonian as Hamiltonian
+from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 
 from .samples import samples
 
@@ -165,7 +165,7 @@ def test_single_charges(dtype: torch.dtype, name: str):
     ref = sample["mulliken_charges"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    h0 = Hamiltonian(numbers, par, ihelp, **dd)
+    h0 = GFN1Hamiltonian(numbers, par, ihelp, **dd)
     n0 = ihelp.reduce_orbital_to_atom(h0.get_occupation())
 
     pop = mulliken.get_mulliken_atomic_charges(overlap, density, ihelp, n0)
@@ -207,7 +207,7 @@ def test_batch_charges(dtype: torch.dtype, name1: str, name2: str):
     )
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    h0 = Hamiltonian(numbers, par, ihelp, **dd)
+    h0 = GFN1Hamiltonian(numbers, par, ihelp, **dd)
     n0 = ihelp.reduce_orbital_to_atom(h0.get_occupation())
 
     pop = mulliken.get_mulliken_atomic_charges(overlap, density, ihelp, n0)
@@ -227,7 +227,7 @@ def test_single_charges_shell(dtype: torch.dtype, name: str):
     ref = sample["mulliken_charges_shell"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    h0 = Hamiltonian(numbers, par, ihelp, **dd)
+    h0 = GFN1Hamiltonian(numbers, par, ihelp, **dd)
     n0 = ihelp.reduce_orbital_to_shell(h0.get_occupation())
 
     pop = mulliken.get_mulliken_shell_charges(overlap, density, ihelp, n0)
@@ -269,7 +269,7 @@ def test_batch_charges_shell(dtype: torch.dtype, name1: str, name2: str):
     )
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    h0 = Hamiltonian(numbers, par, ihelp, **dd)
+    h0 = GFN1Hamiltonian(numbers, par, ihelp, **dd)
     n0 = ihelp.reduce_orbital_to_shell(h0.get_occupation())
 
     pop = mulliken.get_mulliken_shell_charges(overlap, density, ihelp, n0)
