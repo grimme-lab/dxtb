@@ -25,7 +25,7 @@ import torch
 from tad_mctc.batch import pack
 from tad_mctc.convert import symbol_to_number
 
-from dxtb.basis import IndexHelper
+from dxtb import IndexHelper
 
 
 def test_spread() -> None:

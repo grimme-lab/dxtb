@@ -21,7 +21,7 @@ Setup for pytest.
 import pytest
 import torch
 
-from dxtb.timing import timer
+from dxtb._src.timing import timer
 
 # avoid randomness and non-deterministic algorithms
 torch.manual_seed(0)

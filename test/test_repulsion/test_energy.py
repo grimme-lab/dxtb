@@ -27,12 +27,12 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb.basis import IndexHelper
-from dxtb.components.classicals import new_repulsion
-from dxtb.param.gfn1 import GFN1_XTB
-from dxtb.param.gfn2 import GFN2_XTB
-from dxtb.typing import DD, Literal
-from dxtb.utils import batch
+from dxtb import IndexHelper
+from dxtb._src.components.classicals import new_repulsion
+from dxtb._src.param.gfn1 import GFN1_XTB
+from dxtb._src.param.gfn2 import GFN2_XTB
+from dxtb._src.typing import DD, Literal
+from dxtb._src.utils import batch
 
 from .samples import samples
 

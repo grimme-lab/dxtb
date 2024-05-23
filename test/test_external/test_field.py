@@ -27,11 +27,10 @@ import torch
 from tad_mctc.batch import pack
 from tad_mctc.units import VAA2AU
 
-from dxtb.components.interactions import new_efield
-from dxtb.constants import labels
-from dxtb.param import GFN1_XTB
-from dxtb.typing import DD
-from dxtb.xtb import Calculator
+from dxtb import GFN1_XTB, Calculator
+from dxtb._src.components.interactions import new_efield
+from dxtb._src.constants import labels
+from dxtb._src.typing import DD
 
 from .samples import samples
 

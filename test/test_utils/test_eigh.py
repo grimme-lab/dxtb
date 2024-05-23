@@ -22,12 +22,13 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.convert import symmetrize
+from tad_mctc.storch.linalg import eighb
 from torch.autograd.gradcheck import gradcheck
 
-from dxtb.exlibs.xitorch import LinearOperator
-from dxtb.exlibs.xitorch.linalg import symeig
-from dxtb.typing import Literal, Tensor
-from dxtb.utils import eighb, symmetrize
+from dxtb._src.exlibs.xitorch import LinearOperator
+from dxtb._src.exlibs.xitorch.linalg import symeig
+from dxtb._src.typing import Literal, Tensor
 
 # Hamiltonian of LiH from last step
 hamiltonian = torch.tensor(
@@ -85,8 +86,8 @@ hamiltonian = torch.tensor(
 )
 
 
-@pytest.mark.parametrize("broadening", ["none", "cond", "lorn"])
-def test_eighb(broadening: Literal["cond", "lorn", "none"]) -> None:
+@pytest.mark.parametrize("broadening", [None, "cond", "lorn"])
+def test_eighb(broadening: Literal["cond", "lorn"] | None) -> None:
     a = torch.rand(8, 8, dtype=torch.double)
     a.requires_grad_(True)
 
@@ -98,8 +99,8 @@ def test_eighb(broadening: Literal["cond", "lorn", "none"]) -> None:
 
 
 @pytest.mark.xfail
-@pytest.mark.parametrize("broadening", ["none", "cond", "lorn"])
-def test_eighb_degen(broadening: Literal["cond", "lorn", "none"]) -> None:
+@pytest.mark.parametrize("broadening", [None, "cond", "lorn"])
+def test_eighb_degen(broadening: Literal["cond", "lorn"] | None) -> None:
     hamiltonian.detach_().requires_grad_(True)
 
     def eigen_proxy(m: Tensor):

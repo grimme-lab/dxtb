@@ -23,10 +23,10 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.components.classicals.dispersion import new_dispersion
-from dxtb.param import GFN1_XTB
-from dxtb.param.gfn2 import GFN2_XTB
-from dxtb.typing.exceptions import ParameterWarning
+from dxtb import GFN1_XTB
+from dxtb._src.components.classicals.dispersion import new_dispersion
+from dxtb._src.param.gfn2 import GFN2_XTB
+from dxtb._src.typing.exceptions import ParameterWarning
 
 
 def test_none() -> None:

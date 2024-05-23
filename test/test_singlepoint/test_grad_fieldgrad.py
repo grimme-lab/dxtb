@@ -24,12 +24,12 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb.components.interactions import new_efield, new_efield_grad
-from dxtb.constants import labels
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD, Callable, Tensor
-from dxtb.utils import batch
-from dxtb.xtb import Calculator
+from dxtb import GFN1_XTB as par
+from dxtb import Calculator
+from dxtb._src.components.interactions import new_efield, new_efield_grad
+from dxtb._src.constants import labels
+from dxtb._src.typing import DD, Callable, Tensor
+from dxtb._src.utils import batch
 
 from .samples import samples
 

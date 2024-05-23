@@ -23,7 +23,7 @@ from __future__ import annotations
 import torch
 from tad_mctc.data.molecules import merge_nested_dicts, mols
 
-from dxtb.typing import Molecule, Tensor, TypedDict
+from dxtb._src.typing import Molecule, Tensor, TypedDict
 
 
 class Refs(TypedDict):

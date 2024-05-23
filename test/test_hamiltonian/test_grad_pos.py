@@ -24,15 +24,15 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb.basis import IndexHelper
-from dxtb.constants import labels
-from dxtb.integral import Overlap
-from dxtb.integral.driver.pytorch import IntDriverPytorch as IntDriver
-from dxtb.ncoord import cn_d3
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD, Callable, Tensor
-from dxtb.utils import batch
-from dxtb.xtb import GFN1Hamiltonian as Hamiltonian
+from dxtb import GFN1_XTB as par
+from dxtb import IndexHelper
+from dxtb._src.constants import labels
+from dxtb._src.integral.container import Overlap
+from dxtb._src.integral.driver.pytorch import IntDriverPytorch as IntDriver
+from dxtb._src.ncoord import cn_d3
+from dxtb._src.typing import DD, Callable, Tensor
+from dxtb._src.utils import batch
+from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 
 from .samples import samples
 
@@ -54,7 +54,7 @@ def gradchecker(
     positions = sample["positions"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    h0 = Hamiltonian(numbers, par, ihelp, **dd)
+    h0 = GFN1Hamiltonian(numbers, par, ihelp, **dd)
     overlap = Overlap(driver=labels.INTDRIVER_ANALYTICAL, **dd)
 
     driver = IntDriver(numbers, par, ihelp, **dd)
@@ -143,7 +143,7 @@ def gradchecker_batch(
     )
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    h0 = Hamiltonian(numbers, par, ihelp, **dd)
+    h0 = GFN1Hamiltonian(numbers, par, ihelp, **dd)
     overlap = Overlap(driver=labels.INTDRIVER_ANALYTICAL, **dd)
 
     driver = IntDriver(numbers, par, ihelp, **dd)

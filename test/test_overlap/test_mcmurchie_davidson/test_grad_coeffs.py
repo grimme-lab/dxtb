@@ -24,8 +24,8 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb.integral.driver.pytorch.impls import md
-from dxtb.typing import Callable, Tensor
+from dxtb._src.integral.driver.pytorch.impls import md
+from dxtb._src.typing import Callable, Tensor
 
 fcoeff_list = [
     md.explicit.ecoeffs_s,

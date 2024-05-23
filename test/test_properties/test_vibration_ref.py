@@ -26,9 +26,9 @@ from tad_mctc.batch import pack
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.units.spectroscopy import AU2RCM
 
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD
-from dxtb.xtb import Calculator
+from dxtb import GFN1_XTB as par
+from dxtb import Calculator
+from dxtb._src.typing import DD
 
 from .samples import samples
 
@@ -37,7 +37,6 @@ slist = ["H", "H2", "LiH", "H2O", "CH4", "SiH4"]
 slist_large = ["LYS_xao"]
 
 opts = {
-    "int_level": 1,
     "maxiter": 100,
     "mixer": "anderson",
     "scf_mode": "full",

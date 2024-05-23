@@ -22,8 +22,9 @@ from __future__ import annotations
 
 import torch
 
-from dxtb.basis import IndexHelper
-from dxtb.components.interactions import Charges, Interaction
+from dxtb import IndexHelper
+from dxtb._src.components.base import ComponentCache
+from dxtb._src.components.interactions import Charges, Interaction
 
 
 def test_empty() -> None:
@@ -35,7 +36,7 @@ def test_empty() -> None:
     orbital = ihelp.spread_atom_to_orbital(numbers)
 
     c = i.get_cache(numbers=numbers, positions=numbers, ihelp=ihelp)
-    assert isinstance(c, Interaction.Cache)
+    assert isinstance(c, ComponentCache)
 
     ae = i.get_atom_energy(numbers)
     assert (ae == torch.zeros(ae.shape)).all()

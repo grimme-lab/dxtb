@@ -23,8 +23,13 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.param import GFN1_XTB as par
-from dxtb.param import get_elem_param, get_elem_pqn, get_elem_valence, get_pair_param
+from dxtb import GFN1_XTB as par
+from dxtb._src.param import (
+    get_elem_param,
+    get_elem_pqn,
+    get_elem_valence,
+    get_pair_param,
+)
 
 
 def test_pair_param() -> None:

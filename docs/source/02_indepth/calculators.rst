@@ -1,6 +1,14 @@
 .. _indepth_calculators:
 
-.. automodule:: dxtb.xtb.calculators
-   :members:
-   :undoc-members:
-   :show-inheritance:
+Calculators
+===========
+
+.. toctree::
+   :maxdepth: 1
+
+   Configuration <calculators_config>
+   Types <calculators_types>
+   Background <calculators_background>
+
+.. automodule:: dxtb.calculators
+   :no-index:

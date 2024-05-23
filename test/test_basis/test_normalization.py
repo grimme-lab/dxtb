@@ -23,8 +23,8 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.basis import slater_to_gauss
-from dxtb.integral.driver.pytorch.impls.md import overlap_gto
+from dxtb._src.basis.slater import slater_to_gauss
+from dxtb._src.integral.driver.pytorch.impls.md import overlap_gto
 
 
 @pytest.mark.parametrize("ng", [1, 2, 3, 4, 5, 6])

@@ -21,7 +21,7 @@ Test for the actual command line entrypint function.
 import pytest
 
 from dxtb import __version__
-from dxtb.cli import console_entry_point
+from dxtb._src.cli import console_entry_point
 
 from ..utils import coordfile
 

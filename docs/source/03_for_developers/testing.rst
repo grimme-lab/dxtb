@@ -8,9 +8,9 @@ pytest
 
 For rapid testing, simply run `pytest`, but exclude large tests.
 
-.. code::
+.. code-block:: shell
 
-   pytest -vv -m "not large"
+    pytest -vv -m "not large"
 
 
 tox
@@ -18,18 +18,18 @@ tox
 
 For testing all Python environments, use `tox`.
 
-.. code::
+.. code-block:: shell
 
-   tox
+    tox
 
 Note that this randomizes the order of tests but skips "large" tests. To modify this behavior, `tox` has to skip the optional *posargs*.
 
-.. code::
+.. code-block:: shell
 
-   tox -- test
+    tox -- test
 
 To test specific environments, use the `-e` flag.
 
-.. code::
+.. code-block:: shell
 
-   tox -e py39-torch1110
+     tox -e py39-torch1110

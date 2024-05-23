@@ -24,10 +24,11 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb.basis import Basis, IndexHelper
-from dxtb.integral.driver.pytorch.impls import overlap_gradient
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD, Callable, Literal, Tensor
+from dxtb import GFN1_XTB as par
+from dxtb import IndexHelper
+from dxtb._src.basis.bas import Basis
+from dxtb._src.integral.driver.pytorch.impls import overlap_gradient
+from dxtb._src.typing import DD, Callable, Literal, Tensor
 
 from .samples import samples
 

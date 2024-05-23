@@ -10,6 +10,7 @@
 
    Installation <01_quickstart/installation>
    Getting Started <01_quickstart/getting_started>
+   CLI <01_quickstart/cli>
 
 .. toctree::
    :hidden:
@@ -17,7 +18,10 @@
    :maxdepth: 2
 
    Calculators <02_indepth/calculators>
-   SCF <02_indepth/scf>
+   Components <02_indepth/components>
+   Integrals <02_indepth/integrals>
+   Parametrizations <02_indepth/parametrizations>
+   Wavefunction/Basis <02_indepth/wavefunction>
 
 .. toctree::
    :hidden:
@@ -27,7 +31,6 @@
    Installation <03_for_developers/installation>
    Testing <03_for_developers/testing>
    Style <03_for_developers/style>
-   New Components <03_for_developers/extending>
 
 .. toctree::
     :hidden:
@@ -38,6 +41,12 @@
     Related Works <about/related>
     License <about/license>
 
+.. toctree::
+    :hidden:
+    :caption: Module Reference
+    :maxdepth: 0
+
+    modules
 
 dxtb - Fully Differentiable Extended Tight-Binding
 ==================================================
@@ -75,6 +84,6 @@ If you use *dxtb* in your research, please cite the following paper:
 Quicklinks
 ----------
 
-- :ref:`quickstart_installation`
-- :ref:`quickstart_getting_started`
-- :ref:`about_literature`
+- :ref:`quickstart-installation`
+- :ref:`quickstart-getting-started`
+- :ref:`about-literature`

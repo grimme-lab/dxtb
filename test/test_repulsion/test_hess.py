@@ -26,11 +26,11 @@ import pytest
 import torch
 from tad_mctc.autograd import jacrev
 
-from dxtb.basis import IndexHelper
-from dxtb.components.classicals import new_repulsion
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD, Tensor
-from dxtb.utils import batch, hessian
+from dxtb import GFN1_XTB as par
+from dxtb import IndexHelper
+from dxtb._src.components.classicals import new_repulsion
+from dxtb._src.typing import DD, Tensor
+from dxtb._src.utils import batch, hessian
 
 from ..utils import reshape_fortran
 from .samples import samples

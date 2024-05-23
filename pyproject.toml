@@ -43,8 +43,9 @@ exclude = ["./src/dxtb/exlibs/*"]
 plugins = ["covdefaults"]
 source = ["./src"]
 omit = [
-  "./src/dxtb/exlibs/*",
-  "./src/dxtb/typing.py"
+  "./src/dxtb/_src/exlibs/xitorch/*",
+  "./src/dxtb/_src/typing.py",
+  "./src/dxtb/components/*",
 ]
 
 [tool.coverage.report]

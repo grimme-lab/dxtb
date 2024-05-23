@@ -28,9 +28,9 @@ import pytest
 import torch
 from tad_mctc.data.molecules import mols as samples
 
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD
-from dxtb.xtb import Calculator
+from dxtb import GFN1_XTB as par
+from dxtb import Calculator
+from dxtb._src.typing import DD
 
 from .util import has_memleak_tensor
 

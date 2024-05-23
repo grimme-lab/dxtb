@@ -20,7 +20,7 @@ import torch
 from tad_mctc.io import read
 
 import dxtb
-from dxtb.typing import DD
+from dxtb._src.typing import DD
 
 print("ACONF20 subset of ACONFL benchmark set")
 
@@ -65,7 +65,7 @@ dxtb.timer.start("Loop")
 
 for i in range(nbatch):
     calc = dxtb.Calculator(numbers[i], dxtb.GFN1_XTB, opts=opts, **dd)
-    result = calc.energy(numbers[i], positions[i], chrg=charge[i])
+    result = calc.energy(positions[i], chrg=charge[i])
 
 dxtb.timer.stop("Loop")
 dxtb.timer.print(v=-999)

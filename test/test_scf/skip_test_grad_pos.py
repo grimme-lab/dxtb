@@ -24,10 +24,10 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb.constants import labels
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD, Callable, Tensor
-from dxtb.xtb import Calculator
+from dxtb import GFN1_XTB as par
+from dxtb import Calculator
+from dxtb._src.constants import labels
+from dxtb._src.typing import DD, Callable, Tensor
 
 from .samples import samples
 

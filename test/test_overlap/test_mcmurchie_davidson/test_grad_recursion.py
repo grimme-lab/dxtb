@@ -23,7 +23,7 @@ from __future__ import annotations
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb.integral.driver.pytorch.impls.md import recursion
+from dxtb._src.integral.driver.pytorch.impls.md import recursion
 
 
 def test_gradcheck_efunction(dtype: torch.dtype = torch.double) -> None:

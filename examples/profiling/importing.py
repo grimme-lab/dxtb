@@ -26,7 +26,7 @@ t1 = time.perf_counter()
 
 ############################
 
-from dxtb.param import GFN1_XTB
+from dxtb import GFN1_XTB
 
 t2 = time.perf_counter()
 

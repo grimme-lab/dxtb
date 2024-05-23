@@ -24,10 +24,10 @@ import pytest
 import torch
 from tad_mctc.molecule.container import Mol
 
-from dxtb.typing import DD
+from dxtb._src.typing import DD
 
 try:
-    from dxtb.exlibs import pyscf as _pyscf
+    from dxtb._src.exlibs import pyscf as _pyscf
 
     pyscf = True
 except ImportError:

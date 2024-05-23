@@ -23,11 +23,11 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.constants import labels
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD, Tensor
-from dxtb.utils import _hessian as hessian
-from dxtb.xtb import Calculator
+from dxtb import GFN1_XTB as par
+from dxtb import Calculator
+from dxtb._src.constants import labels
+from dxtb._src.typing import DD, Tensor
+from dxtb._src.utils import _hessian as hessian
 
 from ..utils import reshape_fortran
 from .samples import samples

@@ -23,8 +23,8 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.cli import Driver, parser
-from dxtb.timing import timer
+from dxtb._src.cli import Driver, parser
+from dxtb._src.timing import timer
 
 from ..utils import coordfile
 
@@ -41,7 +41,7 @@ def test_driver(dtype: torch.dtype) -> None:
     assert result is not None
 
     energy = result.total.sum(-1).detach()
-    assert pytest.approx(energy) == ref
+    assert pytest.approx(ref) == energy
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

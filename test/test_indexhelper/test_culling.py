@@ -22,10 +22,10 @@ from __future__ import annotations
 
 import torch
 
-from dxtb.basis import IndexHelper
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import Slicers, Tensor
-from dxtb.utils import batch
+from dxtb import GFN1_XTB as par
+from dxtb import IndexHelper
+from dxtb._src.typing import Slicers, Tensor
+from dxtb._src.utils import batch
 
 
 def test_culling() -> None:

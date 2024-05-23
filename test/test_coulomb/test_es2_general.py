@@ -25,11 +25,10 @@ import pytest
 import torch
 from tad_mctc.convert import str_to_device
 
-from dxtb.basis import IndexHelper
-from dxtb.components.interactions import Charges
-from dxtb.components.interactions.coulomb import secondorder as es2
-from dxtb.param import GFN1_XTB
-from dxtb.typing import DD
+from dxtb import GFN1_XTB, IndexHelper
+from dxtb._src.components.interactions import Charges
+from dxtb._src.components.interactions.coulomb import secondorder as es2
+from dxtb._src.typing import DD
 
 
 def test_none() -> None:

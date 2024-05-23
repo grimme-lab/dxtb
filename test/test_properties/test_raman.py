@@ -26,10 +26,11 @@ from tad_mctc.batch import pack
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.units import VAA2AU
 
-from dxtb.components.interactions import new_efield
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD, Tensor
-from dxtb.xtb import Calculator
+from dxtb import GFN1_XTB as par
+from dxtb import Calculator
+from dxtb._src.components.interactions import new_efield
+from dxtb._src.typing import DD, Tensor
+from dxtb.labels import INTLEVEL_DIPOLE
 
 from .samples import samples
 
@@ -37,7 +38,7 @@ slist = ["H", "LiH", "H2O", "SiH4"]
 slist_large = ["PbH4-BiH3"]  # MB16_43_01 and LYS_xao too large for testing
 
 opts = {
-    "int_level": 2,
+    "int_level": INTLEVEL_DIPOLE,
     "maxiter": 100,
     "mixer": "anderson",
     "scf_mode": "full",

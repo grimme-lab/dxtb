@@ -26,9 +26,9 @@ import torch
 from tad_mctc.autograd import dgradcheck
 from tad_mctc.data.radii import VDW_D3
 
-from dxtb.components.interactions.solvation import born
-from dxtb.typing import DD, Tensor
-from dxtb.utils import batch
+from dxtb._src.components.interactions.solvation import born
+from dxtb._src.typing import DD, Tensor
+from dxtb._src.utils import batch
 
 from .samples import samples
 

@@ -26,9 +26,9 @@ from tad_mctc.autograd import dgradcheck
 from tad_mctc.batch import pack
 from tad_mctc.convert import tensor_to_numpy
 
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD, Tensor
-from dxtb.xtb import Calculator
+from dxtb import GFN1_XTB as par
+from dxtb import Calculator
+from dxtb._src.typing import DD, Tensor
 
 from .samples import samples
 
@@ -37,7 +37,6 @@ slist = ["H", "LiH", "HHe", "H2O"]
 # slist = ["H", "LiH", "HHe", "H2O", "CH4", "SiH4", "PbH4-BiH3"]
 
 opts = {
-    "int_level": 1,
     "maxiter": 100,
     "mixer": "anderson",
     "scf_mode": "full",

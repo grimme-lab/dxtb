@@ -25,7 +25,7 @@ from __future__ import annotations
 import gc
 
 from dxtb.__version__ import __tversion__
-from dxtb.typing import Callable, Literal, Tensor, overload
+from dxtb._src.typing import Callable, Literal, Tensor, overload
 
 
 def _tensors_from_gc() -> list:
@@ -126,7 +126,7 @@ def has_memleak_tensor(
     Returns
     -------
     bool
-        Whether there is a memory leak (`True`) or not (`False`).
+        Whether there is a memory leak (``True``) or not (``False``).
     """
     size0, num0 = _get_tensor_memory(return_number_tensors=True)
 

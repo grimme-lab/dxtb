@@ -18,11 +18,57 @@
 Components
 ==========
 
-Tight-binding components.
-"""
+The tight-binding components are the central building blocks of the each model.
 
-from .base import *
-from .classicals import dispersion, halogen, repulsion
-from .interactions import coulomb, solvation
-from .interactions.field import efield
-from .list import *
+The components are split into :class:`~dxtb.components.base.Interaction` and
+:class:`~dxtb.components.base.Classical` components. The
+:class:`~dxtb.components.base.Interaction` components define the Hamiltonian
+and, correspondingly, are density- or charge-dependent and required for the
+SCF. The :class:`~dxtb.components.base.Classical` components are classical
+corrections that do not dependent on the density or charges.
+
+The components are usually initialized with a parametrization and the atomic
+numbers of the system within the :class:`~dxtb.Calculator`, i.e., they do not
+require user intervention. For explicit instantiation, we provide factory
+functions.
+
+.. code-block:: python
+
+    import torch
+    from dxtb import GFN1_XTB
+    from dxtb.components.dispersion import new_dispersion
+
+    numbers = torch.tensor([3, 1])
+    disp = new_dispersion(numbers, GFN1_XTB)
+
+    print(disp.label)  # DispersionD3
+"""
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from dxtb.components import base as base
+    from dxtb.components import coulomb as coulomb
+    from dxtb.components import dispersion as dispersion
+    from dxtb.components import field as field
+    from dxtb.components import halogen as halogen
+    from dxtb.components import repulsion as repulsion
+    from dxtb.components import solvation as solvation
+else:
+    import dxtb._src.loader.lazy as _lazy
+
+    __getattr__, __dir__, __all__ = _lazy.attach_module(
+        __name__,
+        [
+            "base",
+            "coulomb",
+            "field",
+            "solvation",
+            #
+            "dispersion",
+            "halogen",
+            "repulsion",
+        ],
+    )
+    del _lazy
+
+del TYPE_CHECKING

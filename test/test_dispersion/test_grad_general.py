@@ -23,9 +23,9 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.components.classicals.dispersion import new_dispersion
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD
+from dxtb import GFN1_XTB as par
+from dxtb._src.components.classicals.dispersion import new_dispersion
+from dxtb._src.typing import DD
 
 from .samples import samples
 

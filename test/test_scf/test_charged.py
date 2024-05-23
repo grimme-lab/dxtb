@@ -27,10 +27,10 @@ import numpy as np
 import pytest
 import torch
 
-from dxtb.constants import labels
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD
-from dxtb.xtb.calculators import Calculator
+from dxtb import GFN1_XTB as par
+from dxtb import Calculator
+from dxtb._src.constants import labels
+from dxtb._src.typing import DD
 
 from ..utils import load_from_npz
 from .samples_charged import samples

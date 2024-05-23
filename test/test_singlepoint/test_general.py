@@ -25,10 +25,10 @@ from pathlib import Path
 import pytest
 import torch
 
-from dxtb.io import read_chrg, read_coord
-from dxtb.param import GFN1_XTB as par
-from dxtb.timing import timer
-from dxtb.xtb import Calculator
+from dxtb import GFN1_XTB as par
+from dxtb import Calculator
+from dxtb._src.io import read_chrg, read_coord
+from dxtb._src.timing import timer
 
 opts = {"verbosity": 0}
 

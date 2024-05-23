@@ -26,11 +26,11 @@ import pytest
 import torch
 from tad_mctc.data import VDW_D3
 
-from dxtb.components.interactions.solvation import alpb
-from dxtb.constants import labels
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD
-from dxtb.xtb import Calculator
+from dxtb import GFN1_XTB as par
+from dxtb import Calculator
+from dxtb._src.components.interactions.solvation import alpb
+from dxtb._src.constants import labels
+from dxtb._src.typing import DD
 
 from .samples import samples
 

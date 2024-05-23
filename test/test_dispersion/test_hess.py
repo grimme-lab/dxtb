@@ -25,10 +25,10 @@ from math import sqrt
 import pytest
 import torch
 
-from dxtb.components.classicals.dispersion import new_dispersion
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD, Tensor
-from dxtb.utils import batch, hessian
+from dxtb import GFN1_XTB as par
+from dxtb._src.components.classicals.dispersion import new_dispersion
+from dxtb._src.typing import DD, Tensor
+from dxtb._src.utils import batch, hessian
 
 from ..utils import reshape_fortran
 from .samples import samples

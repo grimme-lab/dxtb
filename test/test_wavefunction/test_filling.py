@@ -27,14 +27,13 @@ import pytest
 import torch
 from tad_mctc.units import KELVIN2AU
 
-from dxtb.basis import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
+from dxtb._src.integral.container import IntegralMatrices
+from dxtb._src.scf.implicit import SelfConsistentFieldImplicit as SCF
+from dxtb._src.typing import DD
+from dxtb._src.utils import batch
+from dxtb._src.wavefunction import filling
 from dxtb.config import ConfigSCF
-from dxtb.integral import IntegralMatrices
-from dxtb.param import GFN1_XTB
-from dxtb.scf.implicit import SelfConsistentFieldImplicit as SCF
-from dxtb.typing import DD
-from dxtb.utils import batch
-from dxtb.wavefunction import filling
 
 from .samples import samples
 
@@ -102,7 +101,7 @@ def test_single(dtype: torch.dtype, name: str):
     sample = samples[name]
 
     nel = sample["n_electrons"].to(**dd)
-    uhf = sample["spin"].to(**dd)
+    uhf = sample["spin"].tolist()
     nab = filling.get_alpha_beta_occupation(nel, uhf)
 
     emo = sample["emo"].to(**dd)

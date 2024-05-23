@@ -26,10 +26,11 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb.basis import Basis, IndexHelper
-from dxtb.integral.driver.pytorch.impls.md import overlap_gto
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD
+from dxtb import GFN1_XTB as par
+from dxtb import IndexHelper
+from dxtb._src.basis.bas import Basis
+from dxtb._src.integral.driver.pytorch.impls.md import overlap_gto
+from dxtb._src.typing import DD
 
 from ..utils import load_from_npz
 from .samples import samples
@@ -42,7 +43,7 @@ device = None
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["HC", "HHe", "SCl"])
-def test_single(dtype: torch.dtype, name: str):
+def test_single(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"device": device, "dtype": dtype}
     tol = 1e-05
 
@@ -90,7 +91,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-def test_overlap_higher_orbitals(dtype: torch.dtype):
+def test_overlap_higher_orbitals(dtype: torch.dtype) -> None:
     # pylint: disable=import-outside-toplevel
     from .test_cgto_ortho_data import ref_data
 

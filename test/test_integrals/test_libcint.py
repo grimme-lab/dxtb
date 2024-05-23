@@ -23,13 +23,13 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb import integral as ints
-from dxtb.basis import IndexHelper
-from dxtb.exlibs import libcint
-from dxtb.integral.driver.libcint import IntDriverLibcint
-from dxtb.param import GFN1_XTB as par
-from dxtb.typing import DD
-from dxtb.utils import batch
+from dxtb import GFN1_XTB as par
+from dxtb import IndexHelper
+from dxtb import integrals as ints
+from dxtb._src.exlibs import libcint
+from dxtb._src.integral.driver.libcint import IntDriverLibcint
+from dxtb._src.typing import DD
+from dxtb._src.utils import batch
 
 from .samples import samples
 
@@ -55,7 +55,7 @@ def test_single(dtype: torch.dtype, name: str):
 
     ################################################
 
-    i.overlap = ints.Overlap(**dd)
+    i.overlap = ints.types.Overlap(**dd)
     i.build_overlap(positions)
 
     o = i.overlap
@@ -64,7 +64,7 @@ def test_single(dtype: torch.dtype, name: str):
 
     ################################################
 
-    i.dipole = ints.Dipole(**dd)
+    i.dipole = ints.types.Dipole(**dd)
     i.build_dipole(positions)
 
     d = i.dipole
@@ -73,7 +73,7 @@ def test_single(dtype: torch.dtype, name: str):
 
     ################################################
 
-    i.quadrupole = ints.Quadrupole(**dd)
+    i.quadrupole = ints.types.Quadrupole(**dd)
     i.build_quadrupole(positions)
 
     q = i.quadrupole
@@ -116,7 +116,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
 
     ################################################
 
-    i.overlap = ints.Overlap(**dd)
+    i.overlap = ints.types.Overlap(**dd)
     i.build_overlap(positions)
 
     o = i.overlap
@@ -125,7 +125,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
 
     ################################################
 
-    i.dipole = ints.Dipole(**dd)
+    i.dipole = ints.types.Dipole(**dd)
     i.build_dipole(positions)
 
     d = i.dipole
@@ -134,7 +134,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
 
     ################################################
 
-    i.quadrupole = ints.Quadrupole(**dd)
+    i.quadrupole = ints.types.Quadrupole(**dd)
     i.build_quadrupole(positions)
 
     q = i.quadrupole

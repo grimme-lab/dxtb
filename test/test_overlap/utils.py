@@ -20,11 +20,11 @@ Utility function for overlap calculation.
 
 from __future__ import annotations
 
-from dxtb.basis import IndexHelper
-from dxtb.integral.driver.pytorch import IntDriverPytorch as IntDriver
-from dxtb.integral.driver.pytorch import OverlapPytorch as Overlap
-from dxtb.param import Param
-from dxtb.typing import DD, Literal, Tensor
+from dxtb import IndexHelper
+from dxtb._src.integral.driver.pytorch import IntDriverPytorch as IntDriver
+from dxtb._src.integral.driver.pytorch import OverlapPytorch as Overlap
+from dxtb._src.param import Param
+from dxtb._src.typing import DD, Literal, Tensor
 
 
 def calc_overlap(
