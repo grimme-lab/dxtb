@@ -270,6 +270,11 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         help="R|Molecular spin.",
     )
     p.add_argument(
+        "--strict",
+        action="store_true",
+        help="R|Whether to use strict mode. Throws errors on warnings.",
+    )
+    p.add_argument(
         "--efield",
         type=float,
         nargs=3,
@@ -580,6 +585,20 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         "--force-num",
         action="store_true",
         help=("R|Calculate the forces numerically."),
+    )
+
+    p.add_argument(
+        "--hessian",
+        "--hess",
+        action="store_true",
+        help=("R|Calculate the Hessian."),
+    )
+    p.add_argument(
+        "--hessian-numerical",
+        "--hessian-num",
+        "--hess-num",
+        action="store_true",
+        help=("R|Calculate the Hessian numerically."),
     )
 
     p.add_argument(

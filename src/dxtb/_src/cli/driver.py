@@ -251,19 +251,46 @@ class Driver:
         if args.forces is True:
             positions.requires_grad_(True)
 
-            timer.start("Forces")
             forces = calc.forces(positions, chrg)
-            timer.stop("Forces")
-            print_grad(forces.clone(), numbers)
             calc.reset()
+
+            timer.print()
+            print_grad(forces.clone(), numbers)
+            # io.OutputHandler.dump_warnings()
             return
 
         if args.forces_numerical is True:
             timer.start("Forces")
             forces = calc.forces_numerical(positions, chrg)
-            print_grad(forces.clone(), numbers)
             timer.stop("Forces")
             calc.reset()
+
+            print_grad(forces.clone(), numbers)
+            # io.OutputHandler.dump_warnings()
+            return
+
+        if args.hessian is True:
+            positions.requires_grad_(True)
+
+            timer.start("Hessian")
+            hessian = calc.hessian(positions, chrg)
+            timer.stop("Hessian")
+            calc.reset()
+
+            print(hessian.clone().detach())
+            # io.OutputHandler.dump_warnings()
+            return
+
+        if args.hessian_numerical is True:
+            positions.requires_grad_(True)
+
+            timer.start("Hessian")
+            hessian = calc.hessian_numerical(positions, chrg)
+            timer.stop("Hessian")
+            calc.reset()
+
+            print(hessian.clone())
+            # io.OutputHandler.dump_warnings()
             return
 
         if args.ir is True:

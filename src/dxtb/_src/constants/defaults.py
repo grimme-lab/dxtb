@@ -27,6 +27,11 @@ import torch
 
 # General
 
+STRICT = False
+"""
+Strict mode. Always throws errors if ``True``, instead of making sensible adaptations.
+"""
+
 BATCH_MODE = 0
 """Batch mode for calculation."""
 
@@ -127,12 +132,12 @@ MIXER = "broyden"
 """SCF mixing scheme for convergence acceleration."""
 
 MIXER_CHOICES = ["anderson", "broyden", "simple"]
-"""List of possible choices for `MIXER`."""
+"""List of possible choices for ``MIXER``."""
 
 SCF_MODE = "nonpure"
 """
 Whether to use full gradient tracking in SCF, make use of the implicit
-function theorem as provided by `xitorch.optimize.equilibrium`, or use the
+function theorem as provided by ``xitorch.optimize.equilibrium``, or use the
 experimental single-shot procedure.
 """
 
@@ -143,8 +148,9 @@ SCF_MODE_CHOICES = [
     "full",
     "full_tracking",
     "experimental",
+    "single_shot",
 ]
-"""List of possible choices for `SCF_MODE`."""
+"""List of possible choices for ``SCF_MODE``."""
 
 SCP_MODE = "potential"
 """
@@ -154,7 +160,7 @@ iterations.
 
 SCP_MODE_CHOICES = ["charge", "charges", "potential", "fock"]
 """
-List of possible choices for `SCP_MODE`. 'charge' and 'charges' are identical.
+List of possible choices for ``SCP_MODE``. 'charge' and 'charges' are identical.
 """
 
 SCF_FORCE_CONVERGENCE = False

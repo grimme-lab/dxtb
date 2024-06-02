@@ -63,7 +63,12 @@ SCF_MODE_IMPLICIT_NON_PURE_STRS = (
 SCF_MODE_EXPERIMENTAL = 3
 """Integer code for SCF with single-shot gradient."""
 
-SCF_MODE_EXPERIMENTAL_STRS = ("experimental", "perfect")
+SCF_MODE_EXPERIMENTAL_STRS = (
+    "experimental",
+    "perfect",
+    "single-shot",
+    "single_shot",
+)
 """String codes for SCF with single-shot gradient."""
 
 SCF_MODE_MAP = [

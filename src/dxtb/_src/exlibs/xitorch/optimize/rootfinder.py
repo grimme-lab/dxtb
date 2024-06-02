@@ -23,6 +23,7 @@ from typing import Mapping
 
 import torch
 
+from dxtb import OutputHandler
 from dxtb.__version__ import __tversion__
 from dxtb._src.exlibs.xitorch._core.pure_function import get_pure_function, make_sibling
 from dxtb._src.exlibs.xitorch._impls.optimize.minimizer import adam, gd
@@ -373,7 +374,9 @@ class RootFinderBase(torch.autograd.Function):
 
         # dL/df
         with ctx.fcn.useobjparams(objparams):
-            j = jac(fcn, params=(yout, *params), idxs=[0])
+            with OutputHandler.with_verbosity(0):
+                j = jac(fcn, params=(yout, *params), idxs=[0])
+
             assert isinstance(j, list)
             jac_dfdy = j[0]
             gyfcn = solve(
@@ -391,7 +394,8 @@ class RootFinderBase(torch.autograd.Function):
                 params_copy = allparams_copy[:nparams]
                 objparams_copy = allparams_copy[nparams:]
                 with ctx.fcn.useobjparams(objparams_copy):
-                    yfcn = fcn(yout, *params_copy)
+                    with OutputHandler.with_verbosity(0):
+                        yfcn = fcn(yout, *params_copy)
 
             grad_tensor_params = torch.autograd.grad(
                 yfcn,

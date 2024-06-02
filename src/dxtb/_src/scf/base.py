@@ -37,7 +37,7 @@ from dxtb._src.components.interactions.container import (
 )
 from dxtb._src.constants import defaults, labels
 from dxtb._src.timing.decorator import timer_decorator
-from dxtb._src.typing import DD, Any, Slicers, Tensor
+from dxtb._src.typing import DD, Any, Literal, Slicers, Tensor, overload
 from dxtb._src.wavefunction import filling, mulliken
 from dxtb.config import ConfigSCF
 
@@ -45,11 +45,10 @@ from .result import SCFResult
 from .utils import get_density
 
 if TYPE_CHECKING:
-    from dxtb._src.components.interactions import InteractionList, InteractionListCache
+    from dxtb._src.components.interactions import InteractionList
+    from dxtb._src.components.interactions import InteractionListCache
     from dxtb._src.exlibs import xitorch as xt
     from dxtb._src.integral.container import IntegralMatrices
-
-
 del TYPE_CHECKING
 
 __all__ = ["BaseSCF"]
@@ -279,15 +278,35 @@ class BaseSCF:
 
         self.interactions = interactions
 
+    @overload
     @abstractmethod
-    def scf(self, guess: Tensor) -> Charges:
+    def scf(
+        self,
+        guess: Tensor,
+        return_charges: Literal[True] = True,
+    ) -> Charges: ...
+
+    @overload
+    @abstractmethod
+    def scf(
+        self,
+        guess: Tensor,
+        return_charges: Literal[False] = False,
+    ) -> Charges | Potential | Tensor: ...
+
+    @abstractmethod
+    def scf(
+        self, guess: Tensor, return_charges: bool = True
+    ) -> Charges | Potential | Tensor:
         """
         Mixing and convergence for self-consistent field iterations.
 
         Parameters
         ----------
         guess : Tensor
-            Orbital-resolved guess for charges or potential vector.
+            Orbital-resolved guess for charges, potential or Fock matrix.
+        return_charges : bool, optional
+            Whether to return the charges. Default is ``True``.
 
         Returns
         -------
@@ -327,10 +346,10 @@ class BaseSCF:
             Eigenvectors of the Hamiltonian.
         """
 
-    def __call__(self, charges: Tensor | Charges | None = None) -> SCFResult:
+    def _guess(self, charges: Tensor | Charges | None) -> Tensor:
         """
-        Run the self-consistent iterations until a stationary solution is
-        reached.
+        Get the initial guess for the charges depending on the convergence
+        property (self-consistent property).
 
         Parameters
         ----------
@@ -341,7 +360,7 @@ class BaseSCF:
         Returns
         -------
         Tensor
-            Converged orbital charges vector.
+            Initial guess for the charges.
         """
 
         # initialize zero charges (equivalent to SAD guess)
@@ -366,18 +385,46 @@ class BaseSCF:
                 self._data.charges["quad"] = charges.quad_shape
 
         if self.config.scp_mode == labels.SCP_MODE_CHARGE:
-            guess = charges.as_tensor()
-        elif self.config.scp_mode == labels.SCP_MODE_POTENTIAL:
-            potential = self.charges_to_potential(charges)
-            guess = potential.as_tensor()
-        elif self.config.scp_mode == labels.SCP_MODE_FOCK:
-            potential = self.charges_to_potential(charges)
-            guess = self.potential_to_hamiltonian(potential)
-        else:
-            raise ValueError(
-                f"Unknown convergence target (SCP mode) '{self.config.scp_mode}'."
-            )
+            return charges.as_tensor()
 
+        if self.config.scp_mode == labels.SCP_MODE_POTENTIAL:
+            potential = self.charges_to_potential(charges)
+            return potential.as_tensor()
+
+        if self.config.scp_mode == labels.SCP_MODE_FOCK:
+            potential = self.charges_to_potential(charges)
+            return self.potential_to_hamiltonian(potential)
+
+        lbls = (
+            labels.SCP_MODE_POTENTIAL_STRS
+            + labels.SCP_MODE_CHARGE_STRS
+            + labels.SCP_MODE_FOCK_STRS
+        )
+        raise ValueError(
+            "Unknown convergence target (SCP mode) '"
+            f"{self.config.scp_mode}'. Use one of {', '.join(lbls)}."
+        )
+
+    def __call__(self, charges: Tensor | Charges | None = None) -> SCFResult:
+        """
+        Run the self-consistent iterations until a stationary solution is
+        reached.
+
+        Parameters
+        ----------
+        charges : Tensor | Charges, optional
+            Initial orbital charges vector. If ``None`` is given (default), a
+            zero vector is used.
+
+        Returns
+        -------
+        Tensor
+            Converged orbital charges vector.
+        """
+
+        guess = self._guess(charges)
+
+        # main SCF function (mixing)
         OutputHandler.write_stdout(
             f"\n{'iter':<5} {'Energy':<24} {'Delta E':<16}"
             f"{'Delta Pnorm':<15} {'Delta q':<15}",
@@ -385,19 +432,18 @@ class BaseSCF:
         )
         OutputHandler.write_stdout(77 * "-", v=3)
 
-        # main SCF function (mixing)
-        charges = self.scf(guess)
+        q = self.scf(guess)
 
         OutputHandler.write_stdout(77 * "-", v=3)
         OutputHandler.write_stdout("", v=3)
 
         # evaluate final energy
-        charges.nullify_padding()
-        energy = self.get_energy(charges)
+        q.nullify_padding()
+        energy = self.get_energy(q)
         fenergy = self.get_electronic_free_energy()
 
         return {
-            "charges": charges,
+            "charges": q,
             "coefficients": self._data.evecs,
             "density": self._data.density,
             "emo": self._data.evals,
@@ -405,7 +451,7 @@ class BaseSCF:
             "fenergy": fenergy,
             "hamiltonian": self._data.hamiltonian,
             "occupation": self._data.occupation,
-            "potential": self.charges_to_potential(charges),
+            "potential": self.charges_to_potential(q),
             "iterations": self._data.iter,
         }
 

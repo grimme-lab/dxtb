@@ -316,11 +316,11 @@ class Charges(Container):
         dp_shape = self.dipole.shape if self.dipole is not None else None
         qp_shape = self.quad.shape if self.quad is not None else None
         return (
-            f"{self.__class__.__name__}(\n"
-            f"  mono={self.mono.shape!r},\n"
-            f"  dipole={dp_shape!r},\n"
-            f"  quad={qp_shape!r},\n"
-            f"  batch_mode={self.batch_mode!r}\n)"
+            f"{self.__class__.__name__}("
+            f"  mono={self.mono.shape!r},"
+            f"  dipole={dp_shape!r},"
+            f"  quad={qp_shape!r},"
+            f"  batch_mode={self.batch_mode!r}True)"
         )
 
 

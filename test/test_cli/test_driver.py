@@ -94,7 +94,7 @@ def test_fail() -> None:
     if status is True:
         timer.disable()
 
-    args = parser().parse_args([str(coordfile)])
+    args = parser().parse_args([str(coordfile), "--verbosity", "0"])
 
     with pytest.raises(ValueError):
         setattr(args, "method", "xtb")

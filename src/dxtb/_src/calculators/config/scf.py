@@ -41,6 +41,9 @@ class ConfigSCF:
     attribute.
     """
 
+    strict: bool = False
+    """Strict mode for SCF configuration. Always throws errors if ``True``."""
+
     guess: int
     """Initial guess for the SCF."""
 
@@ -93,6 +96,7 @@ class ConfigSCF:
     def __init__(
         self,
         *,
+        strict: bool = False,
         guess: str | int = defaults.GUESS,
         maxiter: int = defaults.MAXITER,
         mixer: str = defaults.MIXER,
@@ -112,6 +116,8 @@ class ConfigSCF:
         device: torch.device = get_default_device(),
         dtype: torch.dtype = get_default_dtype(),
     ) -> None:
+        self.strict = strict
+
         if isinstance(guess, str):
             if guess.casefold() in labels.GUESS_EEQ_STRS:
                 self.guess = labels.GUESS_EEQ
@@ -137,10 +143,13 @@ class ConfigSCF:
                 self.scf_mode = labels.SCF_MODE_IMPLICIT_NON_PURE
             elif scf_mode.casefold() in labels.SCF_MODE_FULL_STRS:
                 self.scf_mode = labels.SCF_MODE_FULL
-            elif scf_mode.casefold() == labels.SCF_MODE_EXPERIMENTAL_STRS:
+            elif scf_mode.casefold() in labels.SCF_MODE_EXPERIMENTAL_STRS:
                 self.scf_mode = labels.SCF_MODE_EXPERIMENTAL
             else:
-                raise ValueError(f"Unknown SCF mode '{scf_mode}'.")
+                raise ValueError(
+                    f"Unknown SCF mode '{scf_mode}'. Use one of "
+                    f"{', '.join(labels.SCF_MODE_EXPERIMENTAL_STRS)}."
+                )
         elif isinstance(scf_mode, int):
             if scf_mode not in (
                 labels.SCF_MODE_IMPLICIT,
@@ -148,9 +157,13 @@ class ConfigSCF:
                 labels.SCF_MODE_FULL,
                 labels.SCF_MODE_EXPERIMENTAL,
             ):
-                raise ValueError(f"Unknown SCF mode '{scf_mode}'.")
+                raise ValueError(
+                    f"Unknown SCF mode '{scf_mode}'. Use one of "
+                    f"{', '.join(labels.SCF_MODE_EXPERIMENTAL_STRS)}."
+                )
 
             self.scf_mode = scf_mode
+
         else:
             raise TypeError(
                 "The scf_mode must be of type 'int' or 'str', but "

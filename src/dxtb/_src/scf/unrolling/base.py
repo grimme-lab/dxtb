@@ -26,11 +26,18 @@ from __future__ import annotations
 
 import torch
 from tad_mctc import storch
-
+from typing import TYPE_CHECKING
+from dxtb import OutputHandler
+from dxtb._src.constants import labels
 from dxtb._src.timing.decorator import timer_decorator
-from dxtb._src.typing import Tensor
+from dxtb._src.typing import Any, Tensor
 
 from ..base import BaseSCF
+from ..mixer import Anderson, Mixer, Simple
+
+if TYPE_CHECKING:
+    from dxtb._src.components.interactions import InteractionList
+del TYPE_CHECKING
 
 __all__ = ["BaseTSCF"]
 
@@ -46,6 +53,49 @@ class BaseTSCF(BaseSCF):
     This base class only lacks the `scf` method, which implements mixing and
     convergence.
     """
+
+    mixer: Mixer
+    """Mixer for the SCF iterations."""
+
+    def __init__(
+        self,
+        interactions: InteractionList,
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(interactions, *args, **kwargs)
+
+        # initialize the correct mixer with tolerances etc.
+        if isinstance(self.config.mixer, Mixer):
+            # TODO: We wont ever land here, int is enforced in the config
+            self.mixer = self.config.mixer
+        else:
+            batched = self.config.batch_mode
+            if self.config.mixer == labels.MIXER_LINEAR:
+                self.mixer = Simple(self.fwd_options, batch_mode=batched)
+            elif self.config.mixer == labels.MIXER_ANDERSON:
+                self.mixer = Anderson(self.fwd_options, batch_mode=batched)
+            elif self.config.mixer == labels.MIXER_BROYDEN:
+
+                # Broyden is not implemented for SCF with full gradient, but
+                # is the default setting. Without changing the setting, the
+                # code immediately raises an error, which is inconvenient.
+                if self.config.scf_mode not in (
+                    labels.SCF_MODE_IMPLICIT,
+                    labels.SCF_MODE_IMPLICIT_NON_PURE,
+                ):
+                    msg = (
+                        "Broyden mixer is not implemented for SCF with full "
+                        "gradient tracking."
+                    )
+
+                    if self.config.strict is True:
+                        raise NotImplementedError(msg)
+
+                    OutputHandler.warn(msg + " Using Anderson mixer instead.")
+                    self.mixer = Anderson(self.fwd_options, batch_mode=batched)
+            else:
+                raise ValueError(f"Unknown mixer '{self.config.mixer}'.")
 
     def get_overlap(self) -> Tensor:
         """
@@ -86,6 +136,7 @@ class BaseTSCF(BaseSCF):
         """
         o = self.get_overlap()
 
+        # We only need to use a broadening method if gradients are required.
         # FIXME: Not sure if this catches all grad tensors.
         if hamiltonian.requires_grad is False:
             broadening_method = None

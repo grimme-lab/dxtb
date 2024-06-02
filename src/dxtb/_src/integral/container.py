@@ -221,9 +221,10 @@ class Integrals(IntegralContainer):
         self.overlap.build(self.driver)
         assert self.overlap.matrix is not None
 
-        # move integral to the correct device
+        # move integral to the correct device...
         if self.force_cpu_for_libcint is True:
-            if self._intlevel <= levels.INTLEVEL_OVERLAP:
+            # ... but only if no other multipole integrals are required
+            if self._intlevel <= levels.INTLEVEL_HCORE:
                 self.overlap.integral = self.overlap.integral.to(device=self.device)
 
         self._matrices.overlap = self.overlap.matrix

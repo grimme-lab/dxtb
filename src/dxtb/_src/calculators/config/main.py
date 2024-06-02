@@ -40,6 +40,9 @@ class Config:
     file: PathLike | None
     """The input file or directory."""
 
+    strict: bool = False
+    """Strict mode for SCF configuration. Always throws errors if ``True``."""
+
     exclude: str | list[str]
     """The tight-binding components to exclude from the calculation."""
 
@@ -78,6 +81,7 @@ class Config:
         self,
         *,
         file=None,
+        strict: bool = defaults.STRICT,
         exclude: str | list[str] = defaults.EXCLUDE,
         method: str | int = defaults.METHOD,
         grad: bool = False,
@@ -123,6 +127,7 @@ class Config:
         max_element: int = defaults.MAX_ELEMENT,
     ) -> None:
         self.file = file
+        self.strict = strict
         self.exclude = exclude
         self.grad = grad
 
@@ -179,6 +184,7 @@ class Config:
         )
 
         self.scf = ConfigSCF(
+            strict=strict,
             guess=guess,
             maxiter=maxiter,
             mixer=mixer,
@@ -227,6 +233,7 @@ class Config:
         return cls(
             # general
             file=args.file,
+            strict=args.strict,
             exclude=args.exclude,
             method=args.method,
             grad=args.grad,
