@@ -706,8 +706,6 @@ class BaseSCF:
         # FIXME: Batch print not working!
         self._print(q)
 
-        # OutputHandler.write_stdout(f"energy: {self.get_energy(q).sum(-1)}", 6)
-
         new_charges = self.potential_to_charges(potential)
         return new_charges.as_tensor()
 

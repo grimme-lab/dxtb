@@ -137,8 +137,7 @@ class BaseTSCF(BaseSCF):
         o = self.get_overlap()
 
         # We only need to use a broadening method if gradients are required.
-        # FIXME: Not sure if this catches all grad tensors.
-        if hamiltonian.requires_grad is False:
+        if hamiltonian.requires_grad is False and o.requires_grad is False:
             broadening_method = None
         else:
             broadening_method = "lorn"
