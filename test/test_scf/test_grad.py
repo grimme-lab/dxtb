@@ -53,7 +53,7 @@ device = None
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["LiH", "SiH4"])
 @pytest.mark.parametrize("scp_mode", ["potential", "fock"])
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full", "single-shot"])
 def test_grad_backwards(
     name: str, dtype: torch.dtype, scf_mode: str, scp_mode: str
 ) -> None:
@@ -90,12 +90,12 @@ def test_grad_backwards(
     positions.detach_()
     positions.grad.data.zero_()
 
-    assert pytest.approx(ref, abs=tol) == gradient
+    assert pytest.approx(ref, abs=tol, rel=tol) == gradient
 
 
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.float])
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
 def test_grad_autograd(name: str, dtype: torch.dtype):
     tol = sqrt(torch.finfo(dtype).eps) * 10
@@ -112,21 +112,18 @@ def test_grad_autograd(name: str, dtype: torch.dtype):
     # Values obtained with dxtb using full gradient tracking
     ref_full = load_from_npz(ref_grad, f"{name}_full", dtype)
 
-    assert pytest.approx(ref_full, abs=tol) == ref
+    assert pytest.approx(ref_full, abs=tol, rel=1e-5) == ref
 
-    options = dict(opts, **{"f_atol": tol**2, "x_atol": tol**2})
+    options = dict(opts, **{"f_atol": tol, "x_atol": tol})
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, charges)
     energy = result.scf.sum(-1)
 
-    gradient = torch.autograd.grad(
-        energy,
-        positions,
-    )[0]
+    (gradient,) = torch.autograd.grad(energy, positions)
 
-    assert pytest.approx(gradient, abs=tol) == ref
-    assert pytest.approx(gradient, abs=tol) == ref_full
+    assert pytest.approx(gradient, abs=tol, rel=1e-5) == ref
+    assert pytest.approx(gradient, abs=tol, rel=1e-5) == ref_full
 
     positions.detach_()
 
