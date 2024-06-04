@@ -20,11 +20,16 @@ Test the parametrization of the Hamiltonian.
 
 from __future__ import annotations
 
+import tempfile as td
+from pathlib import Path
+
 import pytest
 import tomli as toml
 import torch
 from tad_mctc.convert import symbol_to_number
 
+from dxtb import GFN1_XTB, GFN2_XTB, Calculator
+from dxtb._src.param import Param
 from dxtb._src.param.meta import Meta
 from dxtb._src.typing import DD
 
@@ -32,8 +37,7 @@ from ..conftest import DEVICE
 
 
 def test_builtin_gfn1() -> None:
-    # pylint: disable=import-outside-toplevel
-    from dxtb._src.param.gfn1 import GFN1_XTB as par
+    par = GFN1_XTB.model_copy(deep=True)
 
     assert isinstance(par.meta, Meta)
     assert par.meta.name == "GFN1-xTB"
@@ -57,9 +61,6 @@ def test_builtin_gfn1() -> None:
 
 
 def test_param_minimal() -> None:
-    # pylint: disable=import-outside-toplevel
-    from dxtb._src.param import Param
-
     data = """
     [hamiltonian.xtb]
     wexp = 5.0000000000000000E-01
@@ -115,13 +116,9 @@ def test_param_minimal() -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_param_calculator(dtype: torch.dtype) -> None:
-    # pylint: disable=import-outside-toplevel
-    from dxtb import Calculator
-    from dxtb._src.param.gfn1 import GFN1_XTB as par
-
     dd: DD = {"device": DEVICE, "dtype": dtype}
     numbers = symbol_to_number(["H", "C"])
-    calc = Calculator(numbers, par, opts={"verbosity": 0}, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts={"verbosity": 0}, **dd)
 
     ref = torch.tensor([1.0, 4.0], **dd)
 
@@ -130,3 +127,69 @@ def test_param_calculator(dtype: torch.dtype) -> None:
 
     occ = calc.ihelp.reduce_shell_to_atom(h.integral.refocc)
     assert pytest.approx(ref.cpu()) == occ.cpu()
+
+
+@pytest.mark.parametrize("parname", ["gfn1-xtb", "gfn2-xtb"])
+@pytest.mark.parametrize("ftype", ["json", "toml", "yaml"])
+def test_read(ftype: str, parname: str) -> None:
+    p = (
+        Path(__file__).parents[2]
+        / "src"
+        / "dxtb"
+        / "_src"
+        / "param"
+        / parname.split("-")[0]
+    )
+    par = Param.from_file(p / f"{parname}.{ftype}")
+
+    if parname == "gfn1-xtb":
+        REF = GFN1_XTB
+    elif parname == "gfn2-xtb":
+        REF = GFN2_XTB
+
+    for f, f_read in zip(REF.model_fields.keys(), par.model_fields.keys()):
+        val = getattr(REF, f)
+        val_read = getattr(par, f_read)
+        assert val == val_read
+
+    # GFN1_XTB is not really of type `Param`, but a `LazyLoaderParam`
+    assert par == REF._loaded  # type: ignore
+
+
+@pytest.mark.parametrize("parname", ["gfn1-xtb", "gfn2-xtb"])
+@pytest.mark.parametrize("ftype", ["json", "toml", "yaml"])
+def test_write(ftype: str, parname: str) -> None:
+    p = (
+        Path(__file__).parents[2]
+        / "src"
+        / "dxtb"
+        / "_src"
+        / "param"
+        / parname.split("-")[0]
+    )
+    par = Param.from_file(p / f"{parname}.{ftype}")
+
+    if parname == "gfn1-xtb":
+        REF = GFN1_XTB
+    elif parname == "gfn2-xtb":
+        REF = GFN2_XTB
+
+    with td.TemporaryDirectory() as tmp:
+        # write to file
+        p_write = Path(tmp) / f"test.{ftype}"
+        par.to_file(p_write)
+
+        # read the written file
+        par_read = Param.from_file(p_write)
+
+        # compare the written file with the original file
+        for f, f_read in zip(
+            REF.model_fields.keys(),
+            par.model_fields.keys(),
+        ):
+            val = getattr(REF, f)
+            val_read = getattr(par_read, f_read)
+            assert val == val_read
+
+        # GFN1_XTB is not really of type `Param`, but a `LazyLoaderParam`
+        assert par == REF._loaded  # type: ignore

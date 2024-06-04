@@ -37,10 +37,13 @@ class Meta(BaseModel):
     """
 
     name: Optional[str] = None
-    """Name of the represented method"""
+    """Name of the represented method."""
 
     reference: Optional[str] = None
-    """References relevant for the parametrization records"""
+    """References relevant for the parametrization records."""
 
     version: int = 0
-    """Version of the represented method"""
+    """Version of the represented method."""
+
+    format: Optional[int] = None
+    """Format version of the parametrization data."""
