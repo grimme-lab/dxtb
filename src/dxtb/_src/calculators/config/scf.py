@@ -41,6 +41,9 @@ class ConfigSCF:
     attribute.
     """
 
+    strict: bool = False
+    """Strict mode for SCF configuration. Always throws errors if ``True``."""
+
     guess: int
     """Initial guess for the SCF."""
 
@@ -93,6 +96,7 @@ class ConfigSCF:
     def __init__(
         self,
         *,
+        strict: bool = False,
         guess: str | int = defaults.GUESS,
         maxiter: int = defaults.MAXITER,
         mixer: str = defaults.MIXER,
@@ -112,16 +116,26 @@ class ConfigSCF:
         device: torch.device = get_default_device(),
         dtype: torch.dtype = get_default_dtype(),
     ) -> None:
+        self.strict = strict
+
         if isinstance(guess, str):
             if guess.casefold() in labels.GUESS_EEQ_STRS:
                 self.guess = labels.GUESS_EEQ
             elif guess.casefold() in labels.GUESS_SAD_STRS:
                 self.guess = labels.GUESS_SAD
             else:
-                raise ValueError(f"Unknown guess method '{guess}'.")
+                guess_labels = labels.GUESS_EEQ_STRS + labels.GUESS_SAD_STRS
+                raise ValueError(
+                    f"Unknown guess method '{guess}'. "
+                    f"Use one of '{', '.join(guess_labels)}'."
+                )
         elif isinstance(guess, int):
             if guess not in (labels.GUESS_EEQ, labels.GUESS_SAD):
-                raise ValueError(f"Unknown guess method '{guess}'.")
+                guess_labels = labels.GUESS_EEQ_STRS + labels.GUESS_SAD_STRS
+                raise ValueError(
+                    f"Unknown guess method '{guess}'. "
+                    f"Use one of '{', '.join(guess_labels)}'."
+                )
 
             self.guess = guess
         else:
@@ -137,10 +151,19 @@ class ConfigSCF:
                 self.scf_mode = labels.SCF_MODE_IMPLICIT_NON_PURE
             elif scf_mode.casefold() in labels.SCF_MODE_FULL_STRS:
                 self.scf_mode = labels.SCF_MODE_FULL
-            elif scf_mode.casefold() == labels.SCF_MODE_EXPERIMENTAL_STRS:
+            elif scf_mode.casefold() in labels.SCF_MODE_EXPERIMENTAL_STRS:
                 self.scf_mode = labels.SCF_MODE_EXPERIMENTAL
             else:
-                raise ValueError(f"Unknown SCF mode '{scf_mode}'.")
+                scf_mode_labels = (
+                    labels.SCF_MODE_IMPLICIT_STRS
+                    + labels.SCF_MODE_IMPLICIT_NON_PURE_STRS
+                    + labels.SCF_MODE_FULL_STRS
+                    + labels.SCF_MODE_EXPERIMENTAL_STRS
+                )
+                raise ValueError(
+                    f"Unknown SCF mode '{scf_mode}'. "
+                    f"Use one of '{', '.join(scf_mode_labels)}'."
+                )
         elif isinstance(scf_mode, int):
             if scf_mode not in (
                 labels.SCF_MODE_IMPLICIT,
@@ -148,9 +171,19 @@ class ConfigSCF:
                 labels.SCF_MODE_FULL,
                 labels.SCF_MODE_EXPERIMENTAL,
             ):
-                raise ValueError(f"Unknown SCF mode '{scf_mode}'.")
+                scf_mode_labels = (
+                    labels.SCF_MODE_IMPLICIT_STRS
+                    + labels.SCF_MODE_IMPLICIT_NON_PURE_STRS
+                    + labels.SCF_MODE_FULL_STRS
+                    + labels.SCF_MODE_EXPERIMENTAL_STRS
+                )
+                raise ValueError(
+                    f"Unknown SCF mode '{scf_mode}'. "
+                    f"Use one of '{', '.join(scf_mode_labels)}'."
+                )
 
             self.scf_mode = scf_mode
+
         else:
             raise TypeError(
                 "The scf_mode must be of type 'int' or 'str', but "
@@ -165,14 +198,30 @@ class ConfigSCF:
             elif scp_mode.casefold() in labels.SCP_MODE_FOCK_STRS:
                 self.scp_mode = labels.SCP_MODE_FOCK
             else:
-                raise ValueError(f"Unknown convergence target (SCP mode) '{scp_mode}'.")
+                scp_mode_labels = (
+                    labels.SCP_MODE_CHARGE_STRS
+                    + labels.SCP_MODE_POTENTIAL_STRS
+                    + labels.SCP_MODE_FOCK_STRS
+                )
+                raise ValueError(
+                    f"Unknown convergence target (SCP mode) '{scp_mode}'. "
+                    f"Use one of '{', '.join(scp_mode_labels)}'."
+                )
         elif isinstance(scp_mode, int):
             if scp_mode not in (
                 labels.SCP_MODE_CHARGE,
                 labels.SCP_MODE_POTENTIAL,
                 labels.SCP_MODE_FOCK,
             ):
-                raise ValueError(f"Unknown convergence target (SCP mode) '{scp_mode}'.")
+                scp_mode_labels = (
+                    labels.SCP_MODE_CHARGE_STRS
+                    + labels.SCP_MODE_POTENTIAL_STRS
+                    + labels.SCP_MODE_FOCK_STRS
+                )
+                raise ValueError(
+                    f"Unknown convergence target (SCP mode) '{scp_mode}'. "
+                    f"Use one of '{', '.join(scp_mode_labels)}'."
+                )
 
             self.scp_mode = scp_mode
         else:
@@ -189,9 +238,14 @@ class ConfigSCF:
             elif mixer.casefold() in labels.MIXER_BROYDEN_STRS:
                 self.mixer = labels.MIXER_BROYDEN
             else:
+                mixer_labels = (
+                    labels.MIXER_LINEAR_STRS
+                    + labels.MIXER_ANDERSON_STRS
+                    + labels.MIXER_BROYDEN_STRS
+                )
                 raise ValueError(
                     f"Unknown mixer '{mixer}'. Choose from "
-                    f"'{', '.join(labels.MIXER_MAP)}'."
+                    f"'{', '.join(mixer_labels)}'."
                 )
         elif isinstance(mixer, int):
             if mixer not in (
@@ -199,9 +253,14 @@ class ConfigSCF:
                 labels.MIXER_ANDERSON,
                 labels.MIXER_BROYDEN,
             ):
+                mixer_labels = (
+                    labels.MIXER_LINEAR_STRS
+                    + labels.MIXER_ANDERSON_STRS
+                    + labels.MIXER_BROYDEN_STRS
+                )
                 raise ValueError(
                     f"Unknown mixer '{mixer}'. Choose from "
-                    f"'{', '.join(labels.MIXER_MAP)}'."
+                    f"'{', '.join(mixer_labels)}'."
                 )
 
             self.mixer = mixer
@@ -354,15 +413,28 @@ class ConfigFermi:
             elif partition.casefold() in labels.FERMI_PARTITION_ATOMIC_STRS:
                 self.partition = labels.FERMI_PARTITION_ATOMIC
             else:
+                fermi_partition_labels = (
+                    labels.FERMI_PARTITION_EQUAL_STRS
+                    + labels.FERMI_PARTITION_ATOMIC_STRS
+                )
                 raise ValueError(
                     "Unknown partitioning scheme for the free energy in Fermi "
-                    f"smearing '{partition}'."
+                    f"smearing '{partition}'. Use one of "
+                    f"'{', '.join(fermi_partition_labels)}'."
                 )
         elif isinstance(partition, int):
-            if partition not in (labels.GUESS_EEQ, labels.GUESS_SAD):
+            if partition not in (
+                labels.FERMI_PARTITION_EQUAL,
+                labels.FERMI_PARTITION_ATOMIC,
+            ):
+                fermi_partition_labels = (
+                    labels.FERMI_PARTITION_EQUAL_STRS
+                    + labels.FERMI_PARTITION_ATOMIC_STRS
+                )
                 raise ValueError(
                     "Unknown partitioning scheme for the free energy in Fermi "
-                    f"smearing '{partition}'."
+                    f"smearing '{partition}'. Use one of "
+                    f"'{', '.join(fermi_partition_labels)}'."
                 )
 
             self.partition = partition

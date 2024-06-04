@@ -32,8 +32,6 @@ from tad_mctc.io.checks import content_checks, shape_checks
 from dxtb import OutputHandler
 from dxtb import integrals as ints
 from dxtb._src import scf
-from dxtb._src.components.interactions.field import efield as efield
-from dxtb._src.components.interactions.field import efieldgrad as efield_grad
 from dxtb._src.constants import defaults
 from dxtb._src.timing import timer
 from dxtb._src.typing import Any, Tensor
@@ -231,6 +229,7 @@ class EnergyCalculator(BaseCalculator):
         # SELF-CONSISTENT FIELD PROCEDURE #
         ###################################
 
+        timer.cuda_sync = False
         timer.start("SCF", "Self-Consistent Field")
 
         # get caches of all interactions
@@ -259,6 +258,7 @@ class EnergyCalculator(BaseCalculator):
         )
 
         timer.stop("SCF")
+        timer.cuda_sync = True
         OutputHandler.write_stdout(
             f"SCF finished in {scf_results['iterations']} iterations.", v=3
         )

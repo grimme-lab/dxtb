@@ -107,6 +107,45 @@ class GetPropertiesMixin(ABC):
         grad_mode: Literal["autograd", "backward", "functorch", "row"] = "autograd",
         **kwargs: Any,
     ) -> Tensor:
+        r"""
+        Calculate the nuclear forces :math:`f` via AD.
+
+        .. math::
+
+            f = -\dfrac{\partial E}{\partial R}
+
+        One can calculate the Jacobian either row-by-row using the standard
+        :func:`torch.autograd.grad` with unit vectors in the VJP or using
+        :mod:`torch.func`'s function transforms (e.g.,
+        :func:`torch.func.jacrev`).
+
+        Note
+        ----
+        Using :mod:`torch.func`'s function transforms can apparently be only
+        used once. Hence, for example, the Hessian and the dipole derivatives
+        cannot be both calculated with functorch.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to ``None``.
+        grad_mode: Literal, optional
+            Specify the mode for gradient calculation. Possible options are:
+
+            - "autograd" (default): Use PyTorch's :func:`torch.autograd.grad`.
+            - "backward": Use PyTorch's backward function.
+            - "functorch": Use functorch's `jacrev`.
+            - "row": Use PyTorch's autograd row-by-row (unnecessary here).
+
+        Returns
+        -------
+        Tensor
+            Atomic forces of shape ``(..., nat, 3)``.
+        """
         return self.get_property(
             "forces", positions, chrg=chrg, spin=spin, grad_mode=grad_mode, **kwargs
         )

@@ -32,12 +32,11 @@ import warnings
 
 import torch
 
-from dxtb._src.components.interactions import Charges
+from dxtb._src.components.interactions import Charges, Potential
 from dxtb._src.constants import defaults, labels
-from dxtb._src.typing import Slicers, Tensor, exceptions
+from dxtb._src.typing import Literal, Slicers, Tensor, exceptions, overload
 from dxtb._src.utils import t2int
 
-from ..mixer import Anderson, Mixer, Simple
 from .base import BaseTSCF
 
 __all__ = ["SelfConsistentFieldFull"]
@@ -56,29 +55,28 @@ class SelfConsistentFieldFull(BaseTSCF):
     converged systems are removed (culled) from the batch.
     """
 
-    def scf(self, guess: Tensor) -> Charges:
+    @overload
+    def scf(
+        self,
+        guess: Tensor,
+        return_charges: Literal[True] = True,
+    ) -> Charges: ...
+
+    @overload
+    def scf(
+        self,
+        guess: Tensor,
+        return_charges: Literal[False] = False,
+    ) -> Charges | Potential | Tensor: ...
+
+    def scf(
+        self, guess: Tensor, return_charges: bool = True
+    ) -> Charges | Potential | Tensor:
         # "SCF function"
         fcn = self._fcn
 
         maxiter = self.config.maxiter
         batched = self.config.batch_mode
-
-        # initialize the correct mixer with tolerances etc.
-        if isinstance(self.config.mixer, Mixer):
-            # TODO: We wont ever land here, int is enforced in the config
-            mixer = self.config.mixer
-        else:
-            if self.config.mixer == labels.MIXER_LINEAR:
-                mixer = Simple(self.fwd_options, batch_mode=batched)
-            elif self.config.mixer == labels.MIXER_ANDERSON:
-                mixer = Anderson(self.fwd_options, batch_mode=batched)
-            elif self.config.mixer == labels.MIXER_BROYDEN:
-                raise NotImplementedError(
-                    "Broyden mixer is not implemented for SCF with full "
-                    "gradient tracking."
-                )
-            else:
-                raise ValueError(f"Unknown mixer '{self.config.mixer}'.")
 
         q = guess
 
@@ -86,17 +84,17 @@ class SelfConsistentFieldFull(BaseTSCF):
         if batched == 0:
             for _ in range(maxiter):
                 q_new = fcn(q)
-                q = mixer.iter(q_new, q)
+                q = self.mixer.iter(q_new, q)
 
-                if mixer.converged:
+                if self.mixer.converged:
                     q_converged = q
                     break
 
             else:
                 msg = (
                     f"\nSCF does not converge after {maxiter} cycles using "
-                    f"{mixer.label} mixing with a damping factor of "
-                    f"{mixer.options['damp']}."
+                    f"{self.mixer.label} mixing with a damping factor of "
+                    f"{self.mixer.options['damp']}."
                 )
                 if self.config.force_convergence is True:
                     raise exceptions.SCFConvergenceError(msg)
@@ -105,7 +103,9 @@ class SelfConsistentFieldFull(BaseTSCF):
                 warnings.warn(msg, exceptions.SCFConvergenceWarning)
                 q_converged = q
 
-            return self.converged_to_charges(q_converged)
+            if return_charges is True:
+                return self.converged_to_charges(q_converged)
+            return q_converged
 
         # batched SCF with culling
         culled = True
@@ -169,9 +169,9 @@ class SelfConsistentFieldFull(BaseTSCF):
 
         for _ in range(maxiter):
             q_new = fcn(q)
-            q = mixer.iter(q_new, q)
+            q = self.mixer.iter(q_new, q)
 
-            conv = mixer.converged
+            conv = self.mixer.converged
             if conv.any():
                 # Simultaneous convergence does not require culling.
                 # Occurs if batch size equals amount of True in `conv`.
@@ -260,14 +260,14 @@ class SelfConsistentFieldFull(BaseTSCF):
                     )
 
                 # cull mixer (only contains orbital resolved properties)
-                mixer.cull(conv, slicers=slicers["orbital"], mpdim=int(mpdim))
+                self.mixer.cull(conv, slicers=slicers["orbital"], mpdim=int(mpdim))
 
         # handle unconverged case (`maxiter` iterations)
         else:
             msg = (
                 f"\nSCF does not converge after '{maxiter}' cycles using "
-                f"'{mixer.label}' mixing with a damping factor of "
-                f"'{mixer.options['damp']}'."
+                f"'{self.mixer.label}' mixing with a damping factor of "
+                f"'{self.mixer.options['damp']}'."
             )
             if self.config.force_convergence is True:
                 raise exceptions.SCFConvergenceError(msg)
@@ -336,4 +336,6 @@ class SelfConsistentFieldFull(BaseTSCF):
             self._data.ihelp.restore()
             self._data.cache.restore()
 
-        return self.converged_to_charges(q_converged)
+        if return_charges is True:
+            return self.converged_to_charges(q_converged)
+        return q_converged

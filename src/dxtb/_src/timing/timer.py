@@ -38,6 +38,16 @@ class TimerError(Exception):
     """
 
 
+def _sync() -> None:
+    """
+    Wait for all kernels in all streams on a CUDA device to complete.
+    """
+    import torch
+
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+
+
 class _Timers:
     """
     Collection of Timers.
@@ -50,13 +60,49 @@ class _Timers:
         label: str | None
         """Name of the Timer."""
 
-        _start_time: float | None
+        parent: _Timers
+        """Parent Timer collection."""
 
-        def __init__(self, parent: _Timers, label: str | None = None) -> None:
+        _start_time: float | None
+        """Time when the timer was started. Should not be accessed directly."""
+
+        elapsed_time: float
+        """Elapsed time in seconds."""
+
+        def __init__(
+            self, parent: _Timers, label: str | None = None, cuda_sync: bool = False
+        ) -> None:
             self.parent = parent
             self.label = label
             self._start_time = None
             self.elapsed_time = 0.0
+            self._cuda_sync = cuda_sync
+
+        @property
+        def cuda_sync(self) -> bool:
+            """
+            Check if CUDA synchronization is enabled.
+
+            Returns
+            -------
+            bool
+                Whether CUDA synchronization is enabled (``True``) or not
+                (``False``).
+            """
+            return self._cuda_sync
+
+        @cuda_sync.setter
+        def cuda_sync(self, value: bool) -> None:
+            """
+            Enable or disable CUDA synchronization.
+
+            Parameters
+            ----------
+            value : bool
+                Whether to enable (``True``) or disable (``False``) CUDA
+                synchronization.
+            """
+            self._cuda_sync = value
 
         def start(self) -> None:
             """
@@ -74,6 +120,9 @@ class _Timers:
                 raise TimerError(
                     f"Timer '{self.label}' is running. Use `.stop()` to stop it."
                 )
+
+            if self._cuda_sync is True:
+                _sync()
 
             self._start_time = time.perf_counter()
 
@@ -98,6 +147,9 @@ class _Timers:
                 raise TimerError(
                     f"Timer '{self.label}' is not running. Use .start() to " "start it."
                 )
+
+            if self._cuda_sync is True:
+                _sync()
 
             self.elapsed_time += time.perf_counter() - self._start_time
             self._start_time = None
@@ -127,12 +179,14 @@ class _Timers:
         self,
         label: str | None = None,
         autostart: bool = False,
+        cuda_sync: bool = False,
     ) -> None:
         self.label = label
         self.timers = {}
         self._enabled = True
         self._subtimer_parent_map = {}
         self._autostart = autostart
+        self._cuda_sync = cuda_sync
 
         if self._autostart is True:
             self.reset()
@@ -148,6 +202,47 @@ class _Timers:
         Disable and reset all timers in the collection.
         """
         self._enabled = False
+
+    @property
+    def enabled(self) -> bool:
+        """
+        Check if the timer is enabled.
+
+        Returns
+        -------
+        bool
+            Whether the timer is enabled (``True``) or not (``False``).
+        """
+        return self._enabled
+
+    @property
+    def cuda_sync(self) -> bool:
+        """
+        Check if CUDA synchronization is enabled.
+
+        Returns
+        -------
+        bool
+            Whether CUDA synchronization is enabled (``True``) or not
+            (``False``).
+        """
+        return self._cuda_sync
+
+    @cuda_sync.setter
+    def cuda_sync(self, value: bool) -> None:
+        """
+        Enable or disable CUDA synchronization.
+
+        Parameters
+        ----------
+        value : bool
+            Whether to enable (``True``) or disable (``False``) CUDA
+            synchronization.
+        """
+        self._cuda_sync = value
+
+        for t in self.timers.values():
+            t.cuda_sync = value
 
     def start(
         self, uid: str, label: str | None = None, parent_uid: str | None = None
@@ -170,7 +265,7 @@ class _Timers:
             self.timers[uid].start()
             return
 
-        t = self._Timer(self, uid if label is None else label)
+        t = self._Timer(self, uid if label is None else label, self.cuda_sync)
         t.start()
 
         self.timers[uid] = t
@@ -302,5 +397,5 @@ class _Timers:
         )
 
 
-timer = _Timers(autostart=True)
+timer = _Timers(autostart=True, cuda_sync=False)
 """Global instance of the timer class."""

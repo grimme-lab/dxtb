@@ -31,16 +31,13 @@ input features do not change much.
 
 from __future__ import annotations
 
-import warnings
-
 import torch
 
+from dxtb import OutputHandler
 from dxtb._src.components.interactions import Charges
-from dxtb._src.constants import labels
-from dxtb._src.typing import Tensor
+from dxtb._src.typing import Tensor, override
 
 from ..base import SCFResult
-from ..mixer import Anderson, Mixer, Simple
 from .default import SelfConsistentFieldFull
 
 __all__ = ["SelfConsistentFieldSingleShot"]
@@ -57,6 +54,7 @@ class SelfConsistentFieldSingleShot(SelfConsistentFieldFull):
         are not exact (derivative w.r.t. the input features is missing).
     """
 
+    @override
     def __call__(self, charges: Charges | Tensor | None = None) -> SCFResult:
         """
         Run the self-consistent iterations until a stationary solution is reached
@@ -72,71 +70,67 @@ class SelfConsistentFieldSingleShot(SelfConsistentFieldFull):
             Converged orbital charges vector.
         """
 
-        if charges is None:
-            charges = Charges(mono=torch.zeros_like(self._data.occupation))
-        if isinstance(charges, Tensor):
-            charges = Charges(mono=charges)
-
-        # TODO: This piece of code is used like twenty times (refactor?)
-        if self.config.scp_mode == labels.SCP_MODE_CHARGE:
-            guess = charges.as_tensor()
-        elif self.config.scp_mode == labels.SCP_MODE_POTENTIAL:
-            potential = self.charges_to_potential(charges)
-            guess = potential.as_tensor()
-        elif self.config.scp_mode == labels.SCP_MODE_FOCK:
-            potential = self.charges_to_potential(charges)
-            guess = self.potential_to_hamiltonian(potential)
-        else:
-            raise ValueError(
-                f"Unknown convergence target (SCP mode) '{self.config.scp_mode}'."
-            )
+        guess = super()._guess(charges)
 
         # calculate charges in SCF without gradient tracking
         with torch.no_grad():
-            scp_conv = self.scf(guess).as_tensor()
+            OutputHandler.write_stdout(
+                f"\n{'iter':<5} {'Energy':<24} {'Delta E':<16}"
+                f"{'Delta Pnorm':<15} {'Delta q':<15}",
+                v=3,
+            )
+            OutputHandler.write_stdout(77 * "-", v=3)
 
-        # initialize the correct mixer with tolerances etc.
-        if isinstance(self.config.mixer, Mixer):
-            # TODO: We wont ever land here, int is enforced in the config
-            mixer = self.config.mixer
-        else:
-            batched = self.config.batch_mode
-            if self.config.mixer == labels.MIXER_LINEAR:
-                mixer = Simple(self.fwd_options, batch_mode=batched)
-            elif self.config.mixer == labels.MIXER_ANDERSON:
-                mixer = Anderson(self.fwd_options, batch_mode=batched)
-            elif self.config.mixer == labels.MIXER_BROYDEN:
-                raise NotImplementedError(
-                    "Broyden mixer is not implemented for SCF with full "
-                    "gradient tracking."
-                )
-            else:
-                raise ValueError(f"Unknown mixer '{self.config.mixer}'.")
+            # Normally, the SCF always returns charges, but we need to pass the
+            # converged quantity to `self._fcn`, and hence, need the property
+            # selected for convergence directly.
+            scp_nograd = self.scf(guess, return_charges=False)
+            if not isinstance(scp_nograd, Tensor):
+                scp_nograd = scp_nograd.as_tensor()
+
+            OutputHandler.write_stdout(77 * "-", v=3)
 
         # SCF step with gradient using converged result as "perfect" guess
-        scp_new = self._fcn(scp_conv)
-        scp = mixer.iter(scp_new, scp_conv)
-        scp = self.converged_to_charges(scp)
+        scp_grad = self._fcn(scp_nograd)
+        OutputHandler.write_stdout(77 * "-", v=3)
+
+        def _norm_nograd(q1, q2):
+            with torch.no_grad():
+                return torch.linalg.vector_norm(q1 - q2)
 
         # Check consistency between SCF solution and single step.
         # Especially for elements and their ions, the SCF may oscillate and the
         # single step for the gradient may differ from the converged solution.
-        if (
-            torch.linalg.vector_norm(scp_conv - scp)
-            > torch.finfo(self.dtype).eps ** 0.5 * 10
-        ).any():
-            warnings.warn(
+        if (_norm_nograd(scp_grad, scp_nograd) > self.config.f_atol).any():
+            OutputHandler.warn(
                 "The single SCF step differs from the converged solution. "
-                "Re-calculating with full gradient tracking!"
+                "Trying again with mixing!"
             )
-            charges = self.scf(scp_conv)
 
-        charges.nullify_padding()
-        energy = self.get_energy(charges)
+            scp_grad = self.mixer.iter(scp_grad, scp_nograd)
+
+            if (_norm_nograd(scp_grad, scp_nograd) > self.config.f_atol).any():
+                OutputHandler.warn(
+                    "The single SCF step differs from the converged solution. "
+                    "Re-calculating with full gradient tracking!"
+                )
+
+                self.mixer.reset()
+                q = self.scf(scp_nograd)
+                OutputHandler.write_stdout(77 * "-", v=3)
+            else:
+                q = self.converged_to_charges(scp_grad)
+        else:
+            q = self.converged_to_charges(scp_grad)
+
+        OutputHandler.write_stdout("", v=3)
+
+        q.nullify_padding()
+        energy = self.get_energy(q)
         fenergy = self.get_electronic_free_energy()
 
         return {
-            "charges": charges,
+            "charges": q,
             "coefficients": self._data.evecs,
             "density": self._data.density,
             "emo": self._data.evals,
@@ -144,6 +138,6 @@ class SelfConsistentFieldSingleShot(SelfConsistentFieldFull):
             "fenergy": fenergy,
             "hamiltonian": self._data.hamiltonian,
             "occupation": self._data.occupation,
-            "potential": self.charges_to_potential(charges),
+            "potential": self.charges_to_potential(q),
             "iterations": self._data.iter,
         }

@@ -24,7 +24,7 @@ theorem via `xitorch` for the backward.
 
 from __future__ import annotations
 
-from dxtb._src.components.interactions import Charges
+from dxtb._src.components.interactions import Charges, Potential
 from dxtb._src.constants import labels
 from dxtb._src.typing import Tensor
 
@@ -50,12 +50,16 @@ class SelfConsistentFieldImplicit(BaseXSCF):
     iterative solver required for the self-consistent field iterations.
     """
 
-    def scf(self, guess: Tensor) -> Charges:
+    def scf(
+        self, guess: Tensor, return_charges: bool = True
+    ) -> Charges | Potential | Tensor:
         # pylint: disable=import-outside-toplevel
         from dxtb._src.exlibs import xitorch as xt
 
         fcn = self._fcn
 
+        # TODO: Pass mixer options in `method` arg.
+        # Currently ignored. Always "broyden1".
         q_converged = xt.optimize.equilibrium(
             fcn=fcn,
             y0=guess,
@@ -72,4 +76,6 @@ class SelfConsistentFieldImplicit(BaseXSCF):
             q_new = fcn(q_converged)
             q_converged = mixer.iter(q_new, q_converged)
 
-        return self.converged_to_charges(q_converged)
+        if return_charges is True:
+            return self.converged_to_charges(q_converged)
+        return q_converged

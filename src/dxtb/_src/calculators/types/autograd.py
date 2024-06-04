@@ -27,7 +27,7 @@ import logging
 
 import torch
 
-from dxtb import OutputHandler
+from dxtb import OutputHandler, timer
 from dxtb._src.components.interactions.field import efield as efield
 from dxtb._src.constants import defaults
 from dxtb._src.typing import Any, Literal, Tensor
@@ -136,11 +136,18 @@ class AutogradCalculator(EnergyCalculator):
 
         if grad_mode == "autograd":
             e = self.energy(positions, chrg, spin, **kwargs)
+
+            timer.start("Forces")
             (deriv,) = torch.autograd.grad(e, positions, **kw)
+            timer.stop("Forces")
 
         elif grad_mode == "backward":
             e = self.energy(positions, chrg, spin, **kwargs)
+
+            timer.start("Forces")
             e.backward(**kw)
+            timer.stop("Forces")
+
             assert positions.grad is not None
             deriv = positions.grad
 
@@ -157,7 +164,10 @@ class AutogradCalculator(EnergyCalculator):
             from tad_mctc.autograd import jac
 
             energy = self.energy(positions, chrg, spin, **kwargs)
+
+            timer.start("Forces")
             deriv = jac(energy, positions, **kw).reshape(*positions.shape)
+            timer.stop("Forces")
 
         else:
             raise ValueError(f"Unknown grad_mode: {grad_mode}")

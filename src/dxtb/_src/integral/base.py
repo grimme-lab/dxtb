@@ -133,12 +133,13 @@ class IntDriver(TensorLike):
             diff = self._positions - positions
         except RuntimeError as e:
             raise RuntimeError(
-                f"{e}\n\nThis is a functorch error that appears when running\n"
-                "autograd twice without resetting certain cached values. It\n"
-                "appears first in the integral driver. Depending on which\n"
-                "level you interact with the API, use `driver.invalidate()`,\n"
-                "`integrals.reset_all()` or `integrals.invalidate_driver()`,\n"
-                "or `calc.reset_all()` after the first autograd run."
+                f"{e}\n\nThis is likely a functorch error that appears when \n"
+                "running autograd twice without resetting certain cached \n"
+                "values. It appears first in the integral driver. Depending \n"
+                "on which level you interact with the API, use \n"
+                "`driver.invalidate()`, `integrals.reset_all()` or \n"
+                "`integrals.invalidate_driver()`, or `calc.reset_all()` after "
+                "the first autograd run."
             ) from e
 
         tol = torch.finfo(positions.dtype).eps ** 0.75 if tol is None else tol

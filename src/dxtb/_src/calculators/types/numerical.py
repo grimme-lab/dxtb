@@ -73,6 +73,7 @@ class NumericalCalculator(EnergyCalculator):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         step_size: int | float = defaults.STEP_SIZE,
+        **kwargs: Any,
     ) -> Tensor:
         r"""
         Numerically calculate the atomic forces :math:`f`.
@@ -106,7 +107,7 @@ class NumericalCalculator(EnergyCalculator):
 
         OutputHandler.write_stdout("Forces (numerical)\n", v=4)
 
-        LINEBREAK_NUMERICAL = 20
+        linebreak = kwargs.pop("linebreak", 20)
         nsteps = 3 * self.numbers.shape[-1]
         count = 1
 
@@ -128,7 +129,7 @@ class NumericalCalculator(EnergyCalculator):
                     positions[..., i, j] += step_size
                     deriv[..., i, j] = 0.5 * (gr - gl) / step_size
 
-                if count % LINEBREAK_NUMERICAL == 0:
+                if count % linebreak == 0:
                     OutputHandler.write_stdout(f". {count}/{nsteps}", v=4)
                 else:
                     OutputHandler.write_stdout_nf(".", v=4)
@@ -143,7 +144,7 @@ class NumericalCalculator(EnergyCalculator):
         count -= 1
 
         logger.debug("Forces (numerical): All finished.")
-        space = (LINEBREAK_NUMERICAL - count % LINEBREAK_NUMERICAL) * " "
+        space = (linebreak - count % linebreak) * " "
         OutputHandler.write_stdout(f"{space} {count}/{nsteps}", v=4)
 
         return -deriv
