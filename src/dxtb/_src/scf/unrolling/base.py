@@ -24,9 +24,11 @@ backward pass, i.e., the implicit function theorem is not used.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import torch
 from tad_mctc import storch
-from typing import TYPE_CHECKING
+
 from dxtb import OutputHandler
 from dxtb._src.constants import labels
 from dxtb._src.timing.decorator import timer_decorator
