@@ -100,9 +100,10 @@ class PyscfMol(gto.Mole):
         # init pyscf's molecule type
         super().__init__(**kwargs)
 
-        # TODO: Check if file exists ()
         # path to basis set storage
         path = Path(Path(__file__).resolve().parent, "basis", xtb_version)
+        if not path.exists():
+            raise FileNotFoundError(f"Path '{path}' for basis does not exist.")
 
         # internal format of `pyscf.gto.Mole.atom`
         # atom = [[atom1, (x, y, z)],

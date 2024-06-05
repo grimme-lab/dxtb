@@ -24,7 +24,13 @@ Collection of PyTorch-based integral drivers.
 from __future__ import annotations
 
 from .base_driver import BaseIntDriverPytorch
-from .impls import OverlapAG_V1, OverlapAG_V2, overlap, overlap_gradient
+from .impls import (
+    OverlapAG_V1,
+    OverlapAG_V2,
+    OverlapFunction,
+    overlap,
+    overlap_gradient,
+)
 
 __all__ = [
     "IntDriverPytorch",
@@ -44,6 +50,12 @@ class IntDriverPytorch(BaseIntDriverPytorch):
     ----
     Currently, only the overlap integral is implemented.
     """
+
+    eval_ovlp: OverlapFunction
+    """Function for overlap calculation."""
+
+    eval_ovlp_grad: OverlapFunction
+    """Function for overlap gradient calculation."""
 
     def setup_eval_funcs(self) -> None:
         # pylint: disable=import-outside-toplevel

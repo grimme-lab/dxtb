@@ -51,9 +51,6 @@ class IntDriver(TensorLike):
     ihelp: IndexHelper
     """Helper class for indexing."""
 
-    family: int
-    """Label for integral implementation family"""
-
     __label: str
     """Identifier label for integral driver."""
 

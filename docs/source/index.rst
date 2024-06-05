@@ -31,6 +31,7 @@
    Installation <03_for_developers/installation>
    Testing <03_for_developers/testing>
    Style <03_for_developers/style>
+   Common Errors <03_for_developers/errors>
 
 .. toctree::
     :hidden:

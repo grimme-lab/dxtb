@@ -112,7 +112,7 @@ class Halogen(Classical):
 
         # element numbers of halogens and bases
         self.halogens = [17, 35, 53, 85]
-        self.base = [7, 8, 15, 16]
+        self.bases = [7, 8, 15, 16]
 
     def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> HalogenCache:
         """
@@ -218,7 +218,7 @@ class Halogen(Classical):
                 continue
 
             for j, j_at in enumerate(numbers):
-                if j_at not in self.base:
+                if j_at not in self.bases:
                     continue
 
                 if torch.norm(positions[i, :] - positions[j, :]) > self.cutoff:
@@ -299,7 +299,7 @@ class Halogen(Classical):
             device=self.device,
             dtype=torch.bool,
         )
-        for base in self.base:
+        for base in self.bases:
             base_mask += numbers == base
 
         # return if no bases are present
