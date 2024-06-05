@@ -23,13 +23,10 @@ methods.
 
 The dataclass can represent a complete parametrization file produced by the
 `tblite`_ library, however it only stores the raw data rather than the full
-representation.
+representation, i.e., the transformation to the corresponding atom-resolved
+quantities must be carried out separately.
 
-The parametrization of a calculator with the model data must account for missing
-transformations, like extracting the principal quantum numbers from the shells.
-The respective checks are therefore deferred to the instantiation of the
-calculator, while a deserialized model in `tblite`_ is already verified at this
-stage.
+.. _tblite: https://tblite.readthedocs.io
 """
 
 from __future__ import annotations
@@ -39,7 +36,7 @@ from typing import Dict, Optional
 
 from pydantic import BaseModel
 
-from dxtb._src.typing import Any, PathLike, Type
+from dxtb._src.typing import Any, PathLike, Self, Type
 
 from .charge import Charge
 from .dispersion import Dispersion
@@ -57,6 +54,14 @@ __all__ = ["Param"]
 class Param(BaseModel):
     """
     Complete self-contained representation of an extended tight-binding model.
+
+    The parametrization of a calculator with the model data must account for
+    missing transformations, like extracting the principal quantum numbers from
+    the shells. The respective checks are therefore deferred to the
+    instantiation of the calculator, while a deserialized model in `tblite`_ is
+    already verified at this stage.
+
+    .. _tblite: https://tblite.readthedocs.io
     """
 
     meta: Optional[Meta] = None
@@ -94,9 +99,10 @@ class Param(BaseModel):
         return self.model_dump(exclude_none=True)
 
     @classmethod
-    def from_file(cls: Type[Param], filepath: PathLike) -> Param:
+    def from_file(cls: Type[Self], filepath: PathLike) -> Self:
         """
-        Load a parametrization from a file.
+        Load a parametrization from a file. The file format is determined by the
+        file extension. Supported formats are JSON, TOML, and YAML.
 
         Parameters
         ----------
@@ -107,6 +113,11 @@ class Param(BaseModel):
         -------
         Param
             The loaded parametrization data.
+
+        Raises
+        ------
+        ValueError
+            If the file format is not supported.
         """
         filepath = Path(filepath)
         if filepath.suffix == ".json":
@@ -120,12 +131,18 @@ class Param(BaseModel):
 
     def to_file(self, filepath: PathLike, **kwargs) -> None:
         """
-        Save the parametrization to a file.
+        Save the parametrization to a file. The file format is determined by the
+        file extension. Supported formats are JSON, TOML, and YAML.
 
         Parameters
         ----------
         filepath : PathLike
             The file path to save the parametrization data.
+
+        Raises
+        ------
+        ValueError
+            If the file format is not supported.
         """
         filepath = Path(filepath)
         if filepath.suffix == ".json":
@@ -138,7 +155,7 @@ class Param(BaseModel):
             raise ValueError(f"Unsupported file format: {filepath.suffix}")
 
     @classmethod
-    def from_json_file(cls: Type[Param], filepath: PathLike) -> Param:
+    def from_json_file(cls: Type[Self], filepath: PathLike) -> Self:
         import json
 
         with open(filepath, encoding="utf-8") as fd:
@@ -151,7 +168,7 @@ class Param(BaseModel):
             json.dump(self.clean_model_dump(), fd, **kwargs)
 
     @classmethod
-    def from_toml_file(cls: Type[Param], filepath: PathLike) -> Param:
+    def from_toml_file(cls: Type[Self], filepath: PathLike) -> Self:
         try:
             import tomli as toml
         except ImportError:
@@ -179,7 +196,7 @@ class Param(BaseModel):
             toml_w.dump(self.clean_model_dump(), fd, **kwargs)  # type: ignore
 
     @classmethod
-    def from_yaml_file(cls: Type[Param], filepath: Path) -> Param:
+    def from_yaml_file(cls: Type[Self], filepath: Path) -> Self:
         """
         Load a parametrization from a YAML file.
         """

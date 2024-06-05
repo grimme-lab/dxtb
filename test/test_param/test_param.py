@@ -31,7 +31,7 @@ from tad_mctc.convert import symbol_to_number
 from dxtb import GFN1_XTB, GFN2_XTB, Calculator
 from dxtb._src.param import Param
 from dxtb._src.param.meta import Meta
-from dxtb._src.typing import DD
+from dxtb._src.typing import DD, PathLike
 
 from ..conftest import DEVICE
 
@@ -129,22 +129,13 @@ def test_param_calculator(dtype: torch.dtype) -> None:
     assert pytest.approx(ref.cpu()) == occ.cpu()
 
 
-@pytest.mark.parametrize("parname", ["gfn1-xtb", "gfn2-xtb"])
-@pytest.mark.parametrize("ftype", ["json", "toml", "yaml"])
-def test_read(ftype: str, parname: str) -> None:
-    p = (
-        Path(__file__).parents[2]
-        / "src"
-        / "dxtb"
-        / "_src"
-        / "param"
-        / parname.split("-")[0]
-    )
-    par = Param.from_file(p / f"{parname}.{ftype}")
+def _validate_param(par: Param) -> None:
+    assert isinstance(par.meta, Meta)
+    assert par.meta.name is not None
 
-    if parname == "gfn1-xtb":
+    if par.meta.name.casefold() == "gfn1-xtb":
         REF = GFN1_XTB
-    elif parname == "gfn2-xtb":
+    elif par.meta.name.casefold() == "gfn2-xtb":
         REF = GFN2_XTB
 
     for f, f_read in zip(REF.model_fields.keys(), par.model_fields.keys()):
@@ -157,8 +148,7 @@ def test_read(ftype: str, parname: str) -> None:
 
 
 @pytest.mark.parametrize("parname", ["gfn1-xtb", "gfn2-xtb"])
-@pytest.mark.parametrize("ftype", ["json", "toml", "yaml"])
-def test_write(ftype: str, parname: str) -> None:
+def test_read_toml(parname: str) -> None:
     p = (
         Path(__file__).parents[2]
         / "src"
@@ -167,12 +157,48 @@ def test_write(ftype: str, parname: str) -> None:
         / "param"
         / parname.split("-")[0]
     )
-    par = Param.from_file(p / f"{parname}.{ftype}")
+    par = Param.from_file(Path(p) / f"{parname}.toml")
 
-    if parname == "gfn1-xtb":
-        REF = GFN1_XTB
-    elif parname == "gfn2-xtb":
-        REF = GFN2_XTB
+    _validate_param(par)
+
+
+@pytest.mark.parametrize("parname", ["gfn1-xtb", "gfn2-xtb"])
+@pytest.mark.parametrize("ftype", ["json", "yaml"])
+def test_read_other(ftype: str, parname: str) -> None:
+    p = Path(__file__).parent / "param"
+    par = Param.from_file(Path(p) / f"{parname}.{ftype}")
+
+    _validate_param(par)
+
+
+@pytest.mark.parametrize("parname", ["gfn1-xtb", "gfn2-xtb"])
+def test_write_toml(parname: str) -> None:
+    p = (
+        Path(__file__).parents[2]
+        / "src"
+        / "dxtb"
+        / "_src"
+        / "param"
+        / parname.split("-")[0]
+    )
+    par = Param.from_file(p / f"{parname}.toml")
+
+    with td.TemporaryDirectory() as tmp:
+        # write to file
+        p_write = Path(tmp) / f"test.toml"
+        par.to_file(p_write)
+
+        # read the written file
+        par_read = Param.from_file(p_write)
+
+        _validate_param(par_read)
+
+
+@pytest.mark.parametrize("parname", ["gfn1-xtb", "gfn2-xtb"])
+@pytest.mark.parametrize("ftype", ["json", "yaml"])
+def test_write_other(ftype: str, parname: str) -> None:
+    p = Path(__file__).parent / "param"
+    par = Param.from_file(p / f"{parname}.{ftype}")
 
     with td.TemporaryDirectory() as tmp:
         # write to file
@@ -182,14 +208,4 @@ def test_write(ftype: str, parname: str) -> None:
         # read the written file
         par_read = Param.from_file(p_write)
 
-        # compare the written file with the original file
-        for f, f_read in zip(
-            REF.model_fields.keys(),
-            par.model_fields.keys(),
-        ):
-            val = getattr(REF, f)
-            val_read = getattr(par_read, f_read)
-            assert val == val_read
-
-        # GFN1_XTB is not really of type `Param`, but a `LazyLoaderParam`
-        assert par == REF._loaded  # type: ignore
+        _validate_param(par_read)
