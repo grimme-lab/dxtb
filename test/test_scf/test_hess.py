@@ -31,6 +31,7 @@ from dxtb._src.utils import _hessian as hessian
 
 from ..utils import reshape_fortran
 from .samples import samples
+from ..conftest import DEVICE
 
 sample_list = ["LiH", "SiH4"]
 
@@ -45,16 +46,14 @@ opts = {
     "verbosity": 0,
 }
 
-device = None
-
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
     atol, rtol = 1e-4, 1e-1  # should be lower!
 
-    numbers = samples[name]["numbers"]
+    numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
     ref = reshape_fortran(
@@ -70,18 +69,18 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     # variable to be differentiated
     positions.requires_grad_(True)
 
-    def scf(numbers, positions, charge) -> Tensor:
+    def scf(positions, charge) -> Tensor:
         result = calc.singlepoint(positions, charge)
         return result.scf
 
-    hess = hessian(scf, (numbers, positions, charge), argnums=1)
+    hess = hessian(scf, (positions, charge), argnums=0)
     positions.detach_()
     hess = hess.detach().reshape_as(ref)
     numref = numref.reshape_as(ref)
 
     assert ref.shape == numref.shape == hess.shape
-    assert pytest.approx(ref, abs=1e-6, rel=1e-6) == numref
-    assert pytest.approx(ref, abs=atol, rel=rtol) == hess
+    assert pytest.approx(ref.cpu(), abs=1e-6, rel=1e-6) == numref.cpu()
+    assert pytest.approx(ref.cpu(), abs=atol, rel=rtol) == hess.cpu()
 
 
 def _numhess(
@@ -94,7 +93,7 @@ def _numhess(
         **{"device": positions.device, "dtype": positions.dtype},
     )
 
-    def _gradfcn(numbers: Tensor, positions: Tensor, charge: Tensor) -> Tensor:
+    def _gradfcn(positions: Tensor, charge: Tensor) -> Tensor:
         positions.requires_grad_(True)
         result = -calc.forces_analytical(positions, charge)
         positions.detach_()
@@ -104,10 +103,10 @@ def _numhess(
     for i in range(numbers.shape[0]):
         for j in range(3):
             positions[i, j] += step
-            gr = _gradfcn(numbers, positions, charge)
+            gr = _gradfcn(positions, charge)
 
             positions[i, j] -= 2 * step
-            gl = _gradfcn(numbers, positions, charge)
+            gl = _gradfcn(positions, charge)
 
             positions[i, j] += step
             hess[:, :, i, j] = 0.5 * (gr - gl) / step

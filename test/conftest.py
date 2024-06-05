@@ -18,24 +18,34 @@
 Setup for pytest.
 """
 
+import numpy as np
 import pytest
 import torch
 
 from dxtb._src.timing import timer
 
 # avoid randomness and non-deterministic algorithms
+np.random.seed(0)
 torch.manual_seed(0)
 torch.use_deterministic_algorithms(True)
 
 torch.set_printoptions(precision=10)
 
-
 FAST_MODE: bool = True
 """Flag for fast gradient tests."""
+
+DEVICE: torch.device | None = None
+"""Name of Device."""
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Set up additional command line options."""
+
+    parser.addoption(
+        "--cuda",
+        action="store_true",
+        help="Use GPU as default device.",
+    )
 
     parser.addoption(
         "--detect-anomaly",
@@ -106,20 +116,51 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 def pytest_configure(config: pytest.Config) -> None:
     """Pytest configuration hook."""
+    global DEVICE, FAST_MODE
 
     if config.getoption("--detect-anomaly"):
         torch.autograd.anomaly_mode.set_detect_anomaly(True)
 
     if config.getoption("--jit"):
-        torch.jit._state.enable()  # type: ignore # pylint: disable=protected-access
+        # pylint: disable-next=protected-access
+        torch.jit._state.enable()  # type:ignore
     else:
-        torch.jit._state.disable()  # type: ignore # pylint: disable=protected-access
+        # pylint: disable-next=protected-access
+        torch.jit._state.disable()  # type:ignore
 
-    global FAST_MODE
     if config.getoption("--fast"):
         FAST_MODE = True
     if config.getoption("--slow"):
         FAST_MODE = False
+
+    if config.getoption("--cuda"):
+        if not torch.cuda.is_available():
+            raise RuntimeError("No cuda devices available.")
+
+        if FAST_MODE is True:
+            FAST_MODE = False
+
+            from warnings import warn
+
+            warn(
+                "Fast mode for gradient checks not compatible with GPU "
+                "execution. Switching to slow mode. Use the '--slow' flag "
+                "for GPU tests ('--cuda') to avoid this warning.\n"
+                "(Issue: https://github.com/pytorch/pytorch/issues/114536)"
+            )
+
+        DEVICE = torch.device("cuda:0")
+        torch.use_deterministic_algorithms(False)
+
+        # `torch.set_default_tensor_type` is deprecated since 2.1.0 and version
+        # 2.0.0 introduces `torch.set_default_device`
+        if torch.__version__ < (2, 0, 0):  # type: ignore
+            torch.set_default_tensor_type("torch.cuda.FloatTensor")  # type: ignore
+        else:
+            torch.set_default_device(DEVICE)  # type: ignore[attr-defined]
+    else:
+        torch.use_deterministic_algorithms(True)
+        DEVICE = None
 
     if config.getoption("--tpo-linewidth"):
         torch.set_printoptions(linewidth=config.getoption("--tpo-linewidth"))

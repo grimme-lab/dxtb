@@ -38,7 +38,7 @@ class Jacobian:
         pass
 
     @abstractmethod
-    def solve(self, v, tol=0):
+    def solve(self, v, tol: int | float = 0):
         pass
 
     @abstractmethod
@@ -94,7 +94,7 @@ class BroydenFirst(Jacobian):
         # I arranged into a method to remove the leak
         self.Gm.reduce(self.max_rank)
 
-    def solve(self, v, tol=0):
+    def solve(self, v, tol: int | float = 0):
         res = self.Gm.mv(v)
         return res
 
@@ -168,7 +168,7 @@ class Anderson(Jacobian):
             else:
                 self.alpha = ones
 
-    def solve(self, f: torch.Tensor, tol=0):
+    def solve(self, f: torch.Tensor, tol: int | float = 0):
         if self.alpha is None:
             raise RuntimeError("alpha should not be None")
         dx = -self.alpha * f
@@ -238,7 +238,7 @@ class LinearMixing(Jacobian):
     def setup(self, x0, y0, func):
         pass
 
-    def solve(self, v, tol=0):
+    def solve(self, v, tol: int | float = 0):
         return -v * self.alpha
 
     def update(self, x, y):

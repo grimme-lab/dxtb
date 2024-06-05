@@ -34,6 +34,7 @@ from dxtb._src.typing import DD
 
 from ..utils import load_from_npz
 from .samples_charged import samples
+from ..conftest import DEVICE
 
 opts = {
     "verbosity": 0,
@@ -43,26 +44,25 @@ opts = {
 
 ref_grad = np.load("test/test_scf/grad.npz")
 
-device = None
-
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["Ag2Cl22-", "Al3+Ar6", "AD7en+", "C2H4F+", "ZnOOH-"])
 def test_single(dtype: torch.dtype, name: str):
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
-    ref = sample["escf"].item()
+    ref = sample["escf"]
     chrg = sample["charge"].to(**dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
     results = calc.singlepoint(positions, chrg)
+    res = results.scf.sum(-1)
 
-    assert pytest.approx(ref, abs=tol, rel=tol) == results.scf.sum(-1).item()
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
 @pytest.mark.grad
@@ -70,11 +70,11 @@ def test_single(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize("dtype", [torch.float])
 @pytest.mark.parametrize("name", ["Ag2Cl22-", "Al3+Ar6", "C2H4F+", "ZnOOH-"])
 def test_grad(dtype: torch.dtype, name: str):
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd).detach()
     positions.requires_grad_(True)
     chrg = sample["charge"].to(**dd)
@@ -95,9 +95,5 @@ def test_grad(dtype: torch.dtype, name: str):
     result = calc.singlepoint(positions, chrg)
     energy = result.scf.sum(-1)
 
-    gradient = torch.autograd.grad(
-        energy,
-        positions,
-    )[0]
-
-    assert pytest.approx(gradient, abs=tol, rel=1e-5) == ref
+    (gradient,) = torch.autograd.grad(energy, positions)
+    assert pytest.approx(gradient.cpu(), abs=tol, rel=1e-5) == ref.cpu()

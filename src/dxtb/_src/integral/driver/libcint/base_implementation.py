@@ -25,9 +25,10 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from typing import TYPE_CHECKING
+import torch
 
 from dxtb._src.constants import labels
-from dxtb._src.typing import Tensor
+from dxtb._src.typing import Tensor, override, Self
 
 from ...base import BaseIntegralImplementation
 
@@ -115,3 +116,45 @@ class IntegralImplementationLibcint(
         driver : IntDriverLibcint
             The integral driver for the calculation.
         """
+
+    @override
+    def to(self, device: torch.device) -> Self:
+        """
+        Returns a copy of the :class:`.IntegralImplementationLibcint` instance
+        on the specified device.
+
+        This method overwrites the usual approach because the
+        :class:`.IntegralImplementationLibcint` class should not change the
+        device of the norm .
+
+        Parameters
+        ----------
+        device : torch.device
+            Device to which all associated tensors should be moved.
+
+        Returns
+        -------
+        BaseIntegral
+            A copy of the :class:`.IntegralImplementationLibcint` instance
+            placed on the specified device.
+
+        Raises
+        ------
+        RuntimeError
+            If the ``__slots__`` attribute is not set in the class.
+        """
+        if self.device == device:
+            return self
+
+        if len(self.__slots__) == 0:
+            raise RuntimeError(
+                f"The `to` method requires setting ``__slots__`` in the "
+                f"'{self.__class__.__name__}' class."
+            )
+
+        self.matrix = self.matrix.to(device)
+        if self._gradient is not None:
+            self.gradient = self.gradient.to(device)
+
+        self.override_device(device)
+        return self

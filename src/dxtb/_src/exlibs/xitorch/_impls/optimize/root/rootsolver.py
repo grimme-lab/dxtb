@@ -130,6 +130,8 @@ def _nonlin_solver(
 
     y = func(x)
     y_norm = y.norm()
+    assert isinstance(y_norm, torch.Tensor)
+
     stop_cond = TerminationCondition(f_tol, f_rtol, y_norm, x_tol, x_rtol)
     if y_norm == 0:
         return x.reshape(xshape)
@@ -168,7 +170,8 @@ def _nonlin_solver(
             s = 0.95  # modified!!
             xnew = x + s * dx
             ynew = func(xnew)
-            y_norm_new = ynew.norm()
+            y_norm_new = torch.norm(ynew)
+            assert isinstance(y_norm_new, torch.Tensor)
 
         # save the best results
         if y_norm_new < best_ynorm:

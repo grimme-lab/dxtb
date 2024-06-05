@@ -32,6 +32,7 @@ from dxtb._src.typing import DD, Callable, Tensor
 from dxtb._src.utils import batch
 
 from .samples import samples
+from ..conftest import DEVICE
 
 opts = {
     "f_atol": 1.0e-8,
@@ -47,16 +48,14 @@ tol = 1e-4
 
 sample_list = ["H2", "H2O", "SiH4"]
 
-device = None
-
 
 def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
     Tensor,  # differentiable variables
 ]:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
-    numbers = samples[name]["numbers"].to(device)
+    numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
 
@@ -107,13 +106,13 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
     Tensor,  # differentiable variables
 ]:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ]
     )
     positions = batch.pack(

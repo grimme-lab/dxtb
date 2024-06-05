@@ -25,16 +25,18 @@ import torch
 
 from dxtb import IndexHelper
 from dxtb._src.scf import guess
+from ..conftest import DEVICE
 
-numbers = torch.tensor([6, 1])
+numbers = torch.tensor([6, 1], device=DEVICE)
 positions = torch.tensor(
     [
         [0.0, 0.0, 0.0],
         [0.0, 0.0, 1.0],
-    ]
+    ],
+    device=DEVICE,
 )
 ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0, 0], 6: [0, 1]})
-charge = torch.tensor(0.0)
+charge = torch.tensor(0.0, device=DEVICE)
 
 
 def test_fail() -> None:
@@ -61,11 +63,11 @@ def test_eeq() -> None:
         ]
     )
 
-    assert pytest.approx(ref, abs=1e-5) == c
+    assert pytest.approx(ref.cpu(), abs=1e-5) == c.cpu()
 
 
 def test_sad() -> None:
     c = guess.get_guess(numbers, positions, charge, ihelp, name="sad")
     size = int(ihelp.orbitals_per_shell.sum().item())
 
-    assert pytest.approx(torch.zeros(size)) == c
+    assert pytest.approx(torch.zeros(size).cpu()) == c.cpu()

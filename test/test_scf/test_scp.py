@@ -33,6 +33,7 @@ from dxtb._src.typing import DD
 from dxtb._src.utils import batch
 
 from .samples import samples
+from ..conftest import DEVICE
 
 opts = {
     "verbosity": 0,
@@ -40,8 +41,6 @@ opts = {
     "scf_mode": labels.SCF_MODE_FULL,
     "scp_mode": labels.SCP_MODE_POTENTIAL,
 }
-
-device = None
 
 
 def single(
@@ -52,10 +51,10 @@ def single(
     scp_mode: str,
     scf_mode: str,
 ) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = sample["escf"].to(**dd)
     charges = torch.tensor(0.0, **dd)
@@ -75,7 +74,8 @@ def single(
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, charges)
-    assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
+    res = result.scf.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -142,13 +142,13 @@ def batched(
     scf_mode: str,
     tol: float,
 ) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name1], samples[name2]
     numbers = batch.pack(
         (
-            sample[0]["numbers"].to(device),
-            sample[1]["numbers"].to(device),
+            sample[0]["numbers"].to(DEVICE),
+            sample[1]["numbers"].to(DEVICE),
         )
     )
     positions = batch.pack(
@@ -179,7 +179,8 @@ def batched(
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, charges)
-    assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
+    res = result.scf.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -219,30 +220,30 @@ def test_batch_three(
     scf_mode: str,
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 50
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name1], samples[name2], samples[name3]
     numbers = batch.pack(
         (
-            sample[0]["numbers"],
-            sample[1]["numbers"],
-            sample[2]["numbers"],
+            sample[0]["numbers"].to(DEVICE),
+            sample[1]["numbers"].to(DEVICE),
+            sample[2]["numbers"].to(DEVICE),
         )
     )
     positions = batch.pack(
         (
-            sample[0]["positions"],
-            sample[1]["positions"],
-            sample[2]["positions"],
+            sample[0]["positions"].to(**dd),
+            sample[1]["positions"].to(**dd),
+            sample[2]["positions"].to(**dd),
         )
-    ).type(dtype)
+    )
     ref = batch.pack(
         (
-            sample[0]["escf"],
-            sample[1]["escf"],
-            sample[2]["escf"],
+            sample[0]["escf"].to(**dd),
+            sample[1]["escf"].to(**dd),
+            sample[2]["escf"].to(**dd),
         )
-    ).type(dtype)
+    )
     charges = torch.tensor([0.0, 0.0, 0.0], **dd)
 
     options = dict(
@@ -259,4 +260,4 @@ def test_batch_three(
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, charges)
-    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol) == result.scf.sum(-1).cpu()

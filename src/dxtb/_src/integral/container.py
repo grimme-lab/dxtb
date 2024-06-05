@@ -66,7 +66,6 @@ class Integrals(IntegralContainer):
         *,
         driver: int = labels.INTDRIVER_LIBCINT,
         intlevel: int = defaults.INTLEVEL,
-        force_cpu_for_libcint: bool = True,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
         _hcore: HCore | None = None,
@@ -85,7 +84,12 @@ class Integrals(IntegralContainer):
         self._dipole = _dipole
         self._quadrupole = _quadrupole
         self._intlevel = intlevel
-        self.force_cpu_for_libcint = force_cpu_for_libcint
+
+        # per default, libcint is run on the CPU
+        self.force_cpu_for_libcint = kwargs.pop(
+            "force_cpu_for_libcint",
+            True if driver == labels.INTDRIVER_LIBCINT else False,
+        )
 
         # Determine which driver class to instantiate
         if driver == labels.INTDRIVER_LIBCINT:
@@ -209,7 +213,7 @@ class Integrals(IntegralContainer):
 
     def build_overlap(self, positions: Tensor, **kwargs: Any) -> Tensor:
         # in case CPU is forced for libcint, move positions to CPU
-        if self.force_cpu_for_libcint:
+        if self.force_cpu_for_libcint is True:
             positions = positions.to(device=torch.device("cpu"))
 
         self.setup_driver(positions, **kwargs)
@@ -227,11 +231,25 @@ class Integrals(IntegralContainer):
             if self._intlevel <= levels.INTLEVEL_HCORE:
                 self.overlap.integral = self.overlap.integral.to(device=self.device)
 
+                # FIXME: The matrix has to be moved explicitly, because when
+                # singlepoint is called a second time, the integral is already
+                # on the correct device (from the to of the first call) and the
+                # matrix is not moved because the to method exits immediately.
+                # This is a workaround and can possibly be fixed when the
+                # matrices are no longer stored (should only return in sp)
+                self.overlap.integral.matrix = self.overlap.integral.matrix.to(
+                    device=self.device
+                )
+
         self._matrices.overlap = self.overlap.matrix
         logger.debug("Overlap integral: All finished.")
         return self.overlap.matrix
 
     def grad_overlap(self, positions: Tensor, **kwargs) -> Tensor:
+        # in case CPU is forced for libcint, move positions to CPU
+        if self.force_cpu_for_libcint is True:
+            positions = positions.to(device=torch.device("cpu"))
+
         self.setup_driver(positions, **kwargs)
 
         if self.overlap is None:
@@ -295,7 +313,13 @@ class Integrals(IntegralContainer):
         # integrals are required
         if self.force_cpu_for_libcint and self._intlevel <= levels.INTLEVEL_DIPOLE:
             self.dipole.integral = self.dipole.integral.to(device=self.device)
+            self.dipole.integral.matrix = self.dipole.integral.matrix.to(
+                device=self.device
+            )
             self.overlap.integral = self.overlap.integral.to(device=self.device)
+            self.overlap.integral.matrix = self.overlap.integral.matrix.to(
+                device=self.device
+            )
 
             # explicitly move matrices to the correct device
             self._matrices = self._matrices.to(self.device)
@@ -379,9 +403,18 @@ class Integrals(IntegralContainer):
         # integrals are required
         if self.force_cpu_for_libcint and self._intlevel <= levels.INTLEVEL_QUADRUPOLE:
             self.overlap.integral = self.overlap.integral.to(self.device)
+            self.overlap.integral.matrix = self.overlap.integral.matrix.to(self.device)
+
             self.quadrupole.integral = self.quadrupole.integral.to(self.device)
+            self.quadrupole.integral.matrix = self.quadrupole.integral.matrix.to(
+                self.device
+            )
+
             if self.dipole is not None:
                 self.dipole.integral = self.dipole.integral.to(self.device)
+                self.dipole.integral.matrix = self.dipole.integral.matrix.to(
+                    self.device
+                )
 
             # explicitly move matrices to the correct device
             self._matrices = self._matrices.to(self.device)
