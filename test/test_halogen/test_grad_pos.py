@@ -30,6 +30,7 @@ from dxtb import IndexHelper
 from dxtb._src.components.classicals import new_halogen
 from dxtb._src.typing import DD, Callable, Tensor
 
+from ..conftest import DEVICE
 from .samples import samples
 
 # "LYS_xao" must be the last one as we have to manually exclude it for the
@@ -38,17 +39,15 @@ sample_list = ["br2nh3", "br2och2", "LYS_xao"]
 
 tol = 1e-8
 
-device = None
-
 
 def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
     Tensor,  # differentiable variables
 ]:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     # variable to be differentiated
@@ -94,13 +93,13 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
     Tensor,  # differentiable variables
 ]:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ]
     )
     positions = pack(
@@ -155,10 +154,10 @@ def test_gradgradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", ["br2nh3", "finch", "LYS_xao"])
 def test_autograd(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = sample["gradient"].to(**dd)
 
@@ -177,7 +176,7 @@ def test_autograd(dtype: torch.dtype, name: str) -> None:
     positions.detach_()
     grad_autograd.detach_()
 
-    assert pytest.approx(ref, abs=tol * 10) == grad_autograd
+    assert pytest.approx(ref.cpu(), abs=tol * 10) == grad_autograd.cpu()
 
 
 @pytest.mark.grad
@@ -185,13 +184,13 @@ def test_autograd(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", ["br2nh3"])
 @pytest.mark.parametrize("name2", sample_list)
 def test_autograd_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ]
     )
     positions = pack(
@@ -222,7 +221,7 @@ def test_autograd_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     positions.detach_()
     grad_autograd.detach_()
 
-    assert pytest.approx(ref, abs=tol * 10) == grad_autograd
+    assert pytest.approx(ref.cpu(), abs=tol * 10) == grad_autograd.cpu()
 
 
 @pytest.mark.grad
@@ -230,10 +229,10 @@ def test_autograd_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.parametrize("name", sample_list[:-1])
 def test_backward(dtype: torch.dtype, name: str) -> None:
     """Compare with reference values from tblite."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = sample["gradient"].to(**dd)
 
@@ -256,7 +255,7 @@ def test_backward(dtype: torch.dtype, name: str) -> None:
     positions.detach_()
     positions.grad.data.zero_()
 
-    assert pytest.approx(ref, abs=tol * 10) == grad_backward
+    assert pytest.approx(ref.cpu(), abs=tol * 10) == grad_backward.cpu()
 
 
 @pytest.mark.grad
@@ -265,13 +264,13 @@ def test_backward(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name2", sample_list)
 def test_backward_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Compare with reference values from tblite."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ]
     )
     positions = pack(
@@ -302,6 +301,8 @@ def test_backward_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     assert positions.grad is not None
     grad_backward = positions.grad.clone()
 
-    assert pytest.approx(ref, abs=tol * 10) == grad_backward
-
+    # also zero out gradients when using `.backward()`
     positions.detach_()
+    positions.grad.data.zero_()
+
+    assert pytest.approx(ref.cpu(), abs=tol * 10) == grad_backward.cpu()

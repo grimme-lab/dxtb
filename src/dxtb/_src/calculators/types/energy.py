@@ -33,6 +33,7 @@ from dxtb import OutputHandler
 from dxtb import integrals as ints
 from dxtb._src import scf
 from dxtb._src.constants import defaults
+from dxtb._src.integral.container import IntegralMatrices
 from dxtb._src.timing import timer
 from dxtb._src.typing import Any, Tensor
 from dxtb._src.utils.tensors import tensor_id
@@ -148,10 +149,12 @@ class EnergyCalculator(BaseCalculator):
 
         timer.start("Integrals")
 
+        intmats = IntegralMatrices(**self.dd)
+
         # overlap integral (always required, even without Hückel Hamiltonian)
         OutputHandler.write_stdout_nf(" - Overlap           ... ", v=3)
         timer.start("Overlap", parent_uid="Integrals")
-        self.integrals.build_overlap(positions)
+        intmats.overlap = self.integrals.build_overlap(positions)
         timer.stop("Overlap")
         OutputHandler.write_stdout("done", v=3)
 
@@ -169,7 +172,7 @@ class EnergyCalculator(BaseCalculator):
         if self.opts.ints.level >= ints.levels.INTLEVEL_DIPOLE:
             OutputHandler.write_stdout_nf(" - Dipole            ... ", v=3)
             timer.start("Dipole Integral", parent_uid="Integrals")
-            self.integrals.build_dipole(positions)
+            intmats.dipole = self.integrals.build_dipole(positions)
             timer.stop("Dipole Integral")
             OutputHandler.write_stdout("done", v=3)
 
@@ -182,7 +185,7 @@ class EnergyCalculator(BaseCalculator):
         if self.opts.ints.level >= ints.levels.INTLEVEL_QUADRUPOLE:
             OutputHandler.write_stdout_nf(" - Quadrupole        ... ", v=3)
             timer.start("Quadrupole Integral", parent_uid="Integrals")
-            self.integrals.build_quadrupole(positions)
+            intmats.quadrupole = self.integrals.build_quadrupole(positions)
             timer.stop("Quadrupole Integral")
             OutputHandler.write_stdout("done", v=3)
 
@@ -201,7 +204,7 @@ class EnergyCalculator(BaseCalculator):
         if self.opts.ints.level >= ints.levels.INTLEVEL_HCORE:
             OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ", v=3)
             timer.start("Core Hamiltonian", parent_uid="Integrals")
-            self.integrals.build_hcore(positions)
+            intmats.hcore = self.integrals.build_hcore(positions)
             timer.stop("Core Hamiltonian")
             OutputHandler.write_stdout("done", v=3)
 
@@ -223,7 +226,8 @@ class EnergyCalculator(BaseCalculator):
 
         # finalize integrals
         timer.stop("Integrals")
-        result.integrals = self.integrals
+        intmats = intmats.to(self.device)
+        result.integrals = intmats
 
         ###################################
         # SELF-CONSISTENT FIELD PROCEDURE #
@@ -253,7 +257,7 @@ class EnergyCalculator(BaseCalculator):
             icaches,
             self.ihelp,
             self.opts.scf,
-            self.integrals.matrices,
+            intmats,
             self.integrals.hcore.integral.refocc,
         )
 

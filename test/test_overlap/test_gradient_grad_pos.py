@@ -36,17 +36,17 @@ sample_list = ["H2", "HHe", "LiH", "SiH4"]
 
 tol = 1e-7
 
-device = None
+from ..conftest import DEVICE
 
 
 def gradchecker(
     dtype: torch.dtype, name: str, uplo: Literal["l", "n"]
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, par)

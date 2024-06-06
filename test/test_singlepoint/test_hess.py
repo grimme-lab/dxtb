@@ -34,10 +34,10 @@ from dxtb._src.io import read_chrg, read_coord
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import hessian
 
+from ..conftest import DEVICE
 from ..test_dispersion.samples import samples as samples_disp
 from ..test_halogen.samples import samples as samples_hal
 from ..test_repulsion.samples import samples as samples_rep
-from ..conftest import DEVICE
 
 opts = {
     "f_atol": 1.0e-10,

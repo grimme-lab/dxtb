@@ -37,14 +37,13 @@ from dxtb._src.integral.driver.pytorch.impls.md import recursion
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import t2int
 
+from ..conftest import DEVICE
 from .samples import samples
-
-device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
 def test_ss(dtype: torch.dtype):
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     ng = torch.tensor(6)
@@ -61,11 +60,11 @@ def test_ss(dtype: torch.dtype):
     s = md.overlap_gto((l1, l2), (alpha1, alpha2), (coeff1, coeff2), vec)
 
     # autograd
-    gradient = torch.autograd.grad(
+    (gradient,) = torch.autograd.grad(
         s,
         vec,
         grad_outputs=torch.ones_like(s),
-    )[0]
+    )
 
     # reference gradient from tblite
     ref = torch.tensor(
@@ -88,19 +87,19 @@ def test_ss(dtype: torch.dtype):
         rndm[i] += step
         g = 0.5 * (sr - sl) / step
 
-        assert pytest.approx(gradient[i], abs=tol) == g.item()
-        assert pytest.approx(gradient[i], abs=tol) == ref[i]
+        assert pytest.approx(gradient[i].cpu(), abs=tol) == g.cpu().item()
+        assert pytest.approx(gradient[i].cpu(), abs=tol) == ref[i].cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", ["H", "H2", "LiH", "C", "Rn", "H2O", "CH4", "SiH4"])
 def test_overlap_jacobian(dtype: torch.dtype, name: str):
     """Jacobian calculation with AD and numerical gradient."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps)
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -129,7 +128,7 @@ def test_overlap_jacobian(dtype: torch.dtype, name: str):
     # check whether dimensions are swapped
     assert torch.equal(ngrad - j, ngrad - j2)
 
-    assert pytest.approx(ngrad, rel=tol, abs=tol) == tensor_to_numpy(j)
+    assert pytest.approx(ngrad.cpu(), rel=tol, abs=tol) == tensor_to_numpy(j)
 
 
 def calc_numerical_gradient(
@@ -192,7 +191,7 @@ def compare_md(
 
     # overlap
     ovlp = md.overlap_gto((li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec)
-    assert pytest.approx(ovlp, abs=atol) == ovlp_ref
+    assert pytest.approx(ovlp.cpu(), abs=atol) == ovlp_ref.cpu()
 
     # overlap gradient with explicit E-coefficients
     ovlp_grad_exp = md.explicit.md_explicit_gradient(
@@ -213,9 +212,9 @@ def compare_md(
         [ovlp_grad_exp[i].flatten() for i in range(3)]
     ).transpose(0, 1)
 
-    assert pytest.approx(ovlp_grad_exp, abs=atol) == ovlp_grad_rec
-    assert pytest.approx(ovlp_grad_ref, abs=atol) == ovlp_grad_rec
-    assert pytest.approx(ovlp_grad_ref, abs=atol) == ovlp_grad_exp
+    assert pytest.approx(ovlp_grad_exp.cpu(), abs=atol) == ovlp_grad_rec.cpu()
+    assert pytest.approx(ovlp_grad_ref.cpu(), abs=atol) == ovlp_grad_rec.cpu()
+    assert pytest.approx(ovlp_grad_ref.cpu(), abs=atol) == ovlp_grad_exp.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

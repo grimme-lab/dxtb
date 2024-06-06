@@ -27,8 +27,8 @@ import torch
 
 from dxtb import OutputHandler
 from dxtb._src.components.interactions import Charges, Potential
+from dxtb._src.integral.container import IntegralMatrices
 from dxtb._src.typing import Any, Tensor, TensorLike
-from dxtb.integrals import Integrals
 
 __all__ = ["Result"]
 
@@ -59,7 +59,7 @@ class Result(TensorLike):
     hamiltonian: Tensor
     """Full Hamiltonian matrix (H0 + H1)."""
 
-    integrals: Integrals
+    integrals: IntegralMatrices
     """Collection of integrals including overlap and core Hamiltonian (H0)."""
 
     occupation: Tensor

@@ -26,13 +26,16 @@ from tad_mctc.batch import pack
 from tad_mctc.convert import symbol_to_number
 
 from dxtb import IndexHelper
+from dxtb._src.typing import DD
+
+from ..conftest import DEVICE
 
 
 def test_spread() -> None:
-    unique = torch.tensor([1, 6])  # include sorting
-    atom = torch.tensor([6, 1, 1, 1, 1])
-    shell = torch.tensor([6, 6, 1, 1, 1, 1, 1, 1, 1, 1])
-    orbital = torch.tensor([6, 6, 6, 6, 1, 1, 1, 1, 1, 1, 1, 1])
+    unique = torch.tensor([1, 6], device=DEVICE)  # include sorting
+    atom = torch.tensor([6, 1, 1, 1, 1], device=DEVICE)
+    shell = torch.tensor([6, 6, 1, 1, 1, 1, 1, 1, 1, 1], device=DEVICE)
+    orbital = torch.tensor([6, 6, 6, 6, 1, 1, 1, 1, 1, 1, 1, 1], device=DEVICE)
 
     angular = {
         1: [0, 0],  # H
@@ -51,18 +54,18 @@ def test_spread() -> None:
 
     # spread a "unique shell"-resolved property
     ushell = ihelp.unique_angular
-    shell = torch.tensor([0, 1, 0, 0, 0, 0, 0, 0, 0, 0])
-    orbital = torch.tensor([0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0])
+    shell = torch.tensor([0, 1, 0, 0, 0, 0, 0, 0, 0, 0], device=DEVICE)
+    orbital = torch.tensor([0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0], device=DEVICE)
     assert (ihelp.spread_ushell_to_shell(ushell) == shell).all()
     assert (ihelp.spread_ushell_to_orbital(ushell) == orbital).all()
 
 
 def test_cart() -> None:
-    unique = torch.tensor([1, 14])  # include sorting
-    atom = torch.tensor([14, 1, 1])
-    shell = torch.tensor([14, 14, 14, 1, 1, 1, 1])
-    orbital = torch.tensor([14] * 9 + [1, 1, 1, 1])
-    orbital_cart = torch.tensor([14] * 10 + [1, 1, 1, 1])
+    unique = torch.tensor([1, 14], device=DEVICE)  # include sorting
+    atom = torch.tensor([14, 1, 1], device=DEVICE)
+    shell = torch.tensor([14, 14, 14, 1, 1, 1, 1], device=DEVICE)
+    orbital = torch.tensor([14] * 9 + [1, 1, 1, 1], device=DEVICE)
+    orbital_cart = torch.tensor([14] * 10 + [1, 1, 1, 1], device=DEVICE)
 
     angular = {
         1: [0, 0],  # H
@@ -79,18 +82,20 @@ def test_cart() -> None:
     assert (ihelp.spread_atom_to_orbital_cart(atom) == orbital_cart).all()
 
     # check property
-    orb_per_at = torch.tensor([0] * 9 + [1, 1, 2, 2])
+    orb_per_at = torch.tensor([0] * 9 + [1, 1, 2, 2], device=DEVICE)
     assert (ihelp.orbitals_per_atom == orb_per_at).all()
 
     # cartesian and spherical basis
-    orb_per_shell = torch.tensor([1, 3, 5, 1, 1, 1, 1])
-    orb_per_shell_cart = torch.tensor([1, 3, 6, 1, 1, 1, 1])
+    orb_per_shell = torch.tensor([1, 3, 5, 1, 1, 1, 1], device=DEVICE)
+    orb_per_shell_cart = torch.tensor([1, 3, 6, 1, 1, 1, 1], device=DEVICE)
 
-    orb_index = torch.tensor([0, 1, 4, 9, 10, 11, 12])
-    orb_index_cart = torch.tensor([0, 1, 4, 10, 11, 12, 13])
+    orb_index = torch.tensor([0, 1, 4, 9, 10, 11, 12], device=DEVICE)
+    orb_index_cart = torch.tensor([0, 1, 4, 10, 11, 12, 13], device=DEVICE)
 
-    orb_to_shell = torch.tensor([0, 1, 1, 1, 2, 2, 2, 2, 2, 3, 4, 5, 6])
-    orb_to_shell_cart = torch.tensor([0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 4, 5, 6])
+    orb_to_shell = torch.tensor([0, 1, 1, 1, 2, 2, 2, 2, 2, 3, 4, 5, 6], device=DEVICE)
+    orb_to_shell_cart = torch.tensor(
+        [0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 4, 5, 6], device=DEVICE
+    )
 
     assert (ihelp.orbital_index == orb_index).all()
     assert (ihelp.orbital_index_cart == orb_index_cart).all()
@@ -104,7 +109,11 @@ def test_cart() -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_single(dtype: torch.dtype):
-    numbers = symbol_to_number("S H H H Mg N O S N N C H C H O N".split())
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
+    num = symbol_to_number("S H H H Mg N O S N N C H C H O N".split())
+    numbers = num.to(DEVICE)
+
     angular = {
         1: [0],  # H (GFN2!)
         6: [0, 1],  # C
@@ -127,7 +136,7 @@ def test_single(dtype: torch.dtype):
             *[+2.02080948377078e-1, +1.74595453525400e-1, -4.46124496927388e-1],
             *[-2.95778570663624e-1],
         ],
-        dtype=dtype,
+        **dd,
     )
     qsh = torch.tensor(
         [
@@ -142,20 +151,24 @@ def test_single(dtype: torch.dtype):
             *[+2.46906120671464e-1, +1.74594629792853e-1, +2.06932598673206e-1],
             *[-6.52990922441455e-1, -6.98603488893812e-3, -2.88854759086314e-1],
         ],
-        dtype=dtype,
+        **dd,
     )
 
-    assert pytest.approx(qat, abs=1.0e-4) == ihelp.reduce_shell_to_atom(qsh)
+    q = ihelp.reduce_shell_to_atom(qsh)
+    assert pytest.approx(qat.cpu(), abs=1.0e-4) == q.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_batch(dtype: torch.dtype):
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
     numbers = pack(
         (
             symbol_to_number("O Al Si H Li H Cl Al H H B H H B H H".split()),
             symbol_to_number("H H Si H Na S H H Al H C Si Cl B B H".split()),
         )
-    )
+    ).to(DEVICE)
+
     angular = {
         1: [0],  # H (GFN2!)
         3: [0, 1],  # Li
@@ -184,7 +197,7 @@ def test_batch(dtype: torch.dtype):
                     *[-1.41198286268662e-1, +1.05227974737201e-2, -1.31666840327078e-1],
                     *[-1.20629924063582e-1],
                 ],
-                dtype=dtype,
+                **dd,
             ),
             torch.tensor(
                 [
@@ -195,7 +208,7 @@ def test_batch(dtype: torch.dtype):
                     *[-3.10094747569162e-1, +1.56794592474036e-1, +2.13459748796815e-1],
                     *[-1.29714432165776e-1],
                 ],
-                dtype=dtype,
+                **dd,
             ),
         )
     )
@@ -214,7 +227,7 @@ def test_batch(dtype: torch.dtype):
                     *[+1.11757931464608e-0, -1.10704872438469e-0, -1.31668946428877e-1],
                     *[-1.20631076436794e-1],
                 ],
-                dtype=dtype,
+                **dd,
             ),
             torch.tensor(
                 [
@@ -229,26 +242,26 @@ def test_batch(dtype: torch.dtype):
                     *[-2.13102162478342e-4, +1.13142747674328e-0, -9.74609683930292e-1],
                     *[+1.02802427493832e-0, -8.14556120567196e-1, -1.29715170834719e-1],
                 ],
-                dtype=dtype,
+                **dd,
             ),
         )
     )
 
-    assert torch.allclose(
-        qat,
-        ihelp.reduce_shell_to_atom(qsh),
-        atol=1.0e-4,
-    )
+    q = ihelp.reduce_shell_to_atom(qsh)
+    assert pytest.approx(qat.cpu(), abs=1.0e-4) == q.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_batch2(dtype: torch.dtype):
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
     numbers = pack(
         (
             symbol_to_number("O Al Si H Li H Cl Al H H B H H B H H".split()),
             symbol_to_number("Si H H H H".split()),
         )
-    )
+    ).to(DEVICE)
+
     angular = {
         1: [0],  # H (GFN2!)
         3: [0, 1],  # Li
@@ -277,14 +290,14 @@ def test_batch2(dtype: torch.dtype):
                     *[-1.41198286268662e-1, +1.05227974737201e-2, -1.31666840327078e-1],
                     *[-1.20629924063582e-1],
                 ],
-                dtype=dtype,
+                **dd,
             ),
             torch.tensor(
                 [
                     *[+4.40703021483644e-1, -1.10175755370910e-1, -1.10175755370912e-1],
                     *[-1.10175755370911e-1, -1.10175755370911e-1],
                 ],
-                dtype=dtype,
+                **dd,
             ),
         )
     )
@@ -303,7 +316,7 @@ def test_batch2(dtype: torch.dtype):
                     *[+1.11757931464608e-0, -1.10704872438469e-0, -1.31668946428877e-1],
                     *[-1.20631076436794e-1],
                 ],
-                dtype=dtype,
+                **dd,
             ),
             torch.tensor(
                 [
@@ -311,26 +324,25 @@ def test_batch2(dtype: torch.dtype):
                     *[-1.10175755370910e-1, -1.10175755370912e-1, -1.10175755370911e-1],
                     *[-1.10175755370911e-1],
                 ],
-                dtype=dtype,
+                **dd,
             ),
         )
     )
 
-    assert torch.allclose(
-        qat,
-        ihelp.reduce_shell_to_atom(qsh),
-        atol=1.0e-4,
-    )
+    q = ihelp.reduce_shell_to_atom(qsh)
+    assert pytest.approx(qat.cpu(), abs=1.0e-4) == q.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_batch_2dim(dtype: torch.dtype) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
     numbers = pack(
         (
             symbol_to_number("H H".split()),
             symbol_to_number("Li H".split()),
         )
-    )
+    ).to(DEVICE)
     angular = {
         1: [0, 0],  # H
         3: [0, 1],  # Li
@@ -349,7 +361,7 @@ def test_batch_2dim(dtype: torch.dtype) -> None:
                 [0.5933173895, 2.0000000000],
             ],
         ],
-        dtype=dtype,
+        **dd,
     )
 
     s_h2 = torch.tensor(
@@ -379,7 +391,7 @@ def test_batch_2dim(dtype: torch.dtype) -> None:
                 1.0000000000e00,
             ],
         ],
-        dtype=dtype,
+        **dd,
     )
 
     s_lih = torch.tensor(
@@ -433,10 +445,10 @@ def test_batch_2dim(dtype: torch.dtype) -> None:
                 1.0000000000e00,
             ],
         ],
-        dtype=dtype,
+        **dd,
     )
 
     s = pack([s_h2, s_lih])
 
     s_atom = ihelp.reduce_orbital_to_atom(s, dim=(-2, -1))
-    assert pytest.approx(ref) == s_atom
+    assert pytest.approx(ref.cpu()) == s_atom.cpu()

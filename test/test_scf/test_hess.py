@@ -29,9 +29,9 @@ from dxtb._src.constants import labels
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import _hessian as hessian
 
+from ..conftest import DEVICE
 from ..utils import reshape_fortran
 from .samples import samples
-from ..conftest import DEVICE
 
 sample_list = ["LiH", "SiH4"]
 

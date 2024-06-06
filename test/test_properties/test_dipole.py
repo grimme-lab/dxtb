@@ -32,6 +32,7 @@ from dxtb._src.components.interactions import new_efield
 from dxtb._src.typing import DD, Tensor
 from dxtb.labels import INTLEVEL_DIPOLE
 
+from ..conftest import DEVICE
 from .samples import samples
 
 slist = ["H", "H2", "LiH", "HHe", "H2O", "CH4", "SiH4", "PbH4-BiH3"]
@@ -47,8 +48,6 @@ opts = {
     "x_atol": 1.0e-9,
 }
 
-device = None
-
 
 def single(
     name: str,
@@ -58,7 +57,7 @@ def single(
     atol: float = 1e-5,
     rtol: float = 1e-5,
 ) -> None:
-    numbers = samples[name]["numbers"].to(device)
+    numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
     ref = samples[name][refdipole].to(**dd)
     charge = torch.tensor(0.0, **dd)
@@ -79,8 +78,8 @@ def batched(
 
     numbers = pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ],
     )
     positions = pack(
@@ -110,17 +109,19 @@ def execute(
     atol: float,
     rtol: float,
 ) -> None:
+    npref = tensor_to_numpy(ref)
+
     # create additional interaction and pass to Calculator
     efield = new_efield(field_vector)
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
     # field is cloned and detached and updated inside
-    num = calc.dipole_numerical(positions, charge)
-    assert pytest.approx(ref, abs=atol, rel=rtol) == num
+    num = tensor_to_numpy(calc.dipole_numerical(positions, charge))
+    assert pytest.approx(npref, abs=atol, rel=rtol) == num
 
     # analytical
     dip0 = tensor_to_numpy(calc.dipole_analytical(positions, charge))
-    assert pytest.approx(ref, abs=atol, rel=rtol) == dip0
+    assert pytest.approx(npref, abs=atol, rel=rtol) == dip0
     assert pytest.approx(num, abs=atol, rel=rtol) == dip0
 
     # required for autodiff of energy w.r.t. efield
@@ -128,13 +129,13 @@ def execute(
 
     # manual jacobian
     dip1 = tensor_to_numpy(calc.dipole(positions, charge, use_functorch=False))
-    assert pytest.approx(ref, abs=atol, rel=rtol) == dip1
+    assert pytest.approx(npref, abs=atol, rel=rtol) == dip1
     assert pytest.approx(num, abs=atol, rel=rtol) == dip1
     assert pytest.approx(dip0, abs=atol, rel=rtol) == dip1
 
     # jacrev of energy
     dip2 = tensor_to_numpy(calc.dipole(positions, charge, use_functorch=True))
-    assert pytest.approx(ref, abs=atol, rel=rtol) == dip2
+    assert pytest.approx(npref, abs=atol, rel=rtol) == dip2
     assert pytest.approx(num, abs=atol, rel=rtol) == dip2
     assert pytest.approx(dip0, abs=atol, rel=rtol) == dip2
     assert pytest.approx(dip1, abs=atol, rel=rtol) == dip2
@@ -143,7 +144,7 @@ def execute(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)  # * VAA2AU
     single(name, "dipole", field_vector, dd=dd, atol=1e-3)
@@ -153,7 +154,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist_large)
 def test_single_large(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)  # * VAA2AU
     single(name, "dipole", field_vector, dd=dd, atol=1e-3)
@@ -162,7 +163,7 @@ def test_single_large(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist)
 def test_single_field(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * VAA2AU
     single(name, "dipole2", field_vector, dd=dd, atol=1e-3, rtol=1e-3)
@@ -172,7 +173,7 @@ def test_single_field(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist_large)
 def test_single_field_large(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * VAA2AU
     single(name, "dipole2", field_vector, dd=dd, atol=1e-3, rtol=1e-3)
@@ -182,7 +183,7 @@ def test_single_field_large(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", slist)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)  # * VAA2AU
     batched(name1, name2, "dipole", field_vector, dd=dd, atol=1e-3)
@@ -200,14 +201,14 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 def test_batch_settings(
     dtype: torch.dtype, name1: str, name2: str, scp_mode: str, mixer: str
 ) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
 
     numbers = pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ],
     )
 
@@ -236,7 +237,7 @@ def test_batch_settings(
     calc = Calculator(numbers, par, interaction=[efield], opts=options, **dd)
 
     dipole = tensor_to_numpy(calc.dipole(positions, charge))
-    assert pytest.approx(ref, abs=1e-4) == dipole
+    assert pytest.approx(ref.cpu(), abs=1e-4) == dipole
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -244,14 +245,14 @@ def test_batch_settings(
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", ["HHe", "LiH", "H2O"])
 def test_batch_unconverged(dtype: torch.dtype, name1: str, name2: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
 
     numbers = pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ],
     )
 
@@ -282,4 +283,4 @@ def test_batch_unconverged(dtype: torch.dtype, name1: str, name2: str) -> None:
     calc = Calculator(numbers, par, interaction=[efield], opts=options, **dd)
 
     dipole = tensor_to_numpy(calc.dipole(positions, charge))
-    assert pytest.approx(ref, abs=1e-2, rel=1e-3) == dipole
+    assert pytest.approx(ref.cpu(), abs=1e-2, rel=1e-3) == dipole

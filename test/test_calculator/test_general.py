@@ -51,7 +51,7 @@ def run_asserts(c: Calculator, dtype: torch.dtype) -> None:
     assert c.integrals.overlap is not None
     assert c.integrals.overlap.dtype == dtype
 
-    assert c.integrals.matrices.dtype == dtype
+    assert c.integrals.dtype == dtype
 
     assert c.integrals.driver.dtype == dtype
 
@@ -83,10 +83,10 @@ def test_change_type_after_energy() -> None:
     assert calc_64.integrals.driver.basis.pqn.dtype == torch.uint8
     assert calc_64.integrals.driver.basis.slater.dtype == dtype
 
-    assert calc_64.integrals.matrices.hcore is not None
-    assert calc_64.integrals.matrices.hcore.dtype == dtype
-    assert calc_64.integrals.matrices.overlap is not None
-    assert calc_64.integrals.matrices.overlap.dtype == dtype
+    assert calc_64.integrals.hcore is not None
+    assert calc_64.integrals.hcore.dtype == dtype
+    assert calc_64.integrals.overlap is not None
+    assert calc_64.integrals.overlap.dtype == dtype
 
     ############################################################################
 

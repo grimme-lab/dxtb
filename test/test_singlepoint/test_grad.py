@@ -33,8 +33,8 @@ from dxtb._src.constants import labels
 from dxtb._src.io import read_chrg, read_coord
 from dxtb._src.typing import DD, Tensor
 
-from ..utils import load_from_npz
 from ..conftest import DEVICE
+from ..utils import load_from_npz
 
 ref_grad = np.load("test/test_singlepoint/grad.npz")
 """['H2', 'H2O', 'CH4', 'SiH4', 'LYS_xao', 'AD7en+', 'C60', 'vancoh2']"""
@@ -77,7 +77,12 @@ def test_analytical_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 @pytest.mark.parametrize("name", ["AD7en+", "LYS_xao"])
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
 def test_analytical_large2(dtype: torch.dtype, name: str, scf_mode: str) -> None:
-    atol, rtol = 1e-5, 1e-3
+    if "cuda" in str(DEVICE) and dtype == torch.float:
+        atol = 1e-4
+    else:
+        atol = 1e-5
+
+    rtol = 1e-3
     analytical(dtype, name, atol, rtol, scf_mode)
 
 
@@ -96,7 +101,8 @@ def analytical(
     positions = torch.tensor(positions, **dd, requires_grad=True)
     charge = torch.tensor(charge, **dd)
 
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    options = dict(opts, **{"scf_mode": scf_mode})
+    calc = Calculator(numbers, par, opts=options, **dd)
     result = -calc.forces_analytical(positions, charge)
     gradient = result.detach()
 

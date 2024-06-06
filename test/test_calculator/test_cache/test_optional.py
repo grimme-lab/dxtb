@@ -25,8 +25,7 @@ import torch
 
 from dxtb._src.typing import DD, Tensor
 from dxtb.calculators import GFN1Calculator
-
-DEVICE = None
+from ...conftest import DEVICE
 
 
 opts = {"cache_enabled": True, "verbosity": 0}

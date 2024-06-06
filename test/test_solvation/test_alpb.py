@@ -32,6 +32,7 @@ from dxtb._src.components.interactions.solvation import alpb
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
+from ..conftest import DEVICE
 from .samples import samples
 
 opts = {
@@ -42,19 +43,17 @@ opts = {
     "verbosity": 0,
 }
 
-device = None
-
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["MB16_43_01", "MB16_43_02"])
 def test_gb_single(dtype: torch.dtype, name: str, dielectric_constant=78.9):
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     dielectric_constant = torch.tensor(dielectric_constant, **dd)
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     charges = sample["charges"].to(**dd)
     ref = sample["energies"].to(**dd)
@@ -63,19 +62,19 @@ def test_gb_single(dtype: torch.dtype, name: str, dielectric_constant=78.9):
     cache = gb.get_cache(numbers, positions)
     energies = gb.get_atom_energy(charges, cache)
 
-    assert pytest.approx(energies, abs=tol) == ref
+    assert pytest.approx(energies.cpu(), abs=tol) == ref.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["MB16_43_01", "MB16_43_02"])
 def test_gb_still_single(dtype: torch.dtype, name: str, dielectric_constant=78.9):
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     dc = torch.tensor(dielectric_constant, **dd)
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     charges = sample["charges"].to(**dd)
     rvdw = VDW_D3.to(**dd)[numbers]
@@ -85,7 +84,7 @@ def test_gb_still_single(dtype: torch.dtype, name: str, dielectric_constant=78.9
     cache = gb.get_cache(numbers, positions)
     energies = gb.get_atom_energy(charges, cache)
 
-    assert pytest.approx(energies, abs=tol) == ref
+    assert pytest.approx(energies.cpu(), abs=tol) == ref.cpu()
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -93,10 +92,10 @@ def test_gb_still_single(dtype: torch.dtype, name: str, dielectric_constant=78.9
 @pytest.mark.parametrize("name", ["MB16_43_01"])
 def test_gb_scf(dtype: torch.dtype, name: str, dielectric_constant=78.9):
     tol = 1e-3 if dtype == torch.float else 1e-5
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = sample["gsolv"]
     charges = torch.tensor(0.0).type(dtype)
@@ -112,4 +111,4 @@ def test_gb_scf(dtype: torch.dtype, name: str, dielectric_constant=78.9):
 
     gsolv = results_sol.scf - results_vac.scf
 
-    assert pytest.approx(ref, abs=tol) == gsolv
+    assert pytest.approx(ref.cpu(), abs=tol) == gsolv.cpu()

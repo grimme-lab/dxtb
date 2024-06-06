@@ -25,6 +25,7 @@ import torch
 
 from dxtb import IndexHelper
 from dxtb._src.scf import guess
+
 from ..conftest import DEVICE
 
 numbers = torch.tensor([6, 1], device=DEVICE)

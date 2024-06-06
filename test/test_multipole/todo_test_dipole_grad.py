@@ -32,13 +32,12 @@ from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import batch, is_basis_list
 
 from .samples import samples
+from ..conftest import DEVICE
 
 sample_list = ["H2", "HHe", "LiH", "Li2", "S2", "H2O", "SiH4"]
 
 # FIXME: Investigate low tolerance (normally 1e-7)!
 tol = 1e-7
-
-device = None
 
 
 def num_grad(
@@ -85,13 +84,12 @@ def num_grad(
 @pytest.mark.parametrize("name", sample_list)
 def test_grad(dtype: torch.dtype, name: str):
     """Prepare gradient check from `torch.autograd`."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
-    positions[0] = torch.tensor([0, 0, 0])
-    print(positions)
+    positions[0] = torch.tensor([0, 0, 0], **dd)
     positions.requires_grad_(True)
 
     ihelp = IndexHelper.from_numbers(numbers, par)

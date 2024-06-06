@@ -30,6 +30,7 @@ from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.typing import DD, Tensor
 
+from ..conftest import DEVICE
 from .samples import samples
 
 slist = ["H", "LiH", "HHe", "H2O"]
@@ -45,16 +46,14 @@ opts = {
     "x_atol": 1e-10,
 }
 
-device = None
-
 
 # FIXME: Autograd should also work on those
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist)
 def skip_test_autograd(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
-    numbers = samples[name]["numbers"].to(device)
+    numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
 
@@ -76,7 +75,7 @@ def single(
     atol: float = 1e-5,
     rtol: float = 1e-5,
 ) -> None:
-    numbers = samples[name]["numbers"].to(device)
+    numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
 
@@ -94,8 +93,8 @@ def batched(
 
     numbers = pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ],
     )
     positions = pack(
@@ -161,7 +160,7 @@ def execute(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     single(name, dd=dd)
 
 
@@ -170,5 +169,5 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", slist)
 def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     batched(name1, name2, dd=dd)

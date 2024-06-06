@@ -34,23 +34,22 @@ from dxtb._src.param.gfn2 import GFN2_XTB
 from dxtb._src.typing import DD, Literal
 from dxtb._src.utils import batch
 
+from ..conftest import DEVICE
 from .samples import samples
 
 sample_list = ["H2", "H2O", "SiH4", "ZnOOH-", "MB16_43_01", "MB16_43_02", "LYS_xao"]
-
-device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 @pytest.mark.parametrize("par", ["gfn1", "gfn2"])
 def test_single(dtype: torch.dtype, name: str, par: Literal["gfn1", "gfn2"]) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
 
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = sample[par].to(**dd)
 
@@ -68,7 +67,7 @@ def test_single(dtype: torch.dtype, name: str, par: Literal["gfn1", "gfn2"]) -> 
     cache = rep.get_cache(numbers, ihelp)
     e = rep.get_energy(positions, cache, atom_resolved=False)
 
-    assert pytest.approx(ref, abs=tol) == 0.5 * e.sum((-2, -1))
+    assert pytest.approx(ref.cpu(), abs=tol) == 0.5 * e.sum((-2, -1)).cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -78,15 +77,15 @@ def test_single(dtype: torch.dtype, name: str, par: Literal["gfn1", "gfn2"]) -> 
 def test_batch(
     dtype: torch.dtype, name1: str, name2: str, par: Literal["gfn1", "gfn2"]
 ) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample1, sample2 = samples[name1], samples[name2]
 
     numbers = batch.pack(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         )
     )
     positions = batch.pack(
@@ -116,4 +115,4 @@ def test_batch(
     cache = rep.get_cache(numbers, ihelp)
     e = rep.get_energy(positions, cache)
 
-    assert pytest.approx(ref, abs=tol) == e.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol) == e.sum(-1).cpu()

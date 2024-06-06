@@ -35,17 +35,16 @@ from dxtb._src.utils import is_basis_list
 
 from ..utils import load_from_npz
 from .samples import samples
+from ..conftest import DEVICE
 
 ref_overlap = np.load("test/test_overlap/grad.npz")
 
 sample_list = ["H2", "LiH", "H2O", "SiH4"]
 
-device = None
-
 
 def explicit(name: str, dd: DD, tol: float) -> None:
     sample = samples[name]
-    numbers = sample["numbers"].to(device)  # nat
+    numbers = sample["numbers"].to(DEVICE)  # nat
     positions = sample["positions"].to(**dd)  # nat, 3
     ref = load_from_npz(ref_overlap, name, **dd)
 
@@ -72,13 +71,13 @@ def explicit(name: str, dd: DD, tol: float) -> None:
     # the nabla w.r.t. the spatial coordinate, not the basis central position
     final_grad = -2 * grad.sum(-2)
 
-    assert pytest.approx(ref, abs=tol) == final_grad
+    assert pytest.approx(ref.cpu(), abs=tol) == final_grad.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_explicit(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps) * 10
     explicit(name, dd, tol)
 
@@ -86,13 +85,13 @@ def test_explicit(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["MB16_43_01"])
 def test_explicit_medium(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     explicit(name, dd, 1e-5)
 
 
 def autograd(name: str, dd: DD, tol: float) -> None:
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = load_from_npz(ref_overlap, name, **dd)
 
@@ -112,13 +111,13 @@ def autograd(name: str, dd: DD, tol: float) -> None:
     (g,) = torch.autograd.grad(s.sum(), positions)
     positions.detach_()
 
-    assert pytest.approx(ref, abs=tol) == g
+    assert pytest.approx(ref.cpu(), abs=tol) == g.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_autograd(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps) * 10
     autograd(name, dd, tol)
 
@@ -126,7 +125,7 @@ def test_autograd(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["MB16_43_01"])
 def test_autograd_medium(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     autograd(name, dd, 1e-5)
 
 

@@ -45,10 +45,9 @@ except ImportError:
     pyscf = False
 
 from .samples import samples
+from ..conftest import DEVICE
 
 sample_list = ["H2", "LiH", "Li2", "H2O", "S", "SiH4", "MB16_43_01", "C60"]
-
-device = None
 
 
 def snorm(overlap: Tensor) -> Tensor:
@@ -84,11 +83,11 @@ def extract_blocks(x: Tensor, block_sizes: list[int] | Tensor) -> list[Tensor]:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps) * 1e-2
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -105,7 +104,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     pyscf_overlap = numpy_to_tensor(mol.intor("int1e_ovlp"), **dd)
 
     assert dxtb_overlap.shape == pyscf_overlap.shape
-    assert pytest.approx(pyscf_overlap, abs=tol) == dxtb_overlap
+    assert pytest.approx(pyscf_overlap.cpu(), abs=tol) == dxtb_overlap.cpu()
 
     # normalize dxtb's overlap
     norm = snorm(dxtb_overlap)
@@ -115,7 +114,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     norm = snorm(pyscf_overlap)
     pyscf_overlap = torch.einsum("ij,i,j->ij", pyscf_overlap, norm, norm)
     assert dxtb_overlap.shape == pyscf_overlap.shape
-    assert pytest.approx(pyscf_overlap, abs=tol) == dxtb_overlap
+    assert pytest.approx(pyscf_overlap.cpu(), abs=tol) == dxtb_overlap.cpu()
 
 
 @pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
@@ -128,13 +127,13 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     calculated that is only populated on the diagonal.
     """
     tol = sqrt(torch.finfo(dtype).eps) * 1e-2
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = torch.cat(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         )
     )
     positions = torch.cat(
@@ -159,7 +158,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     pyscf_overlap = numpy_to_tensor(mol.intor("int1e_ovlp"), **dd)
 
     assert dxtb_overlap.shape == pyscf_overlap.shape
-    assert pytest.approx(pyscf_overlap, abs=tol) == dxtb_overlap
+    assert pytest.approx(pyscf_overlap.cpu(), abs=tol) == dxtb_overlap.cpu()
 
     # normalize dxtb's overlap
     norm = snorm(dxtb_overlap)
@@ -170,10 +169,15 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     pyscf_overlap = torch.einsum("ij,i,j->ij", pyscf_overlap, norm, norm)
 
     assert dxtb_overlap.shape == pyscf_overlap.shape
-    assert pytest.approx(pyscf_overlap, abs=tol) == dxtb_overlap
+    assert pytest.approx(pyscf_overlap.cpu(), abs=tol) == dxtb_overlap.cpu()
 
     # we could also extract the blocks and pack them as usual
-    n = pack((sample1["numbers"].to(device), sample2["numbers"].to(device)))
+    n = pack(
+        (
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
+        )
+    )
     ihelp2 = IndexHelper.from_numbers(n, par)
     sizes = ihelp2.orbitals_per_shell.sum(-1)
     out = extract_blocks(dxtb_overlap, sizes)
@@ -187,11 +191,11 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_grad(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps) * 1e-2
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -206,4 +210,4 @@ def test_grad(dtype: torch.dtype, name: str) -> None:
     int2 = numpy_to_tensor(mol.intor("int1e_ipovlp"), **dd)
 
     assert int1.shape == int2.shape
-    assert pytest.approx(int2, abs=tol) == int1
+    assert pytest.approx(int2.cpu(), abs=tol) == int1.cpu()

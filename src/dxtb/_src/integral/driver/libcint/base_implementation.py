@@ -25,10 +25,11 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from typing import TYPE_CHECKING
+
 import torch
 
 from dxtb._src.constants import labels
-from dxtb._src.typing import Tensor, override, Self
+from dxtb._src.typing import Self, Tensor, override
 
 from ...base import BaseIntegralImplementation
 

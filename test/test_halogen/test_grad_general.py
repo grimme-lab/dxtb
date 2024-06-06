@@ -28,19 +28,18 @@ from dxtb import IndexHelper
 from dxtb._src.components.classicals import new_halogen
 from dxtb._src.typing import DD
 
+from ..conftest import DEVICE
 from .samples import samples
-
-device = None
 
 
 @pytest.mark.grad
 @pytest.mark.parametrize("name", ["br2nh3"])
 def test_grad_fail(name: str) -> None:
     dtype = torch.double
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     xb = new_halogen(numbers, par, **dd)

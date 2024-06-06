@@ -25,23 +25,27 @@ import torch
 
 from dxtb._src.cli import Driver, parser
 from dxtb._src.timing import timer
+from dxtb._src.typing import DD
 
 from ..utils import coordfile
+from ..conftest import DEVICE
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_driver(dtype: torch.dtype) -> None:
-    ref = torch.tensor(-1.0362714373390, dtype=dtype)
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    ref = torch.tensor(-1.0362714373390, **dd)
 
     dtype_str = "float32" if dtype == torch.float else "double"
-    opts = f"--verbosity 0 --grad --chrg 0 --dtype {dtype_str} {coordfile}"
+    opts = f"--verbosity 0 --grad --chrg 0 --dtype {dtype_str} --device {DEVICE} {coordfile}"
     args = parser().parse_args(opts.split())
     d = Driver(args)
     result = d.singlepoint()
     assert result is not None
 
     energy = result.total.sum(-1).detach()
-    assert pytest.approx(ref) == energy
+    assert pytest.approx(ref.cpu()) == energy.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -54,7 +58,7 @@ def test_empty(dtype: torch.dtype) -> None:
     assert result is not None
 
     energy = result.total.sum(-1).detach()
-    assert pytest.approx(0.0) == energy
+    assert pytest.approx(0.0) == energy.cpu()
 
 
 # TODO: "Exclude all" and "grad" do not work together! Fix this!
@@ -73,7 +77,7 @@ def test_empty_grad(dtype: torch.dtype) -> None:
     energy = result.total.sum(-1).detach()
 
     timer.enable()
-    assert pytest.approx(0.0) == energy
+    assert pytest.approx(0.0) == energy.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -86,7 +90,7 @@ def test_empty_interactions(dtype: torch.dtype) -> None:
     assert result is not None
 
     energy = result.total.sum(-1).detach()
-    assert pytest.approx(-1.036271443341644) == energy
+    assert pytest.approx(-1.036271443341644) == energy.cpu()
 
 
 def test_fail() -> None:

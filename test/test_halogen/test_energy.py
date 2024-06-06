@@ -31,9 +31,8 @@ from dxtb._src.components.classicals import new_halogen
 from dxtb._src.typing import DD
 from dxtb._src.utils import batch
 
+from ..conftest import DEVICE
 from .samples import samples
-
-device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -44,11 +43,11 @@ def test_small(dtype: torch.dtype, name: str) -> None:
     the tblite test suite.
     """
     tol = sqrt(torch.finfo(dtype).eps)
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
 
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = sample["energy"].to(**dd)
 
@@ -59,7 +58,7 @@ def test_small(dtype: torch.dtype, name: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
     energy = xb.get_energy(positions, cache)
-    assert pytest.approx(ref, rel=tol, abs=tol) == torch.sum(energy)
+    assert pytest.approx(ref.cpu(), rel=tol, abs=tol) == torch.sum(energy).cpu()
 
 
 @pytest.mark.large
@@ -72,11 +71,11 @@ def test_large(dtype: torch.dtype, name: str) -> None:
     Br and one O is added in order to obtain different donors and acceptors.
     """
     tol = sqrt(torch.finfo(dtype).eps)
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
 
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = sample["energy"].to(**dd)
 
@@ -87,18 +86,18 @@ def test_large(dtype: torch.dtype, name: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
     energy = xb.get_energy(positions, cache)
-    assert pytest.approx(ref, abs=tol, rel=tol) == torch.sum(energy)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == torch.sum(energy).cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_no_xb(dtype: torch.dtype) -> None:
     """Test system without halogen bonds."""
     tol = sqrt(torch.finfo(dtype).eps)
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples["LYS_xao"]
 
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = sample["energy"].to(**dd)
 
@@ -109,19 +108,20 @@ def test_no_xb(dtype: torch.dtype) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
     energy = xb.get_energy(positions, cache)
-    assert pytest.approx(ref, abs=tol, rel=tol) == torch.sum(energy)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == torch.sum(energy).cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_beyond_cutoff(dtype: torch.dtype) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
-    numbers = torch.tensor([7, 35])
+    numbers = torch.tensor([7, 35], device=DEVICE)
     positions = torch.tensor(
         [
             [0.0, 0.0, 0.0],
             [0.0, 0.0, 100.0],
-        ]
+        ],
+        **dd,
     )
 
     xb = new_halogen(numbers, par, **dd)
@@ -131,7 +131,7 @@ def test_beyond_cutoff(dtype: torch.dtype) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
     energy = xb.get_energy(positions, cache)
-    assert pytest.approx(0.0) == torch.sum(energy)
+    assert pytest.approx(0.0) == torch.sum(energy).cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -139,14 +139,14 @@ def test_beyond_cutoff(dtype: torch.dtype) -> None:
 @pytest.mark.parametrize("name2", ["finch", "tmpda"])
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps)
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
 
     numbers = batch.pack(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         )
     )
     positions = batch.pack(
@@ -169,4 +169,5 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
     energy = xb.get_energy(positions, cache)
-    assert pytest.approx(ref, abs=tol, rel=tol) == torch.sum(energy, dim=-1)
+    e = torch.sum(energy, dim=-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == e.cpu()

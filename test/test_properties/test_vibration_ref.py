@@ -30,6 +30,7 @@ from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.typing import DD
 
+from ..conftest import DEVICE
 from .samples import samples
 
 # FIXME: "HHe" is completely off
@@ -45,11 +46,9 @@ opts = {
     "x_atol": 1.0e-9,
 }
 
-device = None
-
 
 def single(name: str, dd: DD, atol: float, rtol: float) -> None:
-    numbers = samples[name]["numbers"].to(device)
+    numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
     ref = samples[name]["freqs"].to(**dd)
@@ -77,7 +76,7 @@ def single(name: str, dd: DD, atol: float, rtol: float) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     atol, rtol = 10, 1e-3
     single(name, dd=dd, atol=atol, rtol=rtol)
 
@@ -86,7 +85,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", ["PbH4-BiH3", "MB16_43_01", "LYS_xao"])
 def test_single_large(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     atol, rtol = 10, 1e-3
     single(name, dd=dd, atol=atol, rtol=rtol)
 
@@ -96,8 +95,8 @@ def batched(name1: str, name2: str, dd: DD, atol: float, rtol: float) -> None:
 
     numbers = pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ],
     )
     positions = pack(
@@ -133,7 +132,7 @@ def batched(name1: str, name2: str, dd: DD, atol: float, rtol: float) -> None:
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", slist)
 def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     batched(name1, name2, dd=dd, atol=10, rtol=1e-3)
 
 
@@ -143,5 +142,5 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", slist_large)
 def skip_test_batch_large(dtype: torch.dtype, name1: str, name2) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     batched(name1, name2, dd=dd, atol=10, rtol=1e-3)

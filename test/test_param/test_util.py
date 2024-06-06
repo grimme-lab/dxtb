@@ -49,10 +49,10 @@ def test_pair_param() -> None:
     )
 
     kpair = get_pair_param(numbers, par.hamiltonian.xtb.kpair)
-    assert pytest.approx(ref) == kpair
+    assert pytest.approx(ref.cpu()) == kpair.cpu()
 
     kpair = get_pair_param(symbols, par.hamiltonian.xtb.kpair)
-    assert pytest.approx(ref) == kpair
+    assert pytest.approx(ref.cpu()) == kpair.cpu()
 
 
 def test_elem_param() -> None:

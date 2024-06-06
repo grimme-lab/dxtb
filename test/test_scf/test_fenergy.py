@@ -28,8 +28,8 @@ from dxtb import Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
-from .uhf_table import uhf_anion, uhf_cation
 from ..conftest import DEVICE
+from .uhf_table import uhf_anion, uhf_cation
 
 opts = {
     "fermi_etemp": 300,

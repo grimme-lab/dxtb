@@ -35,23 +35,22 @@ from dxtb._src.utils import batch
 from dxtb._src.wavefunction import filling
 from dxtb.config import ConfigSCF
 
+from ..conftest import DEVICE
 from .samples import samples
 
 sample_list = ["H", "H2", "LiH", "SiH4", "S2"]
 
-device = None
-
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_fail(dtype: torch.dtype):
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
-    evals = torch.arange(1, 6, dtype=dtype)
-    nel = torch.tensor([4.0, 4.0], dtype=dtype)
+    evals = torch.arange(1, 6, **dd)
+    nel = torch.tensor([4.0, 4.0], **dd)
 
     #
     with pytest.raises(RuntimeError):
-        filling.get_alpha_beta_occupation(nel, uhf=torch.tensor([0.0]))
+        filling.get_alpha_beta_occupation(nel, uhf=torch.tensor([0.0], **dd))
 
     # wrong type
     with pytest.raises(TypeError):
@@ -60,7 +59,7 @@ def test_fail(dtype: torch.dtype):
 
     # negative etemp
     with pytest.raises(ValueError):
-        kt = torch.tensor(-1.0, dtype=dtype)
+        kt = torch.tensor(-1.0, **dd)
         filling.get_fermi_occupation(nel, evals, kt)
 
     # convergence fails
@@ -76,7 +75,7 @@ def test_fail(dtype: torch.dtype):
 @pytest.mark.parametrize("uhf", [[0, 0, 0], [1, 1, 0], [3, 1, 0]])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_fail_uhf(dtype: torch.dtype, uhf: list):
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     with pytest.raises(ValueError):
         nel = torch.tensor([2, 1, 2], **dd)
@@ -85,17 +84,19 @@ def test_fail_uhf(dtype: torch.dtype, uhf: list):
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_no_electrons(dtype: torch.dtype):
-    evals = torch.arange(1, 6, dtype=dtype)
-    nel = torch.tensor(0.0, dtype=dtype)
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    evals = torch.arange(1, 6, **dd)
+    nel = torch.tensor(0.0, **dd)
     occ = filling.get_fermi_occupation(nel, evals, None)
 
-    assert pytest.approx(torch.zeros_like(occ)) == occ
+    assert pytest.approx(torch.zeros_like(occ).cpu()) == occ.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str):
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
@@ -112,17 +113,17 @@ def test_single(dtype: torch.dtype, name: str):
     kt = emo.new_tensor(300 * KELVIN2AU)
 
     efermi, _ = filling.get_fermi_energy(nab, emo)
-    assert pytest.approx(ref_efermi, abs=tol) == efermi
+    assert pytest.approx(ref_efermi.cpu(), abs=tol) == efermi.cpu()
 
     focc = filling.get_fermi_occupation(nab, emo, kt)
-    assert pytest.approx(ref_focc, abs=tol) == focc
+    assert pytest.approx(ref_focc.cpu(), abs=tol) == focc.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str):
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample1, sample2 = samples[name1], samples[name2]
@@ -172,20 +173,20 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     kt = emo.new_tensor(300 * KELVIN2AU)
 
     efermi, _ = filling.get_fermi_energy(nab, emo)
-    assert pytest.approx(ref_efermi, abs=tol) == efermi
+    assert pytest.approx(ref_efermi.cpu(), abs=tol) == efermi.cpu()
 
     focc = filling.get_fermi_occupation(nab, emo, kt)
-    assert pytest.approx(ref_focc, abs=tol) == focc
+    assert pytest.approx(ref_focc.cpu(), abs=tol) == focc.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("kt", [0.0, 5000.0])
 def test_kt(dtype: torch.dtype, kt: float):
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples["SiH4"]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
 
     nel = sample["n_electrons"].to(**dd)
     nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
@@ -243,7 +244,7 @@ def test_kt(dtype: torch.dtype, kt: float):
 
     # occupation
     focc = filling.get_fermi_occupation(nab, emo, emo.new_tensor(kt * KELVIN2AU))
-    assert torch.allclose(ref_focc[kt], focc.sum(-2), atol=tol)
+    assert pytest.approx(focc.sum(-2).cpu(), abs=tol) == ref_focc[kt].cpu()
 
     # electronic free energy
     d = torch.zeros_like(focc)  # dummy
@@ -258,8 +259,9 @@ def test_kt(dtype: torch.dtype, kt: float):
         config=ConfigSCF(fermi_etemp=kt),
     )
 
-    fenergy = scf.get_electronic_free_energy()
-    assert pytest.approx(ref_fenergy[kt], abs=tol, rel=tol) == fenergy.sum(-1)
+    fenergy = scf.get_electronic_free_energy().sum(-1)
+    ref = ref_fenergy[kt]
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == fenergy.cpu()
 
     scf.config.fermi.partition = -3
     with pytest.raises(ValueError):
@@ -269,7 +271,7 @@ def test_kt(dtype: torch.dtype, kt: float):
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_lumo_not_existing(dtype: torch.dtype) -> None:
     """Helium has no LUMO due to the minimal basis."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples["He"]
@@ -309,25 +311,25 @@ def test_lumo_not_existing(dtype: torch.dtype) -> None:
     kt = emo.new_tensor(300 * KELVIN2AU)
 
     efermi, _ = filling.get_fermi_energy(nab, emo)
-    assert pytest.approx(ref_efermi, abs=tol) == efermi
+    assert pytest.approx(ref_efermi.cpu(), abs=tol) == efermi.cpu()
 
     focc = filling.get_fermi_occupation(nab, emo, kt)
-    assert pytest.approx(ref_focc, abs=tol) == focc
+    assert pytest.approx(ref_focc.cpu(), abs=tol) == focc.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_lumo_obscured_by_padding(dtype: torch.dtype) -> None:
     """A missing LUMO can be obscured by padding."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample1, sample2 = samples["H2"], samples["He"]
 
     numbers = batch.pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ]
     )
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
@@ -370,7 +372,7 @@ def test_lumo_obscured_by_padding(dtype: torch.dtype) -> None:
     mask = mask.unsqueeze(-2).expand([*nab.shape, -1])
 
     efermi, _ = filling.get_fermi_energy(nab, emo, mask=mask)
-    assert pytest.approx(ref_efermi, abs=tol) == efermi
+    assert pytest.approx(ref_efermi.cpu(), abs=tol) == efermi.cpu()
 
     focc = filling.get_fermi_occupation(nab, emo, kt, mask=mask)
-    assert pytest.approx(ref_focc, abs=tol) == focc
+    assert pytest.approx(ref_focc.cpu(), abs=tol) == focc.cpu()

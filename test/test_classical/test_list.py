@@ -25,13 +25,15 @@ import torch
 from dxtb import IndexHelper
 from dxtb._src.components.classicals import ClassicalList, ClassicalListCache
 
+from ..conftest import DEVICE
+
 
 def test_empty() -> None:
     clist = ClassicalList()
     assert len(clist.components) == 0
 
-    numbers = torch.tensor([6, 1])
-    positions = torch.tensor([[0, 0, 0], [0, 0, 1]])
+    numbers = torch.tensor([6, 1], device=DEVICE)
+    positions = torch.tensor([[0, 0, 0], [0, 0, 1]], device=DEVICE)
     ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0, 0], 6: [0, 1]})
 
     c = clist.get_cache(numbers, ihelp)

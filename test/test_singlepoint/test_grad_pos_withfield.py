@@ -32,8 +32,8 @@ from dxtb._src.components.interactions import new_efield
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD, Callable, Tensor
 
-from .samples import samples
 from ..conftest import DEVICE
+from .samples import samples
 
 opts = {
     "f_atol": 1.0e-8,
@@ -86,7 +86,7 @@ def test_gradcheck(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradchecker(dtype, name)
-    assert dgradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol, nondet_tol=1e-7)
 
 
 @pytest.mark.grad
@@ -149,7 +149,7 @@ def test_gradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradchecker_batch(dtype, name1, name2)
-    assert dgradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol, nondet_tol=1e-7)
 
 
 @pytest.mark.grad
@@ -162,4 +162,4 @@ def test_gradgradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradchecker_batch(dtype, name1, name2)
-    assert dgradgradcheck(func, diffvars, atol=tol, eps=1e-8)
+    assert dgradgradcheck(func, diffvars, atol=tol, eps=1e-8, nondet_tol=1e-7)

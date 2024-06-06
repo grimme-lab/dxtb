@@ -32,22 +32,21 @@ from dxtb._src.components.classicals import new_repulsion
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import batch, hessian
 
+from ..conftest import DEVICE
 from ..utils import reshape_fortran
 from .samples import samples
 
 sample_list = ["LiH", "SiH4", "MB16_43_01"]
 
-device = None
-
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 100
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = reshape_fortran(
         sample["gfn1_hess"].to(**dd),
@@ -68,17 +67,17 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     hess = hess.detach().reshape_as(ref)
 
     assert ref.shape == hess.shape
-    assert pytest.approx(ref, abs=tol, rel=tol) == hess
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == hess.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def skip_test_single_alt(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 100
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     rep = new_repulsion(numbers, par, **dd)
@@ -97,31 +96,31 @@ def skip_test_single_alt(dtype: torch.dtype, name: str) -> None:
 
     # gradient
     fjac = jacrev(rep.get_energy, argnums=0)
-    jacobian: Tensor = fjac(positions, cache).sum(0)  # type: ignore
-    assert pytest.approx(ref_jac, abs=tol, rel=tol) == jacobian.detach()
+    j: Tensor = fjac(positions, cache).sum(0)  # type: ignore
+    assert pytest.approx(ref_jac.cpu(), abs=tol, rel=tol) == j.detach().cpu()
 
     # hessian
     def _hessian(f, argnums):
         return jacrev(jacrev(f, argnums=argnums), argnums=argnums)
 
     fhess = _hessian(rep.get_energy, argnums=0)
-    hess: Tensor = fhess(positions, cache).sum(0)  # type: ignore
+    h: Tensor = fhess(positions, cache).sum(0)  # type: ignore
     positions.detach_()
-    assert pytest.approx(ref_hess, abs=tol, rel=tol) == hess.detach()
+    assert pytest.approx(ref_hess.cpu(), abs=tol, rel=tol) == h.detach().cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", sample_list)
 def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 100
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ]
     )
     positions = batch.pack(
@@ -137,9 +136,9 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
                 sample1["gfn1_hess"].to(**dd),
                 torch.Size(
                     (
-                        sample1["numbers"].to(device).shape[0],
+                        sample1["numbers"].to(DEVICE).shape[0],
                         3,
-                        sample1["numbers"].to(device).shape[0],
+                        sample1["numbers"].to(DEVICE).shape[0],
                         3,
                     )
                 ),
@@ -161,6 +160,6 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
 
     positions.requires_grad_(True)
 
-    hess = hessian(rep.get_energy, (positions, cache), is_batched=True)
+    h = hessian(rep.get_energy, (positions, cache), is_batched=True)
     positions.detach_()
-    assert pytest.approx(ref_hess, abs=tol, rel=tol) == hess.detach()
+    assert pytest.approx(ref_hess.cpu(), abs=tol, rel=tol) == h.detach().cpu()

@@ -25,6 +25,8 @@ import torch
 
 from dxtb._src.basis.slater import slater_to_gauss
 from dxtb._src.integral.driver.pytorch.impls.md import overlap_gto
+from ..conftest import DEVICE
+from dxtb._src.typing import DD
 
 
 @pytest.mark.parametrize("ng", [1, 2, 3, 4, 5, 6])
@@ -53,16 +55,17 @@ def test_sto_ng_single(ng, n, l, dtype):
     """
     Test normalization of all STO-NG basis functions
     """
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     atol = 1.0e-6 if dtype == torch.float else 2.0e-7
 
-    alpha, coeff = slater_to_gauss(ng, n, l, torch.tensor(1.0, dtype=dtype))
-    angular = torch.tensor(l)
-    vec = torch.zeros((3,), dtype=dtype)
+    alpha, coeff = slater_to_gauss(ng, n, l, torch.tensor(1.0, **dd))
+    angular = torch.tensor(l, device=DEVICE)
+    vec = torch.zeros((3,), **dd)
 
     s = overlap_gto((angular, angular), (alpha, alpha), (coeff, coeff), vec)
-    ref = torch.diag(torch.ones((2 * l + 1,), dtype=dtype))
+    ref = torch.diag(torch.ones((2 * l + 1,), **dd))
 
-    assert pytest.approx(ref, abs=atol) == s
+    assert pytest.approx(ref.cpu(), abs=atol) == s.cpu()
 
 
 @pytest.mark.parametrize("ng", [1, 2, 3, 4, 5, 6])
@@ -71,17 +74,26 @@ def test_sto_ng_batch(ng: int, dtype: torch.dtype):
     """
     Test symmetry of s integrals
     """
-    n, l = torch.tensor(1), torch.tensor(0)
-    ng_ = torch.tensor(ng)
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
-    coeff, alpha = slater_to_gauss(ng_, n, l, torch.tensor(1.0, dtype=dtype))
+    n, l = torch.tensor(1, device=DEVICE), torch.tensor(0, device=DEVICE)
+    ng_ = torch.tensor(ng, device=DEVICE)
+
+    coeff, alpha = slater_to_gauss(ng_, n, l, torch.tensor(1.0, **dd))
     coeff, alpha = coeff.type(dtype)[:ng_], alpha.type(dtype)[:ng_]
-    vec = torch.tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], dtype=dtype)
+    vec = torch.tensor(
+        [
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ],
+        **dd,
+    )
 
     s = overlap_gto((l, l), (alpha, alpha), (coeff, coeff), vec)
 
-    assert pytest.approx(s[0, :]) == s[1, :]
-    assert pytest.approx(s[0, :]) == s[2, :]
+    assert pytest.approx(s[0, :].cpu()) == s[1, :].cpu()
+    assert pytest.approx(s[0, :].cpu()) == s[2, :].cpu()
 
 
 @pytest.mark.parametrize("ng", [6])
@@ -91,6 +103,7 @@ def test_no_norm(ng, n, l, dtype):
     """
     Test normalization of all STO-NG basis functions
     """
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = 1.0e-7
 
     ref_alpha = torch.tensor(
@@ -101,7 +114,8 @@ def test_no_norm(ng, n, l, dtype):
             0.4070988894,
             0.1580884159,
             0.0651095361,
-        ]
+        ],
+        **dd,
     )
 
     ref_coeff = torch.tensor(
@@ -112,11 +126,12 @@ def test_no_norm(ng, n, l, dtype):
             0.3705627918,
             0.4164915383,
             0.1303340793,
-        ]
+        ],
+        **dd,
     )
 
-    zeta = torch.tensor(1.0, dtype=dtype)
+    zeta = torch.tensor(1.0, **dd)
     alpha, coeff = slater_to_gauss(ng, n, l, zeta, norm=False)
 
-    assert pytest.approx(ref_alpha, abs=tol, rel=tol) == alpha
-    assert pytest.approx(ref_coeff, abs=tol, rel=tol) == coeff
+    assert pytest.approx(ref_alpha.cpu(), abs=tol, rel=tol) == alpha.cpu()
+    assert pytest.approx(ref_coeff.cpu(), abs=tol, rel=tol) == coeff.cpu()

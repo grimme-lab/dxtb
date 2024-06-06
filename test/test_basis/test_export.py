@@ -27,7 +27,7 @@ import torch
 
 from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.basis.bas import Basis
-from dxtb._src.typing import Literal
+from dxtb._src.typing import Literal, DD
 
 
 @pytest.mark.parametrize("number", range(1, 87))
@@ -39,7 +39,10 @@ def test_export(
     xtb_version: Literal["gfn1", "gfn2"],
     dtype: torch.dtype = torch.double,
 ):
-    numbers = torch.tensor([number])
+    # always use CPU to have exact same results
+    dd: DD = {"dtype": dtype, "device": torch.device("cpu")}
+
+    numbers = torch.tensor([number], device=dd["device"])
 
     if xtb_version == "gfn1":
         par = GFN1_XTB
@@ -47,7 +50,7 @@ def test_export(
         assert False
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    bas = Basis(numbers, par, ihelp, dtype=dtype)
+    bas = Basis(numbers, par, ihelp, **dd)
 
     txt = bas.to_bse(qcformat=qcformat)
 
@@ -57,7 +60,7 @@ def test_export(
     p = root / f"{s}.{qcformat}"
     assert p.exists()
 
-    with open(p, encoding="utf8") as f:
+    with open(p, "r", encoding="utf-8") as f:
         content = f.read()
 
     assert content == txt

@@ -29,30 +29,29 @@ from dxtb._src.typing import DD, Callable, Tensor
 from dxtb._src.utils import batch
 
 from .samples import samples
+from ..conftest import DEVICE
 
 sample_list = ["LiH", "SiH4", "MB16_43_01", "PbH4-BiH3"]
 
 tol = 1e-8
-
-device = None
 
 
 def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     Callable[[Tensor, Tensor, Tensor, Tensor], Tensor],  # autograd function
     tuple[Tensor, Tensor, Tensor, Tensor],  # differentiable variables
 ]:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     # variables to be differentiated
     param = (
-        torch.tensor(1.00000000, requires_grad=True, dtype=dtype),
-        torch.tensor(0.78981345, requires_grad=True, dtype=dtype),
-        torch.tensor(0.49484001, requires_grad=True, dtype=dtype),
-        torch.tensor(5.73083694, requires_grad=True, dtype=dtype),
+        torch.tensor(1.00000000, requires_grad=True, **dd),
+        torch.tensor(0.78981345, requires_grad=True, **dd),
+        torch.tensor(0.49484001, requires_grad=True, **dd),
+        torch.tensor(5.73083694, requires_grad=True, **dd),
     )
     label = ("s6", "s8", "a1", "a2")
 
@@ -93,13 +92,13 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     Callable[[Tensor, Tensor, Tensor, Tensor], Tensor],  # autograd function
     tuple[Tensor, Tensor, Tensor, Tensor],  # differentiable variables
 ]:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ]
     )
     positions = batch.pack(
@@ -111,10 +110,10 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
 
     # variables to be differentiated
     param = (
-        torch.tensor(1.00000000, requires_grad=True, dtype=dtype),
-        torch.tensor(0.78981345, requires_grad=True, dtype=dtype),
-        torch.tensor(0.49484001, requires_grad=True, dtype=dtype),
-        torch.tensor(5.73083694, requires_grad=True, dtype=dtype),
+        torch.tensor(1.00000000, requires_grad=True, **dd),
+        torch.tensor(0.78981345, requires_grad=True, **dd),
+        torch.tensor(0.49484001, requires_grad=True, **dd),
+        torch.tensor(5.73083694, requires_grad=True, **dd),
     )
     label = ("s6", "s8", "a1", "a2")
 

@@ -26,7 +26,8 @@ from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
 from dxtb._src.integral.driver.pytorch.impls import md
 from dxtb._src.integral.driver.pytorch.impls.md import recursion
-from dxtb._src.typing import Callable, Tensor
+from dxtb._src.typing import Callable, Tensor, DD
+from ...conftest import DEVICE
 
 tol = 1e-7
 
@@ -35,31 +36,33 @@ def gradchecker(
     dtype: torch.dtype, md_func, angular: tuple[Tensor, Tensor]
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
     alpha = (
         torch.tensor(
             [10.256286, 0.622797, 0.239101, 7.611997, 1.392902, 0.386963, 0.128430],
-            dtype=dtype,
+            **dd,
         ),
         torch.tensor(
             [1.723363, 0.449418, 0.160806, 0.067220, 0.030738, 0.014532],
-            dtype=dtype,
+            **dd,
         ),
     )
     coeff = (
         torch.tensor(
             [-1.318654, 1.603878, 0.601323, -0.980904, -1.257964, -0.985990, -0.235962],
-            dtype=dtype,
+            **dd,
         ),
         torch.tensor(
             [0.022303, 0.026981, 0.027555, 0.019758, 0.007361, 0.000756],
-            dtype=dtype,
+            **dd,
         ),
     )
 
     # variables to be differentiated
     vec = torch.tensor(
         [[-0.000000, -0.000000, -3.015935]],
-        dtype=dtype,
+        **dd,
         requires_grad=True,
     )
 

@@ -32,14 +32,13 @@ from dxtb._src.components.classicals.dispersion import new_dispersion
 from dxtb._src.typing import DD
 from dxtb._src.utils import batch
 
+from ..conftest import DEVICE
 from .samples import samples
-
-device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_disp_batch(dtype: torch.dtype) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = (
         samples["PbH4-BiH3"],
@@ -47,8 +46,8 @@ def test_disp_batch(dtype: torch.dtype) -> None:
     )
     numbers = batch.pack(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         )
     )
     positions = batch.pack(
@@ -82,7 +81,7 @@ def test_disp_batch(dtype: torch.dtype) -> None:
         numbers, positions, param, c6, rvdw, r4r2, d3.disp.rational_damping
     )
     assert energy.dtype == dtype
-    assert torch.allclose(energy, ref)
+    assert pytest.approx(ref.cpu()) == energy.cpu()
 
     # create copy as `par` lives in global scope
     _par = par.model_copy(deep=True)
@@ -101,5 +100,5 @@ def test_disp_batch(dtype: torch.dtype) -> None:
     cache = disp.get_cache(numbers)
     edisp = disp.get_energy(positions, cache)
     assert edisp.dtype == dtype
-    assert pytest.approx(edisp) == ref
-    assert pytest.approx(edisp) == energy
+    assert pytest.approx(edisp.cpu()) == ref.cpu()
+    assert pytest.approx(edisp.cpu()) == energy.cpu()

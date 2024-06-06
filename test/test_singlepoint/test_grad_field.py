@@ -32,8 +32,8 @@ from dxtb._src.components.interactions import new_efield
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD, Callable, Tensor
 
-from .samples import samples
 from ..conftest import DEVICE
+from .samples import samples
 
 opts = {
     "f_atol": 1.0e-8,

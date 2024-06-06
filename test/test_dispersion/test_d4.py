@@ -32,14 +32,13 @@ from dxtb._src.param.gfn2 import GFN2_XTB as par
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import batch
 
+from ..conftest import DEVICE
 from .samples import samples
-
-device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_batch(dtype: torch.dtype) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = (
         samples["PbH4-BiH3"],
@@ -47,8 +46,8 @@ def test_batch(dtype: torch.dtype) -> None:
     )
     numbers = batch.pack(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         )
     )
     positions = batch.pack(
@@ -60,10 +59,10 @@ def test_batch(dtype: torch.dtype) -> None:
     charge = positions.new_zeros(numbers.shape[0])
 
     param = {
-        "a1": positions.new_tensor(0.49484001),
-        "a2": positions.new_tensor(5.73083694),
-        "s8": positions.new_tensor(0.78981345),
-        "s9": positions.new_tensor(1.00000000),
+        "a1": torch.tensor(0.49484001, **dd),
+        "a2": torch.tensor(5.73083694, **dd),
+        "s8": torch.tensor(0.78981345, **dd),
+        "s9": torch.tensor(1.00000000, **dd),
     }
 
     energy = d4.dftd4(numbers, positions, charge, param)
@@ -87,16 +86,16 @@ def test_batch(dtype: torch.dtype) -> None:
     cache = disp.get_cache(numbers)
     edisp = disp.get_energy(positions, cache)
     assert edisp.dtype == dtype
-    assert pytest.approx(edisp) == energy
+    assert pytest.approx(edisp.cpu()) == energy.cpu()
 
 
 @pytest.mark.grad
 def test_grad_pos() -> None:
     dtype = torch.double
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples["C4H5NCS"]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd).detach()
     charge = positions.new_tensor(0.0)
 
@@ -121,17 +120,17 @@ def test_grad_pos() -> None:
 @pytest.mark.grad
 def test_grad_param() -> None:
     dtype = torch.double
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples["C4H5NCS"]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     charge = positions.new_tensor(0.0)
     param = (
-        positions.new_tensor(1.00000000, requires_grad=True),
-        positions.new_tensor(0.78981345, requires_grad=True),
-        positions.new_tensor(0.49484001, requires_grad=True),
-        positions.new_tensor(5.73083694, requires_grad=True),
+        torch.tensor(1.00000000, requires_grad=True, **dd),
+        torch.tensor(0.78981345, requires_grad=True, **dd),
+        torch.tensor(0.49484001, requires_grad=True, **dd),
+        torch.tensor(5.73083694, requires_grad=True, **dd),
     )
     label = ("s6", "s8", "a1", "a2")
 

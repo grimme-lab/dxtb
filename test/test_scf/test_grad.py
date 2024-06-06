@@ -31,9 +31,9 @@ from dxtb import Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
+from ..conftest import DEVICE
 from ..utils import load_from_npz
 from .samples import samples
-from ..conftest import DEVICE
 
 opts = {
     "verbosity": 0,

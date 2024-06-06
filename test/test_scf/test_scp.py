@@ -32,8 +32,8 @@ from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 from dxtb._src.utils import batch
 
-from .samples import samples
 from ..conftest import DEVICE
+from .samples import samples
 
 opts = {
     "verbosity": 0,

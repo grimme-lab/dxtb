@@ -29,6 +29,7 @@ from dxtb._src.components.interactions.solvation import alpb
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
+from ..conftest import DEVICE
 from .samples import samples
 
 opts = {
@@ -39,18 +40,16 @@ opts = {
     "verbosity": 0,
 }
 
-device = None
-
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["MB16_43_01"])
 def test_gb_scf_grad(dtype: torch.dtype, name: str, dielectric_constant=78.9):
     tol = 1e-3 if dtype == torch.float else 1e-5
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     positions.requires_grad_(True)
     ref = sample["gradient"]
@@ -73,4 +72,4 @@ def test_gb_scf_grad(dtype: torch.dtype, name: str, dielectric_constant=78.9):
     positions.detach_()
     positions.grad.data.zero_()
 
-    assert pytest.approx(ref, abs=tol) == autograd
+    assert pytest.approx(ref.cpu(), abs=tol) == autograd.cpu()

@@ -39,10 +39,9 @@ from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 from dxtb._src.utils import batch
 
+from ..conftest import DEVICE
 from .samples import samples
 from .uhf_table import uhf, uhf_anion, uhf_cation
-from ..conftest import DEVICE
-
 
 ref = torch.tensor(
     [

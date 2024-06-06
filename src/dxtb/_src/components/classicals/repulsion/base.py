@@ -71,6 +71,7 @@ from ..base import Classical, ClassicalCache
 
 __all__ = [
     "BaseRepulsion",
+    "BaseRepulsionCache",
     "repulsion_energy",
     "repulsion_gradient",
 ]

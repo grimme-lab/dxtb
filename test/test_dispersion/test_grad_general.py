@@ -31,17 +31,17 @@ from .samples import samples
 
 sample_list = ["LiH", "SiH4", "MB16_43_01", "PbH4-BiH3"]
 
-device = None
+from ..conftest import DEVICE
 
 
 @pytest.mark.grad
 @pytest.mark.parametrize("name", sample_list)
 def test_grad_fail(name: str) -> None:
     dtype = torch.double
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     disp = new_dispersion(numbers, par, **dd)

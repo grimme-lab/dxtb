@@ -29,6 +29,7 @@ from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.io import read_chrg, read_coord
 from dxtb._src.timing import timer
+
 from ..conftest import DEVICE
 
 opts = {"verbosity": 0, "int_level": 4}
