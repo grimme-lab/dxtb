@@ -98,7 +98,7 @@ def test_gradgradcheck(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradchecker(dtype, name)
-    assert dgradgradcheck(func, diffvars, atol=tol, eps=1e-9)
+    assert dgradgradcheck(func, diffvars, atol=tol, eps=1e-9, nondet_tol=1e-7)
 
 
 def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[

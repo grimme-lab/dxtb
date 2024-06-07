@@ -96,8 +96,6 @@ class DipoleLibcint(MultipoleLibcint):
                 "The position tensor must be spread to orbital-resolution."
             )
 
-        print("pos", pos.device)
-        print("pos", overlap.device)
         shift = torch.einsum("...jx,...ij->...xij", pos, overlap)
         self.matrix = self.matrix - shift
         return self.matrix

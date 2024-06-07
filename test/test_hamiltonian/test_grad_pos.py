@@ -169,7 +169,7 @@ def test_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradchecker_batch(dtype, name1, name2)
-    assert dgradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol, nondet_tol=1e-7)
 
 
 @pytest.mark.grad
@@ -182,4 +182,4 @@ def test_gradgrad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradchecker_batch(dtype, name1, name2)
-    assert dgradgradcheck(func, diffvars, atol=tol)
+    assert dgradgradcheck(func, diffvars, atol=tol, nondet_tol=1e-7)

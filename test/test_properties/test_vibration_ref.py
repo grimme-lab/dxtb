@@ -70,7 +70,7 @@ def single(name: str, dd: DD, atol: float, rtol: float) -> None:
     if name == "LYS_xao":
         freqs, ref = freqs[4:], ref[4:]
 
-    assert pytest.approx(ref, abs=atol, rel=rtol) == freqs
+    assert pytest.approx(ref.cpu(), abs=atol, rel=rtol) == freqs
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
@@ -124,7 +124,7 @@ def batched(name1: str, name2: str, dd: DD, atol: float, rtol: float) -> None:
     if name1 == "LYS_xao" or name2 == "LYS_xao":
         freqs, ref = freqs[..., 4:], ref[..., 4:]
 
-    assert pytest.approx(ref, abs=atol, rel=rtol) == freqs
+    assert pytest.approx(ref.cpu(), abs=atol, rel=rtol) == freqs.cpu()
 
 
 # TODO: Batched Hessians are not supported yet

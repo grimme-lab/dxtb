@@ -111,10 +111,12 @@ def execute(
 
     # field is cloned and detached and updated inside
     numres = calc.raman_numerical(positions, charge)
-    numfreqs, numints, numdepol = numres.freqs, numres.ints, numres.depol
-    assert numfreqs.grad_fn is None
-    assert numints.grad_fn is None
-    assert numdepol.grad_fn is None
+    assert numres.freqs.grad_fn is None
+    assert numres.ints.grad_fn is None
+    assert numres.depol.grad_fn is None
+    numfreqs = tensor_to_numpy(numres.freqs)
+    numints = tensor_to_numpy(numres.ints)
+    numdepol = tensor_to_numpy(numres.depol)
 
     # only add gradient to field_vector after numerical calculation
     field_vector.requires_grad_(True)

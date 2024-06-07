@@ -69,8 +69,8 @@ def test_disp_batch(dtype: torch.dtype) -> None:
         )
     )
 
-    rvdw = d3.data.VDW_D3[numbers.unsqueeze(-1), numbers.unsqueeze(-2)]
-    r4r2 = d3.data.R4R2[numbers]
+    rvdw = d3.data.VDW_D3.to(**dd)[numbers.unsqueeze(-1), numbers.unsqueeze(-2)]
+    r4r2 = d3.data.R4R2.to(**dd)[numbers]
     param = {
         "a1": torch.tensor(0.49484001, **dd),
         "s8": torch.tensor(0.78981345, **dd),
