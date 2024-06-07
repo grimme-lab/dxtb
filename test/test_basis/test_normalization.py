@@ -25,8 +25,9 @@ import torch
 
 from dxtb._src.basis.slater import slater_to_gauss
 from dxtb._src.integral.driver.pytorch.impls.md import overlap_gto
-from ..conftest import DEVICE
 from dxtb._src.typing import DD
+
+from ..conftest import DEVICE
 
 
 @pytest.mark.parametrize("ng", [1, 2, 3, 4, 5, 6])

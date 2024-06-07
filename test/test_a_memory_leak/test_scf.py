@@ -32,8 +32,8 @@ from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.typing import DD
 
-from .util import has_memleak_tensor
 from ..conftest import DEVICE
+from .util import has_memleak_tensor
 
 opts = {"verbosity": 0, "maxiter": 50, "exclude": ["rep", "disp", "hal"]}
 repeats = 5

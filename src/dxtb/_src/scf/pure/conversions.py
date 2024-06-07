@@ -15,10 +15,10 @@ from tad_mctc.units.energy import KELVIN2AU
 from dxtb._src.components.interactions import InteractionList
 from dxtb._src.components.interactions.container import Charges, Potential
 from dxtb._src.constants import defaults, labels
+from dxtb._src.timing.decorator import timer_decorator
 from dxtb._src.typing import Tensor
 from dxtb._src.wavefunction import filling
 from dxtb.config import ConfigSCF
-from dxtb._src.timing.decorator import timer_decorator
 
 from ..utils import get_density
 from .data import _Data

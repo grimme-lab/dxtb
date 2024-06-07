@@ -29,7 +29,6 @@ from dxtb.calculators import AutogradCalculator
 
 from ...conftest import DEVICE
 
-
 opts = {"cache_enabled": True, "verbosity": 0}
 
 

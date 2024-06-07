@@ -33,9 +33,9 @@ from dxtb import IndexHelper
 from dxtb._src.components.classicals import new_repulsion
 from dxtb._src.typing import DD
 
+from ..conftest import DEVICE
 from ..utils import nth_derivative
 from .util import has_memleak_tensor
-from ..conftest import DEVICE
 
 sample_list = ["H2O", "SiH4", "MB16_43_01"]
 

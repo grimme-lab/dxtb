@@ -25,6 +25,7 @@ import torch
 
 from dxtb._src.components.interactions.coulomb import averaging_function
 from dxtb._src.typing import DD
+
 from ..conftest import DEVICE
 
 a = torch.tensor([1.0, 2.0, 3.0, 4.0])

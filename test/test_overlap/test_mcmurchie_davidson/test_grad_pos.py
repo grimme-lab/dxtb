@@ -26,7 +26,8 @@ from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
 from dxtb._src.integral.driver.pytorch.impls import md
 from dxtb._src.integral.driver.pytorch.impls.md import recursion
-from dxtb._src.typing import Callable, Tensor, DD
+from dxtb._src.typing import DD, Callable, Tensor
+
 from ...conftest import DEVICE
 
 tol = 1e-7

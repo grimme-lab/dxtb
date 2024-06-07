@@ -31,9 +31,9 @@ from dxtb._src.components.classicals import new_halogen
 from dxtb._src.typing import DD
 from dxtb._src.utils import batch, hessian
 
+from ..conftest import DEVICE
 from ..utils import reshape_fortran
 from .samples import samples
-from ..conftest import DEVICE
 
 sample_list = ["br2nh3", "br2och2", "finch", "LiH", "SiH4", "MB16_43_01"]
 

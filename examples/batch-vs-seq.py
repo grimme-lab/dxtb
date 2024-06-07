@@ -17,9 +17,9 @@
 """
 Comparing sequential and batched execution.
 """
-import torch
-
 from pathlib import Path
+
+import torch
 from tad_mctc.io import read
 
 import dxtb

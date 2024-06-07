@@ -32,11 +32,10 @@ from dxtb._src.basis.bas import Basis
 from dxtb._src.integral.driver.pytorch.impls.md import overlap_gto
 from dxtb._src.typing import DD
 
+from ..conftest import DEVICE
 from ..utils import load_from_npz
 from .samples import samples
 from .utils import calc_overlap
-
-from ..conftest import DEVICE
 
 ref_overlap = np.load("test/test_overlap/overlap.npz")
 

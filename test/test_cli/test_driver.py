@@ -27,8 +27,8 @@ from dxtb._src.cli import Driver, parser
 from dxtb._src.timing import timer
 from dxtb._src.typing import DD
 
-from ..utils import coordfile
 from ..conftest import DEVICE
+from ..utils import coordfile
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

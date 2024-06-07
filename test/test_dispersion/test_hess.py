@@ -30,9 +30,9 @@ from dxtb._src.components.classicals.dispersion import new_dispersion
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import batch, hessian
 
+from ..conftest import DEVICE
 from ..utils import reshape_fortran
 from .samples import samples
-from ..conftest import DEVICE
 
 sample_list = ["LiH", "SiH4", "MB16_43_01", "PbH4-BiH3"]
 

@@ -29,8 +29,8 @@ from dxtb._src.components.classicals.dispersion import new_dispersion
 from dxtb._src.typing import DD, Callable, Tensor
 from dxtb._src.utils import batch
 
-from .samples import samples
 from ..conftest import DEVICE
+from .samples import samples
 
 sample_list = ["LiH", "SiH4", "MB16_43_01", "PbH4-BiH3"]
 
