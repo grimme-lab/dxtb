@@ -233,7 +233,10 @@ class EnergyCalculator(BaseCalculator):
         # SELF-CONSISTENT FIELD PROCEDURE #
         ###################################
 
-        timer.cuda_sync = False
+        old_cuda_sync = timer.cuda_sync
+        timer.cuda_sync = kwargs.get(
+            "cuda_sync_in_scf", False if self.device.type == "cpu" else True
+        )
         timer.start("SCF", "Self-Consistent Field")
 
         # get caches of all interactions
@@ -262,7 +265,7 @@ class EnergyCalculator(BaseCalculator):
         )
 
         timer.stop("SCF")
-        timer.cuda_sync = True
+        timer.cuda_sync = old_cuda_sync
         OutputHandler.write_stdout(
             f"SCF finished in {scf_results['iterations']} iterations.", v=3
         )

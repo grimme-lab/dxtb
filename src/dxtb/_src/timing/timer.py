@@ -121,7 +121,7 @@ class _Timers:
                     f"Timer '{self.label}' is running. Use `.stop()` to stop it."
                 )
 
-            if self._cuda_sync is True:
+            if self.cuda_sync is True:
                 _sync()
 
             self._start_time = time.perf_counter()
@@ -148,7 +148,7 @@ class _Timers:
                     f"Timer '{self.label}' is not running. Use .start() to " "start it."
                 )
 
-            if self._cuda_sync is True:
+            if self.cuda_sync is True:
                 _sync()
 
             self.elapsed_time += time.perf_counter() - self._start_time
@@ -364,6 +364,33 @@ class _Timers:
         self.reset()
         self.stop_all()
 
+    def get_time(self, uid: str) -> float:
+        """
+        Get the elapsed time of a timer.
+
+        Parameters
+        ----------
+        uid : str
+            Unique ID of the timer.
+
+        Returns
+        -------
+        float
+            Elapsed time in seconds.
+
+        Raises
+        ------
+        TimerError
+            If timer dubbed `uid` does not exist.
+        """
+        if not self.enabled:
+            return 0.0
+
+        if uid not in self.timers:
+            raise TimerError(f"Timer '{uid}' does not exist.")
+
+        return self.timers[uid].elapsed_time
+
     def get_times(self) -> dict[str, dict[str, float]]:
         """
         Get the elapsed times of all timers,
@@ -380,7 +407,7 @@ class _Timers:
         times = {}
 
         # Initialize all parent timers in the times dictionary
-        for k in self.timers.keys():
+        for k in self.timers:
             if k not in self._subtimer_parent_map:
                 times[k] = {KEY: None, "sub": {}}
 
