@@ -29,13 +29,13 @@ from dxtb import integrals as ints
 from dxtb._src.constants.labels import INTDRIVER_ANALYTICAL, INTDRIVER_LIBCINT
 from dxtb._src.typing import DD
 
-device = None
+from ..conftest import DEVICE
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_empty(dtype: torch.dtype):
-    dd: DD = {"device": device, "dtype": dtype}
-    numbers = torch.tensor([1, 3], device=device)
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+    numbers = torch.tensor([1, 3], device=DEVICE)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
     i = ints.Integrals(numbers, par, ihelp, **dd)
@@ -53,8 +53,8 @@ def test_empty(dtype: torch.dtype):
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_fail_family(dtype: torch.dtype):
-    dd: DD = {"device": device, "dtype": dtype}
-    numbers = torch.tensor([1, 3], device=device)
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+    numbers = torch.tensor([1, 3], device=DEVICE)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
     i = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_ANALYTICAL, **dd)
@@ -72,8 +72,8 @@ def test_fail_family(dtype: torch.dtype):
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_fail_pytorch_multipole(dtype: torch.dtype):
-    dd: DD = {"device": device, "dtype": dtype}
-    numbers = torch.tensor([1, 3], device=device)
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+    numbers = torch.tensor([1, 3], device=DEVICE)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
     i = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_ANALYTICAL, **dd)
@@ -94,8 +94,8 @@ def test_fail_pytorch_multipole(dtype: torch.dtype):
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_hcore(dtype: torch.dtype):
-    dd: DD = {"device": device, "dtype": dtype}
-    numbers = torch.tensor([1, 3], device=device)
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+    numbers = torch.tensor([1, 3], device=DEVICE)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
     i = ints.Integrals(numbers, par, ihelp, **dd)

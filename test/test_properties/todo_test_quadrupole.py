@@ -43,7 +43,7 @@ opts = {
     "x_atol": 1.0e-9,
 }
 
-device = None
+from ..conftest import DEVICE
 
 
 def single(
@@ -153,8 +153,8 @@ def batched(
 
     numbers = pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ],
     )
 
@@ -299,8 +299,8 @@ def test_batch_settings(
 
     numbers = pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ],
     )
 
@@ -346,8 +346,8 @@ def test_batch_unconverged(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     numbers = pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ],
     )
 
@@ -395,8 +395,8 @@ def test_batch_unconverged(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     numbers = pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ],
     )
 

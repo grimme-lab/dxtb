@@ -27,14 +27,14 @@ import torch
 from tad_mctc.convert import any_to_tensor
 
 from dxtb import OutputHandler
+from dxtb import integrals as ints
 from dxtb._src import ncoord, scf
 from dxtb._src.components.interactions.container import Charges, Potential
 from dxtb._src.components.interactions.field import efield as efield
 from dxtb._src.constants import defaults
+from dxtb._src.integral.container import IntegralMatrices
 from dxtb._src.timing import timer
 from dxtb._src.typing import Any, Tensor
-from dxtb.integrals import levels as intlvl
-from dxtb.integrals.types import Overlap
 
 from ..result import Result
 from . import decorators as cdec
@@ -173,7 +173,7 @@ class AnalyticalCalculator(EnergyCalculator):
         timer.stop("ograd")
 
         overlap = self.cache["overlap"]
-        assert isinstance(overlap, Overlap)
+        assert isinstance(overlap, ints.types.Overlap)
         assert overlap.matrix is not None
 
         # density matrix
@@ -300,31 +300,56 @@ class AnalyticalCalculator(EnergyCalculator):
         if any(x in ["all", "scf"] for x in self.opts.exclude):
             return -total_grad
 
-        # SELF-CONSISTENT FIELD PROCEDURE
+        #############
+        # INTEGRALS #
+        #############
 
         timer.start("Integrals")
-        # overlap integral
+
+        intmats = IntegralMatrices(**self.dd)
+
+        # overlap integral (always required, even without Hückel Hamiltonian)
         OutputHandler.write_stdout_nf(" - Overlap           ... ", v=3)
         timer.start("Overlap", parent_uid="Integrals")
-        self.integrals.build_overlap(positions)
+        intmats.overlap = self.integrals.build_overlap(positions)
         timer.stop("Overlap")
         OutputHandler.write_stdout("done", v=3)
 
+        if self.integrals.overlap is None:
+            raise RuntimeError("Overlap setup failed. SCF cannot be run.")
+        if self.integrals.overlap.matrix is None:
+            raise RuntimeError("Overlap calculation failed. SCF cannot be run.")
+
+        write_overlap = kwargs.get("write_overlap", False)
+        if write_overlap is not False:
+            assert self.integrals.overlap is not None
+            self.integrals.overlap.to_pt(write_overlap)
+
         # dipole integral
-        if self.opts.ints.level >= intlvl.INTLEVEL_DIPOLE:
+        if self.opts.ints.level >= ints.levels.INTLEVEL_DIPOLE:
             OutputHandler.write_stdout_nf(" - Dipole            ... ", v=3)
             timer.start("Dipole Integral", parent_uid="Integrals")
-            self.integrals.build_dipole(positions)
+            intmats.dipole = self.integrals.build_dipole(positions)
             timer.stop("Dipole Integral")
             OutputHandler.write_stdout("done", v=3)
 
+            write_dipole = kwargs.get("write_dipole", False)
+            if write_dipole is not False:
+                assert self.integrals.dipole is not None
+                self.integrals.dipole.to_pt(write_dipole)
+
         # quadrupole integral
-        if self.opts.ints.level >= intlvl.INTLEVEL_QUADRUPOLE:
+        if self.opts.ints.level >= ints.levels.INTLEVEL_QUADRUPOLE:
             OutputHandler.write_stdout_nf(" - Quadrupole        ... ", v=3)
             timer.start("Quadrupole Integral", parent_uid="Integrals")
-            self.integrals.build_quadrupole(positions)
+            intmats.quadrupole = self.integrals.build_quadrupole(positions)
             timer.stop("Quadrupole Integral")
             OutputHandler.write_stdout("done", v=3)
+
+            write_quad = kwargs.get("write_quadrupole", False)
+            if write_quad is not False:
+                assert self.integrals.quadrupole is not None
+                self.integrals.quadrupole.to_pt(write_quad)
 
         # Core Hamiltonian integral (requires overlap internally!)
         #
@@ -333,20 +358,39 @@ class AnalyticalCalculator(EnergyCalculator):
         # To avoid unnecessary data transfer, the core Hamiltonian should
         # be last. Internally, the overlap integral is only transfered back
         # to GPU when all multipole integrals are calculated.
-        OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ", v=3)
-        timer.start("Core Hamiltonian", parent_uid="Integrals")
-        self.integrals.build_hcore(positions)
-        timer.stop("Core Hamiltonian")
-        OutputHandler.write_stdout("done", v=3)
+        if self.opts.ints.level >= ints.levels.INTLEVEL_HCORE:
+            OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ", v=3)
+            timer.start("Core Hamiltonian", parent_uid="Integrals")
+            intmats.hcore = self.integrals.build_hcore(positions)
+            timer.stop("Core Hamiltonian")
+            OutputHandler.write_stdout("done", v=3)
 
+            write_hcore = kwargs.get("write_hcore", False)
+            if write_hcore is not False:
+                assert self.integrals.hcore is not None
+                self.integrals.hcore.to_pt(write_hcore)
+
+        # While one can theoretically skip the core Hamiltonian, the
+        # current implementation does not account for this case because the
+        # reference occupation is necessary for the SCF procedure.
+        if self.integrals.hcore is None or self.integrals.hcore.matrix is None:
+            raise NotImplementedError(
+                "Core Hamiltonian missing. Skipping the Core Hamiltonian in "
+                "the SCF is currently not supported. Please increase the "
+                "integral level to at least '2'. Currently, the level is set "
+                f"to '{self.opts.ints.level}'."
+            )
+
+        # finalize integrals
         timer.stop("Integrals")
+        intmats = intmats.to(self.device)
+        result.integrals = intmats
 
-        # TODO: Think about handling this case
-        if self.integrals.hcore is None:
-            raise RuntimeError
-        if self.integrals.overlap is None:
-            raise RuntimeError
+        ###################################
+        # SELF-CONSISTENT FIELD PROCEDURE #
+        ###################################
 
+        timer.cuda_sync = False
         timer.start("SCF", "Self-Consistent Field")
 
         # get caches of all interactions
@@ -370,7 +414,7 @@ class AnalyticalCalculator(EnergyCalculator):
             icaches,
             self.ihelp,
             self.opts.scf,
-            self.integrals.matrices,
+            intmats,
             self.integrals.hcore.integral.refocc,
         )
 
@@ -425,7 +469,7 @@ class AnalyticalCalculator(EnergyCalculator):
         cn = ncoord.cn_d3(self.numbers, positions)
         dedcn, dedr = self.integrals.hcore.integral.get_gradient(
             positions,
-            self.integrals.matrices.overlap,
+            intmats.overlap,
             overlap_grad,
             result.density,
             wmat,

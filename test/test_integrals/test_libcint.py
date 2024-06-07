@@ -31,23 +31,30 @@ from dxtb._src.integral.driver.libcint import IntDriverLibcint
 from dxtb._src.typing import DD
 from dxtb._src.utils import batch
 
+from ..conftest import DEVICE
 from .samples import samples
-
-device = None
 
 
 @pytest.mark.parametrize("name", ["H2"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-def test_single(dtype: torch.dtype, name: str):
+@pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
+def test_single(dtype: torch.dtype, name: str, force_cpu_for_libcint: bool):
     """Overlap matrix for monoatomic molecule should be unity."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    i = ints.Integrals(numbers, par, ihelp, **dd)
+    i = ints.Integrals(
+        numbers,
+        par,
+        ihelp,
+        force_cpu_for_libcint=force_cpu_for_libcint,
+        intlevel=ints.levels.INTLEVEL_QUADRUPOLE,
+        **dd,
+    )
 
     i.setup_driver(positions)
     assert isinstance(i.driver, IntDriverLibcint)
@@ -84,18 +91,19 @@ def test_single(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize("name1", ["H2"])
 @pytest.mark.parametrize("name2", ["LiH"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-def test_batch(dtype: torch.dtype, name1: str, name2: str):
+@pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
+def test_batch(
+    dtype: torch.dtype, name1: str, name2: str, force_cpu_for_libcint: bool
+) -> None:
     """Overlap matrix for monoatomic molecule should be unity."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = sample1["numbers"].to(device)
-    positions = sample2["positions"].to(**dd)
 
     numbers = batch.pack(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         )
     )
     positions = batch.pack(
@@ -106,7 +114,14 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     )
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    i = ints.Integrals(numbers, par, ihelp, **dd)
+    i = ints.Integrals(
+        numbers,
+        par,
+        ihelp,
+        intlevel=ints.levels.INTLEVEL_QUADRUPOLE,
+        force_cpu_for_libcint=force_cpu_for_libcint,
+        **dd,
+    )
 
     i.setup_driver(positions)
     assert isinstance(i.driver, IntDriverLibcint)

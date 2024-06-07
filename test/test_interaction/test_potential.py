@@ -28,17 +28,19 @@ from dxtb._src.constants import defaults
 from dxtb._src.typing import ContainerData
 from dxtb._src.utils import batch
 
+from ..conftest import DEVICE
+
 nbatch = 10
 
 # monopolar potential is orbital-resolved
-vmono = torch.randn(6)
-vmonob = torch.randn((nbatch, 6))
+vmono = torch.randn(6, device=DEVICE)
+vmonob = torch.randn((nbatch, 6), device=DEVICE)
 
 # multipolar potentials are atom-resolved
-vdipole = torch.randn(2)
-vdipoleb = torch.randn((nbatch, 2))
-vquad = torch.randn(2)
-vquadb = torch.randn((nbatch, 2))
+vdipole = torch.randn(2, device=DEVICE)
+vdipoleb = torch.randn((nbatch, 2), device=DEVICE)
+vquad = torch.randn(2, device=DEVICE)
+vquadb = torch.randn((nbatch, 2), device=DEVICE)
 
 data: ContainerData = {
     "mono": vmono.shape,

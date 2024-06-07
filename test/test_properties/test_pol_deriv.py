@@ -32,9 +32,11 @@ from dxtb._src.components.interactions import new_efield
 from dxtb._src.typing import DD, Tensor
 from dxtb.labels import INTLEVEL_DIPOLE
 
+from ..conftest import DEVICE
 from .samples import samples
 
-slist = ["H", "LiH", "HHe", "H2O", "CH4", "SiH4", "PbH4-BiH3"]
+slist = ["H", "LiH", "HHe", "H2O", "CH4", "SiH4"]
+slist_large = ["PbH4-BiH3"]
 
 opts = {
     "int_level": INTLEVEL_DIPOLE,
@@ -46,8 +48,6 @@ opts = {
     "x_atol": 1e-10,
 }
 
-device = None
-
 
 def single(
     name: str,
@@ -56,7 +56,7 @@ def single(
     atol: float = 1e-2,
     rtol: float = 1e-2,
 ) -> None:
-    numbers = samples[name]["numbers"].to(device)
+    numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
 
@@ -75,8 +75,8 @@ def batched(
 
     numbers = pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ],
     )
     positions = pack(
@@ -104,7 +104,9 @@ def execute(
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
     # field is cloned and detached and updated inside
-    num = calc.pol_deriv_numerical(positions, charge)
+    num_polder = calc.pol_deriv_numerical(positions, charge)
+    assert num_polder.grad_fn is None
+    num = tensor_to_numpy(num_polder)
 
     # required for autodiff of energy w.r.t. efield
     calc.interactions.update_efield(field=field_vector.requires_grad_(True))
@@ -162,7 +164,17 @@ def execute(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)
+    single(name, field_vector, dd=dd)
+
+
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", slist_large)
+def test_single_large(dtype: torch.dtype, name: str) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)
     single(name, field_vector, dd=dd)
@@ -171,7 +183,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist)
 def test_single_field(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * VAA2AU
     single(name, field_vector, dd=dd)
@@ -182,7 +194,19 @@ def test_single_field(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", slist)
 def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * VAA2AU
+    batched(name1, name2, field_vector, dd=dd)
+
+
+# TODO: Batched derivatives are not supported yet
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", slist_large)
+def skip_test_batch_large(dtype: torch.dtype, name1: str, name2) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * VAA2AU
     batched(name1, name2, field_vector, dd=dd)
@@ -193,7 +217,7 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", slist)
 def skip_test_batch_field(dtype: torch.dtype, name1: str, name2) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * VAA2AU
     batched(name1, name2, field_vector, dd=dd)

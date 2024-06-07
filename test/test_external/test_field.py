@@ -33,6 +33,7 @@ from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
 from .samples import samples
+from ..conftest import DEVICE
 
 sample_list = ["MB16_43_01"]
 sample_list = ["LiH", "SiH4"]
@@ -44,17 +45,15 @@ opts = {
     "scp_mode": labels.SCP_MODE_POTENTIAL,
 }
 
-device = None
-
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
@@ -66,7 +65,8 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     calc = Calculator(numbers, GFN1_XTB, interaction=[efield], opts=opts, **dd)
 
     result = calc.singlepoint(positions, charges)
-    assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1)
+    res = result.total.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -77,13 +77,13 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 )
 def test_batch(dtype: torch.dtype, name1: str, name2: str, scf_mode: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = pack(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         )
     )
     positions = pack(
@@ -94,7 +94,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, scf_mode: str) -> Non
     )
     charges = torch.tensor([0.0, 0.0], **dd)
 
-    ref1 = torch.stack(
+    ref = torch.stack(
         [
             sample1["energy"].to(**dd),
             sample2["energy"].to(**dd),
@@ -107,7 +107,8 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, scf_mode: str) -> Non
     calc = Calculator(numbers, GFN1_XTB, interaction=[efield], opts=options, **dd)
 
     result = calc.singlepoint(positions, charges)
-    assert pytest.approx(ref1, abs=tol, rel=tol) == result.total.sum(-1)
+    res = result.total.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -121,14 +122,14 @@ def test_batch_three(
     dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2, sample3 = samples[name1], samples[name2], samples[name3]
     numbers = pack(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
-            sample3["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
+            sample3["numbers"].to(DEVICE),
         )
     )
     positions = pack(
@@ -154,4 +155,5 @@ def test_batch_three(
     calc = Calculator(numbers, GFN1_XTB, interaction=[efield], opts=options, **dd)
 
     result = calc.singlepoint(positions, charges)
-    assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1)
+    res = result.total.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()

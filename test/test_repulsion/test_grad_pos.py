@@ -29,6 +29,7 @@ from tad_mctc.autograd import dgradcheck, dgradgradcheck
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.components.classicals import Repulsion, new_repulsion
+from dxtb._src.components.classicals.repulsion.base import BaseRepulsionCache
 from dxtb._src.components.classicals.repulsion.rep import (
     repulsion_energy,
     repulsion_gradient,
@@ -36,13 +37,12 @@ from dxtb._src.components.classicals.repulsion.rep import (
 from dxtb._src.typing import DD, Callable, Tensor
 from dxtb._src.utils import batch
 
+from ..conftest import DEVICE
 from .samples import samples
 
 sample_list = ["H2O", "SiH4", "MB16_43_01", "MB16_43_02", "LYS_xao"]
 
 tol = 1e-7
-
-device = None
 
 
 @pytest.mark.grad
@@ -50,10 +50,10 @@ device = None
 @pytest.mark.parametrize("name", ["H2O", "SiH4"])
 def test_backward_vs_tblite(dtype: torch.dtype, name: str) -> None:
     """Compare with reference values from tblite."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = sample["gfn1_grad"].to(**dd)
 
@@ -76,7 +76,7 @@ def test_backward_vs_tblite(dtype: torch.dtype, name: str) -> None:
     positions.detach_()
     positions.grad.data.zero_()
 
-    assert pytest.approx(ref, abs=tol) == grad_backward
+    assert pytest.approx(ref.cpu(), abs=tol) == grad_backward.cpu()
 
 
 @pytest.mark.grad
@@ -85,13 +85,13 @@ def test_backward_vs_tblite(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name2", ["H2O", "SiH4"])
 def test_backward_batch_vs_tblite(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Compare with reference values from tblite."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ]
     )
     positions = batch.pack(
@@ -126,17 +126,17 @@ def test_backward_batch_vs_tblite(dtype: torch.dtype, name1: str, name2: str) ->
     positions.detach_()
     positions.grad.data.zero_()
 
-    assert pytest.approx(ref, abs=tol) == grad_backward
+    assert pytest.approx(ref.cpu(), abs=tol) == grad_backward.cpu()
 
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list + ["MB16_43_03"])
 def test_grad_pos_backward_vs_analytical(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     rep = new_repulsion(numbers, par, **dd)
@@ -164,11 +164,11 @@ def test_grad_pos_backward_vs_analytical(dtype: torch.dtype, name: str) -> None:
     positions.detach_()
     positions.grad.data.zero_()
 
-    assert pytest.approx(grad_analytical, abs=tol) == grad_backward
+    assert pytest.approx(grad_analytical.cpu(), abs=tol) == grad_backward.cpu()
 
 
 def calc_numerical_gradient(
-    positions: Tensor, rep: Repulsion, cache: Repulsion.Cache
+    positions: Tensor, rep: Repulsion, cache: BaseRepulsionCache
 ) -> Tensor:
     """Calculate gradient numerically for reference."""
 
@@ -199,11 +199,11 @@ def calc_numerical_gradient(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list + ["MB16_43_03"])
 def test_grad_pos_analytical_vs_numerical(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
     atol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     rep = new_repulsion(numbers, par, **dd)
@@ -219,8 +219,8 @@ def test_grad_pos_analytical_vs_numerical(dtype: torch.dtype, name: str) -> None
     )
 
     # numerical gradient
-    grad_numerical = calc_numerical_gradient(positions, rep, cache)
-    assert pytest.approx(grad_numerical, abs=atol) == grad_analytical
+    grad_num = calc_numerical_gradient(positions, rep, cache)
+    assert pytest.approx(grad_num.cpu(), abs=atol) == grad_analytical.cpu()
 
 
 def gradchecker(
@@ -229,10 +229,10 @@ def gradchecker(
     """Prepare gradient check from `torch.autograd`."""
     assert par.repulsion is not None
 
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -278,13 +278,13 @@ def gradchecker_batch(
     dtype: torch.dtype, name1: str, name2: str
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ]
     )
     positions = batch.pack(

@@ -39,10 +39,9 @@ from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 from dxtb._src.utils import batch
 
+from ..conftest import DEVICE
 from .samples import samples
 from .uhf_table import uhf, uhf_anion, uhf_cation
-
-device = None
 
 ref = torch.tensor(
     [
@@ -339,18 +338,19 @@ opts = {
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
-    numbers = torch.tensor([number])
+    numbers = torch.tensor([number], device=DEVICE)
     positions = torch.zeros((1, 3), **dd)
-    r = ref[number - 1].item()
+    r = ref[number - 1]
     charges = torch.tensor(0.0, **dd)
 
     # opts["spin"] = uhf[number - 1]
-    options = dict(opts, **{"f_atol": 1e-6, "x_atol": 1e-6})
+    atol = 1e-5 if dtype == torch.float else 1e-6
+    options = dict(opts, **{"f_atol": atol, "x_atol": atol})
     calc = Calculator(numbers, par, opts=options, **dd)
     results = calc.singlepoint(positions, charges)
-    assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
+    assert pytest.approx(r.cpu(), abs=tol) == results.scf.sum(-1).cpu()
 
 
 @pytest.mark.large
@@ -359,15 +359,15 @@ def test_element(dtype: torch.dtype, number: int) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_cation(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     # SCF does not converge for gold (in tblite too)
     if number == 79:
         return
 
-    numbers = torch.tensor([number])
+    numbers = torch.tensor([number], device=DEVICE)
     positions = torch.zeros((1, 3), **dd)
-    r = ref_cation[number - 1].item()
+    r = ref_cation[number - 1]
     charges = torch.tensor(1.0, **dd)
     spin = uhf_cation[number - 1]
 
@@ -382,7 +382,7 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
 
     # no (valence) electrons: [1, 3, 11, 19, 37, 55]
     results = calc.singlepoint(positions, charges, spin=spin)
-    assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
+    assert pytest.approx(r.cpu(), abs=tol) == results.scf.sum(-1).cpu()
 
 
 @pytest.mark.large
@@ -391,7 +391,7 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_anion(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     # Helium doesn't have enough orbitals for negative charge
     if number == 2:
@@ -401,9 +401,9 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
     if number in [21, 22, 23, 25, 43, 57, 58, 59]:
         return
 
-    numbers = torch.tensor([number])
+    numbers = torch.tensor([number], device=DEVICE)
     positions = torch.zeros((1, 3), **dd)
-    r = ref_anion[number - 1].item()
+    r = ref_anion[number - 1]
     charges = torch.tensor(-1.0, **dd)
     spin = uhf_anion[number - 1]
 
@@ -417,7 +417,7 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
     calc = Calculator(numbers, par, opts=options, **dd)
     results = calc.singlepoint(positions, charges, spin=spin)
 
-    assert pytest.approx(r, abs=tol) == results.scf.sum(-1).item()
+    assert pytest.approx(r.cpu(), abs=tol) == results.scf.sum(-1).cpu()
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -426,16 +426,31 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:
     tol = 1e-1
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[mol]
-    numbers = batch.pack((sample["numbers"], torch.tensor([number])))
-    positions = batch.pack((sample["positions"], torch.zeros((1, 3)))).type(dtype)
-    refs = batch.pack((sample["escf"], ref[number - 1])).type(dtype)
+    numbers = batch.pack(
+        (
+            sample["numbers"].to(device=DEVICE),
+            torch.tensor([number], device=DEVICE),
+        )
+    )
+    positions = batch.pack(
+        (
+            sample["positions"].to(**dd),
+            torch.zeros((1, 3), **dd),
+        ),
+    )
+    refs = batch.pack(
+        (
+            sample["escf"].to(**dd),
+            ref[number - 1].to(**dd),
+        )
+    )
     charges = torch.tensor([0.0, 0.0], **dd)
     spin = torch.tensor([0, uhf[number - 1]])
 
     calc = Calculator(numbers, par, opts=opts, **dd)
     results = calc.singlepoint(positions, charges, spin=spin)
 
-    assert pytest.approx(refs, abs=tol) == results.scf.sum(-1)
+    assert pytest.approx(refs.cpu(), abs=tol) == results.scf.sum(-1).cpu()

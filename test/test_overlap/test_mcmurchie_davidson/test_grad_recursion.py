@@ -23,10 +23,14 @@ from __future__ import annotations
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
+from dxtb._src.typing import DD
 from dxtb._src.integral.driver.pytorch.impls.md import recursion
+from ...conftest import DEVICE
 
 
 def test_gradcheck_efunction(dtype: torch.dtype = torch.double) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
     xij = torch.tensor(
         [
             [0.0328428932, 0.0555253364, 0.0625081286, 0.0645959303],
@@ -34,7 +38,7 @@ def test_gradcheck_efunction(dtype: torch.dtype = torch.double) -> None:
             [0.0625081286, 0.2809201777, 0.6460560560, 0.9701334238],
             [0.0645959303, 0.3286595047, 0.9701334238, 1.9465910196],
         ],
-        dtype=dtype,
+        **dd,
     )
     rpi = torch.tensor(
         [
@@ -59,7 +63,7 @@ def test_gradcheck_efunction(dtype: torch.dtype = torch.double) -> None:
                 ],
             ]
         ],
-        dtype=dtype,
+        **dd,
     )
     rpj = torch.tensor(
         [
@@ -84,7 +88,7 @@ def test_gradcheck_efunction(dtype: torch.dtype = torch.double) -> None:
                 ],
             ]
         ],
-        dtype=dtype,
+        **dd,
     )
     shape = (1, 3, 4, 4, torch.tensor(1), torch.tensor(1))
 

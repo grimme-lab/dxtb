@@ -113,7 +113,7 @@ class _Timers:
             TimerError
                 If timer is already running.
             """
-            if not self.parent._enabled:
+            if not self.parent.enabled:
                 return
 
             if self._start_time is not None:
@@ -121,7 +121,7 @@ class _Timers:
                     f"Timer '{self.label}' is running. Use `.stop()` to stop it."
                 )
 
-            if self._cuda_sync is True:
+            if self.cuda_sync is True:
                 _sync()
 
             self._start_time = time.perf_counter()
@@ -140,7 +140,7 @@ class _Timers:
             TimerError
                 If timer is not running.
             """
-            if not self.parent._enabled:
+            if not self.parent.enabled:
                 return 0.0
 
             if self._start_time is None:
@@ -148,7 +148,7 @@ class _Timers:
                     f"Timer '{self.label}' is not running. Use .start() to " "start it."
                 )
 
-            if self._cuda_sync is True:
+            if self.cuda_sync is True:
                 _sync()
 
             self.elapsed_time += time.perf_counter() - self._start_time
@@ -180,6 +180,7 @@ class _Timers:
         label: str | None = None,
         autostart: bool = False,
         cuda_sync: bool = False,
+        only_parents: bool = False,
     ) -> None:
         self.label = label
         self.timers = {}
@@ -187,6 +188,7 @@ class _Timers:
         self._subtimer_parent_map = {}
         self._autostart = autostart
         self._cuda_sync = cuda_sync
+        self._only_parents = only_parents
 
         if self._autostart is True:
             self.reset()
@@ -244,6 +246,32 @@ class _Timers:
         for t in self.timers.values():
             t.cuda_sync = value
 
+    @property
+    def only_parents(self) -> bool:
+        """
+        Check if only parent timers are enabled.
+
+        Returns
+        -------
+        bool
+            Whether only parent timers are enabled (``True``) or not
+            (``False``).
+        """
+        return self._only_parents
+
+    @only_parents.setter
+    def only_parents(self, value: bool) -> None:
+        """
+        Enable or disable only parent timers.
+
+        Parameters
+        ----------
+        value : bool
+            Whether to enable (``True``) or disable (``False``) only parent
+            timers.
+        """
+        self._only_parents = value
+
     def start(
         self, uid: str, label: str | None = None, parent_uid: str | None = None
     ) -> None:
@@ -259,6 +287,9 @@ class _Timers:
             If no `label` is given, the `uid` is used.
         """
         if not self._enabled:
+            return
+
+        if self.only_parents is True and parent_uid is not None:
             return
 
         if uid in self.timers:
@@ -293,10 +324,15 @@ class _Timers:
         TimerError
             If timer dubbed `uid` does not exist.
         """
-        if not self._enabled:
+        if not self.enabled:
             return 0.0
 
         if uid not in self.timers:
+            # If sub timers are disabled, some timers will not exist. So,
+            # instead of raising an error, we return just 0.0.
+            if self.only_parents is True:
+                return 0.0
+
             raise TimerError(f"Timer '{uid}' does not exist.")
 
         t = self.timers[uid]
@@ -328,6 +364,33 @@ class _Timers:
         self.reset()
         self.stop_all()
 
+    def get_time(self, uid: str) -> float:
+        """
+        Get the elapsed time of a timer.
+
+        Parameters
+        ----------
+        uid : str
+            Unique ID of the timer.
+
+        Returns
+        -------
+        float
+            Elapsed time in seconds.
+
+        Raises
+        ------
+        TimerError
+            If timer dubbed `uid` does not exist.
+        """
+        if not self.enabled:
+            return 0.0
+
+        if uid not in self.timers:
+            raise TimerError(f"Timer '{uid}' does not exist.")
+
+        return self.timers[uid].elapsed_time
+
     def get_times(self) -> dict[str, dict[str, float]]:
         """
         Get the elapsed times of all timers,
@@ -344,7 +407,7 @@ class _Timers:
         times = {}
 
         # Initialize all parent timers in the times dictionary
-        for k in self.timers.keys():
+        for k in self.timers:
             if k not in self._subtimer_parent_map:
                 times[k] = {KEY: None, "sub": {}}
 

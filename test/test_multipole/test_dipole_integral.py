@@ -42,10 +42,9 @@ except ImportError:
     M = False
 
 from .samples import samples
+from ..conftest import DEVICE
 
 sample_list = ["H2", "LiH", "Li2", "H2O", "S", "SiH4", "MB16_43_01", "C60"]
-
-device = None
 
 
 def snorm(overlap: Tensor) -> Tensor:
@@ -56,11 +55,11 @@ def snorm(overlap: Tensor) -> Tensor:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps) * 1e-2
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
@@ -77,7 +76,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     pyscf_dpint = numpy_to_tensor(mol.intor("int1e_r_origj"), **dd)
 
     assert dxtb_dpint.shape == pyscf_dpint.shape
-    assert pytest.approx(pyscf_dpint, abs=tol) == dxtb_dpint
+    assert pytest.approx(pyscf_dpint.cpu(), abs=tol) == dxtb_dpint.cpu()
 
     # normalize
     norm = snorm(libcint.overlap(wrapper))
@@ -85,4 +84,4 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     pyscf_dpint = torch.einsum("xij,i,j->xij", pyscf_dpint, norm, norm)
 
     assert dxtb_dpint.shape == pyscf_dpint.shape
-    assert pytest.approx(pyscf_dpint, abs=tol) == dxtb_dpint
+    assert pytest.approx(pyscf_dpint.cpu(), abs=tol) == dxtb_dpint.cpu()

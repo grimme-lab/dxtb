@@ -18,6 +18,7 @@ from dxtb._src.constants import defaults, labels
 from dxtb._src.typing import Tensor
 from dxtb._src.wavefunction import filling
 from dxtb.config import ConfigSCF
+from dxtb._src.timing.decorator import timer_decorator
 
 from ..utils import get_density
 from .data import _Data
@@ -112,6 +113,7 @@ def charges_to_potential(
     return potential
 
 
+@timer_decorator("Potential", "SCF")
 def potential_to_charges(potential: Potential, data: _Data, cfg: ConfigSCF) -> Charges:
     """
     Compute the orbital charges from the potential.
@@ -158,6 +160,7 @@ def potential_to_density(potential: Potential, data: _Data, cfg: ConfigSCF) -> T
     return hamiltonian_to_density(data.hamiltonian, data, cfg)
 
 
+@timer_decorator("Charges", "SCF")
 def density_to_charges(density: Tensor, data: _Data, cfg: ConfigSCF) -> Charges:
     """
     Compute the orbital charges from the density matrix.
@@ -209,6 +212,7 @@ def density_to_charges(density: Tensor, data: _Data, cfg: ConfigSCF) -> Charges:
     return charges
 
 
+@timer_decorator("Fock build", "SCF")
 def potential_to_hamiltonian(potential: Potential, data: _Data) -> Tensor:
     """
     Compute the Hamiltonian from the potential.

@@ -30,7 +30,9 @@ from dxtb import Calculator
 from dxtb._src.io import read_chrg, read_coord
 from dxtb._src.timing import timer
 
-opts = {"verbosity": 0}
+from ..conftest import DEVICE
+
+opts = {"verbosity": 0, "int_level": 4}
 
 
 def test_fail() -> None:
@@ -54,7 +56,7 @@ def test_uhf_fail() -> None:
     positions = torch.tensor(positions)
     charge = torch.tensor(charge)
 
-    calc = Calculator(numbers, par, opts=opts)
+    calc = Calculator(numbers, par, opts=opts, device=DEVICE)
 
     with pytest.raises(ValueError):
         calc.singlepoint(positions, charge, spin=0)

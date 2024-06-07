@@ -121,7 +121,7 @@ class DispersionD4(Dispersion):
         rcov: Tensor = (
             kwargs.pop(
                 "rcov",
-                d4.data.COV_D3[numbers],
+                d4.data.COV_D3.to(**self.dd)[numbers],
             )
             .type(self.dtype)
             .to(self.device)
@@ -130,7 +130,7 @@ class DispersionD4(Dispersion):
         r4r2: Tensor = (
             kwargs.pop(
                 "r4r2",
-                d4.data.R4R2[numbers],
+                d4.data.R4R2.to(**self.dd)[numbers],
             )
             .type(self.dtype)
             .to(self.device)
@@ -140,6 +140,7 @@ class DispersionD4(Dispersion):
             .type(self.dtype)
             .to(self.device)
         )
+
         cf = kwargs.pop("counting_function", d4.ncoord.erf_count)
         df = kwargs.pop("damping_function", d4.damping.rational_damping)
 

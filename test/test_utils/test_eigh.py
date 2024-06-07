@@ -30,6 +30,8 @@ from dxtb._src.exlibs.xitorch import LinearOperator
 from dxtb._src.exlibs.xitorch.linalg import symeig
 from dxtb._src.typing import Literal, Tensor
 
+from ..conftest import DEVICE
+
 # Hamiltonian of LiH from last step
 hamiltonian = torch.tensor(
     [
@@ -83,12 +85,13 @@ hamiltonian = torch.tensor(
         ],
     ],
     dtype=torch.float64,
+    device=DEVICE,
 )
 
 
 @pytest.mark.parametrize("broadening", [None, "cond", "lorn"])
 def test_eighb(broadening: Literal["cond", "lorn"] | None) -> None:
-    a = torch.rand(8, 8, dtype=torch.double)
+    a = torch.rand(8, 8, dtype=torch.double, device=DEVICE)
     a.requires_grad_(True)
 
     def eigen_proxy(m: Tensor):
@@ -111,7 +114,7 @@ def test_eighb_degen(broadening: Literal["cond", "lorn"] | None) -> None:
 
 
 def test_xtlsymeig() -> None:
-    a = torch.rand(8, 8, dtype=torch.double)
+    a = torch.rand(8, 8, dtype=torch.double, device=DEVICE)
     a.requires_grad_(True)
 
     def eigen_proxy(m: Tensor):

@@ -27,7 +27,7 @@ from dxtb import GFN1_XTB
 from dxtb._src.typing import DD, Tensor
 from dxtb.calculators import AutogradCalculator
 
-DEVICE = None
+from ...conftest import DEVICE
 
 
 opts = {"cache_enabled": True, "verbosity": 0}

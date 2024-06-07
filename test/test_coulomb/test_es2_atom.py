@@ -35,10 +35,9 @@ from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import batch
 
 from .samples import samples
+from ..conftest import DEVICE
 
 sample_list = ["MB16_43_01", "MB16_43_02", "SiH4_atom"]
-
-device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -46,10 +45,10 @@ device = None
 def test_single(dtype: torch.dtype, name: str) -> None:
     """Test ES2 for some samples from MB16_43."""
     tol = sqrt(torch.finfo(dtype).eps)
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     qat = sample["q"].to(**dd)
     ref = sample["es2"].to(**dd)
@@ -60,7 +59,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     cache = es.get_cache(numbers, positions, ihelp)
     e = es.get_atom_energy(qat, cache)
-    assert pytest.approx(ref, abs=tol, rel=tol) == torch.sum(e, dim=-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == e.sum(-1).cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -68,13 +67,13 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps)
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         )
     )
     positions = batch.pack(
@@ -102,17 +101,17 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     cache = es.get_cache(numbers, positions, ihelp)
     e = es.get_atom_energy(qat, cache)
-    assert pytest.approx(ref, abs=tol, rel=tol) == torch.sum(e, dim=-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == e.sum(-1).cpu()
 
 
 @pytest.mark.grad
 @pytest.mark.parametrize("name", sample_list)
 def test_grad_positions(name: str) -> None:
     dtype = torch.double
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd).detach()
     qat = sample["q"].to(**dd)
 
@@ -134,10 +133,10 @@ def test_grad_positions(name: str) -> None:
 @pytest.mark.grad
 @pytest.mark.parametrize("name", sample_list)
 def test_grad_param(name: str) -> None:
-    dd: DD = {"device": device, "dtype": torch.double}
+    dd: DD = {"dtype": torch.double, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     qat = sample["q"].to(**dd)
 

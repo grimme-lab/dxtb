@@ -32,6 +32,7 @@ from dxtb._src.components.interactions import new_efield
 from dxtb._src.typing import DD, Tensor
 from dxtb.labels import INTLEVEL_DIPOLE
 
+from ..conftest import DEVICE
 from .samples import samples
 
 slist = ["H", "LiH", "HHe", "H2O", "CH4", "PbH4-BiH3"]
@@ -47,8 +48,6 @@ opts = {
     "x_atol": 1e-10,
 }
 
-device = None
-
 
 def single(
     name: str,
@@ -57,7 +56,7 @@ def single(
     atol: float = 1e-3,
     rtol: float = 1e-3,
 ) -> None:
-    numbers = samples[name]["numbers"].to(device)
+    numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
 
@@ -76,8 +75,8 @@ def batched(
 
     numbers = pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ],
     )
     positions = pack(
@@ -119,7 +118,7 @@ def execute(
             use_functorch=False,
         )
     )
-    assert pytest.approx(num, abs=atol, rel=rtol) == dipder1
+    assert pytest.approx(num.cpu(), abs=atol, rel=rtol) == dipder1
 
     # applying AD twice requires detaching
     calc.reset()
@@ -133,7 +132,7 @@ def execute(
             use_functorch=False,
         )
     )
-    assert pytest.approx(num, abs=atol, rel=rtol) == dipder2
+    assert pytest.approx(num.cpu(), abs=atol, rel=rtol) == dipder2
 
     # applying AD twice requires detaching
     calc.reset()
@@ -147,7 +146,7 @@ def execute(
             use_functorch=True,
         )
     )
-    assert pytest.approx(num, abs=atol, rel=rtol) == dipder3
+    assert pytest.approx(num.cpu(), abs=atol, rel=rtol) == dipder3
 
     # applying AD twice requires detaching
     calc.reset()
@@ -161,7 +160,7 @@ def execute(
             use_functorch=True,
         )
     )
-    assert pytest.approx(num, abs=atol, rel=rtol) == dipder4
+    assert pytest.approx(num.cpu(), abs=atol, rel=rtol) == dipder4
 
     assert pytest.approx(dipder1, abs=atol) == dipder2
     assert pytest.approx(dipder1, abs=atol) == dipder3
@@ -171,7 +170,7 @@ def execute(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)
     single(name, field_vector, dd=dd)
@@ -181,7 +180,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist_large)
 def test_single_large(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)
     single(name, field_vector, dd=dd)
@@ -190,7 +189,7 @@ def test_single_large(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist)
 def test_single_field(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * VAA2AU
     single(name, field_vector, dd=dd)
@@ -201,7 +200,7 @@ def test_single_field(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", slist)
 def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * VAA2AU
     batched(name1, name2, field_vector, dd=dd)
@@ -213,7 +212,7 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", slist_large)
 def skip_test_batch_large(dtype: torch.dtype, name1: str, name2) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * VAA2AU
     batched(name1, name2, field_vector, dd=dd)
@@ -224,7 +223,7 @@ def skip_test_batch_large(dtype: torch.dtype, name1: str, name2) -> None:
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", slist)
 def skip_test_batch_field(dtype: torch.dtype, name1: str, name2) -> None:
-    dd: DD = {"dtype": dtype, "device": device}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     field_vector = torch.tensor([-2.0, 0.5, 1.5], **dd) * VAA2AU
     batched(name1, name2, field_vector, dd=dd)

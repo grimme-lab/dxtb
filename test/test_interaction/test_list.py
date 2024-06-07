@@ -25,12 +25,14 @@ import torch
 from dxtb import IndexHelper
 from dxtb._src.components.interactions import InteractionList, InteractionListCache
 
+from ..conftest import DEVICE
+
 
 def test_empty() -> None:
     ilist = InteractionList()
     assert len(ilist.components) == 0
 
-    numbers = torch.tensor([6, 1])
+    numbers = torch.tensor([6, 1], device=DEVICE)
     ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0, 0], 6: [0, 1]})
     orbital = ihelp.spread_atom_to_orbital(numbers)
 
@@ -38,7 +40,7 @@ def test_empty() -> None:
     assert isinstance(c, InteractionListCache)
 
     e = ilist.get_energy(orbital, numbers, ihelp)  # type: ignore
-    assert (e == torch.zeros(e.shape)).all()
+    assert (e == torch.zeros(e.shape, device=DEVICE)).all()
 
     g = ilist.get_gradient(e, e, e, ihelp)  # type: ignore
-    assert (g == torch.zeros(g.shape)).all()
+    assert (g == torch.zeros(g.shape, device=DEVICE)).all()

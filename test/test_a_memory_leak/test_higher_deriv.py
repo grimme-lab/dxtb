@@ -35,10 +35,9 @@ from dxtb._src.typing import DD
 
 from ..utils import nth_derivative
 from .util import has_memleak_tensor
+from ..conftest import DEVICE
 
 sample_list = ["H2O", "SiH4", "MB16_43_01"]
-
-device = None
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -46,13 +45,13 @@ device = None
 @pytest.mark.parametrize("name", sample_list)
 @pytest.mark.parametrize("n", [1, 2, 3, 4])
 def test_single(dtype: torch.dtype, name: str, n: int) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     def fcn():
         assert par.repulsion is not None
 
         sample = samples[name]
-        numbers = sample["numbers"].to(device)
+        numbers = sample["numbers"].to(DEVICE)
         positions = sample["positions"].clone().to(**dd)
 
         ihelp = IndexHelper.from_numbers(numbers, par)

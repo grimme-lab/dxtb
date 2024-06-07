@@ -32,6 +32,7 @@ from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 from dxtb._src.utils import batch
 
+from ..conftest import DEVICE
 from .samples import samples
 
 opts = {
@@ -41,18 +42,16 @@ opts = {
     "scp_mode": labels.SCP_MODE_POTENTIAL,
 }
 
-device = None
-
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
 def test_single(dtype: torch.dtype, name: str):
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = sample["escf"].to(**dd)
     charges = torch.tensor(0.0, **dd)
@@ -60,7 +59,8 @@ def test_single(dtype: torch.dtype, name: str):
     calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(positions, charges)
-    assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
+    res = result.scf.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -72,10 +72,10 @@ def test_single(dtype: torch.dtype, name: str):
 def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
     """Test a few larger system."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = sample["escf"].to(**dd)
     charges = torch.tensor(0.0, **dd)
@@ -95,7 +95,8 @@ def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, charges)
-    assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
+    res = result.scf.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -104,10 +105,10 @@ def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
 def test_single_difficult(dtype: torch.dtype, name: str):
     """Test a few larger system (only float32 within tolerance)."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = sample["escf"].to(**dd)
     charges = torch.tensor(0.0, **dd)
@@ -124,7 +125,8 @@ def test_single_difficult(dtype: torch.dtype, name: str):
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, charges)
-    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
+    res = result.scf.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol) == res.cpu()
 
 
 @pytest.mark.large
@@ -134,10 +136,10 @@ def test_single_difficult(dtype: torch.dtype, name: str):
 def test_single_large(dtype: torch.dtype, name: str):
     """Test a large systems (only float32 as they take some time)."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = sample["escf"].to(**dd)
     charges = torch.tensor(0.0, **dd)
@@ -152,7 +154,8 @@ def test_single_large(dtype: torch.dtype, name: str):
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, charges)
-    assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
+    res = result.scf.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -161,13 +164,13 @@ def test_single_large(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize("name2", ["LiH", "SiH4"])
 def test_batch(dtype: torch.dtype, name1: str, name2: str):
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name1], samples[name2]
     numbers = batch.pack(
         (
-            sample[0]["numbers"].to(device),
-            sample[1]["numbers"].to(device),
+            sample[0]["numbers"].to(DEVICE),
+            sample[1]["numbers"].to(DEVICE),
         )
     )
     positions = batch.pack(
@@ -186,7 +189,8 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(positions, charges)
-    assert pytest.approx(ref, abs=tol, rel=tol) == result.scf.sum(-1)
+    res = result.scf.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -196,14 +200,14 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
 @pytest.mark.parametrize("name3", ["SiH4"])
 def test_batch2(dtype: torch.dtype, name1: str, name2: str, name3: str):
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name1], samples[name2], samples[name3]
     numbers = batch.pack(
         (
-            sample[0]["numbers"].to(device),
-            sample[1]["numbers"].to(device),
-            sample[2]["numbers"].to(device),
+            sample[0]["numbers"].to(DEVICE),
+            sample[1]["numbers"].to(DEVICE),
+            sample[2]["numbers"].to(DEVICE),
         )
     )
     positions = batch.pack(
@@ -224,7 +228,8 @@ def test_batch2(dtype: torch.dtype, name1: str, name2: str, name3: str):
     calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(positions, charges)
-    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
+    res = result.scf.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol) == res.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -239,9 +244,9 @@ def test_batch_special(dtype: torch.dtype, mixer: str) -> None:
     additional padding upon spreading is prevented.
     """
     tol = 1e-2  # atoms show larger deviations
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
-    numbers = torch.tensor([[2, 2], [17, 0]])
+    numbers = torch.tensor([[2, 2], [17, 0]], device=DEVICE)
     positions = batch.pack(
         [
             torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.5]], **dd),
@@ -255,4 +260,4 @@ def test_batch_special(dtype: torch.dtype, mixer: str) -> None:
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, chrg)
-    assert pytest.approx(ref, abs=tol) == result.scf.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol) == result.scf.sum(-1).cpu()

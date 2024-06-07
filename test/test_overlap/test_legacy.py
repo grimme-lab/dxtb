@@ -30,7 +30,6 @@ from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
 from dxtb._src.integral.driver.pytorch import IntDriverPytorchLegacy, OverlapPytorch
-from dxtb._src.integral.driver.pytorch.impls.overlap_legacy import overlap_legacy
 from dxtb._src.param import Param
 from dxtb._src.typing import DD, Literal, Tensor
 
@@ -40,7 +39,7 @@ from .utils import calc_overlap
 
 ref_overlap = np.load("test/test_overlap/overlap.npz")
 
-device = None
+from ..conftest import DEVICE
 
 
 def calc_overlap(
@@ -61,16 +60,16 @@ def calc_overlap(
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["HC", "HHe"])
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = 1e-05
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = load_from_npz(ref_overlap, name, dtype)
 
     s = calc_overlap(numbers, positions, par, uplo="l", dd=dd)
-    assert pytest.approx(ref, rel=tol, abs=tol) == s
+    assert pytest.approx(ref.cpu(), rel=tol, abs=tol) == s.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float])
@@ -78,15 +77,15 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name2", ["C", "HC", "HHe"])
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Batched version."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = 1e-05
 
     sample1, sample2 = samples[name1], samples[name2]
 
     numbers = pack(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         )
     )
     positions = pack(
@@ -103,8 +102,8 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     s = calc_overlap(numbers, positions, par, uplo="l", dd=dd)
-    assert pytest.approx(s, abs=tol) == s.mT
-    assert pytest.approx(ref, abs=tol) == s
+    assert pytest.approx(s.cpu(), abs=tol) == s.mT.cpu()
+    assert pytest.approx(ref.cpu(), abs=tol) == s.cpu()
 
 
 def test_gradient() -> None:
@@ -112,8 +111,13 @@ def test_gradient() -> None:
         overlap_gradient_legacy,
     )
 
-    numbers = torch.tensor([3, 1])
-    positions = torch.tensor([[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]]])
+    numbers = torch.tensor([3, 1], device=DEVICE)
+    positions = torch.tensor(
+        [
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]],
+        ],
+        device=DEVICE,
+    )
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp)
 

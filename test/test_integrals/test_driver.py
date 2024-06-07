@@ -31,20 +31,38 @@ from dxtb._src.integral.driver.libcint import IntDriverLibcint
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch
 from dxtb._src.typing import DD
 
-device = None
+from ..conftest import DEVICE
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-def test_single(dtype: torch.dtype):
+@pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
+def test_single(dtype: torch.dtype, force_cpu_for_libcint: bool):
     """Overlap matrix for monoatomic molecule should be unity."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
-    numbers = torch.tensor([3, 1], device=device)
+    numbers = torch.tensor([3, 1], device=DEVICE)
     positions = torch.zeros((2, 3), **dd)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    ipy = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_ANALYTICAL, **dd)
-    ilc = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_LIBCINT, **dd)
+    ipy = ints.Integrals(
+        numbers,
+        par,
+        ihelp,
+        driver=INTDRIVER_ANALYTICAL,
+        force_cpu_for_libcint=force_cpu_for_libcint,
+        **dd,
+    )
+    ilc = ints.Integrals(
+        numbers,
+        par,
+        ihelp,
+        driver=INTDRIVER_LIBCINT,
+        force_cpu_for_libcint=force_cpu_for_libcint,
+        **dd,
+    )
+
+    if force_cpu_for_libcint is True:
+        positions = positions.cpu()
 
     ipy.setup_driver(positions)
     assert isinstance(ipy.driver, IntDriverPytorch)
@@ -61,16 +79,34 @@ def test_single(dtype: torch.dtype):
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-def test_batch(dtype: torch.dtype):
+@pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
+def test_batch(dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
     """Overlap matrix for monoatomic molecule should be unity."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
-    numbers = torch.tensor([[3, 1], [1, 0]], device=device)
+    numbers = torch.tensor([[3, 1], [1, 0]], device=DEVICE)
     positions = torch.zeros((2, 2, 3), **dd)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    ipy = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_ANALYTICAL, **dd)
-    ilc = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_LIBCINT, **dd)
+    ipy = ints.Integrals(
+        numbers,
+        par,
+        ihelp,
+        driver=INTDRIVER_ANALYTICAL,
+        force_cpu_for_libcint=force_cpu_for_libcint,
+        **dd,
+    )
+    ilc = ints.Integrals(
+        numbers,
+        par,
+        ihelp,
+        driver=INTDRIVER_LIBCINT,
+        force_cpu_for_libcint=force_cpu_for_libcint,
+        **dd,
+    )
+
+    if force_cpu_for_libcint is True:
+        positions = positions.cpu()
 
     ipy.setup_driver(positions)
     assert isinstance(ipy.driver, IntDriverPytorch)

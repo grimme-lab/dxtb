@@ -34,20 +34,19 @@ except ImportError:
     pyscf = False
 
 from .samples import samples
+from ..conftest import DEVICE
 
 sample_list = ["H2", "LiH", "S", "SiH4", "MB16_43_01", "C60"]
-
-device = None
 
 
 @pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_construction(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     # pyscf molecule
@@ -69,9 +68,9 @@ def test_construction(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_error(dtype: torch.dtype) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
-    numbers = torch.tensor([-1, 1], device=device)
+    numbers = torch.tensor([-1, 1], device=DEVICE)
     positions = torch.randn((2, 3), **dd)
 
     with pytest.raises(ValueError):

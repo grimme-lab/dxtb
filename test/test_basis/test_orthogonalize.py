@@ -28,27 +28,33 @@ from dxtb._src.basis.slater import slater_to_gauss
 from dxtb._src.integral.driver.pytorch.impls.md import overlap_gto
 from dxtb._src.typing import DD
 
-device = None
+from ..conftest import DEVICE
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_ortho_1s_2s(dtype: torch.dtype):
     """Test orthogonality of GFN1-xTB's H1s and H2s orbitals"""
     tols = {"abs": 1e-6, "rel": 1e-6, "nan_ok": False}
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     # azimuthal quantum number of s-orbital
-    l = torch.tensor(0)
+    l = torch.tensor(0, device=DEVICE)
 
     # same site
-    vec = torch.tensor([0.0, 0.0, 0.0], dtype=dtype)
+    vec = torch.tensor([0.0, 0.0, 0.0], **dd)
 
     # create gaussians
     alphai, coeffi = slater_to_gauss(
-        torch.tensor(5), torch.tensor(1), l, vec.new_tensor(1.2)
+        torch.tensor(5, device=DEVICE),
+        torch.tensor(1, device=DEVICE),
+        l,
+        vec.new_tensor(1.2),
     )
     alphaj, coeffj = slater_to_gauss(
-        torch.tensor(2), torch.tensor(2), l, vec.new_tensor(0.7)
+        torch.tensor(2, device=DEVICE),
+        torch.tensor(2, device=DEVICE),
+        l,
+        vec.new_tensor(0.7),
     )
 
     alphaj_new, coeffj_new = orthogonalize((alphai, alphaj), (coeffi, coeffj))
@@ -56,13 +62,13 @@ def test_ortho_1s_2s(dtype: torch.dtype):
     # normalised self-overlap
     ref = torch.tensor(1, **dd)
     s = overlap_gto((l, l), (alphaj, alphaj), (coeffj, coeffj), vec)
-    assert pytest.approx(ref, **tols) == s.sum()
+    assert pytest.approx(ref.cpu(), **tols) == s.sum().cpu()
     s2 = gaussian_integral(*(alphaj, alphaj), *(coeffj, coeffj))
-    assert pytest.approx(ref, **tols) == s2
+    assert pytest.approx(ref.cpu(), **tols) == s2.cpu()
 
     # orthogonal overlap
     ref = torch.tensor(0, **dd)
     s = overlap_gto((l, l), (alphai, alphaj_new), (coeffi, coeffj_new), vec)
     s2 = gaussian_integral(*(alphai, alphaj_new), *(coeffi, coeffj_new))
-    assert pytest.approx(ref, **tols) == s.sum()
-    assert pytest.approx(ref, **tols) == s2
+    assert pytest.approx(ref.cpu(), **tols) == s.sum().cpu()
+    assert pytest.approx(ref.cpu(), **tols) == s2.cpu()

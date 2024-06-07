@@ -37,21 +37,21 @@ from ..utils import load_from_npz
 from .samples import samples
 from .utils import calc_overlap
 
+from ..conftest import DEVICE
+
 ref_overlap = np.load("test/test_overlap/overlap.npz")
 
 molecules = ["H2O", "CH4", "SiH4", "PbH4-BiH3"]
-
-device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", molecules)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = load_from_npz(ref_overlap, name, dtype)
 
@@ -61,10 +61,10 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     # convenience wrapper with defaults (but pytorch driver)
     s2 = overlap(numbers, positions, par, driver=INTDRIVER_ANALYTICAL)
 
-    assert pytest.approx(ref, abs=tol) == s
-    assert pytest.approx(ref, abs=tol) == s2
-    assert pytest.approx(s, abs=tol) == s.mT
-    assert pytest.approx(s, abs=tol) == s2
+    assert pytest.approx(ref.cpu(), abs=tol) == s.cpu()
+    assert pytest.approx(ref.cpu(), abs=tol) == s2.cpu()
+    assert pytest.approx(s.cpu(), abs=tol) == s.mT.cpu()
+    assert pytest.approx(s.cpu(), abs=tol) == s2.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float])
@@ -72,15 +72,15 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name2", molecules)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Batched version."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample1, sample2 = samples[name1], samples[name2]
 
     numbers = batch.pack(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         )
     )
     positions = batch.pack(
@@ -98,5 +98,5 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
 
-    assert pytest.approx(s, abs=tol) == s.mT
-    assert pytest.approx(s, abs=tol) == ref
+    assert pytest.approx(s.cpu(), abs=tol) == s.mT.cpu()
+    assert pytest.approx(s.cpu(), abs=tol) == ref.cpu()

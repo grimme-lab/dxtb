@@ -30,19 +30,18 @@ from dxtb._src.typing import DD
 from dxtb._src.utils import batch
 
 from .samples import samples
+from ..conftest import DEVICE
 
 sample_list = ["H2", "LiH", "Li2", "H2O", "S", "SiH4", "MB16_43_01"]
-
-device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str):
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -67,13 +66,13 @@ def test_single(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         )
     )
     pos_dict = {
@@ -104,4 +103,4 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
             elif basis.atomz in (13, 14, 16, 17):
                 assert [b.angmom for b in basis.bases] == [0, 1, 2]
 
-        assert pytest.approx(pos_dict[i]) == torch.stack(pos)
+        assert pytest.approx(pos_dict[i].cpu()) == torch.stack(pos).cpu()

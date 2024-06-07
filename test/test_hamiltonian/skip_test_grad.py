@@ -36,6 +36,7 @@ from dxtb._src.utils import batch
 
 from ..utils import load_from_npz
 from .samples import samples
+from ..conftest import DEVICE
 
 # references
 ref_grad_no_overlap = np.load("test/test_hamiltonian/grad_no_overlap.npz")
@@ -52,8 +53,6 @@ opts = {
     "f_atol": 1e-6,
     "x_atol": 1e-6,
 }
-
-device = None
 
 
 @pytest.mark.grad
@@ -74,11 +73,11 @@ def test_no_overlap_single_large(dtype: torch.dtype, name: str) -> None:
 
 
 def no_overlap_single(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     chrg = torch.tensor(0.0, **dd)
 
@@ -148,15 +147,15 @@ def test_no_overlap_batch_large(dtype: torch.dtype, name1: str, name2: str) -> N
 
 
 def no_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample1, sample2 = samples[name1], samples[name2]
 
     numbers = batch.pack(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         )
     )
     positions = batch.pack(
@@ -245,7 +244,7 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     Optionally, autograd and numerical gradient can also be calculated,
     although they may be numerically unstable.
     """
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     atol = 1e-4
 
     # tblite references
@@ -254,7 +253,7 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
 
     # setup
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     positions.requires_grad_(True)
     chrg = torch.tensor(0.0, **dd)
@@ -344,7 +343,7 @@ def test_single_large(dtype: torch.dtype, name: str) -> None:
 
 
 def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     # tol = sqrt(torch.finfo(dtype).eps) * 10
     atol = 1e-4
 
@@ -352,8 +351,8 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     numbers = batch.pack(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         )
     )
     positions = batch.pack(

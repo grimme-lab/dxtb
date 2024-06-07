@@ -31,22 +31,21 @@ from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import batch
 
 from .samples import samples
+from ..conftest import DEVICE
 
 sample_list = ["MB16_43_01", "MB16_43_02", "SiH4_atom"]
 
 is_shell_resolved = False
 
-device = None
-
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps)
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     charges = sample["q"].to(**dd)
     ref = sample["grad"].to(**dd)
@@ -63,27 +62,27 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     # analytical (old)
     grad = es._get_atom_gradient(numbers, positions, charges, cache)
-    assert pytest.approx(ref, abs=tol) == grad
+    assert pytest.approx(ref.cpu(), abs=tol) == grad.cpu()
 
     # numerical
     num_grad = calc_numerical_gradient(numbers, positions, ihelp, charges)
-    assert pytest.approx(ref, abs=tol) == num_grad
-    assert pytest.approx(num_grad, abs=tol) == grad
+    assert pytest.approx(ref.cpu(), abs=tol) == num_grad.cpu()
+    assert pytest.approx(num_grad.cpu(), abs=tol) == grad.cpu()
 
     # automatic
     positions.requires_grad_(True)
     mat = es.get_atom_coulomb_matrix(numbers, positions, ihelp)
     energy = 0.5 * mat * charges.unsqueeze(-1) * charges.unsqueeze(-2)
     (agrad,) = torch.autograd.grad(energy.sum(), positions)
-    assert pytest.approx(ref, abs=tol) == agrad
+    assert pytest.approx(ref.cpu(), abs=tol) == agrad.cpu()
 
     # analytical (automatic)
     es.cache_invalidate()
     cache = es.get_cache(numbers, positions, ihelp)  # recalc with gradients
     egrad = es.get_atom_gradient(charges, positions, cache)
     egrad.detach_()
-    assert pytest.approx(ref, abs=tol) == egrad
-    assert pytest.approx(egrad, abs=tol) == agrad
+    assert pytest.approx(ref.cpu(), abs=tol) == egrad.cpu()
+    assert pytest.approx(egrad.cpu(), abs=tol) == agrad.cpu()
 
     positions.detach_()
 
@@ -92,15 +91,15 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", ["SiH4_atom"])
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps)
 
     sample1, sample2 = samples[name1], samples[name2]
 
     numbers = batch.pack(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         )
     )
     positions = batch.pack(
@@ -130,21 +129,21 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     # analytical (old)
     cache = es.get_cache(numbers, positions, ihelp)
     grad = es._get_atom_gradient(numbers, positions, charges, cache)
-    assert pytest.approx(ref, abs=tol) == grad
+    assert pytest.approx(ref.cpu(), abs=tol) == grad.cpu()
 
     # automatic
     positions.requires_grad_(True)
     mat = es.get_atom_coulomb_matrix(numbers, positions, ihelp)
     energy = 0.5 * mat * charges.unsqueeze(-1) * charges.unsqueeze(-2)
     (agrad,) = torch.autograd.grad(energy.sum(), positions)
-    assert pytest.approx(ref, abs=tol) == agrad
+    assert pytest.approx(ref.cpu(), abs=tol) == agrad.cpu()
 
     # analytical (automatic)
     cache = es.get_cache(numbers, positions, ihelp)  # recalc with gradients
     egrad = es.get_atom_gradient(charges, positions, cache)
     egrad.detach_()
-    assert pytest.approx(ref, abs=tol) == egrad
-    assert pytest.approx(egrad, abs=tol) == agrad
+    assert pytest.approx(ref.cpu(), abs=tol) == egrad.cpu()
+    assert pytest.approx(egrad.cpu(), abs=tol) == agrad.cpu()
 
     positions.detach_()
 

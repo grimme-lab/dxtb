@@ -27,12 +27,14 @@ from dxtb import IndexHelper
 from dxtb._src.typing import Slicers, Tensor
 from dxtb._src.utils import batch
 
+from ..conftest import DEVICE
+
 
 def test_culling() -> None:
     numbers = batch.pack(
         [
-            torch.tensor([3, 1]),  # LiH
-            torch.tensor([14, 1, 1, 1, 1]),  # SiH4
+            torch.tensor([3, 1], device=DEVICE),  # LiH
+            torch.tensor([14, 1, 1, 1, 1], device=DEVICE),  # SiH4
         ]
     )
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -65,8 +67,8 @@ def test_culling() -> None:
 def test_no_action() -> None:
     numbers = batch.pack(
         [
-            torch.tensor([3, 1]),  # LiH
-            torch.tensor([14, 1, 1, 1, 1]),  # SiH4
+            torch.tensor([3, 1], device=DEVICE),  # LiH
+            torch.tensor([14, 1, 1, 1, 1], device=DEVICE),  # SiH4
         ]
     )
     ihelp = IndexHelper.from_numbers(numbers, par)

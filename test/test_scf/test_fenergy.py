@@ -28,9 +28,8 @@ from dxtb import Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
+from ..conftest import DEVICE
 from .uhf_table import uhf_anion, uhf_cation
-
-device = None
 
 opts = {
     "fermi_etemp": 300,
@@ -52,18 +51,18 @@ opts = {
 @pytest.mark.parametrize("number", [n for n in range(1, 87)])
 def test_element(dtype: torch.dtype, partition: str, number: int) -> None:
     """Comparison of object SCF (old) vs. functional SCF."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = 1e-8
 
-    numbers = torch.tensor([number])
+    numbers = torch.tensor([number], device=DEVICE)
     positions = torch.zeros((1, 3), **dd)
     charges = torch.tensor(0.0, **dd)
 
     options = dict(
         opts,
         **{
-            "f_atol": 1e-6,
-            "x_atol": 1e-6,
+            "f_atol": 1e-5 if dtype == torch.float32 else 1e-6,
+            "x_atol": 1e-5 if dtype == torch.float32 else 1e-6,
             "fermi_partition": partition,
             "maxiter": 100,
         },
@@ -93,14 +92,20 @@ def test_element(dtype: torch.dtype, partition: str, number: int) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_unique(dtype: torch.dtype) -> None:
     """Different free energies for different atoms."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     def fcn(number):
-        numbers = torch.tensor([number])
+        numbers = torch.tensor([number], device=DEVICE)
         positions = torch.zeros((1, 3), **dd)
         charges = torch.tensor(0.0, **dd)
 
-        options = dict(opts, **{"f_atol": 1e-6, "x_atol": 1e-6})
+        options = dict(
+            opts,
+            **{
+                "f_atol": 1e-5 if dtype == torch.float32 else 1e-6,
+                "x_atol": 1e-5 if dtype == torch.float32 else 1e-6,
+            },
+        )
         calc = Calculator(numbers, par, opts=options, **dd)
         result = calc.singlepoint(positions, charges)
         return result.fenergy
@@ -114,10 +119,10 @@ def test_element_unique(dtype: torch.dtype) -> None:
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_cation(dtype: torch.dtype) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     def fcn(number):
-        numbers = torch.tensor([number])
+        numbers = torch.tensor([number], device=DEVICE)
         positions = torch.zeros((1, 3), **dd)
         charges = torch.tensor(1.0, **dd)
         spin = uhf_cation[number - 1]
@@ -146,10 +151,10 @@ def test_element_cation(dtype: torch.dtype) -> None:
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_anion(dtype: torch.dtype) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     def fcn(number):
-        numbers = torch.tensor([number])
+        numbers = torch.tensor([number], device=DEVICE)
         positions = torch.zeros((1, 3), **dd)
         charges = torch.tensor(-1.0, **dd)
         spin = uhf_anion[number - 1]

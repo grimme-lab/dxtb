@@ -34,6 +34,7 @@ from dxtb._src.io import read_chrg, read_coord
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import hessian
 
+from ..conftest import DEVICE
 from ..test_dispersion.samples import samples as samples_disp
 from ..test_halogen.samples import samples as samples_hal
 from ..test_repulsion.samples import samples as samples_rep
@@ -49,13 +50,11 @@ opts = {
 
 sample_list = ["LiH", "SiH4", "MB16_43_01"]
 
-device = None
-
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 100
 
     # read from file
@@ -64,7 +63,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     charge = read_chrg(Path(base, ".CHRG"))
 
     # convert to tensors
-    numbers = torch.tensor(numbers, dtype=torch.long)
+    numbers = torch.tensor(numbers, dtype=torch.long, device=DEVICE)
     positions = torch.tensor(positions, **dd)
     charge = torch.tensor(charge, **dd)
 
@@ -85,7 +84,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
             samples_disp[name]["hessian"]
             + samples_hal[name]["hessian"]
             + samples_rep[name]["gfn1_hess"]
-        ).type(dtype),
+        ).to(**dd),
         torch.Size(2 * (numbers.shape[-1], 3)),
     )
 
@@ -93,4 +92,4 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     positions.detach_()
     hess = hess.detach().reshape_as(ref)
 
-    assert pytest.approx(ref, abs=tol, rel=tol) == hess
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == hess.cpu()

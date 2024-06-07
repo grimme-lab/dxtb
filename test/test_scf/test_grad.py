@@ -31,6 +31,7 @@ from dxtb import Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
+from ..conftest import DEVICE
 from ..utils import load_from_npz
 from .samples import samples
 
@@ -45,8 +46,6 @@ opts = {
 ref_grad = np.load("test/test_scf/grad.npz")
 ref_grad_param = np.load("test/test_scf/grad_param.npz")
 
-device = None
-
 
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
@@ -58,9 +57,9 @@ def test_grad_backwards(
     name: str, dtype: torch.dtype, scf_mode: str, scp_mode: str
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
-    numbers = samples[name]["numbers"]
+    numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
@@ -90,7 +89,7 @@ def test_grad_backwards(
     positions.detach_()
     positions.grad.data.zero_()
 
-    assert pytest.approx(ref, abs=tol, rel=tol) == gradient
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == gradient.cpu()
 
 
 @pytest.mark.grad
@@ -99,9 +98,9 @@ def test_grad_backwards(
 @pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
 def test_grad_autograd(name: str, dtype: torch.dtype):
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
-    numbers = samples[name]["numbers"]
+    numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
@@ -122,8 +121,8 @@ def test_grad_autograd(name: str, dtype: torch.dtype):
 
     (gradient,) = torch.autograd.grad(energy, positions)
 
-    assert pytest.approx(gradient, abs=tol, rel=1e-5) == ref
-    assert pytest.approx(gradient, abs=tol, rel=1e-5) == ref_full
+    assert pytest.approx(gradient.cpu(), abs=tol, rel=1e-5) == ref.cpu()
+    assert pytest.approx(gradient.cpu(), abs=tol, rel=1e-5) == ref_full.cpu()
 
     positions.detach_()
 
@@ -136,9 +135,9 @@ def test_grad_autograd(name: str, dtype: torch.dtype):
 @pytest.mark.parametrize("name", ["LYS_xao", "C60", "vancoh2"])
 def test_grad_large(name: str, dtype: torch.dtype):
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
-    numbers = samples[name]["numbers"]
+    numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
@@ -148,7 +147,7 @@ def test_grad_large(name: str, dtype: torch.dtype):
     # Values obtained with dxtb using full gradient tracking
     ref_full = load_from_npz(ref_grad, f"{name}_full", dtype)
 
-    assert pytest.approx(ref_full, abs=tol, rel=1e-5) == ref
+    assert pytest.approx(ref_full.cpu(), abs=tol, rel=1e-5) == ref.cpu()
 
     # variable to be differentiated
     positions.requires_grad_(True)
@@ -161,8 +160,8 @@ def test_grad_large(name: str, dtype: torch.dtype):
 
     (gradient,) = torch.autograd.grad(energy, positions)
 
-    assert pytest.approx(gradient, abs=tol, rel=1e-5) == ref
-    assert pytest.approx(gradient, abs=tol, rel=1e-5) == ref_full
+    assert pytest.approx(gradient.cpu(), abs=tol, rel=1e-5) == ref.cpu()
+    assert pytest.approx(gradient.cpu(), abs=tol, rel=1e-5) == ref_full.cpu()
 
     positions.detach_()
 
@@ -175,9 +174,9 @@ def test_param_grad_energy(name: str, dtype: torch.dtype = torch.float):
     tracking. References obtained with full tracking and `torch.float`.
     """
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
-    numbers = samples[name]["numbers"]
+    numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
@@ -200,11 +199,11 @@ def test_param_grad_energy(name: str, dtype: torch.dtype = torch.float):
     )
 
     ref_se = load_from_npz(ref_grad_param, f"{name}_egrad_selfenergy", dtype)
-    assert pytest.approx(pgrad[0], abs=tol) == ref_se
+    assert pytest.approx(pgrad[0].cpu(), abs=tol) == ref_se.cpu()
     ref_kcn = load_from_npz(ref_grad_param, f"{name}_egrad_kcn", dtype)
-    assert pytest.approx(pgrad[1], abs=tol) == ref_kcn
+    assert pytest.approx(pgrad[1].cpu(), abs=tol) == ref_kcn.cpu()
     ref_shpoly = load_from_npz(ref_grad_param, f"{name}_egrad_shpoly", dtype)
-    assert pytest.approx(pgrad[2], abs=tol) == ref_shpoly
+    assert pytest.approx(pgrad[2].cpu(), abs=tol) == ref_shpoly.cpu()
 
     positions.detach_()
 
@@ -218,9 +217,9 @@ def skip_test_param_grad_force(name: str, dtype: torch.dtype = torch.float):
     tracking. References obtained with full tracking and `torch.float`.
     """
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
-    numbers = samples[name]["numbers"]
+    numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
     positions.requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
@@ -250,10 +249,10 @@ def skip_test_param_grad_force(name: str, dtype: torch.dtype = torch.float):
     )
 
     ref_se = load_from_npz(ref_grad_param, f"{name}_ggrad_selfenergy", dtype)
-    assert pytest.approx(pgrad[0], abs=tol) == ref_se
+    assert pytest.approx(pgrad[0].cpu(), abs=tol) == ref_se.cpu()
     ref_kcn = load_from_npz(ref_grad_param, f"{name}_ggrad_kcn", dtype)
-    assert pytest.approx(pgrad[1], abs=tol) == ref_kcn
+    assert pytest.approx(pgrad[1].cpu(), abs=tol) == ref_kcn.cpu()
     ref_shpoly = load_from_npz(ref_grad_param, f"{name}_ggrad_shpoly", dtype)
-    assert pytest.approx(pgrad[2], abs=tol) == ref_shpoly
+    assert pytest.approx(pgrad[2].cpu(), abs=tol) == ref_shpoly.cpu()
 
     positions.detach_()

@@ -34,11 +34,10 @@ from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import is_basis_list
 
 from .samples import samples
+from ..conftest import DEVICE
 
 sample_list = ["H2", "HHe", "LiH", "S2", "H2O", "SiH4"]
 mp_ints = ["jj"]
-
-device = None
 
 
 def check_multipole_symmetry(multipole_tensor: Tensor) -> bool:
@@ -74,10 +73,10 @@ def check_multipole_symmetry(multipole_tensor: Tensor) -> bool:
 @pytest.mark.parametrize("intstr", mp_ints)
 def test_single(dtype: torch.dtype, intstr: str, name: str) -> None:
     """Prepare gradient check from `torch.autograd`."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -103,13 +102,13 @@ def test_single(dtype: torch.dtype, intstr: str, name: str) -> None:
 @pytest.mark.parametrize("intstr", mp_ints)
 def test_batch(dtype: torch.dtype, name1: str, name2: str, intstr: str) -> None:
     """Prepare gradient check from `torch.autograd`."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ]
     )
     positions = pack(

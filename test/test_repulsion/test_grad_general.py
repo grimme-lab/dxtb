@@ -28,21 +28,20 @@ from dxtb import IndexHelper
 from dxtb._src.components.classicals import new_repulsion
 from dxtb._src.typing import DD
 
+from ..conftest import DEVICE
 from .samples import samples
 
 sample_list = ["H2O", "SiH4", "MB16_43_01", "MB16_43_02", "LYS_xao"]
-
-device = None
 
 
 @pytest.mark.grad
 @pytest.mark.parametrize("name", ["H2O"])
 def test_grad_fail(name: str) -> None:
     dtype = torch.double
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     rep = new_repulsion(numbers, par, **dd)

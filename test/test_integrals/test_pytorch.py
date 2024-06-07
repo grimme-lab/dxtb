@@ -31,9 +31,8 @@ from dxtb._src.integral.driver.pytorch import IntDriverPytorch
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import batch
 
+from ..conftest import DEVICE
 from .samples import samples
-
-device = None
 
 
 def run(numbers: Tensor, positions: Tensor, dd: DD) -> None:
@@ -55,10 +54,10 @@ def run(numbers: Tensor, positions: Tensor, dd: DD) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_single(dtype: torch.dtype, name: str):
     """Overlap matrix for monoatomic molecule should be unity."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     run(numbers, positions, dd)
@@ -69,16 +68,14 @@ def test_single(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_batch(dtype: torch.dtype, name1: str, name2: str):
     """Overlap matrix for monoatomic molecule should be unity."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = sample1["numbers"].to(device)
-    positions = sample2["positions"].to(**dd)
 
     numbers = batch.pack(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         )
     )
     positions = batch.pack(

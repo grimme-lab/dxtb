@@ -103,7 +103,7 @@ class ClassicalList(ComponentList[Classical]):
 
         energies = {}
         for classical in self.components:
-            timer.start(classical.label)
+            timer.start(classical.label, parent_uid="Classicals")
             energies[classical.label] = classical.get_energy(
                 positions, cache[classical.label]
             )

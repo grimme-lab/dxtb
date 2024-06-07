@@ -33,6 +33,7 @@ from dxtb._src.constants import labels
 from dxtb._src.io import read_chrg, read_coord
 from dxtb._src.typing import DD, Tensor
 
+from ..conftest import DEVICE
 from ..utils import load_from_npz
 
 ref_grad = np.load("test/test_singlepoint/grad.npz")
@@ -46,8 +47,6 @@ opts = {
     "scp_mode": labels.SCP_MODE_POTENTIAL,
     "verbosity": 0,
 }
-
-device = None
 
 
 @pytest.mark.grad
@@ -78,14 +77,19 @@ def test_analytical_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 @pytest.mark.parametrize("name", ["AD7en+", "LYS_xao"])
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
 def test_analytical_large2(dtype: torch.dtype, name: str, scf_mode: str) -> None:
-    atol, rtol = 1e-5, 1e-3
+    if "cuda" in str(DEVICE) and dtype == torch.float:
+        atol = 1e-4
+    else:
+        atol = 1e-5
+
+    rtol = 1e-3
     analytical(dtype, name, atol, rtol, scf_mode)
 
 
 def analytical(
     dtype: torch.dtype, name: str, atol: float, rtol: float, scf_mode: str
 ) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     # read from file
     base = Path(Path(__file__).parent, "mols", name)
@@ -93,16 +97,17 @@ def analytical(
     charge = read_chrg(Path(base, ".CHRG"))
 
     # convert to tensors
-    numbers = torch.tensor(numbers, dtype=torch.long)
+    numbers = torch.tensor(numbers, dtype=torch.long, device=DEVICE)
     positions = torch.tensor(positions, **dd, requires_grad=True)
     charge = torch.tensor(charge, **dd)
 
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    options = dict(opts, **{"scf_mode": scf_mode})
+    calc = Calculator(numbers, par, opts=options, **dd)
     result = -calc.forces_analytical(positions, charge)
     gradient = result.detach()
 
     ref = load_from_npz(ref_grad, name, dtype)
-    assert pytest.approx(ref, abs=atol, rel=rtol) == gradient
+    assert pytest.approx(ref.cpu(), abs=atol, rel=rtol) == gradient.cpu()
 
 
 @pytest.mark.grad
@@ -112,7 +117,7 @@ def analytical(
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
 def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 50  # slightly larger for H2O!
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     # read from file
     base = Path(Path(__file__).parent, "mols", name)
@@ -120,7 +125,7 @@ def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     charge = read_chrg(Path(base, ".CHRG"))
 
     # convert to tensors
-    numbers = torch.tensor(numbers, dtype=torch.long)
+    numbers = torch.tensor(numbers, dtype=torch.long, device=DEVICE)
     positions = torch.tensor(positions, **dd, requires_grad=True)
     charge = torch.tensor(charge, **dd)
 
@@ -147,7 +152,7 @@ def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 
     # tblite reference grad
     ref = load_from_npz(ref_grad, name, dtype)
-    assert pytest.approx(ref, abs=tol, rel=1e-4) == autograd
+    assert pytest.approx(ref.cpu(), abs=tol, rel=1e-4) == autograd.cpu()
 
 
 @pytest.mark.grad
@@ -156,7 +161,7 @@ def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
 def test_num(name: str, scf_mode: str) -> None:
     dtype = torch.double
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     # read from file
     base = Path(Path(__file__).parent, "mols", name)
@@ -164,7 +169,7 @@ def test_num(name: str, scf_mode: str) -> None:
     charge = read_chrg(Path(base, ".CHRG"))
 
     # convert to tensors
-    numbers = torch.tensor(numbers, dtype=torch.long)
+    numbers = torch.tensor(numbers, dtype=torch.long, device=DEVICE)
     positions = torch.tensor(positions, **dd)
     charge = torch.tensor(charge, **dd)
 
@@ -172,7 +177,7 @@ def test_num(name: str, scf_mode: str) -> None:
     gradient = calc_numerical_gradient(numbers, positions, charge, scf_mode, dd)
 
     ref = load_from_npz(ref_grad, name, dtype)
-    assert pytest.approx(ref, abs=1e-6, rel=1e-4) == gradient
+    assert pytest.approx(ref.cpu(), abs=1e-6, rel=1e-4) == gradient.cpu()
 
 
 def calc_numerical_gradient(

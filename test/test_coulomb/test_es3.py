@@ -32,20 +32,19 @@ from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import batch
 
 from .samples import samples
+from ..conftest import DEVICE
 
 sample_list = ["MB16_43_01", "MB16_43_02", "SiH4_atom"]
-
-device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
     """Test ES3 for some samples from MB16_43."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     qat = sample["q"].to(**dd)
     ref = sample["es3"].to(**dd)
 
@@ -55,7 +54,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     cache = es.get_cache(numbers=numbers, ihelp=ihelp)
     e = es.get_atom_energy(qat, cache)
-    assert pytest.approx(torch.sum(e, dim=-1)) == ref
+    assert pytest.approx(ref.cpu()) == e.sum(-1).cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -63,13 +62,13 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Test batched calculation of ES3."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         )
     )
     qat = batch.pack(
@@ -91,17 +90,17 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     cache = es.get_cache(numbers=numbers, ihelp=ihelp)
     e = es.get_atom_energy(qat, cache)
-    assert torch.allclose(torch.sum(e, dim=-1), ref)
+    assert pytest.approx(ref.cpu()) == e.sum(-1).cpu()
 
 
 @pytest.mark.grad
 @pytest.mark.parametrize("name", sample_list)
 def test_grad_param(name: str) -> None:
     """Test autograd for ES3 parameters."""
-    dd: DD = {"device": device, "dtype": torch.double}
+    dd: DD = {"dtype": torch.double, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     qat = sample["q"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)

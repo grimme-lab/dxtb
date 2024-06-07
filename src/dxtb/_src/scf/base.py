@@ -45,8 +45,7 @@ from .result import SCFResult
 from .utils import get_density
 
 if TYPE_CHECKING:
-    from dxtb._src.components.interactions import InteractionList
-    from dxtb._src.components.interactions import InteractionListCache
+    from dxtb._src.components.interactions import InteractionList, InteractionListCache
     from dxtb._src.exlibs import xitorch as xt
     from dxtb._src.integral.container import IntegralMatrices
 del TYPE_CHECKING

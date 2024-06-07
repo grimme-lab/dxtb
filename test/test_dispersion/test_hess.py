@@ -32,20 +32,19 @@ from dxtb._src.utils import batch, hessian
 
 from ..utils import reshape_fortran
 from .samples import samples
+from ..conftest import DEVICE
 
 sample_list = ["LiH", "SiH4", "MB16_43_01", "PbH4-BiH3"]
-
-device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps)
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = reshape_fortran(
         sample["hessian"].to(**dd),
@@ -65,22 +64,22 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     hess = hess.reshape_as(ref)
     assert ref.shape == numref.shape == hess.shape
-    assert pytest.approx(ref, abs=tol, rel=tol) == numref
-    assert pytest.approx(ref, abs=tol, rel=tol) == hess.detach()
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == numref.cpu()
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == hess.detach().cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["PbH4-BiH3"])
 @pytest.mark.parametrize("name2", sample_list)
 def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps) * 100
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ]
     )
     positions = batch.pack(
@@ -94,7 +93,7 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
         [
             reshape_fortran(
                 sample1["hessian"].to(**dd),
-                torch.Size(2 * (sample1["numbers"].to(device).shape[-1], 3)),
+                torch.Size(2 * (sample1["numbers"].to(DEVICE).shape[-1], 3)),
             ),
             reshape_fortran(
                 sample2["hessian"].to(**dd),
@@ -111,7 +110,7 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
 
     cache = disp.get_cache(numbers)
     hess = hessian(disp.get_energy, (positions, cache))
-    assert pytest.approx(ref, abs=tol, rel=tol) == hess.detach()
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == hess.detach().cpu()
 
     positions.detach_()
 

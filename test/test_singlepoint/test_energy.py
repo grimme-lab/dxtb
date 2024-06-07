@@ -33,6 +33,7 @@ from dxtb._src.io import read_chrg, read_coord
 from dxtb._src.typing import DD
 from dxtb._src.utils import batch
 
+from ..conftest import DEVICE
 from .samples import samples
 
 opts = {
@@ -41,8 +42,6 @@ opts = {
     "scp_mode": labels.SCP_MODE_POTENTIAL,
 }
 
-device = None
-
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -50,18 +49,18 @@ device = None
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
 def test_single(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     base = Path(Path(__file__).parent, "mols", name)
 
     numbers, positions = read_coord(Path(base, "coord"))
     charge = read_chrg(Path(base, ".CHRG"))
 
-    numbers = torch.tensor(numbers, dtype=torch.long)
-    positions = torch.tensor(positions).type(dtype)
-    charge = torch.tensor(charge).type(dtype)
+    numbers = torch.tensor(numbers, dtype=torch.long, device=DEVICE)
+    positions = torch.tensor(positions, **dd)
+    charge = torch.tensor(charge, **dd)
 
-    ref = samples[name]["etot"].item()
+    ref = samples[name]["etot"].to(**dd)
 
     options = dict(
         opts,
@@ -73,7 +72,8 @@ def test_single(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, charge)
-    assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1).item()
+    res = result.total.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
 @pytest.mark.large
@@ -83,18 +83,18 @@ def test_single(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
 def test_single_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     base = Path(Path(__file__).parent, "mols", name)
 
     numbers, positions = read_coord(Path(base, "coord"))
     charge = read_chrg(Path(base, ".CHRG"))
 
-    numbers = torch.tensor(numbers, dtype=torch.long)
-    positions = torch.tensor(positions).type(dtype)
-    charge = torch.tensor(charge).type(dtype)
+    numbers = torch.tensor(numbers, dtype=torch.long, device=DEVICE)
+    positions = torch.tensor(positions, **dd)
+    charge = torch.tensor(charge, **dd)
 
-    ref = samples[name]["etot"]
+    ref = samples[name]["etot"].to(**dd)
 
     options = dict(
         opts,
@@ -106,7 +106,8 @@ def test_single_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, charge)
-    assert pytest.approx(ref, abs=tol, rel=tol) == result.total.sum(-1)
+    res = result.total.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -119,7 +120,7 @@ def test_batch(
     dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     numbers, positions, charge = [], [], []
     for name in [name1, name2, name3]:
@@ -128,9 +129,9 @@ def test_batch(
         nums, pos = read_coord(Path(base, "coord"))
         chrg = read_chrg(Path(base, ".CHRG"))
 
-        numbers.append(torch.tensor(nums, dtype=torch.long))
-        positions.append(torch.tensor(pos).type(dtype))
-        charge.append(torch.tensor(chrg).type(dtype))
+        numbers.append(torch.tensor(nums, dtype=torch.long, device=DEVICE))
+        positions.append(torch.tensor(pos, **dd))
+        charge.append(torch.tensor(chrg, **dd))
 
     numbers = batch.pack(numbers)
     positions = batch.pack(positions)
@@ -153,7 +154,8 @@ def test_batch(
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, charge)
-    assert torch.allclose(ref, result.total.sum(-1), atol=tol, rtol=tol)
+    res = result.total.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -161,19 +163,19 @@ def test_batch(
 @pytest.mark.parametrize("name", ["H", "NO2"])
 def test_uhf_single(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     base = Path(Path(__file__).parent, "mols", name)
 
     numbers, positions = read_coord(Path(base, "coord"))
     charge = read_chrg(Path(base, ".CHRG"))
 
-    numbers = torch.tensor(numbers, dtype=torch.long)
-    positions = torch.tensor(positions).type(dtype)
-    charge = torch.tensor(charge).type(dtype)
+    numbers = torch.tensor(numbers, dtype=torch.long, device=DEVICE)
+    positions = torch.tensor(positions, **dd)
+    charge = torch.tensor(charge, **dd)
+    ref = samples[name]["etot"].to(**dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
 
-    ref = samples[name]["etot"].item()
     result = calc.energy(positions, charge)
-    assert pytest.approx(ref, abs=tol, rel=tol) == result
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == result.cpu()

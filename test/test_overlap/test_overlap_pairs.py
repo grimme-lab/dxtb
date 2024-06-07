@@ -36,24 +36,24 @@ from ..utils import load_from_npz
 from .samples import samples
 from .utils import calc_overlap
 
-ref_overlap = np.load("test/test_overlap/overlap.npz")
+from ..conftest import DEVICE
 
-device = None
+ref_overlap = np.load("test/test_overlap/overlap.npz")
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["HC", "HHe", "SCl"])
 def test_single(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = 1e-05
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = load_from_npz(ref_overlap, name, dtype)
 
     s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
-    assert pytest.approx(ref, rel=tol, abs=tol) == s
+    assert pytest.approx(ref.cpu(), rel=tol, abs=tol) == s.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float])
@@ -61,15 +61,15 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name2", ["C", "HC", "HHe", "SCl"])
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Batched version."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = 1e-05
 
     sample1, sample2 = samples[name1], samples[name2]
 
     numbers = pack(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         )
     )
     positions = pack(
@@ -86,8 +86,8 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
-    assert pytest.approx(s, abs=tol) == s.mT
-    assert pytest.approx(ref, abs=tol) == s
+    assert pytest.approx(s.cpu(), abs=tol) == s.mT.cpu()
+    assert pytest.approx(ref.cpu(), abs=tol) == s.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -95,7 +95,7 @@ def test_overlap_higher_orbitals(dtype: torch.dtype) -> None:
     # pylint: disable=import-outside-toplevel
     from .test_cgto_ortho_data import ref_data
 
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     vec = torch.tensor([0.0, 0.0, 1.4], **dd)
 
@@ -115,11 +115,14 @@ def test_overlap_higher_orbitals(dtype: torch.dtype) -> None:
     for i in range(2):
         for j in range(2):
             ref = ref_data[f"{i}-{j}"].to(**dd).T
-            overlap = overlap_gto(
-                (torch.tensor(i), torch.tensor(j)),
+            S = overlap_gto(
+                (
+                    torch.tensor(i, device=DEVICE),
+                    torch.tensor(j, device=DEVICE),
+                ),
                 (ai, aj),
                 (ci, cj),
                 vec,
             )
 
-            assert pytest.approx(overlap, rel=1e-05, abs=1e-03) == ref
+            assert pytest.approx(S.cpu(), rel=1e-05, abs=1e-03) == ref.cpu()

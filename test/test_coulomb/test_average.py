@@ -24,47 +24,61 @@ import pytest
 import torch
 
 from dxtb._src.components.interactions.coulomb import averaging_function
+from dxtb._src.typing import DD
+from ..conftest import DEVICE
 
 a = torch.tensor([1.0, 2.0, 3.0, 4.0])
 
 
-def test_arithmetic() -> None:
-    avg = averaging_function["arithmetic"](a)
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_arithmetic(dtype: torch.dtype) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
+    avg = averaging_function["arithmetic"](a.to(**dd))
     res = torch.tensor(
         [
             [1.000000, 1.500000, 2.000000, 2.500000],
             [1.500000, 2.000000, 2.500000, 3.000000],
             [2.000000, 2.500000, 3.000000, 3.500000],
             [2.500000, 3.000000, 3.500000, 4.000000],
-        ]
+        ],
+        **dd,
     )
 
-    assert pytest.approx(res) == avg
+    assert pytest.approx(res.cpu()) == avg.cpu()
 
 
-def test_geometric() -> None:
-    avg = averaging_function["geometric"](a)
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_geometric(dtype: torch.dtype) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
+    avg = averaging_function["geometric"](a.to(**dd))
     res = torch.tensor(
         [
             [1.000000, 1.414214, 1.732051, 2.000000],
             [1.414214, 2.000000, 2.449490, 2.828427],
             [1.732051, 2.449490, 3.000000, 3.464102],
             [2.000000, 2.828427, 3.464102, 4.000000],
-        ]
+        ],
+        **dd,
     )
 
-    assert pytest.approx(res) == avg
+    assert pytest.approx(res.cpu()) == avg.cpu()
 
 
-def test_harmonic() -> None:
-    avg = averaging_function["harmonic"](a)
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_harmonic(dtype: torch.dtype) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
+    avg = averaging_function["harmonic"](a.to(**dd))
     res = torch.tensor(
         [
             [1.000000, 1.333333, 1.500000, 1.600000],
             [1.333333, 2.000000, 2.400000, 2.666667],
             [1.500000, 2.400000, 3.000000, 3.428571],
             [1.600000, 2.666667, 3.428571, 4.000000],
-        ]
+        ],
+        **dd,
     )
 
-    assert pytest.approx(res) == avg
+    assert pytest.approx(res.cpu()) == avg.cpu()

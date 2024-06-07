@@ -43,17 +43,17 @@ opts = {
     "verbosity": 0,
 }
 
-device = None
+from ..conftest import DEVICE
 
 
 def gradchecker(
     dtype: torch.dtype, name: str
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 

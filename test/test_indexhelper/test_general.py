@@ -27,9 +27,13 @@ from tad_mctc.convert import str_to_device
 
 from dxtb import IndexHelper
 
+from ..conftest import DEVICE
+
 
 def test_fail_init_dtype() -> None:
-    ihelp = IndexHelper.from_numbers_angular(torch.tensor([1]), {1: [0]})
+    numbers = torch.tensor([1], device=DEVICE)
+    ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
+
     with pytest.raises(ValueError):
         IndexHelper(
             ihelp.unique_angular.type(torch.float),
@@ -45,12 +49,15 @@ def test_fail_init_dtype() -> None:
             ihelp.orbital_index,
             ihelp.orbitals_to_shell,
             batch_mode=0,
+            device=DEVICE,
         )
 
 
 @pytest.mark.cuda
 def test_fail_init_device() -> None:
-    ihelp = IndexHelper.from_numbers_angular(torch.tensor([1]), {1: [0]})
+    numbers = torch.tensor([1], device=torch.device("cpu"))
+    ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
+
     with pytest.raises(ValueError):
         IndexHelper(
             ihelp.unique_angular.to(str_to_device("cuda")),
@@ -71,13 +78,16 @@ def test_fail_init_device() -> None:
 
 @pytest.mark.parametrize("dtype", [torch.int16, torch.int32, torch.int64])
 def test_change_type(dtype: torch.dtype) -> None:
-    ihelp = IndexHelper.from_numbers_angular(torch.tensor([1]), {1: [0]})
+    numbers = torch.tensor([1], device=DEVICE)
+    ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
+
     ihelp = ihelp.type(dtype)
     assert ihelp.dtype == dtype
 
 
 def test_change_type_fail() -> None:
-    ihelp = IndexHelper.from_numbers_angular(torch.tensor([1]), {1: [0]})
+    numbers = torch.tensor([1], device=DEVICE)
+    ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
 
     # trying to use setter
     with pytest.raises(AttributeError):
@@ -92,7 +102,9 @@ def test_change_type_fail() -> None:
 @pytest.mark.parametrize("device_str", ["cpu", "cuda"])
 def test_change_device(device_str: str) -> None:
     device = str_to_device(device_str)
-    ihelp = IndexHelper.from_numbers_angular(torch.tensor([1]), {1: [0]}).to(device)
+
+    numbers = torch.tensor([1])
+    ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]}).to(device)
     assert ihelp.device == device
 
 

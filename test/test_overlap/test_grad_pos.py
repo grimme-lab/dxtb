@@ -31,23 +31,22 @@ from dxtb._src.integral.driver.pytorch import OverlapPytorch as Overlap
 from dxtb._src.typing import DD, Callable, Tensor
 from dxtb._src.utils import batch
 
+from ..conftest import DEVICE
 from .samples import samples
 
 sample_list = ["H2", "HHe", "LiH", "Li2", "S2", "H2O", "SiH4"]
 
 tol = 1e-7
 
-device = None
-
 
 def gradchecker(
     dtype: torch.dtype, name: str
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -92,13 +91,13 @@ def gradchecker_batch(
     dtype: torch.dtype, name1: str, name2: str
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ]
     )
 

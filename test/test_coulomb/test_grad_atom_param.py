@@ -32,12 +32,11 @@ from dxtb._src.typing import DD, Callable, Tensor
 from dxtb._src.utils import batch
 
 from .samples import samples
+from ..conftest import DEVICE
 
 sample_list = ["LiH", "SiH4", "MB16_43_01"]
 
 tol = 1e-7
-
-device = None
 
 
 def gradcheck_param(dtype: torch.dtype, name: str) -> tuple[
@@ -45,10 +44,10 @@ def gradcheck_param(dtype: torch.dtype, name: str) -> tuple[
     tuple[Tensor, Tensor],  # differentiable variables
 ]:
     """Prepare gradient check from `torch.autograd`."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
 
@@ -104,13 +103,13 @@ def gradcheck_param_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     """Prepare gradient check from `torch.autograd`."""
     assert par.repulsion is not None
 
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
     numbers = batch.pack(
         [
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         ]
     )
     positions = batch.pack(

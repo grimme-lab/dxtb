@@ -54,7 +54,6 @@ class Integrals(IntegralContainer):
         "_overlap",
         "_dipole",
         "_quadrupole",
-        "_matrices",
         "_driver",
     ]
 
@@ -66,14 +65,12 @@ class Integrals(IntegralContainer):
         *,
         driver: int = labels.INTDRIVER_LIBCINT,
         intlevel: int = defaults.INTLEVEL,
-        force_cpu_for_libcint: bool = True,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
         _hcore: HCore | None = None,
         _overlap: Overlap | None = None,
         _dipole: Dipole | None = None,
         _quadrupole: Quadrupole | None = None,
-        _matrices: IntegralMatrices | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(device, dtype)
@@ -85,7 +82,12 @@ class Integrals(IntegralContainer):
         self._dipole = _dipole
         self._quadrupole = _quadrupole
         self._intlevel = intlevel
-        self.force_cpu_for_libcint = force_cpu_for_libcint
+
+        # per default, libcint is run on the CPU
+        self.force_cpu_for_libcint = kwargs.pop(
+            "force_cpu_for_libcint",
+            True if driver == labels.INTDRIVER_LIBCINT else False,
+        )
 
         # Determine which driver class to instantiate
         if driver == labels.INTDRIVER_LIBCINT:
@@ -119,19 +121,6 @@ class Integrals(IntegralContainer):
 
         # potentially moved to CPU
         self.ihelp = ihelp
-        self._matrices = (
-            IntegralMatrices(device=device, dtype=dtype)
-            if _matrices is None
-            else _matrices
-        )
-
-    @property
-    def matrices(self) -> IntegralMatrices:
-        return self._matrices
-
-    @matrices.setter
-    def matrices(self, matrices: IntegralMatrices) -> None:
-        self._matrices = matrices
 
     # Integral driver
 
@@ -147,6 +136,10 @@ class Integrals(IntegralContainer):
 
     def setup_driver(self, positions: Tensor, **kwargs: Any) -> None:
         logger.debug("Integral Driver: Start setup.")
+
+        if self.force_cpu_for_libcint is True:
+            positions = positions.to(device=torch.device("cpu"))
+
         if self.driver.is_latest(positions) is True:
             logger.debug("Integral Driver: Skip setup. Already done.")
             return
@@ -192,7 +185,6 @@ class Integrals(IntegralContainer):
             cn = cn_d3(self.numbers, positions)
 
         hcore = self.hcore.integral.build(positions, ovlp.matrix, cn=cn)
-        self._matrices.hcore = hcore
         logger.debug("Core Hamiltonian: All finished.")
         return hcore
 
@@ -209,7 +201,7 @@ class Integrals(IntegralContainer):
 
     def build_overlap(self, positions: Tensor, **kwargs: Any) -> Tensor:
         # in case CPU is forced for libcint, move positions to CPU
-        if self.force_cpu_for_libcint:
+        if self.force_cpu_for_libcint is True:
             positions = positions.to(device=torch.device("cpu"))
 
         self.setup_driver(positions, **kwargs)
@@ -227,16 +219,34 @@ class Integrals(IntegralContainer):
             if self._intlevel <= levels.INTLEVEL_HCORE:
                 self.overlap.integral = self.overlap.integral.to(device=self.device)
 
-        self._matrices.overlap = self.overlap.matrix
+                # FIXME: The matrix has to be moved explicitly, because when
+                # singlepoint is called a second time, the integral is already
+                # on the correct device (from the to of the first call) and the
+                # matrix is not moved because the to method exits immediately.
+                # This is a workaround and can possibly be fixed when the
+                # matrices are no longer stored (should only return in sp)
+                self.overlap.integral.matrix = self.overlap.integral.matrix.to(
+                    device=self.device
+                )
+
         logger.debug("Overlap integral: All finished.")
         return self.overlap.matrix
 
     def grad_overlap(self, positions: Tensor, **kwargs) -> Tensor:
+        # in case CPU is forced for libcint, move positions to CPU
+        if self.force_cpu_for_libcint is True:
+            positions = positions.to(device=torch.device("cpu"))
+
         self.setup_driver(positions, **kwargs)
 
         if self.overlap is None:
             raise RuntimeError("No overlap integral provided.")
-        return self.overlap.get_gradient(self.driver, **kwargs)
+
+        logger.debug("Overlap gradient: Start.")
+        grad = self.overlap.get_gradient(self.driver, **kwargs)
+        logger.debug("Overlap gradient: All finished.")
+
+        return grad.to(self.device)
 
     # dipole
 
@@ -289,16 +299,18 @@ class Integrals(IntegralContainer):
             )
             logger.debug("Dipole integral: Finished shifting operator.")
 
-        self._matrices.dipole = self.dipole.integral.matrix
-
         # move integral to the correct device, but only if no other multipole
         # integrals are required
         if self.force_cpu_for_libcint and self._intlevel <= levels.INTLEVEL_DIPOLE:
             self.dipole.integral = self.dipole.integral.to(device=self.device)
-            self.overlap.integral = self.overlap.integral.to(device=self.device)
+            self.dipole.integral.matrix = self.dipole.integral.matrix.to(
+                device=self.device
+            )
 
-            # explicitly move matrices to the correct device
-            self._matrices = self._matrices.to(self.device)
+            self.overlap.integral = self.overlap.integral.to(device=self.device)
+            self.overlap.integral.matrix = self.overlap.integral.matrix.to(
+                device=self.device
+            )
 
         logger.debug("Dipole integral: All finished.")
         return self.dipole.integral.matrix
@@ -379,14 +391,19 @@ class Integrals(IntegralContainer):
         # integrals are required
         if self.force_cpu_for_libcint and self._intlevel <= levels.INTLEVEL_QUADRUPOLE:
             self.overlap.integral = self.overlap.integral.to(self.device)
+            self.overlap.integral.matrix = self.overlap.integral.matrix.to(self.device)
+
             self.quadrupole.integral = self.quadrupole.integral.to(self.device)
+            self.quadrupole.integral.matrix = self.quadrupole.integral.matrix.to(
+                self.device
+            )
+
             if self.dipole is not None:
                 self.dipole.integral = self.dipole.integral.to(self.device)
+                self.dipole.integral.matrix = self.dipole.integral.matrix.to(
+                    self.device
+                )
 
-            # explicitly move matrices to the correct device
-            self._matrices = self._matrices.to(self.device)
-
-        self._matrices.quadrupole = self.quadrupole.integral.matrix
         logger.debug("Quad integral: All finished.")
         return self.quadrupole.integral.matrix
 
@@ -445,8 +462,7 @@ class Integrals(IntegralContainer):
 
     def reset_all(self) -> None:
         self.invalidate_driver()
-        # TODO: Do we need to reset the specific integrals and the
-        # IntegralMatrices?
+        # TODO: Do we need to reset the specific integrals?
 
     # pretty print
 
@@ -501,6 +517,7 @@ class IntegralMatrices(IntegralContainer):
     def hcore(self, mat: Tensor) -> None:
         self._hcore = mat
         self.checks()
+        self.device_check()
 
     # overlap
 
@@ -514,6 +531,7 @@ class IntegralMatrices(IntegralContainer):
     def overlap(self, overlap: Tensor) -> None:
         self._overlap = overlap
         self.checks()
+        self.device_check()
 
     # dipole
 
@@ -525,6 +543,7 @@ class IntegralMatrices(IntegralContainer):
     def dipole(self, dipole: Tensor) -> None:
         self._dipole = dipole
         self.checks()
+        self.device_check()
 
     # quadrupole
 
@@ -544,8 +563,25 @@ class IntegralMatrices(IntegralContainer):
     def quadrupole(self, mat: Tensor) -> None:
         self._quadrupole = mat
         self.checks()
+        self.device_check()
 
     # checks
+
+    def device_check(self) -> None:
+        """
+        Check if all tensors are on the same device after calling a setter.
+        If not, set the device to ``"invalid"``. Otherwise, the :meth:`to`
+        method is not triggered properly.
+        """
+
+        for name in ["hcore", "overlap", "dipole", "quadrupole"]:
+            tensor: Tensor = getattr(self, "_" + name)
+            if tensor is None:
+                continue
+
+            if tensor.device != self.device:
+                self.override_device("invalid")  # type: ignore
+                break
 
     def checks(self) -> None:
         """

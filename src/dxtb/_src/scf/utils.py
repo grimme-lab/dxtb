@@ -25,7 +25,7 @@ from ..timing.decorator import timer_decorator
 __all__ = ["get_density"]
 
 
-# @timer_decorator("Density", "SCF")
+@timer_decorator("Density", "SCF")
 def get_density(coeffs: Tensor, occ: Tensor, emo: Tensor | None = None) -> Tensor:
     """
     Calculate the density matrix from the coefficient vector and the occupation.

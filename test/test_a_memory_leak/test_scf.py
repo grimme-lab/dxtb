@@ -33,11 +33,10 @@ from dxtb import Calculator
 from dxtb._src.typing import DD
 
 from .util import has_memleak_tensor
+from ..conftest import DEVICE
 
 opts = {"verbosity": 0, "maxiter": 50, "exclude": ["rep", "disp", "hal"]}
 repeats = 5
-
-device = None
 
 
 # FIXME: xitorch's memory leak
@@ -47,11 +46,11 @@ device = None
 @pytest.mark.parametrize("run_gc", [False, True])
 @pytest.mark.parametrize("create_graph", [False, True])
 def test_xitorch(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     def fcn():
         sample = samples["SiH4"]
-        numbers = sample["numbers"].to(device)
+        numbers = sample["numbers"].to(DEVICE)
         positions = sample["positions"].clone().to(**dd)
         charges = torch.tensor(0.0, **dd)
 
@@ -83,11 +82,11 @@ def test_xitorch(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
 @pytest.mark.parametrize("run_gc", [False, True])
 @pytest.mark.parametrize("create_graph", [False, True])
 def test_xitorch_pure(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     def fcn():
         sample = samples["SiH4"]
-        numbers = sample["numbers"].to(device)
+        numbers = sample["numbers"].to(DEVICE)
         positions = sample["positions"].clone().to(**dd)
         charges = torch.tensor(0.0, **dd)
 
@@ -122,11 +121,11 @@ def test_xitorch_pure(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> N
 def skip_test_fulltracking(
     dtype: torch.dtype, run_gc: bool, create_graph: bool
 ) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     def fcn():
         sample = samples["SiH4"]
-        numbers = sample["numbers"].to(device)
+        numbers = sample["numbers"].to(DEVICE)
         positions = sample["positions"].clone().to(**dd)
         charges = torch.tensor(0.0, **dd)
 

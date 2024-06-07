@@ -132,14 +132,26 @@ class IntDriver(TensorLike):
         try:
             diff = self._positions - positions
         except RuntimeError as e:
+            if "Expected all tensors to be on the same device" in str(e):
+                raise RuntimeError(
+                    f"{e}\n\n"
+                    "The positions tensor is on a different device than the \n"
+                    "device on which the driver was setup. This usually \n"
+                    "happens in CUDA runs with the CPU-enforced libcint \n"
+                    "integral driver: The driver is setup on the CPU, but \n"
+                    "the positions tensor supplied to the integral build is \n"
+                    "on the GPU. Check the `build_<intgral>` or \n"
+                    "`grad_<integral>` methods."
+                ) from e
+
             raise RuntimeError(
                 f"{e}\n\nThis is likely a functorch error that appears when \n"
                 "running autograd twice without resetting certain cached \n"
                 "values. It appears first in the integral driver. Depending \n"
                 "on which level you interact with the API, use \n"
                 "`driver.invalidate()`, `integrals.reset_all()` or \n"
-                "`integrals.invalidate_driver()`, or `calc.reset_all()` after "
-                "the first autograd run."
+                "`integrals.invalidate_driver()`, or `calc.reset_all()` \n"
+                "after the first autograd run.\n"
             ) from e
 
         tol = torch.finfo(positions.dtype).eps ** 0.75 if tol is None else tol

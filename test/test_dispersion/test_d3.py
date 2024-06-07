@@ -32,14 +32,13 @@ from dxtb._src.components.classicals.dispersion import DispersionD3, new_dispers
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import batch
 
+from ..conftest import DEVICE
 from .samples import samples
-
-device = None
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_disp_batch(dtype: torch.dtype) -> None:
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = (
         samples["PbH4-BiH3"],
@@ -47,8 +46,8 @@ def test_disp_batch(dtype: torch.dtype) -> None:
     )
     numbers = batch.pack(
         (
-            sample1["numbers"].to(device),
-            sample2["numbers"].to(device),
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
         )
     )
     positions = batch.pack(
@@ -70,8 +69,8 @@ def test_disp_batch(dtype: torch.dtype) -> None:
         )
     )
 
-    rvdw = d3.data.VDW_D3[numbers.unsqueeze(-1), numbers.unsqueeze(-2)]
-    r4r2 = d3.data.R4R2[numbers]
+    rvdw = d3.data.VDW_D3.to(**dd)[numbers.unsqueeze(-1), numbers.unsqueeze(-2)]
+    r4r2 = d3.data.R4R2.to(**dd)[numbers]
     param = {
         "a1": torch.tensor(0.49484001, **dd),
         "s8": torch.tensor(0.78981345, **dd),
@@ -82,7 +81,7 @@ def test_disp_batch(dtype: torch.dtype) -> None:
         numbers, positions, param, c6, rvdw, r4r2, d3.disp.rational_damping
     )
     assert energy.dtype == dtype
-    assert torch.allclose(energy, ref)
+    assert pytest.approx(ref.cpu()) == energy.cpu()
 
     # create copy as `par` lives in global scope
     _par = par.model_copy(deep=True)
@@ -101,17 +100,17 @@ def test_disp_batch(dtype: torch.dtype) -> None:
     cache = disp.get_cache(numbers)
     edisp = disp.get_energy(positions, cache)
     assert edisp.dtype == dtype
-    assert pytest.approx(edisp) == ref
-    assert pytest.approx(edisp) == energy
+    assert pytest.approx(edisp.cpu()) == ref.cpu()
+    assert pytest.approx(edisp.cpu()) == energy.cpu()
 
 
 @pytest.mark.grad
 def test_grad_pos() -> None:
     dtype = torch.double
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples["C4H5NCS"]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd).detach().clone()
 
     # variable to be differentiated
@@ -136,10 +135,10 @@ def test_grad_pos() -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 def test_grad_pos_tblite(dtype: torch.dtype) -> None:
     """Compare with reference values from tblite."""
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples["PbH4-BiH3"]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd).detach().clone()
     positions.requires_grad_(True)
     ref = sample["grad"].to(**dd)
@@ -158,16 +157,16 @@ def test_grad_pos_tblite(dtype: torch.dtype) -> None:
         assert False
     grad_backward = positions.grad.clone()
 
-    assert pytest.approx(grad_backward, abs=1e-10) == ref
+    assert pytest.approx(grad_backward.cpu(), abs=1e-10) == ref.cpu()
 
 
 @pytest.mark.grad
 def test_grad_param() -> None:
     dtype = torch.double
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples["C4H5NCS"]
-    numbers = sample["numbers"].to(device)
+    numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     param = (
         torch.tensor(1.00000000, requires_grad=True, dtype=dtype),

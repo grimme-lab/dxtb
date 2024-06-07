@@ -25,13 +25,14 @@ import torch
 from dxtb import IndexHelper
 from dxtb._src.components.base import ComponentCache
 from dxtb._src.components.interactions import Charges, Interaction
+from ..conftest import DEVICE
 
 
 def test_empty() -> None:
     i = Interaction()
     assert i.label == "Interaction"
 
-    numbers = torch.tensor([6, 1])
+    numbers = torch.tensor([6, 1], device=DEVICE)
     ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0, 0], 6: [0, 1]})
     orbital = ihelp.spread_atom_to_orbital(numbers)
 
@@ -39,22 +40,22 @@ def test_empty() -> None:
     assert isinstance(c, ComponentCache)
 
     ae = i.get_atom_energy(numbers)
-    assert (ae == torch.zeros(ae.shape)).all()
+    assert (ae == torch.zeros(ae.shape, device=DEVICE)).all()
 
     se = i.get_shell_energy(numbers)
-    assert (se == torch.zeros(se.shape)).all()
+    assert (se == torch.zeros(se.shape, device=DEVICE)).all()
 
     e = i.get_energy(Charges(mono=orbital), numbers, ihelp)  # type: ignore
-    assert (e == torch.zeros(e.shape)).all()
+    assert (e == torch.zeros(e.shape, device=DEVICE)).all()
 
     ap = i.get_atom_potential(numbers)
-    assert (ap == torch.zeros(ap.shape)).all()
+    assert (ap == torch.zeros(ap.shape, device=DEVICE)).all()
 
     sp = i.get_shell_potential(numbers, numbers)
-    assert (sp == torch.zeros(sp.shape)).all()
+    assert (sp == torch.zeros(sp.shape, device=DEVICE)).all()
 
     ag = i.get_atom_gradient(numbers, numbers)
-    assert (ag == torch.zeros(ag.shape)).all()
+    assert (ag == torch.zeros(ag.shape, device=DEVICE)).all()
 
     sg = i.get_shell_gradient(numbers, numbers)
-    assert (sg == torch.zeros(sg.shape)).all()
+    assert (sg == torch.zeros(sg.shape, device=DEVICE)).all()

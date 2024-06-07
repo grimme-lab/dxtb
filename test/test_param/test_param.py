@@ -28,7 +28,7 @@ from tad_mctc.convert import symbol_to_number
 from dxtb._src.param.meta import Meta
 from dxtb._src.typing import DD
 
-device = None
+from ..conftest import DEVICE
 
 
 def test_builtin_gfn1() -> None:
@@ -119,7 +119,7 @@ def test_param_calculator(dtype: torch.dtype) -> None:
     from dxtb import Calculator
     from dxtb._src.param.gfn1 import GFN1_XTB as par
 
-    dd: DD = {"device": device, "dtype": dtype}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
     numbers = symbol_to_number(["H", "C"])
     calc = Calculator(numbers, par, opts={"verbosity": 0}, **dd)
 
@@ -128,4 +128,5 @@ def test_param_calculator(dtype: torch.dtype) -> None:
     h = calc.integrals.hcore
     assert h is not None
 
-    assert pytest.approx(ref) == calc.ihelp.reduce_shell_to_atom(h.integral.refocc)
+    occ = calc.ihelp.reduce_shell_to_atom(h.integral.refocc)
+    assert pytest.approx(ref.cpu()) == occ.cpu()
