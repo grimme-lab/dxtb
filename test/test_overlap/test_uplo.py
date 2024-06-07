@@ -31,11 +31,10 @@ from dxtb import GFN1_XTB as par
 from dxtb._src.typing import DD
 from dxtb._src.utils import batch
 
+from ..conftest import DEVICE
 from ..utils import load_from_npz
 from .samples import samples
 from .utils import calc_overlap
-
-from ..conftest import DEVICE
 
 ref_overlap = np.load("test/test_overlap/overlap.npz")
 

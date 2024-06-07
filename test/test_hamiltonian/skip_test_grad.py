@@ -34,9 +34,9 @@ from dxtb._src.scf import get_density
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import batch
 
+from ..conftest import DEVICE
 from ..utils import load_from_npz
 from .samples import samples
-from ..conftest import DEVICE
 
 # references
 ref_grad_no_overlap = np.load("test/test_hamiltonian/grad_no_overlap.npz")

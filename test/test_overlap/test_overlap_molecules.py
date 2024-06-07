@@ -33,11 +33,10 @@ from dxtb._src.utils import batch
 from dxtb.integrals.wrappers import overlap
 from dxtb.labels import INTDRIVER_ANALYTICAL
 
+from ..conftest import DEVICE
 from ..utils import load_from_npz
 from .samples import samples
 from .utils import calc_overlap
-
-from ..conftest import DEVICE
 
 ref_overlap = np.load("test/test_overlap/overlap.npz")
 

@@ -27,8 +27,8 @@ from dxtb import GFN1_XTB
 from dxtb._src.calculators.properties.vibration import VibResult
 from dxtb._src.typing import DD, Literal, Tensor
 from dxtb.calculators import AnalyticalCalculator, AutogradCalculator, GFN1Calculator
-from ...conftest import DEVICE
 
+from ...conftest import DEVICE
 
 opts = {"cache_enabled": True, "verbosity": 0}
 

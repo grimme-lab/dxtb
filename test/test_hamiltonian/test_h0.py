@@ -36,9 +36,9 @@ from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import batch
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 
+from ..conftest import DEVICE
 from ..utils import load_from_npz
 from .samples import samples
-from ..conftest import DEVICE
 
 small = ["C", "Rn", "H2", "LiH", "HLi", "S2", "SiH4"]
 large = ["PbH4-BiH3", "LYS_xao"]

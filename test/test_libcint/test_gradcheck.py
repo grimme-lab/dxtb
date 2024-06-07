@@ -32,8 +32,8 @@ from dxtb._src.integral.driver.libcint import IntDriverLibcint, OverlapLibcint
 from dxtb._src.typing import DD, Callable, Tensor
 from dxtb._src.utils import batch, is_basis_list
 
-from .samples import samples
 from ..conftest import DEVICE
+from .samples import samples
 
 sample_list = ["H2", "HHe", "LiH", "Li2", "S2", "H2O", "SiH4"]
 int_list = ["ovlp", "r0", "r0r0"]

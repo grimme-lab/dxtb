@@ -23,8 +23,9 @@ from __future__ import annotations
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb._src.typing import DD
 from dxtb._src.integral.driver.pytorch.impls.md import recursion
+from dxtb._src.typing import DD
+
 from ...conftest import DEVICE
 
 

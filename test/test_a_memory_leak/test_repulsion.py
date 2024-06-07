@@ -34,8 +34,8 @@ from dxtb._src.components.classicals import Repulsion
 from dxtb._src.param import get_elem_param
 from dxtb._src.typing import DD
 
-from .util import has_memleak_tensor
 from ..conftest import DEVICE
+from .util import has_memleak_tensor
 
 sample_list = ["H2O", "SiH4", "MB16_43_01"]
 

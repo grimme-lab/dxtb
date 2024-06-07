@@ -27,7 +27,7 @@ import torch
 
 from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.basis.bas import Basis
-from dxtb._src.typing import Literal, DD
+from dxtb._src.typing import DD, Literal
 
 
 @pytest.mark.parametrize("number", range(1, 87))
@@ -60,7 +60,7 @@ def test_export(
     p = root / f"{s}.{qcformat}"
     assert p.exists()
 
-    with open(p, "r", encoding="utf-8") as f:
+    with open(p, encoding="utf-8") as f:
         content = f.read()
 
     assert content == txt

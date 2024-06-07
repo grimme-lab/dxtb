@@ -31,8 +31,8 @@ from dxtb._src.exlibs import libcint
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import batch, is_basis_list
 
-from .samples import samples
 from ..conftest import DEVICE
+from .samples import samples
 
 sample_list = ["H2", "HHe", "LiH", "Li2", "S2", "H2O", "SiH4"]
 

@@ -30,8 +30,8 @@ from dxtb._src.components.interactions.coulomb import secondorder as es2
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import batch
 
-from .samples import samples
 from ..conftest import DEVICE
+from .samples import samples
 
 sample_list = ["MB16_43_01", "MB16_43_02", "SiH4_atom"]
 

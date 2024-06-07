@@ -3,8 +3,8 @@ from __future__ import annotations
 import torch
 
 from dxtb._src.exlibs import xitorch as xt
-from dxtb._src.typing import Tensor
 from dxtb._src.timing.decorator import timer_decorator
+from dxtb._src.typing import Tensor
 
 __all__ = ["get_overlap", "diagonalize"]
 

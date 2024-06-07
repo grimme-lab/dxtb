@@ -29,8 +29,8 @@ from dxtb._src.basis.bas import Basis
 from dxtb._src.typing import DD
 from dxtb._src.utils import batch
 
-from .samples import samples
 from ..conftest import DEVICE
+from .samples import samples
 
 sample_list = ["H2", "LiH", "Li2", "H2O", "S", "SiH4", "MB16_43_01"]
 

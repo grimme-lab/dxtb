@@ -33,9 +33,9 @@ from dxtb._src.exlibs import libcint
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import is_basis_list
 
+from ..conftest import DEVICE
 from ..utils import load_from_npz
 from .samples import samples
-from ..conftest import DEVICE
 
 ref_overlap = np.load("test/test_overlap/grad.npz")
 

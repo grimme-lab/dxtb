@@ -44,8 +44,8 @@ try:
 except ImportError:
     pyscf = False
 
-from .samples import samples
 from ..conftest import DEVICE
+from .samples import samples
 
 sample_list = ["H2", "LiH", "Li2", "H2O", "S", "SiH4", "MB16_43_01", "C60"]
 

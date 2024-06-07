@@ -34,8 +34,8 @@ from dxtb._src.typing import DD, Callable, Tensor
 from dxtb._src.utils import batch
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 
-from .samples import samples
 from ..conftest import DEVICE
+from .samples import samples
 
 sample_list = ["H2", "HHe", "LiH", "S2", "H2O", "SiH4"]
 
