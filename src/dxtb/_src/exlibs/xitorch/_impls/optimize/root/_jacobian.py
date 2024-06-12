@@ -100,7 +100,7 @@ class BroydenFirst(Jacobian):
 
     def update(self, x, y):
         dy = y - self.y_prev
-        dx = x - self.x_prev
+        dx = x - self.x_prev  # <-- can become exactly zero
         # update Gm
         self._update(x, y, dx, dy, dx.norm(), dy.norm())
 
@@ -113,7 +113,7 @@ class BroydenFirst(Jacobian):
 
         v = self.Gm.rmv(dx)
         c = dx - self.Gm.mv(dy)
-        d = v / torch.dot(dy, v)
+        d = v / torch.dot(dy, v)  # <-- yields NaN
         self.Gm = self.Gm.append(c, d)
 
 

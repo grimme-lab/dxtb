@@ -27,6 +27,28 @@ included in the method.
 
 The standard parametrizations of GFN1 and GFN2 are predefined.
 
+Parametrizations: Formats
+=========================
+
+Since `tblite`_ exports the parametrization in TOML format, we also read the
+predefined parametrizations from the TOML files. However, the :class:`.Param`
+class also supports reading JSON and YAML formats.
+The parametrization can also be adapted and written back to the respective
+formats.
+
+.. code-block:: python
+
+    from dxtb import Param, GFN1_XTB
+
+    # Save existing GFN1-xTB parametrization to JSON file
+    GFN1_XTB.to_file("gfn1-xtb.json")
+
+    # Load the parametrization from the JSON file
+    param = Param.from_file("gfn1-xtb.json")
+
+    # compare the loaded parametrization with the original
+    assert param == GFN1_XTB
+
 .. _tblite: https://tblite.readthedocs.io
 """
 

@@ -337,8 +337,6 @@ class Basis(TensorLike):
                 alphas.append(alpha)
                 coeffs.append(coeff)
 
-                print(alphas)
-
                 l = angular2label[self.ihelp.angular.tolist()[s]]
                 if qcformat == "gaussian94":
                     txt += f"{l}    {len(alpha)}    1.00\n"

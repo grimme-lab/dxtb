@@ -26,6 +26,8 @@ dependencies:
   - pytorch>=1.11.0,<=2.2.2
   - scipy # for xitorch
   - pytest
+  - tomli
+  - tomli-w
   - tad-mctc
   - tad-multicharge
   - tad-dftd3

@@ -125,3 +125,20 @@ class LazyLoaderParam:
             The string representation of the `LazyLoaderParam` object.
         """
         return str(self)
+
+    def __eq__(self, other: Any) -> bool:
+        """
+        Check if the :class:`.LazyLoaderParam` object is equal to another
+        object.
+
+        Parameters
+        ----------
+        value : object
+            The object to compare with the :class:`.LazyLoaderParam` object.
+
+        Returns
+        -------
+        bool
+            True if the objects are equal, False otherwise.
+        """
+        return self._loaded == other
