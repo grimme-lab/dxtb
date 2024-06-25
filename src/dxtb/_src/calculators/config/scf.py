@@ -358,9 +358,9 @@ def check_tols(value: float, dtype: torch.dtype) -> float:
         OutputHandler.warn(
             f"Selected tolerance ({value:.2E}) is smaller than the "
             f"smallest value for the selected dtype ({dtype}, "
-            f"{eps:.2E}). Switching to 10*{eps:.2E} instead."
+            f"{eps:.2E}). Switching to {100*eps:.2E} instead."
         )
-        return 10 * eps
+        return 100 * eps
 
     return value
 

@@ -36,6 +36,7 @@ from dxtb._src.components.interactions import Charges, Potential
 from dxtb._src.constants import defaults, labels
 from dxtb._src.typing import Literal, Slicers, Tensor, exceptions, overload
 from dxtb._src.utils import t2int
+from dxtb import OutputHandler
 
 from .base import BaseTSCF
 
@@ -100,7 +101,7 @@ class SelfConsistentFieldFull(BaseTSCF):
                     raise exceptions.SCFConvergenceError(msg)
 
                 # only issue warning, return anyway
-                warnings.warn(msg, exceptions.SCFConvergenceWarning)
+                OutputHandler.warn(msg, exceptions.SCFConvergenceWarning)
                 q_converged = q
 
             if return_charges is True:
@@ -290,7 +291,7 @@ class SelfConsistentFieldFull(BaseTSCF):
                 f"({iconv.tolist()}), and {len(idxs[converged])} converged "
                 f"({idxs[converged].tolist()})."
             )
-            warnings.warn(msg + msg_converged, exceptions.SCFConvergenceWarning)
+            OutputHandler.warn(msg + msg_converged, exceptions.SCFConvergenceWarning)
 
         if culled:
             # write converged variables back to `self._data` for final

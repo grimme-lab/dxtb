@@ -23,9 +23,9 @@ Dipole integral implementation based on `libcint`.
 
 from __future__ import annotations
 
-import torch
 
 from dxtb._src.typing import Tensor
+from tad_mctc.math import einsum
 
 from .driver import IntDriverLibcint
 from .multipole import MultipoleLibcint
@@ -96,6 +96,6 @@ class DipoleLibcint(MultipoleLibcint):
                 "The position tensor must be spread to orbital-resolution."
             )
 
-        shift = torch.einsum("...jx,...ij->...xij", pos, overlap)
+        shift = einsum("...jx,...ij->...xij", pos, overlap)
         self.matrix = self.matrix - shift
         return self.matrix

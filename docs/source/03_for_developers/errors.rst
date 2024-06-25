@@ -3,7 +3,7 @@
 Common Errors
 =============
 
-The following comprises a list of common errors that might occur during 
+The following comprises a list of common errors that might occur during
 development and their solutions. If the error occurs frequently, please
 raise a custom error in the respective code.
 
@@ -24,7 +24,7 @@ RuntimeError: The linear operator A must be Hermitian
 
 This error usually occurs in the later stages of the SCF for atoms. Although
 the error message claims that there is a problem with the Hamiltonian matrix,
-the error is actually raised because the mixer in `xitorch` produces a 
+the error is actually raised because the mixer in `xitorch` produces a
 `NaN` value. In fact, the offending code is the following:
 
 .. code-block:: python
@@ -47,6 +47,6 @@ the error is actually raised because the mixer in `xitorch` produces a
         d = v / torch.dot(dy, v) # <-- yields NaN
         self.Gm = self.Gm.append(c, d)
 
-Apparently, this occurs if the convergence criteria are too strict in single 
+Apparently, this occurs if the convergence criteria are too strict in single
 precision. The solution is to increase the convergence criteria to more than
 1e-6.

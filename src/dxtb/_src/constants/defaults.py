@@ -147,8 +147,10 @@ SCF_MODE_CHOICES = [
     "nonpure",
     "full",
     "full_tracking",
+    "full-tracking",
     "experimental",
     "single_shot",
+    "single-shot",
 ]
 """List of possible choices for ``SCF_MODE``."""
 
