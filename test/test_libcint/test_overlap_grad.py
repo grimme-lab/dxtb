@@ -25,6 +25,7 @@ from math import sqrt
 import numpy as np
 import pytest
 import torch
+from tad_mctc.math import einsum
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
@@ -62,7 +63,7 @@ def explicit(name: str, dd: DD, tol: float) -> None:
 
     # normalize and move xyz dimension to last, which is required for
     # the reduction (only works with extra dimension in last)
-    grad = torch.einsum("...xij,...i,...j->...ijx", grad, norm, norm)
+    grad = einsum("...xij,...i,...j->...ijx", grad, norm, norm)
 
     # (norb, norb, 3) -> (nat, norb, 3)
     grad = ihelp.reduce_orbital_to_atom(grad, dim=-3, extra=True)
@@ -106,7 +107,7 @@ def autograd(name: str, dd: DD, tol: float) -> None:
     wrapper = libcint.LibcintWrapper(atombases, ihelp)
     s = libcint.overlap(wrapper)
     norm = torch.pow(s.diagonal(dim1=-1, dim2=-2), -0.5)
-    s = torch.einsum("...ij,...i,...j->...ij", s, norm, norm)
+    s = einsum("...ij,...i,...j->...ij", s, norm, norm)
 
     (g,) = torch.autograd.grad(s.sum(), positions)
     positions.detach_()
@@ -167,6 +168,6 @@ def num_grad(bas: Basis, ihelp: IndexHelper, positions: Tensor) -> torch.Tensor:
     # normalize and move xyz dimension to last, which is required for
     # the reduction (only works with extra dimension in last)
     norm = torch.pow(s_original.diagonal(dim1=-1, dim2=-2), -0.5)
-    grad = torch.einsum("...xij,...i,...j->...ijx", numerical_grad, norm, norm)
+    grad = einsum("...xij,...i,...j->...ijx", numerical_grad, norm, norm)
 
     return grad

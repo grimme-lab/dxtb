@@ -28,15 +28,13 @@ continued until all systems are converged.
 
 from __future__ import annotations
 
-import warnings
-
 import torch
 
+from dxtb import OutputHandler
 from dxtb._src.components.interactions import Charges, Potential
 from dxtb._src.constants import defaults, labels
 from dxtb._src.typing import Literal, Slicers, Tensor, exceptions, overload
 from dxtb._src.utils import t2int
-from dxtb import OutputHandler
 
 from .base import BaseTSCF
 

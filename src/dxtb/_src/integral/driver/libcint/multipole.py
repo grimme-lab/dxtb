@@ -25,10 +25,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from tad_mctc.math import einsum
+
 from dxtb._src.exlibs import libcint
 from dxtb._src.typing import Tensor
 from dxtb._src.utils.batch import pack
-from tad_mctc.math import einsum
 
 from .base_implementation import IntegralImplementationLibcint
 

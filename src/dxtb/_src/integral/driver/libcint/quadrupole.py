@@ -24,9 +24,9 @@ Quadrupole integral implementation based on `libcint`.
 from __future__ import annotations
 
 import torch
+from tad_mctc.math import einsum
 
 from dxtb._src.typing import Tensor
-from tad_mctc.math import einsum
 
 from .driver import IntDriverLibcint
 from .multipole import MultipoleLibcint

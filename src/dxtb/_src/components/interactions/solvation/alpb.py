@@ -61,6 +61,7 @@ import torch
 from tad_mctc import storch
 from tad_mctc.batch import real_pairs
 from tad_mctc.data import VDW_D3
+from tad_mctc.math import einsum
 
 from dxtb._src.param import Param
 from dxtb._src.typing import DD, Any, Tensor, TensorLike, get_default_dtype
@@ -294,7 +295,7 @@ class GeneralizedBorn(Interaction):
     def get_atom_potential(
         self, charges: Tensor, cache: GeneralizedBornCache
     ) -> Tensor:
-        return torch.einsum("...ik,...k->...i", cache.mat, charges)
+        return einsum("...ik,...k->...i", cache.mat, charges)
 
     # TODO: Implement gradient before using solvation in SCF
     def get_atom_gradient(

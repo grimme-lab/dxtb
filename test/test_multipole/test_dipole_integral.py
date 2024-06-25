@@ -28,6 +28,7 @@ from math import sqrt
 import pytest
 import torch
 from tad_mctc.convert import numpy_to_tensor
+from tad_mctc.math import einsum
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
@@ -80,8 +81,8 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     # normalize
     norm = snorm(libcint.overlap(wrapper))
-    dxtb_dpint = torch.einsum("xij,i,j->xij", dxtb_dpint, norm, norm)
-    pyscf_dpint = torch.einsum("xij,i,j->xij", pyscf_dpint, norm, norm)
+    dxtb_dpint = einsum("xij,i,j->xij", dxtb_dpint, norm, norm)
+    pyscf_dpint = einsum("xij,i,j->xij", pyscf_dpint, norm, norm)
 
     assert dxtb_dpint.shape == pyscf_dpint.shape
     assert pytest.approx(pyscf_dpint.cpu(), abs=tol) == dxtb_dpint.cpu()

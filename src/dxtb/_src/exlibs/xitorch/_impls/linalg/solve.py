@@ -23,6 +23,7 @@ from typing import Callable, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch
+from tad_mctc.math import einsum
 
 from dxtb._src.exlibs.scipy.sparse.linalg import gmres as scipy_gmres
 from dxtb._src.exlibs.xitorch import LinearOperator
@@ -503,7 +504,7 @@ def _dot(r: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
     # r: (*BR, nr, nc)
     # z: (*BR, nr, nc)
     # return: (*BR, 1, nc)
-    return torch.einsum("...rc,...rc->...c", r.conj(), z).unsqueeze(-2)
+    return einsum("...rc,...rc->...c", r.conj(), z).unsqueeze(-2)
 
 
 ############ rootfinder-based ############

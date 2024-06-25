@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import torch
 from tad_mctc.batch import real_atoms
+from tad_mctc.math import einsum
 from tad_mctc.units.energy import KELVIN2AU
 
 from dxtb._src.components.interactions import Charges, InteractionList
@@ -128,7 +129,7 @@ def get_electronic_free_energy(data: _Data, cfg: ConfigSCF) -> Tensor:
     # partition to atoms via Mulliken population analysis
     if cfg.fermi.partition == labels.FERMI_PARTITION_ATOMIC:
         # "electronic entropy" density matrix
-        density = torch.einsum(
+        density = einsum(
             "...ik,...k,...jk->...ij",
             data.evecs,  # sorted by energy, starting with lowest
             g,

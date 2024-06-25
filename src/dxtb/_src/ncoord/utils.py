@@ -20,7 +20,7 @@ Calculation of coordination number with various counting functions.
 
 from __future__ import annotations
 
-import torch
+from tad_mctc.math import einsum
 
 from dxtb._src.typing import Tensor
 
@@ -47,6 +47,6 @@ def get_dcn(dcndr: Tensor, dedcn: Tensor) -> Tensor:
     """
 
     # same atom terms added separately (missing due to mask)
-    return torch.einsum("...ijx, ...j -> ...ix", -dcndr, dedcn) + (
+    return einsum("...ijx, ...j -> ...ix", -dcndr, dedcn) + (
         (-dcndr).sum(-2) * dedcn.unsqueeze(-1)
     )
