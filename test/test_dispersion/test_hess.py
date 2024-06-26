@@ -24,12 +24,12 @@ from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.autograd import jacrev
+from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB as par
 from dxtb._src.components.classicals.dispersion import new_dispersion
 from dxtb._src.typing import DD, Tensor
-from tad_mctc.batch import pack
-from dxtb._src.utils import hessian
 
 from ..conftest import DEVICE
 from ..utils import reshape_fortran
@@ -60,7 +60,13 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     assert disp is not None
 
     cache = disp.get_cache(numbers)
-    hess = hessian(disp.get_energy, (positions, cache))
+
+    def energy(pos: Tensor) -> Tensor:
+        return disp.get_energy(pos, cache).sum()
+
+    hess = jacrev(jacrev(energy))(positions)
+    assert isinstance(hess, Tensor)
+
     positions.detach_()
 
     hess = hess.reshape_as(ref)
@@ -110,7 +116,13 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
     assert disp is not None
 
     cache = disp.get_cache(numbers)
-    hess = hessian(disp.get_energy, (positions, cache))
+
+    def energy(pos: Tensor) -> Tensor:
+        return disp.get_energy(pos, cache).sum()
+
+    hess = jacrev(jacrev(energy))(positions)
+    assert isinstance(hess, Tensor)
+
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == hess.detach().cpu()
 
     positions.detach_()

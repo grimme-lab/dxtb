@@ -22,12 +22,12 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.autograd import jacrev
 
 from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD, Tensor
-from dxtb._src.utils import _hessian as hessian
 
 from ..conftest import DEVICE
 from ..utils import reshape_fortran
@@ -69,11 +69,13 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     # variable to be differentiated
     positions.requires_grad_(True)
 
-    def scf(positions, charge) -> Tensor:
-        result = calc.singlepoint(positions, charge)
-        return result.scf
+    def energy(pos: Tensor) -> Tensor:
+        result = calc.singlepoint(pos, charge)
+        return result.scf.sum()
 
-    hess = hessian(scf, (positions, charge), argnums=0)
+    hess = jacrev(jacrev(energy))(positions)
+    assert isinstance(hess, Tensor)
+
     positions.detach_()
     hess = hess.detach().reshape_as(ref)
     numref = numref.reshape_as(ref)
