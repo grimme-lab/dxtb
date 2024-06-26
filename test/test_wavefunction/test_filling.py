@@ -25,13 +25,13 @@ from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.batch import pack
 from tad_mctc.units import KELVIN2AU
 
 from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.integral.container import IntegralMatrices
 from dxtb._src.scf.implicit import SelfConsistentFieldImplicit as SCF
 from dxtb._src.typing import DD
-from tad_mctc.batch import pack
 from dxtb._src.wavefunction import filling
 from dxtb.config import ConfigSCF
 

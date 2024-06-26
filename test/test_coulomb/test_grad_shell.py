@@ -24,11 +24,11 @@ from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.components.interactions import secondorder as es2
 from dxtb._src.typing import DD, Tensor
-from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from .samples import samples

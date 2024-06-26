@@ -24,12 +24,12 @@ from __future__ import annotations
 import pytest
 import torch
 from tad_mctc.autograd import dgradcheck
+from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.components.interactions.coulomb import thirdorder as es3
 from dxtb._src.param.utils import get_elem_param
 from dxtb._src.typing import DD, Tensor
-from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from .samples import samples

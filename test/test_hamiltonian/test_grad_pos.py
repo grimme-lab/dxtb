@@ -23,6 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
+from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
@@ -31,7 +32,6 @@ from dxtb._src.integral.container import Overlap
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb._src.ncoord import cn_d3
 from dxtb._src.typing import DD, Callable, Tensor
-from tad_mctc.batch import pack
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 
 from ..conftest import DEVICE

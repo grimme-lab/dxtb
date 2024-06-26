@@ -26,10 +26,10 @@ from math import sqrt
 import numpy as np
 import pytest
 import torch
+from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB as par
 from dxtb._src.typing import DD
-from tad_mctc.batch import pack
 from dxtb.integrals.wrappers import overlap
 from dxtb.labels import INTDRIVER_ANALYTICAL
 

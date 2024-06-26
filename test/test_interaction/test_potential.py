@@ -22,11 +22,11 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.batch import pack
 
 from dxtb._src.components.interactions import Potential
 from dxtb._src.constants import defaults
 from dxtb._src.typing import ContainerData
-from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 

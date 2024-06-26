@@ -38,9 +38,9 @@
     :caption: About
     :maxdepth: 2
 
-    Literature <about/literature>
-    Related Works <about/related>
-    License <about/license>
+    Literature <04_about/literature>
+    Related Works <04_about/related>
+    License <04_about/license>
 
 .. toctree::
     :hidden:
@@ -64,7 +64,7 @@ With *dxtb*, we provide a re-implementation of the xTB methods in PyTorch, which
 
 If you use *dxtb* in your research, please cite the following paper:
 
-- dxtb: M. Friede, C. Hölzer, S. Ehlert, S. Grimme, *dxtb -- An Efficient and Fully Differentiable Framework for Extended Tight-Binding*, *J. Chem. Phys.*, **2024**
+- M. Friede, C. Hölzer, S. Ehlert, S. Grimme, *dxtb -- An Efficient and Fully Differentiable Framework for Extended Tight-Binding*, *J. Chem. Phys.*, **2024**
 
 .. admonition:: BibTeX
    :class: toggle
@@ -74,7 +74,7 @@ If you use *dxtb* in your research, please cite the following paper:
        @article{dxtb,
          title = {dxtb -- An Efficient and Fully Differentiable Framework for Extended Tight-Binding},
          author = {Friede, Marvin and Hölzer, Christian and Ehlert, Sebastian and Grimme, Stefan},
-         journal = {Journal of Chemical Physics},
+         journal = {J. Chem. Phys.},
          volume = {},
          number = {},
          pages = {},

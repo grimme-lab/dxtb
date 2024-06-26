@@ -25,13 +25,13 @@ from pathlib import Path
 
 import pytest
 import torch
+from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.constants import labels
 from dxtb._src.io import read_chrg, read_coord
 from dxtb._src.typing import DD
-from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from .samples import samples

@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
@@ -29,7 +30,6 @@ from dxtb import integrals as ints
 from dxtb._src.exlibs import libcint
 from dxtb._src.integral.driver.libcint import IntDriverLibcint
 from dxtb._src.typing import DD
-from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from .samples import samples

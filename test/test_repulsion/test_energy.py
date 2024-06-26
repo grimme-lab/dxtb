@@ -26,13 +26,13 @@ from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.batch import pack
 
 from dxtb import IndexHelper
 from dxtb._src.components.classicals import new_repulsion
 from dxtb._src.param.gfn1 import GFN1_XTB
 from dxtb._src.param.gfn2 import GFN2_XTB
 from dxtb._src.typing import DD, Literal
-from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from .samples import samples

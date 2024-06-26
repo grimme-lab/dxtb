@@ -21,11 +21,11 @@ Test culling (removing of systems) from IndexHelper.
 from __future__ import annotations
 
 import torch
+from tad_mctc.batch import deflate, pack
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.typing import Slicers, Tensor
-from tad_mctc.batch import pack, deflate
 
 from ..conftest import DEVICE
 

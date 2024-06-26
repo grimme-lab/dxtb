@@ -24,11 +24,11 @@ from __future__ import annotations
 import pytest
 import torch
 from tad_mctc.autograd import dgradcheck
+from tad_mctc.batch import pack
 from tad_mctc.data.radii import VDW_D3
 
 from dxtb._src.components.interactions.solvation import born
 from dxtb._src.typing import DD, Tensor
-from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from .samples import samples

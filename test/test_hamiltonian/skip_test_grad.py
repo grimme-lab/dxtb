@@ -24,6 +24,7 @@ from math import sqrt
 import numpy as np
 import pytest
 import torch
+from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB as par
 from dxtb import Calculator
@@ -32,7 +33,6 @@ from dxtb._src.integral.driver.pytorch import IntDriverPytorch
 from dxtb._src.ncoord import cn_d3, cn_d3_gradient, get_dcn
 from dxtb._src.scf import get_density
 from dxtb._src.typing import DD, Tensor
-from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from ..utils import load_from_npz

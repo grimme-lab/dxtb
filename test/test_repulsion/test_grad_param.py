@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.batch import pack
 from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
 from dxtb import GFN1_XTB as par
@@ -29,7 +30,6 @@ from dxtb import IndexHelper
 from dxtb._src.components.classicals import Repulsion
 from dxtb._src.param import get_elem_param
 from dxtb._src.typing import DD, Callable, Tensor
-from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from .samples import samples
