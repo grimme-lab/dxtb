@@ -34,11 +34,12 @@ from ..utils import coordfile
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_driver(dtype: torch.dtype) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
+    device = "cuda" if dd["device"] == torch.device("cuda") else "cpu"
 
     ref = torch.tensor(-1.0362714373390, **dd)
 
     dtype_str = "float32" if dtype == torch.float else "double"
-    opts = f"--verbosity 0 --grad --chrg 0 --dtype {dtype_str} --device {DEVICE} {coordfile}"
+    opts = f"--verbosity 0 --grad --chrg 0 --dtype {dtype_str} --device {device} {coordfile}"
     args = parser().parse_args(opts.split())
     d = Driver(args)
     result = d.singlepoint()

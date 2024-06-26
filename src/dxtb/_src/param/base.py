@@ -185,7 +185,7 @@ class Param(BaseModel):
             import tomli_w as toml_w  # type: ignore
         except ImportError:
             try:
-                import toml as toml_w
+                import toml as toml_w  # type: ignore
             except ImportError:
                 raise ImportError(
                     "A TOML writer package is required for TOML support. "

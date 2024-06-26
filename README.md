@@ -2,7 +2,7 @@
 
 <h3 align="center">Fully Differentiable Extended Tight-Binding</h3>
 <p align="center">- Combining semi-empirical quantum chemistry with machine learning in PyTorch -</p>
-      
+
 <p align="center">
   <a href="https://github.com/grimme-lab/dxtb/releases/latest">
     <img src="https://img.shields.io/github/v/release/grimme-lab/dxtb?color=orange" alt="Release"/>

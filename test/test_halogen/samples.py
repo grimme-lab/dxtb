@@ -21,10 +21,9 @@ Samples for test of halogen bond correction.
 from __future__ import annotations
 
 import torch
+from tad_mctc.data.molecules import merge_nested_dicts, mols
 
 from dxtb._src.typing import Molecule, Tensor, TypedDict
-
-from ..molecules import merge_nested_dicts, mols
 
 
 class Refs(TypedDict):

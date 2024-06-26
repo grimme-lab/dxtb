@@ -31,7 +31,20 @@ from tad_mctc.convert import symbol_to_number
 from dxtb import GFN1_XTB, GFN2_XTB, Calculator
 from dxtb._src.param import Param
 from dxtb._src.param.meta import Meta
-from dxtb._src.typing import DD, PathLike
+from dxtb._src.typing import DD
+
+try:
+    import tomli_w as toml_w  # type: ignore
+except ImportError:
+    try:
+        import toml as toml_w  # type: ignore
+    except ImportError:
+        toml_w = None
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 from ..conftest import DEVICE
 
@@ -171,6 +184,7 @@ def test_read_other(ftype: str, parname: str) -> None:
     _validate_param(par)
 
 
+@pytest.mark.skipif(toml_w is None, reason="No TOML writer installed.")
 @pytest.mark.parametrize("parname", ["gfn1-xtb", "gfn2-xtb"])
 def test_write_toml(parname: str) -> None:
     p = (
@@ -195,10 +209,28 @@ def test_write_toml(parname: str) -> None:
 
 
 @pytest.mark.parametrize("parname", ["gfn1-xtb", "gfn2-xtb"])
-@pytest.mark.parametrize("ftype", ["json", "yaml"])
-def test_write_other(ftype: str, parname: str) -> None:
+def test_write_json(parname: str) -> None:
+    ftype = "json"
     p = Path(__file__).parent / "param"
     par = Param.from_file(p / f"{parname}.{ftype}")
+
+    with td.TemporaryDirectory() as tmp:
+        # write to file
+        p_write = Path(tmp) / f"test.{ftype}"
+        par.to_file(p_write)
+
+        # read the written file
+        par_read = Param.from_file(p_write)
+
+        _validate_param(par_read)
+
+
+@pytest.mark.skipif(yaml is None, reason="No YAML writer installed.")
+@pytest.mark.parametrize("parname", ["gfn1-xtb", "gfn2-xtb"])
+@pytest.mark.parametrize("ftype", ["yml", "yaml"])
+def test_write_yaml(ftype: str, parname: str) -> None:
+    p = Path(__file__).parent / "param"
+    par = Param.from_file(p / f"{parname}.yaml")
 
     with td.TemporaryDirectory() as tmp:
         # write to file

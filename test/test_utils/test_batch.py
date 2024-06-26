@@ -25,71 +25,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 import torch
-from tad_mctc.convert import str_to_device
+from tad_mctc.convert import normalize_device
 from torch.autograd.gradcheck import gradcheck
 
-from dxtb._src.utils.batch import deflate, merge, pack, pargsort, psort, unpack
+from dxtb._src.utils.batch import merge, pack, pargsort, psort
 
 from ..conftest import DEVICE
-
-
-def test_pack():
-    """Sanity test of batch packing operation."""
-    # Generate matrix list
-    sizes = torch.randint(2, 8, (10,))
-    matrices = [torch.rand((int(i), int(i)), device=DEVICE) for i in sizes]
-
-    # Pack matrices into a single tensor
-    packed = pack(matrices)
-
-    # Construct a numpy equivalent
-    max_size = max(packed.shape[1:])
-    ref = np.stack([np.pad(i.cpu().numpy(), (0, max_size - len(i))) for i in matrices])
-
-    equivalent = np.all((packed.cpu().numpy() - ref) < 1e-12)
-    assert equivalent, "Check pack method against numpy"
-
-    same_device = packed.device == DEVICE
-    assert same_device, "Device persistence check (packed tensor)"
-
-    # Check that the mask is correct
-    *_, mask = pack(
-        [
-            torch.rand(1, device=DEVICE),
-            torch.rand(2, device=DEVICE),
-            torch.rand(3, device=DEVICE),
-        ],
-        return_mask=True,
-    )
-
-    ref_mask = torch.tensor(
-        [[1, 0, 0], [1, 1, 0], [1, 1, 1]], dtype=torch.bool, device=DEVICE
-    )
-
-    same_device_mask = mask.device == DEVICE
-    eq = torch.all(torch.eq(mask, ref_mask))
-
-    assert eq, "Mask yielded an unexpected result"
-    assert same_device_mask, "Device persistence check (mask)"
-
-
-@pytest.mark.grad
-def test_pack_grad():
-    """Gradient stability test of batch packing operation."""
-    sizes = torch.randint(2, 6, (3,))
-    tensors = [
-        torch.rand(
-            (int(i), int(i)), device=DEVICE, dtype=torch.double, requires_grad=True
-        )
-        for i in sizes
-    ]
-
-    def proxy(*args):
-        # Proxy function is used to prevent an undiagnosed error from occurring.
-        return pack(list(args))
-
-    grad_is_safe = gradcheck(proxy, tensors, raise_exception=False)
-    assert grad_is_safe, "Gradient stability test"
 
 
 def test_sort():
@@ -115,7 +56,7 @@ def test_sort():
         check_1 = (pred == ref).all()
         assert check_1, "Values were incorrectly sorted"
 
-        check_2 = pred.device == DEVICE
+        check_2 = pred.device == normalize_device(DEVICE)
         assert check_2, "Device persistence check failed"
 
     # standard sorting
@@ -124,79 +65,6 @@ def test_sort():
     pred = psort(t).values
     check_3 = (pred == ref).all()
     assert check_3, "Values were incorrectly sorted"
-
-
-@pytest.mark.filterwarnings("ignore")
-def test_deflate():
-    """General operational test of the `deflate` method."""
-    a = torch.tensor(
-        [
-            [1, 1, 0, 0],
-            [2, 2, 2, 0],
-            [0, 0, 0, 0],
-        ],
-        device=DEVICE,
-    )
-
-    # Check 1: single system culling, should remove the last column & row.
-    check_1 = (deflate(a) == a[:-1, :-1]).all()
-    assert check_1, "Failed to correctly deflate a single system"
-
-    # Check 2: batch system culling (axis=0), should remove last column.
-    check_2 = (deflate(a, axis=0) == a[:, :-1]).all()
-    assert check_2, "Failed to correctly deflate a batch system (axis=0)"
-
-    # Check 3: batch system culling (axis=1), should remove last row.
-    check_3 = (deflate(a, axis=1) == a[:-1, :]).all()
-    assert check_3, "Failed to correctly deflate a batch system (axis=1)"
-
-    # Check 4: Check value argument is respected, should do nothing here.
-    check_4 = (deflate(a, value=-1) == a).all()
-    assert check_4, "Failed to ignore an unpadded system"
-
-    # Check 5: ValueError should be raised if axis is specified & tensor is 1d.
-    with pytest.raises(ValueError, match="Tensor must be at*"):
-        deflate(a[0], axis=0)
-
-    # Check 6: high dimensionality tests (warning: this is dependent on `pack`)
-    tensors = [
-        torch.full((i, i + 1, i + 2, i + 3, i + 4), i, device=DEVICE) for i in range(10)
-    ]
-    over_packed = pack(tensors, size=torch.Size((20, 19, 23, 20, 30)))
-    check_6 = (deflate(over_packed, axis=0) == pack(tensors)).all()
-    assert check_6, "Failed to correctly deflate a large batch system"
-
-    # Check 7: ensure the result is placed on the correct device
-    check_7 = deflate(a).device == DEVICE
-    assert check_7, "Result was returned on the wrong device"
-
-
-@pytest.mark.grad
-def test_deflate_grad():
-    """Check the gradient stability of the deflate function."""
-
-    def proxy(tensor):
-        # Clean the padding values to prevent unjust failures
-        proxy_tensor = torch.zeros_like(tensor)
-        proxy_tensor[~mask] = tensor[~mask]
-        return deflate(proxy_tensor)
-
-    a = torch.tensor(
-        [
-            [1, 1, 0, 0],
-            [2, 2, 2, 0],
-            [0, 0, 0, 0.0],
-        ],
-        device=DEVICE,
-        dtype=torch.double,
-        requires_grad=True,
-    )
-
-    mask = a == 0
-    mask = mask.detach()
-
-    check = gradcheck(proxy, a, raise_exception=False)
-    assert check, "Gradient stability check failed"
 
 
 def test_merge():
@@ -227,7 +95,7 @@ def test_merge():
     assert check_2, "Merge attempt failed when axis != 0"
 
     # Check 3: device persistence check
-    check_3 = packed.device == DEVICE
+    check_3 = packed.device == normalize_device(DEVICE)
     assert check_3, "Device persistence check failed"
 
 
@@ -262,34 +130,6 @@ def test_merge_grad():
 
     check = gradcheck(proxy, (a, b), raise_exception=False)
     assert check, "Gradient stability check failed"
-
-
-def test_unpack():
-    """
-    Ensures unpack functions as intended.
-
-    Notes:
-        The `unpack` function does not require an in-depth test as it is just
-        a wrapper for the `deflate` method. Hence, no grad check exists.
-
-    Warnings:
-        This test and the method that is being tested are both dependent on
-        the `deflate` method.
-    """
-    # Check 1: Unpacking without padding
-    a = torch.tensor([[0, 1, 2, 0], [3, 4, 5, 0], [0, 0, 1, 0]], device=DEVICE)
-
-    # Check 1: ensure basic results are correct
-    check_1 = all((i == deflate(j)).all() for i, j in zip(unpack(a), a))
-    assert check_1, "Failed to unpack"
-
-    # Check 2: ensure axis declaration is obeyed
-    check_2 = all((i == deflate(j)).all() for i, j in zip(unpack(a, axis=1), a.T))
-    assert check_2, 'Failed to respect "axis" declaration'
-
-    # Check 3: device persistence check.
-    check_3 = all(i.device == DEVICE for i in unpack(a))
-    assert check_3, "Device persistence check failed"
 
 
 def test_pargsort():

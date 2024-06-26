@@ -123,7 +123,7 @@ def execute(
     nummodes = nummodes / torch.norm(nummodes, dim=-2, keepdim=True)
     assert numfreqs.grad_fn is None
     assert nummodes.grad_fn is None
-    numfreqs, nummodes = tensor_to_numpy(numfreqs), tensor_to_numpy(nummodes)
+    numfreqs = tensor_to_numpy(numfreqs)
 
     # required for autodiff of energy w.r.t. positions (Hessian)
     pos = positions.clone().detach().requires_grad_(True)
