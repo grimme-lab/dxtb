@@ -30,7 +30,7 @@ from dxtb._src.components.interactions import InteractionList
 from dxtb._src.components.interactions.coulomb import new_es2, new_es3
 from dxtb._src.scf import get_guess
 from dxtb._src.typing import DD, Callable, Tensor
-from dxtb._src.utils import batch
+from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -97,13 +97,13 @@ def gradchecker_batch(
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),

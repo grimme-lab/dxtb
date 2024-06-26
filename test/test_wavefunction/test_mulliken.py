@@ -27,7 +27,7 @@ import torch
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.typing import DD
-from dxtb._src.utils import batch
+from tad_mctc.batch import pack
 from dxtb._src.wavefunction import mulliken
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 
@@ -64,25 +64,25 @@ def test_batch_number_electrons(dtype: torch.dtype, name1: str, name2: str):
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         )
     )
-    density = batch.pack(
+    density = pack(
         (
             sample1["density"].to(**dd),
             sample2["density"].to(**dd),
         )
     )
-    overlap = batch.pack(
+    overlap = pack(
         (
             sample1["overlap"].to(**dd),
             sample2["overlap"].to(**dd),
         )
     )
-    ref = batch.pack(
+    ref = pack(
         (
             sample1["n_electrons"].to(**dd),
             sample2["n_electrons"].to(**dd),
@@ -120,25 +120,25 @@ def test_batch_pop_shell(dtype: torch.dtype, name1: str, name2: str):
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         )
     )
-    density = batch.pack(
+    density = pack(
         (
             sample1["density"].to(**dd),
             sample2["density"].to(**dd),
         )
     )
-    overlap = batch.pack(
+    overlap = pack(
         (
             sample1["overlap"].to(**dd),
             sample2["overlap"].to(**dd),
         )
     )
-    ref = batch.pack(
+    ref = pack(
         (
             sample1["mulliken_pop"].to(**dd),
             sample2["mulliken_pop"].to(**dd),
@@ -180,25 +180,25 @@ def test_batch_charges(dtype: torch.dtype, name1: str, name2: str):
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         )
     )
-    density = batch.pack(
+    density = pack(
         (
             sample1["density"].to(**dd),
             sample2["density"].to(**dd),
         )
     )
-    overlap = batch.pack(
+    overlap = pack(
         (
             sample1["overlap"].to(**dd),
             sample2["overlap"].to(**dd),
         )
     )
-    ref = batch.pack(
+    ref = pack(
         (
             sample1["mulliken_charges"].to(**dd),
             sample2["mulliken_charges"].to(**dd),
@@ -242,25 +242,25 @@ def test_batch_charges_shell(dtype: torch.dtype, name1: str, name2: str):
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         )
     )
-    density = batch.pack(
+    density = pack(
         (
             sample1["density"].to(**dd),
             sample2["density"].to(**dd),
         )
     )
-    overlap = batch.pack(
+    overlap = pack(
         (
             sample1["overlap"].to(**dd),
             sample2["overlap"].to(**dd),
         )
     )
-    ref = batch.pack(
+    ref = pack(
         (
             sample1["mulliken_charges_shell"].to(**dd),
             sample2["mulliken_charges_shell"].to(**dd),

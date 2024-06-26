@@ -27,7 +27,7 @@ from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
 from dxtb._src.typing import DD
-from dxtb._src.utils import batch
+from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -69,7 +69,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
@@ -79,7 +79,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         0: sample1["positions"].to(**dd),
         1: sample2["positions"].to(**dd),
     }
-    positions = batch.pack((pos_dict[0], pos_dict[1]), value=float("nan"))
+    positions = pack((pos_dict[0], pos_dict[1]), value=float("nan"))
 
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)

@@ -31,7 +31,7 @@ from dxtb._src.integral.container import Overlap
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb._src.ncoord import cn_d3
 from dxtb._src.typing import DD, Callable, Tensor
-from dxtb._src.utils import batch
+from tad_mctc.batch import pack
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 
 from ..conftest import DEVICE
@@ -127,13 +127,13 @@ def gradchecker_batch(
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         ]
     )
-    positions, mask = batch.pack(
+    positions, mask = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),

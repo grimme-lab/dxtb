@@ -29,7 +29,7 @@ from dxtb import Calculator
 from dxtb._src.components.interactions import new_efield, new_efield_grad
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD, Callable, Tensor
-from dxtb._src.utils import batch
+from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -109,13 +109,13 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),

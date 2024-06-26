@@ -28,7 +28,7 @@ import torch
 from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.components.interactions.coulomb import secondorder as es2
 from dxtb._src.typing import DD, Tensor
-from dxtb._src.utils import batch
+from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -96,25 +96,25 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         )
     )
-    positions = batch.pack(
+    positions = pack(
         (
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         )
     )
-    charges = batch.pack(
+    charges = pack(
         (
             sample1["q"].to(**dd),
             sample2["q"].to(**dd),
         )
     )
-    ref = batch.pack(
+    ref = pack(
         (
             sample1["grad"].to(**dd),
             sample2["grad"].to(**dd),

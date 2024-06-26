@@ -35,7 +35,7 @@ from dxtb._src.components.classicals.repulsion.rep import (
     repulsion_gradient,
 )
 from dxtb._src.typing import DD, Callable, Tensor
-from dxtb._src.utils import batch
+from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -88,19 +88,19 @@ def test_backward_batch_vs_tblite(dtype: torch.dtype, name1: str, name2: str) ->
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         ]
     )
-    ref = batch.pack(
+    ref = pack(
         [
             sample1["gfn1_grad"].to(**dd),
             sample2["gfn1_grad"].to(**dd),
@@ -281,13 +281,13 @@ def gradchecker_batch(
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),

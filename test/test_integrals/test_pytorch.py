@@ -29,7 +29,7 @@ from dxtb import integrals as ints
 from dxtb._src.constants.labels import INTDRIVER_ANALYTICAL
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch
 from dxtb._src.typing import DD, Tensor
-from dxtb._src.utils import batch
+from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -72,13 +72,13 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         )
     )
-    positions = batch.pack(
+    positions = pack(
         (
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),

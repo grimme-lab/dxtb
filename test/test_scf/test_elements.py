@@ -37,7 +37,7 @@ from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
-from dxtb._src.utils import batch
+from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -429,19 +429,19 @@ def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[mol]
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample["numbers"].to(device=DEVICE),
             torch.tensor([number], device=DEVICE),
         )
     )
-    positions = batch.pack(
+    positions = pack(
         (
             sample["positions"].to(**dd),
             torch.zeros((1, 3), **dd),
         ),
     )
-    refs = batch.pack(
+    refs = pack(
         (
             sample["escf"].to(**dd),
             ref[number - 1].to(**dd),

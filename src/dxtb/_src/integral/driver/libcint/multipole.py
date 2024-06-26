@@ -29,7 +29,7 @@ from tad_mctc.math import einsum
 
 from dxtb._src.exlibs import libcint
 from dxtb._src.typing import Tensor
-from dxtb._src.utils.batch import pack
+from tad_mctc.batch import pack
 
 from .base_implementation import IntegralImplementationLibcint
 

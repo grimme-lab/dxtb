@@ -32,7 +32,7 @@ from dxtb._src.integral.driver.pytorch import IntDriverPytorch
 from dxtb._src.ncoord import cn_d3, cn_d3_gradient, get_dcn
 from dxtb._src.scf import get_density
 from dxtb._src.typing import DD, Tensor
-from dxtb._src.utils import batch
+from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from ..utils import load_from_npz
@@ -152,32 +152,32 @@ def no_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         )
     )
-    positions = batch.pack(
+    positions = pack(
         (
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         )
     )
-    chrg = batch.pack(
+    chrg = pack(
         (
             torch.tensor(0.0, **dd),
             torch.tensor(0.0, **dd),
         )
     )
 
-    ref_dedr = batch.pack(
+    ref_dedr = pack(
         (
             load_from_npz(ref_grad_no_overlap, name1, dtype),
             load_from_npz(ref_grad_no_overlap, name2, dtype),
         )
     )
-    ref_dedcn = batch.pack(
+    ref_dedcn = pack(
         (
             load_from_npz(ref_grad_no_overlap, f"{name1}_dedcn", dtype),
             load_from_npz(ref_grad_no_overlap, f"{name2}_dedcn", dtype),
@@ -223,7 +223,7 @@ def no_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     dcndr = cn_d3_gradient(numbers, positions)
     dcn = get_dcn(dcndr, dedcn)
 
-    ref_dcn = batch.pack(
+    ref_dcn = pack(
         (
             load_from_npz(ref_grad_no_overlap, f"{name1}_dcn", dtype),
             load_from_npz(ref_grad_no_overlap, f"{name2}_dcn", dtype),
@@ -349,32 +349,32 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         )
     )
-    positions = batch.pack(
+    positions = pack(
         (
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         )
     )
-    chrg = batch.pack(
+    chrg = pack(
         (
             torch.tensor(0.0, **dd),
             torch.tensor(0.0, **dd),
         )
     )
 
-    ref_dedr = batch.pack(
+    ref_dedr = pack(
         (
             load_from_npz(ref_grad, f"{name1}", dtype),
             load_from_npz(ref_grad, f"{name2}", dtype),
         )
     )
-    ref_dedcn = batch.pack(
+    ref_dedcn = pack(
         (
             load_from_npz(ref_grad_no_overlap, f"{name1}_dedcn", dtype),
             load_from_npz(ref_grad_no_overlap, f"{name2}_dedcn", dtype),
@@ -425,7 +425,7 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     dcndr = cn_d3_gradient(numbers, positions)
     dcn = get_dcn(dcndr, dedcn)
 
-    ref_dcn = batch.pack(
+    ref_dcn = pack(
         (
             load_from_npz(ref_grad_no_overlap, f"{name1}_dcn", dtype),
             load_from_npz(ref_grad_no_overlap, f"{name2}_dcn", dtype),

@@ -26,7 +26,7 @@ from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
 from dxtb._src.components.classicals.dispersion import DispersionD3
 from dxtb._src.typing import DD, Callable, Tensor
-from dxtb._src.utils import batch
+from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -95,13 +95,13 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),

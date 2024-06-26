@@ -29,7 +29,8 @@ from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.components.classicals import new_halogen
 from dxtb._src.typing import DD
-from dxtb._src.utils import batch, hessian
+from tad_mctc.batch import pack
+from dxtb._src.utils import hessian
 
 from ..conftest import DEVICE
 from ..utils import reshape_fortran
@@ -78,20 +79,20 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 100
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         ]
     )
 
-    ref = batch.pack(
+    ref = pack(
         [
             reshape_fortran(
                 sample1["hessian"].to(**dd),

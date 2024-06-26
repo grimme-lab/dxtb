@@ -31,7 +31,7 @@ from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.integral.container import IntegralMatrices
 from dxtb._src.scf.implicit import SelfConsistentFieldImplicit as SCF
 from dxtb._src.typing import DD
-from dxtb._src.utils import batch
+from tad_mctc.batch import pack
 from dxtb._src.wavefunction import filling
 from dxtb.config import ConfigSCF
 
@@ -128,14 +128,14 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    nel = batch.pack(
+    nel = pack(
         [
             sample1["n_electrons"].to(**dd),
             sample2["n_electrons"].to(**dd),
             sample2["n_electrons"].to(**dd),
         ]
     )
-    uhf = batch.pack(
+    uhf = pack(
         [
             sample1["spin"].to(**dd),
             sample2["spin"].to(**dd),
@@ -144,7 +144,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     )
     nab = filling.get_alpha_beta_occupation(nel, uhf)
 
-    emo = batch.pack(
+    emo = pack(
         [
             sample1["emo"].to(**dd),
             sample2["emo"].to(**dd),
@@ -153,7 +153,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     )
     # emo = emo.unsqueeze(-2).expand([*nab.shape, -1]) # if only one ref channel
 
-    ref_efermi = batch.pack(
+    ref_efermi = pack(
         [
             sample1["e_fermi"].to(**dd),
             sample2["e_fermi"].to(**dd),
@@ -162,7 +162,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     )
     # ref_efermi = ref_efermi.expand([*nab.shape]) # if only one ref channel
 
-    ref_focc = batch.pack(
+    ref_focc = pack(
         [
             sample1["focc"].to(**dd),
             sample2["focc"].to(**dd),
@@ -276,7 +276,7 @@ def test_lumo_not_existing(dtype: torch.dtype) -> None:
 
     sample = samples["He"]
 
-    nel = batch.pack(
+    nel = pack(
         [
             sample["n_electrons"].to(**dd),
             sample["n_electrons"].to(**dd),
@@ -285,7 +285,7 @@ def test_lumo_not_existing(dtype: torch.dtype) -> None:
     )
     nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
 
-    emo = batch.pack(
+    emo = pack(
         [
             sample["emo"].to(**dd),
             sample["emo"].to(**dd),
@@ -293,14 +293,14 @@ def test_lumo_not_existing(dtype: torch.dtype) -> None:
         ]
     )
 
-    ref_efermi = batch.pack(
+    ref_efermi = pack(
         [
             sample["e_fermi"].to(**dd),
             sample["e_fermi"].to(**dd),
             sample["e_fermi"].to(**dd),
         ]
     )
-    ref_focc = batch.pack(
+    ref_focc = pack(
         [
             sample["focc"].to(**dd),
             sample["focc"].to(**dd),
@@ -325,7 +325,7 @@ def test_lumo_obscured_by_padding(dtype: torch.dtype) -> None:
 
     sample1, sample2 = samples["H2"], samples["He"]
 
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
@@ -334,7 +334,7 @@ def test_lumo_obscured_by_padding(dtype: torch.dtype) -> None:
     )
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
-    nel = batch.pack(
+    nel = pack(
         [
             sample1["n_electrons"].to(**dd),
             sample2["n_electrons"].to(**dd),
@@ -343,7 +343,7 @@ def test_lumo_obscured_by_padding(dtype: torch.dtype) -> None:
     )
     nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
 
-    emo = batch.pack(
+    emo = pack(
         [
             sample1["emo"].to(**dd),
             sample2["emo"].to(**dd),
@@ -351,14 +351,14 @@ def test_lumo_obscured_by_padding(dtype: torch.dtype) -> None:
         ]
     )
 
-    ref_efermi = batch.pack(
+    ref_efermi = pack(
         [
             sample1["e_fermi"].to(**dd),
             sample2["e_fermi"].to(**dd),
             sample2["e_fermi"].to(**dd),
         ]
     )
-    ref_focc = batch.pack(
+    ref_focc = pack(
         [
             sample1["focc"].to(**dd),
             sample2["focc"].to(**dd),

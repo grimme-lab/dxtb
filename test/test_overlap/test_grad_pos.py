@@ -29,7 +29,7 @@ from dxtb import IndexHelper
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb._src.integral.driver.pytorch import OverlapPytorch as Overlap
 from dxtb._src.typing import DD, Callable, Tensor
-from dxtb._src.utils import batch
+from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -94,7 +94,7 @@ def gradchecker_batch(
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
@@ -103,7 +103,7 @@ def gradchecker_batch(
 
     # mask needed for un-batched overlap calculation (numerical jacobian in
     # gradcheck also changes the padding values, prohibiting `batch.deflate()`)
-    positions, mask = batch.pack(
+    positions, mask = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),

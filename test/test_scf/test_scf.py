@@ -30,7 +30,7 @@ from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
-from dxtb._src.utils import batch
+from tad_mctc.batch import pack
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -167,19 +167,19 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample[0]["numbers"].to(DEVICE),
             sample[1]["numbers"].to(DEVICE),
         )
     )
-    positions = batch.pack(
+    positions = pack(
         (
             sample[0]["positions"].to(**dd),
             sample[1]["positions"].to(**dd),
         )
     )
-    ref = batch.pack(
+    ref = pack(
         (
             sample[0]["escf"].to(**dd),
             sample[1]["escf"].to(**dd),
@@ -203,21 +203,21 @@ def test_batch2(dtype: torch.dtype, name1: str, name2: str, name3: str):
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name1], samples[name2], samples[name3]
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample[0]["numbers"].to(DEVICE),
             sample[1]["numbers"].to(DEVICE),
             sample[2]["numbers"].to(DEVICE),
         )
     )
-    positions = batch.pack(
+    positions = pack(
         (
             sample[0]["positions"].to(**dd),
             sample[1]["positions"].to(**dd),
             sample[2]["positions"].to(**dd),
         )
     )
-    ref = batch.pack(
+    ref = pack(
         (
             sample[0]["escf"].to(**dd),
             sample[1]["escf"].to(**dd),
@@ -247,7 +247,7 @@ def test_batch_special(dtype: torch.dtype, mixer: str) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     numbers = torch.tensor([[2, 2], [17, 0]], device=DEVICE)
-    positions = batch.pack(
+    positions = pack(
         [
             torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.5]], **dd),
             torch.tensor([[0.0, 0.0, 0.0]], **dd),
