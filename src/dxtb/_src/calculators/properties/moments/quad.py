@@ -61,7 +61,7 @@ def quadrupole(qat: Tensor, dpat: Tensor, qpat: Tensor, positions: Tensor) -> Te
         qpat = qpat.view(*qpat.shape[:-1], 3, 3)
 
         # trace: (..., nat, 3, 3) -> (..., nat)
-        tr = 0.5 * torch.einsum("...ii->...", qpat)
+        tr = 0.5 * einsum("...ii->...", qpat)
 
         qpat = torch.stack(
             [

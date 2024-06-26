@@ -26,6 +26,7 @@ from math import sqrt
 import numpy as np
 import pytest
 import torch
+from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch as IntDriver
@@ -33,7 +34,6 @@ from dxtb._src.integral.driver.pytorch import OverlapPytorch as Overlap
 from dxtb._src.ncoord import cn_d3
 from dxtb._src.param import Param
 from dxtb._src.typing import DD, Tensor
-from dxtb._src.utils import batch
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 
 from ..conftest import DEVICE
@@ -86,19 +86,19 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         )
     )
-    positions = batch.pack(
+    positions = pack(
         (
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         )
     )
-    ref = batch.pack(
+    ref = pack(
         (
             load_from_npz(ref_h0, name1, dtype),
             load_from_npz(ref_h0, name2, dtype),
@@ -133,19 +133,19 @@ def test_large_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         )
     )
-    positions = batch.pack(
+    positions = pack(
         (
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         )
     )
-    ref = batch.pack(
+    ref = pack(
         (
             load_from_npz(ref_h0, name1, dtype),
             load_from_npz(ref_h0, name2, dtype),

@@ -72,7 +72,7 @@ def M(
 class PyscfMol(gto.Mole):
     """
     Pyscf's molecule representation that can be created upon passing only
-    `numbers` and ``positions``. Note that the basis set is created from a
+    ``numbers`` and ``positions``. Note that the basis set is created from a
     database and only the xtb version must be provided during instantiation.
 
     .. warning::

@@ -236,11 +236,7 @@ class Halogen(Classical):
         for i in range(adj.size(-2)):
             iat = adj[i][0]
 
-            dist = torch.tensor(
-                torch.finfo(self.dtype).max,
-                dtype=positions.dtype,
-                device=positions.device,
-            )
+            dist = torch.tensor(torch.finfo(self.dtype).max, **self.dd)
             for k, kat in enumerate(numbers):
                 # skip padding
                 if kat == 0:

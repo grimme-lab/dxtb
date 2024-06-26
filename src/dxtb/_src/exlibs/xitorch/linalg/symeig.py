@@ -23,6 +23,7 @@ import warnings
 from typing import Mapping, Optional, Tuple, Union
 
 import torch
+from tad_mctc.math import einsum
 
 from dxtb.__version__ import __tversion__
 from dxtb._src.exlibs.xitorch import LinearOperator
@@ -416,7 +417,7 @@ class SymeigMethodBase(torch.autograd.Function):
 
             # the contribution from the parallel elements
             gevecsM_par = (
-                -0.5 * torch.einsum("...ae,...ae->...e", grad_evecs, evecs.conj())
+                -0.5 * einsum("...ae,...ae->...e", grad_evecs, evecs.conj())
             ).unsqueeze(
                 -2
             ) * evecs  # (*BAM, na, neig)
@@ -576,11 +577,11 @@ def _ortho(
         str1 = "...rc,...rc->...c"
         Bconj = B.conj()
         if M is None:
-            return A - torch.einsum(str1, A, Bconj).unsqueeze(-2) * B
+            return A - einsum(str1, A, Bconj).unsqueeze(-2) * B
         elif mright:
-            return A - torch.einsum(str1, M.mm(A), Bconj).unsqueeze(-2) * B
+            return A - einsum(str1, M.mm(A), Bconj).unsqueeze(-2) * B
         else:
-            return A - M.mm(torch.einsum(str1, A, Bconj).unsqueeze(-2) * B)
+            return A - M.mm(einsum(str1, A, Bconj).unsqueeze(-2) * B)
     else:
         BH = B.transpose(-2, -1).conj()
         if M is None:

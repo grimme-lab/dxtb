@@ -25,6 +25,7 @@ from pathlib import Path
 
 import pytest
 import torch
+from tad_mctc.autograd import jacrev
 from tad_mctc.convert import reshape_fortran
 
 from dxtb import GFN1_XTB as par
@@ -32,7 +33,6 @@ from dxtb import Calculator
 from dxtb._src.constants import labels
 from dxtb._src.io import read_chrg, read_coord
 from dxtb._src.typing import DD, Tensor
-from dxtb._src.utils import hessian
 
 from ..conftest import DEVICE
 from ..test_dispersion.samples import samples as samples_disp
@@ -67,18 +67,6 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     positions = torch.tensor(positions, **dd)
     charge = torch.tensor(charge, **dd)
 
-    # variable to be differentiated
-    positions.requires_grad_(True)
-
-    options = dict(opts, **{"exclude": ["scf"]})
-    calc = Calculator(numbers, par, opts=options, **dd)
-
-    def singlepoint(positions, charge) -> Tensor:
-        result = calc.singlepoint(positions, charge)
-        return result.total
-
-    positions.requires_grad_(True)
-
     ref = reshape_fortran(
         (
             samples_disp[name]["hessian"]
@@ -88,7 +76,19 @@ def test_single(dtype: torch.dtype, name: str) -> None:
         torch.Size(2 * (numbers.shape[-1], 3)),
     )
 
-    hess = hessian(singlepoint, (positions, charge), argnums=0)
+    # variable to be differentiated
+    positions.requires_grad_(True)
+
+    options = dict(opts, **{"exclude": ["scf"]})
+    calc = Calculator(numbers, par, opts=options, **dd)
+
+    def energy(pos: Tensor) -> Tensor:
+        result = calc.singlepoint(pos, charge)
+        return result.total.sum()
+
+    hess = jacrev(jacrev(energy))(positions)
+    assert isinstance(hess, Tensor)
+
     positions.detach_()
     hess = hess.detach().reshape_as(ref)
 

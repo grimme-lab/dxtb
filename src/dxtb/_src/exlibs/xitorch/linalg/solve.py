@@ -21,6 +21,7 @@ import warnings
 from typing import Any, Callable, Mapping, Optional, Union
 
 import torch
+from tad_mctc.math import einsum
 
 from dxtb.__version__ import __tversion__
 from dxtb._src.exlibs.xitorch import LinearOperator
@@ -231,7 +232,7 @@ class SolverBase(torch.autograd.Function):
             else:
                 with ctx.M.uselinopparams(*mparams):
                     Mx = ctx.M.mm(x)  # (*BABEM, nr, ncols)
-            grad_E = torch.einsum("...rc,...rc->...c", v, Mx.conj())  # (*BABEM, ncols)
+            grad_E = einsum("...rc,...rc->...c", v, Mx.conj())  # (*BABEM, ncols)
 
         # calculate the gradient to the biases matrices
         grad_mparams = []

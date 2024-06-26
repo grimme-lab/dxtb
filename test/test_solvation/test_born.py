@@ -24,11 +24,11 @@ from __future__ import annotations
 import pytest
 import torch
 from tad_mctc.autograd import dgradcheck
+from tad_mctc.batch import pack
 from tad_mctc.data.radii import VDW_D3
 
 from dxtb._src.components.interactions.solvation import born
 from dxtb._src.typing import DD, Tensor
-from dxtb._src.utils import batch
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -102,13 +102,13 @@ def test_psi_batch(name1: str, name2: str, dtype: torch.dtype):
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         )
     )
-    positions = batch.pack(
+    positions = pack(
         (
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
@@ -116,7 +116,7 @@ def test_psi_batch(name1: str, name2: str, dtype: torch.dtype):
     )
     rvdw = VDW_D3.to(**dd)[numbers]
 
-    ref = batch.pack(
+    ref = pack(
         (
             sample1["psi"].to(**dd),
             sample2["psi"].to(**dd),
@@ -137,26 +137,26 @@ def test_radii_batch(name1: str, name2: str, dtype: torch.dtype):
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         )
     )
-    positions = batch.pack(
+    positions = pack(
         (
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         )
     )
-    descreening = batch.pack(
+    descreening = pack(
         (
             torch.full(sample1["numbers"].shape, 0.8, **dd),
             torch.full(sample2["numbers"].shape, 0.8, **dd),
         )
     )
 
-    ref = batch.pack(
+    ref = pack(
         (
             sample1["born"].to(**dd),
             sample2["born"].to(**dd),

@@ -23,11 +23,11 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.typing import DD
-from dxtb._src.utils import batch
 from dxtb._src.wavefunction import wiberg
 
 from ..conftest import DEVICE
@@ -63,25 +63,25 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         )
     )
-    density = batch.pack(
+    density = pack(
         (
             sample1["density"].to(**dd),
             sample2["density"].to(**dd),
         )
     )
-    overlap = batch.pack(
+    overlap = pack(
         (
             sample1["overlap"].to(**dd),
             sample2["overlap"].to(**dd),
         )
     )
-    ref = batch.pack(
+    ref = pack(
         (
             sample1["wiberg"].to(**dd),
             sample2["wiberg"].to(**dd),

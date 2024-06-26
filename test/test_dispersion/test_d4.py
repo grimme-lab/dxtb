@@ -26,11 +26,11 @@ from __future__ import annotations
 import pytest
 import tad_dftd4 as d4
 import torch
+from tad_mctc.batch import pack
 
 from dxtb._src.components.classicals.dispersion import DispersionD4, new_dispersion
 from dxtb._src.param.gfn2 import GFN2_XTB as par
 from dxtb._src.typing import DD, Tensor
-from dxtb._src.utils import batch
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -44,13 +44,13 @@ def test_batch(dtype: torch.dtype) -> None:
         samples["PbH4-BiH3"],
         samples["C6H5I-CH3SH"],
     )
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         )
     )
-    positions = batch.pack(
+    positions = pack(
         (
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),

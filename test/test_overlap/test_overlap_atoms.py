@@ -26,10 +26,10 @@ from math import sqrt
 import numpy as np
 import pytest
 import torch
+from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB as par
 from dxtb._src.typing import DD
-from dxtb._src.utils import batch
 
 from ..conftest import DEVICE
 from ..utils import load_from_npz
@@ -66,19 +66,19 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         )
     )
-    positions = batch.pack(
+    positions = pack(
         (
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         )
     )
-    ref = batch.pack(
+    ref = pack(
         (
             load_from_npz(ref_overlap, name1, dtype),
             load_from_npz(ref_overlap, name2, dtype),

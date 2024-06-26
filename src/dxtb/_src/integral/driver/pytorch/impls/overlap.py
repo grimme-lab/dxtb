@@ -342,4 +342,4 @@ def overlap_gradient(
         ds = torch.triu(ds, diagonal=1) - torch.tril(ds.mT)
 
     # (3, norb, norb) -> (norb, norb, 3)
-    return torch.einsum("xij->ijx", ds)
+    return einsum("xij->ijx", ds)

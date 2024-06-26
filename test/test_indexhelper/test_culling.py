@@ -21,17 +21,17 @@ Test culling (removing of systems) from IndexHelper.
 from __future__ import annotations
 
 import torch
+from tad_mctc.batch import deflate, pack
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.typing import Slicers, Tensor
-from dxtb._src.utils import batch
 
 from ..conftest import DEVICE
 
 
 def test_culling() -> None:
-    numbers = batch.pack(
+    numbers = pack(
         [
             torch.tensor([3, 1], device=DEVICE),  # LiH
             torch.tensor([14, 1, 1, 1, 1], device=DEVICE),  # SiH4
@@ -59,13 +59,13 @@ def test_culling() -> None:
             ):
                 # get attribute from normal ihelp and remove padding
                 a = getattr(ref_ihelp, name)[0]
-                ref = batch.deflate(a, value=a[-1])
+                ref = deflate(a, value=a[-1])
 
                 assert (ref == attr.squeeze()).all()
 
 
 def test_no_action() -> None:
-    numbers = batch.pack(
+    numbers = pack(
         [
             torch.tensor([3, 1], device=DEVICE),  # LiH
             torch.tensor([14, 1, 1, 1, 1], device=DEVICE),  # SiH4

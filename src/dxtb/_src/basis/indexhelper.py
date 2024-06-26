@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import torch
 from tad_mctc.batch import pack
+from tad_mctc.math import einsum
 
 from dxtb._src.typing import Slicers, Tensor, TensorLike, override
 
@@ -1081,7 +1082,7 @@ class IndexHelper(TensorLike):
             pad = torch.nn.utils.rnn.pad_sequence(
                 [self.shells_to_atom.mT, self.orbitals_to_shell.T], padding_value=PAD
             )
-            pad = torch.einsum("ijk->kji", pad)  # [2, bs, norb_max]
+            pad = einsum("ijk->kji", pad)  # [2, bs, norb_max]
         except RuntimeError:
             # single mode
             pad = torch.nn.utils.rnn.pad_sequence(

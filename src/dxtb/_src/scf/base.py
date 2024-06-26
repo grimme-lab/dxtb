@@ -591,7 +591,7 @@ class BaseSCF:
         # partition to atoms via Mulliken population analysis
         if mode == labels.FERMI_PARTITION_ATOMIC:
             # "electronic entropy" density matrix
-            density = torch.einsum(
+            density = einsum(
                 "...ik,...k,...jk->...ij",
                 self._data.evecs,  # sorted by energy, starting with lowest
                 g,

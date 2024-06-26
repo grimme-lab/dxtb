@@ -26,13 +26,13 @@ from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.batch import pack
 
 from dxtb import IndexHelper
 from dxtb._src.components.classicals import new_repulsion
 from dxtb._src.param.gfn1 import GFN1_XTB
 from dxtb._src.param.gfn2 import GFN2_XTB
 from dxtb._src.typing import DD, Literal
-from dxtb._src.utils import batch
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -82,13 +82,13 @@ def test_batch(
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    numbers = batch.pack(
+    numbers = pack(
         (
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         )
     )
-    positions = batch.pack(
+    positions = pack(
         (
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),

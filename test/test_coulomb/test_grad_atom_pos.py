@@ -23,13 +23,13 @@ from __future__ import annotations
 import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
+from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.components.interactions.coulomb import ES2
 from dxtb._src.param import get_elem_param
 from dxtb._src.typing import DD, Callable, Tensor
-from dxtb._src.utils import batch
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -109,13 +109,13 @@ def gradcheck_pos_batch(
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),

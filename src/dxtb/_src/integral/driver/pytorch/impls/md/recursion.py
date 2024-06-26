@@ -27,6 +27,7 @@ from __future__ import annotations
 from math import pi, sqrt
 
 import torch
+from tad_mctc.math import einsum
 
 from dxtb._src.typing import Any, Callable, Tensor
 from dxtb._src.typing.exceptions import IntegralTransformError
@@ -397,7 +398,7 @@ def md_recursion(
             ).sum((-2, -1))
 
     # transform to cartesian basis functions (itrafo * S * jtrafo^T)
-    o = torch.einsum("...ij,...jk,...lk->...il", itrafo, s3d, jtrafo)
+    o = einsum("...ij,...jk,...lk->...il", itrafo, s3d, jtrafo)
 
     return o
 
@@ -511,4 +512,4 @@ def md_recursion_gradient(
             )  # [bs, 3]
 
     # transform to spherical basis functions (itrafo * S * jtrafo^T)
-    return torch.einsum("...ij,...xjk,...lk->...xil", itrafo, ds3d, jtrafo)
+    return einsum("...ij,...xjk,...lk->...xil", itrafo, ds3d, jtrafo)

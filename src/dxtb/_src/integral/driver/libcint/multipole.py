@@ -25,11 +25,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import torch
+from tad_mctc.batch import pack
+from tad_mctc.math import einsum
 
 from dxtb._src.exlibs import libcint
 from dxtb._src.typing import Tensor
-from dxtb._src.utils.batch import pack
 
 from .base_implementation import IntegralImplementationLibcint
 
@@ -79,7 +79,7 @@ class MultipoleLibcint(IntegralImplementationLibcint):
             integral = libcint.int1e(intstring, driver)
             if self.normalize is False:
                 return integral
-            return torch.einsum("...ij,i,j->...ij", integral, norm, norm)
+            return einsum("...ij,i,j->...ij", integral, norm, norm)
 
         # batched mode
         if driver.ihelp.batch_mode > 0:

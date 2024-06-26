@@ -25,12 +25,12 @@ from math import sqrt
 import pytest
 import torch
 from tad_mctc.autograd import jacrev
+from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.components.classicals import new_repulsion
 from dxtb._src.typing import DD, Tensor
-from dxtb._src.utils import batch, hessian
 
 from ..conftest import DEVICE
 from ..utils import reshape_fortran
@@ -62,51 +62,17 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
     cache = rep.get_cache(numbers, ihelp)
 
-    hess = hessian(rep.get_energy, (positions, cache))
+    def energy(pos: Tensor) -> Tensor:
+        return rep.get_energy(pos, cache).sum()
+
+    hess = jacrev(jacrev(energy))(positions)
+    assert isinstance(hess, Tensor)
+
     positions.detach_()
     hess = hess.detach().reshape_as(ref)
 
     assert ref.shape == hess.shape
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == hess.cpu()
-
-
-@pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", sample_list)
-def skip_test_single_alt(dtype: torch.dtype, name: str) -> None:
-    dd: DD = {"device": DEVICE, "dtype": dtype}
-    tol = sqrt(torch.finfo(dtype).eps) * 100
-
-    sample = samples[name]
-    numbers = sample["numbers"].to(DEVICE)
-    positions = sample["positions"].to(**dd)
-
-    rep = new_repulsion(numbers, par, **dd)
-    assert rep is not None
-
-    ihelp = IndexHelper.from_numbers(numbers, par)
-    cache = rep.get_cache(numbers, ihelp)
-
-    positions.requires_grad_(True)
-
-    ref_jac = sample["gfn1_grad"].to(**dd)
-    ref_hess = reshape_fortran(
-        sample["gfn1_hess"].to(**dd),
-        torch.Size(2 * (numbers.shape[0], 3)),
-    )
-
-    # gradient
-    fjac = jacrev(rep.get_energy, argnums=0)
-    j: Tensor = fjac(positions, cache).sum(0)  # type: ignore
-    assert pytest.approx(ref_jac.cpu(), abs=tol, rel=tol) == j.detach().cpu()
-
-    # hessian
-    def _hessian(f, argnums):
-        return jacrev(jacrev(f, argnums=argnums), argnums=argnums)
-
-    fhess = _hessian(rep.get_energy, argnums=0)
-    h: Tensor = fhess(positions, cache).sum(0)  # type: ignore
-    positions.detach_()
-    assert pytest.approx(ref_hess.cpu(), abs=tol, rel=tol) == h.detach().cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
@@ -117,20 +83,20 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 100
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         ]
     )
 
-    ref_hess = batch.pack(
+    ref = pack(
         [
             reshape_fortran(
                 sample1["gfn1_hess"].to(**dd),
@@ -160,6 +126,11 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
 
     positions.requires_grad_(True)
 
-    h = hessian(rep.get_energy, (positions, cache), is_batched=True)
+    def energy(pos: Tensor) -> Tensor:
+        return rep.get_energy(pos, cache).sum()
+
+    hess = jacrev(jacrev(energy))(positions)
+    assert isinstance(hess, Tensor)
+
     positions.detach_()
-    assert pytest.approx(ref_hess.cpu(), abs=tol, rel=tol) == h.detach().cpu()
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == hess.detach().cpu()

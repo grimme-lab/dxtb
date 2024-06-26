@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import torch
 from tad_mctc._version import __tversion__
+from tad_mctc.math import einsum
 
 from dxtb._src.typing import Any, Tensor, override
 
@@ -180,8 +181,8 @@ class RepulsionAGBase(torch.autograd.Function):
             )
 
             # vjp: (nb, na, na) * (nb, na, na, 3) -> (nb, na, 3)
-            _gi = torch.einsum("...ij,...ijd->...id", grad_out, g)
-            _gj = torch.einsum("...ij,...ijd->...jd", grad_out, g)
+            _gi = einsum("...ij,...ijd->...id", grad_out, g)
+            _gj = einsum("...ij,...ijd->...jd", grad_out, g)
             positions_bar = _gi - _gj
 
         # automatic gradient for parameters

@@ -24,6 +24,7 @@ Quadrupole integral implementation based on `libcint`.
 from __future__ import annotations
 
 import torch
+from tad_mctc.math import einsum
 
 from dxtb._src.typing import Tensor
 
@@ -95,7 +96,7 @@ class QuadrupoleLibcint(MultipoleLibcint):
         qpint = self.matrix.view(*shp[:-3], 3, 3, *shp[-2:])
 
         # trace: (..., 3, 3, norb, norb) -> (..., norb, norb)
-        tr = 0.5 * torch.einsum("...iijk->...jk", qpint)
+        tr = 0.5 * einsum("...iijk->...jk", qpint)
 
         self.matrix = torch.stack(
             [
@@ -247,8 +248,8 @@ def shift_diagonal(c: Tensor, dpc: Tensor, s: Tensor) -> Tensor:
     Tensor
         Shift contribution for diagonals of quadrupole integral.
     """
-    shift_1 = -2 * torch.einsum("...j,...ij->...ij", c, dpc)
-    shift_2 = torch.einsum("...j,...j,...ij->...ij", c, c, s)
+    shift_1 = -2 * einsum("...j,...ij->...ij", c, dpc)
+    shift_2 = einsum("...j,...j,...ij->...ij", c, c, s)
     return shift_1 + shift_2
 
 
@@ -284,8 +285,8 @@ def shift_offdiag(a: Tensor, b: Tensor, dpa: Tensor, dpb: Tensor, s: Tensor) -> 
     Tensor
         Shift contribution of off-diagonal elements of quadrupole integral.
     """
-    shift_ab_1 = -torch.einsum("...j,...ij->...ij", b, dpa)
-    shift_ab_2 = -torch.einsum("...j,...ij->...ij", a, dpb)
-    shift_ab_3 = torch.einsum("...j,...j,...ij->...ij", a, b, s)
+    shift_ab_1 = -einsum("...j,...ij->...ij", b, dpa)
+    shift_ab_2 = -einsum("...j,...ij->...ij", a, dpb)
+    shift_ab_3 = einsum("...j,...j,...ij->...ij", a, b, s)
 
     return shift_ab_1 + shift_ab_2 + shift_ab_3

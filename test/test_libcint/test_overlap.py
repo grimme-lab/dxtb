@@ -29,6 +29,7 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 from tad_mctc.convert import numpy_to_tensor
+from tad_mctc.math import einsum
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
@@ -108,11 +109,11 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     # normalize dxtb's overlap
     norm = snorm(dxtb_overlap)
-    dxtb_overlap = torch.einsum("ij,i,j->ij", dxtb_overlap, norm, norm)
+    dxtb_overlap = einsum("ij,i,j->ij", dxtb_overlap, norm, norm)
 
     # normalize PySCF's reference overlap
     norm = snorm(pyscf_overlap)
-    pyscf_overlap = torch.einsum("ij,i,j->ij", pyscf_overlap, norm, norm)
+    pyscf_overlap = einsum("ij,i,j->ij", pyscf_overlap, norm, norm)
     assert dxtb_overlap.shape == pyscf_overlap.shape
     assert pytest.approx(pyscf_overlap.cpu(), abs=tol) == dxtb_overlap.cpu()
 
@@ -162,11 +163,11 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     # normalize dxtb's overlap
     norm = snorm(dxtb_overlap)
-    dxtb_overlap = torch.einsum("ij,i,j->ij", dxtb_overlap, norm, norm)
+    dxtb_overlap = einsum("ij,i,j->ij", dxtb_overlap, norm, norm)
 
     # normalize PySCF's reference overlap
     norm = snorm(pyscf_overlap)
-    pyscf_overlap = torch.einsum("ij,i,j->ij", pyscf_overlap, norm, norm)
+    pyscf_overlap = einsum("ij,i,j->ij", pyscf_overlap, norm, norm)
 
     assert dxtb_overlap.shape == pyscf_overlap.shape
     assert pytest.approx(pyscf_overlap.cpu(), abs=tol) == dxtb_overlap.cpu()

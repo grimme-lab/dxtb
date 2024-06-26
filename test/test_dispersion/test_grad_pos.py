@@ -23,11 +23,11 @@ from __future__ import annotations
 import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
+from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB as par
 from dxtb._src.components.classicals.dispersion import new_dispersion
 from dxtb._src.typing import DD, Callable, Tensor
-from dxtb._src.utils import batch
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -92,13 +92,13 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
@@ -178,19 +178,19 @@ def test_autograd_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         ]
     )
-    ref = batch.pack(
+    ref = pack(
         [
             sample1["grad"].to(**dd),
             sample2["grad"].to(**dd),
@@ -257,19 +257,19 @@ def test_backward_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         ]
     )
-    ref = batch.pack(
+    ref = pack(
         [
             sample1["grad"].to(**dd),
             sample2["grad"].to(**dd),

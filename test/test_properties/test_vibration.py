@@ -25,6 +25,7 @@ import torch
 from tad_mctc.autograd import dgradcheck
 from tad_mctc.batch import pack
 from tad_mctc.convert import tensor_to_numpy
+from tad_mctc.math import einsum
 
 from dxtb import GFN1_XTB as par
 from dxtb import Calculator
@@ -122,7 +123,7 @@ def execute(
     nummodes = nummodes / torch.norm(nummodes, dim=-2, keepdim=True)
     assert numfreqs.grad_fn is None
     assert nummodes.grad_fn is None
-    numfreqs, nummodes = tensor_to_numpy(numfreqs), tensor_to_numpy(nummodes)
+    numfreqs = tensor_to_numpy(numfreqs)
 
     # required for autodiff of energy w.r.t. positions (Hessian)
     pos = positions.clone().detach().requires_grad_(True)
@@ -133,7 +134,7 @@ def execute(
     freqs1, modes1 = calc.vibration(pos, charge, use_functorch=False)
     modes1 = modes1 / torch.norm(modes1, dim=-2, keepdim=True)
 
-    dot_products = torch.einsum("...ij,...ij->...j", nummodes, modes1)
+    dot_products = einsum("...ij,...ij->...j", nummodes, modes1)
     assert (torch.abs(dot_products) > 0.99).all()
 
     freqs1 = tensor_to_numpy(freqs1)
@@ -150,7 +151,7 @@ def execute(
     modes2 = modes2 / torch.norm(modes2, dim=-2, keepdim=True)
 
     # check angles between modes
-    dot_products = torch.einsum("...ij,...ij->...j", nummodes, modes2)
+    dot_products = einsum("...ij,...ij->...j", nummodes, modes2)
     assert (torch.abs(dot_products) > 0.99).all()
 
     freqs2 = tensor_to_numpy(freqs2)

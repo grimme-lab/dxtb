@@ -90,7 +90,10 @@ class SelfConsistentFieldSingleShot(SelfConsistentFieldFull):
 
             OutputHandler.write_stdout(77 * "-", v=3)
 
-        # SCF step with gradient using converged result as "perfect" guess
+        # SCF step with gradient using converged result as "perfect" guess.
+        # This is not exact, as the implicit derivative w.r.t. the variational
+        # parameters is missing. The gradient only comes in through the
+        # Hamiltonian (integrals) in ``potential_to_hamiltonian``.
         scp_grad = self._fcn(scp_nograd)
         OutputHandler.write_stdout(77 * "-", v=3)
 

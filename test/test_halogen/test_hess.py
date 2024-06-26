@@ -24,12 +24,13 @@ from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.autograd import jacrev
+from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.components.classicals import new_halogen
-from dxtb._src.typing import DD
-from dxtb._src.utils import batch, hessian
+from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
 from ..utils import reshape_fortran
@@ -61,8 +62,12 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
-    # hessian
-    hess = hessian(xb.get_energy, (positions, cache))
+    def energy(pos: Tensor) -> Tensor:
+        return xb.get_energy(pos, cache).sum()
+
+    hess = jacrev(jacrev(energy))(positions)
+    assert isinstance(hess, Tensor)
+
     positions.detach_()
     hess = hess.detach().reshape_as(ref)
 
@@ -78,28 +83,28 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 100
 
     sample1, sample2 = samples[name1], samples[name2]
-    numbers = batch.pack(
+    numbers = pack(
         [
             sample1["numbers"].to(DEVICE),
             sample2["numbers"].to(DEVICE),
         ]
     )
-    positions = batch.pack(
+    positions = pack(
         [
             sample1["positions"].to(**dd),
             sample2["positions"].to(**dd),
         ]
     )
 
-    ref = batch.pack(
+    ref = pack(
         [
             reshape_fortran(
                 sample1["hessian"].to(**dd),
-                torch.Size(2 * (sample1["numbers"].to(DEVICE).shape[-1], 3)),
+                torch.Size(2 * (sample1["numbers"].to(DEVICE).shape[0], 3)),
             ),
             reshape_fortran(
                 sample2["hessian"].to(**dd),
-                torch.Size(2 * (sample2["numbers"].shape[-1], 3)),
+                torch.Size(2 * (sample2["numbers"].to(DEVICE).shape[0], 3)),
             ),
         ]
     )
@@ -113,7 +118,11 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
-    hess = hessian(xb.get_energy, (positions, cache), is_batched=True)
+    def energy(pos: Tensor) -> Tensor:
+        return xb.get_energy(pos, cache).sum()
+
+    hess = jacrev(jacrev(energy))(positions)
+    assert isinstance(hess, Tensor)
 
     positions.detach_()
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == hess.detach().cpu()

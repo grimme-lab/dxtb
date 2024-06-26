@@ -25,13 +25,13 @@ from pathlib import Path
 
 import pytest
 import torch
+from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.constants import labels
 from dxtb._src.io import read_chrg, read_coord
 from dxtb._src.typing import DD
-from dxtb._src.utils import batch
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -133,10 +133,10 @@ def test_batch(
         positions.append(torch.tensor(pos, **dd))
         charge.append(torch.tensor(chrg, **dd))
 
-    numbers = batch.pack(numbers)
-    positions = batch.pack(positions)
-    charge = batch.pack(charge)
-    ref = batch.pack(
+    numbers = pack(numbers)
+    positions = pack(positions)
+    charge = pack(charge)
+    ref = pack(
         [
             samples[name1]["etot"].to(**dd),
             samples[name2]["etot"].to(**dd),

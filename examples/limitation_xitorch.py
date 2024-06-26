@@ -15,9 +15,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Data for testing repulsion taken from https://github.com/grimme-lab/mstore.
+Calculating forces for vancomycin via AD.
 """
+from pathlib import Path
 
-from __future__ import annotations
+import torch
+from tad_mctc.io import read
 
-from tad_mctc.data.molecules import merge_nested_dicts, mols
+import dxtb
+from dxtb.typing import DD
+
+dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
+
+f = Path(__file__).parent / "molecules" / "lih.xyz"
+numbers, positions = read.read_from_path(f, **dd)
+charge = read.read_chrg_from_path(f, **dd)
+
+opts = {"verbosity": 3, "scf_mode": "nonpure"}
+
+######################################################################
+
+calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, opts=opts, **dd)
+pos = positions.clone().requires_grad_(True)
+hess = calc.hessian(pos, chrg=charge, use_functorch=True)
