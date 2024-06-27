@@ -1,4 +1,4 @@
-<h1 align="center">dxtb</h3>
+<h1 align="center"><img src="assets/logo.png" width="300"></h3>
 
 <h3 align="center">Fully Differentiable Extended Tight-Binding</h3>
 <p align="center">- Combining semi-empirical quantum chemistry with machine learning in PyTorch -</p>
