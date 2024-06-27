@@ -89,12 +89,19 @@ import dxtb
 numbers = torch.tensor([3, 1])
 positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
 
+# instantiate a calculator
 calc = dxtb.calculators.GFN1Calculator(numbers)
 
-positions.requires_grad_(True)
-energy = calc.energy(positions)
+# compute the energy
+pos = positions.clone().requires_grad_(True)
+energy = calc.get_energy(pos)
 
-(g,) = torch.autograd.grad(energy, positions)
+# obtain gradient (dE/dR) via autograd
+(g,) = torch.autograd.grad(energy, pos)
+
+# alternatively, forces can directly be requested from the calculator
+pos = positions.clone().requires_grad_(True)
+forces = calc.get_forces(pos)
 ```
 
 For more examples and details, check out [the documentation](https://dxtb.readthedocs.io).
