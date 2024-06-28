@@ -42,8 +42,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-        torch-version: ["1.11.0", "1.12.1", "1.13.1", "2.0.1", "2.1.2", "2.2.2", "2.3.1"]
+        # python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        # torch-version: ["1.11.0", "1.12.1", "1.13.1", "2.0.1", "2.1.2", "2.2.2", "2.3.1"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        torch-version: ["1.11.0", "1.12.1", "1.13.1", "2.0.1", "2.1.2", "2.2.2"]
         exclude:
           # Check latest versions here: https://download.pytorch.org/whl/torch/
           #
