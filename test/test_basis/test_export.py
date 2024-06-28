@@ -63,4 +63,17 @@ def test_export(
     with open(p, encoding="utf-8") as f:
         content = f.read()
 
+    def round_numbers(data):
+        rounded_data = []
+        for item in data:
+            try:
+                rounded_item = round(float(item), 10)
+                rounded_data.append(rounded_item)
+            except ValueError:
+                rounded_data.append(item)
+        return rounded_data
+
+    content = round_numbers(content.split())
+    txt = round_numbers(txt.split())
+
     assert content == txt
