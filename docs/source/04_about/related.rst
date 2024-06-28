@@ -34,5 +34,5 @@ All PyTorch-based re-implementations required for *dxtb* can be found as standal
 `tad-dftd4 <https://github.com/dftd4/tad-dftd4>`__:
   PyTorch Autodiff Implementation of DFT-D4
 
-`tad-libcint <https://github.com/tad-mctc/tad-libcint>`:
+`tad-libcint <https://github.com/tad-mctc/tad-libcint>`__:
   PyTorch-based C-Interface for Integrals.

@@ -141,6 +141,8 @@ class EnergyCalculator(BaseCalculator):
             OutputHandler.write_stdout("done", v=3)
 
         if {"all", "scf"} & set(self.opts.exclude):
+            self.cache["energy"] = result.total
+
             return result
 
         #############
@@ -365,7 +367,15 @@ class EnergyCalculator(BaseCalculator):
         """
         self.singlepoint(positions, chrg, spin, **kwargs)
         e = self.cache["energy"]
-        assert e is not None
+
+        if e is None:
+            raise RuntimeError(
+                "Energy not found in cache after singlepoint calculation. "
+                "This should not happen; the `singlepoint` method should "
+                "always write at least the energy to the cache (even "
+                "without caching enabled). Please report this issue."
+            )
+
         return e.sum(-1)
 
     @cdec.cache

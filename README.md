@@ -81,20 +81,32 @@ For more options, see the [installation guide](https://dxtb.readthedocs.io/en/la
 The following example demonstrates how to compute the energy and forces using GFN1-xTB.
 
 ```python
-
 import torch
 import dxtb
 
+dd = {"dtype": torch.double, "device": torch.device("cpu")}
+
 # LiH
-numbers = torch.tensor([3, 1])
-positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+numbers = torch.tensor([3, 1], device=dd["device"])
+positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.5]], **dd)
 
-calc = dxtb.calculators.GFN1Calculator(numbers)
+# instantiate a calculator
+calc = dxtb.calculators.GFN1Calculator(numbers, **dd)
 
-positions.requires_grad_(True)
-energy = calc.energy(positions)
+# compute the energy
+pos = positions.clone().requires_grad_(True)
+energy = calc.get_energy(pos)
 
-(g,) = torch.autograd.grad(energy, positions)
+# obtain gradient (dE/dR) via autograd
+(g,) = torch.autograd.grad(energy, pos)
+
+# Alternatively, forces can directly be requested from the calculator.
+# (Don't forget to reset the calculator manually when the inputs are identical.)
+calc.reset()
+pos = positions.clone().requires_grad_(True)
+forces = calc.get_forces(pos)
+
+assert torch.equal(forces, -g)
 ```
 
 For more examples and details, check out [the documentation](https://dxtb.readthedocs.io).
@@ -105,6 +117,9 @@ For more examples and details, check out [the documentation](https://dxtb.readth
 If you use *dxtb* in your research, please cite the following paper:
 
 - M. Friede, C. Hölzer, S. Ehlert, S. Grimme, *dxtb -- An Efficient and Fully Differentiable Framework for Extended Tight-Binding*, *J. Chem. Phys.*, **2024**
+
+The Supporting Information can be found [here](https://github.com/grimme-lab/dxtb-data).
+
 
 For details on the xTB methods, see
 

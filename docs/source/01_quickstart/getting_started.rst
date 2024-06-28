@@ -73,6 +73,40 @@ use corresponding getters :meth:`~dxtb.Calculator.get_energy`:
 
 We recommend using the getters, as they provide the familiar ASE-like interface.
 
+.. warning::
+
+    If you supply the **same inputs** to the calculator multiple times with
+    gradient tracking enabled, you have to reset the calculator in between with
+    :meth:`~dxtb.Calculator.reset_all`. Otherwise, the gradients will be wrong.
+
+    .. admonition:: Example
+       :class: toggle
+
+       .. code-block:: python
+
+           import torch
+           import dxtb
+
+           dd = {"dtype": torch.double, "device": torch.device("cpu")}
+
+           numbers = torch.tensor([3, 1], device=dd["device"])
+           positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
+
+           calc = dxtb.calculators.GFN1Calculator(numbers, **dd)
+
+           pos = positions.clone().requires_grad_(True)
+           energy = calc.energy(pos)
+           (g1,) = torch.autograd.grad(energy, pos)
+
+           # wrong gradients without reset here
+           calc.reset_all()
+
+           pos = positions.clone().requires_grad_(True)
+           energy = calc.energy(pos)
+           (g2,) = torch.autograd.grad(energy, pos)
+
+           assert torch.allclose(g1, g2)
+
 
 Gradients
 ---------
