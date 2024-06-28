@@ -118,6 +118,9 @@ If you use *dxtb* in your research, please cite the following paper:
 
 - M. Friede, C. Hölzer, S. Ehlert, S. Grimme, *dxtb -- An Efficient and Fully Differentiable Framework for Extended Tight-Binding*, *J. Chem. Phys.*, **2024**
 
+The Supporting Information can be found [here](https://github.com/grimme-lab/dxtb-data).
+
+
 For details on the xTB methods, see
 
 - C. Bannwarth, E. Caldeweyher, S. Ehlert, A. Hansen, P. Pracht, J. Seibert, S. Spicher, S. Grimme,
