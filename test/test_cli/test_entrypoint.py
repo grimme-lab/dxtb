@@ -58,7 +58,7 @@ def test_entrypoint(
     caplog: pytest.LogCaptureFixture, capsys: pytest.CaptureFixture
 ) -> None:
     # avoid pollution from previous tests
-    # OutputHandler.clear_warnings()
+    OutputHandler.clear_warnings()
 
     ret = console_entry_point([str(coordfile), "--verbosity", "0"])
     assert ret == 0
