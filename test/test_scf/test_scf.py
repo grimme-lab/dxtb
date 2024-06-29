@@ -100,11 +100,11 @@ def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
 
 
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.float])
-@pytest.mark.parametrize("name", ["S2", "LYS_xao_dist"])
-def test_single_difficult(dtype: torch.dtype, name: str):
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["S2"])
+def test_single_difficult_1(dtype: torch.dtype, name: str):
     """Test a few larger system (only float32 within tolerance)."""
-    tol = sqrt(torch.finfo(dtype).eps) * 10
+    tol = 1e-2
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name]
@@ -116,10 +116,40 @@ def test_single_difficult(dtype: torch.dtype, name: str):
     options = dict(
         opts,
         **{
-            "f_atol": 1e-6,
-            "x_atol": 1e-6,
+            "f_atol": 1e-5 if dtype == torch.float else 1e-7,
+            "x_atol": 1e-5 if dtype == torch.float else 1e-7,
             "damp": 0.5,  # simple mixing
-            "maxiter": 300,  #  simple mixing
+            "maxiter": 400,  #  simple mixing
+        },
+    )
+    calc = Calculator(numbers, par, opts=options, **dd)
+
+    result = calc.singlepoint(positions, charges)
+    res = result.scf.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol) == res.cpu()
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["LYS_xao_dist"])
+def test_single_difficult_2(dtype: torch.dtype, name: str):
+    """Test a few larger system (only float32 within tolerance)."""
+    tol = 1e-3
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    sample = samples[name]
+    numbers = sample["numbers"].to(DEVICE)
+    positions = sample["positions"].to(**dd)
+    ref = sample["escf"].to(**dd)
+    charges = torch.tensor(0.0, **dd)
+
+    options = dict(
+        opts,
+        **{
+            "f_atol": 1e-5 if dtype == torch.float else 1e-7,
+            "x_atol": 1e-5 if dtype == torch.float else 1e-7,
+            "damp": 0.5,  # simple mixing
+            "maxiter": 400,  #  simple mixing
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)

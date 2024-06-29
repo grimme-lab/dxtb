@@ -33,7 +33,7 @@ from dxtb import Calculator
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
-from .util import has_memleak_tensor
+from .util import garbage_collect, has_memleak_tensor
 
 opts = {"verbosity": 0, "maxiter": 50, "exclude": ["rep", "disp", "hal"]}
 repeats = 5
@@ -49,7 +49,7 @@ def test_xitorch(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     def fcn():
-        sample = samples["SiH4"]
+        sample = samples["LiH"]
         numbers = sample["numbers"].to(DEVICE)
         positions = sample["positions"].clone().to(**dd)
         charges = torch.tensor(0.0, **dd)
@@ -69,10 +69,17 @@ def test_xitorch(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
         if create_graph is True:
             energy.backward()
 
+        del numbers
+        del positions
+        del charges
+        del calc
+        del result
+        del energy
+
     # run garbage collector to avoid leaks across other tests
-    gc.collect()
+    garbage_collect()
     leak = has_memleak_tensor(fcn, gccollect=run_gc)
-    gc.collect()
+    garbage_collect()
 
     assert not leak, "Memory leak detected"
 
@@ -105,9 +112,9 @@ def test_xitorch_pure(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> N
             energy.backward()
 
     # run garbage collector to avoid leaks across other tests
-    gc.collect()
+    garbage_collect()
     leak = has_memleak_tensor(fcn, gccollect=run_gc)
-    gc.collect()
+    garbage_collect()
 
     assert not leak, "Memory leak detected"
 
@@ -144,9 +151,16 @@ def skip_test_fulltracking(
         if create_graph is True:
             energy.backward()
 
+        del numbers
+        del positions
+        del charges
+        del calc
+        del result
+        del energy
+
     # run garbage collector to avoid leaks across other tests
-    gc.collect()
+    garbage_collect()
     leak = has_memleak_tensor(fcn, gccollect=run_gc)
-    gc.collect()
+    garbage_collect()
 
     assert not leak, "Memory leak detected"

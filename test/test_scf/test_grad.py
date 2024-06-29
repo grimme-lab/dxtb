@@ -50,10 +50,29 @@ ref_grad_param = np.load("test/test_scf/grad_param.npz")
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["LiH", "SiH4"])
+@pytest.mark.parametrize("name", ["LiH"])
 @pytest.mark.parametrize("scp_mode", ["potential", "fock"])
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full", "single-shot"])
 def test_grad_backwards(
+    name: str, dtype: torch.dtype, scf_mode: str, scp_mode: str
+) -> None:
+    run_grad_backwards(name, dtype, scf_mode, scp_mode)
+
+
+@pytest.mark.grad
+@pytest.mark.large
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["SiH4"])
+@pytest.mark.parametrize("scp_mode", ["potential", "fock"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full", "single-shot"])
+def test_grad_backwards_large(
+    name: str, dtype: torch.dtype, scf_mode: str, scp_mode: str
+) -> None:
+    run_grad_backwards(name, dtype, scf_mode, scp_mode)
+
+
+def run_grad_backwards(
     name: str, dtype: torch.dtype, scf_mode: str, scp_mode: str
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
@@ -95,8 +114,17 @@ def test_grad_backwards(
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
+@pytest.mark.parametrize("name", ["LiH"])
 def test_grad_autograd(name: str, dtype: torch.dtype):
+    run_grad_autograd(name, dtype)
+
+
+@pytest.mark.grad
+@pytest.mark.large
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["H2", "H2O", "CH4", "SiH4"])
+def run_grad_autograd(name: str, dtype: torch.dtype):
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
@@ -167,12 +195,27 @@ def test_grad_large(name: str, dtype: torch.dtype):
 
 
 @pytest.mark.grad
-@pytest.mark.parametrize("name", ["LiH", "H2O", "SiH4", "LYS_xao"])
+@pytest.mark.parametrize("name", ["LiH"])
 def test_param_grad_energy(name: str, dtype: torch.dtype = torch.float):
     """
     Test autograd of SCF without gradient tracking vs. SCF with full gradient
     tracking. References obtained with full tracking and `torch.float`.
     """
+    run_param_grad_energy(name, dtype)
+
+
+@pytest.mark.grad
+@pytest.mark.large
+@pytest.mark.parametrize("name", ["H2O", "SiH4", "LYS_xao"])
+def test_param_grad_energy_large(name: str, dtype: torch.dtype = torch.float):
+    """
+    Test autograd of SCF without gradient tracking vs. SCF with full gradient
+    tracking. References obtained with full tracking and `torch.float`.
+    """
+    run_param_grad_energy(name, dtype)
+
+
+def run_param_grad_energy(name: str, dtype: torch.dtype = torch.float):
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
 

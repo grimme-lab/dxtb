@@ -40,8 +40,6 @@ ref_grad = np.load("test/test_singlepoint/grad.npz")
 """['H2', 'H2O', 'CH4', 'SiH4', 'LYS_xao', 'AD7en+', 'C60', 'vancoh2']"""
 
 opts = {
-    "f_atol": 1.0e-10,
-    "x_atol": 1.0e-10,
     "maxiter": 50,
     "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
     "scp_mode": labels.SCP_MODE_POTENTIAL,
@@ -101,7 +99,15 @@ def analytical(
     positions = torch.tensor(positions, **dd, requires_grad=True)
     charge = torch.tensor(charge, **dd)
 
-    options = dict(opts, **{"scf_mode": scf_mode})
+    options = dict(
+        opts,
+        **{
+            "mixer": "anderson" if scf_mode == "full" else "broyden",
+            "f_atol": 1e-5 if dtype == torch.float else 1e-10,
+            "x_atol": 1e-5 if dtype == torch.float else 1e-10,
+            "scf_mode": scf_mode,
+        },
+    )
     calc = Calculator(numbers, par, opts=options, **dd)
     result = -calc.forces_analytical(positions, charge)
     gradient = result.detach()
@@ -133,8 +139,10 @@ def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     options = dict(
         opts,
         **{
-            "scf_mode": scf_mode,
             "mixer": "anderson" if scf_mode == "full" else "broyden",
+            "f_atol": 1e-5 if dtype == torch.float else 1e-10,
+            "x_atol": 1e-5 if dtype == torch.float else 1e-10,
+            "scf_mode": scf_mode,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)

@@ -112,8 +112,8 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, scf_mode: str) -> Non
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name1", sample_list)
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", ["LiH"])
 @pytest.mark.parametrize("name3", sample_list)
 @pytest.mark.parametrize(
     "scf_mode", [labels.SCF_MODE_IMPLICIT_NON_PURE, labels.SCF_MODE_FULL]

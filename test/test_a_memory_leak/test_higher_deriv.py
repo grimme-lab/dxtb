@@ -35,16 +35,13 @@ from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
 from ..utils import nth_derivative
-from .util import has_memleak_tensor
+from .util import garbage_collect, has_memleak_tensor
 
-sample_list = ["H2O", "SiH4", "MB16_43_01"]
+slist = ["H2O", "SiH4"]
+slist_large = ["MB16_43_01"]
 
 
-@pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", sample_list)
-@pytest.mark.parametrize("n", [1, 2, 3, 4])
-def test_single(dtype: torch.dtype, name: str, n: int) -> None:
+def execute(name: str, dtype: torch.dtype, n: int) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     def fcn():
@@ -67,9 +64,33 @@ def test_single(dtype: torch.dtype, name: str, n: int) -> None:
 
         _ = nth_derivative(energy, positions, n)
 
+        del numbers
+        del positions
+        del ihelp
+        del rep
+        del cache
+        del energy
+
     # run garbage collector to avoid leaks across other tests
-    gc.collect()
+    garbage_collect()
     leak = has_memleak_tensor(fcn)
-    gc.collect()
+    garbage_collect()
 
     assert not leak, "Memory leak detected"
+
+
+@pytest.mark.filterwarnings("ignore::UserWarning")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", slist)
+@pytest.mark.parametrize("n", [1, 2, 3, 4])
+def test_single(dtype: torch.dtype, name: str, n: int) -> None:
+    execute(name, dtype, n)
+
+
+@pytest.mark.large
+@pytest.mark.filterwarnings("ignore::UserWarning")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", slist_large)
+@pytest.mark.parametrize("n", [1, 2, 3, 4])
+def test_large(dtype: torch.dtype, name: str, n: int) -> None:
+    execute(name, dtype, n)

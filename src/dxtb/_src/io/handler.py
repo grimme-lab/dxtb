@@ -298,6 +298,10 @@ class _OutputHandler:
         for msg, warning_type in self.warnings:
             self.console_logger.warning(f"[{warning_type.__name__}] {msg}")
 
+    def clear_warnings(self) -> None:
+        """Clear all warnings."""
+        self.warnings = []
+
     def format_for_console(
         self,
         title: str,

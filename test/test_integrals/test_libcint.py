@@ -27,6 +27,7 @@ from tad_mctc.batch import pack
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb import integrals as ints
+from dxtb import labels
 from dxtb._src.exlibs import libcint
 from dxtb._src.integral.driver.libcint import IntDriverLibcint
 from dxtb._src.typing import DD
@@ -52,7 +53,7 @@ def test_single(dtype: torch.dtype, name: str, force_cpu_for_libcint: bool):
         par,
         ihelp,
         force_cpu_for_libcint=force_cpu_for_libcint,
-        intlevel=ints.levels.INTLEVEL_QUADRUPOLE,
+        intlevel=labels.INTLEVEL_QUADRUPOLE,
         **dd,
     )
 
@@ -118,7 +119,7 @@ def test_batch(
         numbers,
         par,
         ihelp,
-        intlevel=ints.levels.INTLEVEL_QUADRUPOLE,
+        intlevel=labels.INTLEVEL_QUADRUPOLE,
         force_cpu_for_libcint=force_cpu_for_libcint,
         **dd,
     )

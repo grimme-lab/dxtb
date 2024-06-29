@@ -31,7 +31,8 @@ from dxtb._src.typing import DD, Callable, Tensor
 from ..conftest import DEVICE
 from .samples import samples
 
-sample_list = ["LiH", "SiH4", "MB16_43_01", "PbH4-BiH3"]
+slist = ["LiH", "SiH4"]
+slist_large = ["MB16_43_01", "PbH4-BiH3"]
 
 tol = 1e-8
 
@@ -66,7 +67,7 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", sample_list)
+@pytest.mark.parametrize("name", slist)
 def test_gradcheck(dtype: torch.dtype, name: str) -> None:
     """
     Check a single analytical gradient of parameters against numerical
@@ -77,9 +78,35 @@ def test_gradcheck(dtype: torch.dtype, name: str) -> None:
 
 
 @pytest.mark.grad
+@pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", sample_list)
+@pytest.mark.parametrize("name", slist_large)
+def test_gradcheck_large(dtype: torch.dtype, name: str) -> None:
+    """
+    Check a single analytical gradient of parameters against numerical
+    gradient from `torch.autograd.gradcheck`.
+    """
+    func, diffvars = gradchecker(dtype, name)
+    assert dgradcheck(func, diffvars, atol=tol)
+
+
+@pytest.mark.grad
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", slist)
 def test_gradgradcheck(dtype: torch.dtype, name: str) -> None:
+    """
+    Check a single analytical gradient of parameters against numerical
+    gradient from `torch.autograd.gradgradcheck`.
+    """
+    func, diffvars = gradchecker(dtype, name)
+    assert dgradgradcheck(func, diffvars, atol=tol)
+
+
+@pytest.mark.grad
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", slist_large)
+def test_gradgradcheck_large(dtype: torch.dtype, name: str) -> None:
     """
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradgradcheck`.
@@ -129,8 +156,22 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name2", slist)
 def test_gradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    """
+    Check a single analytical gradient of parameters against numerical
+    gradient from `torch.autograd.gradcheck`.
+    """
+    func, diffvars = gradchecker_batch(dtype, name1, name2)
+    assert dgradcheck(func, diffvars, atol=tol)
+
+
+@pytest.mark.grad
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", slist_large)
+def test_gradcheck_batch_large(dtype: torch.dtype, name1: str, name2: str) -> None:
     """
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradcheck`.
@@ -142,8 +183,22 @@ def test_gradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name2", slist)
 def test_gradgradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    """
+    Check a single analytical gradient of parameters against numerical
+    gradient from `torch.autograd.gradgradcheck`.
+    """
+    func, diffvars = gradchecker_batch(dtype, name1, name2)
+    assert dgradgradcheck(func, diffvars, atol=tol)
+
+
+@pytest.mark.grad
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", slist_large)
+def test_gradgradcheck_batch_large(dtype: torch.dtype, name1: str, name2: str) -> None:
     """
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradgradcheck`.

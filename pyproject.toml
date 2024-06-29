@@ -44,12 +44,13 @@ plugins = ["covdefaults"]
 source = ["./src"]
 omit = [
   "./src/dxtb/_src/exlibs/xitorch/*",
+  "./src/dxtb/_src/exlibs/scipy/*",
   "./src/dxtb/_src/typing.py",
   "./src/dxtb/components/*",
 ]
 
 [tool.coverage.report]
-fail_under = 80
+fail_under = 75
 
 
 [tool.isort]

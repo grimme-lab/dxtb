@@ -32,6 +32,7 @@ from tad_mctc.exceptions import DtypeError
 
 from dxtb import IndexHelper, OutputHandler
 from dxtb import integrals as ints
+from dxtb import labels
 from dxtb._src.calculators.properties.vibration import IRResult, RamanResult, VibResult
 from dxtb._src.components.classicals import (
     Classical,
@@ -565,25 +566,21 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
 
         # figure out integral level from interactions
         if efield.LABEL_EFIELD in self.interactions.labels:
-            if self.opts.ints.level < ints.levels.INTLEVEL_DIPOLE:
+            if self.opts.ints.level < labels.INTLEVEL_DIPOLE:
                 OutputHandler.warn(
                     "Setting integral level to DIPOLE "
-                    f"({ints.levels.INTLEVEL_DIPOLE}) due to electric field "
+                    f"({labels.INTLEVEL_DIPOLE}) due to electric field "
                     "interaction."
                 )
-            self.opts.ints.level = max(
-                ints.levels.INTLEVEL_DIPOLE, self.opts.ints.level
-            )
+            self.opts.ints.level = max(labels.INTLEVEL_DIPOLE, self.opts.ints.level)
         if efield_grad.LABEL_EFIELD_GRAD in self.interactions.labels:
-            if self.opts.ints.level < ints.levels.INTLEVEL_DIPOLE:
+            if self.opts.ints.level < labels.INTLEVEL_DIPOLE:
                 OutputHandler.warn(
                     "Setting integral level to QUADRUPOLE "
-                    f"{ints.levels.INTLEVEL_DIPOLE} due to electric field "
+                    f"{labels.INTLEVEL_DIPOLE} due to electric field "
                     "gradient interaction."
                 )
-            self.opts.ints.level = max(
-                ints.levels.INTLEVEL_QUADRUPOLE, self.opts.ints.level
-            )
+            self.opts.ints.level = max(labels.INTLEVEL_QUADRUPOLE, self.opts.ints.level)
 
         # setup integral
         driver = self.opts.ints.driver
@@ -591,14 +588,14 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
             numbers, par, self.ihelp, driver=driver, intlevel=self.opts.ints.level, **dd
         )
 
-        if self.opts.ints.level >= ints.levels.INTLEVEL_OVERLAP:
+        if self.opts.ints.level >= labels.INTLEVEL_OVERLAP:
             self.integrals.hcore = ints.types.HCore(numbers, par, self.ihelp, **dd)
             self.integrals.overlap = ints.types.Overlap(driver=driver, **dd)
 
-        if self.opts.ints.level >= ints.levels.INTLEVEL_DIPOLE:
+        if self.opts.ints.level >= labels.INTLEVEL_DIPOLE:
             self.integrals.dipole = ints.types.Dipole(driver=driver, **dd)
 
-        if self.opts.ints.level >= ints.levels.INTLEVEL_QUADRUPOLE:
+        if self.opts.ints.level >= labels.INTLEVEL_QUADRUPOLE:
             self.integrals.quadrupole = ints.types.Quadrupole(driver=driver, **dd)
 
         OutputHandler.write_stdout("done\n", v=4)

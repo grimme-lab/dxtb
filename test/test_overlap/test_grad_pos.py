@@ -34,7 +34,8 @@ from dxtb._src.typing import DD, Callable, Tensor
 from ..conftest import DEVICE
 from .samples import samples
 
-sample_list = ["H2", "HHe", "LiH", "Li2", "S2", "H2O", "SiH4"]
+slist = ["LiH", "H2O"]
+slist_large = ["H2", "HHe", "Li2", "S2", "SiH4"]
 
 tol = 1e-7
 
@@ -65,7 +66,7 @@ def gradchecker(
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", sample_list)
+@pytest.mark.parametrize("name", slist)
 def test_grad(dtype: torch.dtype, name: str) -> None:
     """
     Check a single analytical gradient of positions against numerical
@@ -77,8 +78,32 @@ def test_grad(dtype: torch.dtype, name: str) -> None:
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", sample_list)
+@pytest.mark.parametrize("name", slist_large)
+def test_grad_large(dtype: torch.dtype, name: str) -> None:
+    """
+    Check a single analytical gradient of positions against numerical
+    gradient from `torch.autograd.gradcheck`.
+    """
+    func, diffvars = gradchecker(dtype, name)
+    assert dgradcheck(func, diffvars, atol=tol)
+
+
+@pytest.mark.grad
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", slist)
 def test_gradgrad(dtype: torch.dtype, name: str) -> None:
+    """
+    Check a single analytical gradient of positions against numerical
+    gradient from `torch.autograd.gradgradcheck`.
+    """
+    func, diffvars = gradchecker(dtype, name)
+    assert dgradgradcheck(func, diffvars, atol=tol)
+
+
+@pytest.mark.grad
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", slist_large)
+def test_gradgrad_large(dtype: torch.dtype, name: str) -> None:
     """
     Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradgradcheck`.
@@ -128,8 +153,8 @@ def gradchecker_batch(
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")  # torch.meshgrid from batch.deflate
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name1", ["H2"])
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", slist)
 def test_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """
     Check a single analytical gradient of positions against numerical
@@ -143,8 +168,36 @@ def test_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.filterwarnings("ignore")  # torch.meshgrid from batch.deflate
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["H2"])
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name2", slist_large)
+def test_grad_batch_large(dtype: torch.dtype, name1: str, name2: str) -> None:
+    """
+    Check a single analytical gradient of positions against numerical
+    gradient from `torch.autograd.gradcheck`.
+    """
+    func, diffvars = gradchecker_batch(dtype, name1, name2)
+    assert dgradcheck(func, diffvars, atol=tol)
+
+
+@pytest.mark.grad
+@pytest.mark.filterwarnings("ignore")  # torch.meshgrid from batch.deflate
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", slist)
 def test_gradgrad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    """
+    Check a single analytical gradient of positions against numerical
+    gradient from `torch.autograd.gradgradcheck`.
+    """
+    func, diffvars = gradchecker_batch(dtype, name1, name2)
+    assert dgradgradcheck(func, diffvars, atol=tol)
+
+
+@pytest.mark.grad
+@pytest.mark.filterwarnings("ignore")  # torch.meshgrid from batch.deflate
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name1", ["H2"])
+@pytest.mark.parametrize("name2", slist_large)
+def test_gradgrad_batch_large(dtype: torch.dtype, name1: str, name2: str) -> None:
     """
     Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradgradcheck`.

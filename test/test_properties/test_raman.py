@@ -35,8 +35,10 @@ from dxtb.labels import INTLEVEL_DIPOLE
 from ..conftest import DEVICE
 from .samples import samples
 
-slist = ["H", "LiH", "H2O", "SiH4"]
-slist_large = ["PbH4-BiH3"]  # MB16_43_01 and LYS_xao too large for testing
+slist = ["LiH"]
+slist_more = ["H", "HHe", "H2O", "SiH4"]
+slist_large = ["PbH4-BiH3"]
+# MB16_43_01 and LYS_xao too large for testing
 
 opts = {
     "int_level": INTLEVEL_DIPOLE,
@@ -158,6 +160,16 @@ def execute(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist)
 def test_single(dtype: torch.dtype, name: str) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
+    field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)
+    single(name, field_vector, dd=dd)
+
+
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", slist_more)
+def test_single_more(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     field_vector = torch.tensor([0.0, 0.0, 0.0], **dd)

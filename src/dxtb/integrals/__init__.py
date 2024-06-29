@@ -52,7 +52,6 @@ options:
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from dxtb.integrals import levels as levels
     from dxtb.integrals import types as types
     from dxtb.integrals import wrappers as wrappers
 else:
@@ -60,7 +59,7 @@ else:
 
     __getattr__, __dir__, __all__ = _lazy.attach_module(
         __name__,
-        ["levels", "types", "wrappers"],
+        ["types", "wrappers"],
     )
     del _lazy
 

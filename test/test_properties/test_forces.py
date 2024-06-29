@@ -33,8 +33,8 @@ from dxtb._src.typing import DD, Tensor
 from ..conftest import DEVICE
 from .samples import samples
 
-slist = ["H", "LiH", "HHe", "H2O", "CH4", "SiH4", "PbH4-BiH3"]
-slist_large = ["MB16_43_01"]  # "LYS_xao"
+slist = ["H", "LiH", "H2O", "CH4", "SiH4"]
+slist_large = ["HHe", "PbH4-BiH3", "MB16_43_01"]  # "LYS_xao"
 
 opts = {
     "maxiter": 100,

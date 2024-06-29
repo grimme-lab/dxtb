@@ -34,8 +34,9 @@ from ..conftest import DEVICE
 from .samples import samples
 
 # FIXME: "HHe" is completely off
-slist = ["H", "H2", "LiH", "H2O", "CH4", "SiH4"]
-slist_large = ["LYS_xao"]
+slist = ["LiH"]
+slist_more = ["H", "H2", "H2O", "CH4", "SiH4"]
+slist_large = ["PbH4-BiH3", "MB16_43_01", "LYS_xao"]
 
 opts = {
     "maxiter": 100,
@@ -83,7 +84,16 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
 @pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", ["PbH4-BiH3", "MB16_43_01", "LYS_xao"])
+@pytest.mark.parametrize("name", slist_more)
+def test_single_more(dtype: torch.dtype, name: str) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+    atol, rtol = 10, 1e-3
+    single(name, dd=dd, atol=atol, rtol=rtol)
+
+
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", slist_large)
 def test_single_large(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
     atol, rtol = 10, 1e-3

@@ -27,12 +27,11 @@ import logging
 
 import torch
 
-from dxtb import IndexHelper
+from dxtb import IndexHelper, labels
 from dxtb._src.constants import defaults, labels
 from dxtb._src.param import Param
 from dxtb._src.typing import Any, Tensor
 
-from . import levels
 from .base import IntDriver, IntegralContainer
 from .types import Dipole, HCore, Overlap, Quadrupole
 
@@ -216,7 +215,7 @@ class Integrals(IntegralContainer):
         # move integral to the correct device...
         if self.force_cpu_for_libcint is True:
             # ... but only if no other multipole integrals are required
-            if self._intlevel <= levels.INTLEVEL_HCORE:
+            if self._intlevel <= labels.INTLEVEL_HCORE:
                 self.overlap.integral = self.overlap.integral.to(device=self.device)
 
                 # FIXME: The matrix has to be moved explicitly, because when
@@ -301,7 +300,7 @@ class Integrals(IntegralContainer):
 
         # move integral to the correct device, but only if no other multipole
         # integrals are required
-        if self.force_cpu_for_libcint and self._intlevel <= levels.INTLEVEL_DIPOLE:
+        if self.force_cpu_for_libcint and self._intlevel <= labels.INTLEVEL_DIPOLE:
             self.dipole.integral = self.dipole.integral.to(device=self.device)
             self.dipole.integral.matrix = self.dipole.integral.matrix.to(
                 device=self.device
@@ -389,7 +388,7 @@ class Integrals(IntegralContainer):
 
         # move integral to the correct device, but only if no other multipole
         # integrals are required
-        if self.force_cpu_for_libcint and self._intlevel <= levels.INTLEVEL_QUADRUPOLE:
+        if self.force_cpu_for_libcint and self._intlevel <= labels.INTLEVEL_QUADRUPOLE:
             self.overlap.integral = self.overlap.integral.to(self.device)
             self.overlap.integral.matrix = self.overlap.integral.matrix.to(self.device)
 
@@ -448,7 +447,7 @@ class Integrals(IntegralContainer):
 
             if name != "hcore":
                 family_integral = cls.integral.family  # type: ignore
-                family_driver = self.driver.family
+                family_driver = self.driver.family  # type: ignore
                 if family_integral != family_driver:
                     raise RuntimeError(
                         f"The '{cls.integral.label}' integral implementation "
