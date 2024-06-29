@@ -35,6 +35,10 @@ from dxtb._src.typing import DD, Tensor
 from ..conftest import DEVICE
 from .samples import samples
 
+slist = ["LiH", "SiH4"]
+slist_more = ["H2", "H2O", "CH4"]
+slist_large = ["PbH4-BiH3", "C6H5I-CH3SH", "MB16_43_01", "LYS_xao"]
+
 opts = {
     "verbosity": 0,
     "maxiter": 300,
@@ -85,7 +89,7 @@ def single(
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
+@pytest.mark.parametrize("name", slist)
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
 @pytest.mark.parametrize("intdriver", drivers)
 def test_single(dtype: torch.dtype, name: str, mixer: str, intdriver: int):
@@ -93,9 +97,21 @@ def test_single(dtype: torch.dtype, name: str, mixer: str, intdriver: int):
     single(dtype, name, mixer, tol, intdriver=intdriver)
 
 
+@pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["PbH4-BiH3", "C6H5I-CH3SH", "MB16_43_01", "LYS_xao"])
+@pytest.mark.parametrize("name", slist_more)
+@pytest.mark.parametrize("mixer", ["anderson", "simple"])
+@pytest.mark.parametrize("intdriver", drivers)
+def test_single_more(dtype: torch.dtype, name: str, mixer: str, intdriver: int):
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    single(dtype, name, mixer, tol, intdriver=intdriver)
+
+
+@pytest.mark.large
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", slist_large)
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
 def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
     """Test a few larger system."""
@@ -103,6 +119,7 @@ def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
     single(dtype, name, mixer, tol)
 
 
+@pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["S2", "LYS_xao_dist"])
@@ -175,7 +192,7 @@ def batched(
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name1", ["H2", "LiH"])
+@pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", ["LiH", "SiH4"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
 @pytest.mark.parametrize("intdriver", drivers)

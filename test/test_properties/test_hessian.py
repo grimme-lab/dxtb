@@ -33,8 +33,10 @@ from dxtb._src.typing import DD, Tensor
 from ..conftest import DEVICE
 from .samples import samples
 
-slist = ["H", "LiH", "HHe", "H2O", "CH4", "SiH4"]
-slist_large = ["PbH4-BiH3"]  # "MB16_43_01", "LYS_xao"
+slist = ["LiH"]
+slist_more = ["H", "HHe", "H2O", "CH4", "SiH4"]
+slist_large = ["PbH4-BiH3"]
+# "MB16_43_01", "LYS_xao"
 
 opts = {
     "maxiter": 100,
@@ -188,6 +190,14 @@ def execute(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist)
 def test_single(dtype: torch.dtype, name: str) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+    single(name, dd=dd)
+
+
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", slist_more)
+def test_single_more(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
     single(name, dd=dd)
 

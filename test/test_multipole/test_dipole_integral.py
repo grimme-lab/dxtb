@@ -45,7 +45,8 @@ except ImportError:
 from ..conftest import DEVICE
 from .samples import samples
 
-sample_list = ["H2", "LiH", "Li2", "H2O", "S", "SiH4", "MB16_43_01", "C60"]
+slist = ["H2", "LiH", "Li2", "H2O", "S"]
+slist_large = ["SiH4", "MB16_43_01", "C60"]
 
 
 def snorm(overlap: Tensor) -> Tensor:
@@ -54,8 +55,20 @@ def snorm(overlap: Tensor) -> Tensor:
 
 @pytest.mark.skipif(M is False, reason="PySCF not installed")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", sample_list)
+@pytest.mark.parametrize("name", slist)
 def test_single(dtype: torch.dtype, name: str) -> None:
+    run_single(dtype, name)
+
+
+@pytest.mark.large
+@pytest.mark.skipif(M is False, reason="PySCF not installed")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", slist_large)
+def test_large(dtype: torch.dtype, name: str) -> None:
+    run_single(dtype, name)
+
+
+def run_single(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps) * 1e-2
 

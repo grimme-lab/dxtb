@@ -34,7 +34,8 @@ from dxtb._src.typing import DD, Tensor
 from ..conftest import DEVICE
 from .samples import samples
 
-slist = ["H", "LiH", "HHe", "H2O"]
+slist = ["LiH"]
+slist_more = ["H", "H2O"]
 # FIXME: Larger systems fail for modes
 # slist = ["H", "LiH", "HHe", "H2O", "CH4", "SiH4", "PbH4-BiH3"]
 
@@ -162,6 +163,14 @@ def execute(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist)
 def test_single(dtype: torch.dtype, name: str) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+    single(name, dd=dd)
+
+
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", slist_more)
+def test_single_more(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
     single(name, dd=dd)
 

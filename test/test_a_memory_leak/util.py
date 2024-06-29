@@ -39,18 +39,12 @@ def garbage_collect() -> None:
         torch.cuda.empty_cache()
 
 
-def _tensors_from_gc(gpu_only=False) -> Generator[Tensor, None, None]:
+def _tensors_from_gc() -> Generator[Tensor, None, None]:
+    # return [obj for obj in gc.get_objects() if isinstance(obj, Tensor)]
     for obj in gc.get_objects():
         try:
-            if torch.is_tensor(obj):
-                tensor = obj
-            elif hasattr(obj, "data") and torch.is_tensor(obj.data):
-                tensor = obj.data
-            else:
-                continue
-
-            if tensor.is_cuda or not gpu_only:
-                yield tensor
+            if isinstance(obj, Tensor):
+                yield obj
         except Exception:  # nosec B112 pylint: disable=broad-exception-caught
             continue
 

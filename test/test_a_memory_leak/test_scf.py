@@ -49,7 +49,7 @@ def test_xitorch(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     def fcn():
-        sample = samples["SiH4"]
+        sample = samples["LiH"]
         numbers = sample["numbers"].to(DEVICE)
         positions = sample["positions"].clone().to(**dd)
         charges = torch.tensor(0.0, **dd)

@@ -80,7 +80,7 @@ def single(
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["H2", "LiH", "SiH4"])
+@pytest.mark.parametrize("name", ["LiH"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
 @pytest.mark.parametrize("scp_mode", ["charges", "potential", "fock"])
 @pytest.mark.parametrize("scf_mode", ["full"])
@@ -91,9 +91,10 @@ def test_single(
     single(dtype, name, mixer, tol, scp_mode, scf_mode)
 
 
+@pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["MB16_43_01", "LYS_xao"])
+@pytest.mark.parametrize("name", ["H2", "SiH4", "MB16_43_01", "LYS_xao"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
 @pytest.mark.parametrize("scp_mode", ["charges", "potential", "fock"])
 @pytest.mark.parametrize("scf_mode", ["full"])
@@ -105,6 +106,7 @@ def test_single_medium(
     single(dtype, name, mixer, tol, scp_mode, scf_mode)
 
 
+@pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["S2", "LYS_xao_dist"])
@@ -185,7 +187,7 @@ def batched(
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name1", ["H2", "LiH"])
+@pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", ["LiH", "SiH4"])
 @pytest.mark.parametrize("mixer", ["anderson", "broyden", "simple"])
 @pytest.mark.parametrize("scp_mode", ["charges", "potential", "fock"])

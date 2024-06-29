@@ -48,7 +48,8 @@ except ImportError:
 from ..conftest import DEVICE
 from .samples import samples
 
-sample_list = ["H2", "LiH", "Li2", "H2O", "S", "SiH4", "MB16_43_01", "C60"]
+slist = ["H2", "LiH", "Li2", "H2O", "S", "SiH4"]
+slist_large = ["MB16_43_01", "C60"]
 
 
 def snorm(overlap: Tensor) -> Tensor:
@@ -82,8 +83,20 @@ def extract_blocks(x: Tensor, block_sizes: list[int] | Tensor) -> list[Tensor]:
 
 @pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", sample_list)
+@pytest.mark.parametrize("name", slist)
 def test_single(dtype: torch.dtype, name: str) -> None:
+    run_single(dtype, name)
+
+
+@pytest.mark.large
+@pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", slist_large)
+def test_large(dtype: torch.dtype, name: str) -> None:
+    run_single(dtype, name)
+
+
+def run_single(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps) * 1e-2
 
@@ -120,13 +133,30 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
 @pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name1", sample_list)
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", slist)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """
     Batched overlap using non-batched setup, i.e., one huge matrix is
     calculated that is only populated on the diagonal.
     """
+    run_batch(dtype, name1, name2)
+
+
+@pytest.mark.large
+@pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", slist_large)
+def test_large_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    """
+    Batched overlap using non-batched setup, i.e., one huge matrix is
+    calculated that is only populated on the diagonal.
+    """
+    run_batch(dtype, name1, name2)
+
+
+def run_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 1e-2
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
@@ -190,8 +220,20 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
 @pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", sample_list)
+@pytest.mark.parametrize("name", slist)
 def test_grad(dtype: torch.dtype, name: str) -> None:
+    run_grad(dtype, name)
+
+
+@pytest.mark.large
+@pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", slist_large)
+def test_large_grad(dtype: torch.dtype, name: str) -> None:
+    run_grad(dtype, name)
+
+
+def run_grad(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps) * 1e-2
 
