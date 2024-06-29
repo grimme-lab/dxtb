@@ -57,10 +57,13 @@ def test_no_file(
 def test_entrypoint(
     caplog: pytest.LogCaptureFixture, capsys: pytest.CaptureFixture
 ) -> None:
+    # avoid pollution from previous tests
+    caplog.clear()
+
     ret = console_entry_point([str(coordfile), "--verbosity", "0"])
     assert ret == 0
 
     out, err = capsys.readouterr()
     assert err == ""
     assert out == ""
-    # assert len(caplog.text) == 0
+    assert len(caplog.text) == 0
