@@ -35,7 +35,7 @@ from dxtb._src.param import get_elem_param
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
-from .util import has_memleak_tensor
+from .util import garbage_collect, has_memleak_tensor
 
 sample_list = ["H2O", "SiH4", "MB16_43_01"]
 
@@ -90,9 +90,19 @@ def test_single(dtype: torch.dtype, name: str) -> None:
         # known reference cycle for create_graph=True
         energy.backward()
 
+        del numbers
+        del positions
+        del ihelp
+        del rep
+        del cache
+        del energy
+        del arep
+        del zeff
+        del kexp
+
     # run garbage collector to avoid leaks across other tests
-    gc.collect()
+    garbage_collect()
     leak = has_memleak_tensor(fcn)
-    gc.collect()
+    garbage_collect()
 
     assert not leak, "Memory leak detected"

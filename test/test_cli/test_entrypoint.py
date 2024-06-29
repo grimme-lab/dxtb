@@ -20,7 +20,7 @@ Test for the actual command line entrypint function.
 
 import pytest
 
-from dxtb import __version__
+from dxtb import OutputHandler, __version__
 from dxtb._src.cli import console_entry_point
 
 from ..utils import coordfile
@@ -58,7 +58,7 @@ def test_entrypoint(
     caplog: pytest.LogCaptureFixture, capsys: pytest.CaptureFixture
 ) -> None:
     # avoid pollution from previous tests
-    caplog.clear()
+    # OutputHandler.clear_warnings()
 
     ret = console_entry_point([str(coordfile), "--verbosity", "0"])
     assert ret == 0

@@ -35,11 +35,11 @@ from dxtb.labels import INTLEVEL_DIPOLE
 from ..conftest import DEVICE
 from .samples import samples
 
-slist = ["H", "LiH", "H2O", "CH4", "PbH4-BiH3"]
-slist_large = ["MB16_43_01"]
+slist = ["H", "LiH", "H2O"]
+slist_large = ["CH4", "PbH4-BiH3", "MB16_43_01"]
 
 opts = {
-    "int_level": INTLEVEL_DIPOLE,
+    # "int_level": INTLEVEL_DIPOLE,
     "maxiter": 100,
     "mixer": "anderson",
     "scf_mode": "full",

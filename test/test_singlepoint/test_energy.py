@@ -36,6 +36,9 @@ from dxtb._src.typing import DD
 from ..conftest import DEVICE
 from .samples import samples
 
+slist = ["H2", "H2O", "CH4", "SiH4"]
+slist_large = ["LYS_xao", "C60", "vancoh2", "AD7en+"]
+
 opts = {
     "verbosity": 0,
     "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
@@ -45,7 +48,7 @@ opts = {
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["H2", "H2O", "CH4", "SiH4", "LYS_xao"])
+@pytest.mark.parametrize("name", slist)
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
 def test_single(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
@@ -79,7 +82,7 @@ def test_single(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 @pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["C60", "vancoh2", "AD7en+"])
+@pytest.mark.parametrize("name", slist_large)
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
 def test_single_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
@@ -114,9 +117,58 @@ def test_single_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["H2", "H2O"])
 @pytest.mark.parametrize("name2", ["H2", "CH4"])
-@pytest.mark.parametrize("name3", ["H2", "SiH4", "LYS_xao"])
+@pytest.mark.parametrize("name3", ["H2", "SiH4"])
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
 def test_batch(
+    dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
+) -> None:
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    numbers, positions, charge = [], [], []
+    for name in [name1, name2, name3]:
+        base = Path(Path(__file__).parent, "mols", name)
+
+        nums, pos = read_coord(Path(base, "coord"))
+        chrg = read_chrg(Path(base, ".CHRG"))
+
+        numbers.append(torch.tensor(nums, dtype=torch.long, device=DEVICE))
+        positions.append(torch.tensor(pos, **dd))
+        charge.append(torch.tensor(chrg, **dd))
+
+    numbers = pack(numbers)
+    positions = pack(positions)
+    charge = pack(charge)
+    ref = pack(
+        [
+            samples[name1]["etot"].to(**dd),
+            samples[name2]["etot"].to(**dd),
+            samples[name3]["etot"].to(**dd),
+        ]
+    )
+
+    options = dict(
+        opts,
+        **{
+            "scf_mode": scf_mode,
+            "mixer": "anderson" if scf_mode == "full" else "broyden",
+        },
+    )
+    calc = Calculator(numbers, par, opts=options, **dd)
+
+    result = calc.singlepoint(positions, charge)
+    res = result.total.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
+
+
+@pytest.mark.large
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name1", ["H2"])
+@pytest.mark.parametrize("name2", ["CH4"])
+@pytest.mark.parametrize("name3", ["LYS_xao"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+def test_batch_large(
     dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10

@@ -30,7 +30,7 @@ from tad_mctc.batch import pack
 from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.constants import labels
-from dxtb._src.typing import DD
+from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -187,7 +187,7 @@ def test_batch(
 
 
 def batched_unconverged(
-    ref,
+    ref: Tensor,
     dtype: torch.dtype,
     name1: str,
     name2: str,

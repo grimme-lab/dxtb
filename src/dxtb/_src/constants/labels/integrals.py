@@ -21,7 +21,26 @@ Labels: Integrals
 All labels related to integrals and their computation.
 """
 
-# integral driver
+__all__ = [
+    "INTDRIVER_LIBCINT",
+    "INTDRIVER_LIBCINT_STRS",
+    "INTDRIVER_AUTOGRAD",
+    "INTDRIVER_AUTOGRAD_STRS",
+    "INTDRIVER_ANALYTICAL",
+    "INTDRIVER_ANALYTICAL_STRS",
+    "INTDRIVER_LEGACY",
+    "INTDRIVER_LEGACY_STRS",
+    "INTDRIVER_MAP",
+    #
+    "INTLEVEL_NONE",
+    "INTLEVEL_OVERLAP",
+    "INTLEVEL_HCORE",
+    "INTLEVEL_DIPOLE",
+    "INTLEVEL_QUADRUPOLE",
+]
+
+# integral drivers
+
 INTDRIVER_LIBCINT = 0
 """Integer code for LIBCINT driver."""
 
@@ -57,8 +76,11 @@ INTLEVEL_NONE = 0
 INTLEVEL_OVERLAP = 1
 """Overlap integrals."""
 
-INTLEVEL_DIPOLE = 2
+INTLEVEL_HCORE = 2
+"""Core Hamiltonian integrals."""
+
+INTLEVEL_DIPOLE = 3
 """Dipole integrals."""
 
-INTLEVEL_QUADRUPOLE = 3
+INTLEVEL_QUADRUPOLE = 4
 """Quadrupole integrals."""

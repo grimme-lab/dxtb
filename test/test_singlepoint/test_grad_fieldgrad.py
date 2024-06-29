@@ -35,6 +35,7 @@ from ..conftest import DEVICE
 from .samples import samples
 
 opts = {
+    "int_level": labels.INTLEVEL_DIPOLE,
     "f_atol": 1.0e-8,
     "x_atol": 1.0e-8,
     "maxiter": 100,

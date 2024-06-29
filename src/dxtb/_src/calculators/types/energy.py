@@ -31,6 +31,7 @@ from tad_mctc.io.checks import content_checks, shape_checks
 
 from dxtb import OutputHandler
 from dxtb import integrals as ints
+from dxtb import labels
 from dxtb._src import scf
 from dxtb._src.constants import defaults
 from dxtb._src.integral.container import IntegralMatrices
@@ -171,7 +172,7 @@ class EnergyCalculator(BaseCalculator):
             self.integrals.overlap.to_pt(write_overlap)
 
         # dipole integral
-        if self.opts.ints.level >= ints.levels.INTLEVEL_DIPOLE:
+        if self.opts.ints.level >= labels.INTLEVEL_DIPOLE:
             OutputHandler.write_stdout_nf(" - Dipole            ... ", v=3)
             timer.start("Dipole Integral", parent_uid="Integrals")
             intmats.dipole = self.integrals.build_dipole(positions)
@@ -184,7 +185,7 @@ class EnergyCalculator(BaseCalculator):
                 self.integrals.dipole.to_pt(write_dipole)
 
         # quadrupole integral
-        if self.opts.ints.level >= ints.levels.INTLEVEL_QUADRUPOLE:
+        if self.opts.ints.level >= labels.INTLEVEL_QUADRUPOLE:
             OutputHandler.write_stdout_nf(" - Quadrupole        ... ", v=3)
             timer.start("Quadrupole Integral", parent_uid="Integrals")
             intmats.quadrupole = self.integrals.build_quadrupole(positions)
@@ -203,7 +204,7 @@ class EnergyCalculator(BaseCalculator):
         # To avoid unnecessary data transfer, the core Hamiltonian should
         # be last. Internally, the overlap integral is only transfered back
         # to GPU when all multipole integrals are calculated.
-        if self.opts.ints.level >= ints.levels.INTLEVEL_HCORE:
+        if self.opts.ints.level >= labels.INTLEVEL_HCORE:
             OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ", v=3)
             timer.start("Core Hamiltonian", parent_uid="Integrals")
             intmats.hcore = self.integrals.build_hcore(positions)

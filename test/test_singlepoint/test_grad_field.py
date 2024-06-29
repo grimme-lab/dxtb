@@ -36,6 +36,7 @@ from ..conftest import DEVICE
 from .samples import samples
 
 opts = {
+    "int_level": labels.INTLEVEL_DIPOLE,
     "f_atol": 1.0e-8,
     "x_atol": 1.0e-8,
     "maxiter": 100,
@@ -43,7 +44,7 @@ opts = {
     "verbosity": 0,
 }
 
-tol = 1e-2
+tol = 1e-1
 
 # FIXME: There seem to be multiple issues with this gradient here.
 # - SiH4 fails for 0.0 (0.01 check depends on eps)

@@ -24,12 +24,35 @@ from __future__ import annotations
 
 import gc
 
+import torch
+
 from dxtb.__version__ import __tversion__
-from dxtb._src.typing import Callable, Literal, Tensor, overload
+from dxtb._src.typing import Callable, Generator, Literal, Tensor, overload
 
 
-def _tensors_from_gc() -> list:
-    return [obj for obj in gc.get_objects() if isinstance(obj, Tensor)]
+def garbage_collect() -> None:
+    """
+    Run the garbage collector.
+    """
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
+def _tensors_from_gc(gpu_only=False) -> Generator[Tensor, None, None]:
+    for obj in gc.get_objects():
+        try:
+            if torch.is_tensor(obj):
+                tensor = obj
+            elif hasattr(obj, "data") and torch.is_tensor(obj.data):
+                tensor = obj.data
+            else:
+                continue
+
+            if tensor.is_cuda or not gpu_only:
+                yield tensor
+        except Exception:  # nosec B112 pylint: disable=broad-exception-caught
+            continue
 
 
 @overload
@@ -57,12 +80,12 @@ def _get_tensor_memory(
     """
 
     # obtaining all the tensor objects from the garbage collector
-    tensor_objs = _tensors_from_gc()
 
     # iterate each tensor objects uniquely and calculate the total storage
     visited_data = set()
     total_mem = 0.0
-    for tensor in tensor_objs:
+    count = 0
+    for tensor in _tensors_from_gc():
         if tensor.is_sparse:
             continue
 
@@ -72,12 +95,7 @@ def _get_tensor_memory(
             storage = tensor.untyped_storage()
 
         # check if it has been visited
-        if __tversion__ < (2, 0, 0):
-            storage = tensor.storage()
-        else:
-            storage = tensor.untyped_storage()
-
-        data_ptr = storage.data_ptr()  # type: ignore
+        data_ptr = storage.data_ptr()
         if data_ptr in visited_data:
             continue
         visited_data.add(data_ptr)
@@ -88,9 +106,10 @@ def _get_tensor_memory(
         mem = numel * elmt_size / (1024 * 1024)  # in MiB
 
         total_mem += mem
+        count += 1
 
     if return_number_tensors is True:
-        return total_mem, len(tensor_objs)
+        return total_mem, count
     return total_mem
 
 
