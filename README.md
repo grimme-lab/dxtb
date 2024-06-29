@@ -31,9 +31,9 @@
   <a href="https://results.pre-commit.ci/latest/github/grimme-lab/dxtb/main">
     <img src="https://results.pre-commit.ci/badge/github/grimme-lab/dxtb/main.svg" alt="pre-commit.ci Status"/>
   </a>
-  <!-- <a href="https://codecov.io/gh/grimme-lab/dxtb">
-    <img src="https://codecov.io/gh/grimme-lab/dxtb/branch/main/graph/badge.svg?token=" alt="Coverage"/>
-  </a> -->
+  <a href="https://codecov.io/gh/grimme-lab/dxtb">
+    <img src="https://codecov.io/gh/grimme-lab/dxtb/branch/main/graph/badge.svg?token=O18EZ1CNE3" alt="Coverage"/>
+  </a>
   <!---->
   <br>
   <!---->
