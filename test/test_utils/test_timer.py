@@ -20,10 +20,11 @@ Test the `Timer` and Timer collections (`Timers`).
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 
-from dxtb._src.timing.timer import TimerError, _Timers, _sync
-from unittest.mock import patch
+from dxtb._src.timing.timer import TimerError, _sync, _Timers
 
 
 def test_fail() -> None:

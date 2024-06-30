@@ -23,8 +23,8 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.integrals import types as inttypes
 from dxtb import GFN1_XTB, GFN2_XTB, IndexHelper
+from dxtb.integrals import types as inttypes
 
 numbers = torch.tensor([14, 1, 1, 1, 1])
 

@@ -27,6 +27,7 @@ import numpy as np
 import pytest
 import torch
 from tad_mctc.io import read
+
 from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.constants import labels

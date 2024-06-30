@@ -49,7 +49,7 @@ from __future__ import annotations
 
 import importlib
 
-from dxtb._src.typing import Any, Callable, Sequence, Mapping
+from dxtb._src.typing import Any, Callable, Mapping, Sequence
 
 __all__ = ["attach_var", "attach_vars"]
 

@@ -20,12 +20,11 @@ Test the lazy loaders.
 
 from __future__ import annotations
 
-import pytest
-from unittest.mock import patch
-from dxtb._src.loader.lazy import attach_var, attach_vars
+from unittest.mock import MagicMock, patch
 
 import pytest
-from unittest.mock import patch, MagicMock
+
+from dxtb._src.loader.lazy import attach_var, attach_vars
 
 
 def test_attach_var_imports_variables():

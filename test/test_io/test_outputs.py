@@ -19,17 +19,17 @@ Test output.
 """
 from __future__ import annotations
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from dxtb import __version__
 from dxtb._src.io.output import (
+    get_mkl_num_threads,
+    get_omp_num_threads,
     get_python_version,
     get_pytorch_version_short,
     get_short_version,
-    get_mkl_num_threads,
-    get_omp_num_threads,
     get_system_info,
 )
 

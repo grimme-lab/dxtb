@@ -46,8 +46,8 @@ def test_properties() -> None:
 
 
 def test_fail() -> None:
-    from dxtb.calculators import EnergyCalculator
     from dxtb import GFN1_XTB
+    from dxtb.calculators import EnergyCalculator
 
     numbers = torch.tensor([1])
     positions = torch.tensor([[0.0, 0.0, 0.0]])

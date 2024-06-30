@@ -23,8 +23,8 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb.integrals import wrappers
 from dxtb import GFN1_XTB, GFN2_XTB, Param
+from dxtb.integrals import wrappers
 
 numbers = torch.tensor([14, 1, 1, 1, 1])
 positions = torch.tensor(

@@ -24,7 +24,6 @@ from pathlib import Path
 
 import pytest
 import torch
-
 from tad_mctc.io import read
 
 from dxtb import GFN1_XTB as par

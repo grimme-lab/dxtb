@@ -24,8 +24,9 @@ import os
 import platform
 
 import torch
-from dxtb._src.typing import Any
+
 from dxtb.__version__ import __tversion__
+from dxtb._src.typing import Any
 
 __all__ = [
     "get_mkl_num_threads",

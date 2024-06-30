@@ -20,10 +20,11 @@ Test the lazy loaders.
 
 from __future__ import annotations
 
-from dxtb._src.loader.lazy import LazyLoaderParam
-import pytest
-import pytest
 from pathlib import Path
+
+import pytest
+
+from dxtb._src.loader.lazy import LazyLoaderParam
 
 
 def test_lazy_loader_param_initialization() -> None:
