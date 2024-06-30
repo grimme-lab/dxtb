@@ -27,11 +27,11 @@ import pytest
 import torch
 from tad_mctc.autograd import jacrev
 from tad_mctc.convert import reshape_fortran
+from tad_mctc.io import read
 
 from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.constants import labels
-from dxtb._src.io import read_chrg, read_coord
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
@@ -59,8 +59,8 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     # read from file
     base = Path(Path(__file__).parent, "mols", name)
-    numbers, positions = read_coord(Path(base, "coord"))
-    charge = read_chrg(Path(base, ".CHRG"))
+    numbers, positions = read.read_from_path(Path(base, "coord"))
+    charge = read.read_chrg_from_path(Path(base, ".CHRG"))
 
     # convert to tensors
     numbers = torch.tensor(numbers, dtype=torch.long, device=DEVICE)

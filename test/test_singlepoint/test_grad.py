@@ -26,11 +26,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 import torch
-
+from tad_mctc.io import read
 from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.constants import labels
-from dxtb._src.io import read_chrg, read_coord
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
@@ -91,8 +90,8 @@ def analytical(
 
     # read from file
     base = Path(Path(__file__).parent, "mols", name)
-    numbers, positions = read_coord(Path(base, "coord"))
-    charge = read_chrg(Path(base, ".CHRG"))
+    numbers, positions = read.read_from_path(Path(base, "coord"))
+    charge = read.read_chrg_from_path(Path(base, ".CHRG"))
 
     # convert to tensors
     numbers = torch.tensor(numbers, dtype=torch.long, device=DEVICE)
@@ -127,8 +126,8 @@ def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 
     # read from file
     base = Path(Path(__file__).parent, "mols", name)
-    numbers, positions = read_coord(Path(base, "coord"))
-    charge = read_chrg(Path(base, ".CHRG"))
+    numbers, positions = read.read_from_path(Path(base, "coord"))
+    charge = read.read_chrg_from_path(Path(base, ".CHRG"))
 
     # convert to tensors
     numbers = torch.tensor(numbers, dtype=torch.long, device=DEVICE)
@@ -173,8 +172,8 @@ def test_num(name: str, scf_mode: str) -> None:
 
     # read from file
     base = Path(Path(__file__).parent, "mols", name)
-    numbers, positions = read_coord(Path(base, "coord"))
-    charge = read_chrg(Path(base, ".CHRG"))
+    numbers, positions = read.read_from_path(Path(base, "coord"))
+    charge = read.read_chrg_from_path(Path(base, ".CHRG"))
 
     # convert to tensors
     numbers = torch.tensor(numbers, dtype=torch.long, device=DEVICE)

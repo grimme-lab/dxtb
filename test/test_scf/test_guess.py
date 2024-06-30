@@ -23,7 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb import IndexHelper
+from dxtb import IndexHelper, labels
 from dxtb._src.scf import guess
 
 from ..conftest import DEVICE
@@ -44,6 +44,9 @@ def test_fail() -> None:
     with pytest.raises(ValueError):
         guess.get_guess(numbers, positions, charge, ihelp, name="eht")
 
+    with pytest.raises(ValueError):
+        guess.get_guess(numbers, positions, charge, ihelp, name=1000)
+
     # charges change because IndexHelper is broken
     with pytest.raises(RuntimeError):
         ih = IndexHelper.from_numbers_angular(numbers, {1: [0, 0], 6: [0, 1]})
@@ -51,8 +54,9 @@ def test_fail() -> None:
         guess.get_guess(numbers, positions, charge, ih)
 
 
-def test_eeq() -> None:
-    c = guess.get_guess(numbers, positions, charge, ihelp)
+@pytest.mark.parametrize("name", ["eeq", labels.GUESS_EEQ])
+def test_eeq(name: str | int) -> None:
+    c = guess.get_guess(numbers, positions, charge, ihelp, name=name)
     ref = torch.tensor(
         [
             -0.11593066900969,
@@ -67,8 +71,9 @@ def test_eeq() -> None:
     assert pytest.approx(ref.cpu(), abs=1e-5) == c.cpu()
 
 
-def test_sad() -> None:
-    c = guess.get_guess(numbers, positions, charge, ihelp, name="sad")
+@pytest.mark.parametrize("name", ["sad", labels.GUESS_SAD])
+def test_sad(name: str | int) -> None:
+    c = guess.get_guess(numbers, positions, charge, ihelp, name=name)
     size = int(ihelp.orbitals_per_shell.sum().item())
 
     assert pytest.approx(torch.zeros(size).cpu()) == c.cpu()

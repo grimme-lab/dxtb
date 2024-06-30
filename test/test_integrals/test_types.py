@@ -15,26 +15,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Example for xitorch's inability to be used together with functorch.
+Test overlap build from integral container.
 """
-from pathlib import Path
 
+from __future__ import annotations
+
+import pytest
 import torch
-from tad_mctc.io import read
 
-import dxtb
-from dxtb.typing import DD
+from dxtb.integrals import types as inttypes
+from dxtb import GFN1_XTB, GFN2_XTB, IndexHelper
 
-dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
+numbers = torch.tensor([14, 1, 1, 1, 1])
 
-f = Path(__file__).parent / "molecules" / "lih.xyz"
-numbers, positions = read.read_from_path(f, **dd)
-charge = read.read_chrg_from_path(f, **dd)
 
-opts = {"verbosity": 3, "scf_mode": "nonpure"}
+def test_fail() -> None:
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
-######################################################################
+    with pytest.raises(ValueError):
+        par1 = GFN1_XTB.model_copy(deep=True)
+        assert par1.meta is not None
 
-calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, opts=opts, **dd)
-pos = positions.clone().requires_grad_(True)
-hess = calc.hessian(pos, chrg=charge, use_functorch=True)
+        par1.meta.name = "fail"
+        inttypes.HCore(numbers, par1, ihelp)

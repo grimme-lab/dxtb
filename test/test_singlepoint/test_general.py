@@ -25,19 +25,15 @@ from pathlib import Path
 import pytest
 import torch
 
+from tad_mctc.io import read
+
 from dxtb import GFN1_XTB as par
 from dxtb import Calculator
-from dxtb._src.io import read_chrg, read_coord
 from dxtb._src.timing import timer
 
 from ..conftest import DEVICE
 
 opts = {"verbosity": 0, "int_level": 4}
-
-
-def test_fail() -> None:
-    with pytest.raises(FileNotFoundError):
-        read_coord(Path("non-existing-coord-file"))
 
 
 def test_uhf_fail() -> None:
@@ -49,8 +45,8 @@ def test_uhf_fail() -> None:
 
     base = Path(Path(__file__).parent, "mols", "H")
 
-    numbers, positions = read_coord(Path(base, "coord"))
-    charge = read_chrg(Path(base, ".CHRG"))
+    numbers, positions = read.read_from_path(Path(base, "coord"))
+    charge = read.read_chrg_from_path(Path(base, ".CHRG"))
 
     numbers = torch.tensor(numbers, dtype=torch.long)
     positions = torch.tensor(positions)

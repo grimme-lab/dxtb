@@ -15,36 +15,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Logging.
+Test logging utils.
 """
-
 from __future__ import annotations
 
-import logging
-
-from ..constants import defaults
-
-__all__ = ["LOG_LEVELS", "DEFAULT_LOG_CONFIG", "get_logging_config"]
+from dxtb._src.io.logutils import DEFAULT_LOG_CONFIG, get_logging_config
 
 
-LOG_LEVELS = {
-    "critical": logging.CRITICAL,
-    "error": logging.ERROR,
-    "warn": logging.WARNING,
-    "warning": logging.WARNING,
-    "info": logging.INFO,
-    "debug": logging.DEBUG,
-}
+def test_config():
+    config = get_logging_config()
+    assert config["level"] == DEFAULT_LOG_CONFIG["level"]
+    assert config["format"] == DEFAULT_LOG_CONFIG["format"]
+    assert config["datefmt"] == DEFAULT_LOG_CONFIG["datefmt"]
 
-
-DEFAULT_LOG_CONFIG = {
-    "level": LOG_LEVELS[defaults.LOG_LEVEL],
-    "format": "%(asctime)s %(levelname)s %(name)s::%(funcName)s -> %(message)s",
-    "datefmt": "%Y-%m-%d %H:%M:%S",
-}
-
-
-def get_logging_config(**kwargs) -> dict:
-    d = DEFAULT_LOG_CONFIG.copy()
-    d.update(kwargs)
-    return d
+    config = get_logging_config(level="debug")
+    assert config["level"] == "debug"

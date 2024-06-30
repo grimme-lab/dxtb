@@ -43,3 +43,21 @@ def test_properties() -> None:
     assert scf.shape == d.shape
     assert scf.device == d.device
     assert scf.dtype == d.dtype
+
+
+def test_fail() -> None:
+    from dxtb.calculators import EnergyCalculator
+    from dxtb import GFN1_XTB
+
+    numbers = torch.tensor([1])
+    positions = torch.tensor([[0.0, 0.0, 0.0]])
+
+    calc = EnergyCalculator(numbers, GFN1_XTB)
+
+    with pytest.raises(ValueError):
+        calc.opts.scf.scf_mode = -1
+        calc.singlepoint(positions)
+
+    with pytest.raises(ValueError):
+        calc.opts.scf.scf_mode = "fail"  # type: ignore
+        calc.singlepoint(positions)

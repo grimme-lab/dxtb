@@ -91,6 +91,12 @@ def solve(
     n0, occupation = get_refocc(refocc, chrg, spin, ihelp)
     charges = get_guess(numbers, positions, chrg, ihelp, config.guess)
 
+    if not isinstance(config.scf_mode, int):
+        raise ValueError(
+            "SCF mode must be an integer within `solve`. This can only "
+            "happen if you explicitly change the configuration object."
+        )
+
     if config.scf_mode == labels.SCF_MODE_IMPLICIT:
         # pylint: disable=import-outside-toplevel
         from .pure import scf_wrapper
@@ -119,8 +125,7 @@ def solve(
         # pylint: disable=import-outside-toplevel
         from .unrolling import SelfConsistentFieldSingleShot as SCF
     else:
-        name = labels.SCF_MODE_MAP[config.scf_mode]
-        raise ValueError(f"Unknown SCF mode '{name}' (input name can vary).")
+        raise ValueError(f"Unknown SCF mode '{config.scf_mode}'.")
 
     return SCF(
         interactions,
