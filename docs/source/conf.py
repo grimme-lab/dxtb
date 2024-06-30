@@ -47,8 +47,8 @@ extensions = [
 
 html_theme = "sphinx_book_theme"
 html_title = project
-html_logo = "_static/dxtb.svg"
-html_favicon = "_static/dxtb-favicon.svg"
+html_logo = "_static/dxtb.png"
+html_favicon = "_static/dxtb-favicon.png"
 
 html_theme_options = {
     "navigation_with_keys": False,
@@ -81,6 +81,7 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "tad_dftd3": ("https://tad-dftd3.readthedocs.io/en/latest/", None),
     "tad_dftd4": ("https://tad-dftd4.readthedocs.io/en/latest/", None),
+    "tad_libcint": ("https://tad-libcint.readthedocs.io/en/latest/", None),
     "tad_mctc": ("https://tad-mctc.readthedocs.io/en/latest/", None),
     "tad_multicharge": ("https://tad-multicharge.readthedocs.io/en/latest/", None),
     "torch": ("https://pytorch.org/docs/stable/", None),
@@ -113,7 +114,9 @@ language = "en"
 exclude_patterns = [
     # Sometimes sphinx reads its own outputs as inputs!
     "build/html",
+    "_build/html",
     "build/jupyter_execute",
+    "_build/jupyter_execute",
     "notebooks/README.md",
     "README.md",
     "notebooks/*.md",
