@@ -49,7 +49,7 @@ from __future__ import annotations
 
 import importlib
 
-from dxtb._src.typing import Any, Callable, Sequence
+from dxtb._src.typing import Any, Callable, Mapping, Sequence
 
 __all__ = ["attach_var", "attach_vars"]
 
@@ -117,7 +117,7 @@ def attach_var(package_name: str, varnames: Sequence[str]) -> tuple[
     return __getattr__, __dir__, __all__
 
 
-def attach_vars(module_vars: dict[str, Sequence[str]]) -> tuple[
+def attach_vars(module_vars: Mapping[str, Sequence[str]]) -> tuple[
     Callable[[str], Any],
     Callable[[], list[str]],
     list[str],

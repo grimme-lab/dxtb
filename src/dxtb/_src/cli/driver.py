@@ -108,7 +108,7 @@ class Driver:
         for path in self.base:
             # use charge (or spin) from file or set to zero
             if Path(path, FILES[attr]).is_file():
-                vals.append(io.read_chrg(Path(path, FILES[attr])))
+                vals.append(read.read_chrg_from_path(Path(path, FILES[attr])))
             else:
                 vals.append(0)
 
@@ -176,7 +176,7 @@ class Driver:
             numbers = pack(_n)
             positions = pack(_p)
         else:
-            _n, _p = io.read_structure_from_file(args.file[0], args.filetype)
+            _n, _p = read.read_from_path(args.file[0], args.filetype)
             numbers = torch.tensor(_n, dtype=torch.long, device=dd["device"])
             positions = torch.tensor(_p, **dd)
 

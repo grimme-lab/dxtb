@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Simple integral interface.
+Simple integral interface. Can be helpful for testing.
 """
 from pathlib import Path
 

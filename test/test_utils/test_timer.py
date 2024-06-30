@@ -20,9 +20,11 @@ Test the `Timer` and Timer collections (`Timers`).
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 
-from dxtb._src.timing.timer import TimerError, _Timers
+from dxtb._src.timing.timer import TimerError, _sync, _Timers
 
 
 def test_fail() -> None:
@@ -63,3 +65,21 @@ def test_stopall() -> None:
 
     assert not timer.timers["test"].is_running()
     assert not timer.timers["test2"].is_running()
+
+
+@patch("torch.cuda.synchronize")
+@patch("torch.cuda.is_available", return_value=False)
+def test_sync_false(mocker_avail, mocker_sync) -> None:
+    _sync()
+
+    mocker_avail.assert_called_once()
+    mocker_sync.assert_not_called()
+
+
+@patch("torch.cuda.synchronize")
+@patch("torch.cuda.is_available", return_value=True)
+def test_sync_true(mocker_avail, mocker_sync) -> None:
+    _sync()
+
+    mocker_avail.assert_called_once()
+    mocker_sync.assert_called_once()

@@ -26,6 +26,7 @@ import platform
 import torch
 
 from dxtb.__version__ import __tversion__
+from dxtb._src.typing import Any
 
 __all__ = [
     "get_mkl_num_threads",
@@ -70,7 +71,7 @@ def get_system_info():
     }
 
 
-def get_pytorch_info():
+def get_pytorch_info() -> dict[str, Any]:  # pragma: no cover
     is_cuda = torch.cuda.is_available()
 
     backends = []
@@ -129,7 +130,7 @@ def get_pytorch_info():
     }
 
 
-def print_system_info(punit=print):
+def print_system_info(punit=print) -> None:  # pragma: no cover
     system_info = get_system_info()["System Information"]
     pytorch_info = get_pytorch_info()["PyTorch Information"]
     sep = 17

@@ -26,7 +26,7 @@ __all__ = ["get_header"]
 WIDTH = 70
 
 
-def get_header() -> str:
+def get_header() -> str:  # pragma: no cover
     logo = [
         r"      _      _   _      ",
         r"     | |    | | | |     ",

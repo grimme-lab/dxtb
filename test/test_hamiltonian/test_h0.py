@@ -153,3 +153,56 @@ def test_large_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     run(numbers, positions, GFN1_XTB, ref, dd)
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_no_cn(dtype: torch.dtype) -> None:
+    """Test without CN."""
+    tol = sqrt(torch.finfo(dtype).eps)
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
+    sample = samples["H2"]
+    numbers = sample["numbers"].to(DEVICE)
+    positions = sample["positions"].to(**dd)
+
+    ref = torch.tensor(
+        [
+            [
+                -0.40142945681830,
+                -0.00000000000000,
+                -0.47765679842079,
+                -0.03687145777483,
+            ],
+            [
+                -0.00000000000000,
+                -0.07981592633195,
+                -0.03687145777483,
+                -0.02334876845340,
+            ],
+            [
+                -0.47765679842079,
+                -0.03687145777483,
+                -0.40142945681830,
+                -0.00000000000000,
+            ],
+            [
+                -0.03687145777483,
+                -0.02334876845340,
+                -0.00000000000000,
+                -0.07981592633195,
+            ],
+        ],
+        **dd,
+    )
+
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
+    driver = IntDriver(numbers, GFN1_XTB, ihelp, **dd)
+    overlap = Overlap(**dd)
+    h0 = GFN1Hamiltonian(numbers, GFN1_XTB, ihelp, **dd)
+
+    driver.setup(positions)
+    s = overlap.build(driver)
+
+    h = h0.build(positions, s)
+    assert pytest.approx(h.cpu(), abs=tol) == h.mT.cpu()
+    assert pytest.approx(h.cpu(), abs=tol) == ref.cpu()

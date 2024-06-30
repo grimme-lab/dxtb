@@ -15,12 +15,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Version module for dxtb.
+Test logging utils.
 """
+from __future__ import annotations
 
-from tad_mctc._version import __tversion__
+from dxtb._src.io.logutils import DEFAULT_LOG_CONFIG, get_logging_config
 
-__all__ = ["__version__", "__tversion__"]
 
-__version__ = "0.0.1"
-"""Version of ``dxtb`` in semantic versioning."""
+def test_config():
+    config = get_logging_config()
+    assert config["level"] == DEFAULT_LOG_CONFIG["level"]
+    assert config["format"] == DEFAULT_LOG_CONFIG["format"]
+    assert config["datefmt"] == DEFAULT_LOG_CONFIG["datefmt"]
+
+    config = get_logging_config(level="debug")
+    assert config["level"] == "debug"

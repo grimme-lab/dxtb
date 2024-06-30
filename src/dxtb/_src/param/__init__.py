@@ -54,7 +54,7 @@ formats.
 
 from pydantic import __version__ as pydantic_version
 
-if tuple(map(int, pydantic_version.split("."))) < (2, 0, 0):
+if tuple(map(int, pydantic_version.split("."))) < (2, 0, 0):  # pragma: no cover
     raise RuntimeError(
         "pydantic version outdated: dxtb requires pydantic >=2.0.0 "
         f"(version {pydantic_version} installed)."
