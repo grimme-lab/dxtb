@@ -59,13 +59,8 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     # read from file
     base = Path(Path(__file__).parent, "mols", name)
-    numbers, positions = read.read_from_path(Path(base, "coord"))
-    charge = read.read_chrg_from_path(Path(base, ".CHRG"))
-
-    # convert to tensors
-    numbers = torch.tensor(numbers, dtype=torch.long, device=DEVICE)
-    positions = torch.tensor(positions, **dd)
-    charge = torch.tensor(charge, **dd)
+    numbers, positions = read.read_from_path(Path(base, "coord"), **dd)
+    charge = read.read_chrg_from_path(Path(base, ".CHRG"), **dd)
 
     ref = reshape_fortran(
         (

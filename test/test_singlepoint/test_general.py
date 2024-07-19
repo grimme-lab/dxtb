@@ -23,7 +23,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-import torch
 from tad_mctc.io import read
 
 from dxtb import GFN1_XTB as par
@@ -35,21 +34,18 @@ from ..conftest import DEVICE
 opts = {"verbosity": 0, "int_level": 4}
 
 
+@pytest.mark.filterwarnings("ignore::tad_mctc.exceptions.MoleculeWarning")
 def test_uhf_fail() -> None:
-    # singlepoint starts SCF timer, but exception is thrown before the SCF
-    # timer is stopped, so we must disable it here
+    # Singlepoint starts SCF timer, but exception is thrown before the SCF
+    # timer is stopped, so we must disable it here.
     status = timer._enabled
     if status is True:
         timer.disable()
 
     base = Path(Path(__file__).parent, "mols", "H")
 
-    numbers, positions = read.read_from_path(Path(base, "coord"))
-    charge = read.read_chrg_from_path(Path(base, ".CHRG"))
-
-    numbers = torch.tensor(numbers, dtype=torch.long)
-    positions = torch.tensor(positions)
-    charge = torch.tensor(charge)
+    numbers, positions = read.read_from_path(Path(base, "coord"), device=DEVICE)
+    charge = read.read_chrg_from_path(Path(base, ".CHRG"), device=DEVICE)
 
     calc = Calculator(numbers, par, opts=opts, device=DEVICE)
 

@@ -91,13 +91,10 @@ def analytical(
 
     # read from file
     base = Path(Path(__file__).parent, "mols", name)
-    numbers, positions = read.read_from_path(Path(base, "coord"))
-    charge = read.read_chrg_from_path(Path(base, ".CHRG"))
+    numbers, positions = read.read_from_path(Path(base, "coord"), **dd)
+    charge = read.read_chrg_from_path(Path(base, ".CHRG"), **dd)
 
-    # convert to tensors
-    numbers = torch.tensor(numbers, dtype=torch.long, device=DEVICE)
-    positions = torch.tensor(positions, **dd, requires_grad=True)
-    charge = torch.tensor(charge, **dd)
+    positions = positions.clone().requires_grad_(True)
 
     options = dict(
         opts,
@@ -127,13 +124,10 @@ def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 
     # read from file
     base = Path(Path(__file__).parent, "mols", name)
-    numbers, positions = read.read_from_path(Path(base, "coord"))
-    charge = read.read_chrg_from_path(Path(base, ".CHRG"))
+    numbers, positions = read.read_from_path(Path(base, "coord"), **dd)
+    charge = read.read_chrg_from_path(Path(base, ".CHRG"), **dd)
 
-    # convert to tensors
-    numbers = torch.tensor(numbers, dtype=torch.long, device=DEVICE)
-    positions = torch.tensor(positions, **dd, requires_grad=True)
-    charge = torch.tensor(charge, **dd)
+    positions = positions.clone().requires_grad_(True)
 
     # do calc
     options = dict(
@@ -173,13 +167,10 @@ def test_num(name: str, scf_mode: str) -> None:
 
     # read from file
     base = Path(Path(__file__).parent, "mols", name)
-    numbers, positions = read.read_from_path(Path(base, "coord"))
-    charge = read.read_chrg_from_path(Path(base, ".CHRG"))
+    numbers, positions = read.read_from_path(Path(base, "coord"), **dd)
+    charge = read.read_chrg_from_path(Path(base, ".CHRG"), **dd)
 
-    # convert to tensors
-    numbers = torch.tensor(numbers, dtype=torch.long, device=DEVICE)
-    positions = torch.tensor(positions, **dd)
-    charge = torch.tensor(charge, **dd)
+    positions = positions.clone().requires_grad_(True)
 
     # do calc
     gradient = calc_numerical_gradient(numbers, positions, charge, scf_mode, dd)
