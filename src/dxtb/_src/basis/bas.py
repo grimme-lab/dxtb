@@ -319,7 +319,7 @@ class Basis(TensorLike):
         for i, number in enumerate(self.unique.tolist()):
             txt = ""
             if with_header is True:
-                txt += header  # type: ignore
+                txt += header
 
             if qcformat == "gaussian94":
                 txt += f"{pse.Z2S[number]}\n"

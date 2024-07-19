@@ -321,7 +321,6 @@ def get_fermi_occupation(
     # no valence electrons
     if (torch.abs(nel.sum(-1)) < eps).any():
         return torch.zeros_like(emo)
-        raise ValueError("Number of valence electrons cannot be zero.")
 
     if thr is None:
         thr = defaults.FERMI_THRESH

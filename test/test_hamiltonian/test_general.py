@@ -27,7 +27,6 @@ from tad_mctc.typing import MockTensor
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
-from dxtb._src.xtb.base import BaseHamiltonian
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 
 
@@ -100,6 +99,8 @@ def test_change_device(device_str: str) -> None:
         dev = torch.device("cpu")
     elif device_str == "cuda":
         dev = torch.device("cuda:0")
+    else:
+        assert False
 
     h0 = h0.to(dev)
     assert h0.device == dev

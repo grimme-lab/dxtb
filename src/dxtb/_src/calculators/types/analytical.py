@@ -99,6 +99,8 @@ class AnalyticalCalculator(EnergyCalculator):
         Tensor
             Atomic forces of shape ``(..., nat, 3)``.
         """
+        total_grad = torch.zeros(positions.shape, **self.dd)
+
         # DEVNOTE: We need to save certain properties from the energy
         # calculation for the analytical derivative. So, we check in the
         # options if those quantities were cached. If not, we correct the
@@ -110,14 +112,6 @@ class AnalyticalCalculator(EnergyCalculator):
             self.cache.reset_all()
 
         self.energy(positions, chrg, spin, **kwargs)
-
-        # Setup
-
-        chrg = any_to_tensor(chrg, **self.dd)
-        if spin is not None:
-            spin = any_to_tensor(spin, **self.dd)
-
-        total_grad = torch.zeros(positions.shape, **self.dd)
 
         # CLASSICAL CONTRIBUTIONS
 
@@ -139,7 +133,7 @@ class AnalyticalCalculator(EnergyCalculator):
             timer.stop("Classicals Gradient")
             OutputHandler.write_stdout("done", v=3)
 
-        if any(x in ["all", "scf"] for x in self.opts.exclude):
+        if {"all", "scf"} & set(self.opts.exclude):
             return -total_grad
 
         # SELF-CONSISTENT FIELD PROCEDURE

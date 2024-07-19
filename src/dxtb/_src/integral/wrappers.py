@@ -256,6 +256,8 @@ def _integral(
             integral = Dipole(driver=driver_name, **dd, **kwargs)
         elif integral_type == "_quadrupole":
             integral = Quadrupole(driver=driver_name, **dd, **kwargs)
+        else:
+            raise ValueError(f"Unknown integral type '{integral_type}'.")
 
         integral.integral.norm = ovlp.integral.norm
     else:

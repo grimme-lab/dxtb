@@ -35,8 +35,7 @@ from dxtb._src.typing import DD
 from ..conftest import DEVICE
 from .samples import samples
 
-sample_list = ["MB16_43_01"]
-sample_list = ["LiH", "SiH4"]
+sample_list = ["LiH", "SiH4", "MB16_43_01"]
 
 opts = {
     "verbosity": 0,

@@ -180,8 +180,6 @@ def calc_numerical_gradient(
 
     for i in range(n_atoms):
         for j in range(3):
-            er, el = 0.0, 0.0
-
             positions[i, j] += step
             er = rep.get_energy(positions, cache)
             er = torch.sum(er, dim=-1)
