@@ -14,7 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-name: Tests (Ubuntu)
+name: Tests (Ubuntu, PyTorch v1)
 
 on:
   push:
@@ -42,21 +42,22 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        # python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         python-version: ["3.8", "3.9", "3.10", "3.11"]
-        torch-version: ["2.0.1", "2.1.2", "2.2.2", "2.3.1"]
+        torch-version: ["1.11.0", "1.12.1", "1.13.1"]
         exclude:
           # Check latest versions here: https://download.pytorch.org/whl/torch/
           #
-          # PyTorch fully supports Python=<3.11
+          # PyTorch now fully supports Python=<3.11
           # see: https://github.com/pytorch/pytorch/issues/86566
           #
-          # PyTorch supports Python 3.12 (Linux) for 2.2.0 and newer
+          # PyTorch does now support Python 3.12 (Linux) for 2.2.0 and newer
           # see: https://github.com/pytorch/pytorch/issues/110436
-          - python-version: "3.12"
-            torch-version: "2.0.1"
-          - python-version: "3.12"
-            torch-version: "2.1.2"
+          #
+          # PyTorch<1.13.0 does only support Python=<3.10
+          - python-version: "3.11"
+            torch-version: "1.11.0"
+          - python-version: "3.11"
+            torch-version: "1.12.1"
 
     runs-on: ${{ matrix.os }}
 
