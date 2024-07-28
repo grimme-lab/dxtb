@@ -170,16 +170,14 @@ def test_num(name: str, scf_mode: str) -> None:
     numbers, positions = read.read_from_path(Path(base, "coord"), **dd)
     charge = read.read_chrg_from_path(Path(base, ".CHRG"), **dd)
 
-    positions = positions.clone().requires_grad_(True)
-
     # do calc
-    gradient = calc_numerical_gradient(numbers, positions, charge, scf_mode, dd)
+    gradient = num_grad(numbers, positions, charge, scf_mode, dd)
 
     ref = load_from_npz(ref_grad, name, dtype)
     assert pytest.approx(ref.cpu(), abs=1e-6, rel=1e-4) == gradient.cpu()
 
 
-def calc_numerical_gradient(
+def num_grad(
     numbers: Tensor, positions: Tensor, charge: Tensor, scf_mode: str, dd: DD
 ) -> Tensor:
     """Calculate gradient numerically for reference."""
