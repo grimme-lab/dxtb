@@ -297,6 +297,7 @@ class Basis(TensorLike):
                 f"Available options are: {allowed_formats}."
             )
 
+        header = ""
         if with_header is True:
             l = 70 * "-"
             header = (
@@ -317,9 +318,7 @@ class Basis(TensorLike):
         s = 0
         fulltxt = ""
         for i, number in enumerate(self.unique.tolist()):
-            txt = ""
-            if with_header is True:
-                txt += header  # type: ignore
+            txt = header
 
             if qcformat == "gaussian94":
                 txt += f"{pse.Z2S[number]}\n"

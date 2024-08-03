@@ -44,7 +44,9 @@ dxtb.timer.reset()
 dxtb.timer.start("Setup")
 
 dxtb.timer.start("Ihelp", parent_uid="Setup")
-ihelp = dxtb.IndexHelper.from_numbers(numbers, dxtb.GFN1_XTB, batch_mode=batch_mode)
+ihelp_cuda = dxtb.IndexHelper.from_numbers(
+    numbers, dxtb.GFN1_XTB, batch_mode=batch_mode
+)
 dxtb.timer.stop("Ihelp")
 
 dxtb.timer.start("Class", parent_uid="Setup")
@@ -56,7 +58,7 @@ dxtb.timer.stop("Setup")
 dxtb.timer.start("Cache")
 
 torch.cuda.synchronize()
-cache = obj.get_cache(numbers, ihelp=ihelp)
+cache = obj.get_cache(numbers, ihelp=ihelp_cuda)
 
 torch.cuda.synchronize()
 dxtb.timer.stop("Cache")
@@ -74,14 +76,13 @@ dxtb.timer.print(v=1)
 
 numbers = numbers.cpu()
 positions = positions.cpu()
-ihelp = ihelp.cpu()
 dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
 
 dxtb.timer.reset()
 dxtb.timer.start("Setup")
 
 dxtb.timer.start("Ihelp", parent_uid="Setup")
-ihelp = dxtb.IndexHelper.from_numbers(numbers, dxtb.GFN1_XTB, batch_mode=batch_mode)
+ihelp_cpu = dxtb.IndexHelper.from_numbers(numbers, dxtb.GFN1_XTB, batch_mode=batch_mode)
 dxtb.timer.stop("Ihelp")
 
 dxtb.timer.start("Class", parent_uid="Setup")
@@ -92,7 +93,7 @@ dxtb.timer.stop("Class")
 dxtb.timer.stop("Setup")
 dxtb.timer.start("Cache")
 
-cache = obj.get_cache(numbers, ihelp=ihelp)
+cache = obj.get_cache(numbers, ihelp=ihelp_cpu)
 
 dxtb.timer.stop("Cache")
 dxtb.timer.start("Energy")

@@ -477,7 +477,7 @@ def md_recursion_gradient(
     # for single gaussians (e.g. in tests)
     if len(vec.shape) == 1:
         vec = torch.unsqueeze(vec, 0)
-        s3d = torch.unsqueeze(s3d, 0)
+        # s3d = torch.unsqueeze(s3d, 0)
         ds3d = torch.unsqueeze(ds3d, 0)
 
     # calc E function for all (ai, aj)-combis for all vecs in batch

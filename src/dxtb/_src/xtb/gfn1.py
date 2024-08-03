@@ -425,7 +425,6 @@ class GFN1Hamiltonian(BaseHamiltonian):
         )
 
         zero = torch.tensor(0.0, **self.dd)
-        eps = torch.tensor(torch.finfo(self.dtype).eps, **self.dd)
 
         # --------------------
         # Eq.28: X(EN_A, EN_B)

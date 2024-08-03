@@ -61,7 +61,7 @@ def test_construction(dtype: torch.dtype, name: str) -> None:
         num2, pos2 = a2
 
         assert num1 == num2
-        assert pos2.dtype == pos2.dtype  # type: ignore
+        assert pos1.dtype == pos2.dtype  # type: ignore
         assert pytest.approx(pos1) == pos2
 
 

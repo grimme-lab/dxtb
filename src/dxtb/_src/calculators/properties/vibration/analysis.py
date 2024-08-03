@@ -140,10 +140,10 @@ def _get_rotational_modes(mass: Tensor, positions: Tensor):
 
     # Eigendecomposition yields the principal moments of inertia (w)
     # and the principal axes of rotation (paxes) of a molecule.
-    w, paxes = storch.eighb(im)
+    _, paxes = storch.eighb(im)
 
     # make z-axis rotation vector with smallest moment of inertia
-    w = torch.flip(w, [-1])
+    # w = torch.flip(w, [-1])
     paxes = torch.flip(paxes, [-1])
     ex, ey, ez = paxes.mT
 

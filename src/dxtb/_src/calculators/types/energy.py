@@ -46,9 +46,6 @@ from .base import BaseCalculator
 __all__ = ["EnergyCalculator"]
 
 
-logger = logging.getLogger(__name__)
-
-
 class EnergyCalculator(BaseCalculator):
     """
     Parametrized calculator defining the extended tight-binding model.

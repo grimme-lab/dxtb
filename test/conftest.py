@@ -39,6 +39,15 @@ DEVICE: torch.device | None = None
 """Name of Device."""
 
 
+# A bug in PyTorch 2.3.0 and 2.3.1 somehow requires manual import of
+# `torch._dynamo` to avoid errors with functorch in custom backward
+# functions. See https://github.com/pytorch/pytorch/issues/128607.
+from tad_mctc._version import __tversion__
+
+if __tversion__ in ((2, 3, 0), (2, 3, 1)):
+    import torch._dynamo
+
+
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Set up additional command line options."""
 

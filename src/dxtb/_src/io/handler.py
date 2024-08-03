@@ -393,6 +393,11 @@ class _OutputHandler:
             main_format += "{:<27} {:>20}"
             sub_format = " {:<26} \033[37m{:>20}\033[0m"
             sub_format_no_indent = "{:<27} \033[37m{:>20}\033[0m"
+        else:
+            raise ValueError(
+                "Length of columns for printing a table must be either 2 or"
+                f"3 but got {len(columns)}."
+            )
 
         if self.verbosity >= (v + 1):
             main_format += "\033[0m"

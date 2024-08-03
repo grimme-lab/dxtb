@@ -56,12 +56,8 @@ def test_single(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 
     base = Path(Path(__file__).parent, "mols", name)
 
-    numbers, positions = read.read_from_path(Path(base, "coord"))
-    charge = read.read_chrg_from_path(Path(base, ".CHRG"))
-
-    numbers = torch.tensor(numbers, dtype=torch.long, device=DEVICE)
-    positions = torch.tensor(positions, **dd)
-    charge = torch.tensor(charge, **dd)
+    numbers, positions = read.read_from_path(Path(base, "coord"), **dd)
+    charge = read.read_chrg_from_path(Path(base, ".CHRG"), **dd)
 
     ref = samples[name]["etot"].to(**dd)
 
@@ -90,12 +86,8 @@ def test_single_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 
     base = Path(Path(__file__).parent, "mols", name)
 
-    numbers, positions = read.read_from_path(Path(base, "coord"))
-    charge = read.read_chrg_from_path(Path(base, ".CHRG"))
-
-    numbers = torch.tensor(numbers, dtype=torch.long, device=DEVICE)
-    positions = torch.tensor(positions, **dd)
-    charge = torch.tensor(charge, **dd)
+    numbers, positions = read.read_from_path(Path(base, "coord"), **dd)
+    charge = read.read_chrg_from_path(Path(base, ".CHRG"), **dd)
 
     ref = samples[name]["etot"].to(**dd)
 
@@ -217,12 +209,9 @@ def test_uhf_single(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     base = Path(Path(__file__).parent, "mols", name)
-    numbers, positions = read.read_from_path(Path(base, "coord"))
-    charge = read.read_chrg_from_path(Path(base, ".CHRG"))
+    numbers, positions = read.read_from_path(Path(base, "coord"), **dd)
+    charge = read.read_chrg_from_path(Path(base, ".CHRG"), **dd)
 
-    numbers = torch.tensor(numbers, dtype=torch.long, device=DEVICE)
-    positions = torch.tensor(positions, **dd)
-    charge = torch.tensor(charge, **dd)
     ref = samples[name]["etot"].to(**dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
