@@ -65,7 +65,7 @@ pip install dxtb
 ### conda <a href="https://anaconda.org/conda-forge/dxtb"><img src="https://img.shields.io/conda/vn/conda-forge/dxtb.svg" alt="Conda Version"></a>
 
 
-*dxtb* is also available on [conda](https://conda.io/).
+*dxtb* will also available on [conda](https://conda.io/) soon.
 
 ```sh
 conda install dxtb
@@ -101,7 +101,7 @@ energy = calc.get_energy(pos)
 (g,) = torch.autograd.grad(energy, pos)
 
 # Alternatively, forces can directly be requested from the calculator.
-# (Don't forget to reset the calculator manually when the inputs are identical.)
+# (Don't forget to manually reset the calculator when the inputs are identical.)
 calc.reset()
 pos = positions.clone().requires_grad_(True)
 forces = calc.get_forces(pos)
