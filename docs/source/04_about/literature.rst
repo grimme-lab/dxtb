@@ -8,18 +8,22 @@ This is a list of literature that is relevant to the project.
 Main Reference
 --------------
 
-- dxtb: M. Friede, C. Hölzer, S. Ehlert, S. Grimme, *dxtb -- An Efficient and Fully Differentiable Framework for Extended Tight-Binding*, *J. Chem. Phys.*, **2024**
+- M. Friede, C. Hölzer, S. Ehlert, S. Grimme, *J. Chem. Phys.*, **2024**, 161, 062501. ([DOI](https://doi.org/10.1063/5.0216715))
 
 .. code-block:: bibtex
 
-    @article{dxtb,
+    @article{dxtb.2024,
       title = {dxtb -- An Efficient and Fully Differentiable Framework for Extended Tight-Binding},
       author = {Friede, Marvin and H{\"o}lzer, Christian and Ehlert, Sebastian and Grimme, Stefan},
-      journal = {Journal of Chemical Physics},
-      volume = {},
-      number = {},
-      pages = {},
+      journal = {The Journal of Chemical Physics},
+      volume = {161},
+      number = {6},
+      pages = {062501},
       year = {2024},
+      month = {08},
+      issn = {0021-9606},
+      doi = {10.1063/5.0216715},
+      url = {https://doi.org/10.1063/5.0216715},
     }
 
 

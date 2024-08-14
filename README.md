@@ -51,6 +51,8 @@ The xTB methods (GFNn-xTB) are a series of semi-empirical quantum chemical metho
 
 With *dxtb*, we provide a re-implementation of the xTB methods in PyTorch, which allows for automatic differentiation and seamless integration into machine learning frameworks.
 
+**NOTE**: If you encounter any bugs or have questions on how to use *dxtb*, feel free to open an [issue](https://github.com/grimme-lab/dxtb/issues).
+
 
 ## Installation
 
@@ -65,7 +67,7 @@ pip install dxtb
 ### conda <a href="https://anaconda.org/conda-forge/dxtb"><img src="https://img.shields.io/conda/vn/conda-forge/dxtb.svg" alt="Conda Version"></a>
 
 
-*dxtb* will also available on [conda](https://conda.io/) soon.
+*dxtb* will also be available on [conda](https://conda.io/) soon.
 
 ```sh
 conda install dxtb
@@ -116,7 +118,7 @@ For more examples and details, check out [the documentation](https://dxtb.readth
 
 If you use *dxtb* in your research, please cite the following paper:
 
-- M. Friede, C. Hölzer, S. Ehlert, S. Grimme, *dxtb -- An Efficient and Fully Differentiable Framework for Extended Tight-Binding*, *J. Chem. Phys.*, **2024**
+- M. Friede, C. Hölzer, S. Ehlert, S. Grimme, *dxtb -- An Efficient and Fully Differentiable Framework for Extended Tight-Binding*, *J. Chem. Phys.*, **2024**, 161, 062501. ([DOI](https://doi.org/10.1063/5.0216715))
 
 The Supporting Information can be found [here](https://github.com/grimme-lab/dxtb-data).
 
