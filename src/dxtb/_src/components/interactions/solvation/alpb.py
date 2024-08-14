@@ -64,7 +64,7 @@ from tad_mctc.data import VDW_D3
 from tad_mctc.math import einsum
 
 from dxtb._src.param import Param
-from dxtb._src.typing import DD, Any, Tensor, TensorLike, get_default_dtype
+from dxtb._src.typing import DD, Any, Tensor, TensorLike, get_default_dtype, override
 from dxtb._src.typing.exceptions import DeviceError
 
 from ..base import Interaction, InteractionCache
@@ -234,6 +234,7 @@ class GeneralizedBorn(Interaction):
             kwargs["rvdw"] = VDW_D3.to(**self.dd)[numbers]
         self.born_kwargs = kwargs
 
+    @override
     def get_cache(
         self, numbers: Tensor, positions: Tensor, **_
     ) -> GeneralizedBornCache:
@@ -289,9 +290,11 @@ class GeneralizedBorn(Interaction):
         self.cache = GeneralizedBornCache(mat)
         return self.cache
 
+    @override
     def get_atom_energy(self, charges: Tensor, cache: GeneralizedBornCache) -> Tensor:
         return 0.5 * charges * self.get_atom_potential(charges, cache)
 
+    @override
     def get_atom_potential(
         self, charges: Tensor, cache: GeneralizedBornCache
     ) -> Tensor:

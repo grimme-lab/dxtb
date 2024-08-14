@@ -176,9 +176,7 @@ class Driver:
             numbers = pack(_n)
             positions = pack(_p)
         else:
-            _n, _p = read.read_from_path(args.file[0], args.filetype)
-            numbers = torch.tensor(_n, dtype=torch.long, device=dd["device"])
-            positions = torch.tensor(_p, **dd)
+            numbers, positions = read.read_from_path(args.file[0], args.filetype, **dd)
 
         timer.stop("Read Files")
 
