@@ -15,12 +15,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Integrals: Types
-================
+Integrals: Utility Functions
+============================
 
-Integral types for the calculation of molecular integrals.
+Integral-related utility functions.
 """
 
-from dxtb._src.integral.types import DipoleIntegral as DipoleIntegral
-from dxtb._src.integral.types import OverlapIntegral as OverlapIntegral
-from dxtb._src.integral.types import QuadrupoleIntegral as QuadrupoleIntegral
+from __future__ import annotations
+
+import torch
+
+from dxtb._src.typing import Tensor
+
+
+def snorm(ovlp: Tensor) -> Tensor:
+    return torch.pow(ovlp.diagonal(dim1=-1, dim2=-2), -0.5)

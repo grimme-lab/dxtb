@@ -23,82 +23,15 @@ Base class for xTB Hamiltonians.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-
 import torch
 
 from dxtb import IndexHelper
-from dxtb._src.components.interactions import Potential
 from dxtb._src.param import Param
-from dxtb._src.typing import Tensor, TensorLike
+from dxtb._src.typing import PathLike, Tensor, TensorLike
 
-__all__ = ["HamiltonianABC", "BaseHamiltonian"]
+from .abc import HamiltonianABC
 
-
-class HamiltonianABC(ABC):
-    """
-    Abstract base class for Hamiltonians.
-    """
-
-    @abstractmethod
-    def build(
-        self, positions: Tensor, overlap: Tensor, cn: Tensor | None = None
-    ) -> Tensor:
-        """
-        Build the xTB Hamiltonian.
-
-        Parameters
-        ----------
-        positions : Tensor
-            Atomic positions of molecular structure.
-        overlap : Tensor
-            Overlap matrix.
-        cn : Tensor | None, optional
-            Coordination number. Defaults to ``None``.
-
-        Returns
-        -------
-        Tensor
-            Hamiltonian (always symmetric).
-        """
-
-    @abstractmethod
-    def get_gradient(
-        self,
-        positions: Tensor,
-        overlap: Tensor,
-        doverlap: Tensor,
-        pmat: Tensor,
-        wmat: Tensor,
-        pot: Potential,
-        cn: Tensor,
-    ) -> tuple[Tensor, Tensor]:
-        """
-        Calculate gradient of the full Hamiltonian with respect ot atomic positions.
-
-        Parameters
-        ----------
-        positions : Tensor
-            Atomic positions of molecular structure.
-        overlap : Tensor
-            Overlap matrix.
-        doverlap : Tensor
-            Derivative of the overlap matrix.
-        pmat : Tensor
-            Density matrix.
-        wmat : Tensor
-            Energy-weighted density.
-        pot : Tensor
-            Self-consistent electrostatic potential.
-        cn : Tensor
-            Coordination number.
-
-        Returns
-        -------
-        tuple[Tensor, Tensor]
-            Derivative of energy with respect to coordination number (first
-            tensor) and atomic positions (second tensor).
-        """
+__all__ = ["BaseHamiltonian"]
 
 
 class BaseHamiltonian(HamiltonianABC, TensorLike):
@@ -204,3 +137,18 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
             refocc / orb_per_shell,
             torch.tensor(0, **self.dd),
         )
+
+    def to_pt(self, path: PathLike | None = None) -> None:
+        """
+        Save the integral matrix to a file.
+
+        Parameters
+        ----------
+        path : PathLike | None
+            Path to the file where the integral matrix should be saved. If
+            ``None``, the matrix is saved to the default location.
+        """
+        if path is None:
+            path = f"{self.label.casefold()}.pt"
+
+        torch.save(self.matrix, path)

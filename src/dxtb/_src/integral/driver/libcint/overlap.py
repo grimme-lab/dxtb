@@ -23,29 +23,32 @@ Overlap implementation based on `libcint`.
 
 from __future__ import annotations
 
-import torch
 from tad_mctc.batch import pack
 from tad_mctc.math import einsum
 
 from dxtb._src.exlibs import libcint
 from dxtb._src.typing import Tensor
 
-from .base_implementation import IntegralImplementationLibcint
+from ...types import OverlapIntegral
+from ...utils import snorm
+from .base import IntegralLibcint
 from .driver import IntDriverLibcint
 
 __all__ = ["OverlapLibcint"]
 
 
-def snorm(ovlp: Tensor) -> Tensor:
-    return torch.pow(ovlp.diagonal(dim1=-1, dim2=-2), -0.5)
-
-
-class OverlapLibcint(IntegralImplementationLibcint):
+class OverlapLibcint(OverlapIntegral, IntegralLibcint):
     """
     Overlap integral from atomic orbitals.
+
+    Use the :meth:`.build` method to calculate the overlap integral. The
+    returned matrix uses a custom autograd function to calculate the
+    backward pass with the analytical gradient.
+    For the full gradient, i.e., a matrix of shape ``(..., norb, norb, 3)``,
+    the :meth:`.get_gradient` method should be used.
     """
 
-    def build(self, driver: IntDriverLibcint) -> Tensor:
+    def build(self, driver: IntDriverLibcint) -> Tensor | tuple[Tensor, Tensor]:
         """
         Calculation of overlap integral using libcint.
 
@@ -53,15 +56,17 @@ class OverlapLibcint(IntegralImplementationLibcint):
         -------
         driver : IntDriverLibcint
             The integral driver for the calculation.
+
+        Returns
+        -------
+        Tensor
+            Overlap integral matrix of shape ``(..., norb, norb)``.
         """
         super().checks(driver)
 
         def fcn(driver: libcint.LibcintWrapper) -> tuple[Tensor, Tensor]:
             s = libcint.overlap(driver)
             norm = snorm(s)
-
-            if self.normalize is True:
-                s = einsum("...ij,...i,...j->...ij", s, norm, norm)
 
             return s, norm
 
@@ -99,7 +104,7 @@ class OverlapLibcint(IntegralImplementationLibcint):
         Returns
         -------
         Tensor
-            Overlap gradient of shape `(nb, norb, norb, 3)`.
+            Overlap gradient of shape ``(..., norb, norb, 3)``.
         """
         super().checks(driver)
 

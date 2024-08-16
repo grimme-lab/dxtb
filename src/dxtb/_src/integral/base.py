@@ -26,14 +26,17 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import torch
+from tad_mctc.math import einsum
 
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
 from dxtb._src.param import Param
-from dxtb._src.typing import PathLike, Tensor, TensorLike
+from dxtb._src.typing import Any, Literal, PathLike, Tensor, TensorLike
+
+from .utils import snorm
 
 __all__ = [
-    "BaseIntegralImplementation",
+    "BaseIntegral",
     "IntDriver",
     "IntegralContainer",
 ]
@@ -50,6 +53,9 @@ class IntDriver(TensorLike):
 
     ihelp: IndexHelper
     """Helper class for indexing."""
+
+    family: Literal["PyTorch", "libcint"]
+    """Label for integral implementation family."""
 
     __label: str
     """Identifier label for integral driver."""
@@ -198,15 +204,15 @@ class IntDriver(TensorLike):
 #########################################################
 
 
-class IntegralImplementationABC(ABC):
+class IntegralABC(ABC):
     """
-    Abstract base class for (actual) integral implementations.
+    Abstract base class for integral implementations.
 
     All integral calculations are executed by this class.
     """
 
     @abstractmethod
-    def build(self, driver: IntDriver) -> Tensor:
+    def build(self, driver: IntDriver, **kwargs: Any) -> Tensor:
         """
         Create the integral matrix.
 
@@ -222,9 +228,9 @@ class IntegralImplementationABC(ABC):
         """
 
     @abstractmethod
-    def get_gradient(self, driver: IntDriver) -> Tensor:
+    def get_gradient(self, driver: IntDriver, **kwargs: Any) -> Tensor:
         """
-        Create the nuclear integral derivative matrix.
+        Calculate the full nuclear gradient matrix of the integral.
 
         Parameters
         ----------
@@ -237,31 +243,48 @@ class IntegralImplementationABC(ABC):
             Nuclear integral derivative matrix.
         """
 
+    @abstractmethod
+    def normalize(self, norm: Tensor | None = None, **kwargs: Any) -> None:
+        """
+        Normalize the integral (changes ``self.matrix``).
 
-class BaseIntegralImplementation(IntegralImplementationABC, TensorLike):
+        Parameters
+        ----------
+        norm : Tensor, optional
+            Overlap norm to normalize the integral.
+        """
+
+
+class BaseIntegral(IntegralABC, TensorLike):
     """
-    Base class for (actual) integral implementations.
+    Base class for integral implementations.
 
-    All integral calculations are executed by this class.
+    All integral calculations are executed by its child classes.
     """
 
-    __slots__ = ["_matrix", "_norm", "_gradient"]
+    _matrix: Tensor | None
+    """Internal storage variable for the integral matrix."""
+
+    _gradient: Tensor | None
+    """Internal storage variable for the cartesian gradient."""
+
+    family: str | None
+    """Family of the integral implementation (PyTorch or libcint)."""
+
+    __slots__ = ["_matrix", "_gradient"]
 
     def __init__(
         self,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
-        normalize: bool = True,
         _matrix: Tensor | None = None,
-        _norm: Tensor | None = None,
         _gradient: Tensor | None = None,
     ) -> None:
         super().__init__(device=device, dtype=dtype)
         self.label = self.__class__.__name__
 
-        self.normalize = normalize
+        self._norm = None
         self._matrix = _matrix
-        self._norm = _norm
         self._gradient = _gradient
 
     def checks(self, driver: IntDriver) -> None:
@@ -278,6 +301,37 @@ class BaseIntegralImplementation(IntegralImplementationABC, TensorLike):
                 "Integral driver not setup. Run `driver.setup(positions)` "
                 "before passing the driver to the integral build."
             )
+
+        if "pytorch" in self.label.casefold():
+            # pylint: disable=import-outside-toplevel
+            from .driver.pytorch.driver import BaseIntDriverPytorch as _BaseIntDriver
+
+        elif "libcint" in self.label.casefold():
+            # pylint: disable=import-outside-toplevel
+            from .driver.libcint.driver import BaseIntDriverLibcint as _BaseIntDriver
+
+        else:
+            raise RuntimeError(f"Unknown integral implementation: '{self.label}'.")
+
+        if not isinstance(driver, _BaseIntDriver):
+            raise RuntimeError(f"Wrong integral driver selected for '{self.label}'.")
+
+    def normalize(self, norm: Tensor | None = None, **kwargs: Any) -> None:
+        """
+        Normalize the integral (changes ``self.matrix``).
+
+        Parameters
+        ----------
+        norm : Tensor
+            Overlap norm to normalize the integral.
+        """
+        if norm is None:
+            if self.norm is not None:
+                norm = self.norm
+            else:
+                norm = snorm(self.matrix)
+
+        self.matrix = einsum("...ij,...i,...j->...ij", self.matrix, norm, norm)
 
     def to_pt(self, path: PathLike | None = None) -> None:
         """
@@ -328,8 +382,6 @@ class BaseIntegralImplementation(IntegralImplementationABC, TensorLike):
         d = self.__dict__.copy()
         if self._matrix is not None:
             d["_matrix"] = self._matrix.shape
-        if self._norm is not None:
-            d["_norm"] = self._norm.shape
         if self._gradient is not None:
             d["_gradient"] = self._gradient.shape
 

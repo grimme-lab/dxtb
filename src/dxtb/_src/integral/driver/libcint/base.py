@@ -15,12 +15,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Integrals: Types
-================
+Implementation: Base Classes
+============================
 
-Integral types for the calculation of molecular integrals.
+Base class for ``libcint``-based integral implementations.
 """
 
-from dxtb._src.integral.types import DipoleIntegral as DipoleIntegral
-from dxtb._src.integral.types import OverlapIntegral as OverlapIntegral
-from dxtb._src.integral.types import QuadrupoleIntegral as QuadrupoleIntegral
+from __future__ import annotations
+
+from dxtb._src.typing import Literal
+
+from ...base import BaseIntegral
+
+__all__ = ["IntegralLibcint"]
+
+
+class LibcintImplementation:
+    """
+    Simple label for ``libcint``-based integral implementations.
+    """
+
+    family: Literal["libcint"] = "libcint"
+    """Label for integral implementation family."""
+
+
+class IntegralLibcint(LibcintImplementation, BaseIntegral):
+    """
+    ``libcint``-based integral implementation.
+    """

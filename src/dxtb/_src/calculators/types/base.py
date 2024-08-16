@@ -133,9 +133,9 @@ class CalculatorCache(TensorLike):
         raman_depol: Tensor | None = None,
         #
         hcore: Tensor | None = None,
-        overlap: ints.types.Overlap | None = None,
-        dipint: ints.types.Dipole | None = None,
-        quadint: ints.types.Quadrupole | None = None,
+        overlap: ints.types.OverlapIntegral | None = None,
+        dipint: ints.types.DipoleIntegral | None = None,
+        quadint: ints.types.QuadrupoleIntegral | None = None,
         #
         bond_orders: Tensor | None = None,
         coefficients: Tensor | None = None,
@@ -404,6 +404,12 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
     results: dict[str, Any]
     """Results container."""
 
+    _ncalcs: int
+    """
+    Number of calculations performed with the calculator. Helpful for keeping
+    track of cache hits and actual new calculations.
+    """
+
     def __init__(
         self,
         numbers: Tensor,
@@ -481,6 +487,7 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         if self.opts.batch_mode == 0 and numbers.ndim > 1:
             self.opts.batch_mode = 1
 
+        # TODO: Should the IndexHelper be a singleton?
         self.ihelp = IndexHelper.from_numbers(numbers, par, self.opts.batch_mode)
 
         ################
@@ -573,6 +580,7 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
                     "interaction."
                 )
             self.opts.ints.level = max(labels.INTLEVEL_DIPOLE, self.opts.ints.level)
+
         if efield_grad.LABEL_EFIELD_GRAD in self.interactions.labels:
             if self.opts.ints.level < labels.INTLEVEL_DIPOLE:
                 OutputHandler.warn(
@@ -582,21 +590,29 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
                 )
             self.opts.ints.level = max(labels.INTLEVEL_QUADRUPOLE, self.opts.ints.level)
 
-        # setup integral
-        driver = self.opts.ints.driver
-        self.integrals = ints.Integrals(
-            numbers, par, self.ihelp, driver=driver, intlevel=self.opts.ints.level, **dd
+        # setup integral driver and integral container
+        drv_mngr = ints.DriverManager(
+            self.opts.ints.driver, numbers, par, self.ihelp, **dd
         )
+        self.integrals = ints.Integrals(drv_mngr, intlevel=self.opts.ints.level, **dd)
 
         if self.opts.ints.level >= labels.INTLEVEL_OVERLAP:
-            self.integrals.hcore = ints.types.HCore(numbers, par, self.ihelp, **dd)
-            self.integrals.overlap = ints.types.Overlap(driver=driver, **dd)
+            self.integrals.hcore = ints.factories.new_hcore(
+                numbers, par, self.ihelp, **dd
+            )
+            self.integrals.overlap = ints.factories.new_overlap(
+                driver=drv_mngr.driver_type, **dd
+            )
 
         if self.opts.ints.level >= labels.INTLEVEL_DIPOLE:
-            self.integrals.dipole = ints.types.Dipole(driver=driver, **dd)
+            self.integrals.dipole = ints.factories.new_dipint(
+                driver=drv_mngr.driver_type, **dd
+            )
 
         if self.opts.ints.level >= labels.INTLEVEL_QUADRUPOLE:
-            self.integrals.quadrupole = ints.types.Quadrupole(driver=driver, **dd)
+            self.integrals.quadrupole = ints.factories.new_quadint(
+                driver=drv_mngr.driver_type, **dd
+            )
 
         OutputHandler.write_stdout("done\n", v=4)
 

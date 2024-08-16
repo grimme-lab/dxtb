@@ -216,7 +216,7 @@ class EnergyCalculator(BaseCalculator):
         # While one can theoretically skip the core Hamiltonian, the
         # current implementation does not account for this case because the
         # reference occupation is necessary for the SCF procedure.
-        if self.integrals.hcore is None or self.integrals.hcore.matrix is None:
+        if self.integrals.hcore is None:
             raise NotImplementedError(
                 "Core Hamiltonian missing. Skipping the Core Hamiltonian in "
                 "the SCF is currently not supported. Please increase the "
@@ -261,7 +261,7 @@ class EnergyCalculator(BaseCalculator):
             self.ihelp,
             self.opts.scf,
             intmats,
-            self.integrals.hcore.integral.refocc,
+            self.integrals.hcore.refocc,
         )
 
         timer.stop("SCF")
@@ -413,8 +413,7 @@ class EnergyCalculator(BaseCalculator):
                 "`calc.energy(positions, store_overlap=True)"
             )
 
-        assert isinstance(overlap, ints.types.Overlap)
-        assert overlap.matrix is not None
+        assert isinstance(overlap, Tensor)
 
         density = self.cache["density"]
         if density is None:
@@ -429,7 +428,7 @@ class EnergyCalculator(BaseCalculator):
         # pylint: disable=import-outside-toplevel
         from dxtb._src.wavefunction.wiberg import get_bond_order
 
-        return get_bond_order(overlap.matrix, density, self.ihelp)
+        return get_bond_order(overlap, density, self.ihelp)
 
     def calculate(
         self,
