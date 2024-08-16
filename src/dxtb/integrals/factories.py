@@ -21,4 +21,9 @@ Integrals: Factory Functions
 Factory functions for integral classes.
 """
 
-from dxtb._src.integral.factory import *
+from dxtb._src.integral.factory import new_dipint as new_dipint
+from dxtb._src.integral.factory import new_hcore as new_hcore
+from dxtb._src.integral.factory import new_overlap as new_overlap
+from dxtb._src.integral.factory import new_quadint as new_quadint
+
+__all__ = ["new_dipint", "new_hcore", "new_overlap", "new_quadint"]

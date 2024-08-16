@@ -36,6 +36,7 @@ from dxtb._src.calculators.result import Result
 from dxtb._src.components.interactions.field import new_efield
 from dxtb._src.constants import labels
 from dxtb._src.timing import timer
+from dxtb._src.typing import Tensor
 
 __all__ = ["Driver"]
 
@@ -118,7 +119,7 @@ class Driver:
 
         return vals
 
-    def singlepoint(self) -> Result | None:
+    def singlepoint(self) -> Result | Tensor:
         timer.start("Setup")
 
         args = self.args
@@ -249,47 +250,47 @@ class Driver:
         if args.forces is True:
             positions.requires_grad_(True)
 
-            forces = calc.forces(positions, chrg)
+            result = calc.forces(positions, chrg)
             calc.reset()
 
             timer.print()
-            print_grad(forces.clone(), numbers)
+            print_grad(result.clone(), numbers)
             # io.OutputHandler.dump_warnings()
-            return
+            return result
 
         if args.forces_numerical is True:
             timer.start("Forces")
-            forces = calc.forces_numerical(positions, chrg)
+            result = calc.forces_numerical(positions, chrg)
             timer.stop("Forces")
             calc.reset()
 
-            print_grad(forces.clone(), numbers)
+            print_grad(result.clone(), numbers)
             # io.OutputHandler.dump_warnings()
-            return
+            return result
 
         if args.hessian is True:
             positions.requires_grad_(True)
 
             timer.start("Hessian")
-            hessian = calc.hessian(positions, chrg)
+            result = calc.hessian(positions, chrg)
             timer.stop("Hessian")
             calc.reset()
 
-            print(hessian.clone().detach())
+            print(result.clone().detach())
             # io.OutputHandler.dump_warnings()
-            return
+            return result
 
         if args.hessian_numerical is True:
             positions.requires_grad_(True)
 
             timer.start("Hessian")
-            hessian = calc.hessian_numerical(positions, chrg)
+            result = calc.hessian_numerical(positions, chrg)
             timer.stop("Hessian")
             calc.reset()
 
-            print(hessian.clone())
+            print(result.clone())
             # io.OutputHandler.dump_warnings()
-            return
+            return result
 
         if args.ir is True:
             # TODO: Better handling here
@@ -359,6 +360,8 @@ class Driver:
             result.print_energies()
             io.OutputHandler.dump_warnings()
             return result
+
+        raise RuntimeError("No calculation was performed.")
 
     def __repr__(self) -> str:  # pragma: no cover
         """Custom print representation of class."""

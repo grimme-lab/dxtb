@@ -22,8 +22,6 @@ Inspired by DQC.
 
 from __future__ import annotations
 
-import gc
-
 import pytest
 import torch
 from tad_mctc.data.molecules import mols as samples

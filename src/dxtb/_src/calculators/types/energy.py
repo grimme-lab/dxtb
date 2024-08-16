@@ -23,15 +23,11 @@ Base calculator for the energy calculation of an extended tight-binding model.
 
 from __future__ import annotations
 
-import logging
-
 import torch
 from tad_mctc.convert import any_to_tensor
 from tad_mctc.io.checks import content_checks, shape_checks
 
-from dxtb import OutputHandler
-from dxtb import integrals as ints
-from dxtb import labels
+from dxtb import OutputHandler, labels
 from dxtb._src import scf
 from dxtb._src.constants import defaults
 from dxtb._src.integral.container import IntegralMatrices

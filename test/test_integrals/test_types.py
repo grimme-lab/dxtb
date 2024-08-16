@@ -23,8 +23,8 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb import GFN1_XTB, GFN2_XTB, IndexHelper
-from dxtb.integrals import types as inttypes
+from dxtb import GFN1_XTB, IndexHelper
+from dxtb.integrals.factories import new_hcore
 
 numbers = torch.tensor([14, 1, 1, 1, 1])
 
@@ -37,4 +37,4 @@ def test_fail() -> None:
         assert par1.meta is not None
 
         par1.meta.name = "fail"
-        inttypes.HCore(numbers, par1, ihelp)
+        new_hcore(numbers, par1, ihelp)

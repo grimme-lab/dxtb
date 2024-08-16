@@ -42,6 +42,7 @@ __all__ = [
     "ClassicalCache",
     #
     "Interaction",
+    "InteractionCache",
     "InteractionList",
     "InteractionListCache",
 ]

@@ -24,3 +24,5 @@ Integral types for the calculation of molecular integrals.
 from dxtb._src.integral.types import DipoleIntegral as DipoleIntegral
 from dxtb._src.integral.types import OverlapIntegral as OverlapIntegral
 from dxtb._src.integral.types import QuadrupoleIntegral as QuadrupoleIntegral
+
+__all__ = ["DipoleIntegral", "OverlapIntegral", "QuadrupoleIntegral"]

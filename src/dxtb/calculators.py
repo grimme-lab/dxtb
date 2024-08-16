@@ -119,3 +119,12 @@ from dxtb._src.calculators.types import AnalyticalCalculator as AnalyticalCalcul
 from dxtb._src.calculators.types import AutogradCalculator as AutogradCalculator
 from dxtb._src.calculators.types import EnergyCalculator as EnergyCalculator
 from dxtb._src.calculators.types import NumericalCalculator as NumericalCalculator
+
+__all__ = [
+    "GFN1Calculator",
+    "GFN2Calculator",
+    "AnalyticalCalculator",
+    "AutogradCalculator",
+    "EnergyCalculator",
+    "NumericalCalculator",
+]

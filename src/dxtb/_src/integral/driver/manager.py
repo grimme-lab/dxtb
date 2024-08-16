@@ -73,37 +73,40 @@ class DriverManager:
     def _select_driver(
         self, driver_type: int, numbers: Tensor, par: Param, ihelp: IndexHelper
     ) -> IntDriver:
-
         if driver_type == labels.INTDRIVER_LIBCINT:
-            from .libcint import IntDriverLibcint
+            # pylint: disable=import-outside-toplevel
+            from .libcint import IntDriverLibcint as _IntDriver
 
             if self.force_cpu_for_libcint:
                 device = torch.device("cpu")
                 numbers = numbers.to(device=device)
                 ihelp = ihelp.to(device=device)
 
-            return IntDriverLibcint(
-                numbers, par, ihelp, device=self.device, dtype=self.dtype
-            )
+            return _IntDriver(numbers, par, ihelp, device=self.device, dtype=self.dtype)
 
-        elif driver_type == labels.INTDRIVER_ANALYTICAL:
-            from .pytorch import IntDriverPytorch
+        if driver_type == labels.INTDRIVER_ANALYTICAL:
+            # pylint: disable=import-outside-toplevel
+            from .pytorch import IntDriverPytorch as _IntDriver
 
-            return IntDriverPytorch(
-                numbers, par, ihelp, device=self.device, dtype=self.dtype
-            )
+            return _IntDriver(numbers, par, ihelp, device=self.device, dtype=self.dtype)
 
-        elif driver_type == labels.INTDRIVER_AUTOGRAD:
-            from .pytorch import IntDriverPytorchNoAnalytical
+        if driver_type == labels.INTDRIVER_AUTOGRAD:
+            # pylint: disable=import-outside-toplevel
+            from .pytorch import IntDriverPytorchNoAnalytical as _IntDriver
 
-            return IntDriverPytorchNoAnalytical(
-                numbers, par, ihelp, device=self.device, dtype=self.dtype
-            )
+            return _IntDriver(numbers, par, ihelp, device=self.device, dtype=self.dtype)
 
-        else:
-            raise ValueError(f"Unknown integral driver '{driver_type}'.")
+        raise ValueError(f"Unknown integral driver '{driver_type}'.")
 
     def setup_driver(self, positions: Tensor, **kwargs: Any) -> None:
+        """
+        Setup the integral driver (if not already done).
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        """
         logger.debug("Integral Driver: Start setup.")
 
         if self.force_cpu_for_libcint is True:

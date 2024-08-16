@@ -62,7 +62,7 @@ def new_driver(
     if name == labels.INTDRIVER_LEGACY:
         return new_driver_legacy(numbers, par, device=device, dtype=dtype)
 
-    raise ValueError(f"Unknown integral driver '{ labels.INTDRIVER_MAP[name]}'.")
+    raise ValueError(f"Unknown integral driver '{labels.INTDRIVER_MAP[name]}'.")
 
 
 ################################################################################
@@ -75,10 +75,10 @@ def new_driver_libcint(
     dtype: torch.dtype | None = None,
 ) -> IntDriverLibcint:
     # pylint: disable=import-outside-toplevel
-    from .libcint import IntDriverLibcint as IntDriver
+    from .libcint import IntDriverLibcint as _IntDriver
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    return IntDriver(numbers, par, ihelp, device=device, dtype=dtype)
+    return _IntDriver(numbers, par, ihelp, device=device, dtype=dtype)
 
 
 ################################################################################
@@ -91,10 +91,10 @@ def new_driver_pytorch(
     dtype: torch.dtype | None = None,
 ) -> IntDriverPytorch:
     # pylint: disable=import-outside-toplevel
-    from .pytorch import IntDriverPytorch as IntDriver
+    from .pytorch import IntDriverPytorch as _IntDriver
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    return IntDriver(numbers, par, ihelp, device=device, dtype=dtype)
+    return _IntDriver(numbers, par, ihelp, device=device, dtype=dtype)
 
 
 def new_driver_pytorch2(
@@ -104,10 +104,10 @@ def new_driver_pytorch2(
     dtype: torch.dtype | None = None,
 ) -> IntDriverPytorchNoAnalytical:
     # pylint: disable=import-outside-toplevel
-    from .pytorch import IntDriverPytorchNoAnalytical as IntDriver
+    from .pytorch import IntDriverPytorchNoAnalytical as _IntDriver
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    return IntDriver(numbers, par, ihelp, device=device, dtype=dtype)
+    return _IntDriver(numbers, par, ihelp, device=device, dtype=dtype)
 
 
 def new_driver_legacy(
@@ -117,7 +117,7 @@ def new_driver_legacy(
     dtype: torch.dtype | None = None,
 ) -> IntDriverPytorchLegacy:
     # pylint: disable=import-outside-toplevel
-    from .pytorch import IntDriverPytorchLegacy as IntDriver
+    from .pytorch import IntDriverPytorchLegacy as _IntDriver
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    return IntDriver(numbers, par, ihelp, device=device, dtype=dtype)
+    return _IntDriver(numbers, par, ihelp, device=device, dtype=dtype)

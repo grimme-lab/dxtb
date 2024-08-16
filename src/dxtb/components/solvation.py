@@ -26,7 +26,4 @@ from dxtb._src.components.interactions.solvation import (
 )
 from dxtb._src.components.interactions.solvation import new_solvation as new_solvation
 
-__all__ = [
-    "GeneralizedBorn",
-    "new_solvation",
-]
+__all__ = ["GeneralizedBorn", "new_solvation"]

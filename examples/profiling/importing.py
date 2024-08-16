@@ -47,3 +47,5 @@ print("Torch", t1 - t0)
 print("dxtb", t2 - t1)
 print("Param", t3 - t2)
 print("scipy", t4 - t3)
+
+del scipy, torch, GFN1_XTB

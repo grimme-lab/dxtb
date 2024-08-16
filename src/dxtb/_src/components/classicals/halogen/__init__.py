@@ -56,5 +56,7 @@ the :class:`.Halogen` class in a simple scenario:
     print(energy.sum(-1))  # tensor(0.0025)
 """
 
-from .factory import *
-from .hal import *
+from .factory import new_halogen
+from .hal import LABEL_HALOGEN, Halogen
+
+__all__ = ["new_halogen", "Halogen", "LABEL_HALOGEN"]

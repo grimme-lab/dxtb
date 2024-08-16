@@ -27,3 +27,12 @@ from dxtb._src.calculators.config.integral import ConfigIntegrals as ConfigInteg
 from dxtb._src.calculators.config.main import Config as Config
 from dxtb._src.calculators.config.scf import ConfigFermi as ConfigFermi
 from dxtb._src.calculators.config.scf import ConfigSCF as ConfigSCF
+
+__all__ = [
+    "Config",
+    "ConfigCache",
+    "ConfigCacheStore",
+    "ConfigIntegrals",
+    "ConfigFermi",
+    "ConfigSCF",
+]
