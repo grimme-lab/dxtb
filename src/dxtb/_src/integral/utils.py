@@ -29,4 +29,5 @@ from dxtb._src.typing import Tensor
 
 
 def snorm(ovlp: Tensor) -> Tensor:
-    return torch.pow(ovlp.diagonal(dim1=-1, dim2=-2), -0.5)
+    d = ovlp.diagonal(dim1=-1, dim2=-2)
+    return torch.where(d == 0.0, 0.0, torch.pow(d, -0.5))

@@ -28,12 +28,64 @@ from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb import integrals as ints
 from dxtb import labels
-from dxtb._src.exlibs import libcint
-from dxtb._src.integral.driver.libcint import IntDriverLibcint
-from dxtb._src.typing import DD
+from dxtb._src.exlibs.libcint import LibcintWrapper
+from dxtb._src.integral.driver import libcint
+from dxtb._src.integral.driver.manager import DriverManager
+from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
 from .samples import samples
+
+
+def run(
+    numbers: Tensor, positions: Tensor, force_cpu_for_libcint: bool, dd: DD
+) -> None:
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    mgr = DriverManager(
+        labels.INTDRIVER_LIBCINT,
+        force_cpu_for_libcint=force_cpu_for_libcint,
+        **dd,
+    )
+    mgr.create_driver(numbers, par, ihelp)
+
+    i = ints.Integrals(mgr, **dd)
+    i.build_overlap(positions)
+
+    if numbers.ndim == 1:
+        assert isinstance(mgr.driver, libcint.IntDriverLibcint)
+        assert isinstance(mgr.driver.drv, LibcintWrapper)
+    else:
+        assert isinstance(mgr.driver, libcint.IntDriverLibcint)
+        assert isinstance(mgr.driver.drv, list)
+        assert isinstance(mgr.driver.drv[0], LibcintWrapper)
+        assert isinstance(mgr.driver.drv[1], LibcintWrapper)
+
+    ################################################
+
+    i.overlap = libcint.OverlapLibcint(**dd)
+    i.build_overlap(positions)
+
+    o = i.overlap
+    assert o is not None
+    assert o.matrix is not None
+
+    ################################################
+
+    i.dipole = libcint.DipoleLibcint(**dd)
+    i.build_dipole(positions)
+
+    d = i.dipole
+    assert d is not None
+    assert d.matrix is not None
+
+    ################################################
+
+    i.quadrupole = libcint.QuadrupoleLibcint(**dd)
+    i.build_quadrupole(positions)
+
+    q = i.quadrupole
+    assert q is not None
+    assert q.matrix is not None
 
 
 @pytest.mark.parametrize("name", ["H2"])
@@ -47,46 +99,7 @@ def test_single(dtype: torch.dtype, name: str, force_cpu_for_libcint: bool):
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
-    i = ints.Integrals(
-        numbers,
-        par,
-        ihelp,
-        force_cpu_for_libcint=force_cpu_for_libcint,
-        intlevel=labels.INTLEVEL_QUADRUPOLE,
-        **dd,
-    )
-
-    i.setup_driver(positions)
-    assert isinstance(i.driver, IntDriverLibcint)
-    assert isinstance(i.driver.drv, libcint.LibcintWrapper)
-
-    ################################################
-
-    i.overlap = ints.types.Overlap(**dd)
-    i.build_overlap(positions)
-
-    o = i.overlap
-    assert o is not None
-    assert o.matrix is not None
-
-    ################################################
-
-    i.dipole = ints.types.Dipole(**dd)
-    i.build_dipole(positions)
-
-    d = i.dipole
-    assert d is not None
-    assert d.matrix is not None
-
-    ################################################
-
-    i.quadrupole = ints.types.Quadrupole(**dd)
-    i.build_quadrupole(positions)
-
-    q = i.quadrupole
-    assert q is not None
-    assert q.matrix is not None
+    run(numbers, positions, force_cpu_for_libcint, dd)
 
 
 @pytest.mark.parametrize("name1", ["H2"])
@@ -114,45 +127,4 @@ def test_batch(
         )
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
-    i = ints.Integrals(
-        numbers,
-        par,
-        ihelp,
-        intlevel=labels.INTLEVEL_QUADRUPOLE,
-        force_cpu_for_libcint=force_cpu_for_libcint,
-        **dd,
-    )
-
-    i.setup_driver(positions)
-    assert isinstance(i.driver, IntDriverLibcint)
-    assert isinstance(i.driver.drv, list)
-    assert isinstance(i.driver.drv[0], libcint.LibcintWrapper)
-    assert isinstance(i.driver.drv[1], libcint.LibcintWrapper)
-
-    ################################################
-
-    i.overlap = ints.types.Overlap(**dd)
-    i.build_overlap(positions)
-
-    o = i.overlap
-    assert o is not None
-    assert o.matrix is not None
-
-    ################################################
-
-    i.dipole = ints.types.Dipole(**dd)
-    i.build_dipole(positions)
-
-    d = i.dipole
-    assert d is not None
-    assert d.matrix is not None
-
-    ################################################
-
-    i.quadrupole = ints.types.Quadrupole(**dd)
-    i.build_quadrupole(positions)
-
-    q = i.quadrupole
-    assert q is not None
-    assert q.matrix is not None
+    run(numbers, positions, force_cpu_for_libcint, dd)

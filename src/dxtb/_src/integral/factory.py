@@ -30,14 +30,13 @@ from dxtb._src.constants import labels
 from dxtb._src.param import Param
 from dxtb._src.typing import TYPE_CHECKING, Any, Tensor
 
-from .driver import DriverManager
-
 if TYPE_CHECKING:
     from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
     from dxtb._src.xtb.gfn2 import GFN2Hamiltonian
 
     from .driver.libcint import DipoleLibcint, OverlapLibcint, QuadrupoleLibcint
     from .driver.pytorch import DipolePytorch, OverlapPytorch, QuadrupolePytorch
+    from .types import DipoleIntegral, OverlapIntegral, QuadrupoleIntegral
 
 __all__ = ["new_hcore", "new_overlap", "new_dipint", "new_quadint"]
 
@@ -112,11 +111,11 @@ def new_hcore_gfn2(
 
 
 def new_overlap(
-    driver: DriverManager | int = labels.INTDRIVER_LIBCINT,
+    driver: int = labels.INTDRIVER_LIBCINT,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
     **kwargs: Any,
-) -> OverlapLibcint | OverlapPytorch:
+) -> OverlapIntegral:
     # Determine which integral class to instantiate based on the type
     if driver == labels.INTDRIVER_LIBCINT:
         return new_overlap_libcint(device=device, dtype=dtype, **kwargs)
@@ -164,7 +163,7 @@ def new_dipint(
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
     **kwargs: Any,
-) -> DipoleLibcint | DipolePytorch:
+) -> DipoleIntegral:
     # Determine which integral class to instantiate based on the type
     if driver == labels.INTDRIVER_LIBCINT:
         return new_dipint_libcint(device=device, dtype=dtype, **kwargs)
@@ -212,7 +211,7 @@ def new_quadint(
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
     **kwargs: Any,
-) -> QuadrupoleLibcint | QuadrupolePytorch:
+) -> QuadrupoleIntegral:
     # Determine which integral class to instantiate based on the type
     if driver == labels.INTDRIVER_LIBCINT:
         return new_quadint_libcint(device=device, dtype=dtype, **kwargs)

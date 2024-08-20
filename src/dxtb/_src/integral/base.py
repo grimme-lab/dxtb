@@ -316,7 +316,7 @@ class BaseIntegral(IntegralABC, TensorLike):
         if not isinstance(driver, _BaseIntDriver):
             raise RuntimeError(f"Wrong integral driver selected for '{self.label}'.")
 
-    def normalize(self, norm: Tensor | None = None, **kwargs: Any) -> None:
+    def normalize(self, norm: Tensor | None = None) -> None:
         """
         Normalize the integral (changes ``self.matrix``).
 
@@ -331,7 +331,14 @@ class BaseIntegral(IntegralABC, TensorLike):
             else:
                 norm = snorm(self.matrix)
 
-        self.matrix = einsum("...ij,...i,...j->...ij", self.matrix, norm, norm)
+        if norm.ndim == 1:
+            einsum_str = "...ij,i,j->...ij"
+        elif norm.ndim == 2:
+            einsum_str = "b...ij,bi,bj->b...ij"
+        else:
+            raise ValueError(f"Invalid norm shape: {norm.shape}")
+
+        self.matrix = einsum(einsum_str, self.matrix, norm, norm)
 
     def to_pt(self, path: PathLike | None = None) -> None:
         """
@@ -359,9 +366,7 @@ class BaseIntegral(IntegralABC, TensorLike):
         self._matrix = mat
 
     @property
-    def norm(self) -> Tensor:
-        if self._norm is None:
-            raise RuntimeError("Overlap norm has not been calculated.")
+    def norm(self) -> Tensor | None:
         return self._norm
 
     @norm.setter

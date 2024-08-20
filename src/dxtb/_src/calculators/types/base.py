@@ -591,27 +591,27 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
             self.opts.ints.level = max(labels.INTLEVEL_QUADRUPOLE, self.opts.ints.level)
 
         # setup integral driver and integral container
-        drv_mngr = ints.DriverManager(
-            self.opts.ints.driver, numbers, par, self.ihelp, **dd
-        )
-        self.integrals = ints.Integrals(drv_mngr, intlevel=self.opts.ints.level, **dd)
+        mgr = ints.DriverManager(self.opts.ints.driver, **dd)
+        mgr.create_driver(numbers, par, self.ihelp)
+
+        self.integrals = ints.Integrals(mgr, intlevel=self.opts.ints.level, **dd)
 
         if self.opts.ints.level >= labels.INTLEVEL_OVERLAP:
             self.integrals.hcore = ints.factories.new_hcore(
                 numbers, par, self.ihelp, **dd
             )
             self.integrals.overlap = ints.factories.new_overlap(
-                driver=drv_mngr.driver_type, **dd
+                driver=mgr.driver_type, **dd
             )
 
         if self.opts.ints.level >= labels.INTLEVEL_DIPOLE:
             self.integrals.dipole = ints.factories.new_dipint(
-                driver=drv_mngr.driver_type, **dd
+                driver=mgr.driver_type, **dd
             )
 
         if self.opts.ints.level >= labels.INTLEVEL_QUADRUPOLE:
             self.integrals.quadrupole = ints.factories.new_quadint(
-                driver=drv_mngr.driver_type, **dd
+                driver=mgr.driver_type, **dd
             )
 
         OutputHandler.write_stdout("done\n", v=4)

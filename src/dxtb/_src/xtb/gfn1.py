@@ -28,12 +28,13 @@ from tad_mctc import storch
 from tad_mctc.batch import real_pairs
 from tad_mctc.convert import symmetrize
 from tad_mctc.data.radii import ATOMIC as ATOMIC_RADII
+from tad_mctc.ncoord import cn_d3
 from tad_mctc.units import EV2AU
 
 from dxtb import IndexHelper
 from dxtb._src.components.interactions import Potential
 from dxtb._src.param import Param
-from dxtb._src.typing import Tensor
+from dxtb._src.typing import Any, Tensor
 
 from .base import BaseHamiltonian
 
@@ -53,7 +54,7 @@ class GFN1Hamiltonian(BaseHamiltonian):
         ihelp: IndexHelper,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
-        **_,
+        **kwargs: Any,
     ) -> None:
         super().__init__(numbers, par, ihelp, device, dtype)
 
@@ -78,6 +79,9 @@ class GFN1Hamiltonian(BaseHamiltonian):
         # unit conversion
         self.selfenergy = self.selfenergy * EV2AU
         self.kcn = self.kcn * EV2AU
+
+        # coordination number function
+        self.cn = kwargs.pop("cn", cn_d3)
 
         # dtype should always be correct as it always uses self.dtype
         if any(
@@ -257,9 +261,7 @@ class GFN1Hamiltonian(BaseHamiltonian):
 
         return ksh
 
-    def build(
-        self, positions: Tensor, overlap: Tensor, cn: Tensor | None = None
-    ) -> Tensor:
+    def build(self, positions: Tensor, overlap: Tensor | None = None) -> Tensor:
         """
         Build the xTB Hamiltonian.
 
@@ -267,10 +269,9 @@ class GFN1Hamiltonian(BaseHamiltonian):
         ----------
         positions : Tensor
             Atomic positions of molecular structure.
-        overlap : Tensor
-            Overlap matrix.
-        cn : Tensor | None, optional
-            Coordination number. Defaults to ``None``.
+        overlap : Tensor | None, optional
+            Overlap matrix. If ``None``, the true xTB Hamiltonian is *not*
+            built. Defaults to ``None``.
 
         Returns
         -------
@@ -294,8 +295,10 @@ class GFN1Hamiltonian(BaseHamiltonian):
         # ----------------
         # Eq.29: H_(mu,mu)
         # ----------------
-        if cn is None:
+        if self.cn is None:
             cn = torch.zeros_like(self.numbers, **self.dd)
+        else:
+            cn = self.cn(self.numbers, positions)
 
         kcn = self.ihelp.spread_ushell_to_shell(self.kcn)
 
@@ -363,10 +366,12 @@ class GFN1Hamiltonian(BaseHamiltonian):
             ),
             dim=(-2, -1),
         )
-        h = hcore * overlap
+
+        if overlap is not None:
+            hcore = hcore * overlap
 
         # force symmetry to avoid problems through numerical errors
-        h0 = symmetrize(h)
+        h0 = symmetrize(hcore)
         self.matrix = h0
         return h0
 

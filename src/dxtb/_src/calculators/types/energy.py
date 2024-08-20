@@ -399,17 +399,24 @@ class EnergyCalculator(BaseCalculator):
         """
         self.singlepoint(positions, chrg, spin, **kwargs)
 
+        ovlp_msg = (
+            "Overlap matrix not found in cache. The overlap is not saved "
+            "per default. Enable saving either via the calculator options "
+            "(`calc.opts.cache.store.overlap = True`) or by passing the "
+            "`store_overlap=True` keyword argument to called method, e.g., "
+            "`calc.energy(positions, store_overlap=True)"
+        )
+
         overlap = self.cache["overlap"]
         if overlap is None:
-            raise RuntimeError(
-                "Overlap matrix not found in cache. The overlap is not saved "
-                "per default. Enable saving either via the calculator options "
-                "(`calc.opts.cache.store.overlap = True`) or by passing the "
-                "`store_overlap=True` keyword argument to called method, e.g., "
-                "`calc.energy(positions, store_overlap=True)"
-            )
+            raise RuntimeError(ovlp_msg)
 
-        assert isinstance(overlap, Tensor)
+        # pylint: disable=import-outside-toplevel
+        from dxtb._src.integral.types import OverlapIntegral
+
+        assert isinstance(overlap, OverlapIntegral)
+        if overlap.matrix is None:
+            raise RuntimeError(ovlp_msg)
 
         density = self.cache["density"]
         if density is None:
@@ -424,7 +431,7 @@ class EnergyCalculator(BaseCalculator):
         # pylint: disable=import-outside-toplevel
         from dxtb._src.wavefunction.wiberg import get_bond_order
 
-        return get_bond_order(overlap, density, self.ihelp)
+        return get_bond_order(overlap.matrix, density, self.ihelp)
 
     def calculate(
         self,

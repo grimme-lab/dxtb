@@ -70,7 +70,7 @@ def test_h0_gfn1(par: Param) -> None:
     h0 = wrappers.hcore(numbers, positions, par)
     assert h0.shape == (17, 17)
 
-    h0 = wrappers.hcore(numbers, positions, par, cn=torch.zeros(numbers.shape))
+    h0 = wrappers.hcore(numbers, positions, par, cn=None)
     assert h0.shape == (17, 17)
 
 

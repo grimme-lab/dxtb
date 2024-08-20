@@ -30,7 +30,7 @@ import torch
 from dxtb import IndexHelper, labels
 from dxtb._src.constants import labels
 from dxtb._src.param import Param
-from dxtb._src.typing import TYPE_CHECKING, Any, Tensor
+from dxtb._src.typing import TYPE_CHECKING, Any, Tensor, TensorLike
 
 if TYPE_CHECKING:
     from ..base import IntDriver
@@ -42,24 +42,23 @@ __all__ = ["DriverManager"]
 logger = logging.getLogger(__name__)
 
 
-class DriverManager:
+class DriverManager(TensorLike):
     """
     This class instantiates the appropriate driver based on the
     configuration passed to it.
     """
 
+    __slots__ = ["_driver", "driver_type", "force_cpu_for_libcint"]
+
     def __init__(
         self,
         driver_type: int,
-        numbers: Tensor,
-        par: Param,
-        ihelp: IndexHelper,
+        _driver: IntDriver | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
         **kwargs,
     ):
-        self.device = device
-        self.dtype = dtype
+        super().__init__(device=device, dtype=dtype)
 
         # per default, libcint is run on the CPU
         self.force_cpu_for_libcint = kwargs.pop(
@@ -67,13 +66,24 @@ class DriverManager:
             True if driver_type == labels.INTDRIVER_LIBCINT else False,
         )
 
-        self.driver = self._select_driver(driver_type, numbers, par, ihelp)
         self.driver_type = driver_type
+        self._driver = _driver
 
-    def _select_driver(
-        self, driver_type: int, numbers: Tensor, par: Param, ihelp: IndexHelper
-    ) -> IntDriver:
-        if driver_type == labels.INTDRIVER_LIBCINT:
+    @property
+    def driver(self) -> IntDriver:
+        if self._driver is None:
+            raise RuntimeError(
+                "No driver has been created yet. Run `create_driver` first."
+            )
+
+        return self._driver
+
+    @driver.setter
+    def driver(self, driver: IntDriver) -> None:
+        self._driver = driver
+
+    def create_driver(self, numbers: Tensor, par: Param, ihelp: IndexHelper) -> None:
+        if self.driver_type == labels.INTDRIVER_LIBCINT:
             # pylint: disable=import-outside-toplevel
             from .libcint import IntDriverLibcint as _IntDriver
 
@@ -82,21 +92,19 @@ class DriverManager:
                 numbers = numbers.to(device=device)
                 ihelp = ihelp.to(device=device)
 
-            return _IntDriver(numbers, par, ihelp, device=self.device, dtype=self.dtype)
-
-        if driver_type == labels.INTDRIVER_ANALYTICAL:
+        elif self.driver_type == labels.INTDRIVER_ANALYTICAL:
             # pylint: disable=import-outside-toplevel
             from .pytorch import IntDriverPytorch as _IntDriver
 
-            return _IntDriver(numbers, par, ihelp, device=self.device, dtype=self.dtype)
-
-        if driver_type == labels.INTDRIVER_AUTOGRAD:
+        elif self.driver_type == labels.INTDRIVER_AUTOGRAD:
             # pylint: disable=import-outside-toplevel
             from .pytorch import IntDriverPytorchNoAnalytical as _IntDriver
+        else:
+            raise ValueError(f"Unknown integral driver '{self.driver_type}'.")
 
-            return _IntDriver(numbers, par, ihelp, device=self.device, dtype=self.dtype)
-
-        raise ValueError(f"Unknown integral driver '{driver_type}'.")
+        self.driver = _IntDriver(
+            numbers, par, ihelp, device=self.device, dtype=self.dtype
+        )
 
     def setup_driver(self, positions: Tensor, **kwargs: Any) -> None:
         """

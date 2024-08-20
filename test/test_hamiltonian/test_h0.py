@@ -57,8 +57,7 @@ def run(numbers: Tensor, positions: Tensor, par: Param, ref: Tensor, dd: DD) -> 
     driver.setup(positions)
     s = overlap.build(driver)
 
-    cn = cn_d3(numbers, positions)
-    h = h0.build(positions, s, cn=cn)
+    h = h0.build(positions, s)
     assert pytest.approx(h.cpu(), abs=tol) == h.mT.cpu()
     assert pytest.approx(h.cpu(), abs=tol) == ref.cpu()
 
@@ -82,7 +81,6 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Batched version."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
-    tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample1, sample2 = samples[name1], samples[name2]
 
@@ -198,7 +196,7 @@ def test_no_cn(dtype: torch.dtype) -> None:
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     driver = IntDriver(numbers, GFN1_XTB, ihelp, **dd)
     overlap = Overlap(**dd)
-    h0 = GFN1Hamiltonian(numbers, GFN1_XTB, ihelp, **dd)
+    h0 = GFN1Hamiltonian(numbers, GFN1_XTB, ihelp, cn=None, **dd)
 
     driver.setup(positions)
     s = overlap.build(driver)

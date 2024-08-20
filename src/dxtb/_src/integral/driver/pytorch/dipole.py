@@ -29,7 +29,8 @@ from dxtb._src.constants import defaults
 from dxtb._src.typing import Literal, Tensor
 
 from ...types import DipoleIntegral
-from .base import BaseIntDriverPytorch, IntegralPytorch
+from .base import IntegralPytorch
+from .driver import BaseIntDriverPytorch
 
 __all__ = ["DipolePytorch"]
 

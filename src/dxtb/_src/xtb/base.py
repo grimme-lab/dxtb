@@ -27,7 +27,7 @@ import torch
 
 from dxtb import IndexHelper
 from dxtb._src.param import Param
-from dxtb._src.typing import PathLike, Tensor, TensorLike
+from dxtb._src.typing import CNFunction, PathLike, Tensor, TensorLike
 
 from .abc import HamiltonianABC
 
@@ -74,6 +74,9 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
     """Pauling electronegativity of each species."""
     rad: Tensor
     """Van-der-Waals radius of each species."""
+
+    cn: None | CNFunction
+    """Coordination number function."""
 
     __slots__ = [
         "numbers",

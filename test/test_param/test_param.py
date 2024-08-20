@@ -138,7 +138,7 @@ def test_param_calculator(dtype: torch.dtype) -> None:
     h = calc.integrals.hcore
     assert h is not None
 
-    occ = calc.ihelp.reduce_shell_to_atom(h.integral.refocc)
+    occ = calc.ihelp.reduce_shell_to_atom(h.refocc)
     assert pytest.approx(ref.cpu()) == occ.cpu()
 
 

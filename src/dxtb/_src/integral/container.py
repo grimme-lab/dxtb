@@ -47,16 +47,17 @@ class Integrals(IntegralContainer):
     """
 
     __slots__ = [
+        "mgr",
+        "intlevel",
         "_hcore",
         "_overlap",
         "_dipole",
         "_quadrupole",
-        "_driver",
     ]
 
     def __init__(
         self,
-        driver_manager: DriverManager,
+        mgr: DriverManager,
         *,
         intlevel: int = defaults.INTLEVEL,
         device: torch.device | None = None,
@@ -68,13 +69,16 @@ class Integrals(IntegralContainer):
     ) -> None:
         super().__init__(device, dtype)
 
-        self.driver_manager = driver_manager
+        self.mgr = mgr
+        self.intlevel = intlevel
 
         self._hcore = _hcore
         self._overlap = _overlap
         self._dipole = _dipole
         self._quadrupole = _quadrupole
-        self._intlevel = intlevel
+
+    def setup_driver(self, positions: Tensor, **kwargs: Any) -> None:
+        self.mgr.setup_driver(positions, **kwargs)
 
     # Core Hamiltonian
 
@@ -87,9 +91,8 @@ class Integrals(IntegralContainer):
         self._hcore = hcore
         self.checks()
 
-    # TODO: Allow Hamiltonian build without overlap
     def build_hcore(
-        self, positions: Tensor, overlap: Tensor | None = None, **kwargs
+        self, positions: Tensor, with_overlap: bool = True, **kwargs
     ) -> Tensor:
         logger.debug("Core Hamiltonian: Start building matrix.")
 
@@ -99,18 +102,14 @@ class Integrals(IntegralContainer):
         if self.overlap is None:
             raise RuntimeError("Overlap integral not initialized.")
 
-        # overlap integral required
-        if overlap is None:
-            overlap = self.build_overlap(positions, **kwargs)
+        # if overlap integral required
+        if with_overlap is True and self.overlap is None:
+            self.build_overlap(positions, **kwargs)
 
-        cn = kwargs.pop("cn", None)
-        if cn is None:
-            # pylint: disable=import-outside-toplevel
-            from ..ncoord import cn_d3
-
-            cn = cn_d3(self.hcore.numbers, positions)
-
-        hcore = self.hcore.build(positions, self.overlap.matrix, cn=cn)
+        hcore = self.hcore.build(
+            positions,
+            overlap=self.overlap.matrix if with_overlap is True else None,
+        )
         logger.debug("Core Hamiltonian: All finished.")
         return hcore
 
@@ -118,6 +117,15 @@ class Integrals(IntegralContainer):
 
     @property
     def overlap(self) -> OverlapIntegral | None:
+        """
+        Overlap integral class. The integral matrix of shape
+        ``(..., nao, nao)`` is stored in the :attr:`matrix` attribute.
+
+        Returns
+        -------
+        Tensor | None
+            Overlap integral if set, else ``None``.
+        """
         return self._overlap
 
     @overlap.setter
@@ -127,22 +135,32 @@ class Integrals(IntegralContainer):
 
     def build_overlap(self, positions: Tensor, **kwargs: Any) -> Tensor:
         # in case CPU is forced for libcint, move positions to CPU
-        if self.driver_manager.force_cpu_for_libcint is True:
-            positions = positions.to(device=torch.device("cpu"))
+        if self.mgr.force_cpu_for_libcint is True:
+            if positions.device != torch.device("cpu"):
+                positions = positions.to(device=torch.device("cpu"))
 
-        self.driver_manager.setup_driver(positions, **kwargs)
+        self.mgr.setup_driver(positions, **kwargs)
         logger.debug("Overlap integral: Start building matrix.")
 
         if self.overlap is None:
-            raise RuntimeError("No overlap integral class provided.")
+            # pylint: disable=import-outside-toplevel
+            from .factory import new_overlap
 
-        self.overlap.build(self.driver_manager.driver)
+            self.overlap = new_overlap(
+                self.mgr.driver_type,
+                **self.dd,
+                **kwargs,
+            )
+
+        if self.overlap._matrix is None:
+            self.overlap.build(self.mgr.driver)
+            self.overlap.normalize()
         assert self.overlap.matrix is not None
 
         # move integral to the correct device...
-        if self.driver_manager.force_cpu_for_libcint is True:
+        if self.mgr.force_cpu_for_libcint is True:
             # ... but only if no other multipole integrals are required
-            if self._intlevel <= labels.INTLEVEL_HCORE:
+            if self.intlevel <= labels.INTLEVEL_HCORE:
                 self.overlap.matrix = self.overlap.matrix.to(device=self.device)
 
                 # FIXME: The matrix has to be moved explicitly, because when
@@ -158,16 +176,17 @@ class Integrals(IntegralContainer):
 
     def grad_overlap(self, positions: Tensor, **kwargs) -> Tensor:
         # in case CPU is forced for libcint, move positions to CPU
-        if self.driver_manager.force_cpu_for_libcint is True:
-            positions = positions.to(device=torch.device("cpu"))
+        if self.mgr.force_cpu_for_libcint is True:
+            if positions.device != torch.device("cpu"):
+                positions = positions.to(device=torch.device("cpu"))
 
-        self.driver_manager.setup_driver(positions, **kwargs)
+        self.mgr.setup_driver(positions, **kwargs)
 
         if self.overlap is None:
             raise RuntimeError("No overlap integral provided.")
 
         logger.debug("Overlap gradient: Start.")
-        grad = self.overlap.get_gradient(self.driver_manager.driver, **kwargs)
+        grad = self.overlap.get_gradient(self.mgr.driver, **kwargs)
         logger.debug("Overlap gradient: All finished.")
 
         return grad.to(self.device)
@@ -177,7 +196,8 @@ class Integrals(IntegralContainer):
     @property
     def dipole(self) -> DipoleIntegral | None:
         """
-        Dipole integral of shape (3, nao, nao).
+        Dipole integral class. The integral matrix of shape
+        ``(..., 3, nao, nao)``is stored in the :attr:`matrix` attribute.
 
         Returns
         -------
@@ -193,20 +213,25 @@ class Integrals(IntegralContainer):
 
     def build_dipole(self, positions: Tensor, shift: bool = True, **kwargs: Any):
         # in case CPU is forced for libcint, move positions to CPU
-        if self.driver_manager.force_cpu_for_libcint:
-            positions = positions.to(device=torch.device("cpu"))
+        if self.mgr.force_cpu_for_libcint:
+            if positions.device != torch.device("cpu"):
+                positions = positions.to(device=torch.device("cpu"))
 
-        self.driver_manager.setup_driver(positions, **kwargs)
+        self.mgr.setup_driver(positions, **kwargs)
         logger.debug("Dipole integral: Start building matrix.")
 
-        if self.overlap is None:
-            raise RuntimeError("Overlap integral class not initialized.")
-
         if self.dipole is None:
-            raise RuntimeError("Dipole integral class not initialized.")
+            # pylint: disable=import-outside-toplevel
+            from .factory import new_dipint
+
+            self.dipole = new_dipint(self.mgr.driver_type, **self.dd, **kwargs)
+
+        if self.overlap is None:
+            self.build_overlap(positions, **kwargs)
+        assert self.overlap is not None
 
         # build (with overlap norm)
-        self.dipole.build(self.driver_manager.driver)
+        self.dipole.build(self.mgr.driver)
         self.dipole.normalize(self.overlap.norm)
         logger.debug("Dipole integral: Finished building matrix.")
 
@@ -215,7 +240,7 @@ class Integrals(IntegralContainer):
             logger.debug("Dipole integral: Start shifting operator (r0->rj).")
             self.dipole.shift_r0_rj(
                 self.overlap.matrix,
-                self.driver_manager.driver.ihelp.spread_atom_to_orbital(
+                self.mgr.driver.ihelp.spread_atom_to_orbital(
                     positions,
                     dim=-2,
                     extra=True,
@@ -225,10 +250,7 @@ class Integrals(IntegralContainer):
 
         # move integral to the correct device, but only if no other multipole
         # integrals are required
-        if (
-            self.driver_manager.force_cpu_for_libcint
-            and self._intlevel <= labels.INTLEVEL_DIPOLE
-        ):
+        if self.mgr.force_cpu_for_libcint and self.intlevel <= labels.INTLEVEL_DIPOLE:
             self.dipole.matrix = self.dipole.matrix.to(device=self.device)
             self.overlap.matrix = self.overlap.matrix.to(device=self.device)
 
@@ -240,7 +262,9 @@ class Integrals(IntegralContainer):
     @property
     def quadrupole(self) -> QuadrupoleIntegral | None:
         """
-        Quadrupole integral of shape (6/9, nao, nao).
+        Quadrupole integral class. The integral matrix of shape
+        ``(..., 6, nao, nao)`` or ``(..., 9, nao, nao)`` is stored
+        in the :attr:`matrix` attribute.
 
         Returns
         -------
@@ -262,21 +286,30 @@ class Integrals(IntegralContainer):
         **kwargs: Any,
     ):
         # in case CPU is forced for libcint, move positions to CPU
-        if self.driver_manager.force_cpu_for_libcint:
-            positions = positions.to(device=torch.device("cpu"))
+        if self.mgr.force_cpu_for_libcint:
+            if positions.device != torch.device("cpu"):
+                positions = positions.to(device=torch.device("cpu"))
 
         # check all instantiations
-        self.driver_manager.setup_driver(positions, **kwargs)
+        self.mgr.setup_driver(positions, **kwargs)
         logger.debug("Quad integral: Start building matrix.")
 
-        if self.overlap is None:
-            raise RuntimeError("Overlap integral not initialized.")
-
         if self.quadrupole is None:
-            raise RuntimeError("Quadrupole integral not initialized.")
+            # pylint: disable=import-outside-toplevel
+            from .factory import new_quadint
+
+            self.quadrupole = new_quadint(
+                self.mgr.driver_type,
+                **self.dd,
+                **kwargs,
+            )
+
+        if self.overlap is None:
+            self.build_overlap(positions, **kwargs)
+        assert self.overlap is not None
 
         # build
-        self.quadrupole.build(self.driver_manager.driver)
+        self.quadrupole.build(self.mgr.driver)
         self.quadrupole.normalize(self.overlap.norm)
         logger.debug("Quad integral: Finished building matrix.")
 
@@ -302,7 +335,7 @@ class Integrals(IntegralContainer):
             self.quadrupole.shift_r0r0_rjrj(
                 self.dipole.matrix,
                 self.overlap.matrix,
-                self.driver_manager.driver.ihelp.spread_atom_to_orbital(
+                self.mgr.driver.ihelp.spread_atom_to_orbital(
                     positions,
                     dim=-2,
                     extra=True,
@@ -313,8 +346,8 @@ class Integrals(IntegralContainer):
         # Finally, we move the integral to the correct device, but only if
         # no other multipole integrals are required.
         if (
-            self.driver_manager.force_cpu_for_libcint
-            and self._intlevel <= labels.INTLEVEL_QUADRUPOLE
+            self.mgr.force_cpu_for_libcint
+            and self.intlevel <= labels.INTLEVEL_QUADRUPOLE
         ):
             self.overlap.matrix = self.overlap.matrix.to(self.device)
             self.quadrupole.matrix = self.quadrupole.matrix.to(self.device)
@@ -346,21 +379,20 @@ class Integrals(IntegralContainer):
             if cls.dtype != self.dtype:
                 raise RuntimeError(
                     f"Data type of '{cls.label}' integral ({cls.dtype}) and "
-                    f"integral container {self.dtype} do not match."
+                    f"integral container ({self.dtype}) do not match."
                 )
             if cls.device != self.device:
                 raise RuntimeError(
                     f"Device of '{cls.label}' integral ({cls.device}) and "
-                    f"integral container {self.device} do not match."
+                    f"integral container ({self.device}) do not match."
                 )
 
             if name != "hcore":
                 assert not isinstance(cls, BaseHamiltonian)
 
-                print(cls.family)
                 family_integral = cls.family
-                family_driver = self.driver_manager.driver.family
-                driver_label = self.driver_manager.driver
+                family_driver = self.mgr.driver.family
+                driver_label = self.mgr.driver
                 if family_integral != family_driver:
                     raise RuntimeError(
                         f"The '{cls.label}' integral implementation "
@@ -373,7 +405,7 @@ class Integrals(IntegralContainer):
                     )
 
     def reset_all(self) -> None:
-        self.driver_manager.invalidate_driver()
+        self.mgr.invalidate_driver()
         # TODO: Do we need to reset the specific integrals?
 
     # pretty print

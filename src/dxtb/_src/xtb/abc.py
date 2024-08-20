@@ -37,9 +37,7 @@ class HamiltonianABC(ABC):
     """
 
     @abstractmethod
-    def build(
-        self, positions: Tensor, overlap: Tensor, cn: Tensor | None = None
-    ) -> Tensor:
+    def build(self, positions: Tensor, overlap: Tensor | None = None) -> Tensor:
         """
         Build the xTB Hamiltonian.
 
@@ -47,10 +45,9 @@ class HamiltonianABC(ABC):
         ----------
         positions : Tensor
             Atomic positions of molecular structure.
-        overlap : Tensor
-            Overlap matrix.
-        cn : Tensor | None, optional
-            Coordination number. Defaults to ``None``.
+        overlap : Tensor | None, optional
+            Overlap matrix. If ``None``, the true xTB Hamiltonian is *not*
+            built. Defaults to ``None``.
 
         Returns
         -------

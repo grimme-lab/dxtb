@@ -53,8 +53,6 @@ def run_asserts(c: Calculator, dtype: torch.dtype) -> None:
 
     assert c.integrals.dtype == dtype
 
-    assert c.integrals.driver.dtype == dtype
-
 
 def test_change_type() -> None:
     numbers = torch.tensor([6, 1, 1, 1, 1])
@@ -77,11 +75,12 @@ def test_change_type_after_energy() -> None:
 
     run_asserts(calc_64, dtype)
 
-    # extra asserts on initialized vars
-    assert calc_64.integrals.driver.basis.dtype == dtype
-    assert calc_64.integrals.driver.basis.ngauss.dtype == torch.uint8
-    assert calc_64.integrals.driver.basis.pqn.dtype == torch.uint8
-    assert calc_64.integrals.driver.basis.slater.dtype == dtype
+    # extra asserts on initialized
+    bas = calc_64.integrals.mgr.driver.basis
+    assert bas.dtype == dtype
+    assert bas.ngauss.dtype == torch.uint8
+    assert bas.pqn.dtype == torch.uint8
+    assert bas.slater.dtype == dtype
 
     assert calc_64.integrals.hcore is not None
     assert calc_64.integrals.hcore.dtype == dtype

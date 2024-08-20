@@ -155,8 +155,18 @@ class AutogradCalculator(EnergyCalculator):
             # pylint: disable=import-outside-toplevel
             from tad_mctc.autograd import jacrev
 
-            # jacrev requires a scalar from `self.energy`!
-            deriv = jacrev(self.energy, argnums=0)(positions, chrg, spin, **kwargs)
+            try:
+                # jacrev requires a scalar from `self.energy`!
+                deriv = jacrev(self.energy, argnums=0)(positions, chrg, spin, **kwargs)
+            except RuntimeError as e:
+                if "clone is not supported by NestedIntSymNode" in str(e):
+                    raise RuntimeError(
+                        "This is a bug in PyTorch 2.3.0 and 2.3.1. "
+                        "Try manually importing `torch._dynamo` before running "
+                        "any calculation."
+                    ) from e
+                raise
+
             assert isinstance(deriv, Tensor)
 
         elif grad_mode == "row":

@@ -168,7 +168,7 @@ class AnalyticalCalculator(EnergyCalculator):
         timer.stop("ograd")
 
         overlap = self.cache["overlap"]
-        assert isinstance(overlap, ints.types.Overlap)
+        assert isinstance(overlap, ints.types.OverlapIntegral)
         assert overlap.matrix is not None
 
         # density matrix
@@ -200,7 +200,7 @@ class AnalyticalCalculator(EnergyCalculator):
         assert self.integrals.hcore is not None
 
         cn = ncoord.cn_d3(self.numbers, positions)
-        dedcn, dedr = self.integrals.hcore.integral.get_gradient(
+        dedcn, dedr = self.integrals.hcore.get_gradient(
             positions,
             overlap.matrix,
             overlap_grad,
@@ -410,7 +410,7 @@ class AnalyticalCalculator(EnergyCalculator):
             self.ihelp,
             self.opts.scf,
             intmats,
-            self.integrals.hcore.integral.refocc,
+            self.integrals.hcore.refocc,
         )
 
         timer.stop("SCF")
@@ -462,7 +462,7 @@ class AnalyticalCalculator(EnergyCalculator):
         )
 
         cn = ncoord.cn_d3(self.numbers, positions)
-        dedcn, dedr = self.integrals.hcore.integral.get_gradient(
+        dedcn, dedr = self.integrals.hcore.get_gradient(
             positions,
             intmats.overlap,
             overlap_grad,

@@ -48,7 +48,7 @@ class OverlapLibcint(OverlapIntegral, IntegralLibcint):
     the :meth:`.get_gradient` method should be used.
     """
 
-    def build(self, driver: IntDriverLibcint) -> Tensor | tuple[Tensor, Tensor]:
+    def build(self, driver: IntDriverLibcint) -> Tensor:
         """
         Calculation of overlap integral using libcint.
 

@@ -228,7 +228,7 @@ def run_param_grad_energy(name: str, dtype: torch.dtype = torch.float):
     calc = Calculator(numbers, par, opts=options, **dd)
 
     assert calc.integrals.hcore is not None
-    h = calc.integrals.hcore.integral
+    h = calc.integrals.hcore
     h.selfenergy.requires_grad_(True)
     h.kcn.requires_grad_(True)
     h.shpoly.requires_grad_(True)
@@ -271,7 +271,7 @@ def skip_test_param_grad_force(name: str, dtype: torch.dtype = torch.float):
     calc = Calculator(numbers, par, opts=options, **dd)
 
     assert calc.integrals.hcore is not None
-    h = calc.integrals.hcore.integral
+    h = calc.integrals.hcore
 
     h.selfenergy.requires_grad_(True)
     h.kcn.requires_grad_(True)

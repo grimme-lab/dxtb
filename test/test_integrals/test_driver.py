@@ -28,6 +28,7 @@ from dxtb import IndexHelper
 from dxtb import integrals as ints
 from dxtb._src.constants.labels import INTDRIVER_ANALYTICAL, INTDRIVER_LIBCINT
 from dxtb._src.integral.driver.libcint import IntDriverLibcint
+from dxtb._src.integral.driver.manager import DriverManager
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch
 from dxtb._src.typing import DD
 
@@ -44,38 +45,32 @@ def test_single(dtype: torch.dtype, force_cpu_for_libcint: bool):
     positions = torch.zeros((2, 3), **dd)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    ipy = ints.Integrals(
-        numbers,
-        par,
-        ihelp,
-        driver=INTDRIVER_ANALYTICAL,
-        force_cpu_for_libcint=force_cpu_for_libcint,
-        **dd,
+
+    mgr_py = DriverManager(
+        INTDRIVER_ANALYTICAL, force_cpu_for_libcint=force_cpu_for_libcint, **dd
     )
-    ilc = ints.Integrals(
-        numbers,
-        par,
-        ihelp,
-        driver=INTDRIVER_LIBCINT,
-        force_cpu_for_libcint=force_cpu_for_libcint,
-        **dd,
+    mgr_py.create_driver(numbers, par, ihelp)
+
+    mgr_lc = DriverManager(
+        INTDRIVER_LIBCINT, force_cpu_for_libcint=force_cpu_for_libcint, **dd
     )
+    mgr_lc.create_driver(numbers, par, ihelp)
 
     if force_cpu_for_libcint is True:
         positions = positions.cpu()
 
-    ipy.setup_driver(positions)
-    assert isinstance(ipy.driver, IntDriverPytorch)
-    ilc.setup_driver(positions)
-    assert isinstance(ilc.driver, IntDriverLibcint)
+    mgr_py.setup_driver(positions)
+    assert isinstance(mgr_py.driver, IntDriverPytorch)
+    mgr_lc.setup_driver(positions)
+    assert isinstance(mgr_lc.driver, IntDriverLibcint)
 
-    assert ipy.driver.is_latest(positions) is True
-    assert ilc.driver.is_latest(positions) is True
+    assert mgr_py.driver.is_latest(positions) is True
+    assert mgr_lc.driver.is_latest(positions) is True
 
     # upon changing the positions, the driver should become outdated
     positions[0, 0] += 1e-4
-    assert ipy.driver.is_latest(positions) is False
-    assert ilc.driver.is_latest(positions) is False
+    assert mgr_py.driver.is_latest(positions) is False
+    assert mgr_lc.driver.is_latest(positions) is False
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -88,35 +83,29 @@ def test_batch(dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
     positions = torch.zeros((2, 2, 3), **dd)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    ipy = ints.Integrals(
-        numbers,
-        par,
-        ihelp,
-        driver=INTDRIVER_ANALYTICAL,
-        force_cpu_for_libcint=force_cpu_for_libcint,
-        **dd,
+
+    mgr_py = DriverManager(
+        INTDRIVER_ANALYTICAL, force_cpu_for_libcint=force_cpu_for_libcint, **dd
     )
-    ilc = ints.Integrals(
-        numbers,
-        par,
-        ihelp,
-        driver=INTDRIVER_LIBCINT,
-        force_cpu_for_libcint=force_cpu_for_libcint,
-        **dd,
+    mgr_py.create_driver(numbers, par, ihelp)
+
+    mgr_lc = DriverManager(
+        INTDRIVER_LIBCINT, force_cpu_for_libcint=force_cpu_for_libcint, **dd
     )
+    mgr_lc.create_driver(numbers, par, ihelp)
 
     if force_cpu_for_libcint is True:
         positions = positions.cpu()
 
-    ipy.setup_driver(positions)
-    assert isinstance(ipy.driver, IntDriverPytorch)
-    ilc.setup_driver(positions)
-    assert isinstance(ilc.driver, IntDriverLibcint)
+    mgr_py.setup_driver(positions)
+    assert isinstance(mgr_py.driver, IntDriverPytorch)
+    mgr_lc.setup_driver(positions)
+    assert isinstance(mgr_lc.driver, IntDriverLibcint)
 
-    assert ipy.driver.is_latest(positions) is True
-    assert ilc.driver.is_latest(positions) is True
+    assert mgr_py.driver.is_latest(positions) is True
+    assert mgr_lc.driver.is_latest(positions) is True
 
     # upon changing the positions, the driver should become outdated
     positions[0, 0] += 1e-4
-    assert ipy.driver.is_latest(positions) is False
-    assert ilc.driver.is_latest(positions) is False
+    assert mgr_py.driver.is_latest(positions) is False
+    assert mgr_lc.driver.is_latest(positions) is False

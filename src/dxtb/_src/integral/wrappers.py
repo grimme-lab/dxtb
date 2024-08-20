@@ -72,8 +72,10 @@ from dxtb._src.typing import DD, Any, Literal, Tensor
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 from dxtb._src.xtb.gfn2 import GFN2Hamiltonian
 
-from .factory import new_driver
-from .types import Dipole, Overlap, Quadrupole
+from .driver.factory import new_driver
+from .driver.manager import DriverManager
+from .factory import new_dipint, new_overlap, new_quadint
+from .types import DipoleIntegral, OverlapIntegral, QuadrupoleIntegral
 
 __all__ = ["hcore", "overlap", "dipint", "quadint"]
 
@@ -122,22 +124,14 @@ def hcore(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tens
 
     name = par.meta.name.casefold()
     if name == "gfn1-xtb":
-        h0 = GFN1Hamiltonian(numbers, par, ihelp, **dd)
+        h0 = GFN1Hamiltonian(numbers, par, ihelp, **dd, **kwargs)
     elif name == "gfn2-xtb":
-        h0 = GFN2Hamiltonian(numbers, par, ihelp, **dd)
+        h0 = GFN2Hamiltonian(numbers, par, ihelp, **dd, **kwargs)
     else:
         raise ValueError(f"Unknown Hamiltonian type '{name}'.")
 
-    # TODOGFN2: Handle possibly different CNs
-    cn = kwargs.pop("cn", None)
-    if cn is None:
-        # pylint: disable=import-outside-toplevel
-        from ..ncoord import cn_d3
-
-        cn = cn_d3(numbers, positions)
-
     ovlp = overlap(numbers, positions, par)
-    return h0.build(positions, ovlp, cn=cn)
+    return h0.build(positions, ovlp)
 
 
 def overlap(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tensor:
@@ -225,43 +219,70 @@ def _integral(
     Returns
     -------
     Tensor
-        Integral matrix of shape ``(nb, nao, nao)`` for overlap and
-        ``(nb, 3, nao, nao)`` for dipole and quadrupole.
+        Integral matrix of shape ``(..., nao, nao)`` for overlap and
+        ``(..., 3, nao, nao)`` for dipole and quadrupole.
 
     Raises
     ------
     ValueError
         If the integral type is unknown.
     """
+
+    if integral_type not in ("_overlap", "_dipole", "_quadrupole"):
+        raise ValueError(f"Unknown integral type '{integral_type}'.")
+
     dd: DD = {"device": positions.device, "dtype": positions.dtype}
+    ihelp = IndexHelper.from_numbers(numbers, par)
+
+    normalize = kwargs.pop("normalize", True)
+
+    ##########
+    # Driver #
+    ##########
 
     # Determine which driver class to instantiate (defaults to libcint)
     driver_name = kwargs.pop("driver", labels.INTDRIVER_LIBCINT)
-    driver = new_driver(driver_name, numbers, par, **dd)
 
     # setup driver for integral calculation
-    driver.setup(positions)
+    drv_mngr = DriverManager(driver_name, **dd)
+    drv_mngr.create_driver(numbers, par, ihelp)
+    drv_mngr.driver.setup(positions)
 
-    # inject driver into requested integral
+    ###########
+    # Overlap #
+    ###########
+
     if integral_type == "_overlap":
-        integral = Overlap(driver=driver_name, **dd, **kwargs)
-    elif integral_type in ("_dipole", "_quadrupole"):
-        ovlp = Overlap(driver=driver_name, **dd, **kwargs)
+        integral = new_overlap(drv_mngr.driver_type, **dd, **kwargs)
 
-        # multipole integrals require the overlap for normalization
-        if ovlp.integral._matrix is None or ovlp.integral._norm is None:
-            ovlp.build(driver)
+        # actual integral calculation
+        integral.build(drv_mngr.driver)
 
-        if integral_type == "_dipole":
-            integral = Dipole(driver=driver_name, **dd, **kwargs)
-        elif integral_type == "_quadrupole":
-            integral = Quadrupole(driver=driver_name, **dd, **kwargs)
-        else:
-            raise ValueError(f"Unknown integral type '{integral_type}'.")
+        if normalize is True:
+            integral.normalize(integral.norm)
 
-        integral.integral.norm = ovlp.integral.norm
+        return integral.matrix
+
+    #############
+    # Multipole #
+    #############
+
+    # multipole integrals require the overlap for normalization
+    ovlp = new_overlap(drv_mngr.driver_type, **dd, **kwargs)
+    if ovlp._matrix is None or ovlp.norm is None:
+        ovlp.build(drv_mngr.driver)
+
+    if integral_type == "_dipole":
+        integral = new_dipint(driver=drv_mngr.driver_type, **dd, **kwargs)
+    elif integral_type == "_quadrupole":
+        integral = new_quadint(driver=drv_mngr.driver_type, **dd, **kwargs)
     else:
         raise ValueError(f"Unknown integral type '{integral_type}'.")
 
     # actual integral calculation
-    return integral.build(driver)
+    integral.build(drv_mngr.driver)
+
+    if normalize is True:
+        integral.normalize(ovlp.norm)
+
+    return integral.matrix
