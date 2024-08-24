@@ -30,7 +30,7 @@ import torch
 from dxtb import OutputHandler, timer
 from dxtb._src.components.interactions.field import efield as efield
 from dxtb._src.constants import defaults
-from dxtb._src.typing import Any, Literal, Tensor
+from dxtb._src.typing import Any, Callable, Literal, Tensor
 
 from ..properties.vibration import (
     IRResult,
@@ -507,19 +507,7 @@ class AutogradCalculator(EnergyCalculator):
         Tensor
             Cartesian dipole derivative of shape ``(..., 3, nat, 3)``.
         """
-
-        if use_analytical is True:
-            if not hasattr(self, "dipole_analytical") or not callable(
-                getattr(self, "dipole_analytical")
-            ):
-                raise ValueError(
-                    "Analytical dipole moment not available. "
-                    "Please use a calculator, which subclasses "
-                    "the `AnalyticalCalculator`."
-                )
-            dip_fcn = self.dipole_analytical  # type: ignore
-        else:
-            dip_fcn = self.dipole
+        dip_fcn = self._get_dipole_fcn(use_analytical)
 
         if use_functorch is True:
             # pylint: disable=import-outside-toplevel
@@ -602,20 +590,8 @@ class AutogradCalculator(EnergyCalculator):
         # retrieve the efield interaction and the field
         field = self.interactions.get_interaction(efield.LABEL_EFIELD).field
 
-        if use_analytical is True:
-            if not hasattr(self, "dipole_analytical") or not callable(
-                getattr(self, "dipole_analytical")
-            ):
-                raise ValueError(
-                    "Analytical dipole moment not available. "
-                    "Please use a calculator, which subclasses "
-                    "the `AnalyticalCalculator`."
-                )
-
-            # FIXME: Not working for Raman
-            dip_fcn = self.dipole_analytical  # type: ignore
-        else:
-            dip_fcn = self.dipole
+        # FIXME: Not working for Raman
+        dip_fcn = self._get_dipole_fcn(use_analytical)
 
         if use_functorch is False:
             # pylint: disable=import-outside-toplevel
@@ -957,6 +933,31 @@ class AutogradCalculator(EnergyCalculator):
         logger.debug("Raman spectrum: All finished.")
 
         return RamanResult(vib_res.freqs, intensities, depol)
+
+    ##########################################################################
+
+    def _get_dipole_fcn(self, use_analytical: bool) -> Callable:
+        if use_analytical is False:
+            return self.dipole
+
+        if not hasattr(self, "dipole_analytical"):
+            raise ValueError(
+                "Analytical dipole moment not available. "
+                "Please use a calculator, which subclasses "
+                "the `AnalyticalCalculator`."
+            )
+        if not callable(getattr(self, "dipole_analytical")):
+            raise ValueError(
+                "Calculator an attribute `dipole_analytical` but it "
+                "is not callable. This should not happen and is an "
+                "implementation error."
+            )
+
+        self.opts.cache.store.dipole = True
+
+        return self.dipole_analytical  # type: ignore
+
+    ##########################################################################
 
     def calculate(
         self,

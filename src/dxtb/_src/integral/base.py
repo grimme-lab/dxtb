@@ -383,7 +383,13 @@ class BaseIntegral(IntegralABC, TensorLike):
     @property
     def matrix(self) -> Tensor:
         if self._matrix is None:
-            raise RuntimeError("Integral matrix has not been calculated.")
+            raise RuntimeError(
+                "Integral matrix not found. This can be caused by two "
+                "reasons:\n"
+                "1. The integral has not been calculated yet.\n"
+                "2. The integral was cleared, despite being required "
+                "in a subsequent calculation. Check the cache settings."
+            )
         return self._matrix
 
     @matrix.setter

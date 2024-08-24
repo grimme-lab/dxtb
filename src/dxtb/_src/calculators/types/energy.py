@@ -193,10 +193,10 @@ class EnergyCalculator(BaseCalculator):
         # Core Hamiltonian integral (requires overlap internally!)
         #
         # This should be the final integral, because the others are
-        # potentially calculated on CPU (libcint) even in GPU runs.
+        # potentially calculated on CPU (libcint), even in GPU runs.
         # To avoid unnecessary data transfer, the core Hamiltonian should
-        # be last. Internally, the overlap integral is only transfered back
-        # to GPU when all multipole integrals are calculated.
+        # be calculated last. Internally, the overlap integral is only
+        # transfered back to GPU when all multipole integrals are calculated.
         if self.opts.ints.level >= labels.INTLEVEL_HCORE:
             OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ", v=3)
             timer.start("Core Hamiltonian", parent_uid="Integrals")
@@ -325,15 +325,31 @@ class EnergyCalculator(BaseCalculator):
 
         if kwargs.get("store_hcore", copts.hcore):
             self.cache["hcore"] = self.integrals.hcore
+        else:
+            if self.integrals.hcore is not None:
+                if self.integrals.hcore.requires_grad is False:
+                    self.integrals.hcore.clear()
 
         if kwargs.get("store_overlap", copts.overlap):
             self.cache["overlap"] = self.integrals.overlap
+        else:
+            if self.integrals.overlap is not None:
+                if self.integrals.overlap.requires_grad is False:
+                    self.integrals.overlap.clear()
 
         if kwargs.get("store_dipole", copts.dipole):
             self.cache["dipint"] = self.integrals.dipole
+        else:
+            if self.integrals.dipole is not None:
+                if self.integrals.dipole.requires_grad is False:
+                    self.integrals.dipole.clear()
 
         if kwargs.get("store_quadrupole", copts.quadrupole):
             self.cache["quadint"] = self.integrals.quadrupole
+        else:
+            if self.integrals.quadrupole is not None:
+                if self.integrals.quadrupole.requires_grad is False:
+                    self.integrals.quadrupole.clear()
 
         self._ncalcs += 1
         return result

@@ -524,6 +524,9 @@ class AnalyticalCalculator(EnergyCalculator):
         Tensor
             Electric dipole moment of shape `(..., 3)`.
         """
+        # require caching for analytical calculation at end of function
+        kwargs["store_dipole"] = True
+
         # run single point and check if integral is populated
         result = self.singlepoint(positions, chrg, spin, **kwargs)
 
@@ -534,19 +537,23 @@ class AnalyticalCalculator(EnergyCalculator):
                 f"be added automatically if the '{efield.LABEL_EFIELD}' "
                 "interaction is added to the Calculator."
             )
-        if dipint.matrix is None:
+
+        # Use try except to raise more informative error message, because
+        # `dipint.matrix` already raises a RuntimeError if the matrix is None.
+        try:
+            _ = dipint.matrix
+        except RuntimeError as e:
             raise RuntimeError(
                 "Dipole moment requires a dipole integral. They should "
                 f"be added automatically if the '{efield.LABEL_EFIELD}' "
-                "interaction is added to the Calculator."
-            )
+                "interaction is added to the Calculator. This is "
+                "probably a bug. Check the cache setup.\n\n"
+                f"Original error: {str(e)}"
+            ) from e
 
         # pylint: disable=import-outside-toplevel
         from ..properties.moments.dip import dipole
 
-        # dip = properties.dipole(
-        # numbers, positions, result.density, self.integrals.dipole
-        # )
         qat = self.ihelp.reduce_orbital_to_atom(result.charges.mono)
         dip = dipole(qat, positions, result.density, dipint.matrix)
         return dip

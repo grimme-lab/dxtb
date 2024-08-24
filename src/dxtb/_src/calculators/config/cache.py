@@ -62,6 +62,26 @@ class ConfigCacheStore:
     potential: bool
     """Whether to store the potential matrix."""
 
+    def set(self, key: str, value: bool) -> None:
+        """
+        Set configuration options using keyword arguments.
+
+        Parameters
+        ----------
+        key : str
+            The configuration key.
+        value : bool
+            The configuration value.
+
+        Example
+        -------
+        config.set("hcore", True)
+        """
+        if not hasattr(self, key):
+            raise ValueError(f"Unknown configuration key: {key}")
+
+        setattr(self, key, value)
+
 
 class ConfigCache:
     """

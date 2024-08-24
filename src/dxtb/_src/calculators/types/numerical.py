@@ -293,6 +293,7 @@ class NumericalCalculator(EnergyCalculator):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         step_size: int | float = defaults.STEP_SIZE,
+        **kwargs: Any,
     ) -> Tensor:
         r"""
         Numerically calculate the electric dipole moment :math:`\mu`.
@@ -332,11 +333,11 @@ class NumericalCalculator(EnergyCalculator):
             with OutputHandler.with_verbosity(0):
                 field[..., i] += step_size
                 self.interactions.update_efield(field=field)
-                gr = self.energy(positions, chrg, spin)
+                gr = self.energy(positions, chrg, spin, **kwargs)
 
                 field[..., i] -= 2 * step_size
                 self.interactions.update_efield(field=field)
-                gl = self.energy(positions, chrg, spin)
+                gl = self.energy(positions, chrg, spin, **kwargs)
 
                 field[..., i] += step_size
                 self.interactions.update_efield(field=field)
@@ -359,6 +360,7 @@ class NumericalCalculator(EnergyCalculator):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         step_size: int | float = defaults.STEP_SIZE,
+        **kwargs: Any,
     ) -> Tensor:
         r"""
         Numerically calculate cartesian dipole derivative :math:`\mu'`.
@@ -411,10 +413,10 @@ class NumericalCalculator(EnergyCalculator):
             for j in range(3):
                 with OutputHandler.with_verbosity(0):
                     positions[..., i, j] += step_size
-                    r = _dipfcn(positions, chrg, spin)
+                    r = _dipfcn(positions, chrg, spin, **kwargs)
 
                     positions[..., i, j] -= 2 * step_size
-                    l = _dipfcn(positions, chrg, spin)
+                    l = _dipfcn(positions, chrg, spin, **kwargs)
 
                     positions[..., i, j] += step_size
                     deriv[..., :, i, j] = 0.5 * (r - l) / step_size
@@ -438,6 +440,7 @@ class NumericalCalculator(EnergyCalculator):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         step_size: int | float = defaults.STEP_SIZE,
+        **kwargs: Any,
     ) -> Tensor:
         r"""
         Numerically calculate the polarizability tensor :math:`\alpha`.
@@ -489,11 +492,11 @@ class NumericalCalculator(EnergyCalculator):
             with OutputHandler.with_verbosity(0):
                 field[..., i] += step_size
                 self.interactions.update_efield(field=field)
-                gr = _dipfcn(positions, chrg, spin)
+                gr = _dipfcn(positions, chrg, spin, **kwargs)
 
                 field[..., i] -= 2 * step_size
                 self.interactions.update_efield(field=field)
-                gl = _dipfcn(positions, chrg, spin)
+                gl = _dipfcn(positions, chrg, spin, **kwargs)
 
                 field[..., i] += step_size
                 self.interactions.update_efield(field=field)
