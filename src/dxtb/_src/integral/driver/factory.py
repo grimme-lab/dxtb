@@ -57,7 +57,9 @@ def new_driver(
         return new_driver_pytorch(numbers, par, device=device, dtype=dtype)
 
     if name == labels.INTDRIVER_AUTOGRAD:
-        return new_driver_pytorch2(numbers, par, device=device, dtype=dtype)
+        return new_driver_pytorch_no_analytical(
+            numbers, par, device=device, dtype=dtype
+        )
 
     if name == labels.INTDRIVER_LEGACY:
         return new_driver_legacy(numbers, par, device=device, dtype=dtype)
@@ -97,7 +99,7 @@ def new_driver_pytorch(
     return _IntDriver(numbers, par, ihelp, device=device, dtype=dtype)
 
 
-def new_driver_pytorch2(
+def new_driver_pytorch_no_analytical(
     numbers: Tensor,
     par: Param,
     device: torch.device | None = None,

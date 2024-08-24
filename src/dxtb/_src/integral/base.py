@@ -187,15 +187,12 @@ class IntDriver(TensorLike):
         """
 
     def __str__(self) -> str:
-        dict_repr = []
-        for key, value in self.__dict__.items():
-            if isinstance(value, Tensor):
-                value_repr = f"{value.shape}"
-            else:
-                value_repr = repr(value)
-            dict_repr.append(f"    {key}: {value_repr}")
-        dict_str = "{\n" + ",\n".join(dict_repr) + "\n}"
-        return f"{self.__class__.__name__}({dict_str})"
+        return (
+            f"{self.__class__.__name__}("
+            f"Family: {self.family}, "
+            f"Number of Atoms: {self.numbers.shape[-1]}, "
+            f"Setup?: {self.is_setup()})"
+        )
 
     def __repr__(self) -> str:
         return str(self)
@@ -328,6 +325,22 @@ class BaseIntegral(IntegralABC, TensorLike):
         self._norm = None
         self._gradient = None
 
+    @property
+    def requires_grad(self) -> bool:
+        """
+        Check if any field of the integral class is requires gradient.
+
+        Returns
+        -------
+        bool
+            Flag for gradient requirement.
+        """
+        for field in (self._matrix, self._gradient, self._norm):
+            if field is not None and field.requires_grad:
+                return True
+
+        return False
+
     def normalize(self, norm: Tensor | None = None) -> None:
         """
         Normalize the integral (changes ``self.matrix``).
@@ -401,6 +414,8 @@ class BaseIntegral(IntegralABC, TensorLike):
             d["_matrix"] = self._matrix.shape
         if self._gradient is not None:
             d["_gradient"] = self._gradient.shape
+        if self._norm is not None:
+            d["_norm"] = self._norm.shape
 
         return f"{self.__class__.__name__}({d})"
 

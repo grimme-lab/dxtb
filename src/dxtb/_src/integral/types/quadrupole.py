@@ -68,7 +68,7 @@ class QuadrupoleIntegral(BaseIntegral):
         zx zy zz       6 7 8      6 7 8
         """
 
-        if self.matrix.shape[-3] != 9:
+        if self.matrix.ndim not in (3, 4) or self.matrix.shape[-3] != 9:
             raise RuntimeError(
                 "Quadrupole integral must be a tensor tensor of shape "
                 f"'(9, nao, nao)' but is {self.matrix.shape}."

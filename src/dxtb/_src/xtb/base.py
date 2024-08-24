@@ -131,6 +131,13 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
         """
         self._matrix = None
 
+    @property
+    def requires_grad(self) -> bool:
+        if self._matrix is None:
+            return False
+
+        return self._matrix.requires_grad
+
     def get_occupation(self) -> Tensor:
         """
         Obtain the reference occupation numbers for each orbital.

@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Test overlap build from integral container.
+Test the integral driver manager.
 """
 
 from __future__ import annotations
@@ -25,14 +25,13 @@ import torch
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
-from dxtb import integrals as ints
 from dxtb._src.constants.labels import INTDRIVER_ANALYTICAL, INTDRIVER_LIBCINT
 from dxtb._src.integral.driver.libcint import IntDriverLibcint
 from dxtb._src.integral.driver.manager import DriverManager
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch
 from dxtb._src.typing import DD
 
-from ..conftest import DEVICE
+from ...conftest import DEVICE
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

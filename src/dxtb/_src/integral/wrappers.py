@@ -72,10 +72,8 @@ from dxtb._src.typing import DD, Any, Literal, Tensor
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 from dxtb._src.xtb.gfn2 import GFN2Hamiltonian
 
-from .driver.factory import new_driver
 from .driver.manager import DriverManager
 from .factory import new_dipint, new_overlap, new_quadint
-from .types import DipoleIntegral, OverlapIntegral, QuadrupoleIntegral
 
 __all__ = ["hcore", "overlap", "dipint", "quadint"]
 
@@ -100,20 +98,20 @@ def hcore(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tens
 
     Raises
     ------
-    TypeError
+    ValueError
         If the Hamiltonian parametrization does not contain meta data or if the
         meta data does not contain a name to select the correct Hamiltonian.
     ValueError
         If the Hamiltonian name is unknown.
     """
     if par.meta is None:
-        raise TypeError(
+        raise ValueError(
             "Meta data of Hamiltonian parametrization must contain a name. "
             "Otherwise, the correct Hamiltonian cannot be selected internally."
         )
 
     if par.meta.name is None:
-        raise TypeError(
+        raise ValueError(
             "The name field of the meta data of the Hamiltonian "
             "parametrization must contain a name. Otherwise, the correct "
             "Hamiltonian cannot be selected internally."

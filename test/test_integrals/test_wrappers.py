@@ -39,12 +39,12 @@ positions = torch.tensor(
 
 
 def test_fail() -> None:
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         par1 = GFN1_XTB.model_copy(deep=True)
         par1.meta = None
         wrappers.hcore(numbers, positions, par1)
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         par1 = GFN1_XTB.model_copy(deep=True)
         assert par1.meta is not None
 
