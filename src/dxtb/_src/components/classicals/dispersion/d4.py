@@ -27,7 +27,8 @@ import tad_dftd4 as d4
 
 from dxtb._src.typing import Any, Tensor
 
-from .base import ClassicalCache, Dispersion
+from ..base import ClassicalCache
+from .base import Dispersion
 
 __all__ = ["DispersionD4", "DispersionD4Cache"]
 

@@ -24,21 +24,54 @@ A class that acts as a container for integrals.
 from __future__ import annotations
 
 import logging
+from abc import abstractmethod
 
 import torch
 
 from dxtb import labels
 from dxtb._src.constants import defaults, labels
-from dxtb._src.typing import Any, Tensor
+from dxtb._src.typing import Any, Tensor, TensorLike
 from dxtb._src.xtb.base import BaseHamiltonian
 
-from .base import BaseIntegral, IntegralContainer
+from .base import BaseIntegral
 from .driver import DriverManager
 from .types import DipoleIntegral, OverlapIntegral, QuadrupoleIntegral
 
 __all__ = ["Integrals", "IntegralMatrices"]
 
 logger = logging.getLogger(__name__)
+
+
+class IntegralContainer(TensorLike):
+    """
+    Base class for integral container.
+    """
+
+    def __init__(
+        self,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+        _run_checks: bool = True,
+    ):
+        super().__init__(device, dtype)
+        self._run_checks = _run_checks
+
+    @property
+    def run_checks(self) -> bool:
+        return self._run_checks
+
+    @run_checks.setter
+    def run_checks(self, run_checks: bool) -> None:
+        current = self.run_checks
+        self._run_checks = run_checks
+
+        # switching from False to True should automatically run checks
+        if current is False and run_checks is True:
+            self.checks()
+
+    @abstractmethod
+    def checks(self) -> None:
+        """Run checks for integrals."""
 
 
 class Integrals(IntegralContainer):

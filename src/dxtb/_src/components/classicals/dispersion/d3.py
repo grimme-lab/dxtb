@@ -28,7 +28,8 @@ from tad_mctc.ncoord import cn_d3, exp_count
 
 from dxtb._src.typing import Any, CountingFunction, Tensor
 
-from .base import ClassicalCache, Dispersion
+from ..base import ClassicalCache
+from .base import Dispersion
 
 __all__ = ["DispersionD3", "DispersionD3Cache"]
 

@@ -18,12 +18,12 @@
 Integrals: Base Classes
 =======================
 
-Base class for Integrals classes and their actual implementations.
+Base class for integral classes and their actual implementations.
 """
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 import torch
 from tad_mctc.math import einsum
@@ -31,15 +31,12 @@ from tad_mctc.math import einsum
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
 from dxtb._src.param import Param
-from dxtb._src.typing import Any, Literal, PathLike, Tensor, TensorLike
+from dxtb._src.typing import Literal, PathLike, Tensor, TensorLike
 
+from .abc import IntegralABC
 from .utils import snorm
 
-__all__ = [
-    "BaseIntegral",
-    "IntDriver",
-    "IntegralContainer",
-]
+__all__ = ["BaseIntegral", "IntDriver"]
 
 
 class IntDriver(TensorLike):
@@ -199,57 +196,6 @@ class IntDriver(TensorLike):
 
 
 #########################################################
-
-
-class IntegralABC(ABC):
-    """
-    Abstract base class for integral implementations.
-
-    All integral calculations are executed by this class.
-    """
-
-    @abstractmethod
-    def build(self, driver: IntDriver, **kwargs: Any) -> Tensor:
-        """
-        Create the integral matrix.
-
-        Parameters
-        ----------
-        driver : IntDriver
-            Integral driver for the calculation.
-
-        Returns
-        -------
-        Tensor
-            Integral matrix.
-        """
-
-    @abstractmethod
-    def get_gradient(self, driver: IntDriver, **kwargs: Any) -> Tensor:
-        """
-        Calculate the full nuclear gradient matrix of the integral.
-
-        Parameters
-        ----------
-        driver : IntDriver
-            Integral driver for the calculation.
-
-        Returns
-        -------
-        Tensor
-            Nuclear integral derivative matrix.
-        """
-
-    @abstractmethod
-    def normalize(self, norm: Tensor | None = None, **kwargs: Any) -> None:
-        """
-        Normalize the integral (changes ``self.matrix``).
-
-        Parameters
-        ----------
-        norm : Tensor, optional
-            Overlap norm to normalize the integral.
-        """
 
 
 class BaseIntegral(IntegralABC, TensorLike):
@@ -427,38 +373,3 @@ class BaseIntegral(IntegralABC, TensorLike):
 
     def __repr__(self) -> str:
         return str(self)
-
-
-#########################################################
-
-
-class IntegralContainer(TensorLike):
-    """
-    Base class for integral container.
-    """
-
-    def __init__(
-        self,
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
-        _run_checks: bool = True,
-    ):
-        super().__init__(device, dtype)
-        self._run_checks = _run_checks
-
-    @property
-    def run_checks(self) -> bool:
-        return self._run_checks
-
-    @run_checks.setter
-    def run_checks(self, run_checks: bool) -> None:
-        current = self.run_checks
-        self._run_checks = run_checks
-
-        # switching from False to True should automatically run checks
-        if current is False and run_checks is True:
-            self.checks()
-
-    @abstractmethod
-    def checks(self) -> None:
-        """Run checks for integrals."""
