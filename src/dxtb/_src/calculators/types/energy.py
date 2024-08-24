@@ -322,12 +322,16 @@ class EnergyCalculator(BaseCalculator):
 
         if kwargs.get("store_fock", copts.fock):
             self.cache["fock"] = scf_results["hamiltonian"]
+
         if kwargs.get("store_hcore", copts.hcore):
             self.cache["hcore"] = self.integrals.hcore
+
         if kwargs.get("store_overlap", copts.overlap):
             self.cache["overlap"] = self.integrals.overlap
+
         if kwargs.get("store_dipole", copts.dipole):
             self.cache["dipint"] = self.integrals.dipole
+
         if kwargs.get("store_quadrupole", copts.quadrupole):
             self.cache["quadint"] = self.integrals.quadrupole
 

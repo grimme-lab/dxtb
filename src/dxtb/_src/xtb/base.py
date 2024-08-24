@@ -125,6 +125,12 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
     def matrix(self, mat: Tensor) -> None:
         self._matrix = mat
 
+    def clear(self) -> None:
+        """
+        Clear the integral matrix.
+        """
+        self._matrix = None
+
     def get_occupation(self) -> Tensor:
         """
         Obtain the reference occupation numbers for each orbital.

@@ -268,10 +268,13 @@ class BaseIntegral(IntegralABC, TensorLike):
     _gradient: Tensor | None
     """Internal storage variable for the cartesian gradient."""
 
+    _norm: Tensor | None
+    """Internal storage variable for the overlap norm."""
+
     family: str | None
     """Family of the integral implementation (PyTorch or libcint)."""
 
-    __slots__ = ["_matrix", "_gradient"]
+    __slots__ = ["_matrix", "_gradient", "_norm"]
 
     def __init__(
         self,
@@ -279,11 +282,12 @@ class BaseIntegral(IntegralABC, TensorLike):
         dtype: torch.dtype | None = None,
         _matrix: Tensor | None = None,
         _gradient: Tensor | None = None,
+        _norm: Tensor | None = None,
     ) -> None:
         super().__init__(device=device, dtype=dtype)
         self.label = self.__class__.__name__
 
-        self._norm = None
+        self._norm = _norm
         self._matrix = _matrix
         self._gradient = _gradient
 
@@ -315,6 +319,14 @@ class BaseIntegral(IntegralABC, TensorLike):
 
         if not isinstance(driver, _BaseIntDriver):
             raise RuntimeError(f"Wrong integral driver selected for '{self.label}'.")
+
+    def clear(self) -> None:
+        """
+        Clear the integral matrix and gradient.
+        """
+        self._matrix = None
+        self._norm = None
+        self._gradient = None
 
     def normalize(self, norm: Tensor | None = None) -> None:
         """

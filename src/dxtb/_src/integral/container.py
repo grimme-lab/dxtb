@@ -32,7 +32,7 @@ from dxtb._src.constants import defaults, labels
 from dxtb._src.typing import Any, Tensor
 from dxtb._src.xtb.base import BaseHamiltonian
 
-from .base import IntegralContainer
+from .base import BaseIntegral, IntegralContainer
 from .driver import DriverManager
 from .types import DipoleIntegral, OverlapIntegral, QuadrupoleIntegral
 
@@ -99,17 +99,17 @@ class Integrals(IntegralContainer):
         if self.hcore is None:
             raise RuntimeError("Core Hamiltonian integral not initialized.")
 
-        if self.overlap is None:
-            raise RuntimeError("Overlap integral not initialized.")
-
         # if overlap integral required
         if with_overlap is True and self.overlap is None:
             self.build_overlap(positions, **kwargs)
 
-        hcore = self.hcore.build(
-            positions,
-            overlap=self.overlap.matrix if with_overlap is True else None,
-        )
+        if with_overlap is True:
+            assert self.overlap is not None
+            overlap = self.overlap.matrix
+        else:
+            overlap = None
+
+        hcore = self.hcore.build(positions, overlap=overlap)
         logger.debug("Core Hamiltonian: All finished.")
         return hcore
 
@@ -152,23 +152,22 @@ class Integrals(IntegralContainer):
                 **kwargs,
             )
 
-        if self.overlap._matrix is None:
-            self.overlap.build(self.mgr.driver)
-            self.overlap.normalize()
+        # DEVNOTE: If the overlap is only built if `self.overlap._matrix` is
+        # `None`, the overlap will not be rebuilt if the positions change,
+        # i.e., when the driver was invalidated. Hence, we would require a
+        # full reset of the integrals via `reset_all`. However, the integral
+        # reset cannot be trigger by the driver manager, so we cannot add this
+        # check here. If we do, the hessian tests will fail as the overlap is
+        # not recalculated for positions + delta.
+        self.overlap.build(self.mgr.driver)
+        self.overlap.normalize()
         assert self.overlap.matrix is not None
 
         # move integral to the correct device...
         if self.mgr.force_cpu_for_libcint is True:
             # ... but only if no other multipole integrals are required
             if self.intlevel <= labels.INTLEVEL_HCORE:
-                self.overlap.matrix = self.overlap.matrix.to(device=self.device)
-
-                # FIXME: The matrix has to be moved explicitly, because when
-                # singlepoint is called a second time, the integral is already
-                # on the correct device (from the to of the first call) and the
-                # matrix is not moved because the to method exits immediately.
-                # This is a workaround and can possibly be fixed when the
-                # matrices are no longer stored (should only return in sp)
+                self.overlap = self.overlap.to(device=self.device)
 
         logger.debug("Overlap integral: All finished.")
 
@@ -251,8 +250,8 @@ class Integrals(IntegralContainer):
         # move integral to the correct device, but only if no other multipole
         # integrals are required
         if self.mgr.force_cpu_for_libcint and self.intlevel <= labels.INTLEVEL_DIPOLE:
-            self.dipole.matrix = self.dipole.matrix.to(device=self.device)
-            self.overlap.matrix = self.overlap.matrix.to(device=self.device)
+            self.dipole = self.dipole.to(device=self.device)
+            self.overlap = self.overlap.to(device=self.device)
 
         logger.debug("Dipole integral: All finished.")
         return self.dipole.matrix
@@ -349,11 +348,11 @@ class Integrals(IntegralContainer):
             self.mgr.force_cpu_for_libcint
             and self.intlevel <= labels.INTLEVEL_QUADRUPOLE
         ):
-            self.overlap.matrix = self.overlap.matrix.to(self.device)
-            self.quadrupole.matrix = self.quadrupole.matrix.to(self.device)
+            self.overlap = self.overlap.to(self.device)
+            self.quadrupole = self.quadrupole.to(self.device)
 
             if self.dipole is not None:
-                self.dipole.matrix = self.dipole.matrix.to(self.device)
+                self.dipole = self.dipole.to(self.device)
 
         logger.debug("Quad integral: All finished.")
         return self.quadrupole.matrix
@@ -406,7 +405,15 @@ class Integrals(IntegralContainer):
 
     def reset_all(self) -> None:
         self.mgr.invalidate_driver()
-        # TODO: Do we need to reset the specific integrals?
+
+        for slot in self.__slots__:
+            i = getattr(self, slot)
+
+            if not slot.startswith("_") or i is None:
+                continue
+
+            if isinstance(i, BaseIntegral) or isinstance(i, BaseHamiltonian):
+                i.clear()
 
     # pretty print
 
