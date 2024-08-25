@@ -53,12 +53,12 @@ def gradchecker(
     ihelp = IndexHelper.from_numbers(numbers, par)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(pos: Tensor) -> Tensor:
-        return guess.get_guess(numbers, pos, charge, ihelp, name=guess_name)
+    def func(p: Tensor) -> Tensor:
+        return guess.get_guess(numbers, p, charge, ihelp, name=guess_name)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad
@@ -111,12 +111,12 @@ def gradchecker_batch(
     ihelp = IndexHelper.from_numbers(numbers, par)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(pos: Tensor) -> Tensor:
-        return guess.get_guess(numbers, pos, charge, ihelp, name=guess_name)
+    def func(p: Tensor) -> Tensor:
+        return guess.get_guess(numbers, p, charge, ihelp, name=guess_name)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad

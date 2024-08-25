@@ -56,14 +56,14 @@ def gradchecker(
     ilist = InteractionList(new_es2(numbers, par, **dd), new_es3(numbers, par, **dd))
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(pos: Tensor) -> Tensor:
-        icaches = ilist.get_cache(numbers=numbers, positions=pos, ihelp=ihelp)
+    def func(p: Tensor) -> Tensor:
+        icaches = ilist.get_cache(numbers=numbers, positions=p, ihelp=ihelp)
         charges = get_guess(numbers, positions, chrg, ihelp)
         return ilist.get_energy(charges, icaches, ihelp)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad
@@ -116,10 +116,10 @@ def gradchecker_batch(
     ilist = InteractionList(new_es2(numbers, par, **dd), new_es3(numbers, par, **dd))
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(pos: Tensor) -> Tensor:
-        icaches = ilist.get_cache(numbers=numbers, positions=pos, ihelp=ihelp)
+    def func(p: Tensor) -> Tensor:
+        icaches = ilist.get_cache(numbers=numbers, positions=p, ihelp=ihelp)
         charges = get_guess(numbers, positions, chrg, ihelp)
         return ilist.get_energy(charges, icaches, ihelp)
 

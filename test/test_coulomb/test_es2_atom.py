@@ -121,13 +121,13 @@ def test_grad_positions(name: str) -> None:
     assert es is not None
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(positions: Tensor):
-        cache = es.get_cache(numbers, positions, ihelp)
+    def func(p: Tensor):
+        cache = es.get_cache(numbers, p, ihelp)
         return es.get_atom_energy(qat, cache)
 
-    assert dgradcheck(func, positions)
+    assert dgradcheck(func, pos)
 
 
 @pytest.mark.grad

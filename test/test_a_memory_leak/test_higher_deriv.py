@@ -52,18 +52,18 @@ def execute(name: str, dtype: torch.dtype, n: int) -> None:
         ihelp = IndexHelper.from_numbers(numbers, par)
 
         # variables to be differentiated
-        positions.requires_grad_(True)
+        pos = positions.clone().requires_grad_(True)
 
         rep = new_repulsion(numbers, par, **dd)
         assert rep is not None
 
         cache = rep.get_cache(numbers, ihelp)
-        energy = rep.get_energy(positions, cache).sum()
+        energy = rep.get_energy(pos, cache).sum()
 
-        _ = nth_derivative(energy, positions, n)
+        _ = nth_derivative(energy, pos, n)
 
         del numbers
-        del positions
+        del pos
         del ihelp
         del rep
         del cache

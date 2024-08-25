@@ -49,17 +49,17 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     positions = sample["positions"].to(**dd)
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     disp = new_dispersion(numbers, par, **dd)
     assert disp is not None
 
     cache = disp.get_cache(numbers)
 
-    def func(positions: Tensor) -> Tensor:
-        return disp.get_energy(positions, cache)
+    def func(p: Tensor) -> Tensor:
+        return disp.get_energy(p, cache)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad
@@ -133,17 +133,17 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     )
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     disp = new_dispersion(numbers, par, **dd)
     assert disp is not None
 
     cache = disp.get_cache(numbers)
 
-    def func(positions: Tensor) -> Tensor:
-        return disp.get_energy(positions, cache)
+    def func(p: Tensor) -> Tensor:
+        return disp.get_energy(p, cache)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad
@@ -208,7 +208,6 @@ def test_autograd(dtype: torch.dtype, name: str) -> None:
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
-    positions.requires_grad_(True)
     ref = sample["grad"].to(**dd)
 
     disp = new_dispersion(numbers, par, **dd)
@@ -216,12 +215,13 @@ def test_autograd(dtype: torch.dtype, name: str) -> None:
 
     cache = disp.get_cache(numbers)
 
-    energy = disp.get_energy(positions, cache)
-    grad_autograd = disp.get_gradient(energy, positions)
+    # variable to be differentiated
+    pos = positions.clone().requires_grad_(True)
+
+    energy = disp.get_energy(pos, cache)
+    grad_autograd = disp.get_gradient(energy, pos)
 
     assert pytest.approx(ref.cpu(), abs=tol) == grad_autograd.detach().cpu()
-
-    positions.detach_()
 
 
 @pytest.mark.grad
@@ -251,17 +251,18 @@ def test_autograd_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         ]
     )
 
-    positions.requires_grad_(True)
+    # variable to be differentiated
+    pos = positions.clone().requires_grad_(True)
 
     disp = new_dispersion(numbers, par, **dd)
     assert disp is not None
 
     cache = disp.get_cache(numbers)
 
-    energy = disp.get_energy(positions, cache)
-    grad_autograd = disp.get_gradient(energy, positions)
+    energy = disp.get_energy(pos, cache)
+    grad_autograd = disp.get_gradient(energy, pos)
 
-    positions.detach_()
+    pos.detach_()
     grad_autograd.detach_()
 
     assert pytest.approx(ref.cpu(), abs=tol) == grad_autograd.cpu()

@@ -56,7 +56,7 @@ def gradchecker(
     bas = Basis(numbers, par, ihelp, **dd)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     def func(pos: Tensor) -> Tensor:
         atombases = bas.create_libcint(pos)
@@ -65,7 +65,7 @@ def gradchecker(
         wrapper = libcint.LibcintWrapper(atombases, ihelp, spherical=False)
         return libcint.int1e(intstr, wrapper)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad
@@ -124,13 +124,13 @@ def gradchecker_batch(
     overlap = OverlapLibcint(**dd)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(pos: Tensor) -> Tensor:
-        driver.setup(pos, mask=mask)
+    def func(p: Tensor) -> Tensor:
+        driver.setup(p, mask=mask)
         return overlap.build(driver)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad

@@ -114,7 +114,7 @@ def test_grad_pos() -> None:
     positions = sample["positions"].to(**dd).detach().clone()
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     disp = new_dispersion(numbers, par, **dd)
     if disp is None:
@@ -122,13 +122,13 @@ def test_grad_pos() -> None:
 
     cache = disp.get_cache(numbers)
 
-    def func(positions: Tensor) -> Tensor:
-        return disp.get_energy(positions, cache)
+    def func(p: Tensor) -> Tensor:
+        return disp.get_energy(p, cache)
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradcheck
 
-    assert gradcheck(func, positions)
+    assert gradcheck(func, pos)
 
 
 @pytest.mark.grad
@@ -140,7 +140,6 @@ def test_grad_pos_tblite(dtype: torch.dtype) -> None:
     sample = samples["PbH4-BiH3"]
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd).detach().clone()
-    positions.requires_grad_(True)
     ref = sample["grad"].to(**dd)
 
     disp = new_dispersion(numbers, par, **dd)
@@ -149,13 +148,16 @@ def test_grad_pos_tblite(dtype: torch.dtype) -> None:
 
     cache = disp.get_cache(numbers)
 
+    # variable to be differentiated
+    pos = positions.clone().requires_grad_(True)
+
     # automatic gradient
-    energy = torch.sum(disp.get_energy(positions, cache), dim=-1)
+    energy = torch.sum(disp.get_energy(pos, cache), dim=-1)
     energy.backward()
 
-    if positions.grad is None:
+    if pos.grad is None:
         assert False
-    grad_backward = positions.grad.clone()
+    grad_backward = pos.grad.clone()
 
     assert pytest.approx(grad_backward.cpu(), abs=1e-10) == ref.cpu()
 

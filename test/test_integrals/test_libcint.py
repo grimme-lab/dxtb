@@ -31,25 +31,24 @@ from dxtb import labels
 from dxtb._src.exlibs.libcint import LibcintWrapper
 from dxtb._src.integral.driver import libcint
 from dxtb._src.integral.driver.manager import DriverManager
+from dxtb._src.integral.factory import (
+    new_dipint_libcint,
+    new_overlap_libcint,
+    new_quadint_libcint,
+)
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
 from .samples import samples
 
 
-def run(
-    numbers: Tensor, positions: Tensor, force_cpu_for_libcint: bool, dd: DD
-) -> None:
+def run(numbers: Tensor, positions: Tensor, cpu: bool, dd: DD) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
-    mgr = DriverManager(
-        labels.INTDRIVER_LIBCINT,
-        force_cpu_for_libcint=force_cpu_for_libcint,
-        **dd,
-    )
+    mgr = DriverManager(labels.INTDRIVER_LIBCINT, force_cpu_for_libcint=cpu, **dd)
     mgr.create_driver(numbers, par, ihelp)
 
-    i = ints.Integrals(mgr, **dd)
-    i.build_overlap(positions)
+    i = ints.Integrals(mgr, intlevel=labels.INTLEVEL_QUADRUPOLE, **dd)
+    i.build_overlap(positions, force_cpu_for_libcint=cpu)
 
     if numbers.ndim == 1:
         assert isinstance(mgr.driver, libcint.IntDriverLibcint)
@@ -62,7 +61,7 @@ def run(
 
     ################################################
 
-    i.overlap = libcint.OverlapLibcint(**dd)
+    i.overlap = new_overlap_libcint(**dd, force_cpu_for_libcint=cpu)
     i.build_overlap(positions)
 
     o = i.overlap
@@ -71,7 +70,7 @@ def run(
 
     ################################################
 
-    i.dipole = libcint.DipoleLibcint(**dd)
+    i.dipole = new_dipint_libcint(**dd, force_cpu_for_libcint=cpu)
     i.build_dipole(positions)
 
     d = i.dipole
@@ -80,7 +79,7 @@ def run(
 
     ################################################
 
-    i.quadrupole = libcint.QuadrupoleLibcint(**dd)
+    i.quadrupole = new_quadint_libcint(**dd, force_cpu_for_libcint=cpu)
     i.build_quadrupole(positions)
 
     q = i.quadrupole
@@ -92,7 +91,6 @@ def run(
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
 def test_single(dtype: torch.dtype, name: str, force_cpu_for_libcint: bool):
-    """Overlap matrix for monoatomic molecule should be unity."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
@@ -109,7 +107,6 @@ def test_single(dtype: torch.dtype, name: str, force_cpu_for_libcint: bool):
 def test_batch(
     dtype: torch.dtype, name1: str, name2: str, force_cpu_for_libcint: bool
 ) -> None:
-    """Overlap matrix for monoatomic molecule should be unity."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]

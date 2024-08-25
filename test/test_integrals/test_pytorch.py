@@ -52,7 +52,6 @@ def run(numbers: Tensor, positions: Tensor, dd: DD) -> None:
 @pytest.mark.parametrize("name", ["H2"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_single(dtype: torch.dtype, name: str):
-    """Overlap matrix for monoatomic molecule should be unity."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
@@ -66,7 +65,6 @@ def test_single(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize("name2", ["LiH"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_batch(dtype: torch.dtype, name1: str, name2: str):
-    """Overlap matrix for monoatomic molecule should be unity."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]

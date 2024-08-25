@@ -91,12 +91,12 @@ def test_grad(dtype: torch.dtype, name: str):
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     positions[0] = torch.tensor([0, 0, 0], **dd)
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
 
-    atombases = bas.create_libcint(positions)
+    atombases = bas.create_libcint(pos)
     assert is_basis_list(atombases)
 
     INTSTR = "r0"
@@ -110,7 +110,7 @@ def test_grad(dtype: torch.dtype, name: str):
     # assert False
 
     print(igrad.shape)
-    numgrad = num_grad(numbers, ihelp, positions, INTSTR)
+    numgrad = num_grad(numbers, ihelp, pos, INTSTR)
     print("numgrad\n", numgrad)
     print("")
     print("")

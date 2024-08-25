@@ -37,7 +37,6 @@ from ...conftest import DEVICE
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
 def test_single(dtype: torch.dtype, force_cpu_for_libcint: bool):
-    """Overlap matrix for monoatomic molecule should be unity."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     numbers = torch.tensor([3, 1], device=DEVICE)
@@ -75,7 +74,6 @@ def test_single(dtype: torch.dtype, force_cpu_for_libcint: bool):
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
 def test_batch(dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
-    """Overlap matrix for monoatomic molecule should be unity."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     numbers = torch.tensor([[3, 1], [1, 0]], device=DEVICE)

@@ -100,8 +100,8 @@ def autograd(name: str, dd: DD, tol: float) -> None:
     bas = Basis(numbers, par, ihelp, **dd)
 
     # variable to be differentiated
-    positions.requires_grad_(True)
-    atombases = bas.create_libcint(positions)
+    pos = positions.clone().requires_grad_(True)
+    atombases = bas.create_libcint(pos)
     assert is_basis_list(atombases)
 
     wrapper = libcint.LibcintWrapper(atombases, ihelp)
@@ -109,9 +109,7 @@ def autograd(name: str, dd: DD, tol: float) -> None:
     norm = torch.pow(s.diagonal(dim1=-1, dim2=-2), -0.5)
     s = einsum("...ij,...i,...j->...ij", s, norm, norm)
 
-    (g,) = torch.autograd.grad(s.sum(), positions)
-    positions.detach_()
-
+    (g,) = torch.autograd.grad(s.sum(), pos)
     assert pytest.approx(ref.cpu(), abs=tol) == g.cpu()
 
 

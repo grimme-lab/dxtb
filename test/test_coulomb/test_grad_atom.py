@@ -70,21 +70,21 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     assert pytest.approx(num_grad.cpu(), abs=tol) == grad.cpu()
 
     # automatic
-    positions.requires_grad_(True)
-    mat = es.get_atom_coulomb_matrix(numbers, positions, ihelp)
+    pos = positions.clone().requires_grad_(True)
+    mat = es.get_atom_coulomb_matrix(numbers, pos, ihelp)
     energy = 0.5 * mat * charges.unsqueeze(-1) * charges.unsqueeze(-2)
-    (agrad,) = torch.autograd.grad(energy.sum(), positions)
+    (agrad,) = torch.autograd.grad(energy.sum(), pos)
     assert pytest.approx(ref.cpu(), abs=tol) == agrad.cpu()
 
     # analytical (automatic)
     es.cache_invalidate()
-    cache = es.get_cache(numbers, positions, ihelp)  # recalc with gradients
-    egrad = es.get_atom_gradient(charges, positions, cache)
+    cache = es.get_cache(numbers, pos, ihelp)  # recalc with gradients
+    egrad = es.get_atom_gradient(charges, pos, cache)
     egrad.detach_()
     assert pytest.approx(ref.cpu(), abs=tol) == egrad.cpu()
     assert pytest.approx(egrad.cpu(), abs=tol) == agrad.cpu()
 
-    positions.detach_()
+    pos.detach_()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -132,20 +132,20 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     assert pytest.approx(ref.cpu(), abs=tol) == grad.cpu()
 
     # automatic
-    positions.requires_grad_(True)
-    mat = es.get_atom_coulomb_matrix(numbers, positions, ihelp)
+    pos = positions.clone().requires_grad_(True)
+    mat = es.get_atom_coulomb_matrix(numbers, pos, ihelp)
     energy = 0.5 * mat * charges.unsqueeze(-1) * charges.unsqueeze(-2)
-    (agrad,) = torch.autograd.grad(energy.sum(), positions)
+    (agrad,) = torch.autograd.grad(energy.sum(), pos)
     assert pytest.approx(ref.cpu(), abs=tol) == agrad.cpu()
 
     # analytical (automatic)
-    cache = es.get_cache(numbers, positions, ihelp)  # recalc with gradients
-    egrad = es.get_atom_gradient(charges, positions, cache)
+    cache = es.get_cache(numbers, pos, ihelp)  # recalc with gradients
+    egrad = es.get_atom_gradient(charges, pos, cache)
     egrad.detach_()
     assert pytest.approx(ref.cpu(), abs=tol) == egrad.cpu()
     assert pytest.approx(egrad.cpu(), abs=tol) == agrad.cpu()
 
-    positions.detach_()
+    pos.detach_()
 
 
 def calc_numerical_gradient(

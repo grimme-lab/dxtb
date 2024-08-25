@@ -73,8 +73,8 @@ def test_grad_fail() -> None:
     assert (torch.zeros_like(positions) == grad).all()
 
     with pytest.raises(RuntimeError):
-        positions.requires_grad_(False)
-        es._gradient(energy, positions)
+        pos = positions.clone().requires_grad_(False)
+        es._gradient(energy, pos)
 
 
 @pytest.mark.parametrize("dtype", [torch.float16, torch.float32, torch.float64])

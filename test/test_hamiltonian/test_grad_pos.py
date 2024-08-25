@@ -57,14 +57,14 @@ def gradchecker(
     driver = IntDriver(numbers, par, ihelp, **dd)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(pos: Tensor) -> Tensor:
-        driver.setup(positions)
+    def func(p: Tensor) -> Tensor:
+        driver.setup(p)
         s = overlap.build(driver)
-        return h0.build(pos, s)
+        return h0.build(p, s)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad
@@ -145,14 +145,14 @@ def gradchecker_batch(
     driver = IntDriver(numbers, par, ihelp, **dd)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(pos: Tensor) -> Tensor:
-        driver.setup(positions, mask=mask)
+    def func(p: Tensor) -> Tensor:
+        driver.setup(p, mask=mask)
         s = overlap.build(driver)
-        return h0.build(pos, s)
+        return h0.build(p, s)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad

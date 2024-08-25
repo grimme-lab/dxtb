@@ -53,12 +53,12 @@ def gradchecker(
     bas = Basis(torch.unique(numbers), par, ihelp, **dd)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(pos: Tensor) -> Tensor:
-        return overlap_gradient(pos, bas, ihelp, uplo=uplo)
+    def func(p: Tensor) -> Tensor:
+        return overlap_gradient(p, bas, ihelp, uplo=uplo)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad

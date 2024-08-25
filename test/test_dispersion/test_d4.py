@@ -100,7 +100,7 @@ def test_grad_pos() -> None:
     charge = positions.new_tensor(0.0)
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     disp = new_dispersion(numbers, par, charge, **dd)
     if disp is None:
@@ -108,13 +108,13 @@ def test_grad_pos() -> None:
 
     cache = disp.get_cache(numbers)
 
-    def func(positions: Tensor) -> Tensor:
-        return disp.get_energy(positions, cache)
+    def func(p: Tensor) -> Tensor:
+        return disp.get_energy(p, cache)
 
     # pylint: disable=import-outside-toplevel
     from torch.autograd.gradcheck import gradcheck
 
-    assert gradcheck(func, positions)
+    assert gradcheck(func, pos)
 
 
 @pytest.mark.grad

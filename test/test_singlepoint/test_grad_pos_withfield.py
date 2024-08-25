@@ -68,14 +68,14 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(pos: Tensor) -> Tensor:
-        result = calc.singlepoint(pos, charge)
+    def func(p: Tensor) -> Tensor:
+        result = calc.singlepoint(p, charge)
         energy = result.total.sum(-1)
         return energy
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad
@@ -130,14 +130,14 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(pos: Tensor) -> Tensor:
-        result = calc.singlepoint(pos, charge)
+    def func(p: Tensor) -> Tensor:
+        result = calc.singlepoint(p, charge)
         energy = result.total.sum(-1)
         return energy
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad

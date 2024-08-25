@@ -55,13 +55,13 @@ def gradchecker(
     overlap = Overlap(uplo="n", **dd)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(pos: Tensor) -> Tensor:
-        driver.setup(pos)
+    def func(p: Tensor) -> Tensor:
+        driver.setup(p)
         return overlap.build(driver)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad
@@ -141,13 +141,13 @@ def gradchecker_batch(
     overlap = Overlap(uplo="n", **dd)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(pos: Tensor) -> Tensor:
-        driver.setup(pos, mask=mask)
+    def func(p: Tensor) -> Tensor:
+        driver.setup(p, mask=mask)
         return overlap.build(driver)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad

@@ -72,15 +72,15 @@ def gradchecker(
     gexp = torch.tensor(par.charge.effective.gexp, **dd)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     es2 = ES2(hubbard, lhubbard, gexp=gexp, shell_resolved=True, **dd)
     es2.cache_disable()
 
-    def func(positions: Tensor) -> Tensor:
-        return es2.get_shell_coulomb_matrix(numbers, positions, ihelp)
+    def func(p: Tensor) -> Tensor:
+        return es2.get_shell_coulomb_matrix(numbers, p, ihelp)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad
@@ -176,14 +176,14 @@ def gradchecker_batch(
     gexp = torch.tensor(par.charge.effective.gexp, **dd)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     es2 = ES2(hubbard, lhubbard, gexp=gexp, shell_resolved=True, **dd)
 
-    def func(positions: Tensor) -> Tensor:
-        return es2.get_shell_coulomb_matrix(numbers, positions, ihelp)
+    def func(p: Tensor) -> Tensor:
+        return es2.get_shell_coulomb_matrix(numbers, p, ihelp)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad

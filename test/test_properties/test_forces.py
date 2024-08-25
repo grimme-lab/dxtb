@@ -57,14 +57,14 @@ def skip_test_autograd(dtype: torch.dtype, name: str) -> None:
     charge = torch.tensor(0.0, **dd)
 
     # required for autodiff of energy w.r.t. positions
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
 
-    def f(pos: Tensor) -> Tensor:
-        return calc.forces(pos, charge)
+    def f(p: Tensor) -> Tensor:
+        return calc.forces(p, charge)
 
-    assert dgradcheck(f, positions)
+    assert dgradcheck(f, pos)
 
 
 def single(

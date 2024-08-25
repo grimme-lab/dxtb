@@ -51,7 +51,7 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     positions = sample["positions"].to(**dd)
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
@@ -59,10 +59,10 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
-    def func(pos: Tensor) -> Tensor:
-        return xb.get_energy(pos, cache)
+    def func(p: Tensor) -> Tensor:
+        return xb.get_energy(p, cache)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad
@@ -110,7 +110,7 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     )
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
@@ -118,10 +118,10 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
-    def func(pos: Tensor) -> Tensor:
-        return xb.get_energy(pos, cache)
+    def func(p: Tensor) -> Tensor:
+        return xb.get_energy(p, cache)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad
@@ -162,7 +162,7 @@ def test_autograd(dtype: torch.dtype, name: str) -> None:
     ref = sample["gradient"].to(**dd)
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
@@ -170,10 +170,10 @@ def test_autograd(dtype: torch.dtype, name: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
-    energy = xb.get_energy(positions, cache)
-    grad_autograd = xb.get_gradient(energy, positions)
+    energy = xb.get_energy(pos, cache)
+    grad_autograd = xb.get_gradient(energy, pos)
 
-    positions.detach_()
+    pos.detach_()
     grad_autograd.detach_()
 
     assert pytest.approx(ref.cpu(), abs=tol * 10) == grad_autograd.cpu()
@@ -207,7 +207,7 @@ def test_autograd_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
@@ -215,10 +215,10 @@ def test_autograd_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
-    energy = xb.get_energy(positions, cache)
-    grad_autograd = xb.get_gradient(energy, positions)
+    energy = xb.get_energy(pos, cache)
+    grad_autograd = xb.get_gradient(energy, pos)
 
-    positions.detach_()
+    pos.detach_()
     grad_autograd.detach_()
 
     assert pytest.approx(ref.cpu(), abs=tol * 10) == grad_autograd.cpu()
@@ -237,7 +237,7 @@ def test_backward(dtype: torch.dtype, name: str) -> None:
     ref = sample["gradient"].to(**dd)
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
@@ -245,15 +245,15 @@ def test_backward(dtype: torch.dtype, name: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
-    energy = xb.get_energy(positions, cache)
+    energy = xb.get_energy(pos, cache)
     energy.sum().backward()
 
-    assert positions.grad is not None
-    grad_backward = positions.grad.clone()
+    assert pos.grad is not None
+    grad_backward = pos.grad.clone()
 
     # also zero out gradients when using `.backward()`
-    positions.detach_()
-    positions.grad.data.zero_()
+    pos.detach_()
+    pos.grad.data.zero_()
 
     assert pytest.approx(ref.cpu(), abs=tol * 10) == grad_backward.cpu()
 
@@ -287,7 +287,7 @@ def test_backward_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     xb = new_halogen(numbers, par, **dd)
     assert xb is not None
@@ -295,14 +295,14 @@ def test_backward_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
     cache = xb.get_cache(numbers, ihelp)
 
-    energy = xb.get_energy(positions, cache)
+    energy = xb.get_energy(pos, cache)
     energy.sum().backward()
 
-    assert positions.grad is not None
-    grad_backward = positions.grad.clone()
+    assert pos.grad is not None
+    grad_backward = pos.grad.clone()
 
     # also zero out gradients when using `.backward()`
-    positions.detach_()
-    positions.grad.data.zero_()
+    pos.detach_()
+    pos.grad.data.zero_()
 
     assert pytest.approx(ref.cpu(), abs=tol * 10) == grad_backward.cpu()
