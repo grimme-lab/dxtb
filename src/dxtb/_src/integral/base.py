@@ -31,7 +31,7 @@ from tad_mctc.math import einsum
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
 from dxtb._src.param import Param
-from dxtb._src.typing import Literal, PathLike, Tensor, TensorLike
+from dxtb._src.typing import Literal, PathLike, Self, Tensor, TensorLike
 
 from .abc import IntegralABC
 from .utils import snorm
@@ -311,6 +311,24 @@ class BaseIntegral(IntegralABC, TensorLike):
 
         self.matrix = einsum(einsum_str, self.matrix, norm, norm)
 
+    def normalize_gradient(self, norm: Tensor | None = None) -> None:
+        """
+        Normalize the gradient (changes ``self.gradient``).
+
+        Parameters
+        ----------
+        norm : Tensor
+            Overlap norm to normalize the integral.
+        """
+        if norm is None:
+            if self.norm is not None:
+                norm = self.norm
+            else:
+                norm = snorm(self.matrix)
+
+        einsum_str = "...ijx,...i,...j->...ijx"
+        self.gradient = einsum(einsum_str, self.gradient, norm, norm)
+
     def to_pt(self, path: PathLike | None = None) -> None:
         """
         Save the integral matrix to a file.
@@ -325,6 +343,35 @@ class BaseIntegral(IntegralABC, TensorLike):
             path = f"{self.label.casefold()}.pt"
 
         torch.save(self.matrix, path)
+
+    def to(self, device: torch.device) -> Self:
+        """
+        Returns a copy of the integral on the specified device "``device``".
+
+        This is essentially a wrapper around the :meth:`to` method of the
+        :class:`TensorLike` class, but explicitly also moves the integral
+        matrix.
+
+        Parameters
+        ----------
+        device : torch.device
+            Device to which all associated tensors should be moved.
+
+        Returns
+        -------
+        Self
+            A copy of the integral placed on the specified device.
+        """
+        if self._gradient is not None:
+            self._gradient = self._gradient.to(device=device)
+
+        if self._norm is not None:
+            self._norm = self._norm.to(device=device)
+
+        if self._matrix is not None:
+            self._matrix = self._matrix.to(device=device)
+
+        return super().to(device=device)
 
     @property
     def matrix(self) -> Tensor:

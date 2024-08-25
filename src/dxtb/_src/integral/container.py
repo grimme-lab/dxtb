@@ -198,9 +198,28 @@ class Integrals(IntegralContainer):
 
         # move integral to the correct device...
         if self.mgr.force_cpu_for_libcint is True:
-            # ... but only if no other multipole integrals are required
+            # ...but only if no other multipole integrals are required
             if self.intlevel <= labels.INTLEVEL_HCORE:
                 self.overlap = self.overlap.to(device=self.device)
+
+                # DEVNOTE: This is a sanity check to avoid the following
+                # scenario: When the overlap is built on CPU (forced by
+                # libcint), it will be moved to the correct device after
+                # the last integral is built. Now, in case of a second
+                # call with an invalid cache, the overlap class already
+                # is on the correct device, but the matrix is not. Hence,
+                # the `to` method must be called on the matrix as well,
+                # which is handled in the custom `to` method of all
+                # integrals.
+                # Also make sure to pass the `force_cpu_for_libcint`
+                # flag when instantiating the integral classes.
+                assert self.overlap is not None
+                if self.overlap.device != self.overlap.matrix.device:
+                    raise RuntimeError(
+                        f"Device of '{self.overlap.label}' integral class "
+                        f"({self.overlap.device}) and its matrix "
+                        f"({self.overlap.matrix.device}) do not match."
+                    )
 
         logger.debug("Overlap integral: All finished.")
 
@@ -215,13 +234,22 @@ class Integrals(IntegralContainer):
         self.mgr.setup_driver(positions, **kwargs)
 
         if self.overlap is None:
-            raise RuntimeError("No overlap integral provided.")
+            # pylint: disable=import-outside-toplevel
+            from .factory import new_overlap
+
+            self.overlap = new_overlap(
+                self.mgr.driver_type,
+                **self.dd,
+                **kwargs,
+            )
 
         logger.debug("Overlap gradient: Start.")
-        grad = self.overlap.get_gradient(self.mgr.driver, **kwargs)
+        self.overlap.get_gradient(self.mgr.driver, **kwargs)
+        self.overlap.gradient = self.overlap.gradient.to(self.device)
+        self.overlap.normalize_gradient()
         logger.debug("Overlap gradient: All finished.")
 
-        return grad.to(self.device)
+        return self.overlap.gradient.to(self.device)
 
     # dipole
 
@@ -282,7 +310,10 @@ class Integrals(IntegralContainer):
 
         # move integral to the correct device, but only if no other multipole
         # integrals are required
-        if self.mgr.force_cpu_for_libcint and self.intlevel <= labels.INTLEVEL_DIPOLE:
+        if (
+            self.mgr.force_cpu_for_libcint is True
+            and self.intlevel <= labels.INTLEVEL_DIPOLE
+        ):
             self.dipole = self.dipole.to(device=self.device)
             self.overlap = self.overlap.to(device=self.device)
 
@@ -378,7 +409,7 @@ class Integrals(IntegralContainer):
         # Finally, we move the integral to the correct device, but only if
         # no other multipole integrals are required.
         if (
-            self.mgr.force_cpu_for_libcint
+            self.mgr.force_cpu_for_libcint is True
             and self.intlevel <= labels.INTLEVEL_QUADRUPOLE
         ):
             self.overlap = self.overlap.to(self.device)
@@ -413,11 +444,12 @@ class Integrals(IntegralContainer):
                     f"Data type of '{cls.label}' integral ({cls.dtype}) and "
                     f"integral container ({self.dtype}) do not match."
                 )
-            if cls.device != self.device:
-                raise RuntimeError(
-                    f"Device of '{cls.label}' integral ({cls.device}) and "
-                    f"integral container ({self.device}) do not match."
-                )
+            if self.mgr.force_cpu_for_libcint is False:
+                if cls.device != self.device:
+                    raise RuntimeError(
+                        f"Device of '{cls.label}' integral ({cls.device}) and "
+                        f"integral container ({self.device}) do not match."
+                    )
 
             if name != "hcore":
                 assert not isinstance(cls, BaseHamiltonian)

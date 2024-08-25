@@ -129,7 +129,7 @@ def hcore(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tens
         raise ValueError(f"Unknown Hamiltonian type '{name}'.")
 
     ovlp = overlap(numbers, positions, par)
-    return h0.build(positions, ovlp)
+    return h0.build(positions, ovlp.to(h0.device))
 
 
 def overlap(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tensor:
@@ -242,19 +242,19 @@ def _integral(
     driver_name = kwargs.pop("driver", labels.INTDRIVER_LIBCINT)
 
     # setup driver for integral calculation
-    drv_mngr = DriverManager(driver_name, **dd)
-    drv_mngr.create_driver(numbers, par, ihelp)
-    drv_mngr.driver.setup(positions)
+    drv_mgr = DriverManager(driver_name, **dd)
+    drv_mgr.create_driver(numbers, par, ihelp)
+    drv_mgr.driver.setup(positions)
 
     ###########
     # Overlap #
     ###########
 
     if integral_type == "_overlap":
-        integral = new_overlap(drv_mngr.driver_type, **dd, **kwargs)
+        integral = new_overlap(drv_mgr.driver_type, **dd, **kwargs)
 
         # actual integral calculation
-        integral.build(drv_mngr.driver)
+        integral.build(drv_mgr.driver)
 
         if normalize is True:
             integral.normalize(integral.norm)
@@ -266,19 +266,19 @@ def _integral(
     #############
 
     # multipole integrals require the overlap for normalization
-    ovlp = new_overlap(drv_mngr.driver_type, **dd, **kwargs)
+    ovlp = new_overlap(drv_mgr.driver_type, **dd, **kwargs)
     if ovlp._matrix is None or ovlp.norm is None:
-        ovlp.build(drv_mngr.driver)
+        ovlp.build(drv_mgr.driver)
 
     if integral_type == "_dipole":
-        integral = new_dipint(driver=drv_mngr.driver_type, **dd, **kwargs)
+        integral = new_dipint(driver=drv_mgr.driver_type, **dd, **kwargs)
     elif integral_type == "_quadrupole":
-        integral = new_quadint(driver=drv_mngr.driver_type, **dd, **kwargs)
+        integral = new_quadint(driver=drv_mgr.driver_type, **dd, **kwargs)
     else:
         raise ValueError(f"Unknown integral type '{integral_type}'.")
 
     # actual integral calculation
-    integral.build(drv_mngr.driver)
+    integral.build(drv_mgr.driver)
 
     if normalize is True:
         integral.normalize(ovlp.norm)

@@ -121,11 +121,11 @@ class OverlapPytorch(OverlapIntegral, IntegralPytorch):
         super().checks(driver)
 
         if driver.ihelp.batch_mode > 0:
-            self.grad = self._batch(driver.eval_ovlp_grad, driver)
+            self.gradient = self._batch(driver.eval_ovlp_grad, driver)
         else:
-            self.grad = self._single(driver.eval_ovlp_grad, driver)
+            self.gradient = self._single(driver.eval_ovlp_grad, driver)
 
-        return self.grad
+        return self.gradient
 
     def _single(self, fcn: OverlapFunction, driver: BaseIntDriverPytorch) -> Tensor:
         if not isinstance(driver, BaseIntDriverPytorch):

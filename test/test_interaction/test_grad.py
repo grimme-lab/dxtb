@@ -60,7 +60,7 @@ def gradchecker(
 
     def func(p: Tensor) -> Tensor:
         icaches = ilist.get_cache(numbers=numbers, positions=p, ihelp=ihelp)
-        charges = get_guess(numbers, positions, chrg, ihelp)
+        charges = get_guess(numbers, p, chrg, ihelp)
         return ilist.get_energy(charges, icaches, ihelp)
 
     return func, pos
@@ -120,10 +120,10 @@ def gradchecker_batch(
 
     def func(p: Tensor) -> Tensor:
         icaches = ilist.get_cache(numbers=numbers, positions=p, ihelp=ihelp)
-        charges = get_guess(numbers, positions, chrg, ihelp)
+        charges = get_guess(numbers, p, chrg, ihelp)
         return ilist.get_energy(charges, icaches, ihelp)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad

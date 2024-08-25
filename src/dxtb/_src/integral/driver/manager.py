@@ -28,7 +28,6 @@ import logging
 import torch
 
 from dxtb import IndexHelper, labels
-from dxtb._src.constants import labels
 from dxtb._src.param import Param
 from dxtb._src.typing import TYPE_CHECKING, Any, Tensor, TensorLike
 
@@ -56,8 +55,8 @@ class DriverManager(TensorLike):
         _driver: IntDriver | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(device=device, dtype=dtype)
 
         # per default, libcint is run on the CPU
@@ -87,7 +86,7 @@ class DriverManager(TensorLike):
             # pylint: disable=import-outside-toplevel
             from .libcint import IntDriverLibcint as _IntDriver
 
-            if self.force_cpu_for_libcint:
+            if self.force_cpu_for_libcint is True:
                 device = torch.device("cpu")
                 numbers = numbers.to(device=device)
                 ihelp = ihelp.to(device=device)
@@ -99,11 +98,12 @@ class DriverManager(TensorLike):
         elif self.driver_type == labels.INTDRIVER_AUTOGRAD:
             # pylint: disable=import-outside-toplevel
             from .pytorch import IntDriverPytorchNoAnalytical as _IntDriver
+
         else:
             raise ValueError(f"Unknown integral driver '{self.driver_type}'.")
 
         self.driver = _IntDriver(
-            numbers, par, ihelp, device=self.device, dtype=self.dtype
+            numbers, par, ihelp, device=ihelp.device, dtype=self.dtype
         )
 
     def setup_driver(self, positions: Tensor, **kwargs: Any) -> None:
