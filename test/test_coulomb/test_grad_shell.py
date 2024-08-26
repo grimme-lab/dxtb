@@ -82,8 +82,6 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     assert pytest.approx(ref.cpu(), abs=tol) == egrad.cpu()
     assert pytest.approx(egrad.cpu(), abs=tol) == agrad.cpu()
 
-    pos.detach_()
-
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["SiH4"])
@@ -143,8 +141,6 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     egrad.detach_()
     assert pytest.approx(ref.cpu(), abs=tol) == egrad.cpu()
     assert pytest.approx(egrad.cpu(), abs=tol) == agrad.cpu()
-
-    pos.detach_()
 
 
 def calc_numerical_gradient(

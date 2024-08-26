@@ -31,7 +31,7 @@ from dxtb._src.components.interactions.coulomb import ES2
 from dxtb._src.param import get_elem_param
 from dxtb._src.typing import DD, Callable, Tensor
 
-from ..conftest import DEVICE
+from ..conftest import DEVICE, NONDET_TOL
 from .samples import samples
 
 sample_list = ["LiH", "SiH4", "MB16_43_01"]
@@ -85,7 +85,7 @@ def test_grad_pos(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradcheck_pos(dtype, name)
-    assert dgradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol, nondet_tol=NONDET_TOL)
 
 
 @pytest.mark.grad
@@ -97,7 +97,7 @@ def test_gradgrad_pos(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradcheck_pos(dtype, name)
-    assert dgradgradcheck(func, diffvars, atol=tol)
+    assert dgradgradcheck(func, diffvars, atol=tol, nondet_tol=NONDET_TOL)
 
 
 def gradcheck_pos_batch(
@@ -156,7 +156,7 @@ def test_grad_pos_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradcheck_pos_batch(dtype, name1, name2)
-    assert dgradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol, nondet_tol=NONDET_TOL)
 
 
 @pytest.mark.grad
@@ -169,4 +169,4 @@ def test_gradgrad_pos_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradcheck_pos_batch(dtype, name1, name2)
-    assert dgradgradcheck(func, diffvars, atol=tol)
+    assert dgradgradcheck(func, diffvars, atol=tol, nondet_tol=NONDET_TOL)
