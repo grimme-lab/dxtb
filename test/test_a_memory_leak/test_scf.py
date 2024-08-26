@@ -22,8 +22,6 @@ Inspired by DQC.
 
 from __future__ import annotations
 
-import gc
-
 import pytest
 import torch
 from tad_mctc.data.molecules import mols as samples
@@ -58,19 +56,19 @@ def test_xitorch(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
         calc = Calculator(numbers, par, opts=options, **dd)
 
         # variables to be differentiated
-        positions.requires_grad_(True)
+        pos = positions.clone().requires_grad_(True)
 
-        result = calc.singlepoint(positions, charges)
+        result = calc.singlepoint(pos, charges)
         energy = result.scf.sum(-1)
 
-        _ = torch.autograd.grad(energy, (positions), create_graph=create_graph)
+        _ = torch.autograd.grad(energy, (pos), create_graph=create_graph)
 
         # known reference cycle for create_graph=True
         if create_graph is True:
             energy.backward()
 
         del numbers
-        del positions
+        del pos
         del charges
         del calc
         del result
@@ -101,11 +99,11 @@ def test_xitorch_pure(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> N
         calc = Calculator(numbers, par, opts=options, **dd)
 
         # variables to be differentiated
-        positions.requires_grad_(True)
+        pos = positions.clone().requires_grad_(True)
 
-        energy = calc.energy(positions, charges)
+        energy = calc.energy(pos, charges)
 
-        _ = torch.autograd.grad(energy, (positions), create_graph=create_graph)
+        _ = torch.autograd.grad(energy, (pos), create_graph=create_graph)
 
         # known reference cycle for create_graph=True
         if create_graph is True:
@@ -140,19 +138,19 @@ def skip_test_fulltracking(
         calc = Calculator(numbers, par, opts=options, **dd)
 
         # variables to be differentiated
-        positions.requires_grad_(True)
+        pos = positions.clone().requires_grad_(True)
 
-        result = calc.singlepoint(positions, charges)
+        result = calc.singlepoint(pos, charges)
         energy = result.scf.sum(-1)
 
-        _ = torch.autograd.grad(energy, (positions), create_graph=create_graph)
+        _ = torch.autograd.grad(energy, (pos), create_graph=create_graph)
 
         # known reference cycle for create_graph=True
         if create_graph is True:
             energy.backward()
 
         del numbers
-        del positions
+        del pos
         del charges
         del calc
         del result

@@ -24,7 +24,4 @@ Tight-binding components for halogen bond corrections.
 from dxtb._src.components.classicals.halogen import Halogen as Halogen
 from dxtb._src.components.classicals.halogen import new_halogen as new_halogen
 
-__all__ = [
-    "Halogen",
-    "new_halogen",
-]
+__all__ = ["Halogen", "new_halogen"]

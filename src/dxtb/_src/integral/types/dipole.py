@@ -15,54 +15,70 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
+Integral Types: Dipole
+======================
+
 Dipole integral.
 """
 
 from __future__ import annotations
 
-import torch
+from tad_mctc.math import einsum
 
-from dxtb._src.constants import labels
-from dxtb._src.typing import TYPE_CHECKING, Any
+from dxtb._src.typing import Tensor
 
-from .base import BaseIntegral
+from ..base import BaseIntegral
 
-if TYPE_CHECKING:
-    from ..driver.libcint import DipoleLibcint
-
-__all__ = ["Dipole"]
+__all__ = ["DipoleIntegral"]
 
 
-class Dipole(BaseIntegral):
+class DipoleIntegral(BaseIntegral):
     """
     Dipole integral from atomic orbitals.
     """
 
-    integral: DipoleLibcint
-    """Instance of actual dipole integral type."""
+    def shift_r0_rj(self, overlap: Tensor, pos: Tensor) -> Tensor:
+        r"""
+        Shift the centering of the dipole integral (moment operator) from the
+        origin (:math:`r0 = r - (0, 0, 0)`) to atoms (ket index,
+        :math:`rj = r - r_j`).
 
-    def __init__(
-        self,
-        driver: int = labels.INTDRIVER_LIBCINT,
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(device=device, dtype=dtype)
+        .. math::
 
-        # Determine which overlap class to instantiate based on the type
-        if driver == labels.INTDRIVER_LIBCINT:
-            # pylint: disable=import-outside-toplevel
-            from ..driver.libcint import DipoleLibcint
+            \begin{align}
+            D &= D^{r_j}  \\
+            &= \langle i | r_j | j \rangle  \\
+            &= \langle i | r | j \rangle - r_j \langle i | j \rangle \\
+            &= \langle i | r_0 | j \rangle - r_j S_{ij}  \\
+            &= D^{r_0} - r_j S_{ij}
+            \end{align}
 
-            if kwargs.pop("force_cpu_for_libcint", True):
-                device = torch.device("cpu")
+        Parameters
+        ----------
+        r0 : Tensor
+            Origin centered dipole integral.
+        overlap : Tensor
+            Overlap integral.
+        pos : Tensor
+            Orbital-resolved atomic positions.
 
-            self.integral = DipoleLibcint(device=device, dtype=dtype, **kwargs)
-        elif driver in (labels.INTDRIVER_ANALYTICAL, labels.INTDRIVER_AUTOGRAD):
-            raise NotImplementedError(
-                "PyTorch versions of multipole moments are not implemented. "
-                "Use `libcint` as integral driver."
+        Raises
+        ------
+        RuntimeError
+            Shape mismatch between ``positions`` and `overlap`.
+            The positions must be orbital-resolved.
+
+        Returns
+        -------
+        Tensor
+            Second-index (ket) atom-centered dipole integral.
+        """
+        if pos.shape[-2] != overlap.shape[-1]:
+            raise RuntimeError(
+                "Shape mismatch between positions and overlap integral. "
+                "The position tensor must be spread to orbital-resolution."
             )
-        else:
-            raise ValueError(f"Unknown integral driver '{driver}'.")
+
+        shift = einsum("...jx,...ij->...xij", pos, overlap)
+        self.matrix = self.matrix - shift
+        return self.matrix

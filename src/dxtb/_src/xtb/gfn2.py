@@ -36,9 +36,7 @@ class GFN2Hamiltonian(BaseHamiltonian):
     The GFN2-xTB Hamiltonian.
     """
 
-    def build(
-        self, positions: Tensor, overlap: Tensor, cn: Tensor | None = None
-    ) -> Tensor:
+    def build(self, positions: Tensor, overlap: Tensor | None = None) -> Tensor:
         raise NotImplementedError("GFN2 not implemented yet.")
 
     def get_gradient(

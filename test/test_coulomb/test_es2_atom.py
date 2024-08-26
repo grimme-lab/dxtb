@@ -34,7 +34,7 @@ from dxtb._src.components.interactions.coulomb import secondorder as es2
 from dxtb._src.param.utils import get_elem_param
 from dxtb._src.typing import DD, Tensor
 
-from ..conftest import DEVICE
+from ..conftest import DEVICE, NONDET_TOL
 from .samples import samples
 
 sample_list = ["MB16_43_01", "MB16_43_02", "SiH4_atom"]
@@ -121,13 +121,13 @@ def test_grad_positions(name: str) -> None:
     assert es is not None
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(positions: Tensor):
-        cache = es.get_cache(numbers, positions, ihelp)
+    def func(p: Tensor):
+        cache = es.get_cache(numbers, p, ihelp)
         return es.get_atom_energy(qat, cache)
 
-    assert dgradcheck(func, positions)
+    assert dgradcheck(func, pos, nondet_tol=NONDET_TOL)
 
 
 @pytest.mark.grad
@@ -157,4 +157,4 @@ def test_grad_param(name: str) -> None:
         cache = es.get_cache(numbers, positions, ihelp)
         return es.get_atom_energy(qat, cache)
 
-    assert dgradcheck(func, (gexp, hubbard))
+    assert dgradcheck(func, (gexp, hubbard), nondet_tol=NONDET_TOL)

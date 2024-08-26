@@ -50,3 +50,18 @@ the error is actually raised because the mixer in `xitorch` produces a
 Apparently, this occurs if the convergence criteria are too strict in single
 precision. The solution is to increase the convergence criteria to more than
 1e-6.
+
+
+RuntimeError: clone is not supported by NestedIntSymNode
+--------------------------------------------------------
+
+This is a bug in PyTorch 2.3.0 and 2.3.1 (see
+`PyTorch #128607 <<https://github.com/pytorch/pytorch/issues/128607>`__).
+To avoid this error, manually import `torch._dynamo` in the code. For example:
+
+.. code-block:: python
+
+    from tad_mctc._version import __tversion__
+
+    if __tversion__ in ((2, 3, 0), (2, 3, 1)):
+        import torch._dynamo

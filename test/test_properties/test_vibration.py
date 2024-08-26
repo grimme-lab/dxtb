@@ -60,15 +60,15 @@ def skip_test_autograd(dtype: torch.dtype, name: str) -> None:
     charge = torch.tensor(0.0, **dd)
 
     # required for autodiff of energy w.r.t. efield and dipole
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
 
-    def f(pos: Tensor) -> tuple[Tensor, Tensor]:
-        f, m = calc.vibration(pos, charge)
+    def f(p: Tensor) -> tuple[Tensor, Tensor]:
+        f, m = calc.vibration(p, charge)
         return f, m
 
-    assert dgradcheck(f, positions)
+    assert dgradcheck(f, pos)
 
 
 def single(

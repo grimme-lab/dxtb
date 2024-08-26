@@ -180,12 +180,12 @@ def test_psi_grad(name: str):
     rvdw = VDW_D3.to(**dd)[numbers]
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(positions: Tensor):
-        return born.compute_psi(numbers, positions, rvdw)
+    def func(p: Tensor):
+        return born.compute_psi(numbers, p, rvdw)
 
-    assert dgradcheck(func, positions)
+    assert dgradcheck(func, pos)
 
 
 @pytest.mark.grad
@@ -200,9 +200,9 @@ def test_radii_grad(name: str):
     positions = sample["positions"].to(**dd)
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(positions: Tensor):
-        return born.get_born_radii(numbers, positions)
+    def func(p: Tensor):
+        return born.get_born_radii(numbers, p)
 
-    assert dgradcheck(func, positions)
+    assert dgradcheck(func, pos)

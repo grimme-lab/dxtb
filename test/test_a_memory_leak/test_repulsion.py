@@ -22,8 +22,6 @@ Inspired by DQC.
 
 from __future__ import annotations
 
-import gc
-
 import pytest
 import torch
 from tad_mctc.data.molecules import mols as samples
@@ -75,21 +73,19 @@ def execute(name: str, dtype: torch.dtype) -> None:
             **dd,
             requires_grad=True,
         )
-        positions.requires_grad_(True)
+        pos = positions.clone().requires_grad_(True)
 
         rep = Repulsion(arep, zeff, kexp, **dd)
         cache = rep.get_cache(numbers, ihelp)
 
-        energy = rep.get_energy(positions, cache).sum()
-        _ = torch.autograd.grad(
-            energy, (positions, arep, zeff, kexp), create_graph=True
-        )
+        energy = rep.get_energy(pos, cache).sum()
+        _ = torch.autograd.grad(energy, (pos, arep, zeff, kexp), create_graph=True)
 
         # known reference cycle for create_graph=True
         energy.backward()
 
         del numbers
-        del positions
+        del pos
         del ihelp
         del rep
         del cache

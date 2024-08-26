@@ -72,19 +72,17 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     )
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     options = dict(opts, **{"exclude": ["scf"]})
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    def energy(pos: Tensor) -> Tensor:
-        result = calc.singlepoint(pos, charge)
+    def energy(p: Tensor) -> Tensor:
+        result = calc.singlepoint(p, charge)
         return result.total.sum()
 
-    hess = jacrev(jacrev(energy))(positions)
+    hess = jacrev(jacrev(energy))(pos)
     assert isinstance(hess, Tensor)
 
-    positions.detach_()
     hess = hess.detach().reshape_as(ref)
-
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == hess.cpu()

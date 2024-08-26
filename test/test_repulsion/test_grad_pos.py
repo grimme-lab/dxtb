@@ -64,17 +64,17 @@ def test_backward_vs_tblite(dtype: torch.dtype, name: str) -> None:
     cache = rep.get_cache(numbers, ihelp)
 
     # automatic gradient
-    positions.requires_grad_(True)
-    energy = torch.sum(rep.get_energy(positions, cache), dim=-1)
+    pos = positions.clone().requires_grad_(True)
+    energy = torch.sum(rep.get_energy(pos, cache), dim=-1)
     energy.backward()
 
-    assert positions.grad is not None
-    grad_backward = positions.grad.clone()
+    assert pos.grad is not None
+    grad_backward = pos.grad.clone()
 
     # also zero out gradients when using `.backward()`
     grad_backward.detach_()
-    positions.detach_()
-    positions.grad.data.zero_()
+    pos.detach_()
+    pos.grad.data.zero_()
 
     assert pytest.approx(ref.cpu(), abs=tol) == grad_backward.cpu()
 
@@ -114,17 +114,17 @@ def test_backward_batch_vs_tblite(dtype: torch.dtype, name1: str, name2: str) ->
     cache = rep.get_cache(numbers, ihelp)
 
     # automatic gradient
-    positions.requires_grad_(True)
-    energy = torch.sum(rep.get_energy(positions, cache))
+    pos = positions.clone().requires_grad_(True)
+    energy = torch.sum(rep.get_energy(pos, cache))
     energy.backward()
 
-    assert positions.grad is not None
-    grad_backward = positions.grad.clone()
+    assert pos.grad is not None
+    grad_backward = pos.grad.clone()
 
     # also zero out gradients when using `.backward()`
     grad_backward.detach_()
-    positions.detach_()
-    positions.grad.data.zero_()
+    pos.detach_()
+    pos.grad.data.zero_()
 
     assert pytest.approx(ref.cpu(), abs=tol) == grad_backward.cpu()
 
@@ -152,17 +152,17 @@ def test_grad_pos_backward_vs_analytical(dtype: torch.dtype, name: str) -> None:
     )
 
     # automatic gradient
-    positions.requires_grad_(True)
-    energy = torch.sum(rep.get_energy(positions, cache), dim=-1)
+    pos = positions.clone().requires_grad_(True)
+    energy = torch.sum(rep.get_energy(pos, cache), dim=-1)
     energy.backward()
 
-    assert positions.grad is not None
-    grad_backward = positions.grad.clone()
+    assert pos.grad is not None
+    grad_backward = pos.grad.clone()
 
     # also zero out gradients when using `.backward()`
     grad_backward.detach_()
-    positions.detach_()
-    positions.grad.data.zero_()
+    pos.detach_()
+    pos.grad.data.zero_()
 
     assert pytest.approx(grad_analytical.cpu(), abs=tol) == grad_backward.cpu()
 
@@ -240,12 +240,12 @@ def gradchecker(
     cache = rep.get_cache(numbers, ihelp)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(pos: Tensor) -> Tensor:
-        return rep.get_energy(pos, cache)
+    def func(p: Tensor) -> Tensor:
+        return rep.get_energy(p, cache)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad
@@ -299,12 +299,12 @@ def gradchecker_batch(
     cache = rep.get_cache(numbers, ihelp)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(pos: Tensor) -> Tensor:
-        return rep.get_energy(pos, cache)
+    def func(p: Tensor) -> Tensor:
+        return rep.get_energy(p, cache)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad

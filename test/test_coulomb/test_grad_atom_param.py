@@ -31,7 +31,7 @@ from dxtb._src.components.interactions.coulomb import ES2
 from dxtb._src.param import get_elem_param
 from dxtb._src.typing import DD, Callable, Tensor
 
-from ..conftest import DEVICE
+from ..conftest import DEVICE, NONDET_TOL
 from .samples import samples
 
 sample_list = ["LiH", "SiH4", "MB16_43_01"]
@@ -81,7 +81,7 @@ def test_grad_param(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradcheck_param(dtype, name)
-    assert dgradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol, nondet_tol=NONDET_TOL)
 
 
 @pytest.mark.grad
@@ -93,7 +93,7 @@ def test_gradgrad_param(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradcheck_param(dtype, name)
-    assert dgradgradcheck(func, diffvars, atol=tol)
+    assert dgradgradcheck(func, diffvars, atol=tol, nondet_tol=NONDET_TOL)
 
 
 def gradcheck_param_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
@@ -157,7 +157,7 @@ def test_grad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     # same for both values.
     diffvars[0].requires_grad_(False)
 
-    assert dgradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol, nondet_tol=NONDET_TOL)
 
 
 @pytest.mark.grad
@@ -177,4 +177,4 @@ def test_gradgrad_param_batch(dtype: torch.dtype, name1: str, name2: str) -> Non
     # same for both values.
     diffvars[0].requires_grad_(False)
 
-    assert dgradgradcheck(func, diffvars, atol=tol)
+    assert dgradgradcheck(func, diffvars, atol=tol, nondet_tol=NONDET_TOL)

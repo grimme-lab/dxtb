@@ -51,7 +51,7 @@ def test_gb_scf_grad(dtype: torch.dtype, name: str, dielectric_constant=78.9):
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
     ref = sample["gradient"]
     charges = torch.tensor(0.0).type(dtype)
 
@@ -60,16 +60,16 @@ def test_gb_scf_grad(dtype: torch.dtype, name: str, dielectric_constant=78.9):
 
     calc = Calculator(numbers, par, interaction=[gb], opts=opts, **dd)
 
-    results = calc.singlepoint(positions, charges)
+    results = calc.singlepoint(pos, charges)
     energy = results.scf.sum(-1)
 
     # autograd
     energy.backward()
-    assert positions.grad is not None
-    autograd = positions.grad.clone()
+    assert pos.grad is not None
+    autograd = pos.grad.clone()
 
     # also zero out gradients when using `.backward()`
-    positions.detach_()
-    positions.grad.data.zero_()
+    pos.detach_()
+    pos.grad.data.zero_()
 
     assert pytest.approx(ref.cpu(), abs=tol) == autograd.cpu()

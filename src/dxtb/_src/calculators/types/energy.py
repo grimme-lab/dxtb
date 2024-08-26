@@ -23,15 +23,11 @@ Base calculator for the energy calculation of an extended tight-binding model.
 
 from __future__ import annotations
 
-import logging
-
 import torch
 from tad_mctc.convert import any_to_tensor
 from tad_mctc.io.checks import content_checks, shape_checks
 
-from dxtb import OutputHandler
-from dxtb import integrals as ints
-from dxtb import labels
+from dxtb import OutputHandler, labels
 from dxtb._src import scf
 from dxtb._src.constants import defaults
 from dxtb._src.integral.container import IntegralMatrices
@@ -197,10 +193,10 @@ class EnergyCalculator(BaseCalculator):
         # Core Hamiltonian integral (requires overlap internally!)
         #
         # This should be the final integral, because the others are
-        # potentially calculated on CPU (libcint) even in GPU runs.
+        # potentially calculated on CPU (libcint), even in GPU runs.
         # To avoid unnecessary data transfer, the core Hamiltonian should
-        # be last. Internally, the overlap integral is only transfered back
-        # to GPU when all multipole integrals are calculated.
+        # be calculated last. Internally, the overlap integral is only
+        # transfered back to GPU when all multipole integrals are calculated.
         if self.opts.ints.level >= labels.INTLEVEL_HCORE:
             OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ", v=3)
             timer.start("Core Hamiltonian", parent_uid="Integrals")
@@ -216,7 +212,7 @@ class EnergyCalculator(BaseCalculator):
         # While one can theoretically skip the core Hamiltonian, the
         # current implementation does not account for this case because the
         # reference occupation is necessary for the SCF procedure.
-        if self.integrals.hcore is None or self.integrals.hcore.matrix is None:
+        if self.integrals.hcore is None:
             raise NotImplementedError(
                 "Core Hamiltonian missing. Skipping the Core Hamiltonian in "
                 "the SCF is currently not supported. Please increase the "
@@ -261,7 +257,7 @@ class EnergyCalculator(BaseCalculator):
             self.ihelp,
             self.opts.scf,
             intmats,
-            self.integrals.hcore.integral.refocc,
+            self.integrals.hcore.refocc,
         )
 
         timer.stop("SCF")
@@ -326,14 +322,34 @@ class EnergyCalculator(BaseCalculator):
 
         if kwargs.get("store_fock", copts.fock):
             self.cache["fock"] = scf_results["hamiltonian"]
+
         if kwargs.get("store_hcore", copts.hcore):
             self.cache["hcore"] = self.integrals.hcore
+        else:
+            if self.integrals.hcore is not None:
+                if self.integrals.hcore.requires_grad is False:
+                    self.integrals.hcore.clear()
+
         if kwargs.get("store_overlap", copts.overlap):
             self.cache["overlap"] = self.integrals.overlap
+        else:
+            if self.integrals.overlap is not None:
+                if self.integrals.overlap.requires_grad is False:
+                    self.integrals.overlap.clear()
+
         if kwargs.get("store_dipole", copts.dipole):
             self.cache["dipint"] = self.integrals.dipole
+        else:
+            if self.integrals.dipole is not None:
+                if self.integrals.dipole.requires_grad is False:
+                    self.integrals.dipole.clear()
+
         if kwargs.get("store_quadrupole", copts.quadrupole):
             self.cache["quadint"] = self.integrals.quadrupole
+        else:
+            if self.integrals.quadrupole is not None:
+                if self.integrals.quadrupole.requires_grad is False:
+                    self.integrals.quadrupole.clear()
 
         self._ncalcs += 1
         return result
@@ -403,18 +419,24 @@ class EnergyCalculator(BaseCalculator):
         """
         self.singlepoint(positions, chrg, spin, **kwargs)
 
+        ovlp_msg = (
+            "Overlap matrix not found in cache. The overlap is not saved "
+            "per default. Enable saving either via the calculator options "
+            "(`calc.opts.cache.store.overlap = True`) or by passing the "
+            "`store_overlap=True` keyword argument to called method, e.g., "
+            "`calc.energy(positions, store_overlap=True)"
+        )
+
         overlap = self.cache["overlap"]
         if overlap is None:
-            raise RuntimeError(
-                "Overlap matrix not found in cache. The overlap is not saved "
-                "per default. Enable saving either via the calculator options "
-                "(`calc.opts.cache.store.overlap = True`) or by passing the "
-                "`store_overlap=True` keyword argument to called method, e.g., "
-                "`calc.energy(positions, store_overlap=True)"
-            )
+            raise RuntimeError(ovlp_msg)
 
-        assert isinstance(overlap, ints.types.Overlap)
-        assert overlap.matrix is not None
+        # pylint: disable=import-outside-toplevel
+        from dxtb._src.integral.types import OverlapIntegral
+
+        assert isinstance(overlap, OverlapIntegral)
+        if overlap.matrix is None:
+            raise RuntimeError(ovlp_msg)
 
         density = self.cache["density"]
         if density is None:

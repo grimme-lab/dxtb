@@ -26,21 +26,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from tad_mctc.batch import pack
-from tad_mctc.math import einsum
 
 from dxtb._src.exlibs import libcint
 from dxtb._src.typing import Tensor
 
-from .base_implementation import IntegralImplementationLibcint
+from .base import IntegralLibcint
 
 if TYPE_CHECKING:
     from .driver import IntDriverLibcint
-del TYPE_CHECKING
 
 __all__ = ["MultipoleLibcint"]
 
 
-class MultipoleLibcint(IntegralImplementationLibcint):
+class MultipoleLibcint(IntegralLibcint):
     """
     Base class for multipole integrals calculated with `libcint`.
     """
@@ -72,14 +70,8 @@ class MultipoleLibcint(IntegralImplementationLibcint):
                 "Other integrals can be added to `tad-libcint`."
             )
 
-        if self.norm is None:
-            raise RuntimeError("Norm must be set before building.")
-
-        def _mpint(driver: libcint.LibcintWrapper, norm: Tensor) -> Tensor:
-            integral = libcint.int1e(intstring, driver)
-            if self.normalize is False:
-                return integral
-            return einsum("...ij,i,j->...ij", integral, norm, norm)
+        def _mpint(driver: libcint.LibcintWrapper) -> Tensor:
+            return libcint.int1e(intstring, driver)
 
         # batched mode
         if driver.ihelp.batch_mode > 0:
@@ -88,27 +80,11 @@ class MultipoleLibcint(IntegralImplementationLibcint):
                     "IndexHelper on integral driver is batched, but the driver "
                     "instance itself not."
                 )
-            if driver.ihelp.batch_mode == 1:
-                # pylint: disable=import-outside-toplevel
-                from tad_mctc.batch import deflate
 
-                self.matrix = pack(
-                    [
-                        _mpint(driver, deflate(norm))
-                        for driver, norm in zip(driver.drv, self.norm)
-                    ]
-                )
-                return self.matrix
-            elif driver.ihelp.batch_mode == 2:
-                self.matrix = pack(
-                    [
-                        _mpint(driver, norm)  # no deflating here
-                        for driver, norm in zip(driver.drv, self.norm)
-                    ]
-                )
-                return self.matrix
-
-            raise ValueError(f"Unknown batch mode '{driver.ihelp.batch_mode}'.")
+            # In this version, batch mode does not matter. If we would
+            # normalize the integral here, we would have to deflate the norm.
+            self.matrix = pack([_mpint(driver) for driver in driver.drv])
+            return self.matrix
 
         # single mode
         if not isinstance(driver.drv, libcint.LibcintWrapper):
@@ -117,5 +93,5 @@ class MultipoleLibcint(IntegralImplementationLibcint):
                 "driver instance itself seems to be batched."
             )
 
-        self.matrix = _mpint(driver.drv, self.norm)
+        self.matrix = _mpint(driver.drv)
         return self.matrix

@@ -29,7 +29,14 @@ dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
 dxtb.timer.cuda_sync = False
 
 # read molecule from file
-f = Path(__file__).parent / "molecules" / "nicotine.xyz"
+p = Path(__file__).parent
+
+if "molecules" not in [x.name for x in p.iterdir()]:
+    p = p.parent
+
+f = p / "molecules" / "nicotine.xyz"
+
+
 numbers, positions = read.read_from_path(f, **dd)
 charge = read.read_chrg_from_path(f, **dd)
 

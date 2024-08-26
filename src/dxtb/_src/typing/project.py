@@ -23,11 +23,12 @@ Project-specific type annotations.
 from __future__ import annotations
 
 import torch
+from tad_mctc.ncoord.typing import CNFunction, CNGradFunction
 
 from .builtin import TypedDict
 from .compat import Slicer
 
-__all__ = ["ContainerData", "Slicers"]
+__all__ = ["CNFunction", "CNGradFunction", "ContainerData", "Slicers"]
 
 
 class Slicers(TypedDict):

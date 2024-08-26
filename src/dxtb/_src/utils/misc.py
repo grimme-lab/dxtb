@@ -58,7 +58,7 @@ def get_all_slots(cls):
         if p.__name__ not in ("object", cls.__class__.__name__)
     ]
 
-    #  and the hidden slots "__" and the "unit" slots
+    # and the hidden slots "__" and the "unit" slots
     parents_slots: list[str] = [
         s for p in parents for s in p.__slots__ if "__" not in s
     ]

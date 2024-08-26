@@ -43,7 +43,6 @@ from dxtb._src.utils.tensors import tensor_id
 
 if TYPE_CHECKING:
     from ..base import Calculator
-del TYPE_CHECKING
 
 __all__ = [
     "requires_positions_grad",

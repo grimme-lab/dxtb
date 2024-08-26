@@ -63,20 +63,22 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     calc = Calculator(numbers, par, opts=opts, **dd)
 
+    pos = positions.clone()
+
     # numerical hessian
-    numref = _numhess(calc, numbers, positions, charge)
+    numref = _numhess(calc, numbers, pos, charge)
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos.requires_grad_(True)
 
     def energy(pos: Tensor) -> Tensor:
         result = calc.singlepoint(pos, charge)
         return result.scf.sum()
 
-    hess = jacrev(jacrev(energy))(positions)
+    hess = jacrev(jacrev(energy))(pos)
     assert isinstance(hess, Tensor)
 
-    positions.detach_()
+    pos.detach_()
     hess = hess.detach().reshape_as(ref)
     numref = numref.reshape_as(ref)
 
@@ -95,10 +97,10 @@ def _numhess(
         **{"device": positions.device, "dtype": positions.dtype},
     )
 
-    def _gradfcn(positions: Tensor, charge: Tensor) -> Tensor:
-        positions.requires_grad_(True)
-        result = -calc.forces_analytical(positions, charge)
-        positions.detach_()
+    def _gradfcn(pos: Tensor, charge: Tensor) -> Tensor:
+        pos.requires_grad_(True)
+        result = -calc.forces_analytical(pos, charge)
+        pos.detach_()
         return result.detach()
 
     step = 1.0e-4

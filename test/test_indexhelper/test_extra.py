@@ -168,7 +168,8 @@ def test_spread_unique_batch() -> None:
     x = torch.randn((nbatch, nat_u, 3), device=DEVICE)
 
     # pollutes CUDA memory
-    assert False
+    if DEVICE is not None:
+        assert False
 
     out = ihelp.spread_uspecies_to_atom(x, dim=-2, extra=True)
     assert out.shape == torch.Size((nbatch, nat, 3))

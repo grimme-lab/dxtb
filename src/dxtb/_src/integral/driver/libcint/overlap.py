@@ -30,19 +30,23 @@ from tad_mctc.math import einsum
 from dxtb._src.exlibs import libcint
 from dxtb._src.typing import Tensor
 
-from .base_implementation import IntegralImplementationLibcint
+from ...types import OverlapIntegral
+from ...utils import snorm
+from .base import IntegralLibcint
 from .driver import IntDriverLibcint
 
 __all__ = ["OverlapLibcint"]
 
 
-def snorm(ovlp: Tensor) -> Tensor:
-    return torch.pow(ovlp.diagonal(dim1=-1, dim2=-2), -0.5)
-
-
-class OverlapLibcint(IntegralImplementationLibcint):
+class OverlapLibcint(OverlapIntegral, IntegralLibcint):
     """
     Overlap integral from atomic orbitals.
+
+    Use the :meth:`build` method to calculate the overlap integral. The
+    returned matrix uses a custom autograd function to calculate the
+    backward pass with the analytical gradient.
+    For the full gradient, i.e., a matrix of shape ``(..., norb, norb, 3)``,
+    the :meth:`get_gradient` method should be used.
     """
 
     def build(self, driver: IntDriverLibcint) -> Tensor:
@@ -53,29 +57,20 @@ class OverlapLibcint(IntegralImplementationLibcint):
         -------
         driver : IntDriverLibcint
             The integral driver for the calculation.
+
+        Returns
+        -------
+        Tensor
+            Overlap integral matrix of shape ``(..., norb, norb)``.
         """
         super().checks(driver)
-
-        def fcn(driver: libcint.LibcintWrapper) -> tuple[Tensor, Tensor]:
-            s = libcint.overlap(driver)
-            norm = snorm(s)
-
-            if self.normalize is True:
-                s = einsum("...ij,...i,...j->...ij", s, norm, norm)
-
-            return s, norm
 
         # batched mode
         if driver.ihelp.batch_mode > 0:
             assert isinstance(driver.drv, list)
 
-            slist = []
-            nlist = []
-
-            for d in driver.drv:
-                mat, norm = fcn(d)
-                slist.append(mat)
-                nlist.append(norm)
+            slist = [libcint.overlap(d) for d in driver.drv]
+            nlist = [snorm(s) for s in slist]
 
             self.norm = pack(nlist)
             self.matrix = pack(slist)
@@ -84,7 +79,8 @@ class OverlapLibcint(IntegralImplementationLibcint):
         # single mode
         assert isinstance(driver.drv, libcint.LibcintWrapper)
 
-        self.matrix, self.norm = fcn(driver.drv)
+        self.matrix = libcint.overlap(driver.drv)
+        self.norm = snorm(self.matrix)
         return self.matrix
 
     def get_gradient(self, driver: IntDriverLibcint) -> Tensor:
@@ -99,29 +95,21 @@ class OverlapLibcint(IntegralImplementationLibcint):
         Returns
         -------
         Tensor
-            Overlap gradient of shape `(nb, norb, norb, 3)`.
+            Overlap gradient of shape ``(..., norb, norb, 3)``.
         """
         super().checks(driver)
 
-        def fcn(driver: libcint.LibcintWrapper, norm: Tensor) -> Tensor:
+        # build norm if not already available
+        if self.norm is None:
+            self.build(driver)
+
+        def fcn(driver: libcint.LibcintWrapper) -> Tensor:
             # (3, norb, norb)
             grad = libcint.int1e("ipovlp", driver)
 
-            if self.normalize is False:
-                return -einsum("...xij->...ijx", grad)
-
-            # normalize and move xyz dimension to last, which is required for
-            # the reduction (only works with extra dimension in last)
-            return -einsum("...xij,...i,...j->...ijx", grad, norm, norm)
-
-        # build norm if not already available
-        if self.norm is None:
-            if driver.ihelp.batch_mode > 0:
-                assert isinstance(driver.drv, list)
-                self.norm = pack([snorm(libcint.overlap(d)) for d in driver.drv])
-            else:
-                assert isinstance(driver.drv, libcint.LibcintWrapper)
-                self.norm = snorm(libcint.overlap(driver.drv))
+            # Move xyz dimension to last, which is required for the
+            # reduction (only works with extra dimension in last)
+            return -einsum("...xij->...ijx", grad)
 
         # batched mode
         if driver.ihelp.batch_mode > 0:
@@ -132,24 +120,12 @@ class OverlapLibcint(IntegralImplementationLibcint):
                 )
 
             if driver.ihelp.batch_mode == 1:
-                # pylint: disable=import-outside-toplevel
-                from tad_mctc.batch import deflate
+                self.gradient = pack([fcn(d) for d in driver.drv])
+                return self.gradient
 
-                self.grad = pack(
-                    [
-                        fcn(driver, deflate(norm))
-                        for driver, norm in zip(driver.drv, self.norm)
-                    ]
-                )
-                return self.grad
             elif driver.ihelp.batch_mode == 2:
-                self.grad = pack(
-                    [
-                        fcn(driver, norm)  # no deflating here
-                        for driver, norm in zip(driver.drv, self.norm)
-                    ]
-                )
-                return self.grad
+                self.gradient = torch.stack([fcn(d) for d in driver.drv])
+                return self.gradient
 
             raise ValueError(f"Unknown batch mode '{driver.ihelp.batch_mode}'.")
 
@@ -160,5 +136,6 @@ class OverlapLibcint(IntegralImplementationLibcint):
                 "driver instance itself seems to be batched."
             )
 
-        self.grad = fcn(driver.drv, self.norm)
-        return self.grad
+        print("aksdjkasd")
+        self.gradient = fcn(driver.drv)
+        return self.gradient

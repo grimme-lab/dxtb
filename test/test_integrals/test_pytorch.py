@@ -28,7 +28,8 @@ from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb import integrals as ints
 from dxtb._src.constants.labels import INTDRIVER_ANALYTICAL
-from dxtb._src.integral.driver.pytorch import IntDriverPytorch
+from dxtb._src.integral.driver.manager import DriverManager
+from dxtb._src.integral.driver.pytorch import OverlapPytorch
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
@@ -37,12 +38,10 @@ from .samples import samples
 
 def run(numbers: Tensor, positions: Tensor, dd: DD) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
-    i = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_ANALYTICAL, **dd)
+    mgr = DriverManager(INTDRIVER_ANALYTICAL, **dd)
+    mgr.create_driver(numbers, par, ihelp)
 
-    i.setup_driver(positions)
-    assert isinstance(i.driver, IntDriverPytorch)
-
-    i.overlap = ints.types.Overlap(driver=INTDRIVER_ANALYTICAL, **dd)
+    i = ints.Integrals(mgr, _overlap=OverlapPytorch(**dd), **dd)
     i.build_overlap(positions)
 
     o = i.overlap
@@ -53,7 +52,6 @@ def run(numbers: Tensor, positions: Tensor, dd: DD) -> None:
 @pytest.mark.parametrize("name", ["H2"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_single(dtype: torch.dtype, name: str):
-    """Overlap matrix for monoatomic molecule should be unity."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
@@ -67,7 +65,6 @@ def test_single(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize("name2", ["LiH"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_batch(dtype: torch.dtype, name1: str, name2: str):
-    """Overlap matrix for monoatomic molecule should be unity."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]

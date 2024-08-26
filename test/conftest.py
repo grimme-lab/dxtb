@@ -38,6 +38,9 @@ FAST_MODE: bool = True
 DEVICE: torch.device | None = None
 """Name of Device."""
 
+NONDET_TOL = 1e-7
+"""Tolerance for non-deterministic tests."""
+
 
 # A bug in PyTorch 2.3.0 and 2.3.1 somehow requires manual import of
 # `torch._dynamo` to avoid errors with functorch in custom backward

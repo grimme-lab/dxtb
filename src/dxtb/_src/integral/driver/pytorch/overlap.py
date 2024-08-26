@@ -29,22 +29,23 @@ from tad_mctc.convert import symmetrize
 from dxtb._src.constants import defaults
 from dxtb._src.typing import Literal, Tensor
 
-from .base_implementation import IntegralImplementationPytorch
+from ...types import OverlapIntegral
+from .base import IntegralPytorch
 from .driver import BaseIntDriverPytorch
 from .impls import OverlapFunction
 
 __all__ = ["OverlapPytorch"]
 
 
-class OverlapPytorch(IntegralImplementationPytorch):
+class OverlapPytorch(OverlapIntegral, IntegralPytorch):
     """
-    Overlap from atomic orbitals.
+    Overlap integral from atomic orbitals.
 
-    Use the `build()` method to calculate the overlap integral. The returned
-    matrix uses a custom autograd function to calculate the backward pass with
-    the analytical gradient.
-    For the full gradient, i.e., a matrix of shape `(nb, norb, norb, 3)`, the
-    `get_gradient()` method should be used.
+    Use the :meth:`.build` method to calculate the overlap integral. The
+    returned matrix uses a custom autograd function to calculate the
+    backward pass with the analytical gradient.
+    For the full gradient, i.e., a matrix of shape ``(..., norb, norb, 3)``,
+    the :meth:`.get_gradient` method should be used.
     """
 
     uplo: Literal["n", "u", "l"] = "l"
@@ -82,12 +83,12 @@ class OverlapPytorch(IntegralImplementationPytorch):
         Parameters
         ----------
         driver : BaseIntDriverPytorch
-            Integral driver for the calculation.
+            The integral driver for the calculation.
 
         Returns
         -------
         Tensor
-            Overlap matrix.
+            Overlap integral matrix of shape ``(..., norb, norb)``.
         """
         super().checks(driver)
 
@@ -115,16 +116,16 @@ class OverlapPytorch(IntegralImplementationPytorch):
         Returns
         -------
         Tensor
-            Overlap gradient of shape `(nb, norb, norb, 3)`.
+            Overlap gradient of shape ``(..., norb, norb, 3)``.
         """
         super().checks(driver)
 
         if driver.ihelp.batch_mode > 0:
-            self.grad = self._batch(driver.eval_ovlp_grad, driver)
+            self.gradient = self._batch(driver.eval_ovlp_grad, driver)
         else:
-            self.grad = self._single(driver.eval_ovlp_grad, driver)
+            self.gradient = self._single(driver.eval_ovlp_grad, driver)
 
-        return self.grad
+        return self.gradient
 
     def _single(self, fcn: OverlapFunction, driver: BaseIntDriverPytorch) -> Tensor:
         if not isinstance(driver, BaseIntDriverPytorch):

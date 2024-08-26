@@ -23,10 +23,19 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb import GFN1_XTB, GFN2_XTB, IndexHelper
-from dxtb.integrals import types as inttypes
+from dxtb import GFN1_XTB, IndexHelper, labels
+from dxtb.integrals.factories import new_dipint, new_hcore, new_quadint
 
 numbers = torch.tensor([14, 1, 1, 1, 1])
+positions = torch.tensor(
+    [
+        [+0.00000000000000, -0.00000000000000, +0.00000000000000],
+        [+1.61768389755830, +1.61768389755830, -1.61768389755830],
+        [-1.61768389755830, -1.61768389755830, -1.61768389755830],
+        [+1.61768389755830, -1.61768389755830, +1.61768389755830],
+        [-1.61768389755830, +1.61768389755830, +1.61768389755830],
+    ]
+)
 
 
 def test_fail() -> None:
@@ -37,4 +46,25 @@ def test_fail() -> None:
         assert par1.meta is not None
 
         par1.meta.name = "fail"
-        inttypes.HCore(numbers, par1, ihelp)
+        new_hcore(numbers, par1, ihelp)
+
+
+def test_dipole_fail() -> None:
+    i = new_dipint(labels.INTDRIVER_LIBCINT)
+
+    with pytest.raises(RuntimeError):
+        fake_ovlp = torch.eye(3, dtype=torch.float64)
+        i.shift_r0_rj(fake_ovlp, positions)
+
+
+def test_quadrupole_fail() -> None:
+    i = new_quadint(labels.INTDRIVER_LIBCINT)
+
+    with pytest.raises(RuntimeError):
+        fake_ovlp = torch.eye(3, dtype=torch.float64)
+        fake_r0 = torch.zeros(3, dtype=torch.float64)
+        i.shift_r0r0_rjrj(fake_r0, fake_ovlp, positions)
+
+    with pytest.raises(RuntimeError):
+        i._matrix = torch.eye(3, dtype=torch.float64)
+        i.traceless()

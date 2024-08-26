@@ -64,23 +64,23 @@ def test_forces(dtype: torch.dtype, grad_mode: Literal["functorch", "row"]) -> N
 
     numbers = torch.tensor([3, 1], device=DEVICE)
     positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
     calc = AutogradCalculator(numbers, GFN1_XTB, opts=options, **dd)
     assert calc._ncalcs == 0
 
-    prop = calc.get_forces(positions, grad_mode=grad_mode)
+    prop = calc.get_forces(pos, grad_mode=grad_mode)
     assert calc._ncalcs == 1
     assert isinstance(prop, Tensor)
 
     # cache is used for same calc
-    prop = calc.get_forces(positions, grad_mode=grad_mode)
+    prop = calc.get_forces(pos, grad_mode=grad_mode)
     assert calc._ncalcs == 1
     assert isinstance(prop, Tensor)
 
     # cache is used for energy
-    prop = calc.get_energy(positions)
+    prop = calc.get_energy(pos)
     assert calc._ncalcs == 1
     assert isinstance(prop, Tensor)
 
@@ -95,22 +95,22 @@ def test_forces_analytical(dtype: torch.dtype) -> None:
 
     numbers = torch.tensor([3, 1], device=DEVICE)
     positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     calc = AnalyticalCalculator(numbers, GFN1_XTB, opts=opts, **dd)
     assert calc._ncalcs == 0
 
-    prop = calc.get_forces(positions)
+    prop = calc.get_forces(pos)
     assert calc._ncalcs == 1
     assert isinstance(prop, Tensor)
 
     # cache is used for same calc
-    prop = calc.get_forces(positions)
+    prop = calc.get_forces(pos)
     assert calc._ncalcs == 1
     assert isinstance(prop, Tensor)
 
     # cache is used for energy
-    prop = calc.get_energy(positions)
+    prop = calc.get_energy(pos)
     assert calc._ncalcs == 1
     assert isinstance(prop, Tensor)
 
@@ -126,31 +126,31 @@ def test_hessian(dtype: torch.dtype, use_functorch: bool) -> None:
 
     numbers = torch.tensor([3, 1], device=DEVICE)
     positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
     calc = AutogradCalculator(numbers, GFN1_XTB, opts=options, **dd)
     assert calc._ncalcs == 0
 
-    prop = calc.get_hessian(positions, use_functorch=use_functorch)
+    prop = calc.get_hessian(pos, use_functorch=use_functorch)
     assert calc._ncalcs == 1
     assert isinstance(prop, Tensor)
 
     # cache is used for same calc
     assert "hessian" in calc.cache.list_cached_properties()
-    prop = calc.get_hessian(positions, use_functorch=use_functorch)
+    prop = calc.get_hessian(pos, use_functorch=use_functorch)
     assert calc._ncalcs == 1
     assert isinstance(prop, Tensor)
 
     # cache is used for energy
     assert "energy" in calc.cache.list_cached_properties()
-    prop = calc.get_energy(positions)
+    prop = calc.get_energy(pos)
     assert calc._ncalcs == 1
     assert isinstance(prop, Tensor)
 
     # cache is used for forces (needs `functorch` to be equivalent)
     assert "forces" in calc.cache.list_cached_properties()
-    prop = calc.get_forces(positions, grad_mode="functorch")
+    prop = calc.get_forces(pos, grad_mode="functorch")
     assert calc._ncalcs == 1
     assert isinstance(prop, Tensor)
 
@@ -166,38 +166,38 @@ def test_vibration(dtype: torch.dtype, use_functorch: bool) -> None:
 
     numbers = torch.tensor([3, 1], device=DEVICE)
     positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
     calc = AutogradCalculator(numbers, GFN1_XTB, opts=options, **dd)
     assert calc._ncalcs == 0
 
-    prop = calc.get_normal_modes(positions, use_functorch=use_functorch)
+    prop = calc.get_normal_modes(pos, use_functorch=use_functorch)
     assert calc._ncalcs == 1
     assert isinstance(prop, Tensor)
     assert "normal_modes" in calc.cache.list_cached_properties()
 
     # cache is used for freqs
     assert "frequencies" in calc.cache.list_cached_properties()
-    prop = calc.get_frequencies(positions, use_functorch=use_functorch)
+    prop = calc.get_frequencies(pos, use_functorch=use_functorch)
     assert calc._ncalcs == 1
     assert isinstance(prop, Tensor)
 
     # cache is used for full vibration result
     assert "vibration" in calc.cache.list_cached_properties()
-    prop = calc.get_vibration(positions, use_functorch=use_functorch)
+    prop = calc.get_vibration(pos, use_functorch=use_functorch)
     assert calc._ncalcs == 1
     assert isinstance(prop, VibResult)
 
     # cache is used for forces (needs `functorch` to be equivalent)
     assert "forces" in calc.cache.list_cached_properties()
     grad_mode = "autograd" if use_functorch is False else "functorch"
-    prop = calc.get_forces(positions, grad_mode=grad_mode)
+    prop = calc.get_forces(pos, grad_mode=grad_mode)
     assert calc._ncalcs == 1
     assert isinstance(prop, Tensor)
 
     # cache is used for hessian (needs `matrix=False` bo be equivalent)
     assert "hessian" in calc.cache.list_cached_properties()
-    prop = calc.get_hessian(positions, use_functorch=use_functorch, matrix=False)
+    prop = calc.get_hessian(pos, use_functorch=use_functorch, matrix=False)
     assert calc._ncalcs == 1
     assert isinstance(prop, Tensor)

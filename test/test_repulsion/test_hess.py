@@ -54,7 +54,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     )
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     rep = new_repulsion(numbers, par, **dd)
     assert rep is not None
@@ -65,10 +65,10 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     def energy(pos: Tensor) -> Tensor:
         return rep.get_energy(pos, cache).sum()
 
-    hess = jacrev(jacrev(energy))(positions)
+    hess = jacrev(jacrev(energy))(pos)
     assert isinstance(hess, Tensor)
 
-    positions.detach_()
+    pos.detach_()
     hess = hess.detach().reshape_as(ref)
 
     assert ref.shape == hess.shape
@@ -124,13 +124,12 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
     cache = rep.get_cache(numbers, ihelp)
 
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def energy(pos: Tensor) -> Tensor:
-        return rep.get_energy(pos, cache).sum()
+    def energy(p: Tensor) -> Tensor:
+        return rep.get_energy(p, cache).sum()
 
-    hess = jacrev(jacrev(energy))(positions)
+    hess = jacrev(jacrev(energy))(pos)
     assert isinstance(hess, Tensor)
 
-    positions.detach_()
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == hess.detach().cpu()

@@ -457,7 +457,7 @@ def md_recursion_gradient(
         raise IntegralTransformError() from e
 
     # cartesian overlap and overlap gradient
-    s3d = vec.new_zeros(*[*vec.shape[:-1], ncarti, ncartj])
+    # s3d = vec.new_zeros(*[*vec.shape[:-1], ncarti, ncartj])
     ds3d = vec.new_zeros(*[*vec.shape[:-1], 3, ncarti, ncartj])
 
     ai, aj = alpha[0].unsqueeze(-1), alpha[1].unsqueeze(-2)

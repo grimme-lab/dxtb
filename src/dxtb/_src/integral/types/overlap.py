@@ -15,46 +15,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Overlap
-=======
+Integral Types: Overlap
+=======================
 
 The GFNn-xTB overlap matrix.
 """
 
 from __future__ import annotations
 
-import torch
+from ..base import BaseIntegral
 
-from dxtb._src.constants import labels
-from dxtb._src.typing import TYPE_CHECKING, Any
-
-from ..factory import new_overlap
-from .base import BaseIntegral
-
-if TYPE_CHECKING:
-    from ..driver.libcint import OverlapLibcint
-    from ..driver.pytorch import OverlapPytorch
-
-__all__ = ["Overlap"]
+__all__ = ["OverlapIntegral"]
 
 
-class Overlap(BaseIntegral):
+class OverlapIntegral(BaseIntegral):
     """
-    Overlap integral from atomic orbitals.
+    Base overlap class.
     """
-
-    integral: OverlapLibcint | OverlapPytorch
-    """Instance of actual overlap integral type."""
-
-    __slots__ = ["integral"]
-
-    def __init__(
-        self,
-        driver: int = labels.INTDRIVER_LIBCINT,
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(device=device, dtype=dtype)
-
-        self.integral = new_overlap(driver, device=device, dtype=dtype, **kwargs)

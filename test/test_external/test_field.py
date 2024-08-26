@@ -64,6 +64,8 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     calc = Calculator(numbers, GFN1_XTB, interaction=[efield], opts=opts, **dd)
 
     result = calc.singlepoint(positions, charges)
+    print(result.total)
+
     res = result.total.sum(-1)
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 

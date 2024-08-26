@@ -21,15 +21,19 @@ Integral Driver: PyTorch
 Pytorch-based integral implementations.
 """
 
+from .dipole import DipolePytorch
 from .driver import (
     IntDriverPytorch,
     IntDriverPytorchLegacy,
     IntDriverPytorchNoAnalytical,
 )
 from .overlap import OverlapPytorch
+from .quadrupole import QuadrupolePytorch
 
 __all__ = [
     "OverlapPytorch",
+    "DipolePytorch",
+    "QuadrupolePytorch",
     "IntDriverPytorch",
     "IntDriverPytorchLegacy",
     "IntDriverPytorchNoAnalytical",

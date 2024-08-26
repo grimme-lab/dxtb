@@ -24,7 +24,4 @@ Tight-binding components for classical repulsion contributions.
 from dxtb._src.components.classicals.repulsion import Repulsion as Repulsion
 from dxtb._src.components.classicals.repulsion import new_repulsion as new_repulsion
 
-__all__ = [
-    "Repulsion",
-    "new_repulsion",
-]
+__all__ = ["Repulsion", "new_repulsion"]

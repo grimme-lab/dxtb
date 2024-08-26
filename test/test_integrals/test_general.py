@@ -27,7 +27,9 @@ from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb import integrals as ints
 from dxtb._src.constants.labels import INTDRIVER_ANALYTICAL, INTDRIVER_LIBCINT
+from dxtb._src.integral.driver import libcint, pytorch
 from dxtb._src.typing import DD
+from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 
 from ..conftest import DEVICE
 
@@ -37,8 +39,8 @@ def test_empty(dtype: torch.dtype):
     dd: DD = {"dtype": dtype, "device": DEVICE}
     numbers = torch.tensor([1, 3], device=DEVICE)
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
-    i = ints.Integrals(numbers, par, ihelp, **dd)
+    mgr = ints.DriverManager(INTDRIVER_LIBCINT, **dd)
+    i = ints.Integrals(mgr, **dd)
 
     assert i._hcore is None
     assert i._overlap is None
@@ -57,17 +59,20 @@ def test_fail_family(dtype: torch.dtype):
     numbers = torch.tensor([1, 3], device=DEVICE)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    i = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_ANALYTICAL, **dd)
+    mgr = ints.DriverManager(INTDRIVER_ANALYTICAL, **dd)
+    mgr.create_driver(numbers, par, ihelp)
+
+    i = ints.Integrals(mgr, **dd)
 
     # make sure the checks are turned on
     assert i.run_checks is True
 
     with pytest.raises(RuntimeError):
-        i.overlap = ints.types.Overlap(INTDRIVER_LIBCINT, **dd)
+        i.overlap = libcint.OverlapLibcint(**dd)
     with pytest.raises(RuntimeError):
-        i.dipole = ints.types.Dipole(INTDRIVER_LIBCINT, **dd)
+        i.dipole = libcint.DipoleLibcint(**dd)
     with pytest.raises(RuntimeError):
-        i.quadrupole = ints.types.Quadrupole(INTDRIVER_LIBCINT, **dd)
+        i.quadrupole = libcint.QuadrupoleLibcint(**dd)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -76,20 +81,23 @@ def test_fail_pytorch_multipole(dtype: torch.dtype):
     numbers = torch.tensor([1, 3], device=DEVICE)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    i = ints.Integrals(numbers, par, ihelp, driver=INTDRIVER_ANALYTICAL, **dd)
+    mgr = ints.DriverManager(INTDRIVER_LIBCINT, **dd)
+    mgr.create_driver(numbers, par, ihelp)
+
+    i = ints.Integrals(mgr, **dd)
 
     # make sure the checks are turned on
     assert i.run_checks is True
 
     # incompatible driver
     with pytest.raises(RuntimeError):
-        i.overlap = ints.types.Overlap(INTDRIVER_LIBCINT, **dd)
+        i.overlap = pytorch.OverlapPytorch(**dd)
 
     # multipole moments not implemented with PyTorch
     with pytest.raises(NotImplementedError):
-        i.dipole = ints.types.Dipole(INTDRIVER_ANALYTICAL, **dd)
+        i.dipole = pytorch.DipolePytorch(**dd)
     with pytest.raises(NotImplementedError):
-        i.quadrupole = ints.types.Quadrupole(INTDRIVER_ANALYTICAL, **dd)
+        i.quadrupole = pytorch.QuadrupolePytorch(**dd)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -98,9 +106,12 @@ def test_hcore(dtype: torch.dtype):
     numbers = torch.tensor([1, 3], device=DEVICE)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
-    i = ints.Integrals(numbers, par, ihelp, **dd)
-    i.hcore = ints.types.HCore(numbers, par, ihelp, **dd)
+    mgr = ints.DriverManager(INTDRIVER_ANALYTICAL, **dd)
+    mgr.create_driver(numbers, par, ihelp)
+
+    i = ints.Integrals(mgr, **dd)
+    i.hcore = GFN1Hamiltonian(numbers, par, ihelp, **dd)
 
     h = i.hcore
     assert h is not None
-    assert h.integral.matrix is None
+    assert h.matrix is None

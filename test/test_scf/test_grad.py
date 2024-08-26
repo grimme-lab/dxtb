@@ -80,7 +80,7 @@ def run_grad_backwards(
 
     numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
     # Values obtained with tblite 0.2.1 disabling repulsion and dispersion
@@ -96,17 +96,17 @@ def run_grad_backwards(
     )
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    result = calc.singlepoint(positions, charges)
+    result = calc.singlepoint(pos, charges)
     energy = result.scf.sum(-1)
 
     energy.backward()
-    assert positions.grad is not None
+    assert pos.grad is not None
 
-    gradient = positions.grad.clone()
+    gradient = pos.grad.clone()
 
     # also zero out gradients when using `.backward()`
-    positions.detach_()
-    positions.grad.data.zero_()
+    pos.detach_()
+    pos.grad.data.zero_()
 
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == gradient.cpu()
 
@@ -130,7 +130,7 @@ def run_grad_autograd(name: str, dtype: torch.dtype):
 
     numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
     # Values obtained with tblite 0.2.1 disabling repulsion and dispersion
@@ -144,15 +144,13 @@ def run_grad_autograd(name: str, dtype: torch.dtype):
     options = dict(opts, **{"f_atol": tol, "x_atol": tol})
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    result = calc.singlepoint(positions, charges)
+    result = calc.singlepoint(pos, charges)
     energy = result.scf.sum(-1)
 
-    (gradient,) = torch.autograd.grad(energy, positions)
+    (gradient,) = torch.autograd.grad(energy, pos)
 
     assert pytest.approx(gradient.cpu(), abs=tol, rel=1e-5) == ref.cpu()
     assert pytest.approx(gradient.cpu(), abs=tol, rel=1e-5) == ref_full.cpu()
-
-    positions.detach_()
 
 
 # FIXME: fails for LYS_xao_dist
@@ -178,20 +176,18 @@ def test_grad_large(name: str, dtype: torch.dtype):
     assert pytest.approx(ref_full.cpu(), abs=tol, rel=1e-5) == ref.cpu()
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     options = dict(opts, **{"f_atol": tol**2, "x_atol": tol**2})
     calc = Calculator(numbers, par, opts=options, **dd)
 
-    result = calc.singlepoint(positions, charges)
+    result = calc.singlepoint(pos, charges)
     energy = result.scf.sum(-1)
 
-    (gradient,) = torch.autograd.grad(energy, positions)
+    (gradient,) = torch.autograd.grad(energy, pos)
 
     assert pytest.approx(gradient.cpu(), abs=tol, rel=1e-5) == ref.cpu()
     assert pytest.approx(gradient.cpu(), abs=tol, rel=1e-5) == ref_full.cpu()
-
-    positions.detach_()
 
 
 @pytest.mark.grad
@@ -221,19 +217,19 @@ def run_param_grad_energy(name: str, dtype: torch.dtype = torch.float):
 
     numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
     options = dict(opts, **{"f_atol": tol**2, "x_atol": tol**2})
     calc = Calculator(numbers, par, opts=options, **dd)
 
     assert calc.integrals.hcore is not None
-    h = calc.integrals.hcore.integral
+    h = calc.integrals.hcore
     h.selfenergy.requires_grad_(True)
     h.kcn.requires_grad_(True)
     h.shpoly.requires_grad_(True)
 
-    result = calc.singlepoint(positions, charges)
+    result = calc.singlepoint(pos, charges)
     energy = result.scf.sum(-1)
 
     pgrad = torch.autograd.grad(
@@ -247,8 +243,6 @@ def run_param_grad_energy(name: str, dtype: torch.dtype = torch.float):
     assert pytest.approx(pgrad[1].cpu(), abs=tol) == ref_kcn.cpu()
     ref_shpoly = load_from_npz(ref_grad_param, f"{name}_egrad_shpoly", dtype)
     assert pytest.approx(pgrad[2].cpu(), abs=tol) == ref_shpoly.cpu()
-
-    positions.detach_()
 
 
 # FIXME!
@@ -264,25 +258,25 @@ def skip_test_param_grad_force(name: str, dtype: torch.dtype = torch.float):
 
     numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
     charges = torch.tensor(0.0, **dd)
 
     options = dict(opts, **{"f_atol": tol**2, "x_atol": tol**2})
     calc = Calculator(numbers, par, opts=options, **dd)
 
     assert calc.integrals.hcore is not None
-    h = calc.integrals.hcore.integral
+    h = calc.integrals.hcore
 
     h.selfenergy.requires_grad_(True)
     h.kcn.requires_grad_(True)
     h.shpoly.requires_grad_(True)
 
-    result = calc.singlepoint(positions, charges)
+    result = calc.singlepoint(pos, charges)
     energy = result.scf.sum(-1)
 
     (gradient,) = torch.autograd.grad(
         energy,
-        positions,
+        pos,
         create_graph=True,
     )
 
@@ -297,5 +291,3 @@ def skip_test_param_grad_force(name: str, dtype: torch.dtype = torch.float):
     assert pytest.approx(pgrad[1].cpu(), abs=tol) == ref_kcn.cpu()
     ref_shpoly = load_from_npz(ref_grad_param, f"{name}_ggrad_shpoly", dtype)
     assert pytest.approx(pgrad[2].cpu(), abs=tol) == ref_shpoly.cpu()
-
-    positions.detach_()

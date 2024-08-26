@@ -112,8 +112,9 @@ class VibResult(BaseResult):
         if value == "freqs":
             return self._convert(self.freqs, unit, self.converter_freqs)
 
+        # TODO: Implement conversion for normal modes (required?)
         # if value == "modes":
-        #   return self._convert(self.modes, unit, self.converter_modes)
+        #    return self._convert(self.modes, unit, self.converter_modes)
 
         raise ValueError(f"Unsupported value for conversion: {value}")
 
@@ -143,7 +144,7 @@ def _get_rotational_modes(mass: Tensor, positions: Tensor):
     _, paxes = storch.eighb(im)
 
     # make z-axis rotation vector with smallest moment of inertia
-    # w = torch.flip(w, [-1])
+    # _ = torch.flip(_, [-1])
     paxes = torch.flip(paxes, [-1])
     ex, ey, ez = paxes.mT
 
@@ -288,7 +289,7 @@ def vib_analysis(
     # by 2π (ω = √λ / 2π) in order to immediately get frequencies in
     # Hartree: E = hbar * ω with hbar = 1 in atomic units. Dividing by 2π
     # effectively converts from angular frequency (ω) to the frequency in
-    # cycles per second (ν, Hz), which would requires the following
+    # cycles per second (ν, Hz), which would require the following
     # conversion to cm^-1: 1e-2 / units.CODATA.c / units.AU2SECOND.
     sgn = torch.sign(force_const_au)
     freqs_au = torch.sqrt(torch.abs(force_const_au)) * sgn

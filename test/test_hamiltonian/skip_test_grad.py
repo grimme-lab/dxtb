@@ -255,11 +255,11 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
     chrg = torch.tensor(0.0, **dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
-    result = calc.singlepoint(positions, chrg)
+    result = calc.singlepoint(pos, chrg)
 
     # check setup
     o = result.integrals.overlap
@@ -275,14 +275,14 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
 
     # compare different overlap calculations
     driver = IntDriverPytorch(numbers, par, calc.ihelp, **dd)
-    driver.setup(positions)
+    driver.setup(pos)
     overlap2 = s.build(driver).detach()
     overlap = o.matrix.detach()
 
     tol = sqrt(torch.finfo(dtype).eps) * 5
     assert pytest.approx(overlap2, abs=tol, rel=tol) == overlap
 
-    cn = cn_d3(numbers, positions)
+    cn = cn_d3(numbers, pos)
     wmat = get_density(
         result.coefficients,
         result.occupation.sum(-2),
@@ -294,7 +294,7 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
 
     # analytical gradient
     dedcn, dedr = h.integral.get_gradient(
-        positions,
+        pos,
         o.matrix,
         doverlap,
         result.density,
@@ -310,19 +310,19 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     # energy = result.scf.sum(-1)
     # autograd = torch.autograd.grad(
     #     energy,
-    #     positions,
+    #     pos,
     # )[0]
     #
     # # numerical gradient
-    # positions.requires_grad_(False)
-    # numerical = calc_numerical_gradient(calc, positions, numbers, chrg)
+    # pos.requires_grad_(False)
+    # numerical = calc_numerical_gradient(calc, pos, numbers, chrg)
 
     assert pytest.approx(ref, abs=atol) == dedr.detach()
 
     # NOTE: dedcn is already tested in test_hamiltonian
     assert pytest.approx(ref_dedcn, abs=atol) == dedcn.detach()
 
-    positions.detach_()
+    pos.detach_()
 
 
 @pytest.mark.grad

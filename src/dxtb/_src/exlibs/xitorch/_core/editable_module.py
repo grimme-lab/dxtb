@@ -181,16 +181,13 @@ class EditableModule:
             id_param = id(param)
 
             # search the id if it has been added to the list
-            try:
+            if id_param in ids:
                 jfound = ids.index(id_param)
                 idx_map[jfound].append(i)
-                continue
-            except ValueError:
-                pass
-
-            ids.append(id_param)
-            idxs.append(i)
-            idx_map.append([i])
+            else:
+                ids.append(id_param)
+                idxs.append(i)
+                idx_map.append([i])
 
         self._number_of_params[methodname] = len(allparams)
         self._unique_params_idxs[methodname] = idxs

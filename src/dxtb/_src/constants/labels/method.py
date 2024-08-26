@@ -19,6 +19,16 @@ Labels: Methods
 ===============
 """
 
+__all__ = [
+    "GFN0_XTB",
+    "GFN0_XTB_STRS",
+    "GFN1_XTB",
+    "GFN1_XTB_STRS",
+    "GFN2_XTB",
+    "GFN2_XTB_STRS",
+    "GFN_XTB_MAP",
+]
+
 # xtb
 GFN0_XTB = 0
 """Integer code for GFN0-xTB."""

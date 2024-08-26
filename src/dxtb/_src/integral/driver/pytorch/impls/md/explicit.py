@@ -803,7 +803,7 @@ def de_p(
         e040 = rpj * e030 + e031
         f030 = 3 * e020 - b * e040
 
-        e130 = rpi * e030 + e031
+        # e130 = rpi * e030 + e031
         e032 = xij * e021 + rpj * e022
         e131 = xij * e030 + rpi * e031 + 2 * e032
         e230 = rpi * e130 + e131
@@ -1493,7 +1493,7 @@ def de_f(
 
         e202 = xij * e101
         e301 = xij * e200 + rpi * e201 + 2 * e202
-        e310 = rpj * e300 + e301
+        # e310 = rpj * e300 + e301
 
         e302 = xij * e201 + rpi * e202
         e311 = xij * e300 + rpj * e301 + 2 * e302
@@ -1525,7 +1525,7 @@ def de_f(
 
         f120 = a * e220 - e020
 
-        e320 = rpj * e310 + e311
+        # e320 = rpj * e310 + e311
         f220 = a * e320 - 2 * e120
 
         e303 = xij * e202
@@ -1575,7 +1575,7 @@ def de_f(
 
         e202 = xij * e101
         e301 = xij * e200 + rpi * e201 + 2 * e202
-        e310 = rpj * e300 + e301
+        # e310 = rpj * e300 + e301
 
         e021 = xij * e010 + rpj * e011
         e030 = rpj * e020 + e021
@@ -1583,7 +1583,7 @@ def de_f(
         e022 = xij * e011
         e031 = xij * e020 + rpj * e021 + 2 * e022
         e301 = xij * e200 + rpi * e201 + 2 * e202
-        e310 = rpj * e300 + e301
+        # e310 = rpj * e300 + e301
         e130 = rpi * e030 + e031
 
         e032 = xij * e021 + rpj * e022

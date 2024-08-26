@@ -22,12 +22,12 @@ Integral objects for the calculation of various molecular integrals.
 
 Currently, the following integral types are supported:
 
-- :class:`.HCore` (core Hamiltonian)
 - :class:`.Overlap`
 - :class:`.Dipole`
 - :class:`.Quadrupole`
+
+Note that the Hamiltonian is different as it does not require a driver.
 """
 from .dipole import *
-from .h0 import *
 from .overlap import *
 from .quadrupole import *

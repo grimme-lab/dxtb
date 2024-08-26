@@ -76,7 +76,7 @@ def test_grad(dtype: torch.dtype, name: str):
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd).detach()
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
     chrg = sample["charge"].to(**dd)
 
     # Values obtain with tblite 0.2.1 disabling repulsion and dispersion
@@ -92,8 +92,8 @@ def test_grad(dtype: torch.dtype, name: str):
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
-    result = calc.singlepoint(positions, chrg)
+    result = calc.singlepoint(pos, chrg)
     energy = result.scf.sum(-1)
 
-    (gradient,) = torch.autograd.grad(energy, positions)
+    (gradient,) = torch.autograd.grad(energy, pos)
     assert pytest.approx(gradient.cpu(), abs=tol, rel=1e-5) == ref.cpu()

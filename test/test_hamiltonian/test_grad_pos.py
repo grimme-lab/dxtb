@@ -27,10 +27,8 @@ from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
-from dxtb._src.constants import labels
-from dxtb._src.integral.container import Overlap
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch as IntDriver
-from dxtb._src.ncoord import cn_d3
+from dxtb._src.integral.driver.pytorch import OverlapPytorch as Overlap
 from dxtb._src.typing import DD, Callable, Tensor
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 
@@ -54,20 +52,19 @@ def gradchecker(
 
     ihelp = IndexHelper.from_numbers(numbers, par)
     h0 = GFN1Hamiltonian(numbers, par, ihelp, **dd)
-    overlap = Overlap(driver=labels.INTDRIVER_ANALYTICAL, **dd)
+    overlap = Overlap(**dd)
 
     driver = IntDriver(numbers, par, ihelp, **dd)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(pos: Tensor) -> Tensor:
-        driver.setup(positions)
+    def func(p: Tensor) -> Tensor:
+        driver.setup(p)
         s = overlap.build(driver)
-        cn = cn_d3(numbers, pos)
-        return h0.build(pos, s, cn=cn)
+        return h0.build(p, s)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad
@@ -143,20 +140,19 @@ def gradchecker_batch(
 
     ihelp = IndexHelper.from_numbers(numbers, par)
     h0 = GFN1Hamiltonian(numbers, par, ihelp, **dd)
-    overlap = Overlap(driver=labels.INTDRIVER_ANALYTICAL, **dd)
+    overlap = Overlap(**dd)
 
     driver = IntDriver(numbers, par, ihelp, **dd)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(pos: Tensor) -> Tensor:
-        driver.setup(positions, mask=mask)
+    def func(p: Tensor) -> Tensor:
+        driver.setup(p, mask=mask)
         s = overlap.build(driver)
-        cn = cn_d3(numbers, pos)
-        return h0.build(pos, s, cn=cn)
+        return h0.build(p, s)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad

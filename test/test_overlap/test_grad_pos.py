@@ -31,7 +31,7 @@ from dxtb._src.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb._src.integral.driver.pytorch import OverlapPytorch as Overlap
 from dxtb._src.typing import DD, Callable, Tensor
 
-from ..conftest import DEVICE
+from ..conftest import DEVICE, NONDET_TOL
 from .samples import samples
 
 slist = ["LiH", "H2O"]
@@ -55,13 +55,13 @@ def gradchecker(
     overlap = Overlap(uplo="n", **dd)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(pos: Tensor) -> Tensor:
-        driver.setup(pos)
+    def func(p: Tensor) -> Tensor:
+        driver.setup(p)
         return overlap.build(driver)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad
@@ -73,7 +73,7 @@ def test_grad(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradchecker(dtype, name)
-    assert dgradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol, nondet_tol=NONDET_TOL)
 
 
 @pytest.mark.grad
@@ -85,7 +85,7 @@ def test_grad_large(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradchecker(dtype, name)
-    assert dgradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol, nondet_tol=NONDET_TOL)
 
 
 @pytest.mark.grad
@@ -97,7 +97,7 @@ def test_gradgrad(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradchecker(dtype, name)
-    assert dgradgradcheck(func, diffvars, atol=tol)
+    assert dgradgradcheck(func, diffvars, atol=tol, nondet_tol=NONDET_TOL)
 
 
 @pytest.mark.grad
@@ -109,7 +109,7 @@ def test_gradgrad_large(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradchecker(dtype, name)
-    assert dgradgradcheck(func, diffvars, atol=tol)
+    assert dgradgradcheck(func, diffvars, atol=tol, nondet_tol=NONDET_TOL)
 
 
 def gradchecker_batch(
@@ -141,13 +141,13 @@ def gradchecker_batch(
     overlap = Overlap(uplo="n", **dd)
 
     # variables to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
-    def func(pos: Tensor) -> Tensor:
-        driver.setup(pos, mask=mask)
+    def func(p: Tensor) -> Tensor:
+        driver.setup(p, mask=mask)
         return overlap.build(driver)
 
-    return func, positions
+    return func, pos
 
 
 @pytest.mark.grad
@@ -161,7 +161,7 @@ def test_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradchecker_batch(dtype, name1, name2)
-    assert dgradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol, nondet_tol=NONDET_TOL)
 
 
 @pytest.mark.grad
@@ -175,7 +175,7 @@ def test_grad_batch_large(dtype: torch.dtype, name1: str, name2: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradchecker_batch(dtype, name1, name2)
-    assert dgradcheck(func, diffvars, atol=tol)
+    assert dgradcheck(func, diffvars, atol=tol, nondet_tol=NONDET_TOL)
 
 
 @pytest.mark.grad
@@ -189,7 +189,7 @@ def test_gradgrad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradchecker_batch(dtype, name1, name2)
-    assert dgradgradcheck(func, diffvars, atol=tol)
+    assert dgradgradcheck(func, diffvars, atol=tol, nondet_tol=NONDET_TOL)
 
 
 @pytest.mark.grad
@@ -203,4 +203,4 @@ def test_gradgrad_batch_large(dtype: torch.dtype, name1: str, name2: str) -> Non
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradchecker_batch(dtype, name1, name2)
-    assert dgradgradcheck(func, diffvars, atol=tol)
+    assert dgradgradcheck(func, diffvars, atol=tol, nondet_tol=NONDET_TOL)

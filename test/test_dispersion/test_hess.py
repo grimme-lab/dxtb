@@ -54,7 +54,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     numref = _numhess(numbers, positions)
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     disp = new_dispersion(numbers, par, **dd)
     assert disp is not None
@@ -64,10 +64,10 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     def energy(pos: Tensor) -> Tensor:
         return disp.get_energy(pos, cache).sum()
 
-    hess = jacrev(jacrev(energy))(positions)
+    hess = jacrev(jacrev(energy))(pos)
     assert isinstance(hess, Tensor)
 
-    positions.detach_()
+    pos.detach_()
 
     hess = hess.reshape_as(ref)
     assert ref.shape == numref.shape == hess.shape
@@ -110,7 +110,7 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
     )
 
     # variable to be differentiated
-    positions.requires_grad_(True)
+    pos = positions.clone().requires_grad_(True)
 
     disp = new_dispersion(numbers, par, **dd)
     assert disp is not None
@@ -120,12 +120,12 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
     def energy(pos: Tensor) -> Tensor:
         return disp.get_energy(pos, cache).sum()
 
-    hess = jacrev(jacrev(energy))(positions)
+    hess = jacrev(jacrev(energy))(pos)
     assert isinstance(hess, Tensor)
 
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == hess.detach().cpu()
 
-    positions.detach_()
+    pos.detach_()
 
 
 def _numhess(numbers: Tensor, positions: Tensor) -> Tensor:
@@ -139,11 +139,11 @@ def _numhess(numbers: Tensor, positions: Tensor) -> Tensor:
     hess = torch.zeros(*(*positions.shape, *positions.shape), **dd)
     step = 1.0e-4
 
-    def _gradfcn(positions: Tensor) -> Tensor:
-        positions.requires_grad_(True)
-        energy = disp.get_energy(positions, cache)
-        gradient = disp.get_gradient(energy, positions)
-        positions.detach_()
+    def _gradfcn(pos: Tensor) -> Tensor:
+        pos.requires_grad_(True)
+        energy = disp.get_energy(pos, cache)
+        gradient = disp.get_gradient(energy, pos)
+        pos.detach_()
         return gradient.detach()
 
     for i in range(numbers.shape[0]):
