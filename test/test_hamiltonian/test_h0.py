@@ -31,7 +31,6 @@ from tad_mctc.batch import pack
 from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb._src.integral.driver.pytorch import OverlapPytorch as Overlap
-from dxtb._src.ncoord import cn_d3
 from dxtb._src.param import Param
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian

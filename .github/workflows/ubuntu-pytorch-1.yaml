@@ -47,13 +47,12 @@ jobs:
         exclude:
           # Check latest versions here: https://download.pytorch.org/whl/torch/
           #
-          # PyTorch now fully supports Python=<3.11
-          # see: https://github.com/pytorch/pytorch/issues/86566
+          # PyTorch issues:
+          # 3.11: https://github.com/pytorch/pytorch/issues/86566
+          # 3.12: https://github.com/pytorch/pytorch/issues/110436
+          # 3.13: https://github.com/pytorch/pytorch/issues/130249
           #
-          # PyTorch does now support Python 3.12 (Linux) for 2.2.0 and newer
-          # see: https://github.com/pytorch/pytorch/issues/110436
-          #
-          # PyTorch<1.13.0 does only support Python=<3.10
+          # PyTorch<1.13.0 does only support Python<3.11 (Linux)
           - python-version: "3.11"
             torch-version: "1.11.0"
           - python-version: "3.11"

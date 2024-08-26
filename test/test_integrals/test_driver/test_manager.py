@@ -34,6 +34,17 @@ from dxtb._src.typing import DD
 from ...conftest import DEVICE
 
 
+def test_fail() -> None:
+    mgr = DriverManager(-99)
+
+    with pytest.raises(RuntimeError):
+        _ = mgr.driver
+
+    with pytest.raises(ValueError):
+        numbers = torch.tensor([1, 2], device=DEVICE)
+        mgr.create_driver(numbers, par, IndexHelper.from_numbers(numbers, par))
+
+
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
 def test_single(dtype: torch.dtype, force_cpu_for_libcint: bool):

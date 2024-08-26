@@ -25,10 +25,39 @@ import torch
 from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB, IndexHelper
+from dxtb._src.integral.driver.pytorch import (
+    DipolePytorch,
+    OverlapPytorch,
+    QuadrupolePytorch,
+)
 from dxtb._src.integral.driver.pytorch.driver import BaseIntDriverPytorch
 from dxtb._src.typing import DD
 
 from ...conftest import DEVICE
+
+
+def test_overlap_fail() -> None:
+    with pytest.raises(ValueError):
+        _ = OverlapPytorch("wrong")  # type: ignore
+
+
+def test_dipole_fail() -> None:
+    with pytest.raises(NotImplementedError):
+        _ = DipolePytorch()
+
+    with pytest.raises(ValueError):
+        _ = DipolePytorch("wrong")  # type: ignore
+
+
+def test_quadrupole_fail() -> None:
+    with pytest.raises(NotImplementedError):
+        _ = QuadrupolePytorch()
+
+    with pytest.raises(ValueError):
+        _ = QuadrupolePytorch("wrong")  # type: ignore
+
+
+##############################################################################
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
