@@ -75,7 +75,7 @@ conda install dxtb
 
 ### Other
 
-For more options, see the [installation guide](https://dxtb.readthedocs.io/en/latest/installation.html) in the documentation.
+For more options, see the [installation guide](https://dxtb.readthedocs.io/en/latest/01_quickstart/installation.html) in the documentation.
 
 
 ## Example
