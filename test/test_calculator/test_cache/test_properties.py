@@ -26,7 +26,11 @@ import torch
 from dxtb import GFN1_XTB
 from dxtb._src.calculators.properties.vibration import VibResult
 from dxtb._src.typing import DD, Literal, Tensor
-from dxtb.calculators import AnalyticalCalculator, AutogradCalculator, GFN1Calculator
+from dxtb.calculators import (
+    AnalyticalCalculator,
+    AutogradCalculator,
+    GFN1Calculator,
+)
 
 from ...conftest import DEVICE
 
@@ -59,7 +63,9 @@ def test_energy(dtype: torch.dtype) -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("grad_mode", ["functorch", "row"])
-def test_forces(dtype: torch.dtype, grad_mode: Literal["functorch", "row"]) -> None:
+def test_forces(
+    dtype: torch.dtype, grad_mode: Literal["functorch", "row"]
+) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     numbers = torch.tensor([3, 1], device=DEVICE)

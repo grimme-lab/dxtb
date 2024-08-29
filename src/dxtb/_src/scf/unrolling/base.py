@@ -114,7 +114,9 @@ class BaseTSCF(BaseSCF):
         zeros = torch.eq(smat, 0)
         mask = torch.all(zeros, dim=-1) & torch.all(zeros, dim=-2)
 
-        return smat + torch.diag_embed(smat.new_ones(*smat.shape[:-2], 1) * mask)
+        return smat + torch.diag_embed(
+            smat.new_ones(*smat.shape[:-2], 1) * mask
+        )
 
     @timer_decorator("Diagonalize", "SCF")
     def diagonalize(self, hamiltonian: Tensor) -> tuple[Tensor, Tensor]:

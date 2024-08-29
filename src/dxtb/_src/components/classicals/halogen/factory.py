@@ -77,6 +77,8 @@ def new_halogen(
     rscale = torch.tensor(par.halogen.classical.rscale, **dd)
 
     unique = torch.unique(numbers)
-    bond_strength = get_elem_param(unique, par.element, "xbond", pad_val=0, **dd)
+    bond_strength = get_elem_param(
+        unique, par.element, "xbond", pad_val=0, **dd
+    )
 
     return Halogen(damp, rscale, bond_strength, cutoff=cutoff, **dd)

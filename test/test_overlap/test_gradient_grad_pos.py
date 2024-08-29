@@ -78,7 +78,9 @@ def test_grad(dtype: torch.dtype, name: str, uplo: Literal["l", "n"]) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 @pytest.mark.parametrize("uplo", ["l", "n"])
-def test_gradgrad(dtype: torch.dtype, name: str, uplo: Literal["l", "n"]) -> None:
+def test_gradgrad(
+    dtype: torch.dtype, name: str, uplo: Literal["l", "n"]
+) -> None:
     """
     Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradgradcheck`.

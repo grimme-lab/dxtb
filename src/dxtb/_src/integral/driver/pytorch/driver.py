@@ -112,7 +112,9 @@ class BaseIntDriverPytorch(PytorchImplementation, IntDriver):
                     nums = self.numbers[_batch]
 
                 else:
-                    raise ValueError(f"Unknown batch mode '{self.ihelp.batch_mode}'.")
+                    raise ValueError(
+                        f"Unknown batch mode '{self.ihelp.batch_mode}'."
+                    )
 
                 self._positions_batch.append(pos)
 
@@ -202,7 +204,10 @@ class IntDriverPytorchLegacy(BaseIntDriverPytorch):
 
     def setup_eval_funcs(self) -> None:
         # pylint: disable=import-outside-toplevel
-        from .impls.overlap_legacy import overlap_gradient_legacy, overlap_legacy
+        from .impls.overlap_legacy import (
+            overlap_gradient_legacy,
+            overlap_legacy,
+        )
 
         self.eval_ovlp = overlap_legacy
         self.eval_ovlp_grad = overlap_gradient_legacy

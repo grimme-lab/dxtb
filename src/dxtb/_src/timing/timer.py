@@ -70,7 +70,10 @@ class _Timers:
         """Elapsed time in seconds."""
 
         def __init__(
-            self, parent: _Timers, label: str | None = None, cuda_sync: bool = False
+            self,
+            parent: _Timers,
+            label: str | None = None,
+            cuda_sync: bool = False,
         ) -> None:
             self.parent = parent
             self.label = label
@@ -145,7 +148,8 @@ class _Timers:
 
             if self._start_time is None:
                 raise TimerError(
-                    f"Timer '{self.label}' is not running. Use .start() to " "start it."
+                    f"Timer '{self.label}' is not running. Use .start() to "
+                    "start it."
                 )
 
             if self.cuda_sync is True:

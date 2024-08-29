@@ -133,7 +133,9 @@ class PyscfMol(gto.Mole):
         self.cart = False
 
     @classmethod
-    def from_mol(cls, mol: Mol, xtb_version: str = "gfn1", **kwargs) -> PyscfMol:
+    def from_mol(
+        cls, mol: Mol, xtb_version: str = "gfn1", **kwargs
+    ) -> PyscfMol:
         return cls(mol.numbers, mol.positions, xtb_version, **kwargs)
 
     def undo_norm_prim(self) -> None:

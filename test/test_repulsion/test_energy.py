@@ -37,13 +37,23 @@ from dxtb._src.typing import DD, Literal
 from ..conftest import DEVICE
 from .samples import samples
 
-sample_list = ["H2", "H2O", "SiH4", "ZnOOH-", "MB16_43_01", "MB16_43_02", "LYS_xao"]
+sample_list = [
+    "H2",
+    "H2O",
+    "SiH4",
+    "ZnOOH-",
+    "MB16_43_01",
+    "MB16_43_02",
+    "LYS_xao",
+]
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 @pytest.mark.parametrize("par", ["gfn1", "gfn2"])
-def test_single(dtype: torch.dtype, name: str, par: Literal["gfn1", "gfn2"]) -> None:
+def test_single(
+    dtype: torch.dtype, name: str, par: Literal["gfn1", "gfn2"]
+) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 

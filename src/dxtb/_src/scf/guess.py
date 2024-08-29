@@ -90,7 +90,10 @@ def get_guess(
 
 
 def get_eeq_guess(
-    numbers: Tensor, positions: Tensor, chrg: Tensor, cutoff: Tensor | None = None
+    numbers: Tensor,
+    positions: Tensor,
+    chrg: Tensor,
+    cutoff: Tensor | None = None,
 ) -> Tensor:
     """
     Calculate atomic EEQ charges.
@@ -117,7 +120,9 @@ def get_eeq_guess(
     return get_eeq_charges(numbers, positions, chrg, cutoff=cutoff)
 
 
-def spread_charges_atomic_to_orbital(charges: Tensor, ihelp: IndexHelper) -> Tensor:
+def spread_charges_atomic_to_orbital(
+    charges: Tensor, ihelp: IndexHelper
+) -> Tensor:
     """
     Spread atomic charges to orbital charges, while conserving total charge.
 

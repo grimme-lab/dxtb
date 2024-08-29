@@ -41,7 +41,15 @@ def gradchecker(
 
     alpha = (
         torch.tensor(
-            [10.256286, 0.622797, 0.239101, 7.611997, 1.392902, 0.386963, 0.128430],
+            [
+                10.256286,
+                0.622797,
+                0.239101,
+                7.611997,
+                1.392902,
+                0.386963,
+                0.128430,
+            ],
             **dd,
         ),
         torch.tensor(
@@ -51,7 +59,15 @@ def gradchecker(
     )
     coeff = (
         torch.tensor(
-            [-1.318654, 1.603878, 0.601323, -0.980904, -1.257964, -0.985990, -0.235962],
+            [
+                -1.318654,
+                1.603878,
+                0.601323,
+                -0.980904,
+                -1.257964,
+                -0.985990,
+                -0.235962,
+            ],
             **dd,
         ),
         torch.tensor(
@@ -75,7 +91,9 @@ def gradchecker(
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("md_func", [md.explicit.md_explicit, recursion.md_recursion])
+@pytest.mark.parametrize(
+    "md_func", [md.explicit.md_explicit, recursion.md_recursion]
+)
 @pytest.mark.parametrize("li", [0, 1, 2, 3])
 @pytest.mark.parametrize("lj", [0, 1, 2, 3])
 def test_grad(dtype: torch.dtype, md_func, li: int, lj: int) -> None:

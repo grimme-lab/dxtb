@@ -807,7 +807,10 @@ def coulomb_matrix_shell(
 
     # re-include diagonal for hardness
     mask = ihelp.spread_atom_to_shell(
-        mask + torch.diag_embed(torch.ones_like(ihelp.atom_to_unique).type(torch.bool)),
+        mask
+        + torch.diag_embed(
+            torch.ones_like(ihelp.atom_to_unique).type(torch.bool)
+        ),
         (-2, -1),
     )
 
@@ -820,7 +823,11 @@ def coulomb_matrix_shell(
 
 
 def coulomb_matrix_shell_gradient(
-    mask: Tensor, positions: Tensor, mat: Tensor, ihelp: IndexHelper, gexp: Tensor
+    mask: Tensor,
+    positions: Tensor,
+    mat: Tensor,
+    ihelp: IndexHelper,
+    gexp: Tensor,
 ) -> Tensor:
     """
     Nuclear gradient of shell-resolved Coulomb matrix.
@@ -941,7 +948,9 @@ class CoulombMatrixAG(torch.autograd.Function):
         if grad_positions:
             # (n_batch, n, n, 3)
             if shell_resolved:
-                g = coulomb_matrix_shell_gradient(mask, positions, mat, ihelp, gexp)
+                g = coulomb_matrix_shell_gradient(
+                    mask, positions, mat, ihelp, gexp
+                )
             else:
                 g = coulomb_matrix_atom_gradient(mask, positions, mat, gexp)
 

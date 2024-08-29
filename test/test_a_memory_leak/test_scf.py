@@ -86,7 +86,9 @@ def test_xitorch(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("run_gc", [False, True])
 @pytest.mark.parametrize("create_graph", [False, True])
-def test_xitorch_pure(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
+def test_xitorch_pure(
+    dtype: torch.dtype, run_gc: bool, create_graph: bool
+) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     def fcn():

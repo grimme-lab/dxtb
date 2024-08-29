@@ -149,7 +149,10 @@ class DispersionD4(Dispersion):
         return self.cache
 
     def get_energy(
-        self, positions: Tensor, cache: DispersionD4Cache, q: Tensor | None = None
+        self,
+        positions: Tensor,
+        cache: DispersionD4Cache,
+        q: Tensor | None = None,
     ) -> Tensor:
         """
         Get D4 dispersion energy.

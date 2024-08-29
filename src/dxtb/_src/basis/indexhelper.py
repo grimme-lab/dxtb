@@ -379,7 +379,9 @@ class IndexHelper(TensorLike):
             device=cpu,
         )
 
-        ushell_index = torch.cumsum(ushells_per_unique, dim=-1) - ushells_per_unique
+        ushell_index = (
+            torch.cumsum(ushells_per_unique, dim=-1) - ushells_per_unique
+        )
         ushells_to_unique = _fill(ushell_index, ushells_per_unique)
 
         if batch_mode > 0:
@@ -431,13 +433,17 @@ class IndexHelper(TensorLike):
             lsh >= 0, 2 * lsh + 1, torch.tensor(0, device=cpu)
         )
 
-        orbital_index = torch.cumsum(orbitals_per_shell, -1) - orbitals_per_shell
+        orbital_index = (
+            torch.cumsum(orbitals_per_shell, -1) - orbitals_per_shell
+        )
         orbital_index[orbitals_per_shell == 0] = PAD
 
         if batch_mode > 0:
             orbitals_to_shell = pack(
                 [
-                    _fill(orbital_index[_batch, :], orbitals_per_shell[_batch, :])
+                    _fill(
+                        orbital_index[_batch, :], orbitals_per_shell[_batch, :]
+                    )
                     for _batch in range(numbers.shape[0])
                 ],
                 value=PAD,
@@ -490,7 +496,9 @@ class IndexHelper(TensorLike):
             Shell-resolved tensor.
         """
 
-        return wrap_scatter_reduce(x, dim, self.orbitals_to_shell, reduce, extra=extra)
+        return wrap_scatter_reduce(
+            x, dim, self.orbitals_to_shell, reduce, extra=extra
+        )
 
     def reduce_shell_to_atom(
         self,
@@ -520,7 +528,9 @@ class IndexHelper(TensorLike):
             Atom-resolved tensor.
         """
 
-        return wrap_scatter_reduce(x, dim, self.shells_to_atom, reduce, extra=extra)
+        return wrap_scatter_reduce(
+            x, dim, self.shells_to_atom, reduce, extra=extra
+        )
 
     def reduce_orbital_to_atom(
         self,
@@ -551,7 +561,9 @@ class IndexHelper(TensorLike):
         """
 
         return self.reduce_shell_to_atom(
-            self.reduce_orbital_to_shell(x, dim=dim, reduce=reduce, extra=extra),
+            self.reduce_orbital_to_shell(
+                x, dim=dim, reduce=reduce, extra=extra
+            ),
             dim=dim,
             reduce=reduce,
             extra=extra,
@@ -973,7 +985,9 @@ class IndexHelper(TensorLike):
         if self.batch_mode > 0:
             orbitals_to_shell = pack(
                 [
-                    _fill(orbital_index[_batch, :], orbitals_per_shell[_batch, :])
+                    _fill(
+                        orbital_index[_batch, :], orbitals_per_shell[_batch, :]
+                    )
                     for _batch in range(self.angular.shape[0])
                 ],
                 value=PAD,
@@ -1080,7 +1094,8 @@ class IndexHelper(TensorLike):
         try:
             # batch mode
             pad = torch.nn.utils.rnn.pad_sequence(
-                [self.shells_to_atom.mT, self.orbitals_to_shell.T], padding_value=PAD
+                [self.shells_to_atom.mT, self.orbitals_to_shell.T],
+                padding_value=PAD,
             )
             pad = einsum("ijk->kji", pad)  # [2, bs, norb_max]
         except RuntimeError:

@@ -196,7 +196,9 @@ def overlap(
     umap, n_unique_pairs = bas.unique_shell_pairs(mask=mask, uplo=uplo)
 
     # overlap calculation
-    ovlp = torch.zeros(*umap.shape, dtype=positions.dtype, device=positions.device)
+    ovlp = torch.zeros(
+        *umap.shape, dtype=positions.dtype, device=positions.device
+    )
 
     for uval in range(n_unique_pairs):
         pairs = get_pairs(umap, uval)
@@ -293,7 +295,9 @@ def overlap_gradient(
     umap, n_unique_pairs = bas.unique_shell_pairs(mask=mask, uplo=uplo)
 
     # overlap calculation
-    ds = torch.zeros((3, *umap.shape), dtype=positions.dtype, device=positions.device)
+    ds = torch.zeros(
+        (3, *umap.shape), dtype=positions.dtype, device=positions.device
+    )
 
     # loop over unique pairs
     for uval in range(n_unique_pairs):

@@ -79,7 +79,9 @@ class AutogradCalculator(EnergyCalculator):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        grad_mode: Literal["autograd", "backward", "functorch", "row"] = "autograd",
+        grad_mode: Literal[
+            "autograd", "backward", "functorch", "row"
+        ] = "autograd",
         **kwargs: Any,
     ) -> Tensor:
         r"""
@@ -157,7 +159,9 @@ class AutogradCalculator(EnergyCalculator):
 
             try:
                 # jacrev requires a scalar from `self.energy`!
-                deriv = jacrev(self.energy, argnums=0)(positions, chrg, spin, **kwargs)
+                deriv = jacrev(self.energy, argnums=0)(
+                    positions, chrg, spin, **kwargs
+                )
             except RuntimeError as e:
                 if "clone is not supported by NestedIntSymNode" in str(e):
                     raise RuntimeError(
@@ -514,7 +518,9 @@ class AutogradCalculator(EnergyCalculator):
             from tad_mctc.autograd import jacrev
 
             # d(3) / d(nat, 3) = (3, nat, 3)
-            dmu_dr = jacrev(dip_fcn, argnums=0)(positions, chrg, spin, use_functorch)
+            dmu_dr = jacrev(dip_fcn, argnums=0)(
+                positions, chrg, spin, use_functorch
+            )
             assert isinstance(dmu_dr, Tensor)
 
         else:
@@ -694,7 +700,9 @@ class AutogradCalculator(EnergyCalculator):
             # pylint: disable=import-outside-toplevel
             from tad_mctc.autograd import jac
 
-            a = self.polarizability(positions, chrg, spin, use_functorch=use_functorch)
+            a = self.polarizability(
+                positions, chrg, spin, use_functorch=use_functorch
+            )
 
             # d(3, 3) / d(nat, 3) -> (3, 3, nat*3) -> (3, 3, nat, 3)
             chi = jac(a, positions).reshape((3, 3, *positions.shape[-2:]))
@@ -727,7 +735,9 @@ class AutogradCalculator(EnergyCalculator):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         use_functorch: bool = False,
-        derived_quantity: Literal["energy", "dipole", "polarizability", "pol"] = "pol",
+        derived_quantity: Literal[
+            "energy", "dipole", "polarizability", "pol"
+        ] = "pol",
     ) -> Tensor:
         r"""
         Calculate the hyper polarizability tensor :math:`\beta`.
@@ -875,7 +885,9 @@ class AutogradCalculator(EnergyCalculator):
         self.integrals.reset_all()
 
         # calculate nuclear dipole derivative dmu/dR: (..., 3, nat, 3)
-        dmu_dr = self.dipole_deriv(positions, chrg, spin, use_functorch=use_functorch)
+        dmu_dr = self.dipole_deriv(
+            positions, chrg, spin, use_functorch=use_functorch
+        )
 
         intensities = ir_ints(dmu_dr, vib_res.modes)
 
@@ -919,14 +931,18 @@ class AutogradCalculator(EnergyCalculator):
         OutputHandler.write_stdout("--------------")
         logger.debug("Raman spectrum: Start.")
 
-        vib_res = self.vibration(positions, chrg, spin, use_functorch=use_functorch)
+        vib_res = self.vibration(
+            positions, chrg, spin, use_functorch=use_functorch
+        )
 
         # TODO: Figure out how to run func transforms 2x properly
         # (improve: Hessian does not need dipole integral but dipder does)
         self.reset()
 
         # d(..., 3, 3) / d(..., nat, 3) -> (..., 3, 3, nat, 3)
-        da_dr = self.pol_deriv(positions, chrg, spin, use_functorch=use_functorch)
+        da_dr = self.pol_deriv(
+            positions, chrg, spin, use_functorch=use_functorch
+        )
 
         intensities, depol = raman_ints_depol(da_dr, vib_res.modes)
 

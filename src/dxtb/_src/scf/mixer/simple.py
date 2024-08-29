@@ -70,7 +70,9 @@ class Simple(Mixer):
         # Return the newly mixed system
         return x_mix
 
-    def cull(self, conv: Tensor, slicers: Slicer = (...,), mpdim: int = 1) -> None:
+    def cull(
+        self, conv: Tensor, slicers: Slicer = (...,), mpdim: int = 1
+    ) -> None:
         if self.x_old is None or self._delta is None:
             raise RuntimeError("Nothing has been mixed yet.")
 

@@ -77,7 +77,9 @@ class BaseIntDriverLibcint(LibcintImplementation, IntDriver):
                     for number in self.numbers
                 ]
             else:
-                raise ValueError(f"Unknown batch mode '{self.ihelp.batch_mode}'.")
+                raise ValueError(
+                    f"Unknown batch mode '{self.ihelp.batch_mode}'."
+                )
 
             assert isinstance(atombases, list)
             self.drv = [

@@ -28,11 +28,21 @@ from tad_mctc.math import einsum
 from dxtb._src.exlibs.scipy.sparse.linalg import gmres as scipy_gmres
 from dxtb._src.exlibs.xitorch import LinearOperator
 from dxtb._src.exlibs.xitorch._impls.optimize.root.rootsolver import broyden1
-from dxtb._src.exlibs.xitorch._utils.bcast import get_bcasted_dims, normalize_bcast_dims
+from dxtb._src.exlibs.xitorch._utils.bcast import (
+    get_bcasted_dims,
+    normalize_bcast_dims,
+)
 from dxtb._src.exlibs.xitorch._utils.exceptions import ConvergenceWarning
 from dxtb._src.exlibs.xitorch._utils.types import get_np_dtype
 
-__all__ = ["wrap_gmres", "cg", "bicgstab", "broyden1_solve", "exactsolve", "gmres"]
+__all__ = [
+    "wrap_gmres",
+    "cg",
+    "bicgstab",
+    "broyden1_solve",
+    "exactsolve",
+    "gmres",
+]
 
 
 def wrap_gmres(A, B, E=None, M=None, min_eps=1e-9, max_niter=None, **unused):
@@ -60,7 +70,9 @@ def wrap_gmres(A, B, E=None, M=None, min_eps=1e-9, max_niter=None, **unused):
 
     # check the parameters
     msg = "GMRES can only do AX=B"
-    assert A.shape[-2] == A.shape[-1], "GMRES can only work for square operator for now"
+    assert (
+        A.shape[-2] == A.shape[-1]
+    ), "GMRES can only work for square operator for now"
     assert E is None, msg
     assert M is None, msg
 
@@ -144,7 +156,9 @@ def cg(
     # if B is all zeros, then return zeros
     batchdims = _get_batchdims(A, B, E, M)
     if torch.allclose(B, B * 0, rtol=rtol, atol=atol):
-        x0 = torch.zeros((*batchdims, nr, ncols), dtype=A.dtype, device=A.device)
+        x0 = torch.zeros(
+            (*batchdims, nr, ncols), dtype=A.dtype, device=A.device
+        )
         return x0
 
     # setup the preconditioning and the matrix problem
@@ -161,7 +175,9 @@ def cg(
     )  # (*BB, 1, nc)
 
     # prepare the initial guess (it's just all zeros)
-    x0shape = (ncols, *batchdims, nr, 1) if col_swapped else (*batchdims, nr, ncols)
+    x0shape = (
+        (ncols, *batchdims, nr, 1) if col_swapped else (*batchdims, nr, ncols)
+    )
     xk = torch.zeros(x0shape, dtype=A.dtype, device=A.device)
 
     rk = B2 - A_fcn(xk)  # (*, nr, nc)
@@ -279,7 +295,9 @@ def bicgstab(
     # if B is all zeros, then return zeros
     batchdims = _get_batchdims(A, B, E, M)
     if torch.allclose(B, B * 0, rtol=rtol, atol=atol):
-        x0 = torch.zeros((*batchdims, nr, ncols), dtype=A.dtype, device=A.device)
+        x0 = torch.zeros(
+            (*batchdims, nr, ncols), dtype=A.dtype, device=A.device
+        )
         return x0
 
     # setup the preconditioning and the matrix problem
@@ -297,7 +315,9 @@ def bicgstab(
     )  # (*BB, 1, nc)
 
     # prepare the initial guess (it's just all zeros)
-    x0shape = (ncols, *batchdims, nr, 1) if col_swapped else (*batchdims, nr, ncols)
+    x0shape = (
+        (ncols, *batchdims, nr, 1) if col_swapped else (*batchdims, nr, ncols)
+    )
     xk = torch.zeros(x0shape, dtype=A.dtype, device=A.device)
 
     rk = B2 - A_fcn(xk)
@@ -407,7 +427,9 @@ def gmres(
     # if B is all zeros, then return zeros
     batchdims = _get_batchdims(A, B, E, M)
     if torch.allclose(B, B * 0, rtol=rtol, atol=atol):
-        x0 = torch.zeros((*batchdims, nr, ncols), dtype=A.dtype, device=A.device)
+        x0 = torch.zeros(
+            (*batchdims, nr, ncols), dtype=A.dtype, device=A.device
+        )
         return x0
 
     # setup the preconditioning and the matrix problem
@@ -423,7 +445,9 @@ def gmres(
     )  # (*BB, 1, nc)
 
     # prepare the initial guess (it's just all zeros)
-    x0shape = (ncols, *batchdims, nr, 1) if col_swapped else (*batchdims, nr, ncols)
+    x0shape = (
+        (ncols, *batchdims, nr, 1) if col_swapped else (*batchdims, nr, ncols)
+    )
     x0 = torch.zeros(x0shape, dtype=A.dtype, device=A.device)
 
     r = B2 - A_fcn(x0)  # torch.Size([*batch_dims, nr, ncols])
@@ -436,7 +460,9 @@ def gmres(
         r.norm(dim=-2, keepdim=True), eps
     )  # torch.Size([*batch_dims, nr, ncols])
     h = torch.zeros(
-        (*batchdims, ncols, max_niter + 1, max_niter), dtype=A.dtype, device=A.device
+        (*batchdims, ncols, max_niter + 1, max_niter),
+        dtype=A.dtype,
+        device=A.device,
     )
     h = h.reshape((-1, ncols, max_niter + 1, max_niter))
 
@@ -448,10 +474,14 @@ def gmres(
 
         h[..., k + 1, k] = torch.linalg.norm(y, dim=-2)
         if torch.any(h[..., k + 1, k]) != 0 and k != max_niter - 1:
-            q[k + 1] = y.reshape(-1, nr, ncols) / h[..., k + 1, k].reshape(-1, 1, ncols)
+            q[k + 1] = y.reshape(-1, nr, ncols) / h[..., k + 1, k].reshape(
+                -1, 1, ncols
+            )
             q[k + 1] = q[k + 1].reshape(*batchdims, nr, ncols)
 
-        b = torch.zeros((*batchdims, ncols, k + 1), dtype=A.dtype, device=A.device)
+        b = torch.zeros(
+            (*batchdims, ncols, k + 1), dtype=A.dtype, device=A.device
+        )
         b = b.reshape(-1, ncols, k + 1)
         b[..., 0] = torch.linalg.norm(r, dim=-2)
         rk = torch.linalg.lstsq(h[..., : k + 1, :k], b)[
@@ -659,7 +689,9 @@ def _setup_linear_problem(
                 A.shape[:-2], B.shape[:-2], E.shape[:-1], M.shape[:-2]
             )
         E = E.reshape(*BEs, *E.shape[-1:])
-        E_new = E.unsqueeze(0).transpose(-1, 0).unsqueeze(-1)  # (ncols, *BEs, 1, 1)
+        E_new = (
+            E.unsqueeze(0).transpose(-1, 0).unsqueeze(-1)
+        )  # (ncols, *BEs, 1, 1)
         B = B.reshape(*BBs, *B.shape[-2:])  # (*BBs, nr, ncols)
         B_new = B.unsqueeze(0).transpose(-1, 0)  # (ncols, *BBs, nr, 1)
 
@@ -692,7 +724,11 @@ def _setup_linear_problem(
     # In non-symmetric case, one need to do Cholesky LDL decomposition
     if posdef is None:
         nr, ncols = B.shape[-2:]
-        x0shape = (ncols, *batchdims, nr, 1) if col_swapped else (*batchdims, nr, ncols)
+        x0shape = (
+            (ncols, *batchdims, nr, 1)
+            if col_swapped
+            else (*batchdims, nr, ncols)
+        )
         x0 = torch.randn(x0shape, dtype=A.dtype, device=A.device)
         x0 = x0 / x0.norm(dim=-2, keepdim=True)
         largest_eival = _get_largest_eival(A_fcn, x0)  # (*, 1, nc)
@@ -708,7 +744,9 @@ def _setup_linear_problem(
             A_fcn2 = lambda x: A_fcn(x) - offset * x
             mostneg_eival = _get_largest_eival(A_fcn2, x0)  # (*, 1, nc)
             posdef = bool(
-                torch.all(torch.logical_or(-mostneg_eival <= offset, negeival)).item()
+                torch.all(
+                    torch.logical_or(-mostneg_eival <= offset, negeival)
+                ).item()
             )
 
     # get the linear operation if it is not a posdef (A -> AT.A)

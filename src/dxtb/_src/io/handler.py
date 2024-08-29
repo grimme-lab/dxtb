@@ -31,7 +31,12 @@ from pathlib import Path
 
 from dxtb._src.typing import Any, Generator, override
 
-from .output import get_header, get_pytorch_info, get_short_version, get_system_info
+from .output import (
+    get_header,
+    get_pytorch_info,
+    get_short_version,
+    get_system_info,
+)
 
 __all__ = ["OutputHandler"]
 

@@ -81,7 +81,9 @@ class DriverManager(TensorLike):
     def driver(self, driver: IntDriver) -> None:
         self._driver = driver
 
-    def create_driver(self, numbers: Tensor, par: Param, ihelp: IndexHelper) -> None:
+    def create_driver(
+        self, numbers: Tensor, par: Param, ihelp: IndexHelper
+    ) -> None:
         if self.driver_type == labels.INTDRIVER_LIBCINT:
             # pylint: disable=import-outside-toplevel
             from .libcint import IntDriverLibcint as _IntDriver

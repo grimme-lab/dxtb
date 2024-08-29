@@ -108,7 +108,9 @@ class Mixer(ABC):
         """
 
     @abstractmethod
-    def cull(self, conv: Tensor, slicers: Slicer = (...,), mpdim: int = 1) -> None:
+    def cull(
+        self, conv: Tensor, slicers: Slicer = (...,), mpdim: int = 1
+    ) -> None:
         """
         Purge selected systems from the mixer.
 

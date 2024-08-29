@@ -64,7 +64,9 @@ def single(
     positions = samples[name]["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
 
-    execute(numbers, positions, charge, field_vector, dd, atol, rtol, atol2, rtol2)
+    execute(
+        numbers, positions, charge, field_vector, dd, atol, rtol, atol2, rtol2
+    )
 
 
 def batched(
@@ -93,7 +95,9 @@ def batched(
     )
     charge = torch.tensor([0.0, 0.0], **dd)
 
-    execute(numbers, positions, charge, field_vector, dd, atol, rtol, atol2, rtol2)
+    execute(
+        numbers, positions, charge, field_vector, dd, atol, rtol, atol2, rtol2
+    )
 
 
 def execute(

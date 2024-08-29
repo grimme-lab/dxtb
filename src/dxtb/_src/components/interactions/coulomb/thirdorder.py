@@ -283,6 +283,8 @@ def new_es3(
         "dtype": dtype if dtype is not None else get_default_dtype(),
     }
 
-    hubbard_derivs = get_elem_param(torch.unique(numbers), par.element, "gam3", **dd)
+    hubbard_derivs = get_elem_param(
+        torch.unique(numbers), par.element, "gam3", **dd
+    )
 
     return ES3(hubbard_derivs, **dd)

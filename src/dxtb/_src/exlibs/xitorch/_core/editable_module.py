@@ -60,7 +60,9 @@ class EditableModule:
 
         return len(params)
 
-    def cached_getparamnames(self, methodname: str, refresh: bool = False) -> List[str]:
+    def cached_getparamnames(
+        self, methodname: str, refresh: bool = False
+    ) -> List[str]:
         # getparamnames, but cached, so it is only called once
         if not hasattr(self, "_paramnames_"):
             self._paramnames_: Dict[str, List[str]] = {}
@@ -160,7 +162,9 @@ class EditableModule:
         return self.setparams(methodname, *allparams)
 
     def _get_unique_params_idxs(
-        self, methodname: str, allparams: Union[Sequence[torch.Tensor], None] = None
+        self,
+        methodname: str,
+        allparams: Union[Sequence[torch.Tensor], None] = None,
     ) -> Sequence[int]:
         if not hasattr(self, "_unique_params_idxs"):
             self._unique_params_idxs = {}  # type: Dict[str,Sequence[int]]
@@ -251,7 +255,9 @@ class EditableModule:
             raise TypeError("The input method must be a method")
         methodself = method.__self__
         if methodself is not self:
-            raise RuntimeError("The method does not belong to the same instance")
+            raise RuntimeError(
+                "The method does not belong to the same instance"
+            )
 
         methodname = method.__name__
 
@@ -274,16 +280,18 @@ class EditableModule:
         # now assert if all_params0 == all_params1
         clsname = method.__self__.__class__.__name__
         methodname = method.__name__
-        msg = (
-            "The method {}.{} does not preserve the object's float tensors: \n".format(
-                clsname,
-                methodname,
-            )
+        msg = "The method {}.{} does not preserve the object's float tensors: \n".format(
+            clsname,
+            methodname,
         )
         if len(all_params0) != len(all_params1):
             msg += "The number of parameters changed:\n"
-            msg += "* number of object's parameters before: %d\n" % len(all_params0)
-            msg += "* number of object's parameters after : %d\n" % len(all_params1)
+            msg += "* number of object's parameters before: %d\n" % len(
+                all_params0
+            )
+            msg += "* number of object's parameters after : %d\n" % len(
+                all_params1
+            )
             raise GetSetParamsError(msg)
 
         for pname, p0, p1 in zip(names0, all_params0, all_params1):
@@ -315,7 +323,9 @@ class EditableModule:
             return None
 
         # get the parameter tensors used in the operation and the tensors specified by the developer
-        oper_names, oper_params = self.__list_operating_params(method, *args, **kwargs)
+        oper_names, oper_params = self.__list_operating_params(
+            method, *args, **kwargs
+        )
         user_names = self.getparamnames(method.__name__)
         user_params = [get_attr(self, name) for name in user_names]
         user_params_id = [id(p) for p in user_params]
@@ -327,9 +337,13 @@ class EditableModule:
         for i in range(len(user_params)):
             param = user_params[i]
             if (not isinstance(param, torch.Tensor)) or (
-                isinstance(param, torch.Tensor) and param.dtype not in torch_float_type
+                isinstance(param, torch.Tensor)
+                and param.dtype not in torch_float_type
             ):
-                msg = "Parameter %s is a non-floating point tensor" % user_names[i]
+                msg = (
+                    "Parameter %s is a non-floating point tensor"
+                    % user_names[i]
+                )
                 raise GetSetParamsError(msg)
 
         # check if there are missing parameters (present in operating params, but not in the user params)
@@ -381,7 +395,9 @@ class EditableModule:
         # run the method and see which one has the gradients
         output = method(*args, **kwargs)
         if not isinstance(output, torch.Tensor):
-            raise RuntimeError("The method to be asserted must have a tensor output")
+            raise RuntimeError(
+                "The method to be asserted must have a tensor output"
+            )
         output = output.sum()
         grad_tensors = torch.autograd.grad(
             output, copy_tensors0, retain_graph=True, allow_unused=True
@@ -486,9 +502,12 @@ def _get_tensors(obj, prefix="", max_depth=20):
 
     # traverse down the object to collect the tensors
     crit = (
-        lambda elmt: isinstance(elmt, torch.Tensor) and elmt.dtype in torch_float_type
+        lambda elmt: isinstance(elmt, torch.Tensor)
+        and elmt.dtype in torch_float_type
     )
-    _traverse_obj(obj, action=action, crit=crit, prefix=prefix, max_depth=max_depth)
+    _traverse_obj(
+        obj, action=action, crit=crit, prefix=prefix, max_depth=max_depth
+    )
     return res, names
 
 
@@ -512,6 +531,7 @@ def _set_tensors(obj, all_params, max_depth=20):
 
     # traverse down the object to collect the tensors
     crit = (
-        lambda elmt: isinstance(elmt, torch.Tensor) and elmt.dtype in torch_float_type
+        lambda elmt: isinstance(elmt, torch.Tensor)
+        and elmt.dtype in torch_float_type
     )
     _traverse_obj(obj, action=action, crit=crit, prefix="", max_depth=max_depth)

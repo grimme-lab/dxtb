@@ -11,7 +11,11 @@ from __future__ import annotations
 import torch
 
 from dxtb import OutputHandler
-from dxtb._src.components.interactions import Charges, InteractionList, Potential
+from dxtb._src.components.interactions import (
+    Charges,
+    InteractionList,
+    Potential,
+)
 from dxtb._src.constants import labels
 from dxtb._src.typing import Tensor
 from dxtb.config import ConfigSCF
@@ -34,14 +38,18 @@ __all__ = [
 ]
 
 
-def _print(charges: Charges, data: _Data, interactions: InteractionList) -> None:
+def _print(
+    charges: Charges, data: _Data, interactions: InteractionList
+) -> None:
     data.iter += 1
 
     if OutputHandler.verbosity < 3:
         return
 
     if charges.mono.ndim < 2:  # pragma: no cover
-        energy = get_energy(charges, data, interactions).sum(-1).detach().clone()
+        energy = (
+            get_energy(charges, data, interactions).sum(-1).detach().clone()
+        )
         ediff = (data.old_energy.sum(-1) - energy) if data.iter > 0 else 0.0
 
         density = data.density.detach().clone()
@@ -74,13 +82,23 @@ def _print(charges: Charges, data: _Data, interactions: InteractionList) -> None
         data.old_density = density
     else:
         energy = get_energy(charges, data, interactions).detach().clone()
-        ediff = torch.linalg.norm(data.old_energy - energy) if data.iter > 0 else 0.0
+        ediff = (
+            torch.linalg.norm(data.old_energy - energy)
+            if data.iter > 0
+            else 0.0
+        )
 
         density = data.density.detach().clone()
-        pnorm = torch.linalg.norm(data.old_density - density) if data.iter > 0 else 0.0
+        pnorm = (
+            torch.linalg.norm(data.old_density - density)
+            if data.iter > 0
+            else 0.0
+        )
 
         _q = charges.mono.detach().clone()
-        qdiff = torch.linalg.norm(data.old_charges - _q) if data.iter > 0 else 0.0
+        qdiff = (
+            torch.linalg.norm(data.old_charges - _q) if data.iter > 0 else 0.0
+        )
 
         OutputHandler.write_row(
             "SCF Iterations",
@@ -132,7 +150,10 @@ def iterate_charges(
 
 
 def iterate_potential(
-    potential: Tensor, data: _Data, cfg: ConfigSCF, interactions: InteractionList
+    potential: Tensor,
+    data: _Data,
+    cfg: ConfigSCF,
+    interactions: InteractionList,
 ) -> Tensor:
     """
     Perform single self-consistent iteration.
@@ -154,7 +175,9 @@ def iterate_potential(
     Tensor
         New potential vector for each orbital partial charge.
     """
-    pot = Potential.from_tensor(potential, data.potential, batch_mode=cfg.batch_mode)
+    pot = Potential.from_tensor(
+        potential, data.potential, batch_mode=cfg.batch_mode
+    )
     charges = potential_to_charges(pot, data, cfg)
 
     # FIXME: Batch print not working!

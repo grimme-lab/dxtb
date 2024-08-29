@@ -60,7 +60,9 @@ logger = logging.getLogger(__name__)
 F = TypeVar("F", bound=Callable[..., Any])
 
 
-def requires_positions_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
+def requires_positions_grad(
+    func: Callable[..., Tensor]
+) -> Callable[..., Tensor]:
     @wraps(func)
     def wrapper(
         self: Calculator,
@@ -152,7 +154,9 @@ def requires_efg_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     ) -> Tensor:
         efg = self.interactions.get_interaction(efieldgrad.LABEL_EFIELD_GRAD)
         if not efg.field_grad.requires_grad:
-            raise RuntimeError("Field gradient tensor needs ``requires_grad=True``.")
+            raise RuntimeError(
+                "Field gradient tensor needs ``requires_grad=True``."
+            )
         return func(self, positions, chrg, spin, **kwargs)
 
     return wrapper
@@ -175,7 +179,9 @@ def _numerical(nograd: bool = False, noprint: bool = False) -> Callable[[F], F]:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             print_context = (
-                OutputHandler.with_verbosity(0) if noprint is True else NoOpContext()
+                OutputHandler.with_verbosity(0)
+                if noprint is True
+                else NoOpContext()
             )
             grad_context = torch.no_grad() if nograd is True else NoOpContext()
 
@@ -244,7 +250,9 @@ def cache(func: F) -> F:
             if key in self.cache:
                 if self.cache.get_cache_key(key) is not None:
                     if self.cache.get_cache_key(key) == full_key:
-                        logger.debug(f"{cache_key.title()}: Using cached result.")
+                        logger.debug(
+                            f"{cache_key.title()}: Using cached result."
+                        )
                         return self.cache[key]
 
         # Execute the function and store the result in the cache

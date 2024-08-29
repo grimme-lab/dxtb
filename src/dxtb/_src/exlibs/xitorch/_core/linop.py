@@ -27,7 +27,9 @@ from typing import Sequence
 
 import torch
 
-from dxtb._src.exlibs.scipy.sparse.linalg import LinearOperator as spLinearOperator
+from dxtb._src.exlibs.scipy.sparse.linalg import (
+    LinearOperator as spLinearOperator,
+)
 from dxtb._src.exlibs.xitorch._core.editable_module import EditableModule
 from dxtb._src.exlibs.xitorch._utils.bcast import get_bcasted_dims
 from dxtb._src.exlibs.xitorch.debug.modes import is_debug_enabled
@@ -64,14 +66,19 @@ class LinearOperator(EditableModule):
             cls._is_mm_implemented = cls.__check_if_implemented("_mm")
             cls._is_rmv_implemented = cls.__check_if_implemented("_rmv")
             cls._is_rmm_implemented = cls.__check_if_implemented("_rmm")
-            cls._is_fullmatrix_implemented = cls.__check_if_implemented("_fullmatrix")
-            cls._is_gpn_implemented = cls.__check_if_implemented("_getparamnames")
+            cls._is_fullmatrix_implemented = cls.__check_if_implemented(
+                "_fullmatrix"
+            )
+            cls._is_gpn_implemented = cls.__check_if_implemented(
+                "_getparamnames"
+            )
 
             cls._implementation_checked = True
 
             if not cls._is_mv_implemented:
                 raise RuntimeError(
-                    "LinearOperator must have at least _mv(self) " "method implemented"
+                    "LinearOperator must have at least _mv(self) "
+                    "method implemented"
                 )
         return super().__new__(cls)
 
@@ -168,11 +175,13 @@ class LinearOperator(EditableModule):
             )
 
     def __repr__(self) -> str:
-        return "LinearOperator ({}) with shape {}, dtype = {}, device = {}".format(
-            self.__class__.__name__,
-            _shape2str(self.shape),
-            self.dtype,
-            self.device,
+        return (
+            "LinearOperator ({}) with shape {}, dtype = {}, device = {}".format(
+                self.__class__.__name__,
+                _shape2str(self.shape),
+                self.dtype,
+                self.device,
+            )
         )
 
     @abstractmethod
@@ -406,7 +415,9 @@ class LinearOperator(EditableModule):
             return self.mm(V)  # (B1,B2,...,Bb,np,nq)
 
     def scipy_linalg_op(self):
-        to_tensor = lambda x: torch.tensor(x, dtype=self.dtype, device=self.device)
+        to_tensor = lambda x: torch.tensor(
+            x, dtype=self.dtype, device=self.device
+        )
         return spLinearOperator(
             shape=self.shape,
             matvec=lambda v: self.mv(to_tensor(v)).detach().cpu().numpy(),
@@ -651,7 +662,9 @@ class AdjointLinearOperator(LinearOperator):
 
     def _mv(self, x: torch.Tensor) -> torch.Tensor:
         if not self.obj.is_rmv_implemented:
-            raise RuntimeError("The ._rmv of must be implemented to call .H.mv()")
+            raise RuntimeError(
+                "The ._rmv of must be implemented to call .H.mv()"
+            )
         return self.obj._rmv(x)
 
     def _rmv(self, x: torch.Tensor) -> torch.Tensor:
@@ -698,9 +711,9 @@ class MatmulLinearOperator(LinearOperator):
         return self.b.rmv(self.a.rmv(x))
 
     def _getparamnames(self, prefix: str = "") -> list[str]:
-        return self.a._getparamnames(prefix=prefix + "a.") + self.b._getparamnames(
-            prefix=prefix + "b."
-        )
+        return self.a._getparamnames(
+            prefix=prefix + "a."
+        ) + self.b._getparamnames(prefix=prefix + "b.")
 
 
 class AddLinearOperator(LinearOperator):
@@ -737,9 +750,9 @@ class AddLinearOperator(LinearOperator):
         return self.a.rmv(x) + self.mul * self.b.rmv(x)
 
     def _getparamnames(self, prefix: str = "") -> list[str]:
-        return self.a._getparamnames(prefix=prefix + "a.") + self.b._getparamnames(
-            prefix=prefix + "b."
-        )
+        return self.a._getparamnames(
+            prefix=prefix + "a."
+        ) + self.b._getparamnames(prefix=prefix + "b.")
 
 
 class MulLinearOperator(LinearOperator):
@@ -798,9 +811,9 @@ class MatrixLinearOperator(LinearOperator):
         return torch.matmul(self.mat, x)
 
     def _rmv(self, x: torch.Tensor) -> torch.Tensor:
-        return torch.matmul(self.mat.transpose(-2, -1).conj(), x.unsqueeze(-1)).squeeze(
-            -1
-        )
+        return torch.matmul(
+            self.mat.transpose(-2, -1).conj(), x.unsqueeze(-1)
+        ).squeeze(-1)
 
     def _rmm(self, x: torch.Tensor) -> torch.Tensor:
         return torch.matmul(self.mat.transpose(-2, -1).conj(), x)
@@ -859,14 +872,17 @@ def checklinop(linop: LinearOperator) -> None:
         msg = "Linearity check fails\n%s\n" % str(linop)
         assert torch.allclose(y2, 1.25 * y), msg
         y0 = fcn(0 * x)
-        assert torch.allclose(y0, y * 0), "Linearity check (with 0) fails\n" + str(
-            linop
-        )
+        assert torch.allclose(
+            y0, y * 0
+        ), "Linearity check (with 0) fails\n" + str(linop)
 
         # batched test
         xnew = torch.cat((x.unsqueeze(0), x2.unsqueeze(0)), dim=0)
         ynew = fcn(xnew)  # (2, ..., q)
-        msg = "Batched test fails (expanding batches changes the results)" + str(linop)
+        msg = (
+            "Batched test fails (expanding batches changes the results)"
+            + str(linop)
+        )
         assert torch.allclose(ynew[0], y), msg
         assert torch.allclose(ynew[1], y2), msg
 

@@ -108,7 +108,8 @@ def solve(
         The tensor :math:`\mathbf{X}` that satisfies :math:`\mathbf{AX-MXE=B}`.
     """
     assert_runtime(
-        A.shape[-1] == A.shape[-2], "The linear operator A must have a square shape"
+        A.shape[-1] == A.shape[-2],
+        "The linear operator A must have a square shape",
     )
     assert_runtime(
         A.shape[-1] == B.shape[-2],
@@ -121,7 +122,8 @@ def solve(
     )
     if M is not None:
         assert_runtime(
-            M.shape[-1] == M.shape[-2], "The linear operator M must have a square shape"
+            M.shape[-1] == M.shape[-2],
+            "The linear operator M must have a square shape",
         )
         assert_runtime(
             M.shape[-1] == A.shape[-1],
@@ -142,7 +144,9 @@ def solve(
             % (E.shape, B.shape),
         )
     if E is None and M is not None:
-        warnings.warn("M is supplied but will be ignored because E is not supplied")
+        warnings.warn(
+            "M is supplied but will be ignored because E is not supplied"
+        )
 
     # perform expensive check if debug mode is enabled
     if is_debug_enabled():
@@ -177,7 +181,9 @@ def solve_torchfcn(
     A, B, E, M, method, fwd_options, bck_options, na, *allparams
 ) -> torch.Tensor:
     Solver = Solver_V1 if __tversion__ < (2, 0, 0) else Solver_V2
-    res = Solver.apply(A, B, E, M, method, fwd_options, bck_options, na, *allparams)
+    res = Solver.apply(
+        A, B, E, M, method, fwd_options, bck_options, na, *allparams
+    )
     assert res is not None
     return res
 
@@ -206,7 +212,12 @@ class SolverBase(torch.autograd.Function):
             MT = ctx.M.H if ctx.M is not None else None  # (*BM, nr, nr)
             Econj = E.conj() if E is not None else None
             v = solve(
-                AT, grad_x, Econj, MT, bck_options=ctx.bck_config, **ctx.bck_config
+                AT,
+                grad_x,
+                Econj,
+                MT,
+                bck_options=ctx.bck_config,
+                **ctx.bck_config,
             )  # (*BABEM, nr, ncols)
         grad_B = v
 
@@ -232,7 +243,9 @@ class SolverBase(torch.autograd.Function):
             else:
                 with ctx.M.uselinopparams(*mparams):
                     Mx = ctx.M.mm(x)  # (*BABEM, nr, ncols)
-            grad_E = einsum("...rc,...rc->...c", v, Mx.conj())  # (*BABEM, ncols)
+            grad_E = einsum(
+                "...rc,...rc->...c", v, Mx.conj()
+            )  # (*BABEM, ncols)
 
         # calculate the gradient to the biases matrices
         grad_mparams = []
@@ -267,7 +280,9 @@ class SolverBase(torch.autograd.Function):
 
 class Solver_V1(SolverBase):
     @staticmethod
-    def forward(ctx, A, B, E, M, method, fwd_options, bck_options, na, *all_params):
+    def forward(
+        ctx, A, B, E, M, method, fwd_options, bck_options, na, *all_params
+    ):
         # A: (*BA, nr, nr)
         # B: (*BB, nr, ncols)
         # E: (*BE, ncols) or None
@@ -287,7 +302,9 @@ class Solver_V1(SolverBase):
             x = torch.zeros(dims, dtype=B.dtype, device=B.device)
         else:
             with A.uselinopparams(*params), (
-                M.uselinopparams(*mparams) if M is not None else dummy_context_manager()
+                M.uselinopparams(*mparams)
+                if M is not None
+                else dummy_context_manager()
             ):
                 methods = {
                     "custom_exactsolve": custom_exactsolve,
@@ -358,7 +375,9 @@ class Solver_V2(SolverBase):
             x = torch.zeros(dims, dtype=B.dtype, device=B.device)
         else:
             with A.uselinopparams(*params), (
-                M.uselinopparams(*mparams) if M is not None else dummy_context_manager()
+                M.uselinopparams(*mparams)
+                if M is not None
+                else dummy_context_manager()
             ):
                 methods = {
                     "custom_exactsolve": custom_exactsolve,

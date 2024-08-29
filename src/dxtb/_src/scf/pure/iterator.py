@@ -141,7 +141,10 @@ def scf_wrapper(
         **kwargs.pop("fwd_options", {}),
     }
 
-    config.eigen_options = {"method": "exacteig", **kwargs.pop("eigen_options", {})}
+    config.eigen_options = {
+        "method": "exacteig",
+        **kwargs.pop("eigen_options", {}),
+    }
 
     # Only infer shapes and types from _Data (no logic involved),
     # i.e. keep _Data and SCFConfig instances disjunct objects.
@@ -213,7 +216,9 @@ def run_scf(
         potential = charges_to_potential(charges, interactions, data)
         guess = potential_to_hamiltonian(potential, data)
     else:
-        raise ValueError(f"Unknown convergence target (SCP mode) '{cfg.scp_mode}'.")
+        raise ValueError(
+            f"Unknown convergence target (SCP mode) '{cfg.scp_mode}'."
+        )
 
     OutputHandler.write_stdout(
         f"\n{'iter':<5} {'Energy':<24} {'Delta E':<16}"

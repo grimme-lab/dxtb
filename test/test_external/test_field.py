@@ -76,7 +76,9 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize(
     "scf_mode", [labels.SCF_MODE_IMPLICIT_NON_PURE, labels.SCF_MODE_FULL]
 )
-def test_batch(dtype: torch.dtype, name1: str, name2: str, scf_mode: str) -> None:
+def test_batch(
+    dtype: torch.dtype, name1: str, name2: str, scf_mode: str
+) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
@@ -105,7 +107,9 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, scf_mode: str) -> Non
     field_vector = torch.tensor([-2.0, 0.0, 0.0], **dd) * VAA2AU
     efield = new_efield(field_vector)
     options = dict(opts, **{"scf_mode": scf_mode, "mixer": "anderson"})
-    calc = Calculator(numbers, GFN1_XTB, interaction=[efield], opts=options, **dd)
+    calc = Calculator(
+        numbers, GFN1_XTB, interaction=[efield], opts=options, **dd
+    )
 
     result = calc.singlepoint(positions, charges)
     res = result.total.sum(-1)
@@ -153,7 +157,9 @@ def test_batch_three(
     field_vector = torch.tensor([-2.0, 0.0, 0.0], **dd) * VAA2AU
     efield = new_efield(field_vector)
     options = dict(opts, **{"scf_mode": scf_mode, "mixer": "anderson"})
-    calc = Calculator(numbers, GFN1_XTB, interaction=[efield], opts=options, **dd)
+    calc = Calculator(
+        numbers, GFN1_XTB, interaction=[efield], opts=options, **dd
+    )
 
     result = calc.singlepoint(positions, charges)
     res = result.total.sum(-1)

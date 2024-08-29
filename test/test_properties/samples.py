@@ -56,23 +56,33 @@ refs: dict[str, Refs] = {
     "H": {
         "dipole": torch.tensor([0.0, 0.0, 0.0]),
         "dipole2": torch.tensor([0.0, 0.0, 0.0]),
-        "quadrupole": torch.tensor([0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]),
-        "quadrupole2": torch.tensor([0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]),
+        "quadrupole": torch.tensor(
+            [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+        ),
+        "quadrupole2": torch.tensor(
+            [0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000]
+        ),
         "freqs": torch.tensor([0.0, 0.0, 0.0]),
         "ints": torch.tensor([0.0, 0.0, 0.0]),
     },
     "H2": {
         "dipole": torch.tensor([0.0, 0.0, 0.0]),
         "dipole2": torch.tensor([0.0000, 0.0000, 0.1015]),
-        "quadrupole": torch.tensor([-0.1591, 0.0000, -0.1591, 0.0000, 0.0000, 0.3183]),
-        "quadrupole2": torch.tensor([-0.1584, 0.0000, -0.1584, 0.0000, 0.0000, 0.3168]),
+        "quadrupole": torch.tensor(
+            [-0.1591, 0.0000, -0.1591, 0.0000, 0.0000, 0.3183]
+        ),
+        "quadrupole2": torch.tensor(
+            [-0.1584, 0.0000, -0.1584, 0.0000, 0.0000, 0.3168]
+        ),
         "freqs": torch.tensor([5363.23]),
         "ints": torch.tensor([0.00000]),
     },
     "LiH": {
         "dipole": torch.tensor([0.0000, 0.0000, -2.4794]),
         "dipole2": torch.tensor([-1.2293, 0.3073, -1.1911]),
-        "quadrupole": torch.tensor([-0.6422, 0.0000, -0.6422, -0.0000, 0.0000, 1.2843]),
+        "quadrupole": torch.tensor(
+            [-0.6422, 0.0000, -0.6422, -0.0000, 0.0000, 1.2843]
+        ),
         "quadrupole2": torch.tensor(
             [-2.0799, 0.4581, -0.3620, 3.7017, -0.9254, 2.4419]
         ),
@@ -82,15 +92,21 @@ refs: dict[str, Refs] = {
     "HHe": {
         "dipole": torch.tensor([0.0000, 0.0000, 0.2565]),
         "dipole2": torch.tensor([0.0000, 0.0000, 0.2759]),
-        "quadrupole": torch.tensor([-0.2259, 0.0000, -0.2259, 0.0000, 0.0000, 0.4517]),
-        "quadrupole2": torch.tensor([-0.2465, 0.0000, -0.2465, 0.0000, 0.0000, 0.4929]),
+        "quadrupole": torch.tensor(
+            [-0.2259, 0.0000, -0.2259, 0.0000, 0.0000, 0.4517]
+        ),
+        "quadrupole2": torch.tensor(
+            [-0.2465, 0.0000, -0.2465, 0.0000, 0.0000, 0.4929]
+        ),
         "freqs": torch.tensor([0.50]),
         "ints": torch.tensor([0.21973]),
     },
     "H2O": {
         "dipole": torch.tensor([-0.0000, -0.0000, 1.1208]),
         "dipole2": torch.tensor([-0.1418, 0.0006, 1.1680]),
-        "quadrupole": torch.tensor([2.2898, 0.0000, -0.8549, 0.0000, 0.0000, -1.4349]),
+        "quadrupole": torch.tensor(
+            [2.2898, 0.0000, -0.8549, 0.0000, 0.0000, -1.4349]
+        ),
         "quadrupole2": torch.tensor(
             [2.3831, 0.0001, -0.8838, -0.2055, -0.0022, -1.4993]
         ),
@@ -100,7 +116,9 @@ refs: dict[str, Refs] = {
     "CH4": {
         "dipole": torch.tensor([0.0, 0.0, 0.0]),
         "dipole2": torch.tensor([-0.2230, 0.0480, 0.1661]),
-        "quadrupole": torch.tensor([0.0000, 0.0000, -0.0000, 0.0000, -0.0000, 0.0000]),
+        "quadrupole": torch.tensor(
+            [0.0000, 0.0000, -0.0000, 0.0000, -0.0000, 0.0000]
+        ),
         "quadrupole2": torch.tensor(
             [-0.0003, -0.6487, 0.0003, -0.1852, 0.8712, -0.0000]
         ),
@@ -141,7 +159,17 @@ refs: dict[str, Refs] = {
             [0.1276, -0.5236, -0.1362, -0.1603, 0.6765, 0.0085]
         ),
         "freqs": torch.tensor(
-            [835.82, 835.82, 835.82, 889.87, 889.87, 2036.71, 2051.72, 2051.72, 2051.72]
+            [
+                835.82,
+                835.82,
+                835.82,
+                889.87,
+                889.87,
+                2036.71,
+                2051.72,
+                2051.72,
+                2051.72,
+            ]
         ),
         "ints": torch.tensor(
             [
@@ -527,7 +555,9 @@ refs: dict[str, Refs] = {
     "C60": {
         "dipole": torch.tensor([0.0, 0.0, 0.0]),
         "dipole2": torch.tensor([-20.5633, 5.3990, 15.6925]),
-        "quadrupole": torch.tensor([0.0000, 0.0000, -0.0000, 0.0000, 0.0000, -0.0000]),
+        "quadrupole": torch.tensor(
+            [0.0000, 0.0000, -0.0000, 0.0000, 0.0000, -0.0000]
+        ),
         "quadrupole2": torch.tensor(
             [-0.3883, -5.9370, -1.4709, -6.8867, 2.8313, 1.8591]
         ),

@@ -32,7 +32,10 @@ import torch
 from tad_mctc import storch
 
 from dxtb import IndexHelper
-from dxtb._src.components.interactions import InteractionList, InteractionListCache
+from dxtb._src.components.interactions import (
+    InteractionList,
+    InteractionListCache,
+)
 from dxtb._src.constants import labels
 from dxtb._src.integral.container import IntegralMatrices
 from dxtb._src.typing import Any, Tensor

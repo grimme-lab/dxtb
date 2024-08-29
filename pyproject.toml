@@ -53,5 +53,11 @@ omit = [
 fail_under = 75
 
 
+[tool.black]
+line-length = 80
+
+
 [tool.isort]
+line_length = 80
+profile = "black"
 skip = ["./src/dxtb/__init__.py",]

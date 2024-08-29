@@ -117,7 +117,10 @@ class Classical(ClassicalABC, Component):
         super().__init__(device, dtype)
 
     def get_gradient(
-        self, energy: Tensor, positions: Tensor, grad_outputs: Tensor | None = None
+        self,
+        energy: Tensor,
+        positions: Tensor,
+        grad_outputs: Tensor | None = None,
     ) -> Tensor:
         """
         Calculates nuclear gradient of a classical energy contribution via

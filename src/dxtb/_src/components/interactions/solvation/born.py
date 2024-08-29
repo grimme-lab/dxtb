@@ -201,13 +201,17 @@ def compute_psi(
     # temporary variables
     d_pl = distances + rho.unsqueeze(-1)
     d_mi = distances - rho.unsqueeze(-1)
-    d_pr = torch.where(mask, d_pl * d_mi, eps)  # eps avoids zero division in grad
+    d_pr = torch.where(
+        mask, d_pl * d_mi, eps
+    )  # eps avoids zero division in grad
     d_qu = torch.where(mask, d_mi / d_pl, zero)
 
     # contributions from non-overlapping atoms
     rho_dpr = torch.where(mask, rho.unsqueeze(-1) / d_pr, zero)
     ln_dqu = torch.where(
-        mask * (d_qu > 0), 0.5 * torch.log(torch.where(d_qu > 0, d_qu, eps)) * r1, zero
+        mask * (d_qu > 0),
+        0.5 * torch.log(torch.where(d_qu > 0, d_qu, eps)) * r1,
+        zero,
     )
     non_ovlp = rho_dpr + ln_dqu
 

@@ -65,7 +65,9 @@ def timer_decorator(
     return decorator
 
 
-def timer_decorator_print(repeats: int = 1) -> Callable[[F], F]:  # pragma: no cover
+def timer_decorator_print(
+    repeats: int = 1,
+) -> Callable[[F], F]:  # pragma: no cover
     """
     Decorator that prints execution time of a function.
 
@@ -101,7 +103,9 @@ def timer_decorator_print(repeats: int = 1) -> Callable[[F], F]:  # pragma: no c
             print()
             if repeats > 1:
                 avg_time = sum(times) / len(times)
-                print(f"Average ({repeats}) of {f.__name__}: {avg_time:2.4f} sec")
+                print(
+                    f"Average ({repeats}) of {f.__name__}: {avg_time:2.4f} sec"
+                )
 
             return result  # type: ignore
 

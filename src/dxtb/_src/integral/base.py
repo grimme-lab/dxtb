@@ -251,17 +251,25 @@ class BaseIntegral(IntegralABC, TensorLike):
 
         if "pytorch" in self.label.casefold():
             # pylint: disable=import-outside-toplevel
-            from .driver.pytorch.driver import BaseIntDriverPytorch as _BaseIntDriver
+            from .driver.pytorch.driver import (
+                BaseIntDriverPytorch as _BaseIntDriver,
+            )
 
         elif "libcint" in self.label.casefold():
             # pylint: disable=import-outside-toplevel
-            from .driver.libcint.driver import BaseIntDriverLibcint as _BaseIntDriver
+            from .driver.libcint.driver import (
+                BaseIntDriverLibcint as _BaseIntDriver,
+            )
 
         else:
-            raise RuntimeError(f"Unknown integral implementation: '{self.label}'.")
+            raise RuntimeError(
+                f"Unknown integral implementation: '{self.label}'."
+            )
 
         if not isinstance(driver, _BaseIntDriver):
-            raise RuntimeError(f"Wrong integral driver selected for '{self.label}'.")
+            raise RuntimeError(
+                f"Wrong integral driver selected for '{self.label}'."
+            )
 
     def clear(self) -> None:
         """

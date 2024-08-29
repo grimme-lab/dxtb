@@ -55,7 +55,9 @@ def tensor_id(x: Tensor) -> str:
     grad = int(x.requires_grad)
     v = x._version
 
-    if __tversion__ >= (1, 13, 0) and torch._C._functorch.is_gradtrackingtensor(x):
+    if __tversion__ >= (1, 13, 0) and torch._C._functorch.is_gradtrackingtensor(
+        x
+    ):
         value = x
         while torch._C._functorch.is_gradtrackingtensor(value):
             value = torch._C._functorch.get_unwrapped(value)

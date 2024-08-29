@@ -135,7 +135,9 @@ class RamanResult(BaseResult):
 
     # conversion
 
-    def to_unit(self, value: Literal["freqs", "ints", "depol"], unit: str) -> Tensor:
+    def to_unit(
+        self, value: Literal["freqs", "ints", "depol"], unit: str
+    ) -> Tensor:
         """
         Convert a value from one unit to another based on the converter
         dictionary.

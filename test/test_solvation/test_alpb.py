@@ -67,7 +67,9 @@ def test_gb_single(dtype: torch.dtype, name: str, dielectric_constant=78.9):
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["MB16_43_01", "MB16_43_02"])
-def test_gb_still_single(dtype: torch.dtype, name: str, dielectric_constant=78.9):
+def test_gb_still_single(
+    dtype: torch.dtype, name: str, dielectric_constant=78.9
+):
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
@@ -80,7 +82,9 @@ def test_gb_still_single(dtype: torch.dtype, name: str, dielectric_constant=78.9
     rvdw = VDW_D3.to(**dd)[numbers]
     ref = sample["energies_still"].to(**dd)
 
-    gb = alpb.GeneralizedBorn(numbers, dc, kernel="still", rvdw=rvdw, alpb=False, **dd)
+    gb = alpb.GeneralizedBorn(
+        numbers, dc, kernel="still", rvdw=rvdw, alpb=False, **dd
+    )
     cache = gb.get_cache(numbers, positions)
     energies = gb.get_atom_energy(charges, cache)
 

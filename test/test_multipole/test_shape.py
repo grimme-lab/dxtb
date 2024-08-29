@@ -89,7 +89,9 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, intstr: str) -> None:
     atombases = bas.create_libcint(positions)
 
     # batched IndexHelper does not yet work with LibcintWrapper
-    ihelp = [IndexHelper.from_numbers(deflate(number), par) for number in numbers]
+    ihelp = [
+        IndexHelper.from_numbers(deflate(number), par) for number in numbers
+    ]
 
     wrappers = [
         libcint.LibcintWrapper(ab, ihelp)

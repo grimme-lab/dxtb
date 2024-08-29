@@ -84,7 +84,9 @@ class BaseResult(TensorLike):
             raise ValueError(f"Unsupported frequency unit: {value}")
         self._freqs_unit = value
 
-    def _convert(self, value: Tensor, unit: str, converter: dict[str, float]) -> Tensor:
+    def _convert(
+        self, value: Tensor, unit: str, converter: dict[str, float]
+    ) -> Tensor:
         """
         Convert a tensor from one unit to another based on the converter
         dictionary.
@@ -113,7 +115,9 @@ class BaseResult(TensorLike):
 
         return value * converter[unit]
 
-    def save_prop_to_pt(self, prop: str, filepath: PathLike | None = None) -> None:
+    def save_prop_to_pt(
+        self, prop: str, filepath: PathLike | None = None
+    ) -> None:
         """
         Save the results to a PyTorch file.
 
@@ -157,7 +161,9 @@ class BaseResult(TensorLike):
                 self.save_prop_to_pt(prop, path)
 
     def __iter__(self) -> Generator[Tensor, None, None]:
-        return iter(getattr(self, s) for s in get_all_slots(self) if "unit" not in s)
+        return iter(
+            getattr(self, s) for s in get_all_slots(self) if "unit" not in s
+        )
 
     def __getitem__(self, key: str) -> Tensor:
         s = get_all_slots(self)
@@ -173,7 +179,9 @@ class BaseResult(TensorLike):
         if key in s:
             return getattr(self, key)
 
-        raise KeyError(f"Invalid key: '{key}'. Possible keys are '{', '.join(s)}'.")
+        raise KeyError(
+            f"Invalid key: '{key}'. Possible keys are '{', '.join(s)}'."
+        )
 
     def __str__(self) -> str:
         text = ""

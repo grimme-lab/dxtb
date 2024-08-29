@@ -40,6 +40,8 @@ def get_header() -> str:  # pragma: no cover
     # Center each line within the given width
     centered_lines = [line.center(WIDTH) for line in logo]
     # Join the lines with newlines and add the top border
-    header = f"{WIDTH * '='}\n" + "\n".join(centered_lines) + f"\n{WIDTH * '='}\n"
+    header = (
+        f"{WIDTH * '='}\n" + "\n".join(centered_lines) + f"\n{WIDTH * '='}\n"
+    )
 
     return header

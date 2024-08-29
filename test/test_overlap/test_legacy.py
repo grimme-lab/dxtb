@@ -29,7 +29,10 @@ from tad_mctc.batch import pack
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
-from dxtb._src.integral.driver.pytorch import IntDriverPytorchLegacy, OverlapPytorch
+from dxtb._src.integral.driver.pytorch import (
+    IntDriverPytorchLegacy,
+    OverlapPytorch,
+)
 from dxtb._src.param import Param
 from dxtb._src.typing import DD, Literal, Tensor
 

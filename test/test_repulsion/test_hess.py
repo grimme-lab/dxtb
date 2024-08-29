@@ -112,7 +112,12 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
             reshape_fortran(
                 sample2["gfn1_hess"].to(**dd),
                 torch.Size(
-                    (sample2["numbers"].shape[0], 3, sample2["numbers"].shape[0], 3)
+                    (
+                        sample2["numbers"].shape[0],
+                        3,
+                        sample2["numbers"].shape[0],
+                        3,
+                    )
                 ),
             ),
         ]

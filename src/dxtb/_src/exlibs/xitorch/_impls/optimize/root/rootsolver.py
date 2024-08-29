@@ -329,7 +329,9 @@ def _safe_norm(v):
     return torch.norm(v)
 
 
-def _nonline_line_search(func, x, y, dx, search_type="armijo", rdiff=1e-8, smin=1e-2):
+def _nonline_line_search(
+    func, x, y, dx, search_type="armijo", rdiff=1e-8, smin=1e-2
+):
     tmp_s = [0]
     tmp_y = [y]
     tmp_phi = [y.norm() ** 2]
@@ -369,7 +371,9 @@ def _nonline_line_search(func, x, y, dx, search_type="armijo", rdiff=1e-8, smin=
     return s, x, y, y_norm
 
 
-def _scalar_search_armijo(phi, phi0, derphi0, c1=1e-4, alpha0=1, amin=0, max_niter=20):
+def _scalar_search_armijo(
+    phi, phi0, derphi0, c1=1e-4, alpha0=1, amin=0, max_niter=20
+):
     phi_a0 = phi(alpha0)
     if phi_a0 <= phi0 + c1 * alpha0 * derphi0:
         return alpha0, phi_a0
@@ -395,12 +399,14 @@ def _scalar_search_armijo(phi, phi0, derphi0, c1=1e-4, alpha0=1, amin=0, max_nit
             phi_a0 - phi0 - derphi0 * alpha0
         )
         a = a / factor
-        b = -(alpha0**3) * (phi_a1 - phi0 - derphi0 * alpha1) + alpha1**3 * (
-            phi_a0 - phi0 - derphi0 * alpha0
-        )
+        b = -(alpha0**3) * (
+            phi_a1 - phi0 - derphi0 * alpha1
+        ) + alpha1**3 * (phi_a0 - phi0 - derphi0 * alpha0)
         b = b / factor
 
-        alpha2 = (-b + torch.sqrt(torch.abs(b**2 - 3 * a * derphi0))) / (3.0 * a)
+        alpha2 = (-b + torch.sqrt(torch.abs(b**2 - 3 * a * derphi0))) / (
+            3.0 * a
+        )
         phi_a2 = phi(alpha2)
 
         if phi_a2 <= phi0 + c1 * alpha2 * derphi0:

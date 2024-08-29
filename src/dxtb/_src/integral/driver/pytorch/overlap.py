@@ -127,15 +127,23 @@ class OverlapPytorch(OverlapIntegral, IntegralPytorch):
 
         return self.gradient
 
-    def _single(self, fcn: OverlapFunction, driver: BaseIntDriverPytorch) -> Tensor:
+    def _single(
+        self, fcn: OverlapFunction, driver: BaseIntDriverPytorch
+    ) -> Tensor:
         if not isinstance(driver, BaseIntDriverPytorch):
             raise RuntimeError("Wrong integral driver selected.")
 
         return fcn(
-            driver._positions_single, driver.basis, driver.ihelp, self.uplo, self.cutoff
+            driver._positions_single,
+            driver.basis,
+            driver.ihelp,
+            self.uplo,
+            self.cutoff,
         )
 
-    def _batch(self, fcn: OverlapFunction, driver: BaseIntDriverPytorch) -> Tensor:
+    def _batch(
+        self, fcn: OverlapFunction, driver: BaseIntDriverPytorch
+    ) -> Tensor:
         if not isinstance(driver, BaseIntDriverPytorch):
             raise RuntimeError("Wrong integral driver selected.")
 

@@ -30,7 +30,9 @@ from dxtb._src.typing import Tensor
 __all__ = ["get_bond_order"]
 
 
-def get_bond_order(overlap: Tensor, density: Tensor, ihelp: IndexHelper) -> Tensor:
+def get_bond_order(
+    overlap: Tensor, density: Tensor, ihelp: IndexHelper
+) -> Tensor:
     """
     Calculate Wiberg bond orders.
 

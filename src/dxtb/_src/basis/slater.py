@@ -50,7 +50,9 @@ sto_ng = [
 # Two over pi
 top = 2.0 / math.pi
 
-dfactorial = torch.tensor([1.0, 1.0, 3.0, 15.0, 105.0, 945.0, 10395.0, 135135.0])
+dfactorial = torch.tensor(
+    [1.0, 1.0, 3.0, 15.0, 105.0, 945.0, 10395.0, 135135.0]
+)
 """
 Double factorial up to 7!! for normalization of the Gaussian basis functions.
 

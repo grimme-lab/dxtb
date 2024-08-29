@@ -144,7 +144,9 @@ def test_grad_param(name: str) -> None:
 
     assert GFN1_XTB.charge is not None
 
-    hubbard = get_elem_param(torch.unique(numbers), GFN1_XTB.element, "gam", **dd)
+    hubbard = get_elem_param(
+        torch.unique(numbers), GFN1_XTB.element, "gam", **dd
+    )
     gexp = torch.tensor(GFN1_XTB.charge.effective.gexp, **dd)
     average = averaging_function[GFN1_XTB.charge.effective.average]
 

@@ -24,6 +24,8 @@ Tight-binding components for solvation corrections.
 from dxtb._src.components.interactions.solvation import (
     GeneralizedBorn as GeneralizedBorn,
 )
-from dxtb._src.components.interactions.solvation import new_solvation as new_solvation
+from dxtb._src.components.interactions.solvation import (
+    new_solvation as new_solvation,
+)
 
 __all__ = ["GeneralizedBorn", "new_solvation"]

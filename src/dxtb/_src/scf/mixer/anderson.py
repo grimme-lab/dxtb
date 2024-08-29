@@ -235,7 +235,9 @@ class Anderson(Mixer):
         x_new = x_new.reshape(self._shape_in)
 
         # If x_old specified; overwrite last entry in self._x_hist.
-        x_old = self._x_hist[0] if x_old is None else x_old.reshape(self._shape_in)
+        x_old = (
+            self._x_hist[0] if x_old is None else x_old.reshape(self._shape_in)
+        )
 
         # Calculate x_new - x_old delta & assign to the delta history _f
         self._f[0] = x_new - x_old
@@ -255,14 +257,18 @@ class Anderson(Mixer):
             # vectors by adding 1 + offset^2 to the diagonals of "a", see
             # equation 8.2 (Eyert)
             if self.diagonal_offset is not None:
-                eye = torch.eye(a.shape[-1], device=x_new.device, dtype=x_new.dtype)
+                eye = torch.eye(
+                    a.shape[-1], device=x_new.device, dtype=x_new.dtype
+                )
                 one = torch.tensor(1.0, device=x_new.device, dtype=x_new.dtype)
                 a *= torch.where(eye != 0, eye + self.diagonal_offset**2, one)
 
             # Solve for the coefficients. As torch.solve cannot solve for 1D
             # tensors a blank dimension must be added
 
-            thetas = torch.squeeze(torch.linalg.solve(a, torch.unsqueeze(b, -1)))
+            thetas = torch.squeeze(
+                torch.linalg.solve(a, torch.unsqueeze(b, -1))
+            )
 
             # Construct the 2'nd terms of eq 4.1 & 4.2 (Eyert). These are
             # the "averaged" histories of x and F respectively:
@@ -313,7 +319,9 @@ class Anderson(Mixer):
         # Reshape the mixed system back into the expected shape and return it
         return x_mix.reshape(self._shape_out)
 
-    def cull(self, conv: Tensor, slicers: Slicer = (...,), mpdim: int = 1) -> None:
+    def cull(
+        self, conv: Tensor, slicers: Slicer = (...,), mpdim: int = 1
+    ) -> None:
         """
         Purge selected systems from the mixer.
 
@@ -370,7 +378,11 @@ class Anderson(Mixer):
             reshaped = culled.view(*shp, *self._shape_out[1:])
 
             # Select elements and reshape back to flattened view
-            return reshaped[..., :mpdim, : (l // mpdim)].contiguous().view(*shp, -1)
+            return (
+                reshaped[..., :mpdim, : (l // mpdim)]
+                .contiguous()
+                .view(*shp, -1)
+            )
 
         self._delta = _cull(self._delta)
         self._f = _cull(self._f)

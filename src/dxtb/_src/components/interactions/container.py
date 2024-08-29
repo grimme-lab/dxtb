@@ -145,15 +145,21 @@ class Container:
 
     def nullify_padding(self, pad: int = defaults.PADNZ) -> None:
         if self.mono is not None:
-            zero = torch.tensor(0.0, device=self.mono.device, dtype=self.mono.dtype)
+            zero = torch.tensor(
+                0.0, device=self.mono.device, dtype=self.mono.dtype
+            )
             self.mono = torch.where(self.mono != pad, self.mono, zero)
 
         if self.dipole is not None:
-            zero = torch.tensor(0.0, device=self.dipole.device, dtype=self.dipole.dtype)
+            zero = torch.tensor(
+                0.0, device=self.dipole.device, dtype=self.dipole.dtype
+            )
             self.dipole = torch.where(self.dipole != pad, self.dipole, zero)
 
         if self.quad is not None:
-            zero = torch.tensor(0.0, device=self.quad.device, dtype=self.quad.dtype)
+            zero = torch.tensor(
+                0.0, device=self.quad.device, dtype=self.quad.dtype
+            )
             self.quad = torch.where(self.quad != pad, self.quad, zero)
 
     @classmethod

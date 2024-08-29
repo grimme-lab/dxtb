@@ -47,7 +47,9 @@ class GFN1Calculator(Calculator):
         numbers: Tensor,
         *,
         classical: list[Classical] | tuple[Classical] | Classical | None = None,
-        interaction: list[Interaction] | tuple[Interaction] | Interaction | None = None,
+        interaction: (
+            list[Interaction] | tuple[Interaction] | Interaction | None
+        ) = None,
         opts: dict[str, Any] | Config | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,

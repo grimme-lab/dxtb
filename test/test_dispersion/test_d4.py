@@ -28,7 +28,10 @@ import tad_dftd4 as d4
 import torch
 from tad_mctc.batch import pack
 
-from dxtb._src.components.classicals.dispersion import DispersionD4, new_dispersion
+from dxtb._src.components.classicals.dispersion import (
+    DispersionD4,
+    new_dispersion,
+)
 from dxtb._src.param.gfn2 import GFN2_XTB as par
 from dxtb._src.typing import DD, Tensor
 

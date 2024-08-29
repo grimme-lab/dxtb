@@ -171,7 +171,9 @@ class ElectricField(Interaction):
         return self.cache
 
     @override
-    def get_atom_energy(self, charges: Tensor, cache: ElectricFieldCache) -> Tensor:
+    def get_atom_energy(
+        self, charges: Tensor, cache: ElectricFieldCache
+    ) -> Tensor:
         """
         Calculate the monopolar contribution of the electric field energy.
 
@@ -190,7 +192,9 @@ class ElectricField(Interaction):
         return -cache.vat * charges
 
     @override
-    def get_dipole_energy(self, charges: Tensor, cache: ElectricFieldCache) -> Tensor:
+    def get_dipole_energy(
+        self, charges: Tensor, cache: ElectricFieldCache
+    ) -> Tensor:
         """
         Calculate the dipolar contribution of the electric field energy.
 
@@ -211,7 +215,9 @@ class ElectricField(Interaction):
         return einsum("...ix,...ix->...i", -cache.vdp, charges)
 
     @override
-    def get_atom_potential(self, _: Charges, cache: ElectricFieldCache) -> Tensor:
+    def get_atom_potential(
+        self, _: Charges, cache: ElectricFieldCache
+    ) -> Tensor:
         """
         Calculate the electric field potential.
 
@@ -230,7 +236,9 @@ class ElectricField(Interaction):
         return -cache.vat
 
     @override
-    def get_dipole_potential(self, _: Charges, cache: ElectricFieldCache) -> Tensor:
+    def get_dipole_potential(
+        self, _: Charges, cache: ElectricFieldCache
+    ) -> Tensor:
         """
         Calculate the electric field dipole potential.
 

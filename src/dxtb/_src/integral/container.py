@@ -271,7 +271,9 @@ class Integrals(IntegralContainer):
         self._dipole = dipole
         self.checks()
 
-    def build_dipole(self, positions: Tensor, shift: bool = True, **kwargs: Any):
+    def build_dipole(
+        self, positions: Tensor, shift: bool = True, **kwargs: Any
+    ):
         # in case CPU is forced for libcint, move positions to CPU
         if self.mgr.force_cpu_for_libcint:
             if positions.device != torch.device("cpu"):

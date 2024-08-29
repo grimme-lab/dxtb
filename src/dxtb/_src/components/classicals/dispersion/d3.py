@@ -124,7 +124,9 @@ class DispersionD3(Dispersion):
 
         rvdw = kwargs.pop(
             "rvdw",
-            d3.data.VDW_D3.to(**self.dd)[numbers.unsqueeze(-1), numbers.unsqueeze(-2)],
+            d3.data.VDW_D3.to(**self.dd)[
+                numbers.unsqueeze(-1), numbers.unsqueeze(-2)
+            ],
         ).to(**self.dd)
 
         r4r2 = kwargs.pop(
@@ -169,7 +171,9 @@ class DispersionD3(Dispersion):
         )
 
         chunk_size = kwargs.pop("chunk_size", None)
-        c6 = d3.model.atomic_c6(self.numbers, weights, cache.ref, chunk_size=chunk_size)
+        c6 = d3.model.atomic_c6(
+            self.numbers, weights, cache.ref, chunk_size=chunk_size
+        )
 
         return d3.disp.dispersion(
             self.numbers,

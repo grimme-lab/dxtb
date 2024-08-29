@@ -113,7 +113,8 @@ class ConvertToTorchDtype(argparse.Action):
         # unreachable due to choices
         else:  # pragma: no cover
             p.error(
-                f"Option '{option_string}' was passed unknown keyword " f"({values})."
+                f"Option '{option_string}' was passed unknown keyword "
+                f"({values})."
             )
 
         setattr(args, self.dest, values)
@@ -228,7 +229,8 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
     """
 
     desc = kwargs.pop(
-        "description", "dxtb - Fully differentiable extended tight-binding program."
+        "description",
+        "dxtb - Fully differentiable extended tight-binding program.",
     )
 
     p = argparse.ArgumentParser(

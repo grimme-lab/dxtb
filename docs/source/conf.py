@@ -83,7 +83,10 @@ intersphinx_mapping = {
     "tad_dftd4": ("https://tad-dftd4.readthedocs.io/en/latest/", None),
     "tad_libcint": ("https://tad-libcint.readthedocs.io/en/latest/", None),
     "tad_mctc": ("https://tad-mctc.readthedocs.io/en/latest/", None),
-    "tad_multicharge": ("https://tad-multicharge.readthedocs.io/en/latest/", None),
+    "tad_multicharge": (
+        "https://tad-multicharge.readthedocs.io/en/latest/",
+        None,
+    ),
     "torch": ("https://pytorch.org/docs/stable/", None),
 }
 

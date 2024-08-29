@@ -33,7 +33,11 @@ from tad_mctc.exceptions import DtypeError
 from dxtb import IndexHelper, OutputHandler
 from dxtb import integrals as ints
 from dxtb import labels
-from dxtb._src.calculators.properties.vibration import IRResult, RamanResult, VibResult
+from dxtb._src.calculators.properties.vibration import (
+    IRResult,
+    RamanResult,
+    VibResult,
+)
 from dxtb._src.components.classicals import (
     Classical,
     ClassicalList,
@@ -416,7 +420,9 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         par: Param,
         *,
         classical: list[Classical] | tuple[Classical] | Classical | None = None,
-        interaction: list[Interaction] | tuple[Interaction] | Interaction | None = None,
+        interaction: (
+            list[Interaction] | tuple[Interaction] | Interaction | None
+        ) = None,
         opts: dict[str, Any] | Config | None = None,
         cache: CalculatorCache | None = None,
         device: torch.device | None = None,
@@ -488,7 +494,9 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
             self.opts.batch_mode = 1
 
         # TODO: Should the IndexHelper be a singleton?
-        self.ihelp = IndexHelper.from_numbers(numbers, par, self.opts.batch_mode)
+        self.ihelp = IndexHelper.from_numbers(
+            numbers, par, self.opts.batch_mode
+        )
 
         ################
         # INTERACTIONS #
@@ -547,7 +555,9 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         )
 
         if classical is None:
-            self.classicals = ClassicalList(halogen, dispersion, repulsion, **dd)
+            self.classicals = ClassicalList(
+                halogen, dispersion, repulsion, **dd
+            )
         elif isinstance(classical, Classical):
             self.classicals = ClassicalList(
                 halogen, dispersion, repulsion, classical, **dd
@@ -579,7 +589,9 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
                     f"({labels.INTLEVEL_DIPOLE}) due to electric field "
                     "interaction."
                 )
-            self.opts.ints.level = max(labels.INTLEVEL_DIPOLE, self.opts.ints.level)
+            self.opts.ints.level = max(
+                labels.INTLEVEL_DIPOLE, self.opts.ints.level
+            )
 
         if efield_grad.LABEL_EFIELD_GRAD in self.interactions.labels:
             if self.opts.ints.level < labels.INTLEVEL_DIPOLE:
@@ -588,13 +600,17 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
                     f"{labels.INTLEVEL_DIPOLE} due to electric field "
                     "gradient interaction."
                 )
-            self.opts.ints.level = max(labels.INTLEVEL_QUADRUPOLE, self.opts.ints.level)
+            self.opts.ints.level = max(
+                labels.INTLEVEL_QUADRUPOLE, self.opts.ints.level
+            )
 
         # setup integral driver and integral container
         mgr = ints.DriverManager(self.opts.ints.driver, **dd)
         mgr.create_driver(numbers, par, self.ihelp)
 
-        self.integrals = ints.Integrals(mgr, intlevel=self.opts.ints.level, **dd)
+        self.integrals = ints.Integrals(
+            mgr, intlevel=self.opts.ints.level, **dd
+        )
 
         if self.opts.ints.level >= labels.INTLEVEL_OVERLAP:
             self.integrals.hcore = ints.factories.new_hcore(

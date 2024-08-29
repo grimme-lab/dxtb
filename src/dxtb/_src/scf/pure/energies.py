@@ -27,7 +27,9 @@ __all__ = [
 ]
 
 
-def get_energy(charges: Charges, data: _Data, interactions: InteractionList) -> Tensor:
+def get_energy(
+    charges: Charges, data: _Data, interactions: InteractionList
+) -> Tensor:
     """
     Get the energy of the system with the given charges.
 
@@ -124,7 +126,9 @@ def get_electronic_free_energy(data: _Data, cfg: ConfigSCF) -> Tensor:
         count = real.count_nonzero(dim=-1).unsqueeze(-1)
         g_atomic = torch.sum(g, dim=-1, keepdim=True) / count
 
-        return torch.where(real, g_atomic.expand(*real.shape), g.new_tensor(0.0))
+        return torch.where(
+            real, g_atomic.expand(*real.shape), g.new_tensor(0.0)
+        )
 
     # partition to atoms via Mulliken population analysis
     if cfg.fermi.partition == labels.FERMI_PARTITION_ATOMIC:
@@ -136,7 +140,9 @@ def get_electronic_free_energy(data: _Data, cfg: ConfigSCF) -> Tensor:
             data.evecs,  # transposed
         )
 
-        return mulliken.get_atomic_populations(data.ints.overlap, density, data.ihelp)
+        return mulliken.get_atomic_populations(
+            data.ints.overlap, density, data.ihelp
+        )
 
     part = labels.FERMI_PARTITION_MAP[cfg.fermi.partition]
     raise ValueError(f"Unknown partitioning mode '{part}'.")

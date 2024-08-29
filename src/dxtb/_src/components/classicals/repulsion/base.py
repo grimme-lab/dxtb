@@ -167,7 +167,9 @@ class BaseRepulsion(Classical):
             klight = klight.to(self.device).type(self.dtype)
         self.klight = klight
 
-    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> BaseRepulsionCache:
+    def get_cache(
+        self, numbers: Tensor, ihelp: IndexHelper
+    ) -> BaseRepulsionCache:
         """
         Store variables for energy and gradient calculation.
 

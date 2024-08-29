@@ -23,7 +23,13 @@ from pathlib import Path
 import torch
 
 from dxtb._src.constants import defaults, labels
-from dxtb._src.typing import Any, PathLike, Self, get_default_device, get_default_dtype
+from dxtb._src.typing import (
+    Any,
+    PathLike,
+    Self,
+    get_default_device,
+    get_default_dtype,
+)
 
 from .cache import ConfigCache
 from .integral import ConfigIntegrals
@@ -359,7 +365,9 @@ class Config:
             If the batch mode is invalid.
         """
         if value not in (0, 1, 2):
-            raise ValueError(f"Invalid batch mode '{value}'. Must be one of [0, 1, 2].")
+            raise ValueError(
+                f"Invalid batch mode '{value}'. Must be one of [0, 1, 2]."
+            )
 
         self._batch_mode = value
         self.scf.batch_mode = value
@@ -400,7 +408,9 @@ class Config:
         config_info = self.info()
 
         def serialize(value):
-            if isinstance(value, torch.device) or isinstance(value, torch.dtype):
+            if isinstance(value, torch.device) or isinstance(
+                value, torch.dtype
+            ):
                 return str(value)
             elif isinstance(value, list):
                 # Recursively serialize lists

@@ -164,7 +164,9 @@ class RepulsionAGBase(torch.autograd.Function):
         positions_bar = arep_bar = kexp_bar = zeff_bar = None
 
         # check which of the input variables of `forward()` requires gradients
-        grad_positions, _, grad_arep, grad_kexp, grad_zeff, _ = ctx.needs_input_grad
+        grad_positions, _, grad_arep, grad_kexp, grad_zeff, _ = (
+            ctx.needs_input_grad
+        )
 
         erep, positions, mask, arep, kexp, zeff = ctx.saved_tensors
 

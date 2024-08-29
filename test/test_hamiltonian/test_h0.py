@@ -45,7 +45,9 @@ large = ["PbH4-BiH3", "LYS_xao"]
 ref_h0 = np.load("test/test_hamiltonian/h0.npz")
 
 
-def run(numbers: Tensor, positions: Tensor, par: Param, ref: Tensor, dd: DD) -> None:
+def run(
+    numbers: Tensor, positions: Tensor, par: Param, ref: Tensor, dd: DD
+) -> None:
     tol = sqrt(torch.finfo(dd["dtype"]).eps) * 10
 
     ihelp = IndexHelper.from_numbers(numbers, par)

@@ -50,7 +50,9 @@ def test_get_pytorch_version_short(mocker) -> None:
 def test_get_pytorch_version_short_raises_error(mocker) -> None:
     mocker.return_value = "config,other"
 
-    with pytest.raises(RuntimeError, match="Version string not found in config."):
+    with pytest.raises(
+        RuntimeError, match="Version string not found in config."
+    ):
         get_pytorch_version_short()
 
 

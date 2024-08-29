@@ -200,19 +200,31 @@ class SelfConsistentFieldFull(BaseTSCF):
                 # cull `orbitals_per_shell` (`shells_per_atom`) to
                 # calculate maximum number of orbitals (shells), which
                 # corresponds to the maximum padding
-                norb_new = self._data.ihelp.orbitals_per_shell[~conv, ...].sum(-1).max()
+                norb_new = (
+                    self._data.ihelp.orbitals_per_shell[~conv, ...]
+                    .sum(-1)
+                    .max()
+                )
                 _norb_new = norb_new
-                nsh_new = self._data.ihelp.shells_per_atom[~conv, ...].sum(-1).max()
-                nat_new = self._data.numbers[~conv, ...].count_nonzero(dim=-1).max()
+                nsh_new = (
+                    self._data.ihelp.shells_per_atom[~conv, ...].sum(-1).max()
+                )
+                nat_new = (
+                    self._data.numbers[~conv, ...].count_nonzero(dim=-1).max()
+                )
 
                 # Here, we account for cases, in which the number of
                 # orbitals is smaller than the number of atoms times 3 (6)
                 # after culling. We specifically avoid culling, as this
                 # would severly mess up the shapes involved.
                 if q.shape[1] == 2:
-                    norb_new = max(t2int(norb_new), t2int(nat_new) * defaults.DP_SHAPE)
+                    norb_new = max(
+                        t2int(norb_new), t2int(nat_new) * defaults.DP_SHAPE
+                    )
                 elif q.shape[1] == 3:
-                    norb_new = max(t2int(norb_new), t2int(nat_new) * defaults.QP_SHAPE)
+                    norb_new = max(
+                        t2int(norb_new), t2int(nat_new) * defaults.QP_SHAPE
+                    )
 
                 # If the largest system was culled from batch, cut the
                 # properties down to the new size to remove superfluous
@@ -238,7 +250,9 @@ class SelfConsistentFieldFull(BaseTSCF):
                 idxs = idxs[~conv]
 
                 if self._data.charges["mono"] is not None:
-                    self._data.charges["mono"] = torch.Size((len(idxs), int(_norb)))
+                    self._data.charges["mono"] = torch.Size(
+                        (len(idxs), int(_norb))
+                    )
                 if self._data.charges["dipole"] is not None:
                     self._data.charges["dipole"] = torch.Size(
                         (len(idxs), int(nat), defaults.DP_SHAPE)
@@ -248,7 +262,9 @@ class SelfConsistentFieldFull(BaseTSCF):
                         (len(idxs), int(nat), defaults.QP_SHAPE)
                     )
                 if self._data.potential["mono"] is not None:
-                    self._data.potential["mono"] = torch.Size((len(idxs), int(_norb)))
+                    self._data.potential["mono"] = torch.Size(
+                        (len(idxs), int(_norb))
+                    )
                 if self._data.potential["dipole"] is not None:
                     self._data.potential["dipole"] = torch.Size(
                         (len(idxs), int(nat), defaults.DP_SHAPE)
@@ -259,7 +275,9 @@ class SelfConsistentFieldFull(BaseTSCF):
                     )
 
                 # cull mixer (only contains orbital resolved properties)
-                self.mixer.cull(conv, slicers=slicers["orbital"], mpdim=int(mpdim))
+                self.mixer.cull(
+                    conv, slicers=slicers["orbital"], mpdim=int(mpdim)
+                )
 
         # handle unconverged case (`maxiter` iterations)
         else:
@@ -289,7 +307,9 @@ class SelfConsistentFieldFull(BaseTSCF):
                 f"({iconv.tolist()}), and {len(idxs[converged])} converged "
                 f"({idxs[converged].tolist()})."
             )
-            OutputHandler.warn(msg + msg_converged, exceptions.SCFConvergenceWarning)
+            OutputHandler.warn(
+                msg + msg_converged, exceptions.SCFConvergenceWarning
+            )
 
         if culled:
             # write converged variables back to `self._data` for final
