@@ -35,6 +35,7 @@ from typing import (
     TypedDict,
     TypeVar,
     cast,
+    final,
     overload,
     runtime_checkable,
 )
@@ -54,6 +55,7 @@ __all__ = [
     "TypedDict",
     "TypeVar",
     "cast",
+    "final",
     "overload",
     "runtime_checkable",
 ]

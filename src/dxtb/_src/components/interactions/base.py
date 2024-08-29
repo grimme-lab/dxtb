@@ -24,7 +24,7 @@ from __future__ import annotations
 import torch
 
 from dxtb import IndexHelper
-from dxtb._src.typing import Any, Slicers, Tensor, TensorOrTensors
+from dxtb._src.typing import Any, Slicers, Tensor, TensorOrTensors, final
 
 from ...components.base import Component, ComponentCache
 from .container import Charges, Potential
@@ -126,6 +126,7 @@ class Interaction(Component):
         """
         return InteractionCache()
 
+    @final
     def get_potential(
         self,
         charges: Charges,
@@ -244,6 +245,7 @@ class Interaction(Component):
         """
         return None
 
+    @final
     def get_energy(
         self, charges: Charges, cache: InteractionCache, ihelp: IndexHelper
     ) -> Tensor:
@@ -373,6 +375,7 @@ class Interaction(Component):
         """
         return torch.zeros_like(charges).sum(-1)
 
+    @final
     def get_gradient(
         self,
         charges: Charges,
