@@ -291,16 +291,13 @@ def svd(
 
     if is_debug_enabled():
         A.check()
-    BA = A.shape[:-2]
 
     m = A.shape[-2]
     n = A.shape[-1]
     if m < n:
         AAsym = A.matmul(A.H, is_hermitian=True)
-        min_nm = m
     else:
         AAsym = A.H.matmul(A, is_hermitian=True)
-        min_nm = n
 
     eivals, eivecs = symeig(
         AAsym, k, mode, bck_options=bck_options, method=method, **fwd_options
@@ -545,7 +542,7 @@ class SymeigMethod_V2(SymeigMethodBase):
 
     @staticmethod
     def setup_context(ctx, inputs: tuple, output: tuple[Tensor, Tensor]):
-        A, neig, mode, M, fwd_options, bck_options, na, amparams = inputs
+        A, _, _, M, _, bck_options, na, amparams = inputs
         evals, evecs = output
 
         ctx.bck_config = set_default_option(
@@ -588,11 +585,8 @@ def _check_degen(
 ) -> Tuple[torch.Tensor, bool]:
     # evals: (*BAM, neig)
 
-    # get the index of degeneracies
-    neig = evals.shape[-1]
-    evals_diff = torch.abs(
-        evals.unsqueeze(-2) - evals.unsqueeze(-1)
-    )  # (*BAM, neig, neig)
+    # (*BAM, neig, neig)
+    evals_diff = torch.abs(evals.unsqueeze(-2) - evals.unsqueeze(-1))
     degen_thrsh = degen_atol + degen_rtol * torch.abs(evals).unsqueeze(-1)
     idx_degen = (evals_diff < degen_thrsh).to(evals.dtype)
     isdegenerate = bool(torch.sum(idx_degen) > torch.numel(evals))

@@ -24,7 +24,7 @@ import sys
 # adapt path to include the source code
 sys.path.insert(0, op.join(op.dirname(__file__), "../../", "src"))
 
-import dxtb
+import dxtb  # noqa
 
 project = "Fully Differentiable Extended Tight-Binding"
 author = "Grimme Group"

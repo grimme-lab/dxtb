@@ -399,7 +399,3 @@ def custom_exactsolve(A, B, E=None, M=None, **options):
     # E: (*BE, ncols)
     # M: (*BM, na, na)
     return exactsolve(A, B, E, M)
-
-
-# docstring completion
-ignore_kwargs = ["E", "M", "mparams"]

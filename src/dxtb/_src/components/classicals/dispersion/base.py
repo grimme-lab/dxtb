@@ -27,6 +27,7 @@ from abc import abstractmethod
 
 import torch
 
+from dxtb import IndexHelper
 from dxtb._src.typing import Any, Tensor
 
 from ...classicals import Classical, ClassicalCache
@@ -64,7 +65,9 @@ class Dispersion(Classical):
         self.charge = charge
 
     @abstractmethod
-    def get_cache(self, numbers: Tensor, **kwargs: Any) -> ClassicalCache:
+    def get_cache(
+        self, numbers: Tensor, ihelp: IndexHelper | None = None, **kwargs: Any
+    ) -> ClassicalCache:
         """
         Store variables for energy calculation.
 
@@ -72,6 +75,9 @@ class Dispersion(Classical):
         ----------
         numbers : Tensor
             Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
+        ihelp : IndexHelper, optional
+            Helper class for indexing. Not needed for D3 and D4. Only passed for
+            consistency with other classical contributions.
 
         Returns
         -------

@@ -878,7 +878,6 @@ def ecoeffs_d(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> Tensor:
     if lj == 1:
         e111 = xij * e100 + rpj * e101
 
-        e020 = rpj * e010 + e011
         e210 = rpi * e110 + e111
 
         return torch.stack(
@@ -1244,7 +1243,6 @@ def ecoeffs_f(lj: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> Tensor:
         e110 = rpj * e100 + e101
         e111 = xij * e100 + rpj * e101
 
-        e020 = rpj * e010 + e011
         e210 = rpi * e110 + e111
 
         e202 = xij * e101
@@ -1514,7 +1512,7 @@ def de_f(
         e302 = xij * e201 + rpi * e202
         e021 = xij * e010 + rpj * e011
         e022 = xij * e011
-        e032 = xij * e021 + rpj * e022
+        # e032 = xij * e021 + rpj * e022
         e311 = xij * e300 + rpj * e301 + 2 * e302
 
         e410 = rpi * e310 + e311

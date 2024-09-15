@@ -37,7 +37,6 @@ from ..conftest import DEVICE
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_empty(dtype: torch.dtype):
     dd: DD = {"dtype": dtype, "device": DEVICE}
-    numbers = torch.tensor([1, 3], device=DEVICE)
 
     mgr = ints.DriverManager(INTDRIVER_LIBCINT, **dd)
     i = ints.Integrals(mgr, **dd)

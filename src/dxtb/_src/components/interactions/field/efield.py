@@ -26,6 +26,7 @@ from __future__ import annotations
 import torch
 from tad_mctc.math import einsum
 
+from dxtb import IndexHelper
 from dxtb._src.typing import Any, Slicers, Tensor, override
 from dxtb._src.typing.exceptions import DeviceError, DtypeError
 
@@ -131,8 +132,15 @@ class ElectricField(Interaction):
         )
         self.field = field
 
+    # pylint: disable=unused-argument
     @override
-    def get_cache(self, positions: Tensor, **_: Any) -> ElectricFieldCache:
+    def get_cache(
+        self,
+        *,
+        numbers: Tensor | None = None,
+        positions: Tensor | None = None,
+        ihelp: IndexHelper | None = None,
+    ) -> ElectricFieldCache:
         """
         Create restart data for individual interactions.
 
@@ -148,6 +156,9 @@ class ElectricField(Interaction):
         argument list will absorb those unnecessary arguments which are given
         as keyword-only arguments (see `Interaction.get_cache()`).
         """
+        if positions is None:
+            raise ValueError("Electric field requires atomic positions.")
+
         cachvars = (positions.detach().clone(), self.field.detach().clone())
 
         if self.cache_is_latest(cachvars) is True:

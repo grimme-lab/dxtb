@@ -59,7 +59,7 @@ def test_gb_single(dtype: torch.dtype, name: str, dielectric_constant=78.9):
     ref = sample["energies"].to(**dd)
 
     gb = alpb.GeneralizedBorn(numbers, dielectric_constant, **dd)
-    cache = gb.get_cache(numbers, positions)
+    cache = gb.get_cache(numbers=numbers, positions=positions)
     energies = gb.get_atom_energy(charges, cache)
 
     assert pytest.approx(energies.cpu(), abs=tol) == ref.cpu()
@@ -85,7 +85,7 @@ def test_gb_still_single(
     gb = alpb.GeneralizedBorn(
         numbers, dc, kernel="still", rvdw=rvdw, alpb=False, **dd
     )
-    cache = gb.get_cache(numbers, positions)
+    cache = gb.get_cache(numbers=numbers, positions=positions)
     energies = gb.get_atom_energy(charges, cache)
 
     assert pytest.approx(energies.cpu(), abs=tol) == ref.cpu()

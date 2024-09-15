@@ -44,9 +44,6 @@ __all__ = [
 ]
 
 
-T = TypeVar("T")
-
-
 def get_all_slots(cls):
     # cls.__class__.__mro__ = (<class 'object'>, <class 'TensorLike'>,
     # <class 'BaseResult'>, <class 'VibResult'>)

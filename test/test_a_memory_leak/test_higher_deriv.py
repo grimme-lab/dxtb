@@ -67,7 +67,7 @@ def execute(name: str, dtype: torch.dtype, n: int) -> None:
         del ihelp
         del rep
         del cache
-        del energy
+        del energy  # noqa
 
     # run garbage collector to avoid leaks across other tests
     garbage_collect()

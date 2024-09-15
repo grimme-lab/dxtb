@@ -41,8 +41,6 @@ from dxtb._src.typing import Tensor
 __all__ = ["Driver"]
 
 
-logger = logging.getLogger(__name__)
-
 FILES = {"spin": ".UHF", "chrg": ".CHRG"}
 
 

@@ -54,7 +54,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=is_shell_resolved, **dd)
     assert es is not None
 
-    cache = es.get_cache(numbers, positions, ihelp)
+    cache = es.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
 
     # shell gradient should be zero
     grad_sh = es._get_shell_gradient(numbers, positions, charges, cache, ihelp)
@@ -78,7 +78,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     # analytical (automatic)
     es.cache_invalidate()
-    cache = es.get_cache(numbers, pos, ihelp)  # recalc with gradients
+    cache = es.get_cache(numbers=numbers, positions=pos, ihelp=ihelp)  # recalc
     egrad = es.get_atom_gradient(charges, pos, cache)
     egrad.detach_()
     assert pytest.approx(ref.cpu(), abs=tol) == egrad.cpu()
@@ -125,7 +125,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     es.cache_disable()
 
     # analytical (old)
-    cache = es.get_cache(numbers, positions, ihelp)
+    cache = es.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
     grad = es._get_atom_gradient(numbers, positions, charges, cache)
     assert pytest.approx(ref.cpu(), abs=tol) == grad.cpu()
 
@@ -137,7 +137,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     assert pytest.approx(ref.cpu(), abs=tol) == agrad.cpu()
 
     # analytical (automatic)
-    cache = es.get_cache(numbers, pos, ihelp)  # recalc with gradients
+    cache = es.get_cache(numbers=numbers, positions=pos, ihelp=ihelp)  # recalc
     egrad = es.get_atom_gradient(charges, pos, cache)
     egrad.detach_()
     assert pytest.approx(ref.cpu(), abs=tol) == egrad.cpu()
@@ -168,12 +168,16 @@ def calc_numerical_gradient(
     for i in range(numbers.shape[0]):
         for j in range(3):
             positions[i, j] += step
-            cache = es.get_cache(numbers, positions, ihelp)
+            cache = es.get_cache(
+                numbers=numbers, positions=positions, ihelp=ihelp
+            )
             er = es.get_atom_energy(charges, cache)
             er = torch.sum(er, dim=-1)
 
             positions[i, j] -= 2 * step
-            cache = es.get_cache(numbers, positions, ihelp)
+            cache = es.get_cache(
+                numbers=numbers, positions=positions, ihelp=ihelp
+            )
             el = es.get_atom_energy(charges, cache)
             el = torch.sum(el, dim=-1)
 

@@ -47,7 +47,7 @@ Example
     gb = GeneralizedBorn(numbers, torch.tensor(78.9), kernel="still")
 
     # Build cache and use it for energy calculation
-    cache = gb.get_cache(numbers, positions)
+    cache = gb.get_cache(numbers=numbers, positions=positions)
     energy = gb.get_atom_energy(charges, cache)
 
     total_energy = energy.sum(-1)
@@ -63,6 +63,7 @@ from tad_mctc.batch import real_pairs
 from tad_mctc.data import VDW_D3
 from tad_mctc.math import einsum
 
+from dxtb import IndexHelper
 from dxtb._src.param import Param
 from dxtb._src.typing import (
     DD,
@@ -243,9 +244,14 @@ class GeneralizedBorn(Interaction):
             kwargs["rvdw"] = VDW_D3.to(**self.dd)[numbers]
         self.born_kwargs = kwargs
 
+    # pylint: disable=unused-argument
     @override
     def get_cache(
-        self, numbers: Tensor, positions: Tensor, **_
+        self,
+        *,
+        numbers: Tensor | None = None,
+        positions: Tensor | None = None,
+        ihelp: IndexHelper | None = None,
     ) -> GeneralizedBornCache:
         """
         Create restart data for individual interactions.
@@ -264,10 +270,16 @@ class GeneralizedBorn(Interaction):
 
         Note
         ----
-        If the `GeneralizedBorn` interaction is evaluated within the
-        `InteractionList`, the `IndexHelper` will be passed as argument.
-        Hence, the `**_` in the argument list is necessary to absorb it.
+        If the :class:`.GeneralizedBorn` interaction is evaluated within the
+        :class:`dxtb.components.InteractionList`, the :class:`dxtb.IndexHelper`
+        will be passed as an argument, too. Hence, it is necessary in signature
+        of the function to absorb it.
         """
+        if numbers is None:
+            raise ValueError("Atomic numbers are required for cache.")
+        if positions is None:
+            raise ValueError("Atomic positions are required for cache.")
+
         cachvars = (numbers.detach().clone(), positions.detach().clone())
 
         if self.cache_is_latest(cachvars) is True:

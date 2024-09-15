@@ -420,6 +420,7 @@ class LinearOperator(EditableModule):
         )
         return spLinearOperator(
             shape=self.shape,
+            dtype=self.dtype,
             matvec=lambda v: self.mv(to_tensor(v)).detach().cpu().numpy(),
             rmatvec=lambda v: self.rmv(to_tensor(v)).detach().cpu().numpy(),
             matmat=lambda v: self.mm(to_tensor(v)).detach().cpu().numpy(),

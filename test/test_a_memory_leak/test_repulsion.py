@@ -94,7 +94,7 @@ def execute(name: str, dtype: torch.dtype) -> None:
         del energy
         del arep
         del zeff
-        del kexp
+        del kexp  # noqa
 
     # run garbage collector to avoid leaks across other tests
     garbage_collect()

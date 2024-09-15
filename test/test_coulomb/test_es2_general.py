@@ -50,7 +50,7 @@ def test_store_fail() -> None:
     es = es2.new_es2(numbers, GFN1_XTB)
     assert es is not None
 
-    cache = es.get_cache(numbers, positions, ihelp=ihelp)
+    cache = es.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
     with pytest.raises(RuntimeError):
         cache.restore()
 
@@ -65,7 +65,7 @@ def test_grad_fail() -> None:
     es = es2.new_es2(numbers, GFN1_XTB, **dd)
     assert es is not None
 
-    cache = es.get_cache(numbers, positions, ihelp=ihelp)
+    cache = es.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
     energy = es.get_energy(Charges(charges), cache, ihelp)
 
     # zeroenergy

@@ -335,7 +335,6 @@ def _nonline_line_search(
     tmp_s = [0]
     tmp_y = [y]
     tmp_phi = [y.norm() ** 2]
-    s_norm = x.norm() / dx.norm()
 
     def phi(s, store=True):
         if s == tmp_s[0]:
@@ -349,12 +348,14 @@ def _nonline_line_search(
             tmp_y[0] = v
         return p
 
-    def derphi(s):
-        ds = (torch.abs(s) + s_norm + 1) * rdiff
-        return (phi(s + ds, store=False) - phi(s)) / ds
+    # Alternative?
+    # s_norm = x.norm() / dx.norm()
+    # def derphi(s):
+    #     ds = (torch.abs(s) + s_norm + 1) * rdiff
+    #     return (phi(s + ds, store=False) - phi(s)) / ds
 
     if search_type == "armijo":
-        s, phi1 = _scalar_search_armijo(phi, tmp_phi[0], -tmp_phi[0], amin=smin)
+        s, _ = _scalar_search_armijo(phi, tmp_phi[0], -tmp_phi[0], amin=smin)
 
     if s is None:
         # No suitable step length found. Take the full Newton step,

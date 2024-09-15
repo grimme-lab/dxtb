@@ -72,7 +72,14 @@ from tad_mctc.exceptions import DeviceError
 
 from dxtb import IndexHelper
 from dxtb._src.param import Param, get_elem_param
-from dxtb._src.typing import DD, Slicers, Tensor, TensorLike, get_default_dtype
+from dxtb._src.typing import (
+    DD,
+    Slicers,
+    Tensor,
+    TensorLike,
+    get_default_dtype,
+    override,
+)
 
 from ..base import Interaction, InteractionCache
 
@@ -153,7 +160,16 @@ class ES3(Interaction):
         super().__init__(device, dtype)
         self.hubbard_derivs = hubbard_derivs
 
-    def get_cache(self, numbers: Tensor, ihelp: IndexHelper, **_) -> ES3Cache:
+    # pylint: disable=unused-argument
+    @override
+    def get_cache(
+        self,
+        *,
+        numbers: Tensor | None = None,
+        positions: Tensor | None = None,
+        ihelp: IndexHelper | None = None,
+        **_,
+    ) -> ES3Cache:
         """
         Create restart data for individual interactions.
 
@@ -169,12 +185,17 @@ class ES3(Interaction):
 
         Note
         ----
-        If this :class:`.ES3` interaction is evaluated within the
-        :class:`dxtb.components.InteractionList`, ``numbers`` will be passed as
-        argument, too. The ``**_`` in the argument list will absorb those
-        unnecessary arguments which are given as keyword-only arguments (see
+        If the :class:`.ES3` interaction is evaluated within the
+        :class:`dxtb.components.InteractionList`, ``positions`` will be passed
+        as an argument, too. Hence, it is necessary in signature
+        of the function to absorb it (also see
         :meth:`dxtb.components.Interaction.get_cache`).
         """
+        if numbers is None:
+            raise ValueError("Atomic numbers are required for ES3 cache.")
+        if ihelp is None:
+            raise ValueError("IndexHelper is required for ES3 cache.")
+
         cachvars = (numbers.detach().clone(),)
 
         if self.cache_is_latest(cachvars) is True:

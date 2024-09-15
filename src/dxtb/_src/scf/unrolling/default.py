@@ -59,14 +59,14 @@ class SelfConsistentFieldFull(BaseTSCF):
         self,
         guess: Tensor,
         return_charges: Literal[True] = True,
-    ) -> Charges: ...
+    ) -> Charges: ...  # noqa
 
     @overload
     def scf(
         self,
         guess: Tensor,
         return_charges: Literal[False] = False,
-    ) -> Charges | Potential | Tensor: ...
+    ) -> Charges | Potential | Tensor: ...  # noqa
 
     def scf(
         self, guess: Tensor, return_charges: bool = True

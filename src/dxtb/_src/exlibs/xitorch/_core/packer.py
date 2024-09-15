@@ -111,7 +111,6 @@ class Packer:
         if unique:
             if self._unique_params_idxs is not None:
                 unique_idxs = self._unique_params_idxs
-                unique_inverse = self._unique_inverse_idxs
             else:
                 unique_idxs, unique_inverse = _get_unique_idxs(params_tensors)
                 self._unique_params_idxs = unique_idxs

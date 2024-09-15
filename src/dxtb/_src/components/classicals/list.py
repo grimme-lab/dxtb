@@ -157,10 +157,16 @@ class ClassicalList(ComponentList[Classical]):
     ###########################################################################
 
     @overload
-    def get_interaction(self, name: Literal["Halogen"]) -> Halogen: ...
+    def get_interaction(
+        self,
+        name: Literal["Halogen"],
+    ) -> Halogen: ...  # noqa
 
     @overload
-    def get_interaction(self, name: Literal["Repulsion"]) -> Repulsion: ...
+    def get_interaction(
+        self,
+        name: Literal["Repulsion"],
+    ) -> Repulsion: ...  # noqa
 
     @override  # generic implementation for typing
     def get_interaction(self, name: str) -> Classical:

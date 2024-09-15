@@ -29,13 +29,11 @@ import torch
 from tad_mctc.batch import pack
 from tad_mctc.data.radii import ATOMIC as ATOMIC_RADII
 
+from dxtb import IndexHelper
 from dxtb._src.constants import xtb
-from dxtb._src.typing import TYPE_CHECKING, Tensor
+from dxtb._src.typing import Tensor, override
 
 from ..base import Classical, ClassicalCache
-
-if TYPE_CHECKING:
-    from dxtb import IndexHelper
 
 __all__ = ["Halogen", "LABEL_HALOGEN"]
 
@@ -114,7 +112,10 @@ class Halogen(Classical):
         self.halogens = [17, 35, 53, 85]
         self.bases = [7, 8, 15, 16]
 
-    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> HalogenCache:
+    @override
+    def get_cache(
+        self, numbers: Tensor, ihelp: IndexHelper | None = None
+    ) -> HalogenCache:
         """
         Store variables for energy calculation.
 
@@ -136,6 +137,11 @@ class Halogen(Classical):
         it only becomes useful if ``numbers`` remain unchanged and ``positions``
         vary, i.e., during geometry optimization.
         """
+        if ihelp is None:
+            raise ValueError(
+                "IndexHelper is required for halogen bond correction."
+            )
+
         cachvars = (numbers.detach().clone(),)
 
         if self.cache_is_latest(cachvars) is True:
@@ -153,6 +159,7 @@ class Halogen(Classical):
         self.cache = HalogenCache(numbers, xbond)
         return self.cache
 
+    @override
     def get_energy(self, positions: Tensor, cache: HalogenCache) -> Tensor:
         """
         Handle batchwise and single calculation of halogen bonding energy.

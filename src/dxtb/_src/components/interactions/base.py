@@ -101,7 +101,11 @@ class Interaction(Component):
 
     # pylint: disable=unused-argument
     def get_cache(
-        self, *, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
+        self,
+        *,
+        numbers: Tensor | None = None,
+        positions: Tensor | None = None,
+        ihelp: IndexHelper | None = None,
     ) -> InteractionCache:
         """
         Create restart data for individual interactions.

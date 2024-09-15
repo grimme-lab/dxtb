@@ -52,13 +52,13 @@ def _tensors_from_gc() -> Generator[Tensor, None, None]:
 @overload
 def _get_tensor_memory(
     return_number_tensors: Literal[False] = False,
-) -> float: ...
+) -> float: ...  # noqa
 
 
 @overload
 def _get_tensor_memory(
     return_number_tensors: Literal[True] = True,
-) -> tuple[float, int]: ...
+) -> tuple[float, int]: ...  # noqa
 
 
 def _get_tensor_memory(
