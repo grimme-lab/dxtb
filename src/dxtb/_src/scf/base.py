@@ -289,7 +289,7 @@ class BaseSCF:
         self,
         guess: Tensor,
         return_charges: Literal[True] = True,
-    ) -> Charges: ...  # noqa
+    ) -> Charges: ...
 
     @overload
     @abstractmethod
@@ -297,7 +297,7 @@ class BaseSCF:
         self,
         guess: Tensor,
         return_charges: Literal[False] = False,
-    ) -> Charges | Potential | Tensor: ...  # noqa
+    ) -> Charges | Potential | Tensor: ...
 
     @abstractmethod
     def scf(

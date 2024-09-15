@@ -51,7 +51,7 @@ class _ScatterOrGatherWrapper(Protocol):
         dim1: int,
         idx: Tensor,
         *args: str,
-    ) -> Tensor: ...  # noqa
+    ) -> Tensor: ...
 
 
 def twice_remove_negative_index(

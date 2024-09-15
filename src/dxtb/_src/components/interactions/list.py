@@ -274,18 +274,18 @@ class InteractionList(ComponentList[Interaction]):
     @overload
     def get_interaction(
         self, name: Literal["ElectricField"]
-    ) -> ElectricField: ...  # noqa
+    ) -> ElectricField: ...
 
     @overload
     def get_interaction(
         self, name: Literal["ElectricFieldGrad"]
-    ) -> ElectricFieldGrad: ...  # noqa
+    ) -> ElectricFieldGrad: ...
 
     @overload
-    def get_interaction(self, name: Literal["ES2"]) -> ES2: ...  # noqa
+    def get_interaction(self, name: Literal["ES2"]) -> ES2: ...
 
     @overload
-    def get_interaction(self, name: Literal["ES3"]) -> ES3: ...  # noqa
+    def get_interaction(self, name: Literal["ES3"]) -> ES3: ...
 
     @override  # generic implementation for typing
     def get_interaction(self, name: str) -> Interaction:

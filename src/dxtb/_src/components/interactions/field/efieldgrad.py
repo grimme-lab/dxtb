@@ -28,7 +28,7 @@ from tad_mctc.exceptions import DeviceError, DtypeError
 from tad_mctc.math import einsum
 
 from dxtb import IndexHelper
-from dxtb._src.typing import Any, Tensor, TensorLike, override
+from dxtb._src.typing import Tensor, TensorLike, override
 
 from ..base import Interaction, InteractionCache
 
