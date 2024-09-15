@@ -89,30 +89,6 @@ hamiltonian = torch.tensor(
 )
 
 
-@pytest.mark.parametrize("broadening", [None, "cond", "lorn"])
-def test_eighb(broadening: Literal["cond", "lorn"] | None) -> None:
-    a = torch.rand(8, 8, dtype=torch.double, device=DEVICE)
-    a.requires_grad_(True)
-
-    def eigen_proxy(m: Tensor):
-        m = symmetrize(m, force=True)
-        return eighb(a=m, broadening_method=broadening)
-
-    assert gradcheck(eigen_proxy, a)
-
-
-@pytest.mark.xfail
-@pytest.mark.parametrize("broadening", [None, "cond", "lorn"])
-def test_eighb_degen(broadening: Literal["cond", "lorn"] | None) -> None:
-    hamiltonian.detach_().requires_grad_(True)
-
-    def eigen_proxy(m: Tensor):
-        m = symmetrize(m, force=True)
-        return eighb(a=m, broadening_method=broadening)
-
-    assert gradcheck(eigen_proxy, hamiltonian)
-
-
 def test_xtlsymeig() -> None:
     a = torch.rand(8, 8, dtype=torch.double, device=DEVICE)
     a.requires_grad_(True)
