@@ -31,7 +31,7 @@ from dxtb._src.components.classicals import Halogen
 from dxtb._src.param import get_elem_param
 from dxtb._src.typing import DD, Callable, Tensor
 
-from ..conftest import DEVICE
+from ...conftest import DEVICE
 from .samples import samples
 
 sample_list = ["br2nh3", "br2och2", "tmpda"]

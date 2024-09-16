@@ -312,7 +312,9 @@ def get_fermi_occupation(
 
     # negative etemp
     if kt is not None and torch.any(kt < 0.0):
-        raise ValueError(f"Electronic Temperature must be positive or None ({kt}).")
+        raise ValueError(
+            f"Electronic Temperature must be positive or None ({kt})."
+        )
 
     dd: DD = {"device": emo.device, "dtype": emo.dtype}
     eps = torch.tensor(torch.finfo(emo.dtype).eps, **dd)
@@ -324,7 +326,9 @@ def get_fermi_occupation(
 
     if thr is None:
         thr = defaults.FERMI_THRESH
-    thresh = thr.get(emo.dtype, torch.tensor(1e-5, dtype=torch.float)).to(emo.device)
+    thresh = thr.get(emo.dtype, torch.tensor(1e-5, dtype=torch.float)).to(
+        emo.device
+    )
 
     e_fermi, homo = get_fermi_energy(nel, emo, mask=mask)
 
@@ -343,7 +347,9 @@ def get_fermi_occupation(
 
         # only singly occupied here         v
         fermi = torch.where(exponent < 50, 1.0 / (eterm + 1.0), zero)
-        dfermi = torch.where(exponent < 50, eterm / (kt * (eterm + 1.0) ** 2), eps)
+        dfermi = torch.where(
+            exponent < 50, eterm / (kt * (eterm + 1.0) ** 2), eps
+        )
 
         _nel = torch.sum(fermi, dim=-1, keepdim=True)
         change = (homo - _nel + 1) / torch.sum(dfermi, dim=-1, keepdim=True)

@@ -44,7 +44,9 @@ from .samples import samples
 
 def run(numbers: Tensor, positions: Tensor, cpu: bool, dd: DD) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
-    mgr = DriverManager(labels.INTDRIVER_LIBCINT, force_cpu_for_libcint=cpu, **dd)
+    mgr = DriverManager(
+        labels.INTDRIVER_LIBCINT, force_cpu_for_libcint=cpu, **dd
+    )
     mgr.create_driver(numbers, par, ihelp)
 
     i = ints.Integrals(mgr, intlevel=labels.INTLEVEL_QUADRUPOLE, **dd)

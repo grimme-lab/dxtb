@@ -189,7 +189,7 @@ class Integrals(IntegralContainer):
         # `None`, the overlap will not be rebuilt if the positions change,
         # i.e., when the driver was invalidated. Hence, we would require a
         # full reset of the integrals via `reset_all`. However, the integral
-        # reset cannot be trigger by the driver manager, so we cannot add this
+        # reset cannot be triggered by the driver manager, so we cannot add this
         # check here. If we do, the hessian tests will fail as the overlap is
         # not recalculated for positions + delta.
         self.overlap.build(self.mgr.driver)
@@ -271,7 +271,9 @@ class Integrals(IntegralContainer):
         self._dipole = dipole
         self.checks()
 
-    def build_dipole(self, positions: Tensor, shift: bool = True, **kwargs: Any):
+    def build_dipole(
+        self, positions: Tensor, shift: bool = True, **kwargs: Any
+    ):
         # in case CPU is forced for libcint, move positions to CPU
         if self.mgr.force_cpu_for_libcint:
             if positions.device != torch.device("cpu"):

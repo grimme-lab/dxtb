@@ -26,7 +26,9 @@ __all__ = ["get_density"]
 
 
 @timer_decorator("Density", "SCF")
-def get_density(coeffs: Tensor, occ: Tensor, emo: Tensor | None = None) -> Tensor:
+def get_density(
+    coeffs: Tensor, occ: Tensor, emo: Tensor | None = None
+) -> Tensor:
     """
     Calculate the density matrix from the coefficient vector and the occupation.
 

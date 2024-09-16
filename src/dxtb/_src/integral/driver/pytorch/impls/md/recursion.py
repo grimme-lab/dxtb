@@ -84,7 +84,9 @@ def _e_function(E: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> Tensor:
             )
 
         # t = tmax (excludes t + 1 term)
-        E[..., i, 0, i] = xij * E[..., i - 1, 0, i - 1] + rpi * E[..., i - 1, 0, i]
+        E[..., i, 0, i] = (
+            xij * E[..., i - 1, 0, i - 1] + rpi * E[..., i - 1, 0, i]
+        )
 
     # do all j > 0 for all i's (all orders of HP)
     for j in range(1, E.shape[-2]):
@@ -102,13 +104,16 @@ def _e_function(E: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> Tensor:
 
             # t = tmax (excludes t + 1 term)
             E[..., i, j, i + j] = (
-                xij * E[..., i, j - 1, i + j - 1] + rpj * E[..., i, j - 1, i + j]
+                xij * E[..., i, j - 1, i + j - 1]
+                + rpj * E[..., i, j - 1, i + j]
             )
 
     return E
 
 
-_e_function_jit: Callable[[Tensor, Tensor, Tensor, Tensor], Tensor] = torch.jit.trace(
+_e_function_jit: Callable[
+    [Tensor, Tensor, Tensor, Tensor], Tensor
+] = torch.jit.trace(
     _e_function,
     (
         torch.rand((3, 5, 5, 11)),
@@ -317,7 +322,8 @@ class EFunction(torch.autograd.Function):
 
 # TODO-3.11: Fix typing with unpacking
 e_function: Callable[
-    [Tensor, Tensor, Tensor, tuple[tuple[int, ...], int, int, Tensor, Tensor]], Tensor
+    [Tensor, Tensor, Tensor, tuple[tuple[int, ...], int, int, Tensor, Tensor]],
+    Tensor,
 ] = EFunction.apply  # type: ignore
 
 
@@ -403,11 +409,15 @@ def md_recursion(
     return o
 
 
-def e_function_derivative(e: Tensor, ai: Tensor, li: Tensor, lj: Tensor) -> Tensor:
+def e_function_derivative(
+    e: Tensor, ai: Tensor, li: Tensor, lj: Tensor
+) -> Tensor:
     """Calculate derivative of E coefficients."""
     _li, _lj = t2int(li), t2int(lj)
 
-    de = torch.zeros((e.shape[0], 3, e.shape[-5], e.shape[-4], _li + 1, _lj + 1, 1))
+    de = torch.zeros(
+        (e.shape[0], 3, e.shape[-5], e.shape[-4], _li + 1, _lj + 1, 1)
+    )
     for k in range(e.shape[-4]):  # aj
         for i in range(li + 1):  # li
             for j in range(lj + 1):  # lj

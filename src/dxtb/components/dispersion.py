@@ -21,8 +21,14 @@ Components: Dispersion
 Tight-binding components for dispersion.
 """
 
-from dxtb._src.components.classicals.dispersion import DispersionD3 as DispersionD3
-from dxtb._src.components.classicals.dispersion import DispersionD4 as DispersionD4
-from dxtb._src.components.classicals.dispersion import new_dispersion as new_dispersion
+from dxtb._src.components.classicals.dispersion import (
+    DispersionD3 as DispersionD3,
+)
+from dxtb._src.components.classicals.dispersion import (
+    DispersionD4 as DispersionD4,
+)
+from dxtb._src.components.classicals.dispersion import (
+    new_dispersion as new_dispersion,
+)
 
 __all__ = ["DispersionD3", "DispersionD4", "new_dispersion"]

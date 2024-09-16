@@ -86,7 +86,9 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property("energy", positions, chrg=chrg, spin=spin, **kwargs)
+        return self.get_property(
+            "energy", positions, chrg=chrg, spin=spin, **kwargs
+        )
 
     def get_potential_energy(
         self,
@@ -95,7 +97,9 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property("energy", positions, chrg=chrg, spin=spin, **kwargs)
+        return self.get_property(
+            "energy", positions, chrg=chrg, spin=spin, **kwargs
+        )
 
     # nuclear derivatives
 
@@ -104,7 +108,9 @@ class GetPropertiesMixin(ABC):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        grad_mode: Literal["autograd", "backward", "functorch", "row"] = "autograd",
+        grad_mode: Literal[
+            "autograd", "backward", "functorch", "row"
+        ] = "autograd",
         **kwargs: Any,
     ) -> Tensor:
         r"""
@@ -147,7 +153,12 @@ class GetPropertiesMixin(ABC):
             Atomic forces of shape ``(..., nat, 3)``.
         """
         return self.get_property(
-            "forces", positions, chrg=chrg, spin=spin, grad_mode=grad_mode, **kwargs
+            "forces",
+            positions,
+            chrg=chrg,
+            spin=spin,
+            grad_mode=grad_mode,
+            **kwargs,
         )
 
     def get_hessian(
@@ -157,7 +168,9 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property("hessian", positions, chrg=chrg, spin=spin, **kwargs)
+        return self.get_property(
+            "hessian", positions, chrg=chrg, spin=spin, **kwargs
+        )
 
     def get_vibration(
         self,
@@ -166,7 +179,9 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property("vibration", positions, chrg=chrg, spin=spin, **kwargs)
+        return self.get_property(
+            "vibration", positions, chrg=chrg, spin=spin, **kwargs
+        )
 
     def get_normal_modes(
         self,
@@ -199,7 +214,9 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property("dipole", positions, chrg=chrg, spin=spin, **kwargs)
+        return self.get_property(
+            "dipole", positions, chrg=chrg, spin=spin, **kwargs
+        )
 
     def get_dipole_moment(
         self,
@@ -208,7 +225,9 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property("dipole", positions, chrg=chrg, spin=spin, **kwargs)
+        return self.get_property(
+            "dipole", positions, chrg=chrg, spin=spin, **kwargs
+        )
 
     def get_dipole_deriv(
         self,
@@ -251,7 +270,11 @@ class GetPropertiesMixin(ABC):
         **kwargs: Any,
     ) -> Tensor:
         return self.get_property(
-            "polarizability_derivatives", positions, chrg=chrg, spin=spin, **kwargs
+            "polarizability_derivatives",
+            positions,
+            chrg=chrg,
+            spin=spin,
+            **kwargs,
         )
 
     def get_polarizability_derivatives(
@@ -262,7 +285,11 @@ class GetPropertiesMixin(ABC):
         **kwargs: Any,
     ) -> Tensor:
         return self.get_property(
-            "polarizability_derivatives", positions, chrg=chrg, spin=spin, **kwargs
+            "polarizability_derivatives",
+            positions,
+            chrg=chrg,
+            spin=spin,
+            **kwargs,
         )
 
     def get_hyperpolarizability(
@@ -285,7 +312,9 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property("ir", positions, chrg=chrg, spin=spin, **kwargs)
+        return self.get_property(
+            "ir", positions, chrg=chrg, spin=spin, **kwargs
+        )
 
     def get_ir_intensities(
         self,
@@ -305,7 +334,9 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property("raman", positions, chrg=chrg, spin=spin, **kwargs)
+        return self.get_property(
+            "raman", positions, chrg=chrg, spin=spin, **kwargs
+        )
 
     def get_raman_intensities(
         self,
@@ -360,7 +391,9 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property("density", positions, chrg=chrg, spin=spin, **kwargs)
+        return self.get_property(
+            "density", positions, chrg=chrg, spin=spin, **kwargs
+        )
 
     def get_charges(
         self,
@@ -369,7 +402,9 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property("charges", positions, chrg=chrg, spin=spin, **kwargs)
+        return self.get_property(
+            "charges", positions, chrg=chrg, spin=spin, **kwargs
+        )
 
     def get_mulliken_charges(
         self,
@@ -378,7 +413,9 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property("charges", positions, chrg=chrg, spin=spin, **kwargs)
+        return self.get_property(
+            "charges", positions, chrg=chrg, spin=spin, **kwargs
+        )
 
     def get_iterations(
         self,
@@ -420,4 +457,6 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property("potential", positions, chrg=chrg, spin=spin, **kwargs)
+        return self.get_property(
+            "potential", positions, chrg=chrg, spin=spin, **kwargs
+        )

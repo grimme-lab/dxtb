@@ -40,10 +40,12 @@ def test_fail() -> None:
         factory.new_driver(-1, numbers, GFN1_XTB)
 
 
-def test_driver() -> None:
+def test_driver_libcint() -> None:
     cls = factory.new_driver(labels.INTDRIVER_LIBCINT, numbers, GFN1_XTB)
     assert isinstance(cls, IntDriverLibcint)
 
+
+def test_driver_pytorch() -> None:
     cls = factory.new_driver(labels.INTDRIVER_ANALYTICAL, numbers, GFN1_XTB)
     assert isinstance(cls, IntDriverPytorch)
 
@@ -54,12 +56,12 @@ def test_driver() -> None:
     assert isinstance(cls, IntDriverPytorchLegacy)
 
 
-def test_libcint() -> None:
+def test_factory_libcint() -> None:
     cls = factory.new_driver_libcint(numbers, GFN1_XTB)
     assert isinstance(cls, IntDriverLibcint)
 
 
-def test_pytorch() -> None:
+def test_factory_pytorch() -> None:
     cls = factory.new_driver_pytorch(numbers, GFN1_XTB)
     assert isinstance(cls, IntDriverPytorch)
 

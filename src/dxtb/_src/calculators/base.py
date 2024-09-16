@@ -56,4 +56,6 @@ class Calculator(AnalyticalCalculator, AutogradCalculator, NumericalCalculator):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ):
-        AutogradCalculator.calculate(self, properties, positions, chrg, spin, **kwargs)
+        AutogradCalculator.calculate(
+            self, properties, positions, chrg, spin, **kwargs
+        )

@@ -26,7 +26,8 @@ import tad_dftd3 as d3
 import torch
 from tad_mctc.ncoord import cn_d3, exp_count
 
-from dxtb._src.typing import Any, CountingFunction, Tensor
+from dxtb import IndexHelper
+from dxtb._src.typing import Any, CountingFunction, Tensor, override
 
 from ..base import ClassicalCache
 from .base import Dispersion
@@ -81,7 +82,10 @@ class DispersionD3Cache(ClassicalCache):
 class DispersionD3(Dispersion):
     """Representation of the DFT-D3(BJ) dispersion correction."""
 
-    def get_cache(self, numbers: Tensor, **kwargs: Any) -> DispersionD3Cache:
+    @override
+    def get_cache(
+        self, numbers: Tensor, ihelp: IndexHelper | None = None, **kwargs: Any
+    ) -> DispersionD3Cache:
         """
         Obtain cache for storage of settings.
 
@@ -124,7 +128,9 @@ class DispersionD3(Dispersion):
 
         rvdw = kwargs.pop(
             "rvdw",
-            d3.data.VDW_D3.to(**self.dd)[numbers.unsqueeze(-1), numbers.unsqueeze(-2)],
+            d3.data.VDW_D3.to(**self.dd)[
+                numbers.unsqueeze(-1), numbers.unsqueeze(-2)
+            ],
         ).to(**self.dd)
 
         r4r2 = kwargs.pop(
@@ -139,6 +145,7 @@ class DispersionD3(Dispersion):
         self.cache = DispersionD3Cache(ref, rcov, rvdw, r4r2, cf, wf, df)
         return self.cache
 
+    @override
     def get_energy(
         self, positions: Tensor, cache: DispersionD3Cache, **kwargs: Any
     ) -> Tensor:
@@ -169,7 +176,9 @@ class DispersionD3(Dispersion):
         )
 
         chunk_size = kwargs.pop("chunk_size", None)
-        c6 = d3.model.atomic_c6(self.numbers, weights, cache.ref, chunk_size=chunk_size)
+        c6 = d3.model.atomic_c6(
+            self.numbers, weights, cache.ref, chunk_size=chunk_size
+        )
 
         return d3.disp.dispersion(
             self.numbers,

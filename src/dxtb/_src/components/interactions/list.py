@@ -262,7 +262,9 @@ class InteractionList(ComponentList[Interaction]):
 
         # add up potentials from all interactions
         for interaction in self.components:
-            p = interaction.get_potential(charges, cache[interaction.label], ihelp)
+            p = interaction.get_potential(
+                charges, cache[interaction.label], ihelp
+            )
             pot += p
 
         return pot
@@ -270,7 +272,9 @@ class InteractionList(ComponentList[Interaction]):
     ###########################################################################
 
     @overload
-    def get_interaction(self, name: Literal["ElectricField"]) -> ElectricField: ...
+    def get_interaction(
+        self, name: Literal["ElectricField"]
+    ) -> ElectricField: ...
 
     @overload
     def get_interaction(

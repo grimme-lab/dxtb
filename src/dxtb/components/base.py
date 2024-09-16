@@ -25,10 +25,16 @@ from dxtb._src.components.base import Component as Component
 from dxtb._src.components.base import ComponentCache as ComponentCache
 from dxtb._src.components.classicals.base import Classical as Classical
 from dxtb._src.components.classicals.base import ClassicalABC as ClassicalABC
-from dxtb._src.components.classicals.base import ClassicalCache as ClassicalCache
+from dxtb._src.components.classicals.base import (
+    ClassicalCache as ClassicalCache,
+)
 from dxtb._src.components.interactions.base import Interaction as Interaction
-from dxtb._src.components.interactions.base import InteractionCache as InteractionCache
-from dxtb._src.components.interactions.list import InteractionList as InteractionList
+from dxtb._src.components.interactions.base import (
+    InteractionCache as InteractionCache,
+)
+from dxtb._src.components.interactions.list import (
+    InteractionList as InteractionList,
+)
 from dxtb._src.components.interactions.list import (
     InteractionListCache as InteractionListCache,
 )

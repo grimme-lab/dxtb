@@ -27,7 +27,6 @@ from typing import TYPE_CHECKING
 
 from tad_mctc.batch import pack
 
-from dxtb._src.exlibs import libcint
 from dxtb._src.typing import Tensor
 
 from .base import IntegralLibcint
@@ -61,6 +60,9 @@ class MultipoleLibcint(IntegralLibcint):
             Normalized multipole integral.
         """
         super().checks(driver)
+
+        # pylint: disable=import-outside-toplevel
+        from dxtb._src.exlibs import libcint
 
         allowed_mps = ("r0", "r0r0", "r0r0r0")
         if intstring not in allowed_mps:

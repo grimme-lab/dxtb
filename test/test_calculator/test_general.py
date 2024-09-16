@@ -25,7 +25,7 @@ import torch
 from tad_mctc.exceptions import DtypeError
 
 from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import Calculator, labels
 from dxtb._src.timing import timer
 
 
@@ -54,9 +54,14 @@ def run_asserts(c: Calculator, dtype: torch.dtype) -> None:
     assert c.integrals.dtype == dtype
 
 
-def test_change_type() -> None:
+@pytest.mark.parametrize(
+    "int_driver", [labels.INTDRIVER_LIBCINT, labels.INTDRIVER_AUTOGRAD]
+)
+def test_change_type(int_driver: str) -> None:
     numbers = torch.tensor([6, 1, 1, 1, 1])
-    calc = Calculator(numbers, par, dtype=torch.double)
+    calc = Calculator(
+        numbers, par, opts={"int_driver": int_driver}, dtype=torch.double
+    )
 
     calc = calc.type(torch.float32)
     run_asserts(calc, torch.float32)
@@ -64,13 +69,21 @@ def test_change_type() -> None:
     timer.reset()
 
 
-def test_change_type_after_energy() -> None:
+@pytest.mark.parametrize(
+    "int_driver", [labels.INTDRIVER_LIBCINT, labels.INTDRIVER_AUTOGRAD]
+)
+def test_change_type_after_energy(int_driver: str) -> None:
     dtype = torch.float64
 
     numbers = torch.tensor([1, 1])
     pos = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], dtype=dtype)
 
-    calc_64 = Calculator(numbers, par, dtype=dtype, opts={"verbosity": 0})
+    calc_64 = Calculator(
+        numbers,
+        par,
+        dtype=dtype,
+        opts={"int_driver": int_driver, "verbosity": 0},
+    )
     calc_64.energy(pos)
 
     run_asserts(calc_64, dtype)

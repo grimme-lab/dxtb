@@ -30,6 +30,7 @@ from tad_mctc.math import einsum
 
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
+from dxtb._src.constants import defaults
 from dxtb._src.param import Param
 from dxtb._src.typing import Literal, PathLike, Self, Tensor, TensorLike
 
@@ -217,18 +218,39 @@ class BaseIntegral(IntegralABC, TensorLike):
     family: str | None
     """Family of the integral implementation (PyTorch or libcint)."""
 
+    uplo: Literal["n", "u", "l"] = "l"
+    """
+    Whether the matrix of unique shell pairs should be create as a
+    triangular matrix (`l`: lower, `u`: upper) or full matrix (`n`).
+    Defaults to `l` (lower triangular matrix).
+    """
+
+    cutoff: Tensor | float | int | None = defaults.INTCUTOFF
+    """
+    Real-space cutoff for integral calculation in Bohr. Defaults to
+    `constants.defaults.INTCUTOFF`.
+    """
+
     __slots__ = ["_matrix", "_gradient", "_norm"]
 
     def __init__(
         self,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
+        uplo: Literal["n", "N", "u", "U", "l", "L"] = "l",
+        cutoff: Tensor | float | int | None = defaults.INTCUTOFF,
         _matrix: Tensor | None = None,
         _gradient: Tensor | None = None,
         _norm: Tensor | None = None,
     ) -> None:
         super().__init__(device=device, dtype=dtype)
         self.label = self.__class__.__name__
+
+        self.cutoff = cutoff
+
+        if uplo not in ("n", "N", "u", "U", "l", "L"):
+            raise ValueError(f"Unknown option for `uplo` chosen: '{uplo}'.")
+        self.uplo = uplo.casefold()  # type: ignore
 
         self._norm = _norm
         self._matrix = _matrix
@@ -251,17 +273,25 @@ class BaseIntegral(IntegralABC, TensorLike):
 
         if "pytorch" in self.label.casefold():
             # pylint: disable=import-outside-toplevel
-            from .driver.pytorch.driver import BaseIntDriverPytorch as _BaseIntDriver
+            from .driver.pytorch.driver import (
+                BaseIntDriverPytorch as _BaseIntDriver,
+            )
 
         elif "libcint" in self.label.casefold():
             # pylint: disable=import-outside-toplevel
-            from .driver.libcint.driver import BaseIntDriverLibcint as _BaseIntDriver
+            from .driver.libcint.driver import (
+                BaseIntDriverLibcint as _BaseIntDriver,
+            )
 
         else:
-            raise RuntimeError(f"Unknown integral implementation: '{self.label}'.")
+            raise RuntimeError(
+                f"Unknown integral implementation: '{self.label}'."
+            )
 
         if not isinstance(driver, _BaseIntDriver):
-            raise RuntimeError(f"Wrong integral driver selected for '{self.label}'.")
+            raise RuntimeError(
+                f"Wrong integral driver selected for '{self.label}'."
+            )
 
     def clear(self) -> None:
         """

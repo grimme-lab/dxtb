@@ -25,8 +25,12 @@ from .modes import enable_debug
 
 def parse_args():
     # parse the argument
-    parser = argparse.ArgumentParser("Run python script by enabling xitorch debug mode")
-    parser.add_argument("scriptfile", type=str, help="Path to the script to run")
+    parser = argparse.ArgumentParser(
+        "Run python script by enabling xitorch debug mode"
+    )
+    parser.add_argument(
+        "scriptfile", type=str, help="Path to the script to run"
+    )
     parser.add_argument(
         "args",
         type=str,

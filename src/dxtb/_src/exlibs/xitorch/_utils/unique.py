@@ -54,7 +54,8 @@ class Uniquifier:
         if allobjs is None:
             return self.unique_objs
         assert_runtime(
-            len(allobjs) == self.nobjs, "The allobjs must have %d elements" % self.nobjs
+            len(allobjs) == self.nobjs,
+            "The allobjs must have %d elements" % self.nobjs,
         )
         if self.all_unique:
             return allobjs

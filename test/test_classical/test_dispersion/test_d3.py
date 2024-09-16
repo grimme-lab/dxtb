@@ -29,10 +29,13 @@ import torch
 from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB as par
-from dxtb._src.components.classicals.dispersion import DispersionD3, new_dispersion
+from dxtb._src.components.classicals.dispersion import (
+    DispersionD3,
+    new_dispersion,
+)
 from dxtb._src.typing import DD, Tensor
 
-from ..conftest import DEVICE
+from ...conftest import DEVICE
 from .samples import samples
 
 

@@ -107,18 +107,18 @@ def _get_tensor_memory(
     return total_mem
 
 
-def _show_memsize(fcn, ntries: int = 10, gccollect: bool = False):
-    # show the memory growth
-    size0, num0 = _get_tensor_memory(return_number_tensors=True)
-
+def _show_memsize(
+    fcn, size0: float, num0: int, ntries: int = 10, gccollect: bool = False
+):
+    # show the memory growth over n iterations
     for i in range(ntries):
         fcn()
-        if gccollect:
+        if gccollect is True:
             gc.collect()
         size, num = _get_tensor_memory(return_number_tensors=True)
 
         print(
-            f"{i + 1:2d} iteration: {size - size0:.16f} MiB of {num-num0:d} addtional tensors"
+            f"{i + 1:2d} iteration: {size - size0:.12f} MiB of {num - num0:d} addtional tensors"
         )
 
 
@@ -133,8 +133,7 @@ def has_memleak_tensor(
     fcn: Callable
         A function with no input and output to be checked.
     gccollect: bool
-        If True, then manually apply ``gc.collect()`` after the function
-        execution.
+        If True, run :func:`gc.collect` after function execution.
 
     Returns
     -------
@@ -144,12 +143,15 @@ def has_memleak_tensor(
     size0, num0 = _get_tensor_memory(return_number_tensors=True)
 
     fcn()
-    if gccollect:
+    if gccollect is True:
         gc.collect()
 
     size, num = _get_tensor_memory(return_number_tensors=True)
 
     if size0 != size or num0 != num:
-        _show_memsize(fcn, repeats, gccollect=gccollect)
+        print(
+            f"{0:2d} iteration: {size - size0:.12f} MiB of {num - num0:d} addtional tensors"
+        )
+        _show_memsize(fcn, size0, num0, repeats, gccollect=gccollect)
 
     return size0 != size

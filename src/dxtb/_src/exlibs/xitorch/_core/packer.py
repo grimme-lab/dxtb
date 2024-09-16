@@ -111,7 +111,6 @@ class Packer:
         if unique:
             if self._unique_params_idxs is not None:
                 unique_idxs = self._unique_params_idxs
-                unique_inverse = self._unique_inverse_idxs
             else:
                 unique_idxs, unique_inverse = _get_unique_idxs(params_tensors)
                 self._unique_params_idxs = unique_idxs
@@ -189,7 +188,8 @@ class Packer:
 
         if tensor_shapes is None:
             raise RuntimeError(
-                "Please execute self.get_param_tensor_list(%s) first" % str(unique)
+                "Please execute self.get_param_tensor_list(%s) first"
+                % str(unique)
             )
         else:
             # make sure the length matches
@@ -227,7 +227,9 @@ class Packer:
 
             return new_obj
 
-    def construct_from_tensor(self, a: torch.Tensor, unique: bool = True) -> Any:
+    def construct_from_tensor(
+        self, a: torch.Tensor, unique: bool = True
+    ) -> Any:
         """
         Construct the object from the single tensor (i.e. it is the parameters
         tensor merged into a single tensor) and returns the object structure
@@ -267,9 +269,12 @@ class Packer:
             assert tensor_numel_tot is not None, "Please report to Github"
             assert tensor_numels is not None, "Please report to Github"
             if a.numel() != tensor_numel_tot:
-                msg = "The number of element does not match. Expected: %d, got: %d" % (
-                    tensor_numel_tot,
-                    a.numel(),
+                msg = (
+                    "The number of element does not match. Expected: %d, got: %d"
+                    % (
+                        tensor_numel_tot,
+                        a.numel(),
+                    )
                 )
                 raise RuntimeError(msg)
 

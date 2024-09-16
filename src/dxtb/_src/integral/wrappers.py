@@ -78,7 +78,9 @@ from .factory import new_dipint, new_overlap, new_quadint
 __all__ = ["hcore", "overlap", "dipint", "quadint"]
 
 
-def hcore(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tensor:
+def hcore(
+    numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any
+) -> Tensor:
     """
     Shortcut for the core Hamiltonian matrix calculation.
 
@@ -132,7 +134,9 @@ def hcore(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tens
     return h0.build(positions, ovlp.to(h0.device))
 
 
-def overlap(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tensor:
+def overlap(
+    numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any
+) -> Tensor:
     """
     Shortcut for overlap integral calculations.
 
@@ -153,7 +157,9 @@ def overlap(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Te
     return _integral("_overlap", numbers, positions, par, **kwargs)
 
 
-def dipint(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tensor:
+def dipint(
+    numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any
+) -> Tensor:
     """
     Shortcut for dipole integral calculations.
 
@@ -174,7 +180,9 @@ def dipint(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Ten
     return _integral("_dipole", numbers, positions, par, **kwargs)
 
 
-def quadint(numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any) -> Tensor:
+def quadint(
+    numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any
+) -> Tensor:
     """Shortcut for dipole integral calculations.
 
     Parameters

@@ -193,7 +193,12 @@ def batched(
 @pytest.mark.parametrize("scp_mode", ["charges", "potential", "fock"])
 @pytest.mark.parametrize("scf_mode", ["full", "implicit"])
 def test_batch(
-    dtype: torch.dtype, name1: str, name2: str, mixer: str, scp_mode: str, scf_mode: str
+    dtype: torch.dtype,
+    name1: str,
+    name2: str,
+    mixer: str,
+    scp_mode: str,
+    scf_mode: str,
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 50
 

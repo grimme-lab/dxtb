@@ -32,13 +32,10 @@ from abc import ABC, abstractmethod
 
 import torch
 
-from dxtb._src.typing import TYPE_CHECKING, Any, Tensor
+from dxtb import IndexHelper
+from dxtb._src.typing import Any, Tensor
 
 from ..base import Component, ComponentCache
-
-if TYPE_CHECKING:
-    from dxtb import IndexHelper
-
 
 __all__ = ["ClassicalABC", "Classical", "ClassicalCache"]
 
@@ -49,7 +46,9 @@ class ClassicalABC(ABC):
     """
 
     @abstractmethod
-    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> ComponentCache:
+    def get_cache(
+        self, numbers: Tensor, ihelp: IndexHelper | None = None, **kwags: Any
+    ) -> ComponentCache:
         """
         Store variables for energy calculation.
 
@@ -117,7 +116,10 @@ class Classical(ClassicalABC, Component):
         super().__init__(device, dtype)
 
     def get_gradient(
-        self, energy: Tensor, positions: Tensor, grad_outputs: Tensor | None = None
+        self,
+        energy: Tensor,
+        positions: Tensor,
+        grad_outputs: Tensor | None = None,
     ) -> Tensor:
         """
         Calculates nuclear gradient of a classical energy contribution via

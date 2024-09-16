@@ -41,8 +41,6 @@ from dxtb._src.typing import Tensor
 __all__ = ["Driver"]
 
 
-logger = logging.getLogger(__name__)
-
 FILES = {"spin": ".UHF", "chrg": ".CHRG"}
 
 
@@ -172,12 +170,17 @@ class Driver:
 
         if len(args.file) > 1:
             _n, _p = zip(
-                *[read.read_from_path(f, ftype=args.filetype, **dd) for f in args.file]
+                *[
+                    read.read_from_path(f, ftype=args.filetype, **dd)
+                    for f in args.file
+                ]
             )
             numbers = pack(_n)
             positions = pack(_p)
         else:
-            numbers, positions = read.read_from_path(args.file[0], args.filetype, **dd)
+            numbers, positions = read.read_from_path(
+                args.file[0], args.filetype, **dd
+            )
 
         timer.stop("Read Files")
 
@@ -224,7 +227,9 @@ class Driver:
             interactions.append(new_efield(field, **dd))
 
         # setup calculator
-        calc = Calculator(numbers, par, opts=config, interaction=interactions, **dd)
+        calc = Calculator(
+            numbers, par, opts=config, interaction=interactions, **dd
+        )
         timer.stop("Setup")
 
         ####################################################

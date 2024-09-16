@@ -138,7 +138,11 @@ def hess(
 
 class _Jac(LinearOperator):
     def __init__(
-        self, fcn: PureFunction, params: Sequence[Any], idx: int, is_hermitian=False
+        self,
+        fcn: PureFunction,
+        params: Sequence[Any],
+        idx: int,
+        is_hermitian=False,
     ) -> None:
         # TODO: check if fcn has kwargs
 
@@ -146,7 +150,9 @@ class _Jac(LinearOperator):
         yparam = params[idx]
         with torch.enable_grad():
             yout = fcn(*params)  # (*nout)
-            v = torch.ones_like(yout).to(yout.device).requires_grad_()  # (*nout)
+            v = (
+                torch.ones_like(yout).to(yout.device).requires_grad_()
+            )  # (*nout)
             (dfdy,) = torch.autograd.grad(
                 yout, (yparam,), grad_outputs=v, create_graph=True
             )  # (*nin)
@@ -189,7 +195,10 @@ class _Jac(LinearOperator):
                 prefix + ("params_tensor[%d]" % i)
                 for i in range(len(self.params_tensor))
             ]
-            + [prefix + ("objparams[%d]" % i) for i in range(len(self.objparams))]
+            + [
+                prefix + ("objparams[%d]" % i)
+                for i in range(len(self.objparams))
+            ]
         )
 
     def _mv(self, gy: Tensor) -> Tensor:
@@ -208,7 +217,9 @@ class _Jac(LinearOperator):
                 assert yparam is not None
 
                 yout = self.fcn(*self.params)  # (*nout)
-                v = torch.ones_like(yout).to(yout.device).requires_grad_()  # (*nout)
+                v = (
+                    torch.ones_like(yout).to(yout.device).requires_grad_()
+                )  # (*nout)
                 (dfdy,) = torch.autograd.grad(
                     yout, (yparam,), grad_outputs=v, create_graph=True
                 )  # (*nin)
@@ -285,7 +296,9 @@ def connect_graph(out, params):
 def _setup_idxs(idxs, params):
     if idxs is None:
         idxs = [
-            i for i, t in enumerate(params) if isinstance(t, Tensor) and t.requires_grad
+            i
+            for i, t in enumerate(params)
+            if isinstance(t, Tensor) and t.requires_grad
         ]
     elif isinstance(idxs, int):
         idxs = [idxs]
@@ -293,6 +306,7 @@ def _setup_idxs(idxs, params):
     for p in idxs:
         assert_type(
             isinstance(params[p], Tensor) and params[p].requires_grad,
-            "The %d-th element (0-based) must be a tensor which requires grad" % p,
+            "The %d-th element (0-based) must be a tensor which requires grad"
+            % p,
         )
     return idxs

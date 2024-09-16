@@ -26,7 +26,14 @@ from __future__ import annotations
 import torch
 
 from dxtb._src.timing import timer
-from dxtb._src.typing import TYPE_CHECKING, Any, Literal, Tensor, overload, override
+from dxtb._src.typing import (
+    TYPE_CHECKING,
+    Any,
+    Literal,
+    Tensor,
+    overload,
+    override,
+)
 
 from ..list import ComponentList, ComponentListCache
 from ..utils import _docstring_reset, _docstring_update
@@ -52,7 +59,9 @@ class ClassicalList(ComponentList[Classical]):
     """
 
     @override
-    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> ClassicalListCache:
+    def get_cache(
+        self, numbers: Tensor, ihelp: IndexHelper
+    ) -> ClassicalListCache:
         """
         Create restart data for individual classical contributions.
 
@@ -73,7 +82,9 @@ class ClassicalList(ComponentList[Classical]):
         d = {}
         for classical in self.components:
             timer.start(classical.label, parent_uid="Classicals")
-            d[classical.label] = classical.get_cache(numbers=numbers, ihelp=ihelp)
+            d[classical.label] = classical.get_cache(
+                numbers=numbers, ihelp=ihelp
+            )
             timer.stop(classical.label)
 
         cache.update(**d)
@@ -146,10 +157,16 @@ class ClassicalList(ComponentList[Classical]):
     ###########################################################################
 
     @overload
-    def get_interaction(self, name: Literal["Halogen"]) -> Halogen: ...
+    def get_interaction(
+        self,
+        name: Literal["Halogen"],
+    ) -> Halogen: ...
 
     @overload
-    def get_interaction(self, name: Literal["Repulsion"]) -> Repulsion: ...
+    def get_interaction(
+        self,
+        name: Literal["Repulsion"],
+    ) -> Repulsion: ...
 
     @override  # generic implementation for typing
     def get_interaction(self, name: str) -> Classical:

@@ -243,7 +243,9 @@ def test_kt(dtype: torch.dtype, kt: float):
     }
 
     # occupation
-    focc = filling.get_fermi_occupation(nab, emo, emo.new_tensor(kt * KELVIN2AU))
+    focc = filling.get_fermi_occupation(
+        nab, emo, emo.new_tensor(kt * KELVIN2AU)
+    )
     assert pytest.approx(focc.sum(-2).cpu(), abs=tol) == ref_focc[kt].cpu()
 
     # electronic free energy

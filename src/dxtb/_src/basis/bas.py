@@ -33,7 +33,12 @@ from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.data import pse
 from tad_mctc.exceptions import DtypeError
 
-from dxtb._src.param import Param, get_elem_param, get_elem_pqn, get_elem_valence
+from dxtb._src.param import (
+    Param,
+    get_elem_param,
+    get_elem_pqn,
+    get_elem_valence,
+)
 from dxtb._src.typing import Literal, Self, Tensor, TensorLike, override
 
 from .indexhelper import IndexHelper
@@ -104,13 +109,21 @@ class Basis(TensorLike):
         self.ihelp = ihelp
 
         self.ngauss = get_elem_param(
-            self.unique, par.element, "ngauss", device=self.device, dtype=torch.uint8
+            self.unique,
+            par.element,
+            "ngauss",
+            device=self.device,
+            dtype=torch.uint8,
         )
-        self.slater = get_elem_param(self.unique, par.element, "slater", **self.dd)
+        self.slater = get_elem_param(
+            self.unique, par.element, "slater", **self.dd
+        )
         self.pqn = get_elem_pqn(
             self.unique, par.element, device=self.device, dtype=torch.uint8
         )
-        self.valence = get_elem_valence(self.unique, par.element, device=self.device)
+        self.valence = get_elem_valence(
+            self.unique, par.element, device=self.device
+        )
 
     def create_cgtos(self) -> tuple[list[Tensor], list[Tensor]]:
         """
@@ -194,7 +207,9 @@ class Basis(TensorLike):
         # products upon multiplication (fundamental theorem of arithmetic).
         orbs = primes.to(self.device)[sh2ush]
         orbs = orbs.unsqueeze(-2) * orbs.unsqueeze(-1)
-        sh2orb = self.ihelp.spread_shell_to_orbital(self.ihelp.orbitals_per_shell)
+        sh2orb = self.ihelp.spread_shell_to_orbital(
+            self.ihelp.orbitals_per_shell
+        )
 
         # extra offset along only one dimension to distinguish (n, m) and
         # (m, n) of the same orbital block (e.g. 1x3 sp and 3x1 ps block)
@@ -326,7 +341,10 @@ class Basis(TensorLike):
             shells = self.ihelp.shells_per_atom[i]
             for _ in range(shells):
                 alpha, coeff = slater_to_gauss(
-                    self.ngauss[s], self.pqn[s], self.ihelp.angular[s], self.slater[s]
+                    self.ngauss[s],
+                    self.pqn[s],
+                    self.ihelp.angular[s],
+                    self.slater[s],
                 )
                 if self.valence[s].item() is False:
                     alpha, coeff = orthogonalize(

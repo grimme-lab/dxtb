@@ -65,10 +65,14 @@ def converged_to_charges(x: Tensor, data: _Data, config: ConfigSCF) -> Charges:
     """
 
     if config.scp_mode == labels.SCP_MODE_CHARGE:
-        return Charges.from_tensor(x, data.charges, batch_mode=config.batch_mode)
+        return Charges.from_tensor(
+            x, data.charges, batch_mode=config.batch_mode
+        )
 
     if config.scp_mode == labels.SCP_MODE_POTENTIAL:
-        pot = Potential.from_tensor(x, data.potential, batch_mode=config.batch_mode)
+        pot = Potential.from_tensor(
+            x, data.potential, batch_mode=config.batch_mode
+        )
         return potential_to_charges(pot, data, cfg=config)
 
     if config.scp_mode == labels.SCP_MODE_FOCK:
@@ -78,7 +82,9 @@ def converged_to_charges(x: Tensor, data: _Data, config: ConfigSCF) -> Charges:
         data.density = hamiltonian_to_density(x, data, config)
         return density_to_charges(data.density, data, config)
 
-    raise ValueError(f"Unknown convergence target (SCP mode) '{config.scp_mode}'.")
+    raise ValueError(
+        f"Unknown convergence target (SCP mode) '{config.scp_mode}'."
+    )
 
 
 def charges_to_potential(
@@ -114,7 +120,9 @@ def charges_to_potential(
 
 
 @timer_decorator("Potential", "SCF")
-def potential_to_charges(potential: Potential, data: _Data, cfg: ConfigSCF) -> Charges:
+def potential_to_charges(
+    potential: Potential, data: _Data, cfg: ConfigSCF
+) -> Charges:
     """
     Compute the orbital charges from the potential.
 
@@ -137,7 +145,9 @@ def potential_to_charges(potential: Potential, data: _Data, cfg: ConfigSCF) -> C
     return density_to_charges(data.density, data, cfg)
 
 
-def potential_to_density(potential: Potential, data: _Data, cfg: ConfigSCF) -> Tensor:
+def potential_to_density(
+    potential: Potential, data: _Data, cfg: ConfigSCF
+) -> Tensor:
     """
     Obtain the density matrix from the potential.
 
@@ -258,7 +268,9 @@ def potential_to_hamiltonian(potential: Potential, data: _Data) -> Tensor:
     return h1
 
 
-def hamiltonian_to_density(hamiltonian: Tensor, data: _Data, cfg: ConfigSCF) -> Tensor:
+def hamiltonian_to_density(
+    hamiltonian: Tensor, data: _Data, cfg: ConfigSCF
+) -> Tensor:
     """
     Compute the density matrix from the Hamiltonian.
 

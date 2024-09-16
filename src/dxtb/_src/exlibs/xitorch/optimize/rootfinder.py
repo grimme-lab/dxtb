@@ -25,7 +25,10 @@ import torch
 
 from dxtb import OutputHandler
 from dxtb.__version__ import __tversion__
-from dxtb._src.exlibs.xitorch._core.pure_function import get_pure_function, make_sibling
+from dxtb._src.exlibs.xitorch._core.pure_function import (
+    get_pure_function,
+    make_sibling,
+)
 from dxtb._src.exlibs.xitorch._impls.optimize.minimizer import adam, gd
 from dxtb._src.exlibs.xitorch._impls.optimize.root.rootsolver import (
     anderson,
@@ -34,7 +37,10 @@ from dxtb._src.exlibs.xitorch._impls.optimize.root.rootsolver import (
     linearmixing,
 )
 from dxtb._src.exlibs.xitorch._utils.assertfuncs import assert_fcn_params
-from dxtb._src.exlibs.xitorch._utils.misc import TensorNonTensorSeparator, get_method
+from dxtb._src.exlibs.xitorch._utils.misc import (
+    TensorNonTensorSeparator,
+    get_method,
+)
 from dxtb._src.exlibs.xitorch.debug.modes import is_debug_enabled
 from dxtb._src.exlibs.xitorch.grad.jachess import jac
 from dxtb._src.exlibs.xitorch.linalg.solve import solve
@@ -347,7 +353,14 @@ def _rootfinder(
 ) -> Tensor:
     _RootFinder = RootFinder_V1 if __tversion__ < (2, 0, 0) else RootFinder_V2
     r = _RootFinder.apply(
-        fcn, y0, fwd_fcn, is_opt_method, options, bck_options, nparams, *allparams
+        fcn,
+        y0,
+        fwd_fcn,
+        is_opt_method,
+        options,
+        bck_options,
+        nparams,
+        *allparams,
     )
     assert r is not None
     return r
@@ -389,8 +402,12 @@ class RootFinderBase(torch.autograd.Function):
 
             # get the grad for the params
             with torch.enable_grad():
-                tensor_params_copy = [p.clone().requires_grad_() for p in tensor_params]
-                allparams_copy = param_sep.reconstruct_params(tensor_params_copy)
+                tensor_params_copy = [
+                    p.clone().requires_grad_() for p in tensor_params
+                ]
+                allparams_copy = param_sep.reconstruct_params(
+                    tensor_params_copy
+                )
                 params_copy = allparams_copy[:nparams]
                 objparams_copy = allparams_copy[nparams:]
                 with ctx.fcn.useobjparams(objparams_copy):
@@ -404,7 +421,9 @@ class RootFinderBase(torch.autograd.Function):
                 create_graph=torch.is_grad_enabled(),
                 allow_unused=True,
             )
-            grad_nontensor_params = [None for _ in range(param_sep.nnontensors())]
+            grad_nontensor_params = [
+                None for _ in range(param_sep.nnontensors())
+            ]
             grad_params = param_sep.reconstruct_params(
                 grad_tensor_params, grad_nontensor_params
             )
@@ -415,7 +434,15 @@ class RootFinderBase(torch.autograd.Function):
 class RootFinder_V1(RootFinderBase):
     @staticmethod
     def forward(
-        ctx, fcn, y0, fwd_fcn, is_opt_method, options, bck_options, nparams, *allparams
+        ctx,
+        fcn,
+        y0,
+        fwd_fcn,
+        is_opt_method,
+        options,
+        bck_options,
+        nparams,
+        *allparams,
     ):
         # fcn: a function that returns what has to be 0 (will be used in the
         #      backward, not used in the forward). For minimization, it is
@@ -454,7 +481,14 @@ class RootFinder_V1(RootFinderBase):
 class RootFinder_V2(RootFinderBase):
     @staticmethod
     def forward(
-        fcn, y0, fwd_fcn, is_opt_method, options, bck_options, nparams, *allparams
+        fcn,
+        y0,
+        fwd_fcn,
+        is_opt_method,
+        options,
+        bck_options,
+        nparams,
+        *allparams,
     ):
         # fcn: a function that returns what has to be 0 (will be used in the
         #      backward, not used in the forward). For minimization, it is

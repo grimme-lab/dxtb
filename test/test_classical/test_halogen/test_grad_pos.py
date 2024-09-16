@@ -30,7 +30,7 @@ from dxtb import IndexHelper
 from dxtb._src.components.classicals import new_halogen
 from dxtb._src.typing import DD, Callable, Tensor
 
-from ..conftest import DEVICE
+from ...conftest import DEVICE
 from .samples import samples
 
 # "LYS_xao" must be the last one as we have to manually exclude it for the
@@ -141,7 +141,9 @@ def test_gradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["br2nh3"])
 @pytest.mark.parametrize("name2", sample_list)
-def test_gradgradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+def test_gradgradcheck_batch(
+    dtype: torch.dtype, name1: str, name2: str
+) -> None:
     """
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradgradcheck`.

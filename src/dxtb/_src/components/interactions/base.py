@@ -24,7 +24,7 @@ from __future__ import annotations
 import torch
 
 from dxtb import IndexHelper
-from dxtb._src.typing import Any, Slicers, Tensor, TensorOrTensors
+from dxtb._src.typing import Any, Slicers, Tensor, TensorOrTensors, final
 
 from ...components.base import Component, ComponentCache
 from .container import Charges, Potential
@@ -101,7 +101,11 @@ class Interaction(Component):
 
     # pylint: disable=unused-argument
     def get_cache(
-        self, *, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
+        self,
+        *,
+        numbers: Tensor | None = None,
+        positions: Tensor | None = None,
+        ihelp: IndexHelper | None = None,
     ) -> InteractionCache:
         """
         Create restart data for individual interactions.
@@ -126,6 +130,7 @@ class Interaction(Component):
         """
         return InteractionCache()
 
+    @final
     def get_potential(
         self,
         charges: Charges,
@@ -244,6 +249,7 @@ class Interaction(Component):
         """
         return None
 
+    @final
     def get_energy(
         self, charges: Charges, cache: InteractionCache, ihelp: IndexHelper
     ) -> Tensor:
@@ -373,6 +379,7 @@ class Interaction(Component):
         """
         return torch.zeros_like(charges).sum(-1)
 
+    @final
     def get_gradient(
         self,
         charges: Charges,

@@ -94,7 +94,9 @@ class QuadrupoleIntegral(BaseIntegral):
         )
         return self.matrix
 
-    def shift_r0r0_rjrj(self, r0: Tensor, overlap: Tensor, pos: Tensor) -> Tensor:
+    def shift_r0r0_rjrj(
+        self, r0: Tensor, overlap: Tensor, pos: Tensor
+    ) -> Tensor:
         r"""
         Shift the centering of the quadrupole integral (moment operator) from
         the origin (:math:`r0 = r - (0, 0, 0)`) to atoms (ket index,
@@ -236,7 +238,9 @@ def shift_diagonal(c: Tensor, dpc: Tensor, s: Tensor) -> Tensor:
     return shift_1 + shift_2
 
 
-def shift_offdiag(a: Tensor, b: Tensor, dpa: Tensor, dpb: Tensor, s: Tensor) -> Tensor:
+def shift_offdiag(
+    a: Tensor, b: Tensor, dpa: Tensor, dpb: Tensor, s: Tensor
+) -> Tensor:
     r"""
     Create the shift contribution for all off-diagonal elements of the
     quadrupole integral.

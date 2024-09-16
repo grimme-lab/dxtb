@@ -74,7 +74,9 @@ def test_analytical_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["AD7en+", "LYS_xao"])
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
-def test_analytical_large2(dtype: torch.dtype, name: str, scf_mode: str) -> None:
+def test_analytical_large2(
+    dtype: torch.dtype, name: str, scf_mode: str
+) -> None:
     if "cuda" in str(DEVICE) and dtype == torch.float:
         atol = 1e-4
     else:

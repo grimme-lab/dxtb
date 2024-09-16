@@ -115,7 +115,9 @@ class DegenSymeigBase(torch.autograd.Function):
                     )
                     msg += "Eigenvalues:\n%s\n" % str(eival)
                     msg += "Degenerate map:\n%s\n" % str(idx)
-                    msg += "Requirements (should be all 0s):\n%s" % str(diff_xtg)
+                    msg += "Requirements (should be all 0s):\n%s" % str(
+                        diff_xtg
+                    )
                     warnings.warn(MathWarning(msg))
 
             F = F.pow(-1)

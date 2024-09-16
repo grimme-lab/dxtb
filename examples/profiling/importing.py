@@ -20,7 +20,7 @@ t0 = time.perf_counter()
 
 ############################
 
-import torch
+import torch  # noqa
 
 t1 = time.perf_counter()
 
@@ -37,7 +37,7 @@ t3 = time.perf_counter()
 
 ############################
 
-import scipy
+import scipy  # noqa
 
 t4 = time.perf_counter()
 

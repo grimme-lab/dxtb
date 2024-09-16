@@ -32,7 +32,17 @@ from dxtb._src.typing import DD, Tensor
 
 from .samples import samples
 
-sample_list = ["H", "H2", "LiH", "HHe", "H2O", "CH4", "SiH4", "PbH4-BiH3", "MB16_43_01"]
+sample_list = [
+    "H",
+    "H2",
+    "LiH",
+    "HHe",
+    "H2O",
+    "CH4",
+    "SiH4",
+    "PbH4-BiH3",
+    "MB16_43_01",
+]
 
 opts = {
     "maxiter": 100,
@@ -101,7 +111,9 @@ def test_single(dtype: torch.dtype, name: str, use_functorch: bool) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", ["LYS_xao", "C60"])
 @pytest.mark.parametrize("use_functorch", [False])
-def test_single_medium(dtype: torch.dtype, name: str, use_functorch: bool) -> None:
+def test_single_medium(
+    dtype: torch.dtype, name: str, use_functorch: bool
+) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
     ref = samples[name]["quadrupole"].to(**dd)
@@ -114,7 +126,9 @@ def test_single_medium(dtype: torch.dtype, name: str, use_functorch: bool) -> No
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 @pytest.mark.parametrize("use_functorch", [False])
-def test_single_field(dtype: torch.dtype, name: str, use_functorch: bool) -> None:
+def test_single_field(
+    dtype: torch.dtype, name: str, use_functorch: bool
+) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
     ref = samples[name]["quadrupole2"].to(**dd)
@@ -186,7 +200,9 @@ def batched(
     efield_grad = new_efield_grad(field_grad)
     calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
 
-    quadrupole = calc.quadrupole(numbers, pos, charge, use_functorch=use_functorch)
+    quadrupole = calc.quadrupole(
+        numbers, pos, charge, use_functorch=use_functorch
+    )
     quadrupole.detach_()
 
     assert pytest.approx(ref, abs=atol, rel=rtol) == quadrupole
@@ -196,7 +212,9 @@ def batched(
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", sample_list)
 @pytest.mark.parametrize("use_functorch", [False])
-def test_batch(dtype: torch.dtype, name1: str, name2, use_functorch: bool) -> None:
+def test_batch(
+    dtype: torch.dtype, name1: str, name2, use_functorch: bool
+) -> None:
     dd: DD = {"dtype": dtype, "device": device}
 
     field_vector = torch.tensor([0.0, 0.0, 0.0], **dd) * VAA2AU

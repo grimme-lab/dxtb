@@ -79,7 +79,9 @@ def execute(name: str, dtype: torch.dtype) -> None:
         cache = rep.get_cache(numbers, ihelp)
 
         energy = rep.get_energy(pos, cache).sum()
-        _ = torch.autograd.grad(energy, (pos, arep, zeff, kexp), create_graph=True)
+        _ = torch.autograd.grad(
+            energy, (pos, arep, zeff, kexp), create_graph=True
+        )
 
         # known reference cycle for create_graph=True
         energy.backward()

@@ -51,7 +51,11 @@ def get_pairs(x: Tensor, i: int) -> Tensor:
 
 
 def get_subblock_start(
-    umap: Tensor, i: int, norbi: int, norbj: int, uplo: Literal["n", "u", "l"] = "l"
+    umap: Tensor,
+    i: int,
+    norbi: int,
+    norbj: int,
+    uplo: Literal["n", "u", "l"] = "l",
 ) -> Tensor:
     """
     Filter out the top-left index of each subblock of unique shell pairs.

@@ -60,7 +60,8 @@ def check_multipole_symmetry(multipole_tensor: Tensor) -> bool:
     # Check symmetry for all permutations
     is_symmetric = all(
         torch.allclose(
-            multipole_tensor, multipole_tensor.permute(*perm, ndim - 2, ndim - 1)
+            multipole_tensor,
+            multipole_tensor.permute(*perm, ndim - 2, ndim - 1),
         )
         for perm in perms
     )
@@ -123,7 +124,9 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, intstr: str) -> None:
     atombases = bas.create_libcint(positions)
 
     # batched IndexHelper does not yet work with LibcintWrapper
-    ihelp = [IndexHelper.from_numbers(deflate(number), par) for number in numbers]
+    ihelp = [
+        IndexHelper.from_numbers(deflate(number), par) for number in numbers
+    ]
 
     wrappers = [
         libcint.LibcintWrapper(ab, ihelp)

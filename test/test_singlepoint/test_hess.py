@@ -35,9 +35,9 @@ from dxtb._src.constants import labels
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
-from ..test_dispersion.samples import samples as samples_disp
-from ..test_halogen.samples import samples as samples_hal
-from ..test_repulsion.samples import samples as samples_rep
+from ..test_classical.test_dispersion.samples import samples as samples_disp
+from ..test_classical.test_halogen.samples import samples as samples_hal
+from ..test_classical.test_repulsion.samples import samples as samples_rep
 
 opts = {
     "f_atol": 1.0e-10,

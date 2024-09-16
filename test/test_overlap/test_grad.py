@@ -92,7 +92,9 @@ def test_ss(dtype: torch.dtype):
 
 
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", ["H", "H2", "LiH", "C", "Rn", "H2O", "CH4", "SiH4"])
+@pytest.mark.parametrize(
+    "name", ["H", "H2", "LiH", "C", "Rn", "H2O", "CH4", "SiH4"]
+)
 def test_overlap_jacobian(dtype: torch.dtype, name: str):
     """Jacobian calculation with AD and numerical gradient."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
@@ -186,8 +188,12 @@ def compare_md(
 
     ngi, ni, li = cgtoi
     ngj, nj, lj = cgtoj
-    alpha_i, coeff_i = slater_to_gauss(ngi, ni, li, torch.tensor(1.0, dtype=dtype))
-    alpha_j, coeff_j = slater_to_gauss(ngj, nj, lj, torch.tensor(1.0, dtype=dtype))
+    alpha_i, coeff_i = slater_to_gauss(
+        ngi, ni, li, torch.tensor(1.0, dtype=dtype)
+    )
+    alpha_j, coeff_j = slater_to_gauss(
+        ngj, nj, lj, torch.tensor(1.0, dtype=dtype)
+    )
 
     # overlap
     ovlp = md.overlap_gto((li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec)
@@ -273,7 +279,9 @@ def test_overlap_grad_single_3s4s(dtype: torch.dtype):
 
     # define references
     ovlp_ref = torch.tensor([[0.893829]])
-    ovlp_grad_ref = torch.tensor([0.000000, 0.000000, -0.056111]).reshape([1, 3])
+    ovlp_grad_ref = torch.tensor([0.000000, 0.000000, -0.056111]).reshape(
+        [1, 3]
+    )
 
     compare_md(cgtoi, cgtoj, vec, ovlp_ref, ovlp_grad_ref, dtype)
 

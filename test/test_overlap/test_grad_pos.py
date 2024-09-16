@@ -197,7 +197,9 @@ def test_gradgrad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["H2"])
 @pytest.mark.parametrize("name2", slist_large)
-def test_gradgrad_batch_large(dtype: torch.dtype, name1: str, name2: str) -> None:
+def test_gradgrad_batch_large(
+    dtype: torch.dtype, name1: str, name2: str
+) -> None:
     """
     Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradgradcheck`.

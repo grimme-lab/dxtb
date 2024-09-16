@@ -24,7 +24,12 @@ import pytest
 import torch
 
 from dxtb._src.typing.exceptions import SCFConvergenceError
-from dxtb._src.utils import is_basis_list, is_int_list, is_str_list, set_jit_enabled
+from dxtb._src.utils import (
+    is_basis_list,
+    is_int_list,
+    is_str_list,
+    set_jit_enabled,
+)
 
 
 def test_lists() -> None:

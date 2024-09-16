@@ -82,7 +82,9 @@ dxtb.timer.reset()
 dxtb.timer.start("Setup")
 
 dxtb.timer.start("Ihelp", parent_uid="Setup")
-ihelp_cpu = dxtb.IndexHelper.from_numbers(numbers, dxtb.GFN1_XTB, batch_mode=batch_mode)
+ihelp_cpu = dxtb.IndexHelper.from_numbers(
+    numbers, dxtb.GFN1_XTB, batch_mode=batch_mode
+)
 dxtb.timer.stop("Ihelp")
 
 dxtb.timer.start("Class", parent_uid="Setup")

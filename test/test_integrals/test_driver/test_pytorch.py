@@ -38,7 +38,7 @@ from ...conftest import DEVICE
 
 def test_overlap_fail() -> None:
     with pytest.raises(ValueError):
-        _ = OverlapPytorch("wrong")  # type: ignore
+        _ = OverlapPytorch(uplo="wrong")  # type: ignore
 
 
 def test_dipole_fail() -> None:

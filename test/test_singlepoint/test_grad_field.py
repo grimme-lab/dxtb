@@ -54,7 +54,9 @@ sample_list = ["H2", "H2O"]
 xfields = [0.0, 1.0, -2.0]
 
 
-def gradchecker(dtype: torch.dtype, name: str, xfield: float, scf_mode: str) -> tuple[
+def gradchecker(
+    dtype: torch.dtype, name: str, xfield: float, scf_mode: str
+) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
     Tensor,  # differentiable variables
 ]:
@@ -89,7 +91,9 @@ def gradchecker(dtype: torch.dtype, name: str, xfield: float, scf_mode: str) -> 
 @pytest.mark.parametrize("name", sample_list)
 @pytest.mark.parametrize("xfield", xfields)
 @pytest.mark.parametrize("scf_mode", ["implicit", "full"])
-def test_gradcheck(dtype: torch.dtype, name: str, xfield: float, scf_mode: str) -> None:
+def test_gradcheck(
+    dtype: torch.dtype, name: str, xfield: float, scf_mode: str
+) -> None:
     """
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradcheck`.

@@ -54,7 +54,9 @@ def num_grad(
     step = 1.0e-5
 
     def compute_integral(pos: torch.Tensor) -> torch.Tensor:
-        bas = Basis(numbers, par, ihelp, dtype=positions.dtype, device=positions.device)
+        bas = Basis(
+            numbers, par, ihelp, dtype=positions.dtype, device=positions.device
+        )
         atombases = bas.create_libcint(pos)
         assert is_basis_list(atombases)
 

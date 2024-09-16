@@ -39,10 +39,9 @@ def del_attr(obj, name):
 
 
 def _get_attr(obj, names):
-    attrfcn = lambda obj, name: getattr(obj, name)
     dictfcn = lambda obj, key: obj.__getitem__(key)
     listfcn = lambda obj, key: obj.__getitem__(key)
-    return _traverse_attr(obj, names, attrfcn, dictfcn, listfcn)
+    return _traverse_attr(obj, names, getattr, dictfcn, listfcn)
 
 
 def _set_attr(obj, names, val):
@@ -53,14 +52,13 @@ def _set_attr(obj, names, val):
 
 
 def _del_attr(obj, names):
-    attrfcn = lambda obj, name: delattr(obj, name)
     dictfcn = lambda obj, key: obj.__delitem__(key)
 
     def listfcn(obj, key):
         obj.__delitem__(key)
         obj.insert(key, None)  # to preserve the length
 
-    return _traverse_attr(obj, names, attrfcn, dictfcn, listfcn)
+    return _traverse_attr(obj, names, delattr, dictfcn, listfcn)
 
 
 def _preproc_name(name):
@@ -84,7 +82,9 @@ def _applyfcn(obj, name, attrfcn, dictfcn, listfcn):
         elif isinstance(obj, list):
             return listfcn(obj, key)
         else:
-            msg = "The parameter with [] must be either a dictionary or a list. "
+            msg = (
+                "The parameter with [] must be either a dictionary or a list. "
+            )
             msg += "Got type: %s" % type(obj)
             raise TypeError(msg)
     else:

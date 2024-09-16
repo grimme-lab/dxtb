@@ -23,7 +23,10 @@ from __future__ import annotations
 import torch
 
 from dxtb import IndexHelper
-from dxtb._src.components.interactions import InteractionList, InteractionListCache
+from dxtb._src.components.interactions import (
+    InteractionList,
+    InteractionListCache,
+)
 
 from ..conftest import DEVICE
 

@@ -25,7 +25,8 @@ from __future__ import annotations
 
 import tad_dftd4 as d4
 
-from dxtb._src.typing import Any, Tensor
+from dxtb import IndexHelper
+from dxtb._src.typing import Any, Tensor, override
 
 from ..base import ClassicalCache
 from .base import Dispersion
@@ -78,7 +79,11 @@ class DispersionD4(Dispersion):
     charge: Tensor
     """Total charge of the system."""
 
-    def get_cache(self, numbers: Tensor, **kwargs: Any) -> DispersionD4Cache:
+    # pylint: disable=unused-argument
+    @override
+    def get_cache(
+        self, numbers: Tensor, ihelp: IndexHelper | None = None, **kwargs: Any
+    ) -> DispersionD4Cache:
         """
         Obtain cache for storage of settings.
 
@@ -148,8 +153,12 @@ class DispersionD4(Dispersion):
         self.cache = DispersionD4Cache(q, model, rcov, r4r2, cutoff, cf, df)
         return self.cache
 
+    @override
     def get_energy(
-        self, positions: Tensor, cache: DispersionD4Cache, q: Tensor | None = None
+        self,
+        positions: Tensor,
+        cache: DispersionD4Cache,
+        q: Tensor | None = None,
     ) -> Tensor:
         """
         Get D4 dispersion energy.

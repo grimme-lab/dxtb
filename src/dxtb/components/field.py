@@ -21,12 +21,16 @@ Components: Fields
 Tight-binding components for interactions with external fields.
 """
 
-from dxtb._src.components.interactions.field import ElectricField as ElectricField
+from dxtb._src.components.interactions.field import (
+    ElectricField as ElectricField,
+)
 from dxtb._src.components.interactions.field import (
     ElectricFieldGrad as ElectricFieldGrad,
 )
 from dxtb._src.components.interactions.field import new_efield as new_efield
-from dxtb._src.components.interactions.field import new_efield_grad as new_efield_grad
+from dxtb._src.components.interactions.field import (
+    new_efield_grad as new_efield_grad,
+)
 
 __all__ = [
     "ElectricField",

@@ -42,7 +42,9 @@ def tallqr(V, MV=None):
         MV = V
     VTV = torch.matmul(V.transpose(-2, -1), MV)  # (*BMV, nguess, nguess)
     R = (
-        torch.linalg.cholesky(VTV.transpose(-2, -1).conj()).transpose(-2, -1).conj()
+        torch.linalg.cholesky(VTV.transpose(-2, -1).conj())
+        .transpose(-2, -1)
+        .conj()
     )  # (*BMV, nguess, nguess)
     Rinv = torch.inverse(R)  # (*BMV, nguess, nguess)
     Q = torch.matmul(V, Rinv)
@@ -60,7 +62,9 @@ def to_fortran_order(V):
     elif V.transpose(-2, -1).is_contiguous():
         return V
     else:
-        raise RuntimeError("Only the last two dimensions can be made Fortran order.")
+        raise RuntimeError(
+            "Only the last two dimensions can be made Fortran order."
+        )
 
 
 def convert_none_grads_to_zeros(grads, inputs):
@@ -77,7 +81,12 @@ def convert_none_grads_to_zeros(grads, inputs):
 
 
 def create_random_square_matrix(
-    n, is_hermitian=False, min_eival=1.0, max_eival=1.0, minabs_eival=0.0, seed=-1
+    n,
+    is_hermitian=False,
+    min_eival=1.0,
+    max_eival=1.0,
+    minabs_eival=0.0,
+    seed=-1,
 ):
     dtype = torch.float64
     eivals = torch.linspace(min_eival, max_eival, n, dtype=dtype)
@@ -91,7 +100,9 @@ def create_random_square_matrix(
         torch.manual_seed(seed)
     if is_hermitian:
         eivecs = create_random_ortho_matrix(n, seed=seed)
-        mat = torch.matmul(torch.matmul(eivecs.transpose(-2, -1), eivals), eivecs)
+        mat = torch.matmul(
+            torch.matmul(eivecs.transpose(-2, -1), eivals), eivecs
+        )
         mat = (mat + mat.transpose(-2, -1)) * 0.5
         return mat
     else:

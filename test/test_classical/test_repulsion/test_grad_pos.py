@@ -37,7 +37,7 @@ from dxtb._src.components.classicals.repulsion.rep import (
 )
 from dxtb._src.typing import DD, Callable, Tensor
 
-from ..conftest import DEVICE
+from ...conftest import DEVICE
 from .samples import samples
 
 sample_list = ["H2O", "SiH4", "MB16_43_01", "MB16_43_02", "LYS_xao"]
@@ -83,7 +83,9 @@ def test_backward_vs_tblite(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["H2O", "SiH4"])
 @pytest.mark.parametrize("name2", ["H2O", "SiH4"])
-def test_backward_batch_vs_tblite(dtype: torch.dtype, name1: str, name2: str) -> None:
+def test_backward_batch_vs_tblite(
+    dtype: torch.dtype, name1: str, name2: str
+) -> None:
     """Compare with reference values from tblite."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
@@ -146,7 +148,9 @@ def test_grad_pos_backward_vs_analytical(dtype: torch.dtype, name: str) -> None:
     cache = rep.get_cache(numbers, ihelp)
 
     # analytical gradient
-    e = repulsion_energy(positions, cache.mask, cache.arep, cache.kexp, cache.zeff)
+    e = repulsion_energy(
+        positions, cache.mask, cache.arep, cache.kexp, cache.zeff
+    )
     grad_analytical = repulsion_gradient(
         e, positions, cache.mask, cache.arep, cache.kexp, reduced=True
     )
@@ -196,7 +200,9 @@ def calc_numerical_gradient(
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list + ["MB16_43_03"])
-def test_grad_pos_analytical_vs_numerical(dtype: torch.dtype, name: str) -> None:
+def test_grad_pos_analytical_vs_numerical(
+    dtype: torch.dtype, name: str
+) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
     atol = sqrt(torch.finfo(dtype).eps) * 10
 
@@ -211,7 +217,9 @@ def test_grad_pos_analytical_vs_numerical(dtype: torch.dtype, name: str) -> None
     cache = rep.get_cache(numbers, ihelp)
 
     # analytical gradient
-    e = repulsion_energy(positions, cache.mask, cache.arep, cache.kexp, cache.zeff)
+    e = repulsion_energy(
+        positions, cache.mask, cache.arep, cache.kexp, cache.zeff
+    )
     grad_analytical = repulsion_gradient(
         e, positions, cache.mask, cache.arep, cache.kexp, reduced=True
     )

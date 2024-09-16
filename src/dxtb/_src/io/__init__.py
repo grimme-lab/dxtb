@@ -18,5 +18,6 @@
 Functions for reading and writing files.
 """
 
-from .handler import *
-from .output import *
+from .handler import OutputHandler
+
+__all__ = ["OutputHandler"]

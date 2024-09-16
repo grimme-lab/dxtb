@@ -34,7 +34,9 @@ from dxtb._src.typing import Tensor
 __all__ = ["quadrupole"]
 
 
-def quadrupole(qat: Tensor, dpat: Tensor, qpat: Tensor, positions: Tensor) -> Tensor:
+def quadrupole(
+    qat: Tensor, dpat: Tensor, qpat: Tensor, positions: Tensor
+) -> Tensor:
     """
     Analytical calculation of traceless electric quadrupole moment.
 
@@ -84,7 +86,9 @@ def quadrupole(qat: Tensor, dpat: Tensor, qpat: Tensor, positions: Tensor) -> Te
 
     # Compute the atomic contributions to molecular quadrupole moment
     cart = torch.empty(
-        (*positions.shape[:-1], 6), device=positions.device, dtype=positions.dtype
+        (*positions.shape[:-1], 6),
+        device=positions.device,
+        dtype=positions.dtype,
     )
     cart[..., 0] = pv2d[..., 0]
     cart[..., 1] = (

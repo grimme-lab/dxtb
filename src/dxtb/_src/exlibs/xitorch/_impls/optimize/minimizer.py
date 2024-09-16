@@ -187,7 +187,12 @@ def adam(
 
 class TerminationCondition:
     def __init__(
-        self, f_tol: float, f_rtol: float, x_tol: float, x_rtol: float, verbose: bool
+        self,
+        f_tol: float,
+        f_rtol: float,
+        x_tol: float,
+        x_rtol: float,
+        verbose: bool,
     ):
         self.f_tol = f_tol
         self.f_rtol = f_rtol

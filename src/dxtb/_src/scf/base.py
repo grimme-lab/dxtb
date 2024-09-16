@@ -45,7 +45,10 @@ from .result import SCFResult
 from .utils import get_density
 
 if TYPE_CHECKING:
-    from dxtb._src.components.interactions import InteractionList, InteractionListCache
+    from dxtb._src.components.interactions import (
+        InteractionList,
+        InteractionListCache,
+    )
     from dxtb._src.exlibs import xitorch as xt
     from dxtb._src.integral.container import IntegralMatrices
 del TYPE_CHECKING
@@ -258,7 +261,10 @@ class BaseSCF:
             **kwargs.pop("fwd_options", {}),
         }
 
-        self.eigen_options = {"method": "exacteig", **kwargs.pop("eigen_options", {})}
+        self.eigen_options = {
+            "method": "exacteig",
+            **kwargs.pop("eigen_options", {}),
+        }
 
         if self.config.scp_mode == labels.SCP_MODE_CHARGE:
             self._fcn = self.iterate_charges
@@ -614,7 +620,9 @@ class BaseSCF:
         if charges.mono.ndim < 2:  # pragma: no cover
             energy = self.get_energy(charges).sum(-1).detach().clone()
             ediff = (
-                (self._data.old_energy.sum(-1) - energy) if self._data.iter > 0 else 0.0
+                (self._data.old_energy.sum(-1) - energy)
+                if self._data.iter > 0
+                else 0.0
             )
 
             density = self._data.density.detach().clone()
@@ -945,7 +953,9 @@ class BaseSCF:
         mask = mask.unsqueeze(-2).expand([*nel.shape, -1])
 
         # Fermi smearing only for non-zero electronic temperature
-        if self.kt is not None and not torch.all(self.kt < 3e-7):  # 0.1 Kelvin * K2AU
+        if self.kt is not None and not torch.all(
+            self.kt < 3e-7
+        ):  # 0.1 Kelvin * K2AU
             self._data.occupation = filling.get_fermi_occupation(
                 nel,
                 emo,

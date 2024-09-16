@@ -93,7 +93,9 @@ def attach_module(package_name: str, submodules: Sequence[str]) -> tuple[
     def __getattr__(name: str) -> Any:
         if name in submodules:
             return importlib.import_module(f"{package_name}.{name}")
-        raise AttributeError(f"The module '{package_name}' has no attribute '{name}.")
+        raise AttributeError(
+            f"The module '{package_name}' has no attribute '{name}."
+        )
 
     def __dir__() -> list[str]:
         return __all__

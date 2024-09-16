@@ -53,7 +53,9 @@ def gradchecker(
 
     # setup
     ihelp = IndexHelper.from_numbers(numbers, par)
-    ilist = InteractionList(new_es2(numbers, par, **dd), new_es3(numbers, par, **dd))
+    ilist = InteractionList(
+        new_es2(numbers, par, **dd), new_es3(numbers, par, **dd)
+    )
 
     # variables to be differentiated
     pos = positions.clone().requires_grad_(True)
@@ -113,7 +115,9 @@ def gradchecker_batch(
 
     # setup
     ihelp = IndexHelper.from_numbers(numbers, par)
-    ilist = InteractionList(new_es2(numbers, par, **dd), new_es3(numbers, par, **dd))
+    ilist = InteractionList(
+        new_es2(numbers, par, **dd), new_es3(numbers, par, **dd)
+    )
 
     # variables to be differentiated
     pos = positions.clone().requires_grad_(True)

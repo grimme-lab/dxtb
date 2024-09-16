@@ -329,11 +329,12 @@ def _safe_norm(v):
     return torch.norm(v)
 
 
-def _nonline_line_search(func, x, y, dx, search_type="armijo", rdiff=1e-8, smin=1e-2):
+def _nonline_line_search(
+    func, x, y, dx, search_type="armijo", rdiff=1e-8, smin=1e-2
+):
     tmp_s = [0]
     tmp_y = [y]
     tmp_phi = [y.norm() ** 2]
-    s_norm = x.norm() / dx.norm()
 
     def phi(s, store=True):
         if s == tmp_s[0]:
@@ -347,12 +348,14 @@ def _nonline_line_search(func, x, y, dx, search_type="armijo", rdiff=1e-8, smin=
             tmp_y[0] = v
         return p
 
-    def derphi(s):
-        ds = (torch.abs(s) + s_norm + 1) * rdiff
-        return (phi(s + ds, store=False) - phi(s)) / ds
+    # Alternative?
+    # s_norm = x.norm() / dx.norm()
+    # def derphi(s):
+    #     ds = (torch.abs(s) + s_norm + 1) * rdiff
+    #     return (phi(s + ds, store=False) - phi(s)) / ds
 
     if search_type == "armijo":
-        s, phi1 = _scalar_search_armijo(phi, tmp_phi[0], -tmp_phi[0], amin=smin)
+        s, _ = _scalar_search_armijo(phi, tmp_phi[0], -tmp_phi[0], amin=smin)
 
     if s is None:
         # No suitable step length found. Take the full Newton step,
@@ -369,7 +372,9 @@ def _nonline_line_search(func, x, y, dx, search_type="armijo", rdiff=1e-8, smin=
     return s, x, y, y_norm
 
 
-def _scalar_search_armijo(phi, phi0, derphi0, c1=1e-4, alpha0=1, amin=0, max_niter=20):
+def _scalar_search_armijo(
+    phi, phi0, derphi0, c1=1e-4, alpha0=1, amin=0, max_niter=20
+):
     phi_a0 = phi(alpha0)
     if phi_a0 <= phi0 + c1 * alpha0 * derphi0:
         return alpha0, phi_a0
@@ -395,12 +400,14 @@ def _scalar_search_armijo(phi, phi0, derphi0, c1=1e-4, alpha0=1, amin=0, max_nit
             phi_a0 - phi0 - derphi0 * alpha0
         )
         a = a / factor
-        b = -(alpha0**3) * (phi_a1 - phi0 - derphi0 * alpha1) + alpha1**3 * (
-            phi_a0 - phi0 - derphi0 * alpha0
-        )
+        b = -(alpha0**3) * (
+            phi_a1 - phi0 - derphi0 * alpha1
+        ) + alpha1**3 * (phi_a0 - phi0 - derphi0 * alpha0)
         b = b / factor
 
-        alpha2 = (-b + torch.sqrt(torch.abs(b**2 - 3 * a * derphi0))) / (3.0 * a)
+        alpha2 = (-b + torch.sqrt(torch.abs(b**2 - 3 * a * derphi0))) / (
+            3.0 * a
+        )
         phi_a2 = phi(alpha2)
 
         if phi_a2 <= phi0 + c1 * alpha2 * derphi0:

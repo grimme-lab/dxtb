@@ -53,7 +53,7 @@ Example
     es = es2.ES2(hubbard=hubbard, average=average, gexp=gexp)
 
     # Calculate energy using the provided atomic charges and positions
-    cache = es.get_cache(numbers, positions)
+    cache = es.get_cache(numbers=numbers, positions=positions)
     e = es.get_energy(q, cache)
 
     torch.set_printoptions(precision=7)
@@ -78,6 +78,7 @@ from dxtb._src.typing import (
     TensorLike,
     TensorOrTensors,
     get_default_dtype,
+    override,
 )
 
 from ..base import Interaction, InteractionCache
@@ -199,8 +200,14 @@ class ES2(Interaction):
 
         self.shell_resolved = shell_resolved and lhubbard is not None
 
+    # pylint: disable=unused-argument
+    @override
     def get_cache(
-        self, numbers: Tensor, positions: Tensor, ihelp: IndexHelper
+        self,
+        *,
+        numbers: Tensor | None = None,
+        positions: Tensor | None = None,
+        ihelp: IndexHelper | None = None,
     ) -> ES2Cache:
         """
         Obtain the cache object containing the Coulomb matrix.
@@ -224,6 +231,13 @@ class ES2(Interaction):
         The cache of an interaction requires ``positions`` as they do not change
         during the self-consistent charge iterations.
         """
+        if numbers is None:
+            raise ValueError("Atomic numbers are required for ES2 cache.")
+        if positions is None:
+            raise ValueError("Positions are required for ES2 cache.")
+        if ihelp is None:
+            raise ValueError("IndexHelper is required for ES2 cache creation.")
+
         cachvars = (numbers.detach().clone(), positions.detach().clone())
 
         if self.cache_is_latest(cachvars) is True:
@@ -807,7 +821,10 @@ def coulomb_matrix_shell(
 
     # re-include diagonal for hardness
     mask = ihelp.spread_atom_to_shell(
-        mask + torch.diag_embed(torch.ones_like(ihelp.atom_to_unique).type(torch.bool)),
+        mask
+        + torch.diag_embed(
+            torch.ones_like(ihelp.atom_to_unique).type(torch.bool)
+        ),
         (-2, -1),
     )
 
@@ -820,7 +837,11 @@ def coulomb_matrix_shell(
 
 
 def coulomb_matrix_shell_gradient(
-    mask: Tensor, positions: Tensor, mat: Tensor, ihelp: IndexHelper, gexp: Tensor
+    mask: Tensor,
+    positions: Tensor,
+    mat: Tensor,
+    ihelp: IndexHelper,
+    gexp: Tensor,
 ) -> Tensor:
     """
     Nuclear gradient of shell-resolved Coulomb matrix.
@@ -941,7 +962,9 @@ class CoulombMatrixAG(torch.autograd.Function):
         if grad_positions:
             # (n_batch, n, n, 3)
             if shell_resolved:
-                g = coulomb_matrix_shell_gradient(mask, positions, mat, ihelp, gexp)
+                g = coulomb_matrix_shell_gradient(
+                    mask, positions, mat, ihelp, gexp
+                )
             else:
                 g = coulomb_matrix_atom_gradient(mask, positions, mat, gexp)
 

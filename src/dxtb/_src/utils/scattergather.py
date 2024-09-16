@@ -334,7 +334,11 @@ def wrap_gather(
 
 
 def scatter_reduce(
-    x: Tensor, dim: int, idx: Tensor, *args: str, fill_value: float | int | None = 0
+    x: Tensor,
+    dim: int,
+    idx: Tensor,
+    *args: str,
+    fill_value: float | int | None = 0,
 ) -> Tensor:  # pragma: no cover
     """
 
@@ -393,14 +397,18 @@ def scatter_reduce(
         if fill_value is None:
             out = torch.empty(out_shape, device=x.device, dtype=x.dtype)
         else:
-            out = torch.full(out_shape, fill_value, device=x.device, dtype=x.dtype)
+            out = torch.full(
+                out_shape, fill_value, device=x.device, dtype=x.dtype
+            )
 
         # stop warning about beta and possible API changes in 1.12
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             output = torch.scatter_reduce(out, dim, idx, x, *args)  # type: ignore
     else:
-        raise RuntimeError(f"Unsupported PyTorch version ({__tversion__}) used.")
+        raise RuntimeError(
+            f"Unsupported PyTorch version ({__tversion__}) used."
+        )
 
     return output
 

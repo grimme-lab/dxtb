@@ -27,7 +27,8 @@ import torch
 from tad_mctc.exceptions import DeviceError, DtypeError
 from tad_mctc.math import einsum
 
-from dxtb._src.typing import Any, Tensor, TensorLike
+from dxtb import IndexHelper
+from dxtb._src.typing import Tensor, TensorLike, override
 
 from ..base import Interaction, InteractionCache
 
@@ -87,7 +88,15 @@ class ElectricFieldGrad(Interaction):
         )
         self.field_grad = field_grad
 
-    def get_cache(self, **_: Any) -> ElectricFieldCache:
+    # pylint: disable=unused-argument
+    @override
+    def get_cache(
+        self,
+        *,
+        numbers: Tensor | None = None,
+        positions: Tensor | None = None,
+        ihelp: IndexHelper | None = None,
+    ) -> ElectricFieldCache:
         """
         Create restart data for individual interactions.
 

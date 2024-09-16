@@ -592,7 +592,10 @@ class GFN1Hamiltonian(BaseHamiltonian):
         )
 
         # reduce orbital-resolved `P*S` for mult with shell-resolved `dhdcn`
-        dcn = self.ihelp.reduce_orbital_to_shell(pmat * overlap, dim=(-2, -1)) * dhdcn
+        dcn = (
+            self.ihelp.reduce_orbital_to_shell(pmat * overlap, dim=(-2, -1))
+            * dhdcn
+        )
 
         # reduce to atoms and sum for vector (requires non-symmetric matrix)
         dedcn = self.ihelp.reduce_shell_to_atom(dcn, dim=(-2, -1))

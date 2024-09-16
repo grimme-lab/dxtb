@@ -65,4 +65,4 @@ class OverlapFunction(Protocol):
         Tensor
             Overlap matrix or overlap gradient.
         """
-        ...  # pylint: disable=unnecessary-ellipsis
+        ...

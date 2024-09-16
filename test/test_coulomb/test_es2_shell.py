@@ -57,7 +57,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     es = es2.new_es2(numbers, GFN1_XTB, **dd)
     assert es is not None
 
-    cache = es.get_cache(numbers, positions, ihelp)
+    cache = es.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
     e = es.get_shell_energy(qsh, cache)
 
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == e.sum(-1).cpu()
@@ -100,7 +100,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     es = es2.new_es2(numbers, GFN1_XTB, **dd)
     assert es is not None
 
-    cache = es.get_cache(numbers, positions, ihelp)
+    cache = es.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
     e = es.get_shell_energy(qsh, cache)
 
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == e.sum(-1).cpu()
@@ -126,7 +126,7 @@ def test_grad_positions(name: str) -> None:
         if es is None:
             assert False
 
-        cache = es.get_cache(numbers, p, ihelp)
+        cache = es.get_cache(numbers=numbers, positions=p, ihelp=ihelp)
         return es.get_shell_energy(qsh, cache)
 
     assert dgradcheck(func, pos, nondet_tol=NONDET_TOL)
@@ -146,8 +146,12 @@ def test_grad_param(name: str) -> None:
 
     assert GFN1_XTB.charge is not None
 
-    hubbard = get_elem_param(torch.unique(numbers), GFN1_XTB.element, "gam", **dd)
-    lhubbard = get_elem_param(torch.unique(numbers), GFN1_XTB.element, "lgam", **dd)
+    hubbard = get_elem_param(
+        torch.unique(numbers), GFN1_XTB.element, "gam", **dd
+    )
+    lhubbard = get_elem_param(
+        torch.unique(numbers), GFN1_XTB.element, "lgam", **dd
+    )
     gexp = torch.tensor(GFN1_XTB.charge.effective.gexp, **dd)
     average = averaging_function[GFN1_XTB.charge.effective.average]
 
@@ -157,7 +161,7 @@ def test_grad_param(name: str) -> None:
 
     def func(gexp: Tensor, hubbard: Tensor):
         es = es2.ES2(hubbard, lhubbard, average=average, gexp=gexp, **dd)
-        cache = es.get_cache(numbers, positions, ihelp)
+        cache = es.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
         return es.get_shell_energy(qsh, cache)
 
     assert dgradcheck(func, (gexp, hubbard), nondet_tol=NONDET_TOL)

@@ -203,7 +203,9 @@ class NumericalCalculator(EnergyCalculator):
                 return -self.forces_numerical(pos, chrg, spin)
 
         # (..., nat, 3, nat, 3)
-        deriv = torch.zeros((*positions.shape, *positions.shape[-2:]), **self.dd)
+        deriv = torch.zeros(
+            (*positions.shape, *positions.shape[-2:]), **self.dd
+        )
         logger.debug("Hessian (numerical): Starting build (%s).", deriv.shape)
 
         count = 1
@@ -273,7 +275,9 @@ class NumericalCalculator(EnergyCalculator):
             ``(..., nfreqs)``) and normal modes (shape:
             ``(..., nat*3, nfreqs)``).
         """
-        hess = self.hessian_numerical(positions, chrg, spin, step_size=step_size)
+        hess = self.hessian_numerical(
+            positions, chrg, spin, step_size=step_size
+        )
         return vib.vib_analysis(
             self.numbers,
             positions,
@@ -404,7 +408,9 @@ class NumericalCalculator(EnergyCalculator):
             (*self.numbers.shape[:-1], 3, *positions.shape[-2:]),
             **self.dd,
         )
-        logger.debug("Dipole derivative (numerical): Starting build (%s).", deriv.shape)
+        logger.debug(
+            "Dipole derivative (numerical): Starting build (%s).", deriv.shape
+        )
 
         count = 1
         nsteps = 3 * self.numbers.shape[-1]
@@ -421,7 +427,9 @@ class NumericalCalculator(EnergyCalculator):
                     positions[..., i, j] += step_size
                     deriv[..., :, i, j] = 0.5 * (r - l) / step_size
 
-                logger.debug("Dipole derivative (numerical): Step %s/%s", count, nsteps)
+                logger.debug(
+                    "Dipole derivative (numerical): Step %s/%s", count, nsteps
+                )
                 count += 1
 
                 gc.collect()
@@ -485,7 +493,9 @@ class NumericalCalculator(EnergyCalculator):
 
         # (..., 3, 3)
         deriv = torch.zeros(*(*self.numbers.shape[:-1], 3, 3), **self.dd)
-        logger.debug("Polarizability (numerical): Starting build %s", deriv.shape)
+        logger.debug(
+            "Polarizability (numerical): Starting build %s", deriv.shape
+        )
 
         count = 1
         for i in range(3):
@@ -711,7 +721,9 @@ class NumericalCalculator(EnergyCalculator):
         )
 
         # calculate nuclear dipole derivative dmu/dR: (..., 3, nat, 3)
-        dmu_dr = self.dipole_deriv_numerical(positions, chrg, spin, step_size=step_size)
+        dmu_dr = self.dipole_deriv_numerical(
+            positions, chrg, spin, step_size=step_size
+        )
 
         intensities = vib.ir_ints(dmu_dr, modes)
 
@@ -755,10 +767,14 @@ class NumericalCalculator(EnergyCalculator):
         OutputHandler.write_stdout("--------------")
         logger.debug("Raman spectrum (numerical): All finished.")
 
-        vib_res = self.vibration_numerical(positions, chrg, spin, step_size=step_size)
+        vib_res = self.vibration_numerical(
+            positions, chrg, spin, step_size=step_size
+        )
 
         # d(3, 3) / d(nat, 3) -> (3, 3, nat, 3) -> (3, 3, nat*3)
-        da_dr = self.pol_deriv_numerical(positions, chrg, spin, step_size=step_size)
+        da_dr = self.pol_deriv_numerical(
+            positions, chrg, spin, step_size=step_size
+        )
 
         intensities, depol = vib.raman_ints_depol(da_dr, vib_res.modes)
 

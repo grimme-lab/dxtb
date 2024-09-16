@@ -142,7 +142,9 @@ def test_no_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", large)
-def test_no_overlap_batch_large(dtype: torch.dtype, name1: str, name2: str) -> None:
+def test_no_overlap_batch_large(
+    dtype: torch.dtype, name1: str, name2: str
+) -> None:
     no_overlap_batch(dtype, name1, name2)
 
 

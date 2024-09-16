@@ -65,7 +65,7 @@ from tad_mctc.batch import real_pairs
 
 from dxtb import IndexHelper
 from dxtb._src.constants import xtb
-from dxtb._src.typing import Any, Tensor
+from dxtb._src.typing import Any, Tensor, override
 
 from ..base import Classical, ClassicalCache
 
@@ -167,7 +167,10 @@ class BaseRepulsion(Classical):
             klight = klight.to(self.device).type(self.dtype)
         self.klight = klight
 
-    def get_cache(self, numbers: Tensor, ihelp: IndexHelper) -> BaseRepulsionCache:
+    @override
+    def get_cache(
+        self, numbers: Tensor, ihelp: IndexHelper | None = None
+    ) -> BaseRepulsionCache:
         """
         Store variables for energy and gradient calculation.
 
@@ -189,6 +192,9 @@ class BaseRepulsion(Classical):
         it only becomes useful if `numbers` remain unchanged and ``positions``
         vary, i.e., during geometry optimization.
         """
+        if ihelp is None:
+            raise ValueError("IndexHelper must be passed for repulsion.")
+
         cachvars = (numbers.detach().clone(),)
 
         if self.cache_is_latest(cachvars) is True:

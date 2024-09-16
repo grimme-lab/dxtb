@@ -105,7 +105,9 @@ def test_grad_large(dtype: torch.dtype, name: str) -> None:
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradchecker(dtype, name)
-    assert dgradcheck(func, diffvars, atol=tol, fast_mode=True, nondet_tol=NONDET_TOL)
+    assert dgradcheck(
+        func, diffvars, atol=tol, fast_mode=True, nondet_tol=NONDET_TOL
+    )
 
 
 @pytest.mark.grad

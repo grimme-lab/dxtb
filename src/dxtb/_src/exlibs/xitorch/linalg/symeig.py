@@ -53,7 +53,13 @@ def lsymeig(
     **fwd_options,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     return symeig(
-        A, neig, "lowest", M, method=method, bck_options=bck_options, **fwd_options
+        A,
+        neig,
+        "lowest",
+        M,
+        method=method,
+        bck_options=bck_options,
+        **fwd_options,
     )
 
 
@@ -66,7 +72,13 @@ def usymeig(
     **fwd_options,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     return symeig(
-        A, neig, "uppest", M, method=method, bck_options=bck_options, **fwd_options
+        A,
+        neig,
+        "uppest",
+        M,
+        method=method,
+        bck_options=bck_options,
+        **fwd_options,
     )
 
 
@@ -153,7 +165,9 @@ def symeig(
         "implemented if using symeig with grad enabled",
     )
     if M is not None:
-        assert_runtime(M.is_hermitian, "The linear operator M must be Hermitian")
+        assert_runtime(
+            M.is_hermitian, "The linear operator M must be Hermitian"
+        )
         assert_runtime(
             M.shape[-1] == A.shape[-1],
             f"The shape of A & M must match (A: {A.shape}, M: {M.shape})",
@@ -277,16 +291,13 @@ def svd(
 
     if is_debug_enabled():
         A.check()
-    BA = A.shape[:-2]
 
     m = A.shape[-2]
     n = A.shape[-1]
     if m < n:
         AAsym = A.matmul(A.H, is_hermitian=True)
-        min_nm = m
     else:
         AAsym = A.H.matmul(A, is_hermitian=True)
-        min_nm = n
 
     eivals, eivecs = symeig(
         AAsym, k, mode, bck_options=bck_options, method=method, **fwd_options
@@ -336,7 +347,9 @@ class SymeigMethodBase(torch.autograd.Function):
         # check the degeneracy
         if degen_atol > 0 or degen_rtol > 0:
             # idx_degen: (*BAM, neig, neig)
-            idx_degen, isdegenerate = _check_degen(evals, degen_atol, degen_rtol)
+            idx_degen, isdegenerate = _check_degen(
+                evals, degen_atol, degen_rtol
+            )
         else:
             isdegenerate = False
         if not isdegenerate:
@@ -377,7 +390,11 @@ class SymeigMethodBase(torch.autograd.Function):
         gevalsA = grad_evals.unsqueeze(-2) * evecs  # (*BAM, na, neig)
 
         # calculate the contributions from the eigenvectors
-        with M.uselinopparams(*mparams) if M is not None else dummy_context_manager():
+        with (
+            M.uselinopparams(*mparams)
+            if M is not None
+            else dummy_context_manager()
+        ):
             # orthogonalize the grad_evecs with evecs
             B = _ortho(grad_evecs, evecs, D=idx_degen, M=M, mright=False)
 
@@ -391,7 +408,12 @@ class SymeigMethodBase(torch.autograd.Function):
 
             with A.uselinopparams(*params):
                 gevecs = solve(
-                    A, -B, evals_offset, M, bck_options=ctx.bck_config, **ctx.bck_config
+                    A,
+                    -B,
+                    evals_offset,
+                    M,
+                    bck_options=ctx.bck_config,
+                    **ctx.bck_config,
                 )  # (*BAM, na, neig)
 
             # orthogonalize gevecs w.r.t. evecs
@@ -430,7 +452,17 @@ class SymeigMethodBase(torch.autograd.Function):
                 create_graph=torch.is_grad_enabled(),
             )
 
-        return (None, None, None, None, None, None, None, *grad_params, *grad_mparams)
+        return (
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            *grad_params,
+            *grad_mparams,
+        )
 
 
 class SymeigMethod_V1(SymeigMethodBase):
@@ -459,7 +491,9 @@ class SymeigMethod_V1(SymeigMethodBase):
 
         method = config.pop("method")
         with A.uselinopparams(*params), (
-            M.uselinopparams(*mparams) if M is not None else dummy_context_manager()
+            M.uselinopparams(*mparams)
+            if M is not None
+            else dummy_context_manager()
         ):
             methods = {
                 "davidson": davidson,
@@ -493,7 +527,9 @@ class SymeigMethod_V2(SymeigMethodBase):
 
         method = config.pop("method")
         with A.uselinopparams(*params), (
-            M.uselinopparams(*mparams) if M is not None else dummy_context_manager()
+            M.uselinopparams(*mparams)
+            if M is not None
+            else dummy_context_manager()
         ):
             methods = {
                 "davidson": davidson,
@@ -506,7 +542,7 @@ class SymeigMethod_V2(SymeigMethodBase):
 
     @staticmethod
     def setup_context(ctx, inputs: tuple, output: tuple[Tensor, Tensor]):
-        A, neig, mode, M, fwd_options, bck_options, na, amparams = inputs
+        A, _, _, M, _, bck_options, na, amparams = inputs
         evals, evecs = output
 
         ctx.bck_config = set_default_option(
@@ -534,8 +570,12 @@ def symeig_torchfcn(
     A, neig, mode, M, fwd_options, bck_options, na, *amparams
 ) -> tuple[Tensor, Tensor]:
 
-    SymeigMethod = SymeigMethod_V1 if __tversion__ < (2, 0, 0) else SymeigMethod_V2
-    res = SymeigMethod.apply(A, neig, mode, M, fwd_options, bck_options, na, *amparams)
+    SymeigMethod = (
+        SymeigMethod_V1 if __tversion__ < (2, 0, 0) else SymeigMethod_V2
+    )
+    res = SymeigMethod.apply(
+        A, neig, mode, M, fwd_options, bck_options, na, *amparams
+    )
     assert res is not None
     return res[0], res[1]
 
@@ -545,11 +585,8 @@ def _check_degen(
 ) -> Tuple[torch.Tensor, bool]:
     # evals: (*BAM, neig)
 
-    # get the index of degeneracies
-    neig = evals.shape[-1]
-    evals_diff = torch.abs(
-        evals.unsqueeze(-2) - evals.unsqueeze(-1)
-    )  # (*BAM, neig, neig)
+    # (*BAM, neig, neig)
+    evals_diff = torch.abs(evals.unsqueeze(-2) - evals.unsqueeze(-1))
     degen_thrsh = degen_atol + degen_rtol * torch.abs(evals).unsqueeze(-1)
     idx_degen = (evals_diff < degen_thrsh).to(evals.dtype)
     isdegenerate = bool(torch.sum(idx_degen) > torch.numel(evals))
