@@ -25,6 +25,8 @@ from __future__ import annotations
 
 import torch
 
+from dxtb import labels
+
 # General
 
 STRICT = False
@@ -76,7 +78,7 @@ MAX_ELEMENT = 86
 INTCUTOFF = 50.0
 """Real-space cutoff (in Bohr) for integral evaluation. (50.0)"""
 
-INTDRIVER = "libcint"
+INTDRIVER = labels.INTDRIVER_LIBCINT
 """Integral driver."""
 
 INTDRIVER_CHOICES = [

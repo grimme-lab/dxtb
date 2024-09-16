@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Testing dispersion gradient (autodiff).
+General gradient tests for repulsion contribution.
 """
 
 from __future__ import annotations
@@ -24,31 +24,32 @@ import pytest
 import torch
 
 from dxtb import GFN1_XTB as par
-from dxtb._src.components.classicals.dispersion import new_dispersion
+from dxtb import IndexHelper
+from dxtb._src.components.classicals import new_repulsion
 from dxtb._src.typing import DD
 
+from ...conftest import DEVICE
 from .samples import samples
 
-sample_list = ["LiH", "SiH4", "MB16_43_01", "PbH4-BiH3"]
-
-from ..conftest import DEVICE
+sample_list = ["H2O", "SiH4", "MB16_43_01", "MB16_43_02", "LYS_xao"]
 
 
 @pytest.mark.grad
-@pytest.mark.parametrize("name", sample_list)
+@pytest.mark.parametrize("name", ["H2O"])
 def test_grad_fail(name: str) -> None:
     dtype = torch.double
-    dd: DD = {"dtype": dtype, "device": DEVICE}
+    dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
-    disp = new_dispersion(numbers, par, **dd)
-    assert disp is not None
+    rep = new_repulsion(numbers, par, **dd)
+    assert rep is not None
 
-    cache = disp.get_cache(numbers)
-    energy = disp.get_energy(positions, cache)
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    cache = rep.get_cache(numbers, ihelp)
+    energy = rep.get_energy(positions, cache)
 
     with pytest.raises(RuntimeError):
-        disp.get_gradient(energy, positions)
+        rep.get_gradient(energy, positions)

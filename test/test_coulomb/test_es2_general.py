@@ -42,7 +42,25 @@ def test_none() -> None:
     assert es2.new_es2(dummy, par) is None
 
 
-def test_store_fail() -> None:
+def test_cache_input_fail() -> None:
+    numbers = torch.tensor([3, 1])
+    positions = torch.randn((2, 3))
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
+
+    es = es2.new_es2(numbers, GFN1_XTB)
+    assert es is not None
+
+    with pytest.raises(ValueError):
+        es.get_cache(numbers=None, positions=positions, ihelp=ihelp)
+
+    with pytest.raises(ValueError):
+        es.get_cache(numbers=numbers, positions=None, ihelp=ihelp)
+
+    with pytest.raises(ValueError):
+        es.get_cache(numbers=numbers, positions=positions, ihelp=None)
+
+
+def test_fail_store() -> None:
     numbers = torch.tensor([3, 1])
     positions = torch.randn((2, 3))
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)

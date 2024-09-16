@@ -51,7 +51,21 @@ def test_fail() -> None:
         es3.new_es3(dummy, par)
 
 
-def test_store_fail() -> None:
+def test_fail_cache_input() -> None:
+    numbers = torch.tensor([3, 1])
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
+
+    es = es3.new_es3(numbers, GFN1_XTB)
+    assert es is not None
+
+    with pytest.raises(ValueError):
+        es.get_cache(numbers=None, ihelp=ihelp)
+
+    with pytest.raises(ValueError):
+        es.get_cache(numbers=numbers, ihelp=None)
+
+
+def test_fail_store() -> None:
     numbers = torch.tensor([3, 1])
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 

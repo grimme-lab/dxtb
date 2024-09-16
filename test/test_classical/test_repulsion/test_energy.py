@@ -34,7 +34,7 @@ from dxtb._src.param.gfn1 import GFN1_XTB
 from dxtb._src.param.gfn2 import GFN2_XTB
 from dxtb._src.typing import DD, Literal
 
-from ..conftest import DEVICE
+from ...conftest import DEVICE
 from .samples import samples
 
 sample_list = [

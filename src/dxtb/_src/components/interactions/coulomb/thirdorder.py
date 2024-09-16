@@ -175,6 +175,8 @@ class ES3(Interaction):
 
         Parameters
         ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
         ihelp : IndexHelper
             Index mapping for the basis set.
 

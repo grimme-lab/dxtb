@@ -35,7 +35,7 @@ from dxtb._src.components.classicals.dispersion import (
 )
 from dxtb._src.typing import DD, Tensor
 
-from ..conftest import DEVICE
+from ...conftest import DEVICE
 from .samples import samples
 
 

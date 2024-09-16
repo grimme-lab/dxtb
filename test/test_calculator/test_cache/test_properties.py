@@ -56,6 +56,11 @@ def test_energy(dtype: torch.dtype) -> None:
     assert calc._ncalcs == 1
     assert isinstance(energy, Tensor)
 
+    # different name for energy getter
+    energy = calc.get_potential_energy(positions)
+    assert calc._ncalcs == 1
+    assert isinstance(energy, Tensor)
+
     # check reset
     calc.cache.reset_all()
     assert len(calc.cache.list_cached_properties()) == 0

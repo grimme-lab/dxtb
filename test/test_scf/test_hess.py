@@ -23,6 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 from tad_mctc.autograd import jacrev
+from tad_mctc.convert import reshape_fortran
 
 from dxtb import GFN1_XTB as par
 from dxtb import Calculator
@@ -30,7 +31,6 @@ from dxtb._src.constants import labels
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
-from ..utils import reshape_fortran
 from .samples import samples
 
 sample_list = ["LiH", "SiH4"]

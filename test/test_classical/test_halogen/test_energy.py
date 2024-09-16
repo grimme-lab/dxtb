@@ -31,7 +31,7 @@ from dxtb import IndexHelper
 from dxtb._src.components.classicals import new_halogen
 from dxtb._src.typing import DD
 
-from ..conftest import DEVICE
+from ...conftest import DEVICE
 from .samples import samples
 
 

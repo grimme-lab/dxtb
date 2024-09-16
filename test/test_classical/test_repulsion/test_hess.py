@@ -26,14 +26,14 @@ import pytest
 import torch
 from tad_mctc.autograd import jacrev
 from tad_mctc.batch import pack
+from tad_mctc.convert import reshape_fortran
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.components.classicals import new_repulsion
 from dxtb._src.typing import DD, Tensor
 
-from ..conftest import DEVICE
-from ..utils import reshape_fortran
+from ...conftest import DEVICE
 from .samples import samples
 
 sample_list = ["LiH", "SiH4", "MB16_43_01"]

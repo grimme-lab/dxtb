@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Testing halogen bond correction gradient (autodiff).
+Testing dispersion gradient (autodiff).
 """
 
 from __future__ import annotations
@@ -24,16 +24,17 @@ import pytest
 import torch
 
 from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
-from dxtb._src.components.classicals import new_halogen
+from dxtb._src.components.classicals.dispersion import new_dispersion
 from dxtb._src.typing import DD
 
-from ..conftest import DEVICE
+from ...conftest import DEVICE
 from .samples import samples
+
+sample_list = ["LiH", "SiH4", "MB16_43_01", "PbH4-BiH3"]
 
 
 @pytest.mark.grad
-@pytest.mark.parametrize("name", ["br2nh3"])
+@pytest.mark.parametrize("name", sample_list)
 def test_grad_fail(name: str) -> None:
     dtype = torch.double
     dd: DD = {"dtype": dtype, "device": DEVICE}
@@ -42,13 +43,11 @@ def test_grad_fail(name: str) -> None:
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
-    xb = new_halogen(numbers, par, **dd)
-    if xb is None:
-        assert False
+    disp = new_dispersion(numbers, par, **dd)
+    assert disp is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
-    cache = xb.get_cache(numbers, ihelp)
-    energy = xb.get_energy(positions, cache)
+    cache = disp.get_cache(numbers)
+    energy = disp.get_energy(positions, cache)
 
     with pytest.raises(RuntimeError):
-        xb.get_gradient(energy, positions)
+        disp.get_gradient(energy, positions)

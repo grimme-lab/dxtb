@@ -37,7 +37,7 @@ from dxtb._src.components.classicals.repulsion.rep import (
 )
 from dxtb._src.typing import DD, Callable, Tensor
 
-from ..conftest import DEVICE
+from ...conftest import DEVICE
 from .samples import samples
 
 sample_list = ["H2O", "SiH4", "MB16_43_01", "MB16_43_02", "LYS_xao"]

@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Testing halogen bond correction gradient (autodiff).
+Testing dispersion gradient (autodiff).
 """
 
 from __future__ import annotations
@@ -26,16 +26,14 @@ from tad_mctc.autograd import dgradcheck, dgradgradcheck
 from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
-from dxtb._src.components.classicals import new_halogen
+from dxtb._src.components.classicals.dispersion import new_dispersion
 from dxtb._src.typing import DD, Callable, Tensor
 
-from ..conftest import DEVICE
+from ...conftest import DEVICE
 from .samples import samples
 
-# "LYS_xao" must be the last one as we have to manually exclude it for the
-# `backward` and `gradgradcheck` check because the gradient is zero
-sample_list = ["br2nh3", "br2och2", "LYS_xao"]
+slist = ["LiH", "SiH4"]
+slist_large = ["MB16_43_01", "PbH4-BiH3"]
 
 tol = 1e-8
 
@@ -53,21 +51,20 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    xb = new_halogen(numbers, par, **dd)
-    assert xb is not None
+    disp = new_dispersion(numbers, par, **dd)
+    assert disp is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
-    cache = xb.get_cache(numbers, ihelp)
+    cache = disp.get_cache(numbers)
 
     def func(p: Tensor) -> Tensor:
-        return xb.get_energy(p, cache)
+        return disp.get_energy(p, cache)
 
     return func, pos
 
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", sample_list)
+@pytest.mark.parametrize("name", slist)
 def test_gradcheck(dtype: torch.dtype, name: str) -> None:
     """
     Check a single analytical gradient of parameters against numerical
@@ -78,9 +75,35 @@ def test_gradcheck(dtype: torch.dtype, name: str) -> None:
 
 
 @pytest.mark.grad
+@pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", sample_list[:-1])
+@pytest.mark.parametrize("name", slist_large)
+def test_gradcheck_large(dtype: torch.dtype, name: str) -> None:
+    """
+    Check a single analytical gradient of parameters against numerical
+    gradient from `torch.autograd.gradcheck`.
+    """
+    func, diffvars = gradchecker(dtype, name)
+    assert dgradcheck(func, diffvars, atol=tol)
+
+
+@pytest.mark.grad
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", slist)
 def test_gradgradcheck(dtype: torch.dtype, name: str) -> None:
+    """
+    Check a single analytical gradient of parameters against numerical
+    gradient from `torch.autograd.gradgradcheck`.
+    """
+    func, diffvars = gradchecker(dtype, name)
+    assert dgradgradcheck(func, diffvars, atol=tol)
+
+
+@pytest.mark.grad
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", slist_large)
+def test_gradgradcheck_large(dtype: torch.dtype, name: str) -> None:
     """
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradgradcheck`.
@@ -112,22 +135,21 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    xb = new_halogen(numbers, par, **dd)
-    assert xb is not None
+    disp = new_dispersion(numbers, par, **dd)
+    assert disp is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
-    cache = xb.get_cache(numbers, ihelp)
+    cache = disp.get_cache(numbers)
 
     def func(p: Tensor) -> Tensor:
-        return xb.get_energy(p, cache)
+        return disp.get_energy(p, cache)
 
     return func, pos
 
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name1", ["br2nh3"])
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", slist)
 def test_gradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """
     Check a single analytical gradient of parameters against numerical
@@ -138,9 +160,25 @@ def test_gradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
 
 @pytest.mark.grad
+@pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name1", ["br2nh3"])
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", slist_large)
+def test_gradcheck_batch_large(
+    dtype: torch.dtype, name1: str, name2: str
+) -> None:
+    """
+    Check a single analytical gradient of parameters against numerical
+    gradient from `torch.autograd.gradcheck`.
+    """
+    func, diffvars = gradchecker_batch(dtype, name1, name2)
+    assert dgradcheck(func, diffvars, atol=tol)
+
+
+@pytest.mark.grad
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", slist)
 def test_gradgradcheck_batch(
     dtype: torch.dtype, name1: str, name2: str
 ) -> None:
@@ -154,37 +192,48 @@ def test_gradgradcheck_batch(
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", ["br2nh3", "finch", "LYS_xao"])
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", slist_large)
+def test_gradgradcheck_batch_large(
+    dtype: torch.dtype, name1: str, name2: str
+) -> None:
+    """
+    Check a single analytical gradient of parameters against numerical
+    gradient from `torch.autograd.gradgradcheck`.
+    """
+    func, diffvars = gradchecker_batch(dtype, name1, name2)
+    assert dgradgradcheck(func, diffvars, atol=tol)
+
+
+@pytest.mark.grad
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name", slist)
 def test_autograd(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
-    ref = sample["gradient"].to(**dd)
+    ref = sample["grad"].to(**dd)
+
+    disp = new_dispersion(numbers, par, **dd)
+    assert disp is not None
+
+    cache = disp.get_cache(numbers)
 
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    xb = new_halogen(numbers, par, **dd)
-    assert xb is not None
+    energy = disp.get_energy(pos, cache)
+    grad_autograd = disp.get_gradient(energy, pos)
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
-    cache = xb.get_cache(numbers, ihelp)
-
-    energy = xb.get_energy(pos, cache)
-    grad_autograd = xb.get_gradient(energy, pos)
-
-    pos.detach_()
-    grad_autograd.detach_()
-
-    assert pytest.approx(ref.cpu(), abs=tol * 10) == grad_autograd.cpu()
+    assert pytest.approx(ref.cpu(), abs=tol) == grad_autograd.detach().cpu()
 
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name1", ["br2nh3"])
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", slist)
 def test_autograd_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
@@ -203,32 +252,31 @@ def test_autograd_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
     ref = pack(
         [
-            sample1["gradient"].to(**dd),
-            sample2["gradient"].to(**dd),
+            sample1["grad"].to(**dd),
+            sample2["grad"].to(**dd),
         ]
     )
 
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    xb = new_halogen(numbers, par, **dd)
-    assert xb is not None
+    disp = new_dispersion(numbers, par, **dd)
+    assert disp is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
-    cache = xb.get_cache(numbers, ihelp)
+    cache = disp.get_cache(numbers)
 
-    energy = xb.get_energy(pos, cache)
-    grad_autograd = xb.get_gradient(energy, pos)
+    energy = disp.get_energy(pos, cache)
+    grad_autograd = disp.get_gradient(energy, pos)
 
     pos.detach_()
     grad_autograd.detach_()
 
-    assert pytest.approx(ref.cpu(), abs=tol * 10) == grad_autograd.cpu()
+    assert pytest.approx(ref.cpu(), abs=tol) == grad_autograd.cpu()
 
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", sample_list[:-1])
+@pytest.mark.parametrize("name", slist)
 def test_backward(dtype: torch.dtype, name: str) -> None:
     """Compare with reference values from tblite."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
@@ -236,18 +284,18 @@ def test_backward(dtype: torch.dtype, name: str) -> None:
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
-    ref = sample["gradient"].to(**dd)
+    ref = sample["grad"].to(**dd)
 
-    # variable to be differentiated
+    # variable to be differentiated (clone in backward for safety)
     pos = positions.clone().requires_grad_(True)
 
-    xb = new_halogen(numbers, par, **dd)
-    assert xb is not None
+    disp = new_dispersion(numbers, par, **dd)
+    assert disp is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
-    cache = xb.get_cache(numbers, ihelp)
+    cache = disp.get_cache(numbers)
 
-    energy = xb.get_energy(pos, cache)
+    # automatic gradient
+    energy = disp.get_energy(pos, cache)
     energy.sum().backward()
 
     assert pos.grad is not None
@@ -256,14 +304,15 @@ def test_backward(dtype: torch.dtype, name: str) -> None:
     # also zero out gradients when using `.backward()`
     pos.detach_()
     pos.grad.data.zero_()
+    grad_backward.detach_()
 
-    assert pytest.approx(ref.cpu(), abs=tol * 10) == grad_backward.cpu()
+    assert pytest.approx(ref.cpu(), abs=tol) == grad_backward.cpu()
 
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name1", ["br2nh3"])
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", slist)
 def test_backward_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Compare with reference values from tblite."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
@@ -283,21 +332,21 @@ def test_backward_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
     ref = pack(
         [
-            sample1["gradient"].to(**dd),
-            sample2["gradient"].to(**dd),
+            sample1["grad"].to(**dd),
+            sample2["grad"].to(**dd),
         ]
     )
 
-    # variable to be differentiated
+    # variable to be differentiated (clone in backward for safety)
     pos = positions.clone().requires_grad_(True)
 
-    xb = new_halogen(numbers, par, **dd)
-    assert xb is not None
+    disp = new_dispersion(numbers, par, **dd)
+    assert disp is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
-    cache = xb.get_cache(numbers, ihelp)
+    cache = disp.get_cache(numbers)
 
-    energy = xb.get_energy(pos, cache)
+    # automatic gradient
+    energy = disp.get_energy(pos, cache)
     energy.sum().backward()
 
     assert pos.grad is not None
@@ -306,5 +355,6 @@ def test_backward_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     # also zero out gradients when using `.backward()`
     pos.detach_()
     pos.grad.data.zero_()
+    grad_backward.detach_()
 
-    assert pytest.approx(ref.cpu(), abs=tol * 10) == grad_backward.cpu()
+    assert pytest.approx(ref.cpu(), abs=tol) == grad_backward.cpu()

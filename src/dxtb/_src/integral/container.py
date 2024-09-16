@@ -189,7 +189,7 @@ class Integrals(IntegralContainer):
         # `None`, the overlap will not be rebuilt if the positions change,
         # i.e., when the driver was invalidated. Hence, we would require a
         # full reset of the integrals via `reset_all`. However, the integral
-        # reset cannot be trigger by the driver manager, so we cannot add this
+        # reset cannot be triggered by the driver manager, so we cannot add this
         # check here. If we do, the hessian tests will fail as the overlap is
         # not recalculated for positions + delta.
         self.overlap.build(self.mgr.driver)

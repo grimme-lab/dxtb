@@ -32,7 +32,7 @@ from dxtb import GFN1_XTB as par
 from dxtb._src.components.classicals.dispersion import new_dispersion
 from dxtb._src.typing import DD
 
-from ..conftest import DEVICE
+from ...conftest import DEVICE
 from .samples import samples
 
 

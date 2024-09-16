@@ -493,7 +493,6 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         if self.opts.batch_mode == 0 and numbers.ndim > 1:
             self.opts.batch_mode = 1
 
-        # TODO: Should the IndexHelper be a singleton?
         self.ihelp = IndexHelper.from_numbers(
             numbers, par, self.opts.batch_mode
         )

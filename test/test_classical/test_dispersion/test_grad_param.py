@@ -28,7 +28,7 @@ from tad_mctc.batch import pack
 from dxtb._src.components.classicals.dispersion import DispersionD3
 from dxtb._src.typing import DD, Callable, Tensor
 
-from ..conftest import DEVICE
+from ...conftest import DEVICE
 from .samples import samples
 
 slist = ["LiH", "SiH4"]
