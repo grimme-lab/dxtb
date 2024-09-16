@@ -30,9 +30,12 @@ from tad_mctc.math import einsum
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
-from dxtb._src.exlibs import libcint
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import is_basis_list
+
+if has_libcint is True:
+    from dxtb._src.exlibs import libcint
 
 from ..conftest import DEVICE
 from ..utils import load_from_npz
@@ -75,6 +78,7 @@ def explicit(name: str, dd: DD, tol: float) -> None:
     assert pytest.approx(ref.cpu(), abs=tol) == final_grad.cpu()
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_explicit(dtype: torch.dtype, name: str) -> None:
@@ -83,6 +87,7 @@ def test_explicit(dtype: torch.dtype, name: str) -> None:
     explicit(name, dd, tol)
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["MB16_43_01"])
 def test_explicit_medium(dtype: torch.dtype, name: str) -> None:
@@ -113,6 +118,7 @@ def autograd(name: str, dd: DD, tol: float) -> None:
     assert pytest.approx(ref.cpu(), abs=tol) == g.cpu()
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_autograd(dtype: torch.dtype, name: str) -> None:
@@ -121,6 +127,7 @@ def test_autograd(dtype: torch.dtype, name: str) -> None:
     autograd(name, dd, tol)
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["MB16_43_01"])
 def test_autograd_medium(dtype: torch.dtype, name: str) -> None:

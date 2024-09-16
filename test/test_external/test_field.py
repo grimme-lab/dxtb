@@ -30,6 +30,7 @@ from tad_mctc.units import VAA2AU
 from dxtb import GFN1_XTB, Calculator
 from dxtb._src.components.interactions import new_efield
 from dxtb._src.constants import labels
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
@@ -45,6 +46,7 @@ opts = {
 }
 
 
+@pytest.mark.skipif(not has_libcint, reason="Libcint not available.")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
@@ -70,6 +72,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
+@pytest.mark.skipif(not has_libcint, reason="Libcint not available.")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
@@ -116,6 +119,7 @@ def test_batch(
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
+@pytest.mark.skipif(not has_libcint, reason="Libcint not available.")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", ["LiH"])

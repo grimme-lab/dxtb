@@ -80,6 +80,20 @@ class ConfigIntegrals:
 
         if isinstance(driver, str):
             if driver.casefold() in labels.INTDRIVER_LIBCINT_STRS:
+                # pylint: disable=import-outside-toplevel
+                from dxtb._src.exlibs.available import has_libcint
+
+                # The default input is an integer. So, if we receive a string
+                # here, we need to assume that the libcint driver was
+                # explicitly requested and we need to check if the libcint
+                # interface is available.
+                if has_libcint is False:
+                    raise ValueError(
+                        "The integral driver seems to be have been set "
+                        f"explicitly to '{driver}'. However, the libcint "
+                        "interface is not installed."
+                    )
+
                 self.driver = labels.INTDRIVER_LIBCINT
             elif driver.casefold() in labels.INTDRIVER_ANALYTICAL_STRS:
                 self.driver = labels.INTDRIVER_ANALYTICAL
@@ -87,6 +101,7 @@ class ConfigIntegrals:
                 self.driver = labels.INTDRIVER_AUTOGRAD
             else:
                 raise ValueError(f"Unknown integral driver '{driver}'.")
+
         elif isinstance(driver, int):
             if driver not in (
                 labels.INTDRIVER_LIBCINT,
@@ -94,6 +109,22 @@ class ConfigIntegrals:
                 labels.INTDRIVER_AUTOGRAD,
             ):
                 raise ValueError(f"Unknown integral driver '{driver}'.")
+
+            if driver == labels.INTDRIVER_LIBCINT:
+                # pylint: disable=import-outside-toplevel
+                from dxtb._src.exlibs.available import has_libcint
+
+                # If we receive the default integer here, we issue a warning
+                # and fall back to the PyTorch driver.
+                if has_libcint is False:
+                    from dxtb import OutputHandler
+
+                    OutputHandler.warn(
+                        "The libcint interface is not installed. "
+                        "Falling back to the analytical driver."
+                    )
+
+                    driver = labels.INTDRIVER_ANALYTICAL
 
             self.driver = driver
         else:

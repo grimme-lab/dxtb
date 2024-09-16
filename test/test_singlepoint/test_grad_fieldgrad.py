@@ -29,6 +29,7 @@ from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.components.interactions import new_efield, new_efield_grad
 from dxtb._src.constants import labels
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Callable, Tensor
 
 from ..conftest import DEVICE
@@ -80,6 +81,7 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
 
 
 @pytest.mark.grad
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_gradcheck(dtype: torch.dtype, name: str) -> None:
@@ -92,6 +94,7 @@ def test_gradcheck(dtype: torch.dtype, name: str) -> None:
 
 
 @pytest.mark.grad
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_gradgradcheck(dtype: torch.dtype, name: str) -> None:
@@ -144,6 +147,7 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
 
 
 @pytest.mark.grad
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["SiH4"])
 @pytest.mark.parametrize("name2", sample_list)
@@ -157,6 +161,7 @@ def test_gradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
 
 @pytest.mark.grad
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["SiH4"])
 @pytest.mark.parametrize("name2", sample_list)

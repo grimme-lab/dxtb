@@ -23,6 +23,8 @@ from __future__ import annotations
 import pytest
 import torch
 
+from dxtb import labels
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Tensor
 from dxtb.calculators import GFN1Calculator
 
@@ -59,8 +61,7 @@ def test_overlap_deleted(dtype: torch.dtype) -> None:
     assert calc.integrals.overlap._gradient is None
 
 
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-def test_overlap_retained_for_grad(dtype: torch.dtype) -> None:
+def overlap_retained_for_grad(dtype: torch.dtype, intdriver: int) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     numbers = torch.tensor([3, 1], device=DEVICE)
@@ -68,7 +69,9 @@ def test_overlap_retained_for_grad(dtype: torch.dtype) -> None:
         [[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd, requires_grad=True
     )
 
-    calc = GFN1Calculator(numbers, opts={"verbosity": 0}, **dd)
+    calc = GFN1Calculator(
+        numbers, opts={"verbosity": 0, "int_driver": intdriver}, **dd
+    )
     assert calc._ncalcs == 0
 
     # overlap should not be cached
@@ -86,3 +89,14 @@ def test_overlap_retained_for_grad(dtype: torch.dtype) -> None:
     assert calc.integrals.overlap is not None
     assert calc.integrals.overlap._matrix is not None
     assert calc.integrals.overlap._norm is not None
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_overlap_retained_for_grad_pytorch(dtype: torch.dtype) -> None:
+    overlap_retained_for_grad(dtype, labels.INTDRIVER_AUTOGRAD)
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_overlap_retained_for_grad_libcint(dtype: torch.dtype) -> None:
+    overlap_retained_for_grad(dtype, labels.INTDRIVER_LIBCINT)

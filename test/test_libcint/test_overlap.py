@@ -34,16 +34,12 @@ from tad_mctc.math import einsum
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
-from dxtb._src.exlibs import libcint
+from dxtb._src.exlibs.available import has_libcint, has_pyscf
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import is_basis_list
 
-try:
-    from dxtb._src.exlibs.pyscf.mol import M
-
-    pyscf = True
-except ImportError:
-    pyscf = False
+if has_libcint is True:
+    from dxtb._src.exlibs import libcint
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -81,7 +77,10 @@ def extract_blocks(x: Tensor, block_sizes: list[int] | Tensor) -> list[Tensor]:
     return blocks
 
 
-@pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
+@pytest.mark.skipif(
+    has_pyscf is False or has_libcint is False,
+    reason="PySCF or libcint interface not installed",
+)
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist)
 def test_single(dtype: torch.dtype, name: str) -> None:
@@ -89,7 +88,10 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
 
 @pytest.mark.large
-@pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
+@pytest.mark.skipif(
+    has_pyscf is False or has_libcint is False,
+    reason="PySCF or libcint interface not installed",
+)
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist_large)
 def test_large(dtype: torch.dtype, name: str) -> None:
@@ -131,7 +133,10 @@ def run_single(dtype: torch.dtype, name: str) -> None:
     assert pytest.approx(pyscf_overlap.cpu(), abs=tol) == dxtb_overlap.cpu()
 
 
-@pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
+@pytest.mark.skipif(
+    has_pyscf is False or has_libcint is False,
+    reason="PySCF or libcint interface not installed",
+)
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", slist)
@@ -144,7 +149,10 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
 
 @pytest.mark.large
-@pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
+@pytest.mark.skipif(
+    has_pyscf is False or has_libcint is False,
+    reason="PySCF or libcint interface not installed",
+)
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", slist_large)
@@ -218,7 +226,10 @@ def run_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     assert s_packed.shape == torch.Size((2, max_size, max_size))
 
 
-@pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
+@pytest.mark.skipif(
+    has_pyscf is False or has_libcint is False,
+    reason="PySCF or libcint interface not installed",
+)
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist)
 def test_grad(dtype: torch.dtype, name: str) -> None:
@@ -226,7 +237,10 @@ def test_grad(dtype: torch.dtype, name: str) -> None:
 
 
 @pytest.mark.large
-@pytest.mark.skipif(pyscf is False, reason="PySCF not installed")
+@pytest.mark.skipif(
+    has_pyscf is False or has_libcint is False,
+    reason="PySCF or libcint interface not installed",
+)
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist_large)
 def test_large_grad(dtype: torch.dtype, name: str) -> None:

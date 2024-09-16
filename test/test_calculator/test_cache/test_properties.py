@@ -25,6 +25,7 @@ import torch
 
 from dxtb import GFN1_XTB
 from dxtb._src.calculators.properties.vibration import VibResult
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Literal, Tensor
 from dxtb.calculators import (
     AnalyticalCalculator,
@@ -58,6 +59,11 @@ def test_energy(dtype: torch.dtype) -> None:
 
     # different name for energy getter
     energy = calc.get_potential_energy(positions)
+    assert calc._ncalcs == 1
+    assert isinstance(energy, Tensor)
+
+    # get other properties
+    energy = calc.get_iterations(positions)
     assert calc._ncalcs == 1
     assert isinstance(energy, Tensor)
 
@@ -212,3 +218,114 @@ def test_vibration(dtype: torch.dtype, use_functorch: bool) -> None:
     prop = calc.get_hessian(pos, use_functorch=use_functorch, matrix=False)
     assert calc._ncalcs == 1
     assert isinstance(prop, Tensor)
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_dipole(dtype: torch.dtype) -> None:
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    numbers = torch.tensor([3, 1], device=DEVICE)
+    positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
+    pos = positions.clone().requires_grad_(True)
+
+    options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
+    calc = AutogradCalculator(numbers, GFN1_XTB, opts=options, **dd)
+    assert calc._ncalcs == 0
+
+    prop = calc.get_dipole(pos)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # cache is used for same calc
+    prop = calc.get_dipole_moment(pos)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # cache is used for energy
+    prop = calc.get_energy(pos)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # check reset
+    calc.cache.reset_all()
+    assert len(calc.cache.list_cached_properties()) == 0
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_ir(dtype: torch.dtype) -> None:
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    numbers = torch.tensor([3, 1], device=DEVICE)
+    positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
+    pos = positions.clone().requires_grad_(True)
+
+    options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
+    calc = AutogradCalculator(numbers, GFN1_XTB, opts=options, **dd)
+    assert calc._ncalcs == 0
+
+    prop = calc.get_ir(pos)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # cache is used for same calc
+    prop = calc.get_ir(pos)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # cache is used for energy
+    prop = calc.get_energy(pos)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # cache is used for IR intensities
+    prop = calc.get_ir_intensities(pos)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # check reset
+    calc.cache.reset_all()
+    assert len(calc.cache.list_cached_properties()) == 0
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_raman(dtype: torch.dtype) -> None:
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    numbers = torch.tensor([3, 1], device=DEVICE)
+    positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
+    pos = positions.clone().requires_grad_(True)
+
+    options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
+    calc = AutogradCalculator(numbers, GFN1_XTB, opts=options, **dd)
+    assert calc._ncalcs == 0
+
+    prop = calc.get_raman(pos)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # cache is used for same calc
+    prop = calc.get_raman(pos)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # cache is used for energy
+    prop = calc.get_energy(pos)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # cache is used for Raman depolarization ratio
+    prop = calc.get_raman_depol(pos)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # cache is used for IR intensities
+    prop = calc.get_raman_intensities(pos)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # check reset
+    calc.cache.reset_all()
+    assert len(calc.cache.list_cached_properties()) == 0
