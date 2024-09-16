@@ -24,11 +24,7 @@ import pytest
 import torch
 
 from dxtb import GFN1_XTB
-from dxtb._src.calculators.properties.vibration import (
-    IRResult,
-    RamanResult,
-    VibResult,
-)
+from dxtb._src.calculators.properties.vibration import IRResult, VibResult
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Literal, Tensor
 from dxtb.calculators import (

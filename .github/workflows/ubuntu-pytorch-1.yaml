@@ -85,7 +85,7 @@ jobs:
         run: echo "TOXENV is set to '${{ env.TOXENV }}'."
 
       - name: Unittests with tox
-        run: tox -e ${{ env.TOXENV }}
+        run: tox -e ${{ env.TOXENV }}-libcint
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
