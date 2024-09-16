@@ -25,6 +25,11 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from dxtb._src.calculators.properties.vibration import (
+    IRResult,
+    RamanResult,
+    VibResult,
+)
 from dxtb._src.constants import defaults
 from dxtb._src.typing import Any, Literal, Tensor
 
@@ -56,7 +61,7 @@ class GetPropertiesMixin(ABC):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
-    ) -> Tensor:
+    ) -> Tensor | VibResult | IRResult | RamanResult:
         """
         Get the named property.
 
@@ -86,9 +91,11 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "energy", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, Tensor)
+        return prop
 
     def get_potential_energy(
         self,
@@ -97,9 +104,7 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
-            "energy", positions, chrg=chrg, spin=spin, **kwargs
-        )
+        return self.get_energy(positions, chrg=chrg, spin=spin, **kwargs)
 
     # nuclear derivatives
 
@@ -152,7 +157,7 @@ class GetPropertiesMixin(ABC):
         Tensor
             Atomic forces of shape ``(..., nat, 3)``.
         """
-        return self.get_property(
+        prop = self.get_property(
             "forces",
             positions,
             chrg=chrg,
@@ -160,6 +165,8 @@ class GetPropertiesMixin(ABC):
             grad_mode=grad_mode,
             **kwargs,
         )
+        assert isinstance(prop, Tensor)
+        return prop
 
     def get_hessian(
         self,
@@ -168,9 +175,11 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "hessian", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, Tensor)
+        return prop
 
     def get_vibration(
         self,
@@ -178,10 +187,12 @@ class GetPropertiesMixin(ABC):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
-    ) -> Tensor:
-        return self.get_property(
+    ) -> VibResult:
+        prop = self.get_property(
             "vibration", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, VibResult)
+        return prop
 
     def get_normal_modes(
         self,
@@ -190,9 +201,11 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "normal_modes", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, Tensor)
+        return prop
 
     def get_frequencies(
         self,
@@ -201,9 +214,11 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "frequencies", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, Tensor)
+        return prop
 
     # field derivatives
 
@@ -214,9 +229,11 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "dipole", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, Tensor)
+        return prop
 
     def get_dipole_moment(
         self,
@@ -225,9 +242,7 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
-            "dipole", positions, chrg=chrg, spin=spin, **kwargs
-        )
+        return self.get_dipole(positions, chrg=chrg, spin=spin, **kwargs)
 
     def get_dipole_deriv(
         self,
@@ -236,9 +251,11 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "dipole_derivatives", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, Tensor)
+        return prop
 
     def get_dipole_derivatives(
         self,
@@ -247,9 +264,11 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "dipole_derivatives", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, Tensor)
+        return prop
 
     def get_polarizability(
         self,
@@ -258,9 +277,11 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "polarizability", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, Tensor)
+        return prop
 
     def get_pol_deriv(
         self,
@@ -269,13 +290,15 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "polarizability_derivatives",
             positions,
             chrg=chrg,
             spin=spin,
             **kwargs,
         )
+        assert isinstance(prop, Tensor)
+        return prop
 
     def get_polarizability_derivatives(
         self,
@@ -284,13 +307,7 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
-            "polarizability_derivatives",
-            positions,
-            chrg=chrg,
-            spin=spin,
-            **kwargs,
-        )
+        return self.get_pol_deriv(positions, chrg=chrg, spin=spin, **kwargs)
 
     def get_hyperpolarizability(
         self,
@@ -299,9 +316,11 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "hyperpolarizability", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, Tensor)
+        return prop
 
     # spectra
 
@@ -311,10 +330,12 @@ class GetPropertiesMixin(ABC):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
-    ) -> Tensor:
-        return self.get_property(
+    ) -> IRResult:
+        prop = self.get_property(
             "ir", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, IRResult)
+        return prop
 
     def get_ir_intensities(
         self,
@@ -323,9 +344,12 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
-            "ir_intensity", positions, chrg=chrg, spin=spin, **kwargs
+        prop = self.get_property(
+            "ir", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, IRResult)
+
+        return prop.ints
 
     def get_raman(
         self,
@@ -333,10 +357,12 @@ class GetPropertiesMixin(ABC):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
-    ) -> Tensor:
-        return self.get_property(
+    ) -> RamanResult:
+        prop = self.get_property(
             "raman", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, RamanResult)
+        return prop
 
     def get_raman_intensities(
         self,
@@ -345,9 +371,12 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "raman_intensity", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, RamanResult)
+
+        return prop.ints
 
     def get_raman_depol(
         self,
@@ -356,9 +385,12 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "raman_depol", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, RamanResult)
+
+        return prop.depol
 
     # SCF properties
 
@@ -369,9 +401,11 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "bond_orders", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, Tensor)
+        return prop
 
     def get_coefficients(
         self,
@@ -380,9 +414,11 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "coefficients", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, Tensor)
+        return prop
 
     def get_density(
         self,
@@ -391,9 +427,11 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "density", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, Tensor)
+        return prop
 
     def get_charges(
         self,
@@ -402,9 +440,11 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "charges", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, Tensor)
+        return prop
 
     def get_mulliken_charges(
         self,
@@ -413,9 +453,7 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
-            "charges", positions, chrg=chrg, spin=spin, **kwargs
-        )
+        return self.get_charges(positions, chrg=chrg, spin=spin, **kwargs)
 
     def get_iterations(
         self,
@@ -424,9 +462,11 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "iterations", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, Tensor)
+        return prop
 
     def get_mo_energies(
         self,
@@ -435,9 +475,11 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "mo_energies", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, Tensor)
+        return prop
 
     def get_occupation(
         self,
@@ -446,9 +488,11 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "occupation", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, Tensor)
+        return prop
 
     def get_potential(
         self,
@@ -457,6 +501,8 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        return self.get_property(
+        prop = self.get_property(
             "potential", positions, chrg=chrg, spin=spin, **kwargs
         )
+        assert isinstance(prop, Tensor)
+        return prop

@@ -23,7 +23,6 @@ PyTorch-based overlap implementations.
 
 from __future__ import annotations
 
-import torch
 from tad_mctc.convert import symmetrize
 
 from dxtb._src.typing import Tensor

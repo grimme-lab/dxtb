@@ -40,6 +40,8 @@ from dxtb._src.utils import is_basis_list
 
 if has_libcint is True:
     from dxtb._src.exlibs import libcint
+if has_pyscf is True:
+    from dxtb._src.exlibs.pyscf.mol import M
 
 from ..conftest import DEVICE
 from .samples import samples

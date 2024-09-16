@@ -102,7 +102,7 @@ class DegenSymeigBase(torch.autograd.Function):
 
             # if in debug mode, check the degeneracy requirements
             if in_debug_mode:
-                degenerate = torch.any(idx)
+                # degenerate = torch.any(idx)
                 xtg = eivect @ grad_eivec
                 diff_xtg = (xtg - xtg.transpose(-2, -1).conj())[idx]
                 reqsat = torch.allclose(diff_xtg, torch.zeros_like(diff_xtg))
@@ -173,7 +173,7 @@ def davidson(
     max_niter: int = 1000,
     nguess: int | None = None,
     v_init: str = "randn",
-    max_addition: int | None = None,
+    # max_addition: int | None = None,
     min_eps: float = 1e-6,
     verbose: bool = False,
     **unused,
@@ -207,8 +207,8 @@ def davidson(
 
     if nguess is None:
         nguess = neig
-    if max_addition is None:
-        max_addition = neig
+    # if max_addition is None:
+    #     max_addition = neig
 
     # get the shape of the transformation
     na = A.shape[-1]
@@ -219,11 +219,11 @@ def davidson(
     dtype = A.dtype
     device = A.device
 
-    prev_eigvals = None
     prev_eigvalT = None
-    stop_reason = "max_niter"
-    shift_is_eigvalT = False
-    idx = torch.arange(neig).unsqueeze(-1)  # (neig, 1)
+    # prev_eigvals = None
+    # stop_reason = "max_niter"
+    # shift_is_eigvalT = False
+    # idx = torch.arange(neig).unsqueeze(-1)  # (neig, 1)
 
     # set up the initial guess
     V = _set_initial_v(
