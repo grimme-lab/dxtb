@@ -487,7 +487,7 @@ class AnalyticalCalculator(EnergyCalculator):
         # explicitly into the cache.
         self.cache["energy"] = result.total
         self.cache["charges"] = result.charges
-        self.cache["iterations"] = result.iter
+        self.cache["iterations"] = torch.tensor(result.iter, device=self.device)
 
         self._ncalcs += 1
 

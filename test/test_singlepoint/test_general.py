@@ -31,7 +31,7 @@ from dxtb._src.timing import timer
 
 from ..conftest import DEVICE
 
-opts = {"verbosity": 0, "int_level": 4}
+opts = {"verbosity": 0, "int_level": 2}
 
 
 @pytest.mark.filterwarnings("ignore::tad_mctc.exceptions.MoleculeWarning")

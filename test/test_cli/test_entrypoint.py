@@ -60,7 +60,9 @@ def test_entrypoint(
     # avoid pollution from previous tests
     OutputHandler.clear_warnings()
 
-    ret = console_entry_point([str(coordfile), "--verbosity", "0"])
+    ret = console_entry_point(
+        [str(coordfile), "--verbosity", "0", "--int-driver", "pytorch"]
+    )
     assert ret == 0
 
     out, err = capsys.readouterr()

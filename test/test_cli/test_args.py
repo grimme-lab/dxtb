@@ -64,7 +64,7 @@ def test_defaults() -> None:
     assert isinstance(args.int_cutoff, (float, int))
     assert args.int_cutoff == defaults.INTCUTOFF
 
-    assert isinstance(args.int_driver, str)
+    assert isinstance(args.int_driver, int)
     assert args.int_driver == defaults.INTDRIVER
 
     assert isinstance(args.int_level, int)

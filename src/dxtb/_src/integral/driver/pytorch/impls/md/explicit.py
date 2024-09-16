@@ -124,8 +124,8 @@ def md_explicit(
         else:
             raise CGTOAzimuthalQuantumNumberError(li)
 
-        nlmi = NLM_CART[li]
-        nlmj = NLM_CART[lj]
+        nlmi = NLM_CART[li].to(vec.device)
+        nlmj = NLM_CART[lj].to(vec.device)
 
         # Collect E-coefficients for each cartesian direction for first (i)
         # center. Getting the E-coefficients for the three directions from
@@ -246,8 +246,8 @@ def md_explicit_gradient(
     rpi = +vec.unsqueeze(-1).unsqueeze(-1) * aj * oij
     rpj = -vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
 
-    nlmi = NLM_CART[li]
-    nlmj = NLM_CART[lj]
+    nlmi = NLM_CART[li].to(vec.device)
+    nlmj = NLM_CART[lj].to(vec.device)
 
     # calc E function for all (ai, aj)-combis for all vecs in batch
     if li == 0:

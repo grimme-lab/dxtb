@@ -27,7 +27,6 @@ import torch
 from tad_mctc.batch import pack
 from tad_mctc.math import einsum
 
-from dxtb._src.exlibs import libcint
 from dxtb._src.typing import Tensor
 
 from ...types import OverlapIntegral
@@ -65,6 +64,9 @@ class OverlapLibcint(OverlapIntegral, IntegralLibcint):
         """
         super().checks(driver)
 
+        # pylint: disable=import-outside-toplevel
+        from dxtb._src.exlibs import libcint
+
         # batched mode
         if driver.ihelp.batch_mode > 0:
             assert isinstance(driver.drv, list)
@@ -98,6 +100,9 @@ class OverlapLibcint(OverlapIntegral, IntegralLibcint):
             Overlap gradient of shape ``(..., norb, norb, 3)``.
         """
         super().checks(driver)
+
+        # pylint: disable=import-outside-toplevel
+        from dxtb._src.exlibs import libcint
 
         # build norm if not already available
         if self.norm is None:

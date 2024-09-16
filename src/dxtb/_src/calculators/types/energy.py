@@ -310,7 +310,9 @@ class EnergyCalculator(BaseCalculator):
             self.cache["density"] = scf_results["density"]
             self.cache.set_cache_key("density", "density:" + hashed_key)
         if kwargs.get("store_iterations", copts.iterations):
-            self.cache["iterations"] = scf_results["iterations"]
+            self.cache["iterations"] = torch.tensor(
+                scf_results["iterations"], device=self.device
+            )
             self.cache.set_cache_key("iterations", "iterations:" + hashed_key)
         if kwargs.get("store_mo_energies", copts.mo_energies):
             self.cache["mo_energies"] = scf_results["emo"]
