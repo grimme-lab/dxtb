@@ -101,4 +101,4 @@ jobs:
         run: echo "TOXENV is set to '${{ env.TOXENV }}'."
 
       - name: Unittests with tox
-        run: tox -e ${{ env.TOXENV }}
+        run: EXTRAS=pyscf tox -e ${{ env.TOXENV }}

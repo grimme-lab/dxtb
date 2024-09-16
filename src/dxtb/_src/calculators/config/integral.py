@@ -34,6 +34,15 @@ class ConfigIntegrals:
     converted to integers in the constructor.
     """
 
+    cutoff: float
+    """
+    Real-space cutoff (in Bohr) for integral evaluation for PyTorch.
+    The ``libint`` driver ignores this option.
+    """
+
+    driver: int
+    """Type of integral driver."""
+
     level: int
     """
     Indicator for integrals to compute.
@@ -44,15 +53,6 @@ class ConfigIntegrals:
     - 3: +dipole
     - 4: +quadrupole
     """
-
-    cutoff: float
-    """
-    Real-space cutoff (in Bohr) for integral evaluation for PyTorch.
-    The ``libint`` driver ignores this option.
-    """
-
-    driver: int
-    """Type of integral driver."""
 
     uplo: Literal["n", "l", "u"]
     """Integral mode for PyTorch integral calculation."""
@@ -99,6 +99,8 @@ class ConfigIntegrals:
                 self.driver = labels.INTDRIVER_ANALYTICAL
             elif driver.casefold() in labels.INTDRIVER_AUTOGRAD_STRS:
                 self.driver = labels.INTDRIVER_AUTOGRAD
+            elif driver.casefold() in labels.INTDRIVER_LEGACY_STRS:
+                self.driver = labels.INTDRIVER_LEGACY
             else:
                 raise ValueError(f"Unknown integral driver '{driver}'.")
 

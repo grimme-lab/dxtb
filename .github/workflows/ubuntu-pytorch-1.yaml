@@ -85,15 +85,4 @@ jobs:
         run: echo "TOXENV is set to '${{ env.TOXENV }}'."
 
       - name: Unittests with tox
-        run: tox -e ${{ env.TOXENV }}-libcint
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        if: >
-          matrix.python-version == '3.11' &&
-          matrix.torch-version == '2.2.2' &&
-          matrix.os == 'ubuntu-latest'
-        with:
-          files: ./coverage.xml # optional
-          token: ${{ secrets.CODECOV_TOKEN }} # required
-          verbose: true # optional (default = false)
+        run: EXTRAS=pyscf tox -e ${{ env.TOXENV }}-libcint
