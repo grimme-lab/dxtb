@@ -95,10 +95,10 @@ jobs:
           python3 -m pip install tox
 
       - name: Determine TOXENV
-        run: echo "TOXENV=py$(echo ${{ matrix.python-version }} | tr -d '.')-torch$(echo ${{ matrix.torch-version }} | tr -d '.')" >> $GITHUB_ENV
+        run: echo "TOXENV=py$(echo ${{ matrix.python-version }} | tr -d '.')-torch$(echo ${{ matrix.torch-version }} | tr -d '.')-nolibcint" >> $GITHUB_ENV
 
       - name: Print TOXENV
         run: echo "TOXENV is set to '${{ env.TOXENV }}'."
 
       - name: Unittests with tox
-        run: tox -e ${{ env.TOXENV }}-nolibcint
+        run: tox -e ${{ env.TOXENV }}

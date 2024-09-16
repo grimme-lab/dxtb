@@ -43,7 +43,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version: ["3.8", "3.9", "3.10", "3.11"]
-        torch-version: ["2.3.1"]
+        torch-version: ["2.4.1"]
         exclude:
           # Check latest versions here: https://download.pytorch.org/whl/torch/
           #
@@ -79,13 +79,13 @@ jobs:
           python3 -m pip install tox
 
       - name: Determine TOXENV
-        run: echo "TOXENV=py$(echo ${{ matrix.python-version }} | tr -d '.')-torch$(echo ${{ matrix.torch-version }} | tr -d '.')" >> $GITHUB_ENV
+        run: echo "TOXENV=py$(echo ${{ matrix.python-version }} | tr -d '.')-torch$(echo ${{ matrix.torch-version }} | tr -d '.')-nolibcint" >> $GITHUB_ENV
 
       - name: Print TOXENV
         run: echo "TOXENV is set to '${{ env.TOXENV }}'."
 
       - name: Unittests with tox
-        run: tox -e ${{ env.TOXENV }}-nolibcint
+        run: tox -e ${{ env.TOXENV }}
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
