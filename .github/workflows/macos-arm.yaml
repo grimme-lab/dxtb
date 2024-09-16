@@ -14,7 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-name: Tests (macOS x86)
+name: Tests (macOS arm)
 
 on:
   push:
@@ -41,32 +41,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-12, macos-13]
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        os: [macos-14]
+        # Python 3.8/3.9 is not on macos-latest (macos-14-arm64)
+        # https://github.com/actions/setup-python/issues/696
+        python-version: ["3.10", "3.11", "3.12"]
         # only test oldest and newest version of torch
-        torch-version: ["1.11.0", "2.2.2"]
+        torch-version: ["1.11.0", "2.4.0"]
         exclude:
           # Check latest versions here: https://download.pytorch.org/whl/torch/
           #
-          # PyTorch issues:
-          # 3.11: https://github.com/pytorch/pytorch/issues/86566
-          # 3.12: https://github.com/pytorch/pytorch/issues/110436
-          # 3.13: https://github.com/pytorch/pytorch/issues/130249
+          # PyTorch now fully supports Python=<3.11
+          # see: https://github.com/pytorch/pytorch/issues/86566
           #
-          # Wheels for macOS x86_64 are deprecated since 2.3.0
-          #
-          # PyTorch<2.2.0 does only support Python<3.12 (all platforms)
+          # PyTorch does now support Python 3.12 (macOS only 2.2)
+          # see: https://github.com/pytorch/pytorch/issues/110436
           - python-version: "3.12"
             torch-version: "1.11.0"
-          - python-version: "3.12"
-            torch-version: "1.12.1"
-          - python-version: "3.12"
-            torch-version: "1.13.1"
-          - python-version: "3.12"
-            torch-version: "2.0.1"
-          - python-version: "3.12"
-            torch-version: "2.1.2"
-          # PyTorch<2.0.0 does only support Python<3.11 (macOS and Windows)
+          # PyTorch<1.13.0 does only support Python=<3.10
+          # On macOS and Windows, 1.13.x is also not supported for Python>=3.10
           - python-version: "3.11"
             torch-version: "1.11.0"
           - python-version: "3.11"
