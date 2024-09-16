@@ -16,12 +16,21 @@
   <a href="https://github.com/grimme-lab/dxtb/actions/workflows/ubuntu.yaml">
     <img src="https://github.com/grimme-lab/dxtb/actions/workflows/ubuntu.yaml/badge.svg" alt="Test Status Ubuntu"/>
   </a>
-  <!-- <a href="https://github.com/grimme-lab/dxtb/actions/workflows/macos.yaml">
+  <a href="https://github.com/grimme-lab/dxtb/actions/workflows/macos.yaml">
     <img src="https://github.com/grimme-lab/dxtb/actions/workflows/macos.yaml/badge.svg" alt="Test Status macOS"/>
+  </a>
+  <a href="https://github.com/tgrimme-lab/dxtb/actions/workflows/macos-x86.yaml">
+    <img src="https://github.com/tgrimme-lab/dxtb/actions/workflows/macos-x86.yaml/badge.svg" alt="Test Status macOS (x86)"/>
+  </a>
+  <a href="https://github.com/tgrimme-lab/dxtb/actions/workflows/macos-arm.yaml">
+    <img src="https://github.com/tgrimme-lab/dxtb/actions/workflows/macos-arm.yaml/badge.svg" alt="Test Status macOS (ARM)"/>
   </a>
   <a href="https://github.com/grimme-lab/dxtb/actions/workflows/windows.yaml">
     <img src="https://github.com/grimme-lab/dxtb/actions/workflows/windows.yaml/badge.svg" alt="Test Status Windows"/>
-  </a> -->
+  </a>
+  <!---->
+  <br>
+  <!---->
   <a href="https://github.com/grimme-lab/dxtb/actions/workflows/release.yaml">
     <img src="https://github.com/grimme-lab/dxtb/actions/workflows/release.yaml/badge.svg" alt="Build Status"/>
   </a>
@@ -61,8 +70,10 @@ With *dxtb*, we provide a re-implementation of the xTB methods in PyTorch, which
 *dxtb* can easily be installed with ``pip``.
 
 ```sh
-pip install dxtb
+pip install dxtb[libcint]
 ```
+
+Installing the libcint interface is highly recommended, as it is significantly faster than the pure PyTorch implementation and provides access to higher-order multipole integrals and their derivatives.
 
 ### conda <a href="https://anaconda.org/conda-forge/dxtb"><img src="https://img.shields.io/conda/vn/conda-forge/dxtb.svg" alt="Conda Version"></a>
 
@@ -72,6 +83,8 @@ pip install dxtb
 ```sh
 conda install dxtb
 ```
+
+Don't forget to install the libcint interface (not on conda) via ``pip install tad-libcint``.
 
 ### Other
 
@@ -112,6 +125,31 @@ assert torch.equal(forces, -g)
 ```
 
 For more examples and details, check out [the documentation](https://dxtb.readthedocs.io).
+
+## Compatibility
+
+| PyTorch \ Python | 3.8                | 3.9                | 3.10               | 3.11               | 3.12               |
+|------------------|--------------------|--------------------|--------------------|--------------------|--------------------|
+| 1.11.0           | :white_check_mark: | :white_check_mark: | :x:                | :x:                | :x:                |
+| 1.12.1           | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :x:                |
+| 1.13.1           | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                |
+| 2.0.1            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                |
+| 2.1.2            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                |
+| 2.2.2            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
+| 2.3.1            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
+| 2.4.1            | not tested | not tested | not tested | not tested | :x: |
+
+Note that only the latest bug fix version is listed, but all preceding bug fix minor versions are supported.
+For example, although only version 2.2.2 is listed, version 2.2.0 and 2.2.1 are also supported.
+
+On macOS and Windows, PyTorch<2.0.0 does only support Python<3.11.
+
+**Restriction for macOS and Windows:**
+The libcint interface is **not** available for macOS and Windows.
+Correspondingly, the integral evaluation can be considerably slower.
+Moreover, higher-order multipole integrals (dipole, quadrupole, ...) are not implemented.
+
+While macOS support may be considered in the future, native Windows support is not possible, because the underlying [libcint](https://github.com/sunqm/libcint) library does not work under Windows.
 
 
 ## Citation

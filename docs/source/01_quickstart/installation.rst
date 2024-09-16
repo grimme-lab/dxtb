@@ -16,6 +16,10 @@ pip
 
     pip install dxtb
 
+Installing the libcint interface is highly recommended, as it is significantly
+faster than the pure PyTorch implementation and provides access to higher-order
+multipole integrals.
+
 
 conda
 -----
@@ -29,6 +33,9 @@ conda
 .. code-block:: shell
 
     mamba install dxtb
+
+
+Don't forget to install the libcint interface (not on conda) via ``pip install tad-libcint``.
 
 
 From source
@@ -56,6 +63,25 @@ Install this project with ``pip`` in the environment
 .. code-block:: shell
 
     pip install .
+
+
+Without pip
+-----------
+
+If you want to install the package without pip, start by cloning the repository.
+
+.. code-block:: shell
+
+    DEST=/opt/software
+    git clone https://github.com/grimme-lab/dxtb $DEST/dxtb
+
+Next, add <path to dxtb>/dxtb/src to your `$PYTHONPATH` environment variable.
+For the command line interface, add <path to dxtb>/dxtb/bin to your `$PATH` environment variable.
+
+.. code-block:: shell
+
+    export PYTHONPATH=$PYTHONPATH:$DEST/dxtb/src
+    export PATH=$PATH:$DEST/dxtb/bin
 
 
 Dependencies
