@@ -52,7 +52,7 @@ STEP_SIZE = 1e-5
 EINSUM_OPTIMIZE = "greedy"
 """Optimization algorithm for `einsum`."""
 
-METHOD = "gfn1"
+METHOD = labels.GFN1_XTB
 """General method for calculation from the xtb family."""
 
 METHOD_CHOICES = ["gfn1", "gfn1-xtb", "gfn2", "gfn2-xtb"]
@@ -118,7 +118,7 @@ reduced to 6 due to symmetry (tracless representation).
 
 # SCF settings
 
-GUESS = "eeq"
+GUESS = labels.GUESS_EEQ
 """Initial guess for orbital charges."""
 
 GUESS_CHOICES = ["eeq", "sad"]
@@ -130,13 +130,13 @@ DAMP = 0.3
 MAXITER = 100
 """Maximum number of SCF iterations."""
 
-MIXER = "broyden"
+MIXER = labels.MIXER_BROYDEN
 """SCF mixing scheme for convergence acceleration."""
 
 MIXER_CHOICES = ["anderson", "broyden", "simple"]
 """List of possible choices for ``MIXER``."""
 
-SCF_MODE = "nonpure"
+SCF_MODE = labels.SCF_MODE_IMPLICIT_NON_PURE
 """
 Whether to use full gradient tracking in SCF, make use of the implicit
 function theorem as provided by ``xitorch.optimize.equilibrium``, or use the
@@ -156,7 +156,7 @@ SCF_MODE_CHOICES = [
 ]
 """List of possible choices for ``SCF_MODE``."""
 
-SCP_MODE = "potential"
+SCP_MODE = labels.SCP_MODE_POTENTIAL
 """
 Type of self-consistent parameter, i.e., which quantity is converged in the SCF
 iterations.
@@ -207,7 +207,7 @@ FERMI_THRESH = {
 }
 """Convergence thresholds for different float data types."""
 
-FERMI_PARTITION = "equal"
+FERMI_PARTITION = labels.FERMI_PARTITION_EQUAL
 """Partitioning scheme for electronic free energy."""
 
 FERMI_PARTITION_CHOICES = ["equal", "atomic"]

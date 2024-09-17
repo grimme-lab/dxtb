@@ -109,6 +109,7 @@ class ConfigIntegrals:
                 labels.INTDRIVER_LIBCINT,
                 labels.INTDRIVER_ANALYTICAL,
                 labels.INTDRIVER_AUTOGRAD,
+                labels.INTDRIVER_LEGACY,
             ):
                 raise ValueError(f"Unknown integral driver '{driver}'.")
 

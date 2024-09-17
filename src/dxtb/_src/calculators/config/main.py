@@ -103,7 +103,7 @@ class Config:
         dtype: torch.dtype = get_default_dtype(),
         # SCF
         maxiter: int = defaults.MAXITER,
-        mixer: str = defaults.MIXER,
+        mixer: str | int = defaults.MIXER,
         damp: float = defaults.DAMP,
         guess: str | int = defaults.GUESS,
         scf_mode: str | int = defaults.SCF_MODE,

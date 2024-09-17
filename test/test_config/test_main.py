@@ -23,7 +23,6 @@ from __future__ import annotations
 import pytest
 
 from dxtb._src.constants import defaults, labels
-from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import get_default_device, get_default_dtype
 from dxtb.config import Config as Cfg
 
