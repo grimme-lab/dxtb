@@ -1039,7 +1039,6 @@ class AutogradCalculator(EnergyCalculator):
         props.remove("bond_orders")
 
         if set(props) & set(properties):
-            print("Calculating energy")
             self.energy(positions, chrg, spin, **kwargs)
 
         if "forces" in properties:

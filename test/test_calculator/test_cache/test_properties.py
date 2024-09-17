@@ -74,6 +74,68 @@ def test_energy(dtype: torch.dtype) -> None:
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_scf_props(dtype: torch.dtype) -> None:
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    numbers = torch.tensor([3, 1], device=DEVICE)
+    positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
+
+    options = dict(
+        opts,
+        **{
+            "cache_charges": True,
+            "cache_coefficients": True,
+            "cache_density": True,
+            "cache_iterations": True,
+            "cache_mo_energies": True,
+            "cache_occupation": True,
+            "cache_potential": True,
+        },
+    )
+
+    calc = GFN1Calculator(numbers, opts=options, **dd)
+    assert calc._ncalcs == 0
+
+    energy = calc.get_energy(positions)
+    assert calc._ncalcs == 1
+    assert isinstance(energy, Tensor)
+
+    # get other properties
+
+    prop = calc.get_charges(positions)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    prop = calc.get_mulliken_charges(positions)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    prop = calc.get_coefficients(positions)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    prop = calc.get_density(positions)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    prop = calc.get_iterations(positions)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    prop = calc.get_occupation(positions)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    prop = calc.get_potential(positions)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # check reset
+    calc.cache.reset_all()
+    assert len(calc.cache.list_cached_properties()) == 0
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("grad_mode", ["functorch", "row"])
 def test_forces(
     dtype: torch.dtype, grad_mode: Literal["functorch", "row"]
@@ -250,6 +312,166 @@ def test_dipole(dtype: torch.dtype) -> None:
     assert isinstance(prop, Tensor)
 
     # cache is used for energy
+    prop = calc.get_energy(pos)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # check reset
+    calc.cache.reset_all()
+    assert len(calc.cache.list_cached_properties()) == 0
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_dipole_deriv(dtype: torch.dtype) -> None:
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    numbers = torch.tensor([3, 1], device=DEVICE)
+    positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
+    pos = positions.clone().requires_grad_(True)
+
+    options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
+
+    field = torch.tensor([0, 0, 0], **dd, requires_grad=True)
+    efield = new_efield(field, **dd)
+
+    calc = AutogradCalculator(
+        numbers, GFN1_XTB, opts=options, interaction=efield, **dd
+    )
+    assert calc._ncalcs == 0
+
+    kwargs = {"use_analytical_dipmom": False, "use_functorch": True}
+
+    prop = calc.get_dipole_deriv(pos, **kwargs)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # cache is used for same calc
+    prop = calc.get_dipole_derivatives(pos, **kwargs)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # cache is used for energy (kwargs mess up the cache key!)
+    prop = calc.get_energy(pos)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # check reset
+    calc.cache.reset_all()
+    assert len(calc.cache.list_cached_properties()) == 0
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_polarizability(dtype: torch.dtype) -> None:
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    numbers = torch.tensor([3, 1], device=DEVICE)
+    positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
+    pos = positions.clone().requires_grad_(True)
+
+    options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
+
+    field = torch.tensor([0, 0, 0], **dd, requires_grad=True)
+    efield = new_efield(field, **dd)
+
+    calc = AutogradCalculator(
+        numbers, GFN1_XTB, opts=options, interaction=efield, **dd
+    )
+    assert calc._ncalcs == 0
+
+    kwargs = {"use_functorch": True}
+
+    prop = calc.get_polarizability(pos, **kwargs)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # cache is used for same calc
+    prop = calc.get_polarizability(pos, **kwargs)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # cache is used for energy (kwargs mess up the cache key!)
+    prop = calc.get_energy(pos)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # check reset
+    calc.cache.reset_all()
+    assert len(calc.cache.list_cached_properties()) == 0
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_pol_deriv(dtype: torch.dtype) -> None:
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    numbers = torch.tensor([3, 1], device=DEVICE)
+    positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
+    pos = positions.clone().requires_grad_(True)
+
+    options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
+
+    field = torch.tensor([0, 0, 0], **dd, requires_grad=True)
+    efield = new_efield(field, **dd)
+
+    calc = AutogradCalculator(
+        numbers, GFN1_XTB, opts=options, interaction=efield, **dd
+    )
+    assert calc._ncalcs == 0
+
+    kwargs = {"use_functorch": True}
+
+    prop = calc.get_pol_deriv(pos, **kwargs)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # cache is used for same calc
+    prop = calc.get_polarizability_derivatives(pos, **kwargs)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # cache is used for energy (kwargs mess up the cache key!)
+    prop = calc.get_energy(pos)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # check reset
+    calc.cache.reset_all()
+    assert len(calc.cache.list_cached_properties()) == 0
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_hyperpolarizability(dtype: torch.dtype) -> None:
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    numbers = torch.tensor([3, 1], device=DEVICE)
+    positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
+    pos = positions.clone().requires_grad_(True)
+
+    options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
+
+    field = torch.tensor([0, 0, 0], **dd, requires_grad=True)
+    efield = new_efield(field, **dd)
+
+    calc = AutogradCalculator(
+        numbers, GFN1_XTB, opts=options, interaction=efield, **dd
+    )
+    assert calc._ncalcs == 0
+
+    kwargs = {"use_functorch": True}
+
+    prop = calc.get_hyperpolarizability(pos, **kwargs)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # cache is used for same calc
+    prop = calc.get_hyperpolarizability(pos, **kwargs)
+    assert calc._ncalcs == 1
+    assert isinstance(prop, Tensor)
+
+    # cache is used for energy (kwargs mess up the cache key!)
     prop = calc.get_energy(pos)
     assert calc._ncalcs == 1
     assert isinstance(prop, Tensor)

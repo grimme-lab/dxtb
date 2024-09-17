@@ -370,7 +370,7 @@ class CalculatorCache(TensorLike):
 
     # printing
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         """Return a string representation of the Cache object."""
         counter = 0
         l = []
@@ -396,7 +396,7 @@ class CalculatorCache(TensorLike):
             f"{', '.join(l)})"
         )
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         """Return a representation of the Cache object."""
         return str(self)
 

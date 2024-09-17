@@ -252,7 +252,7 @@ class GetPropertiesMixin(ABC):
         **kwargs: Any,
     ) -> Tensor:
         prop = self.get_property(
-            "dipole_derivatives", positions, chrg=chrg, spin=spin, **kwargs
+            "dipole_deriv", positions, chrg=chrg, spin=spin, **kwargs
         )
         assert isinstance(prop, Tensor)
         return prop
@@ -264,11 +264,7 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
-        prop = self.get_property(
-            "dipole_derivatives", positions, chrg=chrg, spin=spin, **kwargs
-        )
-        assert isinstance(prop, Tensor)
-        return prop
+        return self.get_dipole_deriv(positions, chrg=chrg, spin=spin, **kwargs)
 
     def get_polarizability(
         self,
@@ -291,11 +287,7 @@ class GetPropertiesMixin(ABC):
         **kwargs: Any,
     ) -> Tensor:
         prop = self.get_property(
-            "polarizability_derivatives",
-            positions,
-            chrg=chrg,
-            spin=spin,
-            **kwargs,
+            "pol_deriv", positions, chrg=chrg, spin=spin, **kwargs
         )
         assert isinstance(prop, Tensor)
         return prop
@@ -440,11 +432,15 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
+        # pylint: disable=import-outside-toplevel
+        from dxtb._src.scf.base import Charges
+
         prop = self.get_property(
             "charges", positions, chrg=chrg, spin=spin, **kwargs
         )
-        assert isinstance(prop, Tensor)
-        return prop
+        assert isinstance(prop, Charges)
+
+        return prop.mono
 
     def get_mulliken_charges(
         self,
@@ -501,8 +497,13 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
+        # pylint: disable=import-outside-toplevel
+        from dxtb._src.scf.base import Potential
+
         prop = self.get_property(
             "potential", positions, chrg=chrg, spin=spin, **kwargs
         )
-        assert isinstance(prop, Tensor)
-        return prop
+        assert isinstance(prop, Potential)
+        assert isinstance(prop.mono, Tensor)
+
+        return prop.mono
