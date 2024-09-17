@@ -188,10 +188,10 @@ class Driver:
         if args.grad is True:
             positions.requires_grad = True
 
-        if args.method.lower() == "gfn1" or args.method.lower() == "gfn1-xtb":
+        if config.method == labels.GFN1_XTB:
             # pylint: disable=import-outside-toplevel
             from dxtb import GFN1_XTB as par
-        elif args.method.lower() == "gfn2" or args.method.lower() == "gfn2-xtb":
+        elif config.method == labels.GFN2_XTB:
             raise NotImplementedError("GFN2-xTB is not implemented yet.")
         else:
             raise ValueError(f"Unknown method '{args.method}'.")
