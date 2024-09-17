@@ -23,6 +23,7 @@ from __future__ import annotations
 import pytest
 
 from dxtb._src.constants import defaults, labels
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import get_default_device, get_default_dtype
 from dxtb.config import Config as Cfg
 
@@ -36,7 +37,6 @@ def test_default() -> None:
     assert cfg.batch_mode == defaults.BATCH_MODE
 
     assert cfg.ints.cutoff == defaults.INTCUTOFF
-    assert cfg.ints.driver == defaults.INTDRIVER
     assert cfg.ints.level == defaults.INTLEVEL
     assert cfg.ints.uplo == defaults.INTUPLO
 
@@ -75,6 +75,11 @@ def test_default() -> None:
 
     assert cfg.max_element == defaults.MAX_ELEMENT
 
+    if has_libcint is True:
+        assert cfg.ints.driver == defaults.INTDRIVER
+    else:
+        assert cfg.ints.driver == labels.INTDRIVER_ANALYTICAL
+
 
 def test_method() -> None:
     cfg = Cfg(method=labels.GFN1_XTB_STRS[0])
@@ -83,11 +88,18 @@ def test_method() -> None:
     cfg = Cfg(method=labels.GFN1_XTB)
     assert cfg.method == labels.GFN1_XTB
 
-    cfg = Cfg(method=labels.GFN2_XTB_STRS[0])
-    assert cfg.method == labels.GFN2_XTB
+    if has_libcint is True:
+        cfg = Cfg(method=labels.GFN2_XTB)
+        assert cfg.method == labels.GFN2_XTB
 
-    cfg = Cfg(method=labels.GFN2_XTB)
-    assert cfg.method == labels.GFN2_XTB
+        cfg = Cfg(method=labels.GFN2_XTB_STRS[0])
+        assert cfg.method == labels.GFN2_XTB
+    else:
+        with pytest.raises(RuntimeError):
+            Cfg(method=labels.GFN2_XTB_STRS[0])
+
+        with pytest.raises(RuntimeError):
+            Cfg(method=labels.GFN2_XTB)
 
 
 def test_method_fail() -> None:
