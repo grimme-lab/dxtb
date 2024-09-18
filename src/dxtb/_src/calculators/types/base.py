@@ -28,7 +28,7 @@ from __future__ import annotations
 from abc import abstractmethod
 
 import torch
-from tad_mctc.exceptions import DtypeError
+from tad_mctc.exceptions import DeviceError, DtypeError
 
 from dxtb import IndexHelper, OutputHandler
 from dxtb import integrals as ints
@@ -53,7 +53,7 @@ from dxtb._src.components.interactions.field import efieldgrad as efield_grad
 from dxtb._src.constants import defaults
 from dxtb._src.param import Param
 from dxtb._src.timing import timer
-from dxtb._src.typing import Any, Self, Tensor, override
+from dxtb._src.typing import Any, Self, Tensor, get_default_dtype, override
 from dxtb.config import Config
 from dxtb.integrals import Integrals
 from dxtb.typing import Tensor, TensorLike
@@ -729,6 +729,40 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         # even allow caching or if the inputs are the same.
         if allow_calculation is False and name not in self.cache:
             return None
+
+        # Before calculating, let's do some device and dtype checks.
+        if self.device != positions.device:
+            raise DeviceError(
+                f"Device mismatch: Calculator is on '{self.device}', but "
+                f"positions are on '{positions.device}'."
+            )
+        if self.dtype != positions.dtype:
+            raise DtypeError(
+                f"Dtype mismatch: Calculator is of type '{self.dtype}', but "
+                f"positions are of type '{positions.dtype}'."
+            )
+        if isinstance(chrg, Tensor):
+            if self.dtype != chrg.dtype:
+                raise DtypeError(
+                    f"Dtype mismatch: Calculator is of type '{self.dtype}', "
+                    f"but charge is of type '{chrg.dtype}'."
+                )
+            if self.device != chrg.device:
+                raise DeviceError(
+                    f"Device mismatch: Calculator is on '{self.device}', but "
+                    f"charge is on '{chrg.device}'."
+                )
+        if isinstance(spin, Tensor):
+            if self.dtype != spin.dtype:
+                raise DtypeError(
+                    f"Dtype mismatch: Calculator is of type '{self.dtype}', "
+                    f"but spin is of type '{spin.dtype}'."
+                )
+            if self.device != spin.device:
+                raise DeviceError(
+                    f"Device mismatch: Calculator is on '{self.device}', but "
+                    f"spin is on '{spin.device}'."
+                )
 
         # All the cache checks are handled deep within `calculate`. No need to
         # do it here as well.
