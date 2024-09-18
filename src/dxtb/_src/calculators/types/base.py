@@ -53,7 +53,7 @@ from dxtb._src.components.interactions.field import efieldgrad as efield_grad
 from dxtb._src.constants import defaults
 from dxtb._src.param import Param
 from dxtb._src.timing import timer
-from dxtb._src.typing import Any, Self, Tensor, get_default_dtype, override
+from dxtb._src.typing import Any, Self, Tensor, override
 from dxtb.config import Config
 from dxtb.integrals import Integrals
 from dxtb.typing import Tensor, TensorLike
