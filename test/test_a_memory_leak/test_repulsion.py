@@ -91,7 +91,6 @@ def execute(name: str, dtype: torch.dtype) -> None:
         del ihelp
         del rep
         del cache
-        del energy
         del arep
         del zeff
         del kexp

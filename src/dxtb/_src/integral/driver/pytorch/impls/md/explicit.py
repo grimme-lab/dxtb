@@ -1442,7 +1442,6 @@ def de_f(
         f210 = a * e310 - 2 * e110
 
         e302 = xij * e201 + rpi * e202
-        e021 = xij * e010 + rpj * e011
         e311 = xij * e300 + rpj * e301 + 2 * e302
 
         e410 = rpi * e310 + e311
@@ -1566,10 +1565,6 @@ def de_f(
         e202 = xij * e101
         e301 = xij * e200 + rpi * e201 + 2 * e202
         e310 = rpj * e300 + e301
-
-        e202 = xij * e101
-        e301 = xij * e200 + rpi * e201 + 2 * e202
-        # e310 = rpj * e300 + e301
 
         e021 = xij * e010 + rpj * e011
         e030 = rpj * e020 + e021

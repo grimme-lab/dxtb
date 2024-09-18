@@ -314,13 +314,13 @@ class EditableModule:
         clsname = method.__self__.__class__.__name__
 
         # get all tensor parameters in the object
-        all_params, all_names = _get_tensors(self)
+        # all_params, all_names = _get_tensors(self)
 
-        def _get_tensor_name(param):
-            for i in range(len(all_params)):
-                if id(all_params[i]) == id(param):
-                    return all_names[i]
-            return None
+        # def _get_tensor_name(param):
+        #     for i in range(len(all_params)):
+        #         if id(all_params[i]) == id(param):
+        #             return all_names[i]
+        #     return None
 
         # get the parameter tensors used in the operation and the tensors specified by the developer
         oper_names, oper_params = self.__list_operating_params(

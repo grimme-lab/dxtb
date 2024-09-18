@@ -72,7 +72,6 @@ def test_xitorch(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
         del charges
         del calc
         del result
-        del energy
 
     # run garbage collector to avoid leaks across other tests
     garbage_collect()
@@ -156,7 +155,6 @@ def skip_test_fulltracking(
         del charges
         del calc
         del result
-        del energy
 
     # run garbage collector to avoid leaks across other tests
     garbage_collect()

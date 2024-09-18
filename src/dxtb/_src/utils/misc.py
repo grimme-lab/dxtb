@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import torch
 
-from dxtb._src.typing import TYPE_CHECKING, Any, Tensor, TypeGuard, TypeVar
+from dxtb._src.typing import TYPE_CHECKING, Any, Tensor, TypeGuard
 
 if TYPE_CHECKING:
     from dxtb._src.exlibs import libcint
