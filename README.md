@@ -62,7 +62,7 @@ With *dxtb*, we provide a re-implementation of the xTB methods in PyTorch, which
 
 ## Installation
 
-### pip <a href="https://pypi.org/project/dxtb/"><img src="https://img.shields.io/pypi/v/dxtb" alt="PyPI Version"></a>
+### pip <a href="https://pypi.org/project/dxtb/"><img src="https://img.shields.io/pypi/v/dxtb" alt="PyPI Version"></a> <a href="https://pypi.org/project/dxtb/"><img src="https://img.shields.io/pypi/dm/dxtb?color=orange" alt="PyPI Downloads"></a>
 
 *dxtb* can easily be installed with ``pip``.
 
@@ -71,17 +71,20 @@ pip install dxtb[libcint]
 ```
 
 Installing the libcint interface is highly recommended, as it is significantly faster than the pure PyTorch implementation and provides access to higher-order multipole integrals and their derivatives.
+However, the interface is currently only available on Linux.
 
-### conda <a href="https://anaconda.org/conda-forge/dxtb"><img src="https://img.shields.io/conda/vn/conda-forge/dxtb.svg" alt="Conda Version"></a>
+### conda <a href="https://anaconda.org/conda-forge/dxtb"><img src="https://img.shields.io/conda/vn/conda-forge/dxtb.svg" alt="Conda Version"></a> <a href="https://anaconda.org/conda-forge/dxtb"><img src="https://img.shields.io/conda/dn/conda-forge/dxtb?style=flat&color=orange" alt="Conda Downloads"></a>
 
 
-*dxtb* will also be available on [conda](https://conda.io/) soon.
+*dxtb* is also available on [``conda``](https://conda.io/) from the *conda-forge* channel.
 
 ```sh
-conda install dxtb
+mamba install dxtb
 ```
 
 Don't forget to install the libcint interface (not on conda) via ``pip install tad-libcint``.
+
+For Windows, *dxtb* is not available via conda, because PyTorch itself is not registered in the conda-forge channel.
 
 ### Other
 
