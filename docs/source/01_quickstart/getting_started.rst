@@ -6,6 +6,8 @@ Getting Started
 The main object of *dxtb* is the :class:`~dxtb.Calculator` class, which is used
 to perform calculations on a given system.
 
+Note that all quantities are in atomic units.
+
 Creating a Calculator
 ---------------------
 

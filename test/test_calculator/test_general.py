@@ -33,7 +33,7 @@ def test_fail() -> None:
     numbers = torch.tensor([6, 1, 1, 1, 1], dtype=torch.double)
 
     with pytest.raises(DtypeError):
-        Calculator(numbers, par, opts={"vebosity": 0})
+        Calculator(numbers, par, opts={"verbosity": 0})
 
     # because of the exception, the timer for the setup is never stopped
     timer.reset()

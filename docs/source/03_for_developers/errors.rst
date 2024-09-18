@@ -56,8 +56,8 @@ RuntimeError: clone is not supported by NestedIntSymNode
 --------------------------------------------------------
 
 This is a bug in PyTorch 2.3.0 and 2.3.1 (see
-`PyTorch #128607 <<https://github.com/pytorch/pytorch/issues/128607>`__).
-To avoid this error, manually import `torch._dynamo` in the code. For example:
+`PyTorch #128607 <https://github.com/pytorch/pytorch/issues/128607>`__).
+To avoid this error, manually import ``torch._dynamo`` in the code. For example:
 
 .. code-block:: python
 
