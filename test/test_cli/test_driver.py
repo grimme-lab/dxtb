@@ -24,6 +24,7 @@ import pytest
 import torch
 
 from dxtb._src.cli import Driver, parser
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.timing import timer
 from dxtb._src.typing import DD
 
@@ -105,9 +106,16 @@ def test_fail() -> None:
         setattr(args, "method", "xtb")
         Driver(args).singlepoint()
 
-    with pytest.raises(NotImplementedError):
-        setattr(args, "method", "gfn2")
-        Driver(args).singlepoint()
+    # Before reaching the NotImplementedError, the RuntimeError can be
+    # raised if the libcint is not available.
+    if has_libcint is False:
+        with pytest.raises(RuntimeError):
+            setattr(args, "method", "gfn2")
+            Driver(args).singlepoint()
+    else:
+        with pytest.raises(NotImplementedError):
+            setattr(args, "method", "gfn2")
+            Driver(args).singlepoint()
 
     with pytest.raises(ValueError):
         setattr(args, "method", "gfn1")

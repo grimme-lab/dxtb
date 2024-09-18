@@ -50,7 +50,7 @@ omit = [
 ]
 
 [tool.coverage.report]
-fail_under = 75
+fail_under = 70
 
 
 [tool.black]

@@ -370,11 +370,33 @@ class CalculatorCache(TensorLike):
 
     # printing
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         """Return a string representation of the Cache object."""
-        return f"{self.__class__.__name__}({', '.join([f'{key}={getattr(self, key)!r}' for key in self.__slots__])})"
+        counter = 0
+        l = []
+        for key in self.__slots__:
+            # skip "_cache_keys"
+            if key.startswith("_"):
+                continue
 
-    def __repr__(self) -> str:
+            attr = getattr(self, key)
+
+            # count populated values
+            if attr is not None:
+                counter += 1
+
+            # reduce printout for tensors
+            if isinstance(attr, Tensor):
+                attr = attr.shape if len(attr.shape) > 0 else attr
+
+            l.append(f"{key}={attr!r}")
+
+        return (
+            f"{self.__class__.__name__}(populated={counter}/{len(l)}, "
+            f"{', '.join(l)})"
+        )
+
+    def __repr__(self) -> str:  # pragma: no cover
         """Return a representation of the Cache object."""
         return str(self)
 
@@ -715,7 +737,7 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         # For some reason the calculator was not able to do what we want...
         if name not in self.cache:
             raise PropertyNotImplementedError(
-                f"Property '{name}' not present after calculation. "
+                f"Property '{name}' not present after calculation.\n"
                 "This seems like an internal error. (Maybe the method you "
                 "are calling has no cache decorator?)"
             )

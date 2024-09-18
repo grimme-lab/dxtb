@@ -23,6 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing.exceptions import SCFConvergenceError
 from dxtb._src.utils import (
     is_basis_list,
@@ -41,7 +42,7 @@ def test_lists() -> None:
     assert is_str_list(None) == False  # type: ignore
 
 
-def test_is_int_list():
+def test_is_int_list() -> None:
     assert is_int_list([1, 2, 3]) == True
     assert is_int_list([1, "a", 3]) == False
     assert is_int_list([]) == True
@@ -50,13 +51,13 @@ def test_is_int_list():
     assert is_int_list(None) == False  # type: ignore
 
 
-def test_is_basis_list(monkeypatch):
-    # Mocking the import inside the function
-    from dxtb._src.exlibs.libcint import AtomCGTOBasis, CGTOBasis
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+def test_is_basis_list() -> None:
+    from dxtb._src.exlibs import libcint  # type: ignore
 
-    basis = AtomCGTOBasis(
+    basis = libcint.AtomCGTOBasis(
         1,
-        [CGTOBasis(1, torch.tensor([1.0]), torch.tensor([1.0]))],
+        [libcint.CGTOBasis(1, torch.tensor([1.0]), torch.tensor([1.0]))],
         torch.tensor([0.0, 0.0, 0.0]),
     )
 

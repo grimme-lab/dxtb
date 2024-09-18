@@ -27,6 +27,7 @@ from tad_mctc.batch import pack
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
@@ -35,6 +36,7 @@ from .samples import samples
 sample_list = ["H2", "LiH", "Li2", "H2O", "S", "SiH4", "MB16_43_01"]
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str):
@@ -62,6 +64,7 @@ def test_single(dtype: torch.dtype, name: str):
             assert [b.angmom for b in basis.bases] == [0, 1, 2]
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)

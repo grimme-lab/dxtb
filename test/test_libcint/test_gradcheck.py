@@ -28,10 +28,13 @@ from tad_mctc.batch import pack
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
-from dxtb._src.exlibs import libcint
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.integral.driver.libcint import IntDriverLibcint, OverlapLibcint
 from dxtb._src.typing import DD, Callable, Tensor
 from dxtb._src.utils import is_basis_list
+
+if has_libcint is True:
+    from dxtb._src.exlibs import libcint
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -68,6 +71,7 @@ def gradchecker(
     return func, pos
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
@@ -82,6 +86,7 @@ def test_grad(dtype: torch.dtype, name: str, intstr: str, deriv: str) -> None:
     assert dgradcheck(func, diffvars, atol=tol, rtol=tol, nondet_tol=1e-7)
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
@@ -133,6 +138,7 @@ def gradchecker_batch(
     return func, pos
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")  # torch.meshgrid from batch.deflate
 @pytest.mark.parametrize("dtype", [torch.double])
@@ -147,6 +153,7 @@ def skip_test_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     assert dgradcheck(func, diffvars, atol=tol, nondet_tol=1e-7)
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")  # torch.meshgrid from batch.deflate
 @pytest.mark.parametrize("dtype", [torch.double])

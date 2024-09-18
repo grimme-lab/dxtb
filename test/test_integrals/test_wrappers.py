@@ -24,6 +24,7 @@ import pytest
 import torch
 
 from dxtb import GFN1_XTB, GFN2_XTB, Param
+from dxtb._src.exlibs.available import has_libcint
 from dxtb.integrals import wrappers
 
 numbers = torch.tensor([14, 1, 1, 1, 1])
@@ -85,11 +86,13 @@ def test_overlap() -> None:
     assert s.shape == (17, 17)
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 def test_dipole() -> None:
     s = wrappers.dipint(numbers, positions, GFN1_XTB)
     assert s.shape == (3, 17, 17)
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 def test_quad() -> None:
     s = wrappers.quadint(numbers, positions, GFN1_XTB)
     assert s.shape == (9, 17, 17)

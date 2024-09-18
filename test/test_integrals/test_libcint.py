@@ -28,8 +28,8 @@ from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb import integrals as ints
 from dxtb import labels
-from dxtb._src.exlibs.libcint import LibcintWrapper
-from dxtb._src.integral.driver import libcint
+from dxtb._src.exlibs.available import has_libcint
+from dxtb._src.integral.driver.libcint import IntDriverLibcint
 from dxtb._src.integral.driver.manager import DriverManager
 from dxtb._src.integral.factory import (
     new_dipint_libcint,
@@ -37,6 +37,9 @@ from dxtb._src.integral.factory import (
     new_quadint_libcint,
 )
 from dxtb._src.typing import DD, Tensor
+
+if has_libcint is True:
+    from dxtb._src.exlibs import libcint
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -53,13 +56,13 @@ def run(numbers: Tensor, positions: Tensor, cpu: bool, dd: DD) -> None:
     i.build_overlap(positions, force_cpu_for_libcint=cpu)
 
     if numbers.ndim == 1:
-        assert isinstance(mgr.driver, libcint.IntDriverLibcint)
-        assert isinstance(mgr.driver.drv, LibcintWrapper)
+        assert isinstance(mgr.driver, IntDriverLibcint)
+        assert isinstance(mgr.driver.drv, libcint.LibcintWrapper)
     else:
-        assert isinstance(mgr.driver, libcint.IntDriverLibcint)
+        assert isinstance(mgr.driver, IntDriverLibcint)
         assert isinstance(mgr.driver.drv, list)
-        assert isinstance(mgr.driver.drv[0], LibcintWrapper)
-        assert isinstance(mgr.driver.drv[1], LibcintWrapper)
+        assert isinstance(mgr.driver.drv[0], libcint.LibcintWrapper)
+        assert isinstance(mgr.driver.drv[1], libcint.LibcintWrapper)
 
     ################################################
 
@@ -89,6 +92,7 @@ def run(numbers: Tensor, positions: Tensor, cpu: bool, dd: DD) -> None:
     assert q.matrix is not None
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("name", ["H2"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
@@ -102,6 +106,7 @@ def test_single(dtype: torch.dtype, name: str, force_cpu_for_libcint: bool):
     run(numbers, positions, force_cpu_for_libcint, dd)
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("name1", ["H2"])
 @pytest.mark.parametrize("name2", ["LiH"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

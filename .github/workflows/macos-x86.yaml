@@ -14,7 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-name: Tests (Ubuntu, PyTorch V1)
+name: Tests (macOS x86)
 
 on:
   push:
@@ -41,9 +41,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [macos-12, macos-13]
         python-version: ["3.8", "3.9", "3.10", "3.11"]
-        torch-version: ["1.11.0", "1.12.1", "1.13.1"]
+        # only test oldest and newest version of torch
+        torch-version: ["1.11.0", "2.2.2"]
         exclude:
           # Check latest versions here: https://download.pytorch.org/whl/torch/
           #
@@ -52,11 +53,26 @@ jobs:
           # 3.12: https://github.com/pytorch/pytorch/issues/110436
           # 3.13: https://github.com/pytorch/pytorch/issues/130249
           #
-          # PyTorch<1.13.0 does only support Python<3.11 (Linux)
+          # Wheels for macOS x86_64 are deprecated since 2.3.0
+          #
+          # PyTorch<2.2.0 does only support Python<3.12 (all platforms)
+          - python-version: "3.12"
+            torch-version: "1.11.0"
+          - python-version: "3.12"
+            torch-version: "1.12.1"
+          - python-version: "3.12"
+            torch-version: "1.13.1"
+          - python-version: "3.12"
+            torch-version: "2.0.1"
+          - python-version: "3.12"
+            torch-version: "2.1.2"
+          # PyTorch<2.0.0 does only support Python<3.11 (macOS and Windows)
           - python-version: "3.11"
             torch-version: "1.11.0"
           - python-version: "3.11"
             torch-version: "1.12.1"
+          - python-version: "3.11"
+            torch-version: "1.13.1"
 
     runs-on: ${{ matrix.os }}
 
@@ -79,10 +95,10 @@ jobs:
           python3 -m pip install tox
 
       - name: Determine TOXENV
-        run: echo "TOXENV=py$(echo ${{ matrix.python-version }} | tr -d '.')-torch$(echo ${{ matrix.torch-version }} | tr -d '.')" >> $GITHUB_ENV
+        run: echo "TOXENV=py$(echo ${{ matrix.python-version }} | tr -d '.')-torch$(echo ${{ matrix.torch-version }} | tr -d '.')-nolibcint" >> $GITHUB_ENV
 
       - name: Print TOXENV
         run: echo "TOXENV is set to '${{ env.TOXENV }}'."
 
       - name: Unittests with tox
-        run: EXTRAS=pyscf tox -e ${{ env.TOXENV }}-libcint
+        run: EXTRAS=pyscf tox -e ${{ env.TOXENV }}

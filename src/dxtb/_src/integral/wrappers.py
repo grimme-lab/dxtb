@@ -246,8 +246,17 @@ def _integral(
     # Driver #
     ##########
 
-    # Determine which driver class to instantiate (defaults to libcint)
-    driver_name = kwargs.pop("driver", labels.INTDRIVER_LIBCINT)
+    # Determine which driver class to instantiate
+    # (defaults to libcint if available)
+    driver_name = kwargs.pop("driver", None)
+    if driver_name is None:
+        # pylint: disable=import-outside-toplevel
+        from dxtb._src.exlibs.available import has_libcint
+
+        if has_libcint is True:
+            driver_name = labels.INTDRIVER_LIBCINT
+        else:
+            driver_name = labels.INTDRIVER_ANALYTICAL
 
     # setup driver for integral calculation
     drv_mgr = DriverManager(driver_name, **dd)

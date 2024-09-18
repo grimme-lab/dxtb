@@ -222,7 +222,7 @@ def cg(
 
         # move to the next index
         pk = pk_1
-        zk = zk_1
+        # zk = zk_1
         xk = xk_1
         rk = rk_1
         rkzk = rkzk_1

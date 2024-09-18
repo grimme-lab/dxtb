@@ -29,9 +29,12 @@ from tad_mctc.batch import deflate, pack
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
-from dxtb._src.exlibs import libcint
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import is_basis_list
+
+if has_libcint is True:
+    from dxtb._src.exlibs import libcint
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -69,6 +72,7 @@ def check_multipole_symmetry(multipole_tensor: Tensor) -> bool:
     return is_symmetric
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 @pytest.mark.parametrize("intstr", mp_ints)
@@ -97,6 +101,7 @@ def test_single(dtype: torch.dtype, intstr: str, name: str) -> None:
     assert check_multipole_symmetry(i) is True
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", sample_list)

@@ -29,6 +29,7 @@ from tad_mctc.units import VAA2AU
 from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.components.interactions import new_efield
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Tensor
 from dxtb.labels import INTLEVEL_DIPOLE
 
@@ -168,6 +169,7 @@ def execute(
     assert pytest.approx(dipder1, abs=atol) == dipder4
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist)
 def test_single(dtype: torch.dtype, name: str) -> None:
@@ -178,6 +180,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
 
 @pytest.mark.large
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist_more)
 def test_single_more(dtype: torch.dtype, name: str) -> None:
@@ -188,6 +191,7 @@ def test_single_more(dtype: torch.dtype, name: str) -> None:
 
 
 @pytest.mark.large
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist_large)
 def test_single_large(dtype: torch.dtype, name: str) -> None:
@@ -197,6 +201,7 @@ def test_single_large(dtype: torch.dtype, name: str) -> None:
     single(name, field_vector, dd=dd)
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist)
 def test_single_field(dtype: torch.dtype, name: str) -> None:
@@ -207,6 +212,7 @@ def test_single_field(dtype: torch.dtype, name: str) -> None:
 
 
 # TODO: Batched derivatives are not supported yet
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", slist)
@@ -219,6 +225,7 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
 
 # TODO: Batched derivatives are not supported yet
 @pytest.mark.large
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", slist_large)
@@ -230,6 +237,7 @@ def skip_test_batch_large(dtype: torch.dtype, name1: str, name2) -> None:
 
 
 # TODO: Batched derivatives are not supported yet
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", slist)

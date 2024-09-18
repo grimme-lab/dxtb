@@ -99,7 +99,7 @@ class ConfigSCF:
         strict: bool = False,
         guess: str | int = defaults.GUESS,
         maxiter: int = defaults.MAXITER,
-        mixer: str = defaults.MIXER,
+        mixer: str | int = defaults.MIXER,
         damp: float = defaults.DAMP,
         scf_mode: str | int = defaults.SCF_MODE,
         scp_mode: str | int = defaults.SCP_MODE,

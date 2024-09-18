@@ -26,6 +26,7 @@ import torch
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.constants.labels import INTDRIVER_ANALYTICAL, INTDRIVER_LIBCINT
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.integral.driver.libcint import IntDriverLibcint
 from dxtb._src.integral.driver.manager import DriverManager
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch
@@ -45,9 +46,7 @@ def test_fail() -> None:
         mgr.create_driver(numbers, par, IndexHelper.from_numbers(numbers, par))
 
 
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
-def test_single(dtype: torch.dtype, force_cpu_for_libcint: bool):
+def single(name: int, dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     numbers = torch.tensor([3, 1], device=DEVICE)
@@ -55,36 +54,43 @@ def test_single(dtype: torch.dtype, force_cpu_for_libcint: bool):
 
     ihelp = IndexHelper.from_numbers(numbers, par)
 
-    mgr_py = DriverManager(
-        INTDRIVER_ANALYTICAL, force_cpu_for_libcint=force_cpu_for_libcint, **dd
-    )
-    mgr_py.create_driver(numbers, par, ihelp)
-
-    mgr_lc = DriverManager(
-        INTDRIVER_LIBCINT, force_cpu_for_libcint=force_cpu_for_libcint, **dd
-    )
-    mgr_lc.create_driver(numbers, par, ihelp)
+    mgr = DriverManager(name, force_cpu_for_libcint=force_cpu_for_libcint, **dd)
+    mgr.create_driver(numbers, par, ihelp)
 
     if force_cpu_for_libcint is True:
         positions = positions.cpu()
 
-    mgr_py.setup_driver(positions)
-    assert isinstance(mgr_py.driver, IntDriverPytorch)
-    mgr_lc.setup_driver(positions)
-    assert isinstance(mgr_lc.driver, IntDriverLibcint)
+    mgr.setup_driver(positions)
+    if name == INTDRIVER_ANALYTICAL:
+        assert isinstance(mgr.driver, IntDriverPytorch)
+    elif name == INTDRIVER_LIBCINT:
+        assert isinstance(mgr.driver, IntDriverLibcint)
 
-    assert mgr_py.driver.is_latest(positions) is True
-    assert mgr_lc.driver.is_latest(positions) is True
+    assert mgr.driver.is_latest(positions) is True
 
     # upon changing the positions, the driver should become outdated
     positions[0, 0] += 1e-4
-    assert mgr_py.driver.is_latest(positions) is False
-    assert mgr_lc.driver.is_latest(positions) is False
+    assert mgr.driver.is_latest(positions) is False
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
+def test_libcint_single(
+    dtype: torch.dtype, force_cpu_for_libcint: bool
+) -> None:
+    single(INTDRIVER_LIBCINT, dtype, force_cpu_for_libcint)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
-def test_batch(dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
+def test_pytorch_single(
+    dtype: torch.dtype, force_cpu_for_libcint: bool
+) -> None:
+    single(INTDRIVER_ANALYTICAL, dtype, force_cpu_for_libcint)
+
+
+def batch(name: int, dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     numbers = torch.tensor([[3, 1], [1, 0]], device=DEVICE)
@@ -92,28 +98,33 @@ def test_batch(dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
 
     ihelp = IndexHelper.from_numbers(numbers, par)
 
-    mgr_py = DriverManager(
-        INTDRIVER_ANALYTICAL, force_cpu_for_libcint=force_cpu_for_libcint, **dd
-    )
-    mgr_py.create_driver(numbers, par, ihelp)
-
-    mgr_lc = DriverManager(
-        INTDRIVER_LIBCINT, force_cpu_for_libcint=force_cpu_for_libcint, **dd
-    )
-    mgr_lc.create_driver(numbers, par, ihelp)
+    mgr = DriverManager(name, force_cpu_for_libcint=force_cpu_for_libcint, **dd)
+    mgr.create_driver(numbers, par, ihelp)
 
     if force_cpu_for_libcint is True:
         positions = positions.cpu()
 
-    mgr_py.setup_driver(positions)
-    assert isinstance(mgr_py.driver, IntDriverPytorch)
-    mgr_lc.setup_driver(positions)
-    assert isinstance(mgr_lc.driver, IntDriverLibcint)
+    mgr.setup_driver(positions)
+    if name == INTDRIVER_ANALYTICAL:
+        assert isinstance(mgr.driver, IntDriverPytorch)
+    elif name == INTDRIVER_LIBCINT:
+        assert isinstance(mgr.driver, IntDriverLibcint)
 
-    assert mgr_py.driver.is_latest(positions) is True
-    assert mgr_lc.driver.is_latest(positions) is True
+    assert mgr.driver.is_latest(positions) is True
 
     # upon changing the positions, the driver should become outdated
     positions[0, 0] += 1e-4
-    assert mgr_py.driver.is_latest(positions) is False
-    assert mgr_lc.driver.is_latest(positions) is False
+    assert mgr.driver.is_latest(positions) is False
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
+def test_libcint_batch(dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
+    batch(INTDRIVER_LIBCINT, dtype, force_cpu_for_libcint)
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
+def test_pytorch_batch(dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
+    batch(INTDRIVER_ANALYTICAL, dtype, force_cpu_for_libcint)

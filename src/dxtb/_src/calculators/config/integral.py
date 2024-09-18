@@ -34,6 +34,15 @@ class ConfigIntegrals:
     converted to integers in the constructor.
     """
 
+    cutoff: float
+    """
+    Real-space cutoff (in Bohr) for integral evaluation for PyTorch.
+    The ``libint`` driver ignores this option.
+    """
+
+    driver: int
+    """Type of integral driver."""
+
     level: int
     """
     Indicator for integrals to compute.
@@ -44,15 +53,6 @@ class ConfigIntegrals:
     - 3: +dipole
     - 4: +quadrupole
     """
-
-    cutoff: float
-    """
-    Real-space cutoff (in Bohr) for integral evaluation for PyTorch.
-    The ``libint`` driver ignores this option.
-    """
-
-    driver: int
-    """Type of integral driver."""
 
     uplo: Literal["n", "l", "u"]
     """Integral mode for PyTorch integral calculation."""
@@ -80,20 +80,54 @@ class ConfigIntegrals:
 
         if isinstance(driver, str):
             if driver.casefold() in labels.INTDRIVER_LIBCINT_STRS:
+                # pylint: disable=import-outside-toplevel
+                from dxtb._src.exlibs.available import has_libcint
+
+                # The default input is an integer. So, if we receive a string
+                # here, we need to assume that the libcint driver was
+                # explicitly requested and we need to check if the libcint
+                # interface is available.
+                if has_libcint is False:
+                    raise ValueError(
+                        "The integral driver seems to be have been set "
+                        f"explicitly to '{driver}'. However, the libcint "
+                        "interface is not installed."
+                    )
+
                 self.driver = labels.INTDRIVER_LIBCINT
             elif driver.casefold() in labels.INTDRIVER_ANALYTICAL_STRS:
                 self.driver = labels.INTDRIVER_ANALYTICAL
             elif driver.casefold() in labels.INTDRIVER_AUTOGRAD_STRS:
                 self.driver = labels.INTDRIVER_AUTOGRAD
+            elif driver.casefold() in labels.INTDRIVER_LEGACY_STRS:
+                self.driver = labels.INTDRIVER_LEGACY
             else:
                 raise ValueError(f"Unknown integral driver '{driver}'.")
+
         elif isinstance(driver, int):
             if driver not in (
                 labels.INTDRIVER_LIBCINT,
                 labels.INTDRIVER_ANALYTICAL,
                 labels.INTDRIVER_AUTOGRAD,
+                labels.INTDRIVER_LEGACY,
             ):
                 raise ValueError(f"Unknown integral driver '{driver}'.")
+
+            if driver == labels.INTDRIVER_LIBCINT:
+                # pylint: disable=import-outside-toplevel
+                from dxtb._src.exlibs.available import has_libcint
+
+                # If we receive the default integer here, we issue a warning
+                # and fall back to the PyTorch driver.
+                if has_libcint is False:
+                    from dxtb import OutputHandler
+
+                    OutputHandler.warn(
+                        "The libcint interface is not installed. "
+                        "Falling back to the analytical driver."
+                    )
+
+                    driver = labels.INTDRIVER_ANALYTICAL
 
             self.driver = driver
         else:

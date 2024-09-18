@@ -30,6 +30,7 @@ from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.components.interactions import new_efield
 from dxtb._src.constants import labels
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Callable, Tensor
 
 from ..conftest import DEVICE
@@ -87,6 +88,7 @@ def gradchecker(
 
 
 @pytest.mark.grad
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 @pytest.mark.parametrize("xfield", xfields)
@@ -103,6 +105,7 @@ def test_gradcheck(
 
 
 @pytest.mark.grad
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 @pytest.mark.parametrize("xfield", xfields)
@@ -165,6 +168,7 @@ def gradchecker_batch(
 
 
 @pytest.mark.grad
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["H2O"])
 @pytest.mark.parametrize("name2", sample_list)
@@ -182,6 +186,7 @@ def test_gradcheck_batch(
 
 
 @pytest.mark.grad
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["H2O"])
 @pytest.mark.parametrize("name2", sample_list)

@@ -22,15 +22,16 @@ from __future__ import annotations
 
 import pytest
 import torch
-from tad_mctc.autograd import dgradcheck, dgradgradcheck
-from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
-from dxtb._src.exlibs import libcint
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import is_basis_list
+
+if has_libcint is True:
+    from dxtb._src.exlibs import libcint
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -82,6 +83,7 @@ def num_grad(
     return gradient
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)

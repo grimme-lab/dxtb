@@ -48,7 +48,7 @@ def test_defaults() -> None:
     assert isinstance(args.maxiter, int)
     assert args.maxiter == defaults.MAXITER
 
-    assert isinstance(args.guess, str)
+    assert isinstance(args.guess, int)
     assert args.guess == defaults.GUESS
 
     assert isinstance(args.fermi_etemp, float)
@@ -57,7 +57,7 @@ def test_defaults() -> None:
     assert isinstance(args.fermi_maxiter, int)
     assert args.fermi_maxiter == defaults.FERMI_MAXITER
 
-    assert isinstance(args.fermi_partition, str)
+    assert isinstance(args.fermi_partition, int)
     assert args.fermi_partition == defaults.FERMI_PARTITION
 
     # integral settings

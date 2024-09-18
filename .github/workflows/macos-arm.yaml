@@ -14,7 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-name: Tests (Ubuntu, PyTorch V1)
+name: Tests (macOS arm)
 
 on:
   push:
@@ -41,22 +41,30 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
-        torch-version: ["1.11.0", "1.12.1", "1.13.1"]
+        os: [macos-14]
+        # Python 3.8/3.9 is not on macos-latest (macos-14-arm64)
+        # https://github.com/actions/setup-python/issues/696
+        python-version: ["3.10", "3.11"]
+        # only test oldest and newest version of torch
+        torch-version: ["1.11.0", "2.4.1"]
         exclude:
           # Check latest versions here: https://download.pytorch.org/whl/torch/
           #
-          # PyTorch issues:
-          # 3.11: https://github.com/pytorch/pytorch/issues/86566
-          # 3.12: https://github.com/pytorch/pytorch/issues/110436
-          # 3.13: https://github.com/pytorch/pytorch/issues/130249
+          # PyTorch now fully supports Python=<3.11
+          # see: https://github.com/pytorch/pytorch/issues/86566
           #
-          # PyTorch<1.13.0 does only support Python<3.11 (Linux)
+          # PyTorch does now support Python 3.12 (macOS only 2.2)
+          # see: https://github.com/pytorch/pytorch/issues/110436
+          - python-version: "3.12"
+            torch-version: "1.11.0"
+          # PyTorch<1.13.0 does only support Python=<3.10
+          # On macOS and Windows, 1.13.x is also not supported for Python>=3.10
           - python-version: "3.11"
             torch-version: "1.11.0"
           - python-version: "3.11"
             torch-version: "1.12.1"
+          - python-version: "3.11"
+            torch-version: "1.13.1"
 
     runs-on: ${{ matrix.os }}
 
@@ -79,10 +87,10 @@ jobs:
           python3 -m pip install tox
 
       - name: Determine TOXENV
-        run: echo "TOXENV=py$(echo ${{ matrix.python-version }} | tr -d '.')-torch$(echo ${{ matrix.torch-version }} | tr -d '.')" >> $GITHUB_ENV
+        run: echo "TOXENV=py$(echo ${{ matrix.python-version }} | tr -d '.')-torch$(echo ${{ matrix.torch-version }} | tr -d '.')-nolibcint" >> $GITHUB_ENV
 
       - name: Print TOXENV
         run: echo "TOXENV is set to '${{ env.TOXENV }}'."
 
       - name: Unittests with tox
-        run: EXTRAS=pyscf tox -e ${{ env.TOXENV }}-libcint
+        run: EXTRAS=pyscf tox -e ${{ env.TOXENV }}

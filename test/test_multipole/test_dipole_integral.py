@@ -33,14 +33,14 @@ from tad_mctc.math import einsum
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
-from dxtb._src.exlibs import libcint
+from dxtb._src.exlibs.available import has_libcint, has_pyscf
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import is_basis_list
 
-try:
+if has_pyscf is True:
     from dxtb._src.exlibs.pyscf.mol import M
-except ImportError:
-    M = False
+if has_libcint is True:
+    from dxtb._src.exlibs import libcint
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -53,7 +53,10 @@ def snorm(overlap: Tensor) -> Tensor:
     return torch.pow(overlap.diagonal(dim1=-1, dim2=-2), -0.5)
 
 
-@pytest.mark.skipif(M is False, reason="PySCF not installed")
+@pytest.mark.skipif(
+    has_pyscf is False or has_libcint is False,
+    reason="PySCF or libcint interface not installed",
+)
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist)
 def test_single(dtype: torch.dtype, name: str) -> None:
@@ -61,7 +64,10 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
 
 @pytest.mark.large
-@pytest.mark.skipif(M is False, reason="PySCF not installed")
+@pytest.mark.skipif(
+    has_pyscf is False or has_libcint is False,
+    reason="PySCF or libcint interface not installed",
+)
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist_large)
 def test_large(dtype: torch.dtype, name: str) -> None:

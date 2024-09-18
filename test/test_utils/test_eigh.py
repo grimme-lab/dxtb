@@ -23,12 +23,11 @@ from __future__ import annotations
 import pytest
 import torch
 from tad_mctc.convert import symmetrize
-from tad_mctc.storch.linalg import eighb
 from torch.autograd.gradcheck import gradcheck
 
 from dxtb._src.exlibs.xitorch import LinearOperator
 from dxtb._src.exlibs.xitorch.linalg import symeig
-from dxtb._src.typing import Literal, Tensor
+from dxtb._src.typing import Tensor
 
 from ..conftest import DEVICE
 

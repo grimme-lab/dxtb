@@ -27,9 +27,12 @@ from tad_mctc.batch import deflate, pack
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
-from dxtb._src.exlibs import libcint
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD
 from dxtb._src.utils import is_basis_list
+
+if has_libcint is True:
+    from dxtb._src.exlibs import libcint
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -38,6 +41,7 @@ sample_list = ["H2", "HHe", "LiH", "Li2", "S2", "H2O", "SiH4"]
 mp_ints = ["j", "jj"]  # dipole, quadrupole
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 @pytest.mark.parametrize("intstr", mp_ints)
@@ -62,6 +66,7 @@ def test_single(dtype: torch.dtype, intstr: str, name: str) -> None:
     assert i.shape == torch.Size((mpdim, ihelp.nao, ihelp.nao))
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", sample_list)

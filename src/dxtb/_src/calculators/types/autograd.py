@@ -69,7 +69,10 @@ class AutogradCalculator(EnergyCalculator):
         "pol_deriv",
         "hyperpolarizability",
         "ir",
+        "ir_intensity",
         "raman",
+        "raman_intensity",
+        "rama_depol",
     ]
 
     @cdec.requires_positions_grad
@@ -385,7 +388,6 @@ class AutogradCalculator(EnergyCalculator):
             hess,
             project_translational=project_translational,
             project_rotational=project_rotational,
-            **kwargs,
         )
 
         return a
@@ -471,8 +473,9 @@ class AutogradCalculator(EnergyCalculator):
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
-        use_analytical: bool = True,
+        use_analytical_dipmom: bool = True,
         use_functorch: bool = False,
+        **kwargs: Any,
     ) -> Tensor:
         r"""
         Calculate cartesian dipole derivative :math:`\mu'`.
@@ -500,7 +503,7 @@ class AutogradCalculator(EnergyCalculator):
             Total charge. Defaults to 0.
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to ``None``.
-        use_analytical: bool, optional
+        use_analytical_dipmom: bool, optional
             Whether to use the analytically calculated dipole moment for AD or
             the automatically differentiated dipole moment.
         use_functorch: bool, optional
@@ -511,7 +514,7 @@ class AutogradCalculator(EnergyCalculator):
         Tensor
             Cartesian dipole derivative of shape ``(..., 3, nat, 3)``.
         """
-        dip_fcn = self._get_dipole_fcn(use_analytical)
+        dip_fcn = self._get_dipole_fcn(use_analytical_dipmom)
 
         if use_functorch is True:
             # pylint: disable=import-outside-toplevel
@@ -584,6 +587,10 @@ class AutogradCalculator(EnergyCalculator):
             Number of unpaired electrons. Defaults to ``None``.
         use_functorch: bool, optional
             Whether to use functorch or the standard (slower) autograd.
+        use_analytical: bool, optional
+            Whether to use the analytically calculated dipole moment for AD or
+            the automatically differentiated dipole moment. Defaults to
+            ``False``.
         derived_quantity: Literal['energy', 'dipole'], optional
             Which derivative to calculate for the polarizability, i.e.,
             derivative of dipole moment or energy w.r.t field.
@@ -656,6 +663,7 @@ class AutogradCalculator(EnergyCalculator):
         spin: Tensor | float | int | None = defaults.SPIN,
         use_functorch: bool = False,
         derived_quantity: Literal["energy", "dipole"] = "dipole",
+        **kwargs: Any,
     ) -> Tensor:
         r"""
         Calculate the cartesian polarizability derivative :math:`\chi`.
@@ -696,12 +704,18 @@ class AutogradCalculator(EnergyCalculator):
         Tensor
             Polarizability derivative shape ``(..., 3, 3, nat, 3)``.
         """
+        use_analytical = kwargs.pop("use_analytical", False)
+
         if use_functorch is False:
             # pylint: disable=import-outside-toplevel
             from tad_mctc.autograd import jac
 
             a = self.polarizability(
-                positions, chrg, spin, use_functorch=use_functorch
+                positions,
+                chrg,
+                spin,
+                use_functorch=use_functorch,
+                use_analytical=use_analytical,
             )
 
             # d(3, 3) / d(nat, 3) -> (3, 3, nat*3) -> (3, 3, nat, 3)
@@ -712,7 +726,12 @@ class AutogradCalculator(EnergyCalculator):
             from tad_mctc.autograd import jacrev
 
             chi = jacrev(self.polarizability, argnums=0)(
-                positions, chrg, spin, use_functorch, derived_quantity
+                positions,
+                chrg,
+                spin,
+                use_functorch,
+                use_analytical,
+                derived_quantity,
             )
             assert isinstance(chi, Tensor)
 
@@ -849,6 +868,7 @@ class AutogradCalculator(EnergyCalculator):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         use_functorch: bool = False,
+        **kwargs: Any,
     ) -> IRResult:
         """
         Calculate the frequencies and intensities of IR spectra.
@@ -876,7 +896,7 @@ class AutogradCalculator(EnergyCalculator):
         logger.debug("IR spectrum: Start.")
 
         # run vibrational analysis first
-        vib_res = self.vibration(positions, chrg, spin)
+        vib_res = self.vibration(positions, chrg, spin, **kwargs)
 
         # TODO: Figure out how to run func transforms 2x properly
         # (improve: Hessian does not need dipole integral but dipder does)
@@ -886,7 +906,7 @@ class AutogradCalculator(EnergyCalculator):
 
         # calculate nuclear dipole derivative dmu/dR: (..., 3, nat, 3)
         dmu_dr = self.dipole_deriv(
-            positions, chrg, spin, use_functorch=use_functorch
+            positions, chrg, spin, use_functorch=use_functorch, **kwargs
         )
 
         intensities = ir_ints(dmu_dr, vib_res.modes)
@@ -902,6 +922,7 @@ class AutogradCalculator(EnergyCalculator):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         use_functorch: bool = False,
+        **kwargs: Any,
     ) -> RamanResult:
         """
         Calculate the frequencies, static intensities and depolarization ratio
@@ -937,7 +958,9 @@ class AutogradCalculator(EnergyCalculator):
 
         # TODO: Figure out how to run func transforms 2x properly
         # (improve: Hessian does not need dipole integral but dipder does)
-        self.reset()
+        self.classicals.reset_all()
+        self.interactions.reset_all()
+        self.integrals.reset_all()
 
         # d(..., 3, 3) / d(..., nat, 3) -> (..., 3, 3, nat, 3)
         da_dr = self.pol_deriv(
@@ -1014,6 +1037,7 @@ class AutogradCalculator(EnergyCalculator):
 
         props = list(EnergyCalculator.implemented_properties)
         props.remove("bond_orders")
+
         if set(props) & set(properties):
             self.energy(positions, chrg, spin, **kwargs)
 
@@ -1041,8 +1065,8 @@ class AutogradCalculator(EnergyCalculator):
         if "hyperpolarizability" in properties:
             self.hyperpolarizability(positions, chrg, spin, **kwargs)
 
-        if {"ir", "ir_intensities"} in set(properties):
+        if {"ir"} & set(properties):
             self.ir(positions, chrg, spin, **kwargs)
 
-        if {"raman", "raman_intensities", "raman_depol"} & set(properties):
+        if {"raman"} & set(properties):
             self.raman(positions, chrg, spin, **kwargs)
