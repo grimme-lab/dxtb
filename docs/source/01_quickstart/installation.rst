@@ -75,8 +75,8 @@ If you want to install the package without pip, start by cloning the repository.
     DEST=/opt/software
     git clone https://github.com/grimme-lab/dxtb $DEST/dxtb
 
-Next, add <path to dxtb>/dxtb/src to your `$PYTHONPATH` environment variable.
-For the command line interface, add <path to dxtb>/dxtb/bin to your `$PATH` environment variable.
+Next, add ``<path to dxtb>/dxtb/src`` to your ``$PYTHONPATH`` environment variable.
+For the command line interface, add ``<path to dxtb>/dxtb/bin`` to your ``$PATH`` environment variable.
 
 .. code-block:: shell
 
@@ -97,9 +97,11 @@ The following dependencies are required
 - `tad-multicharge <https://github.com/tad-mctc/tad-multicharge>`__
 - `tad-dftd3 <https://github.com/dftd3/tad-dftd3>`__
 - `tad-dftd4 <https://github.com/dftd4/tad-dftd4>`__
+- `tad-libcint <https://github.com/tad-mctc/tad-libcint>`__
 - `torch <https://pytorch.org/>`__
 
 For tests, we also require
 
 - `pytest <https://docs.pytest.org/>`__
+- `pyscf <https://pyscf.org/>`__
 - `tox <https://docs.pytest.org/>`__

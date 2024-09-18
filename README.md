@@ -16,14 +16,11 @@
   <a href="https://github.com/grimme-lab/dxtb/actions/workflows/ubuntu.yaml">
     <img src="https://github.com/grimme-lab/dxtb/actions/workflows/ubuntu.yaml/badge.svg" alt="Test Status Ubuntu"/>
   </a>
-  <a href="https://github.com/grimme-lab/dxtb/actions/workflows/macos.yaml">
-    <img src="https://github.com/grimme-lab/dxtb/actions/workflows/macos.yaml/badge.svg" alt="Test Status macOS"/>
-  </a>
   <a href="https://github.com/tgrimme-lab/dxtb/actions/workflows/macos-x86.yaml">
-    <img src="https://github.com/tgrimme-lab/dxtb/actions/workflows/macos-x86.yaml/badge.svg" alt="Test Status macOS (x86)"/>
+    <img src="https://github.com/grimme-lab/dxtb/actions/workflows/macos-x86.yaml/badge.svg" alt="Test Status macOS (x86)"/>
   </a>
   <a href="https://github.com/tgrimme-lab/dxtb/actions/workflows/macos-arm.yaml">
-    <img src="https://github.com/tgrimme-lab/dxtb/actions/workflows/macos-arm.yaml/badge.svg" alt="Test Status macOS (ARM)"/>
+    <img src="https://github.com/grimme-lab/dxtb/actions/workflows/macos-arm.yaml/badge.svg" alt="Test Status macOS (ARM)"/>
   </a>
   <a href="https://github.com/grimme-lab/dxtb/actions/workflows/windows.yaml">
     <img src="https://github.com/grimme-lab/dxtb/actions/workflows/windows.yaml/badge.svg" alt="Test Status Windows"/>
@@ -124,6 +121,8 @@ forces = calc.get_forces(pos)
 assert torch.equal(forces, -g)
 ```
 
+All quantities are in atomic units.
+
 For more examples and details, check out [the documentation](https://dxtb.readthedocs.io).
 
 ## Compatibility
@@ -142,13 +141,13 @@ For more examples and details, check out [the documentation](https://dxtb.readth
 Note that only the latest bug fix version is listed, but all preceding bug fix minor versions are supported.
 For example, although only version 2.2.2 is listed, version 2.2.0 and 2.2.1 are also supported.
 
+**Restriction for macOS and Windows:**
+
 On macOS and Windows, PyTorch<2.0.0 does only support Python<3.11.
 
-**Restriction for macOS and Windows:**
 The libcint interface is **not** available for macOS and Windows.
 Correspondingly, the integral evaluation can be considerably slower.
 Moreover, higher-order multipole integrals (dipole, quadrupole, ...) are not implemented.
-
 While macOS support may be considered in the future, native Windows support is not possible, because the underlying [libcint](https://github.com/sunqm/libcint) library does not work under Windows.
 
 
