@@ -137,9 +137,9 @@ For more examples and details, check out [the documentation](https://dxtb.readth
 | 1.13.1           | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                |
 | 2.0.1            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                |
 | 2.1.2            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                |
-| 2.2.2            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
-| 2.3.1            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x: |
-| 2.4.1            | not tested | not tested | not tested | not tested | :x: |
+| 2.2.2            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | planned |
+| 2.3.1            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | planned |
+| 2.4.1            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | planned |
 
 Note that only the latest bug fix version is listed, but all preceding bug fix minor versions are supported.
 For example, although only version 2.2.2 is listed, version 2.2.0 and 2.2.1 are also supported.

@@ -55,7 +55,7 @@ jobs:
           #
           # Wheels for macOS x86_64 are deprecated since 2.3.0
           #
-          # PyTorch<2.2.0 does only support Python<3.12 (all platforms)
+          # PyTorch<2.2 does only support Python<3.12 (all platforms)
           - python-version: "3.12"
             torch-version: "1.11.0"
           - python-version: "3.12"
@@ -66,7 +66,7 @@ jobs:
             torch-version: "2.0.1"
           - python-version: "3.12"
             torch-version: "2.1.2"
-          # PyTorch<2.0.0 does only support Python<3.11 (macOS and Windows)
+          # PyTorch<2.0 does only support Python<3.11 (macOS and Windows)
           - python-version: "3.11"
             torch-version: "1.11.0"
           - python-version: "3.11"
