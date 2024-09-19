@@ -23,6 +23,7 @@ Taken from DQC.
 from __future__ import annotations
 
 import gc
+import warnings
 
 import torch
 
@@ -41,12 +42,17 @@ def garbage_collect() -> None:
 
 def _tensors_from_gc() -> Generator[Tensor, None, None]:
     # return [obj for obj in gc.get_objects() if isinstance(obj, Tensor)]
-    for obj in gc.get_objects():
-        try:
-            if isinstance(obj, Tensor):
-                yield obj
-        except Exception:  # nosec B112 pylint: disable=broad-exception-caught
-            continue
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", FutureWarning)
+
+        for obj in gc.get_objects():
+            try:
+                if isinstance(obj, Tensor):
+                    yield obj
+            except (
+                Exception
+            ):  # nosec B112 pylint: disable=broad-exception-caught
+                continue
 
 
 @overload
