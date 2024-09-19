@@ -22,7 +22,7 @@ channels:
 dependencies:
   - numpy<2
   - pydantic
-  - python>=3.8,<3.12
+  - python>=3.8,<3.13
   - pytorch>=1.11.0,<2.5
   - scipy # for xitorch
   - pytest

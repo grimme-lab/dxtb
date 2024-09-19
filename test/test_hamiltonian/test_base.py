@@ -25,6 +25,7 @@ from pathlib import Path
 
 import pytest
 import torch
+from tad_mctc._version import __tversion__
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
@@ -51,12 +52,16 @@ def test_write_to_pt() -> None:
     h = GFN1Hamiltonian(numbers, par, ihelp)
     h._matrix = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
 
+    kwargs: dict = {"map_location": torch.device("cpu")}
+    if __tversion__ > (1, 12, 1):
+        kwargs["weights_only"] = True
+
     with td.TemporaryDirectory() as tmpdir:
         p_write = Path(tmpdir) / "test.pt"
         h.to_pt(p_write)
 
-        read_mat = torch.load(p_write)
-        assert pytest.approx(h._matrix.cpu()) == read_mat.cpu()
+        read_mat = torch.load(p_write, **kwargs)
+        assert pytest.approx(h._matrix.cpu()) == read_mat
 
     with td.TemporaryDirectory() as tmpdir:
         p_write = Path(tmpdir) / f"{h.label.casefold()}"
@@ -65,5 +70,5 @@ def test_write_to_pt() -> None:
         h.label = str(p_write)
         h.to_pt()
 
-        read_mat = torch.load(f"{p_write}.pt")
-        assert pytest.approx(h._matrix.cpu()) == read_mat.cpu()
+        read_mat = torch.load(f"{p_write}.pt", **kwargs)
+        assert pytest.approx(h._matrix.cpu()) == read_mat

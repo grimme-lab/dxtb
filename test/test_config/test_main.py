@@ -21,11 +21,14 @@ Test integral configuration.
 from __future__ import annotations
 
 import pytest
+import torch
 
 from dxtb._src.constants import defaults, labels
 from dxtb._src.exlibs.available import has_libcint
-from dxtb._src.typing import get_default_device, get_default_dtype
+from dxtb._src.typing import get_default_dtype
 from dxtb.config import Config as Cfg
+
+from ..conftest import DEVICE
 
 
 def test_default() -> None:
@@ -41,7 +44,7 @@ def test_default() -> None:
     assert cfg.ints.uplo == defaults.INTUPLO
 
     assert cfg.anomaly == False
-    assert cfg.device == get_default_device()
+    assert cfg.device == torch.device("cpu") if DEVICE is None else DEVICE
     assert cfg.dtype == get_default_dtype()
 
     assert cfg.scf.maxiter == defaults.MAXITER
