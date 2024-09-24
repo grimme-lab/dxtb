@@ -209,7 +209,6 @@ data/misc
 
 # exclude some sample and reaction files for tests
 !test/test_singlepoint/**/coord
-!test/test_singlepoint/**/coord
 !examples/issues/**/coord
 !examples/issues/**/*.xyz
 

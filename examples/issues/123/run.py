@@ -27,7 +27,7 @@ from tad_mctc.io import read
 import dxtb
 
 
-def main():
+def main() -> int:
     dd = {"device": torch.device("cpu"), "dtype": torch.double}
     dxtb.timer.cuda_sync = False
 
@@ -47,6 +47,8 @@ def main():
     print(f" - dxtb (0.1.0): {energy: .12f}")
     print(f" - diff        : {energy - ref: .12f}")
 
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
