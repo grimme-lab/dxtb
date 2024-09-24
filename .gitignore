@@ -208,11 +208,9 @@ data/*/processed*
 data/misc
 
 # exclude some sample and reaction files for tests
-!data/GMTKN55/samples_ACONF.json
-!data/GMTKN55/reactions_ACONF.json
-
 !test/test_singlepoint/**/coord
-!test/test_singlepoint/**/.CHRG
+!examples/issues/**/coord
+!examples/issues/**/*.xyz
 
 !test/test_io/**/*.json
 !test/test_io/**/coord
