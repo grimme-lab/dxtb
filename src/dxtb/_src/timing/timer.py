@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import time
 
-__all__ = ["timer"]
+__all__ = ["timer", "create_timer", "kill_timer"]
 
 
 class TimerError(Exception):
@@ -188,8 +188,8 @@ class _Timers:
     ) -> None:
         self.label = label
         self.timers = {}
-        self._enabled = True
-        self._subtimer_parent_map = {}
+        self._enabled: bool = True
+        self._subtimer_parent_map: dict[str, str] = {}
         self._autostart = autostart
         self._cuda_sync = cuda_sync
         self._only_parents = only_parents
@@ -368,6 +368,9 @@ class _Timers:
         self.reset()
         self.stop_all()
 
+        self.timers.clear()
+        self._subtimer_parent_map.clear()
+
     def get_time(self, uid: str) -> float:
         """
         Get the elapsed time of a timer.
@@ -463,6 +466,66 @@ class _Timers:
             precision=precision,
         )
 
+    def __str__(self) -> str:
+        """Return a string representation of the :class:`._Timers` instance."""
+        timers_repr = ", ".join(
+            f"'{label}': {timer.elapsed_time:.3f}s"
+            for label, timer in self.timers.items()
+        )
 
-timer = _Timers(autostart=True, cuda_sync=False)
+        return (
+            f"{self.__class__.__name__}("
+            f"label={self.label!r}, "
+            f"enabled={self._enabled}, "
+            f"cuda_sync={self._cuda_sync}, "
+            f"only_parents={self._only_parents}, "
+            f"timers={{{timers_repr}}}"
+            f")"
+        )
+
+    def __repr__(self) -> str:
+        """Return a string representation of the :class:`._Timers` instance."""
+        return str(self)
+
+
+def create_timer(autostart: bool = True, cuda_sync: bool = False) -> _Timers:
+    """
+    Create a new timer instance.
+
+    Parameters
+    ----------
+    autostart : bool, optional
+        Whether to start the total timer automatically. Defaults to ``True``.
+    cuda_sync : bool, optional
+        Whether to call :func:`torch.cuda.synchronize` after CUDA operations.
+        Defaults to ``False``.
+
+    Returns
+    -------
+    _Timers
+        Instance of the timer class.
+
+    Note
+    ----
+    Delete the timer instance with :func:`.kill_timer` when it is no longer
+    needed or throws errors when reusing it.
+    """
+    global timer
+    timer = _Timers(autostart=autostart, cuda_sync=cuda_sync)
+    return timer
+
+
+def kill_timer() -> None:
+    """Delete the global timer instance."""
+    global timer
+    if "timer" not in globals():
+        raise TimerError(
+            "Cannot delete timer instance; timer was never initialized."
+        )
+
+    timer.kill()
+    del timer
+
+
+timer = create_timer(autostart=True, cuda_sync=False)
 """Global instance of the timer class."""
