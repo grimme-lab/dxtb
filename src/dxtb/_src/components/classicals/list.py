@@ -112,7 +112,7 @@ class ClassicalList(ComponentList[Classical]):
         if len(self.components) <= 0:
             return {"none": positions.new_zeros(positions.shape[:-1])}
 
-        energies = {}
+        energies: dict[str, Tensor] = {}
         for classical in self.components:
             timer.start(classical.label, parent_uid="Classicals")
             energies[classical.label] = classical.get_energy(

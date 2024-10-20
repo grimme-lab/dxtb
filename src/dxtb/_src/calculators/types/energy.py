@@ -36,6 +36,7 @@ from dxtb._src.typing import Any, Tensor
 from dxtb._src.utils.tensors import tensor_id
 
 from ..result import Result
+from ..utils import shape_checks_chrg
 from . import decorators as cdec
 from .base import BaseCalculator
 
@@ -115,6 +116,8 @@ class EnergyCalculator(BaseCalculator):
         chrg = any_to_tensor(chrg, **self.dd)
         if spin is not None:
             spin = any_to_tensor(spin, **self.dd)
+
+        assert shape_checks_chrg(chrg, self.numbers.ndim, name="Charge")
 
         result = Result(positions, **self.dd)
 
