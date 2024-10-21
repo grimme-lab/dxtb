@@ -44,7 +44,7 @@ jobs:
         os: [windows-latest]
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         # only test oldest and newest version of torch
-        torch-version: ["1.11.0", "2.4.1"]
+        torch-version: ["1.11.0", "2.5.0"]
         exclude:
           # Check latest versions here: https://download.pytorch.org/whl/torch/
           #
@@ -71,6 +71,9 @@ jobs:
             torch-version: "1.12.1"
           - python-version: "3.11"
             torch-version: "1.13.1"
+          # PyTorch>=2.5.0 does not support Python<3.9
+          - python-version: "3.8"
+            torch-version: "2.5.0"
 
     runs-on: ${{ matrix.os }}
 
