@@ -27,16 +27,60 @@ from tad_mctc.exceptions import DtypeError
 from dxtb import GFN1_XTB as par
 from dxtb import Calculator, labels
 from dxtb._src.timing import timer
+from dxtb.typing import DD
+
+from ..conftest import DEVICE
 
 
-def test_fail() -> None:
-    numbers = torch.tensor([6, 1, 1, 1, 1], dtype=torch.double)
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_fail(dtype: torch.dtype) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
+    numbers = torch.tensor([6, 1, 1, 1, 1], **dd)
 
     with pytest.raises(DtypeError):
         Calculator(numbers, par, opts={"verbosity": 0})
 
     # because of the exception, the timer for the setup is never stopped
     timer.reset()
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_fail_charge_single(dtype: torch.dtype) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
+    numbers = torch.tensor([3, 1], device=DEVICE)
+    positions = torch.zeros(2, 3, **dd)
+
+    calc = Calculator(numbers, par, opts={"verbosity": 0})
+
+    # charge must be a scalar for single structure
+    with pytest.raises(ValueError) as excinfo:
+        charge = torch.tensor([0.0], **dd)
+        calc.singlepoint(positions, chrg=charge)
+
+    assert "Charge tensor has only one element" in str(excinfo)
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_fail_charge_batch(dtype: torch.dtype) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
+    numbers = torch.tensor([[3, 1], [3, 1]], device=DEVICE)
+    positions = torch.zeros(2, 2, 3, **dd)
+
+    calc = Calculator(numbers, par, opts={"verbosity": 0})
+    with pytest.raises(ValueError) as excinfo:
+        charge = torch.tensor([[0.0], [0.0]], **dd)
+        calc.singlepoint(positions, chrg=charge)
+
+    assert "Charge tensor has more than 1 dimension" in str(excinfo)
+
+    with pytest.raises(ValueError) as excinfo:
+        charge = torch.tensor(0.0, **dd)
+        calc.singlepoint(positions, chrg=charge)
+
+    assert "Charge tensor has invalid shape" in str(excinfo)
 
 
 def run_asserts(c: Calculator, dtype: torch.dtype) -> None:
