@@ -42,21 +42,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-        torch-version: ["2.4.1"]
-        exclude:
-          # Check latest versions here: https://download.pytorch.org/whl/torch/
-          #
-          # PyTorch issues:
-          # 3.11: https://github.com/pytorch/pytorch/issues/86566
-          # 3.12: https://github.com/pytorch/pytorch/issues/110436
-          # 3.13: https://github.com/pytorch/pytorch/issues/130249
-          #
-          # PyTorch<2.2.0 does only support Python<3.12 (all platforms)
-          - python-version: "3.12"
-            torch-version: "2.0.1"
-          - python-version: "3.12"
-            torch-version: "2.1.2"
+        # PyTorch>=2.5.0 does not support Python<3.9
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        torch-version: ["2.5.0"]
 
     runs-on: ${{ matrix.os }}
 
