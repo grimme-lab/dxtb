@@ -24,7 +24,13 @@ from unittest.mock import patch
 
 import pytest
 
-from dxtb._src.timing.timer import TimerError, _sync, _Timers
+from dxtb._src.timing.timer import (
+    TimerError,
+    _sync,
+    _Timers,
+    create_timer,
+    kill_timer,
+)
 
 
 def test_fail() -> None:
@@ -83,3 +89,21 @@ def test_sync_true(mocker_avail, mocker_sync) -> None:
 
     mocker_avail.assert_called_once()
     mocker_sync.assert_called_once()
+
+
+def test_kill() -> None:
+    create_timer()
+    kill_timer()
+
+    assert "timer" not in globals()
+
+
+def test_kill_fail() -> None:
+    # In case no timer exists, create one first and then kill it
+    create_timer()
+    kill_timer()
+    assert "timer" not in globals()
+
+    # now trigger the error
+    with pytest.raises(TimerError):
+        kill_timer()

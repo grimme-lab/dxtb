@@ -466,7 +466,7 @@ class _Timers:
             precision=precision,
         )
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         """Return a string representation of the :class:`._Timers` instance."""
         timers_repr = ", ".join(
             f"'{label}': {timer.elapsed_time:.3f}s"
@@ -483,7 +483,7 @@ class _Timers:
             f")"
         )
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         """Return a string representation of the :class:`._Timers` instance."""
         return str(self)
 
