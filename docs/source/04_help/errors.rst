@@ -1,4 +1,4 @@
-.. _dev_errors:
+.. _help_errors:
 
 Common Errors
 =============
@@ -65,3 +65,26 @@ To avoid this error, manually import ``torch._dynamo`` in the code. For example:
 
     if __tversion__ in ((2, 3, 0), (2, 3, 1)):
         import torch._dynamo
+
+
+
+TimerError: Timer '<interaction>' is running. Use .stop() to stop it.
+---------------------------------------------------------------------
+
+This error occurs when a calculation is launched again without resetting.
+If you don't need the timer, you can disable it.
+The timer lives in the global space and always starts when importing `dxtb`.
+
+.. code-block:: python
+
+    from dxtb import kill_timer
+
+    kill_timer()
+
+If you only want to disable the timer temporarily, you can use the following code:
+
+.. code-block:: python
+
+    from dxtb import timer
+
+    timer.disable()

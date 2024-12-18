@@ -22,7 +22,7 @@ A fully differentiable extended tight-binding package.
 """
 
 # import timer first to get correct total time
-from dxtb._src.timing import timer
+from dxtb._src.timing import timer, kill_timer
 
 timer.start("Import")
 timer.start("PyTorch", parent_uid="Import")
@@ -54,7 +54,7 @@ from dxtb import typing as typing
 
 ###############################################################################
 
-# stop timers and remove from global namespace
+# stop timers and remove PyTorch from global namespace for cleaner API
 del torch
 timer.stop("dxtb")
 timer.stop("Import")
@@ -62,12 +62,17 @@ timer.stop("Import")
 ###############################################################################
 
 __all__ = [
-    "calculators",
     "components",
+    #
+    "calculators",
     "Calculator",
     "GFN1_XTB",
     "GFN2_XTB",
+    #
     "IndexHelper",
+    #
+    "kill_timer",
     "timer",
+    #
     "__version__",
 ]
