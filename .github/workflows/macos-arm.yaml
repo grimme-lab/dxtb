@@ -46,7 +46,7 @@ jobs:
         # https://github.com/actions/setup-python/issues/696
         python-version: ["3.10", "3.11", "3.12"]
         # only test oldest and newest version of torch
-        torch-version: ["1.11.0", "2.5.0"]
+        torch-version: ["1.11.0", "2.5.1"]
         exclude:
           # Check latest versions here: https://download.pytorch.org/whl/torch/
           #
@@ -74,7 +74,9 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -90,7 +92,11 @@ jobs:
         run: echo "TOXENV=py$(echo ${{ matrix.python-version }} | tr -d '.')-torch$(echo ${{ matrix.torch-version }} | tr -d '.')-nolibcint" >> $GITHUB_ENV
 
       - name: Print TOXENV
-        run: echo "TOXENV is set to '${{ env.TOXENV }}'."
+        run: echo "TOXENV is set to '${TOXENV}'."
+        env:
+          TOXENV: ${{ env.TOXENV }}
 
       - name: Unittests with tox
-        run: EXTRAS=pyscf tox -e ${{ env.TOXENV }}
+        run: EXTRAS=pyscf tox -e $TOXENV
+        env:
+          TOXENV: ${{ env.TOXENV }}
