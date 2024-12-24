@@ -35,7 +35,7 @@ repos:
         args: [--include-version-classifiers, --max-py-version, "3.11"]
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.19.0
+    rev: v3.19.1
     hooks:
       - id: pyupgrade
         args: [--py37-plus, --keep-runtime-typing]
