@@ -459,7 +459,7 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         numbers : Tensor
             Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
         par : Param
-            Representation of an extended tight-binding model (full xtb
+            Representation of an extended tight-binding model (full xTB
             parametrization). Decides energy contributions.
         classical : Sequence[Classical] | None, optional
             Additional classical contributions. Defaults to ``None``.
@@ -515,6 +515,16 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         if self.opts.batch_mode == 0 and numbers.ndim > 1:
             self.opts.batch_mode = 1
 
+        # PERF: The IndexHelper is created on CPU and moved to the device of the
+        # `number` tensor. This si required for the instantiation of the
+        # integral classes later in this constructor. However, if the `libcint`
+        # interface is used, we need to transfer the IndexHelper to the CPU
+        # again. Correspondingly, we have one unnecessary transfer.
+        # (It could be circumvented if the intgrals are calculated immediately
+        # after instantiation, i.e., compute integrals with `libcint` first,
+        # then move IndexHelper to the device and compute Hamiltonian. However,
+        # this would require a change in the code structure. So we take the
+        # very small performance hit here.)
         self.ihelp = IndexHelper.from_numbers(
             numbers, par, self.opts.batch_mode
         )
@@ -546,7 +556,7 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         else:
             raise TypeError(
                 "Expected 'interaction' to be 'None' or of type 'Interaction', "
-                "'list[Interaction]' or 'tuple[Interaction]', but got "
+                "'list[Interaction]', or 'tuple[Interaction]', but got "
                 f"'{type(interaction).__name__}'."
             )
 
@@ -590,7 +600,7 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         else:
             raise TypeError(
                 "Expected 'classical' to be 'None' or of type 'Classical', "
-                "'list[Classical]' or 'tuple[Classical]', but got "
+                "'list[Classical]', or 'tuple[Classical]', but got "
                 f"'{type(classical).__name__}'."
             )
 

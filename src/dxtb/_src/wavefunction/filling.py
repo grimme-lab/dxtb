@@ -26,10 +26,9 @@ Parts of the Fermi smearing are taken from https://github.com/tbmalt/tbmalt
 from __future__ import annotations
 
 import torch
+from tad_mctc.convert import any_to_tensor
 
 from dxtb._src.typing import DD, Tensor
-
-from ..constants import defaults
 
 __all__ = [
     "get_alpha_beta_occupation",
@@ -266,7 +265,7 @@ def get_fermi_occupation(
     emo: Tensor,
     kt: Tensor | None = None,
     mask: Tensor | None = None,
-    thr: dict[torch.dtype, Tensor] | None = None,
+    thr: Tensor | float | int | None = None,
     maxiter: int = 200,
 ) -> Tensor:
     """
@@ -325,10 +324,8 @@ def get_fermi_occupation(
         return torch.zeros_like(emo)
 
     if thr is None:
-        thr = defaults.FERMI_THRESH
-    thresh = thr.get(emo.dtype, torch.tensor(1e-5, dtype=torch.float)).to(
-        emo.device
-    )
+        thr = torch.tensor(torch.finfo(emo.dtype).eps, **dd) ** 0.5
+    thresh = any_to_tensor(thr, **dd)
 
     e_fermi, homo = get_fermi_energy(nel, emo, mask=mask)
 
