@@ -322,11 +322,6 @@ ref_anion = torch.tensor(
 opts = {
     "fermi_etemp": 300,
     "fermi_maxiter": 500,
-    "fermi_thresh": {
-        # instead of 1e-5
-        torch.float32: torch.tensor(1e-4, dtype=torch.float32),
-        torch.float64: torch.tensor(1e-10, dtype=torch.float64),
-    },
     "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
     "scp_mode": labels.SCP_MODE_POTENTIAL,  # better convergence for atoms
     "verbosity": 0,
@@ -348,7 +343,14 @@ def test_element(dtype: torch.dtype, number: int) -> None:
 
     # opts["spin"] = uhf[number - 1]
     atol = 1e-5 if dtype == torch.float else 1e-6
-    options = dict(opts, **{"f_atol": atol, "x_atol": atol})
+    options = dict(
+        opts,
+        **{
+            "f_atol": atol,
+            "x_atol": atol,
+            "fermi_thresh": 1e-4 if dtype == torch.float32 else 1e-10,
+        },
+    )
     calc = Calculator(numbers, par, opts=options, **dd)
     results = calc.singlepoint(positions, charges)
     assert pytest.approx(r.cpu(), abs=tol) == results.scf.sum(-1).cpu()
@@ -377,6 +379,7 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
         **{
             "f_atol": 1e-5,  # avoids Jacobian inversion error
             "x_atol": 1e-5,  # avoids Jacobian inversion error
+            "fermi_thresh": 1e-4 if dtype == torch.float32 else 1e-10,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
@@ -413,6 +416,7 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
         **{
             "f_atol": 1e-5,  # avoid Jacobian inversion error
             "x_atol": 1e-5,  # avoid Jacobian inversion error
+            "fermi_thresh": 1e-4 if dtype == torch.float32 else 1e-10,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)

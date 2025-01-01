@@ -282,7 +282,11 @@ class IndexHelper(TensorLike):
 
     @classmethod
     def from_numbers(
-        cls, numbers: Tensor, par: Param, batch_mode: int | None = None
+        cls,
+        numbers: Tensor,
+        par: Param,
+        batch_mode: int | None = None,
+        move_to_numbers_device: bool = True,
     ) -> IndexHelper:
         """
         Construct an index helper instance from atomic numbers and a
@@ -308,6 +312,11 @@ class IndexHelper(TensorLike):
             - 0: Single system
             - 1: Multiple systems with padding
             - 2: Multiple systems with no padding (conformer ensemble)
+        move_to_numbers_device : bool
+            Move the resulting tensors to the device of the ``numbers`` tensor.
+            This should be switched off for GPU calculations that use `libcint`
+            for integrals as the :class:`.IndexHelper` has to be on the CPU
+            for this step.
 
         Returns
         -------
@@ -315,7 +324,12 @@ class IndexHelper(TensorLike):
             Instance of index helper for given basis set.
         """
         angular = get_elem_angular(par.element)
-        return cls.from_numbers_angular(numbers, angular, batch_mode)
+        return cls.from_numbers_angular(
+            numbers,
+            angular,
+            batch_mode,
+            move_to_numbers_device=move_to_numbers_device,
+        )
 
     @classmethod
     def from_numbers_angular(
@@ -323,6 +337,7 @@ class IndexHelper(TensorLike):
         numbers: Tensor,
         angular: dict[int, list[int]],
         batch_mode: int | None = None,
+        move_to_numbers_device: bool = True,
     ) -> IndexHelper:
         """
         Construct an index helper instance from atomic numbers and their
@@ -350,14 +365,19 @@ class IndexHelper(TensorLike):
             - 0: Single system
             - 1: Multiple systems with padding
             - 2: Multiple systems with no padding (conformer ensemble)
+        move_to_numbers_device : bool
+            Move the resulting tensors to the device of the ``numbers`` tensor.
+            This should be switched off for GPU calculations that use `libcint`
+            for integrals as the :class:`.IndexHelper` has to be on the CPU
+            for this step.
 
         Returns
         -------
         IndexHelper
             Instance of index helper for given basis set.
         """
-        device = numbers.device
         cpu = torch.device("cpu")
+        device = numbers.device if move_to_numbers_device else cpu
 
         # Ensure that all tensors are moved to CPU to avoid inefficient
         # memory transfers between devices (.item() and native for-loops).
