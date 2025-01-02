@@ -37,6 +37,28 @@ class HamiltonianABC(ABC):
     """
 
     @abstractmethod
+    def _get_hscale(self) -> Tensor:
+        """
+        Obtain the off-site scaling factor for the Hamiltonian.
+
+        Returns
+        -------
+        Tensor
+            Off-site scaling factor for the Hamiltonian.
+        """
+
+    @abstractmethod
+    def _get_elem_valence(self) -> Tensor:
+        """
+        Obtain a mask for valence and non-valence shells. This is only required for GFN1-xTB's second hydrogen s-function.
+
+        Returns
+        -------
+        Tensor
+            Mask indicating valence shells for each unique species.
+        """
+
+    @abstractmethod
     def build(self, positions: Tensor, overlap: Tensor | None = None) -> Tensor:
         """
         Build the xTB Hamiltonian.
