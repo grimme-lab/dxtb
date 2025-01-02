@@ -238,7 +238,8 @@ class ComponentList(ComponentListABC, Generic[C], TensorLike):
 
     @property
     def labels(self) -> list[str]:
-        return [component.label for component in self.components]
+        """Alphabetically sorted list of all components labels."""
+        return sorted([component.label for component in self.components])
 
     def get_interaction(self, name: str) -> C:
         """
@@ -264,6 +265,9 @@ class ComponentList(ComponentListABC, Generic[C], TensorLike):
                 return component
 
         raise ValueError(f"The component named '{name}' is not in the list.")
+
+    def __len__(self) -> int:
+        return len(self.components)
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__}({self.labels})"

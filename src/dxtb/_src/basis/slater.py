@@ -125,7 +125,7 @@ def slater_to_gauss(
     # <φ|φ> = (2i-1)!!(2j-1)!!(2k-1)!!/(4α)^(i+j+k) · sqrt(π/2α)³
     # N² = (4α)^(i+j+k)/((2i-1)!!(2j-1)!!(2k-1)!!)  · sqrt(2α/π)³
     # N = (4α)^((i+j+k)/2) / sqrt((2i-1)!!(2j-1)!!(2k-1)!!) · (2α/π)^(3/4)
-    if norm:
+    if norm is True:
         coeff = coeff * (
             (top * alpha) ** 0.75
             * torch.sqrt(4 * alpha) ** l

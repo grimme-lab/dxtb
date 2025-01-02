@@ -57,6 +57,7 @@ class GFN2Calculator(Calculator):
         # pylint: disable=import-outside-toplevel
         from dxtb import GFN2_XTB
 
+        # constructor can be found in src/dxtb/_src/calculators/types/base.py
         super().__init__(
             numbers,
             GFN2_XTB,
@@ -66,5 +67,3 @@ class GFN2Calculator(Calculator):
             device=device,
             dtype=dtype,
         )
-
-        raise NotImplementedError("GFN2-xTB is not yet implemented.")

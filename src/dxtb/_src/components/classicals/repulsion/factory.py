@@ -74,7 +74,9 @@ def new_repulsion(
     """
 
     if hasattr(par, "repulsion") is False or par.repulsion is None:
-        # TODO: Repulsion is used in all models, so error or just warning?
+        # Although repulsion is used in all models, we do not want to exit
+        # for custom models that are loaded from a parameter file. Hence, we
+        # only issue a warning here, not an error.
         warnings.warn("No repulsion scheme found.", ParameterWarning)
         return None
 

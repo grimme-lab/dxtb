@@ -57,6 +57,7 @@ class GFN1Calculator(Calculator):
         # pylint: disable=import-outside-toplevel
         from dxtb import GFN1_XTB
 
+        # constructor can be found in src/dxtb/_src/calculators/types/base.py
         super().__init__(
             numbers,
             GFN1_XTB,
