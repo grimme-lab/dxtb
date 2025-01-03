@@ -22,13 +22,21 @@ from __future__ import annotations
 
 import torch
 
-from dxtb import IndexHelper
-from dxtb._src.components.interactions import (
-    InteractionList,
-    InteractionListCache,
-)
+from dxtb import GFN1_XTB, IndexHelper
+from dxtb.components.base import InteractionList, InteractionListCache
+from dxtb.components.coulomb import new_es3
 
 from ..conftest import DEVICE
+
+
+def test_properties() -> None:
+    numbers = torch.tensor([6, 1], device=DEVICE)
+    es3 = new_es3(numbers, GFN1_XTB)
+    ilist = InteractionList(es3)
+
+    assert len(ilist.components) == 1
+    assert len(ilist) == 1
+    assert id(ilist.get_interaction("ES3")) == id(es3)
 
 
 def test_empty() -> None:

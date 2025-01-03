@@ -86,10 +86,16 @@ class GFN2Hamiltonian(BaseHamiltonian):
             4: "g",
         }
         angular_labels = [angular2label.get(int(ang), PAD) for ang in ushells]
-        ksh = torch.ones((len(ushells), len(ushells)), **self.dd)
 
+        # ----------------------
+        # Eq.37: Y(z^A_l, z^B_m)
+        # ----------------------
         z = self._get_elem_param("slater")
+        zi = z.unsqueeze(-1)
+        zj = z.unsqueeze(-2)
+        zmat = (2 * torch.sqrt(zi * zj) / (zi + zj)) ** wexp
 
+        ksh = torch.ones((len(ushells), len(ushells)), **self.dd)
         for i, ang_i in enumerate(ushells):
             ang_i = angular_labels[i]
 
@@ -109,20 +115,19 @@ class GFN2Hamiltonian(BaseHamiltonian):
                     kij = shell[f"{ang_j}{ang_i}"]
                 else:
                     if f"{ang_i}{ang_i}" not in shell:
-                        raise KeyError(f"Missing {ang_i}{ang_i} in shell.")
-                    if f"{ang_j}{ang_j}" not in shell:
-                        raise KeyError(f"Missing {ang_j}{ang_j} in shell.")
+                        raise KeyError(
+                            f"GFN2 HCore: Missing {ang_i}{ang_i} in shell."
+                        )
+                    if f"{ang_j}{ang_j}" not in shell:  # pragma: no cover
+                        raise KeyError(
+                            f"GFN2 HCore: Missing {ang_j}{ang_j} in shell."
+                        )
 
                     kij = 0.5 * (
                         shell[f"{ang_i}{ang_i}"] + shell[f"{ang_j}{ang_j}"]
                     )
 
-                # ----------------------
-                # Eq.37: Y(z^A_l, z^B_m)
-                # ----------------------
-                zij = (2 * torch.sqrt(z[i] * z[j]) / (z[i] + z[j])) ** wexp
-
-                ksh[i, j] = kij * zij
+                ksh[i, j] = kij * zmat[i, j]
 
         return ksh
 

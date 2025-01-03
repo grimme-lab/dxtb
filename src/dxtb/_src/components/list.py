@@ -75,10 +75,10 @@ class ComponentListCache(ComponentListCacheABC):
         """
         pass
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         return f"{self.__class__.__name__}({list(self.keys())})"
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return str(self)
 
 
@@ -269,10 +269,10 @@ class ComponentList(ComponentListABC, Generic[C], TensorLike):
     def __len__(self) -> int:
         return len(self.components)
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         return f"{self.__class__.__name__}({self.labels})"
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return str(self)
 
     @override

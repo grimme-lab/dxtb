@@ -38,6 +38,7 @@ from .samples import samples
 
 small = ["H2", "LiH", "S2", "SiH4"]
 
+# No overlap!
 ref = {
     "H2": torch.tensor(
         [

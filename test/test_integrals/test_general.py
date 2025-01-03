@@ -35,6 +35,17 @@ from ..conftest import DEVICE
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_properties(dtype: torch.dtype):
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
+    mgr = ints.DriverManager(INTDRIVER_LIBCINT, **dd)
+    i = ints.Integrals(mgr, **dd)
+
+    assert len(i.labels) == 0
+    assert len(i) == 0
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_empty(dtype: torch.dtype):
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
