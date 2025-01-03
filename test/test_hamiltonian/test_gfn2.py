@@ -23,7 +23,6 @@ from __future__ import annotations
 
 from math import sqrt
 
-import numpy as np
 import pytest
 import torch
 
