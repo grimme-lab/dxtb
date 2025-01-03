@@ -270,10 +270,11 @@ class GeneralizedBorn(Interaction):
 
         Note
         ----
-        If the :class:`.GeneralizedBorn` interaction is evaluated within the
-        :class:`dxtb.components.InteractionList`, the :class:`dxtb.IndexHelper`
-        will be passed as an argument, too. Hence, it is necessary in signature
-        of the function to absorb it.
+        If the :class:`.GeneralizedBorn` interaction is evaluated
+        within the :class:`dxtb.components.InteractionList`, the
+        :class:`dxtb.IndexHelper` will be passed as an argument, too. Hence,
+        it is necessary to absorb the ``positions`` in the signature of the
+        function.
         """
         if numbers is None:
             raise ValueError("Atomic numbers are required for cache.")

@@ -48,7 +48,10 @@ tol = 1e-7
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", ["H2O", "SiH4"])
-def test_backward_vs_tblite(dtype: torch.dtype, name: str) -> None:
+@pytest.mark.parametrize("with_analytical_gradient", [True, False])
+def test_backward_vs_tblite(
+    dtype: torch.dtype, name: str, with_analytical_gradient: bool
+) -> None:
     """Compare with reference values from tblite."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
@@ -57,7 +60,9 @@ def test_backward_vs_tblite(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].to(**dd)
     ref = sample["gfn1_grad"].to(**dd)
 
-    rep = new_repulsion(numbers, par, **dd)
+    rep = new_repulsion(
+        numbers, par, with_analytical_gradient=with_analytical_gradient, **dd
+    )
     assert rep is not None
 
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -83,8 +88,9 @@ def test_backward_vs_tblite(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["H2O", "SiH4"])
 @pytest.mark.parametrize("name2", ["H2O", "SiH4"])
+@pytest.mark.parametrize("with_analytical_gradient", [True, False])
 def test_backward_batch_vs_tblite(
-    dtype: torch.dtype, name1: str, name2: str
+    dtype: torch.dtype, name1: str, name2: str, with_analytical_gradient: bool
 ) -> None:
     """Compare with reference values from tblite."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -109,7 +115,9 @@ def test_backward_batch_vs_tblite(
         ]
     )
 
-    rep = new_repulsion(numbers, par, **dd)
+    rep = new_repulsion(
+        numbers, par, with_analytical_gradient=with_analytical_gradient, **dd
+    )
     assert rep is not None
 
     ihelp = IndexHelper.from_numbers(numbers, par)

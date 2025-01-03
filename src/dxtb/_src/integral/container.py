@@ -482,6 +482,23 @@ class Integrals(IntegralContainer):
             if isinstance(i, BaseIntegral) or isinstance(i, BaseHamiltonian):
                 i.clear()
 
+    @property
+    def labels(self) -> list[str]:
+        """Return all initialized integrals by label."""
+        return [
+            slot[1:]
+            for slot in self.__slots__
+            if slot.startswith("_") and getattr(self, slot) is not None
+        ]
+
+    def __len__(self) -> int:
+        """Print all initialized integrals."""
+        return sum(
+            1
+            for slot in self.__slots__
+            if slot.startswith("_") and getattr(self, slot) is not None
+        )
+
     # pretty print
 
     def __str__(self) -> str:

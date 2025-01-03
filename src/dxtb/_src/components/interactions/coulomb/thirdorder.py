@@ -188,9 +188,9 @@ class ES3(Interaction):
         Note
         ----
         If the :class:`.ES3` interaction is evaluated within the
-        :class:`dxtb.components.InteractionList`, ``positions`` will be passed
-        as an argument, too. Hence, it is necessary in signature
-        of the function to absorb it (also see
+        :class:`dxtb.components.InteractionList`, ``positions`` will be
+        passed as an argument, too. Hence, it is necessary to absorb
+        the ``positions`` in the signature of the function (also see
         :meth:`dxtb.components.Interaction.get_cache`).
         """
         if numbers is None:
@@ -297,7 +297,7 @@ def new_es3(
     if device is not None:
         if device != numbers.device:
             raise DeviceError(
-                f"Passed device ({device}) and device of electric field "
+                f"Passed device ({device}) and device of `numbers` tensor "
                 f"({numbers.device}) do not match."
             )
 

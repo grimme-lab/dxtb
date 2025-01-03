@@ -26,20 +26,13 @@ from __future__ import annotations
 import torch
 from tad_mctc import storch
 from tad_mctc.batch import real_pairs
-from tad_mctc.convert import symmetrize
-from tad_mctc.data.radii import ATOMIC as ATOMIC_RADII
-from tad_mctc.ncoord import cn_d3
-from tad_mctc.units import EV2AU
 
 from dxtb import IndexHelper
 from dxtb._src.components.interactions import Potential
 from dxtb._src.param import Param
-from dxtb._src.typing import Any, Tensor
+from dxtb._src.typing import Any, Tensor, override
 
-from .base import BaseHamiltonian
-
-PAD = -1
-"""Value used for padding of tensors."""
+from .base import PAD, BaseHamiltonian
 
 __all__ = ["GFN1Hamiltonian"]
 
@@ -58,122 +51,13 @@ class GFN1Hamiltonian(BaseHamiltonian):
     ) -> None:
         super().__init__(numbers, par, ihelp, device, dtype)
 
-        if self.par.hamiltonian is None:
-            raise RuntimeError("Parametrization does not specify Hamiltonian.")
-
-        # atom-resolved parameters
-        self.rad = ATOMIC_RADII.to(**self.dd)[self.unique]
-        self.en = self._get_elem_param("en")
-
-        # shell-resolved element parameters
-        self.kcn = self._get_elem_param("kcn")
-        self.selfenergy = self._get_elem_param("levels")
-        self.shpoly = self._get_elem_param("shpoly")
-        self.refocc = self._get_elem_param("refocc")
-        self.valence = self._get_elem_valence()
-
-        # shell-pair-resolved pair parameters
-        self.hscale = self._get_hscale()
-        self.kpair = self._get_pair_param(self.par.hamiltonian.xtb.kpair)
-
-        # unit conversion
-        self.selfenergy = self.selfenergy * EV2AU
-        self.kcn = self.kcn * EV2AU
-
         # coordination number function
-        self.cn = kwargs.pop("cn", cn_d3)
+        if "cn" in kwargs:
+            self.cn = kwargs.pop("cn")
+        else:
+            from tad_mctc.ncoord import cn_d3
 
-        # dtype should always be correct as it always uses self.dtype
-        if any(
-            tensor.dtype != self.dtype
-            for tensor in (
-                self.hscale,
-                self.kcn,
-                self.kpair,
-                self.refocc,
-                self.selfenergy,
-                self.shpoly,
-                self.en,
-                self.rad,
-            )
-        ):  # pragma: no cover
-            raise ValueError("All tensors must have same dtype")
-
-        # device should always be correct as it always uses self.device
-        if any(
-            tensor.device != self.device
-            for tensor in (
-                self.hscale,
-                self.kcn,
-                self.kpair,
-                self.refocc,
-                self.selfenergy,
-                self.shpoly,
-                self.valence,
-                self.en,
-                self.rad,
-            )
-        ):  # pragma: no cover
-            raise ValueError("All tensors must be on the same device")
-
-    def _get_elem_param(self, key: str) -> Tensor:
-        """
-        Obtain element parameters for species.
-
-        Parameters
-        ----------
-        key : str
-            Name of the parameter to be retrieved.
-
-        Returns
-        -------
-        Tensor
-            Parameters for each species.
-        """
-        # pylint: disable=import-outside-toplevel
-        from dxtb._src.param import get_elem_param
-
-        return get_elem_param(
-            self.unique, self.par.element, key, pad_val=PAD, **self.dd
-        )
-
-    def _get_elem_valence(self) -> Tensor:
-        """
-        Obtain "valence" parameters for shells of species.
-
-        Returns
-        -------
-        Tensor
-            Valence parameters for each species.
-        """
-        # pylint: disable=import-outside-toplevel
-        from dxtb._src.param import get_elem_valence
-
-        return get_elem_valence(
-            self.unique,
-            self.par.element,
-            pad_val=PAD,
-            device=self.device,
-        )
-
-    def _get_pair_param(self, pair: dict[str, float]) -> Tensor:
-        """
-        Obtain element-pair-specific parameters for all species.
-
-        Parameters
-        ----------
-        pair : dict[str, float]
-            Pair parametrization.
-
-        Returns
-        -------
-        Tensor
-            Pair parameters for each species.
-        """
-        # pylint: disable=import-outside-toplevel
-        from dxtb._src.param import get_pair_param
-
-        return get_pair_param(self.unique.tolist(), pair, **self.dd)
+            self.cn = cn_d3
 
     def _get_hscale(self) -> Tensor:
         """
@@ -261,119 +145,25 @@ class GFN1Hamiltonian(BaseHamiltonian):
 
         return ksh
 
-    def build(self, positions: Tensor, overlap: Tensor | None = None) -> Tensor:
+    @override
+    def _get_elem_valence(self) -> Tensor:
         """
-        Build the xTB Hamiltonian.
-
-        Parameters
-        ----------
-        positions : Tensor
-            Atomic positions of molecular structure.
-        overlap : Tensor | None, optional
-            Overlap matrix. If ``None``, the true xTB Hamiltonian is *not*
-            built. Defaults to ``None``.
+        Obtain a mask for valence and non-valence shells. This is only required for GFN1-xTB's second hydrogen s-function.
 
         Returns
         -------
         Tensor
-            Hamiltonian (always symmetric).
+            Mask indicating valence shells for each unique species.
         """
-        if self.par.hamiltonian is None:
-            raise RuntimeError("No Hamiltonian specified.")
+        # pylint: disable=import-outside-toplevel
+        from dxtb._src.param import get_elem_valence
 
-        # masks
-        mask_atom_diagonal = real_pairs(self.numbers, mask_diagonal=True)
-        mask_shell = real_pairs(
-            self.ihelp.spread_atom_to_shell(self.numbers), mask_diagonal=False
+        return get_elem_valence(
+            self.unique,
+            self.par.element,
+            pad_val=PAD,
+            device=self.device,
         )
-        mask_shell_diagonal = self.ihelp.spread_atom_to_shell(
-            mask_atom_diagonal, dim=(-2, -1)
-        )
-
-        zero = torch.tensor(0.0, **self.dd)
-
-        # ----------------
-        # Eq.29: H_(mu,mu)
-        # ----------------
-        if self.cn is None:
-            cn = torch.zeros_like(self.numbers, **self.dd)
-        else:
-            cn = self.cn(self.numbers, positions)
-
-        kcn = self.ihelp.spread_ushell_to_shell(self.kcn)
-
-        # formula differs from paper to be consistent with GFN2 -> "kcn" adapted
-        selfenergy = self.ihelp.spread_ushell_to_shell(
-            self.selfenergy
-        ) - kcn * self.ihelp.spread_atom_to_shell(cn)
-
-        # ----------------------
-        # Eq.24: PI(R_AB, l, l')
-        # ----------------------
-        distances = storch.cdist(positions, positions, p=2)
-        rad = self.ihelp.spread_uspecies_to_atom(self.rad)
-
-        rr = storch.divide(distances, rad.unsqueeze(-1) + rad.unsqueeze(-2))
-        rr_shell = self.ihelp.spread_atom_to_shell(
-            torch.where(mask_atom_diagonal, storch.sqrt(rr), zero),
-            (-2, -1),
-        )
-
-        shpoly = self.ihelp.spread_ushell_to_shell(self.shpoly)
-        var_pi = (1.0 + shpoly.unsqueeze(-1) * rr_shell) * (
-            1.0 + shpoly.unsqueeze(-2) * rr_shell
-        )
-
-        # --------------------
-        # Eq.28: X(EN_A, EN_B)
-        # --------------------
-        en = self.ihelp.spread_uspecies_to_shell(self.en)
-        var_x = torch.where(
-            mask_shell_diagonal,
-            1.0
-            + self.par.hamiltonian.xtb.enscale
-            * torch.pow(en.unsqueeze(-1) - en.unsqueeze(-2), 2.0),
-            zero,
-        )
-
-        # --------------------
-        # Eq.23: K_{AB}^{l,l'}
-        # --------------------
-        kpair = self.ihelp.spread_uspecies_to_shell(self.kpair, dim=(-2, -1))
-        hscale = self.ihelp.spread_ushell_to_shell(self.hscale, dim=(-2, -1))
-        valence = self.ihelp.spread_ushell_to_shell(self.valence)
-
-        var_k = torch.where(
-            valence.unsqueeze(-1) * valence.unsqueeze(-2),
-            hscale * kpair * var_x,
-            hscale,
-        )
-
-        # ------------
-        # Eq.23: H_EHT
-        # ------------
-        var_h = torch.where(
-            mask_shell,
-            0.5 * (selfenergy.unsqueeze(-1) + selfenergy.unsqueeze(-2)),
-            zero,
-        )
-
-        hcore = self.ihelp.spread_shell_to_orbital(
-            torch.where(
-                mask_shell_diagonal,
-                var_pi * var_k * var_h,  # scale only off-diagonals
-                var_h,
-            ),
-            dim=(-2, -1),
-        )
-
-        if overlap is not None:
-            hcore = hcore * overlap
-
-        # force symmetry to avoid problems through numerical errors
-        h0 = symmetrize(hcore)
-        self.matrix = h0
-        return h0
 
     def get_gradient(
         self,

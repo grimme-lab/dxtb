@@ -75,10 +75,10 @@ class ComponentListCache(ComponentListCacheABC):
         """
         pass
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         return f"{self.__class__.__name__}({list(self.keys())})"
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return str(self)
 
 
@@ -238,7 +238,8 @@ class ComponentList(ComponentListABC, Generic[C], TensorLike):
 
     @property
     def labels(self) -> list[str]:
-        return [component.label for component in self.components]
+        """Alphabetically sorted list of all components labels."""
+        return sorted([component.label for component in self.components])
 
     def get_interaction(self, name: str) -> C:
         """
@@ -265,10 +266,13 @@ class ComponentList(ComponentListABC, Generic[C], TensorLike):
 
         raise ValueError(f"The component named '{name}' is not in the list.")
 
-    def __str__(self) -> str:
+    def __len__(self) -> int:
+        return len(self.components)
+
+    def __str__(self) -> str:  # pragma: no cover
         return f"{self.__class__.__name__}({self.labels})"
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return str(self)
 
     @override

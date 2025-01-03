@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Test overlap build from integral container.
+Test wrappers for integrals.
 """
 
 from __future__ import annotations
@@ -39,51 +39,56 @@ positions = torch.tensor(
 )
 
 
-def test_fail() -> None:
+@pytest.mark.parametrize("par", [GFN1_XTB, GFN2_XTB])
+def test_fail(par: Param) -> None:
     with pytest.raises(ValueError):
-        par1 = GFN1_XTB.model_copy(deep=True)
-        par1.meta = None
-        wrappers.hcore(numbers, positions, par1)
-
-    with pytest.raises(ValueError):
-        par1 = GFN1_XTB.model_copy(deep=True)
-        assert par1.meta is not None
-
-        par1.meta.name = None
-        wrappers.hcore(numbers, positions, par1)
+        _par = par.model_copy(deep=True)
+        _par.meta = None
+        wrappers.hcore(numbers, positions, _par)
 
     with pytest.raises(ValueError):
-        par1 = GFN1_XTB.model_copy(deep=True)
-        assert par1.meta is not None
+        _par = par.model_copy(deep=True)
+        assert _par.meta is not None
 
-        par1.meta.name = "fail"
-        wrappers.hcore(numbers, positions, par1)
+        _par.meta.name = None
+        wrappers.hcore(numbers, positions, _par)
+
+    with pytest.raises(ValueError):
+        _par = par.model_copy(deep=True)
+        assert _par.meta is not None
+
+        _par.meta.name = "fail"
+        wrappers.hcore(numbers, positions, _par)
 
     with pytest.raises(ValueError):
         # pylint: disable=import-outside-toplevel
         from dxtb._src.integral.wrappers import _integral
 
-        _integral("fail", numbers, positions, par1)  # type: ignore
+        _integral("fail", numbers, positions, _par)  # type: ignore
 
 
-@pytest.mark.parametrize("par", [GFN1_XTB])
-def test_h0_gfn1(par: Param) -> None:
-    h0 = wrappers.hcore(numbers, positions, par)
+def test_h0_gfn1() -> None:
+    h0 = wrappers.hcore(numbers, positions, GFN1_XTB)
     assert h0.shape == (17, 17)
 
-    h0 = wrappers.hcore(numbers, positions, par, cn=None)
+    h0 = wrappers.hcore(numbers, positions, GFN1_XTB, cn=None)
     assert h0.shape == (17, 17)
 
 
-@pytest.mark.parametrize("par", [GFN2_XTB])
-def test_h0_gfn2(par: Param) -> None:
-    with pytest.raises(NotImplementedError):
-        wrappers.hcore(numbers, positions, par)
+def test_h0_gfn2() -> None:
+    h0 = wrappers.hcore(numbers, positions, GFN2_XTB)
+    assert h0.shape == (13, 13)
+
+    h0 = wrappers.hcore(numbers, positions, GFN2_XTB, cn=None)
+    assert h0.shape == (13, 13)
 
 
 def test_overlap() -> None:
     s = wrappers.overlap(numbers, positions, GFN1_XTB)
     assert s.shape == (17, 17)
+
+    s = wrappers.overlap(numbers, positions, GFN2_XTB)
+    assert s.shape == (13, 13)
 
 
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
@@ -91,8 +96,14 @@ def test_dipole() -> None:
     s = wrappers.dipint(numbers, positions, GFN1_XTB)
     assert s.shape == (3, 17, 17)
 
+    s = wrappers.dipint(numbers, positions, GFN2_XTB)
+    assert s.shape == (3, 13, 13)
+
 
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 def test_quad() -> None:
     s = wrappers.quadint(numbers, positions, GFN1_XTB)
     assert s.shape == (9, 17, 17)
+
+    s = wrappers.quadint(numbers, positions, GFN2_XTB)
+    assert s.shape == (9, 13, 13)

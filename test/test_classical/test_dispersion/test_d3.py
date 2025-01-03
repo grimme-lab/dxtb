@@ -29,11 +29,8 @@ import torch
 from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB as par
-from dxtb._src.components.classicals.dispersion import (
-    DispersionD3,
-    new_dispersion,
-)
 from dxtb._src.typing import DD, Tensor
+from dxtb.components.dispersion import DispersionD3, new_dispersion
 
 from ...conftest import DEVICE
 from .samples import samples
@@ -81,7 +78,7 @@ def test_disp_batch(dtype: torch.dtype) -> None:
     }
 
     energy = d3.disp.dispersion(
-        numbers, positions, param, c6, rvdw, r4r2, d3.disp.rational_damping
+        numbers, positions, param, c6, rvdw, r4r2, d3.damping.rational_damping
     )
     assert energy.dtype == dtype
     assert pytest.approx(ref.cpu()) == energy.cpu()
