@@ -78,7 +78,7 @@ def test_disp_batch(dtype: torch.dtype) -> None:
     }
 
     energy = d3.disp.dispersion(
-        numbers, positions, param, c6, rvdw, r4r2, d3.disp.rational_damping
+        numbers, positions, param, c6, rvdw, r4r2, d3.damping.rational_damping
     )
     assert energy.dtype == dtype
     assert pytest.approx(ref.cpu()) == energy.cpu()
