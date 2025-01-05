@@ -192,7 +192,8 @@ class Driver:
             # pylint: disable=import-outside-toplevel
             from dxtb import GFN1_XTB as par
         elif config.method == labels.GFN2_XTB:
-            raise NotImplementedError("GFN2-xTB is not implemented yet.")
+            # pylint: disable=import-outside-toplevel
+            from dxtb import GFN2_XTB as par
         else:
             raise ValueError(f"Unknown method '{args.method}'.")
 
