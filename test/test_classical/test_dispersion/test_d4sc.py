@@ -61,7 +61,7 @@ def test_single(dtype: torch.dtype, name: str):
     calc = Calculator(numbers, GFN2_XTB, opts=opts, **dd)
 
     result = calc.singlepoint(positions, charges)
-    d4sc = calc.interactions.get_interaction("D4SC")
+    d4sc = calc.interactions.get_interaction("DispersionD4SC")
     cache = d4sc.get_cache(numbers=numbers, positions=positions)
 
     edisp = d4sc.get_energy(result.charges, cache, calc.ihelp)
@@ -99,7 +99,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     calc = Calculator(numbers, GFN2_XTB, opts=opts, **dd)
 
     result = calc.singlepoint(positions)
-    d4sc = calc.interactions.get_interaction("D4SC")
+    d4sc = calc.interactions.get_interaction("DispersionD4SC")
     cache = d4sc.get_cache(numbers=numbers, positions=positions)
 
     edisp = d4sc.get_energy(result.charges, cache, calc.ihelp)

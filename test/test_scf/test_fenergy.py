@@ -34,11 +34,6 @@ from .uhf_table import uhf_anion, uhf_cation
 opts = {
     "fermi_etemp": 300,
     "fermi_maxiter": 500,
-    "fermi_thresh": {
-        # instead of 1e-5
-        torch.float32: torch.tensor(1e-4, dtype=torch.float32),
-        torch.float64: torch.tensor(1e-10, dtype=torch.float64),
-    },
     "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
     "scp_mode": "potential",  # important for atoms (better convergence)
     "verbosity": 0,
@@ -65,6 +60,7 @@ def test_element(dtype: torch.dtype, partition: str, number: int) -> None:
             "f_atol": 1e-5 if dtype == torch.float32 else 1e-6,
             "x_atol": 1e-5 if dtype == torch.float32 else 1e-6,
             "fermi_partition": partition,
+            "fermi_thresh": 1e-4 if dtype == torch.float32 else 1e-10,
             "maxiter": 100,
         },
     )
@@ -105,6 +101,7 @@ def test_element_unique(dtype: torch.dtype) -> None:
             **{
                 "f_atol": 1e-5 if dtype == torch.float32 else 1e-6,
                 "x_atol": 1e-5 if dtype == torch.float32 else 1e-6,
+                "fermi_thresh": 1e-4 if dtype == torch.float32 else 1e-10,
             },
         )
         calc = Calculator(numbers, par, opts=options, **dd)
@@ -133,6 +130,7 @@ def test_element_cation(dtype: torch.dtype) -> None:
             **{
                 "f_atol": 1e-5,  # avoids Jacobian inversion error
                 "x_atol": 1e-5,  # avoids Jacobian inversion error
+                "fermi_thresh": 1e-4 if dtype == torch.float32 else 1e-10,
             },
         )
         calc = Calculator(numbers, par, opts=options, **dd)
@@ -165,6 +163,7 @@ def test_element_anion(dtype: torch.dtype) -> None:
             **{
                 "f_atol": 1e-5,  # avoid Jacobian inversion error
                 "x_atol": 1e-5,  # avoid Jacobian inversion error
+                "fermi_thresh": 1e-4 if dtype == torch.float32 else 1e-10,
             },
         )
         calc = Calculator(numbers, par, opts=options, **dd)

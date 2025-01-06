@@ -24,6 +24,8 @@ from __future__ import annotations
 import pytest
 import torch
 from tad_mctc.convert import str_to_device
+from tad_mctc.exceptions import DeviceError
+from tad_mctc.typing import MockTensor
 
 from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.components.interactions.coulomb import thirdorder as es3
@@ -117,3 +119,16 @@ def test_change_device_fail() -> None:
     # trying to use setter
     with pytest.raises(AttributeError):
         cls.device = "cpu"
+
+
+def test_device_fail_numbers() -> None:
+    n = torch.tensor([3, 1], device="cpu")
+    numbers = MockTensor(n)
+    numbers.device = "cuda"
+
+    # works
+    _ = es3.new_es3(n, GFN1_XTB, device=torch.device("cpu"))
+
+    # fails
+    with pytest.raises(DeviceError):
+        es3.new_es3(numbers, GFN1_XTB, device=torch.device("cpu"))

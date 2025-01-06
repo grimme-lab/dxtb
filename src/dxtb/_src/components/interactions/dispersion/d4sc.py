@@ -42,16 +42,16 @@ from dxtb._src.utils import convert_float_tensor
 
 from ..base import Interaction, InteractionCache
 
-__all__ = ["D4SC", "LABEL_D4SC", "new_d4sc"]
+__all__ = ["DispersionD4SC", "LABEL_DispersionD4SC", "new_d4sc"]
 
 
-LABEL_D4SC = "D4SC"
-"""Label for the :class:`.D4SC` interaction, coinciding with the class name."""
+LABEL_DispersionD4SC = "DispersionD4SC"
+"""Label for the :class:`.DispersionD4SC` interaction, coinciding with the class name."""
 
 
-class D4SCCache(InteractionCache, TensorLike):
+class DispersionDispersionD4SCCache(InteractionCache, TensorLike):
     """
-    Restart data for the :class:`.D4SC` interaction.
+    Restart data for the :class:`.DispersionD4SC` interaction.
 
     Note
     ----
@@ -127,9 +127,9 @@ class D4SCCache(InteractionCache, TensorLike):
         self.dispmat = self.__store.dispmat
 
 
-class D4SC(Interaction):
+class DispersionD4SC(Interaction):
     """
-    Self-consistent D4 dispersion correction (:class:`.D4SC`).
+    Self-consistent D4 dispersion correction (:class:`.DispersionD4SC`).
     """
 
     param: dict[str, Tensor]
@@ -175,7 +175,7 @@ class D4SC(Interaction):
         positions: Tensor | None = None,
         ihelp: IndexHelper | None = None,
         **_,
-    ) -> D4SCCache:
+    ) -> DispersionDispersionD4SCCache:
         """
         Create restart data for individual interactions.
 
@@ -188,26 +188,28 @@ class D4SC(Interaction):
 
         Returns
         -------
-        D4SCCache
+        DispersionDispersionD4SCCache
             Restart data for the interaction.
 
         Note
         ----
-        If the :class:`.D4SC` interaction is evaluated within the
+        If the :class:`.DispersionD4SC` interaction is evaluated within the
         :class:`dxtb.components.InteractionList`, ``positions`` will be passed
         as an argument, too. Hence, it is necessary to absorb the ``positions``
         in the signature of the function (also see
         :meth:`dxtb.components.Interaction.get_cache`).
         """
         if numbers is None:
-            raise ValueError("Atomic numbers are required for D4SC cache.")
+            raise ValueError(
+                "Atomic numbers are required for DispersionD4SC cache."
+            )
         if positions is None:
             raise ValueError("Positions are required for ES2 cache.")
 
         cachvars = (numbers.detach().clone(),)
 
         if self.cache_is_latest(cachvars) is True:
-            if not isinstance(self.cache, D4SCCache):
+            if not isinstance(self.cache, DispersionDispersionD4SCCache):
                 raise TypeError(
                     f"Cache in {self.label} is not of type '{self.label}."
                     "Cache'. This can only happen if you manually manipulate "
@@ -241,11 +243,13 @@ class D4SC(Interaction):
         )
         dispmat = edisp.unsqueeze(-1).unsqueeze(-1) * self.model.rc6
 
-        self.cache = D4SCCache(cn, dispmat)
+        self.cache = DispersionDispersionD4SCCache(cn, dispmat)
 
         return self.cache
 
-    def get_atom_energy(self, charges: Tensor, cache: D4SCCache) -> Tensor:
+    def get_atom_energy(
+        self, charges: Tensor, cache: DispersionDispersionD4SCCache
+    ) -> Tensor:
         """
         Calculate the D4 dispersion correction energy.
 
@@ -253,7 +257,7 @@ class D4SC(Interaction):
         ----------
         charges : Tensor
             Atomic charges of all atoms.
-        cache : D4SCCache
+        cache : DispersionDispersionD4SCCache
             Restart data for the interaction.
 
         Returns
@@ -269,7 +273,9 @@ class D4SC(Interaction):
             optimize=[(0, 1), (0, 1)],
         )
 
-    def get_atom_potential(self, charges: Tensor, cache: D4SCCache) -> Tensor:
+    def get_atom_potential(
+        self, charges: Tensor, cache: DispersionDispersionD4SCCache
+    ) -> Tensor:
         """
         Calculate the D4 dispersion correction potential.
 
@@ -277,7 +283,7 @@ class D4SC(Interaction):
         ----------
         charges : Tensor
             Atomic charges of all atoms.
-        cache : D4SCCache
+        cache : DispersionDispersionD4SCCache
             Restart data for the interaction.
 
         Returns
@@ -299,9 +305,9 @@ def new_d4sc(
     par: Param,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
-) -> D4SC | None:
+) -> DispersionD4SC | None:
     """
-    Create new instance of :class:`.D4SC`.
+    Create new instance of :class:`.DispersionD4SC`.
 
     Parameters
     ----------
@@ -312,8 +318,8 @@ def new_d4sc(
 
     Returns
     -------
-    D4SC | None
-        Instance of the :class:`.D4SC` class or ``None`` if no :class:`.D4SC` is
+    DispersionD4SC | None
+        Instance of the :class:`.DispersionD4SC` class or ``None`` if no :class:`.DispersionD4SC` is
         used.
     """
 
@@ -355,4 +361,6 @@ def new_d4sc(
     model = d4.model.D4Model(numbers, ref_charges="gfn2", **dd)
     cutoff = d4.cutoff.Cutoff(disp2=50.0, disp3=25.0, **dd)
 
-    return D4SC(param, model=model, rcov=rcov, r4r2=r4r2, cutoff=cutoff, **dd)
+    return DispersionD4SC(
+        param, model=model, rcov=rcov, r4r2=r4r2, cutoff=cutoff, **dd
+    )

@@ -60,6 +60,7 @@ from __future__ import annotations
 import torch
 from tad_mctc import storch
 from tad_mctc.batch import real_pairs
+from tad_mctc.convert import any_to_tensor
 from tad_mctc.data import VDW_D3
 from tad_mctc.math import einsum
 
@@ -82,6 +83,8 @@ alpha = 0.571412
 
 DEFAULT_KERNEL = "p16"
 DEFAULT_ALPB = True
+DEFAULT_BORN_SCALE = 1.0
+DEFAULT_BORN_OFFSET = 0.0
 
 __all__ = ["GeneralizedBorn", "new_solvation"]
 
@@ -338,6 +341,7 @@ class GeneralizedBorn(Interaction):
 def new_solvation(
     numbers: Tensor,
     par: Param,
+    dielectric_constant: Tensor | float | int = 80.3,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> GeneralizedBorn | None:
@@ -360,6 +364,9 @@ def new_solvation(
     if hasattr(par, "solvation") is False or par.solvation is None:
         return None
 
+    if hasattr(par.solvation, "alpb") is False or par.solvation.alpb is None:
+        return None
+
     if device is not None:
         if device != numbers.device:
             raise DeviceError(
@@ -372,11 +379,22 @@ def new_solvation(
         "dtype": dtype if dtype is not None else get_default_dtype(),
     }
 
-    s = par.solvation  # type: ignore
-    epsilon = torch.tensor(s.epsilon.gexp, **dd)
+    s = par.solvation.alpb  # type: ignore
     alpb = s.alpb if hasattr(s, "alpb") else DEFAULT_ALPB
     kernel = s.kernel if hasattr(s, "kernel") else DEFAULT_KERNEL
+    born_scale = (
+        s.born_scale if hasattr(s, "born_scale") else DEFAULT_BORN_SCALE
+    )
+    born_offset = (
+        s.born_offset if hasattr(s, "born_offset") else DEFAULT_BORN_OFFSET
+    )
 
     return GeneralizedBorn(
-        numbers, dielectric_constant=epsilon, alpb=alpb, kernel=kernel, **dd
+        numbers,
+        dielectric_constant=any_to_tensor(dielectric_constant),
+        alpb=alpb,
+        kernel=kernel,
+        born_scale=born_scale,
+        born_offset=born_offset,
+        **dd,
     )
