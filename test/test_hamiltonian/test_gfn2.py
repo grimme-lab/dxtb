@@ -25,6 +25,7 @@ from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.batch import pack
 
 from dxtb import GFN2_XTB, IndexHelper
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch as IntDriver
@@ -272,5 +273,34 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     _ref = ref[name].to(**dd)
+
+    run(numbers, positions, GFN2_XTB, _ref, dd)
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name1", small)
+@pytest.mark.parametrize("name2", ["LiH"])
+def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
+    sample1, sample2 = samples[name1], samples[name2]
+    numbers = pack(
+        (
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
+        )
+    )
+    positions = pack(
+        (
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
+        )
+    )
+    _ref = pack(
+        (
+            ref[name1].to(**dd),
+            ref[name2].to(**dd),
+        )
+    )
 
     run(numbers, positions, GFN2_XTB, _ref, dd)

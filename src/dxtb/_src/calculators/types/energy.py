@@ -91,7 +91,7 @@ class EnergyCalculator(BaseCalculator):
         positions : Tensor
             Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
-            Total charge. Defaults to 0.
+            Total charge. Defaults to 0 (also for batched calculations).
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to 0.
         """
@@ -112,6 +112,17 @@ class EnergyCalculator(BaseCalculator):
                 hashed_key += f"{sep}{tensor_id(arg)}"
             else:
                 hashed_key += f"{sep}{arg}"
+
+        if self.numbers.ndim == 2:
+            if isinstance(chrg, (float, int)):
+                if chrg != defaults.CHRG:
+                    raise ValueError(
+                        "Cannot set charge for batched calculations with a "
+                        "single float or integer. Please provide a 1D tensor "
+                        "of charges."
+                    )
+
+                chrg = torch.tensor([chrg, chrg], **self.dd)
 
         chrg = any_to_tensor(chrg, **self.dd)
         if spin is not None:

@@ -39,6 +39,7 @@ from .base import Interaction
 from .container import Charges, Potential
 from .coulomb.secondorder import ES2, LABEL_ES2
 from .coulomb.thirdorder import ES3, LABEL_ES3
+from .dispersion.d4sc import D4SC, LABEL_D4SC
 from .field.efield import LABEL_EFIELD, ElectricField
 from .field.efieldgrad import LABEL_EFIELD_GRAD, ElectricFieldGrad
 
@@ -272,6 +273,9 @@ class InteractionList(ComponentList[Interaction]):
     ###########################################################################
 
     @overload
+    def get_interaction(self, name: Literal["D4SC"]) -> D4SC: ...
+
+    @overload
     def get_interaction(
         self, name: Literal["ElectricField"]
     ) -> ElectricField: ...
@@ -294,6 +298,11 @@ class InteractionList(ComponentList[Interaction]):
     ###########################################################################
 
     @_docstring_reset
+    def reset_d4sc(self) -> Interaction:
+        """Reset tensor attributes to a detached clone of the current state."""
+        return self.reset(LABEL_D4SC)
+
+    @_docstring_reset
     def reset_efield(self) -> Interaction:
         """Reset tensor attributes to a detached clone of the current state."""
         return self.reset(LABEL_EFIELD)
@@ -314,6 +323,10 @@ class InteractionList(ComponentList[Interaction]):
         return self.reset(LABEL_ES3)
 
     ###########################################################################
+
+    @_docstring_update
+    def update_d4sc(self, **kwargs: Any) -> Interaction:
+        return self.update(LABEL_D4SC, **kwargs)
 
     @_docstring_update
     def update_efield(

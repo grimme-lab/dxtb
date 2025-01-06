@@ -112,10 +112,6 @@ def test_fail() -> None:
         with pytest.raises(RuntimeError):
             setattr(args, "method", "gfn2")
             Driver(args).singlepoint()
-    else:
-        with pytest.raises(NotImplementedError):
-            setattr(args, "method", "gfn2")
-            Driver(args).singlepoint()
 
     with pytest.raises(ValueError):
         setattr(args, "method", "gfn1")

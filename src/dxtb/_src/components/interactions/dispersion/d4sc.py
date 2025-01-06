@@ -203,8 +203,6 @@ class D4SC(Interaction):
             raise ValueError("Atomic numbers are required for D4SC cache.")
         if positions is None:
             raise ValueError("Positions are required for ES2 cache.")
-        if ihelp is None:
-            raise ValueError("IndexHelper is required for D4SC cache.")
 
         cachvars = (numbers.detach().clone(),)
 
@@ -237,7 +235,7 @@ class D4SC(Interaction):
             numbers,
             positions,
             self.param,
-            torch.ones_like(self.r4r2),
+            torch.ones((*numbers.shape, numbers.shape[-1]), **self.dd),
             self.r4r2,
             as_matrix=True,
         )
