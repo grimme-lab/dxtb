@@ -141,6 +141,5 @@ class OverlapLibcint(OverlapIntegral, IntegralLibcint):
                 "driver instance itself seems to be batched."
             )
 
-        print("aksdjkasd")
         self.gradient = fcn(driver.drv)
         return self.gradient
