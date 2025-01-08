@@ -31,7 +31,10 @@ __all__ = ["ALPB", "Solvation"]
 
 
 class ALPB(BaseModel):
-    """Representation of shell-resolved third-order electrostatics."""
+    """
+    Representation of the analytical linearized Poisson-Boltzmann solvation
+    model (10.1021/acs.jctc.1c00471).
+    """
 
     alpb: bool
     """Use analytical linearized Poisson-Boltzmann model."""
@@ -51,7 +54,7 @@ class ALPB(BaseModel):
 
 class Solvation(BaseModel):
     """
-    Representation of the isotropic third-order onsite correction.
+    Representation of the solvation models.
     """
 
     alpb: Optional[ALPB] = None

@@ -49,7 +49,7 @@ LABEL_DispersionD4SC = "DispersionD4SC"
 """Label for the :class:`.DispersionD4SC` interaction, coinciding with the class name."""
 
 
-class DispersionDispersionD4SCCache(InteractionCache, TensorLike):
+class DispersionD4SCCache(InteractionCache, TensorLike):
     """
     Restart data for the :class:`.DispersionD4SC` interaction.
 
@@ -175,7 +175,7 @@ class DispersionD4SC(Interaction):
         positions: Tensor | None = None,
         ihelp: IndexHelper | None = None,
         **_,
-    ) -> DispersionDispersionD4SCCache:
+    ) -> DispersionD4SCCache:
         """
         Create restart data for individual interactions.
 
@@ -188,7 +188,7 @@ class DispersionD4SC(Interaction):
 
         Returns
         -------
-        DispersionDispersionD4SCCache
+        DispersionD4SCCache
             Restart data for the interaction.
 
         Note
@@ -209,7 +209,7 @@ class DispersionD4SC(Interaction):
         cachvars = (numbers.detach().clone(),)
 
         if self.cache_is_latest(cachvars) is True:
-            if not isinstance(self.cache, DispersionDispersionD4SCCache):
+            if not isinstance(self.cache, DispersionD4SCCache):
                 raise TypeError(
                     f"Cache in {self.label} is not of type '{self.label}."
                     "Cache'. This can only happen if you manually manipulate "
@@ -243,12 +243,12 @@ class DispersionD4SC(Interaction):
         )
         dispmat = edisp.unsqueeze(-1).unsqueeze(-1) * self.model.rc6
 
-        self.cache = DispersionDispersionD4SCCache(cn, dispmat)
+        self.cache = DispersionD4SCCache(cn, dispmat)
 
         return self.cache
 
     def get_atom_energy(
-        self, charges: Tensor, cache: DispersionDispersionD4SCCache
+        self, charges: Tensor, cache: DispersionD4SCCache
     ) -> Tensor:
         """
         Calculate the D4 dispersion correction energy.
@@ -257,7 +257,7 @@ class DispersionD4SC(Interaction):
         ----------
         charges : Tensor
             Atomic charges of all atoms.
-        cache : DispersionDispersionD4SCCache
+        cache : DispersionD4SCCache
             Restart data for the interaction.
 
         Returns
@@ -274,7 +274,7 @@ class DispersionD4SC(Interaction):
         )
 
     def get_atom_potential(
-        self, charges: Tensor, cache: DispersionDispersionD4SCCache
+        self, charges: Tensor, cache: DispersionD4SCCache
     ) -> Tensor:
         """
         Calculate the D4 dispersion correction potential.
@@ -283,7 +283,7 @@ class DispersionD4SC(Interaction):
         ----------
         charges : Tensor
             Atomic charges of all atoms.
-        cache : DispersionDispersionD4SCCache
+        cache : DispersionD4SCCache
             Restart data for the interaction.
 
         Returns
