@@ -501,7 +501,7 @@ class Integrals(IntegralContainer):
 
     # pretty print
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         attributes = ["hcore", "overlap", "dipole", "quadrupole"]
         details = []
 
@@ -512,7 +512,7 @@ class Integrals(IntegralContainer):
 
         return f"Integrals({', '.join(details)}\n)"
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return str(self)
 
 
@@ -690,7 +690,7 @@ class IntegralMatrices(IntegralContainer):
                     f"{defaults.QP_SHAPE}. Got {tensor.shape[-3]}."
                 )
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         attributes = ["hcore", "overlap", "dipole", "quadrupole"]
         details = []
 
@@ -701,5 +701,5 @@ class IntegralMatrices(IntegralContainer):
 
         return f"Integrals({', '.join(details)}\n)"
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return str(self)

@@ -174,7 +174,7 @@ class LinearOperator(EditableModule):
                 stacklevel=2,
             )
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         return (
             "LinearOperator ({}) with shape {}, dtype = {}, device = {}".format(
                 self.__class__.__name__,
@@ -183,6 +183,9 @@ class LinearOperator(EditableModule):
                 self.device,
             )
         )
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return str(self)
 
     @abstractmethod
     def _getparamnames(self, prefix: str = "") -> list[str]:
@@ -655,11 +658,14 @@ class AdjointLinearOperator(LinearOperator):
         )
         self.obj = obj
 
-    def __repr__(self):
+    def __str__(self):  # pragma: no cover
         return "AdjointLinearOperator with shape {} of:\n - {}".format(
             _shape2str(self.shape),
             _indent(self.obj.__repr__(), 3),
         )
+
+    def __repr__(self):  # pragma: no cover
+        return str(self)
 
     def _mv(self, x: torch.Tensor) -> torch.Tensor:
         if not self.obj.is_rmv_implemented:

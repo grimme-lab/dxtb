@@ -22,9 +22,11 @@ from __future__ import annotations
 
 import torch
 
-from dxtb import GFN1_XTB, IndexHelper
+from dxtb import GFN1_XTB, GFN2_XTB, IndexHelper
 from dxtb.components.base import InteractionList, InteractionListCache
-from dxtb.components.coulomb import new_es3
+from dxtb.components.coulomb import new_es2, new_es3
+from dxtb.components.dispersion import new_d4sc
+from dxtb.components.field import new_efield, new_efield_grad
 
 from ..conftest import DEVICE
 
@@ -55,3 +57,125 @@ def test_empty() -> None:
 
     g = ilist.get_gradient(e, e, e, ihelp)  # type: ignore
     assert (g == torch.zeros(g.shape, device=DEVICE)).all()
+
+
+def test_reset() -> None:
+    numbers = torch.tensor([6, 1], device=DEVICE)
+    positions = torch.tensor([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]], device=DEVICE)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
+
+    d4sc = new_d4sc(numbers, GFN2_XTB, device=DEVICE)
+    es2 = new_es2(numbers, GFN1_XTB, device=DEVICE)
+    es3 = new_es3(numbers, GFN1_XTB, device=DEVICE)
+    ef = new_efield(torch.ones((3,), device=DEVICE), device=DEVICE)
+    efg = new_efield_grad(torch.ones((3, 3), device=DEVICE), device=DEVICE)
+
+    ilist = InteractionList(d4sc, es2, es3, ef, efg)
+    assert len(ilist.components) == 5
+
+    _ = ilist.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
+
+    assert d4sc is not None and d4sc.cache is not None
+    assert es2 is not None and es2.cache is not None
+    assert es3 is not None and es3.cache is not None
+    assert ef is not None and ef.cache is not None
+    assert efg is not None and efg.cache is not None
+
+    assert len(d4sc.cache) == 1
+    ilist.reset_d4sc()
+    assert d4sc.cache is None
+
+    assert len(es2.cache) == 2
+    ilist.reset_es2()
+    assert es2.cache is None
+
+    assert len(es3.cache) == 1
+    ilist.reset_es3()
+    assert es3.cache is None
+
+    assert len(ef.cache) == 2
+    ilist.reset_efield()
+    assert ef.cache is None
+
+    assert len(efg.cache) == 1
+    ilist.reset_efield_grad()
+    assert efg.cache is None
+
+
+def test_reset_all() -> None:
+    numbers = torch.tensor([6, 1], device=DEVICE)
+    positions = torch.tensor([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]], device=DEVICE)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
+
+    d4sc = new_d4sc(numbers, GFN2_XTB, device=DEVICE)
+    es2 = new_es2(numbers, GFN1_XTB, device=DEVICE)
+    es3 = new_es3(numbers, GFN1_XTB, device=DEVICE)
+    ef = new_efield(torch.ones((3,), device=DEVICE), device=DEVICE)
+    efg = new_efield_grad(torch.ones((3, 3), device=DEVICE), device=DEVICE)
+
+    ilist = InteractionList(d4sc, es2, es3, ef, efg)
+    assert len(ilist.components) == 5
+
+    _ = ilist.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
+
+    assert d4sc is not None and d4sc.cache is not None
+    assert es2 is not None and es2.cache is not None
+    assert es3 is not None and es3.cache is not None
+    assert ef is not None and ef.cache is not None
+    assert efg is not None and efg.cache is not None
+
+    assert len(d4sc.cache) == 1
+    assert len(es2.cache) == 2
+    assert len(es3.cache) == 1
+    assert len(ef.cache) == 2
+    assert len(efg.cache) == 1
+
+    ilist.reset_all()
+    assert d4sc.cache is None
+    assert es2.cache is None
+    assert es3.cache is None
+    assert ef.cache is None
+    assert efg.cache is None
+
+
+def test_update() -> None:
+    numbers = torch.tensor([6, 1], device=DEVICE)
+    positions = torch.tensor([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]], device=DEVICE)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
+
+    d4sc = new_d4sc(numbers, GFN2_XTB, device=DEVICE)
+    es2 = new_es2(numbers, GFN1_XTB, device=DEVICE)
+    es3 = new_es3(numbers, GFN1_XTB, device=DEVICE)
+    ef = new_efield(torch.ones((3,), device=DEVICE), device=DEVICE)
+    efg = new_efield_grad(torch.ones((3, 3), device=DEVICE), device=DEVICE)
+
+    ilist = InteractionList(d4sc, es2, es3, ef, efg)
+    assert len(ilist.components) == 5
+
+    _ = ilist.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
+
+    assert d4sc is not None and d4sc.cache is not None
+    assert es2 is not None and es2.cache is not None
+    assert es3 is not None and es3.cache is not None
+    assert ef is not None and ef.cache is not None
+    assert efg is not None and efg.cache is not None
+
+    r4r2 = torch.tensor([1.0, 0.0, 0.0], device=DEVICE)
+    ilist.update_d4sc(r4r2=r4r2)
+    assert (d4sc.r4r2 == r4r2).all()
+
+    lhubbard = torch.tensor([1.0, 0.0, 0.0], device=DEVICE)
+    ilist.update_es2(lhubbard=lhubbard)
+    assert (es2.lhubbard == lhubbard).all()
+
+    hubbard_derivs = torch.tensor([1.0, 0.0, 0.0], device=DEVICE)
+    ilist.update_es3(hubbard_derivs=hubbard_derivs)
+    assert (es3.hubbard_derivs == hubbard_derivs).all()
+
+    field = torch.tensor([1.0, 0.0, 0.0], device=DEVICE)
+    ilist.update_efield(field=field)
+    assert (ef.field == field).all()
+
+    field_grad = torch.ones((3, 3), device=DEVICE)
+    ilist.update_efield_grad(field_grad=field_grad)
+    assert (efg.field_grad == field_grad).all()

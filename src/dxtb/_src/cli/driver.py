@@ -368,6 +368,10 @@ class Driver:
 
         raise RuntimeError("No calculation was performed.")
 
-    def __repr__(self) -> str:  # pragma: no cover
+    def __str__(self) -> str:  # pragma: no cover
         """Custom print representation of class."""
         return f"{self.__class__.__name__}({self.args})"
+
+    def __repr__(self) -> str:  # pragma: no cover
+        """Custom print representation of class."""
+        return str(self)

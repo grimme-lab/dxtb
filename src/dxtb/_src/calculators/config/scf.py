@@ -314,7 +314,7 @@ class ConfigSCF:
             }
         }
 
-    def __str__(self):
+    def __str__(self):  # pragma: no cover
         config_str = [
             f"Configuration for SCF:",
             f"  Guess Method: {self.guess}",
@@ -332,7 +332,7 @@ class ConfigSCF:
         ]
         return "\n".join(config_str)
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return str(self)
 
 
@@ -462,10 +462,10 @@ class ConfigFermi:
             }
         }
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         info = self.info()["Fermi Smearing"]
         info_str = ", ".join(f"{key}={value}" for key, value in info.items())
         return f"{self.__class__.__name__}({info_str})"
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return str(self)

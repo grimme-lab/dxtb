@@ -927,7 +927,7 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
 
         return self
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         """
         Return a string representation of the instance.
         """
@@ -953,6 +953,6 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
             f")"
         )
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         """Return a representation of the instance."""
         return str(self)

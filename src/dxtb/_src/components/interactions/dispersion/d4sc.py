@@ -42,10 +42,10 @@ from dxtb._src.utils import convert_float_tensor
 
 from ..base import Interaction, InteractionCache
 
-__all__ = ["DispersionD4SC", "LABEL_DispersionD4SC", "new_d4sc"]
+__all__ = ["DispersionD4SC", "LABEL_DISPERSIOND4SC", "new_d4sc"]
 
 
-LABEL_DispersionD4SC = "DispersionD4SC"
+LABEL_DISPERSIOND4SC = "DispersionD4SC"
 """Label for the :class:`.DispersionD4SC` interaction, coinciding with the class name."""
 
 

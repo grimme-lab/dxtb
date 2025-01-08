@@ -104,7 +104,7 @@ class LazyLoaderParam:
 
         return getattr(self._loaded, item)
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         """
         Custom string representation of the `LazyLoaderParam` object.
 
@@ -115,7 +115,7 @@ class LazyLoaderParam:
         """
         return f"LazyLoaderParam({str(self.filepath)})"
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         """
         Custom representation of the `LazyLoaderParam` object.
 

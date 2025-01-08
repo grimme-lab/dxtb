@@ -179,7 +179,7 @@ class IntDriver(TensorLike):
             Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         """
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         return (
             f"{self.__class__.__name__}("
             f"Family: {self.family}, "
@@ -187,5 +187,5 @@ class IntDriver(TensorLike):
             f"Setup?: {self.is_setup()})"
         )
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return str(self)

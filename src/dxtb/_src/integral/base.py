@@ -274,7 +274,7 @@ class BaseIntegral(IntegralABC, TensorLike):
     def gradient(self, mat: Tensor) -> None:
         self._gradient = mat
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         d = self.__dict__.copy()
         if self._matrix is not None:
             d["_matrix"] = self._matrix.shape
@@ -285,5 +285,5 @@ class BaseIntegral(IntegralABC, TensorLike):
 
         return f"{self.__class__.__name__}({d})"
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return str(self)

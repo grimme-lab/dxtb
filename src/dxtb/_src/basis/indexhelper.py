@@ -1165,7 +1165,7 @@ class IndexHelper(TensorLike):
         """
         return (torch.int16, torch.int32, torch.int64, torch.long)
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         return (
             f"IndexHelper(\n"
             f"  unique_angular={self.unique_angular},\n"
@@ -1187,7 +1187,7 @@ class IndexHelper(TensorLike):
             ")"
         )
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return str(self)
 
 

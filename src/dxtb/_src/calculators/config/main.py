@@ -437,10 +437,10 @@ class Config:
 
         return json_string
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         info = self.info()["SCF Options"]
         info_str = ", ".join(f"{key}={value}" for key, value in info.items())
         return f"{self.__class__.__name__}({info_str})"
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return str(self)
