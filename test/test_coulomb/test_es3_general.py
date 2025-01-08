@@ -122,7 +122,7 @@ def test_change_device_fail() -> None:
 
 
 def test_device_fail_numbers() -> None:
-    n = torch.tensor([3, 1], device="cpu")
+    n = torch.tensor([3, 1], dtype=torch.float, device="cpu")
     numbers = MockTensor(n)
     numbers.device = "cuda"
 

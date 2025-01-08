@@ -521,13 +521,17 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
             opts = Config(**opts, **dd)
         self.opts = opts
 
-        # set integral level based on parametrization
-        if par.meta is not None:
-            if par.meta.name is not None:
-                if "gfn1" in par.meta.name.casefold():
-                    self.opts.ints.level = labels.INTLEVEL_HCORE
-                elif "gfn2" in par.meta.name.casefold():
-                    self.opts.ints.level = labels.INTLEVEL_QUADRUPOLE
+        # Set integral level based on parametrization. For the tests, we want
+        # to turn this off. Otherwise, all GFN2-xTB tests will fail without
+        # `libcint`, even when integrals are not tested (e.g. D4SC). This is
+        # caused by the integral factories in this very constructor.
+        if kwargs.pop("auto_int_level", True):
+            if par.meta is not None:
+                if par.meta.name is not None:
+                    if "gfn1" in par.meta.name.casefold():
+                        self.opts.ints.level = labels.INTLEVEL_HCORE
+                    elif "gfn2" in par.meta.name.casefold():
+                        self.opts.ints.level = labels.INTLEVEL_QUADRUPOLE
 
         # create cache
         self.cache = CalculatorCache(**dd) if cache is None else cache

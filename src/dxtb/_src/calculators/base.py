@@ -48,6 +48,8 @@ class Calculator(AnalyticalCalculator, AutogradCalculator, NumericalCalculator):
     )
     """Names of implemented methods of the Calculator."""
 
+    # The main implementation can be found in calculator base classes:
+    # dxtb/_src/calculators/types/base.py
     def calculate(
         self,
         properties: list[str],

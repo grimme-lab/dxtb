@@ -58,7 +58,7 @@ def test_single(dtype: torch.dtype, name: str):
     ref = sample["edisp_d4sc"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
-    calc = Calculator(numbers, GFN2_XTB, opts=opts, **dd)
+    calc = Calculator(numbers, GFN2_XTB, opts=opts, **dd, auto_int_level=False)
 
     result = calc.singlepoint(positions, charges)
     d4sc = calc.interactions.get_interaction("DispersionD4SC")
@@ -96,7 +96,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
         )
     )
 
-    calc = Calculator(numbers, GFN2_XTB, opts=opts, **dd)
+    calc = Calculator(numbers, GFN2_XTB, opts=opts, **dd, auto_int_level=False)
 
     result = calc.singlepoint(positions)
     d4sc = calc.interactions.get_interaction("DispersionD4SC")

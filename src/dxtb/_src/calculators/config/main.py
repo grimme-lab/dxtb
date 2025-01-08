@@ -113,7 +113,7 @@ class Config:
         force_convergence: bool = False,
         fermi_etemp: float = defaults.FERMI_ETEMP,
         fermi_maxiter: int = defaults.FERMI_MAXITER,
-        fermi_thresh: dict = defaults.FERMI_THRESH,
+        fermi_thresh: float | int | None = defaults.FERMI_THRESH,
         fermi_partition: str | int = defaults.FERMI_PARTITION,
         # cache
         cache_enabled: bool = defaults.CACHE_ENABLED,
