@@ -76,3 +76,19 @@ def test_fail_too_many_parameters() -> None:
 
     with pytest.raises(ValueError):
         new_dispersion(torch.tensor(0.0), _par)
+
+
+def test_d4_cache() -> None:
+    numbers = torch.tensor([3, 1])
+
+    _par2 = GFN2_XTB.model_copy(deep=True)
+    _par2.dispersion.d4.sc = False  # type: ignore
+
+    disp = new_dispersion(numbers, _par2, torch.tensor(0.0))
+    assert disp is not None
+
+    _ = disp.get_cache(numbers=numbers)
+    assert disp.cache_is_latest((numbers.detach().clone(),))
+
+    _ = disp.get_cache(numbers=numbers)
+    assert disp.cache_is_latest((numbers.detach().clone(),))
