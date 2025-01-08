@@ -25,11 +25,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from dxtb._src.typing import TYPE_CHECKING, Any, Tensor
+from dxtb._src.typing import Any, Tensor
 
-if TYPE_CHECKING:
-    from dxtb._src.integral.base import IntDriver
-
+from .driver import IntDriver
 
 __all__ = ["IntegralABC"]
 

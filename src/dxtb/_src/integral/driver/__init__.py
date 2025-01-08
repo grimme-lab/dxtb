@@ -28,5 +28,7 @@ the `Libcint` drivers are only available if the
 The `PyTorch` drivers are implemented in pure Python, but are currently only
 available for overlap integrals.
 """
-# no imports besides driver manager here to allow lazy loading of drivers
+from .base import IntDriver
+
+# no specific driver imports here to allow lazy loading of drivers
 from .manager import DriverManager
