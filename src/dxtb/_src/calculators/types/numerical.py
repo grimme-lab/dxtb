@@ -208,18 +208,21 @@ class NumericalCalculator(EnergyCalculator):
         )
         logger.debug("Hessian (numerical): Starting build (%s).", deriv.shape)
 
+        # copy here to avoid test pollution
+        _positions = positions.clone().detach()
+
         count = 1
         nsteps = 3 * self.numbers.shape[-1]
         for i in range(self.numbers.shape[-1]):
             for j in range(3):
                 with OutputHandler.with_verbosity(0):
-                    positions[..., i, j] += step_size
-                    gr = _gradfcn(positions)
+                    _positions[..., i, j] += step_size
+                    gr = _gradfcn(_positions)
 
-                    positions[..., i, j] -= 2 * step_size
-                    gl = _gradfcn(positions)
+                    _positions[..., i, j] -= 2 * step_size
+                    gl = _gradfcn(_positions)
 
-                    positions[..., i, j] += step_size
+                    _positions[..., i, j] += step_size
                     deriv[..., :, :, i, j] = 0.5 * (gr - gl) / step_size
 
                 logger.debug("Hessian (numerical): step %s/%s", count, nsteps)

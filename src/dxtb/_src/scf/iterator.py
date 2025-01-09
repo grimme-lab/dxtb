@@ -173,7 +173,7 @@ def get_refocc(
 
     n0 = torch.where(
         orb_per_shell != 0,
-        storch.divide(refocc, orb_per_shell),
+        storch.divide(refocc, orb_per_shell.type(refocc.dtype)),
         torch.tensor(0, device=refs.device, dtype=refs.dtype),
     )
 

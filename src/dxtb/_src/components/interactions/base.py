@@ -254,7 +254,8 @@ class Interaction(Component):
         self, charges: Charges, cache: InteractionCache, ihelp: IndexHelper
     ) -> Tensor:
         """
-        Compute the energy from the charges, all quantities are orbital-resolved.
+        Compute the energy from the charges, all quantities are
+        orbital-resolved.
 
         Parameters
         ----------

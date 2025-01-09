@@ -105,11 +105,11 @@ class Result(TensorLike):
         self.cenergies = {}
         self.iter = 0
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         """Custom print representation showing all available slots."""
         return f"{self.__class__.__name__}({self.__slots__})"
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         """Custom print representation showing all available slots."""
         return str(self)
 

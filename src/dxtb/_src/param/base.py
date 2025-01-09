@@ -46,6 +46,7 @@ from .hamiltonian import Hamiltonian
 from .meta import Meta
 from .multipole import Multipole
 from .repulsion import Repulsion
+from .solvation import Solvation
 from .thirdorder import ThirdOrder
 
 __all__ = ["Param"]
@@ -90,6 +91,8 @@ class Param(BaseModel):
 
     thirdorder: Optional[ThirdOrder] = None
     """Definition of the isotropic third-order charge interactions."""
+
+    solvation: Optional[Solvation] = None
 
     def clean_model_dump(self) -> dict[str, Any]:
         """

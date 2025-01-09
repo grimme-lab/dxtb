@@ -292,7 +292,7 @@ class Container:
 
         return self
 
-    def __repr__(self):
+    def __str__(self):  # pragma: no cover
         return (
             f"{self.__class__.__name__}("
             f"label={self.label!r}, "
@@ -301,6 +301,9 @@ class Container:
             f"quad={self.quad!r}, "
             f"batch_mode={self.batch_mode!r})"
         )
+
+    def __repr__(self):  # pragma: no cover
+        return str(self)
 
 
 class Charges(Container):
@@ -318,7 +321,7 @@ class Charges(Container):
     def mono(self, mono: Tensor) -> None:
         self._mono = mono
 
-    def __repr__(self):
+    def __str__(self):  # pragma: no cover
         dp_shape = self.dipole.shape if self.dipole is not None else None
         qp_shape = self.quad.shape if self.quad is not None else None
         return (
@@ -328,6 +331,9 @@ class Charges(Container):
             f"quad={qp_shape!r}, "
             f"batch_mode={self.batch_mode!r})"
         )
+
+    def __repr__(self):  # pragma: no cover
+        return str(self)
 
 
 class Potential(Container):

@@ -150,10 +150,10 @@ class ElectricFieldGrad(Interaction):
         # equivalent: torch.sum(-cache.vqp * charges, dim=-1)
         return 0.5 * einsum("...x,...ix->...i", cache.efg, charges)
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         return f"{self.__class__.__name__}(field_grad={self.field_grad})"
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return str(self)
 
 

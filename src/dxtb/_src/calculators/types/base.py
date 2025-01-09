@@ -48,6 +48,7 @@ from dxtb._src.components.classicals import (
 from dxtb._src.components.interactions import Interaction, InteractionList
 from dxtb._src.components.interactions.container import Charges, Potential
 from dxtb._src.components.interactions.coulomb import new_es2, new_es3
+from dxtb._src.components.interactions.dispersion import new_d4sc
 from dxtb._src.components.interactions.field import efield as efield
 from dxtb._src.components.interactions.field import efieldgrad as efield_grad
 from dxtb._src.constants import defaults
@@ -368,6 +369,17 @@ class CalculatorCache(TensorLike):
 
         return self._cache_keys[key]
 
+    def __len__(self) -> int:
+        """
+        Return the number of cached properties.
+
+        Returns
+        -------
+        int
+            Number of cached properties.
+        """
+        return len(self.list_cached_properties())
+
     # printing
 
     def __str__(self) -> str:  # pragma: no cover
@@ -509,6 +521,18 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
             opts = Config(**opts, **dd)
         self.opts = opts
 
+        # Set integral level based on parametrization. For the tests, we want
+        # to turn this off. Otherwise, all GFN2-xTB tests will fail without
+        # `libcint`, even when integrals are not tested (e.g. D4SC). This is
+        # caused by the integral factories in this very constructor.
+        if kwargs.pop("auto_int_level", True):
+            if par.meta is not None:
+                if par.meta.name is not None:
+                    if "gfn1" in par.meta.name.casefold():
+                        self.opts.ints.level = labels.INTLEVEL_HCORE
+                    elif "gfn2" in par.meta.name.casefold():
+                        self.opts.ints.level = labels.INTLEVEL_QUADRUPOLE
+
         # create cache
         self.cache = CalculatorCache(**dd) if cache is None else cache
 
@@ -546,13 +570,22 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
             if not {"all", "es3"} & set(self.opts.exclude)
             else None
         )
+        d4sc = (
+            new_d4sc(numbers, par, **dd)
+            if not {"all", "d4sc", "disp"} & set(self.opts.exclude)
+            else None
+        )
 
         if interaction is None:
-            self.interactions = InteractionList(es2, es3, **dd)
+            self.interactions = InteractionList(es2, es3, d4sc, **dd)
         elif isinstance(interaction, Interaction):
-            self.interactions = InteractionList(es2, es3, interaction, **dd)
+            self.interactions = InteractionList(
+                es2, es3, d4sc, interaction, **dd
+            )
         elif isinstance(interaction, (list, tuple)):
-            self.interactions = InteractionList(es2, es3, *interaction, **dd)
+            self.interactions = InteractionList(
+                es2, es3, d4sc, *interaction, **dd
+            )
         else:
             raise TypeError(
                 "Expected 'interaction' to be 'None' or of type 'Interaction', "
@@ -893,3 +926,33 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         self.override_device(device)
 
         return self
+
+    def __str__(self) -> str:  # pragma: no cover
+        """
+        Return a string representation of the instance.
+        """
+        num_atoms = self.numbers.shape[-1]
+        device = self.device
+        dtype = self.dtype
+        num_calculations = self._ncalcs
+        num_classicals = len(self.classicals)
+        num_interactions = len(self.interactions)
+        num_integrals = len(self.integrals)
+        cache_size = len(self.cache)
+
+        return (
+            f"{self.__class__.__name__}(\n"
+            f"  Number of Atoms: {num_atoms}\n"
+            f"  Device: {device}\n"
+            f"  Data Type: {dtype}\n"
+            f"  Calculations Performed: {num_calculations}\n"
+            f"  Cache Size: {cache_size}\n"
+            f"  Classical Contributions: {num_classicals} {self.classicals.labels}\n"
+            f"  Interactions: {num_interactions} {self.interactions.labels}\n"
+            f"  Integrals: {num_integrals} {self.integrals.labels}\n"
+            f")"
+        )
+
+    def __repr__(self) -> str:  # pragma: no cover
+        """Return a representation of the instance."""
+        return str(self)

@@ -32,11 +32,14 @@ from dxtb._src.components.classicals.dispersion import (
     DispersionD4,
     new_dispersion,
 )
-from dxtb._src.param.gfn2 import GFN2_XTB as par
+from dxtb._src.param.gfn2 import GFN2_XTB
 from dxtb._src.typing import DD, Tensor
 
 from ...conftest import DEVICE
 from .samples import samples
+
+par = GFN2_XTB.model_copy(deep=True)
+par.dispersion.d4.sc = False  # type: ignore
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])

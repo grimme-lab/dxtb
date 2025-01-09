@@ -42,12 +42,16 @@ class ComponentCache(TensorLike):
     ):
         super().__init__(device, dtype)
 
-    def __str__(self) -> str:
+    def __len__(self) -> int:
+        slots = get_all_slots(self)
+        return len([s for s in slots if not s.startswith("_")])
+
+    def __str__(self) -> str:  # pragma: no cover
         slots = get_all_slots(self)
         s = ", ".join(s for s in slots if not s.startswith("_"))
         return f"{self.__class__.__name__}({s})"
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return str(self)
 
 
@@ -140,7 +144,8 @@ class Component(TensorLike):
             else:
                 raise AttributeError(
                     f"Cannot update '{key}' of the '{self.__class__.__name__}' "
-                    "interaction. Invalid attribute."
+                    "interaction. Invalid attribute.\nPossible attributes are: "
+                    f"{', '.join(self.__slots__)}."
                 )
 
             self.cache_invalidate()

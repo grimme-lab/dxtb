@@ -48,10 +48,12 @@ def test_energy(dtype: torch.dtype) -> None:
 
     calc = GFN1Calculator(numbers, opts=opts, **dd)
     assert calc._ncalcs == 0
+    assert len(calc.cache) == 0
 
     energy = calc.get_energy(positions)
     assert calc._ncalcs == 1
     assert isinstance(energy, Tensor)
+    assert len(calc.cache) == 3
 
     # cache is used
     energy = calc.get_energy(positions)
@@ -70,7 +72,7 @@ def test_energy(dtype: torch.dtype) -> None:
 
     # check reset
     calc.cache.reset_all()
-    assert len(calc.cache.list_cached_properties()) == 0
+    assert len(calc.cache) == 0
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

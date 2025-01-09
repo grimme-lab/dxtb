@@ -82,3 +82,12 @@ def test_change_device_fail() -> None:
     # trying to use setter
     with pytest.raises(AttributeError):
         cls.device = "cpu"
+
+
+def test_fail_requires_ihelp() -> None:
+    numbers = torch.tensor([3, 1])
+    cls = new_halogen(numbers, par)
+    assert cls is not None
+
+    with pytest.raises(ValueError):
+        cls.get_cache(numbers=numbers, ihelp=None)

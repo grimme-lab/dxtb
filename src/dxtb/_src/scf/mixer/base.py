@@ -72,11 +72,11 @@ class Mixer(ABC):
         # explicitly set this information
         self._batch_mode = batch_mode
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         """Returns representative string."""
         return f"{self.__class__.__name__}({self.iter_step}, {self.options})"
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return str(self)
 
     @abstractmethod

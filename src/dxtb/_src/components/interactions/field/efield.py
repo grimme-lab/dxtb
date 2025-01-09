@@ -267,10 +267,10 @@ class ElectricField(Interaction):
         """
         return -cache.vdp
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         return f"{self.__class__.__name__}(field={self.field})"
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return str(self)
 
 

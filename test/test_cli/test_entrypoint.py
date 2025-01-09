@@ -67,5 +67,5 @@ def test_entrypoint(
 
     out, err = capsys.readouterr()
     assert err == ""
-    assert out == ""
+    assert out == "", "No output should be printed. Leftover debug prints?"
     assert len(caplog.text) == 0

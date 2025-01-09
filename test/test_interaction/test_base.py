@@ -20,6 +20,7 @@ Test Interaction.
 
 from __future__ import annotations
 
+import pytest
 import torch
 
 from dxtb import IndexHelper
@@ -60,3 +61,12 @@ def test_empty() -> None:
 
     sg = i.get_shell_gradient(numbers, numbers)
     assert (sg == torch.zeros(sg.shape, device=DEVICE)).all()
+
+
+def test_energy_fail() -> None:
+    """Monopolar charges are always required."""
+    i = Interaction()
+    c = Charges()
+
+    with pytest.raises(RuntimeError):
+        i.get_energy(c, None, None)  # type: ignore

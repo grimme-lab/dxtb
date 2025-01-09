@@ -30,5 +30,15 @@ from dxtb._src.components.classicals.dispersion import (
 from dxtb._src.components.classicals.dispersion import (
     new_dispersion as new_dispersion,
 )
+from dxtb._src.components.interactions.dispersion import (
+    DispersionD4SC as DispersionD4SC,
+)
+from dxtb._src.components.interactions.dispersion import new_d4sc as new_d4sc
 
-__all__ = ["DispersionD3", "DispersionD4", "new_dispersion"]
+__all__ = [
+    "DispersionD3",
+    "DispersionD4",
+    "new_dispersion",
+    "new_d4sc",
+    "DispersionD4SC",
+]

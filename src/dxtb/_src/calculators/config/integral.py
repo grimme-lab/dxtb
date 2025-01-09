@@ -135,3 +135,12 @@ class ConfigIntegrals:
                 "The driver must be of type 'int' or 'str', but "
                 f"'{type(driver)}' was given."
             )
+
+    def __str__(self) -> str:  # pragma: no cover
+        return (
+            f"ConfigIntegrals(level={self.level}, cutoff={self.cutoff}, "
+            f"driver={self.driver}, uplo={self.uplo})"
+        )
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return str(self)

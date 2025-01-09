@@ -183,7 +183,7 @@ class BaseResult(TensorLike):
             f"Invalid key: '{key}'. Possible keys are '{', '.join(s)}'."
         )
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         text = ""
         for s in get_all_slots(self):
             attr = getattr(self, s)
@@ -200,5 +200,5 @@ class BaseResult(TensorLike):
         text = text[:-2]
         return f"{self.__class__.__name__}({text})"
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return str(self)

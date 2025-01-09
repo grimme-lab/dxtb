@@ -64,7 +64,7 @@ def shape_checks_chrg(
 
     if ndims != t.ndim + 1:
         raise ValueError(
-            f"{name.title()} tensor has invalid shape: {t.shape}.\n "
+            f"{name.title()} tensor has invalid shape: {t.shape}.\n"
             "Please use a scalar for single structures (e.g., "
             "`torch.tensor(1.0)`) and a 1D tensor for batched "
             "calculations (e.g., `torch.tensor([1.0, 0.0])`)."

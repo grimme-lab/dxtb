@@ -26,6 +26,7 @@ from __future__ import annotations
 from functools import partial
 
 import torch
+from tad_mctc import storch
 
 from dxtb import IndexHelper
 from dxtb._src.components.interactions import Potential
@@ -93,7 +94,9 @@ class GFN2Hamiltonian(BaseHamiltonian):
         z = self._get_elem_param("slater")
         zi = z.unsqueeze(-1)
         zj = z.unsqueeze(-2)
-        zmat = (2 * torch.sqrt(zi * zj) / (zi + zj)) ** wexp
+        zmat = storch.pow(
+            2 * storch.divide(storch.sqrt(zi * zj), (zi + zj)), wexp
+        )
 
         ksh = torch.ones((len(ushells), len(ushells)), **self.dd)
         for i, ang_i in enumerate(ushells):
@@ -114,18 +117,23 @@ class GFN2Hamiltonian(BaseHamiltonian):
                 elif f"{ang_j}{ang_i}" in shell:
                     kij = shell[f"{ang_j}{ang_i}"]
                 else:
-                    if f"{ang_i}{ang_i}" not in shell:
-                        raise KeyError(
-                            f"GFN2 HCore: Missing {ang_i}{ang_i} in shell."
-                        )
-                    if f"{ang_j}{ang_j}" not in shell:  # pragma: no cover
-                        raise KeyError(
-                            f"GFN2 HCore: Missing {ang_j}{ang_j} in shell."
-                        )
+                    if ang_i != PAD and ang_j != PAD:
+                        if f"{ang_i}{ang_i}" not in shell:
+                            raise KeyError(
+                                f"GFN2 Core Hamiltonian: Missing '{ang_i}"
+                                f"{ang_i}' in shell."
+                            )
+                        if f"{ang_j}{ang_j}" not in shell:  # pragma: no cover
+                            raise KeyError(
+                                f"GFN2 Core Hamiltonian: Missing '{ang_j}"
+                                f"{ang_j}' in shell."
+                            )
 
-                    kij = 0.5 * (
-                        shell[f"{ang_i}{ang_i}"] + shell[f"{ang_j}{ang_j}"]
-                    )
+                        kij = 0.5 * (
+                            shell[f"{ang_i}{ang_i}"] + shell[f"{ang_j}{ang_j}"]
+                        )
+                    else:
+                        kij = 1.0  # dummy for padding
 
                 ksh[i, j] = kij * zmat[i, j]
 

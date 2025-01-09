@@ -113,7 +113,7 @@ class Config:
         force_convergence: bool = False,
         fermi_etemp: float = defaults.FERMI_ETEMP,
         fermi_maxiter: int = defaults.FERMI_MAXITER,
-        fermi_thresh: dict = defaults.FERMI_THRESH,
+        fermi_thresh: float | int | None = defaults.FERMI_THRESH,
         fermi_partition: str | int = defaults.FERMI_PARTITION,
         # cache
         cache_enabled: bool = defaults.CACHE_ENABLED,
@@ -437,10 +437,10 @@ class Config:
 
         return json_string
 
-    def __str__(self) -> str:
+    def __str__(self) -> str:  # pragma: no cover
         info = self.info()["SCF Options"]
         info_str = ", ".join(f"{key}={value}" for key, value in info.items())
         return f"{self.__class__.__name__}({info_str})"
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # pragma: no cover
         return str(self)
