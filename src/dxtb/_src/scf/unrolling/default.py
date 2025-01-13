@@ -124,7 +124,7 @@ class SelfConsistentFieldFull(BaseTSCF):
         potential_data = self._data.potential.copy()
 
         # shape: (nb, <number of moments>, norb)
-        q_converged = torch.full_like(guess, defaults.PADNZ)
+        q_converged = torch.full_like(guess, defaults.PADNZ, device=self.device)
 
         overlap = self._data.ints.overlap
         hcore = self._data.ints.hcore
@@ -132,10 +132,10 @@ class SelfConsistentFieldFull(BaseTSCF):
         quad = self._data.ints.quadrupole
 
         # indices for systems in batch, required for culling
-        idxs = torch.arange(guess.size(0))
+        idxs = torch.arange(guess.size(0), device=self.device)
 
         # tracker for converged systems
-        converged = torch.full(idxs.shape, False)
+        converged = torch.full(idxs.shape, False, device=self.device)
 
         # maximum number of orbitals in batch
         norb = self._data.ihelp.nao
@@ -291,7 +291,7 @@ class SelfConsistentFieldFull(BaseTSCF):
 
             # collect unconverged indices with convergence tracker; charges
             # are already culled, and hence, require no further indexing
-            idxs = torch.arange(guess.size(0))
+            idxs = torch.arange(guess.size(0), device=self.device)
             iconv = idxs[~converged]
             q_converged[iconv, ..., :norb] = q
 
@@ -311,14 +311,14 @@ class SelfConsistentFieldFull(BaseTSCF):
                 msg + msg_converged, exceptions.SCFConvergenceWarning
             )
 
-        if culled:
+        if culled is True:
             # write converged variables back to `self._data` for final
             # energy evaluation; if we continue with unconverged properties,
             # we first need to write the unconverged values from the
             # `_data` object back to the converged variable before saving it
             # for the final energy evaluation
             if not converged.all():
-                idxs = torch.arange(guess.size(0))
+                idxs = torch.arange(guess.size(0), device=self.device)
                 iconv = idxs[~converged]
 
                 cevals[iconv, :norb] = self._data.evals
