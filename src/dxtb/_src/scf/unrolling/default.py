@@ -181,7 +181,7 @@ class SelfConsistentFieldFull(BaseTSCF):
                     break
 
                 # save all necessary variables for converged system
-                iconv = idxs[conv]
+                iconv = idxs[conv.cpu()]
                 q_converged[iconv, :mpdim, :norb] = q[conv, ..., :]
                 ch[iconv, :norb, :norb] = self._data.hamiltonian[conv, :, :]
                 cevecs[iconv, :norb, :norb] = self._data.evecs[conv, :, :]
@@ -247,7 +247,7 @@ class SelfConsistentFieldFull(BaseTSCF):
 
                 # cull local variables
                 q = q[~conv, :mpdim, :norb]
-                idxs = idxs[~conv]
+                idxs = idxs[~conv.cpu()]
 
                 if self._data.charges["mono"] is not None:
                     self._data.charges["mono"] = torch.Size(
