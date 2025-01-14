@@ -30,13 +30,23 @@ class Refs(TypedDict):
     """Format of reference records containing GFN1-xTB and GFN2-xTB reference values."""
 
     q: Tensor
-    """Atomic or shell-resolved partial charges for this structure."""
+    """
+    Atomic or shell-resolved partial charges for this structure (GFN1-xTB).
+    """
+
+    q_gfn2: Tensor
+    """
+    Atomic or shell-resolved partial charges for this structure (GFN2-xTB).
+    """
 
     es2: Tensor
-    """Reference values for ES2 (GFN1-xTB)"""
+    """Reference values for ES2 (GFN1-xTB)."""
 
     es3: Tensor
-    """Reference values for ES3 (GFN1-xTB)"""
+    """Reference values for ES3 (GFN1-xTB)."""
+
+    es3_shell: Tensor
+    """Reference values for ES3 (GFN2-xTB)."""
 
     grad: Tensor
     """Nuclear gradient of ES2 energy."""
@@ -50,6 +60,7 @@ refs: dict[str, Refs] = {
     "MB16_43_01": {
         "es2": torch.tensor(0.10952019883948200, dtype=torch.float64),
         "es3": torch.tensor(0.0212785489857197, dtype=torch.float64),
+        "es3_shell": torch.tensor(4.0434955262268028e-002, dtype=torch.float64),
         "q": torch.tensor(
             [
                 +7.7334791421890259e-01,
@@ -71,6 +82,7 @@ refs: dict[str, Refs] = {
             ],
             dtype=torch.float64,
         ),
+        "q_gfn2": torch.tensor([], dtype=torch.float64),
         "grad": torch.tensor(
             [
                 [
@@ -160,6 +172,7 @@ refs: dict[str, Refs] = {
     "MB16_43_02": {
         "es2": torch.tensor(0.16666303125798329, dtype=torch.float64),
         "es3": torch.tensor(0.0155668621882796, dtype=torch.float64),
+        "es3_shell": torch.tensor(4.9292337881703292e-2, dtype=torch.float64),
         "q": torch.tensor(
             [
                 +7.3839470744132996e-02,
@@ -181,6 +194,7 @@ refs: dict[str, Refs] = {
             ],
             dtype=torch.float64,
         ),
+        "q_gfn2": torch.tensor([], dtype=torch.float64),
         "grad": torch.tensor(
             [
                 [
@@ -270,6 +284,7 @@ refs: dict[str, Refs] = {
     "MB16_43_07": {  # shell-resolved charges and gradients
         "es2": torch.tensor(0.12017418620257683, dtype=torch.float64),
         "es3": torch.tensor(0.0, dtype=torch.float64),
+        "es3_shell": torch.tensor(-0.34488498240315002, dtype=torch.float64),
         "q": torch.tensor(
             [
                 +8.8596022129058838e-01,
@@ -306,6 +321,40 @@ refs: dict[str, Refs] = {
                 -4.2600473761558533e-01,
                 +1.2486056089401245e00,
                 -6.4642405509948730e-01,
+            ],
+            dtype=torch.float64,
+        ),
+        "q_gfn2": torch.tensor(
+            [
+                -0.2372082175033831,
+                -2.7496123367484957,
+                0.2133150304286247,
+                1.2459662589528724,
+                -0.0240124648404671,
+                0.6375260915396232,
+                0.6288673640786957,
+                0.0427487776207620,
+                -0.4119239254478257,
+                -0.1101947476357790,
+                0.1962526334754219,
+                -0.5774678408988283,
+                -0.0954706513992993,
+                -0.9908549539678670,
+                0.1217211077680937,
+                0.7689744009685770,
+                0.1592249178978529,
+                0.2104607013244239,
+                0.7889318241389675,
+                -0.0056803730919144,
+                0.4332827430406178,
+                0.4592377052487081,
+                0.2833371093194456,
+                -0.9202888743016233,
+                0.1737487393096157,
+                -0.5591459694601939,
+                1.0261224370878024,
+                -0.3777382313598706,
+                -0.3301192555445596,
             ],
             dtype=torch.float64,
         ),
@@ -398,6 +447,7 @@ refs: dict[str, Refs] = {
     "MB16_43_08": {  # shell-resolved charges and gradients
         "es2": torch.tensor(0.11889887832100766, dtype=torch.float64),
         "es3": torch.tensor(0.0, dtype=torch.float64),
+        "es3_shell": torch.tensor(0.0, dtype=torch.float64),
         "q": torch.tensor(
             [
                 +9.0625989437103271e-01,
@@ -436,6 +486,7 @@ refs: dict[str, Refs] = {
             ],
             dtype=torch.float64,
         ),
+        "q_gfn2": torch.tensor([], dtype=torch.float64),
         "grad": torch.tensor(
             [
                 [
@@ -525,6 +576,7 @@ refs: dict[str, Refs] = {
     "LiH": {  # shell-resolved charges and gradients
         "es2": torch.tensor(0.0, dtype=torch.float64),
         "es3": torch.tensor(0.0, dtype=torch.float64),
+        "es3_shell": torch.tensor(0.0, dtype=torch.float64),
         "q": torch.tensor(
             [
                 +6.1767599778670401e-01,
@@ -534,6 +586,7 @@ refs: dict[str, Refs] = {
             ],
             dtype=torch.float64,
         ),
+        "q_gfn2": torch.tensor([], dtype=torch.float64),
         "grad": torch.tensor(
             [
                 [
@@ -553,6 +606,7 @@ refs: dict[str, Refs] = {
     "SiH4": {  # shell-resolved charges and gradients
         "es2": torch.tensor(4.3803610149365790e-003),
         "es3": torch.tensor(-2.9771152185276151e-005),
+        "es3_shell": torch.tensor(0.0, dtype=torch.float64),
         "q": torch.tensor(
             [
                 +6.5663937010219886e-01,
@@ -569,6 +623,7 @@ refs: dict[str, Refs] = {
             ],
             dtype=torch.float64,
         ),
+        "q_gfn2": torch.tensor([], dtype=torch.float64),
         "grad": torch.tensor(
             [
                 [
@@ -607,6 +662,7 @@ extra: dict[str, Record] = {
     "SiH4_atom": {
         "es2": torch.tensor(5.0778974565885598e-004, dtype=torch.float64),
         "es3": torch.tensor(-2.9771152185276151e-005, dtype=torch.float64),
+        "es3_shell": torch.tensor(0.0, dtype=torch.float64),
         "numbers": mols["SiH4"]["numbers"],
         "positions": mols["SiH4"]["positions"],
         "q": torch.tensor(
@@ -619,6 +675,7 @@ extra: dict[str, Record] = {
             ],
             dtype=torch.float64,
         ),
+        "q_gfn2": torch.tensor([], dtype=torch.float64),
         "grad": torch.tensor(
             [
                 [
