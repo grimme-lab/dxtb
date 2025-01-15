@@ -149,21 +149,26 @@ class ES3(Interaction):
     hubbard_derivs: Tensor
     """Hubbard derivatives of all atoms."""
 
-    shell_params: Tensor | None
-    """Scaling factors for shell-resolved third-order electrostatics."""
+    shell_scale: Tensor | None
+    """
+    Scaling factors for shell-resolved third-order electrostatics.
 
-    __slots__ = ["hubbard_derivs", "shell_params"]
+    In GFN2-xTB, this is a tensor of shape ``(3,)`` containing the scaling
+    factors for the s, p, and d shells.
+    """
+
+    __slots__ = ["hubbard_derivs", "shell_scale"]
 
     def __init__(
         self,
         hubbard_derivs: Tensor,
-        shell_params: Tensor | None = None,
+        shell_scale: Tensor | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
         super().__init__(device, dtype)
         self.hubbard_derivs = hubbard_derivs
-        self.shell_params = shell_params
+        self.shell_scale = shell_scale
 
     # pylint: disable=unused-argument
     @override
@@ -217,12 +222,12 @@ class ES3(Interaction):
         # if the cache is built, store the cachevar for validation
         self._cachevars = cachvars
 
-        if self.shell_params is None:
+        if self.shell_scale is None:
             hd = ihelp.spread_uspecies_to_atom(self.hubbard_derivs)
         else:
             hd = (
                 ihelp.spread_uspecies_to_shell(self.hubbard_derivs)
-                * self.shell_params[ihelp.angular]
+                * self.shell_scale[ihelp.angular]
             )
 
         self.cache = ES3Cache(hd)
@@ -254,7 +259,7 @@ class ES3(Interaction):
         """
         return (
             cache.hd * torch.pow(charges, 3.0) / 3.0
-            if self.shell_params is None
+            if self.shell_scale is None
             else torch.zeros_like(charges)
         )
 
@@ -276,7 +281,7 @@ class ES3(Interaction):
         """
         return (
             torch.zeros_like(charges)
-            if self.shell_params is None
+            if self.shell_scale is None
             else cache.hd * torch.pow(charges, 3.0) / 3.0
         )
 
@@ -299,7 +304,7 @@ class ES3(Interaction):
         """
         return (
             cache.hd * torch.pow(charges, 2.0)
-            if self.shell_params is None
+            if self.shell_scale is None
             else torch.zeros_like(charges)
         )
 
@@ -322,7 +327,7 @@ class ES3(Interaction):
         """
         return (
             torch.zeros_like(charges)
-            if self.shell_params is None
+            if self.shell_scale is None
             else cache.hd * torch.pow(charges, 2.0)
         )
 
@@ -369,7 +374,7 @@ def new_es3(
         torch.unique(numbers), par.element, "gam3", **dd
     )
 
-    shell_params = (
+    shell_scale = (
         None
         if par.thirdorder.shell is False
         else torch.tensor(
@@ -382,4 +387,4 @@ def new_es3(
         )
     )
 
-    return ES3(hubbard_derivs, shell_params=shell_params, **dd)
+    return ES3(hubbard_derivs, shell_scale=shell_scale, **dd)

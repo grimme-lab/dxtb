@@ -110,7 +110,7 @@ def test_qat_single(dtype: torch.dtype, name: str) -> None:
     assert es is not None
 
     # atom-resolved charge test
-    es.shell_params = None
+    es.shell_scale = None
 
     cache = es.get_cache(numbers=numbers, ihelp=ihelp)
     e = es.get_atom_energy(qat, cache)
@@ -149,7 +149,7 @@ def test_qat_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     assert es is not None
 
     # atom-resolved charge test
-    es.shell_params = None
+    es.shell_scale = None
 
     cache = es.get_cache(numbers=numbers, ihelp=ihelp)
     e = es.get_atom_energy(qat, cache)
@@ -208,7 +208,7 @@ def test_grad_param_shell(name: str) -> None:
     assert GFN2_XTB.thirdorder is not None
     assert GFN2_XTB.thirdorder.shell is not False
 
-    shell_params = torch.tensor(
+    shell_scale = torch.tensor(
         [
             GFN2_XTB.thirdorder.shell.s,
             GFN2_XTB.thirdorder.shell.p,
@@ -221,7 +221,7 @@ def test_grad_param_shell(name: str) -> None:
     hd.requires_grad_(True)
 
     def func(hubbard_derivs: Tensor):
-        es = es3.ES3(hubbard_derivs, shell_params=shell_params, **dd)
+        es = es3.ES3(hubbard_derivs, shell_scale=shell_scale, **dd)
         cache = es.get_cache(numbers=numbers, ihelp=ihelp)
         return es.get_shell_energy(qsh, cache)
 
