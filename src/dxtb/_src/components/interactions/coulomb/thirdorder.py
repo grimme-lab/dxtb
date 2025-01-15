@@ -149,16 +149,26 @@ class ES3(Interaction):
     hubbard_derivs: Tensor
     """Hubbard derivatives of all atoms."""
 
-    __slots__ = ["hubbard_derivs"]
+    shell_scale: Tensor | None
+    """
+    Scaling factors for shell-resolved third-order electrostatics.
+
+    In GFN2-xTB, this is a tensor of shape ``(3,)`` containing the scaling
+    factors for the s, p, and d shells.
+    """
+
+    __slots__ = ["hubbard_derivs", "shell_scale"]
 
     def __init__(
         self,
         hubbard_derivs: Tensor,
+        shell_scale: Tensor | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
         super().__init__(device, dtype)
         self.hubbard_derivs = hubbard_derivs
+        self.shell_scale = shell_scale
 
     # pylint: disable=unused-argument
     @override
@@ -212,7 +222,14 @@ class ES3(Interaction):
         # if the cache is built, store the cachevar for validation
         self._cachevars = cachvars
 
-        hd = ihelp.spread_uspecies_to_atom(self.hubbard_derivs)
+        if self.shell_scale is None:
+            hd = ihelp.spread_uspecies_to_atom(self.hubbard_derivs)
+        else:
+            hd = (
+                ihelp.spread_uspecies_to_shell(self.hubbard_derivs)
+                * self.shell_scale[ihelp.angular]
+            )
+
         self.cache = ES3Cache(hd)
 
         return self.cache
@@ -238,13 +255,40 @@ class ES3(Interaction):
         Returns
         -------
         Tensor
-            Atomwise third-order Coulomb interaction energies.
+            Atom-wise third-order Coulomb interaction energies.
         """
+        return (
+            cache.hd * torch.pow(charges, 3.0) / 3.0
+            if self.shell_scale is None
+            else torch.zeros_like(charges)
+        )
 
-        return cache.hd * torch.pow(charges, 3.0) / 3.0
+    def get_shell_energy(self, charges: Tensor, cache: ES3Cache) -> Tensor:
+        """
+        Calculate the third-order electrostatic energy.
+
+        Parameters
+        ----------
+        charges : Tensor
+            Shell charges of all atoms.
+        cache : ES3Cache
+            Restart data for the interaction.
+
+        Returns
+        -------
+        Tensor
+            Shell-wise third-order Coulomb interaction energy.
+        """
+        return (
+            torch.zeros_like(charges)
+            if self.shell_scale is None
+            else cache.hd * torch.pow(charges, 3.0) / 3.0
+        )
 
     def get_atom_potential(self, charges: Tensor, cache: ES3Cache) -> Tensor:
-        """Calculate the third-order electrostatic potential.
+        """
+        Calculate the third-order electrostatic potential.
+        Zero if this interaction is shell-resolved.
 
         Parameters
         ----------
@@ -256,10 +300,36 @@ class ES3(Interaction):
         Returns
         -------
         Tensor
-            Atomwise third-order Coulomb interaction potential.
+            Atom-wise third-order Coulomb interaction potential.
         """
+        return (
+            cache.hd * torch.pow(charges, 2.0)
+            if self.shell_scale is None
+            else torch.zeros_like(charges)
+        )
 
-        return cache.hd * torch.pow(charges, 2.0)
+    def get_shell_potential(self, charges: Tensor, cache: ES3Cache) -> Tensor:
+        """
+        Calculate the third-order electrostatic potential.
+        Zero if this interaction is atom-resolved.
+
+        Parameters
+        ----------
+        charges : Tensor
+            Shell charges of all atoms.
+        cache : ES3Cache
+            Restart data for the interaction.
+
+        Returns
+        -------
+        Tensor
+            Shell-wise third-order Coulomb interaction potential.
+        """
+        return (
+            torch.zeros_like(charges)
+            if self.shell_scale is None
+            else cache.hd * torch.pow(charges, 2.0)
+        )
 
 
 def new_es3(
@@ -288,12 +358,6 @@ def new_es3(
     if hasattr(par, "thirdorder") is False or par.thirdorder is None:
         return None
 
-    if par.thirdorder.shell is True:
-        raise NotImplementedError(
-            "Shell-resolved third order electrostatics are not implemented. "
-            "Set `thirdorder.shell` parameter to ``False``."
-        )
-
     if device is not None:
         if device != numbers.device:
             raise DeviceError(
@@ -310,4 +374,17 @@ def new_es3(
         torch.unique(numbers), par.element, "gam3", **dd
     )
 
-    return ES3(hubbard_derivs, **dd)
+    shell_scale = (
+        None
+        if par.thirdorder.shell is False
+        else torch.tensor(
+            [
+                par.thirdorder.shell.s,
+                par.thirdorder.shell.p,
+                par.thirdorder.shell.d,
+            ],
+            **dd,
+        )
+    )
+
+    return ES3(hubbard_derivs, shell_scale=shell_scale, **dd)

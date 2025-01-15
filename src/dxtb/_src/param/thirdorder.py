@@ -23,7 +23,7 @@ Definition of the isotropic third-order onsite correction.
 
 from __future__ import annotations
 
-from typing import Union
+from typing import Literal, Union
 
 from pydantic import BaseModel
 
@@ -48,7 +48,7 @@ class ThirdOrder(BaseModel):
     Representation of the isotropic third-order onsite correction.
     """
 
-    shell: Union[bool, ThirdOrderShell] = False
+    shell: Union[Literal[False], ThirdOrderShell] = False
     """
     Whether the third order contribution is shell-dependent or only atomwise.
     """

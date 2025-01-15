@@ -42,17 +42,6 @@ def test_none() -> None:
     assert es3.new_es3(dummy, par) is None
 
 
-def test_fail() -> None:
-    dummy = torch.tensor(0.0)
-
-    par = GFN1_XTB.model_copy(deep=True)
-    assert par.thirdorder is not None
-
-    with pytest.raises(NotImplementedError):
-        par.thirdorder.shell = True
-        es3.new_es3(dummy, par)
-
-
 def test_fail_cache_input() -> None:
     numbers = torch.tensor([3, 1])
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
