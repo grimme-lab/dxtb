@@ -24,7 +24,7 @@ import pytest
 import torch
 
 from dxtb import GFN1_XTB, GFN2_XTB, IndexHelper, Param
-from dxtb._src.typing import Callable, Tensor
+from dxtb._src.typing import Protocol, Tensor
 from dxtb.components.base import Interaction, InteractionCache
 from dxtb.components.coulomb import new_es2, new_es3
 from dxtb.components.dispersion import new_d4sc
@@ -32,6 +32,15 @@ from dxtb.components.field import new_efield, new_efield_grad
 from dxtb.components.solvation import new_solvation
 
 from ..conftest import DEVICE
+
+
+class CompFactoryProtocol(Protocol):
+    def __call__(
+        self,
+        numbers: Tensor,
+        param: Param,
+        device: torch.device | None = ...,
+    ) -> Interaction: ...
 
 
 @pytest.mark.parametrize(
@@ -43,14 +52,14 @@ from ..conftest import DEVICE
     ],
 )
 def test_fail_overwritten_cache(
-    comp_factory_par: tuple[Callable[[Tensor, Param], Interaction], Param],
+    comp_factory_par: tuple[CompFactoryProtocol, Param]
 ) -> None:
     numbers = torch.tensor([3, 1], device=DEVICE)
     positions = torch.tensor([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]], device=DEVICE)
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     comp_factory, par = comp_factory_par
-    comp = comp_factory(numbers, par)
+    comp = comp_factory(numbers, par, device=DEVICE)
     assert comp is not None
 
     # create cache
@@ -111,7 +120,7 @@ def test_fail_overwritten_cache_solvation() -> None:
         alpb=ALPB(alpb=True, kernel="p16", born_scale=1.0, born_offset=0.0)
     )
 
-    solv = new_solvation(numbers, par)
+    solv = new_solvation(numbers, par, device=DEVICE)
     assert solv is not None
 
     # create cache
@@ -119,7 +128,6 @@ def test_fail_overwritten_cache_solvation() -> None:
     _ = solv.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
 
     # manually overwrite cache
-
     solv.cache = InteractionCache()
 
     with pytest.raises(TypeError):
