@@ -73,6 +73,7 @@ from dxtb._src.constants import xtb
 from dxtb._src.param import Param, get_elem_param
 from dxtb._src.typing import (
     DD,
+    Any,
     Slicers,
     Tensor,
     TensorLike,
@@ -359,31 +360,36 @@ class ES2(Interaction):
 
         return mat
 
+    @override
     def get_atom_energy(self, charges: Tensor, cache: ES2Cache) -> Tensor:
         return (
-            torch.zeros_like(charges)
-            if self.shell_resolved
-            else 0.5 * charges * self.get_atom_potential(charges, cache)
+            0.5 * charges * self.get_monopole_atom_potential(cache, charges)
+            if not self.shell_resolved
+            else torch.zeros_like(charges)
         )
 
+    @override
     def get_shell_energy(self, charges: Tensor, cache: ES2Cache) -> Tensor:
         return (
-            0.5 * charges * self.get_shell_potential(charges, cache)
+            0.5 * charges * self.get_monopole_shell_potential(cache, charges)
             if self.shell_resolved
             else torch.zeros_like(charges)
         )
 
-    def get_atom_potential(self, charges: Tensor, cache: ES2Cache) -> Tensor:
+    @override
+    def get_monopole_atom_potential(
+        self, cache: ES2Cache, qat: Tensor, *_: Any, **__: Any
+    ) -> Tensor:
         """
         Calculate atom-resolved potential. Zero if this interaction is
         shell-resolved.
 
         Parameters
         ----------
-        charges : Tensor
-            Atom-resolved partial charges.
         cache : ES2Cache
             Cache object for second order electrostatics.
+        qat : Tensor
+            Atom-resolved partial charges.
 
         Returns
         -------
@@ -391,22 +397,25 @@ class ES2(Interaction):
             Atom-resolved potential.
         """
         return (
-            torch.zeros_like(charges)
+            torch.zeros_like(qat)
             if self.shell_resolved
-            else einsum("...ik,...k->...i", cache.mat, charges)
+            else einsum("...ik,...k->...i", cache.mat, qat)
         )
 
-    def get_shell_potential(self, charges: Tensor, cache: ES2Cache) -> Tensor:
+    @override
+    def get_monopole_shell_potential(
+        self, cache: ES2Cache, qsh: Tensor, *_: Any, **__: Any
+    ) -> Tensor:
         """
         Calculate shell-resolved potential. Zero if this interaction is only
         atom-resolved.
 
         Parameters
         ----------
-        charges : Tensor
-            Shell-resolved partial charges.
         cache : ES2Cache
             Cache object for second order electrostatics.
+        qsh : Tensor
+            Shell-resolved partial charges.
 
         Returns
         -------
@@ -414,11 +423,12 @@ class ES2(Interaction):
             Shell-resolved potential.
         """
         return (
-            einsum("...ik,...k->...i", cache.mat, charges)
+            einsum("...ik,...k->...i", cache.mat, qsh)
             if self.shell_resolved
-            else torch.zeros_like(charges)
+            else torch.zeros_like(qsh)
         )
 
+    @override
     def get_atom_gradient(
         self,
         charges: Tensor,
@@ -466,6 +476,7 @@ class ES2(Interaction):
             create_graph=create_graph,
         )
 
+    @override
     def get_shell_gradient(
         self,
         charges: Tensor,
@@ -1074,5 +1085,7 @@ def new_es2(
     )
     average = averaging_function[par.charge.effective.average]
     gexp = torch.tensor(par.charge.effective.gexp, **dd)
+
+    print(average)
 
     return ES2(hubbard, lhubbard, average, gexp, **dd)

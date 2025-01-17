@@ -128,6 +128,7 @@ class ElectricFieldGrad(Interaction):
         return self.cache
 
     # TODO: This is probably not correct...
+    @override
     def get_quadrupole_energy(
         self, charges: Tensor, cache: ElectricFieldCache
     ) -> Tensor:

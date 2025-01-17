@@ -74,6 +74,7 @@ from dxtb import IndexHelper
 from dxtb._src.param import Param, get_elem_param
 from dxtb._src.typing import (
     DD,
+    Any,
     Slicers,
     Tensor,
     TensorLike,
@@ -180,7 +181,6 @@ class ES3(Interaction):
         numbers: Tensor | None = None,
         positions: Tensor | None = None,
         ihelp: IndexHelper | None = None,
-        **_,
     ) -> ES3Cache:
         """
         Create restart data for individual interactions.
@@ -200,7 +200,7 @@ class ES3(Interaction):
         Note
         ----
         If the :class:`.ES3` interaction is evaluated within the
-        :class:`dxtb.components.InteractionList`, ``positions`` will be
+        :class:`dxtb.components. InteractionList`, ``positions`` will be
         passed as an argument, too. Hence, it is necessary to absorb
         the ``positions`` in the signature of the function (also see
         :meth:`dxtb.components.Interaction.get_cache`).
@@ -236,6 +236,7 @@ class ES3(Interaction):
 
         return self.cache
 
+    @override
     def get_atom_energy(self, charges: Tensor, cache: ES3Cache) -> Tensor:
         """
         Calculate the third-order electrostatic energy.
@@ -265,6 +266,7 @@ class ES3(Interaction):
             else torch.zeros_like(charges)
         )
 
+    @override
     def get_shell_energy(self, charges: Tensor, cache: ES3Cache) -> Tensor:
         """
         Calculate the third-order electrostatic energy.
@@ -287,17 +289,20 @@ class ES3(Interaction):
             else cache.hd * torch.pow(charges, 3.0) / 3.0
         )
 
-    def get_atom_potential(self, charges: Tensor, cache: ES3Cache) -> Tensor:
+    @override
+    def get_monopole_atom_potential(
+        self, cache: ES3Cache, qat: Tensor, *_: Any, **__: Any
+    ) -> Tensor:
         """
         Calculate the third-order electrostatic potential.
         Zero if this interaction is shell-resolved.
 
         Parameters
         ----------
+        qat : ES3Cache
+            Restart data for the interaction.
         charges : Tensor
             Atomic charges of all atoms.
-        cache : ES3Cache
-            Restart data for the interaction.
 
         Returns
         -------
@@ -305,19 +310,22 @@ class ES3(Interaction):
             Atom-wise third-order Coulomb interaction potential.
         """
         return (
-            cache.hd * torch.pow(charges, 2.0)
+            cache.hd * torch.pow(qat, 2.0)
             if self.shell_scale is None
-            else torch.zeros_like(charges)
+            else torch.zeros_like(qat)
         )
 
-    def get_shell_potential(self, charges: Tensor, cache: ES3Cache) -> Tensor:
+    @override
+    def get_monopole_shell_potential(
+        self, cache: ES3Cache, qsh: Tensor, *_: Any, **__: Any
+    ) -> Tensor:
         """
         Calculate the third-order electrostatic potential.
         Zero if this interaction is atom-resolved.
 
         Parameters
         ----------
-        charges : Tensor
+        qsh : Tensor
             Shell charges of all atoms.
         cache : ES3Cache
             Restart data for the interaction.
@@ -328,9 +336,9 @@ class ES3(Interaction):
             Shell-wise third-order Coulomb interaction potential.
         """
         return (
-            torch.zeros_like(charges)
+            torch.zeros_like(qsh)
             if self.shell_scale is None
-            else cache.hd * torch.pow(charges, 2.0)
+            else cache.hd * torch.pow(qsh, 2.0)
         )
 
 

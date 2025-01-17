@@ -47,7 +47,7 @@ from dxtb._src.components.classicals import (
 )
 from dxtb._src.components.interactions import Interaction, InteractionList
 from dxtb._src.components.interactions.container import Charges, Potential
-from dxtb._src.components.interactions.coulomb import new_es2, new_es3
+from dxtb._src.components.interactions.coulomb import new_aes2, new_es2, new_es3
 from dxtb._src.components.interactions.dispersion import new_d4sc
 from dxtb._src.components.interactions.field import efield as efield
 from dxtb._src.components.interactions.field import efieldgrad as efield_grad
@@ -570,6 +570,11 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
             if not {"all", "es2"} & set(self.opts.exclude)
             else None
         )
+        aes2 = (
+            new_aes2(numbers, par, **dd)
+            if not {"all", "aes2"} & set(self.opts.exclude)
+            else None
+        )
         es3 = (
             new_es3(numbers, par, **dd)
             if not {"all", "es3"} & set(self.opts.exclude)
@@ -582,14 +587,14 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         )
 
         if interaction is None:
-            self.interactions = InteractionList(es2, es3, d4sc, **dd)
+            self.interactions = InteractionList(es2, aes2, es3, d4sc, **dd)
         elif isinstance(interaction, Interaction):
             self.interactions = InteractionList(
-                es2, es3, d4sc, interaction, **dd
+                es2, aes2, es3, d4sc, interaction, **dd
             )
         elif isinstance(interaction, (list, tuple)):
             self.interactions = InteractionList(
-                es2, es3, d4sc, *interaction, **dd
+                es2, aes2, es3, d4sc, *interaction, **dd
             )
         else:
             raise TypeError(

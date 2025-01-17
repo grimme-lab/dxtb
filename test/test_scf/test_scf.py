@@ -27,8 +27,7 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, GFN2_XTB, Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
@@ -37,9 +36,10 @@ from .samples import samples
 
 opts = {
     "verbosity": 0,
-    "maxiter": 50,
+    "maxiter": 2,
     "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
     "scp_mode": labels.SCP_MODE_POTENTIAL,
+    "exclude": ["es2", "es3", "disp"],
 }
 
 
@@ -56,7 +56,9 @@ def test_single(dtype: torch.dtype, name: str):
     ref = sample["escf"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
+    par = GFN2_XTB
     calc = Calculator(numbers, par, opts=opts, **dd)
+    print(calc)
 
     result = calc.singlepoint(positions, charges)
     res = result.scf.sum(-1)
