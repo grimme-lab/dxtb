@@ -27,11 +27,10 @@ import torch
 from tad_mctc.math import einsum
 
 from dxtb import IndexHelper
-from dxtb._src.typing import Slicers, Tensor, override
+from dxtb._src.typing import Any, Slicers, Tensor, override
 from dxtb._src.typing.exceptions import DeviceError, DtypeError
 
 from ..base import Interaction, InteractionCache
-from ..container import Charges
 
 __all__ = ["ElectricField", "LABEL_EFIELD", "new_efield"]
 
@@ -226,16 +225,14 @@ class ElectricField(Interaction):
         return einsum("...ix,...ix->...i", -cache.vdp, charges)
 
     @override
-    def get_atom_potential(
-        self, _: Charges, cache: ElectricFieldCache
+    def get_monopole_atom_potential(
+        self, cache: ElectricFieldCache, *_: Any, **__: Any
     ) -> Tensor:
         """
         Calculate the electric field potential.
 
         Parameters
         ----------
-        charges : Tensor
-            Atomic charges of all atoms (not required).
         cache : ElectricFieldCache
             Restart data for the interaction.
 
@@ -247,16 +244,14 @@ class ElectricField(Interaction):
         return -cache.vat
 
     @override
-    def get_dipole_potential(
-        self, _: Charges, cache: ElectricFieldCache
+    def get_dipole_atom_potential(
+        self, cache: ElectricFieldCache, *_: Any, **__: Any
     ) -> Tensor:
         """
         Calculate the electric field dipole potential.
 
         Parameters
         ----------
-        charges : Tensor
-            Atomic charges of all atoms (not required).
         cache : ElectricFieldCache
             Restart data for the interaction.
 

@@ -157,23 +157,45 @@ class Interaction(Component):
 
         # monopole potential: shell-resolved
         qsh = ihelp.reduce_orbital_to_shell(charges.mono)
-        vsh = self.get_shell_potential(qsh, cache)
+        vsh = self.get_monopole_shell_potential(cache, qsh)
 
         # monopole potential: atom-resolved
         qat = ihelp.reduce_shell_to_atom(qsh)
-        vat = self.get_atom_potential(qat, cache)
+        vat = self.get_monopole_atom_potential(
+            cache, qat, qdp=charges.dipole, qqp=charges.quad
+        )
 
         # spread to orbital-resolution
         vsh += ihelp.spread_atom_to_shell(vat)
         vmono = ihelp.spread_shell_to_orbital(vsh)
 
         # multipole potentials
-        vdipole = self.get_dipole_potential(charges, cache)
-        vquad = self.get_quadrupole_potential(charges, cache)
+        vdipole = self.get_dipole_atom_potential(
+            cache, qat, charges.dipole, charges.quad
+        )
+        vquad = self.get_quadrupole_atom_potential(
+            cache, qat, charges.dipole, charges.quad
+        )
+        print()
+        print()
+        print(qat)
+        print()
+        print(charges.dipole)
+
+        print()
+        print(vat)
+        print()
+        print(vdipole)
 
         return Potential(vmono, dipole=vdipole, quad=vquad, label=self.label)
 
-    def get_shell_potential(self, charges: Tensor, *_) -> Tensor:
+    def get_monopole_shell_potential(
+        self,
+        cache: ComponentCache,
+        qsh: Tensor,
+        *_: Any,
+        **__: Any,
+    ) -> Tensor:
         """
         Compute the potential from the charges, all quantities are shell-resolved.
 
@@ -182,7 +204,9 @@ class Interaction(Component):
 
         Parameters
         ----------
-        charges : Tensor
+        cache : ComponentCache
+            Restart data for the interaction.
+        qsh : Tensor
             Shell-resolved partial charges.
 
         Returns
@@ -190,9 +214,18 @@ class Interaction(Component):
         Tensor
             Potential vector for each atom partial charge.
         """
-        return torch.zeros_like(charges)
+        return torch.zeros_like(qsh)
 
-    def get_atom_potential(self, charges: Tensor, *_) -> Tensor:
+    # pylint: disable=unused-argument
+    def get_monopole_atom_potential(
+        self,
+        cache: ComponentCache,
+        qat: Tensor,
+        qdp: Tensor | None = None,
+        qqp: Tensor | None = None,
+        *_: Any,
+        **__: Any,
+    ) -> Tensor:
         """
         Compute the potential from the charges, all quantities are atom-resolved.
 
@@ -201,17 +234,32 @@ class Interaction(Component):
 
         Parameters
         ----------
-        charges : Tensor
+        cache : ComponentCache
+            Restart data for the interaction.
+        qat : Tensor
             Atom-resolved partial charges.
+        qdp : Tensor
+            Atom-resolved dipole moments.
+        qqp : Tensor
+            Atom-resolved quadrupole moments.
 
         Returns
         -------
         Tensor
             Atom-resolved potential vector for each atom partial charge.
         """
-        return torch.zeros_like(charges)
+        return torch.zeros_like(qat)
 
-    def get_dipole_potential(self, *_) -> Tensor | None:
+    # pylint: disable=unused-argument
+    def get_dipole_atom_potential(
+        self,
+        cache: ComponentCache,
+        qat: Tensor,
+        qdp: Tensor | None = None,
+        qqp: Tensor | None = None,
+        *_: Any,
+        **__: Any,
+    ) -> Tensor | None:
         """
         Compute the dipole potential. All quantities are atom-resolved.
 
@@ -220,8 +268,14 @@ class Interaction(Component):
 
         Parameters
         ----------
-        charges : Tensor
+        cache : ComponentCache
+            Restart data for the interaction.
+        qat : Tensor
             Atom-resolved partial charges.
+        qdp : Tensor
+            Atom-resolved dipole moments.
+        qqp : Tensor
+            Atom-resolved quadrupole moments.
 
         Returns
         -------
@@ -230,7 +284,15 @@ class Interaction(Component):
         """
         return None
 
-    def get_quadrupole_potential(self, *_) -> Tensor | None:
+    def get_quadrupole_atom_potential(
+        self,
+        cache: ComponentCache,
+        qat: Tensor,
+        qdp: Tensor | None = None,
+        qqp: Tensor | None = None,
+        *_: Any,
+        **__: Any,
+    ) -> Tensor | None:
         """
         Compute the quadrupole potential. All quantities are atom-resolved.
 
@@ -239,8 +301,14 @@ class Interaction(Component):
 
         Parameters
         ----------
-        charges : Tensor
+        cache : ComponentCache
+            Restart data for the interaction.
+        qat : Tensor
             Atom-resolved partial charges.
+        qdp : Tensor
+            Atom-resolved dipole moments.
+        qqp : Tensor
+            Atom-resolved quadrupole moments.
 
         Returns
         -------
@@ -430,7 +498,7 @@ class Interaction(Component):
 
         return gsh + gat
 
-    def get_shell_gradient(self, _: Any, positions: Tensor, *__: Any) -> Tensor:
+    def get_atom_gradient(self, _: Any, positions: Tensor, *__: Any) -> Tensor:
         """
         Return zero gradient.
 
@@ -441,7 +509,7 @@ class Interaction(Component):
         - the gradient of the interaction is indeed zero and thus requires no
           gradient implementation (one can, however, implement a method that
           returns zeros to make this more obvious)
-        - the interaction always uses atom-resolved charges and shell-resolved
+        - the interaction always uses shell-resolved charges and atom-resolved
           charges are never required
 
         Parameters
@@ -456,7 +524,7 @@ class Interaction(Component):
         """
         return torch.zeros_like(positions)
 
-    def get_atom_gradient(self, _: Any, positions: Tensor, *__: Any) -> Tensor:
+    def get_shell_gradient(self, _: Any, positions: Tensor, *__: Any) -> Tensor:
         """
         Return zero gradient.
 
@@ -467,7 +535,7 @@ class Interaction(Component):
         - the gradient of the interaction is indeed zero and thus requires no
           gradient implementation (one can, however, implement a method that
           returns zeros to make this more obvious)
-        - the interaction always uses shell-resolved charges and atom-resolved
+        - the interaction always uses atom-resolved charges and shell-resolved
           charges are never required
 
         Parameters
