@@ -61,7 +61,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 def requires_positions_grad(
-    func: Callable[..., Tensor]
+    func: Callable[..., Tensor],
 ) -> Callable[..., Tensor]:
     @wraps(func)
     def wrapper(
