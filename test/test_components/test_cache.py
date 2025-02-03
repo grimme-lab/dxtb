@@ -42,7 +42,7 @@ from ..conftest import DEVICE
     ],
 )
 def test_fail_overwritten_cache(
-    comp_factory_par: tuple[Callable[[Tensor, Param], Classical], Param]
+    comp_factory_par: tuple[Callable[[Tensor, Param], Classical], Param],
 ) -> None:
     numbers = torch.tensor([3, 1], device=DEVICE)
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
