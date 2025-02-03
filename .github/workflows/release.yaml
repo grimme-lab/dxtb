@@ -44,6 +44,7 @@ jobs:
       - name: Upload wheel as artifact
         uses: actions/upload-artifact@v4
         with:
+          name: dxtb-wheel
           path: dist/*.whl
 
   sdist:
@@ -60,6 +61,7 @@ jobs:
       - name: Upload source distribution as artifact
         uses: actions/upload-artifact@v4
         with:
+          name: dxtb-sdist
           path: dist/*.tar.gz
 
   upload_test_pypi:
@@ -73,7 +75,6 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: artifact
           path: dist
 
       - name: Publish to Test PyPI
