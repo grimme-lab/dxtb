@@ -28,7 +28,7 @@ from abc import abstractmethod
 import torch
 
 from dxtb import IndexHelper
-from dxtb._src.typing import Any, Tensor
+from dxtb._src.typing import Any, Literal, Tensor
 
 from ...classicals import Classical, ClassicalCache
 
@@ -49,13 +49,22 @@ class Dispersion(Classical):
     charge: Tensor | None
     """Total charge of the system."""
 
-    __slots__ = ["numbers", "param", "charge"]
+    ref_charges: Literal["eeq", "gfn2"]
+    """
+    Reference charges for the dispersion model.
+    This is only required for charge-dependent models.
+
+    :default: ``"eeq"``
+    """
+
+    __slots__ = ["numbers", "param", "charge", "ref_charges"]
 
     def __init__(
         self,
         numbers: Tensor,
         param: dict[str, Tensor],
         charge: Tensor | None = None,
+        ref_charges: Literal["eeq", "gfn2"] = "eeq",
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
@@ -63,6 +72,7 @@ class Dispersion(Classical):
         self.numbers = numbers
         self.param = param
         self.charge = charge
+        self.ref_charges = ref_charges
 
     @abstractmethod
     def get_cache(

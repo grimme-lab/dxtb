@@ -89,7 +89,16 @@ def test_batch(dtype: torch.dtype) -> None:
     if disp is None:
         assert False
 
-    cache = disp.get_cache(numbers)
+    # Add kwargs explicitly for coverage
+    model = d4.model.D4Model(numbers, **dd)
+    rcov = d4.data.COV_D3.to(**dd)[numbers]
+    r4r2 = d4.data.R4R2.to(**dd)[numbers]
+    cutoff = d4.cutoff.Cutoff(**dd)
+
+    cache = disp.get_cache(
+        numbers, model=model, rcov=rcov, r4r2=r4r2, cutoff=cutoff
+    )
+
     edisp = disp.get_energy(positions, cache)
     assert edisp.dtype == dtype
     assert pytest.approx(edisp.cpu()) == energy.cpu()

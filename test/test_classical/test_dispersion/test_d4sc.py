@@ -30,6 +30,7 @@ from tad_mctc.batch import pack
 from dxtb import GFN2_XTB, Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
+from dxtb.components.dispersion import new_dispersion
 
 from ...conftest import DEVICE
 from .samples import samples
@@ -48,7 +49,7 @@ opts = {
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist)
-def test_single(dtype: torch.dtype, name: str):
+def test_single(dtype: torch.dtype, name: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
@@ -72,7 +73,7 @@ def test_single(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", slist)
 @pytest.mark.parametrize("name2", ["LiH", "MB16_43_01"])
-def test_batch(dtype: torch.dtype, name1: str, name2: str):
+def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
@@ -104,3 +105,26 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
 
     edisp = d4sc.get_energy(result.charges, cache, calc.ihelp)
     assert pytest.approx(ref.cpu(), abs=10 * tol, rel=tol) == edisp.cpu()
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", slist)
+def test_classical(dtype: torch.dtype, name: str) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+    tol = sqrt(torch.finfo(dtype).eps)
+
+    sample = samples[name]
+    numbers = sample["numbers"].to(DEVICE)
+    positions = sample["positions"].to(**dd)
+    ref = sample["edisp_d4atm"].to(**dd)
+    charges = torch.tensor(0.0, **dd)
+
+    disp = new_dispersion(
+        numbers, GFN2_XTB, charge=charges, ref_charges="gfn2", **dd
+    )
+    assert disp is not None
+
+    cache = disp.get_cache(numbers=numbers, ihelp=None)
+    e = disp.get_energy(positions, cache)
+
+    assert pytest.approx(ref.cpu(), abs=tol) == e.cpu()

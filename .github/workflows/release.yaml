@@ -20,35 +20,31 @@ on:
   push:
     branches:
       - main
+      - master
     tags:
       - "v*"
+    paths-ignore:
+      - "doc*/**"
+      - "./*.ya?ml"
+      - "**/*.md"
+      - "**/*.rst"
 
   pull_request:
-    branches:
-      - main
+    paths-ignore:
+      - "doc*/**"
+      - "./*.ya?ml"
+      - "**/*.md"
+      - "**/*.rst"
 
   workflow_dispatch:
 
 jobs:
-  wheel:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Build wheel (bdist)
-        run: pipx run build --wheel
-
-      - name: Upload wheel as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dxtb-wheel
-          path: dist/*.whl
-
   sdist:
+    permissions:
+      contents: read
+
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -61,21 +57,89 @@ jobs:
       - name: Upload source distribution as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dxtb-sdist
-          path: dist/*.tar.gz
+          name: ${{ github.event.repository.name }}-sdist
+          path: dist
+
+  wheel:
+    permissions:
+      contents: read
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Build wheel (bdist)
+        run: pipx run build --wheel
+
+      - name: Upload wheel as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name }}-wheel
+          path: dist
+
+  install_wheel:
+    needs: [wheel]
+
+    permissions:
+      contents: read
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Show downloaded artifacts
+        run: ls -lcahFR --color=auto dist
+
+      - name: Install wheel
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install dist/*.whl
+
+      - name: Determine package name
+        run: |
+          name=$(echo "${REPO_NAME}" | tr '-' '_')
+          echo "PKG_NAME=$name" >> "$GITHUB_ENV"
+          echo "PKG_NAME is set to '${name}'."
+        env:
+          REPO_NAME: ${{ github.event.repository.name }}
+
+      - name: Test import
+        run: python -c "import ${PKG_NAME}; print(${PKG_NAME}.__version__)"
+        env:
+          PKG_NAME: ${{ env.PKG_NAME }}
 
   upload_test_pypi:
     needs: [sdist, wheel]
+
     runs-on: ubuntu-latest
+
     environment: release
+
     permissions:
+      contents: read
       id-token: write
+
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           path: dist
+          merge-multiple: true
 
       - name: Publish to Test PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -84,17 +148,22 @@ jobs:
 
   upload_pypi:
     needs: [sdist, wheel, upload_test_pypi]
+
     runs-on: ubuntu-latest
+
     environment: release
+
     permissions:
+      contents: read
       id-token: write
+
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: artifact
           path: dist
+          merge-multiple: true
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

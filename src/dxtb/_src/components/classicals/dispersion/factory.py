@@ -28,7 +28,7 @@ import warnings
 import torch
 
 from dxtb._src.param import Param
-from dxtb._src.typing import DD, Tensor, get_default_dtype
+from dxtb._src.typing import DD, Literal, Tensor, get_default_dtype
 from dxtb._src.typing.exceptions import ParameterWarning
 from dxtb._src.utils import convert_float_tensor
 
@@ -43,6 +43,7 @@ def new_dispersion(
     numbers: Tensor,
     par: Param,
     charge: Tensor | None = None,
+    ref_charges: Literal["eeq", "gfn2"] = "eeq",
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> Dispersion | None:
@@ -55,6 +56,9 @@ def new_dispersion(
         Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
     par : Param
         Representation of an extended tight-binding model.
+    ref_charges : Literal["eeq", "gfn2"], optional
+        Reference charges for the dispersion model. This is only required for
+        charge-dependent models. Default is ``"eeq"``.
     device : torch.device | None, optional
         Device to store the tensor on. If ``None`` (default), the default
         device is used.
@@ -109,14 +113,29 @@ def new_dispersion(
             **dd,
         )
 
+        if isinstance(par.dispersion.d4.sc, bool) is False:
+            raise ValueError("D4 self-consistency flag is not a boolean.")
+
         # only non-self-consistent D4 is a classical component
         if par.dispersion.d4.sc is False:
             if charge is None:
                 raise ValueError("The total charge is required for DFT-D4.")
 
             return DispersionD4(
-                numbers, param, charge=charge, device=device, dtype=dtype
+                numbers,
+                param,
+                ref_charges=ref_charges,
+                charge=charge,
+                device=device,
+                dtype=dtype,
             )
+
+        # Classical part of self-consistent D4 is only ATM term
+        param["s6"] = torch.tensor(0.0, **dd)
+        param["s8"] = torch.tensor(0.0, **dd)
+        return DispersionD4(
+            numbers, param, ref_charges="gfn2", device=device, dtype=dtype
+        )
 
     if par.dispersion.d3 is not None and par.dispersion.d4 is not None:
         raise ValueError("Parameters for both D3 and D4 found. Please decide.")
