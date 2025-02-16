@@ -149,7 +149,8 @@ class Driver:
 
         # setup config and write to output
         config = Config.from_args(args)
-        io.OutputHandler.write(config.info())
+        io.OutputHandler.write(config.info(), v=5)
+        io.OutputHandler.write_stdout("", v=5)
 
         # Broyden is not supported in full SCF mode
         if (

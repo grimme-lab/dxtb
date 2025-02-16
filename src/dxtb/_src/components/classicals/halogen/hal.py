@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import torch
 from tad_mctc.batch import pack
+from tad_mctc.convert import any_to_tensor
 from tad_mctc.data.radii import ATOMIC as ATOMIC_RADII
 
 from dxtb import IndexHelper
@@ -87,8 +88,12 @@ class Halogen(Classical):
     bond_strength: Tensor
     """Halogen bond strengths for unique species."""
 
-    cutoff: Tensor
-    """Real space cutoff for halogen bonding interactions (default: 20.0)."""
+    cutoff: Tensor | float | int
+    """
+    Real space cutoff for halogen bonding interactions.
+
+    :default: :data:`xtb.DEFAULT_XB_CUTOFF`
+    """
 
     __slots__ = ["damp", "rscale", "bond_strength", "cutoff"]
 
@@ -97,16 +102,16 @@ class Halogen(Classical):
         damp: Tensor,
         rscale: Tensor,
         bond_strength: Tensor,
-        cutoff: Tensor = torch.tensor(xtb.DEFAULT_XB_CUTOFF),
+        cutoff: Tensor | float | int = xtb.DEFAULT_XB_CUTOFF,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
         super().__init__(device, dtype)
 
-        self.damp = damp.to(self.device).type(self.dtype)
-        self.rscale = rscale.to(self.device).type(self.dtype)
-        self.bond_strength = bond_strength.to(self.device).type(self.dtype)
-        self.cutoff = cutoff.to(self.device).type(self.dtype)
+        self.damp = damp.to(**self.dd)
+        self.rscale = rscale.to(**self.dd)
+        self.bond_strength = bond_strength.to(**self.dd)
+        self.cutoff = any_to_tensor(cutoff, **self.dd)
 
         # element numbers of halogens and bases
         self.halogens = [17, 35, 53, 85]

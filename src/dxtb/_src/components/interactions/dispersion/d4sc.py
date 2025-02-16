@@ -135,6 +135,32 @@ class DispersionD4SC(Interaction):
     param: dict[str, Tensor]
     """Dispersion parameters."""
 
+    model: d4.model.D4Model
+    """Model for the D4 dispersion correction."""
+
+    rcov: Tensor
+    """Covalent radii of all atoms."""
+
+    r4r2: Tensor
+    """R4/R2 ratio of all atoms."""
+
+    cutoff: d4.cutoff.Cutoff
+    """Real-space cutoff for the D4 dispersion correction."""
+
+    counting_function: d4.typing.CountingFunction
+    """
+    Counting function for the coordination number.
+
+    :default: :func:`d4.ncoord.erf_count`
+    """
+
+    damping_function: d4.typing.DampingFunction
+    """
+    Damping function for the dispersion correction.
+
+    :default: :func:`d4.damping.rational_damping`
+    """
+
     __slots__ = [
         "param",
         "model",

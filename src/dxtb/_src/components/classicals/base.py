@@ -21,9 +21,9 @@ Classical contributions (ABC)
 This module contains the abstract base class for all classical (i.e., non-
 selfconsistent or non-density-dependent) energy terms.
 
-Every contribution contains a class:`dxtb.components.ComponentCache` that holds
-position-independent variables. Therefore, the positions must always be
-supplied to the ``get_energy`` (or ``get_grad``) method.
+Every contribution contains a :class:`dxtb.components.base.ComponentCache` that
+holds position-independent variables. Therefore, the positions must always be
+supplied to the :meth:`get_energy` (or :meth:`get_grad``) method.
 """
 
 from __future__ import annotations

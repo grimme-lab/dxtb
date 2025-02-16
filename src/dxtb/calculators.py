@@ -93,7 +93,8 @@ Calculators: Get Properties
 
 The calculator can be used to compute energies, forces, dipole moments and
 other properties. The properties are computed by calling the respective
-:meth:`get_<property>` method, just as in ASE.
+:meth:`get_<property>` method, just as in
+`ASE <https://wiki.fysik.dtu.dk/ase/>`_.
 
 Depending on which calculator you choose, the properties are calculated using
 analytical, autograd, or numerical derivatives. The default uses automatic

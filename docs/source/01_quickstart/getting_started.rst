@@ -73,7 +73,8 @@ use corresponding getters :meth:`~dxtb.Calculator.get_energy`:
 
     energy = calc.get_energy(positions, charge=0, spin=0)
 
-We recommend using the getters, as they provide the familiar ASE-like interface.
+We recommend using the getters, as they provide the familiar
+`ASE <https://wiki.fysik.dtu.dk/ase/>`_-like interface.
 
 
 Gradients
@@ -195,4 +196,4 @@ counterpart, e.g., :meth:`~dxtb.Calculator.forces_numerical`.
     Hence, a subsequent :meth:`~dxtb.Calculator.get_forces` does not
     necessitate an additional calculation.
 
-For more details, please see the :ref:`here <indepth_calculators>`.
+For more details, please see :ref:`here <indepth_calculators>`.

@@ -80,7 +80,10 @@ class DispersionD3Cache(ClassicalCache):
 
 
 class DispersionD3(Dispersion):
-    """Representation of the DFT-D3(BJ) dispersion correction."""
+    """
+    Representation of the DFT-D3(BJ) dispersion correction
+    (:class:`.DispersionD3`).
+    """
 
     @override
     def get_cache(

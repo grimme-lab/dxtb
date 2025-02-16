@@ -94,8 +94,13 @@ def requires_efield(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     ) -> Tensor:
         if efield.LABEL_EFIELD not in self.interactions.labels:
             raise RuntimeError(
-                f"{func.__name__} requires an electric field. Add the "
-                f"'{efield.LABEL_EFIELD}' interaction to the Calculator."
+                f"'{func.__name__}' requires an electric field."
+                f"\nAdd the '{efield.LABEL_EFIELD}' interaction to the "
+                "Calculator.\n\nExample:\n"
+                "field = torch.tensor([0.0, 0.0, 0.0], **dd)\n"
+                "ef = dxtb.components.field.new_efield(field, **dd)\n"
+                "calc = dxtb.calculators.GFN1Calculator(numbers, "
+                "interaction=ef, **dd)"
             )
         return func(self, positions, chrg, spin, *args, **kwargs)
 
@@ -134,9 +139,13 @@ def requires_efg(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
     ) -> Tensor:
         if efieldgrad.LABEL_EFIELD_GRAD not in self.interactions.labels:
             raise RuntimeError(
-                f"{func.__name__} requires an electric field. Add the "
-                f"'{efieldgrad.LABEL_EFIELD_GRAD}' interaction to the "
-                "Calculator."
+                f"'{func.__name__}' requires an electric field gradient."
+                f"\nAdd the '{efieldgrad.LABEL_EFIELD_GRAD}' interaction to "
+                "the Calculator.\n\nExample:\n"
+                "field_grad = torch.zeros((3, 3), **dd)\n"
+                "efg = dxtb.components.field.new_efield_grad(field_grad, **dd)"
+                "\ncalc = dxtb.calculators.GFN1Calculator(numbers, "
+                "interaction=efg, **dd)"
             )
         return func(self, positions, chrg, spin, *args, **kwargs)
 

@@ -130,7 +130,7 @@ class Component(TensorLike):
         .. code-block:: python
 
             import torch
-            from dxtb._src.components.interactions.field import ElectricField
+            from dxtb.components.field import ElectricField
 
             ef = ElectricField(field=torch.tensor([0.0, 0.0, 0.0]))
             ef.update(field=torch.tensor([1.0, 0.0, 0.0]))
@@ -152,8 +152,9 @@ class Component(TensorLike):
 
     def reset(self) -> None:
         """
-        Reset the tensor attributes of the `Component` instance to their
-        original states or to specified values.
+        Reset the tensor attributes of the
+        :class:`dxtb.components.base.Component` instance to their original
+        states or to specified values.
 
         This method iterates through the attributes defined in ``__slots__`` and
         resets any tensor attributes to a detached clone of their original
@@ -165,7 +166,7 @@ class Component(TensorLike):
         .. code-block:: python
 
             import torch
-            from dxtb._src.components.interactions.external.field import ElectricField
+            from dxtb.components.base.field import ElectricField
 
             ef = ElectricField(field=torch.tensor([0.0, 0.0, 0.0]))
             ef.reset()

@@ -155,6 +155,8 @@ class ES3(Interaction):
 
     In GFN2-xTB, this is a tensor of shape ``(3,)`` containing the scaling
     factors for the s, p, and d shells.
+
+    :default: ``None``
     """
 
     __slots__ = ["hubbard_derivs", "shell_scale"]
