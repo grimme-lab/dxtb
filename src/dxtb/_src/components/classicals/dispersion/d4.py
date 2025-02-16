@@ -116,36 +116,41 @@ class DispersionD4(Dispersion):
 
         self._cachevars = cachvars
 
-        model: d4.model.D4Model = (
-            kwargs.pop(
-                "model",
-                d4.model.D4Model(numbers, **self.dd),
+        model = kwargs.pop("model", None)
+        if model is not None and not isinstance(model, d4.model.D4Model):
+            raise TypeError("D4: Model is not of type 'd4.model.D4Model'.")
+        if model is None:
+            model = d4.model.D4Model(
+                numbers, ref_charges=self.ref_charges, **self.dd
             )
-            .type(self.dtype)
-            .to(self.device)
-        )
-        rcov: Tensor = (
-            kwargs.pop(
-                "rcov",
-                d4.data.COV_D3.to(**self.dd)[numbers],
-            )
-            .type(self.dtype)
-            .to(self.device)
-        )
+        else:
+            model = model.type(self.dtype).to(self.device)
+
+        rcov = kwargs.pop("rcov", None)
+        if rcov is not None and not isinstance(rcov, Tensor):
+            raise TypeError("D4: 'rcov' is not of type 'Tensor'.")
+        if rcov is None:
+            rcov = d4.data.COV_D3.to(**self.dd)[numbers]
+        else:
+            rcov = rcov.to(**self.dd)
+
+        r4r2 = kwargs.pop("r4r2", None)
+        if r4r2 is not None and not isinstance(r4r2, Tensor):
+            raise TypeError("D4: 'r4r2' is not of type 'Tensor'.")
+        if r4r2 is None:
+            r4r2 = d4.data.R4R2.to(**self.dd)[numbers]
+        else:
+            r4r2 = r4r2.to(**self.dd)
+
+        cutoff = kwargs.pop("cutoff", None)
+        if cutoff is not None and not isinstance(cutoff, d4.cutoff.Cutoff):
+            raise TypeError("D4: 'cutoff' is not of type 'd4.cutoff.Cutoff'.")
+        if cutoff is None:
+            cutoff = d4.cutoff.Cutoff(**self.dd)
+        else:
+            cutoff = cutoff.type(self.dtype).to(self.device)
+
         q = kwargs.pop("q", None)
-        r4r2: Tensor = (
-            kwargs.pop(
-                "r4r2",
-                d4.data.R4R2.to(**self.dd)[numbers],
-            )
-            .type(self.dtype)
-            .to(self.device)
-        )
-        cutoff: d4.cutoff.Cutoff = (
-            (kwargs.pop("cutoff", d4.cutoff.Cutoff(**self.dd)))
-            .type(self.dtype)
-            .to(self.device)
-        )
 
         cf = kwargs.pop("counting_function", d4.ncoord.erf_count)
         df = kwargs.pop("damping_function", d4.damping.rational_damping)

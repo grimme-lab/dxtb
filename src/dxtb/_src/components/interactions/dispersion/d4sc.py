@@ -71,10 +71,7 @@ class DispersionD4SCCache(InteractionCache, TensorLike):
     except for multiplication with C6 and C8.
     """
 
-    __slots__ = [
-        "__store",
-        "cn",
-    ]
+    __slots__ = ["__store", "cn", "dispmat"]
 
     def __init__(
         self,
