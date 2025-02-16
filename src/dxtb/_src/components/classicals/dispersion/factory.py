@@ -113,6 +113,9 @@ def new_dispersion(
             **dd,
         )
 
+        if isinstance(par.dispersion.d4.sc, bool) is False:
+            raise ValueError("D4 self-consistency flag is not a boolean.")
+
         # only non-self-consistent D4 is a classical component
         if par.dispersion.d4.sc is False:
             if charge is None:
@@ -128,12 +131,11 @@ def new_dispersion(
             )
 
         # Classical part of self-consistent D4 is only ATM term
-        if par.dispersion.d4.sc is True:
-            param["s6"] = torch.tensor(0.0, **dd)
-            param["s8"] = torch.tensor(0.0, **dd)
-            return DispersionD4(
-                numbers, param, ref_charges="gfn2", device=device, dtype=dtype
-            )
+        param["s6"] = torch.tensor(0.0, **dd)
+        param["s8"] = torch.tensor(0.0, **dd)
+        return DispersionD4(
+            numbers, param, ref_charges="gfn2", device=device, dtype=dtype
+        )
 
     if par.dispersion.d3 is not None and par.dispersion.d4 is not None:
         raise ValueError("Parameters for both D3 and D4 found. Please decide.")
