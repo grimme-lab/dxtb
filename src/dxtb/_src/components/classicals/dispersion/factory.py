@@ -28,7 +28,7 @@ import warnings
 import torch
 
 from dxtb._src.param import Param
-from dxtb._src.typing import DD, Tensor, get_default_dtype, Literal
+from dxtb._src.typing import DD, Literal, Tensor, get_default_dtype
 from dxtb._src.typing.exceptions import ParameterWarning
 from dxtb._src.utils import convert_float_tensor
 

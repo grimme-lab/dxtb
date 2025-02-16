@@ -28,7 +28,7 @@ from abc import abstractmethod
 import torch
 
 from dxtb import IndexHelper
-from dxtb._src.typing import Any, Tensor, Literal
+from dxtb._src.typing import Any, Literal, Tensor
 
 from ...classicals import Classical, ClassicalCache
 
@@ -53,7 +53,7 @@ class Dispersion(Classical):
     """
     Reference charges for the dispersion model.
     This is only required for charge-dependent models.
-    
+
     :default: ``"eeq"``
     """
 
