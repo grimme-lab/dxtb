@@ -8,7 +8,7 @@ This is a list of literature that is relevant to the project.
 Main Reference
 --------------
 
-- M. Friede, C. Hölzer, S. Ehlert, S. Grimme, *J. Chem. Phys.*, **2024**, 161, 062501. ([DOI](https://doi.org/10.1063/5.0216715))
+- M. Friede, C. Hölzer, S. Ehlert, S. Grimme, *J. Chem. Phys.*, **2024**, 161, 062501. (`DOI: 10.1063/5.0216715 <https://doi.org/10.1063/5.0216715>`__)
 
 .. code-block:: bibtex
 

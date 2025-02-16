@@ -70,7 +70,7 @@ With *dxtb*, we provide a re-implementation of the xTB methods in PyTorch, which
 
 If you use *dxtb* in your research, please cite the following paper:
 
-- M. Friede, C. Hölzer, S. Ehlert, S. Grimme, *dxtb -- An Efficient and Fully Differentiable Framework for Extended Tight-Binding*, *J. Chem. Phys.*, **2024**
+- M. Friede, C. Hölzer, S. Ehlert, S. Grimme, *dxtb -- An Efficient and Fully Differentiable Framework for Extended Tight-Binding*, *J. Chem. Phys.*, **2024**, 161, 062501. (`DOI: 10.1063/5.0216715 <https://doi.org/10.1063/5.0216715>`__)
 
 .. admonition:: BibTeX
    :class: toggle

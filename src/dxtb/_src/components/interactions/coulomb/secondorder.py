@@ -157,21 +157,31 @@ class ES2(Interaction):
 
     lhubbard: Tensor | None
     """
-    Shell-resolved scaling factors for Hubbard parameters (default: ``None``,
-    i.e., no shell resolution).
+    Shell-resolved scaling factors for Hubbard parameters.
+
+    :default: ``None`` (i.e., no shell resolution).
     """
 
     average: AveragingFunction
     """
-    Function to use for averaging the Hubbard parameters (default:
-    :func:`dxtb.components.interactions.coulomb.average.harmonic_average`).
+    Function to use for averaging the Hubbard parameters.
+
+    :default: :func:`dxtb._src.components.interactions.average.harmonic_average`
     """
 
     gexp: Tensor
-    """Exponent of the second-order Coulomb interaction (default: 2.0)."""
+    """
+    Exponent of the second-order Coulomb interaction.
+
+    :default: 2.0
+    """
 
     shell_resolved: bool
-    """Electrostatics is shell-resolved (default: ``True``)."""
+    """
+    Whether electrostatics is shell-resolved.
+
+    :default: ``True``
+    """
 
     __slots__ = [
         "hubbard",
@@ -792,7 +802,7 @@ def coulomb_matrix_shell(
         Exponent of the second-order Coulomb interaction (default: 2.0).
     average: AveragingFunction
         Function to use for averaging the Hubbard parameters (default:
-        :func:`dxtb.components.interactions.coulomb.average.harmonic_average`).
+        :func:`dxtb._src.components.interactions.average.harmonic_average`).
 
     Returns
     -------

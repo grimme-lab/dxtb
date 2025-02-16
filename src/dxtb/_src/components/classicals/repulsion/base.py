@@ -62,6 +62,7 @@ from abc import abstractmethod
 import torch
 from tad_mctc import storch
 from tad_mctc.batch import real_pairs
+from tad_mctc.convert import any_to_tensor
 
 from dxtb import IndexHelper
 from dxtb._src.constants import xtb
@@ -141,8 +142,12 @@ class BaseRepulsion(Classical):
     the repulsion energy for light elements, i.e., H and He (only GFN2).
     """
 
-    cutoff: float
-    """Real space cutoff for repulsion interactions (default: 25.0)."""
+    cutoff: Tensor | float | int
+    """
+    Real space cutoff for repulsion interactions.
+
+    :default: :data:`xtb.DEFAULT_REPULSION_CUTOFF`
+    """
 
     __slots__ = ["arep", "zeff", "kexp", "klight", "cutoff"]
 
@@ -152,20 +157,17 @@ class BaseRepulsion(Classical):
         zeff: Tensor,
         kexp: Tensor,
         klight: Tensor | None = None,
-        cutoff: float = xtb.DEFAULT_REPULSION_CUTOFF,
+        cutoff: Tensor | float | int = xtb.DEFAULT_REPULSION_CUTOFF,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
         super().__init__(device, dtype)
 
-        self.arep = arep.to(self.device).type(self.dtype)
-        self.zeff = zeff.to(self.device).type(self.dtype)
-        self.kexp = kexp.to(self.device).type(self.dtype)
-        self.cutoff = cutoff
-
-        if klight is not None:
-            klight = klight.to(self.device).type(self.dtype)
-        self.klight = klight
+        self.arep = arep.to(**self.dd)
+        self.zeff = zeff.to(**self.dd)
+        self.kexp = kexp.to(**self.dd)
+        self.cutoff = any_to_tensor(cutoff, **self.dd)
+        self.klight = None if klight is None else klight.to(**self.dd)
 
     @override
     def get_cache(
@@ -270,7 +272,7 @@ def repulsion_energy(
     arep: Tensor,
     kexp: Tensor,
     zeff: Tensor,
-    cutoff: float = xtb.DEFAULT_REPULSION_CUTOFF,
+    cutoff: Tensor | float | int = xtb.DEFAULT_REPULSION_CUTOFF,
 ) -> Tensor:
     """
     Clasical repulsion energy.
@@ -288,8 +290,8 @@ def repulsion_energy(
         of the repulsion energy.
     zeff : Tensor
         Effective nuclear charges.
-    cutoff : float, optional
-        Real-space cutoff. Defaults to `xtb.DEFAULT_REPULSION_CUTOFF`.
+    cutoff : Tensor | float | int, optional
+        Real-space cutoff. Defaults to :data:`xtb.DEFAULT_REPULSION_CUTOFF`.
 
     Returns
     -------
@@ -306,7 +308,7 @@ def repulsion_energy(
         dtype=positions.dtype,
         device=positions.device,
     )
-    _cutoff = torch.tensor(
+    _cutoff = any_to_tensor(
         cutoff,
         dtype=positions.dtype,
         device=positions.device,

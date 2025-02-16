@@ -60,6 +60,7 @@ def shape_checks_chrg(
             f"{name.title()} tensor has only one element. Please use a "
             "scalar for single structures (e.g., `torch.tensor(1.0)`) and "
             "a 1D tensor for batched calculations (e.g., "
+            "`torch.tensor([1.0, 0.0])`)."
         )
 
     if ndims != t.ndim + 1:

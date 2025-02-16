@@ -69,7 +69,8 @@ class QuadrupolePytorch(QuadrupoleIntegral, IntegralPytorch):
 
         raise NotImplementedError(
             "PyTorch versions of multipole moments are not implemented. "
-            "Use `libcint` as integral driver."
+            "Use `libcint` as integral driver. Install `tad-libcint` via: "
+            "`pip install tad-libcint`."
         )
 
     def build(self, driver: BaseIntDriverPytorch) -> Tensor:

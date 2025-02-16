@@ -74,7 +74,9 @@ class DispersionD4Cache(ClassicalCache):
 
 
 class DispersionD4(Dispersion):
-    """Representation of the DFT-D4 dispersion correction."""
+    """
+    Representation of the DFT-D4 dispersion correction (:class:`.DispersionD4`).
+    """
 
     charge: Tensor
     """Total charge of the system."""

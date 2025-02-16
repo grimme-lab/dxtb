@@ -34,10 +34,10 @@ from __future__ import annotations
 from typing import Optional, Union
 
 from pydantic import BaseModel, ConfigDict
+from tad_dftd3 import defaults as d3_defaults
+from tad_dftd4 import defaults as d4_defaults
 
 from dxtb._src.typing import Tensor
-
-from ..constants import xtb
 
 __all__ = ["D3Model", "D4Model", "Dispersion"]
 
@@ -49,19 +49,19 @@ class D3Model(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    s6: Union[float, Tensor] = xtb.DEFAULT_DISP_S6
+    s6: Union[float, Tensor] = d3_defaults.S6
     """Scaling factor for multipolar (dipole-dipole contribution) terms."""
 
-    s8: Union[float, Tensor] = xtb.DEFAULT_DISP_S8
+    s8: Union[float, Tensor] = d3_defaults.S8
     """Scaling factor for multipolar (dipole-quadrupole contribution) terms."""
 
-    s9: Union[float, Tensor] = xtb.DEFAULT_DISP_S9
+    s9: Union[float, Tensor] = d3_defaults.S9
     """Scaling factor for the many-body dispersion term (ATM/RPA-like)."""
 
-    a1: Union[float, Tensor] = xtb.DEFAULT_DISP_A1
+    a1: Union[float, Tensor] = d3_defaults.A1
     """Becke-Johnson damping parameter."""
 
-    a2: Union[float, Tensor] = xtb.DEFAULT_DISP_A2
+    a2: Union[float, Tensor] = d3_defaults.A2
     """Becke-Johnson damping parameter."""
 
 
@@ -75,28 +75,25 @@ class D4Model(BaseModel):
     sc: bool = False
     """Whether the dispersion correctio is used self-consistently or not."""
 
-    s6: Union[float, Tensor] = xtb.DEFAULT_DISP_S6
+    s6: Union[float, Tensor] = d4_defaults.S6
     """Scaling factor for multipolar (dipole-dipole contribution) terms"""
 
-    s8: Union[float, Tensor] = xtb.DEFAULT_DISP_S8
+    s8: Union[float, Tensor] = d4_defaults.S8
     """Scaling factor for multipolar (dipole-quadrupole contribution) terms"""
 
-    s9: Union[float, Tensor] = xtb.DEFAULT_DISP_S9
+    s9: Union[float, Tensor] = d4_defaults.S9
     """Scaling factor for the many-body dispersion term (ATM/RPA-like)."""
 
-    s10: Union[float, Tensor] = xtb.DEFAULT_DISP_S10
+    s10: Union[float, Tensor] = d4_defaults.S10
     """Scaling factor for quadrupole-quadrupole term."""
 
-    s10: Union[float, Tensor] = xtb.DEFAULT_DISP_S10
-    """Scaling factor for quadrupole-quadrupole contribution."""
-
-    alp: Union[float, Tensor] = xtb.DEFAULT_DISP_ALP
+    alp: Union[float, Tensor] = d4_defaults.ALP
     """Exponent of zero damping function in the ATM term."""
 
-    a1: Union[float, Tensor] = xtb.DEFAULT_DISP_A1
+    a1: Union[float, Tensor] = d4_defaults.A1
     """Becke-Johnson damping parameter."""
 
-    a2: Union[float, Tensor] = xtb.DEFAULT_DISP_A2
+    a2: Union[float, Tensor] = d4_defaults.A2
     """Becke-Johnson damping parameter."""
 
 

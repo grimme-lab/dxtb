@@ -52,7 +52,9 @@ __all__ = ["LABEL_REPULSION", "Repulsion", "RepulsionAnalytical"]
 
 
 LABEL_REPULSION = "Repulsion"
-"""Label for the 'Repulsion' component, coinciding with the class name."""
+"""
+Label for the :class:`.Repulsion` component, coinciding with the class name.
+"""
 
 
 class Repulsion(BaseRepulsion):
