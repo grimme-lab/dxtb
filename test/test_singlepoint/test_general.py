@@ -23,7 +23,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from tad_mctc.io import read
+from tad_mctc import read, read_chrg
 
 from dxtb import GFN1_XTB as par
 from dxtb import Calculator
@@ -44,8 +44,8 @@ def test_uhf_fail() -> None:
 
     base = Path(Path(__file__).parent, "mols", "H")
 
-    numbers, positions = read.read_from_path(Path(base, "coord"), device=DEVICE)
-    charge = read.read_chrg_from_path(Path(base, ".CHRG"), device=DEVICE)
+    numbers, positions = read(Path(base, "coord"), device=DEVICE)
+    charge = read_chrg(Path(base, ".CHRG"), device=DEVICE)
 
     calc = Calculator(numbers, par, opts=opts, device=DEVICE)
 

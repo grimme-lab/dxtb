@@ -26,7 +26,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 import torch
-from tad_mctc.io import read
+from tad_mctc import read, read_chrg
 
 from dxtb import GFN1_XTB as par
 from dxtb import Calculator
@@ -93,8 +93,8 @@ def analytical(
 
     # read from file
     base = Path(Path(__file__).parent, "mols", name)
-    numbers, positions = read.read_from_path(Path(base, "coord"), **dd)
-    charge = read.read_chrg_from_path(Path(base, ".CHRG"), **dd)
+    numbers, positions = read(Path(base, "coord"), **dd)
+    charge = read_chrg(Path(base, ".CHRG"), **dd)
 
     positions = positions.clone().requires_grad_(True)
 
@@ -126,8 +126,8 @@ def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 
     # read from file
     base = Path(Path(__file__).parent, "mols", name)
-    numbers, positions = read.read_from_path(Path(base, "coord"), **dd)
-    charge = read.read_chrg_from_path(Path(base, ".CHRG"), **dd)
+    numbers, positions = read(Path(base, "coord"), **dd)
+    charge = read_chrg(Path(base, ".CHRG"), **dd)
 
     positions = positions.clone().requires_grad_(True)
 
@@ -169,8 +169,8 @@ def test_num(name: str, scf_mode: str) -> None:
 
     # read from file
     base = Path(Path(__file__).parent, "mols", name)
-    numbers, positions = read.read_from_path(Path(base, "coord"), **dd)
-    charge = read.read_chrg_from_path(Path(base, ".CHRG"), **dd)
+    numbers, positions = read(Path(base, "coord"), **dd)
+    charge = read_chrg(Path(base, ".CHRG"), **dd)
 
     # do calc
     gradient = num_grad(numbers, positions, charge, scf_mode, dd)

@@ -20,8 +20,8 @@ Example for xitorch's inability to be used together with functorch.
 from pathlib import Path
 
 import torch
+from tad_mctc import read, read_chrg
 from tad_mctc._version import __tversion__
-from tad_mctc.io import read
 
 import dxtb
 from dxtb.typing import DD
@@ -33,8 +33,8 @@ if __tversion__ in ((2, 3, 0), (2, 3, 1)):
 dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
 
 f = Path(__file__).parent / "molecules" / "lih.xyz"
-numbers, positions = read.read_from_path(f, **dd)
-charge = read.read_chrg_from_path(f, **dd)
+numbers, positions = read(f, **dd)
+charge = read_chrg(f, **dd)
 
 opts = {"verbosity": 0, "scf_mode": "nonpure"}
 

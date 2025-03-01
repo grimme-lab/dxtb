@@ -25,9 +25,9 @@ from pathlib import Path
 
 import pytest
 import torch
+from tad_mctc import read, read_chrg
 from tad_mctc.autograd import jacrev
 from tad_mctc.convert import reshape_fortran
-from tad_mctc.io import read
 
 from dxtb import GFN1_XTB as par
 from dxtb import Calculator
@@ -59,8 +59,8 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     # read from file
     base = Path(Path(__file__).parent, "mols", name)
-    numbers, positions = read.read_from_path(Path(base, "coord"), **dd)
-    charge = read.read_chrg_from_path(Path(base, ".CHRG"), **dd)
+    numbers, positions = read(Path(base, "coord"), **dd)
+    charge = read_chrg(Path(base, ".CHRG"), **dd)
 
     ref = reshape_fortran(
         (
