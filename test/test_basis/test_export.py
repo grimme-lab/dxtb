@@ -25,14 +25,14 @@ from pathlib import Path
 import pytest
 import torch
 
-from dxtb import GFN1_XTB, IndexHelper
+from dxtb import GFN1_XTB, GFN2_XTB, IndexHelper
 from dxtb._src.basis.bas import Basis
 from dxtb._src.typing import DD, Literal
 
 
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("qcformat", ["nwchem"])
-@pytest.mark.parametrize("xtb_version", ["gfn1"])
+@pytest.mark.parametrize("xtb_version", ["gfn1", "gfn2"])
 def test_export(
     number: int,
     qcformat: Literal["gaussian94", "nwchem"],
@@ -46,6 +46,8 @@ def test_export(
 
     if xtb_version == "gfn1":
         par = GFN1_XTB
+    elif xtb_version == "gfn2":
+        par = GFN2_XTB
     else:
         assert False
 
@@ -58,7 +60,7 @@ def test_export(
     root = Path(__file__).parents[2]
     s = f"src/dxtb/_src/exlibs/pyscf/mol/basis/{xtb_version}/{number:02d}"
     p = root / f"{s}.{qcformat}"
-    assert p.exists()
+    assert p.exists(), f"Basis set not found in '{p}'."
 
     with open(p, encoding="utf-8") as f:
         content = f.read()

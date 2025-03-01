@@ -176,12 +176,13 @@ class GFN1Hamiltonian(BaseHamiltonian):
         cn: Tensor,
     ) -> tuple[Tensor, Tensor]:
         """
-        Calculate gradient of the full Hamiltonian with respect ot atomic positions.
+        Calculate gradient of the full Hamiltonian with respect ot atomic
+        positions.
 
         Parameters
         ----------
         positions : Tensor
-            Atomic positions of molecular structure.
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         overlap : Tensor
             Overlap matrix.
         doverlap : Tensor
