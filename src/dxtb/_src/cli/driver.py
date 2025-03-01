@@ -24,9 +24,8 @@ from argparse import Namespace
 from pathlib import Path
 
 import torch
-from tad_mctc import units
+from tad_mctc import read, units
 from tad_mctc.batch import pack
-from tad_mctc.io import read
 
 from dxtb import Calculator
 from dxtb._src import io
@@ -170,17 +169,12 @@ class Driver:
 
         if len(args.file) > 1:
             _n, _p = zip(
-                *[
-                    read.read_from_path(f, ftype=args.filetype, **dd)
-                    for f in args.file
-                ]
+                *[read(f, ftype=args.filetype, **dd) for f in args.file]
             )
             numbers = pack(_n)
             positions = pack(_p)
         else:
-            numbers, positions = read.read_from_path(
-                args.file[0], args.filetype, **dd
-            )
+            numbers, positions = read(args.file[0], args.filetype, **dd)
 
         timer.stop("Read Files")
 

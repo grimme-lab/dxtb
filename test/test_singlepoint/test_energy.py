@@ -25,8 +25,8 @@ from pathlib import Path
 
 import pytest
 import torch
+from tad_mctc import read, read_chrg
 from tad_mctc.batch import pack
-from tad_mctc.io import read
 
 from dxtb import GFN1_XTB as par
 from dxtb import Calculator
@@ -56,8 +56,8 @@ def test_single(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 
     base = Path(Path(__file__).parent, "mols", name)
 
-    numbers, positions = read.read_from_path(Path(base, "coord"), **dd)
-    charge = read.read_chrg_from_path(Path(base, ".CHRG"), **dd)
+    numbers, positions = read(Path(base, "coord"), **dd)
+    charge = read_chrg(Path(base, ".CHRG"), **dd)
 
     ref = samples[name]["etot"].to(**dd)
 
@@ -86,8 +86,8 @@ def test_single_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 
     base = Path(Path(__file__).parent, "mols", name)
 
-    numbers, positions = read.read_from_path(Path(base, "coord"), **dd)
-    charge = read.read_chrg_from_path(Path(base, ".CHRG"), **dd)
+    numbers, positions = read(Path(base, "coord"), **dd)
+    charge = read_chrg(Path(base, ".CHRG"), **dd)
 
     ref = samples[name]["etot"].to(**dd)
 
@@ -120,8 +120,8 @@ def test_batch(
     numbers, positions, charge = [], [], []
     for name in [name1, name2, name3]:
         base = Path(Path(__file__).parent, "mols", name)
-        nums, pos = read.read_from_path(Path(base, "coord"))
-        chrg = read.read_chrg_from_path(Path(base, ".CHRG"))
+        nums, pos = read(Path(base, "coord"))
+        chrg = read_chrg(Path(base, ".CHRG"))
 
         numbers.append(torch.tensor(nums, dtype=torch.long, device=DEVICE))
         positions.append(torch.tensor(pos, **dd))
@@ -169,8 +169,8 @@ def test_batch_large(
     for name in [name1, name2, name3]:
         base = Path(Path(__file__).parent, "mols", name)
 
-        nums, pos = read.read_from_path(Path(base, "coord"))
-        chrg = read.read_chrg_from_path(Path(base, ".CHRG"))
+        nums, pos = read(Path(base, "coord"))
+        chrg = read_chrg(Path(base, ".CHRG"))
 
         numbers.append(torch.tensor(nums, dtype=torch.long, device=DEVICE))
         positions.append(torch.tensor(pos, **dd))
@@ -209,8 +209,8 @@ def test_uhf_single(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     base = Path(Path(__file__).parent, "mols", name)
-    numbers, positions = read.read_from_path(Path(base, "coord"), **dd)
-    charge = read.read_chrg_from_path(Path(base, ".CHRG"), **dd)
+    numbers, positions = read(Path(base, "coord"), **dd)
+    charge = read_chrg(Path(base, ".CHRG"), **dd)
 
     ref = samples[name]["etot"].to(**dd)
 

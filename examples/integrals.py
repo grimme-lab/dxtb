@@ -20,7 +20,7 @@ Simple integral interface. Can be helpful for testing.
 from pathlib import Path
 
 import torch
-from tad_mctc.io import read
+from tad_mctc import read
 
 from dxtb import GFN1_XTB
 from dxtb.integrals.wrappers import overlap
@@ -47,7 +47,7 @@ print(f"Overlap integral of SiH4 has shape: {s.shape}\n\n")
 torch.set_printoptions(linewidth=200)
 
 path = Path(__file__).resolve().parent / "molecules" / "lih.xyz"
-numbers, positions = read.read_from_path(path)
+numbers, positions = read(path)
 
 s = overlap(numbers, positions, GFN1_XTB)
 print(f"Overlap integral of LiH has shape: {s.shape}\n")

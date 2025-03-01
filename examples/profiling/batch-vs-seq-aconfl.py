@@ -17,7 +17,7 @@
 from pathlib import Path
 
 import torch
-from tad_mctc.io import read
+from tad_mctc import read
 
 import dxtb
 from dxtb._src.typing import DD
@@ -30,7 +30,7 @@ dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
 
 # subset of ACONFL benchmark set (conformers, same number of atoms)
 f = Path(__file__).parent.parent / "molecules" / "aconf20.xyz"
-numbers, positions = read.read_from_path(f, **dd)
+numbers, positions = read(f, **dd)
 
 # manually create the corresponding charge tensor
 nbatch = numbers.shape[0]

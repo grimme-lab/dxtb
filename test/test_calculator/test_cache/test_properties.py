@@ -23,7 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb import GFN1_XTB
+from dxtb import GFN1_XTB, labels
 from dxtb._src.calculators.properties.vibration import IRResult, VibResult
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Literal, Tensor
@@ -294,7 +294,14 @@ def test_dipole(dtype: torch.dtype) -> None:
     positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
     pos = positions.clone().requires_grad_(True)
 
-    options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
+    options = dict(
+        opts,
+        **{
+            "scf_mode": "full",
+            "mixer": "anderson",
+            "int_level": labels.INTLEVEL_DIPOLE,
+        },
+    )
 
     field = torch.tensor([0, 0, 0], **dd, requires_grad=True)
     efield = new_efield(field, **dd)
@@ -332,7 +339,14 @@ def test_dipole_deriv(dtype: torch.dtype) -> None:
     positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
     pos = positions.clone().requires_grad_(True)
 
-    options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
+    options = dict(
+        opts,
+        **{
+            "scf_mode": "full",
+            "mixer": "anderson",
+            "int_level": labels.INTLEVEL_DIPOLE,
+        },
+    )
 
     field = torch.tensor([0, 0, 0], **dd, requires_grad=True)
     efield = new_efield(field, **dd)
@@ -372,7 +386,14 @@ def test_polarizability(dtype: torch.dtype) -> None:
     positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
     pos = positions.clone().requires_grad_(True)
 
-    options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
+    options = dict(
+        opts,
+        **{
+            "scf_mode": "full",
+            "mixer": "anderson",
+            "int_level": labels.INTLEVEL_DIPOLE,
+        },
+    )
 
     field = torch.tensor([0, 0, 0], **dd, requires_grad=True)
     efield = new_efield(field, **dd)
@@ -412,7 +433,14 @@ def test_pol_deriv(dtype: torch.dtype) -> None:
     positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
     pos = positions.clone().requires_grad_(True)
 
-    options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
+    options = dict(
+        opts,
+        **{
+            "scf_mode": "full",
+            "mixer": "anderson",
+            "int_level": labels.INTLEVEL_DIPOLE,
+        },
+    )
 
     field = torch.tensor([0, 0, 0], **dd, requires_grad=True)
     efield = new_efield(field, **dd)
@@ -452,7 +480,14 @@ def test_hyperpolarizability(dtype: torch.dtype) -> None:
     positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
     pos = positions.clone().requires_grad_(True)
 
-    options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
+    options = dict(
+        opts,
+        **{
+            "scf_mode": "full",
+            "mixer": "anderson",
+            "int_level": labels.INTLEVEL_DIPOLE,
+        },
+    )
 
     field = torch.tensor([0, 0, 0], **dd, requires_grad=True)
     efield = new_efield(field, **dd)
@@ -492,7 +527,14 @@ def test_ir(dtype: torch.dtype) -> None:
     positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
     pos = positions.clone().requires_grad_(True)
 
-    options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
+    options = dict(
+        opts,
+        **{
+            "scf_mode": "full",
+            "mixer": "anderson",
+            "int_level": labels.INTLEVEL_DIPOLE,
+        },
+    )
 
     field = torch.tensor([0, 0, 0], **dd, requires_grad=True)
     efield = new_efield(field, **dd)

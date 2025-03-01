@@ -20,7 +20,7 @@ Calculating forces for vancomycin via AD.
 from pathlib import Path
 
 import torch
-from tad_mctc.io import read
+from tad_mctc import read, read_chrg
 
 import dxtb
 from dxtb.typing import DD
@@ -28,8 +28,8 @@ from dxtb.typing import DD
 dd: DD = {"device": torch.device("cpu"), "dtype": torch.double}
 
 f = Path(__file__).parent / "molecules" / "vancoh2.coord"
-numbers, positions = read.read_from_path(f, ftype="tm", **dd)
-charge = read.read_chrg_from_path(f, **dd)
+numbers, positions = read(f, ftype="tm", **dd)
+charge = read_chrg(f, **dd)
 
 opts = {"verbosity": 3}
 
