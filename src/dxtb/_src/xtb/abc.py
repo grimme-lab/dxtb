@@ -66,7 +66,7 @@ class HamiltonianABC(ABC):
         Parameters
         ----------
         positions : Tensor
-            Atomic positions of molecular structure.
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         overlap : Tensor | None, optional
             Overlap matrix. If ``None``, the true xTB Hamiltonian is *not*
             built. Defaults to ``None``.
@@ -94,7 +94,7 @@ class HamiltonianABC(ABC):
         Parameters
         ----------
         positions : Tensor
-            Atomic positions of molecular structure.
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``)..
         overlap : Tensor
             Overlap matrix.
         doverlap : Tensor
