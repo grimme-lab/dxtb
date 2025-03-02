@@ -93,10 +93,11 @@ class Param(BaseModel):
     """Definition of the isotropic third-order charge interactions."""
 
     solvation: Optional[Solvation] = None
+    """Definition of the solvation model."""
 
     def clean_model_dump(self) -> dict[str, Any]:
         """
-        Clean the model from any `None` values.
+        Clean the model from any ``None`` values.
         """
 
         return self.model_dump(exclude_none=True)

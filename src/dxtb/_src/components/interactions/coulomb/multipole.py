@@ -31,7 +31,6 @@ from tad_mctc.exceptions import DeviceError
 from tad_mctc.math import einsum
 
 from dxtb import IndexHelper
-from dxtb._src.components.interactions.container import Charges
 from dxtb._src.param import Param, get_elem_param
 from dxtb._src.typing import (
     DD,
@@ -438,12 +437,76 @@ class AES2(Interaction):
         return sd, dd, sq
 
     @override
-    def get_atom_energy(self, charges: Tensor, cache: AES2Cache) -> Tensor:
-        pass
+    def get_dipole_atom_energy(
+        self, cache: AES2Cache, qat: Tensor, qdp: Tensor, qqp: Tensor
+    ) -> Tensor:
+        """
+        Calculate atom-resolved dipolar energy.
+
+        Parameters
+        ----------
+        cache : ComponentCache
+            Restart data for the interaction.
+        qat : Tensor
+            Atom-resolved partial charges (shape: ``(..., nat)``).
+        qdp : Tensor
+            Atom-resolved shadow charges (shape: ``(..., nat, 3)``).
+        qqp : Tensor
+            Atom-resolved quadrupole moments (shape: ``(..., nat, 6)``).
+
+        Returns
+        -------
+        Tensor
+            Atom-resolved dipolar energy.
+        """
+        # tblite: coulomb/multipole.f90::get_energy
+        vdp_sd = einsum("...ijx,...i->...jx", cache.amat_sd, qat)
+        vdp_dd = 0.5 * einsum("...ijxy,...ix->...jy", cache.amat_dd, qdp)
+
+        # tblite: coulomb/multipole.f90::get_kernel_energy
+        # (ke = dk * dot(qdp, qdp))
+        # Remember: cache.dkernel was unsqueezed in `get_cache`!
+        ke = einsum("...ix,...ix,...ix->...i", cache.dkernel, qdp, qdp)
+
+        return ke + einsum("...ix,...ix->...i", vdp_sd + vdp_dd, qdp)
+
+    @override
+    def get_quadrupole_atom_energy(
+        self, cache: AES2Cache, qat: Tensor, qdp: Tensor, qqp: Tensor
+    ) -> Tensor:
+        """
+        Calculate atom-resolved dipolar energy.
+
+        Parameters
+        ----------
+        cache : ComponentCache
+            Restart data for the interaction.
+        qat : Tensor
+            Atom-resolved partial charges (shape: ``(..., nat)``).
+        qdp : Tensor
+            Atom-resolved shadow charges (shape: ``(..., nat, 3)``).
+        qqp : Tensor
+            Atom-resolved quadrupole moments (shape: ``(..., nat, 6)``).
+
+        Returns
+        -------
+        Tensor
+            Atom-resolved dipolar energy.
+        """
+        # tblite: coulomb/multipole.f90::get_energy
+        vqp = einsum("...ijx,...i->...jx", cache.amat_sq, qat)
+
+        # tblite: coulomb/multipole.f90::get_kernel_energy
+        # (ke = dk * dot(qdp * scale, qdp))
+        # Remember: cache.dkernel was unsqueezed in `get_cache`!
+        scale = torch.tensor([1, 2, 1, 2, 2, 1], **self.dd)
+        ke = einsum("...ix,...ix,x,...ix->...i", cache.qkernel, qqp, scale, qqp)
+
+        return ke + einsum("...ix,...ix->...i", vqp, qqp)
 
     @override
     def get_monopole_atom_potential(
-        self, cache: AES2Cache, _: Tensor, qdp: Tensor, qqp: Tensor
+        self, cache: AES2Cache, qat: Tensor, qdp: Tensor, qqp: Tensor
     ) -> Tensor:
         """
         Calculate atom-resolved potential.
@@ -453,11 +516,11 @@ class AES2(Interaction):
         cache : ComponentCache
             Restart data for the interaction.
         qat : Tensor
-            Atom-resolved partial charges.
+            Atom-resolved partial charges (shape: ``(..., nat)``).
         qdp : Tensor
-            Atom-resolved dipole moments.
+            Atom-resolved dipole moments (shape: ``(..., nat, 3)``).
         qqp : Tensor
-            Atom-resolved quadrupole moments.
+            Atom-resolved quadrupole moments (shape: ``(..., nat, 6)``).
 
         Returns
         -------
@@ -471,7 +534,7 @@ class AES2(Interaction):
 
     @override
     def get_dipole_atom_potential(
-        self, cache: AES2Cache, qat: Tensor, qdp: Tensor, __: Tensor
+        self, cache: AES2Cache, qat: Tensor, qdp: Tensor, qqp: Tensor
     ) -> Tensor:
         """
         Calculate atom-resolved dipolar potential.
@@ -481,30 +544,51 @@ class AES2(Interaction):
         cache : ComponentCache
             Restart data for the interaction.
         qat : Tensor
-            Atom-resolved partial charges.
+            Atom-resolved partial charges (shape: ``(..., nat)``).
         qdp : Tensor
-            Atom-resolved dipole moments.
+            Atom-resolved dipole moments (shape: ``(..., nat, 3)``).
         qqp : Tensor
-            Atom-resolved quadrupole moments.
+            Atom-resolved quadrupole moments (shape: ``(..., nat, 6)``).
 
         Returns
         -------
         Tensor
             Atom-resolved monopolar potential.
         """
-        vdp_sd = einsum("...ijx,...j->...ix", cache.amat_sd, qat)
-        vdp_dd = einsum("...ijxy,...jy->...ix", cache.amat_dd, qdp)
+        vdp_sd = einsum("...ijx,...i->...jx", cache.amat_sd, qat)
+        vdp_dd = einsum("...ijxy,...ix->...jy", cache.amat_dd, qdp)
 
+        # tblite: coulomb/multipole.f90::get_kernel_potential
         kernel_pot_dp = 2 * cache.dkernel * qdp
 
         return vdp_sd + vdp_dd + kernel_pot_dp
 
     @override
     def get_quadrupole_atom_potential(
-        self, cache: AES2Cache, qat: Tensor, _: Tensor, qqp: Tensor
+        self, cache: AES2Cache, qat: Tensor, qdp: Tensor, qqp: Tensor
     ) -> Tensor:
+        r"""
+        Calculate atom-resolved quadrupolar potential.
+
+        Parameters
+        ----------
+        cache : ComponentCache
+            Restart data for the interaction.
+        qat : Tensor
+            Atom-resolved partial charges (shape: ``(..., nat)``).
+        qdp : Tensor
+            Atom-resolved dipole moments (shape: ``(..., nat, 3)``).
+        qqp : Tensor
+            Atom-resolved quadrupole moments (shape: ``(..., nat, 6)``).
+
+        Returns
+        -------
+        Tensor
+            Atom-resolved monopolar potential.
+        """
         vqp = einsum("...ijx,...i->...jx", cache.amat_sq, qat)
 
+        # tblite: coulomb/multipole.f90::get_kernel_potential
         scale = torch.tensor([1, 2, 1, 2, 2, 1], **self.dd)
         kernel_pot_dp = 2 * cache.qkernel * qqp * scale
 

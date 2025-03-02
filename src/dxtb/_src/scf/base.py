@@ -150,7 +150,8 @@ class BaseSCF:
                 "label": None,
             }
 
-            self.iter = -1  # bumped before printing, guess energy also printed
+            # bumped in SCF function (start: 1), guess energy NOT printed (0)
+            self.iter = 0
 
         def init_zeros(self) -> None:
             """Initialize all tensors with zeros."""
@@ -166,7 +167,7 @@ class BaseSCF:
 
         def reset(self) -> None:
             """Reset all tensors and iteration count to zero."""
-            self.iter = 0
+            self.iter = 1
             self.init_zeros()
 
         def cull(self, conv: Tensor, slicers: Slicers) -> None:
@@ -438,14 +439,14 @@ class BaseSCF:
         OutputHandler.write_stdout(77 * "-", v=3)
 
         q = self.scf(guess)
+        q.nullify_padding()
+
+        # evaluate final energy
+        energy = self.get_energy(q)
+        fenergy = self.get_electronic_free_energy()
 
         OutputHandler.write_stdout(77 * "-", v=3)
         OutputHandler.write_stdout("", v=3)
-
-        # evaluate final energy
-        q.nullify_padding()
-        energy = self.get_energy(q)
-        fenergy = self.get_electronic_free_energy()
 
         return {
             "charges": q,
@@ -509,17 +510,20 @@ class BaseSCF:
         Parameters
         ----------
         charges : Tensor
-            Orbital charges vector.
+            Orbital charges vector (shape: ``(..., nao)``).
 
         Returns
         -------
         Tensor
             Energy of the system.
         """
-        energy = self._data.ihelp.reduce_orbital_to_atom(self._data.energy)
-        return energy + self.interactions.get_energy(
+
+        e_h0 = self._data.ihelp.reduce_orbital_to_atom(self._data.energy)
+        e_h1 = self.interactions.get_energy(
             charges, self._data.cache, self._data.ihelp
         )
+
+        return e_h0 + e_h1
 
     def get_energy_as_dict(self, charges: Charges) -> dict[str, Tensor]:
         """
@@ -528,7 +532,7 @@ class BaseSCF:
         Parameters
         ----------
         charges : Tensor
-            Orbital charges vector.
+            Orbital charges vector (shape: ``(..., nao)``).
 
         Returns
         -------
@@ -610,86 +614,6 @@ class BaseSCF:
 
         raise ValueError(f"Unknown partitioning mode '{mode}'.")
 
-    def _print(self, charges: Charges) -> None:
-        self._data.iter += 1
-
-        # explicitly check to avoid some superfluos calculations
-        if OutputHandler.verbosity < 3:
-            return
-
-        if charges.mono.ndim < 2:  # pragma: no cover
-            energy = self.get_energy(charges).sum(-1).detach().clone()
-            ediff = (
-                (self._data.old_energy.sum(-1) - energy)
-                if self._data.iter > 0
-                else 0.0
-            )
-
-            density = self._data.density.detach().clone()
-            pnorm = (
-                torch.linalg.matrix_norm(self._data.old_density - density)
-                if self._data.iter > 0
-                else 0.0
-            )
-
-            _q = charges.mono.detach().clone()
-            qdiff = (
-                torch.linalg.vector_norm(self._data.old_charges - _q)
-                if self._data.iter > 0
-                else 0.0
-            )
-
-            OutputHandler.write_row(
-                "SCF Iterations",
-                f"{self._data.iter:3}",
-                [
-                    f"{energy: .14E}",
-                    f"{ediff: .6E}",
-                    f"{pnorm: .6E}",
-                    f"{qdiff: .6E}",
-                ],
-            )
-
-            self._data.old_energy = energy
-            self._data.old_charges = _q
-            self._data.old_density = density
-        else:
-            energy = self.get_energy(charges).detach().clone()
-            ediff = (
-                torch.linalg.norm(self._data.old_energy - energy)
-                if self._data.iter > 0
-                else 0.0
-            )
-
-            density = self._data.density.detach().clone()
-            pnorm = (
-                torch.linalg.norm(self._data.old_density - density)
-                if self._data.iter > 0
-                else 0.0
-            )
-
-            _q = charges.mono.detach().clone()
-            qdiff = (
-                torch.linalg.norm(self._data.old_charges - _q)
-                if self._data.iter > 0
-                else 0.0
-            )
-
-            OutputHandler.write_row(
-                "SCF Iterations",
-                f"{self._data.iter:3}",
-                [
-                    f"{energy.norm(): .14E}",
-                    f"{ediff: .6E}",
-                    f"{pnorm: .6E}",
-                    f"{qdiff: .6E}",
-                ],
-            )
-
-            self._data.old_energy = energy
-            self._data.old_charges = _q
-            self._data.old_density = density
-
     def iterate_charges(self, charges: Tensor) -> Tensor:
         """
         Perform single self-consistent iteration.
@@ -704,16 +628,17 @@ class BaseSCF:
         Tensor
             New orbital-resolved partial charges vector.
         """
+        self._data.iter += 1
+        print("self._data.iter", self._data.iter)
 
         q = Charges.from_tensor(
             charges, self._data.charges, batch_mode=self.config.batch_mode
         )
+
+        # SCF cycle (Q -> V -> Q)
         potential = self.charges_to_potential(q)
-
-        # FIXME: Batch print not working!
-        self._print(q)
-
         new_charges = self.potential_to_charges(potential)
+
         return new_charges.as_tensor()
 
     def iterate_potential(self, potential: Tensor) -> Tensor:
@@ -730,15 +655,16 @@ class BaseSCF:
         Tensor
             New potential vector for each orbital partial charge.
         """
+        self._data.iter += 1
+
         pot = Potential.from_tensor(
             potential, self._data.potential, batch_mode=self.config.batch_mode
         )
+
+        # SCF cycle (V -> Q -> V)
         charges = self.potential_to_charges(pot)
-
-        # FIXME: Batch print not working!
-        self._print(charges)
-
         new_potential = self.charges_to_potential(charges)
+
         return new_potential.as_tensor()
 
     def iterate_fockian(self, fockian: Tensor) -> Tensor:
@@ -755,13 +681,13 @@ class BaseSCF:
         Tensor
             New Fock matrix.
         """
+        self._data.iter += 1
+
+        # SCF cycle (F -> P -> Q -> V -> F)
         self._data.density = self.hamiltonian_to_density(fockian)
         charges = self.density_to_charges(self._data.density)
         potential = self.charges_to_potential(charges)
         self._data.hamiltonian = self.potential_to_hamiltonian(potential)
-
-        # FIXME: Batch print not working!
-        self._print(charges)
 
         return self._data.hamiltonian
 
@@ -780,10 +706,10 @@ class BaseSCF:
         Tensor
             Potential vector for each orbital partial charge.
         """
-
         potential = self.interactions.get_potential(
-            charges, self._data.cache, self._data.ihelp
+            self._data.cache, charges, self._data.ihelp
         )
+
         self._data.potential = {
             "mono": potential.mono_shape,
             "dipole": potential.dipole_shape,
@@ -843,7 +769,6 @@ class BaseSCF:
         Tensor
             Orbital-resolved partial charges vector.
         """
-
         ints = self._data.ints
 
         # Calculate diagonal directly by using index "i" twice on left side.
@@ -855,7 +780,8 @@ class BaseSCF:
         # monopolar charges
         populations = einsum("...ik,...ki->...i", density, ints.overlap)
         charges = Charges(
-            mono=self._data.n0 - populations, batch_mode=self.config.batch_mode
+            mono=(self._data.n0 - populations),
+            batch_mode=self.config.batch_mode,
         )
 
         # Atomic dipole moments (dipole charges)
@@ -910,7 +836,7 @@ class BaseSCF:
             # Form dot product over the the multipolar components.
             #  - shape multipole integral: (..., x, norb, norb)
             #  - shape multipole potential: (..., norb, x)
-            tmp = 0.5 * einsum("...kij,...ik->...ij", mpint, v)
+            tmp = 0.5 * einsum("...kij,...jk->...ij", mpint, v)
             return h1 - (tmp + tmp.mT)
 
         if potential.dipole is not None:
@@ -952,10 +878,8 @@ class BaseSCF:
         )
         mask = mask.unsqueeze(-2).expand([*nel.shape, -1])
 
-        # Fermi smearing only for non-zero electronic temperature
-        if self.kt is not None and not torch.all(
-            self.kt < 3e-7
-        ):  # 0.1 Kelvin * K2AU
+        # Fermi smearing only for non-zero electronic temperature (0.1 K * K2AU)
+        if self.kt is not None and not torch.all(self.kt < 3e-7):
             self._data.occupation = filling.get_fermi_occupation(
                 nel,
                 emo,
@@ -1002,3 +926,83 @@ class BaseSCF:
         Returns the device of the tensors in this engine.
         """
         return {"device": self.device, "dtype": self.dtype}
+
+    def _print(self, charges: Charges, energy: Tensor) -> None:
+        # explicitly check to avoid some superfluos calculations
+        # if OutputHandler.verbosity < 3:
+        # return None
+
+        if charges.mono.ndim < 2:  # pragma: no cover
+            energy = self.get_energy(charges).sum(-1)
+            _energy = energy.detach().clone()
+
+            ediff = (
+                (_energy - self._data.old_energy.sum(-1))
+                if self._data.iter > 0
+                else 0.0
+            )
+
+            density = self._data.density.detach().clone()
+            pnorm = (
+                torch.linalg.matrix_norm(density - self._data.old_density)
+                if self._data.iter > 0
+                else 0.0
+            )
+
+            _q = charges.mono.detach().clone()
+            qdiff = (
+                torch.linalg.vector_norm(_q - self._data.old_charges)
+                if self._data.iter > 0
+                else 0.0
+            )
+
+            OutputHandler.write_row(
+                "SCF Iterations",
+                f"{self._data.iter:3}",
+                [
+                    f"{_energy: .14E}",
+                    f"{ediff: .6E}",
+                    f"{pnorm: .6E}",
+                    f"{qdiff: .6E}",
+                ],
+            )
+
+            self._data.old_energy = _energy
+            self._data.old_charges = _q
+            self._data.old_density = density
+        else:
+            energy = self.get_energy(charges).detach().clone()
+            ediff = (
+                torch.linalg.norm(energy - self._data.old_energy)
+                if self._data.iter > 0
+                else 0.0
+            )
+
+            density = self._data.density.detach().clone()
+            pnorm = (
+                torch.linalg.norm(density - self._data.old_density)
+                if self._data.iter > 0
+                else 0.0
+            )
+
+            _q = charges.mono.detach().clone()
+            qdiff = (
+                torch.linalg.norm(_q - self._data.old_charges)
+                if self._data.iter > 0
+                else 0.0
+            )
+
+            OutputHandler.write_row(
+                "SCF Iterations",
+                f"{self._data.iter:3}",
+                [
+                    f"{energy.norm(): .14E}",
+                    f"{ediff: .6E}",
+                    f"{pnorm: .6E}",
+                    f"{qdiff: .6E}",
+                ],
+            )
+
+            self._data.old_energy = energy
+            self._data.old_charges = _q
+            self._data.old_density = density

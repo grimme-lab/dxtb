@@ -77,6 +77,8 @@ class DipoleIntegral(BaseIntegral):
             raise RuntimeError(
                 "Shape mismatch between positions and overlap integral. "
                 "The position tensor must be spread to orbital-resolution."
+                "Use the `IndexHelper` to spread the positions: "
+                "ihelp.spread_atom_to_orbital(positions, dim=-2, extra=True)"
             )
 
         shift = einsum("...jx,...ij->...xij", pos, overlap)

@@ -96,7 +96,7 @@ INTDRIVER_CHOICES = [
 INTLEVEL = 2
 """Determines types of calculated integrals."""
 
-INTLEVEL_CHOICES = [0, 1, 2, 3, 4, 5]
+INTLEVEL_CHOICES = [0, 1, 2, 3, 4]
 """List of possible choices for `INTLEVEL`."""
 
 INTUPLO = "l"
@@ -111,8 +111,8 @@ DP_SHAPE = 3
 
 QP_SHAPE = 6
 """
-Number of dimension of the quadrupole integral. Libcint returns 9, which can be
-reduced to 6 due to symmetry (tracless representation).
+Number of dimension of the quadrupole integral.
+Libcint returns 9, which can be reduced to 6 due to symmetry.
 """
 
 

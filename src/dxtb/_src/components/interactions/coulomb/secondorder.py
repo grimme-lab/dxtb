@@ -361,7 +361,9 @@ class ES2(Interaction):
         return mat
 
     @override
-    def get_atom_energy(self, charges: Tensor, cache: ES2Cache) -> Tensor:
+    def get_monopole_atom_energy(
+        self, cache: ES2Cache, charges: Tensor
+    ) -> Tensor:
         return (
             0.5 * charges * self.get_monopole_atom_potential(cache, charges)
             if not self.shell_resolved
@@ -369,7 +371,9 @@ class ES2(Interaction):
         )
 
     @override
-    def get_shell_energy(self, charges: Tensor, cache: ES2Cache) -> Tensor:
+    def get_monopole_shell_energy(
+        self, cache: ES2Cache, charges: Tensor
+    ) -> Tensor:
         return (
             0.5 * charges * self.get_monopole_shell_potential(cache, charges)
             if self.shell_resolved
@@ -389,7 +393,7 @@ class ES2(Interaction):
         cache : ES2Cache
             Cache object for second order electrostatics.
         qat : Tensor
-            Atom-resolved partial charges.
+            Atom-resolved partial charges (shape: ``(..., nat)``).
 
         Returns
         -------
@@ -445,7 +449,7 @@ class ES2(Interaction):
         Parameters
         ----------
         charges : Tensor
-            Atom-resolved partial charges.
+            Atom-resolved partial charges (shape: ``(..., nat)``).
         positions : Tensor
             Nuclear positions. Needs ``requires_grad=True``.
         cache : ES2Cache
@@ -467,7 +471,7 @@ class ES2(Interaction):
         if self.shell_resolved:
             return torch.zeros_like(positions)
 
-        energy = self.get_atom_energy(charges, cache)
+        energy = self.get_monopole_atom_energy(cache, charges)
         return self._gradient(
             energy,
             positions,
@@ -515,7 +519,7 @@ class ES2(Interaction):
         if not self.shell_resolved:
             return torch.zeros_like(positions)
 
-        energy = self.get_shell_energy(charges, cache)
+        energy = self.get_monopole_shell_energy(cache, charges)
         return self._gradient(
             energy,
             positions,
@@ -1085,7 +1089,5 @@ def new_es2(
     )
     average = averaging_function[par.charge.effective.average]
     gexp = torch.tensor(par.charge.effective.gexp, **dd)
-
-    print(average)
 
     return ES2(hubbard, lhubbard, average, gexp, **dd)

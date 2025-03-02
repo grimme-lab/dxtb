@@ -244,7 +244,7 @@ class _OutputHandler:
 
     def write_stdout_nf(self, msg: str, v: int = 5) -> None:
         """
-        Write a message to the console without a newline.
+        Write a message to the console without a final newline.
 
         Parameters
         ----------

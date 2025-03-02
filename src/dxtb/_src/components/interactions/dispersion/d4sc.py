@@ -271,25 +271,26 @@ class DispersionD4SC(Interaction):
 
         return self.cache
 
-    def get_atom_energy(
-        self, charges: Tensor, cache: DispersionD4SCCache
+    @override
+    def get_monopole_atom_energy(
+        self, cache: DispersionD4SCCache, qat: Tensor, **_: Any
     ) -> Tensor:
         """
         Calculate the D4 dispersion correction energy.
 
         Parameters
         ----------
-        charges : Tensor
-            Atomic charges of all atoms.
         cache : DispersionD4SCCache
             Restart data for the interaction.
+        qat : Tensor
+            Atomic charges of all atoms.
 
         Returns
         -------
         Tensor
             Atomwise D4 dispersion correction energies.
         """
-        weights = self.model.weight_references(cache.cn, charges)
+        weights = self.model.weight_references(cache.cn, qat)
 
         return 0.5 * einsum(
             "...ijab,...ia,...jb->...j",

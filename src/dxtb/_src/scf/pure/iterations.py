@@ -28,7 +28,6 @@ from .conversions import (
     potential_to_hamiltonian,
 )
 from .data import _Data
-from .energies import get_energy
 
 __all__ = [
     "iterate_charges",
@@ -36,84 +35,6 @@ __all__ = [
     "iterate_fockian",
     "iter_options",
 ]
-
-
-def _print(
-    charges: Charges, data: _Data, interactions: InteractionList
-) -> None:
-    data.iter += 1
-
-    if OutputHandler.verbosity < 3:
-        return
-
-    if charges.mono.ndim < 2:  # pragma: no cover
-        energy = (
-            get_energy(charges, data, interactions).sum(-1).detach().clone()
-        )
-        ediff = (data.old_energy.sum(-1) - energy) if data.iter > 0 else 0.0
-
-        density = data.density.detach().clone()
-        pnorm = (
-            torch.linalg.matrix_norm(data.old_density - density)
-            if data.iter > 0
-            else 0.0
-        )
-
-        _charges = charges.mono.detach().clone()
-        qdiff = (
-            torch.linalg.vector_norm(data.old_charges - _charges)
-            if data.iter > 0
-            else 0.0
-        )
-
-        OutputHandler.write_row(
-            "SCF Iterations",
-            f"{data.iter:3}",
-            [
-                f"{energy: .14E}",
-                f"{ediff: .6E}",
-                f"{pnorm: .6E}",
-                f"{qdiff: .6E}",
-            ],
-        )
-
-        data.old_energy = energy
-        data.old_charges = _charges
-        data.old_density = density
-    else:
-        energy = get_energy(charges, data, interactions).detach().clone()
-        ediff = (
-            torch.linalg.norm(data.old_energy - energy)
-            if data.iter > 0
-            else 0.0
-        )
-
-        density = data.density.detach().clone()
-        pnorm = (
-            torch.linalg.norm(data.old_density - density)
-            if data.iter > 0
-            else 0.0
-        )
-
-        _q = charges.mono.detach().clone()
-        qdiff = (
-            torch.linalg.norm(data.old_charges - _q) if data.iter > 0 else 0.0
-        )
-
-        OutputHandler.write_row(
-            "SCF Iterations",
-            f"{data.iter:3}",
-            [
-                f"{energy.norm(): .14E}",
-                f"{ediff: .6E}",
-                f"{pnorm: .6E}",
-                f"{qdiff: .6E}",
-            ],
-        )
-
-        data.old_energy = energy
-        data.old_charges = _q
-        data.old_density = density
 
 
 def iterate_charges(
@@ -138,14 +59,11 @@ def iterate_charges(
     Tensor
         New orbital-resolved partial charges vector.
     """
-
     q = Charges.from_tensor(charges, data.charges, batch_mode=cfg.batch_mode)
+
     potential = charges_to_potential(q, interactions, data)
-
-    # FIXME: Batch print not working!
-    _print(q, data, interactions)
-
     new_charges = potential_to_charges(potential, data, cfg)
+
     return new_charges.as_tensor()
 
 
@@ -178,12 +96,10 @@ def iterate_potential(
     pot = Potential.from_tensor(
         potential, data.potential, batch_mode=cfg.batch_mode
     )
+
     charges = potential_to_charges(pot, data, cfg)
-
-    # FIXME: Batch print not working!
-    _print(charges, data, interactions)
-
     new_potential = charges_to_potential(charges, interactions, data)
+
     return new_potential.as_tensor()
 
 
@@ -213,9 +129,6 @@ def iterate_fockian(
     charges = density_to_charges(data.density, data, cfg)
     potential = charges_to_potential(charges, interactions, data)
     data.hamiltonian = potential_to_hamiltonian(potential, data)
-
-    # FIXME: Batch print not working!
-    _print(charges, data, interactions)
 
     return data.hamiltonian
 

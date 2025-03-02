@@ -237,7 +237,9 @@ class ES3(Interaction):
         return self.cache
 
     @override
-    def get_atom_energy(self, charges: Tensor, cache: ES3Cache) -> Tensor:
+    def get_monopole_atom_energy(
+        self, cache: ES3Cache, charges: Tensor
+    ) -> Tensor:
         """
         Calculate the third-order electrostatic energy.
 
@@ -250,10 +252,10 @@ class ES3(Interaction):
 
         Parameters
         ----------
-        charges : Tensor
-            Atomic charges of all atoms.
         cache : ES3Cache
             Restart data for the interaction.
+        charges : Tensor
+            Atomic charges of all atoms.
 
         Returns
         -------
@@ -267,16 +269,18 @@ class ES3(Interaction):
         )
 
     @override
-    def get_shell_energy(self, charges: Tensor, cache: ES3Cache) -> Tensor:
+    def get_monopole_shell_energy(
+        self, cache: ES3Cache, charges: Tensor
+    ) -> Tensor:
         """
         Calculate the third-order electrostatic energy.
 
         Parameters
         ----------
-        charges : Tensor
-            Shell charges of all atoms.
         cache : ES3Cache
             Restart data for the interaction.
+        charges : Tensor
+            Shell charges of all atoms.
 
         Returns
         -------

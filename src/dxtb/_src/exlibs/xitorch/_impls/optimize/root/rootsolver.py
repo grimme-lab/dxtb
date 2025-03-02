@@ -26,6 +26,7 @@ import functools
 
 import torch
 
+from dxtb import OutputHandler
 from dxtb._src.exlibs.xitorch._impls.optimize.root._jacobian import (
     Anderson,
     BroydenFirst,
@@ -56,7 +57,7 @@ def _nonlin_solver(
     line_search=True,
     # misc parameters
     verbose=False,
-    **unused
+    **unused,
 ):
     """
     Keyword arguments
@@ -128,6 +129,7 @@ def _nonlin_solver(
     func = lambda x: _ravel(fcn(_pack(x), *params))
     x = _ravel(x0)
 
+    # Guess is evaluated here (effectively, 1st iteration)
     y = func(x)
     y_norm = y.norm()
     assert isinstance(y_norm, torch.Tensor)
@@ -150,6 +152,20 @@ def _nonlin_solver(
     best_x = x
     best_dxnorm = x.norm()
     best_iter = 0
+
+    # For i=0, we are getting not the guess but the first iteration
+    if OutputHandler.verbosity >= 3:
+        OutputHandler.write_row(
+            "SCF Iterations",
+            f"{1:3}",
+            [
+                f"{'------':<22}",
+                f"{'------':<12}",
+                f"{best_ynorm: .6E}",
+                f"{best_dxnorm: .6E}",
+            ],
+        )
+
     for i in range(maxiter):
         tol = min(eta, eta * y_norm)
         dx = -jacobian.solve(y, tol=tol)
@@ -160,6 +176,19 @@ def _nonlin_solver(
                 "Jacobian inversion yielded zero vector. "
                 "This indicates a bug in the Jacobian "
                 "approximation."
+            )
+
+        # For i=0, we are getting not the guess but the first iteration
+        if OutputHandler.verbosity >= 3:
+            OutputHandler.write_row(
+                "SCF Iterations",
+                f"{i+2:3}",
+                [
+                    f"{'------':<22}",
+                    f"{'------':<12}",
+                    f"{y_norm: .6E}",
+                    f"{dx_norm: .6E}",
+                ],
             )
 
         if line_search:
@@ -202,17 +231,16 @@ def _nonlin_solver(
         y_norm = y_norm_new
         x = xnew
         y = ynew
+
     if not converge:
         msg = (
             "The rootfinder does not converge after %d iterations. "
             "Best |dx|=%.3e, |f|=%.3e at iter %d"
         ) % (maxiter, best_dxnorm, best_ynorm, best_iter)
 
-        # pylint: disable=import-outside-toplevel
-        from dxtb import OutputHandler
-
         OutputHandler.warn(msg, ConvergenceWarning)
         x = best_x
+
     return _pack(x)
 
 
@@ -280,7 +308,7 @@ def linearmixing(
     line_search=True,
     # misc parameters
     verbose=False,
-    **unused
+    **unused,
 ):
     """
     Solve the root finding problem by approximating the inverse of Jacobian

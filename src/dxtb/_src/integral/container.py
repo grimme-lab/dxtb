@@ -180,9 +180,7 @@ class Integrals(IntegralContainer):
             from .factory import new_overlap
 
             self.overlap = new_overlap(
-                self.mgr.driver_type,
-                **self.dd,
-                **kwargs,
+                self.mgr.driver_type, **self.dd, **kwargs
             )
 
         # DEVNOTE: If the overlap is only built if `self.overlap._matrix` is
@@ -275,7 +273,7 @@ class Integrals(IntegralContainer):
         self, positions: Tensor, shift: bool = True, **kwargs: Any
     ):
         # in case CPU is forced for libcint, move positions to CPU
-        if self.mgr.force_cpu_for_libcint:
+        if self.mgr.force_cpu_for_libcint is True:
             if positions.device != torch.device("cpu"):
                 positions = positions.to(device=torch.device("cpu"))
 
@@ -297,9 +295,24 @@ class Integrals(IntegralContainer):
         self.dipole.normalize(self.overlap.norm)
         logger.debug("Dipole integral: Finished building matrix.")
 
-        # shift to rj (requires overlap integral)
+        # DEVNOTE: Finally, we move the integral to the correct device, but
+        # only if no higher multipole integrals are required. Otherwise, the
+        # move is deferred to the highest moment integral.
+        # We also have to wait with the shift, because the quadrupole integral
+        # requires the r0-centered dipole integral.
+
+        # If higher moment integrals are required, everything will be deferred.
+        if self.intlevel > labels.INTLEVEL_DIPOLE:
+            logger.debug("Dipole integral: All finished (r0).")
+            return self.dipole.matrix
+
+        # If not, we have to move all integrals calculated so far and
+        # potentially shift the dipole integral. We shift first, because
+        # the `positions` are on CPU if `force_cpu_for_libcint=True`.
         if shift is True:
             logger.debug("Dipole integral: Start shifting operator (r0->rj).")
+
+            # shift to rj if required (requires overlap integral)
             self.dipole.shift_r0_rj(
                 self.overlap.matrix,
                 self.mgr.driver.ihelp.spread_atom_to_orbital(
@@ -308,18 +321,15 @@ class Integrals(IntegralContainer):
                     extra=True,
                 ),
             )
+
             logger.debug("Dipole integral: Finished shifting operator.")
 
-        # move integral to the correct device, but only if no other multipole
-        # integrals are required
-        if (
-            self.mgr.force_cpu_for_libcint is True
-            and self.intlevel <= labels.INTLEVEL_DIPOLE
-        ):
-            self.dipole = self.dipole.to(device=self.device)
+        # move integral to the correct device
+        if self.mgr.force_cpu_for_libcint is True:
             self.overlap = self.overlap.to(device=self.device)
+            self.dipole = self.dipole.to(device=self.device)
 
-        logger.debug("Dipole integral: All finished.")
+        logger.debug("Dipole integral: All finished (rj).")
         return self.dipole.matrix
 
     # quadrupole
@@ -350,8 +360,51 @@ class Integrals(IntegralContainer):
         traceless: bool = True,
         **kwargs: Any,
     ):
+        """
+        Build the quadrupole integral (shape: ``(6, nao, nao)``).
+
+        The quadrupole integral is returned, but also written to the
+        :attr:`matrix` attribute of the quadrupole class.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        shift : bool, optional
+            Shift the moment operator from the origin (``r0``) to the atoms
+            (``rj``). Defaults to ``True``.
+        traceless : bool, optional
+            Make the quadrupole moment traceless. Defaults to ``True``.
+        **kwargs : Any
+            Additional keyword arguments for the integral factories.
+
+        Returns
+        -------
+        Tensor
+            Quadrupole integral of shape ``(6, nao, nao)``.
+        """
+        if self.intlevel > labels.INTLEVEL_MAX:
+            if shift is True or traceless is True:
+                raise RuntimeError(
+                    f"An integral level of '{self.intlevel}' is requested, "
+                    "but the quadrupole integral (level "
+                    f"{labels.INTLEVEL_QUADRUPOLE}) is the highest moment "
+                    "supported. I am cautiously raising an error here, "
+                    "as this is likely a mistake and messes up parts of the "
+                    "internal integral logic."
+                    "\nDetailed explanation: With a higher integral level "
+                    "present, the moment operator is not shifted (r0->rj) "
+                    "and the quadrupole integral is not made traceless as "
+                    "these operations are deferred to the highest moment "
+                    "integral. If the provided integral level does not "
+                    "correspond to an implemented multipole integral, these "
+                    "integral changes are never executed. The construction of "
+                    "the Hamiltonian, however, expects `rj`-centered integrals "
+                    "and traceless quadrupole integrals."
+                )
+
         # in case CPU is forced for libcint, move positions to CPU
-        if self.mgr.force_cpu_for_libcint:
+        if self.mgr.force_cpu_for_libcint is True:
             if positions.device != torch.device("cpu"):
                 positions = positions.to(device=torch.device("cpu"))
 
@@ -378,25 +431,27 @@ class Integrals(IntegralContainer):
         self.quadrupole.normalize(self.overlap.norm)
         logger.debug("Quad integral: Finished building matrix.")
 
-        # make traceless before shifting
-        if traceless is True:
-            logger.debug("Quad integral: Start creating traceless rep.")
-            self.quadrupole.traceless()
-            logger.debug("Quad integral: Finished creating traceless rep.")
+        # DEVNOTE: Finally, we move the integral to the correct device, but
+        # only if no higher multipole integrals are required (redundant for
+        # quadrupole integrals, because this is the highest moment).
 
-        # shift to rj (requires overlap and dipole integral)
+        # If higher moment integrals are required, everything will be deferred.
+        if self.intlevel > labels.INTLEVEL_QUADRUPOLE:
+            logger.debug("Dipole integral: All finished (r0).")
+            return self.quadrupole.matrix
+
+        # If not, we have to move all integrals calculated so far and
+        # potentially shift all integrals. We shift first, because
+        # the `positions` are still on CPU if `force_cpu_for_libcint=True`.
         if shift is True:
-            logger.debug("Quad integral: Start shifting operator (r0r0->rjrj).")
-            if traceless is not True:
-                raise RuntimeError(
-                    "Quadrupole moment must be tracelesss for shifting. "
-                    "Run `quadrupole.traceless()` before shifting."
-                )
-
+            # Build dipole integral if not already done, but NO shift yet (r0)!
             if self.dipole is None:
-                self.build_dipole(positions, **kwargs)
+                self.build_dipole(positions, shift=False, **kwargs)
             assert self.dipole is not None
 
+            logger.debug("Quad integral: Start shifting operator (r0r0->rjrj).")
+
+            # shift to rjrj requires overlap and r0-centered dipole integral
             self.quadrupole.shift_r0r0_rjrj(
                 self.dipole.matrix,
                 self.overlap.matrix,
@@ -406,17 +461,33 @@ class Integrals(IntegralContainer):
                     extra=True,
                 ),
             )
-            logger.debug("Quad integral: Finished shifting operator.")
 
-        # Finally, we move the integral to the correct device, but only if
-        # no other multipole integrals are required.
-        if (
-            self.mgr.force_cpu_for_libcint is True
-            and self.intlevel <= labels.INTLEVEL_QUADRUPOLE
-        ):
+            logger.debug("Quad integral: Finished shifting (r0r0->rjrj).")
+            logger.debug("Dipole integral: Start shifting operator (r0->rj).")
+
+            self.dipole.shift_r0_rj(
+                self.overlap.matrix,
+                self.mgr.driver.ihelp.spread_atom_to_orbital(
+                    positions,
+                    dim=-2,
+                    extra=True,
+                ),
+            )
+
+            logger.debug("Dipole integral: Finished shifting (r0->rj).")
+
+        # Make traceless only after shifting!
+        if traceless is True:
+            logger.debug("Quad integral: Start making traceless.")
+            self.quadrupole.traceless()
+            logger.debug("Quad integral: Finished making traceless.")
+
+        if self.mgr.force_cpu_for_libcint is True:
             self.overlap = self.overlap.to(self.device)
             self.quadrupole = self.quadrupole.to(self.device)
 
+            # Dipole integral can be missing if we only require the quadrupole
+            # and do not shift.
             if self.dipole is not None:
                 self.dipole = self.dipole.to(self.device)
 

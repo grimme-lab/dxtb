@@ -108,7 +108,7 @@ def charges_to_potential(
         Potential vector for each orbital partial charge.
     """
 
-    potential = interactions.get_potential(charges, data.cache, data.ihelp)
+    potential = interactions.get_potential(data.cache, charges, data.ihelp)
     data.potential = {
         "mono": potential.mono_shape,
         "dipole": potential.dipole_shape,
@@ -252,7 +252,7 @@ def potential_to_hamiltonian(potential: Potential, data: _Data) -> Tensor:
         # Form dot product over the the multipolar components.
         #  - shape multipole integral: (..., x, norb, norb)
         #  - shape multipole potential: (..., norb, x)
-        tmp = 0.5 * einsum("...kij,...ik->...ij", mpint, v)
+        tmp = 0.5 * einsum("...kij,...jk->...ij", mpint, v)
         return h1 - (tmp + tmp.mT)
 
     if potential.dipole is not None:

@@ -181,39 +181,39 @@ class ElectricField(Interaction):
         return self.cache
 
     @override
-    def get_atom_energy(
-        self, charges: Tensor, cache: ElectricFieldCache
+    def get_monopole_atom_energy(
+        self, cache: ElectricFieldCache, qat: Tensor, **_: Any
     ) -> Tensor:
         """
         Calculate the monopolar contribution of the electric field energy.
 
         Parameters
         ----------
-        charges : Tensor
-            Atomic charges of all atoms.
         cache : ElectricFieldCache
             Restart data for the interaction.
+        qat : Tensor
+            Atomic charges of all atoms.
 
         Returns
         -------
         Tensor
             Atom-wise electric field interaction energies.
         """
-        return -cache.vat * charges
+        return -cache.vat * qat
 
     @override
-    def get_dipole_energy(
-        self, charges: Tensor, cache: ElectricFieldCache
+    def get_dipole_atom_energy(
+        self, cache: ElectricFieldCache, qat: Tensor, **_: Any
     ) -> Tensor:
         """
         Calculate the dipolar contribution of the electric field energy.
 
         Parameters
         ----------
-        charges : Tensor
-            Atomic dipole moments of all atoms.
         cache : ElectricFieldCache
             Restart data for the interaction.
+        qat : Tensor
+            Atomic charges of all atoms.
 
         Returns
         -------
@@ -222,7 +222,7 @@ class ElectricField(Interaction):
         """
 
         # equivalent: torch.sum(-cache.vdp * charges, dim=-1)
-        return einsum("...ix,...ix->...i", -cache.vdp, charges)
+        return einsum("...ix,...ix->...i", -cache.vdp, qat)
 
     @override
     def get_monopole_atom_potential(

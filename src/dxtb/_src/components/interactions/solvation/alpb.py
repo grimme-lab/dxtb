@@ -316,14 +316,14 @@ class GeneralizedBorn(Interaction):
         return self.cache
 
     @override
-    def get_atom_energy(
-        self, charges: Tensor, cache: GeneralizedBornCache
+    def get_monopole_atom_energy(
+        self, cache: GeneralizedBornCache, qat: Tensor, **_: Any
     ) -> Tensor:
-        return 0.5 * charges * self.get_monopole_atom_potential(cache, charges)
+        return 0.5 * qat * self.get_monopole_atom_potential(cache, qat)
 
     @override
     def get_monopole_atom_potential(
-        self, cache: GeneralizedBornCache, qat: Tensor, *_: Any, **__: Any
+        self, cache: GeneralizedBornCache, qat: Tensor, **__: Any
     ) -> Tensor:
         return einsum("...ik,...k->...i", cache.mat, qat)
 

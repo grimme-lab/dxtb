@@ -52,7 +52,7 @@ class CompFactoryProtocol(Protocol):
     ],
 )
 def test_fail_overwritten_cache(
-    comp_factory_par: tuple[CompFactoryProtocol, Param]
+    comp_factory_par: tuple[CompFactoryProtocol, Param],
 ) -> None:
     numbers = torch.tensor([3, 1], device=DEVICE)
     positions = torch.tensor([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]], device=DEVICE)
