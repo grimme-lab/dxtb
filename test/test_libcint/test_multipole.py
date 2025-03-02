@@ -123,6 +123,10 @@ def run_single(dtype: torch.dtype, name: str, gfn: str) -> None:
     _run(2, atol=tol)  # quadrupole
 
 
+@pytest.mark.skipif(
+    has_pyscf is False or has_libcint is False,
+    reason="PySCF or libcint interface not installed",
+)
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist)
 @pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
@@ -200,6 +204,10 @@ def test_shift_r0_rj(dtype: torch.dtype, name: str, gfn: str) -> None:
     assert pytest.approx(pyscf_rj.cpu(), abs=tol) == dipint.matrix.cpu()
 
 
+@pytest.mark.skipif(
+    has_pyscf is False or has_libcint is False,
+    reason="PySCF or libcint interface not installed",
+)
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist)
 @pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
@@ -283,6 +291,10 @@ def test_shift_r0r0_rjrj(dtype: torch.dtype, name: str, gfn: str) -> None:
     assert pytest.approx(pyscf_qpint.cpu(), abs=tol) == quadint.matrix.cpu()
 
 
+@pytest.mark.skipif(
+    has_pyscf is False or has_libcint is False,
+    reason="PySCF or libcint interface not installed",
+)
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist)
 @pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
