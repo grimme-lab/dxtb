@@ -24,10 +24,11 @@ Currently, only GFN2-xTB's damped multipole version is supported.
 
 from __future__ import annotations
 
+from typing import Union
+
 from pydantic import BaseModel, ConfigDict
 
 from dxtb.typing import Tensor
-from typing import Union
 
 __all__ = ["MultipoleDamped", "Multipole"]
 
