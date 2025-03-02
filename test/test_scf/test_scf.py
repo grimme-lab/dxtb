@@ -27,24 +27,12 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB, GFN2_XTB, Calculator
+from dxtb import GFN1_XTB, Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
 from .samples import samples
-
-# opts = {
-#     "verbosity": 4,
-#     "maxiter": 22,
-#     "scf_mode": labels.SCF_MODE_FULL,
-#     # "damp": 1.0,
-#     # "mixer": "simple",
-#     # "f_atol": 1e-8,
-#     "x_atol": 1e-8,
-#     "scp_mode": labels.SCP_MODE_CHARGE,
-#     "exclude": ["disp", "rep", "es3", "es2"],
-# }
 
 opts = {
     "verbosity": 0,

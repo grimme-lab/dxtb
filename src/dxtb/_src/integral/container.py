@@ -695,9 +695,9 @@ class IntegralMatrices(IntegralContainer):
 
         Expected shapes:
 
-        - hcore and overlap: (batch_size, nao, nao) or (nao, nao)
-        - dipole: (batch_size, 3, nao, nao) or (3, nao, nao)
-        - quad: (batch_size, 9, nao, nao) or (9, nao, nao)
+        - hcore and overlap: ``(..., nao, nao)``
+        - dipole: ``(..., 3, nao, nao)``
+        - quad: ``(..., 9, nao, nao)``
 
         Raises
         ------

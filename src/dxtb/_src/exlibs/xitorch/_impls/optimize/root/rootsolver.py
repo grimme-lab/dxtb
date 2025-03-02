@@ -153,7 +153,7 @@ def _nonlin_solver(
     best_dxnorm = x.norm()
     best_iter = 0
 
-    # For i=0, we are getting not the guess but the first iteration
+    # Above, we fed the guess to `func`, making it the first iteration.
     if OutputHandler.verbosity >= 3:
         OutputHandler.write_row(
             "SCF Iterations",
@@ -178,7 +178,9 @@ def _nonlin_solver(
                 "approximation."
             )
 
-        # For i=0, we are getting not the guess but the first iteration
+        # Since we already passed the guess into `func` one, we are in the
+        # second iteration for i=0. Energy evaluation is not possible here,
+        # because the SCF class is not passed to the root solver.
         if OutputHandler.verbosity >= 3:
             OutputHandler.write_row(
                 "SCF Iterations",
