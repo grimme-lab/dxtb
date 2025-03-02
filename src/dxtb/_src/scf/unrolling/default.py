@@ -84,6 +84,11 @@ class SelfConsistentFieldFull(BaseTSCF):
             energy = self.get_energy(charges)
             self._print(charges, energy)
 
+        if maxiter == 0:
+            if return_charges is True:
+                return self.converged_to_charges(q)
+            return q
+
         # single-system (non-batched) case, which does not require culling
         if batched == 0:
             for _ in range(maxiter):
@@ -171,7 +176,7 @@ class SelfConsistentFieldFull(BaseTSCF):
         # culling to work properly later. If we are converging the Fock
         # matrix, there is no such thing as multipole dimensions. However,
         # we will shamelessly use this as the second dimension of the Fock
-        # matrix even modify it in for the culling process.
+        # matrix even modify it for the culling process.
         mpdim = q.shape[1]
 
         # initialize slicers for culling

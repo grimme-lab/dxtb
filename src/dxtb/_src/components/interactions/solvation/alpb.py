@@ -48,7 +48,7 @@ Example
 
     # Build cache and use it for energy calculation
     cache = gb.get_cache(numbers=numbers, positions=positions)
-    energy = gb.get_atom_energy(charges, cache)
+    energy = gb.get_monopole_atom_energy(cache, charges)
 
     total_energy = energy.sum(-1)
     print(total_energy)  # Output: tensor(-5.0762e-05)

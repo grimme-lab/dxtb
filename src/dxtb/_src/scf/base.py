@@ -629,7 +629,6 @@ class BaseSCF:
             New orbital-resolved partial charges vector.
         """
         self._data.iter += 1
-        print("self._data.iter", self._data.iter)
 
         q = Charges.from_tensor(
             charges, self._data.charges, batch_mode=self.config.batch_mode

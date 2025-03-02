@@ -203,7 +203,12 @@ class ElectricField(Interaction):
 
     @override
     def get_dipole_atom_energy(
-        self, cache: ElectricFieldCache, qat: Tensor, **_: Any
+        self,
+        cache: ElectricFieldCache,
+        qat: Tensor,
+        qdp: Tensor,
+        qqp: Tensor,
+        **_: Any,
     ) -> Tensor:
         """
         Calculate the dipolar contribution of the electric field energy.
@@ -213,7 +218,11 @@ class ElectricField(Interaction):
         cache : ElectricFieldCache
             Restart data for the interaction.
         qat : Tensor
-            Atomic charges of all atoms.
+            Atom-resolved partial charges (shape: ``(..., nat)``).
+        qdp : Tensor
+            Atom-resolved shadow charges (shape: ``(..., nat, 3)``).
+        qqp : Tensor
+            Atom-resolved quadrupole moments (shape: ``(..., nat, 6)``).
 
         Returns
         -------
@@ -221,8 +230,8 @@ class ElectricField(Interaction):
             Atom-wise electric field interaction energies.
         """
 
-        # equivalent: torch.sum(-cache.vdp * charges, dim=-1)
-        return einsum("...ix,...ix->...i", -cache.vdp, qat)
+        # equivalent: torch.sum(-cache.vdp * qdp, dim=-1)
+        return einsum("...ix,...ix->...i", -cache.vdp, qdp)
 
     @override
     def get_monopole_atom_potential(

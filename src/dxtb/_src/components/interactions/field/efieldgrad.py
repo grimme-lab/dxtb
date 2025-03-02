@@ -130,7 +130,12 @@ class ElectricFieldGrad(Interaction):
     # TODO: This is probably not correct...
     @override
     def get_quadrupole_atom_energy(
-        self, cache: ElectricFieldCache, qat: Tensor, **_: Any
+        self,
+        cache: ElectricFieldCache,
+        qat: Tensor,
+        qdp: Tensor,
+        qqp: Tensor,
+        **_: Any,
     ) -> Tensor:
         """
         Calculate the quadrupolar contribution of the electric field energy.
@@ -140,7 +145,11 @@ class ElectricFieldGrad(Interaction):
         cache : ElectricFieldCache
             Restart data for the interaction.
         qat : Tensor
-            Atomic dipole moments of all atoms.
+            Atom-resolved partial charges (shape: ``(..., nat)``).
+        qdp : Tensor
+            Atom-resolved shadow charges (shape: ``(..., nat, 3)``).
+        qqp : Tensor
+            Atom-resolved quadrupole moments (shape: ``(..., nat, 6)``).
 
         Returns
         -------
@@ -149,7 +158,7 @@ class ElectricFieldGrad(Interaction):
         """
 
         # equivalent: torch.sum(-cache.vqp * charges, dim=-1)
-        return 0.5 * einsum("...x,...ix->...i", cache.efg, qat)
+        return 0.5 * einsum("...x,...ix->...i", cache.efg, qqp)
 
     def __str__(self) -> str:  # pragma: no cover
         return f"{self.__class__.__name__}(field_grad={self.field_grad})"

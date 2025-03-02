@@ -41,8 +41,8 @@ opts = {
     "maxiter": 50,
     "scf_mode": labels.SCF_MODE_FULL,
     "scp_mode": labels.SCP_MODE_POTENTIAL,
-    "f_atol": 1.0e-8,
-    "x_atol": 1.0e-8,
+    "f_atol": 1.0e-12,
+    "x_atol": 1.0e-12,
     "verbosity": 0,
 }
 
@@ -103,7 +103,7 @@ def _numhess(
         pos.detach_()
         return result.detach()
 
-    step = 1.0e-4
+    step = 1.0e-5
     for i in range(numbers.shape[0]):
         for j in range(3):
             positions[i, j] += step

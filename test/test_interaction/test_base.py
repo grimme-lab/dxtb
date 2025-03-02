@@ -41,19 +41,19 @@ def test_empty() -> None:
     c = i.get_cache(numbers=numbers, positions=numbers, ihelp=ihelp)
     assert isinstance(c, ComponentCache)
 
-    ae = i.get_atom_energy(numbers)
+    ae = i.get_monopole_atom_energy(c, numbers)
     assert (ae == torch.zeros(ae.shape, device=DEVICE)).all()
 
-    se = i.get_shell_energy(numbers)
+    se = i.get_monopole_shell_energy(c, numbers)
     assert (se == torch.zeros(se.shape, device=DEVICE)).all()
 
-    e = i.get_energy(Charges(mono=orbital), numbers, ihelp)  # type: ignore
+    e = i.get_energy(c, Charges(mono=orbital), ihelp)
     assert (e == torch.zeros(e.shape, device=DEVICE)).all()
 
-    ap = i.get_atom_potential(numbers)
+    ap = i.get_monopole_atom_potential(c, numbers)
     assert (ap == torch.zeros(ap.shape, device=DEVICE)).all()
 
-    sp = i.get_shell_potential(numbers, numbers)
+    sp = i.get_monopole_shell_potential(c, numbers)
     assert (sp == torch.zeros(sp.shape, device=DEVICE)).all()
 
     ag = i.get_atom_gradient(numbers, numbers)
@@ -66,7 +66,7 @@ def test_empty() -> None:
 def test_energy_fail() -> None:
     """Monopolar charges are always required."""
     i = Interaction()
-    c = Charges()
+    q = Charges()
 
     with pytest.raises(RuntimeError):
-        i.get_energy(c, None, None)  # type: ignore
+        i.get_energy(None, q, None)  # type: ignore
