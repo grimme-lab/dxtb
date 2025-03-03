@@ -182,7 +182,7 @@ class Container:
             Tensor representation of the container.
         data : ContainerData
             Collection of shapes and labels of the container. This information
-            is required for correctly restoring the the Container class.
+            is required for correctly restoring the Container class.
         batch_mode : bool, optional
             Whether the calculation runs in batch_mode mode. Defaults to ``False``.
         pad : int, optional
@@ -191,7 +191,7 @@ class Container:
         Returns
         -------
         Container
-            Instance of the `Container` class.
+            Instance of the :class:`.Container` class.
         """
 
         ndim = tensor.ndim

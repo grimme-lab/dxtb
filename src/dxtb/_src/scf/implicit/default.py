@@ -56,12 +56,10 @@ class SelfConsistentFieldImplicit(BaseXSCF):
         # pylint: disable=import-outside-toplevel
         from dxtb._src.exlibs import xitorch as xt
 
-        fcn = self._fcn
-
         # TODO: Pass mixer options in `method` arg.
         # Currently ignored. Always "broyden1".
         q_converged = xt.optimize.equilibrium(
-            fcn=fcn,
+            fcn=self._fcn,
             y0=guess,
             bck_options={**self.bck_options},
             **self.fwd_options,
@@ -72,9 +70,12 @@ class SelfConsistentFieldImplicit(BaseXSCF):
         # Note that this is not required for SCF with full gradient tracking.
         # (see https://github.com/grimme-lab/dxtb/issues/124)
         if self.config.scp_mode == labels.SCP_MODE_CHARGE:
-            mixer = Simple({**self.fwd_options, "damp": 1e-4})
-            q_new = fcn(q_converged)
+            mixer = Simple({**self.fwd_options, "damp": 1e-5})
+            q_new = self._fcn(q_converged)
             q_converged = mixer.iter(q_new, q_converged)
+
+            # Let's not count this as an iteration
+            self._data.iter -= 1
 
         if return_charges is True:
             return self.converged_to_charges(q_converged)

@@ -53,7 +53,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, ihelp=ihelp)
-    e = es.get_atom_energy(qat, cache)
+    e = es.get_monopole_atom_energy(cache, qat)
     assert pytest.approx(ref.cpu()) == e.sum(-1).cpu()
 
 
@@ -89,7 +89,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, ihelp=ihelp)
-    e = es.get_atom_energy(qat, cache)
+    e = es.get_monopole_atom_energy(cache, qat)
     assert pytest.approx(ref.cpu()) == e.sum(-1).cpu()
 
 
@@ -118,6 +118,6 @@ def test_grad_param(name: str) -> None:
     def func(hubbard_derivs: Tensor):
         es = es3.ES3(hubbard_derivs, **dd)
         cache = es.get_cache(numbers=numbers, ihelp=ihelp)
-        return es.get_atom_energy(qat, cache)
+        return es.get_monopole_atom_energy(cache, qat)
 
     assert dgradcheck(func, hd, nondet_tol=NONDET_TOL)

@@ -28,7 +28,7 @@ from tad_mctc.exceptions import DeviceError, DtypeError
 from tad_mctc.math import einsum
 
 from dxtb import IndexHelper
-from dxtb._src.typing import Tensor, TensorLike, override
+from dxtb._src.typing import Any, Tensor, TensorLike, override
 
 from ..base import Interaction, InteractionCache
 
@@ -128,18 +128,28 @@ class ElectricFieldGrad(Interaction):
         return self.cache
 
     # TODO: This is probably not correct...
-    def get_quadrupole_energy(
-        self, charges: Tensor, cache: ElectricFieldCache
+    @override
+    def get_quadrupole_atom_energy(
+        self,
+        cache: ElectricFieldCache,
+        qat: Tensor,
+        qdp: Tensor,
+        qqp: Tensor,
+        **_: Any,
     ) -> Tensor:
         """
         Calculate the quadrupolar contribution of the electric field energy.
 
         Parameters
         ----------
-        charges : Tensor
-            Atomic dipole moments of all atoms.
         cache : ElectricFieldCache
             Restart data for the interaction.
+        qat : Tensor
+            Atom-resolved partial charges (shape: ``(..., nat)``).
+        qdp : Tensor
+            Atom-resolved shadow charges (shape: ``(..., nat, 3)``).
+        qqp : Tensor
+            Atom-resolved quadrupole moments (shape: ``(..., nat, 6)``).
 
         Returns
         -------
@@ -148,7 +158,7 @@ class ElectricFieldGrad(Interaction):
         """
 
         # equivalent: torch.sum(-cache.vqp * charges, dim=-1)
-        return 0.5 * einsum("...x,...ix->...i", cache.efg, charges)
+        return 0.5 * einsum("...x,...ix->...i", cache.efg, qqp)
 
     def __str__(self) -> str:  # pragma: no cover
         return f"{self.__class__.__name__}(field_grad={self.field_grad})"

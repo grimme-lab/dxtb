@@ -160,7 +160,7 @@ class BaseIntegral(IntegralABC, TensorLike):
 
         Parameters
         ----------
-        norm : Tensor
+        norm : Tensor | None, optional
             Overlap norm to normalize the integral.
         """
         if norm is None:

@@ -58,7 +58,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
-    e = es.get_atom_energy(qat, cache)
+    e = es.get_monopole_atom_energy(cache, qat)
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == e.sum(-1).cpu()
 
 
@@ -100,7 +100,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
-    e = es.get_atom_energy(qat, cache)
+    e = es.get_monopole_atom_energy(cache, qat)
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == e.sum(-1).cpu()
 
 
@@ -125,7 +125,7 @@ def test_grad_positions(name: str) -> None:
 
     def func(p: Tensor):
         cache = es.get_cache(numbers=numbers, positions=p, ihelp=ihelp)
-        return es.get_atom_energy(qat, cache)
+        return es.get_monopole_atom_energy(cache, qat)
 
     assert dgradcheck(func, pos, nondet_tol=NONDET_TOL)
 
@@ -157,6 +157,6 @@ def test_grad_param(name: str) -> None:
     def func(gexp: Tensor, hubbard: Tensor):
         es = es2.ES2(hubbard, average=average, gexp=gexp, **dd)
         cache = es.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
-        return es.get_atom_energy(qat, cache)
+        return es.get_monopole_atom_energy(cache, qat)
 
     assert dgradcheck(func, (gexp, hubbard), nondet_tol=NONDET_TOL)

@@ -65,7 +65,7 @@ def M(
     """
     mol = PyscfMol(numbers, positions, xtb_version=xtb_version)
     mol.build(**kwargs)
-    mol.undo_norm_prim()
+    mol.revert_norm_prim()
     return mol
 
 
@@ -138,9 +138,9 @@ class PyscfMol(gto.Mole):
     ) -> PyscfMol:
         return cls(mol.numbers, mol.positions, xtb_version, **kwargs)
 
-    def undo_norm_prim(self) -> None:
+    def revert_norm_prim(self) -> None:
         """
-        Circumvent normalization of primitive Gaussians, which is automatically
+        Revert normalization of primitive Gaussians, which is automatically
         done in the build step of the PySCF molecule.
 
         See: https://github.com/pyscf/pyscf/issues/1800.

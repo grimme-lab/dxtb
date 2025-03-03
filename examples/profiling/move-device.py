@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # This file is part of dxtb.
 #
 # SPDX-Identifier: Apache-2.0
@@ -80,16 +81,28 @@ override_tensor_methods()
 
 import dxtb
 
-dd = {"dtype": torch.double, "device": torch.device("cuda:0")}
 
-# LiH
-numbers = torch.tensor([3, 1], device=dd["device"])
-positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.5]], **dd)
+def main() -> int:
+    if not torch.cuda.is_available():
+        print("Skipping test as CUDA is not available.")
+        return 0
 
-# instantiate a calculator
-opts = {"verbosity": 6}
-calc = dxtb.calculators.GFN1Calculator(numbers, opts=opts, **dd)
+    dd = {"dtype": torch.double, "device": torch.device("cuda:0")}
 
-# compute the energy
-pos = positions.clone().requires_grad_(True)
-energy = calc.get_energy(pos)
+    # LiH
+    numbers = torch.tensor([3, 1], device=dd["device"])
+    positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.5]], **dd)
+
+    # instantiate a calculator
+    opts = {"verbosity": 6}
+    calc = dxtb.calculators.GFN1Calculator(numbers, opts=opts, **dd)
+
+    # compute the energy
+    pos = positions.clone().requires_grad_(True)
+    _ = calc.get_energy(pos)
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

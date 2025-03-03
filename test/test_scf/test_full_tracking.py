@@ -263,7 +263,14 @@ def test_batch_unconverged_partly_anderson(dtype: torch.dtype) -> None:
 
     # only for regression testing (copied unconverged energies)
     ref = torch.tensor(
-        [-1.058598357054240, -0.881056651685982, -4.024565248590350], **dd
+        [-1.058598357054240, -0.8818244757849318, -4.017705657967151], **dd
+    )
+
+    batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "anderson", 0)
+
+    # only for regression testing (copied unconverged energies)
+    ref = torch.tensor(
+        [-1.058598357054240, -0.882224299270184, -4.026326793876873], **dd
     )
 
     batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "anderson", 1)
@@ -276,10 +283,17 @@ def test_batch_unconverged_partly_simple(dtype: torch.dtype) -> None:
 
     # only for regression testing (copied unconverged energies)
     ref = torch.tensor(
-        [-1.058598357054241, -0.882637082174645, -4.036955313952423], **dd
+        [-1.058598357054241, -0.8818244757849318, -4.017705657967151], **dd
     )
 
-    batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "simple", 1)
+    batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "simple", 0)
+
+    # only for regression testing (copied unconverged energies)
+    ref = torch.tensor(
+        [-1.058598357054240, -0.882224299270184, -4.026326793876873], **dd
+    )
+
+    batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "anderson", 1)
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -289,10 +303,10 @@ def test_batch_unconverged_fully_anderson(dtype: torch.dtype) -> None:
 
     # only for regression testing (copied unconverged energies)
     ref = torch.tensor(
-        [-0.881056651685982, -0.881056651685982, -4.024565248590350], **dd
+        [-0.8818244757849318, -0.8818244757849318, -4.017705657967151], **dd
     )
 
-    batched_unconverged(ref, dtype, "LiH", "LiH", "SiH4", "anderson", 1)
+    batched_unconverged(ref, dtype, "LiH", "LiH", "SiH4", "anderson", 0)
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -304,10 +318,10 @@ def test_batch_unconverged_fully_simple(
 
     # only for regression testing (copied unconverged energies)
     ref = torch.tensor(
-        [-0.882637082174645, -0.882637082174645, -4.036955313952423], **dd
+        [-0.8818244757849318, -0.8818244757849318, -4.017705657967151], **dd
     )
 
-    batched_unconverged(ref, dtype, "LiH", "LiH", "SiH4", "simple", 1)
+    batched_unconverged(ref, dtype, "LiH", "LiH", "SiH4", "simple", 0)
 
 
 @pytest.mark.filterwarnings("ignore")

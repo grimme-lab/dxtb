@@ -31,6 +31,11 @@ coordfile = Path(
 ).resolve()
 """Path to coord file of H2."""
 
+coordfile_lih = Path(
+    Path(__file__).parent, "test_singlepoint/mols/LiH/coord"
+).resolve()
+"""Path to coord file of LiH."""
+
 
 def load_from_npz(
     npzfile: Any,

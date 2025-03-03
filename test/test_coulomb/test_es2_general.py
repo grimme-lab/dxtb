@@ -84,7 +84,7 @@ def test_grad_fail() -> None:
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
-    energy = es.get_energy(Charges(charges), cache, ihelp)
+    energy = es.get_energy(cache, Charges(charges), ihelp)
 
     # zeroenergy
     grad = es._gradient(torch.zeros_like(energy), positions)
@@ -155,7 +155,7 @@ def test_zeros_atom_resolved() -> None:
 
     n = torch.tensor([6, 1])
 
-    shell_energy = cls.get_shell_energy(n, n)  # type: ignore
+    shell_energy = cls.get_monopole_shell_energy(n, n)  # type: ignore
     assert (shell_energy == torch.zeros_like(shell_energy)).all()
 
     shell_gradient = cls.get_shell_gradient(n, n, n)  # type: ignore
@@ -168,7 +168,7 @@ def test_zeros_shell_resolved() -> None:
 
     n = torch.tensor([6, 1])
 
-    atom_energy = cls.get_atom_energy(n, n)  # type: ignore
+    atom_energy = cls.get_monopole_atom_energy(n, n)  # type: ignore
     assert (atom_energy == torch.zeros_like(atom_energy)).all()
 
     atom_gradient = cls.get_atom_gradient(n, n, n, n)  # type: ignore

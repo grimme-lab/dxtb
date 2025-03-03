@@ -110,7 +110,7 @@ class InteractionList(ComponentList[Interaction]):
 
         return torch.stack(
             [
-                interaction.get_energy(charges, cache[interaction.label], ihelp)
+                interaction.get_energy(cache[interaction.label], charges, ihelp)
                 for interaction in self.components
             ]
         ).sum(dim=0)
@@ -141,7 +141,7 @@ class InteractionList(ComponentList[Interaction]):
 
         return {
             interaction.label: interaction.get_energy(
-                charges, cache[interaction.label], ihelp
+                cache[interaction.label], charges, ihelp
             )
             for interaction in self.components
         }
@@ -228,20 +228,20 @@ class InteractionList(ComponentList[Interaction]):
         return cache
 
     def get_potential(
-        self, charges: Charges, cache: InteractionListCache, ihelp: IndexHelper
+        self, cache: InteractionListCache, charges: Charges, ihelp: IndexHelper
     ) -> Potential:
         """
         Compute the potential for a list of interactions.
 
         Parameters
         ----------
+        cache : InteractionListCache
+            Restart data for the interactions.
         charges : Charges
             Collection of charges. Monopolar partial charges are
             orbital-resolved.
         ihelp : IndexHelper
             Index mapping for the basis set.
-        cache : InteractionListCache
-            Restart data for the interactions.
 
         Returns
         -------
@@ -264,7 +264,7 @@ class InteractionList(ComponentList[Interaction]):
         # add up potentials from all interactions
         for interaction in self.components:
             p = interaction.get_potential(
-                charges, cache[interaction.label], ihelp
+                cache[interaction.label], charges, ihelp
             )
             pot += p
 

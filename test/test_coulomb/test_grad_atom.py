@@ -171,14 +171,14 @@ def calc_numerical_gradient(
             cache = es.get_cache(
                 numbers=numbers, positions=positions, ihelp=ihelp
             )
-            er = es.get_atom_energy(charges, cache)
+            er = es.get_monopole_atom_energy(cache, charges)
             er = torch.sum(er, dim=-1)
 
             positions[i, j] -= 2 * step
             cache = es.get_cache(
                 numbers=numbers, positions=positions, ihelp=ihelp
             )
-            el = es.get_atom_energy(charges, cache)
+            el = es.get_monopole_atom_energy(cache, charges)
             el = torch.sum(el, dim=-1)
 
             positions[i, j] += step

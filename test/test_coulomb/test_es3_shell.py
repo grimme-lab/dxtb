@@ -54,7 +54,7 @@ def test_qsh_single(dtype: torch.dtype, name: str) -> None:
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, ihelp=ihelp)
-    e = es.get_shell_energy(qsh, cache)
+    e = es.get_monopole_shell_energy(cache, qsh)
     assert pytest.approx(ref.cpu()) == e.sum(-1).cpu()
 
 
@@ -90,7 +90,7 @@ def test_qsh_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, ihelp=ihelp)
-    e = es.get_shell_energy(qsh, cache)
+    e = es.get_monopole_shell_energy(cache, qsh)
     assert pytest.approx(ref.cpu()) == e.sum(-1).cpu()
 
 
@@ -113,7 +113,7 @@ def test_qat_single(dtype: torch.dtype, name: str) -> None:
     es.shell_scale = None
 
     cache = es.get_cache(numbers=numbers, ihelp=ihelp)
-    e = es.get_atom_energy(qat, cache)
+    e = es.get_monopole_atom_energy(cache, qat)
     assert pytest.approx(ref.cpu()) == e.sum(-1).cpu()
 
 
@@ -152,7 +152,7 @@ def test_qat_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     es.shell_scale = None
 
     cache = es.get_cache(numbers=numbers, ihelp=ihelp)
-    e = es.get_atom_energy(qat, cache)
+    e = es.get_monopole_atom_energy(cache, qat)
     assert pytest.approx(ref.cpu()) == e.sum(-1).cpu()
 
 
@@ -181,7 +181,7 @@ def test_grad_param_atom(name: str) -> None:
     def func(hubbard_derivs: Tensor):
         es = es3.ES3(hubbard_derivs, **dd)
         cache = es.get_cache(numbers=numbers, ihelp=ihelp)
-        return es.get_atom_energy(qat, cache)
+        return es.get_monopole_atom_energy(cache, qat)
 
     assert dgradcheck(func, hd, nondet_tol=NONDET_TOL)
 
@@ -223,6 +223,6 @@ def test_grad_param_shell(name: str) -> None:
     def func(hubbard_derivs: Tensor):
         es = es3.ES3(hubbard_derivs, shell_scale=shell_scale, **dd)
         cache = es.get_cache(numbers=numbers, ihelp=ihelp)
-        return es.get_shell_energy(qsh, cache)
+        return es.get_monopole_shell_energy(cache, qsh)
 
     assert dgradcheck(func, hd, nondet_tol=NONDET_TOL)

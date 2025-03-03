@@ -48,7 +48,7 @@ Example
 
     # Build cache and use it for energy calculation
     cache = gb.get_cache(numbers=numbers, positions=positions)
-    energy = gb.get_atom_energy(charges, cache)
+    energy = gb.get_monopole_atom_energy(cache, charges)
 
     total_energy = energy.sum(-1)
     print(total_energy)  # Output: tensor(-5.0762e-05)
@@ -316,16 +316,16 @@ class GeneralizedBorn(Interaction):
         return self.cache
 
     @override
-    def get_atom_energy(
-        self, charges: Tensor, cache: GeneralizedBornCache
+    def get_monopole_atom_energy(
+        self, cache: GeneralizedBornCache, qat: Tensor, **_: Any
     ) -> Tensor:
-        return 0.5 * charges * self.get_atom_potential(charges, cache)
+        return 0.5 * qat * self.get_monopole_atom_potential(cache, qat)
 
     @override
-    def get_atom_potential(
-        self, charges: Tensor, cache: GeneralizedBornCache
+    def get_monopole_atom_potential(
+        self, cache: GeneralizedBornCache, qat: Tensor, **__: Any
     ) -> Tensor:
-        return einsum("...ik,...k->...i", cache.mat, charges)
+        return einsum("...ik,...k->...i", cache.mat, qat)
 
     # TODO: Implement gradient before using solvation in SCF
     def get_atom_gradient(

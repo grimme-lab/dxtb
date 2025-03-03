@@ -37,6 +37,7 @@ __all__ = [
     "INTLEVEL_HCORE",
     "INTLEVEL_DIPOLE",
     "INTLEVEL_QUADRUPOLE",
+    "INTLEVEL_MAX",
 ]
 
 # integral drivers
@@ -84,3 +85,6 @@ INTLEVEL_DIPOLE = 3
 
 INTLEVEL_QUADRUPOLE = 4
 """Quadrupole integrals."""
+
+INTLEVEL_MAX = INTLEVEL_QUADRUPOLE
+"""Maximum integral level."""

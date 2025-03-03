@@ -159,12 +159,10 @@ class EnergyCalculator(BaseCalculator):
 
         timer.start("Integrals")
 
-        intmats = IntegralMatrices(**self.dd)
-
         # overlap integral (always required, even without Hückel Hamiltonian)
         OutputHandler.write_stdout_nf(" - Overlap           ... ", v=3)
         timer.start("Overlap", parent_uid="Integrals")
-        intmats.overlap = self.integrals.build_overlap(positions)
+        self.integrals.build_overlap(positions)
         timer.stop("Overlap")
         OutputHandler.write_stdout("done", v=3)
 
@@ -182,7 +180,7 @@ class EnergyCalculator(BaseCalculator):
         if self.opts.ints.level >= labels.INTLEVEL_DIPOLE:
             OutputHandler.write_stdout_nf(" - Dipole            ... ", v=3)
             timer.start("Dipole Integral", parent_uid="Integrals")
-            intmats.dipole = self.integrals.build_dipole(positions)
+            self.integrals.build_dipole(positions)
             timer.stop("Dipole Integral")
             OutputHandler.write_stdout("done", v=3)
 
@@ -195,7 +193,7 @@ class EnergyCalculator(BaseCalculator):
         if self.opts.ints.level >= labels.INTLEVEL_QUADRUPOLE:
             OutputHandler.write_stdout_nf(" - Quadrupole        ... ", v=3)
             timer.start("Quadrupole Integral", parent_uid="Integrals")
-            intmats.quadrupole = self.integrals.build_quadrupole(positions)
+            self.integrals.build_quadrupole(positions)
             timer.stop("Quadrupole Integral")
             OutputHandler.write_stdout("done", v=3)
 
@@ -214,7 +212,7 @@ class EnergyCalculator(BaseCalculator):
         if self.opts.ints.level >= labels.INTLEVEL_HCORE:
             OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ", v=3)
             timer.start("Core Hamiltonian", parent_uid="Integrals")
-            intmats.hcore = self.integrals.build_hcore(positions)
+            self.integrals.build_hcore(positions)
             timer.stop("Core Hamiltonian")
             OutputHandler.write_stdout("done", v=3)
 
@@ -230,12 +228,25 @@ class EnergyCalculator(BaseCalculator):
             raise NotImplementedError(
                 "Core Hamiltonian missing. Skipping the Core Hamiltonian in "
                 "the SCF is currently not supported. Please increase the "
-                "integral level to at least '2'. Currently, the level is set "
-                f"to '{self.opts.ints.level}'."
+                f"integral level to at least '{labels.INTLEVEL_HCORE}'. "
+                f"Currently, the level is set to '{self.opts.ints.level}'."
             )
 
         # finalize integrals
         timer.stop("Integrals")
+        intmats = IntegralMatrices(
+            **self.dd,
+            _hcore=self.integrals.hcore.matrix,
+            _overlap=self.integrals.overlap.matrix,
+            _dipole=(
+                self.integrals.dipole.matrix if self.integrals.dipole else None
+            ),
+            _quadrupole=(
+                self.integrals.quadrupole.matrix
+                if self.integrals.quadrupole is not None
+                else None
+            ),
+        )
         intmats = intmats.to(self.device)
         result.integrals = intmats
 

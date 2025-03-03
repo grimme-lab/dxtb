@@ -27,8 +27,7 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
@@ -56,7 +55,7 @@ def test_single(dtype: torch.dtype, name: str):
     ref = sample["escf"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=opts, **dd)
 
     result = calc.singlepoint(positions, charges)
     res = result.scf.sum(-1)
@@ -92,7 +91,7 @@ def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
             "x_atol": tol,
         },
     )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
 
     result = calc.singlepoint(positions, charges)
     res = result.scf.sum(-1)
@@ -122,7 +121,7 @@ def test_single_difficult_1(dtype: torch.dtype, name: str):
             "maxiter": 400,  #  simple mixing
         },
     )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
 
     result = calc.singlepoint(positions, charges)
     res = result.scf.sum(-1)
@@ -152,7 +151,7 @@ def test_single_difficult_2(dtype: torch.dtype, name: str):
             "maxiter": 400,  #  simple mixing
         },
     )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
 
     result = calc.singlepoint(positions, charges)
     res = result.scf.sum(-1)
@@ -181,7 +180,7 @@ def test_single_large(dtype: torch.dtype, name: str):
             "maxiter": 300,  #  simple mixing
         },
     )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
 
     result = calc.singlepoint(positions, charges)
     res = result.scf.sum(-1)
@@ -216,7 +215,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
         )
     )
     charges = torch.tensor([0.0, 0.0], **dd)
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=opts, **dd)
 
     result = calc.singlepoint(positions, charges)
     res = result.scf.sum(-1)
@@ -255,7 +254,7 @@ def test_batch2(dtype: torch.dtype, name1: str, name2: str, name3: str):
         )
     )
     charges = torch.tensor([0.0, 0.0, 0.0], **dd)
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=opts, **dd)
 
     result = calc.singlepoint(positions, charges)
     res = result.scf.sum(-1)
@@ -287,7 +286,7 @@ def test_batch_special(dtype: torch.dtype, mixer: str) -> None:
     ref = torch.tensor([-2.8629311088577, -4.1663539440167], **dd)
 
     options = dict(opts, **{"mixer": mixer})
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
 
     result = calc.singlepoint(positions, chrg)
     assert pytest.approx(ref.cpu(), abs=tol) == result.scf.sum(-1).cpu()

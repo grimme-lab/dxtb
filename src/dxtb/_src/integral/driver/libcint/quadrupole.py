@@ -55,4 +55,17 @@ class QuadrupoleLibcint(QuadrupoleIntegral, MultipoleLibcint):
         return self.multipole(driver, "r0r0")
 
     def get_gradient(self, driver: IntDriver, **kwargs: Any) -> Tensor:
+        """
+        Calculation of quadrupole gradient using libcint.
+
+        Parameters
+        ----------
+        driver : IntDriverLibcint
+            The integral driver for the calculation.
+
+        Returns
+        -------
+        Tensor
+            Quadrupole gradient.
+        """
         raise NotImplementedError("Gradient calculation not implemented.")
