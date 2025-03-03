@@ -382,12 +382,25 @@ def test_reduce_9_to_6(dtype: torch.dtype, name: str, gfn: str) -> None:
     mol = M(numbers, positions, xtb_version=gfn, parse_arg=False)
     pyscf_r0r0 = numpy_to_tensor(mol.intor("int1e_rr"), **dd)
 
-    int_l = _reduce_9_to_6(pyscf_r0r0, uplo="L")
-    int_u = _reduce_9_to_6(pyscf_r0r0, uplo="U")
+    # 0
+    # 3 4    ->  0, 3, 4, 6, 7, 8
+    # 6 7 8
+    int_l = _reduce_9_to_6(pyscf_r0r0, uplo="L").cpu()
 
-    # Compare L and U
+    # 0 1 2
+    #   4 5  ->  0, 1, 2, 4, 5, 8
+    #     8
+    int_u = _reduce_9_to_6(pyscf_r0r0, uplo="U").cpu()
+
     assert int_l.shape == int_u.shape
-    assert pytest.approx(int_l.cpu(), abs=tol) == int_u.cpu()
+
+    # equivalent indices: l0-u0, l3-u1, l4-l4, u6-l2, u7-l5, u8-l8
+    assert pytest.approx(int_l[0], abs=tol) == int_u[0]  # l0-u0
+    assert pytest.approx(int_l[1], abs=tol) == int_u[1]  # l3-u1
+    assert pytest.approx(int_l[2], abs=tol) == int_u[3]  # l4-l4
+    assert pytest.approx(int_l[3], abs=tol) == int_u[2]  # u6-l2
+    assert pytest.approx(int_l[4], abs=tol) == int_u[4]  # u7-l5
+    assert pytest.approx(int_l[5], abs=tol) == int_u[5]  # u8-l8
 
 
 @pytest.mark.skipif(
