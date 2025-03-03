@@ -361,3 +361,57 @@ def test_traceless(dtype: torch.dtype, name: str, gfn: str) -> None:
     # Compare with PySCF reference
     assert pyscf_qp.shape == i.quadrupole.matrix.shape
     assert pytest.approx(pyscf_qp.cpu(), abs=tol) == i.quadrupole.matrix.cpu()
+
+
+@pytest.mark.skipif(
+    has_pyscf is False or has_libcint is False,
+    reason="PySCF or libcint interface not installed",
+)
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", slist)
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
+def test_reduce_9_to_6(dtype: torch.dtype, name: str, gfn: str) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+    tol = sqrt(torch.finfo(dtype).eps)
+
+    sample = samples[name]
+    numbers = sample["numbers"].to(DEVICE)
+    positions = sample["positions"].to(**dd)
+
+    assert M is not False
+    mol = M(numbers, positions, xtb_version=gfn, parse_arg=False)
+    pyscf_r0r0 = numpy_to_tensor(mol.intor("int1e_rr"), **dd)
+
+    int_l = _reduce_9_to_6(pyscf_r0r0, uplo="L")
+    int_u = _reduce_9_to_6(pyscf_r0r0, uplo="U")
+
+    # Compare L and U
+    assert int_l.shape == int_u.shape
+    assert pytest.approx(int_l.cpu(), abs=tol) == int_u.cpu()
+
+
+@pytest.mark.skipif(
+    has_libcint is False, reason="libcint interface not installed"
+)
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_fail_shift_shape(dtype: torch.dtype) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
+    fake_dipint = torch.zeros(3, 2, 2, **dd)
+    fake_ovlp = torch.eye(2, **dd)
+    pos = torch.zeros(3, 2, **dd)
+
+    qpint = new_quadint(labels.INTDRIVER_LIBCINT, **dd)
+    qpint._matrix = torch.zeros(8, 2, 2, **dd)
+
+    with pytest.raises(RuntimeError):
+        qpint.shift_r0r0_rjrj(fake_dipint, fake_ovlp, pos)
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_fail_reduce_shape(dtype: torch.dtype) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
+    qpint = torch.zeros(8, 2, 2, **dd)
+    with pytest.raises(RuntimeError):
+        _reduce_9_to_6(qpint)

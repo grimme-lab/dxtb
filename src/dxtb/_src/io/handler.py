@@ -145,7 +145,9 @@ class _OutputHandler:
         level : int, optional
             The logging level. Defaults to `logging.INFO`.
         """
-        ch = CustomStreamHandler()
+        import sys
+
+        ch = CustomStreamHandler(sys.stdout)
         ch.setLevel(level)
         ch.setFormatter(logging.Formatter("%(message)s"))
         self.console_logger.addHandler(ch)
@@ -210,7 +212,7 @@ class _OutputHandler:
         *args,
         v: int = 5,
         newline: bool = True,
-    ) -> None:
+    ) -> None:  # pragma: no cover
         """
         Write a message to the console.
 
@@ -242,7 +244,7 @@ class _OutputHandler:
             extra = {"newline": newline}
             self.console_logger.info(message, extra=extra)
 
-    def write_stdout_nf(self, msg: str, v: int = 5) -> None:
+    def write_stdout_nf(self, msg: str, v: int = 5) -> None:  # pragma: no cover
         """
         Write a message to the console without a final newline.
 
@@ -257,7 +259,9 @@ class _OutputHandler:
 
     #######################################
 
-    def write_row(self, table_name: str, key: str, row: list[Any]) -> None:
+    def write_row(
+        self, table_name: str, key: str, row: list[Any]
+    ) -> None:  # pragma: no cover
         """
         Write a single row of data to a specified table in both console and JSON output.
 
@@ -301,7 +305,9 @@ class _OutputHandler:
 
         self.console_logger.warning("\nWARNINGS")
         for msg, warning_type in self.warnings:
-            self.console_logger.warning(f"[{warning_type.__name__}] {msg}")
+            self.console_logger.warning(
+                f"- [{warning_type.__name__}] {msg.strip()}"
+            )
 
     def clear_warnings(self) -> None:
         """Clear all warnings."""
@@ -314,7 +320,7 @@ class _OutputHandler:
         separator: str = ":",
         indent: int = 0,
         precision: int = 3,
-    ) -> str:
+    ) -> str:  # pragma: no cover
         """
         Format the data for the console.
 
@@ -339,14 +345,14 @@ class _OutputHandler:
             formatted_str += f"{indent*' '}{key.ljust(20)}{separator} {value}\n"
         return formatted_str
 
-    def header(self) -> None:
+    def header(self) -> None:  # pragma: no cover
         """Print the header to the console."""
         if self.verbosity >= 5:
             self.console_logger.info(get_header())
         if self.verbosity >= 3:
             self.console_logger.info(get_short_version())
 
-    def sysinfo(self) -> None:
+    def sysinfo(self) -> None:  # pragma: no cover
         """Print system and PyTorch information to the console."""
         if self.verbosity >= 6:
             self.write(get_system_info())
@@ -359,7 +365,7 @@ class _OutputHandler:
         columns: list[str],
         v: int = 5,
         precision: int = 3,
-    ) -> None:
+    ) -> None:  # pragma: no cover
         """
         Print the data to the console.
 

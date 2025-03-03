@@ -23,7 +23,7 @@ import pytest
 from dxtb import OutputHandler, __version__
 from dxtb._src.cli import console_entry_point
 
-from ..utils import coordfile
+from ..utils import coordfile, coordfile_lih
 
 
 def test_version(capsys: pytest.CaptureFixture) -> None:

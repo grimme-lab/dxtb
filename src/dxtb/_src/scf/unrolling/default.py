@@ -109,7 +109,7 @@ class SelfConsistentFieldFull(BaseTSCF):
 
             else:
                 msg = (
-                    f"\nSCF does not converge after {maxiter} cycles using "
+                    f"SCF does not converge after {maxiter} cycles using "
                     f"{self.mixer.label} mixing with a damping factor of "
                     f"{self.mixer.options['damp']}."
                 )
@@ -310,7 +310,7 @@ class SelfConsistentFieldFull(BaseTSCF):
         # handle unconverged case (`maxiter` iterations)
         else:
             msg = (
-                f"\nSCF does not converge after '{maxiter}' cycles using "
+                f"SCF does not converge after '{maxiter}' cycles using "
                 f"'{self.mixer.label}' mixing with a damping factor of "
                 f"'{self.mixer.options['damp']}'."
             )
