@@ -19,19 +19,19 @@
 from __future__ import annotations
 
 import pytest
+import torch
 from tad_mctc import read
 
 from dxtb import GFN1_XTB, Calculator, OutputHandler
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 from dxtb._src.typing.exceptions import (
-    SCFConvergenceWarning,
     SCFConvergenceError,
+    SCFConvergenceWarning,
 )
 
 from ..conftest import DEVICE
 from ..utils import coordfile_lih
-import torch
 
 opts = {
     "verbosity": 0,
