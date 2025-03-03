@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # This file is part of dxtb.
 #
 # SPDX-Identifier: Apache-2.0
@@ -75,12 +76,17 @@ charge = torch.tensor([0.0, 0.0], dtype=torch.double)
 calc = dxtb.calculators.GFN1Calculator(numbers, dtype=torch.double)
 energy = calc.get_energy(positions, charge)
 
-
-print(energy)
+print("Testing dimer interaction energy:")
+print(f"Calculated: {energy}")
+print(
+    "Expected:   tensor([-23.2835232516, -11.6302093800], dtype=torch.float64)"
+)
 # tensor([-23.2835232516, -11.6302093800], dtype=torch.float64)
 
 e = energy[0] - 2 * energy[1]
 # tensor(-0.0231044917, dtype=torch.float64)
 
-print(e * mctc.units.AU2KCALMOL)
+print("\nInteraction energy in kcal/mol:")
+print(f"Calculated: {e * mctc.units.AU2KCALMOL}")
+print("Expected:   -14.4982874136")
 # tensor(-14.4982874136, dtype=torch.float64)

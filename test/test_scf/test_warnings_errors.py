@@ -49,7 +49,12 @@ def test_scf_full_unconverged_warning(dtype: torch.dtype) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     maxiter = 3
-    opts = {"scf_mode": "full", "maxiter": maxiter, "verbosity": 0}
+    opts = {
+        "scf_mode": "full",
+        "maxiter": maxiter,
+        "verbosity": 0,
+        "int_driver": labels.INTDRIVER_AUTOGRAD,
+    }
 
     numbers, positions = read(coordfile_lih, **dd)
     calc = Calculator(numbers, GFN1_XTB, opts=opts, **dd)

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # This file is part of dxtb.
 #
 # SPDX-Identifier: Apache-2.0

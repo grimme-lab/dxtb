@@ -16,83 +16,71 @@ positions = torch.tensor(
     **dd,
 )
 
-opts = {
-    "scf_mode": dxtb.labels.SCF_MODE_FULL,
-    "cache_enabled": True,
-}
+# FIX
+opts = {"scf_mode": dxtb.labels.SCF_MODE_FULL}
+
 calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, opts=opts, **dd)
-assert calc.integrals.hcore is not None
 
 
-def get_energy_force(calc: dxtb.Calculator):
-    forces = calc.get_forces(positions, create_graph=True)
-    energy = calc.get_energy(positions)
-    return energy, forces
+def get_energy_force(calc):
+    energy = calc.energy(positions)
+    force = -torch.autograd.grad(energy, positions, create_graph=True)[0]
+    return energy, force
 
 
-es2 = calc.interactions.get_interaction("ES2")
-es2.gexp = es2.gexp.clone().detach().requires_grad_(True)
+for c in calc.interactions.components:
+    if isinstance(c, dxtb._src.components.interactions.coulomb.secondorder.ES2):
+        break
+c.gexp = c.gexp.clone().detach().requires_grad_(True)
 
 hcore = calc.integrals.hcore
 hcore.selfenergy = hcore.selfenergy.clone().detach().requires_grad_(True)
 
 # energy and AD force
-# energy, force = get_energy_force(calc)
+energy, force = get_energy_force(calc)
 
 # AD gradient w.r.t. params
-energy, force = get_energy_force(calc)
 de_dparam = torch.autograd.grad(
-    energy, (es2.gexp, hcore.selfenergy), retain_graph=True
+    energy, (c.gexp, hcore.selfenergy), retain_graph=True
 )
-
-calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, opts=opts, **dd)
-
-es2 = calc.interactions.get_interaction("ES2")
-es2.gexp = es2.gexp.clone().detach().requires_grad_(True)
-hcore = calc.integrals.hcore
-hcore.selfenergy = hcore.selfenergy.clone().detach().requires_grad_(True)
-
-pos = positions.clone().detach().requires_grad_(True)
-energy = calc.get_energy(pos)
-force = -torch.autograd.grad(energy, pos, create_graph=True)[0]
 dfnorm_dparam = torch.autograd.grad(
-    torch.norm(force), (es2.gexp, hcore.selfenergy)
+    torch.norm(force), (c.gexp, hcore.selfenergy)
 )
 
 # Numerical gradient w.r.t. params
 dparam = 2e-6
 calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, **dd)
-es2 = calc.interactions.get_interaction("ES2")
+for c in calc.interactions.components:
+    if isinstance(c, dxtb._src.components.interactions.coulomb.secondorder.ES2):
+        break
 
-es2.gexp += dparam / 2
+c.gexp += dparam / 2
 energy1, force1 = get_energy_force(calc)
-
 calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, **dd)
-es2 = calc.interactions.get_interaction("ES2")
+for c in calc.interactions.components:
+    if isinstance(c, dxtb._src.components.interactions.coulomb.secondorder.ES2):
+        break
 
-es2.gexp -= dparam / 2
+c.gexp -= dparam / 2
 energy2, force2 = get_energy_force(calc)
 
-de_dgexp = (energy1 - energy2) / dparam
+print(
+    f"dE / dgexp = {de_dparam[0].item()} (AD) {(energy1-energy2)/dparam} (Numerical)"
+)
+print(
+    f"d|F| / dgexp = {dfnorm_dparam[0].item()} (AD) {(torch.norm(force1)-torch.norm(force2)).item()/dparam} (Numerical)"
+)
 
-print(f"dE / dgexp (AD)  = {de_dparam[0]: .8f}")
-print(f"dE / dgexp (Num) = {de_dgexp: .8f}")
-
-dF_dgexp = (torch.norm(force1) - torch.norm(force2)) / dparam
-print(f"d|F| / dgexp (AD)  = {dfnorm_dparam[0]: .8f}")
-print(f"d|F| / dgexp (Num) = {dF_dgexp: .8f}")
-
-calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, opts=opts, **dd)
+calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, **dd)
 calc.integrals.hcore.selfenergy[0] += dparam / 2
 energy1, force1 = get_energy_force(calc)
-calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, opts=opts, **dd)
+calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, **dd)
 calc.integrals.hcore.selfenergy[0] -= dparam / 2
 energy2, force2 = get_energy_force(calc)
 
-de_dp = (energy1 - energy2) / dparam
-print(f"dE / dselfenergy[0] (AD)   = {de_dparam[1][0]: .8f}")
-print(f"dE / dselfenergy[0] (Num)  = {de_dp: .8f}")
-
-df_dp = (torch.norm(force1) - torch.norm(force2)) / dparam
-print(f"d|F| / dselfenergy[0] (AD)  = {dfnorm_dparam[1][0]: .8f}")
-print(f"d|F| / dselfenergy[0] (Num) = {df_dp: .8f}")
+print(
+    f"dE / dselfenergy[0] = {de_dparam[1][0].item()} (AD) {(energy1-energy2)/dparam} (Numerical)"
+)
+print(
+    f"d|F| / dselfenergy[0] = {dfnorm_dparam[1][0].item()} (AD) {(torch.norm(force1)-torch.norm(force2)).item()/dparam} (Numerical)"
+)

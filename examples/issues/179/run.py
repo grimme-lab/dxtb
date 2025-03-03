@@ -1,3 +1,23 @@
+#!/usr/bin/env python3
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""
+https://github.com/grimme-lab/dxtb/issues/179
+"""
 import torch
 
 import dxtb
@@ -71,35 +91,35 @@ charge2 = torch.tensor(1, **dd)
 ##############################################################################
 
 
-numbers = torch.stack([num1, num2])
-positions = torch.stack([pos1, pos2])
-charge = torch.tensor([charge1, charge2])
+def main() -> int:
+    numbers = torch.stack([num1, num2])
+    positions = torch.stack([pos1, pos2])
+    charge = torch.tensor([charge1, charge2])
 
-# no conformers -> batched mode 1
-opts = {"verbosity": 0, "batch_mode": 1}
+    # no conformers -> batched mode 1
+    opts = {"verbosity": 0, "batch_mode": 1}
 
-calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, opts=opts, **dd)
-result = calc.energy(positions, chrg=charge)
+    calc = dxtb.Calculator(numbers, dxtb.GFN1_XTB, opts=opts, **dd)
+    result = calc.energy(positions, chrg=charge)
+
+    ###########################################################################
+
+    calc = dxtb.Calculator(num1, dxtb.GFN1_XTB, opts={"verbosity": 0}, **dd)
+    result1 = calc.energy(pos1, chrg=charge1)
+
+    ###########################################################################
+
+    calc = dxtb.Calculator(num2, dxtb.GFN1_XTB, opts={"verbosity": 0}, **dd)
+    result2 = calc.energy(pos2, chrg=charge2)
+
+    ###########################################################################
+
+    assert torch.allclose(result[0], result1)
+    assert torch.allclose(result[1], result2)
+
+    print("Issue 179 test passed!")
+    return 0
 
 
-##############################################################################
-
-
-calc = dxtb.Calculator(num1, dxtb.GFN1_XTB, opts={"verbosity": 0}, **dd)
-result1 = calc.energy(pos1, chrg=charge1)
-
-
-##############################################################################
-
-
-calc = dxtb.Calculator(num2, dxtb.GFN1_XTB, opts={"verbosity": 0}, **dd)
-result2 = calc.energy(pos2, chrg=charge2)
-
-
-##############################################################################
-
-
-assert torch.allclose(result[0], result1)
-assert torch.allclose(result[1], result2)
-
-print("Issue 179 is fixed!")
+if __name__ == "__main__":
+    raise SystemExit(main())

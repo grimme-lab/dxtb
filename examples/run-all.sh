@@ -1,6 +1,9 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
+
+HERE=$(dirname "$(readlink -f "$0")")
+cd "$HERE"
 
 # search recursively for all python files
 for example in $(find . -name "*.py"); do
