@@ -27,8 +27,7 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, GFN2_XTB, Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD, Tensor
 
@@ -56,6 +55,7 @@ drivers = [
 def single(
     dtype: torch.dtype,
     name: str,
+    gfn: str,
     mixer: str,
     tol: float,
     scp_mode: str = "charge",
@@ -66,8 +66,15 @@ def single(
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
-    ref = sample["escf"].to(**dd)
+    ref = sample[f"e{gfn}"].to(**dd)
     charges = torch.tensor(0.0, **dd)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
 
     options = dict(
         opts,
@@ -92,9 +99,20 @@ def single(
 @pytest.mark.parametrize("name", slist)
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
 @pytest.mark.parametrize("intdriver", drivers)
-def test_single(dtype: torch.dtype, name: str, mixer: str, intdriver: int):
+def test_single_gfn1(
+    dtype: torch.dtype, name: str, mixer: str, intdriver: int
+) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    single(dtype, name, mixer, tol, intdriver=intdriver)
+    single(dtype, name, "gfn1", mixer, tol, intdriver=intdriver)
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", slist)
+@pytest.mark.parametrize("mixer", ["anderson", "simple"])
+def test_single_gfn2(dtype: torch.dtype, name: str, mixer: str) -> None:
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    single(dtype, name, "gfn2", mixer, tol, intdriver=labels.INTDRIVER_LIBCINT)
 
 
 @pytest.mark.large
@@ -103,48 +121,70 @@ def test_single(dtype: torch.dtype, name: str, mixer: str, intdriver: int):
 @pytest.mark.parametrize("name", slist_more)
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
 @pytest.mark.parametrize("intdriver", drivers)
-def test_single_more(dtype: torch.dtype, name: str, mixer: str, intdriver: int):
+def test_single_gfn1_more(
+    dtype: torch.dtype, name: str, mixer: str, intdriver: int
+) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    single(dtype, name, mixer, tol, intdriver=intdriver)
+    single(dtype, name, "gfn1", mixer, tol, intdriver=intdriver)
+
+
+@pytest.mark.large
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", slist_more)
+@pytest.mark.parametrize("mixer", ["anderson", "simple"])
+def test_single_gfn2_more(dtype: torch.dtype, name: str, mixer: str) -> None:
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    single(dtype, name, "gfn2", mixer, tol, intdriver=labels.INTDRIVER_LIBCINT)
 
 
 @pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist_large)
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
-def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
+def test_single_medium(
+    dtype: torch.dtype, name: str, gfn: str, mixer: str
+) -> None:
     """Test a few larger system."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    single(dtype, name, mixer, tol)
+    single(dtype, name, gfn, mixer, tol)
 
 
 @pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["S2", "LYS_xao_dist"])
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
-def test_single_difficult(dtype: torch.dtype, name: str, mixer: str):
+def test_single_difficult(
+    dtype: torch.dtype, name: str, gfn: str, mixer: str
+) -> None:
     """These systems do not reproduce tblite energies to high accuracy."""
     tol = 5e-3
-    single(dtype, name, mixer, tol, scp_mode="potential")
+    single(dtype, name, gfn, mixer, tol, scp_mode="potential")
 
 
 @pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["C60", "vancoh2"])
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
-def test_single_large(dtype: torch.dtype, name: str, mixer: str):
+def test_single_large(
+    dtype: torch.dtype, name: str, gfn: str, mixer: str
+) -> None:
     """Test a large systems (only float32 as they take some time)."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    single(dtype, name, mixer, tol)
+    single(dtype, name, gfn, mixer, tol)
 
 
 def batched(
     dtype: torch.dtype,
     name1: str,
     name2: str,
+    gfn: str,
     mixer: str,
     tol: float,
     intdriver: int = labels.INTDRIVER_LIBCINT,
@@ -166,11 +206,18 @@ def batched(
     )
     ref = pack(
         (
-            sample[0]["escf"].to(**dd),
-            sample[1]["escf"].to(**dd),
+            sample[0][f"e{gfn}"].to(**dd),
+            sample[1][f"e{gfn}"].to(**dd),
         )
     )
     charges = torch.tensor([0.0, 0.0], **dd)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
 
     options = dict(
         opts,
@@ -196,11 +243,31 @@ def batched(
 @pytest.mark.parametrize("name2", ["LiH", "SiH4"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
 @pytest.mark.parametrize("intdriver", drivers)
-def test_batch(
+def test_batch_gfn1(
     dtype: torch.dtype, name1: str, name2: str, mixer: str, intdriver: int
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    batched(dtype, name1, name2, mixer, tol, intdriver=intdriver)
+    batched(dtype, name1, name2, "gfn1", mixer, tol, intdriver=intdriver)
+
+
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", ["LiH", "SiH4"])
+@pytest.mark.parametrize("mixer", ["anderson", "simple"])
+def test_batch_gfn2(
+    dtype: torch.dtype, name1: str, name2: str, mixer: str
+) -> None:
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    batched(
+        dtype,
+        name1,
+        name2,
+        "gfn2",
+        mixer,
+        tol,
+        intdriver=labels.INTDRIVER_LIBCINT,
+    )
 
 
 def batched_unconverged(
@@ -209,6 +276,7 @@ def batched_unconverged(
     name1: str,
     name2: str,
     name3: str,
+    gfn: str,
     mixer: str,
     maxiter: int,
 ) -> None:
@@ -236,6 +304,13 @@ def batched_unconverged(
     )
 
     charges = torch.tensor([0.0, 0.0, 0.0], **dd)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
 
     options = dict(
         opts,
@@ -266,14 +341,14 @@ def test_batch_unconverged_partly_anderson(dtype: torch.dtype) -> None:
         [-1.058598357054240, -0.8818244757849318, -4.017705657967151], **dd
     )
 
-    batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "anderson", 0)
+    batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "gfn1", "anderson", 0)
 
     # only for regression testing (copied unconverged energies)
     ref = torch.tensor(
         [-1.058598357054240, -0.882224299270184, -4.026326793876873], **dd
     )
 
-    batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "anderson", 1)
+    batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "gfn1", "anderson", 1)
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -286,14 +361,14 @@ def test_batch_unconverged_partly_simple(dtype: torch.dtype) -> None:
         [-1.058598357054241, -0.8818244757849318, -4.017705657967151], **dd
     )
 
-    batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "simple", 0)
+    batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "gfn1", "simple", 0)
 
     # only for regression testing (copied unconverged energies)
     ref = torch.tensor(
         [-1.058598357054240, -0.882224299270184, -4.026326793876873], **dd
     )
 
-    batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "anderson", 1)
+    batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "gfn1", "anderson", 1)
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -306,7 +381,7 @@ def test_batch_unconverged_fully_anderson(dtype: torch.dtype) -> None:
         [-0.8818244757849318, -0.8818244757849318, -4.017705657967151], **dd
     )
 
-    batched_unconverged(ref, dtype, "LiH", "LiH", "SiH4", "anderson", 0)
+    batched_unconverged(ref, dtype, "LiH", "LiH", "SiH4", "gfn1", "anderson", 0)
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -321,7 +396,7 @@ def test_batch_unconverged_fully_simple(
         [-0.8818244757849318, -0.8818244757849318, -4.017705657967151], **dd
     )
 
-    batched_unconverged(ref, dtype, "LiH", "LiH", "SiH4", "simple", 0)
+    batched_unconverged(ref, dtype, "LiH", "LiH", "SiH4", "gfn1", "simple", 0)
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -329,9 +404,10 @@ def test_batch_unconverged_fully_simple(
 @pytest.mark.parametrize("name1", ["H2"])
 @pytest.mark.parametrize("name2", ["LiH"])
 @pytest.mark.parametrize("name3", ["SiH4"])
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
 def test_batch_three(
-    dtype: torch.dtype, name1: str, name2: str, name3: str, mixer: str
+    dtype: torch.dtype, name1: str, name2: str, name3: str, gfn: str, mixer: str
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -353,12 +429,19 @@ def test_batch_three(
     )
     ref = pack(
         (
-            sample[0]["escf"].to(**dd),
-            sample[1]["escf"].to(**dd),
-            sample[2]["escf"].to(**dd),
+            sample[0][f"e{gfn}"].to(**dd),
+            sample[1][f"e{gfn}"].to(**dd),
+            sample[2][f"e{gfn}"].to(**dd),
         )
     )
     charges = torch.tensor([0.0, 0.0, 0.0], **dd)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
 
     options = dict(
         opts,
@@ -409,7 +492,7 @@ def test_batch_special(dtype: torch.dtype, mixer: str) -> None:
             "mixer": mixer,
         },
     )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
 
     result = calc.singlepoint(positions, chrg)
     res = result.scf.sum(-1)

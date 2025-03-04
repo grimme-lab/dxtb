@@ -348,7 +348,6 @@ def new_d4sc(
         Instance of the :class:`.DispersionD4SC` class or ``None`` if no :class:`.DispersionD4SC` is
         used.
     """
-
     if hasattr(par, "dispersion") is False or par.dispersion is None:
         return None
 

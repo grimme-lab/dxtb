@@ -24,8 +24,8 @@ import pytest
 import torch
 
 from dxtb import GFN1_XTB, GFN2_XTB
-from dxtb._src.components.classicals.dispersion import new_dispersion
-from dxtb._src.typing.exceptions import ParameterWarning
+from dxtb._src.typing.exceptions import DeviceError, ParameterWarning
+from dxtb.components.dispersion import new_d4sc, new_dispersion
 
 
 def test_none() -> None:
@@ -106,6 +106,47 @@ def test_fail_d4_cache() -> None:
 
     with pytest.raises(TypeError):
         _ = disp.get_cache(numbers=numbers, cutoff=0)
+
+
+def test_fail_d4sc_required() -> None:
+    numbers = torch.tensor([3, 1])
+    disp = new_d4sc(numbers, GFN2_XTB)
+    assert disp is not None
+
+    with pytest.raises(ValueError):
+        disp.get_cache(numbers=None)
+
+    with pytest.raises(ValueError):
+        disp.get_cache(numbers=numbers, positions=None)
+
+
+def test_fail_d4sc_device() -> None:
+    numbers = torch.tensor([3, 1], device=torch.device("cpu"))
+
+    with pytest.raises(DeviceError):
+        new_d4sc(numbers, GFN2_XTB, device="wrong")  # type: ignore
+
+
+def test_fail_d4sc_missing() -> None:
+    numbers = torch.tensor([3, 1])
+
+    _par = GFN2_XTB.model_copy(deep=True)
+    assert _par.dispersion is not None
+    assert _par.dispersion.d4 is not None
+
+    _par.dispersion.d4.sc = False
+    disp = new_d4sc(numbers, _par)
+    assert disp is None
+
+    _par.dispersion.d4 = None
+    disp = new_d4sc(numbers, _par)
+    assert disp is None
+
+    _par.dispersion = None
+    disp = new_d4sc(numbers, _par)
+    assert disp is None
+
+    _par = GFN2_XTB.model_copy(deep=True)
 
 
 def test_d4_cache() -> None:

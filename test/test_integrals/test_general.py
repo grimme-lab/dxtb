@@ -26,7 +26,9 @@ import torch
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb import integrals as ints
+from dxtb import labels
 from dxtb._src.constants.labels import INTDRIVER_ANALYTICAL, INTDRIVER_LIBCINT
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.integral.driver import libcint, pytorch
 from dxtb._src.typing import DD
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
@@ -110,6 +112,24 @@ def test_fail_pytorch_multipole(dtype: torch.dtype):
         i.quadrupole = pytorch.QuadrupolePytorch(**dd)
 
 
+@pytest.mark.skipif(
+    has_libcint is False, reason="libcint interface not installed"
+)
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_fail_qpint_intlevel(dtype: torch.dtype):
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
+    mgr = ints.DriverManager(INTDRIVER_LIBCINT, **dd)
+    i = ints.Integrals(mgr, intlevel=labels.INTLEVEL_MAX + 1, **dd)
+
+    assert len(i.labels) == 0
+    assert len(i) == 0
+
+    pos = torch.zeros((2, 3), **dd)
+    with pytest.raises(RuntimeError):
+        i.build_quadrupole(pos)
+
+
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_hcore(dtype: torch.dtype):
     dd: DD = {"dtype": dtype, "device": DEVICE}
@@ -125,3 +145,42 @@ def test_hcore(dtype: torch.dtype):
     h = i.hcore
     assert h is not None
     assert h.matrix is None
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_hcore_build(dtype: torch.dtype):
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+    numbers = torch.tensor([1, 3], device=DEVICE)
+    pos = torch.zeros((2, 3), **dd)
+
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    mgr = ints.DriverManager(INTDRIVER_ANALYTICAL, **dd)
+    mgr.create_driver(numbers, par, ihelp)
+
+    i = ints.Integrals(mgr, **dd)
+    i.hcore = GFN1Hamiltonian(numbers, par, ihelp, **dd)
+
+    hcore = i.build_hcore(pos, with_overlap=False)
+    assert hcore is not None
+    assert i.hcore is not None
+    assert i.overlap is None
+
+    hcore = i.build_hcore(pos, with_overlap=True)
+    assert hcore is not None
+    assert i.hcore is not None
+    assert i.overlap is not None
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_hcore_fail(dtype: torch.dtype):
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+    numbers = torch.tensor([1, 3], device=DEVICE)
+    positions = torch.zeros((2, 3), **dd)
+
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    mgr = ints.DriverManager(INTDRIVER_ANALYTICAL, **dd)
+    mgr.create_driver(numbers, par, ihelp)
+
+    i = ints.Integrals(mgr, **dd)
+    with pytest.raises(RuntimeError):
+        i.build_hcore(positions)

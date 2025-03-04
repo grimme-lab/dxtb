@@ -227,10 +227,10 @@ class ES3(Interaction):
         if self.shell_scale is None:
             hd = ihelp.spread_uspecies_to_atom(self.hubbard_derivs)
         else:
-            hd = (
-                ihelp.spread_uspecies_to_shell(self.hubbard_derivs)
-                * self.shell_scale[ihelp.angular]
+            scale = ihelp.spread_ushell_to_shell(
+                self.shell_scale[ihelp.unique_angular]
             )
+            hd = ihelp.spread_uspecies_to_shell(self.hubbard_derivs) * scale
 
         self.cache = ES3Cache(hd)
 

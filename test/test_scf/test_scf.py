@@ -16,7 +16,9 @@
 # limitations under the License.
 """
 Test for SCF.
-Reference values obtained with tblite 0.2.1 disabling repulsion and dispersion.
+Reference values obtained for:
+- GFN1: tblite 0.2.1, disabling repulsion and dispersion
+- GFN2: tblite 0.4.0, `electronic energy`
 """
 
 from __future__ import annotations
@@ -27,7 +29,7 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB, Calculator
+from dxtb import GFN1_XTB, GFN2_XTB, Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
@@ -45,17 +47,25 @@ opts = {
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
-def test_single(dtype: torch.dtype, name: str):
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
+def test_single(dtype: torch.dtype, name: str, gfn: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
-    ref = sample["escf"].to(**dd)
+    ref = sample[f"e{gfn}"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
-    calc = Calculator(numbers, GFN1_XTB, opts=opts, **dd)
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
+
+    calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(positions, charges)
     res = result.scf.sum(-1)
@@ -68,7 +78,10 @@ def test_single(dtype: torch.dtype, name: str):
     "name", ["PbH4-BiH3", "C6H5I-CH3SH", "MB16_43_01", "LYS_xao", "C60"]
 )
 @pytest.mark.parametrize("mixer", ["anderson", "broyden", "simple"])
-def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
+def test_single_medium(
+    dtype: torch.dtype, name: str, mixer: str, gfn: str
+) -> None:
     """Test a few larger system."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -76,8 +89,15 @@ def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
-    ref = sample["escf"].to(**dd)
+    ref = sample[f"e{gfn}"].to(**dd)
     charges = torch.tensor(0.0, **dd)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
 
     options = dict(
         opts,
@@ -91,7 +111,7 @@ def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
             "x_atol": tol,
         },
     )
-    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
+    calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, charges)
     res = result.scf.sum(-1)
@@ -101,7 +121,8 @@ def test_single_medium(dtype: torch.dtype, name: str, mixer: str):
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["S2"])
-def test_single_difficult_1(dtype: torch.dtype, name: str):
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
+def test_single_difficult_1(dtype: torch.dtype, name: str, gfn: str) -> None:
     """Test a few larger system (only float32 within tolerance)."""
     tol = 1e-2
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -109,8 +130,15 @@ def test_single_difficult_1(dtype: torch.dtype, name: str):
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
-    ref = sample["escf"].to(**dd)
+    ref = sample[f"e{gfn}"].to(**dd)
     charges = torch.tensor(0.0, **dd)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
 
     options = dict(
         opts,
@@ -121,7 +149,7 @@ def test_single_difficult_1(dtype: torch.dtype, name: str):
             "maxiter": 400,  #  simple mixing
         },
     )
-    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
+    calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, charges)
     res = result.scf.sum(-1)
@@ -131,7 +159,8 @@ def test_single_difficult_1(dtype: torch.dtype, name: str):
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["LYS_xao_dist"])
-def test_single_difficult_2(dtype: torch.dtype, name: str):
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
+def test_single_difficult_2(dtype: torch.dtype, name: str, gfn: str) -> None:
     """Test a few larger system (only float32 within tolerance)."""
     tol = 1e-3
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -139,8 +168,15 @@ def test_single_difficult_2(dtype: torch.dtype, name: str):
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
-    ref = sample["escf"].to(**dd)
+    ref = sample[f"e{gfn}"].to(**dd)
     charges = torch.tensor(0.0, **dd)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
 
     options = dict(
         opts,
@@ -151,7 +187,7 @@ def test_single_difficult_2(dtype: torch.dtype, name: str):
             "maxiter": 400,  #  simple mixing
         },
     )
-    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
+    calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, charges)
     res = result.scf.sum(-1)
@@ -162,7 +198,8 @@ def test_single_difficult_2(dtype: torch.dtype, name: str):
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["vancoh2"])
-def test_single_large(dtype: torch.dtype, name: str):
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
+def test_single_large(dtype: torch.dtype, name: str, gfn: str) -> None:
     """Test a large systems (only float32 as they take some time)."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -170,8 +207,15 @@ def test_single_large(dtype: torch.dtype, name: str):
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
-    ref = sample["escf"].to(**dd)
+    ref = sample[f"e{gfn}"].to(**dd)
     charges = torch.tensor(0.0, **dd)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
 
     options = dict(
         opts,
@@ -180,7 +224,7 @@ def test_single_large(dtype: torch.dtype, name: str):
             "maxiter": 300,  #  simple mixing
         },
     )
-    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
+    calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, charges)
     res = result.scf.sum(-1)
@@ -191,7 +235,8 @@ def test_single_large(dtype: torch.dtype, name: str):
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["H2", "LiH"])
 @pytest.mark.parametrize("name2", ["LiH", "SiH4"])
-def test_batch(dtype: torch.dtype, name1: str, name2: str):
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
+def test_batch(dtype: torch.dtype, name1: str, name2: str, gfn: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
@@ -210,12 +255,20 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
     )
     ref = pack(
         (
-            sample[0]["escf"].to(**dd),
-            sample[1]["escf"].to(**dd),
+            sample[0][f"e{gfn}"].to(**dd),
+            sample[1][f"e{gfn}"].to(**dd),
         )
     )
     charges = torch.tensor([0.0, 0.0], **dd)
-    calc = Calculator(numbers, GFN1_XTB, opts=opts, **dd)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
+
+    calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(positions, charges)
     res = result.scf.sum(-1)
@@ -227,7 +280,10 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
 @pytest.mark.parametrize("name1", ["H2"])
 @pytest.mark.parametrize("name2", ["LiH"])
 @pytest.mark.parametrize("name3", ["SiH4"])
-def test_batch2(dtype: torch.dtype, name1: str, name2: str, name3: str):
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
+def test_batch2(
+    dtype: torch.dtype, name1: str, name2: str, name3: str, gfn: str
+) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
@@ -248,13 +304,21 @@ def test_batch2(dtype: torch.dtype, name1: str, name2: str, name3: str):
     )
     ref = pack(
         (
-            sample[0]["escf"].to(**dd),
-            sample[1]["escf"].to(**dd),
-            sample[2]["escf"].to(**dd),
+            sample[0][f"e{gfn}"].to(**dd),
+            sample[1][f"e{gfn}"].to(**dd),
+            sample[2][f"e{gfn}"].to(**dd),
         )
     )
     charges = torch.tensor([0.0, 0.0, 0.0], **dd)
-    calc = Calculator(numbers, GFN1_XTB, opts=opts, **dd)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
+
+    calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.singlepoint(positions, charges)
     res = result.scf.sum(-1)

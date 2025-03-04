@@ -211,6 +211,60 @@ def test_shift_r0_rj(dtype: torch.dtype, name: str, gfn: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist)
 @pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
+def test_no_shift_r0r0_rjrj(dtype: torch.dtype, name: str, gfn: str) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+    tol = sqrt(torch.finfo(dtype).eps)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
+
+    sample = samples[name]
+    numbers = sample["numbers"].to(DEVICE)
+    positions = sample["positions"].to(**dd)
+    ihelp = IndexHelper.from_numbers(numbers, par)
+
+    ##########################################################################
+
+    # Setup the driver
+    mgr = DriverManager(labels.INTDRIVER_LIBCINT, **dd)
+    mgr.create_driver(numbers, par, ihelp)
+
+    i = Integrals(mgr, intlevel=labels.INTLEVEL_QUADRUPOLE, **dd)
+    i.setup_driver(positions)
+    i.build_quadrupole(positions, shift=False, traceless=False)
+    assert i.quadrupole is not None
+
+    # We always normalize, i.e., the overlap is always present
+    assert i.overlap is not None
+
+    ##########################################################################
+
+    # PySCF reference integral, centered at r0
+    assert M is not False
+    mol = M(numbers, positions, xtb_version=gfn, parse_arg=False)
+    pyscf_r0r0 = einsum(
+        "xij,i,j->xij",
+        numpy_to_tensor(mol.intor("int1e_rr"), **dd),
+        i.overlap.norm,
+        i.overlap.norm,
+    )
+
+    # Compare with PySCF reference
+    assert pyscf_r0r0.shape == i.quadrupole.matrix.shape
+    assert pytest.approx(pyscf_r0r0.cpu(), abs=tol) == i.quadrupole.matrix.cpu()
+
+
+@pytest.mark.skipif(
+    has_pyscf is False or has_libcint is False,
+    reason="PySCF or libcint interface not installed",
+)
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", slist)
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 def test_shift_r0r0_rjrj(dtype: torch.dtype, name: str, gfn: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps)
@@ -273,6 +327,11 @@ def test_shift_r0r0_rjrj(dtype: torch.dtype, name: str, gfn: str) -> None:
         dim=-2,
         extra=True,
     )
+
+    # Coverage for both reducing before and inside the shift
+    if dtype == torch.float:
+        quadint.reduce_9_to_6()
+
     quadint.shift_r0r0_rjrj(dipint.matrix, ovlpint.matrix, pos)
 
     # PySCF reference integral, centered at rj
@@ -407,18 +466,40 @@ def test_reduce_9_to_6(dtype: torch.dtype, name: str, gfn: str) -> None:
     has_libcint is False, reason="libcint interface not installed"
 )
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-def test_fail_shift_shape(dtype: torch.dtype) -> None:
+def test_fail_shift_shape_pos(dtype: torch.dtype) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     fake_dipint = torch.zeros(3, 2, 2, **dd)
     fake_ovlp = torch.eye(2, **dd)
-    pos = torch.zeros(3, 2, **dd)
+    pos = torch.zeros(1, 3, **dd)  # wrong shape
 
     qpint = new_quadint(labels.INTDRIVER_LIBCINT, **dd)
-    qpint._matrix = torch.zeros(8, 2, 2, **dd)
+    qpint._matrix = torch.zeros(9, 2, 2, **dd)
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError) as e:
         qpint.shift_r0r0_rjrj(fake_dipint, fake_ovlp, pos)
+
+    assert "Shape mismatch between positions and overlap" in str(e.value)
+
+
+@pytest.mark.skipif(
+    has_libcint is False, reason="libcint interface not installed"
+)
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_fail_shift_shape_qpint(dtype: torch.dtype) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
+    fake_dipint = torch.zeros(3, 2, 2, **dd)
+    fake_ovlp = torch.eye(2, **dd)
+    pos = torch.zeros(2, 3, **dd)
+
+    qpint = new_quadint(labels.INTDRIVER_LIBCINT, **dd)
+    qpint._matrix = torch.zeros(8, 2, 2, **dd)  # wrong shape
+
+    with pytest.raises(RuntimeError) as e:
+        qpint.shift_r0r0_rjrj(fake_dipint, fake_ovlp, pos)
+
+    assert "Quadrupole integral must be a tensor of shape" in str(e.value)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -428,3 +509,12 @@ def test_fail_reduce_shape(dtype: torch.dtype) -> None:
     qpint = torch.zeros(8, 2, 2, **dd)
     with pytest.raises(RuntimeError):
         _reduce_9_to_6(qpint)
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_fail_reduce_uplo(dtype: torch.dtype) -> None:
+    dd: DD = {"dtype": dtype, "device": DEVICE}
+
+    qpint = torch.zeros(9, 2, 2, **dd)
+    with pytest.raises(ValueError):
+        _reduce_9_to_6(qpint, uplo="X")  # type: ignore
