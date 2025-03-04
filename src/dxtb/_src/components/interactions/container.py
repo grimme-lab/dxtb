@@ -184,7 +184,8 @@ class Container:
             Collection of shapes and labels of the container. This information
             is required for correctly restoring the Container class.
         batch_mode : bool, optional
-            Whether the calculation runs in batch_mode mode. Defaults to ``False``.
+            Whether the calculation runs in batch_mode mode.
+            Defaults to ``False``.
         pad : int, optional
             Value used to indicate padding. Defaults to ``defaults.PADNZ``.
 
@@ -213,8 +214,23 @@ class Container:
             vs = torch.split(tensor, 1, dim=axis)
 
             # TODO: Conformer batch_mode mode (deflate not required)
+            print(vs[0].shape)
+            print(data)
+            print("")
+            print("")
+            print(tensor)
+            print("vs[0]")
+            print(vs[0])
+            print("vs[1]")
+            print(vs[1])
+
             mono = deflate(vs[0], axis=0, value=pad).reshape(*data["mono"])
-            dipole = deflate(vs[1], axis=0, value=pad).reshape(*data["dipole"])
+
+            print("\nmono", mono)
+            dipole = deflate(
+                deflate(vs[1], axis=0, value=pad), axis=0, value=0
+            ).reshape(*data["dipole"])
+            print("\ndipole", mono)
 
             if tensor.shape[axis] == 2:
                 return cls(mono, dipole, label=label)
