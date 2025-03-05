@@ -293,10 +293,6 @@ class _Timers:
         if not self._enabled:
             return
 
-        # Check if the total timer was already started
-        # if "total" not in self.timers and uid != "total":
-        #     self.reset()
-
         if self.only_parents is True and parent_uid is not None:
             return
 

@@ -29,6 +29,7 @@ from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB, GFN2_XTB, Calculator
 from dxtb._src.constants import labels
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
@@ -94,7 +95,6 @@ def single(
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist)
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
@@ -106,7 +106,7 @@ def test_single_gfn1(
     single(dtype, name, "gfn1", mixer, tol, intdriver=intdriver)
 
 
-@pytest.mark.filterwarnings("ignore")
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist)
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
@@ -116,7 +116,6 @@ def test_single_gfn2(dtype: torch.dtype, name: str, mixer: str) -> None:
 
 
 @pytest.mark.large
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist_more)
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
@@ -128,8 +127,8 @@ def test_single_gfn1_more(
     single(dtype, name, "gfn1", mixer, tol, intdriver=intdriver)
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.large
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist_more)
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
@@ -139,45 +138,70 @@ def test_single_gfn2_more(dtype: torch.dtype, name: str, mixer: str) -> None:
 
 
 @pytest.mark.large
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist_large)
-@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
-def test_single_medium(
-    dtype: torch.dtype, name: str, gfn: str, mixer: str
-) -> None:
+def test_single_medium_gfn1(dtype: torch.dtype, name: str, mixer: str) -> None:
     """Test a few larger system."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    single(dtype, name, gfn, mixer, tol)
+    single(dtype, name, "gfn1", mixer, tol)
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", slist_large)
+@pytest.mark.parametrize("mixer", ["anderson", "simple"])
+def test_single_medium_gfn2(dtype: torch.dtype, name: str, mixer: str) -> None:
+    """Test a few larger system."""
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    single(dtype, name, "gfn2", mixer, tol)
 
 
 @pytest.mark.large
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["S2", "LYS_xao_dist"])
-@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
-def test_single_difficult(
-    dtype: torch.dtype, name: str, gfn: str, mixer: str
+def test_single_difficult_gfn1(
+    dtype: torch.dtype, name: str, mixer: str
 ) -> None:
     """These systems do not reproduce tblite energies to high accuracy."""
     tol = 5e-3
-    single(dtype, name, gfn, mixer, tol, scp_mode="potential")
+    single(dtype, name, "gfn1", mixer, tol, scp_mode="potential")
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["S2", "LYS_xao_dist"])
+@pytest.mark.parametrize("mixer", ["anderson", "simple"])
+def test_single_difficult_gfn2(
+    dtype: torch.dtype, name: str, mixer: str
+) -> None:
+    """These systems do not reproduce tblite energies to high accuracy."""
+    tol = 5e-3
+    single(dtype, name, "gfn2", mixer, tol, scp_mode="potential")
 
 
 @pytest.mark.large
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["C60", "vancoh2"])
-@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
-def test_single_large(
-    dtype: torch.dtype, name: str, gfn: str, mixer: str
-) -> None:
+def test_single_large_gfn1(dtype: torch.dtype, name: str, mixer: str) -> None:
     """Test a large systems (only float32 as they take some time)."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
-    single(dtype, name, gfn, mixer, tol)
+    single(dtype, name, "gfn1", mixer, tol)
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["C60", "vancoh2"])
+@pytest.mark.parametrize("mixer", ["anderson", "simple"])
+def test_single_large_gfn2(dtype: torch.dtype, name: str, mixer: str) -> None:
+    """Test a large systems (only float32 as they take some time)."""
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    single(dtype, name, "gfn2", mixer, tol)
 
 
 def batched(
@@ -238,7 +262,6 @@ def batched(
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", ["LiH", "SiH4"])
@@ -259,7 +282,7 @@ def test_batch_gfn1(
     )
 
 
-@pytest.mark.filterwarnings("ignore")
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", ["LiH", "SiH4"])
@@ -342,7 +365,6 @@ def batched_unconverged(
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_batch_unconverged_partly_anderson(dtype: torch.dtype) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -362,7 +384,6 @@ def test_batch_unconverged_partly_anderson(dtype: torch.dtype) -> None:
     batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "gfn1", "anderson", 1)
 
 
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_batch_unconverged_partly_simple(dtype: torch.dtype) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -382,7 +403,6 @@ def test_batch_unconverged_partly_simple(dtype: torch.dtype) -> None:
     batched_unconverged(ref, dtype, "H2", "LiH", "SiH4", "gfn1", "anderson", 1)
 
 
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_batch_unconverged_fully_anderson(dtype: torch.dtype) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -395,7 +415,6 @@ def test_batch_unconverged_fully_anderson(dtype: torch.dtype) -> None:
     batched_unconverged(ref, dtype, "LiH", "LiH", "SiH4", "gfn1", "anderson", 0)
 
 
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_batch_unconverged_fully_simple(
     dtype: torch.dtype,
@@ -410,14 +429,30 @@ def test_batch_unconverged_fully_simple(
     batched_unconverged(ref, dtype, "LiH", "LiH", "SiH4", "gfn1", "simple", 0)
 
 
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["H2"])
 @pytest.mark.parametrize("name2", ["LiH"])
 @pytest.mark.parametrize("name3", ["SiH4"])
-@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
-def test_batch_three(
+def test_batch_three_gfn1(
+    dtype: torch.dtype, name1: str, name2: str, name3: str, mixer: str
+) -> None:
+    batch_three(dtype, name1, name2, name3, "gfn1", mixer)
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name1", ["H2"])
+@pytest.mark.parametrize("name2", ["LiH"])
+@pytest.mark.parametrize("name3", ["SiH4"])
+@pytest.mark.parametrize("mixer", ["anderson", "simple"])
+def test_batch_three_gfn2(
+    dtype: torch.dtype, name1: str, name2: str, name3: str, mixer: str
+) -> None:
+    batch_three(dtype, name1, name2, name3, "gfn2", mixer)
+
+
+def batch_three(
     dtype: torch.dtype, name1: str, name2: str, name3: str, gfn: str, mixer: str
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10

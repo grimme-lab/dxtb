@@ -69,36 +69,36 @@ class BaseTSCF(BaseSCF):
 
         batched = self.config.batch_mode
 
-        # initialize the correct mixer with tolerances etc.
+        # Mixers should be specified by integer code in the config
         if isinstance(self.config.mixer, Mixer):
-            # TODO: We wont ever land here, int is enforced in the config
-            self.mixer = self.config.mixer
-        else:
-            if self.config.mixer == labels.MIXER_LINEAR:
-                self.mixer = Simple(self.fwd_options, batch_mode=batched)
-            elif self.config.mixer == labels.MIXER_ANDERSON:
+            raise RuntimeError("Passing custom mixers is not supported.")
+
+        # initialize the correct mixer with tolerances etc.
+        if self.config.mixer == labels.MIXER_LINEAR:
+            self.mixer = Simple(self.fwd_options, batch_mode=batched)
+        elif self.config.mixer == labels.MIXER_ANDERSON:
+            self.mixer = Anderson(self.fwd_options, batch_mode=batched)
+        elif self.config.mixer == labels.MIXER_BROYDEN:
+
+            # Broyden is not implemented for SCF with full gradient, but
+            # is the default setting. Without changing the setting, the
+            # code immediately raises an error, which is inconvenient.
+            if self.config.scf_mode not in (
+                labels.SCF_MODE_IMPLICIT,
+                labels.SCF_MODE_IMPLICIT_NON_PURE,
+            ):
+                msg = (
+                    "Broyden mixer is not implemented for SCF with full "
+                    "gradient tracking."
+                )
+
+                if self.config.strict is True:
+                    raise NotImplementedError(msg)
+
+                OutputHandler.warn(msg + " Using Anderson mixer instead.")
                 self.mixer = Anderson(self.fwd_options, batch_mode=batched)
-            elif self.config.mixer == labels.MIXER_BROYDEN:
-
-                # Broyden is not implemented for SCF with full gradient, but
-                # is the default setting. Without changing the setting, the
-                # code immediately raises an error, which is inconvenient.
-                if self.config.scf_mode not in (
-                    labels.SCF_MODE_IMPLICIT,
-                    labels.SCF_MODE_IMPLICIT_NON_PURE,
-                ):
-                    msg = (
-                        "Broyden mixer is not implemented for SCF with full "
-                        "gradient tracking."
-                    )
-
-                    if self.config.strict is True:
-                        raise NotImplementedError(msg)
-
-                    OutputHandler.warn(msg + " Using Anderson mixer instead.")
-                    self.mixer = Anderson(self.fwd_options, batch_mode=batched)
-            else:
-                raise ValueError(f"Unknown mixer '{self.config.mixer}'.")
+        else:
+            raise ValueError(f"Unknown mixer '{self.config.mixer}'.")
 
         # For batched GFN2-xTB calculations, the culling does not work properly
         # because of shape issues brought about by the quadrupole moments.

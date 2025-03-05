@@ -146,8 +146,6 @@ def test_fail_d4sc_missing() -> None:
     disp = new_d4sc(numbers, _par)
     assert disp is None
 
-    _par = GFN2_XTB.model_copy(deep=True)
-
 
 def test_d4_cache() -> None:
     numbers = torch.tensor([3, 1])

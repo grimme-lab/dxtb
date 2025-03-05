@@ -29,6 +29,7 @@ from tad_mctc import read, read_chrg
 
 from dxtb import GFN2_XTB, Calculator
 from dxtb._src.constants import labels
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
@@ -44,6 +45,7 @@ opts = {
 }
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -89,6 +91,7 @@ def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     assert pytest.approx(g.cpu(), abs=tol, rel=1e-4) == autograd.cpu()
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("name", ["H2", "H2O", "CH4"])

@@ -72,7 +72,7 @@ def gradchecker(dtype: torch.dtype, name: str, gfn: str) -> tuple[
 
     # create additional interaction and pass to Calculator
     efield = new_efield(field_vector)
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    calc = Calculator(numbers, par, opts=opts, interaction=efield, **dd)
 
     # variables to be differentiated
     pos = positions.clone().requires_grad_(True)

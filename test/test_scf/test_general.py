@@ -23,8 +23,14 @@ from __future__ import annotations
 import pytest
 import torch
 
+from dxtb import GFN1_XTB, OutputHandler, labels
 from dxtb._src.integral.container import IntegralMatrices
 from dxtb._src.scf.implicit import SelfConsistentFieldImplicit as SCF
+from dxtb._src.scf.mixer import Anderson
+from dxtb._src.scf.unrolling import SelfConsistentFieldFull
+from dxtb.calculators import EnergyCalculator
+from dxtb.components.base import InteractionList
+from dxtb.config import ConfigSCF
 
 
 def test_properties() -> None:
@@ -46,9 +52,6 @@ def test_properties() -> None:
 
 
 def test_fail() -> None:
-    from dxtb import GFN1_XTB
-    from dxtb.calculators import EnergyCalculator
-
     numbers = torch.tensor([1])
     positions = torch.tensor([[0.0, 0.0, 0.0]])
 
@@ -61,3 +64,61 @@ def test_fail() -> None:
     with pytest.raises(ValueError):
         calc.opts.scf.scf_mode = "fail"  # type: ignore
         calc.singlepoint(positions)
+
+
+def test_full_mixer_error() -> None:
+    ilist = InteractionList()
+    kwargs = {
+        "numbers": torch.tensor([1]),
+        "occupation": torch.tensor([1]),
+        "n0": torch.tensor([1]),
+        "ihelp": torch.tensor([1]),
+        "cache": torch.tensor([1]),
+        "integrals": IntegralMatrices(),
+    }
+
+    with pytest.raises(TypeError):
+        config = ConfigSCF(mixer=Anderson())  # type: ignore
+        SelfConsistentFieldFull(ilist, *kwargs, config=config)
+
+
+def test_full_change_scp() -> None:
+    ilist = InteractionList()
+
+    dummy = torch.tensor([1])
+    kwargs = {
+        "numbers": dummy,
+        "occupation": dummy,
+        "n0": dummy,
+        "ihelp": dummy,
+        "cache": dummy,
+        "integrals": IntegralMatrices(_hcore=dummy, _overlap=dummy),
+    }
+
+    config = ConfigSCF(
+        method=labels.GFN2_XTB,
+        batch_mode=2,
+        scp_mode=labels.SCP_MODE_CHARGE,
+    )
+
+    # Clear warnings from previous tests
+    OutputHandler.clear_warnings()
+
+    ##########################################################################
+
+    _ = SelfConsistentFieldFull(ilist, **kwargs, config=config)
+
+    assert len(OutputHandler.warnings) == 1
+
+    warn_msg, warn_type = OutputHandler.warnings[0]
+    assert "Changing to Fock matrix automatically." in warn_msg
+    assert warn_type is UserWarning
+
+    OutputHandler.clear_warnings()
+
+    ##########################################################################
+
+    config.scp_mode = labels.SCP_MODE_FOCK
+    _ = SelfConsistentFieldFull(ilist, **kwargs, config=config)
+
+    assert len(OutputHandler.warnings) == 0

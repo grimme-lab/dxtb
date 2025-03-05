@@ -36,6 +36,7 @@ from tad_mctc.batch import pack
 
 from dxtb import GFN2_XTB, Calculator
 from dxtb._src.constants import labels
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
@@ -158,8 +159,8 @@ opts = {
 }
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.large
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element(dtype: torch.dtype, number: int) -> None:
@@ -186,8 +187,8 @@ def test_element(dtype: torch.dtype, number: int) -> None:
     assert pytest.approx(r.cpu(), abs=tol) == results.scf.sum(-1).cpu()
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.large
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_cation(dtype: torch.dtype, number: int) -> None:
@@ -223,8 +224,8 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
     assert pytest.approx(r.cpu(), abs=tol) == results.scf.sum(-1).cpu()
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.large
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("number", range(1, 87))
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_element_anion(dtype: torch.dtype, number: int) -> None:
@@ -259,7 +260,7 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
     assert pytest.approx(r.cpu(), abs=tol) == results.scf.sum(-1).cpu()
 
 
-@pytest.mark.filterwarnings("ignore")
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("number", [1, 2, 10, 25, 26, 50, 86])
 @pytest.mark.parametrize("mol", ["SiH4"])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

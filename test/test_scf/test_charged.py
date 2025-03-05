@@ -29,6 +29,7 @@ import torch
 
 from dxtb import GFN1_XTB, GFN2_XTB, Calculator
 from dxtb._src.constants import labels
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
@@ -44,13 +45,7 @@ opts = {
 ref_grad = np.load("test/test_scf/grad.npz")
 
 
-@pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize(
-    "name", ["Ag2Cl22-", "Al3+Ar6", "AD7en+", "C2H4F+", "ZnOOH-"]
-)
-@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
-def test_single(dtype: torch.dtype, name: str, gfn: str) -> None:
+def single(dtype: torch.dtype, name: str, gfn: str) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
@@ -74,8 +69,24 @@ def test_single(dtype: torch.dtype, name: str, gfn: str) -> None:
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize(
+    "name", ["Ag2Cl22-", "Al3+Ar6", "AD7en+", "C2H4F+", "ZnOOH-"]
+)
+def test_single_gfn1(dtype: torch.dtype, name: str) -> None:
+    single(dtype, name, "gfn1")
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize(
+    "name", ["Ag2Cl22-", "Al3+Ar6", "AD7en+", "C2H4F+", "ZnOOH-"]
+)
+def test_single_gfn2(dtype: torch.dtype, name: str) -> None:
+    single(dtype, name, "gfn2")
+
+
 @pytest.mark.grad
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float])
 @pytest.mark.parametrize("name", ["Ag2Cl22-", "Al3+Ar6", "C2H4F+", "ZnOOH-"])
 def test_grad(dtype: torch.dtype, name: str) -> None:
