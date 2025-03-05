@@ -72,12 +72,19 @@ class DispersionD4SCCache(InteractionCache, TensorLike):
     except for multiplication with C6 and C8.
     """
 
-    __slots__ = ["__store", "cn", "dispmat"]
+    model: d4.model.D4Model
+    """
+    Model for the D4 dispersion correction.
+    Same object as in the `.DispersionD4SC` class.
+    """
+
+    __slots__ = ["__store", "cn", "dispmat", "model"]
 
     def __init__(
         self,
         cn: Tensor,
         dispmat: Tensor,
+        model: d4.model.D4Model,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
@@ -88,6 +95,9 @@ class DispersionD4SCCache(InteractionCache, TensorLike):
 
         self.cn = cn
         self.dispmat = dispmat
+
+        # Model is the same object as in the DispersionD4SC class
+        self.model = model
 
         self.__store = None
 
@@ -105,17 +115,24 @@ class DispersionD4SCCache(InteractionCache, TensorLike):
         energy, except for multiplication with C6 and C8.
         """
 
-        def __init__(self, cn: Tensor, dispmat: Tensor) -> None:
+        def __init__(
+            self, cn: Tensor, dispmat: Tensor, model: d4.model.D4Model
+        ) -> None:
             self.cn = cn
             self.dispmat = dispmat
 
+            # only store numbers to get a different object
+            self.numbers = model.numbers
+
     def cull(self, conv: Tensor, slicers: Slicers) -> None:
         if self.__store is None:
-            self.__store = self.Store(self.cn, self.dispmat)
+            self.__store = self.Store(self.cn, self.dispmat, self.model)
 
         slicer = slicers["atom"]
         self.cn = self.cn[[~conv, *slicer]]
         self.dispmat = self.dispmat[[~conv, *slicer, *slicer]]
+
+        self.model.numbers = self.model.numbers[[~conv, *slicer]]
 
     def restore(self) -> None:
         if self.__store is None:
@@ -123,6 +140,7 @@ class DispersionD4SCCache(InteractionCache, TensorLike):
 
         self.cn = self.__store.cn
         self.dispmat = self.__store.dispmat
+        self.model.numbers = self.__store.numbers
 
 
 class DispersionD4SC(Interaction):
@@ -230,7 +248,7 @@ class DispersionD4SC(Interaction):
         if positions is None:
             raise ValueError("Positions are required for ES2 cache.")
 
-        cachvars = (numbers.detach().clone(),)
+        cachvars = (numbers.detach().clone(), positions.detach().clone())
 
         if self.cache_is_latest(cachvars) is True:
             if not isinstance(self.cache, DispersionD4SCCache):
@@ -267,7 +285,7 @@ class DispersionD4SC(Interaction):
         )
         dispmat = edisp.unsqueeze(-1).unsqueeze(-1) * self.model.rc6
 
-        self.cache = DispersionD4SCCache(cn, dispmat)
+        self.cache = DispersionD4SCCache(cn, dispmat, self.model)
 
         return self.cache
 
@@ -290,6 +308,7 @@ class DispersionD4SC(Interaction):
         Tensor
             Atomwise D4 dispersion correction energies.
         """
+        # `numbers` in model are updated in cache (for culling)
         weights = self.model.weight_references(cache.cn, qat)
 
         return 0.5 * einsum(
@@ -348,7 +367,6 @@ def new_d4sc(
         Instance of the :class:`.DispersionD4SC` class or ``None`` if no :class:`.DispersionD4SC` is
         used.
     """
-
     if hasattr(par, "dispersion") is False or par.dispersion is None:
         return None
 

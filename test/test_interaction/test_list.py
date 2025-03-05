@@ -81,7 +81,7 @@ def test_reset() -> None:
     assert ef is not None and ef.cache is not None
     assert efg is not None and efg.cache is not None
 
-    assert len(d4sc.cache) == 2
+    assert len(d4sc.cache) == 3
     ilist.reset_d4sc()
     assert d4sc.cache is None
 
@@ -124,7 +124,7 @@ def test_reset_all() -> None:
     assert ef is not None and ef.cache is not None
     assert efg is not None and efg.cache is not None
 
-    assert len(d4sc.cache) == 2
+    assert len(d4sc.cache) == 3
     assert len(es2.cache) == 2
     assert len(es3.cache) == 1
     assert len(ef.cache) == 2

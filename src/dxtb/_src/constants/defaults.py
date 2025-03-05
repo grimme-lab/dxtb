@@ -67,7 +67,17 @@ CHRG = 0
 EXCLUDE: list[str] = []
 """List of xTB components to exclude during the calculation."""
 
-EXCLUDE_CHOICES = ["disp", "d4sc", "rep", "hal", "es2", "es3", "scf", "all"]
+EXCLUDE_CHOICES = [
+    "disp",
+    "d4sc",
+    "rep",
+    "hal",
+    "aes2",
+    "es2",
+    "es3",
+    "scf",
+    "all",
+]
 """List of possible choices for `EXCLUDE`."""
 
 MAX_ELEMENT = 86

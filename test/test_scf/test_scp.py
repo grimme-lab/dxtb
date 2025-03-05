@@ -56,7 +56,7 @@ def single(
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
-    ref = sample["escf"].to(**dd)
+    ref = sample["egfn1"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
     options = dict(
@@ -161,8 +161,8 @@ def batched(
     )
     ref = pack(
         (
-            sample[0]["escf"].to(**dd),
-            sample[1]["escf"].to(**dd),
+            sample[0]["egfn1"].to(**dd),
+            sample[1]["egfn1"].to(**dd),
         )
     )
     charges = torch.tensor([0.0, 0.0], **dd)
@@ -246,9 +246,9 @@ def test_batch_three(
     )
     ref = pack(
         (
-            sample[0]["escf"].to(**dd),
-            sample[1]["escf"].to(**dd),
-            sample[2]["escf"].to(**dd),
+            sample[0]["egfn1"].to(**dd),
+            sample[1]["egfn1"].to(**dd),
+            sample[2]["egfn1"].to(**dd),
         )
     )
     charges = torch.tensor([0.0, 0.0, 0.0], **dd)

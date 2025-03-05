@@ -27,9 +27,9 @@ import numpy as np
 import pytest
 import torch
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, GFN2_XTB, Calculator
 from dxtb._src.constants import labels
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
@@ -45,20 +45,22 @@ opts = {
 ref_grad = np.load("test/test_scf/grad.npz")
 
 
-@pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize(
-    "name", ["Ag2Cl22-", "Al3+Ar6", "AD7en+", "C2H4F+", "ZnOOH-"]
-)
-def test_single(dtype: torch.dtype, name: str):
+def single(dtype: torch.dtype, name: str, gfn: str) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
-    ref = sample["escf"]
+    ref = sample[f"e{gfn}"]
     chrg = sample["charge"].to(**dd)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
 
     calc = Calculator(numbers, par, opts=opts, **dd)
     results = calc.singlepoint(positions, chrg)
@@ -67,11 +69,27 @@ def test_single(dtype: torch.dtype, name: str):
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize(
+    "name", ["Ag2Cl22-", "Al3+Ar6", "AD7en+", "C2H4F+", "ZnOOH-"]
+)
+def test_single_gfn1(dtype: torch.dtype, name: str) -> None:
+    single(dtype, name, "gfn1")
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize(
+    "name", ["Ag2Cl22-", "Al3+Ar6", "AD7en+", "C2H4F+", "ZnOOH-"]
+)
+def test_single_gfn2(dtype: torch.dtype, name: str) -> None:
+    single(dtype, name, "gfn2")
+
+
 @pytest.mark.grad
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float])
 @pytest.mark.parametrize("name", ["Ag2Cl22-", "Al3+Ar6", "C2H4F+", "ZnOOH-"])
-def test_grad(dtype: torch.dtype, name: str):
+def test_grad(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
@@ -93,7 +111,7 @@ def test_grad(dtype: torch.dtype, name: str):
             "x_atol": 1.0e-5,
         },
     )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
     result = calc.singlepoint(pos, chrg)
     energy = result.scf.sum(-1)
 

@@ -79,7 +79,7 @@ class SelfConsistentFieldFull(BaseTSCF):
 
         # Evaluate initial guess outside of SCF loop to make maxiter=0 possible.
         q = fcn(guess)
-        if OutputHandler.verbosity >= 3:
+        if OutputHandler.verbosity >= 3:  # pragma: no cover
             charges = self.converged_to_charges(q)
             energy = self.get_energy(charges)
             self._print(charges, energy)
@@ -95,7 +95,7 @@ class SelfConsistentFieldFull(BaseTSCF):
                 q_new = fcn(q)
 
                 # Important: Calculate energy with charges before mixing!
-                if OutputHandler.verbosity >= 3:
+                if OutputHandler.verbosity >= 3:  # pragma: no cover
                     charges = self.converged_to_charges(q_new)
                     energy = self.get_energy(charges)
                     self._print(charges, energy)
@@ -190,7 +190,7 @@ class SelfConsistentFieldFull(BaseTSCF):
             q_new = fcn(q)
 
             # Important: Calculate energy with charges before mixing!
-            if OutputHandler.verbosity >= 3:
+            if OutputHandler.verbosity >= 3:  # pragma: no cover
                 charges = self.converged_to_charges(q_new)
                 energy = self.get_energy(charges)
                 self._print(charges, energy)

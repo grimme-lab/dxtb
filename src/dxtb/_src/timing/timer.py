@@ -527,5 +527,13 @@ def kill_timer() -> None:
     del timer
 
 
-timer = create_timer(autostart=True, cuda_sync=False)
+from os import getenv
+
+timer = create_timer(
+    autostart=(
+        getenv("DXTB_TIMER_AUTOSTART", "True").casefold()
+        in ("true", "1", "yes")
+    ),
+    cuda_sync=False,
+)
 """Global instance of the timer class."""

@@ -25,8 +25,7 @@ import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, GFN2_XTB, Calculator
 from dxtb._src.components.interactions import new_efield, new_efield_grad
 from dxtb._src.constants import labels
 from dxtb._src.exlibs.available import has_libcint
@@ -51,7 +50,7 @@ tol = 1e-4
 sample_list = ["H2", "H2O", "SiH4"]
 
 
-def gradchecker(dtype: torch.dtype, name: str) -> tuple[
+def gradchecker(dtype: torch.dtype, name: str, gfn: str) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
     Tensor,  # differentiable variables
 ]:
@@ -66,6 +65,13 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
 
     # variables to be differentiated
     field_grad.requires_grad_(True)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        raise ValueError(f"Unknown GFN: {gfn}")
 
     def func(fieldgrad: Tensor) -> Tensor:
         efield = new_efield(field_vector)
@@ -84,12 +90,13 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
-def test_gradcheck(dtype: torch.dtype, name: str) -> None:
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
+def test_gradcheck(dtype: torch.dtype, name: str, gfn: str) -> None:
     """
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradcheck`.
     """
-    func, diffvars = gradchecker(dtype, name)
+    func, diffvars = gradchecker(dtype, name, gfn)
     assert dgradcheck(func, diffvars, atol=tol)
 
 
@@ -97,16 +104,19 @@ def test_gradcheck(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
-def test_gradgradcheck(dtype: torch.dtype, name: str) -> None:
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
+def test_gradgradcheck(dtype: torch.dtype, name: str, gfn: str) -> None:
     """
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
-    func, diffvars = gradchecker(dtype, name)
+    func, diffvars = gradchecker(dtype, name, gfn)
     assert dgradgradcheck(func, diffvars, atol=tol, eps=1e-9)
 
 
-def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
+def gradchecker_batch(
+    dtype: torch.dtype, name1: str, name2: str, gfn: str
+) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
     Tensor,  # differentiable variables
 ]:
@@ -133,6 +143,13 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     # variables to be differentiated
     field_grad.requires_grad_(True)
 
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        raise ValueError(f"Unknown GFN: {gfn}")
+
     def func(fieldgrad: Tensor) -> Tensor:
         efield = new_efield(field_vector)
         efield_grad = new_efield_grad(fieldgrad)
@@ -151,12 +168,15 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["SiH4"])
 @pytest.mark.parametrize("name2", sample_list)
-def test_gradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
+def test_gradcheck_batch(
+    dtype: torch.dtype, name1: str, name2: str, gfn: str
+) -> None:
     """
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradcheck`.
     """
-    func, diffvars = gradchecker_batch(dtype, name1, name2)
+    func, diffvars = gradchecker_batch(dtype, name1, name2, gfn)
     assert dgradcheck(func, diffvars, atol=tol)
 
 
@@ -165,12 +185,13 @@ def test_gradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["SiH4"])
 @pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 def test_gradgradcheck_batch(
-    dtype: torch.dtype, name1: str, name2: str
+    dtype: torch.dtype, name1: str, name2: str, gfn: str
 ) -> None:
     """
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
-    func, diffvars = gradchecker_batch(dtype, name1, name2)
+    func, diffvars = gradchecker_batch(dtype, name1, name2, gfn)
     assert dgradgradcheck(func, diffvars, atol=tol, eps=1e-8)

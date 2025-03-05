@@ -27,10 +27,15 @@ from dxtb._src.typing import Molecule, Tensor, TypedDict
 
 
 class Refs(TypedDict):
-    """Format of reference records containing GFN1-xTB and GFN2-xTB reference values."""
+    """
+    Format of reference records containing GFN1-xTB and GFN2-xTB references.
+    """
 
-    escf: Tensor
-    """SCF energy for GFN1-xTB"""
+    egfn1: Tensor
+    """SCF energy for GFN1-xTB."""
+
+    egfn2: Tensor
+    """SCF energy for GFN2-xTB."""
 
     hessian: Tensor
     """
@@ -45,23 +50,28 @@ class Record(Molecule, Refs):
 
 refs: dict[str, Refs] = {
     "H": {
-        "escf": torch.tensor(-4.0142947446183e-01, dtype=torch.float64),
+        "egfn1": torch.tensor(-4.0142947446183e-01, dtype=torch.float64),
+        "egfn2": torch.tensor(-3.9348275927054e-01, dtype=torch.float64),
         "hessian": torch.tensor([], dtype=torch.float64),
     },
     "C": {
-        "escf": torch.tensor(-1.7411359557542, dtype=torch.float64),
+        "egfn1": torch.tensor(-1.7411359557542, dtype=torch.float64),
+        "egfn2": torch.tensor(-1.7951105194038, dtype=torch.float64),
         "hessian": torch.tensor([], dtype=torch.float64),
     },
     "Rn": {
-        "escf": torch.tensor(-3.6081562853046, dtype=torch.float64),
+        "egfn1": torch.tensor(-3.6081562853046, dtype=torch.float64),
+        "egfn2": torch.tensor(-3.8578865356212e00, dtype=torch.float64),
         "hessian": torch.tensor([], dtype=torch.float64),
     },
     "H2": {
-        "escf": torch.tensor(-1.0585984032484, dtype=torch.float64),
+        "egfn1": torch.tensor(-1.0585984032484, dtype=torch.float64),
+        "egfn2": torch.tensor(-1.0208877257377e00, dtype=torch.float64),
         "hessian": torch.tensor([], dtype=torch.float64),
     },
     "LiH": {
-        "escf": torch.tensor(-0.88306406116865, dtype=torch.float64),
+        "egfn1": torch.tensor(-8.8306406116865e-01, dtype=torch.float64),
+        "egfn2": torch.tensor(-7.8143760401170e-01, dtype=torch.float64),
         "hessian": torch.tensor(
             [
                 [
@@ -129,31 +139,38 @@ refs: dict[str, Refs] = {
         ).flatten(),
     },
     "HLi": {
-        "escf": torch.tensor(-0.88306406116865, dtype=torch.float64),
+        "egfn1": torch.tensor(-8.8306406116865e-01, dtype=torch.float64),
+        "egfn2": torch.tensor(-7.8143760401170e-01, dtype=torch.float64),
         "hessian": torch.tensor([], dtype=torch.float64),
     },
     "HC": {
-        "escf": torch.tensor(0.0, dtype=torch.float64),
+        "egfn1": torch.tensor(-2.4179539159614e00, dtype=torch.float64),
+        "egfn2": torch.tensor(-2.4201939512507e00, dtype=torch.float64),
         "hessian": torch.tensor([], dtype=torch.float64),
     },
     "HHe": {
-        "escf": torch.tensor(0.0, dtype=torch.float64),
+        "egfn1": torch.tensor(-1.8987776066290e00, dtype=torch.float64),
+        "egfn2": torch.tensor(-2.0372503239778e00, dtype=torch.float64),
         "hessian": torch.tensor([], dtype=torch.float64),
     },
     "S2": {
-        "escf": torch.tensor(-7.3285116888517, dtype=torch.float64),
+        "egfn1": torch.tensor(-7.3285116888517, dtype=torch.float64),
+        "egfn2": torch.tensor(-6.4943104864442e00, dtype=torch.float64),
         "hessian": torch.tensor([], dtype=torch.float64),
     },
     "H2O": {
-        "escf": torch.tensor(-5.8052489623704e00, dtype=torch.float64),
+        "egfn1": torch.tensor(-5.8052489623704e00, dtype=torch.float64),
+        "egfn2": torch.tensor(-5.1041590251073e00, dtype=torch.float64),
         "hessian": torch.tensor([], dtype=torch.float64),
     },
     "CH4": {
-        "escf": torch.tensor(-4.3393059719255e00, dtype=torch.float64),
+        "egfn1": torch.tensor(-4.3393059719255e00, dtype=torch.float64),
+        "egfn2": torch.tensor(-4.2422934998888e00, dtype=torch.float64),
         "hessian": torch.tensor([], dtype=torch.float64),
     },
     "SiH4": {
-        "escf": torch.tensor(-4.0384093532453, dtype=torch.float64),
+        "egfn1": torch.tensor(-4.0384093532453, dtype=torch.float64),
+        "egfn2": torch.tensor(-3.7947703574819e00, dtype=torch.float64),
         "hessian": torch.tensor(
             [
                 [
@@ -536,31 +553,38 @@ refs: dict[str, Refs] = {
         ).flatten(),
     },
     "PbH4-BiH3": {
-        "escf": torch.tensor(-7.6074262079844, dtype=torch.float64),
+        "egfn1": torch.tensor(-7.6074262079844, dtype=torch.float64),
+        "egfn2": torch.tensor(-8.1872417734706e00, dtype=torch.float64),
         "hessian": torch.tensor([], dtype=torch.float64),
     },
     "C6H5I-CH3SH": {
-        "escf": torch.tensor(-27.612142805843, dtype=torch.float64),
+        "egfn1": torch.tensor(-27.612142805843, dtype=torch.float64),
+        "egfn2": torch.tensor(-2.6966880400167e01, dtype=torch.float64),
         "hessian": torch.tensor([], dtype=torch.float64),
     },
     "MB16_43_01": {
-        "escf": torch.tensor(-33.200116717478, dtype=torch.float64),
+        "egfn1": torch.tensor(-3.3200116717478e01, dtype=torch.float64),
+        "egfn2": torch.tensor(-3.0501947093720e01, dtype=torch.float64),
         "hessian": torch.tensor([], dtype=torch.float64),
     },
     "LYS_xao": {
-        "escf": torch.tensor(-48.850798066902, dtype=torch.float64),
+        "egfn1": torch.tensor(-4.8850798066902e01, dtype=torch.float64),
+        "egfn2": torch.tensor(-4.6438843703081e01, dtype=torch.float64),
         "hessian": torch.tensor([], dtype=torch.float64),
     },
     "LYS_xao_dist": {
-        "escf": torch.tensor(-47.020544162958, dtype=torch.float64),
+        "egfn1": torch.tensor(-4.7020544163225e01, dtype=torch.float64),
+        "egfn2": torch.tensor(-4.4713244576702e01, dtype=torch.float64),
         "hessian": torch.tensor([], dtype=torch.float64),
     },
     "C60": {
-        "escf": torch.tensor(-128.79148324775, dtype=torch.float64),
+        "egfn1": torch.tensor(-1.2879148324775e02, dtype=torch.float64),
+        "egfn2": torch.tensor(-1.3077229190478e02, dtype=torch.float64),
         "hessian": torch.tensor([], dtype=torch.float64),
     },
     "vancoh2": {
-        "escf": torch.tensor(-3.2618651888175e02, dtype=torch.float64),
+        "egfn1": torch.tensor(-3.2618651888175e02, dtype=torch.float64),
+        "egfn2": torch.tensor(-3.0824085206839e02, dtype=torch.float64),
         "hessian": torch.tensor([], dtype=torch.float64),
     },
 }

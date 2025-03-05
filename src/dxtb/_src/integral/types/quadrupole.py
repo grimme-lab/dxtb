@@ -198,7 +198,7 @@ class QuadrupoleIntegral(BaseIntegral):
         if self.matrix.shape[-3] != 6:
             if self.matrix.shape[-3] != 9:
                 raise RuntimeError(
-                    "Quadrupole integral must be a tensor tensor of shape "
+                    "Quadrupole integral must be a tensor of shape "
                     "'(6, norb, norb)' or '(9, norb, norb)' but is "
                     f"{self.matrix.shape}."
                 )

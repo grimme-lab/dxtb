@@ -34,8 +34,7 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
@@ -351,7 +350,7 @@ def test_element(dtype: torch.dtype, number: int) -> None:
             "fermi_thresh": 1e-4 if dtype == torch.float32 else 1e-10,
         },
     )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
     results = calc.singlepoint(positions, charges)
     assert pytest.approx(r.cpu(), abs=tol) == results.scf.sum(-1).cpu()
 
@@ -382,7 +381,7 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
             "fermi_thresh": 1e-4 if dtype == torch.float32 else 1e-10,
         },
     )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
 
     # no (valence) electrons: [1, 3, 11, 19, 37, 55]
     results = calc.singlepoint(positions, charges, spin=spin)
@@ -419,7 +418,7 @@ def test_element_anion(dtype: torch.dtype, number: int) -> None:
             "fermi_thresh": 1e-4 if dtype == torch.float32 else 1e-10,
         },
     )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
     results = calc.singlepoint(positions, charges, spin=spin)
 
     assert pytest.approx(r.cpu(), abs=tol) == results.scf.sum(-1).cpu()
@@ -448,14 +447,14 @@ def test_element_batch(dtype: torch.dtype, number: int, mol: str) -> None:
     )
     refs = pack(
         (
-            sample["escf"].to(**dd),
+            sample["egfn1"].to(**dd),
             ref[number - 1].to(**dd),
         )
     )
     charges = torch.tensor([0.0, 0.0], **dd)
     spin = torch.tensor([0, uhf[number - 1]])
 
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=opts, **dd)
     results = calc.singlepoint(positions, charges, spin=spin)
 
     assert pytest.approx(refs.cpu(), abs=tol) == results.scf.sum(-1).cpu()

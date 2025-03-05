@@ -8,9 +8,6 @@ in order to avoid RAM leak due to circular references.
 
 from __future__ import annotations
 
-import torch
-
-from dxtb import OutputHandler
 from dxtb._src.components.interactions import (
     Charges,
     InteractionList,
