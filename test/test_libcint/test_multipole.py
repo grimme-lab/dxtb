@@ -157,15 +157,17 @@ def test_shift_r0_rj(dtype: torch.dtype, name: str, gfn: str) -> None:
     ovlpint = new_overlap(**dd)
     ovlpint.build(mgr.driver)
     ovlpint.normalize()
+    ovlpint = ovlpint.to(DEVICE)
 
     # Setup, build and normalize DIPOLE integral
     dipint = new_dipint(**dd)
     dipint.build(mgr.driver)
+    dipint = dipint.to(DEVICE)
     dipint.normalize(ovlpint.norm)
 
     ##########################################################################
 
-    # PySCF reference integral, centered at r0
+    # PySCF reference integral, centered at r0 (overlap still on CPU)
     assert M is not False
     mol = M(numbers, positions, xtb_version=gfn, parse_arg=False)
     pyscf_r0 = einsum(
@@ -182,11 +184,7 @@ def test_shift_r0_rj(dtype: torch.dtype, name: str, gfn: str) -> None:
     ##########################################################################
 
     # Shift r0->rj
-    pos = mgr.driver.ihelp.spread_atom_to_orbital(
-        positions,
-        dim=-2,
-        extra=True,
-    )
+    pos = ihelp.spread_atom_to_orbital(positions, dim=-2, extra=True)
     dipint.shift_r0_rj(ovlpint.matrix, pos)
 
     # PySCF reference integral, centered at rj
@@ -291,11 +289,13 @@ def test_shift_r0r0_rjrj(dtype: torch.dtype, name: str, gfn: str) -> None:
     # Setup, build and normalize OVERLAP integral
     ovlpint = new_overlap(**dd)
     ovlpint.build(mgr.driver)
+    ovlpint = ovlpint.to(DEVICE)
     ovlpint.normalize()
 
     # Setup, build and normalize QUADRUPOLE integral
     quadint = new_quadint(**dd)
     quadint.build(mgr.driver)
+    quadint = quadint.to(DEVICE)
     quadint.normalize(ovlpint.norm)
 
     ##########################################################################
@@ -319,19 +319,14 @@ def test_shift_r0r0_rjrj(dtype: torch.dtype, name: str, gfn: str) -> None:
     # Setup, build and normalize DIPOLE integral
     dipint = new_dipint(**dd)
     dipint.build(mgr.driver)
+    dipint = dipint.to(DEVICE)
     dipint.normalize(ovlpint.norm)
-
-    # Shift r0->rj, always 6 cartesian components
-    pos = mgr.driver.ihelp.spread_atom_to_orbital(
-        positions,
-        dim=-2,
-        extra=True,
-    )
 
     # Coverage for both reducing before and inside the shift
     if dtype == torch.float:
         quadint.reduce_9_to_6()
 
+    pos = ihelp.spread_atom_to_orbital(positions, dim=-2, extra=True)
     quadint.shift_r0r0_rjrj(dipint.matrix, ovlpint.matrix, pos)
 
     # PySCF reference integral, centered at rj
