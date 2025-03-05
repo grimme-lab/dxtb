@@ -85,7 +85,7 @@ def test_full_mixer_error() -> None:
 def test_full_change_scp() -> None:
     ilist = InteractionList()
 
-    dummy = torch.tensor([1])
+    dummy = torch.tensor([1], dtype=torch.float)
     kwargs = {
         "numbers": dummy,
         "occupation": dummy,
