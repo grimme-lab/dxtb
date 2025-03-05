@@ -239,8 +239,6 @@ class SelfConsistentFieldFull(BaseTSCF):
                 nat_new = (
                     self._data.numbers[~conv, ...].count_nonzero(dim=-1).max()
                 )
-                print(nat, nat_new)
-                print(norb, norb_new)
 
                 # Here, we account for cases, in which the number of
                 # orbitals is smaller than the number of atoms times 3 (6)
@@ -258,12 +256,10 @@ class SelfConsistentFieldFull(BaseTSCF):
                 # If the largest system was culled from batch, cut the
                 # properties down to the new size to remove superfluous
                 # padding values
-                print(norb, norb_new)
                 if norb > norb_new:
                     slicers["orbital"] = [slice(0, i) for i in [norb_new]]
                     norb = norb_new
                     _norb = _norb_new
-                    print(_norb)
                     if self.config.scp_mode == labels.SCP_MODE_FOCK:
                         mpdim = norb
                 if nsh > nsh_new:
@@ -283,7 +279,7 @@ class SelfConsistentFieldFull(BaseTSCF):
 
                 if self._data.charges["mono"] is not None:
                     self._data.charges["mono"] = torch.Size(
-                        (len(idxs), int(norb))
+                        (len(idxs), int(_norb))
                     )
                 if self._data.charges["dipole"] is not None:
                     self._data.charges["dipole"] = torch.Size(
@@ -305,8 +301,6 @@ class SelfConsistentFieldFull(BaseTSCF):
                     self._data.potential["quad"] = torch.Size(
                         (len(idxs), int(nat), defaults.QP_SHAPE)
                     )
-
-                print(self._data.charges)
 
                 # cull mixer (only contains orbital resolved properties)
                 self.mixer.cull(

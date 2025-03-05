@@ -67,12 +67,13 @@ class BaseTSCF(BaseSCF):
     ) -> None:
         super().__init__(interactions, *args, **kwargs)
 
+        batched = self.config.batch_mode
+
         # initialize the correct mixer with tolerances etc.
         if isinstance(self.config.mixer, Mixer):
             # TODO: We wont ever land here, int is enforced in the config
             self.mixer = self.config.mixer
         else:
-            batched = self.config.batch_mode
             if self.config.mixer == labels.MIXER_LINEAR:
                 self.mixer = Simple(self.fwd_options, batch_mode=batched)
             elif self.config.mixer == labels.MIXER_ANDERSON:
@@ -98,6 +99,24 @@ class BaseTSCF(BaseSCF):
                     self.mixer = Anderson(self.fwd_options, batch_mode=batched)
             else:
                 raise ValueError(f"Unknown mixer '{self.config.mixer}'.")
+
+        # For batched GFN2-xTB calculations, the culling does not work properly
+        # because of shape issues brought about by the quadrupole moments.
+        if self.config.method == labels.GFN2_XTB and batched > 0:
+            if self.config.scp_mode != labels.SCP_MODE_FOCK:
+                msg = (
+                    "Full (unrolled) SCF is not supported for GFN2-xTB with "
+                    "`charge` and `potential` vetors as self-consistent "
+                    "parameter, only Fock matrix is possible."
+                )
+
+                if self.config.strict is True:
+                    raise NotImplementedError(msg)
+
+                OutputHandler.warn(
+                    msg + " Changing to Fock matrix automatically."
+                )
+                self.config.scp_mode = labels.SCP_MODE_FOCK
 
     def get_overlap(self) -> Tensor:
         """

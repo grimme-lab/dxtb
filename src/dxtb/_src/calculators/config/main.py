@@ -191,6 +191,7 @@ class Config:
 
         self.scf = ConfigSCF(
             strict=strict,
+            method=self.method,
             guess=guess,
             maxiter=maxiter,
             mixer=mixer,

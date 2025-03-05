@@ -44,6 +44,9 @@ class ConfigSCF:
     strict: bool = False
     """Strict mode for SCF configuration. Always throws errors if ``True``."""
 
+    method: int
+    """Integer code for tight-binding method."""
+
     guess: int
     """Initial guess for the SCF."""
 
@@ -69,7 +72,12 @@ class ConfigSCF:
     """Force convergence of the SCF iterations."""
 
     batch_mode: int
-    """Batch mode for the SCF iterations."""
+    """
+    Batch mode for the SCF iterations.
+    - 0: Single system
+    - 1: Multiple systems with padding
+    - 2: Multiple systems with no padding (conformer ensemble)
+    """
 
     # Fermi
 
@@ -97,6 +105,7 @@ class ConfigSCF:
         self,
         *,
         strict: bool = False,
+        method: int = defaults.METHOD,
         guess: str | int = defaults.GUESS,
         maxiter: int = defaults.MAXITER,
         mixer: str | int = defaults.MIXER,
@@ -117,6 +126,7 @@ class ConfigSCF:
         dtype: torch.dtype = get_default_dtype(),
     ) -> None:
         self.strict = strict
+        self.method = method
 
         if isinstance(guess, str):
             if guess.casefold() in labels.GUESS_EEQ_STRS:
@@ -301,6 +311,7 @@ class ConfigSCF:
         """
         return {
             "SCF Options": {
+                "TB Method": labels.GFN_XTB_MAP[self.method],
                 "Guess Method": labels.GUESS_MAP[self.guess],
                 "SCF Mode": labels.SCF_MODE_MAP[self.scf_mode],
                 "SCP Mode": labels.SCP_MODE_MAP[self.scp_mode],
@@ -317,6 +328,7 @@ class ConfigSCF:
     def __str__(self):  # pragma: no cover
         config_str = [
             f"Configuration for SCF:",
+            f"  TB Method: {labels.GFN_XTB_MAP[self.method]}",
             f"  Guess Method: {self.guess}",
             f"  SCF Mode: {self.scf_mode} (Convergence approach)",
             f"  SCP Mode: {self.scp_mode} (Convergence target)",

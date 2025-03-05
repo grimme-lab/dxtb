@@ -293,6 +293,10 @@ class _Timers:
         if not self._enabled:
             return
 
+        # Check if the total timer was already started
+        # if "total" not in self.timers and uid != "total":
+        #     self.reset()
+
         if self.only_parents is True and parent_uid is not None:
             return
 
@@ -527,5 +531,13 @@ def kill_timer() -> None:
     del timer
 
 
-timer = create_timer(autostart=True, cuda_sync=False)
+from os import getenv
+
+timer = create_timer(
+    autostart=(
+        getenv("DXTB_TIMER_AUTOSTART", "True").casefold()
+        in ("true", "1", "yes")
+    ),
+    cuda_sync=False,
+)
 """Global instance of the timer class."""

@@ -186,6 +186,7 @@ def batched(
     name2: str,
     gfn: str,
     mixer: str,
+    scp_mode: str,
     tol: float,
     intdriver: int = labels.INTDRIVER_LIBCINT,
 ) -> None:
@@ -224,7 +225,7 @@ def batched(
         **{
             "damp": 0.05 if mixer == "simple" else 0.4,
             "mixer": mixer,
-            "scp_mode": "charge",
+            "scp_mode": scp_mode,
             "int_driver": intdriver,
             "f_atol": tol,
             "x_atol": tol,
@@ -246,8 +247,16 @@ def batched(
 def test_batch_gfn1(
     dtype: torch.dtype, name1: str, name2: str, mixer: str, intdriver: int
 ) -> None:
-    tol = sqrt(torch.finfo(dtype).eps) * 10
-    batched(dtype, name1, name2, "gfn1", mixer, tol, intdriver=intdriver)
+    batched(
+        dtype,
+        name1,
+        name2,
+        "gfn1",
+        mixer,
+        scp_mode="charge",
+        tol=sqrt(torch.finfo(dtype).eps) * 10,
+        intdriver=intdriver,
+    )
 
 
 @pytest.mark.filterwarnings("ignore")
@@ -258,14 +267,14 @@ def test_batch_gfn1(
 def test_batch_gfn2(
     dtype: torch.dtype, name1: str, name2: str, mixer: str
 ) -> None:
-    tol = sqrt(torch.finfo(dtype).eps) * 10
     batched(
         dtype,
         name1,
         name2,
         "gfn2",
         mixer,
-        tol,
+        scp_mode="fock",
+        tol=sqrt(torch.finfo(dtype).eps) * 10,
         intdriver=labels.INTDRIVER_LIBCINT,
     )
 
@@ -307,8 +316,10 @@ def batched_unconverged(
 
     if gfn == "gfn1":
         par = GFN1_XTB
+        scp_mode = "potential"
     elif gfn == "gfn2":
         par = GFN2_XTB
+        scp_mode = "fock"
     else:
         assert False
 
@@ -319,7 +330,7 @@ def batched_unconverged(
             "maxiter": maxiter,
             "mixer": mixer,
             "scf_mode": "full",
-            "scp_mode": "potential",
+            "scp_mode": scp_mode,
             "f_atol": tol,
             "x_atol": tol,
         },
@@ -449,7 +460,7 @@ def test_batch_three(
             "damp": 0.1 if mixer == "simple" else 0.4,
             "mixer": mixer,
             "scf_mode": "full",
-            "scp_mode": "charge",
+            "scp_mode": "fock",
             "f_atol": tol,
             "x_atol": tol,
         },

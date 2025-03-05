@@ -28,8 +28,7 @@ import torch
 from tad_mctc import read, read_chrg
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, GFN2_XTB, Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
@@ -49,8 +48,9 @@ opts = {
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist)
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
-def test_single(dtype: torch.dtype, name: str, scf_mode: str) -> None:
+def test_single(dtype: torch.dtype, name: str, gfn: str, scf_mode: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
@@ -59,7 +59,14 @@ def test_single(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     numbers, positions = read(Path(base, "coord"), **dd)
     charge = read_chrg(Path(base, ".CHRG"), **dd)
 
-    ref = samples[name]["etot"].to(**dd)
+    ref = samples[name][f"e{gfn}"].to(**dd)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
 
     options = dict(
         opts,
@@ -79,8 +86,11 @@ def test_single(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist_large)
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
-def test_single_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
+def test_single_large(
+    dtype: torch.dtype, name: str, gfn: str, scf_mode: str
+) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
@@ -89,7 +99,14 @@ def test_single_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     numbers, positions = read(Path(base, "coord"), **dd)
     charge = read_chrg(Path(base, ".CHRG"), **dd)
 
-    ref = samples[name]["etot"].to(**dd)
+    ref = samples[name][f"e{gfn}"].to(**dd)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
 
     options = dict(
         opts,
@@ -110,9 +127,15 @@ def test_single_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 @pytest.mark.parametrize("name1", ["H2", "H2O"])
 @pytest.mark.parametrize("name2", ["H2", "CH4"])
 @pytest.mark.parametrize("name3", ["H2", "SiH4"])
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
 def test_batch(
-    dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
+    dtype: torch.dtype,
+    name1: str,
+    name2: str,
+    name3: str,
+    gfn: str,
+    scf_mode: str,
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -132,11 +155,18 @@ def test_batch(
     charge = pack(charge)
     ref = pack(
         [
-            samples[name1]["etot"].to(**dd),
-            samples[name2]["etot"].to(**dd),
-            samples[name3]["etot"].to(**dd),
+            samples[name1][f"e{gfn}"].to(**dd),
+            samples[name2][f"e{gfn}"].to(**dd),
+            samples[name3][f"e{gfn}"].to(**dd),
         ]
     )
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
 
     options = dict(
         opts,
@@ -158,9 +188,15 @@ def test_batch(
 @pytest.mark.parametrize("name1", ["H2"])
 @pytest.mark.parametrize("name2", ["CH4"])
 @pytest.mark.parametrize("name3", ["LYS_xao"])
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
 def test_batch_large(
-    dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
+    dtype: torch.dtype,
+    name1: str,
+    name2: str,
+    name3: str,
+    gfn: str,
+    scf_mode: str,
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -181,11 +217,18 @@ def test_batch_large(
     charge = pack(charge)
     ref = pack(
         [
-            samples[name1]["etot"].to(**dd),
-            samples[name2]["etot"].to(**dd),
-            samples[name3]["etot"].to(**dd),
+            samples[name1][f"e{gfn}"].to(**dd),
+            samples[name2][f"e{gfn}"].to(**dd),
+            samples[name3][f"e{gfn}"].to(**dd),
         ]
     )
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
 
     options = dict(
         opts,
@@ -203,8 +246,9 @@ def test_batch_large(
 
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 @pytest.mark.parametrize("name", ["H", "NO2"])
-def test_uhf_single(dtype: torch.dtype, name: str) -> None:
+def test_uhf_single(dtype: torch.dtype, name: str, gfn: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
@@ -212,7 +256,14 @@ def test_uhf_single(dtype: torch.dtype, name: str) -> None:
     numbers, positions = read(Path(base, "coord"), **dd)
     charge = read_chrg(Path(base, ".CHRG"), **dd)
 
-    ref = samples[name]["etot"].to(**dd)
+    ref = samples[name][f"e{gfn}"].to(**dd)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
 
     calc = Calculator(numbers, par, opts=opts, **dd)
 
