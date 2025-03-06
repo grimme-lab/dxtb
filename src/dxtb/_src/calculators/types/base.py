@@ -516,10 +516,10 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
 
         # If method not explicitly set in options, we try to get it from the
         # parametrization.
-        # if isinstance(opts, dict) and "method" not in opts:
-        #     if par.meta is not None:
-        #         if par.meta.name is not None:
-        #             opts["method"] = par.meta.name
+        if isinstance(opts, dict) and "method" not in opts:
+            if par.meta is not None:
+                if par.meta.name is not None:
+                    opts["method"] = par.meta.name
 
         # setup calculator options
         if isinstance(opts, dict):

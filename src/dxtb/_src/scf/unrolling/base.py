@@ -117,6 +117,7 @@ class BaseTSCF(BaseSCF):
                     msg + " Changing to Fock matrix automatically."
                 )
                 self.config.scp_mode = labels.SCP_MODE_FOCK
+                self._fcn = self.iterate_fockian
 
     def get_overlap(self) -> Tensor:
         """

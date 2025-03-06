@@ -51,6 +51,10 @@ refs: dict[str, Refs] = {
         "egfn1": torch.tensor(-1.0362714373390e00),
         "egfn2": torch.tensor(-9.8211694450068e-01),
     },
+    "LiH": {
+        "egfn1": torch.tensor(-8.8142483637514e-01),
+        "egfn2": torch.tensor(-7.7924380347126e-01),
+    },
     "H2O": {
         "egfn1": torch.tensor(-5.7686218257620e00),
         "egfn2": torch.tensor(-5.0703655057333e00),
