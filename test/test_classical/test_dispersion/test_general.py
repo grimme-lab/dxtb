@@ -27,6 +27,8 @@ from dxtb import GFN1_XTB, GFN2_XTB
 from dxtb._src.typing.exceptions import DeviceError, ParameterWarning
 from dxtb.components.dispersion import new_d4sc, new_dispersion
 
+from ...conftest import DEVICE
+
 
 def test_none() -> None:
     dummy = torch.tensor(0.0)
@@ -109,8 +111,8 @@ def test_fail_d4_cache() -> None:
 
 
 def test_fail_d4sc_required() -> None:
-    numbers = torch.tensor([3, 1])
-    disp = new_d4sc(numbers, GFN2_XTB)
+    numbers = torch.tensor([3, 1], device=DEVICE)
+    disp = new_d4sc(numbers, GFN2_XTB, device=DEVICE)
     assert disp is not None
 
     with pytest.raises(ValueError):

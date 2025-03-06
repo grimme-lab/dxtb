@@ -25,9 +25,9 @@ import torch
 from tad_mctc.autograd import jacrev
 from tad_mctc.convert import reshape_fortran
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, GFN2_XTB, Calculator
 from dxtb._src.constants import labels
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
@@ -37,7 +37,6 @@ sample_list = ["LiH", "SiH4"]
 
 opts = {
     "exclude": ["disp", "hal", "rep"],
-    "int_driver": "dxtb",
     "maxiter": 50,
     "scf_mode": labels.SCF_MODE_FULL,
     "scp_mode": labels.SCP_MODE_POTENTIAL,
@@ -47,9 +46,7 @@ opts = {
 }
 
 
-@pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name", sample_list)
-def test_single(dtype: torch.dtype, name: str) -> None:
+def single(dtype: torch.dtype, name: str, gfn: str) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
     atol, rtol = 1e-4, 1e-1  # should be lower!
 
@@ -61,7 +58,16 @@ def test_single(dtype: torch.dtype, name: str) -> None:
         torch.Size(2 * (numbers.shape[-1], 3)),
     )
 
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    if gfn == "gfn1":
+        par = GFN1_XTB
+        options = {**opts, "int_driver": labels.INTDRIVER_ANALYTICAL}
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+        options = {**opts, "int_driver": labels.INTDRIVER_LIBCINT}
+    else:
+        assert False
+
+    calc = Calculator(numbers, par, opts=options, **dd)
 
     pos = positions.clone()
 
@@ -83,8 +89,22 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     numref = numref.reshape_as(ref)
 
     assert ref.shape == numref.shape == hess.shape
-    assert pytest.approx(ref.cpu(), abs=1e-6, rel=1e-6) == numref.cpu()
-    assert pytest.approx(ref.cpu(), abs=atol, rel=rtol) == hess.cpu()
+    assert pytest.approx(numref.cpu(), abs=1e-6, rel=1e-6) == hess.cpu()
+
+    if gfn == "gfn1":
+        assert pytest.approx(ref.cpu(), abs=1e-6, rel=1e-6) == numref.cpu()
+        assert pytest.approx(ref.cpu(), abs=atol, rel=rtol) == hess.cpu()
+
+
+@pytest.mark.parametrize("name", sample_list)
+def test_hess_gfn1(name: str) -> None:
+    single(torch.double, name, "gfn1")
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("name", sample_list)
+def test_hess_gfn2(name: str) -> None:
+    single(torch.double, name, "gfn2")
 
 
 def _numhess(
@@ -99,7 +119,15 @@ def _numhess(
 
     def _gradfcn(pos: Tensor, charge: Tensor) -> Tensor:
         pos.requires_grad_(True)
-        result = -calc.forces_analytical(pos, charge)
+
+        if calc.opts.method == labels.GFN1_XTB:
+            result = -calc.forces_analytical(pos, charge)
+        elif calc.opts.method == labels.GFN2_XTB:
+            calc.reset()
+            result = -calc.get_forces(pos, charge)
+        else:
+            assert False
+
         pos.detach_()
         return result.detach()
 
