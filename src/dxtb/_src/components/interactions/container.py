@@ -184,7 +184,8 @@ class Container:
             Collection of shapes and labels of the container. This information
             is required for correctly restoring the Container class.
         batch_mode : bool, optional
-            Whether the calculation runs in batch_mode mode. Defaults to ``False``.
+            Whether the calculation runs in batch_mode mode.
+            Defaults to ``False``.
         pad : int, optional
             Value used to indicate padding. Defaults to ``defaults.PADNZ``.
 

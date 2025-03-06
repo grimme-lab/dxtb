@@ -436,7 +436,8 @@ class Integrals(IntegralContainer):
         # quadrupole integrals, because this is the highest moment).
 
         # If higher moment integrals are required, everything will be deferred.
-        if self.intlevel > labels.INTLEVEL_QUADRUPOLE:
+        # (Never happens, because we raise an error above.)
+        if self.intlevel > labels.INTLEVEL_QUADRUPOLE:  # pragma: no cover
             logger.debug("Dipole integral: All finished (r0).")
             return self.quadrupole.matrix
 

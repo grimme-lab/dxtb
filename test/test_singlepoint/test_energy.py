@@ -28,9 +28,9 @@ import torch
 from tad_mctc import read, read_chrg
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, GFN2_XTB, Calculator
 from dxtb._src.constants import labels
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
@@ -46,11 +46,7 @@ opts = {
 }
 
 
-@pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", slist)
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
-def test_single(dtype: torch.dtype, name: str, scf_mode: str) -> None:
+def single(dtype: torch.dtype, name: str, gfn: str, scf_mode: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
@@ -59,7 +55,66 @@ def test_single(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     numbers, positions = read(Path(base, "coord"), **dd)
     charge = read_chrg(Path(base, ".CHRG"), **dd)
 
-    ref = samples[name]["etot"].to(**dd)
+    ref = samples[name][f"e{gfn}"].to(**dd)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
+
+    options = dict(
+        opts,
+        **{
+            "scf_mode": scf_mode,
+            "mixer": "anderson" if scf_mode == "full" else "broyden",
+        },
+    )
+    calc = Calculator(numbers, par, opts=options, **dd)
+
+    result = calc.singlepoint(positions, charge)
+    res = result.total.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", slist)
+@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+def test_single_gfn1(dtype: torch.dtype, name: str, scf_mode: str) -> None:
+    single(dtype, name, "gfn1", scf_mode)
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", slist)
+@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+def test_single_gfn2(dtype: torch.dtype, name: str, scf_mode: str) -> None:
+    single(dtype, name, "gfn2", scf_mode)
+
+
+##############################################################################
+
+
+def single_large(
+    dtype: torch.dtype, name: str, gfn: str, scf_mode: str
+) -> None:
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    base = Path(Path(__file__).parent, "mols", name)
+
+    numbers, positions = read(Path(base, "coord"), **dd)
+    charge = read_chrg(Path(base, ".CHRG"), **dd)
+
+    ref = samples[name][f"e{gfn}"].to(**dd)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
 
     options = dict(
         opts,
@@ -76,20 +131,67 @@ def test_single(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 
 
 @pytest.mark.large
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist_large)
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
-def test_single_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
+def test_single_large_gfn1(
+    dtype: torch.dtype, name: str, scf_mode: str
+) -> None:
+    single_large(dtype, name, "gfn1", scf_mode)
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", slist_large)
+@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+def test_single_large_gfn2(
+    dtype: torch.dtype, name: str, scf_mode: str
+) -> None:
+    single_large(dtype, name, "gfn2", scf_mode)
+
+
+##############################################################################
+
+
+def batch(
+    dtype: torch.dtype,
+    name1: str,
+    name2: str,
+    name3: str,
+    gfn: str,
+    scf_mode: str,
+) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
-    base = Path(Path(__file__).parent, "mols", name)
+    numbers, positions, charge = [], [], []
+    for name in [name1, name2, name3]:
+        base = Path(Path(__file__).parent, "mols", name)
+        nums, pos = read(Path(base, "coord"), **dd)
+        chrg = read_chrg(Path(base, ".CHRG"), **dd)
 
-    numbers, positions = read(Path(base, "coord"), **dd)
-    charge = read_chrg(Path(base, ".CHRG"), **dd)
+        numbers.append(nums)
+        positions.append(pos)
+        charge.append(chrg)
 
-    ref = samples[name]["etot"].to(**dd)
+    numbers = pack(numbers)
+    positions = pack(positions)
+    charge = pack(charge)
+    ref = pack(
+        [
+            samples[name1][f"e{gfn}"].to(**dd),
+            samples[name2][f"e{gfn}"].to(**dd),
+            samples[name3][f"e{gfn}"].to(**dd),
+        ]
+    )
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
 
     options = dict(
         opts,
@@ -105,14 +207,39 @@ def test_single_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["H2", "H2O"])
-@pytest.mark.parametrize("name2", ["H2", "CH4"])
-@pytest.mark.parametrize("name3", ["H2", "SiH4"])
+@pytest.mark.parametrize("name2", ["H2", "SiH4"])
+@pytest.mark.parametrize("name3", ["H2", "LiH"])
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
-def test_batch(
+def test_batch_gfn1(
     dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
+) -> None:
+    batch(dtype, name1, name2, name3, "gfn1", scf_mode)
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name1", ["H2", "H2O"])
+@pytest.mark.parametrize("name2", ["H2", "SiH4"])
+@pytest.mark.parametrize("name3", ["H2", "LiH"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+def test_batch_gfn2(
+    dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
+) -> None:
+    batch(dtype, name1, name2, name3, "gfn2", scf_mode)
+
+
+##############################################################################
+
+
+def batch_large(
+    dtype: torch.dtype,
+    name1: str,
+    name2: str,
+    name3: str,
+    gfn: str,
+    scf_mode: str,
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -120,6 +247,7 @@ def test_batch(
     numbers, positions, charge = [], [], []
     for name in [name1, name2, name3]:
         base = Path(Path(__file__).parent, "mols", name)
+
         nums, pos = read(Path(base, "coord"))
         chrg = read_chrg(Path(base, ".CHRG"))
 
@@ -132,11 +260,18 @@ def test_batch(
     charge = pack(charge)
     ref = pack(
         [
-            samples[name1]["etot"].to(**dd),
-            samples[name2]["etot"].to(**dd),
-            samples[name3]["etot"].to(**dd),
+            samples[name1][f"e{gfn}"].to(**dd),
+            samples[name2][f"e{gfn}"].to(**dd),
+            samples[name3][f"e{gfn}"].to(**dd),
         ]
     )
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
 
     options = dict(
         opts,
@@ -153,7 +288,6 @@ def test_batch(
 
 
 @pytest.mark.large
-@pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["H2"])
 @pytest.mark.parametrize("name2", ["CH4"])
@@ -162,59 +296,58 @@ def test_batch(
 def test_batch_large(
     dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
 ) -> None:
-    tol = sqrt(torch.finfo(dtype).eps) * 10
-    dd: DD = {"device": DEVICE, "dtype": dtype}
-
-    numbers, positions, charge = [], [], []
-    for name in [name1, name2, name3]:
-        base = Path(Path(__file__).parent, "mols", name)
-
-        nums, pos = read(Path(base, "coord"))
-        chrg = read_chrg(Path(base, ".CHRG"))
-
-        numbers.append(torch.tensor(nums, dtype=torch.long, device=DEVICE))
-        positions.append(torch.tensor(pos, **dd))
-        charge.append(torch.tensor(chrg, **dd))
-
-    numbers = pack(numbers)
-    positions = pack(positions)
-    charge = pack(charge)
-    ref = pack(
-        [
-            samples[name1]["etot"].to(**dd),
-            samples[name2]["etot"].to(**dd),
-            samples[name3]["etot"].to(**dd),
-        ]
-    )
-
-    options = dict(
-        opts,
-        **{
-            "scf_mode": scf_mode,
-            "mixer": "anderson" if scf_mode == "full" else "broyden",
-        },
-    )
-    calc = Calculator(numbers, par, opts=options, **dd)
-
-    result = calc.singlepoint(positions, charge)
-    res = result.total.sum(-1)
-    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
+    batch_large(dtype, name1, name2, name3, "gfn1", scf_mode)
 
 
-@pytest.mark.filterwarnings("ignore")
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["H", "NO2"])
-def test_uhf_single(dtype: torch.dtype, name: str) -> None:
+@pytest.mark.parametrize("name1", ["H2"])
+@pytest.mark.parametrize("name2", ["CH4"])
+@pytest.mark.parametrize("name3", ["LYS_xao"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+def test_batch_large_gfn2(
+    dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
+) -> None:
+    batch_large(dtype, name1, name2, name3, "gfn2", scf_mode)
+
+
+##############################################################################
+
+
+def uhf_single(dtype: torch.dtype, name: str, gfn: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     base = Path(Path(__file__).parent, "mols", name)
-    numbers, positions = read(Path(base, "coord"), **dd)
+    numbers, positions = read(
+        Path(base, "coord"), **dd, raise_padding_warning=False
+    )
     charge = read_chrg(Path(base, ".CHRG"), **dd)
 
-    ref = samples[name]["etot"].to(**dd)
+    ref = samples[name][f"e{gfn}"].to(**dd)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
 
     calc = Calculator(numbers, par, opts=opts, **dd)
 
     result = calc.energy(positions, charge)
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == result.cpu()
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["H", "NO2"])
+def test_uhf_single_gfn1(dtype: torch.dtype, name: str) -> None:
+    uhf_single(dtype, name, "gfn1")
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["H", "NO2"])
+def test_uhf_single_gfn2(dtype: torch.dtype, name: str) -> None:
+    uhf_single(dtype, name, "gfn2")

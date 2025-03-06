@@ -26,8 +26,7 @@ from tad_mctc.autograd import dgradcheck, dgradgradcheck
 from tad_mctc.batch import pack
 from tad_mctc.units import VAA2AU
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, GFN2_XTB, Calculator
 from dxtb._src.components.interactions import new_efield
 from dxtb._src.constants import labels
 from dxtb._src.exlibs.available import has_libcint
@@ -56,7 +55,7 @@ xfields = [0.0, 1.0, -2.0]
 
 
 def gradchecker(
-    dtype: torch.dtype, name: str, xfield: float, scf_mode: str
+    dtype: torch.dtype, name: str, xfield: float, gfn: str, scf_mode: str
 ) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
     Tensor,  # differentiable variables
@@ -75,6 +74,13 @@ def gradchecker(
         },
     )
 
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
+
     # variables to be differentiated
     field_vector = torch.tensor([xfield, 0.0, 0.0], **dd) * VAA2AU
     field_vector.requires_grad_(True)
@@ -92,15 +98,16 @@ def gradchecker(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 @pytest.mark.parametrize("xfield", xfields)
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 @pytest.mark.parametrize("scf_mode", ["implicit", "full"])
 def test_gradcheck(
-    dtype: torch.dtype, name: str, xfield: float, scf_mode: str
+    dtype: torch.dtype, name: str, xfield: float, gfn: str, scf_mode: str
 ) -> None:
     """
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradcheck`.
     """
-    func, diffvars = gradchecker(dtype, name, xfield, scf_mode)
+    func, diffvars = gradchecker(dtype, name, xfield, gfn, scf_mode)
     assert dgradcheck(func, diffvars, atol=tol)
 
 
@@ -109,15 +116,16 @@ def test_gradcheck(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 @pytest.mark.parametrize("xfield", xfields)
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 @pytest.mark.parametrize("scf_mode", ["full"])
 def test_gradgradcheck(
-    dtype: torch.dtype, name: str, xfield: float, scf_mode: str
+    dtype: torch.dtype, name: str, xfield: float, gfn: str, scf_mode: str
 ) -> None:
     """
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
-    func, diffvars = gradchecker(dtype, name, xfield, scf_mode)
+    func, diffvars = gradchecker(dtype, name, xfield, gfn, scf_mode)
     assert dgradgradcheck(func, diffvars, atol=tol)
 
 
@@ -125,7 +133,12 @@ def test_gradgradcheck(
 
 
 def gradchecker_batch(
-    dtype: torch.dtype, name1: str, name2: str, xfield: float, scf_mode: str
+    dtype: torch.dtype,
+    name1: str,
+    name2: str,
+    xfield: float,
+    gfn: str,
+    scf_mode: str,
 ) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
     Tensor,  # differentiable variables
@@ -147,6 +160,13 @@ def gradchecker_batch(
     )
     charge = torch.tensor([0.0, 0.0], **dd)
 
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
+
     options = dict(
         opts,
         **{
@@ -172,16 +192,24 @@ def gradchecker_batch(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name1", ["H2O"])
 @pytest.mark.parametrize("name2", sample_list)
-@pytest.mark.parametrize("scf_mode", ["full"])
 @pytest.mark.parametrize("xfield", xfields)
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
+@pytest.mark.parametrize("scf_mode", ["full"])
 def test_gradcheck_batch(
-    dtype: torch.dtype, name1: str, name2: str, xfield: float, scf_mode: str
+    dtype: torch.dtype,
+    name1: str,
+    name2: str,
+    xfield: float,
+    gfn: str,
+    scf_mode: str,
 ) -> None:
     """
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradcheck`.
     """
-    func, diffvars = gradchecker_batch(dtype, name1, name2, xfield, scf_mode)
+    func, diffvars = gradchecker_batch(
+        dtype, name1, name2, xfield, gfn, scf_mode
+    )
     assert dgradcheck(func, diffvars, atol=tol)
 
 
@@ -191,13 +219,21 @@ def test_gradcheck_batch(
 @pytest.mark.parametrize("name1", ["H2O"])
 @pytest.mark.parametrize("name2", sample_list)
 @pytest.mark.parametrize("xfield", xfields)
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 @pytest.mark.parametrize("scf_mode", ["full"])
 def test_gradgradcheck_batch(
-    dtype: torch.dtype, name1: str, name2: str, xfield: float, scf_mode: str
+    dtype: torch.dtype,
+    name1: str,
+    name2: str,
+    xfield: float,
+    gfn: str,
+    scf_mode: str,
 ) -> None:
     """
     Check a single analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
-    func, diffvars = gradchecker_batch(dtype, name1, name2, xfield, scf_mode)
+    func, diffvars = gradchecker_batch(
+        dtype, name1, name2, xfield, gfn, scf_mode
+    )
     assert dgradgradcheck(func, diffvars, atol=tol, eps=1e-8)

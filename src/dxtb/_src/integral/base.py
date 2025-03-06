@@ -211,7 +211,7 @@ class BaseIntegral(IntegralABC, TensorLike):
 
         torch.save(self.matrix, path)
 
-    def to(self, device: torch.device) -> Self:
+    def to(self, device: torch.device | None) -> Self:
         """
         Returns a copy of the integral on the specified device "``device``".
 
@@ -221,7 +221,7 @@ class BaseIntegral(IntegralABC, TensorLike):
 
         Parameters
         ----------
-        device : torch.device
+        device : torch.device | None
             Device to which all associated tensors should be moved.
 
         Returns

@@ -102,11 +102,15 @@ class ES3Cache(InteractionCache, TensorLike):
     hd: Tensor
     """Spread Hubbard derivatives of all atoms (not only unique)."""
 
-    __slots__ = ["__store", "hd"]
+    shell_resolved: bool
+    """Whether the third-order electrostatics are shell-resolved."""
+
+    __slots__ = ["__store", "hd", "shell_resolved"]
 
     def __init__(
         self,
         hd: Tensor,
+        shell_resolved: bool = False,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ):
@@ -115,6 +119,7 @@ class ES3Cache(InteractionCache, TensorLike):
             dtype=dtype if dtype is None else hd.dtype,
         )
         self.hd = hd
+        self.shell_resolved = shell_resolved
         self.__store = None
 
     class Store:
@@ -132,7 +137,7 @@ class ES3Cache(InteractionCache, TensorLike):
         if self.__store is None:
             self.__store = self.Store(self.hd)
 
-        slicer = slicers["atom"]
+        slicer = slicers["shell"] if self.shell_resolved else slicers["atom"]
         self.hd = self.hd[[~conv, *slicer]]
 
     def restore(self) -> None:
@@ -227,12 +232,14 @@ class ES3(Interaction):
         if self.shell_scale is None:
             hd = ihelp.spread_uspecies_to_atom(self.hubbard_derivs)
         else:
-            hd = (
-                ihelp.spread_uspecies_to_shell(self.hubbard_derivs)
-                * self.shell_scale[ihelp.angular]
+            scale = ihelp.spread_ushell_to_shell(
+                self.shell_scale[ihelp.unique_angular]
             )
+            hd = ihelp.spread_uspecies_to_shell(self.hubbard_derivs) * scale
 
-        self.cache = ES3Cache(hd)
+        self.cache = ES3Cache(
+            hd, shell_resolved=(self.shell_scale is not None), **self.dd
+        )
 
         return self.cache
 

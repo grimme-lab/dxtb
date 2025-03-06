@@ -23,21 +23,19 @@ from __future__ import annotations
 from math import sqrt
 from pathlib import Path
 
-import numpy as np
 import pytest
 import torch
 from tad_mctc import read, read_chrg
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN2_XTB, Calculator
 from dxtb._src.constants import labels
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
-from ..utils import load_from_npz
+from ..utils import load_from_tblite_grad
 
-ref_grad = np.load("test/test_singlepoint/grad.npz")
-"""['H2', 'H2O', 'CH4', 'SiH4', 'LYS_xao', 'AD7en+', 'C60', 'vancoh2']"""
+f = Path(__file__).resolve().parent / "refs" / "gfn2"
 
 opts = {
     "maxiter": 50,
@@ -47,74 +45,7 @@ opts = {
 }
 
 
-@pytest.mark.grad
-@pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["H2", "H2O", "CH4"])
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
-def test_analytical(dtype: torch.dtype, name: str, scf_mode: str) -> None:
-    atol, rtol = 1e-5, 1e-4
-    analytical(dtype, name, atol, rtol, scf_mode)
-
-
-@pytest.mark.grad
-@pytest.mark.large
-@pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["C60"])
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
-def test_analytical_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
-    atol = rtol = sqrt(torch.finfo(dtype).eps)
-    analytical(dtype, name, atol, rtol, scf_mode)
-
-
-@pytest.mark.grad
-@pytest.mark.large
-@pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["AD7en+", "LYS_xao"])
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
-def test_analytical_large2(
-    dtype: torch.dtype, name: str, scf_mode: str
-) -> None:
-    if "cuda" in str(DEVICE) and dtype == torch.float:
-        atol = 1e-4
-    else:
-        atol = 1e-5
-
-    rtol = 1e-3
-    analytical(dtype, name, atol, rtol, scf_mode)
-
-
-def analytical(
-    dtype: torch.dtype, name: str, atol: float, rtol: float, scf_mode: str
-) -> None:
-    dd: DD = {"device": DEVICE, "dtype": dtype}
-
-    # read from file
-    base = Path(Path(__file__).parent, "mols", name)
-    numbers, positions = read(Path(base, "coord"), **dd)
-    charge = read_chrg(Path(base, ".CHRG"), **dd)
-
-    positions = positions.clone().requires_grad_(True)
-
-    options = dict(
-        opts,
-        **{
-            "mixer": "anderson" if scf_mode == "full" else "broyden",
-            "f_atol": 1e-5 if dtype == torch.float else 1e-10,
-            "x_atol": 1e-5 if dtype == torch.float else 1e-10,
-            "scf_mode": scf_mode,
-        },
-    )
-    calc = Calculator(numbers, par, opts=options, **dd)
-    result = -calc.forces_analytical(positions, charge)
-    gradient = result.detach()
-
-    ref = load_from_npz(ref_grad, name, dtype)
-    assert pytest.approx(ref.cpu(), abs=atol, rel=rtol) == gradient.cpu()
-
-
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -141,7 +72,7 @@ def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
             "scf_mode": scf_mode,
         },
     )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(numbers, GFN2_XTB, opts=options, **dd)
     result = calc.singlepoint(positions, charge)
     energy = result.total.sum(-1)
 
@@ -155,10 +86,12 @@ def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     positions.grad.data.zero_()
 
     # tblite reference grad
-    ref = load_from_npz(ref_grad, name, dtype)
-    assert pytest.approx(ref.cpu(), abs=tol, rel=1e-4) == autograd.cpu()
+    ref = load_from_tblite_grad(f / f"{name.casefold()}.txt", **dd)
+    g = ref["gradient"]
+    assert pytest.approx(g.cpu(), abs=tol, rel=1e-4) == autograd.cpu()
 
 
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("name", ["H2", "H2O", "CH4"])
@@ -175,8 +108,9 @@ def test_num(name: str, scf_mode: str) -> None:
     # do calc
     gradient = num_grad(numbers, positions, charge, scf_mode, dd)
 
-    ref = load_from_npz(ref_grad, name, dtype)
-    assert pytest.approx(ref.cpu(), abs=1e-6, rel=1e-4) == gradient.cpu()
+    ref = load_from_tblite_grad(f / f"{name.casefold()}.txt", **dd)
+    g = ref["gradient"]
+    assert pytest.approx(g.cpu(), abs=1e-5, rel=1e-5) == gradient.cpu()
 
 
 def num_grad(
@@ -189,12 +123,14 @@ def num_grad(
         **{
             "scf_mode": scf_mode,
             "mixer": "anderson" if scf_mode == "full" else "broyden",
+            "f_atol": 1e-5 if dd["dtype"] == torch.float else 1e-10,
+            "x_atol": 1e-5 if dd["dtype"] == torch.float else 1e-10,
         },
     )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(numbers, GFN2_XTB, opts=options, **dd)
 
     gradient = torch.zeros_like(positions)
-    step = 1.0e-6
+    step = 1.0e-5
 
     for i in range(numbers.shape[0]):
         for j in range(3):
