@@ -277,6 +277,14 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         help="R|Whether to use strict mode. Throws errors on warnings.",
     )
     p.add_argument(
+        "--timer",
+        action="store_true",
+        help=(
+            "R|Whether to enable the timer for the calculator. For the "
+            "global timer, set the environment variable 'DXTB_TIMER=1'."
+        ),
+    )
+    p.add_argument(
         "--efield",
         type=float,
         nargs=3,

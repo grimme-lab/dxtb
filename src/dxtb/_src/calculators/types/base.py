@@ -488,6 +488,9 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
             Data type of the tensor. If ``None`` (default), the data type is
             inferred.
         """
+        if timer.enabled is False and kwargs.pop("timer", False):
+            timer.enable()
+
         timer.start("Calculator", parent_uid="Setup")
 
         # setup verbosity first

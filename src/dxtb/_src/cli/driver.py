@@ -223,7 +223,12 @@ class Driver:
 
         # setup calculator
         calc = Calculator(
-            numbers, par, opts=config, interaction=interactions, **dd
+            numbers,
+            par,
+            opts=config,
+            interaction=interactions,
+            **dd,
+            timer=args.timer,
         )
         timer.stop("Setup")
 
