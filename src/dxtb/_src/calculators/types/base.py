@@ -534,16 +534,15 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         # If the user sets the level manually, we will still set it to the
         # maximum level required for the respective parametrization.
         if kwargs.pop("auto_int_level", True):
-            if par.meta is not None:
-                if par.meta.name is not None:
-                    if "gfn1" in par.meta.name.casefold():
-                        self.opts.ints.level = max(
-                            labels.INTLEVEL_HCORE, self.opts.ints.level
-                        )
-                    elif "gfn2" in par.meta.name.casefold():
-                        self.opts.ints.level = max(
-                            labels.INTLEVEL_QUADRUPOLE, self.opts.ints.level
-                        )
+            if par.meta is not None and par.meta.name is not None:
+                if "gfn1" in par.meta.name.casefold():
+                    self.opts.ints.level = max(
+                        labels.INTLEVEL_HCORE, self.opts.ints.level
+                    )
+                elif "gfn2" in par.meta.name.casefold():
+                    self.opts.ints.level = max(
+                        labels.INTLEVEL_QUADRUPOLE, self.opts.ints.level
+                    )
 
         # create cache
         self.cache = CalculatorCache(**dd) if cache is None else cache

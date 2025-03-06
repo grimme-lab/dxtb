@@ -85,11 +85,11 @@ def test_reset() -> None:
     ilist.reset_d4sc()
     assert d4sc.cache is None
 
-    assert len(es2.cache) == 2
+    assert len(es2.cache) == 2  # mat + shell_resolved
     ilist.reset_es2()
     assert es2.cache is None
 
-    assert len(es3.cache) == 1
+    assert len(es3.cache) == 2  # hd + shell_resolved
     ilist.reset_es3()
     assert es3.cache is None
 
@@ -126,7 +126,7 @@ def test_reset_all() -> None:
 
     assert len(d4sc.cache) == 3
     assert len(es2.cache) == 2
-    assert len(es3.cache) == 1
+    assert len(es3.cache) == 2
     assert len(ef.cache) == 2
     assert len(efg.cache) == 1
 

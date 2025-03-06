@@ -131,6 +131,7 @@ class Config:
         cache_potential: bool = defaults.CACHE_STORE_POTENTIAL,
         # misc
         max_element: int = defaults.MAX_ELEMENT,
+        skip_compat_checks: bool = False,
     ) -> None:
         self.file = file
         self.strict = strict
@@ -212,15 +213,16 @@ class Config:
             dtype=dtype,
         )
 
-        # compatibility checks
-        if (
-            self.method == labels.GFN2_XTB
-            and self.ints.driver != labels.INTDRIVER_LIBCINT
-        ):
-            raise RuntimeError(
-                "Multipole integrals not available in PyTorch integral drivers."
-                " Use `libcint` as backend."
-            )
+        # compatibility checks (only need to be skipped for some tests)
+        if skip_compat_checks is False:
+            if (
+                self.method == labels.GFN2_XTB
+                and self.ints.driver != labels.INTDRIVER_LIBCINT
+            ):
+                raise RuntimeError(
+                    "Multipole integrals not available in PyTorch integral "
+                    "drivers. Use `libcint` as backend."
+                )
 
     @classmethod
     def from_args(cls, args: Namespace) -> Self:
