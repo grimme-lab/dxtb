@@ -24,6 +24,14 @@ A fully differentiable extended tight-binding package.
 # import timer first to get correct total time
 from dxtb._src.timing import timer, kill_timer
 
+
+from os import getenv
+
+if getenv("DXTB_TIMER", "False").lower() not in ("true", "1", "yes", "on"):
+    timer.disable()
+del getenv
+
+
 timer.start("Import")
 timer.start("PyTorch", parent_uid="Import")
 import torch

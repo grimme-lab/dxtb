@@ -70,7 +70,7 @@ With *dxtb*, we provide a re-implementation of the xTB methods in PyTorch, which
 pip install dxtb[libcint]
 ```
 
-Installing the libcint interface is highly recommended, as it is significantly faster than the pure PyTorch implementation and provides access to higher-order multipole integrals and their derivatives.
+Installing the libcint interface is highly recommended, as it is significantly faster than the pure PyTorch implementation and provides access to higher-order multipole integrals and their derivatives (**required for GFN2-xTB**).
 However, the interface is currently only available on Linux.
 
 ### conda <a href="https://anaconda.org/conda-forge/dxtb"><img src="https://img.shields.io/conda/vn/conda-forge/dxtb.svg" alt="Conda Version"></a> <a href="https://anaconda.org/conda-forge/dxtb"><img src="https://img.shields.io/conda/dn/conda-forge/dxtb?style=flat&color=orange" alt="Conda Downloads"></a>

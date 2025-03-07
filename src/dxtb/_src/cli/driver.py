@@ -116,9 +116,11 @@ class Driver:
         return vals
 
     def singlepoint(self) -> Result | Tensor:
-        timer.start("Setup")
-
         args = self.args
+
+        if timer.enabled is False and args.timer is True:
+            timer.enable()
+        timer.start("Setup")
 
         # logging.basicConfig(
         # level=args.loglevel.upper(),
@@ -223,7 +225,12 @@ class Driver:
 
         # setup calculator
         calc = Calculator(
-            numbers, par, opts=config, interaction=interactions, **dd
+            numbers,
+            par,
+            opts=config,
+            interaction=interactions,
+            **dd,
+            timer=args.timer,
         )
         timer.stop("Setup")
 
