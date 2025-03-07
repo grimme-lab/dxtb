@@ -487,8 +487,16 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         dtype : torch.dtype | None, optional
             Data type of the tensor. If ``None`` (default), the data type is
             inferred.
+        kwargs : Any
+            Additional keyword arguments.
+            - ``auto_int_level``: Automatically set the integral level based on
+              the parametrization. Defaults to ``True``. This should only be
+              turned off for testing purposes.
+            - ``timer``: Enable the timer. Defaults to ``False``. The global
+              timer can also be enabled by setting the environment variable
+              ``DXTB_TIMER`` to ``1``.
         """
-        if timer.enabled is False and kwargs.pop("timer", False):
+        if not timer.enabled and kwargs.pop("timer", False):
             timer.enable()
 
         timer.start("Calculator", parent_uid="Setup")

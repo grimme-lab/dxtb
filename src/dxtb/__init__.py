@@ -27,7 +27,7 @@ from dxtb._src.timing import timer, kill_timer
 
 from os import getenv
 
-if getenv("DXTB_TIMER", "False").lower() in ("true", "1", "yes") is False:
+if getenv("DXTB_TIMER", "False").lower() not in ("true", "1", "yes", "on"):
     timer.disable()
 del getenv
 
