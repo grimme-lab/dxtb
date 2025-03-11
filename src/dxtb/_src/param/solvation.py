@@ -23,9 +23,11 @@ Definition of the isotropic third-order onsite correction.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union
 
 from pydantic import BaseModel
+
+from .tensor import TensorPydantic
 
 __all__ = ["ALPB", "Solvation"]
 
@@ -45,10 +47,10 @@ class ALPB(BaseModel):
     by Lange (JCTC 2012, 8, 1999-2011).
     """
 
-    born_scale: float
+    born_scale: Union[float, TensorPydantic]
     """Scaling factor for Born radii."""
 
-    born_offset: float
+    born_offset: Union[float, TensorPydantic]
     """Offset parameter for Born radii integration."""
 
 

@@ -27,19 +27,21 @@ from typing import Literal, Union
 
 from pydantic import BaseModel
 
+from .tensor import TensorPydantic
+
 __all__ = ["ThirdOrderShell", "ThirdOrder"]
 
 
 class ThirdOrderShell(BaseModel):
     """Representation of shell-resolved third-order electrostatics."""
 
-    s: float
+    s: Union[float, TensorPydantic]
     """Scaling factor for s-orbitals."""
 
-    p: float
+    p: Union[float, TensorPydantic]
     """Scaling factor for p-orbitals."""
 
-    d: float
+    d: Union[float, TensorPydantic]
     """Scaling factor for d-orbitals."""
 
 

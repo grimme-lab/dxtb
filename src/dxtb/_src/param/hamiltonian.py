@@ -27,9 +27,11 @@ additional distance dependent function formed from the element parametrization.
 
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 
 from pydantic import BaseModel
+
+from .tensor import TensorPydantic
 
 __all__ = ["Hamiltonian", "XTBHamiltonian"]
 
@@ -42,23 +44,23 @@ class XTBHamiltonian(BaseModel):
     self-energy and the distance polynomial.
     """
 
-    shell: Dict[str, float]
-    """Shell-pair dependent scaling factor for off-site blocks"""
-
-    kpair: Dict[str, float] = {}
-    """Atom-pair dependent scaling factor for off-site valence blocks"""
-
-    enscale: float
-    """Electronegativity scaling factor for off-site valence blocks"""
-
-    wexp: float
+    wexp: Union[float, TensorPydantic]
     """Exponent of the orbital exponent dependent off-site scaling factor"""
+
+    kpol: Union[float, TensorPydantic] = 2.0
+    """Scaling factor for polarization functions"""
+
+    enscale: Union[float, TensorPydantic]
+    """Electronegativity scaling factor for off-site valence blocks"""
 
     cn: Optional[str] = None
     """Local environment descriptor for shifting the atomic self-energies"""
 
-    kpol: float = 2.0
-    """Scaling factor for polarization functions"""
+    shell: Dict[str, Union[float, TensorPydantic]]
+    """Shell-pair dependent scaling factor for off-site blocks"""
+
+    kpair: Dict[str, Union[float, TensorPydantic]] = {}
+    """Atom-pair dependent scaling factor for off-site valence blocks"""
 
 
 class Hamiltonian(BaseModel):

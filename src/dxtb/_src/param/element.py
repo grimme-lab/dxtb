@@ -24,9 +24,11 @@ species.
 
 from __future__ import annotations
 
-from typing import List
+from typing import List, Union
 
 from pydantic import BaseModel
+
+from .tensor import TensorPydantic
 
 __all__ = ["Element"]
 
@@ -36,21 +38,16 @@ class Element(BaseModel):
     Representation of the parameters for a species.
     """
 
-    zeff: float
-    """Effective nuclear charge used in repulsion."""
-
-    arep: float
-    """Repulsion exponent."""
-
-    ############################################################################
-
-    en: float
-    """Electronnegativity."""
-
     shells: List[str]
     """Included shells with principal quantum number and angular momentum."""
 
-    ngauss: List[int]
+    levels: Union[Union[List[float], TensorPydantic], TensorPydantic]
+    """Atomic level energies for each shell"""
+
+    slater: Union[List[float], TensorPydantic]
+    """Slater exponents of the STO-NG functions for each shell"""
+
+    ngauss: Union[List[int], TensorPydantic]
     """
     Number of primitive Gaussian functions used in the STO-NG expansion for
     each shell.
@@ -58,47 +55,52 @@ class Element(BaseModel):
 
     ############################################################################
 
-    levels: List[float]
-    """Atomic level energies for each shell"""
-
-    slater: List[float]
-    """Slater exponents of the STO-NG functions for each shell"""
-
-    refocc: List[float]
+    refocc: Union[List[float], TensorPydantic]
     """Reference occupation for each shell"""
 
-    kcn: List[float]
-    """CN dependent shift of the self energy for each shell"""
-
-    shpoly: List[float]
+    shpoly: Union[List[float], TensorPydantic]
     """Polynomial enhancement for Hamiltonian elements"""
+
+    kcn: Union[List[float], TensorPydantic]
+    """CN dependent shift of the self energy for each shell"""
 
     ############################################################################
 
-    gam: float
+    gam: Union[float, TensorPydantic]
     """Chemical hardness / Hubbard parameter."""
 
-    lgam: List[float]
+    lgam: Union[List[float], TensorPydantic]
     """Relative chemical hardness for each shell."""
 
-    gam3: float = 0.0
+    gam3: Union[float, TensorPydantic] = 0.0
     """Atomic Hubbard derivative."""
 
     ############################################################################
 
-    dkernel: float = 0.0
-    """Dipolar exchange-correlation kernel."""
+    zeff: Union[float, TensorPydantic]
+    """Effective nuclear charge used in repulsion."""
 
-    qkernel: float = 0.0
-    """Quadrupolar exchange-correlation kernel."""
-
-    mprad: float = 0.0
-    """Offset radius for the damping in the AES energy."""
-
-    mpvcn: float = 0.0
-    """Shift value in the damping in the AES energy. Only used if mprad != 0."""
+    arep: Union[float, TensorPydantic]
+    """Repulsion exponent."""
 
     ############################################################################
 
-    xbond: float = 0.0
+    xbond: Union[float, TensorPydantic] = 0.0
     """Halogen bonding strength."""
+
+    en: Union[float, TensorPydantic]
+    """Electronnegativity."""
+
+    ############################################################################
+
+    dkernel: Union[float, TensorPydantic] = 0.0
+    """Dipolar exchange-correlation kernel."""
+
+    qkernel: Union[float, TensorPydantic] = 0.0
+    """Quadrupolar exchange-correlation kernel."""
+
+    mprad: Union[float, TensorPydantic] = 0.0
+    """Offset radius for the damping in the AES energy."""
+
+    mpvcn: Union[float, TensorPydantic] = 0.0
+    """Shift value in the damping in the AES energy. Only used if mprad != 0."""

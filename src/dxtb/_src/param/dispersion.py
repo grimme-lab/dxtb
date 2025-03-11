@@ -33,11 +33,11 @@ from __future__ import annotations
 
 from typing import Optional, Union
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 from tad_dftd3 import defaults as d3_defaults
 from tad_dftd4 import defaults as d4_defaults
 
-from dxtb._src.typing import Tensor
+from .tensor import TensorPydantic
 
 __all__ = ["D3Model", "D4Model", "Dispersion"]
 
@@ -47,22 +47,20 @@ class D3Model(BaseModel):
     Representation of the DFT-D3(BJ) contribution for a parametrization.
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    s6: Union[float, Tensor] = d3_defaults.S6
+    s6: Union[float, TensorPydantic] = d3_defaults.S6
     """Scaling factor for multipolar (dipole-dipole contribution) terms."""
 
-    s8: Union[float, Tensor] = d3_defaults.S8
+    s8: Union[float, TensorPydantic] = d3_defaults.S8
     """Scaling factor for multipolar (dipole-quadrupole contribution) terms."""
 
-    s9: Union[float, Tensor] = d3_defaults.S9
+    a1: Union[float, TensorPydantic] = d3_defaults.A1
+    """Becke-Johnson damping parameter."""
+
+    a2: Union[float, TensorPydantic] = d3_defaults.A2
+    """Becke-Johnson damping parameter."""
+
+    s9: Union[float, TensorPydantic] = d3_defaults.S9
     """Scaling factor for the many-body dispersion term (ATM/RPA-like)."""
-
-    a1: Union[float, Tensor] = d3_defaults.A1
-    """Becke-Johnson damping parameter."""
-
-    a2: Union[float, Tensor] = d3_defaults.A2
-    """Becke-Johnson damping parameter."""
 
 
 class D4Model(BaseModel):
@@ -70,31 +68,29 @@ class D4Model(BaseModel):
     Representation of the DFT-D4 contribution for a parametrization.
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     sc: bool = False
     """Whether the dispersion correctio is used self-consistently or not."""
 
-    s6: Union[float, Tensor] = d4_defaults.S6
+    s6: Union[float, TensorPydantic] = d4_defaults.S6
     """Scaling factor for multipolar (dipole-dipole contribution) terms"""
 
-    s8: Union[float, Tensor] = d4_defaults.S8
+    s8: Union[float, TensorPydantic] = d4_defaults.S8
     """Scaling factor for multipolar (dipole-quadrupole contribution) terms"""
 
-    s9: Union[float, Tensor] = d4_defaults.S9
+    a1: Union[float, TensorPydantic] = d4_defaults.A1
+    """Becke-Johnson damping parameter."""
+
+    a2: Union[float, TensorPydantic] = d4_defaults.A2
+    """Becke-Johnson damping parameter."""
+
+    s9: Union[float, TensorPydantic] = d4_defaults.S9
     """Scaling factor for the many-body dispersion term (ATM/RPA-like)."""
 
-    s10: Union[float, Tensor] = d4_defaults.S10
+    s10: Union[float, TensorPydantic] = d4_defaults.S10
     """Scaling factor for quadrupole-quadrupole term."""
 
-    alp: Union[float, Tensor] = d4_defaults.ALP
+    alp: Union[float, TensorPydantic] = d4_defaults.ALP
     """Exponent of zero damping function in the ATM term."""
-
-    a1: Union[float, Tensor] = d4_defaults.A1
-    """Becke-Johnson damping parameter."""
-
-    a2: Union[float, Tensor] = d4_defaults.A2
-    """Becke-Johnson damping parameter."""
 
 
 class Dispersion(BaseModel):

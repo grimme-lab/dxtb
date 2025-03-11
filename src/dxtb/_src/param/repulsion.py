@@ -24,9 +24,11 @@ used in GFN1-xTB and GFN2-xTB.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union
 
 from pydantic import BaseModel
+
+from .tensor import TensorPydantic
 
 __all__ = ["EffectiveRepulsion", "Repulsion"]
 
@@ -36,13 +38,13 @@ class EffectiveRepulsion(BaseModel):
     Representation of the repulsion contribution for a parametrization.
     """
 
-    kexp: float
+    kexp: Union[float, TensorPydantic]
     """
     Scaling of the interatomic distance in the exponential damping function of
     the repulsion energy.
     """
 
-    klight: Optional[float] = None
+    klight: Optional[Union[float, TensorPydantic]] = None
     """
     Scaling of the interatomic distance in the exponential damping function of
     the repulsion energy for light elements, i.e., H and He (only GFN2).
