@@ -78,16 +78,19 @@ class SelfConsistentFieldFull(BaseTSCF):
         batched = self.config.batch_mode
 
         # Evaluate initial guess outside of SCF loop to make maxiter=0 possible.
-        q = fcn(guess)
+        q_new = fcn(guess)
         if OutputHandler.verbosity >= 3:  # pragma: no cover
-            charges = self.converged_to_charges(q)
+            charges = self.converged_to_charges(q_new)
             energy = self.get_energy(charges)
             self._print(charges, energy)
 
         if maxiter == 0:
             if return_charges is True:
-                return self.converged_to_charges(q)
-            return q
+                return self.converged_to_charges(q_new)
+            return q_new
+
+        # Also mix the initial guess with the first SCF iteration
+        q = self.mixer.iter(q_new, guess)
 
         # single-system (non-batched) case, which does not require culling
         if batched == 0:
@@ -106,6 +109,10 @@ class SelfConsistentFieldFull(BaseTSCF):
                     # Do not return mixed charges here, but from last SCF call!
                     q_converged = q_new
                     break
+
+                # Switch off damping if the norm of the difference is small
+                if self.mixer.delta_norm < 0.1:
+                    self.mixer.options["damp"] = 1.0
 
             else:
                 msg = (
