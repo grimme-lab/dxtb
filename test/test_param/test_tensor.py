@@ -44,8 +44,6 @@ def test_scalar_serialization() -> None:
     scalar = torch.tensor(42, device=DEVICE)
     model = Model(tensor=scalar)  # type: ignore
 
-    model = Model(tensor=scalar)  # type: ignore
-
     expected = {"tensor": int(scalar.item())}
     assert model.model_dump() == expected
 
