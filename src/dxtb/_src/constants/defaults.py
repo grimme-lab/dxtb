@@ -134,8 +134,11 @@ GUESS = labels.GUESS_EEQ
 GUESS_CHOICES = ["eeq", "sad"]
 """List of possible choices for `GUESS`."""
 
-DAMP = 0.3
+DAMP = 0.5
 """Damping factor for mixing in SCF iterations."""
+
+DAMP_INIT = 0.1
+"""Initial damping factor for mixing in SCF iterations."""
 
 MAXITER = 100
 """Maximum number of SCF iterations."""

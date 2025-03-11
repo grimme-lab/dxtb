@@ -252,6 +252,7 @@ class BaseSCF:
             "method": "broyden1",
             "alpha": -0.5,
             "damp": self.config.damp,
+            "damp_init": self.config.damp_init,
             "f_tol": self.config.f_atol,
             "x_tol": self.config.x_atol,
             "f_rtol": float("inf"),

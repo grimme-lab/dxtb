@@ -166,6 +166,8 @@ def _nonlin_solver(
             ],
         )
 
+    mix = 0.5
+
     for i in range(maxiter):
         tol = min(eta, eta * y_norm)
         dx = -jacobian.solve(y, tol=tol)
@@ -198,11 +200,14 @@ def _nonlin_solver(
                 func, x, y, dx, search_type=line_search
             )
         else:
-            s = 0.95  # modified!!
-            xnew = x + s * dx
+            xnew = x + mix * dx
             ynew = func(xnew)
             y_norm_new = torch.norm(ynew)
             assert isinstance(y_norm_new, torch.Tensor)
+
+            # Switch off mixing if change is small
+            if dx_norm < 0.1 or y_norm_new < 0.1:
+                mix = 1.0
 
         # save the best results
         if y_norm_new < best_ynorm:

@@ -88,15 +88,6 @@ class Anderson(Mixer):
        Mixing and Extrapolation.” Numerical Algorithms, 80(1), 135–234.
     """
 
-    mix_param: float
-    """
-    Mixing parameter, ∈(0, 1), controls the extent of mixing. Larger values
-    result in more aggressive mixing. Defaults to 0.5 according to [Eyert]_.
-    """
-
-    init_mix_param: float
-    """Mixing parameter to use during the initial simple mixing steps (0.01)."""
-
     diagonal_offset: float
     """
     Offset added to the equation system's diagonal's to prevent a linear
@@ -118,9 +109,7 @@ class Anderson(Mixer):
             opts.update(options)
         super().__init__(opts, batch_mode=batch_mode)
 
-        self.mix_param = self.options["damp"]
         self.generations = self.options["generations"]
-        self.init_mix_param = self.options["damp_init"]
         self.diagonal_offset = self.options["diagonal_offset"]
 
         # Holds "x" history and "x" delta history
@@ -298,11 +287,11 @@ class Anderson(Mixer):
             # Calculate the new mixed dQ following equation 4.4 (Eyert):
             #   |x(l+1)> = |x_bar(l)> + beta(l)|f_bar(l)>
             # where "beta" is the mixing parameter
-            x_mix = x_bar + (self.mix_param * f_bar)
+            x_mix = x_bar + (self.options["damp"] * f_bar)
 
         # If there is insufficient history for Anderson; use simple mixing
         else:
-            x_mix = self._x_hist[0] + (self._f[0] * self.init_mix_param)
+            x_mix = self._x_hist[0] + (self._f[0] * self.options["damp_init"])
 
         # Shift f & x_hist over; a roll follow by a reassignment is
         # necessary to avoid an inplace error. (gradients remain intact)

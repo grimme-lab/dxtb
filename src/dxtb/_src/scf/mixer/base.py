@@ -46,10 +46,20 @@ class Mixer(ABC):
     """Number of mixing iterations taken."""
 
     options: dict[str, Any]
-    """Options for the mixer (damping, tolerances, ...)."""
+    """
+    Options for the mixer (damping, tolerances, ...).
+    - `damp` (float): Mixing parameter, ∈(0, 1), controls the extent of
+      mixing. Larger values result in more aggressive mixing. Defaults to
+      0.5 according to [Eyert]_.
+    - `damp_init` (float): Mixing parameter to use during the initial
+       simple mixing steps. Defaults to ``0.01``.
+    """
 
     _delta: Tensor | None
     """Difference between the current and previous systems."""
+
+    _delta_norm: Tensor | None
+    """Norm of the difference between the current and previous systems."""
 
     _batch_mode: int
     """
@@ -67,6 +77,7 @@ class Mixer(ABC):
         self.options = options if options is not None else default_opts
         self.iter_step = 0
         self._delta = None
+        self._delta_norm = None
 
         # inferring batch mode from shapes of tensor is unreliable, so we
         # explicitly set this information
@@ -144,6 +155,18 @@ class Mixer(ABC):
         return self._delta
 
     @property
+    def delta_norm(self) -> Tensor:
+        """
+        Norm of the difference between the current and previous systems.
+
+        This may need to be locally overridden if `_delta_norm` needs to be
+        reshaped prior to it being returned.
+        """
+        if self._delta_norm is None:
+            raise RuntimeError("Mixer has no been started yet.")
+        return self._delta_norm
+
+    @property
     def converged(self) -> Tensor:
         """
         Tensor of bools indicating convergence status of the system(s).
@@ -157,13 +180,13 @@ class Mixer(ABC):
             raise RuntimeError("Nothing has been mixed")
 
         if self._batch_mode == 0:
-            delta_norm = torch.norm(self.delta)
+            self._delta_norm = torch.norm(self.delta)
         else:
             # norm goes over all dims except first (batch dimension)
             dims = tuple(range(-(self.delta.ndim - 1), 0))
-            delta_norm = torch.norm(self.delta, dim=dims)
+            self._delta_norm = torch.norm(self.delta, dim=dims)
 
-        return delta_norm < self.options["x_tol"]
+        return self._delta_norm < self.options["x_tol"]
 
     def reset(self):
         """
@@ -176,3 +199,4 @@ class Mixer(ABC):
         self.iter_step = 0
         self.x_old = None
         self._delta = None
+        self._delta_norm = None

@@ -59,7 +59,10 @@ class Simple(Mixer):
         x_old = self.x_old if x_old is None else x_old
 
         # Perform the mixing operation to create the new mixed x value
-        x_mix = x_old + (x_new - x_old) * self.options["damp"]
+        if self.options["damp"] == 1.0:
+            x_mix = x_new
+        else:
+            x_mix = x_old + (x_new - x_old) * self.options["damp"]
 
         # Update the x_old attribute
         self.x_old = x_mix

@@ -56,6 +56,12 @@ class ConfigSCF:
     mixer: int
     """Mixing scheme for SCF iterations."""
 
+    damp: float
+    """Damping factor for the SCF iterations."""
+
+    damp_init: float
+    """Initial damping factor for the SCF iterations."""
+
     scf_mode: int
     """SCF convergence approach (denoted by backward strategy)."""
 
@@ -110,6 +116,7 @@ class ConfigSCF:
         maxiter: int = defaults.MAXITER,
         mixer: str | int = defaults.MIXER,
         damp: float = defaults.DAMP,
+        damp_init: float = defaults.DAMP_INIT,
         scf_mode: str | int = defaults.SCF_MODE,
         scp_mode: str | int = defaults.SCP_MODE,
         x_atol: float = defaults.X_ATOL,
@@ -282,6 +289,7 @@ class ConfigSCF:
 
         self.maxiter = maxiter
         self.damp = damp
+        self.damp_init = damp_init
         self.force_convergence = force_convergence
         self.batch_mode = batch_mode
 
