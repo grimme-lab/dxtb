@@ -24,7 +24,11 @@ Currently, only GFN1-xTB's classical halogen bond correction is defined.
 
 from __future__ import annotations
 
+from typing import Union
+
 from pydantic import BaseModel
+
+from .tensor import TensorPydantic
 
 __all__ = ["ClassicalHalogen", "Halogen"]
 
@@ -35,12 +39,12 @@ class ClassicalHalogen(BaseModel):
     correction for a parametrization.
     """
 
-    damping: float
+    damping: Union[float, TensorPydantic]
     """
     Damping factor of attractive contribution in Lennard-Jones-like potential.
     """
 
-    rscale: float
+    rscale: Union[float, TensorPydantic]
     """Global scaling factor for covalent radii of AX bond."""
 
 

@@ -23,9 +23,13 @@ Definition of the isotropic second-order charge interactions.
 
 from __future__ import annotations
 
+from typing import Union
+
 from pydantic import BaseModel
 
 from dxtb._src.constants.xtb import DEFAULT_ES2_GEXP
+
+from .tensor import TensorPydantic
 
 __all__ = ["ChargeEffective", "Charge"]
 
@@ -36,7 +40,7 @@ class ChargeEffective(BaseModel):
     parametrization.
     """
 
-    gexp: float = DEFAULT_ES2_GEXP
+    gexp: Union[float, TensorPydantic] = DEFAULT_ES2_GEXP
     """Exponent of Coulomb kernel. """
 
     average: str = "harmonic"

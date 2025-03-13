@@ -496,6 +496,8 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
               timer can also be enabled by setting the environment variable
               ``DXTB_TIMER`` to ``1``.
         """
+        self.parameters = par
+
         if not timer.enabled and kwargs.pop("timer", False):
             timer.enable()
 

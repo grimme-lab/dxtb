@@ -68,9 +68,6 @@ class Param(BaseModel):
     meta: Optional[Meta] = None
     """Descriptive data on the model."""
 
-    element: Dict[str, Element]
-    """Element specific parameter records."""
-
     hamiltonian: Optional[Hamiltonian] = None
     """Definition of the Hamiltonian, always required."""
 
@@ -83,14 +80,17 @@ class Param(BaseModel):
     charge: Optional[Charge] = None
     """Definition of the isotropic second-order charge interactions."""
 
+    thirdorder: Optional[ThirdOrder] = None
+    """Definition of the isotropic third-order charge interactions."""
+
     multipole: Optional[Multipole] = None
     """Definition of the anisotropic second-order multipolar interactions."""
 
     halogen: Optional[Halogen] = None
     """Definition of the halogen bonding correction."""
 
-    thirdorder: Optional[ThirdOrder] = None
-    """Definition of the isotropic third-order charge interactions."""
+    element: Dict[str, Element]
+    """Element specific parameter records."""
 
     solvation: Optional[Solvation] = None
     """Definition of the solvation model."""
