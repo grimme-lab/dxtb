@@ -56,11 +56,23 @@ class ConfigSCF:
     mixer: int
     """Mixing scheme for SCF iterations."""
 
+    mix_guess: bool
+    """Include the initial guess in the mixing scheme."""
+
     damp: float
     """Damping factor for the SCF iterations."""
 
     damp_init: float
     """Initial damping factor for the SCF iterations."""
+
+    damp_dynamic: bool
+    """Whether to use dynamic damping in the SCF iterations."""
+
+    damp_dynamic_factor: float
+    """
+    Damping factor for dynamic damping in the SCF iterations, i.e., when
+    the norm of the error falls below a threshold.
+    """
 
     scf_mode: int
     """SCF convergence approach (denoted by backward strategy)."""
@@ -115,8 +127,11 @@ class ConfigSCF:
         guess: str | int = defaults.GUESS,
         maxiter: int = defaults.MAXITER,
         mixer: str | int = defaults.MIXER,
+        mix_guess: bool = defaults.MIX_GUESS,
         damp: float = defaults.DAMP,
         damp_init: float = defaults.DAMP_INIT,
+        damp_dynamic: bool = defaults.DAMP_DYNAMIC,
+        damp_dynamic_factor: float = defaults.DAMP_DYNAMIC_FACTOR,
         scf_mode: str | int = defaults.SCF_MODE,
         scp_mode: str | int = defaults.SCP_MODE,
         x_atol: float = defaults.X_ATOL,
@@ -288,8 +303,11 @@ class ConfigSCF:
             )
 
         self.maxiter = maxiter
+        self.mix_guess = mix_guess
         self.damp = damp
         self.damp_init = damp_init
+        self.damp_dynamic = damp_dynamic
+        self.damp_dynamic_factor = damp_dynamic_factor
         self.force_convergence = force_convergence
         self.batch_mode = batch_mode
 

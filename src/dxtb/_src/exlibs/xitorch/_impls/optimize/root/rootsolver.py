@@ -27,6 +27,7 @@ import functools
 import torch
 
 from dxtb import OutputHandler
+from dxtb._src.constants import defaults
 from dxtb._src.exlibs.xitorch._impls.optimize.root._jacobian import (
     Anderson,
     BroydenFirst,
@@ -166,7 +167,7 @@ def _nonlin_solver(
             ],
         )
 
-    mix = 0.5
+    damp = unused.get("damp", defaults.DAMP)
 
     for i in range(maxiter):
         tol = min(eta, eta * y_norm)
@@ -200,14 +201,18 @@ def _nonlin_solver(
                 func, x, y, dx, search_type=line_search
             )
         else:
-            xnew = x + mix * dx
+            xnew = x + damp * dx
             ynew = func(xnew)
             y_norm_new = torch.norm(ynew)
             assert isinstance(y_norm_new, torch.Tensor)
 
-            # Switch off mixing if change is small
-            if dx_norm < 0.1 or y_norm_new < 0.1:
-                mix = 1.0
+            # Switch off damping if change is small
+            if unused.get("damp_dynamic", defaults.DAMP_DYNAMIC) is True:
+                if dx_norm < 0.1 or y_norm_new < 0.1:
+                    damp = unused.get(
+                        "damp_dynamic_factor",
+                        defaults.DAMP_DYNAMIC_FACTOR,
+                    )
 
         # save the best results
         if y_norm_new < best_ynorm:

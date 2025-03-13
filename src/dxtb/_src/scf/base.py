@@ -253,6 +253,8 @@ class BaseSCF:
             "alpha": -0.5,
             "damp": self.config.damp,
             "damp_init": self.config.damp_init,
+            "damp_dynamic": self.config.damp_dynamic,
+            "damp_dynamic_factor": self.config.damp_dynamic_factor,
             "f_tol": self.config.f_atol,
             "x_tol": self.config.x_atol,
             "f_rtol": float("inf"),

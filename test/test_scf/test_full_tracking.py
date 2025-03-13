@@ -81,6 +81,7 @@ def single(
         opts,
         **{
             "damp": 0.05 if mixer == "simple" else 0.4,
+            "damp_dynamic": mixer != "simple",
             "int_driver": intdriver,
             "mixer": mixer,
             "scp_mode": scp_mode,
@@ -248,11 +249,12 @@ def batched(
         opts,
         **{
             "damp": 0.05 if mixer == "simple" else 0.4,
+            "damp_dynamic": mixer != "simple",
             "mixer": mixer,
             "scp_mode": scp_mode,
             "int_driver": intdriver,
-            "f_atol": tol,
-            "x_atol": tol,
+            "f_atol": 0.1 * tol,
+            "x_atol": 0.1 * tol,
         },
     )
     calc = Calculator(numbers, par, opts=options, **dd)
@@ -352,6 +354,7 @@ def batched_unconverged(
             "damp": 0.3,
             "maxiter": maxiter,
             "mixer": mixer,
+            "mix_guess": False,
             "scf_mode": "full",
             "scp_mode": scp_mode,
             "f_atol": tol,

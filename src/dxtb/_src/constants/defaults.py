@@ -140,6 +140,12 @@ DAMP = 0.5
 DAMP_INIT = 0.1
 """Initial damping factor for mixing in SCF iterations."""
 
+DAMP_DYNAMIC = False
+"""Whether to use dynamic damping in SCF iterations."""
+
+DAMP_DYNAMIC_FACTOR = 0.99
+"""Damping factor when norm of error is smaller than threshold."""
+
 MAXITER = 100
 """Maximum number of SCF iterations."""
 
@@ -148,6 +154,9 @@ MIXER = labels.MIXER_BROYDEN
 
 MIXER_CHOICES = ["anderson", "broyden", "simple"]
 """List of possible choices for ``MIXER``."""
+
+MIX_GUESS = True
+"""Whether to mix the initial guess."""
 
 SCF_MODE = labels.SCF_MODE_IMPLICIT_NON_PURE
 """

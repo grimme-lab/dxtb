@@ -102,6 +102,7 @@ def test_element_unique(dtype: torch.dtype) -> None:
                 "f_atol": 1e-5 if dtype == torch.float32 else 1e-6,
                 "x_atol": 1e-5 if dtype == torch.float32 else 1e-6,
                 "fermi_thresh": 1e-4 if dtype == torch.float32 else 1e-10,
+                "damp": 0.95,
             },
         )
         calc = Calculator(numbers, par, opts=options, **dd)
@@ -131,6 +132,7 @@ def test_element_cation(dtype: torch.dtype) -> None:
                 "f_atol": 1e-5,  # avoids Jacobian inversion error
                 "x_atol": 1e-5,  # avoids Jacobian inversion error
                 "fermi_thresh": 1e-4 if dtype == torch.float32 else 1e-10,
+                "damp": 0.9,
             },
         )
         calc = Calculator(numbers, par, opts=options, **dd)
