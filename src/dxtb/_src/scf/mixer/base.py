@@ -24,14 +24,29 @@ This module contains the abstract base class for all mixers.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from functools import wraps
 
 import torch
 
+from dxtb import OutputHandler
+from dxtb._src.constants import defaults
 from dxtb._src.typing import Any, Slicer, Tensor
 
-__all__ = ["Mixer"]
+__all__ = ["Mixer", "DEFAULT_OPTS"]
 
-default_opts = {"maxiter": 20, "damp": 0.3, "f_tol": 1e-5, "x_tol": 1e-5}
+
+DEFAULT_OPTS = {
+    "maxiter": defaults.MAXITER,
+    "f_tol": defaults.F_ATOL,
+    "x_tol": defaults.X_ATOL,
+    "x_tol_max": defaults.X_ATOL_MAX,
+    "damp": defaults.DAMP,
+    "damp_init": defaults.DAMP_INIT,
+    "damp_soft_start": defaults.DAMP_SOFT_START,
+    "damp_generations": defaults.DAMP_GENERATIONS,  # for Anderson
+    "damp_diagonal_offset": defaults.DAMP_DIAGONAL_OFFSET,  # for Anderson
+    "damp_soft_start": defaults.DAMP_SOFT_START,  # for Anderson
+}
 
 
 class Mixer(ABC):
@@ -74,7 +89,7 @@ class Mixer(ABC):
         self, options: dict[str, Any] | None = None, batch_mode: int = 0
     ) -> None:
         self.label = self.__class__.__name__
-        self.options = options if options is not None else default_opts
+        self.options = options if options is not None else DEFAULT_OPTS
         self.iter_step = 0
         self._delta = None
         self._delta_norm = None
@@ -82,6 +97,52 @@ class Mixer(ABC):
         # inferring batch mode from shapes of tensor is unreliable, so we
         # explicitly set this information
         self._batch_mode = batch_mode
+
+    def __init_subclass__(cls):
+        def _tolerance_threshold_check(func):
+            """
+            Wrapper to check the validity of the current tolerance value.
+
+            This wraps `__call__` to ensure that a tolerance threshold check
+            gets carried out on the first call, i.e. when `iter_step` is
+            zero. If the specified tolerance cannot be achieved then a warning
+            will be issued and the tolerance will be downgraded to just below
+            the precision limit.
+            """
+
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                self: Mixer = args[0]
+                # pylint: disable=W0212
+                if self.iter_step != 0:
+                    return func(*args, **kwargs)
+
+                dtype = args[1].dtype
+                if torch.finfo(dtype).resolution > self.options["x_tol"]:
+                    OutputHandler.warn(
+                        f"{cls.__name__}: Tolerance value x_tol="
+                        f"{self.options['x_tol']} can't be achieved by "
+                        f"a {dtype}. DOWNGRADING!",
+                        UserWarning,
+                    )
+                    self.options["x_tol"] = torch.finfo(dtype).resolution * 5.0
+
+                if torch.finfo(dtype).resolution > self.options["x_tol_max"]:
+                    OutputHandler.warn(
+                        f"{cls.__name__}: Tolerance value x_tol_max="
+                        f"{self.options['x_tol_max']} can't be achieved by "
+                        f"a {dtype}. DOWNGRADING!",
+                        UserWarning,
+                    )
+                    self.options["x_tol_max"] = (
+                        torch.finfo(dtype).resolution * 5.0
+                    )
+
+                return func(*args, **kwargs)
+
+            return wrapper
+
+        cls.__call__ = _tolerance_threshold_check(cls.__call__)
 
     def __str__(self) -> str:  # pragma: no cover
         """Returns representative string."""
@@ -175,18 +236,25 @@ class Mixer(ABC):
         difference between the current and previous systems is less than
         the ``tolerance`` value.
         """
-        # Check that mixing has been conducted
-        if self.delta is None:
-            raise RuntimeError("Nothing has been mixed")
+        # Check that mixing has been conducted is unnecessary here if we always
+        # access delta via the property (and not via ``self._delta``).
 
+        # Compute max norm (L∞) and L2 norm
         if self._batch_mode == 0:
-            self._delta_norm = torch.norm(self.delta)
+            l2_norm = torch.norm(self.delta, p=None)
+            max_norm = torch.norm(self.delta, p=float("inf"))
         else:
             # norm goes over all dims except first (batch dimension)
             dims = tuple(range(-(self.delta.ndim - 1), 0))
-            self._delta_norm = torch.norm(self.delta, dim=dims)
+            l2_norm = torch.norm(self.delta, dim=dims)
+            max_norm = torch.norm(self.delta, p=float("inf"), dim=dims)
 
-        return self._delta_norm < self.options["x_tol"]
+        converged_l2 = l2_norm < self.options["x_tol"]
+        converged_max = max_norm < self.options["x_tol_max"]
+
+        self._delta_norm = l2_norm
+
+        return converged_max & converged_l2
 
     def reset(self):
         """
@@ -197,6 +265,6 @@ class Mixer(ABC):
         retained.
         """
         self.iter_step = 0
-        self.x_old = None
+        self._x_old = None
         self._delta = None
         self._delta_norm = None

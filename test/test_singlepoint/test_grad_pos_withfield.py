@@ -37,9 +37,11 @@ from .samples import samples
 
 opts = {
     "int_level": labels.INTLEVEL_DIPOLE,
-    "f_atol": 1.0e-8,
-    "x_atol": 1.0e-8,
+    "f_atol": 1.0e-10,
+    "x_atol": 1.0e-10,
     "maxiter": 100,
+    "damp": 0.3,
+    "damp_init": 0.01,
     "mixer": labels.MIXER_ANDERSON,
     "scf_mode": labels.SCF_MODE_FULL,
     "scp_mode": labels.SCP_MODE_POTENTIAL,
@@ -198,5 +200,5 @@ def test_gradgradcheck_batch(
     """
     func, diffvars = gradchecker_batch(dtype, name1, name2, gfn)
     assert dgradgradcheck(
-        func, diffvars, atol=tol, eps=1e-8, nondet_tol=1e-7, fast_mode=False
+        func, diffvars, atol=tol, eps=1e-4, nondet_tol=1e-7, fast_mode=False
     )

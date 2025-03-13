@@ -52,6 +52,7 @@ def test_scf_full_unconverged_warning(dtype: torch.dtype) -> None:
     opts = {
         "damp": 0.3,
         "damp_init": 0.01,
+        "damp_soft_start": True,
         "mix_guess": False,
         "scf_mode": "full",
         "maxiter": maxiter,
