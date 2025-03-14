@@ -46,7 +46,8 @@ def func(x: Tensor) -> Tensor:
 
 
 def general(mixer: Mixer, device: torch.device | None) -> None:
-    """Tests some of the mixer's general operational functionality.
+    """
+    Tests some of the mixer's general operational functionality.
 
     This tests the basic operational functionality of a mixer. It should be
     noted that this is not a comprehensive test. This is intended to catch
@@ -171,6 +172,9 @@ def test_fail_delta() -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_tolerances_1(dtype: torch.dtype) -> None:
+    # Clear warnings from previous tests
+    OutputHandler.clear_warnings()
+
     opts = {"x_tol": 1e-30}
     mixer = Simple(opts)
 
@@ -190,6 +194,9 @@ def test_tolerances_1(dtype: torch.dtype) -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_tolerances_2(dtype: torch.dtype) -> None:
+    # Clear warnings from previous tests
+    OutputHandler.clear_warnings()
+
     opts = {"x_tol_max": 1e-30}
     mixer = Simple(opts)
 
