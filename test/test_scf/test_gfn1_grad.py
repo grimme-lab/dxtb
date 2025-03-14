@@ -95,6 +95,8 @@ def run_grad_backwards(
         **{
             "scf_mode": scf_mode,
             "scp_mode": scp_mode,
+            "f_atol": tol * 0.1,
+            "x_atol": tol * 0.1,
             "mixer": "anderson" if scf_mode == "full" else "broyden",
         },
     )

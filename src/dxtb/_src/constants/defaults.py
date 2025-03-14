@@ -134,8 +134,36 @@ GUESS = labels.GUESS_EEQ
 GUESS_CHOICES = ["eeq", "sad"]
 """List of possible choices for `GUESS`."""
 
-DAMP = 0.3
+DAMP = 0.5
 """Damping factor for mixing in SCF iterations."""
+
+DAMP_INIT = 0.1
+"""Initial damping factor for mixing in SCF iterations."""
+
+DAMP_DYNAMIC = False
+"""Whether to use dynamic damping in SCF iterations."""
+
+DAMP_DYNAMIC_FACTOR = 0.99
+"""Damping factor when norm of error is smaller than threshold."""
+
+DAMP_SOFT_START = True
+"""
+If enabled, then simple mixing will be used for the first ``generations``
+number of steps, otherwise only for the first (in Anderson mixing only).
+"""
+
+DAMP_GENERATIONS = 5
+"""
+Number of generations to use during mixing.
+Defaults to 5 as suggested by Eyert.
+"""
+
+DAMP_DIAGONAL_OFFSET = 0.01
+"""
+Offset added to the equation system's diagonal's to prevent a linear
+dependence during the mixing process. If set to ``None`` then rescaling
+will be disabled.
+"""
 
 MAXITER = 100
 """Maximum number of SCF iterations."""
@@ -145,6 +173,9 @@ MIXER = labels.MIXER_BROYDEN
 
 MIXER_CHOICES = ["anderson", "broyden", "simple"]
 """List of possible choices for ``MIXER``."""
+
+MIX_GUESS = True
+"""Whether to mix the initial guess."""
 
 SCF_MODE = labels.SCF_MODE_IMPLICIT_NON_PURE
 """
@@ -196,6 +227,9 @@ X_ATOL = 1.0e-4
 """
 The absolute tolerance of the norm of the input of the equilibrium function.
 """
+
+X_ATOL_MAX = 1.0e-5
+"""The absolute tolerance of the max norm (L∞) of the error in the SCF."""
 
 F_ATOL = 1.0e-4
 """

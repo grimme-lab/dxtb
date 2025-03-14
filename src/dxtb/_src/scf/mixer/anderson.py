@@ -31,18 +31,9 @@ from tad_mctc.math import einsum
 from dxtb._src.typing import Any, Slicer, Tensor
 from dxtb._src.utils import t2int
 
-from .base import Mixer
+from .base import DEFAULT_OPTS, Mixer
 
 __all__ = ["Anderson"]
-
-
-default_opts = {
-    "maxiter": 100,
-    "damp": 0.5,
-    "generations": 5,
-    "diagonal_offset": 0.01,
-    "damp_init": 0.01,
-}
 
 
 class Anderson(Mixer):
@@ -58,8 +49,9 @@ class Anderson(Mixer):
 
     Note
     ----
-    Note that simple mixing will be used for the first ``generations``
-    number of steps
+    Note that simple mixing will always be used for the first step. If
+    ``soft_start`` is enabled then the simple mixer will also be used for
+    the following ``generations``-1 steps.
 
     The Anderson mixing functions primarily follow the equations set out
     by Eyert [Eyert]_. However, this code borrows heavily from the DFTB+
@@ -88,15 +80,6 @@ class Anderson(Mixer):
        Mixing and Extrapolation.” Numerical Algorithms, 80(1), 135–234.
     """
 
-    mix_param: float
-    """
-    Mixing parameter, ∈(0, 1), controls the extent of mixing. Larger values
-    result in more aggressive mixing. Defaults to 0.5 according to [Eyert]_.
-    """
-
-    init_mix_param: float
-    """Mixing parameter to use during the initial simple mixing steps (0.01)."""
-
     diagonal_offset: float
     """
     Offset added to the equation system's diagonal's to prevent a linear
@@ -110,18 +93,23 @@ class Anderson(Mixer):
     Defaults to 5 as suggested by [Eyert]_.
     """
 
+    soft_start: bool
+    """
+    If enabled, then simple mixing will be used for the first ``generations``
+    number of steps, otherwise only for the first. Defaults to ``False``.
+    """
+
     def __init__(
         self, options: dict[str, Any] | None = None, batch_mode: int = 0
     ) -> None:
-        opts = dict(default_opts)
+        opts = dict(DEFAULT_OPTS)
         if options is not None:
             opts.update(options)
         super().__init__(opts, batch_mode=batch_mode)
 
-        self.mix_param = self.options["damp"]
-        self.generations = self.options["generations"]
-        self.init_mix_param = self.options["damp_init"]
-        self.diagonal_offset = self.options["diagonal_offset"]
+        self.generations = self.options["damp_generations"]
+        self.diagonal_offset = self.options["damp_diagonal_offset"]
+        self.soft_start = self.options["damp_soft_start"]
 
         # Holds "x" history and "x" delta history
         self._x_hist: Tensor | None = None
@@ -153,6 +141,7 @@ class Anderson(Mixer):
             self._shape_in = list(x_new.reshape(x_new.shape[0], -1).shape)
 
         # Instantiate the x history (x_hist) and the delta history 'd_hist'
+        # The current step is also stored hence "self.generations + 1".
         size = (self.generations + 1, *self._shape_in)
         self._x_hist = x_new.new_zeros(size)
         self._f = x_new.new_zeros(size)
@@ -243,13 +232,20 @@ class Anderson(Mixer):
         self._f[0] = x_new - x_old
 
         # If a sufficient history has been built up then use Anderson mixing
-        if self.iter_step > self.generations:
+
+        if (
+            self.iter_step > self.generations
+            or self.iter_step > 1
+            and not self.soft_start
+        ):
+            n = min(self.iter_step - 1, self.generations)
+
             # Setup and solve the linear equation system, as described in
             # equation 4.3 (Eyert), to get the coefficients "thetas":
             #   a(i,j) =  <F(l) - F(l-i)|F(l) - F(l-j)>
             #   b(i)   =  <F(l) - F(l-i)|F(l)>
             # here dF = <F(l) - F(l-i)|
-            df = self._f[0] - self._f[1:]
+            df = self._f[0] - self._f[1 : n + 1]
             a = einsum("i...v,j...v->...ij", df, df)
             b = einsum("h...v,...v->...h", df, self._f[0])
 
@@ -265,9 +261,8 @@ class Anderson(Mixer):
 
             # Solve for the coefficients. As torch.solve cannot solve for 1D
             # tensors a blank dimension must be added
-
-            thetas = torch.squeeze(
-                torch.linalg.solve(a, torch.unsqueeze(b, -1))
+            thetas = torch.atleast_1d(
+                torch.squeeze(torch.linalg.solve(a, torch.unsqueeze(b, -1)))
             )
 
             # Construct the 2'nd terms of eq 4.1 & 4.2 (Eyert). These are
@@ -277,11 +272,13 @@ class Anderson(Mixer):
             # These are not the x_bar & F_var values of eq. 4.1 & 4.2 (Eyert)
             # yet as they are still missing the 1st terms.
             x_bar = einsum(
-                "...h,h...v->...v", thetas, (self._x_hist[1:] - self._x_hist[0])
+                "...h,h...v->...v",
+                thetas,
+                (self._x_hist[1 : n + 1] - self._x_hist[0]),
             )
             f_bar = einsum("...h,h...v->...v", thetas, -df)
 
-            # The first terms of equations 4.1 & 4.2 (Eyert):
+            # Add in the first term of equations 4.1 & 4.2 (Eyert):
             #   4.1: |x(l)> and & 4.2: |F(l)>
             # Have been replaced by:
             #   ϑ_0(l) * |x(j)> and ϑ_0(l) * |x(j)>
@@ -298,11 +295,11 @@ class Anderson(Mixer):
             # Calculate the new mixed dQ following equation 4.4 (Eyert):
             #   |x(l+1)> = |x_bar(l)> + beta(l)|f_bar(l)>
             # where "beta" is the mixing parameter
-            x_mix = x_bar + (self.mix_param * f_bar)
+            x_mix = x_bar + (self.options["damp"] * f_bar)
 
         # If there is insufficient history for Anderson; use simple mixing
         else:
-            x_mix = self._x_hist[0] + (self._f[0] * self.init_mix_param)
+            x_mix = self._x_hist[0] + (self._f[0] * self.options["damp_init"])
 
         # Shift f & x_hist over; a roll follow by a reassignment is
         # necessary to avoid an inplace error. (gradients remain intact)
@@ -384,8 +381,8 @@ class Anderson(Mixer):
                 .view(*shp, -1)
             )
 
-        self._delta = _cull(self._delta)
         self._f = _cull(self._f)
+        self._delta = _cull(self._delta)
         self._x_hist = _cull(self._x_hist)
 
         # Adjust the the shapes accordingly

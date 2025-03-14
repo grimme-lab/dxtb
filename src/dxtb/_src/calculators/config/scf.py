@@ -56,6 +56,43 @@ class ConfigSCF:
     mixer: int
     """Mixing scheme for SCF iterations."""
 
+    mix_guess: bool
+    """Include the initial guess in the mixing scheme."""
+
+    damp: float
+    """Damping factor for the SCF iterations."""
+
+    damp_init: float
+    """Initial damping factor for the SCF iterations."""
+
+    damp_dynamic: bool
+    """Whether to use dynamic damping in the SCF iterations."""
+
+    damp_dynamic_factor: float
+    """
+    Damping factor for dynamic damping in the SCF iterations, i.e., when
+    the norm of the error falls below a threshold.
+    """
+
+    damp_soft_start: bool
+    """
+    If enabled, then simple mixing will be used for the first ``generations``
+    number of steps, otherwise only for the first (in Anderson mixing only).
+    """
+
+    damp_generations: int
+    """
+    Number of generations to use during mixing.
+    Defaults to 5 as suggested by Eyert.
+    """
+
+    damp_diagonal_offset: float
+    """
+    Offset added to the equation system's diagonal's to prevent a linear
+    dependence during the mixing process. If set to ``None`` then rescaling
+    will be disabled.
+    """
+
     scf_mode: int
     """SCF convergence approach (denoted by backward strategy)."""
 
@@ -64,6 +101,9 @@ class ConfigSCF:
 
     x_atol: float
     """Absolute tolerance for argument (x) in SCF solver."""
+
+    x_atol_max: float
+    """Absolute tolerance for max norm (L∞) of the error in the SCF."""
 
     f_atol: float
     """Absolute tolerance for function value (f(x)) the SCF solver."""
@@ -109,10 +149,18 @@ class ConfigSCF:
         guess: str | int = defaults.GUESS,
         maxiter: int = defaults.MAXITER,
         mixer: str | int = defaults.MIXER,
+        mix_guess: bool = defaults.MIX_GUESS,
         damp: float = defaults.DAMP,
+        damp_init: float = defaults.DAMP_INIT,
+        damp_dynamic: bool = defaults.DAMP_DYNAMIC,
+        damp_dynamic_factor: float = defaults.DAMP_DYNAMIC_FACTOR,
+        damp_soft_start: bool = defaults.DAMP_SOFT_START,
+        damp_generations: int = defaults.DAMP_GENERATIONS,
+        damp_diagonal_offset: float = defaults.DAMP_DIAGONAL_OFFSET,
         scf_mode: str | int = defaults.SCF_MODE,
         scp_mode: str | int = defaults.SCP_MODE,
         x_atol: float = defaults.X_ATOL,
+        x_atol_max: float = defaults.X_ATOL_MAX,
         f_atol: float = defaults.F_ATOL,
         force_convergence: bool = defaults.SCF_FORCE_CONVERGENCE,
         batch_mode: int = defaults.BATCH_MODE,
@@ -281,7 +329,14 @@ class ConfigSCF:
             )
 
         self.maxiter = maxiter
+        self.mix_guess = mix_guess
         self.damp = damp
+        self.damp_init = damp_init
+        self.damp_dynamic = damp_dynamic
+        self.damp_dynamic_factor = damp_dynamic_factor
+        self.damp_soft_start = damp_soft_start
+        self.damp_generations = damp_generations
+        self.damp_diagonal_offset = damp_diagonal_offset
         self.force_convergence = force_convergence
         self.batch_mode = batch_mode
 
@@ -289,6 +344,7 @@ class ConfigSCF:
         self.dtype = dtype
 
         self.x_atol = check_tols(x_atol, dtype)
+        self.x_atol_max = check_tols(x_atol_max, dtype)
         self.f_atol = check_tols(f_atol, dtype)
 
         self.fermi = ConfigFermi(
