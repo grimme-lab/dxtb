@@ -23,8 +23,9 @@ from __future__ import annotations
 import pytest
 import torch
 
+from dxtb import OutputHandler
 from dxtb._src.scf.mixer import Anderson, Mixer, Simple
-from dxtb._src.typing import DD, Tensor
+from dxtb._src.typing import Tensor
 
 from ..conftest import DEVICE
 
@@ -135,3 +136,72 @@ def test_anderson() -> None:
         "diagonal_offset": 0.01,
     }
     general(Anderson(opts, batch_mode=1), DEVICE)
+
+
+def test_fail_dim_batch() -> None:
+    mixer = Simple(batch_mode=1)
+    x_new = torch.ones(3, 2, 2)
+    x_old = torch.ones(1, 2, 2)
+
+    with pytest.raises(RuntimeError):
+        mixer.iter(x_new, x_old)
+
+
+def test_fail_dim_nonbatch() -> None:
+    mixer = Simple(batch_mode=1)
+    x_new = torch.ones(3, 4, 2)
+    x_old = torch.ones(3, 2, 5)
+
+    with pytest.raises(RuntimeError):
+        mixer.iter(x_new, x_old)
+
+
+def test_fail_delta() -> None:
+    mixer = Simple()
+
+    with pytest.raises(RuntimeError):
+        _ = mixer.delta
+
+    with pytest.raises(RuntimeError):
+        _ = mixer.delta_norm
+
+    with pytest.raises(RuntimeError):
+        _ = mixer.converged
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_tolerances_1(dtype: torch.dtype) -> None:
+    opts = {"x_tol": 1e-30}
+    mixer = Simple(opts)
+
+    x = torch.ones(5, dtype=dtype)
+    mixer.iter(x, x)
+
+    assert mixer.options["x_tol"] == torch.finfo(dtype).resolution * 50
+
+    assert len(OutputHandler.warnings) == 1
+
+    warn_msg, warn_type = OutputHandler.warnings[0]
+    assert "x_tol=1e-30" in warn_msg
+    assert warn_type is UserWarning
+
+    OutputHandler.clear_warnings()
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_tolerances_2(dtype: torch.dtype) -> None:
+    opts = {"x_tol_max": 1e-30}
+    mixer = Simple(opts)
+
+    x = torch.ones(5, dtype=dtype)
+    mixer.iter(x, x)
+
+    assert mixer.options["x_tol_max"] == torch.finfo(dtype).resolution * 50
+
+    assert len(OutputHandler.warnings) == 1
+
+    warn_msg, warn_type = OutputHandler.warnings[0]
+    assert "x_tol_max=1e-30" in warn_msg
+    assert warn_type is UserWarning
+
+    OutputHandler.clear_warnings()

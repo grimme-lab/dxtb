@@ -120,20 +120,20 @@ class Simple(Mixer):
 
         # Use the previous x_old value if none was specified
         x_old = self._x_old if x_old is None else x_old
+        assert x_old is not None
 
         # Safety check
         if self._batch_mode > 0:
-            if x_old is not None:
-                if x_new.shape[0] != x_old.shape[0]:
-                    raise RuntimeError(
-                        "Batch dimension of x_new and x_old do not match; "
-                        "ensure calls are made to mixer.cull as needed."
-                    )
-                if x_new.shape[1:] != x_old.shape[1:]:
-                    raise RuntimeError(
-                        f"Non-batch dimension mismatch encountered - x_new "
-                        f"{x_new.shape}, x_old {x_old.shape}."
-                    )
+            if x_new.shape[0] != x_old.shape[0]:
+                raise RuntimeError(
+                    "Batch dimension of x_new and x_old do not match; "
+                    "ensure calls are made to mixer.cull as needed."
+                )
+            if x_new.shape[1:] != x_old.shape[1:]:
+                raise RuntimeError(
+                    f"Non-batch dimension mismatch encountered - x_new "
+                    f"{x_new.shape}, x_old {x_old.shape}."
+                )
 
         # Perform the mixing operation to create the new mixed x value
         # if self.options["damp"] == 1.0:
@@ -142,7 +142,7 @@ class Simple(Mixer):
         x_mix = x_old + (x_new - x_old) * self.options["damp"]
 
         # Update the x_old attribute
-        self.x_old = x_mix
+        self._x_old = x_mix
 
         # Update the delta
         self._delta = x_new - x_old
@@ -153,11 +153,11 @@ class Simple(Mixer):
     def cull(
         self, conv: Tensor, slicers: Slicer = (...,), mpdim: int = 1
     ) -> None:
-        if self.x_old is None or self._delta is None:
+        if self._x_old is None or self._delta is None:
             raise RuntimeError("Nothing has been mixed yet.")
 
         if slicers == (...,):
-            tmp = self.x_old.shape[-1]
+            tmp = self._x_old.shape[-1]
         else:
             # NOTE: Only works with vectors (not with Charge container!)
             if isinstance(slicers[0], type(...)):
@@ -172,5 +172,5 @@ class Simple(Mixer):
         # Invert list for culling, gather & reassign `x_old` and `delta` so only
         # those marked False remain.
         notconv = ~conv
-        self.x_old = self.x_old[notconv, :mpdim, :tmp]
+        self._x_old = self._x_old[notconv, :mpdim, :tmp]
         self._delta = self._delta[notconv, :mpdim, :tmp]

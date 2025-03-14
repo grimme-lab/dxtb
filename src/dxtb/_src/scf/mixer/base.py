@@ -42,7 +42,6 @@ DEFAULT_OPTS = {
     "x_tol_max": defaults.X_ATOL_MAX,
     "damp": defaults.DAMP,
     "damp_init": defaults.DAMP_INIT,
-    "damp_soft_start": defaults.DAMP_SOFT_START,
     "damp_generations": defaults.DAMP_GENERATIONS,  # for Anderson
     "damp_diagonal_offset": defaults.DAMP_DIAGONAL_OFFSET,  # for Anderson
     "damp_soft_start": defaults.DAMP_SOFT_START,  # for Anderson
@@ -125,7 +124,7 @@ class Mixer(ABC):
                         f"a {dtype}. DOWNGRADING!",
                         UserWarning,
                     )
-                    self.options["x_tol"] = torch.finfo(dtype).resolution * 5.0
+                    self.options["x_tol"] = torch.finfo(dtype).resolution * 50
 
                 if torch.finfo(dtype).resolution > self.options["x_tol_max"]:
                     OutputHandler.warn(
@@ -135,14 +134,14 @@ class Mixer(ABC):
                         UserWarning,
                     )
                     self.options["x_tol_max"] = (
-                        torch.finfo(dtype).resolution * 5.0
+                        torch.finfo(dtype).resolution * 50
                     )
 
                 return func(*args, **kwargs)
 
             return wrapper
 
-        cls.__call__ = _tolerance_threshold_check(cls.__call__)
+        cls.iter = _tolerance_threshold_check(cls.iter)
 
     def __str__(self) -> str:  # pragma: no cover
         """Returns representative string."""
