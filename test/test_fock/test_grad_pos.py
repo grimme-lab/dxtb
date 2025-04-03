@@ -25,11 +25,9 @@ import torch
 from tad_mctc.autograd import dgradcheck
 
 from dxtb import GFN1_XTB as par
-from dxtb import Calculator
-from dxtb.config import ConfigCache
-from dxtb import labels
-from dxtb import OutputHandler
+from dxtb import Calculator, OutputHandler, labels
 from dxtb._src.typing import DD, Callable, Tensor
+from dxtb.config import ConfigCache
 
 from ..conftest import DEVICE
 from .samples import samples
@@ -39,7 +37,7 @@ sample_list = ["H2", "HHe", "LiH", "S2", "H2O", "SiH4"]
 # remove HHe as it does not pass the numerical gradient check
 sample_list = [s for s in sample_list if s not in ["HHe"]]
 
-tol = 5e-4 # increased tolerance
+tol = 5e-4  # increased tolerance
 
 
 def gradchecker(
@@ -53,7 +51,7 @@ def gradchecker(
     positions = sample["positions"].to(**dd)
 
     opts = {
-        "scf_mode": "implicit", 
+        "scf_mode": "implicit",
         "scp_mode": scp_mode,
     }
 
@@ -67,7 +65,7 @@ def gradchecker(
     def func(p: Tensor) -> Tensor:
         _ = calc.get_energy(p)  # triggers Fock matrix computation
         return calc.cache["fock"]
-    
+
     return func, pos
 
 
