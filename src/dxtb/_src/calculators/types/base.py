@@ -49,15 +49,14 @@ from dxtb._src.components.interactions import Interaction, InteractionList
 from dxtb._src.components.interactions.container import Charges, Potential
 from dxtb._src.components.interactions.coulomb import new_aes2, new_es2, new_es3
 from dxtb._src.components.interactions.dispersion import new_d4sc
-from dxtb._src.components.interactions.field import efield as efield
+from dxtb._src.components.interactions.field import efield
 from dxtb._src.components.interactions.field import efieldgrad as efield_grad
 from dxtb._src.constants import defaults
 from dxtb._src.param import Param
 from dxtb._src.timing import timer
-from dxtb._src.typing import Any, Self, Tensor, override
+from dxtb._src.typing import Any, Self, Tensor, TensorLike, override
 from dxtb.config import Config
 from dxtb.integrals import Integrals
-from dxtb.typing import Tensor, TensorLike
 
 from .abc import GetPropertiesMixin, PropertyNotImplementedError
 
@@ -328,7 +327,7 @@ class CalculatorCache(TensorLike):
 
     # cache validation
 
-    def set_cache_key(self, key: str, hash: str) -> None:
+    def set_cache_key(self, key: str, hashval: str) -> None:
         """
         Set the cache key for a specific property.
 
@@ -336,7 +335,7 @@ class CalculatorCache(TensorLike):
         ----------
         key : str
             The key of the item to set.
-        hash : str
+        hashval : str
             The hash value to be associated with the key.
         """
         if self._cache_keys is None:
@@ -345,7 +344,7 @@ class CalculatorCache(TensorLike):
         if key not in self._cache_keys:
             raise KeyError(f"Key '{key}' cannot be set in Cache.")
 
-        self._cache_keys[key] = hash
+        self._cache_keys[key] = hashval
 
     def get_cache_key(self, key: str) -> str | None:
         """
@@ -564,7 +563,7 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
             self.opts.batch_mode = 1
 
         # PERF: The IndexHelper is created on CPU and moved to the device of the
-        # `number` tensor. This si required for the instantiation of the
+        # `number` tensor. This is required for the instantiation of the
         # integral classes later in this constructor. However, if the `libcint`
         # interface is used, we need to transfer the IndexHelper to the CPU
         # again. Correspondingly, we have one unnecessary transfer.

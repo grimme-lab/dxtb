@@ -85,7 +85,15 @@ class AES2Cache(InteractionCache, TensorLike):
     (shape: ``(..., nat, nat, 6)``).
     """
 
-    __slots__ = ["__store", "mrad", "amat_sd", "amat_dd", "amat_sq"]
+    __slots__ = [
+        "__store",
+        "mrad",
+        "dkernel",
+        "qkernel",
+        "amat_sd",
+        "amat_dd",
+        "amat_sq",
+    ]
 
     def __init__(
         self,
@@ -438,7 +446,11 @@ class AES2(Interaction):
 
     @override
     def get_dipole_atom_energy(
-        self, cache: AES2Cache, qat: Tensor, qdp: Tensor, qqp: Tensor
+        self,
+        cache: AES2Cache,
+        qat: Tensor,
+        qdp: Tensor | None = None,
+        qqp: Tensor | None = None,
     ) -> Tensor:
         """
         Calculate atom-resolved dipolar energy.
@@ -459,6 +471,11 @@ class AES2(Interaction):
         Tensor
             Atom-resolved dipolar energy.
         """
+        if qdp is None:
+            raise RuntimeError(
+                "Dipole moments are required for dipolar energy calculation."
+            )
+
         # tblite: coulomb/multipole.f90::get_energy
         vdp_sd = einsum("...ijx,...i->...jx", cache.amat_sd, qat)
         vdp_dd = 0.5 * einsum("...ijxy,...ix->...jy", cache.amat_dd, qdp)
@@ -472,7 +489,11 @@ class AES2(Interaction):
 
     @override
     def get_quadrupole_atom_energy(
-        self, cache: AES2Cache, qat: Tensor, qdp: Tensor, qqp: Tensor
+        self,
+        cache: AES2Cache,
+        qat: Tensor,
+        qdp: Tensor | None = None,
+        qqp: Tensor | None = None,
     ) -> Tensor:
         """
         Calculate atom-resolved dipolar energy.
@@ -493,6 +514,8 @@ class AES2(Interaction):
         Tensor
             Atom-resolved dipolar energy.
         """
+        assert qqp is not None
+
         # tblite: coulomb/multipole.f90::get_energy
         vqp = einsum("...ijx,...i->...jx", cache.amat_sq, qat)
 
@@ -506,7 +529,11 @@ class AES2(Interaction):
 
     @override
     def get_monopole_atom_potential(
-        self, cache: AES2Cache, qat: Tensor, qdp: Tensor, qqp: Tensor
+        self,
+        cache: AES2Cache,
+        qat: Tensor,
+        qdp: Tensor | None = None,
+        qqp: Tensor | None = None,
     ) -> Tensor:
         """
         Calculate atom-resolved potential.
@@ -527,6 +554,9 @@ class AES2(Interaction):
         Tensor
             Atom-resolved monopolar potential.
         """
+        assert qdp is not None
+        assert qqp is not None
+
         vat_sd = einsum("...ijx,...jx->...i", cache.amat_sd, qdp)
         vat_sq = einsum("...ijx,...jx->...i", cache.amat_sq, qqp)
 
@@ -534,7 +564,11 @@ class AES2(Interaction):
 
     @override
     def get_dipole_atom_potential(
-        self, cache: AES2Cache, qat: Tensor, qdp: Tensor, qqp: Tensor
+        self,
+        cache: AES2Cache,
+        qat: Tensor,
+        qdp: Tensor | None = None,
+        qqp: Tensor | None = None,
     ) -> Tensor:
         """
         Calculate atom-resolved dipolar potential.
@@ -555,6 +589,8 @@ class AES2(Interaction):
         Tensor
             Atom-resolved monopolar potential.
         """
+        assert qdp is not None
+
         vdp_sd = einsum("...ijx,...i->...jx", cache.amat_sd, qat)
         vdp_dd = einsum("...ijxy,...ix->...jy", cache.amat_dd, qdp)
 
@@ -565,7 +601,11 @@ class AES2(Interaction):
 
     @override
     def get_quadrupole_atom_potential(
-        self, cache: AES2Cache, qat: Tensor, qdp: Tensor, qqp: Tensor
+        self,
+        cache: AES2Cache,
+        qat: Tensor,
+        qdp: Tensor | None = None,
+        qqp: Tensor | None = None,
     ) -> Tensor:
         r"""
         Calculate atom-resolved quadrupolar potential.
@@ -586,6 +626,8 @@ class AES2(Interaction):
         Tensor
             Atom-resolved monopolar potential.
         """
+        assert qqp is not None
+
         vqp = einsum("...ijx,...i->...jx", cache.amat_sq, qat)
 
         # tblite: coulomb/multipole.f90::get_kernel_potential

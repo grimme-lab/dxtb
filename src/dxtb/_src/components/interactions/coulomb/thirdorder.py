@@ -245,7 +245,7 @@ class ES3(Interaction):
 
     @override
     def get_monopole_atom_energy(
-        self, cache: ES3Cache, charges: Tensor
+        self, cache: ES3Cache, qat: Tensor, **_: Any
     ) -> Tensor:
         """
         Calculate the third-order electrostatic energy.
@@ -270,14 +270,14 @@ class ES3(Interaction):
             Atom-wise third-order Coulomb interaction energies.
         """
         return (
-            cache.hd * torch.pow(charges, 3.0) / 3.0
+            cache.hd * torch.pow(qat, 3.0) / 3.0
             if self.shell_scale is None
-            else torch.zeros_like(charges)
+            else torch.zeros_like(qat)
         )
 
     @override
     def get_monopole_shell_energy(
-        self, cache: ES3Cache, charges: Tensor
+        self, cache: ES3Cache, qat: Tensor, **_: Any
     ) -> Tensor:
         """
         Calculate the third-order electrostatic energy.
@@ -286,7 +286,7 @@ class ES3(Interaction):
         ----------
         cache : ES3Cache
             Restart data for the interaction.
-        charges : Tensor
+        qat : Tensor
             Shell charges of all atoms.
 
         Returns
@@ -295,14 +295,18 @@ class ES3(Interaction):
             Shell-wise third-order Coulomb interaction energy.
         """
         return (
-            torch.zeros_like(charges)
+            torch.zeros_like(qat)
             if self.shell_scale is None
-            else cache.hd * torch.pow(charges, 3.0) / 3.0
+            else cache.hd * torch.pow(qat, 3.0) / 3.0
         )
 
     @override
     def get_monopole_atom_potential(
-        self, cache: ES3Cache, qat: Tensor, *_: Any, **__: Any
+        self,
+        cache: ES3Cache,
+        qat: Tensor,
+        qdp: Tensor | None = None,
+        qqp: Tensor | None = None,
     ) -> Tensor:
         """
         Calculate the third-order electrostatic potential.

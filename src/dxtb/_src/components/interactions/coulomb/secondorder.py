@@ -362,27 +362,31 @@ class ES2(Interaction):
 
     @override
     def get_monopole_atom_energy(
-        self, cache: ES2Cache, charges: Tensor
+        self, cache: ES2Cache, qat: Tensor, **_: Any
     ) -> Tensor:
         return (
-            0.5 * charges * self.get_monopole_atom_potential(cache, charges)
+            0.5 * qat * self.get_monopole_atom_potential(cache, qat)
             if not self.shell_resolved
-            else torch.zeros_like(charges)
+            else torch.zeros_like(qat)
         )
 
     @override
     def get_monopole_shell_energy(
-        self, cache: ES2Cache, charges: Tensor
+        self, cache: ES2Cache, qat: Tensor, **_: Any
     ) -> Tensor:
         return (
-            0.5 * charges * self.get_monopole_shell_potential(cache, charges)
+            0.5 * qat * self.get_monopole_shell_potential(cache, qat)
             if self.shell_resolved
-            else torch.zeros_like(charges)
+            else torch.zeros_like(qat)
         )
 
     @override
     def get_monopole_atom_potential(
-        self, cache: ES2Cache, qat: Tensor, *_: Any, **__: Any
+        self,
+        cache: ES2Cache,
+        qat: Tensor,
+        qdp: Tensor | None = None,
+        qqp: Tensor | None = None,
     ) -> Tensor:
         """
         Calculate atom-resolved potential. Zero if this interaction is
@@ -408,7 +412,11 @@ class ES2(Interaction):
 
     @override
     def get_monopole_shell_potential(
-        self, cache: ES2Cache, qsh: Tensor, *_: Any, **__: Any
+        self,
+        cache: ES2Cache,
+        qsh: Tensor,
+        qdp: Tensor | None = None,
+        qqp: Tensor | None = None,
     ) -> Tensor:
         """
         Calculate shell-resolved potential. Zero if this interaction is only
@@ -917,6 +925,7 @@ def coulomb_matrix_shell_gradient(
     return dmat.unsqueeze(-1) * rij
 
 
+# pylint: disable=abstract-method,arguments-differ
 class CoulombMatrixAG(torch.autograd.Function):
     """
     Autograd function for Coulomb matrix.

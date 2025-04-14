@@ -28,7 +28,7 @@ from tad_mctc.exceptions import DeviceError, DtypeError
 from tad_mctc.math import einsum
 
 from dxtb import IndexHelper
-from dxtb._src.typing import Any, Tensor, TensorLike, override
+from dxtb._src.typing import Tensor, TensorLike, override
 
 from ..base import Interaction, InteractionCache
 
@@ -133,9 +133,8 @@ class ElectricFieldGrad(Interaction):
         self,
         cache: ElectricFieldCache,
         qat: Tensor,
-        qdp: Tensor,
-        qqp: Tensor,
-        **_: Any,
+        qdp: Tensor | None = None,
+        qqp: Tensor | None = None,
     ) -> Tensor:
         """
         Calculate the quadrupolar contribution of the electric field energy.
@@ -156,6 +155,7 @@ class ElectricFieldGrad(Interaction):
         Tensor
             Atom-wise electric field interaction energies.
         """
+        assert qqp is not None
 
         # equivalent: torch.sum(-cache.vqp * charges, dim=-1)
         return 0.5 * einsum("...x,...ix->...i", cache.efg, qqp)

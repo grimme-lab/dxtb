@@ -19,6 +19,8 @@
 Provides base class for interactions in the extended tight-binding Hamiltonian.
 The `Interaction` class is not purely abstract as its methods return zero.
 """
+# pylint: disable=unused-argument
+
 from __future__ import annotations
 
 import torch
@@ -41,10 +43,10 @@ class InteractionCache(ComponentCache):
     __slots__: list[str] = []
 
     def cull(self, conv: Tensor, slicers: Slicers) -> None:
-        pass
+        """Remove converged data from the cache."""
 
     def restore(self) -> None:
-        pass
+        """Restore the cache from the last iteration."""
 
 
 class Interaction(Component):
@@ -86,10 +88,9 @@ class Interaction(Component):
     must be implemented.
     """
 
+    # Already defined in `Component` parent class
     label: str
     """Label for the interaction."""
-
-    __slots__ = ["label"]
 
     def __init__(
         self,
@@ -99,7 +100,6 @@ class Interaction(Component):
         """Initialize the interaction."""
         super().__init__(device, dtype)
 
-    # pylint: disable=unused-argument
     def get_cache(
         self,
         *,
@@ -179,13 +179,12 @@ class Interaction(Component):
 
         return Potential(vmono, dipole=vdipole, quad=vquad, label=self.label)
 
-    # pylint: disable=unused-argument
     def get_monopole_shell_potential(
         self,
         cache: ComponentCache,
         qsh: Tensor,
-        *_: Any,
-        **__: Any,
+        qdp: Tensor | None = None,
+        qqp: Tensor | None = None,
     ) -> Tensor:
         """
         Compute the potential from the charges, all quantities are shell-resolved.
@@ -207,15 +206,12 @@ class Interaction(Component):
         """
         return torch.zeros_like(qsh)
 
-    # pylint: disable=unused-argument
     def get_monopole_atom_potential(
         self,
         cache: ComponentCache,
         qat: Tensor,
         qdp: Tensor | None = None,
         qqp: Tensor | None = None,
-        *_: Any,
-        **__: Any,
     ) -> Tensor:
         """
         Compute the potential from the charges, all quantities are atom-resolved.
@@ -241,7 +237,6 @@ class Interaction(Component):
         """
         return torch.zeros_like(qat)
 
-    # pylint: disable=unused-argument
     def get_dipole_atom_potential(
         self,
         cache: ComponentCache,
@@ -273,7 +268,6 @@ class Interaction(Component):
         """
         return None
 
-    # pylint: disable=unused-argument
     def get_quadrupole_atom_potential(
         self,
         cache: ComponentCache,
@@ -364,7 +358,6 @@ class Interaction(Component):
 
         return e
 
-    # pylint: disable=unused-argument
     def get_monopole_atom_energy(
         self, cache: InteractionCache, qat: Tensor, **_: Any
     ) -> Tensor:
@@ -386,9 +379,8 @@ class Interaction(Component):
         """
         return torch.zeros_like(qat)
 
-    # pylint: disable=unused-argument
     def get_monopole_shell_energy(
-        self, cache: InteractionCache, charges: Tensor, **_: Any
+        self, cache: InteractionCache, qat: Tensor, **_: Any
     ) -> Tensor:
         """
         Compute the energy from the charges, all quantities are shell-resolved.
@@ -398,7 +390,7 @@ class Interaction(Component):
 
         Parameters
         ----------
-        charges : Tensor
+        qat : Tensor
             Shell-resolved partial charges.
 
         Returns
@@ -406,9 +398,8 @@ class Interaction(Component):
         Tensor
             Energy vector for each shell partial charge.
         """
-        return torch.zeros_like(charges)
+        return torch.zeros_like(qat)
 
-    # pylint: disable=unused-argument
     def get_dipole_atom_energy(
         self,
         cache: InteractionCache,
@@ -441,7 +432,6 @@ class Interaction(Component):
         """
         return torch.zeros_like(qat)
 
-    # pylint: disable=unused-argument
     def get_quadrupole_atom_energy(
         self,
         cache: InteractionCache,
@@ -526,7 +516,15 @@ class Interaction(Component):
 
         return gsh + gat
 
-    def get_atom_gradient(self, _: Any, positions: Tensor, *__: Any) -> Tensor:
+    def get_atom_gradient(
+        self,
+        charges: Tensor,
+        positions: Tensor,
+        cache: InteractionCache,
+        grad_outputs: TensorOrTensors | None = None,
+        retain_graph: bool | None = True,
+        create_graph: bool | None = None,
+    ) -> Tensor:
         """
         Return zero gradient.
 
@@ -552,7 +550,15 @@ class Interaction(Component):
         """
         return torch.zeros_like(positions)
 
-    def get_shell_gradient(self, _: Any, positions: Tensor, *__: Any) -> Tensor:
+    def get_shell_gradient(
+        self,
+        charges: Tensor,
+        positions: Tensor,
+        cache: InteractionCache,
+        grad_outputs: TensorOrTensors | None = None,
+        retain_graph: bool | None = True,
+        create_graph: bool | None = None,
+    ) -> Tensor:
         """
         Return zero gradient.
 
