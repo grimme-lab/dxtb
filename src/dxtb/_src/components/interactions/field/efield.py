@@ -206,9 +206,8 @@ class ElectricField(Interaction):
         self,
         cache: ElectricFieldCache,
         qat: Tensor,
-        qdp: Tensor,
-        qqp: Tensor,
-        **_: Any,
+        qdp: Tensor | None = None,
+        qqp: Tensor | None = None,
     ) -> Tensor:
         """
         Calculate the dipolar contribution of the electric field energy.
@@ -229,6 +228,7 @@ class ElectricField(Interaction):
         Tensor
             Atom-wise electric field interaction energies.
         """
+        assert qdp is not None
 
         # equivalent: torch.sum(-cache.vdp * qdp, dim=-1)
         return einsum("...ix,...ix->...i", -cache.vdp, qdp)

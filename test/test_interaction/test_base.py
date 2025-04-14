@@ -56,10 +56,10 @@ def test_empty() -> None:
     sp = i.get_monopole_shell_potential(c, numbers)
     assert (sp == torch.zeros(sp.shape, device=DEVICE)).all()
 
-    ag = i.get_atom_gradient(numbers, numbers)
+    ag = i.get_atom_gradient(numbers, numbers, numbers)  # type: ignore
     assert (ag == torch.zeros(ag.shape, device=DEVICE)).all()
 
-    sg = i.get_shell_gradient(numbers, numbers)
+    sg = i.get_shell_gradient(numbers, numbers, numbers)  # type: ignore
     assert (sg == torch.zeros(sg.shape, device=DEVICE)).all()
 
 

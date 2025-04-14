@@ -17,7 +17,7 @@
 """
 Test the parametrization of the Hamiltonian.
 """
-
+# pylint: disable=missing-function-docstring, protected-access
 from __future__ import annotations
 
 import tempfile as td
@@ -127,6 +127,23 @@ def test_param_minimal() -> None:
     assert "C" in par.element
 
 
+def test_xtb_version() -> None:
+    assert GFN1_XTB.xtb_version.casefold() == "gfn1-xtb"
+
+
+def test_xtb_version_fail() -> None:
+    par = GFN1_XTB.model_copy(deep=True)
+    assert par.meta is not None
+
+    par.meta.name = None
+    with pytest.raises(ValueError):
+        _ = par.xtb_version
+
+    par.meta = None
+    with pytest.raises(ValueError):
+        _ = par.xtb_version
+
+
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_param_calculator(dtype: torch.dtype) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -147,17 +164,19 @@ def _validate_param(par: Param) -> None:
     assert par.meta.name is not None
 
     if par.meta.name.casefold() == "gfn1-xtb":
-        REF = GFN1_XTB
+        ref = GFN1_XTB
     elif par.meta.name.casefold() == "gfn2-xtb":
-        REF = GFN2_XTB
+        ref = GFN2_XTB
+    else:
+        raise ValueError(f"Unknown parameter set: {par.meta.name}")
 
-    for f, f_read in zip(REF.model_fields.keys(), par.model_fields.keys()):
-        val = getattr(REF, f)
+    for f, f_read in zip(ref.model_fields.keys(), par.model_fields.keys()):
+        val = getattr(ref, f)
         val_read = getattr(par, f_read)
         assert val == val_read
 
     # GFN1_XTB is not really of type `Param`, but a `LazyLoaderParam`
-    assert par == REF._loaded  # type: ignore
+    assert par == ref._loaded  # type: ignore
 
 
 @pytest.mark.parametrize("parname", ["gfn1-xtb", "gfn2-xtb"])
@@ -199,7 +218,7 @@ def test_write_toml(parname: str) -> None:
 
     with td.TemporaryDirectory() as tmp:
         # write to file
-        p_write = Path(tmp) / f"test.toml"
+        p_write = Path(tmp) / "test.toml"
         par.to_file(p_write)
 
         # read the written file

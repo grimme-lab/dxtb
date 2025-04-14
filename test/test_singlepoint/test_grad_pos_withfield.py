@@ -42,6 +42,7 @@ opts = {
     "maxiter": 100,
     "damp": 0.3,
     "damp_init": 0.01,
+    "damp_dynamic": False,
     "mixer": labels.MIXER_ANDERSON,
     "scf_mode": labels.SCF_MODE_FULL,
     "scp_mode": labels.SCP_MODE_POTENTIAL,
@@ -115,7 +116,7 @@ def test_gradgradcheck(dtype: torch.dtype, name: str, gfn: str) -> None:
     """
     func, diffvars = gradchecker(dtype, name, gfn)
     assert dgradgradcheck(
-        func, diffvars, atol=tol, eps=1e-9, nondet_tol=1e-7, fast_mode=False
+        func, diffvars, atol=tol, eps=1e-5, nondet_tol=1e-7, fast_mode=False
     )
 
 

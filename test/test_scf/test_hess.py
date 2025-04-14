@@ -131,7 +131,7 @@ def _numhess(
         pos.detach_()
         return result.detach()
 
-    step = 1.0e-5
+    step = 1.0e-4
     for i in range(numbers.shape[0]):
         for j in range(3):
             positions[i, j] += step

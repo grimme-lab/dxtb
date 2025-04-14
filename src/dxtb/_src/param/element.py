@@ -41,7 +41,7 @@ class Element(BaseModel):
     shells: List[str]
     """Included shells with principal quantum number and angular momentum."""
 
-    levels: Union[Union[List[float], TensorPydantic], TensorPydantic]
+    levels: Union[List[float], TensorPydantic]
     """Atomic level energies for each shell"""
 
     slater: Union[List[float], TensorPydantic]
@@ -89,7 +89,7 @@ class Element(BaseModel):
     """Halogen bonding strength."""
 
     en: Union[float, TensorPydantic]
-    """Electronnegativity."""
+    """Electronegativity."""
 
     ############################################################################
 

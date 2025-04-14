@@ -89,9 +89,9 @@ def test_disp_batch(dtype: torch.dtype) -> None:
         assert False
 
     # set parameters explicitly
-    _par.dispersion.d3.a1 = param["a1"]
-    _par.dispersion.d3.a2 = param["a2"]
-    _par.dispersion.d3.s8 = param["s8"]
+    _par.dispersion.d3.a1 = param["a1"].item()
+    _par.dispersion.d3.a2 = param["a2"].item()
+    _par.dispersion.d3.s8 = param["s8"].item()
 
     disp = new_dispersion(numbers, _par, **dd)
     if disp is None:
