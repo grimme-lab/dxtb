@@ -28,6 +28,7 @@ quantities must be carried out separately.
 
 .. _tblite: https://tblite.readthedocs.io
 """
+# pylint: disable=import-outside-toplevel
 
 from __future__ import annotations
 
@@ -102,6 +103,19 @@ class Param(BaseModel):
 
         return self.model_dump(exclude_none=True)
 
+    @property
+    def xtb_version(self) -> str:
+        """
+        Return the version of the xtb package.
+        """
+        if self.meta is None:
+            raise ValueError("Meta information is not available.")
+
+        if self.meta.name is None:
+            raise ValueError("Version information is not available.")
+
+        return self.meta.name
+
     @classmethod
     def from_file(cls: Type[Self], filepath: PathLike) -> Self:
         """
@@ -160,12 +174,36 @@ class Param(BaseModel):
 
     @classmethod
     def from_json_file(cls: Type[Self], filepath: PathLike) -> Self:
+        """
+        Load a parametrization from a JSON file.
+
+        Parameters
+        ----------
+        filepath : PathLike
+            The file path to the parametrization file.
+
+        Returns
+        -------
+        Param
+            The loaded parametrization data.
+        """
         import json
 
         with open(filepath, encoding="utf-8") as fd:
             return cls(**json.load(fd))
 
     def to_json_file(self, filepath: PathLike, **kwargs) -> None:
+        """
+        Save the parametrization to a JSON file.
+
+        Parameters
+        ----------
+        filepath : PathLike
+            The file path to save the parametrization data.
+        kwargs : dict
+            Additional keyword arguments for the dump function of the
+            JSON writer.
+        """
         import json
 
         with open(filepath, "w", encoding="utf-8") as fd:
@@ -173,28 +211,57 @@ class Param(BaseModel):
 
     @classmethod
     def from_toml_file(cls: Type[Self], filepath: PathLike) -> Self:
+        """
+        Load a parametrization from a TOML file.
+
+        Parameters
+        ----------
+        filepath : PathLike
+            The file path to the parametrization file.
+
+        Returns
+        -------
+        Param
+            The loaded parametrization data.
+        """
         try:
             import tomli as toml
-        except ImportError:
+        except ImportError as e:
             raise ImportError(
                 "A TOML package is required for TOML support. "
                 "You can install it via `pip install tomli`."
-            )
+            ) from e
 
         with open(filepath, "rb") as fd:
             return cls(**toml.load(fd))
 
-    def to_toml_file(self, filepath: PathLike, **kwargs) -> None:
+    def to_toml_file(self, filepath: PathLike, **kwargs: Any) -> None:
+        """
+        Save the parametrization to a TOML file.
+
+        Parameters
+        ----------
+        filepath : PathLike
+            The file path to save the parametrization data.
+        kwargs : dict
+            Additional keyword arguments for the dump function of the
+            TOML writer.
+
+        Raises
+        ------
+        ImportError
+            If the TOML writer package is not installed.
+        """
         try:
             import tomli_w as toml_w  # type: ignore
         except ImportError:
             try:
                 import toml as toml_w  # type: ignore
-            except ImportError:
+            except ImportError as e:
                 raise ImportError(
                     "A TOML writer package is required for TOML support. "
                     "You can install one via `pip install tomli-w`."
-                )
+                ) from e
 
         with open(filepath, "wb") as fd:
             toml_w.dump(self.clean_model_dump(), fd, **kwargs)  # type: ignore
@@ -206,16 +273,16 @@ class Param(BaseModel):
         """
         try:
             import yaml
-        except ImportError:
+        except ImportError as e:
             raise ImportError(
                 "The PyYAML package is required for YAML support. "
                 "You can install it via `pip install pyyaml`."
-            )
+            ) from e
 
         with open(filepath, encoding="utf-8") as fd:
             return cls(**yaml.safe_load(fd))
 
-    def to_yaml_file(self, filepath: Path, **kwargs) -> None:
+    def to_yaml_file(self, filepath: Path, **kwargs: Any) -> None:
         """
         Save the parametrization to a YAML file.
 
@@ -231,11 +298,11 @@ class Param(BaseModel):
         """
         try:
             import yaml
-        except ImportError:
+        except ImportError as e:
             raise ImportError(
                 "The PyYAML package is required for YAML support. "
                 "You can install it via `pip install pyyaml`."
-            )
+            ) from e
 
         with open(filepath, "w", encoding="utf-8") as fd:
             yaml.dump(self.clean_model_dump(), fd, encoding="utf-8", **kwargs)

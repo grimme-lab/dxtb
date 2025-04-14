@@ -127,6 +127,23 @@ def test_param_minimal() -> None:
     assert "C" in par.element
 
 
+def test_xtb_version() -> None:
+    assert GFN1_XTB.xtb_version.casefold() == "gfn1-xtb"
+
+
+def test_xtb_version_fail() -> None:
+    par = GFN1_XTB.model_copy(deep=True)
+    assert par.meta is not None
+
+    par.meta.name = None
+    with pytest.raises(ValueError):
+        _ = par.xtb_version
+
+    par.meta = None
+    with pytest.raises(ValueError):
+        _ = par.xtb_version
+
+
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
 def test_param_calculator(dtype: torch.dtype) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
