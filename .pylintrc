@@ -153,8 +153,6 @@ disable=abstract-method,
         wrong-import-order,
         xrange-builtin,
         zip-builtin-not-iterating,
-        E1102,  # added
-        E0402,  # added (relative-beyond-top-level error)
 
 
 [REPORTS]
@@ -182,7 +180,7 @@ evaluation=10.0 - ((float(5 * error + warning + refactor + convention) / stateme
 [BASIC]
 
 # Good variable names which should always be accepted, separated by a comma
-good-names=main,_,kT,H,S,G
+good-names=main,_,kT,H,S,G,P,F
 
 
 # Bad variable names which should always be refused, separated by a comma
@@ -269,7 +267,7 @@ generated-members=torch.*
 [FORMAT]
 
 # Maximum number of characters on a single line.
-max-line-length=90
+max-line-length=80
 
 # https://github.com/PyCQA/pylint/issues/3352: Direct pylint to exempt
 # lines made too long by directives to pytype.
@@ -284,7 +282,7 @@ ignore-long-lines=(?x)(
 single-line-if-stmt=yes
 
 # Maximum number of lines in a module
-max-module-lines=99999
+max-module-lines=2000
 
 # String used as indentation unit.  The internal Google style guide mandates 2
 # spaces.  Google's externaly-published style guide says 4, consistent with

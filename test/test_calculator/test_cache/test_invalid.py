@@ -17,7 +17,7 @@
 """
 Test Calculator usage.
 """
-
+# pylint: disable=protected-access
 from __future__ import annotations
 
 import pytest
@@ -34,6 +34,7 @@ opts = {"cache_enabled": True, "verbosity": 0}
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_invalid_newpos(dtype: torch.dtype) -> None:
+    """Test that the cache is invalidated when new positions are used."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     numbers = torch.tensor([3, 1], device=DEVICE)
@@ -66,6 +67,7 @@ def test_invalid_newpos(dtype: torch.dtype) -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_invalid_requiresgrad(dtype: torch.dtype) -> None:
+    """Test that the cache is invalidated when requires_grad is changed."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     numbers = torch.tensor([3, 1], device=DEVICE)
@@ -96,6 +98,7 @@ def test_invalid_requiresgrad(dtype: torch.dtype) -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_invalid_inplace(dtype: torch.dtype) -> None:
+    """Test that the cache is invalidated when inplace changes are made."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     numbers = torch.tensor([3, 1], device=DEVICE)

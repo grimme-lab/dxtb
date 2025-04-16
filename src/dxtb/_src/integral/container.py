@@ -176,6 +176,19 @@ class Integrals(IntegralContainer):
         self.checks()
 
     def build_overlap(self, positions: Tensor, **kwargs: Any) -> Tensor:
+        """
+        Build the overlap integral (shape: ``(..., nao, nao)``).
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+
+        Returns
+        -------
+        Tensor
+            Overlap integral of shape ``(..., nao, nao)``.
+        """
         # in case CPU is forced for libcint, move positions to CPU
         if self.mgr.force_cpu_for_libcint is True:
             if positions.device != torch.device("cpu"):
@@ -233,6 +246,19 @@ class Integrals(IntegralContainer):
         return self.overlap.matrix
 
     def grad_overlap(self, positions: Tensor, **kwargs) -> Tensor:
+        """
+        Calculate the gradient of the overlap integral.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+
+        Returns
+        -------
+        Tensor
+            Gradient of the overlap integral (shape: ``(..., nao, nao, 3)``).
+        """
         # in case CPU is forced for libcint, move positions to CPU
         if self.mgr.force_cpu_for_libcint is True:
             if positions.device != torch.device("cpu"):

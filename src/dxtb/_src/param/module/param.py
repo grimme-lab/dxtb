@@ -30,7 +30,7 @@ import torch
 from torch import nn
 
 from dxtb._src.constants.defaults import DEFAULT_BASIS_INT
-from dxtb._src.typing import Any, Self, get_default_dtype
+from dxtb._src.typing import DD, Any
 from dxtb._src.utils import is_float, is_float_list, is_int_list, is_integer
 
 from ..base import Param
@@ -73,19 +73,24 @@ class ParamModule(nn.Module, ParamElementsPairsMixin):
             par.clean_model_dump(), device, dtype
         )
 
-        self.device = device
-        self.dtype = dtype if dtype is not None else get_default_dtype()
-        self.dd = {"device": self.device, "dtype": self.dtype}
+        self.register_buffer(
+            "dummy", torch.empty(0, device=device, dtype=dtype)
+        )
 
-    def _apply(self, fn, recurse: bool = True) -> Self:
-        # Call the parent _apply to update the module's parameters and buffers.
-        # https://stackoverflow.com/questions/54706146/moving-member-tensors-with-module-to-in-pytorch
-        super()._apply(fn, recurse=recurse)
-        self.device = fn(self.device)
-        self.dtype = fn(self.dtype)
-        self.dd = {"device": self.device, "dtype": self.dtype}
+    @property
+    def device(self) -> torch.device:
+        """Returns the device where the first parameter/buffer is located."""
+        return self.dummy.device  # type: ignore
 
-        return self
+    @property
+    def dtype(self) -> torch.dtype:
+        """Returns the data type of the parameters."""
+        return self.dummy.dtype  # type: ignore
+
+    @property
+    def dd(self) -> DD:
+        """Returns the dictionary of device and data type."""
+        return {"device": self.device, "dtype": self.dtype}
 
     def forward(self) -> nn.Module:
         """

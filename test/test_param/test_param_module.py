@@ -20,16 +20,17 @@ Test the differentiable parameter model.
 
 import pytest
 import torch
+from tad_mctc.convert import str_to_device
 from torch import nn
 
 from dxtb import GFN1_XTB, GFN2_XTB, ParamModule
 from dxtb._src.param.module import ParameterModule
 
 
-def test_ParamModule_creation() -> None:
+def test_module_creation() -> None:
     """Test that a ParamModule can be created from a valid parameter model."""
     par = GFN1_XTB.model_copy(deep=True)
-    diff_param = ParamModule(par, dtype=torch.float64)
+    diff_param = ParamModule(par, dtype=torch.double)
 
     tree = diff_param.forward()
     assert isinstance(tree, nn.ModuleDict)
@@ -38,7 +39,7 @@ def test_ParamModule_creation() -> None:
 def test_get_valid() -> None:
     """Test that a valid key path returns the underlying tensor."""
     par = GFN1_XTB.model_copy(deep=True)
-    diff_param = ParamModule(par, dtype=torch.float64)
+    diff_param = ParamModule(par, dtype=torch.double)
     gexp = diff_param.get("charge", "effective", "gexp")
 
     msg = "gexp should be returned as a tensor."
@@ -52,7 +53,7 @@ def test_get_valid() -> None:
 def test_get_invalid_key() -> None:
     """Test that using a non-existent key produces a KeyError."""
     par = GFN2_XTB.model_copy(deep=True)
-    diff_param = ParamModule(par, dtype=torch.float64)
+    diff_param = ParamModule(par, dtype=torch.double)
 
     with pytest.raises(KeyError):
         diff_param.get("nonexistent")
@@ -63,7 +64,7 @@ def test_get_wrong_type() -> None:
     Non-string key for ModuleDict (or non-int for ModuleList) raises TypeError.
     """
     par = GFN1_XTB.model_copy(deep=True)
-    diff_param = ParamModule(par, dtype=torch.float64)
+    diff_param = ParamModule(par, dtype=torch.double)
 
     with pytest.raises(TypeError):
         diff_param.get(123)
@@ -75,7 +76,7 @@ def test_set_differentiable_leaf() -> None:
     differentiable updates the tensor.
     """
     par = GFN2_XTB.model_copy(deep=True)
-    diff_param = ParamModule(par, dtype=torch.float64)
+    diff_param = ParamModule(par, dtype=torch.double)
 
     # Retrieve gexp and verify default gradient flag.
     gexp = diff_param.get("charge", "effective", "gexp")
@@ -93,11 +94,12 @@ def test_set_differentiable_leaf() -> None:
 
 def test_set_differentiable_branch_ignore_non_numeric() -> None:
     """
-    Test that setting an entire branch (e.g. 'charge') to be differentiable with ignore_non_numeric=True
-    recursively updates all numeric leaves, ignoring static leaves.
+    Test that setting an entire branch (e.g. 'charge') to be differentiable
+    with ``ignore_non_numeric=True`` recursively updates all numeric leaves,
+    ignoring static leaves.
     """
     par = GFN1_XTB.model_copy(deep=True)
-    diff_param = ParamModule(par, dtype=torch.float64)
+    diff_param = ParamModule(par, dtype=torch.double)
 
     # Set entire 'charge' branch to differentiable while ignoring static fields.
     diff_param.set_differentiable("charge", ignore_non_numeric=True)
@@ -122,6 +124,48 @@ def test_set_differentiable_failure() -> None:
     For example, 'meta'->'name' is expected to be a static string.
     """
     par = GFN2_XTB.model_copy(deep=True)
-    diff_param = ParamModule(par, dtype=torch.float64)
+    diff_param = ParamModule(par, dtype=torch.double)
     with pytest.raises(TypeError):
         diff_param.set_differentiable("meta", "name", ignore_non_numeric=False)
+
+
+def test_device() -> None:
+    """Test that the device of the parameters is set correctly."""
+    par = GFN1_XTB.model_copy(deep=True)
+    param = ParamModule(par, device=torch.device("cpu"))
+    assert param.device == torch.device("cpu")
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_dtype(dtype: torch.dtype) -> None:
+    """Test that the dtype of the parameters is set correctly."""
+    par = GFN1_XTB.model_copy(deep=True)
+    param = ParamModule(par, dtype=dtype)
+    assert param.dtype == dtype
+
+
+def test_dd() -> None:
+    """Test that the dd of the parameters is set correctly."""
+    par = GFN1_XTB.model_copy(deep=True)
+    param = ParamModule(par, device=torch.device("cpu"), dtype=torch.double)
+    assert param.dd == {"device": torch.device("cpu"), "dtype": torch.double}
+
+
+@pytest.mark.parametrize("dtype", [torch.float16, torch.float32, torch.float64])
+def test_change_type(dtype: torch.dtype) -> None:
+    """Test changing the dtype."""
+    param = ParamModule(GFN1_XTB, dtype=dtype)
+
+    param = param.type(dtype)
+    assert param.dtype == dtype
+
+
+@pytest.mark.cuda
+@pytest.mark.parametrize("device_str", ["cpu", "cuda"])
+def test_change_device(device_str: str) -> None:
+    """Test changing the device."""
+    device = str_to_device(device_str)
+    param = ParamModule(GFN1_XTB, device=device)
+
+    param = param.to(device)
+    assert param.device == device

@@ -28,6 +28,7 @@ from tad_mctc import storch
 from tad_mctc.batch import real_pairs
 from tad_mctc.convert import symmetrize
 from tad_mctc.data.radii import ATOMIC as ATOMIC_RADII
+from tad_mctc.exceptions import DeviceError, DtypeError
 from tad_mctc.units import EV2AU
 
 from dxtb import IndexHelper
@@ -153,38 +154,32 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
         self.selfenergy = self.selfenergy * EV2AU
         self.kcn = self.kcn * EV2AU
 
-        # dtype should always be correct as it always uses self.dtype
-        if any(
-            tensor.dtype != self.dtype
-            for tensor in (
-                self.hscale,
-                self.kcn,
-                self.kpair,
-                self.refocc,
-                self.selfenergy,
-                self.shpoly,
-                self.en,
-                self.rad,
-            )
-        ):  # pragma: no cover
-            raise ValueError("All tensors must have same dtype")
+        tensors = [
+            ("hscale", self.hscale),
+            ("kcn", self.kcn),
+            ("kpair", self.kpair),
+            ("refocc", self.refocc),
+            ("selfenergy", self.selfenergy),
+            ("shpoly", self.shpoly),
+            ("en", self.en),
+            ("rad", self.rad),
+        ]
 
-        # device should always be correct as it always uses self.device
-        if any(
-            tensor.device != self.device
-            for tensor in (
-                self.hscale,
-                self.kcn,
-                self.kpair,
-                self.refocc,
-                self.selfenergy,
-                self.shpoly,
-                self.valence,
-                self.en,
-                self.rad,
-            )
-        ):  # pragma: no cover
-            raise ValueError("All tensors must be on the same device")
+        for name, tensor in tensors:
+            if tensor.dtype != self.dtype:
+                raise DtypeError(
+                    f"Tensor '{name}' has dtype '{tensor.dtype}'; "
+                    f"expected '{self.dtype}'."
+                )
+
+        # For device checking, include an extra tensor 'valence'
+        tensors_device = tensors + [("valence", self.valence)]
+        for name, tensor in tensors_device:
+            if tensor.device != self.device:
+                raise DeviceError(
+                    f"Tensor '{name}' is on device '{tensor.device}'; "
+                    f"expected '{self.device}'."
+                )
 
     @property
     def matrix(self) -> Tensor | None:

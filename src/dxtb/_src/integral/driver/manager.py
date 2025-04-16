@@ -104,6 +104,9 @@ class DriverManager(TensorLike):
                 device = torch.device("cpu")
                 numbers = numbers.to(device=device)
                 ihelp = ihelp.to(device=device)
+                # We do not move the differentiable parameters to the CPU here.
+                # This is only done for the basis-specific parameters in the
+                # constructor of the `Basis` class.
 
         elif self.driver_type == labels.INTDRIVER_ANALYTICAL:
             # pylint: disable=import-outside-toplevel

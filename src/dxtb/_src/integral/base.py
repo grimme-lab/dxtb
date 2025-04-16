@@ -27,7 +27,7 @@ import torch
 from tad_mctc.math import einsum
 
 from dxtb._src.constants import defaults
-from dxtb._src.typing import Any, Literal, PathLike, Tensor, TensorLike
+from dxtb._src.typing import Any, Literal, PathLike, Self, Tensor, TensorLike
 
 from .abc import IntegralABC
 from .driver import IntDriver
@@ -55,20 +55,20 @@ class BaseIntegral(IntegralABC, TensorLike):
     family: str | None
     """Family of the integral implementation (PyTorch or libcint)."""
 
-    uplo: Literal["n", "u", "l"] = "l"
+    uplo: Literal["n", "u", "l"]
     """
     Whether the matrix of unique shell pairs should be create as a
     triangular matrix (`l`: lower, `u`: upper) or full matrix (`n`).
     Defaults to `l` (lower triangular matrix).
     """
 
-    cutoff: Tensor | float | int | None = defaults.INTCUTOFF
+    cutoff: Tensor | float | int | None
     """
     Real-space cutoff for integral calculation in Bohr. Defaults to
     `constants.defaults.INTCUTOFF`.
     """
 
-    __slots__ = ["_matrix", "_gradient", "_norm"]
+    __slots__ = ["_matrix", "_gradient", "_norm", "family", "cutoff", "uplo"]
 
     def __init__(
         self,
@@ -128,9 +128,7 @@ class BaseIntegral(IntegralABC, TensorLike):
             )
 
     def clear(self) -> None:
-        """
-        Clear the integral matrix and gradient.
-        """
+        """Clear the integral matrix and gradient."""
         self._matrix = None
         self._norm = None
         self._gradient = None
@@ -242,6 +240,38 @@ class BaseIntegral(IntegralABC, TensorLike):
     @gradient.setter
     def gradient(self, mat: Tensor) -> None:
         self._gradient = mat
+
+    def to(
+        self,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> Self:
+        """
+        Returns a copy of the integral on the specified device "``device``".
+        This is essentially a wrapper around the :meth:`to` method of the
+        :class:`TensorLike` class, but explicitly also moves the integral
+        matrix.
+
+        Parameters
+        ----------
+        device : torch.device | None
+            Device to which all associated tensors should be moved.
+
+        Returns
+        -------
+        Self
+            A copy of the integral placed on the specified device.
+        """
+        if self._gradient is not None:
+            self._gradient = self._gradient.to(device=device, dtype=dtype)
+
+        if self._norm is not None:
+            self._norm = self._norm.to(device=device, dtype=dtype)
+
+        if self._matrix is not None:
+            self._matrix = self._matrix.to(device=device, dtype=dtype)
+
+        return super().to(device=device, dtype=dtype)
 
     def __str__(self) -> str:  # pragma: no cover
         d = self.__dict__.copy()
