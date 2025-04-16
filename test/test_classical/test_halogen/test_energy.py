@@ -51,7 +51,7 @@ def test_small(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].to(**dd)
     ref = sample["energy"].to(**dd)
 
-    xb = new_halogen(torch.unique(numbers), par, **dd)
+    xb = new_halogen(torch.unique(numbers), par, cutoff=50, **dd)
     if xb is None:
         assert False
 

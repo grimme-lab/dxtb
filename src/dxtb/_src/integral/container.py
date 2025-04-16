@@ -28,7 +28,6 @@ from abc import abstractmethod
 
 import torch
 
-from dxtb import labels
 from dxtb._src.constants import defaults, labels
 from dxtb._src.typing import Any, Tensor, TensorLike
 from dxtb._src.xtb.base import BaseHamiltonian
@@ -111,6 +110,16 @@ class Integrals(IntegralContainer):
         self._quadrupole = _quadrupole
 
     def setup_driver(self, positions: Tensor, **kwargs: Any) -> None:
+        """
+        Setup the driver for the integrals.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        **kwargs : Any
+            Additional keyword arguments for the driver.
+        """
         self.mgr.setup_driver(positions, **kwargs)
 
     # Core Hamiltonian

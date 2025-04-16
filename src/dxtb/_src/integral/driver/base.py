@@ -69,8 +69,6 @@ class IntDriver(TensorLike):
         par: Param | ParamModule,
         ihelp: IndexHelper,
         *,
-        _basis: Basis | None = None,
-        _positions: Tensor | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ):
@@ -78,11 +76,13 @@ class IntDriver(TensorLike):
         self.numbers = numbers
         self.ihelp = ihelp
         self.par = (
-            ParamModule(par, **self.dd) if isinstance(par, Param) else par
+            ParamModule(par, **self.dd)
+            if not isinstance(par, ParamModule)
+            else par
         )
 
-        self._basis = _basis
-        self._positions = _positions
+        self._basis = None
+        self._positions = None
         self.__label = self.__class__.__name__
 
     @property

@@ -71,7 +71,7 @@ def test_single(
     else:
         assert False
 
-    rep = new_repulsion(torch.unique(numbers), _par, **dd)
+    rep = new_repulsion(torch.unique(numbers), _par, cutoff=50, **dd)
     assert rep is not None
 
     ihelp = IndexHelper.from_numbers(numbers, _par)

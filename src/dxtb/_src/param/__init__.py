@@ -65,6 +65,5 @@ from .base import Param
 from .gfn1 import GFN1_XTB
 from .gfn2 import GFN2_XTB
 from .module import ParamModule
-from .utils import *
 
 __all__ = ["GFN1_XTB", "GFN2_XTB", "Param", "ParamModule"]

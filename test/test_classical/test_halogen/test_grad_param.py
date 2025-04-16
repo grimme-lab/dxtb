@@ -28,10 +28,10 @@ from tad_mctc.batch import pack
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.components.classicals import Halogen
-from dxtb._src.param import get_elem_param
 from dxtb._src.typing import DD, Callable, Tensor
 
 from ...conftest import DEVICE
+from ...utils import get_elem_param
 from .samples import samples
 
 sample_list = ["br2nh3", "br2och2", "tmpda"]

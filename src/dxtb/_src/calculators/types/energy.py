@@ -308,12 +308,12 @@ class EnergyCalculator(BaseCalculator):
 
         if self.opts.batch_mode == 0:
             OutputHandler.write_stdout(
-                f"SCF Energy  : %.14f Hartree.",
+                "SCF Energy  : %.14f Hartree.",
                 scf_results["energy"].sum(-1),
                 v=2,
             )
             OutputHandler.write_stdout(
-                f"Total Energy: %.14f Hartree.",
+                "Total Energy: %.14f Hartree.",
                 result.total.sum(-1),
                 v=1,
             )

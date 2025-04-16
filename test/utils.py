@@ -23,7 +23,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import torch
+from tad_mctc.data import pse
 
+from dxtb._src.param.element import Element
 from dxtb._src.typing import Any, Size, Tensor
 
 coordfile = Path(
@@ -70,12 +72,29 @@ def load_from_tblite_grad(
     dtype: torch.dtype,
     device: torch.device | None = None,
 ) -> dict[str, Tensor]:
+    """
+    Load a TBLITE gradient file and convert it to a dictionary of tensors.
+
+    Parameters
+    ----------
+    file : Path
+        Path to the TBLITE gradient file.
+    dtype : torch.dtype
+        Data type of the tensors.
+    device : torch.device | None, optional
+        Device to store the tensors. If ``None``, the default device is used.
+
+    Returns
+    -------
+    dict[str, Tensor]
+        Dictionary mapping keys to tensors.
+    """
     tensor_dict = {}
     current_key = None
     current_shape = ""
     current_data = []
 
-    with open(file) as f:
+    with open(file, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -179,3 +198,72 @@ def reshape_fortran(x: Tensor, shape: Size) -> Tensor:
     if len(x.shape) > 0:
         x = x.permute(*reversed(range(len(x.shape))))
     return x.reshape(*reversed(shape)).permute(*reversed(range(len(shape))))
+
+
+def get_elem_param(
+    unique: Tensor,
+    par_element: dict[str, Element],
+    key: str,
+    pad_val: int = -1,
+    device: torch.device | None = None,
+    dtype: torch.dtype | None = None,
+) -> Tensor:
+    """
+    Obtain a element-wise parametrized quantity for selected atomic numbers.
+
+    Parameters
+    ----------
+    unique : Tensor
+        Unique atomic numbers in the system (shape: ``(nunique,)``).
+    par : dict[str, Element]
+        Parametrization of elements.
+    key : str
+        Name of the quantity to obtain (e.g. gam3 for Hubbard derivatives).
+    pad_val : int, optional
+        Value to pad the tensor with. Default is `-1`.
+    device : torch.device | None
+        Device to store the tensor. If ``None`` (default), the default
+        device is used.
+    dtype : torch.dtype | None
+        Data type of the tensor. If ``None`` (default), the data type
+        is inferred.
+
+    Returns
+    -------
+    Tensor
+        Parametrization of selected elements.
+
+    Raises
+    ------
+    ValueError
+        If the type of the value of `key` is neither `float` nor `int`.
+    """
+    l = []
+
+    for number in unique:
+        el = pse.Z2S.get(int(number.item()), "X")
+        if el in par_element:
+            p = par_element[el]
+            if key not in p.model_fields:
+                raise KeyError(
+                    f"The key '{key}' is not in the element parameterization"
+                )
+            vals = getattr(p, key)
+
+            # convert to list so that we can use the same function
+            # for atom-resolved parameters too
+            if isinstance(vals, float):
+                vals = [vals]
+
+            if not all(isinstance(x, (int, float)) for x in vals):
+                raise ValueError(
+                    f"The key '{key}' contains the non-numeric values '{vals}'."
+                )
+
+        else:
+            vals = [pad_val]
+
+        for val in vals:
+            l.append(val)
+
+    return torch.tensor(l, device=device, dtype=dtype)
