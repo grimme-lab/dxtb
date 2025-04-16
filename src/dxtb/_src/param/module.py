@@ -716,7 +716,7 @@ def _auto_convert(
         _is_int = is_int_list(value)
         _is_float = is_float_list(value)
         if value and (_is_int or _is_float):
-            _dtype = dtype if _is_float else torch.int8
+            _dtype = dtype if _is_float else DEFAULT_BASIS_INT
             tensor_value = torch.tensor(value, device=device, dtype=_dtype)
             return ParameterModule(tensor_value)
 
