@@ -43,7 +43,7 @@ sample_list = ["MB16_43_07", "MB16_43_08", "SiH4"]
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
-    """Test ES2 for some samples from samples."""
+    """Test ES2 for single sample."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps)
 
@@ -54,7 +54,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     ref = sample["es2"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    es = es2.new_es2(numbers, GFN1_XTB, **dd)
+    es = es2.new_es2(torch.unique(numbers), GFN1_XTB, **dd)
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
@@ -67,6 +67,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    """Test ES2 for multiple samples"""
     dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps)
 
@@ -97,7 +98,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    es = es2.new_es2(numbers, GFN1_XTB, **dd)
+    es = es2.new_es2(torch.unique(numbers), GFN1_XTB, **dd)
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
@@ -109,6 +110,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.grad
 @pytest.mark.parametrize("name", sample_list)
 def test_grad_positions(name: str) -> None:
+    """Test autodiff gradient for ES2 with respect to positions."""
     dd: DD = {"dtype": torch.double, "device": DEVICE}
 
     sample = samples[name]
@@ -122,7 +124,9 @@ def test_grad_positions(name: str) -> None:
     pos = positions.clone().requires_grad_(True)
 
     def func(p: Tensor):
-        es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=False, **dd)
+        es = es2.new_es2(
+            torch.unique(numbers), GFN1_XTB, shell_resolved=False, **dd
+        )
         if es is None:
             assert False
 
@@ -135,6 +139,7 @@ def test_grad_positions(name: str) -> None:
 @pytest.mark.grad
 @pytest.mark.parametrize("name", sample_list)
 def test_grad_param(name: str) -> None:
+    """Test autodiff gradient for ES2 with respect to parameters."""
     dd: DD = {"dtype": torch.double, "device": DEVICE}
 
     sample = samples[name]

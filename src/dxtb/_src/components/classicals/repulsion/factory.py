@@ -26,9 +26,10 @@ from __future__ import annotations
 import warnings
 
 import torch
+from tad_mctc.convert import any_to_tensor
 
 from dxtb._src.constants import xtb
-from dxtb._src.param import Param, get_elem_param
+from dxtb._src.param import Param, ParamModule
 from dxtb._src.typing import DD, Tensor, get_default_dtype
 from dxtb._src.typing.exceptions import ParameterWarning
 
@@ -38,9 +39,9 @@ __all__ = ["new_repulsion"]
 
 
 def new_repulsion(
-    numbers: Tensor,
-    par: Param,
-    cutoff: float = xtb.DEFAULT_REPULSION_CUTOFF,
+    unique: Tensor,
+    par: Param | ParamModule,
+    cutoff: Tensor | float | int | None = None,
     with_analytical_gradient: bool = False,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
@@ -50,9 +51,9 @@ def new_repulsion(
 
     Parameters
     ----------
-    numbers : Tensor
-        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
-    par : Param
+    unique : Tensor
+        Unique elements in the system (shape: ``(nunique,)``).
+    par : Param | ParamModule
         Representation of an extended tight-binding model.
     cutoff : float
         Real space cutoff for repulsion interactions (default: 25.0).
@@ -72,30 +73,36 @@ def new_repulsion(
     ValueError
         If parametrization does not contain a halogen bond correction.
     """
+    dd: DD = {
+        "device": device,
+        "dtype": dtype if dtype is not None else get_default_dtype(),
+    }
 
-    if hasattr(par, "repulsion") is False or par.repulsion is None:
+    # compatibility with previous version based on `Param`
+    if not isinstance(par, ParamModule):
+        par = ParamModule(par, **dd)
+
+    if "repulsion" not in par or par.is_none("repulsion"):
         # Although repulsion is used in all models, we do not want to exit
         # for custom models that are loaded from a parameter file. Hence, we
         # only issue a warning here, not an error.
         warnings.warn("No repulsion scheme found.", ParameterWarning)
         return None
 
-    dd: DD = {
-        "device": device,
-        "dtype": dtype if dtype is not None else get_default_dtype(),
-    }
-
-    kexp = torch.tensor(par.repulsion.effective.kexp, **dd)
+    kexp = par.get("repulsion.effective.kexp")
     klight = (
-        torch.tensor(par.repulsion.effective.klight, **dd)
-        if par.repulsion.effective.klight
+        par.get("repulsion.effective.klight")
+        if "klight" in par.get("repulsion.effective")
         else None
     )
 
     # get parameters for unique species
-    unique = torch.unique(numbers)
-    arep = get_elem_param(unique, par.element, "arep", pad_val=0, **dd)
-    zeff = get_elem_param(unique, par.element, "zeff", pad_val=0, **dd)
+    arep = par.get_elem_param(unique, "arep", pad_val=0)
+    zeff = par.get_elem_param(unique, "zeff", pad_val=0)
+
+    if cutoff is None:
+        cutoff = xtb.DEFAULT_REPULSION_CUTOFF
+    cutoff = any_to_tensor(cutoff, **dd)
 
     if with_analytical_gradient is True:
         return RepulsionAnalytical(arep, zeff, kexp, klight, cutoff, **dd)

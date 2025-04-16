@@ -31,7 +31,7 @@ from tad_mctc.exceptions import DeviceError
 from tad_mctc.math import einsum
 
 from dxtb import IndexHelper
-from dxtb._src.param import Param, get_elem_param
+from dxtb._src.param import Param, ParamModule
 from dxtb._src.typing import (
     DD,
     Slicers,
@@ -638,8 +638,8 @@ class AES2(Interaction):
 
 
 def new_aes2(
-    numbers: Tensor,
-    par: Param,
+    unique: Tensor,
+    par: Param | ParamModule,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> AES2 | None:
@@ -648,9 +648,9 @@ def new_aes2(
 
     Parameters
     ----------
-    numbers : Tensor
-        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
-    par : Param
+    unique : Tensor
+        Unique elements in the system (shape: ``(nunique,)``).
+    par : Param | ParamModule
         Representation of an extended tight-binding model.
 
     Returns
@@ -658,42 +658,38 @@ def new_aes2(
     AES2 | None
         Instance of the AES2 class or ``None`` if no AES2 is used.
     """
-    if hasattr(par, "multipole") is False or par.multipole is None:
-        return None
-
-    if device is not None:
-        if device != numbers.device:
-            raise DeviceError(
-                f"Passed device ({device}) and device of electric field "
-                f"({numbers.device}) do not match."
-            )
-
     dd: DD = {
         "device": device,
         "dtype": dtype if dtype is not None else get_default_dtype(),
     }
 
-    unique = torch.unique(numbers)
+    # compatibility with previous version based on `Param`
+    if not isinstance(par, ParamModule):
+        par = ParamModule(par, **dd)
 
-    dkernel = get_elem_param(unique, par.element, "dkernel", **dd)
-    qkernel = get_elem_param(unique, par.element, "qkernel", **dd)
-    rad = get_elem_param(unique, par.element, "mprad", **dd)
-    vcn = get_elem_param(unique, par.element, "mpvcn", **dd)
+    if "multipole" not in par or par.is_none("multipole"):
+        return None
 
-    dmp3 = torch.tensor(par.multipole.damped.dmp3, **dd)
-    dmp5 = torch.tensor(par.multipole.damped.dmp5, **dd)
-    kexp = torch.tensor(par.multipole.damped.kexp, **dd)
-    shift = torch.tensor(par.multipole.damped.shift, **dd)
-    rmax = torch.tensor(par.multipole.damped.rmax, **dd)
+    if device is not None:
+        if device != unique.device:
+            raise DeviceError(
+                f"Passed device ({device}) and device of `unique` tensor "
+                f"({unique.device}) do not match."
+            )
+
+    dkernel = par.get_elem_param(unique, "dkernel")
+    qkernel = par.get_elem_param(unique, "qkernel")
+    rad = par.get_elem_param(unique, "mprad")
+    vcn = par.get_elem_param(unique, "mpvcn")
 
     return AES2(
-        dmp3=dmp3,
-        dmp5=dmp5,
+        dmp3=par.get("multipole.damped.dmp3"),
+        dmp5=par.get("multipole.damped.dmp5"),
         dkernel=dkernel,
         qkernel=qkernel,
-        shift=shift,
-        kexp=kexp,
-        rmax=rmax,
+        shift=par.get("multipole.damped.shift"),
+        kexp=par.get("multipole.damped.kexp"),
+        rmax=par.get("multipole.damped.rmax"),
         rad=rad,
         vcn=vcn,
         **dd,

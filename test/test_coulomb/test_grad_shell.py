@@ -27,7 +27,7 @@ import torch
 from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB, IndexHelper
-from dxtb._src.components.interactions import secondorder as es2
+from dxtb._src.components.interactions.coulomb import secondorder as es2
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
@@ -39,6 +39,7 @@ sample_list = ["MB16_43_07", "MB16_43_08", "SiH4", "LiH"]
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
+    """Test gradient for some samples from MB16_43."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps)
 
@@ -49,7 +50,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     ref = sample["grad"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=True, **dd)
+    es = es2.new_es2(torch.unique(numbers), GFN1_XTB, shell_resolved=True, **dd)
     assert es is not None
 
     es.cache_disable()
@@ -87,6 +88,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", ["SiH4"])
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    """Test gradient for multiple systems."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps)
 
@@ -118,7 +120,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=True, **dd)
+    es = es2.new_es2(torch.unique(numbers), GFN1_XTB, shell_resolved=True, **dd)
     assert es is not None
 
     es.cache_disable()
@@ -149,7 +151,7 @@ def calc_numerical_gradient(
     """Calculate gradient numerically for reference."""
     dtype = torch.double
     es = es2.new_es2(
-        numbers,
+        torch.unique(numbers),
         GFN1_XTB,
         shell_resolved=True,
         dtype=dtype,

@@ -54,24 +54,16 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     ihelp = IndexHelper.from_numbers(numbers, par)
 
     # variables to be differentiated
-    _damp = torch.tensor(
-        par.halogen.classical.damping,
-        **dd,
-        requires_grad=True,
-    )
-    _rscale = torch.tensor(
-        par.halogen.classical.rscale,
-        **dd,
-        requires_grad=True,
-    )
+    _damp = torch.tensor(par.halogen.classical.damping, **dd)
+    _damp.requires_grad_(True)
+
+    _rscale = torch.tensor(par.halogen.classical.rscale, **dd)
+    _rscale.requires_grad_(True)
+
     _xbond = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "xbond",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
+        torch.unique(numbers), par.element, "xbond", pad_val=0, **dd
     )
+    _xbond.requires_grad_(True)
 
     def func(damp: Tensor, rscale: Tensor, xbond: Tensor) -> Tensor:
         xb = Halogen(damp, rscale, xbond, **dd)
@@ -130,24 +122,16 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     ihelp = IndexHelper.from_numbers(numbers, par)
 
     # variables to be differentiated
-    _damp = torch.tensor(
-        par.halogen.classical.damping,
-        **dd,
-        requires_grad=True,
-    )
-    _rscale = torch.tensor(
-        par.halogen.classical.rscale,
-        **dd,
-        requires_grad=True,
-    )
+    _damp = torch.tensor(par.halogen.classical.damping, **dd)
+    _damp.requires_grad_(True)
+
+    _rscale = torch.tensor(par.halogen.classical.rscale, **dd)
+    _rscale.requires_grad_(True)
+
     _xbond = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "xbond",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
+        torch.unique(numbers), par.element, "xbond", pad_val=0, **dd
     )
+    _xbond.requires_grad_(True)
 
     def func(damp: Tensor, rscale: Tensor, xbond: Tensor) -> Tensor:
         xb = Halogen(damp, rscale, xbond, **dd)

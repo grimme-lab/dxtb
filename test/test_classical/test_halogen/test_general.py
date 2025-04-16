@@ -32,7 +32,8 @@ from dxtb._src.components.classicals import new_halogen
 
 
 def test_none() -> None:
-    dummy = torch.tensor(0.0)
+    """Test that the HB correction is set to None if deleted."""
+    dummy = torch.tensor([0.0])
     _par = par.model_copy(deep=True)
 
     _par.halogen = None
@@ -44,7 +45,8 @@ def test_none() -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float16, torch.float32, torch.float64])
 def test_change_type(dtype: torch.dtype) -> None:
-    cls = new_halogen(torch.tensor(0.0), par)
+    """Test changing the dtype of the halogen bond correction."""
+    cls = new_halogen(torch.tensor([0.0]), par)
     assert cls is not None
 
     cls = cls.type(dtype)
@@ -52,7 +54,8 @@ def test_change_type(dtype: torch.dtype) -> None:
 
 
 def test_change_type_fail() -> None:
-    cls = new_halogen(torch.tensor(0.0), par)
+    """Test changing the dtype of the halogen bond correction."""
+    cls = new_halogen(torch.tensor([0.0]), par)
     assert cls is not None
 
     # trying to use setter
@@ -67,8 +70,9 @@ def test_change_type_fail() -> None:
 @pytest.mark.cuda
 @pytest.mark.parametrize("device_str", ["cpu", "cuda"])
 def test_change_device(device_str: str) -> None:
+    """Test changing the device of the halogen bond correction."""
     device = str_to_device(device_str)
-    cls = new_halogen(torch.tensor(0.0), par)
+    cls = new_halogen(torch.tensor([0.0]), par)
     assert cls is not None
 
     cls = cls.to(device)
@@ -76,7 +80,8 @@ def test_change_device(device_str: str) -> None:
 
 
 def test_change_device_fail() -> None:
-    cls = new_halogen(torch.tensor(0.0), par)
+    """Test failure of changing the device of the halogen bond correction."""
+    cls = new_halogen(torch.tensor([0.0]), par)
     assert cls is not None
 
     # trying to use setter
@@ -85,6 +90,7 @@ def test_change_device_fail() -> None:
 
 
 def test_fail_requires_ihelp() -> None:
+    """Test failure if `ihelp` is not provided."""
     numbers = torch.tensor([3, 1])
     cls = new_halogen(numbers, par)
     assert cls is not None

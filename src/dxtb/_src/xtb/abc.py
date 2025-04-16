@@ -24,9 +24,12 @@ Abstract case class for xTB Hamiltonians.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
-from dxtb._src.components.interactions import Potential
-from dxtb._src.typing import Tensor
+if TYPE_CHECKING:
+    from dxtb._src.components.interactions import Potential
+    from dxtb._src.param.module import ParamModule
+    from dxtb._src.typing import Tensor
 
 __all__ = ["HamiltonianABC"]
 
@@ -37,9 +40,14 @@ class HamiltonianABC(ABC):
     """
 
     @abstractmethod
-    def _get_hscale(self) -> Tensor:
+    def _get_hscale(self, par: ParamModule) -> Tensor:
         """
         Obtain the off-site scaling factor for the Hamiltonian.
+
+        Parameters
+        ----------
+        par : ParamModule
+            Representation of an extended tight-binding model.
 
         Returns
         -------
@@ -48,9 +56,15 @@ class HamiltonianABC(ABC):
         """
 
     @abstractmethod
-    def _get_elem_valence(self) -> Tensor:
+    def _get_elem_valence(self, par: ParamModule) -> Tensor:
         """
-        Obtain a mask for valence and non-valence shells. This is only required for GFN1-xTB's second hydrogen s-function.
+        Obtain a mask for valence and non-valence shells. This is only required
+        for GFN1-xTB's second hydrogen s-function.
+
+        Parameters
+        ----------
+        par : ParamModule
+            Representation of an extended tight-binding model.
 
         Returns
         -------

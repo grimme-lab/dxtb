@@ -86,21 +86,20 @@ def get_pair_param(
 
 
 def get_elem_param(
-    numbers: Tensor,
+    unique: Tensor,
     par_element: dict[str, Element],
     key: str,
     pad_val: int = -1,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
-    requires_grad: bool = False,
 ) -> Tensor:
     """
     Obtain a element-wise parametrized quantity for selected atomic numbers.
 
     Parameters
     ----------
-    numbers : Tensor
-        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
+    unique : Tensor
+        Unique atomic numbers in the system (shape: ``(nunique,)``).
     par : dict[str, Element]
         Parametrization of elements.
     key : str
@@ -124,7 +123,7 @@ def get_elem_param(
     """
     l = []
 
-    for number in numbers:
+    for number in unique:
         el = pse.Z2S.get(int(number.item()), "X")
         if el in par_element:
             p = par_element[el]
@@ -150,12 +149,7 @@ def get_elem_param(
         for val in vals:
             l.append(val)
 
-    return torch.tensor(
-        l,
-        device=device,
-        dtype=dtype,
-        requires_grad=requires_grad,
-    )
+    return torch.tensor(l, device=device, dtype=dtype)
 
 
 def get_elem_angular(par_element: dict[str, Element]) -> dict[int, list[int]]:
@@ -172,13 +166,7 @@ def get_elem_angular(par_element: dict[str, Element]) -> dict[int, list[int]]:
     dict[int, list[int]]
         Angular momenta of all elements.
     """
-    label2angular = {
-        "s": 0,
-        "p": 1,
-        "d": 2,
-        "f": 3,
-        "g": 4,
-    }
+    label2angular = {"s": 0, "p": 1, "d": 2, "f": 3, "g": 4}
 
     return {
         pse.S2Z[sym]: [label2angular[label[-1]] for label in par.shells]

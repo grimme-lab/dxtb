@@ -31,6 +31,7 @@ from ..conftest import DEVICE
 
 
 def test_empty() -> None:
+    """Test empty interaction."""
     i = Interaction()
     assert i.label == "Interaction"
 

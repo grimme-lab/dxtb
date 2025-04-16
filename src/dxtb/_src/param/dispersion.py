@@ -31,13 +31,11 @@ libraries.
 
 from __future__ import annotations
 
-from typing import Optional, Union
+from typing import Optional
 
 from pydantic import BaseModel
 from tad_dftd3 import defaults as d3_defaults
 from tad_dftd4 import defaults as d4_defaults
-
-from .tensor import TensorPydantic
 
 __all__ = ["D3Model", "D4Model", "Dispersion"]
 
@@ -47,19 +45,19 @@ class D3Model(BaseModel):
     Representation of the DFT-D3(BJ) contribution for a parametrization.
     """
 
-    s6: Union[float, TensorPydantic] = d3_defaults.S6
+    s6: float = d3_defaults.S6
     """Scaling factor for multipolar (dipole-dipole contribution) terms."""
 
-    s8: Union[float, TensorPydantic] = d3_defaults.S8
+    s8: float = d3_defaults.S8
     """Scaling factor for multipolar (dipole-quadrupole contribution) terms."""
 
-    a1: Union[float, TensorPydantic] = d3_defaults.A1
+    a1: float = d3_defaults.A1
     """Becke-Johnson damping parameter."""
 
-    a2: Union[float, TensorPydantic] = d3_defaults.A2
+    a2: float = d3_defaults.A2
     """Becke-Johnson damping parameter."""
 
-    s9: Union[float, TensorPydantic] = d3_defaults.S9
+    s9: float = d3_defaults.S9
     """Scaling factor for the many-body dispersion term (ATM/RPA-like)."""
 
 
@@ -71,25 +69,25 @@ class D4Model(BaseModel):
     sc: bool = False
     """Whether the dispersion correctio is used self-consistently or not."""
 
-    s6: Union[float, TensorPydantic] = d4_defaults.S6
+    s6: float = d4_defaults.S6
     """Scaling factor for multipolar (dipole-dipole contribution) terms"""
 
-    s8: Union[float, TensorPydantic] = d4_defaults.S8
+    s8: float = d4_defaults.S8
     """Scaling factor for multipolar (dipole-quadrupole contribution) terms"""
 
-    a1: Union[float, TensorPydantic] = d4_defaults.A1
+    a1: float = d4_defaults.A1
     """Becke-Johnson damping parameter."""
 
-    a2: Union[float, TensorPydantic] = d4_defaults.A2
+    a2: float = d4_defaults.A2
     """Becke-Johnson damping parameter."""
 
-    s9: Union[float, TensorPydantic] = d4_defaults.S9
+    s9: float = d4_defaults.S9
     """Scaling factor for the many-body dispersion term (ATM/RPA-like)."""
 
-    s10: Union[float, TensorPydantic] = d4_defaults.S10
+    s10: float = d4_defaults.S10
     """Scaling factor for quadrupole-quadrupole term."""
 
-    alp: Union[float, TensorPydantic] = d4_defaults.ALP
+    alp: float = d4_defaults.ALP
     """Exponent of zero damping function in the ATM term."""
 
 

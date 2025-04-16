@@ -49,7 +49,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     ref = sample["es3"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    es = es3.new_es3(numbers, GFN1_XTB, **dd)
+    es = es3.new_es3(torch.unique(numbers), GFN1_XTB, **dd)
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, ihelp=ihelp)
@@ -85,7 +85,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    es = es3.new_es3(numbers, GFN1_XTB, **dd)
+    es = es3.new_es3(torch.unique(numbers), GFN1_XTB, **dd)
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, ihelp=ihelp)

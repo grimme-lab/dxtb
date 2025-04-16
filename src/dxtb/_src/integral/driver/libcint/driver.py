@@ -40,6 +40,11 @@ class BaseIntDriverLibcint(LibcintImplementation, IntDriver):
     Implementation of `libcint`-based integral driver.
     """
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.drv = None
+
     def setup(self, positions: Tensor, **kwargs) -> None:
         """
         Run the `libcint`-specific driver setup.

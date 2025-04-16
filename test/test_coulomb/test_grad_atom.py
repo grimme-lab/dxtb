@@ -51,7 +51,9 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     ref = sample["grad"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=is_shell_resolved, **dd)
+    es = es2.new_es2(
+        torch.unique(numbers), GFN1_XTB, shell_resolved=is_shell_resolved, **dd
+    )
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
@@ -89,6 +91,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", ["SiH4_atom"])
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    """Test multiple systems."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps)
 
@@ -120,7 +123,9 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=is_shell_resolved, **dd)
+    es = es2.new_es2(
+        torch.unique(numbers), GFN1_XTB, shell_resolved=is_shell_resolved, **dd
+    )
     assert es is not None
     es.cache_disable()
 
@@ -150,7 +155,7 @@ def calc_numerical_gradient(
     """Calculate gradient numerically for reference."""
     dtype = torch.double
     es = es2.new_es2(
-        numbers,
+        torch.unique(numbers),
         GFN1_XTB,
         shell_resolved=is_shell_resolved,
         dtype=dtype,

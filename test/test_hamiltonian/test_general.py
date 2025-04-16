@@ -17,6 +17,7 @@
 """
 General test for Core GFN1Hamiltonian.
 """
+# pylint: disable=protected-access
 
 from __future__ import annotations
 
@@ -25,13 +26,14 @@ import torch
 from tad_mctc.convert import str_to_device
 from tad_mctc.typing import MockTensor
 
-from dxtb import GFN1_XTB, GFN2_XTB, IndexHelper, Param
+from dxtb import GFN1_XTB, GFN2_XTB, IndexHelper, Param, ParamModule
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 from dxtb._src.xtb.gfn2 import GFN2Hamiltonian
 
 
 @pytest.mark.parametrize("par", [GFN1_XTB, GFN2_XTB])
 def test_no_h0_fail(par: Param) -> None:
+    """Fail due to missing hamiltonian in constructor."""
     dummy = torch.tensor([])
     _par = par.model_copy(deep=True)
     _par.hamiltonian = None
@@ -44,6 +46,7 @@ def test_no_h0_fail(par: Param) -> None:
 
 
 def test_no_h0_fail_2() -> None:
+    """Fail due to missing hamiltonian in _get_hscale."""
     numbers = torch.tensor([1])
     par_gfn1 = GFN1_XTB.model_copy(deep=True)
     par_gfn2 = GFN2_XTB.model_copy(deep=True)
@@ -52,59 +55,33 @@ def test_no_h0_fail_2() -> None:
     ihelp_gfn2 = IndexHelper.from_numbers(numbers, par_gfn2)
 
     h0_gfn1 = GFN1Hamiltonian(numbers, par_gfn1, ihelp_gfn1)
-    h0_gfn1.par.hamiltonian = None
+    par_gfn1.hamiltonian = None
     h0_gfn2 = GFN2Hamiltonian(numbers, par_gfn2, ihelp_gfn2)
-    h0_gfn2.par.hamiltonian = None
+    par_gfn2.hamiltonian = None
 
     with pytest.raises(RuntimeError):
-        h0_gfn1._get_hscale()
+        h0_gfn1._get_hscale(ParamModule(par_gfn1))
 
     with pytest.raises(RuntimeError):
-        h0_gfn2._get_hscale()
+        h0_gfn2._get_hscale(ParamModule(par_gfn2))
 
 
 def test_no_h0_fail_3() -> None:
+    """Fail due to missing shell information."""
     numbers = torch.tensor([1])
     par_gfn2 = GFN2_XTB.model_copy(deep=True)
     ihelp_gfn2 = IndexHelper.from_numbers(numbers, par_gfn2)
 
-    h0_gfn2 = GFN2Hamiltonian(numbers, par_gfn2, ihelp_gfn2)
-    assert h0_gfn2.par.hamiltonian is not None
-
-    h0_gfn2.par.hamiltonian.xtb.shell = {}
-    h0_gfn2.ihelp.unique_angular = torch.tensor([4])
+    assert par_gfn2.hamiltonian is not None
+    par_gfn2.hamiltonian.xtb.shell = {}
 
     with pytest.raises(KeyError):
-        h0_gfn2._get_hscale()
-
-
-def test_no_h0_fail_4() -> None:
-    numbers = torch.tensor([1])
-    ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
-    _par = GFN1_XTB.model_copy(deep=True)
-    h0 = GFN1Hamiltonian(numbers, _par, ihelp)
-
-    _par.hamiltonian = None
-    with pytest.raises(RuntimeError):
-        h0._get_hscale()  # pylint: disable=protected-access
-
-    with pytest.raises(RuntimeError):
-        h0.build(numbers, numbers)
-
-    with pytest.raises(RuntimeError):
-        h0.get_gradient(
-            numbers,
-            numbers,
-            numbers,
-            numbers,
-            numbers,
-            numbers,  # type: ignore
-            numbers,
-        )
+        GFN2Hamiltonian(numbers, par_gfn2, ihelp_gfn2)
 
 
 @pytest.mark.parametrize("dtype", [torch.float16, torch.float32, torch.float64])
 def test_change_type(dtype: torch.dtype) -> None:
+    """Change type of GFN1Hamiltonian."""
     numbers = torch.tensor([1])
     ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
     h0 = GFN1Hamiltonian(numbers, GFN1_XTB, ihelp)
@@ -112,6 +89,7 @@ def test_change_type(dtype: torch.dtype) -> None:
 
 
 def test_change_type_fail() -> None:
+    """Fail due to wrong type."""
     numbers = torch.tensor([1])
     ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
     h0 = GFN1Hamiltonian(numbers, GFN1_XTB, ihelp)
@@ -128,6 +106,7 @@ def test_change_type_fail() -> None:
 @pytest.mark.cuda
 @pytest.mark.parametrize("device_str", ["cpu", "cuda"])
 def test_change_device(device_str: str) -> None:
+    """Change device of GFN1Hamiltonian."""
     device = str_to_device(device_str)
 
     numbers = torch.tensor([1], device=device)
@@ -146,6 +125,7 @@ def test_change_device(device_str: str) -> None:
 
 
 def test_change_device_fail() -> None:
+    """Fail due to wrong device."""
     numbers = torch.tensor([1])
     ihelp = IndexHelper.from_numbers_angular(numbers, {1: [0]})
     h0 = GFN1Hamiltonian(numbers, GFN1_XTB, ihelp)
@@ -156,6 +136,7 @@ def test_change_device_fail() -> None:
 
 
 def test_wrong_device_fail() -> None:
+    """Fail due to wrong device."""
     numbers_cpu = torch.tensor([1], device=torch.device("cpu"))
     ihelp = IndexHelper.from_numbers_angular(numbers_cpu, {1: [0]})
 

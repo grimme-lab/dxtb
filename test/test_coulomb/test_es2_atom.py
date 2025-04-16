@@ -54,7 +54,9 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     ref = sample["es2"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=False, **dd)
+    es = es2.new_es2(
+        torch.unique(numbers), GFN1_XTB, shell_resolved=False, **dd
+    )
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
@@ -66,6 +68,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    """Test energy for multiple systems."""
     tol = sqrt(torch.finfo(dtype).eps)
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
@@ -96,7 +99,9 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=False, **dd)
+    es = es2.new_es2(
+        torch.unique(numbers), GFN1_XTB, shell_resolved=False, **dd
+    )
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
@@ -107,6 +112,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.grad
 @pytest.mark.parametrize("name", sample_list)
 def test_grad_positions(name: str) -> None:
+    """Test autodiff gradient with respect to positions."""
     dtype = torch.double
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
@@ -117,7 +123,9 @@ def test_grad_positions(name: str) -> None:
 
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
-    es = es2.new_es2(numbers, GFN1_XTB, shell_resolved=False, **dd)
+    es = es2.new_es2(
+        torch.unique(numbers), GFN1_XTB, shell_resolved=False, **dd
+    )
     assert es is not None
 
     # variable to be differentiated
@@ -133,6 +141,7 @@ def test_grad_positions(name: str) -> None:
 @pytest.mark.grad
 @pytest.mark.parametrize("name", sample_list)
 def test_grad_param(name: str) -> None:
+    """Test autodiff gradient with respect to parameters."""
     dd: DD = {"dtype": torch.double, "device": DEVICE}
 
     sample = samples[name]

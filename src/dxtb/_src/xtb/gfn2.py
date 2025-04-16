@@ -30,7 +30,8 @@ from tad_mctc import storch
 
 from dxtb import IndexHelper
 from dxtb._src.components.interactions import Potential
-from dxtb._src.param import Param
+from dxtb._src.param.base import Param
+from dxtb._src.param.module import ParameterModule, ParamModule
 from dxtb._src.typing import Any, Tensor
 
 from .base import PAD, BaseHamiltonian
@@ -46,7 +47,7 @@ class GFN2Hamiltonian(BaseHamiltonian):
     def __init__(
         self,
         numbers: Tensor,
-        par: Param,
+        par: Param | ParamModule,
         ihelp: IndexHelper,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
@@ -58,25 +59,31 @@ class GFN2Hamiltonian(BaseHamiltonian):
         if "cn" in kwargs:
             self.cn = kwargs.pop("cn")
         else:
+            # pylint: disable=import-outside-toplevel
             from tad_mctc.ncoord import cn_d3, gfn2_count
 
             self.cn = partial(cn_d3, counting_function=gfn2_count)
 
-    def _get_hscale(self) -> Tensor:
+    def _get_hscale(self, par: ParamModule) -> Tensor:
         """
         Obtain the off-site scaling factor for the Hamiltonian.
+
+        Parameters
+        ----------
+        par : ParamModule
+            Representation of an extended tight-binding model.
 
         Returns
         -------
         Tensor
             Off-site scaling factor for the Hamiltonian.
         """
-        if self.par.hamiltonian is None:
+        if par.is_none("hamiltonian"):
             raise RuntimeError("No Hamiltonian specified.")
 
         # extract some vars for convenience
-        shell = self.par.hamiltonian.xtb.shell
-        wexp = self.par.hamiltonian.xtb.wexp
+        shell = par.get("hamiltonian.xtb.shell")
+        wexp = par.get("hamiltonian.xtb.wexp")
         ushells = self.ihelp.unique_angular
 
         angular2label = {
@@ -91,7 +98,7 @@ class GFN2Hamiltonian(BaseHamiltonian):
         # ----------------------
         # Eq.37: Y(z^A_l, z^B_m)
         # ----------------------
-        z = self._get_elem_param("slater")
+        z = par.get_elem_param(self.unique, "slater", pad_val=PAD)
         zi = z.unsqueeze(-1)
         zj = z.unsqueeze(-2)
         zmat = storch.pow(
@@ -105,6 +112,9 @@ class GFN2Hamiltonian(BaseHamiltonian):
             for j, ang_j in enumerate(ushells):
                 ang_j = angular_labels[j]
 
+                key1 = f"{ang_i}{ang_j}"
+                key2 = f"{ang_j}{ang_i}"
+
                 # Since the parametrization only contains "sp" (not "ps"),
                 # we need to check both.
                 # For some reason, the parametrization does not contain "sp"
@@ -112,25 +122,31 @@ class GFN2Hamiltonian(BaseHamiltonian):
                 # and hence, always the same. The paper, however, specifically
                 # mentions this.
                 # tblite: xtb/gfn2.f90::new_gfn2_h0spec
-                if f"{ang_i}{ang_j}" in shell:
-                    kij = shell[f"{ang_i}{ang_j}"]
+                if key1 in shell:
+                    val: ParameterModule = shell[key1]
+                    kij = val.param.view(-1)[0]
                 elif f"{ang_j}{ang_i}" in shell:
-                    kij = shell[f"{ang_j}{ang_i}"]
+                    val: ParameterModule = shell[key2]
+                    kij = val.param.view(-1)[0]
                 else:
-                    if ang_i != PAD and ang_j != PAD:
-                        if f"{ang_i}{ang_i}" not in shell:
+                    key_ii = f"{ang_i}{ang_i}"
+                    key_jj = f"{ang_j}{ang_j}"
+
+                    if PAD not in (ang_i, ang_j):
+                        if key_ii not in shell:
                             raise KeyError(
                                 f"GFN2 Core Hamiltonian: Missing '{ang_i}"
                                 f"{ang_i}' in shell."
                             )
-                        if f"{ang_j}{ang_j}" not in shell:  # pragma: no cover
+                        if key_jj not in shell:  # pragma: no cover
                             raise KeyError(
                                 f"GFN2 Core Hamiltonian: Missing '{ang_j}"
                                 f"{ang_j}' in shell."
                             )
-
+                        val_ii: ParameterModule = shell[key_ii]
+                        val_jj: ParameterModule = shell[key_jj]
                         kij = 0.5 * (
-                            shell[f"{ang_i}{ang_i}"] + shell[f"{ang_j}{ang_j}"]
+                            val_ii.param.view(-1)[0] + val_jj.param.view(-1)[0]
                         )
                     else:
                         kij = 1.0  # dummy for padding

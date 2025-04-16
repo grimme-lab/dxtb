@@ -40,6 +40,7 @@ slist_large = ["MB16_43_01"]
 
 
 def execute(name: str, dtype: torch.dtype) -> None:
+    """Run the test for a given molecule and dtype."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     def fcn():
@@ -53,26 +54,18 @@ def execute(name: str, dtype: torch.dtype) -> None:
 
         # variables to be differentiated
         arep = get_elem_param(
-            torch.unique(numbers),
-            par.element,
-            "arep",
-            pad_val=0,
-            **dd,
-            requires_grad=True,
+            torch.unique(numbers), par.element, "arep", pad_val=0, **dd
         )
+        arep.requires_grad_(True)
+
         zeff = get_elem_param(
-            torch.unique(numbers),
-            par.element,
-            "zeff",
-            pad_val=0,
-            **dd,
-            requires_grad=True,
+            torch.unique(numbers), par.element, "zeff", pad_val=0, **dd
         )
-        kexp = torch.tensor(
-            par.repulsion.effective.kexp,
-            **dd,
-            requires_grad=True,
-        )
+        zeff.requires_grad_(True)
+
+        kexp = torch.tensor(par.repulsion.effective.kexp, **dd)
+        kexp.requires_grad_(True)
+
         pos = positions.clone().requires_grad_(True)
 
         rep = Repulsion(arep, zeff, kexp, **dd)
@@ -107,6 +100,7 @@ def execute(name: str, dtype: torch.dtype) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist)
 def test_single(dtype: torch.dtype, name: str) -> None:
+    """Run test for a single molecule."""
     execute(name, dtype)
 
 
@@ -115,4 +109,5 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist_large)
 def test_large(dtype: torch.dtype, name: str) -> None:
+    """Run test for a large molecule."""
     execute(name, dtype)

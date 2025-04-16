@@ -24,11 +24,9 @@ species.
 
 from __future__ import annotations
 
-from typing import List, Union
+from typing import List
 
 from pydantic import BaseModel
-
-from .tensor import TensorPydantic
 
 __all__ = ["Element"]
 
@@ -41,13 +39,13 @@ class Element(BaseModel):
     shells: List[str]
     """Included shells with principal quantum number and angular momentum."""
 
-    levels: Union[List[float], TensorPydantic]
+    levels: List[float]
     """Atomic level energies for each shell"""
 
-    slater: Union[List[float], TensorPydantic]
+    slater: List[float]
     """Slater exponents of the STO-NG functions for each shell"""
 
-    ngauss: Union[List[int], TensorPydantic]
+    ngauss: List[int]
     """
     Number of primitive Gaussian functions used in the STO-NG expansion for
     each shell.
@@ -55,52 +53,52 @@ class Element(BaseModel):
 
     ############################################################################
 
-    refocc: Union[List[float], TensorPydantic]
+    refocc: List[float]
     """Reference occupation for each shell"""
 
-    shpoly: Union[List[float], TensorPydantic]
+    shpoly: List[float]
     """Polynomial enhancement for Hamiltonian elements"""
 
-    kcn: Union[List[float], TensorPydantic]
+    kcn: List[float]
     """CN dependent shift of the self energy for each shell"""
 
     ############################################################################
 
-    gam: Union[float, TensorPydantic]
+    gam: float
     """Chemical hardness / Hubbard parameter."""
 
-    lgam: Union[List[float], TensorPydantic]
+    lgam: List[float]
     """Relative chemical hardness for each shell."""
 
-    gam3: Union[float, TensorPydantic] = 0.0
+    gam3: float = 0.0
     """Atomic Hubbard derivative."""
 
     ############################################################################
 
-    zeff: Union[float, TensorPydantic]
+    zeff: float
     """Effective nuclear charge used in repulsion."""
 
-    arep: Union[float, TensorPydantic]
+    arep: float
     """Repulsion exponent."""
 
     ############################################################################
 
-    xbond: Union[float, TensorPydantic] = 0.0
+    xbond: float = 0.0
     """Halogen bonding strength."""
 
-    en: Union[float, TensorPydantic]
+    en: float
     """Electronegativity."""
 
     ############################################################################
 
-    dkernel: Union[float, TensorPydantic] = 0.0
+    dkernel: float = 0.0
     """Dipolar exchange-correlation kernel."""
 
-    qkernel: Union[float, TensorPydantic] = 0.0
+    qkernel: float = 0.0
     """Quadrupolar exchange-correlation kernel."""
 
-    mprad: Union[float, TensorPydantic] = 0.0
+    mprad: float = 0.0
     """Offset radius for the damping in the AES energy."""
 
-    mpvcn: Union[float, TensorPydantic] = 0.0
+    mpvcn: float = 0.0
     """Shift value in the damping in the AES energy. Only used if mprad != 0."""

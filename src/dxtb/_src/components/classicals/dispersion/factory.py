@@ -27,10 +27,9 @@ import warnings
 
 import torch
 
-from dxtb._src.param import Param
+from dxtb._src.param import Param, ParamModule
 from dxtb._src.typing import DD, Literal, Tensor, get_default_dtype
 from dxtb._src.typing.exceptions import ParameterWarning
-from dxtb._src.utils import convert_float_tensor
 
 from .base import Dispersion
 from .d3 import DispersionD3
@@ -41,7 +40,7 @@ __all__ = ["new_dispersion"]
 
 def new_dispersion(
     numbers: Tensor,
-    par: Param,
+    par: Param | ParamModule,
     charge: Tensor | None = None,
     ref_charges: Literal["eeq", "gfn2"] = "eeq",
     device: torch.device | None = None,
@@ -54,7 +53,7 @@ def new_dispersion(
     ----------
     numbers : Tensor
         Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
-    par : Param
+    par : Param | ParamModule
         Representation of an extended tight-binding model.
     ref_charges : Literal["eeq", "gfn2"], optional
         Reference charges for the dispersion model. This is only required for
@@ -78,46 +77,46 @@ def new_dispersion(
     ValueError
         D4 parametrization is requested but no charge given.
     """
-    if hasattr(par, "dispersion") is False or par.dispersion is None:
-        warnings.warn("No dispersion scheme found.", ParameterWarning)
-        return None
-
     dd: DD = {
         "device": device,
         "dtype": dtype if dtype is not None else get_default_dtype(),
     }
 
-    if par.dispersion.d3 is not None and par.dispersion.d4 is None:
-        param = convert_float_tensor(
-            {
-                "a1": par.dispersion.d3.a1,
-                "a2": par.dispersion.d3.a2,
-                "s6": par.dispersion.d3.s6,
-                "s8": par.dispersion.d3.s8,
-                "s9": par.dispersion.d3.s9,
-            },
-            **dd,
-        )
+    # compatibility with previous version based on `Param`
+    if not isinstance(par, ParamModule):
+        par = ParamModule(par, **dd)
+
+    if "dispersion" not in par or par.is_none("dispersion"):
+        warnings.warn("No dispersion scheme found.", ParameterWarning)
+        return None
+
+    if not par.is_none("dispersion.d3") and par.is_none("dispersion.d4"):
+        param = {
+            "a1": par.get("dispersion.d3.a1"),
+            "a2": par.get("dispersion.d3.a2"),
+            "s6": par.get("dispersion.d3.s6"),
+            "s8": par.get("dispersion.d3.s8"),
+            "s9": par.get("dispersion.d3.s9"),
+        }
         return DispersionD3(numbers, param, device=device, dtype=dtype)
 
-    if par.dispersion.d4 is not None and par.dispersion.d3 is None:
-        param = convert_float_tensor(
-            {
-                "a1": par.dispersion.d4.a1,
-                "a2": par.dispersion.d4.a2,
-                "s6": par.dispersion.d4.s6,
-                "s8": par.dispersion.d4.s8,
-                "s9": par.dispersion.d4.s9,
-                "s10": par.dispersion.d4.s10,
-            },
-            **dd,
-        )
+    if not par.is_none("dispersion.d4") and par.is_none("dispersion.d3"):
+        param = {
+            "a1": par.get("dispersion.d4.a1"),
+            "a2": par.get("dispersion.d4.a2"),
+            "s6": par.get("dispersion.d4.s6"),
+            "s8": par.get("dispersion.d4.s8"),
+            "s9": par.get("dispersion.d4.s9"),
+            "s10": par.get("dispersion.d4.s10"),
+        }
 
-        if isinstance(par.dispersion.d4.sc, bool) is False:
+        # None values are not set in `DiffParam`
+        sc_is_set = "sc" in par.get("dispersion.d4")
+        if sc_is_set and not isinstance(par.get("dispersion.d4.sc"), bool):
             raise ValueError("D4 self-consistency flag is not a boolean.")
 
         # only non-self-consistent D4 is a classical component
-        if par.dispersion.d4.sc is False:
+        if not sc_is_set or par.is_false("dispersion.d4.sc"):
             if charge is None:
                 raise ValueError("The total charge is required for DFT-D4.")
 
@@ -137,7 +136,7 @@ def new_dispersion(
             numbers, param, ref_charges="gfn2", device=device, dtype=dtype
         )
 
-    if par.dispersion.d3 is not None and par.dispersion.d4 is not None:
+    if not par.is_none("dispersion.d3") and not par.is_none("dispersion.d4"):
         raise ValueError("Parameters for both D3 and D4 found. Please decide.")
 
     return None

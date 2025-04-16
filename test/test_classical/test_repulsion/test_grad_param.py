@@ -55,21 +55,15 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
 
     # variables to be differentiated
     _arep = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "arep",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
+        torch.unique(numbers), par.element, "arep", pad_val=0, **dd
     )
+    _arep.requires_grad_(True)
+
     _zeff = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "zeff",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
+        torch.unique(numbers), par.element, "zeff", pad_val=0, **dd
     )
+    _zeff.requires_grad_(True)
+
     _kexp = torch.tensor(par.repulsion.effective.kexp, **dd, requires_grad=True)
 
     def func(arep: Tensor, zeff: Tensor, kexp: Tensor) -> Tensor:
@@ -130,21 +124,15 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
 
     # variables to be differentiated
     _arep = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "arep",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
+        torch.unique(numbers), par.element, "arep", pad_val=0, **dd
     )
+    _arep.requires_grad_(True)
+
     _zeff = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "zeff",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
+        torch.unique(numbers), par.element, "zeff", pad_val=0, **dd
     )
+    _zeff.requires_grad_(True)
+
     _kexp = torch.tensor(par.repulsion.effective.kexp, **dd, requires_grad=True)
 
     def func(arep: Tensor, zeff: Tensor, kexp: Tensor) -> Tensor:

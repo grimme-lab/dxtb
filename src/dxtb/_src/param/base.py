@@ -105,9 +105,7 @@ class Param(BaseModel):
 
     @property
     def xtb_version(self) -> str:
-        """
-        Return the version of the xtb package.
-        """
+        """Return the version of the xtb package."""
         if self.meta is None:
             raise ValueError("Meta information is not available.")
 

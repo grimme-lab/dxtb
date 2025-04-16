@@ -29,7 +29,7 @@ import torch
 
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
-from dxtb._src.param import Param
+from dxtb._src.param import Param, ParamModule
 from dxtb._src.typing import Literal, Tensor, TensorLike
 
 __all__ = ["IntDriver"]
@@ -41,8 +41,8 @@ class IntDriver(TensorLike):
     numbers: Tensor
     """Atomic numbers of the atoms in the system."""
 
-    par: Param
-    """Representation of parametrization of xtb model."""
+    par: ParamModule
+    """Representation of parametrization of xTB method."""
 
     ihelp: IndexHelper
     """Helper class for indexing."""
@@ -57,6 +57,7 @@ class IntDriver(TensorLike):
         "numbers",
         "par",
         "ihelp",
+        "family",
         "_basis",
         "_positions",
         "__label",
@@ -65,7 +66,7 @@ class IntDriver(TensorLike):
     def __init__(
         self,
         numbers: Tensor,
-        par: Param,
+        par: Param | ParamModule,
         ihelp: IndexHelper,
         *,
         _basis: Basis | None = None,
@@ -75,14 +76,18 @@ class IntDriver(TensorLike):
     ):
         super().__init__(device, dtype)
         self.numbers = numbers
-        self.par = par
         self.ihelp = ihelp
+        self.par = (
+            ParamModule(par, **self.dd) if isinstance(par, Param) else par
+        )
+
         self._basis = _basis
         self._positions = _positions
         self.__label = self.__class__.__name__
 
     @property
     def label(self) -> str:
+        """Label for the integral driver."""
         return self.__label
 
     @property
@@ -145,13 +150,13 @@ class IntDriver(TensorLike):
                 "running autograd twice without resetting certain cached \n"
                 "values. It appears first in the integral driver. Depending \n"
                 "on which level you interact with the API, use \n"
-                "`driver.invalidate()`, `integrals.reset_all()` or \n"
+                "`driver.invalidate()`, `integrals.reset_all()`, \n"
                 "`integrals.invalidate_driver()`, or `calc.reset_all()` \n"
                 "after the first autograd run.\n"
             ) from e
 
         tol = torch.finfo(positions.dtype).eps ** 0.75 if tol is None else tol
-        if diff.abs().sum() > tol:
+        if diff.abs().sum() > tol:  # type: ignore[union-attr]
             return False
 
         return True
@@ -163,6 +168,7 @@ class IntDriver(TensorLike):
         self._positions = None
 
     def is_setup(self) -> bool:
+        """Check if the driver is set up."""
         return self._positions is not None
 
     @abstractmethod

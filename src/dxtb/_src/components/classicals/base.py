@@ -47,7 +47,7 @@ class ClassicalABC(ABC):
 
     @abstractmethod
     def get_cache(
-        self, numbers: Tensor, ihelp: IndexHelper | None = None, **kwags: Any
+        self, numbers: Tensor, ihelp: IndexHelper | None = None, **kwargs: Any
     ) -> ComponentCache:
         """
         Store variables for energy calculation.

@@ -123,14 +123,15 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         "--with-timer",
         action="store_true",
         help=(
-            "Run test with timer enabled. Due to missing teardowns, test pollution occurs for failing tests."
+            "Run test with timer enabled. Due to missing teardowns, "
+            "test pollution occurs for failing tests."
         ),
     )
 
 
 def pytest_configure(config: pytest.Config) -> None:
     """Pytest configuration hook."""
-    global DEVICE, FAST_MODE
+    global DEVICE, FAST_MODE  # pylint: disable=global-statement
 
     if config.getoption("--detect-anomaly"):
         torch.autograd.anomaly_mode.set_detect_anomaly(True)

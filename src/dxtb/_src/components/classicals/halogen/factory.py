@@ -24,9 +24,10 @@ class.
 from __future__ import annotations
 
 import torch
+from tad_mctc.convert import any_to_tensor
 
 from dxtb._src.constants import xtb
-from dxtb._src.param import Param, get_elem_param
+from dxtb._src.param import Param, ParamModule
 from dxtb._src.typing import DD, Tensor, get_default_dtype
 
 from .hal import Halogen
@@ -35,9 +36,9 @@ __all__ = ["new_halogen"]
 
 
 def new_halogen(
-    numbers: Tensor,
-    par: Param,
-    cutoff: Tensor = torch.tensor(xtb.DEFAULT_XB_CUTOFF),
+    unique: Tensor,
+    par: Param | ParamModule,
+    cutoff: Tensor | float | int | None = None,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> Halogen | None:
@@ -46,9 +47,9 @@ def new_halogen(
 
     Parameters
     ----------
-    numbers : Tensor
-        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
-    par : Param
+    unique : Tensor
+        Unique elements in the system (shape: ``(nunique,)``).
+    par : Param | ParamModule
         Representation of an extended tight-binding model.
     cutoff : Tensor
         Real space cutoff for halogen bonding interactions (default: 20.0).
@@ -64,21 +65,25 @@ def new_halogen(
     ValueError
         If parametrization does not contain a halogen bond correction.
     """
-
-    if hasattr(par, "halogen") is False or par.halogen is None:
-        return None
-
     dd: DD = {
         "device": device,
         "dtype": dtype if dtype is not None else get_default_dtype(),
     }
 
-    damp = torch.tensor(par.halogen.classical.damping, **dd)
-    rscale = torch.tensor(par.halogen.classical.rscale, **dd)
+    # compatibility with previous version based on `Param`
+    if not isinstance(par, ParamModule):
+        par = ParamModule(par, **dd)
 
-    unique = torch.unique(numbers)
-    bond_strength = get_elem_param(
-        unique, par.element, "xbond", pad_val=0, **dd
+    if "halogen" not in par or par.is_none("halogen"):
+        return None
+
+    if cutoff is None:
+        cutoff = xtb.DEFAULT_XB_CUTOFF
+
+    return Halogen(
+        damp=par.get("halogen.classical.damping"),
+        rscale=par.get("halogen.classical.rscale"),
+        bond_strength=par.get_elem_param(unique, "xbond", pad_val=0),
+        cutoff=any_to_tensor(cutoff, **dd),
+        **dd,
     )
-
-    return Halogen(damp, rscale, bond_strength, cutoff=cutoff, **dd)

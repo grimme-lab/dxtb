@@ -32,7 +32,8 @@ from dxtb._src.typing import DD
 
 
 def test_none() -> None:
-    dummy = torch.tensor(0.0)
+    """Test if `None` is returned if no ES2 is set."""
+    dummy = torch.tensor([0.0])
     par = GFN1_XTB.model_copy(deep=True)
 
     par.charge = None
@@ -43,6 +44,7 @@ def test_none() -> None:
 
 
 def test_cache_input_fail() -> None:
+    """Test failure upon invalid cache input."""
     numbers = torch.tensor([3, 1])
     positions = torch.randn((2, 3))
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
@@ -61,6 +63,7 @@ def test_cache_input_fail() -> None:
 
 
 def test_fail_store() -> None:
+    """Test failure upon non-existent restoring cache."""
     numbers = torch.tensor([3, 1])
     positions = torch.randn((2, 3))
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
@@ -74,6 +77,7 @@ def test_fail_store() -> None:
 
 
 def test_grad_fail() -> None:
+    """Test failure upon invalid gradient input."""
     numbers = torch.tensor([3, 1])
     positions = torch.randn((2, 3), requires_grad=True)
     charges = torch.randn(6)
@@ -97,7 +101,8 @@ def test_grad_fail() -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float16, torch.float32, torch.float64])
 def test_change_type(dtype: torch.dtype) -> None:
-    cls = es2.new_es2(torch.tensor(0.0), GFN1_XTB)
+    """Test changing the `dtype` of the ES2 class."""
+    cls = es2.new_es2(torch.tensor([0.0]), GFN1_XTB)
     assert cls is not None
 
     cls = cls.type(dtype)
@@ -105,7 +110,8 @@ def test_change_type(dtype: torch.dtype) -> None:
 
 
 def test_change_type_fail() -> None:
-    cls = es2.new_es2(torch.tensor(0.0), GFN1_XTB)
+    """Test failure upon changing `dtype` incorrectly."""
+    cls = es2.new_es2(torch.tensor([0.0]), GFN1_XTB)
     assert cls is not None
 
     # trying to use setter
@@ -120,8 +126,9 @@ def test_change_type_fail() -> None:
 @pytest.mark.cuda
 @pytest.mark.parametrize("device_str", ["cpu", "cuda"])
 def test_change_device(device_str: str) -> None:
+    """Test changing the `device` of the ES2 class."""
     device = str_to_device(device_str)
-    cls = es2.new_es2(torch.tensor(0.0), GFN1_XTB)
+    cls = es2.new_es2(torch.tensor([0.0]), GFN1_XTB)
     assert cls is not None
 
     cls = cls.to(device)
@@ -129,7 +136,8 @@ def test_change_device(device_str: str) -> None:
 
 
 def test_change_device_fail() -> None:
-    cls = es2.new_es2(torch.tensor(0.0), GFN1_XTB)
+    """Test failure upon changing `device` incorrectly."""
+    cls = es2.new_es2(torch.tensor([0.0]), GFN1_XTB)
     assert cls is not None
 
     # trying to use setter
@@ -138,7 +146,8 @@ def test_change_device_fail() -> None:
 
 
 def test_fail_shell_resolved() -> None:
-    cls = es2.new_es2(torch.tensor(0.0), GFN1_XTB, shell_resolved=False)
+    """Test failure if `shell_resolved` is set to `False`."""
+    cls = es2.new_es2(torch.tensor([0.0]), GFN1_XTB, shell_resolved=False)
     assert cls is not None
 
     numbers = torch.tensor([6, 1])
@@ -150,7 +159,8 @@ def test_fail_shell_resolved() -> None:
 
 
 def test_zeros_atom_resolved() -> None:
-    cls = es2.new_es2(torch.tensor(0.0), GFN1_XTB, shell_resolved=False)
+    """Test if atom-resolved ES2 returns zero."""
+    cls = es2.new_es2(torch.tensor([0.0]), GFN1_XTB, shell_resolved=False)
     assert cls is not None
 
     n = torch.tensor([6, 1])
@@ -163,7 +173,8 @@ def test_zeros_atom_resolved() -> None:
 
 
 def test_zeros_shell_resolved() -> None:
-    cls = es2.new_es2(torch.tensor(0.0), GFN1_XTB)
+    """Test if shell-resolved ES2 returns zero."""
+    cls = es2.new_es2(torch.tensor([0.0]), GFN1_XTB)
     assert cls is not None
 
     n = torch.tensor([6, 1])

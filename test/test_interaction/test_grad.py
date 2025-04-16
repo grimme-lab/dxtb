@@ -54,7 +54,8 @@ def gradchecker(
     # setup
     ihelp = IndexHelper.from_numbers(numbers, par)
     ilist = InteractionList(
-        new_es2(numbers, par, **dd), new_es3(numbers, par, **dd)
+        new_es2(torch.unique(numbers), par, **dd),
+        new_es3(torch.unique(numbers), par, **dd),
     )
 
     # variables to be differentiated
@@ -116,7 +117,8 @@ def gradchecker_batch(
     # setup
     ihelp = IndexHelper.from_numbers(numbers, par)
     ilist = InteractionList(
-        new_es2(numbers, par, **dd), new_es3(numbers, par, **dd)
+        new_es2(torch.unique(numbers), par, **dd),
+        new_es3(torch.unique(numbers), par, **dd),
     )
 
     # variables to be differentiated

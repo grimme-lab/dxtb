@@ -42,6 +42,7 @@ sample_list = ["LiH", "SiH4", "MB16_43_01"]
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
+    """Test repulsion Hessian for single sample."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 100
 
@@ -56,7 +57,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    rep = new_repulsion(numbers, par, **dd)
+    rep = new_repulsion(torch.unique(numbers), par, **dd)
     assert rep is not None
 
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -79,6 +80,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", sample_list)
 def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
+    """Test repulsion Hessian for multiple samples."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 100
 
@@ -123,7 +125,7 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
         ]
     )
 
-    rep = new_repulsion(numbers, par, **dd)
+    rep = new_repulsion(torch.unique(numbers), par, **dd)
     assert rep is not None
 
     ihelp = IndexHelper.from_numbers(numbers, par)

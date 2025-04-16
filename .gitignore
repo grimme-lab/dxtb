@@ -206,6 +206,7 @@ data/archive
 data/*/benchmark*
 data/*/processed*
 data/misc
+*.h5
 
 # exclude some sample and reaction files for tests
 !test/test_singlepoint/**/coord

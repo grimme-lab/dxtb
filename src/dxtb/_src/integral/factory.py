@@ -20,6 +20,7 @@ Factories
 
 Factory functions for integral classes.
 """
+# pylint: disable=import-outside-toplevel
 
 from __future__ import annotations
 
@@ -27,7 +28,7 @@ import torch
 
 from dxtb import IndexHelper
 from dxtb._src.constants import labels
-from dxtb._src.param import Param
+from dxtb._src.param import Param, ParamModule
 from dxtb._src.typing import TYPE_CHECKING, Any, Tensor
 
 if TYPE_CHECKING:
@@ -46,18 +47,22 @@ __all__ = ["new_hcore", "new_overlap", "new_dipint", "new_quadint"]
 
 def new_hcore(
     numbers: Tensor,
-    par: Param,
+    par: Param | ParamModule,
     ihelp: IndexHelper,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> GFN1Hamiltonian | GFN2Hamiltonian:
-    if par.meta is None:
+    """Create Core Hamiltonian instance based on parametrization."""
+    if not isinstance(par, ParamModule):
+        par = ParamModule(par, device=device, dtype=dtype)
+
+    if par.is_none("meta"):
         raise ValueError(
             "The `meta` information field is missing in the parametrization. "
             "No xTB core Hamiltonian can be selected and instantiated."
         )
 
-    if par.meta.name is None:
+    if par.is_none("meta.name"):
         raise ValueError(
             "The `name` field of the meta information is missing in the "
             "parametrization. No xTB core Hamiltonian can be selected and "
@@ -76,15 +81,14 @@ def new_hcore(
 def new_hcore_gfn1(
     numbers: Tensor,
     ihelp: IndexHelper,
-    par: Param | None = None,
+    par: Param | ParamModule | None = None,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> GFN1Hamiltonian:
-    # pylint: disable=import-outside-toplevel
+    """Create GFN1 Core Hamiltonian instance."""
     from dxtb._src.xtb.gfn1 import GFN1Hamiltonian as Hamiltonian
 
     if par is None:
-        # pylint: disable=import-outside-toplevel
         from dxtb import GFN1_XTB as par
 
     return Hamiltonian(numbers, par, ihelp, device=device, dtype=dtype)
@@ -93,15 +97,14 @@ def new_hcore_gfn1(
 def new_hcore_gfn2(
     numbers: Tensor,
     ihelp: IndexHelper,
-    par: Param | None = None,
+    par: Param | ParamModule | None = None,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> GFN2Hamiltonian:
-    # pylint: disable=import-outside-toplevel
+    """Create GFN2 Core Hamiltonian instance."""
     from dxtb._src.xtb.gfn2 import GFN2Hamiltonian as Hamiltonian
 
     if par is None:
-        # pylint: disable=import-outside-toplevel
         from dxtb import GFN2_XTB as par
 
     return Hamiltonian(numbers, par, ihelp, device=device, dtype=dtype)
@@ -116,6 +119,7 @@ def new_overlap(
     dtype: torch.dtype | None = None,
     **kwargs: Any,
 ) -> OverlapIntegral:
+    """Create overlap integral instance."""
     # Determine which integral class to instantiate based on the type
     if driver == labels.INTDRIVER_LIBCINT:
         return new_overlap_libcint(device=device, dtype=dtype, **kwargs)
@@ -135,7 +139,7 @@ def new_overlap_libcint(
     dtype: torch.dtype | None = None,
     **kwargs: Any,
 ) -> OverlapLibcint:
-    # pylint: disable=import-outside-toplevel
+    """Create libcint-based overlap integral."""
     from .driver.libcint import OverlapLibcint as Overlap
 
     if kwargs.pop("force_cpu_for_libcint", True):
@@ -149,7 +153,7 @@ def new_overlap_pytorch(
     dtype: torch.dtype | None = None,
     **kwargs: Any,
 ) -> OverlapPytorch:
-    # pylint: disable=import-outside-toplevel
+    """Create PyTorch-based overlap integral."""
     from .driver.pytorch import OverlapPytorch as Overlap
 
     return Overlap(device=device, dtype=dtype, **kwargs)
@@ -164,6 +168,7 @@ def new_dipint(
     dtype: torch.dtype | None = None,
     **kwargs: Any,
 ) -> DipoleIntegral:
+    """Create dipole integral instance."""
     # Determine which integral class to instantiate based on the type
     if driver == labels.INTDRIVER_LIBCINT:
         return new_dipint_libcint(device=device, dtype=dtype, **kwargs)
@@ -183,7 +188,7 @@ def new_dipint_libcint(
     dtype: torch.dtype | None = None,
     **kwargs: Any,
 ) -> DipoleLibcint:
-    # pylint: disable=import-outside-toplevel
+    """Create libcint-based dipole integral."""
     from .driver.libcint import DipoleLibcint as _Dipole
 
     if kwargs.pop("force_cpu_for_libcint", True):
@@ -197,7 +202,7 @@ def new_dipint_pytorch(
     dtype: torch.dtype | None = None,
     **kwargs: Any,
 ) -> DipolePytorch:
-    # pylint: disable=import-outside-toplevel
+    """Create PyTorch-based dipole integral."""
     from .driver.pytorch import DipolePytorch as _Dipole
 
     return _Dipole(device=device, dtype=dtype, **kwargs)
@@ -212,6 +217,7 @@ def new_quadint(
     dtype: torch.dtype | None = None,
     **kwargs: Any,
 ) -> QuadrupoleIntegral:
+    """Create quadrupole integral instance."""
     # Determine which integral class to instantiate based on the type
     if driver == labels.INTDRIVER_LIBCINT:
         return new_quadint_libcint(device=device, dtype=dtype, **kwargs)
@@ -231,7 +237,7 @@ def new_quadint_libcint(
     dtype: torch.dtype | None = None,
     **kwargs: Any,
 ) -> QuadrupoleLibcint:
-    # pylint: disable=import-outside-toplevel
+    """Create libcint-based quadrupole integral."""
     from .driver.libcint import QuadrupoleLibcint as Quadrupole
 
     if kwargs.pop("force_cpu_for_libcint", True):
@@ -245,7 +251,7 @@ def new_quadint_pytorch(
     dtype: torch.dtype | None = None,
     **kwargs: Any,
 ) -> QuadrupolePytorch:
-    # pylint: disable=import-outside-toplevel
+    """Create PyTorch-based quadrupole integral."""
     from .driver.pytorch import QuadrupolePytorch as Quadrupole
 
     return Quadrupole(device=device, dtype=dtype, **kwargs)

@@ -27,6 +27,11 @@ import torch
 
 from dxtb import labels
 
+# Data types
+
+DEFAULT_BASIS_INT = torch.uint8
+"""Default data type for basis integrals."""
+
 # General
 
 STRICT = False

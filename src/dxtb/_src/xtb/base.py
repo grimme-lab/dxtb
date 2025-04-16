@@ -31,7 +31,7 @@ from tad_mctc.data.radii import ATOMIC as ATOMIC_RADII
 from tad_mctc.units import EV2AU
 
 from dxtb import IndexHelper
-from dxtb._src.param import Param
+from dxtb._src.param import Param, ParamModule
 from dxtb._src.typing import CNFunction, PathLike, Tensor, TensorLike
 
 from .abc import HamiltonianABC
@@ -56,9 +56,6 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
     unique: Tensor
     """Unique species of the system."""
 
-    par: Param
-    """Representation of parametrization of xtb model."""
-
     ihelp: IndexHelper
     """Helper class for indexing."""
 
@@ -82,6 +79,8 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
 
     en: Tensor
     """Pauling electronegativity of each species."""
+    enscale: Tensor
+    """Electronegativity scaling factor."""
     rad: Tensor
     """Van-der-Waals radius of each species."""
 
@@ -91,7 +90,6 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
     __slots__ = [
         "numbers",
         "unique",
-        "par",
         "ihelp",
         "hscale",
         "kcn",
@@ -101,13 +99,14 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
         "shpoly",
         "valence",
         "en",
+        "enscale",
         "rad",
     ]
 
     def __init__(
         self,
         numbers: Tensor,
-        par: Param,
+        par: Param | ParamModule,
         ihelp: IndexHelper,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
@@ -119,9 +118,14 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
         if any(tensor.device != self.device for tensor in (numbers, ihelp)):
             raise ValueError("All input tensors must be on the same device")
 
+        if not isinstance(par, ParamModule):
+            par = ParamModule(par, **self.dd)
+
+        if par.is_none("hamiltonian"):
+            raise RuntimeError("Parametrization does not specify Hamiltonian.")
+
         self.numbers = numbers
         self.unique = torch.unique(numbers)
-        self.par = par
         self.ihelp = ihelp
 
         self.label = self.__class__.__name__
@@ -129,27 +133,26 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
 
         # Initialize Hamiltonian parameters
 
-        if self.par.hamiltonian is None:
-            raise RuntimeError("Parametrization does not specify Hamiltonian.")
-
         # atom-resolved parameters
         self.rad = ATOMIC_RADII.to(**self.dd)[self.unique]
-        self.en = self._get_elem_param("en")
+        self.en = par.get_elem_param(self.unique, "en", pad_val=PAD)
+        self.enscale = par.get("hamiltonian.xtb.enscale")
 
         # shell-resolved element parameters
-        self.kcn = self._get_elem_param("kcn")
-        self.selfenergy = self._get_elem_param("levels")
-        self.shpoly = self._get_elem_param("shpoly")
-        self.refocc = self._get_elem_param("refocc")
-        self.valence = self._get_elem_valence()
+        self.kcn = par.get_elem_param(self.unique, "kcn", pad_val=PAD)
+        self.selfenergy = par.get_elem_param(self.unique, "levels", pad_val=PAD)
+        self.shpoly = par.get_elem_param(self.unique, "shpoly", pad_val=PAD)
+        self.refocc = par.get_elem_param(self.unique, "refocc", pad_val=PAD)
+        self.valence = self._get_elem_valence(par)
 
         # shell-pair-resolved pair parameters
-        self.hscale = self._get_hscale()
-        self.kpair = self._get_pair_param(self.par.hamiltonian.xtb.kpair)
+        self.hscale = self._get_hscale(par)
+        self.kpair = par.get_pair_param(self.unique.tolist())
 
         # unit conversion
         self.selfenergy = self.selfenergy * EV2AU
         self.kcn = self.kcn * EV2AU
+
         # dtype should always be correct as it always uses self.dtype
         if any(
             tensor.dtype != self.dtype
@@ -185,6 +188,7 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
 
     @property
     def matrix(self) -> Tensor | None:
+        """Hamiltonian matrix."""
         return self._matrix
 
     @matrix.setter
@@ -192,42 +196,22 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
         self._matrix = mat
 
     def clear(self) -> None:
-        """
-        Clear the integral matrix.
-        """
+        """Clear the integral matrix."""
         self._matrix = None
 
     @property
     def requires_grad(self) -> bool:
+        """Whether the Hamiltonian matrix will be differentiated."""
         if self._matrix is None:
             return False
 
         return self._matrix.requires_grad
 
-    def _get_elem_param(self, key: str) -> Tensor:
+    def _get_elem_valence(self, _: ParamModule) -> Tensor:
         """
-        Obtain element parameters for species.
-
-        Parameters
-        ----------
-        key : str
-            Name of the parameter to be retrieved.
-
-        Returns
-        -------
-        Tensor
-            Parameters for each species.
-        """
-        # pylint: disable=import-outside-toplevel
-        from dxtb._src.param import get_elem_param
-
-        return get_elem_param(
-            self.unique, self.par.element, key, pad_val=PAD, **self.dd
-        )
-
-    def _get_elem_valence(self) -> Tensor:
-        """
-        Obtain a mask for valence and non-valence shells. This is only required for GFN1-xTB's second hydrogen s-function. For GFN2-xTB, this is a dummy method, i.e., the mask is always ``True``.
+        Obtain a mask for valence and non-valence shells. This is only required
+        for GFN1-xTB's second hydrogen s-function. For GFN2-xTB, this is a
+        dummy method, i.e., the mask is always ``True``.
 
         Returns
         -------
@@ -237,25 +221,6 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
         return torch.ones(
             len(self.ihelp.unique_angular), device=self.device, dtype=torch.bool
         )
-
-    def _get_pair_param(self, pair: dict[str, float]) -> Tensor:
-        """
-        Obtain element-pair-specific parameters for all species.
-
-        Parameters
-        ----------
-        pair : dict[str, float]
-            Pair parametrization.
-
-        Returns
-        -------
-        Tensor
-            Pair parameters for each species.
-        """
-        # pylint: disable=import-outside-toplevel
-        from dxtb._src.param import get_pair_param
-
-        return get_pair_param(self.unique.tolist(), pair, **self.dd)
 
     def get_occupation(self) -> Tensor:
         """
@@ -305,9 +270,6 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
         Tensor
             Hamiltonian (always symmetric).
         """
-        if self.par.hamiltonian is None:
-            raise RuntimeError("No Hamiltonian specified.")
-
         # masks
         mask_atom_diagonal = real_pairs(self.numbers, mask_diagonal=True)
         mask_shell = real_pairs(
@@ -358,7 +320,7 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
         var_x = torch.where(
             mask_shell_diagonal,
             1.0
-            + self.par.hamiltonian.xtb.enscale
+            + self.enscale
             * torch.pow(en.unsqueeze(-1) - en.unsqueeze(-2), 2.0),
             zero,
         )

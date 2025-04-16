@@ -60,10 +60,11 @@ if tuple(map(int, pydantic_version.split("."))) < (2, 0, 0):  # pragma: no cover
         f"(version {pydantic_version} installed)."
     )
 
-
+# pylint: disable=wrong-import-position
 from .base import Param
 from .gfn1 import GFN1_XTB
 from .gfn2 import GFN2_XTB
+from .module import ParamModule
 from .utils import *
 
-__all__ = ["Param", "GFN1_XTB", "GFN2_XTB"]
+__all__ = ["GFN1_XTB", "GFN2_XTB", "Param", "ParamModule"]

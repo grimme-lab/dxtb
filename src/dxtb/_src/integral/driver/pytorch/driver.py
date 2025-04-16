@@ -64,6 +64,14 @@ class BaseIntDriverPytorch(PytorchImplementation, IntDriver):
     eval_ovlp_grad: OverlapFunction
     """Function for overlap gradient calculation."""
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._positions: Tensor
+        self._positions_single: Tensor
+        self._positions_batch: list[Tensor]
+        self._basis_batch: list[Basis]
+        self._ihelp_batch: list[IndexHelper]
+
     def setup(self, positions: Tensor, **kwargs: Any) -> None:
         """
         Run the `libcint`-specific driver setup.
@@ -87,9 +95,9 @@ class BaseIntDriverPytorch(PytorchImplementation, IntDriver):
             self._positions_single = positions
         else:
 
-            self._positions_batch: list[Tensor] = []
-            self._basis_batch: list[Basis] = []
-            self._ihelp_batch: list[IndexHelper] = []
+            self._positions_batch = []
+            self._basis_batch = []
+            self._ihelp_batch = []
             for _batch in range(self.numbers.shape[0]):
                 # POSITIONS
                 if self.ihelp.batch_mode == 1:

@@ -47,7 +47,7 @@ def test_energy(dtype: torch.dtype) -> None:
         **dd,
     )
 
-    aes = new_aes2(numbers, GFN2_XTB, **dd)
+    aes = new_aes2(torch.unique(numbers), GFN2_XTB, **dd)
     assert aes is not None
 
     ihelp = IndexHelper.from_numbers(numbers, GFN2_XTB)
@@ -116,7 +116,7 @@ def test_potential(dtype: torch.dtype) -> None:
         **dd,
     )
 
-    aes = new_aes2(numbers, GFN2_XTB, **dd)
+    aes = new_aes2(torch.unique(numbers), GFN2_XTB, **dd)
     assert aes is not None
 
     ihelp = IndexHelper.from_numbers(numbers, GFN2_XTB)

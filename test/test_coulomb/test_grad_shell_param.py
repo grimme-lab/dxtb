@@ -53,22 +53,14 @@ def gradcheck_param(dtype: torch.dtype, name: str) -> tuple[
 
     # variables to be differentiated
     _hubbard = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "gam",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
+        torch.unique(numbers), par.element, "gam", pad_val=0, **dd
     )
+    _hubbard.requires_grad_(True)
 
     _lhubbard = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "lgam",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
+        torch.unique(numbers), par.element, "lgam", pad_val=0, **dd
     )
+    _lhubbard.requires_grad_(True)
 
     assert par.charge is not None
     _gexp = torch.tensor(par.charge.effective.gexp, **dd, requires_grad=True)
@@ -157,22 +149,14 @@ def gradcheck_param_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
 
     # variables to be differentiated
     _hubbard = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "gam",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
+        torch.unique(numbers), par.element, "gam", pad_val=0, **dd
     )
+    _hubbard.requires_grad_(True)
 
     _lhubbard = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "lgam",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
+        torch.unique(numbers), par.element, "lgam", pad_val=0, **dd
     )
+    _lhubbard.requires_grad_(True)
 
     assert par.charge is not None
     _gexp = torch.tensor(par.charge.effective.gexp, **dd, requires_grad=True)
