@@ -280,13 +280,13 @@ class Param(BaseModel):
         with open(filepath, encoding="utf-8") as fd:
             return cls(**yaml.safe_load(fd))
 
-    def to_yaml_file(self, filepath: Path, **kwargs: Any) -> None:
+    def to_yaml_file(self, filepath: PathLike, **kwargs: Any) -> None:
         """
         Save the parametrization to a YAML file.
 
         Parameters
         ----------
-        filepath : Path
+        filepath : PathLike
             The file path to save the parametrization data.
 
         Raises

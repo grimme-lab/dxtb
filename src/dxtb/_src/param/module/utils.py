@@ -491,11 +491,7 @@ class ParamElementsPairsMixin(ParamShortcutMixin):
 
         return torch.stack(vals_list)
 
-    def get_elem_pqn(
-        self,
-        unique: Tensor,
-        pad_val: int = -1,
-    ) -> Tensor:
+    def get_elem_pqn(self, unique: Tensor, pad_val: int = -1) -> Tensor:
         """
         Obtain principal quantum numbers of the shells of all atoms.
 

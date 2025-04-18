@@ -30,7 +30,7 @@ import torch
 from torch import nn
 
 from dxtb._src.constants.defaults import DEFAULT_BASIS_INT
-from dxtb._src.typing import DD, Any
+from dxtb._src.typing import DD, Any, PathLike
 from dxtb._src.utils import is_float, is_float_list, is_int_list, is_integer
 
 from ..base import Param
@@ -69,10 +69,9 @@ class ParamModule(nn.Module, ParamElementsPairsMixin):
         super().__init__()
 
         # Recursively convert the dictionary into a parameter tree.
-        self.parameter_tree = _auto_convert(
-            par.clean_model_dump(), device, dtype
-        )
+        self.parameter_tree = _convert(par.clean_model_dump(), device, dtype)
 
+        # Dummy tensor to get the device and dtype.
         self.register_buffer(
             "dummy", torch.empty(0, device=device, dtype=dtype)
         )
@@ -100,6 +99,99 @@ class ParamModule(nn.Module, ParamElementsPairsMixin):
         """
         return self.parameter_tree
 
+    # Conversion
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Revert the differentiable parameter tree into a plain Python dictionary.
+
+        This method recursively unwraps all parameter wrappers (e.g.
+        :class:`ParameterModule` and :class:`NonNumericValue`) and converts any
+        tensors to Python scalars (if zero-dimensional) or lists (if
+        higher-dimensional). The resulting dictionary mirrors the original
+        model structure, and can be serialized to different formats without
+        loss of information.
+
+        Returns
+        -------
+        dict[str, Any]
+            A dictionary representation of the differentiable parameters.
+        """
+
+        return _revert(self.parameter_tree)
+
+    def to_pydantic(self) -> Param:
+        """
+        Converts the parameter tree back to a Pydantic model.
+
+        Returns
+        -------
+        Param
+            A Pydantic model representation of the differentiable parameters.
+        """
+        return Param(**self.to_dict())
+
+    # Convert to file formats
+
+    def to_file(self, filepath: PathLike, **kwargs) -> None:
+        """
+        Save the parametrization to a file. The file format is determined by the
+        file extension. Supported formats are JSON, TOML, and YAML.
+
+        Parameters
+        ----------
+        filepath : PathLike
+            The file path to save the parametrization data.
+
+        Raises
+        ------
+        ValueError
+            If the file format is not supported.
+        """
+        self.to_pydantic().to_file(filepath, **kwargs)
+
+    def to_json_file(self, filename: PathLike, **kwargs: Any) -> None:
+        """
+        Converts the parameter tree to a JSON file.
+
+        Parameters
+        ----------
+        filename : PathLike
+            The name of the JSON file to save the parameters.
+        kwargs : dict
+            Additional keyword arguments for the dump function of the
+            JSON writer.
+        """
+        self.to_pydantic().to_json_file(filename, **kwargs)
+
+    def to_toml_file(self, filename: PathLike, **kwargs: Any) -> None:
+        """
+        Converts the parameter tree to a TOML file.
+
+        Parameters
+        ----------
+        filename : PathLike
+            The name of the TOML file to save the parameters.
+        kwargs : dict
+            Additional keyword arguments for the dump function of the
+            TOML writer.
+        """
+        self.to_pydantic().to_toml_file(filename, **kwargs)
+
+    def to_yaml_file(self, filename: PathLike, **kwargs: Any) -> None:
+        """
+        Converts the parameter tree to a YAML file.
+
+        Parameters
+        ----------
+        filename : PathLike
+            The name of the YAML file to save the parameters.
+        kwargs : dict
+            Additional keyword arguments for the dump function of the
+            YAML writer.
+        """
+        self.to_pydantic().to_yaml_file(filename, **kwargs)
+
     # Pretty-printing
 
     def __str__(self) -> str:  # pragma: no cover
@@ -109,7 +201,7 @@ class ParamModule(nn.Module, ParamElementsPairsMixin):
         return str(self)
 
 
-def _auto_convert(
+def _convert(
     value: Any,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
@@ -148,7 +240,7 @@ def _auto_convert(
     if isinstance(value, dict):
         out = nn.ModuleDict()
         for key, v in value.items():
-            out[key] = _auto_convert(v, device, dtype)
+            out[key] = _convert(v, device, dtype)
         return out
 
     # If value is a list...
@@ -165,7 +257,7 @@ def _auto_convert(
         converted: list[nn.Module] = []
         all_modules = True
         for item in value:
-            conv_item = _auto_convert(item, device, dtype)
+            conv_item = _convert(item, device, dtype)
             if not isinstance(conv_item, nn.Module):
                 all_modules = False
             converted.append(conv_item)
@@ -186,3 +278,64 @@ def _auto_convert(
 
     # For any other type, wrap in NonNumericValue.
     return NonNumericValue(value)
+
+
+def _revert(module: Any) -> Any:
+    """
+    Recursively reverts a differentiable parameter tree into a plain Python
+    dictionary.
+    This function unwraps all parameter wrappers (e.g. :class:`ParameterModule`
+    and :class:`NonNumericValue`) and converts any tensors to Python scalars
+    (if zero-dimensional) or lists (if higher-dimensional). The resulting
+    dictionary mirrors the original model structure, and can be serialized to
+    different formats without loss of information.
+
+    Parameters
+    ----------
+    module : Any
+        The input value to revert.
+
+    Returns
+    -------
+    Any
+        The value reverted by one level.
+    """
+    # If module is a ModuleDict, convert it to a dict.
+    if isinstance(module, nn.ModuleDict):
+        return {k: _revert(child) for k, child in module.items()}
+
+    # If module is a ModuleList, convert it to a list.
+    if isinstance(module, nn.ModuleList):
+        return [_revert(child) for child in module]
+
+    # If module is a ParameterModule, return its underlying tensor
+    # as a scalar or list.
+    if isinstance(module, ParameterModule):
+        if module.param.dim() == 0:
+            return module.param.item()
+        return module.param.tolist()
+
+    # If module is NonNumericValue, try to recursively revert its value.
+    if isinstance(module, NonNumericValue):
+        value = module.value
+        # If underlying value is nn.Module, process it recursively.
+        if isinstance(
+            value,
+            (
+                nn.ModuleDict,
+                nn.ModuleList,
+                ParameterModule,
+                NonNumericValue,
+            ),
+        ):
+            return _revert(value)
+        return value
+
+    # If it is tensor (unexpected), convert it.
+    if torch.is_tensor(module):
+        if module.dim() == 0:
+            return module.item()
+        return module.tolist()
+
+    # Otherwise, assume it is already a plain Python type.
+    return module
