@@ -121,8 +121,11 @@ def test_get_modulelist_and_wrong_index_type() -> None:
     diff = ParamModule(GFN1_XTB.model_copy(deep=True))
     shells = diff.get("element", "C", "shells", unwrapped=False)
     assert isinstance(shells, nn.ModuleList)
+
     # correct integer index
     item = diff.get("element", "C", "shells", 0)
+    assert isinstance(item, str)
+    assert item == "2s"
 
     # invalid string index for ModuleList
     with pytest.raises(TypeError):
