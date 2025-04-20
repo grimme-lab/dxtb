@@ -51,7 +51,7 @@ def test_small(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].to(**dd)
     ref = sample["energy"].to(**dd)
 
-    xb = new_halogen(numbers, par, **dd)
+    xb = new_halogen(torch.unique(numbers), par, cutoff=50, **dd)
     if xb is None:
         assert False
 
@@ -79,7 +79,7 @@ def test_large(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].to(**dd)
     ref = sample["energy"].to(**dd)
 
-    xb = new_halogen(numbers, par, **dd)
+    xb = new_halogen(torch.unique(numbers), par, **dd)
     if xb is None:
         assert False
 
@@ -101,7 +101,7 @@ def test_no_xb(dtype: torch.dtype) -> None:
     positions = sample["positions"].to(**dd)
     ref = sample["energy"].to(**dd)
 
-    xb = new_halogen(numbers, par, **dd)
+    xb = new_halogen(torch.unique(numbers), par, **dd)
     if xb is None:
         assert False
 
@@ -113,6 +113,7 @@ def test_no_xb(dtype: torch.dtype) -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_beyond_cutoff(dtype: torch.dtype) -> None:
+    """Test system with halogen bonds but outside cutoff radius."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     numbers = torch.tensor([7, 35], device=DEVICE)
@@ -124,7 +125,7 @@ def test_beyond_cutoff(dtype: torch.dtype) -> None:
         **dd,
     )
 
-    xb = new_halogen(numbers, par, **dd)
+    xb = new_halogen(torch.unique(numbers), par, **dd)
     if xb is None:
         assert False
 
@@ -138,6 +139,7 @@ def test_beyond_cutoff(dtype: torch.dtype) -> None:
 @pytest.mark.parametrize("name1", ["br2nh3", "br2och2"])
 @pytest.mark.parametrize("name2", ["finch", "tmpda"])
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    """Test batch of structures with halogen bond correction."""
     tol = sqrt(torch.finfo(dtype).eps)
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
@@ -162,7 +164,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         ],
     )
 
-    xb = new_halogen(numbers, par, **dd)
+    xb = new_halogen(torch.unique(numbers), par, **dd)
     if xb is None:
         assert False
 

@@ -24,8 +24,8 @@ import pytest
 import torch
 from tad_mctc.exceptions import DtypeError
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator, labels
+from dxtb import GFN1_XTB, Calculator, labels
+from dxtb._src.constants.defaults import DEFAULT_BASIS_INT
 from dxtb._src.timing import timer
 from dxtb.typing import DD
 
@@ -34,12 +34,13 @@ from ..conftest import DEVICE
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_fail(dtype: torch.dtype) -> None:
+    """Test failure of calculator setup with wrong dtype for numbers."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     numbers = torch.tensor([6, 1, 1, 1, 1], **dd)
 
     with pytest.raises(DtypeError):
-        Calculator(numbers, par, opts={"verbosity": 0})
+        Calculator(numbers, GFN1_XTB, opts={"verbosity": 0})
 
     # because of the exception, the timer for the setup is never stopped
     timer.reset()
@@ -47,12 +48,13 @@ def test_fail(dtype: torch.dtype) -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_fail_charge_single(dtype: torch.dtype) -> None:
+    """Test failure of calculator setup with wrong shape for charge."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     numbers = torch.tensor([3, 1], device=DEVICE)
     positions = torch.zeros(2, 3, **dd)
 
-    calc = Calculator(numbers, par, opts={"verbosity": 0})
+    calc = Calculator(numbers, GFN1_XTB, opts={"verbosity": 0})
 
     # charge must be a scalar for single structure
     with pytest.raises(ValueError) as excinfo:
@@ -64,12 +66,13 @@ def test_fail_charge_single(dtype: torch.dtype) -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_fail_charge_batch(dtype: torch.dtype) -> None:
+    """Test failure of calculator setup with wrong shape for charge."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     numbers = torch.tensor([[3, 1], [3, 1]], device=DEVICE)
     positions = torch.zeros(2, 2, 3, **dd)
 
-    calc = Calculator(numbers, par, opts={"verbosity": 0})
+    calc = Calculator(numbers, GFN1_XTB, opts={"verbosity": 0})
     with pytest.raises(ValueError) as excinfo:
         charge = torch.tensor([[0.0], [0.0]], **dd)
         calc.singlepoint(positions, chrg=charge)
@@ -84,6 +87,7 @@ def test_fail_charge_batch(dtype: torch.dtype) -> None:
 
 
 def run_asserts(c: Calculator, dtype: torch.dtype) -> None:
+    """Helper function to run asserts on the calculator."""
     assert c.dtype == dtype
     assert c.classicals.dtype == dtype
     assert c.interactions.dtype == dtype
@@ -102,9 +106,10 @@ def run_asserts(c: Calculator, dtype: torch.dtype) -> None:
     "int_driver", [labels.INTDRIVER_LIBCINT, labels.INTDRIVER_AUTOGRAD]
 )
 def test_change_type(int_driver: str) -> None:
+    """Test changing the `dtype` of the calculator class."""
     numbers = torch.tensor([6, 1, 1, 1, 1])
     calc = Calculator(
-        numbers, par, opts={"int_driver": int_driver}, dtype=torch.double
+        numbers, GFN1_XTB, opts={"int_driver": int_driver}, dtype=torch.double
     )
 
     calc = calc.type(torch.float32)
@@ -117,6 +122,7 @@ def test_change_type(int_driver: str) -> None:
     "int_driver", [labels.INTDRIVER_LIBCINT, labels.INTDRIVER_AUTOGRAD]
 )
 def test_change_type_after_energy(int_driver: str) -> None:
+    """Test changing the `dtype` of calculator after energy calculation."""
     dtype = torch.float64
 
     numbers = torch.tensor([1, 1])
@@ -124,7 +130,7 @@ def test_change_type_after_energy(int_driver: str) -> None:
 
     calc_64 = Calculator(
         numbers,
-        par,
+        GFN1_XTB,
         dtype=dtype,
         opts={"int_driver": int_driver, "verbosity": 0},
     )
@@ -135,8 +141,8 @@ def test_change_type_after_energy(int_driver: str) -> None:
     # extra asserts on initialized
     bas = calc_64.integrals.mgr.driver.basis
     assert bas.dtype == dtype
-    assert bas.ngauss.dtype == torch.uint8
-    assert bas.pqn.dtype == torch.uint8
+    assert bas.ngauss.dtype == DEFAULT_BASIS_INT
+    assert bas.pqn.dtype == DEFAULT_BASIS_INT
     assert bas.slater.dtype == dtype
 
     assert calc_64.integrals.hcore is not None

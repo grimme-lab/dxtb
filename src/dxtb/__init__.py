@@ -20,6 +20,7 @@ dxtb
 
 A fully differentiable extended tight-binding package.
 """
+# pylint: disable=C0411,C0412,C0413,C0414
 
 # import timer first to get correct total time
 from dxtb._src.timing import timer, kill_timer
@@ -49,6 +50,7 @@ from dxtb._src.io import OutputHandler as OutputHandler
 from dxtb._src.basis.indexhelper import IndexHelper as IndexHelper
 from dxtb._src.calculators.base import Calculator
 from dxtb._src.param import Param as Param
+from dxtb._src.param import ParamModule as ParamModule
 from dxtb._src.param.gfn1 import GFN1_XTB as GFN1_XTB
 from dxtb._src.param.gfn2 import GFN2_XTB as GFN2_XTB
 
@@ -76,6 +78,8 @@ __all__ = [
     "Calculator",
     "GFN1_XTB",
     "GFN2_XTB",
+    "Param",
+    "ParamModule",
     #
     "IndexHelper",
     #

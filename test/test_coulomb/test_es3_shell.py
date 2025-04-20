@@ -28,10 +28,10 @@ from tad_mctc.batch import pack
 
 from dxtb import GFN2_XTB, IndexHelper
 from dxtb._src.components.interactions.coulomb import thirdorder as es3
-from dxtb._src.param.utils import get_elem_param
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE, NONDET_TOL
+from ..utils import get_elem_param
 from .samples import samples
 
 qat_samples = ["MB16_43_01", "MB16_43_02"]
@@ -50,7 +50,7 @@ def test_qsh_single(dtype: torch.dtype, name: str) -> None:
     ref = sample["es3_shell"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, GFN2_XTB)
-    es = es3.new_es3(numbers, GFN2_XTB, **dd)
+    es = es3.new_es3(torch.unique(numbers), GFN2_XTB, **dd)
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, ihelp=ihelp)
@@ -86,7 +86,7 @@ def test_qsh_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     ihelp = IndexHelper.from_numbers(numbers, GFN2_XTB)
-    es = es3.new_es3(numbers, GFN2_XTB, **dd)
+    es = es3.new_es3(torch.unique(numbers), GFN2_XTB, **dd)
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, ihelp=ihelp)
@@ -106,7 +106,7 @@ def test_qat_single(dtype: torch.dtype, name: str) -> None:
     ref = sample["es3_shell"].to(**dd)
 
     ihelp = IndexHelper.from_numbers(numbers, GFN2_XTB)
-    es = es3.new_es3(numbers, GFN2_XTB, **dd)
+    es = es3.new_es3(torch.unique(numbers), GFN2_XTB, **dd)
     assert es is not None
 
     # atom-resolved charge test
@@ -145,7 +145,7 @@ def test_qat_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     )
 
     ihelp = IndexHelper.from_numbers(numbers, GFN2_XTB)
-    es = es3.new_es3(numbers, GFN2_XTB, **dd)
+    es = es3.new_es3(torch.unique(numbers), GFN2_XTB, **dd)
     assert es is not None
 
     # atom-resolved charge test

@@ -28,7 +28,6 @@ from abc import abstractmethod
 
 import torch
 
-from dxtb import labels
 from dxtb._src.constants import defaults, labels
 from dxtb._src.typing import Any, Tensor, TensorLike
 from dxtb._src.xtb.base import BaseHamiltonian
@@ -111,6 +110,16 @@ class Integrals(IntegralContainer):
         self._quadrupole = _quadrupole
 
     def setup_driver(self, positions: Tensor, **kwargs: Any) -> None:
+        """
+        Setup the driver for the integrals.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        **kwargs : Any
+            Additional keyword arguments for the driver.
+        """
         self.mgr.setup_driver(positions, **kwargs)
 
     # Core Hamiltonian
@@ -167,6 +176,19 @@ class Integrals(IntegralContainer):
         self.checks()
 
     def build_overlap(self, positions: Tensor, **kwargs: Any) -> Tensor:
+        """
+        Build the overlap integral (shape: ``(..., nao, nao)``).
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+
+        Returns
+        -------
+        Tensor
+            Overlap integral of shape ``(..., nao, nao)``.
+        """
         # in case CPU is forced for libcint, move positions to CPU
         if self.mgr.force_cpu_for_libcint is True:
             if positions.device != torch.device("cpu"):
@@ -224,6 +246,19 @@ class Integrals(IntegralContainer):
         return self.overlap.matrix
 
     def grad_overlap(self, positions: Tensor, **kwargs) -> Tensor:
+        """
+        Calculate the gradient of the overlap integral.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+
+        Returns
+        -------
+        Tensor
+            Gradient of the overlap integral (shape: ``(..., nao, nao, 3)``).
+        """
         # in case CPU is forced for libcint, move positions to CPU
         if self.mgr.force_cpu_for_libcint is True:
             if positions.device != torch.device("cpu"):

@@ -49,7 +49,7 @@ from tad_mctc.math import einsum
 
 from dxtb._src.typing import Slicers, Tensor, TensorLike, override
 
-from ..param import Param, get_elem_angular
+from ..param import Param, ParamModule
 from ..utils import t2int, wrap_gather, wrap_scatter_reduce
 
 __all__ = ["IndexHelper"]
@@ -284,7 +284,7 @@ class IndexHelper(TensorLike):
     def from_numbers(
         cls,
         numbers: Tensor,
-        par: Param,
+        par: Param | ParamModule,
         batch_mode: int | None = None,
         move_to_numbers_device: bool = True,
     ) -> IndexHelper:
@@ -323,11 +323,13 @@ class IndexHelper(TensorLike):
         IndexHelper
             Instance of index helper for given basis set.
         """
-        angular = get_elem_angular(par.element)
+        if not isinstance(par, ParamModule):
+            par = ParamModule(par)
+
         return cls.from_numbers_angular(
             numbers,
-            angular,
-            batch_mode,
+            angular=par.get_elem_angular(),
+            batch_mode=batch_mode,
             move_to_numbers_device=move_to_numbers_device,
         )
 
@@ -951,6 +953,7 @@ class IndexHelper(TensorLike):
         self.orbitals_to_shell = self.orbitals_to_shell[orb]
 
     def restore(self) -> None:
+        """Restore the original index helper after culling."""
         if self.store is None:
             raise RuntimeError("Nothing to restore. Store is empty.")
 
@@ -1199,7 +1202,10 @@ class IndexHelperGFN1(IndexHelper):
     @override
     @classmethod
     def from_numbers(
-        cls, numbers: Tensor, batch_mode: int | None = None
+        cls,
+        numbers: Tensor,
+        batch_mode: int | None = None,
+        move_to_numbers_device: bool = True,
     ) -> IndexHelper:
         """
         Construct an index helper instance from atomic numbers and their
@@ -1209,6 +1215,17 @@ class IndexHelperGFN1(IndexHelper):
         ----------
         numbers : Tensor
             Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
+        batch_mode : int
+            Whether multiple systems or a single one are handled:
+
+            - 0: Single system
+            - 1: Multiple systems with padding
+            - 2: Multiple systems with no padding (conformer ensemble)
+        move_to_numbers_device : bool
+            Move the resulting tensors to the device of the ``numbers`` tensor.
+            This should be switched off for GPU calculations that use `libcint`
+            for integrals as the :class:`.IndexHelper` has to be on the CPU
+            for this step.
 
         Returns
         -------
@@ -1218,7 +1235,12 @@ class IndexHelperGFN1(IndexHelper):
         # pylint: disable=import-outside-toplevel
         from dxtb import GFN1_XTB
 
-        return super().from_numbers(numbers, GFN1_XTB, batch_mode=batch_mode)
+        return super().from_numbers(
+            numbers,
+            GFN1_XTB,
+            batch_mode=batch_mode,
+            move_to_numbers_device=move_to_numbers_device,
+        )
 
 
 class IndexHelperGFN2(IndexHelper):
@@ -1229,7 +1251,10 @@ class IndexHelperGFN2(IndexHelper):
     @override
     @classmethod
     def from_numbers(
-        cls, numbers: Tensor, batch_mode: int | None = None
+        cls,
+        numbers: Tensor,
+        batch_mode: int | None = None,
+        move_to_numbers_device: bool = True,
     ) -> IndexHelper:
         """
         Construct an index helper instance from atomic numbers and their
@@ -1239,6 +1264,17 @@ class IndexHelperGFN2(IndexHelper):
         ----------
         numbers : Tensor
             Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
+        batch_mode : int
+            Whether multiple systems or a single one are handled:
+
+            - 0: Single system
+            - 1: Multiple systems with padding
+            - 2: Multiple systems with no padding (conformer ensemble)
+        move_to_numbers_device : bool
+            Move the resulting tensors to the device of the ``numbers`` tensor.
+            This should be switched off for GPU calculations that use `libcint`
+            for integrals as the :class:`.IndexHelper` has to be on the CPU
+            for this step.
 
         Returns
         -------
@@ -1248,4 +1284,9 @@ class IndexHelperGFN2(IndexHelper):
         # pylint: disable=import-outside-toplevel
         from dxtb import GFN2_XTB
 
-        return super().from_numbers(numbers, GFN2_XTB, batch_mode=batch_mode)
+        return super().from_numbers(
+            numbers,
+            GFN2_XTB,
+            batch_mode=batch_mode,
+            move_to_numbers_device=move_to_numbers_device,
+        )

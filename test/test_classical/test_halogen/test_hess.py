@@ -42,6 +42,7 @@ sample_list = ["br2nh3", "br2och2", "finch", "LiH", "SiH4", "MB16_43_01"]
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
 def test_single(dtype: torch.dtype, name: str) -> None:
+    """Test single Hessian calculation."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps) * 100
 
@@ -56,7 +57,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    xb = new_halogen(numbers, par, **dd)
+    xb = new_halogen(torch.unique(numbers), par, **dd)
     assert xb is not None
 
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -79,6 +80,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", ["finch"])
 @pytest.mark.parametrize("name2", sample_list)
 def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
+    """Test Hessian calculation for multiple samples."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps) * 100
 
@@ -112,7 +114,7 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    xb = new_halogen(numbers, par, **dd)
+    xb = new_halogen(torch.unique(numbers), par, **dd)
     assert xb is not None
 
     ihelp = IndexHelper.from_numbers(numbers, par)

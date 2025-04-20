@@ -171,7 +171,7 @@ class BaseRepulsion(Classical):
 
     @override
     def get_cache(
-        self, numbers: Tensor, ihelp: IndexHelper | None = None
+        self, numbers: Tensor, ihelp: IndexHelper | None = None, **_: Any
     ) -> BaseRepulsionCache:
         """
         Store variables for energy and gradient calculation.

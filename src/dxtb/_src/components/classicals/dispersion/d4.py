@@ -24,6 +24,7 @@ DFT-D4 dispersion model.
 from __future__ import annotations
 
 import tad_dftd4 as d4
+import torch
 
 from dxtb import IndexHelper
 from dxtb._src.typing import Any, Tensor, override
@@ -63,7 +64,10 @@ class DispersionD4Cache(ClassicalCache):
         cutoff: d4.cutoff.Cutoff,
         counting_function: d4.typing.CountingFunction,
         damping_function: d4.typing.DampingFunction,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
     ) -> None:
+        super().__init__(device=device, dtype=dtype)
         self.q = q
         self.model = model
         self.rcov = rcov
@@ -166,6 +170,7 @@ class DispersionD4(Dispersion):
         positions: Tensor,
         cache: DispersionD4Cache,
         q: Tensor | None = None,
+        **_: Any,
     ) -> Tensor:
         """
         Get D4 dispersion energy.

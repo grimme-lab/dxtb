@@ -23,7 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb import GFN1_XTB, GFN2_XTB
+from dxtb import GFN1_XTB, GFN2_XTB, ParamModule
 from dxtb._src.typing.exceptions import DeviceError, ParameterWarning
 from dxtb.components.dispersion import new_d4sc, new_dispersion
 
@@ -31,6 +31,7 @@ from ...conftest import DEVICE
 
 
 def test_none() -> None:
+    """Test that the dispersion model is set to None if no dispersion is set."""
     dummy = torch.tensor(0.0)
     _par1 = GFN1_XTB.model_copy(deep=True)
     _par2 = GFN2_XTB.model_copy(deep=True)
@@ -59,6 +60,7 @@ def test_fail_charge() -> None:
 
 
 def test_fail_no_dispersion() -> None:
+    """Test that the dispersion model is set to None if no dispersion is set."""
     _par = GFN1_XTB.model_copy(deep=True)
     assert _par.dispersion is not None
 
@@ -69,8 +71,17 @@ def test_fail_no_dispersion() -> None:
 
 
 def test_fail_wrong_sc_value() -> None:
+    """Test that the dispersion model is set to None if sc is not a bool."""
     _par = GFN2_XTB.model_copy(deep=True)
     assert _par.dispersion is not None
+
+    _par.meta = None
+    _par.charge = None
+    _par.element = None  # type: ignore
+    _par.hamiltonian = None
+    _par.multipole = None
+    _par.repulsion = None
+    _par.thirdorder = None
 
     _par.dispersion.d4.sc = None  # type: ignore
     with pytest.raises(ValueError):
@@ -78,6 +89,7 @@ def test_fail_wrong_sc_value() -> None:
 
 
 def test_fail_too_many_parameters() -> None:
+    """Test failure if too many parameters are passed."""
     _par = GFN1_XTB.model_copy(deep=True)
     _par2 = GFN2_XTB.model_copy(deep=True)
 
@@ -90,6 +102,7 @@ def test_fail_too_many_parameters() -> None:
 
 
 def test_fail_d4_cache() -> None:
+    """Test cache error handling."""
     numbers = torch.tensor([3, 1])
 
     _par = GFN2_XTB.model_copy(deep=True)
@@ -111,6 +124,7 @@ def test_fail_d4_cache() -> None:
 
 
 def test_fail_d4sc_required() -> None:
+    """Test required values for D4SC."""
     numbers = torch.tensor([3, 1], device=DEVICE)
     disp = new_d4sc(numbers, GFN2_XTB, device=DEVICE)
     assert disp is not None
@@ -123,13 +137,15 @@ def test_fail_d4sc_required() -> None:
 
 
 def test_fail_d4sc_device() -> None:
+    """ "Test failure if device is not set correctly."""
     numbers = torch.tensor([3, 1], device=torch.device("cpu"))
 
     with pytest.raises(DeviceError):
-        new_d4sc(numbers, GFN2_XTB, device="wrong")  # type: ignore
+        new_d4sc(numbers, ParamModule(GFN2_XTB), device="wrong")  # type: ignore
 
 
 def test_fail_d4sc_missing() -> None:
+    """Test failure if D4SC is not set correctly."""
     numbers = torch.tensor([3, 1])
 
     _par = GFN2_XTB.model_copy(deep=True)
@@ -150,6 +166,7 @@ def test_fail_d4sc_missing() -> None:
 
 
 def test_d4_cache() -> None:
+    """Test cache handling for D4SC."""
     numbers = torch.tensor([3, 1])
 
     _par2 = GFN2_XTB.model_copy(deep=True)

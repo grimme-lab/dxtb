@@ -44,6 +44,7 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
     Tensor,  # differentiable variables
 ]:
+    """Gradient check from `torch.autograd`."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
@@ -53,7 +54,7 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    xb = new_halogen(numbers, par, **dd)
+    xb = new_halogen(torch.unique(numbers), par, **dd)
     assert xb is not None
 
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -93,6 +94,7 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
     Tensor,  # differentiable variables
 ]:
+    """Gradgrad check from `torch.autograd`."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
@@ -112,7 +114,7 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    xb = new_halogen(numbers, par, **dd)
+    xb = new_halogen(torch.unique(numbers), par, **dd)
     assert xb is not None
 
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -156,6 +158,7 @@ def test_gradgradcheck_batch(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", ["br2nh3", "finch", "LYS_xao"])
 def test_autograd(dtype: torch.dtype, name: str) -> None:
+    """Test autodiff gradient."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
@@ -166,7 +169,7 @@ def test_autograd(dtype: torch.dtype, name: str) -> None:
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    xb = new_halogen(numbers, par, **dd)
+    xb = new_halogen(torch.unique(numbers), par, **dd)
     assert xb is not None
 
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -186,6 +189,7 @@ def test_autograd(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", ["br2nh3"])
 @pytest.mark.parametrize("name2", sample_list)
 def test_autograd_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
+    """Test autodiff gradient for multiple samples."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample1, sample2 = samples[name1], samples[name2]
@@ -211,7 +215,7 @@ def test_autograd_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    xb = new_halogen(numbers, par, **dd)
+    xb = new_halogen(torch.unique(numbers), par, **dd)
     assert xb is not None
 
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -241,7 +245,7 @@ def test_backward(dtype: torch.dtype, name: str) -> None:
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    xb = new_halogen(numbers, par, **dd)
+    xb = new_halogen(torch.unique(numbers), par, **dd)
     assert xb is not None
 
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -291,7 +295,7 @@ def test_backward_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    xb = new_halogen(numbers, par, **dd)
+    xb = new_halogen(torch.unique(numbers), par, **dd)
     assert xb is not None
 
     ihelp = IndexHelper.from_numbers(numbers, par)

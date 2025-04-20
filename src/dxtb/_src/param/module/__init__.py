@@ -15,17 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Components: Coulomb
-===================
+Parametrizations: Module
+========================
 
-Tight-binding components for Coulomb interactions.
+This module provides a differentiable representation of the
+extended tight-binding parametrization using PyTorch.
+
+The :class:`.ParamModule` class automatically converts a Pydantic
+model into a hierarchical :class:`~torch.nn.Module` tree.
 """
-# pylint: disable=useless-import-alias
-from dxtb._src.components.interactions.coulomb import AES2 as AES2
-from dxtb._src.components.interactions.coulomb import ES2 as ES2
-from dxtb._src.components.interactions.coulomb import ES3 as ES3
-from dxtb._src.components.interactions.coulomb import new_aes2 as new_aes2
-from dxtb._src.components.interactions.coulomb import new_es2 as new_es2
-from dxtb._src.components.interactions.coulomb import new_es3 as new_es3
-
-__all__ = ["AES2", "ES2", "ES3", "new_aes2", "new_es2", "new_es3"]
+from .param import *

@@ -24,11 +24,7 @@ Currently, only GFN2-xTB's damped multipole version is supported.
 
 from __future__ import annotations
 
-from typing import Union
-
 from pydantic import BaseModel
-
-from .tensor import TensorPydantic
 
 __all__ = ["MultipoleDamped", "Multipole"]
 
@@ -39,19 +35,19 @@ class MultipoleDamped(BaseModel):
     for a parametrization.
     """
 
-    dmp3: Union[float, TensorPydantic]
+    dmp3: float
     """Damping function for inverse quadratic contributions."""
 
-    dmp5: Union[float, TensorPydantic]
+    dmp5: float
     """Damping function for inverse cubic contributions"""
 
-    kexp: Union[float, TensorPydantic]
+    kexp: float
     """Exponent for the generation of the multipolar damping radii."""
 
-    shift: Union[float, TensorPydantic]
+    shift: float
     """Shift for the generation of the multipolar damping radii."""
 
-    rmax: Union[float, TensorPydantic]
+    rmax: float
     """Maximum radius for the multipolar damping radii (Eq. 29)."""
 
 

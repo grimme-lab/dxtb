@@ -28,7 +28,7 @@ import logging
 import torch
 
 from dxtb import IndexHelper, labels
-from dxtb._src.param import Param
+from dxtb._src.param import Param, ParamModule
 from dxtb._src.typing import TYPE_CHECKING, Any, Tensor, TensorLike
 
 if TYPE_CHECKING:
@@ -52,7 +52,6 @@ class DriverManager(TensorLike):
     def __init__(
         self,
         driver_type: int,
-        _driver: IntDriver | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
         **kwargs: Any,
@@ -62,14 +61,15 @@ class DriverManager(TensorLike):
         # per default, libcint is run on the CPU
         self.force_cpu_for_libcint = kwargs.pop(
             "force_cpu_for_libcint",
-            True if driver_type == labels.INTDRIVER_LIBCINT else False,
+            driver_type == labels.INTDRIVER_LIBCINT,
         )
 
         self.driver_type = driver_type
-        self._driver = _driver
+        self._driver = None
 
     @property
     def driver(self) -> IntDriver:
+        """Integral driver object."""
         if self._driver is None:
             raise RuntimeError(
                 "No driver has been created yet. Run `create_driver` first."
@@ -82,8 +82,20 @@ class DriverManager(TensorLike):
         self._driver = driver
 
     def create_driver(
-        self, numbers: Tensor, par: Param, ihelp: IndexHelper
+        self, numbers: Tensor, par: Param | ParamModule, ihelp: IndexHelper
     ) -> None:
+        """
+        Create the integral driver based on the configuration.
+
+        Parameters
+        ----------
+        numbers : Tensor
+            Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
+        par : Param | ParamModule
+            The parametrization data.
+        ihelp : IndexHelper
+            The index helper object.
+        """
         if self.driver_type == labels.INTDRIVER_LIBCINT:
             # pylint: disable=import-outside-toplevel
             from .libcint import IntDriverLibcint as _IntDriver
@@ -92,6 +104,9 @@ class DriverManager(TensorLike):
                 device = torch.device("cpu")
                 numbers = numbers.to(device=device)
                 ihelp = ihelp.to(device=device)
+                # We do not move the differentiable parameters to the CPU here.
+                # This is only done for the basis-specific parameters in the
+                # constructor of the `Basis` class.
 
         elif self.driver_type == labels.INTDRIVER_ANALYTICAL:
             # pylint: disable=import-outside-toplevel

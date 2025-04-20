@@ -65,12 +65,13 @@ from tad_mctc.data import VDW_D3
 from tad_mctc.math import einsum
 
 from dxtb import IndexHelper
-from dxtb._src.param import Param
+from dxtb._src.param import Param, ParamModule
 from dxtb._src.typing import (
     DD,
     Any,
     Tensor,
     TensorLike,
+    TensorOrTensors,
     get_default_dtype,
     override,
 )
@@ -323,24 +324,30 @@ class GeneralizedBorn(Interaction):
 
     @override
     def get_monopole_atom_potential(
-        self, cache: GeneralizedBornCache, qat: Tensor, **__: Any
+        self,
+        cache: GeneralizedBornCache,
+        qat: Tensor,
+        qdp: Tensor | None = None,
+        qqp: Tensor | None = None,
     ) -> Tensor:
         return einsum("...ik,...k->...i", cache.mat, qat)
 
     # TODO: Implement gradient before using solvation in SCF
     def get_atom_gradient(
         self,
-        numbers: Tensor,
-        positions: Tensor,
         charges: Tensor,
+        positions: Tensor,
         cache: GeneralizedBornCache,
+        grad_outputs: TensorOrTensors | None = None,
+        retain_graph: bool | None = True,
+        create_graph: bool | None = None,
     ) -> Tensor:
         raise NotImplementedError("Solvation gradient not implemented")
 
 
 def new_solvation(
     numbers: Tensor,
-    par: Param,
+    par: Param | ParamModule,
     dielectric_constant: Tensor | float | int = 80.3,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
@@ -352,7 +359,7 @@ def new_solvation(
     ----------
     numbers : Tensor
         Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
-    par : Param
+    par : Param | ParamModule
         Representation of an extended tight-binding model.
 
     Returns
@@ -361,10 +368,19 @@ def new_solvation(
         Instance of the `GeneralizedBorn` class or ``None`` if no solvation model
         is used.
     """
-    if hasattr(par, "solvation") is False or par.solvation is None:
+    dd: DD = {
+        "device": device,
+        "dtype": dtype if dtype is not None else get_default_dtype(),
+    }
+
+    # compatibility with previous version based on `Param`
+    if not isinstance(par, ParamModule):
+        par = ParamModule(par, **dd)
+
+    if "solvation" not in par or par.is_none("solvation"):
         return None
 
-    if hasattr(par.solvation, "alpb") is False or par.solvation.alpb is None:
+    if par.is_none("solvation.alpb") or par.is_false("solvation.alpb"):
         return None
 
     if device is not None:
@@ -374,27 +390,12 @@ def new_solvation(
                 f"({numbers.device}) do not match."
             )
 
-    dd: DD = {
-        "device": device,
-        "dtype": dtype if dtype is not None else get_default_dtype(),
-    }
-
-    s = par.solvation.alpb  # type: ignore
-    alpb = s.alpb if hasattr(s, "alpb") else DEFAULT_ALPB
-    kernel = s.kernel if hasattr(s, "kernel") else DEFAULT_KERNEL
-    born_scale = (
-        s.born_scale if hasattr(s, "born_scale") else DEFAULT_BORN_SCALE
-    )
-    born_offset = (
-        s.born_offset if hasattr(s, "born_offset") else DEFAULT_BORN_OFFSET
-    )
-
     return GeneralizedBorn(
         numbers,
         dielectric_constant=any_to_tensor(dielectric_constant),
-        alpb=alpb,
-        kernel=kernel,
-        born_scale=born_scale,
-        born_offset=born_offset,
+        alpb=par.get("solvation.alpb.alpb"),
+        kernel=par.get("solvation.alpb.kernel"),
+        born_scale=par.get("solvation.alpb.born_scale"),
+        born_offset=par.get("solvation.alpb.born_offset"),
         **dd,
     )

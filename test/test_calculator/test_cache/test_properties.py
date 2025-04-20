@@ -17,7 +17,7 @@
 """
 Test Calculator usage.
 """
-
+# pylint: disable=protected-access
 from __future__ import annotations
 
 import pytest
@@ -41,6 +41,7 @@ opts = {"cache_enabled": True, "verbosity": 0}
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_energy(dtype: torch.dtype) -> None:
+    """Test energy calculation and cache usage."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     numbers = torch.tensor([3, 1], device=DEVICE)
@@ -77,6 +78,7 @@ def test_energy(dtype: torch.dtype) -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_scf_props(dtype: torch.dtype) -> None:
+    """Test SCF properties calculation and cache usage."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     numbers = torch.tensor([3, 1], device=DEVICE)
@@ -142,6 +144,7 @@ def test_scf_props(dtype: torch.dtype) -> None:
 def test_forces(
     dtype: torch.dtype, grad_mode: Literal["functorch", "row"]
 ) -> None:
+    """Test forces calculation and cache usage."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     numbers = torch.tensor([3, 1], device=DEVICE)
@@ -173,6 +176,7 @@ def test_forces(
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_forces_analytical(dtype: torch.dtype) -> None:
+    """Test analytical forces calculation and cache usage."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     numbers = torch.tensor([3, 1], device=DEVICE)
@@ -244,6 +248,7 @@ def test_hessian(dtype: torch.dtype, use_functorch: bool) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("use_functorch", [False, True])
 def test_vibration(dtype: torch.dtype, use_functorch: bool) -> None:
+    """Test vibration calculation and cache usage."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     numbers = torch.tensor([3, 1], device=DEVICE)
@@ -288,6 +293,7 @@ def test_vibration(dtype: torch.dtype, use_functorch: bool) -> None:
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_dipole(dtype: torch.dtype) -> None:
+    """Test dipole calculation and cache usage."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     numbers = torch.tensor([3, 1], device=DEVICE)
@@ -333,6 +339,7 @@ def test_dipole(dtype: torch.dtype) -> None:
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_dipole_deriv(dtype: torch.dtype) -> None:
+    """Test dipole derivative calculation and cache usage."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     numbers = torch.tensor([3, 1], device=DEVICE)
@@ -380,6 +387,7 @@ def test_dipole_deriv(dtype: torch.dtype) -> None:
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_polarizability(dtype: torch.dtype) -> None:
+    """Test polarizability calculation and cache usage."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     numbers = torch.tensor([3, 1], device=DEVICE)
@@ -427,6 +435,7 @@ def test_polarizability(dtype: torch.dtype) -> None:
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_pol_deriv(dtype: torch.dtype) -> None:
+    """Test polarizability derivative calculation and cache usage."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     numbers = torch.tensor([3, 1], device=DEVICE)
@@ -474,6 +483,7 @@ def test_pol_deriv(dtype: torch.dtype) -> None:
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_hyperpolarizability(dtype: torch.dtype) -> None:
+    """Test hyperpolarizability calculation and cache usage."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     numbers = torch.tensor([3, 1], device=DEVICE)
@@ -521,6 +531,7 @@ def test_hyperpolarizability(dtype: torch.dtype) -> None:
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_ir(dtype: torch.dtype) -> None:
+    """Test IR calculation and cache usage."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     numbers = torch.tensor([3, 1], device=DEVICE)

@@ -28,10 +28,10 @@ from tad_mctc.batch import pack
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.components.interactions.coulomb import ES2
-from dxtb._src.param import get_elem_param
 from dxtb._src.typing import DD, Callable, Tensor
 
 from ..conftest import DEVICE, NONDET_TOL
+from ..utils import get_elem_param
 from .samples import samples
 
 sample_list = ["LiH", "SiH4", "MB16_43_01"]
@@ -53,13 +53,9 @@ def gradcheck_param(dtype: torch.dtype, name: str) -> tuple[
 
     # variables to be differentiated
     _hubbard = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "gam",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
+        torch.unique(numbers), par.element, "gam", pad_val=0, **dd
     )
+    _hubbard.requires_grad_(True)
 
     assert par.charge is not None
     _gexp = torch.tensor(par.charge.effective.gexp, **dd, requires_grad=True)
@@ -122,13 +118,9 @@ def gradcheck_param_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
 
     # variables to be differentiated
     _hubbard = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "gam",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
+        torch.unique(numbers), par.element, "gam", pad_val=0, **dd
     )
+    _hubbard.requires_grad_(True)
 
     assert par.charge is not None
     _gexp = torch.tensor(par.charge.effective.gexp, **dd, requires_grad=True)

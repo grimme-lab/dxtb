@@ -61,7 +61,10 @@ def test_backward_vs_tblite(
     ref = sample["gfn1_grad"].to(**dd)
 
     rep = new_repulsion(
-        numbers, par, with_analytical_gradient=with_analytical_gradient, **dd
+        torch.unique(numbers),
+        par,
+        with_analytical_gradient=with_analytical_gradient,
+        **dd,
     )
     assert rep is not None
 
@@ -116,7 +119,10 @@ def test_backward_batch_vs_tblite(
     )
 
     rep = new_repulsion(
-        numbers, par, with_analytical_gradient=with_analytical_gradient, **dd
+        torch.unique(numbers),
+        par,
+        with_analytical_gradient=with_analytical_gradient,
+        **dd,
     )
     assert rep is not None
 
@@ -143,13 +149,14 @@ def test_backward_batch_vs_tblite(
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list + ["MB16_43_03"])
 def test_grad_pos_backward_vs_analytical(dtype: torch.dtype, name: str) -> None:
+    """Compare analytical gradient with automatic gradient."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
-    rep = new_repulsion(numbers, par, **dd)
+    rep = new_repulsion(torch.unique(numbers), par, **dd)
     assert rep is not None
 
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -211,6 +218,7 @@ def calc_numerical_gradient(
 def test_grad_pos_analytical_vs_numerical(
     dtype: torch.dtype, name: str
 ) -> None:
+    """Test analytical gradient against numerical gradient."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
     atol = sqrt(torch.finfo(dtype).eps) * 10
 
@@ -218,7 +226,7 @@ def test_grad_pos_analytical_vs_numerical(
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
-    rep = new_repulsion(numbers, par, **dd)
+    rep = new_repulsion(torch.unique(numbers), par, **dd)
     assert rep is not None
 
     ihelp = IndexHelper.from_numbers(numbers, par)
@@ -251,7 +259,7 @@ def gradchecker(
 
     ihelp = IndexHelper.from_numbers(numbers, par)
 
-    rep = new_repulsion(numbers, par, **dd)
+    rep = new_repulsion(torch.unique(numbers), par, **dd)
     assert rep is not None
     cache = rep.get_cache(numbers, ihelp)
 
@@ -310,7 +318,7 @@ def gradchecker_batch(
 
     ihelp = IndexHelper.from_numbers(numbers, par)
 
-    rep = new_repulsion(numbers, par, **dd)
+    rep = new_repulsion(torch.unique(numbers), par, **dd)
     assert rep is not None
     cache = rep.get_cache(numbers, ihelp)
 

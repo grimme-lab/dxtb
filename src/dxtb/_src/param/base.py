@@ -105,9 +105,7 @@ class Param(BaseModel):
 
     @property
     def xtb_version(self) -> str:
-        """
-        Return the version of the xtb package.
-        """
+        """Return the version of the xtb package."""
         if self.meta is None:
             raise ValueError("Meta information is not available.")
 
@@ -282,13 +280,13 @@ class Param(BaseModel):
         with open(filepath, encoding="utf-8") as fd:
             return cls(**yaml.safe_load(fd))
 
-    def to_yaml_file(self, filepath: Path, **kwargs: Any) -> None:
+    def to_yaml_file(self, filepath: PathLike, **kwargs: Any) -> None:
         """
         Save the parametrization to a YAML file.
 
         Parameters
         ----------
-        filepath : Path
+        filepath : PathLike
             The file path to save the parametrization data.
 
         Raises

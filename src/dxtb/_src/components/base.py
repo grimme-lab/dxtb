@@ -35,13 +35,6 @@ __all__ = ["Component", "ComponentCache"]
 class ComponentCache(TensorLike):
     """Cache of a component."""
 
-    def __init__(
-        self,
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
-    ):
-        super().__init__(device, dtype)
-
     def __len__(self) -> int:
         slots = get_all_slots(self)
         return len([s for s in slots if not s.startswith("_")])
@@ -192,7 +185,7 @@ class Component(TensorLike):
     ############################################################################
 
     def cache_is_latest(
-        self, vars: tuple[Tensor, ...], tol: float | None = None
+        self, cvars: tuple[Tensor, ...], tol: float | None = None
     ) -> bool:
         """
         Check if the driver is set up and updated.
@@ -216,7 +209,7 @@ class Component(TensorLike):
         if self._cachevars is None:
             return False
 
-        for v1, v2 in zip(vars, self._cachevars):
+        for v1, v2 in zip(cvars, self._cachevars):
             # functorch makes problems here, just disable cache for now
             if __tversion__ >= (1, 13, 0):
                 if torch._C._functorch.is_gradtrackingtensor(v1):
@@ -234,7 +227,9 @@ class Component(TensorLike):
                 if torch.equal(v1, v2) is False:
                     return False
             else:
-                tol = torch.finfo(v1.dtype).eps ** 0.75 if tol is None else tol
+                if tol is None:
+                    tol = torch.finfo(v1.dtype).eps ** 0.75
+
                 if (v2 - v1).abs().sum() > tol:
                     return False
 

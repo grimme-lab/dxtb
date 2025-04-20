@@ -71,7 +71,7 @@ import torch
 from tad_mctc.exceptions import DeviceError
 
 from dxtb import IndexHelper
-from dxtb._src.param import Param, get_elem_param
+from dxtb._src.param import Param, ParamModule
 from dxtb._src.typing import (
     DD,
     Any,
@@ -358,8 +358,8 @@ class ES3(Interaction):
 
 
 def new_es3(
-    numbers: Tensor,
-    par: Param,
+    unique: Tensor,
+    par: Param | ParamModule,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> ES3 | None:
@@ -368,9 +368,9 @@ def new_es3(
 
     Parameters
     ----------
-    numbers : Tensor
-        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
-    par : Param
+    unique : Tensor
+        Unique elements in the system (shape: ``(nunique,)``).
+    par : Param | ParamModule
         Representation of an extended tight-binding model.
 
     Returns
@@ -379,36 +379,37 @@ def new_es3(
         Instance of the :class:`.ES3` class or ``None`` if no :class:`.ES3` is
         used.
     """
-
-    if hasattr(par, "thirdorder") is False or par.thirdorder is None:
-        return None
-
-    if device is not None:
-        if device != numbers.device:
-            raise DeviceError(
-                f"Passed device ({device}) and device of `numbers` tensor "
-                f"({numbers.device}) do not match."
-            )
-
     dd: DD = {
         "device": device,
         "dtype": dtype if dtype is not None else get_default_dtype(),
     }
 
-    hubbard_derivs = get_elem_param(
-        torch.unique(numbers), par.element, "gam3", **dd
-    )
+    # compatibility with previous version based on `Param`
+    if not isinstance(par, ParamModule):
+        par = ParamModule(par, **dd)
+
+    if "thirdorder" not in par or par.is_none("thirdorder"):
+        return None
+
+    if device is not None:
+        if device != unique.device:
+            raise DeviceError(
+                f"Passed device ({device}) and device of `unique` tensor "
+                f"({unique.device}) do not match."
+            )
+
+    hubbard_derivs = par.get_elem_param(unique, "gam3")
 
     shell_scale = (
         None
-        if par.thirdorder.shell is False
-        else torch.tensor(
+        if par.is_false("thirdorder", "shell")
+        else torch.cat(
             [
-                par.thirdorder.shell.s,
-                par.thirdorder.shell.p,
-                par.thirdorder.shell.d,
+                torch.atleast_1d(par.get("thirdorder.shell.s")),
+                torch.atleast_1d(par.get("thirdorder.shell.p")),
+                torch.atleast_1d(par.get("thirdorder.shell.d")),
             ],
-            **dd,
+            dim=0,
         )
     )
 

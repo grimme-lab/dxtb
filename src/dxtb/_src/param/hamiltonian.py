@@ -27,13 +27,32 @@ additional distance dependent function formed from the element parametrization.
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 from pydantic import BaseModel
 
-from .tensor import TensorPydantic
-
 __all__ = ["Hamiltonian", "XTBHamiltonian"]
+
+
+class ShellScaling(BaseModel):
+    """
+    Shell-dependent scaling factor for the off-site blocks
+    """
+
+    ss: float
+    """Scaling factor for two s-shells."""
+
+    pp: float
+    """Scaling factor for two p-shells."""
+
+    dd: float
+    """Scaling factor for two d-shells."""
+
+    sd: float
+    """Scaling factor for an s- and a d-shell."""
+
+    pd: float
+    """Scaling factor for a p- and a d-shell."""
 
 
 class XTBHamiltonian(BaseModel):
@@ -44,22 +63,22 @@ class XTBHamiltonian(BaseModel):
     self-energy and the distance polynomial.
     """
 
-    wexp: Union[float, TensorPydantic]
+    wexp: float
     """Exponent of the orbital exponent dependent off-site scaling factor"""
 
-    kpol: Union[float, TensorPydantic] = 2.0
+    kpol: float = 2.0
     """Scaling factor for polarization functions"""
 
-    enscale: Union[float, TensorPydantic]
+    enscale: float
     """Electronegativity scaling factor for off-site valence blocks"""
 
     cn: Optional[str] = None
     """Local environment descriptor for shifting the atomic self-energies"""
 
-    shell: Dict[str, Union[float, TensorPydantic]]
+    shell: Dict[str, float]
     """Shell-pair dependent scaling factor for off-site blocks"""
 
-    kpair: Dict[str, Union[float, TensorPydantic]] = {}
+    kpair: Dict[str, float] = {}
     """Atom-pair dependent scaling factor for off-site valence blocks"""
 
 

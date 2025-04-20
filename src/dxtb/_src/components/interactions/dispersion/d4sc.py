@@ -29,7 +29,7 @@ from tad_mctc.exceptions import DeviceError
 from tad_mctc.math import einsum
 
 from dxtb import IndexHelper
-from dxtb._src.param import Param
+from dxtb._src.param import Param, ParamModule
 from dxtb._src.typing import (
     DD,
     Any,
@@ -39,7 +39,6 @@ from dxtb._src.typing import (
     get_default_dtype,
     override,
 )
-from dxtb._src.utils import convert_float_tensor
 
 from ..base import Interaction, InteractionCache
 
@@ -347,7 +346,7 @@ class DispersionD4SC(Interaction):
 
 def new_d4sc(
     numbers: Tensor,
-    par: Param,
+    par: Param | ParamModule,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> DispersionD4SC | None:
@@ -358,22 +357,31 @@ def new_d4sc(
     ----------
     numbers : Tensor
         Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
-    par : Param
+    par : Param | ParamModule
         Representation of an extended tight-binding model.
 
     Returns
     -------
     DispersionD4SC | None
-        Instance of the :class:`.DispersionD4SC` class or ``None`` if no :class:`.DispersionD4SC` is
-        used.
+        Instance of the :class:`.DispersionD4SC` class or ``None`` if
+        no :class:`.DispersionD4SC` is used.
     """
-    if hasattr(par, "dispersion") is False or par.dispersion is None:
+    dd: DD = {
+        "device": device,
+        "dtype": dtype if dtype is not None else get_default_dtype(),
+    }
+
+    # compatibility with previous version based on `Param`
+    if not isinstance(par, ParamModule):
+        par = ParamModule(par, **dd)
+
+    if "dispersion" not in par or par.is_none("dispersion"):
         return None
 
-    if par.dispersion.d4 is None:
+    if par.is_none("dispersion.d4"):
         return None
 
-    if par.dispersion.d4.sc is False:
+    if par.is_false("dispersion.d4.sc"):
         return None
 
     if device is not None:
@@ -388,17 +396,14 @@ def new_d4sc(
         "dtype": dtype if dtype is not None else get_default_dtype(),
     }
 
-    param = convert_float_tensor(
-        {
-            "a1": par.dispersion.d4.a1,
-            "a2": par.dispersion.d4.a2,
-            "s6": par.dispersion.d4.s6,
-            "s8": par.dispersion.d4.s8,
-            "s9": par.dispersion.d4.s9,
-            "s10": par.dispersion.d4.s10,
-        },
-        **dd,
-    )
+    param = {
+        "a1": par.get("dispersion.d4.a1"),
+        "a2": par.get("dispersion.d4.a2"),
+        "s6": par.get("dispersion.d4.s6"),
+        "s8": par.get("dispersion.d4.s8"),
+        "s9": par.get("dispersion.d4.s9"),
+        "s10": par.get("dispersion.d4.s10"),
+    }
 
     rcov = d4.data.COV_D3.to(**dd)[numbers]
     r4r2 = d4.data.R4R2.to(**dd)[numbers]

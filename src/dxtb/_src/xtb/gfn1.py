@@ -29,7 +29,8 @@ from tad_mctc.batch import real_pairs
 
 from dxtb import IndexHelper
 from dxtb._src.components.interactions import Potential
-from dxtb._src.param import Param
+from dxtb._src.param.base import Param
+from dxtb._src.param.module import ParameterModule, ParamModule
 from dxtb._src.typing import Any, Tensor, override
 
 from .base import PAD, BaseHamiltonian
@@ -43,7 +44,7 @@ class GFN1Hamiltonian(BaseHamiltonian):
     def __init__(
         self,
         numbers: Tensor,
-        par: Param,
+        par: Param | ParamModule,
         ihelp: IndexHelper,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
@@ -55,11 +56,12 @@ class GFN1Hamiltonian(BaseHamiltonian):
         if "cn" in kwargs:
             self.cn = kwargs.pop("cn")
         else:
+            # pylint: disable=import-outside-toplevel
             from tad_mctc.ncoord import cn_d3
 
             self.cn = cn_d3
 
-    def _get_hscale(self) -> Tensor:
+    def _get_hscale(self, par: ParamModule) -> Tensor:
         """
         Obtain the off-site scaling factor for the Hamiltonian.
 
@@ -68,12 +70,12 @@ class GFN1Hamiltonian(BaseHamiltonian):
         Tensor
             Off-site scaling factor for the Hamiltonian.
         """
-        if self.par.hamiltonian is None:
+        if par.is_none("hamiltonian"):
             raise RuntimeError("No Hamiltonian specified.")
 
         # extract some vars for convenience
-        kpol = self.par.hamiltonian.xtb.kpol
-        shell = self.par.hamiltonian.xtb.shell
+        kpol = par.get("hamiltonian.xtb.kpol")
+        shell = par.get("hamiltonian.xtb.shell")
         ushells = self.ihelp.unique_angular
 
         angular2label = {
@@ -85,33 +87,48 @@ class GFN1Hamiltonian(BaseHamiltonian):
         }
         angular_labels = [angular2label.get(int(ang), PAD) for ang in ushells]
 
-        # precompute kii values outside loop with slightly faster listcomp
-        kii_values = [
-            kpol if self.valence[i] == 0 else shell.get(f"{ang}{ang}", 1.0)
-            for i, ang in enumerate(angular_labels)
-        ]
+        # precompute kii values outside loop (slightly faster)
+        kii_values = []
+        for i, label in enumerate(angular_labels):
+            # For non-valence shells, use kpol
+            if self.valence[i] == 0:
+                kii_values.append(kpol)
+                continue
 
-        ksh = torch.ones((len(ushells), len(ushells)), **self.dd)
-        for i in range(len(angular_labels)):
-            ang_i = angular_labels[i]
-            kii = kii_values[i]
+            key = f"{label}{label}"
+            if key in shell:
+                # Use view(-1)[0] to keep the value as a tensor.
+                val = shell[key]
+                assert isinstance(val, ParameterModule)
+                kii_values.append(val.param.view(-1)[0])
+            else:
+                kii_values.append(torch.tensor(1.0, **self.dd))
 
-            # Iterate only over upper triangle and diagonal
+        n = len(ushells)
+        ksh = torch.empty((n, n), **self.dd)
+        for i in range(n):
             for j in range(i + 1):
-                ang_j = angular_labels[j]
+                kii = kii_values[i]
                 kjj = kii_values[j]
-
-                # only if both belong to the valence shell,
-                # we will read from the parametrization
                 if self.valence[i] == 1 and self.valence[j] == 1:
-                    ksh_value = shell.get(
-                        f"{ang_i}{ang_j}",
-                        shell.get(f"{ang_j}{ang_i}", (kii + kjj) / 2.0),
-                    )
-                else:
-                    ksh_value = (kii + kjj) / 2.0
+                    key1 = f"{angular_labels[i]}{angular_labels[j]}"
+                    key2 = f"{angular_labels[j]}{angular_labels[i]}"
 
-                ksh[i, j] = ksh[j, i] = ksh_value
+                    if key1 in shell:
+                        val: ParameterModule = shell[key1]
+                        ksh_val = val.param.view(-1)[0]
+                    elif key2 in shell:
+                        val: ParameterModule = shell[key2]
+                        ksh_val = val.param.view(-1)[0]
+                    else:
+                        ksh_val = (kii + kjj) / 2.0
+
+                else:
+                    ksh_val = (kii + kjj) / 2.0
+
+                # Assign symmetrically.
+                ksh[i, j] = ksh_val
+                ksh[j, i] = ksh_val
 
         # for i, ang_i in enumerate(ushells):
         #     ang_i = angular2label.get(int(ang_i.item()), PAD)
@@ -146,24 +163,22 @@ class GFN1Hamiltonian(BaseHamiltonian):
         return ksh
 
     @override
-    def _get_elem_valence(self) -> Tensor:
+    def _get_elem_valence(self, par: ParamModule) -> Tensor:
         """
-        Obtain a mask for valence and non-valence shells. This is only required for GFN1-xTB's second hydrogen s-function.
+        Obtain a mask for valence and non-valence shells. This is only required
+        for GFN1-xTB's second hydrogen s-function.
+
+        Parameters
+        ----------
+        par : ParamModule
+            Representation of an extended tight-binding model.
 
         Returns
         -------
         Tensor
             Mask indicating valence shells for each unique species.
         """
-        # pylint: disable=import-outside-toplevel
-        from dxtb._src.param import get_elem_valence
-
-        return get_elem_valence(
-            self.unique,
-            self.par.element,
-            pad_val=PAD,
-            device=self.device,
-        )
+        return par.get_elem_valence(self.unique, pad_val=PAD)
 
     def get_gradient(
         self,
@@ -202,9 +217,6 @@ class GFN1Hamiltonian(BaseHamiltonian):
             Derivative of energy with respect to coordination number (first
             tensor) and atomic positions (second tensor).
         """
-        if self.par.hamiltonian is None:
-            raise RuntimeError("No Hamiltonian specified.")
-
         # masks
         mask_atom = real_pairs(self.numbers, mask_diagonal=False)
         mask_atom_diagonal = real_pairs(self.numbers, mask_diagonal=True)
@@ -229,7 +241,7 @@ class GFN1Hamiltonian(BaseHamiltonian):
         var_x = torch.where(
             mask_shell_diagonal,
             1.0
-            + self.par.hamiltonian.xtb.enscale
+            + self.enscale
             * torch.pow(en.unsqueeze(-1) - en.unsqueeze(-2), 2.0),
             zero,
         )

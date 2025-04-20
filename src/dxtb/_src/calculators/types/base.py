@@ -52,7 +52,7 @@ from dxtb._src.components.interactions.dispersion import new_d4sc
 from dxtb._src.components.interactions.field import efield
 from dxtb._src.components.interactions.field import efieldgrad as efield_grad
 from dxtb._src.constants import defaults
-from dxtb._src.param import Param
+from dxtb._src.param import Param, ParamModule
 from dxtb._src.timing import timer
 from dxtb._src.typing import Any, Self, Tensor, TensorLike, override
 from dxtb.config import Config
@@ -450,7 +450,7 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
     def __init__(
         self,
         numbers: Tensor,
-        par: Param,
+        par: Param | ParamModule,
         *,
         classical: list[Classical] | tuple[Classical] | Classical | None = None,
         interaction: (
@@ -495,8 +495,6 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
               timer can also be enabled by setting the environment variable
               ``DXTB_TIMER`` to ``1``.
         """
-        self.parameters = par
-
         if not timer.enabled and kwargs.pop("timer", False):
             timer.enable()
 
@@ -522,16 +520,21 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
                 f"but is '{numbers.dtype}'"
             )
         self.numbers = numbers
+        unique: Tensor = torch.unique(numbers)
 
         super().__init__(device, dtype)
         dd = {"device": self.device, "dtype": self.dtype}
+
+        # Internally, we will always use the differentiable parameter model.
+        if not isinstance(par, ParamModule):
+            par = ParamModule(par, **self.dd)
 
         # If method not explicitly set in options, we try to get it from the
         # parametrization.
         if isinstance(opts, dict) and "method" not in opts:
             if par.meta is not None:
                 if par.meta.name is not None:
-                    opts["method"] = par.meta.name
+                    opts["method"] = par.meta.name.value
 
         # setup calculator options
         if isinstance(opts, dict):
@@ -584,17 +587,17 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         OutputHandler.write_stdout_nf(" - Interactions      ... ", v=4)
 
         es2 = (
-            new_es2(numbers, par, **dd)
+            new_es2(unique, par, **dd)
             if not {"all", "es2"} & set(self.opts.exclude)
             else None
         )
         aes2 = (
-            new_aes2(numbers, par, **dd)
+            new_aes2(unique, par, **dd)
             if not {"all", "aes2"} & set(self.opts.exclude)
             else None
         )
         es3 = (
-            new_es3(numbers, par, **dd)
+            new_es3(unique, par, **dd)
             if not {"all", "es3"} & set(self.opts.exclude)
             else None
         )
@@ -631,7 +634,7 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         OutputHandler.write_stdout_nf(" - Classicals        ... ", v=4)
 
         halogen = (
-            new_halogen(numbers, par, **dd)
+            new_halogen(unique, par, **dd)
             if not {"all", "hal"} & set(self.opts.exclude)
             else None
         )
@@ -641,7 +644,7 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
             else None
         )
         repulsion = (
-            new_repulsion(numbers, par, **dd)
+            new_repulsion(unique, par, **dd)
             if not {"all", "rep"} & set(self.opts.exclude)
             else None
         )
@@ -906,52 +909,6 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
 
         # hard override of the dtype in TensorLike
         self.override_dtype(dtype)
-
-        return self
-
-    @override
-    def to(self, device: torch.device) -> Self:
-        """
-        Returns a copy of the class instance on the specified device.
-
-        This method overrides the usual approach because the
-        :class:`dxtb.Calculator`'s arguments and slots differ significantly.
-        Hence, it is not practical to instantiate a new copy.
-
-        Parameters
-        ----------
-        device : torch.device
-            Device to store the tensor on.
-
-        Returns
-        -------
-        Self
-            A copy of the class instance on the specified device.
-
-        Raises
-        ------
-        RuntimeError
-            If the ``__slots__`` attribute is not set in the class.
-        """
-        if self.device == device:
-            return self
-
-        if len(self.__slots__) == 0:
-            raise RuntimeError(
-                f"The `to` method requires setting ``__slots__`` in the "
-                f"'{self.__class__.__name__}' class."
-            )
-
-        self.classicals = self.classicals.to(device)
-        self.interactions = self.interactions.to(device)
-        self.integrals = self.integrals.to(device)
-        self.cache = self.cache.to(device)
-
-        # simple override in config
-        self.opts.device = device
-
-        # hard override of the dtype in TensorLike
-        self.override_device(device)
 
         return self
 

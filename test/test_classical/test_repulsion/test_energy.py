@@ -54,6 +54,7 @@ sample_list = [
 def test_single(
     dtype: torch.dtype, name: str, par: Literal["gfn1", "gfn2"]
 ) -> None:
+    """Test repulsion calculation for single sample."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
@@ -70,7 +71,7 @@ def test_single(
     else:
         assert False
 
-    rep = new_repulsion(numbers, _par, **dd)
+    rep = new_repulsion(torch.unique(numbers), _par, cutoff=50, **dd)
     assert rep is not None
 
     ihelp = IndexHelper.from_numbers(numbers, _par)
@@ -87,6 +88,7 @@ def test_single(
 def test_batch(
     dtype: torch.dtype, name1: str, name2: str, par: Literal["gfn1", "gfn2"]
 ) -> None:
+    """Test repulsion calculation for multiple samples."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
     tol = sqrt(torch.finfo(dtype).eps) * 10
 
@@ -118,7 +120,7 @@ def test_batch(
     else:
         assert False
 
-    rep = new_repulsion(numbers, _par, **dd)
+    rep = new_repulsion(torch.unique(numbers), _par, **dd)
     assert rep is not None
 
     ihelp = IndexHelper.from_numbers(numbers, _par)

@@ -28,10 +28,10 @@ from torch.autograd.gradcheck import gradcheck, gradgradcheck
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.components.classicals import Repulsion
-from dxtb._src.param import get_elem_param
 from dxtb._src.typing import DD, Callable, Tensor
 
 from ...conftest import DEVICE
+from ...utils import get_elem_param
 from .samples import samples
 
 sample_list = ["H2O", "SiH4", "MB16_43_01", "MB16_43_02", "LYS_xao"]
@@ -55,21 +55,15 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
 
     # variables to be differentiated
     _arep = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "arep",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
+        torch.unique(numbers), par.element, "arep", pad_val=0, **dd
     )
+    _arep.requires_grad_(True)
+
     _zeff = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "zeff",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
+        torch.unique(numbers), par.element, "zeff", pad_val=0, **dd
     )
+    _zeff.requires_grad_(True)
+
     _kexp = torch.tensor(par.repulsion.effective.kexp, **dd, requires_grad=True)
 
     def func(arep: Tensor, zeff: Tensor, kexp: Tensor) -> Tensor:
@@ -130,21 +124,15 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
 
     # variables to be differentiated
     _arep = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "arep",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
+        torch.unique(numbers), par.element, "arep", pad_val=0, **dd
     )
+    _arep.requires_grad_(True)
+
     _zeff = get_elem_param(
-        torch.unique(numbers),
-        par.element,
-        "zeff",
-        pad_val=0,
-        **dd,
-        requires_grad=True,
+        torch.unique(numbers), par.element, "zeff", pad_val=0, **dd
     )
+    _zeff.requires_grad_(True)
+
     _kexp = torch.tensor(par.repulsion.effective.kexp, **dd, requires_grad=True)
 
     def func(arep: Tensor, zeff: Tensor, kexp: Tensor) -> Tensor:

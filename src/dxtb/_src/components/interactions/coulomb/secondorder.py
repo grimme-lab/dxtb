@@ -70,7 +70,7 @@ from tad_mctc.math import einsum
 
 from dxtb import IndexHelper
 from dxtb._src.constants import xtb
-from dxtb._src.param import Param, get_elem_param
+from dxtb._src.param import Param, ParamModule
 from dxtb._src.typing import (
     DD,
     Any,
@@ -1051,8 +1051,8 @@ class CoulombMatrixAG(torch.autograd.Function):
 
 
 def new_es2(
-    numbers: Tensor,
-    par: Param,
+    unique: Tensor,
+    par: Param | ParamModule,
     shell_resolved: bool = True,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
@@ -1062,9 +1062,9 @@ def new_es2(
 
     Parameters
     ----------
-    numbers : Tensor
-        Atomic numbers for all atoms in the system (shape: ``(..., nat)``).
-    par : Param
+    unique : Tensor
+        Unique elements in the system (shape: ``(nunique,)``).
+    par : Param | ParamModule
         Representation of an extended tight-binding model.
     shell_resolved: bool
         Electrostatics is shell-resolved.
@@ -1074,29 +1074,34 @@ def new_es2(
     ES2 | None
         Instance of the ES2 class or ``None`` if no ES2 is used.
     """
-    if hasattr(par, "charge") is False or par.charge is None:
-        return None
-
-    if device is not None:
-        if device != numbers.device:
-            raise DeviceError(
-                f"Passed device ({device}) and device of electric field "
-                f"({numbers.device}) do not match."
-            )
-
     dd: DD = {
         "device": device,
         "dtype": dtype if dtype is not None else get_default_dtype(),
     }
 
-    unique = torch.unique(numbers)
-    hubbard = get_elem_param(unique, par.element, "gam", **dd)
-    lhubbard = (
-        get_elem_param(unique, par.element, "lgam", **dd)
-        if shell_resolved is True
-        else None
-    )
-    average = averaging_function[par.charge.effective.average]
-    gexp = torch.tensor(par.charge.effective.gexp, **dd)
+    # compatibility with previous version based on `Param`
+    if not isinstance(par, ParamModule):
+        par = ParamModule(par, **dd)
 
-    return ES2(hubbard, lhubbard, average, gexp, **dd)
+    if "charge" not in par or par.is_none("charge"):
+        return None
+
+    if device is not None:
+        if device != unique.device:
+            raise DeviceError(
+                f"Passed device ({device}) and device of `unique` tensor "
+                f"({unique.device}) do not match."
+            )
+
+    hubbard = par.get_elem_param(unique, "gam")
+    lhubbard = (
+        par.get_elem_param(unique, "lgam") if shell_resolved is True else None
+    )
+
+    return ES2(
+        hubbard,
+        lhubbard,
+        average=averaging_function[par.get("charge.effective.average")],
+        gexp=par.get("charge.effective.gexp"),
+        **dd,
+    )

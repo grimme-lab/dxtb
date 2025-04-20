@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import torch
 
-from dxtb._src.typing import TYPE_CHECKING, Any, Tensor, TypeGuard
+from dxtb._src.typing import TYPE_CHECKING, Any, TypeGuard
 
 if TYPE_CHECKING:
     from dxtb._src.exlibs import libcint
@@ -37,9 +37,12 @@ if TYPE_CHECKING:
 __all__ = [
     "get_all_slots",
     "is_str_list",
+    "is_integer",
+    "is_float",
+    "is_numeric",
     "is_int_list",
+    "is_float_list",
     "is_basis_list",
-    "convert_float_tensor",
     "set_jit_enabled",
 ]
 
@@ -64,42 +67,35 @@ def get_all_slots(cls):
     return parents_slots + cls.__slots__
 
 
-def is_str_list(x: list[Any]) -> TypeGuard[list[str]]:
-    """
-    Determines whether all objects in the list are strings.
-
-    Parameters
-    ----------
-    x : list[Any]
-        List to check.
-
-    Returns
-    -------
-    TypeGuard[list[str]]
-        ``True`` if all objects are strings, ``False`` otherwise.
-    """
-    if not isinstance(x, list):
-        return False
-    return all(isinstance(i, str) for i in x)
+def is_integer(val: Any) -> TypeGuard[int]:
+    """Return ``True`` if *val* is an integer (excluding booleans)."""
+    # bool inherits from int!
+    return isinstance(val, int) and not isinstance(val, bool)
 
 
-def is_int_list(x: list[Any]) -> TypeGuard[list[int]]:
-    """
-    Determines whether all objects in the list are integers.
+def is_float(val: Any) -> TypeGuard[float]:
+    """Return ``True`` if *val* is a float."""
+    return isinstance(val, float)
 
-    Parameters
-    ----------
-    x : list[Any]
-        List to check.
 
-    Returns
-    -------
-    TypeGuard[list[int]]
-        ``True`` if all objects are integers, ``False`` otherwise.
-    """
-    if not isinstance(x, list):
-        return False
-    return all(isinstance(i, int) for i in x)
+def is_numeric(val: Any) -> TypeGuard[list[float | int]]:
+    """Return ``True`` if *val* is either an integer or a float."""
+    return is_integer(val) or is_float(val)
+
+
+def is_str_list(lst: list[Any]) -> TypeGuard[list[str]]:
+    """Return ``True`` if *lst* is a list of string values"""
+    return isinstance(lst, list) and all(isinstance(i, str) for i in lst)
+
+
+def is_int_list(lst: Any) -> TypeGuard[list[int]]:
+    """Return ``True`` if *lst* is a list of integer values."""
+    return isinstance(lst, list) and all(is_integer(x) for x in lst)
+
+
+def is_float_list(lst: Any) -> TypeGuard[list[float]]:
+    """Return ``True`` if *lst* is a list of flaot values."""
+    return isinstance(lst, list) and all(is_float(x) for x in lst)
 
 
 def is_basis_list(x: Any) -> TypeGuard[list[libcint.AtomCGTOBasis]]:
@@ -123,18 +119,6 @@ def is_basis_list(x: Any) -> TypeGuard[list[libcint.AtomCGTOBasis]]:
     from dxtb._src.exlibs import libcint
 
     return all(isinstance(i, libcint.AtomCGTOBasis) for i in x)
-
-
-def convert_float_tensor(
-    d: dict[str, float | Tensor],
-    device: torch.device | None = None,
-    dtype: torch.dtype | None = None,
-) -> dict[str, Tensor]:
-    for key, value in d.items():
-        if isinstance(value, float):
-            d[key] = torch.tensor(value, device=device, dtype=dtype)
-
-    return d  # type: ignore
 
 
 def set_jit_enabled(enabled: bool) -> None:

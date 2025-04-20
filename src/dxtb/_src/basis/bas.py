@@ -33,12 +33,8 @@ from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.data import pse
 from tad_mctc.exceptions import DtypeError
 
-from dxtb._src.param import (
-    Param,
-    get_elem_param,
-    get_elem_pqn,
-    get_elem_valence,
-)
+from dxtb._src.constants.defaults import DEFAULT_BASIS_INT
+from dxtb._src.param import Param, ParamModule
 from dxtb._src.typing import Literal, Self, Tensor, TensorLike, override
 
 from .indexhelper import IndexHelper
@@ -47,15 +43,31 @@ from .slater import slater_to_gauss
 
 if TYPE_CHECKING:
     from dxtb._src.exlibs import libcint
-del TYPE_CHECKING
 
 __all__ = ["Basis"]
 
 
 # fmt: off
-primes = torch.tensor(
-    [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499,503,509,521,523,541,547,557,563,569,571,577,587,593,599,601,607,613,617,619,631,641,643,647,653,659,661,673,677,683,691,701,709,719,727,733,739,743,751,757,761,769,773,787,797,809,811,821,823,827,829,839,853,857,859,863,877,881,883,887,907,911,919,929,937,941,947,953,967,971,977,983,991,997,1009,1013,1019,1021,1031,1033,1039,1049,1051,1061,1063,1069,1087,1091,1093,1097,1103,1109,1117,1123,1129,1151,1153,1163,1171,1181,1187,1193,1201,1213,1217,1223,1229,1231,1237,1249,1259,1277,1279,1283,1289,1291,1297,1301,1303,1307,1319,1321,1327,1361,1367,1373,1381,1399,1409,1423,1427,1429,1433,1439,1447,1451,1453,1459,1471,1481,1483,1487,1489,1493,1499,1511,1523,1531,1543,1549,1553,1559,1567,1571,1579,1583,1597,1601,1607,1609,1613,1619,1621,1627,1637,1657,1663,1667,1669,1693,1697,1699,1709,1721,1723,1733,1741,1747,1753,1759,1777,1783,1787,1789,1801,1811,1823,1831,1847,1861,1867,1871,1873,1877,1879,1889,1901,1907,1913,1931,1933,1949,1951,1973,1979,1987]
-)
+primes = torch.tensor([
+    2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,
+    103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,193,197,
+    199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,293,307,311,
+    313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,409,419,421,431,
+    433,439,443,449,457,461,463,467,479,487,491,499,503,509,521,523,541,547,557,
+    563,569,571,577,587,593,599,601,607,613,617,619,631,641,643,647,653,659,661,
+    673,677,683,691,701,709,719,727,733,739,743,751,757,761,769,773,787,797,809,
+    811,821,823,827,829,839,853,857,859,863,877,881,883,887,907,911,919,929,937,
+    941,947,953,967,971,977,983,991,997,1009,1013,1019,1021,1031,1033,1039,1049,
+    1051,1061,1063,1069,1087,1091,1093,1097,1103,1109,1117,1123,1129,1151,1153,
+    1163,1171,1181,1187,1193,1201,1213,1217,1223,1229,1231,1237,1249,1259,1277,
+    1279,1283,1289,1291,1297,1301,1303,1307,1319,1321,1327,1361,1367,1373,1381,
+    1399,1409,1423,1427,1429,1433,1439,1447,1451,1453,1459,1471,1481,1483,1487,
+    1489,1493,1499,1511,1523,1531,1543,1549,1553,1559,1567,1571,1579,1583,1597,
+    1601,1607,1609,1613,1619,1621,1627,1637,1657,1663,1667,1669,1693,1697,1699,
+    1709,1721,1723,1733,1741,1747,1753,1759,1777,1783,1787,1789,1801,1811,1823,
+    1831,1847,1861,1867,1871,1873,1877,1879,1889,1901,1907,1913,1931,1933,1949,
+    1951,1973,1979,1987
+])
 """The first 300 prime numbers."""
 # fmt: on
 
@@ -97,7 +109,7 @@ class Basis(TensorLike):
     def __init__(
         self,
         numbers: Tensor,
-        par: Param,
+        par: Param | ParamModule,
         ihelp: IndexHelper,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
@@ -108,22 +120,27 @@ class Basis(TensorLike):
         self.meta = par.meta
         self.ihelp = ihelp
 
-        self.ngauss = get_elem_param(
-            self.unique,
-            par.element,
-            "ngauss",
-            device=self.device,
-            dtype=torch.uint8,
+        if not isinstance(par, ParamModule):
+            par = ParamModule(par, **self.dd)
+
+        # Integer data types for `ngauss` and `pqn`
+        self.ngauss = par.get_elem_param(
+            self.unique, "ngauss", dtype=DEFAULT_BASIS_INT
         )
-        self.slater = get_elem_param(
-            self.unique, par.element, "slater", **self.dd
-        )
-        self.pqn = get_elem_pqn(
-            self.unique, par.element, device=self.device, dtype=torch.uint8
-        )
-        self.valence = get_elem_valence(
-            self.unique, par.element, device=self.device
-        )
+        self.pqn = par.get_elem_pqn(self.unique)
+
+        self.slater = par.get_elem_param(self.unique, "slater")
+        self.valence = par.get_elem_valence(self.unique)
+
+        # When a CUDA device is used, the parametrization remains on CPU, even
+        # when the libcint library is requested via the `force_cpu_for_libcint`
+        # flag. This flag only moves the positions and the IndexHelper (see
+        # `DriverManager.create_driver`). We are moving here, because we do not
+        # want to move the whole parametrization back and forth.
+        self.ngauss = self.ngauss.to(device=self.device)
+        self.slater = self.slater.to(device=self.device)
+        self.pqn = self.pqn.to(device=self.device)
+        self.valence = self.valence.to(device=self.device)
 
     def create_cgtos(self) -> tuple[list[Tensor], list[Tensor]]:
         """
@@ -480,7 +497,8 @@ class Basis(TensorLike):
             # reset counter
             s = 0
 
-            # collect final basis for each atom in list (same order as `numbers`)
+            # collect final basis for each atom in list
+            # (same order as `numbers`)
             atombasis: list[libcint.AtomCGTOBasis] = []
 
             for i, num in enumerate(self.numbers):
@@ -553,6 +571,7 @@ class Basis(TensorLike):
                     s += 1
 
                 # POSITIONS
+                _pos = None
                 if self.ihelp.batch_mode == 1:
                     if mask is not None:
                         m = mask[_batch]
@@ -564,6 +583,11 @@ class Basis(TensorLike):
                         _pos = deflate(pos, value=float("nan"))
                 elif self.ihelp.batch_mode == 2:
                     _pos = pos
+
+                if _pos is None:
+                    raise RuntimeError(
+                        "Positions not found. Please check the batch mode."
+                    )
 
                 atomcgtobasis = libcint.AtomCGTOBasis(
                     atomz=num,
@@ -623,51 +647,5 @@ class Basis(TensorLike):
 
         # hard override of the dtype in TensorLike
         self.override_dtype(dtype)
-
-        return self
-
-    @override
-    def to(self, device: torch.device) -> Self:
-        """
-        Returns a copy of the class instance on the specified device.
-
-        This method overrides the usual approach because the
-        :class:`~dxtb.Calculator`'s arguments and slots differ significantly.
-        Hence, it is not practical to instantiate a new copy.
-
-        Parameters
-        ----------
-        device : torch.device
-            Device to store the tensor on.
-
-        Returns
-        -------
-        Self
-            A copy of the class instance on the specified device.
-
-        Raises
-        ------
-        RuntimeError
-            If the ``__slots__`` attribute is not set in the class.
-        """
-        if self.device == device:
-            return self
-
-        if len(self.__slots__) == 0:
-            raise RuntimeError(
-                f"The `to` method requires setting ``__slots__`` in the "
-                f"'{self.__class__.__name__}' class."
-            )
-
-        self.numbers = self.numbers.to(device)
-        self.unique = self.unique.to(device)
-        self.ihelp = self.ihelp.to(device)
-        self.slater = self.slater.to(device)
-        self.valence = self.valence.to(device)
-        self.ngauss = self.ngauss.to(device)
-        self.pqn = self.pqn.to(device)
-
-        # hard override of the dtype in TensorLike
-        self.override_device(device)
 
         return self

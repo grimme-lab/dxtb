@@ -29,10 +29,13 @@ from ..conftest import DEVICE
 
 
 class Model(BaseModel):
+    """Dummy model to test serialization."""
+
     tensor: TensorPydantic
 
 
 def test_array_serialization() -> None:
+    """Test serialization of a 2D tensor."""
     t = torch.tensor([[1, 2], [3, 4]], device=DEVICE)
     model = Model(tensor=t)  # type: ignore
 
@@ -41,6 +44,7 @@ def test_array_serialization() -> None:
 
 
 def test_scalar_serialization() -> None:
+    """Test serialization of a scalar tensor."""
     scalar = torch.tensor(42, device=DEVICE)
     model = Model(tensor=scalar)  # type: ignore
 
@@ -49,6 +53,7 @@ def test_scalar_serialization() -> None:
 
 
 def test_grad_tensor_serialization() -> None:
+    """Test serialization of a tensor with gradients."""
     t = torch.tensor([[1.0, 4.0]], device=DEVICE, requires_grad=True)
     model = Model(tensor=t)  # type: ignore
 

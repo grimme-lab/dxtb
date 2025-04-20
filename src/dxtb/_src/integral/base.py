@@ -27,7 +27,7 @@ import torch
 from tad_mctc.math import einsum
 
 from dxtb._src.constants import defaults
-from dxtb._src.typing import Literal, PathLike, Self, Tensor, TensorLike
+from dxtb._src.typing import Any, Literal, PathLike, Self, Tensor, TensorLike
 
 from .abc import IntegralABC
 from .driver import IntDriver
@@ -55,20 +55,20 @@ class BaseIntegral(IntegralABC, TensorLike):
     family: str | None
     """Family of the integral implementation (PyTorch or libcint)."""
 
-    uplo: Literal["n", "u", "l"] = "l"
+    uplo: Literal["n", "u", "l"]
     """
     Whether the matrix of unique shell pairs should be create as a
     triangular matrix (`l`: lower, `u`: upper) or full matrix (`n`).
     Defaults to `l` (lower triangular matrix).
     """
 
-    cutoff: Tensor | float | int | None = defaults.INTCUTOFF
+    cutoff: Tensor | float | int | None
     """
     Real-space cutoff for integral calculation in Bohr. Defaults to
     `constants.defaults.INTCUTOFF`.
     """
 
-    __slots__ = ["_matrix", "_gradient", "_norm"]
+    __slots__ = ["_matrix", "_gradient", "_norm", "family", "cutoff", "uplo"]
 
     def __init__(
         self,
@@ -76,9 +76,6 @@ class BaseIntegral(IntegralABC, TensorLike):
         dtype: torch.dtype | None = None,
         uplo: Literal["n", "N", "u", "U", "l", "L"] = "l",
         cutoff: Tensor | float | int | None = defaults.INTCUTOFF,
-        _matrix: Tensor | None = None,
-        _gradient: Tensor | None = None,
-        _norm: Tensor | None = None,
     ) -> None:
         super().__init__(device=device, dtype=dtype)
         self.label = self.__class__.__name__
@@ -89,9 +86,9 @@ class BaseIntegral(IntegralABC, TensorLike):
             raise ValueError(f"Unknown option for `uplo` chosen: '{uplo}'.")
         self.uplo = uplo.casefold()  # type: ignore
 
-        self._norm = _norm
-        self._matrix = _matrix
-        self._gradient = _gradient
+        self._norm = None
+        self._matrix = None
+        self._gradient = None
 
     def checks(self, driver: IntDriver) -> None:
         """
@@ -131,9 +128,7 @@ class BaseIntegral(IntegralABC, TensorLike):
             )
 
     def clear(self) -> None:
-        """
-        Clear the integral matrix and gradient.
-        """
+        """Clear the integral matrix and gradient."""
         self._matrix = None
         self._norm = None
         self._gradient = None
@@ -154,7 +149,7 @@ class BaseIntegral(IntegralABC, TensorLike):
 
         return False
 
-    def normalize(self, norm: Tensor | None = None) -> None:
+    def normalize(self, norm: Tensor | None = None, **_: Any) -> None:
         """
         Normalize the integral (changes ``self.matrix``).
 
@@ -211,37 +206,9 @@ class BaseIntegral(IntegralABC, TensorLike):
 
         torch.save(self.matrix, path)
 
-    def to(self, device: torch.device | None) -> Self:
-        """
-        Returns a copy of the integral on the specified device "``device``".
-
-        This is essentially a wrapper around the :meth:`to` method of the
-        :class:`TensorLike` class, but explicitly also moves the integral
-        matrix.
-
-        Parameters
-        ----------
-        device : torch.device | None
-            Device to which all associated tensors should be moved.
-
-        Returns
-        -------
-        Self
-            A copy of the integral placed on the specified device.
-        """
-        if self._gradient is not None:
-            self._gradient = self._gradient.to(device=device)
-
-        if self._norm is not None:
-            self._norm = self._norm.to(device=device)
-
-        if self._matrix is not None:
-            self._matrix = self._matrix.to(device=device)
-
-        return super().to(device=device)
-
     @property
     def matrix(self) -> Tensor:
+        """Matrix of the integral."""
         if self._matrix is None:
             raise RuntimeError(
                 "Integral matrix not found. This can be caused by two "
@@ -273,6 +240,38 @@ class BaseIntegral(IntegralABC, TensorLike):
     @gradient.setter
     def gradient(self, mat: Tensor) -> None:
         self._gradient = mat
+
+    def to(
+        self,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> Self:
+        """
+        Returns a copy of the integral on the specified device "``device``".
+        This is essentially a wrapper around the :meth:`to` method of the
+        :class:`TensorLike` class, but explicitly also moves the integral
+        matrix.
+
+        Parameters
+        ----------
+        device : torch.device | None
+            Device to which all associated tensors should be moved.
+
+        Returns
+        -------
+        Self
+            A copy of the integral placed on the specified device.
+        """
+        if self._gradient is not None:
+            self._gradient = self._gradient.to(device=device, dtype=dtype)
+
+        if self._norm is not None:
+            self._norm = self._norm.to(device=device, dtype=dtype)
+
+        if self._matrix is not None:
+            self._matrix = self._matrix.to(device=device, dtype=dtype)
+
+        return super().to(device=device, dtype=dtype)
 
     def __str__(self) -> str:  # pragma: no cover
         d = self.__dict__.copy()

@@ -27,7 +27,7 @@ import torch
 from tad_mctc.batch import pack
 from tad_mctc.math import einsum
 
-from dxtb._src.typing import Tensor
+from dxtb._src.typing import Any, Tensor
 
 from ...types import OverlapIntegral
 from ...utils import snorm
@@ -48,7 +48,7 @@ class OverlapLibcint(OverlapIntegral, IntegralLibcint):
     the :meth:`get_gradient` method should be used.
     """
 
-    def build(self, driver: IntDriverLibcint) -> Tensor:
+    def build(self, driver: IntDriverLibcint, **_: Any) -> Tensor:
         """
         Calculation of overlap integral using libcint.
 
@@ -85,7 +85,7 @@ class OverlapLibcint(OverlapIntegral, IntegralLibcint):
         self.norm = snorm(self.matrix)
         return self.matrix
 
-    def get_gradient(self, driver: IntDriverLibcint) -> Tensor:
+    def get_gradient(self, driver: IntDriverLibcint, **_: Any) -> Tensor:
         """
         Overlap gradient calculation using libcint.
 
