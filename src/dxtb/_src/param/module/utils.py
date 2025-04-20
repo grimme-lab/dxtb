@@ -159,7 +159,10 @@ class ParamGetterMixin:
         self._set_differentiable_recursive(node, ignore_non_numeric)
 
     def _set_differentiable_recursive(
-        self, module: nn.Module, ignore_non_numeric: bool
+        self,
+        module: nn.Module,
+        ignore_non_numeric: bool,
+        ignore_non_float: bool = True,
     ) -> None:
         """
         Recursively sets all :class:`ParameterModule` instances within *module*
@@ -175,8 +178,12 @@ class ParamGetterMixin:
         ----------
         module : nn.Module
             The module to update.
-        ignore_non_numeric : bool
+        ignore_non_numeric : bool, optional
             Whether to ignore non-numeric values during the update.
+            Default is ``True``.
+        ignore_non_float : bool, optional
+            Whether to ignore non-float values during the update.
+            Default is ``True``.
 
         Raises
         ------
@@ -185,6 +192,17 @@ class ParamGetterMixin:
             ``ignore_non_numeric`` is ``False``.
         """
         if isinstance(module, ParameterModule):
+            p = module.param
+            if not isinstance(p, torch.Tensor):
+                return
+
+            if not p.is_floating_point():
+                if ignore_non_float:
+                    return
+                raise TypeError(
+                    "Cannot set a non-float value to be differentiable."
+                )
+
             module.param.requires_grad_(True)
             return
 
@@ -382,6 +400,30 @@ class ParamElementsPairsMixin(ParamShortcutMixin):
             result[num] = [label2angular[label[-1]] for label in shells]
 
         return result
+
+    def get_elem_shells(self, unique: Tensor) -> dict[str, list[str]]:
+        """
+        Obtain the shells of all atoms.
+
+        Parameters
+        ----------
+        unique : Tensor
+            Unique atomic numbers in the system (shape: ``(nunique,)``).
+
+        Returns
+        -------
+        Tensor
+            Shells of all elements.
+        """
+        shells: dict[str, list[str]] = {}
+        for number in torch.atleast_1d(unique):
+            el = pse.Z2S.get(int(number.item()), "X")
+            if el in self.element:
+                shells[el] = [
+                    str(s.value) for s in self.get("element", el, "shells")
+                ]
+
+        return shells
 
     def get_pair_param(self, symbols: list[str] | list[int]) -> Tensor:
         """
