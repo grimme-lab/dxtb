@@ -86,6 +86,9 @@ class Basis(TensorLike):
     ngauss: Tensor
     """Number of Gaussians used in expansion from Slater orbital."""
 
+    shells: dict[str, list[str]]
+    """Shells for each atom."""
+
     slater: Tensor
     """Exponent of Slater function."""
 
@@ -101,6 +104,7 @@ class Basis(TensorLike):
         "meta",
         "ihelp",
         "ngauss",
+        "shells",
         "slater",
         "pqn",
         "valence",
@@ -131,6 +135,7 @@ class Basis(TensorLike):
 
         self.slater = par.get_elem_param(self.unique, "slater")
         self.valence = par.get_elem_valence(self.unique)
+        self.shells = par.get_elem_shells(self.unique)
 
         # When a CUDA device is used, the parametrization remains on CPU, even
         # when the libcint library is requested via the `force_cpu_for_libcint`
@@ -349,11 +354,24 @@ class Basis(TensorLike):
         alphas = []
         s = 0
         fulltxt = ""
+
+        if qcformat == "nwchem":
+            header += 'BASIS "ao basis" SPHERICAL PRINT\n'
+
         for i, number in enumerate(self.unique.tolist()):
             txt = header
 
+            symbol = pse.Z2S[number]
+            if symbol not in self.shells:
+                raise ValueError(
+                    f"Element '{symbol}' not found in the basis set."
+                )
+
             if qcformat == "gaussian94":
-                txt += f"{pse.Z2S[number]}\n"
+                txt += f"{symbol}\n"
+            elif qcformat == "nwchem":
+                f = format_contraction(self.shells[symbol], self.ngauss)
+                txt += f"#BASIS SET: {f}\n"
 
             shells = self.ihelp.shells_per_atom[i]
             for _ in range(shells):
@@ -386,6 +404,8 @@ class Basis(TensorLike):
             # final separator in gaussian94 format
             if qcformat == "gaussian94":
                 txt += "****\n"
+            elif qcformat == "nwchem":
+                txt += f"END\n"
 
             # always save to src/dxtb/mol/external/basis
             if save is True:
@@ -649,3 +669,53 @@ class Basis(TensorLike):
         self.override_dtype(dtype)
 
         return self
+
+
+def format_contraction(shells: list[str], ngauss: Tensor) -> str:
+    """
+    Format the contraction of the basis set.
+
+    Parameters
+    ----------
+    shells : list[str]
+        List of shells.
+    ngauss : Tensor
+        Number of Gaussian primitives for each shell.
+
+    Returns
+    -------
+    str
+        Formatted contraction string.
+
+    Note
+    ----
+    For H in GFN1-xTB, the contraction will be (7s) -> [2s]. However, the
+    exported basis set will included the orthogonalized 2s shell, which would
+    make the contraction (11s) -> [2s].
+    """
+    type_order = ["s", "p", "d", "f", "g"]
+
+    # 1) tally up primitives by angular momentum
+    prim_counts = {}
+    for shell, n in zip(shells, ngauss):
+        l = shell[-1]  # last char: 's','p',...
+        prim_counts[l] = prim_counts.get(l, 0) + int(n)
+
+    # 2) build the "(...)" part for nonzero primitives
+    prim_parts = [
+        f"{prim_counts[l]}{l}" for l in type_order if prim_counts.get(l, 0) > 0
+    ]
+
+    # 3) build the "[...]" part for nonzero contracted fns
+    counts = {t: 0 for t in type_order}
+
+    for sh in shells:
+        shell_type = sh[-1]
+        if shell_type not in counts:
+            raise ValueError(f"Unknown shell type '{shell_type}' for element.")
+
+        counts[shell_type] += 1
+
+    cont_parts = [f"{counts[l]}{l}" for l in type_order if counts.get(l, 0) > 0]
+
+    return f"({','.join(prim_parts)}) -> [{','.join(cont_parts)}]"
