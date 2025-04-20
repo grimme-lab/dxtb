@@ -32,7 +32,6 @@ import torch
 from tad_mctc import storch
 
 from dxtb import IndexHelper
-from dxtb._src.calculators.utils import shape_checks_chrg
 from dxtb._src.components.interactions import (
     InteractionList,
     InteractionListCache,
@@ -177,10 +176,8 @@ def get_refocc(
         torch.tensor(0, device=refs.device, dtype=refs.dtype),
     )
 
-    assert shape_checks_chrg(chrg, n0.ndim, name="Charge")
-
     # Obtain the reference occupation and total number of electrons
-    nel = torch.sum(n0, -1) - chrg
+    nel = torch.sum(n0, -1, keepdim=True) - chrg
 
     # get alpha and beta electrons and occupation
     nab = filling.get_alpha_beta_occupation(nel, spin)

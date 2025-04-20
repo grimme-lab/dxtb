@@ -88,7 +88,7 @@ def test_no_electrons(dtype: torch.dtype):
 
     evals = torch.arange(1, 6, **dd)
     nel = torch.tensor(0.0, **dd)
-    occ = filling.get_fermi_occupation(nel, evals, None)
+    occ = filling.get_fermi_occupation(nel, evals, torch.tensor(300, **dd))
 
     assert pytest.approx(torch.zeros_like(occ).cpu()) == occ.cpu()
 
@@ -128,19 +128,21 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
 
     sample1, sample2 = samples[name1], samples[name2]
 
-    nel = pack(
+    nel = torch.stack(
         [
-            sample1["n_electrons"].to(**dd),
-            sample2["n_electrons"].to(**dd),
-            sample2["n_electrons"].to(**dd),
-        ]
+            torch.atleast_1d(sample1["n_electrons"].to(**dd)),
+            torch.atleast_1d(sample2["n_electrons"].to(**dd)),
+            torch.atleast_1d(sample2["n_electrons"].to(**dd)),
+        ],
+        dim=0,
     )
-    uhf = pack(
+    uhf = torch.stack(
         [
-            sample1["spin"].to(**dd),
-            sample2["spin"].to(**dd),
-            sample2["spin"].to(**dd),
-        ]
+            torch.atleast_1d(sample1["spin"].to(**dd)),
+            torch.atleast_1d(sample2["spin"].to(**dd)),
+            torch.atleast_1d(sample2["spin"].to(**dd)),
+        ],
+        dim=0,
     )
     nab = filling.get_alpha_beta_occupation(nel, uhf)
 
@@ -278,12 +280,13 @@ def test_lumo_not_existing(dtype: torch.dtype) -> None:
 
     sample = samples["He"]
 
-    nel = pack(
+    nel = torch.stack(
         [
-            sample["n_electrons"].to(**dd),
-            sample["n_electrons"].to(**dd),
-            sample["n_electrons"].to(**dd),
-        ]
+            torch.atleast_1d(sample["n_electrons"].to(**dd)),
+            torch.atleast_1d(sample["n_electrons"].to(**dd)),
+            torch.atleast_1d(sample["n_electrons"].to(**dd)),
+        ],
+        dim=0,
     )
     nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
 
@@ -336,12 +339,13 @@ def test_lumo_obscured_by_padding(dtype: torch.dtype) -> None:
     )
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
-    nel = pack(
+    nel = torch.stack(
         [
-            sample1["n_electrons"].to(**dd),
-            sample2["n_electrons"].to(**dd),
-            sample2["n_electrons"].to(**dd),
-        ]
+            torch.atleast_1d(sample1["n_electrons"].to(**dd)),
+            torch.atleast_1d(sample2["n_electrons"].to(**dd)),
+            torch.atleast_1d(sample2["n_electrons"].to(**dd)),
+        ],
+        dim=0,
     )
     nab = filling.get_alpha_beta_occupation(nel, torch.zeros_like(nel))
 

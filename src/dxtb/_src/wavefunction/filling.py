@@ -49,12 +49,14 @@ def get_alpha_beta_occupation(
     nel : Tensor
         Total number of electrons.
     uhf : Tensor | int | list[int] | None
-        Number of unpaired electrons. If ``None``, spin is figured out automatically.
+        Number of unpaired electrons. If ``None``, spin is figured out
+        automatically.
 
     Returns
     -------
     Tensor
-        Alpha (first column, 0 index) and beta (second column, 1 index) electrons.
+        Alpha (first column, 0 index) and beta (second column, 1 index)
+        electrons.
 
     Raises
     ------
@@ -94,6 +96,10 @@ def get_alpha_beta_occupation(
         # set to zero and figure out via remainder
         uhf = torch.zeros_like(nel)
 
+    nel = torch.atleast_1d(nel)
+    uhf = torch.atleast_1d(uhf)
+    assert isinstance(uhf, Tensor)
+
     nuhf = torch.where(
         torch.remainder(uhf, 2) == torch.remainder(nel.round(), 2),
         uhf,
@@ -104,7 +110,7 @@ def get_alpha_beta_occupation(
     nb = (nel - diff) / 2.0
     na = nb + diff
 
-    return torch.stack([na, nb], dim=-1)
+    return torch.cat([na, nb], dim=-1)
 
 
 def get_aufbau_occupation(norb: Tensor, nel: Tensor) -> Tensor:
@@ -263,7 +269,7 @@ def get_fermi_energy(
 def get_fermi_occupation(
     nel: Tensor,
     emo: Tensor,
-    kt: Tensor | None = None,
+    kt: Tensor,
     mask: Tensor | None = None,
     thr: Tensor | float | int | None = None,
     maxiter: int = 200,
@@ -281,14 +287,15 @@ def get_fermi_occupation(
         Number of electrons.
     emo : Tensor
         Orbital energies.
-    kt : Tensor | None, optional
-        Electronic temperature in atomic units, by default None.
+    kt : Tensor
+        Electronic temperature in atomic units.
     mask : Tensor | None, optional
         Mask for Fermi energy. Just passed through.
     thr : Tensor | None, optional
         Threshold for converging Fermi energy, by default None.
     maxiter : int, optional
-        Maximum number of iterations for converging Fermi energy, by default 200.
+        Maximum number of iterations for converging Fermi energy.
+        Defaults to 200.
 
     Returns
     -------
