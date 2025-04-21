@@ -120,7 +120,10 @@ class ParamGetterMixin:
     # Recursively set differentiable (requires_grad=True) for the parameter(s)
 
     def set_differentiable(
-        self, *keys: str | int, ignore_non_numeric: bool = True
+        self,
+        *keys: str | int,
+        ignore_non_numeric: bool = True,
+        ignore_non_float: bool = True,
     ) -> None:
         """
         Recursively set the parameter(s) at the given key path to be
@@ -133,9 +136,12 @@ class ParamGetterMixin:
         ----------
         *keys : sequence of str or int
             Keys (or indices) to traverse the parameter tree to the target node.
-        ignore_non_numeric : bool, default True
-            Whether to ignore non-numeric (nonnumeric) fields encountered in the
-            branch.
+        ignore_non_numeric : bool, optional
+            Whether to ignore non-numeric values during the update.
+            Default is ``True``.
+        ignore_non_float : bool, optional
+            Whether to ignore non-float values during the update.
+            Default is ``True``.
 
         Raises
         ------
@@ -156,12 +162,16 @@ class ParamGetterMixin:
             raise TypeError(
                 "Cannot set a nonnumeric value to be differentiable."
             )
-        self._set_differentiable_recursive(node, ignore_non_numeric)
+        self._set_differentiable_recursive(
+            node,
+            ignore_non_numeric=ignore_non_numeric,
+            ignore_non_float=ignore_non_float,
+        )
 
     def _set_differentiable_recursive(
         self,
         module: nn.Module,
-        ignore_non_numeric: bool,
+        ignore_non_numeric: bool = True,
         ignore_non_float: bool = True,
     ) -> None:
         """
@@ -193,7 +203,10 @@ class ParamGetterMixin:
         """
         if isinstance(module, ParameterModule):
             p = module.param
-            if not isinstance(p, torch.Tensor):
+
+            # Should always be tensor, because ParameterModule sets the param
+            # attribute to a Parameter (which is a subclass of Tensor).
+            if not isinstance(p, torch.Tensor):  # pragma: no cover
                 return
 
             if not p.is_floating_point():
@@ -489,13 +502,7 @@ class ParamElementsPairsMixin(ParamShortcutMixin):
         """
         vals_list = []
         key = "shells"
-        label2angular = {
-            "s": 0,
-            "p": 1,
-            "d": 2,
-            "f": 3,
-            "g": 4,
-        }
+        label2angular = {"s": 0, "p": 1, "d": 2, "f": 3, "g": 4}
 
         par = self.element
 

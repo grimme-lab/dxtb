@@ -270,6 +270,25 @@ def test_set_differentiable_branch_ignore_non_numeric_all_numeric() -> None:
     _check(branch)
 
 
+def test_set_differentiable_non_float() -> None:
+    """Test failure when setting a non-float parameter to be differentiable."""
+    par = ParamModule(GFN1_XTB, dtype=torch.double)
+
+    # Retrieve a integer parameter
+    ngauss = par.get("element", "H", "ngauss")
+
+    msg = "name should be a string."
+    assert isinstance(ngauss, torch.Tensor), msg
+
+    # Ignore just skips the non-float parameter
+    par.set_differentiable("element", "H", "ngauss", ignore_non_float=True)
+    assert ngauss.requires_grad is False
+
+    # Attempt to set the non-float parameter to be differentiable
+    with pytest.raises(TypeError):
+        par.set_differentiable("element", "H", "ngauss", ignore_non_float=False)
+
+
 # convert and revert
 
 

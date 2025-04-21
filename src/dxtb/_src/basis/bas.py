@@ -620,56 +620,6 @@ class Basis(TensorLike):
 
         return b
 
-    @override
-    def type(self, dtype: torch.dtype) -> Self:
-        """
-        Returns a copy of the class instance with specified floating point type.
-
-        This method overrides the usual approach because the
-        :class:`~dxtb.Calculator`'s arguments and slots differ significantly.
-        Hence, it is not practical to instantiate a new copy.
-
-        Parameters
-        ----------
-        dtype : torch.dtype
-            Floating point type.
-
-        Returns
-        -------
-        Self
-            A copy of the class instance with the specified dtype.
-
-        Raises
-        ------
-        RuntimeError
-            If the ``__slots__`` attribute is not set in the class.
-        DtypeError
-            If the specified dtype is not allowed.
-        """
-
-        if self.dtype == dtype:
-            return self
-
-        if len(self.__slots__) == 0:
-            raise RuntimeError(
-                f"The `type` method requires setting ``__slots__`` in the "
-                f"'{self.__class__.__name__}' class."
-            )
-
-        if dtype not in self.allowed_dtypes:
-            raise DtypeError(
-                f"Only '{self.allowed_dtypes}' allowed (received '{dtype}')."
-            )
-
-        self.numbers = self.numbers.type(dtype)
-        self.unique = self.unique.type(dtype)
-        self.slater = self.slater.type(dtype)
-
-        # hard override of the dtype in TensorLike
-        self.override_dtype(dtype)
-
-        return self
-
 
 def format_contraction(shells: list[str], ngauss: Tensor) -> str:
     """
@@ -712,7 +662,7 @@ def format_contraction(shells: list[str], ngauss: Tensor) -> str:
     for sh in shells:
         shell_type = sh[-1]
         if shell_type not in counts:
-            raise ValueError(f"Unknown shell type '{shell_type}' for element.")
+            raise ValueError(f"Unknown shell type '{shell_type}'.")
 
         counts[shell_type] += 1
 
