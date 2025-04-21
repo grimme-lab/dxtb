@@ -158,7 +158,7 @@ class ParamGetterMixin:
                 f"Key path {'->'.join(map(str, keys))} not found."
             ) from e
 
-        if isinstance(node, NonNumericValue) and not ignore_non_numeric:
+        if isinstance(node, NonNumericValue) and ignore_non_numeric is False:
             raise TypeError(
                 "Cannot set a nonnumeric value to be differentiable."
             )

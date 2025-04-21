@@ -139,6 +139,20 @@ def test_get_unwrapped_false_returns_module() -> None:
     assert isinstance(pm, ParameterModule)
 
 
+def test_get_nonnumeric_leaf() -> None:
+    """Accessing a non-numeric leaf returns its raw value."""
+    par = GFN1_XTB.model_copy(deep=True)
+    diff = ParamModule(par)
+
+    meta = par.meta
+    assert meta is not None
+    expected = meta.name
+
+    val = diff.get("meta", "name")
+    assert isinstance(val, str)
+    assert val == expected
+
+
 # differentiable
 
 
@@ -228,26 +242,20 @@ def test_set_differentiable_on_modulelist_with_no_ignore() -> None:
     Setting differentiability on ModuleList branch without ignoring
     non-numeric raises TypeError.
     """
-    diff = ParamModule(GFN1_XTB.model_copy(deep=True))
     # 'shells' is ModuleList of NonNumericValue
+    par = ParamModule(GFN1_XTB)
+
+    # Trigger error in `_set_differentiable`
     with pytest.raises(TypeError):
-        diff.set_differentiable(
+        par.set_differentiable(
             "element", "C", "shells", ignore_non_numeric=False
         )
 
-
-def test_get_nonnumeric_leaf() -> None:
-    """Accessing a non-numeric leaf returns its raw value."""
-    par = GFN1_XTB.model_copy(deep=True)
-    diff = ParamModule(par)
-
-    meta = par.meta
-    assert meta is not None
-    expected = meta.name
-
-    val = diff.get("meta", "name")
-    assert isinstance(val, str)
-    assert val == expected
+    # Trigger error in `set_differentiable`
+    with pytest.raises(TypeError):
+        par.set_differentiable(
+            "element", "C", "shells", "2s", ignore_non_numeric=True
+        )
 
 
 def test_set_differentiable_branch_ignore_non_numeric_all_numeric() -> None:
@@ -276,9 +284,7 @@ def test_set_differentiable_non_float() -> None:
 
     # Retrieve a integer parameter
     ngauss = par.get("element", "H", "ngauss")
-
-    msg = "name should be a string."
-    assert isinstance(ngauss, torch.Tensor), msg
+    assert isinstance(ngauss, torch.Tensor)
 
     # Ignore just skips the non-float parameter
     par.set_differentiable("element", "H", "ngauss", ignore_non_float=True)
