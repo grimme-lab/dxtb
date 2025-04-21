@@ -46,46 +46,6 @@ def test_fail(dtype: torch.dtype) -> None:
     timer.reset()
 
 
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-def test_fail_charge_single(dtype: torch.dtype) -> None:
-    """Test failure of calculator setup with wrong shape for charge."""
-    dd: DD = {"dtype": dtype, "device": DEVICE}
-
-    numbers = torch.tensor([3, 1], device=DEVICE)
-    positions = torch.zeros(2, 3, **dd)
-
-    calc = Calculator(numbers, GFN1_XTB, opts={"verbosity": 0})
-
-    # charge must be a scalar for single structure
-    with pytest.raises(ValueError) as excinfo:
-        charge = torch.tensor([0.0], **dd)
-        calc.singlepoint(positions, chrg=charge)
-
-    assert "Charge tensor has only one element" in str(excinfo)
-
-
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-def test_fail_charge_batch(dtype: torch.dtype) -> None:
-    """Test failure of calculator setup with wrong shape for charge."""
-    dd: DD = {"dtype": dtype, "device": DEVICE}
-
-    numbers = torch.tensor([[3, 1], [3, 1]], device=DEVICE)
-    positions = torch.zeros(2, 2, 3, **dd)
-
-    calc = Calculator(numbers, GFN1_XTB, opts={"verbosity": 0})
-    with pytest.raises(ValueError) as excinfo:
-        charge = torch.tensor([[0.0], [0.0]], **dd)
-        calc.singlepoint(positions, chrg=charge)
-
-    assert "Charge tensor has more than 1 dimension" in str(excinfo)
-
-    with pytest.raises(ValueError) as excinfo:
-        charge = torch.tensor(0.0, **dd)
-        calc.singlepoint(positions, chrg=charge)
-
-    assert "Charge tensor has invalid shape" in str(excinfo)
-
-
 def run_asserts(c: Calculator, dtype: torch.dtype) -> None:
     """Helper function to run asserts on the calculator."""
     assert c.dtype == dtype

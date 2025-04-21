@@ -534,7 +534,7 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         if isinstance(opts, dict) and "method" not in opts:
             if par.meta is not None:
                 if par.meta.name is not None:
-                    opts["method"] = par.meta.name.value
+                    opts["method"] = par.meta.name.casefold()
 
         # setup calculator options
         if isinstance(opts, dict):

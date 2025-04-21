@@ -36,7 +36,6 @@ from dxtb._src.typing import Any, Tensor
 from dxtb._src.utils.tensors import tensor_id
 
 from ..result import Result
-from ..utils import shape_checks_chrg
 from . import decorators as cdec
 from .base import BaseCalculator
 
@@ -113,7 +112,9 @@ class EnergyCalculator(BaseCalculator):
             else:
                 hashed_key += f"{sep}{arg}"
 
-        if self.numbers.ndim == 2:
+        is_batched = self.numbers.ndim == 2
+
+        if is_batched:
             if isinstance(chrg, (float, int)):
                 if chrg != defaults.CHRG:
                     raise ValueError(
@@ -124,11 +125,18 @@ class EnergyCalculator(BaseCalculator):
 
                 chrg = torch.tensor([chrg, chrg], **self.dd)
 
-        chrg = any_to_tensor(chrg, **self.dd)
+        _chrg: Tensor = torch.atleast_1d(any_to_tensor(chrg, **self.dd))
         if spin is not None:
-            spin = any_to_tensor(spin, **self.dd)
+            _spin = torch.atleast_1d(any_to_tensor(spin, **self.dd))
+        else:
+            _spin = None
 
-        assert shape_checks_chrg(chrg, self.numbers.ndim, name="Charge")
+        # Attempt reshaping to proper batch shape: (n,) -> (n, 1)
+        if is_batched is True:
+            if _chrg.ndim == 1 and _chrg.numel() != 1:
+                _chrg = _chrg.view(-1, 1)
+            if _spin is not None and _spin.ndim == 1 and _spin.numel() != 1:
+                _spin = _spin.view(-1, 1)
 
         result = Result(positions, **self.dd)
 
@@ -275,8 +283,8 @@ class EnergyCalculator(BaseCalculator):
         scf_results = scf.solve(
             self.numbers,
             positions,
-            chrg,
-            spin,
+            _chrg,
+            _spin,
             self.interactions,
             icaches,
             self.ihelp,
@@ -419,7 +427,8 @@ class EnergyCalculator(BaseCalculator):
                 "without caching enabled). Please report this issue."
             )
 
-        return e.sum(-1)
+        assert isinstance(e, Tensor)
+        return e.sum(-1, keepdim=kwargs.get("keepdim", False))
 
     @cdec.cache
     def bond_orders(
