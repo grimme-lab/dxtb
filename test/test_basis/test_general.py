@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import pytest
 import torch
+from tad_mctc.convert import str_to_device
 
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
@@ -108,3 +109,65 @@ def test_fail_higher_orbital_trafo():
                 (coeff[0], coeff[1]),
                 vec,
             )
+
+
+# Device and Dtype
+
+
+@pytest.mark.parametrize("dtype", [torch.float16, torch.float32, torch.float64])
+def test_change_type(dtype: torch.dtype) -> None:
+    """Test changing the `dtype` of the Basis class."""
+    number = torch.tensor([1])
+    ihelp = IndexHelper.from_numbers(number, par)
+
+    bas = Basis(number, par, ihelp)
+    assert bas is not None
+
+    cls = bas.type(dtype)
+    assert cls.dtype == dtype
+
+
+def test_change_type_fail() -> None:
+    """Test failure upon changing `dtype` incorrectly."""
+    number = torch.tensor([1])
+    ihelp = IndexHelper.from_numbers(number, par)
+
+    bas = Basis(number, par, ihelp)
+    assert bas is not None
+
+    # trying to use setter
+    with pytest.raises(AttributeError):
+        bas.dtype = torch.float64
+
+    # passing disallowed dtype
+    with pytest.raises(ValueError):
+        bas.type(torch.bool)
+
+
+@pytest.mark.cuda
+@pytest.mark.parametrize("device_str", ["cpu", "cuda"])
+def test_change_device(device_str: str) -> None:
+    """Test changing the `device` of the class."""
+    device = str_to_device(device_str)
+
+    number = torch.tensor([1])
+    ihelp = IndexHelper.from_numbers(number, par)
+
+    bas = Basis(number, par, ihelp)
+    assert bas is not None
+
+    bas = bas.to(device)
+    assert bas.device == device
+
+
+def test_change_device_fail() -> None:
+    """Test failure upon changing `device` incorrectly."""
+    number = torch.tensor([1])
+    ihelp = IndexHelper.from_numbers(number, par)
+
+    bas = Basis(number, par, ihelp)
+    assert bas is not None
+
+    # trying to use setter
+    with pytest.raises(AttributeError):
+        bas.device = "cpu"

@@ -231,7 +231,7 @@ examples/*.svg
 dxtb.profile
 
 # pytorch lightning
-src/lightning_logs/*
+**/lightning_logs/*
 
 # weights and biases
 src/wandb/*

@@ -120,7 +120,10 @@ class ParamGetterMixin:
     # Recursively set differentiable (requires_grad=True) for the parameter(s)
 
     def set_differentiable(
-        self, *keys: str | int, ignore_non_numeric: bool = True
+        self,
+        *keys: str | int,
+        ignore_non_numeric: bool = True,
+        ignore_non_float: bool = True,
     ) -> None:
         """
         Recursively set the parameter(s) at the given key path to be
@@ -133,9 +136,12 @@ class ParamGetterMixin:
         ----------
         *keys : sequence of str or int
             Keys (or indices) to traverse the parameter tree to the target node.
-        ignore_non_numeric : bool, default True
-            Whether to ignore non-numeric (nonnumeric) fields encountered in the
-            branch.
+        ignore_non_numeric : bool, optional
+            Whether to ignore non-numeric values during the update.
+            Default is ``True``.
+        ignore_non_float : bool, optional
+            Whether to ignore non-float values during the update.
+            Default is ``True``.
 
         Raises
         ------
@@ -152,14 +158,21 @@ class ParamGetterMixin:
                 f"Key path {'->'.join(map(str, keys))} not found."
             ) from e
 
-        if isinstance(node, NonNumericValue) and not ignore_non_numeric:
+        if isinstance(node, NonNumericValue) and ignore_non_numeric is False:
             raise TypeError(
                 "Cannot set a nonnumeric value to be differentiable."
             )
-        self._set_differentiable_recursive(node, ignore_non_numeric)
+        self._set_differentiable_recursive(
+            node,
+            ignore_non_numeric=ignore_non_numeric,
+            ignore_non_float=ignore_non_float,
+        )
 
     def _set_differentiable_recursive(
-        self, module: nn.Module, ignore_non_numeric: bool
+        self,
+        module: nn.Module,
+        ignore_non_numeric: bool = True,
+        ignore_non_float: bool = True,
     ) -> None:
         """
         Recursively sets all :class:`ParameterModule` instances within *module*
@@ -175,8 +188,12 @@ class ParamGetterMixin:
         ----------
         module : nn.Module
             The module to update.
-        ignore_non_numeric : bool
+        ignore_non_numeric : bool, optional
             Whether to ignore non-numeric values during the update.
+            Default is ``True``.
+        ignore_non_float : bool, optional
+            Whether to ignore non-float values during the update.
+            Default is ``True``.
 
         Raises
         ------
@@ -185,6 +202,20 @@ class ParamGetterMixin:
             ``ignore_non_numeric`` is ``False``.
         """
         if isinstance(module, ParameterModule):
+            p = module.param
+
+            # Should always be tensor, because ParameterModule sets the param
+            # attribute to a Parameter (which is a subclass of Tensor).
+            if not isinstance(p, torch.Tensor):  # pragma: no cover
+                return
+
+            if not p.is_floating_point():
+                if ignore_non_float:
+                    return
+                raise TypeError(
+                    "Cannot set a non-float value to be differentiable."
+                )
+
             module.param.requires_grad_(True)
             return
 
@@ -383,6 +414,30 @@ class ParamElementsPairsMixin(ParamShortcutMixin):
 
         return result
 
+    def get_elem_shells(self, unique: Tensor) -> dict[str, list[str]]:
+        """
+        Obtain the shells of all atoms.
+
+        Parameters
+        ----------
+        unique : Tensor
+            Unique atomic numbers in the system (shape: ``(nunique,)``).
+
+        Returns
+        -------
+        Tensor
+            Shells of all elements.
+        """
+        shells: dict[str, list[str]] = {}
+        for number in torch.atleast_1d(unique):
+            el = pse.Z2S.get(int(number.item()), "X")
+            if el in self.element:
+                shells[el] = [
+                    str(s.value) for s in self.get("element", el, "shells")
+                ]
+
+        return shells
+
     def get_pair_param(self, symbols: list[str] | list[int]) -> Tensor:
         """
         Obtain tensor of a pair-wise parametrized quantity for all unique pairs.
@@ -447,13 +502,7 @@ class ParamElementsPairsMixin(ParamShortcutMixin):
         """
         vals_list = []
         key = "shells"
-        label2angular = {
-            "s": 0,
-            "p": 1,
-            "d": 2,
-            "f": 3,
-            "g": 4,
-        }
+        label2angular = {"s": 0, "p": 1, "d": 2, "f": 3, "g": 4}
 
         par = self.element
 
