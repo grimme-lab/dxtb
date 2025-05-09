@@ -15,49 +15,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Typing: Builtins
-================
+Labels: Dictionary Keys
+=======================
 
-This module contains all used built-in type annotations.
+All labels related to special dictionary keys.
 """
-from typing import (
-    IO,
-    TYPE_CHECKING,
-    Any,
-    Generic,
-    Iterable,
-    Iterator,
-    Literal,
-    Mapping,
-    NoReturn,
-    Protocol,
-    Type,
-    TypeAlias,
-    TypedDict,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 
 __all__ = [
-    "IO",
-    "TYPE_CHECKING",
-    "Any",
-    "Generic",
-    "Iterable",
-    "Iterator",
-    "Literal",
-    "Mapping",
-    "NoReturn",
-    "Protocol",
-    "Type",
-    "TypeAlias",
-    "TypedDict",
-    "TypeVar",
-    "cast",
-    "final",
-    "overload",
-    "runtime_checkable",
+    "KEY_NUMBERS",
+    "KEY_POSITIONS",
+    "KEY_CHARGE",
+    "KEY_SPIN",
+    #
+    "KEY_ENERGY",
+    "KEY_FORCES",
+    "KEY_GRADIENT",
+    "KEY_DIPOLE",
+    #
+    "KEY_REF_ENERGY",
+    "KEY_REF_FORCES",
+    "KEY_REF_GRADIENT",
+    "KEY_REF_DIPOLE",
 ]
+
+KEY_NUMBERS = "numbers"
+KEY_POSITIONS = "positions"
+KEY_CHARGE = "charge"
+KEY_SPIN = "spin"
+
+KEY_ENERGY = "energy"
+KEY_FORCES = "forces"
+KEY_GRADIENT = "gradient"
+KEY_DIPOLE = "dipole"
+
+KEY_REF_ENERGY = "ref_energy"
+KEY_REF_FORCES = "ref_forces"
+KEY_REF_GRADIENT = "ref_gradient"
+KEY_REF_DIPOLE = "ref_dipole"

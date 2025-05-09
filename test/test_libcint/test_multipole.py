@@ -326,6 +326,7 @@ def test_shift_r0r0_rjrj(dtype: torch.dtype, name: str, gfn: str) -> None:
     if dtype == torch.float:
         quadint.reduce_9_to_6()
 
+    # Shift r0->rj, always 6 cartesian components
     pos = ihelp.spread_atom_to_orbital(positions, dim=-2, extra=True)
     quadint.shift_r0r0_rjrj(dipint.matrix, ovlpint.matrix, pos)
 

@@ -31,11 +31,10 @@ import torch
 from tad_mctc.batch import real_pairs
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.data import pse
-from tad_mctc.exceptions import DtypeError
 
 from dxtb._src.constants.defaults import DEFAULT_BASIS_INT
 from dxtb._src.param import Param, ParamModule
-from dxtb._src.typing import Literal, Self, Tensor, TensorLike, override
+from dxtb._src.typing import Literal, Tensor, TensorLike
 
 from .indexhelper import IndexHelper
 from .ortho import orthogonalize

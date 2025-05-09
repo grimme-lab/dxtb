@@ -152,7 +152,7 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
 @pytest.mark.parametrize("name2", slist)
 def test_gradcheck_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """
-    Check a single analytical gradient of parameters against numerical
+    Check a batch of analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradchecker_batch(dtype, name1, name2)
@@ -168,7 +168,7 @@ def test_gradcheck_batch_large(
     dtype: torch.dtype, name1: str, name2: str
 ) -> None:
     """
-    Check a single analytical gradient of parameters against numerical
+    Check a batch of analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradcheck`.
     """
     func, diffvars = gradchecker_batch(dtype, name1, name2)
@@ -183,7 +183,7 @@ def test_gradgradcheck_batch(
     dtype: torch.dtype, name1: str, name2: str
 ) -> None:
     """
-    Check a single analytical gradient of parameters against numerical
+    Check a batch of analytical gradient of parameters against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
     func, diffvars = gradchecker_batch(dtype, name1, name2)

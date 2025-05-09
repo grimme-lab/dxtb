@@ -107,6 +107,7 @@ def test_grad(dtype: torch.dtype, name: str):
 
     wrapper = libcint.LibcintWrapper(atombases, ihelp)
     i = libcint.int1e(INTSTR, wrapper)
+    assert isinstance(i, torch.Tensor)
     print()
     igrad = libcint.int1e(f"ip{INTSTR}", wrapper)
     igrad = igrad + igrad.mT

@@ -21,6 +21,7 @@ Labels
 Labels for calculation options.
 """
 
+from dxtb._src.constants.labels.dictkeys import *
 from dxtb._src.constants.labels.integrals import *
 from dxtb._src.constants.labels.method import *
 from dxtb._src.constants.labels.scf import *

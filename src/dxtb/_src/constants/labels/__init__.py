@@ -21,6 +21,7 @@ Labels
 String and integer codes for options.
 """
 
+from .dictkeys import *
 from .integrals import *
 from .method import *
 from .scf import *
