@@ -32,7 +32,14 @@ repos:
     rev: v2.8.0
     hooks:
       - id: setup-cfg-fmt
-        args: [--include-version-classifiers, --max-py-version, "3.11"]
+        args:
+          [
+            --include-version-classifiers,
+            --min-py-version,
+            "3.8",
+            --max-py-version,
+            "3.12",
+          ]
 
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.19.1
