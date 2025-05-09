@@ -27,7 +27,7 @@ import torch
 
 from dxtb import IndexHelper
 from dxtb._src.constants import labels
-from dxtb._src.param import Param
+from dxtb._src.param import Param, ParamModule
 from dxtb._src.typing import TYPE_CHECKING, Tensor
 
 from ..base import IntDriver
@@ -46,7 +46,7 @@ __all__ = ["new_driver"]
 def new_driver(
     name: int,
     numbers: Tensor,
-    par: Param,
+    par: Param | ParamModule,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> IntDriver:
@@ -72,7 +72,7 @@ def new_driver(
 
 def new_driver_libcint(
     numbers: Tensor,
-    par: Param,
+    par: Param | ParamModule,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> IntDriverLibcint:
@@ -88,7 +88,7 @@ def new_driver_libcint(
 
 def new_driver_pytorch(
     numbers: Tensor,
-    par: Param,
+    par: Param | ParamModule,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> IntDriverPytorch:
@@ -101,7 +101,7 @@ def new_driver_pytorch(
 
 def new_driver_pytorch_no_analytical(
     numbers: Tensor,
-    par: Param,
+    par: Param | ParamModule,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> IntDriverPytorchNoAnalytical:
@@ -114,7 +114,7 @@ def new_driver_pytorch_no_analytical(
 
 def new_driver_legacy(
     numbers: Tensor,
-    par: Param,
+    par: Param | ParamModule,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
 ) -> IntDriverPytorchLegacy:

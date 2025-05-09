@@ -92,29 +92,19 @@ def orthogonalize(
         Primitive Gaussian exponents and contraction coefficients for the
         orthonormalized basis function.
     """
-
     coeff_i, coeff_j = coeff
     alpha_i, alpha_j = alpha
-
-    coeff_new = coeff_i.new_zeros(coeff_i.shape[-1] + coeff_j.shape[-1])
-    alpha_new = alpha_i.new_zeros(alpha_i.shape[-1] + alpha_j.shape[-1])
 
     # Calculate overlap between basis functions
     overlap = gaussian_integral(alpha_i, alpha_j, coeff_i, coeff_j)
 
     # Create new basis function from the pair which is orthogonal to the first
     # basis function
-    alpha_new[: alpha_j.shape[-1]], alpha_new[alpha_j.shape[-1] :] = (
-        alpha_j,
-        alpha_i,
-    )
-    coeff_new[: coeff_j.shape[-1]], coeff_new[coeff_j.shape[-1] :] = (
-        coeff_j,
-        -overlap * coeff_i,
-    )
+    alpha_new = torch.cat((alpha_j, alpha_i), dim=-1)
+    coeff_new = torch.cat((coeff_j, -overlap * coeff_i), dim=-1)
 
-    # Normalization of the new basis function might be off, calculate self overlap
+    # Normalization of new basis function might be off, calculate self overlap
     selfoverlap = gaussian_integral(alpha_new, alpha_new, coeff_new, coeff_new)
-    coeff_new /= torch.sqrt(selfoverlap)
+    coeff_new = coeff_new / torch.sqrt(selfoverlap)
 
     return alpha_new, coeff_new

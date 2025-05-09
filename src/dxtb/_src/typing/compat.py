@@ -36,6 +36,7 @@ from tad_mctc.typing.compat import (
     Size,
     Sliceable,
     TensorOrTensors,
+    TypeAlias,
     TypeGuard,
     override,
 )
@@ -57,6 +58,7 @@ __all__ = [
     "Slicer",
     "Tensor",
     "TensorOrTensors",
+    "TypeAlias",
     "TypeGuard",
     "override",
 ]

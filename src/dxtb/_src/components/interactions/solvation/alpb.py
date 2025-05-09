@@ -230,6 +230,8 @@ class GeneralizedBorn(Interaction):
         dielectric_constant: Tensor,
         alpb: bool = DEFAULT_ALPB,
         kernel: str = DEFAULT_KERNEL,
+        born_scale: float = DEFAULT_BORN_SCALE,
+        born_offset: float = DEFAULT_BORN_OFFSET,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
         **kwargs: Any,
@@ -244,9 +246,11 @@ class GeneralizedBorn(Interaction):
         self.keps = (1 / dielectric_constant - 1) / (1 + self.alpbet)
         self.kernel = kernel
 
-        if "rvdw" not in kwargs:
-            kwargs["rvdw"] = VDW_D3.to(**self.dd)[numbers]
-        self.born_kwargs = kwargs
+        self.born_kwargs = {
+            "rvdw": kwargs.get("rvdw", VDW_D3.to(**self.dd)[numbers]),
+            "born_scale": born_scale,
+            "born_offset": born_offset,
+        }
 
     # pylint: disable=unused-argument
     @override
