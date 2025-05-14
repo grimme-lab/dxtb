@@ -310,6 +310,7 @@ class EnergyCalculator(BaseCalculator):
         result.potential = scf_results["potential"]
         result.scf = scf_results["energy"]
         result.fenergy = scf_results["fenergy"]
+        result.iter = scf_results["iterations"]
 
         scf_energy = scf_results["energy"] + scf_results["fenergy"]
         result.total += scf_energy
