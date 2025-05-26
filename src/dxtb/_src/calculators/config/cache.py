@@ -134,6 +134,8 @@ class ConfigCache:
             potential=potential,
         )
 
+    # Helpers for analytical gradient calculations
+
     def setup_for_analytical_gradient(self) -> None:
         """
         Enable all quantities required for an analytical gradient calculation.
@@ -166,3 +168,12 @@ class ConfigCache:
                 self.store.potential,
             ]
         )
+
+    # Pretty printing
+
+    def __str__(self) -> str:  # pragma: no cover
+        """Custom print representation showing all available slots."""
+        return f"{self.__class__.__name__}({self.__dict__})"
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return str(self)

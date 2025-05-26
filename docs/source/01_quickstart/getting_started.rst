@@ -13,7 +13,8 @@ Creating a Calculator
 
 The constructor always requires the atomic numbers of the system(s) and a
 tight-binding parametrization.
-Currently, we provide the :data:`~dxtb.GFN1_XTB` parametrization out of the box.
+Currently, we provide the :data:`~dxtb.GFN1_XTB` and :data:`~dxtb.GFN2_XTB`
+parametrizations out of the box.
 If you directly use the corresponding
 :class:`~dxtb.calculators.GFN1Calculator`, only the atomic numbers are required.
 
@@ -23,7 +24,10 @@ If you directly use the corresponding
     import dxtb
 
     numbers = torch.tensor([3, 1])  # LiH
-    calc = dxtb.calculators.GFN1Calculator(numbers)
+    calc1 = dxtb.calculators.GFN1Calculator(numbers)
+
+    # equivalent
+    calc2 = dxtb.Calculator(numbers, dxtb.GFN1_XTB)
 
 We recommend to always pass the (floating point) :class:`~torch.dtype` and
 :class:`~torch.device` arguments to the constructor to ensure consistency.
