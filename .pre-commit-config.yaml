@@ -42,7 +42,7 @@ repos:
           ]
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.19.1
+    rev: v3.20.0
     hooks:
       - id: pyupgrade
         args: [--py37-plus, --keep-runtime-typing]
@@ -61,6 +61,6 @@ repos:
         args: ["--line-length", "80"]
 
   - repo: https://github.com/woodruffw/zizmor-pre-commit
-    rev: v1.7.0
+    rev: v1.8.0
     hooks:
       - id: zizmor
