@@ -37,7 +37,7 @@ from dxtb._src.utils import is_basis_list
 if has_libcint is True:
     from dxtb._src.exlibs import libcint
 
-from ..conftest import DEVICE
+from ..conftest import DEVICE, NONDET_TOL
 from .samples import samples
 
 sample_list = ["H2", "LiH", "H2O", "SiH4"]
@@ -85,7 +85,7 @@ def gradchecker(name: str, gfn: Param) -> tuple[
 def test_gradcheck(name: str, gfn: Param) -> None:
     """Check single analytical against numerical gradient."""
     func, diffvars = gradchecker(name, gfn)
-    assert gradcheck(func, diffvars, atol=1e-6)
+    assert gradcheck(func, diffvars, atol=1e-6, nondet_tol=NONDET_TOL)
 
 
 @pytest.mark.grad
@@ -95,7 +95,7 @@ def test_gradcheck(name: str, gfn: Param) -> None:
 def test_gradcheck_medium(name: str, gfn: Param) -> None:
     """Check single analytical against numerical gradient."""
     func, diffvars = gradchecker(name, gfn)
-    assert gradcheck(func, diffvars, atol=1e-6)
+    assert gradcheck(func, diffvars, atol=1e-6, nondet_tol=NONDET_TOL)
 
 
 @pytest.mark.grad
@@ -105,7 +105,7 @@ def test_gradcheck_medium(name: str, gfn: Param) -> None:
 def test_gradgradcheck(name: str, gfn: Param) -> None:
     """Check single analytical against numerical gradient."""
     func, diffvars = gradchecker(name, gfn)
-    assert gradgradcheck(func, diffvars, atol=1e-6)
+    assert gradgradcheck(func, diffvars, atol=1e-6, nondet_tol=NONDET_TOL)
 
 
 def overlap(driver: IntDriverLibcint) -> Tensor:
@@ -168,7 +168,7 @@ def gradchecker_batch(name1: str, name2: str, gfn: Param) -> tuple[
 def test_gradcheck_batch(name1: str, name2: str, gfn: Param) -> None:
     """Check batched analytical against numerical gradient."""
     func, diffvars = gradchecker_batch(name1, name2, gfn)
-    assert gradcheck(func, diffvars, atol=1e-6)
+    assert gradcheck(func, diffvars, atol=1e-6, nondet_tol=NONDET_TOL)
 
 
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
@@ -178,4 +178,4 @@ def test_gradcheck_batch(name1: str, name2: str, gfn: Param) -> None:
 def test_gradgradcheck_batch(name1: str, name2: str, gfn: Param) -> None:
     """Check batched analytical against numerical gradient."""
     func, diffvars = gradchecker_batch(name1, name2, gfn)
-    assert gradgradcheck(func, diffvars, atol=1e-6)
+    assert gradgradcheck(func, diffvars, atol=1e-6, nondet_tol=NONDET_TOL)

@@ -182,7 +182,7 @@ MIXER_CHOICES = ["anderson", "broyden", "simple"]
 MIX_GUESS = True
 """Whether to mix the initial guess."""
 
-SCF_MODE = labels.SCF_MODE_IMPLICIT_NON_PURE
+SCF_MODE = labels.SCF_MODE_FULL
 """
 Whether to use full gradient tracking in SCF, make use of the implicit
 function theorem as provided by ``xitorch.optimize.equilibrium``, or use the
