@@ -123,7 +123,7 @@ the example `here <https://github.com/grimme-lab/dxtb/blob/main/examples/forces.
 
     If you supply the **same inputs** to the calculator multiple times with
     gradient tracking enabled, you have to reset the calculator in between with
-    :meth:`~dxtb.Calculator.reset_all`. Otherwise, the gradients will be wrong.
+    :meth:`~dxtb.Calculator.reset`. Otherwise, the gradients will be wrong.
 
     .. admonition:: Example
        :class: toggle
@@ -145,7 +145,7 @@ the example `here <https://github.com/grimme-lab/dxtb/blob/main/examples/forces.
            (g1,) = torch.autograd.grad(energy, pos)
 
            # wrong gradients without reset here
-           calc.reset_all()
+           calc.reset()
 
            pos = positions.clone().requires_grad_(True)
            energy = calc.energy(pos)
