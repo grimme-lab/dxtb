@@ -214,14 +214,19 @@ evaluated within the :class:`~dxtb.components.base.InteractionList`,
 ``numbers`` and :class:`~dxtb.IndexHelper` will be passed as argument, too.
 This is done to fulfill the different requirements of the caches, while
 retaining a (somewhat) consistent API. The electric field cache only needs the
-position tensor. The ``**_`` in the argument list will absorb those unnecessary
-arguments which are given as keyword-only arguments (see
-:meth:`~dxtb.components.base.Interaction.get_cache`).
+position tensor. Correspondingly, the ``numbers`` and ``ihelp`` are not stored
+in the ``cachvars`` tuple, which is used to check if the cache is up-to-date.
 
 .. code-block:: python
 
     @override
-    def get_cache(self, positions: Tensor, **_: Any) -> ElectricFieldCache:
+    def get_cache(
+        self,
+        *,
+        numbers: Tensor | None = None,
+        positions: Tensor | None = None,
+        ihelp: IndexHelper | None = None,
+    ) -> ElectricFieldCache:
         """
         Create restart data for individual interactions.
 
@@ -229,7 +234,29 @@ arguments which are given as keyword-only arguments (see
         -------
         ElectricFieldCache
             Restart data for the interaction.
+
+        Note
+        ----
+        If this interaction is evaluated within the `InteractionList`, `numbers`
+        and `IndexHelper` will be passed as argument, too. The `**_` in the
+        argument list will absorb those unnecessary arguments which are given
+        as keyword-only arguments (see `Interaction.get_cache()`).
         """
+        if positions is None:
+            raise ValueError("Electric field requires atomic positions.")
+
+        cachvars = (positions.detach().clone(), self.field.detach().clone())
+
+        if self.cache_is_latest(cachvars) is True:
+            if not isinstance(self.cache, ElectricFieldCache):
+                raise TypeError(
+                    f"Cache in {self.label} is not of type '{self.label}."
+                    "Cache'. This can only happen if you manually manipulate "
+                    "the cache."
+                )
+            return self.cache
+
+        self._cachevars = cachvars
 
         # (nbatch, natoms, 3) * (3) -> (nbatch, natoms)
         vat = einsum("...ik,k->...i", positions, self.field)
@@ -237,7 +264,8 @@ arguments which are given as keyword-only arguments (see
         # (nbatch, natoms, 3)
         vdp = self.field.expand_as(positions)
 
-        return self.Cache(vat, vdp)
+        self.cache = ElectricFieldCache(vat, vdp)
+        return self.cache
 
 Step 6: Implement the energy evaluation.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -251,44 +279,57 @@ implemented in the derived class will evaluate to zero.
 .. code-block:: python
 
     @override
-    def get_atom_energy(self, charges: Tensor, cache: ElectricFieldCache) -> Tensor:
+    def get_monopole_atom_energy(
+        self, cache: ElectricFieldCache, qat: Tensor, **_: Any
+    ) -> Tensor:
         """
         Calculate the monopolar contribution of the electric field energy.
 
         Parameters
         ----------
-        charges : Tensor
-            Atomic charges of all atoms.
         cache : ElectricFieldCache
             Restart data for the interaction.
+        qat : Tensor
+            Atomic charges of all atoms.
 
         Returns
         -------
         Tensor
             Atom-wise electric field interaction energies.
         """
-        return -cache.vat * charges
+        return -cache.vat * qat
 
     @override
-    def get_dipole_energy(self, charges: Tensor, cache: ElectricFieldCache) -> Tensor:
+    def get_dipole_atom_energy(
+        self,
+        cache: ElectricFieldCache,
+        qat: Tensor,
+        qdp: Tensor | None = None,
+        qqp: Tensor | None = None,
+    ) -> Tensor:
         """
         Calculate the dipolar contribution of the electric field energy.
 
         Parameters
         ----------
-        charges : Tensor
-            Atomic dipole moments of all atoms.
         cache : ElectricFieldCache
             Restart data for the interaction.
+        qat : Tensor
+            Atom-resolved partial charges (shape: ``(..., nat)``).
+        qdp : Tensor
+            Atom-resolved shadow charges (shape: ``(..., nat, 3)``).
+        qqp : Tensor
+            Atom-resolved quadrupole moments (shape: ``(..., nat, 6)``).
 
         Returns
         -------
         Tensor
             Atom-wise electric field interaction energies.
         """
+        assert qdp is not None
 
-        # equivalent: torch.sum(-cache.vdp * charges, dim=-1)
-        return einsum("...ix,...ix->...i", -cache.vdp, charges)
+        # equivalent: torch.sum(-cache.vdp * qdp, dim=-1)
+        return einsum("...ix,...ix->...i", -cache.vdp, qdp)
 
 Step 7: Implement the potential evaluation.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -300,14 +341,14 @@ For API consistency, the charges are passed as a dummy argument.
 .. code-block:: python
 
     @override
-    def get_atom_potential(self, _: Charges, cache: ElectricFieldCache) -> Tensor:
+    def get_monopole_atom_potential(
+        self, cache: ElectricFieldCache, *_: Any, **__: Any
+    ) -> Tensor:
         """
         Calculate the electric field potential.
 
         Parameters
         ----------
-        charges : Tensor
-            Atomic charges of all atoms (not required).
         cache : ElectricFieldCache
             Restart data for the interaction.
 
@@ -319,14 +360,14 @@ For API consistency, the charges are passed as a dummy argument.
         return -cache.vat
 
     @override
-    def get_dipole_potential(self, _: Charges, cache: ElectricFieldCache) -> Tensor:
+    def get_dipole_atom_potential(
+        self, cache: ElectricFieldCache, *_: Any, **__: Any
+    ) -> Tensor:
         """
         Calculate the electric field dipole potential.
 
         Parameters
         ----------
-        charges : Tensor
-            Atomic charges of all atoms (not required).
         cache : ElectricFieldCache
             Restart data for the interaction.
 
