@@ -110,7 +110,7 @@ enable caching, pass ``{"cache_enabled": True}`` to the calculator options.
 
     Caching may lead to side effects if automatic differentiation is used
     multiple times. If you encounter any issues, try running
-    :meth:`~dxtb.Calculator.reset_all`. If this does not help, disable caching
+    :meth:`~dxtb.Calculator.reset`. If this does not help, disable caching
     or report the issue.
 """
 

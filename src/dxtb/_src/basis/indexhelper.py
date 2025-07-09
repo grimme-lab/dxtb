@@ -142,13 +142,13 @@ class IndexHelper(TensorLike):
     shells_to_ushell: Tensor
     """Mapping of shells to unique atoms"""
 
-    shells_per_atom: Tensor
+    shells_per_atom: Tensor  # nsh_at
     """Number of shells for each atom"""
 
     orbitals_per_shell: Tensor
     """Number of orbitals for each shell"""
 
-    shell_index: Tensor
+    shell_index: Tensor  # ish_at
     """Offset index for starting the next shell block"""
 
     orbital_index: Tensor
