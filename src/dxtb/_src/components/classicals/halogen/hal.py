@@ -29,10 +29,10 @@ import torch
 from tad_mctc.batch import pack
 from tad_mctc.convert import any_to_tensor
 from tad_mctc.data.radii import ATOMIC as ATOMIC_RADII
+from tad_mctc.typing import Any, Tensor, override
 
 from dxtb import IndexHelper
 from dxtb._src.constants import xtb
-from dxtb._src.typing import Tensor, override
 
 from ..base import Classical, ClassicalCache
 
@@ -165,7 +165,9 @@ class Halogen(Classical):
         return self.cache
 
     @override
-    def get_energy(self, positions: Tensor, cache: HalogenCache) -> Tensor:
+    def get_energy(
+        self, positions: Tensor, cache: HalogenCache, **_: Any
+    ) -> Tensor:
         """
         Handle batchwise and single calculation of halogen bonding energy.
 
@@ -320,7 +322,7 @@ class Halogen(Classical):
             return torch.zeros(numbers.shape, **self.dd)
 
         # parameters
-        rads = ATOMIC_RADII.to(**self.dd)[numbers] * self.rscale
+        rads = ATOMIC_RADII(**self.dd)[numbers] * self.rscale
 
         # init tensor for atomwise energies
         energies = positions.new_zeros(numbers.size(-1))

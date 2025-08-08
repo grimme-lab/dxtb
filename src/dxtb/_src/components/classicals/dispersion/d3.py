@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import tad_dftd3 as d3
 import torch
+from tad_mctc.data import radii
 from tad_mctc.ncoord import cn_d3, exp_count
 
 from dxtb import IndexHelper
@@ -126,19 +127,19 @@ class DispersionD3(Dispersion):
 
         rcov = kwargs.pop(
             "rcov",
-            d3.data.COV_D3.to(**self.dd)[numbers],
+            radii.COV_D3(**self.dd)[numbers],
         ).to(**self.dd)
 
         rvdw = kwargs.pop(
             "rvdw",
-            d3.data.VDW_D3.to(**self.dd)[
+            radii.VDW_PAIRWISE(**self.dd)[
                 numbers.unsqueeze(-1), numbers.unsqueeze(-2)
             ],
         ).to(**self.dd)
 
         r4r2 = kwargs.pop(
             "r4r2",
-            d3.data.R4R2.to(**self.dd)[numbers],
+            d3.data.R4R2(**self.dd)[numbers],
         ).to(**self.dd)
 
         cf = kwargs.pop("counting_function", exp_count)

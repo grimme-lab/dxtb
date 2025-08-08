@@ -215,7 +215,7 @@ def vib_analysis(
             f"atomic numbers is {numbers.shape}."
         )
 
-    mass = ATOMIC_MASSES.to(device=hessian.device, dtype=hessian.dtype)[numbers]
+    mass = ATOMIC_MASSES(device=hessian.device, dtype=hessian.dtype)[numbers]
 
     # 1/sqrt(m) of shape (..., nat) -> (..., nat*3)
     invsqrtmass = torch.repeat_interleave(

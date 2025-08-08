@@ -27,6 +27,7 @@ import pytest
 import tad_dftd4 as d4
 import torch
 from tad_mctc.batch import pack
+from tad_mctc.data import radii
 
 from dxtb._src.components.classicals.dispersion import (
     DispersionD4,
@@ -91,8 +92,8 @@ def test_batch(dtype: torch.dtype) -> None:
 
     # Add kwargs explicitly for coverage
     model = d4.model.D4Model(numbers, **dd)
-    rcov = d4.data.COV_D3.to(**dd)[numbers]
-    r4r2 = d4.data.R4R2.to(**dd)[numbers]
+    rcov = radii.COV_D3(**dd)[numbers]
+    r4r2 = d4.data.R4R2(**dd)[numbers]
     cutoff = d4.cutoff.Cutoff(**dd)
 
     cache = disp.get_cache(

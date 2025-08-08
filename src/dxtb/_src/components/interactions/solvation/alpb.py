@@ -247,7 +247,7 @@ class GeneralizedBorn(Interaction):
         self.kernel = kernel
 
         self.born_kwargs = {
-            "rvdw": kwargs.get("rvdw", VDW_D3.to(**self.dd)[numbers]),
+            "rvdw": kwargs.get("rvdw", VDW_D3(**self.dd)[numbers]),
             "born_scale": born_scale,
             "born_offset": born_offset,
         }

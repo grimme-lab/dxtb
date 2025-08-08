@@ -135,7 +135,7 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
         # Initialize Hamiltonian parameters
 
         # atom-resolved parameters
-        self.rad = ATOMIC_RADII.to(**self.dd)[self.unique]
+        self.rad = ATOMIC_RADII(**self.dd)[self.unique]
         self.en = par.get_elem_param(self.unique, "en", pad_val=PAD)
         self.enscale = par.get("hamiltonian.xtb.enscale")
 

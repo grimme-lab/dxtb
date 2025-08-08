@@ -23,11 +23,15 @@ DFT-D4 dispersion model.
 
 from __future__ import annotations
 
+from typing import Any, override
+
 import tad_dftd4 as d4
 import torch
+from tad_mctc.data import radii
+from tad_mctc.ncoord import erf_count
+from tad_mctc.typing import CountingFunction, DampingFunction, Tensor
 
 from dxtb import IndexHelper
-from dxtb._src.typing import Any, Tensor, override
 
 from ..base import ClassicalCache
 from .base import Dispersion
@@ -62,8 +66,8 @@ class DispersionD4Cache(ClassicalCache):
         rcov: Tensor,
         r4r2: Tensor,
         cutoff: d4.cutoff.Cutoff,
-        counting_function: d4.typing.CountingFunction,
-        damping_function: d4.typing.DampingFunction,
+        counting_function: CountingFunction,
+        damping_function: d4.damping.Damping,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
@@ -81,9 +85,6 @@ class DispersionD4(Dispersion):
     """
     Representation of the DFT-D4 dispersion correction (:class:`.DispersionD4`).
     """
-
-    charge: Tensor
-    """Total charge of the system."""
 
     # pylint: disable=unused-argument
     @override
@@ -136,7 +137,7 @@ class DispersionD4(Dispersion):
         if rcov is not None and not isinstance(rcov, Tensor):
             raise TypeError("D4: 'rcov' is not of type 'Tensor'.")
         if rcov is None:
-            rcov = d4.data.COV_D3.to(**self.dd)[numbers]
+            rcov = radii.COV_D3(**self.dd)[numbers]
         else:
             rcov = rcov.to(**self.dd)
 
@@ -144,22 +145,22 @@ class DispersionD4(Dispersion):
         if r4r2 is not None and not isinstance(r4r2, Tensor):
             raise TypeError("D4: 'r4r2' is not of type 'Tensor'.")
         if r4r2 is None:
-            r4r2 = d4.data.R4R2.to(**self.dd)[numbers]
+            r4r2 = d4.data.R4R2(**self.dd)[numbers]
         else:
             r4r2 = r4r2.to(**self.dd)
 
         cutoff = kwargs.pop("cutoff", None)
-        if cutoff is not None and not isinstance(cutoff, d4.cutoff.Cutoff):
-            raise TypeError("D4: 'cutoff' is not of type 'd4.cutoff.Cutoff'.")
+        if cutoff is not None and not isinstance(cutoff, d4.Cutoff):
+            raise TypeError("D4: 'cutoff' is not of type 'd4.Cutoff'.")
         if cutoff is None:
-            cutoff = d4.cutoff.Cutoff(**self.dd)
+            cutoff = d4.Cutoff(**self.dd)
         else:
             cutoff = cutoff.type(self.dtype).to(self.device)
 
         q = kwargs.pop("q", None)
 
-        cf = kwargs.pop("counting_function", d4.ncoord.erf_count)
-        df = kwargs.pop("damping_function", d4.damping.rational_damping)
+        cf = kwargs.pop("counting_function", erf_count)
+        df = kwargs.pop("damping_function", d4.damping.RationalDamping())
 
         self.cache = DispersionD4Cache(q, model, rcov, r4r2, cutoff, cf, df)
         return self.cache
@@ -170,7 +171,7 @@ class DispersionD4(Dispersion):
         positions: Tensor,
         cache: DispersionD4Cache,
         q: Tensor | None = None,
-        **_: Any,
+        **kwargs: Any,
     ) -> Tensor:
         """
         Get D4 dispersion energy.
@@ -189,11 +190,16 @@ class DispersionD4(Dispersion):
         Tensor
             Atom-resolved D4 dispersion energy.
         """
+        # FIXME: Charge should be REQUIRED for D4!
+        if self.charge is None and "charge" not in kwargs:
+            charge = torch.tensor(0.0, **self.dd)
+        else:
+            charge = kwargs.pop("charge", self.charge)
 
         return d4.dftd4(
             self.numbers,
             positions,
-            self.charge,
+            charge,
             self.param,
             model=cache.model,
             rcov=cache.rcov,

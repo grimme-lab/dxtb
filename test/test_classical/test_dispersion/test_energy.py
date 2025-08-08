@@ -27,6 +27,7 @@ import pytest
 import tad_dftd3 as d3
 import torch
 from tad_mctc.batch import pack
+from tad_mctc.data import radii
 
 from dxtb import GFN1_XTB as par
 from dxtb._src.components.classicals.dispersion import new_dispersion
@@ -69,8 +70,10 @@ def test_disp_batch(dtype: torch.dtype) -> None:
         )
     )
 
-    rvdw = d3.data.VDW_D3.to(**dd)[numbers.unsqueeze(-1), numbers.unsqueeze(-2)]
-    r4r2 = d3.data.R4R2.to(**dd)[numbers]
+    rvdw = radii.VDW_PAIRWISE(**dd)[
+        numbers.unsqueeze(-1), numbers.unsqueeze(-2)
+    ]
+    r4r2 = d3.data.R4R2(**dd)[numbers]
     param = {
         "a1": torch.tensor(0.49484001, **dd),
         "s8": torch.tensor(0.78981345, **dd),
