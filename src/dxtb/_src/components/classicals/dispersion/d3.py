@@ -50,6 +50,7 @@ class DispersionD3Cache(ClassicalCache):
         "rcov",
         "rvdw",
         "r4r2",
+        "cutoff",
         "counting_function",
         "weighting_function",
         "damping_function",
@@ -61,6 +62,7 @@ class DispersionD3Cache(ClassicalCache):
         rcov: Tensor,
         rvdw: Tensor,
         r4r2: Tensor,
+        cutoff: Tensor,
         counting_function: CountingFunction,
         weighting_function: d3.typing.WeightingFunction,
         damping_function: d3.typing.DampingFunction,
@@ -75,6 +77,7 @@ class DispersionD3Cache(ClassicalCache):
         self.rcov = rcov
         self.rvdw = rvdw
         self.r4r2 = r4r2
+        self.cutoff = cutoff
         self.counting_function = counting_function
         self.weighting_function = weighting_function
         self.damping_function = damping_function
@@ -142,11 +145,18 @@ class DispersionD3(Dispersion):
             d3.data.R4R2(**self.dd)[numbers],
         ).to(**self.dd)
 
+        cutoff = kwargs.pop(
+            "cutoff",
+            torch.tensor(d3.defaults.D3_CN_CUTOFF, **self.dd),
+        ).to(**self.dd)
+
         cf = kwargs.pop("counting_function", exp_count)
         wf = kwargs.pop("weighting_function", d3.model.gaussian_weight)
         df = kwargs.pop("damping_function", d3.damping.rational_damping)
 
-        self.cache = DispersionD3Cache(ref, rcov, rvdw, r4r2, cf, wf, df)
+        self.cache = DispersionD3Cache(
+            ref, rcov, rvdw, r4r2, cutoff, cf, wf, df
+        )
         return self.cache
 
     @override
@@ -174,6 +184,7 @@ class DispersionD3(Dispersion):
             positions,
             counting_function=cache.counting_function,
             rcov=cache.rcov,
+            cutoff=cache.cutoff,
         )
         weights = d3.model.weight_references(
             self.numbers, cn, cache.ref, cache.weighting_function

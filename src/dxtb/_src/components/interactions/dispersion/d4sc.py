@@ -399,14 +399,16 @@ def new_d4sc(
         "dtype": dtype if dtype is not None else get_default_dtype(),
     }
 
-    param = {
-        "a1": par.get("dispersion.d4.a1"),
-        "a2": par.get("dispersion.d4.a2"),
-        "s6": par.get("dispersion.d4.s6"),
-        "s8": par.get("dispersion.d4.s8"),
-        "s9": par.get("dispersion.d4.s9"),
-        "s10": par.get("dispersion.d4.s10"),
-    }
+    param = d4.Param(
+        **{
+            "a1": par.get("dispersion.d4.a1"),
+            "a2": par.get("dispersion.d4.a2"),
+            "s6": par.get("dispersion.d4.s6"),
+            "s8": par.get("dispersion.d4.s8"),
+            "s9": par.get("dispersion.d4.s9"),
+            "s10": par.get("dispersion.d4.s10"),
+        }
+    )
 
     rcov = d4.data.COV_D3(**dd)[numbers]
     r4r2 = d4.data.R4R2(**dd)[numbers]

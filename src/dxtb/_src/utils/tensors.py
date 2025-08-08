@@ -52,15 +52,27 @@ def tensor_id(x: Tensor) -> str:
     """
     Generate an identifier for a tensor based on its data pointer and version.
     """
+    ft = torch._C._functorch
+
     grad = int(x.requires_grad)
     v = x._version
 
-    if __tversion__ >= (1, 13, 0) and torch._C._functorch.is_gradtrackingtensor(
-        x
-    ):
+    # functorch dual tensors have no storage
+    if ft.is_batchedtensor(x):
+        return f"batched_tensor(id={id(x)},v={x._version},dtype={x.dtype})"
+
+    if __tversion__ >= (1, 13, 0) and ft.is_gradtrackingtensor(x):
         value = x
-        while torch._C._functorch.is_gradtrackingtensor(value):
-            value = torch._C._functorch.get_unwrapped(value)
+
+        # Peel off gradtracking layers to get to the underlying tensor
+        while ft.is_gradtrackingtensor(value):
+            value = ft.get_unwrapped(value)
+
+            if ft.is_batchedtensor(value):
+                return (
+                    f"batched_tensor(id={id(x)},v={x._version},dtype={x.dtype})"
+                )
+
         data = value.data_ptr()
     else:
         data = x.data_ptr()

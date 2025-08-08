@@ -95,9 +95,16 @@ class EnergyCalculator(BaseCalculator):
             Number of unpaired electrons. Defaults to 0.
         """
         # shape checks
-        assert shape_checks(self.numbers, positions, allow_batched=True)
+        assert shape_checks(
+            self.numbers,
+            positions,
+            allow_batched=True,
+        )
         assert content_checks(
-            self.numbers, positions, self.opts.max_element, allow_batched=True
+            self.numbers,
+            positions,
+            self.opts.max_element,
+            allow_batched=True,
         )
 
         OutputHandler.write_stdout("Singlepoint ", v=3)

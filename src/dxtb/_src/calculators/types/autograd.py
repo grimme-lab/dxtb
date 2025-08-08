@@ -68,6 +68,7 @@ class AutogradCalculator(EnergyCalculator):
         "polarizability",
         "pol_deriv",
         "hyperpolarizability",
+        #
         "ir",
         "ir_intensity",
         "raman",
