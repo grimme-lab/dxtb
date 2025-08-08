@@ -23,7 +23,7 @@ Self-consistent D4 dispersion correction.
 
 from __future__ import annotations
 
-from typing import Any, override
+from typing import Any
 
 import tad_dftd4 as d4
 import torch
@@ -33,10 +33,10 @@ from tad_mctc.ncoord import cn_d4, erf_count
 from tad_mctc.typing import (
     DD,
     CountingFunction,
-    DampingFunction,
     Tensor,
     TensorLike,
     get_default_dtype,
+    override,
 )
 
 from dxtb import IndexHelper
@@ -150,7 +150,7 @@ class DispersionD4SC(Interaction):
     Self-consistent D4 dispersion correction (:class:`.DispersionD4SC`).
     """
 
-    param: dict[str, Tensor]
+    param: d4.Param
     """Dispersion parameters."""
 
     model: d4.model.D4Model
@@ -172,7 +172,7 @@ class DispersionD4SC(Interaction):
     :default: :func:`tad_mctc.ncoord.erf_count`
     """
 
-    damping_function: DampingFunction
+    damping_function: d4.damping.Damping
     """
     Damping function for the dispersion correction.
 
@@ -191,13 +191,13 @@ class DispersionD4SC(Interaction):
 
     def __init__(
         self,
-        param: dict[str, Tensor],
+        param: d4.Param,
         model: d4.model.D4Model,
         rcov: Tensor,
         r4r2: Tensor,
         cutoff: d4.cutoff.Cutoff,
         counting_function: CountingFunction = erf_count,
-        damping_function: DampingFunction = d4.damping.RationalDamping(),
+        damping_function: d4.damping.Damping = d4.damping.RationalDamping(),
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:

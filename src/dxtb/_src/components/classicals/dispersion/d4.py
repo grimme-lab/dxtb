@@ -23,13 +23,13 @@ DFT-D4 dispersion model.
 
 from __future__ import annotations
 
-from typing import Any, override
+from typing import Any
 
 import tad_dftd4 as d4
 import torch
 from tad_mctc.data import radii
 from tad_mctc.ncoord import erf_count
-from tad_mctc.typing import CountingFunction, Tensor
+from tad_mctc.typing import CountingFunction, Tensor, override
 
 from dxtb import IndexHelper
 
