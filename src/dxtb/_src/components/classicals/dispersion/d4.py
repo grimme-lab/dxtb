@@ -29,7 +29,7 @@ import tad_dftd4 as d4
 import torch
 from tad_mctc.data import radii
 from tad_mctc.ncoord import erf_count
-from tad_mctc.typing import CountingFunction, DampingFunction, Tensor
+from tad_mctc.typing import CountingFunction, Tensor
 
 from dxtb import IndexHelper
 
