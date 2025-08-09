@@ -23,22 +23,25 @@ Self-consistent D4 dispersion correction.
 
 from __future__ import annotations
 
+from typing import Any
+
 import tad_dftd4 as d4
 import torch
 from tad_mctc.exceptions import DeviceError
 from tad_mctc.math import einsum
-
-from dxtb import IndexHelper
-from dxtb._src.param import Param, ParamModule
-from dxtb._src.typing import (
+from tad_mctc.ncoord import cn_d4, erf_count
+from tad_mctc.typing import (
     DD,
-    Any,
-    Slicers,
+    CountingFunction,
     Tensor,
     TensorLike,
     get_default_dtype,
     override,
 )
+
+from dxtb import IndexHelper
+from dxtb._src.param import Param, ParamModule
+from dxtb._src.typing import Slicers
 
 from ..base import Interaction, InteractionCache
 
@@ -147,7 +150,7 @@ class DispersionD4SC(Interaction):
     Self-consistent D4 dispersion correction (:class:`.DispersionD4SC`).
     """
 
-    param: dict[str, Tensor]
+    param: d4.Param
     """Dispersion parameters."""
 
     model: d4.model.D4Model
@@ -162,18 +165,18 @@ class DispersionD4SC(Interaction):
     cutoff: d4.cutoff.Cutoff
     """Real-space cutoff for the D4 dispersion correction."""
 
-    counting_function: d4.typing.CountingFunction
+    counting_function: CountingFunction
     """
     Counting function for the coordination number.
 
-    :default: :func:`d4.ncoord.erf_count`
+    :default: :func:`tad_mctc.ncoord.erf_count`
     """
 
-    damping_function: d4.typing.DampingFunction
+    damping_function: d4.damping.Damping
     """
     Damping function for the dispersion correction.
 
-    :default: :func:`d4.damping.rational_damping`
+    :default: :func:`d4.damping.RationalDamping`
     """
 
     __slots__ = [
@@ -188,13 +191,13 @@ class DispersionD4SC(Interaction):
 
     def __init__(
         self,
-        param: dict[str, Tensor],
+        param: d4.Param,
         model: d4.model.D4Model,
         rcov: Tensor,
         r4r2: Tensor,
         cutoff: d4.cutoff.Cutoff,
-        counting_function: d4.typing.CountingFunction = d4.ncoord.erf_count,
-        damping_function: d4.typing.DampingFunction = d4.damping.rational_damping,
+        counting_function: CountingFunction = erf_count,
+        damping_function: d4.damping.Damping = d4.damping.RationalDamping(),
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> None:
@@ -261,7 +264,7 @@ class DispersionD4SC(Interaction):
         # if the cache is built, store the cachevar for validation
         self._cachevars = cachvars
 
-        cn = d4.ncoord.cn_d4(
+        cn = cn_d4(
             numbers,
             positions,
             counting_function=self.counting_function,
@@ -274,7 +277,7 @@ class DispersionD4SC(Interaction):
         # with the reference C6 coefficients that have not been multiplied with
         # the Gaussian weights yet. Correspondingly, we have to set the C6
         # argument of `dispersion2` to 1.
-        edisp = d4.disp.dispersion2(
+        edisp = d4.dispersion.dispersion2(
             numbers,
             positions,
             self.param,
@@ -396,17 +399,19 @@ def new_d4sc(
         "dtype": dtype if dtype is not None else get_default_dtype(),
     }
 
-    param = {
-        "a1": par.get("dispersion.d4.a1"),
-        "a2": par.get("dispersion.d4.a2"),
-        "s6": par.get("dispersion.d4.s6"),
-        "s8": par.get("dispersion.d4.s8"),
-        "s9": par.get("dispersion.d4.s9"),
-        "s10": par.get("dispersion.d4.s10"),
-    }
+    param = d4.Param(
+        **{
+            "a1": par.get("dispersion.d4.a1"),
+            "a2": par.get("dispersion.d4.a2"),
+            "s6": par.get("dispersion.d4.s6"),
+            "s8": par.get("dispersion.d4.s8"),
+            "s9": par.get("dispersion.d4.s9"),
+            "s10": par.get("dispersion.d4.s10"),
+        }
+    )
 
-    rcov = d4.data.COV_D3.to(**dd)[numbers]
-    r4r2 = d4.data.R4R2.to(**dd)[numbers]
+    rcov = d4.data.COV_D3(**dd)[numbers]
+    r4r2 = d4.data.R4R2(**dd)[numbers]
     model = d4.model.D4Model(numbers, ref_charges="gfn2", **dd)
     cutoff = d4.cutoff.Cutoff(disp2=50.0, disp3=25.0, **dd)
 

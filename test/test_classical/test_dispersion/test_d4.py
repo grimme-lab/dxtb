@@ -27,6 +27,7 @@ import pytest
 import tad_dftd4 as d4
 import torch
 from tad_mctc.batch import pack
+from tad_mctc.data import radii
 
 from dxtb._src.components.classicals.dispersion import (
     DispersionD4,
@@ -64,12 +65,12 @@ def test_batch(dtype: torch.dtype) -> None:
     )
     charge = positions.new_zeros(numbers.shape[0])
 
-    param = {
-        "a1": torch.tensor(0.49484001, **dd),
-        "a2": torch.tensor(5.73083694, **dd),
-        "s8": torch.tensor(0.78981345, **dd),
-        "s9": torch.tensor(1.00000000, **dd),
-    }
+    param = d4.Param(
+        a1=torch.tensor(0.49484001, **dd),
+        a2=torch.tensor(5.73083694, **dd),
+        s8=torch.tensor(0.78981345, **dd),
+        s9=torch.tensor(1.00000000, **dd),
+    )
 
     energy = d4.dftd4(numbers, positions, charge, param)
     assert energy.dtype == dtype
@@ -91,8 +92,8 @@ def test_batch(dtype: torch.dtype) -> None:
 
     # Add kwargs explicitly for coverage
     model = d4.model.D4Model(numbers, **dd)
-    rcov = d4.data.COV_D3.to(**dd)[numbers]
-    r4r2 = d4.data.R4R2.to(**dd)[numbers]
+    rcov = radii.COV_D3(**dd)[numbers]
+    r4r2 = d4.data.R4R2(**dd)[numbers]
     cutoff = d4.cutoff.Cutoff(**dd)
 
     cache = disp.get_cache(
@@ -150,7 +151,9 @@ def test_grad_param() -> None:
     label = ("s6", "s8", "a1", "a2")
 
     def func(*inputs):
-        input_param = {label[i]: input for i, input in enumerate(inputs)}
+        input_param = d4.Param(
+            **{label[i]: input for i, input in enumerate(inputs)}
+        )
         disp = DispersionD4(numbers, input_param, charge, **dd)
         cache = disp.get_cache(numbers)
         return disp.get_energy(positions, cache)

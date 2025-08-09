@@ -26,6 +26,7 @@ from __future__ import annotations
 from abc import abstractmethod
 
 import torch
+from tad_dftd4 import Param as D4Param
 
 from dxtb import IndexHelper
 from dxtb._src.typing import Any, Literal, Tensor
@@ -43,7 +44,7 @@ class Dispersion(Classical):
     numbers: Tensor
     """Atomic numbers for all atoms in the system (shape: ``(..., nat)``)."""
 
-    param: dict[str, Tensor]
+    param: D4Param
     """Dispersion parameters."""
 
     charge: Tensor | None
@@ -62,7 +63,7 @@ class Dispersion(Classical):
     def __init__(
         self,
         numbers: Tensor,
-        param: dict[str, Tensor],
+        param: D4Param,
         charge: Tensor | None = None,
         ref_charges: Literal["eeq", "gfn2"] = "eeq",
         device: torch.device | None = None,

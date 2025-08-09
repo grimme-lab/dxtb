@@ -45,7 +45,7 @@ def test_psi(name: str, dtype: torch.dtype):
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     ref = sample["psi"].to(**dd)
-    rvdw = VDW_D3.to(**dd)[numbers]
+    rvdw = VDW_D3(**dd)[numbers]
 
     psi = born.compute_psi(numbers, positions, rvdw)
     assert pytest.approx(ref.cpu(), rel=1e-6, abs=tol) == psi.cpu()
@@ -114,7 +114,7 @@ def test_psi_batch(name1: str, name2: str, dtype: torch.dtype):
             sample2["positions"].to(**dd),
         )
     )
-    rvdw = VDW_D3.to(**dd)[numbers]
+    rvdw = VDW_D3(**dd)[numbers]
 
     ref = pack(
         (
@@ -177,7 +177,7 @@ def test_psi_grad(name: str):
 
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
-    rvdw = VDW_D3.to(**dd)[numbers]
+    rvdw = VDW_D3(**dd)[numbers]
 
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)

@@ -68,6 +68,7 @@ class AutogradCalculator(EnergyCalculator):
         "polarizability",
         "pol_deriv",
         "hyperpolarizability",
+        #
         "ir",
         "ir_intensity",
         "raman",
@@ -248,6 +249,12 @@ class AutogradCalculator(EnergyCalculator):
         RuntimeError
             Positions tensor does not have ``requires_grad=True``.
         """
+        if self.opts.batch_mode > 0:
+            raise NotImplementedError(
+                "Hessian calculation is not supported in batch mode. "
+                "Please use the single system mode."
+            )
+
         logger.debug("Autodiff Hessian: Starting Calculation.")
 
         if use_functorch is True:

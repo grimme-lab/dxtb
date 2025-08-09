@@ -61,7 +61,7 @@ class GetPropertiesMixin(ABC):
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
-    ) -> Tensor | VibResult | IRResult | RamanResult:
+    ) -> Tensor | VibResult | IRResult | RamanResult | None:
         """
         Get the named property.
 
@@ -432,6 +432,48 @@ class GetPropertiesMixin(ABC):
         spin: Tensor | float | int | None = defaults.SPIN,
         **kwargs: Any,
     ) -> Tensor:
+        """
+        Get orbital-resolved Mulliken charges.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int | None, optional
+            Number of unpaired electrons. Defaults to 0.
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        Tensor
+            Orbital-resolved Mulliken charges of shape ``(..., nao)``.
+
+        Example
+        -------
+
+        .. code-block:: python
+
+            import torch
+            import dxtb
+
+            dd = {"dtype": torch.double, "device": torch.device("cpu")}
+            numbers = torch.tensor([3, 1], device=dd["device"])
+            positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.5]], **dd)
+
+            calc = dxtb.calculators.GFN1Calculator(numbers, **dd)
+
+            charges_nao = calc.get_charges(positions)
+            print(f"Expected shape: {torch.Size([6])}")
+            print(f"Actual shape  : {charges_nao.shape}")
+
+            charges_nat = calc.ihelp.reduce_orbital_to_atom(charges_nao)
+            print(f"Expected shape: {torch.Size([2])}")
+            print(f"Actual shape  : {charges_nat.shape}")
+        """
+
         # pylint: disable=import-outside-toplevel
         from dxtb._src.scf.base import Charges
 

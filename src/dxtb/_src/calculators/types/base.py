@@ -771,7 +771,7 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
         allow_calculation: bool = True,
         return_clone: bool = False,
         **kwargs: Any,
-    ) -> Tensor | None:
+    ) -> Tensor | VibResult | IRResult | RamanResult | None:
         """
         Get the named property.
 

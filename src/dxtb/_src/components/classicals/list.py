@@ -92,7 +92,7 @@ class ClassicalList(ComponentList[Classical]):
 
     @override
     def get_energy(
-        self, positions: Tensor, cache: ClassicalListCache
+        self, positions: Tensor, cache: ClassicalListCache, **kwargs: Any
     ) -> dict[str, Tensor]:
         """
         Compute the energy for a list of classicals.
@@ -116,7 +116,7 @@ class ClassicalList(ComponentList[Classical]):
         for classical in self.components:
             timer.start(classical.label, parent_uid="Classicals")
             energies[classical.label] = classical.get_energy(
-                positions, cache[classical.label]
+                positions, cache[classical.label], **kwargs
             )
             timer.stop(classical.label)
 

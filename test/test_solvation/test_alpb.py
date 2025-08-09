@@ -79,7 +79,7 @@ def test_gb_still_single(
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
     charges = sample["charges"].to(**dd)
-    rvdw = VDW_D3.to(**dd)[numbers]
+    rvdw = VDW_D3(**dd)[numbers]
     ref = sample["energies_still"].to(**dd)
 
     gb = alpb.GeneralizedBorn(

@@ -108,7 +108,7 @@ def get_born_radii(
     dd: DD = {"device": positions.device, "dtype": positions.dtype}
 
     if rvdw is None:
-        rvdw = VDW_D3.to(**dd)[numbers]
+        rvdw = VDW_D3(**dd)[numbers]
     if numbers.shape != rvdw.shape:
         raise ValueError(
             f"Shape of covalent radii ({rvdw.shape}) is not consistent with "
