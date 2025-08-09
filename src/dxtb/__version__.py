@@ -22,5 +22,5 @@ from tad_mctc._version import __tversion__
 
 __all__ = ["__version__", "__tversion__"]
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 """Version of ``dxtb`` in semantic versioning."""
