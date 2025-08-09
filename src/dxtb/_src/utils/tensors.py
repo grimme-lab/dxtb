@@ -24,6 +24,7 @@ Collection of utility functions for matrices/tensors.
 from __future__ import annotations
 
 import torch
+from tad_mctc.autograd.checks import is_batched, is_gradtracking
 
 from dxtb.__version__ import __tversion__
 from dxtb._src.typing import Tensor
@@ -52,29 +53,27 @@ def tensor_id(x: Tensor) -> str:
     """
     Generate an identifier for a tensor based on its data pointer and version.
     """
-    ft = torch._C._functorch
-
     grad = int(x.requires_grad)
     v = x._version
+    dtype = x.dtype
+
+    # No functorch before v2.0.0
+    if __tversion__ < (2, 0, 0):
+        return f"tensor(ptr={x.data_ptr()},v={v},grad={grad},dtype={dtype})"
+
+    # Data pointer easily accessible without functorch
+    if not is_gradtracking(x):
+        return f"tensor(ptr={x.data_ptr()},v={v},grad={grad},dtype={dtype})"
 
     # functorch dual tensors have no storage
-    if ft.is_batchedtensor(x):
-        return f"batched_tensor(id={id(x)},v={x._version},dtype={x.dtype})"
+    if is_batched(x):
+        return f"batched_tensor(id={id(x)},v={v},grad={grad},dtype={dtype})"
 
-    if __tversion__ >= (1, 13, 0) and ft.is_gradtrackingtensor(x):
-        value = x
+    # Peel off gradtracking layers to get to the underlying tensor
+    while is_gradtracking(x):
+        x = torch._C._functorch.get_unwrapped(x)
 
-        # Peel off gradtracking layers to get to the underlying tensor
-        while ft.is_gradtrackingtensor(value):
-            value = ft.get_unwrapped(value)
+        if is_batched(x):
+            return f"batched_tensor(id={id(x)},v={v},grad={grad},dtype={dtype})"
 
-            if ft.is_batchedtensor(value):
-                return (
-                    f"batched_tensor(id={id(x)},v={x._version},dtype={x.dtype})"
-                )
-
-        data = value.data_ptr()
-    else:
-        data = x.data_ptr()
-
-    return f"tensor({data},v={v},grad={grad},dtype={x.dtype})"
+    return f"tensor(ptr={x.data_ptr()},v={v},grad={grad},dtype={dtype})"
