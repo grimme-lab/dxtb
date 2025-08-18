@@ -61,6 +61,6 @@ repos:
         args: ["--line-length", "80"]
 
   - repo: https://github.com/woodruffw/zizmor-pre-commit
-    rev: v1.11.0
+    rev: v1.12.1
     hooks:
       - id: zizmor
