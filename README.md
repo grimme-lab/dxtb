@@ -145,6 +145,7 @@ For more examples and details, check out [the documentation](https://dxtb.readth
 | 2.6.0            | :x:                | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | 2.7.1            | :x:                | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | 2.8.0            | :x:                | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| 2.9.0            | :x:                | :x:                | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 
 Note that only the latest bug fix version is listed, but all preceding bug fix minor versions are supported.
 For example, although only version 2.2.2 is listed, version 2.2.0 and 2.2.1 are also supported.

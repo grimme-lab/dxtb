@@ -54,6 +54,7 @@ jobs:
             "2.6.0",
             "2.7.1",
             "2.8.0",
+            "2.9.0",
           ]
         exclude:
           # Check latest versions here: https://download.pytorch.org/whl/torch/
@@ -77,6 +78,11 @@ jobs:
             torch-version: "2.7.1"
           - python-version: "3.8"
             torch-version: "2.8.0"
+          - python-version: "3.8"
+            torch-version: "2.9.0"
+          # PyTorch>=2.9.0 does not support Python<3.10
+          - python-version: "3.9"
+            torch-version: "2.9.0"
 
     runs-on: ${{ matrix.os }}
 
@@ -120,7 +126,7 @@ jobs:
         uses: codecov/codecov-action@7f8b4b4bde536c465e797be725718b88c5d95e0e # 5.1.1
         if: >
           matrix.python-version == '3.12' &&
-          matrix.torch-version == '2.8.0' &&
+          matrix.torch-version == '2.9.0' &&
           matrix.os == 'ubuntu-latest'
         with:
           files: ./coverage.xml # optional
