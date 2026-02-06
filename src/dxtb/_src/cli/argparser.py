@@ -399,6 +399,16 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
             "in the SCF. Note that 'charge' and 'charges' is identical."
         ),
     )
+    p.add_argument(
+        "--uhf-mode",
+        "--uhf_mode",
+        default=defaults.UHF_MODE,
+        action="store_true",
+        help=(
+            "R|Use unrestricted SCF mode\n"
+            "note this takes roughly twice the time than for restricted SCF"
+        ),
+    )
 
     # Integrals
     p.add_argument(
@@ -479,6 +489,16 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         "--grad",
         action="store_true",
         help="R|Whether to compute gradients for positions w.r.t. energy.",
+    )
+    p.add_argument(
+        "--spinpol",
+        action="store_true",
+        default=defaults.SPINPOL,
+        help=(
+            "R|Activates Spin Polarisation\n"
+            "Recommended for open-shell system.\n"
+            "Requires unrestricted SCF and thus activates uhf_mode"
+        ),
     )
 
     # Cache

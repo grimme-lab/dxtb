@@ -123,6 +123,7 @@ class Config:
         fermi_maxiter: int = defaults.FERMI_MAXITER,
         fermi_thresh: float | int | None = defaults.FERMI_THRESH,
         fermi_partition: str | int = defaults.FERMI_PARTITION,
+        uhf_mode: bool = defaults.UHF_MODE,
         # cache
         cache_enabled: bool = defaults.CACHE_ENABLED,
         cache_hcore: bool = defaults.CACHE_STORE_HCORE,
@@ -227,6 +228,8 @@ class Config:
             # SCF: PyTorch
             device=device,
             dtype=dtype,
+            # SCF: Mode
+            uhf_mode=uhf_mode,
         )
 
         # compatibility checks (only need to be skipped for some tests)
@@ -286,6 +289,8 @@ class Config:
             fermi_maxiter=args.fermi_maxiter,
             fermi_thresh=args.fermi_thresh,
             fermi_partition=args.fermi_partition,
+            # SCF: UHF
+            uhf_mode=args.uhf_mode,
             # Cache
             cache_enabled=args.cache_enabled,
             cache_hcore=args.cache_hcore,

@@ -1,0 +1,115 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from __future__ import annotations
+
+from math import sqrt
+from pathlib import Path
+
+import pytest
+import torch
+from tad_mctc import read, read_chrg
+
+from dxtb import GFN1_XTB, GFN2_XTB, IndexHelper
+from dxtb._src.components.interactions.spin import factory
+from dxtb._src.constants import labels
+from dxtb._src.typing import DD
+
+from ..conftest import DEVICE
+from .samples import samples
+
+
+@pytest.mark.parametrize("name", ["LiH"])
+@pytest.mark.parametrize(
+    "model_cls, ref_key",
+    [
+        (GFN2_XTB, "eshellgfn2"),
+    ],
+)
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_get_monopol_shell_energy(
+    dtype: torch.dtype, name: str, model_cls, ref_key
+) -> None:
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    qsh = torch.tensor(
+        [
+            [0.17175602, -0.82824398],
+            [-0.33807717, -0.33807717],
+            [0.16632115, -0.83367885],
+        ],
+        **dd,
+    )
+
+    print(qsh.size())
+
+    print(qsh[..., -1])
+
+    sample = samples[name]
+    numbers = sample["numbers"].to(DEVICE)
+    ref = sample[ref_key].to(**dd)
+
+    ihelp = IndexHelper.from_numbers(numbers, model_cls)
+    spin = factory.new_spinpolarisation(numbers, **dd)
+
+    cache = spin.get_cache(numbers=numbers, ihelp=ihelp)
+
+    eshell = spin.get_monopole_shell_energy(cache=cache, qsh=qsh)
+
+    at_shell = ihelp.reduce_shell_to_atom(eshell)
+
+    assert pytest.approx(ref.cpu(), abs=tol) == at_shell.cpu()
+
+
+@pytest.mark.parametrize("name", ["LiH"])
+@pytest.mark.parametrize(
+    "model_cls, ref_key",
+    [
+        (GFN2_XTB, "potshellgfn2"),
+    ],
+)
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_get_monopol_shell_potential(
+    dtype: torch.dtype, name: str, model_cls, ref_key
+) -> None:
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    # tblite run lih.coord --method gfn2 --spin 2 --spin-polarized --iterations 2
+    # then print out the potential in spin.f90
+    qsh = torch.tensor(
+        [
+            [0.06870241, -0.33129759],
+            [-0.13523087, -0.13523087],
+            [0.06652846, -0.33347154],
+        ],
+        **dd,
+    )
+
+    sample = samples[name]
+    numbers = sample["numbers"].to(DEVICE)
+    ref = sample[ref_key].to(**dd)
+
+    ihelp = IndexHelper.from_numbers(numbers, model_cls)
+    spin = factory.new_spinpolarisation(numbers, **dd)
+
+    cache = spin.get_cache(numbers=numbers, ihelp=ihelp)
+
+    potshell = spin.get_monopole_shell_potential(cache=cache, qsh=qsh)
+
+    assert pytest.approx(ref.cpu(), abs=tol) == potshell.cpu()

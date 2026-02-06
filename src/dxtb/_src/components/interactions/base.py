@@ -381,7 +381,10 @@ class Interaction(Component):
         return torch.zeros_like(qat)
 
     def get_monopole_shell_energy(
-        self, cache: InteractionCache, qat: Tensor, **_: Any
+        self,
+        cache: InteractionCache,
+        qat: Tensor,
+        **_: Any,  # ich hätte es qsh genannt
     ) -> Tensor:
         """
         Compute the energy from the charges, all quantities are shell-resolved.

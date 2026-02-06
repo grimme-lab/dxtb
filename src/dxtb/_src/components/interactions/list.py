@@ -42,6 +42,7 @@ from .coulomb.thirdorder import ES3, LABEL_ES3
 from .dispersion.d4sc import LABEL_DISPERSIOND4SC, DispersionD4SC
 from .field.efield import LABEL_EFIELD, ElectricField
 from .field.efieldgrad import LABEL_EFIELD_GRAD, ElectricFieldGrad
+from .spin.spinpolarisation import LABEL_SPINPOLARISATION, SpinPolarisation
 
 __all__ = ["InteractionList", "InteractionListCache"]
 
@@ -324,6 +325,11 @@ class InteractionList(ComponentList[Interaction]):
         """Reset tensor attributes to a detached clone of the current state."""
         return self.reset(LABEL_ES3)
 
+    @_docstring_reset
+    def reset_spinpolarisation(self) -> Interaction:
+        """Reset tensor attributes to a detached clone of the current state."""
+        return self.reset(LABEL_SPINPOLARISATION)
+
     ###########################################################################
 
     @_docstring_update
@@ -353,3 +359,7 @@ class InteractionList(ComponentList[Interaction]):
     @_docstring_update
     def update_es3(self, **kwargs: Any) -> Interaction:
         return self.update(LABEL_ES3, **kwargs)
+
+    @_docstring_update
+    def update_spinpolarisation(self, **kwargs: Any) -> Interaction:
+        return super().update(LABEL_SPINPOLARISATION, **kwargs)

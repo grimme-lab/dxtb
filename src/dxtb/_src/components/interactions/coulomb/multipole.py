@@ -194,7 +194,7 @@ class AES2Cache(InteractionCache, TensorLike):
 
 class AES2(Interaction):
     """
-    Isotropic second-order electrostatic energy (ES2).
+    Isotropic second-order electrostatic energy (ES2). ###????
     """
 
     dmp3: Tensor
