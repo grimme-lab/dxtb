@@ -47,6 +47,15 @@ from .spin.spinpolarisation import LABEL_SPINPOLARISATION, SpinPolarisation
 __all__ = ["InteractionList", "InteractionListCache"]
 
 
+def _has_spin_dim(mono: Tensor) -> bool:
+    """Check whether the monopolar charges carry a spin dimension.
+
+    In unrestricted (UHF) mode, ``Charges.mono`` has shape ``(..., nao, 2)``
+    where channel 0 is the total charge and channel 1 is the magnetization.
+    """
+    return mono.ndim >= 2 and mono.shape[-1] == 2
+
+
 class InteractionListCache(ComponentListCache):
     """
     Restart data for individual interactions, extended by subclasses as
@@ -88,6 +97,11 @@ class InteractionList(ComponentList[Interaction]):
         """
         Compute the energy for a list of interactions.
 
+        In unrestricted (UHF) mode, ``charges.mono`` has shape
+        ``(..., nao, 2)`` (charge/magnetization). Non-spin interactions
+        receive only the charge channel; :class:`SpinPolarisation` receives
+        shell-resolved charge/magnetization stacked along the last dim.
+
         Parameters
         ----------
         charges : Charges | Tensor
@@ -106,46 +120,84 @@ class InteractionList(ComponentList[Interaction]):
         if isinstance(charges, Tensor):
             charges = Charges(mono=charges)
 
-        if len(self.components) <= 0:
-            return ihelp.reduce_orbital_to_atom(torch.zeros_like(charges.mono))
+        has_spin = _has_spin_dim(charges.mono)
 
-        return torch.stack(
-            [
-                interaction.get_energy(cache[interaction.label], charges, ihelp)
-                for interaction in self.components
-            ]
-        ).sum(dim=0)
+        # In UHF mode, create a total-charge-only Charges for non-spin
+        # interactions and stacked shell charges for SpinPolarisation.
+        if has_spin:
+            charges_total = Charges(
+                mono=charges.mono[..., 0],
+                dipole=charges.dipole,
+                quad=charges.quad,
+                batch_mode=charges.batch_mode,
+            )
+        else:
+            charges_total = charges
+
+        if len(self.components) <= 0:
+            return ihelp.reduce_orbital_to_atom(
+                torch.zeros_like(charges_total.mono)
+            )
+
+        energies: list[Tensor] = []
+        for interaction in self.components:
+            if has_spin and isinstance(interaction, SpinPolarisation):
+                # Build shell-resolved [nsh, 2] for SpinPolarisation
+                qsh_charge = ihelp.reduce_orbital_to_shell(charges.mono[..., 0])
+                qsh_mag = ihelp.reduce_orbital_to_shell(charges.mono[..., -1])
+                qsh = torch.stack([qsh_charge, qsh_mag], dim=-1)
+
+                esh = interaction.get_monopole_shell_energy(
+                    cache[interaction.label], qsh
+                )
+                energies.append(ihelp.reduce_shell_to_atom(esh))
+            else:
+                energies.append(
+                    interaction.get_energy(
+                        cache[interaction.label], charges_total, ihelp
+                    )
+                )
+
+        return torch.stack(energies).sum(dim=0)
 
     def get_energy_as_dict(
         self, charges: Charges, cache: InteractionListCache, ihelp: IndexHelper
     ) -> dict[str, Tensor]:
         """
-        Compute the energy for a list of interactions.
+        Compute the energy for a list of interactions, returned as a dict.
 
-        Parameters
-        ----------
-        charges : Charges
-            Collection of charges. Monopolar partial charges are
-            orbital-resolved.
-        ihelp : IndexHelper
-            Index mapping for the basis set.
-        cache : InteractionListCache
-            Restart data for the interaction.
-
-        Returns
-        -------
-        Tensor
-            Energy vector for each orbital partial charge.
+        Handles spin-resolved charges analogously to :meth:`get_energy`.
         """
-        if len(self.components) <= 0:
-            return {"none": torch.zeros_like(charges.mono)}
+        has_spin = _has_spin_dim(charges.mono)
 
-        return {
-            interaction.label: interaction.get_energy(
-                cache[interaction.label], charges, ihelp
+        if has_spin:
+            charges_total = Charges(
+                mono=charges.mono[..., 0],
+                dipole=charges.dipole,
+                quad=charges.quad,
+                batch_mode=charges.batch_mode,
             )
-            for interaction in self.components
-        }
+        else:
+            charges_total = charges
+
+        if len(self.components) <= 0:
+            return {"none": torch.zeros_like(charges_total.mono)}
+
+        result: dict[str, Tensor] = {}
+        for interaction in self.components:
+            if has_spin and isinstance(interaction, SpinPolarisation):
+                qsh_charge = ihelp.reduce_orbital_to_shell(charges.mono[..., 0])
+                qsh_mag = ihelp.reduce_orbital_to_shell(charges.mono[..., -1])
+                qsh = torch.stack([qsh_charge, qsh_mag], dim=-1)
+                esh = interaction.get_monopole_shell_energy(
+                    cache[interaction.label], qsh
+                )
+                result[interaction.label] = ihelp.reduce_shell_to_atom(esh)
+            else:
+                result[interaction.label] = interaction.get_energy(
+                    cache[interaction.label], charges_total, ihelp
+                )
+        return result
 
     @override
     def get_gradient(
@@ -234,6 +286,12 @@ class InteractionList(ComponentList[Interaction]):
         """
         Compute the potential for a list of interactions.
 
+        In unrestricted (UHF) mode, ``charges.mono`` has shape
+        ``(..., nao, 2)`` (charge/magnetization). Non-spin interactions are
+        evaluated on the charge channel only. The :class:`SpinPolarisation`
+        interaction contributes a magnetization potential that is placed into
+        channel 1 of the returned ``Potential.mono`` tensor.
+
         Parameters
         ----------
         cache : InteractionListCache
@@ -246,13 +304,25 @@ class InteractionList(ComponentList[Interaction]):
 
         Returns
         -------
-        Tensor
-            Potential vector for each orbital partial charge.
+        Potential
+            Potential container. In UHF mode ``mono`` has shape
+            ``(..., nao, 2)`` (charge potential, magnetization potential).
         """
+        has_spin = _has_spin_dim(charges.mono)
 
-        # create empty potential
+        if has_spin:
+            charges_total = Charges(
+                mono=charges.mono[..., 0],
+                dipole=charges.dipole,
+                quad=charges.quad,
+                batch_mode=charges.batch_mode,
+            )
+        else:
+            charges_total = charges
+
+        # Create empty potential for non-spin (charge) contributions
         pot = Potential(
-            torch.zeros_like(charges.mono),
+            torch.zeros_like(charges_total.mono),
             dipole=None,
             quad=None,
             batch_mode=ihelp.batch_mode,
@@ -260,14 +330,47 @@ class InteractionList(ComponentList[Interaction]):
 
         # exit with empty potential if no interactions present
         if len(self.components) <= 0:
+            if has_spin:
+                pot.mono = torch.stack(
+                    [pot.mono, torch.zeros_like(pot.mono)], dim=-1
+                )
             return pot
 
-        # add up potentials from all interactions
+        # Magnetization potential accumulator (only in UHF mode)
+        v_spin = torch.zeros_like(charges_total.mono) if has_spin else None
+
         for interaction in self.components:
-            p = interaction.get_potential(
-                cache[interaction.label], charges, ihelp
+            if has_spin and isinstance(interaction, SpinPolarisation):
+                # Build shell-resolved [nsh, 2] for SpinPolarisation
+                qsh_charge = ihelp.reduce_orbital_to_shell(charges.mono[..., 0])
+                qsh_mag = ihelp.reduce_orbital_to_shell(charges.mono[..., -1])
+                qsh = torch.stack([qsh_charge, qsh_mag], dim=-1)
+
+                # Get shell-level spin potential: shape [..., nsh, 2]
+                vsh_spin = interaction.get_monopole_shell_potential(
+                    cache[interaction.label], qsh
+                )
+                # Spread magnetization channel to orbital resolution
+                assert v_spin is not None
+                v_spin = v_spin + ihelp.spread_shell_to_orbital(
+                    vsh_spin[..., -1]
+                )
+            else:
+                p = interaction.get_potential(
+                    cache[interaction.label], charges_total, ihelp
+                )
+                pot += p
+
+        if has_spin:
+            assert v_spin is not None
+            assert pot.mono is not None
+            combined = torch.stack([pot.mono, v_spin], dim=-1)
+            return Potential(
+                mono=combined,
+                dipole=pot.dipole,
+                quad=pot.quad,
+                batch_mode=ihelp.batch_mode,
             )
-            pot += p
 
         return pot
 

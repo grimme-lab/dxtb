@@ -26,12 +26,10 @@ alpha and beta population, resulting in a magnetization density.
 from __future__ import annotations
 
 import torch
-from tad_mctc.convert import symbol_to_number
 from tad_mctc.math import einsum
 
 from dxtb import IndexHelper
 from dxtb._src.typing import Any, Slicers, Tensor, override
-from dxtb._src.typing.exceptions import DeviceError, DtypeError
 
 from ..base import Interaction, InteractionCache
 
@@ -55,9 +53,9 @@ class SpinPolarisationCache(InteractionCache):
     """Storage for cache (required for culling)."""
 
     wll: Tensor
-    """Matrix of spin"""  # TO DO
+    """Shell-pair resolved spin constant matrix (shape: ``(nsh, nsh)``)."""
 
-    __slots__ = ["__store", "wll", "shell_resolved"]
+    __slots__ = ["__store", "wll"]
 
     def __init__(
         self,
@@ -78,7 +76,7 @@ class SpinPolarisationCache(InteractionCache):
         """
 
         wll: Tensor
-        """"""  # TO DO
+        """Shell-pair resolved spin constant matrix."""
 
         def __init__(
             self,
@@ -210,14 +208,10 @@ class SpinPolarisation(Interaction):
         Tensor
             Shell-wise spin-polarisation energy.
         """
-        print(qsh[..., -1])
-        print("wll", cache.wll)
-        # first vector matrix multiplication in einsum then hadamard product
-        return (
-            0.5
-            * qsh[..., -1]
-            * einsum("...k,...ik->...i", qsh[..., -1], cache.wll)
-        )
+        # E_spin = 0.5 * sum_ij qsh_mag_i * W_ij * qsh_mag_j
+        # Ported from tblite/src/tblite/spin.f90 :: get_energy
+        qmag = qsh[..., -1]
+        return 0.5 * qmag * einsum("...k,...ik->...i", qmag, cache.wll)
 
     @override
     def get_monopole_shell_potential(
