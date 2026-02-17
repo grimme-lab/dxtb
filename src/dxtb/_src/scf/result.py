@@ -61,19 +61,3 @@ class SCFResult(TypedDict):
 
     iterations: int
     """Number of SCF iterations."""
-
-    # UHF-specific quantities (None in restricted mode)
-    density_spin: Tensor | None
-    """Spin density matrix (P_alpha - P_beta), only set in UHF mode."""
-
-    evals_alpha: Tensor | None
-    """Alpha orbital energies, only set in UHF mode."""
-
-    evals_beta: Tensor | None
-    """Beta orbital energies, only set in UHF mode."""
-
-    evecs_alpha: Tensor | None
-    """Alpha MO coefficients, only set in UHF mode."""
-
-    evecs_beta: Tensor | None
-    """Beta MO coefficients, only set in UHF mode."""

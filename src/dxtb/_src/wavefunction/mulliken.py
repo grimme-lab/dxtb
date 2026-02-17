@@ -34,7 +34,6 @@ __all__ = [
     "get_atomic_populations",
     "get_mulliken_shell_charges",
     "get_mulliken_atomic_charges",
-    "get_spin_resolved_shell_charges",
 ]
 
 
@@ -174,51 +173,3 @@ def get_mulliken_atomic_charges(
     """
 
     return n0 - get_atomic_populations(overlap, density, indexhelper)
-
-
-def get_spin_resolved_shell_charges(
-    overlap: Tensor,
-    density_alpha: Tensor,
-    density_beta: Tensor,
-    indexhelper: IndexHelper,
-    n0: Tensor,
-) -> Tensor:
-    """
-    Compute shell-resolved Mulliken charges in charge/magnetization
-    representation for spin-polarized calculations.
-
-    Following tblite (``wavefunction/mulliken.f90``):
-    1. Compute shell populations from each spin density.
-    2. Convert from up/down representation to charge/magnetization via
-       ``updown_to_magnet``.
-    3. Add reference occupation to the charge channel.
-
-    Parameters
-    ----------
-    overlap : Tensor
-        Overlap matrix (shape: ``(..., nao, nao)``).
-    density_alpha : Tensor
-        Alpha-spin density matrix (shape: ``(..., nao, nao)``).
-    density_beta : Tensor
-        Beta-spin density matrix (shape: ``(..., nao, nao)``).
-    indexhelper : IndexHelper
-        Index mapping for the basis set.
-    n0 : Tensor
-        Shell-resolved reference occupancy numbers.
-
-    Returns
-    -------
-    Tensor
-        Shell charges in charge/magnetization representation
-        (shape: ``(..., nsh, 2)``).
-    """
-    pop_alpha = get_shell_populations(overlap, density_alpha, indexhelper)
-    pop_beta = get_shell_populations(overlap, density_beta, indexhelper)
-
-    # Total charge: n0 - (pop_alpha + pop_beta)
-    q_charge = n0 - (pop_alpha + pop_beta)
-
-    # Magnetization: -(pop_alpha - pop_beta)
-    q_mag = -(pop_alpha - pop_beta)
-
-    return torch.stack([q_charge, q_mag], dim=-1)
