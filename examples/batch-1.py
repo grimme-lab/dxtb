@@ -18,6 +18,7 @@
 """
 Running a simple batched calculation.
 """
+
 import torch
 
 import dxtb

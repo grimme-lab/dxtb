@@ -22,5 +22,6 @@ SCF implementations that unroll the SCF iterations in the backward pass, i.e.,
 the implicit function theorem is not used. This is inherently more memory
 intensive than using the implicit function theorem.
 """
+
 from .default import SelfConsistentFieldFull
 from .singleshot import SelfConsistentFieldSingleShot

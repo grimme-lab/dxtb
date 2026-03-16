@@ -20,6 +20,7 @@ SCF: Result
 
 Result type for SCF.
 """
+
 from __future__ import annotations
 
 from dxtb._src.components.interactions.container import Charges, Potential

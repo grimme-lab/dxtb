@@ -20,6 +20,7 @@ Typing: Builtins
 
 This module contains all used built-in type annotations.
 """
+
 from typing import (
     IO,
     TYPE_CHECKING,

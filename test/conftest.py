@@ -17,6 +17,7 @@
 """
 Setup for pytest.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -138,10 +139,10 @@ def pytest_configure(config: pytest.Config) -> None:
 
     if config.getoption("--jit"):
         # pylint: disable-next=protected-access
-        torch.jit._state.enable()  # type:ignore
+        torch.jit._state.enable()  # type: ignore
     else:
         # pylint: disable-next=protected-access
-        torch.jit._state.disable()  # type:ignore
+        torch.jit._state.disable()  # type: ignore
 
     if config.getoption("--fast"):
         FAST_MODE = True

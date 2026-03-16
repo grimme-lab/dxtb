@@ -23,6 +23,7 @@ This module contains all type annotations for this project.
 Since typing still significantly changes across different Python versions,
 all the special cases are handled here as well.
 """
+
 from . import exceptions
 from .builtin import *
 from .compat import *

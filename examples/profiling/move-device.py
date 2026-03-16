@@ -18,6 +18,7 @@
 """
 Simple energy calculation.
 """
+
 import functools
 import logging
 import traceback

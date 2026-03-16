@@ -28,6 +28,7 @@ quantities must be carried out separately.
 
 .. _tblite: https://tblite.readthedocs.io
 """
+
 # pylint: disable=import-outside-toplevel
 
 from __future__ import annotations

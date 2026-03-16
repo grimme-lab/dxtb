@@ -23,6 +23,7 @@ Optimize: Minimizer
 
 Implementations of minimizer functions.
 """
+
 import warnings
 from typing import Callable, List, Optional
 

@@ -23,6 +23,7 @@ class and implement the :meth:`calculate` method and the corresponding methods
 to calculate the properties specified within this :meth:`calculate`, as well as
 the :attr:`implemented_properties` attribute.
 """
+
 from __future__ import annotations
 
 from abc import abstractmethod

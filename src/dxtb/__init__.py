@@ -20,6 +20,7 @@ dxtb
 
 A fully differentiable extended tight-binding package.
 """
+
 # pylint: disable=C0411,C0412,C0413,C0414
 
 # import timer first to get correct total time
@@ -43,7 +44,6 @@ timer.start("dxtb", parent_uid="Import")
 ###############################################################################
 
 from dxtb.__version__ import __version__
-
 
 # order is important here
 from dxtb._src.io import OutputHandler as OutputHandler

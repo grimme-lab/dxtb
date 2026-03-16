@@ -21,6 +21,7 @@ Typing: Compatibility
 Since typing still significantly changes across different Python versions,
 all the special cases are handled here.
 """
+
 from __future__ import annotations
 
 import sys

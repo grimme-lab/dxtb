@@ -18,6 +18,7 @@
 """
 https://github.com/grimme-lab/dxtb/issues/123
 """
+
 from __future__ import annotations
 
 from pathlib import Path
