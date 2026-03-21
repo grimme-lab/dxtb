@@ -16,9 +16,6 @@
   <a href="https://github.com/grimme-lab/dxtb/actions/workflows/ubuntu.yaml">
     <img src="https://github.com/grimme-lab/dxtb/actions/workflows/ubuntu.yaml/badge.svg" alt="Test Status Ubuntu"/>
   </a>
-  <a href="https://github.com/tgrimme-lab/dxtb/actions/workflows/macos-x86.yaml">
-    <img src="https://github.com/grimme-lab/dxtb/actions/workflows/macos-x86.yaml/badge.svg" alt="Test Status macOS (x86)"/>
-  </a>
   <a href="https://github.com/tgrimme-lab/dxtb/actions/workflows/macos-arm.yaml">
     <img src="https://github.com/grimme-lab/dxtb/actions/workflows/macos-arm.yaml/badge.svg" alt="Test Status macOS (ARM)"/>
   </a>
