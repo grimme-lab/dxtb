@@ -19,6 +19,7 @@
 Provides base class for interactions in the extended tight-binding Hamiltonian.
 The `Interaction` class is not purely abstract as its methods return zero.
 """
+
 # pylint: disable=unused-argument
 
 from __future__ import annotations

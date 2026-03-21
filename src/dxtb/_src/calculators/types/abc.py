@@ -21,6 +21,7 @@ Calculators: ABC
 Abstract helper classes for reduction of boilerplace method definitions (i.e.,
 duplication) in calculators.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

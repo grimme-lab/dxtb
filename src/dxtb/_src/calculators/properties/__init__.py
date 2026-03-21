@@ -28,6 +28,7 @@ Supported are the following:
 - IR intensities
 - static Raman intensities
 """
+
 from dxtb._src.typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

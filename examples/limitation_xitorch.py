@@ -18,6 +18,7 @@
 """
 Example for xitorch's inability to be used together with functorch.
 """
+
 from pathlib import Path
 
 import torch

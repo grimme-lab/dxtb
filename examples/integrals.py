@@ -18,6 +18,7 @@
 """
 Simple integral interface. Can be helpful for testing.
 """
+
 from pathlib import Path
 
 import torch

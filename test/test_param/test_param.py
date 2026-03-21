@@ -17,6 +17,7 @@
 """
 Test the parametrization of the Hamiltonian.
 """
+
 # pylint: disable=missing-function-docstring, protected-access
 from __future__ import annotations
 

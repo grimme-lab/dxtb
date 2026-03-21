@@ -266,7 +266,7 @@ def davidson(
                 print(
                     "Iter %3d (guess size: %d): resid: %.3e, devals: %.3e"
                     % (i + 1, nguess, max_resid, max_deigval)
-                )  # type:ignore
+                )  # type: ignore
 
         if max_resid < best_resid:
             best_resid = max_resid

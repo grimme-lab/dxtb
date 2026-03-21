@@ -24,6 +24,7 @@ extended tight-binding parametrization using PyTorch.
 The :class:`.ParamModule` class automatically converts a Pydantic
 model into a hierarchical :class:`~torch.nn.Module` tree.
 """
+
 from __future__ import annotations
 
 from types import SimpleNamespace

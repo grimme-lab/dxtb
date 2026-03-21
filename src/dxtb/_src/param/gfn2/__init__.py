@@ -38,4 +38,5 @@ Example
     # Now, the parameters should be loaded
     print(GFN2_XTB._loaded is None)  # Expected output: False
 """
+
 from .load import GFN2_XTB as GFN2_XTB

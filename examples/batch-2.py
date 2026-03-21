@@ -18,6 +18,7 @@
 """
 Obtaining the interaction energy of a dimer from a batched calculation.
 """
+
 import tad_mctc as mctc
 import torch
 

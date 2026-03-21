@@ -17,6 +17,7 @@
 """
 Test JSON export.
 """
+
 from __future__ import annotations
 
 from dxtb.config import Config

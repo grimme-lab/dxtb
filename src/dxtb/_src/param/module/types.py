@@ -21,6 +21,7 @@ Parametrization: Module Types
 Types for the differentiable representation of the extended tight-binding
 parametrization using PyTorch.
 """
+
 from __future__ import annotations
 
 from torch import nn

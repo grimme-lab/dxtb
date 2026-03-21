@@ -63,6 +63,7 @@ While using functorch is faster, it is sometimes less stable and does not work
 if we need to differentiate for multiple properties at once (e.g., Hessian and
 dipole moment for IR spectra). Hence, the default is ``use_functorch=False``.
 """
+
 from .analytical import AnalyticalCalculator
 from .autograd import AutogradCalculator
 from .energy import EnergyCalculator

@@ -17,6 +17,7 @@
 """
 General test for Core GFN1Hamiltonian.
 """
+
 # pylint: disable=protected-access
 
 from __future__ import annotations
