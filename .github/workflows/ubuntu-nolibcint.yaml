@@ -45,7 +45,7 @@ jobs:
         # PyTorch>=2.5.0 does not support Python<3.9
         # PyTorch>=2.9.0 does not support Python<3.10
         python-version: ["3.10", "3.11", "3.12"]
-        torch-version: ["2.9.0"]
+        torch-version: ["2.10.0"]
 
     runs-on: ${{ matrix.os }}
 

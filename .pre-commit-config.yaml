@@ -29,7 +29,7 @@ repos:
         language_version: python3
 
   - repo: https://github.com/asottile/setup-cfg-fmt
-    rev: v3.1.0
+    rev: v3.2.0
     hooks:
       - id: setup-cfg-fmt
         args:
@@ -42,25 +42,25 @@ repos:
           ]
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.0
+    rev: v3.21.2
     hooks:
       - id: pyupgrade
         args: [--py37-plus, --keep-runtime-typing]
 
   - repo: https://github.com/pycqa/isort
-    rev: 7.0.0
+    rev: 8.0.1
     hooks:
       - id: isort
         name: isort (python)
         args: ["--profile", "black", "--line-length", "80", "--filter-files"]
 
   - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 25.9.0
+    rev: 26.3.1
     hooks:
       - id: black
         args: ["--line-length", "80"]
 
   - repo: https://github.com/woodruffw/zizmor-pre-commit
-    rev: v1.15.2
+    rev: v1.23.1
     hooks:
       - id: zizmor
