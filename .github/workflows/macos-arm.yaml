@@ -46,7 +46,7 @@ jobs:
         # https://github.com/actions/setup-python/issues/696
         python-version: ["3.10", "3.11", "3.12"]
         # only test oldest and newest version of torch
-        torch-version: ["1.11.0", "2.9.0"]
+        torch-version: ["1.11.0", "2.10.0"]
         exclude:
           # Check latest versions here: https://download.pytorch.org/whl/torch/
           #
@@ -66,10 +66,10 @@ jobs:
           - python-version: "3.11"
             torch-version: "1.13.1"
 
-    runs-on: ${{ matrix.os }}
-
     permissions:
       contents: read
+
+    runs-on: ${{ matrix.os }}
 
     defaults:
       run:

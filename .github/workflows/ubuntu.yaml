@@ -54,7 +54,8 @@ jobs:
             "2.6.0",
             "2.7.1",
             "2.8.0",
-            "2.9.0",
+            "2.9.1",
+            "2.10.0",
           ]
         exclude:
           # Check latest versions here: https://download.pytorch.org/whl/torch/
@@ -80,9 +81,17 @@ jobs:
             torch-version: "2.8.0"
           - python-version: "3.8"
             torch-version: "2.9.0"
+          - python-version: "3.8"
+            torch-version: "2.9.1"
+          - python-version: "3.8"
+            torch-version: "2.10.0"
           # PyTorch>=2.9.0 does not support Python<3.10
           - python-version: "3.9"
             torch-version: "2.9.0"
+          - python-version: "3.9"
+            torch-version: "2.9.1"
+          - python-version: "3.9"
+            torch-version: "2.10.0"
 
     runs-on: ${{ matrix.os }}
 
@@ -122,12 +131,39 @@ jobs:
         env:
           TOXENV: ${{ env.TOXENV }}
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@7f8b4b4bde536c465e797be725718b88c5d95e0e # 5.1.1
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
         if: >
           matrix.python-version == '3.12' &&
-          matrix.torch-version == '2.9.0' &&
+          matrix.torch-version == '2.10.0' &&
           matrix.os == 'ubuntu-latest'
+        with:
+          name: coverage-data
+          path: ./coverage.xml
+          retention-days: 1 # temporarily needed to pass to next job
+
+  # Dedicated job for upload
+  upload_coverage:
+    name: Upload to Codecov
+    needs: main
+    runs-on: ubuntu-latest
+    environment: codecov
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-data
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@7f8b4b4bde536c465e797be725718b88c5d95e0e # 5.1.1
         with:
           files: ./coverage.xml # optional
           token: ${{ secrets.CODECOV_TOKEN }} # required

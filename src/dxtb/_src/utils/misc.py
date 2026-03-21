@@ -25,6 +25,7 @@ Collection of miscellaneous utility functions containing:
 - JIT enabler
 - Memoization decorators
 """
+
 from __future__ import annotations
 
 import torch

@@ -20,6 +20,7 @@ Dispersion: D3
 
 The DFT-D3 dispersion model.
 """
+
 from __future__ import annotations
 
 import tad_dftd3 as d3

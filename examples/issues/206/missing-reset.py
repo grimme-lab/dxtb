@@ -18,6 +18,7 @@
 """
 https://github.com/grimme-lab/dxtb/issues/206
 """
+
 import concurrent.futures
 import tempfile
 from tempfile import NamedTemporaryFile

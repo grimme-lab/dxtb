@@ -23,6 +23,7 @@ This module contains PyTorch-related type annotations.
 Most importantly, the `TensorLike` base class is defined, which brings
 tensor-like behavior (`.to` and `.type` methods) to classes.
 """
+
 from tad_mctc.typing.pytorch import (
     DD,
     MockTensor,

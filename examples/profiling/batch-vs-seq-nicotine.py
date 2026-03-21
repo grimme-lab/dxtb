@@ -18,6 +18,7 @@
 """
 Comparing sequential and batched execution.
 """
+
 from pathlib import Path
 
 import torch

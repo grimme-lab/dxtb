@@ -17,6 +17,7 @@
 """
 Test logging utils.
 """
+
 from __future__ import annotations
 
 from dxtb._src.io.logutils import DEFAULT_LOG_CONFIG, get_logging_config

@@ -20,6 +20,7 @@ Components: Coulomb
 
 Tight-binding components for Coulomb interactions.
 """
+
 # pylint: disable=useless-import-alias
 from dxtb._src.components.interactions.coulomb import AES2 as AES2
 from dxtb._src.components.interactions.coulomb import ES2 as ES2

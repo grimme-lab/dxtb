@@ -28,4 +28,5 @@ Note
 Currently, the implicit SCF implementations are not fully compatible with
 PyTorch's composable function transforms.
 """
+
 from .default import SelfConsistentFieldImplicit

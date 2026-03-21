@@ -49,6 +49,7 @@ options:
 
     print(calc.opts.ints.driver)  # 0
 """
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

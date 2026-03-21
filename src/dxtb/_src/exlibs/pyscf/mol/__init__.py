@@ -40,4 +40,5 @@ Example
 
     mol = M(numbers, positions)
 """
+
 from .base import *

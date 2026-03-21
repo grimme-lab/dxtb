@@ -21,6 +21,7 @@ Halogen Bond Correction: Factory
 A factory function to create instances of the :class:`dxtb.components.Halogen`
 class.
 """
+
 from __future__ import annotations
 
 import torch

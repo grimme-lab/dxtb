@@ -20,6 +20,7 @@ Factories
 
 Factory functions for integral classes.
 """
+
 # pylint: disable=import-outside-toplevel
 
 from __future__ import annotations
