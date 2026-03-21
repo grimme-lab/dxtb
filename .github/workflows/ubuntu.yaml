@@ -55,6 +55,7 @@ jobs:
             "2.7.1",
             "2.8.0",
             "2.9.1",
+            "2.10.0",
           ]
         exclude:
           # Check latest versions here: https://download.pytorch.org/whl/torch/
