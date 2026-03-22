@@ -23,7 +23,7 @@ Self-consistent D4 dispersion correction.
 
 from __future__ import annotations
 
-from typing import Any, override
+from typing import Any
 
 import tad_dftd4 as d4
 import tad_dftd4.defaults as d4_defaults
@@ -38,6 +38,7 @@ from tad_mctc.typing import (
     Tensor,
     TensorLike,
     get_default_dtype,
+    override,
 )
 
 from dxtb import IndexHelper
