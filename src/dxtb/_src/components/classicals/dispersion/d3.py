@@ -26,12 +26,12 @@ from __future__ import annotations
 import tad_dftd3 as d3
 import torch
 from tad_mctc.data import radii
-from tad_mctc.ncoord import cn_d3, exp_count
+from tad_mctc.ncoord import coordination_number, exp_count
 
 from dxtb import IndexHelper
 from dxtb._src.typing import Any, CountingFunction, Tensor, override
 
-from ..base import ClassicalCache
+from ..base import ClassicalCache, ComponentCache
 from .base import Dispersion
 
 __all__ = ["DispersionD3", "DispersionD3Cache"]
@@ -162,7 +162,7 @@ class DispersionD3(Dispersion):
 
     @override
     def get_energy(
-        self, positions: Tensor, cache: DispersionD3Cache, **kwargs: Any
+        self, positions: Tensor, cache: ComponentCache, **kwargs: Any
     ) -> Tensor:
         """
         Get D3 dispersion energy.
@@ -171,7 +171,7 @@ class DispersionD3(Dispersion):
         ----------
         positions : Tensor
             Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
-        cache : DispersionD3Cache
+        cache : ComponentCache
             Dispersion cache containing settings.
 
         Returns
@@ -179,8 +179,12 @@ class DispersionD3(Dispersion):
         Tensor
             Atom-resolved D3 dispersion energy.
         """
+        if not isinstance(cache, DispersionD3Cache):
+            raise TypeError(
+                f"Cache in {self.label} is not of type 'DispersionD3Cache'."
+            )
 
-        cn = cn_d3(
+        cn = coordination_number(
             self.numbers,
             positions,
             counting_function=cache.counting_function,

@@ -33,7 +33,7 @@ from tad_mctc.typing import CountingFunction, Tensor, override
 
 from dxtb import IndexHelper
 
-from ..base import ClassicalCache
+from ..base import ClassicalCache, ComponentCache
 from .base import Dispersion
 
 __all__ = ["DispersionD4", "DispersionD4Cache"]
@@ -169,7 +169,7 @@ class DispersionD4(Dispersion):
     def get_energy(
         self,
         positions: Tensor,
-        cache: DispersionD4Cache,
+        cache: ComponentCache,
         q: Tensor | None = None,
         **kwargs: Any,
     ) -> Tensor:
@@ -180,7 +180,7 @@ class DispersionD4(Dispersion):
         ----------
         positions : Tensor
             Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
-        cache : DispersionD4Cache
+        cache : ComponentCache
             Dispersion cache containing settings.
         q : Tensor | None, optional
             Atomic partial charges. Defaults to ``None`` (EEQ charges).
@@ -190,6 +190,11 @@ class DispersionD4(Dispersion):
         Tensor
             Atom-resolved D4 dispersion energy.
         """
+        if not isinstance(cache, DispersionD4Cache):
+            raise TypeError(
+                f"Cache in {self.label} is not of type '{self.label}Cache'."
+            )
+
         # FIXME: Charge should be REQUIRED for D4!
         if self.charge is None and "charge" not in kwargs:
             charge = torch.tensor(0.0, **self.dd)

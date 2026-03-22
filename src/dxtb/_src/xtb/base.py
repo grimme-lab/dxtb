@@ -27,13 +27,13 @@ import torch
 from tad_mctc import storch
 from tad_mctc.batch import real_pairs
 from tad_mctc.convert import symmetrize
-from tad_mctc.data.radii import ATOMIC as ATOMIC_RADII
+from tad_mctc.data.radii import ATOMIC_RADII
 from tad_mctc.exceptions import DeviceError, DtypeError
+from tad_mctc.typing import CNFunc, PathLike, Tensor, TensorLike
 from tad_mctc.units import EV2AU
 
 from dxtb import IndexHelper
 from dxtb._src.param import Param, ParamModule
-from dxtb._src.typing import CNFunction, PathLike, Tensor, TensorLike
 
 from .abc import HamiltonianABC
 
@@ -85,7 +85,7 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
     rad: Tensor
     """Van-der-Waals radius of each species."""
 
-    cn: CNFunction | None
+    cn: CNFunc | None
     """Coordination number function."""
 
     __slots__ = [
@@ -202,7 +202,7 @@ class BaseHamiltonian(HamiltonianABC, TensorLike):
 
         return self._matrix.requires_grad
 
-    def _get_elem_valence(self, _: ParamModule) -> Tensor:
+    def _get_elem_valence(self, par: ParamModule) -> Tensor:
         """
         Obtain a mask for valence and non-valence shells. This is only required
         for GFN1-xTB's second hydrogen s-function. For GFN2-xTB, this is a

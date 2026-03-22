@@ -26,10 +26,12 @@ from __future__ import annotations
 from typing import Any
 
 import tad_dftd4 as d4
+import tad_dftd4.defaults as d4_defaults
 import torch
+from tad_mctc.data import PAULING
 from tad_mctc.exceptions import DeviceError
 from tad_mctc.math import einsum
-from tad_mctc.ncoord import cn_d4, erf_count
+from tad_mctc.ncoord import coordination_number, erf_count
 from tad_mctc.typing import (
     DD,
     CountingFunction,
@@ -264,12 +266,19 @@ class DispersionD4SC(Interaction):
         # if the cache is built, store the cachevar for validation
         self._cachevars = cachvars
 
-        cn = cn_d4(
+        en = PAULING(**self.dd)[numbers]
+        endiff = torch.abs(en.unsqueeze(-2) - en.unsqueeze(-1))
+        weight = d4_defaults.D4_K4 * torch.exp(
+            -((endiff + d4_defaults.D4_K5) ** 2.0) / d4_defaults.D4_K6
+        )
+
+        cn = coordination_number(
             numbers,
             positions,
             counting_function=self.counting_function,
             rcov=self.rcov,
             cutoff=self.cutoff.cn,
+            pair_weight=weight,
         )
 
         # tblite: disp/d4.f90::get_dispersion_matrix
@@ -293,7 +302,7 @@ class DispersionD4SC(Interaction):
 
     @override
     def get_monopole_atom_energy(
-        self, cache: DispersionD4SCCache, qat: Tensor, **_: Any
+        self, cache: InteractionCache, qat: Tensor, **_: Any
     ) -> Tensor:
         """
         Calculate the D4 dispersion correction energy.
@@ -310,6 +319,11 @@ class DispersionD4SC(Interaction):
         Tensor
             Atomwise D4 dispersion correction energies.
         """
+        if not isinstance(cache, DispersionD4SCCache):
+            raise TypeError(
+                f"Cache in {self.label} is not of type 'DispersionD4SCCache'."
+            )
+
         # `numbers` in model are updated in cache (for culling)
         weights = self.model.weight_references(cache.cn, qat)
 
@@ -321,7 +335,7 @@ class DispersionD4SC(Interaction):
 
     @override
     def get_monopole_atom_potential(
-        self, cache: DispersionD4SCCache, qat: Tensor, *_: Any, **__: Any
+        self, cache: InteractionCache, qat: Tensor, *_: Any, **__: Any
     ) -> Tensor:
         """
         Calculate the D4 dispersion correction potential.
@@ -338,6 +352,11 @@ class DispersionD4SC(Interaction):
         Tensor
             Atomwise dispersion correction potential.
         """
+        if not isinstance(cache, DispersionD4SCCache):
+            raise TypeError(
+                f"Cache in {self.label} is not of type 'DispersionD4SCCache'."
+            )
+
         weights, dgwdq = self.model.weight_references(
             cache.cn, qat, with_dgwdq=True
         )

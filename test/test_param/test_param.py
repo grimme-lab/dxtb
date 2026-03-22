@@ -171,9 +171,9 @@ def _validate_param(par: Param) -> None:
     else:
         raise ValueError(f"Unknown parameter set: {par.meta.name}")
 
-    for f, f_read in zip(ref.model_fields.keys(), par.model_fields.keys()):
+    for f in Param.model_fields:
         val = getattr(ref, f)
-        val_read = getattr(par, f_read)
+        val_read = getattr(par, f)
         assert val == val_read
 
     # GFN1_XTB is not really of type `Param`, but a `LazyLoaderParam`

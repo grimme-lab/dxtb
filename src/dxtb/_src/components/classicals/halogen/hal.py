@@ -28,13 +28,13 @@ from __future__ import annotations
 import torch
 from tad_mctc.batch import pack
 from tad_mctc.convert import any_to_tensor
-from tad_mctc.data.radii import ATOMIC as ATOMIC_RADII
+from tad_mctc.data.radii import ATOMIC_RADII
 from tad_mctc.typing import Any, Tensor, override
 
 from dxtb import IndexHelper
 from dxtb._src.constants import xtb
 
-from ..base import Classical, ClassicalCache
+from ..base import Classical, ClassicalCache, ComponentCache
 
 __all__ = ["Halogen", "LABEL_HALOGEN"]
 
@@ -119,7 +119,7 @@ class Halogen(Classical):
 
     @override
     def get_cache(
-        self, numbers: Tensor, ihelp: IndexHelper | None = None
+        self, numbers: Tensor, ihelp: IndexHelper | None = None, **kwargs: Any
     ) -> HalogenCache:
         """
         Store variables for energy calculation.
@@ -166,7 +166,7 @@ class Halogen(Classical):
 
     @override
     def get_energy(
-        self, positions: Tensor, cache: HalogenCache, **_: Any
+        self, positions: Tensor, cache: ComponentCache, **_: Any
     ) -> Tensor:
         """
         Handle batchwise and single calculation of halogen bonding energy.
@@ -175,7 +175,7 @@ class Halogen(Classical):
         ----------
         positions : Tensor
             Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
-        cache : HalogenCache
+        cache : ComponentCache
             Cache for the halogen bond parameters.
 
         Returns
@@ -183,6 +183,10 @@ class Halogen(Classical):
         Tensor
              Atomwise energy contributions from halogen bonds.
         """
+        if not isinstance(cache, HalogenCache):
+            raise TypeError(
+                f"Cache in {self.label} is not of type 'HalogenCache'."
+            )
 
         if cache.numbers.ndim > 1:
             return pack(

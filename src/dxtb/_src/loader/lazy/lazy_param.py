@@ -102,7 +102,11 @@ class LazyLoaderParam:
 
             del toml
 
-        return getattr(self._loaded, item)
+        return (
+            type(self._loaded).model_fields
+            if item == "model_fields"
+            else getattr(self._loaded, item)
+        )
 
     def __str__(self) -> str:  # pragma: no cover
         """

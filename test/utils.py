@@ -244,7 +244,7 @@ def get_elem_param(
         el = pse.Z2S.get(int(number.item()), "X")
         if el in par_element:
             p = par_element[el]
-            if key not in p.model_fields:
+            if key not in p.__class__.model_fields:
                 raise KeyError(
                     f"The key '{key}' is not in the element parameterization"
                 )
