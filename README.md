@@ -128,22 +128,22 @@ For more examples and details, check out [the documentation](https://dxtb.readth
 
 ## Compatibility
 
-| PyTorch \ Python | 3.8                | 3.9                | 3.10               | 3.11               | 3.12               |
-|------------------|--------------------|--------------------|--------------------|--------------------|--------------------|
-| 1.11.0           | :white_check_mark: | :white_check_mark: | :x:                | :x:                | :x:                |
-| 1.12.1           | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :x:                |
-| 1.13.1           | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                |
-| 2.0.1            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                |
-| 2.1.2            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                |
-| 2.2.2            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| 2.3.1            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| 2.4.1            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| 2.5.1            | :x:                | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| 2.6.0            | :x:                | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| 2.7.1            | :x:                | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| 2.8.0            | :x:                | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| 2.9.1            | :x:                | :x:                | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| 2.10.0           | :x:                | :x:                | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| PyTorch \ Python | 3.8                | 3.9                | 3.10               | 3.11               | 3.12               | 3.13               | 3.14               |
+|------------------|--------------------|--------------------|--------------------|--------------------|--------------------|--------------------|--------------------|
+| 1.11.0           | :white_check_mark: | :white_check_mark: | :x:                | :x:                | :x:                |:x:                |:x:                |
+| 1.12.1           | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                | :x:                |:x:                |:x:                |
+| 1.13.1           | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                |:x:                |:x:                |
+| 2.0.1            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                |:x:                |:x:                |
+| 2.1.2            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                |:x:                |:x:                |
+| 2.2.2            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |:x:                |:x:                |
+| 2.3.1            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |:x:                |:x:                |
+| 2.4.1            | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |:x:                |:x:                |
+| 2.5.1            | :x:                | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |:x:                |:x:                |
+| 2.6.0            | :x:                | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |:x:                |
+| 2.7.1            | :x:                | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |:x:                |
+| 2.8.0            | :x:                | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |:x:                |
+| 2.9.1            | :x:                | :x:                | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| 2.10.0           | :x:                | :x:                | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 
 Note that only the latest bug fix version is listed, but all preceding bug fix minor versions are supported.
 For example, although only version 2.2.2 is listed, version 2.2.0 and 2.2.1 are also supported.
