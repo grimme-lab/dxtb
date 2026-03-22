@@ -23,6 +23,8 @@ The GFN1-xTB Hamiltonian.
 
 from __future__ import annotations
 
+from functools import partial
+
 import torch
 from tad_mctc import storch
 from tad_mctc.batch import real_pairs
@@ -57,9 +59,9 @@ class GFN1Hamiltonian(BaseHamiltonian):
             self.cn = kwargs.pop("cn")
         else:
             # pylint: disable=import-outside-toplevel
-            from tad_mctc.ncoord import cn_d3
+            from tad_mctc.ncoord import cn_d3, exp_count
 
-            self.cn = cn_d3
+            self.cn = partial(cn_d3, counting_function=exp_count)
 
     def _get_hscale(self, par: ParamModule) -> Tensor:
         """

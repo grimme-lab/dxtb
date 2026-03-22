@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import torch
 from tad_mctc import storch
-from tad_mctc.data.mass import ATOMIC as ATOMIC_MASSES
+from tad_mctc.data.mass import ATOMIC_MASS
 from tad_mctc.math import einsum
 from tad_mctc.molecule.geometry import is_linear
 from tad_mctc.molecule.property import inertia_moment, positions_rel_com
@@ -215,7 +215,7 @@ def vib_analysis(
             f"atomic numbers is {numbers.shape}."
         )
 
-    mass = ATOMIC_MASSES(device=hessian.device, dtype=hessian.dtype)[numbers]
+    mass = ATOMIC_MASS(device=hessian.device, dtype=hessian.dtype)[numbers]
 
     # 1/sqrt(m) of shape (..., nat) -> (..., nat*3)
     invsqrtmass = torch.repeat_interleave(

@@ -182,7 +182,7 @@ class Interaction(Component):
 
     def get_monopole_shell_potential(
         self,
-        cache: ComponentCache,
+        cache: InteractionCache,
         qsh: Tensor,
         qdp: Tensor | None = None,
         qqp: Tensor | None = None,
@@ -195,7 +195,7 @@ class Interaction(Component):
 
         Parameters
         ----------
-        cache : ComponentCache
+        cache : InteractionCache
             Restart data for the interaction.
         qsh : Tensor
             Shell-resolved partial charges.
@@ -209,7 +209,7 @@ class Interaction(Component):
 
     def get_monopole_atom_potential(
         self,
-        cache: ComponentCache,
+        cache: InteractionCache,
         qat: Tensor,
         qdp: Tensor | None = None,
         qqp: Tensor | None = None,
@@ -222,7 +222,7 @@ class Interaction(Component):
 
         Parameters
         ----------
-        cache : ComponentCache
+        cache : InteractionCache
             Restart data for the interaction.
         qat : Tensor
             Atom-resolved partial charges (shape: ``(..., nat)``).
@@ -240,7 +240,7 @@ class Interaction(Component):
 
     def get_dipole_atom_potential(
         self,
-        cache: ComponentCache,
+        cache: InteractionCache,
         qat: Tensor,
         qdp: Tensor | None = None,
         qqp: Tensor | None = None,
@@ -253,7 +253,7 @@ class Interaction(Component):
 
         Parameters
         ----------
-        cache : ComponentCache
+        cache : InteractionCache
             Restart data for the interaction.
         qat : Tensor
             Atom-resolved partial charges (shape: ``(..., nat)``).
@@ -271,7 +271,7 @@ class Interaction(Component):
 
     def get_quadrupole_atom_potential(
         self,
-        cache: ComponentCache,
+        cache: InteractionCache,
         qat: Tensor,
         qdp: Tensor | None = None,
         qqp: Tensor | None = None,
@@ -284,7 +284,7 @@ class Interaction(Component):
 
         Parameters
         ----------
-        cache : ComponentCache
+        cache : InteractionCache
             Restart data for the interaction.
         qat : Tensor
             Atom-resolved partial charges (shape: ``(..., nat)``).
