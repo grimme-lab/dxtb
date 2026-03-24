@@ -248,12 +248,12 @@ def batch_large(
     for name in [name1, name2, name3]:
         base = Path(Path(__file__).parent, "mols", name)
 
-        nums, pos = read(Path(base, "coord"))
-        chrg = read_chrg(Path(base, ".CHRG"))
+        nums, pos = read(Path(base, "coord"), dtype_int=torch.long, **dd)
+        chrg = read_chrg(Path(base, ".CHRG"), **dd)
 
-        numbers.append(torch.tensor(nums, dtype=torch.long, device=DEVICE))
-        positions.append(torch.tensor(pos, **dd))
-        charge.append(torch.tensor(chrg, **dd))
+        numbers.append(nums)
+        positions.append(pos)
+        charge.append(chrg)
 
     numbers = pack(numbers)
     positions = pack(positions)
