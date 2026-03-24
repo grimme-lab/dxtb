@@ -138,8 +138,9 @@ class ES2Cache(InteractionCache, TensorLike):
         if self.__store is None:
             self.__store = self.Store(self.mat)
 
-        slicer = slicers["shell"] if self.shell_resolved else slicers["atom"]
-        self.mat = self.mat[[~conv, *slicer, *slicer]]
+        _slicer = slicers["shell"] if self.shell_resolved else slicers["atom"]
+        slicer = tuple([~conv, *_slicer, *_slicer])
+        self.mat = self.mat[slicer]
 
     def restore(self) -> None:
         if self.__store is None:

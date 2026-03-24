@@ -98,8 +98,8 @@ class ElectricFieldCache(InteractionCache):
             self.__store = self.Store(self.vat, self.vdp)
 
         slicer = slicers["atom"]
-        self.vat = self.vat[[~conv, *slicer]]
-        self.vdp = self.vdp[[~conv, *slicer, ...]]
+        self.vat = self.vat[tuple([~conv, *slicer])]
+        self.vdp = self.vdp[tuple([~conv, *slicer, ...])]
 
     def restore(self) -> None:
         if self.__store is None:

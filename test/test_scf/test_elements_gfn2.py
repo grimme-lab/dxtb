@@ -197,12 +197,17 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
+    scp_mode = labels.SCP_MODE_FOCK
+
     # SCF does not converge (in tblite too)
     if number in (5, 6):
         return
 
     if number == 18:
         tol = 5e-2
+
+    if number == 10 or number == 75:
+        scp_mode = labels.SCP_MODE_CHARGE
 
     numbers = torch.tensor([number], device=DEVICE)
     positions = torch.zeros((1, 3), **dd)
@@ -216,7 +221,7 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
             "f_atol": 1e-5,  # avoids Jacobian inversion error
             "x_atol": 1e-5,  # avoids Jacobian inversion error
             "fermi_thresh": 1e-4 if dtype == torch.float32 else 1e-10,
-            "scp_mode": labels.SCP_MODE_FOCK,
+            "scp_mode": scp_mode,
             "damp": 0.95,
             "damp_dynamic": False,
         },

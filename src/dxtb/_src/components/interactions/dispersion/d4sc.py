@@ -133,10 +133,10 @@ class DispersionD4SCCache(InteractionCache, TensorLike):
             self.__store = self.Store(self.cn, self.dispmat, self.model)
 
         slicer = slicers["atom"]
-        self.cn = self.cn[[~conv, *slicer]]
-        self.dispmat = self.dispmat[[~conv, *slicer, *slicer]]
+        self.cn = self.cn[tuple([~conv, *slicer])]
+        self.dispmat = self.dispmat[tuple([~conv, *slicer, *slicer])]
 
-        self.model.numbers = self.model.numbers[[~conv, *slicer]]
+        self.model.numbers = self.model.numbers[tuple([~conv, *slicer])]
 
     def restore(self) -> None:
         if self.__store is None:

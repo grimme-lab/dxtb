@@ -41,7 +41,7 @@ __all__ = ["md_recursion", "md_recursion_gradient"]
 sqrtpi3 = sqrt(pi) ** 3
 
 
-@torch.jit.script
+# @torch.jit.script
 def _e_function(E: Tensor, xij: Tensor, rpi: Tensor, rpj: Tensor) -> Tensor:
     """
     Calculate E-coefficients for McMurchie-Davidson algorithm. Rather than computing
@@ -124,7 +124,7 @@ _e_function_jit: Callable[
 )  # type: ignore
 
 
-@torch.jit.script
+# @torch.jit.script
 def _e_function_grad(
     E: Tensor,
     xij: Tensor,
@@ -269,7 +269,7 @@ class EFunction(torch.autograd.Function):
         return E
 
     @staticmethod
-    def backward(
+    def backward(  # type: ignore[override]
         ctx: Any,
         E_bar: Tensor,
     ) -> tuple[Tensor | None, Tensor | None, Tensor | None, None]:

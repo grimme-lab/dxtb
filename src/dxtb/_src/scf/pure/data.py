@@ -145,10 +145,12 @@ class _Data:
         slicers : Slicers
             Slicer objects for selecting data from tensors.
         """
-        onedim = [~conv, *slicers["orbital"]]
-        onedim_atom = [~conv, *slicers["atom"]]
-        twodim = [~conv, *slicers["orbital"], *slicers["orbital"]]
-        threedim = [~conv, (...), *slicers["orbital"], *slicers["orbital"]]
+        onedim = tuple([~conv, *slicers["orbital"]])
+        onedim_atom = tuple([~conv, *slicers["atom"]])
+        twodim = tuple([~conv, *slicers["orbital"], *slicers["orbital"]])
+        threedim = tuple(
+            [~conv, (...), *slicers["orbital"], *slicers["orbital"]]
+        )
 
         # disable shape check temporarily for writing culled versions back
         self.ints.run_checks = False
@@ -160,7 +162,7 @@ class _Data:
             self.ints.quadrupole = self.ints.quadrupole[threedim]
         self.ints.run_checks = True
 
-        self.numbers = self.numbers[[~conv, *slicers["atom"]]]
+        self.numbers = self.numbers[onedim_atom]
         self.hamiltonian = self.hamiltonian[twodim]
         self.density = self.density[twodim]
         self.occupation = self.occupation[twodim]

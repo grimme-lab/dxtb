@@ -969,10 +969,10 @@ class AutogradCalculator(EnergyCalculator):
         self.interactions.reset_all()
         self.integrals.reset_all()
 
+        # FIXME: functorch does not work here, liekly because of some
+        # weird interaction with libcint.
         # d(..., 3, 3) / d(..., nat, 3) -> (..., 3, 3, nat, 3)
-        da_dr = self.pol_deriv(
-            positions, chrg, spin, use_functorch=use_functorch
-        )
+        da_dr = self.pol_deriv(positions, chrg, spin, use_functorch=False)
 
         intensities, depol = raman_ints_depol(da_dr, vib_res.modes)
 

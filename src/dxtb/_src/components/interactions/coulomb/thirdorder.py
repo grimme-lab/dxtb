@@ -138,7 +138,7 @@ class ES3Cache(InteractionCache, TensorLike):
             self.__store = self.Store(self.hd)
 
         slicer = slicers["shell"] if self.shell_resolved else slicers["atom"]
-        self.hd = self.hd[[~conv, *slicer]]
+        self.hd = self.hd[tuple([~conv, *slicer])]
 
     def restore(self) -> None:
         if self.__store is None:
