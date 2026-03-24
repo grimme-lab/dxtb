@@ -169,13 +169,16 @@ class AES2Cache(InteractionCache, TensorLike):
                 self.amat_sq,
             )
 
-        slicer = slicers["atom"]
-        self.mrad = self.mrad[[~conv, *slicer]]
-        self.dkernel = self.dkernel[[~conv, *slicer]]
-        self.qkernel = self.qkernel[[~conv, *slicer]]
-        self.amat_sd = self.amat_sd[[~conv, *slicer, *slicer]]
-        self.amat_dd = self.amat_dd[[~conv, *slicer, *slicer]]
-        self.amat_sq = self.amat_sq[[~conv, *slicer, *slicer]]
+        _slicer = slicers["atom"]
+        _slicer_one = tuple([~conv, *_slicer])
+        _slicer_two = tuple([~conv, *_slicer, *_slicer])
+
+        self.mrad = self.mrad[_slicer_one]
+        self.dkernel = self.dkernel[_slicer_one]
+        self.qkernel = self.qkernel[_slicer_one]
+        self.amat_sd = self.amat_sd[_slicer_two]
+        self.amat_dd = self.amat_dd[_slicer_two]
+        self.amat_sq = self.amat_sq[_slicer_two]
 
     def restore(self) -> None:
         if self.__store is None:

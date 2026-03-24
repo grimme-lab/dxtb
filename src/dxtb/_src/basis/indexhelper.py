@@ -938,9 +938,9 @@ class IndexHelper(TensorLike):
                 orbitals_to_shell=self.orbitals_to_shell,
             )
 
-        at = [~conv, *slicers["atom"]]
-        sh = [~conv, *slicers["shell"]]
-        orb = [~conv, *slicers["orbital"]]
+        at = tuple([~conv, *slicers["atom"]])
+        sh = tuple([~conv, *slicers["shell"]])
+        orb = tuple([~conv, *slicers["orbital"]])
 
         self.angular = self.angular[sh]
         self.atom_to_unique = self.atom_to_unique[at]

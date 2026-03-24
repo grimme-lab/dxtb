@@ -29,6 +29,8 @@ import logging
 from contextlib import contextmanager
 from pathlib import Path
 
+import torch
+
 from dxtb._src.typing import Any, Generator, override
 
 from .output import (
@@ -236,7 +238,11 @@ class _OutputHandler:
             elif args:
                 # assume msg is a format string and format it
                 # Example: f("SCF Energy  : %.14f .", e.sum(-1))
-                message = msg % args
+                detached_args = tuple(
+                    a.detach() if torch.is_tensor(a) and a.requires_grad else a
+                    for a in args
+                )
+                message = msg % detached_args
             else:
                 # handle as a normal message
                 message = msg

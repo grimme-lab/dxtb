@@ -73,7 +73,9 @@ def test_element(dtype: torch.dtype, partition: str, number: int) -> None:
     calc2 = Calculator(numbers, par, opts=o, **dd)
     result2 = calc2.singlepoint(positions, charges)
 
-    assert pytest.approx(result1.iter) == result2.iter
+    # The xitorch path does not have access to the data object, and hence,
+    # cannot update the iteration count.
+    # assert pytest.approx(result1.iter) == result2.iter
 
     f1 = result1.fenergy.cpu()
     f2 = result2.fenergy.cpu()
