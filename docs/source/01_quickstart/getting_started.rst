@@ -68,14 +68,14 @@ quantities as optional keyword arguments to :meth:`~dxtb.Calculator.energy`.
 
 .. code-block:: python
 
-    energy = calc.energy(positions, charge=0, spin=0)
+    energy = calc.energy(positions, chrg=0, spin=0)
 
 Instead of calling the :meth:`~dxtb.Calculator.energy` method, you can also
 use corresponding getters :meth:`~dxtb.Calculator.get_energy`:
 
 .. code-block:: python
 
-    energy = calc.get_energy(positions, charge=0, spin=0)
+    energy = calc.get_energy(positions, chrg=0, spin=0)
 
 We recommend using the getters, as they provide the familiar
 `ASE <https://wiki.fysik.dtu.dk/ase/>`_-like interface.
