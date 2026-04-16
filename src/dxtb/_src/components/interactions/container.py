@@ -312,6 +312,21 @@ class Charges(Container):
     Container for the charges used in the SCF.
     """
 
+    nspin: int
+    """Number of spin channels (1 = RHF, 2 = UHF)."""
+
+    def __init__(
+        self,
+        mono: Tensor | None = None,
+        dipole: Tensor | None = None,
+        quad: Tensor | None = None,
+        label: str | list[str] | None = None,
+        batch_mode: int = 0,
+        nspin: int = 1,
+    ) -> None:
+        super().__init__(mono, dipole, quad, label, batch_mode)
+        self.nspin = nspin
+
     @property
     def mono(self) -> Tensor:
         if self._mono is None:

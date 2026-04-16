@@ -93,6 +93,17 @@ class Interaction(Component):
     label: str
     """Label for the interaction."""
 
+    spin_channel: int | None = None
+    """
+    Which spin channel this interaction reads from and writes to
+    when charges carry an ``nspin`` dimension.
+
+    * ``None`` (default): charge-type interaction, reads from channel 0
+      (total charges).
+    * ``1``: magnetization-type interaction (e.g. spin polarisation),
+      reads from channel 1 (magnetization charges).
+    """
+
     def __init__(
         self,
         device: torch.device | None = None,
@@ -131,6 +142,22 @@ class Interaction(Component):
         """
         return InteractionCache()
 
+    def _extract_mono_charges(self, charges: Charges) -> Tensor:
+        """
+        Extract the relevant monopole charges for this interaction.
+
+        For spin-polarized calculations (``charges.nspin > 1``), the
+        appropriate spin channel is selected according to
+        :attr:`spin_channel`.  Charge-type interactions (``spin_channel
+        is None``) use channel 0 (total charges); the spin interaction
+        uses channel 1 (magnetization).
+        """
+        nspin = getattr(charges, "nspin", 1)
+        if nspin > 1:
+            ch = self.spin_channel if self.spin_channel is not None else 0
+            return charges.mono[..., ch, :]
+        return charges.mono
+
     @final
     def get_potential(
         self,
@@ -155,9 +182,11 @@ class Interaction(Component):
         Tensor
             Potential vector for each orbital partial charge.
         """
+        nspin = getattr(charges, "nspin", 1)
+        qat_ch = self._extract_mono_charges(charges)
 
         # monopole potential: shell-resolved
-        qsh = ihelp.reduce_orbital_to_shell(charges.mono)
+        qsh = ihelp.reduce_orbital_to_shell(qat_ch)
         vsh = self.get_monopole_shell_potential(cache, qsh)
 
         # monopole potential: atom-resolved
@@ -169,6 +198,19 @@ class Interaction(Component):
         # spread to orbital-resolution
         vsh += ihelp.spread_atom_to_shell(vat)
         vmono = ihelp.spread_shell_to_orbital(vsh)
+
+        # Route potential into the correct spin channel
+        if nspin > 1:
+            ch = self.spin_channel if self.spin_channel is not None else 0
+            vmono_full = torch.zeros(
+                *vmono.shape[:-1],
+                nspin,
+                vmono.shape[-1],
+                device=vmono.device,
+                dtype=vmono.dtype,
+            )
+            vmono_full[..., ch, :] = vmono
+            vmono = vmono_full
 
         # multipole potentials
         vdipole = self.get_dipole_atom_potential(
@@ -337,7 +379,9 @@ class Interaction(Component):
                 "charges are required."
             )
 
-        qsh = ihelp.reduce_orbital_to_shell(charges.mono)
+        qat_ch = self._extract_mono_charges(charges)
+
+        qsh = ihelp.reduce_orbital_to_shell(qat_ch)
         esh = self.get_monopole_shell_energy(cache, qsh)
 
         qat = ihelp.reduce_shell_to_atom(qsh)

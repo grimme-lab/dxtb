@@ -107,9 +107,20 @@ class SpinPolarisationCache(InteractionCache):
 class SpinPolarisation(Interaction):
     """
     Spin Polarisation (:class: `.SpinPolarisation`).
+
+    This interaction operates on the magnetization channel of the
+    spin-resolved charges, computing the spin-polarisation energy and
+    potential.  The base-class routing (via ``spin_channel = 1``) ensures
+    that the magnetization charges are extracted before being passed to
+    the ``get_monopole_shell_*`` methods, and that the returned potential
+    is placed into the correct spin channel of the combined potential
+    tensor.
     """
 
     spinconst: Tensor
+
+    spin_channel: int | None = 1
+    """Read magnetization charges (channel 1) when nspin > 1."""
 
     __slots__ = [
         "spinconst",
@@ -124,12 +135,12 @@ class SpinPolarisation(Interaction):
         super().__init__(device, dtype)
         self.spinconst = spinconst
 
-    # pylint: disable=unused-argument
     @override
     def get_cache(
         self,
         *,
         numbers: Tensor | None = None,
+        positions: Tensor | None = None,
         ihelp: IndexHelper | None = None,
     ) -> SpinPolarisationCache:
         """
@@ -195,54 +206,50 @@ class SpinPolarisation(Interaction):
         self, cache: SpinPolarisationCache, qsh: Tensor, **_: Any
     ) -> Tensor:
         """
-        Calculate the Spin-Polarization energy
+        Calculate the spin-polarisation energy from magnetization charges.
+
+        The base class extracts the magnetization channel before calling
+        this method, so ``qsh`` is single-channel ``(..., nsh)``.
 
         Parameters
         ----------
-        chache : SpinPolarisationCache
+        cache : SpinPolarisationCache
             Restart data for the interaction.
-            Contains the spinconstantmatrix wll
-        qsh: Tensor
-            Shell Charges of all atoms
+            Contains the spin-constant matrix ``wll``.
+        qsh : Tensor
+            Shell-resolved magnetization charges (shape: ``(..., nsh)``).
 
         Returns
-        --------
+        -------
         Tensor
-            Shell-wise spin-polarisation energy.
+            Shell-wise spin-polarisation energy (shape: ``(..., nsh)``).
         """
-        print(qsh[..., -1])
-        print("wll", cache.wll)
-        # first vector matrix multiplication in einsum then hadamard product
-        return (
-            0.5
-            * qsh[..., -1]
-            * einsum("...k,...ik->...i", qsh[..., -1], cache.wll)
-        )
+        return 0.5 * qsh * einsum("...k,...ik->...i", qsh, cache.wll)
 
     @override
     def get_monopole_shell_potential(
         self, cache: SpinPolarisationCache, qsh: Tensor, **_: Any
     ) -> Tensor:
         """
-        Calculate the Spin-Polarization potential
+        Calculate the spin-polarisation potential from magnetization charges.
+
+        The base class extracts the magnetization channel before calling
+        this method, so ``qsh`` is single-channel ``(..., nsh)``.
 
         Parameters
         ----------
-        chache : SpinPolarisationCache
+        cache : SpinPolarisationCache
             Restart data for the interaction.
-            Contains the spinconstantmatrix wll
-        qsh: Tensor
-            Shell Charges of all atoms
+            Contains the spin-constant matrix ``wll``.
+        qsh : Tensor
+            Shell-resolved magnetization charges (shape: ``(..., nsh)``).
 
         Returns
-        --------
+        -------
         Tensor
-            Shell-wise spin-polarisation potential.
+            Shell-wise spin-polarisation potential (shape: ``(..., nsh)``).
         """
-
-        val = einsum("...k,...ik->...i", qsh[..., -1], cache.wll).unsqueeze(-1)
-        vsh = torch.cat([torch.zeros_like(val), val], dim=-1)
-        return vsh
+        return einsum("...k,...ik->...i", qsh, cache.wll)
 
     def __str__(self) -> str:  # pragma: no cover
         return f"{self.__class__.__name__}(spinconst={self.spinconst})"

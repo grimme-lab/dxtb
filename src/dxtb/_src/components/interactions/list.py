@@ -250,9 +250,21 @@ class InteractionList(ComponentList[Interaction]):
             Potential vector for each orbital partial charge.
         """
 
-        # create empty potential
+        # create empty potential (spin-dimensioned if charges carry nspin)
+        nspin = getattr(charges, "nspin", 1)
+        if nspin > 1:
+            zero_mono = torch.zeros(
+                *charges.mono.shape[:-2],
+                nspin,
+                charges.mono.shape[-1],
+                device=charges.mono.device,
+                dtype=charges.mono.dtype,
+            )
+        else:
+            zero_mono = torch.zeros_like(charges.mono)
+
         pot = Potential(
-            torch.zeros_like(charges.mono),
+            zero_mono,
             dipole=None,
             quad=None,
             batch_mode=ihelp.batch_mode,

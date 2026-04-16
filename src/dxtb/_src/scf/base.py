@@ -135,6 +135,10 @@ class BaseSCF:
             self.numbers = numbers
             self.ihelp = ihelp
             self.cache = cache
+
+            # nspin is set by BaseSCF.__init__ after construction
+            self.nspin: int = 1
+
             self.init_zeros()
 
             self.potential: ContainerData = {
@@ -156,10 +160,27 @@ class BaseSCF:
         def init_zeros(self) -> None:
             """Initialize all tensors with zeros."""
             self.energy = torch.zeros_like(self.n0)
-            self.hamiltonian = torch.zeros_like(self.ints.hcore)
-            self.density = torch.zeros_like(self.ints.hcore)
-            self.evals = torch.zeros_like(self.n0)
-            self.evecs = torch.zeros_like(self.ints.hcore)
+
+            if self.nspin > 1:
+                # Density/Hamiltonian/evecs: (..., nspin, nao, nao)
+                # Evals: (..., nspin, nao)
+                batch = self.ints.hcore.shape[:-2]
+                nao = self.ints.hcore.shape[-1]
+                dd = {
+                    "device": self.ints.hcore.device,
+                    "dtype": self.ints.hcore.dtype,
+                }
+                self.hamiltonian = torch.zeros(
+                    *batch, self.nspin, nao, nao, **dd
+                )
+                self.density = torch.zeros(*batch, self.nspin, nao, nao, **dd)
+                self.evals = torch.zeros(*batch, self.nspin, nao, **dd)
+                self.evecs = torch.zeros(*batch, self.nspin, nao, nao, **dd)
+            else:
+                self.hamiltonian = torch.zeros_like(self.ints.hcore)
+                self.density = torch.zeros_like(self.ints.hcore)
+                self.evals = torch.zeros_like(self.n0)
+                self.evecs = torch.zeros_like(self.ints.hcore)
 
             self.old_charges = torch.zeros_like(self.energy)
             self.old_energy = torch.zeros_like(self.numbers)
@@ -292,6 +313,18 @@ class BaseSCF:
 
         self.interactions = interactions
 
+        # Detect spin polarization: if any interaction has spin_channel != None
+        # (i.e. SpinPolarisation), the calculation is unrestricted (nspin=2).
+        self._nspin = 1
+        for inter in interactions.components:
+            if getattr(inter, "spin_channel", None) is not None:
+                self._nspin = 2
+                break
+        self._data.nspin = self._nspin
+        # Re-initialize tensors with correct spin dimension
+        if self._nspin > 1:
+            self._data.init_zeros()
+
     @overload
     @abstractmethod
     def scf(
@@ -381,9 +414,21 @@ class BaseSCF:
         if charges is None:
             charges = torch.zeros_like(self._data.occupation)
 
+        # For nspin>1 expand a plain (nao,) guess to (2, nao) with zero
+        # magnetization channel.
+        if isinstance(charges, Tensor) and self._nspin > 1:
+            if charges.shape != self._data.occupation.shape:
+                charges = torch.stack(
+                    [charges, torch.zeros_like(charges)], dim=-2
+                )
+
         # initialize Charge container depending on given integrals
         if isinstance(charges, Tensor):
-            charges = Charges(mono=charges, batch_mode=self.config.batch_mode)
+            charges = Charges(
+                mono=charges,
+                batch_mode=self.config.batch_mode,
+                nspin=self._nspin,
+            )
             self._data.charges["mono"] = charges.mono_shape
 
             if self._data.ints.dipole is not None:
@@ -490,9 +535,11 @@ class BaseSCF:
         """
 
         if self.config.scp_mode == labels.SCP_MODE_CHARGE:
-            return Charges.from_tensor(
+            charges = Charges.from_tensor(
                 x, self._data.charges, batch_mode=self.config.batch_mode
             )
+            charges.nspin = self._nspin
+            return charges
 
         if self.config.scp_mode == labels.SCP_MODE_POTENTIAL:
             pot = Potential.from_tensor(
@@ -518,7 +565,8 @@ class BaseSCF:
         Parameters
         ----------
         charges : Tensor
-            Orbital charges vector (shape: ``(..., nao)``).
+            Orbital charges vector (shape: ``(..., nao)`` for RHF or
+            ``(..., nspin, nao)`` for UHF in charge/magnetization basis).
 
         Returns
         -------
@@ -641,6 +689,7 @@ class BaseSCF:
         q = Charges.from_tensor(
             charges, self._data.charges, batch_mode=self.config.batch_mode
         )
+        q.nspin = self._nspin
 
         # SCF cycle (Q -> V -> Q)
         potential = self.charges_to_potential(q)
@@ -702,6 +751,9 @@ class BaseSCF:
     def charges_to_potential(self, charges: Charges) -> Potential:
         """
         Compute the potential from the orbital charges.
+
+        Each interaction extracts its relevant spin channel from the
+        charges automatically via the base ``Interaction`` routing.
 
         Parameters
         ----------
@@ -766,48 +818,77 @@ class BaseSCF:
         """
         Compute the orbital charges from the density matrix.
 
+        For UHF, also computes magnetization shell charges from the
+        difference of alpha and beta density matrices.
+
         Parameters
         ----------
         density : Tensor
-            Density matrix.
+            Density matrix. For nspin=1: ``(..., nao, nao)``.
+            For nspin=2: ``(..., 2, nao, nao)`` in alpha/beta basis.
 
         Returns
         -------
-        Tensor
-            Orbital-resolved partial charges vector.
+        Charges
+            Orbital-resolved partial charges. For nspin=2 the monopole
+            field carries shape ``(..., 2, nao)`` in charge/magnetization
+            basis (channel 0 = total, channel 1 = magnetization).
         """
         ints = self._data.ints
+        nspin = self._nspin
 
-        # Calculate diagonal directly by using index "i" twice on left side.
-        # The slower but more readable approach would instead compute the full
-        # matrix with "...ik,...kj->...ij" and only extract the diagonal
-        # afterwards with `torch.diagonal(tensor, dim1=-2, dim2=-1)`.
-        self._data.energy = einsum("...ik,...ki->...i", density, ints.hcore)
+        if nspin > 1:
+            # Total density for H0 energy and total charges
+            P_total = density.sum(dim=-3)  # (..., nao, nao)
+        else:
+            P_total = density
 
-        # monopolar charges
-        populations = einsum("...ik,...ki->...i", density, ints.overlap)
-        charges = Charges(
-            mono=(self._data.n0 - populations),
-            batch_mode=self.config.batch_mode,
-        )
+        # H0 energy from total density
+        self._data.energy = einsum("...ik,...ki->...i", P_total, ints.hcore)
 
-        # Atomic dipole moments (dipole charges)
+        if nspin > 1:
+            # Per-spin populations: pop[..., s, :] for s in {0=alpha, 1=beta}
+            pop_spin = einsum(
+                "...sik,...ki->...si", density, ints.overlap
+            )  # (..., nspin, nao)
+
+            # Per-spin charges: q_s = n0/nspin - pop_s
+            n0_per_spin = self._data.n0 / nspin  # (..., nao)
+            # expand n0 to (..., nspin, nao)
+            qat_spin = n0_per_spin.unsqueeze(-2) - pop_spin
+
+            # Convert alpha/beta → charge/magnetization (in-place)
+            # channel 0: total = q_alpha + q_beta
+            # channel 1: magnetisation = q_alpha - q_beta
+            q_total = qat_spin[..., 0, :] + qat_spin[..., 1, :]
+            q_mag = qat_spin[..., 0, :] - qat_spin[..., 1, :]
+            qat_cm = torch.stack([q_total, q_mag], dim=-2)  # (..., 2, nao)
+
+            charges = Charges(
+                mono=qat_cm,
+                batch_mode=self.config.batch_mode,
+                nspin=nspin,
+            )
+        else:
+            # RHF: standard total charges
+            populations = einsum("...ik,...ki->...i", P_total, ints.overlap)
+            charges = Charges(
+                mono=(self._data.n0 - populations),
+                batch_mode=self.config.batch_mode,
+            )
+
+        # Atomic dipole moments (dipole charges) — from total density
         if ints.dipole is not None:
-            # Again, the diagonal is directly calculated instead of full matrix
-            # ("...ik,...mkj->...ijm") as `torch.diagonal` behaves weirdly for
-            # more than 2D tensors. Additionally, we move the multipole
-            # dimension to the back, which is required for the reduction to
-            # atom-resolution.
             charges.dipole = self._data.ihelp.reduce_orbital_to_atom(
-                -einsum("...ik,...mki->...im", density, ints.dipole),
+                -einsum("...ik,...mki->...im", P_total, ints.dipole),
                 extra=True,
                 dim=-2,
             )
 
-        # Atomic quadrupole moments (quadrupole charges)
+        # Atomic quadrupole moments (quadrupole charges) — from total density
         if ints.quadrupole is not None:
             charges.quad = self._data.ihelp.reduce_orbital_to_atom(
-                -einsum("...ik,...mki->...im", density, ints.quadrupole),
+                -einsum("...ik,...mki->...im", P_total, ints.quadrupole),
                 extra=True,
                 dim=-2,
             )
@@ -819,9 +900,14 @@ class BaseSCF:
         """
         Compute the Hamiltonian from the potential.
 
+        For nspin=1, returns ``(..., nao, nao)``.
+        For nspin=2, returns ``(..., 2, nao, nao)`` in charge/magnetization
+        basis (channel 0 = charge with H0, channel 1 = magnetization without
+        H0).
+
         Parameters
         ----------
-        potential : Tensor
+        potential : Potential
             Potential vector for each orbital partial charge.
 
         Returns
@@ -829,38 +915,74 @@ class BaseSCF:
         Tensor
             Hamiltonian matrix.
         """
-
-        h1 = self._data.ints.hcore
-
-        if potential.mono is not None:
-            v = potential.mono.unsqueeze(-1) + potential.mono.unsqueeze(-2)
-            h1 = h1 - (0.5 * self._data.ints.overlap * v)
+        nspin = self._nspin
+        S = self._data.ints.overlap
 
         def add_vmp_to_h1(h1: Tensor, mpint: Tensor, vmp: Tensor) -> Tensor:
             # spread potential to orbitals
             v = self._data.ihelp.spread_atom_to_orbital(vmp, dim=-2, extra=True)
-
-            # Form dot product over the the multipolar components.
-            #  - shape multipole integral: (..., x, norb, norb)
-            #  - shape multipole potential: (..., norb, x)
             tmp = 0.5 * einsum("...kij,...jk->...ij", mpint, v)
             return h1 - (tmp + tmp.mT)
 
-        if potential.dipole is not None:
-            dpint = self._data.ints.dipole
-            if dpint is not None:
-                h1 = add_vmp_to_h1(h1, dpint, potential.dipole)
+        if nspin > 1:
+            # ---------- charge channel (includes H0) ----------
+            h_charge = self._data.ints.hcore.clone()
+            if potential.mono is not None:
+                v0 = potential.mono[..., 0, :]  # charge potential
+                v0_sym = v0.unsqueeze(-1) + v0.unsqueeze(-2)
+                h_charge = h_charge - (0.5 * S * v0_sym)
 
-        if potential.quad is not None:
-            qpint = self._data.ints.quadrupole
-            if qpint is not None:
-                h1 = add_vmp_to_h1(h1, qpint, potential.quad)
+            # dipole / quadrupole only on charge channel
+            if potential.dipole is not None:
+                dpint = self._data.ints.dipole
+                if dpint is not None:
+                    h_charge = add_vmp_to_h1(h_charge, dpint, potential.dipole)
 
-        return h1
+            if potential.quad is not None:
+                qpint = self._data.ints.quadrupole
+                if qpint is not None:
+                    h_charge = add_vmp_to_h1(h_charge, qpint, potential.quad)
+
+            # ---------- magnetization channel (no H0!) ----------
+            h_mag = torch.zeros_like(h_charge)
+            if potential.mono is not None:
+                v1 = potential.mono[..., 1, :]  # magnetization potential
+                v1_sym = v1.unsqueeze(-1) + v1.unsqueeze(-2)
+                h_mag = -(0.5 * S * v1_sym)
+
+            return torch.stack([h_charge, h_mag], dim=-3)
+        else:
+            # ---------- RHF (unchanged) ----------
+            h1 = self._data.ints.hcore
+
+            if potential.mono is not None:
+                v = potential.mono.unsqueeze(-1) + potential.mono.unsqueeze(-2)
+                h1 = h1 - (0.5 * S * v)
+
+            if potential.dipole is not None:
+                dpint = self._data.ints.dipole
+                if dpint is not None:
+                    h1 = add_vmp_to_h1(h1, dpint, potential.dipole)
+
+            if potential.quad is not None:
+                qpint = self._data.ints.quadrupole
+                if qpint is not None:
+                    h1 = add_vmp_to_h1(h1, qpint, potential.quad)
+
+            return h1
 
     def hamiltonian_to_density(self, hamiltonian: Tensor) -> Tensor:
         """
         Compute the density matrix from the Hamiltonian.
+
+        For RHF (``nspin == 1``), the hamiltonian has shape
+        ``(..., nao, nao)`` and the returned density has the same shape.
+
+        For UHF (``nspin == 2``), the hamiltonian has shape
+        ``(..., 2, nao, nao)`` in charge/magnetization basis.  The two
+        channels are converted to alpha/beta Hamiltonians, each
+        diagonalized and filled independently.  The returned density has
+        shape ``(..., 2, nao, nao)`` in the alpha/beta basis.
 
         Parameters
         ----------
@@ -872,6 +994,13 @@ class BaseSCF:
         Tensor
             Density matrix.
         """
+
+        if self._nspin == 1:
+            return self._hamiltonian_to_density_rhf(hamiltonian)
+        return self._hamiltonian_to_density_uhf(hamiltonian)
+
+    def _hamiltonian_to_density_rhf(self, hamiltonian: Tensor) -> Tensor:
+        """Restricted (RHF) density matrix construction."""
 
         self._data.evals, self._data.evecs = self.diagonalize(hamiltonian)
 
@@ -905,6 +1034,79 @@ class BaseSCF:
                 )
 
         return get_density(self._data.evecs, self._data.occupation.sum(-2))
+
+    def _hamiltonian_to_density_uhf(self, hamiltonian: Tensor) -> Tensor:
+        """
+        Unrestricted (UHF) density matrix construction.
+
+        The input Hamiltonian has shape ``(..., 2, nao, nao)`` in
+        charge/magnetization basis:
+
+        - channel 0: H_charge = H0 + V_charge  (contains the core
+          Hamiltonian)
+        - channel 1: H_mag = V_spin  (magnetization potential only)
+
+        Conversion to alpha/beta:
+
+        - H_alpha = 0.5 * (H_charge + H_mag)
+        - H_beta  = 0.5 * (H_charge - H_mag)
+
+        Each spin channel is diagonalized and filled independently.
+        Returns density ``(..., 2, nao, nao)`` in alpha/beta basis.
+        """
+
+        # --- charge/magnetization → alpha/beta ---
+        h_charge = hamiltonian[..., 0, :, :]
+        h_mag = hamiltonian[..., 1, :, :]
+        h_alpha = 0.5 * (h_charge + h_mag)
+        h_beta = 0.5 * (h_charge - h_mag)
+
+        # --- diagonalize each spin channel ---
+        evals_a, evecs_a = self.diagonalize(h_alpha)
+        evals_b, evecs_b = self.diagonalize(h_beta)
+
+        # Store alpha eigenvalues/vectors (for compatibility)
+        self._data.evals = evals_a
+        self._data.evecs = evecs_a
+
+        # Combine eigenvalues for Fermi smearing: shape (..., 2, nao)
+        emo = torch.stack([evals_a, evals_b], dim=-2)
+
+        # Number of electrons per channel
+        nel = self._data.occupation.sum(-1).round()  # (..., 2)
+
+        mask = self._data.ihelp.spread_shell_to_orbital(
+            self._data.ihelp.orbitals_per_shell
+        )
+        mask = mask.unsqueeze(-2).expand([*nel.shape, -1])
+
+        # Fermi smearing
+        if self.kt is not None and not torch.all(self.kt < 3e-7):
+            self._data.occupation = filling.get_fermi_occupation(
+                nel,
+                emo,
+                kt=self.kt,
+                mask=mask,
+                maxiter=self.config.fermi.maxiter,
+                thr=self.config.fermi.thresh,
+            )
+
+            _nel = self._data.occupation.sum(-1)
+            if torch.any(torch.abs(nel - _nel.round(decimals=3)) > 1e-4):
+                raise RuntimeError(
+                    f"Number of electrons changed during Fermi smearing "
+                    f"({nel} -> {_nel})."
+                )
+
+        occ_a = self._data.occupation[..., 0, :]
+        occ_b = self._data.occupation[..., 1, :]
+
+        # Build per-spin density matrices
+        P_alpha = get_density(evecs_a, occ_a)
+        P_beta = get_density(evecs_b, occ_b)
+
+        # Return (..., 2, nao, nao) in alpha/beta basis
+        return torch.stack([P_alpha, P_beta], dim=-3)
 
     @property
     def shape(self) -> torch.Size:

@@ -24,13 +24,38 @@ import pytest
 import torch
 from tad_mctc import read, read_chrg
 
-from dxtb import GFN1_XTB, GFN2_XTB, IndexHelper
-from dxtb._src.components.interactions.spin import factory
+from dxtb import GFN1_XTB, GFN2_XTB, Calculator, IndexHelper
+from dxtb._src.components.interactions.spin import factory, new_spinpolarisation
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
 from .samples import samples
+
+
+@pytest.mark.parametrize("name", ["LiH", "SiH4"])
+@pytest.mark.parametrize(
+    "model_cls, ref_key",
+    [
+        (GFN2_XTB, "espgfn2"),
+    ],
+)
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_single(dtype: torch.dtype, name: str, model_cls, ref_key) -> None:
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    sample = samples[name]
+    numbers = sample["numbers"].to(DEVICE)
+    positions = sample["positions"].to(DEVICE)
+    ref = sample[ref_key].to(**dd)
+
+    spinpol = new_spinpolarisation(numbers=numbers, **dd)
+    calc = Calculator(numbers, par=model_cls, interaction=[spinpol], **dd)
+
+    result = calc.singlepoint(positions, chrg=torch.tensor(0.0, **dd), spin=4)
+    res = result.total.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
 @pytest.mark.parametrize("name", ["LiH"])
@@ -56,9 +81,8 @@ def test_get_monopol_shell_energy(
         **dd,
     )
 
-    print(qsh.size())
-
-    print(qsh[..., -1])
+    # SpinPolarisation now expects single-channel magnetization
+    qsh_mag = qsh[:, -1]
 
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
@@ -69,7 +93,7 @@ def test_get_monopol_shell_energy(
 
     cache = spin.get_cache(numbers=numbers, ihelp=ihelp)
 
-    eshell = spin.get_monopole_shell_energy(cache=cache, qsh=qsh)
+    eshell = spin.get_monopole_shell_energy(cache=cache, qsh=qsh_mag)
 
     at_shell = ihelp.reduce_shell_to_atom(eshell)
 
@@ -101,6 +125,9 @@ def test_get_monopol_shell_potential(
         **dd,
     )
 
+    # SpinPolarisation now expects single-channel magnetization
+    qsh_mag = qsh[:, -1]
+
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     ref = sample[ref_key].to(**dd)
@@ -110,6 +137,6 @@ def test_get_monopol_shell_potential(
 
     cache = spin.get_cache(numbers=numbers, ihelp=ihelp)
 
-    potshell = spin.get_monopole_shell_potential(cache=cache, qsh=qsh)
+    potshell = spin.get_monopole_shell_potential(cache=cache, qsh=qsh_mag)
 
     assert pytest.approx(ref.cpu(), abs=tol) == potshell.cpu()
