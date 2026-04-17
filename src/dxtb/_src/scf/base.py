@@ -316,10 +316,12 @@ class BaseSCF:
         # Unrestricted mode can be requested explicitly or implied by
         # spin-polarized interactions (e.g. SpinPolarisation).
         self._nspin = 2 if self.config.uhf_mode is True else 1
-        for inter in interactions.components:
-            if getattr(inter, "spin_channel", None) is not None:
-                self._nspin = 2
-                break
+        interactions_components = getattr(interactions, "components", None)
+        if interactions_components is not None:
+            for inter in interactions_components:
+                if getattr(inter, "spin_channel", None) is not None:
+                    self._nspin = 2
+                    break
         self._data.nspin = self._nspin
         # Re-initialize tensors with correct spin dimension
         if self._nspin > 1:
