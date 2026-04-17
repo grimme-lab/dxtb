@@ -39,6 +39,7 @@ from dxtb._src.constants import defaults, labels
 from dxtb._src.timing.decorator import timer_decorator
 from dxtb._src.typing import DD, Any, Literal, Slicers, Tensor, overload
 from dxtb._src.wavefunction import filling, mulliken
+from dxtb._src.wavefunction import spin as wfspin
 from dxtb.config import ConfigSCF
 
 from .result import SCFResult
@@ -859,12 +860,9 @@ class BaseSCF:
             # expand n0 to (..., nspin, nao)
             qat_spin = n0_per_spin.unsqueeze(-2) - pop_spin
 
-            # Convert alpha/beta → charge/magnetization (in-place)
-            # channel 0: total = q_alpha + q_beta
-            # channel 1: magnetisation = q_alpha - q_beta
-            q_total = qat_spin[..., 0, :] + qat_spin[..., 1, :]
-            q_mag = qat_spin[..., 0, :] - qat_spin[..., 1, :]
-            qat_cm = torch.stack([q_total, q_mag], dim=-2)  # (..., 2, nao)
+            # Convert alpha/beta → charge/magnetization in the spin-channel
+            # dimension, matching tblite's centralized up/down conversion.
+            qat_cm = wfspin.updown_to_magnet_2(qat_spin)  # (..., 2, nao)
 
             charges = Charges(
                 mono=qat_cm,
@@ -1058,10 +1056,13 @@ class BaseSCF:
         """
 
         # --- charge/magnetization → alpha/beta ---
-        h_charge = hamiltonian[..., 0, :, :]
-        h_mag = hamiltonian[..., 1, :, :]
-        h_alpha = 0.5 * (h_charge + h_mag)
-        h_beta = 0.5 * (h_charge - h_mag)
+        # Move spin channel to the end before conversion so the generic helper
+        # always acts on the intended dimension even when other axes have size 2.
+        h_ab = hamiltonian.movedim(-3, -1).clone()
+        h_ab = wfspin.magnet_to_updown(h_ab)
+        h_ab = h_ab.movedim(-1, -3)
+        h_alpha = h_ab[..., 0, :, :]
+        h_beta = h_ab[..., 1, :, :]
 
         # --- diagonalize each spin channel ---
         evals_a, evecs_a = self.diagonalize(h_alpha)
