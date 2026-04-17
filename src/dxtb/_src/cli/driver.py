@@ -227,9 +227,6 @@ class Driver:
         if args.spinpol is True:
             interactions.append(new_spinpolarisation(numbers, **dd))
 
-        if args.spinpol is True and args.uhf_mode is False:
-            args.uhf_mode = True
-
         # setup calculator
         calc = Calculator(
             numbers,
@@ -239,9 +236,6 @@ class Driver:
             **dd,
             timer=args.timer,
         )
-
-        if args.uhf_mode is True:
-            calc.opts.scf.uhf_mode = True
 
         timer.stop("Setup")
 

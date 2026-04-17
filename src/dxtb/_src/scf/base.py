@@ -313,9 +313,9 @@ class BaseSCF:
 
         self.interactions = interactions
 
-        # Detect spin polarization: if any interaction has spin_channel != None
-        # (i.e. SpinPolarisation), the calculation is unrestricted (nspin=2).
-        self._nspin = 1
+        # Unrestricted mode can be requested explicitly or implied by
+        # spin-polarized interactions (e.g. SpinPolarisation).
+        self._nspin = 2 if self.config.uhf_mode is True else 1
         for inter in interactions.components:
             if getattr(inter, "spin_channel", None) is not None:
                 self._nspin = 2
