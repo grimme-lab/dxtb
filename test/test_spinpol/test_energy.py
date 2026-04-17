@@ -18,30 +18,40 @@
 from __future__ import annotations
 
 from math import sqrt
-from pathlib import Path
 
 import pytest
 import torch
-from tad_mctc import read, read_chrg
 
 from dxtb import GFN1_XTB, GFN2_XTB, Calculator, IndexHelper
 from dxtb._src.components.interactions.spin import factory, new_spinpolarisation
-from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
 from .samples import samples
 
+SINGLE_CASES = [
+    pytest.param("LiH", 2, id="LiH-spin2"),
+    pytest.param("SiH4", 2, id="SiH4-spin2"),
+    pytest.param("MB16_43_02", 1, id="MB16_43_02-spin1"),
+]
 
-@pytest.mark.parametrize("name", ["LiH", "SiH4"])
+
+@pytest.mark.parametrize("name, spin", SINGLE_CASES)
 @pytest.mark.parametrize(
     "model_cls, ref_key",
     [
+        (GFN1_XTB, "espgfn1"),
         (GFN2_XTB, "espgfn2"),
     ],
 )
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-def test_single(dtype: torch.dtype, name: str, model_cls, ref_key) -> None:
+def test_single(
+    dtype: torch.dtype,
+    name: str,
+    spin: int,
+    model_cls,
+    ref_key,
+) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
@@ -53,7 +63,9 @@ def test_single(dtype: torch.dtype, name: str, model_cls, ref_key) -> None:
     spinpol = new_spinpolarisation(numbers=numbers, **dd)
     calc = Calculator(numbers, par=model_cls, interaction=[spinpol], **dd)
 
-    result = calc.singlepoint(positions, chrg=torch.tensor(0.0, **dd), spin=4)
+    result = calc.singlepoint(
+        positions, chrg=torch.tensor(0.0, **dd), spin=spin
+    )
     res = result.total.sum(-1)
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 

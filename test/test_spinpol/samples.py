@@ -53,8 +53,14 @@ class Record(Molecule, Refs):
 
 
 refs: dict[str, Refs] = {
+    "MB16_43_02": {
+        # tblite run coord --spin-polarized --spin 1 --method gfn1
+        "espgfn1": torch.tensor(-2.6860491628287e01),
+        "espgfn2": torch.tensor(-2.4072043583538e01),
+    },
     "LiH": {
-        # "espgfn1": torch.tensor(),
+        # spin-polarized GFN1 reference (spin=2)
+        "espgfn1": torch.tensor(-7.2271964862480e-01),
         # tblite run lih.xyz --method gfn2 --spin 2 --spin-polarized
         # (LiH with 2 valence electrons, spin=2 → 2 alpha, 0 beta)
         "espgfn2": torch.tensor(-6.1184408843268e-01),
@@ -104,9 +110,10 @@ refs: dict[str, Refs] = {
         "potshellgfn2": torch.tensor([0.00778357, 0.00706252, 0.02388490]),
     },
     "SiH4": {
-        # "espgfn1": torch.tensor(),
-        # tblite run coord --method gfn2 --spin 4 --spin-polarized
-        "espgfn2": torch.tensor(-3.2989725755175e00),
+        # spin-polarized GFN1 reference (spin=2)
+        "espgfn1": torch.tensor(-3.7411749857645e00),
+        # tblite run coord --method gfn2 --spin 2 --spin-polarized
+        "espgfn2": torch.tensor(-3.5279708942225e00),
         # "gspgfn1": torch.tensor(),
         # "gspgfn2": torch.tensor(),
         "wllgfn1": torch.tensor(
