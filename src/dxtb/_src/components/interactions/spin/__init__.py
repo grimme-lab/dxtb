@@ -1,7 +1,7 @@
 # This file is part of dxtb.
 #
 # SPDX-Identifier: Apache-2.0
-# Copyright (C) 2024 Grimme Group
+# Copyright (C) 2026 Grimme Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,5 +20,6 @@ Spin Polarisation
 
 This subpackage contains the Spin Polarisation Interaction.
 """
+
 from .factory import new_spinpolarisation
 from .spinpolarisation import SpinPolarisation

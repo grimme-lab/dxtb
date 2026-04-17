@@ -1,7 +1,7 @@
 # This file is part of dxtb.
 #
 # SPDX-Identifier: Apache-2.0
-# Copyright (C) 2024 Grimme Group
+# Copyright (C) 2026 Grimme Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -64,8 +64,34 @@ refs: dict[str, Refs] = {
         # tblite run lih.xyz --method gfn2 --spin 2 --spin-polarized
         # (LiH with 2 valence electrons, spin=2 → 2 alpha, 0 beta)
         "espgfn2": torch.tensor(-6.1184408843268e-01),
-        # "gspgfn1": torch.tensor(),
-        # "gspgfn2": torch.tensor(),
+        "gspgfn1": torch.tensor(
+            [
+                [
+                    9.8670107052753681e-18,
+                    0.0000000000000000e00,
+                    1.1789296433583266e-02,
+                ],
+                [
+                    -9.8670107052753681e-18,
+                    0.0000000000000000e00,
+                    -1.1789296433583266e-02,
+                ],
+            ]
+        ),
+        "gspgfn2": torch.tensor(
+            [
+                [
+                    -5.5584836545384057e-18,
+                    2.6279636649476664e-39,
+                    1.6154983674634370e-02,
+                ],
+                [
+                    5.5584836545384057e-18,
+                    -2.6279636649476664e-39,
+                    -1.6154983674634370e-02,
+                ],
+            ]
+        ),
         "spconst": torch.tensor(
             [
                 [
@@ -114,8 +140,64 @@ refs: dict[str, Refs] = {
         "espgfn1": torch.tensor(-3.7411749857645e00),
         # tblite run coord --method gfn2 --spin 2 --spin-polarized
         "espgfn2": torch.tensor(-3.5279708942225e00),
-        # "gspgfn1": torch.tensor(),
-        # "gspgfn2": torch.tensor(),
+        "gspgfn1": torch.tensor(
+            [
+                [
+                    9.4627773498945356e-11,
+                    -1.1906547107845902e-10,
+                    4.3905345234029197e-11,
+                ],
+                [
+                    -2.2289509122165969e-03,
+                    -2.2289508421061300e-03,
+                    2.2289508667640732e-03,
+                ],
+                [
+                    2.2289508463076632e-03,
+                    2.2289509164178239e-03,
+                    2.2289508629479583e-03,
+                ],
+                [
+                    -2.2289508867627448e-03,
+                    2.2289508947800794e-03,
+                    -2.2289508701216791e-03,
+                ],
+                [
+                    2.2289508580438998e-03,
+                    -2.2289508500262993e-03,
+                    -2.2289509034956836e-03,
+                ],
+            ]
+        ),
+        "gspgfn2": torch.tensor(
+            [
+                [
+                    9.4719476554684656e-10,
+                    -1.1077132956553715e-09,
+                    -8.2794972483882234e-10,
+                ],
+                [
+                    -7.3064361903602626e-03,
+                    -7.3064354959752002e-03,
+                    7.3064361485410505e-03,
+                ],
+                [
+                    7.3064355235252232e-03,
+                    7.3064362179122338e-03,
+                    7.3064361233837480e-03,
+                ],
+                [
+                    -7.3064361411859123e-03,
+                    7.3064361938951737e-03,
+                    -7.3064355413285046e-03,
+                ],
+                [
+                    7.3064358608261881e-03,
+                    -7.3064358081189017e-03,
+                    -7.3064359026465634e-03,
+                ],
+            ]
+        ),
         "wllgfn1": torch.tensor(
             [
                 [

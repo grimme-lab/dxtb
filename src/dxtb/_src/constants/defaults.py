@@ -80,7 +80,8 @@ EXCLUDE_CHOICES = [
     "aes2",
     "es2",
     "es3",
-    "spinpolarisation" "scf",
+    "spinpolarisation",
+    "scf",
     "all",
 ]
 """List of possible choices for `EXCLUDE`."""
