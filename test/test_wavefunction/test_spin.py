@@ -23,16 +23,11 @@ from __future__ import annotations
 
 import pytest
 import torch
-from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
 from dxtb._src.typing import DD
 from dxtb._src.wavefunction import spin
-from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 
 from ..conftest import DEVICE
-from .samples import samples
 
 sample_list = ["H2", "LiH", "SiH4"]
 

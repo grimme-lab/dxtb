@@ -27,7 +27,6 @@ from __future__ import annotations
 import torch
 
 from dxtb._src.typing import DD, Tensor, get_default_dtype
-from dxtb._src.typing.exceptions import DeviceError, DtypeError
 
 from .constants import _load_spin_constants
 from .spinpolarisation import SpinPolarisation

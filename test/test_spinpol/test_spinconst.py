@@ -20,7 +20,7 @@ import pytest
 import torch
 
 from dxtb import GFN1_XTB, GFN2_XTB, IndexHelper
-from dxtb._src.components.interactions.spin import factory, new_spinpolarisation
+from dxtb._src.components.interactions.spin import factory
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE

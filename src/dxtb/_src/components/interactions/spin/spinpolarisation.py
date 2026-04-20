@@ -26,12 +26,10 @@ alpha and beta population, resulting in a magnetization density.
 from __future__ import annotations
 
 import torch
-from tad_mctc.convert import symbol_to_number
 from tad_mctc.math import einsum
 
 from dxtb import IndexHelper
 from dxtb._src.typing import Any, Slicers, Tensor, override
-from dxtb._src.typing.exceptions import DeviceError, DtypeError
 
 from ..base import Interaction, InteractionCache
 
