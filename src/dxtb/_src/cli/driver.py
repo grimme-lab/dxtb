@@ -32,6 +32,7 @@ from dxtb._src import io
 from dxtb._src.calculators.config import Config
 from dxtb._src.calculators.result import Result
 from dxtb._src.components.interactions.field import new_efield
+from dxtb._src.components.interactions.spin import new_spinpolarisation
 from dxtb._src.constants import labels
 from dxtb._src.timing import timer
 from dxtb._src.typing import Tensor
@@ -223,6 +224,9 @@ class Driver:
             )
             interactions.append(new_efield(field, **dd))
 
+        if args.spinpol is True:
+            interactions.append(new_spinpolarisation(numbers, **dd))
+
         # setup calculator
         calc = Calculator(
             numbers,
@@ -232,6 +236,7 @@ class Driver:
             **dd,
             timer=args.timer,
         )
+
         timer.stop("Setup")
 
         ####################################################

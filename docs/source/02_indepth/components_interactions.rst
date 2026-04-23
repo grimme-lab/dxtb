@@ -17,4 +17,5 @@ Below, you can find the detailed documentation.
 
    Coulomb <../_autosummary/dxtb.components.coulomb>
    Fields <../_autosummary/dxtb.components.field>
+   Spin Polarisation <../_autosummary/dxtb.components.spinpolarisation>
    Solvation <../_autosummary/dxtb.components.solvation>

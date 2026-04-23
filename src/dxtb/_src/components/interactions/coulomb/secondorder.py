@@ -373,7 +373,10 @@ class ES2(Interaction):
 
     @override
     def get_monopole_shell_energy(
-        self, cache: ES2Cache, qat: Tensor, **_: Any
+        self,
+        cache: ES2Cache,
+        qat: Tensor,
+        **_: Any,
     ) -> Tensor:
         return (
             0.5 * qat * self.get_monopole_shell_potential(cache, qat)
