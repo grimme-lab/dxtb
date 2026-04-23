@@ -119,7 +119,7 @@ def updown_to_magnet_4(x: Tensor) -> Tensor:
     return x
 
 
-# === General Forumlas ===
+# === General Formulas ===
 
 
 def magnet_to_updown(x: Tensor) -> Tensor:

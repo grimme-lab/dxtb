@@ -18,6 +18,7 @@ from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB, GFN2_XTB, IndexHelper
 from dxtb._src.components.interactions.spin import factory
@@ -68,3 +69,40 @@ def test_wll(dtype: torch.dtype, name: str, model_cls, ref_key) -> None:
     cache = spin.get_cache(numbers=numbers, ihelp=ihelp)
 
     assert pytest.approx(ref.cpu(), abs=tol) == cache.wll.cpu()
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("model_cls", [GFN1_XTB, GFN2_XTB])
+def test_wll_batch(dtype: torch.dtype, model_cls) -> None:
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    names = ("LiH", "SiH4")
+
+    numbers = pack(tuple(samples[name]["numbers"].to(DEVICE) for name in names))
+    ihelp = IndexHelper.from_numbers(numbers, model_cls)
+    spin = factory.new_spinpolarisation(numbers, **dd)
+    cache = spin.get_cache(numbers=numbers, ihelp=ihelp)
+
+    assert cache.wll.shape == torch.Size((len(names), ihelp.nsh, ihelp.nsh))
+
+    for batch_idx, name in enumerate(names):
+        numbers_single = samples[name]["numbers"].to(DEVICE)
+        ihelp_single = IndexHelper.from_numbers(numbers_single, model_cls)
+        spin_single = factory.new_spinpolarisation(numbers_single, **dd)
+        cache_single = spin_single.get_cache(
+            numbers=numbers_single, ihelp=ihelp_single
+        )
+
+        nsh_single = ihelp_single.nsh
+        wll_block = cache.wll[batch_idx, :nsh_single, :nsh_single]
+
+        assert pytest.approx(cache_single.wll.cpu(), abs=tol) == wll_block.cpu()
+
+        if nsh_single < ihelp.nsh:
+            assert (
+                torch.count_nonzero(cache.wll[batch_idx, nsh_single:, :]) == 0
+            )
+            assert (
+                torch.count_nonzero(cache.wll[batch_idx, :, nsh_single:]) == 0
+            )

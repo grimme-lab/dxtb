@@ -45,7 +45,7 @@ class Refs(TypedDict):
     """Gradient of spGFN2-xTB"""
 
     spconst: Tensor
-    """Spin Constants (same forsp GFN1-xTB and spGFN2-xTB)"""
+    """Spin Constants (same for spGFN1-xTB and spGFN2-xTB)"""
 
 
 class Record(Molecule, Refs):

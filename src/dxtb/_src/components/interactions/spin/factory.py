@@ -38,7 +38,7 @@ def new_spinpolarisation(
     numbers: Tensor,
     device: torch.device | None = None,
     dtype: torch.dtype | None = None,
-) -> SpinPolarisation | None:
+) -> SpinPolarisation:
 
     dd: DD = {
         "device": device,

@@ -39,7 +39,8 @@ def test_updown_to_magnet(dtype: torch.dtype) -> None:
     tol = torch.finfo(dtype).eps ** 0.5
 
     qsh_before = torch.tensor(
-        [[-0.82824398, -0.33807717, -0.83367885], [0.0, 0.0, 0.0]]
+        [[-0.82824398, -0.33807717, -0.83367885], [0.0, 0.0, 0.0]],
+        **dd,
     )
 
     qsh_after = spin.updown_to_magnet_2(qsh_before)
@@ -48,7 +49,8 @@ def test_updown_to_magnet(dtype: torch.dtype) -> None:
         [
             [-0.82824398, -0.33807717, -0.83367885],
             [-0.82824398, -0.33807717, -0.83367885],
-        ]
+        ],
+        **dd,
     )
     assert (
         pytest.approx(ref_qsh_after.cpu(), rel=1e-7, abs=tol) == qsh_after.cpu()

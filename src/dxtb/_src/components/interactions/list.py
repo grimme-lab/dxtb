@@ -301,6 +301,11 @@ class InteractionList(ComponentList[Interaction]):
     ) -> ElectricFieldGrad: ...
 
     @overload
+    def get_interaction(
+        self, name: Literal["SpinPolarisation"]
+    ) -> SpinPolarisation: ...
+
+    @overload
     def get_interaction(self, name: Literal["ES2"]) -> ES2: ...
 
     @overload

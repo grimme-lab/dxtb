@@ -55,7 +55,7 @@ class SpinPolarisationCache(InteractionCache):
     wll: Tensor
     """Matrix of spin"""  # TO DO
 
-    __slots__ = ["__store", "wll", "shell_resolved"]
+    __slots__ = ["__store", "wll"]
 
     def __init__(
         self,
@@ -93,7 +93,7 @@ class SpinPolarisationCache(InteractionCache):
             self.__store = self.Store(self.wll)
 
         slicer = slicers["shell"]
-        self.wll = self.wll[[~conv, *slicer]]
+        self.wll = self.wll[tuple([~conv, *slicer, *slicer])]
 
     def restore(self):
         if self.__store is None:
@@ -164,6 +164,21 @@ class SpinPolarisation(Interaction):
             raise ValueError(
                 "IndexHelper is required for spinpol cache creation."
             )
+        # The spin constants are expected to have one extra dimension compared to
+        # numbers, to allow for different spin constants per batch item in case
+        # of batched systems. The batch dimension is expected to be the leading
+        # dimension of spinconst
+        # The expected relation from numbers to spinconst is thus:
+        # numbers:(batch, nat) -> spinconst:(batch, nat, 6) (because of ss, sp, pp, sd, pd, dd)
+        # although the __init__ function is doing this correctly, we add this check
+        # because users could potentially manipulate the spinconst tensor manually and cause a mismatch between numbers and spinconst, which would lead to silent errors in the cache creation. With this check, we can catch such mismatches early and provide a clear error message.
+        if self.spinconst.ndim != numbers.ndim + 1:
+            raise ValueError(
+                "SpinPolarisation requires spin constants with one extra "
+                "dimension compared to numbers: expected spinconst.ndim == "
+                f"numbers.ndim + 1, got spinconst.ndim={self.spinconst.ndim} "
+                f"and numbers.ndim={numbers.ndim}."
+            )
 
         cachvars = numbers.detach().clone()
 
@@ -183,18 +198,57 @@ class SpinPolarisation(Interaction):
             [[0, 1, 3], [1, 2, 4], [3, 4, 5]], device=self.device
         )
 
-        wll = torch.zeros((ihelp.nsh, ihelp.nsh), **self.dd)
+        def _build_wll_system(
+            spinconst: Tensor,
+            shells_per_atom: Tensor,
+            shell_index: Tensor,
+            angular: Tensor,
+        ) -> Tensor:
+            wll_system = torch.zeros((ihelp.nsh, ihelp.nsh), **self.dd)
 
-        for atom_idx, number in enumerate(numbers):
-            for ishell in range(ihelp.shells_per_atom[atom_idx]):
-                for jshell in range(ihelp.shells_per_atom[atom_idx]):
-                    ishell_idx = ihelp.shell_index[atom_idx] + ishell
-                    jshell_idx = ihelp.shell_index[atom_idx] + jshell
-                    l1 = ihelp.angular[jshell_idx]
-                    l2 = ihelp.angular[ishell_idx]
-                    wll[jshell_idx, ishell_idx] = self.spinconst[
-                        atom_idx, lidx[l1, l2]
-                    ]
+            for atom_idx in range(shells_per_atom.shape[-1]):
+                nsh_at = int(shells_per_atom[atom_idx])
+                ish0 = int(shell_index[atom_idx])
+
+                for ishell in range(nsh_at):
+                    ishell_idx = ish0 + ishell
+                    l2 = int(angular[ishell_idx])
+
+                    for jshell in range(nsh_at):
+                        jshell_idx = ish0 + jshell
+                        l1 = int(angular[jshell_idx])
+                        wll_system[jshell_idx, ishell_idx] = spinconst[
+                            atom_idx, lidx[l1, l2]
+                        ]
+
+            return wll_system
+
+        if numbers.ndim == 1:
+            wll = _build_wll_system(
+                self.spinconst,
+                ihelp.shells_per_atom,
+                ihelp.shell_index,
+                ihelp.angular,
+            )
+        elif numbers.ndim == 2:
+            wll = torch.stack(
+                [
+                    _build_wll_system(
+                        self.spinconst[batch_idx],
+                        ihelp.shells_per_atom[batch_idx],
+                        ihelp.shell_index[batch_idx],
+                        ihelp.angular[batch_idx],
+                    )
+                    for batch_idx in range(numbers.shape[0])
+                ],
+                dim=0,
+            )
+        else:
+            raise ValueError(
+                "SpinPolarisation cache supports only numbers with ndim 1 "
+                "(single system) or 2 (batched systems), but got "
+                f"ndim={numbers.ndim}."
+            )
 
         self.cache = SpinPolarisationCache(wll)
         return self.cache

@@ -428,7 +428,7 @@ class Interaction(Component):
         self,
         cache: InteractionCache,
         qat: Tensor,
-        **_: Any,  # ich hätte es qsh genannt
+        **_: Any,
     ) -> Tensor:
         """
         Compute the energy from the charges, all quantities are shell-resolved.

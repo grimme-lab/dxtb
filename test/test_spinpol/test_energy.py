@@ -21,6 +21,7 @@ from math import sqrt
 
 import pytest
 import torch
+from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB, GFN2_XTB, Calculator, IndexHelper
 from dxtb._src.components.interactions.spin import factory, new_spinpolarisation
@@ -65,6 +66,40 @@ def test_single(
 
     result = calc.singlepoint(
         positions, chrg=torch.tensor(0.0, **dd), spin=spin
+    )
+    res = result.total.sum(-1)
+    assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
+
+
+@pytest.mark.parametrize(
+    "model_cls, ref_key",
+    [
+        (GFN1_XTB, "espgfn1"),
+        (GFN2_XTB, "espgfn2"),
+    ],
+)
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_batch(dtype: torch.dtype, model_cls, ref_key) -> None:
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    names = ("LiH", "SiH4")
+    numbers = pack(tuple(samples[name]["numbers"].to(DEVICE) for name in names))
+    positions = pack(
+        tuple(samples[name]["positions"].to(DEVICE) for name in names)
+    )
+    ref = pack(tuple(samples[name][ref_key].to(**dd) for name in names))
+    spins = torch.tensor([2, 2], device=DEVICE)
+    # Batched UHF full/unrolled SCF can fail to converge for this setup.
+    options = {"verbosity": 0, "scf_mode": "nonpure", "mixer": "broyden"}
+
+    spinpol = new_spinpolarisation(numbers=numbers, **dd)
+    calc = Calculator(
+        numbers, par=model_cls, interaction=[spinpol], opts=options, **dd
+    )
+
+    result = calc.singlepoint(
+        positions, chrg=torch.zeros(len(names), **dd), spin=spins
     )
     res = result.total.sum(-1)
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()

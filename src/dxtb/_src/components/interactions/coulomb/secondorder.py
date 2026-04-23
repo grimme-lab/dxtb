@@ -376,7 +376,7 @@ class ES2(Interaction):
         self,
         cache: ES2Cache,
         qat: Tensor,
-        **_: Any,  # missleading variable name qsh would be better
+        **_: Any,
     ) -> Tensor:
         return (
             0.5 * qat * self.get_monopole_shell_potential(cache, qat)

@@ -406,7 +406,7 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "R|Use unrestricted SCF mode\n"
-            "note this takes roughly twice the time than for restricted SCF"
+            "note this takes roughly twice as long as restricted SCF"
         ),
     )
 
