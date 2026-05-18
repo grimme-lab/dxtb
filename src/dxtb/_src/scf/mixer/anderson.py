@@ -356,9 +356,12 @@ class Anderson(Mixer):
             else:
                 raise RuntimeError("Unknown slicer given.")
 
-            shape = [mpdim, tmp]
+            if len(self._shape_out) == 4:
+                shape = [mpdim, tmp, tmp]
+            else:
+                shape = [mpdim, tmp]
 
-        # Length of flattened arrays after factoring in the new
+        # Length of flattened arrays after factoring in the new shape.
         l = t2int(torch.prod(torch.tensor(shape, device=self._x_hist.device)))
 
         # Invert the cull_list, gather & reassign self._delta self._x_hist &
@@ -374,12 +377,17 @@ class Anderson(Mixer):
             assert self._shape_out is not None
             reshaped = culled.view(*shp, *self._shape_out[1:])
 
-            # Select elements and reshape back to flattened view
-            return (
-                reshaped[..., :mpdim, : (l // mpdim)]
-                .contiguous()
-                .view(*shp, -1)
-            )
+            # Select elements and reshape back to flattened view.
+            if len(shape) == 2:
+                selected = reshaped[..., : shape[0], : shape[1]]
+            elif len(shape) == 3:
+                selected = reshaped[..., : shape[0], : shape[1], : shape[2]]
+            else:  # pragma: no cover
+                raise RuntimeError(
+                    f"Unsupported SCF tensor rank '{len(shape) + 1}'."
+                )
+
+            return selected.contiguous().view(*shp, -1)
 
         self._f = _cull(self._f)
         self._delta = _cull(self._delta)

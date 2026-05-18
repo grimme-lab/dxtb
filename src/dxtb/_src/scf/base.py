@@ -162,26 +162,10 @@ class BaseSCF:
             """Initialize all tensors with zeros."""
             self.energy = torch.zeros_like(self.n0)
 
-            if self.nspin > 1:
-                # Density/Hamiltonian/evecs: (..., nspin, nao, nao)
-                # Evals: (..., nspin, nao)
-                batch = self.ints.hcore.shape[:-2]
-                nao = self.ints.hcore.shape[-1]
-                dd = {
-                    "device": self.ints.hcore.device,
-                    "dtype": self.ints.hcore.dtype,
-                }
-                self.hamiltonian = torch.zeros(
-                    *batch, self.nspin, nao, nao, **dd
-                )
-                self.density = torch.zeros(*batch, self.nspin, nao, nao, **dd)
-                self.evals = torch.zeros(*batch, self.nspin, nao, **dd)
-                self.evecs = torch.zeros(*batch, self.nspin, nao, nao, **dd)
-            else:
-                self.hamiltonian = torch.zeros_like(self.ints.hcore)
-                self.density = torch.zeros_like(self.ints.hcore)
-                self.evals = torch.zeros_like(self.n0)
-                self.evecs = torch.zeros_like(self.ints.hcore)
+            self.hamiltonian = torch.zeros_like(self.ints.hcore)
+            self.density = torch.zeros_like(self.ints.hcore)
+            self.evals = torch.zeros_like(self.n0)
+            self.evecs = torch.zeros_like(self.ints.hcore)
 
             self.old_charges = torch.zeros_like(self.energy)
             self.old_energy = torch.zeros_like(self.numbers)
@@ -203,11 +187,12 @@ class BaseSCF:
             slicers : Slicers
                 Slicers for the tensors.
             """
-            onedim = tuple([~conv, *slicers["orbital"]])
+            # Keep any optional middle axis (e.g. spin channels) untouched and
+            # only cull the trailing orbital dimensions.
+            onedim = tuple([~conv, ..., *slicers["orbital"]])
             onedim_atom = tuple([~conv, *slicers["atom"]])
-            twodim = tuple([~conv, *slicers["orbital"], *slicers["orbital"]])
-            threedim = tuple(
-                [~conv, (...), *slicers["orbital"], *slicers["orbital"]]
+            twodim = tuple(
+                [~conv, ..., *slicers["orbital"], *slicers["orbital"]]
             )
 
             # disable shape check temporarily for writing culled versions back
@@ -215,15 +200,15 @@ class BaseSCF:
             self.ints.overlap = self.ints.overlap[twodim]
             self.ints.hcore = self.ints.hcore[twodim]
             if self.ints.dipole is not None:
-                self.ints.dipole = self.ints.dipole[threedim]
+                self.ints.dipole = self.ints.dipole[twodim]
             if self.ints.quadrupole is not None:
-                self.ints.quadrupole = self.ints.quadrupole[threedim]
+                self.ints.quadrupole = self.ints.quadrupole[twodim]
             self.ints.run_checks = True
 
             self.numbers = self.numbers[onedim_atom]
             self.hamiltonian = self.hamiltonian[twodim]
             self.density = self.density[twodim]
-            self.occupation = self.occupation[twodim]
+            self.occupation = self.occupation[onedim]
             self.evecs = self.evecs[twodim]
             self.evals = self.evals[onedim]
             self.energy = self.energy[onedim]
@@ -1068,12 +1053,13 @@ class BaseSCF:
         evals_a, evecs_a = self.diagonalize(h_alpha)
         evals_b, evecs_b = self.diagonalize(h_beta)
 
-        # Store alpha eigenvalues/vectors (for compatibility)
-        self._data.evals = evals_a
-        self._data.evecs = evecs_a
+        # Store both spin channels consistently with UHF allocations:
+        # evals shape (..., 2, nao), evecs shape (..., 2, nao, nao)
+        self._data.evals = torch.stack([evals_a, evals_b], dim=-2)
+        self._data.evecs = torch.stack([evecs_a, evecs_b], dim=-3)
 
-        # Combine eigenvalues for Fermi smearing: shape (..., 2, nao)
-        emo = torch.stack([evals_a, evals_b], dim=-2)
+        # Combined eigenvalues for Fermi smearing: shape (..., 2, nao)
+        emo = self._data.evals
 
         # Number of electrons per channel
         nel = self._data.occupation.sum(-1).round()  # (..., 2)
