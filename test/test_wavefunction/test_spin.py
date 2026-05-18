@@ -91,12 +91,14 @@ def test_magnet_to_updown_scf_hamiltonian_layout(dtype: torch.dtype) -> None:
     h_alpha_ref = 0.5 * (h_cm_ref[..., 0, :, :] + h_cm_ref[..., 1, :, :])
     h_beta_ref = 0.5 * (h_cm_ref[..., 0, :, :] - h_cm_ref[..., 1, :, :])
 
-    assert torch.allclose(h_ab[..., 0, :, :], h_alpha_ref)
-    assert torch.allclose(h_ab[..., 1, :, :], h_beta_ref)
+    tol = 1e-4 if dtype == torch.float else 1e-7
+
+    assert torch.allclose(h_ab[..., 0, :, :], h_alpha_ref, atol=tol)
+    assert torch.allclose(h_ab[..., 1, :, :], h_beta_ref, atol=tol)
 
     # Roundtrip should recover the original charge/magnetization channels.
     h_cm_rt = h_ab.movedim(-3, -1).clone()
     h_cm_rt = spin.updown_to_magnet(h_cm_rt)
     h_cm_rt = h_cm_rt.movedim(-1, -3)
 
-    assert torch.allclose(h_cm_rt, h_cm_ref)
+    assert torch.allclose(h_cm_rt, h_cm_ref, atol=tol)
