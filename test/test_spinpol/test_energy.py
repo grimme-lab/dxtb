@@ -25,6 +25,7 @@ from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB, GFN2_XTB, Calculator, IndexHelper
 from dxtb._src.components.interactions.spin import factory, new_spinpolarisation
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
@@ -41,8 +42,15 @@ SINGLE_CASES = [
 @pytest.mark.parametrize(
     "model_cls, ref_key",
     [
-        (GFN1_XTB, "espgfn1"),
-        (GFN2_XTB, "espgfn2"),
+        pytest.param(GFN1_XTB, "espgfn1", id="gfn1"),
+        pytest.param(
+            GFN2_XTB,
+            "espgfn2",
+            id="gfn2",
+            marks=pytest.mark.skipif(
+                not has_libcint, reason="libcint not available"
+            ),
+        ),
     ],
 )
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -74,8 +82,15 @@ def test_single(
 @pytest.mark.parametrize(
     "model_cls, ref_key",
     [
-        (GFN1_XTB, "espgfn1"),
-        (GFN2_XTB, "espgfn2"),
+        pytest.param(GFN1_XTB, "espgfn1", id="gfn1"),
+        pytest.param(
+            GFN2_XTB,
+            "espgfn2",
+            id="gfn2",
+            marks=pytest.mark.skipif(
+                not has_libcint, reason="libcint not available"
+            ),
+        ),
     ],
 )
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
