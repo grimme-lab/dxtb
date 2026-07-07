@@ -49,7 +49,3 @@ Misc
 .. automodule:: dxtb._src.param.meta
    :members:
    :show-inheritance:
-
-.. automodule:: dxtb._src.param.utils
-   :members:
-   :show-inheritance:

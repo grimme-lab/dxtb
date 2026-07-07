@@ -155,9 +155,9 @@ celerybeat.pid
 
 # Environments
 .env
-.venv
+.venv*
 env/
-venv/
+venv*/
 ENV/
 env.bak/
 venv.bak/
@@ -188,6 +188,13 @@ cython_debug/
 
 # tensorboard
 *.pt.trace.json
+
+# AI tools
+.benchmarks/
+.codegraph/
+.pi/
+.pi-subagents/
+.scratch/
 
 # data
 ./*.json

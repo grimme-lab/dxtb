@@ -30,7 +30,7 @@ are required.
 Fundametally, there are two drivers (backends) for the integral computation:
 
 - *PyTorch*: pure PyTorch implementation, only overlap integral
-- *`libcint <https://github.com/sunqm/libcint>`_*: Python interface with custom
+- `libcint <https://github.com/sunqm/libcint>`_ : Python interface with custom
   backward functions for derivatives; arbitrary integrals and derivatives
 
 We generally recommend the *libcint* driver as it is much faster, especially

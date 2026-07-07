@@ -9,20 +9,12 @@ PyTorch
 Drivers
 -------
 
-.. automodule:: dxtb._src.integral.driver.pytorch.base_driver
-   :members:
-   :show-inheritance:
-
 .. automodule:: dxtb._src.integral.driver.pytorch.driver
    :members:
    :show-inheritance:
 
 Implementations
 ---------------
-
-.. automodule:: dxtb._src.integral.driver.pytorch.base_implementation
-   :members:
-   :show-inheritance:
 
 .. automodule:: dxtb._src.integral.driver.pytorch.overlap
    :members:
