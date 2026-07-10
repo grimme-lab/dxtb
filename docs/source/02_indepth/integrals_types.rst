@@ -9,3 +9,7 @@ Integral Types
    Overlap <../_autosummary/dxtb.integrals.types.OverlapIntegral>
    Dipole <../_autosummary/dxtb.integrals.types.DipoleIntegral>
    Quadrupole <../_autosummary/dxtb.integrals.types.QuadrupoleIntegral>
+
+.. automodule:: dxtb._src.integral.types
+   :no-index:
+   :show-inheritance:
