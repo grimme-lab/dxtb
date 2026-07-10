@@ -58,10 +58,10 @@ class BaseIntDriverPytorch(PytorchImplementation, IntDriver):
     Currently, only the overlap integral is implemented.
     """
 
-    eval_ovlp: OverlapFunction
+    eval_ovlp: OverlapFunction | None = None
     """Function for overlap calculation."""
 
-    eval_ovlp_grad: OverlapFunction
+    eval_ovlp_grad: OverlapFunction | None = None
     """Function for overlap gradient calculation."""
 
     def __init__(self, *args, **kwargs) -> None:
@@ -169,12 +169,6 @@ class IntDriverPytorch(BaseIntDriverPytorch):
     ----
     Currently, only the overlap integral is implemented.
     """
-
-    eval_ovlp: OverlapFunction
-    """Function for overlap calculation."""
-
-    eval_ovlp_grad: OverlapFunction
-    """Function for overlap gradient calculation."""
 
     def setup_eval_funcs(self) -> None:
         # pylint: disable=import-outside-toplevel

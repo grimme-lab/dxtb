@@ -26,10 +26,10 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
-__all__ = ["ClassicalHalogen", "Halogen"]
+__all__ = ["PHalogenClassical", "PHalogen"]
 
 
-class ClassicalHalogen(BaseModel):
+class PHalogenClassical(BaseModel):
     """
     Representation of the classical geometry dependent halogen-bond (XB)
     correction for a parametrization.
@@ -44,10 +44,10 @@ class ClassicalHalogen(BaseModel):
     """Global scaling factor for covalent radii of AX bond."""
 
 
-class Halogen(BaseModel):
+class PHalogen(BaseModel):
     """
     Possible halogen correction parametrizations.
     """
 
-    classical: ClassicalHalogen
+    classical: PHalogenClassical
     """Classical halogen-bond correction used in GFN1-xTB."""

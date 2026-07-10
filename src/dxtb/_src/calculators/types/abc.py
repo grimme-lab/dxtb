@@ -131,11 +131,11 @@ class GetPropertiesMixin(ABC):
         :mod:`torch.func`'s function transforms (e.g.,
         :func:`torch.func.jacrev`).
 
-        Note
-        ----
-        Using :mod:`torch.func`'s function transforms can apparently be only
-        used once. Hence, for example, the Hessian and the dipole derivatives
-        cannot be both calculated with functorch.
+        .. note::
+
+            Using :mod:`torch.func`'s function transforms can apparently be only
+            used once. Hence, for example, the Hessian and the dipole
+            derivatives cannot be both calculated with functorch.
 
         Parameters
         ----------

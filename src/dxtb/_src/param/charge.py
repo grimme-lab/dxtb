@@ -27,10 +27,10 @@ from pydantic import BaseModel
 
 from dxtb._src.constants.xtb import DEFAULT_ES2_GEXP
 
-__all__ = ["ChargeEffective", "Charge"]
+__all__ = ["PSecondOrderEffective", "PSecondOrder"]
 
 
-class ChargeEffective(BaseModel):
+class PSecondOrderEffective(BaseModel):
     """
     Representation of the isotropic second-order charge interactions for a
     parametrization.
@@ -43,11 +43,11 @@ class ChargeEffective(BaseModel):
     """Averaging function for Hubbard parameter."""
 
 
-class Charge(BaseModel):
+class PSecondOrder(BaseModel):
     """
     Possible charge parametrizations. Currently only the interaction kernel
     for the Klopman-Ohno electrostatics (effective) is supported.
     """
 
-    effective: ChargeEffective
+    effective: PSecondOrderEffective
     """Klopman-Ohno electrostatics."""

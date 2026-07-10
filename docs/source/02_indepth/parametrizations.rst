@@ -8,6 +8,7 @@ Parametrizations
 
    BaseModel <parametrizations_base>
    Components <parametrizations_components>
+   Param <../_autosummary/dxtb.Param>
    Predefinded <parametrizations_predefined>
 
 .. automodule:: dxtb._src.param

@@ -19,9 +19,10 @@ Integrals: Wrappers/Shortcuts
 =============================
 
 A simple collection of convenience functions to obtain all integral matrices.
+
 This is intended for testing and developing. In these functions, defaults will
 be applied. Although (some) settings can be accessed through keyword arguments,
-it is recommended to follow the interal integral builds as used in the
+it is recommended to follow the internal integral builds as used in the
 :class:`~dxtb.integrals.Integrals` class for more direct control.
 
 Note that there are several peculiarities for the multipole integrals:

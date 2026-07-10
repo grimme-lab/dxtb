@@ -9,20 +9,12 @@ Libcint
 Drivers
 -------
 
-.. automodule:: dxtb._src.integral.driver.libcint.base_driver
-   :members:
-   :show-inheritance:
-
 .. automodule:: dxtb._src.integral.driver.libcint.driver
    :members:
    :show-inheritance:
 
 Implementations
-----------------
-
-.. automodule:: dxtb._src.integral.driver.libcint.base_implementation
-   :members:
-   :show-inheritance:
+---------------
 
 .. automodule:: dxtb._src.integral.driver.libcint.overlap
    :members:

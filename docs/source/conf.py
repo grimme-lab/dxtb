@@ -33,16 +33,14 @@ copyright = f"2024 {author}"
 extensions = [
     "sphinx_design",
     "sphinx_copybutton",
-    "sphinx_design",
     "sphinx_togglebutton",
+    "sphinx.ext.napoleon",
     "sphinx.ext.autodoc",
-    "sphinx_autodoc_typehints",  # after autodoc
     "sphinx.ext.viewcode",
     "sphinx.ext.mathjax",
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
-    "sphinx.ext.napoleon",
 ]
 
 html_theme = "sphinx_book_theme"
@@ -77,7 +75,7 @@ autoclass_content = "both"
 intersphinx_mapping = {
     "numpy": ("https://numpy.org/doc/stable/", None),
     "pandas": ("https://pandas.pydata.org/docs/", None),
-    "pydantic": ("https://docs.pydantic.dev/latest/", None),
+    "pydantic": ("https://pydantic.dev/docs/validation/latest/", None),
     "python": ("https://docs.python.org/3", None),
     "tad_dftd3": ("https://tad-dftd3.readthedocs.io/en/latest/", None),
     "tad_dftd4": ("https://tad-dftd4.readthedocs.io/en/latest/", None),
@@ -87,7 +85,7 @@ intersphinx_mapping = {
         "https://tad-multicharge.readthedocs.io/en/latest/",
         None,
     ),
-    "torch": ("https://pytorch.org/docs/stable/", None),
+    "torch": ("https://docs.pytorch.org/docs/stable/", None),
 }
 
 
@@ -95,8 +93,9 @@ intersphinx_mapping = {
 copybutton_prompt_text = ">>> |... "
 copybutton_prompt_is_regexp = True
 
-napoleon_google_docstring = False
-napoleon_use_param = False
+napoleon_google_docstring = True
+napoleon_numpy_docstring = True
+napoleon_use_param = True
 napoleon_use_ivar = True
 napoleon_use_rtype = True
 

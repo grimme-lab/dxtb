@@ -40,16 +40,17 @@ from pydantic import BaseModel
 
 from dxtb._src.typing import Any, PathLike, Self, Type
 
-from .charge import Charge
-from .dispersion import Dispersion
+# prefix to avoid name clashes with class names of actual implementations
+from .charge import PSecondOrder
+from .dispersion import PDispersion
 from .element import Element
-from .halogen import Halogen
-from .hamiltonian import Hamiltonian
+from .halogen import PHalogen
+from .hamiltonian import PHamiltonian
 from .meta import Meta
-from .multipole import Multipole
-from .repulsion import Repulsion
-from .solvation import Solvation
-from .thirdorder import ThirdOrder
+from .multipole import PMultipole
+from .repulsion import PRepulsion
+from .solvation import PSolvation
+from .thirdorder import PThirdOrder
 
 __all__ = ["Param"]
 
@@ -70,31 +71,31 @@ class Param(BaseModel):
     meta: Optional[Meta] = None
     """Descriptive data on the model."""
 
-    hamiltonian: Optional[Hamiltonian] = None
+    hamiltonian: Optional[PHamiltonian] = None
     """Definition of the Hamiltonian, always required."""
 
-    dispersion: Optional[Dispersion] = None
+    dispersion: Optional[PDispersion] = None
     """Definition of the dispersion correction."""
 
-    repulsion: Optional[Repulsion] = None
+    repulsion: Optional[PRepulsion] = None
     """Definition of the repulsion contribution."""
 
-    charge: Optional[Charge] = None
+    charge: Optional[PSecondOrder] = None
     """Definition of the isotropic second-order charge interactions."""
 
-    thirdorder: Optional[ThirdOrder] = None
+    thirdorder: Optional[PThirdOrder] = None
     """Definition of the isotropic third-order charge interactions."""
 
-    multipole: Optional[Multipole] = None
+    multipole: Optional[PMultipole] = None
     """Definition of the anisotropic second-order multipolar interactions."""
 
-    halogen: Optional[Halogen] = None
+    halogen: Optional[PHalogen] = None
     """Definition of the halogen bonding correction."""
 
     element: Dict[str, Element]
     """Element specific parameter records."""
 
-    solvation: Optional[Solvation] = None
+    solvation: Optional[PSolvation] = None
     """Definition of the solvation model."""
 
     def clean_model_dump(self) -> dict[str, Any]:

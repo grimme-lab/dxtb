@@ -27,10 +27,10 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-__all__ = ["ALPB", "Solvation"]
+__all__ = ["PSolvationALPB", "PSolvation"]
 
 
-class ALPB(BaseModel):
+class PSolvationALPB(BaseModel):
     """
     Representation of the analytical linearized Poisson-Boltzmann solvation
     model (10.1021/acs.jctc.1c00471).
@@ -52,12 +52,12 @@ class ALPB(BaseModel):
     """Offset parameter for Born radii integration."""
 
 
-class Solvation(BaseModel):
+class PSolvation(BaseModel):
     """
     Representation of the solvation models.
     """
 
-    alpb: Optional[ALPB] = None
+    alpb: Optional[PSolvationALPB] = None
     """
     Whether the third order contribution is shell-dependent or only atomwise.
     """

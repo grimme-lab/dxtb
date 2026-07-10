@@ -26,10 +26,10 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
-__all__ = ["MultipoleDamped", "Multipole"]
+__all__ = ["PMultipoleDamped", "PMultipole"]
 
 
-class MultipoleDamped(BaseModel):
+class PMultipoleDamped(BaseModel):
     """
     Representation of the anisotropic second-order multipolar interactions
     for a parametrization.
@@ -51,10 +51,10 @@ class MultipoleDamped(BaseModel):
     """Maximum radius for the multipolar damping radii (Eq. 29)."""
 
 
-class Multipole(BaseModel):
+class PMultipole(BaseModel):
     """
     Possible parametrizations for multipole electrostatics.
     """
 
-    damped: MultipoleDamped
+    damped: PMultipoleDamped
     """Damped second-order multipolar electrostatics (GFN2)."""

@@ -40,7 +40,7 @@ class GFN1Calculator(Calculator):
     Calculator for the GFN1-xTB method.
 
     This is a simple wrapper around the :class:`~dxtb.Calculator` class with
-    the :data:`GFN1-xTB <dxtb.GFN1_XTB>` parameters passed in as defaults.
+    the :data:`~dxtb.GFN1_XTB` parameters passed in as defaults.
     """
 
     def __init__(

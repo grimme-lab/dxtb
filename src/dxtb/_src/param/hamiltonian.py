@@ -31,7 +31,7 @@ from typing import Dict, Optional
 
 from pydantic import BaseModel
 
-__all__ = ["Hamiltonian", "XTBHamiltonian"]
+__all__ = ["PHamiltonian", "PHamiltonianXTB"]
 
 
 class ShellScaling(BaseModel):
@@ -55,7 +55,7 @@ class ShellScaling(BaseModel):
     """Scaling factor for a p- and a d-shell."""
 
 
-class XTBHamiltonian(BaseModel):
+class PHamiltonianXTB(BaseModel):
     """
     Global parameters for the formation of the core Hamiltonian from the
     overlap integrals. Contains the required atomic and shell dependent scaling
@@ -82,11 +82,11 @@ class XTBHamiltonian(BaseModel):
     """Atom-pair dependent scaling factor for off-site valence blocks"""
 
 
-class Hamiltonian(BaseModel):
+class PHamiltonian(BaseModel):
     """
     Possible Hamiltonian parametrizations.
     Currently only the xTB Hamiltonian is supported.
     """
 
-    xtb: XTBHamiltonian
+    xtb: PHamiltonianXTB
     """Data for the xTB Hamiltonian"""

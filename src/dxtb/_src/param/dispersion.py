@@ -37,10 +37,10 @@ from pydantic import BaseModel
 from tad_dftd3 import defaults as d3_defaults
 from tad_dftd4 import defaults as d4_defaults
 
-__all__ = ["D3Model", "D4Model", "Dispersion"]
+__all__ = ["PD3Model", "PD4Model", "PDispersion"]
 
 
-class D3Model(BaseModel):
+class PD3Model(BaseModel):
     """
     Representation of the DFT-D3(BJ) contribution for a parametrization.
     """
@@ -61,7 +61,7 @@ class D3Model(BaseModel):
     """Scaling factor for the many-body dispersion term (ATM/RPA-like)."""
 
 
-class D4Model(BaseModel):
+class PD4Model(BaseModel):
     """
     Representation of the DFT-D4 contribution for a parametrization.
     """
@@ -91,14 +91,14 @@ class D4Model(BaseModel):
     """Exponent of zero damping function in the ATM term."""
 
 
-class Dispersion(BaseModel):
+class PDispersion(BaseModel):
     """
     Possible dispersion parametrizations. Currently, the DFT-D3(BJ) and DFT-D4
     methods are supported.
     """
 
-    d3: Optional[D3Model] = None
+    d3: Optional[PD3Model] = None
     """D3 model for the dispersion."""
 
-    d4: Optional[D4Model] = None
+    d4: Optional[PD4Model] = None
     """D4 model for the dispersion."""

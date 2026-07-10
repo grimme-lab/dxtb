@@ -18,8 +18,8 @@
 Parametrization: Repulsion
 ==========================
 
-Definition of the repulsion contribution. The :class:`EffectiveRepulsion` is
-used in GFN1-xTB and GFN2-xTB.
+Definition of the repulsion contribution. The :class:`PRepulsionEffective`
+is used in GFN1-xTB and GFN2-xTB.
 """
 
 from __future__ import annotations
@@ -28,10 +28,10 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-__all__ = ["EffectiveRepulsion", "Repulsion"]
+__all__ = ["PRepulsionEffective", "PRepulsion"]
 
 
-class EffectiveRepulsion(BaseModel):
+class PRepulsionEffective(BaseModel):
     """
     Representation of the repulsion contribution for a parametrization.
     """
@@ -49,11 +49,11 @@ class EffectiveRepulsion(BaseModel):
     """
 
 
-class Repulsion(BaseModel):
+class PRepulsion(BaseModel):
     """
     Possible repulsion parametrizations. Currently only the GFN1-xTB effective
     repulsion is supported.
     """
 
-    effective: EffectiveRepulsion
+    effective: PRepulsionEffective
     """Name of the represented method"""
