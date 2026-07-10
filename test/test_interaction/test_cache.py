@@ -113,11 +113,13 @@ def test_fail_overwritten_cache_solvation() -> None:
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     # manually create solvation
-    from dxtb._src.param.solvation import ALPB, Solvation
+    from dxtb._src.param.solvation import PSolvation, PSolvationALPB
 
     par = GFN1_XTB.model_copy(deep=True)
-    par.solvation = Solvation(
-        alpb=ALPB(alpb=True, kernel="p16", born_scale=1.0, born_offset=0.0)
+    par.solvation = PSolvation(
+        alpb=PSolvationALPB(
+            alpb=True, kernel="p16", born_scale=1.0, born_offset=0.0
+        )
     )
 
     solv = new_solvation(numbers, par, device=DEVICE)
