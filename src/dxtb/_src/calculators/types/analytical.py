@@ -81,9 +81,9 @@ class AnalyticalCalculator(EnergyCalculator):
 
         .. note::
 
-           Using :mod:`torch.func`'s function transforms can apparently be only
-           used once. Hence, for example, the Hessian and the dipole derivatives
-           cannot be both calculated with functorch.
+            Using :mod:`torch.func`'s function transforms can apparently be only
+            used once. Hence, for example, the Hessian and the dipole
+            derivatives cannot be both calculated with functorch.
 
         Parameters
         ----------
@@ -244,9 +244,9 @@ class AnalyticalCalculator(EnergyCalculator):
 
         .. note::
 
-           Using :mod:`torch.func`'s function transforms can apparently be only
-           used once. Hence, for example, the Hessian and the dipole derivatives
-           cannot be both calculated with functorch.
+            Using :mod:`torch.func`'s function transforms can apparently be only
+            used once. Hence, for example, the Hessian and the dipole derivatives
+            cannot be both calculated with functorch.
 
         Parameters
         ----------
@@ -505,6 +505,7 @@ class AnalyticalCalculator(EnergyCalculator):
     ) -> Tensor:
         r"""
         Analytically calculate the electric dipole moment :math:`\mu`.
+
 
         .. math::
 

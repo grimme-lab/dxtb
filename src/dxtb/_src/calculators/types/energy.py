@@ -472,7 +472,7 @@ class EnergyCalculator(BaseCalculator):
             "per default. Enable saving either via the calculator options "
             "(`calc.opts.cache.store.overlap = True`) or by passing the "
             "`store_overlap=True` keyword argument to called method, e.g., "
-            "`calc.energy(positions, store_overlap=True)"
+            "`calc.energy(positions, store_overlap=True)`"
         )
 
         overlap = self.cache["overlap"]
@@ -493,7 +493,7 @@ class EnergyCalculator(BaseCalculator):
                 "per default. Enable saving either via the calculator options "
                 "(`calc.opts.cache.store.density = True`) or by passing the "
                 "`store_density=True` keyword argument to called method, e.g., "
-                "`calc.energy(positions, store_density=True)"
+                "`calc.energy(positions, store_density=True)`"
             )
 
         # pylint: disable=import-outside-toplevel

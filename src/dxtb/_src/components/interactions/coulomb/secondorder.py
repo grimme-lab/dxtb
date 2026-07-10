@@ -463,7 +463,7 @@ class ES2(Interaction):
             Nuclear positions. Needs ``requires_grad=True``.
         cache : ES2Cache
             Cache object for second order electrostatics.
-        grad_out : Tensor | None
+        grad_outputs : Tensor | None
             Gradient of previous computation, i.e., "vector" in VJP of this
             gradient computation. Defaults to ``None``.
 

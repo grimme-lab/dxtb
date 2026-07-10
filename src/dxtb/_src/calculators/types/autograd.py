@@ -56,6 +56,7 @@ class AutogradCalculator(EnergyCalculator):
     This class provides properties via automatic differentiation.
     """
 
+    # Names of implemented methods of the Calculator.
     implemented_properties = EnergyCalculator.implemented_properties + [
         "forces",
         "hessian",
@@ -100,11 +101,11 @@ class AutogradCalculator(EnergyCalculator):
         :mod:`torch.func`'s function transforms (e.g.,
         :func:`torch.func.jacrev`).
 
-        Note
-        ----
-        Using :mod:`torch.func`'s function transforms can apparently be only
-        used once. Hence, for example, the Hessian and the dipole derivatives
-        cannot be both calculated with functorch.
+        .. note::
+
+            Using :mod:`torch.func`'s function transforms can apparently be only
+            used once. Hence, for example, the Hessian and the dipole
+            derivatives cannot be both calculated with functorch.
 
         Parameters
         ----------
@@ -353,11 +354,11 @@ class AutogradCalculator(EnergyCalculator):
         :mod:`torch.func`'s function transforms (e.g.,
         :func:`torch.func.jacrev`).
 
-        Note
-        ----
-        Using :mod:`torch.func`'s function transforms can apparently be only
-        used once. Hence, for example, the Hessian and the dipole derivatives
-        cannot be both calculated with functorch.
+        .. note::
+
+            Using :mod:`torch.func`'s function transforms can apparently be only
+            used once. Hence, for example, the Hessian and the dipole
+            derivatives cannot be both calculated with functorch.
 
         Parameters
         ----------
@@ -421,11 +422,11 @@ class AutogradCalculator(EnergyCalculator):
         :mod:`torch.func`'s function transforms (e.g.,
         :func:`torch.func.jacrev`).
 
-        Note
-        ----
-        Using :mod:`torch.func`'s function transforms can apparently be only
-        used once. Hence, for example, the Hessian and the dipole derivatives
-        cannot be both calculated with functorch.
+        .. note::
+
+            Using :mod:`torch.func`'s function transforms can apparently be only
+            used once. Hence, for example, the Hessian and the dipole
+            derivatives cannot be both calculated with functorch.
 
         Parameters
         ----------
@@ -496,11 +497,11 @@ class AutogradCalculator(EnergyCalculator):
         :mod:`torch.func`'s function transforms (e.g.,
         :func:`torch.func.jacrev`).
 
-        Note
-        ----
-        Using :mod:`torch.func`'s function transforms can apparently be only
-        used once. Hence, for example, the Hessian and the dipole derivatives
-        cannot be both calculated with functorch.
+        .. note::
+
+            Using :mod:`torch.func`'s function transforms can apparently be only
+            used once. Hence, for example, the Hessian and the dipole
+            derivatives cannot be both calculated with functorch.
 
         Parameters
         ----------
@@ -578,11 +579,11 @@ class AutogradCalculator(EnergyCalculator):
         :mod:`torch.func`'s function transforms (e.g.,
         :func:`torch.func.jacrev`).
 
-        Note
-        ----
-        Using :mod:`torch.func`'s function transforms can apparently be only
-        used once. Hence, for example, the Hessian and the dipole derivatives
-        cannot be both calculated with functorch.
+        .. note::
+
+            Using :mod:`torch.func`'s function transforms can apparently be only
+            used once. Hence, for example, the Hessian and the dipole
+            derivatives cannot be both calculated with functorch.
 
         Parameters
         ----------
@@ -686,11 +687,11 @@ class AutogradCalculator(EnergyCalculator):
         :mod:`torch.func`'s function transforms (e.g.,
         :func:`torch.func.jacrev`).
 
-        Note
-        ----
-        Using :mod:`torch.func`'s function transforms can apparently be only
-        used once. Hence, for example, the Hessian and the dipole derivatives
-        cannot be both calculated with functorch.
+        .. note::
+
+            Using :mod:`torch.func`'s function transforms can apparently be only
+            used once. Hence, for example, the Hessian and the dipole
+            derivatives cannot be both calculated with functorch.
 
         Parameters
         ----------
@@ -779,11 +780,11 @@ class AutogradCalculator(EnergyCalculator):
         :mod:`torch.func`'s function transforms (e.g.,
         :func:`torch.func.jacrev`).
 
-        Note
-        ----
-        Using :mod:`torch.func`'s function transforms can apparently be only
-        used once. Hence, for example, the Hessian and the dipole derivatives
-        cannot be both calculated with functorch.
+        .. note::
+
+            Using :mod:`torch.func`'s function transforms can apparently be only
+            used once. Hence, for example, the Hessian and the dipole
+            derivatives cannot be both calculated with functorch.
 
         Parameters
         ----------

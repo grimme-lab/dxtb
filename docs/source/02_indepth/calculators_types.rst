@@ -14,6 +14,6 @@ Types of Calculators
    GFN2 Calculator <../_autosummary/dxtb.calculators.GFN2Calculator>
 
 .. automodule:: dxtb._src.calculators.types
-   :members:
+   :no-index:
    :undoc-members:
    :show-inheritance:

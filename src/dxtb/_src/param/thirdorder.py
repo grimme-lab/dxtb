@@ -27,10 +27,10 @@ from typing import Literal, Union
 
 from pydantic import BaseModel
 
-__all__ = ["ThirdOrderShell", "ThirdOrder"]
+__all__ = ["PThirdOrderShell", "PThirdOrder"]
 
 
-class ThirdOrderShell(BaseModel):
+class PThirdOrderShell(BaseModel):
     """Representation of shell-resolved third-order electrostatics."""
 
     s: float
@@ -43,12 +43,12 @@ class ThirdOrderShell(BaseModel):
     """Scaling factor for d-orbitals."""
 
 
-class ThirdOrder(BaseModel):
+class PThirdOrder(BaseModel):
     """
     Representation of the isotropic third-order onsite correction.
     """
 
-    shell: Union[Literal[False], ThirdOrderShell] = False
+    shell: Union[Literal[False], PThirdOrderShell] = False
     """
     Whether the third order contribution is shell-dependent or only atomwise.
     """
