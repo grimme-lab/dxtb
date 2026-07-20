@@ -48,7 +48,7 @@ repos:
         args: [--py37-plus, --keep-runtime-typing]
 
   - repo: https://github.com/pycqa/isort
-    rev: 9.0.0a3
+    rev: 9.0.0b1
     hooks:
       - id: isort
         name: isort (python)
@@ -61,6 +61,6 @@ repos:
         args: ["--line-length", "80"]
 
   - repo: https://github.com/woodruffw/zizmor-pre-commit
-    rev: v1.26.1
+    rev: v1.27.0
     hooks:
       - id: zizmor
