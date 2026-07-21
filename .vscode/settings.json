@@ -14,5 +14,7 @@
   "python.defaultInterpreterPath": "${env:CONDA_PREFIX}/envs/dxtb/bin/python",
   "python.testing.pytestArgs": [],
   "python.testing.unittestEnabled": false,
-  "python.testing.pytestEnabled": true
+  "python.testing.pytestEnabled": true,
+  "python-envs.defaultEnvManager": "ms-python.python:system",
+  "python-envs.defaultPackageManager": "ms-python.python:pip"
 }

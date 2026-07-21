@@ -80,6 +80,7 @@ EXCLUDE_CHOICES = [
     "aes2",
     "es2",
     "es3",
+    "spinpolarisation",
     "scf",
     "all",
 ]
@@ -239,6 +240,15 @@ X_ATOL_MAX = 1.0e-5
 F_ATOL = 1.0e-4
 """
 The absolute tolerance of the norm of the output of the equilibrium function.
+"""
+SPINPOL = False
+"""
+Whether to enable spin-polarization for xTB methods.
+"""
+
+UHF_MODE = False
+"""
+Whether to use spin unrestricted SCF mode.
 """
 
 # Fermi smearing

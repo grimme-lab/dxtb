@@ -172,5 +172,20 @@ class Simple(Mixer):
         # Invert list for culling, gather & reassign `x_old` and `delta` so only
         # those marked False remain.
         notconv = ~conv
-        self._x_old = self._x_old[notconv, :mpdim, :tmp]
-        self._delta = self._delta[notconv, :mpdim, :tmp]
+
+        if self._x_old.ndim == 3:
+            idx = (notconv, slice(0, mpdim), slice(0, tmp))
+        elif self._x_old.ndim == 4:
+            idx = (
+                notconv,
+                slice(0, mpdim),
+                slice(0, tmp),
+                slice(0, tmp),
+            )
+        else:  # pragma: no cover
+            raise RuntimeError(
+                f"Unsupported SCF tensor rank '{self._x_old.ndim}'."
+            )
+
+        self._x_old = self._x_old[idx]
+        self._delta = self._delta[idx]

@@ -27,6 +27,7 @@ from pathlib import Path
 import pytest
 import torch
 
+from dxtb._src.calculators.config import Config
 from dxtb._src.cli import parser
 from dxtb._src.constants import defaults
 
@@ -72,6 +73,14 @@ def test_defaults() -> None:
 
     assert isinstance(args.int_uplo, str)
     assert args.int_uplo == defaults.INTUPLO
+
+
+def test_spinpol_enables_uhf_mode() -> None:
+    args = parser().parse_args(f"--spinpol {dummy}".split())
+    assert args.spinpol is True
+
+    config = Config.from_args(args)
+    assert config.scf.uhf_mode is True
 
 
 @pytest.mark.parametrize(

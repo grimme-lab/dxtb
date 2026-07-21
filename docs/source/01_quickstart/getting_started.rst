@@ -153,6 +153,47 @@ the example `here <https://github.com/grimme-lab/dxtb/blob/main/examples/forces.
 
            assert torch.allclose(g1, g2)
 
+Restricted, Unrestricted, and Spin Polarisation
+------------------------------------------------
+
+By default, *dxtb* uses restricted SCF (one spin channel).
+If you want to run unrestricted SCF (UHF) explicitly, enable ``uhf_mode`` in
+the calculator options.
+
+.. code-block:: python
+
+    import dxtb
+
+    calc = dxtb.Calculator(
+        numbers,
+        dxtb.GFN1_XTB,
+        opts={"uhf_mode": True},
+        **dd,
+    )
+
+    # Closed-shell run in unrestricted mode (useful for RHF/UHF comparisons)
+    energy = calc.energy(positions, chrg=0, spin=0)
+
+To include spin-polarisation, add the spin-polarisation interaction component.
+
+.. code-block:: python
+
+    import dxtb
+    from dxtb.components.spinpolarisation import new_spinpolarisation
+
+    spinpol = new_spinpolarisation(numbers, **dd)
+    calc = dxtb.Calculator(
+        numbers,
+        dxtb.GFN1_XTB,
+        interaction=[spinpol],
+        **dd,
+    )
+
+    # Open-shell example with one unpaired electron
+    energy = calc.energy(positions, chrg=0, spin=1)
+
+When a spin-polarisation interaction is present, *dxtb* automatically runs in
+unrestricted mode (two spin channels).
 
 More Properties
 ---------------

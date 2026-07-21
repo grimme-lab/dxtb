@@ -1,7 +1,7 @@
 # This file is part of dxtb.
 #
 # SPDX-Identifier: Apache-2.0
-# Copyright (C) 2024 Grimme Group
+# Copyright (C) 2026 Grimme Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,10 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Entry point for command line interface via `python -m <prog>`.
+Spin Polarisation
+==================
+
+This subpackage contains the Spin Polarisation Interaction.
 """
 
-from ._src.cli import console_entry_point
-
-if __name__ == "__main__":
-    raise SystemExit(console_entry_point())
+from .factory import new_spinpolarisation
+from .spinpolarisation import SpinPolarisation

@@ -27,3 +27,4 @@ from .coulomb import *
 from .field import *
 from .list import InteractionList, InteractionListCache
 from .solvation import *
+from .spin import *
