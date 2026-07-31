@@ -93,6 +93,17 @@ class Interaction(Component):
     label: str
     """Label for the interaction."""
 
+    spin_channel: int | None = None
+    """
+    Which spin channel this interaction reads from and writes to
+    when charges carry an ``nspin`` dimension.
+
+    * ``None`` (default): charge-type interaction, reads from channel 0
+      (total charges).
+    * ``1``: magnetization-type interaction (e.g. spin polarisation),
+      reads from channel 1 (magnetization charges).
+    """
+
     def __init__(
         self,
         device: torch.device | None = None,
@@ -131,6 +142,37 @@ class Interaction(Component):
         """
         return InteractionCache()
 
+    def _extract_mono_charges(self, charges: Charges) -> Tensor:
+        """
+        Extract the relevant monopole charges for this interaction.
+
+        For spin-polarized calculations (``charges.nspin > 1``), the
+        appropriate spin channel is selected according to
+        :attr:`spin_channel`.  Charge-type interactions (``spin_channel
+        is None``) use channel 0 (total charges); the spin interaction
+        uses channel 1 (magnetization).
+        """
+        nspin = getattr(charges, "nspin", 1)
+        if self.spin_channel is not None and nspin <= self.spin_channel:
+            return torch.zeros_like(charges.mono)
+        if nspin > 1:
+            ch = self.spin_channel if self.spin_channel is not None else 0
+            return charges.mono[..., ch, :]
+        return charges.mono
+
+    def _extract_multipole_charges(
+        self, multipole: Tensor | None, charges: Charges
+    ) -> Tensor | None:
+        """Extract the interaction's charge or magnetization multipoles."""
+        if multipole is None:
+            return None
+
+        nspin = getattr(charges, "nspin", 1)
+        if nspin > 1 and multipole.ndim == charges.mono.ndim + 1:
+            ch = self.spin_channel if self.spin_channel is not None else 0
+            return multipole.select(-3, ch)
+        return multipole
+
     @final
     def get_potential(
         self,
@@ -155,28 +197,41 @@ class Interaction(Component):
         Tensor
             Potential vector for each orbital partial charge.
         """
+        nspin = getattr(charges, "nspin", 1)
+        qat_ch = self._extract_mono_charges(charges)
+        qdp_ch = self._extract_multipole_charges(charges.dipole, charges)
+        qqp_ch = self._extract_multipole_charges(charges.quad, charges)
 
         # monopole potential: shell-resolved
-        qsh = ihelp.reduce_orbital_to_shell(charges.mono)
+        qsh = ihelp.reduce_orbital_to_shell(qat_ch)
         vsh = self.get_monopole_shell_potential(cache, qsh)
 
         # monopole potential: atom-resolved
         qat = ihelp.reduce_shell_to_atom(qsh)
         vat = self.get_monopole_atom_potential(
-            cache, qat, qdp=charges.dipole, qqp=charges.quad
+            cache, qat, qdp=qdp_ch, qqp=qqp_ch
         )
 
         # spread to orbital-resolution
         vsh += ihelp.spread_atom_to_shell(vat)
         vmono = ihelp.spread_shell_to_orbital(vsh)
 
+        # Route potential into the correct spin channel
+        if nspin > 1:
+            ch = self.spin_channel if self.spin_channel is not None else 0
+            vmono_full = torch.zeros(
+                *vmono.shape[:-1],
+                nspin,
+                vmono.shape[-1],
+                device=vmono.device,
+                dtype=vmono.dtype,
+            )
+            vmono_full[..., ch, :] = vmono
+            vmono = vmono_full
+
         # multipole potentials
-        vdipole = self.get_dipole_atom_potential(
-            cache, qat, charges.dipole, charges.quad
-        )
-        vquad = self.get_quadrupole_atom_potential(
-            cache, qat, charges.dipole, charges.quad
-        )
+        vdipole = self.get_dipole_atom_potential(cache, qat, qdp_ch, qqp_ch)
+        vquad = self.get_quadrupole_atom_potential(cache, qat, qdp_ch, qqp_ch)
 
         return Potential(vmono, dipole=vdipole, quad=vquad, label=self.label)
 
@@ -337,7 +392,11 @@ class Interaction(Component):
                 "charges are required."
             )
 
-        qsh = ihelp.reduce_orbital_to_shell(charges.mono)
+        qat_ch = self._extract_mono_charges(charges)
+        qdp_ch = self._extract_multipole_charges(charges.dipole, charges)
+        qqp_ch = self._extract_multipole_charges(charges.quad, charges)
+
+        qsh = ihelp.reduce_orbital_to_shell(qat_ch)
         esh = self.get_monopole_shell_energy(cache, qsh)
 
         qat = ihelp.reduce_shell_to_atom(qsh)
@@ -345,15 +404,15 @@ class Interaction(Component):
 
         e = eat + ihelp.reduce_shell_to_atom(esh)
 
-        if charges.dipole is not None:
+        if qdp_ch is not None:
             edp = self.get_dipole_atom_energy(
-                cache, qat=qat, qdp=charges.dipole, qqp=charges.quad
+                cache, qat=qat, qdp=qdp_ch, qqp=qqp_ch
             )
             e += edp
 
-        if charges.quad is not None:
+        if qqp_ch is not None:
             eqp = self.get_quadrupole_atom_energy(
-                cache, qat=qat, qdp=charges.dipole, qqp=charges.quad
+                cache, qat=qat, qdp=qdp_ch, qqp=qqp_ch
             )
             e += eqp
 
@@ -381,7 +440,10 @@ class Interaction(Component):
         return torch.zeros_like(qat)
 
     def get_monopole_shell_energy(
-        self, cache: InteractionCache, qat: Tensor, **_: Any
+        self,
+        cache: InteractionCache,
+        qat: Tensor,
+        **_: Any,
     ) -> Tensor:
         """
         Compute the energy from the charges, all quantities are shell-resolved.
@@ -503,7 +565,11 @@ class Interaction(Component):
         Tensor
             Nuclear gradient for each atom.
         """
-        qao = charges.mono.detach()
+        # Each interaction differentiates the charge channel from which its
+        # energy is constructed: total charge for the regular interactions,
+        # magnetization for spin polarization.  Treating the spin dimension
+        # as an orbital dimension would produce invalid shell populations.
+        qao = self._extract_mono_charges(charges).detach()
 
         qsh = ihelp.reduce_orbital_to_shell(qao)
         gsh = self.get_shell_gradient(

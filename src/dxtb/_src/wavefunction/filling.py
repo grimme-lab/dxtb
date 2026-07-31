@@ -80,20 +80,27 @@ def get_alpha_beta_occupation(
                 f"number of electrons ({nel.shape})."
             )
 
+        if (uhf < 0).any():
+            raise ValueError(
+                f"Number of unpaired electrons ({uhf}) is negative."
+            )
         if (uhf > nel.round()).any():
             raise ValueError(
                 f"Number of unpaired electrons ({uhf}) larger than "
                 f"number of electrons ({nel})."
             )
 
-        # odd/even spin and even/odd number of electrons
+        # An explicit spin must be physically compatible with the electron
+        # count. Only ``None`` requests automatic parity selection below.
         if (torch.remainder(uhf, 2) != torch.remainder(nel.round(), 2)).any():
             raise ValueError(
                 f"Odd (even) number of unpaired electrons ({uhf}) but even "
                 f"(odd) number of electrons ({nel}) given."
             )
+
     else:
-        # set to zero and figure out via remainder
+        # Infer a parity-compatible number of unpaired electrons only when
+        # the caller did not provide a spin.
         uhf = torch.zeros_like(nel)
 
     nel = torch.atleast_1d(nel)
@@ -273,6 +280,7 @@ def get_fermi_occupation(
     mask: Tensor | None = None,
     thr: Tensor | float | int | None = None,
     maxiter: int = 200,
+    equalize_degenerate: bool = False,
 ) -> Tensor:
     """
     Set occupation numbers according to Fermi distribution.
@@ -296,6 +304,10 @@ def get_fermi_occupation(
     maxiter : int, optional
         Maximum number of iterations for converging Fermi energy.
         Defaults to 200.
+    equalize_degenerate : bool, optional
+        Average numerically split degenerate orbital energies before filling.
+        This stabilizes UHF density derivatives after conversion from the
+        charge/magnetization representation. Defaults to ``False``.
 
     Returns
     -------
@@ -325,6 +337,36 @@ def get_fermi_occupation(
     dd: DD = {"device": emo.device, "dtype": emo.dtype}
     eps = torch.tensor(torch.finfo(emo.dtype).eps, **dd)
     zero = torch.tensor(0.0, **dd)
+
+    if equalize_degenerate:
+        # Numerical diagonalization can split symmetry-degenerate subspaces by
+        # a few ulps. Fermi filling must assign the same occupation to such
+        # orbitals; otherwise their arbitrary splitting creates spurious UHF
+        # density derivatives. Use the same tolerances as xitorch's degenerate
+        # symeig backward.
+        degen_atol = torch.finfo(emo.dtype).eps ** 0.6
+        degen_rtol = torch.finfo(emo.dtype).eps ** 0.4
+        averaged = []
+        valid = mask != 0 if mask is not None else None
+        for iorb in range(emo.shape[-1]):
+            close = torch.isclose(
+                emo,
+                emo[..., iorb].unsqueeze(-1),
+                rtol=degen_rtol,
+                atol=degen_atol,
+            )
+            if valid is not None:
+                valid_orbital = valid[..., iorb]
+                close = close & valid & valid_orbital.unsqueeze(-1)
+            else:
+                valid_orbital = None
+
+            count = close.count_nonzero(dim=-1).clamp_min(1)
+            mean = torch.where(close, emo, zero).sum(-1) / count
+            if valid_orbital is not None:
+                mean = torch.where(valid_orbital, mean, emo[..., iorb])
+            averaged.append(mean)
+        emo = torch.stack(averaged, dim=-1)
 
     # no valence electrons
     if (torch.abs(nel.sum(-1)) < eps).any():

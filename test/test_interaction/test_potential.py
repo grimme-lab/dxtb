@@ -144,6 +144,7 @@ def test_fromtensor_mono_batch() -> None:
     assert (pot.mono == vmonob).all()
     assert pot.dipole is None
     assert pot.quad is None
+    assert pot.batch_mode == 1
 
 
 def test_fromtensor_mono_batch_withpack() -> None:
@@ -158,6 +159,7 @@ def test_fromtensor_mono_batch_withpack() -> None:
     assert (pot.mono == tensor).all()
     assert pot.dipole is None
     assert pot.quad is None
+    assert pot.batch_mode == 1
 
 
 def test_fromtensor_mono_dipole_batch() -> None:
@@ -167,6 +169,7 @@ def test_fromtensor_mono_dipole_batch() -> None:
     assert (pot.mono == vmonob).all()
     assert (pot.dipole == vdipoleb).all()
     assert pot.quad is None
+    assert pot.batch_mode == 1
 
 
 def test_fromtensor_all_batch() -> None:
@@ -176,3 +179,4 @@ def test_fromtensor_all_batch() -> None:
     assert (pot.mono == vmonob).all()
     assert (pot.dipole == vdipoleb).all()
     assert (pot.quad == vquadb).all()
+    assert pot.batch_mode == 1

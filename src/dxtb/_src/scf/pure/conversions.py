@@ -18,6 +18,7 @@ from dxtb._src.constants import defaults, labels
 from dxtb._src.timing.decorator import timer_decorator
 from dxtb._src.typing import Tensor
 from dxtb._src.wavefunction import filling
+from dxtb._src.wavefunction import spin as wfspin
 from dxtb.config import ConfigSCF
 
 from ..utils import get_density
@@ -30,6 +31,7 @@ __all__ = [
     "potential_to_charges",
     "potential_to_density",
     "density_to_charges",
+    "density_to_spin_multipoles",
     "potential_to_hamiltonian",
     "hamiltonian_to_density",
 ]
@@ -65,9 +67,11 @@ def converged_to_charges(x: Tensor, data: _Data, config: ConfigSCF) -> Charges:
     """
 
     if config.scp_mode == labels.SCP_MODE_CHARGE:
-        return Charges.from_tensor(
+        charges = Charges.from_tensor(
             x, data.charges, batch_mode=config.batch_mode
         )
+        charges.nspin = data.nspin
+        return charges
 
     if config.scp_mode == labels.SCP_MODE_POTENTIAL:
         pot = Potential.from_tensor(
@@ -188,38 +192,74 @@ def density_to_charges(density: Tensor, data: _Data, cfg: ConfigSCF) -> Charges:
         Orbital-resolved partial charges vector.
     """
 
-    # Calculate diagonal directly by using index "i" twice on left side.
-    # The slower but more readable approach would instead compute the full
-    # matrix with "...ik,...kj->...ij" and only extract the diagonal
-    # afterwards with `torch.diagonal(tensor, dim1=-2, dim2=-1)`.
-    data.energy = einsum("...ik,...ki->...i", density, data.ints.hcore)
+    ints = data.ints
+    if data.nspin > 1:
+        density_total = density.sum(dim=-3)
+    else:
+        density_total = density
 
-    # monopolar charges
-    populations = einsum("...ik,...ki->...i", density, data.ints.overlap)
-    charges = Charges(mono=data.n0 - populations, batch_mode=cfg.batch_mode)
+    data.energy = einsum("...ik,...ki->...i", density_total, ints.hcore)
+
+    if data.nspin > 1:
+        populations = einsum("...sik,...ki->...si", density, ints.overlap)
+        charges_spin = data.n0.unsqueeze(-2) / data.nspin - populations
+        charges = Charges(
+            mono=wfspin.updown_to_magnet_2(charges_spin),
+            batch_mode=cfg.batch_mode,
+            nspin=data.nspin,
+        )
+    else:
+        populations = einsum("...ik,...ki->...i", density_total, ints.overlap)
+        charges = Charges(mono=data.n0 - populations, batch_mode=cfg.batch_mode)
 
     # Atomic dipole moments (dipole charges)
-    if data.ints.dipole is not None:
+    if ints.dipole is not None:
         # Again, the diagonal is directly calculated instead of full matrix
         # ("...ik,...mkj->...ijm") as `torch.diagonal` behaves weirdly for
         # more than 2D tensors. Additionally, we move the multipole
         # dimension to the back, which is required for the reduction to
         # atom-resolution.
         charges.dipole = data.ihelp.reduce_orbital_to_atom(
-            -einsum("...ik,...mki->...im", density, data.ints.dipole),
+            -einsum("...ik,...mki->...im", density_total, ints.dipole),
             extra=True,
             dim=-2,
         )
 
     # Atomic quadrupole moments (quadrupole charges)
-    if data.ints.quadrupole is not None:
+    if ints.quadrupole is not None:
         charges.quad = data.ihelp.reduce_orbital_to_atom(
-            -einsum("...ik,...mki->...im", density, data.ints.quadrupole),
+            -einsum("...ik,...mki->...im", density_total, ints.quadrupole),
             extra=True,
             dim=-2,
         )
 
     return charges
+
+
+def density_to_spin_multipoles(
+    charges: Charges, density: Tensor, data: _Data
+) -> None:
+    """Attach final atomic multipoles in charge/magnetization basis."""
+    ints = data.ints
+    if ints.dipole is not None:
+        dipole_ab = data.ihelp.reduce_orbital_to_atom(
+            -einsum("...sik,...mki->...sim", density, ints.dipole),
+            extra=True,
+            dim=-2,
+        )
+        charges.dipole = wfspin.updown_to_magnet(
+            dipole_ab.movedim(-3, -1)
+        ).movedim(-1, -3)
+
+    if ints.quadrupole is not None:
+        quad_ab = data.ihelp.reduce_orbital_to_atom(
+            -einsum("...sik,...mki->...sim", density, ints.quadrupole),
+            extra=True,
+            dim=-2,
+        )
+        charges.quad = wfspin.updown_to_magnet(quad_ab.movedim(-3, -1)).movedim(
+            -1, -3
+        )
 
 
 @timer_decorator("Fock build", "SCF")
@@ -239,11 +279,7 @@ def potential_to_hamiltonian(potential: Potential, data: _Data) -> Tensor:
     Tensor
         Hamiltonian matrix.
     """
-    h1 = data.ints.hcore
-
-    if potential.mono is not None:
-        v = potential.mono.unsqueeze(-1) + potential.mono.unsqueeze(-2)
-        h1 = h1 - (0.5 * data.ints.overlap * v)
+    overlap = data.ints.overlap
 
     def add_vmp_to_h1(h1: Tensor, mpint: Tensor, vmp: Tensor) -> Tensor:
         # spread potential to orbitals
@@ -255,15 +291,38 @@ def potential_to_hamiltonian(potential: Potential, data: _Data) -> Tensor:
         tmp = 0.5 * einsum("...kij,...jk->...ij", mpint, v)
         return h1 - (tmp + tmp.mT)
 
-    if potential.dipole is not None:
-        dpint = data.ints.dipole
-        if dpint is not None:
-            h1 = add_vmp_to_h1(h1, dpint, potential.dipole)
+    if data.nspin > 1:
+        h_charge = data.ints.hcore.clone()
+        if potential.mono is not None:
+            v_charge = potential.mono[..., 0, :]
+            v = v_charge.unsqueeze(-1) + v_charge.unsqueeze(-2)
+            h_charge = h_charge - (0.5 * overlap * v)
 
-    if potential.quad is not None:
-        qpint = data.ints.quadrupole
-        if qpint is not None:
-            h1 = add_vmp_to_h1(h1, qpint, potential.quad)
+        if potential.dipole is not None and data.ints.dipole is not None:
+            h_charge = add_vmp_to_h1(
+                h_charge, data.ints.dipole, potential.dipole
+            )
+        if potential.quad is not None and data.ints.quadrupole is not None:
+            h_charge = add_vmp_to_h1(
+                h_charge, data.ints.quadrupole, potential.quad
+            )
+
+        h_magnetization = torch.zeros_like(h_charge)
+        if potential.mono is not None:
+            v_magnetization = potential.mono[..., 1, :]
+            v = v_magnetization.unsqueeze(-1) + v_magnetization.unsqueeze(-2)
+            h_magnetization = -(0.5 * overlap * v)
+
+        return torch.stack((h_charge, h_magnetization), dim=-3)
+
+    h1 = data.ints.hcore
+    if potential.mono is not None:
+        v = potential.mono.unsqueeze(-1) + potential.mono.unsqueeze(-2)
+        h1 = h1 - (0.5 * overlap * v)
+    if potential.dipole is not None and data.ints.dipole is not None:
+        h1 = add_vmp_to_h1(h1, data.ints.dipole, potential.dipole)
+    if potential.quad is not None and data.ints.quadrupole is not None:
+        h1 = add_vmp_to_h1(h1, data.ints.quadrupole, potential.quad)
 
     return h1
 
@@ -289,15 +348,40 @@ def hamiltonian_to_density(
         Density matrix.
     """
 
-    data.evals, data.evecs = diagonalize(
-        hamiltonian, data.ints.overlap, cfg.eigen_options
-    )
+    if data.nspin > 1:
+        hamiltonian_ab = hamiltonian.movedim(-3, -1)
+        hamiltonian_ab = wfspin.magnet_to_updown(hamiltonian_ab)
+        hamiltonian_ab = hamiltonian_ab.movedim(-1, -3)
+
+        evals_alpha, evecs_alpha = diagonalize(
+            hamiltonian_ab[..., 0, :, :],
+            data.ints.overlap,
+            cfg.eigen_options,
+        )
+        evals_beta, evecs_beta = diagonalize(
+            hamiltonian_ab[..., 1, :, :],
+            data.ints.overlap,
+            cfg.eigen_options,
+        )
+        # Equivalent to multiplying both Hamiltonian blocks by two before
+        # diagonalization, but retains stable eigenvector derivatives at exact
+        # degeneracies in the PyTorch generalized-eigensolver backward pass.
+        evals_alpha = 2.0 * evals_alpha
+        evals_beta = 2.0 * evals_beta
+        data.evals = torch.stack((evals_alpha, evals_beta), dim=-2)
+        data.evecs = torch.stack((evecs_alpha, evecs_beta), dim=-3)
+    else:
+        data.evals, data.evecs = diagonalize(
+            hamiltonian, data.ints.overlap, cfg.eigen_options
+        )
 
     # round to integers to avoid numerical errors
     nel = data.occupation.sum(-1).round()
 
-    # expand emo/mask to second dim (for alpha/beta electrons)
-    emo = data.evals.unsqueeze(-2).expand([*nel.shape, -1])
+    if data.nspin > 1:
+        emo = data.evals
+    else:
+        emo = data.evals.unsqueeze(-2).expand([*nel.shape, -1])
     mask = data.ihelp.spread_shell_to_orbital(data.ihelp.orbitals_per_shell)
     mask = mask.unsqueeze(-2).expand([*nel.shape, -1])
 
@@ -311,6 +395,7 @@ def hamiltonian_to_density(
             mask=mask,
             maxiter=cfg.fermi.maxiter,
             thr=cfg.fermi.thresh,
+            equalize_degenerate=data.nspin > 1,
         )
 
         # check if number of electrons is still correct
@@ -320,5 +405,14 @@ def hamiltonian_to_density(
                 f"Number of electrons changed during Fermi smearing "
                 f"({nel} -> {_nel})."
             )
+
+    if data.nspin > 1:
+        density_alpha = get_density(
+            data.evecs[..., 0, :, :], data.occupation[..., 0, :]
+        )
+        density_beta = get_density(
+            data.evecs[..., 1, :, :], data.occupation[..., 1, :]
+        )
+        return torch.stack((density_alpha, density_beta), dim=-3)
 
     return get_density(data.evecs, data.occupation.sum(-2))

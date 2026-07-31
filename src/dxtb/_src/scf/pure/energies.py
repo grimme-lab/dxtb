@@ -117,7 +117,8 @@ def get_electronic_free_energy(data: _Data, cfg: ConfigSCF) -> Tensor:
     kt = data.ints.hcore.new_tensor(cfg.fermi.etemp * KELVIN2AU)
     occ = torch.clamp(data.occupation, min=eps)
     occ1 = torch.clamp(1 - data.occupation, min=eps)
-    g = torch.log(occ**occ * occ1**occ1).sum(-2) * kt
+    g_spin = torch.log(occ**occ * occ1**occ1) * kt
+    g = g_spin.sum(-2)
 
     # partition to atoms equally
     if cfg.fermi.partition == labels.FERMI_PARTITION_EQUAL:
@@ -133,12 +134,17 @@ def get_electronic_free_energy(data: _Data, cfg: ConfigSCF) -> Tensor:
     # partition to atoms via Mulliken population analysis
     if cfg.fermi.partition == labels.FERMI_PARTITION_ATOMIC:
         # "electronic entropy" density matrix
-        density = einsum(
-            "...ik,...k,...jk->...ij",
-            data.evecs,  # sorted by energy, starting with lowest
-            g,
-            data.evecs,  # transposed
-        )
+        if data.nspin > 1:
+            density = einsum(
+                "...sik,...sk,...sjk->...sij",
+                data.evecs,
+                g_spin,
+                data.evecs,
+            ).sum(-3)
+        else:
+            density = einsum(
+                "...ik,...k,...jk->...ij", data.evecs, g, data.evecs
+            )
 
         return mulliken.get_atomic_populations(
             data.ints.overlap, density, data.ihelp

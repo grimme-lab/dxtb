@@ -31,6 +31,7 @@ from ..result import SCFResult
 from .conversions import (
     charges_to_potential,
     converged_to_charges,
+    density_to_spin_multipoles,
     potential_to_hamiltonian,
 )
 from .data import _Data
@@ -115,6 +116,12 @@ def scf_wrapper(
     # distinct objects containing data and configuration
     # forbidden = ["bck_options", "fwd_options", "scf_options"]
     # data_kwargs = {k: v for k, v in kwargs.items() if k not in forbidden}
+    nspin = 2 if config.uhf_mode is True else 1
+    for interaction in interactions.components:
+        if getattr(interaction, "spin_channel", None) is not None:
+            nspin = 2
+            break
+
     data = _Data(
         occupation=occupation,
         n0=n0,
@@ -122,6 +129,7 @@ def scf_wrapper(
         ihelp=ihelp,
         cache=cache,
         integrals=integrals,
+        nspin=nspin,
         # **data_kwargs,
     )
 
@@ -192,9 +200,15 @@ def run_scf(
     if charges is None:
         charges = torch.zeros_like(data.occupation)
 
+    if isinstance(charges, Tensor) and data.nspin > 1:
+        if charges.shape != data.occupation.shape:
+            charges = torch.stack((charges, torch.zeros_like(charges)), dim=-2)
+
     # initialize Charge container depending on given integrals
     if isinstance(charges, Tensor):
-        charges = Charges(mono=charges, batch_mode=cfg.batch_mode)
+        charges = Charges(
+            mono=charges, batch_mode=cfg.batch_mode, nspin=data.nspin
+        )
         data.charges["mono"] = charges.mono_shape
 
         if data.ints.dipole is not None:
@@ -246,6 +260,9 @@ def run_scf(
     charges.nullify_padding()
     energy = get_energy(charges, data, interactions)
     fenergy = get_electronic_free_energy(data, cfg)
+    potential = charges_to_potential(charges, interactions, data)
+    if data.nspin > 1:
+        density_to_spin_multipoles(charges, data.density, data)
 
     # break circular graph references to free `_Data` object and hence memory
     density, hamiltonian, _, evals, evecs, occupation = data.clean()
@@ -259,6 +276,6 @@ def run_scf(
         "fenergy": fenergy,
         "hamiltonian": hamiltonian,
         "occupation": occupation,
-        "potential": charges_to_potential(charges, interactions, data),
+        "potential": potential,
         "iterations": data.iter,
     }

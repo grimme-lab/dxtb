@@ -42,6 +42,7 @@ from .coulomb.thirdorder import ES3, LABEL_ES3
 from .dispersion.d4sc import LABEL_DISPERSIOND4SC, DispersionD4SC
 from .field.efield import LABEL_EFIELD, ElectricField
 from .field.efieldgrad import LABEL_EFIELD_GRAD, ElectricFieldGrad
+from .spin.spinpolarisation import LABEL_SPINPOLARISATION, SpinPolarisation
 
 __all__ = ["InteractionList", "InteractionListCache"]
 
@@ -249,9 +250,21 @@ class InteractionList(ComponentList[Interaction]):
             Potential vector for each orbital partial charge.
         """
 
-        # create empty potential
+        # create empty potential (spin-dimensioned if charges carry nspin)
+        nspin = getattr(charges, "nspin", 1)
+        if nspin > 1:
+            zero_mono = torch.zeros(
+                *charges.mono.shape[:-2],
+                nspin,
+                charges.mono.shape[-1],
+                device=charges.mono.device,
+                dtype=charges.mono.dtype,
+            )
+        else:
+            zero_mono = torch.zeros_like(charges.mono)
+
         pot = Potential(
-            torch.zeros_like(charges.mono),
+            zero_mono,
             dipole=None,
             quad=None,
             batch_mode=ihelp.batch_mode,
@@ -286,6 +299,11 @@ class InteractionList(ComponentList[Interaction]):
     def get_interaction(
         self, name: Literal["ElectricFieldGrad"]
     ) -> ElectricFieldGrad: ...
+
+    @overload
+    def get_interaction(
+        self, name: Literal["SpinPolarisation"]
+    ) -> SpinPolarisation: ...
 
     @overload
     def get_interaction(self, name: Literal["ES2"]) -> ES2: ...
@@ -324,6 +342,11 @@ class InteractionList(ComponentList[Interaction]):
         """Reset tensor attributes to a detached clone of the current state."""
         return self.reset(LABEL_ES3)
 
+    @_docstring_reset
+    def reset_spinpolarisation(self) -> Interaction:
+        """Reset tensor attributes to a detached clone of the current state."""
+        return self.reset(LABEL_SPINPOLARISATION)
+
     ###########################################################################
 
     @_docstring_update
@@ -353,3 +376,7 @@ class InteractionList(ComponentList[Interaction]):
     @_docstring_update
     def update_es3(self, **kwargs: Any) -> Interaction:
         return self.update(LABEL_ES3, **kwargs)
+
+    @_docstring_update
+    def update_spinpolarisation(self, **kwargs: Any) -> Interaction:
+        return super().update(LABEL_SPINPOLARISATION, **kwargs)

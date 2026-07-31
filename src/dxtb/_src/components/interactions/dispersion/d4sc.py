@@ -250,7 +250,7 @@ class DispersionD4SC(Interaction):
                 "Atomic numbers are required for DispersionD4SC cache."
             )
         if positions is None:
-            raise ValueError("Positions are required for ES2 cache.")
+            raise ValueError("Positions are required for DispersionD4SC cache.")
 
         cachvars = (numbers.detach().clone(), positions.detach().clone())
 

@@ -141,6 +141,10 @@ class ConfigSCF:
     dtype: torch.dtype
     """Data type for calculations."""
 
+    # UHF
+    uhf_mode: bool
+    """Restricted (false) or unrestricted (true) SCF"""
+
     def __init__(
         self,
         *,
@@ -172,6 +176,8 @@ class ConfigSCF:
         # PyTorch
         device: torch.device = get_default_device(),
         dtype: torch.dtype = get_default_dtype(),
+        # UHF
+        uhf_mode: bool = defaults.UHF_MODE,
     ) -> None:
         self.strict = strict
         self.method = method
@@ -343,6 +349,8 @@ class ConfigSCF:
         self.device = device
         self.dtype = dtype
 
+        self.uhf_mode = uhf_mode
+
         self.x_atol = check_tols(x_atol, dtype)
         self.x_atol_max = check_tols(x_atol_max, dtype)
         self.f_atol = check_tols(f_atol, dtype)
@@ -378,6 +386,7 @@ class ConfigSCF:
                 "x tolerance": self.x_atol,
                 "f(x) tolerance": self.f_atol,
                 **self.fermi.info(),
+                "UHF Mode for SCF": self.uhf_mode,
             }
         }
 
@@ -397,6 +406,7 @@ class ConfigSCF:
             f"  xitorch absolute Tolerance: {self.x_atol}",
             f"  xitorch Functional Tolerance: {self.f_atol}",
             f"  Fermi Configuration: {self.fermi}",
+            f"  Unrestricted SCF: {self.uhf_mode}",
         ]
         return "\n".join(config_str)
 

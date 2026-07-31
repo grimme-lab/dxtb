@@ -119,6 +119,10 @@ class EnergyCalculator(BaseCalculator):
             else:
                 hashed_key += f"{sep}{arg}"
 
+        # Normalize coordinates once so all downstream components use the
+        # calculator dtype/device consistently.
+        positions = positions.to(**self.dd)
+
         is_batched = self.numbers.ndim == 2
 
         if is_batched:

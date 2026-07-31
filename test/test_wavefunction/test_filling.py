@@ -72,7 +72,7 @@ def test_fail(dtype: torch.dtype):
         filling.get_fermi_occupation(nab, emo, kt, maxiter=1)
 
 
-@pytest.mark.parametrize("uhf", [[0, 0, 0], [1, 1, 0], [3, 1, 0]])
+@pytest.mark.parametrize("uhf", [[0, 0, 0], [1, 1, 0], [3, 1, 0], [-1, 1, 0]])
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_fail_uhf(dtype: torch.dtype, uhf: list):
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -80,6 +80,29 @@ def test_fail_uhf(dtype: torch.dtype, uhf: list):
     with pytest.raises(ValueError):
         nel = torch.tensor([2, 1, 2], **dd)
         filling.get_alpha_beta_occupation(nel, nel.new_tensor(uhf))
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+def test_equalize_degenerate_occupation(dtype: torch.dtype) -> None:
+    eps = torch.finfo(dtype).eps
+    delta = 0.5 * eps**0.6
+    emo = torch.tensor(
+        [[-0.5, -0.5 + delta, 0.2], [-0.5, -0.5 + delta, 0.2]],
+        device=DEVICE,
+        dtype=dtype,
+    )
+    nel = torch.ones(2, device=DEVICE, dtype=dtype)
+    kt = emo.new_tensor(300 * KELVIN2AU)
+
+    regular = filling.get_fermi_occupation(nel, emo, kt)
+    equalized = filling.get_fermi_occupation(
+        nel, emo, kt, equalize_degenerate=True
+    )
+
+    assert not torch.equal(regular[..., 0], regular[..., 1])
+    torch.testing.assert_close(
+        equalized[..., 0], equalized[..., 1], atol=0.0, rtol=0.0
+    )
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

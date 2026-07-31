@@ -54,6 +54,7 @@ if TYPE_CHECKING:
     from dxtb.components import halogen as halogen
     from dxtb.components import repulsion as repulsion
     from dxtb.components import solvation as solvation
+    from dxtb.components import spinpolarisation as spinpolarisation
 else:
     import dxtb._src.loader.lazy as _lazy
 
@@ -64,6 +65,7 @@ else:
             "coulomb",
             "field",
             "solvation",
+            "spinpolarisation",
             #
             "dispersion",
             "halogen",

@@ -200,14 +200,18 @@ class Container:
         axis = 1 if batch_mode else 0
 
         if (ndim == 1 and not batch_mode) or (ndim == 2 and batch_mode):
-            return cls(mono=tensor, label=label)
+            return cls(mono=tensor, label=label, batch_mode=batch_mode)
 
         # One dimensions extra for more than monopole ...
         if (ndim == 2 and not batch_mode) or (ndim == 3 and batch_mode):
             # ... but still account for (nb, 1, nao)-shaped monopolar property.
             assert data["mono"] is not None
             if tensor.shape[axis] == 1:
-                return cls(mono=tensor.reshape(*data["mono"]), label=label)
+                return cls(
+                    mono=tensor.reshape(*data["mono"]),
+                    label=label,
+                    batch_mode=batch_mode,
+                )
 
             # Now, dipolar and quadrupolar properties are checked.
             assert data["dipole"] is not None
@@ -218,12 +222,18 @@ class Container:
             dipole = deflate(vs[1], axis=0, value=pad).reshape(*data["dipole"])
 
             if tensor.shape[axis] == 2:
-                return cls(mono, dipole, label=label)
+                return cls(mono, dipole, label=label, batch_mode=batch_mode)
 
             assert data["quad"] is not None
             quad = deflate(vs[2], axis=0, value=pad).reshape(*data["quad"])
             if tensor.shape[axis] == 3:
-                return cls(mono, dipole, quad, label=label)
+                return cls(
+                    mono,
+                    quad=quad,
+                    dipole=dipole,
+                    label=label,
+                    batch_mode=batch_mode,
+                )
 
             raise RuntimeError(
                 "It appears as if more than 3 tensors are given in the "
@@ -311,6 +321,21 @@ class Charges(Container):
     """
     Container for the charges used in the SCF.
     """
+
+    nspin: int
+    """Number of spin channels (1 = RHF, 2 = UHF)."""
+
+    def __init__(
+        self,
+        mono: Tensor | None = None,
+        dipole: Tensor | None = None,
+        quad: Tensor | None = None,
+        label: str | list[str] | None = None,
+        batch_mode: int = 0,
+        nspin: int = 1,
+    ) -> None:
+        super().__init__(mono, dipole, quad, label, batch_mode)
+        self.nspin = nspin
 
     @property
     def mono(self) -> Tensor:

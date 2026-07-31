@@ -240,13 +240,14 @@ class Mixer(ABC):
 
         # Compute max norm (L∞) and L2 norm
         if self._batch_mode == 0:
-            l2_norm = torch.norm(self.delta, p=None)
-            max_norm = torch.norm(self.delta, p=float("inf"))
+            flat = self.delta.reshape(-1)
+            l2_norm = torch.linalg.vector_norm(flat, ord=2)
+            max_norm = torch.linalg.vector_norm(flat, ord=float("inf"))
         else:
-            # norm goes over all dims except first (batch dimension)
-            dims = tuple(range(-(self.delta.ndim - 1), 0))
-            l2_norm = torch.norm(self.delta, dim=dims)
-            max_norm = torch.norm(self.delta, p=float("inf"), dim=dims)
+            # Flatten all non-batch axes and compute per-system vector norms.
+            flat = self.delta.reshape(self.delta.shape[0], -1)
+            l2_norm = torch.linalg.vector_norm(flat, ord=2, dim=-1)
+            max_norm = torch.linalg.vector_norm(flat, ord=float("inf"), dim=-1)
 
         converged_l2 = l2_norm < self.options["x_tol"]
         converged_max = max_norm < self.options["x_tol_max"]

@@ -130,8 +130,9 @@ class DispersionD4(Dispersion):
             model = d4.model.D4Model(
                 numbers, ref_charges=self.ref_charges, **self.dd
             )
-        else:
-            model = model.type(self.dtype).to(self.device)
+
+        # Ensure externally provided models follow this component settings.
+        model = model.type(self.dtype).to(self.device)
 
         rcov = kwargs.pop("rcov", None)
         if rcov is not None and not isinstance(rcov, Tensor):
@@ -197,19 +198,32 @@ class DispersionD4(Dispersion):
 
         # FIXME: Charge should be REQUIRED for D4!
         if self.charge is None and "charge" not in kwargs:
-            charge = torch.tensor(0.0, **self.dd)
+            charge_input: Tensor | float | int | None = torch.tensor(
+                0.0, **self.dd
+            )
         else:
-            charge = kwargs.pop("charge", self.charge)
+            charge_input = kwargs.pop("charge", self.charge)
+
+        if charge_input is None:
+            charge = torch.tensor(0.0, **self.dd)
+        elif isinstance(charge_input, Tensor):
+            charge = charge_input.to(**self.dd)
+        else:
+            charge = torch.tensor(charge_input, **self.dd)
+
+        q_d4 = cache.q if q is None else q
+        if q_d4 is not None:
+            q_d4 = q_d4.to(**self.dd)
 
         return d4.dftd4(
             self.numbers,
-            positions,
+            positions.to(**self.dd),
             charge,
             self.param,
             model=cache.model,
             rcov=cache.rcov,
             r4r2=cache.r4r2,
-            q=cache.q if q is None else q,
+            q=q_d4,
             cutoff=cache.cutoff,
             counting_function=cache.counting_function,
             damping_function=cache.damping_function,

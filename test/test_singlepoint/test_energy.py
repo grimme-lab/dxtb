@@ -351,3 +351,91 @@ def test_uhf_single_gfn1(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name", ["H", "NO2"])
 def test_uhf_single_gfn2(dtype: torch.dtype, name: str) -> None:
     uhf_single(dtype, name, "gfn2")
+
+
+def rhf_vs_uhf_closed_shell(dtype: torch.dtype, name: str, gfn: str) -> None:
+    tol = sqrt(torch.finfo(dtype).eps) * 10
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    base = Path(Path(__file__).parent, "mols", name)
+    numbers, positions = read(
+        Path(base, "coord"), **dd, raise_padding_warning=False
+    )
+    charge = read_chrg(Path(base, ".CHRG"), **dd)
+
+    if gfn == "gfn1":
+        par = GFN1_XTB
+    elif gfn == "gfn2":
+        par = GFN2_XTB
+    else:
+        assert False
+
+    calc_rhf = Calculator(numbers, par, opts=opts, **dd)
+    result_rhf = calc_rhf.singlepoint(positions, charge)
+
+    calc_uhf = Calculator(numbers, par, opts={**opts, "uhf_mode": True}, **dd)
+    result_uhf = calc_uhf.singlepoint(positions, charge)
+
+    assert result_rhf.charges.nspin == 1
+    assert result_uhf.charges.nspin == 2
+    emo_rhf = result_rhf.emo.unsqueeze(-2).expand_as(result_uhf.emo)
+    assert (
+        pytest.approx(emo_rhf.cpu(), abs=tol, rel=tol) == result_uhf.emo.cpu()
+    )
+    assert (
+        pytest.approx(result_rhf.occupation.cpu(), abs=tol, rel=tol)
+        == result_uhf.occupation.cpu()
+    )
+    assert (
+        pytest.approx(result_rhf.total.sum(-1).cpu(), abs=tol, rel=tol)
+        == result_uhf.total.sum(-1).cpu()
+    )
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["H2", "CH4", "SiH4"])
+def test_rhf_vs_uhf_closed_shell_gfn1(dtype: torch.dtype, name: str) -> None:
+    rhf_vs_uhf_closed_shell(dtype, name, "gfn1")
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["H2", "CH4", "SiH4"])
+def test_rhf_vs_uhf_closed_shell_gfn2(dtype: torch.dtype, name: str) -> None:
+    rhf_vs_uhf_closed_shell(dtype, name, "gfn2")
+
+
+@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure"])
+@pytest.mark.parametrize("partition", ["equal", "atomic"])
+def test_rhf_vs_uhf_finite_temperature(scf_mode: str, partition: str) -> None:
+    dd: DD = {"device": DEVICE, "dtype": torch.double}
+    base = Path(Path(__file__).parent, "mols", "H2")
+    numbers, positions = read(
+        Path(base, "coord"), **dd, raise_padding_warning=False
+    )
+    charge = read_chrg(Path(base, ".CHRG"), **dd)
+    options = {
+        "verbosity": 0,
+        "scf_mode": scf_mode,
+        "scp_mode": "potential",
+        "fermi_etemp": 30000.0,
+        "fermi_partition": partition,
+    }
+
+    rhf = Calculator(numbers, GFN1_XTB, opts=options, **dd).singlepoint(
+        positions, charge
+    )
+    uhf = Calculator(
+        numbers, GFN1_XTB, opts={**options, "uhf_mode": True}, **dd
+    ).singlepoint(positions, charge)
+
+    torch.testing.assert_close(
+        uhf.emo, rhf.emo.unsqueeze(-2).expand_as(uhf.emo), rtol=1e-7, atol=1e-7
+    )
+    torch.testing.assert_close(
+        uhf.occupation, rhf.occupation, rtol=1e-7, atol=1e-7
+    )
+    torch.testing.assert_close(uhf.fenergy, rhf.fenergy, rtol=1e-7, atol=1e-7)
+    torch.testing.assert_close(
+        uhf.total.sum(-1), rhf.total.sum(-1), rtol=1e-7, atol=1e-7
+    )

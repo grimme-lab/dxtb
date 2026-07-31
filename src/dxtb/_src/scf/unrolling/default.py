@@ -34,7 +34,6 @@ from dxtb import OutputHandler
 from dxtb._src.components.interactions import Charges, Potential
 from dxtb._src.constants import defaults, labels
 from dxtb._src.typing import Literal, Slicers, Tensor, exceptions, overload
-from dxtb._src.utils import t2int
 
 from .base import BaseTSCF
 
@@ -95,8 +94,12 @@ class SelfConsistentFieldFull(BaseTSCF):
         else:
             q = q_new
 
-        # single-system (non-batched) case, which does not require culling
-        if batched == 0:
+        # UHF tensors carry an additional spin axis (or flatten that axis into
+        # the monopole vector). The batch-culling implementation below assumes
+        # RHF layouts when repacking converged systems, so keep UHF batches
+        # intact until every system has converged. Culling is an optimization;
+        # omitting it does not alter the SCF fixed point or gradient graph.
+        if batched == 0 or self._nspin > 1:
             for _ in range(maxiter):
                 q_new = fcn(q)
 
@@ -108,14 +111,14 @@ class SelfConsistentFieldFull(BaseTSCF):
 
                 q = self.mixer.iter(q_new, q)
 
-                if self.mixer.converged:
+                if self.mixer.converged.all():
                     # Do not return mixed charges here, but from last SCF call!
                     q_converged = q_new
                     break
 
                 if self.config.damp_dynamic is True:
                     # Switch off damping if the norm of the difference is small
-                    if self.mixer.delta_norm < 0.1:
+                    if (self.mixer.delta_norm < 0.1).all():
                         self.mixer.options["damp"] = (
                             self.config.damp_dynamic_factor
                         )
@@ -148,7 +151,7 @@ class SelfConsistentFieldFull(BaseTSCF):
         ch = torch.zeros_like(self._data.hamiltonian)
         cevals = torch.zeros_like(self._data.evals)
         cevecs = torch.zeros_like(self._data.evecs)
-        ce = torch.zeros_like(self._data.evals)
+        ce = torch.zeros_like(self._data.energy)
         co = torch.zeros_like(self._data.occupation)
         cd = torch.zeros_like(self._data.density)
         n0 = self._data.n0
@@ -192,6 +195,11 @@ class SelfConsistentFieldFull(BaseTSCF):
         # matrix even modify it for the culling process.
         mpdim = q.shape[1]
 
+        # Number of orbital entries in the trailing SCF tensor dimension.
+        # For UHF charge/potential vectors this may be larger than nao because
+        # alpha/beta channels are flattened into the monopole channel.
+        q_norb = q.shape[-1]
+
         # initialize slicers for culling
         slicers: Slicers = {
             "orbital": (...,),
@@ -222,13 +230,43 @@ class SelfConsistentFieldFull(BaseTSCF):
 
                 # save all necessary variables for converged system
                 iconv = idxs[conv]
-                q_converged[iconv, :mpdim, :norb] = q_new[conv, ..., :]
-                ch[iconv, :norb, :norb] = self._data.hamiltonian[conv, :, :]
-                cevecs[iconv, :norb, :norb] = self._data.evecs[conv, :, :]
-                cevals[iconv, :norb] = self._data.evals[conv, :]
-                ce[iconv, :norb] = self._data.energy[conv, :]
-                co[iconv, :norb, :norb] = self._data.occupation[conv, :, :]
-                cd[iconv, :norb, :norb] = self._data.density[conv, :, :]
+                int_norb = int(norb)
+                int_q_norb = int(q_norb)
+
+                if q_new.ndim == 3:
+                    q_converged[iconv, :mpdim, :int_q_norb] = q_new[
+                        conv, :mpdim, :int_q_norb
+                    ]
+                elif q_new.ndim == 4:
+                    q_converged[iconv, :mpdim, :int_q_norb, :int_q_norb] = (
+                        q_new[conv, :mpdim, :int_q_norb, :int_q_norb]
+                    )
+                else:  # pragma: no cover
+                    raise RuntimeError(
+                        f"Unsupported SCF tensor rank '{q_new.ndim}'."
+                    )
+
+                mat_idx_iconv = (
+                    iconv,
+                    ...,
+                    slice(0, int_norb),
+                    slice(0, int_norb),
+                )
+                mat_idx_conv = (
+                    conv,
+                    ...,
+                    slice(0, int_norb),
+                    slice(0, int_norb),
+                )
+                vec_idx_iconv = (iconv, ..., slice(0, int_norb))
+                vec_idx_conv = (conv, ..., slice(0, int_norb))
+
+                ch[mat_idx_iconv] = self._data.hamiltonian[mat_idx_conv]
+                cevecs[mat_idx_iconv] = self._data.evecs[mat_idx_conv]
+                cevals[vec_idx_iconv] = self._data.evals[vec_idx_conv]
+                ce[iconv, :int_norb] = self._data.energy[conv, :int_norb]
+                co[vec_idx_iconv] = self._data.occupation[vec_idx_conv]
+                cd[mat_idx_iconv] = self._data.density[mat_idx_conv]
 
                 # update convergence tracker
                 converged[iconv] = True
@@ -259,12 +297,29 @@ class SelfConsistentFieldFull(BaseTSCF):
                 # would severly mess up the shapes involved.
                 if q.shape[1] == 2:
                     norb_new = max(
-                        t2int(norb_new), t2int(nat_new) * defaults.DP_SHAPE
+                        int(norb_new), int(nat_new) * defaults.DP_SHAPE
                     )
                 elif q.shape[1] == 3:
                     norb_new = max(
-                        t2int(norb_new), t2int(nat_new) * defaults.QP_SHAPE
+                        int(norb_new), int(nat_new) * defaults.QP_SHAPE
                     )
+
+                if self.config.scp_mode == labels.SCP_MODE_FOCK:
+                    q_norb_new = int(norb_new)
+                else:
+                    q_norb_new = int(_norb_new)
+                    if self._nspin > 1:
+                        q_norb_new *= self._nspin
+                    if q.shape[1] >= 2:
+                        q_norb_new = max(
+                            q_norb_new,
+                            int(nat_new) * defaults.DP_SHAPE,
+                        )
+                    if q.shape[1] >= 3:
+                        q_norb_new = max(
+                            q_norb_new,
+                            int(nat_new) * defaults.QP_SHAPE,
+                        )
 
                 # If the largest system was culled from batch, cut the
                 # properties down to the new size to remove superfluous
@@ -275,6 +330,8 @@ class SelfConsistentFieldFull(BaseTSCF):
                     _norb = _norb_new
                     if self.config.scp_mode == labels.SCP_MODE_FOCK:
                         mpdim = norb
+                if q_norb > q_norb_new:
+                    q_norb = q_norb_new
                 if nsh > nsh_new:
                     slicers["shell"] = [slice(0, i) for i in [nsh_new]]
                     nsh = nsh_new
@@ -286,14 +343,28 @@ class SelfConsistentFieldFull(BaseTSCF):
                 self._data.cull(conv, slicers=slicers)
 
                 # cull local variables
-                q = q[~conv, :mpdim, :norb]
-                q_new = q_new[~conv, :mpdim, :norb]
+                int_q_norb = int(q_norb)
+                if q.ndim == 3:
+                    q = q[~conv, :mpdim, :int_q_norb]
+                    q_new = q_new[~conv, :mpdim, :int_q_norb]
+                elif q.ndim == 4:
+                    q = q[~conv, :mpdim, :int_q_norb, :int_q_norb]
+                    q_new = q_new[~conv, :mpdim, :int_q_norb, :int_q_norb]
+                else:  # pragma: no cover
+                    raise RuntimeError(
+                        f"Unsupported SCF tensor rank '{q.ndim}'."
+                    )
                 idxs = idxs[~conv]
 
                 if self._data.charges["mono"] is not None:
-                    self._data.charges["mono"] = torch.Size(
-                        (len(idxs), int(_norb))
-                    )
+                    if self._nspin > 1:
+                        self._data.charges["mono"] = torch.Size(
+                            (len(idxs), self._nspin, int(_norb))
+                        )
+                    else:
+                        self._data.charges["mono"] = torch.Size(
+                            (len(idxs), int(_norb))
+                        )
                 if self._data.charges["dipole"] is not None:
                     self._data.charges["dipole"] = torch.Size(
                         (len(idxs), int(nat), defaults.DP_SHAPE)
@@ -303,9 +374,14 @@ class SelfConsistentFieldFull(BaseTSCF):
                         (len(idxs), int(nat), defaults.QP_SHAPE)
                     )
                 if self._data.potential["mono"] is not None:
-                    self._data.potential["mono"] = torch.Size(
-                        (len(idxs), int(_norb))
-                    )
+                    if self._nspin > 1:
+                        self._data.potential["mono"] = torch.Size(
+                            (len(idxs), self._nspin, int(_norb))
+                        )
+                    else:
+                        self._data.potential["mono"] = torch.Size(
+                            (len(idxs), int(_norb))
+                        )
                 if self._data.potential["dipole"] is not None:
                     self._data.potential["dipole"] = torch.Size(
                         (len(idxs), int(nat), defaults.DP_SHAPE)
@@ -315,10 +391,10 @@ class SelfConsistentFieldFull(BaseTSCF):
                         (len(idxs), int(nat), defaults.QP_SHAPE)
                     )
 
-                # cull mixer (only contains orbital resolved properties)
-                self.mixer.cull(
-                    conv, slicers=slicers["orbital"], mpdim=int(mpdim)
-                )
+                # cull mixer using the SCF-vector extent (can differ from nao
+                # in UHF charge/potential mode)
+                mixer_slicer = [slice(0, int_q_norb)]
+                self.mixer.cull(conv, slicers=mixer_slicer, mpdim=int(mpdim))
 
         # handle unconverged case (`maxiter` iterations)
         else:
@@ -334,7 +410,19 @@ class SelfConsistentFieldFull(BaseTSCF):
             # are already culled, and hence, require no further indexing
             idxs = torch.arange(guess.size(0), device=self.device)
             iconv = idxs[~converged]
-            q_converged[iconv, ..., :norb] = q_new
+            int_q_norb = int(q_norb)
+            if q_new.ndim == 3:
+                q_converged[iconv, :mpdim, :int_q_norb] = q_new[
+                    ..., :int_q_norb
+                ]
+            elif q_new.ndim == 4:
+                q_converged[iconv, :mpdim, :int_q_norb, :int_q_norb] = q_new[
+                    ..., :int_q_norb, :int_q_norb
+                ]
+            else:  # pragma: no cover
+                raise RuntimeError(
+                    f"Unsupported SCF tensor rank '{q_new.ndim}'."
+                )
 
             # if nothing converged, skip culling
             if (~converged).all():
@@ -362,12 +450,27 @@ class SelfConsistentFieldFull(BaseTSCF):
                 idxs = torch.arange(guess.size(0), device=self.device)
                 iconv = idxs[~converged]
 
-                cevals[iconv, :norb] = self._data.evals
-                cevecs[iconv, :norb, :norb] = self._data.evecs
-                ce[iconv, :norb] = self._data.energy
-                ch[iconv, :norb, :norb] = self._data.hamiltonian
-                co[iconv, :norb, :norb] = self._data.occupation
-                cd[iconv, :norb, :norb] = self._data.density
+                int_norb = int(norb)
+                mat_idx_iconv = (
+                    iconv,
+                    ...,
+                    slice(0, int_norb),
+                    slice(0, int_norb),
+                )
+                vec_idx_iconv = (iconv, ..., slice(0, int_norb))
+
+                cevals[vec_idx_iconv] = self._data.evals[..., :int_norb]
+                cevecs[mat_idx_iconv] = self._data.evecs[
+                    ..., :int_norb, :int_norb
+                ]
+                ce[iconv, :int_norb] = self._data.energy[..., :int_norb]
+                ch[mat_idx_iconv] = self._data.hamiltonian[
+                    ..., :int_norb, :int_norb
+                ]
+                co[vec_idx_iconv] = self._data.occupation[..., :int_norb]
+                cd[mat_idx_iconv] = self._data.density[
+                    ..., :int_norb, :int_norb
+                ]
 
             self._data.evals = cevals
             self._data.evecs = cevecs

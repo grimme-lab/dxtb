@@ -63,6 +63,7 @@ class _Data:
         ihelp: IndexHelper,
         cache: InteractionListCache,
         integrals: IntegralMatrices,
+        nspin: int = 1,
     ) -> None:
         """
         Initialize the _Data object.
@@ -95,6 +96,7 @@ class _Data:
         self.numbers = numbers
         self.ihelp = ihelp
         self.cache = cache
+        self.nspin = nspin
         self.init_zeros()
 
         self.potential: ContainerData = {
@@ -118,12 +120,20 @@ class _Data:
         old_charges, old_energy, and old_density attributes with zeros.
         """
         self.energy = torch.zeros_like(self.n0)
-        self.hamiltonian = torch.zeros_like(self.ints.hcore)
-        self.density = torch.zeros_like(self.ints.hcore)
-        self.evals = torch.zeros_like(self.n0)
-        self.evecs = torch.zeros_like(self.ints.hcore)
+        hzero = torch.zeros_like(self.ints.hcore)
+        ezero = torch.zeros_like(self.n0)
+        if self.nspin > 1:
+            self.hamiltonian = torch.stack((hzero, hzero), dim=-3)
+            self.density = torch.stack((hzero, hzero), dim=-3)
+            self.evals = torch.stack((ezero, ezero), dim=-2)
+            self.evecs = torch.stack((hzero, hzero), dim=-3)
+        else:
+            self.hamiltonian = hzero
+            self.density = hzero
+            self.evals = ezero
+            self.evecs = hzero
 
-        self.old_charges = torch.zeros_like(self.energy)
+        self.old_charges = torch.zeros_like(self.occupation)
         self.old_energy = torch.zeros_like(self.numbers)
         self.old_density = torch.zeros_like(self.density)
 
@@ -145,27 +155,24 @@ class _Data:
         slicers : Slicers
             Slicer objects for selecting data from tensors.
         """
-        onedim = tuple([~conv, *slicers["orbital"]])
+        onedim = tuple([~conv, ..., *slicers["orbital"]])
         onedim_atom = tuple([~conv, *slicers["atom"]])
-        twodim = tuple([~conv, *slicers["orbital"], *slicers["orbital"]])
-        threedim = tuple(
-            [~conv, (...), *slicers["orbital"], *slicers["orbital"]]
-        )
+        twodim = tuple([~conv, ..., *slicers["orbital"], *slicers["orbital"]])
 
         # disable shape check temporarily for writing culled versions back
         self.ints.run_checks = False
         self.ints.overlap = self.ints.overlap[twodim]
         self.ints.hcore = self.ints.hcore[twodim]
         if self.ints.dipole is not None:
-            self.ints.dipole = self.ints.dipole[threedim]
+            self.ints.dipole = self.ints.dipole[twodim]
         if self.ints.quadrupole is not None:
-            self.ints.quadrupole = self.ints.quadrupole[threedim]
+            self.ints.quadrupole = self.ints.quadrupole[twodim]
         self.ints.run_checks = True
 
         self.numbers = self.numbers[onedim_atom]
         self.hamiltonian = self.hamiltonian[twodim]
         self.density = self.density[twodim]
-        self.occupation = self.occupation[twodim]
+        self.occupation = self.occupation[onedim]
         self.evecs = self.evecs[twodim]
         self.evals = self.evals[onedim]
         self.energy = self.energy[onedim]
