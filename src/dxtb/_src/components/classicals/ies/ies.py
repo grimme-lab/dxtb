@@ -227,7 +227,15 @@ class IES(Classical):
             device=positions.device,
             dtype=positions.dtype,
         )
-        cn = self.get_coordination_number(positions, cache)
+        cn = coordination_number(
+            cache.numbers,
+            positions,
+            counting_function=erf_count,
+            rcov=cache.rcov,
+            cutoff=self.cutoff,
+            cn_max=self.cn_max,
+            kcn=self.cn_kcn,
+        )
         _charges, energy = cache.eeq.solve(
             cache.numbers,
             positions,
