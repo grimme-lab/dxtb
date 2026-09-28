@@ -178,20 +178,6 @@ class IES(Classical):
         self.cache = IESCache(numbers, eeq, self.rcov[numbers], **self.dd)
         return self.cache
 
-    def get_coordination_number(
-        self, positions: Tensor, cache: IESCache
-    ) -> Tensor:
-        """Evaluate capped coordination numbers."""
-        return coordination_number(
-            cache.numbers,
-            positions,
-            counting_function=erf_count,
-            rcov=cache.rcov,
-            cutoff=self.cutoff,
-            cn_max=self.cn_max,
-            kcn=self.cn_kcn,
-        )
-
     @override
     def get_energy(
         self,
