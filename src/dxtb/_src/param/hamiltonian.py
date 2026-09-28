@@ -27,7 +27,7 @@ additional distance dependent function formed from the element parametrization.
 
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -69,8 +69,18 @@ class PHamiltonianXTB(BaseModel):
     kpol: float = 2.0
     """Scaling factor for polarization functions"""
 
-    enscale: float
+    enscale: Optional[float] = None
     """Electronegativity scaling factor for off-site valence blocks"""
+
+    kdiff: Optional[float] = None
+    """Scaling factor for a valence/non-valence shell pair."""
+
+    enshell: Optional[List[float]] = None
+    """Angular-momentum-dependent electronegativity coefficients."""
+
+    # TODO: check if this can also be replaced by using enscale and then in the code itself do it quartic, i.e. enscale**4
+    enscale4: Optional[float] = None
+    """Quartic electronegativity scaling factor."""
 
     cn: Optional[str] = None
     """Local environment descriptor for shifting the atomic self-energies"""

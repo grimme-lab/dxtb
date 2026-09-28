@@ -114,6 +114,7 @@ enable caching, pass ``{"cache_enabled": True}`` to the calculator options.
     or report the issue.
 """
 
+from dxtb._src.calculators.gfn0 import GFN0Calculator as GFN0Calculator
 from dxtb._src.calculators.gfn1 import GFN1Calculator as GFN1Calculator
 from dxtb._src.calculators.gfn2 import GFN2Calculator as GFN2Calculator
 from dxtb._src.calculators.types import (
@@ -126,6 +127,7 @@ from dxtb._src.calculators.types import (
 )
 
 __all__ = [
+    "GFN0Calculator",
     "GFN1Calculator",
     "GFN2Calculator",
     "AnalyticalCalculator",

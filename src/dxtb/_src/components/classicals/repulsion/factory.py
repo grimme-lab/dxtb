@@ -89,21 +89,42 @@ def new_repulsion(
         warnings.warn("No repulsion scheme found.", ParameterWarning)
         return None
 
+    effective = par.get("repulsion.effective")
     kexp = par.get("repulsion.effective.kexp")
     klight = (
-        par.get("repulsion.effective.klight")
-        if "klight" in par.get("repulsion.effective")
+        par.get("repulsion.effective.klight") if "klight" in effective else None
+    )
+    enscale = (
+        par.get("repulsion.effective.enscale")
+        if "enscale" in effective
         else None
     )
 
     # get parameters for unique species
     arep = par.get_elem_param(unique, "arep", pad_val=0)
     zeff = par.get_elem_param(unique, "zeff", pad_val=0)
+    en = (
+        par.get_elem_param(unique, "en", pad_val=0)
+        if enscale is not None
+        else None
+    )
 
     if cutoff is None:
-        cutoff = xtb.DEFAULT_REPULSION_CUTOFF
+        cutoff = (
+            par.get("repulsion.effective.cutoff")
+            if "cutoff" in effective
+            else xtb.DEFAULT_REPULSION_CUTOFF
+        )
     cutoff = any_to_tensor(cutoff, **dd)
 
-    if with_analytical_gradient is True:
-        return RepulsionAnalytical(arep, zeff, kexp, klight, cutoff, **dd)
-    return Repulsion(arep, zeff, kexp, klight, cutoff, **dd)
+    cls = RepulsionAnalytical if with_analytical_gradient else Repulsion
+    return cls(
+        arep,
+        zeff,
+        kexp,
+        klight=klight,
+        cutoff=cutoff,
+        en=en,
+        enscale=enscale,
+        **dd,
+    )

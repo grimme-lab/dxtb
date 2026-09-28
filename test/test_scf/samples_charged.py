@@ -32,6 +32,9 @@ class Refs(TypedDict):
     charge: Tensor
     """Total charge of the molecule"""
 
+    egfn0: Tensor
+    """SSCF/H0 energy for GFN0-xTB"""
+
     egfn1: Tensor
     """SCF energy for GFN1-xTB"""
 
@@ -46,26 +49,31 @@ class Record(Molecule, Refs):
 refs: dict[str, Refs] = {
     "Ag2Cl22-": {
         "charge": torch.tensor(-2.0),
+        "egfn0": torch.tensor(-2.6452073257039e01, dtype=torch.float64),
         "egfn1": torch.tensor(-2.5297870091005e01, dtype=torch.float64),
         "egfn2": torch.tensor(-2.6630938354884e01, dtype=torch.float64),
     },
     "Al3+Ar6": {
         "charge": torch.tensor(3.0),
+        "egfn0": torch.tensor(-2.8368130516232e01, dtype=torch.float64),
         "egfn1": torch.tensor(-3.6303223981129e01, dtype=torch.float64),
         "egfn2": torch.tensor(-2.5062823108448e01, dtype=torch.float64),
     },
     "AD7en+": {
         "charge": torch.tensor(1.0),
+        "egfn0": torch.tensor(-4.3763717901609e01, dtype=torch.float64),
         "egfn1": torch.tensor(-4.3226840214360e01, dtype=torch.float64),
         "egfn2": torch.tensor(-4.2927443646640e01, dtype=torch.float64),
     },
     "C2H4F+": {
         "charge": torch.tensor(1.0),
+        "egfn0": torch.tensor(-9.967191551181e00, dtype=torch.float64),
         "egfn1": torch.tensor(-1.1004178291636e01, dtype=torch.float64),
         "egfn2": torch.tensor(-1.0549228548747e01, dtype=torch.float64),
     },
     "ZnOOH-": {
         "charge": torch.tensor(-1.0),
+        "egfn0": torch.tensor(-8.136531688954e00, dtype=torch.float64),
         "egfn1": torch.tensor(-1.0913986485487e01, dtype=torch.float64),
         "egfn2": torch.tensor(-9.3774182834381e00, dtype=torch.float64),
     },

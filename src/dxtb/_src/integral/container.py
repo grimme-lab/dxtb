@@ -134,7 +134,11 @@ class Integrals(IntegralContainer):
         self.checks()
 
     def build_hcore(
-        self, positions: Tensor, with_overlap: bool = True, **kwargs
+        self,
+        positions: Tensor,
+        with_overlap: bool = True,
+        charge: Tensor | float | int | None = None,
+        **kwargs: Any,
     ) -> Tensor:
         logger.debug("Core Hamiltonian: Start building matrix.")
 
@@ -151,7 +155,7 @@ class Integrals(IntegralContainer):
         else:
             overlap = None
 
-        hcore = self.hcore.build(positions, overlap=overlap)
+        hcore = self.hcore.build(positions, overlap=overlap, charge=charge)
         logger.debug("Core Hamiltonian: All finished.")
         return hcore
 

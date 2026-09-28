@@ -30,6 +30,7 @@ from tad_mctc.batch import pack
 
 from dxtb import IndexHelper
 from dxtb._src.components.classicals import new_repulsion
+from dxtb._src.param.gfn0 import GFN0_XTB
 from dxtb._src.param.gfn1 import GFN1_XTB
 from dxtb._src.param.gfn2 import GFN2_XTB
 from dxtb._src.typing import DD, Literal
@@ -44,15 +45,16 @@ sample_list = [
     "ZnOOH-",
     "MB16_43_01",
     "MB16_43_02",
+    "MB16_43_03",
     "LYS_xao",
 ]
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", sample_list)
-@pytest.mark.parametrize("par", ["gfn1", "gfn2"])
+@pytest.mark.parametrize("par", ["gfn1", "gfn2", "gfn0"])
 def test_single(
-    dtype: torch.dtype, name: str, par: Literal["gfn1", "gfn2"]
+    dtype: torch.dtype, name: str, par: Literal["gfn1", "gfn2", "gfn0"]
 ) -> None:
     """Test repulsion calculation for single sample."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -68,6 +70,8 @@ def test_single(
         _par = GFN1_XTB
     elif par == "gfn2":
         _par = GFN2_XTB
+    elif par == "gfn0":
+        _par = GFN0_XTB
     else:
         assert False
 
@@ -84,9 +88,12 @@ def test_single(
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
-@pytest.mark.parametrize("par", ["gfn1", "gfn2"])
+@pytest.mark.parametrize("par", ["gfn1", "gfn2", "gfn0"])
 def test_batch(
-    dtype: torch.dtype, name1: str, name2: str, par: Literal["gfn1", "gfn2"]
+    dtype: torch.dtype,
+    name1: str,
+    name2: str,
+    par: Literal["gfn1", "gfn2", "gfn0"],
 ) -> None:
     """Test repulsion calculation for multiple samples."""
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -117,6 +124,8 @@ def test_batch(
         _par = GFN1_XTB
     elif par == "gfn2":
         _par = GFN2_XTB
+    elif par == "gfn0":
+        _par = GFN0_XTB
     else:
         assert False
 

@@ -43,12 +43,14 @@ from dxtb._src.typing import Any, PathLike, Self, Type
 # prefix to avoid name clashes with class names of actual implementations
 from .charge import PSecondOrder
 from .dispersion import PDispersion
+from .eeq import PEEQ
 from .element import Element
 from .halogen import PHalogen
 from .hamiltonian import PHamiltonian
 from .meta import Meta
 from .multipole import PMultipole
 from .repulsion import PRepulsion
+from .short_range import PShortRange
 from .solvation import PSolvation
 from .thirdorder import PThirdOrder
 
@@ -83,6 +85,9 @@ class Param(BaseModel):
     charge: Optional[PSecondOrder] = None
     """Definition of the isotropic second-order charge interactions."""
 
+    eeq: Optional[PEEQ] = None
+    """Definition of the electronegativity-equilibration charge model."""
+
     thirdorder: Optional[PThirdOrder] = None
     """Definition of the isotropic third-order charge interactions."""
 
@@ -97,6 +102,9 @@ class Param(BaseModel):
 
     solvation: Optional[PSolvation] = None
     """Definition of the solvation model."""
+
+    short_range: Optional[PShortRange] = None
+    """Definition of short-range corrections."""
 
     def clean_model_dump(self) -> dict[str, Any]:
         """

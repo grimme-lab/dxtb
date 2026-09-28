@@ -29,7 +29,7 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB, GFN2_XTB, Calculator
+from dxtb import GFN0_XTB, GFN1_XTB, GFN2_XTB, Calculator
 from dxtb._src.constants import labels
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD
@@ -61,6 +61,8 @@ def single(dtype: torch.dtype, name: str, gfn: str) -> None:
         par = GFN1_XTB
     elif gfn == "gfn2":
         par = GFN2_XTB
+    elif gfn == "gfn0":
+        par = GFN0_XTB
     else:
         assert False
 
@@ -84,6 +86,12 @@ def test_single_gfn2(dtype: torch.dtype, name: str) -> None:
     single(dtype, name, "gfn2")
 
 
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["H2", "LiH", "H2O", "CH4", "SiH4"])
+def test_single_gfn0(dtype: torch.dtype, name: str) -> None:
+    single(dtype, name, "gfn0")
+
+
 ##############################################################################
 
 
@@ -102,6 +110,8 @@ def single_medium(dtype: torch.dtype, name: str, mixer: str, gfn: str) -> None:
         par = GFN1_XTB
     elif gfn == "gfn2":
         par = GFN2_XTB
+    elif gfn == "gfn0":
+        par = GFN0_XTB
     else:
         assert False
 
@@ -131,6 +141,14 @@ def single_medium(dtype: torch.dtype, name: str, mixer: str, gfn: str) -> None:
 @pytest.mark.parametrize("mixer", ["anderson", "broyden", "simple"])
 def test_single_medium_gfn1(dtype: torch.dtype, name: str, mixer: str) -> None:
     single_medium(dtype, name, mixer, "gfn1")
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize(
+    "name", ["PbH4-BiH3", "C6H5I-CH3SH", "MB16_43_01", "LYS_xao"]
+)
+def test_single_medium_gfn0(dtype: torch.dtype, name: str) -> None:
+    single_medium(dtype, name, "anderson", "gfn0")
 
 
 # On macOS, this test recently started failing for no apparent reason for
@@ -175,6 +193,8 @@ def single_difficult(
         par = GFN1_XTB
     elif gfn == "gfn2":
         par = GFN2_XTB
+    elif gfn == "gfn0":
+        par = GFN0_XTB
     else:
         assert False
 
@@ -208,6 +228,12 @@ def test_single_difficult_1_gfn2(dtype: torch.dtype, name: str) -> None:
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["S2"])
+def test_single_difficult_1_gfn0(dtype: torch.dtype, name: str) -> None:
+    single_difficult(dtype, name, "gfn0", tol=1e-2)
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["LYS_xao_dist"])
 def test_single_difficult_2_gfn1(dtype: torch.dtype, name: str) -> None:
     single_difficult(dtype, name, "gfn1", tol=1e-3)
@@ -218,6 +244,12 @@ def test_single_difficult_2_gfn1(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name", ["LYS_xao_dist"])
 def test_single_difficult_2_gfn2(dtype: torch.dtype, name: str) -> None:
     single_difficult(dtype, name, "gfn2", tol=1e-3)
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["LYS_xao_dist"])
+def test_single_difficult_2_gfn0(dtype: torch.dtype, name: str) -> None:
+    single_difficult(dtype, name, "gfn0", tol=1e-3)
 
 
 ##############################################################################
@@ -238,6 +270,8 @@ def single_large(dtype: torch.dtype, name: str, gfn: str) -> None:
         par = GFN1_XTB
     elif gfn == "gfn2":
         par = GFN2_XTB
+    elif gfn == "gfn0":
+        par = GFN0_XTB
     else:
         assert False
 
@@ -268,6 +302,13 @@ def test_single_large_gfn1(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name", ["vancoh2"])
 def test_single_large_gfn2(dtype: torch.dtype, name: str) -> None:
     single_large(dtype, name, "gfn2")
+
+
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["vancoh2"])
+def test_single_large_gfn0(dtype: torch.dtype, name: str) -> None:
+    single_large(dtype, name, "gfn0")
 
 
 ##############################################################################
@@ -302,6 +343,8 @@ def batch(dtype: torch.dtype, name1: str, name2: str, gfn: str) -> None:
         par = GFN1_XTB
     elif gfn == "gfn2":
         par = GFN2_XTB
+    elif gfn == "gfn0":
+        par = GFN0_XTB
     else:
         assert False
 
@@ -325,6 +368,13 @@ def test_batch_gfn1(dtype: torch.dtype, name1: str, name2: str) -> None:
 @pytest.mark.parametrize("name2", ["LiH", "SiH4"])
 def test_batch_gfn2(dtype: torch.dtype, name1: str, name2: str) -> None:
     batch(dtype, name1, name2, "gfn2")
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name1", ["H2", "LiH"])
+@pytest.mark.parametrize("name2", ["LiH", "SiH4"])
+def test_batch_gfn0(dtype: torch.dtype, name1: str, name2: str) -> None:
+    batch(dtype, name1, name2, "gfn0")
 
 
 ##############################################################################
@@ -364,6 +414,8 @@ def batch_three(
         par = GFN1_XTB
     elif gfn == "gfn2":
         par = GFN2_XTB
+    elif gfn == "gfn0":
+        par = GFN0_XTB
     else:
         assert False
 
@@ -393,6 +445,16 @@ def test_batch_three_gfn2(
     dtype: torch.dtype, name1: str, name2: str, name3: str
 ) -> None:
     batch_three(dtype, name1, name2, name3, "gfn2")
+
+
+@pytest.mark.parametrize("dtype", [torch.float])
+@pytest.mark.parametrize("name1", ["H2"])
+@pytest.mark.parametrize("name2", ["LiH"])
+@pytest.mark.parametrize("name3", ["SiH4"])
+def test_batch_three_gfn0(
+    dtype: torch.dtype, name1: str, name2: str, name3: str
+) -> None:
+    batch_three(dtype, name1, name2, name3, "gfn0")
 
 
 ##############################################################################

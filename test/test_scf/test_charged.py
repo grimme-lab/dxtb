@@ -27,7 +27,7 @@ import numpy as np
 import pytest
 import torch
 
-from dxtb import GFN1_XTB, GFN2_XTB, Calculator
+from dxtb import GFN0_XTB, GFN1_XTB, GFN2_XTB, Calculator
 from dxtb._src.constants import labels
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD
@@ -59,6 +59,8 @@ def single(dtype: torch.dtype, name: str, gfn: str) -> None:
         par = GFN1_XTB
     elif gfn == "gfn2":
         par = GFN2_XTB
+    elif gfn == "gfn0":
+        par = GFN0_XTB
     else:
         assert False
 
@@ -84,6 +86,14 @@ def test_single_gfn1(dtype: torch.dtype, name: str) -> None:
 )
 def test_single_gfn2(dtype: torch.dtype, name: str) -> None:
     single(dtype, name, "gfn2")
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize(
+    "name", ["Ag2Cl22-", "Al3+Ar6", "AD7en+", "C2H4F+", "ZnOOH-"]
+)
+def test_single_gfn0(dtype: torch.dtype, name: str) -> None:
+    single(dtype, name, "gfn0")
 
 
 @pytest.mark.grad

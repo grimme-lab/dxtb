@@ -185,7 +185,10 @@ class Driver:
         if args.grad is True:
             positions.requires_grad = True
 
-        if config.method == labels.GFN1_XTB:
+        if config.method == labels.GFN0_XTB:
+            # pylint: disable=import-outside-toplevel
+            from dxtb import GFN0_XTB as par
+        elif config.method == labels.GFN1_XTB:
             # pylint: disable=import-outside-toplevel
             from dxtb import GFN1_XTB as par
         elif config.method == labels.GFN2_XTB:

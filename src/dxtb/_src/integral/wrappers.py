@@ -70,6 +70,8 @@ from dxtb import IndexHelper
 from dxtb._src.constants import labels
 from dxtb._src.param import Param
 from dxtb._src.typing import DD, Any, Literal, Tensor
+from dxtb._src.xtb.base import BaseHamiltonian
+from dxtb._src.xtb.gfn0 import GFN0Hamiltonian
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 from dxtb._src.xtb.gfn2 import GFN2Hamiltonian
 
@@ -80,7 +82,11 @@ __all__ = ["hcore", "overlap", "dipint", "quadint"]
 
 
 def hcore(
-    numbers: Tensor, positions: Tensor, par: Param, **kwargs: Any
+    numbers: Tensor,
+    positions: Tensor,
+    par: Param,
+    charge: Tensor | float | int | None = None,
+    **kwargs: Any,
 ) -> Tensor:
     """
     Shortcut for the core Hamiltonian matrix calculation.
@@ -93,6 +99,8 @@ def hcore(
         Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
     par : Param
         Representation of an extended tight-binding model.
+    charge : Tensor | float | int | None, optional
+        Total molecular charge required by GFN0 H0.
 
     Returns
     -------
@@ -124,7 +132,10 @@ def hcore(
     ihelp = IndexHelper.from_numbers(numbers, par)
 
     name = par.meta.name.casefold()
-    if name == "gfn1-xtb":
+    h0: BaseHamiltonian
+    if name == "gfn0-xtb":
+        h0 = GFN0Hamiltonian(numbers, par, ihelp, **dd, **kwargs)
+    elif name == "gfn1-xtb":
         h0 = GFN1Hamiltonian(numbers, par, ihelp, **dd, **kwargs)
     elif name == "gfn2-xtb":
         h0 = GFN2Hamiltonian(numbers, par, ihelp, **dd, **kwargs)
@@ -132,7 +143,7 @@ def hcore(
         raise ValueError(f"Unknown Hamiltonian type '{name}'.")
 
     ovlp = overlap(numbers, positions, par)
-    return h0.build(positions, ovlp.to(h0.device))
+    return h0.build(positions, ovlp.to(h0.device), charge=charge)
 
 
 def overlap(

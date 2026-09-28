@@ -170,17 +170,17 @@ class Basis(TensorLike):
             )
 
             # NOTE:
-            # This only works for GFN1 with H being the only element
+            # This only works for GFN0/GFN1 with H being the only element
             # with a non-valence shell. Otherwise the generation of
             # self.valence is not correct.
             # The correct way would be a map to show which orbital needs
             # to be orthogonalized w.r.t. another one.
             # Example: Si with 3s, 3p, 3d, 4p
             # angular = [0, 1, 2, 1]; ortho = [None, None, None, 1]
-            # However, it is probably only ever needed in GFN1. Other methods
-            # do not specifically orthogonalize certain basis functions.
+            # GFN0 and GFN1 both contain this duplicate hydrogen s shell.
             if self.meta is not None and self.meta.name is not None:
-                if "gfn1" in self.meta.name.casefold():
+                method = self.meta.name.casefold()
+                if "gfn0" in method or "gfn1" in method:
                     if self.valence[i].item() is False:
                         alpha, coeff = orthogonalize(
                             (alphas[i - 1], alpha),

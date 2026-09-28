@@ -39,7 +39,10 @@ class Refs(TypedDict):
     """Reference values for GFN1-xTB Hessian."""
 
     gfn2: Tensor
-    """Reference values for GFN1-xTB"""
+    """Reference values for GFN2-xTB"""
+
+    gfn0: Tensor
+    "Reference values for GFN0-xTB"
 
 
 class Record(Molecule, Refs):
@@ -50,12 +53,14 @@ refs: dict[str, Refs] = {
     "H2": {
         "gfn1": torch.tensor(2.2362490584964e-02),
         "gfn2": torch.tensor(3.8770781236977e-02),
+        "gfn0": torch.tensor(0.028841531341),
         "gfn1_grad": torch.tensor([]),
         "gfn1_hess": torch.tensor(0.0),
     },
     "LiH": {
         "gfn1": torch.tensor(0.0),
         "gfn2": torch.tensor(0.0),
+        "gfn0": torch.tensor(0.000886438318),
         "gfn1_grad": torch.tensor(
             [
                 [
@@ -116,6 +121,7 @@ refs: dict[str, Refs] = {
     "H2O": {
         "gfn1": torch.tensor(3.6764721202060e-02),
         "gfn2": torch.tensor(3.3793519342311e-02),
+        "gfn0": torch.tensor(0.035575791708),
         "gfn1_grad": torch.tensor(
             [
                 [
@@ -140,6 +146,7 @@ refs: dict[str, Refs] = {
     "SiH4": {
         "gfn1": torch.tensor(3.0331305861808766e-002),
         "gfn2": torch.tensor(3.1536555053538279e-002),
+        "gfn0": torch.tensor(0.036162301920),
         "gfn1_grad": torch.tensor(
             [
                 [
@@ -405,12 +412,14 @@ refs: dict[str, Refs] = {
         "gfn1_grad": torch.tensor(0.0),
         "gfn1_hess": torch.tensor(0.0),
         "gfn2": torch.tensor(2.2289239363144e-02),
+        "gfn0": torch.tensor(0.025303804436),
     },
     "LYS_xao": {
         "gfn1": torch.tensor(0.54175667737478617),
         "gfn1_hess": torch.tensor(0.0),
         "gfn1_grad": torch.tensor(0.0),
         "gfn2": torch.tensor(5.5376567296060e-01),
+        "gfn0": torch.tensor(0.576585078709),
     },
     "MB16_43_01": {
         "gfn1": torch.tensor(0.16777923624986593),
@@ -2808,18 +2817,21 @@ refs: dict[str, Refs] = {
             ]
         ),
         "gfn2": torch.tensor(0.15297938789402879),
+        "gfn0": torch.tensor(0.171352833714),
     },
     "MB16_43_02": {
         "gfn1": torch.tensor(0.12702003611285190),
         "gfn1_grad": torch.tensor(0.0),
         "gfn1_hess": torch.tensor(0.0),
         "gfn2": torch.tensor(0.10745931926703985),
+        "gfn0": torch.tensor(0.125227645735),
     },
     "MB16_43_03": {
-        "gfn1": torch.tensor(0.16600531760459214),
+        "gfn1": torch.tensor(0.15818907118271672),
         "gfn1_grad": torch.tensor(0.0),
         "gfn1_hess": torch.tensor(0.0),
-        "gfn2": torch.tensor(0.15818907118271672),
+        "gfn2": torch.tensor(0.16600531760459214),
+        "gfn0": torch.tensor(0.163048332482),
     },
 }
 

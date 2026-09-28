@@ -13,9 +13,11 @@ Creating a Calculator
 
 The constructor always requires the atomic numbers of the system(s) and a
 tight-binding parametrization.
-Currently, we provide the :data:`~dxtb.GFN1_XTB` and :data:`~dxtb.GFN2_XTB`
-parametrizations out of the box.
-If you directly use the corresponding
+Currently, we provide the :data:`~dxtb.GFN0_XTB`,
+:data:`~dxtb.GFN1_XTB`, and :data:`~dxtb.GFN2_XTB` parametrizations out of
+the box.
+If you directly use a corresponding method wrapper such as
+:class:`~dxtb.calculators.GFN0Calculator` or
 :class:`~dxtb.calculators.GFN1Calculator`, only the atomic numbers are required.
 
 .. code-block:: python

@@ -56,6 +56,9 @@ class Refs(TypedDict):
     edisp_d4atm: Tensor
     """Reference values for ATM term for GFN2 dispersion energy."""
 
+    edisp_2b: Tensor
+    """Reference values for 2-body dispersion energy for GFN0-xTB."""
+
 
 class Record(Molecule, Refs):
     """Store for molecular information and reference values"""
@@ -143,6 +146,7 @@ refs: dict[str, Refs] = {
             ],
             dtype=torch.double,
         ),
+        "edisp_2b": torch.tensor(-0.000113154222, dtype=torch.double),
     },
     "SiH4": {
         "c6": torch.tensor([]),
@@ -438,6 +442,7 @@ refs: dict[str, Refs] = {
             ],
             dtype=torch.double,
         ),
+        "edisp_2b": torch.tensor(-0.000488633227, dtype=torch.double),
     },
     "PbH4-BiH3": {
         "c6": torch.tensor(
@@ -1459,6 +1464,7 @@ refs: dict[str, Refs] = {
             ],
             dtype=torch.double,
         ),
+        "edisp_2b": torch.tensor(-0.001495905091, dtype=torch.double),
     },
     "C6H5I-CH3SH": {
         "c6": torch.tensor(
@@ -2047,6 +2053,7 @@ refs: dict[str, Refs] = {
             ],
             dtype=torch.double,
         ),
+        "edisp_2b": torch.tensor(-0.006474112211, dtype=torch.double),
     },
     "C4H5NCS": {
         "c6": torch.tensor([]),
@@ -2057,6 +2064,18 @@ refs: dict[str, Refs] = {
         "hessian": torch.tensor([]),
         "edisp_d4sc": torch.tensor([]),
         "edisp_d4atm": torch.tensor([]),
+        "edisp_2b": torch.tensor([]),
+    },
+    "vancoh2": {
+        "c6": torch.tensor([]),
+        "cn": torch.tensor([]),
+        "weights": torch.tensor([]),
+        "edisp": torch.tensor([]),
+        "grad": torch.tensor([]),
+        "hessian": torch.tensor([]),
+        "edisp_d4sc": torch.tensor([]),
+        "edisp_d4atm": torch.tensor([]),
+        "edisp_2b": torch.tensor(-0.178002591593, dtype=torch.double),
     },
     "MB16_43_01": {
         "c6": torch.tensor([]),
@@ -4519,6 +4538,7 @@ refs: dict[str, Refs] = {
             ],
             dtype=torch.double,
         ),
+        "edisp_2b": torch.tensor(-0.006310656763, dtype=torch.double),
     },
 }
 

@@ -156,14 +156,20 @@ class Config:
         self.max_element = max_element
 
         if isinstance(method, str):
-            if method.casefold() in labels.GFN1_XTB_STRS:
+            if method.casefold() in labels.GFN0_XTB_STRS:
+                self.method = labels.GFN0_XTB
+            elif method.casefold() in labels.GFN1_XTB_STRS:
                 self.method = labels.GFN1_XTB
             elif method.casefold() in labels.GFN2_XTB_STRS:
                 self.method = labels.GFN2_XTB
             else:
                 raise ValueError(f"Unknown xtb method '{method}'.")
         elif isinstance(method, int):
-            if method not in (labels.GFN1_XTB, labels.GFN2_XTB):
+            if method not in (
+                labels.GFN0_XTB,
+                labels.GFN1_XTB,
+                labels.GFN2_XTB,
+            ):
                 raise ValueError(f"Unknown xtb method '{method}'.")
 
             self.method = method

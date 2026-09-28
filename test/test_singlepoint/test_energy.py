@@ -28,7 +28,7 @@ import torch
 from tad_mctc import read, read_chrg
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB, GFN2_XTB, Calculator
+from dxtb import GFN0_XTB, GFN1_XTB, GFN2_XTB, Calculator
 from dxtb._src.constants import labels
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD
@@ -46,7 +46,12 @@ opts = {
 }
 
 
-def single(dtype: torch.dtype, name: str, gfn: str, scf_mode: str) -> None:
+def single(
+    dtype: torch.dtype,
+    name: str,
+    gfn: str,
+    scf_mode: str = labels.SCF_MODE_IMPLICIT_NON_PURE,
+) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
@@ -61,6 +66,8 @@ def single(dtype: torch.dtype, name: str, gfn: str, scf_mode: str) -> None:
         par = GFN1_XTB
     elif gfn == "gfn2":
         par = GFN2_XTB
+    elif gfn == "gfn0":
+        par = GFN0_XTB
     else:
         assert False
 
@@ -93,11 +100,20 @@ def test_single_gfn2(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     single(dtype, name, "gfn2", scf_mode)
 
 
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", slist)
+def test_single_gfn0(dtype: torch.dtype, name: str) -> None:
+    single(dtype, name, "gfn0")
+
+
 ##############################################################################
 
 
 def single_large(
-    dtype: torch.dtype, name: str, gfn: str, scf_mode: str
+    dtype: torch.dtype,
+    name: str,
+    gfn: str,
+    scf_mode: str = labels.SCF_MODE_IMPLICIT_NON_PURE,
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -113,6 +129,8 @@ def single_large(
         par = GFN1_XTB
     elif gfn == "gfn2":
         par = GFN2_XTB
+    elif gfn == "gfn0":
+        par = GFN0_XTB
     else:
         assert False
 
@@ -151,6 +169,13 @@ def test_single_large_gfn2(
     single_large(dtype, name, "gfn2", scf_mode)
 
 
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", slist_large)
+def test_single_large_gfn0(dtype: torch.dtype, name: str) -> None:
+    single_large(dtype, name, "gfn0")
+
+
 ##############################################################################
 
 
@@ -160,7 +185,7 @@ def batch(
     name2: str,
     name3: str,
     gfn: str,
-    scf_mode: str,
+    scf_mode: str = labels.SCF_MODE_IMPLICIT_NON_PURE,
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -190,6 +215,8 @@ def batch(
         par = GFN1_XTB
     elif gfn == "gfn2":
         par = GFN2_XTB
+    elif gfn == "gfn0":
+        par = GFN0_XTB
     else:
         assert False
 
@@ -230,6 +257,16 @@ def test_batch_gfn2(
     batch(dtype, name1, name2, name3, "gfn2", scf_mode)
 
 
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name1", ["H2", "H2O"])
+@pytest.mark.parametrize("name2", ["H2", "SiH4"])
+@pytest.mark.parametrize("name3", ["H2", "LiH"])
+def test_batch_gfn0(
+    dtype: torch.dtype, name1: str, name2: str, name3: str
+) -> None:
+    batch(dtype, name1, name2, name3, "gfn0")
+
+
 ##############################################################################
 
 
@@ -239,7 +276,7 @@ def batch_large(
     name2: str,
     name3: str,
     gfn: str,
-    scf_mode: str,
+    scf_mode: str = labels.SCF_MODE_IMPLICIT_NON_PURE,
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -270,6 +307,8 @@ def batch_large(
         par = GFN1_XTB
     elif gfn == "gfn2":
         par = GFN2_XTB
+    elif gfn == "gfn0":
+        par = GFN0_XTB
     else:
         assert False
 
@@ -312,6 +351,17 @@ def test_batch_large_gfn2(
     batch_large(dtype, name1, name2, name3, "gfn2", scf_mode)
 
 
+@pytest.mark.large
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name1", ["H2"])
+@pytest.mark.parametrize("name2", ["CH4"])
+@pytest.mark.parametrize("name3", ["LYS_xao"])
+def test_batch_large_gfn0(
+    dtype: torch.dtype, name1: str, name2: str, name3: str
+) -> None:
+    batch_large(dtype, name1, name2, name3, "gfn0")
+
+
 ##############################################################################
 
 
@@ -331,6 +381,8 @@ def uhf_single(dtype: torch.dtype, name: str, gfn: str) -> None:
         par = GFN1_XTB
     elif gfn == "gfn2":
         par = GFN2_XTB
+    elif gfn == "gfn0":
+        par = GFN0_XTB
     else:
         assert False
 
@@ -351,3 +403,9 @@ def test_uhf_single_gfn1(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name", ["H", "NO2"])
 def test_uhf_single_gfn2(dtype: torch.dtype, name: str) -> None:
     uhf_single(dtype, name, "gfn2")
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("name", ["H", "NO2"])
+def test_uhf_single_gfn0(dtype: torch.dtype, name: str) -> None:
+    uhf_single(dtype, name, "gfn0")

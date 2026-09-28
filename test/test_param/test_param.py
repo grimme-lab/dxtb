@@ -29,9 +29,11 @@ import tomli as toml
 import torch
 from tad_mctc.convert import symbol_to_number
 
-from dxtb import GFN1_XTB, GFN2_XTB, Calculator
+from dxtb import GFN0_XTB, GFN1_XTB, GFN2_XTB, Calculator
 from dxtb._src.param import Param
+from dxtb._src.param.eeq import PEEQ
 from dxtb._src.param.meta import Meta
+from dxtb._src.param.short_range import PShortRange, PShortRangeBond
 from dxtb._src.typing import DD
 
 try:
@@ -72,6 +74,21 @@ def test_builtin_gfn1() -> None:
     assert par.hamiltonian.xtb.enscale == -7.0e-3
 
     assert "Te" in par.element
+
+
+def test_builtin_gfn0() -> None:
+    """Keep EEQ separate from the self-consistent ES2 parameters."""
+    par = GFN0_XTB.model_copy(deep=True)
+
+    assert par.charge is None
+    assert isinstance(par.eeq, PEEQ)
+    assert par.eeq.cn == "erf"
+    assert par.eeq.cutoff == 40.0
+    assert par.eeq.cn_max == 8.0
+    assert par.eeq.kcn == 7.5
+
+    assert isinstance(par.short_range, PShortRange)
+    assert isinstance(par.short_range.srb, PShortRangeBond)
 
 
 def test_param_minimal() -> None:

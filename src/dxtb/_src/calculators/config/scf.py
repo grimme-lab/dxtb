@@ -141,6 +141,9 @@ class ConfigSCF:
     dtype: torch.dtype
     """Data type for calculations."""
 
+    eigen_options: dict[str, Any]
+    """Internal generalized eigensolver options populated by SCF dispatch."""
+
     def __init__(
         self,
         *,
@@ -355,6 +358,16 @@ class ConfigSCF:
             device=device,
             dtype=dtype,
         )
+
+    @property
+    def requires_iterations(self) -> bool:
+        """
+        Whether the selected tight-binding method requires SCF iterations.
+
+        GFN0-xTB is a non-self-consistent method. This property is derived
+        solely from :attr:`method` and intentionally has no setter.
+        """
+        return self.method != labels.GFN0_XTB
 
     def info(self) -> dict[str, Any]:
         """

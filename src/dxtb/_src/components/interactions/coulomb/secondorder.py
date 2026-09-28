@@ -1084,7 +1084,7 @@ def new_es2(
     if not isinstance(par, ParamModule):
         par = ParamModule(par, **dd)
 
-    if "charge" not in par or par.is_none("charge"):
+    if "charge" not in par or par.is_none("charge.effective"):
         return None
 
     if device is not None:

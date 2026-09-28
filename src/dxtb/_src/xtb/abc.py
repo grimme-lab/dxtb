@@ -73,7 +73,12 @@ class HamiltonianABC(ABC):
         """
 
     @abstractmethod
-    def build(self, positions: Tensor, overlap: Tensor | None = None) -> Tensor:
+    def build(
+        self,
+        positions: Tensor,
+        overlap: Tensor | None = None,
+        charge: Tensor | float | int | None = None,
+    ) -> Tensor:
         """
         Build the xTB Hamiltonian.
 
@@ -84,6 +89,9 @@ class HamiltonianABC(ABC):
         overlap : Tensor | None, optional
             Overlap matrix. If ``None``, the true xTB Hamiltonian is *not*
             built. Defaults to ``None``.
+        charge : Tensor | float | int | None, optional
+            Total molecular charge. Consumed by GFN0 and ignored by the
+            existing GFN1/GFN2 Hamiltonians.
 
         Returns
         -------

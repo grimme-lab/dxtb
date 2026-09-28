@@ -92,6 +92,23 @@ def solve(
         Orbital-resolved partial charges vector.
     """
     n0, occupation = get_refocc(refocc, chrg, spin, ihelp)
+
+    if config.requires_iterations is False:
+        # pylint: disable=import-outside-toplevel
+        from .nonselfconsistent import solve_nonselfconsistent
+
+        return solve_nonselfconsistent(
+            numbers,
+            interactions,
+            cache,
+            ihelp,
+            config,
+            integrals,
+            n0,
+            occupation,
+            **kwargs,
+        )
+
     charges = get_guess(numbers, positions, chrg, ihelp, config.guess)
 
     if not isinstance(config.scf_mode, int):

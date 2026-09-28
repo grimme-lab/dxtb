@@ -24,7 +24,7 @@ species.
 
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -62,12 +62,21 @@ class Element(BaseModel):
     kcn: List[float]
     """CN dependent shift of the self energy for each shell"""
 
+    kq: Optional[List[float]] = None
+    """Linear charge-dependent shift of the self energy for each shell."""
+
+    kqat: Optional[float] = None
+    """Quadratic atom-resolved charge shift of the self energy."""
+
+    h0rad: Optional[float] = None
+    """Atomic radius used by the GFN0 H0 distance polynomial."""
+
     ############################################################################
 
-    gam: float
+    gam: Optional[float] = None
     """Chemical hardness / Hubbard parameter."""
 
-    lgam: List[float]
+    lgam: Optional[List[float]] = None
     """Relative chemical hardness for each shell."""
 
     gam3: float = 0.0
@@ -88,6 +97,27 @@ class Element(BaseModel):
 
     en: float
     """Electronegativity."""
+
+    eeq_chi: Optional[float] = None
+    """Electronegativity of the main GFN0 EEQ model."""
+
+    eeq_eta: Optional[float] = None
+    """Chemical hardness of the main GFN0 EEQ model."""
+
+    eeq_kcn: Optional[float] = None
+    """Coordination-number dependence of the main GFN0 EEQ model."""
+
+    eeq_rad: Optional[float] = None
+    """Charge width of the main GFN0 EEQ model."""
+
+    srb_r0: Optional[float] = None
+    """Reference radius of the GFN0 short-range bond correction."""
+
+    srb_cnfak: Optional[float] = None
+    """Coordination-number radius shift of the GFN0 SRB correction."""
+
+    srb_en: Optional[float] = None
+    """Fitted electronegativity used by the GFN0 SRB correction."""
 
     ############################################################################
 

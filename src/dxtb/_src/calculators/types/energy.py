@@ -157,7 +157,7 @@ class EnergyCalculator(BaseCalculator):
 
             ccaches = self.classicals.get_cache(self.numbers, self.ihelp)
             cenergies = self.classicals.get_energy(
-                positions, ccaches, charge=chrg
+                positions, ccaches, charge=_chrg
             )
             result.cenergies = cenergies
             result.total += torch.stack(list(cenergies.values())).sum(0)
@@ -229,7 +229,7 @@ class EnergyCalculator(BaseCalculator):
         if self.opts.ints.level >= labels.INTLEVEL_HCORE:
             OutputHandler.write_stdout_nf(" - Core Hamiltonian  ... ", v=3)
             timer.start("Core Hamiltonian", parent_uid="Integrals")
-            self.integrals.build_hcore(positions)
+            self.integrals.build_hcore(positions, charge=_chrg)
             timer.stop("Core Hamiltonian")
             OutputHandler.write_stdout("done", v=3)
 
@@ -286,8 +286,13 @@ class EnergyCalculator(BaseCalculator):
         timer.stop("Interaction Cache")
         OutputHandler.write_stdout("done", v=3)
 
-        # SCF
-        OutputHandler.write_stdout("\nStarting SCF Iterations...", v=3)
+        # Electronic solve
+        if self.opts.scf.requires_iterations:
+            OutputHandler.write_stdout("\nStarting SCF Iterations...", v=3)
+        else:
+            OutputHandler.write_stdout(
+                "\nStarting non-self-consistent electronic solve...", v=3
+            )
 
         scf_results = scf.solve(
             self.numbers,
@@ -304,9 +309,14 @@ class EnergyCalculator(BaseCalculator):
 
         timer.stop("SCF")
         timer.cuda_sync = old_cuda_sync
-        OutputHandler.write_stdout(
-            f"SCF finished in {scf_results['iterations']} iterations.", v=3
-        )
+        if self.opts.scf.requires_iterations:
+            OutputHandler.write_stdout(
+                f"SCF finished in {scf_results['iterations']} iterations.", v=3
+            )
+        else:
+            OutputHandler.write_stdout(
+                "Non-self-consistent electronic solve finished.", v=3
+            )
 
         # store SCF results
         result.charges = scf_results["charges"]

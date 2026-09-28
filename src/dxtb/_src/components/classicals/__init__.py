@@ -21,13 +21,17 @@ Components: Classical contributions
 This module contains the classical energy contribution of xTB.
 The classical contribution currently comprise:
 
-- repulsion (GFN1-xTB, GFN2-xTB)
+- repulsion (GFN0-xTB, GFN1-xTB, GFN2-xTB)
 - halogen bonding correction (GFN1-xTB).
 - dispersion correction (GFN1-xTB, GFN2-xTB).
+- isotropic electrostatics (GFN0-xTB).
+- short-range bond correction (GFN0-xTB)
 """
 
 from .base import Classical, ClassicalCache
 from .dispersion import *
 from .halogen import *
+from .ies import *
 from .list import *
 from .repulsion import *
+from .shortrangebond import *

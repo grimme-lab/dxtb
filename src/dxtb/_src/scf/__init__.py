@@ -24,4 +24,7 @@ Definition of the self-consistent iterations.
 from .base import *
 from .guess import get_guess
 from .iterator import solve
+from .nonselfconsistent import (
+    solve_nonselfconsistent as solve_nonselfconsistent,
+)
 from .utils import get_density as get_density

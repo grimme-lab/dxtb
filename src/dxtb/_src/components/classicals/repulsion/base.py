@@ -142,6 +142,12 @@ class BaseRepulsion(Classical):
     the repulsion energy for light elements, i.e., H and He (only GFN2).
     """
 
+    en: Tensor | None
+    """Element-specific electronegativities used by optional EN scaling."""
+
+    enscale: Tensor | None
+    """Optional electronegativity-difference scaling of pair screening."""
+
     cutoff: Tensor | float | int
     """
     Real space cutoff for repulsion interactions.
@@ -149,7 +155,15 @@ class BaseRepulsion(Classical):
     :default: :data:`xtb.DEFAULT_REPULSION_CUTOFF`
     """
 
-    __slots__ = ["arep", "zeff", "kexp", "klight", "cutoff"]
+    __slots__ = [
+        "arep",
+        "zeff",
+        "kexp",
+        "klight",
+        "en",
+        "enscale",
+        "cutoff",
+    ]
 
     def __init__(
         self,
@@ -160,6 +174,9 @@ class BaseRepulsion(Classical):
         cutoff: Tensor | float | int = xtb.DEFAULT_REPULSION_CUTOFF,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
+        *,
+        en: Tensor | None = None,
+        enscale: Tensor | None = None,
     ) -> None:
         super().__init__(device, dtype)
 
@@ -168,6 +185,8 @@ class BaseRepulsion(Classical):
         self.kexp = kexp.to(**self.dd)
         self.cutoff = any_to_tensor(cutoff, **self.dd)
         self.klight = None if klight is None else klight.to(**self.dd)
+        self.en = None if en is None else en.to(**self.dd)
+        self.enscale = None if enscale is None else enscale.to(**self.dd)
 
     @override
     def get_cache(
@@ -230,6 +249,11 @@ class BaseRepulsion(Classical):
             torch.sqrt(arep.unsqueeze(-1) * arep.unsqueeze(-2) + eps),
             torch.tensor(0.0, **self.dd),
         )
+
+        if self.en is not None and self.enscale is not None:
+            en = ihelp.spread_uspecies_to_atom(self.en)
+            den2 = (en.unsqueeze(-1) - en.unsqueeze(-2)) ** 2
+            a = a * (1.0 + (0.01 * den2 + 0.01 * den2**2) * self.enscale)
 
         z = zeff.unsqueeze(-1) * zeff.unsqueeze(-2) * mask
         k = kexp.unsqueeze(-1) * kexp.new_ones(kexp.shape).unsqueeze(-2) * mask
