@@ -43,15 +43,6 @@ NONDET_TOL = 1e-7
 """Tolerance for non-deterministic tests."""
 
 
-# A bug in PyTorch 2.3.0 and 2.3.1 somehow requires manual import of
-# `torch._dynamo` to avoid errors with functorch in custom backward
-# functions. See https://github.com/pytorch/pytorch/issues/128607.
-from tad_mctc._version import __tversion__
-
-if __tversion__ in ((2, 3, 0), (2, 3, 1)):
-    import torch._dynamo
-
-
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Set up additional command line options."""
 
@@ -168,12 +159,7 @@ def pytest_configure(config: pytest.Config) -> None:
         DEVICE = torch.device("cuda:0")
         torch.use_deterministic_algorithms(False)
 
-        # `torch.set_default_tensor_type` is deprecated since 2.1.0 and version
-        # 2.0.0 introduces `torch.set_default_device`
-        if torch.__version__ < (2, 0, 0):  # type: ignore
-            torch.set_default_tensor_type("torch.cuda.FloatTensor")  # type: ignore
-        else:
-            torch.set_default_device(DEVICE)  # type: ignore[attr-defined]
+        torch.set_default_device(DEVICE)
     else:
         torch.use_deterministic_algorithms(True)
         DEVICE = None

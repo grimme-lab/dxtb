@@ -25,12 +25,10 @@ batched calculations.
 
 from __future__ import annotations
 
-import warnings
 from functools import wraps
 
 import torch
 
-from dxtb.__version__ import __tversion__
 from dxtb._src.typing import Gather, Protocol, ScatterOrGather, Tensor
 
 from .tensors import t2int
@@ -341,23 +339,8 @@ def scatter_reduce(
     fill_value: float | int | None = 0,
 ) -> Tensor:  # pragma: no cover
     """
-
-    .. warning::
-
-        `scatter_reduce` is only introduced in 1.11.1 and the API changes in
-        v12.1 in a BC-breaking way. `scatter_reduce` in 1.12.1 and 1.13.0 is
-        still in beta and CPU-only.
-
-        Related links:
-
-        - https://pytorch.org/docs/1.12/generated/torch.Tensor.scatter_reduce_.\
-          html#torch.Tensor.scatter_reduce_
-        - https://pytorch.org/docs/1.11/generated/torch.scatter_reduce.html
-        - https://github.com/pytorch/pytorch/releases/tag/v1.12.0
-          (section "Sparse")
-
-    Thin wrapper for pytorch's `scatter_reduce` function for handling API
-    changes.
+    Thin wrapper for pytorch's `scatter_reduce` function that allows to fill
+    indices that are not scattered to with a custom value.
 
     Parameters
     ----------
@@ -377,38 +360,17 @@ def scatter_reduce(
         Reduced tensor.
     """
 
-    if (1, 11, 0) <= __tversion__ < (1, 12, 0):  # type: ignore
-        actual_device = x.device
+    out_shape = list(x.shape)
+    out_shape[dim] = t2int(idx.max()) + 1
 
-        # account for CPU-only implementation
-        if "cuda" in str(actual_device):
-            x = x.to(torch.device("cpu"))
-            idx = idx.to(torch.device("cpu"))
-
-        output = torch.scatter_reduce(x, dim, idx, *args)  # type: ignore
-        output = output.to(actual_device)
-    elif __tversion__ >= (1, 12, 0) or __tversion__ >= (2, 0, 0):  # type: ignore
-        out_shape = list(x.shape)
-        out_shape[dim] = t2int(idx.max()) + 1
-
-        # filling the output is only necessary if the user wants to preserve
-        # the behavior in 1.11, where indices not scattered to are filled with
-        # reduction inits (sum: 0, prod: 1)
-        if fill_value is None:
-            out = torch.empty(out_shape, device=x.device, dtype=x.dtype)
-        else:
-            out = torch.full(
-                out_shape, fill_value, device=x.device, dtype=x.dtype
-            )
-
-        # stop warning about beta and possible API changes in 1.12
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            output = torch.scatter_reduce(out, dim, idx, x, *args)  # type: ignore
+    # filling the output is only necessary if indices that are not scattered to
+    # should hold a defined value
+    if fill_value is None:
+        out = torch.empty(out_shape, device=x.device, dtype=x.dtype)
     else:
-        raise RuntimeError(
-            f"Unsupported PyTorch version ({__tversion__}) used."
-        )
+        out = torch.full(out_shape, fill_value, device=x.device, dtype=x.dtype)
+
+    output = torch.scatter_reduce(out, dim, idx, x, *args)  # type: ignore
 
     return output
 

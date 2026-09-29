@@ -36,7 +36,6 @@ invalid for different geometries, but only for different atomic numbers.
 from __future__ import annotations
 
 import torch
-from tad_mctc._version import __tversion__
 from tad_mctc.math import einsum
 
 from dxtb._src.typing import Any, Tensor, override
@@ -128,11 +127,7 @@ class RepulsionAnalytical(Repulsion):
         Tensor
             (Atom-resolved) repulsion energy.
         """
-        _RepulsionAG = (
-            RepulsionAG_V1 if __tversion__ < (2, 0, 0) else RepulsionAG_V2
-        )  # pragma: no cover
-
-        e = _RepulsionAG.apply(
+        e = RepulsionAG.apply(
             positions,
             cache.mask,
             cache.arep,
@@ -147,11 +142,36 @@ class RepulsionAnalytical(Repulsion):
         return e
 
 
-class RepulsionAGBase(torch.autograd.Function):
+class RepulsionAG(torch.autograd.Function):
     """
-    Base class for the version-specific autograd function for repulsion energy.
-    Different PyTorch versions only require different `forward()` signatures.
+    Autograd function for repulsion energy.
     """
+
+    generate_vmap_rule = True
+    # https://pytorch.org/docs/master/notes/extending.func.html#automatically-generate-a-vmap-rule
+    # should work since we only use PyTorch operations
+
+    @staticmethod
+    def forward(
+        positions: Tensor,
+        mask: Tensor,
+        arep: Tensor,
+        kexp: Tensor,
+        zeff: Tensor,
+        cutoff: float,
+    ) -> Tensor:
+        with torch.enable_grad():
+            erep = repulsion_energy(positions, mask, arep, kexp, zeff, cutoff)
+
+        return erep.clone()
+
+    @staticmethod
+    def setup_context(ctx, inputs: tuple[Tensor, ...], output: Tensor) -> None:
+        positions, mask, arep, kexp, zeff, _ = inputs
+        erep = output
+
+        ctx.mark_non_differentiable(mask)
+        ctx.save_for_backward(erep, positions, mask, arep, kexp, zeff)
 
     @staticmethod
     def backward(ctx, grad_out: Tensor) -> tuple[
@@ -213,59 +233,3 @@ class RepulsionAGBase(torch.autograd.Function):
             )
 
         return positions_bar, None, arep_bar, kexp_bar, zeff_bar, None
-
-
-class RepulsionAG_V1(RepulsionAGBase):
-    """
-    Autograd function for repulsion energy.
-    """
-
-    @staticmethod
-    def forward(
-        ctx,
-        positions: Tensor,
-        mask: Tensor,
-        arep: Tensor,
-        kexp: Tensor,
-        zeff: Tensor,
-        cutoff: float,
-    ) -> Tensor:
-        with torch.enable_grad():
-            erep = repulsion_energy(positions, mask, arep, kexp, zeff, cutoff)
-
-        ctx.mark_non_differentiable(mask)
-        ctx.save_for_backward(erep, positions, mask, arep, kexp, zeff)
-
-        return erep.clone()
-
-
-class RepulsionAG_V2(RepulsionAGBase):
-    """
-    Autograd function for repulsion energy.
-    """
-
-    generate_vmap_rule = True
-    # https://pytorch.org/docs/master/notes/extending.func.html#automatically-generate-a-vmap-rule
-    # should work since we only use PyTorch operations
-
-    @staticmethod
-    def forward(
-        positions: Tensor,
-        mask: Tensor,
-        arep: Tensor,
-        kexp: Tensor,
-        zeff: Tensor,
-        cutoff: float,
-    ) -> Tensor:
-        with torch.enable_grad():
-            erep = repulsion_energy(positions, mask, arep, kexp, zeff, cutoff)
-
-        return erep.clone()
-
-    @staticmethod
-    def setup_context(ctx, inputs: tuple[Tensor, ...], output: Tensor) -> None:
-        positions, mask, arep, kexp, zeff, _ = inputs
-        erep = output
-
-        ctx.mark_non_differentiable(mask)
-        ctx.save_for_backward(erep, positions, mask, arep, kexp, zeff)

@@ -42,79 +42,98 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-        torch-version:
-          [
-            "2.0.1",
-            "2.1.2",
-            "2.2.2",
-            "2.3.1",
-            "2.4.1",
-            "2.5.1",
-            "2.6.0",
-            "2.7.1",
-            "2.8.0",
-            "2.9.1",
-            "2.10.0",
-          ]
-        exclude:
-          # Check latest versions here: https://download.pytorch.org/whl/torch/
+
+        # Only the newest PyTorch release is tested against every Python
+        # version. All other releases (PyTorch>=2.4.1 is supported) run on a
+        # single Python version each (see the `include` block below). This is
+        # sufficient because released wheels never change and no code path
+        # branches on the PyTorch version anymore.
+        #
+        # To restore the full (dense) matrix: swap in the commented-out
+        # `torch-version` list, add "3.8"/"3.9" back to `python-version`,
+        # delete the `include` block and uncomment the `exclude` block.
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        torch-version: ["2.14.0"]
+
+        # python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        # torch-version:
+        #   [
+        #     "2.4.1",
+        #     "2.5.1",
+        #     "2.6.0",
+        #     "2.7.1",
+        #     "2.8.0",
+        #     "2.9.1",
+        #     "2.10.0",
+        #     "2.11.0",
+        #     "2.12.1",
+        #     "2.13.0",
+        #     "2.14.0",
+        #   ]
+
+        include:
+          # Every other PyTorch release runs on the newest Python version it
+          # supports, which walks the staircase along the support boundary
+          # (check the registry for the supported range:
+          # https://download.pytorch.org/whl/torch/).
           #
-          # PyTorch issues:
-          # 3.11: https://github.com/pytorch/pytorch/issues/86566
-          # 3.12: https://github.com/pytorch/pytorch/issues/110436
-          # 3.13: https://github.com/pytorch/pytorch/issues/130249
-          #
-          # PyTorch>=2.5.0 does not support Python<3.9
-          - { python-version: "3.8", torch-version: "2.5.1" }
-          - { python-version: "3.8", torch-version: "2.6.0" }
-          - { python-version: "3.8", torch-version: "2.7.1" }
-          - { python-version: "3.8", torch-version: "2.8.0" }
-          - { python-version: "3.8", torch-version: "2.9.1" }
-          - { python-version: "3.8", torch-version: "2.10.0" }
+          # 3.13/2.7.1 is also the combination the coverage report is taken
+          # from, see the upload step below.
+          - { os: ubuntu-latest, python-version: "3.12", torch-version: "2.4.1" }
+          - { os: ubuntu-latest, python-version: "3.12", torch-version: "2.5.1" }
+          - { os: ubuntu-latest, python-version: "3.13", torch-version: "2.6.0" }
+          - { os: ubuntu-latest, python-version: "3.13", torch-version: "2.7.1" }
+          - { os: ubuntu-latest, python-version: "3.13", torch-version: "2.8.0" }
+          - { os: ubuntu-latest, python-version: "3.14", torch-version: "2.9.1" }
+          - { os: ubuntu-latest, python-version: "3.14", torch-version: "2.10.0" }
+          - { os: ubuntu-latest, python-version: "3.14", torch-version: "2.11.0" }
+          - { os: ubuntu-latest, python-version: "3.14", torch-version: "2.12.1" }
+          - { os: ubuntu-latest, python-version: "3.14", torch-version: "2.13.0" }
 
-          # PyTorch>=2.9.0 does not support Python<3.10
-          - { python-version: "3.9", torch-version: "2.9.1" }
-          - { python-version: "3.9", torch-version: "2.10.0" }
+          # Additional anchors for Python 3.8 and 3.9, which are covered only
+          # by their last supported release, 2.4.1 resp. 2.8.0 (see the
+          # compatibility table in the README).
+          - { os: ubuntu-latest, python-version: "3.8", torch-version: "2.4.1" }
+          - { os: ubuntu-latest, python-version: "3.9", torch-version: "2.8.0" }
 
-          # PyTorch<1.12.0 does only support Python<3.10
-          - { python-version: "3.10", torch-version: "1.11.0" }
-
-          # PyTorch<1.13.0 does only support Python<3.11 (Linux)
-          - { python-version: "3.11", torch-version: "1.11.0" }
-          - { python-version: "3.11", torch-version: "1.12.1" }
-
-          # PyTorch<2.2.0 does only support Python<3.12 (all platforms)
-          - { python-version: "3.12", torch-version: "1.11.0" }
-          - { python-version: "3.12", torch-version: "1.12.1" }
-          - { python-version: "3.12", torch-version: "1.13.1" }
-          - { python-version: "3.12", torch-version: "2.0.1" }
-          - { python-version: "3.12", torch-version: "2.1.2" }
-
-          # PyTorch<2.6.0 does only support Python<3.13
-          - { python-version: "3.13", torch-version: "1.11.0" }
-          - { python-version: "3.13", torch-version: "1.12.1" }
-          - { python-version: "3.13", torch-version: "1.13.1" }
-          - { python-version: "3.13", torch-version: "2.0.1" }
-          - { python-version: "3.13", torch-version: "2.1.2" }
-          - { python-version: "3.13", torch-version: "2.2.2" }
-          - { python-version: "3.13", torch-version: "2.3.1" }
-          - { python-version: "3.13", torch-version: "2.4.1" }
-          - { python-version: "3.13", torch-version: "2.5.1" }
-
-          # PyTorch<2.9.0 does only support Python<3.14
-          - { python-version: "3.14", torch-version: "1.11.0" }
-          - { python-version: "3.14", torch-version: "1.12.1" }
-          - { python-version: "3.14", torch-version: "1.13.1" }
-          - { python-version: "3.14", torch-version: "2.0.1" }
-          - { python-version: "3.14", torch-version: "2.1.2" }
-          - { python-version: "3.14", torch-version: "2.2.2" }
-          - { python-version: "3.14", torch-version: "2.3.1" }
-          - { python-version: "3.14", torch-version: "2.4.1" }
-          - { python-version: "3.14", torch-version: "2.5.1" }
-          - { python-version: "3.14", torch-version: "2.6.0" }
-          - { python-version: "3.14", torch-version: "2.7.1" }
-          - { python-version: "3.14", torch-version: "2.8.0" }
+        # Only needed for the dense matrix above.
+        #
+        # PyTorch issues:
+        # 3.11: https://github.com/pytorch/pytorch/issues/86566
+        # 3.12: https://github.com/pytorch/pytorch/issues/110436
+        # 3.13: https://github.com/pytorch/pytorch/issues/130249
+        #
+        # exclude:
+        #   # PyTorch>=2.5.0 does not support Python<3.9
+        #   - { python-version: "3.8", torch-version: "2.5.1" }
+        #   - { python-version: "3.8", torch-version: "2.6.0" }
+        #   - { python-version: "3.8", torch-version: "2.7.1" }
+        #   - { python-version: "3.8", torch-version: "2.8.0" }
+        #   - { python-version: "3.8", torch-version: "2.9.1" }
+        #   - { python-version: "3.8", torch-version: "2.10.0" }
+        #   - { python-version: "3.8", torch-version: "2.11.0" }
+        #   - { python-version: "3.8", torch-version: "2.12.1" }
+        #   - { python-version: "3.8", torch-version: "2.13.0" }
+        #   - { python-version: "3.8", torch-version: "2.14.0" }
+        #
+        #   # PyTorch>=2.9.0 does not support Python<3.10
+        #   - { python-version: "3.9", torch-version: "2.9.1" }
+        #   - { python-version: "3.9", torch-version: "2.10.0" }
+        #   - { python-version: "3.9", torch-version: "2.11.0" }
+        #   - { python-version: "3.9", torch-version: "2.12.1" }
+        #   - { python-version: "3.9", torch-version: "2.13.0" }
+        #   - { python-version: "3.9", torch-version: "2.14.0" }
+        #
+        #   # PyTorch<2.6.0 does only support Python<3.13
+        #   - { python-version: "3.13", torch-version: "2.4.1" }
+        #   - { python-version: "3.13", torch-version: "2.5.1" }
+        #
+        #   # PyTorch<2.9.0 does only support Python<3.14
+        #   - { python-version: "3.14", torch-version: "2.4.1" }
+        #   - { python-version: "3.14", torch-version: "2.5.1" }
+        #   - { python-version: "3.14", torch-version: "2.6.0" }
+        #   - { python-version: "3.14", torch-version: "2.7.1" }
+        #   - { python-version: "3.14", torch-version: "2.8.0" }
 
     runs-on: ${{ matrix.os }}
 
@@ -157,8 +176,8 @@ jobs:
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         if: >
-          matrix.python-version == '3.12' &&
-          matrix.torch-version == '2.10.0' &&
+          matrix.python-version == '3.14' &&
+          matrix.torch-version == '2.14.0' &&
           matrix.os == 'ubuntu-latest'
         with:
           name: coverage-data

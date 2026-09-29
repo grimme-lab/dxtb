@@ -24,13 +24,12 @@ import warnings
 
 import torch
 
-from dxtb.__version__ import __tversion__
 from dxtb._src.exlibs.xitorch import LinearOperator
 from dxtb._src.exlibs.xitorch._utils.bcast import get_bcasted_dims
 from dxtb._src.exlibs.xitorch._utils.exceptions import MathWarning
 from dxtb._src.exlibs.xitorch._utils.tensor import tallqr, to_fortran_order
 from dxtb._src.exlibs.xitorch.debug.modes import is_debug_enabled
-from dxtb._src.typing import Any, Sequence, Tensor
+from dxtb._src.typing import Sequence, Tensor
 from dxtb._src.utils.math import eigh
 
 __all__ = ["exacteig", "davidson"]
@@ -77,12 +76,23 @@ def exacteig(
 
 # temporary solution to https://github.com/pytorch/pytorch/issues/47599
 # TODO: Replace with tad_mctc.storch.eighb?
-class DegenSymeigBase(torch.autograd.Function):
+class DegenSymeig(torch.autograd.Function):
     """
-    Base class for the version-specific autograd function for solving a
-    eigenvalue problem with degenerate eigenvalues.
-    Different PyTorch versions only require different `forward()` signatures.
+    Autograd function for solving a eigenvalue problem with degenerate
+    eigenvalues.
     """
+
+    generate_vmap_rule = True
+
+    @staticmethod
+    def forward(A: Tensor) -> tuple[Tensor, Tensor]:
+        eival, eivec = eigh(A)
+        return eival, eivec
+
+    @staticmethod
+    def setup_context(ctx, inputs: tuple, outputs: tuple[Tensor, Tensor]):
+        eival, eivec = outputs
+        ctx.save_for_backward(eival, eivec)
 
     @staticmethod
     def backward(ctx, grad_eival, grad_eivec):
@@ -135,31 +145,7 @@ class DegenSymeigBase(torch.autograd.Function):
         return result
 
 
-class DegenSymeig_V1(DegenSymeigBase):
-    @staticmethod
-    def forward(ctx: Any, A: Tensor) -> tuple[Tensor, Tensor]:
-        eival, eivec = eigh(A)
-        ctx.save_for_backward(eival, eivec)
-
-        return eival, eivec
-
-
-class DegenSymeig_V2(DegenSymeigBase):
-    generate_vmap_rule = True
-
-    @staticmethod
-    def forward(A: Tensor) -> tuple[Tensor, Tensor]:
-        eival, eivec = eigh(A)
-        return eival, eivec
-
-    @staticmethod
-    def setup_context(ctx, inputs: tuple, outputs: tuple[Tensor, Tensor]):
-        eival, eivec = outputs
-        ctx.save_for_backward(eival, eivec)
-
-
 def _degen_symeig(A) -> tuple[Tensor, Tensor]:
-    DegenSymeig = DegenSymeig_V1 if __tversion__ < (2, 0, 0) else DegenSymeig_V2
     res = DegenSymeig.apply(A)
     assert res is not None
     return res[0], res[1]

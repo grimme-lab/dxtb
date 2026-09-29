@@ -25,7 +25,6 @@ import platform
 
 import torch
 
-from dxtb.__version__ import __tversion__
 from dxtb._src.typing import Any
 
 __all__ = [

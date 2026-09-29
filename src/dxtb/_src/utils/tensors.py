@@ -26,7 +26,6 @@ from __future__ import annotations
 import torch
 from tad_mctc.autograd.checks import is_batched, is_gradtracking
 
-from dxtb.__version__ import __tversion__
 from dxtb._src.typing import Tensor
 
 __all__ = ["t2int", "tensor_id"]
@@ -56,10 +55,6 @@ def tensor_id(x: Tensor) -> str:
     grad = int(x.requires_grad)
     v = x._version
     dtype = x.dtype
-
-    # No functorch before v2.0.0
-    if __tversion__ < (2, 0, 0):
-        return f"tensor(ptr={x.data_ptr()},v={v},grad={grad},dtype={dtype})"
 
     # Data pointer easily accessible without functorch
     if not is_gradtracking(x):

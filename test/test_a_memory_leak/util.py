@@ -27,7 +27,6 @@ import warnings
 
 import torch
 
-from dxtb.__version__ import __tversion__
 from dxtb._src.typing import Callable, Generator, Literal, Tensor, overload
 
 
@@ -89,10 +88,7 @@ def _get_tensor_memory(
         if tensor.is_sparse:
             continue
 
-        if __tversion__ < (2, 0, 0):
-            storage = tensor.storage()
-        else:
-            storage = tensor.untyped_storage()
+        storage = tensor.untyped_storage()
 
         # check if it has been visited
         data_ptr = storage.data_ptr()
