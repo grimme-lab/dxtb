@@ -24,6 +24,8 @@ theorem for the backward (see :mod:`.fixed_point`).
 
 from __future__ import annotations
 
+import torch
+
 from dxtb._src.components.interactions import Charges, Potential
 from dxtb._src.constants import labels
 from dxtb._src.typing import Tensor
@@ -67,9 +69,11 @@ class SelfConsistentFieldImplicit(BaseXSCF):
             return step(x)
 
         # The gradient cannot be more accurate than the converged SCF, hence
-        # the adjoint tolerance follows the SCF tolerance (unless given)
+        # the adjoint tolerance follows the SCF tolerance (unless given), but
+        # must stay above the round-off of the precision in use
+        eps = torch.finfo(guess.dtype).eps
         bck_options = {
-            "atol": max(1e-10, 1e-2 * self.config.f_atol),
+            "atol": max(1e-10, 1e-2 * self.config.f_atol, 100 * eps),
             **self.bck_options,
         }
 

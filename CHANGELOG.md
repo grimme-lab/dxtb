@@ -18,7 +18,7 @@
 - The old `implicit` code path (`scf/pure/iterator.py`: `scf_pure`,
   `scf_wrapper`, `run_scf`) and all use of xitorch's `equilibrium` and
   `RootFinder` in the SCF were removed. The forward solve still uses xitorch's
-  root solvers (default: `broyden1`), so iteration counts are unchanged. The
+  root solvers (default: `broyden1`); the forward solve is unchanged. The
   vendored xitorch `symeig` remains in use.
 
 ### Behaviour changes (these results were wrong before)
@@ -33,7 +33,8 @@
   change accordingly.
 - Derivatives with respect to the total charge no longer fail with
   `derivative for aten::heaviside is not implemented`.
-- `implicit` now reports the number of SCF iterations (it returned -1).
+- `implicit` now reports the number of SCF iterations (it returned -1), and
+  its converged energies agree with the previous non-pure results.
 - With `scp_mode="charge"`, the extra reconnecting mixing step of the
   implicit SCF uses a damping of 1e-5 (the removed pure implicit path used
   1e-4).

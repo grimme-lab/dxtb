@@ -73,10 +73,14 @@ def test_map_equals_iteration(
     assert seen == [True]
 
 
+@pytest.mark.parametrize("scp_mode", ["charge", "potential", "fock"])
 @pytest.mark.parametrize("mode", ["implicit", "full"])
 @pytest.mark.parametrize("create_graph", [False, True])
 def test_scf_object_freed_without_gc(
-    mode: str, create_graph: bool, monkeypatch: pytest.MonkeyPatch
+    mode: str,
+    create_graph: bool,
+    scp_mode: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """
     The SCF object (and with it everything it holds) is freed by reference
@@ -97,7 +101,7 @@ def test_scf_object_freed_without_gc(
     monkeypatch.setattr(BaseSCF, "__call__", spy)
 
     m = mols["H2O"]
-    opts = {"verbosity": 0, "scf_mode": mode}
+    opts = {"verbosity": 0, "scf_mode": mode, "scp_mode": scp_mode}
     calc = Calculator(m["numbers"].to(DEVICE), GFN1_XTB, opts=opts, **DD)
     pos = m["positions"].to(**DD).clone().requires_grad_(True)
 

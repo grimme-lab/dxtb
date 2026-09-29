@@ -77,15 +77,14 @@ class AdjointOptions:
 
     atol: float | None = None
     """
-    Absolute tolerance on the residual. Defaults to ``1e-9`` for double and
-    ``1e-4`` for lower precision.
+    Tolerance on the residual, relative to the largest entry of the right-hand
+    side (the system is linear in it). Defaults to ``1e-9`` for double and
+    ``1e-4`` for lower precision. Converged if
+    ``max|res| <= (atol + rtol) * max|rhs|`` for every system.
     """
 
     rtol: float | None = None
-    """
-    Tolerance relative to the largest entry of the update. Defaults to the
-    value of ``atol``.
-    """
+    """Second relative tolerance, added to ``atol``. Defaults to ``atol``."""
 
     history: int = 10
     """Number of previous iterates used in the Anderson mixing."""
@@ -359,6 +358,7 @@ class _ImplicitFixedPoint(torch.autograd.Function):
                     v.detach(),
                     opts,
                 )
+            previous = getattr(_LOCAL, "running", None)
             _LOCAL.running = ctx
             try:
                 grads = torch.autograd.grad(
@@ -370,7 +370,7 @@ class _ImplicitFixedPoint(torch.autograd.Function):
                     allow_unused=True,
                 )
             finally:
-                _LOCAL.running = None
+                _LOCAL.running = previous
 
         return (None, None, None, None, *grads)
 
