@@ -36,8 +36,6 @@ opts = {"verbosity": 0, "maxiter": 50, "exclude": ["rep", "disp", "hal"]}
 repeats = 5
 
 
-# FIXME: xitorch's memory leak
-@pytest.mark.xfail
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("run_gc", [False, True])

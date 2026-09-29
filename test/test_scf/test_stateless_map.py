@@ -67,13 +67,13 @@ def test_map_equals_iteration(
 
     m = mols["H2O"]
     par = GFN1_XTB if gfn == "gfn1" else GFN2_XTB
-    opts = {"verbosity": 0, "scf_mode": "nonpure", "scp_mode": scp_mode}
+    opts = {"verbosity": 0, "scf_mode": "implicit", "scp_mode": scp_mode}
     calc = Calculator(m["numbers"].to(DEVICE), par, opts=opts, **DD)
     calc.singlepoint(m["positions"].to(**DD), torch.tensor(0.0, **DD))
     assert seen == [True]
 
 
-@pytest.mark.parametrize("mode", ["nonpure", "full"])
+@pytest.mark.parametrize("mode", ["implicit", "full"])
 @pytest.mark.parametrize("create_graph", [False, True])
 def test_scf_object_freed_without_gc(
     mode: str, create_graph: bool, monkeypatch: pytest.MonkeyPatch
@@ -99,7 +99,7 @@ def test_scf_object_freed_without_gc(
     m = mols["H2O"]
     opts = {"verbosity": 0, "scf_mode": mode}
     calc = Calculator(m["numbers"].to(DEVICE), GFN1_XTB, opts=opts, **DD)
-    pos = m["positions"].to(**DD).requires_grad_(True)
+    pos = m["positions"].to(**DD).clone().requires_grad_(True)
 
     gc.collect()
     gc.disable()
@@ -122,7 +122,7 @@ def test_result_hamiltonian_matches_full(scp_mode: str) -> None:
     """Density, Hamiltonian and orbital energies of the results agree."""
     m = mols["H2O"]
     res = {}
-    for mode in ("nonpure", "full"):
+    for mode in ("implicit", "full"):
         tol = 1e-12
         opts = {
             "verbosity": 0,
@@ -137,5 +137,5 @@ def test_result_hamiltonian_matches_full(scp_mode: str) -> None:
             m["positions"].to(**DD), torch.tensor(0.0, **DD)
         )
     for key in ("hamiltonian", "density", "emo"):
-        a, b = getattr(res["nonpure"], key), getattr(res["full"], key)
+        a, b = getattr(res["implicit"], key), getattr(res["full"], key)
         assert torch.allclose(a, b, atol=1e-8, rtol=0), key

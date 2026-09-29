@@ -34,7 +34,7 @@ from .uhf_table import uhf_anion, uhf_cation
 opts = {
     "fermi_etemp": 300,
     "fermi_maxiter": 500,
-    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
+    "scf_mode": labels.SCF_MODE_IMPLICIT,
     "scp_mode": "potential",  # important for atoms (better convergence)
     "verbosity": 0,
 }
@@ -71,10 +71,6 @@ def test_element(dtype: torch.dtype, partition: str, number: int) -> None:
     o = dict(options, **{"scf_mode": "implicit_nonpure"})
     calc2 = Calculator(numbers, GFN1_XTB, opts=o, **dd)
     result2 = calc2.singlepoint(positions, charges)
-
-    # The xitorch path does not have access to the data object, and hence,
-    # cannot update the iteration count.
-    # assert pytest.approx(result1.iter) == result2.iter
 
     f1 = result1.fenergy.cpu()
     f2 = result2.fenergy.cpu()

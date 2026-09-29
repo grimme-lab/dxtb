@@ -43,7 +43,7 @@ ref_grad = np.load(HERE / "grad.npz")
 
 opts = {
     "maxiter": 50,
-    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
+    "scf_mode": labels.SCF_MODE_IMPLICIT,
     "scp_mode": labels.SCP_MODE_POTENTIAL,
     "verbosity": 0,
 }
@@ -53,7 +53,7 @@ opts = {
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "H2O", "CH4"])
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 def test_analytical(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     atol, rtol = 1e-5, 1e-4
@@ -65,7 +65,7 @@ def test_analytical(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["C60"])
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 def test_analytical_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     atol = rtol = sqrt(torch.finfo(dtype).eps)
@@ -77,7 +77,7 @@ def test_analytical_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["AD7en+", "LYS_xao"])
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 def test_analytical_large2(
     dtype: torch.dtype, name: str, scf_mode: str
@@ -134,7 +134,7 @@ def analytical(
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "H2O", "SiH4"])
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
 def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 50  # slightly larger for H2O!
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -179,7 +179,7 @@ def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("name", ["H2", "H2O", "CH4"])
-@pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.parametrize("scf_mode", ["implicit", "full"])
 def test_num(name: str, scf_mode: str) -> None:
     dtype = torch.double
     dd: DD = {"device": DEVICE, "dtype": dtype}

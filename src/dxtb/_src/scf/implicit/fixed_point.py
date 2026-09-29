@@ -59,11 +59,13 @@ from dataclasses import dataclass
 import torch
 from torch.autograd.function import once_differentiable
 
-from dxtb._src.exlibs.xitorch import optimize as xto
+from dxtb._src.exlibs.xitorch._utils.misc import get_method
+from dxtb._src.exlibs.xitorch.optimize.rootfinder import _RF_METHODS
 from dxtb import OutputHandler
 from dxtb._src.typing import Any, Callable, Mapping, Tensor
 
 __all__ = ["AdjointOptions", "equilibrium"]
+
 
 
 @dataclass
@@ -75,7 +77,7 @@ class AdjointOptions:
 
     atol: float | None = None
     """
-    Absolute tolerance on the residual. Defaults to ``1e-10`` for double and
+    Absolute tolerance on the residual. Defaults to ``1e-9`` for double and
     ``1e-4`` for lower precision.
     """
 
@@ -85,7 +87,7 @@ class AdjointOptions:
     value of ``atol``.
     """
 
-    history: int = 5
+    history: int = 10
     """Number of previous iterates used in the Anderson mixing."""
 
     batched: bool = False
@@ -108,7 +110,7 @@ class AdjointOptions:
     def tolerances(self, dtype: torch.dtype) -> tuple[float, float]:
         """Absolute and relative tolerance for a given dtype."""
         eps = torch.finfo(dtype).eps
-        atol = self.atol if self.atol is not None else (1e-10 if eps < 1e-10 else 1e-4)
+        atol = self.atol if self.atol is not None else (1e-9 if eps < 1e-10 else 1e-4)
         rtol = self.rtol if self.rtol is not None else atol
         return float(atol), float(rtol)
 
@@ -312,11 +314,17 @@ class _ImplicitFixedPoint(torch.autograd.Function):
         x_star: Tensor,
         fcn: Callable[[Tensor], Tensor],
         opts: AdjointOptions,
+        first: tuple[Tensor, Tensor],
         *params: Tensor,
     ) -> Tensor:
         out = x_star.clone()
         ctx.fcn = fcn
         ctx.opts = opts
+        # Evaluation of `g` at `x*` from the parameter discovery. Its graph
+        # ends at a detached leaf and the parameters, i.e., it holds nothing
+        # downstream of the output, and it saves one evaluation in the
+        # backward without `create_graph`.
+        ctx.first = first
         # saving the output (not as plain attribute) creates no reference cycle
         ctx.save_for_backward(out, *params)
         return out
@@ -324,7 +332,7 @@ class _ImplicitFixedPoint(torch.autograd.Function):
     @staticmethod
     def backward(ctx: Any, v: Tensor) -> tuple[Tensor | None, ...]:  # type: ignore[override]
         if getattr(_LOCAL, "running", None) is ctx:
-            return (None,) * (3 + len(ctx.saved_tensors) - 1)
+            return (None,) * (4 + len(ctx.saved_tensors) - 1)
 
         x, *params = ctx.saved_tensors
         fcn, opts = ctx.fcn, ctx.opts
@@ -336,8 +344,11 @@ class _ImplicitFixedPoint(torch.autograd.Function):
             # Only in the differentiable case, `x` carries its dependence on
             # `params` (through this Function), which yields the exact second
             # derivative. Otherwise, it must not re-enter this node.
-            z = x if cg else x.detach().requires_grad_(True)
-            f = fcn(z)
+            if cg:
+                z = x
+                f = fcn(z)
+            else:
+                z, f = ctx.first
             if cg:
                 lam = _AdjointSolve.apply(v, z, fcn, opts, *params)
             else:  # no graph needed: reuse this evaluation of `g`
@@ -361,7 +372,7 @@ class _ImplicitFixedPoint(torch.autograd.Function):
             finally:
                 _LOCAL.running = None
 
-        return (None, None, None, *grads)
+        return (None, None, None, None, *grads)
 
 
 def _grad_leaves(t: Tensor) -> list[Tensor]:
@@ -411,8 +422,9 @@ def equilibrium(
         Whether the first dimension enumerates independent systems (the
         adjoint convergence is then checked per system).
     **fwd_options : Any
-        Options of the forward solver (passed to xitorch's ``equilibrium``,
-        i.e., the same solver and iteration count as before).
+        Options of the forward solver (``method`` and the options of the
+        vendored xitorch root solvers, i.e., the same solver and iteration
+        count as before).
 
     Returns
     -------
@@ -420,8 +432,15 @@ def equilibrium(
         Solution ``y*``. If gradients are required, it is connected to the
         graph of all parameters of ``fcn`` and differentiable twice.
     """
+    fwd = dict(fwd_options)
+    solver = get_method("rootfinder", _RF_METHODS, fwd.pop("method", "broyden1"))
+
+    # root of `y - g(y)` (same function and solver as xitorch's equilibrium)
+    def root(y: Tensor) -> Tensor:
+        return y - fcn(y)
+
     with torch.no_grad():
-        x_star = xto.equilibrium(fcn=fcn, y0=y0.detach(), **fwd_options)
+        x_star = solver(root, y0.detach(), (), **fwd)
     x_star = x_star.detach()
 
     if on_converged is not None:
@@ -431,11 +450,11 @@ def equilibrium(
         return x_star
 
     # discover all parameters (autograd leaves) that `fcn` depends on
-    f = fcn(x_star)
-    params = _grad_leaves(f) if f.requires_grad else []
-    del f
+    z = x_star.clone().requires_grad_(True)
+    f = fcn(z)
+    params = [p for p in _grad_leaves(f) if p is not z]
     if not params:
         return x_star
 
     opts = AdjointOptions.from_mapping(bck_options, batched=batched)
-    return _ImplicitFixedPoint.apply(x_star, fcn, opts, *params)
+    return _ImplicitFixedPoint.apply(x_star, fcn, opts, (z, f), *params)

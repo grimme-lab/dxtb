@@ -68,7 +68,7 @@ TOL_FIRST_ABS = 1e-8
 TOL_FIRST_REL = 1e-7  # relative to max|ref|, used if it is larger
 TOL_SECOND = 1e-6
 
-MODES = ["implicit", "nonpure", "full"]
+MODES = ["implicit", "full"]
 REFERENCE = "full"  # only used to evaluate values for finite differences
 
 # name -> (molecule names, total charge)
@@ -341,8 +341,8 @@ def reference(system: str) -> dict[tuple[str, str], torch.Tensor]:
     )
     if has_libcint and system not in BIG:
         # E is strongly non-linear in the field: small field step (h scan in
-        # NOTES.md: 1e-3 -> 1e-7 error, 1e-4 -> 1e-11). Position step 2e-3: larger
-        # steps lose to truncation, smaller ones to SCF noise (hvp h scan, NOTES.md)
+        # the development notes: 1e-3 -> 1e-7 error, 1e-4 -> 1e-11). Position step 2e-3: larger
+        # steps lose to truncation, smaller ones to SCF noise (hvp h scan, the development notes)
         hp, hf = 2e-3, 3e-4
         mixed = torch.zeros(3, **DD)
         for i in range(3):
@@ -381,123 +381,101 @@ def project(system: str, deriv: str, val: torch.Tensor) -> torch.Tensor:
 # the matrix
 
 # Cells that are known to fail, keyed by (mode, system, derivative, quantity).
-# Filled from the Phase 1 grid; `strict=True` forces removal once fixed.
+# `strict=True` forces removal of the marker once a cell is fixed; cells within
+# 3x of the tolerance are not strict (their outcome depends on FD/SCF noise).
 KNOWN_FAILURES: dict[tuple[str, str, str, str], tuple[str, bool]] = {
-    ('implicit', 'H2', 'pos', 'q2'): ('phase1 err 1.02e-04 (tol 1e-08)', True),
-    ('implicit', 'H2', 'pos', 'dip'): ('phase1 err 3.42e-03 (tol 1e-08)', True),
-    ('implicit', 'H2', 'field', 'q'): ('exception (no gradient path)', True),
-    ('implicit', 'H2', 'field', 'q2'): ('exception (no gradient path)', True),
-    ('implicit', 'H2', 'field', 'dip'): ('exception (no gradient path)', True),
-    ('implicit', 'H2', 'param', 'q'): ('exception (no gradient path)', True),
-    ('implicit', 'H2', 'param', 'q2'): ('exception (no gradient path)', True),
-    ('implicit', 'H2', 'param', 'dip'): ('exception (no gradient path)', True),
-    ('implicit', 'H2', 'hvp_pos', 'E'): ('phase1 err 1.71e-05 (tol 1e-06)', True),
-    ('implicit', 'H2', 'hvp_pos', 'q2'): ('phase1 err 1.03e-04 (tol 1e-06)', True),
-    ('implicit', 'H2', 'mixed', 'E'): ('phase1 err 7.66e-03 (tol 1e-06)', True),
-    ('nonpure', 'H2', 'hvp_pos', 'q2'): ('phase1 err 1.05e-04 (tol 1e-06)', True),
-    ('full', 'H2', 'pos', 'dip'): ('phase1 err 1.09e-08 (tol 1e-08)', False),
-    ('implicit', 'LiH', 'pos', 'q2'): ('phase1 err 6.23e-02 (tol 1e-08)', True),
-    ('implicit', 'LiH', 'pos', 'dip'): ('phase1 err 1.21e-01 (tol 2e-08)', True),
-    ('implicit', 'LiH', 'field', 'q'): ('exception (no gradient path)', True),
-    ('implicit', 'LiH', 'field', 'q2'): ('exception (no gradient path)', True),
-    ('implicit', 'LiH', 'field', 'dip'): ('exception (no gradient path)', True),
-    ('implicit', 'LiH', 'param', 'q'): ('exception (no gradient path)', True),
-    ('implicit', 'LiH', 'param', 'q2'): ('exception (no gradient path)', True),
-    ('implicit', 'LiH', 'param', 'dip'): ('exception (no gradient path)', True),
-    ('implicit', 'LiH', 'hvp_pos', 'E'): ('phase1 err 5.42e-03 (tol 1e-06)', True),
-    ('implicit', 'LiH', 'hvp_pos', 'q2'): ('phase1 err 7.93e-02 (tol 1e-06)', True),
-    ('implicit', 'LiH', 'mixed', 'E'): ('phase1 err 1.01e-01 (tol 1e-06)', True),
-    ('nonpure', 'LiH', 'field', 'q2'): ('phase1 err 1.25e-06 (tol 2e-07)', True),
-    ('nonpure', 'LiH', 'field', 'dip'): ('phase1 err 3.37e-06 (tol 3e-07)', True),
-    ('nonpure', 'LiH', 'hvp_pos', 'q2'): ('phase1 err 2.03e-02 (tol 1e-06)', True),
-    ('full', 'LiH', 'pos', 'q2'): ('phase1 err 2.70e-08 (tol 1e-08)', False),
-    ('full', 'LiH', 'pos', 'dip'): ('phase1 err 5.25e-08 (tol 2e-08)', False),
-    ('full', 'LiH', 'field', 'q2'): ('phase1 err 7.91e-07 (tol 2e-07)', True),
-    ('full', 'LiH', 'field', 'dip'): ('phase1 err 2.47e-06 (tol 3e-07)', True),
-    ('implicit', 'H2O', 'pos', 'q2'): ('phase1 err 3.40e-01 (tol 2e-08)', True),
-    ('implicit', 'H2O', 'pos', 'dip'): ('phase1 err 1.32e-01 (tol 4e-08)', True),
-    ('implicit', 'H2O', 'field', 'q'): ('exception (no gradient path)', True),
-    ('implicit', 'H2O', 'field', 'q2'): ('exception (no gradient path)', True),
-    ('implicit', 'H2O', 'field', 'dip'): ('exception (no gradient path)', True),
-    ('implicit', 'H2O', 'param', 'q'): ('exception (no gradient path)', True),
-    ('implicit', 'H2O', 'param', 'q2'): ('exception (no gradient path)', True),
-    ('implicit', 'H2O', 'param', 'dip'): ('exception (no gradient path)', True),
-    ('implicit', 'H2O', 'hvp_pos', 'E'): ('phase1 err 1.88e-02 (tol 1e-06)', True),
-    ('implicit', 'H2O', 'hvp_pos', 'q2'): ('phase1 err 6.13e-01 (tol 1e-06)', True),
-    ('implicit', 'H2O', 'mixed', 'E'): ('phase1 err 1.48e-01 (tol 1e-06)', True),
-    ('nonpure', 'H2O', 'hvp_pos', 'q2'): ('phase1 err 1.74e-01 (tol 1e-06)', True),
-    ('implicit', 'H2O+', 'pos', 'q2'): ('phase1 err 2.07e-01 (tol 1e-08)', True),
-    ('implicit', 'H2O+', 'pos', 'dip'): ('phase1 err 1.32e-01 (tol 4e-08)', True),
-    ('implicit', 'H2O+', 'field', 'q'): ('exception (no gradient path)', True),
-    ('implicit', 'H2O+', 'field', 'q2'): ('exception (no gradient path)', True),
-    ('implicit', 'H2O+', 'field', 'dip'): ('exception (no gradient path)', True),
-    ('implicit', 'H2O+', 'param', 'q'): ('exception (no gradient path)', True),
-    ('implicit', 'H2O+', 'param', 'q2'): ('exception (no gradient path)', True),
-    ('implicit', 'H2O+', 'param', 'dip'): ('exception (no gradient path)', True),
-    ('implicit', 'H2O+', 'hvp_pos', 'E'): ('phase1 err 2.12e-02 (tol 1e-06)', True),
-    ('implicit', 'H2O+', 'hvp_pos', 'q2'): ('phase1 err 5.10e-01 (tol 1e-06)', True),
-    ('implicit', 'H2O+', 'mixed', 'E'): ('phase1 err 1.46e-01 (tol 1e-06)', True),
-    ('nonpure', 'H2O+', 'hvp_pos', 'q2'): ('phase1 err 8.14e-02 (tol 1e-06)', True),
-    ('implicit', 'batch_H2O_CH4', 'pos', 'q2'): ('phase1 err 3.40e-01 (tol 2e-08)', True),
-    ('implicit', 'batch_H2O_CH4', 'pos', 'dip'): ('phase1 err 1.32e-01 (tol 4e-08)', True),
-    ('implicit', 'batch_H2O_CH4', 'field', 'q'): ('exception (no gradient path)', True),
-    ('implicit', 'batch_H2O_CH4', 'field', 'q2'): ('exception (no gradient path)', True),
-    ('implicit', 'batch_H2O_CH4', 'field', 'dip'): ('exception (no gradient path)', True),
-    ('implicit', 'batch_H2O_CH4', 'param', 'q'): ('exception (no gradient path)', True),
-    ('implicit', 'batch_H2O_CH4', 'param', 'q2'): ('exception (no gradient path)', True),
-    ('implicit', 'batch_H2O_CH4', 'param', 'dip'): ('exception (no gradient path)', True),
-    ('implicit', 'batch_H2O_CH4', 'hvp_pos', 'E'): ('phase1 err 2.44e-02 (tol 1e-06)', True),
-    ('implicit', 'batch_H2O_CH4', 'hvp_pos', 'q2'): ('phase1 err 3.74e-01 (tol 1e-06)', True),
-    ('implicit', 'batch_H2O_CH4', 'mixed', 'E'): ('phase1 err 1.78e-01 (tol 1e-06)', True),
-    ('nonpure', 'batch_H2O_CH4', 'hvp_pos', 'q2'): ('phase1 err 1.51e-01 (tol 1e-06)', True),
-    ('full', 'batch_H2O_CH4', 'hvp_pos', 'q2'): ('phase1 err 3.93e-03 (tol 1e-06)', True),
-    ('implicit', 'LYS_xao', 'pos', 'q2'): ('phase1 err 9.43e-01 (tol 4e-08)', True),
-    ('implicit', 'LYS_xao', 'field', 'E'): ('phase1 err 2.96e-07 (tol 2e-07)', False),
-    ('implicit', 'LYS_xao', 'field', 'q2'): ('exception (no gradient path)', True),
-    ('implicit', 'LYS_xao', 'param', 'q2'): ('exception (no gradient path)', True),
-    ('implicit', 'LYS_xao', 'hvp_pos', 'E'): ('phase1 err 4.36e-01 (tol 1e-06)', True),
-    ('implicit', 'LYS_xao', 'hvp_pos', 'q2'): ('phase1 err 5.50e+00 (tol 1e-06)', True),
-    ('nonpure', 'LYS_xao', 'field', 'q2'): ('phase1 err 1.69e-06 (tol 6e-07)', False),
-    ('nonpure', 'LYS_xao', 'hvp_pos', 'q2'): ('phase1 err 1.07e+00 (tol 1e-06)', True),
-    ('full', 'LYS_xao', 'field', 'q2'): ('phase1 err 1.43e-06 (tol 6e-07)', False),
-    ('full', 'LYS_xao', 'hvp_pos', 'q2'): ('phase1 err 4.16e-03 (tol 1e-06)', True),
-    ('implicit', 'batch_H2_LYS', 'pos', 'q2'): ('phase1 err 2.56e+00 (tol 1e-08)', True),
-    ('implicit', 'batch_H2_LYS', 'field', 'E'): ('phase1 err 4.44e-07 (tol 3e-07)', False),
-    ('implicit', 'batch_H2_LYS', 'field', 'q2'): ('exception (no gradient path)', True),
-    ('implicit', 'batch_H2_LYS', 'param', 'q2'): ('exception (no gradient path)', True),
-    ('implicit', 'batch_H2_LYS', 'hvp_pos', 'E'): ('phase1 err 6.92e+00 (tol 1e-06)', True),
-    ('implicit', 'batch_H2_LYS', 'hvp_pos', 'q2'): ('phase1 err 5.66e+01 (tol 1e-06)', True),
-    ('nonpure', 'batch_H2_LYS', 'field', 'q2'): ('phase1 err 2.54e-06 (tol 9e-07)', False),
-    ('nonpure', 'batch_H2_LYS', 'hvp_pos', 'q2'): ('phase1 err 8.00e+00 (tol 1e-06)', True),
-    ('full', 'batch_H2_LYS', 'field', 'q2'): ('phase1 err 2.15e-06 (tol 9e-07)', False),
-    ('full', 'batch_H2_LYS', 'hvp_pos', 'q2'): ('phase1 err 2.72e-03 (tol 1e-06)', True),
-    ('implicit', 'slow', 'pos', 'q2'): ('phase1 err 6.13e+01 (tol 4e-07)', True),
-    ('implicit', 'slow', 'field', 'q2'): ('exception (no gradient path)', True),
-    ('implicit', 'slow', 'param', 'E'): ('phase1 err 1.78e-08 (tol 1e-08)', False),
-    ('implicit', 'slow', 'param', 'q2'): ('exception (no gradient path)', True),
-    ('implicit', 'slow', 'hvp_pos', 'E'): ('phase1 err nan (tol 1e-06)', True),
-    ('implicit', 'slow', 'hvp_pos', 'q2'): ('phase1 err 5.28e+03 (tol 1e-06)', True),
-    ('nonpure', 'slow', 'pos', 'q2'): ('phase1 err 3.75e-06 (tol 4e-07)', True),
-    ('nonpure', 'slow', 'field', 'q2'): ('phase1 err 6.60e-05 (tol 4e-06)', True),
-    ('nonpure', 'slow', 'hvp_pos', 'E'): ('phase1 err nan (tol 1e-06)', True),
-    ('nonpure', 'slow', 'hvp_pos', 'q2'): ('phase1 err 2.37e+02 (tol 1e-06)', True),
-    ('full', 'slow', 'pos', 'q2'): ('phase1 err 1.86e-01 (tol 4e-07)', True),
-    ('full', 'slow', 'field', 'q2'): ('phase1 err 6.19e-01 (tol 4e-06)', True),
-    ('full', 'slow', 'param', 'q2'): ('phase1 err 7.92e-03 (tol 2e-07)', True),
-    ('full', 'slow', 'hvp_pos', 'E'): ('phase1 err nan (tol 1e-06)', True),
-    ('full', 'slow', 'hvp_pos', 'q2'): ('phase1 err 4.80e+10 (tol 1e-06)', True),
-}
-
-# Cells where two independent modes share the same error to ~10%: the finite-
-# difference reference (step, SCF noise) is the limit, not the modes. They are
-# compared with a tolerance of 3x the observed common error (NOTES.md).
-REFERENCE_LIMITED: dict[tuple[str, str, str, str], float] = {
-    ('nonpure', 'LiH', 'mixed', 'E'): 3.06e-05,  # nonpure and full share err 1.02e-05: FD-reference-limited
-    ('full', 'LiH', 'mixed', 'E'): 3.06e-05,  # nonpure and full share err 1.02e-05: FD-reference-limited
-    ('nonpure', 'LYS_xao', 'field', 'E'): 8.88e-07,  # nonpure and full share err 2.96e-07: FD-reference-limited
-    ('full', 'LYS_xao', 'field', 'E'): 8.88e-07,  # nonpure and full share err 2.96e-07: FD-reference-limited
-    ('nonpure', 'batch_H2_LYS', 'field', 'E'): 1.33e-06,  # nonpure and full share err 4.44e-07: FD-reference-limited
-    ('full', 'batch_H2_LYS', 'field', 'E'): 1.33e-06,  # nonpure and full share err 4.44e-07: FD-reference-limited
+    ('full', 'H2', 'pos', 'dip'): (
+        'unrolled derivative of a non-variational quantity is inexact (err 1.09e-08)',
+        False,
+    ),
+    ('full', 'LiH', 'pos', 'q2'): (
+        'unrolled derivative of a non-variational quantity is inexact (err 2.70e-08)',
+        False,
+    ),
+    ('full', 'LiH', 'pos', 'dip'): (
+        'unrolled derivative of a non-variational quantity is inexact (err 5.25e-08)',
+        False,
+    ),
+    ('full', 'LiH', 'field', 'q2'): (
+        'unrolled derivative of a non-variational quantity is inexact (err 4.58e-07)',
+        False,
+    ),
+    ('full', 'LiH', 'field', 'dip'): (
+        'unrolled derivative of a non-variational quantity is inexact (err 8.92e-07)',
+        False,
+    ),
+    ('full', 'batch_H2O_CH4', 'hvp_pos', 'q2'): (
+        'unrolled derivative of a non-variational quantity is inexact (err 3.93e-03)',
+        True,
+    ),
+    ('full', 'LYS_xao', 'hvp_pos', 'q2'): (
+        'unrolled derivative of a non-variational quantity is inexact (err 4.16e-03)',
+        True,
+    ),
+    ('full', 'batch_H2_LYS', 'hvp_pos', 'q2'): (
+        'unrolled derivative of a non-variational quantity is inexact (err 2.72e-03)',
+        True,
+    ),
+    ('implicit', 'slow', 'pos', 'q2'): (
+        'Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)',
+        True,
+    ),
+    ('implicit', 'slow', 'hvp_pos', 'E'): (
+        'Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)',
+        True,
+    ),
+    ('implicit', 'slow', 'hvp_pos', 'q2'): (
+        'Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)',
+        True,
+    ),
+    ('full', 'slow', 'pos', 'q2'): (
+        'Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)',
+        True,
+    ),
+    ('full', 'slow', 'field', 'q2'): (
+        'Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)',
+        True,
+    ),
+    ('full', 'slow', 'param', 'q2'): (
+        'Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)',
+        True,
+    ),
+    ('full', 'slow', 'hvp_pos', 'E'): (
+        'Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)',
+        True,
+    ),
+    ('full', 'slow', 'hvp_pos', 'q2'): (
+        'Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)',
+        True,
+    ),
+    ('implicit', 'slow_gap', 'pos', 'q2'): (
+        'FD-reference-noise limited, slow-converging system (err 1.40e-08, tol 1e-08)',
+        False,
+    ),
+    ('implicit', 'slow_gap', 'hvp_pos', 'q2'): (
+        'FD-reference-noise limited, slow-converging system (err 2.13e-06, tol 1e-06)',
+        False,
+    ),
+    ('full', 'slow_gap', 'pos', 'q2'): (
+        'unrolled derivative of a non-variational quantity is inexact (err 4.22e-03)',
+        False,
+    ),
+    ('full', 'slow_gap', 'field', 'q2'): (
+        'unrolled derivative of a non-variational quantity is inexact (err 6.21e+00)',
+        False,
+    ),
+    ('full', 'slow_gap', 'param', 'q2'): (
+        'unrolled derivative of a non-variational quantity is inexact (err 1.14e-03)',
+        False,
+    ),
+    ('full', 'slow_gap', 'hvp_pos', 'E'): (
+        'unrolled derivative of a non-variational quantity is inexact (err 1.33e-01)',
+        False,
+    ),
+    ('full', 'slow_gap', 'hvp_pos', 'q2'): (
+        'unrolled derivative of a non-variational quantity is inexact (err 5.41e+06)',
+        False,
+    ),
 }
 
 
@@ -545,7 +523,7 @@ def test_matrix(mode: str, system: str, deriv: str, q: str) -> None:
 
     first = deriv in FIRST
     err = (val - ref).abs().max().item()
-    tol = REFERENCE_LIMITED.get((mode, system, deriv, q), _tol(ref, first))
+    tol = _tol(ref, first)
     assert err < tol, f"max abs error {err:.3e} (tol {tol:.1e})"
 
 

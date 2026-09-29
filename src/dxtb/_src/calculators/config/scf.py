@@ -214,8 +214,12 @@ class ConfigSCF:
         if isinstance(scf_mode, str):
             if scf_mode.casefold() in labels.SCF_MODE_IMPLICIT_STRS:
                 self.scf_mode = labels.SCF_MODE_IMPLICIT
-            elif scf_mode.casefold() in labels.SCF_MODE_IMPLICIT_NON_PURE_STRS:
-                self.scf_mode = labels.SCF_MODE_IMPLICIT_NON_PURE
+            elif scf_mode.casefold() in labels.SCF_MODE_REMOVED_STRS:
+                raise ValueError(
+                    f"The SCF mode '{scf_mode}' was removed. Use "
+                    f"'{labels.SCF_MODE_REMOVED_STRS[scf_mode.casefold()]}' "
+                    "instead."
+                )
             elif scf_mode.casefold() in labels.SCF_MODE_FULL_STRS:
                 self.scf_mode = labels.SCF_MODE_FULL
             elif scf_mode.casefold() in labels.SCF_MODE_EXPERIMENTAL_STRS:
@@ -223,7 +227,6 @@ class ConfigSCF:
             else:
                 scf_mode_labels = (
                     labels.SCF_MODE_IMPLICIT_STRS
-                    + labels.SCF_MODE_IMPLICIT_NON_PURE_STRS
                     + labels.SCF_MODE_FULL_STRS
                     + labels.SCF_MODE_EXPERIMENTAL_STRS
                 )
@@ -232,15 +235,19 @@ class ConfigSCF:
                     f"Use one of '{', '.join(scf_mode_labels)}'."
                 )
         elif isinstance(scf_mode, int):
+            if scf_mode == labels.SCF_MODE_REMOVED:
+                raise ValueError(
+                    f"The SCF mode with integer code {scf_mode} (non-pure "
+                    f"implicit) was removed. Use '{labels.SCF_MODE_REPLACEMENT}' "
+                    f"(code {labels.SCF_MODE_IMPLICIT}) instead."
+                )
             if scf_mode not in (
                 labels.SCF_MODE_IMPLICIT,
-                labels.SCF_MODE_IMPLICIT_NON_PURE,
                 labels.SCF_MODE_FULL,
                 labels.SCF_MODE_EXPERIMENTAL,
             ):
                 scf_mode_labels = (
                     labels.SCF_MODE_IMPLICIT_STRS
-                    + labels.SCF_MODE_IMPLICIT_NON_PURE_STRS
                     + labels.SCF_MODE_FULL_STRS
                     + labels.SCF_MODE_EXPERIMENTAL_STRS
                 )

@@ -191,14 +191,13 @@ MIX_GUESS = True
 SCF_MODE = labels.SCF_MODE_FULL
 """
 Whether to use full gradient tracking in SCF, make use of the implicit
-function theorem as provided by ``xitorch.optimize.equilibrium``, or use the
+function theorem (exact first and second derivatives), or use the
 experimental single-shot procedure.
 """
 
 SCF_MODE_CHOICES = [
     "default",
     "implicit",
-    "nonpure",
     "full",
     "full_tracking",
     "full-tracking",

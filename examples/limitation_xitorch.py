@@ -38,7 +38,7 @@ f = Path(__file__).parent / "molecules" / "lih.xyz"
 numbers, positions = read(f, **dd)
 charge = read_chrg(f, **dd)
 
-opts = {"verbosity": 0, "scf_mode": "nonpure"}
+opts = {"verbosity": 0, "scf_mode": "implicit"}
 
 ######################################################################
 

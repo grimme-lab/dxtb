@@ -83,20 +83,16 @@ class BaseTSCF(BaseSCF):
             # Broyden is not implemented for SCF with full gradient, but
             # is the default setting. Without changing the setting, the
             # code immediately raises an error, which is inconvenient.
-            if self.config.scf_mode not in (
-                labels.SCF_MODE_IMPLICIT,
-                labels.SCF_MODE_IMPLICIT_NON_PURE,
-            ):
-                msg = (
-                    "Broyden mixer is not implemented for SCF with full "
-                    "gradient tracking."
-                )
+            msg = (
+                "Broyden mixer is not implemented for SCF with full "
+                "gradient tracking."
+            )
 
-                if self.config.strict is True:
-                    raise NotImplementedError(msg)
+            if self.config.strict is True:
+                raise NotImplementedError(msg)
 
-                OutputHandler.warn(msg + " Using Anderson mixer instead.")
-                self.mixer = Anderson(self.fwd_options, batch_mode=batched)
+            OutputHandler.warn(msg + " Using Anderson mixer instead.")
+            self.mixer = Anderson(self.fwd_options, batch_mode=batched)
         else:
             raise ValueError(f"Unknown mixer '{self.config.mixer}'.")
 

@@ -19,7 +19,7 @@ SCF Implicit: Standard Variant
 ==============================
 
 Standard implementation of SCF iterations utilizing the implicit function
-theorem via `xitorch` for the backward.
+theorem for the backward (see :mod:`.fixed_point`).
 """
 
 from __future__ import annotations
@@ -45,10 +45,9 @@ class SelfConsistentFieldImplicit(BaseXSCF):
     equilibrium solution, i.e., the gradient must not be tracked through all
     iterations.
 
-    The implementation is based on `xitorch <https://xitorch.readthedocs.io>`__,
-    which appears to be abandoned and unmaintained at the time of
-    writing, but still provides a reasonably good implementation of the
-    iterative solver required for the self-consistent field iterations.
+    The forward iterations use the root solvers of the vendored `xitorch
+    <https://xitorch.readthedocs.io>`__. The backward pass is implemented in
+    :mod:`.fixed_point` and gives exact first and second derivatives.
     """
 
     def scf(
@@ -67,11 +66,18 @@ class SelfConsistentFieldImplicit(BaseXSCF):
             calls[0] += 1
             return step(x)
 
+        # The gradient cannot be more accurate than the converged SCF, hence
+        # the adjoint tolerance follows the SCF tolerance (unless given)
+        bck_options = {
+            "atol": max(1e-10, 1e-2 * self.config.f_atol),
+            **self.bck_options,
+        }
+
         n_iter = [0]
         q_converged = equilibrium(
             fcn=fcn,
             y0=guess,
-            bck_options={**self.bck_options},
+            bck_options=bck_options,
             on_converged=lambda: n_iter.__setitem__(0, calls[0]),
             batched=self.config.batch_mode > 0,
             **self.fwd_options,

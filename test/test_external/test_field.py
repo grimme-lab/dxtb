@@ -42,7 +42,7 @@ sample_list = ["LiH", "SiH4", "MB16_43_01"]
 opts = {
     "verbosity": 0,
     "maxiter": 50,
-    "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
+    "scf_mode": labels.SCF_MODE_IMPLICIT,
     "scp_mode": labels.SCP_MODE_POTENTIAL,
 }
 
@@ -82,7 +82,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.parametrize("name1", sample_list)
 @pytest.mark.parametrize("name2", sample_list)
 @pytest.mark.parametrize(
-    "scf_mode", [labels.SCF_MODE_IMPLICIT_NON_PURE, labels.SCF_MODE_FULL]
+    "scf_mode", [labels.SCF_MODE_IMPLICIT, labels.SCF_MODE_FULL]
 )
 def test_batch(
     dtype: torch.dtype, name1: str, name2: str, scf_mode: str
@@ -134,7 +134,7 @@ def test_batch(
 @pytest.mark.parametrize("name2", ["LiH"])
 @pytest.mark.parametrize("name3", sample_list)
 @pytest.mark.parametrize(
-    "scf_mode", [labels.SCF_MODE_IMPLICIT_NON_PURE, labels.SCF_MODE_FULL]
+    "scf_mode", [labels.SCF_MODE_IMPLICIT, labels.SCF_MODE_FULL]
 )
 def test_batch_three(
     dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
