@@ -24,13 +24,16 @@ theorem in the backward pass.
 
 from __future__ import annotations
 
+import copy
+
 import torch
 
 from dxtb._src.exlibs import xitorch as xt
 from dxtb._src.timing.decorator import timer_decorator
-from dxtb._src.typing import Tensor
+from dxtb._src.typing import Callable, Tensor
 
 from ..base import BaseSCF
+from ..pure.iterations import iter_options
 
 __all__ = ["BaseXSCF"]
 
@@ -91,6 +94,34 @@ class BaseXSCF(BaseSCF, xt.EditableModule):
         o_op = self.get_overlap()
 
         return xt.linalg.lsymeig(A=h_op, M=o_op, **self.eigen_options)
+
+    def stateless_map(self) -> Callable[[Tensor], Tensor]:
+        """
+        Fixed-point map ``x -> g(x)`` that neither reads nor writes ``self``.
+
+        All tensors that can carry gradients (integrals, interaction caches)
+        are reached through a frozen shallow copy of the SCF data, and every
+        call works on its own scratch copy of that snapshot. The returned
+        function therefore holds no reference to this object or to anything
+        that is later attached to the output of the SCF (e.g., ``self._data``
+        after ``scf``), which would form a reference cycle through the autograd
+        graph.
+
+        Returns
+        -------
+        Callable[[Tensor], Tensor]
+            The map for the current convergence target (SCP mode).
+        """
+        template = copy.copy(self._data)
+        cfg = copy.copy(self.config)
+        cfg.eigen_options = self.eigen_options
+        interactions = self.interactions
+        fcn = iter_options[self.config.scp_mode]
+
+        def g(x: Tensor) -> Tensor:
+            return fcn(x, copy.copy(template), cfg, interactions)
+
+        return g
 
     def getparamnames(
         self, methodname: str, prefix: str = ""

@@ -37,7 +37,15 @@ from dxtb._src.components.interactions.container import (
 )
 from dxtb._src.constants import defaults, labels
 from dxtb._src.timing.decorator import timer_decorator
-from dxtb._src.typing import DD, Any, Literal, Slicers, Tensor, overload
+from dxtb._src.typing import (
+    DD,
+    Any,
+    Callable,
+    Literal,
+    Slicers,
+    Tensor,
+    overload,
+)
 from dxtb._src.wavefunction import filling, mulliken
 from dxtb.config import ConfigSCF
 
@@ -284,13 +292,12 @@ class BaseSCF:
             **kwargs.pop("eigen_options", {}),
         }
 
-        if self.config.scp_mode == labels.SCP_MODE_CHARGE:
-            self._fcn = self.iterate_charges
-        elif self.config.scp_mode == labels.SCP_MODE_POTENTIAL:
-            self._fcn = self.iterate_potential
-        elif self.config.scp_mode == labels.SCP_MODE_FOCK:
-            self._fcn = self.iterate_fockian
-        else:
+        # validate early; the iteration function is selected in `_fcn`
+        if self.config.scp_mode not in (
+            labels.SCP_MODE_CHARGE,
+            labels.SCP_MODE_POTENTIAL,
+            labels.SCP_MODE_FOCK,
+        ):
             raise ValueError(
                 f"Unknown convergence target (SCP mode) '{self.config.scp_mode}'."
             )
@@ -630,6 +637,26 @@ class BaseSCF:
             )
 
         raise ValueError(f"Unknown partitioning mode '{mode}'.")
+
+    @property
+    def _fcn(self) -> Callable[[Tensor], Tensor]:
+        """
+        Iteration function of the current convergence target (SCP mode).
+
+        This is a property (not an attribute set in ``__init__``) because a
+        bound method stored on the instance is a reference cycle
+        (``self -> bound method -> self``) that only the garbage collector
+        can free.
+        """
+        if self.config.scp_mode == labels.SCP_MODE_CHARGE:
+            return self.iterate_charges
+        if self.config.scp_mode == labels.SCP_MODE_POTENTIAL:
+            return self.iterate_potential
+        if self.config.scp_mode == labels.SCP_MODE_FOCK:
+            return self.iterate_fockian
+        raise ValueError(
+            f"Unknown convergence target (SCP mode) '{self.config.scp_mode}'."
+        )
 
     def iterate_charges(self, charges: Tensor) -> Tensor:
         """
