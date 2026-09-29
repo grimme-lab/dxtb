@@ -34,8 +34,7 @@ from dxtb._src.typing import Any, Tensor
 from ...base import IntDriver
 from .base import PytorchImplementation
 from .impls import (
-    OverlapAG_V1,
-    OverlapAG_V2,
+    OverlapAG,
     OverlapFunction,
     overlap,
     overlap_gradient,
@@ -171,10 +170,6 @@ class IntDriverPytorch(BaseIntDriverPytorch):
     """
 
     def setup_eval_funcs(self) -> None:
-        # pylint: disable=import-outside-toplevel
-        from tad_mctc._version import __tversion__
-
-        OverlapAG = OverlapAG_V1 if __tversion__ < (2, 0, 0) else OverlapAG_V2
         self.eval_ovlp = OverlapAG.apply  # type: ignore
         self.eval_ovlp_grad = overlap_gradient
 

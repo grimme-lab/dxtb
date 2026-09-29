@@ -24,7 +24,6 @@ from typing import Mapping
 import torch
 
 from dxtb import OutputHandler
-from dxtb.__version__ import __tversion__
 from dxtb._src.exlibs.xitorch._core.pure_function import (
     get_pure_function,
     make_sibling,
@@ -351,8 +350,7 @@ def minimize(
 def _rootfinder(
     fcn, y0, fwd_fcn, is_opt_method, options, bck_options, nparams, *allparams
 ) -> Tensor:
-    _RootFinder = RootFinder_V1 if __tversion__ < (2, 0, 0) else RootFinder_V2
-    r = _RootFinder.apply(
+    r = RootFinder.apply(
         fcn,
         y0,
         fwd_fcn,
@@ -366,11 +364,59 @@ def _rootfinder(
     return r
 
 
-class RootFinderBase(torch.autograd.Function):
+class RootFinder(torch.autograd.Function):
     """
-    Base class for the version-specific autograd function for the RootFinder.
-    Different PyTorch versions only require different `forward()` signatures.
+    Autograd function for the RootFinder.
     """
+
+    @staticmethod
+    def forward(
+        fcn,
+        y0,
+        fwd_fcn,
+        is_opt_method,
+        options,
+        bck_options,
+        nparams,
+        *allparams,
+    ):
+        # fcn: a function that returns what has to be 0 (will be used in the
+        #      backward, not used in the forward). For minimization, it is
+        #      the gradient
+        # fwd_fcn: a function that will be executed in the forward method
+        #          (unused in the backward)
+        # This class is also used for minimization, where fcn and fwd_fcn might
+        # be slightly different
+
+        # set default options
+        config = options
+
+        params = allparams[:nparams]
+        objparams = allparams[nparams:]
+
+        with fwd_fcn.useobjparams(objparams):
+            method = config.pop("method")
+            methods = _RF_METHODS if not is_opt_method else _OPT_METHODS
+            name = "rootfinder" if not is_opt_method else "minimizer"
+            method_fcn = get_method(name, methods, method)
+            y = method_fcn(fwd_fcn, y0, params, **config)
+
+        return y
+
+    @staticmethod
+    def setup_context(ctx, inputs: tuple, output: Tensor):
+        fcn, _, _, is_opt_method, _, bck_options, nparams, *allparams = inputs
+        y = output
+
+        ctx.bck_options = bck_options
+        ctx.fcn = fcn
+        ctx.is_opt_method = is_opt_method
+
+        # split tensors and non-tensors params
+        ctx.nparams = nparams
+        ctx.param_sep = TensorNonTensorSeparator(allparams)
+        tensor_params = ctx.param_sep.get_tensor_params()
+        ctx.save_for_backward(y, *tensor_params)
 
     @staticmethod
     def backward(ctx, grad_yout):
@@ -429,104 +475,6 @@ class RootFinderBase(torch.autograd.Function):
             )
 
         return (None, None, None, None, None, None, None, *grad_params)
-
-
-class RootFinder_V1(RootFinderBase):
-    @staticmethod
-    def forward(
-        ctx,
-        fcn,
-        y0,
-        fwd_fcn,
-        is_opt_method,
-        options,
-        bck_options,
-        nparams,
-        *allparams,
-    ):
-        # fcn: a function that returns what has to be 0 (will be used in the
-        #      backward, not used in the forward). For minimization, it is
-        #      the gradient
-        # fwd_fcn: a function that will be executed in the forward method
-        #          (unused in the backward)
-        # This class is also used for minimization, where fcn and fwd_fcn might
-        # be slightly different
-
-        # set default options
-        config = options
-        ctx.bck_options = bck_options
-
-        params = allparams[:nparams]
-        objparams = allparams[nparams:]
-
-        with fwd_fcn.useobjparams(objparams):
-            method = config.pop("method")
-            methods = _RF_METHODS if not is_opt_method else _OPT_METHODS
-            name = "rootfinder" if not is_opt_method else "minimizer"
-            method_fcn = get_method(name, methods, method)
-            y = method_fcn(fwd_fcn, y0, params, **config)
-
-        ctx.fcn = fcn
-        ctx.is_opt_method = is_opt_method
-
-        # split tensors and non-tensors params
-        ctx.nparams = nparams
-        ctx.param_sep = TensorNonTensorSeparator(allparams)
-        tensor_params = ctx.param_sep.get_tensor_params()
-        ctx.save_for_backward(y, *tensor_params)
-
-        return y
-
-
-class RootFinder_V2(RootFinderBase):
-    @staticmethod
-    def forward(
-        fcn,
-        y0,
-        fwd_fcn,
-        is_opt_method,
-        options,
-        bck_options,
-        nparams,
-        *allparams,
-    ):
-        # fcn: a function that returns what has to be 0 (will be used in the
-        #      backward, not used in the forward). For minimization, it is
-        #      the gradient
-        # fwd_fcn: a function that will be executed in the forward method
-        #          (unused in the backward)
-        # This class is also used for minimization, where fcn and fwd_fcn might
-        # be slightly different
-
-        # set default options
-        config = options
-
-        params = allparams[:nparams]
-        objparams = allparams[nparams:]
-
-        with fwd_fcn.useobjparams(objparams):
-            method = config.pop("method")
-            methods = _RF_METHODS if not is_opt_method else _OPT_METHODS
-            name = "rootfinder" if not is_opt_method else "minimizer"
-            method_fcn = get_method(name, methods, method)
-            y = method_fcn(fwd_fcn, y0, params, **config)
-
-        return y
-
-    @staticmethod
-    def setup_context(ctx, inputs: tuple, output: Tensor):
-        fcn, _, _, is_opt_method, _, bck_options, nparams, *allparams = inputs
-        y = output
-
-        ctx.bck_options = bck_options
-        ctx.fcn = fcn
-        ctx.is_opt_method = is_opt_method
-
-        # split tensors and non-tensors params
-        ctx.nparams = nparams
-        ctx.param_sep = TensorNonTensorSeparator(allparams)
-        tensor_params = ctx.param_sep.get_tensor_params()
-        ctx.save_for_backward(y, *tensor_params)
 
 
 def _get_rootfinder_default_method(method):
