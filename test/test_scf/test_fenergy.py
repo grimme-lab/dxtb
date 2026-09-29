@@ -45,9 +45,17 @@ opts = {
 @pytest.mark.parametrize("dtype, number", reps_both_dtypes())
 @pytest.mark.parametrize("partition", ["equal", "atomic"])
 def test_element(dtype: torch.dtype, partition: str, number: int) -> None:
-    """Comparison of object SCF (old) vs. functional SCF."""
+    """
+    Comparison of implicit vs. full (unrolled) SCF.
+
+    Different solvers (Broyden vs. Anderson) stop anywhere within the SCF
+    tolerance, so the modes can only agree to that tolerance. In double
+    precision, both are converged tightly and compared with 1e-8; in single
+    precision the tolerance is ten times the SCF tolerance.
+    """
     dd: DD = {"device": DEVICE, "dtype": dtype}
-    tol = 1e-8
+    scf_tol = 1e-5 if dtype == torch.float32 else 1e-10
+    tol = 10 * scf_tol if dtype == torch.float32 else 1e-8
 
     numbers = torch.tensor([number], device=DEVICE)
     positions = torch.zeros((1, 3), **dd)
@@ -56,8 +64,8 @@ def test_element(dtype: torch.dtype, partition: str, number: int) -> None:
     options = dict(
         opts,
         **{
-            "f_atol": 1e-5 if dtype == torch.float32 else 1e-6,
-            "x_atol": 1e-5 if dtype == torch.float32 else 1e-6,
+            "f_atol": scf_tol,
+            "x_atol": scf_tol,
             "fermi_partition": partition,
             "fermi_thresh": 1e-4 if dtype == torch.float32 else 1e-10,
             "maxiter": 100,

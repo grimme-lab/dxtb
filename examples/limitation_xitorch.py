@@ -16,7 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Example for xitorch's inability to be used together with functorch.
+Example for the implicit SCF's inability to be used together with functorch
+(custom autograd functions of the implicit SCF and xitorch's eigensolver).
 """
 
 from pathlib import Path
