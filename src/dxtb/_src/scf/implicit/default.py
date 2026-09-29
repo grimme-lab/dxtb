@@ -30,6 +30,7 @@ from dxtb._src.typing import Tensor
 
 from ..mixer import Simple
 from .base import BaseXSCF
+from .fixed_point import equilibrium
 
 __all__ = ["SelfConsistentFieldImplicit"]
 
@@ -53,17 +54,18 @@ class SelfConsistentFieldImplicit(BaseXSCF):
     def scf(
         self, guess: Tensor, return_charges: bool = True
     ) -> Charges | Potential | Tensor:
-        # pylint: disable=import-outside-toplevel
-        from dxtb._src.exlibs import xitorch as xt
-
         # TODO: Pass mixer options in `method` arg.
         # Currently ignored. Always "broyden1".
-        q_converged = xt.optimize.equilibrium(
+        n_iter = [self._data.iter]
+        q_converged = equilibrium(
             fcn=self._fcn,
             y0=guess,
             bck_options={**self.bck_options},
+            on_converged=lambda: n_iter.__setitem__(0, self._data.iter),
             **self.fwd_options,
         )
+        # additional evaluations for the gradient are no SCF iterations
+        self._data.iter = n_iter[0]
 
         # To reconnect the H0 energy with the computational graph, we
         # compute one extra SCF cycle with strong damping.
