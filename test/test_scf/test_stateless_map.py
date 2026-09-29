@@ -71,3 +71,71 @@ def test_map_equals_iteration(
     calc = Calculator(m["numbers"].to(DEVICE), par, opts=opts, **DD)
     calc.singlepoint(m["positions"].to(**DD), torch.tensor(0.0, **DD))
     assert seen == [True]
+
+
+@pytest.mark.parametrize("mode", ["nonpure", "full"])
+@pytest.mark.parametrize("create_graph", [False, True])
+def test_scf_object_freed_without_gc(
+    mode: str, create_graph: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    The SCF object (and with it everything it holds) is freed by reference
+    counting alone after forward, gradient and (double) backward.
+    """
+    import gc
+    import weakref
+
+    from dxtb._src.scf.base import BaseSCF
+
+    probes: list[weakref.ref] = []
+    orig = BaseSCF.__call__
+
+    def spy(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        probes.append(weakref.ref(self))
+        return orig(self, *args, **kwargs)
+
+    monkeypatch.setattr(BaseSCF, "__call__", spy)
+
+    m = mols["H2O"]
+    opts = {"verbosity": 0, "scf_mode": mode}
+    calc = Calculator(m["numbers"].to(DEVICE), GFN1_XTB, opts=opts, **DD)
+    pos = m["positions"].to(**DD).requires_grad_(True)
+
+    gc.collect()
+    gc.disable()
+    try:
+        e = calc.energy(pos, torch.tensor(0.0, **DD))
+        (g,) = torch.autograd.grad(e, pos, create_graph=create_graph)
+        if create_graph:
+            g.sum().backward()
+        del e, g
+        # the calculator caches results (and hence the graph) until reset
+        calc.reset()
+        assert len(probes) == 1
+        assert probes[0]() is None
+    finally:
+        gc.enable()
+
+
+@pytest.mark.parametrize("scp_mode", ["charge", "potential", "fock"])
+def test_result_hamiltonian_matches_full(scp_mode: str) -> None:
+    """Density, Hamiltonian and orbital energies of the results agree."""
+    m = mols["H2O"]
+    res = {}
+    for mode in ("nonpure", "full"):
+        tol = 1e-12
+        opts = {
+            "verbosity": 0,
+            "scf_mode": mode,
+            "scp_mode": scp_mode,
+            "f_atol": tol,
+            "x_atol": tol,
+            "x_atol_max": tol,
+        }
+        calc = Calculator(m["numbers"].to(DEVICE), GFN1_XTB, opts=opts, **DD)
+        res[mode] = calc.singlepoint(
+            m["positions"].to(**DD), torch.tensor(0.0, **DD)
+        )
+    for key in ("hamiltonian", "density", "emo"):
+        a, b = getattr(res["nonpure"], key), getattr(res["full"], key)
+        assert torch.allclose(a, b, atol=1e-8, rtol=0), key

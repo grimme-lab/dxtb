@@ -80,11 +80,16 @@ SYSTEMS: dict[str, tuple[list[str], float]] = {
     "LYS_xao": (["LYS_xao"], 0.0),
     "batch_H2O_CH4": (["H2O", "CH4"], 0.0),
     "batch_H2_LYS": (["H2", "LYS_xao"], 0.0),
-    "slow": (["tmpda"], 0.0),  # 44 SCF iterations (slowest of all samples)
+    # 44 SCF iterations (slowest of all samples), but a HOMO-LUMO gap of only
+    # 4.6 mEh: strongly fractional occupations, i.e., it probes the derivatives
+    # of the Fermi smearing rather than the SCF
+    "slow": (["tmpda"], 0.0),
+    # 24 SCF iterations (second slowest), well gapped
+    "slow_gap": (["LYS_xao_dist"], 0.0),
 }
 
 # systems where only a reduced set of cells is run (cost)
-BIG = ("LYS_xao", "batch_H2_LYS", "slow")
+BIG = ("LYS_xao", "batch_H2_LYS", "slow", "slow_gap")
 
 QUANTITIES = ["E", "q", "q2", "dip"]
 FIRST = ["pos", "field", "param"]
@@ -319,7 +324,7 @@ def reference(system: str) -> dict[tuple[str, str], torch.Tensor]:
         for i in range(3):
             e = torch.zeros(3, **DD)
             e[i] = 1.0
-            v = _vec(lambda t: _scalars(system, field=field0 + t * e), 1e-3)
+            v = _vec(lambda t: _scalars(system, field=field0 + t * e), 1e-4)
             for q in QUANTITIES:
                 gf[q][i] = v[q]
         put("field", gf)
@@ -332,10 +337,13 @@ def reference(system: str) -> dict[tuple[str, str], torch.Tensor]:
     # second derivatives
     put(
         "hvp_pos",
-        _vec(lambda t: _scalars(system, pos=pos0 + t * dpos), 4e-3, second=True),
+        _vec(lambda t: _scalars(system, pos=pos0 + t * dpos), 2e-3, second=True),
     )
     if has_libcint and system not in BIG:
-        h = 4e-3
+        # E is strongly non-linear in the field: small field step (h scan in
+        # NOTES.md: 1e-3 -> 1e-7 error, 1e-4 -> 1e-11). Position step 2e-3: larger
+        # steps lose to truncation, smaller ones to SCF noise (hvp h scan, NOTES.md)
+        hp, hf = 2e-3, 3e-4
         mixed = torch.zeros(3, **DD)
         for i in range(3):
             e = torch.zeros(3, **DD)
@@ -346,10 +354,10 @@ def reference(system: str) -> dict[tuple[str, str], torch.Tensor]:
                     lambda t: _scalars(
                         system, pos=pos0 + t * dpos, field=field0 + f * e
                     )["E"],
-                    h,
+                    hp,
                 )
 
-            mixed[i] = _stencil1(dt, h)
+            mixed[i] = _stencil1(dt, hf)
         out[("mixed", "E")] = mixed
     return out
 

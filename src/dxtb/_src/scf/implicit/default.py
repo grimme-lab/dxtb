@@ -56,16 +56,33 @@ class SelfConsistentFieldImplicit(BaseXSCF):
     ) -> Charges | Potential | Tensor:
         # TODO: Pass mixer options in `method` arg.
         # Currently ignored. Always "broyden1".
-        n_iter = [self._data.iter]
+
+        # The stateless map neither reads nor writes `self`, so that the
+        # function stored in the autograd graph cannot form a reference cycle.
+        # Iterations are counted here (it is no longer done by `self._data`).
+        step = self.stateless_map()
+        calls = [0]
+
+        def fcn(x: Tensor) -> Tensor:
+            calls[0] += 1
+            return step(x)
+
+        n_iter = [0]
         q_converged = equilibrium(
-            fcn=self._fcn,
+            fcn=fcn,
             y0=guess,
             bck_options={**self.bck_options},
-            on_converged=lambda: n_iter.__setitem__(0, self._data.iter),
+            on_converged=lambda: n_iter.__setitem__(0, calls[0]),
+            batched=self.config.batch_mode > 0,
             **self.fwd_options,
         )
         # additional evaluations for the gradient are no SCF iterations
-        self._data.iter = n_iter[0]
+        self._data.iter += n_iter[0]
+
+        # The stateless map does not store the Hamiltonian, which is the
+        # converged quantity in Fock mode (and part of the results).
+        if self.config.scp_mode == labels.SCP_MODE_FOCK:
+            self._data.hamiltonian = q_converged
 
         # To reconnect the H0 energy with the computational graph, we
         # compute one extra SCF cycle with strong damping.
