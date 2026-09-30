@@ -20,6 +20,7 @@ Test export of the basis set.
 
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 
 import pytest
@@ -27,6 +28,7 @@ import torch
 
 from dxtb import GFN1_XTB, GFN2_XTB, IndexHelper
 from dxtb._src.basis.bas import Basis, format_contraction
+from dxtb._src.param import ParamModule
 from dxtb._src.typing import DD, Literal
 
 
@@ -40,6 +42,17 @@ def _round_numbers(data: list[str]) -> list[str | float]:
         except ValueError:
             rounded_data.append(item)
     return rounded_data
+
+
+@lru_cache(maxsize=None)
+def _param_module(xtb_version: str) -> ParamModule:
+    """
+    Convert the parametrization once per GFN version. Converting the full
+    parameter set into a `ParamModule` takes ~0.1 s, and `IndexHelper` and
+    `Basis` each repeat it if they are given a plain `Param`.
+    """
+    par = {"gfn1": GFN1_XTB, "gfn2": GFN2_XTB}[xtb_version]
+    return ParamModule(par, device=torch.device("cpu"), dtype=torch.double)
 
 
 @pytest.mark.parametrize("number", range(1, 87))
@@ -56,12 +69,7 @@ def test_export(
 
     numbers = torch.tensor([number], device=dd["device"])
 
-    if xtb_version == "gfn1":
-        par = GFN1_XTB
-    elif xtb_version == "gfn2":
-        par = GFN2_XTB
-    else:
-        assert False
+    par = _param_module(xtb_version)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
