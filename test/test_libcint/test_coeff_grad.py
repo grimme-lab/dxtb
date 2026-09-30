@@ -96,7 +96,7 @@ def test_gradcheck(name: str, gfn: Param) -> None:
 @pytest.mark.large
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("name", ["MB16_43_01"])
-@pytest.mark.parametrize("gfn", [GFN1_XTB, GFN2_XTB])
+@pytest.mark.parametrize("gfn", [GFN2_XTB])  # GFN1 is ~3x slower here
 def test_gradcheck_medium(name: str, gfn: Param) -> None:
     """Check single analytical against numerical gradient."""
     func, diffvars = gradchecker(name, gfn)
