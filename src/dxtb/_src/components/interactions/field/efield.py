@@ -27,7 +27,7 @@ import torch
 from tad_mctc.math import einsum
 
 from dxtb import IndexHelper
-from dxtb._src.typing import Any, Slicers, Tensor, override
+from dxtb._src.typing import Any, Slicers, Tensor, TensorOrTensors, override
 from dxtb._src.typing.exceptions import DeviceError, DtypeError
 
 from ..base import Interaction, InteractionCache
@@ -270,6 +270,46 @@ class ElectricField(Interaction):
             Atom-wise electric field dipole potential.
         """
         return -cache.vdp
+
+    @override
+    def get_atom_gradient(
+        self,
+        charges: Tensor,
+        positions: Tensor,
+        cache: ElectricFieldCache,
+        grad_outputs: TensorOrTensors | None = None,
+        retain_graph: bool | None = True,
+        create_graph: bool | None = None,
+    ) -> Tensor:
+        r"""
+        Calculate the nuclear gradient of the monopolar electric field energy
+        for fixed charges.
+
+        .. math::
+
+            \dfrac{\partial E}{\partial \mathbf{R}_A} = -q_A \mathbf{F}
+
+        The position dependence of the charges enters via the overlap
+        derivative in the Hamiltonian gradient, and the position dependence
+        of the dipole moments via the dipole integral gradient in
+        :meth:`~dxtb.Calculator.forces_analytical`.
+
+        Parameters
+        ----------
+        charges : Tensor
+            Atom-resolved partial charges (shape: ``(..., nat)``).
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        cache : ElectricFieldCache
+            Restart data for the interaction.
+
+        Returns
+        -------
+        Tensor
+            Nuclear gradient of the electric field energy
+            (shape: ``(..., nat, 3)``).
+        """
+        return -charges.unsqueeze(-1) * cache.vdp
 
     def __str__(self) -> str:  # pragma: no cover
         return f"{self.__class__.__name__}(field={self.field})"

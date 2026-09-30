@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import torch
 from tad_mctc.convert import any_to_tensor
+from tad_mctc.math import einsum
 
 from dxtb import OutputHandler
 from dxtb import integrals as ints
@@ -223,6 +224,35 @@ class AnalyticalCalculator(EnergyCalculator):
         hamiltonian_grad = dedr + dcn
         total_grad += hamiltonian_grad
         timer.stop("hgrad")
+
+        # dipole integral gradient (e.g., from an electric field)
+
+        if potential.dipole is not None and self.integrals.dipole is not None:
+            timer.start("dgrad", "Dipole Integral Gradient")
+
+            # Energy of the dipole potential for a fixed density matrix (cf.
+            # `potential_to_hamiltonian`). The position dependence of the
+            # dipole integral is differentiated via autograd.
+            #  - shape dipole integral: (..., 3, nao, nao)
+            #  - shape dipole potential: (..., nao, 3)
+            vdp = self.ihelp.spread_atom_to_orbital(
+                potential.dipole.detach(), dim=-2, extra=True
+            )
+            edp = -einsum(
+                "...ij,...kij,...jk->...",
+                density.detach(),
+                self.integrals.dipole.matrix,
+                vdp,
+            )
+
+            (dipole_grad,) = torch.autograd.grad(
+                edp.sum(),
+                positions,
+                retain_graph=True,
+                create_graph=torch.is_grad_enabled(),
+            )
+            total_grad += dipole_grad
+            timer.stop("dgrad")
 
         return -total_grad
 
