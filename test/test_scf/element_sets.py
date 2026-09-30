@@ -26,8 +26,8 @@ comparison run on a representative subset that covers every layout and period.
 The neutral-atom energy is still checked for *all* elements (in double
 precision) to guard the per-element parameter data.
 
-Elements that are known to fail (42 and 75 in GFN2, 25 in the Fermi-energy
-test) are included on purpose, so they are not hidden.
+Elements that are known to fail (42 and 75 in GFN2, 25 in the parametrized
+Fermi-energy `test_element`) are included on purpose, so they are not hidden.
 """
 from __future__ import annotations
 

@@ -37,7 +37,8 @@ from ..conftest import DEVICE
 from .samples import samples
 
 slist = ["LiH"]
-slist_more = ["H", "HHe", "H2O", "CH4", "PbH4-BiH3", "MB16_43_01"]
+# PbH4-BiH3 and MB16_43_01 run in `test_single_large` (identical test body)
+slist_more = ["H", "HHe", "H2O", "CH4"]
 slist_large = ["PbH4-BiH3", "MB16_43_01"]
 
 opts = {

@@ -29,7 +29,7 @@ from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
-from .element_sets import reps_both_dtypes
+from .element_sets import REPRESENTATIVE_ELEMENTS, reps_both_dtypes
 from .uhf_table import uhf_anion, uhf_cation
 
 opts = {
@@ -111,7 +111,7 @@ def test_element_unique(dtype: torch.dtype) -> None:
         result = calc.singlepoint(positions, charges)
         return result.fenergy
 
-    fenergies = [fcn(n).item() for n in range(1, 87)]
+    fenergies = [fcn(n).item() for n in REPRESENTATIVE_ELEMENTS]
     unique = set(fenergies)
     assert len(unique) > 5
 
@@ -143,7 +143,7 @@ def test_element_cation(dtype: torch.dtype) -> None:
 
     # no (valence) electrons OR gold
     _exclude = [1, 3, 11, 19, 37, 55, 79]
-    numbers = [i for i in range(1, 87) if i not in _exclude]
+    numbers = [i for i in REPRESENTATIVE_ELEMENTS if i not in _exclude]
 
     fenergies = [fcn(n).item() for n in numbers]
     unique = set(fenergies)
@@ -177,7 +177,7 @@ def test_element_anion(dtype: torch.dtype) -> None:
     # Helium doesn't have enough orbitals for negative charge,
     # SCF does not converge (in tblite too)
     _exclude = [2, 21, 22, 23, 25, 43, 57, 58, 59]
-    numbers = [i for i in range(1, 87) if i not in _exclude]
+    numbers = [i for i in REPRESENTATIVE_ELEMENTS if i not in _exclude]
 
     fenergies = [fcn(n).item() for n in numbers]
     unique = set(fenergies)

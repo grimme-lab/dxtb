@@ -37,6 +37,9 @@ from .samples import samples
 
 slist = ["LiH", "SiH4"]
 slist_more = ["H2", "H2O", "CH4"]
+# Mixers are compared on C60; the (much slower) vancoh2 only runs with Anderson.
+large_cases = [("C60", "anderson"), ("C60", "simple"), ("vancoh2", "anderson")]
+
 slist_large = ["PbH4-BiH3", "C6H5I-CH3SH", "MB16_43_01", "LYS_xao"]
 
 opts = {
@@ -186,8 +189,7 @@ def test_single_difficult_gfn2(
 
 @pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.float])
-@pytest.mark.parametrize("name", ["C60", "vancoh2"])
-@pytest.mark.parametrize("mixer", ["anderson", "simple"])
+@pytest.mark.parametrize("name, mixer", large_cases)
 def test_single_large_gfn1(dtype: torch.dtype, name: str, mixer: str) -> None:
     """Test a large systems (only float32 as they take some time)."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
@@ -197,8 +199,7 @@ def test_single_large_gfn1(dtype: torch.dtype, name: str, mixer: str) -> None:
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.float])
-@pytest.mark.parametrize("name", ["C60", "vancoh2"])
-@pytest.mark.parametrize("mixer", ["anderson", "simple"])
+@pytest.mark.parametrize("name, mixer", large_cases)
 def test_single_large_gfn2(dtype: torch.dtype, name: str, mixer: str) -> None:
     """Test a large systems (only float32 as they take some time)."""
     tol = sqrt(torch.finfo(dtype).eps) * 10

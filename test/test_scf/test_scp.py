@@ -121,12 +121,23 @@ def test_single_difficult(
     single(dtype, name, mixer, tol, scp_mode, scf_mode)
 
 
+# Mixers are compared on C60; the (much slower) vancoh2 only runs with the
+# Anderson mixer. All SCP modes run on both systems.
+large_cases = [
+    (name, mixer, scp_mode)
+    for name, mixers in (
+        ("C60", ["anderson", "simple"]),
+        ("vancoh2", ["anderson"]),
+    )
+    for mixer in mixers
+    for scp_mode in ["charges", "potential", "fock"]
+]
+
+
 @pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float])
-@pytest.mark.parametrize("name", ["C60", "vancoh2"])
-@pytest.mark.parametrize("mixer", ["anderson", "simple"])
-@pytest.mark.parametrize("scp_mode", ["charges", "potential", "fock"])
+@pytest.mark.parametrize("name, mixer, scp_mode", large_cases)
 @pytest.mark.parametrize("scf_mode", ["full"])
 def test_single_large(
     dtype: torch.dtype, name: str, mixer: str, scp_mode: str, scf_mode: str
