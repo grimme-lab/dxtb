@@ -27,13 +27,13 @@ import pytest
 import torch
 from tad_mctc import read, read_chrg
 
-from dxtb import GFN2_XTB, Calculator
+from dxtb import Calculator
 from dxtb._src.constants import labels
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
-from ..utils import load_from_tblite_grad
+from ..utils import get_param_module, load_from_tblite_grad
 
 f = Path(__file__).resolve().parent / "refs" / "gfn2"
 
@@ -72,7 +72,9 @@ def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
             "scf_mode": scf_mode,
         },
     )
-    calc = Calculator(numbers, GFN2_XTB, opts=options, **dd)
+    calc = Calculator(
+        numbers, get_param_module("gfn2", **dd), opts=options, **dd
+    )
     result = calc.singlepoint(positions, charge)
     energy = result.total.sum(-1)
 
@@ -127,7 +129,9 @@ def num_grad(
             "x_atol": 1e-5 if dd["dtype"] == torch.float else 1e-10,
         },
     )
-    calc = Calculator(numbers, GFN2_XTB, opts=options, **dd)
+    calc = Calculator(
+        numbers, get_param_module("gfn2", **dd), opts=options, **dd
+    )
 
     gradient = torch.zeros_like(positions)
     step = 1.0e-5

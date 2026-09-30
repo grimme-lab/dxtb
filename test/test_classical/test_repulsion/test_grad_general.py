@@ -23,8 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.components.classicals import new_repulsion
 from dxtb._src.typing import DD
 
@@ -44,10 +43,10 @@ def test_grad_fail(name: str) -> None:
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
-    rep = new_repulsion(numbers, par, **dd)
+    rep = new_repulsion(numbers, GFN1_XTB, **dd)
     assert rep is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     cache = rep.get_cache(numbers, ihelp)
     energy = rep.get_energy(positions, cache)
 

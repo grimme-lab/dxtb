@@ -27,8 +27,7 @@ from tad_mctc.batch import pack
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.math import einsum
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, Calculator
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
@@ -62,7 +61,7 @@ def skip_test_autograd(dtype: torch.dtype, name: str) -> None:
     # required for autodiff of energy w.r.t. efield and dipole
     pos = positions.clone().requires_grad_(True)
 
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=opts, **dd)
 
     def f(p: Tensor) -> tuple[Tensor, Tensor]:
         f, m = calc.vibration(p, charge)
@@ -118,7 +117,7 @@ def execute(
     atol: float,
     rtol: float,
 ) -> None:
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=opts, **dd)
 
     numfreqs, nummodes = calc.vibration_numerical(positions, charge)
     nummodes = nummodes / torch.norm(nummodes, dim=-2, keepdim=True)

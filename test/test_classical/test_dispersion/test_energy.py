@@ -29,7 +29,7 @@ import torch
 from tad_mctc.batch import pack
 from tad_mctc.data import radii
 
-from dxtb import GFN1_XTB as par
+from dxtb import GFN1_XTB
 from dxtb._src.components.classicals.dispersion import new_dispersion
 from dxtb._src.typing import DD
 
@@ -87,7 +87,7 @@ def test_disp_batch(dtype: torch.dtype) -> None:
     assert pytest.approx(ref.cpu()) == energy.cpu()
 
     # create copy as `par` lives in global scope
-    _par = par.model_copy(deep=True)
+    _par = GFN1_XTB.model_copy(deep=True)
     if _par.dispersion is None or _par.dispersion.d3 is None:
         assert False
 

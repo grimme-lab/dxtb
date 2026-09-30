@@ -25,11 +25,11 @@ import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
 from dxtb._src.components.classicals.dispersion import new_dispersion
 from dxtb._src.typing import DD, Callable, Tensor
 
 from ...conftest import DEVICE
+from ...utils import get_param_module
 from .samples import samples
 
 slist = ["LiH", "SiH4"]
@@ -51,7 +51,7 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    disp = new_dispersion(numbers, par, **dd)
+    disp = new_dispersion(numbers, get_param_module("gfn1", **dd), **dd)
     assert disp is not None
 
     cache = disp.get_cache(numbers)
@@ -135,7 +135,7 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    disp = new_dispersion(numbers, par, **dd)
+    disp = new_dispersion(numbers, get_param_module("gfn1", **dd), **dd)
     assert disp is not None
 
     cache = disp.get_cache(numbers)
@@ -216,7 +216,7 @@ def test_autograd(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].to(**dd)
     ref = sample["grad"].to(**dd)
 
-    disp = new_dispersion(numbers, par, **dd)
+    disp = new_dispersion(numbers, get_param_module("gfn1", **dd), **dd)
     assert disp is not None
 
     cache = disp.get_cache(numbers)
@@ -260,7 +260,7 @@ def test_autograd_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    disp = new_dispersion(numbers, par, **dd)
+    disp = new_dispersion(numbers, get_param_module("gfn1", **dd), **dd)
     assert disp is not None
 
     cache = disp.get_cache(numbers)
@@ -289,7 +289,7 @@ def test_backward(dtype: torch.dtype, name: str) -> None:
     # variable to be differentiated (clone in backward for safety)
     pos = positions.clone().requires_grad_(True)
 
-    disp = new_dispersion(numbers, par, **dd)
+    disp = new_dispersion(numbers, get_param_module("gfn1", **dd), **dd)
     assert disp is not None
 
     cache = disp.get_cache(numbers)
@@ -340,7 +340,7 @@ def test_backward_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     # variable to be differentiated (clone in backward for safety)
     pos = positions.clone().requires_grad_(True)
 
-    disp = new_dispersion(numbers, par, **dd)
+    disp = new_dispersion(numbers, get_param_module("gfn1", **dd), **dd)
     assert disp is not None
 
     cache = disp.get_cache(numbers)

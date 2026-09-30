@@ -26,8 +26,7 @@ import pytest
 import torch
 from tad_mctc.data import VDW_D3
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, Calculator
 from dxtb._src.components.interactions.solvation import alpb
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
@@ -107,8 +106,8 @@ def test_gb_scf(dtype: torch.dtype, name: str, dielectric_constant=78.9):
     dielectric_constant = torch.tensor(dielectric_constant, **dd)
     gb = alpb.GeneralizedBorn(numbers, dielectric_constant, **dd)
 
-    calc_vac = Calculator(numbers, par, opts=opts, **dd)
-    calc_sol = Calculator(numbers, par, interaction=[gb], opts=opts, **dd)
+    calc_vac = Calculator(numbers, GFN1_XTB, opts=opts, **dd)
+    calc_sol = Calculator(numbers, GFN1_XTB, interaction=[gb], opts=opts, **dd)
 
     results_vac = calc_vac.singlepoint(positions, charges)
     results_sol = calc_sol.singlepoint(positions, charges)

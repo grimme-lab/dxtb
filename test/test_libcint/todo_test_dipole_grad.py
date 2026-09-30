@@ -23,8 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.basis.bas import Basis
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Tensor
@@ -56,7 +55,11 @@ def num_grad(
 
     def compute_integral(pos: torch.Tensor) -> torch.Tensor:
         bas = Basis(
-            numbers, par, ihelp, dtype=positions.dtype, device=positions.device
+            numbers,
+            GFN1_XTB,
+            ihelp,
+            dtype=positions.dtype,
+            device=positions.device,
         )
         atombases = bas.create_libcint(pos)
         assert is_basis_list(atombases)
@@ -97,8 +100,8 @@ def test_grad(dtype: torch.dtype, name: str):
     positions[0] = torch.tensor([0, 0, 0], **dd)
     pos = positions.clone().requires_grad_(True)
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
-    bas = Basis(numbers, par, ihelp, **dd)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
+    bas = Basis(numbers, GFN1_XTB, ihelp, **dd)
 
     atombases = bas.create_libcint(pos)
     assert is_basis_list(atombases)

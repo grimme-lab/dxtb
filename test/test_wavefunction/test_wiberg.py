@@ -25,8 +25,7 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.typing import DD
 from dxtb._src.wavefunction import wiberg
 
@@ -48,7 +47,7 @@ def test_single(dtype: torch.dtype, name: str):
     overlap = sample["overlap"].to(**dd)
     ref = sample["wiberg"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     wbo = wiberg.get_bond_order(overlap, density, ihelp)
     assert pytest.approx(ref.cpu(), rel=1e-7, abs=tol) == wbo.cpu()
@@ -88,7 +87,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str):
         ),
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     wbo = wiberg.get_bond_order(overlap, density, ihelp)
     assert pytest.approx(ref.cpu(), rel=1e-7, abs=tol) == wbo.cpu()

@@ -26,8 +26,7 @@ from tad_mctc.batch import pack
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.units import VAA2AU
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, Calculator
 from dxtb._src.components.interactions import new_efield
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Tensor
@@ -107,7 +106,7 @@ def execute(
 ) -> None:
     # create additional interaction and pass to Calculator
     efield = new_efield(field_vector)
-    calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
+    calc = Calculator(numbers, GFN1_XTB, interaction=[efield], opts=opts, **dd)
 
     # field is cloned and detached and updated inside
     num_hypol = calc.hyperpolarizability_numerical(positions, charge)

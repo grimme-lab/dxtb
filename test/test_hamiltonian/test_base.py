@@ -26,16 +26,15 @@ from pathlib import Path
 import pytest
 import torch
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 
 
 def test_requires_grad() -> None:
     numbers = torch.tensor([1])
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
-    h = GFN1Hamiltonian(numbers, par, ihelp)
+    h = GFN1Hamiltonian(numbers, GFN1_XTB, ihelp)
 
     h._matrix = None
     assert h.requires_grad is False
@@ -46,9 +45,9 @@ def test_requires_grad() -> None:
 
 def test_write_to_pt() -> None:
     numbers = torch.tensor([3, 1])
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
-    h = GFN1Hamiltonian(numbers, par, ihelp)
+    h = GFN1Hamiltonian(numbers, GFN1_XTB, ihelp)
     h._matrix = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
 
     kwargs: dict = {"map_location": torch.device("cpu"), "weights_only": True}

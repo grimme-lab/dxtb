@@ -23,8 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.components.classicals import new_halogen
 from dxtb._src.typing import DD
 
@@ -42,11 +41,11 @@ def test_grad_fail(name: str) -> None:
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
-    xb = new_halogen(numbers, par, **dd)
+    xb = new_halogen(numbers, GFN1_XTB, **dd)
     if xb is None:
         assert False
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     cache = xb.get_cache(numbers, ihelp)
     energy = xb.get_energy(positions, cache)
 

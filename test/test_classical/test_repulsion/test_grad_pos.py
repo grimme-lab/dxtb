@@ -27,8 +27,7 @@ import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.components.classicals import Repulsion, new_repulsion
 from dxtb._src.components.classicals.repulsion.base import BaseRepulsionCache
 from dxtb._src.components.classicals.repulsion.rep import (
@@ -38,6 +37,7 @@ from dxtb._src.components.classicals.repulsion.rep import (
 from dxtb._src.typing import DD, Callable, Tensor
 
 from ...conftest import DEVICE
+from ...utils import get_param_module
 from .samples import samples
 
 sample_list = ["H2O", "SiH4", "MB16_43_01", "MB16_43_02", "LYS_xao"]
@@ -60,6 +60,7 @@ def test_backward_vs_tblite(
     positions = sample["positions"].to(**dd)
     ref = sample["gfn1_grad"].to(**dd)
 
+    par = get_param_module("gfn1", **dd)
     rep = new_repulsion(
         torch.unique(numbers),
         par,
@@ -118,6 +119,7 @@ def test_backward_batch_vs_tblite(
         ]
     )
 
+    par = get_param_module("gfn1", **dd)
     rep = new_repulsion(
         torch.unique(numbers),
         par,
@@ -156,6 +158,7 @@ def test_grad_pos_backward_vs_analytical(dtype: torch.dtype, name: str) -> None:
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
+    par = get_param_module("gfn1", **dd)
     rep = new_repulsion(torch.unique(numbers), par, **dd)
     assert rep is not None
 
@@ -226,6 +229,7 @@ def test_grad_pos_analytical_vs_numerical(
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
+    par = get_param_module("gfn1", **dd)
     rep = new_repulsion(torch.unique(numbers), par, **dd)
     assert rep is not None
 
@@ -249,7 +253,7 @@ def gradchecker(
     dtype: torch.dtype, name: str
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
-    assert par.repulsion is not None
+    assert GFN1_XTB.repulsion is not None
 
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
@@ -257,6 +261,7 @@ def gradchecker(
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
 
     rep = new_repulsion(torch.unique(numbers), par, **dd)
@@ -316,6 +321,7 @@ def gradchecker_batch(
         ]
     )
 
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
 
     rep = new_repulsion(torch.unique(numbers), par, **dd)

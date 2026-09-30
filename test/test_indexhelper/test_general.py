@@ -25,7 +25,9 @@ import pytest
 import torch
 from tad_mctc.convert import str_to_device
 
-from dxtb import IndexHelper
+from dxtb import GFN0_XTB, GFN1_XTB, GFN2_XTB, IndexHelper, ParamModule
+from dxtb._src.param import Param
+from dxtb._src.param.element import get_elem_angular
 
 from ..conftest import DEVICE
 
@@ -114,6 +116,33 @@ def test_change_device_fail() -> None:
     # trying to use setter
     with pytest.raises(AttributeError):
         ihelp.device = "cpu"
+
+
+@pytest.mark.parametrize("par", [GFN0_XTB, GFN1_XTB, GFN2_XTB])
+def test_from_numbers_param_matches_module(par: Param) -> None:
+    """Raw `Param` and `ParamModule` yield the same index helper."""
+    numbers = torch.tensor([1, 6, 8, 14, 17, 26, 79], device=DEVICE)
+
+    parmod = ParamModule(par)
+    assert get_elem_angular(par.element) == parmod.get_elem_angular()
+
+    ihelp_par = IndexHelper.from_numbers(numbers, par)
+    ihelp_mod = IndexHelper.from_numbers(numbers, parmod)
+
+    assert (ihelp_par.angular == ihelp_mod.angular).all()
+    assert (ihelp_par.shells_to_atom == ihelp_mod.shells_to_atom).all()
+    assert (ihelp_par.orbitals_to_shell == ihelp_mod.orbitals_to_shell).all()
+
+
+@pytest.mark.parametrize("module", [False, True])
+def test_from_numbers_unknown_shell(module: bool) -> None:
+    """Raw `Param` and `ParamModule` reject unknown shell types alike."""
+    par = GFN1_XTB.model_copy(deep=True)
+    par.element["H"].shells = ["1s", "5h"]
+
+    numbers = torch.tensor([1], device=DEVICE)
+    with pytest.raises(ValueError, match="Unknown shell type 'h'"):
+        IndexHelper.from_numbers(numbers, ParamModule(par) if module else par)
 
 
 # def test_cache() -> None:

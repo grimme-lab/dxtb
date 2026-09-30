@@ -26,8 +26,7 @@ from tad_mctc.batch import pack
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.units.spectroscopy import AU2RCM
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, Calculator
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
@@ -57,7 +56,7 @@ def single(name: str, dd: DD, atol: float, rtol: float) -> None:
     # required for autodiff of energy w.r.t. positions (Hessian)
     pos = positions.clone().detach().requires_grad_(True)
 
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=opts, **dd)
     freqs, _ = calc.vibration(pos, charge)
     freqs = tensor_to_numpy(freqs * AU2RCM)
 
@@ -127,7 +126,7 @@ def batched(name1: str, name2: str, dd: DD, atol: float, rtol: float) -> None:
     # required for autodiff of energy w.r.t. positions (Hessian)
     pos = positions.clone().detach().requires_grad_(True)
 
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=opts, **dd)
     freqs, _ = calc.vibration(pos, charge)
     freqs = freqs * AU2RCM
 

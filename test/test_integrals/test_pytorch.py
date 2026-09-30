@@ -24,8 +24,7 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb import integrals as ints
 from dxtb._src.constants.labels import INTDRIVER_ANALYTICAL
 from dxtb._src.integral.driver.manager import DriverManager
@@ -37,9 +36,9 @@ from .samples import samples
 
 
 def run(numbers: Tensor, positions: Tensor, dd: DD) -> None:
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     mgr = DriverManager(INTDRIVER_ANALYTICAL, **dd)
-    mgr.create_driver(numbers, par, ihelp)
+    mgr.create_driver(numbers, GFN1_XTB, ihelp)
 
     i = ints.Integrals(mgr, _overlap=OverlapPytorch(**dd), **dd)
     i.build_overlap(positions)

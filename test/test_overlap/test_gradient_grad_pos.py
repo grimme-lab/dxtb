@@ -24,7 +24,6 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
 from dxtb._src.integral.driver.pytorch.impls import overlap_gradient
@@ -37,6 +36,7 @@ sample_list = ["H2", "HHe", "LiH", "SiH4"]
 tol = 1e-7
 
 from ..conftest import DEVICE
+from ..utils import get_param_module
 
 
 def gradchecker(
@@ -49,6 +49,7 @@ def gradchecker(
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(torch.unique(numbers), par, ihelp, **dd)
 

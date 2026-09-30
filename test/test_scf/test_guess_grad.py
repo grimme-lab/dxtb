@@ -25,8 +25,7 @@ import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.constants import labels
 from dxtb._src.scf import guess
 from dxtb._src.typing import DD, Callable, Tensor
@@ -50,7 +49,7 @@ def gradchecker(
     positions = sample["positions"].to(**dd)
     charge = torch.tensor(0.0, **dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     # variables to be differentiated
     pos = positions.clone().requires_grad_(True)
@@ -108,7 +107,7 @@ def gradchecker_batch(
     )
     charge = torch.tensor([0.0, 0.0], **dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     # variables to be differentiated
     pos = positions.clone().requires_grad_(True)

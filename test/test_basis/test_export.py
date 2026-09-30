@@ -25,9 +25,11 @@ from pathlib import Path
 import pytest
 import torch
 
-from dxtb import GFN1_XTB, GFN2_XTB, IndexHelper
+from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis, format_contraction
 from dxtb._src.typing import DD, Literal
+
+from ..utils import get_param_module
 
 
 def _round_numbers(data: list[str]) -> list[str | float]:
@@ -56,12 +58,7 @@ def test_export(
 
     numbers = torch.tensor([number], device=dd["device"])
 
-    if xtb_version == "gfn1":
-        par = GFN1_XTB
-    elif xtb_version == "gfn2":
-        par = GFN2_XTB
-    else:
-        assert False
+    par = get_param_module(xtb_version, **dd)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
@@ -88,8 +85,9 @@ def test_export_gaussian() -> None:
     dd: DD = {"dtype": torch.double, "device": torch.device("cpu")}
 
     numbers = torch.tensor([3], device=dd["device"])
-    ihelp = IndexHelper.from_numbers(numbers, GFN2_XTB)
-    bas = Basis(numbers, GFN2_XTB, ihelp, **dd)
+    par = get_param_module("gfn2", **dd)
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    bas = Basis(numbers, par, ihelp, **dd)
 
     # fmt: off
     ref = [
@@ -111,8 +109,9 @@ def test_fail_symbol() -> None:
     dd: DD = {"dtype": torch.double, "device": torch.device("cpu")}
 
     numbers = torch.tensor([3], device=dd["device"])
-    ihelp = IndexHelper.from_numbers(numbers, GFN2_XTB)
-    bas = Basis(numbers, GFN2_XTB, ihelp, **dd)
+    par = get_param_module("gfn2", **dd)
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    bas = Basis(numbers, par, ihelp, **dd)
 
     # wipe shells info to trigger error
     bas.shells = {}

@@ -31,7 +31,7 @@ from dxtb._src.components.interactions.coulomb import thirdorder as es3
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE, NONDET_TOL
-from ..utils import get_elem_param
+from ..utils import get_elem_param, get_param_module
 from .samples import samples
 
 sample_list = ["MB16_43_01", "MB16_43_02", "SiH4_atom"]
@@ -48,8 +48,9 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     qat = sample["q"].to(**dd)
     ref = sample["es3"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    es = es3.new_es3(torch.unique(numbers), GFN1_XTB, **dd)
+    par = get_param_module("gfn1", **dd)
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    es = es3.new_es3(torch.unique(numbers), par, **dd)
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, ihelp=ihelp)
@@ -84,8 +85,9 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         ],
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    es = es3.new_es3(torch.unique(numbers), GFN1_XTB, **dd)
+    par = get_param_module("gfn1", **dd)
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    es = es3.new_es3(torch.unique(numbers), par, **dd)
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, ihelp=ihelp)

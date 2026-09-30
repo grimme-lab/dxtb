@@ -25,8 +25,7 @@ from pathlib import Path
 import pytest
 from tad_mctc import read, read_chrg
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, Calculator
 from dxtb._src.timing import timer
 
 from ..conftest import DEVICE
@@ -47,7 +46,7 @@ def test_uhf_fail() -> None:
     numbers, positions = read(Path(base, "coord"), device=DEVICE)
     charge = read_chrg(Path(base, ".CHRG"), device=DEVICE)
 
-    calc = Calculator(numbers, par, opts=opts, device=DEVICE)
+    calc = Calculator(numbers, GFN1_XTB, opts=opts, device=DEVICE)
 
     with pytest.raises(ValueError):
         calc.singlepoint(positions, charge, spin=0)

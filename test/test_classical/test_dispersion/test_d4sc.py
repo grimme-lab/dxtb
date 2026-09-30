@@ -27,12 +27,13 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN2_XTB, Calculator
+from dxtb import Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 from dxtb.components.dispersion import new_dispersion
 
 from ...conftest import DEVICE
+from ...utils import get_param_module
 from .samples import samples
 
 slist = ["LiH", "SiH4", "PbH4-BiH3", "C6H5I-CH3SH", "MB16_43_01"]
@@ -61,7 +62,11 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     options = {**opts, "skip_compat_checks": True}
     calc = Calculator(
-        numbers, GFN2_XTB, opts=options, **dd, auto_int_level=False
+        numbers,
+        get_param_module("gfn2", **dd),
+        opts=options,
+        **dd,
+        auto_int_level=False,
     )
 
     result = calc.singlepoint(positions, charges)
@@ -102,7 +107,11 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
     options = {**opts, "skip_compat_checks": True}
     calc = Calculator(
-        numbers, GFN2_XTB, opts=options, **dd, auto_int_level=False
+        numbers,
+        get_param_module("gfn2", **dd),
+        opts=options,
+        **dd,
+        auto_int_level=False,
     )
 
     result = calc.singlepoint(positions)
@@ -126,7 +135,11 @@ def test_classical(dtype: torch.dtype, name: str) -> None:
     charges = torch.tensor(0.0, **dd)
 
     disp = new_dispersion(
-        numbers, GFN2_XTB, charge=charges, ref_charges="gfn2", **dd
+        numbers,
+        get_param_module("gfn2", **dd),
+        charge=charges,
+        ref_charges="gfn2",
+        **dd,
     )
     assert disp is not None
 

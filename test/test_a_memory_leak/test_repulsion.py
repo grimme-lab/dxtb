@@ -26,8 +26,7 @@ import pytest
 import torch
 from tad_mctc.data.molecules import mols as samples
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.components.classicals import Repulsion
 from dxtb._src.typing import DD
 
@@ -44,26 +43,26 @@ def execute(name: str, dtype: torch.dtype) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     def fcn():
-        assert par.repulsion is not None
+        assert GFN1_XTB.repulsion is not None
 
         sample = samples[name]
         numbers = sample["numbers"].to(DEVICE)
         positions = sample["positions"].clone().to(**dd)
 
-        ihelp = IndexHelper.from_numbers(numbers, par)
+        ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
         # variables to be differentiated
         arep = get_elem_param(
-            torch.unique(numbers), par.element, "arep", pad_val=0, **dd
+            torch.unique(numbers), GFN1_XTB.element, "arep", pad_val=0, **dd
         )
         arep.requires_grad_(True)
 
         zeff = get_elem_param(
-            torch.unique(numbers), par.element, "zeff", pad_val=0, **dd
+            torch.unique(numbers), GFN1_XTB.element, "zeff", pad_val=0, **dd
         )
         zeff.requires_grad_(True)
 
-        kexp = torch.tensor(par.repulsion.effective.kexp, **dd)
+        kexp = torch.tensor(GFN1_XTB.repulsion.effective.kexp, **dd)
         kexp.requires_grad_(True)
 
         pos = positions.clone().requires_grad_(True)

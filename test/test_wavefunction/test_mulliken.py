@@ -25,13 +25,13 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.typing import DD
 from dxtb._src.wavefunction import mulliken
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 
 from ..conftest import DEVICE
+from ..utils import get_param_module
 from .samples import samples
 
 sample_list = ["H2", "LiH", "SiH4"]
@@ -49,7 +49,7 @@ def test_single_number_electrons(dtype: torch.dtype, name: str):
     overlap = sample["overlap"].to(**dd)
     ref = sample["n_electrons"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     pop = mulliken.get_atomic_populations(overlap, density, ihelp)
     assert pytest.approx(ref.cpu(), rel=1e-7, abs=tol) == pop.sum(-1).cpu()
@@ -89,7 +89,7 @@ def test_batch_number_electrons(dtype: torch.dtype, name1: str, name2: str):
         ),
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     pop = mulliken.get_atomic_populations(overlap, density, ihelp)
     assert pytest.approx(ref.cpu(), rel=1e-7, abs=tol) == pop.sum(-1).cpu()
@@ -106,7 +106,7 @@ def test_single_pop_shell(dtype: torch.dtype, name: str):
     overlap = sample["overlap"].to(**dd)
     ref = sample["mulliken_pop"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     pop = mulliken.get_shell_populations(overlap, density, ihelp)
 
     assert pytest.approx(ref.cpu(), abs=1e-5) == pop.cpu()
@@ -145,7 +145,7 @@ def test_batch_pop_shell(dtype: torch.dtype, name1: str, name2: str):
         ),
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     pop = mulliken.get_shell_populations(overlap, density, ihelp)
 
     assert pytest.approx(ref.cpu(), abs=1e-5) == pop.cpu()
@@ -163,6 +163,7 @@ def test_single_charges(dtype: torch.dtype, name: str):
     overlap = sample["overlap"].to(**dd)
     ref = sample["mulliken_charges"].to(**dd)
 
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     h0 = GFN1Hamiltonian(numbers, par, ihelp, **dd)
     n0 = ihelp.reduce_orbital_to_atom(h0.get_occupation())
@@ -205,6 +206,7 @@ def test_batch_charges(dtype: torch.dtype, name1: str, name2: str):
         ),
     )
 
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     h0 = GFN1Hamiltonian(numbers, par, ihelp, **dd)
     n0 = ihelp.reduce_orbital_to_atom(h0.get_occupation())
@@ -225,6 +227,7 @@ def test_single_charges_shell(dtype: torch.dtype, name: str):
     overlap = sample["overlap"].to(**dd)
     ref = sample["mulliken_charges_shell"].to(**dd)
 
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     h0 = GFN1Hamiltonian(numbers, par, ihelp, **dd)
     n0 = ihelp.reduce_orbital_to_shell(h0.get_occupation())
@@ -267,6 +270,7 @@ def test_batch_charges_shell(dtype: torch.dtype, name1: str, name2: str):
         ),
     )
 
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     h0 = GFN1Hamiltonian(numbers, par, ihelp, **dd)
     n0 = ihelp.reduce_orbital_to_shell(h0.get_occupation())

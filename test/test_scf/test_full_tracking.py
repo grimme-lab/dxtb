@@ -33,10 +33,14 @@ from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
+from ..utils import get_param_module
 from .samples import samples
 
 slist = ["LiH", "SiH4"]
 slist_more = ["H2", "H2O", "CH4"]
+# Mixers are compared on C60; the (much slower) vancoh2 only runs with Anderson.
+large_cases = [("C60", "anderson"), ("C60", "simple"), ("vancoh2", "anderson")]
+
 slist_large = ["PbH4-BiH3", "C6H5I-CH3SH", "MB16_43_01", "LYS_xao"]
 
 opts = {
@@ -70,12 +74,7 @@ def single(
     ref = sample[f"e{gfn}"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     options = dict(
         opts,
@@ -185,9 +184,8 @@ def test_single_difficult_gfn2(
 
 
 @pytest.mark.large
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["C60", "vancoh2"])
-@pytest.mark.parametrize("mixer", ["anderson", "simple"])
+@pytest.mark.parametrize("dtype", [torch.float])
+@pytest.mark.parametrize("name, mixer", large_cases)
 def test_single_large_gfn1(dtype: torch.dtype, name: str, mixer: str) -> None:
     """Test a large systems (only float32 as they take some time)."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
@@ -196,9 +194,8 @@ def test_single_large_gfn1(dtype: torch.dtype, name: str, mixer: str) -> None:
 
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.large
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["C60", "vancoh2"])
-@pytest.mark.parametrize("mixer", ["anderson", "simple"])
+@pytest.mark.parametrize("dtype", [torch.float])
+@pytest.mark.parametrize("name, mixer", large_cases)
 def test_single_large_gfn2(dtype: torch.dtype, name: str, mixer: str) -> None:
     """Test a large systems (only float32 as they take some time)."""
     tol = sqrt(torch.finfo(dtype).eps) * 10
@@ -238,12 +235,7 @@ def batched(
     )
     charges = torch.tensor([0.0, 0.0], **dd)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     options = dict(
         opts,
@@ -485,12 +477,7 @@ def batch_three(
     )
     charges = torch.tensor([0.0, 0.0, 0.0], **dd)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     options = dict(
         opts,
@@ -541,7 +528,9 @@ def test_batch_special(dtype: torch.dtype, mixer: str) -> None:
             "mixer": mixer,
         },
     )
-    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
+    calc = Calculator(
+        numbers, get_param_module("gfn1", **dd), opts=options, **dd
+    )
 
     result = calc.singlepoint(positions, chrg)
     res = result.scf.sum(-1)

@@ -28,16 +28,26 @@ import torch
 from tad_mctc import read, read_chrg
 from tad_mctc.batch import pack
 
-from dxtb import GFN0_XTB, GFN1_XTB, GFN2_XTB, Calculator
+from dxtb import Calculator
 from dxtb._src.constants import labels
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
+from ..utils import get_param_module
 from .samples import samples
 
 slist = ["H2", "H2O", "CH4", "SiH4"]
 slist_large = ["LYS_xao", "C60", "vancoh2", "AD7en+"]
+
+# Batching only needs representative triples (differing sizes, and identical
+# molecules for a batch without padding); every sample is checked individually
+# in the `test_single_*` tests.
+batch_triples = [
+    ("H2O", "SiH4", "H2"),
+    ("H2", "H2", "LiH"),
+    ("H2", "H2", "H2"),
+]
 
 opts = {
     "verbosity": 0,
@@ -62,14 +72,7 @@ def single(
 
     ref = samples[name][f"e{gfn}"].to(**dd)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    elif gfn == "gfn0":
-        par = GFN0_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     options = dict(
         opts,
@@ -125,14 +128,7 @@ def single_large(
 
     ref = samples[name][f"e{gfn}"].to(**dd)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    elif gfn == "gfn0":
-        par = GFN0_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     options = dict(
         opts,
@@ -211,14 +207,7 @@ def batch(
         ]
     )
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    elif gfn == "gfn0":
-        par = GFN0_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     options = dict(
         opts,
@@ -235,9 +224,7 @@ def batch(
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name1", ["H2", "H2O"])
-@pytest.mark.parametrize("name2", ["H2", "SiH4"])
-@pytest.mark.parametrize("name3", ["H2", "LiH"])
+@pytest.mark.parametrize("name1, name2, name3", batch_triples)
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
 def test_batch_gfn1(
     dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
@@ -247,9 +234,7 @@ def test_batch_gfn1(
 
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name1", ["H2", "H2O"])
-@pytest.mark.parametrize("name2", ["H2", "SiH4"])
-@pytest.mark.parametrize("name3", ["H2", "LiH"])
+@pytest.mark.parametrize("name1, name2, name3", batch_triples)
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
 def test_batch_gfn2(
     dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
@@ -258,9 +243,7 @@ def test_batch_gfn2(
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name1", ["H2", "H2O"])
-@pytest.mark.parametrize("name2", ["H2", "SiH4"])
-@pytest.mark.parametrize("name3", ["H2", "LiH"])
+@pytest.mark.parametrize("name1, name2, name3", batch_triples)
 def test_batch_gfn0(
     dtype: torch.dtype, name1: str, name2: str, name3: str
 ) -> None:
@@ -303,14 +286,7 @@ def batch_large(
         ]
     )
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    elif gfn == "gfn0":
-        par = GFN0_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     options = dict(
         opts,
@@ -377,14 +353,7 @@ def uhf_single(dtype: torch.dtype, name: str, gfn: str) -> None:
 
     ref = samples[name][f"e{gfn}"].to(**dd)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    elif gfn == "gfn0":
-        par = GFN0_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
 

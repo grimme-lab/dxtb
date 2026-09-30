@@ -27,12 +27,12 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
+from ..utils import get_param_module
 from .samples import samples
 
 opts = {
@@ -71,7 +71,9 @@ def single(
             "int_driver": "pytorch",
         },
     )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(
+        numbers, get_param_module("gfn1", **dd), opts=options, **dd
+    )
 
     result = calc.singlepoint(positions, charges)
     res = result.scf.sum(-1)
@@ -121,12 +123,23 @@ def test_single_difficult(
     single(dtype, name, mixer, tol, scp_mode, scf_mode)
 
 
+# Mixers are compared on C60; the (much slower) vancoh2 only runs with the
+# Anderson mixer. All SCP modes run on both systems.
+large_cases = [
+    (name, mixer, scp_mode)
+    for name, mixers in (
+        ("C60", ["anderson", "simple"]),
+        ("vancoh2", ["anderson"]),
+    )
+    for mixer in mixers
+    for scp_mode in ["charges", "potential", "fock"]
+]
+
+
 @pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name", ["C60", "vancoh2"])
-@pytest.mark.parametrize("mixer", ["anderson", "simple"])
-@pytest.mark.parametrize("scp_mode", ["charges", "potential", "fock"])
+@pytest.mark.parametrize("dtype", [torch.float])
+@pytest.mark.parametrize("name, mixer, scp_mode", large_cases)
 @pytest.mark.parametrize("scf_mode", ["full"])
 def test_single_large(
     dtype: torch.dtype, name: str, mixer: str, scp_mode: str, scf_mode: str
@@ -178,20 +191,30 @@ def batched(
             "x_atol": tol,
         },
     )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(
+        numbers, get_param_module("gfn1", **dd), opts=options, **dd
+    )
 
     result = calc.singlepoint(positions, charges)
     res = result.scf.sum(-1)
     assert pytest.approx(ref.cpu(), abs=tol, rel=tol) == res.cpu()
 
 
+# Full gradient tracking (from TBMaLT) has no Broyden implementation.
+mixer_scf_modes = [
+    (mixer, scf_mode)
+    for scf_mode in ["full", "implicit"]
+    for mixer in ["anderson", "broyden", "simple"]
+    if not (scf_mode == "full" and mixer == "broyden")
+]
+
+
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
-@pytest.mark.parametrize("name2", ["LiH", "SiH4"])
-@pytest.mark.parametrize("mixer", ["anderson", "broyden", "simple"])
+@pytest.mark.parametrize("name2", ["SiH4"])  # padding
 @pytest.mark.parametrize("scp_mode", ["charges", "potential", "fock"])
-@pytest.mark.parametrize("scf_mode", ["full", "implicit"])
+@pytest.mark.parametrize("mixer, scf_mode", mixer_scf_modes)
 def test_batch(
     dtype: torch.dtype,
     name1: str,
@@ -201,11 +224,27 @@ def test_batch(
     scf_mode: str,
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 50
+    batched(dtype, name1, name2, mixer, scp_mode, scf_mode, tol)
 
-    # full gradient tracking (from TBMaLT) has no Broyden implementation
-    if scf_mode == "full" and mixer == "broyden":
-        return
 
+# A batch of identical molecules (no padding) only needs every mixer and SCP
+# mode once; the full grid runs with padding in `test_batch`.
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("dtype", [torch.double])
+@pytest.mark.parametrize("name1", ["LiH"])
+@pytest.mark.parametrize("name2", ["LiH"])
+@pytest.mark.parametrize("scp_mode", ["charges", "potential", "fock"])
+@pytest.mark.parametrize("mixer", ["anderson", "broyden", "simple"])
+@pytest.mark.parametrize("scf_mode", ["implicit"])
+def test_batch_no_padding(
+    dtype: torch.dtype,
+    name1: str,
+    name2: str,
+    mixer: str,
+    scp_mode: str,
+    scf_mode: str,
+) -> None:
+    tol = sqrt(torch.finfo(dtype).eps) * 50
     batched(dtype, name1, name2, mixer, scp_mode, scf_mode, tol)
 
 
@@ -264,7 +303,9 @@ def test_batch_three(
             "x_atol": tol,
         },
     )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(
+        numbers, get_param_module("gfn1", **dd), opts=options, **dd
+    )
 
     result = calc.singlepoint(positions, charges)
     assert pytest.approx(ref.cpu(), abs=tol) == result.scf.sum(-1).cpu()

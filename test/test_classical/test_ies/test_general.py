@@ -27,14 +27,14 @@ import pytest
 import torch
 from tad_mctc.convert import str_to_device
 
-from dxtb import GFN0_XTB as par
+from dxtb import GFN0_XTB
 from dxtb._src.components.classicals import new_ies
 
 
 def test_none() -> None:
     """Test that IES is set to None if its EEQ parameters are deleted."""
     dummy = torch.tensor([0.0])
-    _par = par.model_copy(deep=True)
+    _par = GFN0_XTB.model_copy(deep=True)
 
     assert _par.eeq is not None
 
@@ -48,7 +48,7 @@ def test_none() -> None:
 @pytest.mark.parametrize("dtype", [torch.float16, torch.float32, torch.float64])
 def test_change_type(dtype: torch.dtype) -> None:
     """Test changing the dtype of the isotropic electrostatics."""
-    cls = new_ies(torch.tensor([0.0]), par)
+    cls = new_ies(torch.tensor([0.0]), GFN0_XTB)
     assert cls is not None
 
     cls = cls.type(dtype)
@@ -57,7 +57,7 @@ def test_change_type(dtype: torch.dtype) -> None:
 
 def test_change_type_fail() -> None:
     """Test changing the dtype of the isotropic electrostatics."""
-    cls = new_ies(torch.tensor([0.0]), par)
+    cls = new_ies(torch.tensor([0.0]), GFN0_XTB)
     assert cls is not None
 
     # trying to use setter
@@ -74,7 +74,7 @@ def test_change_type_fail() -> None:
 def test_change_device(device_str: str) -> None:
     """Test changing the device of the isotropic electrostatics."""
     device = str_to_device(device_str)
-    cls = new_ies(torch.tensor([0.0]), par)
+    cls = new_ies(torch.tensor([0.0]), GFN0_XTB)
     assert cls is not None
 
     cls = cls.to(device)
@@ -83,7 +83,7 @@ def test_change_device(device_str: str) -> None:
 
 def test_change_device_fail() -> None:
     """Test failure of changing the device of the isotropic electrostatics."""
-    cls = new_ies(torch.tensor([0.0]), par)
+    cls = new_ies(torch.tensor([0.0]), GFN0_XTB)
     assert cls is not None
 
     # trying to use setter

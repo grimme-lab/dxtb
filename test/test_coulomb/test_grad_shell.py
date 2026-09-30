@@ -27,11 +27,12 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB, IndexHelper
+from dxtb import IndexHelper
 from dxtb._src.components.interactions.coulomb import secondorder as es2
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
+from ..utils import get_param_module
 from .samples import samples
 
 sample_list = ["MB16_43_07", "MB16_43_08", "SiH4", "LiH"]
@@ -50,8 +51,14 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     charges = sample["q"].to(**dd)
     ref = sample["grad"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    es = es2.new_es2(torch.unique(numbers), GFN1_XTB, shell_resolved=True, **dd)
+    par = get_param_module("gfn1", **dd)
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    es = es2.new_es2(
+        torch.unique(numbers),
+        par,
+        shell_resolved=True,
+        **dd,
+    )
     assert es is not None
 
     es.cache_disable()
@@ -120,8 +127,14 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         ),
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    es = es2.new_es2(torch.unique(numbers), GFN1_XTB, shell_resolved=True, **dd)
+    par = get_param_module("gfn1", **dd)
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    es = es2.new_es2(
+        torch.unique(numbers),
+        par,
+        shell_resolved=True,
+        **dd,
+    )
     assert es is not None
 
     es.cache_disable()
@@ -153,7 +166,7 @@ def calc_numerical_gradient(
     dtype = torch.double
     es = es2.new_es2(
         torch.unique(numbers),
-        GFN1_XTB,
+        get_param_module("gfn1", device=positions.device, dtype=dtype),
         shell_resolved=True,
         dtype=dtype,
         device=positions.device,

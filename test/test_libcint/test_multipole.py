@@ -30,7 +30,7 @@ import torch
 from tad_mctc.convert import numpy_to_tensor
 from tad_mctc.math import einsum
 
-from dxtb import GFN1_XTB, GFN2_XTB, IndexHelper, labels
+from dxtb import IndexHelper, labels
 from dxtb._src.basis.bas import Basis
 from dxtb._src.exlibs.available import has_libcint, has_pyscf
 from dxtb._src.integral.driver.manager import DriverManager
@@ -46,6 +46,7 @@ if has_libcint is True:
     from dxtb._src.exlibs import libcint
 
 from ..conftest import DEVICE
+from ..utils import get_param_module
 from .samples import samples
 
 slist = ["H2", "LiH", "Li2", "H2O", "S"]
@@ -83,12 +84,7 @@ def run_single(dtype: torch.dtype, name: str, gfn: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
@@ -134,12 +130,7 @@ def test_shift_r0_rj(dtype: torch.dtype, name: str, gfn: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
@@ -213,12 +204,7 @@ def test_no_shift_r0r0_rjrj(dtype: torch.dtype, name: str, gfn: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
@@ -267,12 +253,7 @@ def test_shift_r0r0_rjrj(dtype: torch.dtype, name: str, gfn: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
@@ -357,12 +338,7 @@ def test_traceless(dtype: torch.dtype, name: str, gfn: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
     tol = sqrt(torch.finfo(dtype).eps)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)

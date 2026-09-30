@@ -30,12 +30,10 @@ from tad_mctc.batch import pack
 
 from dxtb import IndexHelper
 from dxtb._src.components.classicals import new_repulsion
-from dxtb._src.param.gfn0 import GFN0_XTB
-from dxtb._src.param.gfn1 import GFN1_XTB
-from dxtb._src.param.gfn2 import GFN2_XTB
 from dxtb._src.typing import DD, Literal
 
 from ...conftest import DEVICE
+from ...utils import get_param_module
 from .samples import samples
 
 sample_list = [
@@ -66,14 +64,7 @@ def test_single(
     positions = sample["positions"].to(**dd)
     ref = sample[par].to(**dd)
 
-    if par == "gfn1":
-        _par = GFN1_XTB
-    elif par == "gfn2":
-        _par = GFN2_XTB
-    elif par == "gfn0":
-        _par = GFN0_XTB
-    else:
-        assert False
+    _par = get_param_module(par, **dd)
 
     rep = new_repulsion(torch.unique(numbers), _par, cutoff=50, **dd)
     assert rep is not None
@@ -85,9 +76,22 @@ def test_single(
     assert pytest.approx(ref.cpu(), abs=tol) == 0.5 * e.sum((-2, -1)).cpu()
 
 
+# Every sample is already checked individually in `test_single`; the batched
+# test only needs to cover packing/padding, so a few representative pairs
+# (small+small, small+large, charged, largest, and one identical pair for a
+# batch without padding) suffice.
+batch_pairs = [
+    ("H2", "H2O"),
+    ("SiH4", "ZnOOH-"),
+    ("MB16_43_01", "H2"),
+    ("LYS_xao", "MB16_43_02"),
+    ("MB16_43_03", "SiH4"),
+    ("SiH4", "SiH4"),
+]
+
+
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name1", sample_list)
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name1, name2", batch_pairs)
 @pytest.mark.parametrize("par", ["gfn1", "gfn2", "gfn0"])
 def test_batch(
     dtype: torch.dtype,
@@ -120,14 +124,7 @@ def test_batch(
         ],
     )
 
-    if par == "gfn1":
-        _par = GFN1_XTB
-    elif par == "gfn2":
-        _par = GFN2_XTB
-    elif par == "gfn0":
-        _par = GFN0_XTB
-    else:
-        assert False
+    _par = get_param_module(par, **dd)
 
     rep = new_repulsion(torch.unique(numbers), _par, **dd)
     assert rep is not None

@@ -36,11 +36,24 @@ from dxtb._src.typing import DD, Tensor
 from dxtb._src.xtb.gfn1 import GFN1Hamiltonian
 
 from ..conftest import DEVICE
-from ..utils import load_from_npz
+from ..utils import get_param_module, load_from_npz
 from .samples import samples
 
 small = ["C", "Rn", "H2", "LiH", "HLi", "S2", "SiH4"]
 large = ["PbH4-BiH3", "LYS_xao"]
+
+# `test_single` checks every sample; batching only needs representative pairs
+# (small+small, heavy+small, both orderings, and one identical pair for a batch
+# without padding).
+batch_pairs = [
+    ("C", "Rn"),
+    ("H2", "LiH"),
+    ("LiH", "H2"),
+    ("S2", "SiH4"),
+    ("Rn", "H2"),
+    ("SiH4", "C"),
+    ("SiH4", "SiH4"),
+]
 
 ref_h0 = np.load("test/test_hamiltonian/h0.npz")
 
@@ -77,8 +90,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name1", ["C", "Rn", "H2", "LiH", "S2", "SiH4"])
-@pytest.mark.parametrize("name2", ["C", "Rn", "H2", "LiH", "S2", "SiH4"])
+@pytest.mark.parametrize("name1, name2", batch_pairs)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     """Batched version."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
@@ -194,10 +206,11 @@ def test_no_cn(dtype: torch.dtype) -> None:
         **dd,
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    driver = IntDriver(numbers, GFN1_XTB, ihelp, **dd)
+    par = get_param_module("gfn1", **dd)
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    driver = IntDriver(numbers, par, ihelp, **dd)
     overlap = Overlap(**dd)
-    h0 = GFN1Hamiltonian(numbers, GFN1_XTB, ihelp, cn=None, **dd)
+    h0 = GFN1Hamiltonian(numbers, par, ihelp, cn=None, **dd)
 
     driver.setup(positions)
     s = overlap.build(driver)

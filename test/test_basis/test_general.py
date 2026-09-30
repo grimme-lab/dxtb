@@ -25,8 +25,7 @@ import pytest
 import torch
 from tad_mctc.convert import str_to_device
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.basis.bas import Basis
 from dxtb._src.basis.slater import slater_to_gauss
 from dxtb._src.integral.driver.pytorch.impls.md import overlap_gto
@@ -87,8 +86,8 @@ def test_fail_higher_orbital_trafo():
     # arbitrary element (Rn)
     number = torch.tensor([86])
 
-    ihelp = IndexHelper.from_numbers(number, par)
-    bas = Basis(number, par, ihelp)
+    ihelp = IndexHelper.from_numbers(number, GFN1_XTB)
+    bas = Basis(number, GFN1_XTB, ihelp)
     alpha, coeff = bas.create_cgtos()
 
     j = torch.tensor(5)
@@ -118,9 +117,9 @@ def test_fail_higher_orbital_trafo():
 def test_change_type(dtype: torch.dtype) -> None:
     """Test changing the `dtype` of the Basis class."""
     number = torch.tensor([1])
-    ihelp = IndexHelper.from_numbers(number, par)
+    ihelp = IndexHelper.from_numbers(number, GFN1_XTB)
 
-    bas = Basis(number, par, ihelp)
+    bas = Basis(number, GFN1_XTB, ihelp)
     assert bas is not None
 
     cls = bas.type(dtype)
@@ -130,9 +129,9 @@ def test_change_type(dtype: torch.dtype) -> None:
 def test_change_type_fail() -> None:
     """Test failure upon changing `dtype` incorrectly."""
     number = torch.tensor([1])
-    ihelp = IndexHelper.from_numbers(number, par)
+    ihelp = IndexHelper.from_numbers(number, GFN1_XTB)
 
-    bas = Basis(number, par, ihelp)
+    bas = Basis(number, GFN1_XTB, ihelp)
     assert bas is not None
 
     # trying to use setter
@@ -151,9 +150,9 @@ def test_change_device(device_str: str) -> None:
     device = str_to_device(device_str)
 
     number = torch.tensor([1])
-    ihelp = IndexHelper.from_numbers(number, par)
+    ihelp = IndexHelper.from_numbers(number, GFN1_XTB)
 
-    bas = Basis(number, par, ihelp)
+    bas = Basis(number, GFN1_XTB, ihelp)
     assert bas is not None
 
     bas = bas.to(device)
@@ -163,9 +162,9 @@ def test_change_device(device_str: str) -> None:
 def test_change_device_fail() -> None:
     """Test failure upon changing `device` incorrectly."""
     number = torch.tensor([1])
-    ihelp = IndexHelper.from_numbers(number, par)
+    ihelp = IndexHelper.from_numbers(number, GFN1_XTB)
 
-    bas = Basis(number, par, ihelp)
+    bas = Basis(number, GFN1_XTB, ihelp)
     assert bas is not None
 
     # trying to use setter

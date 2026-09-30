@@ -26,8 +26,7 @@ import pytest
 import torch
 from tad_mctc.data.molecules import mols as samples
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.components.classicals import new_repulsion
 from dxtb._src.typing import DD
 
@@ -43,18 +42,18 @@ def execute(name: str, dtype: torch.dtype, n: int) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     def fcn():
-        assert par.repulsion is not None
+        assert GFN1_XTB.repulsion is not None
 
         sample = samples[name]
         numbers = sample["numbers"].to(DEVICE)
         positions = sample["positions"].clone().to(**dd)
 
-        ihelp = IndexHelper.from_numbers(numbers, par)
+        ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
         # variables to be differentiated
         pos = positions.clone().requires_grad_(True)
 
-        rep = new_repulsion(numbers, par, **dd)
+        rep = new_repulsion(numbers, GFN1_XTB, **dd)
         assert rep is not None
 
         cache = rep.get_cache(numbers, ihelp)

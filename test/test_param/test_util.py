@@ -24,7 +24,7 @@ import pytest
 import torch
 from tad_mctc.data import pse
 
-from dxtb import GFN1_XTB as par
+from dxtb import GFN1_XTB
 from dxtb._src.param.element import Element
 from dxtb._src.typing import Tensor, get_default_dtype
 from dxtb._src.utils import is_int_list
@@ -81,7 +81,7 @@ def test_pair_param() -> None:
     numbers = [6, 1, 1, 1, 1]
     symbols = ["C", "H", "H", "H", "H"]
 
-    assert par.hamiltonian is not None
+    assert GFN1_XTB.hamiltonian is not None
 
     ref = torch.tensor(
         [
@@ -93,10 +93,10 @@ def test_pair_param() -> None:
         ]
     )
 
-    kpair = get_pair_param(numbers, par.hamiltonian.xtb.kpair)
+    kpair = get_pair_param(numbers, GFN1_XTB.hamiltonian.xtb.kpair)
     assert pytest.approx(ref.cpu()) == kpair.cpu()
 
-    kpair = get_pair_param(symbols, par.hamiltonian.xtb.kpair)
+    kpair = get_pair_param(symbols, GFN1_XTB.hamiltonian.xtb.kpair)
     assert pytest.approx(ref.cpu()) == kpair.cpu()
 
 
@@ -105,9 +105,9 @@ def test_elem_param() -> None:
     numbers = torch.tensor([6, 1])
 
     with pytest.raises(KeyError):
-        get_elem_param(numbers, par.element, key="wrongkey")
+        get_elem_param(numbers, GFN1_XTB.element, key="wrongkey")
 
-    _par = par.model_copy(deep=True)
+    _par = GFN1_XTB.model_copy(deep=True)
     _par.element["H"].shpoly = "something"  # type: ignore
     with pytest.raises(ValueError):
         get_elem_param(numbers, _par.element, key="shpoly")
@@ -200,7 +200,7 @@ def test_elem_valence() -> None:
     """Test retrieving valence."""
     numbers = torch.tensor([6, 1])
 
-    _par = par.model_copy(deep=True)
+    _par = GFN1_XTB.model_copy(deep=True)
     _par.element["H"].shells = ["5h"]
     with pytest.raises(ValueError):
         get_elem_valence(numbers, _par.element)
@@ -233,7 +233,7 @@ def get_elem_angular(par_element: dict[str, Element]) -> dict[int, list[int]]:
 
 def test_elem_angular() -> None:
     """Test retrieving angular momenta."""
-    pred = get_elem_angular(par.element)
+    pred = get_elem_angular(GFN1_XTB.element)
     ref = {
         1: [0, 0],
         2: [0],
@@ -376,7 +376,7 @@ def get_elem_pqn(
 def test_elem_pqn() -> None:
     """Test retrieving principal quantum number."""
     numbers = torch.tensor([6, 1, 0])
-    pred = get_elem_pqn(numbers, par.element)
+    pred = get_elem_pqn(numbers, GFN1_XTB.element)
     ref = torch.tensor([2, 2, 1, 2, -1])
 
     assert ref.device == pred.device

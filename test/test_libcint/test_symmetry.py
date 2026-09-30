@@ -26,7 +26,6 @@ import pytest
 import torch
 from tad_mctc.batch import deflate, pack
 
-from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
 from dxtb._src.exlibs.available import has_libcint
@@ -37,6 +36,7 @@ if has_libcint is True:
     from dxtb._src.exlibs import libcint
 
 from ..conftest import DEVICE
+from ..utils import get_param_module
 from .samples import samples
 
 sample_list = ["H2", "HHe", "LiH", "S2", "H2O", "SiH4"]
@@ -84,6 +84,7 @@ def test_single(dtype: torch.dtype, intstr: str, name: str) -> None:
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
 
@@ -124,6 +125,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str, intstr: str) -> None:
         ]
     )
 
+    par = get_param_module("gfn1", **dd)
     _ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, _ihelp, **dd)
     atombases = bas.create_libcint(positions)

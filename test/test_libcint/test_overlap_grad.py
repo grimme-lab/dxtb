@@ -27,7 +27,6 @@ import pytest
 import torch
 from tad_mctc.math import einsum
 
-from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
 from dxtb._src.exlibs.available import has_libcint
@@ -38,7 +37,7 @@ if has_libcint is True:
     from dxtb._src.exlibs import libcint
 
 from ..conftest import DEVICE
-from ..utils import load_from_npz
+from ..utils import get_param_module, load_from_npz
 from .samples import samples
 
 ref_overlap = np.load("test/test_overlap/grad.npz")
@@ -52,6 +51,7 @@ def explicit(name: str, dd: DD, tol: float) -> None:
     positions = sample["positions"].to(**dd)  # nat, 3
     ref = load_from_npz(ref_overlap, name, **dd)
 
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
     atombases = bas.create_libcint(positions)
@@ -101,6 +101,7 @@ def autograd(name: str, dd: DD, tol: float) -> None:
     positions = sample["positions"].to(**dd)
     ref = load_from_npz(ref_overlap, name, **dd)
 
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
 

@@ -26,12 +26,12 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.components.classicals import new_halogen
 from dxtb._src.typing import DD
 
 from ...conftest import DEVICE
+from ...utils import get_param_module
 from .samples import samples
 
 
@@ -51,6 +51,7 @@ def test_small(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].to(**dd)
     ref = sample["energy"].to(**dd)
 
+    par = get_param_module("gfn1", **dd)
     xb = new_halogen(torch.unique(numbers), par, cutoff=50, **dd)
     if xb is None:
         assert False
@@ -79,6 +80,7 @@ def test_large(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].to(**dd)
     ref = sample["energy"].to(**dd)
 
+    par = get_param_module("gfn1", **dd)
     xb = new_halogen(torch.unique(numbers), par, **dd)
     if xb is None:
         assert False
@@ -101,6 +103,7 @@ def test_no_xb(dtype: torch.dtype) -> None:
     positions = sample["positions"].to(**dd)
     ref = sample["energy"].to(**dd)
 
+    par = get_param_module("gfn1", **dd)
     xb = new_halogen(torch.unique(numbers), par, **dd)
     if xb is None:
         assert False
@@ -125,6 +128,7 @@ def test_beyond_cutoff(dtype: torch.dtype) -> None:
         **dd,
     )
 
+    par = get_param_module("gfn1", **dd)
     xb = new_halogen(torch.unique(numbers), par, **dd)
     if xb is None:
         assert False
@@ -164,6 +168,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         ],
     )
 
+    par = get_param_module("gfn1", **dd)
     xb = new_halogen(torch.unique(numbers), par, **dd)
     if xb is None:
         assert False

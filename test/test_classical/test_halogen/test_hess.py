@@ -28,8 +28,7 @@ from tad_mctc.autograd import jacrev
 from tad_mctc.batch import pack
 from tad_mctc.convert import reshape_fortran
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.components.classicals import new_halogen
 from dxtb._src.typing import DD, Tensor
 
@@ -57,10 +56,10 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    xb = new_halogen(torch.unique(numbers), par, **dd)
+    xb = new_halogen(torch.unique(numbers), GFN1_XTB, **dd)
     assert xb is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     cache = xb.get_cache(numbers, ihelp)
 
     def energy(pos: Tensor) -> Tensor:
@@ -114,10 +113,10 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    xb = new_halogen(torch.unique(numbers), par, **dd)
+    xb = new_halogen(torch.unique(numbers), GFN1_XTB, **dd)
     assert xb is not None
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     cache = xb.get_cache(numbers, ihelp)
 
     def energy(pos: Tensor) -> Tensor:

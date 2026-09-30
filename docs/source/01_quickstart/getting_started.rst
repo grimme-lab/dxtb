@@ -44,6 +44,18 @@ We recommend to always pass the (floating point) :class:`~torch.dtype` and
     numbers = torch.tensor([3, 1], device=dd["device"])
     calc = dxtb.calculators.GFN1Calculator(numbers, **dd)
 
+The parametrization is converted into a differentiable
+:class:`~dxtb.ParamModule` every time a calculator is created.
+When creating many calculators, you can convert it once and pass the
+:class:`~dxtb.ParamModule` instead.
+Note that all calculators then share the same parameters.
+
+.. code-block:: python
+
+    par = dxtb.ParamModule(dxtb.GFN1_XTB, **dd)
+    calc1 = dxtb.Calculator(numbers1, par, **dd)
+    calc2 = dxtb.Calculator(numbers2, par, **dd)
+
 Using the Calculator
 --------------------
 

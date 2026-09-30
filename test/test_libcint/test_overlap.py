@@ -31,7 +31,6 @@ from tad_mctc.batch import pack
 from tad_mctc.convert import numpy_to_tensor
 from tad_mctc.math import einsum
 
-from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
 from dxtb._src.exlibs.available import has_libcint, has_pyscf
@@ -44,6 +43,7 @@ if has_pyscf is True:
     from dxtb._src.exlibs.pyscf.mol import M
 
 from ..conftest import DEVICE
+from ..utils import get_param_module
 from .samples import samples
 
 slist = ["H2", "LiH", "Li2", "H2O", "S", "SiH4"]
@@ -108,6 +108,7 @@ def run_single(dtype: torch.dtype, name: str) -> None:
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
     atombases = bas.create_libcint(positions)
@@ -185,6 +186,7 @@ def run_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         dim=0,
     )
 
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
     atombases = bas.create_libcint(positions)
@@ -257,6 +259,7 @@ def run_grad(dtype: torch.dtype, name: str) -> None:
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
     atombases = bas.create_libcint(positions)

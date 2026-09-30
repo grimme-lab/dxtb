@@ -28,13 +28,12 @@ import pytest
 import torch
 from tad_mctc import read, read_chrg
 
-from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
-from ..utils import load_from_npz
+from ..utils import get_param_module, load_from_npz
 
 HERE = Path(__file__).resolve().parent / "refs" / "gfn1"
 ref_grad = np.load(HERE / "grad.npz")
@@ -109,7 +108,9 @@ def analytical(
             "scf_mode": scf_mode,
         },
     )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(
+        numbers, get_param_module("gfn1", **dd), opts=options, **dd
+    )
     result = -calc.forces_analytical(positions, charge)
     gradient = result.detach()
 
@@ -143,7 +144,9 @@ def test_backward(dtype: torch.dtype, name: str, scf_mode: str) -> None:
             "scf_mode": scf_mode,
         },
     )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(
+        numbers, get_param_module("gfn1", **dd), opts=options, **dd
+    )
     result = calc.singlepoint(positions, charge)
     energy = result.total.sum(-1)
 
@@ -193,7 +196,9 @@ def num_grad(
             "mixer": "anderson" if scf_mode == "full" else "broyden",
         },
     )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(
+        numbers, get_param_module("gfn1", **dd), opts=options, **dd
+    )
 
     gradient = torch.zeros_like(positions)
     step = 1.0e-6

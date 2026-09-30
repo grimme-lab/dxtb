@@ -26,12 +26,12 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN0_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.components.classicals import new_srb
 from dxtb._src.typing import DD
 
 from ...conftest import DEVICE
+from ...utils import get_param_module
 from .samples import samples
 
 sample_list = [
@@ -70,6 +70,7 @@ def single(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].to(**dd)
     ref = sample["esrb"].to(**dd)
 
+    par = get_param_module("gfn0", **dd)
     srb = new_srb(numbers, par, **dd)
     assert srb is not None
 
@@ -109,6 +110,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         )
     )
 
+    par = get_param_module("gfn0", **dd)
     srb = new_srb(numbers, par, **dd)
     assert srb is not None
 

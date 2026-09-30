@@ -34,7 +34,7 @@ from dxtb._src.components.interactions.coulomb import secondorder as es2
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE, NONDET_TOL
-from ..utils import get_elem_param
+from ..utils import get_elem_param, get_param_module
 from .samples import samples
 
 sample_list = ["MB16_43_07", "MB16_43_08", "SiH4"]
@@ -53,8 +53,9 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     qsh = sample["q"].to(**dd)
     ref = sample["es2"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    es = es2.new_es2(torch.unique(numbers), GFN1_XTB, **dd)
+    par = get_param_module("gfn1", **dd)
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    es = es2.new_es2(torch.unique(numbers), par, **dd)
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
@@ -97,8 +98,9 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         ],
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    es = es2.new_es2(torch.unique(numbers), GFN1_XTB, **dd)
+    par = get_param_module("gfn1", **dd)
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    es = es2.new_es2(torch.unique(numbers), par, **dd)
     assert es is not None
 
     cache = es.get_cache(numbers=numbers, positions=positions, ihelp=ihelp)
@@ -118,14 +120,18 @@ def test_grad_positions(name: str) -> None:
     positions = sample["positions"].to(**dd).detach()
     qsh = sample["q"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
+    par = get_param_module("gfn1", **dd)
+    ihelp = IndexHelper.from_numbers(numbers, par)
 
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
     def func(p: Tensor):
         es = es2.new_es2(
-            torch.unique(numbers), GFN1_XTB, shell_resolved=False, **dd
+            torch.unique(numbers),
+            par,
+            shell_resolved=False,
+            **dd,
         )
         if es is None:
             assert False

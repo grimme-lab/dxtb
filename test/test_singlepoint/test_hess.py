@@ -29,8 +29,7 @@ from tad_mctc import read, read_chrg
 from tad_mctc.autograd import jacrev
 from tad_mctc.convert import reshape_fortran
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD, Tensor
 
@@ -75,7 +74,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     pos = positions.clone().requires_grad_(True)
 
     options = dict(opts, **{"exclude": ["scf"]})
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
 
     def energy(p: Tensor) -> Tensor:
         result = calc.singlepoint(p, charge)

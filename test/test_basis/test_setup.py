@@ -24,16 +24,27 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
+from ..utils import get_param_module
 from .samples import samples
 
 sample_list = ["H2", "LiH", "Li2", "H2O", "S", "SiH4", "MB16_43_01"]
+
+# `test_single` checks every sample; batching only needs representative pairs,
+# including one identical pair for a batch without padding.
+batch_pairs = [
+    ("H2", "LiH"),
+    ("S", "SiH4"),
+    ("SiH4", "H2O"),
+    ("MB16_43_01", "H2"),
+    ("Li2", "S"),
+    ("SiH4", "SiH4"),
+]
 
 
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
@@ -46,6 +57,7 @@ def test_single(dtype: torch.dtype, name: str):
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
 
@@ -66,8 +78,7 @@ def test_single(dtype: torch.dtype, name: str):
 
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name1", sample_list)
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name1, name2", batch_pairs)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
@@ -84,6 +95,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     }
     positions = pack((pos_dict[0], pos_dict[1]), value=float("nan"))
 
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
 

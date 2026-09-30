@@ -37,6 +37,7 @@ from dxtb._src.constants.defaults import DEFAULT_BASIS_INT
 from dxtb._src.typing import DD, Any, Tensor
 from dxtb._src.utils import is_int_list
 
+from ..element import get_elem_angular, shell_angular
 from .types import NonNumericValue, ParameterModule
 
 __all__ = ["ParamElementsPairsMixin"]
@@ -398,22 +399,13 @@ class ParamElementsPairsMixin(ParamShortcutMixin):
         -------
         dict[int, list[int]]
             Angular momenta of all elements.
+
+        Raises
+        ------
+        ValueError
+            If a shell type is unknown.
         """
-        label2angular = {"s": 0, "p": 1, "d": 2, "f": 3, "g": 4}
-
-        result: dict[int, list[int]] = {}
-
-        for sym in self.element.keys():
-            num = pse.S2Z[sym]
-
-            # Actually, `shells` is a ModuleDict, but to satisfy the
-            # type checker for the following listcomp, we use NonNumericValue.
-            shells: list[NonNumericValue] = self.get("element", sym, "shells")
-
-            # The `shells` is list of strings, like ["1s", "2p", ...].
-            result[num] = [label2angular[label[-1]] for label in shells]
-
-        return result
+        return get_elem_angular(self.element)
 
     def get_elem_shells(self, unique: Tensor) -> dict[str, list[str]]:
         """
@@ -503,7 +495,6 @@ class ParamElementsPairsMixin(ParamShortcutMixin):
         """
         vals_list = []
         key = "shells"
-        label2angular = {"s": 0, "p": 1, "d": 2, "f": 3, "g": 4}
 
         par = self.element
 
@@ -514,10 +505,7 @@ class ParamElementsPairsMixin(ParamShortcutMixin):
             if el in par:
                 # Iterate over shells stored in the element parameters.
                 for shell in getattr(par[el], key):
-                    shell_type = shell[-1]
-                    if shell_type not in label2angular:
-                        raise ValueError(f"Unknown shell type '{shell_type}'.")
-                    shells.append(label2angular[shell_type])
+                    shells.append(shell_angular(shell))
             else:
                 shells = [pad_val]
 

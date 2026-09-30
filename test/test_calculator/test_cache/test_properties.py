@@ -24,7 +24,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb import GFN1_XTB, labels
+from dxtb import labels
 from dxtb._src.calculators.properties.vibration import IRResult, VibResult
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Literal, Tensor
@@ -36,6 +36,7 @@ from dxtb.calculators import (
 from dxtb.components.field import new_efield
 
 from ...conftest import DEVICE
+from ...utils import get_param_module
 
 opts = {"cache_enabled": True, "verbosity": 0}
 
@@ -153,7 +154,9 @@ def test_forces(
     pos = positions.clone().requires_grad_(True)
 
     options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
-    calc = AutogradCalculator(numbers, GFN1_XTB, opts=options, **dd)
+    calc = AutogradCalculator(
+        numbers, get_param_module("gfn1", **dd), opts=options, **dd
+    )
     assert calc._ncalcs == 0
 
     prop = calc.get_forces(pos, grad_mode=grad_mode)
@@ -184,7 +187,9 @@ def test_forces_analytical(dtype: torch.dtype) -> None:
     positions = torch.tensor([[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], **dd)
     pos = positions.clone().requires_grad_(True)
 
-    calc = AnalyticalCalculator(numbers, GFN1_XTB, opts=opts, **dd)
+    calc = AnalyticalCalculator(
+        numbers, get_param_module("gfn1", **dd), opts=opts, **dd
+    )
     assert calc._ncalcs == 0
 
     prop = calc.get_forces(pos)
@@ -216,7 +221,9 @@ def test_hessian(dtype: torch.dtype, use_functorch: bool) -> None:
     pos = positions.clone().requires_grad_(True)
 
     options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
-    calc = AutogradCalculator(numbers, GFN1_XTB, opts=options, **dd)
+    calc = AutogradCalculator(
+        numbers, get_param_module("gfn1", **dd), opts=options, **dd
+    )
     assert calc._ncalcs == 0
 
     prop = calc.get_hessian(pos, use_functorch=use_functorch)
@@ -257,7 +264,9 @@ def test_vibration(dtype: torch.dtype, use_functorch: bool) -> None:
     pos = positions.clone().requires_grad_(True)
 
     options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
-    calc = AutogradCalculator(numbers, GFN1_XTB, opts=options, **dd)
+    calc = AutogradCalculator(
+        numbers, get_param_module("gfn1", **dd), opts=options, **dd
+    )
     assert calc._ncalcs == 0
 
     prop = calc.get_normal_modes(pos, use_functorch=use_functorch)
@@ -314,7 +323,11 @@ def test_dipole(dtype: torch.dtype) -> None:
     efield = new_efield(field, **dd)
 
     calc = AutogradCalculator(
-        numbers, GFN1_XTB, interaction=efield, opts=options, **dd
+        numbers,
+        get_param_module("gfn1", **dd),
+        interaction=efield,
+        opts=options,
+        **dd,
     )
     assert calc._ncalcs == 0
 
@@ -360,7 +373,11 @@ def test_dipole_deriv(dtype: torch.dtype) -> None:
     efield = new_efield(field, **dd)
 
     calc = AutogradCalculator(
-        numbers, GFN1_XTB, opts=options, interaction=efield, **dd
+        numbers,
+        get_param_module("gfn1", **dd),
+        opts=options,
+        interaction=efield,
+        **dd,
     )
     assert calc._ncalcs == 0
 
@@ -408,7 +425,11 @@ def test_polarizability(dtype: torch.dtype) -> None:
     efield = new_efield(field, **dd)
 
     calc = AutogradCalculator(
-        numbers, GFN1_XTB, opts=options, interaction=efield, **dd
+        numbers,
+        get_param_module("gfn1", **dd),
+        opts=options,
+        interaction=efield,
+        **dd,
     )
     assert calc._ncalcs == 0
 
@@ -456,7 +477,11 @@ def test_pol_deriv(dtype: torch.dtype) -> None:
     efield = new_efield(field, **dd)
 
     calc = AutogradCalculator(
-        numbers, GFN1_XTB, opts=options, interaction=efield, **dd
+        numbers,
+        get_param_module("gfn1", **dd),
+        opts=options,
+        interaction=efield,
+        **dd,
     )
     assert calc._ncalcs == 0
 
@@ -504,7 +529,11 @@ def test_hyperpolarizability(dtype: torch.dtype) -> None:
     efield = new_efield(field, **dd)
 
     calc = AutogradCalculator(
-        numbers, GFN1_XTB, opts=options, interaction=efield, **dd
+        numbers,
+        get_param_module("gfn1", **dd),
+        opts=options,
+        interaction=efield,
+        **dd,
     )
     assert calc._ncalcs == 0
 
@@ -552,7 +581,11 @@ def test_ir(dtype: torch.dtype) -> None:
     efield = new_efield(field, **dd)
 
     calc = AutogradCalculator(
-        numbers, GFN1_XTB, opts=options, interaction=efield, **dd
+        numbers,
+        get_param_module("gfn1", **dd),
+        opts=options,
+        interaction=efield,
+        **dd,
     )
     assert calc._ncalcs == 0
 

@@ -23,8 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb import integrals as ints
 from dxtb import labels
 from dxtb._src.constants.labels import INTDRIVER_ANALYTICAL, INTDRIVER_LIBCINT
@@ -70,9 +69,9 @@ def test_fail_family(dtype: torch.dtype):
     dd: DD = {"dtype": dtype, "device": DEVICE}
     numbers = torch.tensor([1, 3], device=DEVICE)
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     mgr = ints.DriverManager(INTDRIVER_ANALYTICAL, **dd)
-    mgr.create_driver(numbers, par, ihelp)
+    mgr.create_driver(numbers, GFN1_XTB, ihelp)
 
     i = ints.Integrals(mgr, **dd)
 
@@ -92,9 +91,9 @@ def test_fail_pytorch_multipole(dtype: torch.dtype):
     dd: DD = {"dtype": dtype, "device": DEVICE}
     numbers = torch.tensor([1, 3], device=DEVICE)
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     mgr = ints.DriverManager(INTDRIVER_LIBCINT, **dd)
-    mgr.create_driver(numbers, par, ihelp)
+    mgr.create_driver(numbers, GFN1_XTB, ihelp)
 
     i = ints.Integrals(mgr, **dd)
 
@@ -135,12 +134,12 @@ def test_hcore(dtype: torch.dtype):
     dd: DD = {"dtype": dtype, "device": DEVICE}
     numbers = torch.tensor([1, 3], device=DEVICE)
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     mgr = ints.DriverManager(INTDRIVER_ANALYTICAL, **dd)
-    mgr.create_driver(numbers, par, ihelp)
+    mgr.create_driver(numbers, GFN1_XTB, ihelp)
 
     i = ints.Integrals(mgr, **dd)
-    i.hcore = GFN1Hamiltonian(numbers, par, ihelp, **dd)
+    i.hcore = GFN1Hamiltonian(numbers, GFN1_XTB, ihelp, **dd)
 
     h = i.hcore
     assert h is not None
@@ -153,12 +152,12 @@ def test_hcore_build(dtype: torch.dtype):
     numbers = torch.tensor([1, 3], device=DEVICE)
     pos = torch.zeros((2, 3), **dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     mgr = ints.DriverManager(INTDRIVER_ANALYTICAL, **dd)
-    mgr.create_driver(numbers, par, ihelp)
+    mgr.create_driver(numbers, GFN1_XTB, ihelp)
 
     i = ints.Integrals(mgr, **dd)
-    i.hcore = GFN1Hamiltonian(numbers, par, ihelp, **dd)
+    i.hcore = GFN1Hamiltonian(numbers, GFN1_XTB, ihelp, **dd)
 
     hcore = i.build_hcore(pos, with_overlap=False)
     assert hcore is not None
@@ -177,9 +176,9 @@ def test_hcore_fail(dtype: torch.dtype):
     numbers = torch.tensor([1, 3], device=DEVICE)
     positions = torch.zeros((2, 3), **dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     mgr = ints.DriverManager(INTDRIVER_ANALYTICAL, **dd)
-    mgr.create_driver(numbers, par, ihelp)
+    mgr.create_driver(numbers, GFN1_XTB, ihelp)
 
     i = ints.Integrals(mgr, **dd)
     with pytest.raises(RuntimeError):

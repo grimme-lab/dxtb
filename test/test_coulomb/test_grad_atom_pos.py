@@ -25,8 +25,7 @@ import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.components.interactions.coulomb import ES2
 from dxtb._src.typing import DD, Callable, Tensor
 
@@ -43,7 +42,7 @@ def gradcheck_pos(
     dtype: torch.dtype, name: str
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
-    assert par.repulsion is not None
+    assert GFN1_XTB.repulsion is not None
 
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
@@ -51,18 +50,18 @@ def gradcheck_pos(
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     hubbard = get_elem_param(
         torch.unique(numbers),
-        par.element,
+        GFN1_XTB.element,
         "gam",
         pad_val=0,
         **dd,
     )
 
-    assert par.charge is not None
-    gexp = torch.tensor(par.charge.effective.gexp, **dd)
+    assert GFN1_XTB.charge is not None
+    gexp = torch.tensor(GFN1_XTB.charge.effective.gexp, **dd)
 
     # variables to be differentiated
     pos = positions.clone().requires_grad_(True)
@@ -104,7 +103,7 @@ def gradcheck_pos_batch(
     dtype: torch.dtype, name1: str, name2: str
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
-    assert par.repulsion is not None
+    assert GFN1_XTB.repulsion is not None
 
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
@@ -122,18 +121,18 @@ def gradcheck_pos_batch(
         ]
     )
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     hubbard = get_elem_param(
         torch.unique(numbers),
-        par.element,
+        GFN1_XTB.element,
         "gam",
         pad_val=0,
         **dd,
     )
 
-    assert par.charge is not None
-    gexp = torch.tensor(par.charge.effective.gexp, **dd)
+    assert GFN1_XTB.charge is not None
+    gexp = torch.tensor(GFN1_XTB.charge.effective.gexp, **dd)
 
     # variables to be differentiated
     pos = positions.clone().requires_grad_(True)

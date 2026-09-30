@@ -42,6 +42,10 @@ from .samples import samples
 
 sample_list = ["H2", "LiH", "H2O", "SiH4"]
 
+# Batched checks pair LiH with: H2 (same atom count, fewer orbitals), SiH4
+# (more atoms and orbitals), and LiH itself (batch without padding).
+batch_partners = ["H2", "SiH4", "LiH"]
+
 
 def gradchecker(name: str, gfn: Param) -> tuple[
     Callable[[Tensor], Tensor],  # autograd function
@@ -89,6 +93,7 @@ def test_gradcheck(name: str, gfn: Param) -> None:
 
 
 @pytest.mark.grad
+@pytest.mark.large
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("name", ["MB16_43_01"])
 @pytest.mark.parametrize("gfn", [GFN1_XTB, GFN2_XTB])
@@ -163,7 +168,7 @@ def gradchecker_batch(name1: str, name2: str, gfn: Param) -> tuple[
 
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("name1", ["LiH"])
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name2", batch_partners)
 @pytest.mark.parametrize("gfn", [GFN1_XTB, GFN2_XTB])
 def test_gradcheck_batch(name1: str, name2: str, gfn: Param) -> None:
     """Check batched analytical against numerical gradient."""
@@ -171,9 +176,10 @@ def test_gradcheck_batch(name1: str, name2: str, gfn: Param) -> None:
     assert gradcheck(func, diffvars, atol=1e-6, nondet_tol=NONDET_TOL)
 
 
+@pytest.mark.large
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("name1", ["LiH"])
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name2", batch_partners)
 @pytest.mark.parametrize("gfn", [GFN1_XTB, GFN2_XTB])
 def test_gradgradcheck_batch(name1: str, name2: str, gfn: Param) -> None:
     """Check batched analytical against numerical gradient."""
