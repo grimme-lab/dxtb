@@ -75,7 +75,9 @@ def overlap_legacy(
         )
 
     # create empty overlap matrix
-    overlap = torch.zeros(ihelp.nao, ihelp.nao)
+    overlap = torch.zeros(
+        ihelp.nao, ihelp.nao, dtype=positions.dtype, device=positions.device
+    )
 
     # Create alphas and sort for indexing
     alphas, coeffs = bas.create_cgtos()

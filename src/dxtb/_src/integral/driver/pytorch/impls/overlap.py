@@ -34,7 +34,7 @@ from dxtb._src.utils import t2int
 from .md import overlap_gto, overlap_gto_grad
 from .md.utils import get_pairs, get_subblock_start
 
-__all__ = ["OverlapAG", "overlap", "overlap_gradient"]
+__all__ = ["OverlapAG", "overlap", "overlap_ag", "overlap_gradient"]
 
 
 class OverlapAG(torch.autograd.Function):
@@ -112,6 +112,32 @@ class OverlapAG(torch.autograd.Function):
             )
 
         return positions_bar, None, None, None, None
+
+
+def overlap_ag(
+    positions: Tensor,
+    bas: Basis,
+    ihelp: IndexHelper,
+    uplo: Literal["n", "u", "l"] = "l",
+    cutoff: Tensor | float | int | None = defaults.INTCUTOFF,
+) -> Tensor:
+    """
+    Overlap with the analytical position derivative, unless the basis
+    parameters themselves require gradients.
+
+    :class:`OverlapAG` keeps the basis as a plain Python object
+    (``ctx.bas``), so autograd cannot route gradients into the exponents and
+    contraction coefficients: they were silently dropped. If any of them
+    requires a gradient (and autograd is enabled), the plain differentiable
+    :func:`overlap` is used instead, which is correct for positions and basis
+    parameters alike (to any order).
+    """
+    if torch.is_grad_enabled():
+        alphas, coeffs = bas.create_cgtos()
+        if any(t.requires_grad for t in (*alphas, *coeffs)):
+            return overlap(positions, bas, ihelp, uplo, cutoff)
+
+    return OverlapAG.apply(positions, bas, ihelp, uplo, cutoff)  # type: ignore
 
 
 def overlap(

@@ -117,6 +117,10 @@ class DriverManager(TensorLike):
             # pylint: disable=import-outside-toplevel
             from .pytorch import IntDriverPytorchNoAnalytical as _IntDriver
 
+        elif self.driver_type == labels.INTDRIVER_LEGACY:
+            # pylint: disable=import-outside-toplevel
+            from .pytorch import IntDriverPytorchLegacy as _IntDriver
+
         else:
             raise ValueError(f"Unknown integral driver '{self.driver_type}'.")
 

@@ -57,7 +57,7 @@ def test_sto_ng_single(ng, n, l, dtype):
     Test normalization of all STO-NG basis functions
     """
     dd: DD = {"dtype": dtype, "device": DEVICE}
-    atol = 1.0e-6 if dtype == torch.float else 2.0e-7
+    atol = 1.0e-6 if dtype == torch.float else 1.0e-14
 
     alpha, coeff = slater_to_gauss(ng, n, l, torch.tensor(1.0, **dd))
     angular = torch.tensor(l, device=DEVICE)

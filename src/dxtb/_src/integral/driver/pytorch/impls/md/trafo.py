@@ -61,13 +61,14 @@ s45_8 = sqrt(45.0 / 8.0)
 
 
 TRAFO = (
-    torch.tensor([[1.0]]),
+    torch.tensor([[1.0]], dtype=torch.double),
     torch.tensor(
         [
             [1.0, 0.0, 0.0],  # x
             [0.0, 1.0, 0.0],  # y
             [0.0, 0.0, 1.0],  # z
-        ]
+        ],
+        dtype=torch.double,
     ),
     # fmt: off
     torch.tensor([
@@ -76,7 +77,7 @@ TRAFO = (
         [ 0.0,   0.0, 0.0, 0.0, 0.0,  s3],
         [s3_4, -s3_4, 0.0, 0.0, 0.0, 0.0],
         [ 0.0,   0.0, 0.0,  s3, 0.0, 0.0],
-    ]),
+    ], dtype=torch.double),
     # FIXME: This transformation matrix is the possibly wrong as it uses the
     # [-l, ..., 0, ..., l] ordering (copied from tblite) and not the ordering
     # that the d-orbitals use ([0, ..., l, -l]). However, I do not have a
@@ -89,7 +90,7 @@ TRAFO = (
         [-s3_8,   0.0, 0.0,   0.0,   0.0,  -s3_8,    0.0,  s6, 0.0, 0.0],
         [  0.0,   0.0, 0.0,   0.0, s15_4,    0.0, -s15_4, 0.0, 0.0, 0.0],
         [ s5_8,   0.0, 0.0,   0.0,   0.0, -s45_8,    0.0, 0.0, 0.0, 0.0],
-    ]),
+    ], dtype=torch.double),
     # fmt: on
 )
 """

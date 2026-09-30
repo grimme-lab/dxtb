@@ -132,4 +132,14 @@ def slater_to_gauss(
             / torch.sqrt(dfactorial[l])
         )
 
+        # normalize the contracted shell (the primitives alone leave cross
+        # terms, i.e., deviations of up to ~1e-8 from unit self-overlap)
+        # S = sum_kl c_k c_l (π/(α_k+α_l))^(3/2) (2l-1)!! / (2(α_k+α_l))^l
+        p = alpha.unsqueeze(-1) + alpha.unsqueeze(-2)
+        pref = (math.pi / p) ** 1.5 * dfactorial[l] / (2 * p) ** l
+        self_overlap = (coeff.unsqueeze(-1) * coeff.unsqueeze(-2) * pref).sum(
+            (-2, -1)
+        )
+        coeff = coeff / torch.sqrt(self_overlap)
+
     return (alpha, coeff)
