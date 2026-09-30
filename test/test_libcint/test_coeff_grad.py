@@ -176,6 +176,7 @@ def test_gradcheck_batch(name1: str, name2: str, gfn: Param) -> None:
     assert gradcheck(func, diffvars, atol=1e-6, nondet_tol=NONDET_TOL)
 
 
+@pytest.mark.large
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("name1", ["LiH"])
 @pytest.mark.parametrize("name2", batch_partners)
