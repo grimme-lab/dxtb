@@ -34,9 +34,9 @@ from dxtb._src.typing import Any, Tensor
 from ...base import IntDriver
 from .base import PytorchImplementation
 from .impls import (
-    OverlapAG,
     OverlapFunction,
     overlap,
+    overlap_ag,
     overlap_gradient,
 )
 
@@ -170,7 +170,7 @@ class IntDriverPytorch(BaseIntDriverPytorch):
     """
 
     def setup_eval_funcs(self) -> None:
-        self.eval_ovlp = OverlapAG.apply  # type: ignore
+        self.eval_ovlp = overlap_ag
         self.eval_ovlp_grad = overlap_gradient
 
 

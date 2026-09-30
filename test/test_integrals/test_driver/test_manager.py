@@ -24,11 +24,18 @@ import pytest
 import torch
 
 from dxtb import GFN1_XTB, IndexHelper
-from dxtb._src.constants.labels import INTDRIVER_ANALYTICAL, INTDRIVER_LIBCINT
+from dxtb._src.constants.labels import (
+    INTDRIVER_ANALYTICAL,
+    INTDRIVER_LEGACY,
+    INTDRIVER_LIBCINT,
+)
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.integral.driver.libcint import IntDriverLibcint
 from dxtb._src.integral.driver.manager import DriverManager
-from dxtb._src.integral.driver.pytorch import IntDriverPytorch
+from dxtb._src.integral.driver.pytorch import (
+    IntDriverPytorch,
+    IntDriverPytorchLegacy,
+)
 from dxtb._src.typing import DD
 
 from ...conftest import DEVICE
@@ -66,6 +73,8 @@ def single(name: int, dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
         assert isinstance(mgr.driver, IntDriverPytorch)
     elif name == INTDRIVER_LIBCINT:
         assert isinstance(mgr.driver, IntDriverLibcint)
+    elif name == INTDRIVER_LEGACY:
+        assert isinstance(mgr.driver, IntDriverPytorchLegacy)
 
     assert mgr.driver.is_latest(positions) is True
 
@@ -91,6 +100,16 @@ def test_pytorch_single(
     single(INTDRIVER_ANALYTICAL, dtype, force_cpu_for_libcint)
 
 
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
+def test_pytorch_legacy_single(
+    dtype: torch.dtype, force_cpu_for_libcint: bool
+) -> None:
+    """Regression test: DriverManager previously had no dispatch branch for
+    INTDRIVER_LEGACY and raised `ValueError: Unknown integral driver '3'`."""
+    single(INTDRIVER_LEGACY, dtype, force_cpu_for_libcint)
+
+
 def batch(name: int, dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
@@ -110,6 +129,8 @@ def batch(name: int, dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
         assert isinstance(mgr.driver, IntDriverPytorch)
     elif name == INTDRIVER_LIBCINT:
         assert isinstance(mgr.driver, IntDriverLibcint)
+    elif name == INTDRIVER_LEGACY:
+        assert isinstance(mgr.driver, IntDriverPytorchLegacy)
 
     assert mgr.driver.is_latest(positions) is True
 
@@ -129,3 +150,11 @@ def test_libcint_batch(dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
 @pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
 def test_pytorch_batch(dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
     batch(INTDRIVER_ANALYTICAL, dtype, force_cpu_for_libcint)
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
+def test_pytorch_legacy_batch(
+    dtype: torch.dtype, force_cpu_for_libcint: bool
+) -> None:
+    batch(INTDRIVER_LEGACY, dtype, force_cpu_for_libcint)
