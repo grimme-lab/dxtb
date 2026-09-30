@@ -40,8 +40,13 @@ coordfile_lih = Path(
 """Path to coord file of LiH."""
 
 
-_PARAM_MODULES: dict[tuple, tuple[ParamModule, list[Tensor], Tensor]] = {}
-"""Shared parametrizations with their parameters and a snapshot of values."""
+_PARAM_MODULES: dict[
+    tuple, tuple[ParamModule, list[Tensor], list[tuple], Tensor]
+] = {}
+"""
+Shared parametrizations with their parameters, the device and dtype of each
+parameter, and a snapshot of values.
+"""
 
 _PARAM_MODULES_USED: set[tuple] = set()
 """Keys of shared parametrizations handed out since the last check."""
@@ -56,9 +61,9 @@ def get_param_module(
     Get the differentiable parametrization, converted only once per
     parametrization, device, and dtype.
 
-    Converting a :class:`~dxtb.Param` into a :class:`~dxtb.ParamModule`
-    takes ~0.1 s and is repeated by every calculator or component that
-    receives a plain :class:`~dxtb.Param`. The returned module is shared
+    Converting a :class:`~dxtb.Param` into a :class:`~dxtb.ParamModule` is
+    comparatively expensive and is repeated by every calculator or component
+    that receives a plain :class:`~dxtb.Param`. The returned module is shared
     between tests and must be treated as read-only. Tests that make
     parameters differentiable or modify them build their own module.
     Misuse is detected after the test by :func:`check_param_modules`.
@@ -89,8 +94,9 @@ def get_param_module(
         # Walking the module tree is the expensive part of the check,
         # so the parameters are collected only once.
         params = list(module.parameters())
+        meta = _meta(params)
         snapshot = _flatten(params).clone()
-        _PARAM_MODULES[key] = (module, params, snapshot)
+        _PARAM_MODULES[key] = (module, params, meta, snapshot)
 
     _PARAM_MODULES_USED.add(key)
     return _PARAM_MODULES[key][0]
@@ -101,9 +107,9 @@ def check_param_modules() -> None:
     Check that the shared parametrizations handed out since the last check
     are unchanged, and discard those that are not.
 
-    Detects parameters that were made differentiable or modified in place
-    (including via ``.data``). Replacing a whole parameter object in the
-    module tree is not detected.
+    Detects parameters that were made differentiable, moved to another device
+    or dtype, or modified in place (including via ``.data``). Replacing a
+    whole parameter object in the module tree is not detected.
 
     Raises
     ------
@@ -112,9 +118,13 @@ def check_param_modules() -> None:
     """
     modified = []
     for key in _PARAM_MODULES_USED:
-        _, params, snapshot = _PARAM_MODULES[key]
-        if any(p.requires_grad for p in params) or not torch.equal(
-            _flatten(params), snapshot
+        _, params, meta, snapshot = _PARAM_MODULES[key]
+        # Device and dtype are compared first, because comparing values
+        # across devices raises instead of returning False.
+        if (
+            any(p.requires_grad for p in params)
+            or _meta(params) != meta
+            or not torch.equal(_flatten(params), snapshot)
         ):
             # Rebuild on next use so that later tests are not affected.
             del _PARAM_MODULES[key]
@@ -124,9 +134,13 @@ def check_param_modules() -> None:
 
     assert not modified, (
         f"Shared parametrization(s) {modified} from 'get_param_module' were "
-        "made differentiable or modified by this test. Build a separate "
-        "'ParamModule' instead."
+        "made differentiable, moved, or modified by this test. Build a "
+        "separate 'ParamModule' instead."
     )
+
+
+def _meta(params: list[Tensor]) -> list[tuple]:
+    return [(p.device, p.dtype) for p in params]
 
 
 def _flatten(params: list[Tensor]) -> Tensor:
