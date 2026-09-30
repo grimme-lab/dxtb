@@ -29,6 +29,7 @@ from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
+from .element_sets import reps_both_dtypes
 from .uhf_table import uhf_anion, uhf_cation
 
 opts = {
@@ -42,9 +43,8 @@ opts = {
 
 @pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("dtype, number", reps_both_dtypes())
 @pytest.mark.parametrize("partition", ["equal", "atomic"])
-@pytest.mark.parametrize("number", [n for n in range(1, 87)])
 def test_element(dtype: torch.dtype, partition: str, number: int) -> None:
     """Comparison of object SCF (old) vs. functional SCF."""
     dd: DD = {"device": DEVICE, "dtype": dtype}

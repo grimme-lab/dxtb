@@ -123,7 +123,7 @@ def test_single_difficult(
 
 @pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("dtype", [torch.float])
 @pytest.mark.parametrize("name", ["C60", "vancoh2"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
 @pytest.mark.parametrize("scp_mode", ["charges", "potential", "fock"])

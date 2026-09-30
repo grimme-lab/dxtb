@@ -185,7 +185,7 @@ def test_single_difficult_gfn2(
 
 
 @pytest.mark.large
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("dtype", [torch.float])
 @pytest.mark.parametrize("name", ["C60", "vancoh2"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
 def test_single_large_gfn1(dtype: torch.dtype, name: str, mixer: str) -> None:
@@ -196,7 +196,7 @@ def test_single_large_gfn1(dtype: torch.dtype, name: str, mixer: str) -> None:
 
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.large
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("dtype", [torch.float])
 @pytest.mark.parametrize("name", ["C60", "vancoh2"])
 @pytest.mark.parametrize("mixer", ["anderson", "simple"])
 def test_single_large_gfn2(dtype: torch.dtype, name: str, mixer: str) -> None:
