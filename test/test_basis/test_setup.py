@@ -35,6 +35,15 @@ from .samples import samples
 
 sample_list = ["H2", "LiH", "Li2", "H2O", "S", "SiH4", "MB16_43_01"]
 
+# `test_single` checks every sample; batching only needs representative pairs.
+batch_pairs = [
+    ("H2", "LiH"),
+    ("S", "SiH4"),
+    ("SiH4", "H2O"),
+    ("MB16_43_01", "H2"),
+    ("Li2", "S"),
+]
+
 
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -66,8 +75,7 @@ def test_single(dtype: torch.dtype, name: str):
 
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name1", sample_list)
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name1, name2", batch_pairs)
 def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
 

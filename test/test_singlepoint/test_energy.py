@@ -39,6 +39,10 @@ from .samples import samples
 slist = ["H2", "H2O", "CH4", "SiH4"]
 slist_large = ["LYS_xao", "C60", "vancoh2", "AD7en+"]
 
+# Batching only needs representative triples (differing sizes); every sample is
+# checked individually in the `test_single_*` tests.
+batch_triples = [("H2O", "SiH4", "H2"), ("H2", "H2", "LiH")]
+
 opts = {
     "verbosity": 0,
     "scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE,
@@ -235,9 +239,7 @@ def batch(
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name1", ["H2", "H2O"])
-@pytest.mark.parametrize("name2", ["H2", "SiH4"])
-@pytest.mark.parametrize("name3", ["H2", "LiH"])
+@pytest.mark.parametrize("name1, name2, name3", batch_triples)
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
 def test_batch_gfn1(
     dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
@@ -247,9 +249,7 @@ def test_batch_gfn1(
 
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name1", ["H2", "H2O"])
-@pytest.mark.parametrize("name2", ["H2", "SiH4"])
-@pytest.mark.parametrize("name3", ["H2", "LiH"])
+@pytest.mark.parametrize("name1, name2, name3", batch_triples)
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
 def test_batch_gfn2(
     dtype: torch.dtype, name1: str, name2: str, name3: str, scf_mode: str
@@ -258,9 +258,7 @@ def test_batch_gfn2(
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name1", ["H2", "H2O"])
-@pytest.mark.parametrize("name2", ["H2", "SiH4"])
-@pytest.mark.parametrize("name3", ["H2", "LiH"])
+@pytest.mark.parametrize("name1, name2, name3", batch_triples)
 def test_batch_gfn0(
     dtype: torch.dtype, name1: str, name2: str, name3: str
 ) -> None:

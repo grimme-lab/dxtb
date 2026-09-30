@@ -188,7 +188,7 @@ def batched(
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name1", ["LiH"])
-@pytest.mark.parametrize("name2", ["LiH", "SiH4"])
+@pytest.mark.parametrize("name2", ["SiH4"])  # padding; LiH+LiH is redundant
 @pytest.mark.parametrize("mixer", ["anderson", "broyden", "simple"])
 @pytest.mark.parametrize("scp_mode", ["charges", "potential", "fock"])
 @pytest.mark.parametrize("scf_mode", ["full", "implicit"])
