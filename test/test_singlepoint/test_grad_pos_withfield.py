@@ -209,3 +209,81 @@ def test_gradgradcheck_batch(
     assert dgradgradcheck(
         func, diffvars, atol=tol, eps=1e-4, nondet_tol=1e-7, fast_mode=False
     )
+
+
+def analytical_vs_autograd(
+    numbers: Tensor, positions: Tensor, charge: Tensor, dd: DD
+) -> None:
+    field_vector = torch.tensor([-2.0, 1.0, 0.5], **dd) * VAA2AU
+
+    options = dict(opts, **{"scf_mode": labels.SCF_MODE_IMPLICIT_NON_PURE})
+
+    # separate calculators, so that no cached quantities are shared
+    calc = Calculator(
+        numbers,
+        GFN1_XTB,
+        interaction=new_efield(field_vector),
+        opts=options,
+        **dd,
+    )
+    pos = positions.clone().requires_grad_(True)
+    energy = calc.energy(pos, charge)
+    (ref,) = torch.autograd.grad(-energy.sum(), pos)
+
+    calc = Calculator(
+        numbers,
+        GFN1_XTB,
+        interaction=new_efield(field_vector),
+        opts=options,
+        **dd,
+    )
+    pos = positions.clone().requires_grad_(True)
+    forces = calc.forces_analytical(pos, charge).detach()
+
+    assert pytest.approx(ref.cpu(), abs=1e-8, rel=1e-6) == forces.cpu()
+
+
+@pytest.mark.grad
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.double])
+def test_analytical(dtype: torch.dtype) -> None:
+    """
+    Check analytical forces in an electric field against autograd. The anion
+    has non-zero atomic charges and dipole moments, i.e., the gradient
+    contains the monopolar (:math:`-q_A F`) and the dipolar contribution.
+    """
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    numbers = samples["NO2"]["numbers"].to(DEVICE)
+    positions = samples["NO2"]["positions"].to(**dd)
+    charge = torch.tensor(-1.0, **dd)
+
+    analytical_vs_autograd(numbers, positions, charge, dd)
+
+
+@pytest.mark.grad
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+@pytest.mark.parametrize("dtype", [torch.double])
+def test_analytical_batch(dtype: torch.dtype) -> None:
+    """
+    Check analytical forces in an electric field against autograd for a
+    batch of a neutral molecule and an anion.
+    """
+    dd: DD = {"device": DEVICE, "dtype": dtype}
+
+    sample1, sample2 = samples["SiH4"], samples["NO2"]
+    numbers = pack(
+        [
+            sample1["numbers"].to(DEVICE),
+            sample2["numbers"].to(DEVICE),
+        ]
+    )
+    positions = pack(
+        [
+            sample1["positions"].to(**dd),
+            sample2["positions"].to(**dd),
+        ]
+    )
+    charge = torch.tensor([0.0, -1.0], **dd)
+
+    analytical_vs_autograd(numbers, positions, charge, dd)
