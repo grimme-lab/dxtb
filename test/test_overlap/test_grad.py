@@ -187,6 +187,17 @@ def compare_md(
 
     ngi, ni, li = cgtoi
     ngj, nj, lj = cgtoj
+
+    # The d-orbital references were generated with the old tblite ordering
+    # [z2, xz, yz, x2-y2, xy]; the code now uses the CCA ordering (tblite#371)
+    # with m ascending: [xy, yz, z2, xz, x2-y2].
+    perm = {2: torch.tensor([4, 2, 0, 1, 3])}
+    pi = perm.get(int(li), torch.arange(2 * int(li) + 1))
+    pj = perm.get(int(lj), torch.arange(2 * int(lj) + 1))
+    ovlp_ref = ovlp_ref[pi][:, pj]
+    grad_ref = ovlp_grad_ref.reshape(len(pi), len(pj), 3)
+    ovlp_grad_ref = grad_ref[pi][:, pj].reshape(-1, 3)
+
     alpha_i, coeff_i = slater_to_gauss(
         ngi, ni, li, torch.tensor(1.0, dtype=dtype)
     )

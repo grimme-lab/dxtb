@@ -17,9 +17,11 @@
 """
 Element-wise agreement of the overlap of all pytorch drivers with libcint.
 
-The drivers order the spherical components within a shell differently (a
-fixed permutation per angular momentum, no sign flips), which energies and
-forces are invariant to. The comparison is therefore done after reordering.
+The pytorch drivers follow the CCA ordering of tblite (spherical components
+in ascending m), which libcint shares for l >= 2. Only the p-orbitals differ:
+y, z, x in the pytorch drivers and x, y, z in libcint. Energies and forces are
+invariant to this fixed permutation, so the comparison is done after
+reordering.
 
 Guards two fixes: the cartesian-to-spherical transformation matrices were
 built in float32, and the contracted shells were not normalized exactly.
@@ -51,7 +53,7 @@ from .samples import samples
 PERM_BY_L = {
     0: [0],
     1: [1, 2, 0],
-    2: [2, 3, 1, 4, 0],
+    2: [0, 1, 2, 3, 4],
 }
 
 
