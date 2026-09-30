@@ -23,8 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.constants.labels import INTDRIVER_ANALYTICAL, INTDRIVER_LIBCINT
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.integral.driver.libcint import IntDriverLibcint
@@ -43,7 +42,9 @@ def test_fail() -> None:
 
     with pytest.raises(ValueError):
         numbers = torch.tensor([1, 2], device=DEVICE)
-        mgr.create_driver(numbers, par, IndexHelper.from_numbers(numbers, par))
+        mgr.create_driver(
+            numbers, GFN1_XTB, IndexHelper.from_numbers(numbers, GFN1_XTB)
+        )
 
 
 def single(name: int, dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
@@ -52,10 +53,10 @@ def single(name: int, dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
     numbers = torch.tensor([3, 1], device=DEVICE)
     positions = torch.zeros((2, 3), **dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     mgr = DriverManager(name, force_cpu_for_libcint=force_cpu_for_libcint, **dd)
-    mgr.create_driver(numbers, par, ihelp)
+    mgr.create_driver(numbers, GFN1_XTB, ihelp)
 
     if force_cpu_for_libcint is True:
         positions = positions.cpu()
@@ -96,10 +97,10 @@ def batch(name: int, dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
     numbers = torch.tensor([[3, 1], [1, 0]], device=DEVICE)
     positions = torch.zeros((2, 2, 3), **dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     mgr = DriverManager(name, force_cpu_for_libcint=force_cpu_for_libcint, **dd)
-    mgr.create_driver(numbers, par, ihelp)
+    mgr.create_driver(numbers, GFN1_XTB, ihelp)
 
     if force_cpu_for_libcint is True:
         positions = positions.cpu()

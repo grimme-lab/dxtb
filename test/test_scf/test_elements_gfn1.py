@@ -39,7 +39,7 @@ from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
-from .element_sets import all_double_reps_float, reps_both_dtypes
+from .element_sets import ALL_DOUBLE_REPS_FLOAT, reps_both_dtypes
 from .samples import samples
 from .uhf_table import uhf, uhf_anion, uhf_cation
 
@@ -330,7 +330,7 @@ opts = {
 
 @pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype, number", all_double_reps_float())
+@pytest.mark.parametrize("dtype, number", ALL_DOUBLE_REPS_FLOAT)
 def test_element(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -359,14 +359,11 @@ def test_element(dtype: torch.dtype, number: int) -> None:
 
 @pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype, number", reps_both_dtypes())
+# SCF does not converge for gold (in tblite too)
+@pytest.mark.parametrize("dtype, number", reps_both_dtypes(exclude=(79,)))
 def test_element_cation(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2
     dd: DD = {"device": DEVICE, "dtype": dtype}
-
-    # SCF does not converge for gold (in tblite too)
-    if number == 79:
-        return
 
     numbers = torch.tensor([number], device=DEVICE)
     positions = torch.zeros((1, 3), **dd)
@@ -393,18 +390,15 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
 
 @pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("dtype, number", reps_both_dtypes())
+# Helium doesn't have enough orbitals for negative charge; SCF does not
+# converge for 21, 22, 23, 25, 43, 57, 58, 59 (in tblite too)
+@pytest.mark.parametrize(
+    "dtype, number",
+    reps_both_dtypes(exclude=(2, 21, 22, 23, 25, 43, 57, 58, 59)),
+)
 def test_element_anion(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
-
-    # Helium doesn't have enough orbitals for negative charge
-    if number == 2:
-        return
-
-    # SCF does not converge (in tblite too)
-    if number in [21, 22, 23, 25, 43, 57, 58, 59]:
-        return
 
     numbers = torch.tensor([number], device=DEVICE)
     positions = torch.zeros((1, 3), **dd)

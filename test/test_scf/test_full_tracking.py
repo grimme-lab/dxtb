@@ -33,6 +33,7 @@ from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
+from ..utils import get_param_module
 from .samples import samples
 
 slist = ["LiH", "SiH4"]
@@ -73,12 +74,7 @@ def single(
     ref = sample[f"e{gfn}"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     options = dict(
         opts,
@@ -239,12 +235,7 @@ def batched(
     )
     charges = torch.tensor([0.0, 0.0], **dd)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     options = dict(
         opts,
@@ -486,12 +477,7 @@ def batch_three(
     )
     charges = torch.tensor([0.0, 0.0, 0.0], **dd)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     options = dict(
         opts,
@@ -542,7 +528,9 @@ def test_batch_special(dtype: torch.dtype, mixer: str) -> None:
             "mixer": mixer,
         },
     )
-    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
+    calc = Calculator(
+        numbers, get_param_module("gfn1", **dd), opts=options, **dd
+    )
 
     result = calc.singlepoint(positions, chrg)
     res = result.scf.sum(-1)

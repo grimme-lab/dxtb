@@ -25,13 +25,14 @@ import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB, GFN2_XTB, Calculator
+from dxtb import Calculator
 from dxtb._src.components.interactions import new_efield, new_efield_grad
 from dxtb._src.constants import labels
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Callable, Tensor
 
 from ..conftest import DEVICE
+from ..utils import get_param_module
 from .samples import samples
 
 opts = {
@@ -66,12 +67,7 @@ def gradchecker(dtype: torch.dtype, name: str, gfn: str) -> tuple[
     # variables to be differentiated
     field_grad.requires_grad_(True)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    else:
-        raise ValueError(f"Unknown GFN: {gfn}")
+    par = get_param_module(gfn, **dd)
 
     def func(fieldgrad: Tensor) -> Tensor:
         efield = new_efield(field_vector)
@@ -143,12 +139,7 @@ def gradchecker_batch(
     # variables to be differentiated
     field_grad.requires_grad_(True)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    else:
-        raise ValueError(f"Unknown GFN: {gfn}")
+    par = get_param_module(gfn, **dd)
 
     def func(fieldgrad: Tensor) -> Tensor:
         efield = new_efield(field_vector)

@@ -27,13 +27,13 @@ import numpy as np
 import pytest
 import torch
 
-from dxtb import GFN0_XTB, GFN1_XTB, GFN2_XTB, Calculator
+from dxtb import Calculator
 from dxtb._src.constants import labels
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
-from ..utils import load_from_npz
+from ..utils import get_param_module, load_from_npz
 from .samples_charged import samples
 
 opts = {
@@ -55,14 +55,7 @@ def single(dtype: torch.dtype, name: str, gfn: str) -> None:
     ref = sample[f"e{gfn}"]
     chrg = sample["charge"].to(**dd)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    elif gfn == "gfn0":
-        par = GFN0_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
     results = calc.singlepoint(positions, chrg)
@@ -121,7 +114,9 @@ def test_grad(dtype: torch.dtype, name: str) -> None:
             "x_atol": 1.0e-5,
         },
     )
-    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
+    calc = Calculator(
+        numbers, get_param_module("gfn1", **dd), opts=options, **dd
+    )
     result = calc.singlepoint(pos, chrg)
     energy = result.scf.sum(-1)
 

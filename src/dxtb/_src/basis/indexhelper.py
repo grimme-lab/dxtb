@@ -50,6 +50,7 @@ from tad_mctc.math import einsum
 from dxtb._src.typing import Slicers, Tensor, TensorLike, override
 
 from ..param import Param, ParamModule
+from ..param.element import get_elem_angular
 from ..utils import t2int, wrap_gather, wrap_scatter_reduce
 
 __all__ = ["IndexHelper"]
@@ -323,12 +324,12 @@ class IndexHelper(TensorLike):
         IndexHelper
             Instance of index helper for given basis set.
         """
-        if not isinstance(par, ParamModule):
-            par = ParamModule(par)
-
+        # PERF: Only the angular momenta (plain Python ints) are required
+        # here. Hence, a plain `Param` is read directly instead of building
+        # the full differentiable parameter tree (~0.1 s).
         return cls.from_numbers_angular(
             numbers,
-            angular=par.get_elem_angular(),
+            angular=get_elem_angular(par.element),
             batch_mode=batch_mode,
             move_to_numbers_device=move_to_numbers_device,
         )

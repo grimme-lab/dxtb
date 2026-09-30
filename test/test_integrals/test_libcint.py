@@ -24,8 +24,7 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb import integrals as ints
 from dxtb import labels
 from dxtb._src.exlibs.available import has_libcint
@@ -46,11 +45,11 @@ from .samples import samples
 
 
 def run(numbers: Tensor, positions: Tensor, cpu: bool, dd: DD) -> None:
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
     mgr = DriverManager(
         labels.INTDRIVER_LIBCINT, force_cpu_for_libcint=cpu, **dd
     )
-    mgr.create_driver(numbers, par, ihelp)
+    mgr.create_driver(numbers, GFN1_XTB, ihelp)
 
     i = ints.Integrals(mgr, intlevel=labels.INTLEVEL_QUADRUPOLE, **dd)
     i.build_overlap(positions, force_cpu_for_libcint=cpu)

@@ -24,8 +24,7 @@ import pytest
 import torch
 from tad_mctc.exceptions import DeviceError, DtypeError
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, Calculator
 from dxtb._src.typing import MockTensor, Tensor
 
 
@@ -35,7 +34,7 @@ def test_fail_dtype() -> None:
     charge = torch.tensor(0.0)
     spin = torch.tensor(0.0)
 
-    calc = Calculator(numbers, par, opts={"verbosity": 0})
+    calc = Calculator(numbers, GFN1_XTB, opts={"verbosity": 0})
 
     # same dtype works
     e = calc.get_energy(positions, charge, spin)
@@ -58,7 +57,9 @@ def test_fail_device() -> None:
     _charge = torch.tensor(0.0)
     _spin = torch.tensor(0.0)
 
-    calc = Calculator(numbers, par, opts={"verbosity": 0}, dtype=torch.float)
+    calc = Calculator(
+        numbers, GFN1_XTB, opts={"verbosity": 0}, dtype=torch.float
+    )
 
     # same device works
     e = calc.get_energy(_positions, _charge, _spin)

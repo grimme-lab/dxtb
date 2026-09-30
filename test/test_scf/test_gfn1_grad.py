@@ -26,13 +26,12 @@ import numpy as np
 import pytest
 import torch
 
-from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
-from ..utils import load_from_npz
+from ..utils import get_param_module, load_from_npz
 from .samples import samples
 
 opts = {
@@ -100,7 +99,9 @@ def run_grad_backwards(
             "mixer": "anderson" if scf_mode == "full" else "broyden",
         },
     )
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(
+        numbers, get_param_module("gfn1", **dd), opts=options, **dd
+    )
 
     result = calc.singlepoint(pos, charges)
     energy = result.scf.sum(-1)
@@ -148,7 +149,9 @@ def run_grad_autograd(name: str, dtype: torch.dtype):
     assert pytest.approx(ref_full, abs=tol, rel=1e-5) == ref
 
     options = dict(opts, **{"f_atol": tol, "x_atol": tol})
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(
+        numbers, get_param_module("gfn1", **dd), opts=options, **dd
+    )
 
     result = calc.singlepoint(pos, charges)
     energy = result.scf.sum(-1)
@@ -185,7 +188,9 @@ def test_grad_large(name: str, dtype: torch.dtype):
     pos = positions.clone().requires_grad_(True)
 
     options = dict(opts, **{"f_atol": tol**2, "x_atol": tol**2})
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(
+        numbers, get_param_module("gfn1", **dd), opts=options, **dd
+    )
 
     result = calc.singlepoint(pos, charges)
     energy = result.scf.sum(-1)
@@ -227,7 +232,9 @@ def run_param_grad_energy(name: str, dtype: torch.dtype = torch.float):
     charges = torch.tensor(0.0, **dd)
 
     options = dict(opts, **{"f_atol": tol**2, "x_atol": tol**2})
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(
+        numbers, get_param_module("gfn1", **dd), opts=options, **dd
+    )
 
     assert calc.integrals.hcore is not None
     h = calc.integrals.hcore
@@ -268,7 +275,9 @@ def skip_test_param_grad_force(name: str, dtype: torch.dtype = torch.float):
     charges = torch.tensor(0.0, **dd)
 
     options = dict(opts, **{"f_atol": tol**2, "x_atol": tol**2})
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(
+        numbers, get_param_module("gfn1", **dd), opts=options, **dd
+    )
 
     assert calc.integrals.hcore is not None
     h = calc.integrals.hcore

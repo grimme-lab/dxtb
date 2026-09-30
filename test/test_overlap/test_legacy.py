@@ -26,8 +26,7 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.basis.bas import Basis
 from dxtb._src.integral.driver.pytorch import (
     IntDriverPytorchLegacy,
@@ -71,7 +70,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].to(**dd)
     ref = load_from_npz(ref_overlap, name, dtype)
 
-    s = calc_overlap(numbers, positions, par, uplo="l", dd=dd)
+    s = calc_overlap(numbers, positions, GFN1_XTB, uplo="l", dd=dd)
     assert pytest.approx(ref.cpu(), rel=tol, abs=tol) == s.cpu()
 
 
@@ -104,7 +103,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         )
     )
 
-    s = calc_overlap(numbers, positions, par, uplo="l", dd=dd)
+    s = calc_overlap(numbers, positions, GFN1_XTB, uplo="l", dd=dd)
     assert pytest.approx(s.cpu(), abs=tol) == s.mT.cpu()
     assert pytest.approx(ref.cpu(), abs=tol) == s.cpu()
 
@@ -121,8 +120,8 @@ def test_gradient() -> None:
         ],
         device=DEVICE,
     )
-    ihelp = IndexHelper.from_numbers(numbers, par)
-    bas = Basis(numbers, par, ihelp)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
+    bas = Basis(numbers, GFN1_XTB, ihelp)
 
     with pytest.raises(NotImplementedError):
         overlap_gradient_legacy(positions, bas, ihelp, uplo="n")

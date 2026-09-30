@@ -29,12 +29,13 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN0_XTB, GFN1_XTB, GFN2_XTB, Calculator
+from dxtb import Calculator
 from dxtb._src.constants import labels
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
+from ..utils import get_param_module
 from .samples import samples
 
 opts = {
@@ -57,14 +58,7 @@ def single(dtype: torch.dtype, name: str, gfn: str) -> None:
     ref = sample[f"e{gfn}"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    elif gfn == "gfn0":
-        par = GFN0_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
 
@@ -106,14 +100,7 @@ def single_medium(dtype: torch.dtype, name: str, mixer: str, gfn: str) -> None:
     ref = sample[f"e{gfn}"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    elif gfn == "gfn0":
-        par = GFN0_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     options = dict(
         opts,
@@ -189,14 +176,7 @@ def single_difficult(
     ref = sample[f"e{gfn}"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    elif gfn == "gfn0":
-        par = GFN0_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     options = dict(
         opts,
@@ -266,14 +246,7 @@ def single_large(dtype: torch.dtype, name: str, gfn: str) -> None:
     ref = sample[f"e{gfn}"].to(**dd)
     charges = torch.tensor(0.0, **dd)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    elif gfn == "gfn0":
-        par = GFN0_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     options = dict(
         opts,
@@ -339,14 +312,7 @@ def batch(dtype: torch.dtype, name1: str, name2: str, gfn: str) -> None:
     )
     charges = torch.tensor([0.0, 0.0], **dd)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    elif gfn == "gfn0":
-        par = GFN0_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
 
@@ -410,14 +376,7 @@ def batch_three(
     )
     charges = torch.tensor([0.0, 0.0, 0.0], **dd)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    elif gfn == "gfn0":
-        par = GFN0_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     calc = Calculator(numbers, par, opts=opts, **dd)
 
@@ -485,7 +444,9 @@ def test_batch_special(dtype: torch.dtype, mixer: str) -> None:
     ref = torch.tensor([-2.8629311088577, -4.1663539440167], **dd)
 
     options = dict(opts, **{"mixer": mixer})
-    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
+    calc = Calculator(
+        numbers, get_param_module("gfn1", **dd), opts=options, **dd
+    )
 
     result = calc.singlepoint(positions, chrg)
     assert pytest.approx(ref.cpu(), abs=tol) == result.scf.sum(-1).cpu()

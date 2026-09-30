@@ -26,6 +26,8 @@ import torch
 
 from dxtb._src.timing import timer
 
+from .utils import check_param_modules
+
 # avoid randomness and non-deterministic algorithms
 np.random.seed(0)
 torch.manual_seed(0)
@@ -190,3 +192,13 @@ def pytest_runtest_setup(item: pytest.Function) -> None:
             pytest.skip(
                 "Torch not compiled with CUDA or no CUDA device available."
             )
+
+
+@pytest.fixture(autouse=True)
+def _check_shared_param_modules():
+    """
+    Fail the test that modified a parametrization shared via
+    :func:`~test.utils.get_param_module`.
+    """
+    yield
+    check_param_modules()

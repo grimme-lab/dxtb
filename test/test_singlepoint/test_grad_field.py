@@ -26,13 +26,14 @@ from tad_mctc.autograd import dgradcheck, dgradgradcheck
 from tad_mctc.batch import pack
 from tad_mctc.units import VAA2AU
 
-from dxtb import GFN1_XTB, GFN2_XTB, Calculator
+from dxtb import Calculator
 from dxtb._src.components.interactions import new_efield
 from dxtb._src.constants import labels
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Callable, Tensor
 
 from ..conftest import DEVICE
+from ..utils import get_param_module
 from .samples import samples
 
 opts = {
@@ -80,12 +81,7 @@ def gradchecker(
         },
     )
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     # variables to be differentiated
     field_vector = torch.tensor([xfield, 0.0, 0.0], **dd) * VAA2AU
@@ -166,12 +162,7 @@ def gradchecker_batch(
     )
     charge = torch.tensor([0.0, 0.0], **dd)
 
-    if gfn == "gfn1":
-        par = GFN1_XTB
-    elif gfn == "gfn2":
-        par = GFN2_XTB
-    else:
-        assert False
+    par = get_param_module(gfn, **dd)
 
     options = dict(
         opts,

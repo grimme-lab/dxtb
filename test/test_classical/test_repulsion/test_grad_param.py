@@ -25,8 +25,7 @@ import torch
 from tad_mctc.batch import pack
 from torch.autograd.gradcheck import gradcheck, gradgradcheck
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.components.classicals import Repulsion
 from dxtb._src.typing import DD, Callable, Tensor
 
@@ -44,27 +43,29 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     tuple[Tensor, Tensor, Tensor],  # differentiable variables
 ]:
     """Prepare gradient check from `torch.autograd`."""
-    assert par.repulsion is not None
+    assert GFN1_XTB.repulsion is not None
 
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     # variables to be differentiated
     _arep = get_elem_param(
-        torch.unique(numbers), par.element, "arep", pad_val=0, **dd
+        torch.unique(numbers), GFN1_XTB.element, "arep", pad_val=0, **dd
     )
     _arep.requires_grad_(True)
 
     _zeff = get_elem_param(
-        torch.unique(numbers), par.element, "zeff", pad_val=0, **dd
+        torch.unique(numbers), GFN1_XTB.element, "zeff", pad_val=0, **dd
     )
     _zeff.requires_grad_(True)
 
-    _kexp = torch.tensor(par.repulsion.effective.kexp, **dd, requires_grad=True)
+    _kexp = torch.tensor(
+        GFN1_XTB.repulsion.effective.kexp, **dd, requires_grad=True
+    )
 
     def func(arep: Tensor, zeff: Tensor, kexp: Tensor) -> Tensor:
         rep = Repulsion(arep, zeff, kexp, **dd)
@@ -103,7 +104,7 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     tuple[Tensor, Tensor, Tensor],  # differentiable variables
 ]:
     """Prepare gradient check from `torch.autograd`."""
-    assert par.repulsion is not None
+    assert GFN1_XTB.repulsion is not None
 
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
@@ -120,20 +121,22 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
             sample2["positions"].to(**dd),
         ]
     )
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     # variables to be differentiated
     _arep = get_elem_param(
-        torch.unique(numbers), par.element, "arep", pad_val=0, **dd
+        torch.unique(numbers), GFN1_XTB.element, "arep", pad_val=0, **dd
     )
     _arep.requires_grad_(True)
 
     _zeff = get_elem_param(
-        torch.unique(numbers), par.element, "zeff", pad_val=0, **dd
+        torch.unique(numbers), GFN1_XTB.element, "zeff", pad_val=0, **dd
     )
     _zeff.requires_grad_(True)
 
-    _kexp = torch.tensor(par.repulsion.effective.kexp, **dd, requires_grad=True)
+    _kexp = torch.tensor(
+        GFN1_XTB.repulsion.effective.kexp, **dd, requires_grad=True
+    )
 
     def func(arep: Tensor, zeff: Tensor, kexp: Tensor) -> Tensor:
         rep = Repulsion(arep, zeff, kexp, **dd)

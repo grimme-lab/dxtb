@@ -25,8 +25,7 @@ import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.components.classicals import Halogen
 from dxtb._src.typing import DD, Callable, Tensor
 
@@ -44,24 +43,24 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     tuple[Tensor, Tensor, Tensor],  # differentiable variables
 ]:
     """Prepare gradient check from `torch.autograd`."""
-    assert par.halogen is not None
+    assert GFN1_XTB.halogen is not None
 
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
     sample = samples[name]
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     # variables to be differentiated
-    _damp = torch.tensor(par.halogen.classical.damping, **dd)
+    _damp = torch.tensor(GFN1_XTB.halogen.classical.damping, **dd)
     _damp.requires_grad_(True)
 
-    _rscale = torch.tensor(par.halogen.classical.rscale, **dd)
+    _rscale = torch.tensor(GFN1_XTB.halogen.classical.rscale, **dd)
     _rscale.requires_grad_(True)
 
     _xbond = get_elem_param(
-        torch.unique(numbers), par.element, "xbond", pad_val=0, **dd
+        torch.unique(numbers), GFN1_XTB.element, "xbond", pad_val=0, **dd
     )
     _xbond.requires_grad_(True)
 
@@ -102,7 +101,7 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     tuple[Tensor, Tensor, Tensor],  # differentiable variables
 ]:
     """Prepare gradient check from `torch.autograd`."""
-    assert par.halogen is not None
+    assert GFN1_XTB.halogen is not None
 
     dd: DD = {"dtype": dtype, "device": DEVICE}
 
@@ -119,17 +118,17 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
             sample2["positions"].to(**dd),
         ]
     )
-    ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     # variables to be differentiated
-    _damp = torch.tensor(par.halogen.classical.damping, **dd)
+    _damp = torch.tensor(GFN1_XTB.halogen.classical.damping, **dd)
     _damp.requires_grad_(True)
 
-    _rscale = torch.tensor(par.halogen.classical.rscale, **dd)
+    _rscale = torch.tensor(GFN1_XTB.halogen.classical.rscale, **dd)
     _rscale.requires_grad_(True)
 
     _xbond = get_elem_param(
-        torch.unique(numbers), par.element, "xbond", pad_val=0, **dd
+        torch.unique(numbers), GFN1_XTB.element, "xbond", pad_val=0, **dd
     )
     _xbond.requires_grad_(True)
 

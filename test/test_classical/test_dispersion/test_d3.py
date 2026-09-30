@@ -29,7 +29,7 @@ import torch
 from tad_mctc.batch import pack
 from tad_mctc.data import radii
 
-from dxtb import GFN1_XTB as par
+from dxtb import GFN1_XTB
 from dxtb._src.typing import DD, Tensor
 from dxtb.components.dispersion import DispersionD3, new_dispersion
 
@@ -87,7 +87,7 @@ def test_disp_batch(dtype: torch.dtype) -> None:
     assert pytest.approx(ref.cpu()) == energy.cpu()
 
     # create copy as `par` lives in global scope
-    _par = par.model_copy(deep=True)
+    _par = GFN1_XTB.model_copy(deep=True)
     if _par.dispersion is None or _par.dispersion.d3 is None:
         assert False
 
@@ -119,7 +119,7 @@ def test_grad_pos() -> None:
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    disp = new_dispersion(numbers, par, **dd)
+    disp = new_dispersion(numbers, GFN1_XTB, **dd)
     if disp is None:
         assert False
 
@@ -145,7 +145,7 @@ def test_grad_pos_tblite(dtype: torch.dtype) -> None:
     positions = sample["positions"].to(**dd).detach().clone()
     ref = sample["grad"].to(**dd)
 
-    disp = new_dispersion(numbers, par, **dd)
+    disp = new_dispersion(numbers, GFN1_XTB, **dd)
     if disp is None:
         assert False
 

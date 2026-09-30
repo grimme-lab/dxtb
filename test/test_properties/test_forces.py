@@ -26,8 +26,7 @@ from tad_mctc.autograd import dgradcheck
 from tad_mctc.batch import pack
 from tad_mctc.convert import tensor_to_numpy
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, Calculator
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
@@ -59,7 +58,7 @@ def skip_test_autograd(dtype: torch.dtype, name: str) -> None:
     # required for autodiff of energy w.r.t. positions
     pos = positions.clone().requires_grad_(True)
 
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=opts, **dd)
 
     def f(p: Tensor) -> Tensor:
         return calc.forces(p, charge)
@@ -114,7 +113,7 @@ def execute(
     atol: float,
     rtol: float,
 ) -> None:
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=opts, **dd)
 
     num_forces = calc.forces_numerical(positions, charge)
     assert num_forces.grad_fn is None

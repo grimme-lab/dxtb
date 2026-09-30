@@ -42,9 +42,9 @@ from .samples import samples
 
 sample_list = ["H2", "LiH", "H2O", "SiH4"]
 
-# Batched checks only need to exercise padding: H2 (same atom count as the
-# LiH partner, fewer orbitals) and SiH4 (more atoms and orbitals).
-batch_partners = ["H2", "SiH4"]
+# Batched checks pair LiH with: H2 (same atom count, fewer orbitals), SiH4
+# (more atoms and orbitals), and LiH itself (batch without padding).
+batch_partners = ["H2", "SiH4", "LiH"]
 
 
 def gradchecker(name: str, gfn: Param) -> tuple[
@@ -96,7 +96,7 @@ def test_gradcheck(name: str, gfn: Param) -> None:
 @pytest.mark.large
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("name", ["MB16_43_01"])
-@pytest.mark.parametrize("gfn", [GFN2_XTB])  # GFN1 is ~3x slower here
+@pytest.mark.parametrize("gfn", [GFN1_XTB, GFN2_XTB])
 def test_gradcheck_medium(name: str, gfn: Param) -> None:
     """Check single analytical against numerical gradient."""
     func, diffvars = gradchecker(name, gfn)

@@ -26,8 +26,7 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, Calculator
 from dxtb._src.constants import labels
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch
 from dxtb._src.ncoord import cn_d3, cn_d3_gradient, get_dcn
@@ -84,7 +83,7 @@ def no_overlap_single(dtype: torch.dtype, name: str) -> None:
     ref_dedr = load_from_npz(ref_grad_no_overlap, name, dtype)
     ref_dedcn = load_from_npz(ref_grad_no_overlap, f"{name}_dedcn", dtype)
 
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=opts, **dd)
     result = calc.singlepoint(positions, chrg)
 
     # check setup
@@ -186,7 +185,7 @@ def no_overlap_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         )
     )
 
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=opts, **dd)
     result = calc.singlepoint(positions, chrg)
 
     # check setup
@@ -260,7 +259,7 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     pos = positions.clone().requires_grad_(True)
     chrg = torch.tensor(0.0, **dd)
 
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=opts, **dd)
     result = calc.singlepoint(pos, chrg)
 
     # check setup
@@ -276,7 +275,7 @@ def hamiltonian_grad_single(dtype: torch.dtype, name: str) -> None:
     assert h.matrix is not None
 
     # compare different overlap calculations
-    driver = IntDriverPytorch(numbers, par, calc.ihelp, **dd)
+    driver = IntDriverPytorch(numbers, GFN1_XTB, calc.ihelp, **dd)
     driver.setup(pos)
     overlap2 = s.build(driver).detach()
     overlap = o.matrix.detach()
@@ -383,7 +382,7 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         )
     )
 
-    calc = Calculator(numbers, par, opts=opts, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=opts, **dd)
     result = calc.singlepoint(positions, chrg)
 
     # check setup
@@ -399,7 +398,7 @@ def hamiltonian_grad_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     assert h.matrix is not None
 
     # analytical overlap gradient
-    driver = IntDriverPytorch(numbers, par, calc.ihelp, **dd)
+    driver = IntDriverPytorch(numbers, GFN1_XTB, calc.ihelp, **dd)
     driver.setup(positions)
     doverlap = s.integral.get_gradient(driver)  # type: ignore
 

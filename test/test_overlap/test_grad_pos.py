@@ -25,13 +25,13 @@ import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb._src.integral.driver.pytorch import OverlapPytorch as Overlap
 from dxtb._src.typing import DD, Callable, Tensor
 
 from ..conftest import DEVICE, NONDET_TOL
+from ..utils import get_param_module
 from .samples import samples
 
 slist = ["LiH", "H2O"]
@@ -50,6 +50,7 @@ def gradchecker(
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     driver = IntDriver(numbers, par, ihelp, **dd)
     overlap = Overlap(uplo="n", **dd)
@@ -136,6 +137,7 @@ def gradchecker_batch(
         return_mask=True,
     )
 
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     driver = IntDriver(numbers, par, ihelp, **dd)
     overlap = Overlap(uplo="n", **dd)

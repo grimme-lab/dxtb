@@ -26,14 +26,13 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.basis.bas import Basis
 from dxtb._src.integral.driver.pytorch.impls.md import overlap_gto
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
-from ..utils import load_from_npz
+from ..utils import get_param_module, load_from_npz
 from .samples import samples
 from .utils import calc_overlap
 
@@ -51,7 +50,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     positions = sample["positions"].to(**dd)
     ref = load_from_npz(ref_overlap, name, dtype)
 
-    s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
+    s = calc_overlap(numbers, positions, GFN1_XTB, uplo="n", dd=dd)
     assert pytest.approx(ref.cpu(), rel=tol, abs=tol) == s.cpu()
 
 
@@ -84,7 +83,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         )
     )
 
-    s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
+    s = calc_overlap(numbers, positions, GFN1_XTB, uplo="n", dd=dd)
     assert pytest.approx(s.cpu(), abs=tol) == s.mT.cpu()
     assert pytest.approx(ref.cpu(), abs=tol) == s.cpu()
 
@@ -101,6 +100,7 @@ def test_overlap_higher_orbitals(dtype: torch.dtype) -> None:
     # arbitrary element (Rn)
     number = torch.tensor([86])
 
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(number, par)
     bas = Basis(number, par, ihelp, **dd)
     alpha, coeff = bas.create_cgtos()

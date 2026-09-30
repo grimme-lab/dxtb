@@ -27,13 +27,14 @@ import torch
 from tad_mctc.batch import pack
 from tad_mctc.units import VAA2AU
 
-from dxtb import GFN1_XTB, Calculator
+from dxtb import Calculator
 from dxtb._src.components.interactions import new_efield
 from dxtb._src.constants import labels
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
+from ..utils import get_param_module
 from .samples import samples
 
 sample_list = ["LiH", "SiH4", "MB16_43_01"]
@@ -63,7 +64,13 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 
     field_vector = torch.tensor([-2.0, 0.0, 0.0], **dd) * VAA2AU
     efield = new_efield(field_vector)
-    calc = Calculator(numbers, GFN1_XTB, interaction=[efield], opts=opts, **dd)
+    calc = Calculator(
+        numbers,
+        get_param_module("gfn1", **dd),
+        interaction=[efield],
+        opts=opts,
+        **dd,
+    )
 
     result = calc.singlepoint(positions, charges)
     res = result.total.sum(-1)
@@ -109,7 +116,11 @@ def test_batch(
     efield = new_efield(field_vector)
     options = dict(opts, **{"scf_mode": scf_mode, "mixer": "anderson"})
     calc = Calculator(
-        numbers, GFN1_XTB, interaction=[efield], opts=options, **dd
+        numbers,
+        get_param_module("gfn1", **dd),
+        interaction=[efield],
+        opts=options,
+        **dd,
     )
 
     result = calc.singlepoint(positions, charges)
@@ -160,7 +171,11 @@ def test_batch_three(
     efield = new_efield(field_vector)
     options = dict(opts, **{"scf_mode": scf_mode, "mixer": "anderson"})
     calc = Calculator(
-        numbers, GFN1_XTB, interaction=[efield], opts=options, **dd
+        numbers,
+        get_param_module("gfn1", **dd),
+        interaction=[efield],
+        opts=options,
+        **dd,
     )
 
     result = calc.singlepoint(positions, charges)

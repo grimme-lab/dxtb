@@ -20,16 +20,16 @@ Test export of the basis set.
 
 from __future__ import annotations
 
-from functools import lru_cache
 from pathlib import Path
 
 import pytest
 import torch
 
-from dxtb import GFN1_XTB, GFN2_XTB, IndexHelper
+from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis, format_contraction
-from dxtb._src.param import ParamModule
 from dxtb._src.typing import DD, Literal
+
+from ..utils import get_param_module
 
 
 def _round_numbers(data: list[str]) -> list[str | float]:
@@ -42,17 +42,6 @@ def _round_numbers(data: list[str]) -> list[str | float]:
         except ValueError:
             rounded_data.append(item)
     return rounded_data
-
-
-@lru_cache(maxsize=None)
-def _param_module(xtb_version: str) -> ParamModule:
-    """
-    Convert the parametrization once per GFN version. Converting the full
-    parameter set into a `ParamModule` takes ~0.1 s, and `IndexHelper` and
-    `Basis` each repeat it if they are given a plain `Param`.
-    """
-    par = {"gfn1": GFN1_XTB, "gfn2": GFN2_XTB}[xtb_version]
-    return ParamModule(par, device=torch.device("cpu"), dtype=torch.double)
 
 
 @pytest.mark.parametrize("number", range(1, 87))
@@ -69,7 +58,7 @@ def test_export(
 
     numbers = torch.tensor([number], device=dd["device"])
 
-    par = _param_module(xtb_version)
+    par = get_param_module(xtb_version, **dd)
 
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(numbers, par, ihelp, **dd)
@@ -96,8 +85,9 @@ def test_export_gaussian() -> None:
     dd: DD = {"dtype": torch.double, "device": torch.device("cpu")}
 
     numbers = torch.tensor([3], device=dd["device"])
-    ihelp = IndexHelper.from_numbers(numbers, GFN2_XTB)
-    bas = Basis(numbers, GFN2_XTB, ihelp, **dd)
+    par = get_param_module("gfn2", **dd)
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    bas = Basis(numbers, par, ihelp, **dd)
 
     # fmt: off
     ref = [
@@ -119,8 +109,9 @@ def test_fail_symbol() -> None:
     dd: DD = {"dtype": torch.double, "device": torch.device("cpu")}
 
     numbers = torch.tensor([3], device=dd["device"])
-    ihelp = IndexHelper.from_numbers(numbers, GFN2_XTB)
-    bas = Basis(numbers, GFN2_XTB, ihelp, **dd)
+    par = get_param_module("gfn2", **dd)
+    ihelp = IndexHelper.from_numbers(numbers, par)
+    bas = Basis(numbers, par, ihelp, **dd)
 
     # wipe shells info to trigger error
     bas.shells = {}

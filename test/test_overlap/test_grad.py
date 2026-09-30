@@ -27,8 +27,7 @@ import torch
 from tad_mctc.autograd import jacrev
 from tad_mctc.convert import tensor_to_numpy
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.basis.slater import slater_to_gauss
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb._src.integral.driver.pytorch import OverlapPytorch as Overlap
@@ -104,8 +103,8 @@ def test_overlap_jacobian(dtype: torch.dtype, name: str):
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
-    ihelp = IndexHelper.from_numbers(numbers, par)
-    driver = IntDriver(numbers, par, ihelp, **dd)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
+    driver = IntDriver(numbers, GFN1_XTB, ihelp, **dd)
     overlap = Overlap(uplo="n", **dd)
 
     # numerical gradient: [natm, norb, norb, 3]

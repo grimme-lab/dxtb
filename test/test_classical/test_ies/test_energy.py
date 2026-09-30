@@ -26,11 +26,11 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN0_XTB as par
 from dxtb._src.components.classicals import new_ies
 from dxtb._src.typing import DD
 
 from ...conftest import DEVICE
+from ...utils import get_param_module
 from .samples import samples
 
 sample_list = [
@@ -68,7 +68,7 @@ def single(dtype: torch.dtype, name: str) -> None:
     charge = sample["charge"].to(**dd)
     ref = sample["eies"].to(**dd)
 
-    ies = new_ies(numbers, par, **dd)
+    ies = new_ies(numbers, get_param_module("gfn0", **dd), **dd)
     assert ies is not None
 
     cache = ies.get_cache(numbers)
@@ -112,7 +112,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         )
     )
 
-    ies = new_ies(numbers, par, **dd)
+    ies = new_ies(numbers, get_param_module("gfn0", **dd), **dd)
     assert ies is not None
 
     cache = ies.get_cache(numbers)

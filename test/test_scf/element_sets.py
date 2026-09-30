@@ -29,13 +29,16 @@ precision) to guard the per-element parameter data.
 Elements that are known to fail (42 and 75 in GFN2, 25 in the parametrized
 Fermi-energy `test_element`) are included on purpose, so they are not hidden.
 """
+
 from __future__ import annotations
+
+from collections.abc import Collection
 
 import torch
 
 __all__ = [
+    "ALL_DOUBLE_REPS_FLOAT",
     "REPRESENTATIVE_ELEMENTS",
-    "all_double_reps_float",
     "reps_both_dtypes",
 ]
 
@@ -80,17 +83,24 @@ REPRESENTATIVE_ELEMENTS = [
 ]
 
 
-def all_double_reps_float() -> list[tuple[torch.dtype, int]]:
-    """(dtype, element) pairs: all elements in double, the subset in float."""
-    return [(torch.double, n) for n in ALL_ELEMENTS] + [
-        (torch.float, n) for n in REPRESENTATIVE_ELEMENTS
-    ]
+ALL_DOUBLE_REPS_FLOAT: list[tuple[torch.dtype, int]] = [
+    (torch.double, n) for n in ALL_ELEMENTS
+] + [(torch.float, n) for n in REPRESENTATIVE_ELEMENTS]
+"""(dtype, element) pairs: all elements in double, the subset in float."""
 
 
-def reps_both_dtypes() -> list[tuple[torch.dtype, int]]:
-    """(dtype, element) pairs for the representative subset in both dtypes."""
+def reps_both_dtypes(
+    exclude: Collection[int] = (),
+) -> list[tuple[torch.dtype, int]]:
+    """
+    (dtype, element) pairs for the representative subset in both dtypes.
+
+    Elements in ``exclude`` (e.g. no SCF convergence) are left out, so they
+    do not show up as passing tests that check nothing.
+    """
     return [
         (dtype, n)
         for dtype in (torch.float, torch.double)
         for n in REPRESENTATIVE_ELEMENTS
+        if n not in exclude
     ]

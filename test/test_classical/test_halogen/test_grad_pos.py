@@ -25,12 +25,12 @@ import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.components.classicals import new_halogen
 from dxtb._src.typing import DD, Callable, Tensor
 
 from ...conftest import DEVICE
+from ...utils import get_param_module
 from .samples import samples
 
 # "LYS_xao" must be the last one as we have to manually exclude it for the
@@ -54,6 +54,7 @@ def gradchecker(dtype: torch.dtype, name: str) -> tuple[
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
+    par = get_param_module("gfn1", **dd)
     xb = new_halogen(torch.unique(numbers), par, **dd)
     assert xb is not None
 
@@ -114,6 +115,7 @@ def gradchecker_batch(dtype: torch.dtype, name1: str, name2: str) -> tuple[
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
+    par = get_param_module("gfn1", **dd)
     xb = new_halogen(torch.unique(numbers), par, **dd)
     assert xb is not None
 
@@ -169,6 +171,7 @@ def test_autograd(dtype: torch.dtype, name: str) -> None:
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
+    par = get_param_module("gfn1", **dd)
     xb = new_halogen(torch.unique(numbers), par, **dd)
     assert xb is not None
 
@@ -215,6 +218,7 @@ def test_autograd_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
+    par = get_param_module("gfn1", **dd)
     xb = new_halogen(torch.unique(numbers), par, **dd)
     assert xb is not None
 
@@ -245,6 +249,7 @@ def test_backward(dtype: torch.dtype, name: str) -> None:
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
+    par = get_param_module("gfn1", **dd)
     xb = new_halogen(torch.unique(numbers), par, **dd)
     assert xb is not None
 
@@ -295,6 +300,7 @@ def test_backward_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
+    par = get_param_module("gfn1", **dd)
     xb = new_halogen(torch.unique(numbers), par, **dd)
     assert xb is not None
 

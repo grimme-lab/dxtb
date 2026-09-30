@@ -23,7 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb import GFN1_XTB as par
+from dxtb import GFN1_XTB
 from dxtb._src.components.classicals.dispersion import new_dispersion
 from dxtb._src.typing import DD
 
@@ -43,7 +43,7 @@ def test_grad_fail(name: str) -> None:
     numbers = sample["numbers"].to(DEVICE)
     positions = sample["positions"].to(**dd)
 
-    disp = new_dispersion(numbers, par, **dd)
+    disp = new_dispersion(numbers, GFN1_XTB, **dd)
     assert disp is not None
 
     cache = disp.get_cache(numbers)

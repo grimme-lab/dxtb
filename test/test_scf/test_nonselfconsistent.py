@@ -39,6 +39,7 @@ from dxtb._src.typing import Tensor
 from dxtb._src.xtb.gfn0 import GFN0Hamiltonian
 from dxtb.config import ConfigSCF
 
+from ..utils import get_param_module
 from .samples import Record, samples
 
 
@@ -59,7 +60,12 @@ def build_problem(
     charge = torch.tensor(0.0, dtype=torch.float64)
 
     ihelp = IndexHelper.from_numbers(numbers, GFN0_XTB)
-    hcore = new_hcore(numbers, GFN0_XTB, ihelp, dtype=torch.float64)
+    hcore = new_hcore(
+        numbers,
+        get_param_module("gfn0", dtype=torch.float64),
+        ihelp,
+        dtype=torch.float64,
+    )
     assert isinstance(hcore, GFN0Hamiltonian)
     ovlp = overlap(
         numbers,
@@ -242,7 +248,12 @@ def test_heterogeneous_batch_matches_separate_solves() -> None:
     charges = torch.zeros((len(names), 1), dtype=torch.float64)
 
     ihelp = IndexHelper.from_numbers(numbers, GFN0_XTB)
-    hcore = new_hcore(numbers, GFN0_XTB, ihelp, dtype=torch.float64)
+    hcore = new_hcore(
+        numbers,
+        get_param_module("gfn0", dtype=torch.float64),
+        ihelp,
+        dtype=torch.float64,
+    )
     assert isinstance(hcore, GFN0Hamiltonian)
     ovlp = overlap(
         numbers,

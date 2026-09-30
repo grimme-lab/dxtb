@@ -27,8 +27,79 @@ from __future__ import annotations
 from typing import List, Optional
 
 from pydantic import BaseModel
+from tad_mctc.data import pse
 
-__all__ = ["Element"]
+from dxtb._src.typing import TYPE_CHECKING, Any, Mapping
+
+if TYPE_CHECKING:
+    from torch import nn
+
+__all__ = ["Element", "get_elem_angular", "shell_angular"]
+
+LABEL2ANGULAR = {"s": 0, "p": 1, "d": 2, "f": 3, "g": 4}
+"""Angular momentum for each shell type label."""
+
+
+def shell_angular(label: Any) -> int:
+    """
+    Obtain the angular momentum of a shell.
+
+    Parameters
+    ----------
+    label : Any
+        Shell label with principal quantum number and shell type (e.g.
+        ``"2p"``). Anything indexable like a string works, such as the
+        wrapped labels of a :class:`~dxtb.ParamModule`.
+
+    Returns
+    -------
+    int
+        Angular momentum of the shell.
+
+    Raises
+    ------
+    ValueError
+        If the shell type is unknown.
+    """
+    shell_type = label[-1]
+    if shell_type not in LABEL2ANGULAR:
+        raise ValueError(f"Unknown shell type '{shell_type}'.")
+
+    return LABEL2ANGULAR[shell_type]
+
+
+def get_elem_angular(
+    element: Mapping[str, Any] | nn.ModuleDict,
+) -> dict[int, list[int]]:
+    """
+    Obtain angular momenta of the shells of all elements.
+
+    Parameters
+    ----------
+    element : Mapping[str, Any] | nn.ModuleDict
+        Element parameters by element symbol. Each entry needs ``shells``,
+        as in :attr:`dxtb.Param.element` or the ``element`` tree of a
+        :class:`~dxtb.ParamModule`.
+
+    Returns
+    -------
+    dict[int, list[int]]
+        Angular momenta of all elements, keyed by atomic number.
+
+    Raises
+    ------
+    ValueError
+        If a shell type is unknown.
+    """
+    result: dict[int, list[int]] = {}
+
+    for sym, elem in element.items():
+        # In a `ParamModule`, `shells` is a `ModuleList` of wrapped labels,
+        # which the type checker cannot tell is iterable.
+        shells: Any = elem.shells
+        result[pse.S2Z[sym]] = [shell_angular(label) for label in shells]
+
+    return result
 
 
 class Element(BaseModel):

@@ -23,8 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD
 
@@ -66,11 +65,11 @@ def test_element(dtype: torch.dtype, partition: str, number: int) -> None:
     )
 
     o = dict(options, **{"scf_mode": "implicit"})
-    calc1 = Calculator(numbers, par, opts=o, **dd)
+    calc1 = Calculator(numbers, GFN1_XTB, opts=o, **dd)
     result1 = calc1.singlepoint(positions, charges)
 
     o = dict(options, **{"scf_mode": "implicit_nonpure"})
-    calc2 = Calculator(numbers, par, opts=o, **dd)
+    calc2 = Calculator(numbers, GFN1_XTB, opts=o, **dd)
     result2 = calc2.singlepoint(positions, charges)
 
     # The xitorch path does not have access to the data object, and hence,
@@ -107,7 +106,7 @@ def test_element_unique(dtype: torch.dtype) -> None:
                 "damp": 0.95,
             },
         )
-        calc = Calculator(numbers, par, opts=options, **dd)
+        calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
         result = calc.singlepoint(positions, charges)
         return result.fenergy
 
@@ -137,7 +136,7 @@ def test_element_cation(dtype: torch.dtype) -> None:
                 "damp": 0.9,
             },
         )
-        calc = Calculator(numbers, par, opts=options, **dd)
+        calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
         result = calc.singlepoint(positions, charges, spin)
         return result.fenergy
 
@@ -170,7 +169,7 @@ def test_element_anion(dtype: torch.dtype) -> None:
                 "fermi_thresh": 1e-4 if dtype == torch.float32 else 1e-10,
             },
         )
-        calc = Calculator(numbers, par, opts=options, **dd)
+        calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
         result = calc.singlepoint(positions, charges, spin)
         return result.fenergy
 

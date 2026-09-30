@@ -28,7 +28,7 @@ from tad_mctc.autograd import jacrev
 from tad_mctc.batch import pack
 from tad_mctc.convert import reshape_fortran
 
-from dxtb import GFN1_XTB as par
+from dxtb import GFN1_XTB
 from dxtb._src.components.classicals.dispersion import new_dispersion
 from dxtb._src.typing import DD, Tensor
 
@@ -56,7 +56,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    disp = new_dispersion(numbers, par, **dd)
+    disp = new_dispersion(numbers, GFN1_XTB, **dd)
     assert disp is not None
 
     cache = disp.get_cache(numbers)
@@ -112,7 +112,7 @@ def skip_test_batch(dtype: torch.dtype, name1: str, name2) -> None:
     # variable to be differentiated
     pos = positions.clone().requires_grad_(True)
 
-    disp = new_dispersion(numbers, par, **dd)
+    disp = new_dispersion(numbers, GFN1_XTB, **dd)
     assert disp is not None
 
     cache = disp.get_cache(numbers)
@@ -132,7 +132,7 @@ def _numhess(numbers: Tensor, positions: Tensor) -> Tensor:
     """Calculate numerical Hessian for reference."""
     dd = {"device": positions.device, "dtype": positions.dtype}
 
-    disp = new_dispersion(numbers, par, **dd)
+    disp = new_dispersion(numbers, GFN1_XTB, **dd)
     assert disp is not None
     cache = disp.get_cache(numbers)
 

@@ -28,7 +28,7 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
+from dxtb import GFN1_XTB
 from dxtb._src.typing import DD
 from dxtb.integrals.wrappers import overlap
 from dxtb.labels import INTDRIVER_ANALYTICAL
@@ -55,10 +55,10 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     ref = load_from_npz(ref_overlap, name, dtype)
 
     # more granular overlap calculation
-    s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
+    s = calc_overlap(numbers, positions, GFN1_XTB, uplo="n", dd=dd)
 
     # convenience wrapper with defaults (but pytorch driver)
-    s2 = overlap(numbers, positions, par, driver=INTDRIVER_ANALYTICAL)
+    s2 = overlap(numbers, positions, GFN1_XTB, driver=INTDRIVER_ANALYTICAL)
 
     assert pytest.approx(ref.cpu(), abs=tol) == s.cpu()
     assert pytest.approx(ref.cpu(), abs=tol) == s2.cpu()
@@ -95,7 +95,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         )
     )
 
-    s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
+    s = calc_overlap(numbers, positions, GFN1_XTB, uplo="n", dd=dd)
 
     assert pytest.approx(s.cpu(), abs=tol) == s.mT.cpu()
     assert pytest.approx(s.cpu(), abs=tol) == ref.cpu()

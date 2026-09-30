@@ -26,7 +26,6 @@ from tad_mctc.batch import pack
 from tad_mctc.convert import tensor_to_numpy
 from tad_mctc.units import VAA2AU
 
-from dxtb import GFN1_XTB as par
 from dxtb import Calculator
 from dxtb._src.components.interactions import new_efield
 from dxtb._src.exlibs.available import has_libcint
@@ -34,6 +33,7 @@ from dxtb._src.typing import DD, Tensor
 from dxtb.labels import INTLEVEL_DIPOLE
 
 from ..conftest import DEVICE
+from ..utils import get_param_module
 from .samples import samples
 
 slist = ["LiH"]
@@ -115,7 +115,13 @@ def execute(
 
     # create additional interaction and pass to Calculator
     efield = new_efield(field_vector)
-    calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
+    calc = Calculator(
+        numbers,
+        get_param_module("gfn1", **dd),
+        interaction=[efield],
+        opts=opts,
+        **dd,
+    )
 
     # field is cloned and detached and updated inside
     num = tensor_to_numpy(calc.dipole_numerical(positions, charge))
@@ -253,7 +259,13 @@ def test_batch_settings(
 
     efield = new_efield(field_vector)
     options = dict(opts, **{"scp_mode": scp_mode, "mixer": mixer})
-    calc = Calculator(numbers, par, interaction=[efield], opts=options, **dd)
+    calc = Calculator(
+        numbers,
+        get_param_module("gfn1", **dd),
+        interaction=[efield],
+        opts=options,
+        **dd,
+    )
 
     dipole = tensor_to_numpy(calc.dipole(positions, charge))
     assert pytest.approx(ref.cpu(), abs=1e-4) == dipole
@@ -300,7 +312,13 @@ def test_batch_unconverged(dtype: torch.dtype, name1: str, name2: str) -> None:
     options = dict(opts, **{"maxiter": 5, "mixer": "simple"})
 
     efield = new_efield(field_vector)
-    calc = Calculator(numbers, par, interaction=[efield], opts=options, **dd)
+    calc = Calculator(
+        numbers,
+        get_param_module("gfn1", **dd),
+        interaction=[efield],
+        opts=options,
+        **dd,
+    )
 
     dipole = tensor_to_numpy(calc.dipole(positions, charge))
     assert pytest.approx(ref.cpu(), abs=1e-2, rel=1e-3) == dipole

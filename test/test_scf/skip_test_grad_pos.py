@@ -24,8 +24,7 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, Calculator
 from dxtb._src.constants import labels
 from dxtb._src.typing import DD, Callable, Tensor
 
@@ -58,7 +57,7 @@ def gradchecker(
     charges = torch.tensor(0.0, **dd)
 
     options = dict(opts, **{"exclude": ["rep", "disp", "hal", "es2", "es3"]})
-    calc = Calculator(numbers, par, opts=options, **dd)
+    calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
 
     # variables to be differentiated
     pos = positions.clone().requires_grad_(True)

@@ -26,8 +26,7 @@ import pytest
 import torch
 from tad_mctc.data.molecules import mols as samples
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, Calculator
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
@@ -53,7 +52,7 @@ def test_xitorch(dtype: torch.dtype, run_gc: bool, create_graph: bool) -> None:
         charges = torch.tensor(0.0, **dd)
 
         options = dict(opts, **{"scf_mode": "nonpure"})
-        calc = Calculator(numbers, par, opts=options, **dd)
+        calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
 
         # variables to be differentiated
         pos = positions.clone().requires_grad_(True)
@@ -97,7 +96,7 @@ def test_xitorch_pure(
         charges = torch.tensor(0.0, **dd)
 
         options = dict(opts, **{"scf_mode": "implicit"})
-        calc = Calculator(numbers, par, opts=options, **dd)
+        calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
 
         # variables to be differentiated
         pos = positions.clone().requires_grad_(True)
@@ -136,7 +135,7 @@ def skip_test_fulltracking(
         charges = torch.tensor(0.0, **dd)
 
         options = dict(opts, **{"scf_mode": "full", "mixer": "anderson"})
-        calc = Calculator(numbers, par, opts=options, **dd)
+        calc = Calculator(numbers, GFN1_XTB, opts=options, **dd)
 
         # variables to be differentiated
         pos = positions.clone().requires_grad_(True)

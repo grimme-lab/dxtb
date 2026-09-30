@@ -28,7 +28,7 @@ import pytest
 import torch
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
+from dxtb import GFN1_XTB
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
@@ -51,7 +51,7 @@ def test_single(dtype: torch.dtype, name: str):
     positions = sample["positions"].to(**dd)
     ref = load_from_npz(ref_overlap, name, dtype)
 
-    s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
+    s = calc_overlap(numbers, positions, GFN1_XTB, uplo="n", dd=dd)
 
     assert pytest.approx(s.cpu(), rel=tol, abs=tol) == ref.cpu()
 
@@ -85,7 +85,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
         )
     )
 
-    s = calc_overlap(numbers, positions, par, uplo="n", dd=dd)
+    s = calc_overlap(numbers, positions, GFN1_XTB, uplo="n", dd=dd)
 
     assert pytest.approx(s.cpu(), abs=tol) == s.mT.cpu()
     assert pytest.approx(s.cpu(), abs=tol) == ref.cpu()

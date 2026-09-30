@@ -167,17 +167,17 @@ def gradchecker_batch(
     return func, pos
 
 
-# Batching (padding) only needs one small partner; the single-sample tests
-# above cover the per-molecule physics. The batched second-order check is
-# marked `large` (not run in the default tox tier).
-batch_partner = ["H2"]
+# Batching only needs one pair with padding and one identical (cheap) pair
+# without padding; the single-sample tests above cover the per-molecule
+# physics. The batched second-order check is marked `large` (not run in the
+# default tox tier).
+batch_pairs = [("SiH4", "H2"), ("H2", "H2")]
 
 
 @pytest.mark.grad
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name1", ["SiH4"])
-@pytest.mark.parametrize("name2", batch_partner)
+@pytest.mark.parametrize("name1, name2", batch_pairs)
 @pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 def test_gradcheck_batch(
     dtype: torch.dtype, name1: str, name2: str, gfn: str
@@ -196,8 +196,7 @@ def test_gradcheck_batch(
 @pytest.mark.large
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize("name1", ["SiH4"])
-@pytest.mark.parametrize("name2", batch_partner)
+@pytest.mark.parametrize("name1, name2", batch_pairs)
 @pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
 def test_gradgradcheck_batch(
     dtype: torch.dtype, name1: str, name2: str, gfn: str

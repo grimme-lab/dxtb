@@ -25,7 +25,6 @@ import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 from tad_mctc.batch import pack
 
-from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.components.interactions import InteractionList
 from dxtb._src.components.interactions.coulomb import new_es2, new_es3
@@ -33,6 +32,7 @@ from dxtb._src.scf import get_guess
 from dxtb._src.typing import DD, Callable, Tensor
 
 from ..conftest import DEVICE, NONDET_TOL
+from ..utils import get_param_module
 from .samples import samples
 
 sample_list = ["H2", "HHe", "LiH", "H2O", "SiH4"]
@@ -52,6 +52,7 @@ def gradchecker(
     chrg = torch.tensor(0.0, **dd)
 
     # setup
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     ilist = InteractionList(
         new_es2(torch.unique(numbers), par, **dd),
@@ -115,6 +116,7 @@ def gradchecker_batch(
     chrg = torch.tensor([0.0, 0.0], **dd)
 
     # setup
+    par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     ilist = InteractionList(
         new_es2(torch.unique(numbers), par, **dd),

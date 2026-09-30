@@ -28,7 +28,7 @@ import pytest
 import torch
 from tad_mctc.convert import str_to_device
 
-from dxtb import GFN1_XTB as par
+from dxtb import GFN1_XTB
 from dxtb._src.components.classicals import new_repulsion
 from dxtb._src.typing.exceptions import ParameterWarning
 
@@ -36,7 +36,7 @@ from dxtb._src.typing.exceptions import ParameterWarning
 def test_none() -> None:
     """Test if `None` is returned if no repulsion is set."""
     dummy = torch.tensor([0.0])
-    _par = par.model_copy(deep=True)
+    _par = GFN1_XTB.model_copy(deep=True)
 
     with pytest.warns(ParameterWarning):
         _par.repulsion = None
@@ -49,7 +49,7 @@ def test_none() -> None:
 @pytest.mark.parametrize("dtype", [torch.float16, torch.float32, torch.float64])
 def test_change_type(dtype: torch.dtype) -> None:
     """Test changing the `dtype` of the repulsion class."""
-    cls = new_repulsion(torch.tensor([0.0]), par)
+    cls = new_repulsion(torch.tensor([0.0]), GFN1_XTB)
     assert cls is not None
 
     cls = cls.type(dtype)
@@ -58,7 +58,7 @@ def test_change_type(dtype: torch.dtype) -> None:
 
 def test_change_type_fail() -> None:
     """Test failure upon changing `dtype` incorrectly."""
-    cls = new_repulsion(torch.tensor([0.0]), par)
+    cls = new_repulsion(torch.tensor([0.0]), GFN1_XTB)
     assert cls is not None
 
     # trying to use setter
@@ -75,7 +75,7 @@ def test_change_type_fail() -> None:
 def test_change_device(device_str: str) -> None:
     """Test changing the `device` of the repulsion class."""
     device = str_to_device(device_str)
-    cls = new_repulsion(torch.tensor([0.0]), par)
+    cls = new_repulsion(torch.tensor([0.0]), GFN1_XTB)
     assert cls is not None
 
     cls = cls.to(device)
@@ -84,7 +84,7 @@ def test_change_device(device_str: str) -> None:
 
 def test_change_device_fail() -> None:
     """Test failure upon changing `device` incorrectly."""
-    cls = new_repulsion(torch.tensor([0.0]), par)
+    cls = new_repulsion(torch.tensor([0.0]), GFN1_XTB)
     assert cls is not None
 
     # trying to use setter
@@ -95,7 +95,7 @@ def test_change_device_fail() -> None:
 def test_fail_requires_ihelp() -> None:
     """Test failure if `ihelp` is not passed."""
     numbers = torch.tensor([3, 1])
-    cls = new_repulsion(numbers, par)
+    cls = new_repulsion(numbers, GFN1_XTB)
     assert cls is not None
 
     with pytest.raises(ValueError):

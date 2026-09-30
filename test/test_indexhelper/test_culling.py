@@ -23,8 +23,7 @@ from __future__ import annotations
 import torch
 from tad_mctc.batch import deflate, pack
 
-from dxtb import GFN1_XTB as par
-from dxtb import IndexHelper
+from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.typing import Slicers, Tensor
 
 from ..conftest import DEVICE
@@ -37,8 +36,8 @@ def test_culling() -> None:
             torch.tensor([14, 1, 1, 1, 1], device=DEVICE),  # SiH4
         ]
     )
-    ihelp = IndexHelper.from_numbers(numbers, par)
-    ref_ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
+    ref_ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     conv = torch.tensor([False, True])
     slicers: Slicers = {
@@ -71,8 +70,8 @@ def test_no_action() -> None:
             torch.tensor([14, 1, 1, 1, 1], device=DEVICE),  # SiH4
         ]
     )
-    ihelp = IndexHelper.from_numbers(numbers, par)
-    ref_ihelp = IndexHelper.from_numbers(numbers, par)
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
+    ref_ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     conv = torch.tensor([False, True])
     slicers: Slicers = {

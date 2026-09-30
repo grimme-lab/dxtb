@@ -40,7 +40,7 @@ from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
-from .element_sets import all_double_reps_float, reps_both_dtypes
+from .element_sets import ALL_DOUBLE_REPS_FLOAT, reps_both_dtypes
 from .samples import samples
 from .uhf_table import uhf, uhf_anion, uhf_cation
 
@@ -162,8 +162,7 @@ opts = {
 
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.large
-@pytest.mark.parametrize("number", range(1, 87))
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("dtype, number", ALL_DOUBLE_REPS_FLOAT)
 def test_element(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -192,16 +191,13 @@ def test_element(dtype: torch.dtype, number: int) -> None:
 
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.large
-@pytest.mark.parametrize("dtype, number", reps_both_dtypes())
+# SCF does not converge for B and C (in tblite too)
+@pytest.mark.parametrize("dtype, number", reps_both_dtypes(exclude=(5, 6)))
 def test_element_cation(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     scp_mode = labels.SCP_MODE_FOCK
-
-    # SCF does not converge (in tblite too)
-    if number in (5, 6):
-        return
 
     if number == 18:
         tol = 5e-2
@@ -235,14 +231,11 @@ def test_element_cation(dtype: torch.dtype, number: int) -> None:
 
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")
 @pytest.mark.large
-@pytest.mark.parametrize("dtype, number", reps_both_dtypes())
+# Helium doesn't have enough orbitals for negative charge
+@pytest.mark.parametrize("dtype, number", reps_both_dtypes(exclude=(2,)))
 def test_element_anion(dtype: torch.dtype, number: int) -> None:
     tol = 1e-2  # math.sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
-
-    # Helium doesn't have enough orbitals for negative charge
-    if number == 2:
-        return
 
     # SCF does not converge (in tblite too)
     if number in [24]:

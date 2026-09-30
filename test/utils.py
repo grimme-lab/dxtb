@@ -25,8 +25,9 @@ from pathlib import Path
 import torch
 from tad_mctc.data import pse
 
+from dxtb import GFN0_XTB, GFN1_XTB, GFN2_XTB, ParamModule
 from dxtb._src.param.element import Element
-from dxtb._src.typing import Any, Size, Tensor
+from dxtb._src.typing import Any, Literal, Size, Tensor
 
 coordfile = Path(
     Path(__file__).parent, "test_singlepoint/mols/H2/coord"
@@ -37,6 +38,99 @@ coordfile_lih = Path(
     Path(__file__).parent, "test_singlepoint/mols/LiH/coord"
 ).resolve()
 """Path to coord file of LiH."""
+
+
+_PARAM_MODULES: dict[tuple, tuple[ParamModule, list[Tensor], Tensor]] = {}
+"""Shared parametrizations with their parameters and a snapshot of values."""
+
+_PARAM_MODULES_USED: set[tuple] = set()
+"""Keys of shared parametrizations handed out since the last check."""
+
+
+def get_param_module(
+    name: Literal["gfn0", "gfn1", "gfn2"],
+    device: torch.device | None = None,
+    dtype: torch.dtype | None = None,
+) -> ParamModule:
+    """
+    Get the differentiable parametrization, converted only once per
+    parametrization, device, and dtype.
+
+    Converting a :class:`~dxtb.Param` into a :class:`~dxtb.ParamModule`
+    takes ~0.1 s and is repeated by every calculator or component that
+    receives a plain :class:`~dxtb.Param`. The returned module is shared
+    between tests and must be treated as read-only. Tests that make
+    parameters differentiable or modify them build their own module.
+    Misuse is detected after the test by :func:`check_param_modules`.
+
+    Parameters
+    ----------
+    name : Literal["gfn0", "gfn1", "gfn2"]
+        Name of the parametrization.
+    device : torch.device | None
+        Device of the parameters. Defaults to ``None``.
+    dtype : torch.dtype | None
+        Data type of the parameters. Defaults to ``None``.
+
+    Returns
+    -------
+    ParamModule
+        Shared differentiable parametrization.
+    """
+    # Resolve ``None`` (default device) and index-less devices ("cuda") to
+    # the concrete device, so equivalent requests share one cache entry.
+    device = torch.empty(0, device=device).device
+    key = (name, device, dtype)
+
+    if key not in _PARAM_MODULES:
+        par = {"gfn0": GFN0_XTB, "gfn1": GFN1_XTB, "gfn2": GFN2_XTB}[name]
+        module = ParamModule(par, device=device, dtype=dtype)
+
+        # Walking the module tree is the expensive part of the check,
+        # so the parameters are collected only once.
+        params = list(module.parameters())
+        snapshot = _flatten(params).clone()
+        _PARAM_MODULES[key] = (module, params, snapshot)
+
+    _PARAM_MODULES_USED.add(key)
+    return _PARAM_MODULES[key][0]
+
+
+def check_param_modules() -> None:
+    """
+    Check that the shared parametrizations handed out since the last check
+    are unchanged, and discard those that are not.
+
+    Detects parameters that were made differentiable or modified in place
+    (including via ``.data``). Replacing a whole parameter object in the
+    module tree is not detected.
+
+    Raises
+    ------
+    AssertionError
+        If a shared parametrization was modified.
+    """
+    modified = []
+    for key in _PARAM_MODULES_USED:
+        _, params, snapshot = _PARAM_MODULES[key]
+        if any(p.requires_grad for p in params) or not torch.equal(
+            _flatten(params), snapshot
+        ):
+            # Rebuild on next use so that later tests are not affected.
+            del _PARAM_MODULES[key]
+            modified.append(key[0])
+
+    _PARAM_MODULES_USED.clear()
+
+    assert not modified, (
+        f"Shared parametrization(s) {modified} from 'get_param_module' were "
+        "made differentiable or modified by this test. Build a separate "
+        "'ParamModule' instead."
+    )
+
+
+def _flatten(params: list[Tensor]) -> Tensor:
+    return torch.cat([p.detach().reshape(-1) for p in params])
 
 
 def load_from_npz(

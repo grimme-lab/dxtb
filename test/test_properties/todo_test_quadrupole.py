@@ -25,8 +25,7 @@ import torch
 from tad_mctc.batch import pack
 from tad_mctc.units import VAA2AU
 
-from dxtb import GFN1_XTB as par
-from dxtb import Calculator
+from dxtb import GFN1_XTB, Calculator
 from dxtb._src.components.interactions import new_efield, new_efield_grad
 from dxtb._src.typing import DD, Tensor
 
@@ -74,7 +73,7 @@ def single(
 
     # create additional interaction and pass to Calculator
     efg = new_efield_grad(field_grad)
-    calc = Calculator(numbers, par, interaction=[efg], opts=opts, **dd)
+    calc = Calculator(numbers, GFN1_XTB, interaction=[efg], opts=opts, **dd)
 
     qana = calc.quadrupole_analytical(
         numbers,
@@ -198,7 +197,7 @@ def batched(
     # create additional interaction and pass to Calculator
     efield = new_efield(field_vector)
     efield_grad = new_efield_grad(field_grad)
-    calc = Calculator(numbers, par, interaction=[efield], opts=opts, **dd)
+    calc = Calculator(numbers, GFN1_XTB, interaction=[efield], opts=opts, **dd)
 
     quadrupole = calc.quadrupole(
         numbers, pos, charge, use_functorch=use_functorch
@@ -343,7 +342,9 @@ def test_batch_settings(
 
     efield = new_efield(field_vector)
     options = dict(opts, **{"scp_mode": scp_mode, "mixer": mixer})
-    calc = Calculator(numbers, par, interaction=[efield], opts=options, **dd)
+    calc = Calculator(
+        numbers, GFN1_XTB, interaction=[efield], opts=options, **dd
+    )
 
     quadrupole = calc.quadrupole(numbers, pos, charge)
     quadrupole.detach_()
@@ -392,7 +393,9 @@ def test_batch_unconverged(dtype: torch.dtype, name1: str, name2: str) -> None:
     options = dict(opts, **{"maxiter": 5, "mixer": "simple"})
 
     efield = new_efield(field_vector)
-    calc = Calculator(numbers, par, interaction=[efield], opts=options, **dd)
+    calc = Calculator(
+        numbers, GFN1_XTB, interaction=[efield], opts=options, **dd
+    )
 
     quadrupole = calc.quadrupole(numbers, pos, charge)
     quadrupole.detach_()
@@ -441,7 +444,9 @@ def test_batch_unconverged(dtype: torch.dtype, name1: str, name2: str) -> None:
     options = dict(opts, **{"maxiter": 5, "mixer": "simple"})
 
     efield = new_efield(field_vector)
-    calc = Calculator(numbers, par, interaction=[efield], opts=options, **dd)
+    calc = Calculator(
+        numbers, GFN1_XTB, interaction=[efield], opts=options, **dd
+    )
 
     quadrupole = calc.quadrupole(numbers, pos, charge)
     quadrupole.detach_()
