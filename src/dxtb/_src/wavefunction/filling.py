@@ -20,10 +20,27 @@ Wavefunction: Filling
 
 Handle the occupation of the orbitals with electrons.
 
-Parts of the Fermi smearing are taken from https://github.com/tbmalt/tbmalt
+Parts of the Fermi smearing are taken from https://github.com/tbmalt/tbmalt.
+The Fermi energy search follows the Fermi filling of tblite after pull request
+#385 (https://github.com/tblite/tblite/pull/385, commit ``e437cde``), with
+additions for batches, fractional electrons and derivatives (see
+:func:`get_fermi_occupation`). The derivatives of the occupations are obtained
+by differentiating Newton steps after a detached solve, an instance of
+one-step differentiation [Bolte2023]_ that is extended here to higher orders.
+
+References
+----------
+.. [Bolte2023] J. Bolte, E. Pauwels, S. Vaiter. One-step differentiation of
+   iterative algorithms. 37th Conference on Neural Information Processing
+   Systems (NeurIPS 2023). Corollary 2 (vanishing Jacobian at the fixed point)
+   and Corollary 3 (Newton's method, quadratic convergence) prove the
+   first-order result. The paper contains no statement about higher orders.
 """
 
 from __future__ import annotations
+
+import warnings
+from numbers import Integral
 
 import torch
 from tad_mctc.convert import any_to_tensor
@@ -36,6 +53,80 @@ __all__ = [
     "get_fermi_energy",
     "get_fermi_occupation",
 ]
+
+
+# Number of iterations of the Fermi energy search between host
+# synchronizations (convergence checks).
+_CHECK_EVERY = 8
+
+# Highest order of the derivatives of the occupations that is exact by
+# default (`diff_order` of `get_fermi_occupation`): forces, Hessians,
+# polarizabilities, dipole derivatives and first hyperpolarizabilities. The
+# number of differentiable Newton steps follows from it (see `_diff_steps`). It
+# is read at call time, since the SCF does not pass `diff_order` yet.
+_DEFAULT_DIFF_ORDER = 3
+
+# A differentiable Newton step is only taken if it is at most this many kT
+# long. At a converged start, the step is the (tiny) deviation of the start
+# from the root. Larger steps only occur if the derivative of the number of
+# electrons is negligible compared to the accepted residual, e.g., for a
+# fractional number of electrons in the far tail of the Fermi function, where
+# Newton overshoots by orders of magnitude and would corrupt the occupations.
+# The Fermi energy is kept in that case (as for a vanishing derivative). The
+# limit is not reached in ordinary cases (steps of about kT at most).
+_MAX_DIFF_STEP_KT = 3.0
+
+
+def _integer_tol(dtype: torch.dtype) -> float:
+    """
+    Tolerance to decide if the number of electrons (or a cumulative
+    occupation) is an integer, i.e., if the orbital is fully occupied.
+    """
+    return torch.finfo(dtype).resolution * 5
+
+
+def _sqrttiny(dtype: torch.dtype) -> float:
+    """
+    Smallest derivative of the Fermi function that is still divided by.
+    """
+    return torch.finfo(dtype).tiny ** 0.5
+
+
+def _diff_steps(diff_order: int) -> int:
+    """
+    Number of differentiable Newton steps for derivatives up to `diff_order`.
+
+    ``k`` steps are exact through order ``2**k - 1``, i.e., the smallest ``k``
+    with ``2**k - 1 >= diff_order`` is ``ceil(log2(diff_order + 1))``, which is
+    the bit length of `diff_order`.
+
+    Parameters
+    ----------
+    diff_order : int
+        Highest order of the derivatives that must be exact.
+
+    Returns
+    -------
+    int
+        Number of Newton steps (0 for order 0, 1 for order 1, 2 for orders 2
+        and 3, 3 for orders 4 to 7, ...).
+
+    Raises
+    ------
+    TypeError
+        `diff_order` is not an integer.
+    ValueError
+        `diff_order` is negative.
+    """
+    if isinstance(diff_order, bool) or not isinstance(diff_order, Integral):
+        raise TypeError(
+            f"The derivative order must be an integer (got {diff_order!r})."
+        )
+    if diff_order < 0:
+        raise ValueError(
+            f"The derivative order must not be negative ({diff_order})."
+        )
+    return int(diff_order).bit_length()
 
 
 def get_alpha_beta_occupation(
@@ -117,6 +208,8 @@ def get_aufbau_occupation(norb: Tensor, nel: Tensor) -> Tensor:
     """
     Set occupation numbers according to the aufbau principle.
     The number of electrons is a real number and can be fractional.
+    Orbitals beyond the number of available orbitals `norb` of a system
+    (padding in a batch) are never occupied.
 
     Parameters
     ----------
@@ -182,19 +275,24 @@ def get_aufbau_occupation(norb: Tensor, nel: Tensor) -> Tensor:
         print(all(nel == occ.sum(-1)))  # True
     """
 
-    # We represent the aufbau filling with a heaviside function, using the following steps
-    # 1. creating orbital indices using arange from 1 to norb, inclusively
-    idxs = torch.arange(1, 1 + torch.max(norb).item(), device=nel.device)
-    occupation = torch.heaviside(
-        # 2. remove the orbital index from the total number of electrons
-        #    (negative numbers are filled with ones, positive numbers with zeros)
-        # 3. fractional occupation will be in the range [-1, 0], therefore we round up
-        torch.ceil(nel.unsqueeze(-1) - idxs.unsqueeze(-2)),
-        # 4. heaviside uses the actual values at 0, therefore we provide the remainder
-        # 5. to not lose whole electrons we take the negative and add one
-        torch.remainder(nel, -1).unsqueeze(-1) + 1,
-    )
+    # electrons fill the available orbitals, orbitals of smaller systems in a
+    # batch (`norb` per system) are padding
+    nmax = int(torch.max(norb).item())
+    valid = None  # [b, (1,) nmax]: True for orbitals that exist
+    if norb.dim() > 0:
+        # `norb` has one entry per system ([b]), `nel` may have additional
+        # (channel) dimensions between the systems and the orbitals
+        # ([b, 2]), i.e., `norb` becomes [b, 1, 1] and the orbital indices
+        # [nmax] are broadcast against it
+        extra = max(nel.dim() - norb.dim(), 0)
+        shape = (*norb.shape, *([1] * (extra + 1)))
+        valid = torch.arange(nmax, device=nel.device) < norb.reshape(shape)
 
+    # the trailing dimension of the electrons ([b, 2, 1]) is broadcast against
+    # the orbitals ([b, 2, nmax])
+    occupation = _aufbau_occupation(
+        nel.unsqueeze(-1), nmax, valid, nel.dtype, nel.device
+    )
     return occupation.flatten() if nel.dim() == 0 else occupation
 
 
@@ -211,40 +309,46 @@ def get_fermi_energy(
     Parameters
     ----------
     nel : Tensor
-        Number of electrons.
+        Number of electrons per channel (shape ``[b, 2]``, the batch dimension
+        ``b`` is optional).
     emo : Tensor
-        Orbital energies
+        Orbital energies (shape ``[b, 2, n]``, the same for both channels).
     mask : Tensor | None, optional
         Mask from orbitals to avoid reading padding as LUMO for elements
-        without LUMO due to minimal basis.
+        without LUMO due to minimal basis (shape ``[b, 2, n]``).
 
     Returns
     -------
     tuple[Tensor, Tensor]
-        Fermi energy and index of HOMO.
+        Fermi energy (shape ``[b, 2]``) and index of HOMO (shape
+        ``[b, 2, 1]``).
     """
     zero = torch.tensor(0.0, device=emo.device, dtype=emo.dtype)
 
+    # cumulative number of orbitals minus the number of electrons of the
+    # channel ([b, 2, n]); `nel` gets a trailing dimension for the orbitals
     occ = torch.ones_like(emo)
     occ_cs = occ.cumsum(-1) - nel.unsqueeze(-1)
 
     # transition: negative values indicate end of occupied orbitals
-    temp = occ_cs >= (-torch.finfo(emo.dtype).resolution * 5)
+    temp = occ_cs >= -_integer_tol(emo.dtype)
 
     # index of first non-negative value and unsqueeze for stacking;
     # stacking will happen along that dim
+    # (shape [b, 2, 1])
     homo = torch.argmax(temp.type(torch.long), dim=-1).unsqueeze(-1)
 
     # some atoms (e.g., He) do not have a LUMO because of the valence basis and
     # the LUMO index becomes larger than No. MOs
     lumo_missing = occ.sum(-1, keepdim=True) - 1 <= homo
+    # indices of HOMO and LUMO ([b, 2, 2])
     gap = torch.where(
         lumo_missing,
         torch.cat((homo, homo), -1),  # Fermi energy becomes HOMO energy
         torch.cat((homo, homo + 1), -1),
     )
 
-    # Fermi energy as midpoint between HOMO and LUMO
+    # Fermi energy as midpoint between HOMO and LUMO ([b, 2])
     e_fermi = torch.where(
         nel != 0,  # detect empty beta channel
         torch.gather(emo, -1, gap).mean(-1),
@@ -273,29 +377,72 @@ def get_fermi_occupation(
     mask: Tensor | None = None,
     thr: Tensor | float | int | None = None,
     maxiter: int = 200,
+    diff_order: int | None = None,
 ) -> Tensor:
     """
     Set occupation numbers according to Fermi distribution.
+
+    The Fermi energy is determined such that the occupations sum up to the
+    given (possibly fractional) number of electrons `nel`. The algorithm is
+    the one of tblite (Newton iteration on the number of electrons) with two
+    additions that are necessary for a batched, differentiable
+    implementation:
+
+    1. The Newton iteration is safeguarded by a bisection bracket because it
+       is not globally convergent, e.g., for fractional electrons. Converged
+       entries of a batch are frozen. This part does not track gradients.
+    2. Differentiable Newton steps from the converged Fermi energy carry its
+       derivatives up to the requested order `diff_order` (see the note on
+       derivatives below) and are attached to the graph afterwards.
 
     The orbital energies `emo` must already have the correct shape for using
     alpha/beta electron channels. Spreading to the channels can be done with
     `emo.unsqueeze(-2).expand([*nel.shape, -1])`.
 
+    Shapes (the batch dimension ``b`` is optional, ``n`` is the number of
+    orbitals including padding): the electrons `nel` are ``[b, 2]``, the
+    orbital energies `emo`, the `mask` and the occupations are ``[b, 2, n]``.
+    Each channel (alpha, beta) is optimized independently and the orbitals are
+    at most singly occupied. Intermediate quantities per channel, such as the
+    Fermi energy or the number of electrons, have a trailing singleton
+    dimension (``[b, 2, 1]``) to broadcast against the orbitals.
+
     Parameters
     ----------
     nel : Tensor
-        Number of electrons.
+        Number of electrons per channel (``[b, 2]``).
     emo : Tensor
-        Orbital energies.
+        Orbital energies (``[b, 2, n]``).
     kt : Tensor
-        Electronic temperature in atomic units.
+        Electronic temperature in atomic units (scalar). For ``kt == 0``, the
+        aufbau occupation is returned.
     mask : Tensor | None, optional
-        Mask for Fermi energy. Just passed through.
-    thr : Tensor | None, optional
-        Threshold for converging Fermi energy, by default None.
+        Mask for the existing orbitals (``0`` for padding) with the same
+        shape as `emo`. Padded orbitals are never occupied and are not read
+        as LUMO for the initial guess of the Fermi energy. Without a mask,
+        padding cannot be distinguished from actual orbitals and is occupied
+        if its energy is close to the Fermi energy.
+    thr : Tensor | float | int | None, optional
+        Threshold for the deviation of the number of electrons, by default
+        ``None``, which is ``min(sqrt(eps), 1e5 * eps, 1e-4)`` of the dtype of
+        `emo` (the last limit only applies in single precision). The SCF
+        verifies the number of electrons to about 5e-4, i.e., larger
+        thresholds may trip this check in single precision.
     maxiter : int, optional
         Maximum number of iterations for converging Fermi energy.
         Defaults to 200.
+    diff_order : int | None, optional
+        Highest order of the derivatives of the occupations that is exact
+        (with respect to the orbital energies, the temperature and everything
+        upstream). ``k = ceil(log2(diff_order + 1))`` differentiable Newton
+        steps are attached, i.e., 0 for order 0, 1 for order 1, 2 for orders 2
+        and 3, and 3 for orders 4 to 7. The default ``None`` is order 3
+        (forces, Hessians, polarizabilities, dipole derivatives and first
+        hyperpolarizabilities). The value of the occupations does not depend
+        on it (apart from the forward residual, see below). Each additional
+        order of the derivative costs more than the additional Newton steps,
+        since the nested derivatives of the graph grow exponentially. Orders
+        beyond 3 need double precision.
 
     Returns
     -------
@@ -307,60 +454,564 @@ def get_fermi_occupation(
     RuntimeError
         Fermi energy fails to converge.
     TypeError
-        Electronic temperature is not given as `Tensor`.
+        Electronic temperature is not given as `Tensor` or the derivative
+        order is not an integer.
     ValueError
-        Electronic temperature is negative or number of electrons is zero.
+        Electronic temperature is not a scalar or negative, the number of
+        electrons exceeds the number of orbitals, or the derivative order is
+        negative.
+
+    Note
+    ----
+    Derivatives (with respect to the orbital energies, and everything
+    upstream of them, such as positions and fields, and to `kt`):
+
+    - ``k`` undamped Newton steps ``mu <- mu - g / g'`` of the number of
+      electrons ``g`` from a converged, detached start reproduce all
+      derivatives of the exact Fermi energy up to order ``2**k - 1``. This is
+      the reason for ``k = ceil(log2(diff_order + 1))``. Proof: the Newton map
+      ``N`` fulfils ``N(mu*) = mu*`` and ``N'(mu*) = 0``, i.e.,
+      ``N(mu) - mu* = (mu - mu*)**2 h`` with a smooth ``h`` (roughly
+      ``g'' / (2 g')``). With the start ``mu_0 = mu*(eps_0)``, the deviation
+      ``mu_0 - mu*(eps)`` is ``O(d eps)``, and applying the identity ``k``
+      times gives ``mu_k - mu* = O(d eps**(2**k))``. By the chain rule, the
+      derivatives of the occupations agree up to the same order.
+    - The derivatives are exact up to the forward residual ``e_0`` of the
+      Fermi energy: the ``n``-th derivative has an error of the order of
+      ``e_0**(2**k - n)``. For ``diff_order = 2**k - 1``, the highest order
+      has an error of order ``e_0`` (the error of a hand-written implicit
+      derivative), and the lower orders are more accurate.
+    - The default order 3 (two steps) covers forces, Hessians,
+      polarizabilities, dipole derivatives (up to second order in the
+      occupations) and the first hyperpolarizability and derivative of the
+      polarizability (third order). Fourth-order properties need order 4 or
+      more (three steps).
+    - Order 0 (no step) omits the change of the Fermi energy entirely, which
+      makes even forces wrong. Order 1 (one step) is exact for forces only.
+    - The origin of the idea is one-step differentiation (Bolte, Pauwels and
+      Vaiter, NeurIPS 2023, see the references of this module,
+      [Bolte2023]_): a detached solve, differentiate only the last step(s) of
+      a fast algorithm. Corollary 2 shows that one step gives the exact
+      Jacobian if the Jacobian of the iteration map vanishes at the fixed
+      point, and Corollary 3 bounds the error of one step by
+      ``L_J ||x_{k-1} - x*||`` for quadratically convergent maps such as
+      Newton's method. Both are first-order results. The statement for
+      higher orders (``2**k - 1``) is the proof above and not part of the
+      paper.
+    - The steps must move the value. A straight-through form
+      ``mu + (change - change.detach())`` differentiates the occupations at
+      the start instead of the end of the steps and leaves an error of order
+      ``e_0`` for every ``k``.
+    - Completely filled channels (as many electrons as orbitals, e.g., He or
+      H\ :sup:`-`) have no finite Fermi energy. Their occupations are exactly
+      one and constant, i.e., all derivatives vanish.
+    - The derivative of the Fermi energy is dropped (the Fermi energy stays
+      frozen) if the derivative of the number of electrons is below
+      ``sqrt(tiny)`` or if the step is longer than ``_MAX_DIFF_STEP_KT``
+      times kT. This happens only if the orbitals have (almost) no thermal
+      weight (gaps of more than about 25 kT). The missing terms are of the
+      order of ``f (1 - f)``, i.e., the derivatives of the occupations are
+      accurate in absolute terms only (at most ``1e-4 * thr / kT**n`` for the
+      ``n``-th derivative) and exactly zero for ``|x| > 50``.
     """
-
-    # wrong type of kt
-    if not isinstance(kt, Tensor) and kt is not None:
-        raise TypeError("Electronic temperature must be `Tensor` or ``None``.")
-
-    # negative etemp
-    if kt is not None and torch.any(kt < 0.0):
+    # the temperature is a single value for all systems and channels
+    if not isinstance(kt, Tensor):
+        raise TypeError("Electronic temperature must be `Tensor`.")
+    if kt.numel() != 1:
         raise ValueError(
-            f"Electronic Temperature must be positive or None ({kt})."
+            f"Electronic temperature must be a scalar (shape {kt.shape})."
+        )
+    kt = kt.reshape(())
+
+    if diff_order is None:
+        diff_order = _DEFAULT_DIFF_ORDER
+    steps = _diff_steps(diff_order)
+    if diff_order > _DEFAULT_DIFF_ORDER and emo.dtype != torch.double:
+        warnings.warn(
+            f"Derivatives of order {diff_order} of the Fermi occupations are "
+            f"dominated by rounding errors in {emo.dtype}; use double "
+            "precision.",
+            stacklevel=2,
         )
 
-    dd: DD = {"device": emo.device, "dtype": emo.dtype}
-    eps = torch.tensor(torch.finfo(emo.dtype).eps, **dd)
-    zero = torch.tensor(0.0, **dd)
+    # Reading a value from the CPU does not synchronize anything. On other
+    # devices, the check is deferred to the first synchronization of the
+    # search, which reads the convergence flag anyway.
+    negative_kt = torch.any(kt < 0.0)
+    if kt.device.type == "cpu" and negative_kt:
+        raise ValueError(f"Electronic Temperature must be non-negative ({kt}).")
 
-    # no valence electrons
-    if (torch.abs(nel.sum(-1)) < eps).any():
-        return torch.zeros_like(emo)
-
+    eps = torch.finfo(emo.dtype).eps
     if thr is None:
-        thr = torch.tensor(torch.finfo(emo.dtype).eps, **dd) ** 0.5
-    thresh = any_to_tensor(thr, **dd)
+        # 1e-4 keeps a margin to the tolerance of the SCF (5e-4, float32)
+        thr = min(eps**0.5, 1e5 * eps, 1e-4)
+    thresh = any_to_tensor(thr, device=emo.device, dtype=emo.dtype)
 
-    e_fermi, homo = get_fermi_energy(nel, emo, mask=mask)
+    # The number of electrons is a constant target. It may carry a graph
+    # (e.g., from the occupation of the previous SCF step), which must not be
+    # part of the graph of the new occupation.
+    nel = nel.detach()
+    # `nel` ([b, 2]) gets a trailing dimension for the subtraction from the
+    # sum over the orbitals ([b, 2, 1])
+    target = nel.unsqueeze(-1)
+    # existing orbitals, padding is never occupied ([b, 2, n])
+    valid = None if mask is None else (mask != 0)
 
-    # `emo` ([b, 2, n]) was expanded to second dim (for alpha/beta electrons)
-    # and we need to add a dim to `e_fermi` for subtraction in that dim
-    e_fermi = e_fermi.view([*nel.shape, -1])  # [b, 2, 1]
+    # Channels without electrons (e.g., beta channel of a doublet) and
+    # channels with zero temperature (aufbau filling) are not optimized.
+    # Negative temperatures are also excluded here (see above).
+    kt_pos = kt > 0.0
+    occupied = target > eps  # [b, 2, 1]
+    # dummy value to not divide by zero (or a negative value) in channels that
+    # are not optimized; their result is replaced below
+    safe_kt = torch.where(kt_pos, kt, 1.0)
 
-    # check if (beta) channel contains electrons
-    not_empty = nel.unsqueeze(-1) != 0
-    emo = torch.where(not_empty, emo, zero)
+    # Invalid input, only read together with the convergence flag: the number
+    # of electrons of an active channel must fit into the existing orbitals.
+    # number of orbitals of each channel (int or [b, 2, 1])
+    norb = emo.shape[-1] if valid is None else valid.sum(-1, keepdim=True)
+    tol = _integer_tol(emo.dtype)
+    too_many = (target > norb + tol) & occupied & kt_pos
 
-    # iterate fermi energy
-    for _ in range(maxiter):
-        exponent = (emo - e_fermi) / kt
-        eterm = torch.exp(torch.where(exponent < 50, exponent, zero))
+    # A completely filled channel has no finite Fermi energy: the occupations
+    # are exactly one and constant. Searching for a root would only move the
+    # Fermi energy by about kT per Newton step in the tail of the Fermi
+    # function and give spurious derivatives.
+    full = occupied & ((target - norb).abs() <= tol)
+    active = occupied & kt_pos & ~full  # [b, 2, 1]
+    checks = torch.stack([negative_kt, torch.any(too_many)])
 
-        # only singly occupied here         v
-        fermi = torch.where(exponent < 50, 1.0 / (eterm + 1.0), zero)
-        dfermi = torch.where(
-            exponent < 50, eterm / (kt * (eterm + 1.0) ** 2), eps
+    # Fermi energy without gradient tracking ([b, 2, 1]): initial guess, then
+    # iterations until the number of electrons is converged
+    with torch.no_grad():
+        emo_d, kt_d = emo.detach(), safe_kt.detach()
+        e_fermi = _initial_fermi_energy(nel, target, emo_d, mask)
+        e_fermi, (negative, too_many) = _fermi_energy_search(
+            target,
+            emo_d,
+            kt_d,
+            e_fermi,
+            active,
+            valid,
+            thresh,
+            maxiter,
+            checks,
         )
 
-        _nel = torch.sum(fermi, dim=-1, keepdim=True)
-        change = (homo - _nel + 1) / torch.sum(dfermi, dim=-1, keepdim=True)
-        e_fermi += change
+    if negative:
+        raise ValueError(f"Electronic Temperature must be non-negative ({kt}).")
+    if too_many:
+        raise ValueError(
+            f"Number of electrons ({nel}) exceeds the number of orbitals."
+        )
 
-        if torch.all(torch.abs(homo - _nel + 1) <= thresh):
-            # check if beta channel is empty
-            return torch.where(not_empty, fermi, torch.zeros_like(fermi))
+    # Differentiable Newton steps from the converged Fermi energy. `rel` are
+    # the orbital energies relative to the converged Fermi energy ([b, 2, n])
+    # and `shift` the Fermi energy after the steps relative to the converged
+    # one ([b, 2, 1]), i.e., `rel - shift` is the exact distance to the Fermi
+    # energy, with the graph of the orbital energies.
+    rel, shift = _attach_implicit_derivative(
+        e_fermi, emo, safe_kt, target, active, valid, steps
+    )
 
-    raise RuntimeError("Fermi energy failed to converge.")
+    fermi, _ = _fermi_distribution(rel, shift, safe_kt, valid)  # [b, 2, n]
+
+    # channels without electrons (e.g., beta channel of an H atom) or with zero
+    # temperature are not occupied here; completely filled channels are
+    full_occ = torch.ones_like(fermi) if valid is None else valid.to(fermi.dtype)
+    fermi = torch.where(full, full_occ, torch.where(active, fermi, 0.0))
+
+    # Zero temperature: Fermi distribution becomes aufbau filling. Both are
+    # evaluated and selected with `where` (instead of branching on the value
+    # of `kt`), which keeps the function free of data-dependent control flow
+    # for `torch.compile` and the function transforms of `torch.func`. The
+    # aufbau occupation is cheap (about 2% of the runtime) and does not
+    # depend on the orbital energies, i.e., it adds nothing to the graph.
+    return torch.where(
+        kt_pos,
+        fermi,
+        _aufbau_occupation(target, emo.shape[-1], valid, emo.dtype, emo.device),
+    )
+
+
+def _fermi_distribution(
+    emo: Tensor, e_fermi: Tensor, kt: Tensor, valid: Tensor | None
+) -> tuple[Tensor, Tensor]:
+    """
+    Fermi function and its derivative with respect to the Fermi energy.
+
+    The exponential is only evaluated in the range ``|x| <= 50``, where
+    ``x = (emo - e_fermi) / kt``. Outside, the occupation is exactly 0 or 1
+    and the derivative vanishes (as in tblite). The inner ``torch.where``
+    prevents overflowing exponentials from reaching the backward pass.
+
+    Parameters
+    ----------
+    emo : Tensor
+        Orbital energies.
+    e_fermi : Tensor
+        Fermi energy with a trailing singleton dimension.
+    kt : Tensor
+        Electronic temperature in atomic units (must be positive).
+    valid : Tensor | None
+        Orbitals that exist (``False`` for padding). Padding is never
+        occupied.
+
+    Returns
+    -------
+    tuple[Tensor, Tensor]
+        Occupation of each orbital and its derivative with respect to the
+        Fermi energy, ``f * (1 - f) / kt``.
+    """
+    # `emo` ([b, 2, n]) was expanded to the second dim (for alpha/beta
+    # electrons) and `e_fermi` has a trailing singleton dim ([b, 2, 1]) for the
+    # subtraction in that dim
+    arg = (emo - e_fermi) / kt  # [b, 2, n]
+    inside = torch.abs(arg) <= 50.0
+
+    # only singly occupied here (the channels are separate): 0 <= f <= 1
+    f_in = 1.0 / (torch.exp(torch.where(inside, arg, 0.0)) + 1.0)
+    fermi = torch.where(arg > 50.0, 0.0, torch.where(arg < -50.0, 1.0, f_in))
+    dfermi = torch.where(inside, f_in * (1.0 - f_in) / kt, 0.0)
+
+    # padding is never occupied and does not contribute to the derivative
+    if valid is not None:
+        fermi = torch.where(valid, fermi, 0.0)
+        dfermi = torch.where(valid, dfermi, 0.0)
+
+    return fermi, dfermi
+
+
+def _newton_step(
+    target: Tensor, fermi: Tensor, dfermi: Tensor
+) -> tuple[Tensor, Tensor, Tensor]:
+    """
+    Newton step of the Fermi energy for the number of electrons.
+
+    Parameters
+    ----------
+    target : Tensor
+        Number of electrons with a trailing singleton dimension.
+    fermi : Tensor
+        Occupation of each orbital.
+    dfermi : Tensor
+        Derivative of the occupation with respect to the Fermi energy.
+
+    Returns
+    -------
+    tuple[Tensor, Tensor, Tensor]
+        Deviation from the target number of electrons, change of the Fermi
+        energy and if the derivative is large enough to divide by it (the
+        change is meaningless otherwise).
+    """
+    # sum over the orbitals of each channel: [b, 2, n] -> [b, 2, 1]
+    resid = target - fermi.sum(-1, keepdim=True)
+    total_dfermi = dfermi.sum(-1, keepdim=True)
+
+    # do not divide by a vanishing derivative (large gap): the change is
+    # meaningless there and must not produce inf or NaN in the backward pass
+    ok = total_dfermi > _sqrttiny(fermi.dtype)
+    change = resid / torch.where(ok, total_dfermi, 1.0)
+    return resid, change, ok
+
+
+def _is_converged(
+    resid: Tensor, e_fermi: Tensor, lo: Tensor, hi: Tensor, thresh: Tensor
+) -> Tensor:
+    """
+    Convergence of the number of electrons.
+
+    Once the bracket cannot be narrowed anymore (adjacent floats), no better
+    Fermi energy exists. This happens for tiny temperatures, where a single
+    ulp of the Fermi energy changes the number of electrons by more than the
+    threshold. Such entries are accepted if the deviation is at most 32 times
+    the threshold (and 1e-6), i.e., in practice only in double precision.
+    """
+    eps = torch.finfo(resid.dtype).eps
+
+    collapsed = hi - lo <= 4.0 * eps * torch.clamp(e_fermi.abs(), min=1.0)
+    loose = resid.abs() <= torch.clamp(32.0 * thresh, max=1e-6)
+    return (resid.abs() <= thresh) | (collapsed & loose)
+
+
+def _initial_fermi_energy(
+    nel: Tensor, target: Tensor, emo: Tensor, mask: Tensor | None
+) -> Tensor:
+    """
+    Initial guess for the Fermi energy.
+
+    For integer electrons, the midpoint of HOMO and LUMO is used. For
+    fractional electrons, the energy of the partially occupied orbital is
+    used.
+
+    Parameters
+    ----------
+    nel : Tensor
+        Number of electrons.
+    target : Tensor
+        Number of electrons with a trailing singleton dimension.
+    emo : Tensor
+        Orbital energies.
+    mask : Tensor | None
+        Mask for the existing orbitals (``0`` for padding).
+
+    Returns
+    -------
+    Tensor
+        Fermi energy with a trailing singleton dimension.
+    """
+    e_mid, homo = get_fermi_energy(nel, emo, mask=mask)
+
+    # `emo` ([b, 2, n]) was expanded to the second dim (for alpha/beta
+    # electrons) and we need to add a dim to `e_fermi` for subtraction in that
+    # dim
+    e_mid = e_mid.view([*nel.shape, -1])  # [b, 2] -> [b, 2, 1]
+    e_homo = torch.gather(emo, -1, homo)  # [b, 2, 1]
+
+    # midpoint for integer electrons (a gap), energy of the partially occupied
+    # orbital for fractional electrons (no gap between HOMO and LUMO)
+    integer = (target - target.round()).abs() <= _integer_tol(emo.dtype)
+    return torch.where(integer, e_mid, e_homo)
+
+
+def _fermi_energy_search(
+    target: Tensor,
+    emo: Tensor,
+    kt: Tensor,
+    e_fermi: Tensor,
+    active: Tensor,
+    valid: Tensor | None,
+    thresh: Tensor,
+    maxiter: int,
+    checks: Tensor,
+) -> tuple[Tensor, list[bool]]:
+    """
+    Find the Fermi energy for which the occupations sum up to `target`.
+
+    Newton steps are only accepted if they stay within a bracket that is
+    updated from the sign of the residual, since the Newton iteration for the
+    Fermi function is not globally convergent (e.g., overshooting for
+    fractional numbers of electrons or vanishing derivatives for a large
+    HOMO-LUMO gap). Otherwise, the bracket is bisected. Entries that are
+    converged are frozen, i.e., batched results equal the individual results.
+
+    The host is only synchronized every ``_CHECK_EVERY`` iterations (and in
+    the first and last one), since iterations after convergence do not change
+    the result.
+
+    Parameters
+    ----------
+    target : Tensor
+        Number of electrons with a trailing singleton dimension.
+    emo : Tensor
+        Orbital energies.
+    kt : Tensor
+        Electronic temperature in atomic units (positive).
+    e_fermi : Tensor
+        Initial guess for the Fermi energy.
+    active : Tensor
+        Channels for which the Fermi energy is optimized.
+    valid : Tensor | None
+        Orbitals that exist (``False`` for padding).
+    thresh : Tensor
+        Threshold for the deviation of the number of electrons.
+    maxiter : int
+        Maximum number of iterations.
+    checks : Tensor
+        Boolean flags for invalid input (negative temperature, too many
+        electrons). They are read together with the convergence flag in the
+        first synchronization.
+
+    Returns
+    -------
+    tuple[Tensor, list[bool]]
+        Fermi energy with a trailing singleton dimension and the flags for
+        invalid input (the search is aborted if any is set).
+
+    Raises
+    ------
+    RuntimeError
+        Fermi energy fails to converge.
+    """
+    # Bracket: the number of electrons is monotonic in the Fermi energy and
+    # zero (all orbitals) far below (above) the lowest (highest) orbital.
+    # (padding is not part of the spectrum and would only widen the bracket)
+    if valid is None:
+        emin, emax = emo.amin(-1, keepdim=True), emo.amax(-1, keepdim=True)
+    else:
+        inf = torch.full_like(emo, torch.inf)
+        emin = torch.where(valid, emo, inf).amin(-1, keepdim=True)
+        emax = torch.where(valid, emo, -inf).amax(-1, keepdim=True)
+        # channels without orbitals are never active, keep them finite
+        emin = torch.where(torch.isfinite(emin), emin, 0.0)
+        emax = torch.where(torch.isfinite(emax), emax, 0.0)
+
+    lo = emin - 60.0 * kt  # [b, 2, 1]
+    hi = emax + 60.0 * kt  # [b, 2, 1]
+    e_fermi, lo, hi, active = torch.broadcast_tensors(e_fermi, lo, hi, active)
+    e_fermi = torch.minimum(torch.maximum(e_fermi, lo), hi)
+
+    # iterate the Fermi energy of each channel, `fermi` and `dfermi` are
+    # [b, 2, n], everything else ([b, 2, 1]) is per channel; `maxiter` updates
+    # are made and the result of the last one is checked, too
+    resid, done = None, None
+    for it in range(maxiter + 1):
+        fermi, dfermi = _fermi_distribution(emo, e_fermi, kt, valid)
+        resid, change, ok = _newton_step(target, fermi, dfermi)
+
+        # channels that are not optimized (no electrons) are always done
+        done = ~active | _is_converged(resid, e_fermi, lo, hi, thresh)
+
+        # check if all channels of all systems are converged (host
+        # synchronization) and if the input was invalid
+        if it % _CHECK_EVERY == 0 or it == maxiter:
+            all_done, *invalid = torch.cat(
+                [torch.all(done).unsqueeze(0), checks]
+            ).tolist()
+            if all_done or any(invalid):
+                return e_fermi, [bool(i) for i in invalid]
+
+        if it == maxiter:
+            break
+
+        # too few (many) electrons: Fermi energy is above (below) the root
+        lo = torch.where(resid > 0.0, e_fermi, lo)
+        hi = torch.where(resid < 0.0, e_fermi, hi)
+
+        # Newton step if it stays within the bracket, bisection otherwise
+        newton = e_fermi + change
+        accept = ok & (newton > lo) & (newton < hi)
+        step = torch.where(accept, newton, 0.5 * (lo + hi))
+
+        # converged channels are frozen, i.e., a batch gives the same result
+        # as the individual systems
+        e_fermi = torch.where(done, e_fermi, step)
+
+    msg = "Fermi energy failed to converge"
+    if resid is not None and done is not None:
+        # report the entries (batch and channel index) that did not converge
+        bad = (~done).squeeze(-1).nonzero().tolist()
+        worst = torch.where(done, 0.0, resid.abs()).max().item()
+        limit = thresh.max().item()
+        msg += (
+            f" within {maxiter} iterations (entries {bad}, largest deviation "
+            f"of the number of electrons {worst:.3e}, threshold {limit:.3e})"
+        )
+    raise RuntimeError(f"{msg}.")
+
+
+def _attach_implicit_derivative(
+    e_fermi: Tensor,
+    emo: Tensor,
+    kt: Tensor,
+    target: Tensor,
+    active: Tensor,
+    valid: Tensor | None,
+    steps: int,
+) -> tuple[Tensor, Tensor]:
+    """
+    Attach the derivatives of the converged Fermi energy to the graph.
+
+    The converged Fermi energy is constant. Every step is an undamped Newton
+    step of the number of electrons, ``mu <- mu - g(mu) / g'(mu)``, and the
+    result of one step is the start of the next one (and the Fermi energy of
+    the occupations). Since the Newton iteration converges quadratically,
+    ``steps`` steps yield the correct derivatives up to order
+    ``2**steps - 1`` (proof, orders per property and references in
+    `get_fermi_occupation`). Without any step, even gradients miss the change
+    of the Fermi energy.
+
+    Note that the steps must move the value: a straight-through form such as
+    ``mu + (change - change.detach())`` has the same derivatives of ``mu``,
+    but the occupations would be differentiated at the start instead of the
+    end of the steps, leaving an error of the order of the deviation of the
+    start from the root for every ``k``.
+
+    Parameters
+    ----------
+    e_fermi : Tensor
+        Converged Fermi energy without graph.
+    emo : Tensor
+        Orbital energies.
+    kt : Tensor
+        Electronic temperature in atomic units (positive).
+    target : Tensor
+        Number of electrons with a trailing singleton dimension.
+    active : Tensor
+        Channels for which the Fermi energy is optimized. The others (no
+        electrons) keep their Fermi energy, since a Newton step would only
+        produce meaningless values there.
+    valid : Tensor | None
+        Orbitals that exist (``False`` for padding).
+    steps : int
+        Number of differentiable Newton steps.
+
+    Returns
+    -------
+    tuple[Tensor, Tensor]
+        Orbital energies relative to the converged Fermi energy and the
+        Fermi energy after the Newton steps relative to the converged one
+        (initially zero). Use them in place of the orbital energies and the
+        Fermi energy in `_fermi_distribution`. The split keeps the steps,
+        which are tiny compared to the ulp of the Fermi energy in single
+        precision, from being lost when they are added to it.
+    """
+    # orbital energies ([b, 2, n]) relative to the converged Fermi energy
+    # ([b, 2, 1], constant), which carries the graph of the orbital energies
+    emo = emo - e_fermi
+    shift = torch.zeros_like(e_fermi)  # Fermi energy relative to the converged
+
+    for _ in range(steps):
+        fermi, dfermi = _fermi_distribution(emo, shift, kt, valid)
+        _, change, ok = _newton_step(target, fermi, dfermi)
+        # keep the Fermi energy where the step is meaningless (see above)
+        take = ok & active & (torch.abs(change) <= _MAX_DIFF_STEP_KT * kt)
+        shift = shift + torch.where(take, change, 0.0)
+
+    return emo, shift
+
+
+def _aufbau_occupation(
+    target: Tensor,
+    norb: int,
+    valid: Tensor | None,
+    dtype: torch.dtype,
+    device: torch.device | None,
+) -> Tensor:
+    """
+    Aufbau filling for (fractional) electrons.
+
+    Padded orbitals are skipped, i.e., the electrons fill the existing
+    orbitals in the given order.
+
+    Parameters
+    ----------
+    target : Tensor
+        Number of electrons with a trailing singleton dimension.
+    norb : int
+        Number of orbitals (including padding).
+    valid : Tensor | None
+        Orbitals that exist (``False`` for padding).
+    dtype : torch.dtype
+        Data type of the occupation.
+    device : torch.device | None
+        Device of the occupation.
+
+    Returns
+    -------
+    Tensor
+        Occupation numbers with the last dimension of size `norb`.
+    """
+    # The orbital with the (0-based) position `i` holds `nel - i` electrons,
+    # limited to [0, 1]: whole electrons fill the lower orbitals (1), the
+    # remainder of fractional electrons the next one and all higher orbitals
+    # stay empty (0). `target` is [b, 2, 1] and the positions are [norb] (or
+    # [b, 1, norb] with padding), i.e., the result is [b, 2, norb].
+    if valid is None:
+        idxs = torch.arange(norb, device=device, dtype=dtype)
+        return torch.clamp(target - idxs, 0.0, 1.0)
+
+    # position of each orbital among the existing orbitals: padding does not
+    # count, i.e., the electrons continue after it
+    rank = torch.cumsum(valid.to(dtype), dim=-1) - 1.0
+    return torch.where(valid, torch.clamp(target - rank, 0.0, 1.0), 0.0)
