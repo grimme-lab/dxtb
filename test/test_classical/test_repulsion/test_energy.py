@@ -85,9 +85,20 @@ def test_single(
     assert pytest.approx(ref.cpu(), abs=tol) == 0.5 * e.sum((-2, -1)).cpu()
 
 
+# Every sample is already checked individually in `test_single`; the batched
+# test only needs to cover packing/padding, so a few representative pairs
+# (small+small, small+large, charged, largest) suffice.
+batch_pairs = [
+    ("H2", "H2O"),
+    ("SiH4", "ZnOOH-"),
+    ("MB16_43_01", "H2"),
+    ("LYS_xao", "MB16_43_02"),
+    ("MB16_43_03", "SiH4"),
+]
+
+
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("name1", sample_list)
-@pytest.mark.parametrize("name2", sample_list)
+@pytest.mark.parametrize("name1, name2", batch_pairs)
 @pytest.mark.parametrize("par", ["gfn1", "gfn2", "gfn0"])
 def test_batch(
     dtype: torch.dtype,
