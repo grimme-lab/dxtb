@@ -64,77 +64,49 @@ TRAFO = (
     torch.tensor([[1.0]], dtype=torch.double),
     torch.tensor(
         [
-            [1.0, 0.0, 0.0],  # x
-            [0.0, 1.0, 0.0],  # y
-            [0.0, 0.0, 1.0],  # z
+            [1.0, 0.0, 0.0],  # y
+            [0.0, 1.0, 0.0],  # z
+            [0.0, 0.0, 1.0],  # x
         ],
         dtype=torch.double,
     ),
     # fmt: off
+    # Cartesian columns: xx, xy, xz, yy, yz, zz; rows: m = -2, ..., 2
     torch.tensor([
-        [-0.5,  -0.5, 1.0, 0.0, 0.0, 0.0],
-        [ 0.0,   0.0, 0.0, 0.0,  s3, 0.0],
-        [ 0.0,   0.0, 0.0, 0.0, 0.0,  s3],
-        [s3_4, -s3_4, 0.0, 0.0, 0.0, 0.0],
-        [ 0.0,   0.0, 0.0,  s3, 0.0, 0.0],
+        [ 0.0,  s3, 0.0,   0.0, 0.0, 0.0],  # m = -2
+        [ 0.0, 0.0, 0.0,   0.0,  s3, 0.0],  # m = -1
+        [-0.5, 0.0, 0.0,  -0.5, 0.0, 1.0],  # m =  0
+        [ 0.0, 0.0,  s3,   0.0, 0.0, 0.0],  # m = +1
+        [s3_4, 0.0, 0.0, -s3_4, 0.0, 0.0],  # m = +2
     ], dtype=torch.double),
-    # FIXME: This transformation matrix is the possibly wrong as it uses the
-    # [-l, ..., 0, ..., l] ordering (copied from tblite) and not the ordering
-    # that the d-orbitals use ([0, ..., l, -l]). However, I do not have a
-    # suitable reference yet and we do not need f-orbitals currently...
+    # Cartesian columns: xxx, xxy, xxz, xyy, xyz, xzz, yyy, yyz, yzz, zzz;
+    # rows: m = -3, ..., 3
     torch.tensor([
-        [  0.0, -s5_8, 0.0, s45_8,   0.0,    0.0,    0.0, 0.0, 0.0, 0.0],
-        [  0.0,   0.0, 0.0,   0.0,   0.0,    0.0,    0.0, 0.0, 0.0, s15],
-        [  0.0, -s3_8, 0.0, -s3_8,   0.0,    0.0,    0.0, 0.0,  s6, 0.0],
-        [  0.0,   0.0, 1.0,   0.0,  -d32,    0.0,   -d32, 0.0, 0.0, 0.0],
-        [-s3_8,   0.0, 0.0,   0.0,   0.0,  -s3_8,    0.0,  s6, 0.0, 0.0],
-        [  0.0,   0.0, 0.0,   0.0, s15_4,    0.0, -s15_4, 0.0, 0.0, 0.0],
-        [ s5_8,   0.0, 0.0,   0.0,   0.0, -s45_8,    0.0, 0.0, 0.0, 0.0],
+        [  0.0, s45_8,    0.0,    0.0, 0.0, 0.0, -s5_8,    0.0, 0.0, 0.0],  # -3
+        [  0.0,   0.0,    0.0,    0.0, s15, 0.0,   0.0,    0.0, 0.0, 0.0],  # -2
+        [  0.0, -s3_8,    0.0,    0.0, 0.0, 0.0, -s3_8,    0.0,  s6, 0.0],  # -1
+        [  0.0,   0.0,   -d32,    0.0, 0.0, 0.0,   0.0,   -d32, 0.0, 1.0],  #  0
+        [-s3_8,   0.0,    0.0,  -s3_8, 0.0,  s6,   0.0,    0.0, 0.0, 0.0],  # +1
+        [  0.0,   0.0,  s15_4,    0.0, 0.0, 0.0,   0.0, -s15_4, 0.0, 0.0],  # +2
+        [ s5_8,   0.0,    0.0, -s45_8, 0.0, 0.0,   0.0,    0.0, 0.0, 0.0],  # +3
     ], dtype=torch.double),
     # fmt: on
 )
 """
 Transformation from cartesian basis functions to spherical harmonics.
-The convention for spherial harmonics ordering is [0, ..., l, -l].
+
+Follows the CCA ordering of tblite (tblite/tblite#371): cartesian functions
+are in lexicographic order (xx, xy, xz, yy, yz, zz, ...) and spherical
+harmonics in ascending order of m, i.e., [-l, ..., 0, ..., l]. The p-orbitals
+are the exception (identity transformation): they are in the order y, z, x,
+which is the spherical order [-1, 0, 1] of tblite.
 """
 
 
-# Transformation matrices taken from tblite and reshaped accordingly.
-#
-# dtrafo
-# reshape_fortran(torch.tensor(
-#     [ #   0    1   -1     2     -2
-#         -0.5, 0.0, 0.0,  s3_4, 0.0,  # xx
-#         -0.5, 0.0, 0.0, -s3_4, 0.0,  # yy
-#          1.0, 0.0, 0.0,   0.0, 0.0,  # zz
-#          0.0, 0.0, 0.0,   0.0,  s3,  # xy
-#          0.0,  s3, 0.0,   0.0, 0.0,  # xz
-#          0.0, 0.0,  s3,   0.0, 0.0,  # yz
-#     ]
-# ), (5, 6))
-#
-#
-# THE TRAFO FOR F-ORBITALS IS VERY LIKELY WRONG!
-# The explicit transformation in tblite differs from the transformation with
-# the transformation matrix that uses [-l, ..., 0, ..., l] ordering. Changing
-# the ordering to [0, ..., l-1, -(l-1), l, -l] reproduces the explicit
-# transformation. Since we do not use f-orbitals I did not fix this yet
-#
-# ftrafo
-# reshape_fortran(torch.tensor(
-#     [  #  -3    -2     -1     0      1       2       3
-#           0.0,  0.0,   0.0,  0.0, -s3_8,    0.0,   s5_8, # xxx
-#         -s5_8,  0.0, -s3_8,  0.0,   0.0,    0.0,    0.0, # yyy
-#           0.0,  0.0,   0.0,  1.0,   0.0,    0.0,    0.0, # zzz
-#         s45_8,  0.0, -s3_8,  0.0,   0.0,    0.0,    0.0, # xxy
-#           0.0,  0.0,   0.0, -d32,   0.0,  s15_4,    0.0, # xxz
-#           0.0,  0.0,   0.0,  0.0, -s3_8,    0.0, -s45_8, # xyy
-#           0.0,  0.0,   0.0, -d32,   0.0, -s15_4,    0.0, # yyz
-#           0.0,  0.0,   0.0,  0.0,    s6,    0.0,    0.0, # xzz
-#           0.0,  0.0,    s6,  0.0,   0.0,    0.0,    0.0, # yzz
-#           0.0,  s15,   0.0,  0.0,   0.0,    0.0,    0.0, # xyz
-#     ]
-# ), (7, 10))
+# The d and f matrices above are `dtrafo` and `ftrafo` of
+# `src/tblite/integral/trafo.f90` in tblite (after tblite/tblite#371), both of
+# shape (2l+1, ncart). The Fortran source lists them column by column, i.e.,
+# one cartesian function per line.
 
 NLM_CART = (
     torch.tensor(
@@ -144,7 +116,7 @@ NLM_CART = (
     ),
     torch.tensor(
         [
-            # tblite order: x (+1), y (-1), z (0) in [-1, 0, 1] sorting
+            # tblite order: y (-1), z (0), x (+1) in [-1, 0, 1] sorting
             [0, 1, 0],  # py
             [0, 0, 1],  # pz
             [1, 0, 0],  # px
@@ -153,80 +125,53 @@ NLM_CART = (
     torch.tensor(
         [
             [2, 0, 0],  # dxx
-            [0, 2, 0],  # dyy
-            [0, 0, 2],  # dzz
             [1, 1, 0],  # dxy
             [1, 0, 1],  # dxz
+            [0, 2, 0],  # dyy
             [0, 1, 1],  # dyz
+            [0, 0, 2],  # dzz
         ]
     ),
     torch.tensor(
         [
             [3, 0, 0],  # fxxx
-            [0, 3, 0],  # fyyy
-            [0, 0, 3],  # fzzz
             [2, 1, 0],  # fxxy
             [2, 0, 1],  # fxxz
             [1, 2, 0],  # fxyy
-            [0, 2, 1],  # fyyz
-            [1, 0, 2],  # fxzz
-            [0, 1, 2],  # fyzz
             [1, 1, 1],  # fxyz
+            [1, 0, 2],  # fxzz
+            [0, 3, 0],  # fyyy
+            [0, 2, 1],  # fyyz
+            [0, 1, 2],  # fyzz
+            [0, 0, 3],  # fzzz
         ]
     ),
     torch.tensor(
         [
             [4, 0, 0],  # gxxxx
-            [0, 4, 0],  # gyyyy
-            [0, 0, 4],  # gzzzz
             [3, 1, 0],  # gxxxy
             [3, 0, 1],  # gxxxz
-            [1, 3, 0],  # gxyyy
-            [0, 3, 1],  # gyyyz
-            [1, 0, 3],  # gxzzz
-            [0, 1, 3],  # gyzzz
             [2, 2, 0],  # gxxyy
-            [2, 0, 2],  # gxxzz
-            [0, 2, 2],  # gyyzz
             [2, 1, 1],  # gxxyz
+            [2, 0, 2],  # gxxzz
+            [1, 3, 0],  # gxyyy
             [1, 2, 1],  # gxyyz
             [1, 1, 2],  # gxyzz
+            [1, 0, 3],  # gxzzz
+            [0, 4, 0],  # gyyyy
+            [0, 3, 1],  # gyyyz
+            [0, 2, 2],  # gyyzz
+            [0, 1, 3],  # gyzzz
+            [0, 0, 4],  # gzzzz
         ]
     ),
 )
 """Cartesian components of Gaussian orbitals."""
 
-# Cartesion components taken from tblite.
-#
-# integer, parameter :: lx(3, 84) = reshape([&
-#     & 0, & ! s
-#     & 0,0,1, & ! p
-#     & 2,0,0,1,1,0, & ! d
-#     & 3,0,0,2,2,1,0,1,0,1, & ! f
-#     & 4,0,0,3,3,1,0,1,0,2,2,0,2,1,1, & ! g
-#     & 5,0,0,3,3,2,2,0,0,4,4,1,0,0,1,1,3,1,2,2,1, & ! h
-#     & 6,0,0,3,3,0,5,5,1,0,0,1,4,4,2,0,2,0,3,3,1,2,2,1,4,1,1,2, & ! i
-#     & 0, &
-#     & 1,0,0, &
-#     & 0,2,0,1,0,1, &
-#     & 0,3,0,1,0,2,2,0,1,1, &
-#     & 0,4,0,1,0,3,3,0,1,2,0,2,1,2,1, &
-#     & 0,5,0,2,0,3,0,3,2,1,0,4,4,1,0,1,1,3,2,1,2, &
-#     & 0,6,0,3,0,3,1,0,0,1,5,5,2,0,0,2,4,4,2,1,3,1,3,2,1,4,1,2, &
-#     & 0, &
-#     & 0,1,0, &
-#     & 0,0,2,0,1,1, &
-#     & 0,0,3,0,1,0,1,2,2,1, &
-#     & 0,0,4,0,1,0,1,3,3,0,2,2,1,1,2, &
-#     & 0,0,5,0,2,0,3,2,3,0,1,0,1,4,4,3,1,1,1,2,2, &
-#     & 0,0,6,0,3,3,0,1,5,5,1,0,0,2,4,4,0,2,1,2,2,3,1,3,1,1,4,2], &
-#     & shape(lx), order=[2, 1])
-#
-# For the ordering here, take all rows for one angular momentum from `lx` and
-# stack them. Then use the columns for the Python ordering. For the p-orbitals,
-# this would look the following way:
-#
-# Fortran  ->   Python
-# 0, 0, 1     [[0, 1, 0]
-# 1, 0, 0      [0, 0, 1]
-# 0, 1, 0      [1, 0, 0]]
+# Cartesian components taken from `lx` in
+# `src/tblite/integral/native/integrals.f90` of tblite (CCA ordering, after
+# tblite/tblite#371): for each l, components are ordered by decreasing lx and,
+# for equal lx, by decreasing ly (lz = l - lx - ly). This is the ordering used
+# for d, f and g above. For p, tblite also lists x, y, z, but its transform
+# then permutes the result with [2, 3, 1] to y, z, x, which is the ordering
+# used here.
