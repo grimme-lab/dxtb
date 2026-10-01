@@ -269,7 +269,26 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         type=int,
         default=defaults.SPIN,
         nargs="+",
-        help="R|Molecular spin.",
+        help="R|Molecular spin (number of unpaired electrons).",
+    )
+    p.add_argument(
+        "--unrestricted",
+        dest="uhf_mode",
+        action="store_true",
+        help="R|Use separate alpha and beta spin channels (UHF).",
+    )
+    p.add_argument(
+        "--spin-polarized",
+        dest="spin_polarized",
+        action="store_true",
+        help=("R|Use spin-polarized xTB Hamiltonian (implies --unrestricted)."),
+    )
+    p.add_argument(
+        "--spin-polarization-scale",
+        dest="spin_polarization_scale",
+        type=float,
+        default=1.0,
+        help="R|Scaling factor for the spin constants (--spin-polarized).",
     )
     p.add_argument(
         "--strict",

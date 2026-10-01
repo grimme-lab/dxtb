@@ -99,24 +99,6 @@ class BaseTSCF(BaseSCF):
         else:
             raise ValueError(f"Unknown mixer '{self.config.mixer}'.")
 
-        # For batched GFN2-xTB calculations, the culling does not work properly
-        # because of shape issues brought about by the quadrupole moments.
-        if self.config.method == labels.GFN2_XTB and batched > 0:
-            if self.config.scp_mode != labels.SCP_MODE_FOCK:
-                msg = (
-                    "Full (unrolled) SCF is not supported for GFN2-xTB with "
-                    "`charge` and `potential` vetors as self-consistent "
-                    "parameter, only Fock matrix is possible."
-                )
-
-                if self.config.strict is True:
-                    raise NotImplementedError(msg)
-
-                OutputHandler.warn(
-                    msg + " Changing to Fock matrix automatically."
-                )
-                self.config.scp_mode = labels.SCP_MODE_FOCK
-
     def get_overlap(self) -> Tensor:
         """
         Get the overlap matrix.
@@ -128,6 +110,10 @@ class BaseTSCF(BaseSCF):
         """
 
         smat = self._data.ints.overlap
+
+        # same overlap for alpha and beta channel
+        if self.nspin == 2:
+            smat = smat.unsqueeze(-3).expand(*smat.shape[:-2], 2, -1, -1)
 
         zeros = torch.eq(smat, 0)
         mask = torch.all(zeros, dim=-1) & torch.all(zeros, dim=-2)

@@ -10,6 +10,7 @@
 
    Installation <01_quickstart/installation>
    Getting Started <01_quickstart/getting_started>
+   Spin and UHF <01_quickstart/spin>
    CLI <01_quickstart/cli>
 
 .. toctree::
@@ -97,4 +98,5 @@ Quicklinks
 
 - :ref:`quickstart-installation`
 - :ref:`quickstart-getting-started`
+- :ref:`quickstart-spin`
 - :ref:`about-literature`

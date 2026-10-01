@@ -188,6 +188,9 @@ MIXER_CHOICES = ["anderson", "broyden", "simple"]
 MIX_GUESS = True
 """Whether to mix the initial guess."""
 
+UHF_MODE = False
+"""Whether to propagate independent alpha and beta wavefunction channels."""
+
 SCF_MODE = labels.SCF_MODE_FULL
 """
 Whether to use full gradient tracking in SCF, make use of the implicit

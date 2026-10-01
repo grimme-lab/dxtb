@@ -39,34 +39,37 @@ class Result(TensorLike):
     """
 
     charges: Charges
-    """Self-consistent orbital-resolved Mulliken partial charges."""
+    """Mulliken charges; UHF channels are total and magnetization."""
 
     coefficients: Tensor
-    """LCAO-MO coefficients (eigenvectors of Fockian)."""
+    """MO coefficients; UHF shape is ``(..., 2, nao, nao)``."""
 
     density: Tensor
-    """Density matrix."""
+    """Density matrix; UHF shape is ``(..., 2, nao, nao)`` in alpha/beta."""
 
     cenergies: dict[str, Tensor]
     """Energies of classical contributions."""
 
     emo: Tensor
-    """Energy of molecular orbitals (sorted by increasing energy)."""
+    """MO energies; UHF shape is ``(..., 2, nao)`` in alpha/beta."""
 
     fenergy: Tensor
     """Atom-resolved electronic free energy from fractional occupation."""
 
     hamiltonian: Tensor
-    """Full Hamiltonian matrix (H0 + H1)."""
+    """Full Hamiltonian; UHF shape is ``(..., 2, nao, nao)``."""
 
     integrals: IntegralMatrices
     """Collection of integrals including overlap and core Hamiltonian (H0)."""
 
     occupation: Tensor
-    """Orbital occupation."""
+    """Alpha/beta orbital occupations with shape ``(..., 2, nao)``."""
+
+    nspin: int
+    """Number of wavefunction channels represented by the result."""
 
     potential: Potential
-    """Self-consistent potentials."""
+    """SCF potentials; UHF channels are total and magnetization."""
 
     scf: Tensor
     """Atom-resolved energy from the self-consistent field (SCF) calculation."""
@@ -84,6 +87,7 @@ class Result(TensorLike):
         "hamiltonian",
         "integrals",
         "iter",
+        "nspin",
         "occupation",
         "potential",
         "scf",
@@ -104,6 +108,7 @@ class Result(TensorLike):
         self.total = torch.zeros(shape, dtype=self.dtype, device=self.device)
         self.cenergies = {}
         self.iter = 0
+        self.nspin = 1
 
     def __str__(self) -> str:  # pragma: no cover
         """Custom print representation showing all available slots."""

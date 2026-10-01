@@ -24,6 +24,8 @@ The `Interaction` class is not purely abstract as its methods return zero.
 
 from __future__ import annotations
 
+from enum import Enum
+
 import torch
 
 from dxtb import IndexHelper
@@ -32,7 +34,17 @@ from dxtb._src.typing import Any, Slicers, Tensor, TensorOrTensors, final
 from ...components.base import Component, ComponentCache
 from .container import Charges, Potential
 
-__all__ = ["Interaction", "InteractionCache"]
+__all__ = ["ChargeChannel", "Interaction", "InteractionCache"]
+
+
+class ChargeChannel(str, Enum):
+    """Charge representation channel consumed by an interaction."""
+
+    TOTAL = "total"
+    """Total-charge channel."""
+
+    MAGNETIZATION = "magnetization"
+    """Magnetization-charge channel."""
 
 
 class InteractionCache(ComponentCache):
@@ -92,6 +104,12 @@ class Interaction(Component):
     # Already defined in `Component` parent class
     label: str
     """Label for the interaction."""
+
+    charge_channel: ChargeChannel = ChargeChannel.TOTAL
+    """Charge channel consumed by this interaction."""
+
+    requires_uhf: bool = False
+    """Whether this interaction requires two wavefunction channels."""
 
     def __init__(
         self,
@@ -178,7 +196,14 @@ class Interaction(Component):
             cache, qat, charges.dipole, charges.quad
         )
 
-        return Potential(vmono, dipole=vdipole, quad=vquad, label=self.label)
+        return Potential(
+            vmono,
+            dipole=vdipole,
+            quad=vquad,
+            label=self.label,
+            batch_mode=charges.batch_mode,
+            nspin=charges.nspin,
+        )
 
     def get_monopole_shell_potential(
         self,
