@@ -25,7 +25,6 @@ import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
 from dxtb._src.integral.driver.pytorch.impls import md
-from dxtb._src.integral.driver.pytorch.impls.md import recursion
 from dxtb._src.typing import DD, Callable, Tensor
 
 from ...conftest import DEVICE
@@ -91,9 +90,7 @@ def gradchecker(
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
-@pytest.mark.parametrize(
-    "md_func", [md.explicit.md_explicit, recursion.md_recursion]
-)
+@pytest.mark.parametrize("md_func", [md.explicit.md_explicit])
 @pytest.mark.parametrize("li", [0, 1, 2, 3])
 @pytest.mark.parametrize("lj", [0, 1, 2, 3])
 def test_grad(dtype: torch.dtype, md_func, li: int, lj: int) -> None:
@@ -106,7 +103,6 @@ def test_grad(dtype: torch.dtype, md_func, li: int, lj: int) -> None:
     assert dgradcheck(func, diffvars, atol=tol)
 
 
-# NOTE: Recursive version fails because of inplace operations
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("md_func", [md.explicit.md_explicit])

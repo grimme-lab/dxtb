@@ -83,7 +83,7 @@ def test_default() -> None:
     if has_libcint is True:
         assert cfg.ints.driver == defaults.INTDRIVER
     else:
-        assert cfg.ints.driver == labels.INTDRIVER_ANALYTICAL
+        assert cfg.ints.driver == labels.INTDRIVER_AUTOGRAD
 
 
 def test_method() -> None:
@@ -135,7 +135,6 @@ def test_fermi_diff_order_value_fail() -> None:
 
 def test_gfn2_with_pytorch_drivers() -> None:
     for driver in (
-        labels.INTDRIVER_ANALYTICAL,
         labels.INTDRIVER_AUTOGRAD,
         labels.INTDRIVER_LEGACY,
     ):
@@ -144,12 +143,12 @@ def test_gfn2_with_pytorch_drivers() -> None:
 
 
 def test_int_algorithm() -> None:
-    cfg = Cfg(int_driver=labels.INTDRIVER_ANALYTICAL, int_algorithm="OS")
+    cfg = Cfg(int_driver=labels.INTDRIVER_AUTOGRAD, int_algorithm="OS")
     assert cfg.ints.algorithm == "os"
     assert Cfg().ints.algorithm is None
 
     with pytest.raises(ValueError):
-        Cfg(int_driver=labels.INTDRIVER_ANALYTICAL, int_algorithm="nope")
+        Cfg(int_driver=labels.INTDRIVER_AUTOGRAD, int_algorithm="nope")
 
 
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")

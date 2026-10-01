@@ -25,7 +25,7 @@ import torch
 
 from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.constants.labels import (
-    INTDRIVER_ANALYTICAL,
+    INTDRIVER_AUTOGRAD,
     INTDRIVER_LEGACY,
     INTDRIVER_LIBCINT,
 )
@@ -72,7 +72,7 @@ def single(name: int, dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
         positions = positions.cpu()
 
     mgr.setup_driver(positions)
-    if name == INTDRIVER_ANALYTICAL:
+    if name == INTDRIVER_AUTOGRAD:
         assert isinstance(mgr.driver, IntDriverPytorch)
     elif name == INTDRIVER_LIBCINT:
         assert isinstance(mgr.driver, IntDriverLibcint)
@@ -100,7 +100,7 @@ def test_libcint_single(
 def test_pytorch_single(
     dtype: torch.dtype, force_cpu_for_libcint: bool
 ) -> None:
-    single(INTDRIVER_ANALYTICAL, dtype, force_cpu_for_libcint)
+    single(INTDRIVER_AUTOGRAD, dtype, force_cpu_for_libcint)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -128,7 +128,7 @@ def batch(name: int, dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
         positions = positions.cpu()
 
     mgr.setup_driver(positions)
-    if name == INTDRIVER_ANALYTICAL:
+    if name == INTDRIVER_AUTOGRAD:
         assert isinstance(mgr.driver, IntDriverPytorch)
     elif name == INTDRIVER_LIBCINT:
         assert isinstance(mgr.driver, IntDriverLibcint)
@@ -152,7 +152,7 @@ def test_libcint_batch(dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
 def test_pytorch_batch(dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
-    batch(INTDRIVER_ANALYTICAL, dtype, force_cpu_for_libcint)
+    batch(INTDRIVER_AUTOGRAD, dtype, force_cpu_for_libcint)
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -181,7 +181,7 @@ def test_pytorch_driver_rebuilds_integrals_for_new_positions(kind: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     def manager() -> DriverManager:
-        mgr = DriverManager(INTDRIVER_ANALYTICAL, algorithm="os", **dd)
+        mgr = DriverManager(INTDRIVER_AUTOGRAD, algorithm="os", **dd)
         mgr.create_driver(numbers, GFN1_XTB, ihelp)
         return mgr
 

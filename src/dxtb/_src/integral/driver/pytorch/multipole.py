@@ -31,7 +31,6 @@ from dxtb._src.typing import Tensor
 
 from .base import IntegralPytorch
 from .driver import BaseIntDriverPytorch
-from .impls.algorithms import DEFAULT_MULTIPOLE_ALGORITHM, get_kernel
 from .impls.pairs import assemble_matrix
 
 __all__ = ["MultipolePytorch"]
@@ -53,7 +52,8 @@ class MultipolePytorch(IntegralPytorch):
 
         The shells are normalized to exactly unit self-overlap, so the
         integral needs no further normalization by the overlap diagonal
-        (the PyTorch overlap has unit diagonal, i.e., its norm is one).
+        (the overlap of every PyTorch driver has a unit diagonal, i.e., its
+        norm is one).
 
         Parameters
         ----------
@@ -70,7 +70,7 @@ class MultipolePytorch(IntegralPytorch):
         """
         super().checks(driver)
 
-        kernel = get_kernel(driver.algorithm or DEFAULT_MULTIPOLE_ALGORITHM)
+        kernel = driver.kernel
 
         def _one(ihelp, bas, pos) -> Tensor:
             alphas, coeffs = bas.create_cgtos()

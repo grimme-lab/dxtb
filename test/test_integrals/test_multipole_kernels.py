@@ -30,7 +30,6 @@ from dxtb._src.integral.driver.pytorch.impls.algorithms import (
     ALGORITHMS,
     get_kernel,
 )
-from dxtb._src.integral.driver.pytorch.impls.md.compute_1d import compute_1d
 from dxtb._src.integral.driver.pytorch.impls.md.explicit import md_explicit
 from dxtb._src.integral.driver.pytorch.impls.md.hermite import (
     compute_1d_md_hermite,
@@ -93,12 +92,6 @@ def test_md_matches_os(la: int, lb: int) -> None:
         out = compute_1d_md_hermite(la, lb, emax, xij, rpi, rpj, rpc)
         assert torch.allclose(out, ref, atol=1e-13, rtol=0.0)
 
-    # explicit McMurchie-Davidson overlap table (no shortcut for s-s)
-    if (la, lb) != (0, 0):
-        ref = compute_1d_os(la, lb, 0, xij, rpi, rpj)
-        out = compute_1d(la, lb, 0, xij, rpi, rpj)
-        assert torch.allclose(out, ref, atol=1e-13, rtol=0.0)
-
 
 def test_one_center_closed_form() -> None:
     """
@@ -122,15 +115,18 @@ def test_one_center_closed_form() -> None:
             assert table[i, j].item() == pytest.approx(ref, abs=1e-14)
 
 
-def test_pipeline_matches_md_explicit() -> None:
+@pytest.mark.parametrize("algorithm", ALGORITHMS)
+def test_overlap_matches_md_explicit(algorithm: str) -> None:
+    """The overlap agrees with the explicit E-coefficients of the legacy code."""
     dd: DD = {"dtype": torch.double, "device": DEVICE}
+    kernel = get_kernel(algorithm)
     a, b, c, d, vec, _ = class_inputs(dd)
 
     for la in range(3):
         for lb in range(3):
             angular = (torch.tensor(la), torch.tensor(lb))
             ref = md_explicit(angular, (a, b), (c, d), vec)
-            out = assemble_overlap_1d(compute_1d, (la, lb), (a, b), (c, d), vec)
+            out = assemble_overlap_1d(kernel, (la, lb), (a, b), (c, d), vec)
             assert torch.allclose(out, ref, atol=1e-14, rtol=0.0)
 
 

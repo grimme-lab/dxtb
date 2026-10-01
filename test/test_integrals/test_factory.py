@@ -106,7 +106,7 @@ def test_overlap() -> None:
     cls = factory.new_overlap(labels.INTDRIVER_LIBCINT)
     assert isinstance(cls, types.OverlapIntegral)
 
-    cls = factory.new_overlap(labels.INTDRIVER_ANALYTICAL)
+    cls = factory.new_overlap(labels.INTDRIVER_AUTOGRAD)
     assert isinstance(cls, types.OverlapIntegral)
 
 
@@ -137,7 +137,7 @@ def test_dipint() -> None:
     cls = factory.new_dipint(labels.INTDRIVER_LIBCINT)
     assert isinstance(cls, types.DipoleIntegral)
 
-    cls = factory.new_dipint(labels.INTDRIVER_ANALYTICAL)
+    cls = factory.new_dipint(labels.INTDRIVER_AUTOGRAD)
     assert isinstance(cls, types.DipoleIntegral)
 
 
@@ -168,7 +168,7 @@ def test_quadint() -> None:
     cls = factory.new_quadint(labels.INTDRIVER_LIBCINT)
     assert isinstance(cls, types.QuadrupoleIntegral)
 
-    cls = factory.new_quadint(labels.INTDRIVER_ANALYTICAL)
+    cls = factory.new_quadint(labels.INTDRIVER_AUTOGRAD)
     assert isinstance(cls, types.QuadrupoleIntegral)
 
 

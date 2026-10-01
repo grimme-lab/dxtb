@@ -149,7 +149,6 @@ def new_overlap(
         return new_overlap_libcint(device=device, dtype=dtype, **kwargs)
 
     if driver in (
-        labels.INTDRIVER_ANALYTICAL,
         labels.INTDRIVER_AUTOGRAD,
         labels.INTDRIVER_LEGACY,
     ):
@@ -198,7 +197,6 @@ def new_dipint(
         return new_dipint_libcint(device=device, dtype=dtype, **kwargs)
 
     if driver in (
-        labels.INTDRIVER_ANALYTICAL,
         labels.INTDRIVER_AUTOGRAD,
         labels.INTDRIVER_LEGACY,
     ):
@@ -247,7 +245,6 @@ def new_quadint(
         return new_quadint_libcint(device=device, dtype=dtype, **kwargs)
 
     if driver in (
-        labels.INTDRIVER_ANALYTICAL,
         labels.INTDRIVER_AUTOGRAD,
         labels.INTDRIVER_LEGACY,
     ):

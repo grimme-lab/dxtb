@@ -10,18 +10,19 @@ Overlap, dipole and quadrupole integrals
 ----------------------------------------
 
 The PyTorch drivers build the overlap, dipole and quadrupole integrals (and
-thereby GFN2-xTB, which needs the multipoles) without libcint. The
-one-dimensional multipole integrals can be computed with one of two
-interchangeable algorithms, selected with the ``int_algorithm`` option
+thereby GFN2-xTB, which needs the multipoles) without libcint. All integrals
+are assembled from one-dimensional integrals, which can be computed with one
+of two interchangeable algorithms, selected with the ``int_algorithm`` option
 (command line: ``--int-algorithm``):
 
 - ``os`` (default): Obara-Saika, three-index vertical recursion
 - ``md``: McMurchie-Davidson with Hermite moments
 
-The overlap always uses the explicit McMurchie-Davidson implementation of the
-driver. Both algorithms agree with libcint to ``1e-12`` in double precision, support
+Both algorithms agree with libcint to ``1e-12`` in double precision, support
 CPU and CUDA, padded batches, and derivatives of any order (also with
-``torch.func``), and work with ``torch.compile``.
+``torch.func``) with respect to the positions and the basis parameters, and
+work with ``torch.compile``. The overlap gradient required by the analytical
+nuclear gradient is computed from the same one-dimensional integrals.
 
 .. code-block:: python
 
@@ -34,16 +35,16 @@ CPU and CUDA, padded batches, and derivatives of any order (also with
         [[0.0, 0.0, 0.0], [0.0, 1.43, 1.11], [0.0, -1.43, 1.11]], **dd
     )
 
-    opts = {"int_driver": "analytical", "int_algorithm": "os"}
+    opts = {"int_driver": "pytorch", "int_algorithm": "os"}
     calc = dxtb.calculators.GFN2Calculator(numbers, opts=opts, **dd)
     energy = calc.get_energy(positions)
 
 The option is only valid for the PyTorch drivers; it is rejected for libcint.
 
-Parameter gradients (with respect to the basis exponents and contraction
-coefficients) are supported by both algorithms. With ``int_driver="analytical"``
-the analytical position derivative of the overlap is used unless a basis
-parameter requires a gradient, in which case the plain autograd path is taken.
+The legacy driver (``int_driver="legacy"``) is the original loop-based overlap
+with explicitly written-down McMurchie-Davidson coefficients. It is kept for
+reference, has no overlap gradient, and takes its multipole integrals from the
+same algorithms.
 
 On the CPU, libcint is faster than the PyTorch drivers, in particular for the
 multipole integrals of large systems.

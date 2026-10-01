@@ -28,9 +28,10 @@ from tad_mctc.batch import pack
 
 from dxtb import GFN2_XTB, Calculator, IndexHelper
 from dxtb._src.exlibs.available import has_libcint
+from dxtb._src.integral.driver.pytorch.impls.algorithms import ALGORITHMS
 from dxtb._src.typing import DD, Tensor
 from dxtb.integrals.wrappers import dipint, quadint
-from dxtb.labels import INTDRIVER_ANALYTICAL, INTDRIVER_LIBCINT
+from dxtb.labels import INTDRIVER_AUTOGRAD, INTDRIVER_LIBCINT
 
 from ..conftest import DEVICE
 from ..utils import get_param_module
@@ -49,11 +50,9 @@ def calculator(numbers: Tensor, opts: dict, dd: DD) -> Calculator:
     return Calculator(numbers, par, opts={**opts, "verbosity": 0}, **dd)
 
 
-@pytest.mark.parametrize(
-    "driver, algorithm", [("analytical", "os"), ("autograd", "md")]
-)
+@pytest.mark.parametrize("algorithm", ALGORITHMS)
 @pytest.mark.parametrize("name", ["LiH", "SiH4"])
-def test_energy_and_forces(name: str, driver: str, algorithm: str) -> None:
+def test_energy_and_forces(name: str, algorithm: str) -> None:
     dd: DD = {"dtype": torch.double, "device": DEVICE}
     numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
@@ -64,7 +63,9 @@ def test_energy_and_forces(name: str, driver: str, algorithm: str) -> None:
         return calc.get_energy(pos), calc.get_forces(pos)
 
     e_ref, f_ref = energy_and_forces({"int_driver": "libcint"})
-    e, f = energy_and_forces({"int_driver": driver, "int_algorithm": algorithm})
+    e, f = energy_and_forces(
+        {"int_driver": "pytorch", "int_algorithm": algorithm}
+    )
 
     assert torch.allclose(e, e_ref, atol=1e-11, rtol=0.0)
     assert torch.allclose(f, f_ref, atol=1e-11, rtol=0.0)
@@ -80,7 +81,7 @@ def test_batch() -> None:
         return calculator(numbers, opts, dd).get_energy(positions)
 
     e_ref = energy({"int_driver": "libcint"})
-    e = energy({"int_driver": "analytical"})
+    e = energy({"int_driver": "autograd"})
     assert torch.allclose(e, e_ref, atol=1e-11, rtol=0.0)
 
 
@@ -95,7 +96,7 @@ def test_hessian() -> None:
         return calculator(numbers, opts, dd).get_hessian(pos)
 
     h_ref = hessian({"int_driver": "libcint"})
-    h = hessian({"int_driver": "analytical"})
+    h = hessian({"int_driver": "autograd"})
     assert torch.allclose(h, h_ref, atol=1e-11, rtol=0.0)
 
 
@@ -117,5 +118,5 @@ def test_integral_wrappers() -> None:
 
     for fn in (dipint, quadint):
         ref = fn(numbers, positions, GFN2_XTB, driver=INTDRIVER_LIBCINT)
-        out = fn(numbers, positions, GFN2_XTB, driver=INTDRIVER_ANALYTICAL)
+        out = fn(numbers, positions, GFN2_XTB, driver=INTDRIVER_AUTOGRAD)
         assert torch.allclose(out, p @ ref.to(DEVICE) @ p.mT, atol=1e-11)

@@ -18,18 +18,17 @@
 Shared 3D assembly
 ==================
 
-One 3D-assembly/contraction/spherical-transform pipeline that every 1D kernel
-(McMurchie-Davidson, Obara-Saika) plugs into. It is the pipeline of
-``md_explicit`` (``impls/md/explicit.py``), parameterized over a ``kernel``
-callable matching the ``compute_1d`` contract.
+The 3D assembly, contraction and spherical transform of one class of shell
+pairs, parameterized over a 1D ``kernel`` matching the ``compute_1d``
+contract (McMurchie-Davidson or Obara-Saika).
 
-``assemble_overlap_1d`` is the overlap (``emax == 0``) assembly of one class
-of shell pairs and ``assemble_multipole_1d`` its generalization to the raw
-dipole (3) and quadrupole (9 components, row-major) integrals about a common
-origin. Both consume per-class ``(angular, alpha, coeff, vec)`` inputs; the
-enumeration and grouping of the shell pairs, screening, chunking and the
-scatter into the AO matrix are done by ``impls/pairs.py``. Every kernel takes
-``(xij, rpi, rpj[, xpc])``.
+``assemble_overlap_1d`` is the overlap (``emax == 0``),
+``assemble_overlap_gradient_1d`` its derivative with respect to the bra
+center, and ``assemble_multipole_1d`` the raw dipole (3) and quadrupole
+(9 components, row-major) integrals about a common origin. All consume
+per-class ``(angular, alpha, coeff, vec)`` inputs; the enumeration and
+grouping of the shell pairs, screening, chunking and the scatter into the AO
+matrix are done by ``impls/pairs.py``.
 """
 
 from __future__ import annotations
@@ -38,18 +37,72 @@ from math import pi, sqrt
 from typing import Callable
 
 import torch
-from tad_mctc.math import einsum
 
 from dxtb._src.typing import Tensor
 from dxtb._src.typing.exceptions import IntegralTransformError
 
 from .md.trafo import NLM_CART, TRAFO
 
-__all__ = ["assemble_overlap_1d", "assemble_multipole_1d", "Kernel1D"]
+__all__ = [
+    "assemble_overlap_1d",
+    "assemble_overlap_gradient_1d",
+    "assemble_multipole_1d",
+    "Kernel1D",
+]
 
 sqrtpi3 = sqrt(pi) ** 3
 
 Kernel1D = Callable[..., Tensor]
+
+
+def _transforms(angular: tuple[int, int], vec: Tensor) -> tuple[Tensor, Tensor]:
+    """Cartesian-to-spherical transforms of the bra and ket shells."""
+    try:
+        itrafo = TRAFO[angular[0]].type(vec.dtype).to(vec.device)
+        jtrafo = TRAFO[angular[1]].type(vec.dtype).to(vec.device)
+    except IndexError as e:
+        raise IntegralTransformError() from e
+    return itrafo, jtrafo
+
+
+def _primitive_pairs(
+    alpha: tuple[Tensor, Tensor], coeff: tuple[Tensor, Tensor], vec: Tensor
+) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
+    """
+    Quantities of all primitive pairs: the bra exponents ``ai`` (shape
+    ``(nprimi, 1)``), ``xij = 1 / (2p)``, the displacements ``rpi = P - A``
+    and ``rpj = P - B`` (shape ``(nvec, 3, nprimi, nprimj)``), and the
+    prefactor ``sij`` of the 3D overlap of two s primitives times the
+    contraction coefficients (shape ``(nvec, nprimi, nprimj)``).
+    """
+    ai, aj = alpha[0].unsqueeze(-1), alpha[1].unsqueeze(-2)
+    ci, cj = coeff[0].unsqueeze(-1), coeff[1].unsqueeze(-2)
+    oij = 1.0 / (ai + aj)
+    xij = 0.5 * oij
+
+    # no `einsum` (opt_einsum), which `torch.compile` cannot trace
+    r2 = (vec * vec).sum(-1)
+    est = ai * aj * oij * r2.unsqueeze(-1).unsqueeze(-2)
+    sij = torch.exp(-est) * sqrtpi3 * torch.pow(oij, 1.5) * ci * cj
+
+    rpi = +vec.unsqueeze(-1).unsqueeze(-1) * aj * oij
+    rpj = -vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
+    return ai, xij, rpi, rpj, sij
+
+
+def _per_axis(table: Tensor, angular: tuple[int, int]) -> list[Tensor]:
+    """
+    Gather the 1D factors of every Cartesian component pair from a table
+    ``[i, j, ..., axis, p, q]``: one tensor ``(ncarti, ncartj, ..., p, q)``
+    per axis. One broadcasting fancy-index call per axis gathers the bra and
+    ket components at once.
+    """
+    nlmi = NLM_CART[angular[0]].to(table.device)
+    nlmj = NLM_CART[angular[1]].to(table.device)
+    return [
+        table[nlmi[:, ax, None], nlmj[None, :, ax]].select(-3, ax)
+        for ax in range(3)
+    ]
 
 
 def assemble_overlap_1d(
@@ -82,45 +135,77 @@ def assemble_overlap_1d(
         Overlap integrals for the shell pair(s).
     """
     li, lj = angular
-
-    try:
-        itrafo = TRAFO[li].type(vec.dtype).to(vec.device)
-        jtrafo = TRAFO[lj].type(vec.dtype).to(vec.device)
-    except IndexError as e:
-        raise IntegralTransformError() from e
-
-    ai, aj = alpha[0].unsqueeze(-1), alpha[1].unsqueeze(-2)
-    ci, cj = coeff[0].unsqueeze(-1), coeff[1].unsqueeze(-2)
-    eij = ai + aj
-    oij = 1.0 / eij
-    xij = 0.5 * oij
-
-    r2 = einsum("...i,...i->...", vec, vec)
-    est = ai * aj * oij * r2.unsqueeze(-1).unsqueeze(-2)
-
-    sij = torch.exp(-est) * sqrtpi3 * torch.pow(oij, 1.5) * ci * cj
+    itrafo, jtrafo = _transforms(angular, vec)
+    _, xij, rpi, rpj, sij = _primitive_pairs(alpha, coeff, vec)
 
     if li == 0 and lj == 0:
         s3d = sij.sum((-2, -1), keepdim=True)
     else:
-        rpi = +vec.unsqueeze(-1).unsqueeze(-1) * aj * oij
-        rpj = -vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
-
-        e0 = kernel(li, lj, 0, xij, rpi, rpj)
-
-        nlmi = NLM_CART[li].to(vec.device)
-        nlmj = NLM_CART[lj].to(vec.device)
-
-        # one broadcasting fancy-index call per axis (gathers dims i and j at
-        # once) instead of two chained ones; see assemble_multipole_1d
-        sx = e0[nlmi[:, 0, None], nlmj[None, :, 0], ..., 0, :, :]  # type: ignore
-        sy = e0[nlmi[:, 1, None], nlmj[None, :, 1], ..., 1, :, :]  # type: ignore
-        sz = e0[nlmi[:, 2, None], nlmj[None, :, 2], ..., 2, :, :]  # type: ignore
+        sx, sy, sz = _per_axis(kernel(li, lj, 0, xij, rpi, rpj), angular)
 
         # fixed contraction, written out (no `einsum` path handling)
         s3d = (sx * sy * sz * sij).sum((-2, -1)).movedim((0, 1), (-2, -1))
 
     return itrafo @ s3d @ jtrafo.mT
+
+
+def assemble_overlap_gradient_1d(
+    kernel: Kernel1D,
+    angular: tuple[int, int],
+    alpha: tuple[Tensor, Tensor],
+    coeff: tuple[Tensor, Tensor],
+    vec: Tensor,
+) -> Tensor:
+    """
+    Derivative of a shell pair's overlap with respect to the bra center
+    :math:`A` (the derivative with respect to the ket center is its
+    negative).
+
+    The derivative of a 1D primitive,
+    :math:`\\partial_{A_x} (x - A_x)^i e^{-a (x - A_x)^2}
+    = 2a (x - A_x)^{i+1} e^{\\ldots} - i (x - A_x)^{i-1} e^{\\ldots}`,
+    turns the 1D overlap table of ``(la + 1, lb)`` into the 1D derivative
+    table, so every kernel provides the gradient without derivative-specific
+    code.
+
+    Parameters
+    ----------
+    kernel : Kernel1D
+        A function matching the ``compute_1d`` contract, called only for
+        ``emax == 0``.
+    angular : (int, int)
+        Angular momentum of the shell pair(s).
+    alpha : (Tensor, Tensor)
+        Primitive Gaussian exponents of the shell pair(s).
+    coeff : (Tensor, Tensor)
+        Contraction coefficients of the shell pair(s).
+    vec : Tensor
+        ``B - A`` displacement, shape ``(nvec, 3)``.
+
+    Returns
+    -------
+    Tensor
+        Gradient of shape ``(nvec, 3, nsph_a, nsph_b)``.
+    """
+    li, lj = angular
+    itrafo, jtrafo = _transforms(angular, vec)
+    ai, xij, rpi, rpj, sij = _primitive_pairs(alpha, coeff, vec)
+
+    # e1: (li+2, lj+1, nvec, 3, p, q)
+    e1 = kernel(li + 1, lj, 0, xij, rpi, rpj)
+    rows = [2.0 * ai * e1[1]]
+    for i in range(1, li + 1):
+        rows.append(2.0 * ai * e1[i + 1] - i * e1[i - 1])
+
+    s = _per_axis(e1[: li + 1], angular)
+    d = _per_axis(torch.stack(rows), angular)
+
+    out = []
+    for ax, (u, v) in enumerate(((1, 2), (0, 2), (0, 1))):
+        cart = (d[ax] * s[u] * s[v] * sij).sum((-2, -1))
+        out.append(itrafo @ cart.movedim((0, 1), (-2, -1)) @ jtrafo.mT)
+
+    return torch.stack(out, dim=1)
 
 
 DIPOLE_COMPONENTS = ((1, 0, 0), (0, 1, 0), (0, 0, 1))
@@ -185,24 +270,8 @@ def assemble_multipole_1d(
         for order in comp:
             emax = max(emax, order)
 
-    try:
-        itrafo = TRAFO[li].type(vec.dtype).to(vec.device)
-        jtrafo = TRAFO[lj].type(vec.dtype).to(vec.device)
-    except IndexError as e:
-        raise IntegralTransformError() from e
-
-    ai, aj = alpha[0].unsqueeze(-1), alpha[1].unsqueeze(-2)
-    ci, cj = coeff[0].unsqueeze(-1), coeff[1].unsqueeze(-2)
-    eij = ai + aj
-    oij = 1.0 / eij
-    xij = 0.5 * oij
-
-    r2 = (vec * vec).sum(-1)
-    est = ai * aj * oij * r2.unsqueeze(-1).unsqueeze(-1)
-    sij = torch.exp(-est) * sqrtpi3 * torch.pow(oij, 1.5) * ci * cj
-
-    rpi = +vec.unsqueeze(-1).unsqueeze(-1) * aj * oij
-    rpj = -vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
+    itrafo, jtrafo = _transforms(angular, vec)
+    _, xij, rpi, rpj, sij = _primitive_pairs(alpha, coeff, vec)
 
     a_minus_c = pos_a if origin is None else pos_a - origin
     rpc = rpi + a_minus_c.unsqueeze(-1).unsqueeze(-1)
@@ -212,16 +281,8 @@ def assemble_multipole_1d(
         # the kernels omit the (singleton) multipole axis for the overlap
         e0 = e0.unsqueeze(2)
 
-    nlmi = NLM_CART[li].to(vec.device)
-    nlmj = NLM_CART[lj].to(vec.device)
-
-    # per-axis tables: (ncarti, ncartj, e, nvec, nprimi, nprimj). One
-    # broadcasting fancy-index call per axis gathers the bra and ket
-    # components at once (e0 carries the full primitive-pair volume).
-    tables = []
-    for ax in range(3):
-        t = e0[nlmi[:, ax, None], nlmj[None, :, ax]]
-        tables.append(t.select(-3, ax))
+    # per-axis tables: (ncarti, ncartj, e, nvec, nprimi, nprimj)
+    tables = _per_axis(e0, angular)
 
     out = []
     for ex, ey, ez in components:

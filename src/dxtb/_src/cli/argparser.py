@@ -432,8 +432,8 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         default=None,
         choices=["md", "os"],
         help=(
-            "R|1D kernel of the PyTorch integral drivers for the multipole "
-            "integrals (McMurchie-Davidson or Obara-Saika). Default: `os`."
+            "R|1D kernel of the PyTorch integral drivers "
+            "(McMurchie-Davidson or Obara-Saika). Default: `os`."
         ),
     )
     p.add_argument(

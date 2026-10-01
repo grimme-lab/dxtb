@@ -268,7 +268,7 @@ def _integral(
         if has_libcint is True:
             driver_name = labels.INTDRIVER_LIBCINT
         else:
-            driver_name = labels.INTDRIVER_ANALYTICAL
+            driver_name = labels.INTDRIVER_AUTOGRAD
 
     # setup driver for integral calculation
     drv_mgr = DriverManager(driver_name, **dd)

@@ -70,7 +70,7 @@ def energy_of_scaled_exponents(
         Basis.create_cgtos = original  # type: ignore[method-assign]
 
 
-@pytest.mark.parametrize("driver", ["autograd", "analytical"])
+@pytest.mark.parametrize("driver", ["autograd", "legacy"])
 @pytest.mark.parametrize(
     "gfn, name", [("gfn1", "LiH"), ("gfn1", "H2O"), ("gfn2", "LiH")]
 )

@@ -40,13 +40,10 @@ def test_default_driver() -> None:
     if has_libcint is True:
         assert cfg.driver == defaults.INTDRIVER
     else:
-        assert cfg.driver == labels.INTDRIVER_ANALYTICAL
+        assert cfg.driver == labels.INTDRIVER_AUTOGRAD
 
 
 def test_driver_pytorch() -> None:
-    cfg = Cfg(driver=labels.INTDRIVER_ANALYTICAL_STRS[0])
-    assert cfg.driver == labels.INTDRIVER_ANALYTICAL
-
     cfg = Cfg(driver=labels.INTDRIVER_AUTOGRAD_STRS[0])
     assert cfg.driver == labels.INTDRIVER_AUTOGRAD
 
@@ -70,6 +67,10 @@ def test_fail_driver() -> None:
 
     with pytest.raises(ValueError):
         Cfg(driver="-999")
+
+    # the analytical PyTorch driver was removed
+    with pytest.raises(ValueError):
+        Cfg(driver="analytical")
 
     with pytest.raises(TypeError):
         Cfg(driver=1.0)  # type: ignore

@@ -53,7 +53,6 @@ opts = {
 drivers = [
     labels.INTDRIVER_LIBCINT,
     labels.INTDRIVER_AUTOGRAD,
-    labels.INTDRIVER_ANALYTICAL,
 ]
 
 

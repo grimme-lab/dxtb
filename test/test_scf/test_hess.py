@@ -60,7 +60,7 @@ def single(dtype: torch.dtype, name: str, gfn: str) -> None:
 
     if gfn == "gfn1":
         par = GFN1_XTB
-        options = {**opts, "int_driver": labels.INTDRIVER_ANALYTICAL}
+        options = {**opts, "int_driver": labels.INTDRIVER_AUTOGRAD}
     elif gfn == "gfn2":
         par = GFN2_XTB
         options = {**opts, "int_driver": labels.INTDRIVER_LIBCINT}

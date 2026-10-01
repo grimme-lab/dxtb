@@ -32,7 +32,6 @@ from dxtb._src.basis.slater import slater_to_gauss
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb._src.integral.driver.pytorch import OverlapPytorch as Overlap
 from dxtb._src.integral.driver.pytorch.impls import md
-from dxtb._src.integral.driver.pytorch.impls.md import recursion
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import t2int
 
@@ -214,22 +213,11 @@ def compare_md(
         (li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec
     )
 
-    # overlap gradient with recursion
-    ovlp_grad_rec = recursion.md_recursion_gradient(
-        (li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec
-    )
-    ovlp_grad_rec = torch.squeeze(ovlp_grad_rec, 0)
-
     # obtain Fortran ordering (row wise)
-    ovlp_grad_rec = torch.stack(
-        [ovlp_grad_rec[i].flatten() for i in range(3)]
-    ).transpose(0, 1)
     ovlp_grad_exp = torch.stack(
         [ovlp_grad_exp[i].flatten() for i in range(3)]
     ).transpose(0, 1)
 
-    assert pytest.approx(ovlp_grad_exp.cpu(), abs=atol) == ovlp_grad_rec.cpu()
-    assert pytest.approx(ovlp_grad_ref.cpu(), abs=atol) == ovlp_grad_rec.cpu()
     assert pytest.approx(ovlp_grad_ref.cpu(), abs=atol) == ovlp_grad_exp.cpu()
 
 

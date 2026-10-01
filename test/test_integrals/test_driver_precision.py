@@ -36,7 +36,6 @@ import torch
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.constants.labels import (
-    INTDRIVER_ANALYTICAL,
     INTDRIVER_AUTOGRAD,
     INTDRIVER_LEGACY,
     INTDRIVER_LIBCINT,
@@ -86,9 +85,7 @@ def test_trafo_is_double() -> None:
 @pytest.mark.skipif(
     has_libcint is False, reason="libcint interface not installed"
 )
-@pytest.mark.parametrize(
-    "driver", [INTDRIVER_AUTOGRAD, INTDRIVER_ANALYTICAL, INTDRIVER_LEGACY]
-)
+@pytest.mark.parametrize("driver", [INTDRIVER_AUTOGRAD, INTDRIVER_LEGACY])
 @pytest.mark.parametrize(
     "name", ["H2", "LiH", "CH4", "NH3", "SiH4", "LYS_xao_dist"]
 )

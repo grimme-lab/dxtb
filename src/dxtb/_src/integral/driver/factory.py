@@ -37,7 +37,6 @@ if TYPE_CHECKING:
     from .pytorch import (
         IntDriverPytorch,
         IntDriverPytorchLegacy,
-        IntDriverPytorchNoAnalytical,
     )
 
 __all__ = ["new_driver"]
@@ -53,18 +52,13 @@ def new_driver(
     if name == labels.INTDRIVER_LIBCINT:
         return new_driver_libcint(numbers, par, device=device, dtype=dtype)
 
-    if name == labels.INTDRIVER_ANALYTICAL:
-        return new_driver_pytorch(numbers, par, device=device, dtype=dtype)
-
     if name == labels.INTDRIVER_AUTOGRAD:
-        return new_driver_pytorch_no_analytical(
-            numbers, par, device=device, dtype=dtype
-        )
+        return new_driver_pytorch(numbers, par, device=device, dtype=dtype)
 
     if name == labels.INTDRIVER_LEGACY:
         return new_driver_legacy(numbers, par, device=device, dtype=dtype)
 
-    raise ValueError(f"Unknown integral driver '{labels.INTDRIVER_MAP[name]}'.")
+    raise ValueError(f"Unknown integral driver '{name}'.")
 
 
 ################################################################################
@@ -94,19 +88,6 @@ def new_driver_pytorch(
 ) -> IntDriverPytorch:
     # pylint: disable=import-outside-toplevel
     from .pytorch import IntDriverPytorch as _IntDriver
-
-    ihelp = IndexHelper.from_numbers(numbers, par)
-    return _IntDriver(numbers, par, ihelp, device=device, dtype=dtype)
-
-
-def new_driver_pytorch_no_analytical(
-    numbers: Tensor,
-    par: Param | ParamModule,
-    device: torch.device | None = None,
-    dtype: torch.dtype | None = None,
-) -> IntDriverPytorchNoAnalytical:
-    # pylint: disable=import-outside-toplevel
-    from .pytorch import IntDriverPytorchNoAnalytical as _IntDriver
 
     ihelp = IndexHelper.from_numbers(numbers, par)
     return _IntDriver(numbers, par, ihelp, device=device, dtype=dtype)

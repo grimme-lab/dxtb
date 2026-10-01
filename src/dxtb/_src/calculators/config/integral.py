@@ -59,8 +59,8 @@ class ConfigIntegrals:
 
     algorithm: str | None
     """
-    1D kernel of the PyTorch integral drivers for the multipole integrals
-    (``None``: the default, ``os``). The overlap is not affected.
+    1D kernel of the PyTorch integral drivers (``None``: the default,
+    ``os``). The overlap of the legacy driver is not affected.
     """
 
     def __init__(
@@ -102,8 +102,6 @@ class ConfigIntegrals:
                     )
 
                 self.driver = labels.INTDRIVER_LIBCINT
-            elif driver.casefold() in labels.INTDRIVER_ANALYTICAL_STRS:
-                self.driver = labels.INTDRIVER_ANALYTICAL
             elif driver.casefold() in labels.INTDRIVER_AUTOGRAD_STRS:
                 self.driver = labels.INTDRIVER_AUTOGRAD
             elif driver.casefold() in labels.INTDRIVER_LEGACY_STRS:
@@ -114,7 +112,6 @@ class ConfigIntegrals:
         elif isinstance(driver, int):
             if driver not in (
                 labels.INTDRIVER_LIBCINT,
-                labels.INTDRIVER_ANALYTICAL,
                 labels.INTDRIVER_AUTOGRAD,
                 labels.INTDRIVER_LEGACY,
             ):
@@ -131,10 +128,10 @@ class ConfigIntegrals:
 
                     OutputHandler.warn(
                         "The libcint interface is not installed. "
-                        "Falling back to the analytical driver."
+                        "Falling back to the PyTorch driver."
                     )
 
-                    driver = labels.INTDRIVER_ANALYTICAL
+                    driver = labels.INTDRIVER_AUTOGRAD
 
             self.driver = driver
         else:

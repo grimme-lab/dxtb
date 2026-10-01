@@ -71,7 +71,7 @@ def build_problem(
         numbers,
         positions,
         GFN0_XTB,
-        driver=labels.INTDRIVER_ANALYTICAL,
+        driver=labels.INTDRIVER_AUTOGRAD,
     )
     h0 = hcore.build(positions, ovlp, charge=charge)
     integrals = IntegralMatrices(
@@ -259,7 +259,7 @@ def test_heterogeneous_batch_matches_separate_solves() -> None:
         numbers,
         positions,
         GFN0_XTB,
-        driver=labels.INTDRIVER_ANALYTICAL,
+        driver=labels.INTDRIVER_AUTOGRAD,
     )
     h0 = hcore.build(positions, ovlp, charge=charges)
     integrals = IntegralMatrices(

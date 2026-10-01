@@ -70,7 +70,7 @@ class DriverManager(TensorLike):
             driver_type == labels.INTDRIVER_LIBCINT,
         )
 
-        # kernel of the PyTorch drivers for the multipoles (`None`: default)
+        # kernel of the PyTorch drivers (`None`: default)
         self.algorithm = kwargs.pop("algorithm", None)
 
         self.driver_type = driver_type
@@ -117,13 +117,9 @@ class DriverManager(TensorLike):
                 # This is only done for the basis-specific parameters in the
                 # constructor of the `Basis` class.
 
-        elif self.driver_type == labels.INTDRIVER_ANALYTICAL:
-            # pylint: disable=import-outside-toplevel
-            from .pytorch import IntDriverPytorch as _IntDriver
-
         elif self.driver_type == labels.INTDRIVER_AUTOGRAD:
             # pylint: disable=import-outside-toplevel
-            from .pytorch import IntDriverPytorchNoAnalytical as _IntDriver
+            from .pytorch import IntDriverPytorch as _IntDriver
 
         elif self.driver_type == labels.INTDRIVER_LEGACY:
             # pylint: disable=import-outside-toplevel

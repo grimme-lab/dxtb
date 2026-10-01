@@ -18,9 +18,10 @@
 Integral algorithms
 ===================
 
-Registry of the interchangeable 1D kernels (``compute_1d`` contract) that the
-PyTorch integral driver can use for the overlap and the multipole integrals,
-selected by name through the ``int_algorithm`` configuration option.
+Registry of the interchangeable 1D kernels (``compute_1d`` contract) of the
+pair builder, which computes all integrals of the PyTorch driver (only the
+multipole integrals of the legacy driver), selected by name through the
+``int_algorithm`` configuration option.
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ from typing import Callable
 
 from dxtb._src.typing import Tensor
 
-__all__ = ["ALGORITHMS", "DEFAULT_MULTIPOLE_ALGORITHM", "get_kernel"]
+__all__ = ["ALGORITHMS", "DEFAULT_ALGORITHM", "get_kernel"]
 
 ALGORITHMS = ("md", "os")
 """
@@ -37,10 +38,9 @@ Names of the available kernels: McMurchie-Davidson with Hermite moments and
 the three-index Obara-Saika recursion.
 """
 
-DEFAULT_MULTIPOLE_ALGORITHM = "os"
+DEFAULT_ALGORITHM = "os"
 """
-Kernel used for the multipole integrals when none is requested: the
-three-index Obara-Saika recursion.
+Kernel used when none is requested: the three-index Obara-Saika recursion.
 """
 
 

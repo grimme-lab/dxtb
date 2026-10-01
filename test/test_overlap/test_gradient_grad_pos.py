@@ -26,8 +26,8 @@ from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
-from dxtb._src.integral.driver.pytorch.impls import overlap_gradient
-from dxtb._src.typing import DD, Callable, Literal, Tensor
+from dxtb._src.integral.driver.pytorch import IntDriverPytorch
+from dxtb._src.typing import DD, Callable, Tensor
 
 from .samples import samples
 
@@ -40,7 +40,7 @@ from ..utils import get_param_module
 
 
 def gradchecker(
-    dtype: torch.dtype, name: str, uplo: Literal["l", "n"]
+    dtype: torch.dtype, name: str
 ) -> tuple[Callable[[Tensor], Tensor], Tensor]:
     """Prepare gradient check from `torch.autograd`."""
     dd: DD = {"dtype": dtype, "device": DEVICE}
@@ -52,12 +52,13 @@ def gradchecker(
     par = get_param_module("gfn1", **dd)
     ihelp = IndexHelper.from_numbers(numbers, par)
     bas = Basis(torch.unique(numbers), par, ihelp, **dd)
+    driver = IntDriverPytorch(numbers, par, ihelp, **dd)
 
     # variables to be differentiated
     pos = positions.clone().requires_grad_(True)
 
     def func(p: Tensor) -> Tensor:
-        return overlap_gradient(p, bas, ihelp, uplo=uplo)
+        return driver.eval_ovlp_grad(p, bas, ihelp)
 
     return func, pos
 
@@ -65,26 +66,22 @@ def gradchecker(
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
-@pytest.mark.parametrize("uplo", ["l", "n"])
-def test_grad(dtype: torch.dtype, name: str, uplo: Literal["l", "n"]) -> None:
+def test_grad(dtype: torch.dtype, name: str) -> None:
     """
     Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradcheck`.
     """
-    func, diffvars = gradchecker(dtype, name, uplo)
+    func, diffvars = gradchecker(dtype, name)
     assert dgradcheck(func, diffvars, atol=tol)
 
 
 @pytest.mark.grad
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", sample_list)
-@pytest.mark.parametrize("uplo", ["l", "n"])
-def test_gradgrad(
-    dtype: torch.dtype, name: str, uplo: Literal["l", "n"]
-) -> None:
+def test_gradgrad(dtype: torch.dtype, name: str) -> None:
     """
     Check a single analytical gradient of positions against numerical
     gradient from `torch.autograd.gradgradcheck`.
     """
-    func, diffvars = gradchecker(dtype, name, uplo)
+    func, diffvars = gradchecker(dtype, name)
     assert dgradgradcheck(func, diffvars, atol=tol)

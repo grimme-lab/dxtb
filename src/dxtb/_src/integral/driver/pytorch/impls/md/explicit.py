@@ -112,14 +112,17 @@ def md_explicit(
         rpi = +vec.unsqueeze(-1).unsqueeze(-1) * aj * oij
         rpj = -vec.unsqueeze(-1).unsqueeze(-1) * ai * oij
 
-        # imported here (not at module level) to avoid a circular import:
-        # `compute_1d` imports the `ecoeffs_*` functions defined below in
-        # this same module.
-        # pylint: disable=import-outside-toplevel
-        from .compute_1d import compute_1d
-
         # e0: (li+1, lj+1, nat, 3, ai, aj)
-        e0 = compute_1d(li, lj, 0, xij, rpi, rpj)
+        if li == 0:
+            e0 = ecoeffs_s(lj, xij, rpi, rpj)
+        elif li == 1:
+            e0 = ecoeffs_p(lj, xij, rpi, rpj)
+        elif li == 2:
+            e0 = ecoeffs_d(lj, xij, rpi, rpj)
+        elif li == 3:
+            e0 = ecoeffs_f(lj, xij, rpi, rpj)
+        else:
+            raise CGTOAzimuthalQuantumNumberError(li)
 
         nlmi = NLM_CART[li].to(vec.device)
         nlmj = NLM_CART[lj].to(vec.device)

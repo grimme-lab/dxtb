@@ -26,7 +26,7 @@ from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB, IndexHelper
 from dxtb import integrals as ints
-from dxtb._src.constants.labels import INTDRIVER_ANALYTICAL
+from dxtb._src.constants.labels import INTDRIVER_AUTOGRAD
 from dxtb._src.integral.driver.manager import DriverManager
 from dxtb._src.integral.driver.pytorch import OverlapPytorch
 from dxtb._src.typing import DD, Tensor
@@ -37,7 +37,7 @@ from .samples import samples
 
 def run(numbers: Tensor, positions: Tensor, dd: DD) -> None:
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    mgr = DriverManager(INTDRIVER_ANALYTICAL, **dd)
+    mgr = DriverManager(INTDRIVER_AUTOGRAD, **dd)
     mgr.create_driver(numbers, GFN1_XTB, ihelp)
 
     i = ints.Integrals(mgr, _overlap=OverlapPytorch(**dd), **dd)

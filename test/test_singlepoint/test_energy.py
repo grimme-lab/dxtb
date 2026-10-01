@@ -109,7 +109,7 @@ def test_single_gfn2(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 @pytest.mark.parametrize("name", ["H2O", "SiH4"])
 def test_single_gfn2_pytorch(name: str) -> None:
     """GFN2 with the multipole integrals of the PyTorch driver (no libcint)."""
-    single(torch.double, name, "gfn2", int_driver="analytical")
+    single(torch.double, name, "gfn2", int_driver="autograd")
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
