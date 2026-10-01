@@ -41,7 +41,7 @@ import torch
 from dxtb._src.typing import Tensor
 from dxtb._src.typing.exceptions import IntegralTransformError
 
-from .md.trafo import NLM_CART, TRAFO
+from .trafo import NLM_CART, TRAFO
 
 __all__ = [
     "assemble_overlap_1d",

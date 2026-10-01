@@ -109,7 +109,7 @@ def test_batch(dtype: torch.dtype, name1: str, name2: str) -> None:
 
 
 def test_gradient() -> None:
-    from dxtb._src.integral.driver.pytorch.impls.overlap_legacy import (
+    from dxtb._src.integral.driver.pytorch.impls.legacy import (
         overlap_gradient_legacy,
     )
 

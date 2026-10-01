@@ -28,7 +28,7 @@ from dxtb._src.basis.bas import Basis
 from dxtb._src.constants import defaults
 from dxtb._src.typing import Literal, Tensor
 
-from .md import overlap_gto
+from .explicit import md_explicit
 
 __all__ = ["overlap_legacy", "overlap_gradient_legacy"]
 
@@ -107,7 +107,7 @@ def overlap_legacy(
                     c = (deflate(coeff[sii]), deflate(coeff[sij]))
                     l = (angi, angj)
 
-                    stmp = overlap_gto(l, a, c, -vec)
+                    stmp = md_explicit(l, a, c, -vec)
 
                     for iao in range(i_nao):
                         for jao in range(j_nao):

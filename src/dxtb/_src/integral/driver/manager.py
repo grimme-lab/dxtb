@@ -140,7 +140,7 @@ class DriverManager(TensorLike):
                 )
 
             # pylint: disable=import-outside-toplevel
-            from .pytorch.impls.algorithms import get_kernel
+            from .pytorch.impls.kernels import get_kernel
 
             get_kernel(self.algorithm)  # validate the name early
             self.driver.algorithm = self.algorithm.casefold()

@@ -24,7 +24,7 @@ import pytest
 import torch
 
 from dxtb._src.basis.slater import slater_to_gauss
-from dxtb._src.integral.driver.pytorch.impls.md import overlap_gto
+from dxtb._src.integral.driver.pytorch.impls.legacy import md_explicit
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
@@ -63,7 +63,7 @@ def test_sto_ng_single(ng, n, l, dtype):
     angular = torch.tensor(l, device=DEVICE)
     vec = torch.zeros((3,), **dd)
 
-    s = overlap_gto((angular, angular), (alpha, alpha), (coeff, coeff), vec)
+    s = md_explicit((angular, angular), (alpha, alpha), (coeff, coeff), vec)
     ref = torch.diag(torch.ones((2 * l + 1,), **dd))
 
     assert pytest.approx(ref.cpu(), abs=atol) == s.cpu()
@@ -91,7 +91,7 @@ def test_sto_ng_batch(ng: int, dtype: torch.dtype):
         **dd,
     )
 
-    s = overlap_gto((l, l), (alpha, alpha), (coeff, coeff), vec)
+    s = md_explicit((l, l), (alpha, alpha), (coeff, coeff), vec)
 
     assert pytest.approx(s[0, :].cpu()) == s[1, :].cpu()
     assert pytest.approx(s[0, :].cpu()) == s[2, :].cpu()

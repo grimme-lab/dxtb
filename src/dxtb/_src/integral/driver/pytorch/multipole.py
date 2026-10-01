@@ -20,7 +20,7 @@ Implementation: Multipole (PyTorch)
 
 Shared implementation of the PyTorch dipole and quadrupole integrals, built
 from the interchangeable ``compute_1d`` kernels (see
-:mod:`dxtb._src.integral.driver.pytorch.impls.algorithms`).
+:mod:`dxtb._src.integral.driver.pytorch.impls.kernels`).
 """
 
 from __future__ import annotations

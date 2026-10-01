@@ -51,7 +51,7 @@ from dxtb._src.typing.exceptions import (
     IntegralTransformError,
 )
 
-from .trafo import NLM_CART, TRAFO
+from ..trafo import NLM_CART, TRAFO
 
 __all__ = ["md_explicit", "md_explicit_gradient"]
 

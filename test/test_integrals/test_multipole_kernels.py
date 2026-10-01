@@ -26,15 +26,15 @@ import math
 import pytest
 import torch
 
-from dxtb._src.integral.driver.pytorch.impls.algorithms import (
+from dxtb._src.integral.driver.pytorch.impls.kernels import (
     ALGORITHMS,
     get_kernel,
 )
-from dxtb._src.integral.driver.pytorch.impls.md.explicit import md_explicit
-from dxtb._src.integral.driver.pytorch.impls.md.hermite import (
+from dxtb._src.integral.driver.pytorch.impls.kernels.md import (
     compute_1d_md_hermite,
 )
-from dxtb._src.integral.driver.pytorch.impls.os.compute_1d import compute_1d_os
+from dxtb._src.integral.driver.pytorch.impls.kernels.os import compute_1d_os
+from dxtb._src.integral.driver.pytorch.impls.legacy.explicit import md_explicit
 from dxtb._src.integral.driver.pytorch.impls.pipeline import (
     DIPOLE_COMPONENTS,
     QUADRUPOLE_COMPONENTS,

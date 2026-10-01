@@ -32,7 +32,7 @@ import torch
 
 from dxtb._src.basis.slater import slater_to_gauss
 from dxtb._src.exlibs.available import has_pyscf
-from dxtb._src.integral.driver.pytorch.impls.md import overlap_gto
+from dxtb._src.integral.driver.pytorch.impls.legacy import md_explicit
 from dxtb._src.typing import DD
 
 # (number of primitives, principal quantum number, Slater exponent) per l
@@ -63,7 +63,7 @@ def test_shell_pair_matches_pyscf(
         return slater_to_gauss(ng, n, l, torch.tensor(zeta, **dd), norm=norm)
 
     (alpha_a, coeff_a), (alpha_b, coeff_b) = cgto(la, True), cgto(lb, True)
-    s = overlap_gto(
+    s = md_explicit(
         (torch.tensor(la), torch.tensor(lb)),
         (alpha_a, alpha_b),
         (coeff_a, coeff_b),

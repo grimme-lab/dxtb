@@ -29,7 +29,7 @@ from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
 from dxtb._src.exlibs.available import has_libcint
-from dxtb._src.integral.driver.pytorch.impls.algorithms import (
+from dxtb._src.integral.driver.pytorch.impls.kernels import (
     ALGORITHMS,
     get_kernel,
 )

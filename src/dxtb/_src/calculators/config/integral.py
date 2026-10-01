@@ -142,7 +142,7 @@ class ConfigIntegrals:
 
         if algorithm is not None:
             # pylint: disable=import-outside-toplevel
-            from dxtb._src.integral.driver.pytorch.impls.algorithms import (
+            from dxtb._src.integral.driver.pytorch.impls.kernels import (
                 ALGORITHMS,
             )
 

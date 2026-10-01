@@ -28,7 +28,7 @@ from tad_mctc.convert import str_to_device
 from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.basis.bas import Basis
 from dxtb._src.basis.slater import slater_to_gauss
-from dxtb._src.integral.driver.pytorch.impls.md import overlap_gto
+from dxtb._src.integral.driver.pytorch.impls.legacy import md_explicit
 from dxtb._src.typing.exceptions import (
     CGTOAzimuthalQuantumNumberError,
     CGTOPrimitivesError,
@@ -93,7 +93,7 @@ def test_fail_higher_orbital_trafo():
     j = torch.tensor(5)
     for i in range(5):
         with pytest.raises(IntegralTransformError):
-            overlap_gto(
+            md_explicit(
                 (torch.tensor(i), j),
                 (alpha[0], alpha[1]),
                 (coeff[0], coeff[1]),
@@ -102,7 +102,7 @@ def test_fail_higher_orbital_trafo():
     i = torch.tensor(5)
     for j in range(5):
         with pytest.raises(IntegralTransformError):
-            overlap_gto(
+            md_explicit(
                 (i, torch.tensor(j)),
                 (alpha[0], alpha[1]),
                 (coeff[0], coeff[1]),

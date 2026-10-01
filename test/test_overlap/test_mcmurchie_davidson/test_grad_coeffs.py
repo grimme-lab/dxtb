@@ -24,16 +24,16 @@ import pytest
 import torch
 from tad_mctc.autograd import dgradcheck, dgradgradcheck
 
-from dxtb._src.integral.driver.pytorch.impls import md
+from dxtb._src.integral.driver.pytorch.impls.legacy import explicit
 from dxtb._src.typing import DD, Callable, Tensor
 
 from ...conftest import DEVICE
 
 fcoeff_list = [
-    md.explicit.ecoeffs_s,
-    md.explicit.ecoeffs_p,
-    md.explicit.ecoeffs_d,
-    md.explicit.ecoeffs_f,
+    explicit.ecoeffs_s,
+    explicit.ecoeffs_p,
+    explicit.ecoeffs_d,
+    explicit.ecoeffs_f,
 ]
 
 tol = 1e-7

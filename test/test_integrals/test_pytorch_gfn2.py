@@ -28,7 +28,7 @@ from tad_mctc.batch import pack
 
 from dxtb import GFN2_XTB, Calculator, IndexHelper
 from dxtb._src.exlibs.available import has_libcint
-from dxtb._src.integral.driver.pytorch.impls.algorithms import ALGORITHMS
+from dxtb._src.integral.driver.pytorch.impls.kernels import ALGORITHMS
 from dxtb._src.typing import DD, Tensor
 from dxtb.integrals.wrappers import dipint, quadint
 from dxtb.labels import INTDRIVER_AUTOGRAD, INTDRIVER_LIBCINT

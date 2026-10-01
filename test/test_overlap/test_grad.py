@@ -31,7 +31,7 @@ from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.basis.slater import slater_to_gauss
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb._src.integral.driver.pytorch import OverlapPytorch as Overlap
-from dxtb._src.integral.driver.pytorch.impls import md
+from dxtb._src.integral.driver.pytorch.impls.legacy import explicit
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import t2int
 
@@ -55,7 +55,7 @@ def test_ss(dtype: torch.dtype):
         [0.13695892585203528, 0.47746994997214642, 0.20729096231197164], **dd
     )
     vec = rndm.detach().requires_grad_(True)
-    s = md.overlap_gto((l1, l2), (alpha1, alpha2), (coeff1, coeff2), vec)
+    s = explicit.md_explicit((l1, l2), (alpha1, alpha2), (coeff1, coeff2), vec)
 
     # autograd
     (gradient,) = torch.autograd.grad(
@@ -77,10 +77,14 @@ def test_ss(dtype: torch.dtype):
     step = 1e-6
     for i in range(3):
         rndm[i] += step
-        sr = md.overlap_gto((l1, l2), (alpha1, alpha2), (coeff1, coeff2), rndm)
+        sr = explicit.md_explicit(
+            (l1, l2), (alpha1, alpha2), (coeff1, coeff2), rndm
+        )
 
         rndm[i] -= 2 * step
-        sl = md.overlap_gto((l1, l2), (alpha1, alpha2), (coeff1, coeff2), rndm)
+        sl = explicit.md_explicit(
+            (l1, l2), (alpha1, alpha2), (coeff1, coeff2), rndm
+        )
 
         rndm[i] += step
         g = 0.5 * (sr - sl) / step
@@ -205,11 +209,13 @@ def compare_md(
     )
 
     # overlap
-    ovlp = md.overlap_gto((li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec)
+    ovlp = explicit.md_explicit(
+        (li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec
+    )
     assert pytest.approx(ovlp.cpu(), abs=atol) == ovlp_ref.cpu()
 
     # overlap gradient with explicit E-coefficients
-    ovlp_grad_exp = md.explicit.md_explicit_gradient(
+    ovlp_grad_exp = explicit.md_explicit_gradient(
         (li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec
     )
 

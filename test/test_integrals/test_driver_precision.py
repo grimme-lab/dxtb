@@ -41,7 +41,7 @@ from dxtb._src.constants.labels import (
     INTDRIVER_LIBCINT,
 )
 from dxtb._src.exlibs.available import has_libcint
-from dxtb._src.integral.driver.pytorch.impls.md.trafo import TRAFO
+from dxtb._src.integral.driver.pytorch.impls.trafo import TRAFO
 from dxtb._src.typing import DD, Tensor
 from dxtb.integrals.wrappers import overlap
 

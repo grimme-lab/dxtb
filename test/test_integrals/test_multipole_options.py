@@ -27,7 +27,7 @@ from tad_mctc.batch import pack
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
-from dxtb._src.integral.driver.pytorch.impls.os.compute_1d import compute_1d_os
+from dxtb._src.integral.driver.pytorch.impls.kernels.os import compute_1d_os
 from dxtb._src.integral.driver.pytorch.impls.pairs import (
     assemble_matrix,
     assemble_matrix_batch,

@@ -33,7 +33,7 @@ from dxtb._src.typing import Any, Literal, Tensor
 
 from ...base import IntDriver
 from .base import PytorchImplementation
-from .impls.algorithms import DEFAULT_ALGORITHM, get_kernel
+from .impls.kernels import DEFAULT_ALGORITHM, get_kernel
 from .impls.pairs import assemble_matrix, assemble_overlap_gradient
 from .impls.pipeline import Kernel1D
 
@@ -262,7 +262,7 @@ class IntDriverPytorchLegacy(BaseIntDriverPytorch):
         cutoff: Tensor | float | int | None = None,
     ) -> Tensor:
         # pylint: disable=import-outside-toplevel
-        from .impls.overlap_legacy import overlap_legacy
+        from .impls.legacy import overlap_legacy
 
         return overlap_legacy(positions, bas, ihelp, uplo, cutoff)
 
@@ -275,6 +275,6 @@ class IntDriverPytorchLegacy(BaseIntDriverPytorch):
         cutoff: Tensor | float | int | None = None,
     ) -> Tensor:
         # pylint: disable=import-outside-toplevel
-        from .impls.overlap_legacy import overlap_gradient_legacy
+        from .impls.legacy import overlap_gradient_legacy
 
         return overlap_gradient_legacy(positions, bas, ihelp, uplo, cutoff)

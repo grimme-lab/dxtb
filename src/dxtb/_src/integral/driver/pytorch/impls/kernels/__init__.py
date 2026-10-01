@@ -57,9 +57,9 @@ def get_kernel(name: str) -> Callable[..., Tensor]:
     name = name.casefold()
 
     if name == "md":
-        from .md.hermite import compute_1d_md_hermite as kernel
+        from .md import compute_1d_md_hermite as kernel
     elif name == "os":
-        from .os.compute_1d import compute_1d_os as kernel
+        from .os import compute_1d_os as kernel
     else:
         raise ValueError(
             f"Unknown integral algorithm '{name}'. "
