@@ -31,6 +31,7 @@ from dxtb._src.constants import labels
 from dxtb._src.typing import Tensor
 
 from ..mixer import Simple
+from ..pure.iterations import iterate_charges
 from .base import BaseXSCF
 from .fixed_point import equilibrium
 
@@ -58,16 +59,6 @@ class SelfConsistentFieldImplicit(BaseXSCF):
         # TODO: Pass mixer options in `method` arg.
         # Currently ignored. Always "broyden1".
 
-        # The stateless map neither reads nor writes `self`, so that the
-        # function stored in the autograd graph cannot form a reference cycle.
-        # Iterations are counted here (it is no longer done by `self._data`).
-        step = self.stateless_map()
-        calls = [0]
-
-        def fcn(x: Tensor) -> Tensor:
-            calls[0] += 1
-            return step(x)
-
         # The gradient cannot be more accurate than the converged SCF, hence
         # the adjoint tolerance follows the SCF tolerance (unless given), but
         # must stay above the round-off of the precision in use
@@ -77,34 +68,37 @@ class SelfConsistentFieldImplicit(BaseXSCF):
             **self.bck_options,
         }
 
-        n_iter = [0]
-        q_converged = equilibrium(
-            fcn=fcn,
+        # The stateless map neither reads nor writes `self`, so that the
+        # function stored in the autograd graph cannot form a reference cycle.
+        # Hence, `self._data` is only updated below, from the solution.
+        q_converged, niter = equilibrium(
+            fcn=self.stateless_map(),
             y0=guess,
             bck_options=bck_options,
-            on_converged=lambda: n_iter.__setitem__(0, calls[0]),
             batched=self.config.batch_mode > 0,
             **self.fwd_options,
         )
-        # additional evaluations for the gradient are no SCF iterations
-        self._data.iter += n_iter[0]
+        self._data.iter += niter
 
-        # The stateless map does not store the Hamiltonian, which is the
-        # converged quantity in Fock mode (and part of the results).
+        # Converged state (density, eigenpairs, ...) from the solution. In
+        # Fock mode, the converged quantity is the Hamiltonian itself.
         if self.config.scp_mode == labels.SCP_MODE_FOCK:
             self._data.hamiltonian = q_converged
 
         # To reconnect the H0 energy with the computational graph, we
-        # compute one extra SCF cycle with strong damping.
+        # compute one extra SCF cycle with strong damping (no SCF iteration).
         # Note that this is not required for SCF with full gradient tracking.
         # (see https://github.com/grimme-lab/dxtb/issues/124)
         if self.config.scp_mode == labels.SCP_MODE_CHARGE:
             mixer = Simple({**self.fwd_options, "damp": 1e-5})
-            q_new = self._fcn(q_converged)
+            q_new = iterate_charges(
+                q_converged,
+                self._data,
+                self.config,
+                self.interactions,
+                self.diagonalize,
+            )
             q_converged = mixer.iter(q_new, q_converged)
-
-            # Let's not count this as an iteration
-            self._data.iter -= 1
 
         if return_charges is True:
             return self.converged_to_charges(q_converged)

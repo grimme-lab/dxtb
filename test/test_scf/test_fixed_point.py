@@ -28,7 +28,6 @@ import pytest
 import torch
 
 from dxtb import OutputHandler
-
 from dxtb._src.scf.implicit.fixed_point import (
     AdjointOptions,
     _grad_leaves,
@@ -45,7 +44,9 @@ class Toy:
     def __init__(self, n: int = 5, batch: int | None = None, seed: int = 0):
         gen = torch.Generator().manual_seed(seed)
         shape = (n, n) if batch is None else (batch, n, n)
-        self.W = (0.5 * torch.randn(shape, generator=gen, **DD)).requires_grad_()
+        self.W = (
+            0.5 * torch.randn(shape, generator=gen, **DD)
+        ).requires_grad_()
         pshape = (n,) if batch is None else (batch, n)
         self.p = torch.randn(pshape, generator=gen, **DD).requires_grad_()
         self.x0 = torch.zeros(pshape, **DD)
@@ -58,9 +59,10 @@ class Toy:
         self.g = g  # plain function: closes over the parameters only
 
     def implicit(self, **kw) -> torch.Tensor:
-        return equilibrium(
+        x, _ = equilibrium(
             self.g, self.x0, batched=self.p.dim() == 2, **FWD, **kw
         )
+        return x
 
     def unrolled(self, steps: int = 400) -> torch.Tensor:
         """Reference: differentiate through all iterations."""
@@ -95,7 +97,9 @@ def test_first_derivative(batch: int | None) -> None:
 def test_second_derivative_is_exact(batch: int | None) -> None:
     """Hessian-vector products equal those of the unrolled iteration."""
     t = Toy(batch=batch)
-    dp = torch.randn(t.p.shape, generator=torch.Generator().manual_seed(1), **DD)
+    dp = torch.randn(
+        t.p.shape, generator=torch.Generator().manual_seed(1), **DD
+    )
 
     def hvp(x: torch.Tensor) -> tuple[torch.Tensor, ...]:
         (g,) = torch.autograd.grad(loss(x), t.p, create_graph=True)
@@ -109,7 +113,9 @@ def test_dense_fallback_matches() -> None:
     """Forcing the dense fallback (no Anderson iterations) gives the same."""
     t = Toy()
     ref = torch.autograd.grad(loss(t.implicit()), [t.W, t.p])
-    fb = torch.autograd.grad(loss(t.implicit(bck_options={"maxiter": 0})), [t.W, t.p])
+    fb = torch.autograd.grad(
+        loss(t.implicit(bck_options={"maxiter": 0})), [t.W, t.p]
+    )
     for a, b in zip(ref, fb):
         assert close(a, b, 1e-9)
 
@@ -154,6 +160,20 @@ def test_options_ignore_unknown_keys() -> None:
     assert (o.maxiter, o.history) == (7, 3)
 
 
+def test_options_accept_xitorch_names() -> None:
+    """xitorch's ``max_niter`` sets the iteration limit."""
+    assert AdjointOptions.from_mapping({"max_niter": 11}).maxiter == 11
+
+
+def test_options_warn_on_ignored_keys() -> None:
+    """Options without effect are reported; ``posdef`` (always set) is not."""
+    OutputHandler.clear_warnings()
+    AdjointOptions.from_mapping({"posdef": True, "method": "gmres"})
+    msgs = [msg for msg, _ in OutputHandler.warnings]
+    assert any("'method'" in m for m in msgs)
+    assert not any("'posdef'" in m for m in msgs)
+
+
 @pytest.mark.parametrize("create_graph", [False, True])
 def test_no_reference_cycle(create_graph: bool) -> None:
     """Output and graph are freed by reference counting alone (no gc)."""
@@ -193,7 +213,9 @@ def test_closure_reaches_no_downstream_state() -> None:
 def test_dense_fallback_second_order_and_batched() -> None:
     """The dense fallback also works in the double VJP and for batches."""
     t = Toy(batch=2)
-    dp = torch.randn(t.p.shape, generator=torch.Generator().manual_seed(1), **DD)
+    dp = torch.randn(
+        t.p.shape, generator=torch.Generator().manual_seed(1), **DD
+    )
 
     def hvp(x: torch.Tensor) -> tuple[torch.Tensor, ...]:
         (g,) = torch.autograd.grad(loss(x), t.p, create_graph=True)
@@ -223,7 +245,7 @@ def test_float32() -> None:
         t.W.data = t.W.data.float()
         t.p.data = t.p.data.float()
         t.x0 = t.x0.float()
-    x = equilibrium(t.g, t.x0, f_tol=1e-6, x_tol=1e-6, maxiter=200)
+    x, _ = equilibrium(t.g, t.x0, f_tol=1e-6, x_tol=1e-6, maxiter=200)
     (g,) = torch.autograd.grad(x.sum(), t.p)
     assert g.dtype == torch.float32 and torch.isfinite(g).all()
 
@@ -242,7 +264,64 @@ def test_nonleaf_intermediate() -> None:
     def g(x: torch.Tensor) -> torch.Tensor:
         return 0.4 * torch.tanh(W @ x) + p
 
-    x = equilibrium(g, torch.zeros(2, **DD), **FWD)
+    x, _ = equilibrium(g, torch.zeros(2, **DD), **FWD)
     (d_inter,) = torch.autograd.grad((x**2).sum(), p, retain_graph=True)
     (d_leaf,) = torch.autograd.grad((x**2).sum(), p0)
     assert close(d_inter, d_leaf, 1e-8)
+
+
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+def test_batch_entry_with_zero_gradient(dtype: torch.dtype) -> None:
+    """
+    A system of the batch that receives no gradient (e.g., one row of a
+    batched Jacobian) neither breaks nor stalls the adjoint solve.
+    """
+    t = Toy(batch=2)
+    with torch.no_grad():
+        t.W.data = t.W.data.to(dtype)
+        t.p.data = t.p.data.to(dtype)
+        t.x0 = t.x0.to(dtype)
+    fwd = (
+        {**FWD, "f_tol": 1e-6, "x_tol": 1e-6} if dtype == torch.float32 else FWD
+    )
+    x, _ = equilibrium(t.g, t.x0, batched=True, **fwd)
+
+    OutputHandler.clear_warnings()
+    gi = torch.autograd.grad(loss(x[0]), [t.W, t.p])
+    assert not any("dense" in msg for msg, _ in OutputHandler.warnings)
+
+    gu = torch.autograd.grad(loss(t.unrolled()[0]), [t.W, t.p])
+    rtol = 1e-4 if dtype == torch.float32 else 1e-8  # adjoint atol 1e-9
+    for a, b in zip(gi, gu):
+        assert (a[1] == 0).all()
+        assert close(a, b, rtol)
+
+
+def test_repeated_backward() -> None:
+    """Backward through a retained graph gives the same gradient twice."""
+    t = Toy()
+    out = loss(t.implicit())
+    g1 = torch.autograd.grad(out, [t.W, t.p], retain_graph=True)
+    g2 = torch.autograd.grad(out, [t.W, t.p])
+    for a, b in zip(g1, g2):
+        assert close(a, b, 1e-12)
+
+
+def test_iterations_count_forward_solve_only() -> None:
+    """The iteration count excludes the evaluations needed for gradients."""
+    t = Toy()
+    calls = 0
+
+    def g(x: torch.Tensor) -> torch.Tensor:
+        nonlocal calls
+        calls += 1
+        return t.g(x)
+
+    with torch.no_grad():
+        _, n_plain = equilibrium(g, t.x0, **FWD)
+    assert n_plain == calls > 1
+
+    calls = 0
+    x, n_grad = equilibrium(g, t.x0, **FWD)
+    torch.autograd.grad(loss(x), t.p)
+    assert n_grad == n_plain < calls

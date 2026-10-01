@@ -59,13 +59,16 @@ from dataclasses import dataclass
 import torch
 from torch.autograd.function import once_differentiable
 
+from dxtb import OutputHandler
 from dxtb._src.exlibs.xitorch._utils.misc import get_method
 from dxtb._src.exlibs.xitorch.optimize.rootfinder import _RF_METHODS
-from dxtb import OutputHandler
 from dxtb._src.typing import Any, Callable, Mapping, Tensor
 
 __all__ = ["AdjointOptions", "equilibrium"]
 
+
+_SILENT_KEYS = frozenset({"posdef"})
+"""Options of xitorch's backward that the SCF always sets; ignored silently."""
 
 
 @dataclass
@@ -95,11 +98,28 @@ class AdjointOptions:
     @classmethod
     def from_mapping(
         cls, opts: Mapping[str, Any] | None, batched: bool = False
-    ) -> "AdjointOptions":
-        """Create from a dict, ignoring unknown keys (e.g., ``posdef``)."""
+    ) -> AdjointOptions:
+        """
+        Create from a dict of options.
+
+        Recognized keys are ``maxiter`` (or xitorch's ``max_niter``),
+        ``atol``, ``rtol`` and ``m`` (history). Other keys have no effect and
+        are reported with a warning, except ``posdef``, which the SCF always
+        sets for xitorch's former backward solve.
+        """
         opts = dict(opts or {})
+        known = {"maxiter", "max_niter", "atol", "rtol", "m"}
+        ignored = sorted(set(opts) - known - _SILENT_KEYS)
+        if ignored:
+            names = ", ".join(repr(k) for k in ignored)
+            OutputHandler.warn(
+                f"Options {names} of the implicit SCF backward have no effect "
+                "(recognized: 'maxiter', 'atol', 'rtol', 'm')."
+            )
+
+        maxiter = opts.get("maxiter", opts.get("max_niter", cls.maxiter))
         return cls(
-            maxiter=int(opts.get("maxiter", cls.maxiter)),
+            maxiter=int(maxiter),
             atol=opts.get("atol"),
             rtol=opts.get("rtol"),
             history=int(opts.get("m", cls.history)),
@@ -109,7 +129,8 @@ class AdjointOptions:
     def tolerances(self, dtype: torch.dtype) -> tuple[float, float]:
         """Absolute and relative tolerance for a given dtype."""
         eps = torch.finfo(dtype).eps
-        atol = self.atol if self.atol is not None else (1e-9 if eps < 1e-10 else 1e-4)
+        default = 1e-9 if eps < 1e-10 else 1e-4
+        atol = self.atol if self.atol is not None else default
         rtol = self.rtol if self.rtol is not None else atol
         return float(atol), float(rtol)
 
@@ -138,12 +159,19 @@ def _anderson(
     Anderson acceleration for ``x = fcn(x)`` on tensors of shape ``(B, n)``.
 
     The rows are independent systems and are checked for convergence
-    separately (all must converge). Raises ``_AdjointConvergenceError`` if not
-    converged within ``maxiter`` iterations.
+    separately. A converged row is frozen and leaves the mixing, so that its
+    (possibly vanishing) residuals cannot spoil the other rows. Raises
+    ``_AdjointConvergenceError`` if not all rows converge within ``maxiter``
+    iterations or the mixing breaks down.
     """
+    tiny = torch.finfo(x0.dtype).tiny
+    reg = max(reg, torch.finfo(x0.dtype).eps)
+
     xs: list[Tensor] = []
     gs: list[Tensor] = []
     x = x0
+    out = x0
+    active = torch.ones(x0.shape[0], dtype=torch.bool, device=x0.device)
     for _ in range(maxiter):
         g = fcn(x)
         res = g - x
@@ -151,26 +179,43 @@ def _anderson(
         # tolerances relative to the size of the right-hand side (the system
         # is linear in it), so that small gradients are not "converged" early
         ref = g.abs().amax(-1) if scale is None else scale
-        if bool((res.abs().amax(-1) <= (atol + rtol) * ref).all()):
-            return g
+        conv = res.abs().amax(-1) <= (atol + rtol) * ref
+        out = torch.where((conv & active).unsqueeze(-1), g, out)
+        active = active & ~conv
+        if not bool(active.any()):
+            return out
 
         xs.append(x)
         gs.append(g)
         xs, gs = xs[-m:], gs[-m:]
 
-        f = torch.stack([gi - xi for gi, xi in zip(gs, xs)], dim=-2)  # B,k,n
-        eye = torch.eye(f.shape[-2], dtype=f.dtype, device=f.device)
-        hmat = f @ f.transpose(-1, -2)
-        # scale-invariant regularization (residuals may be tiny for small rhs)
-        dscale = hmat.diagonal(dim1=-2, dim2=-1).mean(-1)
-        dscale = dscale.clamp_min(torch.finfo(f.dtype).tiny)
-        hmat = hmat + reg * dscale[:, None, None] * eye
-        y = torch.linalg.solve(hmat, torch.ones_like(f[..., 0]).unsqueeze(-1))
-        alpha = (y / y.sum(-2, keepdim=True)).transpose(-1, -2)  # B,1,k
+        # mixing coefficients of the active rows only
+        idx = active.nonzero().squeeze(-1)
+        gmat = torch.stack(gs, dim=-2)[idx]  # B',k,n
+        xmat = torch.stack(xs, dim=-2)[idx]
+        f = gmat - xmat
 
-        gmat = torch.stack(gs, dim=-2)
-        xmat = torch.stack(xs, dim=-2)
-        x = (alpha @ (beta * gmat + (1.0 - beta) * xmat)).squeeze(-2)
+        # The coefficients are invariant to the scale of the residuals of a
+        # row, which are normalized to avoid underflow for tiny right-hand
+        # sides. The regularization is relative to the diagonal.
+        f = f / f.abs().amax((-2, -1), keepdim=True).clamp_min(tiny)
+        hmat = f @ f.transpose(-1, -2)
+        eye = torch.eye(f.shape[-2], dtype=f.dtype, device=f.device)
+        dscale = hmat.diagonal(dim1=-2, dim2=-1).mean(-1).clamp_min(tiny)
+        hmat = hmat + reg * dscale[:, None, None] * eye
+        rhs = torch.ones_like(f[..., 0]).unsqueeze(-1)
+        try:
+            y = torch.linalg.solve(hmat, rhs)
+        except torch.linalg.LinAlgError as e:
+            raise _AdjointConvergenceError("Anderson mixing failed.") from e
+        alpha = (y / y.sum(-2, keepdim=True)).transpose(-1, -2)  # B',1,k
+        if not bool(torch.isfinite(alpha).all()):
+            raise _AdjointConvergenceError("Anderson mixing failed.")
+
+        mixed = (alpha @ (beta * gmat + (1.0 - beta) * xmat)).squeeze(-2)
+
+        # converged rows keep their solution as input (their output is unused)
+        x = out.index_put((idx,), mixed)
 
     raise _AdjointConvergenceError("Adjoint iterations did not converge.")
 
@@ -225,17 +270,21 @@ def _solve(
 # functions
 
 
-def _vjp_setup(
+def _evaluate(
     fcn: Callable[[Tensor], Tensor], x: Tensor
-) -> tuple[Tensor, Tensor, Callable[[Tensor], Tensor]]:
-    """Evaluate ``g`` at a detached copy of ``x`` and return ``(z, f, J^T .)``."""
+) -> tuple[Tensor, Tensor]:
+    """Evaluate ``g`` at a detached copy ``z`` of ``x``; returns ``(z, g(z))``."""
     z = x.detach().requires_grad_(True)
-    f = fcn(z)
+    return z, fcn(z)
+
+
+def _jtu(f: Tensor, z: Tensor) -> Callable[[Tensor], Tensor]:
+    """The vector-Jacobian product ``u -> J^T u`` of ``f = g(z)``."""
 
     def jtu(u: Tensor) -> Tensor:
         return torch.autograd.grad(f, z, u, retain_graph=True)[0]
 
-    return z, f, jtu
+    return jtu
 
 
 class _AdjointSolve(torch.autograd.Function):
@@ -251,8 +300,8 @@ class _AdjointSolve(torch.autograd.Function):
         *params: Tensor,
     ) -> Tensor:
         with torch.enable_grad():
-            _, _, jtu = _vjp_setup(fcn, x)
-            lam = _solve(jtu, v.detach(), opts).detach()
+            z, f = _evaluate(fcn, x)
+            lam = _solve(_jtu(f, z), v.detach(), opts).detach()
 
         ctx.fcn = fcn
         ctx.opts = opts
@@ -261,14 +310,15 @@ class _AdjointSolve(torch.autograd.Function):
 
     @staticmethod
     @once_differentiable
-    def backward(ctx: Any, grad_lam: Tensor) -> tuple[Tensor | None, ...]:  # type: ignore[override]
+    def backward(  # type: ignore[override]
+        ctx: Any, grad_lam: Tensor
+    ) -> tuple[Tensor | None, ...]:
         lam, x, *params = ctx.saved_tensors
         fcn, opts = ctx.fcn, ctx.opts
         grad_lam = grad_lam.detach()
 
         with torch.enable_grad():
-            z = x.detach().requires_grad_(True)
-            f = fcn(z)
+            z, f = _evaluate(fcn, x)
 
             # mu solves (I - J) mu = grad_lam, with J mu from a double VJP
             w = torch.zeros_like(f, requires_grad=True)
@@ -321,43 +371,40 @@ class _ImplicitFixedPoint(torch.autograd.Function):
         ctx.opts = opts
         # Evaluation of `g` at `x*` from the parameter discovery. Its graph
         # ends at a detached leaf and the parameters, i.e., it holds nothing
-        # downstream of the output, and it saves one evaluation in the
-        # backward without `create_graph`.
+        # downstream of the output, and it saves one evaluation in the first
+        # backward without `create_graph`. It is released by the first
+        # backward (a repeated backward evaluates `g` again).
         ctx.first = first
         # saving the output (not as plain attribute) creates no reference cycle
         ctx.save_for_backward(out, *params)
         return out
 
     @staticmethod
-    def backward(ctx: Any, v: Tensor) -> tuple[Tensor | None, ...]:  # type: ignore[override]
+    def backward(  # type: ignore[override]
+        ctx: Any, v: Tensor
+    ) -> tuple[Tensor | None, ...]:
         if getattr(_LOCAL, "running", None) is ctx:
             return (None,) * (4 + len(ctx.saved_tensors) - 1)
 
         x, *params = ctx.saved_tensors
         fcn, opts = ctx.fcn, ctx.opts
+        first, ctx.first = ctx.first, None
 
         # `create_graph=True` of the outer call is signaled by grad mode
         cg = torch.is_grad_enabled()
 
         with torch.enable_grad():
-            # Only in the differentiable case, `x` carries its dependence on
-            # `params` (through this Function), which yields the exact second
-            # derivative. Otherwise, it must not re-enter this node.
             if cg:
-                z = x
-                f = fcn(z)
-            else:
-                z, f = ctx.first
-            if cg:
+                # `x` carries its dependence on `params` (through this
+                # Function), which yields the exact second derivative
+                z, f = x, fcn(x)
                 lam = _AdjointSolve.apply(v, z, fcn, opts, *params)
-            else:  # no graph needed: reuse this evaluation of `g`
-                lam = _solve(
-                    lambda u: torch.autograd.grad(f, z, u, retain_graph=True)[
-                        0
-                    ],
-                    v.detach(),
-                    opts,
-                )
+            else:
+                # no graph needed: `x` must not re-enter this node, and the
+                # evaluation from the forward is reused if still available
+                z, f = first if first is not None else _evaluate(fcn, x)
+                lam = _solve(_jtu(f, z), v.detach(), opts)
+
             previous = getattr(_LOCAL, "running", None)
             _LOCAL.running = ctx
             try:
@@ -398,10 +445,9 @@ def equilibrium(
     fcn: Callable[[Tensor], Tensor],
     y0: Tensor,
     bck_options: Mapping[str, Any] | None = None,
-    on_converged: Callable[[], None] | None = None,
     batched: bool = False,
     **fwd_options: Any,
-) -> Tensor:
+) -> tuple[Tensor, int]:
     """
     Solve the fixed-point equation ``y = fcn(y)`` with implicit gradients.
 
@@ -415,9 +461,6 @@ def equilibrium(
     bck_options : Mapping[str, Any] | None, optional
         Options of the adjoint solve, see :meth:`AdjointOptions.from_mapping`
         (keys ``maxiter``, ``atol``, ``rtol``, ``m``).
-    on_converged : Callable[[], None] | None, optional
-        Called right after the forward solve, before any additional evaluation
-        of ``fcn`` (e.g., to snapshot an iteration counter).
     batched : bool
         Whether the first dimension enumerates independent systems (the
         adjoint convergence is then checked per system).
@@ -428,33 +471,38 @@ def equilibrium(
 
     Returns
     -------
-    Tensor
-        Solution ``y*``. If gradients are required, it is connected to the
-        graph of all parameters of ``fcn`` and differentiable twice.
+    tuple[Tensor, int]
+        Solution ``y*`` and the number of evaluations of ``fcn`` in the
+        forward solve (the SCF iterations). If gradients are required, ``y*``
+        is connected to the graph of all parameters of ``fcn`` and
+        differentiable twice.
     """
     fwd = dict(fwd_options)
-    solver = get_method("rootfinder", _RF_METHODS, fwd.pop("method", "broyden1"))
+    method = fwd.pop("method", "broyden1")
+    solver = get_method("rootfinder", _RF_METHODS, method)
 
     # root of `y - g(y)` (same function and solver as xitorch's equilibrium)
+    niter = 0
+
     def root(y: Tensor) -> Tensor:
+        nonlocal niter
+        niter += 1
         return y - fcn(y)
 
     with torch.no_grad():
         x_star = solver(root, y0.detach(), (), **fwd)
     x_star = x_star.detach()
 
-    if on_converged is not None:
-        on_converged()
-
     if not torch.is_grad_enabled():
-        return x_star
+        return x_star, niter
 
     # discover all parameters (autograd leaves) that `fcn` depends on
     z = x_star.clone().requires_grad_(True)
     f = fcn(z)
     params = [p for p in _grad_leaves(f) if p is not z]
     if not params:
-        return x_star
+        return x_star, niter
 
     opts = AdjointOptions.from_mapping(bck_options, batched=batched)
-    return _ImplicitFixedPoint.apply(x_star, fcn, opts, (z, f), *params)
+    out = _ImplicitFixedPoint.apply(x_star, fcn, opts, (z, f), *params)
+    return out, niter

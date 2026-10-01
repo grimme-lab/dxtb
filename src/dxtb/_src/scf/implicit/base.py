@@ -26,13 +26,11 @@ from __future__ import annotations
 
 import copy
 
-import torch
-
 from dxtb._src.exlibs import xitorch as xt
-from dxtb._src.timing.decorator import timer_decorator
 from dxtb._src.typing import Callable, Tensor
 
 from ..base import BaseSCF
+from ..pure import ovlp_diag
 from ..pure.iterations import iter_options
 
 __all__ = ["BaseXSCF"]
@@ -61,16 +59,8 @@ class BaseXSCF(BaseSCF):
             Overlap matrix.
         """
 
-        smat = self._data.ints.overlap
+        return ovlp_diag.get_overlap(self._data.ints.overlap)
 
-        zeros = torch.eq(smat, 0)
-        mask = torch.all(zeros, dim=-1) & torch.all(zeros, dim=-2)
-
-        return xt.LinearOperator.m(
-            smat + torch.diag_embed(smat.new_ones(*smat.shape[:-2], 1) * mask)
-        )
-
-    @timer_decorator("Diagonalize", "SCF")
     def diagonalize(self, hamiltonian: Tensor) -> tuple[Tensor, Tensor]:
         """
         Diagonalize the Hamiltonian.
@@ -90,10 +80,9 @@ class BaseXSCF(BaseSCF):
         evecs : Tensor
             Eigenvectors of the Hamiltonian.
         """
-        h_op = xt.LinearOperator.m(hamiltonian)
-        o_op = self.get_overlap()
-
-        return xt.linalg.lsymeig(A=h_op, M=o_op, **self.eigen_options)
+        return ovlp_diag.diagonalize(
+            hamiltonian, self._data.ints.overlap, self.eigen_options
+        )
 
     def stateless_map(self) -> Callable[[Tensor], Tensor]:
         """

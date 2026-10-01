@@ -256,7 +256,9 @@ def _scalars(system: str, pos=None, field=None, gexp=None) -> dict:
     kw = {"interaction": new_efield(field)} if has_libcint else {}
     calc = Calculator(numbers, par, opts=_opts(REFERENCE), **kw, **DD)
     res = calc.singlepoint(pos, chrg)
-    return {q: (quantity(calc, res, pos, q) * w).sum().item() for q in QUANTITIES}
+    return {
+        q: (quantity(calc, res, pos, q) * w).sum().item() for q in QUANTITIES
+    }
 
 
 def _stencil1(fn: Callable[[float], float], h: float) -> float:
@@ -337,7 +339,9 @@ def reference(system: str) -> dict[tuple[str, str], torch.Tensor]:
     # second derivatives
     put(
         "hvp_pos",
-        _vec(lambda t: _scalars(system, pos=pos0 + t * dpos), 2e-3, second=True),
+        _vec(
+            lambda t: _scalars(system, pos=pos0 + t * dpos), 2e-3, second=True
+        ),
     )
     if has_libcint and system not in BIG:
         # E is strongly non-linear in the field: small field step (h scan in
@@ -384,100 +388,100 @@ def project(system: str, deriv: str, val: torch.Tensor) -> torch.Tensor:
 # `strict=True` forces removal of the marker once a cell is fixed; cells within
 # 3x of the tolerance are not strict (their outcome depends on FD/SCF noise).
 KNOWN_FAILURES: dict[tuple[str, str, str, str], tuple[str, bool]] = {
-    ('full', 'slow_gap', 'field', 'E'): (
-        'borderline (err ~2e-6, tol 3e-7 varies between runs): FD-reference-noise limited, slow-converging system',
+    ("full", "slow_gap", "field", "E"): (
+        "borderline (err ~2e-6, tol 3e-7 varies between runs): FD-reference-noise limited, slow-converging system",
         False,
     ),
-    ('full', 'H2', 'pos', 'dip'): (
-        'unrolled derivative of a non-variational quantity is inexact (err 1.09e-08)',
+    ("full", "H2", "pos", "dip"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 1.09e-08)",
         False,
     ),
-    ('full', 'LiH', 'pos', 'q2'): (
-        'unrolled derivative of a non-variational quantity is inexact (err 2.70e-08)',
+    ("full", "LiH", "pos", "q2"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 2.70e-08)",
         False,
     ),
-    ('full', 'LiH', 'pos', 'dip'): (
-        'unrolled derivative of a non-variational quantity is inexact (err 5.25e-08)',
+    ("full", "LiH", "pos", "dip"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 5.25e-08)",
         False,
     ),
-    ('full', 'LiH', 'field', 'q2'): (
-        'unrolled derivative of a non-variational quantity is inexact (err 4.58e-07)',
+    ("full", "LiH", "field", "q2"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 4.58e-07)",
         False,
     ),
-    ('full', 'LiH', 'field', 'dip'): (
-        'unrolled derivative of a non-variational quantity is inexact (err 8.92e-07)',
+    ("full", "LiH", "field", "dip"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 8.92e-07)",
         False,
     ),
-    ('full', 'batch_H2O_CH4', 'hvp_pos', 'q2'): (
-        'unrolled derivative of a non-variational quantity is inexact (err 3.93e-03)',
+    ("full", "batch_H2O_CH4", "hvp_pos", "q2"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 3.93e-03)",
         True,
     ),
-    ('full', 'LYS_xao', 'hvp_pos', 'q2'): (
-        'unrolled derivative of a non-variational quantity is inexact (err 4.16e-03)',
+    ("full", "LYS_xao", "hvp_pos", "q2"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 4.16e-03)",
         True,
     ),
-    ('full', 'batch_H2_LYS', 'hvp_pos', 'q2'): (
-        'unrolled derivative of a non-variational quantity is inexact (err 2.72e-03)',
+    ("full", "batch_H2_LYS", "hvp_pos", "q2"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 2.72e-03)",
         True,
     ),
-    ('implicit', 'slow', 'pos', 'q2'): (
-        'Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)',
+    ("implicit", "slow", "pos", "q2"): (
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)",
         True,
     ),
-    ('implicit', 'slow', 'hvp_pos', 'E'): (
-        'Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)',
+    ("implicit", "slow", "hvp_pos", "E"): (
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)",
         True,
     ),
-    ('implicit', 'slow', 'hvp_pos', 'q2'): (
-        'Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)',
+    ("implicit", "slow", "hvp_pos", "q2"): (
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)",
         True,
     ),
-    ('full', 'slow', 'pos', 'q2'): (
-        'Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)',
+    ("full", "slow", "pos", "q2"): (
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)",
         True,
     ),
-    ('full', 'slow', 'field', 'q2'): (
-        'Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)',
+    ("full", "slow", "field", "q2"): (
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)",
         True,
     ),
-    ('full', 'slow', 'param', 'q2'): (
-        'Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)',
+    ("full", "slow", "param", "q2"): (
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)",
         True,
     ),
-    ('full', 'slow', 'hvp_pos', 'E'): (
-        'Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)',
+    ("full", "slow", "hvp_pos", "E"): (
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)",
         True,
     ),
-    ('full', 'slow', 'hvp_pos', 'q2'): (
-        'Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)',
+    ("full", "slow", "hvp_pos", "q2"): (
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)",
         True,
     ),
-    ('implicit', 'slow_gap', 'pos', 'q2'): (
-        'FD-reference-noise limited, slow-converging system (err 1.40e-08, tol 1e-08)',
+    ("implicit", "slow_gap", "pos", "q2"): (
+        "FD-reference-noise limited, slow-converging system (err 1.40e-08, tol 1e-08)",
         False,
     ),
-    ('implicit', 'slow_gap', 'hvp_pos', 'q2'): (
-        'FD-reference-noise limited, slow-converging system (err 2.13e-06, tol 1e-06)',
+    ("implicit", "slow_gap", "hvp_pos", "q2"): (
+        "FD-reference-noise limited, slow-converging system (err 2.13e-06, tol 1e-06)",
         False,
     ),
-    ('full', 'slow_gap', 'pos', 'q2'): (
-        'unrolled derivative of a non-variational quantity is inexact (err 4.22e-03)',
+    ("full", "slow_gap", "pos", "q2"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 4.22e-03)",
         False,
     ),
-    ('full', 'slow_gap', 'field', 'q2'): (
-        'unrolled derivative of a non-variational quantity is inexact (err 6.21e+00)',
+    ("full", "slow_gap", "field", "q2"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 6.21e+00)",
         False,
     ),
-    ('full', 'slow_gap', 'param', 'q2'): (
-        'unrolled derivative of a non-variational quantity is inexact (err 1.14e-03)',
+    ("full", "slow_gap", "param", "q2"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 1.14e-03)",
         False,
     ),
-    ('full', 'slow_gap', 'hvp_pos', 'E'): (
-        'unrolled derivative of a non-variational quantity is inexact (err 1.33e-01)',
+    ("full", "slow_gap", "hvp_pos", "E"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 1.33e-01)",
         False,
     ),
-    ('full', 'slow_gap', 'hvp_pos', 'q2'): (
-        'unrolled derivative of a non-variational quantity is inexact (err 5.41e+06)',
+    ("full", "slow_gap", "hvp_pos", "q2"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 5.41e+06)",
         False,
     ),
 }
@@ -498,7 +502,9 @@ def _all_cells() -> list:
                 key = (mode, system, d, q)
                 if key in KNOWN_FAILURES:
                     reason, strict = KNOWN_FAILURES[key]
-                    marks.append(pytest.mark.xfail(strict=strict, reason=reason))
+                    marks.append(
+                        pytest.mark.xfail(strict=strict, reason=reason)
+                    )
                 params.append(
                     pytest.param(
                         mode,

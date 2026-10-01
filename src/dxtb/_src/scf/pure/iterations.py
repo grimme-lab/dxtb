@@ -18,6 +18,7 @@ from dxtb._src.typing import Tensor
 from dxtb.config import ConfigSCF
 
 from .conversions import (
+    Diagonalizer,
     charges_to_potential,
     density_to_charges,
     hamiltonian_to_density,
@@ -35,7 +36,11 @@ __all__ = [
 
 
 def iterate_charges(
-    charges: Tensor, data: _Data, cfg: ConfigSCF, interactions: InteractionList
+    charges: Tensor,
+    data: _Data,
+    cfg: ConfigSCF,
+    interactions: InteractionList,
+    diagonalizer: Diagonalizer | None = None,
 ) -> Tensor:
     """
     Perform single self-consistent iteration.
@@ -50,6 +55,8 @@ def iterate_charges(
         Configuration for SCF settings.
     interactions : InteractionList
         Collection of `Interation` objects.
+    diagonalizer : Diagonalizer | None, optional
+        Diagonalizer of the Hamiltonian (see :mod:`.conversions`).
 
     Returns
     -------
@@ -59,7 +66,7 @@ def iterate_charges(
     q = Charges.from_tensor(charges, data.charges, batch_mode=cfg.batch_mode)
 
     potential = charges_to_potential(q, interactions, data)
-    new_charges = potential_to_charges(potential, data, cfg)
+    new_charges = potential_to_charges(potential, data, cfg, diagonalizer)
 
     return new_charges.as_tensor()
 
@@ -69,6 +76,7 @@ def iterate_potential(
     data: _Data,
     cfg: ConfigSCF,
     interactions: InteractionList,
+    diagonalizer: Diagonalizer | None = None,
 ) -> Tensor:
     """
     Perform single self-consistent iteration.
@@ -83,6 +91,8 @@ def iterate_potential(
         Configuration for SCF settings.
     interactions : InteractionList
         Collection of `Interation` objects.
+    diagonalizer : Diagonalizer | None, optional
+        Diagonalizer of the Hamiltonian (see :mod:`.conversions`).
 
 
     Returns
@@ -94,14 +104,18 @@ def iterate_potential(
         potential, data.potential, batch_mode=cfg.batch_mode
     )
 
-    charges = potential_to_charges(pot, data, cfg)
+    charges = potential_to_charges(pot, data, cfg, diagonalizer)
     new_potential = charges_to_potential(charges, interactions, data)
 
     return new_potential.as_tensor()
 
 
 def iterate_fockian(
-    fockian: Tensor, data: _Data, cfg: ConfigSCF, interactions: InteractionList
+    fockian: Tensor,
+    data: _Data,
+    cfg: ConfigSCF,
+    interactions: InteractionList,
+    diagonalizer: Diagonalizer | None = None,
 ) -> Tensor:
     """
     Perform single self-consistent iteration using the Fock matrix.
@@ -116,13 +130,15 @@ def iterate_fockian(
         Configuration for SCF settings.
     interactions : InteractionList
         Collection of `Interation` objects.
+    diagonalizer : Diagonalizer | None, optional
+        Diagonalizer of the Hamiltonian (see :mod:`.conversions`).
 
     Returns
     -------
     Tensor
         New Fock matrix.
     """
-    data.density = hamiltonian_to_density(fockian, data, cfg)
+    data.density = hamiltonian_to_density(fockian, data, cfg, diagonalizer)
     charges = density_to_charges(data.density, data, cfg)
     potential = charges_to_potential(charges, interactions, data)
     data.hamiltonian = potential_to_hamiltonian(potential, data)

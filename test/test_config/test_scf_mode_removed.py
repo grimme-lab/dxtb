@@ -19,14 +19,15 @@
 from __future__ import annotations
 
 import pytest
+import torch
 
 from dxtb import GFN1_XTB, Calculator
 from dxtb._src.constants import labels
 
-import torch
 
-
-@pytest.mark.parametrize("mode", list(labels.SCF_MODE_REMOVED_STRS) + ["NonPure"])
+@pytest.mark.parametrize(
+    "mode", list(labels.SCF_MODE_REMOVED_STRS) + ["NonPure"]
+)
 def test_removed_string(mode: str) -> None:
     """Removed mode names raise a ValueError that names `implicit`."""
     with pytest.raises(ValueError, match="removed.*'implicit'"):
@@ -43,3 +44,17 @@ def test_removed_int() -> None:
 def test_remaining_modes_accepted(mode: str | int) -> None:
     """The remaining modes are still accepted."""
     Calculator(torch.tensor([1, 1]), GFN1_XTB, opts={"scf_mode": mode})
+
+
+@pytest.mark.parametrize(
+    "name", ["SCF_MODE_IMPLICIT_NON_PURE", "SCF_MODE_IMPLICIT_NON_PURE_STRS"]
+)
+def test_removed_constant_is_kept(name: str) -> None:
+    """The old public constants still exist and lead to the removal error."""
+    from dxtb import labels as public
+
+    value = getattr(public, name)
+    modes = value if isinstance(value, tuple) else (value,)
+    for mode in modes:
+        with pytest.raises(ValueError, match="removed.*'implicit'"):
+            Calculator(torch.tensor([1, 1]), GFN1_XTB, opts={"scf_mode": mode})

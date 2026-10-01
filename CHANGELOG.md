@@ -14,7 +14,9 @@
   `"implicit_old"`, `"implicit_nonpure"`, integer code 2). Passing one of them
   to the Python API raises a `ValueError` that names `implicit` as the
   replacement; the command line (`--scf-mode`) no longer offers `nonpure`, so
-  `argparse` reports an invalid choice.
+  `argparse` reports an invalid choice. The constants
+  `labels.SCF_MODE_IMPLICIT_NON_PURE` and `labels.SCF_MODE_IMPLICIT_NON_PURE_STRS`
+  are kept as deprecated aliases and lead to the same error.
 - The old `implicit` code path (`scf/pure/iterator.py`: `scf_pure`,
   `scf_wrapper`, `run_scf`) and all use of xitorch's `equilibrium` and
   `RootFinder` in the SCF were removed. The forward solve still uses xitorch's
@@ -40,6 +42,9 @@
   1e-4).
 - The Fock matrix is reported in the results of the implicit SCF for
   `scp_mode="fock"`.
+- `bck_options` of the implicit SCF accept `maxiter` (or xitorch's
+  `max_niter`), `atol`, `rtol` and `m` (Anderson history). Other keys (e.g.,
+  `method`) have no effect and now produce a warning.
 
 ### Fixed
 
@@ -48,12 +53,18 @@
   its graph are freed by reference counting alone.
 - `BaseSCF` no longer stores a bound method of itself (`self._fcn`), which
   produced collectable cyclic garbage in every SCF mode (also `full`).
+- Batched implicit SCF: a system that receives no gradient (e.g., one row of
+  a batched force Jacobian) no longer crashes the backward pass in single
+  precision or stalls it in double precision.
 
 ### Known limits
 
 - Derivatives with respect to non-leaf intermediates of autograd leaves miss
   the implicit term; differentiate with respect to leaves.
 - Third and higher derivatives through the implicit SCF are not supported.
+- If the adjoint iterations do not converge, the dense fallback builds one
+  matrix for the whole batch (size `(batch * n)^2`, with `n = norb^2` in Fock
+  mode), which can exhaust memory for large systems.
 - Position derivatives of the squared charges and their Hessian-vector
   products on slowly converging systems (24+ iterations) agree with finite
   differences only to ~1e-8 (gradient) and ~1e-6 (Hessian-vector product),

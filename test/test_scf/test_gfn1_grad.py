@@ -51,9 +51,7 @@ ref_grad_param = np.load("test/test_scf/grad_param.npz")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["LiH"])
 @pytest.mark.parametrize("scp_mode", ["potential", "fock"])
-@pytest.mark.parametrize(
-    "scf_mode", ["implicit", "full", "single-shot"]
-)
+@pytest.mark.parametrize("scf_mode", ["implicit", "full", "single-shot"])
 def test_grad_backwards(
     name: str, dtype: torch.dtype, scf_mode: str, scp_mode: str
 ) -> None:
@@ -66,9 +64,7 @@ def test_grad_backwards(
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["SiH4"])
 @pytest.mark.parametrize("scp_mode", ["potential", "fock"])
-@pytest.mark.parametrize(
-    "scf_mode", ["implicit", "full", "single-shot"]
-)
+@pytest.mark.parametrize("scf_mode", ["implicit", "full", "single-shot"])
 def test_grad_backwards_large(
     name: str, dtype: torch.dtype, scf_mode: str, scp_mode: str
 ) -> None:
