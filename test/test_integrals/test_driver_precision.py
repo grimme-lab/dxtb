@@ -37,7 +37,6 @@ from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.constants.labels import (
     INTDRIVER_AUTOGRAD,
-    INTDRIVER_LEGACY,
     INTDRIVER_LIBCINT,
 )
 from dxtb._src.exlibs.available import has_libcint
@@ -85,11 +84,10 @@ def test_trafo_is_double() -> None:
 @pytest.mark.skipif(
     has_libcint is False, reason="libcint interface not installed"
 )
-@pytest.mark.parametrize("driver", [INTDRIVER_AUTOGRAD, INTDRIVER_LEGACY])
 @pytest.mark.parametrize(
     "name", ["H2", "LiH", "CH4", "NH3", "SiH4", "LYS_xao_dist"]
 )
-def test_overlap_matches_libcint(name: str, driver: int) -> None:
+def test_overlap_matches_libcint(name: str) -> None:
     dd: DD = {"dtype": torch.double, "device": DEVICE}
 
     sample = samples[name]
@@ -99,7 +97,7 @@ def test_overlap_matches_libcint(name: str, driver: int) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
 
     s_lib = overlap(numbers, positions, par, driver=INTDRIVER_LIBCINT)
-    s_pt = overlap(numbers, positions, par, driver=driver)
+    s_pt = overlap(numbers, positions, par, driver=INTDRIVER_AUTOGRAD)
 
     p = permutation_matrix(ihelp, dd)
     s_lib = p @ s_lib.to(DEVICE) @ p.mT

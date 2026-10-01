@@ -70,12 +70,11 @@ def energy_of_scaled_exponents(
         Basis.create_cgtos = original  # type: ignore[method-assign]
 
 
-@pytest.mark.parametrize("driver", ["autograd", "legacy"])
 @pytest.mark.parametrize(
     "gfn, name", [("gfn1", "LiH"), ("gfn1", "H2O"), ("gfn2", "LiH")]
 )
 def test_exponent_gradient_matches_fd(
-    gfn: Literal["gfn1", "gfn2"], name: str, driver: str
+    gfn: Literal["gfn1", "gfn2"], name: str
 ) -> None:
     dd: DD = {"dtype": torch.double, "device": DEVICE}
     numbers = samples[name]["numbers"].to(DEVICE)
@@ -83,16 +82,16 @@ def test_exponent_gradient_matches_fd(
 
     scale = torch.tensor(1.0, **dd, requires_grad=True)
     energy = energy_of_scaled_exponents(
-        gfn, numbers, positions, scale, driver, dd
+        gfn, numbers, positions, scale, "pytorch", dd
     )
     (grad,) = torch.autograd.grad(energy, scale)
 
     step = 1e-4
     plus = energy_of_scaled_exponents(
-        gfn, numbers, positions, torch.tensor(1.0 + step, **dd), driver, dd
+        gfn, numbers, positions, torch.tensor(1.0 + step, **dd), "pytorch", dd
     )
     minus = energy_of_scaled_exponents(
-        gfn, numbers, positions, torch.tensor(1.0 - step, **dd), driver, dd
+        gfn, numbers, positions, torch.tensor(1.0 - step, **dd), "pytorch", dd
     )
     grad_fd = (plus - minus) / (2 * step)
 

@@ -68,7 +68,7 @@ pip install dxtb[libcint]
 ```
 
 Installing the libcint interface is recommended, as it is faster than the pure PyTorch implementation on the CPU.
-The pure PyTorch integral drivers provide the overlap, dipole and quadrupole integrals (and thereby GFN2-xTB) with derivatives of any order, on CPU and CUDA.
+The pure PyTorch integral driver provides the overlap, dipole and quadrupole integrals (and thereby GFN2-xTB) with derivatives of any order, on CPU and CUDA.
 However, the interface is currently only available on Linux.
 
 ### conda <a href="https://anaconda.org/conda-forge/dxtb"><img src="https://img.shields.io/conda/vn/conda-forge/dxtb.svg" alt="Conda Version"></a> <a href="https://anaconda.org/conda-forge/dxtb"><img src="https://img.shields.io/conda/dn/conda-forge/dxtb?style=flat&color=orange" alt="Conda Downloads"></a>
@@ -148,7 +148,7 @@ Note that only the latest bug fix version is listed, but all preceding bug fix m
 For example, although only version 2.4.1 is listed, version 2.4.0 is also supported.
 
 The libcint interface is **not** available for macOS and Windows.
-Correspondingly, the pure PyTorch integral drivers are used there, which are slower than libcint on the CPU for large systems (see the documentation for the available integral algorithms).
+Correspondingly, the pure PyTorch integral driver is used there, which is slower than libcint on the CPU for large systems (see the documentation for the available integral algorithms).
 While macOS support may be considered in the future, native Windows support is not possible, because the underlying [libcint](https://github.com/sunqm/libcint) library does not work under Windows.
 
 

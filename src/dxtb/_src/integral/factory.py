@@ -148,10 +148,7 @@ def new_overlap(
     if driver == labels.INTDRIVER_LIBCINT:
         return new_overlap_libcint(device=device, dtype=dtype, **kwargs)
 
-    if driver in (
-        labels.INTDRIVER_AUTOGRAD,
-        labels.INTDRIVER_LEGACY,
-    ):
+    if driver == labels.INTDRIVER_AUTOGRAD:
         return new_overlap_pytorch(device=device, dtype=dtype, **kwargs)
 
     raise ValueError(f"Unknown integral driver '{driver}'.")
@@ -196,10 +193,7 @@ def new_dipint(
     if driver == labels.INTDRIVER_LIBCINT:
         return new_dipint_libcint(device=device, dtype=dtype, **kwargs)
 
-    if driver in (
-        labels.INTDRIVER_AUTOGRAD,
-        labels.INTDRIVER_LEGACY,
-    ):
+    if driver == labels.INTDRIVER_AUTOGRAD:
         return new_dipint_pytorch(device=device, dtype=dtype, **kwargs)
 
     raise ValueError(f"Unknown integral driver '{driver}'.")
@@ -244,10 +238,7 @@ def new_quadint(
     if driver == labels.INTDRIVER_LIBCINT:
         return new_quadint_libcint(device=device, dtype=dtype, **kwargs)
 
-    if driver in (
-        labels.INTDRIVER_AUTOGRAD,
-        labels.INTDRIVER_LEGACY,
-    ):
+    if driver == labels.INTDRIVER_AUTOGRAD:
         return new_quadint_pytorch(device=device, dtype=dtype, **kwargs)
 
     raise ValueError(f"Unknown integral driver '{driver}'.")

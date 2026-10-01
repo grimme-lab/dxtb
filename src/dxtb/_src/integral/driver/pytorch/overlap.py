@@ -30,7 +30,7 @@ from dxtb._src.typing import Callable, Tensor
 from ...types import OverlapIntegral
 from ...utils import snorm
 from .base import IntegralPytorch
-from .driver import BaseIntDriverPytorch
+from .driver import IntDriverPytorch
 
 __all__ = ["OverlapPytorch"]
 
@@ -45,13 +45,13 @@ class OverlapPytorch(OverlapIntegral, IntegralPytorch):
     be used.
     """
 
-    def build(self, driver: BaseIntDriverPytorch) -> Tensor:
+    def build(self, driver: IntDriverPytorch) -> Tensor:
         """
         Overlap calculation with the driver's overlap function.
 
         Parameters
         ----------
-        driver : BaseIntDriverPytorch
+        driver : IntDriverPytorch
             The integral driver for the calculation.
 
         Returns
@@ -73,14 +73,14 @@ class OverlapPytorch(OverlapIntegral, IntegralPytorch):
         self.norm = snorm(self.matrix)
         return self.matrix
 
-    def get_gradient(self, driver: BaseIntDriverPytorch) -> Tensor:
+    def get_gradient(self, driver: IntDriverPytorch) -> Tensor:
         """
         Overlap gradient calculation with the driver's overlap gradient
         function.
 
         Parameters
         ----------
-        driver : BaseIntDriverPytorch
+        driver : IntDriverPytorch
             Integral driver for the calculation.
 
         Returns
@@ -102,23 +102,21 @@ class OverlapPytorch(OverlapIntegral, IntegralPytorch):
         return self.gradient
 
     def _single(
-        self, fcn: Callable[..., Tensor], driver: BaseIntDriverPytorch
+        self, fcn: Callable[..., Tensor], driver: IntDriverPytorch
     ) -> Tensor:
-        if not isinstance(driver, BaseIntDriverPytorch):
+        if not isinstance(driver, IntDriverPytorch):
             raise RuntimeError("Wrong integral driver selected.")
 
         return fcn(
             driver._positions_single,
             driver.basis,
             driver.ihelp,
-            self.uplo,
-            self.cutoff,
         )
 
     def _batch(
-        self, fcn: Callable[..., Tensor], driver: BaseIntDriverPytorch
+        self, fcn: Callable[..., Tensor], driver: IntDriverPytorch
     ) -> Tensor:
-        if not isinstance(driver, BaseIntDriverPytorch):
+        if not isinstance(driver, IntDriverPytorch):
             raise RuntimeError("Wrong integral driver selected.")
 
         # pylint: disable=import-outside-toplevel
@@ -130,8 +128,6 @@ class OverlapPytorch(OverlapIntegral, IntegralPytorch):
                     driver._positions_batch[_batch],
                     driver._basis_batch[_batch],
                     driver._ihelp_batch[_batch],
-                    self.uplo,
-                    self.cutoff,
                 )
                 for _batch in range(driver.numbers.shape[0])
             ]

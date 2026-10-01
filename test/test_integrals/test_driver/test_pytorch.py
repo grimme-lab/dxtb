@@ -30,7 +30,7 @@ from dxtb._src.integral.driver.pytorch import (
     OverlapPytorch,
     QuadrupolePytorch,
 )
-from dxtb._src.integral.driver.pytorch.driver import BaseIntDriverPytorch
+from dxtb._src.integral.driver.pytorch.driver import IntDriverPytorch
 from dxtb._src.typing import DD
 
 from ...conftest import DEVICE
@@ -66,7 +66,7 @@ def test_single(dtype: torch.dtype):
     positions = torch.zeros((2, 3), **dd)
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
-    drv = BaseIntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
+    drv = IntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
     drv.setup(positions)
 
     assert drv._basis is not None
@@ -84,7 +84,7 @@ def test_batch_mode_fail(dtype: torch.dtype) -> None:
     # set to invalid value
     ihelp.batch_mode = -99
 
-    drv = BaseIntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
+    drv = IntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
 
     with pytest.raises(ValueError):
         drv.setup(positions)
@@ -104,7 +104,7 @@ def test_batch_mode1(dtype: torch.dtype) -> None:
     )
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB, batch_mode=1)
 
-    drv = BaseIntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
+    drv = IntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
     drv.setup(positions)
 
     assert drv._basis_batch is not None
@@ -133,7 +133,7 @@ def test_batch_mode1_mask(dtype: torch.dtype) -> None:
     )
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB, batch_mode=1)
 
-    drv = BaseIntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
+    drv = IntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
     drv.setup(positions, mask=mask)
 
     assert drv._basis_batch is not None
@@ -156,7 +156,7 @@ def test_batch_mode2(dtype: torch.dtype) -> None:
     positions = torch.zeros((2, 2, 3), **dd)
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB, batch_mode=2)
 
-    drv = BaseIntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
+    drv = IntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
     drv.setup(positions)
 
     assert drv._basis_batch is not None

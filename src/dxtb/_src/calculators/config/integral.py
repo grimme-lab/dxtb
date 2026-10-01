@@ -59,8 +59,8 @@ class ConfigIntegrals:
 
     algorithm: str | None
     """
-    1D kernel of the PyTorch integral drivers (``None``: the default,
-    ``os``). The overlap of the legacy driver is not affected.
+    1D kernel of the PyTorch integral driver (``None``: the default,
+    ``os``).
     """
 
     def __init__(
@@ -104,8 +104,6 @@ class ConfigIntegrals:
                 self.driver = labels.INTDRIVER_LIBCINT
             elif driver.casefold() in labels.INTDRIVER_AUTOGRAD_STRS:
                 self.driver = labels.INTDRIVER_AUTOGRAD
-            elif driver.casefold() in labels.INTDRIVER_LEGACY_STRS:
-                self.driver = labels.INTDRIVER_LEGACY
             else:
                 raise ValueError(f"Unknown integral driver '{driver}'.")
 
@@ -113,7 +111,6 @@ class ConfigIntegrals:
             if driver not in (
                 labels.INTDRIVER_LIBCINT,
                 labels.INTDRIVER_AUTOGRAD,
-                labels.INTDRIVER_LEGACY,
             ):
                 raise ValueError(f"Unknown integral driver '{driver}'.")
 
@@ -156,7 +153,7 @@ class ConfigIntegrals:
             if self.driver == labels.INTDRIVER_LIBCINT:
                 raise ValueError(
                     "The integral algorithm can only be chosen for the "
-                    "PyTorch integral drivers, not for `libcint`."
+                    "PyTorch integral driver, not for `libcint`."
                 )
             algorithm = algorithm.casefold()
         self.algorithm = algorithm

@@ -23,13 +23,11 @@ Collection of PyTorch-based integral drivers.
 
 from __future__ import annotations
 
-from abc import abstractmethod
-
 import torch
 
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
-from dxtb._src.typing import Any, Literal, Tensor
+from dxtb._src.typing import Any, Tensor
 
 from ...base import IntDriver
 from .base import PytorchImplementation
@@ -37,26 +35,20 @@ from .impls.kernels import DEFAULT_ALGORITHM, get_kernel
 from .impls.pairs import assemble_matrix, assemble_overlap_gradient
 from .impls.pipeline import Kernel1D
 
-__all__ = [
-    "BaseIntDriverPytorch",
-    "IntDriverPytorch",
-    "IntDriverPytorchLegacy",
-]
+__all__ = ["IntDriverPytorch"]
 
 
-class BaseIntDriverPytorch(PytorchImplementation, IntDriver):
+class IntDriverPytorch(PytorchImplementation, IntDriver):
     """
     PyTorch-based integral driver.
 
-    Note
-    ----
-    The overlap and its gradient are evaluated by the driver itself
-    (:meth:`eval_ovlp`, :meth:`eval_ovlp_grad`); the dipole and quadrupole
-    integrals are built by
+    All integrals are built by the pair builder with the 1D kernel selected
+    in :attr:`algorithm` (``int_algorithm``), and are differentiable with
+    autograd to any order. The overlap and its analytical gradient are
+    evaluated by the driver itself (:meth:`eval_ovlp`,
+    :meth:`eval_ovlp_grad`); the dipole and quadrupole integrals by
     :class:`~dxtb._src.integral.driver.pytorch.DipolePytorch` and
-    :class:`~dxtb._src.integral.driver.pytorch.QuadrupolePytorch` with the
-    pair builder and the kernel selected in :attr:`algorithm`
-    (``int_algorithm``).
+    :class:`~dxtb._src.integral.driver.pytorch.QuadrupolePytorch`.
     """
 
     algorithm: str | None = None
@@ -157,14 +149,8 @@ class BaseIntDriverPytorch(PytorchImplementation, IntDriver):
         """1D kernel of the pair builder, selected by :attr:`algorithm`."""
         return get_kernel(self.algorithm or DEFAULT_ALGORITHM)
 
-    @abstractmethod
     def eval_ovlp(
-        self,
-        positions: Tensor,
-        bas: Basis,
-        ihelp: IndexHelper,
-        uplo: Literal["n", "u", "l"] = "l",
-        cutoff: Tensor | float | int | None = None,
+        self, positions: Tensor, bas: Basis, ihelp: IndexHelper
     ) -> Tensor:
         """
         Overlap of one molecule.
@@ -177,25 +163,17 @@ class BaseIntDriverPytorch(PytorchImplementation, IntDriver):
             Basis set information.
         ihelp : IndexHelper
             Helper class for indexing.
-        uplo : Literal["n", "u", "l"], optional
-            Which triangle of the matrix is computed and mirrored.
-        cutoff : Tensor | float | int | None, optional
-            Real-space cutoff for the integral calculation in Bohr.
 
         Returns
         -------
         Tensor
             Overlap matrix of shape ``(norb, norb)``.
         """
+        alphas, coeffs = bas.create_cgtos()
+        return assemble_matrix(self.kernel, ihelp, alphas, coeffs, positions)[0]
 
-    @abstractmethod
     def eval_ovlp_grad(
-        self,
-        positions: Tensor,
-        bas: Basis,
-        ihelp: IndexHelper,
-        uplo: Literal["n", "u", "l"] = "l",
-        cutoff: Tensor | float | int | None = None,
+        self, positions: Tensor, bas: Basis, ihelp: IndexHelper
     ) -> Tensor:
         """
         Overlap gradient of one molecule (same arguments as
@@ -208,73 +186,7 @@ class BaseIntDriverPytorch(PytorchImplementation, IntDriver):
             to the position of the atom of orbital :math:`i`, shape
             ``(norb, norb, 3)``.
         """
-
-
-class IntDriverPytorch(BaseIntDriverPytorch):
-    """
-    PyTorch-based integral driver.
-
-    All integrals are built by the pair builder with the kernel selected in
-    :attr:`algorithm`, and are differentiable with autograd to any order.
-    The overlap gradient is computed analytically from the same kernel.
-    ``uplo`` and ``cutoff`` have no effect: the full matrix is always built.
-    """
-
-    def eval_ovlp(
-        self,
-        positions: Tensor,
-        bas: Basis,
-        ihelp: IndexHelper,
-        uplo: Literal["n", "u", "l"] = "l",
-        cutoff: Tensor | float | int | None = None,
-    ) -> Tensor:
-        alphas, coeffs = bas.create_cgtos()
-        return assemble_matrix(self.kernel, ihelp, alphas, coeffs, positions)[0]
-
-    def eval_ovlp_grad(
-        self,
-        positions: Tensor,
-        bas: Basis,
-        ihelp: IndexHelper,
-        uplo: Literal["n", "u", "l"] = "l",
-        cutoff: Tensor | float | int | None = None,
-    ) -> Tensor:
         alphas, coeffs = bas.create_cgtos()
         return assemble_overlap_gradient(
             self.kernel, ihelp, alphas, coeffs, positions
         )
-
-
-class IntDriverPytorchLegacy(BaseIntDriverPytorch):
-    """
-    PyTorch-based integral driver with the old loop-based version of the
-    overlap matrix build, using the explicit McMurchie-Davidson E-coefficients
-    for every shell pair. It has no overlap gradient. The multipole integrals
-    are built by the pair builder, as for :class:`IntDriverPytorch`.
-    """
-
-    def eval_ovlp(
-        self,
-        positions: Tensor,
-        bas: Basis,
-        ihelp: IndexHelper,
-        uplo: Literal["n", "u", "l"] = "l",
-        cutoff: Tensor | float | int | None = None,
-    ) -> Tensor:
-        # pylint: disable=import-outside-toplevel
-        from .impls.legacy import overlap_legacy
-
-        return overlap_legacy(positions, bas, ihelp, uplo, cutoff)
-
-    def eval_ovlp_grad(
-        self,
-        positions: Tensor,
-        bas: Basis,
-        ihelp: IndexHelper,
-        uplo: Literal["n", "u", "l"] = "l",
-        cutoff: Tensor | float | int | None = None,
-    ) -> Tensor:
-        # pylint: disable=import-outside-toplevel
-        from .impls.legacy import overlap_gradient_legacy
-
-        return overlap_gradient_legacy(positions, bas, ihelp, uplo, cutoff)

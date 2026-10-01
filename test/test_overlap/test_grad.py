@@ -31,11 +31,18 @@ from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.basis.slater import slater_to_gauss
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb._src.integral.driver.pytorch import OverlapPytorch as Overlap
-from dxtb._src.integral.driver.pytorch.impls.legacy import explicit
+from dxtb._src.integral.driver.pytorch.impls.kernels import (
+    ALGORITHMS,
+    get_kernel,
+)
+from dxtb._src.integral.driver.pytorch.impls.pipeline import (
+    assemble_overlap_gradient_1d,
+)
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import t2int
 
 from ..conftest import DEVICE
+from ..utils import overlap_1d
 from .samples import samples
 
 
@@ -55,7 +62,7 @@ def test_ss(dtype: torch.dtype):
         [0.13695892585203528, 0.47746994997214642, 0.20729096231197164], **dd
     )
     vec = rndm.detach().requires_grad_(True)
-    s = explicit.md_explicit((l1, l2), (alpha1, alpha2), (coeff1, coeff2), vec)
+    s = overlap_1d((l1, l2), (alpha1, alpha2), (coeff1, coeff2), vec)
 
     # autograd
     (gradient,) = torch.autograd.grad(
@@ -77,14 +84,10 @@ def test_ss(dtype: torch.dtype):
     step = 1e-6
     for i in range(3):
         rndm[i] += step
-        sr = explicit.md_explicit(
-            (l1, l2), (alpha1, alpha2), (coeff1, coeff2), rndm
-        )
+        sr = overlap_1d((l1, l2), (alpha1, alpha2), (coeff1, coeff2), rndm)
 
         rndm[i] -= 2 * step
-        sl = explicit.md_explicit(
-            (l1, l2), (alpha1, alpha2), (coeff1, coeff2), rndm
-        )
+        sl = overlap_1d((l1, l2), (alpha1, alpha2), (coeff1, coeff2), rndm)
 
         rndm[i] += step
         g = 0.5 * (sr - sl) / step
@@ -208,23 +211,22 @@ def compare_md(
         ngj, nj, lj, torch.tensor(1.0, dtype=dtype)
     )
 
-    # overlap
-    ovlp = explicit.md_explicit(
-        (li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec
-    )
-    assert pytest.approx(ovlp.cpu(), abs=atol) == ovlp_ref.cpu()
+    alpha, coeff = (alpha_i, alpha_j), (coeff_i, coeff_j)
+    for algorithm in ALGORITHMS:
+        ovlp = overlap_1d((li, lj), alpha, coeff, vec, algorithm)
+        assert pytest.approx(ovlp.cpu(), abs=atol) == ovlp_ref.cpu()
 
-    # overlap gradient with explicit E-coefficients
-    ovlp_grad_exp = explicit.md_explicit_gradient(
-        (li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec
-    )
+        # derivative w.r.t. the bra center: (3, nsph_i, nsph_j)
+        ovlp_grad = assemble_overlap_gradient_1d(
+            get_kernel(algorithm), (int(li), int(lj)), alpha, coeff, vec
+        )
 
-    # obtain Fortran ordering (row wise)
-    ovlp_grad_exp = torch.stack(
-        [ovlp_grad_exp[i].flatten() for i in range(3)]
-    ).transpose(0, 1)
+        # obtain Fortran ordering (row wise)
+        ovlp_grad = torch.stack(
+            [ovlp_grad[i].flatten() for i in range(3)]
+        ).transpose(0, 1)
 
-    assert pytest.approx(ovlp_grad_ref.cpu(), abs=atol) == ovlp_grad_exp.cpu()
+        assert pytest.approx(ovlp_grad_ref.cpu(), abs=atol) == ovlp_grad.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

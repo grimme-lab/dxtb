@@ -21,7 +21,7 @@ pip
     pip install dxtb[libcint]
 
 Installing the libcint interface is recommended, as it is faster than the pure PyTorch implementation on the CPU.
-The pure PyTorch integral drivers provide the overlap, dipole and quadrupole integrals (and thereby GFN2-xTB) with derivatives of any order, on CPU and CUDA.
+The pure PyTorch integral driver provides the overlap, dipole and quadrupole integrals (and thereby GFN2-xTB) with derivatives of any order, on CPU and CUDA.
 However, the interface is currently only available on Linux.
 
 

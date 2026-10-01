@@ -30,7 +30,7 @@ from tad_mctc.batch import pack
 from dxtb._src.typing import Tensor
 
 from .base import IntegralPytorch
-from .driver import BaseIntDriverPytorch
+from .driver import IntDriverPytorch
 from .impls.pairs import assemble_matrix
 
 __all__ = ["MultipolePytorch"]
@@ -43,7 +43,7 @@ class MultipolePytorch(IntegralPytorch):
 
     def multipole(
         self,
-        driver: BaseIntDriverPytorch,
+        driver: IntDriverPytorch,
         components: tuple[tuple[int, int, int], ...],
     ) -> Tensor:
         """
@@ -52,12 +52,11 @@ class MultipolePytorch(IntegralPytorch):
 
         The shells are normalized to exactly unit self-overlap, so the
         integral needs no further normalization by the overlap diagonal
-        (the overlap of every PyTorch driver has a unit diagonal, i.e., its
-        norm is one).
+        (the PyTorch overlap has a unit diagonal, i.e., its norm is one).
 
         Parameters
         ----------
-        driver : BaseIntDriverPytorch
+        driver : IntDriverPytorch
             The integral driver for the calculation.
         components : tuple[tuple[int, int, int], ...]
             Per-axis multipole order of every output component.

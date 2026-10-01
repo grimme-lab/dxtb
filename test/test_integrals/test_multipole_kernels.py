@@ -34,7 +34,6 @@ from dxtb._src.integral.driver.pytorch.impls.kernels.md import (
     compute_1d_md_hermite,
 )
 from dxtb._src.integral.driver.pytorch.impls.kernels.os import compute_1d_os
-from dxtb._src.integral.driver.pytorch.impls.legacy.explicit import md_explicit
 from dxtb._src.integral.driver.pytorch.impls.pipeline import (
     DIPOLE_COMPONENTS,
     QUADRUPOLE_COMPONENTS,
@@ -113,21 +112,6 @@ def test_one_center_closed_form() -> None:
             if n % 2 == 0:
                 ref = math.prod(range(n - 1, 0, -2)) / (2.0 * p) ** (n / 2)
             assert table[i, j].item() == pytest.approx(ref, abs=1e-14)
-
-
-@pytest.mark.parametrize("algorithm", ALGORITHMS)
-def test_overlap_matches_md_explicit(algorithm: str) -> None:
-    """The overlap agrees with the explicit E-coefficients of the legacy code."""
-    dd: DD = {"dtype": torch.double, "device": DEVICE}
-    kernel = get_kernel(algorithm)
-    a, b, c, d, vec, _ = class_inputs(dd)
-
-    for la in range(3):
-        for lb in range(3):
-            angular = (torch.tensor(la), torch.tensor(lb))
-            ref = md_explicit(angular, (a, b), (c, d), vec)
-            out = assemble_overlap_1d(kernel, (la, lb), (a, b), (c, d), vec)
-            assert torch.allclose(out, ref, atol=1e-14, rtol=0.0)
 
 
 @pytest.mark.parametrize("algorithm", ALGORITHMS)

@@ -28,11 +28,10 @@ from tad_mctc.batch import pack
 
 from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.basis.bas import Basis
-from dxtb._src.integral.driver.pytorch.impls.legacy import md_explicit
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
-from ..utils import get_param_module, load_from_npz
+from ..utils import get_param_module, load_from_npz, overlap_1d
 from .samples import samples
 from .utils import calc_overlap
 
@@ -114,7 +113,7 @@ def test_overlap_higher_orbitals(dtype: torch.dtype) -> None:
     for i in range(2):
         for j in range(2):
             ref = ref_data[f"{i}-{j}"].to(**dd).T
-            S = md_explicit(
+            S = overlap_1d(
                 (
                     torch.tensor(i, device=DEVICE),
                     torch.tensor(j, device=DEVICE),

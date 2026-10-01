@@ -70,7 +70,7 @@ class DriverManager(TensorLike):
             driver_type == labels.INTDRIVER_LIBCINT,
         )
 
-        # kernel of the PyTorch drivers (`None`: default)
+        # kernel of the PyTorch driver (`None`: default)
         self.algorithm = kwargs.pop("algorithm", None)
 
         self.driver_type = driver_type
@@ -121,10 +121,6 @@ class DriverManager(TensorLike):
             # pylint: disable=import-outside-toplevel
             from .pytorch import IntDriverPytorch as _IntDriver
 
-        elif self.driver_type == labels.INTDRIVER_LEGACY:
-            # pylint: disable=import-outside-toplevel
-            from .pytorch import IntDriverPytorchLegacy as _IntDriver
-
         else:
             raise ValueError(f"Unknown integral driver '{self.driver_type}'.")
 
@@ -136,7 +132,7 @@ class DriverManager(TensorLike):
             if self.driver_type == labels.INTDRIVER_LIBCINT:
                 raise ValueError(
                     "The integral algorithm can only be chosen for the "
-                    "PyTorch integral drivers, not for `libcint`."
+                    "PyTorch integral driver, not for `libcint`."
                 )
 
             # pylint: disable=import-outside-toplevel

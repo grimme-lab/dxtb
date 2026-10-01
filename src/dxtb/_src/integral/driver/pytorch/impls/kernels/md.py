@@ -36,10 +36,8 @@ recursion and Hermite moments :math:`M^e_t` about the multipole origin
 (Helgaker, Jorgensen, Olsen, *Molecular Electronic-Structure Theory*, ch. 9),
 with the unitless start values :math:`E^{00}_0 = M^0_0 = 1`; the
 :math:`\\sqrt{\\pi/p}\\exp(-\\mu X_{AB}^2)` factor is applied by the caller, as
-for every kernel. Unlike the explicit E-coefficients of the legacy code
-(``impls/legacy/explicit.py``), this is not hand-unrolled per angular
-momentum: it works for any ``la``, ``lb`` with Python-int loops and no in-place
-writes.
+for every kernel. It works for any ``la``, ``lb`` with Python-int loops and no
+in-place writes.
 """
 
 from __future__ import annotations

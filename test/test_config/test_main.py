@@ -134,12 +134,8 @@ def test_fermi_diff_order_value_fail() -> None:
 
 
 def test_gfn2_with_pytorch_drivers() -> None:
-    for driver in (
-        labels.INTDRIVER_AUTOGRAD,
-        labels.INTDRIVER_LEGACY,
-    ):
-        cfg = Cfg(method=labels.GFN2_XTB, int_driver=driver)
-        assert cfg.ints.driver == driver
+    cfg = Cfg(method=labels.GFN2_XTB, int_driver=labels.INTDRIVER_AUTOGRAD)
+    assert cfg.ints.driver == labels.INTDRIVER_AUTOGRAD
 
 
 def test_int_algorithm() -> None:

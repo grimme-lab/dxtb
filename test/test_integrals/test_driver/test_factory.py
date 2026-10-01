@@ -28,7 +28,6 @@ from dxtb._src.integral.driver import factory
 from dxtb._src.integral.driver.libcint import IntDriverLibcint
 from dxtb._src.integral.driver.pytorch import (
     IntDriverPytorch,
-    IntDriverPytorchLegacy,
 )
 
 numbers = torch.tensor([14, 1, 1, 1, 1])
@@ -48,9 +47,6 @@ def test_driver_pytorch() -> None:
     cls = factory.new_driver(labels.INTDRIVER_AUTOGRAD, numbers, GFN1_XTB)
     assert isinstance(cls, IntDriverPytorch)
 
-    cls = factory.new_driver(labels.INTDRIVER_LEGACY, numbers, GFN1_XTB)
-    assert isinstance(cls, IntDriverPytorchLegacy)
-
 
 def test_factory_libcint() -> None:
     cls = factory.new_driver_libcint(numbers, GFN1_XTB)
@@ -60,6 +56,3 @@ def test_factory_libcint() -> None:
 def test_factory_pytorch() -> None:
     cls = factory.new_driver_pytorch(numbers, GFN1_XTB)
     assert isinstance(cls, IntDriverPytorch)
-
-    cls = factory.new_driver_legacy(numbers, GFN1_XTB)
-    assert isinstance(cls, IntDriverPytorchLegacy)

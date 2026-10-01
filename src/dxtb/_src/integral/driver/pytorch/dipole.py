@@ -29,7 +29,7 @@ from dxtb._src.constants import defaults
 from dxtb._src.typing import Literal, Tensor
 
 from ...types import DipoleIntegral
-from .driver import BaseIntDriverPytorch
+from .driver import IntDriverPytorch
 from .impls.pipeline import DIPOLE_COMPONENTS
 from .multipole import MultipolePytorch
 
@@ -68,14 +68,14 @@ class DipolePytorch(DipoleIntegral, MultipolePytorch):
             raise ValueError(f"Unknown option for `uplo` chosen: '{uplo}'.")
         self.uplo = uplo.casefold()  # type: ignore
 
-    def build(self, driver: BaseIntDriverPytorch) -> Tensor:
+    def build(self, driver: IntDriverPytorch) -> Tensor:
         """
         Dipole integral about the Cartesian origin (``r0``), using the
         algorithm selected on the driver (``int_algorithm``).
 
         Parameters
         ----------
-        driver : BaseIntDriverPytorch
+        driver : IntDriverPytorch
             Integral driver for the calculation.
 
         Returns
@@ -85,14 +85,14 @@ class DipolePytorch(DipoleIntegral, MultipolePytorch):
         """
         return self.multipole(driver, DIPOLE_COMPONENTS)
 
-    def get_gradient(self, driver: BaseIntDriverPytorch) -> Tensor:
+    def get_gradient(self, driver: IntDriverPytorch) -> Tensor:
         """
         Dipole intgral gradient calculation of unique shells pairs, using the
         McMurchie-Davidson algorithm.
 
         Parameters
         ----------
-        driver : BaseIntDriverPytorch
+        driver : IntDriverPytorch
             Integral driver for the calculation.
 
         Returns

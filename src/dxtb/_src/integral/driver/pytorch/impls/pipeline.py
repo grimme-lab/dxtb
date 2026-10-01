@@ -185,7 +185,8 @@ def assemble_overlap_gradient_1d(
     Returns
     -------
     Tensor
-        Gradient of shape ``(nvec, 3, nsph_a, nsph_b)``.
+        Gradient of shape ``(nvec, 3, nsph_a, nsph_b)`` (``(3, nsph_a,
+        nsph_b)`` for a single displacement of shape ``(3,)``).
     """
     li, lj = angular
     itrafo, jtrafo = _transforms(angular, vec)
@@ -205,7 +206,7 @@ def assemble_overlap_gradient_1d(
         cart = (d[ax] * s[u] * s[v] * sij).sum((-2, -1))
         out.append(itrafo @ cart.movedim((0, 1), (-2, -1)) @ jtrafo.mT)
 
-    return torch.stack(out, dim=1)
+    return torch.stack(out, dim=-3)
 
 
 DIPOLE_COMPONENTS = ((1, 0, 0), (0, 1, 0), (0, 0, 1))

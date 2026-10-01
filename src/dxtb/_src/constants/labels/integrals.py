@@ -26,8 +26,6 @@ __all__ = [
     "INTDRIVER_LIBCINT_STRS",
     "INTDRIVER_AUTOGRAD",
     "INTDRIVER_AUTOGRAD_STRS",
-    "INTDRIVER_LEGACY",
-    "INTDRIVER_LEGACY_STRS",
     "INTDRIVER_MAP",
     #
     "INTLEVEL_NONE",
@@ -52,18 +50,12 @@ INTDRIVER_AUTOGRAD = 1
 INTDRIVER_AUTOGRAD_STRS = ("autograd", "pytorch", "torch", "dxtb")
 """String codes for the PyTorch (autograd) driver."""
 
-# The integer code 2 belonged to the removed analytical PyTorch driver.
-
-INTDRIVER_LEGACY = 3
-"""Integer code for Legacy driver."""
-
-INTDRIVER_LEGACY_STRS = ("legacy", "old", "loop")
-"""String codes for Legacy driver."""
+# The integer codes 2 and 3 belonged to the removed analytical and legacy
+# PyTorch drivers.
 
 INTDRIVER_MAP = {
     INTDRIVER_LIBCINT: "libcint",
-    INTDRIVER_AUTOGRAD: "Autograd",
-    INTDRIVER_LEGACY: "Legacy (loops)",
+    INTDRIVER_AUTOGRAD: "PyTorch",
 }
 """String map (for printing) of integral drivers."""
 

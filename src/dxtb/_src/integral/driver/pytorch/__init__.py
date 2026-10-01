@@ -22,7 +22,7 @@ Pytorch-based integral implementations.
 """
 
 from .dipole import DipolePytorch
-from .driver import IntDriverPytorch, IntDriverPytorchLegacy
+from .driver import IntDriverPytorch
 from .overlap import OverlapPytorch
 from .quadrupole import QuadrupolePytorch
 
@@ -31,5 +31,4 @@ __all__ = [
     "DipolePytorch",
     "QuadrupolePytorch",
     "IntDriverPytorch",
-    "IntDriverPytorchLegacy",
 ]

@@ -29,7 +29,7 @@ from dxtb._src.constants import defaults
 from dxtb._src.typing import Literal, Tensor
 
 from ...types import QuadrupoleIntegral
-from .driver import BaseIntDriverPytorch
+from .driver import IntDriverPytorch
 from .impls.pipeline import QUADRUPOLE_COMPONENTS
 from .multipole import MultipolePytorch
 
@@ -68,7 +68,7 @@ class QuadrupolePytorch(QuadrupoleIntegral, MultipolePytorch):
             raise ValueError(f"Unknown option for `uplo` chosen: '{uplo}'.")
         self.uplo = uplo.casefold()  # type: ignore
 
-    def build(self, driver: BaseIntDriverPytorch) -> Tensor:
+    def build(self, driver: IntDriverPytorch) -> Tensor:
         """
         Raw (traced, 9-component, row-major) quadrupole integral about the
         Cartesian origin (``r0r0``), using the algorithm selected on the driver
@@ -77,7 +77,7 @@ class QuadrupolePytorch(QuadrupoleIntegral, MultipolePytorch):
 
         Parameters
         ----------
-        driver : BaseIntDriverPytorch
+        driver : IntDriverPytorch
             Integral driver for the calculation.
 
         Returns
@@ -87,14 +87,14 @@ class QuadrupolePytorch(QuadrupoleIntegral, MultipolePytorch):
         """
         return self.multipole(driver, QUADRUPOLE_COMPONENTS)
 
-    def get_gradient(self, driver: BaseIntDriverPytorch) -> Tensor:
+    def get_gradient(self, driver: IntDriverPytorch) -> Tensor:
         """
         Quadrupole intgral gradient calculation of unique shells pairs, using the
         McMurchie-Davidson algorithm.
 
         Parameters
         ----------
-        driver : BaseIntDriverPytorch
+        driver : IntDriverPytorch
             Integral driver for the calculation.
 
         Returns

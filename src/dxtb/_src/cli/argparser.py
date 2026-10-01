@@ -432,7 +432,7 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         default=None,
         choices=["md", "os"],
         help=(
-            "R|1D kernel of the PyTorch integral drivers "
+            "R|1D kernel of the PyTorch integral driver "
             "(McMurchie-Davidson or Obara-Saika). Default: `os`."
         ),
     )

@@ -25,7 +25,5 @@ Integral implementations
 - ``kernels``: the interchangeable 1D kernels, Obara-Saika (``os``, default)
   and McMurchie-Davidson with Hermite moments (``md``), selected by
   ``int_algorithm``.
-- ``legacy``: the original loop-based overlap with explicit
-  McMurchie-Davidson E-coefficients, used only by the legacy driver.
-- ``trafo``: Cartesian-to-spherical transformation, shared by all of them.
+- ``trafo``: Cartesian-to-spherical transformation.
 """

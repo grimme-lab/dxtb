@@ -47,9 +47,6 @@ def test_driver_pytorch() -> None:
     cfg = Cfg(driver=labels.INTDRIVER_AUTOGRAD_STRS[0])
     assert cfg.driver == labels.INTDRIVER_AUTOGRAD
 
-    cfg = Cfg(driver=labels.INTDRIVER_LEGACY_STRS[0])
-    assert cfg.driver == labels.INTDRIVER_LEGACY
-
 
 def test_driver_libcint() -> None:
 
@@ -68,9 +65,10 @@ def test_fail_driver() -> None:
     with pytest.raises(ValueError):
         Cfg(driver="-999")
 
-    # the analytical PyTorch driver was removed
-    with pytest.raises(ValueError):
-        Cfg(driver="analytical")
+    # the analytical and legacy PyTorch drivers were removed
+    for driver in ("analytical", "legacy"):
+        with pytest.raises(ValueError):
+            Cfg(driver=driver)
 
     with pytest.raises(TypeError):
         Cfg(driver=1.0)  # type: ignore

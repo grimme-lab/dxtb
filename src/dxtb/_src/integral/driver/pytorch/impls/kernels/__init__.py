@@ -19,9 +19,8 @@ Integral algorithms
 ===================
 
 Registry of the interchangeable 1D kernels (``compute_1d`` contract) of the
-pair builder, which computes all integrals of the PyTorch driver (only the
-multipole integrals of the legacy driver), selected by name through the
-``int_algorithm`` configuration option.
+pair builder, which computes all integrals of the PyTorch driver, selected by
+name through the ``int_algorithm`` configuration option.
 """
 
 from __future__ import annotations

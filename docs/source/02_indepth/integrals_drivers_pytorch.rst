@@ -9,7 +9,7 @@ PyTorch
 Overlap, dipole and quadrupole integrals
 ----------------------------------------
 
-The PyTorch drivers build the overlap, dipole and quadrupole integrals (and
+The PyTorch driver builds the overlap, dipole and quadrupole integrals (and
 thereby GFN2-xTB, which needs the multipoles) without libcint. All integrals
 are assembled from one-dimensional integrals, which can be computed with one
 of two interchangeable algorithms, selected with the ``int_algorithm`` option
@@ -39,14 +39,9 @@ nuclear gradient is computed from the same one-dimensional integrals.
     calc = dxtb.calculators.GFN2Calculator(numbers, opts=opts, **dd)
     energy = calc.get_energy(positions)
 
-The option is only valid for the PyTorch drivers; it is rejected for libcint.
+The option is only valid for the PyTorch driver; it is rejected for libcint.
 
-The legacy driver (``int_driver="legacy"``) is the original loop-based overlap
-with explicitly written-down McMurchie-Davidson coefficients. It is kept for
-reference, has no overlap gradient, and takes its multipole integrals from the
-same algorithms.
-
-On the CPU, libcint is faster than the PyTorch drivers, in particular for the
+On the CPU, libcint is faster than the PyTorch driver, in particular for the
 multipole integrals of large systems.
 
 Drivers
