@@ -61,6 +61,7 @@ def single(
     name: str,
     gfn: str,
     scf_mode: str = labels.SCF_MODE_IMPLICIT_NON_PURE,
+    int_driver: str | None = None,
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -81,6 +82,8 @@ def single(
             "mixer": "anderson" if scf_mode == "full" else "broyden",
         },
     )
+    if int_driver is not None:
+        options["int_driver"] = int_driver
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, charge)
@@ -103,6 +106,12 @@ def test_single_gfn2(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     single(dtype, name, "gfn2", scf_mode)
 
 
+@pytest.mark.parametrize("name", ["H2O", "SiH4"])
+def test_single_gfn2_pytorch(name: str) -> None:
+    """GFN2 with the multipole integrals of the PyTorch driver (no libcint)."""
+    single(torch.double, name, "gfn2", int_driver="analytical")
+
+
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", slist)
 def test_single_gfn0(dtype: torch.dtype, name: str) -> None:
@@ -117,6 +126,7 @@ def single_large(
     name: str,
     gfn: str,
     scf_mode: str = labels.SCF_MODE_IMPLICIT_NON_PURE,
+    int_driver: str | None = None,
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -137,6 +147,8 @@ def single_large(
             "mixer": "anderson" if scf_mode == "full" else "broyden",
         },
     )
+    if int_driver is not None:
+        options["int_driver"] = int_driver
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, charge)
@@ -182,6 +194,7 @@ def batch(
     name3: str,
     gfn: str,
     scf_mode: str = labels.SCF_MODE_IMPLICIT_NON_PURE,
+    int_driver: str | None = None,
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -216,6 +229,8 @@ def batch(
             "mixer": "anderson" if scf_mode == "full" else "broyden",
         },
     )
+    if int_driver is not None:
+        options["int_driver"] = int_driver
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, charge)
@@ -260,6 +275,7 @@ def batch_large(
     name3: str,
     gfn: str,
     scf_mode: str = labels.SCF_MODE_IMPLICIT_NON_PURE,
+    int_driver: str | None = None,
 ) -> None:
     tol = sqrt(torch.finfo(dtype).eps) * 10
     dd: DD = {"device": DEVICE, "dtype": dtype}
@@ -295,6 +311,8 @@ def batch_large(
             "mixer": "anderson" if scf_mode == "full" else "broyden",
         },
     )
+    if int_driver is not None:
+        options["int_driver"] = int_driver
     calc = Calculator(numbers, par, opts=options, **dd)
 
     result = calc.singlepoint(positions, charge)

@@ -69,3 +69,23 @@ def test_entrypoint(
     assert err == ""
     assert out == "", "No output should be printed. Leftover debug prints?"
     assert len(caplog.text) == 0
+
+
+def test_entrypoint_gfn2_with_pytorch_algorithm() -> None:
+    """GFN2 (multipoles) with a PyTorch integral driver and kernel choice."""
+    OutputHandler.clear_warnings()
+
+    ret = console_entry_point(
+        [
+            str(coordfile),
+            "--verbosity",
+            "0",
+            "--method",
+            "gfn2",
+            "--int-driver",
+            "pytorch",
+            "--int-algorithm",
+            "os",
+        ]
+    )
+    assert ret == 0

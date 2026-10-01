@@ -48,7 +48,12 @@ class DriverManager(TensorLike):
     configuration passed to it.
     """
 
-    __slots__ = ["_driver", "driver_type", "force_cpu_for_libcint"]
+    __slots__ = [
+        "_driver",
+        "driver_type",
+        "force_cpu_for_libcint",
+        "algorithm",
+    ]
 
     def __init__(
         self,
@@ -64,6 +69,9 @@ class DriverManager(TensorLike):
             "force_cpu_for_libcint",
             driver_type == labels.INTDRIVER_LIBCINT,
         )
+
+        # kernel of the PyTorch drivers for the multipoles (`None`: default)
+        self.algorithm = kwargs.pop("algorithm", None)
 
         self.driver_type = driver_type
         self._driver = None
@@ -127,6 +135,19 @@ class DriverManager(TensorLike):
         self.driver = _IntDriver(
             numbers, par, ihelp, device=ihelp.device, dtype=self.dtype
         )
+
+        if self.algorithm is not None:
+            if self.driver_type == labels.INTDRIVER_LIBCINT:
+                raise ValueError(
+                    "The integral algorithm can only be chosen for the "
+                    "PyTorch integral drivers, not for `libcint`."
+                )
+
+            # pylint: disable=import-outside-toplevel
+            from .pytorch.impls.algorithms import get_kernel
+
+            get_kernel(self.algorithm)  # validate the name early
+            self.driver.algorithm = self.algorithm.casefold()
 
     def setup_driver(self, positions: Tensor, **kwargs: Any) -> None:
         """

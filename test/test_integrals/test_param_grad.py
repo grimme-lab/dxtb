@@ -21,6 +21,7 @@ finite differences.
 Regression test: the custom backward of the analytical driver keeps the basis
 as a plain Python object, so it silently dropped all gradients with respect to
 the exponents and contraction coefficients (LiH: 1.7e-3 instead of 0.19).
+For GFN2, the gradient also flows through the multipole integrals.
 """
 
 from __future__ import annotations
@@ -28,16 +29,22 @@ from __future__ import annotations
 import pytest
 import torch
 
-import dxtb
+from dxtb import Calculator
 from dxtb._src.basis.bas import Basis
-from dxtb._src.typing import DD, Tensor
+from dxtb._src.typing import DD, Literal, Tensor
 
 from ..conftest import DEVICE
+from ..utils import get_param_module
 from .samples import samples
 
 
 def energy_of_scaled_exponents(
-    numbers: Tensor, positions: Tensor, scale: Tensor, driver: str, dd: DD
+    gfn: Literal["gfn1", "gfn2"],
+    numbers: Tensor,
+    positions: Tensor,
+    scale: Tensor,
+    driver: str,
+    dd: DD,
 ) -> Tensor:
     """Single point with every primitive exponent multiplied by ``scale``,
     standing in for a fitted basis parameter."""
@@ -56,29 +63,36 @@ def energy_of_scaled_exponents(
             "f_atol": 1e-11,
             "x_atol": 1e-11,
         }
-        calc = dxtb.calculators.GFN1Calculator(numbers, opts=opts, **dd)
+        par = get_param_module(gfn, **dd)
+        calc = Calculator(numbers, par, opts=opts, **dd)
         return calc.get_energy(positions)
     finally:
         Basis.create_cgtos = original  # type: ignore[method-assign]
 
 
 @pytest.mark.parametrize("driver", ["autograd", "analytical"])
-@pytest.mark.parametrize("name", ["LiH", "H2O"])
-def test_exponent_gradient_matches_fd(name: str, driver: str) -> None:
+@pytest.mark.parametrize(
+    "gfn, name", [("gfn1", "LiH"), ("gfn1", "H2O"), ("gfn2", "LiH")]
+)
+def test_exponent_gradient_matches_fd(
+    gfn: Literal["gfn1", "gfn2"], name: str, driver: str
+) -> None:
     dd: DD = {"dtype": torch.double, "device": DEVICE}
     numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
 
     scale = torch.tensor(1.0, **dd, requires_grad=True)
-    energy = energy_of_scaled_exponents(numbers, positions, scale, driver, dd)
+    energy = energy_of_scaled_exponents(
+        gfn, numbers, positions, scale, driver, dd
+    )
     (grad,) = torch.autograd.grad(energy, scale)
 
     step = 1e-4
     plus = energy_of_scaled_exponents(
-        numbers, positions, torch.tensor(1.0 + step, **dd), driver, dd
+        gfn, numbers, positions, torch.tensor(1.0 + step, **dd), driver, dd
     )
     minus = energy_of_scaled_exponents(
-        numbers, positions, torch.tensor(1.0 - step, **dd), driver, dd
+        gfn, numbers, positions, torch.tensor(1.0 - step, **dd), driver, dd
     )
     grad_fd = (plus - minus) / (2 * step)
 

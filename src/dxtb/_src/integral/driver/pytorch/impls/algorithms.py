@@ -1,0 +1,69 @@
+# This file is part of dxtb.
+#
+# SPDX-Identifier: Apache-2.0
+# Copyright (C) 2024 Grimme Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""
+Integral algorithms
+===================
+
+Registry of the interchangeable 1D kernels (``compute_1d`` contract) that the
+PyTorch integral driver can use for the overlap and the multipole integrals,
+selected by name through the ``int_algorithm`` configuration option.
+"""
+
+from __future__ import annotations
+
+from typing import Callable
+
+from dxtb._src.typing import Tensor
+
+__all__ = ["ALGORITHMS", "DEFAULT_MULTIPOLE_ALGORITHM", "get_kernel"]
+
+ALGORITHMS = ("md", "os")
+"""
+Names of the available kernels: McMurchie-Davidson with Hermite moments and
+the three-index Obara-Saika recursion.
+"""
+
+DEFAULT_MULTIPOLE_ALGORITHM = "os"
+"""
+Kernel used for the multipole integrals when none is requested: the
+three-index Obara-Saika recursion.
+"""
+
+
+def get_kernel(name: str) -> Callable[..., Tensor]:
+    """
+    Return the ``compute_1d``-contract kernel registered under ``name``.
+
+    Raises
+    ------
+    ValueError
+        Unknown algorithm name.
+    """
+    # pylint: disable=import-outside-toplevel
+    name = name.casefold()
+
+    if name == "md":
+        from .md.hermite import compute_1d_md_hermite as kernel
+    elif name == "os":
+        from .os.compute_1d import compute_1d_os as kernel
+    else:
+        raise ValueError(
+            f"Unknown integral algorithm '{name}'. "
+            f"Choose one of: {', '.join(ALGORITHMS)}."
+        )
+
+    return kernel

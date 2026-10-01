@@ -426,6 +426,17 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         help=("R|Integral driver."),
     )
     p.add_argument(
+        "--int-algorithm",
+        "--int_algorithm",
+        type=str,
+        default=None,
+        choices=["md", "os"],
+        help=(
+            "R|1D kernel of the PyTorch integral drivers for the multipole "
+            "integrals (McMurchie-Davidson or Obara-Saika). Default: `os`."
+        ),
+    )
+    p.add_argument(
         "--int-level",
         "--int_level",
         type=int,

@@ -93,18 +93,12 @@ def test_method() -> None:
     cfg = Cfg(method=labels.GFN1_XTB)
     assert cfg.method == labels.GFN1_XTB
 
-    if has_libcint is True:
-        cfg = Cfg(method=labels.GFN2_XTB)
-        assert cfg.method == labels.GFN2_XTB
+    # GFN2 needs multipoles, which libcint and the PyTorch drivers provide
+    cfg = Cfg(method=labels.GFN2_XTB)
+    assert cfg.method == labels.GFN2_XTB
 
-        cfg = Cfg(method=labels.GFN2_XTB_STRS[0])
-        assert cfg.method == labels.GFN2_XTB
-    else:
-        with pytest.raises(RuntimeError):
-            Cfg(method=labels.GFN2_XTB_STRS[0])
-
-        with pytest.raises(RuntimeError):
-            Cfg(method=labels.GFN2_XTB)
+    cfg = Cfg(method=labels.GFN2_XTB_STRS[0])
+    assert cfg.method == labels.GFN2_XTB
 
 
 def test_method_fail() -> None:
@@ -139,6 +133,27 @@ def test_fermi_diff_order_value_fail() -> None:
         Cfg(method=1.0)  # type: ignore
 
 
-def test_fail_incompatibility() -> None:
-    with pytest.raises(RuntimeError):
-        Cfg(method=labels.GFN2_XTB, int_driver=labels.INTDRIVER_LEGACY)
+def test_gfn2_with_pytorch_drivers() -> None:
+    for driver in (
+        labels.INTDRIVER_ANALYTICAL,
+        labels.INTDRIVER_AUTOGRAD,
+        labels.INTDRIVER_LEGACY,
+    ):
+        cfg = Cfg(method=labels.GFN2_XTB, int_driver=driver)
+        assert cfg.ints.driver == driver
+
+
+def test_int_algorithm() -> None:
+    cfg = Cfg(int_driver=labels.INTDRIVER_ANALYTICAL, int_algorithm="OS")
+    assert cfg.ints.algorithm == "os"
+    assert Cfg().ints.algorithm is None
+
+    with pytest.raises(ValueError):
+        Cfg(int_driver=labels.INTDRIVER_ANALYTICAL, int_algorithm="nope")
+
+
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
+def test_int_algorithm_fail_libcint() -> None:
+    # the algorithm only exists for the PyTorch drivers
+    with pytest.raises(ValueError):
+        Cfg(int_driver=labels.INTDRIVER_LIBCINT, int_algorithm="os")

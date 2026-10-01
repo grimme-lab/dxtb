@@ -104,10 +104,10 @@ def test_fail_pytorch_multipole(dtype: torch.dtype):
     with pytest.raises(RuntimeError):
         i.overlap = pytorch.OverlapPytorch(**dd)
 
-    # multipole moments not implemented with PyTorch
-    with pytest.raises(NotImplementedError):
+    # incompatible driver (PyTorch multipoles cannot be used with libcint)
+    with pytest.raises(RuntimeError):
         i.dipole = pytorch.DipolePytorch(**dd)
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(RuntimeError):
         i.quadrupole = pytorch.QuadrupolePytorch(**dd)
 
 

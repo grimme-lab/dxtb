@@ -42,16 +42,14 @@ def test_overlap_fail() -> None:
 
 
 def test_dipole_fail() -> None:
-    with pytest.raises(NotImplementedError):
-        _ = DipolePytorch()
+    _ = DipolePytorch()
 
     with pytest.raises(ValueError):
         _ = DipolePytorch("wrong")  # type: ignore
 
 
 def test_quadrupole_fail() -> None:
-    with pytest.raises(NotImplementedError):
-        _ = QuadrupolePytorch()
+    _ = QuadrupolePytorch()
 
     with pytest.raises(ValueError):
         _ = QuadrupolePytorch("wrong")  # type: ignore

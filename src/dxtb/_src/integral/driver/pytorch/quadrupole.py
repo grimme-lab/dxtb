@@ -29,13 +29,14 @@ from dxtb._src.constants import defaults
 from dxtb._src.typing import Literal, Tensor
 
 from ...types import QuadrupoleIntegral
-from .base import IntegralPytorch
 from .driver import BaseIntDriverPytorch
+from .impls.pipeline import QUADRUPOLE_COMPONENTS
+from .multipole import MultipolePytorch
 
 __all__ = ["QuadrupolePytorch"]
 
 
-class QuadrupolePytorch(QuadrupoleIntegral, IntegralPytorch):
+class QuadrupolePytorch(QuadrupoleIntegral, MultipolePytorch):
     """
     Quadrupole integral from atomic orbitals.
     """
@@ -67,16 +68,12 @@ class QuadrupolePytorch(QuadrupoleIntegral, IntegralPytorch):
             raise ValueError(f"Unknown option for `uplo` chosen: '{uplo}'.")
         self.uplo = uplo.casefold()  # type: ignore
 
-        raise NotImplementedError(
-            "PyTorch versions of multipole moments are not implemented. "
-            "Use `libcint` as integral driver. Install `tad-libcint` via: "
-            "`pip install tad-libcint`."
-        )
-
     def build(self, driver: BaseIntDriverPytorch) -> Tensor:
         """
-        Integral calculation of unique shells pairs, using the
-        McMurchie-Davidson algorithm.
+        Raw (traced, 9-component, row-major) quadrupole integral about the
+        Cartesian origin (``r0r0``), using the algorithm selected on the driver
+        (``int_algorithm``). The reduction to six components, the shift and the
+        traceless conversion are shared post-processing steps.
 
         Parameters
         ----------
@@ -86,10 +83,9 @@ class QuadrupolePytorch(QuadrupoleIntegral, IntegralPytorch):
         Returns
         -------
         Tensor
-            Integral matrix of shape ``(..., norb, norb, 3)``.
+            Integral of shape ``(..., 9, norb, norb)``.
         """
-        super().checks(driver)
-        raise NotImplementedError
+        return self.multipole(driver, QUADRUPOLE_COMPONENTS)
 
     def get_gradient(self, driver: BaseIntDriverPytorch) -> Tensor:
         """

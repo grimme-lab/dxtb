@@ -33,8 +33,11 @@ from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.integral.driver.libcint import IntDriverLibcint
 from dxtb._src.integral.driver.manager import DriverManager
 from dxtb._src.integral.driver.pytorch import (
+    DipolePytorch,
     IntDriverPytorch,
     IntDriverPytorchLegacy,
+    OverlapPytorch,
+    QuadrupolePytorch,
 )
 from dxtb._src.typing import DD
 
@@ -158,3 +161,54 @@ def test_pytorch_legacy_batch(
     dtype: torch.dtype, force_cpu_for_libcint: bool
 ) -> None:
     batch(INTDRIVER_LEGACY, dtype, force_cpu_for_libcint)
+
+
+@pytest.mark.parametrize("kind", ["overlap", "quadrupole"])
+def test_pytorch_driver_rebuilds_integrals_for_new_positions(kind: str) -> None:
+    """After the positions change (or the driver is invalidated), the next
+    ``setup_driver`` + ``build`` must give the integrals of the new geometry,
+    identical to a freshly created driver."""
+    dd: DD = {"dtype": torch.double, "device": DEVICE}
+    numbers = torch.tensor([3, 1, 8], device=DEVICE)
+    pos_a = torch.tensor(
+        [[0.0, 0.0, 0.0], [0.0, 0.0, 3.0], [1.5, 0.0, -1.0]], **dd
+    )
+    shift = torch.tensor(
+        [[0.0, 0.1, 0.0], [0.2, 0.0, 0.1], [0.0, 0.0, -0.3]], **dd
+    )
+    pos_b = pos_a + shift
+
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
+
+    def manager() -> DriverManager:
+        mgr = DriverManager(INTDRIVER_ANALYTICAL, algorithm="os", **dd)
+        mgr.create_driver(numbers, GFN1_XTB, ihelp)
+        return mgr
+
+    def build(mgr: DriverManager) -> torch.Tensor:
+        cls = {
+            "overlap": OverlapPytorch,
+            "dipole": DipolePytorch,
+            "quadrupole": QuadrupolePytorch,
+        }
+        return cls[kind](**dd).build(mgr.driver)
+
+    fresh = manager()
+    fresh.setup_driver(pos_b)
+    expected = build(fresh)
+
+    mgr = manager()
+    mgr.setup_driver(pos_a)
+    first = build(mgr)
+    assert mgr.driver.is_latest(pos_b) is False
+
+    # moved positions: setup again and rebuild
+    mgr.setup_driver(pos_b)
+    moved = build(mgr)
+    assert not torch.allclose(first, moved, atol=1e-6)
+    assert torch.allclose(moved, expected, atol=1e-13, rtol=0.0)
+
+    # explicit invalidation, then back to the first geometry
+    mgr.invalidate_driver()
+    mgr.setup_driver(pos_a)
+    assert torch.allclose(build(mgr), first, atol=1e-13, rtol=0.0)

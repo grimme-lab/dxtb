@@ -28,9 +28,10 @@ import torch
 
 import dxtb
 from dxtb._src.exlibs.available import has_libcint
-from dxtb._src.typing import DD
+from dxtb._src.typing import DD, Literal
 
 from ..conftest import DEVICE
+from ..utils import get_param_module
 from .samples import samples
 
 
@@ -38,15 +39,18 @@ from .samples import samples
     has_libcint is False, reason="libcint interface not installed"
 )
 @pytest.mark.parametrize("name", ["LiH", "H2O", "SiH4"])
-def test_float64_energy_matches_libcint(name: str) -> None:
+@pytest.mark.parametrize("gfn", ["gfn1", "gfn2"])
+def test_float64_energy_matches_libcint(
+    gfn: Literal["gfn1", "gfn2"], name: str
+) -> None:
     dd: DD = {"dtype": torch.double, "device": DEVICE}
     numbers = samples[name]["numbers"].to(DEVICE)
     positions = samples[name]["positions"].to(**dd)
 
     def energy(driver: str) -> torch.Tensor:
-        calc = dxtb.calculators.GFN1Calculator(
-            numbers, opts={"verbosity": 0, "int_driver": driver}, **dd
-        )
+        par = get_param_module(gfn, **dd)
+        opts = {"verbosity": 0, "int_driver": driver}
+        calc = dxtb.Calculator(numbers, par, opts=opts, **dd)
         return calc.get_energy(positions)
 
     assert torch.allclose(

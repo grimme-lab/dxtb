@@ -57,6 +57,12 @@ class ConfigIntegrals:
     uplo: Literal["n", "l", "u"]
     """Integral mode for PyTorch integral calculation."""
 
+    algorithm: str | None
+    """
+    1D kernel of the PyTorch integral drivers for the multipole integrals
+    (``None``: the default, ``os``). The overlap is not affected.
+    """
+
     def __init__(
         self,
         *,
@@ -64,6 +70,7 @@ class ConfigIntegrals:
         cutoff: float = defaults.INTCUTOFF,
         driver: str | int = defaults.INTDRIVER,
         uplo: str = defaults.INTUPLO,
+        algorithm: str | None = None,
     ) -> None:
         self.cutoff = cutoff
 
@@ -136,10 +143,32 @@ class ConfigIntegrals:
                 f"'{type(driver)}' was given."
             )
 
+        if algorithm is not None:
+            # pylint: disable=import-outside-toplevel
+            from dxtb._src.integral.driver.pytorch.impls.algorithms import (
+                ALGORITHMS,
+            )
+
+            if not isinstance(algorithm, str) or (
+                algorithm.casefold() not in ALGORITHMS
+            ):
+                raise ValueError(
+                    f"Unknown integral algorithm '{algorithm}'. "
+                    f"Choose one of: {', '.join(ALGORITHMS)}."
+                )
+            if self.driver == labels.INTDRIVER_LIBCINT:
+                raise ValueError(
+                    "The integral algorithm can only be chosen for the "
+                    "PyTorch integral drivers, not for `libcint`."
+                )
+            algorithm = algorithm.casefold()
+        self.algorithm = algorithm
+
     def __str__(self) -> str:  # pragma: no cover
         return (
             f"ConfigIntegrals(level={self.level}, cutoff={self.cutoff}, "
-            f"driver={self.driver}, uplo={self.uplo})"
+            f"driver={self.driver}, uplo={self.uplo}, "
+            f"algorithm={self.algorithm})"
         )
 
     def __repr__(self) -> str:  # pragma: no cover

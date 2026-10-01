@@ -54,7 +54,11 @@ class BaseIntDriverPytorch(PytorchImplementation, IntDriver):
 
     Note
     ----
-    Currently, only the overlap integral is implemented.
+    The overlap is evaluated by the driver itself (``eval_ovlp``); the dipole
+    and quadrupole integrals are built by
+    :class:`~dxtb._src.integral.driver.pytorch.DipolePytorch` and
+    :class:`~dxtb._src.integral.driver.pytorch.QuadrupolePytorch` with the
+    kernel selected in :attr:`algorithm` (``int_algorithm``).
     """
 
     eval_ovlp: OverlapFunction | None = None
@@ -62,6 +66,13 @@ class BaseIntDriverPytorch(PytorchImplementation, IntDriver):
 
     eval_ovlp_grad: OverlapFunction | None = None
     """Function for overlap gradient calculation."""
+
+    algorithm: str | None = None
+    """
+    Name of the 1D kernel (``int_algorithm``) used for the multipole
+    integrals. ``None``: the default kernel (``os``). The overlap always uses
+    the explicit McMurchie-Davidson implementation of the driver.
+    """
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -166,7 +177,11 @@ class IntDriverPytorch(BaseIntDriverPytorch):
 
     Note
     ----
-    Currently, only the overlap integral is implemented.
+    The overlap is evaluated by the driver itself (``eval_ovlp``); the dipole
+    and quadrupole integrals are built by
+    :class:`~dxtb._src.integral.driver.pytorch.DipolePytorch` and
+    :class:`~dxtb._src.integral.driver.pytorch.QuadrupolePytorch` with the
+    kernel selected in :attr:`algorithm` (``int_algorithm``).
     """
 
     def setup_eval_funcs(self) -> None:
@@ -180,7 +195,11 @@ class IntDriverPytorchNoAnalytical(BaseIntDriverPytorch):
 
     Note
     ----
-    Currently, only the overlap integral is implemented.
+    The overlap is evaluated by the driver itself (``eval_ovlp``); the dipole
+    and quadrupole integrals are built by
+    :class:`~dxtb._src.integral.driver.pytorch.DipolePytorch` and
+    :class:`~dxtb._src.integral.driver.pytorch.QuadrupolePytorch` with the
+    kernel selected in :attr:`algorithm` (``int_algorithm``).
     """
 
     def setup_eval_funcs(self) -> None:
@@ -196,7 +215,11 @@ class IntDriverPytorchLegacy(BaseIntDriverPytorch):
 
     Note
     ----
-    Currently, only the overlap integral is implemented.
+    The overlap is evaluated by the driver itself (``eval_ovlp``); the dipole
+    and quadrupole integrals are built by
+    :class:`~dxtb._src.integral.driver.pytorch.DipolePytorch` and
+    :class:`~dxtb._src.integral.driver.pytorch.QuadrupolePytorch` with the
+    kernel selected in :attr:`algorithm` (``int_algorithm``).
     """
 
     def setup_eval_funcs(self) -> None:

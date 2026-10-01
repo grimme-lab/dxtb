@@ -67,7 +67,8 @@ With *dxtb*, we provide a re-implementation of the xTB methods in PyTorch, which
 pip install dxtb[libcint]
 ```
 
-Installing the libcint interface is highly recommended, as it is significantly faster than the pure PyTorch implementation and provides access to higher-order multipole integrals and their derivatives (**required for GFN2-xTB**).
+Installing the libcint interface is recommended, as it is faster than the pure PyTorch implementation on the CPU.
+The pure PyTorch integral drivers provide the overlap, dipole and quadrupole integrals (and thereby GFN2-xTB) with derivatives of any order, on CPU and CUDA.
 However, the interface is currently only available on Linux.
 
 ### conda <a href="https://anaconda.org/conda-forge/dxtb"><img src="https://img.shields.io/conda/vn/conda-forge/dxtb.svg" alt="Conda Version"></a> <a href="https://anaconda.org/conda-forge/dxtb"><img src="https://img.shields.io/conda/dn/conda-forge/dxtb?style=flat&color=orange" alt="Conda Downloads"></a>
@@ -79,8 +80,7 @@ However, the interface is currently only available on Linux.
 mamba install dxtb
 ```
 
-Don't forget to install the libcint interface (not on conda) via ``pip install tad-libcint``.
-The libcint interface is **required for GFN2-xTB**.
+The optional libcint interface (not on conda) can be installed via ``pip install tad-libcint``.
 
 For Windows, *dxtb* is not available via conda, because PyTorch itself is not registered in the conda-forge channel.
 
@@ -148,8 +148,7 @@ Note that only the latest bug fix version is listed, but all preceding bug fix m
 For example, although only version 2.4.1 is listed, version 2.4.0 is also supported.
 
 The libcint interface is **not** available for macOS and Windows.
-Correspondingly, the integral evaluation can be considerably slower.
-Moreover, higher-order multipole integrals (dipole, quadrupole, ...) are not implemented.
+Correspondingly, the pure PyTorch integral drivers are used there, which are slower than libcint on the CPU for large systems (see the documentation for the available integral algorithms).
 While macOS support may be considered in the future, native Windows support is not possible, because the underlying [libcint](https://github.com/sunqm/libcint) library does not work under Windows.
 
 

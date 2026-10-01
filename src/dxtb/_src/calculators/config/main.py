@@ -97,6 +97,7 @@ class Config:
         int_driver: str | int = defaults.INTDRIVER,
         int_level: int = defaults.INTLEVEL,
         int_uplo: str = defaults.INTUPLO,
+        int_algorithm: str | None = None,
         # PyTorch
         anomaly: bool = False,
         device: torch.device = get_default_device(),
@@ -203,6 +204,7 @@ class Config:
             cutoff=int_cutoff,
             driver=int_driver,
             uplo=int_uplo,
+            algorithm=int_algorithm,
         )
 
         self.scf = ConfigSCF(
@@ -237,17 +239,6 @@ class Config:
             dtype=dtype,
         )
 
-        # compatibility checks (only need to be skipped for some tests)
-        if skip_compat_checks is False:
-            if (
-                self.method == labels.GFN2_XTB
-                and self.ints.driver != labels.INTDRIVER_LIBCINT
-            ):
-                raise RuntimeError(
-                    "Multipole integrals not available in PyTorch integral "
-                    "drivers. Use `libcint` as backend."
-                )
-
     @classmethod
     def from_args(cls, args: Namespace) -> Self:
         """
@@ -275,6 +266,7 @@ class Config:
             int_driver=args.int_driver,
             int_level=args.int_level,
             int_uplo=args.int_uplo,
+            int_algorithm=getattr(args, "int_algorithm", None),
             # PyTorch
             anomaly=args.detect_anomaly,
             device=args.device,

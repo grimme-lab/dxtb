@@ -29,13 +29,14 @@ from dxtb._src.constants import defaults
 from dxtb._src.typing import Literal, Tensor
 
 from ...types import DipoleIntegral
-from .base import IntegralPytorch
 from .driver import BaseIntDriverPytorch
+from .impls.pipeline import DIPOLE_COMPONENTS
+from .multipole import MultipolePytorch
 
 __all__ = ["DipolePytorch"]
 
 
-class DipolePytorch(DipoleIntegral, IntegralPytorch):
+class DipolePytorch(DipoleIntegral, MultipolePytorch):
     """
     Dipole integral from atomic orbitals.
     """
@@ -67,16 +68,10 @@ class DipolePytorch(DipoleIntegral, IntegralPytorch):
             raise ValueError(f"Unknown option for `uplo` chosen: '{uplo}'.")
         self.uplo = uplo.casefold()  # type: ignore
 
-        raise NotImplementedError(
-            "PyTorch versions of multipole moments are not implemented. "
-            "Use `libcint` as integral driver. Install `tad-libcint` via: "
-            "`pip install tad-libcint`."
-        )
-
     def build(self, driver: BaseIntDriverPytorch) -> Tensor:
         """
-        Integral calculation of unique shells pairs, using the
-        McMurchie-Davidson algorithm.
+        Dipole integral about the Cartesian origin (``r0``), using the
+        algorithm selected on the driver (``int_algorithm``).
 
         Parameters
         ----------
@@ -86,10 +81,9 @@ class DipolePytorch(DipoleIntegral, IntegralPytorch):
         Returns
         -------
         Tensor
-            Integral matrix of shape ``(..., norb, norb, 3)``.
+            Integral of shape ``(..., 3, norb, norb)``.
         """
-        super().checks(driver)
-        raise NotImplementedError
+        return self.multipole(driver, DIPOLE_COMPONENTS)
 
     def get_gradient(self, driver: BaseIntDriverPytorch) -> Tensor:
         """
