@@ -24,8 +24,6 @@ theorem for the backward (see :mod:`.fixed_point`).
 
 from __future__ import annotations
 
-import torch
-
 from dxtb._src.components.interactions import Charges, Potential
 from dxtb._src.constants import labels
 from dxtb._src.typing import Tensor
@@ -59,22 +57,13 @@ class SelfConsistentFieldImplicit(BaseXSCF):
         # TODO: Pass mixer options in `method` arg.
         # Currently ignored. Always "broyden1".
 
-        # The gradient cannot be more accurate than the converged SCF, hence
-        # the adjoint tolerance follows the SCF tolerance (unless given), but
-        # must stay above the round-off of the precision in use
-        eps = torch.finfo(guess.dtype).eps
-        bck_options = {
-            "atol": max(1e-10, 1e-2 * self.config.f_atol, 100 * eps),
-            **self.bck_options,
-        }
-
         # The stateless map neither reads nor writes `self`, so that the
         # function stored in the autograd graph cannot form a reference cycle.
         # Hence, `self._data` is only updated below, from the solution.
         q_converged, niter = equilibrium(
             fcn=self.stateless_map(),
             y0=guess,
-            bck_options=bck_options,
+            bck_options=self.bck_options,
             batched=self.config.batch_mode > 0,
             **self.fwd_options,
         )

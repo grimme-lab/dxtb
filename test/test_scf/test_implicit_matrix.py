@@ -425,35 +425,35 @@ KNOWN_FAILURES: dict[tuple[str, str, str, str], tuple[str, bool]] = {
         True,
     ),
     ("implicit", "slow", "pos", "q2"): (
-        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)",
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (inexact in every mode)",
         True,
     ),
     ("implicit", "slow", "hvp_pos", "E"): (
-        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)",
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (inexact in every mode)",
         True,
     ),
     ("implicit", "slow", "hvp_pos", "q2"): (
-        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)",
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (inexact in every mode)",
         True,
     ),
     ("full", "slow", "pos", "q2"): (
-        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)",
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (inexact in every mode)",
         True,
     ),
     ("full", "slow", "field", "q2"): (
-        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)",
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (inexact in every mode)",
         True,
     ),
     ("full", "slow", "param", "q2"): (
-        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)",
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (inexact in every mode)",
         True,
     ),
     ("full", "slow", "hvp_pos", "E"): (
-        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)",
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (inexact in every mode)",
         True,
     ),
     ("full", "slow", "hvp_pos", "q2"): (
-        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (see CHANGELOG.md, known limits)",
+        "Fermi smearing: HOMO-LUMO gap 4.6 mEh, fractional frontier occupations (inexact in every mode)",
         True,
     ),
     ("implicit", "slow_gap", "pos", "q2"): (

@@ -36,6 +36,23 @@ from ..pure.iterations import iter_options
 __all__ = ["BaseXSCF"]
 
 
+class _MapData:
+    """
+    Inputs of the SCF map taken from the SCF data. Results of the map
+    (density, eigenpairs, ...) are written to a per-call copy, so the map
+    keeps no scratch buffers of the SCF alive.
+    """
+
+    def __init__(self, data: BaseSCF._Data) -> None:
+        self.ints = copy.copy(data.ints)
+        self.n0 = data.n0
+        self.occupation = data.occupation
+        self.ihelp = data.ihelp
+        self.cache = data.cache
+        self.charges = dict(data.charges)
+        self.potential = dict(data.potential)
+
+
 class BaseXSCF(BaseSCF):
     """
     Base class for the implicitly differentiated self-consistent field
@@ -89,8 +106,9 @@ class BaseXSCF(BaseSCF):
         Fixed-point map ``x -> g(x)`` that neither reads nor writes ``self``.
 
         All tensors that can carry gradients (integrals, interaction caches)
-        are reached through a frozen shallow copy of the SCF data, and every
-        call works on its own scratch copy of that snapshot. The returned
+        are reached through a snapshot of the inputs of the map in the SCF
+        data (:class:`_MapData`), and every call works on its own scratch copy
+        of that snapshot. The returned
         function therefore holds no reference to this object or to anything
         that is later attached to the output of the SCF (e.g., ``self._data``
         after ``scf``), which would form a reference cycle through the autograd
@@ -101,7 +119,7 @@ class BaseXSCF(BaseSCF):
         Callable[[Tensor], Tensor]
             The map for the current convergence target (SCP mode).
         """
-        template = copy.copy(self._data)
+        template = _MapData(self._data)
         cfg = copy.copy(self.config)
         cfg.eigen_options = self.eigen_options
         interactions = self.interactions

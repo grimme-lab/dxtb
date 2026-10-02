@@ -39,13 +39,18 @@ Design rules (see also the closure test in ``test_fixed_point.py``):
   carry gradients is reached through tensors that ``g`` closes over; their
   autograd leaves are discovered from the graph of one evaluation of ``g`` and
   become the inputs of the Function. Derivatives with respect to autograd
-  leaves (positions, fields, parameters) are therefore complete. Known limit:
-  the *implicit* part is attached to leaves, not to non-leaf intermediates
-  derived from them (see ``test_fixed_point.py``).
+  leaves (positions, fields, parameters) are therefore complete.
 - The Function keeps ``g`` on ``ctx`` (needed in the backward). This is safe
   only under the previous rule: ``ctx`` is part of the graph of the output, and
   a path from ``g`` back to the output would be a reference cycle through the
   C++ graph, which the garbage collector cannot free.
+
+Known limits:
+
+- The *implicit* part is attached to leaves, not to non-leaf intermediates
+  (e.g., ``pos0 + d`` or ``result.integrals.hcore``); their derivatives miss
+  it silently (see ``test_fixed_point.py``).
+- Third and higher derivatives are not supported.
 
 The structure follows JAX's ``custom_root``/``custom_linear_solve``, ``jaxopt``
 (``custom_fixed_point``) and ``torchopt`` (``diff.implicit``), all Apache-2.0.
@@ -53,7 +58,8 @@ The structure follows JAX's ``custom_root``/``custom_linear_solve``, ``jaxopt``
 
 from __future__ import annotations
 
-import threading
+import gc
+import types
 from dataclasses import dataclass
 
 import torch
@@ -81,13 +87,17 @@ class AdjointOptions:
     atol: float | None = None
     """
     Tolerance on the residual, relative to the largest entry of the right-hand
-    side (the system is linear in it). Defaults to ``1e-9`` for double and
-    ``1e-4`` for lower precision. Converged if
-    ``max|res| <= (atol + rtol) * max|rhs|`` for every system.
+    side (the system is linear in it). Converged if
+    ``max|res| <= (atol + rtol) * max|rhs|`` for every system. Defaults to
+    ``max(1e-10, 1e-2 * f_tol, 100 * eps)``: the gradient cannot be more
+    accurate than the forward solve, nor than the precision in use.
     """
 
     rtol: float | None = None
-    """Second relative tolerance, added to ``atol``. Defaults to ``atol``."""
+    """Second tolerance, added to ``atol``. Defaults to ``0``."""
+
+    f_tol: float | None = None
+    """Tolerance of the forward solve (default ``1e-7``), sets ``atol``."""
 
     history: int = 10
     """Number of previous iterates used in the Anderson mixing."""
@@ -127,11 +137,13 @@ class AdjointOptions:
         )
 
     def tolerances(self, dtype: torch.dtype) -> tuple[float, float]:
-        """Absolute and relative tolerance for a given dtype."""
-        eps = torch.finfo(dtype).eps
-        default = 1e-9 if eps < 1e-10 else 1e-4
-        atol = self.atol if self.atol is not None else default
-        rtol = self.rtol if self.rtol is not None else atol
+        """Tolerances ``(atol, rtol)`` for a given dtype."""
+        if self.atol is not None:
+            atol = self.atol
+        else:
+            f_tol = 1e-7 if self.f_tol is None else self.f_tol
+            atol = max(1e-10, 1e-2 * f_tol, 100 * torch.finfo(dtype).eps)
+        rtol = 0.0 if self.rtol is None else self.rtol
         return float(atol), float(rtol)
 
 
@@ -224,6 +236,9 @@ def _dense(op: Callable[[Tensor], Tensor], rhs: Tensor) -> Tensor:
     """
     Solve ``(I - A) u = rhs`` for a linear map ``A`` by building it column by
     column. Fallback and reference for small systems.
+
+    Limit: one matrix for the whole batch (``rhs.numel()`` VJPs, memory
+    ``numel^2``), which can exhaust memory for large or Fock-mode systems.
     """
     n = rhs.numel()
     eye = torch.eye(n, dtype=rhs.dtype, device=rhs.device)
@@ -339,21 +354,6 @@ class _AdjointSolve(torch.autograd.Function):
         return (mu, grads[0], None, None, *grads[1:])
 
 
-_LOCAL = threading.local()
-"""
-Thread-local record of the node whose backward is currently evaluating the
-*partial* derivative of ``g`` with respect to the parameters at fixed ``x*``.
-
-In the differentiable case, ``g`` is evaluated at the (graph-connected)
-output, so ``autograd.grad(f, params)`` would also walk through the output's
-node, i.e., re-enter the very backward that is running and add the total
-instead of the partial derivative. Only that one node is skipped (identified by
-its ``ctx``); other implicit solves in the graph behave normally. The graph of
-the result still contains the dependence on ``x*``, which the second derivative
-needs.
-"""
-
-
 class _ImplicitFixedPoint(torch.autograd.Function):
     """Identity in the forward; implicit function theorem in the backward."""
 
@@ -383,7 +383,13 @@ class _ImplicitFixedPoint(torch.autograd.Function):
     def backward(  # type: ignore[override]
         ctx: Any, v: Tensor
     ) -> tuple[Tensor | None, ...]:
-        if getattr(_LOCAL, "running", None) is ctx:
+        # Re-entry while this node computes the *partial* derivative of `g`
+        # w.r.t. the parameters: in the differentiable case `g` is evaluated
+        # at the (graph-connected) output, so `autograd.grad(f, params)` walks
+        # through this node again and would add the total derivative. The
+        # flag is on `ctx` (not thread-local): autograd may run the nested
+        # call on another thread.
+        if getattr(ctx, "running", False):
             return (None,) * (4 + len(ctx.saved_tensors) - 1)
 
         x, *params = ctx.saved_tensors
@@ -405,8 +411,9 @@ class _ImplicitFixedPoint(torch.autograd.Function):
                 z, f = first if first is not None else _evaluate(fcn, x)
                 lam = _solve(_jtu(f, z), v.detach(), opts)
 
-            previous = getattr(_LOCAL, "running", None)
-            _LOCAL.running = ctx
+            # Limit: all discovered leaves are differentiated, also those the
+            # current call does not ask for (no public autograd API tells).
+            ctx.running = True
             try:
                 grads = torch.autograd.grad(
                     f,
@@ -417,7 +424,7 @@ class _ImplicitFixedPoint(torch.autograd.Function):
                     allow_unused=True,
                 )
             finally:
-                _LOCAL.running = previous
+                ctx.running = False
 
         return (None, None, None, None, *grads)
 
@@ -439,6 +446,29 @@ def _grad_leaves(t: Tensor) -> list[Tensor]:
             continue
         stack.extend(nxt for nxt, _ in node.next_functions)
     return list(leaves.values())
+
+
+def _reaches_grad(fcn: Callable[[Tensor], Tensor]) -> bool:
+    """
+    Whether a tensor that requires grad is reachable from the closure of
+    ``fcn`` (module globals are not followed; see the design rules).
+    """
+    seen: set[int] = set()
+    stack: list[object] = [fcn]
+    while stack:
+        obj = stack.pop()
+        if id(obj) in seen or isinstance(obj, (types.ModuleType, type)):
+            continue
+        seen.add(id(obj))
+        if isinstance(obj, Tensor):
+            if obj.requires_grad:
+                return True
+            continue
+        if isinstance(obj, types.FunctionType):
+            stack.extend(c.cell_contents for c in obj.__closure__ or ())
+            continue
+        stack.extend(gc.get_referents(obj))
+    return False
 
 
 def equilibrium(
@@ -478,7 +508,7 @@ def equilibrium(
         differentiable twice.
     """
     fwd = dict(fwd_options)
-    method = fwd.pop("method", "broyden1")
+    method = fwd.pop("method", None) or "broyden1"
     solver = get_method("rootfinder", _RF_METHODS, method)
 
     # root of `y - g(y)` (same function and solver as xitorch's equilibrium)
@@ -493,7 +523,8 @@ def equilibrium(
         x_star = solver(root, y0.detach(), (), **fwd)
     x_star = x_star.detach()
 
-    if not torch.is_grad_enabled():
+    # skip the evaluation of `fcn` below if nothing can carry gradients
+    if not torch.is_grad_enabled() or not _reaches_grad(fcn):
         return x_star, niter
 
     # discover all parameters (autograd leaves) that `fcn` depends on
@@ -504,5 +535,6 @@ def equilibrium(
         return x_star, niter
 
     opts = AdjointOptions.from_mapping(bck_options, batched=batched)
+    opts.f_tol = fwd.get("f_tol")
     out = _ImplicitFixedPoint.apply(x_star, fcn, opts, (z, f), *params)
     return out, niter

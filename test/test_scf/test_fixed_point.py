@@ -325,3 +325,34 @@ def test_iterations_count_forward_solve_only() -> None:
     x, n_grad = equilibrium(g, t.x0, **FWD)
     torch.autograd.grad(loss(x), t.p)
     assert n_grad == n_plain < calls
+
+
+def test_no_extra_evaluation_without_parameters() -> None:
+    """Grad mode on, but nothing requires grad: only the forward iterations."""
+    t = Toy()
+    t.W.requires_grad_(False)
+    t.p.requires_grad_(False)
+    calls = 0
+
+    def g(x: torch.Tensor) -> torch.Tensor:
+        nonlocal calls
+        calls += 1
+        return t.g(x)
+
+    _, niter = equilibrium(g, t.x0, **FWD)
+    assert calls == niter
+
+
+def test_method_none_means_default() -> None:
+    """``method=None`` selects the default solver (as in xitorch)."""
+    t = Toy()
+    x, _ = equilibrium(t.g, t.x0, **{**FWD, "method": None})
+    assert close(x, t.implicit(), 1e-12)
+
+
+def test_default_tolerance_follows_forward_tolerance() -> None:
+    """The adjoint tolerance defaults to 1% of the forward ``f_tol``."""
+    tol = AdjointOptions(f_tol=1e-6).tolerances
+    assert tol(torch.double) == (1e-8, 0.0)
+    assert tol(torch.float32) == (100 * torch.finfo(torch.float32).eps, 0.0)
+    assert AdjointOptions(f_tol=1e-14).tolerances(torch.double) == (1e-10, 0.0)

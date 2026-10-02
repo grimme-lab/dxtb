@@ -143,3 +143,47 @@ def test_result_hamiltonian_matches_full(scp_mode: str) -> None:
     for key in ("hamiltonian", "density", "emo"):
         a, b = getattr(res["implicit"], key), getattr(res["full"], key)
         assert torch.allclose(a, b, atol=1e-8, rtol=0), key
+
+
+def test_map_holds_only_inputs(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    The map (stored in the autograd graph) does not keep the SCF's scratch
+    buffers (density, eigenvectors, ...) alive.
+    """
+    import gc
+    import types
+
+    checked: list[bool] = []
+    orig = SCF.scf
+
+    def spy(self, guess, return_charges=True):  # type: ignore[no-untyped-def]
+        g = self.stateless_map()
+        d = self._data
+        scratch = {
+            id(t) for t in (d.density, d.evecs, d.hamiltonian, d.old_density)
+        }
+
+        seen: set[int] = set()
+        stack: list[object] = [g]
+        while stack:
+            obj = stack.pop()
+            if id(obj) in seen or isinstance(obj, (types.ModuleType, type)):
+                continue
+            seen.add(id(obj))
+            assert id(obj) not in scratch
+            if isinstance(obj, torch.Tensor):
+                continue
+            if isinstance(obj, types.FunctionType):
+                stack.extend(c.cell_contents for c in obj.__closure__ or ())
+                continue
+            stack.extend(gc.get_referents(obj))
+        checked.append(True)
+        return orig(self, guess, return_charges)
+
+    monkeypatch.setattr(SCF, "scf", spy)
+
+    m = mols["H2O"]
+    opts = {"verbosity": 0, "scf_mode": "implicit"}
+    calc = Calculator(m["numbers"].to(DEVICE), GFN1_XTB, opts=opts, **DD)
+    calc.singlepoint(m["positions"].to(**DD), torch.tensor(0.0, **DD))
+    assert checked == [True]
