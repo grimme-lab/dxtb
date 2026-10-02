@@ -618,6 +618,10 @@ def test_functorch():
     assert pytest.approx(ref.cpu(), abs=1e-10) == hess.cpu()
 
 
+@pytest.mark.skipif(
+    not torch._dynamo.is_dynamo_supported(),
+    reason="torch.compile is not supported for this Python/torch combination",
+)
 def test_compile():
     """Smoke test for tracing with ``torch.compile``."""
     dd: DD = {"device": DEVICE, "dtype": torch.double}
