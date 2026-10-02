@@ -219,14 +219,17 @@ def get_alpha_beta_occupation(
                 f"number of electrons ({nel.shape})."
             )
 
-        if (uhf > nel.round()).any():
+        if (uhf > torch.floor(nel + 0.5)).any():
             raise ValueError(
                 f"Number of unpaired electrons ({uhf}) larger than "
                 f"number of electrons ({nel})."
             )
 
         # odd/even spin and even/odd number of electrons
-        if (torch.remainder(uhf, 2) != torch.remainder(nel.round(), 2)).any():
+        if (
+            torch.remainder(uhf, 2)
+            != torch.remainder(torch.floor(nel + 0.5), 2)
+        ).any():
             raise ValueError(
                 f"Odd (even) number of unpaired electrons ({uhf}) but even "
                 f"(odd) number of electrons ({nel}) given."
@@ -240,9 +243,9 @@ def get_alpha_beta_occupation(
     assert isinstance(uhf, Tensor)
 
     nuhf = torch.where(
-        torch.remainder(uhf, 2) == torch.remainder(nel.round(), 2),
+        torch.remainder(uhf, 2) == torch.remainder(torch.floor(nel + 0.5), 2),
         uhf,
-        torch.remainder(nel.round(), 2),
+        torch.remainder(torch.floor(nel + 0.5), 2),
     )
 
     diff = torch.minimum(nuhf, nel)
