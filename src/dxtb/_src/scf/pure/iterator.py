@@ -108,6 +108,7 @@ def scf_wrapper(
     cache: InteractionListCache,
     integrals: IntegralMatrices,
     config: ConfigSCF,
+    nel: Tensor | None = None,
     **kwargs: Any,
 ) -> SCFResult:
     # calculate SCF equilibrium using semi-pure functions
@@ -122,6 +123,7 @@ def scf_wrapper(
         ihelp=ihelp,
         cache=cache,
         integrals=integrals,
+        nel=nel,
         # **data_kwargs,
     )
 

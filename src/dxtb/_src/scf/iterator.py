@@ -131,6 +131,7 @@ def solve(
             cache=cache,
             integrals=integrals,
             config=config,
+            nel=nab,
             *args,
             **kwargs,
         )
@@ -157,6 +158,7 @@ def solve(
         cache=cache,
         integrals=integrals,
         config=config,
+        nel=nab,
         **kwargs,
     )(charges)
 

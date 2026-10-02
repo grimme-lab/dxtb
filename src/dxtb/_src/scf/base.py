@@ -82,6 +82,9 @@ class BaseSCF:
         occupation: Tensor
         """Occupation numbers (shape: [..., 2, orbs])"""
 
+        nel: Tensor
+        """Number of alpha and beta electrons (shape: [..., 2]). Fixed during the SCF."""
+
         n0: Tensor
         """Reference occupation for each orbital (shape: [..., orbs])"""
 
@@ -123,6 +126,7 @@ class BaseSCF:
             ihelp: IndexHelper,
             cache: InteractionListCache,
             integrals: IntegralMatrices,
+            nel: Tensor | None = None,
         ) -> None:
             if integrals.hcore is None:
                 raise ValueError("No core Hamiltonian provided.")
@@ -131,6 +135,7 @@ class BaseSCF:
 
             self.ints = integrals
             self.occupation = occupation
+            self.nel = occupation.sum(-1) if nel is None else nel
             self.n0 = n0
             self.numbers = numbers
             self.ihelp = ihelp
@@ -202,6 +207,7 @@ class BaseSCF:
             self.hamiltonian = self.hamiltonian[twodim]
             self.density = self.density[twodim]
             self.occupation = self.occupation[twodim]
+            self.nel = self.nel[~conv]
             self.evecs = self.evecs[twodim]
             self.evals = self.evals[onedim]
             self.energy = self.energy[onedim]

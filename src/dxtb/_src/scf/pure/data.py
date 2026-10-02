@@ -34,6 +34,9 @@ class _Data:
         Atomic numbers.
     occupation : Tensor
         Occupation numbers (shape: [..., 2, orbs]).
+    nel : Tensor
+        Number of alpha and beta electrons (shape: [..., 2]). Fixed during
+        the SCF.
     n0 : Tensor
         Reference occupation for each orbital (shape: [..., orbs]).
     ihelp : IndexHelper
@@ -63,6 +66,7 @@ class _Data:
         ihelp: IndexHelper,
         cache: InteractionListCache,
         integrals: IntegralMatrices,
+        nel: Tensor | None = None,
     ) -> None:
         """
         Initialize the _Data object.
@@ -75,6 +79,9 @@ class _Data:
             Overlap matrix.
         occupation : Tensor
             Occupation numbers.
+        nel : Tensor | None
+            Number of alpha and beta electrons. Defaults to the sum of the
+            occupation numbers.
         n0 : Tensor
             Reference occupation for each orbital.
         numbers : Tensor
@@ -91,6 +98,7 @@ class _Data:
 
         self.ints = integrals
         self.occupation = occupation
+        self.nel = occupation.sum(-1) if nel is None else nel
         self.n0 = n0
         self.numbers = numbers
         self.ihelp = ihelp
@@ -166,6 +174,7 @@ class _Data:
         self.hamiltonian = self.hamiltonian[twodim]
         self.density = self.density[twodim]
         self.occupation = self.occupation[twodim]
+        self.nel = self.nel[~conv]
         self.evecs = self.evecs[twodim]
         self.evals = self.evals[onedim]
         self.energy = self.energy[onedim]
