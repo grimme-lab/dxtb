@@ -875,8 +875,9 @@ class BaseSCF:
 
         self._data.evals, self._data.evecs = self.diagonalize(hamiltonian)
 
-        # round to integers to avoid numerical errors
-        nel = self._data.occupation.sum(-1).round()
+        # round to integers to avoid numerical errors; the occupation of the
+        # previous step is not part of the graph of the new one
+        nel = self._data.occupation.sum(-1).round().detach()
 
         # expand emo/mask to second dim (for alpha/beta electrons)
         emo = self._data.evals.unsqueeze(-2).expand([*nel.shape, -1])
@@ -894,6 +895,7 @@ class BaseSCF:
                 mask=mask,
                 maxiter=self.config.fermi.maxiter,
                 thr=self.config.fermi.thresh,
+                diff_order=self.config.fermi.diff_order,
             )
 
             # check if number of electrons is still correct

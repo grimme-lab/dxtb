@@ -122,6 +122,7 @@ class Config:
         fermi_etemp: float = defaults.FERMI_ETEMP,
         fermi_maxiter: int = defaults.FERMI_MAXITER,
         fermi_thresh: float | int | None = defaults.FERMI_THRESH,
+        fermi_diff_order: int = defaults.FERMI_DIFF_ORDER,
         fermi_partition: str | int = defaults.FERMI_PARTITION,
         # cache
         cache_enabled: bool = defaults.CACHE_ENABLED,
@@ -229,6 +230,7 @@ class Config:
             fermi_etemp=fermi_etemp,
             fermi_maxiter=fermi_maxiter,
             fermi_thresh=fermi_thresh,
+            fermi_diff_order=fermi_diff_order,
             fermi_partition=fermi_partition,
             # SCF: PyTorch
             device=device,
@@ -291,6 +293,7 @@ class Config:
             fermi_etemp=args.fermi_etemp,
             fermi_maxiter=args.fermi_maxiter,
             fermi_thresh=args.fermi_thresh,
+            fermi_diff_order=args.fermi_diff_order,
             fermi_partition=args.fermi_partition,
             # Cache
             cache_enabled=args.cache_enabled,

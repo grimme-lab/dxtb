@@ -64,7 +64,7 @@ def test_fail(dtype: torch.dtype):
     # negative etemp
     with pytest.raises(ValueError):
         kt = torch.tensor(-1.0, **dd)
-        filling.get_fermi_occupation(nel, evals, kt)
+        filling.get_fermi_occupation(nel, evals.expand(2, -1), kt)
 
     # convergence fails
     with pytest.raises(RuntimeError):
@@ -644,11 +644,12 @@ def test_kt_must_be_scalar():
     filling.get_fermi_occupation(nab, emo, kt)
 
 
-def test_unresolvable_temperature():
+def test_tiny_temperature_single_precision() -> None:
     """
-    In single precision, a single ulp of the Fermi energy changes the number
-    of electrons by more than the threshold at tiny temperatures. This must
-    not pass silently.
+    In single precision, a single ulp of the (absolute) Fermi energy changes
+    the number of electrons by more than the threshold at tiny temperatures.
+    The search is relative to the initial guess, whose resolution suffices:
+    the degenerate pair shares the fractional electrons exactly.
     """
     dd: DD = {"device": DEVICE, "dtype": torch.float}
 
@@ -656,28 +657,40 @@ def test_unresolvable_temperature():
     nab = torch.tensor([2.5, 1.5], **dd)
     kt = torch.tensor(3.1e-7, **dd)
 
-    with pytest.raises(RuntimeError):
-        filling.get_fermi_occupation(nab, emo, kt)
+    # one ulp of the Fermi energy (at -0.5) moves 2 f (1 - f) / kT electrons
+    ulp = torch.finfo(torch.float).eps / 2
+    assert ulp * 2 * 0.25 * 0.75 / kt.item() > 2 * 1e-4
+
+    occ = filling.get_fermi_occupation(nab, emo, kt)
+    ref = torch.tensor(
+        [[1.0, 0.75, 0.75, 0.0, 0.0], [1.0, 0.25, 0.25, 0.0, 0.0]], **dd
+    )
+    assert (occ - ref).abs().max() <= 1e-6
 
 
-def test_nel_graph_not_reused():
+def test_degenerate_single_precision() -> None:
     """
-    The number of electrons is a constant. A graph attached to it (e.g., from
-    the previous SCF iteration) must not end up in the new occupation.
+    Almost degenerate orbitals at an absolute energy of a few Hartree (the 3d
+    shell of Mn in the SCF) in single precision: one ulp of the absolute
+    Fermi energy moves more electrons than the threshold, but the search
+    (relative to the initial guess) converges.
     """
-    dd: DD = {"device": DEVICE, "dtype": torch.double}
+    dd: DD = {"device": DEVICE, "dtype": torch.float}
 
-    nab, emo, kt = _channels("SiH4", dd, 5000.0)
-    prev = nab.clone().requires_grad_()
-    nel = (prev * 1.0).round()
+    emo = torch.tensor(
+        [-4.4926987, -4.4926891, -4.4926815, -4.4926419, -4.4926395, -2.30302],
+        **dd,
+    ).expand(2, -1)
+    nab = torch.tensor([5.0, 3.0], **dd)
+    kt = torch.tensor(300.0 * KELVIN2AU, **dd)
+    thr = 1e-4
 
-    for _ in range(2):
-        x = emo.clone().requires_grad_()
-        focc = filling.get_fermi_occupation(nel, x, kt)
-        focc.sum().backward()
+    # one ulp at -4.49 is 4.8e-7, about 5 * 0.24 / kT = 1260 electrons/Eh
+    ulp = 4.0 * torch.finfo(torch.float).eps / 2
+    assert ulp * 5 * 0.24 / kt.item() > 2 * thr
 
-        # the backward pass of the first call must not free the second
-        assert x.grad is not None
+    occ = filling.get_fermi_occupation(nab, emo, kt, thr=thr)
+    assert (occ.sum(-1) - nab).abs().max() <= thr
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -731,15 +744,13 @@ def test_host_reads(dtype: torch.dtype, host_reads: list[str]):
     """
     Each read of a tensor value synchronizes the device. There must be a
     single one for converged initial guesses and only one per few iterations
-    otherwise, not one per iteration. The only other read is the validation
-    of the temperature on the CPU, where nothing is synchronized.
+    otherwise, not one per iteration. The validation of the input and the
+    choice between aufbau and Fermi filling are part of the first one.
     """
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     def syncs() -> int:
-        others = [c for c in host_reads if c != "tolist"]
-        on_cpu = DEVICE is None or DEVICE.type == "cpu"
-        assert others == (["__bool__"] if on_cpu else [])
+        assert [c for c in host_reads if c != "tolist"] == []
         n = host_reads.count("tolist")
         host_reads.clear()
         return n
@@ -842,6 +853,33 @@ def test_aufbau_batch_padding():
     assert torch.equal(occ, torch.tensor([[1.0, 1.0, 1.0], [1.0, 0.0, 0.0]]))
 
 
+def test_aufbau_scalar_electrons_batch() -> None:
+    """A scalar number of electrons fills every system of a batch."""
+    occ = filling.get_aufbau_occupation(torch.tensor([3, 2]), torch.tensor(1.5))
+    assert torch.equal(occ, torch.tensor([[1.0, 0.5, 0.0], [1.0, 0.5, 0.0]]))
+
+    # the second system has only one orbital
+    occ = filling.get_aufbau_occupation(torch.tensor([3, 1]), torch.tensor(1.5))
+    assert torch.equal(occ, torch.tensor([[1.0, 0.5, 0.0], [1.0, 0.0, 0.0]]))
+
+
+@pytest.mark.cuda
+@pytest.mark.parametrize("ktemp", [0.0, 5000.0])
+def test_temperature_on_cpu(ktemp: float) -> None:
+    """A temperature on the CPU works with orbital energies on the GPU."""
+    dd: DD = {"device": torch.device("cuda"), "dtype": torch.double}
+
+    nab, emo, _ = _channels("SiH4", dd)
+    kt = torch.tensor(ktemp * KELVIN2AU, dtype=torch.double)
+    ref = filling.get_fermi_occupation(nab, emo, kt.to(emo.device))
+    occ = filling.get_fermi_occupation(nab, emo, kt)
+    assert occ.device == emo.device
+    assert torch.equal(occ, ref)
+
+    with pytest.raises(ValueError):
+        filling.get_fermi_occupation(nab, emo, -kt - 1.0)
+
+
 @pytest.mark.parametrize("nel", [[2.0, 1.0], [1.5, 0.5]])
 def test_third_derivative(nel: list[float]):
     """
@@ -931,7 +969,9 @@ def test_full_channel(dtype: torch.dtype, padded: bool):
     nab = torch.tensor([[1.0, 1.0]], **dd)
     kt = torch.tensor(300.0 * KELVIN2AU, **dd)
 
-    occ = filling.get_fermi_occupation(nab, emo, kt, mask=mask if padded else None)
+    occ = filling.get_fermi_occupation(
+        nab, emo, kt, mask=mask if padded else None
+    )
     assert (occ[..., 0] == 1.0).all()
     assert (occ[..., 1:] == 0.0).all()
 
@@ -944,7 +984,9 @@ def test_full_channel(dtype: torch.dtype, padded: bool):
 
     # the other channel is still smeared
     nab = torch.tensor([[1.0, 0.5]], **dd)
-    occ = filling.get_fermi_occupation(nab, emo, kt, mask=mask if padded else None)
+    occ = filling.get_fermi_occupation(
+        nab, emo, kt, mask=mask if padded else None
+    )
     assert (occ[..., 0, 0] == 1.0).all()
     assert pytest.approx(0.5, abs=_default_thr(dtype)) == occ[0, 1].sum().item()
 

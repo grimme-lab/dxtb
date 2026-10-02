@@ -27,14 +27,11 @@ with too few steps to show that it detects the problem.
 
 from __future__ import annotations
 
-from contextlib import contextmanager
-
 import pytest
 import torch
 
 from dxtb import GFN1_XTB, Calculator
 from dxtb._src.typing import DD, Tensor
-from dxtb._src.wavefunction import filling
 
 from ..conftest import DEVICE
 
@@ -70,7 +67,12 @@ TOO_FEW_HESSIAN = {"C2": 1e-2, "BeH2": 1e-5}
 MODES = ["full", "implicit", "implicit_nonpure", "experimental"]
 
 
-def _setup(name: str, ktemp: float, mode: str):
+def _setup(name: str, ktemp: float, mode: str, steps: int | None = None):
+    """
+    Positions and energy function of a system. ``steps`` differentiable
+    Newton steps of the Fermi energy are exact through order ``2**steps - 1``
+    (``None`` keeps the default derivative order).
+    """
     numbers, positions, spin = SYSTEMS[name]
     dd: DD = {"device": DEVICE, "dtype": torch.double}
 
@@ -83,6 +85,8 @@ def _setup(name: str, ktemp: float, mode: str):
         "scf_mode": mode,
         "verbosity": 0,
     }
+    if steps is not None:
+        opts["fermi_diff_order"] = 2**steps - 1
     numbers_ = torch.tensor(numbers, device=DEVICE)
 
     def energy(pos: Tensor) -> Tensor:
@@ -95,22 +99,6 @@ def _setup(name: str, ktemp: float, mode: str):
 def _gradient(energy, pos: Tensor, create_graph: bool = False) -> Tensor:
     (grad,) = torch.autograd.grad(energy(pos), pos, create_graph=create_graph)
     return grad
-
-
-@contextmanager
-def _newton_steps(steps: int | None):
-    """
-    Number of differentiable Newton steps in the SCF, which does not pass the
-    derivative order of the Fermi occupation yet: ``k`` steps are exact
-    through order ``2**k - 1``. ``None`` keeps the production default.
-    """
-    old = filling._DEFAULT_DIFF_ORDER
-    if steps is not None:
-        filling._DEFAULT_DIFF_ORDER = 2**steps - 1
-    try:
-        yield
-    finally:
-        filling._DEFAULT_DIFF_ORDER = old
 
 
 _REFERENCES: dict = {}
@@ -139,9 +127,10 @@ def _hessian_reference(name: str, ktemp: float) -> Tensor:
     key = ("hessian", name, ktemp)
     if key not in _REFERENCES:
         pos, energy = _setup(name, ktemp, "implicit")
-        ref = torch.zeros(pos.numel(), pos.numel(), dtype=pos.dtype)
+        dd: DD = {"device": pos.device, "dtype": pos.dtype}
+        ref = torch.zeros(pos.numel(), pos.numel(), **dd)
         for i in range(pos.numel()):
-            d = torch.zeros(pos.numel(), dtype=pos.dtype)
+            d = torch.zeros(pos.numel(), **dd)
             d[i] = STEP
             d = d.view_as(pos)
             gp = _gradient(energy, (pos + d).requires_grad_())
@@ -155,10 +144,9 @@ def _forces_error(
     name: str, ktemp: float, mode: str, steps: int | None
 ) -> float:
     ref = _forces_reference(name, ktemp)
-    pos, energy = _setup(name, ktemp, mode)
+    pos, energy = _setup(name, ktemp, mode, steps)
 
-    with _newton_steps(steps):
-        grad = _gradient(energy, pos.clone().requires_grad_())
+    grad = _gradient(energy, pos.clone().requires_grad_())
     return (grad - ref).abs().max().item()
 
 
@@ -166,17 +154,16 @@ def _hessian_error(
     name: str, ktemp: float, mode: str, steps: int | None
 ) -> float:
     ref = _hessian_reference(name, ktemp)
-    pos, energy = _setup(name, ktemp, mode)
+    pos, energy = _setup(name, ktemp, mode, steps)
 
-    with _newton_steps(steps):
-        p = pos.clone().requires_grad_()
-        grad = _gradient(energy, p, create_graph=True)
-        hess = torch.stack(
-            [
-                torch.autograd.grad(g, p, retain_graph=True)[0].flatten()
-                for g in grad.flatten()
-            ]
-        )
+    p = pos.clone().requires_grad_()
+    grad = _gradient(energy, p, create_graph=True)
+    hess = torch.stack(
+        [
+            torch.autograd.grad(g, p, retain_graph=True)[0].flatten()
+            for g in grad.flatten()
+        ]
+    )
     return (hess - ref).abs().max().item()
 
 
@@ -223,27 +210,18 @@ def test_hessian(name: str, ktemp: float, mode: str) -> None:
 # of steps (three or five steps give the same), and for the implicit mode it is
 # 3.6e-3 without smearing (and at 300 K) as well. It is the linearly
 # convergent case (single-shot: Bolte, Pauwels and Vaiter, Corollary 1) or the
-# accuracy of the implicit second derivative. The errors are recorded here.
+# accuracy of the implicit second derivative. The measured errors must not
+# grow by more than a factor of 10.
+NOT_EXACT = {
+    "implicit": 3.4e-4,
+    "implicit_nonpure": 1.5e-5,
+    "experimental": 5.4e-4,
+}
+
+
 @pytest.mark.grad
 @pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize(
-    "mode",
-    [
-        pytest.param(
-            "implicit",
-            marks=pytest.mark.xfail(reason="error 3.4e-4", strict=False),
-        ),
-        pytest.param(
-            "implicit_nonpure",
-            marks=pytest.mark.xfail(reason="error 1.5e-5", strict=False),
-        ),
-        pytest.param(
-            "experimental",
-            marks=pytest.mark.xfail(
-                reason="single-shot, not exact: error 5.4e-4", strict=False
-            ),
-        ),
-    ],
-)
+@pytest.mark.parametrize("mode", NOT_EXACT)
 def test_hessian_not_exact(mode: str) -> None:
-    assert _hessian_error("BeH2", 25000.0, mode, None) < 5e-8
+    """The inexact Hessians of BeH2 stay at their recorded errors."""
+    assert _hessian_error("BeH2", 25000.0, mode, None) < 10 * NOT_EXACT[mode]

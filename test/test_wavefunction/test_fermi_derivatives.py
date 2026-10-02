@@ -30,13 +30,15 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 
+import mpmath
 import numpy as np
 import pytest
 import torch
 from scipy.optimize import brentq
-from torch.func import jacrev, jvp
 from tad_mctc.units import KELVIN2AU
+from torch.func import jacrev, jvp
 
+from dxtb._src.constants import defaults
 from dxtb._src.typing import DD
 from dxtb._src.wavefunction import filling
 
@@ -69,16 +71,15 @@ STEPS = [0, 1, 2]
 RTOL = 1e-8
 # Additional absolute tolerance in units of THR / kT**n for the n-th
 # derivative. It covers channels with (almost) no thermal weight, for which the
-# solver stops at the threshold without moving the Fermi energy, i.e., the
-# start deviates from the root by more than kT. Then the derivative of the
-# Fermi energy is dropped (see `_MAX_DIFF_STEP_KT`), an error of the order of
-# the (negligible) derivatives themselves. The largest error observed is 1e-4.
+# derivative of the Fermi energy is dropped (see `_diff_floor`), an error of the
+# order of the (negligible) derivatives themselves.
 ATOL = 1e-2
 # Violation of the identity at order 2**k relative to the scale, required in at
 # least one channel with fractional occupations (sum of f(1-f) of at least
-# MIN_WEIGHT).
+# MIN_WEIGHT) and curvature (see `curvature`, at least MIN_CURVATURE).
 LOWER = 1e-8
 MIN_WEIGHT = 1e-2
+MIN_CURVATURE = 1e-4
 
 
 ###############################################################################
@@ -119,8 +120,8 @@ def fixed_fermi_energy(offset: float = 0.0):
 
     def search(*args, **kwargs):
         if not stored:
-            e_fermi, flags = real(*args, **kwargs)
-            stored.append((e_fermi.detach() + offset, flags))
+            (ref, e_fermi), invalid, flags = real(*args, **kwargs)
+            stored.append(((ref, e_fermi + offset), invalid, flags))
         return stored[0]
 
     filling._fermi_energy_search = search
@@ -267,6 +268,66 @@ def thermal_weight(case: Case, ktemp: float) -> torch.Tensor:
     return (occ * (1.0 - occ)).sum(-1)
 
 
+def exact_occupation(case: Case, ktemp: float):
+    """
+    Occupations ``f`` and thermal weights ``w = f (1 - f)`` at the exact
+    Fermi energy of each channel (bisection in high precision). The weights
+    ``occ * (1 - occ)`` from the occupations lose the tails of the occupied
+    orbitals to rounding, which the derivatives with respect to the
+    electrons depend on in a gap.
+    """
+    key = ("weights", id(case), ktemp)
+    if key in _CACHE:
+        return _CACHE[key]
+
+    kt = mpmath.mpf(ktemp * KELVIN2AU)
+    emo = case.emo.expand(*case.nab.shape, -1).cpu()
+    valid = case.valid().expand(*case.nab.shape, -1).cpu()
+    f = torch.zeros(emo.shape, dtype=torch.double)
+    w = torch.zeros(emo.shape, dtype=torch.double)
+
+    with mpmath.workdps(120):
+        for idx in np.ndindex(*case.nab.shape):
+            nel = mpmath.mpf(case.nab[idx].item())
+            e = [
+                mpmath.mpf(x)
+                for x, v in zip(emo[idx].tolist(), valid[idx])
+                if v
+            ]
+
+            def count(mu):
+                return sum(1 / (1 + mpmath.exp((x - mu) / kt)) for x in e)
+
+            lo, hi = min(e) - 100 * kt, max(e) + 100 * kt
+            for _ in range(200):
+                mid = (lo + hi) / 2
+                lo, hi = (mid, hi) if count(mid) < nel else (lo, mid)
+            mu = (lo + hi) / 2
+
+            fs = [1 / (1 + mpmath.exp((x - mu) / kt)) for x in e]
+            hs = [1 / (1 + mpmath.exp((mu - x) / kt)) for x in e]
+            f[idx][valid[idx]] = torch.tensor(
+                [float(x) for x in fs], dtype=torch.double
+            )
+            w[idx][valid[idx]] = torch.tensor(
+                [float(x * y) for x, y in zip(fs, hs)], dtype=torch.double
+            )
+
+    _CACHE[key] = f.to(DEVICE), w.to(DEVICE)
+    return _CACHE[key]
+
+
+def curvature(case: Case, ktemp: float) -> torch.Tensor:
+    """
+    Relative curvature ``kT g'' / g'`` of the number of electrons per
+    channel. The violation at order ``2**k`` is proportional to it: for a
+    single orbital at ``f = 1/2`` (e.g., fractional electrons at low
+    temperature), Newton is exact to higher orders by symmetry.
+    """
+    f, w = exact_occupation(case, ktemp)
+    return (w * (1.0 - 2.0 * f)).sum(-1).abs() / w.sum(-1)
+
+
 ###############################################################################
 # tests
 ###############################################################################
@@ -300,6 +361,7 @@ def _electron_conservation(
         assert (total <= tolerance(d[n], n, kt)).all(), (n, total)
 
     fractional = thermal_weight(case, ktemp) >= MIN_WEIGHT
+    fractional &= curvature(case, ktemp) >= MIN_CURVATURE
     if lower and case.generic and fractional.any():
         # the coefficient depends on the channel and the direction, i.e., the
         # violation has to show up in at least one channel
@@ -465,9 +527,10 @@ def test_start_error_slope():
 
 def test_wide_gap():
     """
-    Without thermal weight (``|x| > 50``), the occupations are exact integers
-    and all derivatives vanish exactly (no NaN from the vanishing derivative
-    of the number of electrons).
+    Without thermal weight (a gap of about 950 kT, below the floor of the
+    steps), the occupations are integers up to their tails and all
+    derivatives are negligible (no NaN from the vanishing derivative of the
+    number of electrons).
     """
     emo = torch.tensor([-0.9, -0.8, -0.7, -0.6, 0.3, 0.4], **dd)
     emo = emo.expand(1, 2, -1).clone()
@@ -481,9 +544,11 @@ def test_wide_gap():
         v.to(**dd),
         3,
     )
-    assert torch.equal(d[0], (torch.arange(6, **dd) < 4).expand(1, 2, -1) * 1.0)
+    ref = (torch.arange(6, **dd) < 4).expand(1, 2, -1) * 1.0
+    assert (d[0] - ref).abs().max() <= 1e-150
     for n in (1, 2, 3):
-        assert (d[n] == 0).all()
+        assert torch.isfinite(d[n]).all()
+        assert d[n].abs().max() <= 1e-150
 
 
 def test_empty_channel():
@@ -535,7 +600,9 @@ def test_temperature_derivative():
         def fermi(mu: float) -> np.ndarray:
             return 1.0 / (1.0 + np.exp((e - mu) / k))
 
-        mu = brentq(lambda m: fermi(m).sum() - nab[0, c].item(), -5, 5, xtol=1e-15)
+        mu = brentq(
+            lambda m: fermi(m).sum() - nab[0, c].item(), -5, 5, xtol=1e-15
+        )
         w = fermi(mu) * (1.0 - fermi(mu))
         dmu = (w * (mu - e) / k).sum() / w.sum()
         ref[0, c] = torch.tensor(w * (dmu / k - (mu - e) / k**2), **dd)
@@ -670,8 +737,8 @@ def test_diff_order_invalid(order):
 
 def test_diff_order_default():
     """The default is order 3 (two steps), and the values do not change."""
-    assert filling._DEFAULT_DIFF_ORDER == 3
-    assert filling._diff_steps(filling._DEFAULT_DIFF_ORDER) == 2
+    assert defaults.FERMI_DIFF_ORDER == 3
+    assert filling._diff_steps(defaults.FERMI_DIFF_ORDER) == 2
 
     case = CASES["fractional"]
     kt = case.kt(5000.0)
@@ -702,3 +769,214 @@ def test_diff_order_not_power_of_two(name: str, order: int):
         # each orbital agrees with four steps (exact through order 15)
         tol = tolerance(ref[n], n, kt).unsqueeze(-1)
         assert ((d[n] - ref[n]).abs() <= tol).all(), n
+
+
+###############################################################################
+# derivatives with respect to the number of electrons
+###############################################################################
+
+
+def _electron_derivs(case: Case, ktemp: float, steps: int, nmax: int):
+    """Derivatives of the occupations along a direction of `nel`."""
+    kt = case.kt(ktemp)
+    g = torch.Generator().manual_seed(11)
+    v = torch.rand(case.nab.shape, generator=g, dtype=torch.double) + 0.5
+    v = v.to(DEVICE)
+
+    def fcn(n: torch.Tensor) -> torch.Tensor:
+        return filling.get_fermi_occupation(
+            n, case.emo, kt, mask=case.mask, diff_order=order_of(steps)
+        )
+
+    with fixed_fermi_energy():
+        fcn(case.nab)  # converged Fermi energy at t = 0
+        return v, directional_derivs(fcn, case.nab, v, nmax)
+
+
+def _natural_scale(v: torch.Tensor, weight: torch.Tensor, n: int):
+    """
+    Scale of the n-th derivative along `v` of the electrons of a channel
+    with the thermal weight `weight`: each derivative brings a factor of
+    ``d mu / d N ~ kT / weight``, and each derivative of the Fermi function
+    one of ``1 / kT``.
+    """
+    return v.abs() * (v.abs() / weight) ** (n - 1)
+
+
+def _above_floor(case: Case, ktemp: float, steps: int) -> torch.Tensor:
+    """
+    Channels whose derivative of the number of electrons is above the floor
+    of the differentiable Newton steps (see `_diff_floor`), with a factor of
+    10 as a margin for the difference between the weights.
+    """
+    _, w = exact_occupation(case, ktemp)
+    deriv = w.sum(-1) / case.kt(ktemp)
+    return deriv >= 10 * filling._diff_floor(torch.double, steps)
+
+
+@pytest.mark.parametrize("steps", [1, 2, 3])
+@pytest.mark.parametrize("ktemp", TEMPERATURES)
+@pytest.mark.parametrize("name", ["fractional", "degenerate", "batch_padding"])
+def test_electron_number_derivatives(name: str, ktemp: float, steps: int):
+    """
+    The occupations follow the number of electrons: the first derivative of
+    their sum is the direction itself, all higher ones vanish. ``k`` steps
+    are exact through order ``2**k - 1`` (the proof covers any parameter of
+    the Newton map) and violate the identity at order ``2**k``. This also
+    holds in gaps (no thermal weight within the threshold), down to the floor
+    of the steps. Below it, the derivatives are finite.
+    """
+    order = 2**steps
+    case = CASES[name]
+    v, d = _electron_derivs(case, ktemp, steps, order)
+    _, w = exact_occupation(case, ktemp)
+    weight = w.sum(-1)
+    exact = _above_floor(case, ktemp, steps)
+
+    total = d[1].sum(-1)
+    tol = RTOL * torch.maximum(scale_of(d[1]), v.abs())
+    assert ((total - v).abs() <= tol)[exact].all(), (total, v)
+
+    for n in range(2, order):
+        total = d[n].sum(-1).abs()
+        nat = _natural_scale(v, weight, n)
+        tol = RTOL * torch.maximum(scale_of(d[n]), nat)
+        assert (total <= tol)[exact].all(), (n, total)
+
+    for n in range(1, order + 1):
+        assert torch.isfinite(d[n]).all(), n
+
+    # a single orbital at f = 1/2 has vanishing even derivatives (no scale)
+    scale = scale_of(d[order])
+    measurable = exact & (weight >= MIN_WEIGHT) & (scale > 0.0)
+    measurable &= curvature(case, ktemp) >= MIN_CURVATURE
+    if case.generic and measurable.any():
+        ratio = d[order].sum(-1).abs() / torch.where(measurable, scale, 1.0)
+        assert ratio[measurable].max() >= LOWER, ratio
+
+
+@pytest.mark.parametrize("ktemp", TEMPERATURES)
+@pytest.mark.parametrize("name", ["fractional", "degenerate", "batch_padding"])
+def test_electron_number_first_order(name: str, ktemp: float):
+    """
+    First derivative in closed form: an additional electron is distributed
+    according to the thermal weights, ``d f_i / d N = w_i / sum_j w_j`` with
+    ``w = f (1 - f)``, and it does not change the other channels. In a gap,
+    the weights are tails, and the ratio depends on the position of the
+    Fermi energy, which the threshold of the search does not determine.
+    """
+    case = CASES[name]
+    kt = case.kt(ktemp)
+    exact = _above_floor(case, ktemp, filling._diff_steps(3))
+
+    def fcn(n: torch.Tensor) -> torch.Tensor:
+        return filling.get_fermi_occupation(n, case.emo, kt, mask=case.mask)
+
+    jac = jacrev(fcn)(case.nab)  # [b, 2, n, b, 2]
+    assert torch.isfinite(jac).all()
+
+    _, w = exact_occupation(case, ktemp)
+    ref = w / w.sum(-1, keepdim=True)
+    nb, nc = case.nab.shape
+    for b in range(nb):
+        for c in range(nc):
+            if not exact[b, c]:
+                continue
+            expected = torch.zeros_like(ref)
+            expected[b, c] = ref[b, c]
+            assert (jac[..., b, c] - expected).abs().max() <= 1e-10, (b, c)
+
+
+@pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.parametrize("gap", [60.0, 150.0, 300.0])
+def test_electron_number_gap(dtype: torch.dtype, gap: float):
+    """
+    Integer electrons in a gap of `gap` kT: the thermal weight is far below
+    the threshold (1e-12 to 1e-64), but an additional electron still goes to
+    the HOMO and LUMO in the exact ratio. Beyond the floor of the steps
+    (here: all gaps in single precision), the derivative is zero, and all
+    derivatives are finite.
+    """
+    kt = 1e-3
+    half = gap * kt / 2
+    energies = [-half - 0.3, -half - 0.05, -half, half, half + 0.02, half + 0.4]
+    case = Case([[3.0, 3.0]], torch.tensor(energies).expand(1, 2, -1))
+
+    emo = case.emo.to(dtype)
+    ktt = torch.tensor(kt, dtype=dtype, device=DEVICE)
+
+    def fcn(n: torch.Tensor) -> torch.Tensor:
+        return filling.get_fermi_occupation(n, emo, ktt)
+
+    jac = jacrev(fcn)(case.nab.to(dtype))[0, 0, :, 0, 0]  # alpha by alpha
+    assert torch.isfinite(jac).all()
+
+    _, w = exact_occupation(case, kt / KELVIN2AU)
+    ref = (w / w.sum(-1, keepdim=True))[0, 0]
+    floor = filling._diff_floor(dtype, filling._diff_steps(3))
+    if w[0, 0].sum() / kt >= 10 * floor:
+        tol = 1e-12 if dtype == torch.double else 1e-5
+        assert (jac.double() - ref).abs().max() <= tol
+    else:
+        assert (jac == 0).all()
+
+    # higher orders along the electrons are finite, too
+    v = torch.ones_like(case.nab).to(dtype)
+    one = torch.ones((), dtype=dtype, device=DEVICE)
+
+    def nth(n: int):
+        def f(t: torch.Tensor) -> torch.Tensor:
+            if n == 0:
+                return fcn(case.nab.to(dtype) + t * v)
+            return jvp(nth(n - 1), (t,), (one,))[1]
+
+        return f
+
+    for n in range(1, 5):
+        assert torch.isfinite(
+            nth(n)(torch.zeros((), **{**dd, "dtype": dtype}))
+        ).all()
+
+
+def test_electron_number_graph():
+    """
+    The graph of `nel` is kept (it was detached before): the chemical
+    potential and Fukui functions are available by autograd. Channels without
+    electrons or completely filled channels do not depend on it.
+    """
+    emo = torch.tensor([-0.6, -0.3, -0.25, 0.1], **dd).expand(3, 2, -1)
+    nab = torch.tensor([[2.5, 1.5], [4.0, 1.0], [2.0, 0.0]], **dd)
+    nab.requires_grad_()
+    kt = torch.tensor(5000.0 * KELVIN2AU, **dd)
+
+    occ = filling.get_fermi_occupation(nab, emo, kt)
+    assert occ.requires_grad
+
+    (grad,) = torch.autograd.grad(occ.sum(), nab)
+    ref = torch.tensor([[1.0, 1.0], [0.0, 1.0], [1.0, 0.0]], **dd)
+    assert (grad - ref).abs().max() <= 1e-12
+
+
+@pytest.mark.parametrize("padding", [False, True])
+def test_electron_number_zero_temperature(padding: bool):
+    """
+    At zero temperature, only the partially occupied orbital changes. For
+    integer electrons, the derivative belongs to the lowest empty orbital
+    (adding electrons), i.e., the derivatives sum to one in both cases.
+    """
+    emo = torch.tensor([-0.6, -0.3, 0.0, -0.25, 0.1], **dd).expand(2, -1)
+    mask = torch.tensor([1.0, 1.0, 0.0, 1.0, 1.0], **dd).expand(2, -1)
+    nab = torch.tensor([2.5, 1.0], **dd)
+    kt = torch.tensor(0.0, **dd)
+
+    def fcn(n: torch.Tensor) -> torch.Tensor:
+        m = mask if padding else None
+        return filling.get_fermi_occupation(n, emo, kt, mask=m)
+
+    jac = jacrev(fcn)(nab)  # [2, n, 2]
+    # the padded orbital (index 2) is skipped with a mask
+    alpha, beta = (3, 1) if padding else (2, 1)
+    ref = torch.zeros_like(jac)
+    ref[0, alpha, 0] = 1.0
+    ref[1, beta, 1] = 1.0
+    assert torch.equal(jac, ref)

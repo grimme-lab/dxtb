@@ -57,6 +57,9 @@ def test_defaults() -> None:
     assert isinstance(args.fermi_maxiter, int)
     assert args.fermi_maxiter == defaults.FERMI_MAXITER
 
+    assert isinstance(args.fermi_diff_order, int)
+    assert args.fermi_diff_order == defaults.FERMI_DIFF_ORDER
+
     assert isinstance(args.fermi_partition, int)
     assert args.fermi_partition == defaults.FERMI_PARTITION
 
@@ -75,7 +78,15 @@ def test_defaults() -> None:
 
 
 @pytest.mark.parametrize(
-    "option", ["chrg", "spin", "maxiter", "verbosity", "fermi_maxiter"]
+    "option",
+    [
+        "chrg",
+        "spin",
+        "maxiter",
+        "verbosity",
+        "fermi_maxiter",
+        "fermi_diff_order",
+    ],
 )
 def test_int(option: str) -> None:
     value = 1

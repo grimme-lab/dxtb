@@ -20,6 +20,7 @@ Test integral configuration.
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 import torch
 
@@ -60,6 +61,7 @@ def test_default() -> None:
     assert cfg.scf.fermi.etemp == defaults.FERMI_ETEMP
     assert cfg.scf.fermi.maxiter == defaults.FERMI_MAXITER
     assert cfg.scf.fermi.thresh == defaults.FERMI_THRESH
+    assert cfg.scf.fermi.diff_order == defaults.FERMI_DIFF_ORDER
     assert cfg.scf.fermi.partition == defaults.FERMI_PARTITION
 
     assert cfg.cache.enabled == defaults.CACHE_ENABLED
@@ -108,6 +110,27 @@ def test_method() -> None:
 def test_method_fail() -> None:
     with pytest.raises(ValueError):
         Cfg(method="invalid")
+
+
+def test_fermi_diff_order() -> None:
+    """The derivative order of the Fermi occupations is passed through."""
+    cfg = Cfg(fermi_diff_order=np.int64(1))
+    assert cfg.scf.fermi.diff_order == 1
+    assert isinstance(cfg.scf.fermi.diff_order, int)
+    assert cfg.scf.fermi.info()["Fermi Smearing"]["Derivative order"] == 1
+
+
+@pytest.mark.parametrize("order", [True, 1.5, "2"])
+def test_fermi_diff_order_type_fail(order) -> None:
+    """The derivative order must be an integer."""
+    with pytest.raises(TypeError):
+        Cfg(fermi_diff_order=order)
+
+
+def test_fermi_diff_order_value_fail() -> None:
+    """The derivative order must not be negative."""
+    with pytest.raises(ValueError):
+        Cfg(fermi_diff_order=-1)
 
     with pytest.raises(ValueError):
         Cfg(method=-999)

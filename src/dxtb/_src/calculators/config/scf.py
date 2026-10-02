@@ -20,6 +20,8 @@ SCF configuration.
 
 from __future__ import annotations
 
+from operator import index
+
 import torch
 
 from dxtb import OutputHandler
@@ -130,6 +132,9 @@ class ConfigSCF:
     fermi_thresh: dict
     """Threshold for Fermi iterations."""
 
+    fermi_diff_order: int
+    """Highest order of exact derivatives of the Fermi occupations."""
+
     fermi_partition: int
     """Partitioning scheme for electronic free energy."""
 
@@ -171,6 +176,7 @@ class ConfigSCF:
         fermi_etemp: float = defaults.FERMI_ETEMP,
         fermi_maxiter: int = defaults.FERMI_MAXITER,
         fermi_thresh: float | int | None = defaults.FERMI_THRESH,
+        fermi_diff_order: int = defaults.FERMI_DIFF_ORDER,
         fermi_partition: str | int = defaults.FERMI_PARTITION,
         # PyTorch
         device: torch.device = get_default_device(),
@@ -354,6 +360,7 @@ class ConfigSCF:
             etemp=fermi_etemp,
             maxiter=fermi_maxiter,
             thresh=fermi_thresh,
+            diff_order=fermi_diff_order,
             partition=fermi_partition,
             device=device,
             dtype=dtype,
@@ -460,6 +467,12 @@ class ConfigFermi:
     thresh: float | int | None
     """Float data type dependent threshold for Fermi iterations."""
 
+    diff_order: int
+    """
+    Highest order of the derivatives of the Fermi occupations that is exact.
+    It sets the number of differentiable Newton steps of the Fermi energy.
+    """
+
     partition: int
     """Partitioning scheme for electronic free energy."""
 
@@ -477,6 +490,7 @@ class ConfigFermi:
         etemp: float | int = defaults.FERMI_ETEMP,
         maxiter: int = defaults.FERMI_MAXITER,
         thresh: float | int | None = defaults.FERMI_THRESH,
+        diff_order: int = defaults.FERMI_DIFF_ORDER,
         partition: str | int = defaults.FERMI_PARTITION,
         # PyTorch
         device: torch.device = get_default_device(),
@@ -487,6 +501,24 @@ class ConfigFermi:
         self.etemp = etemp
         self.maxiter = maxiter
         self.thresh = thresh
+
+        # integers of any kind (e.g., NumPy), but not bool
+        msg = (
+            "The derivative order of the Fermi occupations must be of type "
+            f"'int', but '{type(diff_order)}' was given."
+        )
+        if isinstance(diff_order, bool):
+            raise TypeError(msg)
+        try:
+            diff_order = index(diff_order)
+        except TypeError as e:
+            raise TypeError(msg) from e
+        if diff_order < 0:
+            raise ValueError(
+                "The derivative order of the Fermi occupations must not be "
+                f"negative ({diff_order})."
+            )
+        self.diff_order = diff_order
 
         if isinstance(partition, str):
             if partition.casefold() in labels.FERMI_PARTITION_EQUAL_STRS:
@@ -539,6 +571,7 @@ class ConfigFermi:
                 "Temperature": self.etemp,
                 "Maxiter": self.maxiter,
                 "Threshold": self.thresh,
+                "Derivative order": self.diff_order,
                 "Partioning": labels.FERMI_PARTITION_MAP[self.partition],
             }
         }

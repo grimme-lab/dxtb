@@ -293,8 +293,9 @@ def hamiltonian_to_density(
         hamiltonian, data.ints.overlap, cfg.eigen_options
     )
 
-    # round to integers to avoid numerical errors
-    nel = data.occupation.sum(-1).round()
+    # round to integers to avoid numerical errors; the occupation of the
+    # previous step is not part of the graph of the new one
+    nel = data.occupation.sum(-1).round().detach()
 
     # expand emo/mask to second dim (for alpha/beta electrons)
     emo = data.evals.unsqueeze(-2).expand([*nel.shape, -1])
@@ -311,6 +312,7 @@ def hamiltonian_to_density(
             mask=mask,
             maxiter=cfg.fermi.maxiter,
             thr=cfg.fermi.thresh,
+            diff_order=cfg.fermi.diff_order,
         )
 
         # check if number of electrons is still correct
