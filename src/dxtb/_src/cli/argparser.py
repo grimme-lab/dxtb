@@ -344,7 +344,16 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         "--fermi-thresh",
         type=float,
         default=defaults.FERMI_THRESH,
-        help="R|Threshold for Fermi iterations.",
+        help="R|Threshold for the number of electrons in Fermi smearing "
+        "(default: dtype dependent).",
+    )
+    p.add_argument(
+        "--fermi_diff_order",
+        "--fermi-diff-order",
+        action=action_not_less_than(0),
+        type=int,
+        default=defaults.FERMI_DIFF_ORDER,
+        help="R|Highest order of exact derivatives of the Fermi occupations.",
     )
 
     # SCF

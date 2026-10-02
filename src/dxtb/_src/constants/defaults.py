@@ -260,8 +260,17 @@ FERMI_MAXITER = 200
 
 FERMI_THRESH = None
 """
-Convergence thresholds for different float data types.
-``None`` uses sqrt of machine epsilon.
+Convergence threshold for the number of electrons in Fermi smearing.
+``None`` uses ``min(sqrt(eps), 1e5 * eps, 1e-4)`` of the float data type,
+i.e., about 2.2e-11 in double and 1e-4 in single precision.
+"""
+
+FERMI_DIFF_ORDER = 3
+"""
+Highest order of the derivatives of the Fermi occupations that is exact
+(3: forces, Hessians, polarizabilities and first hyperpolarizabilities).
+Order ``n`` needs ``ceil(log2(n + 1))`` differentiable Newton steps of the
+Fermi energy per SCF iteration, e.g., one for forces only.
 """
 
 FERMI_PARTITION = labels.FERMI_PARTITION_EQUAL

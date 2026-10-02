@@ -88,10 +88,14 @@ def _get_tensor_memory(
         if tensor.is_sparse:
             continue
 
-        storage = tensor.untyped_storage()
+        # functorch wrappers (e.g., leftovers of `jacrev`) have no storage
+        try:
+            storage = tensor.untyped_storage()
+            data_ptr = storage.data_ptr()
+        except RuntimeError:
+            continue
 
         # check if it has been visited
-        data_ptr = storage.data_ptr()
         if data_ptr in visited_data:
             continue
         visited_data.add(data_ptr)

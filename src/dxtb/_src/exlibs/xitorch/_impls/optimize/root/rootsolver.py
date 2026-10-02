@@ -136,7 +136,12 @@ def _nonlin_solver(
     assert isinstance(y_norm, torch.Tensor)
 
     stop_cond = TerminationCondition(f_tol, f_rtol, y_norm, x_tol, x_rtol)
-    if y_norm == 0:
+
+    # The guess is a root if its residual is zero up to the precision of the
+    # tolerance (e.g., a neutral atom, where only the far tails of the Fermi
+    # function remain). Iterating would be harmful: the initial Jacobian is
+    # scaled by `1 / y_norm`, i.e., the first step would be arbitrarily long.
+    if y_norm <= stop_cond.f_tol * torch.finfo(y.dtype).eps:
         return x.reshape(xshape)
 
     # set up the jacobian
