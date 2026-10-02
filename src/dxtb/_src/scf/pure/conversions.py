@@ -318,7 +318,7 @@ def hamiltonian_to_density(
 
         # check if number of electrons is still correct
         _nel = data.occupation.sum(-1)
-        if torch.any(torch.abs(nel - _nel.round(decimals=3)) > 1e-4):
+        if torch.any(torch.abs(nel - _nel) > 1e-4):
             raise RuntimeError(
                 f"Number of electrons changed during Fermi smearing "
                 f"({nel} -> {_nel})."
