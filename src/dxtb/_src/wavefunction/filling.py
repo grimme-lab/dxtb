@@ -89,6 +89,34 @@ def _integer_tol(dtype: torch.dtype) -> float:
     return torch.finfo(dtype).resolution * 5
 
 
+def _read_flags(x: Tensor) -> list[bool]:
+    """
+    Read a 1D boolean tensor on the host with a single synchronization.
+
+    ``Tensor.tolist`` needs a data pointer, which tensors within
+    `torch.func.jacrev` do not have in some PyTorch versions (e.g., 2.4), not
+    even after peeling off the wrappers. ``Tensor.item`` goes through the
+    dispatcher and works, hence the flags are packed into one integer. The
+    search is not differentiated, i.e., the values are all that is needed.
+
+    Parameters
+    ----------
+    x : Tensor
+        Boolean tensor with at most 63 elements.
+
+    Returns
+    -------
+    list[bool]
+        Values of the tensor.
+    """
+    n = x.numel()
+    assert n <= 63, "Flags do not fit into a 64-bit integer."
+
+    weights = 2 ** torch.arange(n, device=x.device, dtype=torch.int64)
+    packed = int((x.to(torch.int64) * weights).sum().item())
+    return [bool((packed >> i) & 1) for i in range(n)]
+
+
 def _sqrttiny(dtype: torch.dtype) -> float:
     """
     Smallest derivative of the Fermi function that is still divided by.
@@ -1152,12 +1180,11 @@ def _fermi_energy_search(
         # need to be read once
         if it % _CHECK_EVERY == 0 or it == maxiter:
             if it == 0:
-                all_done, *read = torch.cat(
-                    [torch.all(done).unsqueeze(0), checks, flags]
-                ).tolist()
-                read = [bool(i) for i in read]
+                all_done, *read = _read_flags(
+                    torch.cat([torch.all(done).unsqueeze(0), checks, flags])
+                )
             else:
-                all_done = torch.all(done).tolist()
+                all_done = bool(torch.all(done).item())
 
             invalid, further = read[: checks.numel()], read[checks.numel() :]
             if all_done or any(invalid):
@@ -1183,7 +1210,8 @@ def _fermi_energy_search(
     msg = "Fermi energy failed to converge"
     if resid is not None and done is not None:
         # report the entries (batch and channel index) that did not converge
-        bad = (~done).squeeze(-1).nonzero().tolist()
+        idx = (~done).squeeze(-1).nonzero()
+        bad = [[int(i.item()) for i in row.unbind(0)] for row in idx.unbind(0)]
         worst = torch.where(done, 0.0, resid.abs()).max().item()
         limit = thresh.max().item()
         msg += (

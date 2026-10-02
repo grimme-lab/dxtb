@@ -750,8 +750,8 @@ def test_host_reads(dtype: torch.dtype, host_reads: list[str]):
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
     def syncs() -> int:
-        assert [c for c in host_reads if c != "tolist"] == []
-        n = host_reads.count("tolist")
+        assert [c for c in host_reads if c != "item"] == []
+        n = host_reads.count("item")
         host_reads.clear()
         return n
 
