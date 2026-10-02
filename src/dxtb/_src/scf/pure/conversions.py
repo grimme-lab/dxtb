@@ -293,9 +293,10 @@ def hamiltonian_to_density(
         hamiltonian, data.ints.overlap, cfg.eigen_options
     )
 
-    # round to integers to avoid numerical errors; the occupation of the
-    # previous step is not part of the graph of the new one
-    nel = data.occupation.sum(-1).round().detach()
+    # fixed number of alpha and beta electrons from the setup (as in
+    # tblite); it is never re-derived from the previous occupation and
+    # keeps the graph of the total charge
+    nel = data.nel
 
     # expand emo/mask to second dim (for alpha/beta electrons)
     emo = data.evals.unsqueeze(-2).expand([*nel.shape, -1])
