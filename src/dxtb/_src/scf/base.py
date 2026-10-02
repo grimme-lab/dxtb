@@ -83,7 +83,10 @@ class BaseSCF:
         """Occupation numbers (shape: [..., 2, orbs])"""
 
         nel: Tensor
-        """Number of alpha and beta electrons (shape: [..., 2]). Fixed during the SCF."""
+        """
+        Number of alpha and beta electrons (shape: [..., 2]). Fixed during the
+        SCF.
+        """
 
         n0: Tensor
         """Reference occupation for each orbital (shape: [..., orbs])"""

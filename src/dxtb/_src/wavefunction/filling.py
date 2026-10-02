@@ -204,8 +204,12 @@ def get_alpha_beta_occupation(
 
     Note
     ----
-    The number of electrons is rounded to integers via `torch.round` for
-    numerical stability, i.e., non-integer electrons are not supported.
+    Rounding is only used to determine the parity of the number of electrons,
+    which fixes the number of unpaired electrons. The number of electrons
+    itself is not rounded: the paired electrons of a fractional number are
+    split equally between alpha and beta, the unpaired ones are alpha, as in
+    tblite. At half-integer totals, the parity and
+    hence the split change discontinuously.
     """
     if uhf is not None:
         if isinstance(uhf, (list, int, float)):

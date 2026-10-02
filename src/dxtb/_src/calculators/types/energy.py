@@ -90,7 +90,9 @@ class EnergyCalculator(BaseCalculator):
         positions : Tensor
             Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
         chrg : Tensor | float | int, optional
-            Total charge. Defaults to 0 (also for batched calculations).
+            Total charge. Defaults to 0 (also for batched calculations). May
+            be fractional. At finite electronic temperature, the energy is
+            differentiable with respect to it.
         spin : Tensor | float | int, optional
             Number of unpaired electrons. Defaults to 0.
         """

@@ -111,7 +111,15 @@ def scf_wrapper(
     nel: Tensor | None = None,
     **kwargs: Any,
 ) -> SCFResult:
-    # calculate SCF equilibrium using semi-pure functions
+    """
+    Calculate the SCF equilibrium using semi-pure functions.
+
+    Parameters
+    ----------
+    nel : Tensor | None, optional
+        Number of alpha and beta electrons (shape: [..., 2]). Defaults to
+        `occupation.sum(-1)`.
+    """
 
     # distinct objects containing data and configuration
     # forbidden = ["bck_options", "fwd_options", "scf_options"]
