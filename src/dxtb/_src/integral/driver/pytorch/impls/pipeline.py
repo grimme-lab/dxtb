@@ -46,6 +46,8 @@ __all__ = [
     "assemble_overlap_1d",
     "assemble_multipole_1d",
     "OVERLAP_COMPONENTS",
+    "DIPOLE_COMPONENTS",
+    "QUADRUPOLE_COMPONENTS",
     "Kernel1D",
 ]
 
