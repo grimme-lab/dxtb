@@ -68,7 +68,11 @@ def _transforms(
         except IndexError as e:
             raise IntegralTransformError() from e
 
-        out.append(None if l <= 1 else trafo.type(vec.dtype).to(vec.device))
+        out.append(
+            None
+            if l <= 1
+            else torch.as_tensor(trafo, dtype=vec.dtype, device=vec.device)
+        )
 
     return out[0], out[1]
 
@@ -110,8 +114,8 @@ def _per_axis(table: Tensor, angular: tuple[int, int]) -> list[Tensor]:
     long chain of ``select_scatter`` operations in the backward graph, which
     inductor miscompiles for ``compile(jacrev(...))`` of the quadrupole.
     """
-    nlmi = NLM_CART[angular[0]].to(table.device)
-    nlmj = NLM_CART[angular[1]].to(table.device)
+    nlmi = torch.as_tensor(NLM_CART[angular[0]], device=table.device)
+    nlmj = torch.as_tensor(NLM_CART[angular[1]], device=table.device)
     by_axis = table.unbind(-3)
     return [
         by_axis[ax][nlmi[:, ax, None], nlmj[None, :, ax]] for ax in range(3)

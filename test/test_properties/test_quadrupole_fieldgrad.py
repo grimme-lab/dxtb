@@ -32,6 +32,7 @@ from tad_mctc.batch import pack
 
 from dxtb import GFN2_XTB, Calculator
 from dxtb._src.components.interactions import new_efield_grad
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
@@ -154,7 +155,18 @@ def test_batch() -> None:
         assert pytest.approx(single.cpu(), abs=1e-6) == auto[i].cpu()
 
 
-@pytest.mark.parametrize("driver", ["libcint", "pytorch"])
+@pytest.mark.parametrize(
+    "driver",
+    [
+        pytest.param(
+            "libcint",
+            marks=pytest.mark.skipif(
+                not has_libcint, reason="libcint not available"
+            ),
+        ),
+        "pytorch",
+    ],
+)
 def test_drivers(driver: str) -> None:
     dd: DD = {"dtype": torch.double, "device": DEVICE}
     name = "H2O"

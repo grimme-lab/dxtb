@@ -57,6 +57,7 @@ from .trafo import TRAFO
 
 __all__ = [
     "assemble_matrix",
+    "PairPlan",
     "prepare",
     "select_pairs",
 ]
@@ -88,7 +89,7 @@ class _Class:
         self.ib, self.jk, self.idx, self.weight = ib, jk, idx, weight
 
 
-class _Plan:
+class PairPlan:
     """
     Everything of :func:`assemble_matrix` that depends only on the structure
     (angular momenta, unique shells, shell-to-atom map), not on positions or
@@ -148,62 +149,37 @@ class _Plan:
             )
 
 
-_PLANS: dict[tuple, _Plan] = {}
-_PLANS_BY_OBJECT: dict[tuple, tuple[IndexHelper, _Plan]] = {}
-"""
-Plans by identity of the index helper (the helper itself is kept alive, so
-its ``id`` cannot be reused). The lookup does not read any tensor data and can
-therefore be traced by ``torch.compile``.
-"""
-
-
-def _plan(ihelp: IndexHelper, dev: torch.device) -> _Plan:
+def prepare(ihelp: IndexHelper, dev: torch.device) -> PairPlan:
     """
-    Structural plan of `ihelp`, cached on the bytes of its index arrays.
+    Build the structural plan of `ihelp` on `dev`.
 
-    Inside ``torch.compile`` the plan cannot be built (it reads the index
-    arrays on the host): it must exist already, i.e., the function has to be
-    called once eagerly (or :func:`prepare` called) with the same helper.
+    The plan is owned by the caller, who passes it as ``plan`` to
+    :func:`assemble_matrix` and :func:`select_pairs` to avoid rebuilding it on
+    every call. This is required to trace :func:`assemble_matrix` with
+    ``torch.compile`` (``fullgraph``), which cannot read the index arrays on
+    the host. There is deliberately no global cache: a plan lives exactly as
+    long as its owner (e.g., the integral driver).
     """
-    obj = _PLANS_BY_OBJECT.get((id(ihelp), dev))
-    if obj is not None and obj[0] is ihelp:
-        return obj[1]
+    return PairPlan(ihelp, dev)
+
+
+def _resolve_plan(
+    ihelp: IndexHelper, dev: torch.device, plan: PairPlan | None
+) -> PairPlan:
+    if plan is not None:
+        return plan
 
     if torch.compiler.is_compiling():
         raise RuntimeError(
-            "The pair plan of this IndexHelper has not been built. Call "
-            "`prepare(ihelp, device)` (or the function eagerly) before "
-            "compiling."
+            "The pair plan cannot be built inside `torch.compile`. Create it "
+            "with `prepare(ihelp, device)` and pass it as `plan`."
         )
 
-    key = (
-        dev,
-        tuple(_to_ints(ihelp.angular)),
-        tuple(_to_ints(ihelp.shells_to_ushell)),
-        tuple(_to_ints(ihelp.shells_to_atom)),
-    )
-    plan = _PLANS.get(key)
-    if plan is None:
-        if len(_PLANS) >= 32:
-            _PLANS.clear()
-        plan = _PLANS[key] = _Plan(ihelp, dev)
-
-    if len(_PLANS_BY_OBJECT) >= 32:
-        _PLANS_BY_OBJECT.clear()
-    _PLANS_BY_OBJECT[(id(ihelp), dev)] = (ihelp, plan)
-    return plan
-
-
-def prepare(ihelp: IndexHelper, dev: torch.device) -> None:
-    """
-    Build the structural plan of `ihelp` on `dev`, so that
-    :func:`assemble_matrix` can be traced by ``torch.compile`` (``fullgraph``).
-    """
-    _plan(ihelp, dev)
+    return PairPlan(ihelp, dev)
 
 
 def _normalized(
-    kernel: Kernel1D, plan: _Plan, alphas: list[Tensor], coeffs: list[Tensor]
+    kernel: Kernel1D, plan: PairPlan, alphas: list[Tensor], coeffs: list[Tensor]
 ) -> list[Tensor]:
     """
     Contraction coefficients scaled to exactly unit self-overlap of every
@@ -261,6 +237,7 @@ def assemble_matrix(
     chunk_size: int | None = None,
     checkpoint: bool = False,
     pairs: Sequence[Tensor] | None = None,
+    plan: PairPlan | None = None,
 ) -> Tensor:
     """
     Assemble the full AO integral matrix of one molecule. Every shell is
@@ -303,6 +280,9 @@ def assemble_matrix(
         indices are constants, so everything is static and the function works
         under ``vmap`` and ``torch.compile`` as well. The error bound of the
         screening only holds for the geometries the selection was made for.
+    plan : PairPlan | None
+        Structural plan of `ihelp` from :func:`prepare`. Built on the fly if
+        not given (not possible inside ``torch.compile``).
 
     Returns
     -------
@@ -311,7 +291,7 @@ def assemble_matrix(
     """
     dev, dt = positions.device, positions.dtype
 
-    plan = _plan(ihelp, dev)
+    plan = _resolve_plan(ihelp, dev, plan)
     nao, atom = plan.nao, plan.atom
     if components is None:
         components = OVERLAP_COMPONENTS
@@ -425,7 +405,7 @@ Multipole orders (overlap, dipole, quadrupole) that share one screening mask.
 """
 
 
-_SPH_NORM = tuple(t.abs().sum(-1).max().item() for t in TRAFO)
+_SPH_NORM = tuple(float(np.abs(t).sum(-1).max()) for t in TRAFO)
 """Largest absolute row sum of the Cartesian-to-spherical transform of each l."""
 
 
@@ -569,6 +549,7 @@ def select_pairs(
     positions: Tensor,
     threshold: float,
     origin: Tensor | None = None,
+    plan: PairPlan | None = None,
 ) -> tuple[Tensor, ...]:
     """
     Shell pairs to compute for the given geometries, for the ``pairs``
@@ -594,6 +575,9 @@ def select_pairs(
         Drop pairs whose bound is below this value.
     origin : Tensor | None
         Multipole origin (default: Cartesian origin).
+    plan : PairPlan | None
+        Structural plan of `ihelp` from :func:`prepare`. Built on the fly if
+        not given.
 
     Returns
     -------
@@ -601,7 +585,7 @@ def select_pairs(
         Indices of the kept pairs of each class.
     """
     dev = positions.device
-    plan = _plan(ihelp, dev)
+    plan = _resolve_plan(ihelp, dev, plan)
     coeffs = [c.detach() for c in _normalized(kernel, plan, alphas, coeffs)]
     geometries = positions.detach().reshape(-1, *positions.shape[-2:])
     org = None if origin is None else origin.detach()

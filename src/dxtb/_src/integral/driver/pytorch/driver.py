@@ -33,7 +33,7 @@ from dxtb._src.typing import Any, Tensor
 from ...base import IntDriver
 from .base import PytorchImplementation
 from .impls.kernels import DEFAULT_ALGORITHM, get_kernel
-from .impls.pairs import assemble_matrix
+from .impls.pairs import PairPlan, assemble_matrix, prepare
 from .impls.pipeline import Kernel1D
 
 __all__ = ["IntDriverPytorch"]
@@ -59,6 +59,10 @@ class IntDriverPytorch(PytorchImplementation, IntDriver):
         self._positions_batch: list[Tensor]
         self._basis_batch: list[Basis]
         self._ihelp_batch: list[IndexHelper]
+        # structural plans of the pair builder, owned by (and freed with) the
+        # driver; the single-molecule plan is tied to the helper it was built for
+        self._plan_single: tuple[IndexHelper, PairPlan] | None = None
+        self._plan_batch: list[PairPlan] = []
 
     def setup(self, positions: Tensor, **kwargs: Any) -> None:
         """
@@ -87,6 +91,7 @@ class IntDriverPytorch(PytorchImplementation, IntDriver):
             self._positions_batch = []
             self._basis_batch = []
             self._ihelp_batch = []
+            self._plan_batch = []
             for _batch in range(self.numbers.shape[0]):
                 # POSITIONS
                 if self.ihelp.batch_mode == 1:
@@ -120,6 +125,7 @@ class IntDriverPytorch(PytorchImplementation, IntDriver):
                 ihelp = IndexHelper.from_numbers(nums, self.par)
 
                 self._ihelp_batch.append(ihelp)
+                self._plan_batch.append(prepare(ihelp, self.device))
 
                 # BASIS
                 bas = Basis(
@@ -175,20 +181,39 @@ class IntDriverPytorch(PytorchImplementation, IntDriver):
         """
         kernel = self.kernel
 
-        def _one(ihelp: IndexHelper, bas: Basis, pos: Tensor) -> Tensor:
+        def _one(
+            ihelp: IndexHelper, bas: Basis, pos: Tensor, plan: PairPlan
+        ) -> Tensor:
             alphas, coeffs = bas.create_cgtos()
             return assemble_matrix(
-                kernel, ihelp, alphas, coeffs, pos, components
+                kernel, ihelp, alphas, coeffs, pos, components, plan=plan
             )
 
         if self.ihelp.batch_mode == 0:
-            return _one(self.ihelp, self.basis, self._positions_single)
+            if (
+                self._plan_single is None
+                or self._plan_single[0] is not self.ihelp
+            ):
+                self._plan_single = (
+                    self.ihelp,
+                    prepare(self.ihelp, self.device),
+                )
+
+            return _one(
+                self.ihelp,
+                self.basis,
+                self._positions_single,
+                self._plan_single[1],
+            )
 
         return pack(
             [
-                _one(ihelp, bas, pos)
-                for ihelp, bas, pos in zip(
-                    self._ihelp_batch, self._basis_batch, self._positions_batch
+                _one(ihelp, bas, pos, plan)
+                for ihelp, bas, pos, plan in zip(
+                    self._ihelp_batch,
+                    self._basis_batch,
+                    self._positions_batch,
+                    self._plan_batch,
                 )
             ]
         )

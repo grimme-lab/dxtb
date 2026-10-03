@@ -34,7 +34,6 @@ from dxtb._src.integral.driver.pytorch.impls.kernels.os import compute_1d_os
 from dxtb._src.integral.driver.pytorch.impls.pairs import (
     _bounds,
     _normalized,
-    _plan,
     assemble_matrix,
     prepare,
     select_pairs,
@@ -82,7 +81,7 @@ def test_bound(name: str, ascale: float, shift: float, op: str) -> None:
         compute_1d_os, ihelp, alphas, coeffs, positions, comps
     )
 
-    plan = _plan(ihelp, positions.device)
+    plan = prepare(ihelp, positions.device)
     coeffs = _normalized(compute_1d_os, plan, alphas, coeffs)
     off = (2 * ihelp.angular + 1).cumsum(0) - (2 * ihelp.angular + 1)
 
@@ -116,7 +115,7 @@ def test_bounds_orders_consistent() -> None:
     dd: DD = {"dtype": torch.double, "device": DEVICE}
     ihelp, alphas, coeffs, positions = _setup("SiH4", dd, 1.0)
 
-    plan = _plan(ihelp, positions.device)
+    plan = prepare(ihelp, positions.device)
     coeffs = _normalized(compute_1d_os, plan, alphas, coeffs)
 
     for cl in plan.classes:
@@ -346,11 +345,13 @@ def test_compile() -> None:
     )
     ihelp = IndexHelper.from_numbers(numbers, par)
     alphas, coeffs = Basis(numbers, par, ihelp, **dd).create_cgtos()
-    prepare(ihelp, positions.device)
+    plan = prepare(ihelp, positions.device)
 
-    pairs = select_pairs(compute_1d_os, ihelp, alphas, coeffs, positions, 1e-8)
+    pairs = select_pairs(
+        compute_1d_os, ihelp, alphas, coeffs, positions, 1e-8, plan=plan
+    )
     for kwargs in ({}, {"pairs": pairs}):
-        fn = _matrix(ihelp, alphas, coeffs, None, **kwargs)
+        fn = _matrix(ihelp, alphas, coeffs, None, plan=plan, **kwargs)
         torch._dynamo.reset()
         out = torch.compile(fn, fullgraph=True)(positions)
         assert torch.allclose(out, fn(positions), atol=1e-13, rtol=0.0)
@@ -359,6 +360,13 @@ def test_compile() -> None:
     torch._dynamo.reset()
     with pytest.raises(Exception, match="select_pairs"):
         torch.compile(
-            _matrix(ihelp, alphas, coeffs, None, screening_threshold=1e-8),
+            _matrix(
+                ihelp,
+                alphas,
+                coeffs,
+                None,
+                plan=plan,
+                screening_threshold=1e-8,
+            ),
             fullgraph=True,
         )(positions)

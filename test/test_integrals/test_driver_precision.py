@@ -30,6 +30,7 @@ show up as deviations of up to ~5e-9 for d shells (SiH4).
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 import torch
 
@@ -76,7 +77,7 @@ def test_trafo_is_double() -> None:
     """Irrational coefficients (sqrt(3), ...) must not be truncated to the
     default dtype at import."""
     for trafo in TRAFO:
-        assert trafo.dtype == torch.double
+        assert trafo.dtype == np.float64
 
     assert TRAFO[2][1, 4].item() == 3.0**0.5
 
