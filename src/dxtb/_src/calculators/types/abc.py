@@ -245,6 +245,28 @@ class GetPropertiesMixin(ABC):
     ) -> Tensor:
         return self.get_dipole(positions, chrg=chrg, spin=spin, **kwargs)
 
+    def get_quadrupole(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any,
+    ) -> Tensor:
+        prop = self.get_property(
+            "quadrupole", positions, chrg=chrg, spin=spin, **kwargs
+        )
+        assert isinstance(prop, Tensor)
+        return prop
+
+    def get_quadrupole_moment(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        **kwargs: Any,
+    ) -> Tensor:
+        return self.get_quadrupole(positions, chrg=chrg, spin=spin, **kwargs)
+
     def get_dipole_deriv(
         self,
         positions: Tensor,

@@ -30,8 +30,7 @@ from dxtb._src.typing import Tensor
 from ...types import OverlapIntegral
 from ...utils import snorm
 from .base import IntegralPytorch
-from .driver import BaseIntDriverPytorch
-from .impls import OverlapFunction
+from .driver import IntDriverPytorch
 
 __all__ = ["OverlapPytorch"]
 
@@ -40,21 +39,18 @@ class OverlapPytorch(OverlapIntegral, IntegralPytorch):
     """
     Overlap integral from atomic orbitals.
 
-    Use the :meth:`.build` method to calculate the overlap integral. The
-    returned matrix uses a custom autograd function to calculate the
-    backward pass with the analytical gradient.
-    For the full gradient, i.e., a matrix of shape ``(..., norb, norb, 3)``,
-    the :meth:`.get_gradient` method should be used.
+    Use the :meth:`.build` method to calculate the overlap integral, which is
+    differentiable with autograd. There is no analytical overlap gradient in
+    the PyTorch driver; the analytical calculator needs the libcint driver.
     """
 
-    def build(self, driver: BaseIntDriverPytorch) -> Tensor:
+    def build(self, driver: IntDriverPytorch) -> Tensor:
         """
-        Overlap calculation of unique shells pairs, using the
-        McMurchie-Davidson algorithm.
+        Overlap calculation with the driver's overlap function.
 
         Parameters
         ----------
-        driver : BaseIntDriverPytorch
+        driver : IntDriverPytorch
             The integral driver for the calculation.
 
         Returns
@@ -64,10 +60,7 @@ class OverlapPytorch(OverlapIntegral, IntegralPytorch):
         """
         super().checks(driver)
 
-        if driver.ihelp.batch_mode > 0:
-            self.matrix = self._batch(driver.eval_ovlp, driver)
-        else:
-            self.matrix = self._single(driver.eval_ovlp, driver)
+        self.matrix = driver.eval_matrix()[..., 0, :, :]
 
         # force symmetry to avoid problems through numerical errors
         if self.uplo == "n":
@@ -76,66 +69,13 @@ class OverlapPytorch(OverlapIntegral, IntegralPytorch):
         self.norm = snorm(self.matrix)
         return self.matrix
 
-    def get_gradient(self, driver: BaseIntDriverPytorch) -> Tensor:
+    def get_gradient(self, driver: IntDriverPytorch) -> Tensor:
         """
-        Overlap gradient calculation of unique shells pairs, using the
-        McMurchie-Davidson algorithm.
-
-        Parameters
-        ----------
-        driver : BaseIntDriverPytorch
-            Integral driver for the calculation.
-
-        Returns
-        -------
-        Tensor
-            Overlap gradient of shape ``(..., norb, norb, 3)``.
+        Not available: differentiate :meth:`.build` with autograd, or use the
+        libcint driver for the analytical overlap gradient.
         """
         super().checks(driver)
-
-        # build norm if not already available
-        if self.norm is None:
-            self.build(driver)
-
-        if driver.ihelp.batch_mode > 0:
-            self.gradient = self._batch(driver.eval_ovlp_grad, driver)
-        else:
-            self.gradient = self._single(driver.eval_ovlp_grad, driver)
-
-        return self.gradient
-
-    def _single(
-        self, fcn: OverlapFunction, driver: BaseIntDriverPytorch
-    ) -> Tensor:
-        if not isinstance(driver, BaseIntDriverPytorch):
-            raise RuntimeError("Wrong integral driver selected.")
-
-        return fcn(
-            driver._positions_single,
-            driver.basis,
-            driver.ihelp,
-            self.uplo,
-            self.cutoff,
-        )
-
-    def _batch(
-        self, fcn: OverlapFunction, driver: BaseIntDriverPytorch
-    ) -> Tensor:
-        if not isinstance(driver, BaseIntDriverPytorch):
-            raise RuntimeError("Wrong integral driver selected.")
-
-        # pylint: disable=import-outside-toplevel
-        from tad_mctc.batch import pack
-
-        return pack(
-            [
-                fcn(
-                    driver._positions_batch[_batch],
-                    driver._basis_batch[_batch],
-                    driver._ihelp_batch[_batch],
-                    self.uplo,
-                    self.cutoff,
-                )
-                for _batch in range(driver.numbers.shape[0])
-            ]
+        raise NotImplementedError(
+            "The PyTorch integral driver has no analytical overlap gradient. "
+            "Use autograd on the overlap or the libcint driver."
         )

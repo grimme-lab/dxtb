@@ -57,7 +57,7 @@ def test_scf_full_unconverged_warning(dtype: torch.dtype) -> None:
         "scf_mode": "full",
         "maxiter": maxiter,
         "verbosity": 0,
-        "int_driver": labels.INTDRIVER_AUTOGRAD,
+        "int_driver": labels.INTDRIVER_PYTORCH,
     }
 
     numbers, positions = read(coordfile_lih, **dd)

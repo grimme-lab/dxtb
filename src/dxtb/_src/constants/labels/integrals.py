@@ -24,13 +24,13 @@ All labels related to integrals and their computation.
 __all__ = [
     "INTDRIVER_LIBCINT",
     "INTDRIVER_LIBCINT_STRS",
+    "INTDRIVER_PYTORCH",
+    "INTDRIVER_PYTORCH_STRS",
+    "INTDRIVER_MAP",
     "INTDRIVER_AUTOGRAD",
     "INTDRIVER_AUTOGRAD_STRS",
-    "INTDRIVER_ANALYTICAL",
-    "INTDRIVER_ANALYTICAL_STRS",
-    "INTDRIVER_LEGACY",
-    "INTDRIVER_LEGACY_STRS",
-    "INTDRIVER_MAP",
+    "INTALGORITHM_CHOICES",
+    "INTALGORITHM_DEFAULT",
     #
     "INTLEVEL_NONE",
     "INTLEVEL_OVERLAP",
@@ -48,26 +48,34 @@ INTDRIVER_LIBCINT = 0
 INTDRIVER_LIBCINT_STRS = ("libcint", "c")
 """String codes for LIBCINT driver."""
 
-INTDRIVER_AUTOGRAD = 1
-"""Integer code for Autograd driver."""
+INTDRIVER_PYTORCH = 1
+"""Integer code for the PyTorch driver."""
 
-INTDRIVER_AUTOGRAD_STRS = ("autograd", "pytorch", "torch", "dxtb")
-"""String codes for Autograd driver."""
+INTDRIVER_PYTORCH_STRS = ("autograd", "pytorch", "torch", "dxtb")
+"""String codes for the PyTorch driver."""
 
-INTDRIVER_ANALYTICAL = 2
-"""Integer code for Analytical driver."""
+INTDRIVER_AUTOGRAD = INTDRIVER_PYTORCH
+"""Deprecated alias of :data:`INTDRIVER_PYTORCH`."""
 
-INTDRIVER_ANALYTICAL_STRS = ("analytical", "pytorch2", "torch2", "dxtb2")
-"""String codes for Analytical driver."""
+INTDRIVER_AUTOGRAD_STRS = INTDRIVER_PYTORCH_STRS
+"""Deprecated alias of :data:`INTDRIVER_PYTORCH_STRS`."""
 
-INTDRIVER_LEGACY = 3
-"""Integer code for Legacy driver."""
-
-INTDRIVER_LEGACY_STRS = ("legacy", "old", "loop")
-"""String codes for Legacy driver."""
-
-INTDRIVER_MAP = ["libcint", "Autograd", "Analytical", "Legacy (loops)"]
+INTDRIVER_MAP = {
+    INTDRIVER_LIBCINT: "libcint",
+    INTDRIVER_PYTORCH: "PyTorch",
+}
 """String map (for printing) of integral drivers."""
+
+# algorithms of the PyTorch driver
+
+INTALGORITHM_CHOICES = ("md", "os")
+"""
+Names of the 1D kernels of the PyTorch driver: McMurchie-Davidson with
+Hermite moments (``md``) and the three-index Obara-Saika recursion (``os``).
+"""
+
+INTALGORITHM_DEFAULT = "os"
+"""Kernel of the PyTorch driver used when none is requested."""
 
 # levels
 

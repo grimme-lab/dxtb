@@ -29,7 +29,8 @@ are required.
 
 Fundametally, there are two drivers (backends) for the integral computation:
 
-- *PyTorch*: pure PyTorch implementation, only overlap integral
+- *PyTorch*: pure PyTorch implementation, overlap, dipole and quadrupole
+  integrals with derivatives of any order
 - `libcint <https://github.com/sunqm/libcint>`_ : Python interface with custom
   backward functions for derivatives; arbitrary integrals and derivatives
 

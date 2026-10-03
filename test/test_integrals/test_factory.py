@@ -106,7 +106,7 @@ def test_overlap() -> None:
     cls = factory.new_overlap(labels.INTDRIVER_LIBCINT)
     assert isinstance(cls, types.OverlapIntegral)
 
-    cls = factory.new_overlap(labels.INTDRIVER_ANALYTICAL)
+    cls = factory.new_overlap(labels.INTDRIVER_PYTORCH)
     assert isinstance(cls, types.OverlapIntegral)
 
 
@@ -137,9 +137,8 @@ def test_dipint() -> None:
     cls = factory.new_dipint(labels.INTDRIVER_LIBCINT)
     assert isinstance(cls, types.DipoleIntegral)
 
-    with pytest.raises(NotImplementedError):
-        cls = factory.new_dipint(labels.INTDRIVER_ANALYTICAL)
-        assert isinstance(cls, types.DipoleIntegral)
+    cls = factory.new_dipint(labels.INTDRIVER_PYTORCH)
+    assert isinstance(cls, types.DipoleIntegral)
 
 
 def test_dipint_libcint() -> None:
@@ -153,9 +152,8 @@ def test_dipint_libcint() -> None:
 
 
 def test_dipint_pytorch() -> None:
-    with pytest.raises(NotImplementedError):
-        cls = factory.new_dipint_pytorch()
-        assert isinstance(cls, types.DipoleIntegral)
+    cls = factory.new_dipint_pytorch()
+    assert isinstance(cls, types.DipoleIntegral)
 
 
 ################################################################################
@@ -170,9 +168,8 @@ def test_quadint() -> None:
     cls = factory.new_quadint(labels.INTDRIVER_LIBCINT)
     assert isinstance(cls, types.QuadrupoleIntegral)
 
-    with pytest.raises(NotImplementedError):
-        cls = factory.new_quadint(labels.INTDRIVER_ANALYTICAL)
-        assert isinstance(cls, types.QuadrupoleIntegral)
+    cls = factory.new_quadint(labels.INTDRIVER_PYTORCH)
+    assert isinstance(cls, types.QuadrupoleIntegral)
 
 
 def test_quadint_libcint() -> None:
@@ -186,6 +183,5 @@ def test_quadint_libcint() -> None:
 
 
 def test_quadint_pytorch() -> None:
-    with pytest.raises(NotImplementedError):
-        cls = factory.new_quadint_pytorch()
-        assert isinstance(cls, types.QuadrupoleIntegral)
+    cls = factory.new_quadint_pytorch()
+    assert isinstance(cls, types.QuadrupoleIntegral)

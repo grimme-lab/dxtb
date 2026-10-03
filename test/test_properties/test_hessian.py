@@ -27,6 +27,7 @@ from tad_mctc.batch import pack
 from tad_mctc.convert import tensor_to_numpy
 
 from dxtb import GFN1_XTB, Calculator
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
@@ -188,6 +189,7 @@ def execute(
 
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist)
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 def test_single(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
     single(name, dd=dd)
@@ -196,6 +198,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist_more)
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 def test_single_more(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
     single(name, dd=dd)
@@ -204,6 +207,7 @@ def test_single_more(dtype: torch.dtype, name: str) -> None:
 @pytest.mark.large
 @pytest.mark.parametrize("dtype", [torch.double])
 @pytest.mark.parametrize("name", slist_large)
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 def test_single_large(dtype: torch.dtype, name: str) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
     single(name, dd=dd)

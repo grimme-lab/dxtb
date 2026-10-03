@@ -245,3 +245,5 @@ src/wandb/*
 
 # gfn reparametrisations
 src/parametrisations/*
+
+/benchmarks

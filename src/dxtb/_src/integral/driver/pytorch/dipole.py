@@ -23,88 +23,34 @@ PyTorch-based dipole integral implementations.
 
 from __future__ import annotations
 
-import torch
-
-from dxtb._src.constants import defaults
-from dxtb._src.typing import Literal, Tensor
+from dxtb._src.typing import Tensor
 
 from ...types import DipoleIntegral
-from .base import IntegralPytorch
-from .driver import BaseIntDriverPytorch
+from .driver import IntDriverPytorch
+from .impls.pipeline import DIPOLE_COMPONENTS
+from .multipole import MultipolePytorch
 
 __all__ = ["DipolePytorch"]
 
 
-class DipolePytorch(DipoleIntegral, IntegralPytorch):
+class DipolePytorch(DipoleIntegral, MultipolePytorch):
     """
     Dipole integral from atomic orbitals.
     """
 
-    uplo: Literal["n", "u", "l"] = "l"
-    """
-    Whether the matrix of unique shell pairs should be create as a
-    triangular matrix (``l``: lower, ``u``: upper) or full matrix (``n``).
-    Defaults to ``l`` (lower triangular matrix).
-    """
-
-    cutoff: Tensor | float | int | None = defaults.INTCUTOFF
-    """
-    Real-space cutoff for integral calculation in Bohr. Defaults to
-    ``constants.defaults.INTCUTOFF``.
-    """
-
-    def __init__(
-        self,
-        uplo: Literal["n", "N", "u", "U", "l", "L"] = "l",
-        cutoff: Tensor | float | int | None = defaults.INTCUTOFF,
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
-    ):
-        super().__init__(device=device, dtype=dtype)
-        self.cutoff = cutoff
-
-        if uplo not in ("n", "N", "u", "U", "l", "L"):
-            raise ValueError(f"Unknown option for `uplo` chosen: '{uplo}'.")
-        self.uplo = uplo.casefold()  # type: ignore
-
-        raise NotImplementedError(
-            "PyTorch versions of multipole moments are not implemented. "
-            "Use `libcint` as integral driver. Install `tad-libcint` via: "
-            "`pip install tad-libcint`."
-        )
-
-    def build(self, driver: BaseIntDriverPytorch) -> Tensor:
+    def build(self, driver: IntDriverPytorch) -> Tensor:
         """
-        Integral calculation of unique shells pairs, using the
-        McMurchie-Davidson algorithm.
+        Dipole integral about the Cartesian origin (``r0``), using the
+        algorithm selected on the driver (``int_algorithm``).
 
         Parameters
         ----------
-        driver : BaseIntDriverPytorch
+        driver : IntDriverPytorch
             Integral driver for the calculation.
 
         Returns
         -------
         Tensor
-            Integral matrix of shape ``(..., norb, norb, 3)``.
+            Integral of shape ``(..., 3, norb, norb)``.
         """
-        super().checks(driver)
-        raise NotImplementedError
-
-    def get_gradient(self, driver: BaseIntDriverPytorch) -> Tensor:
-        """
-        Dipole intgral gradient calculation of unique shells pairs, using the
-        McMurchie-Davidson algorithm.
-
-        Parameters
-        ----------
-        driver : BaseIntDriverPytorch
-            Integral driver for the calculation.
-
-        Returns
-        -------
-        Tensor
-            Integral gradient of shape ``(..., norb, norb, 3, 3)``.
-        """
-        super().checks(driver)
-        raise NotImplementedError
+        return self.multipole(driver, DIPOLE_COMPONENTS)

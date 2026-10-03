@@ -30,6 +30,7 @@ from tad_mctc import read, read_chrg
 
 from dxtb import Calculator
 from dxtb._src.constants import labels
+from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.typing import DD, Tensor
 
 from ..conftest import DEVICE
@@ -53,6 +54,7 @@ opts = {
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["H2", "H2O", "CH4"])
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 def test_analytical(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     atol, rtol = 1e-5, 1e-4
     analytical(dtype, name, atol, rtol, scf_mode)
@@ -64,6 +66,7 @@ def test_analytical(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["C60"])
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 def test_analytical_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
     atol = rtol = sqrt(torch.finfo(dtype).eps)
     analytical(dtype, name, atol, rtol, scf_mode)
@@ -75,6 +78,7 @@ def test_analytical_large(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("name", ["AD7en+", "LYS_xao"])
 @pytest.mark.parametrize("scf_mode", ["implicit", "nonpure", "full"])
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 def test_analytical_large2(
     dtype: torch.dtype, name: str, scf_mode: str
 ) -> None:
@@ -88,7 +92,12 @@ def test_analytical_large2(
 
 
 def analytical(
-    dtype: torch.dtype, name: str, atol: float, rtol: float, scf_mode: str
+    dtype: torch.dtype,
+    name: str,
+    atol: float,
+    rtol: float,
+    scf_mode: str,
+    int_driver: str | None = None,
 ) -> None:
     dd: DD = {"device": DEVICE, "dtype": dtype}
 
@@ -108,6 +117,9 @@ def analytical(
             "scf_mode": scf_mode,
         },
     )
+    if int_driver is not None:
+        options["int_driver"] = int_driver
+
     calc = Calculator(
         numbers, get_param_module("gfn1", **dd), opts=options, **dd
     )

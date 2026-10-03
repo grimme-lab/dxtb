@@ -60,7 +60,7 @@ def single(dtype: torch.dtype, name: str, gfn: str) -> None:
 
     if gfn == "gfn1":
         par = GFN1_XTB
-        options = {**opts, "int_driver": labels.INTDRIVER_ANALYTICAL}
+        options = {**opts, "int_driver": labels.INTDRIVER_PYTORCH}
     elif gfn == "gfn2":
         par = GFN2_XTB
         options = {**opts, "int_driver": labels.INTDRIVER_LIBCINT}
@@ -120,9 +120,8 @@ def _numhess(
     def _gradfcn(pos: Tensor, charge: Tensor) -> Tensor:
         pos.requires_grad_(True)
 
-        if calc.opts.method == labels.GFN1_XTB:
-            result = -calc.forces_analytical(pos, charge)
-        elif calc.opts.method == labels.GFN2_XTB:
+        # autograd forces: the analytical forces need the libcint driver
+        if calc.opts.method in (labels.GFN1_XTB, labels.GFN2_XTB):
             calc.reset()
             result = -calc.get_forces(pos, charge)
         else:

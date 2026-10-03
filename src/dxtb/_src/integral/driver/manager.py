@@ -48,7 +48,12 @@ class DriverManager(TensorLike):
     configuration passed to it.
     """
 
-    __slots__ = ["_driver", "driver_type", "force_cpu_for_libcint"]
+    __slots__ = [
+        "_driver",
+        "driver_type",
+        "force_cpu_for_libcint",
+        "algorithm",
+    ]
 
     def __init__(
         self,
@@ -64,6 +69,9 @@ class DriverManager(TensorLike):
             "force_cpu_for_libcint",
             driver_type == labels.INTDRIVER_LIBCINT,
         )
+
+        # kernel of the PyTorch driver (`None`: default)
+        self.algorithm = kwargs.pop("algorithm", None)
 
         self.driver_type = driver_type
         self._driver = None
@@ -109,17 +117,9 @@ class DriverManager(TensorLike):
                 # This is only done for the basis-specific parameters in the
                 # constructor of the `Basis` class.
 
-        elif self.driver_type == labels.INTDRIVER_ANALYTICAL:
+        elif self.driver_type == labels.INTDRIVER_PYTORCH:
             # pylint: disable=import-outside-toplevel
             from .pytorch import IntDriverPytorch as _IntDriver
-
-        elif self.driver_type == labels.INTDRIVER_AUTOGRAD:
-            # pylint: disable=import-outside-toplevel
-            from .pytorch import IntDriverPytorchNoAnalytical as _IntDriver
-
-        elif self.driver_type == labels.INTDRIVER_LEGACY:
-            # pylint: disable=import-outside-toplevel
-            from .pytorch import IntDriverPytorchLegacy as _IntDriver
 
         else:
             raise ValueError(f"Unknown integral driver '{self.driver_type}'.")
@@ -127,6 +127,15 @@ class DriverManager(TensorLike):
         self.driver = _IntDriver(
             numbers, par, ihelp, device=ihelp.device, dtype=self.dtype
         )
+
+        if self.algorithm is not None:
+            if self.driver_type == labels.INTDRIVER_LIBCINT:
+                raise ValueError(
+                    "The integral algorithm can only be chosen for the "
+                    "PyTorch integral driver, not for `libcint`."
+                )
+
+            self.driver.algorithm = self.algorithm  # validates the name
 
     def setup_driver(self, positions: Tensor, **kwargs: Any) -> None:
         """

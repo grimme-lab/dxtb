@@ -26,7 +26,7 @@ from pathlib import Path
 import torch
 
 from dxtb import __version__
-from dxtb._src.constants import defaults
+from dxtb._src.constants import defaults, labels
 from dxtb._src.typing import Any
 
 __all__ = ["parser"]
@@ -424,6 +424,18 @@ def parser(name: str = "dxtb", **kwargs: Any) -> argparse.ArgumentParser:
         default=defaults.INTDRIVER,
         choices=defaults.INTDRIVER_CHOICES,
         help=("R|Integral driver."),
+    )
+    p.add_argument(
+        "--int-algorithm",
+        "--int_algorithm",
+        type=str,
+        default=None,
+        choices=labels.INTALGORITHM_CHOICES,
+        help=(
+            "R|1D kernel of the PyTorch integral driver "
+            "(McMurchie-Davidson or Obara-Saika). "
+            f"Default: `{labels.INTALGORITHM_DEFAULT}`."
+        ),
     )
     p.add_argument(
         "--int-level",

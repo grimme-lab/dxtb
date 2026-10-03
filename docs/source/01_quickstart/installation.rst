@@ -20,7 +20,8 @@ pip
 
     pip install dxtb[libcint]
 
-Installing the libcint interface is highly recommended, as it is significantly faster than the pure PyTorch implementation and provides access to higher-order multipole integrals and their derivatives.
+Installing the libcint interface is recommended, as it is faster than the pure PyTorch implementation on the CPU.
+The pure PyTorch integral driver provides the overlap, dipole and quadrupole integrals (and thereby GFN2-xTB) with derivatives of any order, on CPU and CUDA.
 However, the interface is currently only available on Linux.
 
 
@@ -42,7 +43,7 @@ conda
     mamba install dxtb
 
 
-Don't forget to install the libcint interface (not on conda) via ``pip install tad-libcint``.
+The optional libcint interface (not on conda) can be installed via ``pip install tad-libcint``.
 
 For Windows, *dxtb* is not available via conda, because PyTorch itself is not registered in the conda-forge channel.
 

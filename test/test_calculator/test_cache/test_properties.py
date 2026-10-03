@@ -179,6 +179,7 @@ def test_forces(
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
+@pytest.mark.skipif(not has_libcint, reason="libcint not available")
 def test_forces_analytical(dtype: torch.dtype) -> None:
     """Test analytical forces calculation and cache usage."""
     dd: DD = {"device": DEVICE, "dtype": dtype}

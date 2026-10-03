@@ -26,7 +26,7 @@ import torch
 from dxtb import GFN1_XTB, IndexHelper
 from dxtb import integrals as ints
 from dxtb import labels
-from dxtb._src.constants.labels import INTDRIVER_ANALYTICAL, INTDRIVER_LIBCINT
+from dxtb._src.constants.labels import INTDRIVER_LIBCINT, INTDRIVER_PYTORCH
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.integral.driver import libcint, pytorch
 from dxtb._src.typing import DD
@@ -70,7 +70,7 @@ def test_fail_family(dtype: torch.dtype):
     numbers = torch.tensor([1, 3], device=DEVICE)
 
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    mgr = ints.DriverManager(INTDRIVER_ANALYTICAL, **dd)
+    mgr = ints.DriverManager(INTDRIVER_PYTORCH, **dd)
     mgr.create_driver(numbers, GFN1_XTB, ihelp)
 
     i = ints.Integrals(mgr, **dd)
@@ -104,10 +104,10 @@ def test_fail_pytorch_multipole(dtype: torch.dtype):
     with pytest.raises(RuntimeError):
         i.overlap = pytorch.OverlapPytorch(**dd)
 
-    # multipole moments not implemented with PyTorch
-    with pytest.raises(NotImplementedError):
+    # incompatible driver (PyTorch multipoles cannot be used with libcint)
+    with pytest.raises(RuntimeError):
         i.dipole = pytorch.DipolePytorch(**dd)
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(RuntimeError):
         i.quadrupole = pytorch.QuadrupolePytorch(**dd)
 
 
@@ -135,7 +135,7 @@ def test_hcore(dtype: torch.dtype):
     numbers = torch.tensor([1, 3], device=DEVICE)
 
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    mgr = ints.DriverManager(INTDRIVER_ANALYTICAL, **dd)
+    mgr = ints.DriverManager(INTDRIVER_PYTORCH, **dd)
     mgr.create_driver(numbers, GFN1_XTB, ihelp)
 
     i = ints.Integrals(mgr, **dd)
@@ -153,7 +153,7 @@ def test_hcore_build(dtype: torch.dtype):
     pos = torch.zeros((2, 3), **dd)
 
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    mgr = ints.DriverManager(INTDRIVER_ANALYTICAL, **dd)
+    mgr = ints.DriverManager(INTDRIVER_PYTORCH, **dd)
     mgr.create_driver(numbers, GFN1_XTB, ihelp)
 
     i = ints.Integrals(mgr, **dd)
@@ -177,7 +177,7 @@ def test_hcore_fail(dtype: torch.dtype):
     positions = torch.zeros((2, 3), **dd)
 
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
-    mgr = ints.DriverManager(INTDRIVER_ANALYTICAL, **dd)
+    mgr = ints.DriverManager(INTDRIVER_PYTORCH, **dd)
     mgr.create_driver(numbers, GFN1_XTB, ihelp)
 
     i = ints.Integrals(mgr, **dd)

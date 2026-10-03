@@ -25,16 +25,17 @@ import torch
 
 from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.constants.labels import (
-    INTDRIVER_ANALYTICAL,
-    INTDRIVER_LEGACY,
     INTDRIVER_LIBCINT,
+    INTDRIVER_PYTORCH,
 )
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.integral.driver.libcint import IntDriverLibcint
 from dxtb._src.integral.driver.manager import DriverManager
 from dxtb._src.integral.driver.pytorch import (
+    DipolePytorch,
     IntDriverPytorch,
-    IntDriverPytorchLegacy,
+    OverlapPytorch,
+    QuadrupolePytorch,
 )
 from dxtb._src.typing import DD
 
@@ -69,12 +70,10 @@ def single(name: int, dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
         positions = positions.cpu()
 
     mgr.setup_driver(positions)
-    if name == INTDRIVER_ANALYTICAL:
+    if name == INTDRIVER_PYTORCH:
         assert isinstance(mgr.driver, IntDriverPytorch)
     elif name == INTDRIVER_LIBCINT:
         assert isinstance(mgr.driver, IntDriverLibcint)
-    elif name == INTDRIVER_LEGACY:
-        assert isinstance(mgr.driver, IntDriverPytorchLegacy)
 
     assert mgr.driver.is_latest(positions) is True
 
@@ -97,17 +96,7 @@ def test_libcint_single(
 def test_pytorch_single(
     dtype: torch.dtype, force_cpu_for_libcint: bool
 ) -> None:
-    single(INTDRIVER_ANALYTICAL, dtype, force_cpu_for_libcint)
-
-
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
-def test_pytorch_legacy_single(
-    dtype: torch.dtype, force_cpu_for_libcint: bool
-) -> None:
-    """Regression test: DriverManager previously had no dispatch branch for
-    INTDRIVER_LEGACY and raised `ValueError: Unknown integral driver '3'`."""
-    single(INTDRIVER_LEGACY, dtype, force_cpu_for_libcint)
+    single(INTDRIVER_PYTORCH, dtype, force_cpu_for_libcint)
 
 
 def batch(name: int, dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
@@ -125,12 +114,10 @@ def batch(name: int, dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
         positions = positions.cpu()
 
     mgr.setup_driver(positions)
-    if name == INTDRIVER_ANALYTICAL:
+    if name == INTDRIVER_PYTORCH:
         assert isinstance(mgr.driver, IntDriverPytorch)
     elif name == INTDRIVER_LIBCINT:
         assert isinstance(mgr.driver, IntDriverLibcint)
-    elif name == INTDRIVER_LEGACY:
-        assert isinstance(mgr.driver, IntDriverPytorchLegacy)
 
     assert mgr.driver.is_latest(positions) is True
 
@@ -149,12 +136,55 @@ def test_libcint_batch(dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
 def test_pytorch_batch(dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
-    batch(INTDRIVER_ANALYTICAL, dtype, force_cpu_for_libcint)
+    batch(INTDRIVER_PYTORCH, dtype, force_cpu_for_libcint)
 
 
-@pytest.mark.parametrize("dtype", [torch.float, torch.double])
-@pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
-def test_pytorch_legacy_batch(
-    dtype: torch.dtype, force_cpu_for_libcint: bool
-) -> None:
-    batch(INTDRIVER_LEGACY, dtype, force_cpu_for_libcint)
+@pytest.mark.parametrize("kind", ["overlap", "quadrupole"])
+def test_pytorch_driver_rebuilds_integrals_for_new_positions(kind: str) -> None:
+    """After the positions change (or the driver is invalidated), the next
+    ``setup_driver`` + ``build`` must give the integrals of the new geometry,
+    identical to a freshly created driver."""
+    dd: DD = {"dtype": torch.double, "device": DEVICE}
+    numbers = torch.tensor([3, 1, 8], device=DEVICE)
+    pos_a = torch.tensor(
+        [[0.0, 0.0, 0.0], [0.0, 0.0, 3.0], [1.5, 0.0, -1.0]], **dd
+    )
+    shift = torch.tensor(
+        [[0.0, 0.1, 0.0], [0.2, 0.0, 0.1], [0.0, 0.0, -0.3]], **dd
+    )
+    pos_b = pos_a + shift
+
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
+
+    def manager() -> DriverManager:
+        mgr = DriverManager(INTDRIVER_PYTORCH, algorithm="os", **dd)
+        mgr.create_driver(numbers, GFN1_XTB, ihelp)
+        return mgr
+
+    def build(mgr: DriverManager) -> torch.Tensor:
+        cls = {
+            "overlap": OverlapPytorch,
+            "dipole": DipolePytorch,
+            "quadrupole": QuadrupolePytorch,
+        }
+        return cls[kind](**dd).build(mgr.driver)
+
+    fresh = manager()
+    fresh.setup_driver(pos_b)
+    expected = build(fresh)
+
+    mgr = manager()
+    mgr.setup_driver(pos_a)
+    first = build(mgr)
+    assert mgr.driver.is_latest(pos_b) is False
+
+    # moved positions: setup again and rebuild
+    mgr.setup_driver(pos_b)
+    moved = build(mgr)
+    assert not torch.allclose(first, moved, atol=1e-6)
+    assert torch.allclose(moved, expected, atol=1e-13, rtol=0.0)
+
+    # explicit invalidation, then back to the first geometry
+    mgr.invalidate_driver()
+    mgr.setup_driver(pos_a)
+    assert torch.allclose(build(mgr), first, atol=1e-13, rtol=0.0)

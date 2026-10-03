@@ -30,7 +30,7 @@ from dxtb._src.integral.driver.pytorch import (
     OverlapPytorch,
     QuadrupolePytorch,
 )
-from dxtb._src.integral.driver.pytorch.driver import BaseIntDriverPytorch
+from dxtb._src.integral.driver.pytorch.driver import IntDriverPytorch
 from dxtb._src.typing import DD
 
 from ...conftest import DEVICE
@@ -42,16 +42,14 @@ def test_overlap_fail() -> None:
 
 
 def test_dipole_fail() -> None:
-    with pytest.raises(NotImplementedError):
-        _ = DipolePytorch()
+    _ = DipolePytorch()
 
     with pytest.raises(ValueError):
         _ = DipolePytorch("wrong")  # type: ignore
 
 
 def test_quadrupole_fail() -> None:
-    with pytest.raises(NotImplementedError):
-        _ = QuadrupolePytorch()
+    _ = QuadrupolePytorch()
 
     with pytest.raises(ValueError):
         _ = QuadrupolePytorch("wrong")  # type: ignore
@@ -68,7 +66,7 @@ def test_single(dtype: torch.dtype):
     positions = torch.zeros((2, 3), **dd)
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
-    drv = BaseIntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
+    drv = IntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
     drv.setup(positions)
 
     assert drv._basis is not None
@@ -86,7 +84,7 @@ def test_batch_mode_fail(dtype: torch.dtype) -> None:
     # set to invalid value
     ihelp.batch_mode = -99
 
-    drv = BaseIntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
+    drv = IntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
 
     with pytest.raises(ValueError):
         drv.setup(positions)
@@ -106,7 +104,7 @@ def test_batch_mode1(dtype: torch.dtype) -> None:
     )
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB, batch_mode=1)
 
-    drv = BaseIntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
+    drv = IntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
     drv.setup(positions)
 
     assert drv._basis_batch is not None
@@ -135,7 +133,7 @@ def test_batch_mode1_mask(dtype: torch.dtype) -> None:
     )
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB, batch_mode=1)
 
-    drv = BaseIntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
+    drv = IntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
     drv.setup(positions, mask=mask)
 
     assert drv._basis_batch is not None
@@ -150,6 +148,33 @@ def test_batch_mode1_mask(dtype: torch.dtype) -> None:
     assert (drv._positions_batch[1] == positions[1, 0, :]).all()
 
 
+def test_batch_mode1_mask_all_molecules() -> None:
+    """The mask must be applied to every molecule, not only the first."""
+    dd: DD = {"dtype": torch.double, "device": DEVICE}
+
+    numbers = torch.tensor([[3, 1], [1, 0]], device=DEVICE)
+    positions = torch.tensor(
+        [
+            [[0.0, 0.0, 1.0], [0.0, 0.0, -1.0]],
+            [[0.0, 0.0, 2.0], [0.0, 0.0, 5.0]],
+        ],
+        **dd,
+    )
+    # deliberately differs from the padding implied by the atomic numbers
+    mask = (
+        torch.tensor([[True, True], [False, True]], device=DEVICE)
+        .unsqueeze(-1)
+        .expand(2, 2, 3)
+    )
+    ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB, batch_mode=1)
+
+    drv = IntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
+    drv.setup(positions, mask=mask)
+
+    assert (drv._positions_batch[0] == positions[0]).all()
+    assert (drv._positions_batch[1] == positions[1, 1:]).all()
+
+
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_batch_mode2(dtype: torch.dtype) -> None:
     dd: DD = {"dtype": dtype, "device": DEVICE}
@@ -158,7 +183,7 @@ def test_batch_mode2(dtype: torch.dtype) -> None:
     positions = torch.zeros((2, 2, 3), **dd)
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB, batch_mode=2)
 
-    drv = BaseIntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
+    drv = IntDriverPytorch(numbers, GFN1_XTB, ihelp, **dd)
     drv.setup(positions)
 
     assert drv._basis_batch is not None

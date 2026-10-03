@@ -25,10 +25,10 @@ import torch
 
 from dxtb._src.basis.ortho import gaussian_integral, orthogonalize
 from dxtb._src.basis.slater import slater_to_gauss
-from dxtb._src.integral.driver.pytorch.impls.md import overlap_gto
 from dxtb._src.typing import DD
 
 from ..conftest import DEVICE
+from ..utils import overlap_1d
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
@@ -61,14 +61,14 @@ def test_ortho_1s_2s(dtype: torch.dtype):
 
     # normalised self-overlap
     ref = torch.tensor(1, **dd)
-    s = overlap_gto((l, l), (alphaj, alphaj), (coeffj, coeffj), vec)
+    s = overlap_1d((l, l), (alphaj, alphaj), (coeffj, coeffj), vec)
     assert pytest.approx(ref.cpu(), **tols) == s.sum().cpu()
     s2 = gaussian_integral(*(alphaj, alphaj), *(coeffj, coeffj))
     assert pytest.approx(ref.cpu(), **tols) == s2.cpu()
 
     # orthogonal overlap
     ref = torch.tensor(0, **dd)
-    s = overlap_gto((l, l), (alphai, alphaj_new), (coeffi, coeffj_new), vec)
+    s = overlap_1d((l, l), (alphai, alphaj_new), (coeffi, coeffj_new), vec)
     s2 = gaussian_integral(*(alphai, alphaj_new), *(coeffi, coeffj_new))
     assert pytest.approx(ref.cpu(), **tols) == s.sum().cpu()
     assert pytest.approx(ref.cpu(), **tols) == s2.cpu()

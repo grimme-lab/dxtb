@@ -63,7 +63,7 @@ def run_asserts(c: Calculator, dtype: torch.dtype) -> None:
 
 
 @pytest.mark.parametrize(
-    "int_driver", [labels.INTDRIVER_LIBCINT, labels.INTDRIVER_AUTOGRAD]
+    "int_driver", [labels.INTDRIVER_LIBCINT, labels.INTDRIVER_PYTORCH]
 )
 def test_change_type(int_driver: str) -> None:
     """Test changing the `dtype` of the calculator class."""
@@ -79,7 +79,7 @@ def test_change_type(int_driver: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "int_driver", [labels.INTDRIVER_LIBCINT, labels.INTDRIVER_AUTOGRAD]
+    "int_driver", [labels.INTDRIVER_LIBCINT, labels.INTDRIVER_PYTORCH]
 )
 def test_change_type_after_energy(int_driver: str) -> None:
     """Test changing the `dtype` of calculator after energy calculation."""

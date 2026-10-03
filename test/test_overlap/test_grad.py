@@ -31,12 +31,12 @@ from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.basis.slater import slater_to_gauss
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb._src.integral.driver.pytorch import OverlapPytorch as Overlap
-from dxtb._src.integral.driver.pytorch.impls import md
-from dxtb._src.integral.driver.pytorch.impls.md import recursion
+from dxtb._src.integral.driver.pytorch.impls.kernels import ALGORITHMS
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import t2int
 
 from ..conftest import DEVICE
+from ..utils import overlap_1d
 from .samples import samples
 
 
@@ -56,7 +56,7 @@ def test_ss(dtype: torch.dtype):
         [0.13695892585203528, 0.47746994997214642, 0.20729096231197164], **dd
     )
     vec = rndm.detach().requires_grad_(True)
-    s = md.overlap_gto((l1, l2), (alpha1, alpha2), (coeff1, coeff2), vec)
+    s = overlap_1d((l1, l2), (alpha1, alpha2), (coeff1, coeff2), vec)
 
     # autograd
     (gradient,) = torch.autograd.grad(
@@ -78,10 +78,10 @@ def test_ss(dtype: torch.dtype):
     step = 1e-6
     for i in range(3):
         rndm[i] += step
-        sr = md.overlap_gto((l1, l2), (alpha1, alpha2), (coeff1, coeff2), rndm)
+        sr = overlap_1d((l1, l2), (alpha1, alpha2), (coeff1, coeff2), rndm)
 
         rndm[i] -= 2 * step
-        sl = md.overlap_gto((l1, l2), (alpha1, alpha2), (coeff1, coeff2), rndm)
+        sl = overlap_1d((l1, l2), (alpha1, alpha2), (coeff1, coeff2), rndm)
 
         rndm[i] += step
         g = 0.5 * (sr - sl) / step
@@ -188,9 +188,9 @@ def compare_md(
     ngi, ni, li = cgtoi
     ngj, nj, lj = cgtoj
 
-    # The d-orbital references were generated with the old tblite ordering
-    # [z2, xz, yz, x2-y2, xy]; the code now uses the CCA ordering (tblite#371)
-    # with m ascending: [xy, yz, z2, xz, x2-y2].
+    # The d-orbital references are in the tblite order [z2, xz, yz, x2-y2, xy];
+    # the code uses the CCA ordering (tblite#371) with m ascending:
+    # [xy, yz, z2, xz, x2-y2].
     perm = {2: torch.tensor([4, 2, 0, 1, 3])}
     pi = perm.get(int(li), torch.arange(2 * int(li) + 1))
     pj = perm.get(int(lj), torch.arange(2 * int(lj) + 1))
@@ -205,32 +205,19 @@ def compare_md(
         ngj, nj, lj, torch.tensor(1.0, dtype=dtype)
     )
 
-    # overlap
-    ovlp = md.overlap_gto((li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec)
-    assert pytest.approx(ovlp.cpu(), abs=atol) == ovlp_ref.cpu()
+    alpha, coeff = (alpha_i, alpha_j), (coeff_i, coeff_j)
+    for algorithm in ALGORITHMS:
+        ovlp = overlap_1d((li, lj), alpha, coeff, vec, algorithm)
+        assert pytest.approx(ovlp.cpu(), abs=atol) == ovlp_ref.cpu()
 
-    # overlap gradient with explicit E-coefficients
-    ovlp_grad_exp = md.explicit.md_explicit_gradient(
-        (li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec
-    )
+        # derivative w.r.t. the bra center (the negative of the one w.r.t. the
+        # displacement), by autograd; rows in Fortran order: (nsph_i * nsph_j, 3)
+        jac = torch.autograd.functional.jacobian(
+            lambda v: overlap_1d((li, lj), alpha, coeff, v, algorithm), vec
+        )
+        ovlp_grad = -jac.reshape(-1, 3)
 
-    # overlap gradient with recursion
-    ovlp_grad_rec = recursion.md_recursion_gradient(
-        (li, lj), (alpha_i, alpha_j), (coeff_i, coeff_j), vec
-    )
-    ovlp_grad_rec = torch.squeeze(ovlp_grad_rec, 0)
-
-    # obtain Fortran ordering (row wise)
-    ovlp_grad_rec = torch.stack(
-        [ovlp_grad_rec[i].flatten() for i in range(3)]
-    ).transpose(0, 1)
-    ovlp_grad_exp = torch.stack(
-        [ovlp_grad_exp[i].flatten() for i in range(3)]
-    ).transpose(0, 1)
-
-    assert pytest.approx(ovlp_grad_exp.cpu(), abs=atol) == ovlp_grad_rec.cpu()
-    assert pytest.approx(ovlp_grad_ref.cpu(), abs=atol) == ovlp_grad_rec.cpu()
-    assert pytest.approx(ovlp_grad_ref.cpu(), abs=atol) == ovlp_grad_exp.cpu()
+        assert pytest.approx(ovlp_grad_ref.cpu(), abs=atol) == ovlp_grad.cpu()
 
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

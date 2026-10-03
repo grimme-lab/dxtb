@@ -723,7 +723,9 @@ class BaseCalculator(GetPropertiesMixin, TensorLike):
             )
 
         # setup integral driver and integral container
-        mgr = ints.DriverManager(self.opts.ints.driver, **dd)
+        mgr = ints.DriverManager(
+            self.opts.ints.driver, algorithm=self.opts.ints.algorithm, **dd
+        )
         mgr.create_driver(numbers, par, self.ihelp)
 
         self.integrals = ints.Integrals(
