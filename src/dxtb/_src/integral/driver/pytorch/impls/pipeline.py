@@ -22,10 +22,9 @@ The 3D assembly, contraction and spherical transform of one class of shell
 pairs, parameterized over a 1D ``kernel`` matching the ``compute_1d``
 contract (McMurchie-Davidson or Obara-Saika).
 
-``assemble_overlap_1d`` is the overlap (``emax == 0``),
-``assemble_overlap_gradient_1d`` its derivative with respect to the bra
-center, and ``assemble_multipole_1d`` the raw dipole (3) and quadrupole
-(9 components, row-major) integrals about a common origin. All consume
+``assemble_multipole_1d`` assembles the overlap (one component), the raw
+dipole (3) and the raw quadrupole (9 components, row-major) integrals about a
+common origin; ``assemble_overlap_1d`` is its single-component form. All consume
 per-class ``(angular, alpha, coeff, vec)`` inputs; the enumeration and
 grouping of the shell pairs, screening, chunking and the scatter into the AO
 matrix are done by ``impls/pairs.py``.
@@ -45,8 +44,8 @@ from .trafo import NLM_CART, TRAFO
 
 __all__ = [
     "assemble_overlap_1d",
-    "assemble_overlap_gradient_1d",
     "assemble_multipole_1d",
+    "OVERLAP_COMPONENTS",
     "Kernel1D",
 ]
 
@@ -55,14 +54,23 @@ sqrtpi3 = sqrt(pi) ** 3
 Kernel1D = Callable[..., Tensor]
 
 
-def _transforms(angular: tuple[int, int], vec: Tensor) -> tuple[Tensor, Tensor]:
-    """Cartesian-to-spherical transforms of the bra and ket shells."""
-    try:
-        itrafo = TRAFO[angular[0]].type(vec.dtype).to(vec.device)
-        jtrafo = TRAFO[angular[1]].type(vec.dtype).to(vec.device)
-    except IndexError as e:
-        raise IntegralTransformError() from e
-    return itrafo, jtrafo
+def _transforms(
+    angular: tuple[int, int], vec: Tensor
+) -> tuple[Tensor | None, Tensor | None]:
+    """
+    Cartesian-to-spherical transforms of the bra and ket shells. ``None`` for
+    s and p shells, whose transform is the identity.
+    """
+    out: list[Tensor | None] = []
+    for l in angular:
+        try:
+            trafo = TRAFO[l]
+        except IndexError as e:
+            raise IntegralTransformError() from e
+
+        out.append(None if l <= 1 else trafo.type(vec.dtype).to(vec.device))
+
+    return out[0], out[1]
 
 
 def _primitive_pairs(
@@ -96,131 +104,41 @@ def _per_axis(table: Tensor, angular: tuple[int, int]) -> list[Tensor]:
     ``[i, j, ..., axis, p, q]``: one tensor ``(ncarti, ncartj, ..., p, q)``
     per axis. One broadcasting fancy-index call per axis gathers the bra and
     ket components at once.
+
+    The axis is picked first with ``unbind``, whose backward is a single
+    ``stack``. Selecting it after the gather (``.select(-3, ax)``) produces a
+    long chain of ``select_scatter`` operations in the backward graph, which
+    inductor miscompiles for ``compile(jacrev(...))`` of the quadrupole.
     """
     nlmi = NLM_CART[angular[0]].to(table.device)
     nlmj = NLM_CART[angular[1]].to(table.device)
+    by_axis = table.unbind(-3)
     return [
-        table[nlmi[:, ax, None], nlmj[None, :, ax]].select(-3, ax)
-        for ax in range(3)
+        by_axis[ax][nlmi[:, ax, None], nlmj[None, :, ax]] for ax in range(3)
     ]
 
 
-def assemble_overlap_1d(
-    kernel: Kernel1D,
-    angular: tuple[int, int],
-    alpha: tuple[Tensor, Tensor],
-    coeff: tuple[Tensor, Tensor],
-    vec: Tensor,
-) -> Tensor:
-    """
-    Assemble a shell pair's overlap from any ``compute_1d``-contract kernel.
-
-    Parameters
-    ----------
-    kernel : Kernel1D
-        A function matching the ``compute_1d(la, lb, emax, xij, rpi, rpj)``
-        contract (e.g. MD's or OS's), called only for ``emax == 0`` here.
-    angular : (int, int)
-        Angular momentum of the shell pair(s).
-    alpha : (Tensor, Tensor)
-        Primitive Gaussian exponents of the shell pair(s).
-    coeff : (Tensor, Tensor)
-        Contraction coefficients of the shell pair(s).
-    vec : Tensor
-        Displacement vector between shell pair(s) of shape ``(nvec, 3)``.
-
-    Returns
-    -------
-    Tensor
-        Overlap integrals for the shell pair(s).
-    """
-    li, lj = angular
-    itrafo, jtrafo = _transforms(angular, vec)
-    _, xij, rpi, rpj, sij = _primitive_pairs(alpha, coeff, vec)
-
-    if li == 0 and lj == 0:
-        s3d = sij.sum((-2, -1), keepdim=True)
-    else:
-        sx, sy, sz = _per_axis(kernel(li, lj, 0, xij, rpi, rpj), angular)
-
-        # fixed contraction, written out (no `einsum` path handling)
-        s3d = (sx * sy * sz * sij).sum((-2, -1)).movedim((0, 1), (-2, -1))
-
-    return itrafo @ s3d @ jtrafo.mT
-
-
-def assemble_overlap_gradient_1d(
-    kernel: Kernel1D,
-    angular: tuple[int, int],
-    alpha: tuple[Tensor, Tensor],
-    coeff: tuple[Tensor, Tensor],
-    vec: Tensor,
-) -> Tensor:
-    """
-    Derivative of a shell pair's overlap with respect to the bra center
-    :math:`A` (the derivative with respect to the ket center is its
-    negative).
-
-    The derivative of a 1D primitive,
-    :math:`\\partial_{A_x} (x - A_x)^i e^{-a (x - A_x)^2}
-    = 2a (x - A_x)^{i+1} e^{\\ldots} - i (x - A_x)^{i-1} e^{\\ldots}`,
-    turns the 1D overlap table of ``(la + 1, lb)`` into the 1D derivative
-    table, so every kernel provides the gradient without derivative-specific
-    code.
-
-    Parameters
-    ----------
-    kernel : Kernel1D
-        A function matching the ``compute_1d`` contract, called only for
-        ``emax == 0``.
-    angular : (int, int)
-        Angular momentum of the shell pair(s).
-    alpha : (Tensor, Tensor)
-        Primitive Gaussian exponents of the shell pair(s).
-    coeff : (Tensor, Tensor)
-        Contraction coefficients of the shell pair(s).
-    vec : Tensor
-        ``B - A`` displacement, shape ``(nvec, 3)``.
-
-    Returns
-    -------
-    Tensor
-        Gradient of shape ``(nvec, 3, nsph_a, nsph_b)`` (``(3, nsph_a,
-        nsph_b)`` for a single displacement of shape ``(3,)``).
-    """
-    li, lj = angular
-    itrafo, jtrafo = _transforms(angular, vec)
-    ai, xij, rpi, rpj, sij = _primitive_pairs(alpha, coeff, vec)
-
-    # e1: (li+2, lj+1, nvec, 3, p, q)
-    e1 = kernel(li + 1, lj, 0, xij, rpi, rpj)
-    rows = [2.0 * ai * e1[1]]
-    for i in range(1, li + 1):
-        rows.append(2.0 * ai * e1[i + 1] - i * e1[i - 1])
-
-    s = _per_axis(e1[: li + 1], angular)
-    d = _per_axis(torch.stack(rows), angular)
-
-    out = []
-    for ax, (u, v) in enumerate(((1, 2), (0, 2), (0, 1))):
-        cart = (d[ax] * s[u] * s[v] * sij).sum((-2, -1))
-        out.append(itrafo @ cart.movedim((0, 1), (-2, -1)) @ jtrafo.mT)
-
-    return torch.stack(out, dim=-3)
-
+OVERLAP_COMPONENTS = ((0, 0, 0),)
+"""Per-axis multipole order of the overlap (a single, zeroth-order component)."""
 
 DIPOLE_COMPONENTS = ((1, 0, 0), (0, 1, 0), (0, 0, 1))
 """Per-axis multipole order of each dipole component (x, y, z)."""
 
-QUADRUPOLE_COMPONENTS = tuple(
-    tuple(int(a == ax) + int(b == ax) for ax in range(3))
-    for a in range(3)
-    for b in range(3)
+QUADRUPOLE_COMPONENTS = (
+    (2, 0, 0),  # xx
+    (1, 1, 0),  # xy
+    (1, 0, 1),  # xz
+    (1, 1, 0),  # yx
+    (0, 2, 0),  # yy
+    (0, 1, 1),  # yz
+    (1, 0, 1),  # zx
+    (0, 1, 1),  # zy
+    (0, 0, 2),  # zz
 )
 """
 Per-axis multipole order of each of the 9 raw quadrupole components,
-row-major ``(x, y, z) x (x, y, z)`` (xx, xy, xz, yx, ...), matching libcint's
-``int1e("r0r0")`` ordering.
+row-major ``(x, y, z) x (x, y, z)`` (xx, xy, xz, yx, ...), matching
+libcint's ``int1e("r0r0")`` ordering.
 """
 
 
@@ -274,22 +192,81 @@ def assemble_multipole_1d(
     itrafo, jtrafo = _transforms(angular, vec)
     _, xij, rpi, rpj, sij = _primitive_pairs(alpha, coeff, vec)
 
-    a_minus_c = pos_a if origin is None else pos_a - origin
-    rpc = rpi + a_minus_c.unsqueeze(-1).unsqueeze(-1)
+    # unique components (e.g., xy and yx are identical): contract only once
+    unique = list(dict.fromkeys(components))
 
-    e0 = kernel(li, lj, emax, xij, rpi, rpj, rpc=rpc)
-    if emax == 0:
-        # the kernels omit the (singleton) multipole axis for the overlap
-        e0 = e0.unsqueeze(2)
+    if emax == 0 and li == 0 and lj == 0:
+        # s-s overlap: no recursion needed
+        s3d = sij.sum((-2, -1)).reshape(1, 1, -1)
+        cart = [s3d] * len(unique)
+    else:
+        rpc = None
+        if emax > 0:
+            a_minus_c = pos_a if origin is None else pos_a - origin
+            rpc = rpi + a_minus_c.unsqueeze(-1).unsqueeze(-1)
 
-    # per-axis tables: (ncarti, ncartj, e, nvec, nprimi, nprimj)
-    tables = _per_axis(e0, angular)
+        e0 = kernel(li, lj, emax, xij, rpi, rpj, rpc=rpc)
 
-    out = []
-    for ex, ey, ez in components:
-        prod = tables[0][:, :, ex] * tables[1][:, :, ey] * tables[2][:, :, ez]
-        cart = (prod * sij).sum((-2, -1))  # (ncarti, ncartj, nvec)
-        cart = cart.permute(2, 0, 1)
-        out.append(itrafo @ cart @ jtrafo.mT)
+        # per-axis tables: (ncarti, ncartj, e, nvec, nprimi, nprimj)
+        tables = _per_axis(e0, angular)
 
-    return torch.stack(out, dim=1)
+        cart = []
+        for ex, ey, ez in unique:
+            prod = (
+                tables[0][:, :, ex] * tables[1][:, :, ey] * tables[2][:, :, ez]
+            )
+            cart.append((prod * sij).sum((-2, -1)))  # (ncarti, ncartj, nvec)
+
+    # single batched spherical transformation: (nvec, nuniq, ncarti, ncartj)
+    cart = torch.stack(cart, dim=0).permute(3, 0, 1, 2)
+    sph = cart
+    if itrafo is not None:
+        sph = itrafo @ sph
+    if jtrafo is not None:
+        sph = sph @ jtrafo.mT
+
+    if len(unique) == len(components):
+        return sph
+    return sph[:, [unique.index(c) for c in components]]
+
+
+def assemble_overlap_1d(
+    kernel: Kernel1D,
+    angular: tuple[int, int],
+    alpha: tuple[Tensor, Tensor],
+    coeff: tuple[Tensor, Tensor],
+    vec: Tensor,
+) -> Tensor:
+    """
+    Overlap of a shell pair: :func:`assemble_multipole_1d` with the single
+    zeroth-order component.
+
+    Parameters
+    ----------
+    kernel : Kernel1D
+        A function matching the ``compute_1d(la, lb, emax, xij, rpi, rpj)``
+        contract (e.g. MD's or OS's), called only for ``emax == 0`` here.
+    angular : (int, int)
+        Angular momentum of the shell pair(s).
+    alpha : (Tensor, Tensor)
+        Primitive Gaussian exponents of the shell pair(s).
+    coeff : (Tensor, Tensor)
+        Contraction coefficients of the shell pair(s).
+    vec : Tensor
+        Displacement vector between shell pair(s) of shape ``(nvec, 3)``.
+
+    Returns
+    -------
+    Tensor
+        Overlap integrals of shape ``(nvec, nsph_a, nsph_b)``.
+    """
+    # a single (unbatched) displacement of shape ``(3,)`` is also accepted
+    single = vec.ndim == 1
+    if single:
+        vec = vec.unsqueeze(0)
+
+    # the multipole origin is irrelevant for the overlap
+    out = assemble_multipole_1d(
+        kernel, angular, alpha, coeff, vec, vec, OVERLAP_COMPONENTS
+    )[:, 0]
+    return out[0] if single else out

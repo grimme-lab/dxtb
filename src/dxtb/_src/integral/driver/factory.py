@@ -51,7 +51,7 @@ def new_driver(
     if name == labels.INTDRIVER_LIBCINT:
         return new_driver_libcint(numbers, par, device=device, dtype=dtype)
 
-    if name == labels.INTDRIVER_AUTOGRAD:
+    if name == labels.INTDRIVER_PYTORCH:
         return new_driver_pytorch(numbers, par, device=device, dtype=dtype)
 
     raise ValueError(f"Unknown integral driver '{name}'.")

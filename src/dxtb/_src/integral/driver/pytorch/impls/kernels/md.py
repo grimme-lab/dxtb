@@ -130,7 +130,7 @@ def compute_1d_md_hermite(
     shape = rpi.shape
     if emax == 0:
         vals = [e_tab[(i, j)][0] for i in range(la + 1) for j in range(lb + 1)]
-        return torch.stack(vals, dim=0).reshape(la + 1, lb + 1, *shape)
+        return torch.stack(vals, dim=0).reshape(la + 1, lb + 1, 1, *shape)
 
     vals = [
         contract(i, j, e)

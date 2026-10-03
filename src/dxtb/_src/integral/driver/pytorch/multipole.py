@@ -25,13 +25,13 @@ from the interchangeable ``compute_1d`` kernels (see
 
 from __future__ import annotations
 
-from tad_mctc.batch import pack
+import torch
 
-from dxtb._src.typing import Tensor
+from dxtb._src.constants import defaults
+from dxtb._src.typing import Literal, Tensor
 
 from .base import IntegralPytorch
 from .driver import IntDriverPytorch
-from .impls.pairs import assemble_matrix
 
 __all__ = ["MultipolePytorch"]
 
@@ -40,6 +40,23 @@ class MultipolePytorch(IntegralPytorch):
     """
     Base class for multipole integrals calculated with the PyTorch kernels.
     """
+
+    def __init__(
+        self,
+        uplo: Literal["n", "N", "u", "U", "l", "L"] = "l",
+        cutoff: Tensor | float | int | None = defaults.INTCUTOFF,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ):
+        super().__init__(device=device, dtype=dtype, uplo=uplo, cutoff=cutoff)
+
+    def get_gradient(self, driver: IntDriverPytorch) -> Tensor:
+        """
+        Gradient of the multipole integral. Not implemented for the PyTorch
+        driver; use autograd on the integral instead.
+        """
+        super().checks(driver)
+        raise NotImplementedError
 
     def multipole(
         self,
@@ -69,28 +86,5 @@ class MultipolePytorch(IntegralPytorch):
         """
         super().checks(driver)
 
-        kernel = driver.kernel
-
-        def _one(ihelp, bas, pos) -> Tensor:
-            alphas, coeffs = bas.create_cgtos()
-            return assemble_matrix(
-                kernel, ihelp, alphas, coeffs, pos, components
-            )
-
-        if driver.ihelp.batch_mode > 0:
-            self.matrix = pack(
-                [
-                    _one(
-                        driver._ihelp_batch[i],
-                        driver._basis_batch[i],
-                        driver._positions_batch[i],
-                    )
-                    for i in range(driver.numbers.shape[0])
-                ]
-            )
-        else:
-            self.matrix = _one(
-                driver.ihelp, driver.basis, driver._positions_single
-            )
-
+        self.matrix = driver.eval_matrix(components)
         return self.matrix

@@ -24,6 +24,7 @@ Collection of PyTorch-based integral drivers.
 from __future__ import annotations
 
 import torch
+from tad_mctc.batch import deflate, pack
 
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
@@ -32,7 +33,7 @@ from dxtb._src.typing import Any, Tensor
 from ...base import IntDriver
 from .base import PytorchImplementation
 from .impls.kernels import DEFAULT_ALGORITHM, get_kernel
-from .impls.pairs import assemble_matrix, assemble_overlap_gradient
+from .impls.pairs import assemble_matrix
 from .impls.pipeline import Kernel1D
 
 __all__ = ["IntDriverPytorch"]
@@ -44,21 +45,15 @@ class IntDriverPytorch(PytorchImplementation, IntDriver):
 
     All integrals are built by the pair builder with the 1D kernel selected
     in :attr:`algorithm` (``int_algorithm``), and are differentiable with
-    autograd to any order. The overlap and its analytical gradient are
-    evaluated by the driver itself (:meth:`eval_ovlp`,
-    :meth:`eval_ovlp_grad`); the dipole and quadrupole integrals by
+    autograd to any order. The overlap is evaluated by the driver itself
+    (:meth:`eval_matrix`); the dipole and quadrupole integrals by
     :class:`~dxtb._src.integral.driver.pytorch.DipolePytorch` and
     :class:`~dxtb._src.integral.driver.pytorch.QuadrupolePytorch`.
     """
 
-    algorithm: str | None = None
-    """
-    Name of the 1D kernel (``int_algorithm``) of the pair builder.
-    ``None``: the default kernel (``os``).
-    """
-
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self._algorithm = DEFAULT_ALGORITHM
         self._positions: Tensor
         self._positions_single: Tensor
         self._positions_batch: list[Tensor]
@@ -87,6 +82,7 @@ class IntDriverPytorch(PytorchImplementation, IntDriver):
 
             self._positions_single = positions
         else:
+            mask = kwargs.get("mask")
 
             self._positions_batch = []
             self._basis_batch = []
@@ -94,12 +90,8 @@ class IntDriverPytorch(PytorchImplementation, IntDriver):
             for _batch in range(self.numbers.shape[0]):
                 # POSITIONS
                 if self.ihelp.batch_mode == 1:
-                    # pylint: disable=import-outside-toplevel
-                    from tad_mctc.batch import deflate
-
                     nums = deflate(self.numbers[_batch])
 
-                    mask = kwargs.pop("mask", None)
                     if mask is not None:
                         pos = torch.masked_select(
                             positions[_batch],
@@ -145,48 +137,58 @@ class IntDriverPytorch(PytorchImplementation, IntDriver):
         self._positions = positions.detach().clone()
 
     @property
+    def algorithm(self) -> str:
+        """
+        Name of the 1D kernel (``int_algorithm``) of the pair builder.
+        Defaults to ``constants.labels.INTALGORITHM_DEFAULT``.
+        """
+        return self._algorithm
+
+    @algorithm.setter
+    def algorithm(self, value: str) -> None:
+        get_kernel(value)  # validates the name
+        self._algorithm = value.casefold()
+
+    @property
     def kernel(self) -> Kernel1D:
         """1D kernel of the pair builder, selected by :attr:`algorithm`."""
-        return get_kernel(self.algorithm or DEFAULT_ALGORITHM)
+        return get_kernel(self.algorithm)
 
-    def eval_ovlp(
-        self, positions: Tensor, bas: Basis, ihelp: IndexHelper
+    def eval_matrix(
+        self, components: tuple[tuple[int, int, int], ...] | None = None
     ) -> Tensor:
         """
-        Overlap of one molecule.
+        AO integral matrix of the current setup, for single molecules and
+        (zero-padded) batches alike.
 
         Parameters
         ----------
-        positions : Tensor
-            Cartesian coordinates of all atoms (shape: ``(nat, 3)``).
-        bas : Basis
-            Basis set information.
-        ihelp : IndexHelper
-            Helper class for indexing.
+        components : tuple[tuple[int, int, int], ...] | None, optional
+            Per-axis multipole order of every output component. ``None``
+            (default) is the overlap.
 
         Returns
         -------
         Tensor
-            Overlap matrix of shape ``(norb, norb)``.
+            Integral of shape ``(ncomp, norb, norb)`` (single) or
+            ``(nbatch, ncomp, norb, norb)`` (batched).
         """
-        alphas, coeffs = bas.create_cgtos()
-        return assemble_matrix(self.kernel, ihelp, alphas, coeffs, positions)[0]
+        kernel = self.kernel
 
-    def eval_ovlp_grad(
-        self, positions: Tensor, bas: Basis, ihelp: IndexHelper
-    ) -> Tensor:
-        """
-        Overlap gradient of one molecule (same arguments as
-        :meth:`eval_ovlp`).
+        def _one(ihelp: IndexHelper, bas: Basis, pos: Tensor) -> Tensor:
+            alphas, coeffs = bas.create_cgtos()
+            return assemble_matrix(
+                kernel, ihelp, alphas, coeffs, pos, components
+            )
 
-        Returns
-        -------
-        Tensor
-            Derivative of every overlap element :math:`S_{ij}` with respect
-            to the position of the atom of orbital :math:`i`, shape
-            ``(norb, norb, 3)``.
-        """
-        alphas, coeffs = bas.create_cgtos()
-        return assemble_overlap_gradient(
-            self.kernel, ihelp, alphas, coeffs, positions
+        if self.ihelp.batch_mode == 0:
+            return _one(self.ihelp, self.basis, self._positions_single)
+
+        return pack(
+            [
+                _one(ihelp, bas, pos)
+                for ihelp, bas, pos in zip(
+                    self._ihelp_batch, self._basis_batch, self._positions_batch
+                )
+            ]
         )

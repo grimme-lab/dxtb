@@ -31,13 +31,7 @@ from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.basis.slater import slater_to_gauss
 from dxtb._src.integral.driver.pytorch import IntDriverPytorch as IntDriver
 from dxtb._src.integral.driver.pytorch import OverlapPytorch as Overlap
-from dxtb._src.integral.driver.pytorch.impls.kernels import (
-    ALGORITHMS,
-    get_kernel,
-)
-from dxtb._src.integral.driver.pytorch.impls.pipeline import (
-    assemble_overlap_gradient_1d,
-)
+from dxtb._src.integral.driver.pytorch.impls.kernels import ALGORITHMS
 from dxtb._src.typing import DD, Tensor
 from dxtb._src.utils import t2int
 
@@ -194,9 +188,9 @@ def compare_md(
     ngi, ni, li = cgtoi
     ngj, nj, lj = cgtoj
 
-    # The d-orbital references were generated with the old tblite ordering
-    # [z2, xz, yz, x2-y2, xy]; the code now uses the CCA ordering (tblite#371)
-    # with m ascending: [xy, yz, z2, xz, x2-y2].
+    # The d-orbital references are in the tblite order [z2, xz, yz, x2-y2, xy];
+    # the code uses the CCA ordering (tblite#371) with m ascending:
+    # [xy, yz, z2, xz, x2-y2].
     perm = {2: torch.tensor([4, 2, 0, 1, 3])}
     pi = perm.get(int(li), torch.arange(2 * int(li) + 1))
     pj = perm.get(int(lj), torch.arange(2 * int(lj) + 1))
@@ -216,15 +210,12 @@ def compare_md(
         ovlp = overlap_1d((li, lj), alpha, coeff, vec, algorithm)
         assert pytest.approx(ovlp.cpu(), abs=atol) == ovlp_ref.cpu()
 
-        # derivative w.r.t. the bra center: (3, nsph_i, nsph_j)
-        ovlp_grad = assemble_overlap_gradient_1d(
-            get_kernel(algorithm), (int(li), int(lj)), alpha, coeff, vec
+        # derivative w.r.t. the bra center (the negative of the one w.r.t. the
+        # displacement), by autograd; rows in Fortran order: (nsph_i * nsph_j, 3)
+        jac = torch.autograd.functional.jacobian(
+            lambda v: overlap_1d((li, lj), alpha, coeff, v, algorithm), vec
         )
-
-        # obtain Fortran ordering (row wise)
-        ovlp_grad = torch.stack(
-            [ovlp_grad[i].flatten() for i in range(3)]
-        ).transpose(0, 1)
+        ovlp_grad = -jac.reshape(-1, 3)
 
         assert pytest.approx(ovlp_grad_ref.cpu(), abs=atol) == ovlp_grad.cpu()
 

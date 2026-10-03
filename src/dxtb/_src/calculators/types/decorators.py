@@ -159,14 +159,16 @@ def requires_efg_grad(func: Callable[..., Tensor]) -> Callable[..., Tensor]:
         positions: Tensor,
         chrg: Tensor | float | int = defaults.CHRG,
         spin: Tensor | float | int | None = defaults.SPIN,
+        *args: Any,
         **kwargs: Any,
     ) -> Tensor:
         efg = self.interactions.get_interaction(efieldgrad.LABEL_EFIELD_GRAD)
         if not efg.field_grad.requires_grad:
             raise RuntimeError(
-                "Field gradient tensor needs ``requires_grad=True``."
+                "Field gradient tensor needs ``requires_grad=True`` in "
+                f"'{func.__name__}'."
             )
-        return func(self, positions, chrg, spin, **kwargs)
+        return func(self, positions, chrg, spin, *args, **kwargs)
 
     return wrapper
 

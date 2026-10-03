@@ -31,7 +31,7 @@ from tad_mctc.batch import pack
 from dxtb import GFN1_XTB
 from dxtb._src.typing import DD
 from dxtb.integrals.wrappers import overlap
-from dxtb.labels import INTDRIVER_AUTOGRAD
+from dxtb.labels import INTDRIVER_PYTORCH
 
 from ..conftest import DEVICE
 from ..utils import load_from_npz
@@ -58,7 +58,7 @@ def test_single(dtype: torch.dtype, name: str) -> None:
     s = calc_overlap(numbers, positions, GFN1_XTB, uplo="n", dd=dd)
 
     # convenience wrapper with defaults (but pytorch driver)
-    s2 = overlap(numbers, positions, GFN1_XTB, driver=INTDRIVER_AUTOGRAD)
+    s2 = overlap(numbers, positions, GFN1_XTB, driver=INTDRIVER_PYTORCH)
 
     assert pytest.approx(ref.cpu(), abs=tol) == s.cpu()
     assert pytest.approx(ref.cpu(), abs=tol) == s2.cpu()

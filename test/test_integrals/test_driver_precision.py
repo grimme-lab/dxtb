@@ -23,9 +23,9 @@ y, z, x in the pytorch drivers and x, y, z in libcint. Energies and forces are
 invariant to this fixed permutation, so the comparison is done after
 reordering.
 
-Guards two fixes: the cartesian-to-spherical transformation matrices were
-built in float32, and the contracted shells were not normalized exactly.
-Both showed up as deviations of up to ~5e-9 for d shells (SiH4).
+Guards the double precision of the cartesian-to-spherical transformation
+matrices and the exact normalization of the contracted shells; either would
+show up as deviations of up to ~5e-9 for d shells (SiH4).
 """
 
 from __future__ import annotations
@@ -36,8 +36,8 @@ import torch
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.constants.labels import (
-    INTDRIVER_AUTOGRAD,
     INTDRIVER_LIBCINT,
+    INTDRIVER_PYTORCH,
 )
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.integral.driver.pytorch.impls.trafo import TRAFO
@@ -97,7 +97,7 @@ def test_overlap_matches_libcint(name: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, par)
 
     s_lib = overlap(numbers, positions, par, driver=INTDRIVER_LIBCINT)
-    s_pt = overlap(numbers, positions, par, driver=INTDRIVER_AUTOGRAD)
+    s_pt = overlap(numbers, positions, par, driver=INTDRIVER_PYTORCH)
 
     p = permutation_matrix(ihelp, dd)
     s_lib = p @ s_lib.to(DEVICE) @ p.mT

@@ -25,8 +25,8 @@ import torch
 
 from dxtb import GFN1_XTB, IndexHelper
 from dxtb._src.constants.labels import (
-    INTDRIVER_AUTOGRAD,
     INTDRIVER_LIBCINT,
+    INTDRIVER_PYTORCH,
 )
 from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.integral.driver.libcint import IntDriverLibcint
@@ -70,7 +70,7 @@ def single(name: int, dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
         positions = positions.cpu()
 
     mgr.setup_driver(positions)
-    if name == INTDRIVER_AUTOGRAD:
+    if name == INTDRIVER_PYTORCH:
         assert isinstance(mgr.driver, IntDriverPytorch)
     elif name == INTDRIVER_LIBCINT:
         assert isinstance(mgr.driver, IntDriverLibcint)
@@ -96,7 +96,7 @@ def test_libcint_single(
 def test_pytorch_single(
     dtype: torch.dtype, force_cpu_for_libcint: bool
 ) -> None:
-    single(INTDRIVER_AUTOGRAD, dtype, force_cpu_for_libcint)
+    single(INTDRIVER_PYTORCH, dtype, force_cpu_for_libcint)
 
 
 def batch(name: int, dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
@@ -114,7 +114,7 @@ def batch(name: int, dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
         positions = positions.cpu()
 
     mgr.setup_driver(positions)
-    if name == INTDRIVER_AUTOGRAD:
+    if name == INTDRIVER_PYTORCH:
         assert isinstance(mgr.driver, IntDriverPytorch)
     elif name == INTDRIVER_LIBCINT:
         assert isinstance(mgr.driver, IntDriverLibcint)
@@ -136,7 +136,7 @@ def test_libcint_batch(dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 @pytest.mark.parametrize("force_cpu_for_libcint", [True, False])
 def test_pytorch_batch(dtype: torch.dtype, force_cpu_for_libcint: bool) -> None:
-    batch(INTDRIVER_AUTOGRAD, dtype, force_cpu_for_libcint)
+    batch(INTDRIVER_PYTORCH, dtype, force_cpu_for_libcint)
 
 
 @pytest.mark.parametrize("kind", ["overlap", "quadrupole"])
@@ -157,7 +157,7 @@ def test_pytorch_driver_rebuilds_integrals_for_new_positions(kind: str) -> None:
     ihelp = IndexHelper.from_numbers(numbers, GFN1_XTB)
 
     def manager() -> DriverManager:
-        mgr = DriverManager(INTDRIVER_AUTOGRAD, algorithm="os", **dd)
+        mgr = DriverManager(INTDRIVER_PYTORCH, algorithm="os", **dd)
         mgr.create_driver(numbers, GFN1_XTB, ihelp)
         return mgr
 

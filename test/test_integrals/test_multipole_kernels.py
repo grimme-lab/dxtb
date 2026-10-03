@@ -80,16 +80,19 @@ def class_inputs(dd: DD) -> tuple[Tensor, ...]:
     )
 
 
-@pytest.mark.parametrize("la", [0, 1, 2])
-@pytest.mark.parametrize("lb", [0, 1, 2])
+@pytest.mark.parametrize("la", [0, 1, 2, 3, 4])
+@pytest.mark.parametrize("lb", [0, 1, 2, 3, 4])
 def test_md_matches_os(la: int, lb: int) -> None:
+    """The shipped bases have l <= 2; the kernels are checked up to g."""
     dd: DD = {"dtype": torch.double, "device": DEVICE}
     xij, rpi, rpj, rpc = pair_quantities(dd)
 
     for emax in range(3):
         ref = compute_1d_os(la, lb, emax, xij, rpi, rpj, rpc)
         out = compute_1d_md_hermite(la, lb, emax, xij, rpi, rpj, rpc)
-        assert torch.allclose(out, ref, atol=1e-13, rtol=0.0)
+        assert (out - ref).abs().max() <= 1e-13 * max(
+            1.0, float(ref.abs().max())
+        )
 
 
 def test_one_center_closed_form() -> None:

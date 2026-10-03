@@ -19,9 +19,9 @@ Orientation-aware shell-pair builder
 ====================================
 
 Enumerates shell pairs for a single (unbatched) molecule and assembles a full
-integral matrix (overlap, overlap gradient, dipole, quadrupole) through the
+integral matrix (overlap, dipole, quadrupole) through the
 shared ``compute_1d``-contract pipeline, with an out-of-place ``index_copy``
-scatter of the lower triangle followed by a (anti)symmetrization (no in-place
+scatter of the lower triangle followed by a symmetrization (no in-place
 writes into the result).
 
 Pairs are grouped by the *ordered* unique-shell pair ``(ushell_bra,
@@ -33,36 +33,32 @@ Every shell pair with ``bra >= ket`` (shell index) is computed once and
 mirrored; this relies on the multipole integrals being symmetric, which holds
 for a common gauge origin. Same-atom pairs are *included* in the integrals
 (they are load-bearing for GFN2's AES2 term), and every shell is normalized
-exactly, so the overlap has a unit diagonal without forcing it. The
-overlap gradient leaves out same-atom pairs, whose contributions cancel in
-the nuclear gradient.
+exactly, so the overlap has a unit diagonal without forcing it.
 """
 
 from __future__ import annotations
 
-from math import pi
+from math import comb, gamma, pi
+from typing import Sequence
 
 import numpy as np
 import torch
-from tad_mctc import storch
-from tad_mctc.batch import pack
 
 from dxtb import IndexHelper
-from dxtb._src.basis.bas import Basis
-from dxtb._src.param import Param
 from dxtb._src.typing import Tensor
 
 from .pipeline import (
+    OVERLAP_COMPONENTS,
     Kernel1D,
     assemble_multipole_1d,
     assemble_overlap_1d,
-    assemble_overlap_gradient_1d,
 )
+from .trafo import TRAFO
 
 __all__ = [
     "assemble_matrix",
-    "assemble_matrix_batch",
-    "assemble_overlap_gradient",
+    "prepare",
+    "select_pairs",
 ]
 
 _SCREEN_CHUNK = 20000
@@ -87,11 +83,9 @@ def _to_ints(t: Tensor) -> list[int]:
 class _Class:
     """Structural data of one ordered unique-shell-pair class."""
 
-    def __init__(self, ub, uk, lb, lk, ib, jk, idx, weight, inter):
+    def __init__(self, ub, uk, lb, lk, ib, jk, idx, weight):
         self.ub, self.uk, self.lb, self.lk = ub, uk, lb, lk
         self.ib, self.jk, self.idx, self.weight = ib, jk, idx, weight
-        self.inter = inter
-        """Indices of the pairs on two different atoms."""
 
 
 class _Plan:
@@ -109,7 +103,6 @@ class _Plan:
         # `_to_ints`).
         ang_np = np.asarray(_to_ints(ihelp.angular))
         ush_np = np.asarray(_to_ints(ihelp.shells_to_ushell))
-        atom_np = np.asarray(_to_ints(ihelp.shells_to_atom))
         nsh = ang_np.shape[0]
         nsph_np = 2 * ang_np + 1
         off_np = np.cumsum(nsph_np) - nsph_np
@@ -151,20 +144,38 @@ class _Plan:
                     torch.as_tensor(
                         np.where(ib_np == jk_np, 0.5, 1.0), device=dev
                     ),
-                    torch.as_tensor(
-                        np.nonzero(atom_np[ib_np] != atom_np[jk_np])[0],
-                        dtype=torch.long,
-                        device=dev,
-                    ),
                 )
             )
 
 
 _PLANS: dict[tuple, _Plan] = {}
+_PLANS_BY_OBJECT: dict[tuple, tuple[IndexHelper, _Plan]] = {}
+"""
+Plans by identity of the index helper (the helper itself is kept alive, so
+its ``id`` cannot be reused). The lookup does not read any tensor data and can
+therefore be traced by ``torch.compile``.
+"""
 
 
 def _plan(ihelp: IndexHelper, dev: torch.device) -> _Plan:
-    """Structural plan of `ihelp`, cached on the bytes of its index arrays."""
+    """
+    Structural plan of `ihelp`, cached on the bytes of its index arrays.
+
+    Inside ``torch.compile`` the plan cannot be built (it reads the index
+    arrays on the host): it must exist already, i.e., the function has to be
+    called once eagerly (or :func:`prepare` called) with the same helper.
+    """
+    obj = _PLANS_BY_OBJECT.get((id(ihelp), dev))
+    if obj is not None and obj[0] is ihelp:
+        return obj[1]
+
+    if torch.compiler.is_compiling():
+        raise RuntimeError(
+            "The pair plan of this IndexHelper has not been built. Call "
+            "`prepare(ihelp, device)` (or the function eagerly) before "
+            "compiling."
+        )
+
     key = (
         dev,
         tuple(_to_ints(ihelp.angular)),
@@ -176,7 +187,19 @@ def _plan(ihelp: IndexHelper, dev: torch.device) -> _Plan:
         if len(_PLANS) >= 32:
             _PLANS.clear()
         plan = _PLANS[key] = _Plan(ihelp, dev)
+
+    if len(_PLANS_BY_OBJECT) >= 32:
+        _PLANS_BY_OBJECT.clear()
+    _PLANS_BY_OBJECT[(id(ihelp), dev)] = (ihelp, plan)
     return plan
+
+
+def prepare(ihelp: IndexHelper, dev: torch.device) -> None:
+    """
+    Build the structural plan of `ihelp` on `dev`, so that
+    :func:`assemble_matrix` can be traced by ``torch.compile`` (``fullgraph``).
+    """
+    _plan(ihelp, dev)
 
 
 def _normalized(
@@ -198,7 +221,10 @@ def _normalized(
     for l, a, c in zip(plan.unique_angular, alphas, coeffs):
         vec0 = torch.zeros((1, 3), dtype=a.dtype, device=a.device)
         s = assemble_overlap_1d(kernel, (l, l), (a, a), (c, c), vec0)
-        out.append(c * storch.reciprocal(storch.sqrt(s[0, 0, 0])))
+        # reciprocal square root with a clamp and an eps shift; the eps is a
+        # Python float, which `torch.compile` can trace
+        eps = torch.finfo(a.dtype).eps
+        out.append(c / (torch.sqrt(torch.clamp(s[0, 0, 0], min=eps)) + eps))
     return out
 
 
@@ -207,13 +233,11 @@ def _mirror(
     val: list[Tensor],
     ncomp: int,
     nao: int,
-    sign: float,
     like: Tensor,
 ) -> Tensor:
     """
     Scatter the lower-triangular shell blocks into an ``(ncomp, nao, nao)``
-    matrix (dtype and device of ``like``) and add (``sign = 1``) or subtract
-    (``sign = -1``) its transpose.
+    matrix (dtype and device of ``like``) and add its transpose.
     """
     flat = torch.zeros(ncomp, nao * nao, dtype=like.dtype, device=like.device)
     if idx:
@@ -222,7 +246,7 @@ def _mirror(
         flat = flat.index_copy(1, torch.cat(idx), torch.cat(val, dim=1))
 
     tri = flat.reshape(ncomp, nao, nao)
-    return tri + sign * tri.transpose(-1, -2)
+    return tri + tri.transpose(-1, -2)
 
 
 def assemble_matrix(
@@ -236,6 +260,7 @@ def assemble_matrix(
     screening_threshold: float | None = None,
     chunk_size: int | None = None,
     checkpoint: bool = False,
+    pairs: Sequence[Tensor] | None = None,
 ) -> Tensor:
     """
     Assemble the full AO integral matrix of one molecule. Every shell is
@@ -257,11 +282,14 @@ def assemble_matrix(
     origin : Tensor | None
         Multipole origin (default: Cartesian origin).
     screening_threshold : float | None
-        Drop shell pairs whose prefactor bound
-        ``max |c_a c_b| (pi/p)^1.5 exp(-mu R^2) (1 + R)^(la + lb + emax)`` is
-        below this value (same-atom pairs are always kept). The mask is
-        computed from detached positions, so autograd is unaffected. ``None``
-        (default) computes every pair.
+        Drop shell pairs on different atoms whose rigorous upper bound on the
+        largest element of the block (:func:`_bounds`) is below this value for
+        the overlap, dipole and quadrupole alike (:func:`_screen`), i.e., every
+        dropped element is smaller than the threshold in absolute value. Pairs on the same atom are always kept. The mask is computed
+        from detached positions, so autograd is unaffected (dropped blocks get
+        no gradient). ``None`` (default) computes every pair. The mask has a
+        data-dependent size: it works eagerly and under ``jacrev``/``jacfwd``,
+        but not under ``vmap`` or ``torch.compile``; use ``pairs`` there.
     chunk_size : int | None
         Maximum number of shell pairs of one class evaluated at once, to
         bound the size of the intermediate tensors. ``None``: no chunking.
@@ -269,6 +297,12 @@ def assemble_matrix(
         Recompute the intermediate tensors of every chunk in the backward pass
         (``torch.utils.checkpoint``) instead of storing them: less memory for
         about one extra forward evaluation. Only affects autograd.
+    pairs : Sequence[Tensor] | None
+        Shell pairs to compute, one index tensor per pair class, as returned
+        by :func:`select_pairs` (excludes ``screening_threshold``). The
+        indices are constants, so everything is static and the function works
+        under ``vmap`` and ``torch.compile`` as well. The error bound of the
+        screening only holds for the geometries the selection was made for.
 
     Returns
     -------
@@ -279,21 +313,41 @@ def assemble_matrix(
 
     plan = _plan(ihelp, dev)
     nao, atom = plan.nao, plan.atom
-    ncomp = 1 if components is None else len(components)
-    emax = 0 if components is None else max(max(c) for c in components)
+    if components is None:
+        components = OVERLAP_COMPONENTS
+    ncomp = len(components)
 
     coeffs = _normalized(kernel, plan, alphas, coeffs)
+
+    if pairs is not None:
+        if screening_threshold is not None:
+            raise ValueError(
+                "Pass either `screening_threshold` or `pairs`, not both."
+            )
+        if len(pairs) != len(plan.classes):
+            raise ValueError(
+                f"Expected {len(plan.classes)} pair selections (one per "
+                f"class), got {len(pairs)}."
+            )
+    elif screening_threshold is not None and torch.compiler.is_compiling():
+        raise RuntimeError(
+            "`screening_threshold` selects pairs depending on the data, which "
+            "`torch.compile` cannot trace. Select the pairs eagerly with "
+            "`select_pairs` and pass them as `pairs`."
+        )
 
     all_idx: list[Tensor] = []
     all_val: list[Tensor] = []
 
-    for cl in plan.classes:
+    for k, cl in enumerate(plan.classes):
         ub, uk, lb, lk = cl.ub, cl.uk, cl.lb, cl.lk
-        keep = torch.arange(cl.ib.numel(), device=dev)
+        keep: Tensor | None = None
 
-        if screening_threshold is not None:
+        if pairs is not None:
+            keep = pairs[k]
+        elif screening_threshold is not None:
             keep = _screen(
-                keep,
+                torch.arange(cl.ib.numel(), device=dev),
                 cl.ib,
                 cl.jk,
                 atom,
@@ -302,13 +356,26 @@ def assemble_matrix(
                 alphas[uk].detach(),
                 coeffs[ub].detach(),
                 coeffs[uk].detach(),
-                lb + lk + emax,
+                (lb, lk),
                 screening_threshold,
+                None if origin is None else origin.detach(),
             )
 
-        step = keep.numel() if chunk_size is None else max(int(chunk_size), 1)
-        for start in range(0, keep.numel(), max(step, 1)):
-            sel = keep[start : start + step]
+        selections: list[Tensor | slice]
+        if keep is None and chunk_size is None:
+            # all pairs in one go: views instead of identity gathers
+            selections = [slice(None)]
+        else:
+            if keep is None:
+                keep = torch.arange(cl.ib.numel(), device=dev)
+            step = keep.numel() if chunk_size is None else int(chunk_size)
+            step = max(step, 1)
+            selections = [
+                keep[start : start + step]
+                for start in range(0, keep.numel(), step)
+            ]
+
+        for sel in selections:
             ib, jk = cl.ib[sel], cl.jk[sel]
 
             pos_a = positions[atom[ib]]
@@ -324,11 +391,6 @@ def assemble_matrix(
             )
 
             def _blocks(vec, pos_a, a_b, a_k, c_b, c_k, lb=lb, lk=lk):
-                if components is None:
-                    return assemble_overlap_1d(
-                        kernel, (lb, lk), (a_b, a_k), (c_b, c_k), vec
-                    ).unsqueeze(1)
-
                 return assemble_multipole_1d(
                     kernel,
                     (lb, lk),
@@ -354,63 +416,102 @@ def assemble_matrix(
             all_idx.append(cl.idx[sel].reshape(-1))
             all_val.append(blocks.permute(1, 0, 2, 3).reshape(ncomp, -1))
 
-    return _mirror(all_idx, all_val, ncomp, nao, 1.0, positions)
+    return _mirror(all_idx, all_val, ncomp, nao, positions)
 
 
-def assemble_overlap_gradient(
-    kernel: Kernel1D,
-    ihelp: IndexHelper,
-    alphas: list[Tensor],
-    coeffs: list[Tensor],
-    positions: Tensor,
+_SCREEN_ORDERS = (0, 1, 2)
+"""
+Multipole orders (overlap, dipole, quadrupole) that share one screening mask.
+"""
+
+
+_SPH_NORM = tuple(t.abs().sum(-1).max().item() for t in TRAFO)
+"""Largest absolute row sum of the Cartesian-to-spherical transform of each l."""
+
+
+def _bounds(
+    pa: Tensor,
+    pb: Tensor,
+    alpha_a: Tensor,
+    alpha_b: Tensor,
+    coeff_a: Tensor,
+    coeff_b: Tensor,
+    angular: tuple[int, int],
+    orders: Sequence[int],
+    origin: Tensor | None,
 ) -> Tensor:
+    r"""
+    Rigorous upper bounds on the largest absolute element of the spherical
+    integral block of each shell pair of one class (centers ``pa`` and ``pb``
+    of shape ``(npairs, 3)``), for every multipole order ``e`` in ``orders``,
+    as a tensor of shape ``(len(orders), npairs)``. The quantities that do not
+    depend on the order are computed only once.
+
+    For a Cartesian monomial of the pair with total degrees ``(la, lb, e)``
+    about the centers :math:`A`, :math:`B` and the multipole origin :math:`C`,
+    :math:`|\prod (x-X)^n| \le |r-A|^{l_a} |r-B|^{l_b} |r-C|^e`, and
+    :math:`|r-X| \le \rho + |P-X|` with :math:`\rho = |r-P|` of the product
+    Gaussian center :math:`P`. With
+    :math:`\int \rho^k e^{-p\rho^2} d^3r = 2\pi\Gamma(\frac{k+3}{2})
+    p^{-(k+3)/2}`, the primitive pair is bounded by
+
+    .. math::
+
+        |c_i c_j| e^{-\mu R^2} \sum_{a,b,c} \binom{l_a}{a}
+        \binom{l_b}{b} \binom{e}{c} |PA|^a |PB|^b |PC|^c
+        \, 2\pi \Gamma(\tfrac{n+3}{2}) p^{-(n+3)/2},
+
+    with :math:`n = (l_a - a) + (l_b - b) + (e - c)`, :math:`|PA| = bR/p`,
+    :math:`|PB| = aR/p` and :math:`|PC| \le \max(|AC|, |BC|)`. The sum over
+    all primitive pairs is multiplied by the largest absolute row sums of the
+    two spherical transforms. With ``e = 0`` this is the overlap.
     """
-    Overlap gradient of one molecule: the derivative of every overlap
-    element :math:`S_{ij}` with respect to the position of the atom of
-    orbital :math:`i`. The derivative with respect to the atom of orbital
-    :math:`j` is the negative, so the gradient is antisymmetric. Same-atom
-    blocks are zero.
+    la, lb = angular
+    a, b = alpha_a[:, None], alpha_b[None, :]
+    p = a + b
+    cc = (coeff_a[:, None] * coeff_b[None, :]).abs()
+    mu = a * b / p
+    sph = _SPH_NORM[la] * _SPH_NORM[lb] * (1.0 + 1e-10)  # rounding margin
 
-    Parameters
-    ----------
-    kernel : Kernel1D
-        ``compute_1d``-contract kernel.
-    ihelp : IndexHelper
-        Index helper of the (unbatched) molecule.
-    alphas, coeffs : list[Tensor]
-        Per-unique-shell exponents and coefficients (``Basis.create_cgtos``).
-    positions : Tensor
-        Cartesian coordinates, shape ``(nat, 3)``.
+    c = torch.zeros(3, dtype=pa.dtype, device=pa.device)
+    if origin is not None:
+        c = origin.to(pa.dtype).reshape(-1, 3)[0]
 
-    Returns
-    -------
-    Tensor
-        Shape ``(nao, nao, 3)``.
-    """
-    plan = _plan(ihelp, positions.device)
-    coeffs = _normalized(kernel, plan, alphas, coeffs)
+    r = (pb - pa).norm(dim=-1)[:, None, None]
+    xc = torch.maximum((pa - c).norm(dim=-1), (pb - c).norm(dim=-1))
+    xc = xc[:, None, None]
+    xa, xb = b / p * r, a / p * r
 
-    all_idx: list[Tensor] = []
-    all_val: list[Tensor] = []
-    for cl in plan.classes:
-        if cl.inter.numel() == 0:
-            continue
+    # everything but the polynomial is independent of the order
+    prefactor = cc * torch.exp(-mu * r * r)
+    emax = max(orders)
+    mom = [
+        2.0 * pi * gamma((n + 3) / 2) * p ** (-(n + 3) / 2)
+        for n in range(la + lb + emax + 1)
+    ]
+    xa_pow = [xa**i for i in range(la + 1)]
+    xb_pow = [xb**j for j in range(lb + 1)]
+    xc_pow = [xc**k for k in range(emax + 1)]
 
-        ib, jk = cl.ib[cl.inter], cl.jk[cl.inter]
-        vec = positions[plan.atom[jk]] - positions[plan.atom[ib]]  # B - A
-        blocks = assemble_overlap_gradient_1d(
-            kernel,
-            (cl.lb, cl.lk),
-            (alphas[cl.ub], alphas[cl.uk]),
-            (coeffs[cl.ub], coeffs[cl.uk]),
-            vec,
-        )
+    bounds = []
+    for e in orders:
+        poly = 0.0
+        for i in range(la + 1):
+            for j in range(lb + 1):
+                for k in range(e + 1):
+                    n = (la - i) + (lb - j) + (e - k)
+                    poly = poly + (
+                        comb(la, i)
+                        * comb(lb, j)
+                        * comb(e, k)
+                        * xa_pow[i]
+                        * xb_pow[j]
+                        * xc_pow[k]
+                        * mom[n]
+                    )
+        bounds.append((prefactor * poly).sum((-2, -1)) * sph)
 
-        all_idx.append(cl.idx[cl.inter].reshape(-1))
-        all_val.append(blocks.permute(1, 0, 2, 3).reshape(3, -1))
-
-    grad = _mirror(all_idx, all_val, 3, plan.nao, -1.0, positions)
-    return grad.permute(1, 2, 0)
+    return torch.stack(bounds)
 
 
 def _screen(
@@ -423,78 +524,107 @@ def _screen(
     alpha_b: Tensor,
     coeff_a: Tensor,
     coeff_b: Tensor,
-    degree: int,
+    angular: tuple[int, int],
     threshold: float,
+    origin: Tensor | None = None,
 ) -> Tensor:
-    """Indices (into ``bra``/``ket``) of the pairs of one class to keep."""
-    a, b = alpha_a[:, None], alpha_b[None, :]
-    p = a + b
-    pref = (coeff_a[:, None] * coeff_b[None, :]).abs() * (pi / p) ** 1.5
-    mu = a * b / p
+    """
+    Indices (into ``bra``/``ket``) of the pairs of one class to keep: those
+    on the same atom and those for which the :func:`_bounds` of *any* multipole
+    order in :data:`_SCREEN_ORDERS` exceeds ``threshold``.
 
+    The mask is the same for the overlap, dipole and quadrupole. Dropping a
+    pair from the overlap but not from the dipole would leave an error of up
+    to ``|R| * threshold`` (``|R|^2`` for the quadrupole) once the multipoles
+    are shifted from the gauge origin to the atoms, which grows with the
+    distance of the molecule from the origin.
+    """
     kept = []
     for start in range(0, cls.numel(), _SCREEN_CHUNK):
         sel = cls[start : start + _SCREEN_CHUNK]
-        d = positions[atom[ket[sel]]] - positions[atom[bra[sel]]]
-        r2 = (d * d).sum(-1)
-        bound = (pref[None] * torch.exp(-mu[None] * r2[:, None, None])).amax(
-            (-2, -1)
+        pa, pb = positions[atom[bra[sel]]], positions[atom[ket[sel]]]
+        keep = (pb == pa).all(-1)
+        bound = _bounds(
+            pa,
+            pb,
+            alpha_a,
+            alpha_b,
+            coeff_a,
+            coeff_b,
+            angular,
+            _SCREEN_ORDERS,
+            origin,
         )
-        bound = bound * (1.0 + r2.sqrt()) ** degree
-        kept.append(sel[(bound > threshold) | (r2 == 0)])
+        keep = keep | (bound > threshold).any(0)
+        kept.append(sel[keep])
 
     return torch.cat(kept) if kept else cls[:0]
 
 
-def assemble_matrix_batch(
+def select_pairs(
     kernel: Kernel1D,
-    numbers: Tensor,
+    ihelp: IndexHelper,
+    alphas: list[Tensor],
+    coeffs: list[Tensor],
     positions: Tensor,
-    par: Param,
-    components: tuple[tuple[int, int, int], ...] | None = None,
+    threshold: float,
     origin: Tensor | None = None,
-) -> Tensor:
+) -> tuple[Tensor, ...]:
     """
-    Padded-batch version of :func:`assemble_matrix`.
+    Shell pairs to compute for the given geometries, for the ``pairs``
+    argument of :func:`assemble_matrix`: one index tensor per pair class.
 
-    Padded atoms are identified from ``numbers == 0`` -- never from the
-    coordinates, which are ambiguous for molecules lying in a coordinate
-    plane (see AGENTS.md, issue #263) -- and are removed *before* any basis
-    or pair is built, so the kernels never see them. Each molecule is
-    assembled separately and packed with zero padding, so padded rows and
-    columns are exactly zero and no gradient can flow from padded atoms.
+    The selection is made eagerly (the number of pairs depends on the data)
+    with the shared bound of :func:`_screen`, so it is valid for the overlap,
+    dipole and quadrupole. It is the union over all geometries in
+    ``positions``, which keeps the error bound for every one of them (a pair
+    that is kept although it is not needed is exact).
 
     Parameters
     ----------
-    numbers : Tensor
-        Atomic numbers, shape ``(nbatch, nat)``, zero-padded.
+    kernel : Kernel1D
+        ``compute_1d``-contract kernel (normalizes the shells).
+    ihelp : IndexHelper
+        Index helper of the (unbatched) molecule.
+    alphas, coeffs : list[Tensor]
+        Per-unique-shell exponents and coefficients (``Basis.create_cgtos``).
     positions : Tensor
-        Coordinates, shape ``(nbatch, nat, 3)``.
-    par : Param
-        Parametrization.
+        Cartesian coordinates, shape ``(nat, 3)`` or ``(nbatch, nat, 3)``.
+    threshold : float
+        Drop pairs whose bound is below this value.
+    origin : Tensor | None
+        Multipole origin (default: Cartesian origin).
 
     Returns
     -------
-    Tensor
-        Shape ``(nbatch, ncomp, nao_max, nao_max)``.
+    tuple[Tensor, ...]
+        Indices of the kept pairs of each class.
     """
-    mats = []
-    for nums, pos in zip(numbers, positions):
-        keep = nums != 0
-        nums, pos = nums[keep], pos[keep]
-        ihelp = IndexHelper.from_numbers(nums, par)
-        alphas, coeffs = Basis(
-            nums, par, ihelp, dtype=pos.dtype, device=pos.device
-        ).create_cgtos()
-        mats.append(
-            assemble_matrix(
-                kernel,
-                ihelp,
-                alphas,
-                coeffs,
+    dev = positions.device
+    plan = _plan(ihelp, dev)
+    coeffs = [c.detach() for c in _normalized(kernel, plan, alphas, coeffs)]
+    geometries = positions.detach().reshape(-1, *positions.shape[-2:])
+    org = None if origin is None else origin.detach()
+
+    out = []
+    for cl in plan.classes:
+        every = torch.arange(cl.ib.numel(), device=dev)
+        kept = [
+            _screen(
+                every,
+                cl.ib,
+                cl.jk,
+                plan.atom,
                 pos,
-                components,
-                origin,
+                alphas[cl.ub].detach(),
+                alphas[cl.uk].detach(),
+                coeffs[cl.ub],
+                coeffs[cl.uk],
+                (cl.lb, cl.lk),
+                threshold,
+                org,
             )
-        )
-    return pack(mats)
+            for pos in geometries
+        ]
+        out.append(torch.unique(torch.cat(kept)))
+    return tuple(out)

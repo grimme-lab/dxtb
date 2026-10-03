@@ -21,8 +21,21 @@ of two interchangeable algorithms, selected with the ``int_algorithm`` option
 Both algorithms agree with libcint to ``1e-12`` in double precision, support
 CPU and CUDA, padded batches, and derivatives of any order (also with
 ``torch.func``) with respect to the positions and the basis parameters, and
-work with ``torch.compile``. The overlap gradient required by the analytical
-nuclear gradient is computed from the same one-dimensional integrals.
+work with ``torch.compile``. The analytical nuclear gradient of the
+calculator needs the overlap gradient of the libcint driver; with the PyTorch
+driver, use the autograd forces.
+
+The GFN2 calculator also provides the molecular traceless quadrupole moment
+(``calc.get_quadrupole(positions)``, six components ``xx, yx, yy, zx, zy, zz``,
+matching tblite), which requires the quadrupole integral.
+
+The quadrupole moment is also available as the derivative of the energy with
+respect to an electric field gradient, via autograd (``calc.quadrupole``) and
+finite differences (``calc.quadrupole_numerical``). Both need the
+``ElectricFieldGrad`` interaction (with ``requires_grad=True`` for autograd).
+They agree with the analytical diagonal elements; the analytical off-diagonal
+elements follow tblite and count the point-charge and dipole contribution
+twice.
 
 .. code-block:: python
 

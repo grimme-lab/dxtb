@@ -24,9 +24,13 @@ All labels related to integrals and their computation.
 __all__ = [
     "INTDRIVER_LIBCINT",
     "INTDRIVER_LIBCINT_STRS",
+    "INTDRIVER_PYTORCH",
+    "INTDRIVER_PYTORCH_STRS",
+    "INTDRIVER_MAP",
     "INTDRIVER_AUTOGRAD",
     "INTDRIVER_AUTOGRAD_STRS",
-    "INTDRIVER_MAP",
+    "INTALGORITHM_CHOICES",
+    "INTALGORITHM_DEFAULT",
     #
     "INTLEVEL_NONE",
     "INTLEVEL_OVERLAP",
@@ -44,20 +48,34 @@ INTDRIVER_LIBCINT = 0
 INTDRIVER_LIBCINT_STRS = ("libcint", "c")
 """String codes for LIBCINT driver."""
 
-INTDRIVER_AUTOGRAD = 1
-"""Integer code for the PyTorch (autograd) driver."""
+INTDRIVER_PYTORCH = 1
+"""Integer code for the PyTorch driver."""
 
-INTDRIVER_AUTOGRAD_STRS = ("autograd", "pytorch", "torch", "dxtb")
-"""String codes for the PyTorch (autograd) driver."""
+INTDRIVER_PYTORCH_STRS = ("autograd", "pytorch", "torch", "dxtb")
+"""String codes for the PyTorch driver."""
 
-# The integer codes 2 and 3 belonged to the removed analytical and legacy
-# PyTorch drivers.
+INTDRIVER_AUTOGRAD = INTDRIVER_PYTORCH
+"""Deprecated alias of :data:`INTDRIVER_PYTORCH`."""
+
+INTDRIVER_AUTOGRAD_STRS = INTDRIVER_PYTORCH_STRS
+"""Deprecated alias of :data:`INTDRIVER_PYTORCH_STRS`."""
 
 INTDRIVER_MAP = {
     INTDRIVER_LIBCINT: "libcint",
-    INTDRIVER_AUTOGRAD: "PyTorch",
+    INTDRIVER_PYTORCH: "PyTorch",
 }
 """String map (for printing) of integral drivers."""
+
+# algorithms of the PyTorch driver
+
+INTALGORITHM_CHOICES = ("md", "os")
+"""
+Names of the 1D kernels of the PyTorch driver: McMurchie-Davidson with
+Hermite moments (``md``) and the three-index Obara-Saika recursion (``os``).
+"""
+
+INTALGORITHM_DEFAULT = "os"
+"""Kernel of the PyTorch driver used when none is requested."""
 
 # levels
 

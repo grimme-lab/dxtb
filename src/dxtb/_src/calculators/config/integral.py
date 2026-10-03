@@ -102,15 +102,15 @@ class ConfigIntegrals:
                     )
 
                 self.driver = labels.INTDRIVER_LIBCINT
-            elif driver.casefold() in labels.INTDRIVER_AUTOGRAD_STRS:
-                self.driver = labels.INTDRIVER_AUTOGRAD
+            elif driver.casefold() in labels.INTDRIVER_PYTORCH_STRS:
+                self.driver = labels.INTDRIVER_PYTORCH
             else:
                 raise ValueError(f"Unknown integral driver '{driver}'.")
 
         elif isinstance(driver, int):
             if driver not in (
                 labels.INTDRIVER_LIBCINT,
-                labels.INTDRIVER_AUTOGRAD,
+                labels.INTDRIVER_PYTORCH,
             ):
                 raise ValueError(f"Unknown integral driver '{driver}'.")
 
@@ -128,7 +128,7 @@ class ConfigIntegrals:
                         "Falling back to the PyTorch driver."
                     )
 
-                    driver = labels.INTDRIVER_AUTOGRAD
+                    driver = labels.INTDRIVER_PYTORCH
 
             self.driver = driver
         else:
@@ -138,17 +138,12 @@ class ConfigIntegrals:
             )
 
         if algorithm is not None:
-            # pylint: disable=import-outside-toplevel
-            from dxtb._src.integral.driver.pytorch.impls.kernels import (
-                ALGORITHMS,
-            )
-
             if not isinstance(algorithm, str) or (
-                algorithm.casefold() not in ALGORITHMS
+                algorithm.casefold() not in labels.INTALGORITHM_CHOICES
             ):
                 raise ValueError(
-                    f"Unknown integral algorithm '{algorithm}'. "
-                    f"Choose one of: {', '.join(ALGORITHMS)}."
+                    f"Unknown integral algorithm '{algorithm}'. Choose one "
+                    f"of: {', '.join(labels.INTALGORITHM_CHOICES)}."
                 )
             if self.driver == labels.INTDRIVER_LIBCINT:
                 raise ValueError(

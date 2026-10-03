@@ -27,20 +27,19 @@ from __future__ import annotations
 
 from typing import Callable
 
+from dxtb._src.constants.labels import (
+    INTALGORITHM_CHOICES,
+    INTALGORITHM_DEFAULT,
+)
 from dxtb._src.typing import Tensor
 
 __all__ = ["ALGORITHMS", "DEFAULT_ALGORITHM", "get_kernel"]
 
-ALGORITHMS = ("md", "os")
-"""
-Names of the available kernels: McMurchie-Davidson with Hermite moments and
-the three-index Obara-Saika recursion.
-"""
+ALGORITHMS = INTALGORITHM_CHOICES
+"""Names of the available kernels."""
 
-DEFAULT_ALGORITHM = "os"
-"""
-Kernel used when none is requested: the three-index Obara-Saika recursion.
-"""
+DEFAULT_ALGORITHM = INTALGORITHM_DEFAULT
+"""Kernel used when none is requested."""
 
 
 def get_kernel(name: str) -> Callable[..., Tensor]:

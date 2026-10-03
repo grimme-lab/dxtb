@@ -59,14 +59,6 @@ def test_analytical(dtype: torch.dtype, name: str, scf_mode: str) -> None:
 
 
 @pytest.mark.grad
-@pytest.mark.filterwarnings("ignore")
-@pytest.mark.parametrize("name", ["H2O", "CH4"])
-def test_analytical_pytorch(name: str) -> None:
-    """Analytical overlap gradient of the PyTorch driver (no libcint)."""
-    analytical(torch.double, name, 1e-5, 1e-4, "implicit", "pytorch")
-
-
-@pytest.mark.grad
 @pytest.mark.large
 @pytest.mark.filterwarnings("ignore")
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])

@@ -16,12 +16,8 @@
 # limitations under the License.
 """
 Gradient of the total energy with respect to the basis exponents against
-finite differences.
-
-Regression test: the custom backward of the analytical driver keeps the basis
-as a plain Python object, so it silently dropped all gradients with respect to
-the exponents and contraction coefficients (LiH: 1.7e-3 instead of 0.19).
-For GFN2, the gradient also flows through the multipole integrals.
+finite differences. For GFN2, the gradient also flows through the multipole
+integrals.
 """
 
 from __future__ import annotations

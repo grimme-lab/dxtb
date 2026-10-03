@@ -31,7 +31,7 @@ from dxtb._src.exlibs.available import has_libcint
 from dxtb._src.integral.driver.pytorch.impls.kernels import ALGORITHMS
 from dxtb._src.typing import DD, Tensor
 from dxtb.integrals.wrappers import dipint, quadint
-from dxtb.labels import INTDRIVER_AUTOGRAD, INTDRIVER_LIBCINT
+from dxtb.labels import INTDRIVER_LIBCINT, INTDRIVER_PYTORCH
 
 from ..conftest import DEVICE
 from ..utils import get_param_module
@@ -118,5 +118,5 @@ def test_integral_wrappers() -> None:
 
     for fn in (dipint, quadint):
         ref = fn(numbers, positions, GFN2_XTB, driver=INTDRIVER_LIBCINT)
-        out = fn(numbers, positions, GFN2_XTB, driver=INTDRIVER_AUTOGRAD)
+        out = fn(numbers, positions, GFN2_XTB, driver=INTDRIVER_PYTORCH)
         assert torch.allclose(out, p @ ref.to(DEVICE) @ p.mT, atol=1e-11)

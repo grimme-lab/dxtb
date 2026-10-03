@@ -48,7 +48,7 @@ large = ["PbH4-BiH3", "MB16_43_01", "LYS_xao"]
 # SCF options
 opts = {
     "verbosity": 0,
-    "int_driver": labels.INTDRIVER_AUTOGRAD,
+    "int_driver": labels.INTDRIVER_PYTORCH,
     "f_atol": 1e-6,
     "x_atol": 1e-6,
 }

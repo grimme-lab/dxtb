@@ -27,11 +27,9 @@ from tad_mctc.batch import pack
 from dxtb import GFN1_XTB as par
 from dxtb import IndexHelper
 from dxtb._src.basis.bas import Basis
+from dxtb._src.integral.driver.pytorch.driver import IntDriverPytorch
 from dxtb._src.integral.driver.pytorch.impls.kernels.os import compute_1d_os
-from dxtb._src.integral.driver.pytorch.impls.pairs import (
-    assemble_matrix,
-    assemble_matrix_batch,
-)
+from dxtb._src.integral.driver.pytorch.impls.pairs import assemble_matrix
 from dxtb._src.integral.driver.pytorch.impls.pipeline import (
     QUADRUPOLE_COMPONENTS,
 )
@@ -45,6 +43,19 @@ def setup(numbers: Tensor, dd: DD) -> tuple[IndexHelper, list, list]:
     ihelp = IndexHelper.from_numbers(numbers, par)
     alphas, coeffs = Basis(numbers, par, ihelp, **dd).create_cgtos()
     return ihelp, alphas, coeffs
+
+
+def batch_matrix(
+    numbers: Tensor,
+    positions: Tensor,
+    components: tuple[tuple[int, int, int], ...],
+) -> Tensor:
+    """Integral of a zero-padded batch, built by the PyTorch driver."""
+    dd: DD = {"dtype": positions.dtype, "device": positions.device}
+    ihelp = IndexHelper.from_numbers(numbers, par, batch_mode=1)
+    driver = IntDriverPytorch(numbers, par, ihelp, **dd)
+    driver.setup(positions)
+    return driver.eval_matrix(components)
 
 
 def two_molecules(dd: DD, gap: float) -> tuple[Tensor, Tensor]:
@@ -78,17 +89,11 @@ def test_batch() -> None:
 
     numbers = pack(nums)
     positions = pack(pos).requires_grad_(True)
-    out = assemble_matrix_batch(
-        compute_1d_os, numbers, positions, par, QUADRUPOLE_COMPONENTS
-    )
+    out = batch_matrix(numbers, positions, QUADRUPOLE_COMPONENTS)
 
     for i, (n, p) in enumerate(zip(nums, pos)):
-        ref = assemble_matrix_batch(
-            compute_1d_os,
-            n.unsqueeze(0),
-            p.unsqueeze(0),
-            par,
-            QUADRUPOLE_COMPONENTS,
+        ref = batch_matrix(
+            n.unsqueeze(0), p.unsqueeze(0), QUADRUPOLE_COMPONENTS
         )[0]
         nao = ref.shape[-1]
         assert torch.allclose(out[i, :, :nao, :nao], ref, atol=1e-14)

@@ -35,7 +35,6 @@ from dxtb._src.integral.driver.pytorch.impls.kernels import (
 )
 from dxtb._src.integral.driver.pytorch.impls.pairs import (
     assemble_matrix,
-    assemble_overlap_gradient,
 )
 from dxtb._src.integral.driver.pytorch.impls.pipeline import (
     DIPOLE_COMPONENTS,
@@ -204,37 +203,6 @@ def test_rotation_covariance(algorithm: str) -> None:
     assert t0.abs().max() > 1e-3
     assert torch.allclose(t1, rot @ t0, atol=1e-9, rtol=0.0)
     assert torch.allclose(tt1, rot @ tt0 @ rot.T, atol=1e-9, rtol=0.0)
-
-
-@pytest.mark.parametrize("algorithm", ALGORITHMS)
-def test_overlap_gradient(algorithm: str) -> None:
-    """
-    The analytical overlap gradient is the derivative of :math:`S_{ij}` with
-    respect to the atom of orbital :math:`i`, zero for same-atom blocks.
-    """
-    dd: DD = {"dtype": torch.double, "device": DEVICE}
-    numbers = samples["SiH4"]["numbers"].to(DEVICE)
-    positions = samples["SiH4"]["positions"].to(**dd)
-    mats = Matrices(numbers, algorithm, dd)
-
-    grad = assemble_overlap_gradient(
-        mats.kernel, mats.ihelp, mats.alphas, mats.coeffs, positions
-    )
-
-    # (nao, nao, nat, 3) -> derivative w.r.t. the atom of the row orbital
-    jac = torch.autograd.functional.jacobian(
-        lambda pos: mats(pos, "overlap")[0], positions
-    )
-    atom = mats.ihelp.spread_atom_to_orbital(
-        torch.arange(numbers.shape[0], device=DEVICE), dim=-1
-    )
-    nao = atom.shape[0]
-    rows = torch.arange(nao, device=DEVICE)
-    ref = jac[rows[:, None], rows[None, :], atom[:, None]]
-    ref[atom[:, None] == atom[None, :]] = 0.0
-
-    assert torch.allclose(grad, ref, atol=1e-13, rtol=0.0)
-    assert torch.allclose(grad, -grad.transpose(0, 1), atol=1e-14, rtol=0.0)
 
 
 @pytest.mark.parametrize("algorithm", ALGORITHMS)

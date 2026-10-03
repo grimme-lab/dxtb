@@ -44,7 +44,7 @@ def test_driver_libcint() -> None:
 
 
 def test_driver_pytorch() -> None:
-    cls = factory.new_driver(labels.INTDRIVER_AUTOGRAD, numbers, GFN1_XTB)
+    cls = factory.new_driver(labels.INTDRIVER_PYTORCH, numbers, GFN1_XTB)
     assert isinstance(cls, IntDriverPytorch)
 
 

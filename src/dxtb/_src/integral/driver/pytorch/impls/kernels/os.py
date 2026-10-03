@@ -95,9 +95,8 @@ def compute_1d_os(
     Returns
     -------
     Tensor
-        For ``emax == 0``: ``[i, j, ..., axis, nprimi, nprimj]`` (matching
-        ``compute_1d``). For ``emax > 0``: ``[i, j, e, ..., axis, nprimi,
-        nprimj]`` with ``e <= emax``.
+        Table ``[i, j, e, ..., axis, nprimi, nprimj]`` with ``e <= emax``
+        (a singleton ``e`` axis for the overlap, ``emax == 0``).
 
     Raises
     ------
@@ -153,7 +152,7 @@ def compute_1d_os(
     shape = t[(0, 0, 0)].shape
     if emax == 0:
         vals = [t[(i, j, 0)] for i in range(la + 1) for j in range(lb + 1)]
-        return torch.stack(vals, dim=0).reshape(la + 1, lb + 1, *shape)
+        return torch.stack(vals, dim=0).reshape(la + 1, lb + 1, 1, *shape)
 
     vals = [
         t[(i, j, e)]

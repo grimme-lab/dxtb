@@ -117,7 +117,7 @@ class DriverManager(TensorLike):
                 # This is only done for the basis-specific parameters in the
                 # constructor of the `Basis` class.
 
-        elif self.driver_type == labels.INTDRIVER_AUTOGRAD:
+        elif self.driver_type == labels.INTDRIVER_PYTORCH:
             # pylint: disable=import-outside-toplevel
             from .pytorch import IntDriverPytorch as _IntDriver
 
@@ -135,11 +135,7 @@ class DriverManager(TensorLike):
                     "PyTorch integral driver, not for `libcint`."
                 )
 
-            # pylint: disable=import-outside-toplevel
-            from .pytorch.impls.kernels import get_kernel
-
-            get_kernel(self.algorithm)  # validate the name early
-            self.driver.algorithm = self.algorithm.casefold()
+            self.driver.algorithm = self.algorithm  # validates the name
 
     def setup_driver(self, positions: Tensor, **kwargs: Any) -> None:
         """

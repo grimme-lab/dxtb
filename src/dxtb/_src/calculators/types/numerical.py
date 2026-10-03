@@ -28,7 +28,7 @@ import logging
 import torch
 
 from dxtb import OutputHandler
-from dxtb._src.components.interactions.field import efield
+from dxtb._src.components.interactions.field import efield, efieldgrad
 from dxtb._src.constants import defaults
 from dxtb._src.typing import Any, Tensor
 
@@ -56,6 +56,7 @@ class NumericalCalculator(EnergyCalculator):
         "normal_modes",
         "frequencies",
         "dipole",
+        "quadrupole",
         "dipole_deriv",
         "polarizability",
         "pol_deriv",
@@ -358,6 +359,80 @@ class NumericalCalculator(EnergyCalculator):
         logger.debug("Dipole (numerical): All finished.")
 
         return -deriv
+
+    @cdec.numerical
+    @cdec.requires_efg
+    @cdec.cache
+    def quadrupole_numerical(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        step_size: int | float = defaults.STEP_SIZE,
+        **kwargs: Any,
+    ) -> Tensor:
+        r"""
+        Numerically calculate the traceless electric quadrupole moment
+        :math:`\Theta`.
+
+        .. math::
+
+            \Theta_{ij} = -3 \, \dfrac{\partial E}{\partial G_{ij}}
+
+        See :meth:`dxtb.Calculator.quadrupole` for details.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to ``None``.
+        step_size : int | float, optional
+            Step size for numerical differentiation.
+
+        Returns
+        -------
+        Tensor
+            Traceless quadrupole moment of shape ``(..., 6)``, packed as
+            ``xx, yx, yy, zx, zy, zz``.
+        """
+        # pylint: disable=import-outside-toplevel
+        import gc
+
+        # retrieve field gradient, no copy needed because of no_grad context
+        field_grad = self.interactions.get_interaction(
+            efieldgrad.LABEL_EFIELD_GRAD
+        ).field_grad
+
+        # (..., 6)
+        deriv = torch.zeros((*self.numbers.shape[:-1], 6), **self.dd)
+        logger.debug(
+            "Quadrupole (numerical): Starting build (%s).", deriv.shape
+        )
+
+        rows, cols = torch.tril_indices(3, 3).unbind()
+        for k, (i, j) in enumerate(zip(rows.tolist(), cols.tolist())):
+            with OutputHandler.with_verbosity(0):
+                field_grad[i, j] += step_size
+                self.interactions.update_efield_grad(field_grad=field_grad)
+                gr = self.energy(positions, chrg, spin, **kwargs)
+
+                field_grad[i, j] -= 2 * step_size
+                self.interactions.update_efield_grad(field_grad=field_grad)
+                gl = self.energy(positions, chrg, spin, **kwargs)
+
+                field_grad[i, j] += step_size
+                self.interactions.update_efield_grad(field_grad=field_grad)
+                deriv[..., k] = 0.5 * (gr - gl) / step_size
+
+            logger.debug("Quadrupole (numerical): step %s/6.", k + 1)
+            gc.collect()
+
+        logger.debug("Quadrupole (numerical): All finished.")
+
+        return -3.0 * deriv
 
     @cdec.numerical
     @cdec.cache
@@ -821,6 +896,9 @@ class NumericalCalculator(EnergyCalculator):
 
         if "dipole" in properties:
             self.dipole_numerical(positions, chrg, spin, **kwargs)
+
+        if "quadrupole" in properties:
+            self.quadrupole_numerical(positions, chrg, spin, **kwargs)
 
         if {"dipole_derivatives", "dipole_deriv"} & set(properties):
             self.dipole_deriv_numerical(positions, chrg, spin, **kwargs)
