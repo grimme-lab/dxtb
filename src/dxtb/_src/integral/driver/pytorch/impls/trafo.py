@@ -30,9 +30,14 @@ from __future__ import annotations
 
 from math import sqrt
 
-import torch
+import numpy as np
 
 __all__ = ["TRAFO", "NLM_CART"]
+
+# DEVNOTE: The tables are numpy arrays on purpose. Module-level tensors would
+# be created whenever the (lazily imported) driver is first used, which looks
+# like a memory leak of the first calculation, and they would be fixed to one
+# device and dtype.
 
 
 s3 = sqrt(3.0)
@@ -61,27 +66,27 @@ s45_8 = sqrt(45.0 / 8.0)
 
 
 TRAFO = (
-    torch.tensor([[1.0]], dtype=torch.double),
-    torch.tensor(
+    np.array([[1.0]], dtype=np.float64),
+    np.array(
         [
             [1.0, 0.0, 0.0],  # y
             [0.0, 1.0, 0.0],  # z
             [0.0, 0.0, 1.0],  # x
         ],
-        dtype=torch.double,
+        dtype=np.float64,
     ),
     # fmt: off
     # Cartesian columns: xx, xy, xz, yy, yz, zz; rows: m = -2, ..., 2
-    torch.tensor([
+    np.array([
         [ 0.0,  s3, 0.0,   0.0, 0.0, 0.0],  # m = -2
         [ 0.0, 0.0, 0.0,   0.0,  s3, 0.0],  # m = -1
         [-0.5, 0.0, 0.0,  -0.5, 0.0, 1.0],  # m =  0
         [ 0.0, 0.0,  s3,   0.0, 0.0, 0.0],  # m = +1
         [s3_4, 0.0, 0.0, -s3_4, 0.0, 0.0],  # m = +2
-    ], dtype=torch.double),
+    ], dtype=np.float64),
     # Cartesian columns: xxx, xxy, xxz, xyy, xyz, xzz, yyy, yyz, yzz, zzz;
     # rows: m = -3, ..., 3
-    torch.tensor([
+    np.array([
         [  0.0, s45_8,    0.0,    0.0, 0.0, 0.0, -s5_8,    0.0, 0.0, 0.0],  # -3
         [  0.0,   0.0,    0.0,    0.0, s15, 0.0,   0.0,    0.0, 0.0, 0.0],  # -2
         [  0.0, -s3_8,    0.0,    0.0, 0.0, 0.0, -s3_8,    0.0,  s6, 0.0],  # -1
@@ -89,7 +94,7 @@ TRAFO = (
         [-s3_8,   0.0,    0.0,  -s3_8, 0.0,  s6,   0.0,    0.0, 0.0, 0.0],  # +1
         [  0.0,   0.0,  s15_4,    0.0, 0.0, 0.0,   0.0, -s15_4, 0.0, 0.0],  # +2
         [ s5_8,   0.0,    0.0, -s45_8, 0.0, 0.0,   0.0,    0.0, 0.0, 0.0],  # +3
-    ], dtype=torch.double),
+    ], dtype=np.float64),
     # fmt: on
 )
 """
@@ -109,12 +114,12 @@ which is the spherical order [-1, 0, 1] of tblite.
 # one cartesian function per line.
 
 NLM_CART = (
-    torch.tensor(
+    np.array(
         [
             [0, 0, 0],  # s
         ]
     ),
-    torch.tensor(
+    np.array(
         [
             # tblite order: y (-1), z (0), x (+1) in [-1, 0, 1] sorting
             [0, 1, 0],  # py
@@ -122,7 +127,7 @@ NLM_CART = (
             [1, 0, 0],  # px
         ]
     ),
-    torch.tensor(
+    np.array(
         [
             [2, 0, 0],  # dxx
             [1, 1, 0],  # dxy
@@ -132,7 +137,7 @@ NLM_CART = (
             [0, 0, 2],  # dzz
         ]
     ),
-    torch.tensor(
+    np.array(
         [
             [3, 0, 0],  # fxxx
             [2, 1, 0],  # fxxy
@@ -146,7 +151,7 @@ NLM_CART = (
             [0, 0, 3],  # fzzz
         ]
     ),
-    torch.tensor(
+    np.array(
         [
             [4, 0, 0],  # gxxxx
             [3, 1, 0],  # gxxxy

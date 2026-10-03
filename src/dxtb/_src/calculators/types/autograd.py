@@ -29,6 +29,7 @@ import torch
 
 from dxtb import OutputHandler, timer
 from dxtb._src.components.interactions.field import efield as efield
+from dxtb._src.components.interactions.field import efieldgrad as efieldgrad
 from dxtb._src.constants import defaults
 from dxtb._src.typing import Any, Callable, Literal, Tensor
 
@@ -65,6 +66,7 @@ class AutogradCalculator(EnergyCalculator):
         "frequencies",
         #
         "dipole",
+        "quadrupole",
         "dipole_deriv",
         "polarizability",
         "pol_deriv",
@@ -464,6 +466,81 @@ class AutogradCalculator(EnergyCalculator):
             dip = dip.contiguous()
 
         return -dip
+
+    @cdec.requires_efg
+    @cdec.requires_efg_grad
+    @cdec.cache
+    def quadrupole(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        use_functorch: bool = False,
+    ) -> Tensor:
+        r"""
+        Calculate the traceless electric quadrupole moment :math:`\Theta` via
+        AD.
+
+        .. math::
+
+            \Theta_{ij} = -3 \, \dfrac{\partial E}{\partial G_{ij}}
+
+        where :math:`G` is the electric field gradient of the
+        :class:`~dxtb.components.field.ElectricFieldGrad` interaction. The
+        result is packed in the order ``xx, yx, yy, zx, zy, zz``, like
+        :meth:`dxtb.Calculator.quadrupole_analytical`.
+
+        .. note::
+
+            This is the derivative of a rotation-covariant energy. It agrees
+            with the analytical quadrupole moment for the diagonal elements,
+            whereas the off-diagonal elements of the analytical result
+            double the contribution of the point charges and dipoles
+            (following `tblite`).
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to ``None``.
+        use_functorch: bool, optional
+            Whether to use functorch or the standard (slower) autograd.
+
+        Returns
+        -------
+        Tensor
+            Traceless quadrupole moment of shape ``(..., 6)``.
+        """
+        field_grad = self.interactions.get_interaction(
+            efieldgrad.LABEL_EFIELD_GRAD
+        ).field_grad
+
+        if use_functorch is True:
+            # pylint: disable=import-outside-toplevel
+            from tad_mctc.autograd import jacrev
+
+            def wrapped_energy(g: Tensor) -> Tensor:
+                self.interactions.update_efield_grad(field_grad=g)
+                return self.energy(positions, chrg, spin)
+
+            deriv = jacrev(wrapped_energy)(field_grad)
+            assert isinstance(deriv, Tensor)
+        else:
+            # pylint: disable=import-outside-toplevel
+            from tad_mctc.autograd import jac
+
+            energy = self.energy(positions, chrg, spin)
+            deriv = jac(energy, field_grad)
+
+        # `jac` flattens the (3, 3) input, `jacrev` does not: (..., 3, 3)
+        deriv = deriv.reshape(*self.numbers.shape[:-1], 3, 3)
+
+        # (..., 3, 3) -> (..., 6): packed lower triangle
+        rows, cols = torch.tril_indices(3, 3, device=deriv.device).unbind()
+        return -3.0 * deriv[..., rows, cols].contiguous()
 
     @cdec.requires_positions_grad
     @cdec.cache
@@ -1051,6 +1128,9 @@ class AutogradCalculator(EnergyCalculator):
 
         if "dipole" in properties:
             self.dipole(positions, chrg, spin, **kwargs)
+
+        if "quadrupole" in properties:
+            self.quadrupole(positions, chrg, spin, **kwargs)
 
         if {"dipole_derivatives", "dipole_deriv"} & set(properties):
             self.dipole_deriv(positions, chrg, spin, **kwargs)

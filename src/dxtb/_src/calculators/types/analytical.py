@@ -56,6 +56,7 @@ class AnalyticalCalculator(EnergyCalculator):
     implemented_properties = EnergyCalculator.implemented_properties + [
         "forces",
         "dipole",
+        "quadrupole",
     ]
     """Names of implemented methods of the Calculator."""
 
@@ -608,6 +609,77 @@ class AnalyticalCalculator(EnergyCalculator):
         dip = dipole(qat, positions, result.density, dipint.matrix)
         return dip
 
+    @cdec.cache
+    def quadrupole_analytical(
+        self,
+        positions: Tensor,
+        chrg: Tensor | float | int = defaults.CHRG,
+        spin: Tensor | float | int | None = defaults.SPIN,
+        *_,  # absorb stuff
+        **kwargs: Any,
+    ) -> Tensor:
+        r"""
+        Analytically calculate the traceless electric quadrupole moment
+        :math:`\Theta` (nuclear and electronic contributions), following the
+        `tblite` implementation.
+
+        The atom-resolved monopole, dipole and quadrupole populations that the
+        SCF builds from the density matrix and the (atom-centered) integrals
+        are combined with the nuclear positions.
+
+        Requires the quadrupole integral, i.e., an integral level of at least
+        ``labels.INTLEVEL_QUADRUPOLE`` (the default for GFN2-xTB).
+
+        .. note::
+
+            This reproduces `tblite` element by element. The off-diagonal
+            elements of the packed result mix two scalings (``3 Q_ij`` for
+            the point-charge/dipole part, ``1.5 Q_ij`` for the atomic
+            quadrupoles), so they are not rotation-covariant, whereas the
+            diagonal elements are. The derivative of the energy with respect
+            to the electric field gradient
+            (:meth:`~dxtb.Calculator.quadrupole`,
+            :meth:`~dxtb.Calculator.quadrupole_numerical`) is consistent and
+            agrees with this result for the diagonal elements.
+
+        Parameters
+        ----------
+        positions : Tensor
+            Cartesian coordinates of all atoms (shape: ``(..., nat, 3)``).
+        chrg : Tensor | float | int, optional
+            Total charge. Defaults to 0.
+        spin : Tensor | float | int, optional
+            Number of unpaired electrons. Defaults to ``None``.
+
+        Returns
+        -------
+        Tensor
+            Traceless quadrupole moment of shape ``(..., 6)`` in the order
+            ``xx, yx, yy, zx, zy, zz``.
+        """
+        if self.opts.ints.level < labels.INTLEVEL_QUADRUPOLE:
+            raise RuntimeError(
+                "The quadrupole moment requires the quadrupole integral, i.e., "
+                f"an integral level of at least {labels.INTLEVEL_QUADRUPOLE} "
+                f"(current: {self.opts.ints.level}). GFN2-xTB does this by "
+                "default."
+            )
+
+        result = self.singlepoint(positions, chrg, spin, **kwargs)
+
+        charges = result.charges
+        if charges.dipole is None or charges.quad is None:
+            raise RuntimeError(
+                "The SCF did not produce atom-resolved dipole and quadrupole "
+                "populations. This is probably a bug."
+            )
+
+        # pylint: disable=import-outside-toplevel
+        from ..properties.moments.quad import quadrupole
+
+        qat = self.ihelp.reduce_orbital_to_atom(charges.mono)
+        return quadrupole(qat, charges.dipole, charges.quad, positions)
+
     def calculate(
         self,
         properties: list[str],
@@ -650,3 +722,6 @@ class AnalyticalCalculator(EnergyCalculator):
 
         if "dipole" in properties:
             self.dipole_analytical(positions, chrg, spin, **kwargs)
+
+        if "quadrupole" in properties:
+            self.quadrupole_analytical(positions, chrg, spin, **kwargs)

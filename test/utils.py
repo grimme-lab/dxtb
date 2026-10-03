@@ -147,6 +147,27 @@ def _flatten(params: list[Tensor]) -> Tensor:
     return torch.cat([p.detach().reshape(-1) for p in params])
 
 
+def overlap_1d(
+    angular: tuple[int | Tensor, int | Tensor],
+    alpha: tuple[Tensor, Tensor],
+    coeff: tuple[Tensor, Tensor],
+    vec: Tensor,
+    algorithm: str = "os",
+) -> Tensor:
+    """
+    Overlap of one shell pair (or one class of shell pairs) from the 3D
+    assembly of the PyTorch integral driver.
+    """
+    # pylint: disable=import-outside-toplevel
+    from dxtb._src.integral.driver.pytorch.impls.kernels import get_kernel
+    from dxtb._src.integral.driver.pytorch.impls.pipeline import (
+        assemble_overlap_1d,
+    )
+
+    ang = (int(angular[0]), int(angular[1]))
+    return assemble_overlap_1d(get_kernel(algorithm), ang, alpha, coeff, vec)
+
+
 def load_from_npz(
     npzfile: Any,
     name: str,

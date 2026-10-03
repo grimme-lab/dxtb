@@ -15,8 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Integral implementations.
-"""
+Integral implementations
+========================
 
-from .overlap import *
-from .type import *
+- ``pairs``: the pair builder, which enumerates the shell pairs of a molecule
+  and assembles the overlap, its gradient, and the dipole and quadrupole
+  integrals.
+- ``pipeline``: the 3D assembly of one class of shell pairs from a 1D kernel.
+- ``kernels``: the interchangeable 1D kernels, Obara-Saika (``os``, default)
+  and McMurchie-Davidson with Hermite moments (``md``), selected by
+  ``int_algorithm``.
+- ``trafo``: Cartesian-to-spherical transformation.
+"""

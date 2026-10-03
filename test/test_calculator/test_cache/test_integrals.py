@@ -93,7 +93,7 @@ def overlap_retained_for_grad(dtype: torch.dtype, intdriver: int) -> None:
 
 @pytest.mark.parametrize("dtype", [torch.float, torch.double])
 def test_overlap_retained_for_grad_pytorch(dtype: torch.dtype) -> None:
-    overlap_retained_for_grad(dtype, labels.INTDRIVER_AUTOGRAD)
+    overlap_retained_for_grad(dtype, labels.INTDRIVER_PYTORCH)
 
 
 @pytest.mark.skipif(not has_libcint, reason="libcint not available")

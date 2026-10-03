@@ -108,7 +108,7 @@ class BaseIntegral(IntegralABC, TensorLike):
         if "pytorch" in self.label.casefold():
             # pylint: disable=import-outside-toplevel
             from .driver.pytorch.driver import (
-                BaseIntDriverPytorch as _BaseIntDriver,
+                IntDriverPytorch as _BaseIntDriver,
             )
 
         elif "libcint" in self.label.casefold():

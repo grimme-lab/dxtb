@@ -107,11 +107,8 @@ INTDRIVER = labels.INTDRIVER_LIBCINT
 
 INTDRIVER_CHOICES = [
     "dxtb",
-    "dxtb2",
     "torch",
-    "torch2",
     "pytorch",
-    "pytorch2",
     "libcint",
     "c",
 ]

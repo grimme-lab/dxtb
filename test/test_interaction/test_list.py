@@ -97,7 +97,7 @@ def test_reset() -> None:
     ilist.reset_efield()
     assert ef.cache is None
 
-    assert len(efg.cache) == 1
+    assert len(efg.cache) == 3  # vat + vdp + vqp
     ilist.reset_efield_grad()
     assert efg.cache is None
 
@@ -128,7 +128,7 @@ def test_reset_all() -> None:
     assert len(es2.cache) == 2
     assert len(es3.cache) == 2
     assert len(ef.cache) == 2
-    assert len(efg.cache) == 1
+    assert len(efg.cache) == 3  # vat + vdp + vqp
 
     ilist.reset_all()
     assert d4sc.cache is None

@@ -57,6 +57,12 @@ class ConfigIntegrals:
     uplo: Literal["n", "l", "u"]
     """Integral mode for PyTorch integral calculation."""
 
+    algorithm: str | None
+    """
+    1D kernel of the PyTorch integral driver (``None``: the default,
+    ``os``).
+    """
+
     def __init__(
         self,
         *,
@@ -64,6 +70,7 @@ class ConfigIntegrals:
         cutoff: float = defaults.INTCUTOFF,
         driver: str | int = defaults.INTDRIVER,
         uplo: str = defaults.INTUPLO,
+        algorithm: str | None = None,
     ) -> None:
         self.cutoff = cutoff
 
@@ -95,21 +102,15 @@ class ConfigIntegrals:
                     )
 
                 self.driver = labels.INTDRIVER_LIBCINT
-            elif driver.casefold() in labels.INTDRIVER_ANALYTICAL_STRS:
-                self.driver = labels.INTDRIVER_ANALYTICAL
-            elif driver.casefold() in labels.INTDRIVER_AUTOGRAD_STRS:
-                self.driver = labels.INTDRIVER_AUTOGRAD
-            elif driver.casefold() in labels.INTDRIVER_LEGACY_STRS:
-                self.driver = labels.INTDRIVER_LEGACY
+            elif driver.casefold() in labels.INTDRIVER_PYTORCH_STRS:
+                self.driver = labels.INTDRIVER_PYTORCH
             else:
                 raise ValueError(f"Unknown integral driver '{driver}'.")
 
         elif isinstance(driver, int):
             if driver not in (
                 labels.INTDRIVER_LIBCINT,
-                labels.INTDRIVER_ANALYTICAL,
-                labels.INTDRIVER_AUTOGRAD,
-                labels.INTDRIVER_LEGACY,
+                labels.INTDRIVER_PYTORCH,
             ):
                 raise ValueError(f"Unknown integral driver '{driver}'.")
 
@@ -124,10 +125,10 @@ class ConfigIntegrals:
 
                     OutputHandler.warn(
                         "The libcint interface is not installed. "
-                        "Falling back to the analytical driver."
+                        "Falling back to the PyTorch driver."
                     )
 
-                    driver = labels.INTDRIVER_ANALYTICAL
+                    driver = labels.INTDRIVER_PYTORCH
 
             self.driver = driver
         else:
@@ -136,10 +137,27 @@ class ConfigIntegrals:
                 f"'{type(driver)}' was given."
             )
 
+        if algorithm is not None:
+            if not isinstance(algorithm, str) or (
+                algorithm.casefold() not in labels.INTALGORITHM_CHOICES
+            ):
+                raise ValueError(
+                    f"Unknown integral algorithm '{algorithm}'. Choose one "
+                    f"of: {', '.join(labels.INTALGORITHM_CHOICES)}."
+                )
+            if self.driver == labels.INTDRIVER_LIBCINT:
+                raise ValueError(
+                    "The integral algorithm can only be chosen for the "
+                    "PyTorch integral driver, not for `libcint`."
+                )
+            algorithm = algorithm.casefold()
+        self.algorithm = algorithm
+
     def __str__(self) -> str:  # pragma: no cover
         return (
             f"ConfigIntegrals(level={self.level}, cutoff={self.cutoff}, "
-            f"driver={self.driver}, uplo={self.uplo})"
+            f"driver={self.driver}, uplo={self.uplo}, "
+            f"algorithm={self.algorithm})"
         )
 
     def __repr__(self) -> str:  # pragma: no cover
