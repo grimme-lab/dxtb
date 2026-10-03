@@ -380,9 +380,11 @@ def test_compile() -> None:
         )
         assert torch.allclose(out, fn(positions), atol=1e-13, rtol=0.0)
 
-    # the data-dependent selection by threshold is refused with a hint
+    # the data-dependent selection by threshold is refused (older torch
+    # versions replace the message of the original exception, which is
+    # checked in `test_threshold_refused_when_compiling`)
     torch._dynamo.reset()
-    with pytest.raises(Exception, match="select_pairs"):
+    with pytest.raises(Exception):
         torch.compile(
             _matrix(
                 ihelp,
@@ -395,3 +397,24 @@ def test_compile() -> None:
             fullgraph=True,
             backend=_compile_backend(),
         )(positions)
+
+
+def test_threshold_refused_when_compiling(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The refusal comes with a hint to `select_pairs`."""
+    dd: DD = {"dtype": torch.double, "device": DEVICE}
+    ihelp, alphas, coeffs, positions = _two_molecules(dd, 16.0, 1.0)
+    plan = prepare(ihelp, positions.device)
+
+    monkeypatch.setattr(torch.compiler, "is_compiling", lambda: True)
+    with pytest.raises(RuntimeError, match="select_pairs"):
+        assemble_matrix(
+            compute_1d_os,
+            ihelp,
+            alphas,
+            coeffs,
+            positions,
+            screening_threshold=1e-8,
+            plan=plan,
+        )

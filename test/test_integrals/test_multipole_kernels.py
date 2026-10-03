@@ -191,6 +191,10 @@ def test_gradcheck(algorithm: str) -> None:
         assert torch.autograd.gradgradcheck(func, args, atol=1e-5)
 
 
+@pytest.mark.skipif(
+    not torch._dynamo.is_dynamo_supported(),
+    reason="torch.compile is not supported for this Python/torch combination",
+)
 @pytest.mark.parametrize("algorithm", ALGORITHMS)
 def test_traceable_without_graph_breaks(algorithm: str) -> None:
     dd: DD = {"dtype": torch.double, "device": DEVICE}
