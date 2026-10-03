@@ -279,8 +279,11 @@ def test_vmap(op: str) -> None:
     screened = _matrix(ihelp, alphas, coeffs, comps, pairs=pairs)
     full = _matrix(ihelp, alphas, coeffs, comps)
 
+    # `vmap` uses batched matmuls, whose summation order may differ from the
+    # loop at the level of rounding errors (platform dependent)
     out = torch.vmap(screened)(batch)
-    assert torch.equal(out, torch.stack([screened(b) for b in batch]))
+    loop = torch.stack([screened(b) for b in batch])
+    assert torch.allclose(out, loop, atol=1e-13, rtol=0.0)
     ref = torch.stack([full(b) for b in batch])
     assert (out - ref).abs().max() <= threshold
     assert ((out == 0) & (ref != 0)).any()
@@ -328,6 +331,25 @@ def test_jacrev_pairs() -> None:
     )
 
 
+def _compile_backend() -> str:
+    """
+    ``inductor`` needs a C++ compiler (missing, e.g., on CI runners without
+    MSVC); the graph capture is checked with ``aot_eager`` otherwise.
+    """
+    try:
+        # pylint: disable=import-outside-toplevel
+        from torch._inductor.cpp_builder import get_cpp_compiler
+
+        get_cpp_compiler()
+    except Exception:  # pylint: disable=broad-exception-caught
+        return "aot_eager"
+    return "inductor"
+
+
+@pytest.mark.skipif(
+    not torch._dynamo.is_dynamo_supported(),
+    reason="torch.compile is not supported for this Python/torch combination",
+)
 def test_compile() -> None:
     """``fullgraph`` compilation, unscreened and with a pair selection."""
     dd: DD = {"dtype": torch.double, "device": DEVICE}
@@ -353,7 +375,9 @@ def test_compile() -> None:
     for kwargs in ({}, {"pairs": pairs}):
         fn = _matrix(ihelp, alphas, coeffs, None, plan=plan, **kwargs)
         torch._dynamo.reset()
-        out = torch.compile(fn, fullgraph=True)(positions)
+        out = torch.compile(fn, fullgraph=True, backend=_compile_backend())(
+            positions
+        )
         assert torch.allclose(out, fn(positions), atol=1e-13, rtol=0.0)
 
     # the data-dependent selection by threshold is refused with a hint
@@ -369,4 +393,5 @@ def test_compile() -> None:
                 screening_threshold=1e-8,
             ),
             fullgraph=True,
+            backend=_compile_backend(),
         )(positions)
