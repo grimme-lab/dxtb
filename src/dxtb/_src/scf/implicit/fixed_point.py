@@ -432,13 +432,15 @@ class _ImplicitFixedPoint(torch.autograd.Function):
 def _grad_leaves(t: Tensor) -> list[Tensor]:
     """All autograd leaves that require grad and are reachable from ``t``."""
     leaves: dict[int, Tensor] = {}
-    seen: set[int] = set()
+    # Hold the nodes (not only their ids): older torch versions create a new
+    # Python wrapper on every access, and the id of a freed one is reused.
+    seen: dict[int, object] = {}
     stack = [t.grad_fn]
     while stack:
         node = stack.pop()
         if node is None or id(node) in seen:
             continue
-        seen.add(id(node))
+        seen[id(node)] = node
 
         var = getattr(node, "variable", None)  # AccumulateGrad
         if var is not None:
