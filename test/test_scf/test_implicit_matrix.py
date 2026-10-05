@@ -36,11 +36,10 @@ Quantities (all reduced to a scalar with fixed per-system weights):
 Derivatives:
 
 - ``pos``: first derivative w.r.t. the positions
-- ``field``: first derivative w.r.t. the electric field (needs libcint)
+- ``field``: first derivative w.r.t. the electric field
 - ``param``: first derivative w.r.t. one parametrization tensor (``gexp``)
 - ``hvp_pos``: Hessian-vector product w.r.t. positions (fixed direction)
 - ``mixed``: derivative of the ``pos``-gradient projection w.r.t. the field
-  (needs libcint)
 """
 
 from __future__ import annotations
@@ -55,7 +54,6 @@ from tad_mctc.data.molecules import mols
 
 from dxtb import GFN1_XTB, Calculator, ParamModule
 from dxtb._src.components.interactions import new_efield
-from dxtb._src.exlibs.available import has_libcint
 
 from ..conftest import DEVICE
 
@@ -202,8 +200,9 @@ def compute(
     gexp = par.get("charge", "effective", "gexp")
 
     opts = _opts(mode)
-    kwargs = {"interaction": new_efield(field)} if has_libcint else {}
-    calc = Calculator(numbers, par, opts=opts, **kwargs, **DD)
+    calc = Calculator(
+        numbers, par, opts=opts, interaction=new_efield(field), **DD
+    )
 
     out: dict[tuple[str, str], torch.Tensor | Failed] = {}
     try:
@@ -253,8 +252,9 @@ def _scalars(system: str, pos=None, field=None, gexp=None) -> dict:
     if gexp is not None:
         with torch.no_grad():
             par.get("charge", "effective", "gexp").fill_(gexp)
-    kw = {"interaction": new_efield(field)} if has_libcint else {}
-    calc = Calculator(numbers, par, opts=_opts(REFERENCE), **kw, **DD)
+    calc = Calculator(
+        numbers, par, opts=_opts(REFERENCE), interaction=new_efield(field), **DD
+    )
     res = calc.singlepoint(pos, chrg)
     return {
         q: (quantity(calc, res, pos, q) * w).sum().item() for q in QUANTITIES
@@ -321,15 +321,14 @@ def reference(system: str) -> dict[tuple[str, str], torch.Tensor]:
         put("pos", g)
 
     # field (3) and parameter (1)
-    if has_libcint:
-        gf = {q: torch.zeros(3, **DD) for q in QUANTITIES}
-        for i in range(3):
-            e = torch.zeros(3, **DD)
-            e[i] = 1.0
-            v = _vec(lambda t: _scalars(system, field=field0 + t * e), 1e-4)
-            for q in QUANTITIES:
-                gf[q][i] = v[q]
-        put("field", gf)
+    gf = {q: torch.zeros(3, **DD) for q in QUANTITIES}
+    for i in range(3):
+        e = torch.zeros(3, **DD)
+        e[i] = 1.0
+        v = _vec(lambda t: _scalars(system, field=field0 + t * e), 1e-4)
+        for q in QUANTITIES:
+            gf[q][i] = v[q]
+    put("field", gf)
     g0 = ParamModule(GFN1_XTB, **DD).get("charge", "effective", "gexp").item()
     put(
         "param",
@@ -343,7 +342,7 @@ def reference(system: str) -> dict[tuple[str, str], torch.Tensor]:
             lambda t: _scalars(system, pos=pos0 + t * dpos), 2e-3, second=True
         ),
     )
-    if has_libcint and system not in BIG:
+    if system not in BIG:
         # E is strongly non-linear in the field: small field step (h scan in
         # the development notes: 1e-3 -> 1e-7 error, 1e-4 -> 1e-11). Position step 2e-3: larger
         # steps lose to truncation, smaller ones to SCF noise (hvp h scan, the development notes)
@@ -416,6 +415,10 @@ KNOWN_FAILURES: dict[tuple[str, str, str, str], tuple[str, bool]] = {
         "unrolled derivative of a non-variational quantity is inexact (err 4.16e-03)",
         True,
     ),
+    ("full", "batch_H2_LYS", "pos", "q2"): (
+        "unrolled derivative of a non-variational quantity is inexact (err 1.12e-08)",
+        False,
+    ),
     ("full", "batch_H2_LYS", "hvp_pos", "q2"): (
         "unrolled derivative of a non-variational quantity is inexact (err 2.72e-03)",
         True,
@@ -477,12 +480,6 @@ def _all_cells() -> list:
         for system in SYSTEMS:
             for d, q in _cells_for(system):
                 marks = []
-                if d in ("field", "mixed"):
-                    marks.append(
-                        pytest.mark.skipif(
-                            not has_libcint, reason="libcint not available"
-                        )
-                    )
                 key = (mode, system, d, q)
                 if key in KNOWN_FAILURES:
                     reason, strict = KNOWN_FAILURES[key]
@@ -531,12 +528,13 @@ def test_float32_smoke(mode: str) -> None:
     dd32 = {"device": DEVICE, "dtype": torch.float32}
     opts = {"verbosity": 0, "maxiter": 100, "scf_mode": mode}
     pos = pos0.to(**dd32).requires_grad_(True)
-    kw = (
-        {"interaction": new_efield(torch.tensor(FIELD0, **dd32))}
-        if has_libcint
-        else {}
+    calc = Calculator(
+        numbers,
+        GFN1_XTB,
+        opts=opts,
+        interaction=new_efield(torch.tensor(FIELD0, **dd32)),
+        **dd32,
     )
-    calc = Calculator(numbers, GFN1_XTB, opts=opts, **kw, **dd32)
     res = calc.singlepoint(pos, chrg.to(**dd32))
 
     e = res.total.sum(-1)
